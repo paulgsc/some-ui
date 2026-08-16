@@ -79,7 +79,7 @@
     `@some-ui/interview` · `pedagogy/` · and every tutor skill
   ]
   #v(1em)
-  #text(size: 9.5pt)[Version 1.0 --- 2026-07-25]
+  #text(size: 9.5pt)[Version 1.1 --- 2026-08-16]
   #v(2cm)
 ]
 
@@ -1481,6 +1481,90 @@ rather than as *data*, and the remedy is to exhibit the data.
   that a human reviewer can falsify it.
 ]
 
+#definition("6.5", name: "Sink and bridge")[
+  A *confusion edge* is an ordered pair $(k_1, k_2) in cal(K) times cal(K)$
+  recording that construction of $k_2$ predictably stalls where $k_1$ is
+  unavailable --- the second relation O1 already requires alongside $prec$
+  (Def. 1.2), formalized here for the first time. A *sink* is a triple
+  $(k_1, k_2, b)$ where $(k_1, k_2)$ is a confusion edge and $b in "Bridge"$
+  is a bounded route that resolves the incidental burden $k_1$ names and
+  returns the learner to the *same* obligation at $k_2$ --- never to a
+  different one (Prop. 6.3). For a subject matter with finite declared sink
+  set $Sigma$ (Axiom 1.1 applies to $Sigma$ exactly as it applies to
+  $cal(K)$) and unclassified state $bot$ --- "no declared sink matched" ---
+  a *routing function* is a map $"route" : Sigma union {bot} -> "Bridge"$.
+  This introduces no relation beyond the two O1 already names: a sink is
+  what a confusion edge is called once it is equipped with a bridge, not a
+  third kind of thing.
+]
+
+#remark("6.4", name: "A sink is local and falsifiable, never a learner identity")[
+  In the register of Remark 2.1: the same learner reaches different sinks on
+  different problems, and on different attempts at the same problem, because
+  a sink is a property of *this attempt at this obligation* (the exercise
+  $e$ of an observation $o$, Def. 3.1), not of the learner's state $S_t$
+  (Def. 2.1). "This attempt reached the sink $(k_1, k_2)$" is local and
+  falsifiable by the next attempt; "this learner lacks $k_1$" is a claim
+  about $mu_t (k_1)$ that Axiom 3.1 already rules a single attempt cannot
+  supply. A sink store keyed on the learner rather than on the edge
+  reintroduces Proposition 2.1's rejected scalar under a routing name.
+]
+
+#proposition("6.3", name: "Bridge losslessness")[
+  For a sink $(k_1, k_2, b)$, if $b$ terminates at an obligation other than
+  $k_2$, or at $k_2$ under an objective different from the one being probed
+  (Def. 4.1's $"obj"$), then $b$ has not resolved the confusion $(k_1, k_2)$
+  names --- it has substituted a different exercise for it.
+]
+
+#proof[
+  By Definition 6.5, $b$ exists to discharge the *incidental* burden the
+  confusion edge names while leaving the obligation $k_2$ intact. A route
+  terminating elsewhere either abandons $k_2$ --- silently withdrawing the
+  exercise the learner was being probed on --- or answers a different
+  objective at $k_2$, e.g. a lesson on the syntax of $k_1$ where the
+  obligation asked for the invariant of $k_2$. Either way, the evidential
+  yield $Y$ (Def. 3.2) collected downstream is about an exercise
+  $"route"$ never advertised, which is the same corruption Corollary 3.3
+  forbids for an unrecorded shared presentation parameter --- here
+  committed by the bridge itself rather than by the channel.
+]
+
+#corollary("6.3", name: "Sinks do not become modes")[
+  Derivable from Theorem 4.1: a bridge is a valuation over dimensions the
+  policy vector (Def. 4.2) already has --- $p_"hint"$ moved earlier,
+  $p_"retry"$ loosened, decomposition depth increased --- so the
+  implementations required to support $|Sigma|$ sinks are $O(|p|)$, not
+  $O(|Sigma|)$, by the same argument Corollary 4.1 makes for named modes. A
+  bridge that requires a component the runner does not already have has
+  reproduced Corollary 4.1's pile-up with the word "sink" in place of the
+  word "mode".
+]
+
+#theorem("6.3", name: "Routing totality")[
+  If $Sigma$ is finite (Axiom 1.1) and $"route"(bot)$ is defined as a
+  bridge requiring no member of $Sigma$ to have matched, then
+  $"route" : Sigma union {bot} -> "Bridge"$ is total --- and totality does
+  not require $Sigma$ to cover every latent cause of blockage, only that
+  $"route"$ have a value on every *observable* state, which $Sigma union
+  {bot}$ exhausts by construction, since $bot$ is defined as its
+  complement.
+]
+
+#proof[
+  $Sigma union {bot}$ is, by the definition of $bot$, the entire domain a
+  classification step can return: either a declared sink matched, or none
+  did. $"route"$ is defined on every element of $Sigma$ by hypothesis (each
+  sink carries its own bridge, Def. 6.5) and on $bot$ by the fallback
+  route's construction, which does not depend on which sink, if any, a
+  larger taxonomy would have matched. Enlarging or shrinking $Sigma$
+  therefore changes which bridge a given attempt receives but never removes
+  a value from $"route"$'s domain --- which is Definition 6.4's (P1) at the
+  routing sub-decision, instantiated rather than argued afresh. A compiled
+  graph can discharge this structurally, over its finite node and edge set,
+  in place of enumerating $Sigma$'s coverage of human causes of blockage.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = The Persistence Budget
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1975,7 +2059,10 @@ derived decisions and belong in ADRs filed against this section.
   identifiers (Def. 1.3), a prerequisite relation, and a confusion relation.
   Authored as content, reviewed as content. *This is the first obligation and
   nothing else can be built before it.* For the Hangul domain it must
-  distinguish recognition from production per glyph (Rem. 1.1).
+  distinguish recognition from production per glyph (Rem. 1.1). A sink
+  (Def. 6.5) is an instance of the confusion relation this obligation
+  already names, not a fourth relation --- the taxonomy O1 requires has room
+  for it without amendment to this rule.
 ]
 
 #rule("O2 · Reference profiles")[
@@ -2091,6 +2178,17 @@ would cost.
   is wrong and the surfaces need disjoint concept spaces with an explicit
   mapping. Cost: moderate; O3's single envelope survives, O1 splits.
 
++ *The observed blocker distribution has no finite cover at any useful
+  granularity.* If attempts at unclassified blockage never cluster into a
+  small, reusable set of sinks --- if every stall is its own cause --- then
+  Definition 6.5's $Sigma$ cannot be authored at a size a small team can
+  maintain, and Theorem 6.3's totality holds only through $"route"(bot)$
+  alone. Cost: the sink taxonomy is kept deliberately sparse or abandoned,
+  and the fully worked fallback route is promoted from optimization to
+  primary mechanism --- survivable, since by construction it is already
+  correct and already non-blocking, but it forfeits whatever efficiency a
+  matched bridge would have bought over it.
+
 // ═══════════════════════════════════════════════════════════════════════════
 = Amendment Protocol
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2134,6 +2232,17 @@ prior-plus-deviation-plus-ring decomposition (Thm. 5.1), lazy decay
 `packages/ui/{honeycomb,leetype,topik,interview}`, `pedagogy/`, and the tutor
 skills as of this date. No source change accompanies this filing, by design:
 §11 sequences the work, and O1 is the first increment.
+
+*v1.1 --- 2026-08-16.* Formalizes the confusion relation O1 has required
+since v1.0 but left undefined: sink and bridge (Def. 6.5),
+sink-is-not-a-learner-identity (Rem. 6.4), bridge losslessness (Prop. 6.3),
+sinks-do-not-become-modes as a corollary of Theorem 4.1 (Cor. 6.3), and
+routing totality (Thm. 6.3) --- the routing function over declared sinks
+plus an unclassified state is total by construction, independent of whether
+the declared sinks cover every latent cause of blockage. Falsifier added to
+§12: no finite cover at any useful granularity. Filed against O1 and §6 per
+this section's own triage rule, ahead of the source it governs in
+`packages/ui/leetype`, per the discipline stated at v1.0's filing.
 
 #pagebreak()
 
