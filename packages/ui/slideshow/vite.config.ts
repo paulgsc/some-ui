@@ -5,11 +5,13 @@ export default createViteConfig({
   packageName: "@some-ui/slideshow",
   libraryName: "SomeUISlideshow",
   alias: {
-    "@slideshow": resolve(__dirname, "src"),
+    "@slideshow": resolve(import.meta.dirname, "src"),
   },
   contentPackage: true,
   dtsOptions: {
     exclude: ["**/recap/**"],
   },
-  tsConfigPaths: { projects: [resolve(__dirname, "tsconfig.build.json")] },
+  tsConfigPaths: {
+    projects: [resolve(import.meta.dirname, "tsconfig.build.json")],
+  },
 })

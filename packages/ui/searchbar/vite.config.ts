@@ -5,6 +5,6 @@ export default createViteConfig({
   packageName: "some-ui-searchbar",
   libraryName: "SomeUISearchbar",
   alias: {
-    "@searchbar": resolve(__dirname, "src"),
+    "@searchbar": resolve(import.meta.dirname, "src"),
   },
 })

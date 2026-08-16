@@ -67,7 +67,7 @@ export function createViteConfig(
     build: {
       minify: true, // Ensure minification is on so esbuild drops the logs
       ...createBuildConfig(options, packageRoot),
-      rollupOptions: createRollupOptions(options, externalDeps),
+      rolldownOptions: createRollupOptions(options, externalDeps),
     },
   }
 

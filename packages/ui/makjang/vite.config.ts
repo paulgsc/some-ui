@@ -5,7 +5,9 @@ export default createViteConfig({
   packageName: "some-ui-makjang",
   libraryName: "SomeUIMakjang",
   alias: {
-    "@makjang": resolve(__dirname, "src"),
+    "@makjang": resolve(import.meta.dirname, "src"),
   },
-  tsConfigPaths: { projects: [resolve(__dirname, "tsconfig.build.json")] },
+  tsConfigPaths: {
+    projects: [resolve(import.meta.dirname, "tsconfig.build.json")],
+  },
 })

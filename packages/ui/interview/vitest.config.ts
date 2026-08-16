@@ -12,7 +12,7 @@ export default defineConfig({
     passWithNoTests: true,
     deps: {
       optimizer: {
-        web: {
+        client: {
           include: ["@testing-library/react"],
         },
       },
@@ -20,7 +20,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@interview": path.resolve(__dirname, "./src"),
+      "@interview": path.resolve(import.meta.dirname, "./src"),
     },
   },
 })

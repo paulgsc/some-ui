@@ -6,10 +6,13 @@ import viteReact from "@vitejs/plugin-react"
 import type { Plugin, UserConfig } from "vite"
 import { defineConfig } from "vite"
 
-import styleContext from "./style.context"
+import styleContext from "./style.context.ts"
 
-const certPath = resolve(__dirname, "../../certs/nixos.local+3.pem")
-const keyPath = resolve(__dirname, "../../certs/nixos.local+3-key.pem")
+const certPath = resolve(import.meta.dirname, "../../certs/nixos.local+3.pem")
+const keyPath = resolve(
+  import.meta.dirname,
+  "../../certs/nixos.local+3-key.pem"
+)
 const hasLocalCerts = fs.existsSync(certPath) && fs.existsSync(keyPath)
 
 // The dev/preview counterpart of apps/www/nginx.tts-proxy.conf: the same
@@ -59,7 +62,7 @@ function warnMissingContentAssets(): Plugin {
     name: "warn-missing-content-assets",
     configureServer(): void {
       const missing = ["sfx"].filter(
-        (name) => !fs.existsSync(resolve(__dirname, "public", name))
+        (name) => !fs.existsSync(resolve(import.meta.dirname, "public", name))
       )
       if (missing.length === 0) return
       // eslint-disable-next-line no-console
@@ -166,13 +169,13 @@ export default defineConfig(
     ],
     resolve: {
       alias: {
-        "@": resolve(__dirname, "./src"),
+        "@": resolve(import.meta.dirname, "./src"),
       },
       tsconfigPaths: true,
     },
     build: {
       // Enable rollup bundle analysis
-      rollupOptions: {
+      rolldownOptions: {
         // No `output.manualChunks`. The hand-rolled version here matched with
         // `id.includes(pkg)` — a substring test against the full module path —
         // which under pnpm matches far more than the package named. pnpm

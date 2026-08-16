@@ -10,7 +10,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@filter": resolve(__dirname, "./src"),
+      "@filter": resolve(import.meta.dirname, "./src"),
     },
   },
 })

@@ -12,7 +12,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@wireframes": path.resolve(__dirname, "./src"),
+      "@wireframes": path.resolve(import.meta.dirname, "./src"),
     },
   },
 })

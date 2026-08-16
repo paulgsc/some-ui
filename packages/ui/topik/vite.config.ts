@@ -5,7 +5,9 @@ export default createViteConfig({
   packageName: "@some-ui/topik",
   libraryName: "SomeUITopik",
   alias: {
-    "@topik": resolve(__dirname, "src"),
+    "@topik": resolve(import.meta.dirname, "src"),
   },
-  tsConfigPaths: { projects: [resolve(__dirname, "tsconfig.build.json")] },
+  tsConfigPaths: {
+    projects: [resolve(import.meta.dirname, "tsconfig.build.json")],
+  },
 })

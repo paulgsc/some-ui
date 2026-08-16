@@ -5,6 +5,6 @@ export default createViteConfig({
   packageName: "some-ui-neon-sign",
   libraryName: "SomeUINeonSign",
   alias: {
-    "@neon-sign": resolve(__dirname, "src"),
+    "@neon-sign": resolve(import.meta.dirname, "src"),
   },
 })

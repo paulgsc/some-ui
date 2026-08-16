@@ -5,10 +5,12 @@ export default createViteConfig({
   packageName: "umag",
   libraryName: "SomeUIUmag",
   alias: {
-    "@umag": resolve(__dirname, "src"),
+    "@umag": resolve(import.meta.dirname, "src"),
   },
   dtsOptions: {
     exclude: ["**/demo/**"],
   },
-  tsConfigPaths: { projects: [resolve(__dirname, "tsconfig.build.json")] },
+  tsConfigPaths: {
+    projects: [resolve(import.meta.dirname, "tsconfig.build.json")],
+  },
 })

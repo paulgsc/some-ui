@@ -90,7 +90,7 @@ export function extensionConfig(options: ExtensionConfigOptions): UserConfig {
       modulePreload: false,
       // Rollup emits ESM here; the flatten pass rewrites the classic entries to
       // IIFE. Flat file names keep manifests referencing `content.js` etc.
-      rollupOptions: {
+      rolldownOptions: {
         input,
         external,
         output: {
