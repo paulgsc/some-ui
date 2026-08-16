@@ -1,5 +1,12 @@
-import type { ConstructionStep, Exercise } from "@leetype/types/exercise"
-import { ConstructionStepSchema } from "@leetype/types/exercise"
+import type {
+  ConstructionStep,
+  DiagnosticStep,
+  Exercise,
+} from "@leetype/types/exercise"
+import {
+  ConstructionStepSchema,
+  DiagnosticStepSchema,
+} from "@leetype/types/exercise"
 import { z } from "zod"
 
 import { linearize } from "./obligation-graph"
@@ -63,9 +70,10 @@ const OBLIGATION_CLAIMS = [
  * An `Obligation.content` is valid exactly when it carries no `id` of its
  * own — the node's key in `ObligationGraph.nodes` is the only place an
  * obligation's identity may come from (`linearize()`'s own comment on
- * this) — and attaching a probe id to it satisfies `ConstructionStepSchema`,
- * the real schema `types/exercise.ts` already ships, reused rather than
- * re-specified so the two can never silently drift apart.
+ * this) — and attaching a probe id to it satisfies either
+ * `ConstructionStepSchema` or `DiagnosticStepSchema`, the real schemas
+ * `types/exercise.ts` already ships, reused rather than re-specified so
+ * the two can never silently drift apart.
  *
  * Rejecting a stray `id` here, rather than letting the probe below
  * silently absorb it, is deliberate: `{ id: probe, ...value }` would let
@@ -77,22 +85,22 @@ const OBLIGATION_CLAIMS = [
  */
 function isValidObligationContent(
   value: unknown
-): value is Omit<ConstructionStep, "id"> {
+): value is Omit<ConstructionStep, "id"> | Omit<DiagnosticStep, "id"> {
   if (typeof value !== "object" || value === null) return false
   if ("id" in value) return false
-  return ConstructionStepSchema.safeParse({
-    id: "obligation-content-schema-probe",
-    ...value,
-  }).success
+  const probed = { id: "obligation-content-schema-probe", ...value }
+  return (
+    ConstructionStepSchema.safeParse(probed).success ||
+    DiagnosticStepSchema.safeParse(probed).success
+  )
 }
 
-const ObligationContentSchema = z.custom<Omit<ConstructionStep, "id">>(
-  isValidObligationContent,
-  {
-    message:
-      "An obligation's content must satisfy ConstructionStepSchema once an id is attached.",
-  }
-)
+const ObligationContentSchema = z.custom<
+  Omit<ConstructionStep, "id"> | Omit<DiagnosticStep, "id">
+>(isValidObligationContent, {
+  message:
+    "An obligation's content must satisfy ConstructionStepSchema or DiagnosticStepSchema once an id is attached.",
+})
 
 /**
  * Runtime validation for `Obligation` — the acceptance criterion this

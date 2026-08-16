@@ -1,4 +1,8 @@
-import type { ConstructionStep, Exercise } from "@leetype/types/exercise"
+import type {
+  ConstructionStep,
+  DiagnosticStep,
+  Exercise,
+} from "@leetype/types/exercise"
 
 /**
  * The obligation graph — one arrow to the left of the shim.
@@ -62,12 +66,17 @@ type ObligationClaim =
 
 /**
  * One node in the graph: everything `linearize()` needs to emit this
- * obligation as a `ConstructionStep`, plus the edges LTY-ROUTE reads and
- * this module does not.
+ * obligation as a step, plus the edges LTY-ROUTE reads and this module
+ * does not.
  *
- * `content` is `ConstructionStep` minus `id` because the id is the node's
- * own key in `ObligationGraph.nodes` — an obligation graph has exactly one
- * place that says what a node is called, not two that have to agree.
+ * `content` is a `ConstructionStep` or a `DiagnosticStep`, minus `id`,
+ * because the id is the node's own key in `ObligationGraph.nodes` — an
+ * obligation graph has exactly one place that says what a node is called,
+ * not two that have to agree. Both families are admitted (not just
+ * construction) because R4's totality validator has to be able to state
+ * "every diagnostic node has a concrete observation" about *some* node in
+ * a graph, and a graph that can only ever contain construction content
+ * has no such node to check.
  */
 export type Obligation = {
   claim: ObligationClaim
@@ -82,7 +91,7 @@ export type Obligation = {
   sinkRoutes: Partial<Record<SinkId, BridgeId>>
   /** Read by LTY-ROUTE R3/R4, not by this module. */
   fallbackBridge: BridgeId
-  content: Omit<ConstructionStep, "id">
+  content: Omit<ConstructionStep, "id"> | Omit<DiagnosticStep, "id">
 }
 
 /**
