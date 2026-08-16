@@ -8,6 +8,7 @@
 import { isDebugToWorkerMessage } from "@suspender/types/messages"
 
 import { discard } from "./core/discard"
+import { hydrateDiscardState } from "./core/discard-state"
 import { isMoveCommand, navigate } from "./core/navigate"
 import {
   count,
@@ -128,7 +129,12 @@ storage.on("idle-timeout", () => {
   chrome.idle.setDetectionInterval(prefs["idle-timeout"])
 })
 
-// badge
+// badge: neutral colour, count of tabs the browser is currently declining to
+// suspend (see discard-state.ts) — restored before anything else touches it,
+// since MV3 can recycle this worker mid-session.
 starters.push(() => {
   void chrome.action.setBadgeBackgroundColor({ color: "#666" })
+})
+starters.push(() => {
+  void hydrateDiscardState()
 })

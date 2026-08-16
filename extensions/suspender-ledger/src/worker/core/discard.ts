@@ -26,6 +26,7 @@ import {
   injectUnmark,
   requestDiscard,
 } from "./discard-adapter"
+import { clearSkipped, markSkipped } from "./discard-state"
 import {
   count,
   forgetTab,
@@ -227,6 +228,7 @@ const perform = (tab: chrome.tabs.Tab): Promise<void> =>
               origin,
               verified: landed === true,
             })
+            clearSkipped(tabId)
             settle("succeeded")
             trace("perform:done-success", tabId)
             resolve()
@@ -243,6 +245,7 @@ const perform = (tab: chrome.tabs.Tab): Promise<void> =>
             { origin, why: "discard resolved but tab is still live" },
             "warn"
           )
+          markSkipped(tabId, "protected")
           state = transition(tabId, state, { type: "DISCARD_FAILED" })
           if (state.kind !== "ROLLING_BACK") {
             settle("noop")
@@ -293,6 +296,7 @@ const perform = (tab: chrome.tabs.Tab): Promise<void> =>
             verified: true,
             despiteError: attempt.message,
           })
+          clearSkipped(tabId)
           settle("succeeded")
           trace("perform:done-false-negative", tabId)
           resolve()
@@ -313,6 +317,7 @@ const perform = (tab: chrome.tabs.Tab): Promise<void> =>
           { origin, error: attempt.message },
           "warn"
         )
+        markSkipped(tabId, "protected")
         state = transition(tabId, state, { type: "DISCARD_FAILED" })
 
         if (state.kind !== "ROLLING_BACK") {
@@ -386,6 +391,7 @@ function discardImpl(tab: chrome.tabs.Tab): Promise<void> | void {
     })
     log("tab is audible; suspend skipped", tab)
     trace("discardImpl:skip-audible", tabId)
+    markSkipped(tabId, "media")
     release(Promise.resolve())
     return
   }
@@ -542,6 +548,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   // Drop per-tab belief with the tab, so the snapshot map tracks the current
   // profile rather than every tab ever opened.
   forgetTab(tabId)
+  clearSkipped(tabId)
 })
 
 export { discard, inprogress, reconcileActivatedTab }
