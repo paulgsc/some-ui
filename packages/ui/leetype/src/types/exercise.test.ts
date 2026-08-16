@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest"
 import type { Block } from "./exercise"
 import {
   BlockSchema,
+  DIAGNOSTIC_REPAIR_MAX_CHARS,
+  DiagnosticStepSchema,
   ExerciseSchema,
   GOAL_MAX_CHARS,
   languageOf,
@@ -302,6 +304,140 @@ describe("block helpers", () => {
     expect(promptBlocksOf(parsed)).toHaveLength(2)
     expect(typingBlockOf(parsed)?.source).toBe(typing.source)
     expect(languageOf(parsed)).toBe("rust")
+  })
+})
+
+describe("DiagnosticStepSchema — the falsification→repair family", () => {
+  const failure: Block = {
+    kind: "trace",
+    headline: "TIMEOUT",
+    observations: [{ label: "cursor", value: "0 → 0" }],
+  }
+  const shortRepair: Block = {
+    kind: "typing",
+    source: "cursor += 1;",
+    language: "rust",
+  }
+  const rationale = {
+    cause: "the loop advances nothing, so cursor never reaches input.len()",
+    whyRepairDiscriminates:
+      "incrementing cursor is the only change that makes the loop terminate",
+  }
+
+  it("keeps rationale optional on the plain StepSchema", () => {
+    const parsed = StepSchema.parse(step([failure, shortRepair]))
+    expect(parsed.rationale).toBeUndefined()
+  })
+
+  it("rejects a diagnostic step with no rationale, at the rationale path", () => {
+    const result = DiagnosticStepSchema.safeParse(step([failure, shortRepair]))
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.path).toEqual(["rationale"])
+  })
+
+  it("rejects a diagnostic step with no trace block, and says why", () => {
+    const result = DiagnosticStepSchema.safeParse({
+      ...step([shortRepair]),
+      rationale,
+    })
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.message).toMatch(/must carry a trace block/)
+  })
+
+  it("accepts a diagnostic step whose rationale and trace block are present", () => {
+    const result = DiagnosticStepSchema.safeParse({
+      ...step([failure, shortRepair]),
+      rationale,
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("preserves rationale through the generic StepSchema/ExerciseSchema parse", () => {
+    // The corpus lint's whole premise depends on this: `nextExercise`'s
+    // shim parses every seed exercise through `ExerciseCorpusSchema`
+    // (generic `StepSchema`, not `DiagnosticStepSchema`), so a `rationale`
+    // authored on a diagnostic instance must survive that generic parse
+    // rather than being stripped as an unrecognized key.
+    const exercise = ExerciseSchema.parse({
+      id: "e1",
+      title: "Diagnostic fixture",
+      steps: [{ ...step([failure, shortRepair]), rationale }],
+    })
+    expect(exercise.steps[0]?.rationale).toEqual(rationale)
+  })
+
+  it("rejects a repair past the bounded-answer budget, and says why", () => {
+    const tooLong: Block = {
+      kind: "typing",
+      source: "a".repeat(DIAGNOSTIC_REPAIR_MAX_CHARS + 1),
+      language: "rust",
+    }
+    const result = DiagnosticStepSchema.safeParse({
+      ...step([failure, tooLong]),
+      rationale,
+    })
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.message).toMatch(
+      /runs past 50 typed characters/
+    )
+  })
+
+  it("accepts a repair right at the bounded-answer budget", () => {
+    const atLimit: Block = {
+      kind: "typing",
+      source: "a".repeat(DIAGNOSTIC_REPAIR_MAX_CHARS),
+      language: "rust",
+    }
+    const result = DiagnosticStepSchema.safeParse({
+      ...step([failure, atLimit]),
+      rationale,
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("rejects a multi-line repair even when it is under the character budget", () => {
+    const multiline: Block = {
+      kind: "typing",
+      source: "cursor += 1;\nlet done = true;",
+      language: "rust",
+    }
+    const result = DiagnosticStepSchema.safeParse({
+      ...step([failure, multiline]),
+      rationale,
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it("bounds only the typed portion of a repair framed with ‹context›", () => {
+    // The gap this guards: a diagnostic step's frame legitimately spans
+    // many lines of context around a short repair (LTY-FRAME's context
+    // spans), and counting the whole source — frame included — would
+    // reject exactly the shape the family is built on. A ~150-character
+    // frame around a 12-character repair must still pass.
+    const framed: Block = {
+      kind: "typing",
+      source:
+        "‹while cursor < input.len() {\n    parse(input[cursor]);\n    ›cursor += 1;‹\n}›",
+      language: "rust",
+    }
+    const result = DiagnosticStepSchema.safeParse({
+      ...step([failure, framed]),
+      rationale,
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("still rejects when the typed portion alone is over budget, context aside", () => {
+    const framed: Block = {
+      kind: "typing",
+      source: `‹let x = ›${"a".repeat(DIAGNOSTIC_REPAIR_MAX_CHARS + 1)}‹;›`,
+      language: "rust",
+    }
+    const result = DiagnosticStepSchema.safeParse({
+      ...step([failure, framed]),
+      rationale,
+    })
+    expect(result.success).toBe(false)
   })
 })
 
