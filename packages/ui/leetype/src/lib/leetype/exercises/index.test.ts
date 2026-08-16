@@ -1,4 +1,5 @@
 import {
+  DiagnosticStepSchema,
   GOAL_MAX_CHARS,
   StepSchema,
   typingBlockOf,
@@ -7,6 +8,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   FIXTURE_ADVERSARIAL_EXERCISE_ID,
+  FIXTURE_DIAGNOSTIC_EXERCISE_IDS,
   FIXTURE_EXERCISE_ID,
   FIXTURE_HOSTILE_PROMPT_STEP,
   nextExercise,
@@ -112,6 +114,72 @@ describe("the seed set", () => {
         expect(StepSchema.safeParse(step).success).toBe(true)
       }
     }
+  })
+})
+
+describe("the five diagnostic instances (LTY-FAMILIES A3)", () => {
+  it("ships exactly five, one per failure class", () => {
+    expect(FIXTURE_DIAGNOSTIC_EXERCISE_IDS).toHaveLength(5)
+    expect(new Set(FIXTURE_DIAGNOSTIC_EXERCISE_IDS).size).toBe(5)
+  })
+
+  it("each validates through the strict DiagnosticStepSchema, not just StepSchema", () => {
+    // StepSchema accepting them is necessary (the shim's load-time parse
+    // already proves it) but not sufficient — this is the check that they
+    // actually satisfy the family's own contract: rationale present, a
+    // trace block present, and the repair within the bounded-answer budget.
+    // A step that passed StepSchema but failed this would be silent
+    // evidence the fixture had drifted out of the shape it claims.
+    for (const id of FIXTURE_DIAGNOSTIC_EXERCISE_IDS) {
+      const exercise = nextExercise({ preferId: id })
+      expect(exercise.id).toBe(id)
+      expect(exercise.steps).toHaveLength(1)
+      const result = DiagnosticStepSchema.safeParse(exercise.steps[0])
+      const reason = result.success ? "" : result.error.message
+      expect(result.success, `"${id}" failed: ${reason}`).toBe(true)
+    }
+  })
+
+  it("keeps every repair a single line under the bounded-answer budget", () => {
+    // "Copying each fully-revealed repair takes seconds, not a minute" —
+    // approximated here as a hard length/line bound on the typed portion,
+    // the same measure DiagnosticStepSchema itself enforces. The frame
+    // around each repair is intentionally excluded (see typedPortionOf in
+    // types/exercise.ts) and can run to several lines.
+    for (const id of FIXTURE_DIAGNOSTIC_EXERCISE_IDS) {
+      const exercise = nextExercise({ preferId: id })
+      const source = typingBlockOf(exercise.steps[0]!)?.source ?? ""
+      const typed = source.replace(/‹[^›]*›/g, "")
+      expect(typed.length, `"${id}"'s typed repair`).toBeLessThanOrEqual(50)
+      expect(typed).not.toMatch(/\n/)
+    }
+  })
+
+  it("anchors every repair inside a visible frame, never floating beneath it", () => {
+    // Constraint 6: revealable in isolation. Structurally, that means every
+    // diagnostic instance's typing source actually uses a context span —
+    // the repair sits inside the buggy attempt, not appended after a blank
+    // canvas.
+    for (const id of FIXTURE_DIAGNOSTIC_EXERCISE_IDS) {
+      const exercise = nextExercise({ preferId: id })
+      const source = typingBlockOf(exercise.steps[0]!)?.source ?? ""
+      expect(source, `"${id}"'s frame`).toMatch(/‹.*›/s)
+    }
+  })
+
+  it("keeps instances 4 and 5 alongside entryApi until A4 folds them in", () => {
+    // The design discussion's own instruction: having both the flagship
+    // exercise and its diagnostic counterexamples in the corpus at once is
+    // the clearest available evidence for whether A4's rewrite is an
+    // improvement. This test is the trip wire that catches either one
+    // disappearing before A4 actually lands.
+    const doubleLookup = nextExercise({ preferId: "diagnostic-double-lookup" })
+    const eagerLazy = nextExercise({
+      preferId: "diagnostic-eager-lazy-default",
+    })
+    expect(doubleLookup.id).toBe("diagnostic-double-lookup")
+    expect(eagerLazy.id).toBe("diagnostic-eager-lazy-default")
+    expect(nextExercise().id).toBe(FIXTURE_EXERCISE_ID)
   })
 })
 

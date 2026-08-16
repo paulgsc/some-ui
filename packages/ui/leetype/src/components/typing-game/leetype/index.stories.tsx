@@ -1,5 +1,6 @@
 import {
   FIXTURE_ADVERSARIAL_EXERCISE_ID,
+  FIXTURE_DIAGNOSTIC_EXERCISE_IDS,
   nextExercise,
 } from "@leetype/lib/leetype/exercises"
 import type { Meta, StoryObj } from "@storybook/react-vite"
@@ -35,4 +36,14 @@ export const Default: Story = {
 /** The adversarial fixture, for the shapes a generated corpus can produce. */
 export const AdversarialCorpus: Story = {
   render: () => <Mounted preferId={FIXTURE_ADVERSARIAL_EXERCISE_ID} />,
+}
+
+/**
+ * A falsification→repair instance (LTY-FAMILIES A1/A3), mounted through the
+ * exact same `Leetype`/`ExerciseCard` machinery as every other exercise —
+ * the acceptance criterion this story exists to demonstrate: no new branch
+ * anywhere in the runner or the shell for a diagnostic step to play.
+ */
+export const DiagnosticInstance: Story = {
+  render: () => <Mounted preferId={FIXTURE_DIAGNOSTIC_EXERCISE_IDS[0]} />,
 }
