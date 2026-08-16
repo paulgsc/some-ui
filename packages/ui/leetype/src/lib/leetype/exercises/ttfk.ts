@@ -31,19 +31,32 @@
  *
  * # The reveal-window interaction (the part likely to get silently wrong)
  *
- * `RevealConfig::initial_delay_ms(attempt)` opens the reveal window after
- * a delay, and the engine keeps ticking that delay forward on a timer
- * (`docs/leetype/README.md`'s `Command::Tick`) independently of whether
- * the player has typed anything yet. On a slow step the window can
- * therefore open *before* the first keystroke — at which point TTFK would
- * measure how long the system waited, not how long the player took to
- * respond. {@link computeTtfk} censors that case explicitly rather than
- * silently: an observation whose `revealKAtFirstKeystroke` is nonzero
- * (`Snapshot.revealK`, read at the instant of the first keystroke, before
- * that keystroke could itself have changed it) is marked `censored`, never
- * averaged into an instance's aggregate. Silently including it would
- * produce a metric that looks cleanest exactly on the slow instances it is
- * supposed to catch, which is worse than not having it.
+ * Two engine paths can make an answer visible before the player types
+ * anything, and both have to be censored or the metric looks cleanest
+ * exactly on the instances it exists to catch:
+ *
+ * 1. `RevealConfig::initial_delay_ms(attempt)` opens the automatic reveal
+ *    window after a delay, and the engine keeps ticking that delay forward
+ *    on a timer (`docs/leetype/README.md`'s `Command::Tick`) independently
+ *    of whether the player has typed anything yet. On a slow step the
+ *    window can open before the first keystroke, at which point
+ *    `Snapshot.revealK` is already nonzero.
+ * 2. The manual-reveal toggle (`toggle_manual_override`,
+ *    `crates/leetype_wasm/src/leetype/reveal.rs`) is a *separate* path:
+ *    while `manual_override_until` is in force, `RevealState::is_visible`
+ *    shows every slot regardless of `k` — and `k` itself keeps evolving
+ *    exactly as if the override did not exist (`advance`'s own doc
+ *    comment: "The override changes what is shown, never what the
+ *    controller has concluded"). A player who toggles manual reveal
+ *    immediately can therefore have `revealK` still at `0` while seeing
+ *    the whole answer — `revealK` alone cannot see this path at all.
+ *
+ * {@link computeTtfk} censors on either: an observation whose
+ * `revealKAtFirstKeystroke` is nonzero, or whose
+ * `manualRevealActiveAtFirstKeystroke` is true (`Snapshot.revealK` /
+ * `Snapshot.manualRevealActive`, both read at the instant of the first
+ * keystroke, before that keystroke could itself have changed them), is
+ * marked `censored`, never averaged into an instance's aggregate.
  *
  * # Explicitly not
  *
@@ -88,11 +101,18 @@ export type TtfkObservation = {
   baselineWpm: number
   /**
    * `Snapshot.revealK` read at the instant of the first keystroke, before
-   * that keystroke could itself have moved it. Nonzero means the reveal
-   * window had already opened on its own — see the module doc's "reveal-
-   * window interaction" section.
+   * that keystroke could itself have moved it. Nonzero means the automatic
+   * reveal window had already opened on its own — see the module doc's
+   * "reveal-window interaction" section.
    */
   revealKAtFirstKeystroke: number
+  /**
+   * `Snapshot.manualRevealActive` read at the same instant. `true` means
+   * the player toggled manual reveal before typing anything — a path
+   * `revealKAtFirstKeystroke` cannot see on its own, since the manual
+   * override leaves `k` to evolve independently of what it is showing.
+   */
+  manualRevealActiveAtFirstKeystroke: boolean
 }
 
 /** The standardized figure, or why this observation cannot produce one. */
@@ -117,15 +137,23 @@ export function standardizeTtfk(ttfkMs: number, baselineWpm: number): number {
 }
 
 /**
- * One observation, standardized — or censored, if the reveal window opened
- * before the player's first keystroke could have (see the module doc).
+ * One observation, standardized — or censored, if the answer was already
+ * visible before the player's first keystroke, by either reveal path (see
+ * the module doc).
  */
 export function computeTtfk(observation: TtfkObservation): TtfkResult {
   if (observation.revealKAtFirstKeystroke > 0) {
     return {
       censored: true,
       reason:
-        "the reveal window had already opened before the first keystroke — this observation measures how long the engine waited, not how long the player took to respond",
+        "the automatic reveal window had already opened before the first keystroke — this observation measures how long the engine waited, not how long the player took to respond",
+    }
+  }
+  if (observation.manualRevealActiveAtFirstKeystroke) {
+    return {
+      censored: true,
+      reason:
+        "the player had manual reveal active before the first keystroke — every slot was already visible, so this observation measures nothing about whether the step blocks",
     }
   }
   return {

@@ -17,6 +17,7 @@ function observation(
     ttfkMs: 1000,
     baselineWpm: 60,
     revealKAtFirstKeystroke: 0,
+    manualRevealActiveAtFirstKeystroke: false,
     ...overrides,
   }
 }
@@ -78,6 +79,28 @@ describe("computeTtfk — the reveal-window interaction", () => {
       observation({ ttfkMs: 10, revealKAtFirstKeystroke: 1 })
     )
     expect(result.censored).toBe(true)
+  })
+
+  it("censors a manual reveal even when revealK alone would look clean", () => {
+    // The gap a review caught: manual reveal (RevealState.manual_override_
+    // until) shows every slot regardless of k, and k keeps evolving
+    // independently of the override rather than being driven to nonzero by
+    // it (reveal.rs's advance() doc comment: "the override changes what is
+    // shown, never what the controller has concluded"). A player who
+    // toggles manual reveal immediately can have revealKAtFirstKeystroke
+    // still 0 while having already seen the whole answer — exactly the
+    // deceptively-fast, uncensored TTFK this case exists to catch.
+    const result = computeTtfk(
+      observation({
+        ttfkMs: 20,
+        revealKAtFirstKeystroke: 0,
+        manualRevealActiveAtFirstKeystroke: true,
+      })
+    )
+    expect(result.censored).toBe(true)
+    if (result.censored) {
+      expect(result.reason).toMatch(/manual reveal/)
+    }
   })
 })
 
