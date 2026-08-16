@@ -11,5 +11,7 @@ export default createViteConfig({
     exclude: ["**/recap/**"],
   },
   contentPackage: true,
-  tsConfigPaths: { projects: [resolve(import.meta.dirname, "tsconfig.build.json")] },
+  tsConfigPaths: {
+    projects: [resolve(import.meta.dirname, "tsconfig.build.json")],
+  },
 })

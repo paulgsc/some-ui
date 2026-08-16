@@ -6,10 +6,13 @@ import viteReact from "@vitejs/plugin-react"
 import type { Plugin, UserConfig } from "vite"
 import { defineConfig } from "vite"
 
-import styleContext from "./style.context"
+import styleContext from "./style.context.ts"
 
 const certPath = resolve(import.meta.dirname, "../../certs/nixos.local+3.pem")
-const keyPath = resolve(import.meta.dirname, "../../certs/nixos.local+3-key.pem")
+const keyPath = resolve(
+  import.meta.dirname,
+  "../../certs/nixos.local+3-key.pem"
+)
 const hasLocalCerts = fs.existsSync(certPath) && fs.existsSync(keyPath)
 
 // The dev/preview counterpart of apps/www/nginx.tts-proxy.conf: the same

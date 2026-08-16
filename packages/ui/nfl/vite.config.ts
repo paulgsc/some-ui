@@ -8,5 +8,7 @@ export default createViteConfig({
     "@nfl": resolve(import.meta.dirname, "src"),
   },
   contentPackage: true,
-  tsConfigPaths: { projects: [resolve(import.meta.dirname, "tsconfig.build.json")] },
+  tsConfigPaths: {
+    projects: [resolve(import.meta.dirname, "tsconfig.build.json")],
+  },
 })

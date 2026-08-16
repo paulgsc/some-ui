@@ -9,5 +9,7 @@ export default createViteConfig({
   },
   contentPackage: true,
   contentPackageDataExclude: ["**/data/chat-messages.ts", "**/data/index.ts"],
-  tsConfigPaths: { projects: [resolve(import.meta.dirname, "tsconfig.build.json")] },
+  tsConfigPaths: {
+    projects: [resolve(import.meta.dirname, "tsconfig.build.json")],
+  },
 })

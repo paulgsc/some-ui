@@ -7,5 +7,7 @@ export default createViteConfig({
   alias: {
     "@speech": resolve(import.meta.dirname, "src"),
   },
-  tsConfigPaths: { projects: [resolve(import.meta.dirname, "tsconfig.build.json")] },
+  tsConfigPaths: {
+    projects: [resolve(import.meta.dirname, "tsconfig.build.json")],
+  },
 })

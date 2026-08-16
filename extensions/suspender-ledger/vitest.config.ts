@@ -4,7 +4,10 @@ import { defineConfig } from "vitest/config"
 export default defineConfig({
   resolve: {
     alias: {
-      "@suspender/platform": resolve(import.meta.dirname, "src/lib/platform/firefox.ts"),
+      "@suspender/platform": resolve(
+        import.meta.dirname,
+        "src/lib/platform/firefox.ts"
+      ),
       "@suspender": resolve(import.meta.dirname, "src"),
     },
   },

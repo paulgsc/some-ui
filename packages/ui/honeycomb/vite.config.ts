@@ -10,5 +10,7 @@ export default createViteConfig({
   dtsOptions: {
     exclude: ["**/hexagon-grid-demo/**", "vitest.config.ts", "vitest.setup.ts"],
   },
-  tsConfigPaths: { projects: [resolve(import.meta.dirname, "tsconfig.build.json")] },
+  tsConfigPaths: {
+    projects: [resolve(import.meta.dirname, "tsconfig.build.json")],
+  },
 })
