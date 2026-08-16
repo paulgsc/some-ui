@@ -12,7 +12,14 @@
 import type { JSX, ReactNode } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import type * as ReactRouterModule from "@tanstack/react-router"
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const navigateSpy = vi.fn()
@@ -222,12 +229,9 @@ describe("SessionComposer: Save & Play, new session - success path and regressio
     await renderAtReviewStep()
 
     const saveAndPlay = screen.getByRole("button", { name: /save.*play/i })
-    await act(async () => {
-      fireEvent.click(saveAndPlay)
-      await new Promise((resolve) => setTimeout(resolve, 20))
-    })
+    fireEvent.click(saveAndPlay)
 
-    const alert = screen.getByRole("alert")
+    const alert = await screen.findByRole("alert")
     expect(alert.textContent).toContain("Session saved, but couldn't start it")
     // The chain never navigated - the failure is visible instead.
     expect(navigateSpy).not.toHaveBeenCalled()
@@ -238,8 +242,10 @@ describe("SessionComposer: Save & Play, new session - success path and regressio
     expect(postsBeforeRetry).toHaveLength(1)
 
     fireEvent.click(screen.getByRole("button", { name: /try again/i }))
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 20))
+
+    await waitFor(() => {
+      const patches = calls.filter((c) => c.method === "PATCH")
+      expect(patches.length).toBeGreaterThanOrEqual(2)
     })
 
     const postsAfterRetry = calls.filter(
