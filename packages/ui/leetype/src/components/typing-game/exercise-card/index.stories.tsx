@@ -99,14 +99,14 @@ const Mounted = ({
   )
 }
 
-/** A short prompt over a one-line proof — the shape most steps have. */
+/** A short evidence block over a one-line proof — the shape most commitments have. */
 export const ShortPromptShortBody: Story = {
   render: () => (
-    <Mounted exercise={seed} stepIndex={1} typedChars={8} idleSeconds={6} />
+    <Mounted exercise={seed} stepIndex={2} typedChars={8} idleSeconds={6} />
   ),
 }
 
-/** A three-line prompt over a six-line proof. */
+/** Multi-row evidence (a trace's headline plus observations) over a long framed body. */
 export const LongPromptLongBody: Story = {
   render: () => (
     <Mounted exercise={seed} stepIndex={9} typedChars={30} idleSeconds={20} />

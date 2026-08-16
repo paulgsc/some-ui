@@ -1,4 +1,9 @@
-import type { DiagnosticStep, Exercise, Step } from "@leetype/types/exercise"
+import type {
+  ConstructionStep,
+  DiagnosticStep,
+  Exercise,
+  Step,
+} from "@leetype/types/exercise"
 
 /**
  * Hand-authored exercises. The whole corpus, for now.
@@ -15,239 +20,21 @@ import type { DiagnosticStep, Exercise, Step } from "@leetype/types/exercise"
  */
 
 /**
- * The motivation's own example, decomposed.
- *
- * The line the whole exercise builds toward is
- * `map.entry(key).or_insert_with(Vec::new).push(value);`, and what is being
- * taught is emphatically **not** the module that line came from. The steps
- * prove ownership of a mutable binding, the shape of a lookup that can
- * insert, why `or_insert_with` and `or_insert` are not the same call, and
- * why the whole thing is one lookup rather than two. That the line came from
- * somewhere is incidental — which is the point being demonstrated.
- *
- * Lengths vary on purpose: a two-token proof and a six-line one in the same
- * exercise is what shakes the shell out.
- */
-const entryApi: Exercise = {
-  id: "rust-hashmap-entry",
-  title: "The Entry API",
-  steps: [
-    {
-      id: "entry-01-import",
-      goal: "Bring HashMap into scope.",
-      concepts: ["use declarations", "std::collections"],
-      blocks: [
-        {
-          kind: "prompt",
-          lines: [
-            "HashMap is not in the prelude. Everything that follows needs it in scope.",
-          ],
-        },
-        {
-          kind: "typing",
-          source: "use std::collections::HashMap;",
-          language: "rust",
-        },
-      ],
-    },
-    {
-      id: "entry-02-empty-map",
-      goal: "Create an empty map you are allowed to change.",
-      concepts: ["mutability", "type inference"],
-      blocks: [
-        {
-          kind: "prompt",
-          lines: [
-            "`mut` is not decoration. Without it the next four steps do not compile,",
-            "and the compiler will tell you so at the call site rather than here.",
-          ],
-        },
-        {
-          kind: "typing",
-          source: "let mut map = HashMap::new();",
-          language: "rust",
-        },
-      ],
-    },
-    {
-      id: "entry-03-naive-insert",
-      goal: "Insert a value the blunt way, and notice what it costs.",
-      concepts: ["HashMap::insert", "ownership transfer"],
-      blocks: [
-        {
-          kind: "prompt",
-          lines: [
-            "`insert` overwrites. It is the right call when you know you are replacing,",
-            "and the wrong one whenever the existing value matters.",
-          ],
-        },
-        {
-          kind: "typing",
-          source: 'map.insert("a", vec![1]);',
-          language: "rust",
-        },
-      ],
-    },
-    {
-      id: "entry-04-double-lookup",
-      goal: "Write the two-lookup version that the Entry API exists to replace.",
-      concepts: ["contains_key", "double lookup"],
-      blocks: [
-        {
-          kind: "prompt",
-          lines: [
-            "This works, and it hashes the key twice — once to ask, once to answer.",
-            "Hold on to how it reads; the next steps are about deleting it.",
-          ],
-        },
-        {
-          kind: "typing",
-          source:
-            'if !map.contains_key("b") {\n    map.insert("b", Vec::new());\n}',
-          language: "rust",
-        },
-      ],
-    },
-    {
-      id: "entry-05-entry",
-      goal: "Ask the map for the entry at a key rather than for its value.",
-      concepts: ["Entry", "borrowing"],
-      blocks: [
-        {
-          kind: "prompt",
-          lines: [
-            "`entry` hands back a place in the map — occupied or vacant — not a value.",
-            "That is the whole trick: the lookup has already happened.",
-          ],
-        },
-        {
-          kind: "typing",
-          source: 'let slot = map.entry("b");',
-          language: "rust",
-        },
-      ],
-    },
-    {
-      id: "entry-06-or-insert",
-      goal: "Fill a vacant entry with a default, leaving an occupied one alone.",
-      concepts: ["Entry::or_insert", "default values"],
-      blocks: [
-        {
-          kind: "prompt",
-          lines: [
-            "One call, one hash. If the key was there, nothing is written.",
-          ],
-        },
-        {
-          kind: "typing",
-          source: 'map.entry("b").or_insert(Vec::new());',
-          language: "rust",
-        },
-      ],
-    },
-    {
-      id: "entry-07-or-insert-with",
-      goal: "Build the default only when it is actually needed.",
-      concepts: ["Entry::or_insert_with", "closures", "eager vs lazy"],
-      blocks: [
-        {
-          kind: "prompt",
-          lines: [
-            "`or_insert` evaluates its argument even when the key is already present.",
-            "`or_insert_with` takes a closure, called only on the vacant path.",
-          ],
-        },
-        {
-          kind: "typing",
-          source: 'map.entry("b").or_insert_with(Vec::new);',
-          language: "rust",
-        },
-      ],
-    },
-    {
-      id: "entry-08-push",
-      goal: "Push onto the vector you just got back, without a second lookup.",
-      concepts: [
-        "Entry::or_insert_with",
-        "mutable references",
-        "method chaining",
-      ],
-      blocks: [
-        {
-          kind: "prompt",
-          lines: [
-            "`or_insert_with` returns `&mut V`. Chain straight onto it.",
-            "This one line is what the whole exercise was for.",
-          ],
-        },
-        {
-          kind: "typing",
-          source: 'map.entry("b").or_insert_with(Vec::new).push(7);',
-          language: "rust",
-        },
-      ],
-      provenance: {
-        source: "The pattern this exercise was distilled from",
-        locator: "std::collections::hash_map::Entry",
-      },
-    },
-    {
-      id: "entry-09-counter",
-      goal: "Count occurrences with the same shape, over an integer instead of a vector.",
-      concepts: ["Entry::or_insert", "in-place mutation"],
-      blocks: [
-        {
-          kind: "prompt",
-          lines: [
-            "The shape transfers. Dereference the `&mut i32` and add to it in place.",
-          ],
-        },
-        {
-          kind: "typing",
-          source: "*counts.entry(word).or_insert(0) += 1;",
-          language: "rust",
-        },
-      ],
-    },
-    {
-      id: "entry-10-whole-function",
-      goal: "Assemble the pattern into a function that groups values by key.",
-      concepts: ["generics", "trait bounds", "Entry::or_default"],
-      blocks: [
-        {
-          kind: "prompt",
-          lines: [
-            "Everything above, once, in a signature that says what it does.",
-            "`or_default` is `or_insert_with(Default::default)` with a shorter name.",
-          ],
-        },
-        {
-          kind: "typing",
-          source:
-            "fn group<K: Eq + Hash, V>(pairs: Vec<(K, V)>) -> HashMap<K, Vec<V>> {\n    let mut out = HashMap::new();\n    for (key, value) in pairs {\n        out.entry(key).or_default().push(value);\n    }\n    out\n}",
-          language: "rust",
-        },
-      ],
-    },
-  ],
-}
-
-/**
  * Five diagnostic instances (LTY-FAMILIES A3), hand-authored, chosen to
  * span the failure classes rather than the topics — the design
  * discussion's own recommendation, and the posture this file already
  * takes with `entryApi`: validate the interaction by hand before there is
  * anything to judge a generator's output against.
  *
- * `diagnosticDoubleLookupStep` and `diagnosticEagerLazyDefaultStep` are each
- * kept as a named local, not inlined into their exercise's `steps` array,
- * because they are deliberately the same subject matter as `entryApi`'s own
- * motivation (the design discussion's instruction — "the same subject
- * matter as the existing Entry API exercise, in diagnostic form"), and
- * LTY-FAMILIES A4 folds both into `entryApi`'s tail as the diagnostic
- * handoff — reusing the same local identifier, in this same file, rather
- * than retyping the step — at which point they stop being freestanding
- * exercises.
+ * Defined ahead of `entryApi` below: `diagnosticDoubleLookupStep` and
+ * `diagnosticEagerLazyDefaultStep` are deliberately the same subject matter
+ * as `entryApi`'s own motivation (the design discussion's instruction —
+ * "the same subject matter as the existing Entry API exercise, in
+ * diagnostic form"), and LTY-FAMILIES A4 folds both into `entryApi`'s tail
+ * as the diagnostic handoff, under renamed ids that keep the exercise's
+ * step ids sorting in play order (see `entryApi`'s own doc comment) —
+ * `const` bindings are not hoisted, so the steps have to exist textually
+ * before the exercise that spreads them.
  *
  * Every instance's frame uses LTY-FRAME's `‹context›` spans: the buggy
  * attempt is fully visible (rendered, never typed), with the one blank
@@ -358,10 +145,8 @@ const diagnosticShrinkingInterval: Exercise = {
 
 /**
  * Failure class 4: the double lookup — deliberately the same subject
- * matter as `entryApi`, in diagnostic form. See this file's module doc:
- * LTY-FAMILIES A4 folds this step into `entryApi`'s tail, at which point
- * `diagnosticDoubleLookup` (the exercise wrapper below) is removed from
- * `SEED_EXERCISES` rather than kept as a freestanding entry.
+ * matter as `entryApi`, in diagnostic form. Folded into `entryApi`'s tail
+ * below (LTY-FAMILIES A4) rather than kept as a freestanding exercise.
  */
 const diagnosticDoubleLookupStep: DiagnosticStep = {
   id: "diagnostic-double-lookup-01",
@@ -391,16 +176,10 @@ const diagnosticDoubleLookupStep: DiagnosticStep = {
   },
 }
 
-const diagnosticDoubleLookup: Exercise = {
-  id: "diagnostic-double-lookup",
-  title: "Diagnostic: double lookup",
-  steps: [diagnosticDoubleLookupStep],
-}
-
 /**
  * Failure class 5: eager vs. lazy default construction — the same subject
- * matter as `entryApi`'s `or_insert_with` step, in diagnostic form. Folded
- * into `entryApi`'s tail by LTY-FAMILIES A4, same as failure class 4 above.
+ * matter as `entryApi`'s fill commitment, in diagnostic form. Folded into
+ * `entryApi`'s tail below, same as failure class 4 above.
  */
 const diagnosticEagerLazyDefaultStep: DiagnosticStep = {
   id: "diagnostic-eager-lazy-default-01",
@@ -430,10 +209,200 @@ const diagnosticEagerLazyDefaultStep: DiagnosticStep = {
   },
 }
 
-const diagnosticEagerLazyDefault: Exercise = {
-  id: "diagnostic-eager-lazy-default",
-  title: "Diagnostic: eager vs. lazy default",
-  steps: [diagnosticEagerLazyDefaultStep],
+/**
+ * The motivation's own example, as a chain of commitments (LTY-FAMILIES A4).
+ *
+ * The corpus's flagship, and the clearest surviving instance of the shape
+ * this milestone retired: eight steps of *explain, then reproduce what was
+ * explained*, prose doing the conceptual work before the engine ever saw a
+ * keystroke. Rewritten in place — same id, so the diff is the argument —
+ * with the exposition deleted rather than shortened. No `PromptBlock` here
+ * carries conceptual exposition; every claim that used to live in prose now
+ * lives in a rendered evidence block (what follows, not why) or in an
+ * `obligation` field the player never sees at all.
+ *
+ * The line the whole exercise still builds toward is
+ * `map.entry(key).or_insert_with(Vec::new).push(value);`. Each commitment's
+ * frame re-shows every prior commitment as `‹context›` and anchors the new
+ * witness inside it — not because anything is buggy (that is the diagnostic
+ * family's use of the same mechanism), but because "what has already been
+ * established" is exactly what LTY-FRAME's context role was built to carry.
+ *
+ * Step ids stay `entry-NN-slug` throughout, tail included: the shim's own
+ * test (`../index.test.ts`) treats id order as the ladder's order, and a
+ * folded-in diagnostic step keeping its freestanding `diagnostic-*` id
+ * would sort before every `entry-*` id and break that invariant. Renaming
+ * at the point of use is cheap; the original id is still findable in this
+ * file, on `diagnosticDoubleLookupStep`/`diagnosticEagerLazyDefaultStep`
+ * above.
+ *
+ * Step-length variance is preserved on purpose — `entry-01`/`entry-02` and
+ * the individual commitments run under 40 characters typed, `entry-08`'s
+ * generalized function runs well past 120 — because a rewrite that quietly
+ * narrowed what the shell is tested against would be a regression dressed
+ * as a refactor.
+ */
+const entryApi: Exercise = {
+  id: "rust-hashmap-entry",
+  title: "The Entry API",
+  steps: [
+    {
+      id: "entry-01-import",
+      goal: "Bring HashMap into scope.",
+      concepts: ["use declarations", "std::collections"],
+      blocks: [
+        {
+          kind: "typing",
+          source: "use std::collections::HashMap;",
+          language: "rust",
+        },
+      ],
+    },
+    {
+      id: "entry-02-empty-map",
+      goal: "Create an empty map you are allowed to change.",
+      concepts: ["mutability", "type inference"],
+      blocks: [
+        {
+          kind: "typing",
+          source: "let mut map = HashMap::new();",
+          language: "rust",
+        },
+      ],
+    },
+    {
+      id: "entry-03-place",
+      goal: "Ask the map for the place a key lives, not its value.",
+      concepts: ["Entry API", "borrowing"],
+      obligation: "a lookup can be held as a place, not a value",
+      blocks: [
+        {
+          kind: "transition",
+          label: "slot",
+          before: "unresolved",
+          after: "vacant | occupied",
+        },
+        {
+          kind: "typing",
+          source: "‹let slot = ›map.entry(key)‹;›",
+          language: "rust",
+        },
+      ],
+    } satisfies ConstructionStep,
+    {
+      id: "entry-04-fill",
+      goal: "Fill the place without hashing the key a second time.",
+      concepts: ["Entry::or_insert_with", "closures"],
+      obligation: "a vacant place can be filled without a second lookup",
+      blocks: [
+        {
+          kind: "trace",
+          headline: "hash ops",
+          observations: [{ label: "entry + fill", value: "1" }],
+        },
+        {
+          kind: "typing",
+          source:
+            "‹let slot = map.entry(key);\nlet filled = slot›.or_insert_with(Vec::new)‹;›",
+          language: "rust",
+        },
+      ],
+    } satisfies ConstructionStep,
+    {
+      id: "entry-05-mutate",
+      goal: "Push onto the vector the filled place actually holds.",
+      concepts: ["mutable references", "method chaining"],
+      obligation: "the filled place yields a mutable borrow, not a copy",
+      blocks: [
+        {
+          kind: "transition",
+          label: "filled",
+          before: "Entry<K, Vec<V>>",
+          after: "&mut Vec<V>",
+        },
+        {
+          kind: "typing",
+          source:
+            "‹let slot = map.entry(key);\nlet filled = slot.or_insert_with(Vec::new);\nfilled›.push(value)‹;›",
+          language: "rust",
+        },
+      ],
+    } satisfies ConstructionStep,
+    {
+      id: "entry-06-compose",
+      goal: "Chain the three commitments into the one line they were always building toward.",
+      concepts: ["method chaining", "expression-oriented style"],
+      obligation:
+        "the three commitments compose into one expression, with no named intermediate for the place or the filled result",
+      blocks: [
+        {
+          kind: "transition",
+          label: "bindings",
+          before: "2 (slot, filled)",
+          after: "0",
+        },
+        {
+          kind: "typing",
+          source: "map.entry(key).or_insert_with(Vec::new).push(value);",
+          language: "rust",
+        },
+      ],
+    } satisfies ConstructionStep,
+    {
+      id: "entry-07-transfer",
+      goal: "Apply the same shape to counting, where the default is cheap enough to build eagerly.",
+      concepts: ["Entry::or_insert", "in-place mutation", "eager defaults"],
+      obligation:
+        "the commit-fill-mutate shape transfers to counting, where or_insert is the right call because 0 costs nothing to build",
+      blocks: [
+        {
+          kind: "transition",
+          label: "default",
+          before: "Vec::new() — allocates",
+          after: "0 — a literal",
+        },
+        {
+          kind: "typing",
+          source: "*counts.entry(word).or_insert(0) += 1;",
+          language: "rust",
+        },
+      ],
+    } satisfies ConstructionStep,
+    {
+      id: "entry-08-generalize",
+      goal: "Fold the shape into a function that groups any pairs by key.",
+      concepts: ["generics", "trait bounds", "Entry::or_default"],
+      obligation:
+        "the shape holds for any key and value type, not just this one map",
+      blocks: [
+        {
+          kind: "transition",
+          label: "scope",
+          before: "one map, one key",
+          after: "any K, V — over every pair",
+        },
+        {
+          kind: "typing",
+          source:
+            "fn group<K: Eq + Hash, V>(pairs: Vec<(K, V)>) -> HashMap<K, Vec<V>> {\n    let mut out = HashMap::new();\n    for (key, value) in pairs {\n        out.entry(key).or_default().push(value);\n    }\n    out\n}",
+          language: "rust",
+        },
+      ],
+      provenance: {
+        source: "The pattern this exercise was distilled from",
+        locator: "std::collections::hash_map::Entry",
+      },
+    } satisfies ConstructionStep,
+    // The diagnostic handoff (LTY-FAMILIES A4): construction creates the
+    // available forms, diagnosis makes their causal boundaries visible.
+    // Renamed from their freestanding ids (still findable above) so the
+    // exercise's step order and its ids' sort order keep agreeing.
+    { ...diagnosticDoubleLookupStep, id: "entry-09-diagnostic-double-lookup" },
+    {
+      ...diagnosticEagerLazyDefaultStep,
+      id: "entry-10-diagnostic-eager-lazy-default",
+    },
+  ],
 }
 
 /**
@@ -534,8 +503,6 @@ export const SEED_EXERCISES: ReadonlyArray<Exercise> = [
   diagnosticLoopProgress,
   diagnosticInclusiveBoundary,
   diagnosticShrinkingInterval,
-  diagnosticDoubleLookup,
-  diagnosticEagerLazyDefault,
   adversarial,
 ]
 
@@ -545,11 +512,15 @@ export const SEED_EXERCISE_ID = entryApi.id
 /** The one that is deliberately hostile, for stories and tests. */
 export const ADVERSARIAL_EXERCISE_ID = adversarial.id
 
-/** The five diagnostic instances (LTY-FAMILIES A3), for stories and tests. */
+/**
+ * The three diagnostic instances still freestanding (LTY-FAMILIES A3), for
+ * stories and tests. Two more — the double-lookup and eager-vs-lazy
+ * instances — exist as steps but not as exercises: LTY-FAMILIES A4 folded
+ * them into `entryApi`'s tail (see `entry-09-diagnostic-double-lookup` and
+ * `entry-10-diagnostic-eager-lazy-default` above).
+ */
 export const DIAGNOSTIC_EXERCISE_IDS = [
   diagnosticLoopProgress.id,
   diagnosticInclusiveBoundary.id,
   diagnosticShrinkingInterval.id,
-  diagnosticDoubleLookup.id,
-  diagnosticEagerLazyDefault.id,
 ] as const
