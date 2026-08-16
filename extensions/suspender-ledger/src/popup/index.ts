@@ -10,6 +10,7 @@
 // protocol (`PopupToWorkerMessage`) and `storage.local`.
 
 import { ActionMenu } from "@suspender/popup/components/action-menu"
+import { DiscardBanner } from "@suspender/popup/components/discard-banner"
 import {
   SettingsForm,
   type SettingsValues,
@@ -23,6 +24,10 @@ import type {
   PopupCommand,
   PopupToWorkerMessage,
 } from "@suspender/types/messages"
+import {
+  DISCARD_STATE_STORAGE_KEY,
+  summarizeSkipReasons,
+} from "@suspender/worker/core/discard-state"
 import type { Prefs } from "@suspender/worker/core/prefs"
 
 import "./popup.css"
@@ -82,6 +87,26 @@ async function readPrefs(): Promise<PopupPrefKeys> {
   }
 }
 
+/**
+ * Reads the "kept awake" snapshot straight out of `storage.session` — the
+ * same direct-storage-read convention `readPrefs` above uses for
+ * `storage.local`, rather than round-tripping through the worker. The popup
+ * and the worker are separate execution contexts (this is a fresh page load
+ * every time the toolbar icon is clicked), so this is deliberately re-read on
+ * every open: it reports on whatever is currently true, not what was true
+ * the last time this exact tab's popup happened to be open.
+ */
+async function readDiscardReasons(): Promise<Array<string>> {
+  const raw: unknown = await browser.storage.session.get(
+    DISCARD_STATE_STORAGE_KEY
+  )
+  if (!isRecord(raw)) {
+    return []
+  }
+  const stored = raw[DISCARD_STATE_STORAGE_KEY]
+  return summarizeSkipReasons(isRecord(stored) ? stored : {})
+}
+
 /** Local mirror of the worker's whitelist matcher (kept dependency-free). */
 function matchesWhitelist(
   rules: Array<string>,
@@ -122,6 +147,8 @@ type PopupState = {
   tab: ActiveTab
   prefs: PopupPrefKeys
   shortcuts: Array<ShortcutHint>
+  /** Deduplicated, plain-language reasons some background tab(s) could not be suspended — see `readDiscardReasons`. */
+  discardReasons: Array<string>
 }
 
 let state: PopupState = {
@@ -132,6 +159,7 @@ let state: PopupState = {
   },
   prefs: { ...PREF_DEFAULTS },
   shortcuts: [],
+  discardReasons: [],
 }
 
 function setState(patch: Partial<PopupState>): void {
@@ -254,6 +282,10 @@ function render(): void {
 
   const state2: TabState = state.tab.discarded ? "suspended" : "active"
 
+  if (state.discardReasons.length > 0) {
+    root.appendChild(DiscardBanner({ reasons: state.discardReasons }))
+  }
+
   root.appendChild(
     TabStatus({
       title: state.tab.title,
@@ -344,12 +376,13 @@ async function refresh(): Promise<void> {
 
 void (async () => {
   try {
-    const [tab, prefs, shortcuts] = await Promise.all([
+    const [tab, prefs, shortcuts, discardReasons] = await Promise.all([
       readActiveTab(),
       readPrefs(),
       readShortcuts(),
+      readDiscardReasons(),
     ])
-    setState({ tab, prefs, shortcuts })
+    setState({ tab, prefs, shortcuts, discardReasons })
   } catch {
     // Popup hydration is best-effort; a failure leaves the default shell.
   }

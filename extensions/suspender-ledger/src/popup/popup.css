@@ -49,6 +49,48 @@ body {
   padding: 12px;
 }
 
+/* ── Discard banner ───────────────────────────────────────────────────────── */
+
+.discard-banner {
+  align-items: flex-start;
+  background: color-mix(in srgb, var(--sl-suspended) 12%, var(--sl-bg-1));
+  border: 1px solid color-mix(in srgb, var(--sl-suspended) 35%, transparent);
+  border-radius: var(--sl-radius);
+  display: flex;
+  gap: 8px;
+  padding: 9px 10px;
+}
+
+.discard-banner[hidden] {
+  display: none;
+}
+
+.discard-banner__icon {
+  color: var(--sl-suspended);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.discard-banner__body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.discard-banner__heading {
+  color: var(--sl-fg);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.discard-banner__list {
+  color: var(--sl-fg-dim);
+  font-size: 11px;
+  list-style: disc;
+  margin-left: 15px;
+}
+
 /* ── Tab status ───────────────────────────────────────────────────────────── */
 
 .tab-status {

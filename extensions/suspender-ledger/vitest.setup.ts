@@ -62,6 +62,8 @@ const mockActionApi = {
   setTitle: vi.fn(),
   setIcon: vi.fn(),
   setPopup: vi.fn(),
+  setBadgeText: vi.fn(),
+  setBadgeBackgroundColor: vi.fn(),
 }
 
 vi.stubGlobal("chrome", {
