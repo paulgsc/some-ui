@@ -44,7 +44,7 @@
     "storybook": "storybook dev -p 6006 --no-open",
     "test:ui-fit": "CI=1 pnpm build-storybook -o storybook-static && STORYBOOK_STATIC=storybook-static pnpm --filter www test:ui-fit"
   },
-  "packageManager": "pnpm@10.11.1",
+  "packageManager": "pnpm@11.20.0",
   "author": "pgdev",
   "devDependencies": {
     "@babel/eslint-parser": "7.26.5",
@@ -132,14 +132,6 @@
     "vite-plugin-wasm": "3.6.0",
     "vitest": "^4.1.10",
     "zod": "catalog:"
-  },
-  "pnpm": {
-    "overrides": {
-      "@types/react": "^19.0.4",
-      "@eslint/core": "0.17.0",
-      "@eslint/config-helpers": "0.4.2",
-      "ws": "^8.21.1"
-    }
   },
   "eslintConfig": {
     "extends": [

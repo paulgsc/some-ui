@@ -6,7 +6,13 @@ packages:
   - "!extensions/**/dist/**"
   - packages/*
   - crates/*
-
+overrides:
+  "@types/react": ^19.0.4
+  "@eslint/core": 0.17.0
+  "@eslint/config-helpers": 0.4.2
+  ws: ^8.21.1
+minimumReleaseAgeExclude:
+  - "@some-ui/leetype-wasm"
 # Single source of truth for dependencies that more than one workspace needs
 # to agree on. Reference them as `"lucide-react": "catalog:"` in a package
 # manifest instead of a version range — there is then no per-package version
@@ -31,7 +37,6 @@ catalog:
   # admits patches, so this stays on 0.562.x.
   lucide-react: ^0.562.0
   zod: 4.0.5
-
   # Radix is here for a second-order reason. These are proper semver ranges,
   # so caret alone would have been enough to converge them — but ten of the
   # eighteen were declared at different ranges (react-accordion had four:
@@ -60,3 +65,9 @@ catalog:
   "@radix-ui/react-switch": ^1.1.2
   "@radix-ui/react-tabs": 1.1.21
   "@radix-ui/react-tooltip": ^1.2.7
+allowBuilds:
+  '@swc/core': true
+  '@tailwindcss/oxide': true
+  esbuild: true
+  spawn-sync: true
+  unrs-resolver: true
