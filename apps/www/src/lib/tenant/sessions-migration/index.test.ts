@@ -1,15 +1,19 @@
 import { beforeEach, describe, expect, it } from "vitest"
 
-import { migrateLocalSessions } from "./sessions-migration"
-import { createSessionsRepository, STORAGE_KEY } from "./sessions-repository"
+import {
+  createSessionsRepository,
+  STORAGE_KEY,
+} from "@/lib/tenant/sessions-repository"
 import type {
   CreateSessionInput,
   SessionsStore,
   UpdateSessionInput,
-} from "./sessions-repository"
-import type { StorageAdapter } from "./storage"
-import { createInMemoryStorage, writeJSON } from "./storage"
-import type { SessionRecord, SessionStatus } from "./types"
+} from "@/lib/tenant/sessions-repository"
+import type { StorageAdapter } from "@/lib/tenant/storage"
+import { createInMemoryStorage, writeJSON } from "@/lib/tenant/storage"
+import type { SessionRecord, SessionStatus } from "@/lib/tenant/types"
+
+import { migrateLocalSessions } from "."
 
 let storage: StorageAdapter
 

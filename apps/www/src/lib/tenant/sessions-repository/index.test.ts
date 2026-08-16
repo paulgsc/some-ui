@@ -2,13 +2,11 @@ import type { SessionActivity } from "@some-ui/activity-catalog"
 import type { SceneConfig } from "@some-ui/types"
 import { beforeEach, describe, expect, it } from "vitest"
 
-import {
-  createSessionsRepository,
-  SessionNotFoundError,
-} from "./sessions-repository"
-import type { CreateSessionInput } from "./sessions-repository"
-import type { StorageAdapter } from "./storage"
-import { createInMemoryStorage } from "./storage"
+import type { StorageAdapter } from "@/lib/tenant/storage"
+import { createInMemoryStorage } from "@/lib/tenant/storage"
+
+import { createSessionsRepository, SessionNotFoundError } from "."
+import type { CreateSessionInput } from "."
 
 let storage: StorageAdapter
 

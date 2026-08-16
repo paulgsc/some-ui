@@ -1,7 +1,7 @@
 import type { SessionActivity } from "@some-ui/activity-catalog"
 import type { SceneConfig } from "@some-ui/types"
 
-import type { StorageAdapter } from "./storage"
+import type { StorageAdapter } from "@/lib/tenant/storage"
 import {
   browserLocalStorage,
   delay,
@@ -9,8 +9,8 @@ import {
   MOCK_LATENCY_MS,
   readJSON,
   writeJSON,
-} from "./storage"
-import type { SessionRecord, SessionStatus } from "./types"
+} from "@/lib/tenant/storage"
+import type { SessionRecord, SessionStatus } from "@/lib/tenant/types"
 
 /** Also read by `sessions-migration`, which uploads what is under it. */
 export const STORAGE_KEY = "some-ui.tenant.sessions.v1"

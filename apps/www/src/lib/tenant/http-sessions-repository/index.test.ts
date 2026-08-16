@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest"
 
-import type { FileHostTransport } from "../file-host-config/client"
-import { createHttpSessionsRepository } from "./http-sessions-repository"
-import { SessionNotFoundError } from "./sessions-repository"
-import type { SessionRecord } from "./types"
+import type { FileHostTransport } from "@/lib/file-host-config/client"
+import { SessionNotFoundError } from "@/lib/tenant/sessions-repository"
+import type { SessionRecord } from "@/lib/tenant/types"
+
+import { createHttpSessionsRepository } from "."
 
 type Call = { route: string; method: string; body: unknown }
 

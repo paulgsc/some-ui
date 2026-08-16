@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { MAX_RECOMMENDED_COUNT, recommendedCount } from "./fit"
+import { MAX_RECOMMENDED_COUNT, recommendedCount } from "."
 
 describe("recommendedCount", () => {
   it("is one row of cards at each breakpoint", () => {

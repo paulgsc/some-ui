@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest"
 
-import { createProfileRepository, DEFAULT_PROFILE } from "./profile-repository"
-import type { StorageAdapter } from "./storage"
-import { createInMemoryStorage } from "./storage"
-import type { UserProfile } from "./types"
+import type { StorageAdapter } from "@/lib/tenant/storage"
+import { createInMemoryStorage } from "@/lib/tenant/storage"
+import type { UserProfile } from "@/lib/tenant/types"
+
+import { createProfileRepository, DEFAULT_PROFILE } from "."
 
 let storage: StorageAdapter
 

@@ -14,7 +14,7 @@ import { matchIntent } from "@some-ui/intent-kit"
 import { act, renderHook } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import type * as MigrationSignalModule from "./migration-signal"
+import type * as MigrationSignalModule from "."
 
 function summarize(state: Intent<void>): string {
   return matchIntent(state, {
@@ -27,7 +27,7 @@ function summarize(state: Intent<void>): string {
 
 async function freshModule(): Promise<typeof MigrationSignalModule> {
   vi.resetModules()
-  return import("./migration-signal")
+  return import(".")
 }
 
 beforeEach(() => {

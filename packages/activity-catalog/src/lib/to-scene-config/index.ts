@@ -1,7 +1,10 @@
+import { getActivity } from "@activity-catalog/lib/catalog"
+import type {
+  ActivityConfigValues,
+  ActivityId,
+  LayoutTreeId,
+} from "@activity-catalog/lib/types"
 import type { SceneConfig } from "@some-ui/types"
-
-import { getActivity } from "./catalog"
-import type { ActivityConfigValues, ActivityId, LayoutTreeId } from "./types"
 
 export type SceneBuildOptions = {
   startTime: number

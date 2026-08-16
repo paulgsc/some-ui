@@ -42,15 +42,18 @@
  * silently relied on.
  */
 
-import type { FileHostTransport } from "../file-host-config/client"
-import { FileHostResponseError, requestJSON } from "../file-host-config/client"
+import type { FileHostTransport } from "@/lib/file-host-config/client"
+import {
+  FileHostResponseError,
+  requestJSON,
+} from "@/lib/file-host-config/client"
 import type {
   CreateSessionInput,
   SessionsStore,
   UpdateSessionInput,
-} from "./sessions-repository"
-import { SessionNotFoundError } from "./sessions-repository"
-import type { SessionRecord, SessionStatus } from "./types"
+} from "@/lib/tenant/sessions-repository"
+import { SessionNotFoundError } from "@/lib/tenant/sessions-repository"
+import type { SessionRecord, SessionStatus } from "@/lib/tenant/types"
 
 function isNotFound(error: unknown): boolean {
   return error instanceof FileHostResponseError && error.status === 404
