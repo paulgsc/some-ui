@@ -330,12 +330,50 @@ function typingSourceOf(
 }
 
 /**
+ * The typed portion of a witness source, matching the engine's real
+ * context-span semantics (`crates/leetype_wasm/src/leetype/program.rs`)
+ * rather than `types/exercise.ts`'s `typedPortionOf` approximation.
+ *
+ * That approximation is a plain `source.replace(/‹[^›]*›/g, "")` and its
+ * own doc comment says why it's acceptable there: it does not special-case
+ * an unterminated `‹` with no matching `›`, because the regex only matches
+ * a *closed* span, so a dangling opener is left counted as typed — the
+ * opposite of the engine, which treats a dangling opener as context
+ * running to the end of the source (`program.rs`'s
+ * `an_unterminated_context_span_runs_to_the_end_of_the_source` test:
+ * `typed_stream("let x = ‹abc")` types only `"let x ="`). That gap is
+ * harmless where it's used today (a length *budget*, where an author
+ * would notice the drift from other failures first) and is exactly wrong
+ * for this check, whose entire question is emptiness: a witness like
+ * `‹answer` — nothing before the dangling opener at all — would pass the
+ * approximation as "has typed content" while the engine gives the learner
+ * nothing to reveal. This walks the source once, stopping at the first
+ * unmatched `‹` rather than leaving it in, which is enough to answer "is
+ * there anything typed" correctly without porting the engine's full role
+ * classification (whitespace, runs) into this schema-adjacent file.
+ */
+function typedPortionMatchingEngine(source: string): string {
+  let typed = ""
+  let i = 0
+  while (i < source.length) {
+    if (source[i] === "‹") {
+      const closeIndex = source.indexOf("›", i + 1)
+      if (closeIndex === -1) break // dangling opener: context to EOF
+      i = closeIndex + 1
+    } else {
+      typed += source[i]
+      i += 1
+    }
+  }
+  return typed
+}
+
+/**
  * A witness must have something to actually type: source outside any
- * `‹context›` span (LTY-FRAME), the same measure `typedPortionOf` in
- * `types/exercise.ts` uses for the diagnostic repair budget. A witness
- * entirely wrapped in context has nothing revealable in it — structurally
- * the frame with no obligation inside it — which no existing schema
- * catches, because a fully-context-wrapped source is still a non-empty
+ * `‹context›` span (LTY-FRAME). A witness entirely wrapped in context has
+ * nothing revealable in it — structurally the frame with no obligation
+ * inside it — which no existing schema catches, because a
+ * fully-context-wrapped or dangling-opener source is still a non-empty
  * string.
  */
 function checkWitnessIsRevealable(graph: ObligationGraph): Array<Violation> {
@@ -343,12 +381,12 @@ function checkWitnessIsRevealable(graph: ObligationGraph): Array<Violation> {
   for (const [id, node] of Object.entries(graph.nodes)) {
     const source = typingSourceOf(node.content)
     if (source === undefined) continue // checkContentSatisfiesItsFamily already reports this
-    const typed = source.replace(/‹[^›]*›/g, "").trim()
+    const typed = typedPortionMatchingEngine(source).trim()
     if (typed.length === 0) {
       violations.push({
         node: id,
         message:
-          "its witness has nothing outside a ‹context› span — nothing for the learner to reveal or type.",
+          "its witness has nothing outside a ‹context› span (or ends in an unmatched ‹ — context runs to end of source) — nothing for the learner to reveal or type.",
       })
     }
   }

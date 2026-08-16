@@ -299,6 +299,36 @@ describe("validateTotality — deliberately malformed fixtures", () => {
     ).toBe(true)
   })
 
+  it("rejects a witness with a dangling unmatched ‹ — context runs to EOF in the real engine", () => {
+    // program.rs's own test (an_unterminated_context_span_runs_to_the_end_
+    // of_the_source) establishes this: an opener with no matching closer
+    // is context through the end of the source, not left as typed text.
+    // A naive `replace(/‹[^›]*›/g, "")` only matches a *closed* span, so
+    // it would leave a dangling opener counted as typed — the opposite of
+    // the engine, and exactly wrong for an emptiness check.
+    const graph: ObligationGraph = {
+      ...trivialGraph(),
+      nodes: {
+        only: {
+          ...trivialObligation(),
+          content: {
+            goal: "Do the one thing.",
+            concepts: ["fixture"],
+            obligation: "a trivial obligation",
+            blocks: [
+              { kind: "transition", before: "a", after: "b" },
+              { kind: "typing", source: "‹answer", language: "rust" },
+            ],
+          },
+        },
+      },
+    }
+    const violations = validateTotality(graph)
+    expect(
+      violations.some((v) => v.includes("nothing for the learner to reveal"))
+    ).toBe(true)
+  })
+
   it("rejects a graph over the static node-count bound", () => {
     const nodes: Record<string, Obligation> = {}
     const ids = Array.from(
