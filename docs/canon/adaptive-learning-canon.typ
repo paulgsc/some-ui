@@ -79,7 +79,7 @@
     `@some-ui/interview` · `pedagogy/` · and every tutor skill
   ]
   #v(1em)
-  #text(size: 9.5pt)[Version 1.1 --- 2026-08-16]
+  #text(size: 9.5pt)[Version 1.2 --- 2026-08-16]
   #v(2cm)
 ]
 
@@ -1070,6 +1070,34 @@ rather than as *data*, and the remedy is to exhibit the data.
   belief".
 ]
 
+#corollary("4.3", name: "LeetType M20's valuation, declared")[
+  LeetType milestone M20 occupies Theorem 4.1's *Tutorial* valuation ---
+  $p_"hint" = "progressive"$, $p_"pressure" = "none"$, $p_"scored" = "false"$,
+  $p_"credited" = "false"$ --- with two deviations worth naming rather than
+  glossing: $p_"retry" = "bounded"$, not free (`MAX_STEP_ATTEMPTS = 3`; the
+  bound is what makes the gate's escape, and therefore the exercise's
+  termination, true); and $p_"reveal"$ is the *witness itself*, disclosed
+  progressively by the control loop as it is earned, rather than a post-hoc
+  explanation surfaced once the outcome is known --- a different point in the
+  space from the Hangul tutorial case cited alongside Remark 4.2, and worth
+  being legible as one. Under $p_"credited" = "false"$, Proposition 3.1 and
+  Corollary 3.2 hold *vacuously* for every session this surface runs, hinted
+  or not: no posterior is written, so none is written badly.
+]
+
+#remark("4.5", name: "The valuation is this increment's position, not a terminal design")[
+  Corollary 4.3 records where M20 sits, not where `packages/ui/leetype` stays.
+  The eventual product carries persistence and scoring (O3, O5) and will care
+  about reveal state at the moment it is disclosed, not merely that
+  disclosure occurred. The valuation changes when, and only when, a belief
+  envelope (O3) exists for this surface to write into: at that point
+  $p_"credited"$ moves off `"false"` for some subset of sessions,
+  Proposition 3.1's vacuous satisfaction stops covering that subset, and the
+  corpus facts LTY-SEAM S3 and S5 declare now --- transfer pairs, stable
+  concept identity --- become inputs the estimator (O4) needs on day one
+  rather than a retrofit onto a corpus that shipped without them.
+]
+
 #proposition("4.1", name: "Mode strings are a lossy quotient")[
   A mode selected by string at construction time --- `create_game_mode("completion" | "vocabulary" | "vocabulary-endless" | _)` ---
   is the quotient of the policy space by a partition into four cells, fixed
@@ -2052,6 +2080,34 @@ look like arbitrary choices are in fact required.
    diagnostic each session is Prop. 2.3's window failure at $N = 5$.],
 )
 
+#heading(level: 2)[Update --- LTY-SEAM (v1.2): `packages/ui/leetype` re-grounded]
+
+The row above records the model audited at v1.0's filing and is retained
+rather than edited (§13): renumbering or silently rewriting a grounding row
+would break exactly the citation stability the Amendment Protocol exists to
+protect. Two epics have since landed against it. LTY-ROUTE replaced the
+`adaptiveHidden` latch with the reveal loop as engine state plus a total
+routing function; LTY-SEAM (Cor. 4.3) declares the valuation that row could
+previously only gesture at as absent.
+
+#table(
+  columns: (3.3cm, 3.5cm, 1fr),
+  stroke: 0.4pt,
+  inset: 6pt,
+  [*Surface*], [*Current learner model*], [*What changed, and what did not*],
+
+  [`packages/ui/leetype`, as of LTY-SEAM],
+  [Reveal is a policy over `Snapshot`, not a latch (Prop. 6.1 satisfied);
+   routing over `attempt`/`assisted` is total by construction (Thm. 6.3);
+   the surface is uncredited *by declaration* (Cor. 4.3), not by omission],
+  [What changed is the $p_"credited"$ column and the mechanism above it.
+   What did not: Prop. 2.1's objection to a scalar and Prop. 7.1's objection
+   to an unbounded log still apply in full to any competence claim this
+   surface might persist --- LTY-SEAM S2 (#1016) is the corresponding
+   prohibition, not this amendment, and O3 still does not exist for this
+   surface to write into.],
+)
+
 #heading(level: 2)[The unreconciled duplication]
 
 The most consequential finding of the audit is not in the table. Two
@@ -2264,6 +2320,19 @@ the declared sinks cover every latent cause of blockage. Falsifier added to
 §12: no finite cover at any useful granularity. Filed against O1 and §6 per
 this section's own triage rule, ahead of the source it governs in
 `packages/ui/leetype`, per the discipline stated at v1.0's filing.
+
+*v1.2 --- 2026-08-16.* Declares LeetType M20's valuation (Cor. 4.3): the
+*Tutorial* row of Theorem 4.1 with two named deviations
+($p_"retry" = "bounded"$, $p_"reveal"$ as the witness itself), and records
+the vacuous satisfaction of Prop. 3.1 / Cor. 3.2 it carries. Remark 4.5
+states the condition under which the valuation changes --- a belief
+envelope (O3) existing for this surface to write into --- so a future
+amendment has a named trigger rather than an implicit one. §10's
+`packages/ui/leetype` row is updated as a new item, not a rewrite: the
+`adaptiveHidden` latch's removal and the reveal loop's promotion to policy
+(both LTY-ROUTE) are recorded alongside the declared valuation. Filed ahead
+of `packages/ui/leetype` source (LTY-SEAM S2--S5), per the discipline
+stated at v1.0's filing.
 
 #pagebreak()
 
