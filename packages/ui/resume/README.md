@@ -43,6 +43,13 @@ the one option that doesn't ship a multi-megabyte compiler to every visitor
 of `apps/www` just to render one page. See the option comparison this
 decision was made against for the fuller tradeoff.
 
+The renderer also asserts a shared ATS seam in every composition: TypeScript,
+data modeling, production services, distributed/asynchronous event-driven
+systems, Docker/cloud infrastructure, and testing. This is a source-level
+guard against a targeted variant becoming so concise that it stops exposing
+qualifications the underlying work genuinely supports; it does not invent
+unsupported tenure, Kubernetes, scale, or employment history.
+
 `apps/www`'s `/resume` route serves the compiled PDF for inline preview and
 download — see its README for how the two are wired together.
 

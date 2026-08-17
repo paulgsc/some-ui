@@ -31,7 +31,7 @@
     label: "Backend & event-driven systems",
     tagline: "Software Engineer --- typed services, event-driven systems, and production delivery",
     summary: "Software engineer building typed production boundaries from client mutation through HTTP services, asynchronous workers, contract verification, and container delivery. Sole engineer of a 52-package TypeScript and Rust monorepo, from architecture through production operations.",
-    skills: "TypeScript; Rust; HTTP/JSON APIs; Zod; event-driven processing; Docker; GitHub Actions; Vitest; Playwright; contract and integration testing",
+    skills: "TypeScript; Rust; production HTTP/JSON APIs; data modeling; distributed and event-driven systems; asynchronous processing; Docker/cloud infrastructure; microservice integration; Vitest; Playwright; contract and integration testing",
     projects: (
       (
         name: "Study-session and notification platform",
@@ -41,6 +41,7 @@
           "Integrated a React application with production Rust HTTP/JSON endpoints for sessions, engagement signals, subscriptions, and push configuration; centralized same-origin proxying to eliminate mixed-content and CORS failures.",
           "Designed fire-and-forget lifecycle events and consent-scoped Web Push so service failure never blocks study; verified the last hop by driving a real Chromium service worker and delivered push with Playwright.",
           "Built a 48-test contract harness covering 15 of 52 server routes for route drift, schema divergence, unknown fields, and phantom optionals against both route inventory and live HTTP responses.",
+          "Modeled session migration, progress, consent grants, and last-write-wins behavior explicitly across local and server repositories rather than hiding distributed-state assumptions in UI code.",
         ),
       ),
       (
@@ -50,19 +51,22 @@
         bullets: (
           "Built on native discard so tabs retain strip position and history; typed and validated every popup/worker/content boundary and made corrupt preferences fall back safely.",
           "Shipped a signed AMO extension through a release gate requiring tsc, Vitest, ESLint, web-ext lint, license checks, and a Firefox-compatible flat worker bundle.",
+          "Designed for restartable, asynchronous MV3 execution: alarms survive worker termination, startup reconciliation restores invariants, and bounded queues isolate bulk-discard failures.",
         ),
       ),
     ),
     platform: (
       "Operate a 52-package pnpm/Turborepo monorepo with dependency-scoped PR gates, full-trunk sweeps, Rust clippy/cargo-deny, Changesets, and signed releases.",
-      "Publish an Nginx web container to GHCR with HTTPS termination, health checks, and service-to-service proxies; deploy Pages, Storybook, WASM, and extensions through GitHub Actions.",
+      "Publish an Nginx web container to GHCR with HTTPS termination, health checks, and service-to-service proxies; integrate separately deployed file and TTS services over explicit microservice boundaries.",
+      "Own production delivery across Docker/cloud infrastructure, GitHub Pages, Storybook, WASM, and signed extensions; use runtime schemas and contract drift checks to make cross-repository changes reviewable.",
+      "Write formal canons and ADRs that derive invariants and failure modes before implementation, turning problem-solving rationale into a durable engineering artifact.",
     ),
   ),
   systems: (
     label: "Systems & browser infrastructure",
     tagline: "Software Engineer --- browser and systems infrastructure in Rust, WebAssembly, and TypeScript",
     summary: "Software engineer who turns behavioral guarantees into typed state machines, invariants, and independently testable kernels. Sole engineer of six shipping browser extensions and a 52-package TypeScript/Rust platform.",
-    skills: "Rust; TypeScript; WebAssembly; finite-state machines; browser service workers; Vite; Vitest; Playwright; CI/CD",
+    skills: "TypeScript; Rust; WebAssembly; data modeling; production APIs and microservice integration; distributed/event-driven systems; asynchronous service workers; Docker/cloud infrastructure; unit, integration, contract, and Playwright testing; CI/CD",
     projects: (
       (
         name: "Suspender Ledger",
@@ -83,6 +87,15 @@
         ),
       ),
       (
+        name: "Production service integration",
+        kind: "TypeScript, Zod, HTTP APIs, Web Push",
+        premise: "A distributed feature is only as reliable as its process boundaries, restart behavior, and observable contract drift.",
+        bullets: (
+          "Integrated versioned session, signal, and push APIs across React, a separately deployed Rust service, a push provider, and a browser worker; isolated failures so unavailable services never block core study flows.",
+          "Built 48 contract tests plus real-Chromium push coverage, exercising route drift, response-shape divergence, worker delivery, and malformed asynchronous payloads instead of mocking the boundaries.",
+        ),
+      ),
+      (
         name: "transport",
         kind: "TypeScript kernel, unit + Playwright conformance",
         premise: "Partially observable DOM behavior should be governed by a reusable observe/estimate/plan/act contract rather than copied extension logic.",
@@ -93,14 +106,15 @@
     ),
     platform: (
       "Enforce cross-extension idioms with a custom ESLint plugin while sharing contracts rather than runtime coupling.",
-      "Run dependency-scoped TypeScript/Rust CI plus full-trunk verification, Changesets releases, and signed extension pipelines.",
+      "Run dependency-scoped TypeScript/Rust CI plus full-trunk verification, 48-test API contracts, Changesets releases, and signed extension pipelines.",
+      "Containerize the web tier behind Nginx with HTTPS, health checks, and service-to-service proxies; publish Docker images to GHCR through GitHub Actions cloud infrastructure.",
     ),
   ),
   learning: (
     label: "Adaptive learning & product engineering",
     tagline: "Software Engineer --- adaptive learning systems in Rust, WebAssembly, and React",
     summary: "Software engineer building learning software that estimates knowledge instead of advancing a fixed curriculum. Own the formal model, Rust/WASM engines, React experiences, content boundaries, testing, and production delivery.",
-    skills: "Rust; WebAssembly; TypeScript; React; state estimation; data modeling; Playwright; Vitest; Docker; CI/CD",
+    skills: "Rust; WebAssembly; TypeScript; React; AI/ML-adjacent state estimation; data modeling; production APIs and microservice integration; distributed/asynchronous event-driven systems; Docker/cloud infrastructure; unit, integration, contract, Vitest, and Playwright testing",
     projects: (
       (
         name: "Adaptive learning platform",
@@ -121,9 +135,19 @@
           "Tested decisions, live API contracts, and the real browser push path at unit, integration, and Playwright layers.",
         ),
       ),
+      (
+        name: "Measured rendering and classification",
+        kind: "TypeScript, browser APIs, Playwright corpus",
+        premise: "Visual comfort and DOM uncertainty should be measured against rendered evidence rather than treated as subjective styling.",
+        bullets: (
+          "Built a comfort metric over live computed background/text pairs and separated it from page-level classification so disagreement becomes a diagnostic signal.",
+          "Created a human-labeled Playwright corpus that bundles the shipped classifier modules directly, eliminating reimplementation drift between production logic and evaluation.",
+        ),
+      ),
     ),
     platform: (
-      "Ship the application through Docker/Nginx and GitHub Pages, with GHCR releases, health checks, HTTPS proxies, and dependency-scoped CI.",
+      "Ship through Docker/Nginx and GitHub Pages with GHCR releases, health checks, HTTPS proxies, and dependency-scoped TypeScript/Rust CI.",
+      "Integrate separately deployed Rust and TTS services across explicit HTTP boundaries; validate schemas and route inventory with a 48-test contract harness.",
       "Govern non-trivial subsystems with versioned canon documents that state definitions, impossibility results, falsifiers, and amendment protocols.",
     ),
   ),
@@ -149,6 +173,15 @@ its own summary, skill stack, project sequence, and platform close, chosen to
 make one argument to one audience. `resume.typ` may round-robin between those
 complete arguments, but must never independently shuffle impressive-sounding
 fragments into an incoherent page.
+
+One page is a maximum *and* a content budget to use. Every composition must carry
+enough concrete mechanisms, boundaries, tests, and delivery evidence to survive
+an ATS pass before a human reads it. The shared qualification seam is explicit:
+TypeScript, production APIs, data modeling, distributed/asynchronous and
+event-driven systems, cloud/container infrastructure, and strong testing
+practice appear in every composition. Unsupported claims remain unsupported:
+the catalogue does not manufacture four years of backend tenure, Kubernetes,
+high-volume transactions, model-serving infrastructure, or startup employment.
 
 = Provenance --- résumé claim to repo evidence
 
@@ -458,3 +491,13 @@ substantiate those claims.
   and exposes both a round-robin control and a page context-menu picker. Curation remains
   reversible because omitted evidence stays here; coherence remains mandatory
   because the selectable unit is the whole composition, never a random bullet.
+
+
+- *v8 (current, 2026-08-17)* --- corrected the opposite failure mode: a
+  one-page résumé can still be under-filled and too skeletal for an ATS or a
+  technical reader. Expanded every composition with concrete boundary,
+  failure-mode, testing, data-model, and delivery evidence; made the common ATS
+  qualification seam explicit in all three variants; and restored readable
+  type, margins, and spacing so the page budget is used rather than merely not
+  exceeded. The Typst assertions now enforce both halves of the contract:
+  exactly one laid-out page and the presence of the shared qualification terms.
