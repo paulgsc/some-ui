@@ -3,6 +3,7 @@
   "ignore": [
     "**/bindings-contract.ts",
     "apps/www/public/sw.js",
+    "packages/speech/src/lib/testing/**",
     "**/__type-fixtures__/**"
   ],
   "ignoreBinaries": ["typst"],
