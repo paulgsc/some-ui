@@ -5,6 +5,7 @@
     "apps/www/public/sw.js",
     "**/__type-fixtures__/**"
   ],
+  "ignoreBinaries": ["typst"],
   "workspaces": {
     "apps/www": {
       "ignoreDependencies": ["@some-ui/resume"]
