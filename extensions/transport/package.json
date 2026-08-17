@@ -26,7 +26,7 @@
     "@some-ui/eslint-kit": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
     "esbuild": "^0.25.0",
-    "eslint": "^10.8.0",
+    "eslint": "^10.8.1",
     "fast-check": "^3.23.1"
   },
   "scripts": {
