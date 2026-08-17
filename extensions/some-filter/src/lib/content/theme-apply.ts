@@ -357,20 +357,38 @@ function applyLegacyFilter(config: FilterConfig): void {
   const mediaRule = isInverted
     ? "img, video, canvas, picture { filter: invert(1) hue-rotate(180deg) !important; }"
     : ""
+  // Keep the filter and every prepaint counter-colour in one stylesheet.
+  // Chromium can revive a discarded tab's compositor before a sequence of
+  // separate DOM mutations has fully propagated. If the root filter becomes
+  // visible one commit before data-sw-legacy reaches prepaint.css, its normal
+  // dark veil is inverted into the characteristic dim white flash. Bundling
+  // these rules with the filter makes that compositor transition atomic.
+  const prepaintRule = isInverted
+    ? `
+    html.sw-dirty > body {
+      background-color: #fff !important;
+      color-scheme: light !important;
+    }
+    #__sw_prepaint_veil,
+    #__sw_prepaint_veil:popover-open,
+    #__sw_prepaint_veil::backdrop {
+      background-color: #fff !important;
+      color-scheme: light !important;
+    }`
+    : ""
 
   setStyleText(
     style,
     `
     html { filter: ${buildFilterString(config)} !important; ${canvasRule} }
     ${mediaRule}
+    ${prepaintRule}
   `
   )
 
-  // Install the filter before advertising it to prepaint.css. That stylesheet
-  // makes the veil white while this attribute is present, relying on invert()
-  // to composite it back to black. Setting the attribute first exposes the
-  // raw white veil until the filter style is live. A dim-only legacy config is
-  // not inverted at all, so it must never opt into that compensation.
+  // The attribute remains a state marker and a CSS fallback, but correctness
+  // no longer depends on it reaching the compositor in the same commit as the
+  // filter: the stylesheet above already carries the counter-colour rules.
   if (existing === null) {
     document.head.appendChild(style)
   }

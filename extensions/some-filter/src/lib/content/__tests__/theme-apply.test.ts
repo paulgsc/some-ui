@@ -92,6 +92,9 @@ describe("applyTheme", () => {
     expect(style?.textContent).toContain(
       "img, video, canvas, picture { filter: invert(1) hue-rotate(180deg)"
     )
+    expect(style?.textContent).toContain("html.sw-dirty > body")
+    expect(style?.textContent).toContain("#__sw_prepaint_veil:popover-open")
+    expect(style?.textContent).toContain("#__sw_prepaint_veil::backdrop")
   })
 
   it("'legacy' without invert (dim style) skips the canvas colour and media counter-invert", () => {
@@ -100,6 +103,7 @@ describe("applyTheme", () => {
     expect(style?.textContent).toContain("brightness(0.7)")
     expect(style?.textContent).not.toContain("background-color: #0d1117")
     expect(style?.textContent).not.toContain("img, video, canvas, picture")
+    expect(style?.textContent).not.toContain("#__sw_prepaint_veil")
     expect(document.documentElement.hasAttribute("data-sw-legacy")).toBe(false)
   })
 
