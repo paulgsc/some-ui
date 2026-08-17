@@ -9,10 +9,9 @@
 //  premise is immediately cashed out in the mechanism that implements it:
 //  the state machine, the invariant, the build constraint, the test corpus.
 //
-//  There is deliberately no "Technical Skills" list. Enumerating languages
-//  and tools communicates nothing a reader can verify; the same tools appear
-//  in the bullets, attached to the thing they were used to build, where they
-//  actually carry information.
+//  A compact capabilities line makes backend qualifications legible to both
+//  humans and application parsers; every term there is still backed by the
+//  project evidence and provenance map below.
 //
 //  Every line traces to something that ships from `some-ui` — a crate, a
 //  package, a workflow file, a signed extension. See resume.meta.typ (same
@@ -93,9 +92,15 @@ renting it: a virtual-memory layer for a browser used as an operating system,
 an attention firewall that makes exposure opt-in rather than default, a
 rendering layer that treats visual comfort as a measurable property, and an
 instruction engine that estimates what a learner knows instead of marching
-them through a fixed curriculum. All four ship from `some-ui` --- a
-52-package TypeScript and Rust monorepo --- alongside the CI/CD, release, and
-signing pipelines behind them. Sole engineer, from architecture to production.
+them through a fixed curriculum. The work ships from `some-ui` --- a 52-package TypeScript and Rust monorepo
+--- alongside production API integrations, asynchronous service workers, and
+the CI/CD, container, release, and signing pipelines behind them. Sole
+engineer, from architecture through production operations.
+
+#text(size: 9.2pt, weight: "bold")[Core capabilities:] TypeScript; Rust; HTTP/JSON
+APIs; data modeling and runtime validation; event-driven and asynchronous
+processing; Docker and GitHub Actions; Vitest, Playwright, contract, and
+integration testing.
 
 #sectionhead[Selected Work --- some-ui, sole engineer (2024 --- Present)]
 
@@ -179,6 +184,34 @@ signing pipelines behind them. Sole engineer, from architecture to production.
   esbuild rather than reimplementing them, so a fix in the extension is
   exercised by the corpus on the next run with no duplicated logic and no
   extension build step.
+
+#project(
+  "Study-session and notification platform",
+  [Production API integration · TypeScript, Zod, Web Push, Docker],
+)[
+  A reminder is useful only when it respects both learner state and explicit
+  consent. The static client and server-backed deployment therefore use
+  distinct pacing policies, joined by a versioned API contract rather than
+  duplicating business logic across processes.
+]
+
+- Integrated the React application with a production Rust HTTP/JSON service
+  across versioned session, engagement-signal, and Web Push endpoints; modeled
+  request and response data with TypeScript and Zod, and centralized same-origin
+  proxying so HTTPS clients can reach the service without mixed-content or CORS
+  failures.
+- Designed event-driven processing around session lifecycle transitions:
+  mutations emit fire-and-forget engagement events, while a browser service
+  worker consumes push events and manages consent-scoped subscriptions without
+  allowing network failure to block a learner from starting a session.
+- Built a contract-test harness that checks 15 of 52 server routes for route
+  drift and then probes a live service for schema divergence, unknown fields,
+  and phantom optionals; its 48-test suite starts a real HTTP server and
+  exercises each detector against concrete protocol breakage.
+- Closed the last asynchronous hop with Playwright driving a real Chromium
+  service worker and delivered push, then containerized the web tier behind
+  Nginx with health checks, HTTPS termination, and service-to-service proxies;
+  GitHub Actions publishes the image to GHCR.
 
 #project(
   "Adaptive learning platform",

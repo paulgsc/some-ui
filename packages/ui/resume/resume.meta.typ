@@ -101,6 +101,30 @@ backs should be cut, not kept and re-justified.
   shipped modules from `@some-extension/filter` and bundles them with
   esbuild. No extension build, no `--load-extension`, no reimplementation.
 
+== Study-session and notification platform
+
+- *Production API integration* --- `apps/www/src/lib/tenant/http-sessions-repository.ts`
+  implements the versioned session client; `apps/www/src/lib/study-nudge/signals.ts`
+  emits lifecycle-derived events to `POST /api/v1/signals`; and
+  `apps/www/src/lib/study-nudge/service-worker.ts` manages Web Push subscriptions.
+  The backing Rust `file_host` is a separate repository, so the résumé says
+  "integrated" rather than claiming this tree implemented the server.
+- *Typed contracts and data models* --- `packages/contract-harness` declares
+  TypeScript/Zod request and response contracts and checks them against both a
+  checked-in server route inventory and live HTTP responses. Its README records
+  15 of 52 routes covered and 48 tests, including integration tests that start a
+  real HTTP server and exercise concrete schema and route divergence.
+- *Event-driven and asynchronous processing* --- `docs/study-nudge.md` records
+  the explicit transition-to-signal model, fire-and-forget delivery policy,
+  consent-scoped push subscriptions, and division between server engagement
+  events and browser service-worker push events. The Playwright service-worker
+  spec drives the real worker through Chromium rather than mocking the final hop.
+- *Container/cloud delivery* --- `Dockerfile`, `infra/compose/www.yml`, and
+  `apps/www/nginx.*.conf` define the Nginx web container, health check, HTTPS and
+  same-origin service proxies; `.github/workflows/www-docker-release.yml`
+  publishes it to GHCR. This supports Docker/cloud-infrastructure wording, not
+  Kubernetes: there are no Kubernetes manifests in this repository.
+
 == Adaptive learning platform
 
 - *Engine + UI* --- `crates/hangul-game-core` (pure Rust, compiled to WASM)
@@ -173,78 +197,67 @@ See
 (`resume.typ` → `dist/resume.pdf` via `scripts/compile.mjs`) and what's
 deliberately out of scope for the MVP cut.
 
-= Requirements map --- E-Logic / Sacramento County, "Web Application Developer"
+= Requirements map --- backend software engineer screening gap
 
 #text(style: "italic", size: 9pt)[
-  Pulled from Indeed, 2026-07-26. This is an application-planning artifact,
-  not résumé content: it exists to help decide whether applying is worth
-  the effort and, if so, what a cover letter should lead with. It is
-  deliberately evaluative and posting-specific — exactly what a résumé
-  should not be, and exactly what belongs in a private note instead of on
-  the page a recruiter reads in six seconds.
+  Derived from the qualification feedback supplied with the 2026-08-17 resume
+  revision. This is an application-planning artifact, not résumé copy. "Match"
+  means the repository contains direct evidence; "Adjacent" names relevant work
+  without inflating it into experience the tree cannot prove; "Gap" stays a gap.
 ]
 
 #table(
-  columns: (24%, 12%, 1fr),
+  columns: (28%, 12%, 1fr),
   stroke: (x, y) => if y == 0 { (bottom: 0.6pt + rgb("#999999")) } else { none },
   inset: (x: 4pt, y: 4pt),
   align: (left + horizon, left + horizon, left + horizon),
-  [*Posting requires*], [*Status*], [*What's actually true*],
+  [*Qualification*], [*Status*], [*Repository evidence / honest boundary*],
 
-  [JavaScript], [Match],
-  [Primary language (as TypeScript, strict) across all 61 workspace packages.],
+  [4+ years backend engineering], [Gap],
+  [The dated body of work supports 2024--present, not four years. Do not solve a chronology gap with wording.],
 
-  [CSS], [Match],
-  [Tailwind CSS v4 + a hand-built, Storybook-documented design system (`some-styles`).],
+  [TypeScript, Python, or Go], [Match],
+  [Strict TypeScript spans the monorepo, browser workers, API clients, runtime schemas, contract harness, and test infrastructure.],
 
-  [GIT mastery], [Match],
-  [PR-gated trunk behind a required `ci-gate` check; Changesets-driven release branching.],
+  [Production APIs / backend services], [Match (integration)],
+  [The React application consumes the production Rust `file_host` API for sessions, signals, subscriptions, and push configuration. The server is a separate repository, so this tree proves API integration and boundary ownership, not sole authorship of that backend.],
 
-  [CI/CD products \& functions], [Match],
-  [Turborepo dependency-graph pipeline (scoped + full-sweep) on GitHub Actions; Docker/GHCR builds; signed extension releases.],
+  [Distributed systems / async processing], [Adjacent],
+  [Event-driven flow crosses client mutation, HTTP service, push provider, and browser service worker; retry, consent, failure isolation, and contract drift are explicit. It is not evidence of operating a large distributed system.],
 
-  [Communication skills], [Match (structural)],
-  [Written ADRs and 2,000+ line "canon" theory docs with amendment protocols gate every architecture change --- evidenced, not asserted.],
+  [Testing / engineering practice], [Match],
+  [Vitest unit tests, Playwright browser and conformance suites, a 48-test HTTP contract harness, strict type checking, linting, Rust clippy/cargo-deny, scoped PR gates, and full-trunk sweeps.],
 
-  [AI model training / AI front end], [Adjacent],
-  [No model training. Provider-agnostic TTS front end (ElevenLabs/OpenAI/Google/Azure) + a heuristic DOM classifier calibrated against a human-labeled corpus (`filter-classifier`) --- applied classification, not the neural-net sense the posting likely means.],
+  [Databases / data modeling], [Match],
+  [Typed session, stimulus/answer, FSM, and API contract models; migration semantics and last-write-wins behavior are documented. Database implementation lives in the separate server repository.],
 
-  [Java], [Gap],
-  [No JVM code in the repo; the systems language here is Rust, compiled to WASM.],
+  [Kubernetes / cloud infrastructure], [Adjacent / Gap],
+  [Docker Compose, Nginx, health checks, GitHub Actions, GHCR, and GitHub Pages are direct evidence. No Kubernetes manifests or managed-cloud platform are present.],
 
-  [Angular], [Gap],
-  [React is the only front-end framework used, repo-wide.],
+  [Event-driven architecture], [Match],
+  [Lifecycle transitions emit engagement events; Web Push crosses a provider boundary into a browser service worker; MV3 extensions also run in restartable event-driven workers.],
 
-  [Bootstrap], [Gap],
-  [No Bootstrap dependency; the custom Tailwind-based system substitutes for it.],
+  [Microservices], [Adjacent],
+  [The containerized web tier integrates with separately deployed `file_host` and TTS services over explicit HTTP boundaries. Do not relabel this as production microservice ownership without operational evidence.],
 
-  [AEM / Jackrabbit Oak], [Gap],
-  [No CMS or content-repository integration of any kind; everything here is built, not composed atop a vendor platform.],
+  [High-volume transactions], [Gap],
+  [No throughput, latency, transaction-volume, or load-test evidence exists in this repository.],
 
-  [SOLR / SOLR API], [Gap],
-  [No search-engine integration exists in the repo.],
+  [AI/ML infrastructure], [Adjacent],
+  [The adaptive-learning work formalizes state estimation and policy over latent knowledge, but no model training, serving, feature store, or ML platform is implemented.],
 
-  [AWS], [Gap],
-  [Deploys run on GitHub Actions to Docker/GHCR; no AWS usage anywhere in the repo.],
+  [Startup / scale-up], [Gap],
+  [Sole-engineer product ownership shows ambiguity and end-to-end execution, but repository evidence cannot establish an employer's company stage.],
 )
 
-*Tally:* 5 direct matches, 1 adjacent-but-different, 6 gaps out of 12.
-An earlier revision made this point by citing `some-schedule`'s
-`TECH_TERMS` keyword list, which tracked rust, typescript, aws, kubernetes,
-ml, llm, systems and compiler but not AEM, SOLR, Angular or Bootstrap — the
-gap wasn't just in this analysis, it was in what the maintainer's own
-tooling considered relevant. That extension was deleted on 2026-08-04, so
-the citation is gone; the observation it supported is unchanged, but it now
-rests on the requirements map above rather than on a file in the tree.
-
-*So what, for this posting specifically:* this is a government-subcontract
-staff-aug role embedded in an existing AEM/SOLR stack, not a from-scratch
-product build — a different role shape than what this repo demonstrates,
-independent of the tech-stack gaps. If applying anyway, a cover letter
-should lead with the Git/CI/CD matches and the applied-classifier work
-(closest true analog to "AI front-end development"), name the AEM/SOLR/
-Angular/Java gaps plainly rather than let an interviewer discover them, and
-not claim AWS or model-training experience that isn't backed by the repo.
+*Practical reading:* the revised résumé now makes five previously hidden direct
+matches machine-readable --- TypeScript, production API integration,
+event-driven processing, testing practice, and Docker/cloud delivery --- while
+preserving the real gaps. The strongest application story is backend-adjacent
+systems ownership across typed boundaries, asynchronous workers, contracts, and
+release operations. It should not claim four years, Kubernetes, high-volume
+transactions, or ML infrastructure unless evidence outside this repository can
+substantiate those claims.
 
 = Revision log
 
@@ -303,7 +316,7 @@ not claim AWS or model-training experience that isn't backed by the repo.
   Also corrected the workspace counts (61 → 58 packages, "15+" → 12
   extensions); see §2's *Counts* note for how both are derived.
 
-- *v5 (current)* --- no argument changed; the tree underneath it did. Six
+- *v5* --- no argument changed; the tree underneath it did. Six
   graveyard workspaces (`some-tab-meta`, `tab-tracker`, `some-schedule`,
   `some-cycle`, `some-prompt`, `some-streak`) were deleted as defunct, so
   the counts were re-derived by the §2 method: 58 → 52 packages, 12 → 6
@@ -313,3 +326,14 @@ not claim AWS or model-training experience that isn't backed by the repo.
   on `some-schedule`'s `TECH_TERMS` is marked as historical. A résumé whose
   numbers are derived from the repo has to move when the repo does,
   including downward.
+
+
+- *v6 (current, 2026-08-17)* --- responded to backend-screening feedback by
+  making already-shipped work explicit rather than manufacturing missing
+  experience. Added the study-session/API integration project, a compact
+  capabilities line for human and automated readers, and concrete language for
+  event-driven service workers, contract/integration testing, Docker, Nginx,
+  GHCR, and production operations. Replaced the obsolete posting map with the
+  supplied backend qualification map. Four years, Kubernetes, high-volume
+  systems, ML infrastructure, and startup-stage experience remain named gaps;
+  the repository does not support those claims.
