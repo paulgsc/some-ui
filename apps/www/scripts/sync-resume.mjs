@@ -9,14 +9,22 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const appDir = dirname(dirname(fileURLToPath(import.meta.url)))
-const source = join(appDir, "../../packages/ui/resume/dist/resume.pdf")
-const dest = join(appDir, "public/resume.pdf")
+const resumeDir = join(appDir, "../../packages/ui/resume/dist")
+const publicDir = join(appDir, "public")
+const files = [
+  "resume.pdf",
+  "resume-backend.pdf",
+  "resume-systems.pdf",
+  "resume-learning.pdf",
+]
 
-if (existsSync(source)) {
-  mkdirSync(dirname(dest), { recursive: true })
-  copyFileSync(source, dest)
+if (files.every((file) => existsSync(join(resumeDir, file)))) {
+  mkdirSync(publicDir, { recursive: true })
+  for (const file of files) {
+    copyFileSync(join(resumeDir, file), join(publicDir, file))
+  }
   // eslint-disable-next-line no-console
-  console.log("[www] synced resume.pdf from @some-ui/resume")
+  console.log("[www] synced résumé compositions from @some-ui/resume")
 } else {
   // eslint-disable-next-line no-console
   console.warn(

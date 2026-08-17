@@ -1,7 +1,8 @@
 # @some-ui/resume
 
-`resume.typ` is the source of truth for Paul Gathondu's résumé — a
-[Typst](https://typst.app) document, distilled from this repository itself.
+`resume.meta.typ` is the evidence and composition source of truth for Paul
+Gathondu's résumé. `resume.typ` is the one-page
+[Typst](https://typst.app) renderer for that catalogue.
 
 It's written in STAR grammar, told project-first. Each entry opens with the
 premise the project exists to answer — a browser is an operating system and
@@ -13,37 +14,41 @@ held to is that **a premise earns its place only if the next line cashes it
 out in a mechanism**; motivation without mechanism doesn't belong on the
 page.
 
-There is deliberately no "Technical Skills" list. Enumerating languages and
-tools communicates nothing a reader can verify; the same tools appear in the
-bullets, attached to the thing they were used to build.
+Every rendered variant has a compact technical-capabilities line, but its terms
+are selected with — and supported by — that composition's project evidence.
 
-Nothing posting-specific lives here, so the document stays a reusable
-drop-in for any application flow. The provenance map (résumé claim → the
-crate, package, or workflow file backing it), the format's revision history,
-and any posting-specific requirements analysis live separately in
-`resume.meta.typ` — read as source, the same way `docs/canon/*.typ` is not
-something you build so much as something you cite. See its header comment
-for why the split exists.
+The long-form provenance, posting-specific analysis, and omitted evidence stay
+in `resume.meta.typ`; its exported catalogue supplies only complete, audience-
+specific compositions to the renderer. Pruning for one page therefore never
+erases the underlying work or creates a random assortment of bullets.
 
-> Claims in `resume.typ` are load-bearing: if something here stops being
-> true, cut the line rather than re-justifying it, and update the matching
-> entry in `resume.meta.typ` §2. The workspace counts in particular are
+> Claims in the exported compositions are load-bearing: if one stops being
+> true, cut it rather than re-justifying it, and update its provenance in §2. The workspace counts in particular are
 > derived, not remembered — see that section's _Counts_ note.
 
 ## Pipeline (MVP)
 
 ```
-resume.typ  --typst compile-->  dist/resume.pdf
+resume.meta.typ (evidence + compositions)
+              ↓ imported by
+resume.typ --variant--> dist/resume-{backend,systems,learning}.pdf
 ```
 
-`pnpm build` (`scripts/compile.mjs`) compiles the document to
-`dist/resume.pdf`. There's no browser-side WASM compiler and no server in
+`pnpm build` (`scripts/compile.mjs`) compiles all named one-page compositions.
+The backend variant is also copied to `dist/resume.pdf` for compatibility. A Typst layout assertion fails the build if any composition exceeds one page. There's no browser-side WASM compiler and no server in
 this first cut — that's a deliberate MVP cut, not an oversight: static
 precompilation is the cheapest thing that actually proves the concept
 (source-controlled `.typ` in, previewable/downloadable `PDF` out), and it's
 the one option that doesn't ship a multi-megabyte compiler to every visitor
 of `apps/www` just to render one page. See the option comparison this
 decision was made against for the fuller tradeoff.
+
+The renderer also asserts a shared ATS seam in every composition: TypeScript,
+data modeling, production services, distributed/asynchronous event-driven
+systems, Docker/cloud infrastructure, and testing. This is a source-level
+guard against a targeted variant becoming so concise that it stops exposing
+qualifications the underlying work genuinely supports; it does not invent
+unsupported tenure, Kubernetes, scale, or employment history.
 
 `apps/www`'s `/resume` route serves the compiled PDF for inline preview and
 download — see its README for how the two are wired together.
@@ -69,7 +74,5 @@ The auto-download path currently covers Linux and macOS (`x64`/`arm64`) via
 ## What's out of scope for this MVP
 
 - In-browser (WASM) compilation / live preview without a rebuild.
-- Multiple resume variants generated from shared content (the "targets"
-  idea - `rust.pdf`, `frontend.pdf`, etc.) - one document is enough to prove
-  the pipeline; splitting content only pays off once there's a second
-  variant that actually needs it.
+- Arbitrary bullet-level mixing. The selectable unit is intentionally a complete
+  composition so every PDF remains a coherent argument.

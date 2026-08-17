@@ -1,13 +1,12 @@
 // ═══════════════════════════════════════════════════════════════════════════
 //  resume.meta.typ — commentary, provenance, and requirements-map analysis
-//  behind resume.typ. Not the résumé; not built by the résumé pipeline
-//  (see README.md — pnpm build only compiles resume.typ). Meant to be read
-//  as source, the same way this repo's docs/canon/*.typ files are: no build
+//  behind resume.typ. Its exported composition catalogue is imported by the
+//  résumé pipeline; the surrounding analysis remains meant to be read as source, the same way this repo's docs/canon/*.typ files are: no build
 //  step required, the .typ *is* the artifact.
 //
-//  Why this file exists: an earlier draft of resume.typ carried this
-//  material inline — the motivation behind each engineering decision, and
-//  a table scoring the repo against a specific job posting's requirements.
+//  Why this file exists: the printable résumé has a hard one-page budget. This
+//  file preserves the larger evidence bank, the rationale behind each claim,
+//  and several coherent one-page compositions so pruning never means erasure.
 //  A résumé should not do its reader's evaluative work for them, so the
 //  posting-specific scoring moved here (§4) instead of being deleted, on
 //  the same principle docs/canon/README.md states for source vs. rationale:
@@ -23,22 +22,146 @@
 //  self-indulgence when it is not.
 // ═══════════════════════════════════════════════════════════════════════════
 
-#set document(title: "some-ui — Résumé Meta", author: "Paul Gathondu")
-#set page(paper: "a4", margin: 2.2cm, numbering: "1")
-#set text(size: 10pt, lang: "en")
-#set par(justify: true, leading: 0.62em)
+// The long-form evidence bank and the printable compositions live together.
+// `resume.typ` imports only this value and renders one named composition. Each
+// composition is deliberately complete (summary + skills + projects + platform)
+// and budgeted for one page; it is not a bag of independently shuffled bullets.
+#let resume-compositions = (
+  backend: (
+    label: "Backend & event-driven systems",
+    tagline: "Software Engineer --- production Rust services, event-driven systems, and resilient APIs",
+    summary: "Software engineer building production backend services in Rust and TypeScript: versioned HTTP APIs, WebSockets, asynchronous workers, SQL data models, message-broker pipelines, caching, observability, and container delivery. Sole engineer across a 24-crate Rust workspace and a 52-package client platform, owning contracts from browser mutation to durable storage and background actuation.",
+    skills: "Rust; TypeScript; Axum; Tokio; SQLx/SQLite; Redis; NATS JetStream; WebSockets; production HTTP/JSON APIs; data modeling; distributed and event-driven systems; asynchronous processing; Docker/cloud infrastructure; Prometheus; Grafana; OpenTelemetry; unit, integration, contract, and Playwright testing; CI/CD",
+    projects: (
+      (name: "file_host production service", kind: "Rust, Axum, Tokio, SQLx, Redis, NATS JetStream", premise: "A backend boundary is production-ready only when overload, dependency failure, contract drift, and shutdown are designed states rather than surprises.", bullets: (
+        "Authored a Rust/Axum service exposing 39 inventoried HTTP operations plus WebSocket transport for sessions, engagement signals, push subscriptions, mood events, tab state, media metadata, and asynchronous processing.",
+        "Modeled sessions, consent, engagement gates, interventions, tabs, and mood events in SQLite/SQLx repositories with paired migrations, compile-time query validation, WAL mode, bounded pools, and explicit last-write-wins semantics.",
+        "Built per-client token buckets, concurrency/body limits, load shedding, timeouts, typed 429/413/503 outcomes, and refusal metrics that distinguish rejected work from successful low latency.",
+        "Connected Redis caching and in-flight coalescing to NATS/JetStream jobs; retryable worker failures are NAKed for redelivery while cache invalidation follows database mutations.",
+        "Implemented restart-aware WebSockets with permits, heartbeat/staleness, broadcast isolation, presence, cancellation, and bounded shutdown of SQLite, NATS, sockets, and OpenTelemetry.",
+        "Published a schema-versioned route inventory and source-parity tests so undeclared, stale, duplicated, or unaudited Axum routes fail before client contracts drift.",
+      )),
+      (name: "Study-session and notification system", kind: "Rust services, TypeScript/Zod contracts, Web Push", premise: "An intervention should follow learner state and consent, not a clock, and delivery failure must never become load-bearing for study.", bullets: (
+        "Separated warrant, admissibility, and actuation across pure Rust policy, file_host constraints, and push_kit VAPID/RFC 8291/8292 delivery behind a testable transport trait.",
+        "Represented engagement as a decaying vector, solved threshold crossings per signal, persisted eligible_at, and reduced the asynchronous waker to an indexed due-work query.",
+        "Made consent a data-model precondition; malformed or empty grants become silence, while VAPID key mismatch fails at startup instead of invalidating delivery invisibly.",
+        "Integrated typed TypeScript clients with a 48-test contract harness covering 15 operations and Playwright coverage of a real Chromium push/service-worker hop.",
+        "Classified expiry, payload rejection, authentication, rate limiting, and transport failure; removed expired subscriptions and persisted outcomes so quiet behavior remains explainable.",
+      )),
+    ),
+    platform: (
+      "Operate 24 Rust crates with strict all/pedantic/nursery Clippy groups, cargo-deny, migrated SQLx schema preparation, 300+ test functions, and change-scoped GitHub Actions.",
+      "Ship distroless Docker images and compose Axum, Redis, NATS, Caddy, Prometheus, Grafana, exporters, and analytics behind explicit health/readiness boundaries.",
+      "Define six falsifiable fault states --- unreachable, dependency-down, rejecting, saturated, stalled, and observability-blind --- in bounded-cardinality metrics and generated dashboards.",
+      "Render missing telemetry as unknown rather than healthy; probe SQLite, NATS, and Redis independently under bounded timeouts.",
+      "Version invariants, migrations, route contracts, failure conditions, and operational limits beside source and tests rather than as tribal knowledge.",
+    ),
+  ),
+  systems: (
+    label: "Distributed systems & infrastructure",
+    tagline: "Software Engineer --- asynchronous Rust infrastructure, messaging, and observable failure semantics",
+    summary: "Software engineer translating operational guarantees into typed Rust components, bounded concurrency, durable messaging, explicit fault predicates, and independently testable state machines. Own a 24-crate service workspace and the browser systems that consume it.",
+    skills: "Rust; TypeScript; Tokio; Axum/Tower; NATS JetStream; Redis; WebSockets; SQLx; data modeling; production APIs; distributed systems; event-driven architecture; asynchronous processing; Docker/cloud infrastructure; Prometheus/Grafana/OpenTelemetry; unit, integration, contract, and browser testing",
+    projects: (
+      (name: "Real-time transport and work pipeline", kind: "Rust, WebSockets, NATS JetStream, Tokio", premise: "A real-time system must make admission, liveness, redelivery, and termination visible at every process boundary.", bullets: (
+        "Built file_host's actor-owned WebSocket service with heartbeat/activity semantics, typed events, broadcast fan-out, global/per-client permits, and cancellation-driven cleanup.",
+        "Separated ephemeral socket delivery from durable JetStream processing; typed jobs classify retryable failures for NAK/redelivery rather than treating every error as terminal.",
+        "Instrumented live/subscribed connections, guard occupancy, frame kinds, end reasons, refusals, and loop progress so quiet, stalled, saturated, and disconnected remain distinct.",
+        "Bound connection capacity, request concurrency, task timeout, body size, cache in-flight work, dependency probes, and shutdown with observable rejection paths.",
+      )),
+      (name: "Study intervention engine", kind: "Pure Rust domain crates, SQLite, Web Push", premise: "Time may constrain an intervention, but the clock should not manufacture its reason.", bullets: (
+        "Split study_domain, intervention, repositories, push_kit, and file_host so pure policy has no HTTP, database, async-runtime, or delivery dependencies.",
+        "Computed decaying engagement in closed form and solved the next crossing once per event: O(1) work per signal, zero per idle subject, and indexed discovery of due work.",
+        "Represented quiet hours, cooldown, active presence, consent, and configuration as suppression reasons with retry instants instead of silent early returns.",
+        "Used generic transports where the binary owns one implementation, preserving compile-time composition and network-free tests of VAPID and outcome classification.",
+      )),
+      (name: "Browser-worker infrastructure", kind: "Firefox MV3, TypeScript, WebAssembly, Playwright", premise: "Restart is normal for an event-driven worker, and browser state must survive it without hidden runtime coupling.", bullets: (
+        "Built Suspender Ledger on native discard; startup reconciliation restores tab invariants after termination and bounded queues isolate bulk failures.",
+        "Validated popup/worker/content protocols, isolated browser differences, emitted one flat MV3 worker, and gated signed releases on type, unit, lint, web-ext, and license checks.",
+        "Encoded progressive disclosure as discriminated-union transitions and reconciled virtualized DOM feeds through MutationObserver; illegal states fail compilation.",
+        "Extracted a domain-free observe/estimate/plan/act kernel whose unit and Playwright suites pass against a null adapter.",
+      )),
+    ),
+    platform: (
+      "Run strict Rust/TypeScript CI, SQLx checks, route parity, API contracts, browser conformance, and signed release gates.",
+      "Compose distroless services with Caddy, Redis, NATS, Prometheus, Grafana, exporters, and service-specific readiness probes.",
+      "Generate dashboards from Jsonnet with measured-good, measured-bad, and missing/unknown as irreducible states.",
+      "Use bounded-cardinality Prometheus metrics and OpenTelemetry traces for HTTP, dependencies, pools, cache, admission, connections, and loop progress.",
+      "Maintain typed shared crates for transport, caching, metrics, connections, events, repositories, and policy rather than copying infrastructure between binaries.",
+    ),
+  ),
+  learning: (
+    label: "Adaptive learning & product engineering",
+    tagline: "Software Engineer --- Rust learning systems from domain model to production actuation",
+    summary: "Software engineer building learning software that models knowledge and engagement rather than advancing a fixed schedule. Own pure Rust policy, SQL persistence, production APIs, asynchronous notification delivery, Rust/WASM engines, React experiences, observability, testing, and deployment.",
+    skills: "Rust; WebAssembly; TypeScript; React; Axum; SQLx; Web Push; state estimation; data modeling; production APIs; microservice integration; distributed and event-driven systems; asynchronous processing; Docker/cloud infrastructure; unit, integration, contract, Vitest, and Playwright testing",
+    projects: (
+      (name: "Adaptive learning platform", kind: "Rust/WebAssembly engine, React application", premise: "Learning software should estimate what a learner knows and choose the smallest next concept that produces progress.", bullets: (
+        "Built a pure-Rust engine compiled to WebAssembly and consumed by React hex-grid, TOPIK exam-prep, and typing-drill modules on one curriculum platform.",
+        "Generalized exercises from single glyphs to typed multi-token Stimulus/Answer models after deriving the prior model's ceiling before implementation.",
+        "Authored a formal model of latent state, observation, estimation, policy, persistence, and falsifiers; proved a completed-item set plus one scalar cannot become adaptive.",
+        "Kept study_domain independent of storage and transport so lessons, sessions, scores, and curriculum rules test without Axum, SQLx, Tokio, or browser code.",
+      )),
+      (name: "Production study-session backend", kind: "file_host, Rust, Axum, SQLx, Redis", premise: "Local progress and the server's durable view need an explicit contract, migration path, and failure policy.", bullets: (
+        "Authored versioned Rust endpoints for session CRUD, progress sync, engagement signals, push configuration/subscriptions, and test delivery over typed SQL repositories.",
+        "Modeled identity, revision, progress, timestamps, consent, engagement classes, and last-write-wins updates instead of hiding distributed assumptions in React.",
+        "Published 39 operations as schema-versioned JSON and proved parity with Axum registration sources; the TypeScript client imports it for drift and live-contract checks.",
+        "Kept optional notifications from gating study: invalid enabled configuration fails fast, while deliberately disabled push returns typed unavailability and permits boot.",
+      )),
+      (name: "Event-driven study nudge", kind: "Rust policy crates, Web Push, asynchronous worker", premise: "A reminder is useful only when declining engagement warrants it and consent, presence, cooldown, and local time permit it.", bullets: (
+        "Modeled independently decaying presence, momentum, mastery, and freshness; the dominant deficit selects lesson, resume, review, or new-material intervention.",
+        "Solved threshold crossings on signals and persisted eligible_at; a cancellation-aware waker queries only due rows and records its last successful pass.",
+        "Used recent WebSocket activity for presence so a pinned background tab cannot suppress intervention forever.",
+        "Made malformed consent silent, used an explicit IANA time zone, rejected VAPID mismatch at startup, and classified provider outcomes for cleanup and diagnosis.",
+        "Tested decay/policy arithmetic, repositories, constraints, payloads, VAPID, live HTTP schemas, and real browser service-worker delivery at natural boundaries.",
+      )),
+    ),
+    platform: (
+      "Ship Rust services and web UI in Docker behind Caddy/Nginx with TLS, readiness, Redis, NATS, Prometheus, Grafana, and Docker Hub/GitHub Actions delivery.",
+      "Exercise 24 backend crates with 300+ tests, strict Clippy, cargo-deny, SQLx preparation, route parity, and downstream contract/browser suites.",
+      "Treat missing telemetry as a fault; dashboards expose unreachable, dependency-down, rejecting, saturated, stalled, and blind states.",
+      "Derive architecture from written domain boundaries and falsifiable failures kept beside migrations, source, metrics, and tests.",
+      "Own the path from learning-state model through schema, HTTP contract, decision worker, push provider, browser worker, UI, and operational dashboard.",
+    ),
+  ),
+)
+#set document(title: "Résumé Meta --- Evidence and Composition Catalogue", author: "Paul Gathondu")
+#set page(paper: "a4", margin: 1.35cm, numbering: "1")
+#set text(size: 9.2pt, lang: "en")
+#set par(justify: true, leading: 0.55em)
 #set heading(numbering: "1.1")
 
-= What this is
+= Purpose
 
-`resume.typ` is the résumé: four projects in STAR grammar, each opening with
-the premise it answers and then cashing that premise out in the mechanism
-that implements it. This file is the apparatus around it — the provenance
-for each claim (§2), the production method (§3), a requirements-map analysis
-against a specific posting (§4) — the kind of scoring a résumé shouldn't do
-to its reader but that's genuinely useful for deciding *whether and how to
-apply* — and a revision log (§5) that is mostly a record of getting the
-format wrong twice.
+This is the durable evidence store behind the printable one-page résumé. The
+renderer selects one complete composition --- summary, skills, projects, and
+platform close --- and never shuffles isolated bullets. Each composition targets
+roughly 95% of a page at readable type while retaining only auditable claims.
+
+The server body of work changes the central claim: `file_host` is authored
+backend work, not merely an integration dependency. The catalogue therefore
+names the API, persistence, messaging, concurrency, resilience, notification,
+observability, testing, and deployment mechanisms implemented across the Rust
+server and TypeScript client. It does not invent tenure, production traffic,
+Kubernetes, managed-cloud operation, startup employment, or ML infrastructure.
+
+= Server provenance
+
+- The backend spans 24 Rust crates; `file_host` composes Axum/Tower, Tokio,
+  SQLx/SQLite, Redis, NATS JetStream, WebSockets, Prometheus, OpenTelemetry, and
+  Web Push behind 39 inventoried method/path operations.
+- SQLx repositories and paired migrations own sessions, consented subscriptions,
+  engagement gates, interventions, tabs, captures, and mood events; Redis
+  coalesces concurrent misses and JetStream redelivers retryable typed jobs.
+- Admission control, bounded queues/timeouts, cancellation-driven shutdown,
+  independent dependency readiness, and typed failure outcomes make overload
+  and dependency loss designed states.
+- Six falsifiable service states --- unreachable, dependency-down, rejecting,
+  saturated, stalled, and observability-blind --- are represented by Prometheus
+  metrics and dashboards that render missing data as unknown, never healthy.
+- More than 300 Rust test functions, strict Clippy groups, cargo-deny, SQLx
+  preparation, route-source parity, live contracts, and browser suites cover the
+  boundary from durable storage to the real service worker.
 
 = Provenance --- résumé claim to repo evidence
 
@@ -101,6 +224,30 @@ backs should be cut, not kept and re-justified.
   shipped modules from `@some-extension/filter` and bundles them with
   esbuild. No extension build, no `--load-extension`, no reimplementation.
 
+== Study-session and notification platform
+
+- *Production API integration* --- `apps/www/src/lib/tenant/http-sessions-repository.ts`
+  implements the versioned session client; `apps/www/src/lib/study-nudge/signals.ts`
+  emits lifecycle-derived events to `POST /api/v1/signals`; and
+  `apps/www/src/lib/study-nudge/service-worker.ts` manages Web Push subscriptions.
+  The backing Rust `file_host` is a separate repository, so the résumé says
+  "integrated" rather than claiming this tree implemented the server.
+- *Typed contracts and data models* --- `packages/contract-harness` declares
+  TypeScript/Zod request and response contracts and checks them against both a
+  checked-in server route inventory and live HTTP responses. Its README records
+  15 of 52 routes covered and 48 tests, including integration tests that start a
+  real HTTP server and exercise concrete schema and route divergence.
+- *Event-driven and asynchronous processing* --- `docs/study-nudge.md` records
+  the explicit transition-to-signal model, fire-and-forget delivery policy,
+  consent-scoped push subscriptions, and division between server engagement
+  events and browser service-worker push events. The Playwright service-worker
+  spec drives the real worker through Chromium rather than mocking the final hop.
+- *Container/cloud delivery* --- `Dockerfile`, `infra/compose/www.yml`, and
+  `apps/www/nginx.*.conf` define the Nginx web container, health check, HTTPS and
+  same-origin service proxies; `.github/workflows/www-docker-release.yml`
+  publishes it to Docker Hub. This supports Docker/cloud-infrastructure wording, not
+  Kubernetes: there are no Kubernetes manifests in this repository.
+
 == Adaptive learning platform
 
 - *Engine + UI* --- `crates/hangul-game-core` (pure Rust, compiled to WASM)
@@ -128,7 +275,7 @@ backs should be cut, not kept and re-justified.
   (full-repo sweep) and `_rust-ci.yml` (clippy, cargo-deny).
 - *Release path* --- Changesets and `.changeset/` drive versioning and
   changelogs across the workspace; `release.yml`, `www-docker-release.yml`
-  (Docker/GHCR), `pages.yml` (GitHub Pages + Storybook), `wasm-release.yml`,
+  (Docker/Docker Hub), `pages.yml` (GitHub Pages + Storybook), `wasm-release.yml`,
   and `extension-sign*.yml` / `_extension-verify.yml` cover the rest.
 - *Hoisted contract, not a shared runtime* --- `extensions/common`
   (`GOOD_CITIZEN.md` and the "two mandates": disjointness vs. no
@@ -173,78 +320,64 @@ See
 (`resume.typ` → `dist/resume.pdf` via `scripts/compile.mjs`) and what's
 deliberately out of scope for the MVP cut.
 
-= Requirements map --- E-Logic / Sacramento County, "Web Application Developer"
+= Requirements map --- backend software engineer screening gap
 
 #text(style: "italic", size: 9pt)[
-  Pulled from Indeed, 2026-07-26. This is an application-planning artifact,
-  not résumé content: it exists to help decide whether applying is worth
-  the effort and, if so, what a cover letter should lead with. It is
-  deliberately evaluative and posting-specific — exactly what a résumé
-  should not be, and exactly what belongs in a private note instead of on
-  the page a recruiter reads in six seconds.
+  Derived from the qualification feedback supplied with the 2026-08-17 resume
+  revision. This is an application-planning artifact, not résumé copy. "Match"
+  means the repository contains direct evidence; "Adjacent" names relevant work
+  without inflating it into experience the tree cannot prove; "Gap" stays a gap.
 ]
 
 #table(
-  columns: (24%, 12%, 1fr),
+  columns: (28%, 12%, 1fr),
   stroke: (x, y) => if y == 0 { (bottom: 0.6pt + rgb("#999999")) } else { none },
   inset: (x: 4pt, y: 4pt),
   align: (left + horizon, left + horizon, left + horizon),
-  [*Posting requires*], [*Status*], [*What's actually true*],
+  [*Qualification*], [*Status*], [*Repository evidence / honest boundary*],
 
-  [JavaScript], [Match],
-  [Primary language (as TypeScript, strict) across all 61 workspace packages.],
+  [4+ years backend engineering], [Gap],
+  [The dated body of work supports 2024--present, not four years. Do not solve a chronology gap with wording.],
 
-  [CSS], [Match],
-  [Tailwind CSS v4 + a hand-built, Storybook-documented design system (`some-styles`).],
+  [TypeScript, Python, or Go], [Match],
+  [Strict TypeScript spans the monorepo, browser workers, API clients, runtime schemas, contract harness, and test infrastructure.],
 
-  [GIT mastery], [Match],
-  [PR-gated trunk behind a required `ci-gate` check; Changesets-driven release branching.],
+  [Production APIs / backend services], [Match],
+  [`file_host` authorship covers 39 versioned HTTP operations, WebSockets, SQL repositories, Redis caching, NATS jobs, admission control, readiness, metrics, and graceful shutdown.],
 
-  [CI/CD products \& functions], [Match],
-  [Turborepo dependency-graph pipeline (scoped + full-sweep) on GitHub Actions; Docker/GHCR builds; signed extension releases.],
+  [Distributed systems / async processing], [Match],
+  [Tokio tasks, HTTP boundaries, Redis, JetStream redelivery, WebSockets, push providers, cancellation, bounded queues, and restartable browser workers. No claim of large-scale operation.],
 
-  [Communication skills], [Match (structural)],
-  [Written ADRs and 2,000+ line "canon" theory docs with amendment protocols gate every architecture change --- evidenced, not asserted.],
+  [Testing / engineering practice], [Match],
+  [300+ Rust test functions, strict Clippy groups, cargo-deny, SQLx checks, route parity, 48 live HTTP contract tests, Vitest, Playwright, and signed release gates.],
 
-  [AI model training / AI front end], [Adjacent],
-  [No model training. Provider-agnostic TTS front end (ElevenLabs/OpenAI/Google/Azure) + a heuristic DOM classifier calibrated against a human-labeled corpus (`filter-classifier`) --- applied classification, not the neural-net sense the posting likely means.],
+  [Databases / data modeling], [Match],
+  [Typed SQLite/SQLx repositories and migrations cover sessions, engagement, gates, consented subscriptions, interventions, tabs, captures, and mood events.],
 
-  [Java], [Gap],
-  [No JVM code in the repo; the systems language here is Rust, compiled to WASM.],
+  [Kubernetes / cloud infrastructure], [Adjacent / Gap],
+  [Docker/Compose, distroless images, Caddy/Nginx, Docker Hub, GitHub Actions, readiness, Prometheus, and Grafana are direct; Kubernetes and managed-cloud operations are not.],
 
-  [Angular], [Gap],
-  [React is the only front-end framework used, repo-wide.],
+  [Event-driven architecture], [Match],
+  [Lifecycle signals, persisted eligibility, an indexed due-work waker, JetStream jobs/redelivery, WebSockets, push providers, and restartable browser workers.],
 
-  [Bootstrap], [Gap],
-  [No Bootstrap dependency; the custom Tailwind-based system substitutes for it.],
+  [Microservices], [Match],
+  [Separately deployable Rust server, web, TTS/ML managers, Redis, NATS, and monitoring components communicate over explicit HTTP and messaging boundaries.],
 
-  [AEM / Jackrabbit Oak], [Gap],
-  [No CMS or content-repository integration of any kind; everything here is built, not composed atop a vendor platform.],
+  [High-volume transactions], [Gap],
+  [Backpressure and saturation controls exist, but no traffic, throughput, latency SLO, or load-test result supports a high-volume claim.],
 
-  [SOLR / SOLR API], [Gap],
-  [No search-engine integration exists in the repo.],
+  [AI/ML infrastructure], [Adjacent],
+  [The adaptive-learning work formalizes state estimation and policy over latent knowledge, but no model training, serving, feature store, or ML platform is implemented.],
 
-  [AWS], [Gap],
-  [Deploys run on GitHub Actions to Docker/GHCR; no AWS usage anywhere in the repo.],
+  [Startup / scale-up], [Gap],
+  [Sole-engineer product ownership shows ambiguity and end-to-end execution, but repository evidence cannot establish an employer's company stage.],
 )
 
-*Tally:* 5 direct matches, 1 adjacent-but-different, 6 gaps out of 12.
-An earlier revision made this point by citing `some-schedule`'s
-`TECH_TERMS` keyword list, which tracked rust, typescript, aws, kubernetes,
-ml, llm, systems and compiler but not AEM, SOLR, Angular or Bootstrap — the
-gap wasn't just in this analysis, it was in what the maintainer's own
-tooling considered relevant. That extension was deleted on 2026-08-04, so
-the citation is gone; the observation it supported is unchanged, but it now
-rests on the requirements map above rather than on a file in the tree.
-
-*So what, for this posting specifically:* this is a government-subcontract
-staff-aug role embedded in an existing AEM/SOLR stack, not a from-scratch
-product build — a different role shape than what this repo demonstrates,
-independent of the tech-stack gaps. If applying anyway, a cover letter
-should lead with the Git/CI/CD matches and the applied-classifier work
-(closest true analog to "AI front-end development"), name the AEM/SOLR/
-Angular/Java gaps plainly rather than let an interviewer discover them, and
-not claim AWS or model-training experience that isn't backed by the repo.
+*Practical reading:* the revised résumé makes the authored backend body machine-readable --- TypeScript, Rust services, SQL persistence, production APIs, distributed/event-driven processing, testing, and Docker/cloud delivery --- while
+preserving the real gaps. The strongest application story is backend and systems ownership across typed boundaries, asynchronous workers, contracts, and
+release operations. It should not claim four years, Kubernetes, high-volume
+transactions, or ML infrastructure unless evidence outside this repository can
+substantiate those claims.
 
 = Revision log
 
@@ -303,7 +436,7 @@ not claim AWS or model-training experience that isn't backed by the repo.
   Also corrected the workspace counts (61 → 58 packages, "15+" → 12
   extensions); see §2's *Counts* note for how both are derived.
 
-- *v5 (current)* --- no argument changed; the tree underneath it did. Six
+- *v5* --- no argument changed; the tree underneath it did. Six
   graveyard workspaces (`some-tab-meta`, `tab-tracker`, `some-schedule`,
   `some-cycle`, `some-prompt`, `some-streak`) were deleted as defunct, so
   the counts were re-derived by the §2 method: 58 → 52 packages, 12 → 6
@@ -313,3 +446,47 @@ not claim AWS or model-training experience that isn't backed by the repo.
   on `some-schedule`'s `TECH_TERMS` is marked as historical. A résumé whose
   numbers are derived from the repo has to move when the repo does,
   including downward.
+
+
+- *v6 (2026-08-17)* --- responded to backend-screening feedback by
+  making already-shipped work explicit rather than manufacturing missing
+  experience. Added the study-session/API integration project, a compact
+  capabilities line for human and automated readers, and concrete language for
+  event-driven service workers, contract/integration testing, Docker, Nginx,
+  Docker Hub, and production operations. Replaced the obsolete posting map with the
+  supplied backend qualification map. Four years, Kubernetes, high-volume
+  systems, ML infrastructure, and startup-stage experience remain named gaps;
+  the repository does not support those claims.
+
+
+- *v7 (current, 2026-08-17)* --- made the one-page constraint the architecture
+  rather than an aspiration. The long-form meta document now exports three
+  coherent compositions (backend, systems, and adaptive learning), while
+  `resume.typ` became a small renderer selected by a compile-time `variant`.
+  The build emits all three PDFs and rejects any composition whose Typst layout
+  reports more than one page. The web viewer persists the chosen composition
+  and exposes both a round-robin control and a page context-menu picker. Curation remains
+  reversible because omitted evidence stays here; coherence remains mandatory
+  because the selectable unit is the whole composition, never a random bullet.
+
+
+- *v8 (current, 2026-08-17)* --- corrected the opposite failure mode: a
+  one-page résumé can still be under-filled and too skeletal for an ATS or a
+  technical reader. Expanded every composition with concrete boundary,
+  failure-mode, testing, data-model, and delivery evidence; made the common ATS
+  qualification seam explicit in all three variants; and restored readable
+  type, margins, and spacing so the page budget is used rather than merely not
+  exceeded. The Typst assertions now enforce both halves of the contract:
+  exactly one laid-out page and the presence of the shared qualification terms.
+
+
+= Current revision
+
+*v10 (2026-08-17).* Promoted `file_host` from an integration dependency to
+its accurate role as authored production backend work. Added the 39-operation
+API, SQLx persistence, Redis coalescing, NATS/JetStream redelivery, WebSocket
+lifecycle, admission controls, intervention engine, fault taxonomy,
+observability, tests, and container delivery across every composition. Each
+variant now carries enough concrete evidence to target approximately 95% page
+utilization without claiming unsupported tenure, traffic scale, Kubernetes,
+managed cloud, startup employment, or ML infrastructure.
