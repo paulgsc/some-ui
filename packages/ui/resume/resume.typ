@@ -21,25 +21,33 @@
     message: variant + " composition is missing ATS qualification: " + term,
   )
 }
+#let evidence-count = selected.projects.fold(
+  0,
+  (total, project) => total + project.bullets.len(),
+) + selected.platform.len()
+#assert(
+  evidence-count >= 15,
+  message: variant + " composition is too sparse for the 95% page-density target",
+)
 
 #set document(title: "Paul Gathondu — Résumé", author: "Paul Gathondu")
-#set page(paper: "us-letter", margin: (x: 1.65cm, y: 1.4cm))
-#set text(font: "Libertinus Serif", size: 9.5pt, lang: "en")
-#set par(justify: true, leading: 0.58em)
-#set list(indent: 0.18em, spacing: 0.5em, marker: [•])
+#set page(paper: "us-letter", margin: (x: 1.15cm, y: 1.05cm))
+#set text(font: "Libertinus Serif", size: 8.2pt, lang: "en")
+#set par(justify: true, leading: 0.42em)
+#set list(indent: 0.14em, spacing: 0.2em, marker: [•])
 
-#let sectionhead(title) = block(sticky: true, above: 0.55em, below: 0.36em)[
-  #text(size: 10.5pt, weight: "bold", tracking: 0.35pt)[#upper(title)]
+#let sectionhead(title) = block(sticky: true, above: 0.36em, below: 0.2em)[
+  #text(size: 9.5pt, weight: "bold", tracking: 0.3pt)[#upper(title)]
   #line(length: 100%, stroke: 0.45pt + rgb("#bbbbbb"))
 ]
 
 #let project-entry(item) = [
-  #block(sticky: true, above: 0.7em, below: 0.28em)[
-    #text(size: 10pt, weight: "bold")[#item.name]
+  #block(sticky: true, above: 0.4em, below: 0.16em)[
+    #text(size: 9pt, weight: "bold")[#item.name]
     #h(0.4em)
-    #text(size: 8.8pt, fill: rgb("#555555"))[#item.kind]
+    #text(size: 7.8pt, fill: rgb("#555555"))[#item.kind]
     #linebreak()
-    #text(size: 9.1pt, style: "italic", fill: rgb("#3f3f3f"))[#item.premise]
+    #text(size: 8pt, style: "italic", fill: rgb("#3f3f3f"))[#item.premise]
   ]
   #for bullet in item.bullets [
     - #bullet
@@ -47,11 +55,11 @@
 ]
 
 #align(center)[
-  #text(size: 18.5pt, weight: "bold")[Paul Gathondu]
+  #text(size: 17pt, weight: "bold")[Paul Gathondu]
   #v(0.08em)
-  #text(size: 9.3pt, fill: rgb("#4a4a4a"))[#selected.tagline]
+  #text(size: 8.5pt, fill: rgb("#4a4a4a"))[#selected.tagline]
   #v(0.13em)
-  #text(size: 8.4pt)[
+  #text(size: 7.7pt)[
     paulgathondudev\@gmail.com #h(0.45em)·#h(0.45em)
     github.com/paulgsc #h(0.45em)·#h(0.45em)
     paulgsc.github.io/some-ui #h(0.45em)·#h(0.45em)
@@ -62,7 +70,7 @@
 #sectionhead[Summary]
 #selected.summary
 
-#text(size: 9pt, weight: "bold")[Core capabilities:] #selected.skills
+#text(size: 8pt, weight: "bold")[Core capabilities:] #selected.skills
 
 #sectionhead[Selected Work — some-ui, sole engineer (2024 — Present)]
 #for item in selected.projects {
