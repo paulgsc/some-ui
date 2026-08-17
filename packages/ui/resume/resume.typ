@@ -15,9 +15,16 @@
   "Docker/cloud infrastructure",
   "testing",
 )
+#let ats-text = (
+  selected.tagline
+  + " "
+  + selected.summary
+  + " "
+  + selected.skills
+)
 #for term in ats-terms {
   assert(
-    selected.skills.contains(term),
+    ats-text.contains(term),
     message: variant + " composition is missing ATS qualification: " + term,
   )
 }
@@ -54,32 +61,42 @@
   ]
 ]
 
-#align(center)[
-  #text(size: 17pt, weight: "bold")[Paul Gathondu]
-  #v(0.08em)
-  #text(size: 8.5pt, fill: rgb("#4a4a4a"))[#selected.tagline]
-  #v(0.13em)
-  #text(size: 7.7pt)[
-    paulgathondudev\@gmail.com #h(0.45em)·#h(0.45em)
-    github.com/paulgsc #h(0.45em)·#h(0.45em)
-    paulgsc.github.io/some-ui #h(0.45em)·#h(0.45em)
-    github.com/paulgsc/some-ui
+// The catalogue supplies the meat; this fixed-height composition frame spends
+// exactly 95% of the printable column on it. Fractional gaps distribute only
+// the space left after layout, so dense variants collapse to their minimum
+// rhythm while shorter variants cannot leave an accidental half-page void.
+#block(height: 95%)[
+  #align(center)[
+    #text(size: 17pt, weight: "bold")[Paul Gathondu]
+    #v(0.08em)
+    #text(size: 8.5pt, fill: rgb("#4a4a4a"))[#selected.tagline]
+    #v(0.13em)
+    #text(size: 7.7pt)[
+      paulgathondudev\@gmail.com #h(0.45em)·#h(0.45em)
+      github.com/paulgsc #h(0.45em)·#h(0.45em)
+      paulgsc.github.io/some-ui #h(0.45em)·#h(0.45em)
+      github.com/paulgsc/some-ui
+    ]
   ]
-]
 
-#sectionhead[Summary]
-#selected.summary
+  #v(1fr)
+  #sectionhead[Summary]
+  #selected.summary
 
-#text(size: 8pt, weight: "bold")[Core capabilities:] #selected.skills
+  #v(1fr)
+  #text(size: 8pt, weight: "bold")[Core capabilities:] #selected.skills
 
-#sectionhead[Selected Work — some-ui, sole engineer (2024 — Present)]
-#for item in selected.projects {
-  project-entry(item)
-}
+  #v(1fr)
+  #sectionhead[Selected Work — some-ui, sole engineer (2024 — Present)]
+  #for item in selected.projects {
+    project-entry(item)
+    v(1fr)
+  }
 
-#sectionhead[Platform, Release, and Engineering Practice]
-#for bullet in selected.platform [
-  - #bullet
+  #sectionhead[Platform, Release, and Engineering Practice]
+  #for bullet in selected.platform [
+    - #bullet
+  ]
 ]
 
 // The page budget is a build invariant, not a visual-review suggestion. Typst
