@@ -117,7 +117,7 @@
       )),
     ),
     platform: (
-      "Ship Rust services and web UI in Docker behind Caddy/Nginx with TLS, readiness, Redis, NATS, Prometheus, Grafana, and GHCR/GitHub Actions delivery.",
+      "Ship Rust services and web UI in Docker behind Caddy/Nginx with TLS, readiness, Redis, NATS, Prometheus, Grafana, and Docker Hub/GitHub Actions delivery.",
       "Exercise 24 backend crates with 300+ tests, strict Clippy, cargo-deny, SQLx preparation, route parity, and downstream contract/browser suites.",
       "Treat missing telemetry as a fault; dashboards expose unreachable, dependency-down, rejecting, saturated, stalled, and blind states.",
       "Derive architecture from written domain boundaries and falsifiable failures kept beside migrations, source, metrics, and tests.",
@@ -245,7 +245,7 @@ backs should be cut, not kept and re-justified.
 - *Container/cloud delivery* --- `Dockerfile`, `infra/compose/www.yml`, and
   `apps/www/nginx.*.conf` define the Nginx web container, health check, HTTPS and
   same-origin service proxies; `.github/workflows/www-docker-release.yml`
-  publishes it to GHCR. This supports Docker/cloud-infrastructure wording, not
+  publishes it to Docker Hub. This supports Docker/cloud-infrastructure wording, not
   Kubernetes: there are no Kubernetes manifests in this repository.
 
 == Adaptive learning platform
@@ -275,7 +275,7 @@ backs should be cut, not kept and re-justified.
   (full-repo sweep) and `_rust-ci.yml` (clippy, cargo-deny).
 - *Release path* --- Changesets and `.changeset/` drive versioning and
   changelogs across the workspace; `release.yml`, `www-docker-release.yml`
-  (Docker/GHCR), `pages.yml` (GitHub Pages + Storybook), `wasm-release.yml`,
+  (Docker/Docker Hub), `pages.yml` (GitHub Pages + Storybook), `wasm-release.yml`,
   and `extension-sign*.yml` / `_extension-verify.yml` cover the rest.
 - *Hoisted contract, not a shared runtime* --- `extensions/common`
   (`GOOD_CITIZEN.md` and the "two mandates": disjointness vs. no
@@ -355,7 +355,7 @@ deliberately out of scope for the MVP cut.
   [Typed SQLite/SQLx repositories and migrations cover sessions, engagement, gates, consented subscriptions, interventions, tabs, captures, and mood events.],
 
   [Kubernetes / cloud infrastructure], [Adjacent / Gap],
-  [Docker/Compose, distroless images, Caddy/Nginx, GHCR, GitHub Actions, readiness, Prometheus, and Grafana are direct; Kubernetes and managed-cloud operations are not.],
+  [Docker/Compose, distroless images, Caddy/Nginx, Docker Hub, GitHub Actions, readiness, Prometheus, and Grafana are direct; Kubernetes and managed-cloud operations are not.],
 
   [Event-driven architecture], [Match],
   [Lifecycle signals, persisted eligibility, an indexed due-work waker, JetStream jobs/redelivery, WebSockets, push providers, and restartable browser workers.],
@@ -453,7 +453,7 @@ substantiate those claims.
   experience. Added the study-session/API integration project, a compact
   capabilities line for human and automated readers, and concrete language for
   event-driven service workers, contract/integration testing, Docker, Nginx,
-  GHCR, and production operations. Replaced the obsolete posting map with the
+  Docker Hub, and production operations. Replaced the obsolete posting map with the
   supplied backend qualification map. Four years, Kubernetes, high-volume
   systems, ML infrastructure, and startup-stage experience remain named gaps;
   the repository does not support those claims.

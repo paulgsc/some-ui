@@ -24,12 +24,14 @@ const RESUME_COMPOSITIONS = [
 type ResumeComposition = (typeof RESUME_COMPOSITIONS)[number]["id"]
 const RESUME_COMPOSITION_KEY = "some-ui:resume-composition"
 
+function isResumeComposition(value: string | null): value is ResumeComposition {
+  return RESUME_COMPOSITIONS.some(({ id }) => id === value)
+}
+
 function initialComposition(): ResumeComposition {
   if (typeof window === "undefined") return "backend"
   const stored = localStorage.getItem(RESUME_COMPOSITION_KEY)
-  return RESUME_COMPOSITIONS.some(({ id }) => id === stored)
-    ? (stored as ResumeComposition)
-    : "backend"
+  return isResumeComposition(stored) ? stored : "backend"
 }
 
 const ResumeRoute = (): JSX.Element => {
