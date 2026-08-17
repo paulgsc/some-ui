@@ -10,6 +10,7 @@
 import { execFileSync, spawnSync } from "node:child_process"
 import {
   chmodSync,
+  copyFileSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -24,8 +25,9 @@ const TYPST_VERSION = "0.13.1"
 
 const packageDir = dirname(dirname(fileURLToPath(import.meta.url)))
 const sourceFile = join(packageDir, "resume.typ")
-const outFile = join(packageDir, "dist", "resume.pdf")
+const outDir = join(packageDir, "dist")
 const cacheDir = join(packageDir, "node_modules", ".cache", "typst-bin")
+const variants = ["backend", "systems", "learning"]
 
 function releaseTriple() {
   const table = {
@@ -94,13 +96,38 @@ async function main() {
   const watch = process.argv.includes("--watch")
   const typstBin = await resolveTypstBinary()
 
-  mkdirSync(dirname(outFile), { recursive: true })
+  mkdirSync(outDir, { recursive: true })
 
-  const args = [watch ? "watch" : "compile", sourceFile, outFile]
-  // eslint-disable-next-line no-console
-  console.log(`[resume] ${watch ? "watching" : "compiling"} resume.typ...`)
-  const result = spawnSync(typstBin, args, { stdio: "inherit" })
-  process.exitCode = result.status ?? 1
+  if (watch) {
+    const outFile = join(outDir, "resume-backend.pdf")
+    // eslint-disable-next-line no-console
+    console.log("[resume] watching the backend composition...")
+    const result = spawnSync(
+      typstBin,
+      ["watch", sourceFile, outFile, "--input", "variant=backend"],
+      { stdio: "inherit" }
+    )
+    process.exitCode = result.status ?? 1
+    return
+  }
+
+  for (const variant of variants) {
+    const outFile = join(outDir, `resume-${variant}.pdf`)
+    // eslint-disable-next-line no-console
+    console.log(`[resume] compiling the ${variant} composition...`)
+    const result = spawnSync(
+      typstBin,
+      ["compile", sourceFile, outFile, "--input", `variant=${variant}`],
+      { stdio: "inherit" }
+    )
+    if (result.status !== 0) {
+      process.exitCode = result.status ?? 1
+      return
+    }
+  }
+
+  // Preserve the original public filename as the default/backend composition.
+  copyFileSync(join(outDir, "resume-backend.pdf"), join(outDir, "resume.pdf"))
 }
 
 main().catch((err) => {

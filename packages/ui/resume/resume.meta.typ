@@ -1,13 +1,12 @@
 // ═══════════════════════════════════════════════════════════════════════════
 //  resume.meta.typ — commentary, provenance, and requirements-map analysis
-//  behind resume.typ. Not the résumé; not built by the résumé pipeline
-//  (see README.md — pnpm build only compiles resume.typ). Meant to be read
-//  as source, the same way this repo's docs/canon/*.typ files are: no build
+//  behind resume.typ. Its exported composition catalogue is imported by the
+//  résumé pipeline; the surrounding analysis remains meant to be read as source, the same way this repo's docs/canon/*.typ files are: no build
 //  step required, the .typ *is* the artifact.
 //
-//  Why this file exists: an earlier draft of resume.typ carried this
-//  material inline — the motivation behind each engineering decision, and
-//  a table scoring the repo against a specific job posting's requirements.
+//  Why this file exists: the printable résumé has a hard one-page budget. This
+//  file preserves the larger evidence bank, the rationale behind each claim,
+//  and several coherent one-page compositions so pruning never means erasure.
 //  A résumé should not do its reader's evaluative work for them, so the
 //  posting-specific scoring moved here (§4) instead of being deleted, on
 //  the same principle docs/canon/README.md states for source vs. rationale:
@@ -23,6 +22,113 @@
 //  self-indulgence when it is not.
 // ═══════════════════════════════════════════════════════════════════════════
 
+// The long-form evidence bank and the printable compositions live together.
+// `resume.typ` imports only this value and renders one named composition. Each
+// composition is deliberately complete (summary + skills + projects + platform)
+// and budgeted for one page; it is not a bag of independently shuffled bullets.
+#let resume-compositions = (
+  backend: (
+    label: "Backend & event-driven systems",
+    tagline: "Software Engineer --- typed services, event-driven systems, and production delivery",
+    summary: "Software engineer building typed production boundaries from client mutation through HTTP services, asynchronous workers, contract verification, and container delivery. Sole engineer of a 52-package TypeScript and Rust monorepo, from architecture through production operations.",
+    skills: "TypeScript; Rust; HTTP/JSON APIs; Zod; event-driven processing; Docker; GitHub Actions; Vitest; Playwright; contract and integration testing",
+    projects: (
+      (
+        name: "Study-session and notification platform",
+        kind: "TypeScript, Zod, Web Push, Docker",
+        premise: "A reminder is useful only when it respects learner state and explicit consent; static and server-backed deployments therefore use distinct policies joined by a versioned contract.",
+        bullets: (
+          "Integrated a React application with production Rust HTTP/JSON endpoints for sessions, engagement signals, subscriptions, and push configuration; centralized same-origin proxying to eliminate mixed-content and CORS failures.",
+          "Designed fire-and-forget lifecycle events and consent-scoped Web Push so service failure never blocks study; verified the last hop by driving a real Chromium service worker and delivered push with Playwright.",
+          "Built a 48-test contract harness covering 15 of 52 server routes for route drift, schema divergence, unknown fields, and phantom optionals against both route inventory and live HTTP responses.",
+        ),
+      ),
+      (
+        name: "Suspender Ledger",
+        kind: "Firefox MV3, TypeScript, Vite, Vitest",
+        premise: "Hundreds of long-lived tabs are workspaces, so suspension must reclaim memory without destroying identity.",
+        bullets: (
+          "Built on native discard so tabs retain strip position and history; typed and validated every popup/worker/content boundary and made corrupt preferences fall back safely.",
+          "Shipped a signed AMO extension through a release gate requiring tsc, Vitest, ESLint, web-ext lint, license checks, and a Firefox-compatible flat worker bundle.",
+        ),
+      ),
+    ),
+    platform: (
+      "Operate a 52-package pnpm/Turborepo monorepo with dependency-scoped PR gates, full-trunk sweeps, Rust clippy/cargo-deny, Changesets, and signed releases.",
+      "Publish an Nginx web container to GHCR with HTTPS termination, health checks, and service-to-service proxies; deploy Pages, Storybook, WASM, and extensions through GitHub Actions.",
+    ),
+  ),
+  systems: (
+    label: "Systems & browser infrastructure",
+    tagline: "Software Engineer --- browser and systems infrastructure in Rust, WebAssembly, and TypeScript",
+    summary: "Software engineer who turns behavioral guarantees into typed state machines, invariants, and independently testable kernels. Sole engineer of six shipping browser extensions and a 52-package TypeScript/Rust platform.",
+    skills: "Rust; TypeScript; WebAssembly; finite-state machines; browser service workers; Vite; Vitest; Playwright; CI/CD",
+    projects: (
+      (
+        name: "Suspender Ledger",
+        kind: "Firefox MV3, TypeScript, Vite, Vitest",
+        premise: "A browser used as an operating system needs suspension as virtualization, not cleanup.",
+        bullets: (
+          "Built on native discard so a suspended tab preserves identity, position, and history; excluded tabs.remove from the source and made corrupt storage recover to safe defaults.",
+          "Quarantined browser differences behind a platform shim and emitted Firefox MV3's worker as one flat bundle; ship signed through AMO behind type, unit, lint, and license gates.",
+        ),
+      ),
+      (
+        name: "some-censor",
+        kind: "TypeScript, MutationObserver, typed FSM",
+        premise: "Recommendation content should reveal exactly one layer per deliberate interaction and never leak state across navigation.",
+        bullets: (
+          "Encoded masked -> meta -> title -> revealed as discriminated unions and overloaded transitions, making illegal transitions and unhandled states compile failures.",
+          "Reconciled virtualized feeds through a MutationObserver lifecycle and built an asynchronous click gate guaranteeing one commit per logical interaction.",
+        ),
+      ),
+      (
+        name: "transport",
+        kind: "TypeScript kernel, unit + Playwright conformance",
+        premise: "Partially observable DOM behavior should be governed by a reusable observe/estimate/plan/act contract rather than copied extension logic.",
+        bullets: (
+          "Extracted a property-agnostic kernel with typestate and boundary guards; its full unit and browser conformance suites pass against a null adapter with no domain code.",
+        ),
+      ),
+    ),
+    platform: (
+      "Enforce cross-extension idioms with a custom ESLint plugin while sharing contracts rather than runtime coupling.",
+      "Run dependency-scoped TypeScript/Rust CI plus full-trunk verification, Changesets releases, and signed extension pipelines.",
+    ),
+  ),
+  learning: (
+    label: "Adaptive learning & product engineering",
+    tagline: "Software Engineer --- adaptive learning systems in Rust, WebAssembly, and React",
+    summary: "Software engineer building learning software that estimates knowledge instead of advancing a fixed curriculum. Own the formal model, Rust/WASM engines, React experiences, content boundaries, testing, and production delivery.",
+    skills: "Rust; WebAssembly; TypeScript; React; state estimation; data modeling; Playwright; Vitest; Docker; CI/CD",
+    projects: (
+      (
+        name: "Adaptive learning platform",
+        kind: "Rust -> WebAssembly engine, React application",
+        premise: "The software should infer what a learner knows and select the smallest next concept that produces progress.",
+        bullets: (
+          "Built a pure-Rust game engine compiled to WebAssembly and consumed by React hex-grid, TOPIK exam-prep, and typing-drill modules on one curriculum platform.",
+          "Generalized exercises from single glyphs to typed multi-token Stimulus/Answer models after deriving the old model's ceiling before implementation.",
+          "Authored a 2,000-line formal treatment of latent learner state, observation, estimation, policy, and persistence; proved the shipping completed-set plus scalar model cannot become adaptive.",
+        ),
+      ),
+      (
+        name: "Study-session platform",
+        kind: "TypeScript, HTTP APIs, Web Push",
+        premise: "Intervention should follow learning state and consent without making network availability a prerequisite for studying.",
+        bullets: (
+          "Modeled versioned session and signal APIs with TypeScript/Zod, isolated static and server-backed policies, and emitted non-blocking lifecycle events.",
+          "Tested decisions, live API contracts, and the real browser push path at unit, integration, and Playwright layers.",
+        ),
+      ),
+    ),
+    platform: (
+      "Ship the application through Docker/Nginx and GitHub Pages, with GHCR releases, health checks, HTTPS proxies, and dependency-scoped CI.",
+      "Govern non-trivial subsystems with versioned canon documents that state definitions, impossibility results, falsifiers, and amendment protocols.",
+    ),
+  ),
+)
+
 #set document(title: "some-ui — Résumé Meta", author: "Paul Gathondu")
 #set page(paper: "a4", margin: 2.2cm, numbering: "1")
 #set text(size: 10pt, lang: "en")
@@ -31,14 +137,18 @@
 
 = What this is
 
-`resume.typ` is the résumé: four projects in STAR grammar, each opening with
-the premise it answers and then cashing that premise out in the mechanism
-that implements it. This file is the apparatus around it — the provenance
-for each claim (§2), the production method (§3), a requirements-map analysis
-against a specific posting (§4) — the kind of scoring a résumé shouldn't do
-to its reader but that's genuinely useful for deciding *whether and how to
-apply* — and a revision log (§5) that is mostly a record of getting the
-format wrong twice.
+`resume.typ` is a one-page renderer, not the evidence store. Its hard constraint
+is that every output is exactly one coherent page: enough for an initial scan,
+never an inventory of everything in the repository. This file preserves what
+that constraint removes. It owns the composable evidence bank and the named
+alternative compositions above, plus the provenance for every claim (§2), the
+production method (§3), requirements analysis (§4), and revision history (§5).
+
+The unit of selection is a *composition*, not a bullet. Each named variant has
+its own summary, skill stack, project sequence, and platform close, chosen to
+make one argument to one audience. `resume.typ` may round-robin between those
+complete arguments, but must never independently shuffle impressive-sounding
+fragments into an incoherent page.
 
 = Provenance --- résumé claim to repo evidence
 
@@ -328,7 +438,7 @@ substantiate those claims.
   including downward.
 
 
-- *v6 (current, 2026-08-17)* --- responded to backend-screening feedback by
+- *v6 (2026-08-17)* --- responded to backend-screening feedback by
   making already-shipped work explicit rather than manufacturing missing
   experience. Added the study-session/API integration project, a compact
   capabilities line for human and automated readers, and concrete language for
@@ -337,3 +447,14 @@ substantiate those claims.
   supplied backend qualification map. Four years, Kubernetes, high-volume
   systems, ML infrastructure, and startup-stage experience remain named gaps;
   the repository does not support those claims.
+
+
+- *v7 (current, 2026-08-17)* --- made the one-page constraint the architecture
+  rather than an aspiration. The long-form meta document now exports three
+  coherent compositions (backend, systems, and adaptive learning), while
+  `resume.typ` became a small renderer selected by a compile-time `variant`.
+  The build emits all three PDFs and rejects any composition whose Typst layout
+  reports more than one page. The web viewer persists the chosen composition
+  and exposes both a round-robin control and a page context-menu picker. Curation remains
+  reversible because omitted evidence stays here; coherence remains mandatory
+  because the selectable unit is the whole composition, never a random bullet.
