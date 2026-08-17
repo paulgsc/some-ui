@@ -1,4 +1,5 @@
 import type { JSX } from "react"
+import { useTheme } from "@/providers/theme"
 import {
   Button,
   Card,
@@ -16,26 +17,34 @@ import { Download } from "lucide-react"
 // local dev alike.
 const RESUME_PDF_PATH = `${import.meta.env.BASE_URL}resume.pdf`
 
-const ResumeRoute = (): JSX.Element => (
-  <Card className="flex h-full flex-col">
-    <CardHeader className="flex-row items-center justify-between space-y-0">
-      <CardTitle>Résumé</CardTitle>
-      <Button asChild size="sm">
-        <a href={RESUME_PDF_PATH} download="Paul_Gathondu_Resume.pdf">
-          <Download />
-          Download PDF
-        </a>
-      </Button>
-    </CardHeader>
-    <CardContent className="min-h-0 flex-1 pb-6">
-      <iframe
-        src={RESUME_PDF_PATH}
-        title="Résumé preview"
-        className="size-full rounded-md border"
-      />
-    </CardContent>
-  </Card>
-)
+const ResumeRoute = (): JSX.Element => {
+  const { resolved } = useTheme()
+  const darkPreview = resolved.mode === "dark"
+
+  return (
+    <Card className="flex h-full flex-col">
+      <CardHeader className="flex-row items-center justify-between space-y-0">
+        <CardTitle>Résumé</CardTitle>
+        <Button asChild size="sm">
+          <a href={RESUME_PDF_PATH} download="Paul_Gathondu_Resume.pdf">
+            <Download />
+            Download PDF
+          </a>
+        </Button>
+      </CardHeader>
+      <CardContent className="min-h-0 flex-1 pb-6">
+        <iframe
+          src={RESUME_PDF_PATH}
+          title="Résumé preview"
+          // Browser PDF viewers are isolated documents and do not expose a
+          // theme API. Filtering the embedded surface keeps the preview in
+          // step with the app without changing the downloadable PDF itself.
+          className={`size-full rounded-md border transition-[filter] ${darkPreview ? "invert hue-rotate-180" : ""}`}
+        />
+      </CardContent>
+    </Card>
+  )
+}
 
 export const Route = createFileRoute("/_dashboard/resume")({
   component: ResumeRoute,
