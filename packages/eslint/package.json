@@ -44,9 +44,9 @@
     "@types/eslint-plugin-jsx-a11y": "6.10.0",
     "@types/eslint-plugin-tailwindcss": "3.17.0",
     "@types/node": "^26.0.1",
-    "@typescript-eslint/eslint-plugin": "8.65.0",
-    "@typescript-eslint/parser": "8.65.0",
-    "@typescript-eslint/utils": "^8.65.0",
+    "@typescript-eslint/eslint-plugin": "8.67.0",
+    "@typescript-eslint/parser": "8.67.0",
+    "@typescript-eslint/utils": "^8.67.0",
     "eslint": "10.8.1",
     "eslint-config-airbnb-typescript": "18.0.0",
     "eslint-config-prettier": "10.1.8",
@@ -63,7 +63,7 @@
     "eslint-plugin-unicorn": "69.0.0",
     "eslint-plugin-unused-imports": "4.4.1",
     "tsc-alias": "^1.9.1",
-    "typescript-eslint": "8.65.0",
+    "typescript-eslint": "8.67.0",
     "vitest": "^4.1.10"
   }
 }
