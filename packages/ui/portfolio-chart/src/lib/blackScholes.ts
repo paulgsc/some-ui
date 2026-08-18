@@ -3,7 +3,7 @@
  * No React, no side effects, fully unit-testable.
  */
 
-import type { Greeks, Leg, PLMetrics, PLPoint } from "../types"
+import type { Greeks, Leg, PLMetrics, PLPoint } from "@portfolio/types"
 
 // ── math primitives ──────────────────────────────────────────────────────────
 

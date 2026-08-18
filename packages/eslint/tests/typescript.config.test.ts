@@ -10,9 +10,9 @@
  */
 
 import path from "node:path"
+import typescriptConfig from "@eslint/configs/typescript.config.js"
 import { describe, expect, it } from "vitest"
 
-import typescriptConfig from "../src/configs/typescript.config.js"
 import {
   calculateConfig,
   expectError,

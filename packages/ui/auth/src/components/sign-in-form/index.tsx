@@ -1,17 +1,16 @@
 import { useMemo, useState } from "react"
 import type { FC } from "react"
-
-import { useAuthForm } from "../../hooks/use-auth-form"
-import { signInSchema } from "../../lib/schemas"
-import type { SignInValues } from "../../lib/schemas"
-import type { AuthFormStatusProps, OAuthProvider } from "../../types/auth"
-import { AuthError } from "../auth-error"
-import { AuthField } from "../auth-field"
-import { CheckboxField } from "../checkbox-field"
-import { AuthDivider, OAuthButtons } from "../oauth-buttons"
-import { PasskeyButton } from "../passkey-button"
-import { PasswordField } from "../password-field"
-import { AuthSubmitButton } from "../submit-button"
+import { AuthError } from "@auth/components/auth-error"
+import { AuthField } from "@auth/components/auth-field"
+import { CheckboxField } from "@auth/components/checkbox-field"
+import { AuthDivider, OAuthButtons } from "@auth/components/oauth-buttons"
+import { PasskeyButton } from "@auth/components/passkey-button"
+import { PasswordField } from "@auth/components/password-field"
+import { AuthSubmitButton } from "@auth/components/submit-button"
+import { useAuthForm } from "@auth/hooks/use-auth-form"
+import { signInSchema } from "@auth/lib/schemas"
+import type { SignInValues } from "@auth/lib/schemas"
+import type { AuthFormStatusProps, OAuthProvider } from "@auth/types/auth"
 
 export type SignInFormProps = AuthFormStatusProps & {
   onSubmit: (values: SignInValues) => void

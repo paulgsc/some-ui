@@ -1,14 +1,13 @@
-import { DARK_THEME_ATTR } from "@filter/lib/content/theme-apply"
-import { createSessionLifecycle } from "@some-extension/transport/session/lifecycle"
-import { afterEach, describe, expect, it, vi } from "vitest"
-
 import {
   createContentSession,
   isSelfAuthored,
   scan,
   withVendorColorsVisible,
-} from "../pipeline"
-import { SWATCHES } from "../swatches"
+} from "@filter/adapter/pipeline"
+import { SWATCHES } from "@filter/adapter/swatches"
+import { DARK_THEME_ATTR } from "@filter/lib/content/theme-apply"
+import { createSessionLifecycle } from "@some-extension/transport/session/lifecycle"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 const STYLE_ID = "__sw_dark_theme"
 const DYNAMIC_STYLE_ID = "__sw_dark_dynamic"

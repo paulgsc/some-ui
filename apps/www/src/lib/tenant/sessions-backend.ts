@@ -30,8 +30,9 @@
  * being carried over.
  */
 
-import { DATA_MODE } from "../data-mode"
-import { createFileHostTransport } from "../file-host-config/client"
+import { DATA_MODE } from "@/lib/data-mode"
+import { createFileHostTransport } from "@/lib/file-host-config/client"
+
 import { createHttpSessionsRepository } from "./http-sessions-repository"
 import { reportPartialMigration } from "./migration-signal"
 import { migrateLocalSessions } from "./sessions-migration"

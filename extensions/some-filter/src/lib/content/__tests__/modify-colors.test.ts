@@ -1,7 +1,5 @@
-import { describe, expect, it } from "vitest"
-
-import type { RGBA } from "../color"
-import { relativeLuminance } from "../color"
+import type { RGBA } from "@filter/lib/content/color"
+import { relativeLuminance } from "@filter/lib/content/color"
 import {
   hslToRGB,
   modifyBackgroundColor,
@@ -9,7 +7,8 @@ import {
   modifyForegroundColor,
   rgbaToCss,
   rgbToHSL,
-} from "../modify-colors"
+} from "@filter/lib/content/modify-colors"
+import { describe, expect, it } from "vitest"
 
 const lum = ([r, g, b]: RGBA): number => relativeLuminance(r, g, b)
 

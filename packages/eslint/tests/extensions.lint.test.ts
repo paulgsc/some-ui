@@ -13,14 +13,14 @@
  *   #288 — extension-charter/no-raw-storage
  */
 
-import { defineConfig } from "eslint/config"
-import { describe, it } from "vitest"
-
 import {
   extensionCharterPlugin,
   default as extensionsCharterConfig,
-} from "../src/configs/extensions-charter.config.js"
-import extensionsSecurityConfig from "../src/configs/extensions-security.config.js"
+} from "@eslint/configs/extensions-charter.config.js"
+import extensionsSecurityConfig from "@eslint/configs/extensions-security.config.js"
+import { defineConfig } from "eslint/config"
+import { describe, it } from "vitest"
+
 import {
   expectMessageForRule,
   expectNoMessageForRule,
@@ -219,6 +219,42 @@ describe("lint: extension-security — no remote dynamic imports", () => {
       TS_FILE
     )
     expectNoMessageForRule(msgs, "no-restricted-syntax", "local import()")
+  })
+})
+
+// ── parentRelativeDynamicImportSelector, restated from react.config.ts ─────
+//
+// extensionsRecommended spreads this config after maishatuRecommended
+// (react.config.ts's no-restricted-syntax included), so without its own
+// copy of this selector this file's array would silently drop it for every
+// extensions/* workspace — the same hazard the file's own header comment
+// already warns about for its other selectors.
+
+describe("lint: extension-security — parent-relative dynamic import guard", () => {
+  it("fires on a parent-relative dynamic import", async () => {
+    const msgs = await lintSnippet(
+      extensionsSecurityConfig,
+      `const mod = import("../lib/foo.js")`,
+      TS_FILE
+    )
+    expectMessageForRule(
+      msgs,
+      "no-restricted-syntax",
+      "parent-relative dynamic import"
+    )
+  })
+
+  it("does NOT fire on a sibling dynamic import", async () => {
+    const msgs = await lintSnippet(
+      extensionsSecurityConfig,
+      `const mod = import("./lib/foo.js")`,
+      TS_FILE
+    )
+    expectNoMessageForRule(
+      msgs,
+      "no-restricted-syntax",
+      "sibling dynamic import"
+    )
   })
 })
 

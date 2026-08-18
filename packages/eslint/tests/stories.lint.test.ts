@@ -8,12 +8,12 @@
  * is enough to parse the TS/TSX syntax in the snippets below.
  */
 
+import { storyLintPlugin } from "@eslint/configs/stories.config.js"
 import typescriptParser from "@typescript-eslint/parser"
 import type { Linter } from "eslint"
 import { defineConfig } from "eslint/config"
 import { describe, expect, it } from "vitest"
 
-import { storyLintPlugin } from "../src/configs/stories.config.js"
 import {
   expectMessageForRule,
   expectNoMessageForRule,

@@ -21,11 +21,10 @@
  *   settle a promise belonging to the next one.
  */
 
+import type { SpeakOptions, SpeechAdapter } from "@speech/lib/adapters/types"
 import { createSpeechLedger } from "@speech/lib/promise"
 import { createAbortError } from "@speech/lib/promise/abort"
 import type { VoiceConfig } from "@speech/lib/types/tts-types"
-
-import type { SpeakOptions, SpeechAdapter } from "../types"
 
 export type WebSpeechAdapterOptions = {
   /** Injected in tests; defaults to `window.speechSynthesis`. */

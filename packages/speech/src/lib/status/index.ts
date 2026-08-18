@@ -28,9 +28,9 @@
  * failure mode here is precisely the interleaving nobody thought of.
  */
 
+import type { SpeechAdapter } from "@speech/lib/adapters/types"
 import type { SpeechQueueState } from "@speech/lib/queue"
 
-import type { SpeechAdapter } from "../adapters/types"
 import type {
   SpeechHealth,
   SpeechNotice,

@@ -24,14 +24,14 @@
    This file's whole job is feeding the rule the class strings it exists to
    catch. Every match below is a fixture, not a surface. */
 
+import fitsTheBoxConfig, {
+  fitsTheBoxPlugin,
+} from "@eslint/configs/fits-the-box.config.js"
 import typescriptParser from "@typescript-eslint/parser"
 import type { Linter } from "eslint"
 import { defineConfig } from "eslint/config"
 import { describe, expect, it } from "vitest"
 
-import fitsTheBoxConfig, {
-  fitsTheBoxPlugin,
-} from "../src/configs/fits-the-box.config.js"
 import {
   expectMessageForRule,
   expectNoMessageForRule,

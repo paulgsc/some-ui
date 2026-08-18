@@ -3,9 +3,8 @@
 // (DramaEntryOpinionated.transition is singular — matches popup-renderer's
 // getTransition() contract). No querySelectorAll, no row-array.
 
+import type { JournalDraft } from "@drama/components/form-opinionated/use-drama-journal-state"
 import { el } from "@drama/effects/content/dom"
-
-import type { JournalDraft } from "../use-drama-journal-state"
 
 export function buildTransitionEditor(
   value: Pick<JournalDraft, "transition">,

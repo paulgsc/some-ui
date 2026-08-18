@@ -248,6 +248,35 @@ const transportConfig = [
       ],
     },
   },
+  {
+    // adapter/ ships raw TS source with no build step of its own -
+    // package.json "exports" point "./*" straight at src/*.ts, unlike a
+    // vite-built package where an internal alias gets resolved away before
+    // the dist ships. filter-classifier imports src/adapter/swatches/index.ts
+    // directly through that source export for its own typecheck/bundling, so
+    // a self-alias here would need every such consumer's config to know
+    // about it too. Every other stage directory already replaces this rule
+    // with its own D.2/D.2.1 boundary patterns above, which is why only
+    // adapter/ needs this explicit carve-out.
+    files: ["src/adapter/**/*.{ts,tsx,cts,mts}"],
+    rules: {
+      "no-restricted-imports": "off",
+    },
+  },
+  {
+    // Every stage block above scopes its own no-restricted-imports override
+    // to non-test files (`ignores: ["**/*.test.ts", ...]` or an equivalent
+    // files glob) - the D.2/D.2.1 boundary invariants are about production
+    // wiring, not test fixtures. That leaves *.test.ts falling through to
+    // base.config's blanket "../*" ban with no stage-specific replacement,
+    // even though a test importing its own stage's siblings by relative
+    // path is exactly the "same local module neighborhood" case the rule
+    // means to allow.
+    files: ["src/**/*.test.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": "off",
+    },
+  },
 ]
 
 export default transportConfig

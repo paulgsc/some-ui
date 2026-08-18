@@ -22,9 +22,9 @@
 
 import path from "node:path"
 import { fileURLToPath } from "node:url"
+import baseConfig from "@eslint/configs/base.config.js"
 import { describe, it } from "vitest"
 
-import baseConfig from "../src/configs/base.config.js"
 // ── Lint-time: base rules fire on real code ────────────────────────────────
 // A small subset of base rules tested at lint time to confirm plugin/rule
 // connectivity (not just presence in the config).
@@ -59,6 +59,7 @@ const EXPECTED_ERRORS = [
   "prefer-template",
   "eqeqeq",
   "prefer-arrow-callback",
+  "no-restricted-imports",
 ] as const
 
 describe("base.config — error rules wired for .js files", () => {
@@ -125,6 +126,84 @@ describe("lint: base.config rules fire on real code", () => {
       messages,
       "no-else-return",
       ".js file with else after return"
+    )
+  })
+
+  it("no-restricted-imports fires on a parent-relative import", async () => {
+    const messages = await lintSnippet(
+      baseConfig,
+      `import { foo } from "../foo.js"`,
+      "src/util.js"
+    )
+    expectMessageForRule(
+      messages,
+      "no-restricted-imports",
+      ".js file importing from a parent directory"
+    )
+  })
+
+  it("no-restricted-imports fires on a multi-level parent-relative import", async () => {
+    const messages = await lintSnippet(
+      baseConfig,
+      `import { foo } from "../../components/foo.js"`,
+      "src/util.js"
+    )
+    expectMessageForRule(
+      messages,
+      "no-restricted-imports",
+      ".js file importing two levels up"
+    )
+  })
+
+  it("no-restricted-imports fires on a parent-relative re-export", async () => {
+    const messages = await lintSnippet(
+      baseConfig,
+      `export { foo } from "../foo.js"`,
+      "src/util.js"
+    )
+    expectMessageForRule(
+      messages,
+      "no-restricted-imports",
+      ".js file re-exporting from a parent directory"
+    )
+  })
+
+  it("no-restricted-imports does NOT fire on a same-directory import", async () => {
+    const messages = await lintSnippet(
+      baseConfig,
+      `import { foo } from "./foo.js"`,
+      "src/util.js"
+    )
+    expectNoMessageForRule(
+      messages,
+      "no-restricted-imports",
+      ".js file importing a sibling module"
+    )
+  })
+
+  it("no-restricted-imports does NOT fire on a path-alias import", async () => {
+    const messages = await lintSnippet(
+      baseConfig,
+      `import { foo } from "@eslint/foo.js"`,
+      "src/util.js"
+    )
+    expectNoMessageForRule(
+      messages,
+      "no-restricted-imports",
+      ".js file importing via a path alias"
+    )
+  })
+
+  it("no-restricted-imports does NOT fire on a bare package import", async () => {
+    const messages = await lintSnippet(
+      baseConfig,
+      `import { foo } from "some-package"`,
+      "src/util.js"
+    )
+    expectNoMessageForRule(
+      messages,
+      "no-restricted-imports",
+      ".js file importing a package"
     )
   })
 })

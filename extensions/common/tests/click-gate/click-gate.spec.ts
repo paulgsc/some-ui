@@ -10,9 +10,8 @@
  * the whole single-click sequence first.
  */
 
+import { ClickGate, DEFAULT_DBLCLICK_WINDOW_MS } from "@common/lib/click-gate"
 import { expect, test } from "@playwright/test"
-
-import { ClickGate, DEFAULT_DBLCLICK_WINDOW_MS } from "../../src/lib/click-gate"
 
 type Event = "CLICK" | "DBLCLICK"
 

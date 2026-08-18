@@ -1,26 +1,25 @@
 import type { FC } from "react"
-import { Mail } from "lucide-react"
-
+import { AuthCard } from "@auth/components/auth-card"
+import { PasskeyEnrollment } from "@auth/components/passkey-enrollment"
+import { RequestPasswordResetForm } from "@auth/components/request-password-reset-form"
+import { ResetPasswordForm } from "@auth/components/reset-password-form"
+import { SignInForm } from "@auth/components/sign-in-form"
+import { SignUpForm } from "@auth/components/sign-up-form"
+import { VerifyCodeForm } from "@auth/components/verify-code-form"
 import type {
   RequestResetValues,
   ResetPasswordValues,
   SignInValues,
   SignUpValues,
   VerifyCodeValues,
-} from "../../lib/schemas"
+} from "@auth/lib/schemas"
 import type {
   AuthFlowStep,
   AuthFormStatusProps,
   OAuthProvider,
-} from "../../types/auth"
-import { assertNever } from "../../utils/error"
-import { AuthCard } from "../auth-card"
-import { PasskeyEnrollment } from "../passkey-enrollment"
-import { RequestPasswordResetForm } from "../request-password-reset-form"
-import { ResetPasswordForm } from "../reset-password-form"
-import { SignInForm } from "../sign-in-form"
-import { SignUpForm } from "../sign-up-form"
-import { VerifyCodeForm } from "../verify-code-form"
+} from "@auth/types/auth"
+import { assertNever } from "@auth/utils/error"
+import { Mail } from "lucide-react"
 
 export type AuthFlowProps = AuthFormStatusProps & {
   /** Controlled. See the note below on why this is not internal state. */

@@ -21,7 +21,7 @@
 
 import { matchIntent } from "@some-ui/intent-kit"
 
-import type { UseIntentResult } from "../use-intent"
+import type { UseIntentResult } from "@/lib/intent/use-intent"
 
 // A type-only stand-in for what `useIntent(mutation, { presentation:
 // "ambient" })` returns - calling the real hook is unavailable here (it is

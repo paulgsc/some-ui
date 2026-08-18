@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
+import type { Range as ValidNumbers } from "@dice-card/types/range"
+import { assertNever } from "@dice-card/utils/assert-never"
 import { createEventBus } from "some-ui-utils"
-
-import type { Range as ValidNumbers } from "../types/range"
-import { assertNever } from "../utils/assert-never"
 
 type Unsubscribe = () => void
 type CubeState = {

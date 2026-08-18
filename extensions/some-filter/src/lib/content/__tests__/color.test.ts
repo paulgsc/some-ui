@@ -1,6 +1,9 @@
+import {
+  effectiveBgLuminance,
+  parseColor,
+  relativeLuminance,
+} from "@filter/lib/content/color"
 import { afterEach, describe, expect, it } from "vitest"
-
-import { effectiveBgLuminance, parseColor, relativeLuminance } from "../color"
 
 describe("parseColor", () => {
   it("returns null for empty string", () => {
@@ -97,7 +100,7 @@ describe("parseColor", () => {
   })
 
   it("every SWATCHES bg0 hex value parses to the same rgb it renders as", async () => {
-    const { SWATCHES } = await import("../../../adapter/swatches")
+    const { SWATCHES } = await import("@filter/adapter/swatches")
     for (const swatch of Object.values(SWATCHES)) {
       expect(parseColor(swatch.bg0)).not.toBeNull()
     }

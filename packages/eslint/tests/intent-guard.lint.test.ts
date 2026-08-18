@@ -7,12 +7,12 @@
  * to parse the TSX snippets below. Same rationale as switch-lint.lint.test.ts.
  */
 
+import { intentGuardPlugin } from "@eslint/configs/intent-guard.config.js"
 import typescriptParser from "@typescript-eslint/parser"
 import type { Linter } from "eslint"
 import { defineConfig } from "eslint/config"
 import { describe, expect, it } from "vitest"
 
-import { intentGuardPlugin } from "../src/configs/intent-guard.config.js"
 import {
   expectMessageForRule,
   expectNoMessageForRule,

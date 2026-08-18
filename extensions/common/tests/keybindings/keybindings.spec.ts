@@ -5,9 +5,8 @@
  * assignments so they survive strict-mode eval scoping.
  */
 
+import { modifiersMatch } from "@common/lib/keybindings/index"
 import { expect, test } from "@playwright/test"
-
-import { modifiersMatch } from "../../src/lib/keybindings/index"
 
 // Functions are assigned to globalThis so they survive strict-mode eval. Use
 // the production matcher's source rather than maintaining a test-only copy.

@@ -1,10 +1,9 @@
 import type { FC } from "react"
+import { AuthError } from "@auth/components/auth-error"
+import { PasskeyButton } from "@auth/components/passkey-button"
+import type { AuthFormStatusProps } from "@auth/types/auth"
 import { Button } from "@some-ui/shared"
 import { Fingerprint, ShieldCheck } from "lucide-react"
-
-import type { AuthFormStatusProps } from "../../types/auth"
-import { AuthError } from "../auth-error"
-import { PasskeyButton } from "../passkey-button"
 
 export type PasskeyEnrollmentProps = AuthFormStatusProps & {
   onCreate?: () => void

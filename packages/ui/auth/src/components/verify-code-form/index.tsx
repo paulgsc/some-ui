@@ -1,14 +1,13 @@
 import { useMemo } from "react"
 import type { FC } from "react"
+import { AuthError } from "@auth/components/auth-error"
+import { CodeInput } from "@auth/components/code-input"
+import { AuthSubmitButton } from "@auth/components/submit-button"
+import { useAuthForm } from "@auth/hooks/use-auth-form"
+import { VERIFICATION_CODE_LENGTH, verifyCodeSchema } from "@auth/lib/schemas"
+import type { VerifyCodeValues } from "@auth/lib/schemas"
+import type { AuthFormStatusProps } from "@auth/types/auth"
 import { ArrowLeft } from "lucide-react"
-
-import { useAuthForm } from "../../hooks/use-auth-form"
-import { VERIFICATION_CODE_LENGTH, verifyCodeSchema } from "../../lib/schemas"
-import type { VerifyCodeValues } from "../../lib/schemas"
-import type { AuthFormStatusProps } from "../../types/auth"
-import { AuthError } from "../auth-error"
-import { CodeInput } from "../code-input"
-import { AuthSubmitButton } from "../submit-button"
 
 export type VerifyCodeFormProps = AuthFormStatusProps & {
   onSubmit: (values: VerifyCodeValues) => void

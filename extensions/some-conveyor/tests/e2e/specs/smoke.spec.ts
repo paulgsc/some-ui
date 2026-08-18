@@ -12,7 +12,7 @@
  * Requires PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH (set by nix develop .#playwright).
  */
 
-import { expect, test, waitForConveyorInit } from "../fixture"
+import { expect, test, waitForConveyorInit } from "@conveyor/playwright/fixture"
 
 test.describe("some-conveyor smoke", () => {
   test("guard attribute is set on <html>", async ({ fixture }) => {

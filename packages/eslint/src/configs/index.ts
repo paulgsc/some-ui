@@ -1,6 +1,9 @@
 export { default as baseConfig } from "./base.config.js"
 export { default as typescriptConfig } from "./typescript.config.js"
-export { default as reactConfig } from "./react.config.js"
+export {
+  default as reactConfig,
+  reactImportBanSelectors,
+} from "./react.config.js"
 export { default as tailwindConfig } from "./tailwind.config.js"
 export {
   default as tailwindIdiomConfig,

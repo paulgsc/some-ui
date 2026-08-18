@@ -1,6 +1,5 @@
+import { noBareWasmSingleton } from "@eslint/rules/index.js"
 import { defineConfig } from "eslint/config"
-
-import { noBareWasmSingleton } from "../rules/index.js"
 
 /**
  * Plugin guarding the UTL-WASM epic's (#529) canon: every wasm-bindgen

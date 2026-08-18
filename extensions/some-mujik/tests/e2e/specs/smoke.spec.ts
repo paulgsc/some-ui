@@ -17,7 +17,7 @@
  * Requires PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH (set by nix develop .#playwright).
  */
 
-import { expect, readMujikState, test } from "../fixture"
+import { expect, readMujikState, test } from "@mujik/playwright/fixture"
 
 test.describe("some-mujik smoke", () => {
   test("T1: extension loads without uncaught JS errors", async ({

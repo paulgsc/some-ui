@@ -8,12 +8,12 @@
  * switch-lint.lint.test.ts, so a plain @typescript-eslint/parser is enough.
  */
 
+import { buildHygienePlugin } from "@eslint/configs/build-hygiene.config.js"
 import typescriptParser from "@typescript-eslint/parser"
 import type { Linter } from "eslint"
 import { defineConfig } from "eslint/config"
 import { describe, expect, it } from "vitest"
 
-import { buildHygienePlugin } from "../src/configs/build-hygiene.config.js"
 import {
   expectMessageForRule,
   expectNoMessageForRule,

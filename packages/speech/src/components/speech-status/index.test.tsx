@@ -8,6 +8,7 @@
  */
 
 import type { JSX } from "react"
+import { SpeechProvider } from "@speech/components/speech-provider"
 import type { SpeechAdapterRegistry } from "@speech/lib/adapters"
 import { useSpeechQueue } from "@speech/lib/hooks"
 import { resetSpeechQueue } from "@speech/lib/queue"
@@ -18,7 +19,6 @@ import { act, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
 
 import { SpeechStatusBadge } from "."
-import { SpeechProvider } from "../speech-provider"
 
 afterEach(() => {
   resetSpeechQueue()

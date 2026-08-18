@@ -14,9 +14,9 @@
  * exists only to satisfy `noUnusedLocals`.
  */
 
-import { failed, idle, matchIntent } from "../intent"
-import type { Intent } from "../intent"
-import { toIntentError } from "../intent-error"
+import { failed, idle, matchIntent } from "@intent-kit/intent"
+import type { Intent } from "@intent-kit/intent"
+import { toIntentError } from "@intent-kit/intent-error"
 
 const anIntent: Intent<number> = idle()
 

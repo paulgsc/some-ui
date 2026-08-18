@@ -1,7 +1,7 @@
+import { AuthCard } from "@auth/components/auth-card"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 
 import { VerifyCodeForm } from "."
-import { AuthCard } from "../auth-card"
 
 type Story = StoryObj<typeof VerifyCodeForm>
 type Meta = MetaObj<typeof VerifyCodeForm>

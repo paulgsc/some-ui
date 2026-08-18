@@ -3,6 +3,12 @@ import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 import { formatRelativeTime } from "some-ui-utils"
 
 import { ChatMessages } from "."
+// Relative, not "@some-ui/*"-aliased: chat's tsconfig maps that prefix to
+// the repo-root assets/ package, but the specifier also happens to look
+// like a real scoped npm package (@some-ui/core-utils and friends really
+// exist), which trips import/no-extraneous-dependencies into demanding a
+// "some-ui" package.json dependency that makes no sense to add.
+// eslint-disable-next-line no-restricted-imports -- see comment above
 import { pgdevPng } from "../../../../../../assets"
 
 type Story = StoryObj<typeof ChatMessages>

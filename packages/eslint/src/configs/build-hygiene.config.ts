@@ -1,6 +1,5 @@
+import { noManualBuildExclude } from "@eslint/rules/index.js"
 import { defineConfig } from "eslint/config"
-
-import { noManualBuildExclude } from "../rules/index.js"
 
 /**
  * Plugin guarding library-build hygiene: the declaration-emit excludes for

@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from "react"
-
-import type { AuthFlowStep } from "../types/auth"
+import type { AuthFlowStep } from "@auth/types/auth"
 
 export type UseAuthFlowOptions = {
   initialStep?: AuthFlowStep

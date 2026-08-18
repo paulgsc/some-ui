@@ -13,11 +13,11 @@ lint/prettier/git/editorconfig dotfiles across.
 cargo run --manifest-path crates/pkg_cloner/Cargo.toml -- --workspaces packages/ui
 ```
 
-| Flag                     | Default | Meaning                                                     |
-| ------------------------ | ------- | ----------------------------------------------------------- |
-| `--workspaces`, `-w`     | —       | Directory holding the workspace packages (required).         |
+| Flag                     | Default | Meaning                                                                                                                          |
+| ------------------------ | ------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `--workspaces`, `-w`     | —       | Directory holding the workspace packages (required).                                                                             |
 | `--similarity-threshold` | `0.75`  | Levenshtein similarity above which a name is flagged as a near-duplicate of an existing package and confirmed before proceeding. |
-| `--force`, `-f`          | `false` | Overwrite an existing package directory and skip the confirmation prompt. |
+| `--force`, `-f`          | `false` | Overwrite an existing package directory and skip the confirmation prompt.                                                        |
 
 It deliberately stops at the mechanical parts. The vite-config call, the
 `src/index.ts` barrel, and the three registration points (root `tsconfig.json`

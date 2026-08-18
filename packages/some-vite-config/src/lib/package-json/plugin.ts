@@ -1,6 +1,7 @@
 import type { Plugin } from "vite"
 
-import type { ViteConfigOptions } from "../../types/index.js"
+import type { ViteConfigOptions } from "@/types/index.js"
+
 import { updatePackageJson } from "./write.js"
 
 /**

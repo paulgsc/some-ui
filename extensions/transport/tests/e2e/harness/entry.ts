@@ -17,46 +17,43 @@
  * required to keep everything *except* their own Adapter.
  */
 
-import { apply, type ActionRealizer } from "../../../src/actuator/apply"
+import { apply, type ActionRealizer } from "@transport/actuator/apply"
 import {
   isSelfTagged,
   releaseOwnership,
   wasRemovedByVendor,
-} from "../../../src/actuator/self-tag"
-import { invoke } from "../../../src/adapter/invoke"
-import { createNullAdapter } from "../../../src/adapter/null-adapter"
-import * as bootstrap from "../../../src/bootstrap/static"
-import type { Action } from "../../../src/contracts/action"
-import { createDecayTracker } from "../../../src/estimator/decay"
+} from "@transport/actuator/self-tag"
+import { invoke } from "@transport/adapter/invoke"
+import { createNullAdapter } from "@transport/adapter/null-adapter"
+import * as bootstrap from "@transport/bootstrap/static"
+import type { Action } from "@transport/contracts/action"
+import { createDecayTracker } from "@transport/estimator/decay"
 import {
   createHypothesis,
   type MutableHypothesis,
-} from "../../../src/estimator/hypothesis"
+} from "@transport/estimator/hypothesis"
 import {
   createProvenanceStore,
   update,
   type Evidence,
   type ProvenanceStore,
-} from "../../../src/estimator/update"
+} from "@transport/estimator/update"
 import {
   teardownContent,
   teardownDocument,
   type Disposable,
-} from "../../../src/lifecycle/teardown"
-import {
-  createCoalescer,
-  type Coalescer,
-} from "../../../src/scheduler/reconcile"
+} from "@transport/lifecycle/teardown"
+import { createCoalescer, type Coalescer } from "@transport/scheduler/reconcile"
 import {
   createContinuityCheck,
   identify,
   type ExtractionResult,
-} from "../../../src/sensor/identity"
-import { attachMutationObserver } from "../../../src/sensor/observer"
+} from "@transport/sensor/identity"
+import { attachMutationObserver } from "@transport/sensor/observer"
 import {
   createSessionLifecycle,
   type SessionLifecycle,
-} from "../../../src/session/lifecycle"
+} from "@transport/session/lifecycle"
 
 type Attrs = { readonly seq: number }
 

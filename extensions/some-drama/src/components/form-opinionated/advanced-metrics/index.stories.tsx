@@ -1,10 +1,10 @@
 import "@drama/styles/popup.css"
 
 import { useEffect, useRef, useState } from "react"
+import { defaultDraft } from "@drama/components/form-opinionated/use-drama-journal-state"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
 import { buildAdvancedMetrics } from "."
-import { defaultDraft } from "../use-drama-journal-state"
 
 type BridgeProps = {
   rating: number

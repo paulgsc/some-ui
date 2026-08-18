@@ -12,7 +12,8 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "@transport/*": ["./src/*"]
+      "@transport/*": ["./src/*"],
+      "@transport/playwright/*": ["./tests/e2e/*"]
     }
   },
   "include": [

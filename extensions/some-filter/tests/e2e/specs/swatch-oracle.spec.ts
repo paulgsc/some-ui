@@ -28,9 +28,8 @@ import {
 } from "@filter/adapter/swatches"
 import { parseColor } from "@filter/lib/content/color"
 import { expect, test, waitForClassification } from "@filter/playwright/fixture"
+import { churn } from "@filter/playwright/fixtures/hostile-page"
 import type { Page } from "@playwright/test"
-
-import { churn } from "../fixtures/hostile-page"
 
 const swatch = SWATCHES[DEFAULT_SWATCH_ID]
 const COLOR_TOLERANCE = 0.08 // 0..1 per-channel budget; generous for AA/rounding

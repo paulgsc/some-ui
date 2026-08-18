@@ -160,7 +160,7 @@ specific sites, narrow the match pattern.
 
 ---
 
-### B2 · Overly Broad web_accessible_resources _(weight: 3)_
+### B2 · Overly Broad web*accessible_resources *(weight: 3)\_
 
 **Policy:** [web_accessible_resources security note](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/web_accessible_resources)
 
@@ -247,7 +247,7 @@ explaining which WASM module is loaded and why it cannot use a pre-compiled bina
 
 ## C — Hygiene: Best Practice / Eventual Flag
 
-### C1 · data_collection_permissions Not Declared in All Manifests _(weight: 2)_
+### C1 · data*collection_permissions Not Declared in All Manifests *(weight: 2)\_
 
 Firefox MV3 supports `browser_specific_settings.gecko.data_collection_permissions`. Declaring
 `"required": ["none"]` proactively signals that the extension collects nothing and suppresses

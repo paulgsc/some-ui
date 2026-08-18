@@ -24,6 +24,10 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      // More specific than "@" below, and must come first - vite's alias
+      // matcher takes the first prefix match, so "@" would otherwise shadow
+      // this entry and resolve it under src/ instead of the package root.
+      "@/style.context": resolve(import.meta.dirname, "./style.context.ts"),
       // Mirrors vite.config.ts's "@" -> "./src" alias - this config doesn't
       // extend that one, so tests importing a "@/..." module (most of src/
       // does) need their own copy of the same mapping.

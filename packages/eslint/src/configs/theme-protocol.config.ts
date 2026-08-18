@@ -1,7 +1,11 @@
+import {
+  noStructuralPaletteColor,
+  noThemeBoundary,
+} from "@eslint/rules/index.js"
 import { defineConfig } from "eslint/config"
 import type { Config } from "typescript-eslint"
 
-import { noStructuralPaletteColor, noThemeBoundary } from "../rules/index.js"
+import { parentRelativeImportPattern } from "./base.config.js"
 
 /**
  * Plugin enforcing the theme protocol (`@some-ui/styles/theme`) at the one
@@ -47,10 +51,18 @@ export default defineConfig([
       // A package reaching into an app's theme provider is the coupling this
       // whole architecture exists to prevent — and it would not even work,
       // since the protocol is CSS inheritance and has nothing to subscribe to.
+      // Restates base.config.ts's parent-relative-import ban alongside the
+      // theme-provider ban below: this config is spread after
+      // maishatuRecommended in `uiRecommended`, and flat config replaces (not
+      // merges) a rule's value at the most specific matching config - so
+      // without it, this block would silently turn the base ban off for
+      // every non-story/test/spec .ts/.tsx file in every package/ui/*
+      // workspace.
       "no-restricted-imports": [
         "error",
         {
           patterns: [
+            parentRelativeImportPattern,
             {
               group: ["**/apps/www/**", "@/providers/theme"],
               message:

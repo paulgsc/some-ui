@@ -17,6 +17,7 @@ import {
   lazyRegistryConfig,
   lazyRegistryPlugin,
   reactConfig,
+  reactImportBanSelectors,
   reactPeerDependencyConfig,
   switchLintConfig,
   switchLintPlugin,
@@ -75,6 +76,10 @@ export {
 
 // ── Switch-statement idiom rules ───────────────────────────────────────────
 export { switchLintConfig, switchLintPlugin }
+
+// ── Reusable no-restricted-syntax fragment for workspace-level overrides ───
+// See its own doc comment in react.config.ts.
+export { reactImportBanSelectors }
 
 // ── Intent boundary guard (#937 S1) ─────────────────────────────────────────
 export { intentGuardConfig, intentGuardPlugin }

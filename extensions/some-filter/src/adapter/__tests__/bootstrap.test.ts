@@ -1,16 +1,15 @@
+import {
+  createFilterBootstrap,
+  wasRemovedByUs,
+  wasRemovedByVendor,
+} from "@filter/adapter/bootstrap"
+import { PREPAINT_VEIL_ID } from "@filter/lib/content/prepaint"
 import { isSelfTagged } from "@some-extension/transport/actuator/self-tag"
 import {
   installedAt,
   isInstalled,
 } from "@some-extension/transport/bootstrap/static"
 import { afterEach, describe, expect, it, vi } from "vitest"
-
-import { PREPAINT_VEIL_ID } from "../../lib/content/prepaint"
-import {
-  createFilterBootstrap,
-  wasRemovedByUs,
-  wasRemovedByVendor,
-} from "../bootstrap"
 
 const root = document.documentElement
 

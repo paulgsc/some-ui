@@ -10,7 +10,8 @@
  */
 import { describe, expect, it, vi } from "vitest"
 
-import type { SessionRecord } from "../tenant/types"
+import type { SessionRecord } from "@/lib/tenant/types"
+
 import type { NudgeDecision } from "./index"
 import { DEFAULT_NUDGE_PREFERENCES } from "./index"
 import { clientOwnsNudgeDelivery, runNudgeTick } from "./use-study-nudge"

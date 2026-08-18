@@ -1,9 +1,8 @@
 import { fixupConfigRules } from "@eslint/compat"
 import type { FixupConfigArray } from "@eslint/compat"
+import { preferMetaSatisfies } from "@eslint/rules/index.js"
 import storybook from "eslint-plugin-storybook"
 import { defineConfig } from "eslint/config"
-
-import { preferMetaSatisfies } from "../rules/index.js"
 
 /**
  * Plugin housing story-file-specific autofix rules. Kept separate from

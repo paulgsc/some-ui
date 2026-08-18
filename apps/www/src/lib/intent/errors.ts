@@ -29,11 +29,11 @@
 import type { IntentError } from "@some-ui/intent-kit"
 import { toIntentError as toGenericIntentError } from "@some-ui/intent-kit"
 
-import { FileHostUnreachableError } from "../file-host-config"
+import { FileHostUnreachableError } from "@/lib/file-host-config"
 import {
   FileHostNotConfiguredError,
   FileHostResponseError,
-} from "../file-host-config/client"
+} from "@/lib/file-host-config/client"
 
 /** A non-2xx in the 5xx range is the server's own admission that the
  * request was fine and it failed anyway - the same request could succeed

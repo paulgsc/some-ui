@@ -1,9 +1,8 @@
 import type { SyntheticEvent } from "react"
 import { useCallback, useState } from "react"
+import type { FieldErrors } from "@auth/lib/field-errors"
+import { EMPTY_FIELD_ERRORS, toFieldErrors } from "@auth/lib/field-errors"
 import type { ZodType } from "zod"
-
-import type { FieldErrors } from "../lib/field-errors"
-import { EMPTY_FIELD_ERRORS, toFieldErrors } from "../lib/field-errors"
 
 export type UseAuthFormOptions<TValues extends object> = {
   schema: ZodType<TValues>

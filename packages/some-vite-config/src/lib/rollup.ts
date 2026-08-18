@@ -1,4 +1,4 @@
-import type { ViteConfigOptions } from "../types/index.js"
+import type { ViteConfigOptions } from "@/types/index.js"
 
 export function createRollupOptions(
   options: ViteConfigOptions,

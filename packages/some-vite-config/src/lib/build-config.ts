@@ -1,6 +1,6 @@
 import { resolve } from "path"
 
-import type { ViteConfigOptions } from "../types/index.js"
+import type { ViteConfigOptions } from "@/types/index.js"
 
 /**
  * Absolute path to the package's library entry point. Single source of truth

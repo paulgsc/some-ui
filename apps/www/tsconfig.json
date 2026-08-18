@@ -21,6 +21,7 @@
     "noUncheckedSideEffectImports": true,
     "paths": {
       "@/*": ["./src/*"],
+      "@/style.context": ["./style.context"],
       "@some-ui/content-registry/*": [
         "../../packages/some-content-registry/src/*"
       ],

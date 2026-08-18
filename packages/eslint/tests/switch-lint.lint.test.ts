@@ -10,12 +10,12 @@
  * below. Same rationale as stories.lint.test.ts.
  */
 
+import { switchLintPlugin } from "@eslint/configs/switch-lint.config.js"
 import typescriptParser from "@typescript-eslint/parser"
 import type { Linter } from "eslint"
 import { defineConfig } from "eslint/config"
 import { describe, expect, it } from "vitest"
 
-import { switchLintPlugin } from "../src/configs/switch-lint.config.js"
 import {
   expectMessageForRule,
   expectNoMessageForRule,

@@ -1,6 +1,9 @@
+import {
+  DEFAULT_TAB_STATE,
+  nextTabState,
+  STATE_CYCLE,
+} from "@filter/lib/tab-state"
 import { describe, expect, it } from "vitest"
-
-import { DEFAULT_TAB_STATE, nextTabState, STATE_CYCLE } from "../tab-state"
 
 describe("tab-state", () => {
   it("defaults to auto (themed-by-default)", () => {

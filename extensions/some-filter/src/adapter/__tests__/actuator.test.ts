@@ -1,10 +1,9 @@
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
+import { realize } from "@filter/adapter/actuator"
+import type { FilterAction, SurfaceKey } from "@filter/adapter/contracts"
 import { DARK_THEME_ATTR } from "@filter/lib/content/theme-apply"
 import { describe, expect, it } from "vitest"
-
-import { realize } from "../actuator"
-import type { FilterAction, SurfaceKey } from "../contracts"
 
 const STYLE_ID = "__sw_dark_theme"
 const DYNAMIC_STYLE_ID = "__sw_dark_dynamic"

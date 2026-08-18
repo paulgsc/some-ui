@@ -1,9 +1,8 @@
 // ── ReflectionEditor ──────────────────────────────────────────────────────────
 // Owns: "Why did it matter?" textarea. Auto-grow, char counter, success pulse.
 
+import type { JournalDraft } from "@drama/components/form-opinionated/use-drama-journal-state"
 import { el } from "@drama/effects/content/dom"
-
-import type { JournalDraft } from "../use-drama-journal-state"
 
 const MAX_CHARS = 240
 

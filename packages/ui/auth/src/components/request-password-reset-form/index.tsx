@@ -1,14 +1,13 @@
 import { useMemo } from "react"
 import type { FC } from "react"
+import { AuthError } from "@auth/components/auth-error"
+import { AuthField } from "@auth/components/auth-field"
+import { AuthSubmitButton } from "@auth/components/submit-button"
+import { useAuthForm } from "@auth/hooks/use-auth-form"
+import { requestResetSchema } from "@auth/lib/schemas"
+import type { RequestResetValues } from "@auth/lib/schemas"
+import type { AuthFormStatusProps } from "@auth/types/auth"
 import { ArrowLeft } from "lucide-react"
-
-import { useAuthForm } from "../../hooks/use-auth-form"
-import { requestResetSchema } from "../../lib/schemas"
-import type { RequestResetValues } from "../../lib/schemas"
-import type { AuthFormStatusProps } from "../../types/auth"
-import { AuthError } from "../auth-error"
-import { AuthField } from "../auth-field"
-import { AuthSubmitButton } from "../submit-button"
 
 export type RequestPasswordResetFormProps = AuthFormStatusProps & {
   onSubmit: (values: RequestResetValues) => void

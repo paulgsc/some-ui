@@ -1,6 +1,5 @@
+import { noEagerRegistryImport } from "@eslint/rules/index.js"
 import { defineConfig } from "eslint/config"
-
-import { noEagerRegistryImport } from "../rules/index.js"
 
 /**
  * Plugin keeping the content registry's lazy loading actually lazy.

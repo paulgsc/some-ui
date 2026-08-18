@@ -3,7 +3,8 @@
   "compilerOptions": {
     "isolatedModules": true,
     "paths": {
-      "@mujik/*": ["./src/*"]
+      "@mujik/*": ["./src/*"],
+      "@mujik/playwright/*": ["./tests/e2e/*"]
     },
     "types": ["firefox-webext-browser", "chrome"]
   },

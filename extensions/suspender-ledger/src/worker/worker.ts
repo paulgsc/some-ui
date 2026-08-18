@@ -24,7 +24,7 @@ import { log, query } from "./core/utils"
 import "./modes/number"
 import "./menu"
 // Firefox compatibility shims must be applied after the core modules load.
-import "../lib/platform/firefox"
+import "@suspender/lib/platform/firefox"
 
 /**
  * MV3 service-worker entry point. Composes the suspend chain (prefs → discard →
