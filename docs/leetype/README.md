@@ -67,6 +67,18 @@ New with the shift:
   gates progression to the next step.
 - **baseline** — the player's own typing speed, sampled in an agnostic
   warm-up. Every threshold is a function of it.
+- **hunk** — a `TypingBlock`'s optional `patch` overlay: one line kind
+  (`context` / `del` / `add`) per rendered line. It reduces — every line is
+  still exactly `context` or `typeable` to the engine either way (LTY-PATCH,
+  below); a hunk is authored data about which lines the _renderer_ paints as
+  removed or added, not a new engine concept.
+- **deletion** — a `del` line: ordinary `context` (rendered, read, never
+  typed, carries no slot), additionally marked as the code being removed, so
+  the renderer paints it as struck-through rather than merely given.
+- **addition** — an `add` line: a rendered line containing at least one
+  `typeable` character — the ordinary typing stream, given its own tint and
+  the hunk's new-line-number column. A line that is `context` throughout is
+  neither a deletion nor an addition; it is the hunk's unchanged middle.
 
 ## The five decisions
 
@@ -149,6 +161,98 @@ between sessions, is that channel. A 900ms pause before typing it is not.
 Until such a channel exists, sinks are authored graph structure (LTY-ROUTE
 R1/R2's confusion-edge-plus-bridge), never a runtime inference — no type in
 this workspace names an inferred sink.
+
+## LTY-PATCH: the typing block becomes a hunk
+
+Tracked in [#1075](https://github.com/paulgsc/some-ui/issues/1075). Before
+this, a step's typing block was a fragment of source with a frame around
+it. After it, a typing block can carry a `patch` overlay and read as a git
+diff hunk: the `-` lines and the surrounding context are rendered and read
+but never typed, and the `+` lines are the ordinary typeable stream. The
+payoff is that a step can be authored by _taking a patch_ — a solve that
+breaks, a commit that fixes a bug — instead of hand-composing a frame
+around a blank.
+
+**The claim worth recording is that the engine does not change at all.** A
+`-` line and an unchanged ` ` context line are, to the engine, the same
+thing, and that thing already shipped as LTY-FRAME's `Role::Context`
+(`crates/leetype_wasm/src/leetype/program.rs:17-19`, the `Context` variant
+at `:63-67`): source that renders as code, anchors the typeable slots
+around it to a position, is never typed, is never masked, and carries no
+slot at all. With no slot, there is nothing for `VISIBILITY_MASKED` to
+apply to, nothing to enter `assisted` or `correct`, and therefore nothing
+to move `weightedWpm` or `gateThreshold` (#998). The `+` lines are the
+ordinary typeable stream and want nothing new. So the corpus already
+contained diffs that had not been painted as diffs — `seed.ts`'s
+`diagnosticLoopProgressStep` is a one-line hunk with three lines of
+context, and `entryApi`'s three-step chain (`entry-03-place` through
+`entry-05-mutate`) is an accumulating patch where each step re-shows every
+prior commitment as context and adds one line.
+
+This is a **cross-reference, not an edit**: the sentence above cites
+`program.rs` by path and line rather than adding a comment to the crate,
+because `crates/leetype_wasm` staying untouched is itself one of the
+epic's "done when" claims, and leaving it literally true — checkable with
+`git log -- crates/leetype_wasm` — is worth more than a pointer comment
+one file over. If a future reader wants the note inside the crate itself,
+that is a small, separate, deliberate change, not a default this record
+took on the crate's behalf.
+
+**What this forecloses**, recorded as decisions because each will be
+proposed again by someone who has not read this section:
+
+- **No fourth `Role`.** `Role::Deleted` would be `Role::Context` with
+  different paint. The engine's question is _who owes a keystroke_, and on
+  that question a deletion and an unchanged line are identical. A new
+  variant would bump the wire encoding, `bindings-contract.ts`, every zod
+  schema and every consumer of `roles()` to carry a distinction the engine
+  never reads.
+- **No diff parser in the crate.** `program.rs` is a pure function of a
+  source string and knows no language by design. Teaching it unified-diff
+  syntax is the same category of mistake one level up.
+- **No `+`/`-` characters in `displaySource`.** They would take display
+  indices, land in `roles`, and be handed to `Prism.tokenize` as if they
+  were code. The sign column is a gutter, and gutters are not part of the
+  character stream.
+- **No second controller.** The reveal loop, error accounting, accuracy,
+  WPM and progression stay engine state (decision 3 above). A patch step's
+  textarea holds `value=""` and stays `readOnly`, same as every other step.
+
+**The mapping the two step families read a hunk through**, once
+`entryApi`'s chain (LTY-PATCH P5) demonstrates the construction side of it:
+
+|             | diagnostic                                 | construction                                                     |
+| ----------- | ------------------------------------------ | ---------------------------------------------------------------- |
+| ` ` context | the frame around the fault                 | the surrounding code the obligation lives in                     |
+| `-` deleted | the broken attempt — the falsified witness | the prior commitment, or the naive form the constraint rules out |
+| `+` added   | the repair                                 | the witness that discharges the obligation                       |
+
+Same mechanics on both rows, because the engine sees only context and
+typeable. The families differ in what the author _means_ by a deletion —
+exactly where they already differed on `rationale` versus `obligation`,
+neither of which is rendered.
+
+**A construction `-` line is not a blank with a hint over it.** Diagnostic
+deletions are the thing that was falsified — showing them is the point.
+Construction deletions are optional, and careless ones become an answer
+key: a `-` line showing the naive form the player is steered away from can
+give the `+` line away by contrast. The authoring test (#1006) applies
+unchanged — _what conceptual claim becomes true because this exact
+fragment is present?_ — and it is the test that catches a `-` row that
+makes the `+` row guessable rather than genuinely ruled-out.
+
+**The layered-DSA reading.** The working meta a person uses reading an
+unfamiliar diff: given source of _N_ lines, reason about an _N choose K_
+hunk that targets one concept or invariant. `entryApi`'s three steps are
+that operation on a four-line fragment — pick the smallest slice that
+discharges one obligation, hold the rest as context, repeat for the next
+layer. Nothing about that is specific to a four-line toy; it generalizes to
+constructing a real solution one algorithmic layer at a time against real
+source. Stated as an authoring constraint: a construction step is never
+"remember the method name" — a step that reduces to recalling an API name
+is a bridge (LTY-ROUTE), not an obligation, and the hunk shape is more
+inviting to that mistake than a frame was, not less, which is exactly why
+it is worth naming here.
 
 ## Where the magic is quarantined
 
