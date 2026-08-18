@@ -15,6 +15,7 @@ commit past it:
 - `eslint --fix` (or at minimum a clean `eslint`) for every touched package
 - `tsc --noEmit` (project-aware typecheck) for every touched package
 - `prettier --check` (or `--write`) over touched files
+- `stylelint --allow-empty-input` over any touched `**/*.css` files
 
 Skipping this because the hook stayed quiet is not an option — the hook staying quiet in
 this environment is expected, not a sign that everything is clean.
