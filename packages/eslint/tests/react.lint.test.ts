@@ -379,4 +379,43 @@ describe("lint: no-restricted-syntax — parent-relative dynamic import guard", 
       "path-alias dynamic import"
     )
   })
+
+  it("fires on a parent-relative dynamic import written as a template literal", async () => {
+    const messages = await lintSnippet(
+      reactConfig,
+      "export const load = () => import(`../foo`)",
+      "src/Foo.ts"
+    )
+    expectMessageForRule(
+      messages,
+      "no-restricted-syntax",
+      "parent-relative template-literal dynamic import"
+    )
+  })
+
+  it("fires on a parent-relative template literal with interpolation", async () => {
+    const messages = await lintSnippet(
+      reactConfig,
+      "export const load = (name) => import(`../${name}`)",
+      "src/Foo.ts"
+    )
+    expectMessageForRule(
+      messages,
+      "no-restricted-syntax",
+      "interpolated parent-relative template-literal dynamic import"
+    )
+  })
+
+  it("does NOT fire on a sibling dynamic import written as a template literal", async () => {
+    const messages = await lintSnippet(
+      reactConfig,
+      "export const load = (name) => import(`./${name}`)",
+      "src/Foo.ts"
+    )
+    expectNoMessageForRule(
+      messages,
+      "no-restricted-syntax",
+      "sibling template-literal dynamic import"
+    )
+  })
 })

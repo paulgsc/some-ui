@@ -1,4 +1,8 @@
-import { reactImportBanSelectors, uiRecommended } from "@some-ui/eslint-kit"
+import {
+  reactImportBanSelectors,
+  themeProviderBanPattern,
+  uiRecommended,
+} from "@some-ui/eslint-kit"
 import { defineConfig } from "eslint/config"
 
 export default defineConfig([
@@ -12,9 +16,32 @@ export default defineConfig([
     // speech, ws, activity-catalog) where the alias is resolved away by
     // `vite build` before the dist ships. Until this package has a build
     // step of its own, "../" stays the only import form its own internals
-    // can safely use.
+    // can safely use. Blanket safety net for every file base.config.ts's
+    // rule reaches (stories/test/spec .ts/.tsx, plus .js/.mjs/.jsx); the
+    // block below narrows this back on for the one subset that also needs
+    // to keep a different check alive.
     rules: {
       "no-restricted-imports": "off",
+    },
+  },
+  {
+    // theme-protocol.config.ts's own no-restricted-imports (the theme-
+    // provider ban - uiRecommended's whole point for this package) applies
+    // to exactly this files/ignores combination, and flat config replaces a
+    // rule's value wholesale - so without restating it here, the blanket
+    // "off" above would silently re-permit importing an app's theme
+    // provider from this reusable-UI package too.
+    files: ["**/*.{ts,tsx}"],
+    ignores: [
+      "**/*.stories.{ts,tsx}",
+      "**/*.test.{ts,tsx}",
+      "**/*.spec.{ts,tsx}",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        { patterns: [themeProviderBanPattern] },
+      ],
     },
   },
   {

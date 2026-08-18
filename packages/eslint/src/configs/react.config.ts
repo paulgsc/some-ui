@@ -19,28 +19,42 @@ import { defineConfig } from "eslint/config"
 const files = ["**/*.{mdx,js,jsx,ts,tsx}"]
 
 /**
- * Exported so a workspace that must turn off the parent-relative dynamic
- * import guard below (a raw-source package with no self-alias - see
- * base.config.ts's `no-restricted-imports` for the full rationale) can
- * redeclare `no-restricted-syntax` with just these two selectors, instead
- * of silently dropping the React-import ban too. Flat config replaces a
- * rule's value wholesale at the most specific matching config; there is no
- * way to remove one selector from this array without restating the rest.
+ * Two selectors: a plain string literal (`import("../foo")`) and a template
+ * literal with no interpolation before the traversal
+ * (`` import(`../foo`) ``, or `` import(`../${dir}/foo`) `` - only the
+ * literal's first quasi has to start with "../" for either to be a parent-
+ * relative path). `ImportExpression.source` is a `TemplateLiteral` node for
+ * the latter, which has no `.value` - only `.quasis[n].value.cooked` - so
+ * the plain-literal selector alone doesn't see it.
+ *
+ * Exported for two reasons:
+ * 1. A workspace that must turn off this guard (a raw-source package with
+ *    no self-alias - see base.config.ts's `no-restricted-imports` for the
+ *    full rationale) can redeclare `no-restricted-syntax` with just
+ *    `reactImportBanSelectors`, instead of silently dropping the
+ *    React-import ban too. Flat config replaces a rule's value wholesale at
+ *    the most specific matching config; there is no way to remove one
+ *    selector from this array without restating the rest.
+ * 2. `extensions-security.config.ts` also defines `no-restricted-syntax`,
+ *    spread *after* this file inside `extensionsRecommended`, so it wins
+ *    the same way this file wins over typescript.config.ts. Every
+ *    extensions/* workspace needs these selectors spread into that file's
+ *    array too, or they go dark there exactly like they would have in
+ *    typescript.config.ts.
  */
-/**
- * Same reasoning as `reactImportBanSelectors` above, but this one has a
- * second reason to be exported: `extensions-security.config.ts` also
- * defines `no-restricted-syntax`, spread *after* this file inside
- * `extensionsRecommended`, so it wins the same way this file wins over
- * typescript.config.ts. Every extensions/* workspace needs this selector
- * spread into that file's array too, or it goes dark there exactly like it
- * would have in typescript.config.ts.
- */
-export const parentRelativeDynamicImportSelector = {
-  selector: "ImportExpression[source.value=/^\\.\\./]",
-  message:
-    "Parent-relative dynamic imports ('../') are not allowed - use this workspace's path alias instead.",
-}
+export const parentRelativeDynamicImportSelectors = [
+  {
+    selector: "ImportExpression[source.value=/^\\.\\./]",
+    message:
+      "Parent-relative dynamic imports ('../') are not allowed - use this workspace's path alias instead.",
+  },
+  {
+    selector:
+      "ImportExpression[source.type='TemplateLiteral'][source.quasis.0.value.cooked=/^\\.\\./]",
+    message:
+      "Parent-relative dynamic imports ('../') are not allowed - use this workspace's path alias instead.",
+  },
+]
 
 export const reactImportBanSelectors = [
   {
@@ -182,7 +196,7 @@ export default defineConfig([
       "no-restricted-syntax": [
         "error",
         ...reactImportBanSelectors,
-        parentRelativeDynamicImportSelector,
+        ...parentRelativeDynamicImportSelectors,
       ],
     },
   },

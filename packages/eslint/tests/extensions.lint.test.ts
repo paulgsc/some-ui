@@ -222,13 +222,13 @@ describe("lint: extension-security — no remote dynamic imports", () => {
   })
 })
 
-// ── parentRelativeDynamicImportSelector, restated from react.config.ts ─────
+// ── parentRelativeDynamicImportSelectors, restated from react.config.ts ────
 //
 // extensionsRecommended spreads this config after maishatuRecommended
 // (react.config.ts's no-restricted-syntax included), so without its own
-// copy of this selector this file's array would silently drop it for every
-// extensions/* workspace — the same hazard the file's own header comment
-// already warns about for its other selectors.
+// copy of these selectors this file's array would silently drop them for
+// every extensions/* workspace — the same hazard the file's own header
+// comment already warns about for its other selectors.
 
 describe("lint: extension-security — parent-relative dynamic import guard", () => {
   it("fires on a parent-relative dynamic import", async () => {
@@ -254,6 +254,45 @@ describe("lint: extension-security — parent-relative dynamic import guard", ()
       msgs,
       "no-restricted-syntax",
       "sibling dynamic import"
+    )
+  })
+
+  it("fires on a parent-relative dynamic import written as a template literal", async () => {
+    const msgs = await lintSnippet(
+      extensionsSecurityConfig,
+      "const mod = import(`../lib/foo.js`)",
+      TS_FILE
+    )
+    expectMessageForRule(
+      msgs,
+      "no-restricted-syntax",
+      "parent-relative template-literal dynamic import"
+    )
+  })
+
+  it("fires on a parent-relative template literal with interpolation", async () => {
+    const msgs = await lintSnippet(
+      extensionsSecurityConfig,
+      "const mod = import(`../lib/${name}.js`)",
+      TS_FILE
+    )
+    expectMessageForRule(
+      msgs,
+      "no-restricted-syntax",
+      "interpolated parent-relative template-literal dynamic import"
+    )
+  })
+
+  it("does NOT fire on a sibling dynamic import written as a template literal", async () => {
+    const msgs = await lintSnippet(
+      extensionsSecurityConfig,
+      "const mod = import(`./lib/${name}.js`)",
+      TS_FILE
+    )
+    expectNoMessageForRule(
+      msgs,
+      "no-restricted-syntax",
+      "sibling template-literal dynamic import"
     )
   })
 })

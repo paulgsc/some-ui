@@ -50,4 +50,5 @@ export {
   default as themeProtocolConfig,
   structuralColorRatchet,
   themeProtocolPlugin,
+  themeProviderBanPattern,
 } from "./theme-protocol.config.js"

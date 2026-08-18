@@ -1,7 +1,7 @@
 import { defineConfig } from "eslint/config"
 import globals from "globals"
 
-import { parentRelativeDynamicImportSelector } from "./react.config.js"
+import { parentRelativeDynamicImportSelectors } from "./react.config.js"
 
 /**
  * AMO/extension security rules (#322).
@@ -14,7 +14,7 @@ import { parentRelativeDynamicImportSelector } from "./react.config.js"
  * to preserve, since flat-config rule entries override rather than merge.
  * `extensionsRecommended` does exactly that - this file is spread after
  * `maishatuRecommended` (react.config.ts's `no-restricted-syntax` included),
- * which is why `parentRelativeDynamicImportSelector` below is restated
+ * which is why `parentRelativeDynamicImportSelectors` below is restated
  * rather than left to react.config.ts alone.
  */
 const extensionsSecurityConfig = defineConfig([
@@ -86,7 +86,7 @@ const extensionsSecurityConfig = defineConfig([
           message:
             "chrome.tabs.discard(tabId, callback) throws on Firefox — its runtime only implements the Promise form. Call chrome.tabs.discard(tabId) with no callback instead.",
         },
-        parentRelativeDynamicImportSelector,
+        ...parentRelativeDynamicImportSelectors,
       ],
     },
   },

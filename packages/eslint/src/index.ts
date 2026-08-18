@@ -26,6 +26,7 @@ import {
   testsOverrideConfig,
   themeProtocolConfig,
   themeProtocolPlugin,
+  themeProviderBanPattern,
   toolsOverrideConfig,
   typescriptConfig,
   wasmLoaderGuardConfig,
@@ -88,7 +89,7 @@ export { intentGuardConfig, intentGuardPlugin }
 export { fitsTheBoxConfig, fitsTheBoxPlugin }
 
 // ── Theme protocol (reusable UI must inherit its theme, not choose one) ────
-export { themeProtocolConfig, themeProtocolPlugin }
+export { themeProtocolConfig, themeProtocolPlugin, themeProviderBanPattern }
 export { structuralColorRatchet } from "./configs/index.js"
 
 // ── Lazy content-registry loading ──────────────────────────────────────────
