@@ -74,9 +74,20 @@ const DashboardLayout = (): JSX.Element => {
     <SidebarProvider className={cn(isViewportRoute && "h-svh overflow-hidden")}>
       <Sidebar>
         <SidebarHeader>
-          <div className="text-gradient-accent px-2 py-1.5 text-sm font-semibold">
-            Some UI
-          </div>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild size="lg" tooltip="Some UI home">
+                <Link to="/" aria-label="Some UI home">
+                  <span className="flex size-8 shrink-0 items-center justify-center">
+                    <HexCombMark tone="brand" className="size-6" />
+                  </span>
+                  <span className="text-gradient-accent font-semibold">
+                    Some UI
+                  </span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>
