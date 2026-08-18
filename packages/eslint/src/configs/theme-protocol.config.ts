@@ -1,7 +1,26 @@
+import {
+  noStructuralPaletteColor,
+  noThemeBoundary,
+} from "@eslint/rules/index.js"
 import { defineConfig } from "eslint/config"
 import type { Config } from "typescript-eslint"
 
-import { noStructuralPaletteColor, noThemeBoundary } from "../rules/index.js"
+import { parentRelativeImportPattern } from "./base.config.js"
+
+/**
+ * Exported so a workspace that must turn off the parent-relative-import ban
+ * below (a raw-source package with no self-alias - see base.config.ts's
+ * `no-restricted-imports` for the full rationale) can redeclare
+ * `no-restricted-imports` with just this pattern, instead of silently
+ * dropping the theme-provider ban too. Flat config replaces a rule's value
+ * wholesale at the most specific matching config; there is no way to remove
+ * one pattern from this list without restating the rest.
+ */
+export const themeProviderBanPattern = {
+  group: ["**/apps/www/**", "@/providers/theme"],
+  message:
+    "Reusable UI must not import an app's theme provider. Theme reaches components by CSS inheritance from the host's DOM boundary — there is nothing to subscribe to. If you need the registry itself, import @some-ui/styles/theme.",
+}
 
 /**
  * Plugin enforcing the theme protocol (`@some-ui/styles/theme`) at the one
@@ -47,16 +66,17 @@ export default defineConfig([
       // A package reaching into an app's theme provider is the coupling this
       // whole architecture exists to prevent — and it would not even work,
       // since the protocol is CSS inheritance and has nothing to subscribe to.
+      // Restates base.config.ts's parent-relative-import ban alongside the
+      // theme-provider ban below: this config is spread after
+      // maishatuRecommended in `uiRecommended`, and flat config replaces (not
+      // merges) a rule's value at the most specific matching config - so
+      // without it, this block would silently turn the base ban off for
+      // every non-story/test/spec .ts/.tsx file in every package/ui/*
+      // workspace.
       "no-restricted-imports": [
         "error",
         {
-          patterns: [
-            {
-              group: ["**/apps/www/**", "@/providers/theme"],
-              message:
-                "Reusable UI must not import an app's theme provider. Theme reaches components by CSS inheritance from the host's DOM boundary — there is nothing to subscribe to. If you need the registry itself, import @some-ui/styles/theme.",
-            },
-          ],
+          patterns: [parentRelativeImportPattern, themeProviderBanPattern],
         },
       ],
     },

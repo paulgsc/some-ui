@@ -1,4 +1,4 @@
-import type { Leg, SpreadArchetype } from "../types"
+import type { Leg, SpreadArchetype } from "@portfolio/types"
 
 export const ARCHETYPE_DESCRIPTIONS: Record<SpreadArchetype, string> = {
   "long call": "directional bullish · unlimited upside · defined risk",

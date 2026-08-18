@@ -32,9 +32,9 @@
  */
 
 import path from "node:path"
+import reactConfig from "@eslint/configs/react.config.js"
 import { describe, expect, it } from "vitest"
 
-import reactConfig from "../src/configs/react.config.js"
 import {
   calculateConfig,
   expectError,

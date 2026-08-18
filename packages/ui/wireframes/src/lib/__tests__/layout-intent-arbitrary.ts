@@ -1,7 +1,6 @@
 import type { YouTubeRegion } from "@some-ui/types"
+import type { LayoutIntent } from "@wireframes/lib/layout-intent"
 import fc from "fast-check"
-
-import type { LayoutIntent } from "../layout-intent"
 
 /**
  * A small, fixed alphabet (the real YouTubeRegion slots) instead of unique

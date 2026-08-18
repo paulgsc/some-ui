@@ -1,12 +1,11 @@
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
+import type { SurfaceAttr, SurfaceKey } from "@filter/adapter/contracts"
+import { SWATCHES } from "@filter/adapter/swatches"
+import { decide } from "@filter/adapter/theme-adapter"
+import { parseColor, relativeLuminance } from "@filter/lib/content/color"
 import { createHypothesis } from "@some-extension/transport/estimator/hypothesis"
 import { describe, expect, it } from "vitest"
-
-import { parseColor, relativeLuminance } from "../../lib/content/color"
-import type { SurfaceAttr, SurfaceKey } from "../contracts"
-import { SWATCHES } from "../swatches"
-import { decide } from "../theme-adapter"
 
 const swatch = SWATCHES.default
 

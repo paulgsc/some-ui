@@ -5,8 +5,8 @@
 // Adapted from auto-tab-discard v3/data/popup (MPL-2.0)
 // Copyright (C) auto-tab-discard contributors
 
-import type { PopupCommand } from "@suspender/types/messages"
 import { svgNode } from "@suspender/popup/svg"
+import type { PopupCommand } from "@suspender/types/messages"
 
 export type ActionMenuProps = {
   /** True when the active tab's host is whitelisted (drives the toggle label). */
@@ -51,16 +51,14 @@ export function ActionMenu({
   primary.className = "action-menu__grid"
 
   primary.append(
-    actionButton(ICONS.suspend, "Suspend tab", () =>
-      onCommand("discard-tab")
-    ),
+    actionButton(ICONS.suspend, "Suspend tab", () => onCommand("discard-tab")),
     actionButton(ICONS.layers, "Suspend all", () =>
       // shiftKey forces every eligible tab rather than honouring the count cap
       onCommand("discard-tabs", { shiftKey: true })
     ),
     actionButton(ICONS.windows, "Other windows", () =>
       onCommand("discard-other-windows", { shiftKey: true })
-    ),
+    )
   )
   el.appendChild(primary)
 
@@ -73,7 +71,7 @@ export function ActionMenu({
     }),
     actionButton(ICONS.next, "Next tab", () => onCommand("move-next"), {
       compact: true,
-    }),
+    })
   )
   el.appendChild(nav)
 

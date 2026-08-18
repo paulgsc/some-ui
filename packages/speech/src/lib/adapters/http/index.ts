@@ -11,6 +11,7 @@
  * that is visible to a caller, who only ever holds a `SpeechAdapter`.
  */
 
+import type { SpeakOptions, SpeechAdapter } from "@speech/lib/adapters/types"
 import type { AudioPlayer, AudioPlayerOptions } from "@speech/lib/engine"
 import { createAudioPlayer } from "@speech/lib/engine"
 import type { FetchImpl, TTSClient } from "@speech/lib/engine/tts-client"
@@ -23,8 +24,6 @@ import {
 } from "@speech/lib/promise/abort"
 import type { TTSServiceConfig, VoiceConfig } from "@speech/lib/types/tts-types"
 import { BUILTIN_VOICES } from "@speech/lib/types/tts-types"
-
-import type { SpeakOptions, SpeechAdapter } from "../types"
 
 export type HttpSpeechAdapterOptions = {
   service: TTSServiceConfig

@@ -1,7 +1,6 @@
+import type { ImageDetails } from "@filter/lib/content/images"
+import { shouldInvertImage } from "@filter/lib/content/images"
 import { describe, expect, it } from "vitest"
-
-import type { ImageDetails } from "../images"
-import { shouldInvertImage } from "../images"
 
 const details = (over: Partial<ImageDetails>): ImageDetails => ({
   isDark: false,

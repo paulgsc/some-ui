@@ -19,6 +19,7 @@
 
 import type { JSX } from "react"
 import { useEffect, useMemo, useRef } from "react"
+import { useSpeechSession } from "@speech/components/speech-provider"
 import { useQueueStore } from "@speech/lib/hooks/use-queue-store"
 import type { SpeechQueueState } from "@speech/lib/queue"
 import type { SpeechNotifier, SpeechStatus } from "@speech/lib/status"
@@ -27,8 +28,6 @@ import {
   deriveSpeechStatus,
   describeStatus,
 } from "@speech/lib/status"
-
-import { useSpeechSession } from "../speech-provider"
 
 const selectError = (state: SpeechQueueState): string | null => state.error
 

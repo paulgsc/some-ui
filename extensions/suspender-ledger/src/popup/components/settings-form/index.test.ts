@@ -4,11 +4,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import {
-  SettingsForm,
-  type SettingsFormProps,
-  type SettingsValues,
-} from "."
+import { SettingsForm, type SettingsFormProps, type SettingsValues } from "."
 
 const VALUES: SettingsValues = {
   idleTimeoutMinutes: 5,
@@ -48,9 +44,7 @@ describe("SettingsForm — field edits", () => {
 
   it("clamps and emits the idle timeout on change", () => {
     const { el, onChange } = mount()
-    const input = el.querySelector<HTMLInputElement>(
-      ".settings__input--number"
-    )
+    const input = el.querySelector<HTMLInputElement>(".settings__input--number")
     if (!input) throw new Error("number field missing")
     input.value = "999"
     input.dispatchEvent(new Event("change", { bubbles: true }))
@@ -68,9 +62,7 @@ describe("SettingsForm — field edits", () => {
 
   it("emits the favicon checkbox state", () => {
     const { el, onChange } = mount()
-    const box = el.querySelector<HTMLInputElement>(
-      ".settings__input--checkbox"
-    )
+    const box = el.querySelector<HTMLInputElement>(".settings__input--checkbox")
     if (!box) throw new Error("checkbox missing")
     box.checked = true
     box.dispatchEvent(new Event("change", { bubbles: true }))

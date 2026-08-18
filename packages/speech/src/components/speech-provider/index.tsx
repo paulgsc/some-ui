@@ -19,13 +19,12 @@
 
 import type { JSX, ReactNode } from "react"
 import { createContext, useContext, useEffect, useState } from "react"
+import { SpeechStatusAnnouncer } from "@speech/components/speech-status"
 import type { SpeechAdapter, SpeechConfig } from "@speech/lib/adapters"
 import { createSpeechAdapter, resolveSpeechConfig } from "@speech/lib/adapters"
 import type { SpeechQueueManager } from "@speech/lib/queue"
 import { initializeSpeechQueue, releaseSpeechQueue } from "@speech/lib/queue"
 import type { SpeechNotifier } from "@speech/lib/status"
-
-import { SpeechStatusAnnouncer } from "../speech-status"
 
 export type SpeechSession = {
   readonly adapter: SpeechAdapter

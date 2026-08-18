@@ -1,12 +1,11 @@
-import { afterEach, describe, expect, it } from "vitest"
-
 import {
   applyTheme,
   DARK_THEME_ATTR,
   injectDarkTheme,
   removeDarkTheme,
   restoreVendor,
-} from "../theme-apply"
+} from "@filter/lib/content/theme-apply"
+import { afterEach, describe, expect, it } from "vitest"
 
 const STYLE_ID = "__sw_dark_theme"
 const LEGACY_STYLE_ID = "__sw_legacy_filter"

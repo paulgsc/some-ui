@@ -13,12 +13,12 @@
  * @typescript-eslint/parser with ecmaFeatures.jsx is enough.
  */
 
+import { fitsTheBoxPlugin } from "@eslint/configs/fits-the-box.config.js"
 import typescriptParser from "@typescript-eslint/parser"
 import type { Linter } from "eslint"
 import { defineConfig } from "eslint/config"
 import { describe, it } from "vitest"
 
-import { fitsTheBoxPlugin } from "../src/configs/fits-the-box.config.js"
 import {
   expectMessageForRule,
   expectNoMessageForRule,

@@ -1,11 +1,10 @@
 import type { FC, ReactNode } from "react"
+import { AuthBrand } from "@auth/components/auth-brand"
+import { AuthFlow } from "@auth/components/auth-flow"
+import type { AuthFlowProps } from "@auth/components/auth-flow"
 import { cn } from "@some-ui/core-utils"
 import { Alert, AlertDescription, AlertTitle } from "@some-ui/shared"
 import { Info } from "lucide-react"
-
-import { AuthBrand } from "../../components/auth-brand"
-import { AuthFlow } from "../../components/auth-flow"
-import type { AuthFlowProps } from "../../components/auth-flow"
 
 export type AuthPageTemplateProps = AuthFlowProps & {
   /** Product mark or wordmark; intentionally supplied by the host app. */

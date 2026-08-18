@@ -1,8 +1,9 @@
 import { existsSync, readFileSync, writeFileSync } from "fs"
 import { resolve } from "path"
 
-import type { ViteConfigOptions } from "../../types/index.js"
-import { resolveEntryPath } from "../build-config.js"
+import type { ViteConfigOptions } from "@/types/index.js"
+import { resolveEntryPath } from "@/lib/build-config.js"
+
 import { generatePackageJsonFields } from "./generate.js"
 
 /**

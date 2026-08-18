@@ -1,7 +1,7 @@
+import { syntheticCatalogue } from "@activity-catalog/testing/synthetic-catalogue"
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import { syntheticCatalogue } from "../testing/synthetic-catalogue"
 import { ACTIVITY_CATALOG, ACTIVITY_IDS } from "./catalog"
 import { pickRecommended, rankActivities } from "./rank"
 import type { ActivityPlay } from "./rank"

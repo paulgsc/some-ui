@@ -8,12 +8,12 @@
  * switch-lint.lint.test.ts.
  */
 
+import { wasmLoaderGuardPlugin } from "@eslint/configs/wasm-loader-guard.config.js"
 import typescriptParser from "@typescript-eslint/parser"
 import type { Linter } from "eslint"
 import { defineConfig } from "eslint/config"
 import { describe, expect, it } from "vitest"
 
-import { wasmLoaderGuardPlugin } from "../src/configs/wasm-loader-guard.config.js"
 import {
   expectMessageForRule,
   expectNoMessageForRule,

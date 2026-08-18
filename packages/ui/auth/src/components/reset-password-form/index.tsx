@@ -1,13 +1,12 @@
 import { useMemo } from "react"
 import type { FC } from "react"
-
-import { useAuthForm } from "../../hooks/use-auth-form"
-import { PASSWORD_HINT, resetPasswordSchema } from "../../lib/schemas"
-import type { ResetPasswordValues } from "../../lib/schemas"
-import type { AuthFormStatusProps } from "../../types/auth"
-import { AuthError } from "../auth-error"
-import { PasswordField } from "../password-field"
-import { AuthSubmitButton } from "../submit-button"
+import { AuthError } from "@auth/components/auth-error"
+import { PasswordField } from "@auth/components/password-field"
+import { AuthSubmitButton } from "@auth/components/submit-button"
+import { useAuthForm } from "@auth/hooks/use-auth-form"
+import { PASSWORD_HINT, resetPasswordSchema } from "@auth/lib/schemas"
+import type { ResetPasswordValues } from "@auth/lib/schemas"
+import type { AuthFormStatusProps } from "@auth/types/auth"
 
 export type ResetPasswordFormProps = AuthFormStatusProps & {
   onSubmit: (values: ResetPasswordValues) => void

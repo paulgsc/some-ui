@@ -7,8 +7,8 @@ import type { TTSProvider } from "@some-ui/speech"
 import type { SceneConfig, SlotId } from "@some-ui/types"
 import type { LayoutNode } from "wireframes"
 
-import type { AudioPreferences } from "../audio-preferences"
-import type { NudgePreferences } from "../study-nudge"
+import type { AudioPreferences } from "@/lib/audio-preferences"
+import type { NudgePreferences } from "@/lib/study-nudge"
 
 /**
  * Re-exported rather than redeclared: the levels a profile can target and the

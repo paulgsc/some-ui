@@ -1,6 +1,5 @@
+import { noUnboundedIntent } from "@eslint/rules/index.js"
 import { defineConfig } from "eslint/config"
-
-import { noUnboundedIntent } from "../rules/index.js"
 
 /**
  * S1 of #937: the lint half of the intent boundary. The type layer

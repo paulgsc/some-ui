@@ -20,7 +20,7 @@
  *   T4  guard attr present                        — script ran to completion
  */
 
-import { expect, test, waitForConveyorInit } from "../fixture"
+import { expect, test, waitForConveyorInit } from "@conveyor/playwright/fixture"
 
 test.describe("WASM bridge graceful failure", () => {
   test("T1: shadow host created despite WASM init failure", async ({

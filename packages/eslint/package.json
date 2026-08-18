@@ -16,8 +16,8 @@
     "dist"
   ],
   "scripts": {
-    "build:esm": "tsc -b tsconfig.esm.build.json",
-    "build:cjs": "tsc -b tsconfig.cjs.build.json",
+    "build:esm": "tsc -b tsconfig.esm.build.json && tsc-alias -p tsconfig.esm.build.json",
+    "build:cjs": "tsc -b tsconfig.cjs.build.json && tsc-alias -p tsconfig.cjs.build.json",
     "build": "pnpm build:esm",
     "check-dist": "if [ ! -d dist ]; then pnpm run build; fi",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
@@ -62,6 +62,7 @@
     "eslint-plugin-tailwindcss": "4.2.0",
     "eslint-plugin-unicorn": "69.0.0",
     "eslint-plugin-unused-imports": "4.4.1",
+    "tsc-alias": "^1.9.1",
     "typescript-eslint": "8.65.0",
     "vitest": "^4.1.10"
   }

@@ -1,6 +1,8 @@
+import {
+  noGreedyOverflow,
+  noUnshrinkableFlexChild,
+} from "@eslint/rules/index.js"
 import { defineConfig } from "eslint/config"
-
-import { noGreedyOverflow, noUnshrinkableFlexChild } from "../rules/index.js"
 
 /**
  * Plugin enforcing the "content fits its box" idiom for overlay surfaces.

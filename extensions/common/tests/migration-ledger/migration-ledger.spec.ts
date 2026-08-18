@@ -6,14 +6,13 @@
  * browser page required.
  */
 
-import { expect, test } from "@playwright/test"
-
 import {
   runMigrations,
   type Migration,
   type MigrationContext,
   type StorageAdapter,
-} from "../../src/lib/migration-ledger"
+} from "@common/lib/migration-ledger"
+import { expect, test } from "@playwright/test"
 
 function makeStorage(): StorageAdapter & { _store: Record<string, string> } {
   const _store: Record<string, string> = {}

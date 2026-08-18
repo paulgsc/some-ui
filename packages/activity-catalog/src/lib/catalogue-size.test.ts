@@ -1,6 +1,6 @@
+import { syntheticCatalogue } from "@activity-catalog/testing/synthetic-catalogue"
 import { describe, expect, it } from "vitest"
 
-import { syntheticCatalogue } from "../testing/synthetic-catalogue"
 import { ACTIVITY_CATALOG, ACTIVITY_IDS } from "./catalog"
 import { MAX_RECOMMENDED_COUNT, recommendedCount } from "./fit"
 import { pickRecommended } from "./rank"

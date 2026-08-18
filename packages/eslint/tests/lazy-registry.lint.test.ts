@@ -15,14 +15,14 @@
  * that nothing else would catch.
  */
 
+import { lazyRegistryPlugin } from "@eslint/configs/lazy-registry.config.js"
+import { appsRecommended, maishatuRecommended } from "@eslint/index.js"
 import typescriptParser from "@typescript-eslint/parser"
 import type { Linter } from "eslint"
 import { defineConfig } from "eslint/config"
 import type { Config } from "typescript-eslint"
 import { describe, expect, it } from "vitest"
 
-import { lazyRegistryPlugin } from "../src/configs/lazy-registry.config.js"
-import { appsRecommended, maishatuRecommended } from "../src/index.js"
 import {
   expectMessageForRule,
   expectNoMessageForRule,

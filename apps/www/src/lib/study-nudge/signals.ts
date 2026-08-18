@@ -32,13 +32,13 @@
  * degraded reminder, the second is a broken app, and they are not close.
  */
 
-import { DATA_MODE } from "../data-mode"
-import type { FileHostTransport } from "../file-host-config/client"
+import { DATA_MODE } from "@/lib/data-mode"
+import type { FileHostTransport } from "@/lib/file-host-config/client"
 import {
   createFileHostTransport,
   requestJSON,
-} from "../file-host-config/client"
-import type { SessionRecord } from "../tenant/types"
+} from "@/lib/file-host-config/client"
+import type { SessionRecord } from "@/lib/tenant/types"
 
 /**
  * The four `StudySignal` variants a session record can justify.

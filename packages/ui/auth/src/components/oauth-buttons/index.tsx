@@ -1,7 +1,6 @@
 import type { FC } from "react"
+import type { OAuthProvider } from "@auth/types/auth"
 import { Button } from "@some-ui/shared"
-
-import type { OAuthProvider } from "../../types/auth"
 
 export type AuthDividerProps = {
   label?: string

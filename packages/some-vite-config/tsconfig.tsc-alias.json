@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "some-vite-config tsc-alias bookkeeping",
+  // tsc-alias needs an explicit rootDir to compute where compiled files
+  // land under outDir - but setting rootDir on tsconfig.json itself would
+  // change the real `tsc --outDir dist/esm` build's output layout (it would
+  // drop the "src/" prefix package.json's exports rely on). This file exists
+  // only so `tsc-alias -p tsconfig.tsc-alias.json` can see the same rootDir
+  // tsc already infers implicitly, without touching the config that
+  // actually drives compilation or typecheck.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist/esm"
+  }
+}

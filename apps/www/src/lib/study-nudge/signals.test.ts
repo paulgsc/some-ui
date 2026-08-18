@@ -9,8 +9,9 @@
  */
 import { describe, expect, it } from "vitest"
 
-import type { FileHostTransport } from "../file-host-config/client"
-import type { SessionRecord } from "../tenant/types"
+import type { FileHostTransport } from "@/lib/file-host-config/client"
+import type { SessionRecord } from "@/lib/tenant/types"
+
 import { reportSignal, signalForTransition } from "./signals"
 
 function session(overrides: Partial<SessionRecord> = {}): SessionRecord {

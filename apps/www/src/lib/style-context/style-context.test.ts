@@ -1,9 +1,8 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import styleContext from "@/style.context"
 import { describe, expect, it } from "vitest"
-
-import styleContext from "../../../style.context"
 
 /**
  * Every UI package www can render must be in style.context.ts's scan set.

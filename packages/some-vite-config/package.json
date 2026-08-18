@@ -16,7 +16,7 @@
     "shared"
   ],
   "scripts": {
-    "build:esm": "tsc --outDir dist/esm",
+    "build:esm": "tsc --outDir dist/esm && tsc-alias -p tsconfig.tsc-alias.json",
     "build": "pnpm build:esm",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
@@ -31,7 +31,8 @@
     "vite-plugin-dts": "^5.0.3"
   },
   "devDependencies": {
-    "@some-ui/tsconfig": "workspace:*"
+    "@some-ui/tsconfig": "workspace:*",
+    "tsc-alias": "^1.9.1"
   },
   "peerDependencies": {
     "vite": "^8.2.1"

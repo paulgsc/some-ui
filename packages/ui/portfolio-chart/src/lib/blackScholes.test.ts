@@ -1,6 +1,6 @@
+import type { Leg, PLPoint } from "@portfolio/types"
 import { describe, expect, it } from "vitest"
 
-import type { Leg, PLPoint } from "../types"
 import {
   bsPrice,
   buildPLCurve,

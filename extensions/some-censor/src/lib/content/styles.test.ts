@@ -23,10 +23,10 @@
 
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
+import unoConfig from "@censor/uno.config"
 import { createGenerator } from "unocss"
 import { beforeAll, describe, expect, it } from "vitest"
 
-import unoConfig from "../../../uno.config"
 import * as styles from "./veil-styles"
 
 const RAW_CSS = readFileSync(

@@ -1,6 +1,8 @@
+import {
+  isExtensionMessage,
+  isGetTabFilterStateResponse,
+} from "@filter/lib/content/guard"
 import { describe, expect, it } from "vitest"
-
-import { isExtensionMessage, isGetTabFilterStateResponse } from "../guard"
 
 describe("isExtensionMessage — TOGGLE_FILTER", () => {
   it("accepts a well-formed TOGGLE_FILTER carrying enabled + config", () => {

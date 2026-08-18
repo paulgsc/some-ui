@@ -1,7 +1,7 @@
+import { AuthCard } from "@auth/components/auth-card"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 
 import { ResetPasswordForm } from "."
-import { AuthCard } from "../auth-card"
 
 type Story = StoryObj<typeof ResetPasswordForm>
 type Meta = MetaObj<typeof ResetPasswordForm>

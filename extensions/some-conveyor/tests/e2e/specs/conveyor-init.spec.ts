@@ -17,7 +17,7 @@
  *   T5  host has fixed positioning            — viewport overlay is correct
  */
 
-import { expect, test, waitForConveyorInit } from "../fixture"
+import { expect, test, waitForConveyorInit } from "@conveyor/playwright/fixture"
 
 test.describe("conveyor shadow DOM init", () => {
   test("T1: guard attribute set on <html> element", async ({ fixture }) => {

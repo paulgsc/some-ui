@@ -1,9 +1,8 @@
 import { useState } from "react"
 import type { FC } from "react"
+import type { AuthFieldProps } from "@auth/components/auth-field"
+import { AuthField } from "@auth/components/auth-field"
 import { Eye, EyeOff } from "lucide-react"
-
-import type { AuthFieldProps } from "../auth-field"
-import { AuthField } from "../auth-field"
 
 export type PasswordFieldProps = Omit<
   AuthFieldProps,

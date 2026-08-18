@@ -3,10 +3,9 @@
 // completion likelihood, episode progress, and the four emotional axes
 // (so getAxes() in popup-renderer has a UI to back it).
 
+import type { JournalDraft } from "@drama/components/form-opinionated/use-drama-journal-state"
 import { el } from "@drama/effects/content/dom"
 import type { DramaEntryOpinionated } from "@drama/types"
-
-import type { JournalDraft } from "../use-drama-journal-state"
 
 type Direction = DramaEntryOpinionated["momentum"]["direction"]
 type AxisKey = keyof DramaEntryOpinionated["axes"]

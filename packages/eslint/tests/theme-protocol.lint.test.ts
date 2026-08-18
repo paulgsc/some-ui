@@ -9,12 +9,14 @@
  * filePath passed to lintSnippet must end in .tsx for JSX syntax to parse.
  */
 
+import themeProtocolConfig, {
+  themeProtocolPlugin,
+} from "@eslint/configs/theme-protocol.config.js"
 import typescriptParser from "@typescript-eslint/parser"
 import type { Linter } from "eslint"
 import { defineConfig } from "eslint/config"
 import { describe, expect, it } from "vitest"
 
-import { themeProtocolPlugin } from "../src/configs/theme-protocol.config.js"
 import {
   expectMessageForRule,
   expectNoMessageForRule,
@@ -189,5 +191,52 @@ describe("lint: theme-protocol/no-structural-palette-color", () => {
     const code = `const doc = "the bg-slate-900 token was replaced"`
     const msgs = await lintSnippet(makeConfig(), code, TSX_FILE)
     expectNoMessageForRule(msgs, COLOR, "a class name mentioned in prose")
+  })
+})
+
+// ── no-restricted-imports, restated from base.config.ts ────────────────────
+//
+// uiRecommended spreads this config after maishatuRecommended (base.config's
+// no-restricted-imports included), so without its own copy of the
+// parent-relative-import pattern this file's own theme-provider-ban array
+// would silently drop it for every non-story/test/spec .ts/.tsx file in
+// every package/ui/* workspace. Uses the actual default export, not
+// makeConfig()'s hand-rolled plugin-only config, since that is the rule
+// under test here.
+
+describe("lint: theme-protocol config — no-restricted-imports", () => {
+  it("still fires on a parent-relative import", async () => {
+    const msgs = await lintSnippet(
+      themeProtocolConfig,
+      `import { foo } from "../foo"`,
+      TSX_FILE
+    )
+    expectMessageForRule(
+      msgs,
+      "no-restricted-imports",
+      "parent-relative import"
+    )
+  })
+
+  it("fires on an app theme-provider import", async () => {
+    const msgs = await lintSnippet(
+      themeProtocolConfig,
+      `import { useTheme } from "@/providers/theme"`,
+      TSX_FILE
+    )
+    expectMessageForRule(msgs, "no-restricted-imports", "app theme provider")
+  })
+
+  it("does NOT fire on a same-directory import", async () => {
+    const msgs = await lintSnippet(
+      themeProtocolConfig,
+      `import { foo } from "./foo"`,
+      TSX_FILE
+    )
+    expectNoMessageForRule(
+      msgs,
+      "no-restricted-imports",
+      "same-directory import"
+    )
   })
 })

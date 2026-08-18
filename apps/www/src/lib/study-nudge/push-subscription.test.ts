@@ -9,7 +9,8 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import type { FileHostTransport } from "../file-host-config/client"
+import type { FileHostTransport } from "@/lib/file-host-config/client"
+
 import {
   hasPushSubscription,
   reconcilePushSubscription,

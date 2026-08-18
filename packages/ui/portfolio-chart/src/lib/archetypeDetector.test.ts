@@ -1,6 +1,6 @@
+import type { Leg } from "@portfolio/types"
 import { describe, expect, it } from "vitest"
 
-import type { Leg } from "../types"
 import { detectArchetype } from "./archetypeDetector"
 
 let nextId = 0

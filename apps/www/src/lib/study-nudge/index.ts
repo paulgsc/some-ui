@@ -28,7 +28,7 @@
  * model — out of a client module that would only have to give it back.
  */
 
-import type { SessionRecord, SessionStatus } from "../tenant/types"
+import type { SessionRecord, SessionStatus } from "@/lib/tenant/types"
 
 export type NudgePreferences = {
   enabled: boolean

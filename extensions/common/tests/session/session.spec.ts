@@ -9,9 +9,8 @@
  * to one minted earlier.
  */
 
+import { mkSession } from "@common/lib/session"
 import { expect, test } from "@playwright/test"
-
-import { mkSession } from "../../src/lib/session"
 
 test("every mint is distinct", () => {
   const ids = Array.from({ length: 100 }, () => mkSession())

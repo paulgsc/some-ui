@@ -1,6 +1,5 @@
+import { requireReactPeerDependency } from "@eslint/rules/index.js"
 import { defineConfig } from "eslint/config"
-
-import { requireReactPeerDependency } from "../rules/index.js"
 
 /**
  * Plugin enforcing the React-library externalization invariant: any workspace

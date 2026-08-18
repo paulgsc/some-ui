@@ -1,6 +1,8 @@
+import {
+  requireCaseBraces,
+  requireFailFastDefault,
+} from "@eslint/rules/index.js"
 import { defineConfig } from "eslint/config"
-
-import { requireCaseBraces, requireFailFastDefault } from "../rules/index.js"
 
 /**
  * Plugin housing switch-statement idiom rules: mandatory per-case block

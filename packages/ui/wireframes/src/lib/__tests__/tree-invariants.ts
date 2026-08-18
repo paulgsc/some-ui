@@ -1,4 +1,4 @@
-import type { LayoutNode } from "../layout-weighted"
+import type { LayoutNode } from "@wireframes/lib/layout-weighted"
 
 /**
  * Counts occurrences of every leaf id in the tree. Unlike `extractLeafIds`

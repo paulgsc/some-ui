@@ -48,10 +48,10 @@
 
 import { existsSync } from "node:fs"
 import { join } from "node:path"
+import typescriptConfig from "@eslint/configs/typescript.config.js"
 import { ESLint } from "eslint"
 import { describe, expect, it } from "vitest"
 
-import typescriptConfig from "../src/configs/typescript.config.js"
 import { PACKAGE_ROOT } from "./helpers/eslint-resolver.js"
 
 // ── Fixture paths ─────────────────────────────────────────────────────────

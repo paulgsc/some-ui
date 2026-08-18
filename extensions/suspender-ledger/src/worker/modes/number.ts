@@ -7,8 +7,7 @@
 
 import type { JsonValue } from "@some-extension/common/observability"
 import { collectMeta } from "@suspender/content/meta"
-
-import { discard } from "../core/discard"
+import { discard } from "@suspender/worker/core/discard"
 import {
   CHECK_ALARM,
   clampCheckPeriodSeconds,
@@ -18,10 +17,10 @@ import {
   observe,
   record,
   safeOrigin,
-} from "../core/observability"
-import { storage } from "../core/prefs"
-import { starters } from "../core/startup"
-import { log, match, query } from "../core/utils"
+} from "@suspender/worker/core/observability"
+import { storage } from "@suspender/worker/core/prefs"
+import { starters } from "@suspender/worker/core/startup"
+import { log, match, query } from "@suspender/worker/core/utils"
 
 /**
  * Time/count-based discard mode: an alarm periodically inspects open tabs and

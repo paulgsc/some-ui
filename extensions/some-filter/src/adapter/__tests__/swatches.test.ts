@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest"
-
 import {
   comfortReport,
   DEFAULT_SWATCH_ID,
@@ -8,7 +6,8 @@ import {
   SWATCHES,
   swatchSample,
   type Swatch,
-} from "../swatches"
+} from "@filter/adapter/swatches"
+import { describe, expect, it } from "vitest"
 
 describe("SWATCHES", () => {
   // No exceptions, by design (#735): a swatch that fails Φ_comfort is a

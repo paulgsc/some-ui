@@ -21,12 +21,13 @@
  * will use, and only the *trigger* changes.
  */
 
-import type { FileHostTransport } from "../file-host-config/client"
+import type { FileHostTransport } from "@/lib/file-host-config/client"
 import {
   createFileHostTransport,
   FileHostNotConfiguredError,
   requestJSON,
-} from "../file-host-config/client"
+} from "@/lib/file-host-config/client"
+
 import type { NudgeDecision } from "./index"
 
 /** Kept in step by hand with the same constant in public/sw.js — that file

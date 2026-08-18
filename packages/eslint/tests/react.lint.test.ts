@@ -39,10 +39,10 @@
  *   The parser belongs in typescript.config, not duplicated into react.config.
  */
 
+import reactConfig from "@eslint/configs/react.config.js"
 import tseslint from "typescript-eslint"
 import { describe, expect, it } from "vitest"
 
-import reactConfig from "../src/configs/react.config.js"
 import {
   expectMessageForRule,
   expectNoMessageForRule,
@@ -315,6 +315,107 @@ describe("lint: no-restricted-syntax — React import patterns", () => {
       messages,
       "no-restricted-syntax",
       "named React import"
+    )
+  })
+})
+
+// ── no-restricted-syntax: parent-relative dynamic import guard ────────────
+//
+// Lives here, not in typescript.config.ts: this file's `no-restricted-syntax`
+// value is what actually reaches every .ts/.tsx file in production (flat
+// config replaces, not merges, a rule's value at the most specific matching
+// config, and this config's `files` glob is spread after typescript.config's
+// in every preset). See the selector's own comment in react.config.ts.
+
+describe("lint: no-restricted-syntax — parent-relative dynamic import guard", () => {
+  it("fires on a parent-relative dynamic import", async () => {
+    const messages = await lintSnippet(
+      reactConfig,
+      `export const load = () => import("../foo")`,
+      "src/Foo.ts"
+    )
+    expectMessageForRule(
+      messages,
+      "no-restricted-syntax",
+      "parent-relative dynamic import"
+    )
+  })
+
+  it("fires on a multi-level parent-relative dynamic import", async () => {
+    const messages = await lintSnippet(
+      reactConfig,
+      `export const load = () => import("../../components/foo")`,
+      "src/Foo.ts"
+    )
+    expectMessageForRule(
+      messages,
+      "no-restricted-syntax",
+      "multi-level parent-relative dynamic import"
+    )
+  })
+
+  it("does NOT fire on a sibling dynamic import", async () => {
+    const messages = await lintSnippet(
+      reactConfig,
+      `export const load = () => import("./foo")`,
+      "src/Foo.ts"
+    )
+    expectNoMessageForRule(
+      messages,
+      "no-restricted-syntax",
+      "sibling dynamic import"
+    )
+  })
+
+  it("does NOT fire on a path-alias dynamic import", async () => {
+    const messages = await lintSnippet(
+      reactConfig,
+      `export const load = () => import("@eslint/foo")`,
+      "src/Foo.ts"
+    )
+    expectNoMessageForRule(
+      messages,
+      "no-restricted-syntax",
+      "path-alias dynamic import"
+    )
+  })
+
+  it("fires on a parent-relative dynamic import written as a template literal", async () => {
+    const messages = await lintSnippet(
+      reactConfig,
+      "export const load = () => import(`../foo`)",
+      "src/Foo.ts"
+    )
+    expectMessageForRule(
+      messages,
+      "no-restricted-syntax",
+      "parent-relative template-literal dynamic import"
+    )
+  })
+
+  it("fires on a parent-relative template literal with interpolation", async () => {
+    const messages = await lintSnippet(
+      reactConfig,
+      "export const load = (name) => import(`../${name}`)",
+      "src/Foo.ts"
+    )
+    expectMessageForRule(
+      messages,
+      "no-restricted-syntax",
+      "interpolated parent-relative template-literal dynamic import"
+    )
+  })
+
+  it("does NOT fire on a sibling dynamic import written as a template literal", async () => {
+    const messages = await lintSnippet(
+      reactConfig,
+      "export const load = (name) => import(`./${name}`)",
+      "src/Foo.ts"
+    )
+    expectNoMessageForRule(
+      messages,
+      "no-restricted-syntax",
+      "sibling template-literal dynamic import"
     )
   })
 })

@@ -51,8 +51,9 @@
 import { useEffect, useRef } from "react"
 import type { RuntimeMode } from "@some-ui/fetch-kit"
 
-import { DATA_MODE } from "../data-mode"
-import { useSessions, useSettings } from "../tenant"
+import { DATA_MODE } from "@/lib/data-mode"
+import { useSessions, useSettings } from "@/lib/tenant"
+
 import type { NudgeDecision, NudgePreferences } from "./index"
 import { decideNudge, DEFAULT_NUDGE_PREFERENCES } from "./index"
 import {

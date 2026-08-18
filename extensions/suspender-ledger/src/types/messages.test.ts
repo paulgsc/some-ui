@@ -4,10 +4,7 @@
 
 import { describe, expect, it } from "vitest"
 
-import {
-  isContentToWorkerMessage,
-  isPopupToWorkerMessage,
-} from "./messages"
+import { isContentToWorkerMessage, isPopupToWorkerMessage } from "./messages"
 
 describe("isPopupToWorkerMessage", () => {
   it("accepts a popup command", () => {

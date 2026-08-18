@@ -1,12 +1,11 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
-
 import {
   commitVisualState,
   disablePrepaint,
   enablePrepaint,
   PREPAINT_VEIL_ID,
   withPrepaintSuppressed,
-} from "../prepaint"
+} from "@filter/lib/content/prepaint"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 afterEach(() => {
   document.getElementById(PREPAINT_VEIL_ID)?.remove()

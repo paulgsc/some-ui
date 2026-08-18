@@ -1,6 +1,5 @@
+import { classifyPage, detect } from "@filter/lib/content/theme-detector"
 import { afterEach, describe, expect, it } from "vitest"
-
-import { classifyPage, detect } from "../theme-detector"
 
 describe("classifyPage", () => {
   afterEach(() => {

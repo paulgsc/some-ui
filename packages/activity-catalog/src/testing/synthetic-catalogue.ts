@@ -5,7 +5,7 @@ import type {
   ActivityMaturity,
   LayoutTreeId,
   TopikLevel,
-} from "../lib/types"
+} from "@activity-catalog/lib/types"
 
 /**
  * A catalogue of arbitrary size, for asking what the launcher and the picker

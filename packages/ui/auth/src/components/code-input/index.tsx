@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef } from "react"
 import type { ChangeEvent, ClipboardEvent, FC, KeyboardEvent } from "react"
+import { VERIFICATION_CODE_LENGTH } from "@auth/lib/schemas"
 import { cn } from "@some-ui/core-utils"
 import { Label } from "@some-ui/shared"
-
-import { VERIFICATION_CODE_LENGTH } from "../../lib/schemas"
 
 const DIGITS_ONLY = /\D/g
 

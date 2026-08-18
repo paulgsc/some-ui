@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react"
+import { AuthGate } from "@auth/components/auth-gate"
+import { useAuthFlow } from "@auth/hooks/use-auth-flow"
+import type { AuthStatus, OAuthProvider } from "@auth/types/auth"
 import { Button } from "@some-ui/shared"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 
 import { AuthFlow } from "."
-import { useAuthFlow } from "../../hooks/use-auth-flow"
-import type { AuthStatus, OAuthProvider } from "../../types/auth"
-import { AuthGate } from "../auth-gate"
 
 type Story = StoryObj<typeof AuthFlow>
 type Meta = MetaObj<typeof AuthFlow>

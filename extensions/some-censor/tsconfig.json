@@ -19,6 +19,7 @@
     "paths": {
       "@censor/*": ["./src/*"],
       "@censor/playwright/*": ["./tests/e2e/*"],
+      "@censor/uno.config": ["./uno.config"],
       "@censor/platform/api": ["./src/lib/platform/api.ts"],
       "@censor/platform/content": ["./src/lib/platform/api.ts"],
       "@censor/platform/background": ["./src/lib/platform/api.ts"]

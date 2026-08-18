@@ -1,6 +1,8 @@
 import { expect, test, type Page } from "@playwright/test"
-
-import { churn, hostilePageHtml } from "../fixtures/hostile-page"
+import {
+  churn,
+  hostilePageHtml,
+} from "@transport/playwright/fixtures/hostile-page"
 
 const HARNESS_BUNDLE = "tests/e2e/harness/dist/entry.js"
 

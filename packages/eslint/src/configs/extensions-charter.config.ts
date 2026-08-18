@@ -1,12 +1,11 @@
-import { defineConfig } from "eslint/config"
-
 import {
   noLogicLayerSideEffects,
   noRawStorage,
   noUnprefixedNamespace,
   noZindexEscalation,
   requireStoryTitlePrefix,
-} from "../rules/index.js"
+} from "@eslint/rules/index.js"
+import { defineConfig } from "eslint/config"
 
 /**
  * Plugin object containing all Good-Citizen Charter lint rules.

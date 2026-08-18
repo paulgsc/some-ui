@@ -1,6 +1,5 @@
+import { noInterpolatedClassname } from "@eslint/rules/index.js"
 import { defineConfig } from "eslint/config"
-
-import { noInterpolatedClassname } from "../rules/index.js"
 
 /**
  * Plugin enforcing the "static class name" idiom that a single-pass Tailwind

@@ -10,12 +10,12 @@
  * filePath passed to lintSnippet must end in .tsx for JSX syntax to parse.
  */
 
+import { tailwindIdiomPlugin } from "@eslint/configs/tailwind-idiom.config.js"
 import typescriptParser from "@typescript-eslint/parser"
 import type { Linter } from "eslint"
 import { defineConfig } from "eslint/config"
 import { describe, expect, it } from "vitest"
 
-import { tailwindIdiomPlugin } from "../src/configs/tailwind-idiom.config.js"
 import {
   expectMessageForRule,
   expectNoMessageForRule,

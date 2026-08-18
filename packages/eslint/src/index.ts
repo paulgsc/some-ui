@@ -17,6 +17,7 @@ import {
   lazyRegistryConfig,
   lazyRegistryPlugin,
   reactConfig,
+  reactImportBanSelectors,
   reactPeerDependencyConfig,
   switchLintConfig,
   switchLintPlugin,
@@ -25,6 +26,7 @@ import {
   testsOverrideConfig,
   themeProtocolConfig,
   themeProtocolPlugin,
+  themeProviderBanPattern,
   toolsOverrideConfig,
   typescriptConfig,
   wasmLoaderGuardConfig,
@@ -76,6 +78,10 @@ export {
 // ── Switch-statement idiom rules ───────────────────────────────────────────
 export { switchLintConfig, switchLintPlugin }
 
+// ── Reusable no-restricted-syntax fragment for workspace-level overrides ───
+// See its own doc comment in react.config.ts.
+export { reactImportBanSelectors }
+
 // ── Intent boundary guard (#937 S1) ─────────────────────────────────────────
 export { intentGuardConfig, intentGuardPlugin }
 
@@ -83,7 +89,7 @@ export { intentGuardConfig, intentGuardPlugin }
 export { fitsTheBoxConfig, fitsTheBoxPlugin }
 
 // ── Theme protocol (reusable UI must inherit its theme, not choose one) ────
-export { themeProtocolConfig, themeProtocolPlugin }
+export { themeProtocolConfig, themeProtocolPlugin, themeProviderBanPattern }
 export { structuralColorRatchet } from "./configs/index.js"
 
 // ── Lazy content-registry loading ──────────────────────────────────────────

@@ -1,4 +1,4 @@
-import type { ViteConfigOptions } from "../../types/index.js"
+import type { ViteConfigOptions } from "@/types/index.js"
 
 export type PackageJsonExportTarget = string | Record<string, string>
 
