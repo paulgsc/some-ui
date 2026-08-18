@@ -69,7 +69,7 @@ const DestinationCard = (destination: Destination): JSX.Element => {
         <div className="bg-primary/10 flex size-11 items-center justify-center rounded-full">
           <Icon className="text-primary size-5" aria-hidden />
         </div>
-        <div className="flex-1 space-y-1.5">
+        <div className="min-h-0 flex-1 space-y-1.5">
           <h2 className="font-semibold">{title}</h2>
           <p className="text-muted-foreground text-sm">{description}</p>
         </div>

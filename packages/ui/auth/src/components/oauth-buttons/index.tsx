@@ -9,11 +9,11 @@ export type AuthDividerProps = {
 /** Rule with centred text, for the gap between third-party and credentials. */
 export const AuthDivider: FC<AuthDividerProps> = ({ label = "or" }) => (
   <div className="flex items-center gap-3">
-    <span className="bg-border h-px flex-1" />
+    <span className="bg-border h-px min-w-0 flex-1" />
     <span className="text-muted-foreground text-xs uppercase tracking-wide">
       {label}
     </span>
-    <span className="bg-border h-px flex-1" />
+    <span className="bg-border h-px min-w-0 flex-1" />
   </div>
 )
 

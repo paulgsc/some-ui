@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Compiles resume.typ -> dist/resume.pdf.
+// Compiles resume.typ into PDF downloads and browser-native SVG previews.
 //
 // No system-wide `typst` dependency required: if `typst` isn't already on
 // PATH, this fetches the pinned release binary for the current platform
@@ -7,7 +7,7 @@
 // uses in CI) and caches it under node_modules/.cache so repeat builds are
 // free. That's the whole pipeline for this MVP - no WASM compiler, no
 // server: pass --watch for `typst watch` during local editing.
-import { execFileSync, spawnSync } from "node:child_process"
+import { execFileSync, spawn, spawnSync } from "node:child_process"
 import {
   chmodSync,
   copyFileSync,
@@ -99,29 +99,56 @@ async function main() {
   mkdirSync(outDir, { recursive: true })
 
   if (watch) {
-    const outFile = join(outDir, "resume-backend.pdf")
     // eslint-disable-next-line no-console
-    console.log("[resume] watching the backend composition...")
-    const result = spawnSync(
-      typstBin,
-      ["watch", sourceFile, outFile, "--input", "variant=backend"],
-      { stdio: "inherit" }
+    console.log("[resume] watching the backend PDF and SVG composition...")
+    const watchers = ["pdf", "svg"].map((format) =>
+      spawn(
+        typstBin,
+        [
+          "watch",
+          sourceFile,
+          join(outDir, `resume-backend.${format}`),
+          "--input",
+          "variant=backend",
+        ],
+        { stdio: "inherit" }
+      )
     )
-    process.exitCode = result.status ?? 1
+
+    const finishedWatcher = await new Promise((resolve) => {
+      for (const watcher of watchers) {
+        watcher.once("exit", (status) => resolve({ watcher, status }))
+      }
+    })
+    for (const watcher of watchers) {
+      if (watcher !== finishedWatcher.watcher) watcher.kill()
+    }
+    process.exitCode = finishedWatcher.status ?? 1
     return
   }
 
   for (const variant of variants) {
-    const outFile = join(outDir, `resume-${variant}.pdf`)
+    const pdfFile = join(outDir, `resume-${variant}.pdf`)
+    const svgFile = join(outDir, `resume-${variant}.svg`)
     // eslint-disable-next-line no-console
     console.log(`[resume] compiling the ${variant} composition...`)
-    const result = spawnSync(
+    const pdfResult = spawnSync(
       typstBin,
-      ["compile", sourceFile, outFile, "--input", `variant=${variant}`],
+      ["compile", sourceFile, pdfFile, "--input", `variant=${variant}`],
       { stdio: "inherit" }
     )
-    if (result.status !== 0) {
-      process.exitCode = result.status ?? 1
+    if (pdfResult.status !== 0) {
+      process.exitCode = pdfResult.status ?? 1
+      return
+    }
+
+    const svgResult = spawnSync(
+      typstBin,
+      ["compile", sourceFile, svgFile, "--input", `variant=${variant}`],
+      { stdio: "inherit" }
+    )
+    if (svgResult.status !== 0) {
+      process.exitCode = svgResult.status ?? 1
       return
     }
   }

@@ -30,6 +30,10 @@ export type AuthPageTemplateProps = AuthFlowProps & {
  * Copy-friendly, shadcn-style page composition for the complete auth flow.
  * It only forwards props: routing, WebAuthn, and server calls belong to the
  * host application's adapter.
+ *
+ * Governing rule: Mobile defines the auth experience; desktop decorates it.
+ * Below the `lg` breakpoint, the marketing/welcome panel is hidden entirely,
+ * rendering a single compact auth page (brand → form → footer).
  */
 export const AuthPageTemplate: FC<AuthPageTemplateProps> = ({
   brand = <AuthBrand />,
@@ -41,63 +45,74 @@ export const AuthPageTemplate: FC<AuthPageTemplateProps> = ({
   passkeyAvailable = true,
   passkeyFirst = true,
   ...flowProps
-}) => (
-  <main
-    className={cn(
-      "some-ui-auth-page bg-background text-foreground grid min-h-screen font-sans lg:grid-cols-2",
-      !aside && !welcome && "lg:grid-cols-1",
-      className
-    )}
-  >
-    {aside || welcome ? (
-      <aside className="some-ui-auth-page__aside relative flex flex-col overflow-hidden border-b p-6 lg:min-h-screen lg:border-r lg:border-b-0 lg:p-10">
-        {brand ? <div className="relative z-10">{brand}</div> : null}
-        {notice ? (
-          <Alert className="relative z-10 mt-6 max-w-xs self-end lg:absolute lg:top-10 lg:right-10 lg:mt-0">
-            <Info aria-hidden="true" />
-            <AlertTitle>{notice.title}</AlertTitle>
-            {notice.description ? (
-              <AlertDescription>{notice.description}</AlertDescription>
-            ) : null}
-          </Alert>
-        ) : null}
-        <div className="relative z-10 my-12 flex flex-1 items-center lg:my-20">
-          {welcome ? (
-            <div className="max-w-md space-y-3">
-              {welcome.eyebrow ? (
-                <p className="text-primary text-sm font-semibold tracking-wide uppercase">
-                  {welcome.eyebrow}
-                </p>
+}) => {
+  const hasAside = Boolean(aside || welcome)
+
+  return (
+    <main
+      className={cn(
+        "some-ui-auth-page bg-background text-foreground min-h-dvh font-sans",
+        hasAside && "lg:grid lg:grid-cols-2",
+        className
+      )}
+    >
+      {hasAside ? (
+        <aside className="some-ui-auth-page__aside relative hidden min-h-dvh flex-col overflow-hidden border-r p-10 lg:flex">
+          {brand ? <div className="relative z-10">{brand}</div> : null}
+
+          {notice ? (
+            <Alert className="absolute top-10 right-10 z-10 max-w-xs">
+              <Info aria-hidden="true" />
+              <AlertTitle>{notice.title}</AlertTitle>
+              {notice.description ? (
+                <AlertDescription>{notice.description}</AlertDescription>
               ) : null}
-              <h1 className="text-3xl font-bold text-balance tracking-tight lg:text-4xl">
-                {welcome.title}
-              </h1>
-              {welcome.description ? (
-                <p className="text-muted-foreground max-w-sm leading-relaxed text-balance">
-                  {welcome.description}
-                </p>
-              ) : null}
-            </div>
-          ) : (
-            aside
-          )}
-        </div>
-      </aside>
-    ) : null}
-    <section className="flex min-h-screen flex-col p-6 md:p-10">
-      {!aside && !welcome && brand ? <header>{brand}</header> : null}
-      <div className="flex flex-1 items-center justify-center py-10">
-        <AuthFlow
-          {...flowProps}
-          passkeyAvailable={passkeyAvailable}
-          passkeyFirst={passkeyFirst}
-        />
-      </div>
-      {footer ? (
-        <footer className="text-muted-foreground text-center text-xs">
-          {footer}
-        </footer>
+            </Alert>
+          ) : null}
+
+          <div className="relative z-10 flex flex-1 items-center">
+            {welcome ? (
+              <div className="max-w-md space-y-3">
+                {welcome.eyebrow ? (
+                  <p className="text-primary text-sm font-semibold tracking-wide uppercase">
+                    {welcome.eyebrow}
+                  </p>
+                ) : null}
+
+                <h1 className="text-4xl font-bold tracking-tight text-balance">
+                  {welcome.title}
+                </h1>
+
+                {welcome.description ? (
+                  <p className="text-muted-foreground max-w-sm leading-relaxed text-balance">
+                    {welcome.description}
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              aside
+            )}
+          </div>
+        </aside>
       ) : null}
-    </section>
-  </main>
-)
+
+      <section className="flex min-h-dvh flex-col px-6 py-6 sm:px-8 lg:p-10">
+        <header className={cn(hasAside && "lg:hidden")}>{brand}</header>
+
+        <div className="min-h-0 flex flex-1 items-center justify-center py-8">
+          <AuthFlow
+            {...flowProps}
+            passkeyAvailable={passkeyAvailable}
+            passkeyFirst={passkeyFirst}
+          />
+        </div>
+
+        {footer ? (
+          <footer className="text-muted-foreground text-center text-xs">
+            {footer}
+          </footer>
+        ) : null}
+      </section>
+    </main>
+  )
+}
