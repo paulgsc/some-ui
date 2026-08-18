@@ -1,5 +1,5 @@
 import type { JSX, MouseEvent } from "react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useTheme } from "@/providers/theme"
 import {
   Button,
@@ -23,6 +23,7 @@ const RESUME_COMPOSITIONS = [
 ] as const
 type ResumeComposition = (typeof RESUME_COMPOSITIONS)[number]["id"]
 const RESUME_COMPOSITION_KEY = "some-ui:resume-composition"
+const MOBILE_PREVIEW_QUERY = "(max-width: 767px)"
 
 function isResumeComposition(value: string | null): value is ResumeComposition {
   return RESUME_COMPOSITIONS.some(({ id }) => id === value)
@@ -41,7 +42,21 @@ const ResumeRoute = (): JSX.Element => {
     useState<ResumeComposition>(initialComposition)
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
   const pdfPath = `${import.meta.env.BASE_URL}resume-${composition}.pdf`
+  const svgPath = `${import.meta.env.BASE_URL}resume-${composition}.svg`
+  const [mobilePreview, setMobilePreview] = useState(() =>
+    typeof window === "undefined"
+      ? false
+      : window.matchMedia(MOBILE_PREVIEW_QUERY).matches
+  )
   const label = RESUME_COMPOSITIONS.find(({ id }) => id === composition)?.label
+
+  useEffect(() => {
+    const query = window.matchMedia(MOBILE_PREVIEW_QUERY)
+    const updatePreview = (): void => setMobilePreview(query.matches)
+    updatePreview()
+    query.addEventListener("change", updatePreview)
+    return () => query.removeEventListener("change", updatePreview)
+  }, [])
 
   const selectComposition = (next: ResumeComposition): void => {
     localStorage.setItem(RESUME_COMPOSITION_KEY, next)
@@ -66,7 +81,7 @@ const ResumeRoute = (): JSX.Element => {
 
   return (
     <Card className="flex h-full flex-col" onContextMenu={openCompositionMenu}>
-      <CardHeader className="flex-row items-center justify-between space-y-0">
+      <CardHeader className="flex-row flex-wrap items-center justify-between gap-3 space-y-0">
         <div>
           <CardTitle>Résumé</CardTitle>
           <p className="text-muted-foreground text-xs">{label}</p>
@@ -92,18 +107,27 @@ const ResumeRoute = (): JSX.Element => {
       </CardHeader>
       <CardContent className="min-h-0 flex-1 pb-6">
         <div
-          className="relative isolate size-full overflow-hidden rounded-md border"
+          className="relative isolate size-full overflow-auto rounded-md border md:overflow-hidden"
           onContextMenu={openCompositionMenu}
         >
-          <iframe
-            key={composition}
-            src={pdfPath}
-            title="Résumé preview"
-            // Browser PDF viewers are isolated documents and do not expose a
-            // theme API. Filtering the embedded surface keeps the preview in
-            // step with the app without changing the downloadable PDF itself.
-            className={`size-full transition-[filter] ${darkPreview ? "invert hue-rotate-180" : ""}`}
-          />
+          {mobilePreview ? (
+            <img
+              key={composition}
+              src={svgPath}
+              alt={`${label} résumé`}
+              className={`h-auto w-full transition-[filter] ${darkPreview ? "invert hue-rotate-180" : ""}`}
+            />
+          ) : (
+            <iframe
+              key={composition}
+              src={pdfPath}
+              title="Résumé preview"
+              // Browser PDF viewers are isolated documents and do not expose a
+              // theme API. Filtering the embedded surface keeps the preview in
+              // step with the app without changing the downloadable PDF itself.
+              className={`size-full transition-[filter] ${darkPreview ? "invert hue-rotate-180" : ""}`}
+            />
+          )}
           {darkPreview && (
             <div
               aria-hidden="true"

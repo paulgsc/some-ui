@@ -31,10 +31,11 @@ erases the underlying work or creates a random assortment of bullets.
 ```
 resume.meta.typ (evidence + compositions)
               ↓ imported by
-resume.typ --variant--> dist/resume-{backend,systems,learning}.pdf
+resume.typ --variant--> dist/resume-{backend,systems,learning}.{pdf,svg}
 ```
 
-`pnpm build` (`scripts/compile.mjs`) compiles all named one-page compositions.
+`pnpm build` (`scripts/compile.mjs`) compiles all named one-page compositions
+to PDF downloads and SVG web previews.
 The backend variant is also copied to `dist/resume.pdf` for compatibility. A Typst layout assertion fails the build if any composition exceeds one page. There's no browser-side WASM compiler and no server in
 this first cut — that's a deliberate MVP cut, not an oversight: static
 precompilation is the cheapest thing that actually proves the concept
@@ -50,8 +51,10 @@ guard against a targeted variant becoming so concise that it stops exposing
 qualifications the underlying work genuinely supports; it does not invent
 unsupported tenure, Kubernetes, scale, or employment history.
 
-`apps/www`'s `/resume` route serves the compiled PDF for inline preview and
-download — see its README for how the two are wired together.
+`apps/www`'s `/resume` route uses the compiled SVG on narrow viewports so mobile
+web views render the document as ordinary web content instead of handing the
+PDF off to a download flow. Desktop retains the browser's full PDF viewer, and
+the explicit PDF download remains available on every viewport.
 
 ### No system `typst` dependency
 
