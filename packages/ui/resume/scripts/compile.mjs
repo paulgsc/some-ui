@@ -7,7 +7,7 @@
 // uses in CI) and caches it under node_modules/.cache so repeat builds are
 // free. That's the whole pipeline for this MVP - no WASM compiler, no
 // server: pass --watch for `typst watch` during local editing.
-import { execFileSync, spawnSync } from "node:child_process"
+import { execFileSync, spawn, spawnSync } from "node:child_process"
 import {
   chmodSync,
   copyFileSync,
@@ -99,15 +99,31 @@ async function main() {
   mkdirSync(outDir, { recursive: true })
 
   if (watch) {
-    const outFile = join(outDir, "resume-backend.pdf")
     // eslint-disable-next-line no-console
-    console.log("[resume] watching the backend composition...")
-    const result = spawnSync(
-      typstBin,
-      ["watch", sourceFile, outFile, "--input", "variant=backend"],
-      { stdio: "inherit" }
+    console.log("[resume] watching the backend PDF and SVG composition...")
+    const watchers = ["pdf", "svg"].map((format) =>
+      spawn(
+        typstBin,
+        [
+          "watch",
+          sourceFile,
+          join(outDir, `resume-backend.${format}`),
+          "--input",
+          "variant=backend",
+        ],
+        { stdio: "inherit" }
+      )
     )
-    process.exitCode = result.status ?? 1
+
+    const finishedWatcher = await new Promise((resolve) => {
+      for (const watcher of watchers) {
+        watcher.once("exit", (status) => resolve({ watcher, status }))
+      }
+    })
+    for (const watcher of watchers) {
+      if (watcher !== finishedWatcher.watcher) watcher.kill()
+    }
+    process.exitCode = finishedWatcher.status ?? 1
     return
   }
 
