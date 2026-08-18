@@ -100,7 +100,7 @@ export const AuthPageTemplate: FC<AuthPageTemplateProps> = ({
       <section className="flex min-h-dvh flex-col px-6 py-6 sm:px-8 lg:p-10">
         <header className={cn(hasAside && "lg:hidden")}>{brand}</header>
 
-        <div className="flex flex-1 items-center justify-center py-8">
+        <div className="min-h-0 flex flex-1 items-center justify-center py-8">
           <AuthFlow
             {...flowProps}
             passkeyAvailable={passkeyAvailable}

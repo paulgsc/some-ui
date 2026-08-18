@@ -134,7 +134,7 @@ const ResumeRoute = (): JSX.Element => {
     const updatePreview = (): void => setMobilePreview(query.matches)
     updatePreview()
     query.addEventListener("change", updatePreview)
-    return () => query.removeEventListener("change", updatePreview)
+    return (): void => query.removeEventListener("change", updatePreview)
   }, [])
 
   const selectComposition = (next: ResumeComposition): void => {
