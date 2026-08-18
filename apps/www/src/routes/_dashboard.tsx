@@ -11,6 +11,7 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
+  useSidebar,
 } from "@some-ui/shared"
 import {
   createFileRoute,
@@ -63,6 +64,63 @@ function isNavItemActive(itemPath: NavItem["to"], pathname: string): boolean {
   return pathname === itemPath || pathname.startsWith(`${itemPath}/`)
 }
 
+const DashboardSidebarContent = ({
+  pathname,
+}: {
+  pathname: string
+}): JSX.Element => {
+  const { setOpenMobile, isMobile } = useSidebar()
+
+  return (
+    <Sidebar>
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild size="lg" tooltip="Some UI home">
+              <Link to="/" aria-label="Some UI home">
+                <span className="flex size-8 shrink-0 items-center justify-center">
+                  <HexCombMark tone="brand" className="size-6" />
+                </span>
+                <span className="text-gradient-accent font-semibold">
+                  Some UI
+                </span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {NAV_ITEMS.map((item) => (
+                <SidebarMenuItem key={item.to}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isNavItemActive(item.to, pathname)}
+                  >
+                    <Link
+                      to={item.to}
+                      onClick={() => {
+                        if (isMobile) {
+                          setOpenMobile(false)
+                        }
+                      }}
+                    >
+                      <item.icon />
+                      <span>{item.label}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+    </Sidebar>
+  )
+}
+
 const DashboardLayout = (): JSX.Element => {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
@@ -72,45 +130,7 @@ const DashboardLayout = (): JSX.Element => {
 
   return (
     <SidebarProvider className={cn(isViewportRoute && "h-svh overflow-hidden")}>
-      <Sidebar>
-        <SidebarHeader>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild size="lg" tooltip="Some UI home">
-                <Link to="/" aria-label="Some UI home">
-                  <span className="flex size-8 shrink-0 items-center justify-center">
-                    <HexCombMark tone="brand" className="size-6" />
-                  </span>
-                  <span className="text-gradient-accent font-semibold">
-                    Some UI
-                  </span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarHeader>
-        <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {NAV_ITEMS.map((item) => (
-                  <SidebarMenuItem key={item.to}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isNavItemActive(item.to, pathname)}
-                    >
-                      <Link to={item.to}>
-                        <item.icon />
-                        <span>{item.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
-      </Sidebar>
+      <DashboardSidebarContent pathname={pathname} />
       <SidebarInset>
         <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger />
