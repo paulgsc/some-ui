@@ -111,32 +111,46 @@ const ResumeRoute = (): JSX.Element => {
           onContextMenu={openCompositionMenu}
         >
           {mobilePreview ? (
-            <img
-              key={composition}
-              src={svgPath}
-              alt={`${label} résumé`}
-              className={`h-auto w-full transition-[filter] ${darkPreview ? "invert hue-rotate-180" : ""}`}
-            />
+            <div className="relative">
+              <object
+                key={composition}
+                data={svgPath}
+                type="image/svg+xml"
+                title={`${label} résumé`}
+                className={`aspect-[17/22] h-auto w-full transition-[filter] ${darkPreview ? "invert hue-rotate-180" : ""}`}
+              >
+                <a href={pdfPath}>View the {label} résumé as a PDF</a>
+              </object>
+              {darkPreview && (
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 mix-blend-multiply"
+                  style={{ backgroundColor: resolved.swatch.fg }}
+                />
+              )}
+            </div>
           ) : (
-            <iframe
-              key={composition}
-              src={pdfPath}
-              title="Résumé preview"
-              // Browser PDF viewers are isolated documents and do not expose a
-              // theme API. Filtering the embedded surface keeps the preview in
-              // step with the app without changing the downloadable PDF itself.
-              className={`size-full transition-[filter] ${darkPreview ? "invert hue-rotate-180" : ""}`}
-            />
-          )}
-          {darkPreview && (
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0 mix-blend-multiply"
-              // Inversion alone turns black type into bright white. Tinting
-              // those light pixels with the active theme's foreground token
-              // preserves the repo's no-sun-white text invariant.
-              style={{ backgroundColor: resolved.swatch.fg }}
-            />
+            <>
+              <iframe
+                key={composition}
+                src={pdfPath}
+                title="Résumé preview"
+                // Browser PDF viewers are isolated documents and do not expose a
+                // theme API. Filtering the embedded surface keeps the preview in
+                // step with the app without changing the downloadable PDF itself.
+                className={`size-full transition-[filter] ${darkPreview ? "invert hue-rotate-180" : ""}`}
+              />
+              {darkPreview && (
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 mix-blend-multiply"
+                  // Inversion alone turns black type into bright white. Tinting
+                  // those light pixels with the active theme's foreground token
+                  // preserves the repo's no-sun-white text invariant.
+                  style={{ backgroundColor: resolved.swatch.fg }}
+                />
+              )}
+            </>
           )}
         </div>
         {menu && (
