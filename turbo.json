@@ -37,6 +37,9 @@
     "lint:corpus": {
       "cache": false
     },
+    "test:deletions-are-free": {
+      "cache": false
+    },
     "lint:fix": {
       "cache": false,
       "outputs": []

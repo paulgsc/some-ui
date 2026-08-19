@@ -219,10 +219,15 @@ function checkPatchAlignment(
   const violations: Array<string> = []
   let cursor = 0
   renderedLines.forEach((line, index) => {
-    const hasTypeableChar = Array.from(
-      { length: line.length },
+    // `roles` is indexed by Rust `char` — one entry per Unicode scalar
+    // value, not per UTF-16 code unit. `line.length` counts UTF-16 units,
+    // so a surrogate-pair character (anything outside the BMP) would
+    // overcount by one and drift `cursor` for every line after it.
+    // `Array.from(line)` iterates by code point, matching that indexing.
+    const lineChars = Array.from(line)
+    const hasTypeableChar = lineChars.some(
       (_, offset) => roles[cursor + offset] === ROLE_TYPEABLE
-    ).some(Boolean)
+    )
     const kind = lineKinds[index]
     if (kind === undefined) return // unreachable: lengths were checked equal above
     if (kind === "add" && !hasTypeableChar) {
@@ -237,7 +242,7 @@ function checkPatchAlignment(
           'character on it — a line with anything to type reads as "add", per the mixed-line rule.'
       )
     }
-    cursor += line.length + 1 // +1 for the '\n' consumed between lines
+    cursor += lineChars.length + 1 // +1 for the '\n' consumed between lines
   })
   return violations
 }

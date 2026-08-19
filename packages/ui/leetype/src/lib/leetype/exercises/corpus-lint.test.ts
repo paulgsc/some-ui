@@ -279,4 +279,32 @@ describe("patch.lineKinds alignment against the rendered source (LTY-PATCH P6, #
     ])
     expect(violations).toEqual([])
   })
+
+  it("stays aligned across a surrogate-pair character, where a UTF-16-length cursor would drift", () => {
+    // "🎉" is one Rust `char` (one Unicode scalar value) but two UTF-16
+    // code units — `roles` is indexed the first way (role_codes() walks
+    // Program::chars, a Vec<char>), so a cursor advanced by
+    // `line.length` (the second way) overcounts by one after this line
+    // and every line after it reads one role short. Regression for a
+    // real review finding on #1081.
+    const emojiWitness: Block = {
+      kind: "typing",
+      source: "🎉x\nb",
+      language: "rust",
+      patch: {
+        path: "src/example.rs",
+        oldStart: 1,
+        newStart: 1,
+        lineKinds: ["context", "add"],
+      },
+    }
+    const step = constructionStep({ blocks: [constraint, emojiWitness] })
+    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }], {
+      renderedSourceOf: (source) => source,
+      // Char-indexed, matching classify_source: 🎉(context), x(context),
+      // \n(context — irrelevant, never read as part of either line), b(add).
+      rolesOf: () => Uint8Array.from([2, 2, 2, 1]),
+    })
+    expect(violations).toEqual([])
+  })
 })
