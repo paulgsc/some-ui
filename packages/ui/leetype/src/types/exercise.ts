@@ -317,12 +317,22 @@ export const RationaleSchema = z.object({
 })
 
 /**
- * The longest a diagnostic step's repair — the *typed* portion of its
- * typing block, i.e. `typedPortionOf(source)` below, not `source.length` —
- * is allowed to run: constraint 4's "seconds to copy once revealed, not a
- * minute," made a number. The frame around the repair (context, per
- * LTY-FRAME) is unbounded by this constant on purpose; only what the player
- * actually types is.
+ * The longest a diagnostic step's repair — an approximation of the
+ * engine's own `typed_stream` length over `typedPortionOf(source)` below
+ * (`typeableStreamLength`), not `source.length` and not
+ * `typedPortionOf(source).length` either — is allowed to run: constraint
+ * 4's "seconds to copy once revealed, not a minute," made a number. The
+ * frame around the repair (context, per LTY-FRAME) is unbounded by this
+ * constant on purpose; only what the player actually types is.
+ *
+ * Measured as *keystrokes*, not raw characters, because a repair's typed
+ * portion can itself contain layout the player never presses a key for —
+ * newlines and per-line leading indentation, both `Role::Skip` in the
+ * engine. That distinction was invisible for a single-line repair (nothing
+ * to indent around), which is exactly why the gap surfaced only once
+ * LTY-PATCH P4 allowed a repair to span lines: measuring raw characters
+ * there would reject an indented multi-line repair the volume bound is not
+ * actually meant to reject, purely because of its formatting.
  *
  * # LTY-PATCH P4 (#1079): this bound used to also police structure
  *
@@ -356,11 +366,12 @@ export const RationaleSchema = z.object({
  *   rather than by what the step is actually doing.
  *
  * 50 rather than a round "looks generous" figure: the five original
- * hand-authored instances span 11–41 typed characters (`right -= 1;` to
+ * hand-authored instances span 11–40 typed keystrokes (`right -= 1;` to
  * `map.entry(key).or_default().push(value);`), so this is headroom above
  * the corpus's own actual ceiling, not a number picked in the abstract.
- * LTY-PATCH's own multi-line instance (a three-line, 41-character guard
- * clause) fits inside that same headroom — no reason to raise the number
+ * LTY-PATCH's own multi-line instance (a three-line guard clause, 39 raw
+ * characters but 25 typed keystrokes once its indentation and newlines are
+ * excluded) fits inside that same headroom — no reason to raise the number
  * yet. Raise it the same way if a future instance actually needs more: from
  * a real instance, not in the abstract.
  */
@@ -493,6 +504,56 @@ function typedPortionOf(source: string): string {
   return source.replace(/‹[^›]*›/g, "")
 }
 
+/** Whitespace `program.rs` ever classifies as layout — the alphabet `isLoneInteriorSpace` checks the boundary of. */
+function isLayoutWhitespace(char: string | undefined): boolean {
+  return (
+    char === undefined ||
+    char === " " ||
+    char === "\n" ||
+    char === "\t" ||
+    char === "\r"
+  )
+}
+
+/**
+ * Approximates the length of the engine's own `typed_stream` over a
+ * rendered span — not `span.length`, which counts layout the player never
+ * presses a key for. Same posture as `typedPortionOf` above: a pure-string
+ * approximation of `program.rs`'s classification rule ("a run of
+ * whitespace is typeable only when it is exactly one space bounded on both
+ * sides by non-whitespace"), kept approximate rather than importing the
+ * wasm engine, for the same reason this whole file stays engine-free.
+ *
+ * Load-bearing for LTY-PATCH P4 (#1079): once a repair can span multiple
+ * lines, its raw character count includes newlines and per-line leading
+ * indentation that `Role::Skip` already excludes from what the player
+ * actually types (`press()` refuses `\n`/`\r`/`\t` outright) — measuring
+ * `span.length` there would reject a repair the volume bound is not
+ * actually meant to reject, purely because of how it happens to be
+ * indented.
+ */
+function typeableStreamLength(span: string): number {
+  let count = 0
+  for (let index = 0; index < span.length; index++) {
+    const char = span[index]
+    if (!isLayoutWhitespace(char)) {
+      count += 1
+      continue
+    }
+    // The one whitespace run that *is* typed: a lone space bounded by
+    // non-whitespace on both sides. Everything else here — an indentation
+    // run, a newline, a multi-space run — is Role::Skip.
+    if (
+      char === " " &&
+      !isLayoutWhitespace(span[index - 1]) &&
+      !isLayoutWhitespace(span[index + 1])
+    ) {
+      count += 1
+    }
+  }
+  return count
+}
+
 /** Volume half of the diagnostic repair bound (LTY-PATCH P4) — see `DIAGNOSTIC_REPAIR_MAX_CHARS`'s doc comment. */
 function diagnosticRepairWithinCharBudget(step: BlocksHolder): boolean {
   const repair = step.blocks.find(
@@ -502,7 +563,10 @@ function diagnosticRepairWithinCharBudget(step: BlocksHolder): boolean {
   // The "exactly one typing block" refine already reports a missing
   // repair; nothing to bound here.
   if (repair === undefined) return true
-  return typedPortionOf(repair.source).length <= DIAGNOSTIC_REPAIR_MAX_CHARS
+  return (
+    typeableStreamLength(typedPortionOf(repair.source)) <=
+    DIAGNOSTIC_REPAIR_MAX_CHARS
+  )
 }
 
 /**

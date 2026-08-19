@@ -566,6 +566,34 @@ describe("DiagnosticStepSchema — the falsification→repair family", () => {
       expect(result.success).toBe(true)
     })
 
+    it("measures keystrokes, not raw characters — indentation and newlines don't inflate the budget", () => {
+      // Regression for a review finding on this story: a repair's raw
+      // character count includes layout (leading indentation, newlines)
+      // the player never presses a key for (Role::Skip). Four lines
+      // indented 12 spaces each run to 67 raw characters — over budget if
+      // measured naively — but only 16 actual keystrokes once indentation
+      // and newlines are excluded, comfortably inside it.
+      const indentedLine = "            x();" // 12 spaces + typed "x();"
+      const source = Array(4).fill(indentedLine).join("\n")
+      expect(source.length).toBeGreaterThan(DIAGNOSTIC_REPAIR_MAX_CHARS)
+      const heavilyIndented: Block = {
+        kind: "typing",
+        source,
+        language: "rust",
+        patch: {
+          path: "src/example.rs",
+          oldStart: 1,
+          newStart: 1,
+          lineKinds: ["add", "add", "add", "add"],
+        },
+      }
+      const result = DiagnosticStepSchema.safeParse({
+        ...step([failure, heavilyIndented]),
+        rationale,
+      })
+      expect(result.success).toBe(true)
+    })
+
     it("rejects a patch repair whose add lines split into two runs, and says why", () => {
       // Two separate runs is two faults wearing one hunk — the exact shape
       // "one fault, one edit" (constraint 1) exists to rule out, now
