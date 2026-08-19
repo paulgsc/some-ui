@@ -5,9 +5,11 @@ import {
   VISIBILITY_MASKED,
   VISIBILITY_REVEALED,
 } from "@leetype/types/leetype"
+import type { RenderResult } from "@testing-library/react"
 import { render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 
+import type { LineKind } from "."
 import { CodeDisplay } from "."
 
 /**
@@ -143,6 +145,284 @@ describe("CodeDisplay — the caret never lands on a context character", () => {
     expect(maskedTypeableSpans.length).toBeGreaterThan(0)
     maskedTypeableSpans.forEach((span) => {
       expect(span.textContent).toBe("•")
+    })
+  })
+})
+
+// ── LTY-PATCH P3 (#1078): the hunk overlay ─────────────────────────────
+
+/**
+ * A small hand-built hunk: one context line, one deleted line, one added
+ * line, one more context line — the ordinary two-column diff convention
+ * exercised across every row kind in one fixture.
+ *
+ * Deletion is `Role::Context` throughout (LTY-PATCH P1, #1076: a `-` line
+ * and an unchanged line are the same thing to the engine), so `bad();`
+ * gets the same role as `start`/`end` — only the hunk's own `lineKinds`
+ * distinguishes them, which is exactly the distinction this story adds.
+ */
+const HUNK_LINES = ["start", "bad();", "good();", "end"]
+const HUNK_KINDS: ReadonlyArray<LineKind> = ["context", "del", "add", "context"]
+const HUNK_DISPLAY_CODE = HUNK_LINES.join("\n")
+const HUNK_OLD_START = 10
+const HUNK_NEW_START = 10
+
+function buildHunkFixture(): {
+  roles: Uint8Array
+  slotOfDisplay: Int32Array
+  slotStatus: Uint8Array
+  visibility: Uint8Array
+} {
+  const roles = new Uint8Array(HUNK_DISPLAY_CODE.length)
+  const slotOfDisplay = new Int32Array(HUNK_DISPLAY_CODE.length).fill(-1)
+  let displayIndex = 0
+  let slot = 0
+  HUNK_LINES.forEach((line, lineIndex) => {
+    const role = HUNK_KINDS[lineIndex] === "add" ? ROLE_TYPEABLE : ROLE_CONTEXT
+    for (let i = 0; i < line.length; i++) {
+      roles[displayIndex] = role
+      if (role === ROLE_TYPEABLE) slotOfDisplay[displayIndex] = slot++
+      displayIndex++
+    }
+    if (lineIndex < HUNK_LINES.length - 1) {
+      roles[displayIndex] = ROLE_CONTEXT // the '\n' itself — never read by the row renderer
+      displayIndex++
+    }
+  })
+  return {
+    roles,
+    slotOfDisplay,
+    slotStatus: new Uint8Array(slot).fill(SLOT_UNTOUCHED),
+    visibility: new Uint8Array(slot).fill(VISIBILITY_REVEALED),
+  }
+}
+
+const CONTEXT_SOURCE_FOR_NO_HUNK_CHECK = "// note\nlet y = 2;"
+
+function roleArrayAllContext(source: string): Uint8Array {
+  return new Uint8Array(source.length).fill(ROLE_CONTEXT)
+}
+
+describe("CodeDisplay — the hunk overlay (LTY-PATCH P3, #1078)", () => {
+  it("renders a sign column and both line-number columns, add/del/context alike", () => {
+    const { roles, slotOfDisplay, slotStatus, visibility } = buildHunkFixture()
+    const { container } = render(
+      <CodeDisplay
+        displayCode={HUNK_DISPLAY_CODE}
+        language="rust"
+        roles={roles}
+        slotOfDisplay={slotOfDisplay}
+        slotStatus={slotStatus}
+        visibility={visibility}
+        cursorDisplay={-1}
+        hunk={{
+          lineKinds: HUNK_KINDS,
+          oldStart: HUNK_OLD_START,
+          newStart: HUNK_NEW_START,
+        }}
+      />
+    )
+
+    const rows = container.querySelectorAll("[data-line-kind]")
+    expect(rows).toHaveLength(4)
+    expect(
+      Array.from(rows).map((row) => row.getAttribute("data-line-kind"))
+    ).toEqual(["context", "del", "add", "context"])
+
+    // sign, old, new: the ordinary two-column diff convention — add fills
+    // the new column only, del fills the old column only, context fills
+    // both, and every row's running counters advance independently.
+    const expectedGutters = [
+      { sign: " ", old: "10", new: "10" },
+      { sign: "-", old: "11", new: "" },
+      { sign: "+", old: "", new: "11" },
+      { sign: " ", old: "12", new: "12" },
+    ]
+    rows.forEach((row, i) => {
+      const [sign, old, next] = row.children
+      expect(sign?.textContent).toBe(expectedGutters[i]?.sign)
+      expect(old?.textContent).toBe(expectedGutters[i]?.old)
+      expect(next?.textContent).toBe(expectedGutters[i]?.new)
+    })
+  })
+
+  it("wraps every row's code in a real <pre>, never a bare language- code element", () => {
+    // Regression for a review finding: Prism's imported theme carries an
+    // unlayered `:not(pre) > code[class*="language-"]` rule that overrides
+    // `white-space` to `normal` and paints an opaque background — jsdom
+    // does not compute this (Codex's own review noted the DOM-only tests
+    // above cannot observe it), so the invariant that actually avoids the
+    // rule — every language- code element's parent is a real `pre` — is
+    // asserted here structurally instead.
+    const { roles, slotOfDisplay, slotStatus, visibility } = buildHunkFixture()
+    const { container } = render(
+      <CodeDisplay
+        displayCode={HUNK_DISPLAY_CODE}
+        language="rust"
+        roles={roles}
+        slotOfDisplay={slotOfDisplay}
+        slotStatus={slotStatus}
+        visibility={visibility}
+        cursorDisplay={-1}
+        hunk={{
+          lineKinds: HUNK_KINDS,
+          oldStart: HUNK_OLD_START,
+          newStart: HUNK_NEW_START,
+        }}
+      />
+    )
+
+    const languageCodeElements = container.querySelectorAll(
+      'code[class*="language-"]'
+    )
+    expect(languageCodeElements).toHaveLength(4) // one per row
+    languageCodeElements.forEach((code) => {
+      expect(code.parentElement?.tagName).toBe("PRE")
+    })
+  })
+
+  it("lands the caret on the first character of the first + line", () => {
+    const { roles, slotOfDisplay, slotStatus, visibility } = buildHunkFixture()
+    const firstAddIndex = HUNK_DISPLAY_CODE.indexOf("good();")
+
+    render(
+      <CodeDisplay
+        displayCode={HUNK_DISPLAY_CODE}
+        language="rust"
+        roles={roles}
+        slotOfDisplay={slotOfDisplay}
+        slotStatus={slotStatus}
+        visibility={visibility}
+        cursorDisplay={firstAddIndex}
+        hunk={{
+          lineKinds: HUNK_KINDS,
+          oldStart: HUNK_OLD_START,
+          newStart: HUNK_NEW_START,
+        }}
+      />
+    )
+
+    const caret = screen.getByTitle("You are here")
+    expect(caret.textContent).toBe("g")
+    expect(
+      caret.closest("[data-line-kind]")?.getAttribute("data-line-kind")
+    ).toBe("add")
+  })
+
+  it("gives a deleted line its own paint — struck-through and muted red, not italic", () => {
+    const { roles, slotOfDisplay, slotStatus, visibility } = buildHunkFixture()
+    const { container } = render(
+      <CodeDisplay
+        displayCode={HUNK_DISPLAY_CODE}
+        language="rust"
+        roles={roles}
+        slotOfDisplay={slotOfDisplay}
+        slotStatus={slotStatus}
+        visibility={visibility}
+        cursorDisplay={-1}
+        hunk={{
+          lineKinds: HUNK_KINDS,
+          oldStart: HUNK_OLD_START,
+          newStart: HUNK_NEW_START,
+        }}
+      />
+    )
+
+    const delRow = container.querySelector('[data-line-kind="del"]')
+    const contextRow = container.querySelector('[data-line-kind="context"]')
+
+    expect(delRow?.querySelectorAll(".line-through")).toHaveLength(
+      "bad();".length
+    )
+    expect(delRow?.querySelectorAll(".italic")).toHaveLength(0)
+
+    expect(contextRow?.querySelectorAll(".italic").length).toBeGreaterThan(0)
+    expect(contextRow?.querySelectorAll(".line-through")).toHaveLength(0)
+  })
+
+  it("renders the tail as unmarked context when lineKinds runs short, total rather than throwing", () => {
+    const { roles, slotOfDisplay, slotStatus, visibility } = buildHunkFixture()
+    const render_ = (): RenderResult =>
+      render(
+        <CodeDisplay
+          displayCode={HUNK_DISPLAY_CODE}
+          language="rust"
+          roles={roles}
+          slotOfDisplay={slotOfDisplay}
+          slotStatus={slotStatus}
+          visibility={visibility}
+          cursorDisplay={-1}
+          hunk={{
+            lineKinds: ["context"], // only the first row's kind is authored
+            oldStart: HUNK_OLD_START,
+            newStart: HUNK_NEW_START,
+          }}
+        />
+      )
+
+    expect(render_).not.toThrow()
+    const { container } = render_()
+    const rows = container.querySelectorAll("[data-line-kind]")
+    expect(rows).toHaveLength(4)
+    rows.forEach((row) => {
+      expect(row.getAttribute("data-line-kind")).toBe("context")
+    })
+  })
+
+  it("renders exactly as it did before this story when no hunk is given", () => {
+    const { container } = render(
+      <CodeDisplay
+        displayCode={CONTEXT_SOURCE_FOR_NO_HUNK_CHECK}
+        language="rust"
+        roles={roleArrayAllContext(CONTEXT_SOURCE_FOR_NO_HUNK_CHECK)}
+        slotOfDisplay={new Int32Array(
+          CONTEXT_SOURCE_FOR_NO_HUNK_CHECK.length
+        ).fill(-1)}
+        slotStatus={new Uint8Array(0)}
+        visibility={new Uint8Array(0)}
+        cursorDisplay={-1}
+      />
+    )
+
+    expect(container.querySelectorAll("[data-line-kind]")).toHaveLength(0)
+    expect(container.querySelector("pre > code")).not.toBeNull()
+  })
+
+  it("keeps every character in place across a hunk containing a multi-line Prism token", () => {
+    // A block comment split across two lines by the hunk boundary would
+    // tokenize as one Prism token spanning the newline if this component
+    // still tokenized the whole displayCode at once — the exact hazard the
+    // story calls out. Whatever colors that produces, every character must
+    // still land at its correct display index and survive verbatim.
+    const lines = ["/* start", "   end */", "let x = 1;"]
+    const displayCode = lines.join("\n")
+    const roles = new Uint8Array(displayCode.length).fill(ROLE_TYPEABLE)
+    const slotOfDisplay = Int32Array.from(
+      { length: displayCode.length },
+      (_, i) => i
+    )
+    const slotStatus = new Uint8Array(displayCode.length).fill(SLOT_UNTOUCHED)
+    const visibility = new Uint8Array(displayCode.length).fill(
+      VISIBILITY_REVEALED
+    )
+
+    const { container } = render(
+      <CodeDisplay
+        displayCode={displayCode}
+        language="rust"
+        roles={roles}
+        slotOfDisplay={slotOfDisplay}
+        slotStatus={slotStatus}
+        visibility={visibility}
+        cursorDisplay={-1}
+        hunk={{ lineKinds: ["add", "add", "add"], oldStart: 1, newStart: 1 }}
+      />
+    )
+
+    const rows = container.querySelectorAll("[data-line-kind]")
+    expect(rows).toHaveLength(3)
+    rows.forEach((row, i) => {
+      expect(row.querySelector("code")?.textContent).toBe(lines[i])
     })
   })
 })

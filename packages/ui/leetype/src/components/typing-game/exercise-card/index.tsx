@@ -5,7 +5,11 @@ import { StepRail } from "@leetype/components/typing-game/step-rail"
 import { TypingViewport } from "@leetype/components/typing-game/typing-viewport"
 import { useKeystrokeCapture } from "@leetype/hooks/leetype/use-keystroke-capture"
 import type { Step } from "@leetype/types/exercise"
-import { languageOf, promptBlocksOf } from "@leetype/types/exercise"
+import {
+  languageOf,
+  promptBlocksOf,
+  typingBlockOf,
+} from "@leetype/types/exercise"
 import type { GameState, Rejection, TextGradient } from "@leetype/types/leetype"
 import { Eye } from "lucide-react"
 import { cn } from "some-ui-utils"
@@ -116,6 +120,7 @@ export const ExerciseCard: FC<ExerciseCardProps> = ({
   const inputId = useId()
   const canType = gameState === "playing"
   const hint = rejection ? REJECTION_HINT[rejection] : undefined
+  const patch = typingBlockOf(step)?.patch
 
   useKeystrokeCapture(inputRef, {
     onKey,
@@ -164,6 +169,7 @@ export const ExerciseCard: FC<ExerciseCardProps> = ({
           visibility={visibility}
           cursorDisplay={cursorDisplay}
           textGradient={textGradient}
+          hunk={patch}
         />
 
         {canType && hint && (
