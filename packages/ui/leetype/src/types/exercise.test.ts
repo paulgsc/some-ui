@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import type { Block, Patch } from "./exercise"
+import type { Block, Patch, RationaleChoice } from "./exercise"
 import {
   BlockSchema,
   ConstructionStepSchema,
@@ -13,6 +13,8 @@ import {
   PROMPT_MAX_LINES,
   PromptBlockSchema,
   promptBlocksOf,
+  RATIONALE_CHOICES_MAX,
+  RationaleChoiceSchema,
   RegionBlockSchema,
   StepSchema,
   TraceBlockSchema,
@@ -149,6 +151,64 @@ describe("StepSchema", () => {
     const oneLineBlock: Block = { kind: "prompt", lines: ["A short line."] }
     const stacked = step([oneLineBlock, oneLineBlock, typing])
     expect(StepSchema.safeParse(stacked).success).toBe(true)
+  })
+})
+
+describe("StepObjectSchema — rationaleChoices (LTY-WHY W2, #1102)", () => {
+  const choices: Array<RationaleChoice> = [
+    { text: "Borrowing avoids the copy the earlier attempt paid for." },
+    {
+      text: "The iterator adaptor never allocates a second Vec.",
+      canonical: true,
+    },
+  ]
+
+  it("keeps rationaleChoices optional and a step without it renders identically", () => {
+    const without = StepSchema.parse(step([prompt, typing]))
+    const withChoices = StepSchema.parse({
+      ...step([prompt, typing]),
+      rationaleChoices: choices,
+    })
+    expect(withChoices.rationaleChoices).toEqual(choices)
+    expect(typingBlockOf(withChoices)).toEqual(typingBlockOf(without))
+    expect(promptBlocksOf(withChoices)).toEqual(promptBlocksOf(without))
+    expect(languageOf(withChoices)).toEqual(languageOf(without))
+  })
+
+  it("keeps canonical optional and unread by anything outside the schema", () => {
+    // The same pin `provenance`/`transferFrom` get: the field round-trips
+    // through the schema and nothing in this module's public surface
+    // (typingBlockOf/promptBlocksOf/languageOf) branches on it.
+    const parsed = StepSchema.parse({
+      ...step([prompt, typing]),
+      rationaleChoices: choices,
+    })
+    expect(parsed.rationaleChoices?.[0]?.canonical).toBeUndefined()
+    expect(parsed.rationaleChoices?.[1]?.canonical).toBe(true)
+  })
+
+  it("rejects a single candidate — one candidate is not a choice", () => {
+    const result = StepSchema.safeParse({
+      ...step([prompt, typing]),
+      rationaleChoices: [{ text: "only one" }],
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it(`rejects more than ${RATIONALE_CHOICES_MAX} candidates`, () => {
+    const tooMany: Array<RationaleChoice> = Array.from(
+      { length: RATIONALE_CHOICES_MAX + 1 },
+      (_, i) => ({ text: `candidate ${i}` })
+    )
+    const result = StepSchema.safeParse({
+      ...step([prompt, typing]),
+      rationaleChoices: tooMany,
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it("rejects an empty candidate string", () => {
+    expect(RationaleChoiceSchema.safeParse({ text: "" }).success).toBe(false)
   })
 })
 
