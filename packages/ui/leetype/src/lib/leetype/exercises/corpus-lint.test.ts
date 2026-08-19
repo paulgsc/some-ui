@@ -189,3 +189,94 @@ describe("lintCorpus — deliberately malformed fixtures", () => {
     expect(violations).toEqual([])
   })
 })
+
+describe("patch.lineKinds alignment against the rendered source (LTY-PATCH P6, #1081)", () => {
+  const patchedWitness: Block = {
+    kind: "typing",
+    source: "line-a\nline-b",
+    language: "rust",
+    patch: {
+      path: "src/example.rs",
+      oldStart: 1,
+      newStart: 1,
+      lineKinds: ["context", "add"],
+    },
+  }
+
+  it("fails when lineKinds has a different entry count than the rendered source has lines — even under the default approximation", () => {
+    // No injected check needed: the fallback ‹…›-stripping approximation
+    // still computes a real line count, and this fixture has no ‹…› at all
+    // for the approximation to strip — the mismatch is visible either way.
+    const step = constructionStep({
+      blocks: [
+        constraint,
+        {
+          ...patchedWitness,
+          patch: { ...patchedWitness.patch!, lineKinds: ["context"] },
+        },
+      ],
+    })
+    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }])
+    expect(
+      violations.some((v) => v.includes("has 1 entries but the rendered"))
+    ).toBe(true)
+  })
+
+  it("passes line-count alignment without flagging role mismatches when no rolesOf is given (the approximation's real limit)", () => {
+    // Documents the fallback's actual boundary: it is deliberately unable
+    // to catch an "add" line the engine would render with no typeable
+    // character, or vice versa — only the real, wasm-backed check can.
+    const step = constructionStep({ blocks: [constraint, patchedWitness] })
+    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }])
+    expect(violations).toEqual([])
+  })
+
+  it("fails when an add-marked line has no typeable character, under a role-aware check", () => {
+    const step = constructionStep({ blocks: [constraint, patchedWitness] })
+    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }], {
+      renderedSourceOf: (source) => source,
+      // Every character reads as context — including line 1, "add"-marked.
+      rolesOf: (source) => new Uint8Array(source.length).fill(2), // ROLE_CONTEXT
+    })
+    expect(
+      violations.some((v) =>
+        v.includes('line 1 is marked "add" but the engine renders no typeable')
+      )
+    ).toBe(true)
+  })
+
+  it("fails when a context-marked line has a typeable character, under a role-aware check", () => {
+    const step = constructionStep({ blocks: [constraint, patchedWitness] })
+    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }], {
+      renderedSourceOf: (source) => source,
+      // Every character reads as typeable — including line 0, "context"-marked.
+      rolesOf: (source) => new Uint8Array(source.length).fill(1), // ROLE_TYPEABLE
+    })
+    expect(
+      violations.some((v) =>
+        v.includes(
+          'line 0 is marked "context" but the engine renders a typeable'
+        )
+      )
+    ).toBe(true)
+  })
+
+  it("passes a correctly-aligned patch under a role-aware check that matches its lineKinds", () => {
+    const step = constructionStep({ blocks: [constraint, patchedWitness] })
+    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }], {
+      renderedSourceOf: (source) => source,
+      rolesOf: (source) =>
+        // "line-a" (context, indices 0-5) then '\n' (index 6) then
+        // "line-b" (add, indices 7-12) — matches patchedWitness.patch.lineKinds.
+        Uint8Array.from(source, (_, i) => (i <= 6 ? 2 : 1)),
+    })
+    expect(violations).toEqual([])
+  })
+
+  it("never checks a step with no patch overlay at all", () => {
+    const violations = lintCorpus([
+      { id: "e1", title: "t", steps: [constructionStep()] },
+    ])
+    expect(violations).toEqual([])
+  })
+})
