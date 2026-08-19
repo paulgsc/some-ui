@@ -84,6 +84,7 @@ export const CONCEPT_IDS = {
   exclusiveVsInclusiveBounds: "exclusive-vs-inclusive-bounds",
   sliceIndexing: "slice-indexing",
   windowShrinking: "window-shrinking",
+  preconditionGuard: "precondition-guard",
   /** Marks a step as shell-stress fixture data, never a taught abstraction — see `seed.ts`'s `adversarial`/`HOSTILE_PROMPT_STEP`. */
   fixture: "fixture",
 } as const

@@ -539,6 +539,99 @@ describe("DiagnosticStepSchema — the falsification→repair family", () => {
     })
     expect(result.success).toBe(false)
   })
+
+  describe("the repair bound under a patch (LTY-PATCH P4, #1079)", () => {
+    // A hunk decouples "one line" from "one locus": a patch-shaped repair
+    // may span several lines as long as its `add` lines form one
+    // contiguous run — contiguity substitutes for the line rule entirely,
+    // per the doc comment on DIAGNOSTIC_REPAIR_MAX_CHARS.
+
+    it("accepts a multi-line patch repair whose add lines are one contiguous run", () => {
+      const guardClause: Block = {
+        kind: "typing",
+        source:
+          "‹fn average(total: i32, count: i32) -> i32 {\n    ›if count == 0 {\n        return 0;\n    }‹\n    total / count\n}›",
+        language: "rust",
+        patch: {
+          path: "src/stats/average.rs",
+          oldStart: 1,
+          newStart: 1,
+          lineKinds: ["context", "add", "add", "add", "context", "context"],
+        },
+      }
+      const result = DiagnosticStepSchema.safeParse({
+        ...step([failure, guardClause]),
+        rationale,
+      })
+      expect(result.success).toBe(true)
+    })
+
+    it("rejects a patch repair whose add lines split into two runs, and says why", () => {
+      // Two separate runs is two faults wearing one hunk — the exact shape
+      // "one fault, one edit" (constraint 1) exists to rule out, now
+      // mechanically checkable because lineKinds is authored data.
+      const twoFaults: Block = {
+        kind: "typing",
+        source: "line1\nline2\nline3\nline4\nline5",
+        language: "rust",
+        patch: {
+          path: "src/example.rs",
+          oldStart: 1,
+          newStart: 1,
+          lineKinds: ["add", "context", "add", "context", "context"],
+        },
+      }
+      const result = DiagnosticStepSchema.safeParse({
+        ...step([failure, twoFaults]),
+        rationale,
+      })
+      expect(result.success).toBe(false)
+      expect(result.error?.issues[0]?.message).toMatch(
+        /not one contiguous locus/
+      )
+    })
+
+    it("still rejects a patch repair that clears contiguity but not the character budget", () => {
+      const oversized: Block = {
+        kind: "typing",
+        source: "a".repeat(DIAGNOSTIC_REPAIR_MAX_CHARS + 1),
+        language: "rust",
+        patch: {
+          path: "src/example.rs",
+          oldStart: 1,
+          newStart: 1,
+          lineKinds: ["add"],
+        },
+      }
+      const result = DiagnosticStepSchema.safeParse({
+        ...step([failure, oversized]),
+        rationale,
+      })
+      expect(result.success).toBe(false)
+      expect(result.error?.issues[0]?.message).toMatch(
+        /runs past 50 typed characters/
+      )
+    })
+
+    it("accepts a patch repair with no add lines at all (0 runs is at most 1)", () => {
+      const noAddLines: Block = {
+        kind: "typing",
+        source: "line1\nline2",
+        language: "rust",
+        patch: {
+          path: "src/example.rs",
+          oldStart: 1,
+          newStart: 1,
+          lineKinds: ["context", "del"],
+        },
+      }
+      const result = DiagnosticStepSchema.safeParse({
+        ...step([failure, noAddLines]),
+        rationale,
+      })
+      expect(result.success).toBe(true)
+    })
+  })
 })
 
 describe("ConstructionStepSchema — the obligation→witness family", () => {
