@@ -246,6 +246,41 @@ describe("CodeDisplay — the hunk overlay (LTY-PATCH P3, #1078)", () => {
     })
   })
 
+  it("wraps every row's code in a real <pre>, never a bare language- code element", () => {
+    // Regression for a review finding: Prism's imported theme carries an
+    // unlayered `:not(pre) > code[class*="language-"]` rule that overrides
+    // `white-space` to `normal` and paints an opaque background — jsdom
+    // does not compute this (Codex's own review noted the DOM-only tests
+    // above cannot observe it), so the invariant that actually avoids the
+    // rule — every language- code element's parent is a real `pre` — is
+    // asserted here structurally instead.
+    const { roles, slotOfDisplay, slotStatus, visibility } = buildHunkFixture()
+    const { container } = render(
+      <CodeDisplay
+        displayCode={HUNK_DISPLAY_CODE}
+        language="rust"
+        roles={roles}
+        slotOfDisplay={slotOfDisplay}
+        slotStatus={slotStatus}
+        visibility={visibility}
+        cursorDisplay={-1}
+        hunk={{
+          lineKinds: HUNK_KINDS,
+          oldStart: HUNK_OLD_START,
+          newStart: HUNK_NEW_START,
+        }}
+      />
+    )
+
+    const languageCodeElements = container.querySelectorAll(
+      'code[class*="language-"]'
+    )
+    expect(languageCodeElements).toHaveLength(4) // one per row
+    languageCodeElements.forEach((code) => {
+      expect(code.parentElement?.tagName).toBe("PRE")
+    })
+  })
+
   it("lands the caret on the first character of the first + line", () => {
     const { roles, slotOfDisplay, slotStatus, visibility } = buildHunkFixture()
     const firstAddIndex = HUNK_DISPLAY_CODE.indexOf("good();")

@@ -509,15 +509,25 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
           >
             {newLabel ?? ""}
           </span>
-          <code
-            className={cn(
-              "min-w-0 flex-1 whitespace-pre",
-              `language-${language}`
-            )}
-            style={codeStyle}
-          >
-            {rowNodes}
-          </code>
+          {/*
+            A real `<pre>`, not a `<code>` styled to look like one: Prism's
+            imported theme (`prism-tomorrow.css`) carries an unlayered
+            `:not(pre) > code[class*="language-"]` rule that overrides
+            `white-space` to `normal` and paints an opaque background —
+            unlayered CSS outranks any `@layer utilities` class regardless
+            of specificity (the same fact `TEXT_GRADIENT_STYLE`'s own
+            comment already documents for `color`), so a Tailwind
+            `whitespace-pre` utility on a bare `<code>` here would silently
+            lose to it, collapsing indentation and hiding the row tint
+            behind an opaque background no DOM-only test would catch. The
+            no-hunk path was never exposed to this because `code` already
+            sits inside a real `pre` there.
+          */}
+          <pre className="m-0 min-w-0 flex-1">
+            <code className={`language-${language}`} style={codeStyle}>
+              {rowNodes}
+            </code>
+          </pre>
         </div>
       )
     })
