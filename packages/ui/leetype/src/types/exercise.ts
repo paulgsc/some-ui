@@ -116,6 +116,13 @@ const REGION_SPAN_MESSAGE =
   "can only be the same length or shorter (a context span's delimiters are stripped, " +
   "never added to), so a span past the raw source length is never valid."
 
+const PATCH_LINE_KINDS_MESSAGE =
+  "A patch's lineKinds holds more entries than its typing block's authored source has " +
+  "lines. lineKinds indexes lines of the engine's rendered source (Layout.displaySource), " +
+  "which can only be the same length or shorter than the authored source — a context " +
+  "span's delimiters are stripped, never added to — so an array longer than the authored " +
+  "line count is never valid."
+
 /**
  * A block the player reads rather than types.
  *
@@ -196,6 +203,51 @@ export const RegionBlockSchema = z
   })
 
 /**
+ * A rendered line's role in a `patch` overlay (LTY-PATCH P2, #1077): given
+ * as-is, removed, or added. Indexes lines of the engine's *rendered*
+ * source (`Layout.displaySource`), not the authored `TypingBlock.source` —
+ * see `patchLineKindsFitSource` below for why this schema can only bound
+ * that alignment, not check it exactly. A rendered line is `add` if it
+ * contains at least one typeable character, even mostly-inherited ones;
+ * `del` if the whole line is removed; `context` otherwise — see
+ * `docs/leetype/README.md`'s LTY-PATCH section for the full rule.
+ */
+export const PatchLineKindSchema = z.enum(["context", "del", "add"])
+
+/**
+ * The diff hunk a `TypingBlock` optionally overlays on its ordinary
+ * context/typeable rendering (LTY-PATCH P2, #1077). One hunk, one file, one
+ * step — a step wanting two hunks is two steps, the same cost "exactly one
+ * typing block per step" already accepted. No `oldCount`/`newCount`, no
+ * multi-file patches, no `diff --git` preamble: authors write the block,
+ * nothing in the workspace ingests real `git diff` output yet.
+ *
+ * `path`/`oldStart`/`newStart` render in the viewport's own header (P3),
+ * never through `ExerciseHeader` and never through `provenance`: `patch`
+ * says what hunk the player is looking at, `provenance` says where the
+ * competency was distilled from, and stays inert either way.
+ */
+export const PatchSchema = z.object({
+  /** e.g. "src/lib/rate-limit.ts". Never rendered through provenance or ExerciseHeader. */
+  path: z.string().min(1),
+  /** The `-N` of a `@@ -N,n +M,m @@` hunk header. */
+  oldStart: z.number().int().nonnegative(),
+  /** The `+M` of a `@@ -N,n +M,m @@` hunk header. */
+  newStart: z.number().int().nonnegative(),
+  /**
+   * One entry per rendered line, aligned to `Layout.displaySource` — not to
+   * `TypingBlock.source`, which still carries `‹…›` context-span delimiters
+   * that `displaySource` strips. See `patchLineKindsFitSource` for the
+   * schema-level bound and the corpus lint (LTY-PATCH P6, #1081) for the
+   * exact-alignment check against the real rendered form. A `lineKinds`
+   * shorter than the rendered line count is legal — the renderer treats
+   * the unlabeled tail as ordinary unmarked context (P3) — so this is a
+   * ceiling, not a required exact count.
+   */
+  lineKinds: z.array(PatchLineKindSchema).min(1),
+})
+
+/**
  * The block the player types. Exactly one per step.
  *
  * `source` is an inline string, never a path. A minimal proof is a few
@@ -207,6 +259,12 @@ export const TypingBlockSchema = z.object({
   kind: z.literal("typing"),
   source: z.string().min(1),
   language: z.enum(["typescript", "rust", "cpp", "c"]),
+  /**
+   * Optional diff-hunk overlay (LTY-PATCH P2, #1077). A step without one is
+   * a plain frame and renders exactly as it did before this field existed
+   * — there is no mode flag anywhere that says a step "is a patch step".
+   */
+  patch: PatchSchema.optional(),
 })
 
 /**
@@ -352,6 +410,31 @@ function regionsFitTypingSource(step: BlocksHolder): boolean {
 }
 
 /**
+ * A conservative bound, not an exact one — same posture as
+ * `regionsFitTypingSource` just above and for the identical reason:
+ * `patch.lineKinds` indexes lines of the engine's *rendered* text
+ * (`Layout.displaySource`), which this schema cannot compute without
+ * importing the wasm engine into a file whose whole job is staying a
+ * plain, engine-free serializable value. What is knowable without the
+ * engine: a context span's `‹…›` delimiters are only ever stripped, never
+ * added to, and stripping a two-character delimiter never changes a
+ * string's line count — so the rendered line count can never exceed the
+ * authored source's own line count. `lineKinds` longer than that is
+ * unambiguously wrong regardless of what the engine does with the source;
+ * exact alignment against the real rendered form is the corpus lint's job
+ * (LTY-PATCH P6, #1081), not this schema's.
+ */
+function patchLineKindsFitSource(step: BlocksHolder): boolean {
+  const typing = step.blocks.find(
+    (block): block is z.infer<typeof TypingBlockSchema> =>
+      block.kind === "typing"
+  )
+  if (typing?.patch === undefined) return true // no patch, nothing to bound
+  const sourceLineCount = typing.source.split("\n").length
+  return typing.patch.lineKinds.length <= sourceLineCount
+}
+
+/**
  * The typed portion of an authored typing-block source: everything outside
  * a `‹…›` context span. A budget check has to measure this, not
  * `source.length` — a diagnostic step's frame legitimately spans several
@@ -457,6 +540,10 @@ export const StepSchema = StepObjectSchema.refine(hasExactlyOneTypingBlock, {
     message: REGION_SPAN_MESSAGE,
     path: ["blocks"],
   })
+  .refine(patchLineKindsFitSource, {
+    message: PATCH_LINE_KINDS_MESSAGE,
+    path: ["blocks"],
+  })
 
 /**
  * A step in the falsification→repair family: a visible attempted witness
@@ -524,6 +611,10 @@ export const DiagnosticStepSchema = DiagnosticStepObjectSchema.refine(
   })
   .refine(regionsFitTypingSource, {
     message: REGION_SPAN_MESSAGE,
+    path: ["blocks"],
+  })
+  .refine(patchLineKindsFitSource, {
+    message: PATCH_LINE_KINDS_MESSAGE,
     path: ["blocks"],
   })
   .refine((step) => step.blocks.some((block) => block.kind === "trace"), {
@@ -598,6 +689,10 @@ export const ConstructionStepSchema = ConstructionStepObjectSchema.refine(
     message: REGION_SPAN_MESSAGE,
     path: ["blocks"],
   })
+  .refine(patchLineKindsFitSource, {
+    message: PATCH_LINE_KINDS_MESSAGE,
+    path: ["blocks"],
+  })
   .refine((step) => step.blocks.length >= 2, {
     message: CONSTRUCTION_MISSING_EVIDENCE_MESSAGE,
     path: ["blocks"],
@@ -617,6 +712,8 @@ export type TraceObservation = z.infer<typeof TraceObservationSchema>
 export type TraceBlock = z.infer<typeof TraceBlockSchema>
 export type RegionBlock = z.infer<typeof RegionBlockSchema>
 export type EvidenceBlock = z.infer<typeof EvidenceBlockSchema>
+export type PatchLineKind = z.infer<typeof PatchLineKindSchema>
+export type Patch = z.infer<typeof PatchSchema>
 export type TypingBlock = z.infer<typeof TypingBlockSchema>
 export type Block = z.infer<typeof BlockSchema>
 /** Every block kind except `typing` — what `promptBlocksOf` hands back. */
