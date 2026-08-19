@@ -487,21 +487,6 @@ export const Leetype: FC<LeetypeProps> = ({
               </div>
             </div>
 
-            {completedRationale && (
-              // LTY-WHY W4 (#1104): strictly-after, never gating. Sits
-              // below the card rather than over it — this is the one most
-              // recently completed step's accordion, not a modal about the
-              // step currently in flight.
-              <div className="pointer-events-none absolute inset-x-4 bottom-4 z-10">
-                <div className="pointer-events-auto">
-                  <RationaleAccordion
-                    key={completedRationale.key}
-                    candidates={completedRationale.candidates}
-                  />
-                </div>
-              </div>
-            )}
-
             {gameState === "idle" && (
               <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/70 backdrop-blur-sm">
                 <Button onClick={handleStart} disabled={isLoading} size="lg">
@@ -511,6 +496,27 @@ export const Leetype: FC<LeetypeProps> = ({
             )}
           </div>
         </>
+      )}
+
+      {completedRationale && (
+        // LTY-WHY W4 (#1104): strictly-after, never gating. Rendered
+        // outside the finished/in-progress split on purpose: the last
+        // step of a sequence can carry rationaleChoices too, and its
+        // completion effect fires in the same tick runner.advance() marks
+        // the whole run finished — swapping ExerciseCard for ResultsCard
+        // the instant it did (review finding on this PR) would make that
+        // one accordion permanently unreachable. Anchored to the bottom
+        // of the outer card either way, so it reads as one lingering
+        // affordance about the step just finished, not a modal over
+        // whichever surface happens to be showing.
+        <div className="pointer-events-none absolute inset-x-4 bottom-4 z-10">
+          <div className="pointer-events-auto">
+            <RationaleAccordion
+              key={completedRationale.key}
+              candidates={completedRationale.candidates}
+            />
+          </div>
+        </div>
       )}
     </div>
   )

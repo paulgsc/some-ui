@@ -1,6 +1,5 @@
 import type { FC } from "react"
-import { useId, useRef, useState } from "react"
-import { useKeystrokeCapture } from "@leetype/hooks/leetype/use-keystroke-capture"
+import { useEffect, useId, useRef, useState } from "react"
 import { narrow } from "@leetype/lib/leetype/rationale-match"
 import type { RationaleChoice } from "@leetype/types/exercise"
 import {
@@ -10,8 +9,6 @@ import {
   AccordionTrigger,
 } from "@some-ui/shared"
 import { cn } from "some-ui-utils"
-
-const NO_OP = (): void => {}
 
 type RationaleAccordionProps = {
   /**
@@ -36,6 +33,17 @@ type RationaleAccordionProps = {
  * component imports nothing from `types/leetype`'s engine vocabulary and
  * nothing wasm-shaped; `rationale-accordion.test.tsx` pins it the same way
  * `rationale-match.test.ts` pins its own engine-free boundary.
+ *
+ * Its keystroke listener is hand-rolled rather than
+ * `hooks/leetype/use-keystroke-capture` (`ExerciseCard`'s own capture
+ * hook): that hook always calls `preventDefault()` on Tab — sound there,
+ * since the main exercise repurposes it as the manual-reveal toggle and
+ * the capture element is the only focusable surface on the card. Reusing
+ * it here trapped keyboard users inside this widget's
+ * hidden input with no way to Tab to the trigger or the dead-end's "Clear
+ * and try again" button (review finding on #1122). This listener forwards
+ * only printable characters and Backspace; Tab, Shift+Tab, Enter and
+ * everything else are left alone so native focus movement keeps working.
  *
  * **No verdict, anywhere.** A live candidate's typed-so-far prefix
  * highlights the same green `CodeDisplay` uses for a resolved keystroke —
@@ -70,20 +78,54 @@ export const RationaleAccordion: FC<RationaleAccordionProps> = ({
   const { live, completed } = narrow(texts, typed)
   const deadEnd = typed.length > 0 && live.length === 0 && completed === null
 
-  useKeystrokeCapture(inputRef, {
-    onKey: (key) => {
-      if (completed !== null) return
-      setTyped((current) => current + key)
-    },
-    onBackspace: () => {
-      if (completed !== null) return
-      setTyped((current) => current.slice(0, -1))
-    },
-    // This widget has no reveal state of its own to toggle — Tab is left a
-    // no-op rather than reusing the hook's engine-shaped affordance.
-    onToggleReveal: NO_OP,
-    enabled: open && completed === null,
-  })
+  useEffect(() => {
+    const element = inputRef.current
+    if (!element || !open || completed !== null) return
+
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.ctrlKey || event.metaKey || event.altKey) return
+
+      if (event.key === "Backspace") {
+        event.preventDefault()
+        setTyped((current) => current.slice(0, -1))
+        return
+      }
+
+      // Tab, Shift+Tab, Enter, Escape and every other key are left
+      // untouched — this widget is one focusable surface among several
+      // (the trigger, the dead-end's Clear button), not the whole card.
+      if (Array.from(event.key).length === 1) {
+        event.preventDefault()
+        setTyped((current) => current + event.key)
+      }
+    }
+
+    const handleBeforeInput = (event: InputEvent): void => {
+      if (event.inputType === "deleteContentBackward") {
+        event.preventDefault()
+        setTyped((current) => current.slice(0, -1))
+        return
+      }
+      if (
+        event.inputType === "insertText" ||
+        event.inputType === "insertCompositionText"
+      ) {
+        event.preventDefault()
+        const inserted = Array.from(event.data ?? "").join("")
+        if (inserted.length > 0) {
+          setTyped((current) => current + inserted)
+        }
+      }
+    }
+
+    element.addEventListener("keydown", handleKeyDown)
+    element.addEventListener("beforeinput", handleBeforeInput)
+
+    return (): void => {
+      element.removeEventListener("keydown", handleKeyDown)
+      element.removeEventListener("beforeinput", handleBeforeInput)
+    }
+  }, [open, completed])
 
   return (
     <Accordion

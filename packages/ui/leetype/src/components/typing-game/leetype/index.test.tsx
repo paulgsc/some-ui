@@ -434,6 +434,47 @@ describe("the reason-reaffirmation shim (LTY-WHY W4, #1104)", () => {
       screen.queryByText("Why is this the right fix?")
     ).not.toBeInTheDocument()
   })
+
+  it("stays reachable when its step is the last one in the sequence", async () => {
+    // Regression: runner.advance() on the last step's completion marks the
+    // whole run finished in the same tick the accordion's trigger would be
+    // captured, and the finished branch used to replace ExerciseCard (and
+    // everything rendered alongside it) with ResultsCard outright — making
+    // the final step's rationale permanently unreachable. Review finding
+    // on #1122.
+    const exerciseEndingWithRationale: Exercise = {
+      id: "test-rationale-last",
+      title: "One step, with rationaleChoices, and nothing after it",
+      steps: [
+        {
+          id: "last",
+          goal: "Step 0.",
+          concepts: [],
+          blocks: [
+            { kind: "prompt" as const, lines: ["Prompt 0"] },
+            {
+              kind: "typing" as const,
+              source: "aaa",
+              language: "rust" as const,
+            },
+          ],
+          rationaleChoices: [
+            { text: "because borrowing avoids the copy" },
+            { text: "because the loop terminates early" },
+          ],
+        },
+      ],
+    }
+
+    seedBaseline()
+    render(<Leetype exercise={exerciseEndingWithRationale} />)
+    const input = await begin()
+    await screen.findByText("Step 0.")
+
+    typeStep(input, 3)
+    await screen.findByText(/Exercise complete/i)
+    await screen.findByText("Why is this the right fix?")
+  })
 })
 
 describe("the warm-up", () => {
