@@ -317,27 +317,77 @@ export const RationaleSchema = z.object({
 })
 
 /**
- * The longest a diagnostic step's repair — the *typed* portion of its
- * typing block, i.e. `typedPortionOf(source)` below, not `source.length` —
- * is allowed to run: constraint 4's "seconds to copy once revealed, not a
- * minute," made a number. The frame around the repair (context, per
- * LTY-FRAME) is unbounded by this constant on purpose; only what the player
- * actually types is. One line, the same posture as `PROMPT_LINE_MAX_CHARS`:
- * a repair that needs a second line was too broad for the family and wanted
- * two steps.
+ * The longest a diagnostic step's repair — an approximation of the
+ * engine's own `typed_stream` length over `typedPortionOf(source)` below
+ * (`typeableStreamLength`), not `source.length` and not
+ * `typedPortionOf(source).length` either — is allowed to run: constraint
+ * 4's "seconds to copy once revealed, not a minute," made a number. The
+ * frame around the repair (context, per LTY-FRAME) is unbounded by this
+ * constant on purpose; only what the player actually types is.
  *
- * 50 rather than a round "looks generous" figure: the five hand-authored
- * instances span 11–41 typed characters (`right -= 1;` to
+ * Measured as *keystrokes*, not raw characters, because a repair's typed
+ * portion can itself contain layout the player never presses a key for —
+ * newlines and per-line leading indentation, both `Role::Skip` in the
+ * engine. That distinction was invisible for a single-line repair (nothing
+ * to indent around), which is exactly why the gap surfaced only once
+ * LTY-PATCH P4 allowed a repair to span lines: measuring raw characters
+ * there would reject an indented multi-line repair the volume bound is not
+ * actually meant to reject, purely because of its formatting.
+ *
+ * # LTY-PATCH P4 (#1079): this bound used to also police structure
+ *
+ * Originally "one line, ≤50 characters" — a single rule doing two jobs at
+ * once, because until a hunk overlay existed the two happened to coincide:
+ * constraint 4's *volume* claim ("seconds to copy, not a minute") and
+ * constraint 1's *structure* claim ("one principal causal defect") wearing
+ * a proxy. A patch separates them — three added lines can be one locus and
+ * still be quick to type, and one very long single line can be neither —
+ * so the single-line half of the old rule is gone, replaced by contiguity
+ * (`diagnosticRepairIsOneLocus` below): a patch-shaped repair's `add` lines
+ * (`patch.lineKinds`, LTY-PATCH P2) must form at most one contiguous run —
+ * "one fault, one edit" becomes "one hunk has one addition block," which is
+ * checkable because `lineKinds` is authored data sitting right in the
+ * block. A repair with no patch overlay has no `lineKinds` to prove
+ * contiguity against, so it keeps the original rule verbatim: one line.
+ *
+ * This constant now bounds volume alone, for every diagnostic repair
+ * whether patch-shaped or not — landed as option (b) of the three the
+ * issue laid out:
+ *
+ * - **(a)**, rejected: keep this constant, drop the line rule for patch
+ *   steps, *and* add a separate `+`-line-count cap. An extra knob every
+ *   other constant in this file has had to earn; contiguity alone already
+ *   does the structural job (b) wants without it.
+ * - **(c)**, rejected: keep the single-line rule and declare multi-line
+ *   repairs out of the diagnostic family entirely. Defensible as the status
+ *   quo's own argument, but it would make the epic's motivating case (probe
+ *   a solve that breaks, often a two- or three-line fix) mostly
+ *   unreachable, and it draws the family boundary by a formatting rule
+ *   rather than by what the step is actually doing.
+ *
+ * 50 rather than a round "looks generous" figure: the five original
+ * hand-authored instances span 11–40 typed keystrokes (`right -= 1;` to
  * `map.entry(key).or_default().push(value);`), so this is headroom above
  * the corpus's own actual ceiling, not a number picked in the abstract.
+ * LTY-PATCH's own multi-line instance (a three-line guard clause, 39 raw
+ * characters but 25 typed keystrokes once its indentation and newlines are
+ * excluded) fits inside that same headroom — no reason to raise the number
+ * yet. Raise it the same way if a future instance actually needs more: from
+ * a real instance, not in the abstract.
  */
 export const DIAGNOSTIC_REPAIR_MAX_CHARS = 50
 
 const DIAGNOSTIC_REPAIR_TOO_LONG_MESSAGE =
-  `A diagnostic step's repair runs past ${DIAGNOSTIC_REPAIR_MAX_CHARS} typed characters ` +
-  "or spans more than one line. The repair is meant to be copied in seconds once " +
-  "revealed, not authored as a second exercise — narrow the fault, or this wants " +
-  "to be two diagnostic instances."
+  `A diagnostic step's repair runs past ${DIAGNOSTIC_REPAIR_MAX_CHARS} typed characters. ` +
+  "The repair is meant to be copied in seconds once revealed, not authored as a second " +
+  "exercise — narrow the fault, or this wants to be two diagnostic instances."
+
+const DIAGNOSTIC_REPAIR_NOT_ONE_LOCUS_MESSAGE =
+  "A diagnostic step's repair is not one contiguous locus. A patch-shaped repair's " +
+  "add lines (patch.lineKinds) must form a single run — two separate runs is two " +
+  "faults wearing one hunk, and wants two diagnostic instances. A repair with no " +
+  "patch overlay has no lineKinds to prove contiguity against, so it keeps the " +
+  "original rule: one line."
 
 const DIAGNOSTIC_MISSING_TRACE_MESSAGE =
   "A diagnostic step must carry a trace block — the visible falsified expectation " +
@@ -452,6 +502,103 @@ function patchLineKindsFitSource(step: BlocksHolder): boolean {
  */
 function typedPortionOf(source: string): string {
   return source.replace(/‹[^›]*›/g, "")
+}
+
+/** Whitespace `program.rs` ever classifies as layout — the alphabet `isLoneInteriorSpace` checks the boundary of. */
+function isLayoutWhitespace(char: string | undefined): boolean {
+  return (
+    char === undefined ||
+    char === " " ||
+    char === "\n" ||
+    char === "\t" ||
+    char === "\r"
+  )
+}
+
+/**
+ * Approximates the length of the engine's own `typed_stream` over a
+ * rendered span — not `span.length`, which counts layout the player never
+ * presses a key for. Same posture as `typedPortionOf` above: a pure-string
+ * approximation of `program.rs`'s classification rule ("a run of
+ * whitespace is typeable only when it is exactly one space bounded on both
+ * sides by non-whitespace"), kept approximate rather than importing the
+ * wasm engine, for the same reason this whole file stays engine-free.
+ *
+ * Load-bearing for LTY-PATCH P4 (#1079): once a repair can span multiple
+ * lines, its raw character count includes newlines and per-line leading
+ * indentation that `Role::Skip` already excludes from what the player
+ * actually types (`press()` refuses `\n`/`\r`/`\t` outright) — measuring
+ * `span.length` there would reject a repair the volume bound is not
+ * actually meant to reject, purely because of how it happens to be
+ * indented.
+ */
+function typeableStreamLength(span: string): number {
+  let count = 0
+  for (let index = 0; index < span.length; index++) {
+    const char = span[index]
+    if (!isLayoutWhitespace(char)) {
+      count += 1
+      continue
+    }
+    // The one whitespace run that *is* typed: a lone space bounded by
+    // non-whitespace on both sides. Everything else here — an indentation
+    // run, a newline, a multi-space run — is Role::Skip.
+    if (
+      char === " " &&
+      !isLayoutWhitespace(span[index - 1]) &&
+      !isLayoutWhitespace(span[index + 1])
+    ) {
+      count += 1
+    }
+  }
+  return count
+}
+
+/** Volume half of the diagnostic repair bound (LTY-PATCH P4) — see `DIAGNOSTIC_REPAIR_MAX_CHARS`'s doc comment. */
+function diagnosticRepairWithinCharBudget(step: BlocksHolder): boolean {
+  const repair = step.blocks.find(
+    (block): block is z.infer<typeof TypingBlockSchema> =>
+      block.kind === "typing"
+  )
+  // The "exactly one typing block" refine already reports a missing
+  // repair; nothing to bound here.
+  if (repair === undefined) return true
+  return (
+    typeableStreamLength(typedPortionOf(repair.source)) <=
+    DIAGNOSTIC_REPAIR_MAX_CHARS
+  )
+}
+
+/**
+ * How many separate contiguous runs of `"add"` a patch's `lineKinds` holds
+ * — 0 for none, 1 for a well-formed single hunk, 2+ for two or more faults
+ * wearing one hunk.
+ */
+function addRunCount(lineKinds: ReadonlyArray<PatchLineKind>): number {
+  let runs = 0
+  let inRun = false
+  for (const kind of lineKinds) {
+    if (kind === "add") {
+      if (!inRun) runs += 1
+      inRun = true
+    } else {
+      inRun = false
+    }
+  }
+  return runs
+}
+
+/** Structure half of the diagnostic repair bound (LTY-PATCH P4) — see `DIAGNOSTIC_REPAIR_MAX_CHARS`'s doc comment. */
+function diagnosticRepairIsOneLocus(step: BlocksHolder): boolean {
+  const repair = step.blocks.find(
+    (block): block is z.infer<typeof TypingBlockSchema> =>
+      block.kind === "typing"
+  )
+  if (repair === undefined) return true
+  if (repair.patch === undefined) {
+    return !typedPortionOf(repair.source).includes("\n")
+  }
+  return addRunCount(repair.patch.lineKinds) <= 1
 }
 
 /**
@@ -576,7 +723,12 @@ export const StepSchema = StepObjectSchema.refine(hasExactlyOneTypingBlock, {
  * # The six validity constraints, and where each is enforced
  *
  * 1. **One failure.** One principal causal defect. Judgement — argued in
- *    `rationale.cause`, not independently checkable from the shape alone.
+ *    `rationale.cause`, not independently checkable from the shape alone in
+ *    general. LTY-PATCH P4 (#1079) adds one mechanical corner of it for a
+ *    patch-shaped repair: `diagnosticRepairIsOneLocus` below requires the
+ *    `add` lines in `patch.lineKinds` to form a single contiguous run —
+ *    "one hunk has one addition block" is checkable even though "the cause
+ *    is really singular" still is not.
  * 2. **One discriminating repair.** The repair distinguishes the intended
  *    misconception rather than merely silencing the symptom. Judgement —
  *    argued in `rationale.whyRepairDiscriminates`.
@@ -584,9 +736,12 @@ export const StepSchema = StepObjectSchema.refine(hasExactlyOneTypingBlock, {
  *    the fault. Judgement — there is no shape-level signal for "everything
  *    in this context span is relevant."
  * 4. **Bounded answer.** Seconds to copy once revealed, not a minute.
- *    Checked below (`DIAGNOSTIC_REPAIR_MAX_CHARS`, single line, measured
- *    over the typed portion only) — the one constraint of the six with an
- *    actual shape to check.
+ *    Checked below (`DIAGNOSTIC_REPAIR_MAX_CHARS`, measured over the typed
+ *    portion only) — the one constraint of the six with an actual shape to
+ *    check. Bundled with constraint 1's structural claim until LTY-PATCH P4
+ *    (#1079) separated them: `diagnosticRepairWithinCharBudget` bounds
+ *    volume alone now, and `diagnosticRepairIsOneLocus` (constraint 1,
+ *    above) bounds structure.
  * 5. **Deterministic signal.** `expected 3, received 4`, never "something
  *    went wrong." Partly checked: a `trace` block must be present (below),
  *    but whether its `observations` actually read as deterministic is
@@ -621,22 +776,14 @@ export const DiagnosticStepSchema = DiagnosticStepObjectSchema.refine(
     message: DIAGNOSTIC_MISSING_TRACE_MESSAGE,
     path: ["blocks"],
   })
-  .refine(
-    (step) => {
-      const repair = typingBlockOf(step)
-      // The "exactly one typing block" refine above already reports a
-      // missing repair; nothing to bound here.
-      if (repair === undefined) return true
-      const typed = typedPortionOf(repair.source)
-      return (
-        typed.length <= DIAGNOSTIC_REPAIR_MAX_CHARS && !typed.includes("\n")
-      )
-    },
-    {
-      message: DIAGNOSTIC_REPAIR_TOO_LONG_MESSAGE,
-      path: ["blocks"],
-    }
-  )
+  .refine(diagnosticRepairWithinCharBudget, {
+    message: DIAGNOSTIC_REPAIR_TOO_LONG_MESSAGE,
+    path: ["blocks"],
+  })
+  .refine(diagnosticRepairIsOneLocus, {
+    message: DIAGNOSTIC_REPAIR_NOT_ONE_LOCUS_MESSAGE,
+    path: ["blocks"],
+  })
 
 /**
  * A step in the obligation→witness family: a constraint that rules out
