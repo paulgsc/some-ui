@@ -59,7 +59,6 @@ function writeCachedState(state: TabState): void {
 
 let currentState: TabState = DEFAULT_TAB_STATE
 let filterConfig: FilterConfig = DEFAULT_FILTER
-let autoWasApplied = false
 
 // The content session's epoch source (Definition 5.4). Reset on every
 // SPA-navigation re-patch (Theorem D.1(a)) — a full page reset (refresh)
@@ -124,14 +123,14 @@ function runAutoTheme(): void {
   // commitVisualState()/disablePrepaint() run on *every* fire, not just the
   // first: both are idempotent no-ops once the veil is already down, and
   // re-running them unconditionally is what lets the SPA re-patch path
-  // (yt-navigate-finish re-shows the veil, below) reuse this same callback
-  // to lift it again, instead of needing its own copy of this logic.
+  // (yt-navigate-start re-shows the veil, below; yt-navigate-finish's
+  // rescan() drives back into this same callback) reuse this same logic
+  // to lift it again, instead of needing its own copy of it.
   contentSession = createContentSession(
     SWATCHES[DEFAULT_SWATCH_ID],
     sessionLifecycle,
     (actions) => {
       const applied = actions.some((action) => action.kind === "activate-theme")
-      autoWasApplied = applied
       document.body.dataset.swThemeApplied = applied ? "dark" : "none"
       updateDebugAttrs()
 
@@ -201,27 +200,52 @@ function init(): void {
     }
   })()
 
-  // SPA navigation re-patch: re-scan after pushState navigations and
-  // YouTube's custom navigation event so newly rendered subtrees are
-  // themed even when no new DOM nodes trigger the Sensor's own observer
-  // (Theorem D.1(a) — same-document navigation, epoch advances). This is
-  // no longer a bespoke re-patch call: it is the same coalesced
-  // decide/realize cycle every other mutation goes through, re-triggered
-  // by hand for an event the Sensor's MutationObserver cannot see itself.
-  // Note: third-party tab suspenders that replace the page with their own
-  // origin URL are out-of-process and cannot be covered here; our re-
-  // engagement on the real-URL reload is handled by the normal init path.
+  // SPA navigation re-patch: YouTube's Polymer router swaps large portions
+  // of the document — up to and including `<head>`/`<body>` themselves —
+  // around its own `yt-navigate-*` events, independent of any pushState
+  // the Sensor's own MutationObserver would otherwise see (Theorem
+  // D.1(a) — same-document navigation, epoch advances). Note: third-party
+  // tab suspenders that replace the page with their own origin URL are
+  // out-of-process and cannot be covered here; our re-engagement on the
+  // real-URL reload is handled by the normal init path.
   //
-  // We re-enable the veil before rescanning so there is no frame where
-  // newly rendered vendor elements are visible without the dark theme
-  // token — the pipeline's onFire hook (above) lifts it again once this
-  // round settles.
+  // Two events, two jobs:
+  //   - yt-navigate-start fires *before* the router tears down/rebuilds the
+  //     outgoing route. Re-arming the veil here — unconditionally, for
+  //     every non-"off" state — covers the swap itself. Reacting only on
+  //     *finish* (the previous behavior) re-covers the page only after the
+  //     native, unthemed swap has already painted for at least one frame:
+  //     that can shorten a flash, never prevent it.
+  //   - yt-navigate-finish fires once the swap has settled: auto re-scans
+  //     (its onFire hook, registered above, decides whether to commit or
+  //     release the veil); legacy re-applies its filter, since a
+  //     head/body swap can carry off its <style> tag along with whatever
+  //     it replaced.
+  //
+  // Previously this whole re-patch was gated on `autoWasApplied`, which is
+  // only ever set from inside auto's own onFire callback — every
+  // legacy-mode tab, and any auto-mode tab whose very first verdict was
+  // "no theme needed", got no protection at all against this event for the
+  // rest of the tab's life. Both handlers key off `currentState` directly
+  // instead, so every mode is covered.
+  window.addEventListener("yt-navigate-start", () => {
+    if (currentState === "off") return
+    enablePrepaint()
+  })
+
   window.addEventListener("yt-navigate-finish", () => {
-    if (autoWasApplied) {
+    if (currentState === "auto") {
       sessionLifecycle.resetContent()
-      enablePrepaint()
       contentSession?.rescan()
+      return
     }
+
+    if (currentState === "legacy") {
+      applyTheme("legacy", filterConfig)
+      return
+    }
+
+    disablePrepaint()
   })
 }
 
