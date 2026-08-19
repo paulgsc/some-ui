@@ -317,6 +317,41 @@ export const RationaleSchema = z.object({
 })
 
 /**
+ * One authored candidate for the reason-reaffirmation shim (LTY-WHY W2,
+ * #1102) — "why is this the right fix," posed as 2–5 short leetyped
+ * sentences rather than a click. See `docs/leetype/README.md`'s LTY-WHY
+ * section for the shim's posture: no verdict, no mastery signal, every
+ * completed candidate accepted until a real semantic verifier exists.
+ *
+ * Unlike `rationale`/`obligation` above, this shape is not purely inert —
+ * W4's widget renders each candidate's `text` as a chip once a step's hunk
+ * completes. What stays inert is `canonical` alone.
+ */
+export const RationaleChoiceSchema = z.object({
+  text: z.string().min(1),
+  /**
+   * Which candidate an author believes is correct. Worth recording for the
+   * eventual verifier — a hidden reference it will gate against — never
+   * load-bearing because nothing in this epic's runtime path reads it: no
+   * component, hook, or lint branches on it, and no candidate is ever
+   * colored, labeled, or treated differently because of it. Same posture
+   * `rationale`/`obligation` hold today.
+   */
+  canonical: z.boolean().optional(),
+})
+
+/**
+ * The ceiling on `rationaleChoices` below (LTY-WHY W2, #1102): the issue's
+ * own proposed starting number, not derived from real authored instances
+ * the way `DIAGNOSTIC_REPAIR_MAX_CHARS` was — no step in the corpus carries
+ * `rationaleChoices` yet, so there is nothing to measure a ceiling against.
+ * Kept at the conservative end of what the issue suggested rather than
+ * picked generously, on the same discipline: raise it from a real authored
+ * instance that actually needs more candidates, not in the abstract.
+ */
+export const RATIONALE_CHOICES_MAX = 5
+
+/**
  * The longest a diagnostic step's repair — an approximation of the
  * engine's own `typed_stream` length over `typedPortionOf(source)` below
  * (`typeableStreamLength`), not `source.length` and not
@@ -673,6 +708,28 @@ const StepObjectSchema = z.object({
    * is the author's, argued nowhere but in the choice of pairing itself.
    */
   transferFrom: z.string().min(1).optional(),
+  /**
+   * The reason-reaffirmation shim's authored candidates (LTY-WHY W2,
+   * #1102) — see `RationaleChoiceSchema`'s own doc comment for what
+   * renders and what stays inert. Optional, and declared here rather than
+   * only on a family-specific schema, for the same reason `rationale` and
+   * `obligation` are: it has to survive the *generic*
+   * `ExerciseCorpusSchema.parse` the shim runs at module load.
+   *
+   * `min(2)` because one candidate is not a choice; `max` is
+   * `RATIONALE_CHOICES_MAX` because the accordion is a small UI element,
+   * not a quiz page. No candidate may share a full prefix with another —
+   * checked in the corpus lint (`lib/leetype/exercises/corpus-lint.ts`),
+   * not here, because it is a cross-candidate property this schema has no
+   * natural place to express as a `.refine()` on one array field without
+   * duplicating the whole-step refinement machinery below for a check that
+   * has nothing to do with block shape.
+   */
+  rationaleChoices: z
+    .array(RationaleChoiceSchema)
+    .min(2)
+    .max(RATIONALE_CHOICES_MAX)
+    .optional(),
 })
 
 export const StepSchema = StepObjectSchema.refine(hasExactlyOneTypingBlock, {
@@ -867,6 +924,7 @@ export type Block = z.infer<typeof BlockSchema>
 export type ReadBlock = PromptBlock | EvidenceBlock
 export type Provenance = z.infer<typeof ProvenanceSchema>
 export type Rationale = z.infer<typeof RationaleSchema>
+export type RationaleChoice = z.infer<typeof RationaleChoiceSchema>
 export type Step = z.infer<typeof StepSchema>
 export type DiagnosticStep = z.infer<typeof DiagnosticStepSchema>
 export type ConstructionStep = z.infer<typeof ConstructionStepSchema>

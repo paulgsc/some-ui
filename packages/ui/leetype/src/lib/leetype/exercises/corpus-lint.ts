@@ -247,6 +247,45 @@ function checkPatchAlignment(
   return violations
 }
 
+/**
+ * No two candidates in `rationaleChoices` may share a full prefix
+ * (LTY-WHY W2, #1102): if one candidate's text is a prefix of another's,
+ * W3's `narrow()` can never disambiguate the shorter one from the longer
+ * one before the shorter one is already "complete" — a real bug in the
+ * matcher's own contract, not a cosmetic authoring nit. Pairwise, every
+ * pair — not just adjacent ones or the first match, the shape most likely
+ * to slip past a check that only compares neighbors in authoring order —
+ * which is free: `O(n²)` over a set capped at `RATIONALE_CHOICES_MAX`.
+ *
+ * Equal candidates are caught by the same check: either string trivially
+ * starts with the other, which is correct — two identical candidates are
+ * exactly the degenerate case of "one is a prefix of the other."
+ */
+function checkRationaleChoicesNoSharedPrefix(
+  exercise: Exercise,
+  step: Step
+): Array<string> {
+  const choices = step.rationaleChoices
+  if (choices === undefined) return []
+  const where = locate(exercise, step)
+  const violations: Array<string> = []
+  for (let i = 0; i < choices.length; i++) {
+    for (let j = i + 1; j < choices.length; j++) {
+      const a = choices[i]
+      const b = choices[j]
+      if (a === undefined || b === undefined) continue // unreachable: i, j < choices.length
+      if (a.text.startsWith(b.text) || b.text.startsWith(a.text)) {
+        violations.push(
+          `${where}: rationaleChoices candidates "${a.text}" and "${b.text}" share a full ` +
+            "prefix. narrow() can never disambiguate the shorter one before it is already " +
+            '"complete" — rewrite one so neither candidate is a prefix of the other.'
+        )
+      }
+    }
+  }
+  return violations
+}
+
 function normalizeForSubstringCheck(text: string): string {
   return text.toLowerCase().trim()
 }
@@ -358,6 +397,7 @@ function lintStep(
 
   violations.push(...checkTransferFrom(exercise, step, stepsById))
   violations.push(...checkPatchAlignment(exercise, step, patchAlignmentCheck))
+  violations.push(...checkRationaleChoicesNoSharedPrefix(exercise, step))
 
   return violations
 }

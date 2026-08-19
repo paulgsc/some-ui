@@ -190,6 +190,56 @@ describe("lintCorpus — deliberately malformed fixtures", () => {
   })
 })
 
+describe("rationaleChoices — no shared prefix (LTY-WHY W2, #1102)", () => {
+  it("fails when one candidate is a strict prefix of another", () => {
+    const step = diagnosticStep({
+      rationaleChoices: [
+        { text: "borrowing avoids the copy" },
+        { text: "borrowing avoids the copy entirely" },
+      ],
+    })
+    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }])
+    expect(violations.some((v) => v.includes("share a full prefix"))).toBe(true)
+  })
+
+  it("fails on a non-adjacent shared prefix, not just neighboring candidates", () => {
+    // The shape a check that only compares adjacent pairs would miss: the
+    // colliding pair sits at positions 0 and 2, with an unrelated candidate
+    // between them.
+    const step = diagnosticStep({
+      rationaleChoices: [
+        { text: "the same prefix" },
+        { text: "an unrelated middle candidate" },
+        { text: "the same prefix, extended" },
+      ],
+    })
+    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }])
+    expect(violations.some((v) => v.includes("share a full prefix"))).toBe(true)
+  })
+
+  it("fails when two candidates are identical — the degenerate prefix case", () => {
+    const step = diagnosticStep({
+      rationaleChoices: [
+        { text: "identical candidate text" },
+        { text: "identical candidate text" },
+      ],
+    })
+    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }])
+    expect(violations.some((v) => v.includes("share a full prefix"))).toBe(true)
+  })
+
+  it("passes candidates that share a common start but diverge before either ends", () => {
+    const step = diagnosticStep({
+      rationaleChoices: [
+        { text: "borrowing avoids the copy" },
+        { text: "borrowing avoids the allocation" },
+      ],
+    })
+    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }])
+    expect(violations).toEqual([])
+  })
+})
+
 describe("patch.lineKinds alignment against the rendered source (LTY-PATCH P6, #1081)", () => {
   const patchedWitness: Block = {
     kind: "typing",
