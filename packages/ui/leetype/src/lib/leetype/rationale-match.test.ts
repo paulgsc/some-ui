@@ -95,6 +95,9 @@ describe("rationale-match.ts stays engine-free (LTY-WHY W3, #1103)", () => {
     for (const token of forbidden) {
       expect(codeOnly.includes(token)).toBe(false)
     }
-    expect(codeOnly.includes("import ")).toBe(false)
+    // Matches both a static `import ... from "..."` and a dynamic
+    // `import("...")` — a literal `"import "` check alone misses the
+    // latter, since there is no space between `import` and its `(`.
+    expect(codeOnly).not.toMatch(/\bimport\s*[("]/)
   })
 })
