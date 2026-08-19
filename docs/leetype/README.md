@@ -272,6 +272,102 @@ is a bridge (LTY-ROUTE), not an obligation, and the hunk shape is more
 inviting to that mistake than a frame was, not less, which is exactly why
 it is worth naming here.
 
+## LTY-WHY: the reason-reaffirmation shim
+
+Tracked in [#1100](https://github.com/paulgsc/some-ui/issues/1100). After a
+step's hunk is typed, an accordion can pose "why is this the right fix" as
+2–5 authored candidate rationale sentences, leetyped rather than clicked: a
+keystroke is valid as long as what is typed so far is a prefix of at least
+one surviving candidate, the live set narrows as characters diverge
+candidates out, and reaching the end of any one candidate exactly is
+completion.
+
+This decision record exists because the recon that produced this epic
+nearly shipped the wrong default: the wireframe canvas built to check the
+interaction drew a green checkmark and a "that's the one" verdict — a
+completely reasonable-looking UI that is, on inspection, exactly the
+failure mode this document's own rule exists to catch (_"no judgment is
+allowed unless it can produce its own justification,"_ below). There is no
+semantic verifier. A verdict rendered without one is a judgment with no
+justification, dressed as a feature. The canvas has been corrected; this
+section is what keeps the correction from being lost the next time someone
+builds toward the wireframe instead of toward this doc.
+
+**No mastery signal, unconditionally.** Not "conditional on it" —
+confirmed, the same posture LTY-SEAM already holds for the whole exercise
+(`p_credited = false`, #1015). This feature does not get its own exemption
+or its own argument; it inherits the one that already exists. Nothing this
+epic ships is read by `weightedWpm`, `gateThreshold`, `progression()`, or
+any persisted store.
+
+**This is a stub for an eventual system, named so it is not mistaken for
+the final shape.** The eventual version has a real semantic verifier, gates
+on specific vocabulary, and judges against a canonical rationale that stays
+hidden even after the player answers — a hidden choice that can't be
+unhidden. Recorded here the same way "Where the magic is quarantined" below
+names its own deferred pipeline without building any of it: this is the
+second thing in this doc held to that standard. The acceptance test for the
+eventual verifier, when it lands, is the same shape as that section's own
+rule — _it emits what the shim emits, plus a verdict the shim never had
+grounds to render._
+
+**Until the verifier exists: accept, don't grade.** Any candidate the
+player types to completion is accepted — not "the authored-canonical one is
+marked right and the rest wrong." Every authored candidate is equally valid
+_for analysis_ in the absence of something that can actually analyze them.
+No candidate is ever colored, labeled, or modal-announced as correct or
+incorrect. At most a neutral acknowledgement ("noted") on completion.
+
+**Not hoisted in wasm, and why that is not a compromise.**
+`crates/leetype_wasm/src/leetype/session.rs`'s `press()` matches one
+keystroke against one `expected` character read from one compiled
+`Program` (`:249`) — there is no candidate-set notion anywhere in the
+crate, and no small parameter change adds one. This epic does not pay that
+cost: `crates/leetype_wasm` gets nothing from it, no new export, no new
+`Program` variant, no wasm-bindgen surface. That is not a scoped-down
+version of doing it properly; it is the same sequencing
+`lib/leetype/exercises/index.ts` already uses for the exercise-generation
+pipeline — the interesting, hard part (real semantic verification) is
+deferred wholesale, and what ships is a small, honest, engine-free
+placeholder for the one arrow it actually occupies: accept a well-formed
+attempt.
+
+**What this forecloses**, recorded as decisions because each will be
+proposed again by someone who has not read this section:
+
+- **No color-coded right/wrong on any candidate, ever, in this epic.** Not
+  "hidden until an admin flag flips it" — genuinely absent from the
+  component. The moment the code carries a notion of "the correct
+  candidate," someone will render it, and rendering it is the thing being
+  forbidden.
+- **No modal.** The worked-route rule against dialogs on the graded loop
+  (#1012) is written for the _graded_ loop and does not strictly bind an
+  ungated widget — but the corrected behavior above makes the question moot
+  anyway: there is nothing to pop a modal about when nothing is being
+  judged.
+- **No persistence of which candidate a player converged on**, absent a
+  separate decision. LTY-SEAM S2's "persist nothing, score nothing"
+  (#1016) applies by default; logging choices to eventually train or seed
+  the verifier is a real future decision with its own privacy and canon
+  argument, not something this epic reaches for by default.
+- **No engine change.** Per the recon above, `press()`'s single-`expected`-
+  character model has no small path to a candidate-set model, and this shim
+  does not need one.
+
+**Vocabulary**, added alongside the entries above:
+
+- **candidate** — one authored rationale string in a step's
+  `rationaleChoices`, accepted on exact completion, never colored, never
+  ranked against the others by anything the runtime reads.
+- **canonical** — authoring metadata on a candidate (LTY-WHY W2): which one
+  an author believes is correct, worth recording for the eventual verifier,
+  never load-bearing because nothing in this epic's runtime path reads it —
+  same posture as `rationale`/`obligation` above.
+- **narrow** — the shim's one piece of logic (LTY-WHY W3): a pure function
+  that narrows a live candidate set against a typed-so-far prefix. It is the
+  entire amount of judgment this epic performs, and the entire amount it is
+  allowed to.
+
 ## Where the magic is quarantined
 
 The full ambition is a compiler, not a prompt:
