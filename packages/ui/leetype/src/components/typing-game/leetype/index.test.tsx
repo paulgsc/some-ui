@@ -343,6 +343,99 @@ describe("the step hand-off", () => {
   })
 })
 
+describe("the reason-reaffirmation shim (LTY-WHY W4, #1104)", () => {
+  /** One step carries rationaleChoices; the other doesn't, to prove the widget is per-step, not global. */
+  const EXERCISE_WITH_RATIONALE: Exercise = {
+    id: "test-rationale",
+    title: "Two steps, one with rationaleChoices",
+    steps: [
+      {
+        id: "r0",
+        goal: "Step 0.",
+        concepts: [],
+        blocks: [
+          { kind: "prompt" as const, lines: ["Prompt 0"] },
+          {
+            kind: "typing" as const,
+            source: "aaa",
+            language: "rust" as const,
+          },
+        ],
+        rationaleChoices: [
+          { text: "because borrowing avoids the copy" },
+          { text: "because the loop terminates early" },
+        ],
+      },
+      {
+        id: "r1",
+        goal: "Step 1.",
+        concepts: [],
+        blocks: [
+          { kind: "prompt" as const, lines: ["Prompt 1"] },
+          {
+            kind: "typing" as const,
+            source: "bbb",
+            language: "rust" as const,
+          },
+        ],
+      },
+    ],
+  }
+
+  it("renders nothing while a rationaleChoices-bearing step is still in flight", async () => {
+    seedBaseline()
+    render(<Leetype exercise={EXERCISE_WITH_RATIONALE} />)
+    await begin()
+    await screen.findByText("Step 0.")
+    expect(
+      screen.queryByText("Why is this the right fix?")
+    ).not.toBeInTheDocument()
+  })
+
+  it("renders the accordion once the step's hunk completes", async () => {
+    seedBaseline()
+    render(<Leetype exercise={EXERCISE_WITH_RATIONALE} />)
+    const input = await begin()
+    await screen.findByText("Step 0.")
+
+    typeStep(input, 3)
+    await screen.findByText("Step 1.")
+    await screen.findByText("Why is this the right fix?")
+  })
+
+  it("retires the accordion on the player's next keystroke, not before", async () => {
+    seedBaseline()
+    render(<Leetype exercise={EXERCISE_WITH_RATIONALE} />)
+    const input = await begin()
+    await screen.findByText("Step 0.")
+
+    typeStep(input, 3)
+    await screen.findByText("Step 1.")
+    await screen.findByText("Why is this the right fix?")
+
+    // Step 1 carries no rationaleChoices of its own — its first keystroke
+    // retires step 0's leftover accordion rather than replacing it.
+    typeStep(input, 1)
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Why is this the right fix?")
+      ).not.toBeInTheDocument()
+    })
+  })
+
+  it("never renders for a step without rationaleChoices", async () => {
+    seedBaseline()
+    render(<Leetype exercise={EXERCISE} />)
+    const input = await begin()
+    await screen.findByText("Step 0.")
+    typeStep(input, 3)
+    await screen.findByText("Step 1.")
+    expect(
+      screen.queryByText("Why is this the right fix?")
+    ).not.toBeInTheDocument()
+  })
+})
+
 describe("the warm-up", () => {
   it("runs first for a player with no stored baseline, and only once", async () => {
     render(<Leetype exercise={EXERCISE} />)
