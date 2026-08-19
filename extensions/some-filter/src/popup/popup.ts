@@ -277,6 +277,30 @@ function render(): void {
       WindowGroupHeader,
     })
   )
+
+  root.appendChild(diagnosticsLink())
+}
+
+/**
+ * Entry point to `debug.html`. Deliberately just a link, not a live health
+ * summary — the popup must stay fast to open, and a per-tab session picker
+ * (coverage-observability.ts's header explains why there is one) is not
+ * something a one-line badge can usefully compress anyway.
+ */
+function diagnosticsLink(): HTMLElement {
+  const footer = document.createElement("footer")
+  footer.className = "popup__footer"
+
+  const link = document.createElement("a")
+  link.className = "popup__diagnostics"
+  link.href = browser.runtime.getURL("debug.html")
+  link.target = "_blank"
+  link.rel = "noopener"
+  link.textContent = "Diagnostics"
+  link.title = "Coverage health, metrics and the per-tab event timeline"
+
+  footer.appendChild(link)
+  return footer
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────

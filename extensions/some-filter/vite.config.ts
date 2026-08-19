@@ -14,6 +14,7 @@ const entries = [
   { name: "content", input: "src/content/content.ts" },
   { name: "background", input: "src/background/background.ts" },
   { name: "popup", input: "popup.html", classic: false },
+  { name: "debug", input: "debug.html", classic: false },
 ]
 
 // One `vite build` per target. `--mode chromium` builds Chrome; the default

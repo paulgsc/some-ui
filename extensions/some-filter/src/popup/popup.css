@@ -588,3 +588,22 @@ svg {
   color: var(--c-filtered);
   opacity: 0.85;
 }
+
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+
+.popup__footer {
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
+  padding: 8px 12px;
+  text-align: right;
+}
+
+.popup__diagnostics {
+  color: var(--text-1);
+  font-size: 11px;
+  text-decoration: none;
+}
+
+.popup__diagnostics:hover {
+  color: var(--text-0);
+}

@@ -4,6 +4,16 @@ import {
 } from "@filter/adapter/pipeline"
 import { DEFAULT_SWATCH_ID, SWATCHES } from "@filter/adapter/swatches"
 import {
+  createCoverageRecorder,
+  removeFromIndex,
+  touchIndex,
+  type CoverageRecorder,
+} from "@filter/lib/content/coverage-observability"
+import {
+  createCoverageWatchdog,
+  type CoverageWatchdog,
+} from "@filter/lib/content/coverage-watchdog"
+import {
   isExtensionMessage,
   isGetTabFilterStateResponse,
 } from "@filter/lib/content/guard"
@@ -66,9 +76,54 @@ let filterConfig: FilterConfig = DEFAULT_FILTER
 const sessionLifecycle = createSessionLifecycle()
 let contentSession: ContentSession | null = null
 
+// ── Coverage observability ───────────────────────────────────────────────────
+//
+// One recorder per content-script instance (see coverage-observability.ts's
+// header for why: a shared cross-tab storage key would race). The watchdog
+// re-reads the live DOM on every mutation that could touch the veil, the
+// dark-theme attribute, or the legacy filter's attribute/<style> pair, and
+// evaluates coverage-observability.ts's invariants against what it actually
+// finds — not against what this module believes it last did.
+const observabilitySessionId = crypto.randomUUID()
+const observabilityRecorder: CoverageRecorder = createCoverageRecorder(
+  observabilitySessionId,
+  true
+)
+const coverageWatchdog: CoverageWatchdog = createCoverageWatchdog(
+  observabilityRecorder,
+  () => currentState
+)
+
+function touchObservabilityIndex(): void {
+  void touchIndex({
+    sessionId: observabilitySessionId,
+    origin: location.origin,
+    title: document.title,
+    tabState: currentState,
+    updatedAt: Date.now(),
+  })
+}
+
 function applyState(state: TabState): void {
+  const previous = currentState
   currentState = state
   writeCachedState(state)
+  observabilityRecorder.record({
+    kind: "state.changed",
+    detail: { from: previous, to: state },
+  })
+  touchObservabilityIndex()
+
+  // The watchdog only needs to run while there is something to hold
+  // coverage of — "off" is the one state Remark C.1's invariant does not
+  // apply to (coverage-observability.ts's CoverageHeld already encodes
+  // this), so tearing it down there is just avoiding dead observer
+  // overhead, not a correctness requirement.
+  if (state === "off") {
+    coverageWatchdog.teardown()
+  } else {
+    coverageWatchdog.observe()
+  }
 
   // Auto's pipeline owns its own MutationObserver — leaving auto (or
   // re-entering it) must stop the previous one before anything else runs,
@@ -83,16 +138,19 @@ function applyState(state: TabState): void {
     // for snapshot isolation; the pipeline's onFire hook handles veil teardown
     // once the first decide/realize cycle actually settles.
     runAutoTheme()
+    coverageWatchdog.check("apply-state:auto")
     return
   }
 
   if (state === "legacy") {
     applyTheme("legacy", filterConfig)
+    coverageWatchdog.check("apply-state:legacy")
     return
   }
 
   // off
   disablePrepaint()
+  coverageWatchdog.check("apply-state:off")
 
   updateDebugAttrs()
 }
@@ -155,6 +213,14 @@ function updateDebugAttrs(): void {
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 function init(): void {
+  // Exposed for the debug page's session picker and for e2e assertions —
+  // the same role updateDebugAttrs()'s swTabState/swThemeApplied already
+  // play, just for the observability session rather than the theme state.
+  document.body.dataset.swObservabilitySession = observabilitySessionId
+
+  observabilityRecorder.count("sessions_started")
+  observabilityRecorder.record({ kind: "session.start" })
+
   // Restore the last-known state synchronously from sessionStorage so that
   // legacy/off tabs can apply the correct visual state before the background
   // responds. For a cold background this avoids a 100–300 ms window of
@@ -229,23 +295,43 @@ function init(): void {
   // rest of the tab's life. Both handlers key off `currentState` directly
   // instead, so every mode is covered.
   window.addEventListener("yt-navigate-start", () => {
+    observabilityRecorder.count("nav_starts")
+    observabilityRecorder.record({ kind: "nav.start" })
     if (currentState === "off") return
     enablePrepaint()
+    coverageWatchdog.check("nav-start")
   })
 
   window.addEventListener("yt-navigate-finish", () => {
+    observabilityRecorder.count("nav_finishes")
+    observabilityRecorder.record({ kind: "nav.finish" })
+
     if (currentState === "auto") {
       sessionLifecycle.resetContent()
       contentSession?.rescan()
+      coverageWatchdog.check("nav-finish:auto")
       return
     }
 
     if (currentState === "legacy") {
       applyTheme("legacy", filterConfig)
+      coverageWatchdog.check("nav-finish:legacy")
       return
     }
 
     disablePrepaint()
+    coverageWatchdog.check("nav-finish:off")
+  })
+
+  // Real navigation away (or the tab closing) — flush whatever this session
+  // recorded and drop its index entry so the debug page's picker does not
+  // accumulate dead sessions. Best-effort: pagehide is not guaranteed on
+  // every teardown path (a killed process gets neither), but it is the best
+  // signal available from a content script.
+  window.addEventListener("pagehide", () => {
+    coverageWatchdog.teardown()
+    void observabilityRecorder.dispose()
+    void removeFromIndex(observabilitySessionId)
   })
 }
 
