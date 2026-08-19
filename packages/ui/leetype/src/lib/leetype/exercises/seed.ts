@@ -218,6 +218,54 @@ const diagnosticDivisionGuard: Exercise = {
 }
 
 /**
+ * LTY-PATCH P5's own instance (#1080): a construction `-` line carrying a
+ * genuinely ruled-out form, not a prior commitment — the reading
+ * `entryApi`'s retrofit below never demonstrates on its own, since every
+ * `-` line there is inherited context, not an alternative. The eager
+ * default is shown, in full, never typed: the contrast with the lazy form
+ * actually chosen is the evidence for *why* lazy is owed, per the
+ * construction `-` authoring guidance in `docs/leetype/README.md`'s
+ * LTY-PATCH section — not a blank with a hint over it, because the two
+ * lines differ by more than the one fragment that resolves the obligation.
+ * Same subject matter as `diagnosticEagerLazyDefaultStep` above, read from
+ * the opposite direction: that step shows the failure and repairs it, this
+ * one shows the alternative and rules it out.
+ */
+const constructionLazyDefaultStep: ConstructionStep = {
+  id: "construction-lazy-default-01",
+  goal: "Choose the entry call that defers construction until the place is actually vacant.",
+  concepts: [CONCEPT_IDS.eagerVsLazyEvaluation, CONCEPT_IDS.lookupAsPlace],
+  obligation:
+    "the default is owed lazily — the constructor may run only on the call that finds the entry vacant, never on a call that finds it already occupied",
+  blocks: [
+    {
+      kind: "transition",
+      label: "constructor calls",
+      before: "every call, occupied or not",
+      after: "only the call that finds the entry vacant",
+    },
+    {
+      kind: "typing",
+      source:
+        "‹map.entry(key).or_insert(build_default());\n›map.entry(key).or_insert_with(build_default);",
+      language: "rust",
+      patch: {
+        path: "src/cache/lazy_default.rs",
+        oldStart: 1,
+        newStart: 1,
+        lineKinds: ["del", "add"],
+      },
+    },
+  ],
+}
+
+const constructionLazyDefault: Exercise = {
+  id: "construction-lazy-default",
+  title: "Construction: lazy default",
+  steps: [constructionLazyDefaultStep],
+}
+
+/**
  * Failure class 4: the double lookup — deliberately the same subject
  * matter as `entryApi`, in diagnostic form. Folded into `entryApi`'s tail
  * below (LTY-FAMILIES A4) rather than kept as a freestanding exercise.
@@ -367,9 +415,21 @@ const entryApi: Exercise = {
           after: "vacant | occupied",
         },
         {
+          // LTY-PATCH P5 (#1080): the first hunk in an accumulating chain
+          // — no prior commitment to carry as context yet, so the whole
+          // rendered line is `add`. Steps 04 and 05 below re-show this
+          // exact line as context and extend it, the construction
+          // family's own reading of the diagnostic mapping (docs/leetype/
+          // README.md's LTY-PATCH section).
           kind: "typing",
           source: "‹let slot = ›map.entry(key)‹;›",
           language: "rust",
+          patch: {
+            path: "src/entry.rs",
+            oldStart: 1,
+            newStart: 1,
+            lineKinds: ["add"],
+          },
         },
       ],
     } satisfies ConstructionStep,
@@ -385,10 +445,19 @@ const entryApi: Exercise = {
           observations: [{ label: "entry + fill", value: "1" }],
         },
         {
+          // entry-03-place's whole line returns here as context (line 0),
+          // unaltered — the accumulation is not new authoring, it is what
+          // the source already did before this story painted it as a diff.
           kind: "typing",
           source:
             "‹let slot = map.entry(key);\nlet filled = slot›.or_insert_with(Vec::new)‹;›",
           language: "rust",
+          patch: {
+            path: "src/entry.rs",
+            oldStart: 1,
+            newStart: 1,
+            lineKinds: ["context", "add"],
+          },
         },
       ],
     } satisfies ConstructionStep,
@@ -405,10 +474,18 @@ const entryApi: Exercise = {
           after: "&mut Vec<V>",
         },
         {
+          // Both prior lines return as context; only the final witness is
+          // typed — the chain's third and last hunk.
           kind: "typing",
           source:
             "‹let slot = map.entry(key);\nlet filled = slot.or_insert_with(Vec::new);\nfilled›.push(value)‹;›",
           language: "rust",
+          patch: {
+            path: "src/entry.rs",
+            oldStart: 1,
+            newStart: 1,
+            lineKinds: ["context", "context", "add"],
+          },
         },
       ],
     } satisfies ConstructionStep,
@@ -600,6 +677,7 @@ export const SEED_EXERCISES: ReadonlyArray<Exercise> = [
   diagnosticInclusiveBoundary,
   diagnosticShrinkingInterval,
   diagnosticDivisionGuard,
+  constructionLazyDefault,
   adversarial,
 ]
 

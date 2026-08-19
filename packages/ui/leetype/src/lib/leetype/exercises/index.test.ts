@@ -244,6 +244,51 @@ describe("entryApi's diagnostic tail (LTY-FAMILIES A4)", () => {
   })
 })
 
+describe("the construction reading — entryApi as an accumulating hunk (LTY-PATCH P5, #1080)", () => {
+  /** The rendered form of a `‹…›`-marked source: delimiters stripped, content kept. */
+  function renderedFormOf(source: string): string {
+    return source.replace(/[‹›]/g, "")
+  }
+
+  it("gives entry-03/04/05 a patch overlay whose add lines are exactly the step's own witness", () => {
+    const steps = nextExercise().steps
+    const commitments = [
+      { id: "entry-03-place", lineKinds: ["add"] },
+      { id: "entry-04-fill", lineKinds: ["context", "add"] },
+      { id: "entry-05-mutate", lineKinds: ["context", "context", "add"] },
+    ]
+    for (const { id, lineKinds } of commitments) {
+      const step = steps.find((candidate) => candidate.id === id)
+      const typing = step ? typingBlockOf(step) : undefined
+      expect(typing?.patch, `"${id}" has no patch overlay`).toBeDefined()
+      expect(typing?.patch?.lineKinds).toEqual(lineKinds)
+    }
+  })
+
+  it("re-shows each commitment's whole rendered line as the next step's leading context", () => {
+    // The claim the epic actually rests on for this story: the chain reads
+    // as one accumulating hunk, not three unrelated ones — each step's `+`
+    // line is exactly the same text the next step carries forward as `‹context›`.
+    const steps = nextExercise().steps
+    const place = steps.find((s) => s.id === "entry-03-place")
+    const fill = steps.find((s) => s.id === "entry-04-fill")
+    const mutate = steps.find((s) => s.id === "entry-05-mutate")
+    const placeSource = place ? typingBlockOf(place)?.source : undefined
+    const fillSource = fill ? typingBlockOf(fill)?.source : undefined
+    const mutateSource = mutate ? typingBlockOf(mutate)?.source : undefined
+    expect(placeSource).toBeDefined()
+    expect(fillSource).toBeDefined()
+    expect(mutateSource).toBeDefined()
+
+    const placeRendered = renderedFormOf(placeSource ?? "")
+    const fillRendered = renderedFormOf(fillSource ?? "")
+    const mutateRendered = renderedFormOf(mutateSource ?? "")
+
+    expect(fillRendered.startsWith(placeRendered)).toBe(true)
+    expect(mutateRendered.startsWith(fillRendered)).toBe(true)
+  })
+})
+
 describe("the hostile prompt fixture", () => {
   it("is genuinely over budget — it fails StepSchema", () => {
     // The whole point of keeping it out of SEED_EXERCISES: a step this far
