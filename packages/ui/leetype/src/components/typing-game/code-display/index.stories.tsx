@@ -4,6 +4,7 @@ import { languageOf, typingBlockOf } from "@leetype/types/exercise"
 import type { TextGradient } from "@leetype/types/leetype"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
+import type { Hunk } from "."
 import { CodeDisplay } from "."
 
 const meta: Meta<typeof CodeDisplay> = {
@@ -117,11 +118,13 @@ const StoryFromSource = ({
   typedChars,
   idleSeconds = 0,
   textGradient,
+  hunk,
 }: {
   source: string
   typedChars: number
   idleSeconds?: number
   textGradient?: TextGradient
+  hunk?: Hunk
 }) => {
   const preview = usePreviewGame(source, typedChars, idleSeconds)
 
@@ -142,6 +145,7 @@ const StoryFromSource = ({
         visibility={preview.visibility}
         cursorDisplay={preview.snapshot.cursorDisplay}
         textGradient={textGradient}
+        hunk={hunk}
       />
     </div>
   )
@@ -194,14 +198,15 @@ export const ContextFrameMutedGradient: Story = {
   ),
 }
 
-// ── A hunk overlay (LTY-PATCH P3, #1078) ──────────────────────────────
+// ── A hunk overlay (LTY-PATCH P3, #1078; the full set, P6, #1081) ────
 //
-// The comprehensive set — a diagnostic patch, a construction patch, a
-// hunk whose `-` side dwarfs its `+` side, a step with no patch at all —
-// is LTY-PATCH P6's job (#1081), the same way `prompt-panel`'s own
-// pagination stories waited for the story that actually needed them. This
-// is the one story P3 owes: proof the gutter, the tint and the caret
-// actually render against a real seed instance, not a synthetic prop bag.
+// `HunkOverlay` below is the one story P3 owed on its own: proof the
+// gutter, the tint and the caret actually render against a real seed
+// instance, not a synthetic prop bag. The comprehensive set — a
+// diagnostic patch, a construction patch, a hunk whose `-` side dwarfs
+// its `+` side, a step with no patch at all — is P6's, the same way
+// `prompt-panel`'s own pagination stories waited for the story that
+// actually needed them.
 
 const StoryFromPatchStep = ({
   exerciseId,
@@ -250,6 +255,101 @@ export const HunkOverlay: Story = {
   render: () => (
     <StoryFromPatchStep
       exerciseId="diagnostic-division-guard"
+      typedChars={0}
+      idleSeconds={20}
+    />
+  ),
+}
+
+/**
+ * A real seed instance (`construction-lazy-default-01`, LTY-PATCH P5,
+ * #1080): the only construction-family step whose `patch` carries a `del`
+ * line, so this is the one story that proves the deletion strikethrough
+ * renders against a construction step and not only a diagnostic one.
+ */
+export const HunkOverlayConstruction: Story = {
+  render: () => (
+    <StoryFromPatchStep
+      exerciseId="construction-lazy-default"
+      typedChars={0}
+      idleSeconds={20}
+    />
+  ),
+}
+
+// ── A `-` side that dwarfs its `+` side ───────────────────────────────
+//
+// No seed instance has this shape — the corpus's own `del` lines (P5's
+// `construction-lazy-default-01`) are deliberately one-for-one with their
+// `add` line, per that exercise's own doc comment. This is the same
+// shim-bypass `StoryFromSource` already uses for `ContextFrame`: a
+// minimal, purpose-built fixture where the corpus has none. The source and
+// its 11-del/3-add split are the identical fixture
+// `check-deletions-are-free.ts`'s `WITH_LARGE_DELETION` already proved
+// renders and plays correctly against the real compiled engine — this
+// story is that same shape, just watched instead of played.
+
+const LARGE_DELETION_SOURCE =
+  "‹fn slow_path(items: &[i32]) -> i32 {\n" +
+  "    let mut total = 0;\n" +
+  "    for item in items {\n" +
+  "        if *item % 2 == 0 {\n" +
+  "            total += item * 2;\n" +
+  "        } else {\n" +
+  "            total += item;\n" +
+  "        }\n" +
+  "    }\n" +
+  "    total\n" +
+  "}\n" +
+  "›fn fast_path(items: &[i32]) -> i32 {\n" +
+  "    items.iter().sum()\n" +
+  "}"
+
+const LARGE_DELETION_HUNK: Hunk = {
+  oldStart: 1,
+  newStart: 1,
+  lineKinds: [
+    "del",
+    "del",
+    "del",
+    "del",
+    "del",
+    "del",
+    "del",
+    "del",
+    "del",
+    "del",
+    "del",
+    "add",
+    "add",
+    "add",
+  ],
+}
+
+export const HunkOverlayLargeDeletion: Story = {
+  render: () => (
+    <StoryFromSource
+      source={LARGE_DELETION_SOURCE}
+      typedChars={0}
+      idleSeconds={20}
+      hunk={LARGE_DELETION_HUNK}
+    />
+  ),
+}
+
+/**
+ * A step with no `patch` at all (`entry-01-import`, `entryApi`'s first
+ * step — never touched by LTY-PATCH). `hunk` is simply omitted — proof
+ * the omission path (still every other story above `HunkOverlay`) keeps
+ * rendering byte-identically to how it did before the epic, exercised
+ * here through the same `StoryFromPatchStep` helper the hunk stories use
+ * rather than a separate one, so this is a true apples-to-apples check of
+ * the branch in `CodeDisplay` that hunk presence switches on.
+ */
+export const NoHunkOverlay: Story = {
+  render: () => (
+    <StoryFromPatchStep
+      exerciseId="rust-hashmap-entry"
       typedChars={0}
       idleSeconds={20}
     />

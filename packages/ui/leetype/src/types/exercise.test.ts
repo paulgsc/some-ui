@@ -190,6 +190,31 @@ describe("PromptBlockSchema — the prose budget", () => {
     }
     expect(PromptBlockSchema.safeParse(atLimit).success).toBe(true)
   })
+
+  it("rejects an over-budget prompt on a patch-shaped step exactly as it would on any other (LTY-PATCH P6, #1081)", () => {
+    // "No patch-shaped exemption anywhere": isWithinStepPromptBudget reads
+    // step.blocks, never patch, so there is no code path for an exemption
+    // to hide in — but the epic's own safety claim asks for this proven,
+    // not inferred from reading the implementation.
+    const overBudget: Block = {
+      kind: "prompt",
+      lines: Array(PROMPT_MAX_LINES + 1).fill("A short line."),
+    }
+    const patchedTyping: Block = {
+      kind: "typing",
+      source: "add_this();",
+      language: "rust",
+      patch: {
+        path: "src/example.rs",
+        oldStart: 1,
+        newStart: 1,
+        lineKinds: ["add"],
+      },
+    }
+    const result = StepSchema.safeParse(step([overBudget, patchedTyping]))
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.message).toMatch(/more than 2 lines/)
+  })
 })
 
 describe("the evidence block kinds", () => {

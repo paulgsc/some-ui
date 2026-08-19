@@ -182,6 +182,19 @@ jobs:
             --filter='!./extensions/**' \
             --concurrency=100%
 
+      # LTY-PATCH's own guardrail (#1081): "deletions are free" is a claim
+      # about the real compiled engine, not the vitest type stub — see
+      # scripts/load-real-wasm.ts's doc comment for why the plain `test`
+      # step above can never exercise this. Same opt-in shape as the corpus
+      # lint step: a workspace opts in by declaring a `test:deletions-are-free`
+      # script — only packages/ui/leetype declares one today.
+      - name: Deletions-are-free guardrail (affected packages)
+        run: |
+          nix develop .#ci --command pnpm turbo run test:deletions-are-free \
+            --filter=...[HEAD^1] \
+            --filter='!./extensions/**' \
+            --concurrency=100%
+
       # public/sw.js is the one file in apps/www that nothing else checks: a
       # plain public/ asset, never bundled, never imported, never type-checked,
       # and unreachable from vitest. This drives it in a real Chromium with a
