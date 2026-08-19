@@ -2,6 +2,7 @@ import type { FC } from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { ExerciseCard } from "@leetype/components/typing-game/exercise-card"
 import { ExerciseHeader } from "@leetype/components/typing-game/exercise-header"
+import { RationaleAccordion } from "@leetype/components/typing-game/rationale-accordion"
 import { ResultsCard } from "@leetype/components/typing-game/results-card"
 import { TypingErrorAlert } from "@leetype/components/typing-game/typing-error-alert"
 import { useExerciseRunner } from "@leetype/hooks/leetype/use-exercise-runner"
@@ -16,7 +17,7 @@ import {
 } from "@leetype/lib/leetype/baseline-store"
 import { CALIBRATION_STEP } from "@leetype/lib/leetype/baseline-store/calibration"
 import { nextExercise } from "@leetype/lib/leetype/exercises"
-import type { Exercise } from "@leetype/types/exercise"
+import type { Exercise, RationaleChoice } from "@leetype/types/exercise"
 import { typingBlockOf } from "@leetype/types/exercise"
 import type {
   CompletedSessionStats,
@@ -136,6 +137,31 @@ export const Leetype: FC<LeetypeProps> = ({
    */
   const [finished, setFinished] = useState<CompletedSessionStats | null>(null)
 
+  /**
+   * The most recently completed step's `rationaleChoices` (LTY-WHY W4,
+   * #1104), decoupled from `runner`/`step` on purpose: the effect below
+   * that credits a finished step and calls `runner.advance()` moves the
+   * runner in the very same commit `isComplete` turns true, so a widget
+   * keyed off `runner.step` directly would never get a render where the
+   * step reads as both complete and current — a frozen copy captured here
+   * is what lets the accordion actually be visible.
+   *
+   * Cleared from `recordKeystroke` below, on the player's *next* real
+   * keystroke, rather than from an effect keyed on `stepKey`. That effect
+   * shape was tried and breaks: `stepKey` changes in the same render pass
+   * `runner.advance()` produces, so a `useEffect(() => set(null),
+   * [stepKey])` would fire in the same `act()`-flushed cascade that just
+   * set this value, clearing it before it is ever painted — no bug for a
+   * human eye to notice, but caught the moment a test tried to observe the
+   * intermediate state. Tying the clear to an actual DOM event instead of
+   * a reactive effect sidesteps the whole class of "cascade undid the
+   * state before it rendered" bug by construction.
+   */
+  const [completedRationale, setCompletedRationale] = useState<{
+    key: string
+    candidates: ReadonlyArray<RationaleChoice>
+  } | null>(null)
+
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const onSessionCompleteRef = useRef(onSessionComplete)
   useEffect(() => {
@@ -213,6 +239,9 @@ export const Leetype: FC<LeetypeProps> = ({
   const recordKeystroke = useCallback(
     (key: string): void => {
       if (calibrating) warmUpIntervals.record()
+      // A no-op once it is already null (see completedRationale's own doc
+      // comment for why this, not an effect, is what retires it).
+      setCompletedRationale(null)
       press(key)
     },
     [calibrating, warmUpIntervals, press]
@@ -265,6 +294,21 @@ export const Leetype: FC<LeetypeProps> = ({
     // test that catches it going back.
     if (activeStep !== `${stepKey}#${attempt}`) return
 
+    // The accordion's own trigger (LTY-WHY W4): captured independently of
+    // the runner.advance() call below, so it survives the runner moving on
+    // in this same tick. Cleared by recordKeystroke on the player's next
+    // real keystroke (completedRationale's own doc comment), never here.
+    // The step finishing is an engine fact arriving from outside React, the
+    // same shape as the warm-up-ending and sequence-ending state changes
+    // this effect already makes below.
+    if (!calibrating && step.rationaleChoices !== undefined) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCompletedRationale({
+        key: stepKey,
+        candidates: step.rationaleChoices,
+      })
+    }
+
     // The warm-up ends the same way any step does, and then hands over. Its
     // sample is taken outright rather than blended: the cold start it
     // replaces was a stand-in, not evidence.
@@ -280,7 +324,7 @@ export const Leetype: FC<LeetypeProps> = ({
       // the same shape as the sequence ending below, and for the same reason:
       // "which phase is this" is genuinely new state, not something derivable
       // during render from the engine's snapshot.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+
       setPhase("exercise")
       return
     }
@@ -308,6 +352,7 @@ export const Leetype: FC<LeetypeProps> = ({
     stepKey,
     attempt,
     calibrating,
+    step,
     warmUpIntervals,
     correct,
     assisted,
@@ -364,6 +409,7 @@ export const Leetype: FC<LeetypeProps> = ({
   const handleAgain = useCallback((): void => {
     assistanceRef.current = []
     setFinished(null)
+    setCompletedRationale(null)
     runner.restart()
     setGameState("idle")
   }, [runner])
@@ -450,6 +496,27 @@ export const Leetype: FC<LeetypeProps> = ({
             )}
           </div>
         </>
+      )}
+
+      {completedRationale && (
+        // LTY-WHY W4 (#1104): strictly-after, never gating. Rendered
+        // outside the finished/in-progress split on purpose: the last
+        // step of a sequence can carry rationaleChoices too, and its
+        // completion effect fires in the same tick runner.advance() marks
+        // the whole run finished — swapping ExerciseCard for ResultsCard
+        // the instant it did (review finding on this PR) would make that
+        // one accordion permanently unreachable. Anchored to the bottom
+        // of the outer card either way, so it reads as one lingering
+        // affordance about the step just finished, not a modal over
+        // whichever surface happens to be showing.
+        <div className="pointer-events-none absolute inset-x-4 bottom-4 z-10">
+          <div className="pointer-events-auto">
+            <RationaleAccordion
+              key={completedRationale.key}
+              candidates={completedRationale.candidates}
+            />
+          </div>
+        </div>
       )}
     </div>
   )
