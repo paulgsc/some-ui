@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import type { Block } from "./exercise"
+import type { Block, Patch } from "./exercise"
 import {
   BlockSchema,
   ConstructionStepSchema,
@@ -278,13 +278,95 @@ describe("the block union is closed", () => {
     expect(BlockSchema.safeParse(unknown).success).toBe(false)
   })
 
-  it("leaves TypingBlockSchema exactly as it was", () => {
+  it("leaves TypingBlockSchema untouched by the new evidence kinds", () => {
     expect(TypingBlockSchema.safeParse(typing).success).toBe(true)
-    // The typing path never grows a case for the new evidence kinds — its
-    // shape is still exactly kind/source/language.
+    // The typing path never grows a case for prompt/transition/trace/region
+    // — its shape is exactly kind/source/language plus LTY-PATCH's own
+    // optional `patch` overlay (P2, #1077), nothing an evidence kind added.
     expect(Object.keys(TypingBlockSchema.shape).sort()).toEqual(
-      ["kind", "language", "source"].sort()
+      ["kind", "language", "patch", "source"].sort()
     )
+  })
+})
+
+describe("TypingBlockSchema — the patch overlay (LTY-PATCH P2, #1077)", () => {
+  const fourLineSource = "line1\nline2\nline3\nline4"
+  const patch: Patch = {
+    path: "src/lib/rate-limit.ts",
+    oldStart: 12,
+    newStart: 12,
+    lineKinds: ["context", "del", "add", "context"],
+  }
+
+  it("keeps patch optional and never needs it to render", () => {
+    const multiline: Block = {
+      kind: "typing",
+      source: fourLineSource,
+      language: "rust",
+    }
+    const withoutPatch = StepSchema.parse(step([prompt, multiline]))
+    const withPatch = StepSchema.parse({
+      ...step([prompt, multiline]),
+      blocks: [prompt, { ...multiline, patch }],
+    })
+    expect(typingBlockOf(withPatch)?.patch).toEqual(patch)
+    expect(promptBlocksOf(withPatch)).toEqual(promptBlocksOf(withoutPatch))
+    expect(languageOf(withPatch)).toEqual(languageOf(withoutPatch))
+  })
+
+  it("accepts a patch whose lineKinds fits the authored source's line count", () => {
+    const withPatch = step([
+      prompt,
+      { kind: "typing", source: fourLineSource, language: "rust", patch },
+    ])
+    expect(StepSchema.safeParse(withPatch).success).toBe(true)
+  })
+
+  it("accepts lineKinds shorter than the authored source's line count", () => {
+    // The renderer treats an unlabeled tail as ordinary context (P3) — a
+    // short lineKinds is a ceiling violation only when it runs past the
+    // source, never when it runs short of it.
+    const shortPatch: Patch = { ...patch, lineKinds: ["add"] }
+    const withPatch = step([
+      prompt,
+      {
+        kind: "typing",
+        source: fourLineSource,
+        language: "rust",
+        patch: shortPatch,
+      },
+    ])
+    expect(StepSchema.safeParse(withPatch).success).toBe(true)
+  })
+
+  it("rejects lineKinds longer than the authored source's line count, and says why", () => {
+    const oneLineSource = "let x = 1;"
+    const overLong: Patch = {
+      ...patch,
+      lineKinds: ["context", "del", "add", "context", "context"],
+    }
+    const withPatch = step([
+      prompt,
+      {
+        kind: "typing",
+        source: oneLineSource,
+        language: "rust",
+        patch: overLong,
+      },
+    ])
+    const result = StepSchema.safeParse(withPatch)
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.message).toMatch(/rendered source/)
+  })
+
+  it("requires at least one lineKinds entry", () => {
+    const withEmptyLineKinds = {
+      kind: "typing",
+      source: "let x = 1;",
+      language: "rust",
+      patch: { ...patch, lineKinds: [] },
+    }
+    expect(TypingBlockSchema.safeParse(withEmptyLineKinds).success).toBe(false)
   })
 })
 
