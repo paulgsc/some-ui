@@ -138,4 +138,26 @@ describe("ExerciseCard", () => {
     expect(declared).toHaveLength(1)
     expect(declared[0]?.getAttribute("data-scroll-intent")).toBe("code-display")
   })
+
+  it("passes a step's patch overlay through to the gutter (LTY-PATCH P3, #1078)", () => {
+    // End-to-end wiring check: a step's typing block's `patch` (P2, #1077)
+    // has to survive ExerciseCard -> TypingViewport -> CodeDisplay for the
+    // gutter to ever render at all.
+    const patched = nextExercise({ preferId: "diagnostic-division-guard" })
+    const step = patched.steps[0]
+    if (!step) throw new Error("diagnostic-division-guard has one step")
+
+    const { container } = renderCard(step, 0)
+    expect(
+      container.querySelectorAll("[data-line-kind]").length
+    ).toBeGreaterThan(0)
+  })
+
+  it("renders no gutter for a step without a patch overlay", () => {
+    const step = seed.steps[0]
+    if (!step) throw new Error("the seed exercise has ten steps")
+
+    const { container } = renderCard(step, 0)
+    expect(container.querySelectorAll("[data-line-kind]")).toHaveLength(0)
+  })
 })

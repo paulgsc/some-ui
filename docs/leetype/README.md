@@ -96,6 +96,24 @@ forces the renderer to learn what a prompt is.
 `CodeDisplay`'s invariant survives untouched — _render a linear sequence of
 display glyphs plus caret state_. No mode flags.
 
+**Amended by LTY-PATCH P3 (#1078):** untouched in the sense that actually
+matters — _the renderer decides nothing_ — but no longer in the most
+literal reading of "a linear sequence of glyphs." Handed a hunk overlay,
+`CodeDisplay` now organizes those same glyphs into rows, each with a sign
+column and old/new line-number columns. The line to draw, stated
+explicitly because this is the first story entitled to move it: **layout**
+is conceded, **policy** is not. `CodeDisplay` still owns no masking rule,
+no error accounting, no threshold, no latch and no memory, and its props
+still carry no exercise vocabulary — no `Step`, no `TypingBlock`, no mode
+flag, only a per-line kind array a step's `patch` happens to supply
+(`docs/leetype/README.md`'s own "hunk"/"deletion"/"addition" vocabulary,
+not this one's). That is the same line #1004 (E4) drew for the frame: the
+frame needed nothing new because `Role::Context` already existed and
+`CodeDisplay` could render it unchanged; a hunk's row structure genuinely
+does not derive from anything already in `CodeDisplay`'s props, which is
+what makes this the first requirement actually entitled to extend them,
+rather than a mode flag arriving by default because a line was easy to add.
+
 ### 2. One typing block per step
 
 The original sketch allowed arbitrary interleaving of prompts and typing

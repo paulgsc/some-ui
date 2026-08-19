@@ -1,5 +1,9 @@
 import type { FC } from "react"
 import { useLayoutEffect, useRef } from "react"
+import type {
+  Hunk as CodeDisplayHunk,
+  LineKind,
+} from "@leetype/components/typing-game/code-display"
 import { CodeDisplay } from "@leetype/components/typing-game/code-display"
 import type { TextGradient } from "@leetype/types/leetype"
 import { cn } from "some-ui-utils"
@@ -14,6 +18,22 @@ import { cn } from "some-ui-utils"
  */
 const CARET_MARGIN_PX = 100
 
+/**
+ * A diff hunk's identity (LTY-PATCH P3, #1078) — `path`/`oldStart`/
+ * `newStart` render in this viewport's own header, per P2 (#1077)'s
+ * decision that a hunk's file identity belongs here and not in
+ * `ExerciseHeader` or `provenance`. `lineKinds` and the two starts are
+ * forwarded to `CodeDisplay` as its own `Hunk` (which carries no `path` —
+ * that renderer draws lines, not file identity); this type is the one
+ * place both halves of a hunk's data are held together.
+ */
+type Hunk = {
+  path: string
+  oldStart: number
+  newStart: number
+  lineKinds: ReadonlyArray<LineKind>
+}
+
 type TypingViewportProps = {
   displayCode: string
   language: string
@@ -24,6 +44,8 @@ type TypingViewportProps = {
   cursorDisplay: number
   textGradient?: TextGradient
   className?: string
+  /** A step's patch overlay, when it has one — absent, this renders exactly as it always has. */
+  hunk?: Hunk
 }
 
 /**
@@ -49,9 +71,19 @@ export const TypingViewport: FC<TypingViewportProps> = ({
   cursorDisplay,
   textGradient,
   className,
+  hunk,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const caretRef = useRef<HTMLSpanElement>(null)
+
+  // `CodeDisplay`'s own `Hunk` carries no `path` — that renderer draws
+  // lines, not file identity — so the header's file identity is dropped
+  // here rather than forwarded.
+  const codeDisplayHunk: CodeDisplayHunk | undefined = hunk && {
+    lineKinds: hunk.lineKinds,
+    oldStart: hunk.oldStart,
+    newStart: hunk.newStart,
+  }
 
   useLayoutEffect(() => {
     const container = containerRef.current
@@ -70,32 +102,41 @@ export const TypingViewport: FC<TypingViewportProps> = ({
   }, [cursorDisplay])
 
   return (
-    <div
-      ref={containerRef}
-      // scroll-intent: code-display — the source the player reads and types
-      // through is as long as the step is, and the caret is auto-scrolled to
-      // follow them. The scroll *is* the interaction here, not a fallback for
-      // a box that was handed too much; declared so the ui-fit sweep can tell
-      // the two apart (docs/ui-fit).
-      data-scroll-intent="code-display"
-      className={cn(
+    <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
+      {hunk && (
+        // The hunk's file identity (LTY-PATCH P3/P2) — outside the scroll
+        // box on purpose, so it stays put while the code scrolls under it,
+        // and nowhere near PromptPanel, which stays ignorant of patches
+        // entirely (P6).
+        <div className="mb-1 shrink-0 truncate font-mono text-xs text-muted-foreground/60">
+          {hunk.path} @@ -{hunk.oldStart} +{hunk.newStart} @@
+        </div>
+      )}
+      <div
+        ref={containerRef}
+        // scroll-intent: code-display — the source the player reads and types
+        // through is as long as the step is, and the caret is auto-scrolled to
+        // follow them. The scroll *is* the interaction here, not a fallback for
+        // a box that was handed too much; declared so the ui-fit sweep can tell
+        // the two apart (docs/ui-fit).
+        data-scroll-intent="code-display"
         // scroll-intent: code-display — as above; the lint rule reads the
         // comment attached to this class string, not the JSX attribute.
-        "min-h-0 flex-1 overflow-auto rounded-lg border border-border bg-secondary p-4",
-        className
-      )}
-    >
-      <CodeDisplay
-        displayCode={displayCode}
-        language={language}
-        roles={roles}
-        slotOfDisplay={slotOfDisplay}
-        slotStatus={slotStatus}
-        visibility={visibility}
-        cursorDisplay={cursorDisplay}
-        caretRef={caretRef}
-        textGradient={textGradient}
-      />
+        className="min-h-0 flex-1 overflow-auto rounded-lg border border-border bg-secondary p-4"
+      >
+        <CodeDisplay
+          displayCode={displayCode}
+          language={language}
+          roles={roles}
+          slotOfDisplay={slotOfDisplay}
+          slotStatus={slotStatus}
+          visibility={visibility}
+          cursorDisplay={cursorDisplay}
+          caretRef={caretRef}
+          textGradient={textGradient}
+          hunk={codeDisplayHunk}
+        />
+      </div>
     </div>
   )
 }

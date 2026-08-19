@@ -36,6 +36,36 @@ const LANGUAGE_MAP: Record<string, string> = {
   c: "c",
 }
 
+/** Fixed widths for the gutter's sign and line-number columns — outside the glyph run, never reflowing with content (LTY-PATCH P3). */
+const GUTTER_SIGN_WIDTH = "w-4"
+const GUTTER_NUMBER_WIDTH = "w-8"
+
+/**
+ * A rendered line's role in a diff-hunk overlay.
+ *
+ * Deliberately not imported from `types/exercise`'s `PatchLineKind`, even
+ * though the two are structurally identical: this file's invariant is that
+ * adding a new kind of prompt-side block — or any other exercise concept —
+ * must never reach it, and importing a type *named* by the exercise schema
+ * would be exactly that kind of reach, however narrow. Plain diff
+ * vocabulary (`docs/leetype/README.md`'s "hunk"/"deletion"/"addition"
+ * entries) is what actually reaches this component.
+ */
+export type LineKind = "context" | "del" | "add"
+
+/**
+ * The diff-hunk gutter data a step's `patch` overlay projects down to this
+ * renderer (LTY-PATCH P3, #1078). `oldStart`/`newStart` seed the gutter's
+ * running line-number counters. The hunk's file path is deliberately not
+ * here — that renders in `TypingViewport`'s own header, never in this
+ * file, which draws no more of a hunk than the lines it is asked to paint.
+ */
+export type Hunk = {
+  lineKinds: ReadonlyArray<LineKind>
+  oldStart: number
+  newStart: number
+}
+
 /**
  * Maps each non-"none" `TextGradient` option to the swatch-driven gradient
  * custom property it paints (`--gradient-heading` / `--gradient-accent` /
@@ -112,11 +142,21 @@ type CodeDisplayProps = {
    * of the cosmetic mode.
    */
   textGradient?: TextGradient
+  /**
+   * A diff-hunk overlay (LTY-PATCH P3, #1078): when present, the renderer
+   * gains a sign column and old/new line-number columns, and add/del rows
+   * gain a background tint. Absent, this component renders exactly as it
+   * always has — the two paths are independent render functions, not one
+   * path branching on a flag part-way through.
+   */
+  hunk?: Hunk
 }
 
 /**
  * A pure glyph renderer: a linear sequence of display characters plus caret
- * state, and nothing else.
+ * state, and nothing else — organized into rows when handed a `hunk`
+ * overlay, which is layout, not policy (LTY-PATCH P3, #1078 amends decision
+ * 1 in `docs/leetype/README.md` on exactly this point).
  *
  * It used to be three things — a renderer, a scroll container
  * (`h-[500px] overflow-auto`) and a caret-following controller. The fixed
@@ -129,7 +169,11 @@ type CodeDisplayProps = {
  * It knows nothing about exercises, prompts, steps or competencies. Its
  * props contain no vocabulary from any of them, and that is the invariant
  * worth protecting: adding a new kind of prompt-side block must never reach
- * this file.
+ * this file. `hunk` is not an exception — `LineKind`/`Hunk` are plain diff
+ * vocabulary, not exercise vocabulary, and this component still owns no
+ * masking policy, no error accounting, no threshold, no latch and no
+ * memory; it draws what it is handed, one row at a time instead of one
+ * flat stream when a hunk says which rows are which.
  */
 export const CodeDisplay: FC<CodeDisplayProps> = ({
   displayCode,
@@ -142,8 +186,13 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
   caretRef,
   className,
   textGradient = "none",
+  hunk,
 }): JSX.Element => {
-  const renderChar = (char: string, displayIndex: number): JSX.Element => {
+  const renderChar = (
+    char: string,
+    displayIndex: number,
+    lineKind?: LineKind
+  ): JSX.Element => {
     const isTypeable = roles[displayIndex] === ROLE_TYPEABLE
     const isContext = roles[displayIndex] === ROLE_CONTEXT
     const slot = slotOfDisplay[displayIndex] ?? -1
@@ -194,11 +243,24 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
     // inherited property, so without resetting it here a context span would
     // silently pick up the gradient `<code>` ancestor's `transparent` in
     // WebKit and vanish into the clipped gradient instead of staying muted.
+    //
+    // A `del` row's context is the one exception (LTY-PATCH P3, #1078):
+    // struck-through and muted red rather than italic-muted, so a removed
+    // line reads as removed rather than merely given — distinct paint, same
+    // reset, both unmasked either way. This has to live here rather than as
+    // a row-level style override: the color and italics below are set
+    // directly on this span, and a directly-set color always wins over
+    // whatever an ancestor row wrapper tries to inherit down to it.
     if (isContext) {
+      const isDeleted = lineKind === "del"
       return (
         <span
           key={displayIndex}
-          className="italic text-muted-foreground/70"
+          className={
+            isDeleted
+              ? "text-red-400/70 line-through decoration-red-400/50"
+              : "italic text-muted-foreground/70"
+          }
           style={{ WebkitTextFillColor: "currentColor" }}
         >
           {char}
@@ -285,26 +347,206 @@ export const CodeDisplay: FC<CodeDisplayProps> = ({
     return body
   }
 
+  /**
+   * The hunk-mode renderer (LTY-PATCH P3, #1078): one row per line of
+   * `displayCode`, each with its own gutter, instead of one flat inline
+   * stream. A wholly separate function from `renderHighlightedCode` above,
+   * not a shared path branching on `hunk` — the no-hunk path stays
+   * untouched code, not merely untouched output, which is what makes "a
+   * step with no patch renders byte-identically to today" true by
+   * construction rather than by careful branching.
+   *
+   * Tokenizes **per line**, not once over the whole `displayCode` — the
+   * deliberate trade the story's own hazard section calls out. A construct
+   * that would tokenize as one Prism token across a line boundary (an
+   * unterminated block comment, a multi-line string) instead tokenizes as
+   * two independent, locally-wrong fragments; colors can be wrong for that
+   * one line pair, same as the story anticipates, but the character stream
+   * itself is never in question, because `renderChar` still runs once per
+   * source character regardless of what Prism made of it. Author a hunk
+   * that does not straddle a multi-line construct if this matters for a
+   * given instance.
+   *
+   * `charIndex` is one running counter shared across every line, the same
+   * single source of truth `renderHighlightedCode` uses — it has to keep
+   * agreeing with `roles`/`slotOfDisplay`/`slotStatus` across a line break
+   * exactly as it does within one line, or the caret ends up on the wrong
+   * glyph the moment a hunk spans more than one row.
+   */
+  const renderHunkRows = (activeHunk: Hunk): ReactNode => {
+    const selectedLang = LANGUAGE_MAP[language] ?? "javascript"
+    const grammar = Prism.languages[selectedLang]
+    const lines = displayCode.split("\n")
+    let charIndex = 0
+    let oldLine = activeHunk.oldStart
+    let newLine = activeHunk.newStart
+
+    const rowData = lines.map((line, lineIndex) => {
+      // A lineKinds shorter than the rendered line count is legal (P2) —
+      // the tail renders as unmarked context, total rather than throwing.
+      const kind: LineKind = activeHunk.lineKinds[lineIndex] ?? "context"
+
+      const renderRun = (text: string): Array<JSX.Element> =>
+        Array.from(text).map((char) => renderChar(char, charIndex++, kind))
+
+      const renderToken = (
+        token: string | Prism.Token,
+        key: string | number
+      ): ReactNode => {
+        if (typeof token === "string") return renderRun(token)
+
+        const content = Array.isArray(token.content)
+          ? token.content.map((t, i) => renderToken(t, `${key}-${i}`))
+          : typeof token.content === "string"
+            ? renderRun(token.content)
+            : renderToken(token.content, `${key}-sub`)
+
+        return (
+          <span
+            key={key}
+            className={
+              textGradient === "none" ? `token ${token.type}` : undefined
+            }
+          >
+            {content}
+          </span>
+        )
+      }
+
+      const rowNodes: Array<ReactNode> =
+        !grammar || roles.length === 0
+          ? Array.from(line).map((char) => renderChar(char, charIndex++, kind))
+          : Prism.tokenize(line, grammar).map((token, i) =>
+              renderToken(token, `${lineIndex}-${i}`)
+            )
+
+      if (lineIndex < lines.length - 1) {
+        // The '\n' between this line and the next: a real display index —
+        // `roles`/`slotOfDisplay` still carry an entry for it — but never a
+        // glyph of its own. The row boundary is the line break now; a
+        // rendered '\n' character would only add a stray one.
+        charIndex += 1
+      }
+
+      // The ordinary two-column diff convention: add rows fill the new
+      // column only, del rows the old column only, context rows both.
+      const showOld = kind !== "add"
+      const showNew = kind !== "del"
+      const oldLabel = showOld ? oldLine : undefined
+      const newLabel = showNew ? newLine : undefined
+      if (showOld) oldLine += 1
+      if (showNew) newLine += 1
+
+      return { lineIndex, kind, rowNodes, oldLabel, newLabel }
+    })
+
+    // Same end-of-step caret `renderHighlightedCode` places after the last
+    // character — here, the last character of the last row.
+    const lastRow = rowData[rowData.length - 1]
+    if (cursorDisplay >= roles.length && lastRow !== undefined) {
+      lastRow.rowNodes.push(
+        <span
+          key="caret-end"
+          ref={caretRef}
+          title="Step complete"
+          className="relative rounded-[2px] bg-blue-500/20 px-1 ring-2 ring-blue-400/60"
+        />
+      )
+    }
+
+    return rowData.map(({ lineIndex, kind, rowNodes, oldLabel, newLabel }) => {
+      const sign = kind === "add" ? "+" : kind === "del" ? "-" : " "
+      // The tint sits behind the character-level feedback painted inside
+      // `rowNodes` (SLOT_CORRECT/SLOT_WRONG set their own background
+      // directly on the character span), which is what makes it win: a
+      // child's own background always paints over its ancestor's in normal
+      // stacking order, so nothing here has to know about slot status to
+      // stay out of its way.
+      const tintClass =
+        kind === "add"
+          ? "bg-green-500/10"
+          : kind === "del"
+            ? "bg-red-500/10"
+            : undefined
+      const codeStyle =
+        textGradient !== "none"
+          ? {
+              ...TEXT_GRADIENT_STYLE[textGradient],
+              backgroundClip: "text",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              color: "transparent",
+            }
+          : undefined
+
+      return (
+        <div
+          key={lineIndex}
+          data-line-kind={kind}
+          className={cn("flex", tintClass)}
+        >
+          <span
+            className={cn(
+              GUTTER_SIGN_WIDTH,
+              "shrink-0 select-none text-center text-muted-foreground/50"
+            )}
+          >
+            {sign}
+          </span>
+          <span
+            className={cn(
+              GUTTER_NUMBER_WIDTH,
+              "shrink-0 select-none pr-2 text-right tabular-nums text-muted-foreground/40"
+            )}
+          >
+            {oldLabel ?? ""}
+          </span>
+          <span
+            className={cn(
+              GUTTER_NUMBER_WIDTH,
+              "shrink-0 select-none pr-2 text-right tabular-nums text-muted-foreground/40"
+            )}
+          >
+            {newLabel ?? ""}
+          </span>
+          <code
+            className={cn(
+              "min-w-0 flex-1 whitespace-pre",
+              `language-${language}`
+            )}
+            style={codeStyle}
+          >
+            {rowNodes}
+          </code>
+        </div>
+      )
+    })
+  }
+
   return (
     <div className={cn("font-mono text-sm leading-relaxed", className)}>
-      <pre className="m-0">
-        <code
-          className={`language-${language}`}
-          style={
-            textGradient !== "none"
-              ? {
-                  ...TEXT_GRADIENT_STYLE[textGradient],
-                  backgroundClip: "text",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  color: "transparent",
-                }
-              : undefined
-          }
-        >
-          {renderHighlightedCode()}
-        </code>
-      </pre>
+      {hunk === undefined ? (
+        <pre className="m-0">
+          <code
+            className={`language-${language}`}
+            style={
+              textGradient !== "none"
+                ? {
+                    ...TEXT_GRADIENT_STYLE[textGradient],
+                    backgroundClip: "text",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    color: "transparent",
+                  }
+                : undefined
+            }
+          >
+            {renderHighlightedCode()}
+          </code>
+        </pre>
+      ) : (
+        renderHunkRows(hunk)
+      )}
     </div>
   )
 }

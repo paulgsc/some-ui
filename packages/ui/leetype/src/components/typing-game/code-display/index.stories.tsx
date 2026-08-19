@@ -193,3 +193,65 @@ export const ContextFrameMutedGradient: Story = {
     />
   ),
 }
+
+// ── A hunk overlay (LTY-PATCH P3, #1078) ──────────────────────────────
+//
+// The comprehensive set — a diagnostic patch, a construction patch, a
+// hunk whose `-` side dwarfs its `+` side, a step with no patch at all —
+// is LTY-PATCH P6's job (#1081), the same way `prompt-panel`'s own
+// pagination stories waited for the story that actually needed them. This
+// is the one story P3 owes: proof the gutter, the tint and the caret
+// actually render against a real seed instance, not a synthetic prop bag.
+
+const StoryFromPatchStep = ({
+  exerciseId,
+  typedChars,
+  idleSeconds = 0,
+}: {
+  exerciseId: string
+  typedChars: number
+  idleSeconds?: number
+}) => {
+  const exercise = nextExercise({ preferId: exerciseId })
+  const step = exercise.steps[0]
+  const typing = step ? typingBlockOf(step) : undefined
+  const preview = usePreviewGame(typing?.source ?? "", typedChars, idleSeconds)
+
+  if (!preview || !typing) {
+    return (
+      <div className="p-5 text-sm text-muted-foreground">Starting engine…</div>
+    )
+  }
+
+  return (
+    <div className="code rounded-lg border border-border bg-secondary p-4">
+      <CodeDisplay
+        displayCode={preview.displaySource}
+        language={typing.language}
+        roles={preview.roles}
+        slotOfDisplay={preview.slotOfDisplay}
+        slotStatus={preview.slotStatus}
+        visibility={preview.visibility}
+        cursorDisplay={preview.snapshot.cursorDisplay}
+        hunk={typing.patch}
+      />
+    </div>
+  )
+}
+
+/**
+ * A real seed instance (`diagnostic-division-guard-01`, LTY-PATCH P4,
+ * #1079): three added lines as one contiguous run, sitting between
+ * context above and below — the sign column, both line-number columns and
+ * the add tint, all against a hunk the repair-budget story already proved
+ * validates.
+ */
+export const HunkOverlay: Story = {
+  render: () => (
+    <StoryFromPatchStep
+      exerciseId="diagnostic-division-guard"
+      typedChars={0}
+      idleSeconds={20}
+    />
+  ),
+}
