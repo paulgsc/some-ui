@@ -47,7 +47,8 @@ some-ui/
 │   └── www/              main Vite/React application and app-specific wiring
 ├── extensions/           independently runnable browser extensions
 │   ├── common/           shared extension build/runtime support
-│   └── transport/        framework-neutral extension transport kernel
+│   ├── transport/        framework-neutral extension transport kernel
+│   └── */                individual extension products (some-filter, some-mujik, …)
 ├── packages/
 │   ├── ui/               feature-level UI workspaces and activities
 │   ├── some-content/     assets and data (not orchestration)
