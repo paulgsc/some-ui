@@ -16,7 +16,7 @@ You do **not** need to understand every workspace before exploring one.
 | If you want to…                               | Start here                    | Run it in isolation                        |
 | --------------------------------------------- | ----------------------------- | ------------------------------------------ |
 | Explore the main web experience               | [`apps/www`](apps/www)        | `pnpm --filter www dev`                    |
-| Work on a browser extension                   | [`extensions/`](extensions)   | `pnpm --filter @some-extension/<name> dev` |
+| Work on a browser extension                   | [`extensions/`](extensions)   | `pnpm --filter @some-extension/<name> run` |
 | Explore a UI activity or component            | [`packages/ui/`](packages/ui) | `pnpm --filter <package-name> test`        |
 | Find reusable domain and infrastructure code  | [`packages/`](packages)       | `pnpm --filter <package-name> test`        |
 | Work on a Rust or WebAssembly engine          | [`crates/`](crates)           | `cargo test -p <crate-name>`               |
@@ -31,6 +31,9 @@ pnpm --filter @some-ui/leetype test
 pnpm --filter @some-extension/filter dev
 cargo test -p leetype_wasm
 ```
+
+Not every extension exposes the same scripts — `pnpm --filter <name> run`
+lists what a given extension actually supports before you invoke it.
 
 The filter is the escape hatch from “monorepo means run everything”: most
 development, testing, and builds can stay scoped to the workspace being
@@ -99,14 +102,13 @@ nvm use
 corepack enable
 pnpm install
 
-# Run all development tasks, or prefer the scoped form below.
-pnpm dev
+# Prefer a scoped command over the root `pnpm dev` (currently broken; see
+# the "Work on one workspace" note below).
 pnpm --filter www dev
 ```
 
-`pnpm dev` starts Turbo's development graph and is useful when changes span
-workspaces. A filtered command is usually the faster, quieter choice when
-working on one project.
+Filtered commands like the one above are the faster, quieter choice when
+working on one project, and they don't depend on the root `dev` script.
 
 ## Common workflows
 
