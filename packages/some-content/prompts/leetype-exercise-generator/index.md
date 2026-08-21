@@ -31,7 +31,7 @@ than re-deriving them:
 Concept: [a CONCEPT_IDS entry, or a new kebab-case id if none fits — see "Concept and invariant" below]
 Invariant violated: [one sentence: the specific property the source's defect, or ruled-out form, violates]
 Family: [diagnostic | construction]
-T: [Apply LeetType Exercise Generator v1.1]
+T: [Apply LeetType Exercise Generator v1.2]
 ```
 
 Example:
@@ -40,7 +40,7 @@ Example:
 Concept: window-shrinking
 Invariant violated: a two-pointer scan's search window must strictly shrink on every non-terminating iteration, or the loop never converges
 Family: diagnostic
-T: [Apply LeetType Exercise Generator v1.1]
+T: [Apply LeetType Exercise Generator v1.2]
 ```
 
 The generator then produces one TypeScript module (a single `export const`
@@ -367,6 +367,15 @@ mechanize eventually — write your own instance against each one, and treat
   syntax feature — the single question worth re-asking last: could a
   learner solve this by pattern-matching a method name rather than
   reasoning about the concept?
+- [judgment] A newly coined concept id is not a near-duplicate of an
+  existing `CONCEPT_IDS` entry — the same idea under a different name.
+  Not mechanically checkable (LTY-SEED G5 considered and rejected a
+  fuzzy-match lint for this — see `corpus-lint.ts`'s module doc for why).
+- [judgment] Every specific number in a `trace` observation was verified
+  against the actual code — executed or carefully hand-traced — for the
+  exact quantity its label names, not merely computed correctly for some
+  _related_ quantity (G4's own run landed a real instance of this: a
+  correct count of distinct subproblems, mislabeled as a call count).
 
 ---
 
@@ -395,6 +404,17 @@ mechanize eventually — write your own instance against each one, and treat
 ---
 
 ## Versioning
+
+**`v1.2`.** LTY-SEED G5 (#1110) reviewed every self-check item below
+against G4's actual findings and added no new mechanizable check — the
+run's two real findings were both prose imprecision, already folded in as
+the v1.1 wording fixes below, and every other item was already covered by
+`DiagnosticStepSchema`/`ConstructionStepSchema` or `corpus-lint.ts`. Two
+items are now marked `[judgment]` here that weren't broken out before:
+near-duplication between two registered `CONCEPT_IDS` entries, and
+verifying a `trace` number against the exact quantity it claims — both
+argued as deliberately left to review, not silently skipped, in
+`corpus-lint.ts`'s own module doc.
 
 **`v1.1`.** LTY-SEED G4 (#1109) ran `v1.0` for real against two concepts —
 `memoization` (diagnostic) and `lookup-as-place` transferred to a sorted
