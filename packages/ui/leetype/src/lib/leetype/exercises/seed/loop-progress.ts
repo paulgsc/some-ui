@@ -1,6 +1,5 @@
+import { CONCEPT_IDS } from "@leetype/lib/leetype/exercises/concepts"
 import type { DiagnosticStep, Exercise } from "@leetype/types/exercise"
-
-import { CONCEPT_IDS } from "../concepts"
 
 /**
  * Failure class 1: a loop that never advances toward its own exit.

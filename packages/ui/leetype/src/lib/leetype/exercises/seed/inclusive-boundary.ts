@@ -1,6 +1,5 @@
+import { CONCEPT_IDS } from "@leetype/lib/leetype/exercises/concepts"
 import type { DiagnosticStep, Exercise } from "@leetype/types/exercise"
-
-import { CONCEPT_IDS } from "../concepts"
 
 /** Failure class 2: an exclusive bound treated as if it were a valid index. */
 const diagnosticInclusiveBoundaryStep: DiagnosticStep = {

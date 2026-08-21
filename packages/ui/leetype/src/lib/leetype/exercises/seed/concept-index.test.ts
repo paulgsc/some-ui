@@ -1,6 +1,6 @@
+import { CONCEPT_IDS } from "@leetype/lib/leetype/exercises/concepts"
 import { describe, expect, it } from "vitest"
 
-import { CONCEPT_IDS } from "../concepts"
 import { conceptIndex } from "./concept-index"
 import { SEED_EXERCISES } from "./index"
 

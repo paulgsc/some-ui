@@ -1,6 +1,5 @@
+import { CONCEPT_IDS } from "@leetype/lib/leetype/exercises/concepts"
 import type { ConstructionStep, Exercise } from "@leetype/types/exercise"
-
-import { CONCEPT_IDS } from "../concepts"
 
 /**
  * LTY-PATCH P5's own instance (#1080): a construction `-` line carrying a

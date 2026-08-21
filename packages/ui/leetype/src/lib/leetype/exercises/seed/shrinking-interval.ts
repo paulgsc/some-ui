@@ -1,6 +1,5 @@
+import { CONCEPT_IDS } from "@leetype/lib/leetype/exercises/concepts"
 import type { DiagnosticStep, Exercise } from "@leetype/types/exercise"
-
-import { CONCEPT_IDS } from "../concepts"
 
 /** Failure class 3: a search window whose edge never actually moves. */
 const diagnosticShrinkingIntervalStep: DiagnosticStep = {

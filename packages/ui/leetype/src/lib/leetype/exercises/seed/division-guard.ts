@@ -1,6 +1,5 @@
+import { CONCEPT_IDS } from "@leetype/lib/leetype/exercises/concepts"
 import type { DiagnosticStep, Exercise } from "@leetype/types/exercise"
-
-import { CONCEPT_IDS } from "../concepts"
 
 /**
  * LTY-PATCH P4's own instance (#1079): the corpus's first multi-line patch

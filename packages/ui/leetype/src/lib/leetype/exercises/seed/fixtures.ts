@@ -1,6 +1,5 @@
+import { CONCEPT_IDS } from "@leetype/lib/leetype/exercises/concepts"
 import type { Exercise, Step } from "@leetype/types/exercise"
-
-import { CONCEPT_IDS } from "../concepts"
 
 /**
  * The awkward one. Not a lesson — a fixture.

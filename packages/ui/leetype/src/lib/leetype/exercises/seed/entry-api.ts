@@ -1,10 +1,9 @@
+import { CONCEPT_IDS } from "@leetype/lib/leetype/exercises/concepts"
 import type {
   ConstructionStep,
   DiagnosticStep,
   Exercise,
 } from "@leetype/types/exercise"
-
-import { CONCEPT_IDS } from "../concepts"
 
 /**
  * Failure class 4: the double lookup — deliberately the same subject
