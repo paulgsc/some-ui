@@ -1,11 +1,13 @@
 import type { Exercise } from "@leetype/types/exercise"
 
+import { constructionBinarySearchPlace } from "./binary-search-place"
 import { diagnosticDivisionGuard } from "./division-guard"
 import { entryApi } from "./entry-api"
 import { adversarial, HOSTILE_PROMPT_STEP } from "./fixtures"
 import { diagnosticInclusiveBoundary } from "./inclusive-boundary"
 import { constructionLazyDefault } from "./lazy-default"
 import { diagnosticLoopProgress } from "./loop-progress"
+import { diagnosticMemoization } from "./memoization"
 import { diagnosticShrinkingInterval } from "./shrinking-interval"
 
 /**
@@ -46,6 +48,8 @@ export const SEED_EXERCISES: ReadonlyArray<Exercise> = [
   diagnosticShrinkingInterval,
   diagnosticDivisionGuard,
   constructionLazyDefault,
+  diagnosticMemoization,
+  constructionBinarySearchPlace,
   adversarial,
 ]
 

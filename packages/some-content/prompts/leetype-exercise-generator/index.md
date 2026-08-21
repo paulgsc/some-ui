@@ -31,7 +31,7 @@ than re-deriving them:
 Concept: [a CONCEPT_IDS entry, or a new kebab-case id if none fits — see "Concept and invariant" below]
 Invariant violated: [one sentence: the specific property the source's defect, or ruled-out form, violates]
 Family: [diagnostic | construction]
-T: [Apply LeetType Exercise Generator v1.0]
+T: [Apply LeetType Exercise Generator v1.1]
 ```
 
 Example:
@@ -40,7 +40,7 @@ Example:
 Concept: window-shrinking
 Invariant violated: a two-pointer scan's search window must strictly shrink on every non-terminating iteration, or the loop never converges
 Family: diagnostic
-T: [Apply LeetType Exercise Generator v1.0]
+T: [Apply LeetType Exercise Generator v1.1]
 ```
 
 The generator then produces one TypeScript module (a single `export const`
@@ -171,7 +171,13 @@ below or marked as judgment for the reviewer:
 5. **Deterministic signal.** `expected 3, received 4`, never "something went
    wrong" — this is what the step's `trace` block carries. _(partly checked
    — a `trace` block must be present; whether its `observations` actually
-   read as deterministic is judgment)_
+   read as deterministic is judgment)_ **A number in a `trace` observation
+   must be verified, not estimated** — trace through the actual code (or
+   execute it) for the specific quantity the label names, and make sure the
+   label names the quantity you actually computed. "36 distinct subproblems"
+   and "69 total calls" are both real, correct numbers for a memoized
+   `fib(35)` — they are not interchangeable, and labeling one as the other
+   is a false deterministic claim even though the number itself is real.
 6. **Revealable in isolation.** The repair sits inside the frame, anchored
    at the point in the surrounding code where it belongs — never appended
    after all the context with nothing following it. Concretely: the repair
@@ -204,6 +210,17 @@ A construction step needs at least one visible constraint or consequence
 block besides its witness (`transition`/`trace`/`region`/`prompt`) — a
 witness with nothing surrounding it is a blank with no reason given for
 what it discharges.
+
+**Scope `obligation` and the transition's `before`/`after` to exactly what
+the witness guarantees, never to what merely looks equivalent.** A witness
+can be correct Rust while the prose _around_ it overclaims — e.g. two forms
+of a lookup that agree on the common case (the target is absent) but would
+diverge on an edge case neither form was written to handle (duplicates of
+the target present). If the witness only guarantees the claim for a
+specific case, say so in `obligation`/`before`/`after` rather than writing
+as if it holds unconditionally — an authoring test that passes for the
+wrong reason is exactly the failure #1006's own test exists to catch, and
+prose is where a generator drifts into it even when the code is fine.
 
 **A construction `-` line, if you use one, is a genuinely ruled-out form —
 never a blank with a hint over it.** Showing the eager, naive, or
@@ -379,6 +396,19 @@ mechanize eventually — write your own instance against each one, and treat
 
 ## Versioning
 
-`v1.0`, as of this writing. LTY-SEED G4 (#1109) runs this prompt for real
-against at least two concepts and records what it got wrong; expect this
-document's version to bump once that log exists.
+**`v1.1`.** LTY-SEED G4 (#1109) ran `v1.0` for real against two concepts —
+`memoization` (diagnostic) and `lookup-as-place` transferred to a sorted
+`Vec` (construction) — landed as `seed/memoization.ts` and
+`seed/binary-search-place.ts`. Full findings, including what was rejected
+and why, are in
+[`docs/leetype/leetype-exercise-generator-log.md`](../../../../docs/leetype/leetype-exercise-generator-log.md).
+`v1.1` folds in the two wording fixes that run produced: the "Scope
+`obligation` and the transition's `before`/`after`..." paragraph in the
+construction section above, added after the run's construction candidate
+correctly generated compiling code but overclaimed its general equivalence
+to the form it replaced; and constraint 5's "A number in a `trace`
+observation must be verified, not estimated" sentence, added after a PR
+reviewer caught the diagnostic candidate's landed `trace` labeling a real,
+correctly-computed number (36, the count of distinct subproblems) as a
+different quantity (the number of function calls, actually 69) — the value
+was right, the label named the wrong thing.
