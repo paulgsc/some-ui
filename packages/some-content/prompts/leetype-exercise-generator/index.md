@@ -63,6 +63,17 @@ kebab-case id if genuinely nothing fits — read that file first) and
 **the invariant it violates**, as input, before you generate anything. If
 either is missing from the header, ask for it rather than inventing one.
 
+**A genuinely new concept is a two-file change, not one.** Emit the step
+against `CONCEPT_IDS.<newKey>` (never a bare string literal), and add
+`<newKey>` to `CONCEPT_IDS` in `concepts.ts` in the same PR. Skipping the
+registry update does not fail fast: `tsc` only catches a _typo_ of an
+existing entry (property access on a name that isn't there), and a brand
+new key compiles fine either way — but `concepts.test.ts`'s "every step in
+the shipped corpus draws its concepts from this list" fails the moment the
+module is wired into `SEED_EXERCISES`, since it checks every step's
+`concepts` against `Object.values(CONCEPT_IDS)` directly. Land both edits
+together, or the module doesn't merge.
+
 ---
 
 ## The one rule everything else fights: Rust is the alphabet, not the subject
@@ -161,10 +172,17 @@ below or marked as judgment for the reviewer:
    wrong" — this is what the step's `trace` block carries. _(partly checked
    — a `trace` block must be present; whether its `observations` actually
    read as deterministic is judgment)_
-6. **Revealable in isolation.** The repair is anchored inside the frame, not
-   floating beneath it. _(structurally guaranteed — a diagnostic step's
-   typing block always renders in place; do not violate it by putting the
-   repair outside every `‹…›` span)_
+6. **Revealable in isolation.** The repair sits inside the frame, anchored
+   at the point in the surrounding code where it belongs — never appended
+   after all the context with nothing following it. Concretely: the repair
+   _is_ the text outside the `‹…›` markers (everything inside one is
+   rendered but never typed), and that untyped portion should itself be
+   flanked by context on at least one side, the way
+   `entry-03-place`'s `‹let slot = ›map.entry(key)‹;›` wraps its addition
+   between a context prefix and suffix. Do not write the repair _as_ a
+   context span — that produces an exercise with nothing left to type.
+   _(structurally guaranteed by LTY-FRAME as long as you get this right — a
+   diagnostic step's typing block always renders in place)_
 
 A patch-shaped repair's `add` lines must additionally form **one contiguous
 run** — one fault, one edit — checked mechanically against `patch.lineKinds`.
