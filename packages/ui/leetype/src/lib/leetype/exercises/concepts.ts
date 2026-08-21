@@ -85,6 +85,7 @@ export const CONCEPT_IDS = {
   sliceIndexing: "slice-indexing",
   windowShrinking: "window-shrinking",
   preconditionGuard: "precondition-guard",
-  /** Marks a step as shell-stress fixture data, never a taught abstraction — see `seed.ts`'s `adversarial`/`HOSTILE_PROMPT_STEP`. */
+  memoization: "memoization",
+  /** Marks a step as shell-stress fixture data, never a taught abstraction — see `seed/fixtures.ts`'s `adversarial`/`HOSTILE_PROMPT_STEP`. */
   fixture: "fixture",
 } as const
