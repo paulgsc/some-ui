@@ -368,6 +368,91 @@ proposed again by someone who has not read this section:
   entire amount of judgment this epic performs, and the entire amount it is
   allowed to.
 
+## LTY-SEED: the corpus is generated content, not fetched content
+
+Tracked in [#1105](https://github.com/paulgsc/some-ui/issues/1105). The
+corpus gains a path by which a new exercise arrives:
+`packages/some-content/prompts/leetype-exercise-generator/index.md`, a
+prompt a person hands to an oracle, reviews the result against the two
+families' own validity constraints (#1005's six for diagnostic, #1006's
+authoring test for construction), and commits what survives. Nothing about
+that path runs at runtime.
+
+This decision record exists because "generated content" is exactly the
+phrase that makes the wrong precedent look right. `hangul` and `topiks`
+both generate content and both fetch it — a gitignored
+`packages/some-content/public/<name>/` directory, a volume mount in
+`infra/compose/www.yml`, an entry in `apps/www/scripts/link-content-assets.js`,
+a `createDataSource`-shaped hook gated on `DATA_MODE`. Read quickly, an
+oracle-authored corpus looks like a third instance of the same shape. It is
+not, and the reason is not that LeetType is special — it is what
+"generated" means in each case.
+
+**Generation and fetching are orthogonal, and the axis that actually
+matters is review, not origin.** `hangul`'s vocabulary is gitignored,
+developer-local, regenerated-on-demand data that never passes through a
+pull request — nobody reviews `vocab.json` before Docker mounts it. This
+corpus is the opposite: an oracle produces a candidate, a human reads it
+against the family constraints above, and only a reviewed, merged, committed
+file ever reaches a player. Reviewed content is bundled; unreviewed,
+developer-local content is fetched. The canon states the committed path
+exactly (`docs/canon/adaptive-learning-canon.typ` **Proposition 8.1**,
+**Remark 8.1**): class IV generation belongs at _authoring time_, where
+non-determinism is resolved by review, and the pipeline **terminates at the
+repository** — `source material → oracle → JSON artifacts → review →
+repository → static client`. There is no runtime fetch anywhere in that
+sentence.
+
+**Three already-load-bearing records say the same thing from three
+different files, and this epic upholds every one of them rather than
+arguing with any:**
+
+> "The corpus-fetch seam is gone, not re-typed... Keeping a fetch path
+> against `Exercise` would mean two sources for one thing and a second,
+> unexercised copy of a validation the shim already performs."
+> — this document, above ("The corpus-fetch seam is gone, not re-typed")
+
+> "LeetType used to be in this list, mounting a generated challenges.json and
+> a tree of code samples. Both went in M20 (#887): exercises carry inline
+> sources now, so the activity fetches nothing and there is nothing to
+> mount. That also removes the only difference the Pages and Docker builds
+> had for this activity."
+> — `infra/compose/www.yml`
+
+> "`leetype` is deliberately absent: it needs nothing injected. Its
+> exercises come from its own shim (`@some-ui/leetype`'s
+> `lib/leetype/exercises`), which is the single seam a future generator
+> replaces — a corpus threaded through this app would be a second one."
+> — `apps/www/src/components/player/session-viewport.tsx`
+
+**The graduation path, named.** A generated exercise is a proposal, not
+content, until a human has read it against the family's own validity
+constraints and merged it. There is no auto-accept. Once merged, a
+generated exercise and a hand-authored one are the same thing — `Step`
+gains no `generated: true` flag, because review is exactly the mechanism
+that erases the distinction a flag would invite a consumer to act on.
+`ProvenanceSchema` stays what it already is: where the _competency_ was
+distilled from, inert, never which tool wrote the file.
+
+**What this forecloses**, recorded as decisions because each will be
+proposed again by someone who has not read this section:
+
+- **No `packages/some-content/public/leetype/`, no volume mount, no
+  `link-content-assets.js` entry, no `useLeetypeCorpus` hook, no `DATA_MODE`
+  branch, no `session-viewport.tsx` change.** A PR touching any of those in
+  service of this epic is out of scope regardless of how small.
+- **No runtime oracle call.** Nothing in `packages/ui/leetype` gains a
+  network dependency, an API key, or a model name. **Theorem 8.1**
+  (oracle-free scheduling) stays satisfied.
+- **No `generated: true` marker, and no provenance field naming the
+  generator.** A flag inviting a consumer to treat two reviewed exercises
+  differently is exactly the distinction review exists to erase.
+
+See
+[`retired-curriculum-decomposer.md`](./retired-curriculum-decomposer.md) for
+the new prompt's lineage and the three constraints it inherits rather than
+re-derives.
+
 ## Where the magic is quarantined
 
 The full ambition is a compiler, not a prompt:

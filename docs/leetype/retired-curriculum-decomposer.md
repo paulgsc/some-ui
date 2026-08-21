@@ -57,3 +57,24 @@ emits what the shim emits.** Same `Exercise` value shape, same schema, same
 single function. A pipeline that wants a different shape is proposing a
 change to `packages/ui/leetype/src/types/exercise.ts`, argued on its own
 merits — not a format decision made on the way past.
+
+## Where the successor lives
+
+[#1105](https://github.com/paulgsc/some-ui/issues/1105) (LTY-SEED) is that
+replacement. The generator prompt is
+`packages/some-content/prompts/leetype-exercise-generator/index.md` — the
+same `Exercise` value shape, the same schema, the same single `nextExercise`
+seam the acceptance test above demanded, so that test is not retired, only
+finally checkable against something real.
+
+That prompt cites this document's three surviving constraints (one node per
+insight, an honest linearization, no judgment without justification) rather
+than re-deriving them, and adds one constraint this document had no schema
+to state yet: concept selection is not itself class IV
+(`docs/canon/adaptive-learning-canon.typ` **Definition 8.1**), so the human
+author supplies the concept and the invariant it violates as input, rather
+than leaving the oracle to choose them. See
+[`docs/leetype/README.md`](./README.md)'s own LTY-SEED section for the full
+decision — in particular why oracle-authored content still does not fetch
+anything at runtime, the same conclusion this document's own "corpus-fetch
+seam is gone" note already reached from the opposite direction.
