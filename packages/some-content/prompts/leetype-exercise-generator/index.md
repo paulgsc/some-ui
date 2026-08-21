@@ -171,7 +171,13 @@ below or marked as judgment for the reviewer:
 5. **Deterministic signal.** `expected 3, received 4`, never "something went
    wrong" — this is what the step's `trace` block carries. _(partly checked
    — a `trace` block must be present; whether its `observations` actually
-   read as deterministic is judgment)_
+   read as deterministic is judgment)_ **A number in a `trace` observation
+   must be verified, not estimated** — trace through the actual code (or
+   execute it) for the specific quantity the label names, and make sure the
+   label names the quantity you actually computed. "36 distinct subproblems"
+   and "69 total calls" are both real, correct numbers for a memoized
+   `fib(35)` — they are not interchangeable, and labeling one as the other
+   is a false deterministic claim even though the number itself is real.
 6. **Revealable in isolation.** The repair sits inside the frame, anchored
    at the point in the surrounding code where it belongs — never appended
    after all the context with nothing following it. Concretely: the repair
@@ -396,8 +402,13 @@ mechanize eventually — write your own instance against each one, and treat
 `seed/binary-search-place.ts`. Full findings, including what was rejected
 and why, are in
 [`docs/leetype/leetype-exercise-generator-log.md`](../../../../docs/leetype/leetype-exercise-generator-log.md).
-`v1.1` folds in the one wording fix that run produced: the "Scope
+`v1.1` folds in the two wording fixes that run produced: the "Scope
 `obligation` and the transition's `before`/`after`..." paragraph in the
 construction section above, added after the run's construction candidate
 correctly generated compiling code but overclaimed its general equivalence
-to the form it replaced.
+to the form it replaced; and constraint 5's "A number in a `trace`
+observation must be verified, not estimated" sentence, added after a PR
+reviewer caught the diagnostic candidate's landed `trace` labeling a real,
+correctly-computed number (36, the count of distinct subproblems) as a
+different quantity (the number of function calls, actually 69) — the value
+was right, the label named the wrong thing.

@@ -10,7 +10,10 @@ rule, and both survived review and landed — `seed/memoization.ts` and
 `seed/binary-search-place.ts`. Rejecting everything would have been an
 equally successful outcome of this story; it happened not to be needed
 this time, and this log says exactly what review caught along the way
-rather than treating a clean landing as nothing to report.
+rather than treating a clean landing as nothing to report — including one
+finding this log's own first version missed and a PR reviewer (Codex, on
+[#1127](https://github.com/paulgsc/some-ui/pull/1127)) caught, corrected
+below rather than quietly edited away.
 
 ## A caveat on how to read this log
 
@@ -57,9 +60,9 @@ contiguous `add` run.
    under the 50-character budget. Confirmed mechanically too —
    `DiagnosticStepSchema`'s own refinement accepted the step at import
    time (see Verification below). ✅
-5. **Deterministic signal.** `trace` carries call counts:
-   `fib(35)` naive vs. memoized, `29,860,703` vs. `36` — computed from the
-   real recurrence (`2·fib(36)−1`), not invented round numbers. ✅
+5. **Deterministic signal.** `trace` carries two real, computed numbers —
+   see the correction immediately below; the constraint holds, but the
+   first landed value did not satisfy it as precisely as it claimed to.
 6. **Revealable in isolation.** The guard sits between the function
    signature and the base case, both rendered as context — never floating
    beneath an unrelated frame. ✅
@@ -69,6 +72,24 @@ across a recursion tree — a DSA property, not a Rust feature. The `-` side
 (implicitly, the function without the guard) is valid, compiling Rust that
 merely does more work than necessary; nothing here is a syntax fact the
 compiler already teaches.
+
+**What review caught — a real finding of this run:** the first landed
+version of the `trace` labeled its second observation `"fib(35) calls,
+memoized"` with value `36`. `36` is correct as a count of **distinct
+subproblems** (`n = 0..35`) — it is not the number of times the memoized
+`fib` function is actually _called_. Every one of those 36 subproblems,
+once computed, is still called again by its parent as the "other" branch
+of the recursion; that call is cheap (an immediate memo hit) but it is
+still a call. Simulating the real function (not estimating) gives the
+actual figure: **69** calls total for `fib(35)` under memoization
+(confirmed by direct trace-counted simulation, not derived algebraically:
+`C(n) = C(n−1) + 2` for `n ≥ 2` with `C(0) = C(1) = 1`, so `C(n) = 2n−1`
+— `C(35) = 69`). Labeling `36` as "calls" was a real instance of
+constraint 5 not being satisfied as precisely as claimed: the number was
+deterministic and correctly computed, just naming the wrong quantity.
+**Fix:** relabeled to `"fib(35) subproblems, distinct"`, value unchanged
+at `36` — an honest label for the number that was actually right, paired
+with the correctly-labeled naive call count.
 
 ### Construction: `lookup-as-place`, transferred
 
@@ -85,7 +106,7 @@ linearly for the first element greater than the target
 `arr.binary_search(&target).unwrap_or_else(|i| i)`, with `obligation` and
 the `transition` block stated as if the two forms were equivalent outright.
 
-**What review caught, and it is the one real finding of this run:** the
+**What review caught — another real finding of this run:** the
 two forms are **not** equivalent when the array holds a value equal to
 `target`. `binary_search`'s `Ok` arm returns _some_ index where a match
 exists — Rust does not guarantee which one among duplicates — while the
@@ -133,11 +154,16 @@ From #1109's own list, checked against what actually happened:
    note that a real "does the `-` side compile" check is the most
    expensive one on the table and this story does not attempt it.
 3. **A repair that isn't discriminating.** Not observed for the
-   diagnostic's repair itself. A related but distinct problem surfaced in
-   the construction candidate — not a non-discriminating witness, but
-   over-general _prose_ around a discriminating witness (see above). Worth
-   distinguishing: this run found a prose-precision failure mode #1109
-   didn't explicitly name, not a repeat of #3.
+   diagnostic's repair itself. A related but distinct problem surfaced
+   twice in this run, once in each candidate — not a non-discriminating
+   witness or repair, but imprecise _prose/labeling_ around otherwise-
+   correct content: the construction candidate's overclaimed equivalence,
+   and the diagnostic candidate's trace mislabeling a real number as the
+   wrong quantity (see both above). Worth distinguishing as its own
+   category: this run found a prose-precision failure mode #1109 didn't
+   explicitly name, not a repeat of #3 — and finding it twice in one run,
+   in two unrelated places, is weak evidence it is a real, recurring
+   category rather than a one-off.
 4. **`rationale` restating the goal.** Not observed. Checked mechanically:
    `corpus-lint`'s `eitherContainsTheOther` check on `rationale.cause`/
    `rationale.whyRepairDiscriminates` passed for the diagnostic instance.
@@ -167,11 +193,20 @@ From #1109's own list, checked against what actually happened:
 
 ## Classification: prompt-wording vs. a check to mechanize
 
-- **The construction prose-overclaim (the one real finding).**
-  Prompt-wording. Folded into G3, version bumped v1.0 → v1.1: a new
-  paragraph in the construction section instructs the generator to scope
-  `obligation`/`transition` claims to exactly what the witness guarantees,
-  not to what merely looks equivalent.
+- **The construction prose-overclaim.** Prompt-wording. Folded into G3,
+  version bumped v1.0 → v1.1: a new paragraph in the construction section
+  instructs the generator to scope `obligation`/`transition` claims to
+  exactly what the witness guarantees, not to what merely looks
+  equivalent.
+- **The diagnostic trace's mislabeled number.** Also prompt-wording,
+  caught later — by a PR reviewer on #1127, after this log's own first
+  version had already called constraint 5 satisfied. Folded into the same
+  v1.1 bump: constraint 5 now says explicitly that a `trace` number must
+  be verified for the specific quantity its label names, not merely
+  computed correctly for _some_ quantity. Not mechanizable as a lint —
+  nothing in `corpus-lint.ts` can execute or trace through arbitrary Rust
+  to check a natural-language label against a number, which is the same
+  cost problem as "the `-` side compiles," below.
 - **Everything else in the self-check list that this run actually
   exercised** (goal length, patch alignment, repair budget and
   contiguity, trace presence, evidence-row budget, transferFrom's

@@ -30,7 +30,7 @@ const diagnosticMemoizationStep: DiagnosticStep = {
       headline: "REGRESSION",
       observations: [
         { label: "fib(35) calls, naive", value: "29,860,703" },
-        { label: "fib(35) calls, memoized", value: "36" },
+        { label: "fib(35) subproblems, distinct", value: "36" },
       ],
     },
     {
