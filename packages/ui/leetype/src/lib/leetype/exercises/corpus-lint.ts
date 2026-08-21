@@ -67,7 +67,7 @@ import { ROLE_TYPEABLE } from "@leetype/types/leetype"
  * is this story's honest outcome, not a skipped step — mirroring G4's own
  * "rejecting everything is a successful outcome."
  *
- * Two items considered and deliberately left as review-only, so the
+ * Three items considered and deliberately left as review-only, so the
  * boundary is recorded rather than silently forgotten:
  *
  * - **Concept-id near-duplication between two different, both-registered
@@ -82,6 +82,16 @@ import { ROLE_TYPEABLE } from "@leetype/types/leetype"
  *   measure must move toward termination," phrased differently because
  *   they probe different code shapes) — exactly the kind of judgment
  *   #1009's own framing says this file must not pretend it can make.
+ * - **Whether a `trace` observation's number names the exact quantity it
+ *   claims to**, rather than a different, related quantity that happens to
+ *   also be correctly computed — the real failure G4's run landed (a
+ *   correct count of distinct subproblems, mislabeled as a call count).
+ *   Left out because verifying it means executing or hand-tracing
+ *   arbitrary Rust for the specific quantity a free-text `label` names —
+ *   a natural-language claim against a number, which is exactly the kind
+ *   of open-ended judgment this file's own "mechanical, and only
+ *   mechanical" framing (above) draws the line against, not a shape a
+ *   parser over `ALL_FIXTURE_EXERCISES` could check.
  * - **Whether a diagnostic step's `-` side actually compiles.** The
  *   strongest possible check on "valid prior attempt," and the one this
  *   file's own character forbids: every check above runs with no Rust
