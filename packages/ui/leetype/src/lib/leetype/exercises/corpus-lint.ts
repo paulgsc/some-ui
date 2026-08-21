@@ -49,6 +49,59 @@ import { ROLE_TYPEABLE } from "@leetype/types/leetype"
  * same `‹…›`-stripping approximation `typedPortionOf` already uses
  * elsewhere. `scripts/check-corpus-lint.ts`, a plain Node/`tsx` process
  * the vitest alias never touches, hands in the real, stronger check.
+ *
+ * # LTY-SEED G5 (#1110): what the generator's first worked run did *not*
+ * add here, and why
+ *
+ * G4 (#1109, `docs/leetype/leetype-exercise-generator-log.md`) ran the
+ * generator prompt against two concepts and found no self-check item that
+ * was both mechanizable and not already covered — every schema-checkable
+ * shape (patch alignment, repair budget and contiguity, trace presence,
+ * evidence-row budget, `transferFrom`'s referential and concept-overlap
+ * check) is already enforced above or in `DiagnosticStepSchema`/
+ * `ConstructionStepSchema`, and both real findings that run produced were
+ * *prose* imprecision (an `obligation` overclaiming general equivalence; a
+ * `trace` observation naming the wrong quantity) — fixed as wording
+ * changes to the prompt itself, not as anything a data-only lint over
+ * `ALL_FIXTURE_EXERCISES` could have caught. Adding no new check function
+ * is this story's honest outcome, not a skipped step — mirroring G4's own
+ * "rejecting everything is a successful outcome."
+ *
+ * Three items considered and deliberately left as review-only, so the
+ * boundary is recorded rather than silently forgotten:
+ *
+ * - **Concept-id near-duplication between two different, both-registered
+ *   `CONCEPT_IDS` entries** (e.g. `loop-progress` vs. a hypothetical
+ *   `loop-progress-check`). `concepts.test.ts` already catches an
+ *   unregistered string (a typo, or a coined id nobody added to
+ *   `CONCEPT_IDS`); what nothing catches is two *legitimately registered*
+ *   ids that mean the same thing. Left out because a fuzzy string-match
+ *   check needs a threshold that is easy to write just outside of, and
+ *   would false-positive on real, deliberately-similar-sounding concepts
+ *   already in this corpus (`loopProgress`/`windowShrinking` are both "a
+ *   measure must move toward termination," phrased differently because
+ *   they probe different code shapes) — exactly the kind of judgment
+ *   #1009's own framing says this file must not pretend it can make.
+ * - **Whether a `trace` observation's number names the exact quantity it
+ *   claims to**, rather than a different, related quantity that happens to
+ *   also be correctly computed — the real failure G4's run landed (a
+ *   correct count of distinct subproblems, mislabeled as a call count).
+ *   Left out because verifying it means executing or hand-tracing
+ *   arbitrary Rust for the specific quantity a free-text `label` names —
+ *   a natural-language claim against a number, which is exactly the kind
+ *   of open-ended judgment this file's own "mechanical, and only
+ *   mechanical" framing (above) draws the line against, not a shape a
+ *   parser over `ALL_FIXTURE_EXERCISES` could check.
+ * - **Whether a diagnostic step's `-` side actually compiles.** The
+ *   strongest possible check on "valid prior attempt," and the one this
+ *   file's own character forbids: every check above runs with no Rust
+ *   toolchain, `cargo`, or wasm build required, the same way
+ *   `scripts/check-wasm-bindgen-boundary.sh` and
+ *   `scripts/check-mutation-boundary.sh` do. Requiring `cargo` here would
+ *   be a different, much heavier CI shape than every sibling guardrail
+ *   script — a decision for its own PR if a future run's log shows this
+ *   check would actually have caught something, not one this file backs
+ *   into by accretion.
  */
 
 function locate(exercise: Exercise, step: Step): string {
