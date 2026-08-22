@@ -206,12 +206,16 @@ async function main() {
     }
   }
 
-  // Fail the build if the PDFs do not expose a useful plain-text reading order.
-  execFileSync(
-    process.execPath,
-    [join(packageDir, "scripts", "check-ats.mjs")],
-    { stdio: "inherit" }
-  )
+  // Fail the build if the PDFs do not expose a useful plain-text reading order,
+  // or if any two lines are set tighter than ordinary body leading. Both read
+  // the compiled artifacts back rather than inspecting the source: a term the
+  // layout drops and a subtitle riding up into the line above it are both
+  // invisible in `.typ` and obvious in the PDF.
+  for (const check of ["check-ats.mjs", "check-layout.mjs"]) {
+    execFileSync(process.execPath, [join(packageDir, "scripts", check)], {
+      stdio: "inherit",
+    })
+  }
 
   // Preserve the original public filename as the default/backend composition.
   copyFileSync(join(outDir, "resume-backend.pdf"), join(outDir, "resume.pdf"))

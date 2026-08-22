@@ -5,7 +5,7 @@
 // tracking systems most often interleave the columns and destroy reading
 // order, and a photograph is a liability in several hiring pipelines. When the
 // posting routes through an unknown ATS, send this one.
-#import "../lib/parts.typ": bullets, contact-line, engagement-head, project-entry, section-head
+#import "../lib/parts.typ": HEADING-GAP, bullets, contact-line, engagement-head, project-entry, section-head
 #import "../lib/fit.typ": fit-scale, join-blocks, justify-blocks
 
 #let PAGE-W = 8.5in
@@ -23,23 +23,29 @@
 
   set page(paper: "us-letter", margin: 0pt, fill: theme.page-fill)
   set text(font: ctx.font, fill: theme.ink, lang: "en")
-  set par(justify: false, leading: 0.5em)
-  set list(indent: 0.1em, body-indent: 0.6em, spacing: 0.3em, marker: [•])
+  // PT Serif carries taller ascent/descent than the sans families, so the
+  // same nominal leading sets noticeably tighter here. Raised so this template
+  // clears the same line-gap floor the others do (scripts/check-layout.mjs).
+  set par(justify: false, leading: 0.68em)
+  set list(indent: 0.1em, body-indent: 0.6em, spacing: 0.75em, marker: [•])
 
   let bullet-budget(s) = if s > 0.92 { 4 } else { 3 }
   let practice-budget(s) = if s > 0.92 { 5 } else { 4 }
 
   let blocks(s) = {
     let out = (
-      align(center)[
-        #text(size: 2.05em, weight: "bold", fill: theme.ink)[#upper(profile.name)]
-        #v(0.16em, weak: true)
-        #text(size: 1.02em, fill: theme.muted)[
+      // Same construction as parts.typ's name-block: an explicit stack gap,
+      // not weak `v`, so the oversized name can't be ridden into by the line
+      // below it. See scripts/check-layout.mjs.
+      align(center, stack(
+        dir: ttb,
+        spacing: HEADING-GAP,
+        text(size: 2.05em, weight: "bold", fill: theme.ink)[#upper(profile.name)],
+        text(size: 1.02em, fill: theme.muted)[
           #profile.title #h(0.4em)|#h(0.4em) #comp.label
-        ]
-        #v(0.2em, weak: true)
-        #contact-line(theme, profile, sep: "|")
-      ],
+        ],
+        contact-line(theme, profile, sep: "|"),
+      )),
       [
         #section-head(theme)[Summary]
         #comp.summary

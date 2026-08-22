@@ -115,6 +115,39 @@ invent tenure, Kubernetes, scale, or employment history.
 text-oriented parser receives. `pnpm check:ats` re-runs the check against
 already-compiled PDFs.
 
+### Typography checking
+
+`pnpm build` also runs `scripts/check-layout.mjs` (or `pnpm check:layout` on
+already-compiled PDFs), which asserts that no two adjacent lines are set tighter
+than ordinary body leading.
+
+This exists because of a real failure. Several templates stack a title over a
+subtitle — name over role, project over stack, rail heading over its blurb — and
+Typst's `#v(.., weak: true)` collapses against an adjoining block. Those gaps
+silently went to zero and the subtitles' line boxes rode up into the lines above
+them. The source looked fine, the one-page assertion passed, and the ATS text
+check passed: all the text was present and in order, just overlapping. Only
+looking at the PDF caught it.
+
+So it is measured. `pdftotext -bbox-layout` gives a bounding box per rendered
+line; for each pair of vertically adjacent lines sharing a column, the check
+takes `(next.yMin - current.yMax)` normalised by the shorter line's height,
+which makes it independent of the type scale the fitting pass solves for. The
+zero point is not "touching" — a text box spans the font's full ascent and
+descent, so normal leading measures slightly positive and a negative value means
+the boxes genuinely overlap.
+
+Measured across all nine documents: Lato body leading sits at `+0.030`, PT Serif
+at `+0.042`, the worst legitimate pair at `-0.009`, and the defects this was
+built from at `-0.120` through `-0.517`. The floor is `-0.05`.
+
+PT Serif's ascent and descent run taller than Lato's at the same nominal size,
+so `STACK-GAP` and `HEADING-GAP` in `src/lib/parts.typ` are set for the serif —
+sizing them for the sans is how the overlap happened in the first place.
+
+It is a floor, not a designer: it catches cramming and collision, not whether
+spacing looks good. Gaps that are too _wide_ remain a judgement call.
+
 `pdftotext` is a build input, not a convenience: it comes from the repo's nix
 shells (`nix/pdf`). Outside nix, install `poppler-utils` or point
 `PDFTOTEXT_BIN` at a compatible executable.

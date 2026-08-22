@@ -55,7 +55,7 @@
   )
   set text(font: ctx.font, fill: theme.ink, lang: "en")
   set par(justify: false, leading: 0.52em)
-  set list(indent: 0.1em, body-indent: 0.6em, spacing: 0.34em, marker: [•])
+  set list(indent: 0.1em, body-indent: 0.6em, spacing: 0.52em, marker: [•])
 
   // The one place content volume responds to the solved scale: when a
   // composition is close to fitting, dropping the least load-bearing bullet
@@ -138,13 +138,13 @@
       [
         #section-head(theme, on-rail: true)[Technical toolbox]
         #for group in ctx.toolbox {
-          rail-pair(theme, group.label, group.items, gap: 0.2em, below: 0.36em)
+          rail-pair(theme, group.label, group.items)
         }
       ],
       [
         #section-head(theme, on-rail: true)[Repositories]
         #for repo in ctx.repositories {
-          rail-pair(theme, repo.name, repo.body, gap: 0.24em, below: 0.5em)
+          rail-pair(theme, repo.name, repo.body)
         }
       ],
     )

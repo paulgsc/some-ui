@@ -1,5 +1,21 @@
 // Rendering atoms shared by the templates. Everything is sized in `em` so the
 // scale solved by lib/fit.typ governs the whole document (see that file).
+//
+// Stacked title/subtitle groups go through `stack` with an explicit gap rather
+// than `#v(.., weak: true)`. Weak spacing collapses against an adjoining block,
+// which let a subtitle's line box ride up into the line above it — invisible in
+// the source, obvious on the page. scripts/check-layout.mjs asserts against
+// that geometry now, so these two constants are the knobs it holds.
+
+// Gaps are set for the loosest-metric family in the pinned set (PT Serif,
+// whose ascent/descent boxes run taller than Lato's at the same nominal size).
+// Sizing them for the sans and letting the serif ride tight is how the header
+// and the project subtitles ended up overlapping in the first place.
+//
+// Gap between the lines of a title/subtitle group.
+#let STACK-GAP = 0.72em
+// Gap under an oversized heading line, which needs to clear a much taller box.
+#let HEADING-GAP = 1.1em
 
 // A section rule. `on-rail` flips the palette for the coloured column.
 #let section-head(theme, title, on-rail: false) = block(
@@ -28,12 +44,18 @@
 #let project-entry(theme, item, bullet-count: 3) = block(
   below: 0.62em, breakable: false,
 )[
-  #text(size: 1.02em, weight: "bold", fill: theme.ink)[#item.name]
-  #linebreak()
-  #text(size: 0.85em, fill: theme.muted)[#item.kind]
-  #v(0.12em, weak: true)
-  #text(size: 0.94em, style: "italic", fill: theme.accent)[#item.premise]
-  #v(0.1em, weak: true)
+  #stack(
+    dir: ttb,
+    spacing: STACK-GAP,
+    text(size: 1.02em, weight: "bold", fill: theme.ink)[#item.name],
+    text(size: 0.85em, fill: theme.muted)[#item.kind],
+    text(size: 0.94em, style: "italic", fill: theme.accent)[#item.premise],
+  )
+  // Deliberately tighter than STACK-GAP: the bullets belong to the premise
+  // above them, and a gap wider than the one *between* bullets reads as a
+  // break rather than as continuation. The layout check enforces a floor, not
+  // a ceiling — this one is a judgement call it cannot make.
+  #v(0.3em)
   #bullets(item.bullets.slice(0, calc.min(bullet-count, item.bullets.len())))
 ]
 
@@ -41,14 +63,14 @@
 // layout's achievement blocks.
 #let rail-entry(theme, title, body) = block(below: 0.6em, breakable: false, stack(
   dir: ttb,
-  spacing: 0.24em,
+  spacing: STACK-GAP,
   text(size: 0.98em, weight: "bold", fill: theme.rail-ink)[#title],
   text(size: 0.88em, fill: theme.rail-muted)[#body],
 ))
 
 // Bold label over a supporting line, at the tighter spacing the toolbox and
 // repository blocks want.
-#let rail-pair(theme, label, body, gap: 0.16em, below: 0.4em) = block(
+#let rail-pair(theme, label, body, gap: STACK-GAP, below: 0.52em) = block(
   below: below, breakable: false, stack(
     dir: ttb,
     spacing: gap,
@@ -116,27 +138,30 @@
   ]
 ]
 
-#let name-block(theme, profile, focus, size: 2.1em) = [
-  #text(size: size, weight: "black", fill: theme.ink)[#upper(profile.name)]
-  #v(0.08em, weak: true)
-  #text(size: 1.05em, fill: theme.accent-soft)[
+#let name-block(theme, profile, focus, size: 2.1em) = stack(
+  dir: ttb,
+  // The name sets at 2.1em, so its line box is more than twice the height of
+  // the two lines beneath it. A gap proportional to the *body* size is not
+  // enough to clear it — this one is set against the name.
+  spacing: HEADING-GAP,
+  text(size: size, weight: "black", fill: theme.ink)[#upper(profile.name)],
+  text(size: 1.05em, fill: theme.accent-soft)[
     #profile.title #h(0.4em)|#h(0.4em) #focus
-  ]
-  #v(0.22em, weak: true)
-  #contact-line(theme, profile)
-]
+  ],
+  contact-line(theme, profile),
+)
 
 // The role line beneath an EXPERIENCE heading. Title left, dates right, and
 // the organisation on its own line — the shape a résumé parser expects to find
 // and the shape the reference layout uses.
-#let engagement-head(theme, engagement) = block(below: 0.5em, breakable: false)[
+#let engagement-head(theme, engagement) = block(below: 0.78em, breakable: false)[
   #grid(
     columns: (1fr, auto),
     align: (left + horizon, right + horizon),
     text(size: 1.06em, weight: "bold", fill: theme.ink)[#engagement.role],
     text(size: 0.9em, fill: theme.muted)[#engagement.dates],
   )
-  #v(0.08em)
+  #v(STACK-GAP)
   #grid(
     columns: (1fr, auto),
     align: (left + horizon, right + horizon),
