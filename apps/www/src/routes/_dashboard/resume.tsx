@@ -25,6 +25,23 @@ const RESUME_COMPOSITIONS = [
 type ResumeComposition = (typeof RESUME_COMPOSITIONS)[number]["id"]
 const RESUME_COMPOSITION_KEY = "some-ui:resume-composition"
 const MOBILE_PREVIEW_QUERY = "(max-width: 767px)"
+// A phone held sideways. `pointer: coarse` is what keeps a merely short
+// desktop window out of this branch; height alone would catch both.
+const TOUCH_LANDSCAPE_QUERY = "(max-height: 500px) and (pointer: coarse)"
+
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(() =>
+    typeof window === "undefined" ? false : window.matchMedia(query).matches
+  )
+  useEffect(() => {
+    const list = window.matchMedia(query)
+    const update = (): void => setMatches(list.matches)
+    update()
+    list.addEventListener("change", update)
+    return (): void => list.removeEventListener("change", update)
+  }, [query])
+  return matches
+}
 
 function isResumeComposition(value: string | null): value is ResumeComposition {
   return RESUME_COMPOSITIONS.some(({ id }) => id === value)
@@ -43,22 +60,17 @@ const ResumeRoute = (): JSX.Element => {
     useState<ResumeComposition>(initialComposition)
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
   const pdfPath = `${import.meta.env.BASE_URL}resume-${composition}.pdf`
-  const [mobilePreview, setMobilePreview] = useState(() =>
-    typeof window === "undefined"
-      ? false
-      : window.matchMedia(MOBILE_PREVIEW_QUERY).matches
-  )
+  const mobilePreview = useMediaQuery(MOBILE_PREVIEW_QUERY)
+  // Landscape on a phone keeps the PDF, because that is what the platform
+  // does with one. What it must not do is pretend: the browser's own embed
+  // placeholder offers an "Open" control that silently downloads, and that
+  // control is browser chrome - it cannot be relabelled or re-iconed from
+  // here. So the embed is not rendered in this state at all, and the page
+  // offers the download in its own words instead.
+  const touchLandscape = useMediaQuery(TOUCH_LANDSCAPE_QUERY)
   const label =
     RESUME_COMPOSITIONS.find(({ id }) => id === composition)?.label ??
     RESUME_COMPOSITIONS[0].label
-
-  useEffect(() => {
-    const query = window.matchMedia(MOBILE_PREVIEW_QUERY)
-    const updatePreview = (): void => setMobilePreview(query.matches)
-    updatePreview()
-    query.addEventListener("change", updatePreview)
-    return (): void => query.removeEventListener("change", updatePreview)
-  }, [])
 
   const selectComposition = (next: ResumeComposition): void => {
     localStorage.setItem(RESUME_COMPOSITION_KEY, next)
@@ -99,12 +111,18 @@ const ResumeRoute = (): JSX.Element => {
             <Layers3 />
             Next version
           </Button>
-          <Button asChild size="sm">
-            <a href={pdfPath} download="Paul_Gathondu_Resume.pdf">
-              <Download />
-              Download PDF
-            </a>
-          </Button>
+          {/* Hidden in phone landscape, where the panel below already offers
+              the download - two buttons doing the same thing, one of them
+              redundant, is how the browser's own control got mistaken for
+              ours in the first place. */}
+          {!touchLandscape && (
+            <Button asChild size="sm">
+              <a href={pdfPath} download="Paul_Gathondu_Resume.pdf">
+                <Download />
+                Download PDF
+              </a>
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent className="min-h-0 flex-1 pb-6">
@@ -112,7 +130,22 @@ const ResumeRoute = (): JSX.Element => {
           className="relative isolate size-full overflow-auto rounded-md border md:overflow-hidden"
           onContextMenu={openCompositionMenu}
         >
-          {mobilePreview ? (
+          {touchLandscape ? (
+            <div className="flex size-full flex-col items-center justify-center gap-3 p-6 text-center">
+              <p className="text-foreground text-sm font-medium">{label}</p>
+              <p className="text-muted-foreground max-w-sm text-sm">
+                A phone can’t display a PDF inside a page, so landscape offers
+                the file itself. Rotate to portrait to read the résumé here
+                instead.
+              </p>
+              <Button asChild size="sm">
+                <a href={pdfPath} download="Paul_Gathondu_Resume.pdf">
+                  <Download />
+                  Download PDF
+                </a>
+              </Button>
+            </div>
+          ) : mobilePreview ? (
             // No mobile browser renders a PDF inline - Android Chrome hands it
             // to the download manager and iOS Safari shows a dead first page -
             // so the phone viewport gets the document as real HTML instead of
