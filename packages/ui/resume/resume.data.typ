@@ -7,7 +7,6 @@
   email: "paulgathondudev@gmail.com",
   github: "github.com/paulgsc",
   portfolio: "paulgsc.github.io/some-ui",
-  location: "Nairobi, Kenya",
   // Set `photo` to an image path when binary assets can be distributed.
   photo: none,
   photo-placeholder: "PG",
