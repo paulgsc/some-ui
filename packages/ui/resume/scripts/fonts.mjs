@@ -25,7 +25,11 @@ const RAW = "https://raw.githubusercontent.com/google/fonts/main"
 // Families the templates may name. Keep `family` matching the font's internal
 // family name — that string is what a template's `#set text(font: ...)` looks
 // up, and typst matches on it rather than on the filename.
-export const FONT_FAMILIES = {
+//
+// Deliberately not exported: `resolveFontPath` is the whole public surface of
+// this module, and the pinned set is an implementation detail of it. The
+// template-visible names live in src/theme/index.typ.
+const FONT_FAMILIES = {
   lato: {
     family: "Lato",
     files: [
