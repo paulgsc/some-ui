@@ -14,11 +14,10 @@
 // scrambled primary-section order.
 import { execFileSync } from "node:child_process"
 import { existsSync, writeFileSync } from "node:fs"
-import { basename, dirname, join } from "node:path"
-import { fileURLToPath } from "node:url"
+import { basename, join } from "node:path"
 
-const packageDir = dirname(dirname(fileURLToPath(import.meta.url)))
-const outDir = join(packageDir, "dist")
+import { outDir } from "./typst.mjs"
+
 const extractor = process.env.PDFTOTEXT_BIN ?? "pdftotext"
 
 const variants = {

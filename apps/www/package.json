@@ -37,6 +37,7 @@
     "@some-ui/fetch-kit": "workspace:*",
     "@some-ui/honeycomb": "workspace:*",
     "@some-ui/intent-kit": "workspace:*",
+    "@some-ui/resume": "workspace:*",
     "@some-ui/shared": "workspace:*",
     "@some-ui/slideshow": "workspace:*",
     "@some-ui/speech": "workspace:*",
@@ -59,7 +60,6 @@
   },
   "devDependencies": {
     "@playwright/test": "1.60.0",
-    "@some-ui/resume": "workspace:*",
     "@vitejs/plugin-react": "^6.0.5",
     "rollup-plugin-visualizer": "^5.12.0",
     "vite": "^8.2.1"
