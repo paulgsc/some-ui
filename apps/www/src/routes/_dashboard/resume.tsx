@@ -17,12 +17,18 @@ import { Download, Layers3 } from "lucide-react"
 // instead and 404 there. import.meta.env.BASE_URL always ends in "/", so
 // this resolves correctly for GitHub Pages, the Docker/nginx build, and
 // local dev alike.
-const RESUME_COMPOSITIONS = [
-  { id: "backend", label: "Backend & event-driven systems" },
-  { id: "systems", label: "Systems & browser infrastructure" },
-  { id: "learning", label: "Adaptive learning & product engineering" },
-] as const
-type ResumeComposition = (typeof RESUME_COMPOSITIONS)[number]["id"]
+// Order is a presentation decision and belongs here; the labels are content
+// and do not. They used to be hard-coded alongside these ids and had already
+// drifted - the selector said "Systems & browser infrastructure" while the
+// document said "Distributed systems & infrastructure", so the card header
+// and the résumé under it disagreed. Reading them from resumeData removes
+// the last copy of résumé content in this app.
+const RESUME_ORDER = ["backend", "systems", "learning"] as const
+type ResumeComposition = (typeof RESUME_ORDER)[number]
+const RESUME_COMPOSITIONS: ReadonlyArray<{
+  id: ResumeComposition
+  label: string
+}> = RESUME_ORDER.map((id) => ({ id, label: resumeData[id].label }))
 const RESUME_COMPOSITION_KEY = "some-ui:resume-composition"
 const MOBILE_PREVIEW_QUERY = "(max-width: 767px)"
 // A phone held sideways. `pointer: coarse` is what keeps a merely short

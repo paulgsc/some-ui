@@ -34,6 +34,20 @@ if (files.every((file) => existsSync(join(resumeDir, file)))) {
   }
   // eslint-disable-next-line no-console
   console.log("[www] synced résumé compositions from @some-ui/resume")
+} else if (process.env["CI"]) {
+  // Warning is right for a developer and wrong for a release. Missing PDFs
+  // here mean the site ships with a 404 behind every download and desktop
+  // preview, and a warning in a green build is not something anyone reads.
+  //
+  // This fires if @some-ui/resume's build output ever stops arriving - the
+  // way it did when `documents/` was not listed in turbo.json's build
+  // `outputs` and a cache hit restored nothing.
+  throw new Error(
+    "[www] compiled résumé PDFs not found. Refusing to build a site whose " +
+      "/resume downloads would 404. Expected them in " +
+      `${resumeDir} - check that @some-ui/resume built, and that its output ` +
+      "directory is listed in turbo.json's build outputs."
+  )
 } else {
   // eslint-disable-next-line no-console
   console.warn(

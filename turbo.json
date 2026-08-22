@@ -9,7 +9,7 @@
     },
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", "build/**", ".contentlayer/**"],
+      "outputs": ["dist/**", "build/**", "documents/**", ".contentlayer/**"],
       "cache": true
     },
     "build:docs": {
