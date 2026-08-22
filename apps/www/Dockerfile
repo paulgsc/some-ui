@@ -52,11 +52,19 @@ FROM base AS builder
 # .tar.xz and extracts it with system `tar` - relying on BusyBox tar's
 # xz support being compiled in is a bad bet for a release pipeline.
 #
+# poppler-utils is here for the same reason: that package's build ends by
+# reading its own compiled PDFs back with `pdftotext` to prove they expose
+# extractable, correctly ordered text (scripts/check-ats.mjs). It is a build
+# input, not a developer convenience - without it this stage fails with
+# ENOENT. The nix shells provision it separately for CI and local dev; this
+# image does not use them, so it needs its own copy.
+#
 RUN apk add --no-cache \
         curl \
         build-base \
         tar \
         xz \
+        poppler-utils \
     && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
         | sh -s -- -y --default-toolchain stable
 
