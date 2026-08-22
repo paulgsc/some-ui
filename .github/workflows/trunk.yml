@@ -52,19 +52,30 @@ jobs:
         run: nix develop .#ci --command pnpm lint:js --concurrency=100%
       - name: Prettier all packages
         run: nix develop .#ci --command pnpm prettier --concurrency=100%
-      # Bounded concurrency, unlike the steps above. `test` (= `turbo test`)
-      # fans out to the 21 workspaces with a `test` script — 19 of them
-      # Vitest, and exactly one, @some-extension/common, Playwright/Chromium.
-      # At --concurrency=100% on a standard (4-core) runner, ~20 concurrent
-      # Vitest processes contend for the same CPU/memory budget as that one
-      # Chromium instance, and the contention blows through
-      # @some-extension/common's deliberately tight budget (workers: 1,
-      # timeout: 15s, retries: 0 — see its playwright.config.ts). That suite
-      # is invisible to PR CI (excluded from pr.yml's node job and from
-      # extension.yml's matrix, since it ships no manifest*.json), so this
-      # was the only place the resulting flake could ever surface (#1136).
+      # ci-playwright, unlike the steps above. `test` (= `turbo test`) fans
+      # out to the 21 workspaces with a `test` script; 20 are Vitest, and
+      # exactly one, @some-extension/common, is Playwright/Chromium. The
+      # plain `ci` shell explicitly ships no Playwright ("No GUI libs, no
+      # dev ergonomics, no Playwright" — see its own comment in flake.nix),
+      # so Playwright fell back to its own npm-managed browser download,
+      # which is unavailable/incomplete in this sandboxed CI environment —
+      # not a timeout, an outright "Executable doesn't exist". `ci-playwright`
+      # provisions a Nix-patched Chromium and exports
+      # PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH/PLAYWRIGHT_BROWSERS_PATH/
+      # PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD (nix/playwright/default.nix) —
+      # but that alone isn't sufficient here: this step runs the task via
+      # `turbo test`, and turbo's default strict env mode strips ambient
+      # env vars from the child task process unless a task explicitly lists
+      # them in `passThroughEnv` (see turbo.json's `test` task). Both parts
+      # are required together. @some-extension/common's suite is invisible
+      # to PR CI (excluded from pr.yml's node job and from extension.yml's
+      # matrix, since it ships no manifest*.json), so this was the only
+      # place the resulting failure could ever surface (#1136). Verified
+      # locally: `turbo run test --filter=@some-extension/common` fails
+      # with the exact "Executable doesn't exist" error without
+      # passThroughEnv declared, and passes once it is.
       - name: Test all packages
-        run: nix develop .#ci --command pnpm test --concurrency=2
+        run: nix develop .#ci-playwright --command pnpm test --concurrency=100%
   # ── Full dependency audit ───────────────────────────────────────────────
   deny:
     name: Deny Checks (full)

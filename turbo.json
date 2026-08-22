@@ -68,19 +68,37 @@
       "cache": false
     },
     "test": {
-      "cache": false
+      "cache": false,
+      "passThroughEnv": [
+        "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH",
+        "PLAYWRIGHT_BROWSERS_PATH",
+        "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD",
+        "LD_LIBRARY_PATH"
+      ]
     },
     "test:invariants": {
       "dependsOn": ["^build"],
       "inputs": ["tests/browser-invariants/**", "playwright.config.ts"],
       "outputs": ["playwright-report/**", "test-results/**"],
-      "cache": false
+      "cache": false,
+      "passThroughEnv": [
+        "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH",
+        "PLAYWRIGHT_BROWSERS_PATH",
+        "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD",
+        "LD_LIBRARY_PATH"
+      ]
     },
     "test:e2e": {
       "dependsOn": ["build", "^test:invariants"],
       "inputs": ["src/**", "tests/**", "playwright.config.ts"],
       "outputs": ["playwright-report/**", "test-results/**"],
-      "cache": false
+      "cache": false,
+      "passThroughEnv": [
+        "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH",
+        "PLAYWRIGHT_BROWSERS_PATH",
+        "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD",
+        "LD_LIBRARY_PATH"
+      ]
     },
     "clean": {
       "cache": false
