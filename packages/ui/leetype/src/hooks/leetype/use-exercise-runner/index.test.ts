@@ -4,9 +4,9 @@ import { describe, expect, it } from "vitest"
 
 import { useExerciseRunner } from "."
 
-function exerciseOf(stepCount: number): Exercise {
+function exerciseOf(stepCount: number, id = "e"): Exercise {
   return {
-    id: "e",
+    id,
     title: "Three steps",
     steps: Array.from({ length: stepCount }, (_, index) => ({
       id: `s${index}`,
@@ -93,6 +93,22 @@ describe("useExerciseRunner", () => {
     expect(result.current.attempt).toBe(0)
     expect(result.current.escaped).toBe(0)
     expect(result.current.isFinished).toBe(false)
+  })
+
+  it("starts at the first step when the session selects another exercise", () => {
+    const { result, rerender } = renderHook(
+      ({ exercise }) => useExerciseRunner(exercise),
+      { initialProps: { exercise: exerciseOf(3, "first") } }
+    )
+
+    act(() => result.current.advance("escape"))
+    act(() => result.current.advance("repeat"))
+    rerender({ exercise: exerciseOf(2, "second") })
+
+    expect(result.current.exercise.id).toBe("second")
+    expect(result.current.index).toBe(0)
+    expect(result.current.attempt).toBe(0)
+    expect(result.current.escaped).toBe(0)
   })
 
   it("holds no typing state — swapping the source touches only its input", () => {

@@ -1,5 +1,6 @@
 import { CONCEPT_IDS } from "@leetype/lib/leetype/exercises/concepts"
 import type { ConstructionStep, Exercise } from "@leetype/types/exercise"
+import { typingBlockFromDiff } from "@leetype/types/exercise"
 
 /**
  * LTY-SEED G4 (#1109): the epic's first worked generation run, construction
@@ -38,18 +39,22 @@ const constructionBinarySearchPlaceStep: ConstructionStep = {
       before: "a full O(n) scan to find where the new value belongs",
       after: "already returned by binary_search's Err(i)",
     },
-    {
-      kind: "typing",
-      source:
-        "‹let insert_at = arr.iter().position(|&x| x > target).unwrap_or(arr.len());\n›let insert_at = arr.binary_search(&target).unwrap_or_else(|i| i);",
+    typingBlockFromDiff({
       language: "rust",
-      patch: {
-        path: "src/search/sorted_insert.rs",
-        oldStart: 1,
-        newStart: 1,
-        lineKinds: ["del", "add"],
-      },
-    },
+      path: "src/search/sorted_insert.rs",
+      oldStart: 1,
+      newStart: 1,
+      segments: [
+        {
+          kind: "deletion",
+          text: "let insert_at = arr.iter().position(|&x| x > target).unwrap_or(arr.len());\n",
+        },
+        {
+          kind: "addition",
+          text: "let insert_at = arr.binary_search(&target).unwrap_or_else(|i| i);",
+        },
+      ],
+    }),
   ],
 }
 

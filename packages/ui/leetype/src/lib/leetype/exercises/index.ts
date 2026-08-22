@@ -50,21 +50,30 @@ import {
  */
 
 /**
- * Everything the future selector will need and this one ignores.
+ * Everything the future selector will need and this one ignores, plus the
+ * one field it does read.
  *
  * The eventual pipeline picks the next probe by expected information gain
- * over a learner model. This shim picks the only exercise it has. Taking the
- * argument *now* — and ignoring it — makes the replacement a body swap;
+ * over a learner model. This shim reads only `preferId`. `completed` is
+ * taken *now* — and ignored — so that the replacement is a body swap;
  * omitting it would make the replacement a signature change through every
  * caller.
  *
- * **Ignoring it is the current implementation, not the contract.**
+ * **Ignoring `completed` is the current implementation, not the contract.**
+ *
+ * `preferId` is required rather than optional: an implicit "no preference"
+ * default used to silently resolve to the first corpus exercise
+ * (`entryApi`), which is exactly the deterministic-first-item behavior this
+ * shim's own callers (the session scheduler, deep links) exist to replace.
+ * A caller that wants a specific fixture — a story, a test — names it; a
+ * caller that wants "whatever the corpus offers next" asks the scheduler
+ * (`./scheduling`), not this shim.
  */
 export type SelectionState = {
   /** Exercises the player has already finished, most recent last. */
   completed?: ReadonlyArray<string>
-  /** Force a particular exercise — stories, tests, and a future deep link. */
-  preferId?: string
+  /** The exercise to hand back — stories, tests, deep links, and the session scheduler's own choice. */
+  preferId: string
 }
 
 /**
@@ -79,28 +88,29 @@ const CORPUS: ReadonlyArray<Exercise> =
   ExerciseCorpusSchema.parse(SEED_EXERCISES)
 
 /**
- * The next exercise to play.
+ * The exercise `preferId` names.
  *
  * Synchronous and boring on purpose: no network, no cache, no promise. The
  * whole point of the quarantine is that the interesting part is somewhere
  * else, and a shim that had to be awaited would have already started
  * pretending otherwise.
+ *
+ * Throws on an id nothing in the corpus matches, rather than silently
+ * substituting a default exercise: the corpus already fails loudly at
+ * module load if it does not validate (see `CORPUS` above), and a selection
+ * seam that quietly served the wrong exercise for a stale deep link or a
+ * typo'd fixture id would be the same "fail here, not three components
+ * later" argument going unapplied at the one seam that actually takes a
+ * caller-supplied id.
  */
-export function nextExercise(state?: SelectionState): Exercise {
-  const preferred =
-    state?.preferId === undefined
-      ? undefined
-      : CORPUS.find((exercise) => exercise.id === state.preferId)
-
-  // `CORPUS` is non-empty by schema (`ExerciseCorpusSchema` requires at least
-  // one), so the fallback is a type-level necessity rather than a runtime
-  // possibility.
-  const first = CORPUS[0]
-  if (first === undefined) {
-    throw new Error("The exercise corpus is empty, which the schema forbids.")
+export function nextExercise(state: SelectionState): Exercise {
+  const exercise = CORPUS.find((candidate) => candidate.id === state.preferId)
+  if (exercise === undefined) {
+    throw new Error(
+      `nextExercise: "${state.preferId}" is not an id in the validated corpus.`
+    )
   }
-
-  return preferred ?? first
+  return exercise
 }
 
 /**
@@ -125,10 +135,15 @@ export const FIXTURE_HOSTILE_PROMPT_STEP: Step = HOSTILE_PROMPT_STEP
 /**
  * Every exercise in the validated corpus — for lints that need to check a
  * property across *all* of it, which `nextExercise` cannot express: it only
- * ever returns one exercise (the default or an explicit `preferId`), so a
+ * ever returns the one exercise its `preferId` names, so a
  * lint built out of individual `nextExercise` calls silently stops covering
  * the corpus the moment a new exercise is added and nothing calls for it by
  * id. Not a runtime selection API — a host asking what the player should
  * see next always goes through `nextExercise`, this export included.
  */
 export const ALL_FIXTURE_EXERCISES: ReadonlyArray<Exercise> = CORPUS
+
+/** The validated exercises eligible for a normal, user-facing session. */
+export const SESSION_EXERCISE_IDS: ReadonlyArray<string> = CORPUS.filter(
+  (exercise) => exercise.id !== ADVERSARIAL_EXERCISE_ID
+).map((exercise) => exercise.id)

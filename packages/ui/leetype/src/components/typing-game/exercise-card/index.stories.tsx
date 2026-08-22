@@ -2,6 +2,7 @@ import { useRef } from "react"
 import { usePreviewGame } from "@leetype/hooks/leetype/use-preview-game"
 import {
   FIXTURE_ADVERSARIAL_EXERCISE_ID,
+  FIXTURE_EXERCISE_ID,
   FIXTURE_HOSTILE_PROMPT_STEP,
   nextExercise,
 } from "@leetype/lib/leetype/exercises"
@@ -19,7 +20,7 @@ const meta: Meta<typeof ExerciseCard> = {
 export default meta
 type Story = StoryObj<typeof ExerciseCard>
 
-const seed = nextExercise()
+const seed = nextExercise({ preferId: FIXTURE_EXERCISE_ID })
 const adversarial = nextExercise({ preferId: FIXTURE_ADVERSARIAL_EXERCISE_ID })
 
 /**

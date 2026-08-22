@@ -16,7 +16,15 @@ import {
   saveBaseline,
 } from "@leetype/lib/leetype/baseline-store"
 import { CALIBRATION_STEP } from "@leetype/lib/leetype/baseline-store/calibration"
-import { nextExercise } from "@leetype/lib/leetype/exercises"
+import {
+  nextExercise,
+  SESSION_EXERCISE_IDS,
+} from "@leetype/lib/leetype/exercises"
+import {
+  createExerciseSchedule,
+  takeScheduledExercise,
+} from "@leetype/lib/leetype/exercises/scheduling"
+import type { ExerciseSchedule } from "@leetype/lib/leetype/exercises/scheduling"
 import type { Exercise, RationaleChoice } from "@leetype/types/exercise"
 import { typingBlockOf } from "@leetype/types/exercise"
 import type {
@@ -52,13 +60,18 @@ function sampleFromStep(
 
 type LeetypeProps = {
   /**
-   * The exercise to play. Defaults to whatever the shim hands out.
+   * A fixed exercise for a preview or deep link. Normal sessions omit this
+   * prop and traverse the eligible corpus through the seeded schedule.
    *
    * This prop is the seam a future generator plugs into — see
    * `lib/leetype/exercises`. Everything above it (the runner, the card, the
    * engine) is indifferent to where the value came from.
    */
   exercise?: Exercise
+  /** Session term supplied by the composer/scene, in milliseconds. */
+  sessionDurationMs?: number
+  /** Deterministic override for tests, previews, and replaying an ordering bug. */
+  sessionSeed?: number
   /** Cosmetic. See `TextGradient`. */
   textGradient?: TextGradient
   /** Called once the whole sequence is finished. */
@@ -82,10 +95,9 @@ type LeetypeProps = {
  * LeetType: a competency probe whose input modality happens to be typing.
  *
  * The loop is *read one sentence → type → observe → repeat*, with no menus
- * in it. There is no challenge picker, no session configuration, no clock
- * that ends anything and no XP: what used to be six decisions the player
- * made before starting are now one decision the exercise engine makes, and
- * one scalar — WPM against their own baseline — that decides the rest.
+ * in it. The composer supplies only the session term; within that term the
+ * seeded exercise schedule and the baseline-relative gate decide what comes
+ * next. There is no challenge picker and no XP.
  *
  * This component is composition, not orchestration. Three collaborators,
  * each ignorant of the others:
@@ -101,15 +113,32 @@ type LeetypeProps = {
  */
 export const Leetype: FC<LeetypeProps> = ({
   exercise,
+  sessionDurationMs = 10 * 60_000,
+  sessionSeed,
   textGradient,
   onSessionComplete,
   appearance = "inherit",
 }) => {
+  const [seed] = useState(
+    () => sessionSeed ?? crypto.getRandomValues(new Uint32Array(1))[0]!
+  )
+  // Computed unconditionally rather than only when `exercise` is omitted:
+  // `nextExercise` requires an explicit `preferId`, and a schedule is cheap,
+  // pure data — the small extra work on the preview/deep-link path buys a
+  // resolvedExercise initializer that never needs an unsafe non-null
+  // assertion to satisfy that contract.
+  const [initialSelection] = useState(() =>
+    takeScheduledExercise(
+      SESSION_EXERCISE_IDS,
+      createExerciseSchedule(SESSION_EXERCISE_IDS, seed)
+    )
+  )
+  const scheduleRef = useRef<ExerciseSchedule>(initialSelection.schedule)
   // The shim is consulted once per mount rather than on every render: it is
   // synchronous and cheap, but "which exercise am I playing" must not change
   // underneath a run.
-  const [resolvedExercise] = useState<Exercise>(
-    () => exercise ?? nextExercise()
+  const [resolvedExercise, setResolvedExercise] = useState<Exercise>(
+    () => exercise ?? nextExercise({ preferId: initialSelection.exerciseId })
   )
   const runner = useExerciseRunner(resolvedExercise)
 
@@ -136,6 +165,11 @@ export const Leetype: FC<LeetypeProps> = ({
    * cheaper and more honest.
    */
   const [finished, setFinished] = useState<CompletedSessionStats | null>(null)
+  const [sessionClockMs, setSessionClockMs] = useState(0)
+  const clockStartedAtRef = useRef<number | null>(null)
+  const completedStepsRef = useRef(0)
+  const escapedStepsRef = useRef(0)
+  const exerciseCompletionHandledRef = useRef(false)
 
   /**
    * The most recently completed step's `rationaleChoices` (LTY-WHY W4,
@@ -194,7 +228,9 @@ export const Leetype: FC<LeetypeProps> = ({
    * Two different steps may carry the same source — a corpus is allowed to
    * repeat a proof — so identity has to be the step's own, not its text.
    */
-  const stepKey = calibrating ? "warm-up" : `${runner.index}:${runner.step.id}`
+  const stepKey = calibrating
+    ? "warm-up"
+    : `${resolvedExercise.id}:${runner.index}:${runner.step.id}`
   const attempt = calibrating ? 0 : runner.attempt
 
   const {
@@ -363,16 +399,82 @@ export const Leetype: FC<LeetypeProps> = ({
   ])
 
   useEffect(() => {
+    if (gameState !== "playing") {
+      clockStartedAtRef.current = null
+      return
+    }
+    const startedAt = clockStartedAtRef.current ?? performance.now()
+    clockStartedAtRef.current = startedAt
+    const update = (): void => {
+      setSessionClockMs(
+        Math.min(performance.now() - startedAt, sessionDurationMs)
+      )
+    }
+    const timer = window.setInterval(update, 250)
+    return (): void => window.clearInterval(timer)
+  }, [gameState, sessionDurationMs])
+
+  useEffect(() => {
+    if (!runner.isFinished) exerciseCompletionHandledRef.current = false
+  }, [runner.isFinished])
+
+  useEffect(() => {
     if (calibrating || !runner.isFinished || gameState !== "playing") return
+    if (exerciseCompletionHandledRef.current) return
+    exerciseCompletionHandledRef.current = true
+
+    completedStepsRef.current += runner.completed
+    escapedStepsRef.current += runner.escaped
+
+    if (sessionClockMs >= sessionDurationMs) return
+
+    if (exercise !== undefined) {
+      // Exercise props are the preview/deep-link seam. Preserve their
+      // one-exercise completion contract while normal corpus sessions loop.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSessionClockMs(sessionDurationMs)
+      return
+    }
+
+    const next = takeScheduledExercise(
+      SESSION_EXERCISE_IDS,
+      scheduleRef.current
+    )
+    scheduleRef.current = next.schedule
+    // The completed exercise is an external engine event; selecting the next
+    // scheduled value is the state transition this effect synchronizes.
+    setResolvedExercise(nextExercise({ preferId: next.exerciseId }))
+  }, [
+    calibrating,
+    runner,
+    gameState,
+    sessionClockMs,
+    sessionDurationMs,
+    exercise,
+  ])
+
+  useEffect(() => {
+    if (
+      calibrating ||
+      sessionClockMs < sessionDurationMs ||
+      gameState !== "playing"
+    )
+      return
 
     const shares = assistanceRef.current
+    const currentSteps = exerciseCompletionHandledRef.current
+      ? 0
+      : runner.completed
+    const currentEscaped = exerciseCompletionHandledRef.current
+      ? 0
+      : runner.escaped
     const stats: CompletedSessionStats = {
       wpm,
       accuracy,
       elapsedTime: sessionElapsedTime,
       errors: totalErrors,
-      stepsCompleted: runner.completed,
-      stepsEscaped: runner.escaped,
+      stepsCompleted: completedStepsRef.current + currentSteps,
+      stepsEscaped: escapedStepsRef.current + currentEscaped,
       assistance:
         shares.length === 0
           ? 0
@@ -388,7 +490,8 @@ export const Leetype: FC<LeetypeProps> = ({
     onSessionCompleteRef.current?.(stats)
   }, [
     calibrating,
-    runner.isFinished,
+    sessionClockMs,
+    sessionDurationMs,
     runner.completed,
     runner.escaped,
     gameState,
@@ -399,6 +502,8 @@ export const Leetype: FC<LeetypeProps> = ({
   ])
 
   const handleStart = useCallback((): void => {
+    clockStartedAtRef.current = performance.now()
+    setSessionClockMs(0)
     setGameState("playing")
     start()
     // The keystroke-capture element only accepts input while enabled, and it
@@ -408,11 +513,27 @@ export const Leetype: FC<LeetypeProps> = ({
 
   const handleAgain = useCallback((): void => {
     assistanceRef.current = []
+    completedStepsRef.current = 0
+    escapedStepsRef.current = 0
+    setSessionClockMs(0)
+    clockStartedAtRef.current = null
+    exerciseCompletionHandledRef.current = false
     setFinished(null)
     setCompletedRationale(null)
-    runner.restart()
+    if (exercise === undefined) {
+      const nextSeed =
+        sessionSeed ?? crypto.getRandomValues(new Uint32Array(1))[0]!
+      const first = takeScheduledExercise(
+        SESSION_EXERCISE_IDS,
+        createExerciseSchedule(SESSION_EXERCISE_IDS, nextSeed)
+      )
+      scheduleRef.current = first.schedule
+      setResolvedExercise(nextExercise({ preferId: first.exerciseId }))
+    } else {
+      runner.restart()
+    }
     setGameState("idle")
-  }, [runner])
+  }, [exercise, runner, sessionSeed])
 
   if (error) {
     return (
@@ -441,7 +562,7 @@ export const Leetype: FC<LeetypeProps> = ({
     >
       {finished ? (
         <ResultsCard
-          exerciseTitle={resolvedExercise.title}
+          exerciseTitle="LeetType session"
           stats={finished}
           onPlayAgain={handleAgain}
         />

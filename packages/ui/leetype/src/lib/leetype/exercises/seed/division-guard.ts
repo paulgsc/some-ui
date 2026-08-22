@@ -1,5 +1,6 @@
 import { CONCEPT_IDS } from "@leetype/lib/leetype/exercises/concepts"
 import type { DiagnosticStep, Exercise } from "@leetype/types/exercise"
+import { typingBlockFromDiff } from "@leetype/types/exercise"
 
 /**
  * LTY-PATCH P4's own instance (#1079): the corpus's first multi-line patch
@@ -26,18 +27,23 @@ const diagnosticDivisionGuardStep: DiagnosticStep = {
       headline: "PANIC",
       observations: [{ label: "count", value: "0" }],
     },
-    {
-      kind: "typing",
-      source:
-        "‹fn average(total: i32, count: i32) -> i32 {\n    ›if count == 0 {\n        return 0;\n    }‹\n    total / count\n}›",
+    typingBlockFromDiff({
       language: "rust",
-      patch: {
-        path: "src/stats/average.rs",
-        oldStart: 1,
-        newStart: 1,
-        lineKinds: ["context", "add", "add", "add", "context", "context"],
-      },
-    },
+      path: "src/stats/average.rs",
+      oldStart: 1,
+      newStart: 1,
+      segments: [
+        {
+          kind: "context",
+          text: "fn average(total: i32, count: i32) -> i32 {\n    ",
+        },
+        {
+          kind: "addition",
+          text: "if count == 0 {\n        return 0;\n    }",
+        },
+        { kind: "context", text: "\n    total / count\n}" },
+      ],
+    }),
   ],
   rationale: {
     cause:

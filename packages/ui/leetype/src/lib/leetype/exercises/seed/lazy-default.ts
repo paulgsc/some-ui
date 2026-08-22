@@ -1,5 +1,6 @@
 import { CONCEPT_IDS } from "@leetype/lib/leetype/exercises/concepts"
 import type { ConstructionStep, Exercise } from "@leetype/types/exercise"
+import { typingBlockFromDiff } from "@leetype/types/exercise"
 
 /**
  * LTY-PATCH P5's own instance (#1080): a construction `-` line carrying a
@@ -28,18 +29,22 @@ const constructionLazyDefaultStep: ConstructionStep = {
       before: "every call, occupied or not",
       after: "only the call that finds the entry vacant",
     },
-    {
-      kind: "typing",
-      source:
-        "‹map.entry(key).or_insert(build_default());\n›map.entry(key).or_insert_with(build_default);",
+    typingBlockFromDiff({
       language: "rust",
-      patch: {
-        path: "src/cache/lazy_default.rs",
-        oldStart: 1,
-        newStart: 1,
-        lineKinds: ["del", "add"],
-      },
-    },
+      path: "src/cache/lazy_default.rs",
+      oldStart: 1,
+      newStart: 1,
+      segments: [
+        {
+          kind: "deletion",
+          text: "map.entry(key).or_insert(build_default());\n",
+        },
+        {
+          kind: "addition",
+          text: "map.entry(key).or_insert_with(build_default);",
+        },
+      ],
+    }),
   ],
 }
 

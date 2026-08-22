@@ -1,5 +1,8 @@
 import { usePreviewGame } from "@leetype/hooks/leetype/use-preview-game"
-import { nextExercise } from "@leetype/lib/leetype/exercises"
+import {
+  FIXTURE_EXERCISE_ID,
+  nextExercise,
+} from "@leetype/lib/leetype/exercises"
 import { languageOf, typingBlockOf } from "@leetype/types/exercise"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
@@ -13,7 +16,7 @@ const meta: Meta<typeof TypingViewport> = {
 export default meta
 type Story = StoryObj<typeof TypingViewport>
 
-const seed = nextExercise()
+const seed = nextExercise({ preferId: FIXTURE_EXERCISE_ID })
 
 /**
  * The viewport takes its height from the layout. Every story therefore puts

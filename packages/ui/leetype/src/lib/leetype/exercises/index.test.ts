@@ -2,6 +2,7 @@ import {
   ConstructionStepSchema,
   DiagnosticStepSchema,
   GOAL_MAX_CHARS,
+  renderedDiffLineKinds,
   StepSchema,
   typingBlockOf,
 } from "@leetype/types/exercise"
@@ -16,19 +17,22 @@ import {
 } from "."
 
 describe("the exercise shim", () => {
-  it("hands back a valid exercise with no argument at all", () => {
-    const exercise = nextExercise()
+  it("hands back the exercise its preferId names", () => {
+    const exercise = nextExercise({ preferId: FIXTURE_EXERCISE_ID })
     expect(exercise.steps.length).toBeGreaterThan(0)
     expect(exercise.id).toBe(FIXTURE_EXERCISE_ID)
   })
 
-  it("takes selection state and ignores it — the signature is the contract", () => {
-    // The point of the argument is that the future pipeline is a body swap,
+  it("takes selection state and ignores everything but preferId — the signature is the contract", () => {
+    // The point of `completed` is that the future pipeline is a body swap,
     // not a signature change through every caller. Ignoring it today is the
     // implementation.
-    expect(nextExercise({ completed: ["rust-hashmap-entry"] }).id).toBe(
-      FIXTURE_EXERCISE_ID
-    )
+    expect(
+      nextExercise({
+        completed: ["rust-hashmap-entry"],
+        preferId: FIXTURE_EXERCISE_ID,
+      }).id
+    ).toBe(FIXTURE_EXERCISE_ID)
   })
 
   it("honours an explicit preference, for stories and deep links", () => {
@@ -37,16 +41,20 @@ describe("the exercise shim", () => {
     )
   })
 
-  it("falls back rather than throwing on an id nothing matches", () => {
-    expect(nextExercise({ preferId: "no-such-exercise" }).id).toBe(
-      FIXTURE_EXERCISE_ID
+  it("throws on an id nothing in the corpus matches, rather than silently substituting a default", () => {
+    // The deterministic-first-item fallback this shim used to have is
+    // exactly the behavior the session scheduler and deep links exist to
+    // replace — a stale or typo'd id should fail loudly at the seam, not
+    // quietly resolve to entryApi.
+    expect(() => nextExercise({ preferId: "no-such-exercise" })).toThrow(
+      /is not an id in the validated corpus/
     )
   })
 })
 
 describe("the seed set", () => {
   it("carries one full curriculum, not a token two steps", () => {
-    const exercise = nextExercise()
+    const exercise = nextExercise({ preferId: FIXTURE_EXERCISE_ID })
     expect(exercise.steps.length).toBeGreaterThanOrEqual(8)
     expect(exercise.steps.length).toBeLessThanOrEqual(12)
   })
@@ -55,14 +63,16 @@ describe("the seed set", () => {
     // Structural stand-in for a claim only a reader can really check: every
     // step id is unique and the ids carry their position, so a reordering
     // that broke the ladder would be visible in a diff.
-    const ids = nextExercise().steps.map((step) => step.id)
+    const ids = nextExercise({ preferId: FIXTURE_EXERCISE_ID }).steps.map(
+      (step) => step.id
+    )
     expect(new Set(ids).size).toBe(ids.length)
     expect(ids).toEqual([...ids].sort())
   })
 
   it("keeps every goal inside the sentence bound", () => {
     for (const exercise of [
-      nextExercise(),
+      nextExercise({ preferId: FIXTURE_EXERCISE_ID }),
       nextExercise({ preferId: FIXTURE_ADVERSARIAL_EXERCISE_ID }),
     ]) {
       for (const step of exercise.steps) {
@@ -72,7 +82,7 @@ describe("the seed set", () => {
   })
 
   it("varies proof length enough to shake out the shell", () => {
-    const lengths = nextExercise().steps.map(
+    const lengths = nextExercise({ preferId: FIXTURE_EXERCISE_ID }).steps.map(
       (step) => typingBlockOf(step)?.source.length ?? 0
     )
     expect(Math.min(...lengths)).toBeLessThan(40)
@@ -95,7 +105,7 @@ describe("the seed set", () => {
   })
 
   it("keeps sources inline — no path, no fetch, no formatting pass", () => {
-    for (const step of nextExercise().steps) {
+    for (const step of nextExercise({ preferId: FIXTURE_EXERCISE_ID }).steps) {
       const source = typingBlockOf(step)?.source ?? ""
       expect(source).not.toMatch(/^\/|^https?:/)
       expect(source.length).toBeGreaterThan(0)
@@ -108,7 +118,7 @@ describe("the seed set", () => {
     // over budget failing silently at import time, in every consumer of the
     // shim at once, is exactly the failure a direct test here avoids.
     for (const exercise of [
-      nextExercise(),
+      nextExercise({ preferId: FIXTURE_EXERCISE_ID }),
       nextExercise({ preferId: FIXTURE_ADVERSARIAL_EXERCISE_ID }),
     ]) {
       for (const step of exercise.steps) {
@@ -170,20 +180,19 @@ describe("the diagnostic instances still freestanding (LTY-FAMILIES A3)", () => 
 
   it("no longer serves instances 4 and 5 as freestanding exercises (A4 folded them in)", () => {
     // The freestanding ids from A3 must not resolve to anything anymore —
-    // nextExercise falls back to the default rather than silently keeping
-    // a duplicate around.
-    expect(nextExercise({ preferId: "diagnostic-double-lookup" }).id).toBe(
-      FIXTURE_EXERCISE_ID
-    )
-    expect(nextExercise({ preferId: "diagnostic-eager-lazy-default" }).id).toBe(
-      FIXTURE_EXERCISE_ID
-    )
+    // nextExercise throws rather than silently keeping a duplicate around.
+    expect(() =>
+      nextExercise({ preferId: "diagnostic-double-lookup" })
+    ).toThrow(/is not an id in the validated corpus/)
+    expect(() =>
+      nextExercise({ preferId: "diagnostic-eager-lazy-default" })
+    ).toThrow(/is not an id in the validated corpus/)
   })
 })
 
 describe("entryApi's diagnostic tail (LTY-FAMILIES A4)", () => {
   it("carries the double-lookup and eager-lazy-default steps, renamed to sort with the ladder", () => {
-    const steps = nextExercise().steps
+    const steps = nextExercise({ preferId: FIXTURE_EXERCISE_ID }).steps
     const doubleLookup = steps.find(
       (step) => step.id === "entry-09-diagnostic-double-lookup"
     )
@@ -195,7 +204,7 @@ describe("entryApi's diagnostic tail (LTY-FAMILIES A4)", () => {
   })
 
   it("keeps both tail steps strictly valid as diagnostic instances, not just plain steps", () => {
-    const steps = nextExercise().steps
+    const steps = nextExercise({ preferId: FIXTURE_EXERCISE_ID }).steps
     const tail = steps.filter(
       (step) =>
         step.id.startsWith("entry-09-") || step.id.startsWith("entry-10-")
@@ -209,14 +218,16 @@ describe("entryApi's diagnostic tail (LTY-FAMILIES A4)", () => {
   })
 
   it("orders the diagnostic tail after every commitment, composition and transfer step", () => {
-    const ids = nextExercise().steps.map((step) => step.id)
+    const ids = nextExercise({ preferId: FIXTURE_EXERCISE_ID }).steps.map(
+      (step) => step.id
+    )
     const tailStart = ids.indexOf("entry-09-diagnostic-double-lookup")
     expect(tailStart).toBeGreaterThan(0)
     expect(tailStart).toBe(ids.length - 2)
   })
 
   it("carries no PromptBlock anywhere — no conceptual exposition survived the rewrite", () => {
-    for (const step of nextExercise().steps) {
+    for (const step of nextExercise({ preferId: FIXTURE_EXERCISE_ID }).steps) {
       const hasPrompt = step.blocks.some((block) => block.kind === "prompt")
       expect(hasPrompt, `step "${step.id}" still has a prompt block`).toBe(
         false
@@ -233,7 +244,7 @@ describe("entryApi's diagnostic tail (LTY-FAMILIES A4)", () => {
       "entry-07-transfer",
       "entry-08-generalize",
     ]
-    const steps = nextExercise().steps
+    const steps = nextExercise({ preferId: FIXTURE_EXERCISE_ID }).steps
     for (const id of commitmentIds) {
       const step = steps.find((candidate) => candidate.id === id)
       expect(step, `step "${id}" not found`).toBeDefined()
@@ -250,8 +261,8 @@ describe("the construction reading — entryApi as an accumulating hunk (LTY-PAT
     return source.replace(/[‹›]/g, "")
   }
 
-  it("gives entry-03/04/05 a patch overlay whose add lines are exactly the step's own witness", () => {
-    const steps = nextExercise().steps
+  it("gives entry-03/04/05 a diff overlay whose rendered add lines are exactly the step's own witness", () => {
+    const steps = nextExercise({ preferId: FIXTURE_EXERCISE_ID }).steps
     const commitments = [
       { id: "entry-03-place", lineKinds: ["add"] },
       { id: "entry-04-fill", lineKinds: ["context", "add"] },
@@ -260,8 +271,10 @@ describe("the construction reading — entryApi as an accumulating hunk (LTY-PAT
     for (const { id, lineKinds } of commitments) {
       const step = steps.find((candidate) => candidate.id === id)
       const typing = step ? typingBlockOf(step) : undefined
-      expect(typing?.patch, `"${id}" has no patch overlay`).toBeDefined()
-      expect(typing?.patch?.lineKinds).toEqual(lineKinds)
+      expect(typing?.diff, `"${id}" has no diff overlay`).toBeDefined()
+      expect(typing?.diff && renderedDiffLineKinds(typing.diff)).toEqual(
+        lineKinds
+      )
     }
   })
 
@@ -269,7 +282,7 @@ describe("the construction reading — entryApi as an accumulating hunk (LTY-PAT
     // The claim the epic actually rests on for this story: the chain reads
     // as one accumulating hunk, not three unrelated ones — each step's `+`
     // line is exactly the same text the next step carries forward as `‹context›`.
-    const steps = nextExercise().steps
+    const steps = nextExercise({ preferId: FIXTURE_EXERCISE_ID }).steps
     const place = steps.find((s) => s.id === "entry-03-place")
     const fill = steps.find((s) => s.id === "entry-04-fill")
     const mutate = steps.find((s) => s.id === "entry-05-mutate")

@@ -116,12 +116,12 @@ const REGION_SPAN_MESSAGE =
   "can only be the same length or shorter (a context span's delimiters are stripped, " +
   "never added to), so a span past the raw source length is never valid."
 
-const PATCH_LINE_KINDS_MESSAGE =
-  "A patch's lineKinds holds more entries than its typing block's authored source has " +
-  "lines. lineKinds indexes lines of the engine's rendered source (Layout.displaySource), " +
-  "which can only be the same length or shorter than the authored source — a context " +
-  "span's delimiters are stripped, never added to — so an array longer than the authored " +
-  "line count is never valid."
+const DIFF_SOURCE_MISMATCH_MESSAGE =
+  "A typing block's source does not match the string its diff overlay's own segments " +
+  "derive. source is generated from diff.segments (see typingSourceOfDiffSegments) — " +
+  "author the segments and let the source follow, rather than hand-editing either one " +
+  "independently, or the two will drift the way a step's source and a separately-authored " +
+  "lineKinds array used to."
 
 /**
  * A block the player reads rather than types.
@@ -203,49 +203,109 @@ export const RegionBlockSchema = z
   })
 
 /**
- * A rendered line's role in a `patch` overlay (LTY-PATCH P2, #1077): given
- * as-is, removed, or added. Indexes lines of the engine's *rendered*
- * source (`Layout.displaySource`), not the authored `TypingBlock.source` —
- * see `patchLineKindsFitSource` below for why this schema can only bound
- * that alignment, not check it exactly. A rendered line is `add` if it
- * contains at least one typeable character, even mostly-inherited ones;
- * `del` if the whole line is removed; `context` otherwise — see
- * `docs/leetype/README.md`'s LTY-PATCH section for the full rule.
+ * One authored fragment of a diff hunk (LTY-PATCH, canonicalized): a kind
+ * plus the literal text it contributes. Replaces the earlier `patch` shape
+ * — a hand-authored `source` string plus a separately-authored `lineKinds`
+ * array indexing its *rendered* lines — which could drift against each
+ * other because nothing but a lint re-derived one from the other after the
+ * fact. A segment's `kind` and `text` travel together, so both the typing
+ * engine's source string and the renderer's per-line classification are
+ * *derived* from this one list (`typingSourceOfDiffSegments`,
+ * `renderedDiffLineKinds` below) rather than independently authored.
+ *
+ * `text` may contain embedded newlines: a context span commonly spans a
+ * full prior line plus part of the next (the same shape the old `‹…›`
+ * markup allowed), and a rendered *line*'s kind is not one-to-one with a
+ * segment — `renderedDiffLineKinds` derives it by scanning every segment
+ * that contributed a character to that line.
  */
-export const PatchLineKindSchema = z.enum(["context", "del", "add"])
+export const DiffSegmentSchema = z.object({
+  kind: z.enum(["context", "deletion", "addition"]),
+  text: z.string().min(1),
+})
 
 /**
  * The diff hunk a `TypingBlock` optionally overlays on its ordinary
- * context/typeable rendering (LTY-PATCH P2, #1077). One hunk, one file, one
- * step — a step wanting two hunks is two steps, the same cost "exactly one
- * typing block per step" already accepted. No `oldCount`/`newCount`, no
- * multi-file patches, no `diff --git` preamble: authors write the block,
- * nothing in the workspace ingests real `git diff` output yet.
+ * context/typeable rendering (LTY-PATCH). One hunk, one file, one step — a
+ * step wanting two hunks is two steps, the same cost "exactly one typing
+ * block per step" already accepted. No `oldCount`/`newCount`, no multi-file
+ * patches, no `diff --git` preamble: authors write the segments, nothing in
+ * the workspace ingests real `git diff` output yet.
  *
  * `path`/`oldStart`/`newStart` render in the viewport's own header (P3),
- * never through `ExerciseHeader` and never through `provenance`: `patch`
+ * never through `ExerciseHeader` and never through `provenance`: `diff`
  * says what hunk the player is looking at, `provenance` says where the
  * competency was distilled from, and stays inert either way.
  */
-export const PatchSchema = z.object({
+export const DiffHunkSchema = z.object({
   /** e.g. "src/lib/rate-limit.ts". Never rendered through provenance or ExerciseHeader. */
   path: z.string().min(1),
   /** The `-N` of a `@@ -N,n +M,m @@` hunk header. */
   oldStart: z.number().int().nonnegative(),
   /** The `+M` of a `@@ -N,n +M,m @@` hunk header. */
   newStart: z.number().int().nonnegative(),
-  /**
-   * One entry per rendered line, aligned to `Layout.displaySource` — not to
-   * `TypingBlock.source`, which still carries `‹…›` context-span delimiters
-   * that `displaySource` strips. See `patchLineKindsFitSource` for the
-   * schema-level bound and the corpus lint (LTY-PATCH P6, #1081) for the
-   * exact-alignment check against the real rendered form. A `lineKinds`
-   * shorter than the rendered line count is legal — the renderer treats
-   * the unlabeled tail as ordinary unmarked context (P3) — so this is a
-   * ceiling, not a required exact count.
-   */
-  lineKinds: z.array(PatchLineKindSchema).min(1),
+  /** Ordered fragments; concatenating their text (context/deletion wrapped in `‹…›`) is the typing block's `source`. */
+  segments: z.array(DiffSegmentSchema).min(1),
 })
+
+/**
+ * Builds the engine-facing `source` string from a diff hunk's segments:
+ * `addition` text passes through as the typeable stream, everything else
+ * is wrapped in the `‹…›` context-span delimiters `program.rs` already
+ * understands. The single place both `TypingBlock.source` and (via
+ * `typingBlockFromDiff`) every patch-shaped seed step derive their source
+ * from, so a hand-maintained `source` can never disagree with its own
+ * segments the way a separately-authored `lineKinds` array used to.
+ */
+export function typingSourceOfDiffSegments(
+  segments: ReadonlyArray<DiffSegment>
+): string {
+  return segments
+    .map((segment) =>
+      segment.kind === "addition" ? segment.text : `‹${segment.text}›`
+    )
+    .join("")
+}
+
+/** A rendered line's diff role, in `CodeDisplay`'s own short vocabulary — see its `LineKind`. */
+export type RenderedDiffLineKind = "context" | "del" | "add"
+
+/**
+ * Derives, from segments alone, exactly the per-rendered-line classification
+ * the old hand-authored `lineKinds` array used to carry — mechanically,
+ * so it cannot drift from the source the same segments also generate.
+ * Mirrors the mixed-line rule the corpus lint used to check against the
+ * real engine: a rendered line is `"add"` if *any* segment contributing to
+ * it is `addition`; otherwise `"del"` if any contributing segment is
+ * `deletion`; otherwise `"context"`.
+ */
+export function renderedDiffLineKinds(
+  hunk: Pick<DiffHunk, "segments">
+): ReadonlyArray<RenderedDiffLineKind> {
+  const kinds: Array<RenderedDiffLineKind> = []
+  let hasAddition = false
+  let hasDeletion = false
+
+  const flushLine = (): void => {
+    kinds.push(hasAddition ? "add" : hasDeletion ? "del" : "context")
+    hasAddition = false
+    hasDeletion = false
+  }
+
+  for (const segment of hunk.segments) {
+    for (const char of segment.text) {
+      if (char === "\n") {
+        flushLine()
+        continue
+      }
+      if (segment.kind === "addition") hasAddition = true
+      else if (segment.kind === "deletion") hasDeletion = true
+    }
+  }
+  flushLine()
+
+  return kinds
+}
 
 /**
  * The block the player types. Exactly one per step.
@@ -260,11 +320,16 @@ export const TypingBlockSchema = z.object({
   source: z.string().min(1),
   language: z.enum(["typescript", "rust", "cpp", "c"]),
   /**
-   * Optional diff-hunk overlay (LTY-PATCH P2, #1077). A step without one is
-   * a plain frame and renders exactly as it did before this field existed
-   * — there is no mode flag anywhere that says a step "is a patch step".
+   * Optional diff-hunk overlay (LTY-PATCH). A step without one is a plain
+   * frame and renders exactly as it did before this field existed — there
+   * is no mode flag anywhere that says a step "is a diff step". Consistency
+   * between this and `source` is checked at the step level (see
+   * `diffSourceMatchesSegments` below) rather than here: `TypingBlockSchema`
+   * has to stay a plain `ZodObject` to remain a valid member of
+   * `BlockSchema`'s discriminated union, which a `.refine()` wrapper (a
+   * `ZodEffects`) cannot be.
    */
-  patch: PatchSchema.optional(),
+  diff: DiffHunkSchema.optional(),
 })
 
 /**
@@ -378,12 +443,12 @@ export const RATIONALE_CHOICES_MAX = 5
  * a proxy. A patch separates them — three added lines can be one locus and
  * still be quick to type, and one very long single line can be neither —
  * so the single-line half of the old rule is gone, replaced by contiguity
- * (`diagnosticRepairIsOneLocus` below): a patch-shaped repair's `add` lines
- * (`patch.lineKinds`, LTY-PATCH P2) must form at most one contiguous run —
- * "one fault, one edit" becomes "one hunk has one addition block," which is
- * checkable because `lineKinds` is authored data sitting right in the
- * block. A repair with no patch overlay has no `lineKinds` to prove
- * contiguity against, so it keeps the original rule verbatim: one line.
+ * (`diagnosticRepairIsOneLocus` below): a patch-shaped repair's rendered
+ * `add` lines (derived from `diff.segments` — `renderedDiffLineKinds`) must
+ * form at most one contiguous run — "one fault, one edit" becomes "one hunk
+ * has one addition block." A repair with no diff overlay has no rendered
+ * line kinds to prove contiguity against, so it keeps the original rule
+ * verbatim: one line.
  *
  * This constant now bounds volume alone, for every diagnostic repair
  * whether patch-shaped or not — landed as option (b) of the three the
@@ -418,11 +483,11 @@ const DIAGNOSTIC_REPAIR_TOO_LONG_MESSAGE =
   "exercise — narrow the fault, or this wants to be two diagnostic instances."
 
 const DIAGNOSTIC_REPAIR_NOT_ONE_LOCUS_MESSAGE =
-  "A diagnostic step's repair is not one contiguous locus. A patch-shaped repair's " +
-  "add lines (patch.lineKinds) must form a single run — two separate runs is two " +
-  "faults wearing one hunk, and wants two diagnostic instances. A repair with no " +
-  "patch overlay has no lineKinds to prove contiguity against, so it keeps the " +
-  "original rule: one line."
+  "A diagnostic step's repair is not one contiguous locus. A diff-shaped repair's " +
+  "addition segments must render as a single contiguous run of add lines — two " +
+  "separate runs is two faults wearing one hunk, and wants two diagnostic instances. " +
+  "A repair with no diff overlay has no rendered line kinds to prove contiguity " +
+  "against, so it keeps the original rule: one line."
 
 const DIAGNOSTIC_MISSING_TRACE_MESSAGE =
   "A diagnostic step must carry a trace block — the visible falsified expectation " +
@@ -495,28 +560,23 @@ function regionsFitTypingSource(step: BlocksHolder): boolean {
 }
 
 /**
- * A conservative bound, not an exact one — same posture as
- * `regionsFitTypingSource` just above and for the identical reason:
- * `patch.lineKinds` indexes lines of the engine's *rendered* text
- * (`Layout.displaySource`), which this schema cannot compute without
- * importing the wasm engine into a file whose whole job is staying a
- * plain, engine-free serializable value. What is knowable without the
- * engine: a context span's `‹…›` delimiters are only ever stripped, never
- * added to, and stripping a two-character delimiter never changes a
- * string's line count — so the rendered line count can never exceed the
- * authored source's own line count. `lineKinds` longer than that is
- * unambiguously wrong regardless of what the engine does with the source;
- * exact alignment against the real rendered form is the corpus lint's job
- * (LTY-PATCH P6, #1081), not this schema's.
+ * Where the source/diff consistency `TypingBlockSchema` itself cannot check
+ * (see its own doc comment: a `.refine()` there would stop it being a valid
+ * `BlockSchema` discriminated-union member) actually lands. `source` is
+ * generated data once `diff` is present — `typingSourceOfDiffSegments`
+ * concatenates the same segments the renderer derives its line kinds from
+ * — so this is an equality check, not a bound: unlike the old
+ * `patch.lineKinds`/`source` pairing, there is no way for a rendered-line
+ * count to legitimately run short of the authored one, because there are no
+ * two independently-authored structures left to disagree.
  */
-function patchLineKindsFitSource(step: BlocksHolder): boolean {
+function diffSourceMatchesSegments(step: BlocksHolder): boolean {
   const typing = step.blocks.find(
     (block): block is z.infer<typeof TypingBlockSchema> =>
       block.kind === "typing"
   )
-  if (typing?.patch === undefined) return true // no patch, nothing to bound
-  const sourceLineCount = typing.source.split("\n").length
-  return typing.patch.lineKinds.length <= sourceLineCount
+  if (typing?.diff === undefined) return true // no diff, nothing to check
+  return typing.source === typingSourceOfDiffSegments(typing.diff.segments)
 }
 
 /**
@@ -605,11 +665,11 @@ function diagnosticRepairWithinCharBudget(step: BlocksHolder): boolean {
 }
 
 /**
- * How many separate contiguous runs of `"add"` a patch's `lineKinds` holds
- * — 0 for none, 1 for a well-formed single hunk, 2+ for two or more faults
- * wearing one hunk.
+ * How many separate contiguous runs of `"add"` a diff hunk's rendered line
+ * kinds hold — 0 for none, 1 for a well-formed single hunk, 2+ for two or
+ * more faults wearing one hunk.
  */
-function addRunCount(lineKinds: ReadonlyArray<PatchLineKind>): number {
+function addRunCount(lineKinds: ReadonlyArray<RenderedDiffLineKind>): number {
   let runs = 0
   let inRun = false
   for (const kind of lineKinds) {
@@ -623,17 +683,17 @@ function addRunCount(lineKinds: ReadonlyArray<PatchLineKind>): number {
   return runs
 }
 
-/** Structure half of the diagnostic repair bound (LTY-PATCH P4) — see `DIAGNOSTIC_REPAIR_MAX_CHARS`'s doc comment. */
+/** Structure half of the diagnostic repair bound (LTY-PATCH) — see `DIAGNOSTIC_REPAIR_MAX_CHARS`'s doc comment. */
 function diagnosticRepairIsOneLocus(step: BlocksHolder): boolean {
   const repair = step.blocks.find(
     (block): block is z.infer<typeof TypingBlockSchema> =>
       block.kind === "typing"
   )
   if (repair === undefined) return true
-  if (repair.patch === undefined) {
+  if (repair.diff === undefined) {
     return !typedPortionOf(repair.source).includes("\n")
   }
-  return addRunCount(repair.patch.lineKinds) <= 1
+  return addRunCount(renderedDiffLineKinds(repair.diff)) <= 1
 }
 
 /**
@@ -744,8 +804,8 @@ export const StepSchema = StepObjectSchema.refine(hasExactlyOneTypingBlock, {
     message: REGION_SPAN_MESSAGE,
     path: ["blocks"],
   })
-  .refine(patchLineKindsFitSource, {
-    message: PATCH_LINE_KINDS_MESSAGE,
+  .refine(diffSourceMatchesSegments, {
+    message: DIFF_SOURCE_MISMATCH_MESSAGE,
     path: ["blocks"],
   })
 
@@ -782,10 +842,10 @@ export const StepSchema = StepObjectSchema.refine(hasExactlyOneTypingBlock, {
  * 1. **One failure.** One principal causal defect. Judgement — argued in
  *    `rationale.cause`, not independently checkable from the shape alone in
  *    general. LTY-PATCH P4 (#1079) adds one mechanical corner of it for a
- *    patch-shaped repair: `diagnosticRepairIsOneLocus` below requires the
- *    `add` lines in `patch.lineKinds` to form a single contiguous run —
- *    "one hunk has one addition block" is checkable even though "the cause
- *    is really singular" still is not.
+ *    diff-shaped repair: `diagnosticRepairIsOneLocus` below requires the
+ *    rendered `add` lines (derived from `diff.segments`) to form a single
+ *    contiguous run — "one hunk has one addition block" is checkable even
+ *    though "the cause is really singular" still is not.
  * 2. **One discriminating repair.** The repair distinguishes the intended
  *    misconception rather than merely silencing the symptom. Judgement —
  *    argued in `rationale.whyRepairDiscriminates`.
@@ -825,8 +885,8 @@ export const DiagnosticStepSchema = DiagnosticStepObjectSchema.refine(
     message: REGION_SPAN_MESSAGE,
     path: ["blocks"],
   })
-  .refine(patchLineKindsFitSource, {
-    message: PATCH_LINE_KINDS_MESSAGE,
+  .refine(diffSourceMatchesSegments, {
+    message: DIFF_SOURCE_MISMATCH_MESSAGE,
     path: ["blocks"],
   })
   .refine((step) => step.blocks.some((block) => block.kind === "trace"), {
@@ -893,8 +953,8 @@ export const ConstructionStepSchema = ConstructionStepObjectSchema.refine(
     message: REGION_SPAN_MESSAGE,
     path: ["blocks"],
   })
-  .refine(patchLineKindsFitSource, {
-    message: PATCH_LINE_KINDS_MESSAGE,
+  .refine(diffSourceMatchesSegments, {
+    message: DIFF_SOURCE_MISMATCH_MESSAGE,
     path: ["blocks"],
   })
   .refine((step) => step.blocks.length >= 2, {
@@ -916,8 +976,8 @@ export type TraceObservation = z.infer<typeof TraceObservationSchema>
 export type TraceBlock = z.infer<typeof TraceBlockSchema>
 export type RegionBlock = z.infer<typeof RegionBlockSchema>
 export type EvidenceBlock = z.infer<typeof EvidenceBlockSchema>
-export type PatchLineKind = z.infer<typeof PatchLineKindSchema>
-export type Patch = z.infer<typeof PatchSchema>
+export type DiffSegment = z.infer<typeof DiffSegmentSchema>
+export type DiffHunk = z.infer<typeof DiffHunkSchema>
 export type TypingBlock = z.infer<typeof TypingBlockSchema>
 export type Block = z.infer<typeof BlockSchema>
 /** Every block kind except `typing` — what `promptBlocksOf` hands back. */
@@ -942,6 +1002,34 @@ export function typingBlockOf(step: Step): TypingBlock | undefined {
   return step.blocks.find(
     (block): block is TypingBlock => block.kind === "typing"
   )
+}
+
+/**
+ * Builds a diff-shaped `TypingBlock` from its segments alone — the way every
+ * patch-shaped seed step should be authored. `source` is generated
+ * (`typingSourceOfDiffSegments`), never independently written, so a seed
+ * module using this can no longer author a `source`/`diff` pair that
+ * disagrees with itself the way a hand-written `source` plus a separately
+ * hand-written `lineKinds` array used to.
+ */
+export function typingBlockFromDiff(input: {
+  language: Language
+  path: string
+  oldStart: number
+  newStart: number
+  segments: ReadonlyArray<DiffSegment>
+}): TypingBlock {
+  return {
+    kind: "typing",
+    language: input.language,
+    source: typingSourceOfDiffSegments(input.segments),
+    diff: {
+      path: input.path,
+      oldStart: input.oldStart,
+      newStart: input.newStart,
+      segments: [...input.segments],
+    },
+  }
 }
 
 /**

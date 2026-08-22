@@ -67,18 +67,23 @@ New with the shift:
   gates progression to the next step.
 - **baseline** — the player's own typing speed, sampled in an agnostic
   warm-up. Every threshold is a function of it.
-- **hunk** — a `TypingBlock`'s optional `patch` overlay: one line kind
-  (`context` / `del` / `add`) per rendered line. It reduces — every line is
-  still exactly `context` or `typeable` to the engine either way (LTY-PATCH,
-  below); a hunk is authored data about which lines the _renderer_ paints as
-  removed or added, not a new engine concept.
-- **deletion** — a `del` line: ordinary `context` (rendered, read, never
-  typed, carries no slot), additionally marked as the code being removed, so
-  the renderer paints it as struck-through rather than merely given.
-- **addition** — an `add` line: a rendered line containing at least one
-  `typeable` character — the ordinary typing stream, given its own tint and
-  the hunk's new-line-number column. A line that is `context` throughout is
-  neither a deletion nor an addition; it is the hunk's unchanged middle.
+- **hunk** — a `TypingBlock`'s optional `diff` overlay: an ordered list of
+  authored segments (`context` / `deletion` / `addition`, each carrying its
+  own text), from which both the engine-facing `source` string and a
+  per-rendered-line kind (`context` / `del` / `add`) are mechanically
+  derived. It reduces — every line is still exactly `context` or `typeable`
+  to the engine either way (LTY-PATCH, below); a hunk is authored data about
+  which lines the _renderer_ paints as removed or added, not a new engine
+  concept.
+- **deletion** — a rendered `del` line, derived from a `deletion`-kind
+  segment: ordinary `context` (rendered, read, never typed, carries no
+  slot), additionally marked as the code being removed, so the renderer
+  paints it as struck-through rather than merely given.
+- **addition** — a rendered `add` line, derived from an `addition`-kind
+  segment contributing at least one character to it — the ordinary typing
+  stream, given its own tint and the hunk's new-line-number column. A line
+  with no addition-segment characters on it is neither a deletion nor an
+  addition; it is the hunk's unchanged middle.
 
 ## The five decisions
 
@@ -105,7 +110,7 @@ explicitly because this is the first story entitled to move it: **layout**
 is conceded, **policy** is not. `CodeDisplay` still owns no masking rule,
 no error accounting, no threshold, no latch and no memory, and its props
 still carry no exercise vocabulary — no `Step`, no `TypingBlock`, no mode
-flag, only a per-line kind array a step's `patch` happens to supply
+flag, only a per-line kind array derived from a step's `diff` overlay
 (`docs/leetype/README.md`'s own "hunk"/"deletion"/"addition" vocabulary,
 not this one's). That is the same line #1004 (E4) drew for the frame: the
 frame needed nothing new because `Role::Context` already existed and
@@ -184,12 +189,21 @@ this workspace names an inferred sink.
 
 Tracked in [#1075](https://github.com/paulgsc/some-ui/issues/1075). Before
 this, a step's typing block was a fragment of source with a frame around
-it. After it, a typing block can carry a `patch` overlay and read as a git
+it. After it, a typing block can carry a `diff` overlay and read as a git
 diff hunk: the `-` lines and the surrounding context are rendered and read
 but never typed, and the `+` lines are the ordinary typeable stream. The
 payoff is that a step can be authored by _taking a patch_ — a solve that
 breaks, a commit that fixes a bug — instead of hand-composing a frame
 around a blank.
+
+A `diff` overlay is authored as an ordered list of segments — `{ kind:
+"context" | "deletion" | "addition", text: string }` — rather than as a
+hand-written `source` string plus a separately hand-written per-line kind
+array. `typingBlockFromDiff` (`types/exercise.ts`) builds the whole
+`TypingBlock` from segments alone: the engine-facing `source` and the
+renderer's per-line kinds are both mechanically derived from the same
+segments, so the two can no longer independently drift the way a
+hand-authored `source` and a hand-authored line-kind array once could.
 
 **The claim worth recording is that the engine does not change at all.** A
 `-` line and an unchanged ` ` context line are, to the engine, the same
@@ -201,7 +215,7 @@ slot at all. With no slot, there is nothing for `VISIBILITY_MASKED` to
 apply to, nothing to enter `assisted` or `correct`, and therefore nothing
 to move `weightedWpm` or `gateThreshold` (#998). The `+` lines are the
 ordinary typeable stream and want nothing new. So the corpus already
-contained diffs that had not been painted as diffs — `seed.ts`'s
+contained diffs that had not been painted as diffs — `seed/loop-progress.ts`'s
 `diagnosticLoopProgressStep` is a one-line hunk with three lines of
 context, and `entryApi`'s three-step chain (`entry-03-place` through
 `entry-05-mutate`) is an accumulating patch where each step re-shows every

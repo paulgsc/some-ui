@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import type { Block, Patch, RationaleChoice } from "./exercise"
+import type { Block, DiffHunk, RationaleChoice } from "./exercise"
 import {
   BlockSchema,
   ConstructionStepSchema,
@@ -16,9 +16,11 @@ import {
   RATIONALE_CHOICES_MAX,
   RationaleChoiceSchema,
   RegionBlockSchema,
+  renderedDiffLineKinds,
   StepSchema,
   TraceBlockSchema,
   TransitionBlockSchema,
+  typingBlockFromDiff,
   typingBlockOf,
   TypingBlockSchema,
 } from "./exercise"
@@ -251,27 +253,23 @@ describe("PromptBlockSchema — the prose budget", () => {
     expect(PromptBlockSchema.safeParse(atLimit).success).toBe(true)
   })
 
-  it("rejects an over-budget prompt on a patch-shaped step exactly as it would on any other (LTY-PATCH P6, #1081)", () => {
-    // "No patch-shaped exemption anywhere": isWithinStepPromptBudget reads
-    // step.blocks, never patch, so there is no code path for an exemption
+  it("rejects an over-budget prompt on a diff-shaped step exactly as it would on any other (LTY-PATCH)", () => {
+    // "No diff-shaped exemption anywhere": isWithinStepPromptBudget reads
+    // step.blocks, never diff, so there is no code path for an exemption
     // to hide in — but the epic's own safety claim asks for this proven,
     // not inferred from reading the implementation.
     const overBudget: Block = {
       kind: "prompt",
       lines: Array(PROMPT_MAX_LINES + 1).fill("A short line."),
     }
-    const patchedTyping: Block = {
-      kind: "typing",
-      source: "add_this();",
+    const diffTyping: Block = typingBlockFromDiff({
       language: "rust",
-      patch: {
-        path: "src/example.rs",
-        oldStart: 1,
-        newStart: 1,
-        lineKinds: ["add"],
-      },
-    }
-    const result = StepSchema.safeParse(step([overBudget, patchedTyping]))
+      path: "src/example.rs",
+      oldStart: 1,
+      newStart: 1,
+      segments: [{ kind: "addition", text: "add_this();" }],
+    })
+    const result = StepSchema.safeParse(step([overBudget, diffTyping]))
     expect(result.success).toBe(false)
     expect(result.error?.issues[0]?.message).toMatch(/more than 2 lines/)
   })
@@ -367,91 +365,82 @@ describe("the block union is closed", () => {
     expect(TypingBlockSchema.safeParse(typing).success).toBe(true)
     // The typing path never grows a case for prompt/transition/trace/region
     // — its shape is exactly kind/source/language plus LTY-PATCH's own
-    // optional `patch` overlay (P2, #1077), nothing an evidence kind added.
+    // optional `diff` overlay, nothing an evidence kind added.
     expect(Object.keys(TypingBlockSchema.shape).sort()).toEqual(
-      ["kind", "language", "patch", "source"].sort()
+      ["diff", "kind", "language", "source"].sort()
     )
   })
 })
 
-describe("TypingBlockSchema — the patch overlay (LTY-PATCH P2, #1077)", () => {
-  const fourLineSource = "line1\nline2\nline3\nline4"
-  const patch: Patch = {
+describe("TypingBlockSchema — the diff overlay (LTY-PATCH)", () => {
+  const fourLineDiff: DiffHunk = {
     path: "src/lib/rate-limit.ts",
     oldStart: 12,
     newStart: 12,
-    lineKinds: ["context", "del", "add", "context"],
+    segments: [
+      { kind: "context", text: "line1\n" },
+      { kind: "deletion", text: "line2\n" },
+      { kind: "addition", text: "line3" },
+      { kind: "context", text: "\nline4" },
+    ],
   }
+  const fourLineTyping = typingBlockFromDiff({
+    language: "rust",
+    ...fourLineDiff,
+  })
 
-  it("keeps patch optional and never needs it to render", () => {
-    const multiline: Block = {
+  it("keeps diff optional and never needs it to render", () => {
+    const plain: Block = {
       kind: "typing",
-      source: fourLineSource,
+      source: fourLineTyping.source,
       language: "rust",
     }
-    const withoutPatch = StepSchema.parse(step([prompt, multiline]))
-    const withPatch = StepSchema.parse({
-      ...step([prompt, multiline]),
-      blocks: [prompt, { ...multiline, patch }],
+    const withoutDiff = StepSchema.parse(step([prompt, plain]))
+    const withDiff = StepSchema.parse({
+      ...step([prompt, plain]),
+      blocks: [prompt, fourLineTyping],
     })
-    expect(typingBlockOf(withPatch)?.patch).toEqual(patch)
-    expect(promptBlocksOf(withPatch)).toEqual(promptBlocksOf(withoutPatch))
-    expect(languageOf(withPatch)).toEqual(languageOf(withoutPatch))
+    expect(typingBlockOf(withDiff)?.diff).toEqual(fourLineDiff)
+    expect(promptBlocksOf(withDiff)).toEqual(promptBlocksOf(withoutDiff))
+    expect(languageOf(withDiff)).toEqual(languageOf(withoutDiff))
   })
 
-  it("accepts a patch whose lineKinds fits the authored source's line count", () => {
-    const withPatch = step([
-      prompt,
-      { kind: "typing", source: fourLineSource, language: "rust", patch },
+  it("accepts a diff whose source matches what its segments derive", () => {
+    const withDiff = step([prompt, fourLineTyping])
+    expect(StepSchema.safeParse(withDiff).success).toBe(true)
+  })
+
+  it("derives rendered line kinds matching the segments' own kinds", () => {
+    expect(renderedDiffLineKinds(fourLineDiff)).toEqual([
+      "context",
+      "del",
+      "add",
+      "context",
     ])
-    expect(StepSchema.safeParse(withPatch).success).toBe(true)
   })
 
-  it("accepts lineKinds shorter than the authored source's line count", () => {
-    // The renderer treats an unlabeled tail as ordinary context (P3) — a
-    // short lineKinds is a ceiling violation only when it runs past the
-    // source, never when it runs short of it.
-    const shortPatch: Patch = { ...patch, lineKinds: ["add"] }
-    const withPatch = step([
-      prompt,
-      {
-        kind: "typing",
-        source: fourLineSource,
-        language: "rust",
-        patch: shortPatch,
-      },
-    ])
-    expect(StepSchema.safeParse(withPatch).success).toBe(true)
-  })
-
-  it("rejects lineKinds longer than the authored source's line count, and says why", () => {
-    const oneLineSource = "let x = 1;"
-    const overLong: Patch = {
-      ...patch,
-      lineKinds: ["context", "del", "add", "context", "context"],
+  it("rejects a source that disagrees with what its diff's segments derive, and says why", () => {
+    const mismatched: Block = {
+      kind: "typing",
+      source: `${fourLineTyping.source} `, // one stray character
+      language: "rust",
+      diff: fourLineDiff,
     }
-    const withPatch = step([
-      prompt,
-      {
-        kind: "typing",
-        source: oneLineSource,
-        language: "rust",
-        patch: overLong,
-      },
-    ])
-    const result = StepSchema.safeParse(withPatch)
+    const result = StepSchema.safeParse(step([prompt, mismatched]))
     expect(result.success).toBe(false)
-    expect(result.error?.issues[0]?.message).toMatch(/rendered source/)
+    expect(result.error?.issues[0]?.message).toMatch(
+      /source does not match the string its diff overlay/
+    )
   })
 
-  it("requires at least one lineKinds entry", () => {
-    const withEmptyLineKinds = {
+  it("requires at least one segment", () => {
+    const withEmptySegments = {
       kind: "typing",
       source: "let x = 1;",
       language: "rust",
-      patch: { ...patch, lineKinds: [] },
+      diff: { ...fourLineDiff, segments: [] },
     }
-    expect(TypingBlockSchema.safeParse(withEmptyLineKinds).success).toBe(false)
+    expect(TypingBlockSchema.safeParse(withEmptySegments).success).toBe(false)
   })
 })
 
@@ -625,25 +614,30 @@ describe("DiagnosticStepSchema — the falsification→repair family", () => {
     expect(result.success).toBe(false)
   })
 
-  describe("the repair bound under a patch (LTY-PATCH P4, #1079)", () => {
-    // A hunk decouples "one line" from "one locus": a patch-shaped repair
-    // may span several lines as long as its `add` lines form one
+  describe("the repair bound under a diff overlay (LTY-PATCH P4, #1079)", () => {
+    // A hunk decouples "one line" from "one locus": a diff-shaped repair
+    // may span several lines as long as its rendered `add` lines form one
     // contiguous run — contiguity substitutes for the line rule entirely,
     // per the doc comment on DIAGNOSTIC_REPAIR_MAX_CHARS.
 
-    it("accepts a multi-line patch repair whose add lines are one contiguous run", () => {
-      const guardClause: Block = {
-        kind: "typing",
-        source:
-          "‹fn average(total: i32, count: i32) -> i32 {\n    ›if count == 0 {\n        return 0;\n    }‹\n    total / count\n}›",
+    it("accepts a multi-line diff repair whose add lines are one contiguous run", () => {
+      const guardClause = typingBlockFromDiff({
         language: "rust",
-        patch: {
-          path: "src/stats/average.rs",
-          oldStart: 1,
-          newStart: 1,
-          lineKinds: ["context", "add", "add", "add", "context", "context"],
-        },
-      }
+        path: "src/stats/average.rs",
+        oldStart: 1,
+        newStart: 1,
+        segments: [
+          {
+            kind: "context",
+            text: "fn average(total: i32, count: i32) -> i32 {\n    ",
+          },
+          {
+            kind: "addition",
+            text: "if count == 0 {\n        return 0;\n    }",
+          },
+          { kind: "context", text: "\n    total / count\n}" },
+        ],
+      })
       const result = DiagnosticStepSchema.safeParse({
         ...step([failure, guardClause]),
         rationale,
@@ -661,17 +655,13 @@ describe("DiagnosticStepSchema — the falsification→repair family", () => {
       const indentedLine = "            x();" // 12 spaces + typed "x();"
       const source = Array(4).fill(indentedLine).join("\n")
       expect(source.length).toBeGreaterThan(DIAGNOSTIC_REPAIR_MAX_CHARS)
-      const heavilyIndented: Block = {
-        kind: "typing",
-        source,
+      const heavilyIndented = typingBlockFromDiff({
         language: "rust",
-        patch: {
-          path: "src/example.rs",
-          oldStart: 1,
-          newStart: 1,
-          lineKinds: ["add", "add", "add", "add"],
-        },
-      }
+        path: "src/example.rs",
+        oldStart: 1,
+        newStart: 1,
+        segments: [{ kind: "addition", text: source }],
+      })
       const result = DiagnosticStepSchema.safeParse({
         ...step([failure, heavilyIndented]),
         rationale,
@@ -679,21 +669,23 @@ describe("DiagnosticStepSchema — the falsification→repair family", () => {
       expect(result.success).toBe(true)
     })
 
-    it("rejects a patch repair whose add lines split into two runs, and says why", () => {
+    it("rejects a diff repair whose add lines split into two runs, and says why", () => {
       // Two separate runs is two faults wearing one hunk — the exact shape
       // "one fault, one edit" (constraint 1) exists to rule out, now
-      // mechanically checkable because lineKinds is authored data.
-      const twoFaults: Block = {
-        kind: "typing",
-        source: "line1\nline2\nline3\nline4\nline5",
+      // mechanically checkable because rendered line kinds are derived from
+      // authored segments.
+      const twoFaults = typingBlockFromDiff({
         language: "rust",
-        patch: {
-          path: "src/example.rs",
-          oldStart: 1,
-          newStart: 1,
-          lineKinds: ["add", "context", "add", "context", "context"],
-        },
-      }
+        path: "src/example.rs",
+        oldStart: 1,
+        newStart: 1,
+        segments: [
+          { kind: "addition", text: "line1" },
+          { kind: "context", text: "\nline2\n" },
+          { kind: "addition", text: "line3" },
+          { kind: "context", text: "\nline4\nline5" },
+        ],
+      })
       const result = DiagnosticStepSchema.safeParse({
         ...step([failure, twoFaults]),
         rationale,
@@ -704,18 +696,19 @@ describe("DiagnosticStepSchema — the falsification→repair family", () => {
       )
     })
 
-    it("still rejects a patch repair that clears contiguity but not the character budget", () => {
-      const oversized: Block = {
-        kind: "typing",
-        source: "a".repeat(DIAGNOSTIC_REPAIR_MAX_CHARS + 1),
+    it("still rejects a diff repair that clears contiguity but not the character budget", () => {
+      const oversized = typingBlockFromDiff({
         language: "rust",
-        patch: {
-          path: "src/example.rs",
-          oldStart: 1,
-          newStart: 1,
-          lineKinds: ["add"],
-        },
-      }
+        path: "src/example.rs",
+        oldStart: 1,
+        newStart: 1,
+        segments: [
+          {
+            kind: "addition",
+            text: "a".repeat(DIAGNOSTIC_REPAIR_MAX_CHARS + 1),
+          },
+        ],
+      })
       const result = DiagnosticStepSchema.safeParse({
         ...step([failure, oversized]),
         rationale,
@@ -726,18 +719,17 @@ describe("DiagnosticStepSchema — the falsification→repair family", () => {
       )
     })
 
-    it("accepts a patch repair with no add lines at all (0 runs is at most 1)", () => {
-      const noAddLines: Block = {
-        kind: "typing",
-        source: "line1\nline2",
+    it("accepts a diff repair with no add lines at all (0 runs is at most 1)", () => {
+      const noAddLines = typingBlockFromDiff({
         language: "rust",
-        patch: {
-          path: "src/example.rs",
-          oldStart: 1,
-          newStart: 1,
-          lineKinds: ["context", "del"],
-        },
-      }
+        path: "src/example.rs",
+        oldStart: 1,
+        newStart: 1,
+        segments: [
+          { kind: "context", text: "line1\n" },
+          { kind: "deletion", text: "line2" },
+        ],
+      })
       const result = DiagnosticStepSchema.safeParse({
         ...step([failure, noAddLines]),
         rationale,
