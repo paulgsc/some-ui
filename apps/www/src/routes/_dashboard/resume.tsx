@@ -1,6 +1,7 @@
 import type { JSX, MouseEvent } from "react"
 import { useEffect, useState } from "react"
 import { useTheme } from "@/providers/theme"
+import { resumeData, ResumeDocument } from "@some-ui/resume"
 import {
   Button,
   Card,
@@ -16,55 +17,37 @@ import { Download, Layers3 } from "lucide-react"
 // instead and 404 there. import.meta.env.BASE_URL always ends in "/", so
 // this resolves correctly for GitHub Pages, the Docker/nginx build, and
 // local dev alike.
-const RESUME_COMPOSITIONS = [
-  { id: "backend", label: "Backend & event-driven systems" },
-  { id: "systems", label: "Systems & browser infrastructure" },
-  { id: "learning", label: "Adaptive learning & product engineering" },
-] as const
-type ResumeComposition = (typeof RESUME_COMPOSITIONS)[number]["id"]
+// Order is a presentation decision and belongs here; the labels are content
+// and do not. They used to be hard-coded alongside these ids and had already
+// drifted - the selector said "Systems & browser infrastructure" while the
+// document said "Distributed systems & infrastructure", so the card header
+// and the résumé under it disagreed. Reading them from resumeData removes
+// the last copy of résumé content in this app.
+const RESUME_ORDER = ["backend", "systems", "learning"] as const
+type ResumeComposition = (typeof RESUME_ORDER)[number]
+const RESUME_COMPOSITIONS: ReadonlyArray<{
+  id: ResumeComposition
+  label: string
+}> = RESUME_ORDER.map((id) => ({ id, label: resumeData[id].label }))
 const RESUME_COMPOSITION_KEY = "some-ui:resume-composition"
 const MOBILE_PREVIEW_QUERY = "(max-width: 767px)"
+// A phone held sideways. `pointer: coarse` is what keeps a merely short
+// desktop window out of this branch; height alone would catch both.
+const TOUCH_LANDSCAPE_QUERY = "(max-height: 500px) and (pointer: coarse)"
 
-const RESUME_TRANSCRIPT = {
-  summary:
-    "Software engineer building production Rust and TypeScript systems across backend services, browser infrastructure, and adaptive learning products. Sole engineer across a 24-crate Rust workspace and a 52-package client platform, owning contracts from browser mutation to durable storage and background actuation.",
-  skills:
-    "Rust; TypeScript; React; WebAssembly; Axum; Tokio; SQLx and SQLite; Redis; NATS JetStream; WebSockets; Web Push; HTTP and JSON APIs; data modeling; distributed and event-driven systems; Docker and cloud infrastructure; Prometheus; Grafana; OpenTelemetry; unit, integration, contract, Vitest, and Playwright testing; CI/CD.",
-  projects: [
-    {
-      name: "file_host production service",
-      technologies: "Rust, Axum, Tokio, SQLx, Redis, and NATS JetStream",
-      bullets: [
-        "Authored a Rust and Axum service exposing 39 inventoried HTTP operations plus WebSocket transport for sessions, engagement signals, push subscriptions, mood events, tab state, media metadata, and asynchronous processing.",
-        "Modeled sessions, consent, engagement gates, interventions, tabs, and mood events in SQLite and SQLx repositories with paired migrations, compile-time query validation, bounded pools, and explicit last-write-wins semantics.",
-        "Built bounded admission controls, typed overload outcomes, Redis caching, JetStream jobs with redelivery, restart-aware WebSockets, and observable shutdown of service dependencies.",
-      ],
-    },
-    {
-      name: "Adaptive learning and study intervention platform",
-      technologies:
-        "Rust, WebAssembly, React, SQLx, Web Push, and TypeScript contracts",
-      bullets: [
-        "Built a pure-Rust learning engine compiled to WebAssembly and consumed by React curriculum, exam-preparation, and typing-drill experiences.",
-        "Separated engagement policy, persistence, and notification delivery; represented consent, quiet hours, cooldown, active presence, and configuration as explicit constraints.",
-        "Integrated typed TypeScript clients with contract tests and Playwright coverage of a real Chromium push and service-worker delivery hop.",
-      ],
-    },
-    {
-      name: "Browser-worker infrastructure",
-      technologies: "Firefox MV3, TypeScript, WebAssembly, and Playwright",
-      bullets: [
-        "Built Suspender Ledger on native tab discard with startup reconciliation, bounded work queues, validated extension protocols, and signed release gates.",
-        "Encoded UI workflows as discriminated-union transitions and extracted a domain-free observe, estimate, plan, and act kernel tested with unit and browser suites.",
-      ],
-    },
-  ],
-  practice: [
-    "Operate 24 Rust crates with strict Clippy groups, cargo-deny, SQLx schema preparation, more than 300 test functions, and change-scoped GitHub Actions.",
-    "Ship distroless Docker images with Caddy, Redis, NATS, Prometheus, Grafana, exporters, analytics, and explicit health and readiness boundaries.",
-    "Represent unreachable, dependency-down, rejecting, saturated, stalled, and observability-blind states in bounded-cardinality metrics and generated dashboards.",
-  ],
-} as const
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(() =>
+    typeof window === "undefined" ? false : window.matchMedia(query).matches
+  )
+  useEffect(() => {
+    const list = window.matchMedia(query)
+    const update = (): void => setMatches(list.matches)
+    update()
+    list.addEventListener("change", update)
+    return (): void => list.removeEventListener("change", update)
+  }, [query])
+  return matches
+}
 
 function isResumeComposition(value: string | null): value is ResumeComposition {
   return RESUME_COMPOSITIONS.some(({ id }) => id === value)
@@ -76,42 +59,6 @@ function initialComposition(): ResumeComposition {
   return isResumeComposition(stored) ? stored : "backend"
 }
 
-const ResumeTranscript = ({ label }: { label: string }): JSX.Element => (
-  <section className="sr-only" aria-label={`${label} résumé transcript`}>
-    <h2>Paul Gathondu</h2>
-    <p>{label}</p>
-    <address>
-      <a href="mailto:paulgathondudev@gmail.com">paulgathondudev@gmail.com</a>
-      {" · "}
-      <a href="https://github.com/paulgsc">github.com/paulgsc</a>
-      {" · "}
-      <a href="https://paulgsc.github.io/some-ui">paulgsc.github.io/some-ui</a>
-    </address>
-    <h3>Summary</h3>
-    <p>{RESUME_TRANSCRIPT.summary}</p>
-    <h3>Core capabilities</h3>
-    <p>{RESUME_TRANSCRIPT.skills}</p>
-    <h3>Selected work — some-ui, sole engineer (2024 — Present)</h3>
-    {RESUME_TRANSCRIPT.projects.map((project) => (
-      <section key={project.name}>
-        <h4>{project.name}</h4>
-        <p>{project.technologies}</p>
-        <ul>
-          {project.bullets.map((bullet) => (
-            <li key={bullet}>{bullet}</li>
-          ))}
-        </ul>
-      </section>
-    ))}
-    <h3>Platform, release, and engineering practice</h3>
-    <ul>
-      {RESUME_TRANSCRIPT.practice.map((item) => (
-        <li key={item}>{item}</li>
-      ))}
-    </ul>
-  </section>
-)
-
 const ResumeRoute = (): JSX.Element => {
   const { resolved } = useTheme()
   const darkPreview = resolved.mode === "dark"
@@ -119,23 +66,17 @@ const ResumeRoute = (): JSX.Element => {
     useState<ResumeComposition>(initialComposition)
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
   const pdfPath = `${import.meta.env.BASE_URL}resume-${composition}.pdf`
-  const svgPath = `${import.meta.env.BASE_URL}resume-${composition}.svg`
-  const [mobilePreview, setMobilePreview] = useState(() =>
-    typeof window === "undefined"
-      ? false
-      : window.matchMedia(MOBILE_PREVIEW_QUERY).matches
-  )
+  const mobilePreview = useMediaQuery(MOBILE_PREVIEW_QUERY)
+  // Landscape on a phone keeps the PDF, because that is what the platform
+  // does with one. What it must not do is pretend: the browser's own embed
+  // placeholder offers an "Open" control that silently downloads, and that
+  // control is browser chrome - it cannot be relabelled or re-iconed from
+  // here. So the embed is not rendered in this state at all, and the page
+  // offers the download in its own words instead.
+  const touchLandscape = useMediaQuery(TOUCH_LANDSCAPE_QUERY)
   const label =
     RESUME_COMPOSITIONS.find(({ id }) => id === composition)?.label ??
     RESUME_COMPOSITIONS[0].label
-
-  useEffect(() => {
-    const query = window.matchMedia(MOBILE_PREVIEW_QUERY)
-    const updatePreview = (): void => setMobilePreview(query.matches)
-    updatePreview()
-    query.addEventListener("change", updatePreview)
-    return (): void => query.removeEventListener("change", updatePreview)
-  }, [])
 
   const selectComposition = (next: ResumeComposition): void => {
     localStorage.setItem(RESUME_COMPOSITION_KEY, next)
@@ -176,12 +117,18 @@ const ResumeRoute = (): JSX.Element => {
             <Layers3 />
             Next version
           </Button>
-          <Button asChild size="sm">
-            <a href={pdfPath} download="Paul_Gathondu_Resume.pdf">
-              <Download />
-              Download PDF
-            </a>
-          </Button>
+          {/* Hidden in phone landscape, where the panel below already offers
+              the download - two buttons doing the same thing, one of them
+              redundant, is how the browser's own control got mistaken for
+              ours in the first place. */}
+          {!touchLandscape && (
+            <Button asChild size="sm">
+              <a href={pdfPath} download="Paul_Gathondu_Resume.pdf">
+                <Download />
+                Download PDF
+              </a>
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent className="min-h-0 flex-1 pb-6">
@@ -189,24 +136,31 @@ const ResumeRoute = (): JSX.Element => {
           className="relative isolate size-full overflow-auto rounded-md border md:overflow-hidden"
           onContextMenu={openCompositionMenu}
         >
-          {mobilePreview ? (
-            <div className="relative">
-              <img
-                key={composition}
-                src={svgPath}
-                alt=""
-                aria-hidden="true"
-                className={`aspect-[17/22] h-auto w-full transition-[filter] ${darkPreview ? "invert hue-rotate-180" : ""}`}
-              />
-              <ResumeTranscript label={label} />
-              {darkPreview && (
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 mix-blend-multiply"
-                  style={{ backgroundColor: resolved.swatch.fg }}
-                />
-              )}
+          {touchLandscape ? (
+            <div className="flex size-full flex-col items-center justify-center gap-3 p-6 text-center">
+              <p className="text-foreground text-sm font-medium">{label}</p>
+              <p className="text-muted-foreground max-w-sm text-sm">
+                A phone can’t display a PDF inside a page, so landscape offers
+                the file itself. Rotate to portrait to read the résumé here
+                instead.
+              </p>
+              <Button asChild size="sm">
+                <a href={pdfPath} download="Paul_Gathondu_Resume.pdf">
+                  <Download />
+                  Download PDF
+                </a>
+              </Button>
             </div>
+          ) : mobilePreview ? (
+            // No mobile browser renders a PDF inline - Android Chrome hands it
+            // to the download manager and iOS Safari shows a dead first page -
+            // so the phone viewport gets the document as real HTML instead of
+            // as an embed. It is the same content the PDF carries, rendered
+            // from @some-ui/resume's exported data, so it stays selectable,
+            // searchable and screen-reader navigable, inherits the app's theme
+            // without the filter trick the PDF embed needs, and costs a few KB
+            // rather than the 1.1 MB image this replaced.
+            <ResumeDocument data={resumeData[composition]} />
           ) : (
             <>
               <iframe

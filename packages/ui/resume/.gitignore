@@ -1,0 +1,3 @@
+# Rendered résumé documents (PDF/SVG/ATS transcripts). Separate from dist/
+# because that belongs to the vite library build, which empties its outDir.
+documents/

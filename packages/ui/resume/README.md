@@ -33,7 +33,7 @@ src/data/resume.typ      (evidence distilled from paulgsc/{server,some-ui})
 src/data/personal.typ    (facts that exist outside those repos — see below)
               ↓ imported by
 src/main.typ  --variant/--template/--theme/--font-->
-              dist/resume-{backend,systems,learning}[-{classic,compact}].{pdf,svg}
+              documents/resume-{backend,systems,learning}[-{classic,compact}].{pdf,svg}
 ```
 
 `src/main.typ` is the only entry point. Everything about a rendered document is
@@ -111,9 +111,47 @@ The seam is a guard against a targeted variant becoming so concise that it stops
 exposing qualifications the underlying work genuinely supports. It does not
 invent tenure, Kubernetes, scale, or employment history.
 
-`dist/resume-<stem>.ats.txt` is written for each document — roughly what a
+`documents/resume-<stem>.ats.txt` is written for each document — roughly what a
 text-oriented parser receives. `pnpm check:ats` re-runs the check against
 already-compiled PDFs.
+
+### The web reading view
+
+`apps/www` renders the résumé two ways, because a PDF only works one of them.
+
+On desktop the `/resume` route embeds the PDF. On mobile it cannot: **no mobile
+browser renders a PDF inside an `<iframe>`** — Android Chrome hands the URL to
+the download manager and iOS Safari shows a dead, non-scrollable first page.
+That is a browser capability, not a header; nothing about `Content-Disposition`
+changes it.
+
+The previous fallback was the compiled SVG shown as an `<img>`. Typst's SVG
+export contains **no text at all** — every glyph is a `<path>`, ~3,900 `<use>`
+references per document — so it was a 1.1 MB _picture_ of a résumé, marked
+`aria-hidden`, with a hand-written transcript in `apps/www` beside it for
+anyone who could not see it. That transcript was a second copy of the content
+and had already drifted from this package.
+
+So the text is derived instead. `src/main.typ` attaches the composition to the
+document it just laid out as `<resume-export>` metadata; `scripts/export-data.mjs`
+reads it back with `typst query` and writes `src/react/generated/data.ts`
+(~7 KB per variant), which `src/react/resume-document.tsx` renders as ordinary
+semantic HTML. Run `pnpm export:data` after changing content; `pnpm build` does
+it automatically.
+
+`tsc` checks the generated data against `src/react/types.ts`, so reshaping
+`src/data/resume.typ` fails the build rather than blanking a section.
+
+The reading view is **not** a reproduction of the print templates and should not
+become one — two-column layouts read badly on a phone, and mirroring the rail
+would mean making every template and theme change twice with nothing able to
+assert the two agree. The PDF stays the canonical artefact; this is how it is
+read without downloading it.
+
+Typst's own HTML export was evaluated and rejected: it is gated behind
+`--features html`, documented as "do not rely on this feature for production
+use cases", and errors on these templates (`page configuration is not allowed
+inside of containers`).
 
 ### Typography checking
 

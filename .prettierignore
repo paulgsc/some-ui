@@ -33,6 +33,12 @@ out/
 # every route change, so formatting it here wouldn't survive the next run.
 **/routeTree.gen.ts
 
+# @some-ui/resume data export — same reasoning as the router codegen above.
+# scripts/export-data.mjs rewrites it from the Typst source on every build, so
+# any formatting applied here is gone on the next run. It is still typechecked
+# and linted; only formatting is skipped.
+packages/ui/resume/src/react/generated/
+
 # Contentlayer & MDX
 .contentlayer
 .contentlayer.cache

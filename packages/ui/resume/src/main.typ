@@ -65,3 +65,40 @@
 ))
 
 #assert-one-page(variant + "/" + template-name)
+
+// The same composition, exposed as data rather than as layout.
+//
+// `typst query` reads this back out, and scripts/export-data.mjs turns it into
+// the TypeScript the web reading view renders (src/react). That view exists
+// because a PDF does not render inline on mobile and the SVG export contains
+// no text at all — only glyph outlines — so neither can be read, selected, or
+// crawled on a phone. Deriving it from here is what keeps apps/www from
+// carrying its own hand-copied transcript of the résumé.
+//
+// Keys are camelCase because they cross into TypeScript. Everything here is
+// already defined above; nothing new is asserted.
+#metadata((
+  variant: variant,
+  profile: (
+    name: resume-profile.name,
+    title: resume-profile.title,
+    email: resume-profile.email,
+    github: resume-profile.github,
+    portfolio: resume-profile.portfolio,
+    location: resume-profile.location,
+  ),
+  label: resume-compositions.at(variant).label,
+  summary: resume-compositions.at(variant).summary,
+  skills: resume-compositions.at(variant).skills,
+  projects: resume-compositions.at(variant).projects,
+  platform: resume-compositions.at(variant).platform,
+  highlights: resume-highlights.at(variant),
+  toolbox: resume-toolbox.at(variant),
+  repositories: resume-repositories,
+  engagement: resume-engagement,
+  education: personal.education,
+  languages: personal.languages,
+  certifications: personal.certifications,
+  interests: personal.interests,
+  additionalExperience: personal.additional-experience,
+)) <resume-export>

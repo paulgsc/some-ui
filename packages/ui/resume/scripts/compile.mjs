@@ -1,147 +1,30 @@
 #!/usr/bin/env node
 // Compiles src/main.typ into PDF downloads and browser-native SVG previews,
-// once per (composition x template) pair.
+// once per (composition x template) pair, then verifies the artifacts.
 //
-// No system-wide `typst` dependency required: if `typst` isn't already on
-// PATH, this fetches the pinned release binary for the current platform
-// straight from GitHub Releases (same artifact `typst-community/setup-typst`
-// uses in CI) and caches it under node_modules/.cache so repeat builds are
-// free. Fonts are pinned and fetched the same way - see scripts/fonts.mjs for
-// why that matters to the one-page guarantee.
+// Binary and font resolution live in scripts/typst.mjs - see that file for why
+// neither is taken from the host.
 import { execFileSync, spawn, spawnSync } from "node:child_process"
+import { copyFileSync, mkdirSync } from "node:fs"
+import { join } from "node:path"
+
 import {
-  chmodSync,
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs"
-import { arch, platform, tmpdir } from "node:os"
-import { dirname, join } from "node:path"
-import { fileURLToPath } from "node:url"
-
-import { resolveFontPath } from "./fonts.mjs"
-
-const TYPST_VERSION = "0.13.1"
-
-const packageDir = dirname(dirname(fileURLToPath(import.meta.url)))
-const sourceFile = join(packageDir, "src", "main.typ")
-const outDir = join(packageDir, "dist")
-const cacheDir = join(packageDir, "node_modules", ".cache", "typst-bin")
-
-const variants = ["backend", "systems", "learning"]
-const templates = ["rail", "classic", "compact"]
-// The template whose output also claims the unsuffixed filenames that
-// apps/www/scripts/sync-resume.mjs copies into the site.
-const DEFAULT_TEMPLATE = "rail"
-
-function releaseTriple() {
-  const table = {
-    "linux-x64": "x86_64-unknown-linux-musl",
-    "linux-arm64": "aarch64-unknown-linux-musl",
-    "darwin-x64": "x86_64-apple-darwin",
-    "darwin-arm64": "aarch64-apple-darwin",
-  }
-  const key = `${platform()}-${arch()}`
-  const triple = table[key]
-  if (!triple) {
-    throw new Error(
-      `No pinned typst binary for ${key}. Install typst yourself ` +
-        `(https://github.com/typst/typst#installation) and make sure ` +
-        `it's on PATH, then re-run this script.`
-    )
-  }
-  return triple
-}
-
-function typstOnPath() {
-  const probe = spawnSync("typst", ["--version"], { stdio: "ignore" })
-  return probe.status === 0 ? "typst" : null
-}
-
-function cachedBinary() {
-  const bin = join(cacheDir, TYPST_VERSION, "typst")
-  return existsSync(bin) ? bin : null
-}
-
-async function downloadBinary() {
-  const triple = releaseTriple()
-  const asset = `typst-${triple}.tar.xz`
-  const url = `https://github.com/typst/typst/releases/download/v${TYPST_VERSION}/${asset}`
-
-  // eslint-disable-next-line no-console
-  console.log(`[resume] fetching typst ${TYPST_VERSION} (${triple})...`)
-  const res = await fetch(url)
-  if (!res.ok) {
-    throw new Error(`Failed to download ${url}: HTTP ${res.status}`)
-  }
-  const archiveBytes = new Uint8Array(await res.arrayBuffer())
-
-  const tmpDir = mkdtempSync(join(tmpdir(), "typst-dl-"))
-  const archivePath = join(tmpDir, asset)
-  writeFileSync(archivePath, archiveBytes)
-
-  // System `tar` handles .tar.xz natively on Linux/macOS - no extra deps.
-  execFileSync("tar", ["xf", archivePath, "-C", tmpDir])
-
-  const versionDir = join(cacheDir, TYPST_VERSION)
-  mkdirSync(versionDir, { recursive: true })
-  const extractedBinary = join(tmpDir, `typst-${triple}`, "typst")
-  execFileSync("cp", [extractedBinary, join(versionDir, "typst")])
-  chmodSync(join(versionDir, "typst"), 0o755)
-  rmSync(tmpDir, { recursive: true, force: true })
-
-  return join(versionDir, "typst")
-}
-
-async function resolveTypstBinary() {
-  return typstOnPath() ?? cachedBinary() ?? (await downloadBinary())
-}
-
-// The template imports ../data/resume.typ from src/templates, so typst's
-// project root has to be the package - not the entry file's directory, which
-// is what it defaults to. Without this the build fails with "cannot read file
-// outside of project root". System fonts are ignored so the rendered page
-// depends only on the pinned families, never on what the host has installed.
-function baseArgs(fontPath) {
-  return [
-    "--root",
-    packageDir,
-    "--font-path",
-    fontPath,
-    "--ignore-system-fonts",
-  ]
-}
-
-function inputArgs({ variant, template, theme, font }) {
-  return [
-    "--input",
-    `variant=${variant}`,
-    "--input",
-    `template=${template}`,
-    "--input",
-    `theme=${theme}`,
-    "--input",
-    `font=${font}`,
-  ]
-}
-
-// Each template picks the palette and family it was designed around; a caller
-// can still override either through the typst inputs above.
-const presentation = {
-  rail: { theme: "teal", font: "lato" },
-  classic: { theme: "ink", font: "pt-serif" },
-  compact: { theme: "slate", font: "lato" },
-}
+  baseArgs,
+  DEFAULT_TEMPLATE,
+  inputArgs,
+  outDir,
+  packageDir,
+  presentation,
+  resolveTypst,
+  sourceFile,
+  stemFor,
+  templates,
+  variants,
+} from "./typst.mjs"
 
 async function main() {
   const watch = process.argv.includes("--watch")
-  const [typstBin, fontPath] = await Promise.all([
-    resolveTypstBinary(),
-    resolveFontPath(),
-  ])
+  const { bin: typstBin, fontPath } = await resolveTypst()
 
   mkdirSync(outDir, { recursive: true })
 
@@ -180,10 +63,7 @@ async function main() {
 
   for (const template of templates) {
     for (const variant of variants) {
-      const stem =
-        template === DEFAULT_TEMPLATE
-          ? `resume-${variant}`
-          : `resume-${variant}-${template}`
+      const stem = stemFor(variant, template)
       // eslint-disable-next-line no-console
       console.log(`[resume] compiling ${variant} / ${template}...`)
       for (const format of ["pdf", "svg"]) {

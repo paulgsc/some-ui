@@ -37,11 +37,10 @@
 // that actually ships unnoticed.
 import { execFileSync } from "node:child_process"
 import { existsSync } from "node:fs"
-import { basename, dirname, join } from "node:path"
-import { fileURLToPath } from "node:url"
+import { basename, join } from "node:path"
 
-const packageDir = dirname(dirname(fileURLToPath(import.meta.url)))
-const outDir = join(packageDir, "dist")
+import { outDir } from "./typst.mjs"
+
 const extractor = process.env.PDFTOTEXT_BIN ?? "pdftotext"
 
 const MIN_GAP_RATIO = -0.05
