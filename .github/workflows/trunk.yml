@@ -52,15 +52,17 @@ jobs:
         run: nix develop .#ci --command pnpm lint:js --concurrency=100%
       - name: Prettier all packages
         run: nix develop .#ci --command pnpm prettier --concurrency=100%
-      # Bounded concurrency, unlike the steps above. `test` fans out to every
-      # workspace with a test script, including ~8 Chromium/Playwright-based
-      # extension and app suites — at --concurrency=100% on a standard
-      # (4-core) runner they all launch browsers at once, and the contention
-      # blows through @some-extension/common's deliberately tight budget
-      # (workers: 1, timeout: 15s, retries: 0 — see its playwright.config.ts).
-      # That suite is invisible to PR CI (excluded from pr.yml's node job and
-      # from extension.yml's matrix, since it ships no manifest*.json), so
-      # this was the only place the resulting flake could ever surface (#1136).
+      # Bounded concurrency, unlike the steps above. `test` (= `turbo test`)
+      # fans out to the 21 workspaces with a `test` script — 19 of them
+      # Vitest, and exactly one, @some-extension/common, Playwright/Chromium.
+      # At --concurrency=100% on a standard (4-core) runner, ~20 concurrent
+      # Vitest processes contend for the same CPU/memory budget as that one
+      # Chromium instance, and the contention blows through
+      # @some-extension/common's deliberately tight budget (workers: 1,
+      # timeout: 15s, retries: 0 — see its playwright.config.ts). That suite
+      # is invisible to PR CI (excluded from pr.yml's node job and from
+      # extension.yml's matrix, since it ships no manifest*.json), so this
+      # was the only place the resulting flake could ever surface (#1136).
       - name: Test all packages
         run: nix develop .#ci --command pnpm test --concurrency=2
   # ── Full dependency audit ───────────────────────────────────────────────
