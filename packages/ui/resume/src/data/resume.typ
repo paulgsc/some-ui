@@ -10,19 +10,6 @@
   // Set `photo` to an image path when binary assets can be distributed.
   photo: none,
   photo-placeholder: "PG",
-  languages: (
-    (name: "English", level: "Fluent"),
-    (name: "Swahili", level: "Native"),
-  ),
-  achievements: (
-    (title: "Production API ownership", detail: "Designed 39 versioned operations spanning persistence, real-time transport, caching, and background work."),
-    (title: "End-to-end engineering", detail: "Owns the path from typed domain models to browser UI, delivery infrastructure, and operational dashboards."),
-    (title: "Reliability by design", detail: "Turns overload, dependency failure, restarts, and missing telemetry into explicit, tested system states."),
-  ),
-  interests: (
-    (title: "Adaptive learning", detail: "Modeling knowledge and engagement to choose useful next actions."),
-    (title: "Resilient systems", detail: "Making asynchronous software bounded, observable, and explainable."),
-  ),
 )
 
 #let resume-compositions = (

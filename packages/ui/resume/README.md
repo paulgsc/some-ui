@@ -1,7 +1,7 @@
 # @some-ui/resume
 
-`resume.data.typ` is the granular résumé-data source of truth for Paul
-Gathondu. `resume.typ` is the presentation-only, one-page
+`src/data/resume.typ` is the granular résumé-data source of truth for Paul
+Gathondu. `src/template/resume.typ` is the presentation-only, one-page
 [Typst](https://typst.app) renderer for that catalogue.
 
 It's written in STAR grammar, told project-first. Each entry opens with the
@@ -18,8 +18,8 @@ Every rendered variant has a compact technical-capabilities line, but its terms
 are selected with — and supported by — that composition's project evidence.
 
 The long-form provenance, posting-specific analysis, and omitted evidence stay
-in `resume.meta.typ`. The renderer imports identity, sidebar facts, and complete
-audience-specific compositions exclusively from `resume.data.typ`. Pruning for one page therefore never
+in `src/canon/resume.meta.typ`. The renderer imports only identity facts and
+complete audience-specific compositions from `src/data/resume.typ`. Pruning for one page therefore never
 erases the underlying work or creates a random assortment of bullets.
 
 > Claims in the exported compositions are load-bearing: if one stops being
@@ -29,14 +29,14 @@ erases the underlying work or creates a random assortment of bullets.
 ## Pipeline (MVP)
 
 ```
-resume.data.typ (identity + granular compositions)
+src/data/resume.typ (identity + granular compositions)
               ↓ imported by
-resume.typ (layout/template) --variant--> dist/resume-{backend,systems,learning}.{pdf,svg}
+src/template/resume.typ (layout/template) --variant--> dist/resume-{backend,systems,learning}.{pdf,svg}
 ```
 
 `pnpm build` (`scripts/compile.mjs`) compiles all named one-page compositions
 to PDF downloads and SVG web previews.
-The backend variant is also copied to `dist/resume.pdf` for compatibility. A Typst layout assertion fails the build if any composition exceeds one page. There's no browser-side WASM compiler and no server in
+The backend variant is also copied to `dist/resume.pdf` for compatibility. A Typst layout assertion fails the build if any composition exceeds one page. After compilation, `scripts/check-ats.mjs` uses Poppler's `pdftotext` to verify that every PDF exposes the candidate name and contact details, expected section landmarks, variant label, at least 180 words, valid Unicode, and the primary sections in reading order. It also writes `dist/resume-<variant>.ats.txt` for human inspection. There's no browser-side WASM compiler and no server in
 this first cut — that's a deliberate MVP cut, not an oversight: static
 precompilation is the cheapest thing that actually proves the concept
 (source-controlled `.typ` in, previewable/downloadable `PDF` out), and it's
@@ -55,6 +55,17 @@ unsupported tenure, Kubernetes, scale, or employment history.
 web views render the document as ordinary web content instead of handing the
 PDF off to a download flow. Desktop retains the browser's full PDF viewer, and
 the explicit PDF download remains available on every viewport.
+
+### ATS smoke-test methodology
+
+`pnpm check:ats` checks already-compiled PDFs; `pnpm build` runs the same check
+automatically. Install Poppler (`poppler-utils` on Debian/Ubuntu) so
+`pdftotext` is on `PATH`, or point `PDFTOTEXT_BIN` at a compatible executable.
+The check is intentionally described as a smoke test, not ATS certification:
+proprietary applicant-tracking systems differ, but an image-only PDF, missing
+contact data, broken glyph mapping, implausibly sparse extraction, or scrambled
+main-section order now fails before publishing. Review the emitted `.ats.txt`
+files to see approximately what a text-oriented parser receives.
 
 ### No system `typst` dependency
 

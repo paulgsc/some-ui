@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Compiles resume.typ into PDF downloads and browser-native SVG previews.
+// Compiles src/template/resume.typ into PDF downloads and browser-native SVG previews.
 //
 // No system-wide `typst` dependency required: if `typst` isn't already on
 // PATH, this fetches the pinned release binary for the current platform
@@ -24,7 +24,7 @@ import { fileURLToPath } from "node:url"
 const TYPST_VERSION = "0.13.1"
 
 const packageDir = dirname(dirname(fileURLToPath(import.meta.url)))
-const sourceFile = join(packageDir, "resume.typ")
+const sourceFile = join(packageDir, "src", "template", "resume.typ")
 const outDir = join(packageDir, "dist")
 const cacheDir = join(packageDir, "node_modules", ".cache", "typst-bin")
 const variants = ["backend", "systems", "learning"]
@@ -152,6 +152,15 @@ async function main() {
       return
     }
   }
+
+  // Fail the build if the PDFs do not expose a useful plain-text reading order.
+  execFileSync(
+    process.execPath,
+    [join(packageDir, "scripts", "check-ats.mjs")],
+    {
+      stdio: "inherit",
+    }
+  )
 
   // Preserve the original public filename as the default/backend composition.
   copyFileSync(join(outDir, "resume-backend.pdf"), join(outDir, "resume.pdf"))

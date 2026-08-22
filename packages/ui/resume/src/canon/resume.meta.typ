@@ -25,7 +25,7 @@
 // The printable compositions now live in resume.data.typ so this file can stay
 // focused on long-form provenance and analysis. Importing the catalogue here
 // keeps the evidence notes connected to the same source the renderer consumes.
-#import "resume.data.typ": resume-compositions
+#import "../data/resume.typ": resume-compositions
 
 #set document(title: "Résumé Meta --- Evidence and Composition Catalogue", author: "Paul Gathondu")
 #set page(paper: "a4", margin: 1.35cm, numbering: "1")

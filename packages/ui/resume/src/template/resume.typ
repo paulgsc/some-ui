@@ -1,6 +1,6 @@
 // Presentation-only résumé template. All candidate facts and variant-specific
-// content live in resume.data.typ.
-#import "resume.data.typ": resume-profile, resume-compositions
+// content live in ../data/resume.typ.
+#import "../data/resume.typ": resume-profile, resume-compositions
 
 #let variant = sys.inputs.at("variant", default: "backend")
 #let selected = resume-compositions.at(variant, default: resume-compositions.backend)
@@ -38,15 +38,6 @@
   #for bullet in item.bullets.slice(0, 1) [
     - #bullet
   ]
-]
-
-#let sidebar-item(title, detail, symbol: [◇]) = block(below: 0.55em)[
-  #grid(columns: (1.2em, 1fr), column-gutter: 0.25em,
-    text(size: 8pt, weight: "bold", fill: white)[#symbol],
-    [#text(size: 7.7pt, weight: "bold", fill: white)[#title]
-     #v(0.12em)
-     #text(size: 6.6pt, fill: rgb("#d6eeee"))[#detail]],
-  )
 ]
 
 #grid(
@@ -97,28 +88,10 @@
           }
         ),
       )
-      #v(0.18em)
-      #text(size: 7pt, fill: rgb("#d6eeee"))[PROFILE]
     ]
 
-    #section-head(light: true)[Languages]
-    #for language in resume-profile.languages [
-      #grid(columns: (1fr, auto),
-        text(size: 7.2pt, fill: white)[#language.name],
-        text(size: 6.8pt, fill: rgb("#d6eeee"))[#language.level],
-      )
-      #v(0.25em)
-    ]
-
-    #section-head(light: true)[Key achievements]
-    #for achievement in resume-profile.achievements {
-      sidebar-item(achievement.title, achievement.detail, symbol: [✦])
-    }
-
-    #section-head(light: true)[Interests]
-    #for interest in resume-profile.interests {
-      sidebar-item(interest.title, interest.detail)
-    }
+    #section-head(light: true)[Focus]
+    #text(size: 8pt, fill: white)[#selected.label]
   ],
 )
 
