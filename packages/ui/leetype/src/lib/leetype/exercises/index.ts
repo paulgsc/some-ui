@@ -132,3 +132,8 @@ export const FIXTURE_HOSTILE_PROMPT_STEP: Step = HOSTILE_PROMPT_STEP
  * see next always goes through `nextExercise`, this export included.
  */
 export const ALL_FIXTURE_EXERCISES: ReadonlyArray<Exercise> = CORPUS
+
+/** The validated exercises eligible for a normal, user-facing session. */
+export const SESSION_EXERCISE_IDS: ReadonlyArray<string> = CORPUS.filter(
+  (exercise) => exercise.id !== ADVERSARIAL_EXERCISE_ID
+).map((exercise) => exercise.id)

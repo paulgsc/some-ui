@@ -66,15 +66,22 @@ export type ExerciseRunner = RunnerPosition & {
 }
 
 type RunnerState = {
+  exerciseId: string
   index: number
   attempt: number
   escaped: number
 }
 
-const START: RunnerState = { index: 0, attempt: 0, escaped: 0 }
+function start(exerciseId: string): RunnerState {
+  return { exerciseId, index: 0, attempt: 0, escaped: 0 }
+}
 
 export function useExerciseRunner(exercise: Exercise): ExerciseRunner {
-  const [state, setState] = useState<RunnerState>(START)
+  const [storedState, setState] = useState<RunnerState>(() =>
+    start(exercise.id)
+  )
+  const state =
+    storedState.exerciseId === exercise.id ? storedState : start(exercise.id)
 
   const total = exercise.steps.length
   // An exercise is non-empty by schema; clamping rather than indexing
@@ -83,22 +90,28 @@ export function useExerciseRunner(exercise: Exercise): ExerciseRunner {
   const index = Math.min(state.index, Math.max(total - 1, 0))
   const step = exercise.steps[index]
 
-  const advance = useCallback((progression: Progression): void => {
-    setState((current) => {
-      if (progression === "repeat") {
-        return { ...current, attempt: current.attempt + 1 }
-      }
-      return {
-        index: current.index + 1,
-        attempt: 0,
-        escaped: current.escaped + (progression === "escape" ? 1 : 0),
-      }
-    })
-  }, [])
+  const advance = useCallback(
+    (progression: Progression): void => {
+      setState((current) => {
+        const active =
+          current.exerciseId === exercise.id ? current : start(exercise.id)
+        if (progression === "repeat") {
+          return { ...active, attempt: active.attempt + 1 }
+        }
+        return {
+          ...active,
+          index: active.index + 1,
+          attempt: 0,
+          escaped: active.escaped + (progression === "escape" ? 1 : 0),
+        }
+      })
+    },
+    [exercise.id]
+  )
 
   const restart = useCallback((): void => {
-    setState(START)
-  }, [])
+    setState(start(exercise.id))
+  }, [exercise.id])
 
   return useMemo(
     (): ExerciseRunner => ({

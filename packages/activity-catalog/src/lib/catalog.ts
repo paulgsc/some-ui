@@ -172,19 +172,24 @@ const leetype: ActivityDefinition = {
   icon: "keyboard",
   registryKey: "leetype",
   layoutTree: "study",
-  // No fields at all, and that is the point (M20). Language was a property of
-  // the demo pool's four-language challenges, not of the player - an exercise
-  // carries its own source in its own language. Session length was a clock
-  // that could end a run, and progress is gated by weighted WPM now, so a
-  // duration would be a second terminator competing with the one that has a
-  // measurement behind it.
-  //
-  // Nothing else is asked here either: the exercise engine decides what comes
-  // next, which is the whole shift. A field on this entry would be a menu in
-  // front of a loop whose defining property is that it has none.
-  fields: [],
-  defaultConfig: {},
-  toSceneProps: () => ({}),
+  fields: [
+    {
+      kind: "duration",
+      key: "durationMinutes",
+      label: "Session length",
+      minMinutes: 5,
+      maxMinutes: 60,
+      stepMinutes: 5,
+      defaultMinutes: 10,
+    },
+  ],
+  defaultConfig: { durationMinutes: 10 },
+  toSceneProps: (config) => ({
+    sessionDurationMs:
+      (typeof config.durationMinutes === "number"
+        ? config.durationMinutes
+        : 10) * 60_000,
+  }),
 }
 
 /**
