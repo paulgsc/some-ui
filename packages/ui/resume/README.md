@@ -1,7 +1,7 @@
 # @some-ui/resume
 
-`resume.meta.typ` is the evidence and composition source of truth for Paul
-Gathondu's résumé. `resume.typ` is the one-page
+`resume.data.typ` is the granular résumé-data source of truth for Paul
+Gathondu. `resume.typ` is the presentation-only, one-page
 [Typst](https://typst.app) renderer for that catalogue.
 
 It's written in STAR grammar, told project-first. Each entry opens with the
@@ -18,8 +18,8 @@ Every rendered variant has a compact technical-capabilities line, but its terms
 are selected with — and supported by — that composition's project evidence.
 
 The long-form provenance, posting-specific analysis, and omitted evidence stay
-in `resume.meta.typ`; its exported catalogue supplies only complete, audience-
-specific compositions to the renderer. Pruning for one page therefore never
+in `resume.meta.typ`. The renderer imports identity, sidebar facts, and complete
+audience-specific compositions exclusively from `resume.data.typ`. Pruning for one page therefore never
 erases the underlying work or creates a random assortment of bullets.
 
 > Claims in the exported compositions are load-bearing: if one stops being
@@ -29,9 +29,9 @@ erases the underlying work or creates a random assortment of bullets.
 ## Pipeline (MVP)
 
 ```
-resume.meta.typ (evidence + compositions)
+resume.data.typ (identity + granular compositions)
               ↓ imported by
-resume.typ --variant--> dist/resume-{backend,systems,learning}.{pdf,svg}
+resume.typ (layout/template) --variant--> dist/resume-{backend,systems,learning}.{pdf,svg}
 ```
 
 `pnpm build` (`scripts/compile.mjs`) compiles all named one-page compositions
