@@ -166,7 +166,8 @@ export const Leetype: FC<LeetypeProps> = ({
    */
   const [finished, setFinished] = useState<CompletedSessionStats | null>(null)
   const [sessionClockMs, setSessionClockMs] = useState(0)
-  const clockStartedAtRef = useRef<number | null>(null)
+  /** Bumped by `handleAgain` to re-anchor the session clock at a fresh mount-like start. */
+  const [sessionGeneration, setSessionGeneration] = useState(0)
   const completedStepsRef = useRef(0)
   const escapedStepsRef = useRef(0)
   const exerciseCompletionHandledRef = useRef(false)
@@ -399,20 +400,25 @@ export const Leetype: FC<LeetypeProps> = ({
   ])
 
   useEffect(() => {
-    if (gameState !== "playing") {
-      clockStartedAtRef.current = null
-      return
-    }
-    const startedAt = clockStartedAtRef.current ?? performance.now()
-    clockStartedAtRef.current = startedAt
+    // Anchored at mount (and again each `sessionGeneration` bump from
+    // `handleAgain`), not at the player's own "Begin" click: the
+    // orchestrator removes this scene at its own `start_time + duration`
+    // (`buildActiveLifetimes`), measured from when the scene became active,
+    // not from when the player got around to clicking through. A clock that
+    // only started ticking on click ran later than the scene's real
+    // deadline for any player who paused first, so the completion state
+    // could arrive after the orchestrator had already unmounted this
+    // component — review finding on this PR (#1130).
+    const startedAt = performance.now()
     const update = (): void => {
       setSessionClockMs(
         Math.min(performance.now() - startedAt, sessionDurationMs)
       )
     }
+    update()
     const timer = window.setInterval(update, 250)
     return (): void => window.clearInterval(timer)
-  }, [gameState, sessionDurationMs])
+  }, [sessionDurationMs, sessionGeneration])
 
   useEffect(() => {
     if (!runner.isFinished) exerciseCompletionHandledRef.current = false
@@ -502,8 +508,6 @@ export const Leetype: FC<LeetypeProps> = ({
   ])
 
   const handleStart = useCallback((): void => {
-    clockStartedAtRef.current = performance.now()
-    setSessionClockMs(0)
     setGameState("playing")
     start()
     // The keystroke-capture element only accepts input while enabled, and it
@@ -516,7 +520,7 @@ export const Leetype: FC<LeetypeProps> = ({
     completedStepsRef.current = 0
     escapedStepsRef.current = 0
     setSessionClockMs(0)
-    clockStartedAtRef.current = null
+    setSessionGeneration((generation) => generation + 1)
     exerciseCompletionHandledRef.current = false
     setFinished(null)
     setCompletedRationale(null)
