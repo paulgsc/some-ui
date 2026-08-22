@@ -5,69 +5,6 @@
   "routes": [
     {
       "method": "GET",
-      "path": "/get_audio/:id",
-      "full_path": "/api/v1/get_audio/:id",
-      "versioned": true,
-      "module": "audio_files"
-    },
-    {
-      "method": "GET",
-      "path": "/search_audio",
-      "full_path": "/api/v1/search_audio",
-      "versioned": true,
-      "module": "audio_files"
-    },
-    {
-      "method": "POST",
-      "path": "/search_audio",
-      "full_path": "/api/v1/search_audio",
-      "versioned": true,
-      "module": "audio_files"
-    },
-    {
-      "method": "GET",
-      "path": "/gdrive/image/:image_id",
-      "full_path": "/api/v1/gdrive/image/:image_id",
-      "versioned": true,
-      "module": "gdrive"
-    },
-    {
-      "method": "GET",
-      "path": "/gdrive/json/:file_id",
-      "full_path": "/api/v1/gdrive/json/:file_id",
-      "versioned": true,
-      "module": "gdrive"
-    },
-    {
-      "method": "GET",
-      "path": "/gdrive/list",
-      "full_path": "/api/v1/gdrive/list",
-      "versioned": true,
-      "module": "gdrive"
-    },
-    {
-      "method": "GET",
-      "path": "/gdrive/list/:folder_id",
-      "full_path": "/api/v1/gdrive/list/:folder_id",
-      "versioned": true,
-      "module": "gdrive"
-    },
-    {
-      "method": "PUT",
-      "path": "/gdrive/write/:folder_id/:name",
-      "full_path": "/api/v1/gdrive/write/:folder_id/:name",
-      "versioned": true,
-      "module": "gdrive"
-    },
-    {
-      "method": "GET",
-      "path": "/get_github_repos",
-      "full_path": "/api/v1/get_github_repos",
-      "versioned": true,
-      "module": "github"
-    },
-    {
-      "method": "GET",
       "path": "/health",
       "full_path": "/health",
       "versioned": false,
@@ -179,6 +116,13 @@
       "module": "push"
     },
     {
+      "method": "GET",
+      "path": "/ready",
+      "full_path": "/ready",
+      "versioned": false,
+      "module": "readiness"
+    },
+    {
       "method": "DELETE",
       "path": "/sessions",
       "full_path": "/api/v1/sessions",
@@ -233,41 +177,6 @@
       "full_path": "/api/v1/sessions/status",
       "versioned": true,
       "module": "sessions"
-    },
-    {
-      "method": "GET",
-      "path": "/get_attributions/:sheet_id",
-      "full_path": "/api/v1/get_attributions/:sheet_id",
-      "versioned": true,
-      "module": "sheets"
-    },
-    {
-      "method": "GET",
-      "path": "/get_gantt/:sheet_id",
-      "full_path": "/api/v1/get_gantt/:sheet_id",
-      "versioned": true,
-      "module": "sheets"
-    },
-    {
-      "method": "GET",
-      "path": "/get_nfl_roster/:sheet_id",
-      "full_path": "/api/v1/get_nfl_roster/:sheet_id",
-      "versioned": true,
-      "module": "sheets"
-    },
-    {
-      "method": "GET",
-      "path": "/get_nfl_tennis/:sheet_id",
-      "full_path": "/api/v1/get_nfl_tennis/:sheet_id",
-      "versioned": true,
-      "module": "sheets"
-    },
-    {
-      "method": "GET",
-      "path": "/get_video_chapters/:sheet_id",
-      "full_path": "/api/v1/get_video_chapters/:sheet_id",
-      "versioned": true,
-      "module": "sheets"
     },
     {
       "method": "POST",
