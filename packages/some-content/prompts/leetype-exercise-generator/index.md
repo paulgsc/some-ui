@@ -120,11 +120,14 @@ type TypingBlock = {
   kind: "typing"
   source: string // ‹…› marks context spans (rendered, never typed); everything outside is typed
   language: "rust" // this corpus is Rust
-  patch?: {
+  diff?: {
     path: string // a plausible file path, e.g. "src/scan/window.rs" — never rendered through provenance
     oldStart: number
     newStart: number
-    lineKinds: Array<"context" | "del" | "add"> // one entry per RENDERED line (after ‹…› stripping), see "The hunk shape" below
+    segments: Array<{ kind: "context" | "deletion" | "addition"; text: string }>
+    // Build a diff-shaped TypingBlock with typingBlockFromDiff(...) (types/exercise.ts)
+    // rather than hand-writing source and diff separately — it derives source from
+    // segments, so the two can never disagree. See "The hunk shape" below.
   }
 }
 
@@ -190,8 +193,9 @@ below or marked as judgment for the reviewer:
    _(structurally guaranteed by LTY-FRAME as long as you get this right — a
    diagnostic step's typing block always renders in place)_
 
-A patch-shaped repair's `add` lines must additionally form **one contiguous
-run** — one fault, one edit — checked mechanically against `patch.lineKinds`.
+A diff-shaped repair's rendered `add` lines must additionally form **one
+contiguous run** — one fault, one edit — checked mechanically against the
+line kinds derived from `diff.segments`.
 
 ### Construction (obligation → witness)
 
@@ -237,39 +241,52 @@ authoring test above just as surely as a bad `obligation` does.
 ## The hunk shape (LTY-PATCH, `docs/leetype/README.md`)
 
 `source` uses `‹…›` to mark context — rendered as code, read, never typed.
-Everything outside a `‹…›` span is the typeable stream. `patch` is optional;
+Everything outside a `‹…›` span is the typeable stream. `diff` is optional;
 add it whenever the exercise reads naturally as a diff (most diagnostic and
 many construction steps do) — it is not required for a single uninterrupted
-`+` line with no surrounding context.
+`+` line with no surrounding context. Author `diff.segments` and build the
+block with `typingBlockFromDiff(...)` (`types/exercise.ts`) rather than
+writing `source` by hand — it derives `source` from the segments, so the
+two can never disagree the way an independently hand-written `source` and
+line-kind array once could.
 
-`patch.lineKinds` has one entry per **rendered** line (i.e. after `‹…›`
-delimiters are stripped, not per line of the raw authored string) — the
-mixed-line rule: a rendered line is `"add"` if it contains **at least one**
-typed character, even mostly-inherited ones; `"del"` if the whole line is
-being shown as removed; `"context"` otherwise. `"del"` and `"context"` are
-identical to the engine (LTY-PATCH P1) — the difference is authorial intent
-about what the renderer paints, not a schema distinction it can check for
-you, so choose `"del"` only for a line you mean to show as struck-through
-removed code.
+Each segment is `{ kind: "context" | "deletion" | "addition", text }`.
+`renderedDiffLineKinds` (`types/exercise.ts`) derives one entry per
+**rendered** line (i.e. after `‹…›` delimiters are stripped, not per line of
+the raw authored string) from those segments — the mixed-line rule: a
+rendered line reads `"add"` if **any** contributing segment is `addition`,
+even mostly-inherited ones; `"del"` if a contributing segment is
+`deletion` and none is `addition`; `"context"` otherwise. `deletion` and
+`context` segments are identical to the engine (LTY-PATCH P1) — the
+difference is authorial intent about what the renderer paints, not a
+schema distinction it can check for you, so choose `deletion` only for text
+you mean to show as struck-through removed code.
 
 Worked example (`seed/loop-progress.ts`'s `diagnostic-loop-progress-01`):
 
 ```ts
-source:
-  "‹while cursor < input.len() {\n    parse(input[cursor]);\n    ›cursor += 1;‹\n}›",
-patch: {
+typingBlockFromDiff({
+  language: "rust",
   path: "src/parse/cursor.rs",
   oldStart: 1,
   newStart: 1,
-  lineKinds: ["context", "context", "add", "context"],
-},
+  segments: [
+    {
+      kind: "context",
+      text: "while cursor < input.len() {\n    parse(input[cursor]);\n    ",
+    },
+    { kind: "addition", text: "cursor += 1;" },
+    { kind: "context", text: "\n}" },
+  ],
+})
 ```
 
-Four rendered lines: the `while` line and the `parse` line are pure
-context; `    cursor += 1;` mixes inherited indentation (context) with the
-one typed statement, so the _whole rendered line_ reads `"add"`; the
-closing `}` is context. No `"del"` line here — the fault is an absence, not
-a visibly wrong line, which is as legitimate a hunk shape as one with a
+Four rendered lines result: the `while` line and the `parse` line are pure
+context; `    cursor += 1;` mixes inherited indentation (the context
+segment's trailing spaces) with the one typed statement (the addition
+segment), so the _whole rendered line_ reads `"add"`; the closing `}` is
+context. No `deletion` segment here — the fault is an absence, not a
+visibly wrong line, which is as legitimate a hunk shape as one with a
 removed line.
 
 A multi-line repair is allowed and does not need to fit on one line — the
@@ -340,13 +357,12 @@ mechanize eventually — write your own instance against each one, and treat
 - [checkable] `concepts` is non-empty and every entry is either an existing
   `CONCEPT_IDS` value or a new, genuinely-needed kebab-case id.
 - [checkable] Exactly one `typing` block; every other block is prompt-side.
-- [checkable] If `patch` is present, `lineKinds` has exactly one entry per
-  rendered line (after `‹…›` stripping), and every `"add"`-marked line
-  contains at least one typed character while every `"context"`/`"del"`
-  line contains none (the mixed-line rule).
+- [checkable] If `diff` is present, it was built with `typingBlockFromDiff`
+  so `source` is derived from `diff.segments` rather than hand-written
+  alongside it (the schema rejects the two disagreeing).
 - [checkable] Diagnostic only: the typed repair is ≤50 keystrokes
-  (excluding layout whitespace and newlines) and, if patch-shaped, its
-  `"add"` lines form exactly one contiguous run.
+  (excluding layout whitespace and newlines) and, if diff-shaped, its
+  rendered `"add"` lines form exactly one contiguous run.
 - [checkable] Diagnostic only: a `trace` block is present.
 - [checkable] Construction only: at least one block besides the typing
   block (a visible constraint or consequence).

@@ -1,6 +1,7 @@
 import {
   FIXTURE_ADVERSARIAL_EXERCISE_ID,
   FIXTURE_DIAGNOSTIC_EXERCISE_IDS,
+  FIXTURE_EXERCISE_ID,
   nextExercise,
 } from "@leetype/lib/leetype/exercises"
 import type { Meta, StoryObj } from "@storybook/react-vite"
@@ -23,9 +24,9 @@ type Story = StoryObj<typeof Leetype>
  * exercise comes from the shim, and the player lands on a typing surface
  * with no intervening choice.
  */
-const Mounted = ({ preferId }: { preferId?: string }) => (
+const Mounted = ({ preferId = FIXTURE_EXERCISE_ID }: { preferId?: string }) => (
   <div className="relative h-screen w-full p-4">
-    <Leetype exercise={nextExercise(preferId ? { preferId } : undefined)} />
+    <Leetype exercise={nextExercise({ preferId })} />
   </div>
 )
 

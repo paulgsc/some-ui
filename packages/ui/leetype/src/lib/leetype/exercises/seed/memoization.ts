@@ -1,5 +1,6 @@
 import { CONCEPT_IDS } from "@leetype/lib/leetype/exercises/concepts"
 import type { DiagnosticStep, Exercise } from "@leetype/types/exercise"
+import { typingBlockFromDiff } from "@leetype/types/exercise"
 
 /**
  * LTY-SEED G4 (#1109): the epic's first worked generation run, diagnostic
@@ -33,30 +34,26 @@ const diagnosticMemoizationStep: DiagnosticStep = {
         { label: "fib(35) subproblems, distinct", value: "36" },
       ],
     },
-    {
-      kind: "typing",
-      source:
-        "‹fn fib(n: u64, memo: &mut HashMap<u64, u64>) -> u64 {\n    ›if let Some(v) = memo.get(&n) {\n        return *v;\n    }‹\n    if n < 2 {\n        return n;\n    }\n    let result = fib(n - 1, memo) + fib(n - 2, memo);\n    memo.insert(n, result);\n    result\n}›",
+    typingBlockFromDiff({
       language: "rust",
-      patch: {
-        path: "src/dp/fib.rs",
-        oldStart: 1,
-        newStart: 1,
-        lineKinds: [
-          "context",
-          "add",
-          "add",
-          "add",
-          "context",
-          "context",
-          "context",
-          "context",
-          "context",
-          "context",
-          "context",
-        ],
-      },
-    },
+      path: "src/dp/fib.rs",
+      oldStart: 1,
+      newStart: 1,
+      segments: [
+        {
+          kind: "context",
+          text: "fn fib(n: u64, memo: &mut HashMap<u64, u64>) -> u64 {\n    ",
+        },
+        {
+          kind: "addition",
+          text: "if let Some(v) = memo.get(&n) {\n        return *v;\n    }",
+        },
+        {
+          kind: "context",
+          text: "\n    if n < 2 {\n        return n;\n    }\n    let result = fib(n - 1, memo) + fib(n - 2, memo);\n    memo.insert(n, result);\n    result\n}",
+        },
+      ],
+    }),
   ],
   rationale: {
     cause:

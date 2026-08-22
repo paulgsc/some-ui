@@ -43,13 +43,14 @@ const GUTTER_NUMBER_WIDTH = "w-8"
 /**
  * A rendered line's role in a diff-hunk overlay.
  *
- * Deliberately not imported from `types/exercise`'s `PatchLineKind`, even
- * though the two are structurally identical: this file's invariant is that
- * adding a new kind of prompt-side block — or any other exercise concept —
- * must never reach it, and importing a type *named* by the exercise schema
- * would be exactly that kind of reach, however narrow. Plain diff
- * vocabulary (`docs/leetype/README.md`'s "hunk"/"deletion"/"addition"
- * entries) is what actually reaches this component.
+ * Deliberately not imported from `types/exercise`'s `renderedDiffLineKinds`
+ * output, even though the two are structurally identical: this file's
+ * invariant is that adding a new kind of prompt-side block — or any other
+ * exercise concept — must never reach it, and importing a type derived
+ * from the exercise schema would be exactly that kind of reach, however
+ * narrow. Plain diff vocabulary (`docs/leetype/README.md`'s
+ * "hunk"/"deletion"/"addition" entries) is what actually reaches this
+ * component.
  */
 export type LineKind = "context" | "del" | "add"
 

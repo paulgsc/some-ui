@@ -40,6 +40,9 @@ describe("toSceneConfig", () => {
       { startTime: 0 }
     )
     expect(scene.duration).toBe(5 * 60_000)
+    expect(scene.ui[0]?.panels?.mainContent?.props).toMatchObject({
+      sessionDurationMs: 5 * 60_000,
+    })
   })
 
   it("falls back to the activity's default duration when omitted from config", () => {

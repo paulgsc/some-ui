@@ -1,6 +1,13 @@
 import { usePreviewGame } from "@leetype/hooks/leetype/use-preview-game"
-import { nextExercise } from "@leetype/lib/leetype/exercises"
-import { languageOf, typingBlockOf } from "@leetype/types/exercise"
+import {
+  FIXTURE_EXERCISE_ID,
+  nextExercise,
+} from "@leetype/lib/leetype/exercises"
+import {
+  languageOf,
+  renderedDiffLineKinds,
+  typingBlockOf,
+} from "@leetype/types/exercise"
 import type { TextGradient } from "@leetype/types/leetype"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
@@ -35,7 +42,7 @@ const StoryFromStep = ({
   /** How long the player has been sitting there — the reveal window's input. */
   idleSeconds?: number
 }) => {
-  const exercise = nextExercise()
+  const exercise = nextExercise({ preferId: FIXTURE_EXERCISE_ID })
   const step = exercise.steps[stepIndex] ?? exercise.steps[0]
   const source = step ? (typingBlockOf(step)?.source ?? "") : ""
   const preview = usePreviewGame(source, typedChars, idleSeconds)
@@ -228,6 +235,12 @@ const StoryFromPatchStep = ({
     )
   }
 
+  const hunk = typing.diff && {
+    oldStart: typing.diff.oldStart,
+    newStart: typing.diff.newStart,
+    lineKinds: renderedDiffLineKinds(typing.diff),
+  }
+
   return (
     <div className="code rounded-lg border border-border bg-secondary p-4">
       <CodeDisplay
@@ -238,7 +251,7 @@ const StoryFromPatchStep = ({
         slotStatus={preview.slotStatus}
         visibility={preview.visibility}
         cursorDisplay={preview.snapshot.cursorDisplay}
-        hunk={typing.patch}
+        hunk={hunk}
       />
     </div>
   )

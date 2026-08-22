@@ -4,6 +4,7 @@ import type {
   DiagnosticStep,
   Exercise,
 } from "@leetype/types/exercise"
+import { typingBlockFromDiff } from "@leetype/types/exercise"
 
 /**
  * Failure class 4: the double lookup — deliberately the same subject
@@ -157,23 +158,23 @@ export const entryApi: Exercise = {
           before: "unresolved",
           after: "vacant | occupied",
         },
-        {
-          // LTY-PATCH P5 (#1080): the first hunk in an accumulating chain
-          // — no prior commitment to carry as context yet, so the whole
-          // rendered line is `add`. Steps 04 and 05 below re-show this
-          // exact line as context and extend it, the construction
-          // family's own reading of the diagnostic mapping (docs/leetype/
-          // README.md's LTY-PATCH section).
-          kind: "typing",
-          source: "‹let slot = ›map.entry(key)‹;›",
+        // LTY-PATCH P5 (#1080): the first hunk in an accumulating chain —
+        // no prior commitment to carry as context yet, so the whole
+        // rendered line is `add`. Steps 04 and 05 below re-show this exact
+        // line as context and extend it, the construction family's own
+        // reading of the diagnostic mapping (docs/leetype/README.md's
+        // LTY-PATCH section).
+        typingBlockFromDiff({
           language: "rust",
-          patch: {
-            path: "src/entry.rs",
-            oldStart: 1,
-            newStart: 1,
-            lineKinds: ["add"],
-          },
-        },
+          path: "src/entry.rs",
+          oldStart: 1,
+          newStart: 1,
+          segments: [
+            { kind: "context", text: "let slot = " },
+            { kind: "addition", text: "map.entry(key)" },
+            { kind: "context", text: ";" },
+          ],
+        }),
       ],
     } satisfies ConstructionStep,
     {
@@ -187,21 +188,23 @@ export const entryApi: Exercise = {
           headline: "hash ops",
           observations: [{ label: "entry + fill", value: "1" }],
         },
-        {
-          // entry-03-place's whole line returns here as context (line 0),
-          // unaltered — the accumulation is not new authoring, it is what
-          // the source already did before this story painted it as a diff.
-          kind: "typing",
-          source:
-            "‹let slot = map.entry(key);\nlet filled = slot›.or_insert_with(Vec::new)‹;›",
+        // entry-03-place's whole line returns here as context (line 0),
+        // unaltered — the accumulation is not new authoring, it is what
+        // the source already did before this story painted it as a diff.
+        typingBlockFromDiff({
           language: "rust",
-          patch: {
-            path: "src/entry.rs",
-            oldStart: 1,
-            newStart: 1,
-            lineKinds: ["context", "add"],
-          },
-        },
+          path: "src/entry.rs",
+          oldStart: 1,
+          newStart: 1,
+          segments: [
+            {
+              kind: "context",
+              text: "let slot = map.entry(key);\nlet filled = slot",
+            },
+            { kind: "addition", text: ".or_insert_with(Vec::new)" },
+            { kind: "context", text: ";" },
+          ],
+        }),
       ],
     } satisfies ConstructionStep,
     {
@@ -216,20 +219,22 @@ export const entryApi: Exercise = {
           before: "Entry<K, Vec<V>>",
           after: "&mut Vec<V>",
         },
-        {
-          // Both prior lines return as context; only the final witness is
-          // typed — the chain's third and last hunk.
-          kind: "typing",
-          source:
-            "‹let slot = map.entry(key);\nlet filled = slot.or_insert_with(Vec::new);\nfilled›.push(value)‹;›",
+        // Both prior lines return as context; only the final witness is
+        // typed — the chain's third and last hunk.
+        typingBlockFromDiff({
           language: "rust",
-          patch: {
-            path: "src/entry.rs",
-            oldStart: 1,
-            newStart: 1,
-            lineKinds: ["context", "context", "add"],
-          },
-        },
+          path: "src/entry.rs",
+          oldStart: 1,
+          newStart: 1,
+          segments: [
+            {
+              kind: "context",
+              text: "let slot = map.entry(key);\nlet filled = slot.or_insert_with(Vec::new);\nfilled",
+            },
+            { kind: "addition", text: ".push(value)" },
+            { kind: "context", text: ";" },
+          ],
+        }),
       ],
     } satisfies ConstructionStep,
     {

@@ -2,6 +2,7 @@ import type { RefObject } from "react"
 import { createRef } from "react"
 import {
   FIXTURE_ADVERSARIAL_EXERCISE_ID,
+  FIXTURE_EXERCISE_ID,
   nextExercise,
 } from "@leetype/lib/leetype/exercises"
 import type { Step } from "@leetype/types/exercise"
@@ -11,7 +12,7 @@ import { describe, expect, it } from "vitest"
 
 import { ExerciseCard } from "."
 
-const seed = nextExercise()
+const seed = nextExercise({ preferId: FIXTURE_EXERCISE_ID })
 const adversarial = nextExercise({ preferId: FIXTURE_ADVERSARIAL_EXERCISE_ID })
 
 function projectionsFor(step: Step): {

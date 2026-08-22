@@ -8,6 +8,7 @@ import type { Step } from "@leetype/types/exercise"
 import {
   languageOf,
   promptBlocksOf,
+  renderedDiffLineKinds,
   typingBlockOf,
 } from "@leetype/types/exercise"
 import type { GameState, Rejection, TextGradient } from "@leetype/types/leetype"
@@ -120,7 +121,13 @@ export const ExerciseCard: FC<ExerciseCardProps> = ({
   const inputId = useId()
   const canType = gameState === "playing"
   const hint = rejection ? REJECTION_HINT[rejection] : undefined
-  const patch = typingBlockOf(step)?.patch
+  const diff = typingBlockOf(step)?.diff
+  const hunk = diff && {
+    path: diff.path,
+    oldStart: diff.oldStart,
+    newStart: diff.newStart,
+    lineKinds: renderedDiffLineKinds(diff),
+  }
 
   useKeystrokeCapture(inputRef, {
     onKey,
@@ -169,7 +176,7 @@ export const ExerciseCard: FC<ExerciseCardProps> = ({
           visibility={visibility}
           cursorDisplay={cursorDisplay}
           textGradient={textGradient}
-          hunk={patch}
+          hunk={hunk}
         />
 
         {canType && hint && (

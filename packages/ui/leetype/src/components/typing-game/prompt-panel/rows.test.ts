@@ -1,6 +1,10 @@
 import { ALL_FIXTURE_EXERCISES } from "@leetype/lib/leetype/exercises"
 import type { ReadBlock } from "@leetype/types/exercise"
-import { promptBlocksOf, StepSchema } from "@leetype/types/exercise"
+import {
+  promptBlocksOf,
+  StepSchema,
+  typingBlockFromDiff,
+} from "@leetype/types/exercise"
 import { describe, expect, it } from "vitest"
 
 import type { EvidenceRow } from "./rows"
@@ -130,17 +134,13 @@ describe("PromptPanel's inputs stay blind to patch overlays (LTY-PATCH P6, #1081
       goal: "Do the thing.",
       blocks: [
         ...promptSideBlocks,
-        {
-          kind: "typing",
-          source: "let x = 1;",
+        typingBlockFromDiff({
           language: "rust",
-          patch: {
-            path: "src/example.rs",
-            oldStart: 1,
-            newStart: 1,
-            lineKinds: ["add"],
-          },
-        },
+          path: "src/example.rs",
+          oldStart: 1,
+          newStart: 1,
+          segments: [{ kind: "addition", text: "let x = 1;" }],
+        }),
       ],
     })
 

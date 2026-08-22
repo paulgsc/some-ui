@@ -1,5 +1,6 @@
 import { CONCEPT_IDS } from "@leetype/lib/leetype/exercises/concepts"
 import type { DiagnosticStep, Exercise } from "@leetype/types/exercise"
+import { typingBlockFromDiff } from "@leetype/types/exercise"
 
 /**
  * Failure class 1: a loop that never advances toward its own exit.
@@ -26,18 +27,20 @@ const diagnosticLoopProgressStep: DiagnosticStep = {
       headline: "TIMEOUT",
       observations: [{ label: "cursor", value: "remained 0" }],
     },
-    {
-      kind: "typing",
-      source:
-        "‹while cursor < input.len() {\n    parse(input[cursor]);\n    ›cursor += 1;‹\n}›",
+    typingBlockFromDiff({
       language: "rust",
-      patch: {
-        path: "src/parse/cursor.rs",
-        oldStart: 1,
-        newStart: 1,
-        lineKinds: ["context", "context", "add", "context"],
-      },
-    },
+      path: "src/parse/cursor.rs",
+      oldStart: 1,
+      newStart: 1,
+      segments: [
+        {
+          kind: "context",
+          text: "while cursor < input.len() {\n    parse(input[cursor]);\n    ",
+        },
+        { kind: "addition", text: "cursor += 1;" },
+        { kind: "context", text: "\n}" },
+      ],
+    }),
   ],
   rationale: {
     cause:
