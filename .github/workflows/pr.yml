@@ -22,6 +22,15 @@ name: PR
 # ci-gate is the single required status check. Configure branch protection
 # to require only this job, not the individual rust/node jobs (which may be
 # skipped when no relevant files changed).
+#
+# Convention — scoped test:e2e invocations (#1137):
+#   A package's `test:e2e` script (`playwright test` with no filter) runs
+#   that package's ENTIRE e2e suite, including any known-failing backlog
+#   (e.g. apps/www's tests/ui-fit/no-overflow.spec.ts, ~42 stories, #899).
+#   A step whose name and trigger paths imply a narrow scope — "E2E — CSP
+#   regression (www)" below, for example — must pass explicit spec paths
+#   to `test:e2e`, or it silently inherits that backlog and fails PRs for
+#   work they never touched. Any new `test:e2e` step in CI must do the same.
 on:
   pull_request:
     branches: [main]
