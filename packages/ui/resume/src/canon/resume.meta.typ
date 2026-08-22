@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════════════
 //  resume.meta.typ — commentary, provenance, and requirements-map analysis
-//  behind resume.typ. Its exported composition catalogue is imported by the
+//  behind the rendered résumé. Its exported composition catalogue is imported by
 //  résumé pipeline; the surrounding analysis remains meant to be read as source, the same way this repo's docs/canon/*.typ files are: no build
 //  step required, the .typ *is* the artifact.
 //
@@ -22,7 +22,7 @@
 //  self-indulgence when it is not.
 // ═══════════════════════════════════════════════════════════════════════════
 
-// The printable compositions now live in resume.data.typ so this file can stay
+// The printable compositions now live in ../data/resume.typ so this file can stay
 // focused on long-form provenance and analysis. Importing the catalogue here
 // keeps the evidence notes connected to the same source the renderer consumes.
 #import "../data/resume.typ": resume-compositions
@@ -67,7 +67,7 @@ Kubernetes, managed-cloud operation, startup employment, or ML infrastructure.
 
 = Provenance --- résumé claim to repo evidence
 
-Every claim in `resume.typ` traces to something that actually ships. None of
+Every claim in `src/data/resume.typ` traces to something that actually ships. None of
 it is aspirational; if a line here stops being true, the résumé claim it
 backs should be cut, not kept and re-justified.
 
@@ -219,7 +219,7 @@ threshold — from a page's raw rendered styles rather than from whatever the
 page claims about itself. Same instinct, pointed inward instead of outward.
 See
 `packages/ui/resume/README.md` for the build pipeline itself
-(`resume.typ` → `dist/resume.pdf` via `scripts/compile.mjs`) and what's
+(`src/main.typ` → `dist/resume.pdf` via `scripts/compile.mjs`) and what's
 deliberately out of scope for the MVP cut.
 
 = Requirements map --- backend software engineer screening gap

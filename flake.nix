@@ -31,6 +31,7 @@
       node = import ./nix/node {inherit pkgs;};
       playwright = import ./nix/playwright {inherit pkgs;};
       deny = import ./nix/deny {inherit pkgs;};
+      pdf = import ./nix/pdf {inherit pkgs;};
 
       # ── Helpers ───────────────────────────────────────────────────────────
       mkLdPath = libs: pkgs.lib.makeLibraryPath libs;
@@ -43,7 +44,8 @@
           buildInputs =
             rust.deps
             ++ rust.devDeps
-            ++ desktop.deps;
+            ++ desktop.deps
+            ++ pdf.deps;
 
           LD_LIBRARY_PATH = mkLdPath desktop.ldLibs;
 
@@ -56,13 +58,16 @@
         };
 
         # ── ci: lean CI shell ─────────────────────────────────────────────
-        # Rust compile + pnpm workspace + web-ext.
+        # Rust compile + pnpm workspace + web-ext + poppler.
         # No GUI libs, no dev ergonomics, no Playwright, no audit tools.
         # Audit tools live in .#deny to keep this closure small.
+        # poppler is here rather than in a shell of its own because
+        # @some-ui/resume's build fails without pdftotext - see nix/pdf.
         ci = pkgs.mkShell {
           buildInputs =
             rust.deps
             ++ node.deps
+            ++ pdf.deps
             ++ [pkgs.nodePackages.web-ext];
 
           shellHook = ''

@@ -1,5 +1,13 @@
 // Granular résumé content only. Keep presentation and page-layout decisions in
-// resume.typ so the same evidence can be rendered by another template.
+// the templates under src/templates so the same evidence can be rendered by
+// any of them.
+//
+// Everything here is distilled from paulgsc/some-ui and paulgsc/server, and
+// every claim traces to code — src/canon/resume.meta.typ records the trace.
+// Facts that live outside those repositories (degrees, spoken languages,
+// certifications, non-engineering roles) belong in src/data/personal.typ.
+
+#import "personal.typ": personal
 
 #let resume-profile = (
   name: "Paul Gathondu",
@@ -7,6 +15,7 @@
   email: "paulgathondudev@gmail.com",
   github: "github.com/paulgsc",
   portfolio: "paulgsc.github.io/some-ui",
+  location: personal.location,
   // Set `photo` to an image path when binary assets can be distributed.
   photo: none,
   photo-placeholder: "PG",
@@ -15,7 +24,7 @@
 #let resume-compositions = (
   backend: (
     label: "Backend & event-driven systems",
-    tagline: "Software Engineer --- production Rust services, event-driven systems, and resilient APIs",
+    tagline: "Software Engineer — production Rust services, event-driven systems, and resilient APIs",
     summary: "Software engineer building production backend services in Rust and TypeScript: versioned HTTP APIs, WebSockets, asynchronous workers, SQL data models, message-broker pipelines, caching, observability, and container delivery. Sole engineer across a 24-crate Rust workspace and a 52-package client platform, owning contracts from browser mutation to durable storage and background actuation.",
     skills: "Rust; TypeScript; Axum; Tokio; SQLx/SQLite; Redis; NATS JetStream; WebSockets; production HTTP/JSON APIs; data modeling; distributed and event-driven systems; asynchronous processing; Docker/cloud infrastructure; Prometheus; Grafana; OpenTelemetry; unit, integration, contract, and Playwright testing; CI/CD",
     projects: (
@@ -38,14 +47,14 @@
     platform: (
       "Operate 24 Rust crates with strict all/pedantic/nursery Clippy groups, cargo-deny, migrated SQLx schema preparation, 300+ test functions, and change-scoped GitHub Actions.",
       "Ship distroless Docker images and compose Axum, Redis, NATS, Caddy, Prometheus, Grafana, exporters, and analytics behind explicit health/readiness boundaries.",
-      "Define six falsifiable fault states --- unreachable, dependency-down, rejecting, saturated, stalled, and observability-blind --- in bounded-cardinality metrics and generated dashboards.",
+      "Define six falsifiable fault states — unreachable, dependency-down, rejecting, saturated, stalled, and observability-blind — in bounded-cardinality metrics and generated dashboards.",
       "Render missing telemetry as unknown rather than healthy; probe SQLite, NATS, and Redis independently under bounded timeouts.",
       "Version invariants, migrations, route contracts, failure conditions, and operational limits beside source and tests rather than as tribal knowledge.",
     ),
   ),
   systems: (
     label: "Distributed systems & infrastructure",
-    tagline: "Software Engineer --- asynchronous Rust infrastructure, messaging, and observable failure semantics",
+    tagline: "Software Engineer — asynchronous Rust infrastructure, messaging, and observable failure semantics",
     summary: "Software engineer translating operational guarantees into typed Rust components, bounded concurrency, durable messaging, explicit fault predicates, and independently testable state machines. Own a 24-crate service workspace and the browser systems that consume it.",
     skills: "Rust; TypeScript; Tokio; Axum/Tower; NATS JetStream; Redis; WebSockets; SQLx; data modeling; production APIs; distributed systems; event-driven architecture; asynchronous processing; Docker/cloud infrastructure; Prometheus/Grafana/OpenTelemetry; unit, integration, contract, and browser testing",
     projects: (
@@ -78,7 +87,7 @@
   ),
   learning: (
     label: "Adaptive learning & product engineering",
-    tagline: "Software Engineer --- Rust learning systems from domain model to production actuation",
+    tagline: "Software Engineer — Rust learning systems from domain model to production actuation",
     summary: "Software engineer building learning software that models knowledge and engagement rather than advancing a fixed schedule. Own pure Rust policy, SQL persistence, production APIs, asynchronous notification delivery, Rust/WASM engines, React experiences, observability, testing, and deployment.",
     skills: "Rust; WebAssembly; TypeScript; React; Axum; SQLx; Web Push; state estimation; data modeling; production APIs; microservice integration; distributed and event-driven systems; asynchronous processing; Docker/cloud infrastructure; unit, integration, contract, Vitest, and Playwright testing",
     projects: (
@@ -110,4 +119,118 @@
       "Own the path from learning-state model through schema, HTTP contract, decision worker, push provider, browser worker, UI, and operational dashboard.",
     ),
   ),
+)
+
+// ── Rail content ───────────────────────────────────────────────────────────
+// The reference layout carries a second, scannable column. These are not new
+// claims: each one restates evidence already present in the compositions above
+// in the shape a skimming reader (and a keyword parser) picks up first.
+
+#let resume-highlights = (
+  backend: (
+    (
+      title: "39-operation service surface",
+      body: "Authored file_host's inventoried HTTP and WebSocket surface, published as schema-versioned JSON and held to source parity by test.",
+    ),
+    (
+      title: "Overload as a designed state",
+      body: "Token buckets, concurrency and body limits, load shedding, and typed 429/413/503 outcomes, with refusal metrics kept distinct from fast success.",
+    ),
+    (
+      title: "Durable work, not best effort",
+      body: "Redis coalescing in front of NATS JetStream; retryable worker failures are NAKed for redelivery and cache invalidation follows the database mutation.",
+    ),
+    (
+      title: "300+ tests across 24 crates",
+      body: "Strict all/pedantic/nursery Clippy, cargo-deny, SQLx preparation, route parity, live contracts, and real-browser coverage.",
+    ),
+  ),
+  systems: (
+    (
+      title: "Restart-aware real-time transport",
+      body: "Actor-owned WebSockets with permits, heartbeat and staleness, broadcast isolation, presence, and cancellation-driven shutdown.",
+    ),
+    (
+      title: "Six falsifiable fault states",
+      body: "Unreachable, dependency-down, rejecting, saturated, stalled, and observability-blind, each carried by bounded-cardinality metrics.",
+    ),
+    (
+      title: "Missing telemetry reads as unknown",
+      body: "Dashboards never render an absent signal as healthy; SQLite, NATS, and Redis are probed independently under bounded timeouts.",
+    ),
+    (
+      title: "Policy with no infrastructure",
+      body: "Pure Rust domain crates carry no HTTP, database, runtime, or delivery dependency, so policy arithmetic tests without a server.",
+    ),
+  ),
+  learning: (
+    (
+      title: "Rust engine, WebAssembly delivery",
+      body: "One pure-Rust learning engine compiled to WASM and consumed by hex-grid, TOPIK exam-prep, and typing-drill modules on a shared platform.",
+    ),
+    (
+      title: "Engagement as a decaying vector",
+      body: "Threshold crossings solved once per signal and persisted as eligible_at: O(1) work per event, zero per idle subject.",
+    ),
+    (
+      title: "Consent is a data-model precondition",
+      body: "Malformed or empty grants become silence; a VAPID key mismatch fails at startup rather than invalidating delivery invisibly.",
+    ),
+    (
+      title: "48-test contract harness",
+      body: "Typed TypeScript clients checked against 15 live operations, plus Playwright coverage of a real Chromium push and service-worker hop.",
+    ),
+  ),
+)
+
+// Grouped capabilities for the rail. Same terms as each composition's `skills`
+// line, arranged so a reader can find a stack without reading a paragraph.
+#let resume-toolbox = (
+  backend: (
+    (label: "Languages", items: "Rust, TypeScript, SQL"),
+    (label: "Services", items: "Axum, Tower, Tokio, WebSockets, REST/JSON"),
+    (label: "Data", items: "SQLx, SQLite, Postgres, Redis, migrations"),
+    (label: "Messaging", items: "NATS JetStream, Web Push, async workers"),
+    (label: "Operations", items: "Docker, Caddy, Prometheus, Grafana, OpenTelemetry"),
+    (label: "Quality", items: "Unit, integration, contract, Playwright, CI/CD"),
+  ),
+  systems: (
+    (label: "Languages", items: "Rust, TypeScript, SQL"),
+    (label: "Concurrency", items: "Tokio, actors, permits, cancellation, backpressure"),
+    (label: "Messaging", items: "NATS JetStream, WebSockets, typed jobs"),
+    (label: "Data", items: "SQLx, SQLite, Redis, coalesced caching"),
+    (label: "Operations", items: "Docker, distroless, Prometheus, Grafana, Jsonnet"),
+    (label: "Quality", items: "Clippy, cargo-deny, route parity, contract, browser"),
+  ),
+  learning: (
+    (label: "Languages", items: "Rust, TypeScript, SQL"),
+    (label: "Client", items: "React, WebAssembly, Vite, TanStack"),
+    (label: "Services", items: "Axum, SQLx, Redis, Web Push"),
+    (label: "Modeling", items: "State estimation, decay models, curriculum policy"),
+    (label: "Operations", items: "Docker, Caddy, GitHub Actions, Docker Hub"),
+    (label: "Quality", items: "Vitest, Playwright, contract harness, 300+ Rust tests"),
+  ),
+)
+
+// Where the evidence lives. The rail names these because a reader who wants
+// to verify a claim should not have to search for the repository it came from.
+#let resume-repositories = (
+  (
+    name: "paulgsc/server",
+    body: "24-crate Rust workspace: Axum services, SQLx repositories, NATS JetStream, Redis, Web Push, Prometheus/Grafana.",
+  ),
+  (
+    name: "paulgsc/some-ui",
+    body: "52-package TypeScript platform: React apps, Rust/WASM engines, Firefox MV3 extensions, contract and browser suites.",
+  ),
+)
+
+// The role line under EXPERIENCE. Applicant-tracking parsers look for a
+// title/organisation/date triple beneath a standard "Experience" heading; the
+// projects below it are the detail, not a substitute for it.
+#let resume-engagement = (
+  role: "Software Engineer — independent systems work",
+  org: "paulgsc/server · paulgsc/some-ui",
+  dates: "2024 — Present",
+  note: "Sole engineer",
 )
