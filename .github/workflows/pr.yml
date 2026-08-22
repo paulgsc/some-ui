@@ -277,6 +277,16 @@ jobs:
       # not a per-package build/test, so turbo's dep-graph filter doesn't
       # apply the way it does to the steps above. Regression coverage for
       # #660 (www's CSP header blocked WebAssembly instantiation).
+      #
+      # The spec argument is load-bearing. `test:e2e` is `playwright test`
+      # with no filter, so without it this step ran the ENTIRE suite - which
+      # includes tests/ui-fit/no-overflow.spec.ts, the sweep the step above
+      # deliberately does not run because its backlog predates #899 and would
+      # "fail every UI PR for work it did not do". Any PR touching
+      # apps/www/Dockerfile therefore inherited ~42 unrelated story overflow
+      # failures from packages it never touched. Nothing is skipped by naming
+      # the spec: the three ui-fit specs that pass are still enforced above,
+      # and no-overflow stays a local command exactly as documented there.
       - name: E2E — CSP regression (www)
         run: |
           files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \
@@ -285,7 +295,8 @@ jobs:
             'apps/www/tests/csp/**' \
             'apps/www/playwright.config.ts' || true)
           if [ -n "$files" ]; then
-            nix develop .#ci-playwright --command pnpm --filter www test:e2e
+            nix develop .#ci-playwright --command pnpm --filter www test:e2e \
+              tests/csp/csp.spec.ts
           else
             echo "No CSP-relevant www files changed."
           fi
