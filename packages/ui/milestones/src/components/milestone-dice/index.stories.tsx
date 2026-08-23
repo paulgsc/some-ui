@@ -2,7 +2,7 @@ import { sampleMilestones } from "@milestones/data"
 import { useMilestoneCycle } from "@milestones/hooks/use-milestone-cycle"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
-import { MilestoneDice } from "./milestone-dice"
+import { MilestoneDice } from "."
 
 const meta = {
   title: "UI/Milestones/Milestone Dice",

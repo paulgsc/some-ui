@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
-import { MilestoneBoard } from "./milestone-board"
+import { MilestoneBoard } from "."
 
 const meta = {
   title: "UI/Milestones/Board",

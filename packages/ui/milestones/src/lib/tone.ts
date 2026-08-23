@@ -30,3 +30,26 @@ export const toneDotClass: Record<MilestoneTone, string> = {
   dread: "bg-violet-500",
   rage: "bg-rose-500",
 }
+
+export const toneWashClass: Record<MilestoneTone, string> = {
+  joy: "from-emerald-100/80 to-cyan-100/70 dark:from-emerald-950/70 dark:to-cyan-950/60",
+  relief:
+    "from-sky-100/80 to-blue-100/70 dark:from-sky-950/70 dark:to-blue-950/60",
+  grind:
+    "from-amber-100/80 to-orange-100/70 dark:from-amber-950/70 dark:to-orange-950/60",
+  dread:
+    "from-violet-100/80 to-fuchsia-100/70 dark:from-violet-950/70 dark:to-fuchsia-950/60",
+  rage: "from-rose-100/80 to-orange-100/70 dark:from-rose-950/70 dark:to-orange-950/60",
+}
+
+// lib/tone.ts — add alongside the existing exports
+export const toneTintClass: Record<MilestoneTone, string> = {
+  joy: "from-emerald-100 via-teal-50 to-card dark:from-emerald-950/70 dark:via-teal-950/40 dark:to-card",
+  relief:
+    "from-sky-100 via-blue-50 to-card dark:from-sky-950/70 dark:via-blue-950/40 dark:to-card",
+  grind:
+    "from-amber-100 via-orange-50 to-card dark:from-amber-950/70 dark:via-orange-950/40 dark:to-card",
+  dread:
+    "from-violet-100 via-fuchsia-50 to-card dark:from-violet-950/70 dark:via-fuchsia-950/40 dark:to-card",
+  rage: "from-rose-100 via-orange-50 to-card dark:from-rose-950/70 dark:via-orange-950/40 dark:to-card",
+}

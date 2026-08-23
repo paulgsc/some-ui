@@ -1,14 +1,11 @@
+import { MilestoneFace } from "@milestones/components/milestone-face"
+import { MilestoneGrid } from "@milestones/components/milestone-grid"
+import { MilestoneHero } from "@milestones/components/milestone-hero"
+import { MilestoneTimeline } from "@milestones/components/milestone-timeline"
 import { sampleMilestones } from "@milestones/data"
 import { useMilestoneCycle } from "@milestones/hooks/use-milestone-cycle"
 import type { Milestone } from "@milestones/types"
-import { Pause, Play } from "lucide-react"
 import { cn } from "some-ui-utils"
-
-import { MilestoneDice } from "./milestone-dice"
-import { MilestoneFace } from "./milestone-face"
-import { MilestoneGrid } from "./milestone-grid"
-import { MilestoneHero } from "./milestone-hero"
-import { MilestoneTimeline } from "./milestone-timeline"
 
 type Props = {
   milestones?: ReadonlyArray<Milestone>
@@ -35,7 +32,7 @@ export const MilestoneBoard = ({
   cycleMs = 5200,
   className,
 }: Props): React.JSX.Element => {
-  const { activeIndex, isPlaying, select, togglePlaying } = useMilestoneCycle({
+  const { activeIndex, isPlaying, select } = useMilestoneCycle({
     count: milestones.length,
     cubeId,
     intervalMs: cycleMs,
@@ -52,28 +49,6 @@ export const MilestoneBoard = ({
       {/* Desktop / tablet-landscape: fixed viewport, hero dice + timeline
           on the left, a wall of independently-rotating dice on the right. */}
       <div className="hidden h-full min-h-0 grid-rows-[auto_auto_minmax(0,1fr)] lg:grid">
-        <header className="flex items-center justify-between gap-4 border-b border-border px-6 py-3">
-          <div className="flex items-center gap-2">
-            <span className="size-2 rounded-full bg-primary" aria-hidden />
-            <strong className="font-mono text-xs uppercase tracking-widest">
-              Milestones
-            </strong>
-          </div>
-          <button
-            type="button"
-            onClick={togglePlaying}
-            aria-pressed={isPlaying}
-            className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-          >
-            {isPlaying ? (
-              <Pause className="size-3.5" aria-hidden />
-            ) : (
-              <Play className="size-3.5" aria-hidden />
-            )}
-            {isPlaying ? "Pause" : "Resume"}
-          </button>
-        </header>
-
         {active && (
           <MilestoneHero
             milestone={active}
@@ -85,29 +60,12 @@ export const MilestoneBoard = ({
 
         <div className="grid min-h-0 grid-cols-[0.85fr_1.15fr] gap-5 p-5">
           <div className="flex min-h-0 flex-col gap-4">
-            <div className="flex min-h-0 flex-[1.3] items-center justify-center overflow-hidden">
-              {/* `DiceCard`'s Y-axis faces are pushed out in 3D by half the
-                  container's *width*, independent of height — an
-                  unconstrained width here would translate a face far enough
-                  toward the camera to blow past `perspective` and visibly
-                  overflow the box. Capping width (not height) is what keeps
-                  the cube's geometry sane. */}
-              <MilestoneDice
-                milestones={milestones}
-                activeIndex={activeIndex}
-                cubeId={cubeId}
-                compact
-                className="h-full w-full max-w-sm"
-              />
-            </div>
-            <div className="min-h-0 flex-1 rounded-lg border border-border p-3">
-              <MilestoneTimeline
-                milestones={milestones}
-                activeIndex={activeIndex}
-                onSelect={select}
-                className="h-full"
-              />
-            </div>
+            <MilestoneTimeline
+              milestones={milestones}
+              activeIndex={activeIndex}
+              onSelect={select}
+              className="h-full"
+            />
           </div>
 
           <MilestoneGrid

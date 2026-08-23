@@ -1,7 +1,6 @@
+import { MilestoneGridCell } from "@milestones/components/milestone-grid-cell"
 import type { Milestone } from "@milestones/types"
 import { cn } from "some-ui-utils"
-
-import { MilestoneGridCell } from "./milestone-grid-cell"
 
 type Props = {
   milestones: ReadonlyArray<Milestone>
@@ -27,7 +26,7 @@ export const MilestoneGrid = ({
 }: Props): React.JSX.Element => (
   <div
     className={cn(
-      "grid h-full min-h-0 grid-cols-2 grid-rows-3 gap-3",
+      "grid h-full min-h-0 grid-cols-2 grid-rows-3 gap-3 rounded-2xl border border-border/60 bg-card/40 p-3 shadow-sm",
       className
     )}
   >

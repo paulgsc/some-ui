@@ -2,7 +2,7 @@ import { useState } from "react"
 import { sampleMilestones } from "@milestones/data"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
-import { MilestoneTimeline } from "./milestone-timeline"
+import { MilestoneTimeline } from "."
 
 const meta = {
   title: "UI/Milestones/Milestone Timeline",

@@ -1,11 +1,10 @@
 import type { ReactNode } from "react"
+import { MilestoneFace } from "@milestones/components/milestone-face"
+import { MilestoneStatFace } from "@milestones/components/milestone-stat-face"
 import { X_AXIS_FACE_SEQUENCE } from "@milestones/lib/dice-face-order"
 import type { Milestone } from "@milestones/types"
 import { DiceCard } from "@some-ui/dice-card"
 import { cn } from "some-ui-utils"
-
-import { MilestoneFace } from "./milestone-face"
-import { MilestoneStatFace } from "./milestone-stat-face"
 
 type Props = {
   milestone: Milestone

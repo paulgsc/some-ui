@@ -1,10 +1,9 @@
 import type { ReactNode } from "react"
+import { MilestoneFace } from "@milestones/components/milestone-face"
 import { Y_AXIS_FACE_SEQUENCE } from "@milestones/lib/dice-face-order"
 import type { Milestone } from "@milestones/types"
 import { DiceCard } from "@some-ui/dice-card"
 import { cn } from "some-ui-utils"
-
-import { MilestoneFace } from "./milestone-face"
 
 type Props = {
   milestones: ReadonlyArray<Milestone>
@@ -58,7 +57,6 @@ export const MilestoneDice = ({
       dof="Y-axis"
       mode="manual"
       showBeam={false}
-      hideBackface
       // `overflow: hidden` on an ancestor does not reliably clip content
       // inside a `perspective`/`preserve-3d` context across browsers, so a
       // face translated forward by a non-trivial fraction of `perspective`
@@ -66,7 +64,7 @@ export const MilestoneDice = ({
       // perspective keeps that ratio small enough (translateZ here is at
       // most ~200px) that the resulting magnification is negligible rather
       // than something a clip rect has to catch.
-      perspective={2600}
+      perspective={1200}
     />
   )
 }

@@ -1,7 +1,7 @@
 import { sampleMilestones } from "@milestones/data"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
-import { MilestoneGrid } from "./milestone-grid"
+import { MilestoneGrid } from "."
 
 const meta = {
   title: "UI/Milestones/Milestone Grid",
