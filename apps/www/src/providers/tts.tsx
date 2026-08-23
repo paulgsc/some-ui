@@ -5,6 +5,7 @@ import { cn } from "some-ui-utils"
 import { toast } from "sonner"
 
 import { useAudioPreferences } from "@/lib/audio-preferences/use-audio-preferences"
+import { useHasDecorativeSession } from "@/lib/auth-session"
 import { DATA_MODE } from "@/lib/data-mode"
 import { useSettings } from "@/lib/tenant"
 import { describeTTSEndpoint, resolveTTSEndpoint } from "@/lib/tts-config"
@@ -103,8 +104,12 @@ export const TTSProvider = ({
 }: {
   children: ReactNode
 }): JSX.Element => {
-  const { data: settings } = useSettings()
-  const { preferences } = useAudioPreferences()
+  // TTSProvider wraps the whole app above the router, so it is mounted on
+  // the public landing page and the passkey screen too - gating on session
+  // here keeps it from fetching tenant settings before there is a session.
+  const hasSession = useHasDecorativeSession()
+  const { data: settings } = useSettings({ enabled: hasSession })
+  const { preferences } = useAudioPreferences({ enabled: hasSession })
 
   discloseEndpoint()
 

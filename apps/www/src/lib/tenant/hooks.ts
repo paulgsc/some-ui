@@ -50,8 +50,10 @@ export function useUpdateProfile(): UseMutationResult<
   })
 }
 
-export function useSettings(): UseQueryResult<UserSettings> {
-  return useQuery(settingsQuery)
+export function useSettings(options?: {
+  enabled?: boolean
+}): UseQueryResult<UserSettings> {
+  return useQuery({ ...settingsQuery, enabled: options?.enabled ?? true })
 }
 
 export function useUpdateSettings(): UseMutationResult<
@@ -68,8 +70,10 @@ export function useUpdateSettings(): UseMutationResult<
   })
 }
 
-export function useSessions(): UseQueryResult<Array<SessionRecord>> {
-  return useQuery(sessionsQuery)
+export function useSessions(options?: {
+  enabled?: boolean
+}): UseQueryResult<Array<SessionRecord>> {
+  return useQuery({ ...sessionsQuery, enabled: options?.enabled ?? true })
 }
 
 export function useSession(id: string): UseQueryResult<SessionRecord | null> {
