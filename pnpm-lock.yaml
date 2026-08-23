@@ -1467,6 +1467,37 @@ importers:
         specifier: workspace:*
         version: link:../../some-vite-config
 
+  packages/ui/milestones:
+    dependencies:
+      '@radix-ui/react-accordion':
+        specifier: 'catalog:'
+        version: 1.2.14(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@some-ui/dice-card':
+        specifier: workspace:*
+        version: link:../dice-card
+      lucide-react:
+        specifier: 'catalog:'
+        version: 0.562.0(react@19.0.0)
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.0.0(react@19.0.0)
+      some-ui-utils:
+        specifier: workspace:*
+        version: link:../../utils
+    devDependencies:
+      '@some-ui/tsconfig':
+        specifier: workspace:*
+        version: link:../../tsconfig
+      '@some-ui/vite-config':
+        specifier: workspace:*
+        version: link:../../some-vite-config
+      concurrently:
+        specifier: 10.0.3
+        version: 10.0.3
+
   packages/ui/neon-sign:
     dependencies:
       '@some-ui/shared':

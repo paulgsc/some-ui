@@ -62,6 +62,10 @@ export default defineConfig({
         import.meta.dirname,
         "./packages/ui/makjang/src"
       ),
+      "@milestones": path.resolve(
+        import.meta.dirname,
+        "./packages/ui/milestones/src"
+      ),
       "@umag": path.resolve(import.meta.dirname, "./packages/ui/umag/src"),
       "@stepper": path.resolve(
         import.meta.dirname,
