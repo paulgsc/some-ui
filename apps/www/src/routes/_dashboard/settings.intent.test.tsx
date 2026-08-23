@@ -26,6 +26,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterAll, afterEach, beforeEach, describe, it, vi } from "vitest"
 
+import { createDecorativeSession } from "@/lib/auth-session"
 import { SettingsRepository } from "@/lib/tenant/settings-repository"
 
 const saveSettingsSpy = vi.spyOn(SettingsRepository.prototype, "save")
@@ -59,6 +60,10 @@ function withProviders(children: ReactNode): JSX.Element {
 beforeEach(() => {
   saveSettingsSpy.mockClear()
   window.localStorage.clear()
+  // This route only ever renders behind the router's auth guard - the
+  // settings query it reads stays disabled without a session (see
+  // `lib/tenant/hooks.ts`), so tests rendering it directly need one too.
+  createDecorativeSession()
 })
 
 afterEach(() => {

@@ -22,7 +22,9 @@ export type RouterContext = {
 export const Route = createRootRouteWithContext<RouterContext>()({
   beforeLoad: ({ location }) => {
     const isPublicRoute =
-      location.pathname === "/" || location.pathname === "/auth"
+      location.pathname === "/" ||
+      location.pathname === "/auth" ||
+      location.pathname === "/resume"
     if (!isPublicRoute && !hasDecorativeSession()) {
       throw redirect({
         to: "/auth",
