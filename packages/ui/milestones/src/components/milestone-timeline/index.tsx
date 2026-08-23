@@ -32,7 +32,7 @@ export const MilestoneTimeline = ({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-3xl border-2 border-slate-950 bg-slate-50 shadow-[10px_12px_0_theme(colors.slate.950),0_24px_45px_theme(colors.slate.950/0.14)] dark:border-slate-200 dark:bg-slate-950 dark:shadow-[10px_12px_0_theme(colors.slate.200),0_24px_45px_theme(colors.black/0.4)]",
+        "relative overflow-hidden rounded-3xl border-2 border-foreground bg-card shadow-[10px_12px_0_var(--foreground),0_24px_45px_color-mix(in_oklab,var(--foreground)_18%,transparent)]",
         className
       )}
     >
@@ -65,7 +65,7 @@ export const MilestoneTimeline = ({
               >
                 <span
                   className={cn(
-                    "z-10 mt-1.5 size-3 shrink-0 rounded-full border-2 border-slate-950 shadow-[0_0_0_3px_theme(colors.slate.50)] transition-transform dark:border-slate-200 dark:shadow-[0_0_0_3px_theme(colors.slate.950)]",
+                    "z-10 mt-1.5 size-3 shrink-0 rounded-full border-2 border-foreground shadow-[0_0_0_3px_var(--card)] transition-transform",
                     active
                       ? toneDotClass[milestone.tone]
                       : "bg-muted-foreground/40",
@@ -73,7 +73,7 @@ export const MilestoneTimeline = ({
                   )}
                 />
                 {!isLast && (
-                  <span className="w-0.5 flex-1 bg-slate-950/15 dark:bg-slate-200/15" />
+                  <span className="min-h-0 w-0.5 flex-1 bg-foreground/15" />
                 )}
               </div>
 
@@ -82,18 +82,18 @@ export const MilestoneTimeline = ({
                   <AccordionPrimitive.Trigger
                     onClick={() => onSelect(index)}
                     className={cn(
-                      "group flex w-full items-center justify-between rounded-2xl border-2 border-transparent px-4 py-3 text-left outline-none transition-all hover:border-slate-950/20 hover:bg-white/70 focus-visible:ring-4 focus-visible:ring-cyan-500/30 dark:hover:border-slate-200/20 dark:hover:bg-slate-900/70",
+                      "group flex w-full items-center justify-between rounded-2xl border-2 border-transparent px-4 py-3 text-left outline-none transition-all hover:border-foreground/20 hover:bg-accent/70 focus-visible:ring-4 focus-visible:ring-ring/30",
                       active &&
-                        `border-slate-950 bg-gradient-to-r ${toneWashClass[milestone.tone]} shadow-[5px_6px_0_theme(colors.slate.950)] dark:border-slate-200 dark:shadow-[5px_6px_0_theme(colors.slate.200)]`
+                        `border-foreground bg-gradient-to-r ${toneWashClass[milestone.tone]} shadow-[5px_6px_0_var(--foreground)]`
                     )}
                   >
                     <span className="min-w-0">
-                      <span className="block font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                      <span className="block font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
                         {milestone.timestamp}
                       </span>
                       <span
                         className={cn(
-                          "mt-1 line-clamp-1 block text-sm font-extrabold leading-6 text-slate-950 dark:text-white",
+                          "mt-1 line-clamp-1 block text-sm font-extrabold leading-6 text-foreground",
                           active && toneTextClass[milestone.tone]
                         )}
                       >
@@ -114,10 +114,10 @@ export const MilestoneTimeline = ({
                   )}
                 >
                   <div className="px-4">
-                    <p className="line-clamp-2 pt-2 text-xs leading-5 text-slate-600 dark:text-slate-300">
+                    <p className="line-clamp-2 pt-2 text-xs leading-5 text-muted-foreground">
                       {milestone.reflection}
                     </p>
-                    <span className="mt-3 inline-block rounded-full border-2 border-slate-950 bg-slate-950 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white dark:border-slate-200 dark:bg-slate-200 dark:text-slate-950">
+                    <span className="mt-3 inline-block rounded-full border-2 border-foreground bg-foreground px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-background">
                       {milestone.category}
                     </span>
                   </div>

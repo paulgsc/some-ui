@@ -32,7 +32,7 @@ export const MilestoneBoard = ({
   cycleMs = 5200,
   className,
 }: Props): React.JSX.Element => {
-  const { activeIndex, isPlaying, select } = useMilestoneCycle({
+  const { activeIndex, select } = useMilestoneCycle({
     count: milestones.length,
     cubeId,
     intervalMs: cycleMs,

@@ -20,7 +20,7 @@ export const MilestoneFace = ({
 }: Props): React.JSX.Element => (
   <article
     className={cn(
-      "group relative flex size-full flex-col justify-between gap-5 overflow-hidden rounded-2xl border-2 bg-gradient-to-br text-card-foreground shadow-[6px_7px_0_hsl(var(--foreground)/0.85)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[8px_10px_0_hsl(var(--foreground)/0.85)]",
+      "group relative flex size-full flex-col justify-between gap-5 overflow-hidden rounded-2xl border-2 bg-gradient-to-br text-card-foreground shadow-[6px_7px_0_color-mix(in_oklab,var(--foreground)_85%,transparent)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[8px_10px_0_color-mix(in_oklab,var(--foreground)_85%,transparent)]",
       toneBorderClass[milestone.tone],
       toneTintClass[milestone.tone],
       compact ? "p-4" : "p-6",

@@ -19,7 +19,7 @@ type Props = {
 export const MilestoneStatFace = ({ milestone }: Props): React.JSX.Element => (
   <article
     className={cn(
-      "relative flex size-full flex-col justify-center gap-4 overflow-hidden rounded-lg border-2 bg-gradient-to-br p-3 text-card-foreground shadow-[4px_5px_0_hsl(var(--foreground)/0.85)]",
+      "relative flex size-full flex-col justify-center gap-4 overflow-hidden rounded-lg border-2 bg-gradient-to-br p-3 text-card-foreground shadow-[4px_5px_0_color-mix(in_oklab,var(--foreground)_85%,transparent)]",
       toneBorderClass[milestone.tone],
       toneTintClass[milestone.tone]
     )}

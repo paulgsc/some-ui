@@ -1494,9 +1494,6 @@ importers:
       '@some-ui/vite-config':
         specifier: workspace:*
         version: link:../../some-vite-config
-      concurrently:
-        specifier: 10.0.3
-        version: 10.0.3
 
   packages/ui/neon-sign:
     dependencies:
