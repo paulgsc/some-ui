@@ -39,6 +39,7 @@
     "@some-ui/intent-kit": "workspace:*",
     "@some-ui/resume": "workspace:*",
     "@some-ui/shared": "workspace:*",
+    "@some-ui/ship-log": "workspace:*",
     "@some-ui/slideshow": "workspace:*",
     "@some-ui/speech": "workspace:*",
     "@some-ui/styles": "workspace:*",

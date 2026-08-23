@@ -1,0 +1,509 @@
+.ship-log-shell {
+  --ship-bg: #070b0a;
+  --ship-line: rgb(255 255 255 / 10%);
+  --ship-muted: #8c9691;
+  --ship-green: #78f5a3;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: var(--ship-bg);
+  color: #f1f5f2;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+.ship-log-shell * {
+  box-sizing: border-box;
+}
+.ship-aurora {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+      circle at 72% 25%,
+      rgb(36 131 75 / 16%),
+      transparent 32%
+    ),
+    linear-gradient(rgb(255 255 255 / 2%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 2%) 1px, transparent 1px);
+  background-size:
+    auto,
+    48px 48px,
+    48px 48px;
+}
+.ship-layout {
+  position: relative;
+  width: min(1440px, 100%);
+  height: 100dvh;
+  min-height: 680px;
+  margin: auto;
+  padding: clamp(18px, 2.6vh, 32px) clamp(28px, 4vw, 72px) 18px;
+  display: grid;
+  grid-template-rows: 44px minmax(330px, 1fr) minmax(195px, 0.48fr) 36px;
+  gap: clamp(12px, 1.8vh, 22px);
+}
+.ship-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--ship-line);
+  padding-bottom: 14px;
+}
+.ship-brand,
+.ship-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: ui-monospace, monospace;
+  letter-spacing: 0.15em;
+}
+.ship-brand > span {
+  width: 28px;
+  height: 28px;
+  color: var(--ship-green);
+}
+.ship-brand strong {
+  font-size: 13px;
+}
+.ship-brand small {
+  color: var(--ship-muted);
+  font-size: 9px;
+  border-left: 1px solid var(--ship-line);
+  padding-left: 12px;
+}
+.ship-status {
+  font-size: 9px;
+  color: var(--ship-green);
+}
+.ship-status i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentcolor;
+  box-shadow: 0 0 12px currentcolor;
+}
+.ship-status span {
+  color: var(--ship-muted);
+  margin-left: 15px;
+}
+.ship-hero {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 0.82fr 1.18fr;
+  gap: clamp(28px, 5vw, 82px);
+  align-items: center;
+}
+.ship-hero__copy {
+  align-self: center;
+}
+.ship-eyebrow,
+.ship-section-label {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  color: var(--ship-muted);
+  font:
+    9px ui-monospace,
+    monospace;
+  letter-spacing: 0.22em;
+}
+.ship-eyebrow span,
+.ship-section-label > span {
+  color: var(--ship-green);
+}
+.ship-hero h1 {
+  margin: clamp(10px, 2vh, 24px) 0 14px;
+  font-size: clamp(50px, 6.2vw, 92px);
+  line-height: 0.82;
+  letter-spacing: -0.075em;
+  font-weight: 850;
+}
+.ship-hero h1 em {
+  color: var(--ship-green);
+  font-style: normal;
+  text-shadow: 0 0 40px rgb(120 245 163 / 25%);
+}
+.ship-hero__copy > p:last-of-type {
+  max-width: 500px;
+  margin: 0;
+  color: var(--ship-muted);
+  line-height: 1.55;
+  font-size: clamp(11px, 1vw, 14px);
+}
+.ship-metrics {
+  display: flex;
+  margin-top: clamp(16px, 3vh, 32px);
+  border-top: 1px solid var(--ship-line);
+  padding-top: 14px;
+}
+.ship-metrics div {
+  flex: 1;
+  display: grid;
+  gap: 2px;
+  border-right: 1px solid var(--ship-line);
+  padding-right: 12px;
+  margin-right: 12px;
+}
+.ship-metrics div:last-child {
+  border: 0;
+}
+.ship-metrics strong {
+  font:
+    700 clamp(18px, 2vw, 28px) ui-monospace,
+    monospace;
+}
+.ship-metrics span {
+  color: var(--ship-muted);
+  font:
+    8px ui-monospace,
+    monospace;
+  letter-spacing: 0.1em;
+}
+.ship-stage {
+  height: min(43vh, 430px);
+  min-height: 290px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  perspective: 1400px;
+}
+.ship-stage::before {
+  content: "";
+  position: absolute;
+  width: 64%;
+  height: 40%;
+  bottom: -2%;
+  background: rgb(64 229 119 / 10%);
+  filter: blur(50px);
+  transform: rotateX(70deg);
+}
+.ship-stage__label {
+  position: absolute;
+  top: 0;
+  inset-inline: 2%;
+  display: flex;
+  justify-content: space-between;
+  color: var(--ship-muted);
+  font:
+    8px ui-monospace,
+    monospace;
+  letter-spacing: 0.18em;
+}
+.ship-dice {
+  width: min(88%, 620px) !important;
+  height: min(72%, 310px) !important;
+}
+.ship-dice__face {
+  padding: 0;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 2px;
+  background: #0c1210;
+  box-shadow: 0 20px 60px rgb(0 0 0 / 50%);
+}
+.ship-face {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: clamp(18px, 2.2vw, 28px);
+  background: linear-gradient(145deg, rgb(255 255 255 / 4%), transparent 60%);
+}
+.ship-face[data-tone="joy"] {
+  --face-tone: #78f5a3;
+}
+.ship-face[data-tone="relief"] {
+  --face-tone: #80d9ff;
+}
+.ship-face[data-tone="grind"] {
+  --face-tone: #f3c969;
+}
+.ship-face[data-tone="dread"] {
+  --face-tone: #c29aff;
+}
+.ship-face header {
+  display: flex;
+  justify-content: space-between;
+  color: var(--face-tone);
+  font:
+    8px ui-monospace,
+    monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+.ship-badge {
+  border: 1px solid color-mix(in srgb, var(--face-tone), transparent 65%);
+  padding: 5px 8px;
+}
+.ship-face__body {
+  align-self: center;
+}
+.ship-kicker {
+  color: var(--face-tone);
+  font:
+    8px ui-monospace,
+    monospace;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+.ship-face h2 {
+  max-width: 470px;
+  margin: 7px 0;
+  font-size: clamp(19px, 2.2vw, 31px);
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+}
+.ship-face blockquote {
+  margin: 0;
+  color: #aeb8b3;
+  font:
+    10px/1.5 ui-monospace,
+    monospace;
+}
+.ship-meta {
+  margin: 5px 0 0;
+  color: var(--ship-muted);
+  font-size: 9px;
+}
+.ship-face dl {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 0;
+  border-top: 1px solid var(--ship-line);
+  padding-top: 10px;
+}
+.ship-face dl div {
+  display: grid;
+}
+.ship-face dt {
+  color: var(--ship-muted);
+  font:
+    7px ui-monospace,
+    monospace;
+  text-transform: uppercase;
+}
+.ship-face dd {
+  margin: 2px 0 0;
+  color: var(--face-tone);
+  font:
+    700 14px ui-monospace,
+    monospace;
+}
+.ship-lower {
+  display: grid;
+  grid-template-columns: 1.45fr 0.55fr;
+  gap: 18px;
+  min-height: 0;
+}
+.ship-timeline,
+.ship-summary {
+  border: 1px solid var(--ship-line);
+  background: rgb(10 16 14 / 82%);
+  padding: 15px 18px;
+  min-height: 0;
+}
+.ship-section-label {
+  margin-bottom: 8px;
+}
+.ship-section-label h2 {
+  margin: 0;
+  color: #f1f5f2;
+  font:
+    600 10px ui-monospace,
+    monospace;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+.ship-timeline ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  height: calc(100% - 22px);
+}
+.ship-timeline li {
+  position: relative;
+  border-left: 1px solid var(--ship-line);
+  transition: background 0.5s ease;
+}
+.ship-timeline li[data-active="true"] {
+  background: rgb(120 245 163 / 5%);
+}
+.ship-timeline button {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: 23px 1fr 18px;
+  gap: 7px;
+  border: 0;
+  padding: 10px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ship-timeline__number,
+.ship-timeline__toggle {
+  color: var(--ship-muted);
+  font:
+    9px ui-monospace,
+    monospace;
+}
+.ship-timeline li[data-active="true"] .ship-timeline__number,
+.ship-timeline li[data-active="true"] .ship-timeline__toggle {
+  color: var(--ship-green);
+}
+.ship-timeline__copy {
+  display: block;
+  overflow: hidden;
+}
+.ship-timeline__copy strong {
+  display: block;
+  color: #dce3df;
+  font:
+    9px ui-monospace,
+    monospace;
+  text-transform: uppercase;
+}
+.ship-timeline__copy > span {
+  display: block;
+  max-height: 0;
+  margin-top: 0;
+  opacity: 0;
+  color: var(--ship-muted);
+  font-size: 10px;
+  line-height: 1.4;
+  transition:
+    max-height 0.6s ease,
+    margin 0.6s ease,
+    opacity 0.4s ease;
+}
+.ship-timeline li[data-active="true"] .ship-timeline__copy > span {
+  max-height: 60px;
+  margin-top: 7px;
+  opacity: 1;
+}
+.ship-timeline__progress {
+  position: absolute;
+  inset: auto 10px 5px;
+  height: 1px;
+  background: var(--ship-line);
+  overflow: hidden;
+}
+.ship-timeline__progress span {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: var(--ship-green);
+}
+.ship-timeline li[data-active="true"] .ship-timeline__progress span {
+  animation: ship-progress 5.2s linear forwards;
+}
+.ship-summary {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.ship-summary > p {
+  color: var(--ship-green);
+  font:
+    8px ui-monospace,
+    monospace;
+  letter-spacing: 0.2em;
+}
+.ship-summary > strong {
+  font-size: clamp(16px, 1.6vw, 23px);
+  line-height: 0.95;
+}
+.ship-summary > span {
+  margin-top: 9px;
+  color: var(--ship-muted);
+  font-size: 9px;
+  line-height: 1.35;
+}
+.ship-summary button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  margin-top: 12px;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--ship-green);
+  font:
+    8px ui-monospace,
+    monospace;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+}
+.ship-summary button svg {
+  width: 11px;
+}
+.ship-layout footer {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  overflow: hidden;
+  border-top: 1px solid var(--ship-line);
+  color: var(--ship-muted);
+  white-space: nowrap;
+  font:
+    8px ui-monospace,
+    monospace;
+  letter-spacing: 0.12em;
+}
+.ship-layout footer span::before {
+  content: "◆";
+  color: var(--ship-green);
+  margin-right: 8px;
+}
+.ship-layout footer .ship-footer__end {
+  margin-left: auto;
+  color: var(--ship-green);
+  display: flex;
+  align-items: center;
+}
+.ship-footer__end svg {
+  width: 12px;
+  margin-left: 6px;
+}
+@keyframes ship-progress {
+  to {
+    width: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ship-timeline__progress span {
+    animation: none !important;
+  }
+  .ship-dice > div {
+    transition: none !important;
+  }
+}
+@media (max-width: 900px) {
+  .ship-log-shell {
+    overflow: auto;
+  }
+  .ship-layout {
+    height: auto;
+    min-height: 100dvh;
+    grid-template-rows: auto;
+  }
+  .ship-hero {
+    grid-template-columns: 1fr;
+  }
+  .ship-stage {
+    height: 390px;
+  }
+  .ship-lower {
+    grid-template-columns: 1fr;
+  }
+  .ship-timeline ol {
+    min-height: 180px;
+  }
+  .ship-layout footer {
+    min-height: 36px;
+  }
+  .ship-status span,
+  .ship-brand small {
+    display: none;
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "name": "@some-ui/ship-log",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && vite build",
+    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+    "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,json,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "dependencies": {
+    "@some-ui/dice-card": "workspace:*",
+    "lucide-react": "catalog:"
+  },
+  "devDependencies": {
+    "@some-ui/tsconfig": "workspace:*",
+    "@some-ui/vite-config": "workspace:*"
+  },
+  "main": "./dist/@some-ui/ship-log.cjs.js",
+  "module": "./dist/@some-ui/ship-log.es.js",
+  "types": "./dist/@some-ui/ship-log.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/@some-ui/ship-log.d.ts",
+      "import": "./dist/@some-ui/ship-log.es.js"
+    },
+    "./style.css": "./dist/ship-log.css"
+  },
+  "style": "./dist/ship-log.css",
+  "files": [
+    "dist"
+  ],
+  "sideEffects": [
+    "*.css"
+  ]
+}
