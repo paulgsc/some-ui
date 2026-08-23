@@ -1,3 +1,4 @@
+import { MilestoneDice } from "@milestones/components/milestone-dice"
 import { MilestoneFace } from "@milestones/components/milestone-face"
 import { MilestoneGrid } from "@milestones/components/milestone-grid"
 import { MilestoneHero } from "@milestones/components/milestone-hero"
@@ -48,7 +49,7 @@ export const MilestoneBoard = ({
     >
       {/* Desktop / tablet-landscape: fixed viewport, hero dice + timeline
           on the left, a wall of independently-rotating dice on the right. */}
-      <div className="hidden h-full min-h-0 grid-rows-[auto_auto_minmax(0,1fr)] lg:grid">
+      <div className="hidden h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] lg:grid">
         {active && (
           <MilestoneHero
             milestone={active}
@@ -60,11 +61,26 @@ export const MilestoneBoard = ({
 
         <div className="grid min-h-0 grid-cols-[0.85fr_1.15fr] gap-5 p-5">
           <div className="flex min-h-0 flex-col gap-4">
+            <div className="flex min-h-0 flex-[1.3] items-center justify-center overflow-hidden">
+              {/* `DiceCard`'s Y-axis faces are pushed out in 3D by half the
+                  container's *width*, independent of height — an
+                  unconstrained width here would translate a face far enough
+                  toward the camera to blow past `perspective` and visibly
+                  overflow the box. Capping width (not height) is what keeps
+                  the cube's geometry sane. */}
+              <MilestoneDice
+                milestones={milestones}
+                activeIndex={activeIndex}
+                cubeId={cubeId}
+                compact
+                className="h-full w-full max-w-sm"
+              />
+            </div>
             <MilestoneTimeline
               milestones={milestones}
               activeIndex={activeIndex}
               onSelect={select}
-              className="h-full"
+              className="min-h-0 flex-1"
             />
           </div>
 
