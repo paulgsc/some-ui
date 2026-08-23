@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query"
 
+import { useHasDecorativeSession } from "@/lib/auth-session"
 import { reportSessionTransition } from "@/lib/study-nudge/signals"
 
 import {
@@ -32,8 +33,29 @@ import type {
 // it. Everything below spends those definitions rather than restating them.
 export { settingsKey } from "./queries"
 
+/**
+ * Every read hook below is `enabled` on this, not just the query options a
+ * loader prefetches. A route loader never runs before the router's own
+ * `beforeLoad` guard clears a location, so it needs no gate of its own - but
+ * these hooks can also be called from outside the routed tree entirely (a
+ * provider mounted above the router, a future one nobody has written yet),
+ * where there is no route guard to rely on. Gating the read here, once,
+ * means any caller gets it for free instead of each one having to remember
+ * to ask "is there a session" before it fetches.
+ *
+ * This is a waste guard, not a security one: a `useQuery` that never fires
+ * is a request this tab never had to make (and, upstream of that, a
+ * provider that skips mounting the expensive thing this data feeds - see
+ * `providers/index.tsx` and `providers/tts.tsx`). Whether the request would
+ * have been *allowed* is the server's question, not this one.
+ */
+function useTenantQueriesEnabled(): boolean {
+  return useHasDecorativeSession()
+}
+
 export function useProfile(): UseQueryResult<UserProfile> {
-  return useQuery(profileQuery)
+  const enabled = useTenantQueriesEnabled()
+  return useQuery({ ...profileQuery, enabled })
 }
 
 export function useUpdateProfile(): UseMutationResult<
@@ -50,10 +72,9 @@ export function useUpdateProfile(): UseMutationResult<
   })
 }
 
-export function useSettings(options?: {
-  enabled?: boolean
-}): UseQueryResult<UserSettings> {
-  return useQuery({ ...settingsQuery, enabled: options?.enabled ?? true })
+export function useSettings(): UseQueryResult<UserSettings> {
+  const enabled = useTenantQueriesEnabled()
+  return useQuery({ ...settingsQuery, enabled })
 }
 
 export function useUpdateSettings(): UseMutationResult<
@@ -70,14 +91,17 @@ export function useUpdateSettings(): UseMutationResult<
   })
 }
 
-export function useSessions(options?: {
-  enabled?: boolean
-}): UseQueryResult<Array<SessionRecord>> {
-  return useQuery({ ...sessionsQuery, enabled: options?.enabled ?? true })
+export function useSessions(): UseQueryResult<Array<SessionRecord>> {
+  const enabled = useTenantQueriesEnabled()
+  return useQuery({ ...sessionsQuery, enabled })
 }
 
 export function useSession(id: string): UseQueryResult<SessionRecord | null> {
-  return useQuery(sessionQuery(id))
+  const hasSession = useTenantQueriesEnabled()
+  return useQuery({
+    ...sessionQuery(id),
+    enabled: hasSession && id.length > 0,
+  })
 }
 
 export function useCreateSession(): UseMutationResult<

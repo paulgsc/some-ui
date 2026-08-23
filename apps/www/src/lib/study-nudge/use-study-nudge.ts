@@ -51,7 +51,6 @@
 import { useEffect, useRef } from "react"
 import type { RuntimeMode } from "@some-ui/fetch-kit"
 
-import { useHasDecorativeSession } from "@/lib/auth-session"
 import { DATA_MODE } from "@/lib/data-mode"
 import { useSessions, useSettings } from "@/lib/tenant"
 
@@ -123,13 +122,8 @@ export async function runNudgeTick(
 }
 
 export function useStudyNudge(): void {
-  // This hook is mounted once above the router (see `StudyNudgeWatcher`), so
-  // it is alive on the public landing page and the passkey screen too -
-  // gated queries here, not just the route guard, keep it from fetching
-  // tenant data before there is a session to fetch it for.
-  const hasSession = useHasDecorativeSession()
-  const { data: sessions } = useSessions({ enabled: hasSession })
-  const { data: settings } = useSettings({ enabled: hasSession })
+  const { data: sessions } = useSessions()
+  const { data: settings } = useSettings()
 
   const preferences: NudgePreferences =
     settings?.notifications ?? DEFAULT_NUDGE_PREFERENCES

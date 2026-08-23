@@ -24,10 +24,8 @@ export type UseAudioPreferencesReturn = {
   update: (next: AudioPreferences) => void
 }
 
-export function useAudioPreferences(options?: {
-  enabled?: boolean
-}): UseAudioPreferencesReturn {
-  const { data: settings } = useSettings(options)
+export function useAudioPreferences(): UseAudioPreferencesReturn {
+  const { data: settings } = useSettings()
   const updateSettings = useUpdateSettings()
   const queryClient = useQueryClient()
 

@@ -11,6 +11,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
+import { createDecorativeSession } from "@/lib/auth-session"
+
 import { AudioActivityHint, AudioActivityNotice } from "./audio-activity-notice"
 
 function withQueryClient(children: ReactNode): JSX.Element {
@@ -22,6 +24,13 @@ function withQueryClient(children: ReactNode): JSX.Element {
 
 beforeEach(() => {
   window.localStorage.clear()
+  // The audio preferences this notice reads come from the tenant settings
+  // query, which stays disabled until there is a session (see
+  // `lib/tenant/hooks.ts`) - this component only ever renders inside the
+  // signed-in dashboard, so its tests establish that precondition rather
+  // than exercising the signed-out state, which `auth-session.test.ts` and
+  // `providers/tts.test.tsx` already cover.
+  createDecorativeSession()
 })
 
 afterEach(() => {

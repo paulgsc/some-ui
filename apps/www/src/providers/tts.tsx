@@ -104,14 +104,19 @@ export const TTSProvider = ({
 }: {
   children: ReactNode
 }): JSX.Element => {
-  // TTSProvider wraps the whole app above the router, so it is mounted on
-  // the public landing page and the passkey screen too - gating on session
-  // here keeps it from fetching tenant settings before there is a session.
+  // `SpeechProvider`'s mount effect builds a real adapter - an audio
+  // context, a network client - which is exactly the cost this app should
+  // not pay on the public landing page or the passkey screen, before there
+  // is a tenant workspace to speak for. `children` still renders either
+  // way: this tree wraps every route, and none of them should wait on a
+  // speech session nobody has asked for yet.
   const hasSession = useHasDecorativeSession()
-  const { data: settings } = useSettings({ enabled: hasSession })
-  const { preferences } = useAudioPreferences({ enabled: hasSession })
+  const { data: settings } = useSettings()
+  const { preferences } = useAudioPreferences()
 
   discloseEndpoint()
+
+  if (!hasSession) return <>{children}</>
 
   return (
     <SpeechProvider
