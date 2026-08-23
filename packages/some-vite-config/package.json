@@ -32,7 +32,7 @@
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "tsc-alias": "^1.9.1"
+    "tsc-alias": "^1.9.2"
   },
   "peerDependencies": {
     "vite": "^8.2.1"
