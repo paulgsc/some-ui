@@ -26,6 +26,7 @@
     "some-ui-utils": "workspace:*"
   },
   "devDependencies": {
+    "@some-ui/eslint-kit": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/vite-config": "workspace:*"
   },

@@ -1488,6 +1488,9 @@ importers:
         specifier: workspace:*
         version: link:../../utils
     devDependencies:
+      '@some-ui/eslint-kit':
+        specifier: workspace:*
+        version: link:../../eslint
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../tsconfig
