@@ -5,10 +5,14 @@ import { MilestoneBoard } from "."
 const meta = {
   title: "UI/Milestones/Board",
   component: MilestoneBoard,
-  // `neutralCanvas` drops the theme decorator's padded wrapper — this
-  // board fills the viewport itself (`lg:h-dvh`), so the padding it exists
-  // for elsewhere would just misrepresent the fixed-viewport claim here.
-  parameters: { layout: "fullscreen", neutralCanvas: true },
+  // `neutralCanvas` looked appealing for dropping the theme decorator's
+  // padded wrapper, but it's built for Comfort Lab's isolated fixtures — it
+  // unconditionally pins the canvas to light and never reads the toolbar's
+  // session global, so it silently defeated theme switching for this story
+  // entirely. `layout: "fullscreen"` alone still removes Storybook's own
+  // chrome; the decorator's ~24px canvas padding that remains is a preview-
+  // only artifact, not something a real consumer of this board would see.
+  parameters: { layout: "fullscreen" },
 } satisfies Meta<typeof MilestoneBoard>
 
 export default meta
