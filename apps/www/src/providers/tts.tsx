@@ -5,6 +5,7 @@ import { cn } from "some-ui-utils"
 import { toast } from "sonner"
 
 import { useAudioPreferences } from "@/lib/audio-preferences/use-audio-preferences"
+import { useHasDecorativeSession } from "@/lib/auth-session"
 import { DATA_MODE } from "@/lib/data-mode"
 import { useSettings } from "@/lib/tenant"
 import { describeTTSEndpoint, resolveTTSEndpoint } from "@/lib/tts-config"
@@ -103,10 +104,19 @@ export const TTSProvider = ({
 }: {
   children: ReactNode
 }): JSX.Element => {
+  // `SpeechProvider`'s mount effect builds a real adapter - an audio
+  // context, a network client - which is exactly the cost this app should
+  // not pay on the public landing page or the passkey screen, before there
+  // is a tenant workspace to speak for. `children` still renders either
+  // way: this tree wraps every route, and none of them should wait on a
+  // speech session nobody has asked for yet.
+  const hasSession = useHasDecorativeSession()
   const { data: settings } = useSettings()
   const { preferences } = useAudioPreferences()
 
   discloseEndpoint()
+
+  if (!hasSession) return <>{children}</>
 
   return (
     <SpeechProvider

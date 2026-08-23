@@ -6,6 +6,11 @@ import { defineConfig } from "eslint/config"
 import type { Config } from "typescript-eslint"
 
 import { parentRelativeImportPattern } from "./base.config.js"
+import {
+  parentRelativeDynamicImportSelectors,
+  reactImportBanSelectors,
+} from "./react.config.js"
+import { compiledPackageStyleImportBanPattern } from "./style-import-protocol.config.js"
 
 /**
  * Exported so a workspace that must turn off the parent-relative-import ban
@@ -21,6 +26,52 @@ export const themeProviderBanPattern = {
   message:
     "Reusable UI must not import an app's theme provider. Theme reaches components by CSS inheritance from the host's DOM boundary — there is nothing to subscribe to. If you need the registry itself, import @some-ui/styles/theme.",
 }
+
+/**
+ * Same boundary, a different plumbing concern: a route's URL, query params,
+ * and navigation are host-specific state, not something a reusable
+ * component under packages/ui/* gets to reach for directly. The whole point
+ * of this workspace boundary is that the same component stays mountable
+ * from any client — this app today, a different TanStack app, a Next.js
+ * app, or anything else tomorrow — each passing its own routing concerns
+ * down as granular props/context instead of the component importing a
+ * router and coupling itself to one framework's navigation model
+ * (paulgsc/some-ui#1146's postmortem, on why "an app only owns concerns
+ * that are a necessary part of its own plumbing" needed to become a rule
+ * rather than stay a convention).
+ */
+export const routerImportBanPattern = {
+  group: [
+    "@tanstack/react-router",
+    "@tanstack/react-router-devtools",
+    "next",
+    "next/*",
+    "react-router",
+    "react-router-dom",
+  ],
+  message:
+    "Reusable UI must not import a router or framework-navigation package. Accept route/query/navigation state as props or context from the host instead — a component under packages/ui/* must stay mountable from any client, and importing a router directly ties it to one.",
+}
+
+/**
+ * `no-restricted-imports` (routerImportBanPattern, above) only sees static
+ * `import`/`export from` syntax — it has no visibility into
+ * `ImportExpression` (dynamic `import(...)`), so `await
+ * import("react-router-dom")` inside packages/ui/* satisfies the ban's
+ * letter while defeating its point. This is the same reason
+ * react.config.ts needs `parentRelativeDynamicImportSelectors` alongside
+ * base.config.ts's static "../" ban: ESLint's static- and dynamic-import
+ * restrictions are two separate mechanisms, and a boundary meant to hold
+ * against either call shape has to declare both.
+ */
+export const routerDynamicImportSelectors = [
+  {
+    selector:
+      "ImportExpression[source.value=/^(@tanstack\\/react-router(-devtools)?|next(\\/.*)?|react-router(-dom)?)$/]",
+    message:
+      "Reusable UI must not import a router or framework-navigation package, including via a dynamic import() — see routerImportBanPattern.",
+  },
+]
 
 /**
  * Plugin enforcing the theme protocol (`@some-ui/styles/theme`) at the one
@@ -67,17 +118,38 @@ export default defineConfig([
       // whole architecture exists to prevent — and it would not even work,
       // since the protocol is CSS inheritance and has nothing to subscribe to.
       // Restates base.config.ts's parent-relative-import ban alongside the
-      // theme-provider ban below: this config is spread after
-      // maishatuRecommended in `uiRecommended`, and flat config replaces (not
-      // merges) a rule's value at the most specific matching config - so
-      // without it, this block would silently turn the base ban off for
-      // every non-story/test/spec .ts/.tsx file in every package/ui/*
-      // workspace.
+      // theme-provider, style-import, and router bans below: this config is
+      // spread after maishatuRecommended in `uiRecommended`, and flat config
+      // replaces (not merges) a rule's value at the most specific matching
+      // config - so without restating all four here, this block would
+      // silently turn the others off for every non-story/test/spec .ts/.tsx
+      // file in every package/ui/* workspace. This array is now the one
+      // place that answers "what may a reusable UI workspace not import" —
+      // despite the file's name, it is the packages/ui/* host-boundary
+      // array, not only the theme half of it.
       "no-restricted-imports": [
         "error",
         {
-          patterns: [parentRelativeImportPattern, themeProviderBanPattern],
+          patterns: [
+            parentRelativeImportPattern,
+            themeProviderBanPattern,
+            compiledPackageStyleImportBanPattern,
+            routerImportBanPattern,
+          ],
         },
+      ],
+      // Same "restate or it goes dark" trap as the array above, for the
+      // dynamic-import half of import restriction: react.config.ts already
+      // declares `no-restricted-syntax` globally (reactImportBanSelectors +
+      // parentRelativeDynamicImportSelectors), and this block - later in
+      // `uiRecommended`, same-or-narrower `files` glob - would silently
+      // replace that declaration for every packages/ui/* .ts/.tsx file if it
+      // didn't restate both alongside routerDynamicImportSelectors.
+      "no-restricted-syntax": [
+        "error",
+        ...reactImportBanSelectors,
+        ...parentRelativeDynamicImportSelectors,
+        ...routerDynamicImportSelectors,
       ],
     },
   },
