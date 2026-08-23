@@ -1,0 +1,63 @@
+{
+  "name": "@some-ui/milestones",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && vite build",
+    "build:tsc-alias": "tsc-alias -p tsconfig.build.json",
+    "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\"",
+    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
+    "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
+    "knip": "knip --directory \"$(git rev-parse --show-toplevel)\" --workspace \"$(git rev-parse --show-prefix | sed 's:/*$::')\"",
+    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+    "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "dependencies": {
+    "@radix-ui/react-accordion": "catalog:",
+    "@some-ui/dice-card": "workspace:*",
+    "lucide-react": "catalog:",
+    "some-ui-utils": "workspace:*"
+  },
+  "devDependencies": {
+    "@some-ui/eslint-kit": "workspace:*",
+    "@some-ui/tsconfig": "workspace:*",
+    "@some-ui/vite-config": "workspace:*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paulgsc/some-ui"
+  },
+  "bugs": {
+    "url": "https://github.com/paulgsc/some-ui/issues"
+  },
+  "homepage": "https://pgdev.maishatu.com/?tab=github",
+  "license": "MIT",
+  "keywords": [],
+  "files": [
+    "dist"
+  ],
+  "unpkg": "@some-ui/milestones.umd.js",
+  "main": "./dist/@some-ui/milestones.cjs.js",
+  "module": "./dist/@some-ui/milestones.es.js",
+  "types": "./dist/@some-ui/milestones.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/@some-ui/milestones.d.ts",
+      "import": "./dist/@some-ui/milestones.es.js",
+      "require": "./dist/@some-ui/milestones.cjs.js",
+      "default": "./dist/@some-ui/milestones.es.js"
+    },
+    "./style.css": "./dist/milestones.css"
+  },
+  "style": "./dist/milestones.css",
+  "sideEffects": [
+    "*.css"
+  ]
+}
