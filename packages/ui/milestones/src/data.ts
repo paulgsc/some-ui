@@ -47,4 +47,30 @@ export const sampleMilestones: ReadonlyArray<Milestone> = [
     reflection: "Third rewrite of the same chapter. Still not right.",
     timestamp: "Jan 2026",
   },
+  {
+    id: "flaky-test",
+    tone: "rage",
+    category: "Engineering",
+    title: "The test that only fails on Tuesdays",
+    reflection:
+      "It passes locally. It passes on rerun. It will not pass right now.",
+    timestamp: "Oct 2025",
+    stats: [
+      { label: "Retries", value: "17" },
+      { label: "Root cause", value: "Timezone" },
+    ],
+  },
+  {
+    id: "emergency-fund",
+    tone: "relief",
+    category: "Finance",
+    title: "Hit six months of expenses in savings",
+    reflection:
+      "Started at zero. Never touched it once, even when it was tempting.",
+    timestamp: "Jul 2025",
+    stats: [
+      { label: "Months saved", value: "6" },
+      { label: "Automated transfers", value: "31" },
+    ],
+  },
 ]

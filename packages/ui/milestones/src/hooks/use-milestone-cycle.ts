@@ -53,7 +53,7 @@ export const useMilestoneCycle = ({
   }, [isPlaying, count, intervalMs])
 
   useEffect(() => {
-    const face = Y_AXIS_FACE_SEQUENCE[activeIndex]
+    const face = Y_AXIS_FACE_SEQUENCE[activeIndex % Y_AXIS_FACE_SEQUENCE.length]
     if (face === undefined) return
     cubeEvents.emit("rotate:to", { id: cubeId, face })
   }, [activeIndex, cubeId])

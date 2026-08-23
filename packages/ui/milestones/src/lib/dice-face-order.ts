@@ -7,3 +7,11 @@
  * physical step instead of a shortcut diagonal across it.
  */
 export const Y_AXIS_FACE_SEQUENCE = [0, 3, 2, 1] as const
+
+/**
+ * The X-axis equivalent: front(0) -> bottom(5) -> back(2) -> top(4) (see
+ * `ROTATION_CYCLES["X-axis"]` in the same hook). Used by the grid cells,
+ * whose cards tumble on the other axis so the wall doesn't read as one
+ * repeated animation.
+ */
+export const X_AXIS_FACE_SEQUENCE = [0, 5, 2, 4] as const

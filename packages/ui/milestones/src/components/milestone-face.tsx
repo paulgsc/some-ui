@@ -4,14 +4,25 @@ import { cn } from "some-ui-utils"
 
 type Props = {
   milestone: Milestone
+  /** Denser spacing/type for small surfaces like a grid cell. */
+  compact?: boolean
 }
 
-export const MilestoneFace = ({ milestone }: Props): React.JSX.Element => (
-  <article className="flex size-full flex-col justify-between gap-3 rounded-lg border border-border bg-card p-5 text-card-foreground">
+export const MilestoneFace = ({
+  milestone,
+  compact = false,
+}: Props): React.JSX.Element => (
+  <article
+    className={cn(
+      "flex size-full flex-col justify-between gap-3 rounded-lg border border-border bg-card text-card-foreground",
+      compact ? "p-3" : "p-5"
+    )}
+  >
     <header className="flex items-center justify-between gap-3">
       <span
         className={cn(
-          "inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider",
+          "inline-flex items-center gap-1.5 font-medium uppercase tracking-wider",
+          compact ? "text-[10px]" : "text-xs",
           toneTextClass[milestone.tone]
         )}
       >
@@ -21,21 +32,36 @@ export const MilestoneFace = ({ milestone }: Props): React.JSX.Element => (
         />
         {milestone.category}
       </span>
-      <span className="text-xs text-muted-foreground">
+      <span
+        className={cn(
+          "text-muted-foreground",
+          compact ? "text-[10px]" : "text-xs"
+        )}
+      >
         {milestone.timestamp}
       </span>
     </header>
 
     <div className="min-h-0 flex-1 overflow-hidden">
-      <h2 className="text-balance text-lg font-semibold leading-snug sm:text-xl">
+      <h2
+        className={cn(
+          "text-balance font-semibold leading-snug",
+          compact ? "text-sm" : "text-lg sm:text-xl"
+        )}
+      >
         {milestone.title}
       </h2>
-      <blockquote className="mt-2 line-clamp-3 text-sm italic text-muted-foreground">
+      <blockquote
+        className={cn(
+          "mt-2 italic text-muted-foreground",
+          compact ? "line-clamp-2 text-xs" : "line-clamp-3 text-sm"
+        )}
+      >
         “{milestone.reflection}”
       </blockquote>
     </div>
 
-    {milestone.stats && milestone.stats.length > 0 && (
+    {!compact && milestone.stats && milestone.stats.length > 0 && (
       <dl className="grid grid-cols-2 gap-3 border-t border-border pt-3">
         {milestone.stats.map((stat) => (
           <div key={stat.label}>
