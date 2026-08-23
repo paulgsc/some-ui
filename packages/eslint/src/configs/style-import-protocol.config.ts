@@ -25,9 +25,20 @@ import { parentRelativeImportPattern } from "./base.config.js"
  * resolves the subpath happily (the package.json `exports` map says it
  * exists), and the only symptom is a cascade that differs from build to
  * build (paulgsc/some-ui#1146).
+ *
+ * Scoped to this monorepo's own package-naming conventions
+ * (`@some-ui/<pkg>/style.css`, and the handful of unscoped `some-ui-<pkg>`
+ * names - see packages/*\/package.json), not a blanket `**\/style.css`. A
+ * bare `**` pattern also matches a same-directory `import "./style.css"`
+ * (a locally authored stylesheet, no different from the `./index.css` /
+ * `./auth.css` imports already used throughout packages/ui/*) and a
+ * third-party `import "@vendor/widget/style.css"` (an external npm
+ * package's own stylesheet, which was never compiled from this repo's
+ * Tailwind layer and has nothing to do with #636). Neither is the mistake
+ * this rule exists to catch, so neither should fail it.
  */
 export const compiledPackageStyleImportBanPattern = {
-  group: ["**/style.css"],
+  group: ["@some-ui/*/style.css", "some-ui-*/style.css"],
   message:
     "Do not import a workspace package's compiled \"style.css\" export from inside this monorepo (#636). That subpath is for an external consumer installing the package standalone - each copy carries its own compiled Tailwind layer, and concatenating several here lets module-graph merge order decide the cascade. A package's authored CSS reaches this app through main.tsx's import.meta.glob over its *source*, not by importing its compiled output.",
 }

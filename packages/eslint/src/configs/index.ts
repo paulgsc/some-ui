@@ -52,6 +52,7 @@ export {
   themeProtocolPlugin,
   themeProviderBanPattern,
   routerImportBanPattern,
+  routerDynamicImportSelectors,
 } from "./theme-protocol.config.js"
 export {
   default as styleImportProtocolConfig,

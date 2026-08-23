@@ -20,6 +20,7 @@ import {
   reactConfig,
   reactImportBanSelectors,
   reactPeerDependencyConfig,
+  routerDynamicImportSelectors,
   routerImportBanPattern,
   styleImportProtocolConfig,
   switchLintConfig,
@@ -96,7 +97,7 @@ export { themeProtocolConfig, themeProtocolPlugin, themeProviderBanPattern }
 export { structuralColorRatchet } from "./configs/index.js"
 
 // ── Router boundary (reusable UI must not import a router/framework) ───────
-export { routerImportBanPattern }
+export { routerImportBanPattern, routerDynamicImportSelectors }
 
 // ── Package-style-import boundary (an app must not import a workspace
 // package's compiled style.css — #636, paulgsc/some-ui#1146) ───────────────

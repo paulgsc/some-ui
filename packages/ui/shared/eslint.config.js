@@ -1,5 +1,8 @@
 import {
+  compiledPackageStyleImportBanPattern,
   reactImportBanSelectors,
+  routerDynamicImportSelectors,
+  routerImportBanPattern,
   themeProviderBanPattern,
   uiRecommended,
 } from "@some-ui/eslint-kit"
@@ -26,11 +29,12 @@ export default defineConfig([
   },
   {
     // theme-protocol.config.ts's own no-restricted-imports (the theme-
-    // provider ban - uiRecommended's whole point for this package) applies
-    // to exactly this files/ignores combination, and flat config replaces a
-    // rule's value wholesale - so without restating it here, the blanket
-    // "off" above would silently re-permit importing an app's theme
-    // provider from this reusable-UI package too.
+    // provider, style-import, and router bans - uiRecommended's whole point
+    // for this package) applies to exactly this files/ignores combination,
+    // and flat config replaces a rule's value wholesale - so without
+    // restating all three here, the blanket "off" above would silently
+    // re-permit importing an app's theme provider, a sibling package's
+    // compiled style.css, or a router from this reusable-UI package too.
     files: ["**/*.{ts,tsx}"],
     ignores: [
       "**/*.stories.{ts,tsx}",
@@ -40,7 +44,13 @@ export default defineConfig([
     rules: {
       "no-restricted-imports": [
         "error",
-        { patterns: [themeProviderBanPattern] },
+        {
+          patterns: [
+            themeProviderBanPattern,
+            compiledPackageStyleImportBanPattern,
+            routerImportBanPattern,
+          ],
+        },
       ],
     },
   },
@@ -48,12 +58,21 @@ export default defineConfig([
     // Same "raw source, no self-alias" reasoning as the no-restricted-imports
     // override above, applied to the dynamic-import half of the rule
     // (react.config.ts's no-restricted-syntax - see its own doc comment for
-    // why it lives there). Redeclares the React-import-ban selectors instead
-    // of dropping them: flat config replaces this rule's value wholesale, so
-    // omitting them would silently disable that unrelated check too.
+    // why it lives there). Redeclares the React-import-ban selectors and the
+    // router-dynamic-import ban instead of dropping them: flat config
+    // replaces this rule's value wholesale, so omitting them would silently
+    // disable those unrelated checks too.
+    // parentRelativeDynamicImportSelectors is deliberately NOT restated here
+    // - the "off" override above exists precisely because this raw-source
+    // package's own internals must keep using "../", and that reasoning
+    // applies to the dynamic form too.
     files: ["**/*.{mdx,js,jsx,ts,tsx}"],
     rules: {
-      "no-restricted-syntax": ["error", ...reactImportBanSelectors],
+      "no-restricted-syntax": [
+        "error",
+        ...reactImportBanSelectors,
+        ...routerDynamicImportSelectors,
+      ],
     },
   },
 ])

@@ -6,6 +6,10 @@ import { defineConfig } from "eslint/config"
 import type { Config } from "typescript-eslint"
 
 import { parentRelativeImportPattern } from "./base.config.js"
+import {
+  parentRelativeDynamicImportSelectors,
+  reactImportBanSelectors,
+} from "./react.config.js"
 import { compiledPackageStyleImportBanPattern } from "./style-import-protocol.config.js"
 
 /**
@@ -48,6 +52,26 @@ export const routerImportBanPattern = {
   message:
     "Reusable UI must not import a router or framework-navigation package. Accept route/query/navigation state as props or context from the host instead — a component under packages/ui/* must stay mountable from any client, and importing a router directly ties it to one.",
 }
+
+/**
+ * `no-restricted-imports` (routerImportBanPattern, above) only sees static
+ * `import`/`export from` syntax — it has no visibility into
+ * `ImportExpression` (dynamic `import(...)`), so `await
+ * import("react-router-dom")` inside packages/ui/* satisfies the ban's
+ * letter while defeating its point. This is the same reason
+ * react.config.ts needs `parentRelativeDynamicImportSelectors` alongside
+ * base.config.ts's static "../" ban: ESLint's static- and dynamic-import
+ * restrictions are two separate mechanisms, and a boundary meant to hold
+ * against either call shape has to declare both.
+ */
+export const routerDynamicImportSelectors = [
+  {
+    selector:
+      "ImportExpression[source.value=/^(@tanstack\\/react-router(-devtools)?|next(\\/.*)?|react-router(-dom)?)$/]",
+    message:
+      "Reusable UI must not import a router or framework-navigation package, including via a dynamic import() — see routerImportBanPattern.",
+  },
+]
 
 /**
  * Plugin enforcing the theme protocol (`@some-ui/styles/theme`) at the one
@@ -113,6 +137,19 @@ export default defineConfig([
             routerImportBanPattern,
           ],
         },
+      ],
+      // Same "restate or it goes dark" trap as the array above, for the
+      // dynamic-import half of import restriction: react.config.ts already
+      // declares `no-restricted-syntax` globally (reactImportBanSelectors +
+      // parentRelativeDynamicImportSelectors), and this block - later in
+      // `uiRecommended`, same-or-narrower `files` glob - would silently
+      // replace that declaration for every packages/ui/* .ts/.tsx file if it
+      // didn't restate both alongside routerDynamicImportSelectors.
+      "no-restricted-syntax": [
+        "error",
+        ...reactImportBanSelectors,
+        ...parentRelativeDynamicImportSelectors,
+        ...routerDynamicImportSelectors,
       ],
     },
   },
