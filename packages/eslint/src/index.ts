@@ -5,6 +5,7 @@ import {
   baseConfig,
   buildHygieneConfig,
   buildHygienePlugin,
+  compiledPackageStyleImportBanPattern,
   depsOverrideConfig,
   eslintPluginStorybook,
   extensionCharterPlugin,
@@ -19,6 +20,9 @@ import {
   reactConfig,
   reactImportBanSelectors,
   reactPeerDependencyConfig,
+  routerDynamicImportSelectors,
+  routerImportBanPattern,
+  styleImportProtocolConfig,
   switchLintConfig,
   switchLintPlugin,
   tailwindIdiomConfig,
@@ -92,6 +96,13 @@ export { fitsTheBoxConfig, fitsTheBoxPlugin }
 export { themeProtocolConfig, themeProtocolPlugin, themeProviderBanPattern }
 export { structuralColorRatchet } from "./configs/index.js"
 
+// ── Router boundary (reusable UI must not import a router/framework) ───────
+export { routerImportBanPattern, routerDynamicImportSelectors }
+
+// ── Package-style-import boundary (an app must not import a workspace
+// package's compiled style.css — #636, paulgsc/some-ui#1146) ───────────────
+export { styleImportProtocolConfig, compiledPackageStyleImportBanPattern }
+
 // ── Lazy content-registry loading ──────────────────────────────────────────
 export { lazyRegistryConfig, lazyRegistryPlugin }
 export { tailwindIdiomConfig, tailwindIdiomPlugin }
@@ -129,11 +140,15 @@ export const uiRecommended: Config = [
  * Recommended preset for deployable apps (`apps/*`).
  *
  * Extends maishatuRecommended with the lints that only mean something for a
- * thing that ships a bundle. Today that is lazy-registry: a *host* is the
+ * thing that ships a bundle. Today that is lazy-registry (a *host* is the
  * only place a static import can short-circuit the content registry's
- * dynamic boundary, because the host is what has an entry chunk. A library
+ * dynamic boundary, because the host is what has an entry chunk — a library
  * importing a sibling library is ordinary composition, and linting it there
- * only manufactures exceptions.
+ * only manufactures exceptions) and styleImportProtocolConfig (a *host* is
+ * the only place with an index.css and a main.tsx, so it is the only place
+ * that can reopen #636 by importing a sibling package's compiled
+ * "style.css" instead of letting main.tsx pull that package's authored CSS
+ * from source).
  *
  * The parallel is `extensionsRecommended`, not `buildHygieneConfig` - the
  * latter stays in maishatuRecommended and self-limits by file glob
@@ -144,6 +159,7 @@ export const uiRecommended: Config = [
 export const appsRecommended: Config = [
   ...maishatuRecommended,
   ...lazyRegistryConfig,
+  ...styleImportProtocolConfig,
 ]
 
 /**
