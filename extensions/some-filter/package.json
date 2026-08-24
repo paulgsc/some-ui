@@ -10,7 +10,7 @@
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/eslint-kit": "workspace:*",
     "@types/firefox-webext-browser": "^120.0.4",
-    "vite": "^8.2.1"
+    "vite": "^8.2.2"
   },
   "exports": {
     ".": {
