@@ -5,6 +5,20 @@
   "routes": [
     {
       "method": "GET",
+      "path": "/activities",
+      "full_path": "/api/v1/activities",
+      "versioned": true,
+      "module": "activities"
+    },
+    {
+      "method": "GET",
+      "path": "/activities/:id",
+      "full_path": "/api/v1/activities/:id",
+      "versioned": true,
+      "module": "activities"
+    },
+    {
+      "method": "GET",
       "path": "/health",
       "full_path": "/health",
       "versioned": false,
