@@ -4,7 +4,7 @@
   },
   "description": "Shared Vite build and runtime commons for the extension workspaces",
   "devDependencies": {
-    "@playwright/test": "1.60.0",
+    "@playwright/test": "1.62.1",
     "@some-ui/tsconfig": "workspace:*",
     "@types/firefox-webext-browser": "^120.0.4"
   },

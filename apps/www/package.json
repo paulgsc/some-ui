@@ -59,7 +59,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@playwright/test": "1.60.0",
+    "@playwright/test": "1.62.1",
     "@vitejs/plugin-react": "^6.0.5",
     "rollup-plugin-visualizer": "^5.12.0",
     "vite": "^8.2.1"
