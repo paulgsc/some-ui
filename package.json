@@ -38,6 +38,7 @@
     "knip": "knip --no-progress --reporter compact",
     "check:catalog": "node scripts/check-catalog-drift.mjs",
     "dump:activity-catalog": "tsx scripts/dump-activity-catalog.ts",
+    "dump:session-duration-policy": "tsx scripts/dump-session-duration-policy.ts",
     "prepare": "husky",
     "test": "turbo test",
     "contract": "pnpm --filter @some-ui/contract-harness contract",
