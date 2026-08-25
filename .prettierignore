@@ -39,6 +39,13 @@ out/
 # and linted; only formatting is skipped.
 packages/ui/resume/src/react/generated/
 
+# @some-ui/server-routes' generated route union — same reasoning again.
+# paulgsc/server's `dump-routes -- --ts` (server#266) renders it in its own
+# style and this repo checks it in verbatim (some-ui#1040); reformatting it
+# here would make the next regeneration a diff against nothing it actually
+# produced. Still typechecked and linted; only formatting is skipped.
+packages/server-routes/src/generated/
+
 # Contentlayer & MDX
 .contentlayer
 .contentlayer.cache

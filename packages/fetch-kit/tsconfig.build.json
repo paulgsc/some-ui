@@ -7,6 +7,7 @@
     "**/*.test.ts",
     "**/*.test.tsx",
     "vite.config*.ts",
-    "vitest.*.ts"
+    "vitest.*.ts",
+    "**/__type-fixtures__/**"
   ]
 }
