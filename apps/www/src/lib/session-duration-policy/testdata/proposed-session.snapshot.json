@@ -1,0 +1,17 @@
+[
+  {
+    "activityId": "honeycomb",
+    "config": {
+      "difficulty": "standard",
+      "durationMinutes": 5,
+      "mode": "completion"
+    }
+  },
+  {
+    "activityId": "topik",
+    "config": {
+      "durationMinutes": 10,
+      "level": "beginner"
+    }
+  }
+]
