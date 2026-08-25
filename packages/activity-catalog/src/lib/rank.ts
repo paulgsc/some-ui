@@ -30,6 +30,17 @@ export type RankingSignals = {
  * ordering an actual ordering rather than four numbers that happen to be
  * different - and it means a ranking change is a change to *this block*, not
  * an emergent surprise.
+ *
+ * `WEIGHT_RECENCY` deliberately disagrees with the server's own recommender
+ * (`recommend`, `crates/db/activity/src/recommender.rs`, `paulgsc/server`,
+ * #280/RCM3), which weights *newness of the content* highest and treats a
+ * person's own recent play as a poor predictor - the opposite of this
+ * weight's direction, using the same number (`8`). This ranker answers
+ * "what do I want to open right now" for someone browsing a dashboard,
+ * where recency of play is a great predictor; the server answers "what
+ * should I do next" for someone who asked for nothing, where it is not.
+ * Both are correct for the question they answer - do not "fix" one to
+ * match the other.
  */
 const WEIGHT_RECENCY = 8
 const WEIGHT_FREQUENCY = 4
