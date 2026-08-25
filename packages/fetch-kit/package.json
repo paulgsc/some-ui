@@ -2,6 +2,9 @@
   "bugs": {
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
+  "dependencies": {
+    "@some-ui/server-routes": "workspace:*"
+  },
   "devDependencies": {
     "@some-ui/vite-config": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
