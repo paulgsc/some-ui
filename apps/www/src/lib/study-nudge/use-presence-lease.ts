@@ -17,6 +17,15 @@ import { useEffect } from "react"
 
 import { reportPresence } from "./presence"
 
+/**
+ * Fixed, not derived from the server's `NUDGE_PRESENCE_LEASE_TTL_SECONDS` —
+ * there is no route that exposes it to the client, and inventing one for
+ * this alone would be server-side scope this change doesn't otherwise need.
+ * The two are meant to move together: a deployment that configures a TTL at
+ * or below this interval (default is 75s) leaves no slack for a renewal to
+ * land before the previous lease expires, which is a server misconfiguration
+ * relative to this client, not something this timer can compensate for.
+ */
 const RENEWAL_INTERVAL_MS = 45_000
 
 /** `contextKey` is undefined while there is no session in view (e.g. the
