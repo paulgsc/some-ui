@@ -98,6 +98,8 @@ export default defineConfig({
 
       "@ws": path.resolve(import.meta.dirname, "./packages/ws/src"),
 
+      "@auth": path.resolve(import.meta.dirname, "./packages/ui/auth/src"),
+
       // --------------- Extensions ---------------
       "@drama": path.resolve(
         import.meta.dirname,
