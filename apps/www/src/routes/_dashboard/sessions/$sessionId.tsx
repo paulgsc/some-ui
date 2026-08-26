@@ -8,6 +8,7 @@ import {
 } from "@some-ui/shared"
 import { createFileRoute, Link } from "@tanstack/react-router"
 
+import { usePresenceLease } from "@/lib/study-nudge/use-presence-lease"
 import { sessionQuery, useSession } from "@/lib/tenant"
 import { LivePlayer } from "@/components/player/live-player"
 
@@ -54,6 +55,10 @@ const DraftGuard = ({ sessionId }: { sessionId: string }): JSX.Element => (
 
 const SessionPlayerRoute = (): JSX.Element => {
   const { sessionId } = Route.useParams()
+  // The same string this route's own URL and the push notification's deep
+  // link (`sessions/${id}`) carry, which is what the server compares a lease
+  // against — see `usePresenceLease`.
+  usePresenceLease(String(sessionId))
   const { data: session, isLoading } = useSession(String(sessionId))
 
   if (isLoading) return <PlayerSkeleton />
