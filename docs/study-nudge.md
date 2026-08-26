@@ -10,6 +10,8 @@ apps/www/public/sw.js                            service worker
 apps/www/src/lib/study-nudge/index.ts            the client decision (pure, tested)
 apps/www/src/lib/study-nudge/service-worker.ts   registration, display, subscription + consent
 apps/www/src/lib/study-nudge/signals.ts          telling the server what happened
+apps/www/src/lib/study-nudge/presence.ts         telling the server what's on screen, right now
+apps/www/src/lib/study-nudge/use-presence-lease.ts
 apps/www/src/lib/study-nudge/use-study-nudge.ts  the client trigger
 apps/www/src/lib/file-host-config/               where the backend is, and how to reach it
 apps/www/src/lib/tenant/http-sessions-repository.ts
@@ -96,6 +98,42 @@ Two decisions worth keeping:
   start studying because a LAN box is down. Bulk status changes report nothing
   at all — marking six drafts as scheduled is housekeeping, not six people
   sitting down.
+
+## Presence is a lease, not a veto
+
+`file_host` used to gate a notification on a WebSocket connection count, which
+was wrong: this app never opened one for the study dashboard, and the
+deployment's own `/ws` health-check prober did — so the signal was both
+structurally dead for a real user and a false positive for a bot. The fix
+replaced it with a lease the client asserts explicitly, and
+`lib/study-nudge/presence.ts` / `use-presence-lease.ts` are the client half of
+that redesign; see `paulgsc/server`'s own `docs/study-nudge.md` (same heading)
+for the full server-side writeup.
+
+`usePresenceLease(sessionId)` is mounted directly in the session player route
+(`routes/_dashboard/sessions/$sessionId.tsx`), not behind a global route
+listener, because being mounted there **is** "on a session route" — no
+separate check is needed. It posts `POST /api/v1/presence/lease` with
+`{ context_key: sessionId }` once on mount if the tab is visible, again on
+every `visibilitychange` back to visible, and on a sparse ~45s renewal in
+between — never on a fixed interval regardless of visibility, and never while
+the tab is hidden. The renewal cadence is sized against the server's default
+75s lease TTL (`NUDGE_PRESENCE_LEASE_TTL_SECONDS`); the ~30s of slack between
+them is the whole budget for a throttled background timer and network
+jitter, not room to poll faster.
+
+`context_key` is the route's own `$sessionId` param, unmodified — the same
+string the push notification's own deep link (`sessions/${id}`) and the
+server's `StudyAction::session_id()` comparison use. There is deliberately no
+lease write for the no-session "get started" state: it carries no session id
+to report, and the server never looks up a lease for that notification kind
+at all, so a write there could not suppress anything.
+
+Like `signals.ts`, a failed write is swallowed rather than retried or
+surfaced — a missed lease just means presence reads as absent, which is the
+server's safe default. Unlike `signals.ts`, this has no `DATA_MODE` branch
+beyond "the static build has no backend to write to": presence exists to
+gate server-side push suppression, which the static build has no part of.
 
 ## Consent is a precondition, not a preference
 

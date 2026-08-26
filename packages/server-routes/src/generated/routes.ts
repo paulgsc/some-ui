@@ -12,6 +12,7 @@ export type ServerRoute =
   | "/api/v1/mood_events/team/:team"
   | "/api/v1/mood_events/week/:week"
   | "/api/v1/now-playing"
+  | "/api/v1/presence/lease"
   | "/api/v1/push/subscriptions"
   | "/api/v1/push/test"
   | "/api/v1/push/vapid-key"

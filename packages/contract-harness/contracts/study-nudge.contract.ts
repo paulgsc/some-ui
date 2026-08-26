@@ -76,6 +76,16 @@ const SignalAcceptedSchema = z.object({
 })
 
 /**
+ * `ObserveLeaseResponse` — `presence.rs`'s handler echoes `context_key` back
+ * verbatim and answers with its own clock, not the client's, since a lease's
+ * freshness is judged server-side against `observed_at` at read time.
+ */
+const PresenceLeaseSchema = z.object({
+  context_key: z.string(),
+  observed_at: z.string(),
+})
+
+/**
  * `SessionRecord`, which serialises `camelCase` because the client's type is
  * the contract and the server is the side that moved.
  *
@@ -163,6 +173,22 @@ export const contracts = [
     mutates: true,
     request: { body: { endpoint: FAKE_SUBSCRIPTION.endpoint } },
     expect: { status: 200, schema: DeleteResponseSchema },
+  }),
+
+  defineContract({
+    id: "presence.lease",
+    module: "presence",
+    method: "POST",
+    path: "/presence/lease",
+    summary:
+      "assert presence on a session id, so a nudge can be suppressed for it",
+    mutates: true,
+    // `context_key` must be exactly the string `nudge::presence` compares
+    // against `StudyAction::session_id()` — this probe's value is fake, but
+    // the shape (a bare non-empty string, not a slug or a wrapped object) is
+    // the thing worth pinning.
+    request: { body: { context_key: "contract-harness-probe" } },
+    expect: { status: 200, schema: PresenceLeaseSchema },
   }),
 
   defineContract({

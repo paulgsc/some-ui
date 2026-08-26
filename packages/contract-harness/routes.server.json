@@ -102,6 +102,13 @@
       "module": "mood_events"
     },
     {
+      "method": "POST",
+      "path": "/presence/lease",
+      "full_path": "/api/v1/presence/lease",
+      "versioned": true,
+      "module": "presence"
+    },
+    {
       "method": "DELETE",
       "path": "/push/subscriptions",
       "full_path": "/api/v1/push/subscriptions",
