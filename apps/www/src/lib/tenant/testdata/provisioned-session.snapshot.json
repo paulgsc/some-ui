@@ -1,0 +1,27 @@
+{
+  "id": "session-fixture-provisioned",
+  "name": "Hangul Honeycomb + TOPIK Study",
+  "status": "scheduled",
+  "activities": [
+    {
+      "activityId": "honeycomb",
+      "config": {
+        "difficulty": "standard",
+        "durationMinutes": 5,
+        "mode": "completion"
+      }
+    },
+    {
+      "activityId": "topik",
+      "config": {
+        "durationMinutes": 10,
+        "level": "beginner"
+      }
+    }
+  ],
+  "scenes": [],
+  "layoutMode": "basic",
+  "totalDurationMs": 900000,
+  "createdAt": "2026-08-25T09:00:00+00:00",
+  "updatedAt": "2026-08-25T09:00:00+00:00"
+}
