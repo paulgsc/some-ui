@@ -321,7 +321,7 @@ export function removeDarkTheme(): void {
 
 // ── Legacy filter ─────────────────────────────────────────────────────────────
 
-const LEGACY_FILTER_STYLE_ID = "__sw_legacy_filter"
+export const LEGACY_FILTER_STYLE_ID = "__sw_legacy_filter"
 
 function buildFilterString(config: FilterConfig): string {
   const parts: Array<string> = []

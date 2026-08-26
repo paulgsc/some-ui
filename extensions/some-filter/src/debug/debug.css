@@ -1,0 +1,230 @@
+/* Diagnostics page styling — deliberately plain: this page is a debugging
+ * instrument, not product surface, and it must stay readable when the thing
+ * it reports on is broken. Structure and naming mirror suspender-ledger's own
+ * debug.css (extensions/suspender-ledger/src/debug/debug.css) — the
+ * reference diagnostics page in this workspace — with an `sf-` prefix instead
+ * of `sl-` and one addition this extension needs that suspender-ledger does
+ * not: a session picker (coverage-observability.ts's header explains why a
+ * per-tab session, not a single background worker, is the unit here).
+ *
+ * Dark unconditionally, matching popup.css: an extension whose whole job is
+ * forcing vendor pages dark should not need itself pointed at itself. */
+
+:root {
+  color-scheme: dark;
+
+  --sf-bg: #1a1a1a;
+  --sf-fg: #e0e0e0;
+  --sf-muted: #8a8a8a;
+  --sf-panel: #232326;
+  --sf-border: rgb(255 255 255 / 8%);
+  --sf-ok: #4ade80;
+  --sf-warn: #fbbf24;
+  --sf-bad: #f87171;
+  --sf-accent: #6aa6ff;
+}
+
+#app {
+  margin: 0 auto;
+  max-width: 60rem;
+  padding: 1.5rem 1rem 4rem;
+}
+
+.sf-head {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.sf-head h1 {
+  font-size: 1.15rem;
+  margin: 0;
+}
+
+.sf-sub {
+  color: var(--sf-muted);
+  font-size: 0.8rem;
+}
+
+.sf-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+button {
+  background: var(--sf-panel);
+  border: 1px solid var(--sf-border);
+  border-radius: 0.35rem;
+  color: var(--sf-fg);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.35rem 0.75rem;
+}
+
+button:hover {
+  border-color: var(--sf-accent);
+}
+
+section {
+  background: var(--sf-panel);
+  border: 1px solid var(--sf-border);
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.9rem 1rem;
+}
+
+section > h2 {
+  color: var(--sf-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  margin: 0 0 0.75rem;
+  text-transform: uppercase;
+}
+
+.sf-picker {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.sf-picker select {
+  background: var(--sf-bg);
+  border: 1px solid var(--sf-border);
+  border-radius: 0.35rem;
+  color: var(--sf-fg);
+  flex: 1;
+  font: inherit;
+  font-size: 0.8rem;
+  min-width: 14rem;
+  padding: 0.35rem 0.5rem;
+}
+
+.sf-score {
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.sf-score small {
+  color: var(--sf-muted);
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
+.ok {
+  color: var(--sf-ok);
+}
+
+.warn {
+  color: var(--sf-warn);
+}
+
+.bad {
+  color: var(--sf-bad);
+}
+
+.muted {
+  color: var(--sf-muted);
+}
+
+ul.sf-checks {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+}
+
+ul.sf-checks li {
+  border-top: 1px solid var(--sf-border);
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 1.25rem 1fr;
+  padding: 0.35rem 0;
+}
+
+ul.sf-checks .sf-desc {
+  color: var(--sf-muted);
+  font-size: 0.8rem;
+}
+
+.sf-grid {
+  display: grid;
+  gap: 0.5rem 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+}
+
+.sf-metric {
+  border-bottom: 1px dotted var(--sf-border);
+  display: flex;
+  font-variant-numeric: tabular-nums;
+  gap: 0.5rem;
+  justify-content: space-between;
+  padding: 0.2rem 0;
+}
+
+.sf-metric .k {
+  color: var(--sf-muted);
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+table.sf-events {
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  width: 100%;
+}
+
+table.sf-events th {
+  color: var(--sf-muted);
+  font-weight: 500;
+  padding: 0.25rem 0.5rem 0.4rem 0;
+  text-align: left;
+}
+
+table.sf-events td {
+  border-top: 1px solid var(--sf-border);
+  padding: 0.2rem 0.5rem 0.2rem 0;
+  vertical-align: top;
+}
+
+table.sf-events td.detail {
+  color: var(--sf-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  word-break: break-word;
+}
+
+.sf-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+
+.sf-filter input,
+.sf-filter select {
+  background: var(--sf-bg);
+  border: 1px solid var(--sf-border);
+  border-radius: 0.35rem;
+  color: var(--sf-fg);
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.5rem;
+}
+
+.sf-empty {
+  color: var(--sf-muted);
+  font-size: 0.85rem;
+  padding: 0.5rem 0;
+}
+
+.sf-scroll {
+  max-height: 28rem;
+  overflow-y: auto;
+}

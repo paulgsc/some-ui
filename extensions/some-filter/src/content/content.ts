@@ -4,6 +4,16 @@ import {
 } from "@filter/adapter/pipeline"
 import { DEFAULT_SWATCH_ID, SWATCHES } from "@filter/adapter/swatches"
 import {
+  createCoverageRecorder,
+  removeFromIndex,
+  touchIndex,
+  type CoverageRecorder,
+} from "@filter/lib/content/coverage-observability"
+import {
+  createCoverageWatchdog,
+  type CoverageWatchdog,
+} from "@filter/lib/content/coverage-watchdog"
+import {
   isExtensionMessage,
   isGetTabFilterStateResponse,
 } from "@filter/lib/content/guard"
@@ -59,7 +69,14 @@ function writeCachedState(state: TabState): void {
 
 let currentState: TabState = DEFAULT_TAB_STATE
 let filterConfig: FilterConfig = DEFAULT_FILTER
-let autoWasApplied = false
+
+// True between yt-navigate-start and yt-navigate-finish. Guards runAutoTheme's
+// onFire below: the route swap's own DOM churn can go quiet for pipeline.ts's
+// 50ms debounce before finish ever fires, letting the pipeline's own
+// MutationObserver drive an onFire round on a still-mid-swap page and drop
+// the veil yt-navigate-start just re-armed. Deferred, not dropped — finish's
+// rescan() below runs its own synchronous onFire round with this false again.
+let navigatingAway = false
 
 // The content session's epoch source (Definition 5.4). Reset on every
 // SPA-navigation re-patch (Theorem D.1(a)) — a full page reset (refresh)
@@ -67,9 +84,67 @@ let autoWasApplied = false
 const sessionLifecycle = createSessionLifecycle()
 let contentSession: ContentSession | null = null
 
+// `crypto.randomUUID()` requires a secure context; a content script runs in
+// the page's own origin, so on plain http:// pages it is undefined and
+// throws here — before bootInit()'s try/catch ever runs. getRandomValues()
+// carries no such restriction, so build a v4 UUID from that instead.
+function safeRandomUUID(): string {
+  if (typeof crypto.randomUUID === "function") return crypto.randomUUID()
+  const bytes = crypto.getRandomValues(new Uint8Array(16))
+  bytes[6] = ((bytes[6] ?? 0) & 0x0f) | 0x40
+  bytes[8] = ((bytes[8] ?? 0) & 0x3f) | 0x80
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+}
+
+// ── Coverage observability ───────────────────────────────────────────────────
+//
+// One recorder per content-script instance (see coverage-observability.ts's
+// header for why: a shared cross-tab storage key would race). The watchdog
+// re-reads the live DOM on every mutation that could touch the veil, the
+// dark-theme attribute, or the legacy filter's attribute/<style> pair, and
+// evaluates coverage-observability.ts's invariants against what it actually
+// finds — not against what this module believes it last did.
+const observabilitySessionId = safeRandomUUID()
+const observabilityRecorder: CoverageRecorder = createCoverageRecorder(
+  observabilitySessionId,
+  true
+)
+const coverageWatchdog: CoverageWatchdog = createCoverageWatchdog(
+  observabilityRecorder,
+  () => currentState
+)
+
+function touchObservabilityIndex(): void {
+  void touchIndex({
+    sessionId: observabilitySessionId,
+    origin: location.origin,
+    title: document.title,
+    tabState: currentState,
+    updatedAt: Date.now(),
+  })
+}
+
 function applyState(state: TabState): void {
+  const previous = currentState
   currentState = state
   writeCachedState(state)
+  observabilityRecorder.record({
+    kind: "state.changed",
+    detail: { from: previous, to: state },
+  })
+  touchObservabilityIndex()
+
+  // The watchdog only needs to run while there is something to hold
+  // coverage of — "off" is the one state Remark C.1's invariant does not
+  // apply to (coverage-observability.ts's CoverageHeld already encodes
+  // this), so tearing it down there is just avoiding dead observer
+  // overhead, not a correctness requirement.
+  if (state === "off") {
+    coverageWatchdog.teardown()
+  } else {
+    coverageWatchdog.observe()
+  }
 
   // Auto's pipeline owns its own MutationObserver — leaving auto (or
   // re-entering it) must stop the previous one before anything else runs,
@@ -84,16 +159,19 @@ function applyState(state: TabState): void {
     // for snapshot isolation; the pipeline's onFire hook handles veil teardown
     // once the first decide/realize cycle actually settles.
     runAutoTheme()
+    coverageWatchdog.check("apply-state:auto")
     return
   }
 
   if (state === "legacy") {
     applyTheme("legacy", filterConfig)
+    coverageWatchdog.check("apply-state:legacy")
     return
   }
 
   // off
   disablePrepaint()
+  coverageWatchdog.check("apply-state:off")
 
   updateDebugAttrs()
 }
@@ -124,16 +202,18 @@ function runAutoTheme(): void {
   // commitVisualState()/disablePrepaint() run on *every* fire, not just the
   // first: both are idempotent no-ops once the veil is already down, and
   // re-running them unconditionally is what lets the SPA re-patch path
-  // (yt-navigate-finish re-shows the veil, below) reuse this same callback
-  // to lift it again, instead of needing its own copy of this logic.
+  // (yt-navigate-start re-shows the veil, below; yt-navigate-finish's
+  // rescan() drives back into this same callback) reuse this same logic
+  // to lift it again, instead of needing its own copy of it.
   contentSession = createContentSession(
     SWATCHES[DEFAULT_SWATCH_ID],
     sessionLifecycle,
     (actions) => {
       const applied = actions.some((action) => action.kind === "activate-theme")
-      autoWasApplied = applied
       document.body.dataset.swThemeApplied = applied ? "dark" : "none"
       updateDebugAttrs()
+
+      if (navigatingAway) return
 
       if (applied) {
         commitVisualState()
@@ -156,6 +236,14 @@ function updateDebugAttrs(): void {
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 function init(): void {
+  // Exposed for the debug page's session picker and for e2e assertions —
+  // the same role updateDebugAttrs()'s swTabState/swThemeApplied already
+  // play, just for the observability session rather than the theme state.
+  document.body.dataset.swObservabilitySession = observabilitySessionId
+
+  observabilityRecorder.count("sessions_started")
+  observabilityRecorder.record({ kind: "session.start" })
+
   // Restore the last-known state synchronously from sessionStorage so that
   // legacy/off tabs can apply the correct visual state before the background
   // responds. For a cold background this avoids a 100–300 ms window of
@@ -201,27 +289,74 @@ function init(): void {
     }
   })()
 
-  // SPA navigation re-patch: re-scan after pushState navigations and
-  // YouTube's custom navigation event so newly rendered subtrees are
-  // themed even when no new DOM nodes trigger the Sensor's own observer
-  // (Theorem D.1(a) — same-document navigation, epoch advances). This is
-  // no longer a bespoke re-patch call: it is the same coalesced
-  // decide/realize cycle every other mutation goes through, re-triggered
-  // by hand for an event the Sensor's MutationObserver cannot see itself.
-  // Note: third-party tab suspenders that replace the page with their own
-  // origin URL are out-of-process and cannot be covered here; our re-
-  // engagement on the real-URL reload is handled by the normal init path.
+  // SPA navigation re-patch: YouTube's Polymer router swaps large portions
+  // of the document — up to and including `<head>`/`<body>` themselves —
+  // around its own `yt-navigate-*` events, independent of any pushState
+  // the Sensor's own MutationObserver would otherwise see (Theorem
+  // D.1(a) — same-document navigation, epoch advances). Note: third-party
+  // tab suspenders that replace the page with their own origin URL are
+  // out-of-process and cannot be covered here; our re-engagement on the
+  // real-URL reload is handled by the normal init path.
   //
-  // We re-enable the veil before rescanning so there is no frame where
-  // newly rendered vendor elements are visible without the dark theme
-  // token — the pipeline's onFire hook (above) lifts it again once this
-  // round settles.
+  // Two events, two jobs:
+  //   - yt-navigate-start fires *before* the router tears down/rebuilds the
+  //     outgoing route. Re-arming the veil here — unconditionally, for
+  //     every non-"off" state — covers the swap itself. Reacting only on
+  //     *finish* (the previous behavior) re-covers the page only after the
+  //     native, unthemed swap has already painted for at least one frame:
+  //     that can shorten a flash, never prevent it.
+  //   - yt-navigate-finish fires once the swap has settled: auto re-scans
+  //     (its onFire hook, registered above, decides whether to commit or
+  //     release the veil); legacy re-applies its filter, since a
+  //     head/body swap can carry off its <style> tag along with whatever
+  //     it replaced.
+  //
+  // Previously this whole re-patch was gated on `autoWasApplied`, which is
+  // only ever set from inside auto's own onFire callback — every
+  // legacy-mode tab, and any auto-mode tab whose very first verdict was
+  // "no theme needed", got no protection at all against this event for the
+  // rest of the tab's life. Both handlers key off `currentState` directly
+  // instead, so every mode is covered.
+  window.addEventListener("yt-navigate-start", () => {
+    observabilityRecorder.count("nav_starts")
+    observabilityRecorder.record({ kind: "nav.start" })
+    navigatingAway = true
+    if (currentState === "off") return
+    enablePrepaint()
+    coverageWatchdog.check("nav-start")
+  })
+
   window.addEventListener("yt-navigate-finish", () => {
-    if (autoWasApplied) {
+    observabilityRecorder.count("nav_finishes")
+    observabilityRecorder.record({ kind: "nav.finish" })
+    navigatingAway = false
+
+    if (currentState === "auto") {
       sessionLifecycle.resetContent()
-      enablePrepaint()
       contentSession?.rescan()
+      coverageWatchdog.check("nav-finish:auto")
+      return
     }
+
+    if (currentState === "legacy") {
+      applyTheme("legacy", filterConfig)
+      coverageWatchdog.check("nav-finish:legacy")
+      return
+    }
+
+    disablePrepaint()
+    coverageWatchdog.check("nav-finish:off")
+  })
+
+  // Real navigation away (or the tab closing) — flush whatever this session
+  // recorded and drop its index entry so the debug page's picker does not
+  // accumulate dead sessions. Best-effort: pagehide is not guaranteed on
+  // every teardown path (a killed process gets neither), but it is the best
+  // signal available from a content script.
+  window.addEventListener("pagehide", () => {
+    coverageWatchdog.teardown()
+    void observabilityRecorder.dispose()
+    void removeFromIndex(observabilitySessionId)
   })
 }
 

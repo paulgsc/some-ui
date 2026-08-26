@@ -91,25 +91,22 @@ test.describe("the prepaint veil under a previously-applied filter, across a new
     await page.waitForTimeout(300)
 
     // Precondition: the first session already themed this page (established
-    // by the sibling test above) — autoWasApplied is exactly what gates
-    // content.ts's yt-navigate-finish handler below.
+    // by the sibling test above).
     const firstSession = await page.evaluate(
       () => document.body.dataset["swThemeApplied"]
     )
     expect(firstSession).toBe("dark")
 
-    // content.ts's yt-navigate-finish listener is a plain window event
-    // listener, not scoped to youtube.com — dispatching it here simulates an
-    // SPA-style re-navigation within the same document. It resets the
-    // content session's epoch (sessionLifecycle.resetContent(), the
-    // codebase's own "new session" boundary — Definition 5.4/Theorem D.1(a))
-    // and re-arms the veil via enablePrepaint(), synchronously followed by a
-    // fresh rescan()/decide()/realize() round. Everything here happens
-    // inside one page.evaluate() call so the veil's computed background is
-    // sampled before commitVisualState()'s requestAnimationFrame pair can
-    // tear it back down — the veil removal is scheduled, not synchronous.
+    // content.ts's yt-navigate-start/yt-navigate-finish listeners are plain
+    // window event listeners, not scoped to youtube.com — dispatching them
+    // here simulates an SPA-style re-navigation within the same document.
+    // yt-navigate-start re-arms the veil via enablePrepaint(); this test
+    // only needs that half (the veil's *declared* color, sampled before
+    // yt-navigate-finish's rescan/commitVisualState could tear it back
+    // down) — dispatching -finish too would race the veil-removal rAF pair
+    // against this synchronous read for no benefit.
     const veil = await page.evaluate(() => {
-      window.dispatchEvent(new Event("yt-navigate-finish"))
+      window.dispatchEvent(new Event("yt-navigate-start"))
       const el = document.getElementById("__sw_prepaint_veil")
       return {
         present: el !== null,
