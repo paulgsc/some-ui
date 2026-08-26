@@ -76,6 +76,19 @@ let filterConfig: FilterConfig = DEFAULT_FILTER
 const sessionLifecycle = createSessionLifecycle()
 let contentSession: ContentSession | null = null
 
+// `crypto.randomUUID()` requires a secure context; a content script runs in
+// the page's own origin, so on plain http:// pages it is undefined and
+// throws here — before bootInit()'s try/catch ever runs. getRandomValues()
+// carries no such restriction, so build a v4 UUID from that instead.
+function safeRandomUUID(): string {
+  if (typeof crypto.randomUUID === "function") return crypto.randomUUID()
+  const bytes = crypto.getRandomValues(new Uint8Array(16))
+  bytes[6] = ((bytes[6] ?? 0) & 0x0f) | 0x40
+  bytes[8] = ((bytes[8] ?? 0) & 0x3f) | 0x80
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+}
+
 // ── Coverage observability ───────────────────────────────────────────────────
 //
 // One recorder per content-script instance (see coverage-observability.ts's
@@ -84,7 +97,7 @@ let contentSession: ContentSession | null = null
 // dark-theme attribute, or the legacy filter's attribute/<style> pair, and
 // evaluates coverage-observability.ts's invariants against what it actually
 // finds — not against what this module believes it last did.
-const observabilitySessionId = crypto.randomUUID()
+const observabilitySessionId = safeRandomUUID()
 const observabilityRecorder: CoverageRecorder = createCoverageRecorder(
   observabilitySessionId,
   true
