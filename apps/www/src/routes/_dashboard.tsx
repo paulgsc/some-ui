@@ -20,7 +20,7 @@ import {
   useRouterState,
 } from "@tanstack/react-router"
 import { FileText, ListVideo, Settings, User } from "lucide-react"
-import { cn } from "some-ui-utils"
+import { cn, useIsMobile } from "some-ui-utils"
 
 import { AmbientIntentStatus } from "@/lib/intent/render"
 import { useMigrationSignal } from "@/lib/tenant/migration-signal"
@@ -126,28 +126,50 @@ const DashboardLayout = (): JSX.Element => {
     select: (state) => state.location.pathname,
   })
   const isViewportRoute = isViewportPath(pathname)
+  const isMobile = useIsMobile()
   const migrationSignal = useMigrationSignal()
+
+  /**
+   * The one place the shell gets out of the way entirely.
+   *
+   * On the session player route at phone width, `V` is the screen. The 56px
+   * header and the 24px inset are each defensible on their own and together
+   * cost roughly a fifth of a 390×780 viewport — spent on chrome, on the one
+   * route whose content is the reason the person is there. Everything the
+   * header carried is still reachable, folded into the session's own control
+   * (`components/player/session-chrome.tsx`), which paints on the overlay
+   * plane above `V` rather than taking a band out of it
+   * (`docs/session-viewport/01-overflow-doctrine-and-audit.md` §2).
+   *
+   * Scoped to this route and this width deliberately. Every other route is
+   * an ordinary scrolling document that wants its header, and a wide session
+   * player has the room for one.
+   */
+  const bareViewport = isViewportRoute && isMobile
 
   return (
     <SidebarProvider className={cn(isViewportRoute && "h-svh overflow-hidden")}>
       <DashboardSidebarContent pathname={pathname} />
       <SidebarInset>
-        <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
-          <SidebarTrigger />
-          <ThemeSwitcher />
-          {/* Layer 1 of audio disclosure: a standing indicator of what this
-              app may play, always visible and never interrupting. It is the
-              canonical place a person learns this app has audio, and the
-              place the first-use notices point back to. */}
-          <AudioIndicator />
-          {/* #947: sessions-backend.ts's partial-migration outcome, ambient
-              per #940 - quiet unless there's something to say, and never
-              silent when there is. */}
-          <AmbientIntentStatus state={migrationSignal} className="ml-2" />
-        </header>
+        {!bareViewport && (
+          <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+            <SidebarTrigger />
+            <ThemeSwitcher />
+            {/* Layer 1 of audio disclosure: a standing indicator of what this
+                app may play, always visible and never interrupting. It is the
+                canonical place a person learns this app has audio, and the
+                place the first-use notices point back to. */}
+            <AudioIndicator />
+            {/* #947: sessions-backend.ts's partial-migration outcome, ambient
+                per #940 - quiet unless there's something to say, and never
+                silent when there is. */}
+            <AmbientIntentStatus state={migrationSignal} className="ml-2" />
+          </header>
+        )}
         <div
           className={cn(
-            "flex-1 p-6",
+            "flex-1",
+            bareViewport ? "p-0" : "p-6",
             // scroll-intent: page — an ordinary document route scrolls as a
             // page. The viewport route is the bounded one, and takes the
             // overflow-hidden branch precisely so it cannot (docs/ui-fit,

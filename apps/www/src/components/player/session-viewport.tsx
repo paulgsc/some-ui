@@ -2,8 +2,10 @@ import type { JSX } from "react"
 import { useEffect, useMemo } from "react"
 import { componentRegistry } from "@some-ui/content-registry"
 import {
+  cn,
   setSessionKey,
   setSuspended,
+  useIsMobile,
   useSceneLifetimes,
   useSessionKey,
   useSuspended,
@@ -32,6 +34,22 @@ export const SessionViewport = ({
   session,
 }: SessionViewportProps): JSX.Element => {
   const activeLifetimes = useSceneLifetimes()
+  /**
+   * The live layout editor is a desktop authoring affordance, and on a phone
+   * it is not merely cramped — it is unreachable. Every one of its gestures
+   * assumes hardware that is not there: `E` to enter it needs a keyboard,
+   * right-click resize needs a mouse, and dragging a topology needs a
+   * pointer with hover. What it leaves behind on a small screen is a button
+   * advertising a mode that cannot be entered, a border and a corner radius
+   * inset from the edges of a screen with no room to spare, and an activity
+   * squeezed into the remainder.
+   *
+   * So on a phone `V` is the screen: no editor, no frame, no inset. The hook
+   * below still runs — it holds this session's layout and its autosave, both
+   * of which matter regardless of who can edit them — but nothing it exposes
+   * for editing is rendered.
+   */
+  const isMobile = useIsMobile()
   const {
     editMode,
     toggleEditMode,
@@ -112,8 +130,18 @@ export const SessionViewport = ({
     [effectiveLifetimes, sceneProps]
   )
 
+  const editable = !isMobile
+
   return (
-    <div className="bg-muted relative w-full flex-1 min-h-0 overflow-hidden rounded-lg border">
+    <div
+      className={cn(
+        "bg-muted relative w-full flex-1 min-h-0 overflow-hidden",
+        // Full-bleed on a phone. The frame is what tells a desktop user
+        // where the session viewport ends and the dashboard resumes; on a
+        // phone there is no dashboard around it to distinguish it from.
+        !isMobile && "rounded-lg border"
+      )}
+    >
       {activeLifetimes.length === 0 ? (
         <div className="absolute inset-0 flex items-center justify-center">
           <p className="text-muted-foreground text-sm">Press Play to begin</p>
@@ -125,11 +153,11 @@ export const SessionViewport = ({
             activeLifetimes={renderedLifetimes}
             componentRegistry={componentRegistry}
             enableFocus={false}
-            collapseUnbound={!editMode}
+            collapseUnbound={editable ? !editMode : true}
             onLeafResize={onLeafResize}
           />
 
-          {editMode && (
+          {editable && editMode && (
             <LiveEditOverlay
               tree={tree}
               onTreeChange={onTreeChange}
@@ -139,22 +167,30 @@ export const SessionViewport = ({
             />
           )}
 
-          <button
-            type="button"
-            onClick={toggleEditMode}
-            className="absolute top-2 right-2 z-50 rounded-md border bg-background/90 px-2 py-1 text-xs text-muted-foreground shadow-sm hover:text-foreground"
-          >
-            {editMode
-              ? "Editing layout — press E to exit"
-              : "Press E to edit layout"}
-          </button>
+          {editable && (
+            <button
+              type="button"
+              onClick={toggleEditMode}
+              className="absolute top-2 right-2 z-50 rounded-md border bg-background/90 px-2 py-1 text-xs text-muted-foreground shadow-sm hover:text-foreground"
+            >
+              {editMode
+                ? "Editing layout — press E to exit"
+                : "Press E to edit layout"}
+            </button>
+          )}
         </>
       )}
 
-      <AmbientIntentStatus
-        state={autosaveStatus}
-        className="absolute bottom-2 left-2 z-50 rounded-md border bg-background/90 px-2 py-1 shadow-sm"
-      />
+      {/* The layout autosave's failure notice. Suppressed on a phone along
+          with the editor that produces the edits: nothing there can change a
+          layout, so a notice about a layout write failing is a report about
+          a thing the reader did not do and cannot retry. */}
+      {editable && (
+        <AmbientIntentStatus
+          state={autosaveStatus}
+          className="absolute bottom-2 left-2 z-50 rounded-md border bg-background/90 px-2 py-1 shadow-sm"
+        />
+      )}
     </div>
   )
 }
