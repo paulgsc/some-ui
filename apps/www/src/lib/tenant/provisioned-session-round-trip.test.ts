@@ -35,6 +35,96 @@ const rawFixture = readFileSync(
   "utf-8"
 )
 
+const SESSION_STATUSES = new Set([
+  "draft",
+  "scheduled",
+  "active",
+  "paused",
+  "completed",
+])
+
+/**
+ * `JSON.parse` returns `any`, so `const record: SessionRecord =
+ * JSON.parse(...)` performs neither compile-time nor runtime checking - a
+ * regenerated fixture that dropped or renamed a required field, or shipped
+ * a malformed nested `activities` entry, would still "pass" every
+ * assertion below that doesn't happen to touch it. This is a minimal
+ * structural check, not a full schema (`some-ui#1052`'s own "hand-written
+ * schema" acceptance criterion is that, and it doesn't exist yet) - just
+ * enough to make the round-trip claim this file's own docstring makes
+ * actually enforced rather than assumed.
+ */
+function assertIsSessionRecord(value: unknown): asserts value is SessionRecord {
+  if (typeof value !== "object" || value === null) {
+    throw new Error("fixture did not parse to an object")
+  }
+  // `object` has no index signature, so reading named fields off it needs a
+  // cast - this is the trust boundary this function exists to check, the
+  // same justification `useLocalStorage`'s own deserializer gives its
+  // otherwise-identical `as T`, except every field below is actually
+  // verified rather than assumed.
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see above
+  const record = value as Record<string, unknown>
+
+  if (typeof record.id !== "string") {
+    throw new Error(`fixture.id must be a string, got ${typeof record.id}`)
+  }
+  if (typeof record.name !== "string") {
+    throw new Error(`fixture.name must be a string, got ${typeof record.name}`)
+  }
+  if (typeof record.createdAt !== "string") {
+    throw new Error(
+      `fixture.createdAt must be a string, got ${typeof record.createdAt}`
+    )
+  }
+  if (typeof record.updatedAt !== "string") {
+    throw new Error(
+      `fixture.updatedAt must be a string, got ${typeof record.updatedAt}`
+    )
+  }
+  if (
+    typeof record.status !== "string" ||
+    !SESSION_STATUSES.has(record.status)
+  ) {
+    throw new Error(
+      `fixture.status "${String(record.status)}" is not a known SessionStatus`
+    )
+  }
+  if (record.layoutMode !== "basic" && record.layoutMode !== "advanced") {
+    throw new Error(
+      `fixture.layoutMode "${String(record.layoutMode)}" is not "basic" or "advanced"`
+    )
+  }
+  if (typeof record.totalDurationMs !== "number") {
+    throw new Error("fixture.totalDurationMs must be a number")
+  }
+  if (!Array.isArray(record.scenes)) {
+    throw new Error("fixture.scenes must be an array")
+  }
+  if (!Array.isArray(record.activities)) {
+    throw new Error("fixture.activities must be an array")
+  }
+  for (const activity of record.activities) {
+    if (typeof activity !== "object" || activity === null) {
+      throw new Error("every activities[] entry must be an object")
+    }
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see above
+    const { activityId, config } = activity as Record<string, unknown>
+    if (typeof activityId !== "string") {
+      throw new Error("activities[].activityId must be a string")
+    }
+    if (typeof config !== "object" || config === null) {
+      throw new Error("activities[].config must be an object")
+    }
+  }
+}
+
+function loadFixture(): SessionRecord {
+  const parsed: unknown = JSON.parse(rawFixture)
+  assertIsSessionRecord(parsed)
+  return parsed
+}
+
 /**
  * `paulgsc/server#282`'s own acceptance criterion: "a provisioned session
  * round-trips through `SessionRepository` and deserialises into the
@@ -46,7 +136,7 @@ const rawFixture = readFileSync(
  * never a reimplementation of what any of them should produce.
  */
 describe("a server-provisioned session round-trips into the client's SessionRecord (server#282)", () => {
-  const record: SessionRecord = JSON.parse(rawFixture)
+  const record: SessionRecord = loadFixture()
 
   it("deserialises into a well-formed SessionRecord", () => {
     expect(record.id).toMatch(/^session-/)
