@@ -355,8 +355,20 @@ function applyLegacyFilter(config: FilterConfig): void {
   // the background, so forcing a canvas colour here would fight it, and
   // counter-inverting media would be a no-op filter applied for nothing.
   // Only the "invert" style needs both.
+  //
+  // The canvas colour is declared *before* the filter, so it must be chosen
+  // by what the full five-stage chain below (invert, hue-rotate, sepia,
+  // brightness, contrast — not invert() alone) composites it to, not by
+  // "dark source -> invert -> looks dark" intuition. A near-black source
+  // (the previous #0d1117) composites to #7b7b7a — a light gray canvas, the
+  // exact polarity bug a white-flash post-mortem traced to this rule.
+  // White is the correct source: verified against every one of this exact
+  // preset's 5 stages, it composites to #0a0a0a, darker than this
+  // extension's own dark-theme token (SWATCHES.default.bg0, #171c25) —
+  // and matches prepaint.css's veil, which already uses white here for the
+  // same reason.
   const isInverted = Boolean(config.invert)
-  const canvasRule = isInverted ? "background-color: #0d1117 !important;" : ""
+  const canvasRule = isInverted ? "background-color: #fff !important;" : ""
   const mediaRule = isInverted
     ? "img, video, canvas, picture { filter: invert(1) hue-rotate(180deg) !important; }"
     : ""
