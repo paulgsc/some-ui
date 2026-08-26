@@ -1,4 +1,4 @@
-export { Leetype } from "./leetype"
+export { TypingSession } from "./typing-session"
 export { ExerciseCard } from "./exercise-card"
 export { ExerciseHeader } from "./exercise-header"
 export { PromptPanel } from "./prompt-panel"

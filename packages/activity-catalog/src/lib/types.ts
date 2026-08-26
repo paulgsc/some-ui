@@ -98,6 +98,52 @@ type ActivityAudio = {
   required?: boolean
 }
 
+/**
+ * The input channels an activity can be played through.
+ *
+ * A closed union owned here for the same reason `AudioChannelId` is: this is
+ * the producing end — an activity states what it asks of a person's hands —
+ * and the surfaces that disclose it are consumers of the vocabulary.
+ */
+export type InputModalityId = "keyboard" | "touch"
+
+/**
+ * What an activity asks of a person's hands, in their terms.
+ *
+ * The sibling of `ActivityAudio` above, and it exists for the same reason:
+ * a person choosing an activity on their phone deserves to know before the
+ * click what it is going to ask them to do, not after.
+ *
+ * The case that forced it is LeetType. Its large-screen surface is a typing
+ * probe — the player produces code under a masking loop — and its
+ * small-screen surface is not a narrower version of that but a different
+ * exercise: read a change, say what it does (`@some-ui/leetype`'s
+ * `LTY-MOBILE`, `docs/leetype/README.md`). A single description written for
+ * one of those is false on the other, and "Prove one competency at a time by
+ * typing the smallest code that shows it" was false on every phone that read
+ * it.
+ *
+ * Declared per-activity rather than as one global note for the same reason
+ * audio is: modules genuinely differ. Honeycomb is a tap game at every width;
+ * TOPIK reading is the same on both. Only an activity that actually changes
+ * shape needs to say so.
+ */
+type ActivityInput = {
+  /** Every modality this activity can be played through, across all widths. */
+  modalities: ReadonlyArray<InputModalityId>
+  /**
+   * One line for an activity card, about the experience rather than the
+   * mechanism — the same register `ActivityAudio.blurb` is written in.
+   */
+  blurb: string
+  /**
+   * True when the small-screen interaction is a *different exercise*, not a
+   * reflow of the same one. Only such an activity earns the extra sentence;
+   * for everything else the blurb alone is the right weight.
+   */
+  switchesOnSmallScreens?: boolean
+}
+
 export type ActivityDefinition = {
   id: ActivityId
   name: string
@@ -111,6 +157,8 @@ export type ActivityDefinition = {
   defaultConfig: ActivityConfigValues
   /** Absent means the activity is silent and needs no disclosure at all. */
   audio?: ActivityAudio
+  /** Absent means the activity asks nothing worth disclosing before the click. */
+  input?: ActivityInput
   /** Absent means `"ready"` - the quiet default. */
   maturity?: ActivityMaturity
   /**

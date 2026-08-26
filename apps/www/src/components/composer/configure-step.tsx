@@ -20,6 +20,7 @@ import {
 
 import { usePagination } from "@/hooks/use-pagination"
 import { ActivityIcon } from "@/components/activity-icon"
+import { ActivityInputNote } from "@/components/activity/activity-input"
 import { PaginationControls } from "@/components/pagination-controls"
 
 /** Each card is tall (multiple fields), so a smaller page keeps a page's worth of cards on screen. */
@@ -147,6 +148,16 @@ export const ConfigureStep = ({
                   </div>
                 )
               })}
+              {/* Said here, on the last screen before the session is built,
+                  and only for an activity whose small-screen interaction is a
+                  genuinely different exercise. A person configuring a session
+                  length is committing to the thing; finding out afterwards
+                  that their phone plays a different exercise is exactly the
+                  disclosure this is for. */}
+              <ActivityInputNote
+                activity={activity}
+                className="sm:col-span-2"
+              />
             </CardContent>
           </Card>
         )

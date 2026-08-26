@@ -147,3 +147,25 @@ export const ALL_FIXTURE_EXERCISES: ReadonlyArray<Exercise> = CORPUS
 export const SESSION_EXERCISE_IDS: ReadonlyArray<string> = CORPUS.filter(
   (exercise) => exercise.id !== ADVERSARIAL_EXERCISE_ID
 ).map((exercise) => exercise.id)
+
+/**
+ * Every step of every session-eligible exercise, flattened.
+ *
+ * The reading surface's distractor pool (LTY-MOBILE,
+ * `lib/leetype/reading-probe`): a mobile card asks the player to pick the
+ * claim this step makes out of claims the corpus makes about *other* steps,
+ * so it needs the corpus as a whole rather than the one exercise in flight.
+ *
+ * Exported from the shim rather than reached for in `./seed` directly, for
+ * the reason this module's own doc comment gives: the seed data stays private
+ * so replacing it later is a body swap in one place. It is derived from the
+ * same `SESSION_EXERCISE_IDS` filter, so the adversarial fixture's
+ * deliberately hostile prose can never turn up as a distractor on a real
+ * card.
+ *
+ * Not a selection API: a host asking what the player should see next still
+ * goes through `nextExercise`.
+ */
+export const SESSION_STEPS: ReadonlyArray<Step> = CORPUS.filter(
+  (exercise) => exercise.id !== ADVERSARIAL_EXERCISE_ID
+).flatMap((exercise) => exercise.steps)

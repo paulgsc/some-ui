@@ -75,6 +75,15 @@ export const SessionViewport = ({
   // exercises come from its own shim (@some-ui/leetype's
   // lib/leetype/exercises), which is the single seam a future generator
   // replaces - a corpus threaded through this app would be a second one.
+  //
+  // That stayed true when it grew a second surface. Below the small-screen
+  // breakpoint the activity switches from a typing probe to a reading one
+  // (LTY-MOBILE), and the switch is entirely inside the package: `Leetype`
+  // reads the viewport itself and mounts one surface or the other. Nothing
+  // here passes a `surface` prop, and nothing here should - a host deciding
+  // which probe a device gets would be this app holding an opinion about a
+  // package's internals, and the registry contract (render with no props) is
+  // exactly what that would break.
   // Built through `defineSceneProps` rather than annotated: a plain
   // ScenePropsMap annotation would not catch a misspelled registry key here -
   // see that function's own comment.

@@ -1,3 +1,16 @@
+import { shuffledBySeed } from "@leetype/lib/leetype/deterministic-random"
+
+/**
+ * The session's exercise order.
+ *
+ * The permutation comes from the package's shared deterministic generator
+ * (`lib/leetype/deterministic-random`) rather than `Math.random`, so a
+ * session can be replayed from its seed — in a test, a story, or a bug
+ * report. That generator used to be private to this module; it moved out
+ * when the mobile reading path needed the same replay property for its own
+ * ordering (LTY-MOBILE), and nothing about the schedule's behaviour changed
+ * in the move.
+ */
 export type ExerciseSchedule = {
   readonly seed: number
   readonly cycle: number
@@ -5,41 +18,8 @@ export type ExerciseSchedule = {
   readonly cursor: number
 }
 
-/**
- * A small deterministic generator for reproducible session ordering.
- *
- * The output is intentionally specified here rather than delegated to
- * `Math.random`: a session can be replayed from its seed, including in a test
- * or a bug report. The zero state is replaced because xorshift32 cannot leave
- * it.
- */
-function randomValues(seed: number): () => number {
-  let state = seed | 0 || 0x6d2b79f5
-  return () => {
-    state ^= state << 13
-    state ^= state >>> 17
-    state ^= state << 5
-    return state >>> 0
-  }
-}
-
 function cycleSeed(seed: number, cycle: number): number {
   return (seed ^ Math.imul(cycle + 1, 0x9e3779b9)) >>> 0
-}
-
-function shuffled(
-  exerciseIds: ReadonlyArray<string>,
-  seed: number
-): Array<string> {
-  const order = [...exerciseIds]
-  const random = randomValues(seed)
-  for (let index = order.length - 1; index > 0; index -= 1) {
-    const swapWith = random() % (index + 1)
-    const current = order[index]
-    order[index] = order[swapWith]!
-    order[swapWith] = current!
-  }
-  return order
 }
 
 function orderForCycle(
@@ -48,7 +28,7 @@ function orderForCycle(
   cycle: number,
   previousId?: string
 ): Array<string> {
-  const order = shuffled(exerciseIds, cycleSeed(seed, cycle))
+  const order = shuffledBySeed(exerciseIds, cycleSeed(seed, cycle))
   if (order.length > 1 && order[0] === previousId) {
     const first = order[0]!
     order[0] = order[1]!

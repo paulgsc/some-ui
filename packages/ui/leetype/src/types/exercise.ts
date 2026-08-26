@@ -370,9 +370,16 @@ export const ProvenanceSchema = z.object({
 /**
  * Why a diagnostic step's repair is the correct one — authoring/audit
  * evidence for `DiagnosticStepSchema`'s judgement-only constraints (see its
- * doc comment), inert during play like `concepts` and `provenance` above:
- * nothing renders it, nothing branches on it. Checked mechanically, not for
- * quality, by the corpus lint (LTY-FAMILIES A5).
+ * doc comment), inert on the production path like `concepts` and `provenance`
+ * above: nothing there renders it, nothing branches on it. Checked
+ * mechanically, not for quality, by the corpus lint (LTY-FAMILIES A5).
+ *
+ * Amended by LTY-MOBILE, on the same terms as `obligation` below: the reading
+ * surface poses `cause` as one option among distractors and, once the player
+ * has chosen, shows `whyRepairDiscriminates` as the explanation. That is the
+ * one place in the workspace either field reaches a learner, and the reason a
+ * verdict is allowed there when LTY-WHY forbids one — the justification ships
+ * with the judgement rather than being missing from it.
  */
 export const RationaleSchema = z.object({
   /** The one principal causal defect the failure signal points at. */
@@ -745,9 +752,17 @@ const StepObjectSchema = z.object({
    * module load instead of being silently stripped as an unrecognized key.
    * `ConstructionStepSchema` overrides this to required.
    *
-   * Authoring metadata, like `rationale` — **never rendered to the
-   * learner**. The temptation to display it is exactly the description
-   * card this whole shift retired, returning through a new field.
+   * Authoring metadata, like `rationale` — **never rendered to the learner on
+   * the production path**. The temptation to display it there is exactly the
+   * description card this whole shift retired, returning through a new field.
+   *
+   * Amended by LTY-MOBILE: the small-screen reading surface renders it, and
+   * only ever as one option among claims the corpus makes about other steps
+   * (`lib/leetype/reading-probe`, `components/reading-game/claim-choices`).
+   * There the claim *is* the answer and discriminating it is the whole task,
+   * so an answer key among distractors is the format rather than a leak.
+   * Never alone, and never before the player has chosen. See
+   * `docs/leetype/README.md`'s LTY-MOBILE section for the argument.
    */
   obligation: z.string().min(1).optional(),
   /**
