@@ -24,7 +24,8 @@
  * not `autoWasApplied`) once the swap has landed.
  */
 
-import { expect, test } from "@filter/playwright/fixture"
+import { expect, test, waitForClassification } from "@filter/playwright/fixture"
+import { churn } from "@filter/playwright/fixtures/hostile-page"
 import {
   backgroundWorker,
   enterLegacyMode,
@@ -176,5 +177,58 @@ test.describe("auto mode keeps rescanning on yt-navigate-finish after a 'no them
       hasDarkAttr: document.documentElement.hasAttribute("data-sw-dark"),
     }))
     expect(resettled.hasDarkAttr).toBe(true)
+  })
+})
+
+// ── a mid-navigation pipeline reconcile round must not drop the veil early ──
+
+test.describe("auto mode keeps the veil up through a mid-navigation reconcile round", () => {
+  test("a vendor mutation between yt-navigate-start and yt-navigate-finish must not tear the veil down before the swap settles", async ({
+    fixture,
+  }) => {
+    const page = await fixture.goto("hostile-page")
+    const initial = await waitForClassification(page)
+    expect(initial.themeApplied).toBe("dark")
+    expect(initial.hasPrepaintVeil).toBe(false)
+
+    await page.evaluate(() => {
+      window.dispatchEvent(new Event("yt-navigate-start"))
+    })
+
+    const rearmed = await page.evaluate(
+      () => document.getElementById("__sw_prepaint_veil") !== null
+    )
+    expect(rearmed, "yt-navigate-start should re-arm the veil").toBe(true)
+
+    // A vendor mutation mid-navigation, unrelated to the yt-navigate-*
+    // events themselves: pipeline.ts's own MutationObserver sees it and,
+    // after its 50ms debounce (RECONCILE_POLICY.debounceMs), drives its own
+    // onFire round. That round must not tear the just-re-armed veil down —
+    // the swap has not settled yet, only yt-navigate-finish gets to decide
+    // that.
+    await churn.styleChurn(page)
+
+    // Comfortably longer than the 50ms debounce so the coalesced round has
+    // certainly run by the time this reads the veil back.
+    await page.waitForTimeout(300)
+
+    const duringNav = await page.evaluate(
+      () => document.getElementById("__sw_prepaint_veil") !== null
+    )
+    expect(
+      duringNav,
+      "a pipeline reconcile round mid-navigation dropped the veil before " +
+        "yt-navigate-finish settled the swap"
+    ).toBe(true)
+
+    await page.evaluate(() => {
+      window.dispatchEvent(new Event("yt-navigate-finish"))
+    })
+
+    await page.waitForFunction(
+      () => document.getElementById("__sw_prepaint_veil") === null,
+      undefined,
+      { timeout: 5_000, polling: 100 }
+    )
   })
 })

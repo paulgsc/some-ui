@@ -70,6 +70,14 @@ function writeCachedState(state: TabState): void {
 let currentState: TabState = DEFAULT_TAB_STATE
 let filterConfig: FilterConfig = DEFAULT_FILTER
 
+// True between yt-navigate-start and yt-navigate-finish. Guards runAutoTheme's
+// onFire below: the route swap's own DOM churn can go quiet for pipeline.ts's
+// 50ms debounce before finish ever fires, letting the pipeline's own
+// MutationObserver drive an onFire round on a still-mid-swap page and drop
+// the veil yt-navigate-start just re-armed. Deferred, not dropped — finish's
+// rescan() below runs its own synchronous onFire round with this false again.
+let navigatingAway = false
+
 // The content session's epoch source (Definition 5.4). Reset on every
 // SPA-navigation re-patch (Theorem D.1(a)) — a full page reset (refresh)
 // gets a fresh one for free, since this whole module re-initializes.
@@ -205,6 +213,8 @@ function runAutoTheme(): void {
       document.body.dataset.swThemeApplied = applied ? "dark" : "none"
       updateDebugAttrs()
 
+      if (navigatingAway) return
+
       if (applied) {
         commitVisualState()
       } else {
@@ -310,6 +320,7 @@ function init(): void {
   window.addEventListener("yt-navigate-start", () => {
     observabilityRecorder.count("nav_starts")
     observabilityRecorder.record({ kind: "nav.start" })
+    navigatingAway = true
     if (currentState === "off") return
     enablePrepaint()
     coverageWatchdog.check("nav-start")
@@ -318,6 +329,7 @@ function init(): void {
   window.addEventListener("yt-navigate-finish", () => {
     observabilityRecorder.count("nav_finishes")
     observabilityRecorder.record({ kind: "nav.finish" })
+    navigatingAway = false
 
     if (currentState === "auto") {
       sessionLifecycle.resetContent()
