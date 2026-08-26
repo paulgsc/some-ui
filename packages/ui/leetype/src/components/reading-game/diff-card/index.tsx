@@ -1,5 +1,5 @@
 import type { FC, ReactNode } from "react"
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useLayoutEffect, useRef, useState } from "react"
 import type { ReadingHunk } from "@leetype/lib/leetype/reading-probe"
 import Prism from "prismjs"
 import { cn, useResizeObserver } from "some-ui-utils"
@@ -153,6 +153,38 @@ export const DiffCard: FC<DiffCardProps> = ({ hunk, className }) => {
     )
   }, [])
   useResizeObserver({ ref: scrollerRef, onResize: measure })
+
+  /**
+   * Back to the start of the line whenever the card is handed a different
+   * hunk.
+   *
+   * Nothing remounts this component between steps — `ReadingSession` renders
+   * one `DiffCard` and swaps its prop — so the scroll box is the *same* DOM
+   * element from one step to the next and keeps whatever `scrollLeft` the
+   * reader left it at. `ResizeObserver` does not cover the gap either: it
+   * fires on the scroller's own box changing, and the box is identical
+   * between steps; only the content inside it changed. The result was a new
+   * hunk opening halfway across its first line, under a "swipe" affordance
+   * left over from the previous one.
+   *
+   * Keyed on a signature of the rows rather than on the `hunk` object,
+   * because a caller may legitimately rebuild that object on every render —
+   * this file's own stories do — and resetting on identity would snap the
+   * scroll back mid-swipe. The signature is a few hundred characters for a
+   * four-to-ten-line hunk, which is what a hunk is.
+   *
+   * A layout effect, not an effect: it runs after the new rows are in the DOM
+   * and before paint, so no frame is ever shown at the stale offset.
+   */
+  const signature = `${hunk.path ?? ""}\u0000${hunk.language}\u0000${hunk.rows
+    .map((row) => row.text)
+    .join("\n")}`
+  useLayoutEffect(() => {
+    const scroller = scrollerRef.current
+    if (!scroller) return
+    scroller.scrollLeft = 0
+    measure()
+  }, [signature, measure])
 
   const highlight = (text: string): ReactNode => {
     if (!grammar || text.length === 0) return text

@@ -1,7 +1,7 @@
 import { DiffCard } from "@leetype/components/reading-game/diff-card"
 import type { ReadingHunk } from "@leetype/lib/leetype/reading-probe"
 import { render, screen } from "@testing-library/react"
-import { describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
 const HUNK: ReadingHunk = {
   path: "src/auth/session.rs",
@@ -93,5 +93,110 @@ describe("DiffCard", () => {
     )
     expect(container.textContent).not.toContain("Rust")
     expect(container.querySelectorAll("[data-line-kind]")).toHaveLength(3)
+  })
+
+  // ── The scroller's memory across a step boundary ────────────────────────
+  //
+  // `ReadingSession` renders one `DiffCard` and swaps its prop, so the scroll
+  // box is the same DOM element from step to step. jsdom computes no layout,
+  // so `scrollWidth`/`clientWidth` are faked here — which is exactly what
+  // makes this test honest: with them faked, `ResizeObserver` absent from
+  // jsdom entirely, and no user scroll event, the *only* thing that can reset
+  // the offset or re-measure is the layout effect under test.
+  describe("when handed a different hunk", () => {
+    const OTHER: ReadingHunk = {
+      path: "src/stats/average.rs",
+      language: "rust",
+      rows: [
+        {
+          index: 0,
+          kind: "context",
+          text: "fn average(total: i32, count: i32) -> i32 {",
+          oldLine: 1,
+          newLine: 1,
+        },
+        {
+          index: 1,
+          kind: "add",
+          text: "    if count == 0 { return 0; }",
+          newLine: 2,
+        },
+      ],
+    }
+
+    let scrollWidth: number
+
+    // `this` inside the property getters below is the element being
+    // measured. Declared as an explicit `this` parameter rather than
+    // asserted, so the getters stay assertion-free.
+    function overflowOf(this: HTMLElement): number {
+      // Only the scroll box reports overflow; every other element measures 0,
+      // so nothing else in the tree can accidentally satisfy the check.
+      return this.getAttribute("data-scroll-intent") === "code-display"
+        ? scrollWidth
+        : 0
+    }
+
+    beforeEach(() => {
+      scrollWidth = 1000
+      Object.defineProperty(HTMLElement.prototype, "scrollWidth", {
+        configurable: true,
+        get: overflowOf,
+      })
+      Object.defineProperty(HTMLElement.prototype, "clientWidth", {
+        configurable: true,
+        get(this: HTMLElement): number {
+          return overflowOf.call(this) > 0 ? 300 : 0
+        },
+      })
+    })
+
+    afterEach(() => {
+      Reflect.deleteProperty(HTMLElement.prototype, "scrollWidth")
+      Reflect.deleteProperty(HTMLElement.prototype, "clientWidth")
+    })
+
+    const scrollerOf = (container: HTMLElement): HTMLElement => {
+      const scroller = container.querySelector<HTMLElement>(
+        '[data-scroll-intent="code-display"]'
+      )
+      expect(scroller).not.toBeNull()
+      return scroller!
+    }
+
+    it("scrolls back to the start of the line", () => {
+      const { container, rerender } = render(<DiffCard hunk={HUNK} />)
+      const scroller = scrollerOf(container)
+
+      scroller.scrollLeft = 400
+      expect(scroller.scrollLeft).toBe(400)
+
+      rerender(<DiffCard hunk={OTHER} />)
+      // Without the reset the next hunk opens 400px across its first line.
+      expect(scrollerOf(container).scrollLeft).toBe(0)
+    })
+
+    it("re-measures, rather than keeping the previous hunk's affordance", () => {
+      const { container, rerender } = render(<DiffCard hunk={HUNK} />)
+      expect(screen.getByText(/swipe the code/i)).toBeInTheDocument()
+
+      // The next hunk fits. Nothing about the scroll box's own size changed,
+      // so a ResizeObserver would never fire — only the content did.
+      scrollWidth = 0
+      rerender(<DiffCard hunk={OTHER} />)
+      expect(screen.queryByText(/swipe the code/i)).not.toBeInTheDocument()
+      expect(scrollerOf(container)).toBeInTheDocument()
+    })
+
+    it("leaves the offset alone when the same hunk re-renders", () => {
+      // A caller rebuilding the hunk object on every render — this file's own
+      // stories do — must not have the reader's swipe snapped back under them.
+      const { container, rerender } = render(<DiffCard hunk={HUNK} />)
+      const scroller = scrollerOf(container)
+      scroller.scrollLeft = 250
+
+      rerender(<DiffCard hunk={{ ...HUNK, rows: [...HUNK.rows] }} />)
+      expect(scrollerOf(container).scrollLeft).toBe(250)
+    })
   })
 })
