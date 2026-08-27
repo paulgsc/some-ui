@@ -348,9 +348,9 @@ export const lexicographicallySmallestValidSequence: Exercise = {
       concepts: [CONCEPT_IDS.suffixCertificate, CONCEPT_IDS.oneMismatchBudget],
       transferFrom: "lc3302-13-last-position-change",
       obligation:
-        "choosing i for target j leaves a strictly later exact realization of target[j + 1..]",
+        "provided a later exact realization of target[j + 1..] is already known to exist, choosing i for target j must leave that realization strictly later than i — this step assumes the realization exists and leaves ruling out its absence to lc3302-19",
       decisionReason:
-        "The stored boundary proves that committing the mismatch now still leaves a strictly later exact suffix",
+        "The stored boundary proves the ordering once a later exact suffix is known to exist; this comparison alone does not yet check that the boundary denotes a real index rather than the usize::MAX sentinel for 'no such suffix'",
       counterfactual:
         "the remaining suffix could spend another mismatch or reorder indices",
       surfaceRule: "Look ahead before making a greedy choice",

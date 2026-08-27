@@ -77,10 +77,10 @@ and architectural stewardship.
 Concept: [a CONCEPT_IDS entry, or a new kebab-case id if none fits — see "Concept and invariant" below]
 Invariant violated: [one sentence: the specific property the source's defect, or ruled-out form, violates]
 Family: [diagnostic | construction]
-Intent: [the observable outcome or system guarantee]
-Operative constraints: [facts that make one correct candidate fitter than another]
-Correct candidates: [A and B — both satisfy the behavioral contract]
-Decision boundary: [a realistic changed constraint under which B becomes preferable]
+Intent: [construction only — the observable outcome or system guarantee]
+Operative constraints: [construction only — facts that make one correct candidate fitter than another]
+Correct candidates: [construction only — A and B, both satisfy the behavioral contract]
+Decision boundary: [construction only — a realistic changed constraint under which B becomes preferable]
 T: [Apply LeetType Exercise Generator v1.3]
 ```
 
@@ -110,12 +110,23 @@ judgment nobody has actually made into a step nobody asked for. The human
 author supplies **concept** (an existing `CONCEPT_IDS` entry, from
 `packages/ui/leetype/src/lib/leetype/exercises/concepts.ts`, or a new
 kebab-case id if genuinely nothing fits — read that file first) and
-**the invariant it violates**, as input, before you generate anything. The
-author must also supply **intent**, **operative constraints**, two behaviorally
-correct **candidates**, and a **decision boundary**. If any field is missing,
-ask for it rather than inventing one. A diagnostic may show defective code as
-failure evidence, but its assessed decision must still discriminate between
-two correct designs; repair alone is not competence evidence.
+**the invariant it violates**, as input, before you generate anything. For a
+**construction** instance, the author must also supply **intent**,
+**operative constraints**, two behaviorally correct **candidates**, and a
+**decision boundary** — the fields the Construction section below requires
+`rationaleChoices` to argue. If any of these four is missing, ask for it
+rather than inventing one; the usage example above marks them
+construction-only for exactly this reason.
+
+A **diagnostic** instance keeps its six validity constraints exactly as they
+were before v1.3 (see the Diagnostic section below) and does not need these
+four fields: constraint 2's `rationale.whyRepairDiscriminates` already
+requires the repair to discriminate the intended misconception rather than
+merely silence the symptom, which is a different, narrower demand than a
+construction step's two-candidate decision. Repair alone was never
+sufficient evidence for a diagnostic either — that is constraint 2, not a
+new v1.3 addition — but a diagnostic does not gain a `rationaleChoices`
+requirement or a decision-boundary field.
 
 **A genuinely new concept is a two-file change, not one.** Emit the step
 against `CONCEPT_IDS.<newKey>` (never a bare string literal), and add
