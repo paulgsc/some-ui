@@ -180,6 +180,43 @@ function cycleState(): void {
   applyState(nextTabState(currentState))
 }
 
+/**
+ * Enter legacy mode, or — already there — just refresh the filter in place.
+ *
+ * `applyState("legacy")` is not a safe way to reassert an already-active
+ * state: every call, redundant or not, runs `restoreVendor()` first, which
+ * deletes `data-sw-legacy` and the `#__sw_legacy_filter` stylesheet outright
+ * before `applyTheme` recreates them a statement later. That gap is real —
+ * this project's coverage-watchdog exists precisely to catch a page sitting
+ * in exactly that "declared legacy, filter rule gone" state — and unlike
+ * every other path that opens it (a genuine mode transition, the first
+ * paint), a *redundant* reassertion opens it with no veil up to cover the
+ * page while it's open, because the veil was already torn down after the
+ * settle this call is redundant with.
+ *
+ * The two call sites this guards both go redundant the same way: the
+ * background doesn't track whether a tab already got the message it's about
+ * to send. `TOGGLE_FILTER` is pushed on every `chrome.tabs.onUpdated`
+ * "complete" transition for a tab already in `filteredTabIds` — and on
+ * SPA-routed sites (YouTube's client-side router included) that status can
+ * refire on an in-page navigation with no new document and no `nav-start`/
+ * `nav-finish` pair, so the tab is already settled in legacy when the
+ * message lands. The async init reconciliation below (`GET_TAB_FILTER_STATE`
+ * racing the synchronous sessionStorage-cached paint) hits the identical
+ * case any time both already agree on "legacy".
+ *
+ * Only an actual transition — auto/off into legacy — goes through
+ * `applyState`, which is correct there: nothing exists yet to tear down.
+ */
+function enterOrRefreshLegacy(config: FilterConfig): void {
+  filterConfig = config
+  if (currentState !== "legacy") {
+    applyState("legacy")
+  } else {
+    applyTheme("legacy", filterConfig)
+  }
+}
+
 // ── Auto theming (apply-then-detect) ────────────────────────────────────────────
 
 function runAutoTheme(): void {
@@ -262,25 +299,12 @@ function init(): void {
       })
 
       if (isGetTabFilterStateResponse(response)) {
-        filterConfig = response.config
-
         if (response.enabled) {
-          // Background confirms legacy — ensure we're there regardless of
-          // cache, and repaint with the authoritative config even if the
-          // cache already guessed "legacy": the synchronous cached paint
-          // above ran before this response arrived, using whatever config
-          // was in scope at that time (the module default, or a stale value
-          // from a previous style). Skipping the repaint here left tabs
-          // stuck on that stale look whenever the legacy style had changed
-          // (e.g. dim <-> invert) since the last paint.
-          if (currentState !== "legacy") {
-            applyState("legacy")
-          } else {
-            applyTheme("legacy", filterConfig)
-          }
+          enterOrRefreshLegacy(response.config)
         } else if (currentState === "legacy") {
           // Cache said legacy but this tab is no longer in the filter list
           // (user removed it via popup). Re-classify with auto.
+          filterConfig = response.config
           applyState("auto")
         }
       }
@@ -379,8 +403,22 @@ ext.runtime.onMessage.addListener((msg: unknown): void => {
       // dim <-> invert) or this tab's filtered membership changes — the
       // config it carries is authoritative and must replace whatever this
       // tab last painted with, not just re-trigger a repaint of the old one.
-      filterConfig = msg.config
-      applyState(msg.enabled ? "legacy" : "auto")
+      //
+      // It also pushes this redundantly: background.ts's tabs.onUpdated
+      // handler re-sends TOGGLE_FILTER{enabled:true} on every "complete"
+      // transition for a tab already in filteredTabIds, with no check for
+      // whether this tab is already in legacy mode. On an SPA whose router
+      // re-fires that status without a real navigation, this message can
+      // land well after the tab already settled into legacy — going through
+      // applyState() here (unconditionally, every call) tore the filter
+      // down and rebuilt it with no veil up to cover the gap. See
+      // enterOrRefreshLegacy()'s own comment for the mechanism.
+      if (msg.enabled) {
+        enterOrRefreshLegacy(msg.config)
+      } else {
+        filterConfig = msg.config
+        applyState("auto")
+      }
       return
     }
 
