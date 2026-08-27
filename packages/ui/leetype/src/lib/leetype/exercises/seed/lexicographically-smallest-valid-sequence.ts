@@ -1,33 +1,7 @@
 import { CONCEPT_IDS } from "@leetype/lib/leetype/exercises/concepts"
-import type { ConstructionStep, Exercise } from "@leetype/types/exercise"
+import type { Exercise } from "@leetype/types/exercise"
 
-type JudgmentStep = ConstructionStep & {
-  decisionReason: string
-  counterfactual: string
-  surfaceRule: string
-}
-
-/**
- * Keep the code fragment subordinate to the engineering decision. Desktop
- * asks the learner to reaffirm a property-based reason after producing the
- * witness; mobile asks them to discriminate the obligation itself. The two
- * rejected choices deliberately model cargo-cult technique matching and a
- * counterfactual applied under the wrong constraints.
- */
-const step = ({
-  decisionReason,
-  counterfactual,
-  surfaceRule,
-  ...value
-}: JudgmentStep): ConstructionStep => ({
-  ...value,
-  obligation: `${value.obligation}. Decision: ${decisionReason}. Boundary: ${counterfactual}`,
-  rationaleChoices: [
-    { text: decisionReason, canonical: true },
-    { text: surfaceRule },
-    { text: `Always keep this design, even if ${counterfactual}` },
-  ],
-})
+import { withJudgment as step } from "./judgment-step"
 
 /**
  * A 24-rung competency ladder for LeetCode 3302. Each rung exposes one

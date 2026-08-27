@@ -1,6 +1,8 @@
 import { CONCEPT_IDS } from "@leetype/lib/leetype/exercises/concepts"
-import type { ConstructionStep, Exercise } from "@leetype/types/exercise"
+import type { Exercise } from "@leetype/types/exercise"
 import { typingBlockFromDiff } from "@leetype/types/exercise"
+
+import { withJudgment } from "./judgment-step"
 
 /**
  * LTY-SEED G4 (#1109): the epic's first worked generation run, construction
@@ -25,13 +27,18 @@ import { typingBlockFromDiff } from "@leetype/types/exercise"
  * exactly when an insertion is happening and exactly when `binary_search`
  * is guaranteed to return `Err`.
  */
-const constructionBinarySearchPlaceStep: ConstructionStep = {
+const constructionBinarySearchPlaceStep = withJudgment({
   id: "construction-binary-search-place-01",
   goal: "Use a failed binary search's own answer as the sorted insertion point.",
   concepts: [CONCEPT_IDS.lookupAsPlace],
   transferFrom: "entry-03-place",
   obligation:
     "when a sorted search fails to find an absent target, its own Err arm already is the index to insert at — recovering that index should not need a second, separate scan",
+  decisionReason:
+    "binary_search's own Err(i) arm already carries the sorted insertion index that a position()-based scan re-derives from scratch",
+  surfaceRule: "use binary search because the array is sorted",
+  counterfactual:
+    "the array were not already maintained in sorted order elsewhere — sorting it just to enable this one lookup would cost more than the O(n) scan it replaces",
   blocks: [
     {
       kind: "transition",
@@ -56,7 +63,7 @@ const constructionBinarySearchPlaceStep: ConstructionStep = {
       ],
     }),
   ],
-}
+})
 
 export const constructionBinarySearchPlace: Exercise = {
   id: "construction-binary-search-place",
