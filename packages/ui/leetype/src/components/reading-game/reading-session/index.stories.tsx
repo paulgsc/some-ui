@@ -48,15 +48,3 @@ export const Diagnostic: Story = {
 export const Construction: Story = {
   render: () => <Phone preferId={FIXTURE_EXERCISE_ID} />,
 }
-
-/**
- * The same surface with no fixed exercise: the seeded schedule picks, and the
- * session loops through the corpus for its term the way a real one does.
- */
-export const ScheduledSession: Story = {
-  render: () => (
-    <div className="relative mx-auto h-[844px] w-full max-w-[390px] overflow-hidden border border-border">
-      <ReadingSession sessionSeed={4} />
-    </div>
-  ),
-}

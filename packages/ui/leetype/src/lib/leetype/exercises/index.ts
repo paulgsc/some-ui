@@ -64,15 +64,17 @@ import {
  * `preferId` is required rather than optional: an implicit "no preference"
  * default used to silently resolve to the first corpus exercise
  * (`entryApi`), which is exactly the deterministic-first-item behavior this
- * shim's own callers (the session scheduler, deep links) exist to replace.
- * A caller that wants a specific fixture — a story, a test — names it; a
- * caller that wants "whatever the corpus offers next" asks the scheduler
- * (`./scheduling`), not this shim.
+ * shim's own callers exist to replace. A caller that wants a specific
+ * fixture — a story, a test, a deep link — names it; a caller that wants
+ * "whatever the learner chooses" asks `ExercisePicker`
+ * (`components/exercise-picker`), not this shim. (LTY-PICKER,
+ * `docs/leetype/README.md`: the seeded schedule this comment used to point
+ * to instead is gone, not replaced in kind.)
  */
 export type SelectionState = {
   /** Exercises the player has already finished, most recent last. */
   completed?: ReadonlyArray<string>
-  /** The exercise to hand back — stories, tests, deep links, and the session scheduler's own choice. */
+  /** The exercise to hand back — stories, tests, deep links, and the picker's own choice. */
   preferId: string
 }
 
@@ -143,7 +145,14 @@ export const FIXTURE_HOSTILE_PROMPT_STEP: Step = HOSTILE_PROMPT_STEP
  */
 export const ALL_FIXTURE_EXERCISES: ReadonlyArray<Exercise> = CORPUS
 
-/** The validated exercises eligible for a normal, user-facing session. */
+/**
+ * The validated exercises eligible for a normal, user-facing session —
+ * every seed exercise except the adversarial fixture.
+ *
+ * `ExercisePicker` renders this list as the learner's tile choices (LTY-
+ * PICKER, `docs/leetype/README.md`); this pool used to feed a random
+ * schedule instead of a picker.
+ */
 export const SESSION_EXERCISE_IDS: ReadonlyArray<string> = CORPUS.filter(
   (exercise) => exercise.id !== ADVERSARIAL_EXERCISE_ID
 ).map((exercise) => exercise.id)

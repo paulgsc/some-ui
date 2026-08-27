@@ -3,7 +3,8 @@ import {
   FIXTURE_EXERCISE_ID,
   nextExercise,
 } from "@leetype/lib/leetype/exercises"
-import { render, screen } from "@testing-library/react"
+import { claimOf } from "@leetype/lib/leetype/reading-probe"
+import { fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 // The wasm binary is a workspace crate with no dist/ in a test run, and the
@@ -103,15 +104,61 @@ describe("Leetype", () => {
   })
 
   // The registry contract: an entry must render with no props and no ambient
-  // React context (@some-ui/content-registry's own rule).
-  it("mounts with no props at all, on either surface", () => {
+  // React context (@some-ui/content-registry's own rule). With no `exercise`
+  // forced, that render is the picker — the seeded schedule this used to
+  // land on is gone.
+  it("mounts with no props at all, landing on the picker, on either surface", () => {
     setViewport(true)
     const { unmount } = render(<Leetype />)
-    expect(screen.getByText("Practice")).toBeInTheDocument()
+    expect(screen.getByText("Choose what to practice")).toBeInTheDocument()
+    expect(screen.queryByRole("group")).not.toBeInTheDocument()
     unmount()
 
     setViewport(false)
     render(<Leetype />)
+    expect(screen.getByText("Choose what to practice")).toBeInTheDocument()
+    expect(screen.queryByLabelText("Typing input")).not.toBeInTheDocument()
+  })
+
+  it("starts a session once the learner picks an exercise from the picker", () => {
+    setViewport(false)
+    render(<Leetype />)
+    const [firstTile] = screen.getAllByRole("button")
+    fireEvent.click(firstTile!)
     expect(screen.getByLabelText("Typing input")).toBeInTheDocument()
+  })
+
+  it("forwards exerciseBadges to the picker's tiles", () => {
+    setViewport(false)
+    const oneStep = nextExercise({ preferId: "diagnostic-loop-progress" })
+    render(
+      <Leetype
+        exerciseBadges={{ [oneStep.id]: { tone: "popular", count: 7 } }}
+      />
+    )
+    const tile = screen.getByText(oneStep.title).closest("button")
+    expect(tile?.textContent).toContain("7")
+  })
+
+  it("returns to the picker once a picker-chosen session finishes, and never shows it for a forced exercise", () => {
+    // A one-step diagnostic, read through the mobile surface: no wasm, and
+    // one correct pick ends the whole session.
+    setViewport(true)
+    const onSessionComplete = vi.fn()
+    render(<Leetype onSessionComplete={onSessionComplete} />)
+
+    const oneStep = nextExercise({ preferId: "diagnostic-loop-progress" })
+    fireEvent.click(screen.getByText(oneStep.title))
+    expect(
+      screen.queryByText("Choose what to practice")
+    ).not.toBeInTheDocument()
+
+    const answer = claimOf(oneStep.steps[0]!).text
+    fireEvent.click(screen.getByText(answer))
+    fireEvent.click(screen.getByRole("button", { name: /check answer/i }))
+    fireEvent.click(screen.getByRole("button", { name: /next change/i }))
+
+    expect(onSessionComplete).toHaveBeenCalledTimes(1)
+    expect(screen.getByText("Choose what to practice")).toBeInTheDocument()
   })
 })

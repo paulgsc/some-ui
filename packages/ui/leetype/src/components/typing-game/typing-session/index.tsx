@@ -16,15 +16,6 @@ import {
   saveBaseline,
 } from "@leetype/lib/leetype/baseline-store"
 import { CALIBRATION_STEP } from "@leetype/lib/leetype/baseline-store/calibration"
-import {
-  nextExercise,
-  SESSION_EXERCISE_IDS,
-} from "@leetype/lib/leetype/exercises"
-import {
-  createExerciseSchedule,
-  takeScheduledExercise,
-} from "@leetype/lib/leetype/exercises/scheduling"
-import type { ExerciseSchedule } from "@leetype/lib/leetype/exercises/scheduling"
 import type { Exercise, RationaleChoice } from "@leetype/types/exercise"
 import { typingBlockOf } from "@leetype/types/exercise"
 import type {
@@ -60,18 +51,18 @@ function sampleFromStep(
 
 type TypingSessionProps = {
   /**
-   * A fixed exercise for a preview or deep link. Normal sessions omit this
-   * prop and traverse the eligible corpus through the seeded schedule.
+   * Which exercise this session plays. `Leetype` resolves this before
+   * mounting `TypingSession` at all — either the caller's own fixed
+   * `exercise` prop (a preview or deep link), or whatever the learner chose
+   * from `ExercisePicker` — so this component never has to pick one itself.
    *
    * This prop is the seam a future generator plugs into — see
-   * `lib/leetype/exercises`. Everything above it (the runner, the card, the
+   * `lib/leetype/exercises`. Everything below it (the runner, the card, the
    * engine) is indifferent to where the value came from.
    */
-  exercise?: Exercise
+  exercise: Exercise
   /** Session term supplied by the composer/scene, in milliseconds. */
   sessionDurationMs?: number
-  /** Deterministic override for tests, previews, and replaying an ordering bug. */
-  sessionSeed?: number
   /** Cosmetic. See `TextGradient`. */
   textGradient?: TextGradient
   /** Called once the whole sequence is finished. */
@@ -99,10 +90,10 @@ type TypingSessionProps = {
  * small-screen reading surface without either one mounting the other's hooks
  * (LTY-MOBILE). A phone gets `ReadingSession`; everything else gets this.
  *
- * The loop is *read one sentence → type → observe → repeat*, with no menus
- * in it. The composer supplies only the session term; within that term the
- * seeded exercise schedule and the baseline-relative gate decide what comes
- * next. There is no challenge picker and no XP.
+ * The loop is *read one sentence → type → observe → repeat*, with no menu
+ * inside it: which exercise, `Leetype` (`ExercisePicker`) decides above
+ * this component; within one exercise, only the baseline-relative gate
+ * decides what comes next. There is no XP.
  *
  * This component is composition, not orchestration. Three collaborators,
  * each ignorant of the others:
@@ -119,33 +110,11 @@ type TypingSessionProps = {
 export const TypingSession: FC<TypingSessionProps> = ({
   exercise,
   sessionDurationMs = 10 * 60_000,
-  sessionSeed,
   textGradient,
   onSessionComplete,
   appearance = "inherit",
 }) => {
-  const [seed] = useState(
-    () => sessionSeed ?? crypto.getRandomValues(new Uint32Array(1))[0]!
-  )
-  // Computed unconditionally rather than only when `exercise` is omitted:
-  // `nextExercise` requires an explicit `preferId`, and a schedule is cheap,
-  // pure data — the small extra work on the preview/deep-link path buys a
-  // resolvedExercise initializer that never needs an unsafe non-null
-  // assertion to satisfy that contract.
-  const [initialSelection] = useState(() =>
-    takeScheduledExercise(
-      SESSION_EXERCISE_IDS,
-      createExerciseSchedule(SESSION_EXERCISE_IDS, seed)
-    )
-  )
-  const scheduleRef = useRef<ExerciseSchedule>(initialSelection.schedule)
-  // The shim is consulted once per mount rather than on every render: it is
-  // synchronous and cheap, but "which exercise am I playing" must not change
-  // underneath a run.
-  const [resolvedExercise, setResolvedExercise] = useState<Exercise>(
-    () => exercise ?? nextExercise({ preferId: initialSelection.exerciseId })
-  )
-  const runner = useExerciseRunner(resolvedExercise)
+  const runner = useExerciseRunner(exercise)
 
   const [gameState, setGameState] = useState<GameState>("idle")
   /**
@@ -236,7 +205,7 @@ export const TypingSession: FC<TypingSessionProps> = ({
    */
   const stepKey = calibrating
     ? "warm-up"
-    : `${resolvedExercise.id}:${runner.index}:${runner.step.id}`
+    : `${exercise.id}:${runner.index}:${runner.step.id}`
   const attempt = calibrating ? 0 : runner.attempt
 
   const {
@@ -439,30 +408,12 @@ export const TypingSession: FC<TypingSessionProps> = ({
 
     if (sessionClockMs >= sessionDurationMs) return
 
-    if (exercise !== undefined) {
-      // Exercise props are the preview/deep-link seam. Preserve their
-      // one-exercise completion contract while normal corpus sessions loop.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSessionClockMs(sessionDurationMs)
-      return
-    }
-
-    const next = takeScheduledExercise(
-      SESSION_EXERCISE_IDS,
-      scheduleRef.current
-    )
-    scheduleRef.current = next.schedule
-    // The completed exercise is an external engine event; selecting the next
-    // scheduled value is the state transition this effect synchronizes.
-    setResolvedExercise(nextExercise({ preferId: next.exerciseId }))
-  }, [
-    calibrating,
-    runner,
-    gameState,
-    sessionClockMs,
-    sessionDurationMs,
-    exercise,
-  ])
+    // A session is exactly one exercise: `Leetype` resolves which one before
+    // this component ever mounts, so finishing it ends the term rather than
+    // advancing to something else picked here.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSessionClockMs(sessionDurationMs)
+  }, [calibrating, runner, gameState, sessionClockMs, sessionDurationMs])
 
   useEffect(() => {
     if (
@@ -529,20 +480,9 @@ export const TypingSession: FC<TypingSessionProps> = ({
     exerciseCompletionHandledRef.current = false
     setFinished(null)
     setCompletedRationale(null)
-    if (exercise === undefined) {
-      const nextSeed =
-        sessionSeed ?? crypto.getRandomValues(new Uint32Array(1))[0]!
-      const first = takeScheduledExercise(
-        SESSION_EXERCISE_IDS,
-        createExerciseSchedule(SESSION_EXERCISE_IDS, nextSeed)
-      )
-      scheduleRef.current = first.schedule
-      setResolvedExercise(nextExercise({ preferId: first.exerciseId }))
-    } else {
-      runner.restart()
-    }
+    runner.restart()
     setGameState("idle")
-  }, [exercise, runner, sessionSeed])
+  }, [runner])
 
   if (error) {
     return (
@@ -578,7 +518,7 @@ export const TypingSession: FC<TypingSessionProps> = ({
       ) : (
         <>
           <ExerciseHeader
-            title={calibrating ? "Warm-up" : resolvedExercise.title}
+            title={calibrating ? "Warm-up" : exercise.title}
             elapsedTime={sessionElapsedTime}
             wpm={wpm}
             accuracy={accuracy}

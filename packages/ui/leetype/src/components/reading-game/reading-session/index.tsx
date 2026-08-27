@@ -5,16 +5,7 @@ import { DiffCard } from "@leetype/components/reading-game/diff-card"
 import { ReadingFeedback } from "@leetype/components/reading-game/reading-feedback"
 import { ReadingHeader } from "@leetype/components/reading-game/reading-header"
 import { useExerciseRunner } from "@leetype/hooks/leetype/use-exercise-runner"
-import {
-  nextExercise,
-  SESSION_EXERCISE_IDS,
-  SESSION_STEPS,
-} from "@leetype/lib/leetype/exercises"
-import {
-  createExerciseSchedule,
-  takeScheduledExercise,
-} from "@leetype/lib/leetype/exercises/scheduling"
-import type { ExerciseSchedule } from "@leetype/lib/leetype/exercises/scheduling"
+import { SESSION_STEPS } from "@leetype/lib/leetype/exercises"
 import {
   claimPoolOf,
   readingHunkOf,
@@ -33,11 +24,11 @@ import { cn } from "some-ui-utils"
 const STEP_SEED_STRIDE = 0x9e3779b9
 
 type ReadingSessionProps = {
-  /** A fixed exercise for a preview or deep link, exactly as `TypingSession` takes one. */
-  exercise?: Exercise
+  /** Which exercise this session plays — resolved by `Leetype` before mount, exactly as `TypingSession` takes one. */
+  exercise: Exercise
   /** Session term supplied by the composer/scene, in milliseconds. */
   sessionDurationMs?: number
-  /** Deterministic override for tests, previews, and replaying an ordering bug. */
+  /** Deterministic override for tests, previews, and replaying a distractor-ordering bug. */
   sessionSeed?: number
   /** Fired once the term is spent or the fixed exercise runs out. */
   onSessionComplete?: () => void
@@ -50,8 +41,9 @@ type ReadingSessionProps = {
  *
  * # What this is, next to `TypingSession`
  *
- * The same corpus, the same runner, the same scheduler — and a different
- * probe. Desktop asks the player to *produce* the witness under a masking
+ * The same corpus, the same runner, the same `ExercisePicker` choosing which
+ * exercise reaches either one — and a different probe. Desktop asks the
+ * player to *produce* the witness under a masking
  * loop; there is no version of that which survives a phone keyboard, so this
  * surface asks them to *discriminate* the claim the change makes from claims
  * the corpus makes about other changes (`lib/leetype/reading-probe`).
@@ -96,17 +88,7 @@ export const ReadingSession: FC<ReadingSessionProps> = ({
   const [seed] = useState(
     () => sessionSeed ?? crypto.getRandomValues(new Uint32Array(1))[0]!
   )
-  const [initialSelection] = useState(() =>
-    takeScheduledExercise(
-      SESSION_EXERCISE_IDS,
-      createExerciseSchedule(SESSION_EXERCISE_IDS, seed)
-    )
-  )
-  const scheduleRef = useRef<ExerciseSchedule>(initialSelection.schedule)
-  const [resolvedExercise, setResolvedExercise] = useState<Exercise>(
-    () => exercise ?? nextExercise({ preferId: initialSelection.exerciseId })
-  )
-  const runner = useExerciseRunner(resolvedExercise)
+  const runner = useExerciseRunner(exercise)
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [submitted, setSubmitted] = useState(false)
@@ -184,20 +166,10 @@ export const ReadingSession: FC<ReadingSessionProps> = ({
     const lastStep = runner.index >= runner.total - 1
     if (!lastStep) return
 
-    if (exercise !== undefined) {
-      // The fixed-exercise seam is one exercise long, the same contract
-      // `TypingSession` honours for a preview or deep link.
-      setSessionClockMs(sessionDurationMs)
-      return
-    }
-
-    const next = takeScheduledExercise(
-      SESSION_EXERCISE_IDS,
-      scheduleRef.current
-    )
-    scheduleRef.current = next.schedule
-    setResolvedExercise(nextExercise({ preferId: next.exerciseId }))
-  }, [runner, exercise, sessionDurationMs])
+    // A session is exactly one exercise: `Leetype` resolves which one before
+    // this component ever mounts, so finishing it ends the term.
+    setSessionClockMs(sessionDurationMs)
+  }, [runner, sessionDurationMs])
 
   const handleRestart = useCallback((): void => {
     setSelectedId(null)
@@ -206,19 +178,8 @@ export const ReadingSession: FC<ReadingSessionProps> = ({
     setReviewed(0)
     setSessionClockMs(0)
     setSessionGeneration((generation) => generation + 1)
-    if (exercise === undefined) {
-      const nextSeed =
-        sessionSeed ?? crypto.getRandomValues(new Uint32Array(1))[0]!
-      const first = takeScheduledExercise(
-        SESSION_EXERCISE_IDS,
-        createExerciseSchedule(SESSION_EXERCISE_IDS, nextSeed)
-      )
-      scheduleRef.current = first.schedule
-      setResolvedExercise(nextExercise({ preferId: first.exerciseId }))
-    } else {
-      runner.restart()
-    }
-  }, [exercise, runner, sessionSeed])
+    runner.restart()
+  }, [runner])
 
   if (finished) {
     return (
@@ -306,7 +267,7 @@ export const ReadingSession: FC<ReadingSessionProps> = ({
         // Keyed by step so a fresh group — and a fresh set of unchecked
         // inputs — mounts per step, rather than an effect racing to clear the
         // previous one's checked state.
-        key={`${resolvedExercise.id}:${step.id}`}
+        key={`${exercise.id}:${step.id}`}
         prompt={probe.prompt}
         options={probe.options}
         selectedId={selectedId}

@@ -1,6 +1,13 @@
 import type { FC } from "react"
+import { useCallback, useState } from "react"
+import type { ExercisePickerBadge } from "@leetype/components/exercise-picker"
+import { ExercisePicker } from "@leetype/components/exercise-picker"
 import { ReadingSession } from "@leetype/components/reading-game/reading-session"
 import { TypingSession } from "@leetype/components/typing-game/typing-session"
+import {
+  nextExercise,
+  SESSION_EXERCISE_IDS,
+} from "@leetype/lib/leetype/exercises"
 import type { Exercise } from "@leetype/types/exercise"
 import type {
   CompletedSessionStats,
@@ -23,7 +30,8 @@ export type LeetypeSurface = "auto" | "typing" | "reading"
 type LeetypeProps = {
   /**
    * A fixed exercise for a preview or deep link. Normal sessions omit this
-   * prop and traverse the eligible corpus through the seeded schedule.
+   * prop: the learner chooses one from `ExercisePicker` instead, and the
+   * choice — not a schedule — decides what plays.
    *
    * This prop is the seam a future generator plugs into — see
    * `lib/leetype/exercises`. Everything above it is indifferent to where the
@@ -50,33 +58,45 @@ type LeetypeProps = {
   appearance?: Appearance
   /** Escape hatch for stories, tests and deep links. Defaults to `"auto"`. */
   surface?: LeetypeSurface
+  /**
+   * Per-exercise usage signal for `ExercisePicker`'s tiles — how starved or
+   * popular each one is, in whatever units the host's own session history
+   * counts in. Optional and computed by nobody here: this package's static
+   * seed corpus has no notion of "across every player, over time," so a host
+   * that tracks that (`apps/www`) supplies it; a host that doesn't gets a
+   * plain, badge-free picker.
+   */
+  exerciseBadges?: Readonly<Record<string, ExercisePickerBadge>>
 }
 
 /**
  * LeetType: a competency probe, on whichever channel the device actually has.
  *
  * ```text
- * Leetype                         picks a modality, and nothing else
- * ├── TypingSession   ≥ 768px     produce the witness  (the M20 surface)
- * └── ReadingSession  < 768px     discriminate the claim (LTY-MOBILE)
+ * Leetype                         picks a modality, then an exercise
+ * ├── ExercisePicker               no exercise chosen yet (either surface)
+ * ├── TypingSession   ≥ 768px      produce the witness  (the M20 surface)
+ * └── ReadingSession  < 768px      discriminate the claim (LTY-MOBILE)
  * ```
  *
  * # Why a branch here rather than responsive CSS one level down
  *
- * Because the two surfaces are not the same interaction at two widths. The
- * typing surface's reveal loop, gate, baseline sampling and WPM figures are
- * all facts about a player producing code under time pressure; on a phone
- * there is no keyboard to produce it with, and every one of those figures
- * measures a channel that is switched off. Reflowing that surface into a
- * narrow column yields a screen that *looks* playable and reports numbers
- * that mean nothing — which is worse than not offering it.
+ * Because the two session surfaces are not the same interaction at two
+ * widths. The typing surface's reveal loop, gate, baseline sampling and WPM
+ * figures are all facts about a player producing code under time pressure;
+ * on a phone there is no keyboard to produce it with, and every one of those
+ * figures measures a channel that is switched off. Reflowing that surface
+ * into a narrow column yields a screen that *looks* playable and reports
+ * numbers that mean nothing — which is worse than not offering it.
  *
  * So the breakpoint is not `desktop diff → smaller desktop diff`. It is
  * `production probe → discrimination probe`, and expressing it as a component
  * branch rather than a media query is what lets the mobile path mount none of
  * the engine: `TypingSession` is where `useTypingGame` lives, and a hook
  * cannot be called conditionally. A phone therefore never fetches
- * `@some-ui/leetype-wasm` at all.
+ * `@some-ui/leetype-wasm` at all. `ExercisePicker` makes its own, independent
+ * mobile/desktop choice for the same reason applied to itself: a picker built
+ * for a pointer and one built for a thumb are different layouts.
  *
  * # The breakpoint is `useIsMobile`'s, not a new one
  *
@@ -88,12 +108,25 @@ type LeetypeProps = {
  * this component would mean starting a wasm load for a session that turns out
  * to be a reading one.
  *
+ * # Choosing an exercise replaced choosing one at random
+ *
+ * There used to be a seeded schedule here (`lib/leetype/exercises
+ * /scheduling.ts`) that traversed the eligible corpus in a shuffled cycle
+ * whenever no `exercise` prop was supplied. It is gone, not superseded: a
+ * learner picking their own target is a stronger reason to come back than a
+ * well-shuffled bag, and it is the only way to go straight at a concept
+ * known to be weak. `chosenId` below is this component's whole memory of
+ * that choice — cleared back to "no exercise yet" once a picker-sourced
+ * session finishes, so the next round asks again rather than silently
+ * looping to another random one. An explicit `exercise` prop (deep link,
+ * preview, test) always wins and never sees the picker at all.
+ *
  * # The registry contract
  *
  * Mounts with no props and no ambient context, exactly as before
  * (`@some-ui/content-registry`'s own rule). A host binds `leetype` and gets
  * whichever surface the device can actually carry, without knowing there are
- * two.
+ * two — and, with no `exercise` forced, the learner sees the picker first.
  */
 export const Leetype: FC<LeetypeProps> = ({
   exercise,
@@ -103,21 +136,48 @@ export const Leetype: FC<LeetypeProps> = ({
   onSessionComplete,
   appearance = "inherit",
   surface = "auto",
+  exerciseBadges,
 }) => {
   const isMobile = useIsMobile()
   const resolved =
     surface === "auto" ? (isMobile ? "reading" : "typing") : surface
 
+  const [chosenId, setChosenId] = useState<string | undefined>(undefined)
+  const active: Exercise | undefined =
+    exercise ??
+    (chosenId !== undefined ? nextExercise({ preferId: chosenId }) : undefined)
+
+  // Only a picker-sourced choice returns to the picker on completion — an
+  // explicit `exercise` prop is the caller's own fixed seam (a preview, a
+  // deep link, a test) and keeps behaving exactly as it always has.
+  const handleComplete = useCallback(
+    (stats?: CompletedSessionStats): void => {
+      onSessionComplete?.(stats)
+      if (exercise === undefined) setChosenId(undefined)
+    },
+    [onSessionComplete, exercise]
+  )
+
+  if (!active) {
+    const items = SESSION_EXERCISE_IDS.map((id) => {
+      const { title } = nextExercise({ preferId: id })
+      return { id, title, badge: exerciseBadges?.[id] }
+    })
+    return (
+      <div className={cn(appearanceClassName(appearance), "absolute inset-0")}>
+        <ExercisePicker items={items} onSelect={setChosenId} />
+      </div>
+    )
+  }
+
   if (resolved === "reading") {
     return (
       <div className={cn(appearanceClassName(appearance), "absolute inset-0")}>
         <ReadingSession
-          exercise={exercise}
+          exercise={active}
           sessionDurationMs={sessionDurationMs}
           sessionSeed={sessionSeed}
-          onSessionComplete={
-            onSessionComplete && ((): void => onSessionComplete())
-          }
+          onSessionComplete={(): void => handleComplete()}
         />
       </div>
     )
@@ -125,11 +185,10 @@ export const Leetype: FC<LeetypeProps> = ({
 
   return (
     <TypingSession
-      exercise={exercise}
+      exercise={active}
       sessionDurationMs={sessionDurationMs}
-      sessionSeed={sessionSeed}
       textGradient={textGradient}
-      onSessionComplete={onSessionComplete}
+      onSessionComplete={handleComplete}
       appearance={appearance}
     />
   )

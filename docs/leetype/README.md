@@ -676,6 +676,48 @@ See
 the new prompt's lineage and the three constraints it inherits rather than
 re-derives.
 
+## LTY-PICKER: choosing an exercise replaced choosing one at random
+
+Every earlier section above that says "seeded schedule" or "one schedule"
+(LTY-MOBILE, LTY-SEED) is describing a component this corpus no longer has.
+`lib/leetype/exercises/scheduling.ts` — a cyclic Fisher–Yates bag that picked
+the next exercise at random whenever a session carried no fixed `exercise`
+prop — is deleted, not superseded by a replacement inside the same shim.
+
+**The picker, not the bag, decides now.** `components/exercise-picker`
+(`ExercisePicker`) renders every `SESSION_EXERCISE_IDS` entry as a tile the
+learner chooses from, with a desktop grid and a mobile single-column list —
+the same component-branch idiom `Leetype` itself uses for `TypingSession`
+versus `ReadingSession`, and for the same reason: a picker built for a
+pointer and one built for a thumb are different layouts, not one layout
+narrowed by a media query.
+
+**Why:** a learner picking their own target is a stronger reason to come
+back than a well-shuffled bag, and it is the only way to go straight at a
+concept known to be weak. Corpus coverage — the property the random bag
+actually optimized for — was never the retention lever.
+
+**What moved, mechanically:** `TypingSession` and `ReadingSession` no longer
+resolve an exercise on their own — `exercise: Exercise` is a required prop on
+both now, not optional-with-a-schedule-fallback. `Leetype` is the one place
+that still allows an absent `exercise`: absent, it renders `ExercisePicker`
+instead of a session, and remembers the learner's choice only in local
+`useState` — cleared back to "nothing chosen" once a picker-sourced session
+finishes, so the next round asks again rather than silently looping to
+another random pick. An explicit `exercise` prop (a preview, a deep link, a
+test) still bypasses the picker entirely and behaves exactly as it always
+has; nothing about that seam changed.
+
+**Where "starved/popular" lives, and where it does not:** `ExercisePicker`
+renders an optional per-tile badge (`ExercisePickerBadge`: a tone and a
+count) but computes no classification itself — it has no notion of "across
+every player, over time," because this package's seed corpus is static data,
+not session history. `Leetype`'s own `exerciseBadges` prop is the seam: a
+host that tracks real usage (`apps/www`, eventually) supplies the
+classification; a host that does not gets a plain, badge-free picker. As of
+this section, nothing wires real data into that prop yet — the seam exists,
+the population-level "starved" and "popular" judgment does not.
+
 ## Where the magic is quarantined
 
 The full ambition is a compiler, not a prompt:
