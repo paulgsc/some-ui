@@ -299,12 +299,21 @@ function init(): void {
       })
 
       if (isGetTabFilterStateResponse(response)) {
+        // Always the authoritative value, regardless of which branch below
+        // runs (or whether either does) — cycleState() (the keyboard
+        // shortcut's CYCLE_TAB_STATE handler) reads this module-level cache
+        // directly with no config of its own, so an off/auto tab that skips
+        // both branches here (background agrees it's off/auto, nothing to
+        // reconcile) must still pick up e.g. a dim <-> invert style change
+        // made while it sat idle — otherwise the next legacy entry repaints
+        // with a stale filterConfig until some other message updates it.
+        filterConfig = response.config
+
         if (response.enabled) {
           enterOrRefreshLegacy(response.config)
         } else if (currentState === "legacy") {
           // Cache said legacy but this tab is no longer in the filter list
           // (user removed it via popup). Re-classify with auto.
-          filterConfig = response.config
           applyState("auto")
         }
       }
