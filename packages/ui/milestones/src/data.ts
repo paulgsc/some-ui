@@ -9,10 +9,11 @@ import type { Milestone } from "./types"
 export const sampleMilestones: ReadonlyArray<Milestone> = [
   {
     id: "ci-green",
+    period: "previously",
     tone: "joy",
     category: "Engineering",
-    title: "Main is green. Actually, genuinely green.",
-    reflection: "Finally got my main branch to be green check marked, woohoo.",
+    title: "Got main to finally be green",
+    reflection: "The main branch is finally green check marked. Woohoo.",
     timestamp: "Aug 2026",
     stats: [
       { label: "Red builds survived", value: "1,204" },
@@ -20,57 +21,27 @@ export const sampleMilestones: ReadonlyArray<Milestone> = [
     ],
   },
   {
-    id: "first-10k",
-    tone: "relief",
-    category: "Health",
-    title: "Ran the whole 10K without stopping",
-    reflection: "Six months ago I couldn't do one mile without walking.",
-    timestamp: "Jun 2026",
+    id: "mozilla-addon",
+    period: "currently",
+    tone: "joy",
+    category: "Shipping",
+    title: "My Mozilla add-on was approved",
+    reflection:
+      "Just got my Mozilla add-on approved by the Mozilla add-on team.",
+    timestamp: "Aug 2026",
     stats: [
-      { label: "Pace", value: "6:42/km" },
-      { label: "Training weeks", value: "24" },
+      { label: "Review status", value: "Approved" },
+      { label: "Browsers", value: "Firefox" },
     ],
   },
   {
-    id: "hard-conversation",
+    id: "niners-australia",
+    period: "upcoming",
     tone: "grind",
-    category: "Relationships",
-    title: "Had the conversation I'd been avoiding for a year",
-    reflection: "It went badly, and I'm still glad I said it.",
-    timestamp: "Mar 2026",
-  },
-  {
-    id: "missed-deadline",
-    tone: "dread",
-    category: "Craft",
-    title: "Missed the deadline I promised myself",
-    reflection: "Third rewrite of the same chapter. Still not right.",
-    timestamp: "Jan 2026",
-  },
-  {
-    id: "flaky-test",
-    tone: "rage",
-    category: "Engineering",
-    title: "The test that only fails on Tuesdays",
+    category: "Adventure",
+    title: "Witness a Niners game in Australia",
     reflection:
-      "It passes locally. It passes on rerun. It will not pass right now.",
-    timestamp: "Oct 2025",
-    stats: [
-      { label: "Retries", value: "17" },
-      { label: "Root cause", value: "Timezone" },
-    ],
-  },
-  {
-    id: "emergency-fund",
-    tone: "relief",
-    category: "Finance",
-    title: "Hit six months of expenses in savings",
-    reflection:
-      "Started at zero. Never touched it once, even when it was tempting.",
-    timestamp: "Jul 2025",
-    stats: [
-      { label: "Months saved", value: "6" },
-      { label: "Automated transfers", value: "31" },
-    ],
+      "One for the itinerary: see the Niners play on the other side of the world.",
+    timestamp: "Someday",
   },
 ]

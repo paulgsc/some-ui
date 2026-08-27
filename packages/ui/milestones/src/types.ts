@@ -7,6 +7,8 @@
  */
 export type MilestoneTone = "joy" | "relief" | "grind" | "dread" | "rage"
 
+export type MilestonePeriod = "previously" | "currently" | "upcoming"
+
 export type MilestoneStat = {
   label: string
   value: string
@@ -14,6 +16,7 @@ export type MilestoneStat = {
 
 export type Milestone = {
   id: string
+  period: MilestonePeriod
   tone: MilestoneTone
   category: string
   title: string

@@ -22,7 +22,7 @@ export const Interactive: Story = {
     const Demo = (): React.JSX.Element => {
       const [activeIndex, setActiveIndex] = useState(0)
       return (
-        <div className="h-[420px] w-full max-w-sm bg-background p-4">
+        <div className="h-[480px] w-full max-w-sm bg-background p-4">
           <MilestoneTimeline
             milestones={args.milestones}
             activeIndex={activeIndex}

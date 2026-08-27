@@ -3,7 +3,7 @@ import {
   toneTextClass,
   toneWashClass,
 } from "@milestones/lib/tone"
-import type { Milestone } from "@milestones/types"
+import type { Milestone, MilestonePeriod } from "@milestones/types"
 import * as AccordionPrimitive from "@radix-ui/react-accordion"
 import { ChevronDown } from "lucide-react"
 import { cn } from "some-ui-utils"
@@ -15,11 +15,20 @@ type Props = {
   className?: string
 }
 
+const periods: ReadonlyArray<{
+  id: MilestonePeriod
+  label: string
+}> = [
+  { id: "previously", label: "Previously" },
+  { id: "currently", label: "Currently" },
+  { id: "upcoming", label: "Upcoming" },
+]
+
 /**
- * A vertical dot-and-line timeline, one row per milestone. The open row is
- * driven entirely by `activeIndex` (owned by `useMilestoneCycle`) rather
- * than the accordion's own internal state, so the cyclical auto-advance and
- * a manual click land in the exact same place the paired dice card does.
+ * A three-period dot-and-line timeline, grouped into previously, currently,
+ * and upcoming sections. The open row is driven entirely by `activeIndex`
+ * (owned by `useMilestoneCycle`) rather than the accordion's internal state,
+ * so cyclical auto-advance and manual selection stay paired with the dice.
  */
 export const MilestoneTimeline = ({
   milestones,
@@ -32,7 +41,7 @@ export const MilestoneTimeline = ({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-3xl border-2 border-foreground bg-card shadow-[10px_12px_0_var(--foreground),0_24px_45px_color-mix(in_oklab,var(--foreground)_18%,transparent)]",
+        "relative min-h-0 max-w-full overflow-hidden rounded-3xl border-2 border-foreground bg-card shadow-[10px_12px_0_var(--foreground),0_24px_45px_color-mix(in_oklab,var(--foreground)_18%,transparent)]",
         className
       )}
     >
@@ -47,83 +56,105 @@ export const MilestoneTimeline = ({
           )
           if (index >= 0) onSelect(index)
         }}
-        className="flex min-h-0 flex-col overflow-hidden px-6 py-7 sm:px-8"
+        className="flex h-[calc(100%-0.5rem)] min-h-0 flex-col gap-3 overflow-hidden px-5 py-5 sm:px-7"
       >
-        {milestones.map((milestone, index) => {
-          const active = index === activeIndex
-          const isLast = index === milestones.length - 1
+        {periods.map((period) => {
+          const periodMilestones = milestones
+            .map((milestone, index) => ({ milestone, index }))
+            .filter(({ milestone }) => milestone.period === period.id)
 
           return (
-            <AccordionPrimitive.Item
-              key={milestone.id}
-              value={milestone.id}
-              className="flex gap-4"
+            <section
+              key={period.id}
+              className="flex min-h-0 flex-1 flex-col overflow-hidden"
+              aria-labelledby={`milestone-period-${period.id}`}
             >
-              <div
-                className="flex w-4 shrink-0 flex-col items-center"
-                aria-hidden
+              <h3
+                id={`milestone-period-${period.id}`}
+                className="mb-1.5 shrink-0 font-mono text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground"
               >
-                <span
-                  className={cn(
-                    "z-10 mt-1.5 size-3 shrink-0 rounded-full border-2 border-foreground shadow-[0_0_0_3px_var(--card)] transition-transform",
-                    active
-                      ? toneDotClass[milestone.tone]
-                      : "bg-muted-foreground/40",
-                    active && "scale-125"
-                  )}
-                />
-                {!isLast && (
-                  <span className="min-h-0 w-0.5 flex-1 bg-foreground/15" />
-                )}
-              </div>
+                {period.label}
+              </h3>
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                {periodMilestones.map(({ milestone, index }, periodIndex) => {
+                  const active = index === activeIndex
+                  const isLast = periodIndex === periodMilestones.length - 1
 
-              <div className="min-w-0 flex-1 pb-4">
-                <AccordionPrimitive.Header>
-                  <AccordionPrimitive.Trigger
-                    onClick={() => onSelect(index)}
-                    className={cn(
-                      "group flex w-full items-center justify-between rounded-2xl border-2 border-transparent px-4 py-3 text-left outline-none transition-all hover:border-foreground/20 hover:bg-accent/70 focus-visible:ring-4 focus-visible:ring-ring/30",
-                      active &&
-                        `border-foreground bg-gradient-to-r ${toneWashClass[milestone.tone]} shadow-[5px_6px_0_var(--foreground)]`
-                    )}
-                  >
-                    <span className="min-w-0">
-                      <span className="block font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                        {milestone.timestamp}
-                      </span>
-                      <span
-                        className={cn(
-                          "mt-1 line-clamp-1 block text-sm font-extrabold leading-6 text-foreground",
-                          active && toneTextClass[milestone.tone]
-                        )}
+                  return (
+                    <AccordionPrimitive.Item
+                      key={milestone.id}
+                      value={milestone.id}
+                      className="flex min-h-0 flex-1 gap-3 overflow-hidden"
+                    >
+                      <div
+                        className="flex w-4 shrink-0 flex-col items-center"
+                        aria-hidden
                       >
-                        {milestone.title}
-                      </span>
-                    </span>
-                    <ChevronDown
-                      className="ml-3 size-4 shrink-0 transition-transform group-data-[state=open]:rotate-180"
-                      aria-hidden
-                    />
-                  </AccordionPrimitive.Trigger>
-                </AccordionPrimitive.Header>
+                        <span
+                          className={cn(
+                            "z-10 mt-1.5 size-3 shrink-0 rounded-full border-2 border-foreground shadow-[0_0_0_3px_var(--card)] transition-transform",
+                            active
+                              ? toneDotClass[milestone.tone]
+                              : "bg-muted-foreground/40",
+                            active && "scale-125"
+                          )}
+                        />
+                        {!isLast && (
+                          <span className="min-h-0 w-0.5 flex-1 bg-foreground/15" />
+                        )}
+                      </div>
 
-                <AccordionPrimitive.Content
-                  className={cn(
-                    "overflow-hidden",
-                    "data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
-                  )}
-                >
-                  <div className="px-4">
-                    <p className="line-clamp-2 pt-2 text-xs leading-5 text-muted-foreground">
-                      {milestone.reflection}
-                    </p>
-                    <span className="mt-3 inline-block rounded-full border-2 border-foreground bg-foreground px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-background">
-                      {milestone.category}
-                    </span>
-                  </div>
-                </AccordionPrimitive.Content>
+                      <div className="min-h-0 min-w-0 flex-1 overflow-hidden pb-2">
+                        <AccordionPrimitive.Header>
+                          <AccordionPrimitive.Trigger
+                            onClick={() => onSelect(index)}
+                            className={cn(
+                              "group flex w-full min-w-0 items-center justify-between overflow-hidden rounded-2xl border-2 border-transparent px-3 py-2 text-left outline-none transition-all hover:border-foreground/20 hover:bg-accent/70 focus-visible:ring-4 focus-visible:ring-ring/30",
+                              active &&
+                                `border-foreground bg-gradient-to-r ${toneWashClass[milestone.tone]} shadow-[5px_6px_0_var(--foreground)]`
+                            )}
+                          >
+                            <span className="min-w-0">
+                              <span className="block font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                                {milestone.timestamp}
+                              </span>
+                              <span
+                                className={cn(
+                                  "mt-1 line-clamp-1 block text-sm font-extrabold leading-6 text-foreground",
+                                  active && toneTextClass[milestone.tone]
+                                )}
+                              >
+                                {milestone.title}
+                              </span>
+                            </span>
+                            <ChevronDown
+                              className="ml-3 size-4 shrink-0 transition-transform group-data-[state=open]:rotate-180"
+                              aria-hidden
+                            />
+                          </AccordionPrimitive.Trigger>
+                        </AccordionPrimitive.Header>
+
+                        <AccordionPrimitive.Content
+                          className={cn(
+                            "max-h-20 overflow-hidden",
+                            "data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
+                          )}
+                        >
+                          <div className="px-4">
+                            <p className="line-clamp-2 pt-2 text-xs leading-5 text-muted-foreground">
+                              {milestone.reflection}
+                            </p>
+                            <span className="mt-3 inline-block rounded-full border-2 border-foreground bg-foreground px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-background">
+                              {milestone.category}
+                            </span>
+                          </div>
+                        </AccordionPrimitive.Content>
+                      </div>
+                    </AccordionPrimitive.Item>
+                  )
+                })}
               </div>
-            </AccordionPrimitive.Item>
+            </section>
           )
         })}
       </AccordionPrimitive.Root>
