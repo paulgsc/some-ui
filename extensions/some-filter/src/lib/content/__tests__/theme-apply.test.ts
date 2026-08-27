@@ -1,4 +1,4 @@
-import { relativeLuminance } from "@filter/lib/content/color"
+import { parseColor, relativeLuminance } from "@filter/lib/content/color"
 import {
   applyTheme,
   DARK_THEME_ATTR,
@@ -6,6 +6,7 @@ import {
   removeDarkTheme,
   restoreVendor,
 } from "@filter/lib/content/theme-apply"
+import { LEGACY_PRESETS } from "@filter/lib/legacy-presets"
 import { afterEach, describe, expect, it } from "vitest"
 
 const STYLE_ID = "__sw_dark_theme"
@@ -86,7 +87,7 @@ describe("applyTheme", () => {
   it("'legacy' with invert forces the canvas colour and counter-inverts media", () => {
     applyTheme("legacy", { invert: 1, brightness: 0.5 })
     const style = document.getElementById(LEGACY_STYLE_ID)
-    expect(style?.textContent).toContain("background-color: #fff")
+    expect(style?.textContent).toContain("background-color: #0d1117")
     expect(style?.textContent).toContain(
       "img, video, canvas, picture { filter: invert(1) hue-rotate(180deg)"
     )
@@ -96,19 +97,34 @@ describe("applyTheme", () => {
     applyTheme("legacy", { invert: 0, brightness: 0.7, contrast: 0.95 })
     const style = document.getElementById(LEGACY_STYLE_ID)
     expect(style?.textContent).toContain("brightness(0.7)")
-    expect(style?.textContent).not.toContain("background-color: #fff")
+    expect(style?.textContent).not.toContain("background-color: #0d1117")
     expect(style?.textContent).not.toContain("img, video, canvas, picture")
   })
 })
 
-// ── the declared canvas colour must composite dark, not just be dark ──────────
+// ── the declared canvas colour, in both regimes it is painted in ─────────────
+//
+// The legacy invert canvas colour is consumed by two painters that want
+// opposite values (theme-apply.ts's applyLegacyFilter has the full argument):
+//
+//   raw        — the declared colour, no filter applied. Visible during every
+//                window where content is on screen before the root filter's
+//                output covers it: the pre-commit window, and (the reported
+//                bug) vendor DOM materialised after document_end and revealed
+//                faster than it rasters, e.g. a held PgDn on GitHub.
+//   composited — the same colour through this preset's five stages.
 //
 // getComputedStyle never reflects `filter` (issue-741-auto-defects.spec.ts's
-// same point) — a *declared* dark canvas colour can still *render* light once
-// composited through this preset's own invert/hue-rotate/sepia/brightness/
-// contrast chain. These replicate that composite (CSS Filter Effects Level 1's
-// formulas for each function, applied in the order the `filter` property
-// lists them) to assert what a human actually sees, not what was declared.
+// same point), so the composited regime has to be computed. The stages below
+// implement CSS Filter Effects Level 1's formulas, applied in the order the
+// `filter` property lists them.
+//
+// Composited luminance falls monotonically as source luminance rises, so no
+// source is dark in both regimes and the choice is which one is visible. It
+// is raw — the html canvas spends the composited regime occluded by the
+// vendor's own opaque body, and the raw regime is exactly the uncovered tick
+// a human sees. These tests pin that choice so the composited maths alone
+// cannot flip it back (#1175 did, and reintroduced the tick).
 
 type RGB = [number, number, number]
 
@@ -157,39 +173,83 @@ function contrastStage([r, g, b]: RGB, amount: number): RGB {
   return [c(r), c(g), c(b)]
 }
 
-/** What a human actually sees once `source` (0-1 RGB) is composited through the exact "invert" legacy preset's five-stage filter. */
+/**
+ * What a human actually sees once `source` (0-1 RGB) is composited through the
+ * "invert" legacy preset's five-stage filter. Reads the preset rather than
+ * restating it, so retuning the preset retunes this model with it.
+ */
 function asSeenThroughLegacyInvertFilter(source: RGB): RGB {
+  const preset = LEGACY_PRESETS.invert
   const clamp = (x: number): number => Math.min(1, Math.max(0, x))
-  const inverted = invertStage(source, 1)
-  const rotated = hueRotateStage(inverted, 180)
-  const sepiaed = sepiaStage(rotated, 0.12)
-  const brightened = brightnessStage(sepiaed, 0.5)
-  const contrasted = contrastStage(brightened, 0.92)
+  const inverted = invertStage(source, preset.invert)
+  const rotated = hueRotateStage(inverted, preset.hueRotate)
+  const sepiaed = sepiaStage(rotated, preset.sepia)
+  const brightened = brightnessStage(sepiaed, preset.brightness)
+  const contrasted = contrastStage(brightened, preset.contrast)
   return [clamp(contrasted[0]), clamp(contrasted[1]), clamp(contrasted[2])]
 }
 
-describe("legacy invert preset's declared canvas colour, as actually composited", () => {
-  it("white (the current source) composites to a dark canvas", () => {
-    const [r, g, b] = asSeenThroughLegacyInvertFilter([1, 1, 1])
-    const luminance = relativeLuminance(r, g, b)
-    const rounded = [r, g, b].map((c) => Math.round(c * 255)).join(", ")
+/** The canvas colour applyLegacyFilter actually declares, as 0-1 RGB. */
+function declaredCanvasColor(): RGB {
+  applyTheme("legacy", LEGACY_PRESETS.invert)
+  const css = document.getElementById(LEGACY_STYLE_ID)?.textContent ?? ""
+  const declared = /background-color:\s*(#[0-9a-fA-F]{3,8})/.exec(css)?.[1]
+  if (declared === undefined) {
+    throw new Error(`no canvas colour declared in: ${css}`)
+  }
+  const parsed = parseColor(declared)
+  if (parsed === null) throw new Error(`unparseable canvas colour ${declared}`)
+  return [parsed[0], parsed[1], parsed[2]]
+}
+
+function describeRgb(rgb: RGB): string {
+  return `rgb(${rgb.map((c) => Math.round(c * 255)).join(", ")})`
+}
+
+describe("legacy invert preset's declared canvas colour", () => {
+  it("reads dark unfiltered — the flashbang-tick guard", () => {
+    const declared = declaredCanvasColor()
+    const luminance = relativeLuminance(...declared)
+    // The invariant that matters to a human. White satisfies the composited
+    // maths and fails here: it is a full-viewport flash on every tick where
+    // vendor content is up before the root filter's output is.
     expect(
       luminance,
-      `composited rgb(${rounded}) should read dark`
+      `unfiltered ${describeRgb(declared)} must read dark`
     ).toBeLessThan(0.05)
   })
 
-  it("the previous #0d1117 source (the reported polarity bug) composites to a light canvas, not dark", () => {
-    const [r, g, b] = asSeenThroughLegacyInvertFilter([
-      0x0d / 255,
-      0x11 / 255,
-      0x17 / 255,
-    ])
-    const luminance = relativeLuminance(r, g, b)
-    // Documents the bug this preset used to have: a near-black *declared*
-    // source read as light once actually composited (#7b7b7a). If this ever
-    // stops being true the reasoning in theme-apply.ts's comment is stale.
-    expect(luminance).toBeGreaterThan(0.15)
+  it("composites light — the accepted, occluded cost of that choice", () => {
+    const composited = asSeenThroughLegacyInvertFilter(declaredCanvasColor())
+    const luminance = relativeLuminance(...composited)
+    // Not a bug being enshrined: it is the other half of the trade-off, held
+    // here so it stays a known quantity. #0d1117 composites to #7b7b7a, a
+    // light grey — behind the vendor's opaque body, where nobody sees it. If
+    // this ever does become visible the fix is a second, filtered floor (a
+    // fixed z-index:-1 white layer inside <html>), not repolarising the
+    // canvas: that is what would bring the tick back.
+    expect(
+      luminance,
+      `composited ${describeRgb(composited)} is the occluded regime`
+    ).toBeGreaterThan(0.15)
+  })
+
+  it("has no source colour that is dark in both regimes", () => {
+    // Why the two tests above disagree and that is not a defect. Sampling the
+    // greyscale ramp: every source is light in one regime or the other, so
+    // "declare a colour that is dark either way" is not an available fix.
+    const darkEnough = 0.05
+    const bothDark = Array.from({ length: 256 }, (_, i) => i / 255).filter(
+      (level) => {
+        const source: RGB = [level, level, level]
+        const composited = asSeenThroughLegacyInvertFilter(source)
+        return (
+          relativeLuminance(...source) < darkEnough &&
+          relativeLuminance(...composited) < darkEnough
+        )
+      }
+    )
+    expect(bothDark).toEqual([])
   })
 })
 
