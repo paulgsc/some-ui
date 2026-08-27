@@ -116,6 +116,17 @@ async function applyLegacyStyle(style: LegacyStyle): Promise<void> {
 }
 
 // ─────────────────────────────────────────────
+// diagnostics
+// ─────────────────────────────────────────────
+
+const OPEN_DIAGNOSTICS_MENU_ID = "sw-open-diagnostics"
+
+/** Same destination as the popup's own "Diagnostics" footer link. */
+function openDiagnostics(): void {
+  void ext.tabs.create({ url: ext.runtime.getURL("debug.html") })
+}
+
+// ─────────────────────────────────────────────
 // install
 // ─────────────────────────────────────────────
 
@@ -152,6 +163,11 @@ ext.runtime.onInstalled.addListener((): void => {
       checked: DEFAULT_LEGACY_STYLE === "dim",
       contexts: ["tab"],
     })
+    ext.contextMenus.create({
+      id: OPEN_DIAGNOSTICS_MENU_ID,
+      title: "Open diagnostics",
+      contexts: ["tab"],
+    })
   })
 })
 
@@ -160,6 +176,11 @@ ext.contextMenus.onClicked.addListener((info): void => {
 
   if (style) {
     void applyLegacyStyle(style)
+    return
+  }
+
+  if (info.menuItemId === OPEN_DIAGNOSTICS_MENU_ID) {
+    openDiagnostics()
   }
 })
 
