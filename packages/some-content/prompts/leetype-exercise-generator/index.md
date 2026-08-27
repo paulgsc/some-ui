@@ -23,6 +23,52 @@ than re-deriving them:
 3. **No judgment without its own justification** — `rationale`, `obligation`
    and `concepts` are where the evidence attaches.
 
+## The governing rule: test fitness, not merely correctness
+
+**LeetType does not test whether the learner can make code work. It tests
+whether the learner can justify an engineering commitment.** Correctness asks
+whether an implementation satisfies a specification; engineering judgment
+asks why a specification, representation, algorithm, boundary, or policy is
+fit under the actual constraints. A candidate may be completely correct and
+still be the form the exercise rules out.
+
+Every generated exercise must expose at least two genuinely plausible,
+semantically correct candidates. Its epistemic chain is:
+
+```text
+intent → operative constraint → required property → candidates
+       → decision → consequence → counterfactual boundary
+```
+
+Code is evidence attached to that chain, never its center. The learner must
+establish why the chosen form preserves the information or capability the
+intent requires, what the alternative preserves or costs unnecessarily, and
+what realistic constraint change would make that alternative preferable.
+
+**A justification must bottom out in properties, not names.** “Use
+memoization,” “use a hash map,” “use binary search,” and “use a mutex” are
+labels, not justifications. State the repeated pure subproblem, required
+key-to-state relation, ordered-search boundary, or shared-state invariant that
+makes the named technique applicable, including the relevant cost or failure
+mode.
+
+Reject an exercise if the learner can succeed through syntax knowledge, API
+recall, compiler feedback, observed output, local repair alone, a memorized
+complexity label, or a canonical surface mapping such as `duplicates →
+HashSet` or `sorted input → binary search`.
+
+### The counterfactual test (required)
+
+Name one realistic constraint change under which the rejected correct
+alternative becomes preferable. If none can be articulated, the candidates
+are not genuine design alternatives or the decision has not been modeled
+deeply enough. Do not generate the exercise.
+
+Behavioral correctness and mechanistic understanding may be prerequisites in
+the frame. They are never sufficient as the discriminating signal; the corpus
+targets constraint reasoning, design discrimination, counterfactual judgment,
+and architectural stewardship.
+
 ---
 
 ## Usage Example Header
@@ -31,7 +77,11 @@ than re-deriving them:
 Concept: [a CONCEPT_IDS entry, or a new kebab-case id if none fits — see "Concept and invariant" below]
 Invariant violated: [one sentence: the specific property the source's defect, or ruled-out form, violates]
 Family: [diagnostic | construction]
-T: [Apply LeetType Exercise Generator v1.2]
+Intent: [the observable outcome or system guarantee]
+Operative constraints: [facts that make one correct candidate fitter than another]
+Correct candidates: [A and B — both satisfy the behavioral contract]
+Decision boundary: [a realistic changed constraint under which B becomes preferable]
+T: [Apply LeetType Exercise Generator v1.3]
 ```
 
 Example:
@@ -40,7 +90,7 @@ Example:
 Concept: window-shrinking
 Invariant violated: a two-pointer scan's search window must strictly shrink on every non-terminating iteration, or the loop never converges
 Family: diagnostic
-T: [Apply LeetType Exercise Generator v1.2]
+T: [Apply LeetType Exercise Generator v1.3]
 ```
 
 The generator then produces one TypeScript module (a single `export const`
@@ -51,7 +101,7 @@ way the hangul generator's JSON output is.
 
 ---
 
-## Concept and invariant are supplied, never chosen by you
+## The decision frame is supplied, never chosen by you
 
 Concept selection is not class IV (`docs/canon/adaptive-learning-canon.typ`
 **Definition 8.1**) — it does not require an open-world model of what a
@@ -60,8 +110,12 @@ judgment nobody has actually made into a step nobody asked for. The human
 author supplies **concept** (an existing `CONCEPT_IDS` entry, from
 `packages/ui/leetype/src/lib/leetype/exercises/concepts.ts`, or a new
 kebab-case id if genuinely nothing fits — read that file first) and
-**the invariant it violates**, as input, before you generate anything. If
-either is missing from the header, ask for it rather than inventing one.
+**the invariant it violates**, as input, before you generate anything. The
+author must also supply **intent**, **operative constraints**, two behaviorally
+correct **candidates**, and a **decision boundary**. If any field is missing,
+ask for it rather than inventing one. A diagnostic may show defective code as
+failure evidence, but its assessed decision must still discriminate between
+two correct designs; repair alone is not competence evidence.
 
 **A genuinely new concept is a two-file change, not one.** Emit the step
 against `CONCEPT_IDS.<newKey>` (never a bare string literal), and add
@@ -209,6 +263,15 @@ bridge, not an obligation — do not generate it. `obligation` states the
 concept-bearing decision the witness discharges; it is never rendered to
 the learner, so write it as an argument for the reviewer, not as
 in-character prose.
+
+That authoring test is necessary but no longer sufficient. The witness must
+be one of at least two behaviorally correct candidates, and `obligation` must
+argue why it is fitter under the supplied constraints. Attach 2–5
+`rationaleChoices`: the canonical choice bottoms out in properties, one
+distractor represents surface technique matching, and one incorrectly treats
+the selected design as unconditional across the supplied counterfactual. The
+code fragment proves the decision is realized; typing it does not by itself
+prove the learner understands the decision.
 
 A construction step needs at least one visible constraint or consequence
 block besides its witness (`transition`/`trace`/`region`/`prompt`) — a
@@ -383,6 +446,16 @@ mechanize eventually — write your own instance against each one, and treat
   syntax feature — the single question worth re-asking last: could a
   learner solve this by pattern-matching a method name rather than
   reasoning about the concept?
+- [judgment] At least two candidates are behaviorally correct; the
+  discriminator is fitness under explicit constraints, never output alone.
+- [judgment] The justification bottoms out in required information,
+  complexity assumptions, failure modes, or boundary semantics rather than
+  a named technique or memorized complexity label.
+- [judgment] A realistic changed constraint makes the rejected correct
+  candidate preferable, and the exercise records that boundary.
+- [judgment] The learner cannot succeed through a canonical surface mapping
+  such as `overlapping subproblems → memoization` without deriving the
+  property that makes the technique applicable.
 - [judgment] A newly coined concept id is not a near-duplicate of an
   existing `CONCEPT_IDS` entry — the same idea under a different name.
   Not mechanically checkable (LTY-SEED G5 considered and rejected a
@@ -420,6 +493,13 @@ mechanize eventually — write your own instance against each one, and treat
 ---
 
 ## Versioning
+
+**`v1.3`.** Adds fitness-over-correctness as the positive invariant. Every
+generated instance now requires two correct candidates, property-grounded
+constraint discrimination, and a counterfactual decision boundary. This
+closes the gap in v1.2 that rejected syntax/API recall but still admitted
+local repair and canonical problem-to-technique lookup as sufficient
+competence.
 
 **`v1.2`.** LTY-SEED G5 (#1110) reviewed every self-check item below
 against G4's actual findings and added no new mechanizable check — the

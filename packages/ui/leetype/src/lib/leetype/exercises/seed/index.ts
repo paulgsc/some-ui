@@ -6,6 +6,7 @@ import { entryApi } from "./entry-api"
 import { adversarial, HOSTILE_PROMPT_STEP } from "./fixtures"
 import { diagnosticInclusiveBoundary } from "./inclusive-boundary"
 import { constructionLazyDefault } from "./lazy-default"
+import { lexicographicallySmallestValidSequence } from "./lexicographically-smallest-valid-sequence"
 import { diagnosticLoopProgress } from "./loop-progress"
 import { diagnosticMemoization } from "./memoization"
 import { diagnosticShrinkingInterval } from "./shrinking-interval"
@@ -42,6 +43,7 @@ import { diagnosticShrinkingInterval } from "./shrinking-interval"
  * call site that reached in directly.
  */
 export const SEED_EXERCISES: ReadonlyArray<Exercise> = [
+  lexicographicallySmallestValidSequence,
   entryApi,
   diagnosticLoopProgress,
   diagnosticInclusiveBoundary,
@@ -55,6 +57,10 @@ export const SEED_EXERCISES: ReadonlyArray<Exercise> = [
 
 /** The one that reads like a real curriculum, for stories and tests. */
 export const SEED_EXERCISE_ID = entryApi.id
+
+/** The focused LeetCode 3302 curriculum served by both interactive surfaces. */
+export const LEETCODE_3302_EXERCISE_ID =
+  lexicographicallySmallestValidSequence.id
 
 /** The one that is deliberately hostile, for stories and tests. */
 export const ADVERSARIAL_EXERCISE_ID = adversarial.id

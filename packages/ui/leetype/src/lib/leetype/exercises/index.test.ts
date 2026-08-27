@@ -14,9 +14,24 @@ import {
   FIXTURE_EXERCISE_ID,
   FIXTURE_HOSTILE_PROMPT_STEP,
   nextExercise,
+  SESSION_EXERCISE_IDS,
 } from "."
 
 describe("the exercise shim", () => {
+  it("serves only the 24-rung engineering-judgment curriculum", () => {
+    expect(SESSION_EXERCISE_IDS).toEqual(["leetcode-3302-valid-sequence"])
+    const exercise = nextExercise({ preferId: SESSION_EXERCISE_IDS[0]! })
+    expect(exercise.steps).toHaveLength(24)
+    for (const step of exercise.steps) {
+      expect(step.obligation).toContain("Decision:")
+      expect(step.obligation).toContain("Boundary:")
+      expect(step.rationaleChoices).toHaveLength(3)
+      expect(
+        step.rationaleChoices?.filter((choice) => choice.canonical)
+      ).toHaveLength(1)
+    }
+  })
+
   it("hands back the exercise its preferId names", () => {
     const exercise = nextExercise({ preferId: FIXTURE_EXERCISE_ID })
     expect(exercise.steps.length).toBeGreaterThan(0)
