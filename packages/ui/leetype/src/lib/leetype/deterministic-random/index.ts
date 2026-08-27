@@ -1,11 +1,13 @@
 /**
  * The package's one deterministic permutation.
  *
- * Extracted from `exercises/scheduling.ts`, which held it privately until a
- * second caller needed the same guarantee — `reading-probe`, whose distractor
- * ordering has to be replayable from a session seed for exactly the reason a
- * session's exercise order does: a run reported in a bug, pinned in a test or
- * mounted in a story must produce the same screen twice.
+ * Extracted from `exercises/scheduling.ts` (LTY-PICKER, `docs/leetype
+ * /README.md`, removed once the picker replaced the random schedule it drove),
+ * which held this privately until a second caller needed the same guarantee —
+ * `reading-probe`, whose distractor ordering has to be replayable from a
+ * session seed for the same reason a session's old exercise order did: a run
+ * reported in a bug, pinned in a test or mounted in a story must produce the
+ * same screen twice. `reading-probe` is this module's one caller now.
  *
  * Specified here rather than delegated to `Math.random` for that replay
  * property, and kept as one implementation rather than two because two
@@ -42,10 +44,11 @@ function randomValues(seed: number): () => number {
 /**
  * A Fisher–Yates shuffle driven by `randomValues`, returning a new array.
  *
- * Shared for the same reason the generator itself is: `scheduling.ts` and
- * `reading-probe` both want "this list, deterministically permuted," and a
- * shuffle written twice is a shuffle that can be biased in one of the two
- * copies without anything noticing.
+ * Kept as a named export rather than folded back into its one remaining
+ * caller: `exercises/scheduling.ts` used to want "this list, deterministically
+ * permuted" too, and a shuffle inlined into `reading-probe` alone would have
+ * to be un-inlined again the day a second caller needs the same guarantee —
+ * exactly what happened once already.
  */
 export function shuffledBySeed<T>(
   items: ReadonlyArray<T>,
