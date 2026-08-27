@@ -167,10 +167,22 @@ const interview: ActivityDefinition = {
 const leetype: ActivityDefinition = {
   id: "leetype",
   name: "LeetType",
+  // Modality-neutral on purpose. The old wording — "by typing the smallest
+  // code that shows it" — described the large-screen surface and was simply
+  // false on a phone, where the activity asks the player to read a change and
+  // say what it does instead (`@some-ui/leetype`'s LTY-MOBILE). What both
+  // surfaces have in common is the competency, which is what a description on
+  // a launch card should have been naming all along; how it is probed is the
+  // `input` disclosure's job, below.
   description:
-    "Prove one competency at a time by typing the smallest code that shows it.",
+    "Prove one competency at a time against the smallest code that shows it.",
   icon: "keyboard",
   registryKey: "leetype",
+  input: {
+    modalities: ["keyboard", "touch"],
+    blurb: "Typing on a keyboard; reading and tapping on a phone",
+    switchesOnSmallScreens: true,
+  },
   layoutTree: "study",
   fields: [
     {

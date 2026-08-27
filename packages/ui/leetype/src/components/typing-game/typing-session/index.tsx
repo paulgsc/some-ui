@@ -58,7 +58,7 @@ function sampleFromStep(
   )
 }
 
-type LeetypeProps = {
+type TypingSessionProps = {
   /**
    * A fixed exercise for a preview or deep link. Normal sessions omit this
    * prop and traverse the eligible corpus through the seeded schedule.
@@ -92,7 +92,12 @@ type LeetypeProps = {
 }
 
 /**
- * LeetType: a competency probe whose input modality happens to be typing.
+ * The production surface: a competency probe whose input modality is typing.
+ *
+ * This is the whole of what `Leetype` used to be, unchanged in behaviour and
+ * moved here so that `components/leetype` can pick between it and the
+ * small-screen reading surface without either one mounting the other's hooks
+ * (LTY-MOBILE). A phone gets `ReadingSession`; everything else gets this.
  *
  * The loop is *read one sentence → type → observe → repeat*, with no menus
  * in it. The composer supplies only the session term; within that term the
@@ -111,7 +116,7 @@ type LeetypeProps = {
  * asked-for rather than assumed: the runner is handed the engine's own
  * verdict on the finished step.
  */
-export const Leetype: FC<LeetypeProps> = ({
+export const TypingSession: FC<TypingSessionProps> = ({
   exercise,
   sessionDurationMs = 10 * 60_000,
   sessionSeed,

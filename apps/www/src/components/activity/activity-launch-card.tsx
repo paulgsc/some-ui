@@ -4,6 +4,7 @@ import { Card, CardContent } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
 
 import { ActivityIcon } from "@/components/activity-icon"
+import { ActivityInputHint } from "@/components/activity/activity-input"
 import {
   ActivityMaturityBadge,
   ActivityMaturityNote,
@@ -47,6 +48,9 @@ export const ActivityLaunchCard = ({
             {activity.description}
           </p>
           <ActivityMaturityNote activity={activity} />
+          {/* Both said before the click, where the expectation is set: what
+              this will do to your ears, and what it will ask of your hands. */}
+          <ActivityInputHint activity={activity} />
           <AudioActivityHint activity={activity} />
         </CardContent>
       </Card>

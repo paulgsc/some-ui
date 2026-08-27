@@ -11,6 +11,7 @@ export type {
   ActivityId,
   ActivityMaturity,
   AudioChannelId,
+  InputModalityId,
   LayoutTreeId,
   TopikLevel,
 } from "./lib/types"

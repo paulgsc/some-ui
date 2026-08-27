@@ -382,6 +382,215 @@ proposed again by someone who has not read this section:
   entire amount of judgment this epic performs, and the entire amount it is
   allowed to.
 
+## LTY-MOBILE: below the breakpoint, the modality changes and the subject does not
+
+Before this, LeetType had one surface. Below about 768px that surface was
+still rendered, still masked text, still measured WPM, and still gated on a
+baseline — on a device with no keyboard to produce code with. It looked
+playable and reported numbers that meant nothing, which is worse than not
+offering it.
+
+After it, `Leetype` is a chooser. A wide viewport gets `TypingSession` —
+byte-for-byte the surface M20 shipped, moved from
+`components/typing-game/leetype` to `components/typing-game/typing-session`
+and renamed, with no behavioural change. A narrow one gets `ReadingSession`
+(`components/reading-game/`): the same corpus, the same runner, the same
+seeded schedule, and a different probe.
+
+The slogan this whole document opens with is what licenses it:
+
+> The game is not a typing game over source code. It is a competency probe
+> whose only input modality happens to be typing.
+
+Taken seriously, that sentence says the typing is incidental. This epic is
+the first thing to actually take it seriously: on a phone the modality is
+unavailable, so it is the **modality** that changes and not the subject.
+
+### The two probes, named
+
+- **Production** (desktop). The player produces the witness by typing it under
+  the reveal loop. Fluency against their own sampled baseline is the evidence.
+- **Discrimination** (mobile). The player reads the hunk and picks the claim
+  the change makes out of a set of claims the corpus makes about _other_
+  changes. Recognition is the evidence.
+
+Discrimination is a **strictly weaker signal**, and nothing about the
+implementation pretends otherwise. The mobile surface produces no baseline
+sample, no absolute or weighted WPM, no gate, no reveal window and no attempt
+counter — every one of those is a fact about production read out of keystroke
+timing, and there are no keystrokes. Nothing it produces is read by
+`weightedWpm`, `gateThreshold`, `progression()`, `baseline-store`, or any
+persisted store: LTY-SEAM S2's _persist nothing, score nothing_ (#1016) and
+`p_credited = false` (#1015) apply by inheritance, not by a new argument.
+
+`adaptive-learning-canon.typ` **Axiom 3.1** is the reason this is honest
+rather than a shortfall: evidence arrives confounded, and no single
+observation identifies a competence. A correct pick is consistent with
+recognition, with elimination, and with a lucky guess out of four. Recording
+it as mastery would be a claim the channel cannot support — the same
+confound this document's own deferral of sink classification is built around,
+one modality over.
+
+### Why a component branch and not a media query
+
+Because `useTypingGame` lives inside `TypingSession`, and a hook cannot be
+called conditionally. Branching at the component boundary is therefore what
+makes the strongest claim available: **a phone never fetches
+`@some-ui/leetype-wasm` at all.** `components/leetype/index.test.tsx` pins it,
+with a negative control that asserts the wide branch _does_ load the engine —
+an "it didn't load wasm" test that passes when nothing loads wasm is not a
+test.
+
+The consequence worth stating: every engine invariant proved by
+`cargo test -p leetype_wasm` remains a statement about a system the mobile
+surface cannot perturb, because it never instantiates one.
+
+The breakpoint is `useIsMobile`'s 768px, from `some-ui-utils`, reused rather
+than re-picked. The workspace already has exactly one answer to "is this a
+phone"; a second constant here would be a second answer, and the two would
+drift.
+
+### Where the question and the answers come from
+
+Not from a new authored field. `readingProbeOf`
+(`lib/leetype/reading-probe`) derives a card from data the corpus already
+carries:
+
+| step family  | the claim         | the question                          | the reason                         |
+| ------------ | ----------------- | ------------------------------------- | ---------------------------------- |
+| diagnostic   | `rationale.cause` | _What fault does this change repair?_ | `rationale.whyRepairDiscriminates` |
+| construction | `obligation`      | _What does this change establish?_    | — (none authored yet)              |
+| neither      | `goal`            | _What is this change for?_            | —                                  |
+
+`goal` is required by the schema, which makes `claimOf` **total**: no
+schema-valid step can fail to produce a card. That matters more here than it
+would on the desktop path, because the reading surface is the _only_ surface
+on a phone — a step it could not pose would be a dead end, not a degraded
+card.
+
+**Distractors are other steps' own claims**, preferring one that shares a
+`concepts` entry with the step being posed, ordered by the session seed. Not
+authored per-step distractor lists, which would have left the surface
+unreachable on every existing step until somebody wrote three plausible wrong
+answers for each, and which age into strawmen the moment the author's
+attention moves on. A claim drawn from the corpus is a sentence somebody
+meant, about a change somebody made. The concept preference is what makes a
+distractor a near miss rather than a category error, and a probe you can pass
+without reading the code probes nothing.
+
+The judgement performed is small enough to state in full, which is the bar
+this package holds itself to: _a distractor is another step's authored claim,
+preferring one that shares a concept, ordered by seed._ That is the entire
+amount of judgement this epic performs and the entire amount it is allowed
+to — the same posture LTY-WHY's `narrow` holds.
+
+### The amendment: `rationale` and `obligation` are rendered here
+
+This document records both as authoring metadata **never rendered to the
+learner**, and `ExerciseSchema`'s own comments say so again. On the production
+path that is exactly right: an obligation shown above a blank is the
+description card this whole shift retired, handing the player the answer to
+the thing they were about to type.
+
+The reading path inverts the situation. Here the claim **is** the answer, and
+it is offered inside a closed set alongside claims the corpus makes about
+other changes; discriminating it is the entire task. An answer key among
+distractors is the format, not a leak.
+
+So the rule is amended rather than waived, and the amended form is:
+
+> `rationale` and `obligation` are never rendered on the production path, and
+> on the reading path only as one option among others — never alone, and never
+> before a choice has been made.
+
+`ClaimChoices` is the one component entitled to draw a claim, and it is handed
+`answerId: null` until the player has answered, so there is no render in which
+it holds the answer and merely declines to paint it.
+
+### The other amendment: a verdict, with its justification attached
+
+LTY-WHY forbids a verdict on its typed-rationale shim, and correctly: there is
+no semantic verifier, so _"that's the one"_ would be a judgement with nothing
+under it. That rule is this repository's own —
+
+> No judgment is allowed unless it can produce its own justification.
+
+— and a closed choice set satisfies it **literally**, not by exemption. The
+judgement is exact identity with the step's own authored claim; no verifier is
+required to compute it. The justification is the author's own
+`whyRepairDiscriminates`, rendered right underneath.
+
+The paint is held to the same restraint LTY-WHY argued for anyway. The verdict
+lives on the option rows, as a glyph plus a word, next to the option the
+player actually chose. `ReadingFeedback` carries no verdict at all — a `WHY`
+eyebrow and the sentence, in neutral paint. "Correct" on its own teaches
+nothing, and a learner who guessed right learns exactly as much as one who
+reasoned.
+
+**A cost, left visible.** Construction steps have no authored equivalent of
+`whyRepairDiscriminates`, so their cards end at the marked rows and the
+explanation panel does not mount. That is a real thinness across half the
+corpus. It is deliberately not papered over with generated prose or with the
+claim restated in different words: the fix is an authored sentence for the
+construction family, which is a corpus change argued on its own merits.
+
+### What this forecloses
+
+Recorded as decisions because each will be proposed again by someone who has
+not read this section.
+
+- **No side-by-side diff on any width, and no split/unified toggle.**
+  `DiffCard` is unified, permanently. This is a product decision, not a
+  simplification pending a bigger screen.
+- **No wrapping in the code region, ever.** Wrapping destroys indentation,
+  disconnects a continuation line from its sign, and makes an `add` row
+  impossible to align against the `del` row above it — which is the entire
+  comparison the card exists to support. The code region scrolls horizontally;
+  the page does not.
+- **No engine on the mobile path.** Not "lazily", not "only if the exercise
+  needs it". `ReadingSession` importing anything wasm-shaped is the regression
+  the chooser's test exists to catch.
+- **No mastery signal, no persistence, no streak, no XP.** M20 removed XP and
+  levels outright, and a new surface is exactly where they get proposed again.
+- **No `surface` prop set by a host.** `apps/www` passes none, and should not:
+  a host choosing which probe a device gets would be an application holding an
+  opinion about a package's internals, and the registry contract (_render with
+  no props_) is what that would break. The prop exists for stories, tests and
+  deep links.
+- **No second corpus and no mobile-only exercises.** One `Exercise` type, one
+  shim, one schedule. If a step reads badly on a phone, that is a fact about
+  the step.
+- **No `Role`, schema or crate change.** `crates/leetype_wasm` is untouched;
+  `types/exercise.ts` gains nothing. The whole epic is a derivation
+  (`lib/leetype/reading-probe`) plus a set of renderers, which is what makes
+  "the corpus already contained everything the mobile surface needed" a
+  checkable claim rather than a slogan.
+
+### Vocabulary
+
+- **production probe** — the typing surface. The player produces the witness;
+  fluency against their own baseline is the evidence.
+- **discrimination probe** — the reading surface. The player picks the claim
+  out of a closed set; recognition is the evidence, and it is weaker.
+- **claim** — the one sentence a step asserts about its own change, derived
+  from `rationale.cause`, `obligation` or `goal` in that order. Distinct from
+  LTY-WHY's _candidate_, which is one of several authored rationales for one
+  step; a claim is a step's own, and every step has exactly one.
+- **distractor** — another step's claim, offered beside this step's.
+
+### What the implementation settled
+
+**The reading unit is a step, not an exercise.** One card, one hunk, one
+question — the same `useExerciseRunner` the typing surface sequences with,
+advanced with `"advance"` and never with `"repeat"` or `"escape"`, because
+there is no gate to fall short of.
+
+**Determinism reaches the distractors.** `lib/leetype/deterministic-random`
+holds the xorshift32 that `exercises/scheduling.ts` used to keep private; both
+callers share it so "seed 7" cannot come to mean two things. A story, a test
+and a replayed bug report from one seed all show one screen, distractor
+ordering included.
+
 ## LTY-SEED: the corpus is generated content, not fetched content
 
 Tracked in [#1105](https://github.com/paulgsc/some-ui/issues/1105). The

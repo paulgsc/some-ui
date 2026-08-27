@@ -100,6 +100,24 @@ It is the one mechanizable piece of the containment contract: intrinsic minimum
 sizes are exactly how a descendant defeats composition, and they are visible in
 the class list.
 
+**Its blind spot, named after it cost us a shipped bug.** Reading a
+_relationship_ is what lets the rule name the defect — and it is also why the
+rule cannot see a relationship that spans two components. `SidebarInset`
+(`@some-ui/shared`) is a bare `<main class="flex-1">`; the flex row that makes
+it a flex _item_ lives in `SidebarProvider`, in the same file but a different
+component, and the JSX nesting the rule matches on never appears. So the
+warning never fired, and every route of every consumer inherited a `<main>`
+that could not shrink below its content: one un-shrinkable descendant anywhere
+grew it past the viewport and the _page_ scrolled sideways. It surfaced as
+499px of `scrollWidth` against a 390px viewport on `apps/www`'s `/sessions`.
+
+The rule is still worth having; the lesson is where to compensate for it. A
+**layout primitive** that hands its children to a flex context defined
+elsewhere is exactly the shape the linter cannot check, so those want
+`min-w-0` / `min-h-0` by construction and a test that says so — the Playwright
+sweep below is the backstop, but only for components that ship a story, and a
+shell primitive rendered by a route does not.
+
 ### 2. `apps/www/tests/ui-fit` (Playwright, the actual gate)
 
 Renders **every story in the monorepo** at three viewport sizes and fails on

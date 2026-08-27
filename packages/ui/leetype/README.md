@@ -1,11 +1,12 @@
 # `@some-ui/leetype`
 
-A competency probe whose only input modality happens to be typing.
+A competency probe whose input modality is whatever the device can carry.
 
-The player reads one sentence, types the smallest code that proves it, and
-repeats. Everything else — how much of the code is visible, whether they may
-move on — is inferred from how they type. There is no challenge picker, no
-session configuration, no clock that ends anything, and no XP.
+On a keyboard, the player reads one sentence, types the smallest code that
+proves it, and repeats; everything else — how much of the code is visible,
+whether they may move on — is inferred from how they type. On a phone they
+read the change and say what it does instead. There is no challenge picker, no
+session configuration, no clock that ends anything, and no XP on either.
 
 ```tsx
 import { Leetype } from "@some-ui/leetype"
@@ -16,6 +17,13 @@ import { Leetype } from "@some-ui/leetype"
 That is the only way in. `Leetype` mounts with no required props: the
 exercise comes from the shim (`lib/leetype/exercises`), and a host that wants
 a specific one passes `exercise`.
+
+**Below 768px it is a different probe** (LTY-MOBILE). A phone has no keyboard
+to produce code with, so the small-screen surface asks the player to read a
+change and pick out the claim it makes, rather than to type it. Same corpus,
+same runner, same schedule — a weaker signal, honestly weaker, and no engine
+at all: `@some-ui/leetype-wasm` is never fetched on a phone. The host does
+nothing to opt in.
 
 > [!IMPORTANT] > **Canon-governed workspace — read the canon before editing this package.**
 >
@@ -39,23 +47,35 @@ a specific one passes `exercise`.
 [`docs/leetype/README.md`](../../../docs/leetype/README.md) carries the
 vocabulary and the five decisions this package assumes. Read it before
 touching the shell or the reveal loop — it outlives the issues that closed.
+Its LTY-MOBILE section is the one to read before touching either surface's
+boundary: it records what the small-screen path may render that the desktop
+path may not, and why.
 
 ## The shape
 
 ```text
-Leetype                        composition, not orchestration
-├── useExerciseRunner          which step, and when to leave it
-│                              (holds no typing state, ever)
-├── useTypingGame              slots, caret, reveal, the two WPM figures
-│                              (has no idea what a step is)
-└── ExerciseCard
-    ├── PromptPanel            fixed ~20%, outside the scroll model
-    └── TypingViewport         the one scroll container in the card
-        └── CodeDisplay        a pure glyph renderer
+Leetype                        picks a modality, and nothing else
+│
+├── TypingSession   ≥ 768px    composition, not orchestration
+│   ├── useExerciseRunner      which step, and when to leave it
+│   │                          (holds no typing state, ever)
+│   ├── useTypingGame          slots, caret, reveal, the two WPM figures
+│   │                          (has no idea what a step is)
+│   └── ExerciseCard
+│       ├── PromptPanel        fixed ~20%, outside the scroll model
+│       └── TypingViewport     the one scroll container in the card
+│           └── CodeDisplay    a pure glyph renderer
+│
+└── ReadingSession  < 768px    the same corpus, a discrimination probe
+    ├── useExerciseRunner      the same hook, advanced and never repeated
+    ├── readingProbeOf         a card derived from authored data alone
+    ├── DiffCard               the focal object: one unified hunk
+    ├── ClaimChoices           a real radio group that looks like rows
+    └── ReadingFeedback        the author's reason, no verdict of its own
 ```
 
-Four boundaries hold this together, and each is worth stating because each
-was crossed by the version this replaced:
+Four boundaries hold the typing branch together, and each is worth stating
+because each was crossed by the version this replaced:
 
 1. **`CodeDisplay` knows nothing about exercises.** Its props contain no
    prompt, step or competency vocabulary. Adding a new prompt-side block
@@ -68,6 +88,16 @@ was crossed by the version this replaced:
 4. **No absolute WPM constant survives.** Every threshold is a fraction of
    the player's own sampled baseline (`lib/leetype/baseline-store`), which is
    ephemeral: clearing it costs one warm-up and nothing else.
+
+The reading branch has a boundary of its own, and it is the one to check a
+change against first:
+
+5. **The reading path imports nothing engine-shaped.** No `types/leetype`
+   vocabulary, no wasm loader, no typing hook — `lib/leetype/reading-probe` is
+   a pure function of authored corpus data and `DiffCard` takes a hunk and
+   nothing else. That is what makes "a phone never loads the engine" true by
+   construction; `components/leetype/index.test.tsx` pins it, with a negative
+   control that asserts the wide branch does load it.
 
 ## Where the engine ends and this package begins
 

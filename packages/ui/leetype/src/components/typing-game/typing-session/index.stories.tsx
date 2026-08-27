@@ -6,16 +6,16 @@ import {
 } from "@leetype/lib/leetype/exercises"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
-import { Leetype } from "."
+import { TypingSession } from "."
 
-const meta: Meta<typeof Leetype> = {
-  title: "UI/Input/Components/Typing/Leetype",
-  component: Leetype,
+const meta: Meta<typeof TypingSession> = {
+  title: "UI/Input/Components/Typing/TypingSession",
+  component: TypingSession,
   parameters: { layout: "fullscreen" },
 }
 
 export default meta
-type Story = StoryObj<typeof Leetype>
+type Story = StoryObj<typeof TypingSession>
 
 /**
  * The whole activity, mounted the one way hosts mount it.
@@ -26,7 +26,7 @@ type Story = StoryObj<typeof Leetype>
  */
 const Mounted = ({ preferId = FIXTURE_EXERCISE_ID }: { preferId?: string }) => (
   <div className="relative h-screen w-full p-4">
-    <Leetype exercise={nextExercise({ preferId })} />
+    <TypingSession exercise={nextExercise({ preferId })} />
   </div>
 )
 
@@ -41,7 +41,7 @@ export const AdversarialCorpus: Story = {
 
 /**
  * A falsification→repair instance (LTY-FAMILIES A1/A3), mounted through the
- * exact same `Leetype`/`ExerciseCard` machinery as every other exercise —
+ * exact same `TypingSession`/`ExerciseCard` machinery as every other exercise —
  * the acceptance criterion this story exists to demonstrate: no new branch
  * anywhere in the runner or the shell for a diagnostic step to play.
  */

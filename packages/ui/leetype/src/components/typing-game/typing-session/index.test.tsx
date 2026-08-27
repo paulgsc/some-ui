@@ -5,7 +5,7 @@ import type { default as wasmInit } from "@some-ui/leetype-wasm"
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { Leetype } from "."
+import { TypingSession } from "."
 
 /**
  * What `__wbg_init` resolves to — the wasm exports table. Derived from the
@@ -21,7 +21,7 @@ const INIT_OUTPUT = {} as Awaited<ReturnType<typeof wasmInit>>
 // no unit test would notice: **the runner advances exactly once per completed
 // step.**
 //
-// The hazard is React re-entrancy, not arithmetic. `Leetype`'s completion
+// The hazard is React re-entrancy, not arithmetic. `TypingSession`'s completion
 // effect depends on the runner, so advancing the runner re-runs the effect —
 // and on that second run the snapshot it reads is still the *previous*
 // engine state, because the engine's own step-swap effect has scheduled a
@@ -285,7 +285,7 @@ describe("the step hand-off", () => {
     // the runner advances twice per completion and the player sees steps 1
     // and 3, never 2.
     seedBaseline()
-    render(<Leetype exercise={EXERCISE} />)
+    render(<TypingSession exercise={EXERCISE} />)
 
     const input = await begin()
     await screen.findByText("Step 0.")
@@ -304,7 +304,7 @@ describe("the step hand-off", () => {
   it("replays the same step when the gate holds, without skipping ahead", async () => {
     seedBaseline()
     progression = "repeat"
-    render(<Leetype exercise={EXERCISE} />)
+    render(<TypingSession exercise={EXERCISE} />)
 
     const input = await begin()
     await screen.findByText("Step 0.")
@@ -321,7 +321,10 @@ describe("the step hand-off", () => {
     seedBaseline()
     const onSessionComplete = vi.fn()
     render(
-      <Leetype exercise={EXERCISE} onSessionComplete={onSessionComplete} />
+      <TypingSession
+        exercise={EXERCISE}
+        onSessionComplete={onSessionComplete}
+      />
     )
 
     const input = await begin()
@@ -384,7 +387,7 @@ describe("the reason-reaffirmation shim (LTY-WHY W4, #1104)", () => {
 
   it("renders nothing while a rationaleChoices-bearing step is still in flight", async () => {
     seedBaseline()
-    render(<Leetype exercise={EXERCISE_WITH_RATIONALE} />)
+    render(<TypingSession exercise={EXERCISE_WITH_RATIONALE} />)
     await begin()
     await screen.findByText("Step 0.")
     expect(
@@ -394,7 +397,7 @@ describe("the reason-reaffirmation shim (LTY-WHY W4, #1104)", () => {
 
   it("renders the accordion once the step's hunk completes", async () => {
     seedBaseline()
-    render(<Leetype exercise={EXERCISE_WITH_RATIONALE} />)
+    render(<TypingSession exercise={EXERCISE_WITH_RATIONALE} />)
     const input = await begin()
     await screen.findByText("Step 0.")
 
@@ -405,7 +408,7 @@ describe("the reason-reaffirmation shim (LTY-WHY W4, #1104)", () => {
 
   it("retires the accordion on the player's next keystroke, not before", async () => {
     seedBaseline()
-    render(<Leetype exercise={EXERCISE_WITH_RATIONALE} />)
+    render(<TypingSession exercise={EXERCISE_WITH_RATIONALE} />)
     const input = await begin()
     await screen.findByText("Step 0.")
 
@@ -425,7 +428,7 @@ describe("the reason-reaffirmation shim (LTY-WHY W4, #1104)", () => {
 
   it("never renders for a step without rationaleChoices", async () => {
     seedBaseline()
-    render(<Leetype exercise={EXERCISE} />)
+    render(<TypingSession exercise={EXERCISE} />)
     const input = await begin()
     await screen.findByText("Step 0.")
     typeStep(input, 3)
@@ -467,7 +470,7 @@ describe("the reason-reaffirmation shim (LTY-WHY W4, #1104)", () => {
     }
 
     seedBaseline()
-    render(<Leetype exercise={exerciseEndingWithRationale} />)
+    render(<TypingSession exercise={exerciseEndingWithRationale} />)
     const input = await begin()
     await screen.findByText("Step 0.")
 
@@ -479,7 +482,7 @@ describe("the reason-reaffirmation shim (LTY-WHY W4, #1104)", () => {
 
 describe("the warm-up", () => {
   it("runs first for a player with no stored baseline, and only once", async () => {
-    render(<Leetype exercise={EXERCISE} />)
+    render(<TypingSession exercise={EXERCISE} />)
 
     const input = await begin()
     await screen.findByText(/Warm up/i)
@@ -496,7 +499,7 @@ describe("the warm-up", () => {
 
   it("is skipped entirely once a baseline is stored", async () => {
     seedBaseline()
-    render(<Leetype exercise={EXERCISE} />)
+    render(<TypingSession exercise={EXERCISE} />)
 
     await begin()
     await screen.findByText("Step 0.")
@@ -519,7 +522,10 @@ describe("the assistance seam (LTY-SEAM S2, #1016)", () => {
     assistedOverride = 1
     const onSessionComplete = vi.fn<(stats: CompletedSessionStats) => void>()
     render(
-      <Leetype exercise={EXERCISE} onSessionComplete={onSessionComplete} />
+      <TypingSession
+        exercise={EXERCISE}
+        onSessionComplete={onSessionComplete}
+      />
     )
 
     const input = await begin()

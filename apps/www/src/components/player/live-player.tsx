@@ -1,6 +1,7 @@
 import type { JSX } from "react"
 import { useEffect, useRef } from "react"
 import {
+  useIsMobile,
   useIsTerminal,
   useOrchestratorClock,
   useOrchestratorStore,
@@ -14,6 +15,7 @@ import { SessionAudioNotice } from "@/components/audio/session-audio-notice"
 
 import { CompletionSummary } from "./completion-summary"
 import { NowNextStrip } from "./now-next-strip"
+import { SessionChrome } from "./session-chrome"
 import { SessionViewport } from "./session-viewport"
 import { TransportControls } from "./transport-controls"
 
@@ -31,6 +33,7 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
   const configure = useOrchestratorStore((s) => s.configure)
   const start = useOrchestratorStore((s) => s.start)
   const isTerminal = useIsTerminal()
+  const isMobile = useIsMobile()
   const { current_time: currentTime } = useOrchestratorClock()
   // Ambient per #940/#944's classification: the gesture that ends a session
   // (finishing it, or Stop) already has its own on-screen confirmation - the
@@ -90,6 +93,34 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
       <div className="flex flex-col gap-3">
         <CompletionSummary session={completedSession} />
         <AmbientIntentStatus state={completeSessionIntent.state} />
+      </div>
+    )
+  }
+
+  /**
+   * On a phone the activity gets the screen and the chrome gets an icon.
+   *
+   * The desktop composition below is three bands stacked under the viewport
+   * (notice, now/next, transport) plus the dashboard header above it. That
+   * is a reasonable use of space a wide screen has spare and an unreasonable
+   * one at 390px, where between them they take more room than the activity —
+   * on the route whose whole purpose is the activity. `SessionChrome` folds
+   * the two bottom bands and the header into one overlay-plane control (see
+   * its own doc comment for why they fold together rather than shrink).
+   *
+   * The audio notice stays resident on both. It is a first-use disclosure
+   * about something the app is about to do to a person's ears, shown once
+   * per activity ever; putting it behind a tap would be hiding a disclosure
+   * behind an affordance nobody has a reason to open yet.
+   */
+  if (isMobile) {
+    return (
+      <div className="flex h-full min-h-0 w-full flex-col">
+        <SessionAudioNotice session={session} className="shrink-0" />
+        {/* Above the viewport, not over it — see `SessionChrome`'s own note
+            on why the trigger is layout and only the sheet is overlay. */}
+        <SessionChrome scenes={session.scenes} onPlay={() => void start()} />
+        <SessionViewport session={session} />
       </div>
     )
   }

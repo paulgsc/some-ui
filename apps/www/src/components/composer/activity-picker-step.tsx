@@ -13,6 +13,7 @@ import { cn, useFittedPage } from "some-ui-utils"
 
 import { usePagination } from "@/hooks/use-pagination"
 import { ActivityIcon } from "@/components/activity-icon"
+import { ActivityInputHint } from "@/components/activity/activity-input"
 import { ActivityMaturityBadge } from "@/components/activity/activity-maturity"
 import {
   ActivitySearchField,
@@ -169,8 +170,11 @@ export const ActivityPickerStep = ({
                           <p className="text-muted-foreground text-sm">
                             {activity.description}
                           </p>
-                          {/* Said while the person is still choosing, so audio
-                              is never a surprise once the session starts. */}
+                          {/* Both said while the person is still choosing, so
+                              neither what this does to their ears nor what it
+                              asks of their hands is a surprise once the
+                              session starts. */}
+                          <ActivityInputHint activity={activity} />
                           <AudioActivityHint activity={activity} />
                         </div>
                         <div className="flex shrink-0 items-center gap-1.5">
