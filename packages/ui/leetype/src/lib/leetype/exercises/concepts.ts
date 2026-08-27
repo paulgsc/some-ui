@@ -86,6 +86,14 @@ export const CONCEPT_IDS = {
   windowShrinking: "window-shrinking",
   preconditionGuard: "precondition-guard",
   memoization: "memoization",
+  subsequenceFeasibility: "subsequence-feasibility",
+  lexicographicGreedyChoice: "lexicographic-greedy-choice",
+  suffixCertificate: "suffix-certificate",
+  oneMismatchBudget: "one-mismatch-budget",
+  greedyExchangeArgument: "greedy-exchange-argument",
+  strictIndexOrdering: "strict-index-ordering",
+  impossibilityDetection: "impossibility-detection",
+  linearTimeScan: "linear-time-scan",
   /** Marks a step as shell-stress fixture data, never a taught abstraction — see `seed/fixtures.ts`'s `adversarial`/`HOSTILE_PROMPT_STEP`. */
   fixture: "fixture",
 } as const

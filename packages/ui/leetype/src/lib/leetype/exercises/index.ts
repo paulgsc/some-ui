@@ -5,6 +5,7 @@ import {
   ADVERSARIAL_EXERCISE_ID,
   DIAGNOSTIC_EXERCISE_IDS,
   HOSTILE_PROMPT_STEP,
+  LEETCODE_3302_EXERCISE_ID,
   SEED_EXERCISE_ID,
   SEED_EXERCISES,
 } from "./seed"
@@ -134,6 +135,9 @@ export const FIXTURE_DIAGNOSTIC_EXERCISE_IDS = DIAGNOSTIC_EXERCISE_IDS
  */
 export const FIXTURE_HOSTILE_PROMPT_STEP: Step = HOSTILE_PROMPT_STEP
 
+/** The 24-rung engineering-judgment curriculum for LeetCode 3302, for stories and tests. */
+export const FIXTURE_LEETCODE_3302_EXERCISE_ID = LEETCODE_3302_EXERCISE_ID
+
 /**
  * Every exercise in the validated corpus — for lints that need to check a
  * property across *all* of it, which `nextExercise` cannot express: it only
@@ -147,7 +151,8 @@ export const ALL_FIXTURE_EXERCISES: ReadonlyArray<Exercise> = CORPUS
 
 /**
  * The validated exercises eligible for a normal, user-facing session —
- * every seed exercise except the adversarial fixture.
+ * every seed exercise except the adversarial fixture, including the
+ * LeetCode 3302 curriculum (`LEETCODE_3302_EXERCISE_ID`) alongside the rest.
  *
  * `ExercisePicker` renders this list as the learner's tile choices (LTY-
  * PICKER, `docs/leetype/README.md`); this pool used to feed a random
@@ -175,6 +180,6 @@ export const SESSION_EXERCISE_IDS: ReadonlyArray<string> = CORPUS.filter(
  * Not a selection API: a host asking what the player should see next still
  * goes through `nextExercise`.
  */
-export const SESSION_STEPS: ReadonlyArray<Step> = CORPUS.filter(
-  (exercise) => exercise.id !== ADVERSARIAL_EXERCISE_ID
+export const SESSION_STEPS: ReadonlyArray<Step> = CORPUS.filter((exercise) =>
+  SESSION_EXERCISE_IDS.includes(exercise.id)
 ).flatMap((exercise) => exercise.steps)

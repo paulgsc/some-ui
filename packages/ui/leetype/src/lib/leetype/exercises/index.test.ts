@@ -13,10 +13,31 @@ import {
   FIXTURE_DIAGNOSTIC_EXERCISE_IDS,
   FIXTURE_EXERCISE_ID,
   FIXTURE_HOSTILE_PROMPT_STEP,
+  FIXTURE_LEETCODE_3302_EXERCISE_ID,
   nextExercise,
+  SESSION_EXERCISE_IDS,
 } from "."
 
 describe("the exercise shim", () => {
+  it("adds the 24-rung engineering-judgment curriculum alongside the existing corpus", () => {
+    // Additive, not a replacement: the new curriculum joins session rotation
+    // on both surfaces, it does not become the only thing either one serves.
+    expect(SESSION_EXERCISE_IDS).toContain(FIXTURE_LEETCODE_3302_EXERCISE_ID)
+    expect(SESSION_EXERCISE_IDS.length).toBeGreaterThan(1)
+    const exercise = nextExercise({
+      preferId: FIXTURE_LEETCODE_3302_EXERCISE_ID,
+    })
+    expect(exercise.steps).toHaveLength(24)
+    for (const step of exercise.steps) {
+      expect(step.obligation).toContain("Decision:")
+      expect(step.obligation).toContain("Boundary:")
+      expect(step.rationaleChoices).toHaveLength(3)
+      expect(
+        step.rationaleChoices?.filter((choice) => choice.canonical)
+      ).toHaveLength(1)
+    }
+  })
+
   it("hands back the exercise its preferId names", () => {
     const exercise = nextExercise({ preferId: FIXTURE_EXERCISE_ID })
     expect(exercise.steps.length).toBeGreaterThan(0)
