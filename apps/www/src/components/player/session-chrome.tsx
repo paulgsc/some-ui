@@ -225,8 +225,16 @@ export const SessionChrome = ({
 
           {/* The dashboard header's own contents, which this route does not
               render at this width. Kept visibly subordinate to the transport
-              above: on this screen they are the rare case. */}
-          <div className="flex items-center gap-2">
+              above: on this screen they are the rare case.
+
+              Right-aligned for thumb reach on the hand most people hold a
+              phone in — and, incidentally, clear of the bottom-left corner,
+              where the TanStack devtools button sits at `z-index: 99999` and
+              was intercepting taps on the sidebar trigger. That widget is
+              stripped from production (`routes/__root.tsx`), so this is not a
+              fix for a shipped defect; it costs nothing and makes the control
+              reachable while developing on a phone. */}
+          <div className="flex items-center justify-end gap-2">
             <SidebarTrigger />
             <ThemeSwitcher />
             <AudioIndicator />

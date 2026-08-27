@@ -333,7 +333,19 @@ const SidebarInset = forwardRef<HTMLDivElement, ComponentProps<"main">>(
       <main
         ref={ref}
         className={cn(
-          "relative flex min-h-svh flex-1 flex-col bg-background",
+          // `min-w-0` is load-bearing, not tidying. This is the flexible
+          // child of `SidebarProvider`'s flex row, and a flex item's default
+          // `min-width: auto` refuses to shrink below its content's
+          // min-content width — so one un-shrinkable descendant anywhere in
+          // the app grows this <main> past the viewport and the *page* scrolls
+          // sideways, rather than the offending box handling its own overflow.
+          // That is the exact defect `fits-the-box/no-unshrinkable-flex-child`
+          // exists to catch (#899, docs/ui-fit); it had never been applied to
+          // this primitive, so every route of every consumer inherited it.
+          // Found as a horizontal page scroll on apps/www's /sessions at
+          // 390px: 499px of scrollWidth against a 390px viewport, exactly 390
+          // once this class is present.
+          "relative flex min-h-svh min-w-0 flex-1 flex-col bg-background",
           "peer-data-[variant=inset]:min-h-[calc(100svh-theme(spacing.4))] md:peer-data-[variant=inset]:m-2 md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow",
           className
         )}
