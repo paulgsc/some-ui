@@ -15,6 +15,7 @@ export type RotatingCubeProps = {
   content?: Array<React.JSX.Element>
   duration?: number
   hideBackface?: boolean
+  pauseOnInteraction?: boolean
 }
 
 export const RotatingCube: FC<RotatingCubeProps> = ({
@@ -24,6 +25,7 @@ export const RotatingCube: FC<RotatingCubeProps> = ({
   content = [],
   duration = 3000,
   hideBackface = false,
+  pauseOnInteraction = true,
   className,
 }) => {
   // Use useMemo instead of useCallback for static/prop-driven data processing
@@ -40,6 +42,7 @@ export const RotatingCube: FC<RotatingCubeProps> = ({
       perspective={perspective}
       duration={duration}
       hideBackface={hideBackface}
+      pauseOnInteraction={pauseOnInteraction}
     />
   )
 }

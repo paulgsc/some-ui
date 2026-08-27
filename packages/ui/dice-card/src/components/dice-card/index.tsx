@@ -19,6 +19,7 @@ type RotatingCubeProps = {
   showBeam?: boolean
   cubeId?: number | string
   hideBackface?: boolean
+  pauseOnInteraction?: boolean
 }
 
 export const DiceCard: FC<RotatingCubeProps> = ({
@@ -32,13 +33,17 @@ export const DiceCard: FC<RotatingCubeProps> = ({
   faces = [],
   showBeam = true,
   hideBackface = false,
+  pauseOnInteraction = true,
 }): React.JSX.Element => {
-  const { rotationState, rotationAxis } = useRotatingCube({
-    dof,
-    duration,
-    mode,
-    cubeId,
-  })
+  const { rotationState, rotationAxis, bindInteractionPause } = useRotatingCube(
+    {
+      dof,
+      duration,
+      mode,
+      cubeId,
+      pauseOnInteraction,
+    }
+  )
   const ref = useRef<HTMLDivElement>(null)
 
   const { height, width } = useMeasureRect({ ref })
@@ -51,6 +56,7 @@ export const DiceCard: FC<RotatingCubeProps> = ({
         "bg-transparent",
         className
       )}
+      {...bindInteractionPause}
     >
       <div
         ref={ref}
