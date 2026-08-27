@@ -4,7 +4,7 @@ import {
   nextExercise,
 } from "@leetype/lib/leetype/exercises"
 import { claimOf } from "@leetype/lib/leetype/reading-probe"
-import { fireEvent, render, screen } from "@testing-library/react"
+import { act, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 // The wasm binary is a workspace crate with no dist/ in a test run, and the
@@ -160,5 +160,58 @@ describe("Leetype", () => {
 
     expect(onSessionComplete).toHaveBeenCalledTimes(1)
     expect(screen.getByText("Choose what to practice")).toBeInTheDocument()
+  })
+
+  it("subtracts time spent browsing the picker from the session's own budget", () => {
+    // The orchestrator removes the whole component at its own mount time
+    // plus sessionDurationMs, fixed the instant Leetype mounts -- before
+    // the learner has picked anything. Without accounting for that, a
+    // session picked late would still be handed the full, un-shrunk
+    // duration and could be unmounted by the orchestrator before its own
+    // completion effect ever ran (review finding on some-ui#1182).
+    setViewport(true) // reading surface: no wasm, deterministic completion
+    // `performance` is not in vitest's default fake-timer set, but both
+    // Leetype's own elapsed-time snapshot and ReadingSession's clock read
+    // performance.now() directly, so it has to advance in lockstep with
+    // the interval ticks this test drives.
+    vi.useFakeTimers({
+      toFake: [
+        "setTimeout",
+        "clearTimeout",
+        "setInterval",
+        "clearInterval",
+        "performance",
+      ],
+    })
+    try {
+      const onSessionComplete = vi.fn()
+      render(
+        <Leetype
+          sessionDurationMs={1000}
+          onSessionComplete={onSessionComplete}
+        />
+      )
+
+      const oneStep = nextExercise({ preferId: "diagnostic-loop-progress" })
+      act(() => {
+        vi.advanceTimersByTime(700)
+      })
+      fireEvent.click(screen.getByText(oneStep.title))
+
+      // Only ~300ms of the 1000ms budget should remain; the session polls
+      // its clock every 250ms, so 500ms more (two ticks) is enough to end
+      // it if and only if the picker's own 700ms was actually subtracted
+      // rather than given away for free -- 500ms would not be enough
+      // against the full, un-shrunk 1000ms budget. Completion returns
+      // straight to the picker (the same shape the round-trip test above
+      // pins), so that reappearing is the observable proof.
+      act(() => {
+        vi.advanceTimersByTime(500)
+      })
+      expect(onSessionComplete).toHaveBeenCalledTimes(1)
+      expect(screen.getByText("Choose what to practice")).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

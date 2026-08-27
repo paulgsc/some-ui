@@ -1,15 +1,18 @@
 /**
- * Which way a caller-supplied usage count reads on a tile — never computed
- * here. Which exercises are "starved" or "popular" is a fact about how a
- * whole population of players has used the corpus over time, which lives in
- * apps/www's own session history, not in this package's static seed corpus.
- * This module only renders the classification it is handed.
+ * One caller-supplied usage signal for one exercise tile. Which exercises
+ * are "starved" or "popular" is a fact about how a whole population of
+ * players has used the corpus over time, which lives in apps/www's own
+ * session history, not in this package's static seed corpus — this module
+ * only renders the classification it is handed.
+ *
+ * `tone` is inlined rather than its own named export: `knip` flags a
+ * standalone `ExercisePickerBadgeTone` as unused the moment nothing imports
+ * it by name, which is true today (only this field's own type position uses
+ * it) and would stay true until a real caller needs the bare union — add it
+ * back then, not speculatively now.
  */
-export type ExercisePickerBadgeTone = "starved" | "popular"
-
-/** One caller-supplied usage signal for one exercise tile. */
 export type ExercisePickerBadge = {
-  tone: ExercisePickerBadgeTone
+  tone: "starved" | "popular"
   /** However the caller counts usage — sessions played, last-N-days plays, whatever their own history tracks. */
   count: number
 }

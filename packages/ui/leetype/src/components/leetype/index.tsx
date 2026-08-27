@@ -27,6 +27,9 @@ import { cn, useIsMobile } from "some-ui-utils"
  */
 export type LeetypeSurface = "auto" | "typing" | "reading"
 
+/** Matches `TypingSession`/`ReadingSession`'s own default — see why below at `mountedAt`. */
+const DEFAULT_SESSION_DURATION_MS = 10 * 60_000
+
 type LeetypeProps = {
   /**
    * A fixed exercise for a preview or deep link. Normal sessions omit this
@@ -115,11 +118,16 @@ type LeetypeProps = {
  * whenever no `exercise` prop was supplied. It is gone, not superseded: a
  * learner picking their own target is a stronger reason to come back than a
  * well-shuffled bag, and it is the only way to go straight at a concept
- * known to be weak. `chosenId` below is this component's whole memory of
- * that choice — cleared back to "no exercise yet" once a picker-sourced
- * session finishes, so the next round asks again rather than silently
- * looping to another random one. An explicit `exercise` prop (deep link,
- * preview, test) always wins and never sees the picker at all.
+ * known to be weak. `picked` below is this component's whole memory of that
+ * choice — cleared back to "no exercise yet" once a picker-sourced session
+ * finishes, so the next round asks again rather than silently looping to
+ * another random one. An explicit `exercise` prop (deep link, preview,
+ * test) always wins and never sees the picker at all.
+ *
+ * `picked` also carries the session's remaining time budget, snapshotted at
+ * the moment of selection — see `mountedAt` below for why time spent
+ * browsing the picker has to come out of that budget rather than being
+ * free.
  *
  * # The registry contract
  *
@@ -130,7 +138,7 @@ type LeetypeProps = {
  */
 export const Leetype: FC<LeetypeProps> = ({
   exercise,
-  sessionDurationMs,
+  sessionDurationMs = DEFAULT_SESSION_DURATION_MS,
   sessionSeed,
   textGradient,
   onSessionComplete,
@@ -142,18 +150,48 @@ export const Leetype: FC<LeetypeProps> = ({
   const resolved =
     surface === "auto" ? (isMobile ? "reading" : "typing") : surface
 
-  const [chosenId, setChosenId] = useState<string | undefined>(undefined)
+  /**
+   * The orchestrator removes this whole component at its own mount time
+   * plus `sessionDurationMs` (see `TypingSession`'s own clock-anchoring
+   * comment) — a deadline fixed the instant `Leetype` itself mounts, before
+   * the learner has picked anything. Time spent browsing the picker
+   * therefore has to come out of the session's own budget: without this,
+   * a session picked late could be unmounted by the orchestrator before its
+   * own completion effect ever runs, and `onSessionComplete` would silently
+   * never fire (review finding on some-ui#1182).
+   */
+  const [mountedAt] = useState(() => performance.now())
+
+  // Both the id and the remaining budget are snapshotted once, at the
+  // moment of selection — not recomputed on every render, which would keep
+  // shrinking the child session's `sessionDurationMs` prop on every
+  // unrelated re-render and re-anchor its clock forever.
+  const [picked, setPicked] = useState<
+    { id: string; remainingMs: number } | undefined
+  >(undefined)
+
+  const handleSelect = useCallback(
+    (id: string): void => {
+      const elapsed = performance.now() - mountedAt
+      setPicked({ id, remainingMs: Math.max(0, sessionDurationMs - elapsed) })
+    },
+    [mountedAt, sessionDurationMs]
+  )
+
   const active: Exercise | undefined =
-    exercise ??
-    (chosenId !== undefined ? nextExercise({ preferId: chosenId }) : undefined)
+    exercise ?? (picked ? nextExercise({ preferId: picked.id }) : undefined)
+  // An explicit `exercise` prop is the caller's own fixed seam (a preview, a
+  // deep link, a test): the scene became active exactly when this mounted,
+  // so no picker-time gap exists and the raw duration is already correct.
+  const activeDurationMs =
+    exercise !== undefined ? sessionDurationMs : (picked?.remainingMs ?? 0)
 
   // Only a picker-sourced choice returns to the picker on completion — an
-  // explicit `exercise` prop is the caller's own fixed seam (a preview, a
-  // deep link, a test) and keeps behaving exactly as it always has.
+  // explicit `exercise` prop keeps behaving exactly as it always has.
   const handleComplete = useCallback(
     (stats?: CompletedSessionStats): void => {
       onSessionComplete?.(stats)
-      if (exercise === undefined) setChosenId(undefined)
+      if (exercise === undefined) setPicked(undefined)
     },
     [onSessionComplete, exercise]
   )
@@ -165,7 +203,7 @@ export const Leetype: FC<LeetypeProps> = ({
     })
     return (
       <div className={cn(appearanceClassName(appearance), "absolute inset-0")}>
-        <ExercisePicker items={items} onSelect={setChosenId} />
+        <ExercisePicker items={items} onSelect={handleSelect} />
       </div>
     )
   }
@@ -175,7 +213,7 @@ export const Leetype: FC<LeetypeProps> = ({
       <div className={cn(appearanceClassName(appearance), "absolute inset-0")}>
         <ReadingSession
           exercise={active}
-          sessionDurationMs={sessionDurationMs}
+          sessionDurationMs={activeDurationMs}
           sessionSeed={sessionSeed}
           onSessionComplete={(): void => handleComplete()}
         />
@@ -186,7 +224,7 @@ export const Leetype: FC<LeetypeProps> = ({
   return (
     <TypingSession
       exercise={active}
-      sessionDurationMs={sessionDurationMs}
+      sessionDurationMs={activeDurationMs}
       textGradient={textGradient}
       onSessionComplete={handleComplete}
       appearance={appearance}

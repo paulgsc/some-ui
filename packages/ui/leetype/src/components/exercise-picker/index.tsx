@@ -8,13 +8,9 @@ import type { ExercisePickerProps } from "./types"
 // `ExercisePickerItem` stays reachable from `./types` rather than re-exported
 // here: `Leetype` builds the item list itself (see its own doc comment) and
 // nothing outside this directory constructs one directly, so re-exporting it
-// would be public surface with no caller. The other three are what a host
+// would be public surface with no caller. The other two are what a host
 // computing `exerciseBadges` or rendering this component directly needs.
-export type {
-  ExercisePickerBadge,
-  ExercisePickerBadgeTone,
-  ExercisePickerProps,
-} from "./types"
+export type { ExercisePickerBadge, ExercisePickerProps } from "./types"
 
 /**
  * Choose what to practice, instead of a Fisher–Yates bag choosing for you.
