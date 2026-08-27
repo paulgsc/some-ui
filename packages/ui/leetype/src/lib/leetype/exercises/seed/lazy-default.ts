@@ -1,6 +1,8 @@
 import { CONCEPT_IDS } from "@leetype/lib/leetype/exercises/concepts"
-import type { ConstructionStep, Exercise } from "@leetype/types/exercise"
+import type { Exercise } from "@leetype/types/exercise"
 import { typingBlockFromDiff } from "@leetype/types/exercise"
+
+import { withJudgment } from "./judgment-step"
 
 /**
  * LTY-PATCH P5's own instance (#1080): a construction `-` line carrying a
@@ -16,12 +18,18 @@ import { typingBlockFromDiff } from "@leetype/types/exercise"
  * from the opposite direction: that step shows the failure and repairs it,
  * this one shows the alternative and rules it out.
  */
-const constructionLazyDefaultStep: ConstructionStep = {
+const constructionLazyDefaultStep = withJudgment({
   id: "construction-lazy-default-01",
   goal: "Choose the entry call that defers construction until the place is actually vacant.",
   concepts: [CONCEPT_IDS.eagerVsLazyEvaluation, CONCEPT_IDS.lookupAsPlace],
   obligation:
     "the default is owed lazily — the constructor may run only on the call that finds the entry vacant, never on a call that finds it already occupied",
+  decisionReason:
+    "or_insert_with defers build_default() behind a closure, so it runs only on the one call that finds the entry actually vacant",
+  surfaceRule:
+    "use or_insert_with because that's the idiomatic call for lazy defaults",
+  counterfactual:
+    "the default were already a cheap, fully-evaluated literal instead of a constructor call — wrapping a literal in a closure for or_insert_with would defer nothing and only add indirection",
   blocks: [
     {
       kind: "transition",
@@ -46,7 +54,7 @@ const constructionLazyDefaultStep: ConstructionStep = {
       ],
     }),
   ],
-}
+})
 
 export const constructionLazyDefault: Exercise = {
   id: "construction-lazy-default",
