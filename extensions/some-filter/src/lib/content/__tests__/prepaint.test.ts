@@ -74,6 +74,77 @@ describe("enablePrepaint", () => {
   })
 })
 
+// ── the veil's rendering regime ──────────────────────────────────────────────
+//
+// A top-layer element is painted outside every ancestor filter's render
+// surface, so no `filter: invert()` on <html> reaches the veil once
+// showPopover() promotes it. Verified by pixel probe: a white veil under the
+// legacy invert preset renders #0a0a0a as a plain fixed element and #ffffff
+// once promoted. Compensation must therefore be skipped in the top layer —
+// not because it is a harmless no-op there, but because it would invert the
+// dark value prepaint.css declares for that regime into a light one, painting
+// the flash the veil exists to prevent.
+//
+// jsdom implements neither the top layer nor `:popover-open`, so `matches()`
+// throws on the selector and the veil is treated as being in the filtered
+// regime. That is the correct reading of a throw (no popover support means no
+// promotion), and it is what lets the compensation path below still be
+// exercised here; the top-layer branch is asserted by stubbing `matches`.
+
+describe("veil filter compensation", () => {
+  const stubRegime = (veil: HTMLElement, inTopLayer: boolean): void => {
+    veil.matches = (selector: string): boolean =>
+      selector === ":popover-open"
+        ? inTopLayer
+        : Element.prototype.matches.call(veil, selector)
+  }
+
+  it("counter-inverts against a vendor filter in the filtered regime", () => {
+    document.documentElement.style.filter = "invert(1)"
+    enablePrepaint()
+
+    const veil = document.getElementById(PREPAINT_VEIL_ID)
+    expect(veil?.style.getPropertyValue("background-color")).not.toBe("")
+
+    document.documentElement.style.removeProperty("filter")
+  })
+
+  it("does not counter-invert in the top layer — no ancestor filter reaches it", () => {
+    document.documentElement.style.filter = "invert(1)"
+    enablePrepaint()
+    const veil = document.getElementById(PREPAINT_VEIL_ID)
+    if (veil === null) throw new Error("veil missing")
+
+    // Re-enter with the veil reporting itself as promoted; the inline
+    // override from the filtered-regime pass must be cleared, not recomputed.
+    stubRegime(veil, true)
+    enablePrepaint()
+
+    expect(veil.style.getPropertyValue("background-color")).toBe("")
+    document.documentElement.style.removeProperty("filter")
+  })
+
+  it("ignores this extension's own legacy filter, which is not a vendor's", () => {
+    // detectVendorInvert() reads the computed filter on <html> and cannot
+    // tell whose it is. In legacy mode that filter is ours, and the veil is
+    // promoted, so the top-layer check is what keeps it from being treated
+    // as a vendor invert to compensate against.
+    document.documentElement.setAttribute("data-sw-legacy", "")
+    document.documentElement.style.filter =
+      "invert(1) hue-rotate(180deg) sepia(0.12) brightness(0.5) contrast(0.92)"
+    enablePrepaint()
+    const veil = document.getElementById(PREPAINT_VEIL_ID)
+    if (veil === null) throw new Error("veil missing")
+
+    stubRegime(veil, true)
+    enablePrepaint()
+
+    expect(veil.style.getPropertyValue("background-color")).toBe("")
+    document.documentElement.removeAttribute("data-sw-legacy")
+    document.documentElement.style.removeProperty("filter")
+  })
+})
+
 describe("disablePrepaint", () => {
   it("removes the overlay veil", () => {
     enablePrepaint()

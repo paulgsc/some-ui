@@ -24,9 +24,30 @@
   disablePrepaint() removes sw-dirty first, then tears down the veil element, so
   the backstop is released atomically with intentional veil teardown.
 
-  Under the legacy invert filter the entire <html> is inverted. The veil is
-  deliberately white in that mode (so inversion produces black). We mirror that
-  here: the body backstop must also be white so it inverts to black.
+  Legacy invert mode: two regimes, and the veil is in both
+  ────────────────────────────────────────────────────────
+  Under the legacy invert filter the entire <html> is inverted, so a surface
+  inside that subtree must be declared white to *render* black. That is why
+  the body backstop below is white.
+
+  The veil is the exception, because it is not reliably inside that subtree.
+  It is promoted to the top layer via the popover API, and a top-layer
+  element is painted outside every ancestor filter's render surface — the
+  root filter does not reach it. Declaring it white there does not produce
+  black; it produces a full-viewport white flash, which is the exact thing
+  the veil exists to prevent (verified by pixel probe: white veil under this
+  preset renders #0a0a0a as a plain fixed element, #ffffff once
+  `showPopover()` promotes it).
+
+  So the veil's colour is selected by which regime it is actually in, and
+  `:popover-open` is the signal — it matches only while the element is in
+  the top layer, which is exactly when no ancestor filter applies:
+
+    not in the top layer -> filtered   -> declare white, renders #0a0a0a
+    in the top layer     -> unfiltered -> declare the dark value directly
+
+  `::backdrop` only exists for top-layer elements, so it is always in the
+  unfiltered regime and always takes the dark value.
 */
 
 /* Dirty-by-default: body stays dark until we explicitly release it.
@@ -67,13 +88,22 @@ html[data-sw-legacy].sw-dirty > body {
   z-index: 2147483647;
 }
 
-/* When the legacy filter is applied to <html>, it flips the colors. 
-  Setting the background to white here means the inversion turns it back to black perfectly.
-*/
-html[data-sw-legacy] #__sw_prepaint_veil,
-html[data-sw-legacy] #__sw_prepaint_veil:popover-open {
+/* Filtered regime: not in the top layer (popover unsupported, or
+   showPopover() refused the element), so the root filter reaches the veil
+   and white is what inverts to black. */
+html[data-sw-legacy] #__sw_prepaint_veil {
   background-color: white !important;
   color-scheme: light !important;
+}
+
+/* Unfiltered regime: in the top layer, painted outside the root filter's
+   render surface. Nothing will invert this, so declare the dark value
+   itself — the same #171c25 the non-legacy veil uses. Declaring white here
+   is what turned the legacy veil into a white flash for the whole prepaint
+   window. */
+html[data-sw-legacy] #__sw_prepaint_veil:popover-open {
+  background-color: #171c25 !important;
+  color-scheme: dark !important;
 }
 
 /* Top-layer backdrop matches the veil face so nothing lighter shows at edges. */
@@ -81,6 +111,8 @@ html[data-sw-legacy] #__sw_prepaint_veil:popover-open {
   background-color: #171c25;
 }
 
+/* A backdrop exists only for a top-layer element, so it is unconditionally
+   in the unfiltered regime — never white. */
 html[data-sw-legacy] #__sw_prepaint_veil::backdrop {
-  background-color: white !important;
+  background-color: #171c25 !important;
 }

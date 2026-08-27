@@ -64,6 +64,27 @@ export function isPrepaintActive(): boolean {
 }
 
 /**
+ * True while the veil is painted in the top layer.
+ *
+ * This is the veil's *rendering regime*, and it decides whether any filter
+ * compensation is meaningful at all. A top-layer element is painted outside
+ * every ancestor filter's render surface, so no `filter: invert()` on
+ * `<html>` — the vendor's or this extension's own legacy one — reaches it.
+ *
+ * `:popover-open` is the signal because it matches exactly while the element
+ * is in the top layer. Guarded: engines without popover support throw on the
+ * unknown selector, and that throw *is* the answer — no popover support means
+ * the veil never left the normal flow, which is the filtered regime.
+ */
+function isVeilInTopLayer(veil: HTMLElement): boolean {
+  try {
+    return veil.matches(":popover-open")
+  } catch {
+    return false
+  }
+}
+
+/**
  * Counter-inverts the veil's background so it still reads dark once
  * composited through a *vendor's own*, still-active `filter:
  * invert(...)` (#741) — prepaint.css already does the analogous thing for
@@ -74,8 +95,22 @@ export function isPrepaintActive(): boolean {
  * the overwhelming majority case) clears any previous override instead —
  * enablePrepaint() reuses an existing veil across repeated calls, and an
  * override from a filter that is no longer active must not linger.
+ *
+ * Compensation only applies in the filtered regime. In the top layer there
+ * is no ancestor filter to counter, and compensating anyway is not a
+ * harmless no-op — it would invert a dark veil to a light one, painting the
+ * flash it exists to prevent. Two ways this bites in practice, both real:
+ * `detectVendorInvert()` reads the computed `filter` on `<html>`, which in
+ * legacy mode is *this extension's own* invert(1) and not a vendor's at
+ * all; and prepaint.css's regime split already hands the top-layer veil a
+ * value that is correct as declared and must not be second-guessed here.
  */
 function compensateVeilBackground(veil: HTMLElement): void {
+  if (isVeilInTopLayer(veil)) {
+    veil.style.removeProperty("background-color")
+    return
+  }
+
   const invertAmount = detectVendorInvert()
   if (invertAmount === 0) {
     veil.style.removeProperty("background-color")
@@ -131,7 +166,6 @@ export function enablePrepaint(): void {
   // remove a sibling of <body>; only a full documentElement.replaceChildren
   // could do so, and the CSS backstop covers that extreme case.
   document.documentElement.appendChild(veil)
-  compensateVeilBackground(veil)
 
   try {
     veil.showPopover()
@@ -139,6 +173,10 @@ export function enablePrepaint(): void {
     // Popover unsupported or element not eligible — the fixed/max-z fallback
     // styling in prepaint.css keeps the veil covering the viewport regardless.
   }
+
+  // After showPopover(), never before: compensation is regime-dependent and
+  // the regime is not settled until the promotion has been attempted.
+  compensateVeilBackground(veil)
 }
 
 /**
