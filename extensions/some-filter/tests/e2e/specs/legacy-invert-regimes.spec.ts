@@ -1,13 +1,14 @@
 /**
- * Pixel-level proof that legacy invert mode paints a dark surface in *both*
- * of the regimes its colours are consumed in.
+ * Pixel-level proof that legacy invert mode paints a dark surface where the
+ * root filter actually reaches, and a documented account of the one place
+ * a screenshot from this specific (headless/swiftshader) harness turned out
+ * not to be trustworthy.
  *
  * Every other test in this repo reasons about *declared* values, because
  * that is all `getComputedStyle` can see — it never reflects `filter`
  * compositing (issue-741-auto-defects.spec.ts makes the same point). That
- * blind spot is precisely where this bug class lives: a surface declared
- * white is dark only if something actually filters it, and twice now
- * something did not.
+ * blind spot is precisely where the canvas and scrollbar bugs below lived:
+ * a surface declared white is dark only if something actually filters it.
  *
  *   #1175 — the propagated <html> canvas was repolarised to white on the
  *           strength of composited maths that were correct but described
@@ -15,13 +16,22 @@
  *           after document_end and revealed faster than it rasters, e.g. a
  *           held PgDn on GitHub) are filled with the canvas colour
  *           unfiltered, so white was a full-viewport flash.
- *   veil   — the prepaint veil is promoted to the top layer via the popover
- *           API, and a top-layer element is painted outside every ancestor
- *           filter's render surface. Declared white "so the inversion turns
- *           it black", it was simply white.
+ *   scrollbar — browser chrome, painted outside the root filter's render
+ *           surface unconditionally (verified by pixel probe: a scrollbar
+ *           declared green/red under this preset renders green/red, not
+ *           the inverted cyan/magenta) — so it must simply be dark, no
+ *           trade-off to weigh.
  *
- * Only a screenshot can tell those apart from the correct case, so this
- * spec asserts on real pixels.
+ * The veil test below is the odd one out, and deliberately asserts less
+ * than the other two: an earlier version gave the veil's top-layer
+ * (`:popover-open`) rule a dark value on the theory that a top-layer
+ * element is outside every ancestor filter's render surface. That theory
+ * matched this harness's own pixel measurement and did NOT match real
+ * usage — it caused a real refresh/remount flash that reverting the value
+ * back to white removed. So for this one case, this harness's pixels are
+ * a demonstrated false witness, and the veil test only checks what's
+ * actually settled: the declared value, not what this sandbox renders it
+ * as. See prepaint.css's own header comment for the full account.
  */
 
 import fs from "fs"
@@ -93,6 +103,57 @@ test.describe("legacy invert mode, in both rendering regimes", () => {
       lum,
       `brightest empty-region pixel was ${describeColor(color)} — legacy ` +
         `invert must leave a dark surface where the page paints nothing`
+    ).toBeLessThan(DARK)
+  })
+
+  test("the root scrollbar reads dark, not the browser's native chrome colour", async ({
+    context,
+    fixture,
+  }) => {
+    // The scrollbar gutter is exactly what contentWidth() excludes from
+    // every other test in this file — it is browser chrome, painted outside
+    // the root filter's render surface, so nothing here composites it. This
+    // test samples that excluded strip on purpose, instead of avoiding it.
+    const page = await fixture.goto("transparent-page")
+    const sw = await backgroundWorker(context)
+    await enterLegacyMode(sw, "transparent-page.html", LEGACY_CONFIG)
+
+    await page.waitForFunction(
+      () => document.documentElement.hasAttribute("data-sw-legacy"),
+      undefined,
+      { timeout: 5_000, polling: 100 }
+    )
+    await page.waitForFunction(
+      () => document.getElementById("__sw_prepaint_veil") === null,
+      undefined,
+      { timeout: 5_000, polling: 100 }
+    )
+
+    // transparent-page is short; force a gutter regardless of content
+    // height rather than depending on the fixture happening to overflow.
+    await page.evaluate(() => {
+      document.documentElement.style.overflowY = "scroll"
+    })
+
+    const viewport = page.viewportSize()
+    if (viewport === null) throw new Error("no viewport")
+    const gutterWidth = viewport.width - (await contentWidth(page))
+    expect(
+      gutterWidth,
+      "overflow-y: scroll must produce a gutter to sample"
+    ).toBeGreaterThan(0)
+
+    const { color, luminance: lum } = await brightestIn(page, context, {
+      x: viewport.width - gutterWidth,
+      y: 0,
+      width: gutterWidth,
+      height: viewport.height,
+    })
+
+    expect(
+      lum,
+      `brightest scrollbar-gutter pixel was ${describeColor(color)} — legacy ` +
+        `invert must not leave the browser's native (light) scrollbar showing`
     ).toBeLessThan(DARK)
   })
 

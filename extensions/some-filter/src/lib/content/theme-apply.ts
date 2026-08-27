@@ -392,6 +392,24 @@ function applyLegacyFilter(config: FilterConfig): void {
     ? "img, video, canvas, picture { filter: invert(1) hue-rotate(180deg) !important; }"
     : ""
 
+  // The scrollbar: a third surface with no composited regime to weigh
+  // against — the root scrollbar is browser chrome, painted outside the
+  // root filter's render surface unconditionally (verified by pixel probe:
+  // a scrollbar declared `scrollbar-color: #00ff00 #ff0000` under this
+  // preset renders green and red, not the cyan/magenta an inversion would
+  // produce). So unlike the canvas, there is no trade-off here — the
+  // declared value is always what a human sees, and it must simply be dark.
+  // Folded into the same `html {}` rule as canvasRule below, not a separate
+  // selector: it's the same element, set atomically alongside the filter
+  // that makes canvasRule's own raw-safe reasoning necessary in the first
+  // place. #0d1117 track matches the canvas so both read as one surface;
+  // #272b37 thumb is SWATCHES.default.bg3, reused rather than invented so
+  // the scrollbar sits in the same dark palette the rest of the extension
+  // uses.
+  const scrollbarRule = isInverted
+    ? "scrollbar-color: #272b37 #0d1117 !important;"
+    : ""
+
   // The filtered floor — the composited regime's own surface.
   //
   // A white layer *inside* the filtered subtree, pinned behind everything
@@ -432,7 +450,7 @@ function applyLegacyFilter(config: FilterConfig): void {
   setStyleText(
     style,
     `
-    html { filter: ${buildFilterString(config)} !important; ${canvasRule} }
+    html { filter: ${buildFilterString(config)} !important; ${canvasRule} ${scrollbarRule} }
     ${floorRule}
     ${mediaRule}
   `
