@@ -54,6 +54,10 @@ type InteractionPauseHandlers = {
   onBlur: (event: FocusEvent<HTMLElement>) => void
 }
 
+/** Independent reasons autoplay can be suspended for - resuming one must not
+ *  restart the interval while another is still in effect. */
+type AutoplaySuspendReason = "hover" | "focus" | "hidden" | "explicit"
+
 type ReturnOptions = {
   rotationAxis: RotationAxis
   rotationState: RotationState
@@ -399,9 +403,35 @@ export const useRotatingCube = ({
     [rotateCube, stopAutoplay, startAutoplay]
   )
 
+  // Hover, focus, tab-visibility, and an explicit `rotate:pause` can each
+  // independently want autoplay suspended - naively calling stopAutoplay/
+  // startAutoplay from each of them treats "resume" as "nothing else still
+  // wants this paused," which isn't true: leaving with the mouse while a
+  // descendant still has keyboard focus, or the tab regaining visibility
+  // after an explicit pause, would each incorrectly restart it. Tracking
+  // *why* it's suspended means a resume only re-starts the interval once
+  // every reason that suspended it has cleared.
+  const suspendReasonsRef = useRef<Set<AutoplaySuspendReason>>(new Set())
+
+  const suspendAutoplay = useCallback(
+    (reason: AutoplaySuspendReason): void => {
+      suspendReasonsRef.current.add(reason)
+      stopAutoplay()
+    },
+    [stopAutoplay]
+  )
+
+  const resumeAutoplay = useCallback(
+    (reason: AutoplaySuspendReason): void => {
+      suspendReasonsRef.current.delete(reason)
+      if (suspendReasonsRef.current.size === 0) startAutoplay()
+    },
+    [startAutoplay]
+  )
+
   const onTogglePause = useCallback(() => {
-    stopAutoplay()
-  }, [stopAutoplay])
+    suspendAutoplay("explicit")
+  }, [suspendAutoplay])
 
   const bindInteractionPause = useMemo<InteractionPauseHandlers>(() => {
     if (!pauseOnInteraction) {
@@ -413,18 +443,18 @@ export const useRotatingCube = ({
       }
     }
     return {
-      onMouseEnter: (): void => stopAutoplay(),
-      onMouseLeave: (): void => startAutoplay(),
-      onFocus: (): void => stopAutoplay(),
+      onMouseEnter: (): void => suspendAutoplay("hover"),
+      onMouseLeave: (): void => resumeAutoplay("hover"),
+      onFocus: (): void => suspendAutoplay("focus"),
       onBlur: (event: FocusEvent<HTMLElement>): void => {
         const next = event.relatedTarget
         // Focus moving between two elements inside the same card isn't a
         // real blur - don't resume mid-tab-through.
         if (next instanceof Node && event.currentTarget.contains(next)) return
-        startAutoplay()
+        resumeAutoplay("focus")
       },
     }
-  }, [pauseOnInteraction, stopAutoplay, startAutoplay])
+  }, [pauseOnInteraction, suspendAutoplay, resumeAutoplay])
 
   useEffect(() => {
     if (mode === "autoplay") {
@@ -435,22 +465,24 @@ export const useRotatingCube = ({
 
   // Autoplay costs real CPU/battery for a cube nobody is looking at because
   // its tab is in the background - suspend the interval while hidden and
-  // pick it back up when the tab is foregrounded again.
+  // pick it back up when the tab is foregrounded again (unless something
+  // else - hover, focus, an explicit rotate:pause - is still holding it
+  // suspended too).
   useEffect(() => {
     if (mode !== "autoplay" || typeof document === "undefined") return undefined
 
     const handleVisibilityChange = (): void => {
       if (document.hidden) {
-        stopAutoplay()
+        suspendAutoplay("hidden")
       } else {
-        startAutoplay()
+        resumeAutoplay("hidden")
       }
     }
 
     document.addEventListener("visibilitychange", handleVisibilityChange)
     return (): void =>
       document.removeEventListener("visibilitychange", handleVisibilityChange)
-  }, [mode, startAutoplay, stopAutoplay])
+  }, [mode, suspendAutoplay, resumeAutoplay])
 
   // Handle cube events
   useEffect(() => {
