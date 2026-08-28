@@ -70,9 +70,7 @@ export async function findHorizontalOverflow(
     // contained by it.
     const root = container ?? document.body
     const violations: Array<OverflowViolation> = []
-    for (const element of Array.from(
-      root.querySelectorAll<HTMLElement>("*")
-    )) {
+    for (const element of Array.from(root.querySelectorAll<HTMLElement>("*"))) {
       const style = getComputedStyle(element)
       if (style.position === "fixed") continue
 
@@ -112,7 +110,7 @@ export async function expectNoHorizontalOverflow(
   )
 }
 
-export type ContainmentViolation = {
+type ContainmentViolation = {
   parent: string
   child: string
   overflowLeft: number
@@ -126,7 +124,7 @@ export type ContainmentViolation = {
  * `absolute`, `display: none`) - popovers, tooltips, and similar overlays
  * are not containment failures.
  */
-export async function findContainmentViolations(
+async function findContainmentViolations(
   page: Page,
   tolerance = 1
 ): Promise<Array<ContainmentViolation>> {
@@ -250,7 +248,8 @@ export async function expectSingleLineText(
 
   throw new Error(
     `${offenders.length} of ${lineCounts.length} element(s) matching ` +
-      `"${selector}" wrapped onto multiple lines: ${ 
-      offenders.map((o) => `#${o.index} (${o.count} lines)`).join(", ")}`
+      `"${selector}" wrapped onto multiple lines: ${offenders
+        .map((o) => `#${o.index} (${o.count} lines)`)
+        .join(", ")}`
   )
 }
