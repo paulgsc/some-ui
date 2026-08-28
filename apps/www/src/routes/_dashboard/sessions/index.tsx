@@ -108,47 +108,49 @@ const SessionCard = ({
 
   return (
     <Card className={cn(isSelected && "border-primary ring-primary/50 ring-1")}>
-      <CardContent className="flex items-center justify-between gap-4 py-4">
-        <input
-          type="checkbox"
-          className="accent-primary size-4 shrink-0"
-          checked={isSelected}
-          onChange={() => onToggleSelected(session.id)}
-          aria-label={`Select "${session.name}"`}
-        />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <p className="truncate font-medium">{session.name}</p>
-            <Badge variant={badgeVariantFor(session.status)}>
-              {STATUS_LABEL[session.status]}
-            </Badge>
+      <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div className="flex min-w-0 items-start gap-3 sm:flex-1 sm:items-center">
+          <input
+            type="checkbox"
+            className="accent-primary mt-1 size-4 shrink-0 sm:mt-0"
+            checked={isSelected}
+            onChange={() => onToggleSelected(session.id)}
+            aria-label={`Select "${session.name}"`}
+          />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <p className="truncate font-medium">{session.name}</p>
+              <Badge variant={badgeVariantFor(session.status)}>
+                {STATUS_LABEL[session.status]}
+              </Badge>
+            </div>
+            {/* One tag per activity's mode/difficulty/etc. (the same
+                summarizeConfig the completion summary already uses) so
+                sessions of the same activity are distinguishable at a
+                glance - e.g. two Honeycomb drafts, one Vocabulary and one
+                Endless, don't otherwise look identical in this list. */}
+            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+              {session.activities.map((sessionActivity, index) => {
+                const activity = getActivity(sessionActivity.activityId)
+                return (
+                  <Badge
+                    // eslint-disable-next-line react/no-array-index-key -- position within one session's fixed activity list is a stable identity here; the same activityId can repeat within a session
+                    key={`${sessionActivity.activityId}-${index}`}
+                    variant="outline"
+                    className="text-muted-foreground font-normal"
+                  >
+                    {activity.name}:{" "}
+                    {summarizeConfig(activity, sessionActivity.config)}
+                  </Badge>
+                )
+              })}
+            </div>
+            <p className="text-muted-foreground mt-1 text-xs">
+              Updated {formatRelativeTime(session.updatedAt)}
+            </p>
           </div>
-          {/* One tag per activity's mode/difficulty/etc. (the same
-              summarizeConfig the completion summary already uses) so
-              sessions of the same activity are distinguishable at a
-              glance - e.g. two Honeycomb drafts, one Vocabulary and one
-              Endless, don't otherwise look identical in this list. */}
-          <div className="mt-1 flex flex-wrap items-center gap-1.5">
-            {session.activities.map((sessionActivity, index) => {
-              const activity = getActivity(sessionActivity.activityId)
-              return (
-                <Badge
-                  // eslint-disable-next-line react/no-array-index-key -- position within one session's fixed activity list is a stable identity here; the same activityId can repeat within a session
-                  key={`${sessionActivity.activityId}-${index}`}
-                  variant="outline"
-                  className="text-muted-foreground font-normal"
-                >
-                  {activity.name}:{" "}
-                  {summarizeConfig(activity, sessionActivity.config)}
-                </Badge>
-              )
-            })}
-          </div>
-          <p className="text-muted-foreground mt-1 text-xs">
-            Updated {formatRelativeTime(session.updatedAt)}
-          </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
           {primaryAction}
           <IntentButton
             state={duplicateIntent.state}

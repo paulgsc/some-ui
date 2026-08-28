@@ -20,7 +20,7 @@ import {
   useRouterState,
 } from "@tanstack/react-router"
 import { FileText, ListVideo, Settings, User } from "lucide-react"
-import { cn, useIsMobile } from "some-ui-utils"
+import { cn, useIsMobile, useIsTerminal } from "some-ui-utils"
 
 import { AmbientIntentStatus } from "@/lib/intent/render"
 import { useMigrationSignal } from "@/lib/tenant/migration-signal"
@@ -127,6 +127,7 @@ const DashboardLayout = (): JSX.Element => {
   })
   const isViewportRoute = isViewportPath(pathname)
   const isMobile = useIsMobile()
+  const isTerminal = useIsTerminal()
   const migrationSignal = useMigrationSignal()
 
   /**
@@ -144,8 +145,16 @@ const DashboardLayout = (): JSX.Element => {
    * Scoped to this route and this width deliberately. Every other route is
    * an ordinary scrolling document that wants its header, and a wide session
    * player has the room for one.
+   *
+   * Also gated on `!isTerminal`: once a session finishes (or is opened
+   * already completed), `LivePlayer` swaps `SessionViewport` for
+   * `CompletionSummary` - an ordinary card, not `V`. That component was never
+   * built to own the full viewport edge-to-edge, so the shell (header,
+   * padding) has to come back for it exactly as it would for any other
+   * route, or the summary renders pinned to the screen's corner with no
+   * padding and no scroll for the dead space below it.
    */
-  const bareViewport = isViewportRoute && isMobile
+  const bareViewport = isViewportRoute && isMobile && !isTerminal
 
   return (
     <SidebarProvider className={cn(isViewportRoute && "h-svh overflow-hidden")}>
