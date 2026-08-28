@@ -30,6 +30,7 @@
  */
 
 import type { JSX, ReactNode } from "react"
+import { catalogWorstCase } from "@/test-support/catalog-worst-case"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import type * as ReactRouterModule from "@tanstack/react-router"
 import { cleanup, render, screen } from "@testing-library/react"
@@ -37,7 +38,6 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type * as TenantModule from "@/lib/tenant"
 import type { SessionRecord } from "@/lib/tenant"
-import { catalogWorstCase } from "@/test-support/catalog-worst-case"
 
 const REPORTED_SESSION: SessionRecord = {
   id: "session-1192",
@@ -60,9 +60,7 @@ const worstCase = catalogWorstCase()
 const WORST_CASE_SESSION: SessionRecord = {
   ...REPORTED_SESSION,
   id: "session-worst-case",
-  activities: [
-    { activityId: worstCase.activityId, config: worstCase.config },
-  ],
+  activities: [{ activityId: worstCase.activityId, config: worstCase.config }],
 }
 
 vi.mock(

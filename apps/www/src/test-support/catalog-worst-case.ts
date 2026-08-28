@@ -24,10 +24,10 @@
 
 import {
   ACTIVITY_IDS,
-  type ActivityId,
-  type ActivityConfigValues,
   getActivity,
   summarizeConfig,
+  type ActivityConfigValues,
+  type ActivityId,
 } from "@some-ui/activity-catalog"
 
 export type CatalogWorstCase = {

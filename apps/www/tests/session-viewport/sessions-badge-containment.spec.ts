@@ -40,10 +40,8 @@
  * of trusting a hand-typed corpus not to fall behind it again.
  */
 
-import { expect, test, type Page } from "@playwright/test"
-
 import { catalogWorstCase } from "@/test-support/catalog-worst-case"
-
+import { expect, test, type Page } from "@playwright/test"
 import {
   countTextLines,
   expectContainedLayouts,
