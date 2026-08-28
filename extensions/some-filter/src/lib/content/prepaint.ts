@@ -66,15 +66,33 @@ export function isPrepaintActive(): boolean {
 /**
  * True while the veil is painted in the top layer.
  *
- * This is the veil's *rendering regime*, and it decides whether any filter
- * compensation is meaningful at all. A top-layer element is painted outside
+ * The theory this is built on — a top-layer element is painted outside
  * every ancestor filter's render surface, so no `filter: invert()` on
- * `<html>` — the vendor's or this extension's own legacy one — reaches it.
+ * `<html>` reaches it — held up under direct pixel measurement in this
+ * project's own headless/swiftshader e2e harness, and did NOT hold up
+ * against real usage: prepaint.css used to give the legacy veil's
+ * `:popover-open` rule a dark value on this exact reasoning, and it
+ * produced a real white flash on refresh/remount that went away once that
+ * rule went back to declaring white unconditionally (prepaint.css's own
+ * header comment has the full account). That means at least one real,
+ * non-headless browser DOES still let an ancestor filter on `<html>` reach
+ * a Popover-API top-layer element — the opposite of what this function
+ * assumes.
+ *
+ * It's kept here, still gating the compensation below, because the *vendor*
+ * filter case (#741) it protects hasn't been reported broken the way the
+ * legacy-veil case was, and unwinding it without that same kind of evidence
+ * would be trading a demonstrated fix for a guess. But the premise is now
+ * known-unreliable rather than settled, and if a similar flash is ever
+ * reported for #741's scenario (a *vendor's* invert(1) still active while
+ * the veil is up), this function's own assumption is the first place to
+ * doubt — not the compensation math below it.
  *
  * `:popover-open` is the signal because it matches exactly while the element
- * is in the top layer. Guarded: engines without popover support throw on the
- * unknown selector, and that throw *is* the answer — no popover support means
- * the veil never left the normal flow, which is the filtered regime.
+ * is in the top layer, on the theory above. Guarded: engines without
+ * popover support throw on the unknown selector, and that throw *is* the
+ * answer — no popover support means the veil never left the normal flow,
+ * which is the filtered regime regardless.
  */
 function isVeilInTopLayer(veil: HTMLElement): boolean {
   try {
@@ -87,23 +105,25 @@ function isVeilInTopLayer(veil: HTMLElement): boolean {
 /**
  * Counter-inverts the veil's background so it still reads dark once
  * composited through a *vendor's own*, still-active `filter:
- * invert(...)` (#741) — prepaint.css already does the analogous thing for
- * this extension's own legacy filter (`html[data-sw-legacy]`), but that
- * CSS-only rule has no way to see a filter the vendor, not this extension,
- * applied. `!important` inline (highest-specificity, author-origin) beats
- * prepaint.css's own `!important` class rule. A no-op (`invertAmount = 0`,
- * the overwhelming majority case) clears any previous override instead —
- * enablePrepaint() reuses an existing veil across repeated calls, and an
- * override from a filter that is no longer active must not linger.
+ * invert(...)` (#741) — prepaint.css declares a fixed white for its own
+ * legacy filter instead (`html[data-sw-legacy]`, unconditionally now — see
+ * that file's header comment), but that CSS-only rule has no way to see a
+ * filter the vendor, not this extension, applied. `!important` inline
+ * (highest-specificity, author-origin) beats prepaint.css's own
+ * `!important` class rule. A no-op (`invertAmount = 0`, the overwhelming
+ * majority case) clears any previous override instead — enablePrepaint()
+ * reuses an existing veil across repeated calls, and an override from a
+ * filter that is no longer active must not linger.
  *
- * Compensation only applies in the filtered regime. In the top layer there
- * is no ancestor filter to counter, and compensating anyway is not a
- * harmless no-op — it would invert a dark veil to a light one, painting the
- * flash it exists to prevent. Two ways this bites in practice, both real:
- * `detectVendorInvert()` reads the computed `filter` on `<html>`, which in
- * legacy mode is *this extension's own* invert(1) and not a vendor's at
- * all; and prepaint.css's regime split already hands the top-layer veil a
- * value that is correct as declared and must not be second-guessed here.
+ * Compensation is skipped in the top layer on `isVeilInTopLayer`'s theory
+ * that no ancestor filter reaches it there — see that function's own
+ * comment for why this premise is no longer trusted without reservation.
+ * Left as-is here because unwinding it needs the same kind of real-browser
+ * evidence the legacy-veil case got, which this path doesn't have yet.
+ * `detectVendorInvert()` reads the computed `filter` on `<html>` and cannot
+ * tell whose it is — in legacy mode that filter is this extension's own
+ * invert(1), not a vendor's, which the top-layer skip also happens to guard
+ * against confusing for one.
  */
 function compensateVeilBackground(veil: HTMLElement): void {
   if (isVeilInTopLayer(veil)) {

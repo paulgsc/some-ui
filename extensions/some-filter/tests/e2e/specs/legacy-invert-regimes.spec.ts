@@ -96,61 +96,81 @@ test.describe("legacy invert mode, in both rendering regimes", () => {
     ).toBeLessThan(DARK)
   })
 
-  test("the shipped veil CSS is dark in the top layer and in the fallback alike", async ({
+  test("the shipped veil CSS declares white for both the fallback and the top layer", async ({
     context,
   }) => {
     // Driven directly rather than through the pipeline: the real veil is torn
     // down two rAFs after it goes up, which is a race no screenshot can win
     // reliably. The artifact under test is prepaint.css, so this builds the
     // exact scene it is written for — real file, real filter, real popover
-    // promotion — and reads the pixels it produces.
+    // promotion.
+    //
+    // The fallback (non-promoted) case is asserted on rendered pixels: white,
+    // filtered, is unambiguous — it composites dark everywhere, sandbox or
+    // real hardware, no disagreement on record.
+    //
+    // The top-layer case is asserted on the *declared* value only, not on
+    // rendered pixels. It used to be pixel-checked here too, expecting dark,
+    // back when prepaint.css gave `:popover-open` its own dark value. That
+    // value produced a real refresh/remount white flash in actual use; only
+    // this project's own headless/swiftshader harness ever measured it as
+    // dark. Reverting it to white (this file's header comment has the full
+    // account) fixed the real flash, but it also means a pixel assertion of
+    // "renders dark" here would be asserting this sandbox's own outlier
+    // behaviour rather than the real-world-verified one — so this checks
+    // what the CSS declares, which is what changed and what future edits
+    // should be caught touching, not what one specific renderer does with it.
     const prepaintCss = fs.readFileSync(PREPAINT_CSS, "utf8")
     const scene = await context.newPage()
     await scene.setViewportSize({ width: 400, height: 300 })
+    const sceneHtml = (withPopoverAttr: boolean): string =>
+      `<!doctype html>
+       <html data-sw-legacy class="sw-dirty">
+         <head><style>${prepaintCss}</style>
+         <style>
+           html { filter: ${FILTER_STRING} !important;
+                  background-color: #0d1117 !important; }
+           body { margin: 0; height: 100%; background: #fff; }
+         </style></head>
+         <body><div id="__sw_prepaint_veil" data-my-ext
+                    ${withPopoverAttr ? 'popover="manual"' : ""}></div></body>
+       </html>`
 
     try {
-      for (const promote of [true, false]) {
-        await scene.setContent(
-          `<!doctype html>
-           <html data-sw-legacy class="sw-dirty">
-             <head><style>${prepaintCss}</style>
-             <style>
-               html { filter: ${FILTER_STRING} !important;
-                      background-color: #0d1117 !important; }
-               body { margin: 0; height: 100%; background: #fff; }
-             </style></head>
-             <body><div id="__sw_prepaint_veil" data-my-ext
-                        ${promote ? 'popover="manual"' : ""}></div></body>
-           </html>`
-        )
-        if (promote) {
-          await scene.evaluate(() => {
-            const veil = document.getElementById("__sw_prepaint_veil")
-            if (veil === null) throw new Error("veil missing")
-            veil.showPopover()
-            // If promotion is unavailable the fallback iteration already
-            // covers that path — here it must actually happen, or the regime
-            // this case exists to test is not the one being tested.
-            if (!veil.matches(":popover-open")) {
-              throw new Error("veil did not reach the top layer")
-            }
-          })
+      // Top layer: a *separate* scene, not the fallback one with its popover
+      // later closed — a closed [popover] element is display:none by the UA
+      // stylesheet, not "a plain fixed div", so that approach would sample
+      // whatever is behind it (the canvas) instead of the veil.
+      await scene.setContent(sceneHtml(true))
+      const declaredTopLayer = await scene.evaluate(() => {
+        const veil = document.getElementById("__sw_prepaint_veil")
+        if (veil === null) throw new Error("veil missing")
+        veil.showPopover()
+        if (!veil.matches(":popover-open")) {
+          throw new Error("veil did not reach the top layer")
         }
+        return getComputedStyle(veil).backgroundColor
+      })
+      expect(
+        declaredTopLayer,
+        "the top-layer rule must declare the same white the fallback rule does"
+      ).toBe("rgb(255, 255, 255)")
 
-        const { color, luminance: lum } = await brightestIn(scene, context, {
-          x: 0,
-          y: 0,
-          width: await contentWidth(scene),
-          height: 300,
-        })
-
-        expect(
-          lum,
-          `veil ${promote ? "in the top layer" : "in the fixed/z-index fallback"} ` +
-            `rendered ${describeColor(color)} — it must read dark in both ` +
-            `regimes, and only one of them is reached by the root filter`
-        ).toBeLessThan(DARK)
-      }
+      // Fallback: no popover attribute at all, so it's an ordinary fixed div,
+      // visible by default — the same shape the real fallback (popover
+      // unsupported, or showPopover() refused) actually takes.
+      await scene.setContent(sceneHtml(false))
+      const { color, luminance: lum } = await brightestIn(scene, context, {
+        x: 0,
+        y: 0,
+        width: await contentWidth(scene),
+        height: 300,
+      })
+      expect(
+        lum,
+        `veil in the fixed/z-index fallback rendered ${describeColor(color)} ` +
+          `— filtered and white must composite dark`
+      ).toBeLessThan(DARK)
     } finally {
       await scene.close()
     }
