@@ -356,19 +356,43 @@ function applyLegacyFilter(config: FilterConfig): void {
   // counter-inverting media would be a no-op filter applied for nothing.
   // Only the "invert" style needs both.
   //
-  // The canvas colour is declared *before* the filter, so it must be chosen
-  // by what the full five-stage chain below (invert, hue-rotate, sepia,
-  // brightness, contrast — not invert() alone) composites it to, not by
-  // "dark source -> invert -> looks dark" intuition. A near-black source
-  // (the previous #0d1117) composites to #7b7b7a — a light gray canvas, the
-  // exact polarity bug a white-flash post-mortem traced to this rule.
-  // White is the correct source: verified against every one of this exact
-  // preset's 5 stages, it composites to #0a0a0a, darker than this
-  // extension's own dark-theme token (SWATCHES.default.bg0, #171c25) —
-  // and matches prepaint.css's veil, which already uses white here for the
-  // same reason.
+  // Canvas colour: the two regimes, and why the raw one wins
+  // ────────────────────────────────────────────────────────
+  // This one declared colour is consumed by two different painters, and the
+  // filter chain below makes them want *opposite* values:
+  //
+  //   composited — the root filter's own output, once the region has been
+  //     rastered through invert/hue-rotate/sepia/brightness/contrast. Here a
+  //     light source reads dark: #fff -> #0a0a0a, #0d1117 -> #7b7b7a.
+  //   raw — the same colour with no filter applied at all. Here a dark
+  //     source reads dark, and #fff is a full-screen white flash.
+  //
+  // Raw is not hypothetical, and it is not only the pre-commit window. On a
+  // vendor DOM that has not painted its whole document by document_end
+  // (GitHub's is the reported case), content materialised *after* the filter
+  // was installed — a fast PgDn keydown outrunning raster, virtualised rows
+  // revealed on scroll — is on screen for a measurable window before the
+  // root filter's output covers it. That window is the extension's coverage
+  // invariant being violated in the only way a human can see, and what fills
+  // it is this colour, unfiltered. Hence the "flashbang tick".
+  //
+  // The two regimes cannot be satisfied at once: composited luminance falls
+  // monotonically as source luminance rises, so every source is dark in one
+  // regime and light in the other (the midpoint, ~#606060, is a mid grey in
+  // both — worse than either end). So the choice is *which regime is
+  // actually visible*, and it is raw: in the composited regime the html
+  // canvas is nearly always occluded by the vendor's own opaque body, while
+  // the raw regime is exposed precisely during the uncovered ticks above.
+  //
+  // #0d1117 is therefore correct even though it composites to a light grey
+  // (#7b7b7a) — that grey is behind the page, the white was in front of the
+  // user. Do not "fix" this to #fff on the composited maths alone; that was
+  // #1175, and it reintroduced the tick. If the light-grey composited canvas
+  // ever does become visible, the fix is a second, *filtered* floor (a
+  // fixed, z-index:-1 white layer inside <html>) so each regime gets its own
+  // surface — not repolarising this one.
   const isInverted = Boolean(config.invert)
-  const canvasRule = isInverted ? "background-color: #fff !important;" : ""
+  const canvasRule = isInverted ? "background-color: #0d1117 !important;" : ""
   const mediaRule = isInverted
     ? "img, video, canvas, picture { filter: invert(1) hue-rotate(180deg) !important; }"
     : ""
