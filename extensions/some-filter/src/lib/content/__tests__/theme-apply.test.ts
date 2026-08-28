@@ -214,6 +214,31 @@ const canvasColor = (): RGB => declaredBackground("html {")
 /** The floor behind the page — the surface the composited regime paints. */
 const floorColor = (): RGB => declaredBackground("html[data-sw-legacy]::before")
 
+/** The `scrollbar-color` thumb/track declared in the `html {}` rule, as 0-1 RGB pairs. */
+function declaredScrollbarColors(): { thumb: RGB; track: RGB } {
+  applyTheme("legacy", LEGACY_PRESETS.invert)
+  const css = document.getElementById(LEGACY_STYLE_ID)?.textContent ?? ""
+  const block = css.split("}").find((rule) => rule.includes("html {"))
+  const declared =
+    block === undefined
+      ? undefined
+      : /scrollbar-color:\s*(#[0-9a-fA-F]{3,8})\s+(#[0-9a-fA-F]{3,8})/.exec(
+          block
+        )
+  if (declared?.[1] === undefined || declared[2] === undefined) {
+    throw new Error(`no scrollbar-color in the html {} rule: ${css}`)
+  }
+  const thumb = parseColor(declared[1])
+  const track = parseColor(declared[2])
+  if (thumb === null || track === null) {
+    throw new Error(`unparseable scrollbar-color ${declared[1]} ${declared[2]}`)
+  }
+  return {
+    thumb: [thumb[0], thumb[1], thumb[2]],
+    track: [track[0], track[1], track[2]],
+  }
+}
+
 function describeRgb(rgb: RGB): string {
   return `rgb(${rgb.map((c) => Math.round(c * 255)).join(", ")})`
 }
@@ -256,6 +281,44 @@ describe("legacy invert mode paints a dark surface in both regimes", () => {
     const css = document.getElementById(LEGACY_STYLE_ID)?.textContent ?? ""
     expect(css).not.toContain("::before")
     expect(css).not.toContain("background-color:")
+    expect(css).not.toContain("scrollbar-color:")
+  })
+
+  it("the scrollbar reads dark unfiltered — it has no composited regime to weigh against", () => {
+    // The root scrollbar is browser chrome: painted outside the root
+    // filter's render surface unconditionally (verified by pixel probe —
+    // extensions/some-filter/tests/e2e/fixtures/pixels.ts's contentWidth()
+    // doc comment has the measurement). Unlike the canvas, there is only
+    // one regime here, so both the thumb and the track must simply be dark.
+    const { thumb, track } = declaredScrollbarColors()
+    expect(
+      relativeLuminance(...thumb),
+      `unfiltered scrollbar thumb ${describeRgb(thumb)} must read dark`
+    ).toBeLessThan(DARK)
+    expect(
+      relativeLuminance(...track),
+      `unfiltered scrollbar track ${describeRgb(track)} must read dark`
+    ).toBeLessThan(DARK)
+  })
+
+  it("resets scrollbar-color for descendants, not for html itself", () => {
+    // scrollbar-color is inherited, so without a reset, an unstyled nested
+    // `overflow: auto` container would inherit html's dark declaration and
+    // (being inside the filtered subtree, unlike the root/viewport
+    // scrollbar) composite it to a light one. Not pixel-verified — see this
+    // rule's own comment in theme-apply.ts for why — so this only pins the
+    // declared shape: descendants reset to scrollbar-color's own initial
+    // value (`auto`, i.e. what they already had before html declared one),
+    // and html's own dark value is untouched.
+    applyTheme("legacy", LEGACY_PRESETS.invert)
+    const css = document.getElementById(LEGACY_STYLE_ID)?.textContent ?? ""
+    const reset = css
+      .split("}")
+      .find((rule) => rule.includes(":where(:root *)"))
+    expect(reset, `no descendant scrollbar-color reset in: ${css}`).toContain(
+      "scrollbar-color: auto"
+    )
+    expect(css).toContain("scrollbar-color: #272b37 #0d1117")
   })
 
   it("has no single source colour that would serve both regimes alone", () => {
