@@ -46,6 +46,7 @@ import {
   countTextLines,
   expectContainedLayouts,
   expectNoHorizontalOverflow,
+  expectSingleLineText,
   findHorizontalOverflow,
   MOBILE_WIDTHS,
 } from "@tests/layout-invariants/geometry"
@@ -296,12 +297,7 @@ test.describe("sessions list row never wraps a badge's text inside itself", () =
         for (const label of BOUNDED_STRESS_LABELS) {
           await loadShell(page, "after", label)
 
-          const [lineCount] = await countTextLines(page, "#activity-badge")
-
-          expect(
-            lineCount,
-            `"${label}" wrapped onto ${lineCount} lines at ${width}px`
-          ).toBeLessThanOrEqual(1)
+          await expectSingleLineText(page, "#activity-badge")
 
           // The harness's other two invariants stay green throughout - this
           // fix didn't trade one geometry problem for another.

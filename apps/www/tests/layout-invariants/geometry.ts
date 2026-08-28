@@ -110,7 +110,7 @@ export async function expectNoHorizontalOverflow(
   )
 }
 
-export type ContainmentViolation = {
+type ContainmentViolation = {
   parent: string
   child: string
   overflowLeft: number
@@ -124,7 +124,7 @@ export type ContainmentViolation = {
  * `absolute`, `display: none`) - popovers, tooltips, and similar overlays
  * are not containment failures.
  */
-export async function findContainmentViolations(
+async function findContainmentViolations(
   page: Page,
   tolerance = 1
 ): Promise<Array<ContainmentViolation>> {
