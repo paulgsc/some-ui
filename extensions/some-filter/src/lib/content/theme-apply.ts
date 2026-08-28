@@ -410,6 +410,34 @@ function applyLegacyFilter(config: FilterConfig): void {
     ? "scrollbar-color: #272b37 #0d1117 !important;"
     : ""
 
+  // scrollbar-color is inherited, so the dark declaration above reaches any
+  // descendant scroll container that doesn't set its own — e.g. an
+  // unstyled `overflow: auto` div. Unlike the root/viewport scrollbar
+  // (verified chrome, outside the render surface — see the comment above),
+  // a nested container's scrollbar is painted as part of that element's own
+  // box, inside the filtered subtree, so review flagged that an inherited
+  // dark value there would composite to a light one — the same class of bug
+  // as the canvas/floor split above, just on a third surface.
+  //
+  // Not independently verified here: this sandbox's headless/swiftshader
+  // Chromium did not render a distinguishable pixel for a nested container's
+  // scrollbar in a probe alongside this change (unlike the root gutter,
+  // which the dedicated e2e case below can isolate) — the same class of
+  // measurement this file's header comment already flags as unreliable for
+  // filter-compositing questions. So this resets inheritance rather than
+  // attempting to reverse the composite math into a tuned "composited-safe"
+  // pair the way canvasRule/floorRule do for the root surface: `auto` is
+  // scrollbar-color's own initial value, i.e. exactly what every descendant
+  // already had before this rule started declaring one on `html`, so this
+  // can only remove a risk this rule introduced, never make a
+  // previously-fine nested scrollbar worse. `:where()` keeps it at zero
+  // specificity so any real, explicit scrollbar-color a vendor sets on a
+  // descendant still wins normally; `:root *` (not `*`) excludes `html`
+  // itself, so the dark value two lines up still applies there.
+  const nestedScrollbarResetRule = isInverted
+    ? ":where(:root *) { scrollbar-color: auto; }"
+    : ""
+
   // The filtered floor — the composited regime's own surface.
   //
   // A white layer *inside* the filtered subtree, pinned behind everything
@@ -451,6 +479,7 @@ function applyLegacyFilter(config: FilterConfig): void {
     style,
     `
     html { filter: ${buildFilterString(config)} !important; ${canvasRule} ${scrollbarRule} }
+    ${nestedScrollbarResetRule}
     ${floorRule}
     ${mediaRule}
   `

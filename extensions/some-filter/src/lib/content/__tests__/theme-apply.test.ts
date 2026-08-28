@@ -301,6 +301,26 @@ describe("legacy invert mode paints a dark surface in both regimes", () => {
     ).toBeLessThan(DARK)
   })
 
+  it("resets scrollbar-color for descendants, not for html itself", () => {
+    // scrollbar-color is inherited, so without a reset, an unstyled nested
+    // `overflow: auto` container would inherit html's dark declaration and
+    // (being inside the filtered subtree, unlike the root/viewport
+    // scrollbar) composite it to a light one. Not pixel-verified — see this
+    // rule's own comment in theme-apply.ts for why — so this only pins the
+    // declared shape: descendants reset to scrollbar-color's own initial
+    // value (`auto`, i.e. what they already had before html declared one),
+    // and html's own dark value is untouched.
+    applyTheme("legacy", LEGACY_PRESETS.invert)
+    const css = document.getElementById(LEGACY_STYLE_ID)?.textContent ?? ""
+    const reset = css
+      .split("}")
+      .find((rule) => rule.includes(":where(:root *)"))
+    expect(reset, `no descendant scrollbar-color reset in: ${css}`).toContain(
+      "scrollbar-color: auto"
+    )
+    expect(css).toContain("scrollbar-color: #272b37 #0d1117")
+  })
+
   it("has no single source colour that would serve both regimes alone", () => {
     // Why two surfaces rather than one better-chosen colour. Sampling the
     // greyscale ramp: every source is light in one regime or the other, so
