@@ -827,3 +827,62 @@ vocabulary. The invariants this design _does_ owe (no oscillation, monotone
 reveal, bounded convergence) are discharged as property tests in
 `crates/leetype_wasm/tests/invariants.rs`, which is a stronger place for
 them than prose.
+
+### Amended: the overhaul is a `.typ`, and this file is not
+
+The paragraph above is retained and still correct **about M20**. It is not
+correct about what replaces M20.
+
+[`docs/canon/complexity-witness-canon.typ`](../canon/complexity-witness-canon.typ)
+— _The Unprovable Measurement_ — is the governing canon for the workspace's
+next user story, and it is a canon rather than a second decision record for a
+reason this document's own test settles cleanly: the overhaul's central claims
+are **proof obligations, not architecture decisions**. That no finite set of
+runtime observations entails a complexity class is a theorem with a proof and
+two forbidden inferences that a lint can enforce. That the cost of a loop graph
+is a sum over root-to-leaf paths of products is a theorem the corpus's authored
+data is checked against. That one correct selection over five options cannot
+discharge a proposition is a likelihood argument with a number in it. None of
+those is a taste, and none of them is dischargeable as a property test in
+`leetype_wasm`, because the engine is not the thing making the claim.
+
+So the split is:
+
+| Document                                                                | Holds                                                                                                               |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| this file                                                               | M20's shipped surface, its five decisions, and the LTY-\* vocabulary — the record of what exists                    |
+| [`complexity-witness-canon.typ`](../canon/complexity-witness-canon.typ) | the overhaul's objects, theorems, proposition register and amendment protocol — the record of what is being derived |
+
+What the canon changes about the sections above, stated here so a reader of
+this file is not misled by them:
+
+- **The premise of the whole document is superseded** (canon P.0). "A step is
+  finished when its proof is typed" is the thing being retired: production is
+  blocking, and blocking selects for learners who already hold the competency.
+- **LTY-MOBILE's premise is inverted, not its conclusion** (canon Prop. 9.2,
+  Rem. 9.3). The discrimination probe stops being the phone's weaker
+  substitute and becomes the probe the system assesses on; because the whole
+  interaction alphabet is toggle / scroll / select / press / swipe, the
+  small-screen surface is the _reference_ surface and the wide one must justify
+  each affordance it adds. A wide layout showing several artifacts at once is a
+  commitment leak (canon Rem. 9.2), not a bonus.
+- **LTY-SEED's conclusion moves and its argument does not** (canon Rem. 11.4).
+  Reviewed content is still what reaches a player; the corpus still passes a
+  human. What changed is that a round carries a whole compiling program, a
+  constraint set, a budget, a cost graph, a diff set, an authored mapping and a
+  machine-produced execution transcript — so it leaves the client bundle for
+  the server, as `paulgsc/server#324` (`[EPIC][LTY-SRV]`) already scopes, with
+  the two amendments Rem. 11.4 names.
+- **The gate stops being a progression predicate** (canon Ax. 9.1). `weightedWpm`,
+  `gateThreshold` and the sampled baseline remain meaningful for the optional
+  production probe and for nothing else. `crates/leetype_wasm` is untouched.
+- **`rationale`, `obligation` and `concepts` gain a successor with a stricter
+  rule.** A proposition is a numbered register entry cited by identifier
+  (`CW-P5`, not a sentence), and the citation is checked the way
+  `docs/canon/scripts/check-citations.sh` checks canon paths.
+
+Everything else in this file stands. In particular the hunk model
+(LTY-PATCH), the reading-probe derivation (LTY-MOBILE), `DiffCard`,
+`ClaimChoices` and the deterministic seed are reused wholesale rather than
+replaced — canon Rem. 11.1 is the table of what survives, and it is most of
+the mechanism.
