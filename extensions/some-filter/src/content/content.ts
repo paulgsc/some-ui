@@ -207,14 +207,51 @@ function cycleState(): void {
  *
  * Only an actual transition — auto/off into legacy — goes through
  * `applyState`, which is correct there: nothing exists yet to tear down.
+ *
+ * The "already legacy" branch itself only calls applyTheme() when `config`
+ * actually differs from what's already applied — measured, not assumed: a
+ * MutationObserver on document.documentElement showed applyLegacyFilter()'s
+ * own `setAttribute(LEGACY_THEME_ATTR, "")` firing a real mutation record
+ * even when the attribute already held that exact value (verified directly;
+ * setAttribute has no built-in same-value short-circuit, unlike classList).
+ * setStyleText() (theme-apply.ts) separately no-ops an identical textContent
+ * write, but that guard is one step too late to catch this — the attribute
+ * touch happens first, and it re-triggers every selector this extension has
+ * gated on `[data-sw-legacy]` across two stylesheets (prepaint.css and this
+ * one), on the same element that is also the root filter's own target. This
+ * sandbox's headless/swiftshader e2e harness has not reproduced a visible
+ * frame from that (a real, hardware-composited Chrome may, given a `filter`-
+ * bearing root re-evaluating its own gated selectors is exactly the kind of
+ * churn compositing layers are sensitive to) — checked here as a concrete,
+ * measured no-op instead: zero DOM writes, not zero pixels.
+ *
+ * A redundant call with an identical config was unreachable before the
+ * GET_TAB_FILTER_STATE fix (#1188) — its response was always `undefined`, so
+ * this whole function only ever ran from the TOGGLE_FILTER path. Once that
+ * response started arriving, EVERY page load's async init reconciliation
+ * calls this a second time, moments after the synchronous cached paint
+ * already applied the same config — and unlike a real config change, that
+ * second call has nothing to accomplish.
  */
 function enterOrRefreshLegacy(config: FilterConfig): void {
+  const alreadyApplied =
+    currentState === "legacy" && filterConfigsEqual(filterConfig, config)
   filterConfig = config
   if (currentState !== "legacy") {
     applyState("legacy")
-  } else {
+  } else if (!alreadyApplied) {
     applyTheme("legacy", filterConfig)
   }
+}
+
+function filterConfigsEqual(a: FilterConfig, b: FilterConfig): boolean {
+  return (
+    a.invert === b.invert &&
+    a.hueRotate === b.hueRotate &&
+    a.sepia === b.sepia &&
+    a.brightness === b.brightness &&
+    a.contrast === b.contrast
+  )
 }
 
 // ── Auto theming (apply-then-detect) ────────────────────────────────────────────
@@ -299,22 +336,31 @@ function init(): void {
       })
 
       if (isGetTabFilterStateResponse(response)) {
-        // Always the authoritative value, regardless of which branch below
-        // runs (or whether either does) — cycleState() (the keyboard
-        // shortcut's CYCLE_TAB_STATE handler) reads this module-level cache
-        // directly with no config of its own, so an off/auto tab that skips
-        // both branches here (background agrees it's off/auto, nothing to
-        // reconcile) must still pick up e.g. a dim <-> invert style change
-        // made while it sat idle — otherwise the next legacy entry repaints
-        // with a stale filterConfig until some other message updates it.
-        filterConfig = response.config
-
         if (response.enabled) {
+          // enterOrRefreshLegacy() reads the module-level filterConfig
+          // itself to decide whether this is a no-op, then assigns it — it
+          // must run before filterConfig is touched here, or its comparison
+          // is against a value this same reconciliation already overwrote
+          // (config vs. itself, always "unchanged", even when the tab's
+          // cached paint used a stale config and this response carries a
+          // real change picked up while the tab sat idle).
           enterOrRefreshLegacy(response.config)
-        } else if (currentState === "legacy") {
-          // Cache said legacy but this tab is no longer in the filter list
-          // (user removed it via popup). Re-classify with auto.
-          applyState("auto")
+        } else {
+          // Always the authoritative value, regardless of which branch below
+          // runs (or whether either does) — cycleState() (the keyboard
+          // shortcut's CYCLE_TAB_STATE handler) reads this module-level cache
+          // directly with no config of its own, so an off/auto tab that skips
+          // both branches here (background agrees it's off/auto, nothing to
+          // reconcile) must still pick up e.g. a dim <-> invert style change
+          // made while it sat idle — otherwise the next legacy entry repaints
+          // with a stale filterConfig until some other message updates it.
+          filterConfig = response.config
+
+          if (currentState === "legacy") {
+            // Cache said legacy but this tab is no longer in the filter list
+            // (user removed it via popup). Re-classify with auto.
+            applyState("auto")
+          }
         }
       }
     } catch {
