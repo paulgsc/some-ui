@@ -188,88 +188,110 @@ ext.contextMenus.onClicked.addListener((info): void => {
 // message handling
 // ─────────────────────────────────────────────
 
-ext.runtime.onMessage.addListener((msg, sender): boolean | Promise<unknown> => {
-  if (!isExtensionMessage(msg)) {
-    return false
-  }
+// This module's listener types come from `browser`-shaped definitions
+// (platform/api.ts), which model Firefox's promise-returning onMessage —
+// they don't declare a `sendResponse` third parameter at all, because
+// Firefox doesn't need one. At runtime, on the Chromium build, `ext` is
+// literally `globalThis.chrome`, and `chrome.runtime.onMessage` still uses
+// the classic callback contract: returning a bare `true` promises an
+// eventual `sendResponse(...)` call, and nothing else counts. Returning
+// the handler's own Promise directly (`return handler()`, relying on
+// Chrome's documented "a returned Promise is treated like sendResponse"
+// support) was tried and measured to *not* take effect in this build —
+// the sender received `undefined` immediately rather than the resolved
+// value. `sendResponse` is captured explicitly below so `GET_TAB_FILTER_STATE`
+// actually reaches its caller.
+type SendResponse = (response: unknown) => void
 
-  if (msg.type === "GET_TAB_FILTER_STATE") {
-    const handler = async (): Promise<unknown> => {
-      const tabId = sender.tab?.id
-      if (!tabId) {
-        return { enabled: false, config: DEFAULT_FILTER }
-      }
-
-      const { filteredTabIds, filterConfig, tabStates } = await getState()
-
-      return {
-        enabled: filteredTabIds.includes(tabId),
-        config: filterConfig,
-        tabState: tabStates[tabId] ?? DEFAULT_TAB_STATE,
-      }
+ext.runtime.onMessage.addListener(
+  (msg, sender, sendResponse: SendResponse): boolean | Promise<unknown> => {
+    if (!isExtensionMessage(msg)) {
+      return false
     }
 
-    void handler()
-    return true
-  }
+    if (msg.type === "GET_TAB_FILTER_STATE") {
+      const handler = async (): Promise<unknown> => {
+        const tabId = sender.tab?.id
+        if (!tabId) {
+          return { enabled: false, config: DEFAULT_FILTER }
+        }
 
-  if (msg.type === "SET_LEGACY_STYLE") {
-    void applyLegacyStyle(msg.style)
-    return false
-  }
+        const { filteredTabIds, filterConfig, tabStates } = await getState()
 
-  if (msg.type === "SET_FILTERED_TABS" && Array.isArray(msg.ids)) {
-    const handler = async (): Promise<void> => {
-      const { filteredTabIds, filterConfig, tabStates } = await getState()
-
-      const desired = new Set(msg.ids)
-      const current = new Set(filteredTabIds)
-
-      const nextTabStates: Record<number, TabState> = {
-        ...tabStates,
+        return {
+          enabled: filteredTabIds.includes(tabId),
+          config: filterConfig,
+          tabState: tabStates[tabId] ?? DEFAULT_TAB_STATE,
+        }
       }
 
-      const allTabs = new Set([...Array.from(desired), ...Array.from(current)])
-
-      for (const tabId of allTabs) {
-        nextTabStates[tabId] = desired.has(tabId) ? "legacy" : DEFAULT_TAB_STATE
-      }
-
-      await ext.storage.local.set({
-        filteredTabIds: msg.ids,
-        tabStates: nextTabStates,
-      })
-
-      const tabs = await ext.tabs.query({})
-
-      const tasks: Array<Promise<unknown>> = []
-
-      for (const t of tabs) {
-        if (typeof t.id !== "number") continue
-
-        const wasFiltered = current.has(t.id)
-        const willFilter = desired.has(t.id)
-
-        if (wasFiltered === willFilter) continue
-
-        tasks.push(
-          sendToTab(t.id, {
-            type: "TOGGLE_FILTER",
-            enabled: willFilter,
-            config: filterConfig,
-          })
-        )
-      }
-
-      await Promise.all(tasks)
+      void handler().then(sendResponse)
+      return true
     }
 
-    void handler()
-    return true
-  }
+    if (msg.type === "SET_LEGACY_STYLE") {
+      void applyLegacyStyle(msg.style)
+      return false
+    }
 
-  return false
-})
+    if (msg.type === "SET_FILTERED_TABS" && Array.isArray(msg.ids)) {
+      const handler = async (): Promise<void> => {
+        const { filteredTabIds, filterConfig, tabStates } = await getState()
+
+        const desired = new Set(msg.ids)
+        const current = new Set(filteredTabIds)
+
+        const nextTabStates: Record<number, TabState> = {
+          ...tabStates,
+        }
+
+        const allTabs = new Set([
+          ...Array.from(desired),
+          ...Array.from(current),
+        ])
+
+        for (const tabId of allTabs) {
+          nextTabStates[tabId] = desired.has(tabId)
+            ? "legacy"
+            : DEFAULT_TAB_STATE
+        }
+
+        await ext.storage.local.set({
+          filteredTabIds: msg.ids,
+          tabStates: nextTabStates,
+        })
+
+        const tabs = await ext.tabs.query({})
+
+        const tasks: Array<Promise<unknown>> = []
+
+        for (const t of tabs) {
+          if (typeof t.id !== "number") continue
+
+          const wasFiltered = current.has(t.id)
+          const willFilter = desired.has(t.id)
+
+          if (wasFiltered === willFilter) continue
+
+          tasks.push(
+            sendToTab(t.id, {
+              type: "TOGGLE_FILTER",
+              enabled: willFilter,
+              config: filterConfig,
+            })
+          )
+        }
+
+        await Promise.all(tasks)
+      }
+
+      void handler()
+      return true
+    }
+
+    return false
+  }
+)
 
 // ─────────────────────────────────────────────
 // keyboard shortcut
