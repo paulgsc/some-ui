@@ -384,23 +384,56 @@ function applyLegacyFilter(config: FilterConfig): void {
   // canvas is nearly always occluded by the vendor's own opaque body, while
   // the raw regime is exposed precisely during the uncovered ticks above.
   //
-  // #0d1117 is therefore correct even though it composites to a light grey
-  // (#7b7b7a) — that grey is behind the page, the white was in front of the
-  // user. Do not "fix" this to #fff on the composited maths alone; that was
-  // #1175, and it reintroduced the tick. If the light-grey composited canvas
-  // ever does become visible, the fix is a second, *filtered* floor (a
-  // fixed, z-index:-1 white layer inside <html>) so each regime gets its own
-  // surface — not repolarising this one.
+  // So the canvas keeps the raw-safe value, and the composited regime gets
+  // its own surface instead of having to share this one — see floorRule.
   const isInverted = Boolean(config.invert)
   const canvasRule = isInverted ? "background-color: #0d1117 !important;" : ""
   const mediaRule = isInverted
     ? "img, video, canvas, picture { filter: invert(1) hue-rotate(180deg) !important; }"
     : ""
 
+  // The filtered floor — the composited regime's own surface.
+  //
+  // A white layer *inside* the filtered subtree, pinned behind everything
+  // (z-index: -1) and in front of the canvas. It is rastered through the
+  // chain like any other content, so it renders #0a0a0a; the canvas above
+  // stays #0d1117 for the raw ticks. Each regime now has a surface tuned for
+  // it and neither is a compromise, which is what makes the light-grey
+  // composited canvas a non-issue rather than an accepted cost.
+  //
+  // Deliberately a pseudo-element, not an injected node:
+  //   - it survives vendor DOM replacement (even
+  //     documentElement.replaceChildren) for free, where an element would
+  //     need the veil's whole self-healing observer to stay alive;
+  //   - it produces no MutationRecords, so the Sensor has nothing to react
+  //     to and cannot echo itself into a rescan loop (#831);
+  //   - it is torn down atomically with this stylesheet.
+  // The cost is that a vendor's own `html::before` is overridden for the
+  // duration. That is rare (`body::before` is the common one), it only
+  // applies while legacy invert is on, and the escape hatch — should a
+  // fixture ever hit it — is an injected `[data-my-ext]` element carrying
+  // these same declarations.
+  //
+  // `position: fixed` resolves against <html> here rather than the viewport,
+  // because the filter above makes <html> a containing block for fixed
+  // descendants. That is the desirable reading: the floor spans the whole
+  // scrollable document, so a fast scroll cannot outrun its edge.
+  const floorRule = isInverted
+    ? `html[data-sw-legacy]::before {
+         background-color: #fff !important;
+         content: "" !important;
+         inset: 0 !important;
+         pointer-events: none !important;
+         position: fixed !important;
+         z-index: -1 !important;
+       }`
+    : ""
+
   setStyleText(
     style,
     `
     html { filter: ${buildFilterString(config)} !important; ${canvasRule} }
+    ${floorRule}
     ${mediaRule}
   `
   )

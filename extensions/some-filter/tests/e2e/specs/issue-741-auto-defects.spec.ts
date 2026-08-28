@@ -16,6 +16,12 @@
 
 import { relativeLuminance } from "@filter/lib/content/color"
 import { expect, test, waitForClassification } from "@filter/playwright/fixture"
+import {
+  brightestIn,
+  DARK,
+  describeColor,
+  viewportRegion,
+} from "@filter/playwright/fixtures/pixels"
 
 // ── filter: invert — auto poisons its own remedy ────────────────────────────
 
@@ -83,7 +89,8 @@ test.describe("auto theme under a vendor-authored filter: invert (#741)", () => 
 // ── prepaint veil poisoned by a previously-applied filter, across a new session ──
 
 test.describe("the prepaint veil under a previously-applied filter, across a new session (#741)", () => {
-  test("a second (SPA-navigation) session's anti-flash veil composites bright, not dark, while the page's own filter is still active", async ({
+  test("a second (SPA-navigation) session's anti-flash veil stays dark on screen while the page's own filter is still active", async ({
+    context,
     fixture,
   }) => {
     const page = await fixture.goto("filter-invert-vendor-page")
@@ -101,16 +108,17 @@ test.describe("the prepaint veil under a previously-applied filter, across a new
     // window event listeners, not scoped to youtube.com — dispatching them
     // here simulates an SPA-style re-navigation within the same document.
     // yt-navigate-start re-arms the veil via enablePrepaint(); this test
-    // only needs that half (the veil's *declared* color, sampled before
-    // yt-navigate-finish's rescan/commitVisualState could tear it back
-    // down) — dispatching -finish too would race the veil-removal rAF pair
-    // against this synchronous read for no benefit.
+    // only needs that half. Dispatching -finish too would race the
+    // veil-removal rAF pair against the screenshot below for no benefit —
+    // content.ts's navigatingAway guard holds the veil up until -finish
+    // settles the swap, which is what makes the capture deterministic.
     const veil = await page.evaluate(() => {
       window.dispatchEvent(new Event("yt-navigate-start"))
       const el = document.getElementById("__sw_prepaint_veil")
       return {
         present: el !== null,
         bg: el ? getComputedStyle(el).backgroundColor : null,
+        inTopLayer: el === null ? null : el.matches(":popover-open"),
       }
     })
 
@@ -119,44 +127,41 @@ test.describe("the prepaint veil under a previously-applied filter, across a new
       "the new session should re-arm the anti-flash veil (enablePrepaint())"
     ).toBe(true)
 
-    const veilBg = veil.bg ?? ""
-    const match = veilBg.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/)
-    if (match === null) {
-      throw new Error(`unparseable veil background: ${veilBg}`)
-    }
-    const [, rStr, gStr, bStr] = match
-    if (rStr === undefined || gStr === undefined || bStr === undefined) {
-      throw new Error(`unparseable veil background: ${veilBg}`)
-    }
-    const declared: [number, number, number] = [
-      Number(rStr) / 255,
-      Number(gStr) / 255,
-      Number(bStr) / 255,
-    ]
-    const asSeen: [number, number, number] = [
-      1 - declared[0],
-      1 - declared[1],
-      1 - declared[2],
-    ]
-    const asSeenLuminance = relativeLuminance(...asSeen)
+    // ── why this asserts on pixels rather than on `1 - declared` ────────────
+    //
+    // This test used to derive what a human sees by inverting the veil's
+    // *declared* colour in JS, on the premise that the vendor's still-active
+    // `filter: invert(1)` on <html> composites the veil like any other
+    // descendant. It does not, and the premise is what made the assertion
+    // unsound: enablePrepaint() promotes the veil to the top layer via the
+    // popover API, and a top-layer element is painted outside every ancestor
+    // filter's render surface. No inversion is applied to it at all.
+    //
+    // That gap was not academic. Under the model, compensating the veil to a
+    // light declared value "read dark", and the test passed. On screen the
+    // compensated veil was simply light — measured at rgb(232, 227, 218), a
+    // near-white cream filling the viewport, which is #741's own symptom
+    // ("the anti-flash mechanism becomes the flash") reproduced by its fix.
+    // prepaint.ts now skips compensation in the top layer, where there is no
+    // filter to counter, and the veil renders the dark value it declares.
+    //
+    // A screenshot is the only instrument that can tell those two apart, so
+    // the assertion moved onto one. The declared value is still reported in
+    // the failure message, since it is what a fix would change.
+    const { color, luminance } = await brightestIn(
+      page,
+      context,
+      await viewportRegion(page)
+    )
 
-    // The veil exists purely to hold a dark, flash-free canvas while a
-    // session settles (prepaint.ts/prepaint.css). Its declared color is only
-    // ever adjusted for *our own* legacy filter (prepaint.css's
-    // `html[data-sw-legacy] #__sw_prepaint_veil` rule) — never for a page's
-    // own, independently-applied filter, which is exactly this fixture's
-    // condition and was already active before this second session started.
-    // Composited through it, the veil's dark declared color reads as bright
-    // — the anti-flash mechanism becomes the flash, for a session that
-    // starts *after* the page has already loaded and a human is far more
-    // likely to be looking at the screen than during the initial load.
     expect(
-      asSeenLuminance,
-      `veil declared bg ${veilBg} is meant to hold a dark canvas, but ` +
-        `composited through the page's own, previously-applied filter: ` +
-        `invert(1) it reads as luminance ${asSeenLuminance.toFixed(3)} — ` +
-        "bright, not dark"
-    ).toBeLessThan(0.3)
+      luminance,
+      `the re-armed veil declared ${veil.bg ?? "(none)"} and, ` +
+        `${veil.inTopLayer === true ? "in the top layer" : "in the filtered fallback"}, ` +
+        `actually renders ${describeColor(color)}. The veil exists to hold a ` +
+        `dark, flash-free canvas while a session settles — over a page with ` +
+        `its own previously-applied filter: invert(1), it must still do so.`
+    ).toBeLessThan(DARK)
   })
 })
 

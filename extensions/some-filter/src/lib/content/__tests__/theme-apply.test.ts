@@ -120,11 +120,13 @@ describe("applyTheme", () => {
 // `filter` property lists them.
 //
 // Composited luminance falls monotonically as source luminance rises, so no
-// source is dark in both regimes and the choice is which one is visible. It
-// is raw — the html canvas spends the composited regime occluded by the
-// vendor's own opaque body, and the raw regime is exactly the uncovered tick
-// a human sees. These tests pin that choice so the composited maths alone
-// cannot flip it back (#1175 did, and reintroduced the tick).
+// *single* surface can be dark in both regimes — which is why there are two.
+// The canvas takes the raw-safe value and the floor (html::before, inside
+// the filtered subtree) takes the composited-safe one, so every regime has a
+// surface tuned for it. These tests assert that pairing, which is stronger
+// than the "pick the lesser evil" invariant it replaces: neither regime is
+// an accepted cost any more, and flipping either surface to serve the other
+// regime's maths (#1175's mistake) fails here.
 
 type RGB = [number, number, number]
 
@@ -189,63 +191,83 @@ function asSeenThroughLegacyInvertFilter(source: RGB): RGB {
   return [clamp(contrasted[0]), clamp(contrasted[1]), clamp(contrasted[2])]
 }
 
-/** The canvas colour applyLegacyFilter actually declares, as 0-1 RGB. */
-function declaredCanvasColor(): RGB {
+/** The `background-color` declared in the legacy stylesheet rule whose selector contains `selectorFragment`, as 0-1 RGB. */
+function declaredBackground(selectorFragment: string): RGB {
   applyTheme("legacy", LEGACY_PRESETS.invert)
   const css = document.getElementById(LEGACY_STYLE_ID)?.textContent ?? ""
-  const declared = /background-color:\s*(#[0-9a-fA-F]{3,8})/.exec(css)?.[1]
+  const block = css.split("}").find((rule) => rule.includes(selectorFragment))
+  if (block === undefined) {
+    throw new Error(`no rule matching ${selectorFragment} in: ${css}`)
+  }
+  const declared = /background-color:\s*(#[0-9a-fA-F]{3,8})/.exec(block)?.[1]
   if (declared === undefined) {
-    throw new Error(`no canvas colour declared in: ${css}`)
+    throw new Error(`no background-color in rule ${selectorFragment}: ${block}`)
   }
   const parsed = parseColor(declared)
-  if (parsed === null) throw new Error(`unparseable canvas colour ${declared}`)
+  if (parsed === null) throw new Error(`unparseable colour ${declared}`)
   return [parsed[0], parsed[1], parsed[2]]
 }
+
+/** The propagated canvas colour — the surface the raw regime paints. */
+const canvasColor = (): RGB => declaredBackground("html {")
+
+/** The floor behind the page — the surface the composited regime paints. */
+const floorColor = (): RGB => declaredBackground("html[data-sw-legacy]::before")
 
 function describeRgb(rgb: RGB): string {
   return `rgb(${rgb.map((c) => Math.round(c * 255)).join(", ")})`
 }
 
-describe("legacy invert preset's declared canvas colour", () => {
-  it("reads dark unfiltered — the flashbang-tick guard", () => {
-    const declared = declaredCanvasColor()
-    const luminance = relativeLuminance(...declared)
+const DARK = 0.05
+
+describe("legacy invert mode paints a dark surface in both regimes", () => {
+  it("the canvas reads dark unfiltered — the flashbang-tick guard", () => {
+    const canvas = canvasColor()
     // The invariant that matters to a human. White satisfies the composited
     // maths and fails here: it is a full-viewport flash on every tick where
     // vendor content is up before the root filter's output is.
     expect(
-      luminance,
-      `unfiltered ${describeRgb(declared)} must read dark`
-    ).toBeLessThan(0.05)
+      relativeLuminance(...canvas),
+      `unfiltered canvas ${describeRgb(canvas)} must read dark`
+    ).toBeLessThan(DARK)
   })
 
-  it("composites light — the accepted, occluded cost of that choice", () => {
-    const composited = asSeenThroughLegacyInvertFilter(declaredCanvasColor())
-    const luminance = relativeLuminance(...composited)
-    // Not a bug being enshrined: it is the other half of the trade-off, held
-    // here so it stays a known quantity. #0d1117 composites to #7b7b7a, a
-    // light grey — behind the vendor's opaque body, where nobody sees it. If
-    // this ever does become visible the fix is a second, filtered floor (a
-    // fixed z-index:-1 white layer inside <html>), not repolarising the
-    // canvas: that is what would bring the tick back.
+  it("the floor reads dark composited — what makes the canvas free to be raw-safe", () => {
+    const composited = asSeenThroughLegacyInvertFilter(floorColor())
     expect(
-      luminance,
-      `composited ${describeRgb(composited)} is the occluded regime`
-    ).toBeGreaterThan(0.15)
+      relativeLuminance(...composited),
+      `composited floor ${describeRgb(composited)} must read dark`
+    ).toBeLessThan(DARK)
   })
 
-  it("has no source colour that is dark in both regimes", () => {
-    // Why the two tests above disagree and that is not a defect. Sampling the
+  it("the floor is behind content and inert", () => {
+    applyTheme("legacy", LEGACY_PRESETS.invert)
+    const css = document.getElementById(LEGACY_STYLE_ID)?.textContent ?? ""
+    const floor = css.split("}").find((r) => r.includes("::before")) ?? ""
+    // A floor that intercepts clicks or paints over the page is worse than
+    // the grey canvas it replaces.
+    expect(floor).toContain("z-index: -1")
+    expect(floor).toContain("pointer-events: none")
+    expect(floor).toContain("position: fixed")
+  })
+
+  it("neither surface is declared for the dim style, which has no invert", () => {
+    applyTheme("legacy", LEGACY_PRESETS.dim)
+    const css = document.getElementById(LEGACY_STYLE_ID)?.textContent ?? ""
+    expect(css).not.toContain("::before")
+    expect(css).not.toContain("background-color:")
+  })
+
+  it("has no single source colour that would serve both regimes alone", () => {
+    // Why two surfaces rather than one better-chosen colour. Sampling the
     // greyscale ramp: every source is light in one regime or the other, so
-    // "declare a colour that is dark either way" is not an available fix.
-    const darkEnough = 0.05
+    // "just declare a colour that is dark either way" was never available.
     const bothDark = Array.from({ length: 256 }, (_, i) => i / 255).filter(
       (level) => {
         const source: RGB = [level, level, level]
-        const composited = asSeenThroughLegacyInvertFilter(source)
         return (
-          relativeLuminance(...source) < darkEnough &&
-          relativeLuminance(...composited) < darkEnough
+          relativeLuminance(...source) < DARK &&
+          relativeLuminance(...asSeenThroughLegacyInvertFilter(source)) < DARK
         )
       }
     )

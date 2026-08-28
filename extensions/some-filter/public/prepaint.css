@@ -24,9 +24,40 @@
   disablePrepaint() removes sw-dirty first, then tears down the veil element, so
   the backstop is released atomically with intentional veil teardown.
 
-  Under the legacy invert filter the entire <html> is inverted. The veil is
-  deliberately white in that mode (so inversion produces black). We mirror that
-  here: the body backstop must also be white so it inverts to black.
+  Legacy invert mode: the veil is white in the top layer too, and that is
+  not settled science — read before changing it again
+  ─────────────────────────────────────────────────────────────────────────
+  Under the legacy invert filter the entire <html> is inverted, so a surface
+  inside that subtree must be declared white to *render* black. That is why
+  the body backstop below is white, and it is also why the veil (both rules
+  below, `:popover-open` included) is white.
+
+  An earlier version of this file gave `:popover-open` its own, dark value
+  instead, on the reasoning that a top-layer element (the veil is promoted
+  there via the Popover API) is painted outside every ancestor filter's
+  render surface, so a white declaration would render as literal white — a
+  full-viewport flash. That reasoning was directly measured and held up in
+  this project's own headless/swiftshader e2e harness (a white top-layer
+  veil under this filter rendered #ffffff there, not composited). It did
+  NOT hold up against real usage: shipping the dark `:popover-open` value
+  produced a refresh/remount white flash that reverting it back to white
+  removed, restoring the no-flash behaviour this file always had before
+  that change. So on at least one real, non-headless browser, an ancestor
+  filter on <html> DOES still reach this top-layer element, contradicting
+  the headless measurement.
+
+  Net: this file's own e2e coverage is not a reliable oracle for how an
+  ancestor `filter` interacts with Popover-API top-layer promotion — it
+  disagrees with real browsers on this one question, in this direction,
+  demonstrated. White is the value that has actually been verified not to
+  flash. If you're tempted to reintroduce a dark `:popover-open` value
+  because a *sandboxed* e2e run shows a white one compositing to literal
+  white: that sandboxed result is exactly what got contradicted here, and
+  is not sufficient justification on its own — verify against a real,
+  hardware-accelerated browser first.
+
+  `::backdrop` only exists for a top-layer element, so it is in the same
+  boat and gets the same value for the same reason.
 */
 
 /* Dirty-by-default: body stays dark until we explicitly release it.
@@ -67,9 +98,9 @@ html[data-sw-legacy].sw-dirty > body {
   z-index: 2147483647;
 }
 
-/* When the legacy filter is applied to <html>, it flips the colors. 
-  Setting the background to white here means the inversion turns it back to black perfectly.
-*/
+/* White whether or not the veil made it into the top layer — see this
+   file's header comment for why `:popover-open` isn't given its own,
+   dark value here despite the theoretical case for one. */
 html[data-sw-legacy] #__sw_prepaint_veil,
 html[data-sw-legacy] #__sw_prepaint_veil:popover-open {
   background-color: white !important;
@@ -81,6 +112,8 @@ html[data-sw-legacy] #__sw_prepaint_veil:popover-open {
   background-color: #171c25;
 }
 
+/* Same value as the veil rule above, same reasoning. */
 html[data-sw-legacy] #__sw_prepaint_veil::backdrop {
   background-color: white !important;
+  color-scheme: light !important;
 }
