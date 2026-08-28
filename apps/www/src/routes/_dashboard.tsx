@@ -131,6 +131,18 @@ const DashboardLayout = (): JSX.Element => {
   const migrationSignal = useMigrationSignal()
 
   /**
+   * `V` (the fixed, bounded, non-scrolling viewport) only exists while
+   * `LivePlayer` is actually rendering the live `SessionViewport`. Once a
+   * session is terminal, it swaps that for `CompletionSummary` - an
+   * ordinary, possibly-tall card that needs to scroll like any other route,
+   * not be clipped to whatever height `V`'s contract left it. So every
+   * viewport-only affordance below (the fixed-height/no-scroll shell *and*
+   * `bareViewport`, its bare-chrome subset) is gated on `!isTerminal`, not
+   * just on the route pattern.
+   */
+  const isLiveViewportRoute = isViewportRoute && !isTerminal
+
+  /**
    * The one place the shell gets out of the way entirely.
    *
    * On the session player route at phone width, `V` is the screen. The 56px
@@ -145,19 +157,13 @@ const DashboardLayout = (): JSX.Element => {
    * Scoped to this route and this width deliberately. Every other route is
    * an ordinary scrolling document that wants its header, and a wide session
    * player has the room for one.
-   *
-   * Also gated on `!isTerminal`: once a session finishes (or is opened
-   * already completed), `LivePlayer` swaps `SessionViewport` for
-   * `CompletionSummary` - an ordinary card, not `V`. That component was never
-   * built to own the full viewport edge-to-edge, so the shell (header,
-   * padding) has to come back for it exactly as it would for any other
-   * route, or the summary renders pinned to the screen's corner with no
-   * padding and no scroll for the dead space below it.
    */
-  const bareViewport = isViewportRoute && isMobile && !isTerminal
+  const bareViewport = isLiveViewportRoute && isMobile
 
   return (
-    <SidebarProvider className={cn(isViewportRoute && "h-svh overflow-hidden")}>
+    <SidebarProvider
+      className={cn(isLiveViewportRoute && "h-svh overflow-hidden")}
+    >
       <DashboardSidebarContent pathname={pathname} />
       <SidebarInset>
         {!bareViewport && (
@@ -180,10 +186,11 @@ const DashboardLayout = (): JSX.Element => {
             "flex-1",
             bareViewport ? "p-0" : "p-6",
             // scroll-intent: page — an ordinary document route scrolls as a
-            // page. The viewport route is the bounded one, and takes the
+            // page. The live viewport route is the bounded one, and takes the
             // overflow-hidden branch precisely so it cannot (docs/ui-fit,
-            // docs/session-viewport/02-kill-the-cutoff.md).
-            isViewportRoute ? "min-h-0 overflow-hidden" : "overflow-auto"
+            // docs/session-viewport/02-kill-the-cutoff.md). A terminal
+            // session on this same route is back to an ordinary document.
+            isLiveViewportRoute ? "min-h-0 overflow-hidden" : "overflow-auto"
           )}
         >
           <Outlet />

@@ -120,7 +120,10 @@ const SessionCard = ({
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <p className="truncate font-medium">{session.name}</p>
-              <Badge variant={badgeVariantFor(session.status)}>
+              <Badge
+                variant={badgeVariantFor(session.status)}
+                className="whitespace-nowrap"
+              >
                 {STATUS_LABEL[session.status]}
               </Badge>
             </div>
@@ -137,7 +140,7 @@ const SessionCard = ({
                     // eslint-disable-next-line react/no-array-index-key -- position within one session's fixed activity list is a stable identity here; the same activityId can repeat within a session
                     key={`${sessionActivity.activityId}-${index}`}
                     variant="outline"
-                    className="text-muted-foreground font-normal"
+                    className="text-muted-foreground whitespace-nowrap font-normal"
                   >
                     {activity.name}:{" "}
                     {summarizeConfig(activity, sessionActivity.config)}
