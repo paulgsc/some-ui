@@ -21,7 +21,12 @@
  * The activity fixture (`topik`, `{ level: "beginner", durationMinutes: 15 }`)
  * isn't arbitrary - it's the real catalog entry and config that produce
  * #1192's exact reported string ("TOPIK Study: Beginner • 15 min") through
- * the real `summarizeConfig`, not a hand-typed lookalike.
+ * the real `summarizeConfig`, not a hand-typed lookalike. A second fixture
+ * below uses `catalogWorstCase()` - a live build (not this repo's tests)
+ * found that `whitespace-nowrap` alone still overflows a long enough real
+ * summary, which is why the activity pill's class changed again, to
+ * `max-w-full truncate` (see `src/test-support/catalog-worst-case.ts` for
+ * why that's computed from the real catalog rather than hand-typed).
  */
 
 import type { JSX, ReactNode } from "react"
@@ -32,6 +37,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type * as TenantModule from "@/lib/tenant"
 import type { SessionRecord } from "@/lib/tenant"
+import { catalogWorstCase } from "@/test-support/catalog-worst-case"
 
 const REPORTED_SESSION: SessionRecord = {
   id: "session-1192",
@@ -50,6 +56,15 @@ const REPORTED_SESSION: SessionRecord = {
   updatedAt: "2026-01-01T00:00:00.000Z",
 }
 
+const worstCase = catalogWorstCase()
+const WORST_CASE_SESSION: SessionRecord = {
+  ...REPORTED_SESSION,
+  id: "session-worst-case",
+  activities: [
+    { activityId: worstCase.activityId, config: worstCase.config },
+  ],
+}
+
 vi.mock(
   "@tanstack/react-router",
   async (importOriginal): Promise<typeof ReactRouterModule> => {
@@ -64,6 +79,11 @@ vi.mock(
   }
 )
 
+// Mutated per-test (see `renderWith` below) rather than fixed at mock-setup
+// time, so this one mock can serve both the reported-string fixture and the
+// catalog-worst-case fixture without a second render harness.
+let sessionsFixture: Array<SessionRecord> = [REPORTED_SESSION]
+
 vi.mock(
   "@/lib/tenant",
   async (importOriginal): Promise<typeof TenantModule> => {
@@ -72,7 +92,7 @@ vi.mock(
       ...actual,
       useSessions: () =>
         // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- stubbing TanStack Query's rich UseQueryResult with the two fields this route actually reads; the real shape has no minimal constructor.
-        ({ data: [REPORTED_SESSION], isLoading: false }) as ReturnType<
+        ({ data: sessionsFixture, isLoading: false }) as ReturnType<
           typeof TenantModule.useSessions
         >,
     }
@@ -92,14 +112,16 @@ function withQueryClient(children: ReactNode): JSX.Element {
 
 afterEach(() => {
   cleanup()
+  sessionsFixture = [REPORTED_SESSION]
 })
 
 describe("sessions list: the classes #1193's geometry fixture assumes", () => {
-  it("the activity summary pill still carries whitespace-nowrap", () => {
+  it("the activity summary pill still carries max-w-full truncate", () => {
     render(withQueryClient(<SessionsRoute />))
 
     const badge = screen.getByText("TOPIK Study: Beginner • 15 min")
-    expect(badge.className).toContain("whitespace-nowrap")
+    expect(badge.className).toContain("max-w-full")
+    expect(badge.className).toContain("truncate")
   })
 
   it("the status pill still carries whitespace-nowrap", () => {
@@ -109,6 +131,15 @@ describe("sessions list: the classes #1193's geometry fixture assumes", () => {
     // disambiguated from the status Badge (a <div>) by tag.
     const badge = screen.getByText("Completed", { selector: "div" })
     expect(badge.className).toContain("whitespace-nowrap")
+  })
+
+  it("the real catalog's longest summary still carries max-w-full truncate", () => {
+    sessionsFixture = [WORST_CASE_SESSION]
+    render(withQueryClient(<SessionsRoute />))
+
+    const badge = screen.getByText(worstCase.label)
+    expect(badge.className).toContain("max-w-full")
+    expect(badge.className).toContain("truncate")
   })
 
   it("the row still stacks on mobile and un-stacks at sm:", () => {

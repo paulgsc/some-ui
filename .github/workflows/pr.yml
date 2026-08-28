@@ -326,6 +326,8 @@ jobs:
             'apps/www/src/routes/_dashboard.tsx' \
             'apps/www/src/routes/_dashboard/sessions/**' \
             'apps/www/src/components/player/**' \
+            'apps/www/src/test-support/catalog-worst-case.ts' \
+            'packages/activity-catalog/**' \
             'packages/ui/shared/src/components/ui/badge.tsx' \
             'packages/ui/shared/src/components/ui/button.tsx' \
             'apps/www/tsconfig.json' \

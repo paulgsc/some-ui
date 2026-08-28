@@ -29,14 +29,26 @@
  * escapes anything. It only shows up as `expectSingleLineText` failing -
  * the badge's own promise ("this is a one-line pill") breaking while every
  * containment invariant stays green.
+ *
+ * A second describe block below covers the follow-up this harness's own
+ * `BOUNDED_STRESS_LABELS` corpus missed: `whitespace-nowrap` alone stops the
+ * wrap but not an overflow, once a summary is long enough that nowrap has
+ * nothing left to shrink it with. A live build (not this repo's tests)
+ * found that one, against a real catalog entry longer than the reported
+ * string this file's corpus happened to cover - see `catalog-worst-case.ts`
+ * for why that block computes the worst case from the real catalog instead
+ * of trusting a hand-typed corpus not to fall behind it again.
  */
 
 import { expect, test, type Page } from "@playwright/test"
+
+import { catalogWorstCase } from "@/test-support/catalog-worst-case"
 
 import {
   countTextLines,
   expectContainedLayouts,
   expectNoHorizontalOverflow,
+  findHorizontalOverflow,
   MOBILE_WIDTHS,
 } from "@tests/layout-invariants/geometry"
 import { BOUNDED_STRESS_LABELS } from "@tests/layout-invariants/stress-content"
@@ -51,7 +63,16 @@ import { BOUNDED_STRESS_LABELS } from "@tests/layout-invariants/stress-content"
  */
 const TESTED_WIDTHS = MOBILE_WIDTHS.filter(({ width }) => width >= 360)
 
-type ShellVariant = "before" | "after"
+/**
+ * `nowrap-only` sits between `before` and `after`: the row-stacking layout
+ * is #1192's (current), but the activity badge still only has
+ * `whitespace-nowrap` - #1192's original commits, before the follow-up that
+ * added `max-w-full truncate`. Used solely to prove *that* follow-up fix is
+ * itself load-bearing (see the dedicated test below): a real catalog
+ * summary long enough (96 characters) overflows the pill horizontally with
+ * nowrap alone, once nowrap has nothing left to shrink it with.
+ */
+type ShellVariant = "before" | "nowrap-only" | "after"
 
 const SHARED_CSS = `
   * { box-sizing: border-box; }
@@ -75,9 +96,17 @@ const SHARED_CSS = `
     line-height: 1rem;
     font-weight: 600;
   }
-  /* the AFTER-only className="whitespace-nowrap" on the two sessions-route
-     Badge call sites (status pill, activity summary pill) */
+  /* the status pill's className="whitespace-nowrap" (unchanged since #1192) */
   .badge-nowrap { white-space: nowrap; }
+  /* the activity summary pill's current className="max-w-full truncate" -
+     caps the pill at its column's actual width and ellipsizes the excess,
+     instead of nowrap's "wider than its column with nothing left to shrink" */
+  .badge-truncate {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .name-row { display: flex; align-items: center; gap: 0.5rem; }
   .name {
     margin: 0;
@@ -170,37 +199,55 @@ function actionsHtml(): string {
   `
 }
 
-function contentHtml(activityLabel: string, badgeClass: string): string {
+function contentHtml(
+  activityLabel: string,
+  statusBadgeClass: string,
+  activityBadgeClass: string
+): string {
   return `
     <div class="content">
       <div class="name-row">
         <p class="name">Vocabulary warm-up</p>
-        <span class="badge ${badgeClass}">Completed</span>
+        <span class="badge ${statusBadgeClass}">Completed</span>
       </div>
       <div class="activities-row">
-        <span class="badge ${badgeClass}" id="activity-badge">${activityLabel}</span>
+        <span class="badge ${activityBadgeClass}" id="activity-badge">${activityLabel}</span>
       </div>
       <p class="updated">Updated 1 day ago</p>
     </div>
   `
 }
 
+/** Row-stacking layout: `before` is #1192's original single-row layout;
+ * `nowrap-only` and `after` both use #1192's current stacked layout - they
+ * differ only in the activity badge's own class (see `ShellVariant`). */
+function layoutFor(variant: ShellVariant): "before" | "after" {
+  return variant === "before" ? "before" : "after"
+}
+
 function shellHtml(variant: ShellVariant, activityLabel: string): string {
-  const badgeClass = variant === "after" ? "badge-nowrap" : ""
-  const variantCss = variant === "after" ? afterCss() : beforeCss()
+  const statusBadgeClass = variant === "before" ? "" : "badge-nowrap"
+  const activityBadgeClass =
+    variant === "after"
+      ? "badge-truncate"
+      : variant === "nowrap-only"
+        ? "badge-nowrap"
+        : ""
+  const layout = layoutFor(variant)
+  const variantCss = layout === "after" ? afterCss() : beforeCss()
 
   const body =
-    variant === "after"
+    layout === "after"
       ? `
         <div class="left-wrap">
           <input class="checkbox" type="checkbox">
-          ${contentHtml(activityLabel, badgeClass)}
+          ${contentHtml(activityLabel, statusBadgeClass, activityBadgeClass)}
         </div>
         ${actionsHtml()}
       `
       : `
         <input class="checkbox" type="checkbox">
-        ${contentHtml(activityLabel, badgeClass)}
+        ${contentHtml(activityLabel, statusBadgeClass, activityBadgeClass)}
         ${actionsHtml()}
       `
 
@@ -289,5 +336,46 @@ test.describe("sessions list row never wraps a badge's text inside itself", () =
     // even on the known-broken fixture.
     await expectNoHorizontalOverflow(page)
     await expectContainedLayouts(page)
+  })
+})
+
+/**
+ * A live build (not this repo's own tests) surfaced the next regression:
+ * `whitespace-nowrap` alone stops the pill wrapping, but a genuinely long
+ * catalog summary - not the shorter one #1192's own report and this file's
+ * `BOUNDED_STRESS_LABELS` happened to use - has nothing left to shrink it
+ * with, so it overflows the pill horizontally instead. `catalogWorstCase()`
+ * computes the real catalog's own longest case rather than a hand-typed
+ * guess, so this stays true as the catalog grows instead of needing someone
+ * to notice the next longer entry by eye.
+ */
+test.describe("the sessions badge never overflows its card, even at the real catalog's longest", () => {
+  const worstCase = catalogWorstCase()
+
+  test(`after the truncate follow-up: "${worstCase.label}" stays inside the card`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 800 })
+    await loadShell(page, "after", worstCase.label)
+
+    // The point of truncating rather than just not-wrapping: the pill
+    // itself never grows past its column, whatever the text does.
+    await expectNoHorizontalOverflow(page)
+    await expectContainedLayouts(page)
+  })
+
+  test(`before the truncate follow-up (sanity): "${worstCase.label}" overflows with nowrap alone`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 800 })
+    await loadShell(page, "nowrap-only", worstCase.label)
+
+    // Proves the fixture reproduces the live-build regression: nowrap with
+    // no truncation lets a long enough summary push past the card's edge.
+    const violations = await findHorizontalOverflow(page)
+    expect(
+      violations,
+      "fixture did not reproduce the overflow - it no longer proves anything"
+    ).not.toEqual([])
   })
 })
