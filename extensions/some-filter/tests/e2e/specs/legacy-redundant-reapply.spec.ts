@@ -25,6 +25,7 @@
  * same standard #831's veil test already holds enablePrepaint() to.
  */
 
+import { LEGACY_PRESETS } from "@filter/lib/legacy-presets"
 import { expect, test } from "@filter/playwright/fixture"
 import {
   backgroundWorker,
@@ -115,4 +116,58 @@ test("a redundant TOGGLE_FILTER with an unchanged config writes nothing to the l
     mutationCount,
     "a redundant TOGGLE_FILTER carrying the config already applied must not touch the legacy stylesheet or the html attribute"
   ).toBe(0)
+})
+
+/**
+ * Companion regression, caught by review on the fix above rather than
+ * measured first: enterOrRefreshLegacy()'s no-op check compares the
+ * module-level `filterConfig` against the incoming one, but content.ts's own
+ * async init reconciliation used to overwrite that module-level value with
+ * the incoming config *before* calling enterOrRefreshLegacy() — so the
+ * comparison was always "config equals itself", regardless of what was
+ * actually painted. On a reload, the synchronous sessionStorage-cached paint
+ * always re-enters legacy mode with content.ts's own hardcoded default
+ * filter (module state resets on every fresh injection; only the *state*
+ * cache survives, not the config), so a tab whose real, stored style is
+ * "dim" would reload showing "invert", reconcile, and then never actually
+ * correct to "dim" — the too-early overwrite made the mismatch invisible to
+ * the very check meant to catch it.
+ */
+test("a reload's stale cached-default paint is still corrected to the real stored style", async ({
+  context,
+  fixture,
+}) => {
+  const page = await fixture.goto("transparent-page")
+  const sw = await backgroundWorker(context)
+  // "dim" is deliberately not content.ts's own hardcoded default (which
+  // matches LEGACY_PRESETS.invert) — the reload below must repaint away
+  // from that default, not merely tolerate already being on it.
+  await enterLegacyMode(sw, "transparent-page.html", LEGACY_PRESETS.dim)
+
+  await page.waitForFunction(
+    () => document.documentElement.hasAttribute("data-sw-legacy"),
+    undefined,
+    { timeout: 5_000, polling: 100 }
+  )
+
+  await page.reload()
+
+  await page.waitForFunction(
+    () => document.documentElement.hasAttribute("data-sw-legacy"),
+    undefined,
+    { timeout: 5_000, polling: 100 }
+  )
+  // Give the async GET_TAB_FILTER_STATE reconciliation time to land and
+  // (if working) correct the synchronous paint's stale default.
+  await page.waitForTimeout(300)
+
+  const css = await page.evaluate(
+    () => document.getElementById("__sw_legacy_filter")?.textContent ?? ""
+  )
+
+  expect(css, `installed legacy stylesheet after reload: ${css}`).toContain(
+    "invert(0)"
+  )
+  expect(css).toContain("brightness(0.7)")
+  expect(css).not.toContain("invert(1)")
 })

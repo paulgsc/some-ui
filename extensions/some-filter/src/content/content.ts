@@ -336,22 +336,31 @@ function init(): void {
       })
 
       if (isGetTabFilterStateResponse(response)) {
-        // Always the authoritative value, regardless of which branch below
-        // runs (or whether either does) — cycleState() (the keyboard
-        // shortcut's CYCLE_TAB_STATE handler) reads this module-level cache
-        // directly with no config of its own, so an off/auto tab that skips
-        // both branches here (background agrees it's off/auto, nothing to
-        // reconcile) must still pick up e.g. a dim <-> invert style change
-        // made while it sat idle — otherwise the next legacy entry repaints
-        // with a stale filterConfig until some other message updates it.
-        filterConfig = response.config
-
         if (response.enabled) {
+          // enterOrRefreshLegacy() reads the module-level filterConfig
+          // itself to decide whether this is a no-op, then assigns it — it
+          // must run before filterConfig is touched here, or its comparison
+          // is against a value this same reconciliation already overwrote
+          // (config vs. itself, always "unchanged", even when the tab's
+          // cached paint used a stale config and this response carries a
+          // real change picked up while the tab sat idle).
           enterOrRefreshLegacy(response.config)
-        } else if (currentState === "legacy") {
-          // Cache said legacy but this tab is no longer in the filter list
-          // (user removed it via popup). Re-classify with auto.
-          applyState("auto")
+        } else {
+          // Always the authoritative value, regardless of which branch below
+          // runs (or whether either does) — cycleState() (the keyboard
+          // shortcut's CYCLE_TAB_STATE handler) reads this module-level cache
+          // directly with no config of its own, so an off/auto tab that skips
+          // both branches here (background agrees it's off/auto, nothing to
+          // reconcile) must still pick up e.g. a dim <-> invert style change
+          // made while it sat idle — otherwise the next legacy entry repaints
+          // with a stale filterConfig until some other message updates it.
+          filterConfig = response.config
+
+          if (currentState === "legacy") {
+            // Cache said legacy but this tab is no longer in the filter list
+            // (user removed it via popup). Re-classify with auto.
+            applyState("auto")
+          }
         }
       }
     } catch {
