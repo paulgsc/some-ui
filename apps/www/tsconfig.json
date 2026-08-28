@@ -22,6 +22,7 @@
     "paths": {
       "@/*": ["./src/*"],
       "@/style.context": ["./style.context"],
+      "@tests/*": ["./tests/*"],
       "@some-ui/content-registry/*": [
         "../../packages/some-content-registry/src/*"
       ],
