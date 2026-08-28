@@ -34,6 +34,7 @@
 import { expect, test, type Page } from "@playwright/test"
 
 import {
+  countTextLines,
   expectContainedLayouts,
   expectNoHorizontalOverflow,
   MOBILE_WIDTHS,
@@ -250,15 +251,7 @@ test.describe("sessions list row never wraps a badge's text inside itself", () =
         for (const label of BOUNDED_STRESS_LABELS) {
           await loadShell(page, "after", label)
 
-          const lineCount = (
-            await page.locator("#activity-badge").evaluate((el) => {
-              const range = document.createRange()
-              range.selectNodeContents(el)
-              return Array.from(range.getClientRects()).filter(
-                (r) => r.width > 0.5
-              ).length
-            })
-          )
+          const [lineCount] = await countTextLines(page, "#activity-badge")
 
           expect(
             lineCount,
@@ -281,14 +274,7 @@ test.describe("sessions list row never wraps a badge's text inside itself", () =
     const reportedLabel = "TOPIK Study: Beginner • 15 min"
     await loadShell(page, "before", reportedLabel)
 
-    const lineCount = (
-      await page.locator("#activity-badge").evaluate((el) => {
-        const range = document.createRange()
-        range.selectNodeContents(el)
-        return Array.from(range.getClientRects()).filter((r) => r.width > 0.5)
-          .length
-      })
-    )
+    const [lineCount] = await countTextLines(page, "#activity-badge")
 
     // Proves the fixture reproduces the real regression: without the fix,
     // the pill's own text wraps across multiple lines.

@@ -310,6 +310,34 @@ jobs:
             echo "No CSP-relevant www files changed."
           fi
 
+      # #1193's own review flagged that this directory - both the sessions
+      # badge/completion-summary regression and the session-viewport overflow
+      # spec that predates it - ran nowhere in CI: no workflow named either
+      # spec, so both could fail indefinitely without blocking a PR. Same
+      # shape as the CSP step above (a static-fixture Playwright spec, no
+      # Storybook build needed), scoped to the source these two specs mirror
+      # rather than turbo's dep graph, since neither is a per-package
+      # build/test.
+      - name: E2E — session-viewport regression (www)
+        run: |
+          files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \
+            'apps/www/tests/session-viewport/**' \
+            'apps/www/tests/layout-invariants/**' \
+            'apps/www/src/routes/_dashboard.tsx' \
+            'apps/www/src/routes/_dashboard/sessions/**' \
+            'apps/www/src/components/player/**' \
+            'packages/ui/shared/src/components/ui/badge.tsx' \
+            'packages/ui/shared/src/components/ui/button.tsx' \
+            'apps/www/tsconfig.json' \
+            'apps/www/playwright.config.ts' || true)
+          if [ -n "$files" ]; then
+            nix develop .#ci-playwright --command pnpm --filter www test:e2e \
+              tests/session-viewport/no-overflow-scroll.spec.ts \
+              tests/session-viewport/sessions-badge-containment.spec.ts
+          else
+            echo "No session-viewport-relevant www files changed."
+          fi
+
   # ── Dependency license audit ────────────────────────────────────────────
   deny:
     name: Deny Checks

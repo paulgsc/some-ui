@@ -56,14 +56,22 @@ export async function findHorizontalOverflow(
   containerSelector?: string
 ): Promise<Array<OverflowViolation>> {
   return page.evaluate((selector: string | undefined) => {
-    const bounds = selector
-      ? document.querySelector(selector)?.getBoundingClientRect()
-      : { left: 0, right: document.documentElement.clientWidth }
-    if (!bounds) return []
+    const container = selector ? document.querySelector(selector) : null
+    if (selector && !container) return []
 
+    const bounds = container
+      ? container.getBoundingClientRect()
+      : { left: 0, right: document.documentElement.clientWidth }
+
+    // Scoped to the container's own subtree when one is given - scanning
+    // `body *` regardless would flag the container's wider ancestors and
+    // unrelated siblings as "overflow" too, since they naturally sit
+    // outside a narrower container's bounds without actually being
+    // contained by it.
+    const root = container ?? document.body
     const violations: Array<OverflowViolation> = []
     for (const element of Array.from(
-      document.querySelectorAll<HTMLElement>("body *")
+      root.querySelectorAll<HTMLElement>("*")
     )) {
       const style = getComputedStyle(element)
       if (style.position === "fixed") continue
@@ -200,9 +208,28 @@ export async function countTextLines(
         const range = document.createRange()
         range.selectNodeContents(element)
         const rects = Array.from(range.getClientRects())
-        // A trailing empty rect (zero width) after the last glyph is normal
-        // and not a second line.
-        return rects.filter((r) => r.width > 0.5).length
+          // A trailing empty rect (zero width) after the last glyph is
+          // normal and not a second line.
+          .filter((r) => r.width > 0.5)
+          .sort((a, b) => a.top - b.top)
+
+        // Nested inline markup (an icon before the text, a <strong> span,
+        // …) can produce more than one client rect on the *same* visual
+        // line - counting rects directly over-reports wrapping for exactly
+        // the badges this invariant exists to check (an icon + label).
+        // Cluster instead: a new line only starts once a rect's top is
+        // meaningfully below the current line's, not merely different from
+        // baseline/font-metric jitter between adjacent inline boxes.
+        const LINE_TOLERANCE_PX = 2
+        let lines = 0
+        let currentLineTop = Number.NEGATIVE_INFINITY
+        for (const rect of rects) {
+          if (rect.top - currentLineTop > LINE_TOLERANCE_PX) {
+            lines += 1
+            currentLineTop = rect.top
+          }
+        }
+        return lines
       }
     )
   }, selector)
