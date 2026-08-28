@@ -207,14 +207,51 @@ function cycleState(): void {
  *
  * Only an actual transition — auto/off into legacy — goes through
  * `applyState`, which is correct there: nothing exists yet to tear down.
+ *
+ * The "already legacy" branch itself only calls applyTheme() when `config`
+ * actually differs from what's already applied — measured, not assumed: a
+ * MutationObserver on document.documentElement showed applyLegacyFilter()'s
+ * own `setAttribute(LEGACY_THEME_ATTR, "")` firing a real mutation record
+ * even when the attribute already held that exact value (verified directly;
+ * setAttribute has no built-in same-value short-circuit, unlike classList).
+ * setStyleText() (theme-apply.ts) separately no-ops an identical textContent
+ * write, but that guard is one step too late to catch this — the attribute
+ * touch happens first, and it re-triggers every selector this extension has
+ * gated on `[data-sw-legacy]` across two stylesheets (prepaint.css and this
+ * one), on the same element that is also the root filter's own target. This
+ * sandbox's headless/swiftshader e2e harness has not reproduced a visible
+ * frame from that (a real, hardware-composited Chrome may, given a `filter`-
+ * bearing root re-evaluating its own gated selectors is exactly the kind of
+ * churn compositing layers are sensitive to) — checked here as a concrete,
+ * measured no-op instead: zero DOM writes, not zero pixels.
+ *
+ * A redundant call with an identical config was unreachable before the
+ * GET_TAB_FILTER_STATE fix (#1188) — its response was always `undefined`, so
+ * this whole function only ever ran from the TOGGLE_FILTER path. Once that
+ * response started arriving, EVERY page load's async init reconciliation
+ * calls this a second time, moments after the synchronous cached paint
+ * already applied the same config — and unlike a real config change, that
+ * second call has nothing to accomplish.
  */
 function enterOrRefreshLegacy(config: FilterConfig): void {
+  const alreadyApplied =
+    currentState === "legacy" && filterConfigsEqual(filterConfig, config)
   filterConfig = config
   if (currentState !== "legacy") {
     applyState("legacy")
-  } else {
+  } else if (!alreadyApplied) {
     applyTheme("legacy", filterConfig)
   }
+}
+
+function filterConfigsEqual(a: FilterConfig, b: FilterConfig): boolean {
+  return (
+    a.invert === b.invert &&
+    a.hueRotate === b.hueRotate &&
+    a.sepia === b.sepia &&
+    a.brightness === b.brightness &&
+    a.contrast === b.contrast
+  )
 }
 
 // ── Auto theming (apply-then-detect) ────────────────────────────────────────────
