@@ -140,7 +140,7 @@ const SessionCard = ({
                     // eslint-disable-next-line react/no-array-index-key -- position within one session's fixed activity list is a stable identity here; the same activityId can repeat within a session
                     key={`${sessionActivity.activityId}-${index}`}
                     variant="outline"
-                    className="text-muted-foreground whitespace-nowrap font-normal"
+                    className="text-muted-foreground max-w-full truncate font-normal"
                   >
                     {activity.name}:{" "}
                     {summarizeConfig(activity, sessionActivity.config)}
