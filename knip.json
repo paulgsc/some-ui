@@ -7,10 +7,5 @@
     "**/__type-fixtures__/**",
     "apps/www/tests/layout-invariants/stress-content.ts"
   ],
-  "ignoreBinaries": ["typst"],
-  "workspaces": {
-    "apps/www": {
-      "ignoreDependencies": ["@some-ui/resume"]
-    }
-  }
+  "ignoreBinaries": ["typst"]
 }

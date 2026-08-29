@@ -11,7 +11,7 @@
 // when rendering moves to a service (paulgsc/some-ui#1132), this is what that
 // service's response body has to satisfy.
 
-export type ResumeVariant = "backend" | "systems" | "learning"
+export type ResumeVariant = "backend" | "platform" | "fullstack"
 
 type ResumeProfile = {
   name: string

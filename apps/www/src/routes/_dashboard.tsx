@@ -19,7 +19,7 @@ import {
   Outlet,
   useRouterState,
 } from "@tanstack/react-router"
-import { FileText, ListVideo, Settings, User } from "lucide-react"
+import { Briefcase, FileText, ListVideo, Settings, User } from "lucide-react"
 import { cn, useIsMobile, useIsTerminal } from "some-ui-utils"
 
 import { AmbientIntentStatus } from "@/lib/intent/render"
@@ -42,7 +42,7 @@ function isViewportPath(pathname: string): boolean {
 }
 
 type NavItem = {
-  to: "/app" | "/sessions" | "/resume" | "/profile" | "/settings"
+  to: "/app" | "/sessions" | "/resume" | "/jobs" | "/profile" | "/settings"
   label: string
   // Widened from `typeof Home` so the brand mark sits alongside the lucide
   // glyphs. Both are sized the same way, by the sidebar's own `[&>svg]:size-4`
@@ -56,6 +56,7 @@ const NAV_ITEMS: ReadonlyArray<NavItem> = [
   { to: "/app", label: "Home", icon: HexCombMark },
   { to: "/sessions", label: "Sessions", icon: ListVideo },
   { to: "/resume", label: "Résumé", icon: FileText },
+  { to: "/jobs", label: "Jobs", icon: Briefcase },
   { to: "/profile", label: "Profile", icon: User },
   { to: "/settings", label: "Settings", icon: Settings },
 ]

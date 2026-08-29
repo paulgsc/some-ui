@@ -21,17 +21,41 @@
 
 #let personal = (
   // Shown under the header when set, e.g. "Indianapolis, Indiana".
-  location: none,
+  location: "Berkeley, CA",
+
+  // Left empty deliberately, same reasoning as every other field in this
+  // file: a real phone number belongs in git history and a public
+  // repository's diff even less than it belongs in a rendered PDF. Fill
+  // this in locally, on your own machine, only when you're about to
+  // generate a specific application's PDF — and don't commit that change.
+  //
+  // Submission-only once set: rendered by the ATS-submission templates
+  // (classic, safe, vanilla, conventional — see their
+  // `contact-line(..., phone: ...)` call), never by the portfolio
+  // templates (rail, compact) whose PDFs are embedded and linked directly
+  // on the public website, and never exposed via the `<resume-export>`
+  // metadata block in src/main.typ that feeds the public web viewer.
+  phone: none,
+
+  // Not currently used by any template — see below. Kept here so the fact is
+  // recorded once rather than re-typed per application.
+  linkedin: none,
+
+  // Real and true (per the candidate's own non-engineering résumé), but not
+  // wired into any template's render() yet: whether it is worth a line
+  // depends on the specific posting, which a static build can't know. Set it
+  // true in a one-off application copy rather than rendering it everywhere.
+  work-authorization: "Authorized to work in the US for any employer",
 
   // (institution, credential, detail, dates)
-  education: (),
-  // Example, once you have the real values to hand:
-  //   (
-  //     institution: "…",
-  //     credential: "B.S. Computer Science",
-  //     detail: "…",
-  //     dates: "2015 — 2019",
-  //   ),
+  education: (
+    (
+      institution: "University of California, Merced",
+      credential: "B.S. Mechanical Engineering",
+      detail: none,
+      dates: "2011 — 2015",
+    ),
+  ),
 
   // (name, note, level) — level is 1–5, rendered as the reference's dots.
   languages: (),
@@ -49,13 +73,22 @@
   // for showing continuous employment, and transferable evidence (ownership,
   // throughput, customer contact) belongs on the page when it is real.
   //
+  // Consolidated into one entry rather than one per employer (CABA Design,
+  // Natera, WIS, Rite Aid, PayLocity all appear on the candidate's
+  // non-engineering résumé): the point here is proving employment
+  // continuity and naming transferable, evidence-backed skills, not
+  // re-litigating a separate career in detail on an engineering résumé.
+  //
   // (role, org, detail, dates, bullets)
-  additional-experience: (),
-  //   (
-  //     role: "…",
-  //     org: "…",
-  //     detail: "…",
-  //     dates: "2019 — 2023",
-  //     bullets: ("…",),
-  //   ),
+  additional-experience: (
+    (
+      role: "Data Administrator / Operations",
+      org: "CABA Design · Natera · WIS",
+      detail: none,
+      dates: "2017 — Present",
+      bullets: (
+        "Automated ERP record-keeping and reporting with Python and SQL while maintaining 99.9%+ data accuracy in continuous full-time employment.",
+      ),
+    ),
+  ),
 )

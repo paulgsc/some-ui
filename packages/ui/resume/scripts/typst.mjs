@@ -32,8 +32,15 @@ export const sourceFile = join(packageDir, "src", "main.typ")
 export const outDir = join(packageDir, "documents")
 const cacheDir = join(packageDir, "node_modules", ".cache", "typst-bin")
 
-export const variants = ["backend", "systems", "learning"]
-export const templates = ["rail", "classic", "compact"]
+export const variants = ["backend", "platform", "fullstack"]
+export const templates = [
+  "rail",
+  "classic",
+  "compact",
+  "vanilla",
+  "safe",
+  "conventional",
+]
 // The template whose output also claims the unsuffixed filenames that
 // apps/www/scripts/sync-resume.mjs copies into the site.
 export const DEFAULT_TEMPLATE = "rail"
@@ -44,6 +51,9 @@ export const presentation = {
   rail: { theme: "teal", font: "lato" },
   classic: { theme: "ink", font: "pt-serif" },
   compact: { theme: "slate", font: "lato" },
+  vanilla: { theme: "ink", font: "lato" },
+  safe: { theme: "ink", font: "lato" },
+  conventional: { theme: "ink", font: "pt-serif" },
 }
 
 export function stemFor(variant, template) {

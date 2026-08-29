@@ -33,18 +33,18 @@ src/data/resume.typ      (evidence distilled from paulgsc/{server,some-ui})
 src/data/personal.typ    (facts that exist outside those repos — see below)
               ↓ imported by
 src/main.typ  --variant/--template/--theme/--font-->
-              documents/resume-{backend,systems,learning}[-{classic,compact}].{pdf,svg}
+              documents/resume-{backend,platform,fullstack}[-{classic,compact,vanilla,safe,conventional}].{pdf,svg}
 ```
 
 `src/main.typ` is the only entry point. Everything about a rendered document is
 a typst `--input`, not a source edit:
 
-| input      | values                           |
-| ---------- | -------------------------------- |
-| `variant`  | `backend`, `systems`, `learning` |
-| `template` | `rail`, `classic`, `compact`     |
-| `theme`    | `teal`, `slate`, `ink`           |
-| `font`     | `lato`, `pt-serif`               |
+| input      | values                                                          |
+| ---------- | --------------------------------------------------------------- |
+| `variant`  | `backend`, `platform`, `fullstack`                              |
+| `template` | `rail`, `classic`, `compact`, `vanilla`, `safe`, `conventional` |
+| `theme`    | `teal`, `slate`, `ink`                                          |
+| `font`     | `lato`, `pt-serif`                                              |
 
 Those four are the same knobs a server-side renderer would take per request,
 which is the point: the static build and a dynamic renderer can share one
@@ -61,9 +61,23 @@ template set rather than diverging.
   through an unknown ATS.
 - **`compact`** — rail moved left, portrait dropped, denser main column and
   more bullets per entry.
+- **`vanilla`** — the plainest layout in the set: left-aligned header, no rule
+  under section headings, no grid-based date alignment, no italicized project
+  premise. For a posting that routes through a parser old or strict enough
+  that even `classic`'s thin rule and two-cell date grid feel like a risk.
+- **`safe`** — `classic`'s reading order with Education promoted to sit
+  directly under Experience and the project premise dropped, for a submission
+  artifact that spends its words on evidence rather than architecture prose.
+- **`conventional`** — the traditional reverse-chronological format: no
+  separate "Key achievements" or "Engineering practice" section (folded into
+  Experience/Skills, the way a traditional résumé does it), Education grouped
+  with Experience, no project premise.
 
 `rail` and `compact` are two configurations of one engine (`src/lib/two-column.typ`),
-not two copies of it.
+not two copies of it. `vanilla`, `safe`, and `conventional` default to the
+same monochrome `ink` theme `classic` does — none of the three ATS-safe
+templates carry portfolio color by default — and share `classic`'s and
+`rail`'s pinned fonts (`lato`/`pt-serif`) rather than introducing new ones.
 
 ### One page, and a full one
 
@@ -93,8 +107,9 @@ redistributes the space, so filling these in later costs nothing structurally.
 
 ### ATS checking
 
-`pnpm build` compiles all nine (variant × template) documents and then runs
-`scripts/check-ats.mjs`, which asserts against the **rendered PDFs** rather than
+`pnpm build` compiles all eighteen (variant × template) documents and then runs
+`scripts/check-claims.mjs`, `scripts/check-ats.mjs`, and `scripts/check-layout.mjs`
+in that order. `check-ats.mjs` asserts against the **rendered PDFs** rather than
 against the source data. A source-level assertion can only prove a string exists
 in `src/data` — not that any template put it on the page — so a term dropped by
 a layout, pushed to a second page, or emitted as an unmappable glyph would still
@@ -103,13 +118,24 @@ pass. Each PDF is read back with Poppler's `pdftotext` and must expose:
 - the candidate name and contact details;
 - `SUMMARY`, `SKILLS`, and `EXPERIENCE` as headings, in that order;
 - the variant's own focus label;
-- the shared qualification seam (TypeScript, data modeling, production,
-  distributed, asynchronous, event-driven, Docker, testing);
+- a role-family qualification cluster, matched against the Summary+Skills
+  text specifically (the part every template renders in full and never
+  truncates) — `backend` requires Rust/REST/SQL/asynchronous/testing/CI/CD,
+  `platform` requires GitHub Actions/CI/CD/Docker/contract/observability,
+  `fullstack` requires React/web application/REST API/component/browser/testing;
 - at least 180 words, and no Unicode replacement glyphs.
 
-The seam is a guard against a targeted variant becoming so concise that it stops
-exposing qualifications the underlying work genuinely supports. It does not
-invent tenure, Kubernetes, scale, or employment history.
+Each cluster is a guard against a targeted variant becoming so concise that it
+stops exposing qualifications the underlying work genuinely supports. It does
+not invent tenure, Kubernetes, scale, or employment history.
+
+`scripts/check-claims.mjs` runs first and checks the _source_ rather than a
+rendered PDF: it recomputes this repository's own workspace-package and
+browser-extension counts and fails if `src/data/resume.typ`'s prose disagrees,
+and it scans that same file for a small forbidden-term list (`Kubernetes`,
+`Entity Framework`, `on-call`, `uptime`, ...) and for "production" used without
+a qualifier. See that script's header comment for why `paulgsc/server`'s own
+crate count is deliberately not one of the things it can check.
 
 `documents/resume-<stem>.ats.txt` is written for each document — roughly what a
 text-oriented parser receives. `pnpm check:ats` re-runs the check against

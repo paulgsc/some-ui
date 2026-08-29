@@ -190,23 +190,50 @@ backs should be cut, not kept and re-justified.
 
 == Counts
 
-*52 workspace packages, 6 browser extensions* --- counted 2026-08-04.
-`pnpm -r list --depth -1` reports 53 workspace projects including the repo
-root, hence 52. The extension count is directories under `extensions/` that
-declare a `manifest_version`, which deliberately excludes the shared
-packages (`common`, `transport`, `docs`, `scripts`) and the
-`filter-classifier` test corpus: `some-censor`, `some-conveyor`,
-`some-drama`, `some-filter`, `some-mujik`, `suspender-ledger`. Re-derive
-both before reusing them if meaningful time has passed --- an earlier
-revision of this résumé claimed "61 packages" and "15+ extensions", and
-neither survived a recount.
+*57 workspace packages, 6 browser extensions* --- counted 2026-08-29 by
+`scripts/check-claims.mjs`, which walks the globs in `pnpm-workspace.yaml`
+(`packages/ui/*`, `apps/*`, `docs/canon`, `extensions/**`, `packages/*`,
+`crates/*`) for a `package.json`, the same method `pnpm -r list --depth -1`
+uses and the one this section has used since the last recount. The extension
+count is directories under `extensions/` that ship a real `manifest.json`
+under `public/` (not merely something matching `*manifest*`, which also
+catches build scripts): `some-censor`, `some-conveyor`, `some-drama`,
+`some-filter`, `some-mujik`, `suspender-ledger`. `common`, `transport`,
+`filter-classifier`, `docs`, and `scripts` are excluded — shared code and a
+test corpus, not shipped extensions.
 
-Both numbers dropped on 2026-08-04, when six graveyard workspaces
-(`some-tab-meta`, `tab-tracker`, `some-schedule`, `some-cycle`,
-`some-prompt`, `some-streak`) were deleted as defunct. That is the honest
-direction for this document to move: the earlier figures counted work that
-was abandoned, and a smaller number of extensions that actually ship is a
-stronger claim than a larger one padded with dead trees.
+The package count is 52 -> 57 since the last recount: new additions include
+`packages/activity-catalog`, `packages/contract-harness`,
+`packages/server-routes`, `packages/intent-kit`, `packages/fetch-kit`,
+`packages/job-tracker` (this revision's own addition — see the job-tracker
+route below), and several `packages/ui/*` products (`assessment`, `auth`,
+`calendar`, `chat`, and others), plus `extensions/transport` and
+`extensions/common` becoming real workspace packages. The extension count is
+unchanged at 6 — the growth is shared/platform code, not new shipped
+extensions. `scripts/check-claims.mjs`
+now runs on every `@some-ui/resume` build and fails if `src/data/resume.typ`'s
+rendered composition ever hard-codes a workspace count without recomputing
+it, which is also why this section states the number rather than the
+resume content itself doing so (see the P0 fix below).
+
+Both numbers dropped once before, on 2026-08-04, when six graveyard
+workspaces (`some-tab-meta`, `tab-tracker`, `some-schedule`, `some-cycle`,
+`some-prompt`, `some-streak`) were deleted as defunct, and an earlier
+revision before that had claimed "61 packages" and "15+ extensions" that
+did not survive a recount either. The number moving in either direction is
+the honest failure mode of deriving it from a live tree instead of
+remembering it.
+
+*paulgsc/server: 26 workspace members (3 applications, 23 library crates)*
+--- read directly from that repository's root `Cargo.toml` `members` list on
+2026-08-29 (up from the "24 crates" this résumé previously stated, which was
+already stale). This number is **not** independently verifiable from this
+repository's own CI — `paulgsc/server` is a separate repository not checked
+out during `some-ui`'s builds — so `src/data/resume.typ` no longer states an
+exact crate count at all; every mention was changed to "a multi-crate Rust
+workspace". Re-derive this note (not the résumé content) by cloning
+`paulgsc/server` read-only and counting `members` in its `Cargo.toml` before
+reusing the number anywhere that matters.
 
 = Method
 
@@ -383,6 +410,65 @@ substantiate those claims.
 
 
 = Current revision
+
+*v11 (2026-08-29).* Responded to an external ATS/positioning review
+(`docs/canon` sibling review, 2026-08-29) that read the rendered PDFs, the
+public `/resume` route, and both repositories the way an applicant-tracking
+system and a hiring reader would. Its diagnosis: the résumé's ATS problem was
+never a broken PDF, it was a structurally incomplete and occasionally
+overstated candidate profile.
+
+- *Filled real personal-schema gaps* in `src/data/personal.typ` rather than
+  leaving them empty by policy default: location, a submission-only phone
+  number (deliberately excluded from the public `<resume-export>` metadata —
+  see that file's comment), a real STEM degree (B.S. Mechanical Engineering,
+  UC Merced), work-authorization status (recorded but not rendered by any
+  template yet — see personal.typ), and one consolidated non-engineering
+  employment entry proving continuity without re-litigating a separate
+  career in engineering-résumé space. Every value traces to the candidate's
+  own non-engineering résumé, not to inference.
+- *Removed every unqualified workspace-count claim* from the rendered
+  résumé content. "24-crate" and "52-package" were both stale (see the
+  Counts note above) and, per the review, shouldn't have been hard-coded
+  numbers in résumé prose to begin with — repetition of a topology count
+  spends space that outcomes should occupy. `scripts/check-claims.mjs` now
+  fails the build if a bare crate/package count or a forbidden unqualified
+  term (`production` used without a qualifier, `users`, `traffic`, `uptime`,
+  `on-call`, `SLO`, `Kubernetes`, `Entity Framework`, ...) appears in
+  `src/data/resume.typ`.
+- *Replaced "Sole engineer"* (`resume-engagement.note`) with wording that
+  cannot be misread as company tenure: this is unpaid, independent,
+  no-employer work, not a headcount-of-one team.
+- *Retired `systems` and `learning` as primary compositions*, per the
+  review's read of the current early-career job market: `systems`
+  (distributed-systems infrastructure) overlapped heavily with `backend`'s
+  own project evidence, and `learning` under-sold real full-stack/web-platform
+  work by filing it under "adaptive learning" specifically. Replaced with:
+  - `platform` — developer-platform tooling: the cross-repo contract/route
+    parity harness (`packages/contract-harness`, now cited with a freshly
+    counted 21-of-42-routes/13-tests figure rather than the stale
+    15-of-52/48 this document previously recorded) and CI/CD & release
+    automation (change-scoped Actions, Docker, Changesets, signed extension
+    releases) — targets the Developer Tools / Web Platform Engineer lanes.
+  - `fullstack` — TypeScript/React web applications, reusable components,
+    and the browser-extension platform (six shipped extensions, typed
+    protocols, MV3 service workers, cross-browser Playwright coverage),
+    with the adaptive-learning engine kept as one of its two projects rather
+    than the composition's sole premise.
+  Nothing was deleted: the retired compositions' evidence (real-time
+  transport/JetStream pipeline, the study intervention engine) remains
+  traceable through the *Server provenance* and *Study-session and
+  notification platform* sections above; only the one-page rendered
+  selection changed.
+- *Added three ATS-safe print templates* — `vanilla`, `safe`, and
+  `conventional` — alongside `rail`/`classic`/`compact`, per the review's P0
+  "ship a plain single-column submission artifact" recommendation. See
+  `README.md`'s Templates section for what differs structurally between
+  them (section order, presence of a rule under headings, whether the
+  italicized project premise renders at all).
+- Left named gaps named: four years of tenure, Kubernetes, managed cloud,
+  high-volume traffic, and ML infrastructure are still not claimed anywhere,
+  because the repositories still do not support those claims.
 
 *v10 (2026-08-17).* Promoted `file_host` from an integration dependency to
 its accurate role as authored production backend work. Added the 39-operation

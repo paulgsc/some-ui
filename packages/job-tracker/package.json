@@ -1,0 +1,51 @@
+{
+  "bugs": {
+    "url": "https://github.com/paulgsc/some-ui/issues"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@some-ui/tsconfig": "workspace:*",
+    "@some-ui/vite-config": "workspace:*"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/@some-ui/job-tracker.d.ts",
+      "import": "./dist/@some-ui/job-tracker.es.js",
+      "require": "./dist/@some-ui/job-tracker.cjs.js",
+      "default": "./dist/@some-ui/job-tracker.es.js"
+    },
+    "./style.css": "./dist/job-tracker.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "homepage": "https://pgdev.maishatu.com/?tab=github",
+  "keywords": [],
+  "license": "MIT",
+  "main": "./dist/@some-ui/job-tracker.cjs.js",
+  "module": "./dist/@some-ui/job-tracker.es.js",
+  "name": "@some-ui/job-tracker",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paulgsc/some-ui"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && vite build",
+    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
+    "clean:build": "rimraf ./dist && rimraf tsconfig.tsbuildinfo",
+    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+    "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "prettier": "prettier . --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
+  },
+  "type": "module",
+  "types": "./dist/@some-ui/job-tracker.d.ts",
+  "version": "0.0.1",
+  "style": "./dist/job-tracker.css",
+  "sideEffects": [
+    "*.css"
+  ]
+}

@@ -5,7 +5,7 @@
 // Binary and font resolution live in scripts/typst.mjs - see that file for why
 // neither is taken from the host.
 import { execFileSync, spawn, spawnSync } from "node:child_process"
-import { copyFileSync, mkdirSync } from "node:fs"
+import { copyFileSync, mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
 import {
@@ -91,7 +91,11 @@ async function main() {
   // the compiled artifacts back rather than inspecting the source: a term the
   // layout drops and a subtitle riding up into the line above it are both
   // invisible in `.typ` and obvious in the PDF.
-  for (const check of ["check-ats.mjs", "check-layout.mjs"]) {
+  for (const check of [
+    "check-claims.mjs",
+    "check-ats.mjs",
+    "check-layout.mjs",
+  ]) {
     execFileSync(process.execPath, [join(packageDir, "scripts", check)], {
       stdio: "inherit",
     })
@@ -99,6 +103,25 @@ async function main() {
 
   // Preserve the original public filename as the default/backend composition.
   copyFileSync(join(outDir, "resume-backend.pdf"), join(outDir, "resume.pdf"))
+
+  // A self-describing manifest of exactly what this run produced, so a
+  // consumer (apps/www/scripts/sync-resume.mjs) can require the full set
+  // before shipping any of it, without importing this package's JS across
+  // a package boundary (blocked by eslint's ban on `../` imports, and
+  // fragile anyway: @some-ui/vite-config's build overwrites this package's
+  // package.json `exports` field wholesale on every build, which would
+  // silently drop any custom export subpath added for that purpose).
+  const files = templates
+    .flatMap((template) =>
+      variants.map((variant) => stemFor(variant, template))
+    )
+    .map((stem) => `${stem}.pdf`)
+    .concat("resume.pdf")
+    .sort()
+  writeFileSync(
+    join(outDir, "manifest.json"),
+    `${JSON.stringify(files, null, 2)}\n`
+  )
 }
 
 main().catch((err) => {

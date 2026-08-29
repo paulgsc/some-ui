@@ -49,8 +49,15 @@ const MIN_GAP_RATIO = -0.05
 // compared against a main-column line that merely happens to sit near it.
 const COLUMN_OVERLAP = 0.5
 
-const variants = ["backend", "systems", "learning"]
-const templates = ["rail", "classic", "compact"]
+const variants = ["backend", "platform", "fullstack"]
+const templates = [
+  "rail",
+  "classic",
+  "compact",
+  "vanilla",
+  "safe",
+  "conventional",
+]
 const DEFAULT_TEMPLATE = "rail"
 
 const LINE_RE =
