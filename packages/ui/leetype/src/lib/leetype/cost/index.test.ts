@@ -89,6 +89,16 @@ describe("Monomial — print and parse round-trip", () => {
   it.each(cases)("parses %s back to the same monomial", (text, monomial) => {
     expect(parseMonomial(text)).toEqual(monomial)
   })
+
+  // A dimension name `parseMonomial` cannot read back would silently break
+  // the round-trip this module documents: `printMonomial` would still emit
+  // it, but `parseMonomial` would throw on the result. Rejected at
+  // construction instead, so every monomial `dim`/`logDim` can build is one
+  // `parseMonomial` can read.
+  it("rejects a dimension name the parser could not read back", () => {
+    expect(() => dim("input-size")).toThrow(/not a valid dimension name/)
+    expect(() => logDim("input size")).toThrow(/not a valid dimension name/)
+  })
 })
 
 // Generated terms for the two property tests below: every combination of two

@@ -64,11 +64,13 @@ export const ONE: Monomial = []
 
 /** `dim("n")` is `n`; `dim("n", 2)` is `n^2`. */
 export function dim(dimension: Dimension, exponent = 1): Monomial {
+  validateDimension(dimension)
   return normalizeMonomial([{ kind: "pow", dimension, exponent }])
 }
 
 /** `logDim("n")` is `log n`; `logDim("n", 2)` is `(log n)^2`. */
 export function logDim(dimension: Dimension, exponent = 1): Monomial {
+  validateDimension(dimension)
   return normalizeMonomial([{ kind: "log", dimension, exponent }])
 }
 
@@ -92,9 +94,23 @@ export function printMonomial(monomial: Monomial): string {
   return monomial.map(printFactor).join(" * ")
 }
 
-const LOG_PAREN = /^\(log\s+([A-Za-z]\w*)\)\^(-?\d+)$/
-const LOG_PLAIN = /^log\s+([A-Za-z]\w*)$/
-const POW = /^([A-Za-z]\w*)(?:\^(-?\d+))?$/
+// Single source for the identifier shape a dimension name must have — reused
+// by `validateDimension` below so a name `dim`/`logDim` accepts is always one
+// `parseFactor` can read back, which is what makes `parseMonomial` actually
+// the inverse of `printMonomial` on every monomial this module can construct.
+const DIMENSION_SOURCE = "[A-Za-z]\\w*"
+const DIMENSION_NAME = new RegExp(`^${DIMENSION_SOURCE}$`)
+const LOG_PAREN = new RegExp(`^\\(log\\s+(${DIMENSION_SOURCE})\\)\\^(-?\\d+)$`)
+const LOG_PLAIN = new RegExp(`^log\\s+(${DIMENSION_SOURCE})$`)
+const POW = new RegExp(`^(${DIMENSION_SOURCE})(?:\\^(-?\\d+))?$`)
+
+function validateDimension(dimension: Dimension): void {
+  if (!DIMENSION_NAME.test(dimension)) {
+    throw new Error(
+      `not a valid dimension name: "${dimension}" (expected ${DIMENSION_NAME})`
+    )
+  }
+}
 
 function parseFactor(token: string): MonomialFactor {
   const raw = token.trim()
