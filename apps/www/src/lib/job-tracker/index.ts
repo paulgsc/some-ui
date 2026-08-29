@@ -6,7 +6,6 @@ import type {
 } from "@some-ui/job-tracker"
 import {
   enqueue,
-  MAX_QUEUE_SIZE,
   oldestEntry,
   removeEntry,
   updateEntryStatus,
@@ -20,19 +19,24 @@ import {
   writeJSON,
 } from "@/lib/tenant/storage"
 
-/** Also read by tests via an in-memory `StorageAdapter`. */
-export const STORAGE_KEY = "some-ui.job-tracker.queue.v1"
-
-export { MAX_QUEUE_SIZE }
 export type { EnqueueResult, JobEntry, JobStatus, NewJobInput }
+
+// Not exported: nothing outside this file reads the raw storage key.
+// `MAX_QUEUE_SIZE` and `isFull` are consumed straight from
+// `@some-ui/job-tracker` by the route (jobs.tsx) rather than re-exported
+// through here, since they're pure and have nothing to do with storage.
+const STORAGE_KEY = "some-ui.job-tracker.queue.v1"
 
 /**
  * What the route is allowed to know about job-queue storage. Unlike
  * `SessionsStore` (lib/tenant/sessions-repository), this has no server
  * counterpart to keep parity with and no reason to simulate network
  * latency: it is local-only by design, so every method here is synchronous.
+ * Not exported: nothing outside this file names the type directly (the
+ * route consumes `createJobTrackerRepository`'s inferred return type), so
+ * it stays a self-check on the class below via `implements`.
  */
-export type JobTrackerStore = {
+type JobTrackerStore = {
   list: () => ReadonlyArray<JobEntry>
   add: (input: NewJobInput) => EnqueueResult
   remove: (id: string) => void
