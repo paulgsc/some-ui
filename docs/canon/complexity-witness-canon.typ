@@ -663,14 +663,38 @@ of Theorem 4.1.
 ]
 
 #proposition("5.1", name: "Optimization attacks the dominant path")[
-  A rewrite that alters only nodes off every dominant path cannot change
-  $Theta(T)$.
+  A rewrite that leaves every dominant path unchanged cannot *reduce*
+  $Theta(T)$. It may *raise* it: a rewrite off the dominant path that
+  enlarges a dominated path until it dominates changes the class upward. So
+  a rewrite alters $Theta(T)$ in neither direction only under the further
+  condition that every path it touches remains dominated afterwards.
 ]
 
 #proof[
-  By Theorem 2.1, $T$ is the sum over paths of path products, and by
-  Cor. 2.1 the asymptotic value is determined by the maximizing path(s). A
-  change confined to non-maximizing paths alters only dominated terms.
+  By Theorem 2.1, $T$ is the sum over paths of path products, and by Cor. 2.1
+  its asymptotic value is the maximum over paths. If every maximizing path is
+  unchanged, that maximum is still attained, so $Theta(T)$ cannot fall ---
+  which is the first claim. It can rise, because the maximum is over *all*
+  paths and a rewritten dominated path may exceed the old maximum: in
+  $"Seq"("Loop"(n^2, W(1)), "Loop"(n, W(1))) = Theta(n^2)$, rewriting the
+  $n$ branch to $n^3$ --- a branch that was not dominant --- yields
+  $Theta(n^3)$. Under the further condition that every altered path stays
+  dominated, the maximum is unchanged in both directions.
+]
+
+#remark("5.2", name: "The one-directional form is the one the design uses")[
+  The unconditional half is what the pedagogy actually rests on, and it is
+  the half stated as `CW-P11`: *you cannot make it asymptotically faster by
+  optimizing somewhere that was never the problem.* The converse hazard ---
+  an off-path rewrite making things worse --- is a distinct and less common
+  authoring case, and a round that wants it should say so, because a learner
+  told only the two-directional slogan will confidently mis-answer exactly
+  the counterexample above.
+
+  Recorded because the first draft of this canon stated the two-directional
+  form with no hypothesis, and its proof --- _"a change confined to
+  non-maximizing paths alters only dominated terms"_ --- silently assumed
+  rewrites only shrink things. Caught in review of this canon's own filing.
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -783,9 +807,15 @@ superseded and kept.
 ]
 
 #proposition("7.8", name: "CW-P8 · An early exit does not change the worst case")[
-  A `return` inside a loop bounds the best and typical case and leaves the
-  worst-case cost graph unchanged. Admissibility (Def. 3.1) is a worst-case
-  relation.
+  A `return` inside a loop improves the *best* case and leaves the
+  *worst-case* cost graph unchanged. Admissibility (Def. 3.1) is a worst-case
+  relation, so an early exit cannot restore it.
+
+  It says nothing about the typical case without an input distribution *and*
+  a reason the exit condition fires early under it: an exit that triggers only
+  on the final iteration, or almost never, leaves typical cost untouched.
+  A round asserting a typical-case improvement is asserting something about
+  the inputs, and owes that assumption explicitly.
 ]
 
 #proposition("7.9", name: "CW-P9 · Triangular iteration is a constant factor")[
@@ -830,6 +860,22 @@ superseded and kept.
   recursion must author its recurrence rather than pretend a nest.
 ]
 
+#proposition("7.16", name: "CW-P16 · A cost independent of the bounds is not a constraint problem")[
+  A term of $T$ that does not vary with any dimension $C$ bounds --- a fixed
+  setup cost, an unbounded wait, work in a dimension $C$ says nothing about
+  --- is unaffected by every assignment of those bounds. If such a term
+  already exceeds $B$, no constraint diff makes the program admissible, and
+  the failure is of a different kind from "too slow at this size."
+]
+
+#remark("7.3", name: "Why `CW-P16` exists")[
+  Added during review of this canon's own filing, when Def. 8.2's second case
+  --- a selected diff no constraint can rescue --- turned out to have no
+  register entry to pose a question against. It is the register's first entry
+  contributed by a proof obligation rather than by a teaching intention,
+  which is the direction Rem. 7.2 says the register is supposed to grow in.
+]
+
 #remark("7.1", name: "The register is cited from source, and the citation is checked")[
   The governed workspaces name propositions by identifier --- `CW-P5`, not
   `"use a hash set"` --- and a check in the spirit of
@@ -854,36 +900,99 @@ superseded and kept.
 // ═══════════════════════════════════════════════════════════════════════════
 
 #definition("8.1", name: "Round transition")[
-  Let a round present $(A, C, B, D, mu)$ and let $r$ be the execution result
-  of $A$ under $C$. The cycle proceeds:
-  + $r = "ok"$ --- $A$ is admissible under $C$. The next round holds $A$ fixed
-    and applies a constraint diff $C -> C'$ (Def. 3.2). The learner's task is
-    to anticipate its consequence (Prop. 4.2).
-  + $r = "error"$ --- $A$ is inadmissible under $C$. The round presents $D$
-    and the learner selects a pair $(d, p)$. On submission, $A' = A + d$ is
-    executed under $C$, producing $r'$.
-  + $r' = "ok"$ --- the selection restored admissibility. The next round
-    diffs the constraint, as in (1).
-  + $r' = "error"$ --- the selection did not restore admissibility. *The round
-    does not repeat.* The next round holds the learner's selected $(d, p)$
-    fixed and presents a constraint diff $C -> C''$ under which $A + d$
-    *would* be admissible; the learner's task is to select the pair
-    $(c, p)$ --- the constraint and the proposition explaining why the pair
-    now halts inside budget.
+  Let a round present $(A, C, B, D, mu)$. **The branch is taken on the
+  derived admissibility relation $T_A (C) <= B$ (Def. 3.1), never on the
+  execution result $r$.** The cycle proceeds:
+  + $T_A (C) <= B$ --- $A$ is admissible. The next round holds $A$ fixed and
+    applies a constraint diff $C -> C'$ (Def. 3.2). The learner's task is to
+    anticipate its consequence (Prop. 4.2).
+  + $T_A (C) > B$ --- $A$ is inadmissible. The round presents $D$ and the
+    learner selects a pair $(d, p)$.
+  + $T_(A+d) (C) <= B$ --- the selection restored admissibility. The next
+    round diffs the constraint, as in (1).
+  + $T_(A+d) (C) > B$ --- the selection did not restore admissibility. *The
+    round does not repeat.* Its successor is Def. 8.2.
+
+  An execution result $r$ may be *shown* at any point in this cycle, and is
+  what Prop. 4.1 says it is: evidence, motivation, and a falsifier of the
+  learner's expectation. It never selects a branch.
+]
+
+#remark("8.0", name: "This definition previously committed Corollary 4.1's own error")[
+  Recorded rather than quietly corrected, because it is the most instructive
+  thing that happened to this canon and it will be proposed again by anyone
+  reading the design's slogan (_"the cycle runs on $A(C) -> "Result"$"_)
+  without §4.
+
+  The first draft branched on $r$: _"$r = "ok"$ --- $A$ is admissible under
+  $C$"_ and _"$r = "error"$ --- $A$ is inadmissible."_ Both readings are
+  exactly the inferences **Corollary 4.1** forbids. An $"ok"$ at one sampled
+  input does not establish the worst-case relation $T_A (C) <= B$; an
+  $"error"$ may be a compile failure, a fault, or a machine-dependent
+  timeout, none of which is inadmissibility. So the state machine would have
+  routed learners by an inference the same document declares invalid two
+  sections earlier.
+
+  The correction is not a weakening. It makes a *divergence* between the
+  derived verdict and the observed result --- a theoretically inadmissible
+  program that happens to finish, an admissible one that faults --- into the
+  single most valuable event the surface can show, because it is Theorem 4.1
+  demonstrated rather than asserted. A round engineered to produce that
+  divergence is worth authoring on purpose.
+]
+
+#definition("8.2", name: "The successor of a failed selection")[
+  Let $d$ be the learner's selected diff with $T_(A+d) (C) > B$. Exactly one
+  of the following holds, and each names a successor:
+  + *A rescuing constraint exists* --- there is a constraint set $C''$, over
+    the same dimensions, with $T_(A+d) (C'') <= B$. The next round holds
+    $(d, p)$ fixed, presents the constraint diff $C -> C''$, and asks for the
+    pair $(c, p)$: the constraint, and the proposition explaining why the
+    pair now sits inside budget.
+  + *No rescuing constraint exists* --- no assignment of the bounds makes
+    $A + d$ admissible, because its cost has a term independent of every
+    dimension and already above $B$, or grows in a dimension $C$ does not
+    bound. The next round holds $(d, p)$ fixed and asks for the pair
+    $(d, p')$: *why no constraint rescues this diff* --- a strictly different
+    failure kind from "too slow at this size", and one the register is
+    expected to carry a proposition for.
+]
+
+#remark("8.2", name: "Why the second case is a branch and not a lint")[
+  It is tempting to require every authored $d$ to be rescuable and reject
+  the rest at authoring time. That would forbid a whole class of honest
+  distractor --- the rewrite that adds unbounded fixed work --- and
+  Corollary 5.1 has already said a distractor is a *well-formed rewrite that
+  fails*, not junk. Worse, it would make the corpus's admissible-looking
+  wrong answers systematically milder than the ones a learner meets in real
+  code.
+
+  So the unrescuable case is admitted and given its own question, which is a
+  better question than the first one anyway: *this patch is not slow, it is
+  wrong at every size* is a distinction most learners have never had to
+  articulate.
 ]
 
 #theorem("8.1", name: "The cycle has no absorbing failure state")[
-  Under Def. 8.1 no learner response returns the cycle to a state already
-  visited, and every branch has a successor.
+  Under Def. 8.1 and Def. 8.2 no learner response returns the cycle to a
+  state already visited, and every branch has a successor.
 ]
 
 #proof[
-  Branches (1) and (3) advance the constraint, which is a strict change by
-  Def. 3.2. Branch (2) advances by applying a diff. Branch (4) is the one that
-  would otherwise loop, and does not: it changes the *presented question* from
-  a $(d, p)$ selection to a $(c, p)$ selection over a different artifact pair,
-  and it changes $C$. Hence the state advances on every branch, and since each
-  branch names its successor the transition function is total.
+  Branches (1) and (3) advance the constraint, a strict change by Def. 3.2.
+  Branch (2) advances by applying a diff. Branch (4) delegates to Def. 8.2,
+  whose two cases are exhaustive --- either some assignment of the bounds
+  satisfies $T_(A+d) (C'') <= B$ or none does, and there is no third
+  possibility --- and each names a successor that changes the presented
+  question, from a $(d, p)$ selection to a $(c, p)$ or $(d, p')$ selection.
+  Hence the state advances on every branch and the transition function is
+  total.
+
+  Totality here is a claim about the *transition function*, not about corpus
+  coverage: Def. 8.2's second case requires the register to hold a
+  proposition about dimension-independent cost, and Rem. 7.2 is the mechanism
+  by which a missing one is added --- an amendment, before the round that
+  needs it.
 ]
 
 #remark("8.1", name: "Why the failure branch re-poses one level up")[
@@ -892,9 +1001,12 @@ superseded and kept.
   progress. Branch (4) is what replaces it, and it is strictly better on
   three counts: it is not a repetition, so it cannot stall; it *uses* the
   learner's wrong selection as the subject rather than discarding it, which is
-  the only way a wrong answer teaches; and it moves the question to the
-  constraint, which is where `CW-P4` lives --- and mis-stating `CW-P4` is the
-  most likely reason the learner's original selection was wrong.
+  the only way a wrong answer teaches; and it changes what is being asked
+  about. In Def. 8.2's first case that is the constraint, which is where
+  `CW-P4` lives --- and mis-stating `CW-P4` is the most likely reason the
+  original selection was wrong. In its second case it is the difference
+  between *slow at this size* and *wrong at every size* (`CW-P16`), which is
+  a distinction the learner who chose that diff has demonstrably not drawn.
 ]
 
 #proposition("8.1", name: "The cycle terminates only by the learner leaving")[
@@ -1366,8 +1478,8 @@ Def. 2.2, Thm. 2.1, Cor. 2.1); admissibility and the constraint diff
 and its two forbidden inferences (Cor. 4.1); the diff-as-witness and
 minimality-as-semantic-distance (Thm. 5.1, Def. 5.2); the authored mapping and
 the verifier-free verdict (Ax. 6.1, Thm. 6.1); the proposition register
-`CW-P1`--`CW-P15` (§7); the round cycle and its non-repeating failure branch
-(Def. 8.1, Thm. 8.1); unconditional progression with conditional credit
+`CW-P1`--`CW-P16` (§7); the round cycle and its non-repeating failure branch
+(Def. 8.1, Def. 8.2, Thm. 8.1); unconditional progression with conditional credit
 (Ax. 9.1, Ax. 9.2, Thm. 9.1); the reference-surface inversion (Def. 9.2,
 Prop. 9.2, Rem. 9.2, Rem. 9.3); and the ledger with its demonstration condition
 (Def. 10.1, Def. 10.2, Thm. 10.1). Records two cross-repository consequences as
@@ -1379,6 +1491,34 @@ milestone (Rem. 11.5). Grounded against `packages/ui/leetype`,
 route inventory as of this date. No source change accompanies this filing, by design: §11 records
 what is retained and what changes, and the milestone's epics sequence the
 work.
+
+*Corrections made during review of this filing, before it landed.* Four
+defects were found by automated review of the filing pull request and are
+recorded rather than silently fixed, because three of them are mistakes this
+document exists to prevent and will be made again:
+
++ *Def. 8.1 branched the state machine on the execution result $r$* --- the
+  inference Cor. 4.1 forbids, committed by this canon two sections after
+  forbidding it. Corrected to branch on Def. 3.1's derived relation, with
+  Rem. 8.0 recording the error and the divergence case it turns into an
+  asset.
++ *Def. 8.1's failure branch promised a rescuing constraint that need not
+  exist* --- a diff adding fixed work above $B$ is unrescuable by any bound,
+  so Thm. 8.1's totality did not follow. Corrected by Def. 8.2's exhaustive
+  two-case successor, with Rem. 8.2 on why the unrescuable case is a branch
+  rather than a lint, and Thm. 8.1's proof rewritten to rest on that
+  exhaustiveness.
++ *Prop. 5.1 asserted that an off-dominant rewrite cannot change
+  $Theta(T)$*, which is false upward --- enlarging a dominated path until it
+  dominates changes the class. Corrected to the one-directional claim, with
+  the two-directional form given its hypothesis, a counterexample, and
+  Rem. 5.2.
++ *`CW-P8` claimed an early exit bounds the typical case*, unsupported
+  without an input distribution. Corrected to best- and worst-case alone.
+
+`CW-P16` was added in the course of the second, and is the register's first
+entry contributed by a proof obligation rather than a teaching intention
+(Rem. 7.3).
 
 #pagebreak()
 
