@@ -2,13 +2,14 @@ import {
   EVIDENCE_ROW_BUDGET,
   evidenceRowsOf,
 } from "@leetype/components/typing-game/prompt-panel/rows"
-import type { Exercise, Step } from "@leetype/types/exercise"
+import type { Block, Exercise, Step } from "@leetype/types/exercise"
 import {
   ConstructionStepSchema,
   DiagnosticStepSchema,
   promptBlocksOf,
   typingBlockOf,
 } from "@leetype/types/exercise"
+import { assertNever } from "some-ui-utils"
 
 /**
  * The corpus lint (LTY-FAMILIES A5): "no judgment is allowed unless it can
@@ -276,6 +277,173 @@ function isRestatementOfWitness(
   return normWitness.length > 0 && normObligation.includes(normWitness)
 }
 
+const MEASUREMENT_TERM = /\b(timed out|timeout|slow|fast|took)\b|\b\d+\s?ms\b/i
+// Two patterns, not one, because "O(" only means Big-O as a standalone,
+// capitalized token: a case-insensitive `O\(` with no boundary also matches
+// the tail of an ordinary call like `foo(` (review finding on #1240,
+// chatgpt-codex-connector) — a false positive `quadratic`/`linear`/
+// `logarithmic` can't produce, so only the symbol needs the extra care.
+const CLASS_TERM_WORD = /\b(quadratic|linear|logarithmic)\b/i
+const CLASS_TERM_SYMBOL = /Θ|\bO\(/
+const SENTENCE_SPLIT = /(?<=[.!?])\s+/
+
+/**
+ * Reviewed escape for `checkNoMeasurementEntailmentClaim` (LTY-EXEC X4,
+ * Cor. 4.1): a sentence the heuristic below flags that a human has
+ * confirmed does not actually infer a class from a measurement (the
+ * corpus lint's own acceptance criteria's own example: "it timed out; the
+ * cost graph is what says why"). Add an entry only when that is true of
+ * the specific sentence — this list is not a way to silence a real one.
+ */
+const MEASUREMENT_CLAIM_EXEMPTIONS: ReadonlyArray<{
+  readonly sentence: string
+  readonly reason: string
+}> = []
+
+function sentencesOf(text: string): ReadonlyArray<string> {
+  return text
+    .split(SENTENCE_SPLIT)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length > 0)
+}
+
+function isExemptSentence(
+  sentence: string,
+  exemptions: ReadonlyArray<{ readonly sentence: string }>
+): boolean {
+  return exemptions.some((exemption) => sentence.includes(exemption.sentence))
+}
+
+/**
+ * Cor. 4.1's two forbidden inferences ("it timed out, therefore it is
+ * Θ(n²)"; "it ran in 4ms, therefore it is Θ(n)"), as a **heuristic** over
+ * authored prose (LTY-EXEC X4). The type-level half is X1's `RunResult`
+ * (`lib/leetype/run-result`), which no function computing a cost, a class,
+ * a proposition or a ledger transition accepts as a parameter; this is the
+ * half that catches the same inference made in words, in a corpus sentence
+ * that reaches a learner directly and that no type system checks.
+ *
+ * A sentence flagging both a measurement term and a class term is not
+ * thereby *proven* to commit either forbidden inference — only worth a
+ * human's attention, which is the honest character a keyword
+ * co-occurrence check can have. `exemptions` (the module's own
+ * `MEASUREMENT_CLAIM_EXEMPTIONS` by default) is the reviewed escape for a
+ * confirmed false positive.
+ */
+export function checkNoMeasurementEntailmentClaim(
+  text: string,
+  where: string,
+  exemptions: ReadonlyArray<{
+    readonly sentence: string
+    readonly reason: string
+  }> = MEASUREMENT_CLAIM_EXEMPTIONS
+): Array<string> {
+  const violations: Array<string> = []
+  for (const sentence of sentencesOf(text)) {
+    if (
+      MEASUREMENT_TERM.test(sentence) &&
+      (CLASS_TERM_WORD.test(sentence) || CLASS_TERM_SYMBOL.test(sentence)) &&
+      !isExemptSentence(sentence, exemptions)
+    ) {
+      violations.push(
+        `${where}: "${sentence}" reads a complexity class off a measurement — Cor. 4.1 ` +
+          "(complexity-witness-canon.typ) forbids inferring a class from a run's timing. If " +
+          "this sentence does not actually make that inference, add it to " +
+          "MEASUREMENT_CLAIM_EXEMPTIONS with a reason."
+      )
+    }
+  }
+  return violations
+}
+
+/** Every authored prose field of one step, each paired with where it was found (LTY-EXEC X4). */
+function proseFieldsOf(
+  exercise: Exercise,
+  step: Step
+): Array<{ where: string; text: string }> {
+  const where = locate(exercise, step)
+  const fields: Array<{ where: string; text: string }> = [
+    { where: `${where} (goal)`, text: step.goal },
+  ]
+
+  if (step.rationale !== undefined) {
+    fields.push(
+      { where: `${where} (rationale.cause)`, text: step.rationale.cause },
+      {
+        where: `${where} (rationale.whyRepairDiscriminates)`,
+        text: step.rationale.whyRepairDiscriminates,
+      }
+    )
+  }
+
+  if (step.obligation !== undefined) {
+    fields.push({ where: `${where} (obligation)`, text: step.obligation })
+  }
+
+  for (const choice of step.rationaleChoices ?? []) {
+    fields.push({ where: `${where} (rationaleChoices)`, text: choice.text })
+  }
+
+  for (const block of step.blocks) {
+    fields.push(...proseFieldsOfBlock(where, block))
+  }
+
+  return fields
+}
+
+/** The authored prose carried by one block, keyed by kind — `typing` carries none (it is the witness, not the argument). */
+function proseFieldsOfBlock(
+  where: string,
+  block: Block
+): Array<{ where: string; text: string }> {
+  switch (block.kind) {
+    case "prompt": {
+      return block.lines.map((line) => ({
+        where: `${where} (prompt block)`,
+        text: line,
+      }))
+    }
+    case "transition": {
+      const fields = [
+        { where: `${where} (transition before)`, text: block.before },
+        { where: `${where} (transition after)`, text: block.after },
+      ]
+      if (block.label !== undefined) {
+        fields.push({ where: `${where} (transition label)`, text: block.label })
+      }
+      return fields
+    }
+    case "trace": {
+      const fields = block.observations.flatMap((observation) => [
+        {
+          where: `${where} (trace observation label)`,
+          text: observation.label,
+        },
+        {
+          where: `${where} (trace observation value)`,
+          text: observation.value,
+        },
+      ])
+      if (block.headline !== undefined) {
+        fields.push({
+          where: `${where} (trace headline)`,
+          text: block.headline,
+        })
+      }
+      return fields
+    }
+    case "region": {
+      return [{ where: `${where} (region label)`, text: block.label }]
+    }
+    case "typing": {
+      return []
+    }
+    default: {
+      return assertNever(block)
+    }
+  }
+}
+
 /** Every violation found in one step. Empty means the step is clean. */
 function lintStep(
   exercise: Exercise,
@@ -345,6 +513,12 @@ function lintStep(
 
   violations.push(...checkTransferFrom(exercise, step, stepsById))
   violations.push(...checkRationaleChoicesNoSharedPrefix(exercise, step))
+
+  for (const field of proseFieldsOf(exercise, step)) {
+    violations.push(
+      ...checkNoMeasurementEntailmentClaim(field.text, field.where)
+    )
+  }
 
   return violations
 }
