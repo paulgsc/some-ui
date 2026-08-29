@@ -59,6 +59,26 @@
   #bullets(item.bullets.slice(0, calc.min(bullet-count, item.bullets.len())))
 ]
 
+// A plain project entry: name, kind, and bullets, with no italicized
+// `premise` line. The premise is the architectural "why" — genuinely useful
+// on the portfolio/rail templates, which have the room and audience for it,
+// and dead weight on a plain ATS-submission template's tight word budget
+// (the 2026-08-29 review named this specifically: "Remove the premise
+// sentences ... from the submission version"). Everything else is identical
+// to `project-entry` so the two stay visually consistent where they overlap.
+#let project-entry-plain(theme, item, bullet-count: 3) = block(
+  below: 0.62em, breakable: false,
+)[
+  #stack(
+    dir: ttb,
+    spacing: STACK-GAP,
+    text(size: 1.02em, weight: "bold", fill: theme.ink)[#item.name],
+    text(size: 0.85em, fill: theme.muted)[#item.kind],
+  )
+  #v(0.3em)
+  #bullets(item.bullets.slice(0, calc.min(bullet-count, item.bullets.len())))
+]
+
 // Rail entry: a bold line plus a supporting sentence, matching the reference
 // layout's achievement blocks.
 #let rail-entry(theme, title, body) = block(below: 0.6em, breakable: false, stack(
@@ -127,7 +147,16 @@
   )
 ]
 
-#let contact-line(theme, profile, sep: "·") = text(
+// `phone` defaults to `none` and is deliberately opt-in per call site,
+// rather than read off `profile` the way email/github/portfolio are: it
+// lives in src/data/personal.typ (not resume-profile) precisely so a
+// caller can choose to include it. Only the ATS-submission templates
+// (classic, safe, vanilla, conventional) pass it — the portfolio templates
+// (rail, compact, via name-block below) do not, because their PDFs are the
+// ones embedded and linked directly on the public website. See
+// personal.typ's `phone` field comment for the public/submission split
+// this implements.
+#let contact-line(theme, profile, sep: "·", phone: none) = text(
   size: 0.86em, fill: theme.muted,
 )[
   #profile.email
@@ -135,6 +164,9 @@
   #h(0.4em)#sep#h(0.4em) #profile.portfolio
   #if profile.location != none [
     #h(0.4em)#sep#h(0.4em) #profile.location
+  ]
+  #if phone != none [
+    #h(0.4em)#sep#h(0.4em) #phone
   ]
 ]
 

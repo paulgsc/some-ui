@@ -22,10 +22,17 @@ const extractor = process.env.PDFTOTEXT_BIN ?? "pdftotext"
 
 const variants = {
   backend: "Backend & event-driven systems",
-  systems: "Distributed systems & infrastructure",
-  learning: "Adaptive learning & product engineering",
+  platform: "Developer platform & release engineering",
+  fullstack: "Full-stack web & product engineering",
 }
-const templates = ["rail", "classic", "compact"]
+const templates = [
+  "rail",
+  "classic",
+  "compact",
+  "vanilla",
+  "safe",
+  "conventional",
+]
 const DEFAULT_TEMPLATE = "rail"
 
 // Identity facts, matched anywhere in the extracted text.
@@ -53,19 +60,43 @@ function headingOffset(text, heading) {
   return match == null ? -1 : match.index
 }
 
-// The shared qualification seam. Every composition must still expose these
-// after layout, in every template — a targeted variant is allowed to be
-// concise, not to stop naming work the evidence genuinely supports.
-const requiredQualifications = [
-  "TypeScript",
-  "data modeling",
-  "production",
-  "distributed",
-  "asynchronous",
-  "event-driven",
-  "Docker",
-  "testing",
-]
+// Role-family term clusters, not one global list. A concise, targeted
+// variant is allowed to not name every stack in the résumé — `fullstack`
+// has no reason to claim "asynchronous" or "event-driven" the way `backend`
+// does — but it is not allowed to stop naming the work its own evidence
+// supports. Matched only against Summary + Skills text (see `extract`
+// below's word-boundary note), which every template renders in full and
+// never truncates, unlike Experience bullets under a tight one-page fit.
+const requiredQualificationsByVariant = {
+  backend: [
+    "Rust",
+    "TypeScript",
+    "REST",
+    "SQL",
+    "asynchronous",
+    "Docker",
+    "testing",
+    "CI/CD",
+  ],
+  platform: [
+    "TypeScript",
+    "Rust",
+    "GitHub Actions",
+    "CI/CD",
+    "Docker",
+    "contract",
+    "observability",
+  ],
+  fullstack: [
+    "TypeScript",
+    "React",
+    "web application",
+    "REST API",
+    "component",
+    "browser",
+    "testing",
+  ],
+}
 
 const MIN_WORDS = 180
 
@@ -128,13 +159,32 @@ function assertAtsText(pdfFile, variant, template, label) {
     )
   }
 
-  const unqualified = requiredQualifications.filter((term) => !has(term))
+  // Scoped to the Summary+Skills region (Summary heading through, but not
+  // including, Experience), which every template renders in full — unlike
+  // Experience's project bullets, which the one-page fitting pass can slice
+  // down to fewer bullets per project. A term this check relies on has to be
+  // somewhere that layout never truncates.
+  const summaryAndSkills = text
+    .slice(offsets[0], offsets[2])
+    .replace(/\s+/g, " ")
+    .toLocaleLowerCase("en")
+  const hasInSummaryOrSkills = (term) =>
+    summaryAndSkills.includes(term.toLocaleLowerCase("en"))
+
+  const cluster = requiredQualificationsByVariant[variant]
+  if (cluster === undefined) {
+    throw new Error(
+      `check-ats.mjs has no requiredQualificationsByVariant entry for ` +
+        `"${variant}" — add one alongside its composition in src/data/resume.typ.`
+    )
+  }
+  const unqualified = cluster.filter((term) => !hasInSummaryOrSkills(term))
   if (unqualified.length) {
     throw new Error(
-      `${name} renders no text for these qualifications: ` +
-        `${unqualified.join(", ")}. Either the composition in src/data no ` +
-        `longer states them, or the ${template} template does not put them ` +
-        `on the page.`
+      `${name} Summary/Skills text names none of: ${unqualified.join(", ")}. ` +
+        `Either the ${variant} composition in src/data/resume.typ no longer ` +
+        `states them there, or the ${template} template's Summary/Skills ` +
+        "blocks don't put them on the page."
     )
   }
 

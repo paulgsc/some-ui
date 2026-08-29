@@ -19,11 +19,17 @@
 #import "templates/rail.typ"
 #import "templates/classic.typ"
 #import "templates/compact.typ"
+#import "templates/vanilla.typ"
+#import "templates/safe.typ"
+#import "templates/conventional.typ"
 
 #let templates = (
   rail: (render: rail.render, base: 8.9pt),
   classic: (render: classic.render, base: 9.6pt),
   compact: (render: compact.render, base: 8.7pt),
+  vanilla: (render: vanilla.render, base: 9.4pt),
+  safe: (render: safe.render, base: 9.5pt),
+  conventional: (render: conventional.render, base: 9.5pt),
 )
 
 #let variant = sys.inputs.at("variant", default: "backend")
@@ -47,7 +53,7 @@
 #set document(
   title: resume-profile.name + " — Résumé (" + variant + ")",
   author: resume-profile.name,
-  keywords: ("software engineer", "Rust", "TypeScript", "backend", "distributed systems"),
+  keywords: ("software engineer", "Rust", "TypeScript", "backend", "full-stack", "developer platform"),
 )
 
 #(chosen.render)((

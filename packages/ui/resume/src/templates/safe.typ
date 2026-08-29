@@ -1,11 +1,15 @@
-// `classic` — one column, one colour, no rail, no portrait.
-//
-// The two-column templates are better documents to read; this one is the
-// better document to be *parsed*. Multi-column PDFs are where applicant
-// tracking systems most often interleave the columns and destroy reading
-// order, and a photograph is a liability in several hiring pipelines. When the
-// posting routes through an unknown ATS, send this one.
-#import "../lib/parts.typ": HEADING-GAP, bullets, contact-line, engagement-head, project-entry, section-head
+// `safe` — `classic`'s single-column reading order, kept ATS-conservative in
+// two additional ways the 2026-08-29 positioning review asked for: Education
+// is promoted to sit directly under Experience (many applicant-tracking
+// systems weight a degree/equivalent-training field, and a form that
+// extracts only the first N sections should still see it), and project
+// entries drop the italicized `premise` line — thoughtful on the
+// portfolio/rail templates, but spare words a plain submission artifact
+// should spend on evidence instead. Everything else — the ruled section
+// heads, the grid-aligned dates, the centered header — is unchanged from
+// `classic`, because none of that is what applicant-tracking systems
+// actually struggle with; a real multi-column layout is.
+#import "../lib/parts.typ": HEADING-GAP, bullets, contact-line, engagement-head, project-entry-plain, section-head
 #import "../lib/fit.typ": fit-scale, join-blocks, justify-blocks
 
 #let PAGE-W = 8.5in
@@ -23,10 +27,7 @@
 
   set page(paper: "us-letter", margin: 0pt, fill: theme.page-fill)
   set text(font: ctx.font, fill: theme.ink, lang: "en")
-  // PT Serif carries taller ascent/descent than the sans families, so the
-  // same nominal leading sets noticeably tighter here. Raised so this template
-  // clears the same line-gap floor the others do (scripts/check-layout.mjs).
-  set par(justify: false, leading: 0.68em)
+  set par(justify: false, leading: 0.62em)
   set list(indent: 0.1em, body-indent: 0.6em, spacing: 0.75em, marker: [•])
 
   let bullet-budget(s) = if s > 0.92 { 4 } else { 3 }
@@ -34,9 +35,6 @@
 
   let blocks(s) = {
     let out = (
-      // Same construction as parts.typ's name-block: an explicit stack gap,
-      // not weak `v`, so the oversized name can't be ridden into by the line
-      // below it. See scripts/check-layout.mjs.
       align(center, stack(
         dir: ttb,
         spacing: HEADING-GAP,
@@ -58,18 +56,32 @@
         #section-head(theme)[Experience]
         #engagement-head(theme, ctx.engagement)
         #for item in comp.projects {
-          project-entry(theme, item, bullet-count: bullet-budget(s))
+          project-entry-plain(theme, item, bullet-count: bullet-budget(s))
         }
       ],
-      [
-        #section-head(theme)[Key achievements]
-        #bullets(ctx.highlights.map(a => a.title + " — " + a.body))
-      ],
-      [
-        #section-head(theme)[Engineering practice]
-        #bullets(comp.platform.slice(0, practice-budget(s)))
-      ],
     )
+    if personal.education.len() > 0 {
+      out.push([
+        #section-head(theme)[Education]
+        #for entry in personal.education [
+          #block(below: 0.4em, breakable: false)[
+            #grid(
+              columns: (1fr, auto),
+              text(size: 1.02em, weight: "bold")[#entry.credential],
+              text(size: 0.88em, fill: theme.muted)[#entry.dates],
+            )
+            #text(size: 0.94em, weight: "bold", fill: theme.accent)[#entry.institution]
+            #if entry.detail != none [
+              #text(size: 0.88em, fill: theme.muted)[ — #entry.detail]
+            ]
+          ]
+        ]
+      ])
+    }
+    out.push([
+      #section-head(theme)[Engineering practice]
+      #bullets(comp.platform.slice(0, practice-budget(s)))
+    ])
     if personal.additional-experience.len() > 0 {
       out.push([
         #section-head(theme)[Additional experience]
@@ -85,24 +97,6 @@
               #text(size: 0.88em, fill: theme.muted)[ — #role.detail]
             ]
             #bullets(role.bullets)
-          ]
-        ]
-      ])
-    }
-    if personal.education.len() > 0 {
-      out.push([
-        #section-head(theme)[Education]
-        #for entry in personal.education [
-          #block(below: 0.4em, breakable: false)[
-            #grid(
-              columns: (1fr, auto),
-              text(size: 1.02em, weight: "bold")[#entry.credential],
-              text(size: 0.88em, fill: theme.muted)[#entry.dates],
-            )
-            #text(size: 0.94em, weight: "bold", fill: theme.accent)[#entry.institution]
-            #if entry.detail != none [
-              #text(size: 0.88em, fill: theme.muted)[ — #entry.detail]
-            ]
           ]
         ]
       ])
