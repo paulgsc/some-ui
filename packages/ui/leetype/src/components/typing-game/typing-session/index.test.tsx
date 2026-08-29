@@ -301,7 +301,7 @@ describe("the step hand-off", () => {
     expect(sourcesSeen).toEqual(["aaa", "bbb", "ccc"])
   })
 
-  it("replays the same step when the gate holds, without skipping ahead", async () => {
+  it("advances even when the engine reports the gate held (Ax. 9.1: revelation is unconditional)", async () => {
     seedBaseline()
     progression = "repeat"
     render(<TypingSession exercise={EXERCISE} />)
@@ -310,11 +310,11 @@ describe("the step hand-off", () => {
     await screen.findByText("Step 0.")
 
     typeStep(input, 3)
-    await screen.findByText(/again ×1/)
+    await screen.findByText("Step 1.")
 
-    // Still step 0, and the engine was told to replay rather than swap.
-    expect(screen.getByText("Step 0.")).toBeInTheDocument()
-    expect(sourcesSeen).toEqual(["aaa", "retry:aaa"])
+    // The engine's own verdict was "repeat"; the surface moved on anyway —
+    // `readProgression` no longer consults it.
+    expect(sourcesSeen).toEqual(["aaa", "bbb"])
   })
 
   it("reports the sequence once it runs out of steps", async () => {

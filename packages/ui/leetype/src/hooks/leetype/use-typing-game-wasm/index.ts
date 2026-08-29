@@ -93,9 +93,13 @@ type UseTypingGameReturn = GameView & {
    */
   toggleReveal: () => void
   /**
-   * What the engine makes of the step as typed — read at the moment the
-   * runner asks, because weighted WPM is a rate and asking it about time the
-   * player was not typing in would answer a different question.
+   * Always `"advance"`.
+   *
+   * The engine still computes weighted WPM against a baseline — `snapshot`
+   * keeps `weightedWpm`/`gateThreshold` for the production probe — but its
+   * `.progression()` verdict is no longer read here: under Axiom 9.1,
+   * revelation is unconditional, so nothing a step's outcome does may be
+   * gated on how fast it was typed.
    */
   readProgression: () => Progression
   /**
@@ -348,10 +352,10 @@ export function useTypingGame({
     dispatch((game, now) => game.toggleReveal(now))
   }, [dispatch, gameState])
 
-  const readProgression = useCallback(
-    (): Progression => gameRef.current?.progression(Date.now()) ?? "advance",
-    []
-  )
+  // Ax. 9.1: revelation is unconditional. The engine's own gate verdict
+  // (`.progression()`) is intentionally never consulted here — see
+  // `UseTypingGameReturn.readProgression`'s doc comment.
+  const readProgression = useCallback((): Progression => "advance", [])
 
   const calibrate = useCallback((baseline: Baseline): void => {
     gameRef.current?.calibrate(baseline.wpm, baseline.dispersion, Date.now())

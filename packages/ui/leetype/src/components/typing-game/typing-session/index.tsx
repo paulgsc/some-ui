@@ -92,8 +92,8 @@ type TypingSessionProps = {
  *
  * The loop is *read one sentence → type → observe → repeat*, with no menu
  * inside it: which exercise, `Leetype` (`ExercisePicker`) decides above
- * this component; within one exercise, only the baseline-relative gate
- * decides what comes next. There is no XP.
+ * this component; within one exercise, every step is left behind once it is
+ * typed. There is no XP.
  *
  * This component is composition, not orchestration. Three collaborators,
  * each ignorant of the others:
@@ -103,9 +103,11 @@ type TypingSessionProps = {
  *   what a step is.
  * - `ExerciseCard` — draws one step against those projections.
  *
- * The seam between the first two is the `advance` call below, and it is
- * asked-for rather than assumed: the runner is handed the engine's own
- * verdict on the finished step.
+ * The seam between the first two is the `advance` call below — one call
+ * site regardless of how a step finished. It is still asked-for rather than
+ * assumed, but per Ax. 9.1 (revelation is unconditional) what it is asked is
+ * no longer the engine's competency verdict on the finished step:
+ * `readProgression` always answers `"advance"`.
  */
 export const TypingSession: FC<TypingSessionProps> = ({
   exercise,
@@ -285,12 +287,12 @@ export const TypingSession: FC<TypingSessionProps> = ({
 
   /**
    * The step is typed. Bank the assistance, feed the run back into the
-   * baseline, ask the engine what the step was worth, and let the runner
-   * move.
+   * baseline, and let the runner move — `readProgression()` always answers
+   * `"advance"` (Ax. 9.1), so this is never a verdict on the step just
+   * typed.
    *
    * Every part of that is unconditional and click-free: a miss never asks
-   * the player to acknowledge anything, it just brings the same step round
-   * again.
+   * the player to acknowledge anything.
    */
   useEffect(() => {
     if (gameState !== "playing" || !isComplete) return
