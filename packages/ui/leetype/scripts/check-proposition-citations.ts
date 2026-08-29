@@ -13,7 +13,10 @@
  *    witness-canon.typ` §7 produces right now (Rem. 7.2's "generated,
  *    never transcribed").
  * 2. Citations — every `CW-P`n` found anywhere in the tracked tree (outside
- *    the canon's own definition site) resolves against the register, and
+ *    the register's own §7 declaration lines — not the whole canon tree;
+ *    a `CW-P` mention elsewhere in that same file, or in a sibling canon,
+ *    is a real citation and is checked like any other — review finding on
+ *    #1241, chatgpt-codex-connector) resolves against the register, and
  *    is not a retired entry (Rem. 7.1, Amendment protocol rule 2).
  *
  * Failure mode 2 of Rem. 7.1 (a register entry with no corpus instance) is
@@ -26,6 +29,7 @@ import path from "node:path"
 import type { Citation } from "@leetype/lib/leetype/proposition-register/citation-check"
 import { checkCitations } from "@leetype/lib/leetype/proposition-register/citation-check"
 import { PROPOSITION_REGISTER } from "@leetype/lib/leetype/proposition-register/generated"
+import { propositionDeclarationLineNumbers } from "@leetype/lib/leetype/proposition-register/parse-canon"
 
 import { regenerate } from "./generate-proposition-register"
 import {
@@ -36,17 +40,14 @@ import {
 
 const CITATION_PATTERN = "CW-P[0-9]+"
 
-// Excluded because these are not real citations of the register: every
-// canon under docs/canon/ (§7 defines the ids; other canons or remarks
-// might mention one in passing) and `generated.ts` itself, the closed
-// union derived from them, would make checking either against the
-// register it *is* circular. This module's own tests are excluded for a
-// different reason — proving the dangling-citation direction (Rem. 7.1's
-// "easy" failure mode) requires writing a literal id that does not resolve
-// against the real register, which is exactly what this scan exists to
-// catch everywhere else.
+// Excluded at the file level because the *whole* file is non-citational:
+// `generated.ts` is generated data (every `"CW-Pn"` in it is a real id,
+// never prose), and this module's own tests intentionally write ids that
+// do not resolve against the real register (proving the dangling-citation
+// direction requires exactly that). Canon §7's own declaration lines are
+// excluded separately, below, at line granularity — everything else in
+// docs/canon/ is real citation content and stays in scope.
 const EXCLUDED_PATHSPECS = [
-  ":(exclude,glob)docs/canon/**",
   `:(exclude)${GENERATED_RELATIVE_PATH}`,
   ":(exclude,glob)packages/ui/leetype/src/lib/leetype/proposition-register/**/*.test.ts",
 ]
@@ -106,9 +107,33 @@ function scanRepoForCitations(root: string): Array<Citation> {
   return citations
 }
 
+/**
+ * Drops exactly the register's own §7 declaration lines from `citations`
+ * — the one legitimate exclusion `scanRepoForCitations` can't express as
+ * a pathspec, since only *some* lines of `docs/canon/complexity-witness-
+ * canon.typ` are definition sites and the rest is real citation content.
+ */
+function withoutDefinitionSites(
+  citations: ReadonlyArray<Citation>,
+  canonSource: string
+): Array<Citation> {
+  const declarationLines = propositionDeclarationLineNumbers(canonSource)
+  return citations.filter(
+    (citation) =>
+      !(
+        citation.file === CANON_RELATIVE_PATH &&
+        declarationLines.has(citation.line)
+      )
+  )
+}
+
 async function main(): Promise<void> {
   const root = repoRoot()
-  const citations = scanRepoForCitations(root)
+  const canonSource = readFileSync(path.join(root, CANON_RELATIVE_PATH), "utf8")
+  const citations = withoutDefinitionSites(
+    scanRepoForCitations(root),
+    canonSource
+  )
 
   const violations = [
     ...(await checkFreshness(root)),

@@ -19,6 +19,10 @@ import path from "node:path"
 import { formatGeneratedModule } from "@leetype/lib/leetype/proposition-register/format-generated-module"
 import type { PropositionRegisterEntry } from "@leetype/lib/leetype/proposition-register/parse-canon"
 import { parsePropositionRegister } from "@leetype/lib/leetype/proposition-register/parse-canon"
+import {
+  assertNoRegisteredIdWasRemoved,
+  idsInGeneratedFile,
+} from "@leetype/lib/leetype/proposition-register/registry-integrity"
 import * as prettier from "prettier"
 
 import {
@@ -27,14 +31,6 @@ import {
   repoRoot,
 } from "./proposition-register-paths"
 
-/**
- * The freshly-generated file contents, computed from the real canon on
- * disk and run through this repo's own Prettier config — shared with
- * `check-proposition-citations.ts` so both scripts agree on what "fresh"
- * means. Pre-formatted rather than left for a separate `prettier --write`
- * pass so the committed file never legitimately differs from what this
- * function returns.
- */
 async function formatForOutput(
   root: string,
   entries: ReadonlyArray<PropositionRegisterEntry>
@@ -47,17 +43,44 @@ async function formatForOutput(
   })
 }
 
-export async function regenerate(root: string): Promise<string> {
+/**
+ * Parses the real canon, checks it against whatever `generated.ts` is
+ * currently committed (refusing to silently drop a previously-registered
+ * id — review finding on #1241), and formats the result through this
+ * repo's own Prettier config. Shared by `regenerate` below and `main`, so
+ * both the freshness check (`check-proposition-citations.ts`) and an
+ * actual write go through the same integrity guard.
+ */
+async function generateFromCanon(root: string): Promise<{
+  entries: ReadonlyArray<PropositionRegisterEntry>
+  contents: string
+}> {
   const canonSource = readFileSync(path.join(root, CANON_RELATIVE_PATH), "utf8")
   const entries = parsePropositionRegister(canonSource)
-  return formatForOutput(root, entries)
+
+  const outPath = path.join(root, GENERATED_RELATIVE_PATH)
+  const existingGenerated = existsSync(outPath)
+    ? readFileSync(outPath, "utf8")
+    : ""
+  assertNoRegisteredIdWasRemoved(idsInGeneratedFile(existingGenerated), entries)
+
+  const contents = await formatForOutput(root, entries)
+  return { entries, contents }
+}
+
+/**
+ * The freshly-generated file contents — shared with `check-proposition-
+ * citations.ts` so both scripts agree on what "fresh" means.
+ */
+export async function regenerate(root: string): Promise<string> {
+  return (await generateFromCanon(root)).contents
 }
 
 async function main(): Promise<void> {
   const checkOnly = process.argv.includes("--check")
   const root = repoRoot()
   const outPath = path.join(root, GENERATED_RELATIVE_PATH)
-  const generated = await regenerate(root)
+  const { entries, contents: generated } = await generateFromCanon(root)
 
   if (checkOnly) {
     const current = existsSync(outPath) ? readFileSync(outPath, "utf8") : ""
@@ -73,10 +96,8 @@ async function main(): Promise<void> {
   }
 
   writeFileSync(outPath, generated)
-  const canonSource = readFileSync(path.join(root, CANON_RELATIVE_PATH), "utf8")
-  const entryCount = parsePropositionRegister(canonSource).length
   console.log(
-    `Wrote ${entryCount} proposition(s) to ${GENERATED_RELATIVE_PATH}.`
+    `Wrote ${entries.length} proposition(s) to ${GENERATED_RELATIVE_PATH}.`
   )
 }
 
