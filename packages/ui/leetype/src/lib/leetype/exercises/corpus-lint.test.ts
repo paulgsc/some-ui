@@ -6,7 +6,7 @@ import type {
 import { typingBlockFromDiff } from "@leetype/types/exercise"
 import { describe, expect, it } from "vitest"
 
-import { lintCorpus } from "./corpus-lint"
+import { checkNoMeasurementEntailmentClaim, lintCorpus } from "./corpus-lint"
 import { ALL_FIXTURE_EXERCISES } from "./index"
 
 const failure: Block = {
@@ -263,5 +263,58 @@ describe("a step's diff overlay (LTY-PATCH)", () => {
     const step = constructionStep({ blocks: [constraint, diffWitness] })
     const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }])
     expect(violations).toEqual([])
+  })
+})
+
+describe("checkNoMeasurementEntailmentClaim — the two forbidden inferences (LTY-EXEC X4, Cor. 4.1)", () => {
+  it("flags 'it timed out, therefore it is Θ(n²)'", () => {
+    const violations = checkNoMeasurementEntailmentClaim(
+      "It timed out, therefore it is Θ(n²).",
+      "fixture"
+    )
+    expect(violations).toHaveLength(1)
+    expect(violations[0]).toContain("It timed out, therefore it is Θ(n²).")
+    expect(violations[0]).toContain("Cor. 4.1")
+  })
+
+  it("flags 'it ran in 4ms, therefore it is Θ(n)'", () => {
+    const violations = checkNoMeasurementEntailmentClaim(
+      "It ran in 4ms, therefore it is Θ(n).",
+      "fixture"
+    )
+    expect(violations).toHaveLength(1)
+    expect(violations[0]).toContain("Cor. 4.1")
+  })
+
+  it("passes a legitimate sentence mentioning a measurement and a class without claiming entailment", () => {
+    const violations = checkNoMeasurementEntailmentClaim(
+      "It timed out; the cost graph is what says why.",
+      "fixture"
+    )
+    expect(violations).toEqual([])
+  })
+
+  it("does not flag a measurement term and a class term in different sentences", () => {
+    const violations = checkNoMeasurementEntailmentClaim(
+      "It timed out on the largest input. Separately, the register lists linear scans.",
+      "fixture"
+    )
+    expect(violations).toEqual([])
+  })
+
+  it("is a heuristic with a reviewed, per-sentence escape", () => {
+    const text = "It timed out, therefore it is Θ(n²)."
+    const violations = checkNoMeasurementEntailmentClaim(text, "fixture", [
+      { sentence: text, reason: "confirmed false positive for this fixture" },
+    ])
+    expect(violations).toEqual([])
+  })
+
+  it("wires into lintCorpus over a step's goal", () => {
+    const step = diagnosticStep({
+      goal: "Explain that it timed out, therefore it is Θ(n²).",
+    })
+    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }])
+    expect(violations.some((v) => v.includes("Cor. 4.1"))).toBe(true)
   })
 })
