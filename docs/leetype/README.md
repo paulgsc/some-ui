@@ -886,3 +886,26 @@ Everything else in this file stands. In particular the hunk model
 `ClaimChoices` and the deterministic seed are reused wholesale rather than
 replaced — canon Rem. 11.1 is the table of what survives, and it is most of
 the mechanism.
+
+### The epics the canon governs
+
+Decomposed across the same milestone **leetype (M20)**. Each cites the
+numbered results it derives from; a PR that cannot is a happy-path patch.
+
+| Epic                                                               | What it settles                                                                   |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| [#1197](https://github.com/paulgsc/some-ui/issues/1197) LTY-ROUND  | The five objects — `A`, `C`, `B`, `D`, `μ` — and the cardinality invariant        |
+| [#1198](https://github.com/paulgsc/some-ui/issues/1198) LTY-COST   | The cost algebra; a complexity claim that computes rather than asserts            |
+| [#1199](https://github.com/paulgsc/some-ui/issues/1199) LTY-CARD   | The reference surface is the phone; one artifact at a time; the gate stops gating |
+| [#1200](https://github.com/paulgsc/some-ui/issues/1200) LTY-PROBE  | Selection over the register, and the first verdict this workspace may render      |
+| [#1201](https://github.com/paulgsc/some-ui/issues/1201) LTY-EXEC   | A real run, as evidence and never as proof                                        |
+| [#1202](https://github.com/paulgsc/some-ui/issues/1202) LTY-LEDGER | Unconditional progression, conditional credit, and demonstration by transfer      |
+| [#1203](https://github.com/paulgsc/some-ui/issues/1203) LTY-HOIST  | The corpus leaves the bundle; the amendments it forces on `paulgsc/server`        |
+
+Rough order: LTY-ROUND and LTY-COST are the shape and the arithmetic and gate
+most of the rest; LTY-CARD's #1217 (the gate stops being a progression
+predicate) is worth landing early because every surface story is simpler once
+`advance` no longer consults a fluency scalar; LTY-PROBE needs #1218's
+register binding first; LTY-EXEC and LTY-HOIST both reach into
+`paulgsc/server` and their cross-repo stories (#1226, #1232, #1234) are
+requests filed there, not commits made here.
