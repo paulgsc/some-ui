@@ -317,4 +317,12 @@ describe("checkNoMeasurementEntailmentClaim — the two forbidden inferences (LT
     const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }])
     expect(violations.some((v) => v.includes("Cor. 4.1"))).toBe(true)
   })
+
+  it("does not mistake an ordinary call ending in 'o' for a standalone Big-O token (review finding on #1240)", () => {
+    const violations = checkNoMeasurementEntailmentClaim(
+      "The slow foo(input) call should be cached.",
+      "fixture"
+    )
+    expect(violations).toEqual([])
+  })
 })

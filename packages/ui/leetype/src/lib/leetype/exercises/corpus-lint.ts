@@ -278,7 +278,13 @@ function isRestatementOfWitness(
 }
 
 const MEASUREMENT_TERM = /\b(timed out|timeout|slow|fast|took)\b|\b\d+\s?ms\b/i
-const CLASS_TERM = /Θ|O\(|\bquadratic\b|\blinear\b|\blogarithmic\b/i
+// Two patterns, not one, because "O(" only means Big-O as a standalone,
+// capitalized token: a case-insensitive `O\(` with no boundary also matches
+// the tail of an ordinary call like `foo(` (review finding on #1240,
+// chatgpt-codex-connector) — a false positive `quadratic`/`linear`/
+// `logarithmic` can't produce, so only the symbol needs the extra care.
+const CLASS_TERM_WORD = /\b(quadratic|linear|logarithmic)\b/i
+const CLASS_TERM_SYMBOL = /Θ|\bO\(/
 const SENTENCE_SPLIT = /(?<=[.!?])\s+/
 
 /**
@@ -336,7 +342,7 @@ export function checkNoMeasurementEntailmentClaim(
   for (const sentence of sentencesOf(text)) {
     if (
       MEASUREMENT_TERM.test(sentence) &&
-      CLASS_TERM.test(sentence) &&
+      (CLASS_TERM_WORD.test(sentence) || CLASS_TERM_SYMBOL.test(sentence)) &&
       !isExemptSentence(sentence, exemptions)
     ) {
       violations.push(
