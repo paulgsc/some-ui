@@ -244,3 +244,44 @@ export function costOf(graph: CostGraph): CostExpr {
     }
   }
 }
+
+/** Every dimension named by any factor of a monomial. */
+export function dimensionsOfMonomial(
+  monomial: Monomial
+): ReadonlySet<Dimension> {
+  return new Set(monomial.map((factor) => factor.dimension))
+}
+
+/**
+ * Every dimension any `Loop` in the graph repeats over (Def. 2.1: only a
+ * `Loop`'s repetition expression carries a dimension — `W`'s cost is a bare
+ * number). The identifiers a constraint's own `dimension` is checked
+ * against (R2, #1205's own acceptance criterion: "dimension identifiers
+ * are shared with the cost graph's repetition expressions").
+ */
+export function dimensionsOfGraph(graph: CostGraph): ReadonlySet<Dimension> {
+  switch (graph.kind) {
+    case "work": {
+      return new Set()
+    }
+    case "seq": {
+      const dimensions = new Set<Dimension>()
+      for (const child of graph.children) {
+        for (const dimension of dimensionsOfGraph(child)) {
+          dimensions.add(dimension)
+        }
+      }
+      return dimensions
+    }
+    case "loop": {
+      const dimensions = new Set(dimensionsOfMonomial(graph.repetition))
+      for (const dimension of dimensionsOfGraph(graph.body)) {
+        dimensions.add(dimension)
+      }
+      return dimensions
+    }
+    default: {
+      return assertNever(graph)
+    }
+  }
+}
