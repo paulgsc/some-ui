@@ -285,3 +285,149 @@ export function dimensionsOfGraph(graph: CostGraph): ReadonlySet<Dimension> {
     }
   }
 }
+
+/**
+ * G2 (#1210), Thm. 2.1 / Cor. 2.1 / Def. 2.3 / Rem. 2.1: `T(G)` decomposed
+ * into the root-to-leaf paths whose products sum to it, and the "dominant"
+ * subset among them — the structure a future renderer (#1199) points at to
+ * show *which* nesting is the expensive one, rather than only naming the
+ * class.
+ */
+
+/** One root-to-leaf path through a cost graph (Thm. 2.1): the `Loop` nodes traversed, root to leaf, and the `W` leaf the path ends at — actual node references, not a reduced monomial, so a caller walking `G` can identify by `===` which nodes a path passes through (what "renderable" means for this story: "the round can highlight the nesting chain that dominates"). */
+export type CostPath = {
+  readonly loops: ReadonlyArray<Extract<CostGraph, { kind: "loop" }>>
+  readonly leaf: Extract<CostGraph, { kind: "work" }>
+}
+
+function pathsOf(
+  graph: CostGraph,
+  loopsSoFar: ReadonlyArray<Extract<CostGraph, { kind: "loop" }>>
+): ReadonlyArray<CostPath> {
+  switch (graph.kind) {
+    case "work": {
+      return [{ loops: loopsSoFar, leaf: graph }]
+    }
+    case "seq": {
+      return graph.children.flatMap((child) => pathsOf(child, loopsSoFar))
+    }
+    case "loop": {
+      return pathsOf(graph.body, [...loopsSoFar, graph])
+    }
+    default: {
+      return assertNever(graph)
+    }
+  }
+}
+
+/**
+ * `paths(G)` (Thm. 2.1): every root-to-leaf path through the graph. `Seq`
+ * branches into one path set per child (disjoint union, per the theorem's
+ * own proof); `Loop` prefixes its repetition onto every path through its
+ * body; `W` terminates exactly one path. A graph with several `Seq`
+ * siblings nested several levels deep has as many paths as leaves — not
+ * the same count as `costOf`'s own `CostExpr`, which merges paths that
+ * land on the same monomial (`normalizeCostExpr`) into one term.
+ */
+export function paths(graph: CostGraph): ReadonlyArray<CostPath> {
+  return pathsOf(graph, [])
+}
+
+/** `Π_{v∈p} r_v` (Thm. 2.1): a path's own repetition monomials, multiplied — nesting still multiplies, the same rule `scaleCost` already encodes, just walked as a path instead of recursed as a tree. */
+export function monomialOfPath(path: CostPath): Monomial {
+  return path.loops.reduce(
+    (product, loop) => multiplyMonomials(product, loop.repetition),
+    ONE
+  )
+}
+
+/** One path's own contribution to `T(G)`: its leaf's constant, times its monomial. Summing this over every `paths(G)` reconstructs `costOf(G)` exactly — Thm. 2.1's identity, and the two independent computations this story's own test holds against each other. */
+export function costOfPath(path: CostPath): CostExpr {
+  return normalizeCostExpr([
+    { coefficient: path.leaf.cost, monomial: monomialOfPath(path) },
+  ])
+}
+
+/**
+ * A path's degree (Cor. 2.1's `Σ_v a_v`, generalized): the sum of its
+ * `pow`-kind factors' exponents, primary; the sum of its `log`-kind
+ * factors' exponents, secondary. Cor. 2.1's own precondition is a single
+ * shared dimension with every repetition a bare power of it — where that
+ * holds, `log` is `0` for every path and only `pow` ever decides.
+ * `pow` alone stops being sufficient the moment a repetition legitimately
+ * combines a power with a logarithm of the *same* dimension (`n * log n`,
+ * a `Monomial` `Loop` already accepts): `log n` grows strictly slower
+ * than any positive power of `n`, but strictly *faster* than doing
+ * nothing — a path of `n * log n` genuinely dominates a same-degree path
+ * of `n` alone, and comparing `pow` only would wrongly call them tied
+ * (review finding on #1252). Comparing multiple *different* dimensions'
+ * degrees this way (`n²` against `m³`) remains outside what this can
+ * justify — that comparison depends on the relationship between `n` and
+ * `m`, which nothing here knows, and stays out of scope the same way
+ * non-monomial repetition expressions do (this story's own "out of
+ * scope" line).
+ */
+type PathDegree = { readonly pow: number; readonly log: number }
+
+function sumExponents(monomial: Monomial, kind: "pow" | "log"): number {
+  return monomial
+    .filter((factor) => factor.kind === kind)
+    .reduce((total, factor) => total + factor.exponent, 0)
+}
+
+function degreeOfPath(path: CostPath): PathDegree {
+  const monomial = monomialOfPath(path)
+  return {
+    pow: sumExponents(monomial, "pow"),
+    log: sumExponents(monomial, "log"),
+  }
+}
+
+/** `true` iff `a` is strictly greater than `b` — `pow` decides first, `log` breaks a `pow` tie. */
+function degreeExceeds(a: PathDegree, b: PathDegree): boolean {
+  if (a.pow !== b.pow) return a.pow > b.pow
+  return a.log > b.log
+}
+
+function degreesEqual(a: PathDegree, b: PathDegree): boolean {
+  return a.pow === b.pow && a.log === b.log
+}
+
+/**
+ * `dominantPaths(G)` (Def. 2.3, Cor. 2.1): the maximizing set among
+ * `paths(G)` — every path whose degree equals the graph's maximum. **A
+ * set, not a path**: Def. 2.3 says a dominant path "need not be unique;
+ * where it is not, the round may not assert that it is" — there is
+ * deliberately no singular `dominantPath(G)` export a caller could reach
+ * for instead, which is what makes that rule true by construction rather
+ * than by a convention every call site has to remember.
+ *
+ * A path whose leaf costs `0` is excluded before the comparison, never a
+ * candidate for dominance regardless of degree: Thm. 2.1's own proof
+ * takes "the leaf's own constant" as the product's last factor, so a
+ * zero leaf makes the whole product — and the path's real contribution to
+ * `T(G)` — zero (`costOfPath`'s term is dropped by `normalizeCostExpr`'s
+ * own zero-coefficient filter, the same one `costOf` itself relies on). A
+ * higher-degree path that contributes nothing is not "the expensive
+ * nesting" Def. 2.3 means (review finding on #1252). If every path costs
+ * `0`, `T(G)` is identically `0` and nothing meaningfully dominates —
+ * this returns the empty set rather than picking one arbitrarily.
+ *
+ * Rem. 2.1's own counterexample is why this compares by degree (summed
+ * exponents) rather than by depth or path length: two siblings, one `n`
+ * and one `n³`, inside an outer `n`-loop, give two paths of degree 2 and
+ * 4 — the degree-4 path is dominant (`Θ(n⁴)`), never a `Θ(n⁵)` a
+ * depth-3-implies-cubed-again misreading would produce.
+ */
+export function dominantPaths(graph: CostGraph): ReadonlyArray<CostPath> {
+  const contributingPaths = paths(graph).filter((path) => path.leaf.cost !== 0)
+  if (contributingPaths.length === 0) return []
+
+  const degrees = contributingPaths.map(degreeOfPath)
+  const maxDegree = degrees.reduce((max, degree) =>
+    degreeExceeds(degree, max) ? degree : max
+  )
+  return contributingPaths.filter((path) =>
+    degreesEqual(degreeOfPath(path), maxDegree)
+  )
+}
