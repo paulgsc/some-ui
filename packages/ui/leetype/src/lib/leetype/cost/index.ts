@@ -349,30 +349,69 @@ export function costOfPath(path: CostPath): CostExpr {
 }
 
 /**
- * `Σ_v a_v` along one path (Cor. 2.1): the sum of every `pow`-kind factor's
- * exponent in the path's combined monomial. Meaningful as "the" exponent
- * only under Cor. 2.1's own precondition — every repetition expression in
- * `G` a power of the *same single* input dimension, which is what every
- * worked instance in the canon (including Rem. 2.1's) actually is. A `log`
- * factor contributes nothing here: `log n` grows strictly slower than any
- * positive power of `n`, so it must never inflate a path's degree past a
- * path with no log factor at the same power-exponent sum.
+ * A path's degree (Cor. 2.1's `Σ_v a_v`, generalized): the sum of its
+ * `pow`-kind factors' exponents, primary; the sum of its `log`-kind
+ * factors' exponents, secondary. Cor. 2.1's own precondition is a single
+ * shared dimension with every repetition a bare power of it — where that
+ * holds, `log` is `0` for every path and only `pow` ever decides.
+ * `pow` alone stops being sufficient the moment a repetition legitimately
+ * combines a power with a logarithm of the *same* dimension (`n * log n`,
+ * a `Monomial` `Loop` already accepts): `log n` grows strictly slower
+ * than any positive power of `n`, but strictly *faster* than doing
+ * nothing — a path of `n * log n` genuinely dominates a same-degree path
+ * of `n` alone, and comparing `pow` only would wrongly call them tied
+ * (review finding on #1252). Comparing multiple *different* dimensions'
+ * degrees this way (`n²` against `m³`) remains outside what this can
+ * justify — that comparison depends on the relationship between `n` and
+ * `m`, which nothing here knows, and stays out of scope the same way
+ * non-monomial repetition expressions do (this story's own "out of
+ * scope" line).
  */
-function degreeOfPath(path: CostPath): number {
-  return monomialOfPath(path)
-    .filter((factor) => factor.kind === "pow")
+type PathDegree = { readonly pow: number; readonly log: number }
+
+function sumExponents(monomial: Monomial, kind: "pow" | "log"): number {
+  return monomial
+    .filter((factor) => factor.kind === kind)
     .reduce((total, factor) => total + factor.exponent, 0)
+}
+
+function degreeOfPath(path: CostPath): PathDegree {
+  const monomial = monomialOfPath(path)
+  return {
+    pow: sumExponents(monomial, "pow"),
+    log: sumExponents(monomial, "log"),
+  }
+}
+
+/** `true` iff `a` is strictly greater than `b` — `pow` decides first, `log` breaks a `pow` tie. */
+function degreeExceeds(a: PathDegree, b: PathDegree): boolean {
+  if (a.pow !== b.pow) return a.pow > b.pow
+  return a.log > b.log
+}
+
+function degreesEqual(a: PathDegree, b: PathDegree): boolean {
+  return a.pow === b.pow && a.log === b.log
 }
 
 /**
  * `dominantPaths(G)` (Def. 2.3, Cor. 2.1): the maximizing set among
- * `paths(G)` — every path whose degree equals the graph's maximum, per
- * Cor. 2.1's `e = max_p Σ_v a_v`. **A set, not a path**: Def. 2.3 says a
- * dominant path "need not be unique; where it is not, the round may not
- * assert that it is" — there is deliberately no singular
- * `dominantPath(G)` export a caller could reach for instead, which is
- * what makes that rule true by construction rather than by a convention
- * every call site has to remember.
+ * `paths(G)` — every path whose degree equals the graph's maximum. **A
+ * set, not a path**: Def. 2.3 says a dominant path "need not be unique;
+ * where it is not, the round may not assert that it is" — there is
+ * deliberately no singular `dominantPath(G)` export a caller could reach
+ * for instead, which is what makes that rule true by construction rather
+ * than by a convention every call site has to remember.
+ *
+ * A path whose leaf costs `0` is excluded before the comparison, never a
+ * candidate for dominance regardless of degree: Thm. 2.1's own proof
+ * takes "the leaf's own constant" as the product's last factor, so a
+ * zero leaf makes the whole product — and the path's real contribution to
+ * `T(G)` — zero (`costOfPath`'s term is dropped by `normalizeCostExpr`'s
+ * own zero-coefficient filter, the same one `costOf` itself relies on). A
+ * higher-degree path that contributes nothing is not "the expensive
+ * nesting" Def. 2.3 means (review finding on #1252). If every path costs
+ * `0`, `T(G)` is identically `0` and nothing meaningfully dominates —
+ * this returns the empty set rather than picking one arbitrarily.
  *
  * Rem. 2.1's own counterexample is why this compares by degree (summed
  * exponents) rather than by depth or path length: two siblings, one `n`
@@ -381,7 +420,14 @@ function degreeOfPath(path: CostPath): number {
  * depth-3-implies-cubed-again misreading would produce.
  */
 export function dominantPaths(graph: CostGraph): ReadonlyArray<CostPath> {
-  const graphPaths = paths(graph)
-  const maxDegree = Math.max(...graphPaths.map(degreeOfPath))
-  return graphPaths.filter((path) => degreeOfPath(path) === maxDegree)
+  const contributingPaths = paths(graph).filter((path) => path.leaf.cost !== 0)
+  if (contributingPaths.length === 0) return []
+
+  const degrees = contributingPaths.map(degreeOfPath)
+  const maxDegree = degrees.reduce((max, degree) =>
+    degreeExceeds(degree, max) ? degree : max
+  )
+  return contributingPaths.filter((path) =>
+    degreesEqual(degreeOfPath(path), maxDegree)
+  )
 }

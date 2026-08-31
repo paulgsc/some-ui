@@ -334,4 +334,43 @@ describe("dominantPaths — Def. 2.3 / Cor. 2.1, Rem. 2.1's own instance", () =>
     expect(dominant).toHaveLength(1)
     expect(dominant[0]!.leaf).toBe(graph)
   })
+
+  // Review finding on #1252: comparing only pow-exponents called `n` and
+  // `n * log n` tied (both degree 1), even though `n * log n` strictly
+  // dominates `n` — `log n` grows slower than any positive power, but
+  // strictly faster than nothing. `n * log n` is a real, constructible
+  // `Loop` repetition (a `Monomial` product), not a hypothetical.
+  it("n * log n strictly dominates n — a log factor tie-breaks a pow-degree tie, never ties it (review finding)", () => {
+    const graph = Seq(
+      Loop(dim("n"), W(1)),
+      Loop(multiplyMonomials(dim("n"), logDim("n")), W(1))
+    )
+    const dominant = dominantPaths(graph)
+    expect(dominant).toHaveLength(1)
+    expect(monomialOfPath(dominant[0]!)).toEqual(
+      multiplyMonomials(dim("n"), logDim("n"))
+    )
+  })
+
+  // Review finding on #1252: a higher-degree path whose leaf costs 0
+  // contributes nothing to T(G) — normalizeCostExpr drops a zero-coefficient
+  // term, so costOf(this graph) is n alone, with no n^2 term at all. A
+  // "dominant" path that isn't even present in costOf(G) contradicts the
+  // decomposition Thm. 2.1 is supposed to reconstruct.
+  it("excludes a zero-cost path from dominance even when its degree is higher", () => {
+    const zeroPath = Loop(dim("n", 2), W(0))
+    const graph = Seq(zeroPath, Loop(dim("n"), W(1)))
+    expect(costOf(graph)).toEqual([{ coefficient: 1, monomial: dim("n") }])
+
+    const dominant = dominantPaths(graph)
+    expect(dominant).toHaveLength(1)
+    expect(monomialOfPath(dominant[0]!)).toEqual(dim("n"))
+    expect(dominant[0]!.loops).not.toContain(zeroPath)
+  })
+
+  it("a graph whose every path costs 0 has no dominant path — T(G) is identically 0", () => {
+    const graph = Seq(Loop(dim("n", 2), W(0)), Loop(dim("n"), W(0)))
+    expect(costOf(graph)).toEqual([])
+    expect(dominantPaths(graph)).toEqual([])
+  })
 })
