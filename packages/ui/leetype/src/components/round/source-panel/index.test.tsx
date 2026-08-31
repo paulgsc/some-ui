@@ -37,15 +37,45 @@ describe("SourcePanel", () => {
     expect(container.textContent).toContain("return n * 2")
   })
 
-  it("shows the entry point and input alphabet once opened", async () => {
+  it("shows the entry point and input alphabet once opened, each on its own wrapping line", async () => {
     const { container } = render(<SourcePanel algorithm={ALGORITHM} />)
     await open()
     // `entryPoint` ("solve") also appears as an identifier inside the
-    // highlighted source below, so this is scoped to the caption paragraph
+    // highlighted source below, so this is scoped to the caption paragraphs
     // rather than queried by text alone.
-    const caption = container.querySelector("p")
-    expect(caption?.textContent).toContain(ALGORITHM.entryPoint)
-    expect(caption?.textContent).toContain(ALGORITHM.inputAlphabet)
+    const captions = [...container.querySelectorAll("p")]
+    expect(captions).toHaveLength(2)
+    expect(captions[0]?.textContent).toContain(ALGORITHM.entryPoint)
+    expect(captions[1]?.textContent).toContain(ALGORITHM.inputAlphabet)
+    // Regression for a review finding on #1248: a single `truncate`d line
+    // silently clipped an unbounded `inputAlphabet` with no way to recover
+    // the omitted text. Neither caption may clip again.
+    for (const caption of captions) {
+      expect(caption.className).not.toMatch(/\btruncate\b/)
+    }
+  })
+
+  it("closes again when the algorithm changes on an already-mounted instance", async () => {
+    const { rerender, container } = render(
+      <SourcePanel algorithm={ALGORITHM} />
+    )
+    await open()
+    expect(container.textContent).toContain("return n * 2")
+
+    const NEXT_ALGORITHM: Algorithm = {
+      source: 'fn main() {\n    println!("next round");\n}',
+      language: "rust",
+      entryPoint: "main",
+      inputAlphabet: "none",
+    }
+    // Same instance, not remounted — a caller may legitimately swap
+    // `algorithm` this way (a review finding on #1248: without resetting,
+    // a round left open would carry `open = true` straight into the next
+    // round's source).
+    rerender(<SourcePanel algorithm={NEXT_ALGORITHM} />)
+
+    expect(screen.getByText("Show source")).toBeInTheDocument()
+    expect(container.textContent).not.toContain("next round")
   })
 
   it("syntax-highlights through Prism — token spans, not a flat string", async () => {

@@ -90,6 +90,16 @@ type SourcePanelProps = {
  * not the assessed artifact (Cor. 6.1); a reveal a caller could observe
  * would smuggle it back in as a signal.
  *
+ * **Closes again when the algorithm changes.** A caller may legitimately
+ * swap `algorithm` on an already-mounted instance rather than remounting it
+ * (`ReadingSession` does exactly this with `DiffCard`'s `hunk` prop) — React
+ * does not reset local state on a prop change by itself, so without this a
+ * round left open would carry its `open = true` straight into the next
+ * round's source, revealing it before anyone tapped anything. Compared
+ * during render against `algorithm.source` (Def. 1.1's actual identity for
+ * `A`) rather than in an effect, so the stale content is never painted open
+ * for a frame before snapping shut.
+ *
  * **Renders through Prism directly** — the library, not `CodeDisplay` or
  * `DiffCard` — because `A` carries none of what either of those needs:
  * no engine projection (`roles` / `slotOfDisplay` / `slotStatus` /
@@ -102,6 +112,11 @@ type SourcePanelProps = {
  */
 export const SourcePanel: FC<SourcePanelProps> = ({ algorithm, className }) => {
   const [open, setOpen] = useState(false)
+  const [seenSource, setSeenSource] = useState(algorithm.source)
+  if (algorithm.source !== seenSource) {
+    setSeenSource(algorithm.source)
+    setOpen(false)
+  }
   const grammarId = LANGUAGE_MAP[algorithm.language] ?? "javascript"
   const grammar = Prism.languages[grammarId]
   const label = LANGUAGE_LABEL[algorithm.language] ?? algorithm.language
@@ -134,14 +149,28 @@ export const SourcePanel: FC<SourcePanelProps> = ({ algorithm, className }) => {
           </span>
         </AccordionTrigger>
         <AccordionContent className="px-3 pb-3 pt-0">
-          <p className="mb-2 truncate font-mono text-[11px] text-muted-foreground/70">
-            entry point{" "}
-            <span className="text-foreground/80">{algorithm.entryPoint}</span>
-            {" · input "}
-            <span className="text-foreground/80">
-              {algorithm.inputAlphabet}
-            </span>
-          </p>
+          {/*
+            One line each, wrapping rather than clipped: `inputAlphabet` is
+            unbounded free text (a review finding on #1248 caught the prior
+            single `truncate`d line silently dropping it on a narrow phone,
+            with no way to recover the omitted text). Both are part of what
+            the learner needs to interpret the program, so losing either
+            silently is a correctness problem on this surface, not a
+            polish one — the same posture `DiffCard`'s own clipped-line
+            affordance is built on.
+          */}
+          <div className="mb-2 space-y-0.5 font-mono text-[11px] text-muted-foreground/70">
+            <p className="break-words">
+              entry point{" "}
+              <span className="text-foreground/80">{algorithm.entryPoint}</span>
+            </p>
+            <p className="break-words">
+              input{" "}
+              <span className="text-foreground/80">
+                {algorithm.inputAlphabet}
+              </span>
+            </p>
+          </div>
           <pre className="m-0 overflow-x-auto rounded bg-secondary p-3 font-mono text-xs leading-relaxed">
             <code className={`language-${grammarId}`}>{highlight()}</code>
           </pre>
