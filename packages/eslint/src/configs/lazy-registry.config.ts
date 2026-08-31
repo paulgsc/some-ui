@@ -61,6 +61,13 @@ export default defineConfig([
             // `ActiveLifetimesPanel` under "scheduled". The composer route
             // is itself code-split, so the eager edge is bounded to it.
             "@some-ui/slideshow",
+            // apps/www's /site route ("Under Construction") embeds
+            // `HexGrid` directly as a generic hex-grid renderer, not the
+            // registry's Hangul applet under "honeycomb". /site is itself
+            // an ordinary file-based route, code-split by
+            // `autoCodeSplitting: true` (vite.config.ts), so this eager
+            // edge is bounded to that one route's own chunk.
+            "@some-ui/honeycomb",
           ],
         },
       ],

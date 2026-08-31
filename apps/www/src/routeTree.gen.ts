@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SiteRouteImport } from './routes/site'
 import { Route as MissionRouteImport } from './routes/mission'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as DashboardRouteImport } from './routes/_dashboard'
@@ -22,6 +23,11 @@ import { Route as DashboardSessionsIndexRouteImport } from './routes/_dashboard/
 import { Route as DashboardSessionsNewRouteImport } from './routes/_dashboard/sessions/new'
 import { Route as DashboardSessionsSessionIdRouteImport } from './routes/_dashboard/sessions/$sessionId'
 
+const SiteRoute = SiteRouteImport.update({
+  id: '/site',
+  path: '/site',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MissionRoute = MissionRouteImport.update({
   id: '/mission',
   path: '/mission',
@@ -87,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/mission': typeof MissionRoute
+  '/site': typeof SiteRoute
   '/app': typeof DashboardAppRoute
   '/jobs': typeof DashboardJobsRoute
   '/profile': typeof DashboardProfileRoute
@@ -100,6 +107,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/mission': typeof MissionRoute
+  '/site': typeof SiteRoute
   '/app': typeof DashboardAppRoute
   '/jobs': typeof DashboardJobsRoute
   '/profile': typeof DashboardProfileRoute
@@ -115,6 +123,7 @@ export interface FileRoutesById {
   '/_dashboard': typeof DashboardRouteWithChildren
   '/auth': typeof AuthRoute
   '/mission': typeof MissionRoute
+  '/site': typeof SiteRoute
   '/_dashboard/app': typeof DashboardAppRoute
   '/_dashboard/jobs': typeof DashboardJobsRoute
   '/_dashboard/profile': typeof DashboardProfileRoute
@@ -130,6 +139,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/mission'
+    | '/site'
     | '/app'
     | '/jobs'
     | '/profile'
@@ -143,6 +153,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/mission'
+    | '/site'
     | '/app'
     | '/jobs'
     | '/profile'
@@ -157,6 +168,7 @@ export interface FileRouteTypes {
     | '/_dashboard'
     | '/auth'
     | '/mission'
+    | '/site'
     | '/_dashboard/app'
     | '/_dashboard/jobs'
     | '/_dashboard/profile'
@@ -172,10 +184,18 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRouteWithChildren
   AuthRoute: typeof AuthRoute
   MissionRoute: typeof MissionRoute
+  SiteRoute: typeof SiteRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/site': {
+      id: '/site'
+      path: '/site'
+      fullPath: '/site'
+      preLoaderRoute: typeof SiteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/mission': {
       id: '/mission'
       path: '/mission'
@@ -294,6 +314,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRouteWithChildren,
   AuthRoute: AuthRoute,
   MissionRoute: MissionRoute,
+  SiteRoute: SiteRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
