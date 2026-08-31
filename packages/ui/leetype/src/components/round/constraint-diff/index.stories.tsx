@@ -70,3 +70,35 @@ export const MixedWithUnchangedDimension: Story = {
     />
   ),
 }
+
+/**
+ * Review finding on #1253: `ConstraintSchema.dimension` carries no length
+ * cap, so a dimension name can be long and unbroken. This story is the
+ * screenshot check for it — the row wraps onto a second line at the
+ * mobile1/390px viewport rather than overflowing past the card's
+ * `overflow-hidden` and silently clipping part of the bound.
+ */
+export const LongDimensionNameWraps: Story = {
+  render: () => (
+    <Phone
+      diff={{
+        before: [
+          {
+            dimension:
+              "numberOfElementsRemainingInTheHashMapAfterEveryInsertionAndRemoval",
+            operator: "<=",
+            bound: 1,
+          },
+        ],
+        after: [
+          {
+            dimension:
+              "numberOfElementsRemainingInTheHashMapAfterEveryInsertionAndRemoval",
+            operator: "<=",
+            bound: 2,
+          },
+        ],
+      }}
+    />
+  ),
+}

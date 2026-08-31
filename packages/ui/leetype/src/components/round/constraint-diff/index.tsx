@@ -127,7 +127,21 @@ export const ConstraintDiff: FC<ConstraintDiffProps> = ({
                   {row.kind === "add" ? "new bound: " : "old bound: "}
                 </span>
               )}
-              <span className={cn("text-foreground/90", paint.text)}>
+              {/* `min-w-0` so this item can actually shrink inside the flex
+                  row instead of forcing it wider than the card, and
+                  `break-words` so a dimension name with no natural break
+                  point (`ConstraintSchema.dimension` carries no length cap)
+                  wraps onto a second line rather than overflowing past the
+                  card's `overflow-hidden` and being silently clipped —
+                  losing part of a bound's digits that way could be misread
+                  as the real value, which is worse than the row simply
+                  growing taller (review finding on #1253). */}
+              <span
+                className={cn(
+                  "min-w-0 break-words text-foreground/90",
+                  paint.text
+                )}
+              >
                 {`${row.dimension} ${OPERATOR_SYMBOL[row.operator]} ${BOUND_FORMAT.format(row.bound)}`}
               </span>
             </div>

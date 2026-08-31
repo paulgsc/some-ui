@@ -65,4 +65,28 @@ describe("ConstraintDiff", () => {
     expect(container.textContent).not.toContain("old bound:")
     expect(container.textContent).not.toContain("new bound:")
   })
+
+  // Review finding on #1253: `ConstraintSchema.dimension` carries no length
+  // cap, and this card's outer wrapper is `overflow-hidden` — a long,
+  // unbroken dimension name with nowhere to wrap would overflow past the
+  // card and be silently clipped, potentially losing part of a bound's own
+  // digits. jsdom does not lay out real overflow, so this pins the class
+  // contract that prevents it (`min-w-0` lets the row text shrink instead of
+  // forcing the row wider than the card; `break-words` lets an unbroken
+  // dimension name wrap onto a second line) rather than measuring pixels.
+  it("lets a long, unbroken dimension name wrap instead of overflow", () => {
+    const longDimension =
+      "numberOfElementsRemainingInTheHashMapAfterEveryInsertionAndRemoval"
+    const diff: ConstraintDiffValue = {
+      before: [{ dimension: longDimension, operator: "<=", bound: 1 }],
+      after: [{ dimension: longDimension, operator: "<=", bound: 2 }],
+    }
+    const { container } = render(<ConstraintDiff diff={diff} />)
+    const text = [...container.querySelectorAll("[data-line-kind] span")].find(
+      (span) => span.textContent.includes(longDimension)
+    )
+    expect(text).toBeDefined()
+    expect(text?.className).toContain("min-w-0")
+    expect(text?.className).toContain("break-words")
+  })
 })
