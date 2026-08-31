@@ -1,10 +1,15 @@
 import {
   checkConstraintDimensions,
+  constraintDiffRows,
   dimensionsOfConstraints,
   evaluateConstraint,
 } from "@leetype/lib/leetype/constraint"
 import { dim, Loop, Seq, W } from "@leetype/lib/leetype/cost"
-import type { Constraint, ConstraintSet } from "@leetype/types/constraint"
+import type {
+  Constraint,
+  ConstraintDiff,
+  ConstraintSet,
+} from "@leetype/types/constraint"
 import { describe, expect, it } from "vitest"
 
 describe('evaluateConstraint — Def. 1.2\'s own "evaluable at a numeric point"', () => {
@@ -82,5 +87,59 @@ describe("checkConstraintDimensions — R2's own acceptance criterion", () => {
     ]
     const graph = Loop(dim("n"), Loop(dim("m"), W(1)))
     expect(checkConstraintDimensions(constraints, graph)).toEqual([])
+  })
+})
+
+describe("constraintDiffRows — R3's own row model", () => {
+  it("renders an unchanged dimension as a single context row", () => {
+    const diff: ConstraintDiff = {
+      before: [{ dimension: "n", operator: "<=", bound: 100000 }],
+      after: [{ dimension: "n", operator: "<=", bound: 100000 }],
+    }
+    expect(constraintDiffRows(diff)).toEqual([
+      {
+        index: 0,
+        kind: "context",
+        dimension: "n",
+        operator: "<=",
+        bound: 100000,
+      },
+    ])
+  })
+
+  it("renders a changed dimension as its old bound (del) immediately followed by its new bound (add)", () => {
+    const diff: ConstraintDiff = {
+      before: [{ dimension: "n", operator: "<=", bound: 100000 }],
+      after: [{ dimension: "n", operator: "<=", bound: 200000 }],
+    }
+    expect(constraintDiffRows(diff)).toEqual([
+      { index: 0, kind: "del", dimension: "n", operator: "<=", bound: 100000 },
+      { index: 1, kind: "add", dimension: "n", operator: "<=", bound: 200000 },
+    ])
+  })
+
+  it("orders rows by diff.before, mixing context and changed dimensions", () => {
+    const diff: ConstraintDiff = {
+      before: [
+        { dimension: "n", operator: "<=", bound: 100000 },
+        { dimension: "m", operator: "<=", bound: 100 },
+      ],
+      after: [
+        { dimension: "n", operator: "<=", bound: 200000 },
+        { dimension: "m", operator: "<=", bound: 100 },
+      ],
+    }
+    const rows = constraintDiffRows(diff)
+    expect(rows.map((row) => row.kind)).toEqual(["del", "add", "context"])
+    expect(rows.map((row) => row.dimension)).toEqual(["n", "n", "m"])
+  })
+
+  it("carries every changed dimension's own operator through both its del and add row", () => {
+    const diff: ConstraintDiff = {
+      before: [{ dimension: "k", operator: ">=", bound: 1 }],
+      after: [{ dimension: "k", operator: ">=", bound: 4 }],
+    }
+    const rows = constraintDiffRows(diff)
+    expect(rows.every((row) => row.operator === ">=")).toBe(true)
   })
 })

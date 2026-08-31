@@ -1,7 +1,8 @@
-import type { ComparisonOperator } from "@leetype/types/constraint"
+import type { ComparisonOperator, Constraint } from "@leetype/types/constraint"
 import {
   BudgetSchema,
   ComparisonOperatorSchema,
+  ConstraintDiffSchema,
   ConstraintSchema,
   ConstraintSetSchema,
 } from "@leetype/types/constraint"
@@ -106,5 +107,52 @@ describe("BudgetSchema", () => {
     expect(() =>
       BudgetSchema.parse({ operations: 1000, wallClock: "" })
     ).toThrow()
+  })
+})
+
+describe("ConstraintDiffSchema", () => {
+  const base: Constraint = { dimension: "n", operator: "<=", bound: 100000 }
+
+  it("accepts a pair whose bound moved on a shared dimension", () => {
+    const diff = { before: [base], after: [{ ...base, bound: 200000 }] }
+    expect(ConstraintDiffSchema.parse(diff)).toEqual(diff)
+  })
+
+  it("accepts a pair with one changed and one unchanged dimension", () => {
+    const second: Constraint = { dimension: "m", operator: "<=", bound: 100 }
+    const diff = {
+      before: [base, second],
+      after: [{ ...base, bound: 200000 }, second],
+    }
+    expect(ConstraintDiffSchema.parse(diff)).toEqual(diff)
+  })
+
+  // Def. 3.2's own requirement, R3's acceptance criterion word for word:
+  // "a pair that differs in nothing fails validation."
+  it("rejects a pair identical in every bound", () => {
+    const diff = { before: [base], after: [{ ...base }] }
+    expect(() => ConstraintDiffSchema.parse(diff)).toThrow()
+  })
+
+  it("rejects a pair that adds a dimension — out of Thm. 3.1's scope", () => {
+    const extra: Constraint = { dimension: "m", operator: "<=", bound: 10 }
+    const diff = { before: [base], after: [base, extra] }
+    expect(() => ConstraintDiffSchema.parse(diff)).toThrow()
+  })
+
+  it("rejects a pair that removes a dimension — out of Thm. 3.1's scope", () => {
+    const extra: Constraint = { dimension: "m", operator: "<=", bound: 10 }
+    const diff = { before: [base, extra], after: [base] }
+    expect(() => ConstraintDiffSchema.parse(diff)).toThrow()
+  })
+
+  it("rejects a pair that changes a dimension's operator — Thm. 3.1: only the bound moves", () => {
+    const changedOperator: Constraint = {
+      dimension: "n",
+      operator: "<",
+      bound: 200000,
+    }
+    const diff = { before: [base], after: [changedOperator] }
+    expect(() => ConstraintDiffSchema.parse(diff)).toThrow()
   })
 })

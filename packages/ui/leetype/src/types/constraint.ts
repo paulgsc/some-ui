@@ -76,3 +76,74 @@ export const BudgetSchema = z.object({
   wallClock: z.string().min(1).optional(),
 })
 export type Budget = z.infer<typeof BudgetSchema>
+
+const dimensionSetOf = (constraints: ConstraintSet): ReadonlySet<string> =>
+  new Set(constraints.map((constraint) => constraint.dimension))
+
+const constraintByDimension = (
+  constraints: ConstraintSet
+): ReadonlyMap<string, Constraint> =>
+  new Map(constraints.map((constraint) => [constraint.dimension, constraint]))
+
+/**
+ * `(C, C′)` (Def. 3.2, R3/#1206): a constraint perturbation, held as data so
+ * it can be rendered and reasoned about rather than described in prose.
+ *
+ * Theorem 3.1's own hypothesis is that only numeric bounds moved — `T` as a
+ * function, the set of dimensions, and each dimension's comparison operator
+ * all stay fixed. This schema rejects anything wider at parse time, per R3's
+ * own acceptance criterion ("a round whose constraint diff changes the
+ * *number* of dimensions, or their relationships, is out of Thm. 3.1's
+ * scope"): a dimension added or removed, an operator changed on a shared
+ * dimension, or a pair with no bound difference at all is not a `Def. 3.2`
+ * constraint diff — it is a different kind of change this schema does not
+ * model.
+ */
+export const ConstraintDiffSchema = z
+  .object({
+    before: ConstraintSetSchema,
+    after: ConstraintSetSchema,
+  })
+  .refine(
+    (diff) => {
+      const beforeDimensions = dimensionSetOf(diff.before)
+      const afterDimensions = dimensionSetOf(diff.after)
+      return (
+        beforeDimensions.size === afterDimensions.size &&
+        [...beforeDimensions].every((dimension) =>
+          afterDimensions.has(dimension)
+        )
+      )
+    },
+    {
+      message:
+        "a constraint diff must bound the same dimensions before and after — Thm. 3.1's own hypothesis is that only numeric bounds moved, so an added or removed dimension is a different kind of change than this schema models",
+    }
+  )
+  .refine(
+    (diff) => {
+      const after = constraintByDimension(diff.after)
+      return diff.before.every(
+        (constraint) =>
+          after.get(constraint.dimension)?.operator === constraint.operator
+      )
+    },
+    {
+      message:
+        "a constraint diff must not change a dimension's comparison operator — Thm. 3.1's hypothesis is that only the bound moves, never the relationship it expresses",
+    }
+  )
+  .refine(
+    (diff) => {
+      const after = constraintByDimension(diff.after)
+      return diff.before.some(
+        (constraint) =>
+          after.get(constraint.dimension)?.bound !== constraint.bound
+      )
+    },
+    {
+      message:
+        "a constraint diff must change at least one bound (Def. 3.2) — a pair identical in every bound is not a diff",
+    }
+  )
+export type ConstraintDiff = z.infer<typeof ConstraintDiffSchema>
