@@ -20,7 +20,7 @@
     "@some-ui/styles": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
     "@types/firefox-webext-browser": "^120.0.4",
-    "@unocss/cli": "^66.0.0",
+    "@unocss/cli": "^66.8.1",
     "@some-ui/fetch-kit": "workspace:*",
     "unocss": "^66.0.0",
     "vite": "^8.2.2",
