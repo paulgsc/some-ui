@@ -1,20 +1,25 @@
 import type {
   CostExpr,
   CostGraph,
+  CostPath,
   Dimension,
   Monomial,
 } from "@leetype/lib/leetype/cost"
 import {
   constantCost,
   costOf,
+  costOfPath,
   dim,
   dimensionsOfGraph,
   dimensionsOfMonomial,
+  dominantPaths,
   logDim,
   Loop,
+  monomialOfPath,
   multiplyMonomials,
   ONE,
   parseMonomial,
+  paths,
   printMonomial,
   scaleCost,
   Seq,
@@ -240,5 +245,93 @@ describe("dimensionsOfMonomial / dimensionsOfGraph — the identifiers R2 (#1205
       Seq(Loop(dim("n"), W(1)), Loop(dim("m", 2), W(1)))
     )
     expect(dimensionsOfGraph(graph)).toEqual(new Set(["n", "m"]))
+  })
+})
+
+describe("paths — every root-to-leaf path (G2, #1210, Thm. 2.1)", () => {
+  it("a bare W is one path with no loops", () => {
+    const leaf = W(5)
+    const [path] = paths(leaf)
+    expect(paths(leaf)).toHaveLength(1)
+    expect(path!.loops).toEqual([])
+    expect(path!.leaf).toBe(leaf)
+  })
+
+  it("Seq branches into one path per child — a disjoint union, per Thm. 2.1's own proof", () => {
+    const a = W(1)
+    const b = W(2)
+    const result = paths(Seq(a, b))
+    expect(result).toHaveLength(2)
+    expect(result.map((path) => path.leaf)).toEqual([a, b])
+  })
+
+  it("Loop prefixes its own node onto every path through its body", () => {
+    const outer = Loop(dim("n"), Seq(W(1), W(2)))
+    const result = paths(outer)
+    expect(result).toHaveLength(2)
+    for (const path of result) {
+      expect(path.loops).toEqual([outer])
+    }
+  })
+
+  it("carries the exact node references from G, not copies — what makes a CostPath renderable", () => {
+    const leafNode = W(1)
+    const innerLoop = Loop(dim("n"), leafNode)
+    const graph = Loop(dim("m"), innerLoop)
+    const [path] = paths(graph)
+    expect(path!.loops[0]).toBe(graph)
+    expect(path!.loops[1]).toBe(innerLoop)
+    expect(path!.leaf).toBe(leafNode)
+  })
+})
+
+describe("costOfPath — Thm. 2.1's own identity: summing every path's contribution reconstructs costOf(G)", () => {
+  // Two independent computations of the same quantity, over graphs varying
+  // in shape (bare leaf, Seq, Loop, nested) and in leaf coefficient (not
+  // just W(1)) — costOf recurses the tree directly; this sums each path's
+  // own leaf-times-monomial contribution instead.
+  const GRAPHS: ReadonlyArray<CostGraph> = [
+    W(5),
+    Seq(W(2), W(3)),
+    Loop(dim("n"), W(4)),
+    Loop(dim("n"), Seq(Loop(dim("n"), W(2)), Loop(dim("n", 2), W(3)))),
+    Seq(
+      Loop(dim("n"), W(1)),
+      Loop(dim("m"), Seq(W(4), Loop(dim("n", 2), W(2))))
+    ),
+  ]
+
+  it.each(GRAPHS)(
+    "reconstructs costOf(%#) from summed path contributions",
+    (graph) => {
+      const reconstructed = sumCost(...paths(graph).map(costOfPath))
+      expect(reconstructed).toEqual(costOf(graph))
+    }
+  )
+})
+
+describe("dominantPaths — Def. 2.3 / Cor. 2.1, Rem. 2.1's own instance", () => {
+  it("n(n + n^3)'s dominant path has degree 4 (Θ(n⁴)), never degree 5 (Rem. 2.1)", () => {
+    const graph = Loop(
+      dim("n"),
+      Seq(Loop(dim("n"), W(1)), Loop(dim("n", 3), W(1)))
+    )
+    const dominant: ReadonlyArray<CostPath> = dominantPaths(graph)
+    expect(dominant).toHaveLength(1)
+    expect(monomialOfPath(dominant[0]!)).toEqual(dim("n", 4))
+    // The depth-3-implies-n^5 misreading Rem. 2.1 exists specifically to punish.
+    expect(monomialOfPath(dominant[0]!)).not.toEqual(dim("n", 5))
+  })
+
+  it("returns every tied path — a set, not a singleton a caller could mistake for THE dominant path (Def. 2.3)", () => {
+    const graph = Seq(Loop(dim("n", 2), W(1)), Loop(dim("n", 2), W(1)))
+    expect(dominantPaths(graph)).toHaveLength(2)
+  })
+
+  it("a single-leaf graph's one path is trivially the dominant one", () => {
+    const graph = W(7)
+    const dominant = dominantPaths(graph)
+    expect(dominant).toHaveLength(1)
+    expect(dominant[0]!.leaf).toBe(graph)
   })
 })
