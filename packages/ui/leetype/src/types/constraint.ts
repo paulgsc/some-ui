@@ -32,14 +32,30 @@ export const ConstraintSchema = z.object({
 export type Constraint = z.infer<typeof ConstraintSchema>
 
 /**
- * `C` (Ax. 1.1): a round's whole constraint set. `0 < |C|` is not a
- * convention this schema chooses to enforce, it is the axiom itself — Def.
- * 3.1 (admissibility) has nothing to quantify over without at least one
- * bound, so an empty set is rejected at parse time rather than left for a
- * caller to notice its absence silently made every admissibility check
- * vacuously true.
+ * `C` (Ax. 1.1, Def. 1.2): a round's whole constraint set. `0 < |C|` is not
+ * a convention this schema chooses to enforce, it is the axiom itself —
+ * Def. 3.1 (admissibility) has nothing to quantify over without at least
+ * one bound, so an empty set is rejected at parse time rather than left
+ * for a caller to notice its absence silently made every admissibility
+ * check vacuously true. Def. 1.2 also defines `C` as a set "over distinct
+ * dimensions" — two constraints on the same dimension is not two
+ * independent bounds, it is one dimension with an ambiguous bound, so this
+ * schema rejects it at parse time for the same reason it rejects an empty
+ * set: leaving it for `checkConstraintDimensions` or an admissibility
+ * check to notice later would let malformed data reach either silently.
  */
-export const ConstraintSetSchema = z.array(ConstraintSchema).min(1)
+export const ConstraintSetSchema = z
+  .array(ConstraintSchema)
+  .min(1)
+  .refine(
+    (constraints) =>
+      new Set(constraints.map((constraint) => constraint.dimension)).size ===
+      constraints.length,
+    {
+      message:
+        "a constraint set must bound distinct dimensions (Def. 1.2) — two constraints on the same dimension is an ambiguous bound, not two independent ones",
+    }
+  )
 export type ConstraintSet = z.infer<typeof ConstraintSetSchema>
 
 /**

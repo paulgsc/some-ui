@@ -65,6 +65,24 @@ describe("ConstraintSetSchema", () => {
   it("rejects an empty set — Ax. 1.1's 0 < |C|", () => {
     expect(() => ConstraintSetSchema.parse([])).toThrow()
   })
+
+  it("accepts two constraints on distinct dimensions", () => {
+    const second = { ...VALID_CONSTRAINT, dimension: "m", bound: 100 }
+    expect(ConstraintSetSchema.parse([VALID_CONSTRAINT, second])).toEqual([
+      VALID_CONSTRAINT,
+      second,
+    ])
+  })
+
+  // Review finding on #1251: Def. 1.2 defines C as "a finite set of
+  // constraints over distinct dimensions" — two bounds on the same
+  // dimension is an ambiguous constraint, not two independent ones.
+  it('rejects two constraints on the same dimension — Def. 1.2\'s own "distinct dimensions"', () => {
+    const duplicate = { ...VALID_CONSTRAINT, operator: ">=", bound: 1 }
+    expect(() =>
+      ConstraintSetSchema.parse([VALID_CONSTRAINT, duplicate])
+    ).toThrow()
+  })
 })
 
 describe("BudgetSchema", () => {

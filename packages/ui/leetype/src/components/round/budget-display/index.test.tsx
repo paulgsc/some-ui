@@ -11,16 +11,24 @@ describe("BudgetDisplay", () => {
     expect(screen.getByText(/10,000,000 operations/)).toBeInTheDocument()
   })
 
-  it("renders the wall-clock annotation when the budget carries one", () => {
+  // Regression for a review finding on #1251: rendering `(~${wallClock})`
+  // against a caller-supplied "~1 second" produced "(~~1 second)" — a
+  // marker this component added on top of the caller's own. The prior
+  // version of this test used an unanchored regex (`/~1 second/`) that
+  // matched that malformed output too, which is exactly how the bug got
+  // past a green test suite — this asserts the full parenthesized text,
+  // and separately proves no doubled marker appears anywhere.
+  it("renders the wall-clock annotation verbatim, with no marker of its own added", () => {
     const budget: Budget = { operations: 10_000_000, wallClock: "~1 second" }
-    render(<BudgetDisplay budget={budget} />)
-    expect(screen.getByText(/~1 second/)).toBeInTheDocument()
+    const { container } = render(<BudgetDisplay budget={budget} />)
+    expect(screen.getByText("(~1 second)")).toBeInTheDocument()
+    expect(container.textContent).not.toContain("~~")
   })
 
-  it("omits any wall-clock text when the budget carries none", () => {
+  it("omits any parenthesized annotation when the budget carries no wall-clock figure", () => {
     const budget: Budget = { operations: 10_000_000 }
     const { container } = render(<BudgetDisplay budget={budget} />)
-    expect(container.textContent).not.toContain("(~")
+    expect(container.textContent).not.toMatch(/\(.*\)/)
   })
 
   // R2's own acceptance criterion, word for word: "not in a tooltip a

@@ -28,6 +28,12 @@ type BudgetDisplayProps = {
  * that the caveat is said, not that it is *available if asked for*: "not
  * in a tooltip a learner may never open" is this story's own acceptance
  * criterion, word for word.
+ *
+ * `wallClock` renders verbatim, parenthesized, with no marker of this
+ * component's own added — Def. 1.3 calls it "a wall-clock figure," not a
+ * fragment this renderer completes, so a caller who writes `"~1 second"`
+ * gets exactly `(~1 second)` rather than `(~~1 second)` from a `~` this
+ * file prepended on top of the caller's own (review finding on #1251).
  */
 export const BudgetDisplay: FC<BudgetDisplayProps> = ({
   budget,
@@ -45,7 +51,7 @@ export const BudgetDisplay: FC<BudgetDisplayProps> = ({
         {budget.wallClock !== undefined && (
           <span className="font-normal text-muted-foreground">
             {" "}
-            (~{budget.wallClock})
+            ({budget.wallClock})
           </span>
         )}
       </p>
