@@ -9,7 +9,12 @@
 
 import type { CostGraph, Dimension } from "@leetype/lib/leetype/cost"
 import { dimensionsOfGraph } from "@leetype/lib/leetype/cost"
-import type { Constraint, ConstraintSet } from "@leetype/types/constraint"
+import type {
+  Constraint,
+  ConstraintDiff,
+  ConstraintSet,
+} from "@leetype/types/constraint"
+import type { RenderedDiffLineKind } from "@leetype/types/exercise"
 import { assertNever } from "some-ui-utils"
 
 /**
@@ -76,4 +81,72 @@ export function checkConstraintDimensions(
     }
   }
   return violations
+}
+
+/**
+ * One row of a `ConstraintDiff`'s rendered comparison — the same
+ * `"context" | "del" | "add"` vocabulary `renderedDiffLineKinds`
+ * (`types/exercise.ts`) already established for a code diff's rendered
+ * lines, reused here rather than reinvented (R3's own acceptance criterion:
+ * "reusing `DiffCard`'s row model rather than inventing a second one").
+ */
+export type ConstraintDiffRow = {
+  index: number
+  kind: RenderedDiffLineKind
+  dimension: string
+  operator: Constraint["operator"]
+  bound: number
+}
+
+/**
+ * `(C, C′)` unrolled into the ordered row list `ConstraintDiff` (the
+ * component, `components/round/constraint-diff`) renders. A changed
+ * dimension becomes two adjacent rows — its old bound as `del`, immediately
+ * followed by its new bound as `add` — the same paired shape a code diff
+ * uses for a changed line; an unchanged dimension becomes one `context` row.
+ *
+ * Order follows `diff.before`. `ConstraintDiffSchema` already guarantees
+ * `diff.before` and `diff.after` bound the same dimensions (same size, same
+ * names, same operators) once a diff has actually parsed, so every
+ * `afterByDimension` lookup below finds a match for any caller passing a
+ * validated `ConstraintDiff` — the one case a lookup can miss is a `diff`
+ * hand-built to a type not actually validated by that schema, which is not
+ * this function's contract to guard against.
+ */
+export function constraintDiffRows(
+  diff: ConstraintDiff
+): ReadonlyArray<ConstraintDiffRow> {
+  const afterByDimension = new Map(
+    diff.after.map((constraint) => [constraint.dimension, constraint])
+  )
+  const rows: Array<ConstraintDiffRow> = []
+  for (const before of diff.before) {
+    const after = afterByDimension.get(before.dimension)
+    if (after === undefined) continue
+    if (after.bound === before.bound) {
+      rows.push({
+        index: rows.length,
+        kind: "context",
+        dimension: before.dimension,
+        operator: before.operator,
+        bound: before.bound,
+      })
+      continue
+    }
+    rows.push({
+      index: rows.length,
+      kind: "del",
+      dimension: before.dimension,
+      operator: before.operator,
+      bound: before.bound,
+    })
+    rows.push({
+      index: rows.length,
+      kind: "add",
+      dimension: after.dimension,
+      operator: after.operator,
+      bound: after.bound,
+    })
+  }
+  return rows
 }
