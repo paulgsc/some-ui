@@ -33,6 +33,26 @@ describe("CommitmentControl", () => {
     expect(screen.queryByTestId("reveal")).not.toBeInTheDocument()
   })
 
+  it("gives the button group an accessible name, defaulted so it is never nameless", () => {
+    render(<CommitmentControl options={OPTIONS} onCommit={vi.fn()} />)
+    expect(
+      screen.getByRole("group", { name: "Commitment" })
+    ).toBeInTheDocument()
+  })
+
+  it("takes a caller-supplied group label — #1200's real prompt, once it exists", () => {
+    render(
+      <CommitmentControl
+        options={OPTIONS}
+        onCommit={vi.fn()}
+        groupLabel="Is this claim true?"
+      />
+    )
+    expect(
+      screen.getByRole("group", { name: "Is this claim true?" })
+    ).toBeInTheDocument()
+  })
+
   it("styles abstention identically to a real option — same size, same weight, no muted affordance", () => {
     render(<CommitmentControl options={OPTIONS} onCommit={vi.fn()} />)
     const real = screen.getByRole("button", { name: "Correct" })

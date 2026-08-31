@@ -35,6 +35,14 @@ type CommitmentControlProps = {
    */
   reveal?: ReactNode
   className?: string
+  /**
+   * The button group's accessible name — what a screen reader announces
+   * before reading the options, since `role="group"` has none of its own.
+   * #1200 owns the actual question a round shows sighted users; this exists
+   * so the group is never nameless in the meantime, and a caller who does
+   * have a real prompt can pass it straight through.
+   */
+  groupLabel?: string
 }
 
 /**
@@ -74,6 +82,7 @@ export const CommitmentControl: FC<CommitmentControlProps> = ({
   onCommit,
   reveal,
   className,
+  groupLabel = "Commitment",
 }) => {
   const [committed, setCommitted] = useState<Commitment | null>(null)
 
@@ -103,7 +112,11 @@ export const CommitmentControl: FC<CommitmentControlProps> = ({
 
   return (
     <div className={cn("flex flex-col gap-3", className)}>
-      <div role="group" className="grid grid-cols-2 gap-2">
+      <div
+        role="group"
+        aria-label={groupLabel}
+        className="grid grid-cols-2 gap-2"
+      >
         {options.map((option) => {
           const commitment: Commitment = { kind: "choice", id: option.id }
           const picked = isPicked(commitment)
