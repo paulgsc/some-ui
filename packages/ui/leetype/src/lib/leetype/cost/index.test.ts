@@ -8,6 +8,8 @@ import {
   constantCost,
   costOf,
   dim,
+  dimensionsOfGraph,
+  dimensionsOfMonomial,
   logDim,
   Loop,
   multiplyMonomials,
@@ -207,4 +209,36 @@ describe("costOf — nesting multiplies (Def. 2.2, Loop), negative control", () 
       }
     }
   }
+})
+
+describe("dimensionsOfMonomial / dimensionsOfGraph — the identifiers R2 (#1205) checks a constraint's own dimension against", () => {
+  it("a bare monomial names its own dimension", () => {
+    expect(dimensionsOfMonomial(dim("n", 2))).toEqual(new Set(["n"]))
+  })
+
+  it("the constant monomial ONE names no dimension", () => {
+    expect(dimensionsOfMonomial(ONE)).toEqual(new Set())
+  })
+
+  it("a product monomial names every distinct factor's dimension once", () => {
+    expect(
+      dimensionsOfMonomial(multiplyMonomials(dim("n"), dim("m", 2)))
+    ).toEqual(new Set(["n", "m"]))
+  })
+
+  it("W alone names no dimension — only a Loop's repetition does", () => {
+    expect(dimensionsOfGraph(W(5))).toEqual(new Set())
+  })
+
+  it("collects a Loop's own dimension", () => {
+    expect(dimensionsOfGraph(Loop(dim("n"), W(1)))).toEqual(new Set(["n"]))
+  })
+
+  it("collects every dimension across nested Seq/Loop, deduplicated", () => {
+    const graph = Loop(
+      dim("n"),
+      Seq(Loop(dim("n"), W(1)), Loop(dim("m", 2), W(1)))
+    )
+    expect(dimensionsOfGraph(graph)).toEqual(new Set(["n", "m"]))
+  })
 })
