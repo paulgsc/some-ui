@@ -18,9 +18,19 @@
  *     `attributeFilter`) — catches `<head>`/`<body>` being swapped wholesale
  *     (they are `<html>`'s direct children) and `<html>`'s own attributes
  *     changing;
- *   - one on `document.head` (`childList` only) — catches the legacy
- *     `<style>` tag being individually added or removed without the rest of
- *     `<head>` going with it.
+ *   - one on `document.head` (`childList` + `subtree` + `characterData`) —
+ *     catches the legacy/dark `<style>` tag being individually added or
+ *     removed without the rest of `<head>` going with it, *and* a vendor
+ *     reconciler that retains the tag but clears or replaces its own
+ *     `textContent` in place (a `childList` mutation on the `<style>`
+ *     element itself, a descendant of `<head>`, not on `<head>` directly —
+ *     invisible to a non-subtree observer here, and invisible to
+ *     `pipeline.ts`'s own Sensor too, since that mutation's target carries
+ *     `[data-my-ext]` and is filtered out as self-authored). `subtree`
+ *     stays scoped to `<head>`, not `<html>`, so it does not become the
+ *     `subtree: true` walk this module's intro explains the cost of
+ *     avoiding — `<head>`'s children churn nowhere near as often as
+ *     `<body>`'s.
  *
  * `pipeline.ts`'s own Sensor already pays for a `subtree: true` walk in auto
  * mode, because it needs to find every vendor surface. This watchdog needs
@@ -181,7 +191,16 @@ export function createCoverageWatchdog(
     headObserver?.disconnect()
     observedHead = document.head
     headObserver = new MutationObserver(() => check("head-mutation"))
-    headObserver.observe(document.head, { childList: true })
+    // subtree + characterData: a content-only wipe of an existing extension
+    // <style> tag (textContent = "", or a direct Text.data mutation) must be
+    // caught here — see this module's header comment for why neither a
+    // childList-only observer on <head> itself nor pipeline.ts's Sensor sees
+    // it.
+    headObserver.observe(document.head, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    })
   }
 
   function check(reason: string): void {

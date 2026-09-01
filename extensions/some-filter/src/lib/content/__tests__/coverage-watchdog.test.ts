@@ -54,6 +54,33 @@ describe("coverage watchdog — dark-signal desync repair", () => {
     watchdog.teardown()
   })
 
+  it("re-arms the veil when the stylesheet is retained but its textContent is wiped in place", async () => {
+    // A vendor reconciler that keeps the <style> node but clears/replaces its
+    // text is invisible to a childList-only observer on <head> itself (the
+    // mutation's target is the <style> element, a descendant) and to
+    // pipeline.ts's Sensor (the target carries [data-my-ext] and is filtered
+    // as self-authored) — the exact gap the head observer's subtree +
+    // characterData options close.
+    installDarkTheme()
+    const tabState: TabState = "auto"
+    const recorder = createCoverageRecorder("test-dark-desync-wipe", false)
+    const watchdog = createCoverageWatchdog(recorder, () => tabState)
+
+    watchdog.observe()
+    await flushMicrotasks()
+    expect(document.getElementById(PREPAINT_VEIL_ID)).toBeNull()
+
+    const style = document.getElementById(DARK_THEME_STYLE_ID)
+    if (style === null) throw new Error("dark theme style missing")
+    style.textContent = ""
+    await flushMicrotasks()
+
+    expect(document.getElementById(PREPAINT_VEIL_ID)).not.toBeNull()
+    expect(document.documentElement.classList.contains("sw-dirty")).toBe(true)
+
+    watchdog.teardown()
+  })
+
   it("does not repair while the tab is off", async () => {
     installDarkTheme()
     const tabState: TabState = "off"
