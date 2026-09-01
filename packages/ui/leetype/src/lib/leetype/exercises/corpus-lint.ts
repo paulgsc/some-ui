@@ -356,6 +356,66 @@ export function checkNoMeasurementEntailmentClaim(
   return violations
 }
 
+// `Θ(`/`Ω(` need no boundary — neither ever appears as the tail of an
+// ordinary identifier the way `foo(` can end in a bare `o`. `O(` reuses
+// `CLASS_TERM_SYMBOL`'s own `\bO\(` care (review finding on #1240) for the
+// identical reason.
+const ASSERTED_CLASS_LITERAL = /Θ\(|Ω\(|\bO\(/
+
+/**
+ * Reviewed escape for `checkNoAssertedComplexityClassLiteral` (G3, Prop.
+ * 2.1): a sentence quoting a `CW-P` register proposition's own canonical
+ * wording, which legitimately uses `Θ(...)`/`O(...)`/`Ω(...)` as established
+ * notation for the proposition itself (e.g. `CW-P11`'s own "cannot change
+ * Θ(T)") rather than a corpus author's claim about one specific round's own
+ * algorithm. Add an entry only when the sentence is directly quoting
+ * register text — this list is not a way to let an author's own claim
+ * through.
+ */
+const ASSERTED_CLASS_LITERAL_EXEMPTIONS: ReadonlyArray<{
+  readonly sentence: string
+  readonly reason: string
+}> = []
+
+/**
+ * Prop. 2.1 ("a round ... never authors the `Θ`-class directly"), made
+ * mechanical (G3, #1211): a bare `Θ(`, `O(`, or `Ω(` literal anywhere in a
+ * step's authored prose is exactly the "hand-written judgement with no
+ * justification attached" the cost algebra (`lib/leetype/cost`) and
+ * admissibility (`lib/leetype/admissibility`) modules exist to replace —
+ * `printClass` is the only function in this workspace allowed to produce
+ * one. Same character as `checkNoMeasurementEntailmentClaim` right above:
+ * mechanical pattern match, not a judgement of whether the sentence is
+ * *good*, with a reviewed, named, per-sentence escape for a confirmed false
+ * positive (register text quoting a `CW-P` proposition's own wording).
+ */
+export function checkNoAssertedComplexityClassLiteral(
+  text: string,
+  where: string,
+  exemptions: ReadonlyArray<{
+    readonly sentence: string
+    readonly reason: string
+  }> = ASSERTED_CLASS_LITERAL_EXEMPTIONS
+): Array<string> {
+  const violations: Array<string> = []
+  for (const sentence of sentencesOf(text)) {
+    if (
+      ASSERTED_CLASS_LITERAL.test(sentence) &&
+      !isExemptSentence(sentence, exemptions)
+    ) {
+      violations.push(
+        `${where}: "${sentence}" asserts a complexity class as a literal — Prop. 2.1 ` +
+          "(complexity-witness-canon.typ) forbids authoring a Θ/O/Ω-class directly; it must be " +
+          "derived from a cost graph via evaluate/isAdmissible/printClass " +
+          "(lib/leetype/admissibility, lib/leetype/cost) instead. If this sentence is quoting a " +
+          "CW-P register proposition's own canonical wording rather than asserting a claim about " +
+          "a specific round, add it to ASSERTED_CLASS_LITERAL_EXEMPTIONS with a reason."
+      )
+    }
+  }
+  return violations
+}
+
 /** Every authored prose field of one step, each paired with where it was found (LTY-EXEC X4). */
 function proseFieldsOf(
   exercise: Exercise,
@@ -517,6 +577,9 @@ function lintStep(
   for (const field of proseFieldsOf(exercise, step)) {
     violations.push(
       ...checkNoMeasurementEntailmentClaim(field.text, field.where)
+    )
+    violations.push(
+      ...checkNoAssertedComplexityClassLiteral(field.text, field.where)
     )
   }
 

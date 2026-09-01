@@ -13,6 +13,7 @@ import {
   dimensionsOfGraph,
   dimensionsOfMonomial,
   dominantPaths,
+  dominantTerms,
   logDim,
   Loop,
   monomialOfPath,
@@ -20,6 +21,7 @@ import {
   ONE,
   parseMonomial,
   paths,
+  printClass,
   printMonomial,
   scaleCost,
   Seq,
@@ -372,5 +374,65 @@ describe("dominantPaths — Def. 2.3 / Cor. 2.1, Rem. 2.1's own instance", () =>
     const graph = Seq(Loop(dim("n", 2), W(0)), Loop(dim("n"), W(0)))
     expect(costOf(graph)).toEqual([])
     expect(dominantPaths(graph)).toEqual([])
+  })
+})
+
+describe("dominantTerms / printClass — G3's own derivation (Prop. 2.1)", () => {
+  it("a single-term expression's own term is trivially dominant", () => {
+    const cost = costOf(Loop(dim("n", 2), W(1)))
+    expect(dominantTerms(cost)).toEqual(cost)
+    expect(printClass(cost)).toBe("Θ(n^2)")
+  })
+
+  it("picks the higher-degree term out of a multi-term sum (n^2 + n^3 is dominated by n^3)", () => {
+    const cost = costOf(
+      Loop(dim("n"), Seq(Loop(dim("n"), W(1)), Loop(dim("n", 2), W(1))))
+    )
+    expect(cost).toEqual([
+      { coefficient: 1, monomial: dim("n", 2) },
+      { coefficient: 1, monomial: dim("n", 3) },
+    ])
+    expect(dominantTerms(cost)).toEqual([
+      { coefficient: 1, monomial: dim("n", 3) },
+    ])
+    expect(printClass(cost)).toBe("Θ(n^3)")
+  })
+
+  it("drops the coefficient — Ax. 3.1's coarseness means a constant factor was never part of the class", () => {
+    const cost = costOf(Loop(dim("n"), W(1000)))
+    expect(printClass(cost)).toBe("Θ(n)")
+  })
+
+  it('prints a genuine tie between distinct same-degree monomials as a sum (Def. 2.3, "need not be unique")', () => {
+    const cost = costOf(
+      Seq(
+        Loop(dim("n", 2), W(1)),
+        Loop(multiplyMonomials(dim("n"), dim("m")), W(1))
+      )
+    )
+    expect(dominantTerms(cost)).toHaveLength(2)
+    // normalizeCostExpr orders terms by monomial key ("pow:m:1,pow:n:1" sorts
+    // before "pow:n:2"), and printMonomial's own factor order within the n*m
+    // monomial is alphabetical too — hence "m * n" before "n^2", not the
+    // authoring order.
+    expect(printClass(cost)).toBe("Θ(m * n + n^2)")
+  })
+
+  it("T(G) identically 0 has no dominant term and prints Θ(0) rather than throwing", () => {
+    const cost = costOf(W(0))
+    expect(cost).toEqual([])
+    expect(dominantTerms(cost)).toEqual([])
+    expect(printClass(cost)).toBe("Θ(0)")
+  })
+
+  it("a log factor's degree still tie-breaks a pow-degree tie, same as dominantPaths (review finding on #1252)", () => {
+    const cost = costOf(
+      Seq(
+        Loop(dim("n"), W(1)),
+        Loop(multiplyMonomials(dim("n"), logDim("n")), W(1))
+      )
+    )
+    // Factors print in normalized order — "log:n" sorts before "pow:n".
+    expect(printClass(cost)).toBe("Θ(log n * n)")
   })
 })

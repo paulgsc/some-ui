@@ -6,7 +6,11 @@ import type {
 import { typingBlockFromDiff } from "@leetype/types/exercise"
 import { describe, expect, it } from "vitest"
 
-import { checkNoMeasurementEntailmentClaim, lintCorpus } from "./corpus-lint"
+import {
+  checkNoAssertedComplexityClassLiteral,
+  checkNoMeasurementEntailmentClaim,
+  lintCorpus,
+} from "./corpus-lint"
 import { ALL_FIXTURE_EXERCISES } from "./index"
 
 const failure: Block = {
@@ -324,5 +328,76 @@ describe("checkNoMeasurementEntailmentClaim — the two forbidden inferences (LT
       "fixture"
     )
     expect(violations).toEqual([])
+  })
+})
+
+describe("checkNoAssertedComplexityClassLiteral — no round anywhere holds a Θ string (G3, #1211, Prop. 2.1)", () => {
+  it("flags a bare Θ( literal", () => {
+    const violations = checkNoAssertedComplexityClassLiteral(
+      "This rewrite is Θ(n log n).",
+      "fixture"
+    )
+    expect(violations).toHaveLength(1)
+    expect(violations[0]).toContain("Θ(n log n)")
+    expect(violations[0]).toContain("Prop. 2.1")
+  })
+
+  it("flags a bare O( literal", () => {
+    const violations = checkNoAssertedComplexityClassLiteral(
+      "The naive approach is O(n^2).",
+      "fixture"
+    )
+    expect(violations).toHaveLength(1)
+  })
+
+  it("flags a bare Ω( literal", () => {
+    const violations = checkNoAssertedComplexityClassLiteral(
+      "Any comparison sort is Ω(n log n) in the worst case.",
+      "fixture"
+    )
+    expect(violations).toHaveLength(1)
+  })
+
+  it("does not mistake an ordinary call ending in 'o' for a standalone Big-O token", () => {
+    const violations = checkNoAssertedComplexityClassLiteral(
+      "The slow foo(input) call should be cached.",
+      "fixture"
+    )
+    expect(violations).toEqual([])
+  })
+
+  it("does not flag prose describing a class in words rather than notation", () => {
+    const violations = checkNoAssertedComplexityClassLiteral(
+      "This rewrite is linear, trading space for the repeated search it avoids.",
+      "fixture"
+    )
+    expect(violations).toEqual([])
+  })
+
+  it("is a heuristic with a reviewed, per-sentence escape for register text", () => {
+    const text =
+      "CW-P11 states that a rewrite off every dominant path cannot change Θ(T)."
+    const violations = checkNoAssertedComplexityClassLiteral(text, "fixture", [
+      {
+        sentence: text,
+        reason:
+          "quotes CW-P11's own canonical wording, not an authored claim about a round",
+      },
+    ])
+    expect(violations).toEqual([])
+  })
+
+  it("wires into lintCorpus over a step's goal", () => {
+    const step = diagnosticStep({
+      goal: "Recognize that this repair changes the class to Θ(n).",
+    })
+    const violations = lintCorpus([{ id: "e1", title: "t", steps: [step] }])
+    expect(violations.some((v) => v.includes("Prop. 2.1"))).toBe(true)
+  })
+
+  it("finds no violations in the validated shim corpus — the real corpus holds no asserted class literal", () => {
+    expect(
+      lintCorpus(ALL_FIXTURE_EXERCISES).filter((v) => v.includes("Prop. 2.1"))
+    ).toEqual([])
   })
 })
