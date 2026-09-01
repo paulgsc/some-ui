@@ -32,6 +32,7 @@ function check(
 
 const CoverageHeld = findInvariant("CoverageHeld")
 const LegacySignalsAgree = findInvariant("LegacySignalsAgree")
+const DarkSignalsAgree = findInvariant("DarkSignalsAgree")
 const VeilColorMatchesLegacyState = findInvariant("VeilColorMatchesLegacyState")
 
 /** A context where nothing is covering the page and nothing is declared active — every field explicit so each test only overrides what it means to vary. */
@@ -44,6 +45,7 @@ function baseContext(
     veilPresent: false,
     dirtyClassPresent: false,
     darkThemeActive: false,
+    darkStyleActive: false,
     legacyAttrPresent: false,
     legacyStyleActive: false,
     veilBackgroundColor: null,
@@ -58,8 +60,21 @@ describe("CoverageHeld — Remark C.1's zero-leak invariant", () => {
   })
 
   it("holds when the dark theme is active", () => {
-    const ctx = baseContext({ tabState: "auto", darkThemeActive: true })
+    const ctx = baseContext({
+      tabState: "auto",
+      darkThemeActive: true,
+      darkStyleActive: true,
+    })
     expect(check(CoverageHeld, ctx)).toEqual({ ok: true })
+  })
+
+  it("is violated when data-sw-dark is declared but the theme stylesheet is not actually there", () => {
+    const ctx = baseContext({
+      tabState: "auto",
+      darkThemeActive: true,
+      darkStyleActive: false,
+    })
+    expect(check(CoverageHeld, ctx).ok).toBe(false)
   })
 
   it("holds when the veil element is present", () => {
@@ -132,6 +147,28 @@ describe("LegacySignalsAgree", () => {
       legacyStyleActive: true,
     })
     expect(check(LegacySignalsAgree, ctx).ok).toBe(false)
+  })
+})
+
+describe("DarkSignalsAgree", () => {
+  it("holds when both the attribute and the stylesheet are present", () => {
+    const ctx = baseContext({ darkThemeActive: true, darkStyleActive: true })
+    expect(check(DarkSignalsAgree, ctx)).toEqual({ ok: true })
+  })
+
+  it("holds when neither is present", () => {
+    const ctx = baseContext({ darkThemeActive: false, darkStyleActive: false })
+    expect(check(DarkSignalsAgree, ctx)).toEqual({ ok: true })
+  })
+
+  it("is violated when the attribute is declared but the stylesheet is missing — a <head> replacement carried it off", () => {
+    const ctx = baseContext({ darkThemeActive: true, darkStyleActive: false })
+    expect(check(DarkSignalsAgree, ctx).ok).toBe(false)
+  })
+
+  it("is violated when the stylesheet is present but the attribute is missing", () => {
+    const ctx = baseContext({ darkThemeActive: false, darkStyleActive: true })
+    expect(check(DarkSignalsAgree, ctx).ok).toBe(false)
   })
 })
 

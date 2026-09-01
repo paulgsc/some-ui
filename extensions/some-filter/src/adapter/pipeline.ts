@@ -200,6 +200,32 @@ function canvasAttrFrom(raw: RawCarrierColor): SurfaceAttr {
 }
 
 /**
+ * True while prepaint.css's `html.sw-dirty > body { background-color: ...
+ * !important }` backstop (that file's own header comment has the full
+ * rationale) is forcing `body`'s computed background regardless of what the
+ * vendor actually declared. `withVendorColorsVisible` below only suppresses
+ * this extension's *theme* stylesheets (`OWN_COLOR_SHEET_IDS`) — the
+ * backstop lives in prepaint.css, a separate, manifest-injected stylesheet
+ * that also carries the veil element's own visible styling, so disabling
+ * the whole sheet for the duration of a scan is not the safe, side-effect-free
+ * option that disabling the two theme sheets is (a thrown scan before the
+ * sheet is re-enabled would leave the veil itself unstyled, not just
+ * untheme the page).
+ *
+ * `!important` plus this rule's `html.sw-dirty > body` specificity beats any
+ * plain (non-`!important`) vendor `body` background — confirmed directly:
+ * a vendor `body { background: white }` rule reads back through
+ * `getComputedStyle` as this rule's own forced color while `sw-dirty` is
+ * set, not the vendor's. That is the common case (most vendor CSS does not
+ * mark its own background `!important`), and `sw-dirty` is active for the
+ * *entire* first classification by design (the ADR: "classification runs
+ * while the veil remains visible") — not just during a repair path.
+ */
+function bodyCanvasBackstopActive(): boolean {
+  return document.documentElement.classList.contains(PREPAINT_DIRTY_CLASS)
+}
+
+/**
  * Resolves `html`'s effective canvas evidence — the substrate a fully
  * transparent light-DOM stack leaves showing through as the browser's own
  * white default paint. This is *not* simply `html`'s own declared
@@ -216,10 +242,31 @@ function canvasAttrFrom(raw: RawCarrierColor): SurfaceAttr {
  * "unknown means light" bias `readAttr` already applies to a gradient-only
  * surface — generalized to "no resolvable color anywhere the canvas could
  * get one from," not to "this one element's read came back empty."
+ *
+ * Returns `null` — no evidence, not "confidently bright" and not
+ * "confidently dark" — when the fallback-to-`body` read would be taken
+ * while `bodyCanvasBackstopActive()`. That is a deliberately weaker
+ * response than marking the attr `rendered: false`: `pageAlreadyDark()`'s
+ * canvas branch treats *any* untrustworthy canvas evidence as a veto
+ * ("unknown never earns restore-native", Requirement 3) — correct for a
+ * carrier that is genuinely hidden or too transparent to read, where
+ * *something* about it is still known. A backstop-contaminated read carries
+ * no information about the vendor's color in either direction; folding it
+ * into the same veto path would force "not already dark" for the *entire*
+ * first classification on any page where `html` itself declares no
+ * background (the common case), silently disabling already-dark detection
+ * on initial load rather than merely losing #1257's extra protection for
+ * this one evidence source on this one round. Omitting the key instead
+ * means `ingest()`'s `update()` call is simply skipped for it this round —
+ * the hypothesis is append-only, so a prior, uncontaminated reading (if
+ * any) is left standing rather than overwritten with a value this read
+ * cannot actually support.
  */
-function readHtmlCanvasAttr(): SurfaceAttr {
+function readHtmlCanvasAttr(): SurfaceAttr | null {
   const html = readRawCarrierColor(document.documentElement)
   if (html.color !== null) return canvasAttrFrom(html)
+
+  if (bodyCanvasBackstopActive()) return null
 
   const body = readRawCarrierColor(document.body)
   return canvasAttrFrom(body)
@@ -241,7 +288,8 @@ export function scanCanvas(
   root: Element
 ): ReadonlyMap<SurfaceKey, SurfaceAttr> {
   const attrs = new Map<SurfaceKey, SurfaceAttr>()
-  attrs.set(CANVAS_KEY_HTML, readHtmlCanvasAttr())
+  const htmlAttr = readHtmlCanvasAttr()
+  if (htmlAttr !== null) attrs.set(CANVAS_KEY_HTML, htmlAttr)
   if (root !== document.body && root !== document.documentElement) {
     attrs.set(CANVAS_KEY_ROOT, canvasAttrFrom(readRawCarrierColor(root)))
   }

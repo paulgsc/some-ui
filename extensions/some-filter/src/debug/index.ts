@@ -70,6 +70,7 @@ function isCoverageContext(value: unknown): value is CoverageContext {
     typeof Reflect.get(value, "veilPresent") === "boolean" &&
     typeof Reflect.get(value, "dirtyClassPresent") === "boolean" &&
     typeof Reflect.get(value, "darkThemeActive") === "boolean" &&
+    typeof Reflect.get(value, "darkStyleActive") === "boolean" &&
     typeof Reflect.get(value, "legacyAttrPresent") === "boolean" &&
     typeof Reflect.get(value, "legacyStyleActive") === "boolean"
   )
@@ -250,6 +251,7 @@ const COUNTER_ORDER = [
   "coverage_checks",
   "coverage_violations",
   "legacy_signal_mismatches",
+  "dark_signal_mismatches",
   "veil_color_mismatches",
 ]
 

@@ -18,9 +18,19 @@
  *     `attributeFilter`) — catches `<head>`/`<body>` being swapped wholesale
  *     (they are `<html>`'s direct children) and `<html>`'s own attributes
  *     changing;
- *   - one on `document.head` (`childList` only) — catches the legacy
- *     `<style>` tag being individually added or removed without the rest of
- *     `<head>` going with it.
+ *   - one on `document.head` (`childList` + `subtree` + `characterData`) —
+ *     catches the legacy/dark `<style>` tag being individually added or
+ *     removed without the rest of `<head>` going with it, *and* a vendor
+ *     reconciler that retains the tag but clears or replaces its own
+ *     `textContent` in place (a `childList` mutation on the `<style>`
+ *     element itself, a descendant of `<head>`, not on `<head>` directly —
+ *     invisible to a non-subtree observer here, and invisible to
+ *     `pipeline.ts`'s own Sensor too, since that mutation's target carries
+ *     `[data-my-ext]` and is filtered out as self-authored). `subtree`
+ *     stays scoped to `<head>`, not `<html>`, so it does not become the
+ *     `subtree: true` walk this module's intro explains the cost of
+ *     avoiding — `<head>`'s children churn nowhere near as often as
+ *     `<body>`'s.
  *
  * `pipeline.ts`'s own Sensor already pays for a `subtree: true` walk in auto
  * mode, because it needs to find every vendor surface. This watchdog needs
@@ -37,10 +47,21 @@
  * The head observer is re-attached whenever the html observer sees `<head>`
  * itself get replaced (the `document.head` a listener captured at `observe()`
  * time is not the live one after that).
+ *
+ * ## Not purely observational
+ *
+ * One violation gets repaired here, not just recorded: `DarkSignalsAgree`
+ * (`data-sw-dark` still declared true while `#__sw_dark_theme`'s actual CSS
+ * is gone) re-arms the prepaint veil — see `repairDarkDesync()`. That is the
+ * one gap this watchdog is positioned to close safely and unambiguously; the
+ * legacy pair and the general "nothing at all is covering the page" case are
+ * left to the existing recovery paths (nav-finish, the pipeline's own
+ * reactive rescan) for reasons `repairDarkDesync()`'s own comment covers.
  */
 
 import {
   DARK_THEME_ATTR,
+  DARK_THEME_STYLE_ID,
   LEGACY_FILTER_STYLE_ID,
   LEGACY_THEME_ATTR,
 } from "@filter/lib/content/theme-apply"
@@ -54,7 +75,11 @@ import {
   type CoverageEventKind,
   type CoverageRecorder,
 } from "./coverage-observability"
-import { PREPAINT_DIRTY_CLASS, PREPAINT_VEIL_ID } from "./prepaint"
+import {
+  enablePrepaint,
+  PREPAINT_DIRTY_CLASS,
+  PREPAINT_VEIL_ID,
+} from "./prepaint"
 
 export type CoverageWatchdog = {
   /** Attach both observers. Idempotent. */
@@ -77,6 +102,10 @@ const EVENT_FOR: Readonly<
     violated: "legacy.signal_mismatch",
     recovered: "legacy.signal_resolved",
   },
+  DarkSignalsAgree: {
+    violated: "dark.signal_mismatch",
+    recovered: "dark.signal_resolved",
+  },
   VeilColorMatchesLegacyState: {
     violated: "veil.color_mismatch",
     recovered: "veil.color_resolved",
@@ -86,6 +115,7 @@ const EVENT_FOR: Readonly<
 const COUNTER_FOR: Readonly<Record<string, CoverageCounter>> = {
   CoverageHeld: "coverage_violations",
   LegacySignalsAgree: "legacy_signal_mismatches",
+  DarkSignalsAgree: "dark_signal_mismatches",
   VeilColorMatchesLegacyState: "veil_color_mismatches",
 }
 
@@ -93,6 +123,7 @@ function collectContext(getTabState: () => TabState): CoverageContext {
   const html = document.documentElement
   const veil = document.getElementById(PREPAINT_VEIL_ID)
   const legacyStyle = document.getElementById(LEGACY_FILTER_STYLE_ID)
+  const darkStyle = document.getElementById(DARK_THEME_STYLE_ID)
 
   return {
     now: Date.now(),
@@ -100,6 +131,7 @@ function collectContext(getTabState: () => TabState): CoverageContext {
     veilPresent: veil !== null,
     dirtyClassPresent: html.classList.contains(PREPAINT_DIRTY_CLASS),
     darkThemeActive: html.hasAttribute(DARK_THEME_ATTR),
+    darkStyleActive: darkStyle?.textContent.includes("--sw-bg-0") ?? false,
     legacyAttrPresent: html.hasAttribute(LEGACY_THEME_ATTR),
     legacyStyleActive: legacyStyle?.textContent.includes("filter:") ?? false,
     veilBackgroundColor:
@@ -107,6 +139,40 @@ function collectContext(getTabState: () => TabState): CoverageContext {
         ? getComputedStyle(veil).backgroundColor
         : null,
   }
+}
+
+/**
+ * Repair the one coverage gap this watchdog can safely close on its own:
+ * `data-sw-dark` (declared, `<html>`, survives a `<head>` swap) still says
+ * the static dark-theme layer should be on, but `#__sw_dark_theme` (real,
+ * inside `<head>`) is gone — a vendor document flush carried off the
+ * stylesheet and left the attribute behind. content.ts still believes dark
+ * is required; nothing is currently rendering it. Re-arming the veil closes
+ * that window until the next pipeline round (nav-finish, or the Sensor's own
+ * reactive rescan) settles a fresh verdict and lifts it again.
+ *
+ * Deliberately narrower than "any CoverageHeld violation": the same
+ * invariant also fires, correctly, whenever `decide()` itself emits
+ * `restore-native` (the page reads as already dark, so content.ts's onFire
+ * calls `disablePrepaint()` on purpose) — there both signals go false
+ * *together*, `darkThemeActive === darkStyleActive` still holds, and
+ * `DarkSignalsAgree` does not fire. Keying the repair off that invariant
+ * instead of `CoverageHeld` is what keeps a correct "native already dark,
+ * nothing to cover" verdict from being clobbered by a veil that would never
+ * come back down.
+ *
+ * The legacy pair gets no equivalent repair here: `VeilColorMatchesLegacyState`
+ * documents why the veil's *color* under legacy is selected from the
+ * `data-sw-legacy` attribute alone (prepaint.css's `html[data-sw-legacy]`
+ * selector), so re-arming it while that attribute is stale but the filter
+ * genuinely isn't running would paint a white veil with no invert() left to
+ * composite it back to dark — trading one gap for a literal flash. The dark
+ * veil's color has no such dependency, so no equivalent risk exists here.
+ */
+function repairDarkDesync(ctx: CoverageContext): void {
+  if (ctx.tabState !== "auto") return
+  if (!ctx.darkThemeActive || ctx.darkStyleActive) return
+  enablePrepaint()
 }
 
 export function createCoverageWatchdog(
@@ -125,7 +191,16 @@ export function createCoverageWatchdog(
     headObserver?.disconnect()
     observedHead = document.head
     headObserver = new MutationObserver(() => check("head-mutation"))
-    headObserver.observe(document.head, { childList: true })
+    // subtree + characterData: a content-only wipe of an existing extension
+    // <style> tag (textContent = "", or a direct Text.data mutation) must be
+    // caught here — see this module's header comment for why neither a
+    // childList-only observer on <head> itself nor pipeline.ts's Sensor sees
+    // it.
+    headObserver.observe(document.head, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    })
   }
 
   function check(reason: string): void {
@@ -137,6 +212,13 @@ export function createCoverageWatchdog(
     // module's header) but recording the outcome need not block it.
     void runInvariants(coverageInvariants, ctx, ctx.now).then((results) => {
       for (const result of results) {
+        if (
+          result.name === "DarkSignalsAgree" &&
+          result.status === "violated"
+        ) {
+          repairDarkDesync(ctx)
+        }
+
         const previous = lastStatus.get(result.name)
         lastStatus.set(result.name, result.status)
         if (result.status === previous) continue
