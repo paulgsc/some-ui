@@ -132,13 +132,20 @@ prevents a forced, rushed migration later.
 
 ### A4 · CI Auto-Sign on Main Merge _(weight: 4)_
 
-This is a process control, not a code issue. The current CI pipeline triggers `web-ext sign`
-automatically on every push to `main`. Until all A/B footguns are resolved, an automatic sign
-risks creating a non-compliant AMO version that then triggers a disable or 30-day warning.
+This is a process control, not a code issue. Auto-signing on every push to `main` risks creating
+a non-compliant AMO version that then triggers a disable or 30-day warning before a human ever
+looks at the diff.
 
-**Fix:** Gate the sign workflow behind a manual `workflow_dispatch` trigger (or a protected tag)
-until a compliance audit confirms the build is clean. Reinstate automatic signing once the
-pre-sign checklist passes in CI.
+**Fix:** Gate signing behind either a manual `workflow_dispatch` trigger (extension-sign-manual.yml)
+or a reviewed, human-merged release PR (extension-release.yml — see §10). Only reinstate either
+path for an extension once a compliance audit confirms the build is clean.
+
+**Status:** `suspender-ledger` has passed AMO review (0.2.1, approved 2026-08-26) and is the one
+extension currently opted into `extension-release.yml`'s automated release PR — see §10. Signing
+still requires a human to merge that PR; nothing publishes unreviewed. Every other extension in
+this workspace remains manual-only (`extension-sign-manual.yml`, gated by the
+`compliance_confirmed` checkbox) until its own A+B footguns are resolved and it's added to that
+workflow's extension allowlist.
 
 ---
 
@@ -481,10 +488,10 @@ scripts from AMO-managed resources without declaring them in `web_accessible_res
 
 ## 10. CI/CD Pipeline
 
-### Current pipeline (do not trigger sign until footguns resolved)
+### Verification (every extension, every push/PR)
 
 ```
-push to main
+push to main / PR
 └── extension-detect (discovers changed extensions)
     └── extension-verify (per changed extension)
         ├── typecheck
@@ -492,17 +499,50 @@ push to main
         ├── test
         ├── build:firefox
         └── web-ext lint --source-dir dist --self-hosted --warnings-as-errors
-            └── [MANUAL ONLY] extension-sign
-                ├── web-ext sign --channel=unlisted
-                └── upload source archive to AMO developer hub
 ```
 
-### Required additions before reinstating auto-sign
+### Signing — two paths, both human-gated
 
-1. `package:source` step — produces reproducible source `.zip` from git tree
-2. `upload:source` step — uploads the archive to the AMO version page via AMO API
-3. `notes:reviewers` — posts the "Notes to Reviewers" text via AMO API
-4. All A+B footguns resolved (tracked in epic issue)
+**Manual (`extension-sign-manual.yml`)** — any extension, `workflow_dispatch` only, hard-gated by
+the `compliance_confirmed` checkbox referencing epic #310 §11's pre-sign checklist.
+
+**Automated release PR (`extension-release.yml`)** — opted-in extensions only (currently just
+`suspender-ledger`; see A4's Status note above for what "opted in" requires):
+
+```
+commit reachable from an opted-in extension lands on main
+└── detect (turbo dry-run diff against the previous push)
+    ├── nothing changed                         -> stop
+    ├── extension changed                       -> release-pr
+    │     ├── draft-release-notes.sh drafts changeset body from commit
+    │     │   subjects since the last release
+    │     ├── changeset version bump: package.json + CHANGELOG.md
+    │     ├── sync-manifest-version.mjs: public/manifest.firefox.json
+    │     │   follows package.json — one field to review, not two
+    │     └── opens/updates a PR (changeset-release/extension-<name>)
+    │           a human reviews it — the CHANGELOG section becomes the
+    │           public AMO release notes, so this is where draft bullets
+    │           get turned into real prose — and merges it (squash)
+    └── this push *is* that squash-merge commit -> build-workspace + sign
+          ├── build-amo-metadata.mjs: CHANGELOG.md section -> release_notes,
+          │   README.build.md -> approval_notes (both capped at AMO's 3000
+          │   char limit; a version/changelog mismatch fails the sign
+          │   rather than submitting stale or missing notes)
+          └── _extension-sign.yml: web-ext sign --amo-metadata ...
+                (still package:source + upload-source-code, as before)
+```
+
+The merge itself is the human confirmation that used to come from the manual workflow's
+`compliance_confirmed` checkbox — nothing reaches AMO without a person reviewing a diff first.
+Neither path skips `package:source`/`upload:source`/AMO reviewer-notes — the automated path just
+stopped requiring a human to retype the version notes and reviewer notes into the AMO dashboard
+by hand after every sign (see extensions/scripts/build-amo-metadata.mjs).
+
+Extending the automated path to another extension once its own A+B footguns are resolved: add it
+to `extension-release.yml`'s `EXTENSION_NAME`/allowlist (currently hardcoded to one extension —
+see the workflow's header comment for why it isn't a matrix yet), and give it a `CHANGELOG.md`
+bootstrapped with its currently-published version's notes (`build-amo-metadata.mjs` no-ops for
+any extension without one, so this is opt-in per extension, not a workspace-wide switch).
 
 ### Secrets required
 

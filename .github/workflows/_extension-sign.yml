@@ -37,6 +37,14 @@ jobs:
         with:
           name: workspace-dist
           path: packages
+      # package.json is the single field a human (or extension-release.yml's
+      # changeset bump) edits; public/manifest.firefox.json carries its own
+      # copy of `version` that AMO actually reads from the built xpi, and
+      # nothing else keeps it in sync. Stamp it here so even a manually
+      # triggered sign (extension-sign-manual.yml) can't ship a drifted
+      # version.
+      - name: Sync manifest version
+        run: nix develop .#ci --command node extensions/scripts/sync-manifest-version.mjs "${{ matrix.extension_path }}"
       # Build the extension itself — workspace deps already present from artifact.
       - name: Build release artifact
         run: nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" build
@@ -46,6 +54,13 @@ jobs:
         run: |
           nix develop .#ci --command bash extensions/scripts/package-source.sh \
             "${{ matrix.extension_path }}"
+      # Builds the AMO "Version Notes" / "Notes for Reviewers" submission
+      # from CHANGELOG.md + README.build.md (see the script header for the
+      # exact field mapping). No-ops if the extension has no CHANGELOG.md
+      # yet — it just hasn't opted into automated release notes, so this
+      # sign falls back to whatever's already sitting in the AMO dashboard.
+      - name: Build AMO submission metadata
+        run: nix develop .#ci --command node extensions/scripts/build-amo-metadata.mjs "${{ matrix.extension_path }}"
       # Submits the xpi and, in the same request, PATCHes the source archive onto
       # the version web-ext just created (A1 fix). The previous approach signed
       # first and then PATCHed a hand-rolled `.../versions/upload/` URL as a
@@ -71,12 +86,19 @@ jobs:
             exit 1
           fi
 
+          AMO_METADATA=()
+          METADATA_FILE="${{ matrix.extension_path }}/artifacts/amo-metadata.json"
+          if [ -f "$METADATA_FILE" ]; then
+            AMO_METADATA=(--amo-metadata "$METADATA_FILE")
+          fi
+
           nix develop .#ci --command web-ext sign \
             --source-dir "${{ matrix.extension_path }}/dist" \
             --channel unlisted \
             --api-key "${{ secrets.AMO_JWT_ISSUER }}" \
             --api-secret "${{ secrets.AMO_JWT_SECRET }}" \
             --upload-source-code "$ARCHIVE" \
+            "${AMO_METADATA[@]}" \
             --approval-timeout 0 \
             --artifacts-dir artifacts 2>&1 | tee sign-output.log
       # --approval-timeout 0 above means web-ext returns as soon as the version
