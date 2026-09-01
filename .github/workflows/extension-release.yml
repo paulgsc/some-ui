@@ -1,0 +1,220 @@
+name: Extension Release
+# Publish cadence for AMO extensions that have cleared compliance (epic
+# #310) and are explicitly opted in below. Automates the two manual steps
+# that were blocking a regular cadence:
+#   a) bumping the extension version (package.json + the manifest's own
+#      copy of `version`, which used to drift independently)
+#   b) writing the AMO "Version Notes" / "Notes for Reviewers" text by hand
+#      into the developer hub after every sign
+#
+# Flow (mirrors www-docker-release.yml's release-PR pattern):
+#   a commit reachable from an opted-in extension lands on `main`
+#     -> detect job notices via a turbo dry-run diff
+#     -> release-pr job drafts a changeset (commit subjects since the last
+#        release, via extensions/scripts/draft-release-notes.sh), bumps the
+#        version + CHANGELOG.md, and opens/updates a PR on its own branch
+#   a human reviews that PR — the CHANGELOG section it adds becomes the
+#     public AMO release notes, so this is the point to turn the draft
+#     bullets into real prose — and merges it (squash)
+#     -> that merge is itself the compliance confirmation
+#        extension-sign-manual.yml's checkbox exists to get from a human;
+#        detect job recognizes the release commit and routes straight to
+#        build+sign, no separate manual dispatch needed
+#     -> build-workspace + sign build the extension and call
+#        _extension-sign.yml, which now injects the CHANGELOG section and
+#        README.build.md as --amo-metadata (release_notes/approval_notes)
+#
+# Deliberately NOT changesets/action, and NOT the shared `.changeset/`
+# release branch release.yml and wasm-release.yml already point
+# changesets/action at: a third consumer of `changeset-release/main` would
+# mix an unrelated AMO-publish decision into the same PR as npm version
+# bumps (see www-docker-release.yml's header for the same reasoning). This
+# runs `@changesets/cli` directly on its own branch instead, isolated via
+# .github/actions/extension-release-version's stash-and-restore trick, so
+# review here is scoped to "does this diff warrant a new AMO version" and
+# nothing else.
+#
+# No cron/polling scheduler: GitHub Actions already fires instantly on
+# push and on the release PR's merge, which is strictly more reliable than
+# monitoring for a PR on an interval. The "cadence" is however often a
+# maintainer chooses to merge the standing release PR — changesets
+# naturally batches every commit since the last release into it.
+#
+# Extensions still gated by epic #310 are unaffected: this workflow only
+# ever acts on EXTENSION_NAME below, and extension-sign-manual.yml remains
+# the manual escape hatch (backfills, or any extension not yet opted in).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "extensions/suspender-ledger/**"
+      - "extensions/common/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - ".changeset/**"
+      - ".github/workflows/extension-release.yml"
+      - ".github/workflows/_extension-sign.yml"
+      - ".github/actions/extension-release-detect/**"
+      - ".github/actions/extension-release-version/**"
+  workflow_dispatch:
+    inputs:
+      publish_only:
+        description: "Skip detection/PR and sign straight from the extension's current package.json version (use to retry a publish that failed after the release PR merged)"
+        type: boolean
+        default: false
+env:
+  EXTENSION_NAME: suspender-ledger
+  RELEASE_COMMIT_MESSAGE: "chore(release): publish extension suspender-ledger"
+  RELEASE_BRANCH: "changeset-release/extension-suspender-ledger"
+  CHANGESET_PREFIX: "ext-suspender-ledger-"
+permissions:
+  contents: read
+concurrency:
+  group: extension-release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  # ── Detect whether this extension's build graph actually changed ────────
+  detect:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      release_mode: ${{ steps.detect.outputs.release_mode }}
+      package_name: ${{ steps.pkg.outputs.name }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: pkg
+        run: echo "name=$(jq -r .name extensions/${{ env.EXTENSION_NAME }}/package.json)" >> "$GITHUB_OUTPUT"
+      - uses: ./.github/actions/nix-setup
+      - uses: ./.github/actions/pnpm-cache
+      - name: Install dependencies
+        run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline
+        env:
+          HUSKY: 0
+      - id: detect
+        uses: ./.github/actions/extension-release-detect
+        with:
+          event-name: ${{ github.event_name }}
+          publish-only: ${{ inputs.publish_only }}
+          commit-message: ${{ github.event.head_commit.message }}
+          release-commit-message: ${{ env.RELEASE_COMMIT_MESSAGE }}
+          base-sha: ${{ github.event.before }}
+          head-sha: ${{ github.sha }}
+          package-name: ${{ steps.pkg.outputs.name }}
+
+  # ── Open/update the release PR ───────────────────────────────────────────
+  release-pr:
+    name: Open/Update Release PR
+    needs: detect
+    if: needs.detect.outputs.release_mode == 'release-pr'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/nix-setup
+      - uses: ./.github/actions/pnpm-cache
+      - name: Install dependencies
+        run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline
+        env:
+          HUSKY: 0
+      - name: Draft release notes
+        run: |
+          bash extensions/scripts/draft-release-notes.sh "extensions/${{ env.EXTENSION_NAME }}" > /tmp/draft-notes.md
+          cat /tmp/draft-notes.md
+      - name: Write changeset
+        run: |
+          {
+            echo "---"
+            echo "\"${{ needs.detect.outputs.package_name }}\": patch"
+            echo "---"
+            echo
+            cat /tmp/draft-notes.md
+          } > ".changeset/${{ env.CHANGESET_PREFIX }}$(date +%s).md"
+      - name: Apply version bump and changelog
+        uses: ./.github/actions/extension-release-version
+        with:
+          extension-path: extensions/${{ env.EXTENSION_NAME }}
+          changeset-prefix: ${{ env.CHANGESET_PREFIX }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Open release PR
+        uses: peter-evans/create-pull-request@v8
+        with:
+          branch: ${{ env.RELEASE_BRANCH }}
+          base: main
+          delete-branch: true
+          commit-message: ${{ env.RELEASE_COMMIT_MESSAGE }}
+          title: ${{ env.RELEASE_COMMIT_MESSAGE }}
+          body: >
+            Opened automatically because extensions/${{ env.EXTENSION_NAME }}
+            (or a workspace dependency it builds from) changed on `main`.
+
+
+            The draft `## <version>` section this adds to CHANGELOG.md is
+            generated from commit subjects since the last release — it
+            becomes the public AMO "Version Notes" for the submitted build,
+            so read it and edit the bullets into real release-note prose
+            before merging. `README.build.md` is submitted verbatim as the
+            AMO "Notes for Reviewers" text; update it directly if the build
+            steps or archive layout changed.
+
+
+            Merge via **squash** (the merge commit message drives the
+            sign+submit job below) to sign this version and submit it to
+            AMO. Closing this PR without merging is also fine — it reopens
+            automatically next time something changes.
+
+  # ── Build workspace deps for this extension ──────────────────────────────
+  build-workspace:
+    name: Build Workspace Packages
+    needs: detect
+    if: needs.detect.outputs.release_mode == 'publish'
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/nix-setup
+      - uses: ./.github/actions/pnpm-cache
+      - name: Install dependencies
+        run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline
+        env:
+          HUSKY: 0
+      - name: Build workspace packages
+        run: |
+          nix develop .#ci --command pnpm build \
+            --filter "...{./extensions/${{ env.EXTENSION_NAME }}}" \
+            --concurrency=100%
+        env:
+          NODE_ENV: production
+      - name: Upload workspace dist
+        uses: actions/upload-artifact@v7
+        with:
+          name: workspace-dist
+          path: packages/*/dist
+          if-no-files-found: warn
+          retention-days: 1
+      - name: Resolve sign matrix
+        id: matrix
+        run: |
+          matrix=$(jq -cn \
+            --arg n   "${{ env.EXTENSION_NAME }}" \
+            --arg p   "extensions/${{ env.EXTENSION_NAME }}" \
+            --arg pkg "${{ needs.detect.outputs.package_name }}" \
+            '{"include":[{"extension_name":$n,"extension_path":$p,"package_name":$pkg}]}')
+          echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
+
+  # ── Sign & submit to AMO ──────────────────────────────────────────────────
+  sign:
+    name: Sign
+    needs: [detect, build-workspace]
+    if: needs.detect.outputs.release_mode == 'publish'
+    uses: ./.github/workflows/_extension-sign.yml
+    secrets: inherit
+    with:
+      matrix: ${{ needs.build-workspace.outputs.matrix }}

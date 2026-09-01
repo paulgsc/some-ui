@@ -1,0 +1,17 @@
+name: "Extension Release Version"
+description: "Apply an extension's pending changeset (bump version + changelog) without disturbing changesets awaiting other release tracks, then sync the manifest's version to match."
+inputs:
+  extension-path:
+    description: "Path to the extension, e.g. extensions/suspender-ledger"
+    required: true
+  changeset-prefix:
+    description: "Filename prefix this extension's changeset files use, e.g. ext-suspender-ledger-"
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        EXTENSION_PATH: ${{ inputs.extension-path }}
+        CHANGESET_PREFIX: ${{ inputs.changeset-prefix }}
+      run: bash "${{ github.action_path }}/version.sh"
