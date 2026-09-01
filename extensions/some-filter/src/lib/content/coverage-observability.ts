@@ -83,6 +83,8 @@ export type CoverageEventKind =
   | "coverage.recovered"
   | "legacy.signal_mismatch"
   | "legacy.signal_resolved"
+  | "dark.signal_mismatch"
+  | "dark.signal_resolved"
   | "veil.color_mismatch"
   | "veil.color_resolved"
 
@@ -94,6 +96,7 @@ export type CoverageCounter =
   | "coverage_checks"
   | "coverage_violations"
   | "legacy_signal_mismatches"
+  | "dark_signal_mismatches"
   | "veil_color_mismatches"
 
 export type CoverageAggregate = "violation_duration_ms"
@@ -110,8 +113,10 @@ export type CoverageContext = {
   veilPresent: boolean
   /** `sw-dirty` is on `<html>` — the CSS backstop is active even if the veil element itself is gone. */
   dirtyClassPresent: boolean
-  /** `data-sw-dark` is on `<html>` — the auto pipeline's static dark-theme layer is switched on. */
+  /** `data-sw-dark` is on `<html>` — the *declared* signal that the auto pipeline's static dark-theme layer should be switched on. */
   darkThemeActive: boolean
+  /** `#__sw_dark_theme` exists in `<head>` and its text actually carries the theme's tokens — the *actual* signal. Distinct from `darkThemeActive` for the same reason `legacyStyleActive` is distinct from `legacyAttrPresent`: the attribute lives on `<html>` and survives a `<head>` replacement that carries the stylesheet off, so a vendor document flush can pull the two apart. */
+  darkStyleActive: boolean
   /** `data-sw-legacy` is on `<html>` — the *declared* signal that the legacy filter should be active. */
   legacyAttrPresent: boolean
   /** `#__sw_legacy_filter` exists in `<head>` and its text actually contains a `filter:` rule — the *actual* signal. */
@@ -151,7 +156,7 @@ export const coverageInvariants: ReadonlyArray<Invariant<CoverageContext>> = [
       const covered =
         ctx.veilPresent ||
         ctx.dirtyClassPresent ||
-        ctx.darkThemeActive ||
+        (ctx.darkThemeActive && ctx.darkStyleActive) ||
         (ctx.legacyAttrPresent && ctx.legacyStyleActive)
       return covered
         ? { ok: true }
@@ -160,6 +165,7 @@ export const coverageInvariants: ReadonlyArray<Invariant<CoverageContext>> = [
             veilPresent: ctx.veilPresent,
             dirtyClassPresent: ctx.dirtyClassPresent,
             darkThemeActive: ctx.darkThemeActive,
+            darkStyleActive: ctx.darkStyleActive,
             legacyAttrPresent: ctx.legacyAttrPresent,
             legacyStyleActive: ctx.legacyStyleActive,
           })
@@ -175,6 +181,18 @@ export const coverageInvariants: ReadonlyArray<Invariant<CoverageContext>> = [
         : violated({
             legacyAttrPresent: ctx.legacyAttrPresent,
             legacyStyleActive: ctx.legacyStyleActive,
+          }),
+  },
+  {
+    name: "DarkSignalsAgree",
+    description:
+      "data-sw-dark (declared, on <html>) and #__sw_dark_theme's actual token CSS (real, in <head>) are two separate DOM artifacts theme-apply.ts's activateDarkTheme() sets together — a vendor <head> replacement can carry off only the second, since the first lives outside <head> and survives. That is a repairable coverage gap, not just an observable one: coverage-watchdog.ts re-arms the prepaint veil when this fires with the attribute still declared true.",
+    check: (ctx): InvariantOutcome =>
+      ctx.darkThemeActive === ctx.darkStyleActive
+        ? { ok: true }
+        : violated({
+            darkThemeActive: ctx.darkThemeActive,
+            darkStyleActive: ctx.darkStyleActive,
           }),
   },
   {
