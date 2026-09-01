@@ -347,8 +347,24 @@ function applyLegacyFilter(config: FilterConfig): void {
       ? existing
       : createExtensionStyle(LEGACY_FILTER_STYLE_ID)
 
+  // Anchored to <html>, not <head> — the same reasoning prepaint.ts's veil
+  // already documents for anchoring itself there instead of <body>. YouTube's
+  // Polymer router can wholesale-replace <head> around yt-navigate-start/
+  // yt-navigate-finish (a real SPA pattern, exercised by
+  // yt-navigate-repaint.spec.ts), which used to carry this stylesheet off
+  // with it. LEGACY_THEME_ATTR survives that (it lives on <html> itself),
+  // so prepaint.css's `html[data-sw-legacy] #__sw_prepaint_veil { background:
+  // white }` rule keeps declaring the veil white the whole time regardless —
+  // that rule's entire premise is that the *same* still-active root filter
+  // this stylesheet supplies will invert it back to dark. Losing this
+  // stylesheet while that attribute (and the resulting white declaration)
+  // survives is exactly what turned a still-covered page into a literal
+  // white flash: the veil kept covering the page, but with nothing left to
+  // invert its declared white into anything else. <html> itself is never
+  // replaced by a <head>/<body> swap, so appending here (a sibling of both,
+  // same as the veil) survives it the same way.
   if (existing === null) {
-    document.head.appendChild(style)
+    document.documentElement.appendChild(style)
   }
 
   // "dim" style (no invert): the browser's native dark theme already darkened

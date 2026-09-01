@@ -17,10 +17,17 @@
  *   - one on `document.documentElement` (`childList` + a narrow
  *     `attributeFilter`) — catches `<head>`/`<body>` being swapped wholesale
  *     (they are `<html>`'s direct children) and `<html>`'s own attributes
- *     changing;
- *   - one on `document.head` (`childList` only) — catches the legacy
- *     `<style>` tag being individually added or removed without the rest of
- *     `<head>` going with it.
+ *     changing. The legacy `<style>` tag (`theme-apply.ts`'s
+ *     `applyLegacyFilter`) is itself anchored directly on `<html>`, not
+ *     `<head>` — the same head-swap vulnerability this watchdog exists to
+ *     catch used to be able to carry that stylesheet off silently, so it no
+ *     longer lives somewhere a whole-`<head>` replacement can take it with
+ *     it. This observer's `childList` on `documentElement` is what notices
+ *     it being individually added or removed now.
+ *   - one on `document.head` (`childList` only) — a generic backstop for
+ *     any *other* extension-owned artifact under `<head>` (today, nothing
+ *     `CoverageContext` reads lives there) being individually added or
+ *     removed without the rest of `<head>` going with it.
  *
  * `pipeline.ts`'s own Sensor already pays for a `subtree: true` walk in auto
  * mode, because it needs to find every vendor surface. This watchdog needs

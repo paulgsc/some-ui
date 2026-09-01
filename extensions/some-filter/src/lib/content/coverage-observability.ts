@@ -114,7 +114,7 @@ export type CoverageContext = {
   darkThemeActive: boolean
   /** `data-sw-legacy` is on `<html>` — the *declared* signal that the legacy filter should be active. */
   legacyAttrPresent: boolean
-  /** `#__sw_legacy_filter` exists in `<head>` and its text actually contains a `filter:` rule — the *actual* signal. */
+  /** `#__sw_legacy_filter` exists (anchored on `<html>`, not `<head>` — see theme-apply.ts's applyLegacyFilter) and its text actually contains a `filter:` rule — the *actual* signal. */
   legacyStyleActive: boolean
   /** The veil's own resolved `background-color`, or null when no veil is present to read it from. */
   veilBackgroundColor: string | null
