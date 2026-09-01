@@ -1,3 +1,4 @@
+import type { RenderedDiffLineKind } from "@leetype/types/exercise"
 import {
   ConstructionStepSchema,
   DiagnosticStepSchema,
@@ -9,6 +10,7 @@ import {
 import { describe, expect, it } from "vitest"
 
 import {
+  ALL_FIXTURE_EXERCISES,
   FIXTURE_ADVERSARIAL_EXERCISE_ID,
   FIXTURE_DIAGNOSTIC_EXERCISE_IDS,
   FIXTURE_EXERCISE_ID,
@@ -320,6 +322,70 @@ describe("the construction reading — entryApi as an accumulating hunk (LTY-PAT
 
     expect(fillRendered.startsWith(placeRendered)).toBe(true)
     expect(mutateRendered.startsWith(fillRendered)).toBe(true)
+  })
+})
+
+/**
+ * R4 (#1207) guardrail: `renderedDiffLineKinds` output must stay unchanged
+ * for every existing corpus hunk while this story reuses `DiffHunkSchema`
+ * verbatim (Def. 1.4's own reuse claim). Pins every step across the whole
+ * corpus that carries a `.diff` overlay — not just entryApi's three, which
+ * the describe block above already covers for a different reason (the
+ * accumulating-hunk invariant, not a general regression pin) — computed
+ * once against the pre-R4 behavior and asserted unchanged here. A step
+ * added elsewhere with a new diff hunk must extend this table explicitly,
+ * so a corpus change to `renderedDiffLineKinds`'s own logic cannot silently
+ * drift an untested hunk.
+ */
+describe("renderedDiffLineKinds is pinned across every corpus hunk (R4/#1207 guardrail)", () => {
+  it("computes the same per-line classification for every DiffHunk in the corpus", () => {
+    const PINNED_KINDS: Readonly<
+      Record<string, ReadonlyArray<RenderedDiffLineKind>>
+    > = {
+      "entry-03-place": ["add"],
+      "entry-04-fill": ["context", "add"],
+      "entry-05-mutate": ["context", "context", "add"],
+      "diagnostic-loop-progress-01": ["context", "context", "add", "context"],
+      "diagnostic-division-guard-01": [
+        "context",
+        "add",
+        "add",
+        "add",
+        "context",
+        "context",
+      ],
+      "construction-lazy-default-01": ["del", "add"],
+      "diagnostic-memoization-01": [
+        "context",
+        "add",
+        "add",
+        "add",
+        "context",
+        "context",
+        "context",
+        "context",
+        "context",
+        "context",
+        "context",
+      ],
+      "construction-binary-search-place-01": ["del", "add"],
+    }
+
+    const foundIds = new Set<string>()
+    for (const exercise of ALL_FIXTURE_EXERCISES) {
+      for (const step of exercise.steps) {
+        const diff = typingBlockOf(step)?.diff
+        if (diff === undefined) continue
+        foundIds.add(step.id)
+        expect(renderedDiffLineKinds(diff), `"${step.id}"`).toEqual(
+          PINNED_KINDS[step.id]
+        )
+      }
+    }
+
+    // Every pinned id was actually found, and nothing in the corpus carries
+    // a diff hunk this pin doesn't know about.
+    expect(foundIds).toEqual(new Set(Object.keys(PINNED_KINDS)))
   })
 })
 
