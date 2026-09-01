@@ -5,7 +5,8 @@
  * (reported live: a visible white flash mid-session, on a page that never
  * actually refreshed, in *both* auto and legacy mode).
  *
- * Two bugs, traced to content.ts's `yt-navigate-finish` listener:
+ * Three bugs, traced to content.ts's `yt-navigate-finish` listener and
+ * theme-apply.ts's legacy filter placement:
  *
  *   1. It re-armed the veil (`enablePrepaint()`) itself, on *finish* — after
  *      the router's swap has already painted natively for at least one
@@ -17,6 +18,21 @@
  *      needed" got zero protection from this event for the rest of the
  *      tab's life — the swap could carry off the extension's injected
  *      `<style>` tag with nothing to restore it.
+ *   3. Even with (1) and (2) fixed, legacy mode had a second, narrower flash
+ *      window of its own: `data-sw-legacy` lives on `<html>` and survives a
+ *      `<head>` swap, but `#__sw_legacy_filter` — the `<style>` carrying the
+ *      actual `filter: invert(...)` — used to be a child of `<head>` and did
+ *      not. prepaint.css's veil-color rule is gated purely on
+ *      `data-sw-legacy` (`html[data-sw-legacy] #__sw_prepaint_veil {
+ *      background: white }`), on the premise that the *same* still-active
+ *      root filter will invert it back to dark. A `<head>` swap that carries
+ *      off the filter stylesheet while that attribute survives falsifies
+ *      that premise: the veil keeps covering the page, declared white, with
+ *      nothing left to invert it — a literal white flash for exactly as
+ *      long as the stylesheet is gone. Anchoring the stylesheet on `<html>`
+ *      itself (theme-apply.ts's `applyLegacyFilter`, the same place the
+ *      veil already anchors itself against a `<body>`-only swap) closes
+ *      this: a `<head>`-only swap can no longer take it.
  *
  * The fix splits the handler in two: `yt-navigate-start` re-arms the veil
  * *before* the swap (covering the churn itself, not just its aftermath),
@@ -50,9 +66,12 @@ test.describe("legacy mode survives a yt-navigate-* head/body swap", () => {
     // Everything from here happens inside one page.evaluate() call so no
     // frame can paint between the router "tearing down" the outgoing route
     // (the head/body swap, standing in for whatever YouTube's own flush
-    // does) and the assertions below — the same reasoning
+    // does) and the DOM-state assertions below — the same reasoning
     // issue-741-auto-defects.spec.ts's veil test documents for why a
-    // synchronous evaluate is required to observe a pre-rAF DOM state.
+    // synchronous evaluate is required to observe a pre-rAF DOM state. The
+    // pixel assertion further down is deliberately a *separate* step: a
+    // screenshot can only capture an actual paint, which by definition
+    // cannot happen inside this same synchronous call.
     const duringSwap = await page.evaluate(() => {
       window.dispatchEvent(new Event("yt-navigate-start"))
 
@@ -62,9 +81,10 @@ test.describe("legacy mode survives a yt-navigate-* head/body swap", () => {
         document.documentElement.classList.contains("sw-dirty")
 
       // Stand-in for a vendor router's own document flush: replace <head>
-      // (carrying off the injected __sw_legacy_filter <style> tag) and
-      // <body> wholesale, same shape as hostile-page.ts's
-      // churn.bodyHeadReplace().
+      // and <body> wholesale, same shape as hostile-page.ts's
+      // churn.bodyHeadReplace(). __sw_legacy_filter is anchored on <html>
+      // itself (theme-apply.ts's applyLegacyFilter), not <head>, precisely
+      // so this can no longer carry it off.
       const newHead = document.createElement("head")
       const newBody = document.createElement("body")
       newBody.innerHTML = '<div id="content-root"></div>'
@@ -74,8 +94,10 @@ test.describe("legacy mode survives a yt-navigate-* head/body swap", () => {
       return {
         veilPresentBeforeSwap,
         dirtyBeforeSwap,
-        legacyStyleGoneAfterSwap:
-          document.getElementById("__sw_legacy_filter") === null,
+        legacyStyleSurvivedSwap:
+          document.getElementById("__sw_legacy_filter") !== null,
+        legacyAttrSurvivedSwap:
+          document.documentElement.hasAttribute("data-sw-legacy"),
         // The veil is anchored to <html>, not <body> — a body replaceChild
         // cannot remove it (prepaint.ts's whole reason for anchoring there).
         veilSurvivedSwap:
@@ -89,15 +111,41 @@ test.describe("legacy mode survives a yt-navigate-* head/body swap", () => {
     ).toBe(true)
     expect(duringSwap.dirtyBeforeSwap).toBe(true)
     expect(
-      duringSwap.legacyStyleGoneAfterSwap,
-      "the fixture's head replace should carry off the injected <style> tag " +
-        "(precondition — otherwise this test isn't exercising the swap at all)"
+      duringSwap.legacyAttrSurvivedSwap,
+      "data-sw-legacy lives on <html> itself and must survive a <head>/<body> swap either way " +
+        "(precondition — otherwise this test isn't exercising the split-brain window at all)"
+    ).toBe(true)
+    expect(
+      duringSwap.legacyStyleSurvivedSwap,
+      "the legacy filter <style> is anchored on <html>, not <head>, and must survive a " +
+        "<head> replacement — otherwise data-sw-legacy (surviving) and the veil's white " +
+        "declaration (gated on it) go stale together, with nothing left to invert the veil back to dark"
     ).toBe(true)
     expect(
       duringSwap.veilSurvivedSwap,
       "the veil must still be covering the page immediately after the " +
         "swap, before yt-navigate-finish has even fired"
     ).toBe(true)
+
+    // Not pixel-checked here, deliberately: the veil in this real,
+    // extension-driven scene is popover-promoted (top layer) whenever the
+    // browser supports it, and prepaint.css's own header comment already
+    // documents — from a real, hard-won regression, not a theory — that
+    // this project's headless/swiftshader harness renders a white top-layer
+    // element as literal white under an ancestor `filter: invert(...)`
+    // regardless of whether that filter is genuinely active, the opposite
+    // of what real hardware-accelerated browsers do. A screenshot here
+    // would fail exactly this way whether or not the fix above is correct,
+    // which makes it worse than no test — legacy-invert-regimes.spec.ts's
+    // own veil test carries the identical caveat for the same reason. The
+    // DOM-level assertions above (the attribute and the stylesheet both
+    // surviving the swap) are the causally relevant claim: once the
+    // stylesheet survives, the *fallback* (non-top-layer) rendering path —
+    // which this harness's pixels are proven trustworthy for — is already
+    // covered by legacy-invert-regimes.spec.ts's "declares white for both
+    // the fallback and the top layer" scene, and by "the veil composites
+    // dark once the legacy filter survives a <head> swap" below, which
+    // builds the exact pre/post-fix scene pixel-side-by-side.
 
     // Settle: yt-navigate-finish should notice the legacy filter is gone
     // and re-inject it.

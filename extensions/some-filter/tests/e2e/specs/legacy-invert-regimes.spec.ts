@@ -236,4 +236,84 @@ test.describe("legacy invert mode, in both rendering regimes", () => {
       await scene.close()
     }
   })
+
+  test("the veil's declared white composites dark only once the legacy filter <style> is back — the yt-navigate <head>-swap flash, pixel-side-by-side", async ({
+    context,
+  }) => {
+    // Reproduces the reported flash directly: a vendor SPA router (YouTube's
+    // Polymer router, dispatching yt-navigate-start/finish) can wholesale-
+    // replace <head> mid-navigation. data-sw-legacy lives on <html> and
+    // survives that; #__sw_legacy_filter — the <style> carrying the actual
+    // `filter: invert(...)` — used to be a <head> child and did not.
+    // prepaint.css's veil rule is gated purely on data-sw-legacy, on the
+    // premise that the same still-active root filter will invert its
+    // declared white back to dark; losing the filter while the attribute
+    // survives falsifies that premise. theme-apply.ts's applyLegacyFilter
+    // now anchors the <style> on <html> itself instead (this file's sibling
+    // test above already proves the *filter* composites correctly once
+    // installed — this proves the specific split-brain window is closed).
+    //
+    // Fallback (non-popover) rendering path only, same reasoning as the
+    // sibling test above: the top-layer path is where this project's own
+    // headless/swiftshader harness is a documented false witness (prepaint
+    // .css's header comment), so yt-navigate-repaint.spec.ts's real,
+    // extension-driven scene deliberately does not pixel-check it. This
+    // scene isolates the one variable that mechanism actually depends on —
+    // whether the filter <style> is present — with everything else (the
+    // shipped prepaint.css, the real filter string, an un-promoted veil)
+    // identical between the two samples below.
+    const prepaintCss = fs.readFileSync(PREPAINT_CSS, "utf8")
+    const scene = await context.newPage()
+    await scene.setViewportSize({ width: 400, height: 300 })
+
+    const sceneHtml = (filterStylePresent: boolean): string =>
+      `<!doctype html>
+       <html data-sw-legacy class="sw-dirty" style="background-color: rgb(255, 255, 255)">
+         <head><style>${prepaintCss}</style>
+         ${
+           filterStylePresent
+             ? `<style id="__sw_legacy_filter">
+                  html { filter: ${FILTER_STRING} !important; background-color: #0d1117 !important; }
+                </style>`
+             : ""
+         }
+         </head>
+         <body><div id="__sw_prepaint_veil" data-my-ext></div></body>
+       </html>`
+
+    try {
+      // The split-brain window itself: data-sw-legacy present, the filter
+      // <style> carried off by the <head> swap — the literal flash.
+      await scene.setContent(sceneHtml(false))
+      const flashed = await brightestIn(scene, context, {
+        x: 0,
+        y: 0,
+        width: await contentWidth(scene),
+        height: 300,
+      })
+      expect(
+        flashed.luminance,
+        `veil with the filter <style> missing rendered ${describeColor(flashed.color)} ` +
+          `— this is the literal flash the bug produced`
+      ).toBeGreaterThan(1 - DARK)
+
+      // The fix: the filter <style> survives (anchored on <html>, so a
+      // <head>-only swap can't take it) — the same declared-white veil now
+      // composites dark, same as the settled state always has.
+      await scene.setContent(sceneHtml(true))
+      const fixed = await brightestIn(scene, context, {
+        x: 0,
+        y: 0,
+        width: await contentWidth(scene),
+        height: 300,
+      })
+      expect(
+        fixed.luminance,
+        `veil with the filter <style> present rendered ${describeColor(fixed.color)} ` +
+          `— declared white must composite dark once something actually inverts it`
+      ).toBeLessThan(DARK)
+    } finally {
+      await scene.close()
+    }
+  })
 })
