@@ -151,6 +151,135 @@ describe("decide — page-level already-dark verdict", () => {
   })
 })
 
+describe("decide — canvas evidence veto (false-dark-verdict fix)", () => {
+  /** Builds canvas-role SurfaceAttr the way pipeline.ts's scanCanvas() does. */
+  function canvasAttrFor(
+    css: string,
+    overrides: Partial<SurfaceAttr> = {}
+  ): SurfaceAttr {
+    const color = parseColor(css)
+    if (color === null) throw new Error(`unparseable fixture color: ${css}`)
+    return {
+      color,
+      luminance: relativeLuminance(color[0], color[1], color[2]),
+      opacity: 1,
+      rendered: true,
+      evidenceRole: "canvas",
+      ...overrides,
+    }
+  }
+
+  it("a rendered bright canvas key vetoes restore-native, however many dark surface keys exist", () => {
+    const h = createHypothesis<SurfaceKey, SurfaceAttr>()
+    h.set("__canvas__:html", canvasAttrFor("rgb(255, 255, 255)"))
+    for (let i = 0; i < 30; i++) {
+      h.set(`dark-${i}`, attrFor(`rgb(${i}, ${i}, ${i})`))
+    }
+
+    const actions = decide(h, swatch)
+    expect(actions.some((a) => a.kind === "restore-native")).toBe(false)
+    expect(actions.some((a) => a.kind === "activate-theme")).toBe(true)
+  })
+
+  it("canvas evidence with no resolvable color (assumed-bright/unknown) vetoes restore-native", () => {
+    const h = createHypothesis<SurfaceKey, SurfaceAttr>()
+    // pipeline.ts's readCanvasAttr never returns null: an unresolvable
+    // color reads as assumed-bright (luminance 1), exactly like this.
+    h.set(
+      "__canvas__:html",
+      canvasAttrFor("rgb(255, 255, 255)", { opacity: 1 })
+    )
+    h.set("a", attrFor("rgb(13, 17, 23)"))
+    h.set("b", attrFor("rgb(5, 5, 5)"))
+    h.set("c", attrFor("rgb(10, 10, 10)"))
+
+    expect(decide(h, swatch).some((a) => a.kind === "restore-native")).toBe(
+      false
+    )
+  })
+
+  it("a hidden (unrendered) canvas reading does not count as proof of dark — treated as unknown, still vetoes", () => {
+    const h = createHypothesis<SurfaceKey, SurfaceAttr>()
+    h.set(
+      "__canvas__:body",
+      canvasAttrFor("rgb(13, 17, 23)", { rendered: false })
+    )
+    h.set("a", attrFor("rgb(13, 17, 23)"))
+    h.set("b", attrFor("rgb(5, 5, 5)"))
+    h.set("c", attrFor("rgb(10, 10, 10)"))
+
+    expect(decide(h, swatch).some((a) => a.kind === "restore-native")).toBe(
+      false
+    )
+  })
+
+  it("a near-transparent canvas reading is untrustworthy — treated as unknown, still vetoes", () => {
+    const h = createHypothesis<SurfaceKey, SurfaceAttr>()
+    h.set(
+      "__canvas__:body",
+      canvasAttrFor("rgb(13, 17, 23)", { opacity: 0.05 })
+    )
+    h.set("a", attrFor("rgb(13, 17, 23)"))
+    h.set("b", attrFor("rgb(5, 5, 5)"))
+    h.set("c", attrFor("rgb(10, 10, 10)"))
+
+    expect(decide(h, swatch).some((a) => a.kind === "restore-native")).toBe(
+      false
+    )
+  })
+
+  it("a confidently dark, rendered canvas reading does not itself force restore-native without a dark surface mean", () => {
+    // Requirement 5: canvas evidence only ever vetoes; the distinct-key
+    // mean stays the sole source of an affirmative dark verdict.
+    const h = createHypothesis<SurfaceKey, SurfaceAttr>()
+    h.set("__canvas__:html", canvasAttrFor("rgb(13, 17, 23)"))
+    h.set("__canvas__:body", canvasAttrFor("rgb(13, 17, 23)"))
+    h.set("a", attrFor("rgb(255, 255, 255)"))
+
+    expect(decide(h, swatch).some((a) => a.kind === "restore-native")).toBe(
+      false
+    )
+  })
+
+  it("restores native when canvas evidence is confidently dark and the surface mean agrees", () => {
+    const h = createHypothesis<SurfaceKey, SurfaceAttr>()
+    h.set("__canvas__:html", canvasAttrFor("rgb(13, 17, 23)"))
+    h.set("__canvas__:body", canvasAttrFor("rgb(13, 17, 23)"))
+    h.set("a", attrFor("rgb(13, 17, 23)"))
+    h.set("b", attrFor("rgb(5, 5, 5)"))
+    h.set("c", attrFor("rgb(10, 10, 10)"))
+
+    expect(decide(h, swatch)).toEqual([{ kind: "restore-native" }])
+  })
+
+  it("never emits a tag-surface/emit-surface-color action for a canvas-role key", () => {
+    const h = createHypothesis<SurfaceKey, SurfaceAttr>()
+    h.set("__canvas__:html", canvasAttrFor("rgb(255, 255, 255)"))
+
+    const actions = decide(h, swatch)
+    expect(actions.some((a) => "key" in a && a.key === "__canvas__:html")).toBe(
+      false
+    )
+  })
+
+  it("excludes unrendered/hidden surface evidence from the page-level mean", () => {
+    const h = createHypothesis<SurfaceKey, SurfaceAttr>()
+    // Three dark keys, but unrendered — a dormant/hidden player control's
+    // color must not corroborate a dark verdict.
+    h.set("a", attrFor("rgb(13, 17, 23)", 1))
+    h.set("b", attrFor("rgb(5, 5, 5)", 1))
+    h.set("c", attrFor("rgb(10, 10, 10)", 1))
+    for (const key of ["a", "b", "c"]) {
+      const attr = h.get(key)
+      if (attr !== undefined) h.set(key, { ...attr, rendered: false })
+    }
+
+    const actions = decide(h, swatch)
+    expect(actions.some((a) => a.kind === "restore-native")).toBe(false)
+    expect(actions.some((a) => a.kind === "activate-theme")).toBe(true)
+  })
+})
+
 describe("decide — golden fixture (parity with pre-refactor classifyElement)", () => {
   const cases: ReadonlyArray<{
     readonly name: string

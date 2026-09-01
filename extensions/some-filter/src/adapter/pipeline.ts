@@ -128,8 +128,14 @@ function ownTextColor(el: Element, style: CSSStyleDeclaration): RGBA | null {
   return parseColor(style.color)
 }
 
+/** True unless the computed style itself proves the carrier was never actually painted. */
+function isRendered(style: CSSStyleDeclaration): boolean {
+  return style.display !== "none" && style.visibility !== "hidden"
+}
+
 function readAttr(el: Element): SurfaceAttr | null {
   const style = getComputedStyle(el)
+  const rendered = isRendered(style)
   const c = parseColor(style.backgroundColor)
 
   if (c !== null) {
@@ -138,6 +144,7 @@ function readAttr(el: Element): SurfaceAttr | null {
       luminance: relativeLuminance(c[0], c[1], c[2]),
       opacity: c[3],
       text: ownTextColor(el, style),
+      rendered,
     }
   }
 
@@ -152,10 +159,73 @@ function readAttr(el: Element): SurfaceAttr | null {
       opacity: 1,
       text: ownTextColor(el, style),
       imageOnly: true,
+      rendered,
     }
   }
 
   return null
+}
+
+const CANVAS_KEY_HTML: SurfaceKey = "__canvas__:html"
+const CANVAS_KEY_BODY: SurfaceKey = "__canvas__:body"
+const CANVAS_KEY_ROOT: SurfaceKey = "__canvas__:root"
+
+/**
+ * Root/canvas evidence for one carrier (`html`, `body`, or the scan root
+ * itself) — the substrate a fully transparent light-DOM stack leaves
+ * showing through as the browser's own white default paint. Unlike
+ * `readAttr`, a carrier with no explicit `background-color` of its own is
+ * never "no evidence, skip" here: that is indistinguishable from the exact
+ * failure this exists to catch (YouTube leaving `ytd-app` transparent after
+ * hydration, with nothing beneath it declaring a color either), so it reads
+ * as assumed-bright canvas evidence — the same unknown-means-light bias
+ * `readAttr` already applies to a gradient-only surface above, generalized
+ * to "no resolvable color at all."
+ */
+function readCanvasAttr(el: Element): SurfaceAttr {
+  const style = getComputedStyle(el)
+  const rendered = isRendered(style)
+  const c = parseColor(style.backgroundColor)
+
+  if (c !== null) {
+    return {
+      color: c,
+      luminance: relativeLuminance(c[0], c[1], c[2]),
+      opacity: c[3],
+      rendered,
+      evidenceRole: "canvas",
+    }
+  }
+
+  return {
+    color: ASSUMED_LIGHT_IMAGE,
+    luminance: 1,
+    opacity: 1,
+    rendered,
+    evidenceRole: "canvas",
+  }
+}
+
+/**
+ * Samples `html`, `body`, and `root` itself for `theme-adapter.ts`'s
+ * bright-canvas veto (Phase 1 of the false-dark-verdict fix). Deliberately
+ * disjoint from `scan()`'s descendant-only `elementsByKey`/`attrsByKey` —
+ * these keys name no real element for `realize()`'s per-surface tagging to
+ * act on, and `decide()` never emits a tag-surface/emit-surface-color
+ * action for an `evidenceRole: "canvas"` key, so keeping them out of
+ * `elementsByKey` costs nothing and keeps `scan()`'s own "never classifies
+ * root itself" contract intact for its existing callers.
+ */
+export function scanCanvas(
+  root: Element
+): ReadonlyMap<SurfaceKey, SurfaceAttr> {
+  const attrs = new Map<SurfaceKey, SurfaceAttr>()
+  attrs.set(CANVAS_KEY_HTML, readCanvasAttr(document.documentElement))
+  attrs.set(CANVAS_KEY_BODY, readCanvasAttr(document.body))
+  if (root !== document.body) {
+    attrs.set(CANVAS_KEY_ROOT, readCanvasAttr(root))
+  }
+  return attrs
 }
 
 // ── Vendor truth (Axiom 3.5, read side) ──────────────────────────────────────
@@ -388,9 +458,22 @@ export function createContentSession(
         dropStaleEvidence()
       }
 
-      lastScan = withVendorColorsVisible(() => scan(root))
+      const { scanned, canvas } = withVendorColorsVisible(() => ({
+        scanned: scan(root),
+        canvas: scanCanvas(root),
+      }))
+      lastScan = scanned
       const timestamp = Date.now()
       for (const [key, attrs] of lastScan.attrsByKey) {
+        update(hypothesis, provenance, {
+          key,
+          attrs,
+          epoch: session.epoch,
+          tier: "full",
+          timestamp,
+        })
+      }
+      for (const [key, attrs] of canvas) {
         update(hypothesis, provenance, {
           key,
           attrs,
