@@ -63,13 +63,33 @@ describe("DiffSetMemberSchema — Def. 1.4's diff plus Def. 1.6's μ", () => {
   })
 
   it("rejects a propositionId that does not resolve against the register", () => {
+    // Deliberately not shaped like "CW-Pn": `scripts/check-proposition-
+    // citations.ts` scans every tracked file for that literal pattern, and
+    // this fixture is not one of the proposition-register module's own
+    // tests (the one place that scan excludes), so a "CW-Pn"-shaped id
+    // here — even an out-of-range one — would be flagged as a real
+    // dangling citation rather than exercising this schema's own check.
     const result = DiffSetMemberSchema.safeParse({
       hunk: ADMISSIBLE_HUNK,
-      propositionId: "CW-P999",
+      propositionId: "not-a-real-proposition-id",
       admissible: true,
     })
     expect(result.success).toBe(false)
     expect(result.success ? "" : result.error.message).toContain("register")
+  })
+
+  // Review finding (#1261, chatgpt-codex-connector): `in` walks the
+  // prototype chain, so an inherited Object.prototype name would have
+  // resolved here even though it is not a real register key.
+  it("rejects an inherited Object.prototype name as a propositionId", () => {
+    for (const value of ["constructor", "toString", "hasOwnProperty"]) {
+      const result = DiffSetMemberSchema.safeParse({
+        hunk: ADMISSIBLE_HUNK,
+        propositionId: value,
+        admissible: true,
+      })
+      expect(result.success, `"${value}"`).toBe(false)
+    }
   })
 
   it("accepts an admissible member that also carries a distractor statement — not forbidden, just not required", () => {
@@ -149,6 +169,50 @@ describe("DiffSetSchema — Ax. 1.1's floor and Prop. 2.1's exactly-one-admissib
     expect(result.success).toBe(false)
     expect(result.success ? "" : result.error.message).toContain(
       "exactly one member of D is authored as admissible"
+    )
+  })
+
+  // Review finding (#1261, chatgpt-codex-connector): D is Def. 1.4's own
+  // *set* of diffs — the same hunk appearing under two members is one hunk
+  // with an ambiguous μ, not two alternatives, even when exactly one of
+  // the two is marked admissible.
+  it("rejects a diff set carrying the same hunk under two members", () => {
+    const duplicate: DiffSetMember = {
+      hunk: distractorMember.hunk,
+      propositionId: "CW-P10",
+      admissible: false,
+      distractorStatement: "a different account of the same rewrite",
+    }
+    const result = DiffSetSchema.safeParse([
+      admissibleMember,
+      distractorMember,
+      duplicate,
+    ])
+    expect(result.success).toBe(false)
+    expect(result.success ? "" : result.error.message).toContain(
+      "D is a set of diffs"
+    )
+  })
+
+  it("still catches a duplicate hunk whose segment fields were authored in a different key order", () => {
+    // hunkKeyOf must not be fooled by JSON.stringify's key-order
+    // sensitivity: the same content, re-keyed, is still the same hunk.
+    const reorderedHunk: DiffHunk = {
+      ...distractorMember.hunk,
+      segments: distractorMember.hunk.segments.map((segment) => ({
+        text: segment.text,
+        kind: segment.kind,
+      })),
+    }
+    const diffSet: DiffSet = [
+      admissibleMember,
+      distractorMember,
+      { ...secondDistractorMember, hunk: reorderedHunk },
+    ]
+    const result = DiffSetSchema.safeParse(diffSet)
+    expect(result.success).toBe(false)
+    expect(result.success ? "" : result.error.message).toContain(
+      "D is a set of diffs"
     )
   })
 })

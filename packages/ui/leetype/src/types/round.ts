@@ -2,6 +2,7 @@ import { PROPOSITION_REGISTER } from "@leetype/lib/leetype/proposition-register/
 import type { PropositionId } from "@leetype/lib/leetype/proposition-register/generated"
 import { z } from "zod"
 
+import type { DiffHunk } from "./exercise"
 import { DiffHunkSchema } from "./exercise"
 
 /**
@@ -20,7 +21,12 @@ import { DiffHunkSchema } from "./exercise"
  */
 
 function isKnownPropositionId(value: unknown): value is PropositionId {
-  return typeof value === "string" && value in PROPOSITION_REGISTER
+  // `in` walks the prototype chain, so an inherited `Object.prototype` name
+  // ("constructor", "toString", "__proto__", ...) would resolve here even
+  // though it is not a real register key (review finding, #1261,
+  // chatgpt-codex-connector) — `Object.hasOwn` checks the register's own
+  // keys only.
+  return typeof value === "string" && Object.hasOwn(PROPOSITION_REGISTER, value)
 }
 
 /**
@@ -76,6 +82,22 @@ export const DiffSetMemberSchema = z
 export type DiffSetMember = z.infer<typeof DiffSetMemberSchema>
 
 /**
+ * A deterministic structural key for a hunk — independent of authored key
+ * order (unlike `JSON.stringify`, which is key-order sensitive and would
+ * therefore under-count duplicates authored with fields in a different
+ * order) — used only to detect the same hunk repeated across `D`'s
+ * members, never to compare hunks for any other purpose.
+ */
+function hunkKeyOf(hunk: DiffHunk): string {
+  return [
+    hunk.path,
+    hunk.oldStart,
+    hunk.newStart,
+    ...hunk.segments.map((segment) => `${segment.kind}:${segment.text}`),
+  ].join(" ")
+}
+
+/**
  * `D` (Def. 1.4): an ordered set of diff-set members against one `A`.
  * `|D| ≥ 2` is this story's own floor — a round with only its one
  * admissible member has no distractor to compare it against, and Def. 1.4
@@ -85,7 +107,12 @@ export type DiffSetMember = z.infer<typeof DiffSetMemberSchema>
  * two, because the round can't say which repair the learner is meant to
  * find — is malformed and rejected at parse time, the same posture
  * `ConstraintSetSchema` already takes on an empty or ambiguous `C`, rather
- * than left for a lint to notice after the fact.
+ * than left for a lint to notice after the fact. A `D` carrying the same
+ * `hunk` under two members is likewise rejected: Def. 1.4 calls `D` a
+ * *set*, not a list, and a hunk repeated under two different `μ` claims
+ * makes the mapping ambiguous for that hunk and would present a round with
+ * two visually identical choices (review finding, #1261,
+ * chatgpt-codex-connector).
  *
  * Whether the authored `admissible` claim actually agrees with
  * `isAdmissible`'s own derivation (Prop. 2.1's other half) is out of this
@@ -106,6 +133,16 @@ export const DiffSetSchema = z
     {
       message:
         "Def. 3.1/Prop. 2.1: exactly one member of D is authored as admissible — a round with zero or two authored-admissible members cannot be posed.",
+    }
+  )
+  .refine(
+    (members) => {
+      const keys = members.map((member) => hunkKeyOf(member.hunk))
+      return new Set(keys).size === keys.length
+    },
+    {
+      message:
+        "Def. 1.4: D is a set of diffs — two members carrying the same hunk is not two alternatives, it is one hunk with an ambiguous μ.",
     }
   )
 export type DiffSet = z.infer<typeof DiffSetSchema>
