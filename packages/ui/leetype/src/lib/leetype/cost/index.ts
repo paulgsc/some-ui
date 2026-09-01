@@ -436,28 +436,61 @@ export function dominantPaths(graph: CostGraph): ReadonlyArray<CostPath> {
   )
 }
 
+/** A monomial's own dimension set, as a stable, order-independent map key. */
+function dimensionSetKey(monomial: Monomial): string {
+  return [...dimensionsOfMonomial(monomial)].sort().join(",")
+}
+
+function isMaximalDegree(
+  degree: Degree,
+  maxDegreeInGroup: Degree | undefined
+): boolean {
+  return (
+    maxDegreeInGroup !== undefined && degreesEqual(degree, maxDegreeInGroup)
+  )
+}
+
 /**
  * G3 (#1211), Prop. 2.1: the dominant term(s) of `T(G)` itself — the same
- * degree comparison `dominantPaths` runs over a graph's paths, run instead
- * over a cost expression's own (already-summed) terms, so a caller holding
- * only `T` (no graph reference) can still find what dominates it. `T`'s
- * terms are already normalized (`normalizeCostExpr`), so two paths landing
- * on the same monomial have already been merged into one term by the time
- * this runs — but two *distinct* monomials of equal degree (`n^2` and
- * `n * m`) are not merged and can genuinely tie. Def. 2.3's "need not be
- * unique" applies here exactly as it does to `dominantPaths`, so this
+ * kind of degree comparison `dominantPaths` runs over a graph's paths, run
+ * instead over a cost expression's own (already-summed) terms, so a caller
+ * holding only `T` (no graph reference) can still find what dominates it.
+ * `T`'s terms are already normalized (`normalizeCostExpr`), so two paths
+ * landing on the same monomial have already been merged into one term by
+ * the time this runs — but two *distinct* monomials of equal degree (`n^2`
+ * and `n * m`) are not merged and can genuinely tie. Def. 2.3's "need not
+ * be unique" applies here exactly as it does to `dominantPaths`, so this
  * returns every tied term rather than choosing one.
+ *
+ * Degree is only compared **within** terms sharing the exact same set of
+ * dimensions — R2's own "relating two dimensions to each other" is out of
+ * scope, so nothing here can say `n^3` "beats" `m^2`: `m` is free to grow
+ * independently of `n`, and summing exponents across unrelated dimensions
+ * would silently drop a term that could dominate for some valid input
+ * (review finding: `n^3 + m^2` was reduced to `Θ(n^3)`). A term maximal
+ * within its own dimension-set group survives; a different group never
+ * eliminates it, regardless of summed degree.
  */
 export function dominantTerms(cost: CostExpr): CostExpr {
   if (cost.length === 0) return []
 
-  const degrees = cost.map((term) => degreeOfMonomial(term.monomial))
-  const maxDegree = degrees.reduce((max, degree) =>
-    degreeExceeds(degree, max) ? degree : max
-  )
-  return cost.filter((term) =>
-    degreesEqual(degreeOfMonomial(term.monomial), maxDegree)
-  )
+  const maxDegreeByDimensionSet = new Map<string, Degree>()
+  for (const term of cost) {
+    const key = dimensionSetKey(term.monomial)
+    const degree = degreeOfMonomial(term.monomial)
+    const currentMax = maxDegreeByDimensionSet.get(key)
+    if (currentMax === undefined || degreeExceeds(degree, currentMax)) {
+      maxDegreeByDimensionSet.set(key, degree)
+    }
+  }
+
+  return cost.filter((term) => {
+    const key = dimensionSetKey(term.monomial)
+    return isMaximalDegree(
+      degreeOfMonomial(term.monomial),
+      maxDegreeByDimensionSet.get(key)
+    )
+  })
 }
 
 /**

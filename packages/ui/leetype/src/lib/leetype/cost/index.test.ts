@@ -418,6 +418,31 @@ describe("dominantTerms / printClass — G3's own derivation (Prop. 2.1)", () =>
     expect(printClass(cost)).toBe("Θ(m * n + n^2)")
   })
 
+  // Review finding (Codex, #1256): summing exponents across dimensions
+  // wrongly ranked n^3 above m^2, even though m grows independently of n
+  // and could exceed it for a valid input — R2's own "relating two
+  // dimensions to each other" is out of scope, so neither term may be
+  // dropped. Degree is only compared within terms sharing the same
+  // dimension set; a different dimension set never eliminates a term,
+  // however much smaller its summed degree looks.
+  it("retains both terms of an unequal-degree cross-dimension sum rather than ranking by summed exponent (review finding)", () => {
+    const cost = costOf(Seq(Loop(dim("m", 2), W(1)), Loop(dim("n", 3), W(1))))
+    expect(dominantTerms(cost)).toHaveLength(2)
+    expect(printClass(cost)).toBe("Θ(m^2 + n^3)")
+  })
+
+  it("a higher-degree term in one dimension set does not eliminate a lower-degree term in a different one (n^5 vs n*m)", () => {
+    const cost = costOf(
+      Seq(
+        Loop(dim("n", 5), W(1)),
+        Loop(multiplyMonomials(dim("n"), dim("m")), W(1))
+      )
+    )
+    expect(dominantTerms(cost)).toHaveLength(2)
+    // "m * n" (dims {n, m}) sorts before "n^5" (dims {n}) by monomial key.
+    expect(printClass(cost)).toBe("Θ(m * n + n^5)")
+  })
+
   it("T(G) identically 0 has no dominant term and prints Θ(0) rather than throwing", () => {
     const cost = costOf(W(0))
     expect(cost).toEqual([])
