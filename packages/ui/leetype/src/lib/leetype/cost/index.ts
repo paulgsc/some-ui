@@ -367,7 +367,7 @@ export function costOfPath(path: CostPath): CostExpr {
  * non-monomial repetition expressions do (this story's own "out of
  * scope" line).
  */
-type PathDegree = { readonly pow: number; readonly log: number }
+type Degree = { readonly pow: number; readonly log: number }
 
 function sumExponents(monomial: Monomial, kind: "pow" | "log"): number {
   return monomial
@@ -375,21 +375,25 @@ function sumExponents(monomial: Monomial, kind: "pow" | "log"): number {
     .reduce((total, factor) => total + factor.exponent, 0)
 }
 
-function degreeOfPath(path: CostPath): PathDegree {
-  const monomial = monomialOfPath(path)
+/** A monomial's own degree — `pow` primary, `log` secondary — independent of any path or graph it came from, so `dominantTerms` (below) can compare a `CostExpr`'s terms the same way `dominantPaths` compares a graph's paths. */
+function degreeOfMonomial(monomial: Monomial): Degree {
   return {
     pow: sumExponents(monomial, "pow"),
     log: sumExponents(monomial, "log"),
   }
 }
 
+function degreeOfPath(path: CostPath): Degree {
+  return degreeOfMonomial(monomialOfPath(path))
+}
+
 /** `true` iff `a` is strictly greater than `b` — `pow` decides first, `log` breaks a `pow` tie. */
-function degreeExceeds(a: PathDegree, b: PathDegree): boolean {
+function degreeExceeds(a: Degree, b: Degree): boolean {
   if (a.pow !== b.pow) return a.pow > b.pow
   return a.log > b.log
 }
 
-function degreesEqual(a: PathDegree, b: PathDegree): boolean {
+function degreesEqual(a: Degree, b: Degree): boolean {
   return a.pow === b.pow && a.log === b.log
 }
 
@@ -430,4 +434,80 @@ export function dominantPaths(graph: CostGraph): ReadonlyArray<CostPath> {
   return contributingPaths.filter((path) =>
     degreesEqual(degreeOfPath(path), maxDegree)
   )
+}
+
+/** A monomial's own dimension set, as a stable, order-independent map key. */
+function dimensionSetKey(monomial: Monomial): string {
+  return [...dimensionsOfMonomial(monomial)].sort().join(",")
+}
+
+function isMaximalDegree(
+  degree: Degree,
+  maxDegreeInGroup: Degree | undefined
+): boolean {
+  return (
+    maxDegreeInGroup !== undefined && degreesEqual(degree, maxDegreeInGroup)
+  )
+}
+
+/**
+ * G3 (#1211), Prop. 2.1: the dominant term(s) of `T(G)` itself — the same
+ * kind of degree comparison `dominantPaths` runs over a graph's paths, run
+ * instead over a cost expression's own (already-summed) terms, so a caller
+ * holding only `T` (no graph reference) can still find what dominates it.
+ * `T`'s terms are already normalized (`normalizeCostExpr`), so two paths
+ * landing on the same monomial have already been merged into one term by
+ * the time this runs — but two *distinct* monomials of equal degree (`n^2`
+ * and `n * m`) are not merged and can genuinely tie. Def. 2.3's "need not
+ * be unique" applies here exactly as it does to `dominantPaths`, so this
+ * returns every tied term rather than choosing one.
+ *
+ * Degree is only compared **within** terms sharing the exact same set of
+ * dimensions — R2's own "relating two dimensions to each other" is out of
+ * scope, so nothing here can say `n^3` "beats" `m^2`: `m` is free to grow
+ * independently of `n`, and summing exponents across unrelated dimensions
+ * would silently drop a term that could dominate for some valid input
+ * (review finding: `n^3 + m^2` was reduced to `Θ(n^3)`). A term maximal
+ * within its own dimension-set group survives; a different group never
+ * eliminates it, regardless of summed degree.
+ */
+export function dominantTerms(cost: CostExpr): CostExpr {
+  if (cost.length === 0) return []
+
+  const maxDegreeByDimensionSet = new Map<string, Degree>()
+  for (const term of cost) {
+    const key = dimensionSetKey(term.monomial)
+    const degree = degreeOfMonomial(term.monomial)
+    const currentMax = maxDegreeByDimensionSet.get(key)
+    if (currentMax === undefined || degreeExceeds(degree, currentMax)) {
+      maxDegreeByDimensionSet.set(key, degree)
+    }
+  }
+
+  return cost.filter((term) => {
+    const key = dimensionSetKey(term.monomial)
+    return isMaximalDegree(
+      degreeOfMonomial(term.monomial),
+      maxDegreeByDimensionSet.get(key)
+    )
+  })
+}
+
+/**
+ * The rendered `Θ`-class of a cost expression — Prop. 2.1's own "a round
+ * ... derives ... its `Θ`-class. It never authors the `Θ`-class directly":
+ * this is that derivation, the only function in this workspace allowed to
+ * produce a `Θ(...)` string, so that no schema needs a field to hold one
+ * (G3's own acceptance criterion). A genuine tie among `dominantTerms`
+ * prints as a sum (canon gives no rule for preferring one tied monomial
+ * over another); coefficients are dropped the same way `printMonomial`
+ * already drops them, since Ax. 3.1's coarseness means a constant factor
+ * was never part of the class. `T(G) ≡ 0` (every leaf costs `0`) has no
+ * dominant term and prints as `Θ(0)` rather than throwing — a graph that
+ * does no work at all is a legitimate, if degenerate, cost graph.
+ */
+export function printClass(cost: CostExpr): string {
+  const dominant = dominantTerms(cost)
+  if (dominant.length === 0) return "Θ(0)"
+  return `Θ(${dominant.map((term) => printMonomial(term.monomial)).join(" + ")})`
 }

@@ -562,7 +562,7 @@ export const lexicographicallySmallestValidSequence: Exercise = {
       obligation:
         "neither cursor retreats within its scan, so source positions are visited at most twice",
       decisionReason:
-        "Two monotone scans trade O(m) certificate storage for avoiding repeated suffix searches",
+        "Two monotone scans trade certificate storage linear in m for avoiding repeated suffix searches",
       counterfactual:
         "auxiliary memory were forbidden and quadratic time were acceptable",
       surfaceRule: "Two-pointer algorithms are linear",
@@ -571,7 +571,10 @@ export const lexicographicallySmallestValidSequence: Exercise = {
           kind: "trace",
           headline: "complexity",
           observations: [
-            { label: "time / extra space", value: "O(n + m) / O(m)" },
+            {
+              label: "time / extra space",
+              value: "linear in n + m / linear in m",
+            },
           ],
         },
         {

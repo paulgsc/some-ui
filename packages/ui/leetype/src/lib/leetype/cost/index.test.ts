@@ -13,6 +13,7 @@ import {
   dimensionsOfGraph,
   dimensionsOfMonomial,
   dominantPaths,
+  dominantTerms,
   logDim,
   Loop,
   monomialOfPath,
@@ -20,6 +21,7 @@ import {
   ONE,
   parseMonomial,
   paths,
+  printClass,
   printMonomial,
   scaleCost,
   Seq,
@@ -372,5 +374,90 @@ describe("dominantPaths — Def. 2.3 / Cor. 2.1, Rem. 2.1's own instance", () =>
     const graph = Seq(Loop(dim("n", 2), W(0)), Loop(dim("n"), W(0)))
     expect(costOf(graph)).toEqual([])
     expect(dominantPaths(graph)).toEqual([])
+  })
+})
+
+describe("dominantTerms / printClass — G3's own derivation (Prop. 2.1)", () => {
+  it("a single-term expression's own term is trivially dominant", () => {
+    const cost = costOf(Loop(dim("n", 2), W(1)))
+    expect(dominantTerms(cost)).toEqual(cost)
+    expect(printClass(cost)).toBe("Θ(n^2)")
+  })
+
+  it("picks the higher-degree term out of a multi-term sum (n^2 + n^3 is dominated by n^3)", () => {
+    const cost = costOf(
+      Loop(dim("n"), Seq(Loop(dim("n"), W(1)), Loop(dim("n", 2), W(1))))
+    )
+    expect(cost).toEqual([
+      { coefficient: 1, monomial: dim("n", 2) },
+      { coefficient: 1, monomial: dim("n", 3) },
+    ])
+    expect(dominantTerms(cost)).toEqual([
+      { coefficient: 1, monomial: dim("n", 3) },
+    ])
+    expect(printClass(cost)).toBe("Θ(n^3)")
+  })
+
+  it("drops the coefficient — Ax. 3.1's coarseness means a constant factor was never part of the class", () => {
+    const cost = costOf(Loop(dim("n"), W(1000)))
+    expect(printClass(cost)).toBe("Θ(n)")
+  })
+
+  it('prints a genuine tie between distinct same-degree monomials as a sum (Def. 2.3, "need not be unique")', () => {
+    const cost = costOf(
+      Seq(
+        Loop(dim("n", 2), W(1)),
+        Loop(multiplyMonomials(dim("n"), dim("m")), W(1))
+      )
+    )
+    expect(dominantTerms(cost)).toHaveLength(2)
+    // normalizeCostExpr orders terms by monomial key ("pow:m:1,pow:n:1" sorts
+    // before "pow:n:2"), and printMonomial's own factor order within the n*m
+    // monomial is alphabetical too — hence "m * n" before "n^2", not the
+    // authoring order.
+    expect(printClass(cost)).toBe("Θ(m * n + n^2)")
+  })
+
+  // Review finding (Codex, #1256): summing exponents across dimensions
+  // wrongly ranked n^3 above m^2, even though m grows independently of n
+  // and could exceed it for a valid input — R2's own "relating two
+  // dimensions to each other" is out of scope, so neither term may be
+  // dropped. Degree is only compared within terms sharing the same
+  // dimension set; a different dimension set never eliminates a term,
+  // however much smaller its summed degree looks.
+  it("retains both terms of an unequal-degree cross-dimension sum rather than ranking by summed exponent (review finding)", () => {
+    const cost = costOf(Seq(Loop(dim("m", 2), W(1)), Loop(dim("n", 3), W(1))))
+    expect(dominantTerms(cost)).toHaveLength(2)
+    expect(printClass(cost)).toBe("Θ(m^2 + n^3)")
+  })
+
+  it("a higher-degree term in one dimension set does not eliminate a lower-degree term in a different one (n^5 vs n*m)", () => {
+    const cost = costOf(
+      Seq(
+        Loop(dim("n", 5), W(1)),
+        Loop(multiplyMonomials(dim("n"), dim("m")), W(1))
+      )
+    )
+    expect(dominantTerms(cost)).toHaveLength(2)
+    // "m * n" (dims {n, m}) sorts before "n^5" (dims {n}) by monomial key.
+    expect(printClass(cost)).toBe("Θ(m * n + n^5)")
+  })
+
+  it("T(G) identically 0 has no dominant term and prints Θ(0) rather than throwing", () => {
+    const cost = costOf(W(0))
+    expect(cost).toEqual([])
+    expect(dominantTerms(cost)).toEqual([])
+    expect(printClass(cost)).toBe("Θ(0)")
+  })
+
+  it("a log factor's degree still tie-breaks a pow-degree tie, same as dominantPaths (review finding on #1252)", () => {
+    const cost = costOf(
+      Seq(
+        Loop(dim("n"), W(1)),
+        Loop(multiplyMonomials(dim("n"), logDim("n")), W(1))
+      )
+    )
+    // Factors print in normalized order — "log:n" sorts before "pow:n".
+    expect(printClass(cost)).toBe("Θ(log n * n)")
   })
 })

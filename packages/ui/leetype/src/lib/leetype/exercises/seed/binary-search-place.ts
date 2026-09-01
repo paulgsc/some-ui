@@ -38,12 +38,12 @@ const constructionBinarySearchPlaceStep = withJudgment({
     "binary_search's own Err(i) arm already carries the sorted insertion index that a position()-based scan re-derives from scratch",
   surfaceRule: "use binary search because the array is sorted",
   counterfactual:
-    "the array were not already maintained in sorted order elsewhere — sorting it just to enable this one lookup would cost more than the O(n) scan it replaces",
+    "the array were not already maintained in sorted order elsewhere — sorting it just to enable this one lookup would cost more than the linear scan it replaces",
   blocks: [
     {
       kind: "transition",
       label: "insertion index, target absent",
-      before: "a full O(n) scan to find where the new value belongs",
+      before: "a full linear scan to find where the new value belongs",
       after: "already returned by binary_search's Err(i)",
     },
     typingBlockFromDiff({
