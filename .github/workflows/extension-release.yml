@@ -50,6 +50,7 @@ on:
       - "extensions/suspender-ledger/**"
       - "extensions/common/**"
       - "packages/**"
+      - "pnpm-lock.yaml"
       - ".changeset/**"
       - ".github/workflows/extension-release.yml"
       - ".github/workflows/_extension-sign.yml"

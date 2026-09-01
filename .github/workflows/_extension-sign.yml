@@ -40,11 +40,16 @@ jobs:
       # package.json is the single field a human (or extension-release.yml's
       # changeset bump) edits; public/manifest.firefox.json carries its own
       # copy of `version` that AMO actually reads from the built xpi, and
-      # nothing else keeps it in sync. Stamp it here so even a manually
-      # triggered sign (extension-sign-manual.yml) can't ship a drifted
-      # version.
-      - name: Sync manifest version
-        run: nix develop .#ci --command node extensions/scripts/sync-manifest-version.mjs "${{ matrix.extension_path }}"
+      # nothing else keeps it in sync. --check only *verifies* the two
+      # match — it must not silently rewrite the manifest here: this job's
+      # working tree is what gets built into the xpi, but
+      # package-source.sh's `git archive HEAD` below packages whatever is
+      # actually committed, so a fix applied only in this step would submit
+      # a build that its own source archive can't reproduce. Extensions
+      # without a public/manifest.firefox.json (not every extension uses
+      # that convention) are skipped, not failed — see the script header.
+      - name: Verify manifest version matches package.json
+        run: nix develop .#ci --command node extensions/scripts/sync-manifest-version.mjs --check "${{ matrix.extension_path }}"
       # Build the extension itself — workspace deps already present from artifact.
       - name: Build release artifact
         run: nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" build
