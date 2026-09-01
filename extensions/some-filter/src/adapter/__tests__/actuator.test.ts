@@ -24,8 +24,12 @@ describe("realize — Definition 7.3 structural check", () => {
     const stripComments = (source: string): string =>
       source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "")
 
+    // classList's write methods (add/remove/toggle/replace) count as a DOM
+    // write like the rest of this pattern; .contains()/.length and friends
+    // are a read no different from the getComputedStyle() calls pipeline.ts
+    // is built around, so only the write methods are matched here.
     const domWritePattern =
-      /\.setAttribute\(|\.removeAttribute\(|\.dataset\.|\.appendChild\(|\.textContent\s*=|\.classList\./
+      /\.setAttribute\(|\.removeAttribute\(|\.dataset\.|\.appendChild\(|\.textContent\s*=|\.classList\.(add|remove|toggle|replace)\(/
 
     const pipeline = stripComments(
       readFileSync(join(dir, "pipeline.ts"), "utf-8")

@@ -6,6 +6,7 @@ import {
   withVendorColorsVisible,
 } from "@filter/adapter/pipeline"
 import { SWATCHES } from "@filter/adapter/swatches"
+import { PREPAINT_DIRTY_CLASS } from "@filter/lib/content/prepaint"
 import { DARK_THEME_ATTR } from "@filter/lib/content/theme-apply"
 import { createSessionLifecycle } from "@some-extension/transport/session/lifecycle"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -23,6 +24,7 @@ function cleanUp(): void {
   document.body.innerHTML = ""
   document.documentElement.style.backgroundColor = ""
   document.body.style.backgroundColor = ""
+  document.documentElement.classList.remove(PREPAINT_DIRTY_CLASS)
 }
 
 afterEach(() => {
@@ -182,6 +184,34 @@ describe("scanCanvas — root/canvas evidence for the false-dark-verdict veto", 
       expect(attr.luminance).toBe(1)
       expect(attr.rendered).toBe(true)
     }
+  })
+
+  it("omits html canvas evidence entirely while sw-dirty's CSS backstop would contaminate the body-fallback read", () => {
+    // prepaint.css's `html.sw-dirty > body { background: ... !important }`
+    // beats any plain (non-!important) vendor body rule in a real browser
+    // (confirmed separately against a real cascade, not reproduced here —
+    // this test only needs bodyCanvasBackstopActive()'s own precondition:
+    // sw-dirty present, html declaring nothing of its own). The fallback
+    // must not report body's read at all in that state, since it cannot
+    // tell this extension's own forced color from the vendor's.
+    document.body.style.backgroundColor = "rgb(255, 255, 255)"
+    document.documentElement.classList.add(PREPAINT_DIRTY_CLASS)
+
+    const canvas = scanCanvas(document.body)
+
+    expect(canvas.has("__canvas__:html")).toBe(false)
+    expect(canvas.size).toBe(0)
+  })
+
+  it("still reads html's own explicit background while sw-dirty is active — the backstop only targets body", () => {
+    document.documentElement.style.backgroundColor = "rgb(13, 17, 23)"
+    document.documentElement.classList.add(PREPAINT_DIRTY_CLASS)
+
+    const canvas = scanCanvas(document.body)
+
+    expect(canvas.size).toBe(1)
+    const attr = canvas.get("__canvas__:html")
+    expect(attr?.luminance).toBeLessThan(0.1)
   })
 
   it("does not add canvas keys to a descendant scan's own elementsByKey/attrsByKey", () => {
