@@ -128,8 +128,14 @@ function ownTextColor(el: Element, style: CSSStyleDeclaration): RGBA | null {
   return parseColor(style.color)
 }
 
+/** True unless the computed style itself proves the carrier was never actually painted. */
+function isRendered(style: CSSStyleDeclaration): boolean {
+  return style.display !== "none" && style.visibility !== "hidden"
+}
+
 function readAttr(el: Element): SurfaceAttr | null {
   const style = getComputedStyle(el)
+  const rendered = isRendered(style)
   const c = parseColor(style.backgroundColor)
 
   if (c !== null) {
@@ -138,6 +144,7 @@ function readAttr(el: Element): SurfaceAttr | null {
       luminance: relativeLuminance(c[0], c[1], c[2]),
       opacity: c[3],
       text: ownTextColor(el, style),
+      rendered,
     }
   }
 
@@ -152,10 +159,93 @@ function readAttr(el: Element): SurfaceAttr | null {
       opacity: 1,
       text: ownTextColor(el, style),
       imageOnly: true,
+      rendered,
     }
   }
 
   return null
+}
+
+const CANVAS_KEY_HTML: SurfaceKey = "__canvas__:html"
+const CANVAS_KEY_ROOT: SurfaceKey = "__canvas__:root"
+
+type RawCarrierColor = {
+  readonly color: RGBA | null
+  readonly imageOnly: boolean
+  readonly rendered: boolean
+}
+
+/** The raw, unresolved read of one carrier's own declared background — no propagation, no assumed-bright fallback. */
+function readRawCarrierColor(el: Element): RawCarrierColor {
+  const style = getComputedStyle(el)
+  const rendered = isRendered(style)
+  const color = parseColor(style.backgroundColor)
+  if (color !== null) return { color, imageOnly: false, rendered }
+  if (GRADIENT_RE.test(style.backgroundImage)) {
+    return { color: ASSUMED_LIGHT_IMAGE, imageOnly: true, rendered }
+  }
+  return { color: null, imageOnly: false, rendered }
+}
+
+function canvasAttrFrom(raw: RawCarrierColor): SurfaceAttr {
+  const color = raw.color ?? ASSUMED_LIGHT_IMAGE
+  return {
+    color,
+    luminance: relativeLuminance(color[0], color[1], color[2]),
+    opacity: raw.color === null ? 1 : color[3],
+    rendered: raw.rendered,
+    imageOnly: raw.imageOnly || raw.color === null,
+    evidenceRole: "canvas",
+  }
+}
+
+/**
+ * Resolves `html`'s effective canvas evidence — the substrate a fully
+ * transparent light-DOM stack leaves showing through as the browser's own
+ * white default paint. This is *not* simply `html`'s own declared
+ * background: CSS's canvas background propagation
+ * (https://www.w3.org/TR/css-backgrounds-3/#special-backgrounds) means
+ * that when `html` declares no background of its own, the UA instead
+ * paints `body`'s declared background across the *entire* canvas — a real,
+ * extremely common native-dark pattern (`body { background: #000 }` with
+ * `html` left untouched) that reading `html` and `body` as two
+ * independently-transparent, independently-assumed-bright carriers would
+ * misclassify as bright and veto `restore-native` on every such page.
+ * Falling through to `body` here, and only treating the pair as truly
+ * unknown when *neither* declares anything, is what makes this that same
+ * "unknown means light" bias `readAttr` already applies to a gradient-only
+ * surface — generalized to "no resolvable color anywhere the canvas could
+ * get one from," not to "this one element's read came back empty."
+ */
+function readHtmlCanvasAttr(): SurfaceAttr {
+  const html = readRawCarrierColor(document.documentElement)
+  if (html.color !== null) return canvasAttrFrom(html)
+
+  const body = readRawCarrierColor(document.body)
+  return canvasAttrFrom(body)
+}
+
+/**
+ * Samples `html` (propagation-resolved against `body`, see
+ * `readHtmlCanvasAttr`) and, when it differs from both, `root` itself, for
+ * `theme-adapter.ts`'s bright-canvas veto (Phase 1 of the false-dark-verdict
+ * fix). Deliberately disjoint from `scan()`'s descendant-only
+ * `elementsByKey`/`attrsByKey` — these keys name no real element for
+ * `realize()`'s per-surface tagging to act on, and `decide()` never emits a
+ * tag-surface/emit-surface-color action for an `evidenceRole: "canvas"`
+ * key, so keeping them out of `elementsByKey` costs nothing and keeps
+ * `scan()`'s own "never classifies root itself" contract intact for its
+ * existing callers.
+ */
+export function scanCanvas(
+  root: Element
+): ReadonlyMap<SurfaceKey, SurfaceAttr> {
+  const attrs = new Map<SurfaceKey, SurfaceAttr>()
+  attrs.set(CANVAS_KEY_HTML, readHtmlCanvasAttr())
+  if (root !== document.body && root !== document.documentElement) {
+    attrs.set(CANVAS_KEY_ROOT, canvasAttrFrom(readRawCarrierColor(root)))
+  }
+  return attrs
 }
 
 // ── Vendor truth (Axiom 3.5, read side) ──────────────────────────────────────
@@ -332,6 +422,20 @@ export function scan(root: Element): ScanResult {
         const list = elementsByKey.get(key)
         if (list !== undefined) {
           list.push(node)
+          // Only the first carrier's attr is retained as the key's
+          // representative evidence (color/text below), but `rendered`
+          // must not inherit that same "first wins" collapse: a later
+          // occurrence of an identical color that IS actually on screen
+          // must not be discarded from the page-level mean just because
+          // the first occurrence happened to be hidden/zero-area. `rendered`
+          // is true for the key as a whole whenever *any* carrier sharing
+          // it is rendered.
+          if (attr.rendered === true) {
+            const existing = attrsByKey.get(key)
+            if (existing !== undefined && existing.rendered !== true) {
+              attrsByKey.set(key, { ...existing, rendered: true })
+            }
+          }
         } else {
           elementsByKey.set(key, [node])
           attrsByKey.set(key, attr)
@@ -388,9 +492,22 @@ export function createContentSession(
         dropStaleEvidence()
       }
 
-      lastScan = withVendorColorsVisible(() => scan(root))
+      const { scanned, canvas } = withVendorColorsVisible(() => ({
+        scanned: scan(root),
+        canvas: scanCanvas(root),
+      }))
+      lastScan = scanned
       const timestamp = Date.now()
       for (const [key, attrs] of lastScan.attrsByKey) {
+        update(hypothesis, provenance, {
+          key,
+          attrs,
+          epoch: session.epoch,
+          tier: "full",
+          timestamp,
+        })
+      }
+      for (const [key, attrs] of canvas) {
         update(hypothesis, provenance, {
           key,
           attrs,

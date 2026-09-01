@@ -84,6 +84,36 @@ export type SurfaceAttr = {
    * keys, since there is no real color to recolor.
    */
   readonly imageOnly?: boolean
+  /**
+   * `undefined`/`"surface"` (the default) for ordinary descendant evidence
+   * from `scan()`. `"canvas"` marks the small, separate set of keys
+   * `pipeline.ts`'s `scanCanvas()` produces for `html`, `body`, and the
+   * scan root themselves — the one class of evidence `scan()`'s
+   * descendant-only walk structurally cannot produce (it never classifies
+   * `root`, and `root` is always inside `body`/`html`). `decide()` never
+   * emits a per-surface action for a canvas-role key (there is no element
+   * behind it to tag); `pageAlreadyDark()` reads it as an outright veto
+   * against `restore-native` rather than folding it into the ordinary
+   * distinct-key mean — a false-dark verdict here is exactly what let a
+   * fully transparent light-DOM stack (YouTube's `ytd-app` after
+   * hydration, leaving the browser's own white canvas as the true visible
+   * substrate) read as "already dark" from nothing but its hidden/zero-area
+   * descendant chrome.
+   */
+  readonly evidenceRole?: "canvas" | "surface"
+  /**
+   * False when the carrier itself is `display: none` or `visibility:
+   * hidden` at scan time — a dormant player control or off-screen skeleton
+   * whose color was never actually visible to anyone. `undefined` (the
+   * common case: `readAttr`/`readCanvasAttr` always set this, but a
+   * hand-built `SurfaceAttr` in a test fixture may omit it) is treated the
+   * same as `true` everywhere this is read, so existing evidence with no
+   * opinion on visibility keeps voting exactly as before. Only
+   * `pageAlreadyDark()`'s page-level verdict consults this field —
+   * per-surface actuation (`decide()`'s tag-surface/emit-surface-color
+   * loop) is unaffected, since tagging a hidden element is harmless.
+   */
+  readonly rendered?: boolean
 }
 
 /**

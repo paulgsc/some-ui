@@ -65,10 +65,31 @@ const MIN_EVIDENCE_FOR_DARK_VERDICT = 3
 
 /**
  * `detect()`'s `alreadyDark` verdict, folded into a pure predicate over Ĥ:
- * an unweighted mean luminance across every evidenced key, compared against
- * the same threshold `classifyPage()` uses. No evidence yet (`count === 0`)
- * mirrors `classifyPage()`'s own zero-samples case — assume light (the
- * browser-default-white bias), i.e. not already dark.
+ * an unweighted mean luminance across every evidenced *surface* key,
+ * compared against the same threshold `classifyPage()` uses. No evidence
+ * yet (`count === 0`) mirrors `classifyPage()`'s own zero-samples case —
+ * assume light (the browser-default-white bias), i.e. not already dark.
+ *
+ * That mean is deliberately not the whole story: it is keyed by distinct
+ * *color*, not by visible area or occurrence, so a page can accumulate
+ * enough small/hidden dark keys —
+ * dormant player controls, off-screen tooltips, zero-area skeletons — to
+ * pull the mean dark while the actual painted viewport substrate stays
+ * white. Two corrections close that gap without touching the mean's own
+ * math:
+ *
+ *   - Evidence this extension itself knows was never visible (`rendered
+ *     === false`) or was too transparent to mean anything
+ *     (`opacity < OPACITY_SKIP_THRESHOLD`, the same bar `decide()`'s
+ *     per-surface loop already uses) never enters the mean at all.
+ *   - `pipeline.ts`'s `scanCanvas()` evidence (`evidenceRole: "canvas"` —
+ *     `html`, `body`, the scan root) is read separately, as a veto: one
+ *     rendered, confidently bright canvas key forces "not already dark"
+ *     outright, before the mean is even computed, however many dark
+ *     surface keys exist. A canvas key that itself reads dark is *not*
+ *     the mirror-image "force already dark" — Requirement 5 keeps the
+ *     distinct-key mean as the sole source of an affirmative dark verdict,
+ *     canvas evidence only ever vetoes it.
  */
 function pageAlreadyDark(
   hypothesis: Hypothesis<SurfaceKey, SurfaceAttr>
@@ -79,6 +100,24 @@ function pageAlreadyDark(
   for (const key of hypothesis.keys()) {
     const attr = hypothesis.get(key)
     if (attr === undefined) continue
+
+    if (attr.evidenceRole === "canvas") {
+      const trustworthy =
+        attr.rendered !== false && attr.opacity >= OPACITY_SKIP_THRESHOLD
+      // Untrustworthy canvas evidence (hidden, or too transparent to read)
+      // is treated the same as confidently-bright: "unknown" never earns
+      // restore-native (Requirement 3), and a canvas carrier this extension
+      // cannot confidently call dark is not proof the page is safe to hand
+      // back to native rendering.
+      if (!trustworthy || attr.luminance > PAGE_LUMINANCE_THRESHOLD) {
+        return false
+      }
+      continue
+    }
+
+    if (attr.rendered === false) continue
+    if (attr.opacity < OPACITY_SKIP_THRESHOLD) continue
+
     total += attr.luminance
     count += 1
   }
@@ -116,6 +155,12 @@ export function decide(
   for (const key of hypothesis.keys()) {
     const attr = hypothesis.get(key)
     if (attr === undefined) continue
+    // Canvas evidence (pipeline.ts's scanCanvas()) names html/body/root,
+    // not a scanned descendant — there is no element behind the key for
+    // realize()'s tag-surface loop to find, and the static theme layer
+    // (buildDarkThemeCSS's html/body rule) already covers these carriers
+    // unconditionally whenever activate-theme fires.
+    if (attr.evidenceRole === "canvas") continue
     if (attr.opacity < OPACITY_SKIP_THRESHOLD) continue
 
     if (attr.luminance > LIGHT_THRESHOLD) {

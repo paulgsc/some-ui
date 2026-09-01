@@ -2,6 +2,7 @@ import {
   createContentSession,
   isSelfAuthored,
   scan,
+  scanCanvas,
   withVendorColorsVisible,
 } from "@filter/adapter/pipeline"
 import { SWATCHES } from "@filter/adapter/swatches"
@@ -20,6 +21,8 @@ function cleanUp(): void {
     el.removeAttribute("data-sw-patched")
   })
   document.body.innerHTML = ""
+  document.documentElement.style.backgroundColor = ""
+  document.body.style.backgroundColor = ""
 }
 
 afterEach(() => {
@@ -86,6 +89,112 @@ describe("scan", () => {
     expect(elementsByKey.size).toBe(0)
     expect(attrsByKey.size).toBe(0)
   })
+
+  it("marks a display:none descendant's evidence as unrendered", () => {
+    document.body.innerHTML =
+      '<div id="a" style="background-color: rgb(13, 17, 23); display: none"></div>'
+    const { attrsByKey } = scan(document.body)
+    const attr = attrsByKey.get("rgb(13, 17, 23)")
+    expect(attr?.rendered).toBe(false)
+  })
+
+  it("marks a visibility:hidden descendant's evidence as unrendered", () => {
+    document.body.innerHTML =
+      '<div id="a" style="background-color: rgb(13, 17, 23); visibility: hidden"></div>'
+    const { attrsByKey } = scan(document.body)
+    const attr = attrsByKey.get("rgb(13, 17, 23)")
+    expect(attr?.rendered).toBe(false)
+  })
+
+  it("marks an ordinary visible descendant's evidence as rendered", () => {
+    document.body.innerHTML =
+      '<div id="a" style="background-color: rgb(13, 17, 23)"></div>'
+    const { attrsByKey } = scan(document.body)
+    const attr = attrsByKey.get("rgb(13, 17, 23)")
+    expect(attr?.rendered).toBe(true)
+  })
+
+  it("reports a shared key as rendered when a later occurrence is visible, even though the first occurrence (the one whose attr is stored) is hidden", () => {
+    // scan() only ever stores the *first* carrier's SurfaceAttr for a given
+    // key (surfaceKeyFor's own docstring already documents this collapse
+    // for text/imageOnly); rendered must not inherit that same "first
+    // wins" behavior, or a key with any hidden first occurrence would be
+    // wrongly dropped from the page-level mean even when a later, visible
+    // occurrence of the identical color exists elsewhere on the page.
+    document.body.innerHTML =
+      '<div id="hidden-first" style="background-color: rgb(13, 17, 23); display: none"></div>' +
+      '<div id="visible-second" style="background-color: rgb(13, 17, 23)"></div>'
+    const { attrsByKey } = scan(document.body)
+    const attr = attrsByKey.get("rgb(13, 17, 23)")
+    expect(attr?.rendered).toBe(true)
+  })
+
+  it("reports a shared key as unrendered only when every occurrence is hidden", () => {
+    document.body.innerHTML =
+      '<div style="background-color: rgb(13, 17, 23); display: none"></div>' +
+      '<div style="background-color: rgb(13, 17, 23); visibility: hidden"></div>'
+    const { attrsByKey } = scan(document.body)
+    const attr = attrsByKey.get("rgb(13, 17, 23)")
+    expect(attr?.rendered).toBe(false)
+  })
+})
+
+describe("scanCanvas — root/canvas evidence for the false-dark-verdict veto", () => {
+  it("reads html's own explicit background as canvas evidence, not assumed-bright", () => {
+    document.documentElement.style.backgroundColor = "rgb(13, 17, 23)"
+
+    const canvas = scanCanvas(document.body)
+
+    expect(canvas.size).toBe(1)
+    for (const attr of canvas.values()) {
+      expect(attr.evidenceRole).toBe("canvas")
+      expect(attr.luminance).toBeLessThan(0.1)
+    }
+  })
+
+  it("resolves html's canvas color from body when html declares nothing of its own (CSS canvas propagation)", () => {
+    // https://www.w3.org/TR/css-backgrounds-3/#special-backgrounds: with no
+    // background on html, body's declared background paints the whole
+    // canvas. Reading html/body as two independent carriers would read
+    // html's own transparent background as assumed-bright and veto
+    // restore-native on this extremely common native-dark pattern.
+    document.body.style.backgroundColor = "rgb(13, 17, 23)"
+
+    const canvas = scanCanvas(document.body)
+
+    expect(canvas.size).toBe(1)
+    for (const attr of canvas.values()) {
+      expect(attr.evidenceRole).toBe("canvas")
+      expect(attr.luminance).toBeLessThan(0.1)
+    }
+  })
+
+  it("treats html/body with no explicit background as assumed-bright canvas evidence", () => {
+    // The exact YouTube shape: nothing in the light-DOM stack declares a
+    // color, so the browser's own white default is the true visible
+    // substrate — indistinguishable, from a computed-style read alone, from
+    // "no evidence at all." Must not be read as the latter.
+    const canvas = scanCanvas(document.body)
+
+    expect(canvas.size).toBe(1)
+    for (const attr of canvas.values()) {
+      expect(attr.evidenceRole).toBe("canvas")
+      expect(attr.luminance).toBe(1)
+      expect(attr.rendered).toBe(true)
+    }
+  })
+
+  it("does not add canvas keys to a descendant scan's own elementsByKey/attrsByKey", () => {
+    document.documentElement.style.backgroundColor = "rgb(13, 17, 23)"
+    document.body.style.backgroundColor = "rgb(13, 17, 23)"
+    document.body.innerHTML =
+      '<div style="background-color: rgb(255, 255, 255)"></div>'
+
+    const { elementsByKey, attrsByKey } = scan(document.body)
+
+    expect(elementsByKey.size).toBe(1)
+    expect(attrsByKey.size).toBe(1)
+  })
 })
 
 describe("createContentSession — rescan() is immediate, not coalesced", () => {
@@ -112,10 +221,18 @@ describe("createContentSession — rescan() is immediate, not coalesced", () => 
     contentSession.teardown()
   })
 
-  it("a genuinely dark page (mean luminance low) restores native instead of tagging, immediately", () => {
+  it("a genuinely dark page (mean luminance low, dark canvas) restores native instead of tagging, immediately", () => {
     // Three distinct dark keys, at/above theme-adapter.ts's
     // MIN_EVIDENCE_FOR_DARK_VERDICT -- a single evidenced element is exactly
-    // the sparse-sample case that guard exists to distrust.
+    // the sparse-sample case that guard exists to distrust. html/body also
+    // carry their own explicit dark background: this is what real-world
+    // native-dark pages do to avoid their own FOUC, and it's what makes
+    // "already dark" trustworthy here -- scanCanvas()'s bright-canvas veto
+    // (the false-dark-verdict fix) means dark surface evidence alone, with
+    // html/body left transparent, is no longer enough (see the sibling test
+    // below, which is exactly that shape and must NOT restore native).
+    document.documentElement.style.backgroundColor = "rgb(13, 17, 23)"
+    document.body.style.backgroundColor = "rgb(13, 17, 23)"
     document.body.innerHTML =
       '<div id="a" style="background-color: rgb(13, 17, 23)"></div>' +
       '<div id="b" style="background-color: rgb(5, 5, 5)"></div>' +
@@ -128,6 +245,75 @@ describe("createContentSession — rescan() is immediate, not coalesced", () => 
     expect(document.documentElement.hasAttribute(DARK_THEME_ATTR)).toBe(false)
     const target = document.getElementById("a")
     expect(target?.dataset.swPatched).toBeUndefined()
+
+    contentSession.teardown()
+  })
+
+  it("does NOT restore native from dark descendants alone when html/body are left transparent (the YouTube false-dark verdict)", () => {
+    // The exact failure the recon traced: a fully transparent light-DOM
+    // stack (ytd-app after hydration, with nothing beneath it declaring a
+    // color either) leaves the browser's own white canvas as the true
+    // visible substrate, while enough small/hidden dark descendant keys
+    // exist to pull scan()'s distinct-key mean below the dark threshold.
+    // html/body here are never given an explicit background -- exactly
+    // that shape -- so scanCanvas() must read them as assumed-bright
+    // (unknown) and veto restore-native, even though the three descendant
+    // keys alone would have crossed MIN_EVIDENCE_FOR_DARK_VERDICT and read
+    // dark under the old, canvas-blind verdict.
+    document.body.innerHTML =
+      '<div id="a" style="background-color: rgb(13, 17, 23)"></div>' +
+      '<div id="b" style="background-color: rgb(5, 5, 5)"></div>' +
+      '<div id="c" style="background-color: rgb(10, 10, 10)"></div>'
+    const session = createSessionLifecycle()
+    const contentSession = createContentSession(SWATCHES.default, session)
+
+    contentSession.rescan()
+
+    expect(document.documentElement.hasAttribute(DARK_THEME_ATTR)).toBe(true)
+
+    contentSession.teardown()
+  })
+
+  it("does NOT restore native when dark descendants sit under a hidden canvas reading (unknown, not proof of dark)", () => {
+    // html declares nothing of its own, so its effective canvas color
+    // propagates from body (CSS's canvas background propagation) -- but
+    // body itself is visibility:hidden here, so that propagated dark
+    // reading can't actually be seen either. An "unrendered" canvas
+    // reading must not be trusted as proof the page is dark -- it is
+    // exactly as uninformative as no color at all.
+    document.body.style.cssText =
+      "background-color: rgb(13, 17, 23); visibility: hidden"
+    document.body.innerHTML =
+      '<div id="a" style="background-color: rgb(13, 17, 23); visibility: visible"></div>' +
+      '<div id="b" style="background-color: rgb(5, 5, 5); visibility: visible"></div>' +
+      '<div id="c" style="background-color: rgb(10, 10, 10); visibility: visible"></div>'
+    const session = createSessionLifecycle()
+    const contentSession = createContentSession(SWATCHES.default, session)
+
+    contentSession.rescan()
+
+    expect(document.documentElement.hasAttribute(DARK_THEME_ATTR)).toBe(true)
+
+    contentSession.teardown()
+    document.body.style.visibility = ""
+  })
+
+  it("resolves html's effective canvas color from body when html declares no background of its own (CSS canvas propagation)", () => {
+    // The extremely common native-dark pattern: only body declares a dark
+    // background, html is left untouched. Reading html and body as two
+    // independently-transparent carriers would misclassify this as an
+    // unknown/bright canvas and veto restore-native on every such page.
+    document.body.style.backgroundColor = "rgb(13, 17, 23)"
+    document.body.innerHTML =
+      '<div id="a" style="background-color: rgb(13, 17, 23)"></div>' +
+      '<div id="b" style="background-color: rgb(5, 5, 5)"></div>' +
+      '<div id="c" style="background-color: rgb(10, 10, 10)"></div>'
+    const session = createSessionLifecycle()
+    const contentSession = createContentSession(SWATCHES.default, session)
+
+    contentSession.rescan()
+
+    expect(document.documentElement.hasAttribute(DARK_THEME_ATTR)).toBe(false)
 
     contentSession.teardown()
   })
@@ -585,7 +771,14 @@ describe("createContentSession — evidence is scoped to the content epoch", () 
     // *recur*. Without an explicit drop, colors from a route the user has
     // already navigated away from keep voting in the page-level verdict —
     // enough of them, and a light page inherits the previous page's "already
-    // dark" conclusion and never gets themed.
+    // dark" conclusion and never gets themed. html/body carry an explicit
+    // dark canvas for the first route too — scanCanvas()'s bright-canvas
+    // veto means the descendant mean alone (with html/body transparent) is
+    // no longer sufficient for "already dark," so the drop this test is
+    // actually about needs a real dark verdict to have fired in the first
+    // place for the second assertion to be meaningful.
+    document.documentElement.style.backgroundColor = "rgb(13, 17, 23)"
+    document.body.style.backgroundColor = "rgb(13, 17, 23)"
     document.body.innerHTML =
       '<div style="background-color: rgb(13, 17, 23)"></div>' +
       '<div style="background-color: rgb(5, 5, 5)"></div>' +
@@ -598,7 +791,11 @@ describe("createContentSession — evidence is scoped to the content epoch", () 
     contentSession.rescan()
     expect(document.documentElement.hasAttribute(DARK_THEME_ATTR)).toBe(false)
 
-    // Same-document navigation to a light route.
+    // Same-document navigation to a light route: the new route's own
+    // html/body canvas replaces the previous route's dark one, same as a
+    // real vendor SPA swapping its own root styling on navigation.
+    document.documentElement.style.backgroundColor = "rgb(255, 255, 255)"
+    document.body.style.backgroundColor = "rgb(255, 255, 255)"
     document.body.innerHTML =
       '<div style="background-color: rgb(180, 180, 180)"></div>' +
       '<div style="background-color: rgb(185, 185, 185)"></div>' +
