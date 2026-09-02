@@ -180,14 +180,12 @@ describe("SessionComposer: Save & Play, new session - success path and regressio
       fireEvent.click(saveAndPlay)
     })
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 20))
+    await waitFor(() => {
+      const posts = calls.filter(
+        (c) => c.method === "POST" && c.url.includes("/sessions")
+      )
+      expect(posts).toHaveLength(1)
     })
-
-    const posts = calls.filter(
-      (c) => c.method === "POST" && c.url.includes("/sessions")
-    )
-    expect(posts).toHaveLength(1)
     restore()
   })
 
@@ -196,13 +194,12 @@ describe("SessionComposer: Save & Play, new session - success path and regressio
     await renderAtReviewStep()
 
     const saveDraft = screen.getByRole("button", { name: /save as draft/i })
-    await act(async () => {
-      fireEvent.click(saveDraft)
-      await new Promise((resolve) => setTimeout(resolve, 20))
-    })
+    fireEvent.click(saveDraft)
 
-    expect(toastSpy).toHaveBeenCalledWith("Session saved as draft")
-    expect(navigateSpy).toHaveBeenCalledWith({ to: "/sessions" })
+    await waitFor(() => {
+      expect(toastSpy).toHaveBeenCalledWith("Session saved as draft")
+      expect(navigateSpy).toHaveBeenCalledWith({ to: "/sessions" })
+    })
     restore()
   })
 
@@ -211,14 +208,13 @@ describe("SessionComposer: Save & Play, new session - success path and regressio
     await renderAtReviewStep()
 
     const saveAndPlay = screen.getByRole("button", { name: /save.*play/i })
-    await act(async () => {
-      fireEvent.click(saveAndPlay)
-      await new Promise((resolve) => setTimeout(resolve, 20))
-    })
+    fireEvent.click(saveAndPlay)
 
-    expect(navigateSpy).toHaveBeenCalledWith({
-      to: "/sessions/$sessionId",
-      params: { sessionId: "session-1" },
+    await waitFor(() => {
+      expect(navigateSpy).toHaveBeenCalledWith({
+        to: "/sessions/$sessionId",
+        params: { sessionId: "session-1" },
+      })
     })
     expect(toastSpy).not.toHaveBeenCalled()
     restore()
