@@ -180,8 +180,16 @@ describe("SessionComposer: Save & Play, new session - success path and regressio
       fireEvent.click(saveAndPlay)
     })
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 20))
+    // Waiting for the count to read 1 is not enough: `waitFor` returns the
+    // instant that's true, which for a duplicate-POST bug is exactly the
+    // moment the *first* one lands - before a second, wrongly-issued POST
+    // has had a chance to arrive. `navigateSpy` firing is this chain's own
+    // terminal signal (create -> activate -> navigate, same success path
+    // "save & play: navigates..." below exercises) - by the time it fires,
+    // every request the double-click could have triggered has resolved
+    // against the mock, so the count taken right after it is exact.
+    await waitFor(() => {
+      expect(navigateSpy).toHaveBeenCalled()
     })
 
     const posts = calls.filter(
@@ -196,13 +204,12 @@ describe("SessionComposer: Save & Play, new session - success path and regressio
     await renderAtReviewStep()
 
     const saveDraft = screen.getByRole("button", { name: /save as draft/i })
-    await act(async () => {
-      fireEvent.click(saveDraft)
-      await new Promise((resolve) => setTimeout(resolve, 20))
-    })
+    fireEvent.click(saveDraft)
 
-    expect(toastSpy).toHaveBeenCalledWith("Session saved as draft")
-    expect(navigateSpy).toHaveBeenCalledWith({ to: "/sessions" })
+    await waitFor(() => {
+      expect(toastSpy).toHaveBeenCalledWith("Session saved as draft")
+      expect(navigateSpy).toHaveBeenCalledWith({ to: "/sessions" })
+    })
     restore()
   })
 
@@ -211,14 +218,13 @@ describe("SessionComposer: Save & Play, new session - success path and regressio
     await renderAtReviewStep()
 
     const saveAndPlay = screen.getByRole("button", { name: /save.*play/i })
-    await act(async () => {
-      fireEvent.click(saveAndPlay)
-      await new Promise((resolve) => setTimeout(resolve, 20))
-    })
+    fireEvent.click(saveAndPlay)
 
-    expect(navigateSpy).toHaveBeenCalledWith({
-      to: "/sessions/$sessionId",
-      params: { sessionId: "session-1" },
+    await waitFor(() => {
+      expect(navigateSpy).toHaveBeenCalledWith({
+        to: "/sessions/$sessionId",
+        params: { sessionId: "session-1" },
+      })
     })
     expect(toastSpy).not.toHaveBeenCalled()
     restore()
