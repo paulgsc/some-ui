@@ -364,6 +364,19 @@ type ScopeRecord<Rho, Pi> = {
   readonly hold: CustodyPrimitive
   state: RestingScopeState<Rho, Pi>
   committedRealization: CommittedRealization<Rho> | null
+  /**
+   * Bumped by every synchronous state mutation this registry makes to this
+   * record. `resolveCommitted`'s `await realization.install()` is the one
+   * place execution is suspended mid-transition — a concurrent `reRegister`/
+   * `retire`/`invalidate` call (legal, from JS's ordinary single-threaded
+   * interleaving: nothing blocks another call on the same id while an
+   * `await` elsewhere is suspended) can complete an entire transition in
+   * that gap. Capturing this before the await and comparing it after is how
+   * `resolveCommitted` tells "nothing else touched this scope while I was
+   * waiting" from "it did," so a stale completion never clobbers a newer,
+   * already-established state.
+   */
+  generation: number
 }
 
 export type ScopeRegistry<Rho = unknown, Pi = unknown> = {
@@ -437,6 +450,15 @@ function record<Rho, Pi>(
   return found
 }
 
+/** Applies a transition and bumps the record's generation in one place, so every synchronous mutation this registry makes is visible to `resolveCommitted`'s staleness check. */
+function transitionRecord<Rho, Pi>(
+  r: ScopeRecord<Rho, Pi>,
+  event: ScopeEvent<Rho, Pi>
+): void {
+  r.state = transition<Rho, Pi>(r.state, event)
+  r.generation += 1
+}
+
 export function createScopeRegistry<
   Rho = unknown,
   Pi = unknown,
@@ -456,27 +478,25 @@ export function createScopeRegistry<
         hold: registration.hold,
         state: transition<Rho, Pi>(undefined, { kind: "register", epoch }),
         committedRealization: null,
+        generation: 0,
       })
     },
 
     startResolving(id): void {
-      const r = record(records, id)
-      r.state = transition<Rho, Pi>(r.state, { kind: "start-resolving" })
+      transitionRecord(record(records, id), { kind: "start-resolving" })
     },
 
     retry(id): void {
-      const r = record(records, id)
-      r.state = transition<Rho, Pi>(r.state, { kind: "retry" })
+      transitionRecord(record(records, id), { kind: "retry" })
     },
 
     resolveFailed(id, reason): void {
-      const r = record(records, id)
-      r.state = transition<Rho, Pi>(r.state, { kind: "resolve-failed", reason })
+      transitionRecord(record(records, id), { kind: "resolve-failed", reason })
     },
 
     resolveExonerated(id, exoneration): void {
       const r = record(records, id)
-      r.state = transition<Rho, Pi>(r.state, {
+      transitionRecord(r, {
         kind: "resolve-exonerated",
         proof: exoneration.proof,
       })
@@ -488,13 +508,36 @@ export function createScopeRegistry<
       if (r.state.kind !== "RESOLVING") {
         throw new IllegalTransitionError(r.state.kind, "resolve-committed")
       }
+      const generationAtStart = r.generation
 
+      let installError: unknown
       try {
         await realization.install()
       } catch (error) {
-        r.state = transition<Rho, Pi>(r.state, {
+        installError = error
+      }
+
+      // A concurrent reRegister()/retire()/invalidate() on this same id can
+      // run to completion while the await above was suspended (see
+      // ScopeRecord.generation's own doc comment) — that call has already
+      // established whatever κ-value and hold/realization state is now
+      // current, and this stale completion must not clobber it: uninstall
+      // the now-orphaned realization (if it did install) and stop, touching
+      // neither the hold nor κ.
+      if (r.generation !== generationAtStart) {
+        if (installError === undefined) {
+          realization.uninstall()
+        }
+        return
+      }
+
+      if (installError !== undefined) {
+        transitionRecord(r, {
           kind: "resolve-failed",
-          reason: error instanceof Error ? error.message : String(error),
+          reason:
+            installError instanceof Error
+              ? installError.message
+              : String(installError),
         })
         return
       }
@@ -505,7 +548,7 @@ export function createScopeRegistry<
       // rule out.
       r.hold.release()
       r.committedRealization = realization
-      r.state = transition<Rho, Pi>(r.state, {
+      transitionRecord(r, {
         kind: "resolve-committed",
         revision: realization.revision,
       })
@@ -520,7 +563,7 @@ export function createScopeRegistry<
       r.hold.install()
       const previousRealization = r.committedRealization
       r.committedRealization = null
-      r.state = transition<Rho, Pi>(r.state, { kind: "invalidate" })
+      transitionRecord(r, { kind: "invalidate" })
       previousRealization?.uninstall()
     },
 
@@ -529,7 +572,7 @@ export function createScopeRegistry<
       r.hold.install()
       const previousRealization = r.committedRealization
       r.committedRealization = null
-      r.state = transition<Rho, Pi>(r.state, {
+      transitionRecord(r, {
         kind: "re-register",
         contentEpoch,
       })
@@ -542,7 +585,7 @@ export function createScopeRegistry<
       r.committedRealization?.uninstall()
       r.committedRealization = null
       r.hold.release()
-      r.state = transition<Rho, Pi>(r.state, { kind: "retire" })
+      transitionRecord(r, { kind: "retire" })
     },
 
     stateOf(id): RestingScopeState<Rho, Pi> | undefined {

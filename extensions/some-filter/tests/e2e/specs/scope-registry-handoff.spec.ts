@@ -16,6 +16,18 @@
  * ever released the hold before that successor was confirmed installed, the
  * frame oracle below would catch a native-bright frame during the gap — not
  * merely "the code reads left to right in the right order."
+ *
+ * Registration (which installs the hold) runs *before* `captureFrames()` is
+ * called, not inside its measured callback: `captureFrames` seeks into the
+ * recording using a wall-clock estimate of "just before `fn()`'s first side
+ * effect" (`frames.ts`'s own header comment explains why, and that the
+ * estimate is deliberately allowed to under-skip by up to 20ms rather than
+ * risk skipping past it). If registration itself ran inside the measured
+ * window, that slop could catch the harness page's genuine pre-hold white
+ * frame and misreport it as a handoff leak — a flake in the test, not a bug
+ * in the module under test. Registering first means the page is already
+ * dark by the time `captureFrames` starts looking, so its callback measures
+ * exactly the handoff this spec is about.
  */
 
 import "@filter/playwright/fixtures/scope-registry-window-types"
@@ -33,6 +45,26 @@ test("installs and confirms the committed successor before releasing the hold �
 }) => {
   const page = await harness.goto("scope-registry-harness-page")
 
+  // Registration — which installs the hold — runs before captureFrames() is
+  // called, per this file's own header comment: the page must already be
+  // dark by the time captureFrames() starts looking, so its callback below
+  // measures exactly the handoff and nothing about setup timing.
+  await page.evaluate(() => {
+    const { createScopeRegistry } = window.ScopeRegistryModule
+    const { createOcclusionHold } = window.CustodyPrimitiveModule
+
+    const registry = createScopeRegistry<string>()
+    const hold = createOcclusionHold(document)
+    registry.register("root", {
+      ref: document,
+      parent: null,
+      contentEpoch: 0,
+      hold,
+    })
+    registry.startResolving("root")
+    window.__sfHandoffRegistry = registry
+  })
+
   let finalCheck:
     | {
         stateKind: string | undefined
@@ -43,18 +75,8 @@ test("installs and confirms the committed successor before releasing the hold �
 
   const samples = await captureFrames(context, page, async () => {
     finalCheck = await page.evaluate(async () => {
-      const { createScopeRegistry } = window.ScopeRegistryModule
-      const { createOcclusionHold } = window.CustodyPrimitiveModule
-
-      const registry = createScopeRegistry<string>()
-      const hold = createOcclusionHold(document)
-      registry.register("root", {
-        ref: document,
-        parent: null,
-        contentEpoch: 0,
-        hold,
-      })
-      registry.startResolving("root")
+      const registry = window.__sfHandoffRegistry
+      if (registry === undefined) throw new Error("registry not initialized")
 
       await registry.resolveCommitted("root", {
         revision: "test-committed",

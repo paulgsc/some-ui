@@ -19,12 +19,26 @@
  * whose containing block is the viewport regardless of which node — document
  * root or a nested shadow root — it is mounted under (shadow-tree nesting
  * does not itself establish a new containing block). It therefore covers
- * every pixel any live descendant of the scope could paint, registered or
- * not, satisfying the boundary-crossing argument Theorem D.3's inductive
- * step and Corollary D.3.1 both rely on — deliberately the coarsest, most
- * conservative instance of the primitive (canon: "on uncertainty, hold the
- * whole affected scope — false-positive custody... [is an] admissible
- * cost"), not a per-scope-bounded mask.
+ * every pixel any live descendant of the scope could paint *within the
+ * ordinary stacking-context tree*, registered or not, satisfying the
+ * boundary-crossing argument Theorem D.3's inductive step and Corollary
+ * D.3.1 both rely on — deliberately the coarsest, most conservative instance
+ * of the primitive (canon: "on uncertainty, hold the whole affected scope —
+ * false-positive custody... [is an] admissible cost"), not a
+ * per-scope-bounded mask.
+ *
+ * *Known gap, not this story's to close*: browser top-layer content (a
+ * native `<dialog>` shown via `showModal()`, the Popover API, `:fullscreen`)
+ * paints in a compositing layer above the entire ordinary stacking-context
+ * tree regardless of `z-index` — no `position: fixed` element, however high
+ * its `z-index`, can cover it. A live descendant promoted to the top layer
+ * while this scope is held is therefore *not* covered by this primitive.
+ * This is the same top-layer question the epic (#1263) already tracks as
+ * open — Gate 0's G0.7 explicitly did not test it, and SF-LG (#1269) is
+ * where it "resolves (or explicitly re-defers, same posture as #1191)" —
+ * not a gap this story's own acceptance criteria asks it to close, and not
+ * silently claimed closed here either (§8.3's "unsupported-latent-scope
+ * disclosure" checklist item is the same discipline this comment follows).
  *
  * Zero imports: this file is injected standalone (compiled, unbundled) into
  * a bare test page by `tests/e2e/fixtures/scope-registry-harness.ts` to

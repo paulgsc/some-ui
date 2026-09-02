@@ -429,6 +429,79 @@ describe("createScopeRegistry — resolveCommitted: the two-phase custody handof
       registry.resolveCommitted("s1", fakeRealization("rev-1"))
     ).rejects.toThrow(IllegalTransitionError)
   })
+
+  it("discards a stale completion superseded by a concurrent reRegister() during the install() await — never releases the newly re-installed hold, never overwrites the newer HELD state", async () => {
+    const log: Array<string> = []
+    const hold = fakeHold(log)
+    const registry = createScopeRegistry<string>()
+    registry.register("s1", { ref: REF, parent: null, contentEpoch: 0, hold })
+    registry.startResolving("s1")
+
+    let releaseInstall: (() => void) | undefined
+    const installGate = new Promise<void>((resolve) => {
+      releaseInstall = resolve
+    })
+    const realization: CommittedRealization<string> = {
+      revision: "rev-1",
+      install: vi.fn(async () => {
+        await installGate
+        log.push("realization.install")
+      }),
+      uninstall: vi.fn(() => log.push("realization.uninstall")),
+    }
+
+    const pending = registry.resolveCommitted("s1", realization)
+
+    // Interleaves while resolveCommitted's install() await is suspended —
+    // exactly the JS single-threaded interleaving the finding is about, no
+    // real parallelism required.
+    registry.reRegister("s1", CONTENT_EPOCH_1)
+    log.length = 0
+
+    releaseInstall?.()
+    await pending
+
+    // The stale completion must not have touched the hold reRegister()
+    // already re-installed, nor overwritten reRegister()'s HELD(ε') with a
+    // COMMITTED value belonging to the superseded round.
+    expect(log).toEqual(["realization.install", "realization.uninstall"])
+    expect(registry.stateOf("s1")).toEqual({
+      kind: "HELD",
+      epoch: { content: CONTENT_EPOCH_1, scope: 1 },
+    })
+  })
+
+  it("discards a stale completion superseded by a concurrent retire() during the install() await", async () => {
+    const log: Array<string> = []
+    const hold = fakeHold(log)
+    const registry = createScopeRegistry<string>()
+    registry.register("s1", { ref: REF, parent: null, contentEpoch: 0, hold })
+    registry.startResolving("s1")
+
+    let releaseInstall: (() => void) | undefined
+    const installGate = new Promise<void>((resolve) => {
+      releaseInstall = resolve
+    })
+    const realization: CommittedRealization<string> = {
+      revision: "rev-1",
+      install: vi.fn(async () => {
+        await installGate
+        log.push("realization.install")
+      }),
+      uninstall: vi.fn(() => log.push("realization.uninstall")),
+    }
+
+    const pending = registry.resolveCommitted("s1", realization)
+
+    registry.retire("s1")
+    log.length = 0
+
+    releaseInstall?.()
+    await pending
+
+    expect(log).toEqual(["realization.install", "realization.uninstall"])
+    expect(registry.stateOf("s1")).toEqual({ kind: "RETIRED" })
+  })
 })
 
 describe("createScopeRegistry — invalidate: rehold before teardown, in both directions", () => {

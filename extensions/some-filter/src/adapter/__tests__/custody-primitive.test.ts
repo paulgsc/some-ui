@@ -25,10 +25,12 @@ describe("createOcclusionHold — document scope", () => {
     const style = veil?.getAttribute("style") ?? ""
     // position:fixed's containing block is the viewport regardless of DOM
     // nesting — this, plus the maximal z-index, is what makes the hold
-    // boundary-crossing (Definition D.5): it covers every live descendant
-    // of the scope, registered or not, not just the scope's own direct
-    // content. See this module's own header comment for the full argument;
-    // the live-browser proof is tests/e2e/specs/scope-registry-handoff.spec.ts.
+    // boundary-crossing (Definition D.5) within the ordinary stacking-context
+    // tree: it covers every live descendant of the scope, registered or not,
+    // not just the scope's own direct content. See this module's own header
+    // comment for the full argument, including the known top-layer exception
+    // (tracked by the epic's SF-LG, #1269 — not this story's to close); the
+    // live-browser proof is tests/e2e/specs/scope-registry-handoff.spec.ts.
     expect(style).toContain("position:fixed")
     expect(style).toContain("inset:0")
     expect(style).toContain("z-index:2147483647")

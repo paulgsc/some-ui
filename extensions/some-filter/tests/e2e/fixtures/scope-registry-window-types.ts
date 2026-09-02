@@ -16,6 +16,12 @@ declare global {
   interface Window {
     ScopeRegistryModule: typeof ScopeRegistryModule
     CustodyPrimitiveModule: typeof CustodyPrimitiveModule
+    // Test-scaffolding slot only, set by one page.evaluate() call and read
+    // by a later one on the same page — registration (which installs the
+    // hold) deliberately runs before scope-registry-handoff.spec.ts calls
+    // captureFrames(), so the registry instance needs to survive across that
+    // call boundary. See that spec's own header comment for why.
+    __sfHandoffRegistry?: ScopeRegistryModule.ScopeRegistry<string>
   }
 }
 

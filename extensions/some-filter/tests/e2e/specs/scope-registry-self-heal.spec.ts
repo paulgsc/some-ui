@@ -10,6 +10,11 @@
  * `createOcclusionHold` primitive (`custody-primitive.ts`) instead of the
  * harness-only spike that inspired its shape
  * (`fixtures/occlusion-primitive.ts`, never imported from production code).
+ *
+ * Registration (which installs the hold) runs *before* `captureFrames()` is
+ * called — see `scope-registry-handoff.spec.ts`'s own header comment for why
+ * this matters: `captureFrames`'s wall-clock seek can otherwise catch the
+ * harness page's genuine pre-hold white frame and misreport it as a leak.
  */
 
 import "@filter/playwright/fixtures/scope-registry-window-types"
@@ -30,23 +35,23 @@ test("a HELD scope's hold survives repeated adversarial removal of its covering 
 }) => {
   const page = await harness.goto("scope-registry-harness-page")
 
+  await page.evaluate(() => {
+    const { createScopeRegistry } = window.ScopeRegistryModule
+    const { createOcclusionHold } = window.CustodyPrimitiveModule
+
+    const registry = createScopeRegistry()
+    const hold = createOcclusionHold(document)
+    registry.register("root", {
+      ref: document,
+      parent: null,
+      contentEpoch: 0,
+      hold,
+    })
+  })
+
   let finalVeilPresent: boolean | undefined
 
   const samples = await captureFrames(context, page, async () => {
-    await page.evaluate(() => {
-      const { createScopeRegistry } = window.ScopeRegistryModule
-      const { createOcclusionHold } = window.CustodyPrimitiveModule
-
-      const registry = createScopeRegistry()
-      const hold = createOcclusionHold(document)
-      registry.register("root", {
-        ref: document,
-        parent: null,
-        contentEpoch: 0,
-        hold,
-      })
-    })
-
     for (let i = 0; i < ADVERSARIAL_REMOVALS; i += 1) {
       await page.evaluate(() => {
         document.querySelector("[data-scope-registry-hold]")?.remove()
