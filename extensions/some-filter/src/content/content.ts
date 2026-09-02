@@ -124,7 +124,13 @@ const observabilityRecorder: CoverageRecorder = createCoverageRecorder(
 )
 const coverageWatchdog: CoverageWatchdog = createCoverageWatchdog(
   observabilityRecorder,
-  () => currentState
+  () => currentState,
+  // The watchdog's own dark-desync repair calls enablePrepaint() directly,
+  // bypassing the registry the same way yt-navigate-start's own call does
+  // (see that handler's comment) — without this, a matching verdict on the
+  // pipeline's next round would wrongly no-op and strand the veil this
+  // repair just re-armed.
+  () => documentScope.forgetLastOutcome()
 )
 
 function touchObservabilityIndex(): void {
