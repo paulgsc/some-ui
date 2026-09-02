@@ -1,0 +1,121 @@
+<!doctype html>
+<!--
+  Legacy-filter shadow-closure fixture (#1262 Gate 0, G0.7).
+
+  Four identically-sized, identically-colored (literal white) boxes, laid out
+  side by side so a screenshot can sample each in isolation:
+
+    #light-box         — ordinary light DOM (the reference).
+    #shadow-box-flat    — inside one open shadow root.
+    #shadow-box-nested  — inside a shadow root nested two levels deep.
+    #slotted-content    — a *light-DOM* element, but rendered via a <slot>
+                           inside a shadow tree (a real vendor pattern —
+                           user-supplied children projected into a
+                           web-component's template).
+
+  Unlike the JS pipeline (scan()/decide()/realize()), legacy mode is a single
+  declarative `html { filter: invert(...) ... }` rule (theme-apply.ts's
+  applyLegacyFilter) — it needs no per-surface discovery at all. Whether it
+  actually covers these four boxes is a question about the browser's
+  rendering/compositing model (does an ancestor `filter` reach across a
+  shadow boundary the way it reaches into an ordinary child?), not about this
+  extension's traversal code — G0.7 exists to answer that experimentally
+  rather than asserting it by analogy with CSS selectors, which do NOT cross
+  the boundary.
+-->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Legacy Filter Shadow-Closure Fixture</title>
+    <style>
+      body {
+        margin: 0;
+        background-color: rgb(255, 255, 255);
+      }
+      .box {
+        position: absolute;
+        top: 0;
+        width: 100px;
+        height: 100px;
+        background-color: rgb(255, 255, 255);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="light-box" class="box" style="left: 0"></div>
+    <div
+      id="shadow-host-flat"
+      style="
+        position: absolute;
+        left: 120px;
+        top: 0;
+        width: 100px;
+        height: 100px;
+      "
+    ></div>
+    <div
+      id="shadow-host-nested"
+      style="
+        position: absolute;
+        left: 240px;
+        top: 0;
+        width: 100px;
+        height: 100px;
+      "
+    ></div>
+    <div
+      id="slot-host"
+      style="
+        position: absolute;
+        left: 360px;
+        top: 0;
+        width: 100px;
+        height: 100px;
+      "
+    >
+      <div id="slotted-content" class="box" style="position: static"></div>
+    </div>
+    <script>
+      // .box (declared in this document's own <head> stylesheet) is
+      // deliberately NOT relied on for anything created below — a light-DOM
+      // stylesheet's selectors do not cross into a shadow tree (the same
+      // encapsulation G0.1 already establishes structurally), so every
+      // shadow-internal box gets its geometry/color from an explicit inline
+      // style instead, exactly as a real component's own shadow-scoped
+      // styling would.
+      const BOX_INLINE_STYLE =
+        "width: 100px; height: 100px; background-color: rgb(255, 255, 255);"
+
+      // Flat: one open shadow root, directly containing the box.
+      const flatRoot = document
+        .getElementById("shadow-host-flat")
+        .attachShadow({ mode: "open" })
+      const flatBox = document.createElement("div")
+      flatBox.id = "shadow-box-flat"
+      flatBox.setAttribute("style", BOX_INLINE_STYLE)
+      flatRoot.appendChild(flatBox)
+
+      // Nested: a shadow root inside a shadow root, box in the innermost.
+      const outerRoot = document
+        .getElementById("shadow-host-nested")
+        .attachShadow({ mode: "open" })
+      const innerHost = document.createElement("div")
+      outerRoot.appendChild(innerHost)
+      const innerRoot = innerHost.attachShadow({ mode: "open" })
+      const nestedBox = document.createElement("div")
+      nestedBox.id = "shadow-box-nested"
+      nestedBox.setAttribute("style", BOX_INLINE_STYLE)
+      innerRoot.appendChild(nestedBox)
+
+      // Slotted: #slotted-content is a *light-DOM* child of #slot-host,
+      // rendered through a <slot> declared inside #slot-host's own shadow
+      // tree — the composed tree, not the light tree, is what actually
+      // paints.
+      const slotRoot = document
+        .getElementById("slot-host")
+        .attachShadow({ mode: "open" })
+      const slotEl = document.createElement("slot")
+      slotRoot.appendChild(slotEl)
+    </script>
+  </body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "#1262 Gate 0 — attachShadow interception probe",
+  "version": "1.0.0",
+  "description": "Throwaway test-only extension for G0.4 — never shipped, never referenced by production code. Proves or falsifies whether a document_start isolated-world content script's Element.prototype.attachShadow override observes main-world page calls.",
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["probe.js"],
+      "run_at": "document_start"
+    }
+  ]
+}

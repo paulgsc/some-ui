@@ -1,0 +1,34 @@
+<!doctype html>
+<!--
+  #1262 Gate 0, G0.4 fixture — no relation to some-filter's own extension;
+  loaded alongside the throwaway probe-extension/ only.
+
+  Two independent shadow-root creations, neither involving the probe:
+
+    #imperative-host  — attachShadow() called from this page's own inline
+                         script, i.e. the MAIN world, exactly like any real
+                         vendor page's JS.
+    #declarative-host — declarative Shadow DOM: the browser's HTML parser
+                         creates the shadow root directly from markup. No
+                         script, main-world or isolated-world, ever calls
+                         attachShadow() for this one at all.
+-->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>attachShadow Interception Probe Fixture</title>
+  </head>
+  <body>
+    <div id="imperative-host"></div>
+    <div id="declarative-host">
+      <template shadowrootmode="open">
+        <div id="declarative-surface">declarative shadow content</div>
+      </template>
+    </div>
+    <script>
+      // Main-world call — the thing G0.4 asks whether an isolated-world
+      // document_start patch of Element.prototype.attachShadow can observe.
+      document.getElementById("imperative-host").attachShadow({ mode: "open" })
+    </script>
+  </body>
+</html>

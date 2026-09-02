@@ -141,6 +141,88 @@ describe("scan", () => {
   })
 })
 
+describe("scan — shadow DOM boundary (#1262 Gate 0, G0.1)", () => {
+  // Mechanical proof that the current key space cannot express "unobserved
+  // rendering scope" as a distinct state from "no evidence" — see
+  // docs/gate0/1262-falsification-report.md's G0.1. scan()'s TreeWalker
+  // (pipeline.ts:462) is constructed with `document.createTreeWalker(root,
+  // NodeFilter.SHOW_ELEMENT)`: NodeIterator/TreeWalker traversal is
+  // specified to walk one node tree (https://dom.spec.whatwg.org/#concept-tree)
+  // and a shadow root is a distinct node tree from its host's — nothing
+  // about the walker's construction ever crosses that boundary, with no
+  // opt-in flag to do so. jsdom implements the same DOM traversal algorithm,
+  // so this is not a jsdom-specific artifact; G0.3 in the same report
+  // additionally confirms live, in the real built extension, that this
+  // silence is permanent rather than merely delayed.
+  it("produces zero elementsByKey/attrsByKey entries for a surface inside an open shadow root, while an identical light-DOM sibling produces one", () => {
+    document.body.innerHTML =
+      '<div id="light-sibling" style="background-color: rgb(255, 255, 255)"></div>' +
+      '<div id="shadow-host"></div>'
+
+    const host = document.getElementById("shadow-host")
+    expect(host).not.toBeNull()
+    if (host === null) return
+    const root = host.attachShadow({ mode: "open" })
+    const shadowSurface = document.createElement("div")
+    shadowSurface.id = "shadow-surface"
+    shadowSurface.style.backgroundColor = "rgb(255, 255, 255)"
+    root.appendChild(shadowSurface)
+
+    const { elementsByKey, attrsByKey } = scan(document.body)
+
+    // The light-DOM sibling is ordinary, expected evidence.
+    const key = "rgb(255, 255, 255)"
+    expect(elementsByKey.get(key)?.map((el) => el.id)).toEqual([
+      "light-sibling",
+    ])
+
+    // The shadow-internal surface — identical color, identical evidentiary
+    // shape — appears nowhere: not merged into the light sibling's element
+    // list, not under any other key. It never entered scan()'s output at
+    // all, which is the exact ontological gap the falsification report
+    // names: "unknown color" and "unknown rendering scope" are different
+    // states, and the current model contains only the former after
+    // observation.
+    for (const elements of elementsByKey.values()) {
+      expect(elements).not.toContain(shadowSurface)
+    }
+    expect(elementsByKey.get(key)?.length).toBe(1)
+    expect(attrsByKey.size).toBe(1)
+  })
+
+  it("end-to-end: createContentSession never tags or themes the shadow-internal surface, no matter how many rounds run — it never entered Ĥ, so decide() never had a SurfaceKey to emit a tag-surface/emit-surface-color action for", () => {
+    document.body.innerHTML =
+      '<div id="light-sibling" style="background-color: rgb(255, 255, 255)"></div>' +
+      '<div id="shadow-host"></div>'
+
+    const host = document.getElementById("shadow-host")
+    expect(host).not.toBeNull()
+    if (host === null) return
+    const root = host.attachShadow({ mode: "open" })
+    const shadowSurface = document.createElement("div")
+    shadowSurface.id = "shadow-surface"
+    shadowSurface.style.backgroundColor = "rgb(255, 255, 255)"
+    root.appendChild(shadowSurface)
+
+    const session = createSessionLifecycle()
+    const contentSession = createContentSession(SWATCHES.default, session)
+
+    // Several rounds, exactly as a live page's reactive rescans would run —
+    // not just the first pass, to rule out "eventually themed on a later
+    // round" as an explanation.
+    for (let i = 0; i < 3; i++) {
+      contentSession.rescan()
+    }
+
+    const sibling = document.getElementById("light-sibling")
+    expect(sibling?.dataset.swPatched).toBeDefined()
+    expect(shadowSurface.dataset.swPatched).toBeUndefined()
+    expect(shadowSurface.style.backgroundColor).toBe("rgb(255, 255, 255)")
+
+    contentSession.teardown()
+  })
+})
+
 describe("scanCanvas — root/canvas evidence for the false-dark-verdict veto", () => {
   it("reads html's own explicit background as canvas evidence, not assumed-bright", () => {
     document.documentElement.style.backgroundColor = "rgb(13, 17, 23)"
