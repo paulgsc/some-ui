@@ -180,12 +180,22 @@ describe("SessionComposer: Save & Play, new session - success path and regressio
       fireEvent.click(saveAndPlay)
     })
 
+    // Waiting for the count to read 1 is not enough: `waitFor` returns the
+    // instant that's true, which for a duplicate-POST bug is exactly the
+    // moment the *first* one lands - before a second, wrongly-issued POST
+    // has had a chance to arrive. `navigateSpy` firing is this chain's own
+    // terminal signal (create -> activate -> navigate, same success path
+    // "save & play: navigates..." below exercises) - by the time it fires,
+    // every request the double-click could have triggered has resolved
+    // against the mock, so the count taken right after it is exact.
     await waitFor(() => {
-      const posts = calls.filter(
-        (c) => c.method === "POST" && c.url.includes("/sessions")
-      )
-      expect(posts).toHaveLength(1)
+      expect(navigateSpy).toHaveBeenCalled()
     })
+
+    const posts = calls.filter(
+      (c) => c.method === "POST" && c.url.includes("/sessions")
+    )
+    expect(posts).toHaveLength(1)
     restore()
   })
 
