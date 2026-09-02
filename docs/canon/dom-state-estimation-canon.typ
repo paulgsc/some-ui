@@ -76,7 +76,7 @@
   #v(0.15em)
   #text(size: 10pt)[Governing `some-censor` · `some-filter` · and all descendants]
   #v(1em)
-  #text(size: 9.5pt)[Version 1.3 --- 2026-07-11]
+  #text(size: 9.5pt)[Version 1.5 --- 2026-09-02]
   #v(2cm)
 ]
 
@@ -1542,6 +1542,31 @@ each of the following against Axioms 3.1--3.5:
 - A declaration that no module outside the adapter's own package imports a
   concrete adapter implementation (Corollary D.2.1) --- checkable by a build
   and conformance-suite run against the null adapter alone (Theorem D.2).
+- *Scope discovery:* the reactive and/or periodic signal realizing discovery
+  of a rendering scope (Definition D.4), the claimed bound on discovery
+  latency after a scope's creation, and an explicit acknowledgment that this
+  bound is not, and need not be, zero (Corollary D.3.1) --- no driver may
+  claim a creation-time interception guarantee this platform does not
+  provide.
+- *Root registry lifecycle:* how the scope registry $kappa$ (Definition D.5)
+  is created, retired, and rebuilt across the nested lifetimes of Definition
+  D.1 --- in particular, that a same-document navigation (Theorem D.1(a))
+  retires every live scope's registry entry and begins a fresh scope epoch
+  alongside the fresh content epoch, while a refresh (Theorem D.1(b)) retires
+  the registry itself along with $L_D$.
+- *Observer phase:* the phase (Remark 1.5) in which the scope-discovery scan
+  runs, and the argument that scanning does not itself trip the endogenous
+  coupling of Remark 2.6.
+- *Custody primitive:* the concrete conservative-presentation mechanism
+  realizing a $"HELD"$/$"RESOLVING"$/$"FAILED_HELD"$ scope (Definition D.5's
+  first $"Safe"_T$ disjunct), and an argument that it does not itself leak
+  native pixels through an unheld descendant scope while only the parent's
+  own direct content is masked.
+- *Unsupported-latent-scope disclosure:* which categories of rendering scope
+  this driver cannot discover at all --- a closed shadow root, a
+  cross-origin frame's own document, `<canvas>` content, a browser/UA shadow
+  tree --- remain classified latent (Definition 2.2) at scope granularity
+  rather than silently treated as covered.
 
 // ═══════════════════════════════════════════════════════════════════════════
 #heading(level: 1, numbering: none)[The Deployment Lattice --- Lifecycle Stratification and the Adapter Boundary]
@@ -1705,6 +1730,201 @@ to appear at all --- is formalized as Definition D.3 through Corollary D.2.1.
   accessibility or typography policy --- is required to be expressible as one
   $"decide" : H -> "Fin"(A)$, or the canon itself, not the adapter, has been
   under-specified and must be amended per §10.
+]
+
+#heading(level: 2, numbering: none)[D.2 · Rendering-scope custody]
+
+Definition D.2's Bootstrap and Theorem C.1's contraction bound both quantify
+over a single, document-granularity scope. Issue 1262 exhibits a vendor
+surface --- an open shadow root --- for which that granularity is too
+coarse: `some-filter`'s `scan()` (`src/adapter/pipeline.ts`) walks one
+`TreeWalker` tree, and a shadow root is spec-defined to be a distinct node
+tree from its host's, so content inside it never enters $hat(H)$'s domain at
+all --- not "unknown," genuinely absent (Gate 0's G0.1, mechanically
+confirmed in `pipeline.test.ts` and structurally forced by the DOM
+specification itself, not merely observed). Recursively re-deriving
+Definition D.1's document/content stratification at the granularity of
+*any* open-shadow-root boundary, rather than patching `scan()` to widen the
+vocabulary of a single fixed walk, is the descent §10.1's own triage
+procedure ("coverage gap: was the offending node ever a suspect at all?",
+sharpened below) already prescribes. One correction Gate 0 forces into the
+model that the pre-Gate-0 recommendation did not anticipate: G0.4 proved
+that a `document_start` isolated-world content-script patch of
+`Element.prototype.attachShadow` does not observe a main-world page's own
+call, and that declarative Shadow DOM has no `attachShadow()` call to
+intercept at all --- so nothing below may assume a scope can be held
+*before* its creation returns; only reactive or periodic discovery under an
+already-covered ancestor is available (Corollary D.3.1).
+
+#definition("D.4", name: [Rendering-scope lifetime $L_R$])[
+  A *rendering scope* is the root document scope $r_0$, whose lifetime
+  $L_R (r_0) := L_D$ (Definition D.1's document lifetime, unchanged), or,
+  recursively, an *open shadow root* attached to a host node that itself
+  lies within the subtree of some already-live rendering scope $r'$ --- in
+  which case the new scope $r$'s lifetime $L_R (r) subset.eq L_R (r')$
+  begins at the round $r$ is *registered* (Definition D.5) --- never assumed
+  to coincide with the round $r$ is *created*, see Corollary D.3.1 --- and
+  ends when $r$'s host is detached from a live scope, $r$ itself is removed,
+  or $L_R (r')$ ends, whichever is first. The set of live rendering scopes
+  at round $t$, $R_t$, forms a tree under this containment relation: $r_0$
+  is its unique root, and every non-root $r in R_t$ has a unique nearest
+  live ancestor $"anc"(r) in R_t$ (its own host's enclosing scope). Closed
+  shadow roots, cross-origin frame documents, `<canvas>` pixels, and
+  browser/UA shadow trees are, per Definition 2.2, structurally outside this
+  tree entirely --- not a scope this registry ever attempts to hold, per the
+  epic's own explicit exclusion; see the disclosure obligation added to
+  §8.3.
+]
+
+#definition("D.5", name: "Scope registry, coverage, and the custody state machine")[
+  The *scope registry* is a partial function $kappa_t : R_t -> Sigma$
+  (defined exactly on the *registered* subset $"dom"(kappa_t) subset.eq
+  R_t$) into the state space
+  $ Sigma = {
+      "DISCOVERED_UNHELD",
+      "HELD"(epsilon), "RESOLVING"(epsilon),
+      "COMMITTED"(epsilon, rho), "EXONERATED_NATIVE"(epsilon, pi),
+      "FAILED_HELD"(epsilon, "reason"), "RETIRED"
+    }, $
+  where $epsilon = (epsilon_"content", epsilon_"scope")$ pairs the ambient
+  content epoch (Definition 5.4) with a *scope epoch* $epsilon_"scope"$
+  local to $r$, advanced only on $r$'s own registration or re-registration;
+  $rho$ is the currently installed policy revision (the adapter's own
+  versioning of $"decide"$, Definition D.3); and $pi$ is a native-safety
+  proof witness. A conforming registration transition is *atomic*: the round
+  at which $r$ first enters $"dom"(kappa_t)$ is the round at which
+  $kappa_t (r) = "HELD"(epsilon)$ is first recorded ---
+  $"DISCOVERED_UNHELD"$ is a member of $Sigma$ solely so a
+  coverage-observability instrument (§8.3, SF-OB) can assert its occupancy
+  count is always zero; a conforming custodian must never construct it as a
+  resting value of $kappa_t$.
+
+  *Legal transitions.* $kappa$ evolves only along: registration
+  $"DISCOVERED_UNHELD" -> "HELD"(epsilon)$, required atomic as above; onset
+  of classification $"HELD"(epsilon) -> "RESOLVING"(epsilon)$; resolution to
+  $"COMMITTED"(epsilon, rho)$, to $"EXONERATED_NATIVE"(epsilon, pi)$, or to
+  $"FAILED_HELD"(epsilon, "reason")$ (conservative, not an exoneration);
+  retry $"FAILED_HELD"(epsilon, dot) -> "RESOLVING"(epsilon)$; re-opening on
+  a superseded policy revision or an invalidated realization,
+  $"COMMITTED"(epsilon, rho) -> "RESOLVING"(epsilon)$; re-holding on an
+  invalidated proof, $"EXONERATED_NATIVE"(epsilon, pi) -> "HELD"(epsilon')$
+  --- never a silent re-exoneration; and, from any state, retirement on
+  detachment or on $L_R (r)$ ending. $"RETIRED"$ is absorbing: a later
+  re-attachment of the same physical host is a *new* scope with fresh
+  identity and a fresh $epsilon_"scope"$, by the same non-permanence
+  Proposition 4.1 already establishes for keys.
+
+  *Coverage and safety.* Write $"anc"(r)$ for $r$'s nearest live ancestor
+  scope (Definition D.4). $r$ is *safe under target $T$* at round $t$,
+  written $"Safe"_T (r,t)$, iff one of:
+  + $r in "dom"(kappa_t)$ and $kappa_t (r) in {"HELD"(epsilon),
+    "RESOLVING"(epsilon), "FAILED_HELD"(epsilon, dot)}$ --- bounded by a
+    *conservative presentation* (the custody hold itself);
+  + $r in "dom"(kappa_t)$ and $kappa_t (r) = "COMMITTED"(epsilon, rho)$ with
+    $rho$ the currently installed revision --- produced under a *committed
+    realization* of $T$;
+  + $r in "dom"(kappa_t)$ and $kappa_t (r) = "EXONERATED_NATIVE"(epsilon,
+    pi)$ with $pi$ valid at $(epsilon, t)$ --- covered by a *sound
+    native-safety proof*;
+  + $r in "dom"(kappa_t)$ and $kappa_t (r) = "RETIRED"$ --- vacuous, $r$ has
+    no live pixels;
+  + $r in R_t \\ "dom"(kappa_t)$ (not yet registered) and
+    $"Safe"_T ("anc"(r), t)$ --- covered by its ancestor, per Corollary
+    D.3.1 below; for $r = r_0$ this case does not arise, since $r_0 in
+    "dom"(kappa_t)$ always, by Corollary D.1.1.
+  $"DISCOVERED_UNHELD"$ grants none of the five disjuncts, by construction.
+
+  *The scope invariant.* $Phi_"scope" (t) := forall r in R_t, "Safe"_T
+  (r,t)$. Like $Phi$ (Definition 6.1), $Phi_"scope"$ is zero-leak (Definition
+  C.0): a single $r$ with $"Safe"_T (r,t)$ false at any $t$ is a completed
+  failure. Unlike $Phi$, its domain is $R_t$ (rendering scopes), not $KK$
+  (logical keys); the pipeline's full obligation is the conjunction
+  $Phi and Phi_"scope"$ over the two disjoint domains, not a replacement of
+  either by the other (Remark D.4).
+]
+
+#theorem("D.3", name: "Recursive Bootstrap persistence (scope custody handoff)")[
+  If every registration transition into $"dom"(kappa_t)$ is atomic ---
+  $kappa_t (r) = "HELD"(epsilon)$ is the value first recorded for $r$, and
+  $"DISCOVERED_UNHELD"$ is never the value of $kappa_t (r)$ at any $t$ at
+  which $r$ may paint --- then $"Safe"_T (r,t)$ holds for every rendering
+  scope $r in R_t$ and every render opportunity $t in L_R (r)$.
+]
+
+#proof[
+  By induction on the depth of $r$ in the containment tree of Definition
+  D.4. *Base case* ($r = r_0$, depth 0): $L_R (r_0) = L_D$, and
+  $"Safe"_T (r_0, t)$ for $t in L_D$ is exactly Corollary D.1.1's claim ---
+  Bootstrap enforces the pessimistic default at document granularity
+  independent of whether $hat(H)$, let alone $kappa$, yet exists --- and is
+  unchanged by anything in this section. *Inductive step* ($r$ at depth
+  $n+1$, unique parent $"anc"(r)$ at depth $n$, live at every $t$ that $r$
+  is live, by Definition D.4's containment): for $t$ at which $r in R_t \\
+  "dom"(kappa_t)$, $"Safe"_T (r,t) := "Safe"_T ("anc"(r), t)$ by the fifth
+  disjunct of Definition D.5, which holds by the inductive hypothesis. For
+  $t$ at which $r in "dom"(kappa_t)$, the atomicity hypothesis guarantees
+  $kappa_t (r) != "DISCOVERED_UNHELD"$, so $kappa_t (r)$ is one of the
+  remaining six values of $Sigma$, each of which is, by construction, one of
+  the first four disjuncts of Definition D.5's $"Safe"_T$. Either way
+  $"Safe"_T (r,t)$ holds. By induction it holds for every $r in R_t$ at
+  every $t in L_R (r)$.
+]
+
+#corollary("D.3.1", name: "Reactive/periodic discovery is sound; creation-time interception is neither required nor available")[
+  Theorem D.3's hypothesis constrains only the *registration write* --- that
+  it be atomic with the transition to $"HELD"$ --- and says nothing about
+  when registration occurs relative to $r$'s creation. The interval between
+  $r$'s creation and its registration is covered by
+  $"Safe"_T ("anc"(r), dot)$, the fifth disjunct of Definition D.5, for
+  however long that interval lasts; Theorem D.3 does not require it to be
+  short, let alone zero. This is the precise sense in which G0.4's finding
+  --- that a `document_start` isolated-world patch of
+  `Element.prototype.attachShadow` does not observe a main-world page's own
+  call, and that declarative Shadow DOM has no such call to intercept at all
+  --- does not weaken the guarantee this section states: the architecture
+  Theorem D.3 requires was never interception-based, and a conforming
+  registry may discover $r$ arbitrarily late relative to $r$'s creation, via
+  a reactive scan keyed off any signal already observable within an
+  already-held ancestor scope, or via a periodic scan in the style of
+  $SS_"poll"$ (Definition 3.3) generalized to scope discovery --- so long as
+  (a) its own registration write is atomic per Theorem D.3 and (b)
+  $"anc"(r)$ remains covered throughout the discovery latency, which for
+  $"anc"(r) = r_0$ is guaranteed unconditionally by Corollary D.1.1 and,
+  recursively, for any deeper ancestor by this same theorem applied one
+  level up.
+]
+
+#remark("D.3", name: "Kernel independence extends to the scope registry")[
+  Definition D.5's state machine is defined purely over $Sigma$, the
+  containment tree of Definition D.4, and a proof-or-realization signal
+  supplied from outside itself --- it names neither $Phi$ nor a concrete
+  $"decide"$. Instantiated against the null adapter $"decide"_0$ (Theorem
+  D.2), no scope is ever assigned a sound $pi$ or a committed $rho$, so
+  every registered scope remains permanently in
+  ${"HELD", "RESOLVING", "FAILED_HELD"}$ --- $Phi_"scope"$ still holds
+  throughout (every disjunct used is the conservative-presentation one), and
+  Theorem D.3 still holds verbatim, since its proof never referenced
+  $"decide"$ either. The registry and its conformance suite therefore build
+  and pass against $"decide"_0$ alone, extending Theorem D.2(i)/(iii) to
+  this section without modification --- the "provable against the null
+  adapter" requirement SF-RG (issue 1265) inherits directly from here,
+  rather than needing to be established independently.
+]
+
+#remark("D.4", name: [$Phi_"scope"$ composes with, and does not replace, $Phi$])[
+  Definition D.5's $Phi_"scope" (t) = forall r in R_t, "Safe"_T (r,t)$ and
+  Definition 6.1's $Phi (hat(H)) = forall k in KK, phi(k, hat(H)(k))$ are
+  stated over disjoint domains --- rendering scopes and logical keys,
+  respectively --- and the pipeline's actual obligation is their
+  conjunction $Phi and Phi_"scope"$, not a subsumption of either by the
+  other. Theorem 6.1's one-round termination is undisturbed: it is proved
+  from Definition 6.1's local decomposition over $KK$ alone and never
+  quantifies over $R_t$. Symmetrically, nothing in Definition D.5 or Theorem
+  D.3 quantifies over $KK$. The two invariants are layered, exactly as the
+  epic that motivates this amendment (issue 1263) describes: $Phi_"scope"$
+  is a visual admission controller sitting *before* the existing Sensor
+  $->$ Estimator $->$ Adapter $->$ Actuator loop that $Phi$ already governs,
+  not a redefinition of any of its stages.
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1887,6 +2107,49 @@ legacy is a claim this canon requires evidence for (a demonstrated,
 sound exoneration predicate satisfying Theorem C.1's bound), not a target
 date.
 
+*Rendering-scope coverage gap (issue 1262), and which Gate 0 finding
+evidences which claim.* `scan()`'s `TreeWalker` never crosses a shadow
+boundary, so a shadow-hosted surface is not merely an unexonerated key ---
+per Definition D.4/D.5 it is a member of $R_t \\ "dom"(kappa_t)$ for which
+no registered ancestor scope exists at all, because no scope object for it
+has ever been created: a strictly worse failure than a wrongly-exonerated
+key, the same shape as `some-censor`'s own container-coverage gap documented
+above. Each Gate 0 finding evidences a distinct piece of the amended model,
+not the same claim seven times. *G0.1* (mechanical: new `pipeline.test.ts`
+cases; structural: the DOM specification itself) evidences the
+$R_t \\ "dom"(kappa_t)$ claim directly --- there is no code path by which
+`scan()` could produce a token for shadow-internal content, so the gap is
+categorical, not probabilistic. *G0.2* (all three shadow-root creation
+orderings stay native-bright in every captured frame, a real frame oracle,
+not a screenshot poll) evidences that $"Safe"_T$ fails today: no covering
+artifact --- not even a stale one --- exists for these scopes at all.
+*G0.4* (discussed above) evidences Corollary D.3.1's necessity: the fix
+cannot be "hold synchronously at creation," because this platform does not
+expose creation as an observable event to an isolated-world patch, nor at
+all for declarative Shadow DOM. *G0.5* (the issue's own proposed fix ---
+recursive shadow-aware scan, one observer and one style per root, the real
+50ms reconcile debounce --- implemented as a throwaway spike, still produces
+native-bright frames during a sustained mutation burst) evidences that
+shadow-aware discovery alone is *necessary but not sufficient*: reachability
+is not admission control, and it is specifically $"Safe"_T$'s
+ancestor-coverage disjunct (Definition D.5) --- a coarser, already-held
+ancestor scope, not a faster per-descendant scan --- that Theorem D.3 shows
+closes the gap during such a burst. *G0.6* (a theme-independent,
+permanently-held, self-healing occlusion layer survives the identical
+burst, including adversarial removal of the cover element, with zero
+leaked frames) evidences that $"Safe"_T$'s conservative-presentation
+disjunct is realizable, not merely formally sound --- an existence proof
+for Theorem D.3's mechanism, not just its statement. *G0.7* (legacy
+mode's document-level `filter: invert(...)` already composites correctly
+across a flat shadow root, a shadow root nested two levels deep, and
+slotted light-DOM content, both as an isolated CSS primitive and in the real
+extension) evidences that legacy mode needs no new custody machinery: it is
+the degenerate point in Definition D.5's own state space where every
+non-root scope stays permanently unregistered, entirely covered by $r_0$'s
+pre-existing, document-wide Bootstrap hold (Definition D.2) --- exactly why
+SF-LG (issue 1269) depends only on this story and not on the registry SF-RG
+(issue 1265) builds next.
+
 // ═══════════════════════════════════════════════════════════════════════════
 = The Amendment Protocol --- Canon Law
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1940,13 +2203,21 @@ resurface in a different guise.
   If the race is between a microtask ingestion and an animation-frame write
   (Remark 1.5), reschedule actuation into a phase that does not fight the
   vendor's layout; do not paper over a phase-boundary race with a `setTimeout`.
-+ *Coverage gap: was the offending node ever a suspect at all?* If a leak
++ *Coverage gap: was the offending node ever a suspect at all? Was its
+  rendering scope under custody before it could become a suspect?* If a leak
   traces to a node in a location the channel never subscribed to (a new
   container, a new surface), the fault is not in the estimator or planner ---
   Axiom C.1 was never given the chance to apply. Widen $SS_"event"$'s and
   $xi$'s declared coverage (§8.3) to the whole document by default; do not
   add the new container to a list of known containers, which only relocates
-  the next gap.
+  the next gap. The recursive form of the same question (Definition
+  D.4/D.5, issue 1262): if the node's *rendering scope* --- not the node
+  itself --- was never registered into $kappa$, no per-key coverage
+  widening downstream of $xi$ can reach it, because it never entered $R_t$'s
+  registered subset in the first place. Widen the scope-discovery scan
+  (§8.3) to the whole containment tree by default; do not add the new
+  shadow-hosting component to a list of known custom elements, which only
+  relocates the next gap the same way.
 + *Incomplete exoneration: is "cleared" actually the inverse of "held"?* If a
   key that should read as safe still carries a behavioral or visual artifact
   (blocked interaction, residual style), the actuator's clearing action is
@@ -2076,6 +2347,52 @@ solely as a source-code commit message; it must be reflected in this file.
   $Phi_"comfort"$ is later promoted into $Phi$ itself, once a rendered-page
   assertion exists to justify it, is explicitly left open rather than
   decided here.
+- *v1.4 → v1.5* (2026-09-02, story SF-CN of the SF-SCOPE epic, issue 1264,
+  part of issue 1263). A *major* amendment, following the v1.2 → v1.3
+  precedent of adding new material to "The Deployment Lattice" without
+  touching §2--§3: it adds "D.2 · Rendering-scope custody," generalizing
+  Definition D.1's document/content stratification to a recursively
+  nestable *rendering scope* --- the document itself, or, recursively, an
+  open shadow root. New content: rendering-scope lifetime $L_R$ (Definition
+  D.4), nested under $L_D$ exactly as Corollary D.1.1 already treats the
+  root scope; the scope registry, its seven-state custody machine, the
+  ancestor-coverage relation, the safety predicate $"Safe"_T$, and the scope
+  invariant $Phi_"scope"$ (Definition D.5); the Recursive Bootstrap
+  Persistence theorem (Theorem D.3), proved by induction on
+  containment-tree depth from Theorem D.1/Corollary D.1.1 at the base case
+  and Definition D.5's ancestor-coverage disjunct at the inductive step; and
+  Corollary D.3.1, stating explicitly --- per Gate 0 finding G0.4, gathered
+  live against the built extension before this amendment was written ---
+  that the transition law assumes only reactive or periodic scope discovery
+  under an already-covered ancestor, never a creation-time interception
+  guarantee this platform does not provide (a `document_start`
+  isolated-world patch of `Element.prototype.attachShadow` cannot observe a
+  main-world page's own call, and declarative Shadow DOM has no such call to
+  intercept at all). Motivation: issue 1262, `some-filter`'s `scan()` is
+  structurally blind to shadow-internal content (a `TreeWalker` never
+  crosses a shadow boundary), confirmed live by Gate 0 (G0.1--G0.7, cited
+  individually in the extended §9.2 case study) before any implementation
+  story was filed. Every existing theorem in §5--§8, §C, and §D was
+  re-derived against Definition D.4/D.5 and confirmed to still hold:
+  Theorems 5.1, 6.1, 7.1, and 7.2 quantify over $KK$ or the channel alone
+  and never reference $R_t$ or $kappa$, so they hold unconditionally
+  (Remark D.4 states the composition with $Phi$ explicitly); Theorem C.1's
+  contraction bound is stated over $KK$ and is likewise untouched --- an
+  analogous bound for custody volume over $R_t$ is explicitly left to SF-RG
+  (issue 1265), not claimed here; Theorem D.1 and Corollary D.1.1 are the
+  unchanged base case Theorem D.3's induction rests on; Theorem D.2's
+  kernel-independence argument extends verbatim to the new machinery
+  (Remark D.3), since Definition D.5 names no concrete adapter. No existing
+  axiom, definition, or theorem in §1--§8, §C, or §D was weakened or
+  renumbered. §8.3 gained five checklist items (scope discovery, root
+  registry lifecycle, observer phase, custody primitive,
+  unsupported-latent-scope disclosure); §9.2's `some-filter` case study
+  gained the coverage-gap addendum citing G0.1--G0.7 individually; §10.1's
+  "coverage gap" triage entry was sharpened to ask the same question at
+  scope granularity; the glossary and notation index were extended
+  accordingly. The registry/state-machine *implementation* is explicitly
+  out of scope for this amendment --- SF-RG's own job --- as is re-deriving
+  the unrelated leetype canon.
 
 // ═══════════════════════════════════════════════════════════════════════════
 #heading(level: 1, numbering: none)[Appendix A --- Glossary]
@@ -2106,6 +2423,7 @@ solely as a source-code commit message; it must be reflected in this file.
   [Bootstrap (Def. D.2)], [(not yet separated from the estimator's own startup --- a candidate future amendment)], [`public/prepaint.*`, installed at `document_start`, independent of classification],
   [Document/content lifetime (Def. D.1)], [`SessionId` epoch is the content-lifetime boundary; no distinct document-lifetime object yet], [prepaint veil is the document-lifetime object; theme session is the content-lifetime object],
   [Business Adapter (Def. D.3)], [`upsert()`/`_promote()`/`_backfill()` not yet factored out of `VideoManager`], [`theme-apply.ts`/`theme-detector.ts` split (§9.2) is the adapter boundary drawn independently, pre-canon],
+  [Rendering-scope lifetime / registry (Def. D.4/D.5)], [(no shadow DOM content currently in scope for `some-censor`)], [Specified by SF-CN (issue 1264); implementation is SF-RG (issue 1265), not yet landed --- `scan()` (`pipeline.ts`) is not yet shadow-aware (issue 1262)],
 )
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2144,6 +2462,9 @@ solely as a source-code commit message; it must be reflected in this file.
   [Bootstrap], [Document-scoped, pre-hypothesis pessimistic default (Def. D.2)],
   [$"decide" : H -> "Fin"(A)$], [Business adapter: pure hypothesis-to-actions map (Def. D.3)],
   [$"decide"_0$], [The null adapter, $"decide"_0(h) = emptyset$ (Thm. D.2)],
+  [$L_R$, $R_t$], [Rendering-scope lifetime; live scope containment tree at round $t$ (Def. D.4)],
+  [$kappa_t$, $Sigma$], [Scope registry (partial), its seven-state custody space (Def. D.5)],
+  [$"Safe"_T (r,t)$, $Phi_"scope"$], [Per-scope safety predicate; scope invariant $= forall r, "Safe"_T (r,t)$ (Def. D.5)],
 )
 
 // ═══════════════════════════════════════════════════════════════════════════
