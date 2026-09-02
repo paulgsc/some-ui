@@ -1551,17 +1551,18 @@ each of the following against Axioms 3.1--3.5:
 - *Root registry lifecycle:* how the scope registry $kappa$ (Definition D.5)
   is created, retired, and rebuilt across the nested lifetimes of Definition
   D.1 --- in particular, that a same-document navigation (Theorem D.1(a))
-  retires every live scope's registry entry and begins a fresh scope epoch
-  alongside the fresh content epoch, while a refresh (Theorem D.1(b)) retires
-  the registry itself along with $L_D$.
+  forces every still-live scope through the *re-registration* transition
+  under a fresh scope epoch alongside the fresh content epoch (retiring only
+  the scopes whose host does not survive the navigation), while a refresh
+  (Theorem D.1(b)) retires the registry itself along with $L_D$.
 - *Observer phase:* the phase (Remark 1.5) in which the scope-discovery scan
   runs, and the argument that scanning does not itself trip the endogenous
   coupling of Remark 2.6.
 - *Custody primitive:* the concrete conservative-presentation mechanism
   realizing a $"HELD"$/$"RESOLVING"$/$"FAILED_HELD"$ scope (Definition D.5's
-  first $"Safe"_T$ disjunct), and an argument that it does not itself leak
-  native pixels through an unheld descendant scope while only the parent's
-  own direct content is masked.
+  first $"Safe"_T$ disjunct), and an argument that it is *boundary-crossing*
+  (Definition D.5) --- it does not leak native pixels through an unheld
+  descendant scope while only the parent's own direct content is masked.
 - *Unsupported-latent-scope disclosure:* which categories of rendering scope
   this driver cannot discover at all --- a closed shadow root, a
   cross-origin frame's own document, `<canvas>` content, a browser/UA shadow
@@ -1762,18 +1763,22 @@ already-covered ancestor is available (Corollary D.3.1).
   recursively, an *open shadow root* attached to a host node that itself
   lies within the subtree of some already-live rendering scope $r'$ --- in
   which case the new scope $r$'s lifetime $L_R (r) subset.eq L_R (r')$
-  begins at the round $r$ is *registered* (Definition D.5) --- never assumed
-  to coincide with the round $r$ is *created*, see Corollary D.3.1 --- and
-  ends when $r$'s host is detached from a live scope, $r$ itself is removed,
-  or $L_R (r')$ ends, whichever is first. The set of live rendering scopes
-  at round $t$, $R_t$, forms a tree under this containment relation: $r_0$
-  is its unique root, and every non-root $r in R_t$ has a unique nearest
-  live ancestor $"anc"(r) in R_t$ (its own host's enclosing scope). Closed
-  shadow roots, cross-origin frame documents, `<canvas>` pixels, and
-  browser/UA shadow trees are, per Definition 2.2, structurally outside this
-  tree entirely --- not a scope this registry ever attempts to hold, per the
-  epic's own explicit exclusion; see the disclosure obligation added to
-  §8.3.
+  begins at the round $r$ is *created* --- the shadow root itself attached,
+  whether or not the registry has yet discovered it --- and ends when $r$'s
+  host is detached from a live scope, $r$ itself is removed, or $L_R (r')$
+  ends, whichever is first. The set of live rendering scopes at round $t$ is
+  $ R_t := {r : t in L_R (r)}, $
+  which forms a tree under the containment relation just defined: $r_0$ is
+  its unique root, and every non-root $r in R_t$ has a unique nearest live
+  ancestor $"anc"(r) in R_t$ (its own host's enclosing scope). *Registration*
+  into the scope registry (Definition D.5) is a distinct, later event ---
+  never assumed to coincide with a scope's entry into $R_t$; see Corollary
+  D.3.1, which depends on $R_t$ including a scope from its creation, before
+  any registry has discovered it. Closed shadow roots, cross-origin frame
+  documents, `<canvas>` pixels, and browser/UA shadow trees are, per
+  Definition 2.2, structurally outside this tree entirely --- not a scope
+  this registry ever attempts to hold, per the epic's own explicit
+  exclusion; see the disclosure obligation added to §8.3.
 ]
 
 #definition("D.5", name: "Scope registry, coverage, and the custody state machine")[
@@ -1791,32 +1796,52 @@ already-covered ancestor is available (Corollary D.3.1).
   local to $r$, advanced only on $r$'s own registration or re-registration;
   $rho$ is the currently installed policy revision (the adapter's own
   versioning of $"decide"$, Definition D.3); and $pi$ is a native-safety
-  proof witness. A conforming registration transition is *atomic*: the round
-  at which $r$ first enters $"dom"(kappa_t)$ is the round at which
-  $kappa_t (r) = "HELD"(epsilon)$ is first recorded ---
-  $"DISCOVERED_UNHELD"$ is a member of $Sigma$ solely so a
+  proof witness. $"DISCOVERED_UNHELD"$ is a member of $Sigma$ solely so a
   coverage-observability instrument (§8.3, SF-OB) can assert its occupancy
   count is always zero; a conforming custodian must never construct it as a
-  resting value of $kappa_t$.
+  resting value of $kappa_t$ (see *instantaneous*, below).
 
   *Legal transitions.* $kappa$ evolves only along: registration
-  $"DISCOVERED_UNHELD" -> "HELD"(epsilon)$, required atomic as above; onset
-  of classification $"HELD"(epsilon) -> "RESOLVING"(epsilon)$; resolution to
+  $"DISCOVERED_UNHELD" -> "HELD"(epsilon)$; onset of classification
+  $"HELD"(epsilon) -> "RESOLVING"(epsilon)$; resolution to
   $"COMMITTED"(epsilon, rho)$, to $"EXONERATED_NATIVE"(epsilon, pi)$, or to
   $"FAILED_HELD"(epsilon, "reason")$ (conservative, not an exoneration);
-  retry $"FAILED_HELD"(epsilon, dot) -> "RESOLVING"(epsilon)$; re-opening on
-  a superseded policy revision or an invalidated realization,
-  $"COMMITTED"(epsilon, rho) -> "RESOLVING"(epsilon)$; re-holding on an
-  invalidated proof, $"EXONERATED_NATIVE"(epsilon, pi) -> "HELD"(epsilon')$
-  --- never a silent re-exoneration; and, from any state, retirement on
-  detachment or on $L_R (r)$ ending. $"RETIRED"$ is absorbing: a later
-  re-attachment of the same physical host is a *new* scope with fresh
-  identity and a fresh $epsilon_"scope"$, by the same non-permanence
-  Proposition 4.1 already establishes for keys.
+  retry $"FAILED_HELD"(epsilon, dot) -> "RESOLVING"(epsilon)$;
+  *re-registration* --- $kappa_t (r) -> "HELD"(epsilon')$ with
+  $epsilon' = (epsilon_"content"', epsilon_"scope" + 1)$, from any
+  non-$"RETIRED"$ state, forced on every scope still live immediately after
+  a content-epoch rollover ($bot_epsilon$, Definition 5.4, Theorem D.1(a))
+  --- this is what discharges the same-document-navigation requirement of
+  §8.3, and is required because a stale $"COMMITTED"$/$"EXONERATED_NATIVE"$
+  value must not silently survive into a new content epoch, mirroring Lemma
+  5.2's epoch-dominance requirement for keys; *rehold on invalidation* ---
+  $"COMMITTED"(epsilon, rho) -> "RESOLVING"(epsilon)$ forced the moment
+  $rho$ is superseded, and $"EXONERATED_NATIVE"(epsilon, pi) ->
+  "HELD"(epsilon)$ forced the moment $pi$ is invalidated --- never a silent
+  re-exoneration, and never a round spent under a stale $rho$ or $pi$; and,
+  from any state, retirement on detachment or on $L_R (r)$ ending.
+  $"RETIRED"$ is absorbing: a later re-attachment of the same physical host
+  is a *new* scope with fresh identity and a fresh $epsilon_"scope"$, by the
+  same non-permanence Proposition 4.1 already establishes for keys. A
+  conforming custodian's registration, re-registration, and
+  rehold-on-invalidation transitions are all *instantaneous*: the affected
+  scope's $kappa$-value already reflects the transition in the very round
+  its trigger (discovery, content-epoch rollover, a policy-revision change,
+  or a proof invalidation) occurs. No round is ever spent in
+  $"DISCOVERED_UNHELD"$, nor in a $"COMMITTED"$ or $"EXONERATED_NATIVE"$
+  value that the safety conditions below no longer accept.
 
   *Coverage and safety.* Write $"anc"(r)$ for $r$'s nearest live ancestor
-  scope (Definition D.4). $r$ is *safe under target $T$* at round $t$,
-  written $"Safe"_T (r,t)$, iff one of:
+  scope (Definition D.4). A custody primitive realizing one of the first
+  three disjuncts below at a scope $s$ is *boundary-crossing* if its
+  guarantee holds for every pixel painted by any live descendant of $s$ not
+  separately registered into $kappa$, not merely by $s$'s own direct
+  content --- §8.3's *custody primitive* checklist item requires a sensor
+  driver to argue this explicitly; Gate 0's G0.6 (a permanently-held,
+  theme-independent occlusion layer) and G0.7 (document-level
+  `filter: invert(...)`) are both exhibited, real-implementation instances
+  (§9.2). $r$ is *safe under target $T$* at round $t$, written
+  $"Safe"_T (r,t)$, iff one of:
   + $r in "dom"(kappa_t)$ and $kappa_t (r) in {"HELD"(epsilon),
     "RESOLVING"(epsilon), "FAILED_HELD"(epsilon, dot)}$ --- bounded by a
     *conservative presentation* (the custody hold itself);
@@ -1828,11 +1853,16 @@ already-covered ancestor is available (Corollary D.3.1).
     native-safety proof*;
   + $r in "dom"(kappa_t)$ and $kappa_t (r) = "RETIRED"$ --- vacuous, $r$ has
     no live pixels;
-  + $r in R_t \\ "dom"(kappa_t)$ (not yet registered) and
-    $"Safe"_T ("anc"(r), t)$ --- covered by its ancestor, per Corollary
-    D.3.1 below; for $r = r_0$ this case does not arise, since $r_0 in
-    "dom"(kappa_t)$ always, by Corollary D.1.1.
-  $"DISCOVERED_UNHELD"$ grants none of the five disjuncts, by construction.
+  + $r in R_t \\ "dom"(kappa_t)$ (not yet registered) and $"Safe"_T
+    ("anc"(r), t)$ is realized by a *boundary-crossing* primitive at
+    $"anc"(r)$ --- covered by its ancestor, per Corollary D.3.1 below; for
+    $r = r_0$ this case does not arise, since $r_0 in "dom"(kappa_t)$
+    always, by Corollary D.1.1.
+  $"DISCOVERED_UNHELD"$ grants none of the five disjuncts, by construction;
+  neither does a $"COMMITTED"$ value under a superseded $rho$ or an
+  $"EXONERATED_NATIVE"$ value under an invalidated $pi$ --- the legal
+  transitions above require these to be reopened instantaneously, never
+  left standing.
 
   *The scope invariant.* $Phi_"scope" (t) := forall r in R_t, "Safe"_T
   (r,t)$. Like $Phi$ (Definition 6.1), $Phi_"scope"$ is zero-leak (Definition
@@ -1844,11 +1874,12 @@ already-covered ancestor is available (Corollary D.3.1).
 ]
 
 #theorem("D.3", name: "Recursive Bootstrap persistence (scope custody handoff)")[
-  If every registration transition into $"dom"(kappa_t)$ is atomic ---
-  $kappa_t (r) = "HELD"(epsilon)$ is the value first recorded for $r$, and
-  $"DISCOVERED_UNHELD"$ is never the value of $kappa_t (r)$ at any $t$ at
-  which $r$ may paint --- then $"Safe"_T (r,t)$ holds for every rendering
-  scope $r in R_t$ and every render opportunity $t in L_R (r)$.
+  If every registration, re-registration, and rehold-on-invalidation
+  transition of Definition D.5 is *instantaneous* with its trigger (as
+  required there), and every custody primitive realizing one of
+  $"Safe"_T$'s first three disjuncts is *boundary-crossing* (Definition
+  D.5), then $"Safe"_T (r,t)$ holds for every rendering scope $r in R_t$
+  and every render opportunity $t in L_R (r)$.
 ]
 
 #proof[
@@ -1859,26 +1890,33 @@ already-covered ancestor is available (Corollary D.3.1).
   independent of whether $hat(H)$, let alone $kappa$, yet exists --- and is
   unchanged by anything in this section. *Inductive step* ($r$ at depth
   $n+1$, unique parent $"anc"(r)$ at depth $n$, live at every $t$ that $r$
-  is live, by Definition D.4's containment): for $t$ at which $r in R_t \\
-  "dom"(kappa_t)$, $"Safe"_T (r,t) := "Safe"_T ("anc"(r), t)$ by the fifth
-  disjunct of Definition D.5, which holds by the inductive hypothesis. For
-  $t$ at which $r in "dom"(kappa_t)$, the atomicity hypothesis guarantees
-  $kappa_t (r) != "DISCOVERED_UNHELD"$, so $kappa_t (r)$ is one of the
-  remaining six values of $Sigma$, each of which is, by construction, one of
-  the first four disjuncts of Definition D.5's $"Safe"_T$. Either way
+  is live, by Definition D.4's containment, which now begins $L_R (r)$ at
+  $r$'s creation rather than its registration): for $t$ at which $r in R_t
+  \\ "dom"(kappa_t)$, $"Safe"_T (r,t) := "Safe"_T ("anc"(r), t)$ realized by
+  a boundary-crossing primitive, by the fifth disjunct of Definition D.5;
+  $"Safe"_T ("anc"(r), t)$ holds by the inductive hypothesis, and the
+  boundary-crossing hypothesis discharges the disjunct's remaining
+  condition. For $t$ at which $r in "dom"(kappa_t)$, the instantaneity
+  hypothesis guarantees $kappa_t (r) != "DISCOVERED_UNHELD"$ and that
+  $kappa_t (r)$ is never a $"COMMITTED"$ value under a superseded $rho$ nor
+  an $"EXONERATED_NATIVE"$ value under an invalidated $pi$ --- any such
+  invalidation is instantaneously followed, in the same round, by the
+  corresponding rehold transition --- so $kappa_t (r)$ always satisfies one
+  of the first four disjuncts of Definition D.5's $"Safe"_T$. Either way
   $"Safe"_T (r,t)$ holds. By induction it holds for every $r in R_t$ at
   every $t in L_R (r)$.
 ]
 
 #corollary("D.3.1", name: "Reactive/periodic discovery is sound; creation-time interception is neither required nor available")[
-  Theorem D.3's hypothesis constrains only the *registration write* --- that
-  it be atomic with the transition to $"HELD"$ --- and says nothing about
-  when registration occurs relative to $r$'s creation. The interval between
-  $r$'s creation and its registration is covered by
-  $"Safe"_T ("anc"(r), dot)$, the fifth disjunct of Definition D.5, for
-  however long that interval lasts; Theorem D.3 does not require it to be
-  short, let alone zero. This is the precise sense in which G0.4's finding
-  --- that a `document_start` isolated-world patch of
+  Theorem D.3's instantaneity hypothesis constrains only how a registered
+  scope's own $kappa$-writes relate to their triggers --- it says nothing
+  about how long a scope may remain in $R_t \\ "dom"(kappa_t)$: live
+  (Definition D.4: $L_R (r)$ begins at $r$'s creation) but not yet
+  registered. That interval is covered instead by $"Safe"_T ("anc"(r),
+  dot)$ realized by a boundary-crossing primitive, the fifth disjunct of
+  Definition D.5, for however long the interval lasts; Theorem D.3 does not
+  require it to be short, let alone zero. This is the precise sense in
+  which G0.4's finding --- that a `document_start` isolated-world patch of
   `Element.prototype.attachShadow` does not observe a main-world page's own
   call, and that declarative Shadow DOM has no such call to intercept at all
   --- does not weaken the guarantee this section states: the architecture
@@ -1887,11 +1925,13 @@ already-covered ancestor is available (Corollary D.3.1).
   a reactive scan keyed off any signal already observable within an
   already-held ancestor scope, or via a periodic scan in the style of
   $SS_"poll"$ (Definition 3.3) generalized to scope discovery --- so long as
-  (a) its own registration write is atomic per Theorem D.3 and (b)
-  $"anc"(r)$ remains covered throughout the discovery latency, which for
-  $"anc"(r) = r_0$ is guaranteed unconditionally by Corollary D.1.1 and,
-  recursively, for any deeper ancestor by this same theorem applied one
-  level up.
+  (a) its own registration write is instantaneous per Theorem D.3 and (b)
+  $"anc"(r)$ remains boundary-crossing-covered throughout the discovery
+  latency, which for $"anc"(r) = r_0$ is guaranteed unconditionally by
+  Corollary D.1.1 (document-level custody primitives --- the legacy filter
+  of G0.7, the occlusion layer of G0.6 --- are boundary-crossing by
+  inspection, §9.2) and, recursively, for any deeper ancestor by this same
+  theorem applied one level up.
 ]
 
 #remark("D.3", name: "Kernel independence extends to the scope registry")[
@@ -2137,18 +2177,21 @@ ancestor scope, not a faster per-descendant scan --- that Theorem D.3 shows
 closes the gap during such a burst. *G0.6* (a theme-independent,
 permanently-held, self-healing occlusion layer survives the identical
 burst, including adversarial removal of the cover element, with zero
-leaked frames) evidences that $"Safe"_T$'s conservative-presentation
-disjunct is realizable, not merely formally sound --- an existence proof
-for Theorem D.3's mechanism, not just its statement. *G0.7* (legacy
-mode's document-level `filter: invert(...)` already composites correctly
-across a flat shadow root, a shadow root nested two levels deep, and
-slotted light-DOM content, both as an isolated CSS primitive and in the real
-extension) evidences that legacy mode needs no new custody machinery: it is
-the degenerate point in Definition D.5's own state space where every
-non-root scope stays permanently unregistered, entirely covered by $r_0$'s
-pre-existing, document-wide Bootstrap hold (Definition D.2) --- exactly why
-SF-LG (issue 1269) depends only on this story and not on the registry SF-RG
-(issue 1265) builds next.
+leaked frames --- because it is a compositing overlay in front of the
+whole document, its coverage is not confined to the ancestor's own direct
+content) evidences that $"Safe"_T$'s conservative-presentation disjunct is
+not merely formally sound but *boundary-crossing* (Definition D.5) in a
+real implementation --- an existence proof for Theorem D.3's mechanism, not
+just its statement. *G0.7* (legacy mode's document-level
+`filter: invert(...)` already composites correctly across a flat shadow
+root, a shadow root nested two levels deep, and slotted light-DOM content,
+both as an isolated CSS primitive and in the real extension) evidences that
+legacy mode needs no new custody machinery: it is the degenerate point in
+Definition D.5's own state space where every non-root scope stays
+permanently unregistered, entirely covered by $r_0$'s pre-existing,
+document-wide Bootstrap hold (Definition D.2) --- itself boundary-crossing
+by this same finding --- exactly why SF-LG (issue 1269) depends only on
+this story and not on the registry SF-RG (issue 1265) builds next.
 
 // ═══════════════════════════════════════════════════════════════════════════
 = The Amendment Protocol --- Canon Law
