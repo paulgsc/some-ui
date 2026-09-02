@@ -273,13 +273,17 @@ export function withPrepaintSuppressed<T>(fn: () => T): T {
   loser a no-op so the veil is never torn down twice. On a visible tab the rAF
   pair resolves in ~1 frame, well before the timer, preserving the atomic swap.
 */
-const COMMIT_FALLBACK_MS = 100
+/** Exported for document-scope.ts's `awaitAtomicSwap()`, which mirrors this same gate as a standalone `Promise` (SF-BS, #1266) rather than sharing this function's own body — see `commitVisualState()`'s own doc comment for why. */
+export const COMMIT_FALLBACK_MS = 100
 
 export function commitVisualState(): void {
-  // Called on *every* pipeline fire (content.ts's onFire), not just the
-  // first. Once the veil is down there is nothing left to commit, and
-  // scheduling another rAF pair + fallback timer per fire only creates work
-  // whose sole effect would be a redundant disablePrepaint().
+  // content.ts's auto-mode onFire no longer calls this directly (SF-BS,
+  // #1266, routes that decision through document-scope.ts's registry
+  // custodian instead — its own awaitAtomicSwap() mirrors this same gate,
+  // as a Promise, using COMMIT_FALLBACK_MS above). Kept as a standalone,
+  // idempotent utility: once the veil is down there is nothing left to
+  // commit, and scheduling another rAF pair + fallback timer only creates
+  // work whose sole effect would be a redundant disablePrepaint().
   if (!isPrepaintActive()) return
 
   let dropped = false

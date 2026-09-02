@@ -1,4 +1,8 @@
 import {
+  createDocumentScopeCustodian,
+  type DocumentScopeCustodian,
+} from "@filter/adapter/document-scope"
+import {
   createContentSession,
   type ContentSession,
 } from "@filter/adapter/pipeline"
@@ -18,7 +22,6 @@ import {
   isGetTabFilterStateResponse,
 } from "@filter/lib/content/guard"
 import {
-  commitVisualState,
   disablePrepaint,
   enablePrepaint,
   withPrepaintSuppressed,
@@ -83,6 +86,15 @@ let navigatingAway = false
 // gets a fresh one for free, since this whole module re-initializes.
 const sessionLifecycle = createSessionLifecycle()
 let contentSession: ContentSession | null = null
+
+// The document — rendering scope r_0 (Definition D.4) — as SF-RG's registry
+// (#1265) sees it. Registered once, unconditionally, in init() below,
+// before any tab-state decision runs: prepaint-start.js's veil already
+// exists by the time this content script runs, so the registration is
+// catching up to reality (Corollary D.1.1's day-zero case), not creating
+// it. Only runAutoTheme()'s onFire routes through it — see
+// document-scope.ts's own header for why legacy/off stay untouched.
+const documentScope: DocumentScopeCustodian = createDocumentScopeCustodian()
 
 // `crypto.randomUUID()` requires a secure context; a content script runs in
 // the page's own origin, so on plain http:// pages it is undefined and
@@ -273,27 +285,28 @@ function runAutoTheme(): void {
   // initial verdict; only the MutationObserver's own burst-coalescing
   // (pipeline.ts's observe()) is debounced.
   //
-  // commitVisualState()/disablePrepaint() run on *every* fire, not just the
-  // first: both are idempotent no-ops once the veil is already down, and
-  // re-running them unconditionally is what lets the SPA re-patch path
-  // (yt-navigate-start re-shows the veil, below; yt-navigate-finish's
-  // rescan() drives back into this same callback) reuse this same logic
-  // to lift it again, instead of needing its own copy of it.
+  // documentScope.reportPipelineOutcome() runs on *every* fire, not just the
+  // first: it re-derives whether anything actually changed (its own
+  // signature guard, mirroring the idempotency commitVisualState()/
+  // disablePrepaint() used to provide directly) and drives the registry's
+  // custody transitions accordingly — including re-arming the veil around a
+  // committed->exonerated (or exonerated->committed) re-classification, not
+  // just tearing it down. The SPA re-patch path (yt-navigate-start re-shows
+  // the veil, below; yt-navigate-finish's rescan() drives back into this
+  // same callback) still reuses this same logic to lift it again.
   contentSession = createContentSession(
     SWATCHES[DEFAULT_SWATCH_ID],
     sessionLifecycle,
-    (actions) => {
-      const applied = actions.some((action) => action.kind === "activate-theme")
+    (outcome) => {
+      const applied =
+        outcome.kind === "ok" &&
+        outcome.actions.some((action) => action.kind === "activate-theme")
       document.body.dataset.swThemeApplied = applied ? "dark" : "none"
       updateDebugAttrs()
 
       if (navigatingAway) return
 
-      if (applied) {
-        commitVisualState()
-      } else {
-        disablePrepaint()
-      }
+      documentScope.reportPipelineOutcome(outcome)
     }
   )
 
@@ -314,6 +327,8 @@ function init(): void {
   // the same role updateDebugAttrs()'s swTabState/swThemeApplied already
   // play, just for the observability session rather than the theme state.
   document.body.dataset.swObservabilitySession = observabilitySessionId
+
+  documentScope.registerDocument(sessionLifecycle.epoch)
 
   observabilityRecorder.count("sessions_started")
   observabilityRecorder.record({ kind: "session.start" })
@@ -402,6 +417,12 @@ function init(): void {
     navigatingAway = true
     if (currentState === "off") return
     enablePrepaint()
+    // This re-arms the veil through a path the registry does not own (see
+    // document-scope.ts's own header). Without telling the custodian, its
+    // idempotency guard could mistake the next matching verdict (nav-finish's
+    // own rescan, below) for "unchanged" and never release the veil this
+    // call just put back up.
+    documentScope.forgetLastOutcome()
     coverageWatchdog.check("nav-start")
   })
 

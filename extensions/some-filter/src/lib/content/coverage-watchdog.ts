@@ -154,7 +154,9 @@ function collectContext(getTabState: () => TabState): CoverageContext {
  * Deliberately narrower than "any CoverageHeld violation": the same
  * invariant also fires, correctly, whenever `decide()` itself emits
  * `restore-native` (the page reads as already dark, so content.ts's onFire
- * calls `disablePrepaint()` on purpose) — there both signals go false
+ * routes an EXONERATED_NATIVE verdict through document-scope.ts's registry
+ * custodian, releasing the veil on purpose — SF-BS, #1266) — there both
+ * signals go false
  * *together*, `darkThemeActive === darkStyleActive` still holds, and
  * `DarkSignalsAgree` does not fire. Keying the repair off that invariant
  * instead of `CoverageHeld` is what keeps a correct "native already dark,
