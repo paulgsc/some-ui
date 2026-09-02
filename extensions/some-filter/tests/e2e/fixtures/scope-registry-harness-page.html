@@ -1,0 +1,24 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>scope-registry harness</title>
+    <style>
+      /* Bright/native background — stands in for unheld vendor content. A
+         successful hold or committed realization must keep the frame
+         oracle from ever sampling this color while the scope under test is
+         in a state Definition D.5's Safe_T should cover. */
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background: #ffffff;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="shadow-host"></div>
+  </body>
+</html>
