@@ -1,3 +1,4 @@
+import type { CostGraph } from "@leetype/lib/leetype/cost"
 import {
   costOf,
   dim,
@@ -11,7 +12,7 @@ import {
 import type { Budget, ConstraintSet } from "@leetype/types/constraint"
 import { describe, expect, it } from "vitest"
 
-import type { Rewrite, RewriteWitness } from "./index"
+import type { EdgeIdentity, Rewrite, RewriteWitness } from "./index"
 import {
   classesOf,
   isAdmissibilityRestoring,
@@ -98,6 +99,46 @@ describe("semanticDistance — Def. 5.2's own worked examples", () => {
     const before = Seq(Loop(dim("n", 2), W(1)), Loop(dim("n"), W(1)))
     const after = Seq(Loop(dim("n", 2), W(1)), Loop(dim("n", 3), W(1)))
     expect(semanticDistance(before, after)).toBe(1)
+  })
+})
+
+// Review finding on this PR (chatgpt-codex-connector): the same (before,
+// after) graph pair can arise from two different rewrites — adding an
+// inner loop (the outer edge untouched) or adding an outer loop and
+// pushing the original into its body (the original edge moved) — and no
+// function of the two graphs alone can distinguish them. `identify` is the
+// escape hatch: `EdgeIdentity`'s own doc comment explains why.
+describe("semanticDistance — edge correspondence across a rewrite (EdgeIdentity)", () => {
+  it("the default, position-keyed identity cannot see either interpretation as a move — documents the limitation, does not hide it", () => {
+    const addInnerLoop = Loop(dim("n"), Loop(dim("n"), W(1)))
+    const pushOriginalDown = Loop(dim("n"), Loop(dim("n"), W(1)))
+    const before = Loop(dim("n"), W(1))
+    expect(semanticDistance(before, addInnerLoop)).toBe(0)
+    expect(semanticDistance(before, pushOriginalDown)).toBe(0)
+  })
+
+  it("an authored identity that recognizes a genuinely new inner loop reports the outer edge as unchanged", () => {
+    const before = Loop(dim("n"), W(1))
+    // The outer loop is unchanged; a brand new inner loop is added around
+    // its former body. Both graphs' root sits at position "", so an
+    // identity keying the root position as a stable id (regardless of
+    // which object it is) recognizes them as the same edge.
+    const after = Loop(dim("n"), Loop(dim("n"), W(1)))
+    const identify: EdgeIdentity = (_loop, position) =>
+      position === "" ? "outer" : position
+    expect(semanticDistance(before, after, identify)).toBe(0)
+  })
+
+  it("an authored identity that tracks the original loop object reports it as moved", () => {
+    const original = Loop(dim("n"), W(1))
+    const before: CostGraph = original
+    // The original loop, reused by object reference, is pushed down into a
+    // brand new outer loop's body — a real structural move, even though
+    // its own repetition expression never changes.
+    const after = Loop(dim("n"), original)
+    const identify: EdgeIdentity = (loop, position) =>
+      loop === original ? "original" : position
+    expect(semanticDistance(before, after, identify)).toBe(1)
   })
 })
 

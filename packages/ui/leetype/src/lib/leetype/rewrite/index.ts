@@ -75,18 +75,63 @@ export function classesOf(rewrite: Rewrite): {
  * the only node kind Def. 2.1 gives a repetition expression to (`Seq` and
  * `W` carry none). `position` is the structural path from the graph's root
  * to this edge — a `Seq`'s `i`-th child extends the path with `.${i}`, a
- * `Loop`'s body extends it with `.body` — so two edges compare equal in
- * position only when they sit at exactly the same place in the tree, not
- * merely at the same depth.
+ * `Loop`'s body extends it with `.body` — so two edges sit at exactly the
+ * same place in the tree only when their positions match exactly, not
+ * merely at the same depth. `id` is this edge's correspondence key across
+ * a rewrite — see `EdgeIdentity`'s own doc comment for why it is not
+ * simply `position` again.
  */
 type CostGraphEdge = {
+  readonly id: string
   readonly position: string
   readonly repetition: Monomial
 }
 
+/**
+ * Assigns a `Loop` edge its correspondence key across a rewrite — which
+ * edge of `after` is "the same edge as this one from `before`, possibly
+ * moved," a question the two graphs cannot answer on their own.
+ *
+ * Concretely: `Loop(n, W(1))` becomes `Loop(n, Loop(n, W(1)))` either by
+ * adding a new inner loop (the original outer edge is untouched — distance
+ * 0) or by adding a new outer loop and pushing the original into its body
+ * (the original edge moved — distance 1). Both rewrites produce the
+ * identical `after` graph, so `semanticDistance(before, after)` alone
+ * cannot tell them apart; no function of the graph pair can (review
+ * finding on this PR, chatgpt-codex-connector). The default identity below
+ * (`defaultEdgeIdentity`) keys an edge by its own `position`, which is
+ * exactly wrong for this case — it reports 0 for *both* rewrites, since
+ * position-keyed matching cannot see that the second one moved anything.
+ *
+ * Resolving that requires information the graphs alone don't carry, so —
+ * the same posture μ (Ax. 6.1) and every other cross-state identity claim
+ * in this workspace already takes — it is authored, never inferred: a
+ * caller who retains object identity across `before`/`after` while
+ * constructing the rewrite (e.g. reusing the exact `before` sub-object as
+ * part of `after`'s tree, the natural way to author "this loop, now
+ * nested") can pass an `identify` that recognizes that object and assigns
+ * it a stable id regardless of where it moved, while everything else falls
+ * back to position. `semanticDistance` compares the matched pair's
+ * `position` in addition to `repetition`, so a same-id match whose
+ * position differs still counts as changed — this function only needs to
+ * answer "is this the same edge," not "did it move."
+ */
+export type EdgeIdentity = (
+  loop: Extract<CostGraph, { kind: "loop" }>,
+  position: string
+) => string
+
+function defaultEdgeIdentity(
+  _loop: Extract<CostGraph, { kind: "loop" }>,
+  position: string
+): string {
+  return position
+}
+
 function edgesOf(
   graph: CostGraph,
-  position: string
+  position: string,
+  identify: EdgeIdentity
 ): ReadonlyArray<CostGraphEdge> {
   switch (graph.kind) {
     case "work": {
@@ -94,13 +139,17 @@ function edgesOf(
     }
     case "seq": {
       return graph.children.flatMap((child, index) =>
-        edgesOf(child, `${position}.${index}`)
+        edgesOf(child, `${position}.${index}`, identify)
       )
     }
     case "loop": {
       return [
-        { position, repetition: graph.repetition },
-        ...edgesOf(graph.body, `${position}.body`),
+        {
+          id: identify(graph, position),
+          position,
+          repetition: graph.repetition,
+        },
+        ...edgesOf(graph.body, `${position}.body`, identify),
       ]
     }
     default: {
@@ -113,27 +162,41 @@ function edgesOf(
  * `semanticDistance(G, G')` (Def. 5.2): the number of `G`'s own edges whose
  * repetition expression or position changes in `G'` — never lines (Rem.
  * 5.1). Directional, per the definition's own wording ("edges of `G_A`"):
- * an edge of `before` counts once it either has no counterpart at the same
- * `position` in `after`, or has one whose repetition expression differs:
- * either condition alone is "changes," matching the definition's "or." An
- * edge `after` introduces with no counterpart in `before` is not itself
- * counted — Def. 5.2 counts `G_A`'s edges, not a symmetric edit distance —
- * though restructuring a graph so that none of its old edges survive at
- * their old positions (as CW-P5 and CW-P7 both do, below) still counts
- * every one of `before`'s edges, since none of them has a same-position
- * counterpart left to match.
+ * an edge of `before` counts once its matched counterpart in `after` (by
+ * `identify`, `position`-keyed by default — see `EdgeIdentity`'s own doc
+ * comment for the ambiguity that default cannot resolve) either does not
+ * exist, or exists with a different `position` or a different repetition
+ * expression: either condition alone is "changes," matching the
+ * definition's "or." An edge `after` introduces with no counterpart in
+ * `before` is not itself counted — Def. 5.2 counts `G_A`'s edges, not a
+ * symmetric edit distance — though restructuring a graph so that none of
+ * its old edges survive at their old positions (as CW-P5 and CW-P7 both
+ * do, below) still counts every one of `before`'s edges, since none of
+ * them has a same-position counterpart left to match under the default
+ * identity.
  */
-export function semanticDistance(before: CostGraph, after: CostGraph): number {
-  const afterByPosition = new Map(
-    edgesOf(after, "").map((edge) => [edge.position, edge.repetition])
+function edgeUnchanged(
+  before: CostGraphEdge,
+  match: CostGraphEdge | undefined
+): boolean {
+  if (match === undefined) return false
+  return (
+    match.position === before.position &&
+    printMonomial(match.repetition) === printMonomial(before.repetition)
   )
-  return edgesOf(before, "").filter((edge) => {
-    const afterRepetition = afterByPosition.get(edge.position)
-    return (
-      afterRepetition === undefined ||
-      printMonomial(afterRepetition) !== printMonomial(edge.repetition)
-    )
-  }).length
+}
+
+export function semanticDistance(
+  before: CostGraph,
+  after: CostGraph,
+  identify: EdgeIdentity = defaultEdgeIdentity
+): number {
+  const afterById = new Map(
+    edgesOf(after, "", identify).map((edge) => [edge.id, edge])
+  )
+  return edgesOf(before, "", identify).filter(
+    (edge) => !edgeUnchanged(edge, afterById.get(edge.id))
+  ).length
 }
 
 /**
