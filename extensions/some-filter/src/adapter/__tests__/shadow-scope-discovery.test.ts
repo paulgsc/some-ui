@@ -304,6 +304,52 @@ describe("createShadowScopeDiscovery — periodic poll backstop (SS_poll, canon 
     }
   })
 
+  it("discovers a *nested* late attachShadow() inside an already-registered outer root", async () => {
+    // A plain top-level re-walk from document.documentElement finds only
+    // the outer host again on every call (already in idFor) and, by
+    // design, never re-descends into an already-known root on its own —
+    // without rewalkKnownRoots(), a nested late upgrade would stay
+    // undiscovered indefinitely, not just for one poll interval.
+    // Bot-found (#1267's own review, round 2).
+    vi.useFakeTimers()
+    try {
+      const reg = registry()
+      const discovery = createShadowScopeDiscovery(reg, () => 0)
+      discovery.observe()
+
+      const outerHost = document.createElement("div")
+      document.body.appendChild(outerHost)
+      const outerShadow = outerHost.attachShadow({ mode: "open" })
+      const innerHost = document.createElement("div")
+      outerShadow.appendChild(innerHost)
+      await Promise.resolve()
+      await Promise.resolve()
+      expect(reg.ids()).toHaveLength(1)
+
+      // The nested "late upgrade": attachShadow() on innerHost, well after
+      // it was already connected inside outerShadow, with no accompanying
+      // mutation inside outerShadow for its per-root observer to see.
+      const innerShadow = innerHost.attachShadow({ mode: "open" })
+
+      vi.advanceTimersByTime(DISCOVERY_POLL_MS)
+
+      expect(reg.ids()).toHaveLength(2)
+      expect(innerShadow.querySelector(HOLD_SELECTOR)).not.toBeNull()
+      const outerId = reg
+        .ids()
+        .find((id) => reg.snapshot(id)?.parent === DOCUMENT_SCOPE_ID)
+      const innerId = reg.ids().find((id) => id !== outerId)
+      expect(outerId).toBeDefined()
+      expect(innerId).toBeDefined()
+      if (outerId === undefined || innerId === undefined) return
+      expect(reg.snapshot(innerId)?.parent).toBe(outerId)
+
+      discovery.teardown()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it("teardown() stops the poll — no further discovery after it", () => {
     vi.useFakeTimers()
     try {

@@ -160,19 +160,46 @@ function isHoldChurn(record: MutationRecord): boolean {
 
 /**
  * `SS_poll`'s own cadence, generalized to scope discovery (Definition 3.3,
- * Remark 3.2) — the same order of magnitude as `some-censor`'s own
- * `retryUnresolved()` interval the canon cites as precedent. Bounds the one
- * discovery-latency gap the `MutationObserver`-based reactive path
- * structurally cannot see: a host inserted into the light DOM well before
- * its `attachShadow()` call actually runs (a custom element upgraded some
- * time after insertion, e.g. its definition loading late) produces no
- * further light-DOM mutation for the top-level observer to react to —
- * `attachShadow()` itself is not an observable mutation, the same G0.4 fact
- * this module's own header already leans on (bot-found, #1267's own
- * review). Not a replacement for the reactive path — the two together are
- * exactly canon §3.2's `SS = SS_event ∪ SS_poll`, not an either/or.
+ * Remark 3.2). Bounds the one discovery-latency gap the
+ * `MutationObserver`-based reactive path structurally cannot see: a host
+ * whose `attachShadow()` call runs well after its own insertion (a custom
+ * element upgraded some time later, e.g. its definition loading late)
+ * produces no further light-DOM mutation for the top-level observer to
+ * react to — `attachShadow()` itself is not an observable mutation, the
+ * same G0.4 fact this module's own header already leans on. Set an order of
+ * magnitude tighter than `some-censor`'s own `retryUnresolved()` precedent
+ * (500ms) the canon cites, deliberately: `retryUnresolved()` bounds
+ * staleness of an already-covered key, where a wider margin is a latency
+ * cost, not a safety one; this bounds a window during which a scope can
+ * paint *natively*, uncovered, which is the failure class G0.2/G0.5 exist
+ * to rule out, so it is worth paying more frequent, cheap (no
+ * `getComputedStyle`, structural-only) walks to keep tight.
+ *
+ * A `requestAnimationFrame`-driven loop — tying the bound to the actual
+ * paint cadence rather than a fixed timer — was considered and rejected for
+ * this codebase specifically: `vitest.setup.ts` stubs `requestAnimationFrame`
+ * to invoke its callback *synchronously*, which a self-rescheduling rAF
+ * loop turns into unbounded synchronous recursion inside a single test run.
+ * `setInterval`, gated by the real (or fake, per-test) timer queue, has no
+ * such hazard.
+ *
+ * Stated plainly, because leaving it implicit would be exactly the kind of
+ * silent gap this canon's own disclosure discipline forbids (§8.3's
+ * "unsupported-latent-scope disclosure" checklist item, generalized here to
+ * a *timing* gap rather than a *coverage-category* one): this bound is not
+ * zero, and cannot be made zero by a purely reactive-plus-poll design over
+ * this platform — G0.4 already proved no synchronous interception primitive
+ * exists for `attachShadow()`, and the only architecture that *would* close
+ * this to zero (never releasing the document's own conservative hold while
+ * auto mode is active, replacing SF-BS's per-surface realization with a
+ * second permanent, boundary-crossing veil) reintroduces exactly the
+ * "independently self-healing occlusion alongside the real theme" shape
+ * `document-scope.ts`'s own header already rejects. `DISCOVERY_POLL_MS`
+ * trades a bounded, disclosed, order-of-magnitude-reduced exposure window
+ * for keeping the extension's actual purpose (a themed, not permanently
+ * blacked-out, page) intact.
  */
-export const DISCOVERY_POLL_MS = 500
+export const DISCOVERY_POLL_MS = 100
 
 export type ShadowScopeDiscovery = {
   /**
@@ -241,6 +268,25 @@ export function createShadowScopeDiscovery<Rho, Pi>(
     }
   }
 
+  /**
+   * Re-walks every currently-registered root's own content for a *nested*
+   * shadow host that appeared without a mutation the outer root's per-root
+   * observer could see — the recursive form of the same late-`attachShadow`
+   * gap `DISCOVERY_POLL_MS` exists for, one level deeper. `walk()` alone
+   * only descends into a root at the moment it is *first* registered; a
+   * plain top-level `walk(document.documentElement, ...)` finds only the
+   * outer host again on every later call (already present in `idFor`) and,
+   * by design, never re-descends into an already-known root on its own —
+   * so without this, a nested late upgrade would stay undiscovered
+   * indefinitely, not just for one poll interval (bot-found, #1267's own
+   * review).
+   */
+  function rewalkKnownRoots(): void {
+    for (const [id, shadow] of rootFor) {
+      walk(shadow, id)
+    }
+  }
+
   function walk(root: Node, parentId: ScopeId): void {
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT)
     let node = walker.nextNode()
@@ -301,6 +347,7 @@ export function createShadowScopeDiscovery<Rho, Pi>(
   return {
     discover(root): void {
       walk(root, DOCUMENT_SCOPE_ID)
+      rewalkKnownRoots()
       retireDetached()
     },
 
@@ -310,6 +357,7 @@ export function createShadowScopeDiscovery<Rho, Pi>(
         for (const record of mutations) {
           if (isSelfAuthored(record)) continue
           walk(document.documentElement, DOCUMENT_SCOPE_ID)
+          rewalkKnownRoots()
           retireDetached()
           return
         }
@@ -320,6 +368,7 @@ export function createShadowScopeDiscovery<Rho, Pi>(
       })
       pollHandle = setInterval(() => {
         walk(document.documentElement, DOCUMENT_SCOPE_ID)
+        rewalkKnownRoots()
         retireDetached()
       }, DISCOVERY_POLL_MS)
     },
