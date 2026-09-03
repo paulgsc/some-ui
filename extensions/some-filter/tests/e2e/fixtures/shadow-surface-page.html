@@ -1,0 +1,34 @@
+<!doctype html>
+<!--
+  Shadow-DOM creation-trace fixture (#1262 Gate 0, G0.2).
+
+  A plain, otherwise-unremarkable light page — it classifies and themes
+  exactly like light-page.html — that exists purely to give
+  shadow-traces.ts's driver functions somewhere stable to attach a shadow
+  host to. Nothing about shadow DOM happens from this file's own inline
+  script; every trace is driven from the spec via page.evaluate() calls into
+  shadow-traces.ts, so each trace's *timing* relative to classification is
+  fully controlled by the test, never raced against this fixture's own load
+  sequence.
+
+  #host-anchor is the one thing this file commits to: a stable, empty,
+  already-connected element every trace can target without needing to
+  (re)discover a selector.
+-->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Shadow Surface Creation-Trace Fixture</title>
+  </head>
+  <body style="background-color: rgb(255, 255, 255); margin: 0">
+    <main style="background-color: rgb(255, 255, 255)">
+      <h1>Shadow Surface Creation-Trace Fixture</h1>
+      <p>
+        Light page; auto mode should theme it exactly as light-page.html does.
+        Shadow hosts are injected only by shadow-traces.ts, driven from the
+        spec.
+      </p>
+    </main>
+    <div id="host-anchor"></div>
+  </body>
+</html>

@@ -48,7 +48,20 @@
 
 import type { CustodyPrimitive, ScopeRef } from "./scope-registry"
 
-const HOLD_ATTR = "data-scope-registry-hold"
+/**
+ * Exported (not just a module-private constant) so a per-scope reactive
+ * observer watching the *same* node this hold is mounted under —
+ * `shadow-scope-discovery.ts`'s per-root observer — can recognize this
+ * element specifically, distinct from `data-my-ext`'s coarser "any
+ * extension-owned node" test. Needed because Axiom 3.5's usual "removal is
+ * never self-authored" rule (`pipeline.ts`'s `isSelfAuthored`, reused as-is
+ * by that observer for genuine vendor evidence) is the wrong call for
+ * *this* element specifically: this hold's own legitimate `release()` (the
+ * second half of `scope-registry.ts`'s two-phase commit handoff) removes it
+ * on purpose, and a caller reacting to that removal as if it were hostile
+ * would invalidate the very commit it just watched succeed.
+ */
+export const HOLD_ATTR = "data-scope-registry-hold"
 
 /** The node a hold is appended to and observed on: `documentElement` for the root document scope, the root itself for a shadow-root scope — there is no analogous "root element" to prefer over a `ShadowRoot` for the latter. */
 function mountPointFor(ref: ScopeRef): Element | ShadowRoot {
@@ -77,6 +90,14 @@ export function createOcclusionHold(ref: ScopeRef): CustodyPrimitive {
   function appendVeil(): HTMLDivElement {
     const el = ownerDocument.createElement("div")
     el.setAttribute(HOLD_ATTR, "")
+    // SF-DC (#1267): a per-root observer reacting to this same scope's own
+    // mutations (shadow-scope-discovery.ts) must not mistake this veil's own
+    // install()/self-heal churn for vendor evidence — the same Axiom 3.5
+    // discipline prepaint.ts's own veil already carries (see that file's
+    // PREPAINT_VEIL_ID element). Harmless for the document scope too: no
+    // observer here reads `data-my-ext` today, but there is no reason for
+    // this element to be missing the extension's own ownership tag either.
+    el.setAttribute("data-my-ext", "")
     el.setAttribute(
       "style",
       "position:fixed;inset:0;z-index:2147483647;margin:0;padding:0;" +

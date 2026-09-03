@@ -34,6 +34,11 @@ describe("createOcclusionHold — document scope", () => {
     expect(style).toContain("position:fixed")
     expect(style).toContain("inset:0")
     expect(style).toContain("z-index:2147483647")
+    // SF-DC (#1267): a per-scope reactive observer (shadow-scope-discovery.ts)
+    // must be able to tell this veil's own install()/self-heal churn apart
+    // from vendor evidence (Axiom 3.5) — the same ownership tag
+    // prepaint.ts's own veil already carries.
+    expect(veil?.getAttribute("data-my-ext")).toBe("")
 
     hold.release()
   })
