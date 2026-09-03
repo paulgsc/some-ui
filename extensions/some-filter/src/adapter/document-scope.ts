@@ -52,6 +52,18 @@
  * `RESOLVING`, and the one operation that both re-installs the hold *and*
  * bumps generation in the same synchronous call — rather than a bespoke,
  * weaker "just forget what I cached" primitive.
+ *
+ * A third, related bug (also bot-found, same PR) lives one layer down and
+ * is fixed in `prepaint.ts` itself, not here: `theme-apply.ts`'s
+ * `applyTheme("legacy", ...)` schedules its own `commitVisualState()` call
+ * (its own `finally` block) — a mechanism entirely outside this registry,
+ * with no generation counter of its own to race against. `enablePrepaint()`
+ * now bumps a module-private token on every call (idempotent
+ * re-affirmations included) that `commitVisualState()` checks before its
+ * own eventual `disablePrepaint()`, so a caller re-arming the veil through
+ * *this* registry (via `reengage()`/`hold.install()`) also invalidates a
+ * still-pending legacy-triggered teardown, not just an in-flight
+ * `resolveCommitted()`. See `prepaint.ts`'s own `commitToken` doc comment.
  */
 
 import {
