@@ -135,6 +135,20 @@ import { isSelfAuthored } from "./pipeline"
 import type { ScopeId, ScopeRegistry } from "./scope-registry"
 
 /**
+ * A realm-independent replacement for `node instanceof Element`. A page can
+ * move an element created in a same-origin iframe's own realm into this
+ * document (`adoptNode()`, or a plain `appendChild()` across documents,
+ * which adopts implicitly) — the adopted node keeps the *source* realm's
+ * `Element` constructor on its prototype chain, so it fails `instanceof`
+ * against this realm's own `Element` global even though it is connected and
+ * walkable. `nodeType` is a plain data property, not a prototype check, so
+ * it is realm-independent (bot-found, #1267's own review).
+ */
+export function isElementNode(node: Node): node is Element {
+  return node.nodeType === Node.ELEMENT_NODE
+}
+
+/**
  * True when `record` is *purely* the occlusion hold element itself being
  * added or removed from the scope's root — its `install()`/self-heal
  * churn (already caught by `isSelfAuthored` below, since the veil now
@@ -152,9 +166,7 @@ function isHoldChurn(record: MutationRecord): boolean {
   const touched = [...record.addedNodes, ...record.removedNodes]
   return (
     touched.length > 0 &&
-    touched.every(
-      (node) => node instanceof Element && node.hasAttribute(HOLD_ATTR)
-    )
+    touched.every((node) => isElementNode(node) && node.hasAttribute(HOLD_ATTR))
   )
 }
 
@@ -245,6 +257,9 @@ export function createShadowScopeDiscovery<Rho, Pi>(
   let nextId = 0
 
   function forget(id: ScopeId, shadow: ShadowRoot): void {
+    // registry.retire(id) below releases this scope's OcclusionHold via
+    // its own stored ScopeRegistration — no separate hold-by-id bookkeeping
+    // needed here.
     registry.retire(id)
     registry.purge(id)
     observerFor.get(id)?.disconnect()
@@ -291,7 +306,15 @@ export function createShadowScopeDiscovery<Rho, Pi>(
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT)
     let node = walker.nextNode()
     while (node !== null) {
-      if (node instanceof Element && node.shadowRoot !== null) {
+      // Not `node instanceof Element`: a page can move an element created
+      // in a same-origin iframe's own realm into this document via
+      // `adoptNode()`/`appendChild()`. The adopted node keeps the source
+      // realm's `Element` constructor on its prototype chain, so it fails
+      // `instanceof` against *this* realm's `Element` global even though it
+      // is connected, walkable, and may carry a real open shadow root —
+      // `nodeType` is a plain data property, not a prototype check, so it
+      // is realm-independent (bot-found, #1267's own review).
+      if (isElementNode(node) && node.shadowRoot !== null) {
         const shadow = node.shadowRoot
         if (!idFor.has(shadow)) registerShadowRoot(shadow, parentId)
       }
@@ -301,6 +324,7 @@ export function createShadowScopeDiscovery<Rho, Pi>(
 
   function registerShadowRoot(shadow: ShadowRoot, parentId: ScopeId): void {
     const id: ScopeId = `shadow:${(nextId += 1)}`
+    const hold = createOcclusionHold(shadow)
     idFor.set(shadow, id)
     rootFor.set(id, shadow)
 
@@ -308,7 +332,7 @@ export function createShadowScopeDiscovery<Rho, Pi>(
       ref: shadow,
       parent: parentId,
       contentEpoch: contentEpoch(),
-      hold: createOcclusionHold(shadow),
+      hold,
     })
 
     const observer = new MutationObserver((mutations) => {
@@ -323,6 +347,16 @@ export function createShadowScopeDiscovery<Rho, Pi>(
         ) {
           registry.invalidate(id)
         }
+        // CSS's own tie-break rule for stacking contexts sharing a z-index
+        // is document order — later wins. A vendor element inserted after
+        // this hold, sharing its own maximal z-index, would otherwise paint
+        // on top of it indefinitely once the scope settles into HELD (which
+        // this story's own scopes never leave — see this module's header),
+        // since install()'s idempotency guard alone never re-positions an
+        // already-connected veil. Re-stacking on every genuine vendor
+        // mutation, not just at registration, keeps winning that tie
+        // (bot-found, #1267's own review).
+        hold.reassert()
       }
       // Regardless of self-authorship: a mutation inside this root can
       // introduce a newly-attached *nested* shadow host (Definition D.4's

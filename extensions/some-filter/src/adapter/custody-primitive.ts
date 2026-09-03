@@ -40,6 +40,20 @@
  * silently claimed closed here either (§8.3's "unsupported-latent-scope
  * disclosure" checklist item is the same discipline this comment follows).
  *
+ * *A second, narrower gap `reassert()` below closes*: `install()`'s
+ * idempotency guard (`if (veil?.isConnected) return`) means a second call
+ * never changes the veil's *position* in the tree, only its presence. CSS's
+ * own tie-break rule for stacking contexts sharing a z-index is document
+ * (tree) order — later wins — so a vendor element inserted *after* this
+ * veil, sharing its own maximal `z-index`, would otherwise paint on top of
+ * it indefinitely, `install()` notwithstanding. `reassert()` re-appends the
+ * (already-installed) veil to the end of its mount point without touching
+ * install/self-heal state, so a caller reacting to vendor mutations while a
+ * scope stays held (SF-DC's `shadow-scope-discovery.ts`, #1267, where a
+ * discovered scope never resolves past `HELD` — see that module's own
+ * header) can keep winning the tie on every round rather than only at
+ * registration time (bot-found, that story's own review).
+ *
  * Zero imports: this file is injected standalone (compiled, unbundled) into
  * a bare test page by `tests/e2e/fixtures/scope-registry-harness.ts` to
  * prove the two-phase handoff and self-healing live in a browser, with no
@@ -74,13 +88,25 @@ function ownerDocumentFor(ref: ScopeRef): Document {
 }
 
 /**
- * Creates a `CustodyPrimitive` scoped to `ref`. `install()`/`release()` are
+ * `CustodyPrimitive` plus `reassert()` — see this module's own header for
+ * why the extra method exists and does not belong on the base interface
+ * (every other `CustodyPrimitive` implementation, `document-scope.ts`'s
+ * `createPrepaintCustody()` included, has no analogous stacking-order
+ * concern to reassert).
+ */
+export type OcclusionHold = CustodyPrimitive & {
+  /** Moves an already-installed veil back to being the last child of its mount point. A no-op if the veil is not currently installed — this never installs one itself. */
+  reassert(): void
+}
+
+/**
+ * Creates an `OcclusionHold` scoped to `ref`. `install()`/`release()` are
  * both idempotent (Definition D.5's registry calls `install()` on every
  * transition requiring the hold engaged, including ones where it may
  * already be) and synchronous — there is never a round between calling
  * `install()` and the occlusion being live in the DOM.
  */
-export function createOcclusionHold(ref: ScopeRef): CustodyPrimitive {
+export function createOcclusionHold(ref: ScopeRef): OcclusionHold {
   const mount = mountPointFor(ref)
   const ownerDocument = ownerDocumentFor(ref)
 
@@ -131,6 +157,10 @@ export function createOcclusionHold(ref: ScopeRef): CustodyPrimitive {
       observer = null
       veil?.remove()
       veil = null
+    },
+
+    reassert(): void {
+      if (veil?.isConnected) mount.appendChild(veil)
     },
   }
 }

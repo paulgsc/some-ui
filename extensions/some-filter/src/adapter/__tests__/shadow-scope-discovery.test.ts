@@ -6,6 +6,7 @@ import {
 import {
   createShadowScopeDiscovery,
   DISCOVERY_POLL_MS,
+  isElementNode,
 } from "@filter/adapter/shadow-scope-discovery"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -368,5 +369,94 @@ describe("createShadowScopeDiscovery — periodic poll backstop (SS_poll, canon 
     } finally {
       vi.useRealTimers()
     }
+  })
+})
+
+describe("isElementNode — realm-independent, unlike `instanceof Element`", () => {
+  it("recognises a same-realm element (the common case)", () => {
+    expect(isElementNode(document.createElement("div"))).toBe(true)
+    expect(isElementNode(document.createTextNode("x"))).toBe(false)
+  })
+
+  it("recognises an element adopted from a different realm's own Element constructor, where instanceof Element fails", () => {
+    const iframe = document.createElement("iframe")
+    document.body.appendChild(iframe)
+    const foreignDoc = iframe.contentDocument
+    expect(foreignDoc).not.toBeNull()
+    if (foreignDoc === null) return
+
+    const foreignEl = foreignDoc.createElement("div")
+
+    // The exact failure isElementNode exists to route around — proves this
+    // test actually reproduces the cross-realm gap, not a same-realm no-op.
+    expect(foreignEl instanceof Element).toBe(false)
+    expect(isElementNode(foreignEl)).toBe(true)
+
+    iframe.remove()
+  })
+})
+
+describe("createShadowScopeDiscovery — cross-realm adopted host (bot-found, #1267's own review)", () => {
+  it("discovers and registers a shadow root on a host adopted from a different-realm iframe document", () => {
+    const iframe = document.createElement("iframe")
+    document.body.appendChild(iframe)
+    const foreignDoc = iframe.contentDocument
+    expect(foreignDoc).not.toBeNull()
+    if (foreignDoc === null) return
+
+    // Created in the iframe's own realm, then adopted into the top document
+    // — appendChild() across documents adopts implicitly, same as a real
+    // page moving DOM across a same-origin iframe boundary.
+    const foreignHost = foreignDoc.createElement("div")
+    expect(foreignHost instanceof Element).toBe(false)
+    document.body.appendChild(foreignHost)
+    const shadow = foreignHost.attachShadow({ mode: "open" })
+
+    const reg = registry()
+    const discovery = createShadowScopeDiscovery(reg, () => 0)
+    discovery.discover(document)
+
+    expect(reg.ids()).toHaveLength(1)
+    expect(shadow.querySelector(HOLD_SELECTOR)).not.toBeNull()
+
+    iframe.remove()
+  })
+})
+
+describe("createShadowScopeDiscovery — z-index stacking-order reassertion (bot-found, #1267's own review)", () => {
+  it("re-stacks a HELD scope's hold to the end on a vendor mutation, so it keeps winning an equal-z-index tie", async () => {
+    // The hold's own z-index is the CSS maximum; CSS's tie-break rule for
+    // equal-z stacking contexts is document order (later wins). A vendor
+    // element inserted after the hold, sharing that same maximal z-index,
+    // would otherwise paint on top of it indefinitely once the scope
+    // settles into HELD — install()'s idempotency guard alone never moves
+    // an already-connected veil.
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    const shadow = host.attachShadow({ mode: "open" })
+
+    const reg = registry()
+    const discovery = createShadowScopeDiscovery(reg, () => 0)
+    discovery.discover(document)
+    expect(reg.ids()).toHaveLength(1)
+    expect(
+      shadow.lastElementChild?.hasAttribute("data-scope-registry-hold")
+    ).toBe(true)
+
+    // A vendor element, sharing the hold's own maximal z-index, inserted
+    // after it.
+    const vendorMaxZ = document.createElement("div")
+    vendorMaxZ.setAttribute("style", "position:fixed;z-index:2147483647;")
+    shadow.appendChild(vendorMaxZ)
+    await flushMicrotasks()
+
+    // Without reassert(), the veil would now be the second-to-last child —
+    // losing the equal-z tie to vendorMaxZ, which comes after it.
+    expect(
+      shadow.lastElementChild?.hasAttribute("data-scope-registry-hold")
+    ).toBe(true)
+    expect(shadow.lastElementChild).not.toBe(vendorMaxZ)
+
+    discovery.teardown()
   })
 })
