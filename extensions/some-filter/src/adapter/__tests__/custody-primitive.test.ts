@@ -242,15 +242,22 @@ describe("createOcclusionHold — isOwnNode (bot-found, #1267's own review, roun
   })
 })
 
-describe("VEIL_STYLE — !important against author-origin CSS (bot-found, #1267's own review, round 6)", () => {
-  it("every critical declaration carries !important, not just the plain attribute string", () => {
+describe("VEIL_STYLE — !important against author-origin CSS (bot-found, #1267's own review, rounds 6-7)", () => {
+  it("declares, and marks !important, the full 'make this invisible or collapse it' property set — not just the properties round 6 already had", () => {
     // A shadow tree's own <style>/adopted stylesheet containing so much as
     // `div { display: none !important }` (or a rule targeting the public
     // HOLD_ATTR selector directly) would otherwise silently defeat this
     // veil while the plain-string attribute comparison the self-heal
     // observer runs still reports it intact — a stylesheet rule never
     // touches the style *attribute's* own text. Only an inline !important
-    // (this) outranks any author-origin stylesheet rule, !important or not.
+    // (this) outranks any author-origin stylesheet rule, !important or not
+    // — but only for a property this string actually declares. Round 6's
+    // own first pass added !important to every property it already had,
+    // but never declared `display` at all, so the exact `display: none
+    // !important` example it cited was never actually defended — caught in
+    // round 7 by this same review. This list matches VEIL_STYLE's own
+    // current declarations exactly so a future property regresses the same
+    // way if it's ever dropped without a matching test update.
     const hold = createOcclusionHold(document)
     hold.install()
     const veil = document.documentElement.querySelector(HOLD_SELECTOR)
@@ -264,6 +271,12 @@ describe("VEIL_STYLE — !important against author-origin CSS (bot-found, #1267'
       "z-index",
       "margin",
       "padding",
+      "width",
+      "height",
+      "display",
+      "visibility",
+      "opacity",
+      "transform",
       "background-color",
       "pointer-events",
     ]) {

@@ -162,10 +162,35 @@ export type OcclusionHold = CustodyPrimitive & {
  * hold while the plain-string attribute comparison below still reports it
  * intact, since a stylesheet rule never touches the `style` attribute's own
  * text (bot-found, #1267's own review, round 6).
+ *
+ * `!important` only protects a property this string actually *declares* —
+ * round 6's own first pass added `!important` to every property already
+ * present here, but never added `display` in the first place, so an author
+ * `div { display: none !important }` rule (the round's own cited example)
+ * still won outright: there was no inline declaration for it to lose to.
+ * Round 7 (still #1267's own review) caught that gap in the fix itself.
+ * `display`/`visibility`/`opacity`/`width`/`height`/`transform` are the
+ * standard "make an element invisible or collapse it" property set any
+ * competent adversarial page reaches for; all six are pinned here now,
+ * explicitly, to the values that keep this box a visible, full-viewport,
+ * untransformed, opaque rectangle. `width`/`height` are pinned to `auto`,
+ * not a fixed length — with `position: fixed` and all four `inset` offsets
+ * constrained, `auto` is what makes CSS 2.1 §10.3.7's absolute-positioning
+ * sizing rule compute the box to stretch across the full containing block,
+ * which is the stretch-to-fill behavior this hold already relied on before
+ * this string ever declared a `width`/`height` opinion at all — pinning
+ * `auto` explicitly keeps that same behavior while also no longer leaving
+ * the property undeclared for an author rule to fill in instead. This is a
+ * defended, not exhaustive, set — `custody-primitive.ts`'s own header
+ * already discloses the deeper containing-block gap (`transform`/`filter`/
+ * `contain` on a *host or ancestor*, not this element) this string cannot
+ * close by itself.
  */
 const VEIL_STYLE =
   "position:fixed !important;inset:0 !important;z-index:2147483647 !important;" +
-  "margin:0 !important;padding:0 !important;" +
+  "margin:0 !important;padding:0 !important;width:auto !important;" +
+  "height:auto !important;display:block !important;visibility:visible !important;" +
+  "opacity:1 !important;transform:none !important;" +
   "background-color:rgb(10,10,10) !important;pointer-events:none !important;"
 
 /**
