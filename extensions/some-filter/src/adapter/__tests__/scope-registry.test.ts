@@ -615,6 +615,44 @@ describe("createScopeRegistry — retire", () => {
   })
 })
 
+describe("createScopeRegistry — purge (SF-DC, #1267)", () => {
+  it("removes a RETIRED scope's record entirely — no longer registered, no longer queryable", () => {
+    const registry = createScopeRegistry<string>()
+    registry.register("s1", {
+      ref: REF,
+      parent: null,
+      contentEpoch: 0,
+      hold: fakeHold(),
+    })
+    registry.retire("s1")
+    expect(registry.isRegistered("s1")).toBe(true)
+
+    registry.purge("s1")
+
+    expect(registry.isRegistered("s1")).toBe(false)
+    expect(registry.stateOf("s1")).toBeUndefined()
+    expect(registry.ids()).not.toContain("s1")
+  })
+
+  it("throws when the scope is registered but not yet RETIRED — never silently discards live custody", () => {
+    const registry = createScopeRegistry<string>()
+    registry.register("s1", {
+      ref: REF,
+      parent: null,
+      contentEpoch: 0,
+      hold: fakeHold(),
+    })
+
+    expect(() => registry.purge("s1")).toThrow(/non-retired/i)
+    expect(registry.isRegistered("s1")).toBe(true)
+  })
+
+  it("is a no-op when the scope is not registered at all (idempotent alongside retire())", () => {
+    const registry = createScopeRegistry<string>()
+    expect(() => registry.purge("never-registered")).not.toThrow()
+  })
+})
+
 describe("createScopeRegistry — kernel independence (Remark D.3, Theorem D.2)", () => {
   it("against the null adapter (no CommittedRealization/NativeExoneration ever constructed), every registered scope stays in {HELD, RESOLVING, FAILED_HELD}", () => {
     const registry = createScopeRegistry<never, never>()

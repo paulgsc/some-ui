@@ -103,10 +103,19 @@
  * "when r's host is detached from a live scope") — checked reactively on
  * every `discover()` pass rather than via a dedicated observer, since
  * detachment is visible in the *parent* scope's own tree, which `discover()`
- * already walks. Retiring releases the hold and disconnects the per-root
- * observer, so a page whose shadow-hosting components come and go (an SPA
- * route swap) does not accumulate unbounded registry entries or observers.
- * Not implemented here: forcing every still-live shadow scope through
+ * already walks. Retiring releases the hold, disconnects the per-root
+ * observer, and `purge()`s the record from `scope-registry.ts`'s own `Map`
+ * (a new export this story adds there — `retire()` alone only transitions
+ * state, it does not remove the record or its strong reference to the
+ * scope's `ShadowRoot`, so a page whose shadow-hosting components come and
+ * go would otherwise accumulate every one of them for the life of the
+ * content script — bot-found, #1267's own review). Purging also drops this
+ * module's own `idFor` entry for the scope: leaving it would make
+ * `walk()`'s `!idFor.has(shadow)` check skip a *later* re-attachment of the
+ * same physical host forever, contradicting Definition D.5's own "a later
+ * re-attachment... is a new scope with fresh identity" (bot-found, same
+ * review round). Not implemented here: forcing every still-live shadow
+ * scope through
  * Definition D.5's `re-register` transition on a content-epoch rollover
  * (`document-scope.ts`'s `reengage()` does this for `r_0` alone). That
  * transition exists to invalidate a stale `COMMITTED`/`EXONERATED_NATIVE`
@@ -149,6 +158,22 @@ function isHoldChurn(record: MutationRecord): boolean {
   )
 }
 
+/**
+ * `SS_poll`'s own cadence, generalized to scope discovery (Definition 3.3,
+ * Remark 3.2) — the same order of magnitude as `some-censor`'s own
+ * `retryUnresolved()` interval the canon cites as precedent. Bounds the one
+ * discovery-latency gap the `MutationObserver`-based reactive path
+ * structurally cannot see: a host inserted into the light DOM well before
+ * its `attachShadow()` call actually runs (a custom element upgraded some
+ * time after insertion, e.g. its definition loading late) produces no
+ * further light-DOM mutation for the top-level observer to react to —
+ * `attachShadow()` itself is not an observable mutation, the same G0.4 fact
+ * this module's own header already leans on (bot-found, #1267's own
+ * review). Not a replacement for the reactive path — the two together are
+ * exactly canon §3.2's `SS = SS_event ∪ SS_poll`, not an either/or.
+ */
+export const DISCOVERY_POLL_MS = 500
+
 export type ShadowScopeDiscovery = {
   /**
    * Walks `root`'s descendants for open shadow roots not yet registered,
@@ -164,14 +189,19 @@ export type ShadowScopeDiscovery = {
    * Starts a dedicated, document-wide `MutationObserver` (`childList` +
    * `subtree`, no `attributeFilter` — a new shadow host arrives via
    * insertion, never an attribute change) that re-runs `discover()`
-   * synchronously — never debounced — on every non-self-authored mutation.
-   * Idempotent.
+   * synchronously — never debounced — on every non-self-authored mutation,
+   * plus a `DISCOVERY_POLL_MS` periodic poll (`SS_poll`, canon §3.2) as a
+   * backstop for the one gap the observer alone cannot see — see
+   * `DISCOVERY_POLL_MS`'s own doc comment. Idempotent.
    */
   observe(): void
 
   /**
-   * Disconnects the top-level observer and every per-root observer, and
-   * retires every scope this instance registered (releasing its hold).
+   * Disconnects the top-level observer, the poll, and every per-root
+   * observer, and retires + purges every scope this instance registered
+   * (releasing its hold and dropping the registry's own record of it, so a
+   * later `discover()`/`observe()` on the same or a new page section starts
+   * clean rather than skipping roots this instance already forgot about).
    */
   teardown(): void
 }
@@ -184,15 +214,30 @@ export function createShadowScopeDiscovery<Rho, Pi>(
   const rootFor = new Map<ScopeId, ShadowRoot>()
   const observerFor = new Map<ScopeId, MutationObserver>()
   let topObserver: MutationObserver | null = null
+  let pollHandle: ReturnType<typeof setInterval> | null = null
   let nextId = 0
+
+  function forget(id: ScopeId, shadow: ShadowRoot): void {
+    registry.retire(id)
+    registry.purge(id)
+    observerFor.get(id)?.disconnect()
+    observerFor.delete(id)
+    rootFor.delete(id)
+    // idFor is a WeakMap, so it never needs to be swept for garbage —
+    // deleting the entry explicitly is still required, though: a live
+    // ShadowRoot object staying mapped to a now-purged id would make
+    // walk()'s `!idFor.has(shadow)` check skip re-registering it forever,
+    // even though Definition D.5 makes RETIRED absorbing and requires a
+    // later re-attachment of the same physical host to be treated as a
+    // *new* scope with fresh identity (the same non-permanence Proposition
+    // 4.1 already establishes for keys) — bot-found (#1267's own review).
+    idFor.delete(shadow)
+  }
 
   function retireDetached(): void {
     for (const [id, shadow] of rootFor) {
       if (shadow.host.isConnected) continue
-      registry.retire(id)
-      observerFor.get(id)?.disconnect()
-      observerFor.delete(id)
-      rootFor.delete(id)
+      forget(id, shadow)
     }
   }
 
@@ -273,17 +318,22 @@ export function createShadowScopeDiscovery<Rho, Pi>(
         childList: true,
         subtree: true,
       })
+      pollHandle = setInterval(() => {
+        walk(document.documentElement, DOCUMENT_SCOPE_ID)
+        retireDetached()
+      }, DISCOVERY_POLL_MS)
     },
 
     teardown(): void {
       topObserver?.disconnect()
       topObserver = null
-      for (const [id, observer] of observerFor) {
-        observer.disconnect()
-        registry.retire(id)
+      if (pollHandle !== null) {
+        clearInterval(pollHandle)
+        pollHandle = null
       }
-      observerFor.clear()
-      rootFor.clear()
+      for (const [id, shadow] of rootFor) {
+        forget(id, shadow)
+      }
     },
   }
 }

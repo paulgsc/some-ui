@@ -3,8 +3,11 @@ import {
   createScopeRegistry,
   type ScopeRegistry,
 } from "@filter/adapter/scope-registry"
-import { createShadowScopeDiscovery } from "@filter/adapter/shadow-scope-discovery"
-import { afterEach, describe, expect, it } from "vitest"
+import {
+  createShadowScopeDiscovery,
+  DISCOVERY_POLL_MS,
+} from "@filter/adapter/shadow-scope-discovery"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 const HOLD_SELECTOR = "[data-scope-registry-hold]"
 
@@ -81,10 +84,10 @@ describe("createShadowScopeDiscovery — discovery and registration (Corollary D
     expect(reg.snapshot(innerId)?.parent).toBe(outerId)
   })
 
-  it("retires a previously-registered scope once its host disconnects", () => {
+  it("retires and purges a previously-registered scope once its host disconnects", () => {
     const host = document.createElement("div")
     document.body.appendChild(host)
-    host.attachShadow({ mode: "open" })
+    const shadow = host.attachShadow({ mode: "open" })
 
     const reg = registry()
     const discovery = createShadowScopeDiscovery(reg, () => 0)
@@ -97,7 +100,23 @@ describe("createShadowScopeDiscovery — discovery and registration (Corollary D
     host.remove()
     discovery.discover(document)
 
-    expect(reg.stateOf(id)?.kind).toBe("RETIRED")
+    // purge()d, not just retired — scope-registry.ts's own record (and its
+    // strong reference to `shadow`) is gone, not merely transitioned.
+    expect(reg.isRegistered(id)).toBe(false)
+    expect(reg.stateOf(id)).toBeUndefined()
+
+    // Reattaching the *same* physical host is a new scope with fresh
+    // identity (Definition D.5's "RETIRED is absorbing... a later
+    // re-attachment... is a new scope") — proves idFor's own stale mapping
+    // was cleared too, not just the registry's record.
+    document.body.appendChild(host)
+    discovery.discover(document)
+    expect(reg.ids()).toHaveLength(1)
+    const newId = reg.ids()[0]
+    expect(newId).toBeDefined()
+    if (newId === undefined) return
+    expect(reg.stateOf(newId)?.kind).toBe("HELD")
+    expect(shadow.querySelector(HOLD_SELECTOR)).not.toBeNull()
   })
 })
 
@@ -233,7 +252,9 @@ describe("createShadowScopeDiscovery — observe()/teardown() lifecycle", () => 
 
     discovery.teardown()
 
-    expect(reg.stateOf(id)?.kind).toBe("RETIRED")
+    // purge()d, not just retired — see the discover()/retirement test above
+    // for why leaving the record (or idFor's mapping) behind is itself a bug.
+    expect(reg.isRegistered(id)).toBe(false)
     expect(shadow.querySelector(HOLD_SELECTOR)).toBeNull()
 
     const secondHost = document.createElement("div")
@@ -241,6 +262,65 @@ describe("createShadowScopeDiscovery — observe()/teardown() lifecycle", () => 
     document.body.appendChild(secondHost)
     await flushMicrotasks()
 
-    expect(reg.ids()).toHaveLength(1)
+    // The top-level observer was disconnected by teardown() — nothing
+    // reacts to this new host at all.
+    expect(reg.ids()).toHaveLength(0)
+  })
+})
+
+describe("createShadowScopeDiscovery — periodic poll backstop (SS_poll, canon §3.2)", () => {
+  it("discovers a shadow root whose attachShadow() call happens well after its host's own insertion, with no further light-DOM mutation", async () => {
+    // Simulates a custom element upgraded some time after it was already
+    // connected (its definition loading late) — attachShadow() itself
+    // produces no observable mutation (G0.4), so the reactive top-level
+    // observer's own callback, having already run for the host's insertion
+    // and found nothing, has nothing left to react to. Only the periodic
+    // poll can still find it. Bot-found (#1267's own review).
+    vi.useFakeTimers()
+    try {
+      const reg = registry()
+      const discovery = createShadowScopeDiscovery(reg, () => 0)
+      discovery.observe()
+
+      const host = document.createElement("div")
+      document.body.appendChild(host)
+      await Promise.resolve()
+      await Promise.resolve()
+      expect(reg.ids()).toHaveLength(0)
+
+      // The "late upgrade": attachShadow() + populate, well after insertion,
+      // with no accompanying light-DOM mutation for the observer to see.
+      const shadow = host.attachShadow({ mode: "open" })
+      shadow.appendChild(document.createElement("div"))
+
+      vi.advanceTimersByTime(DISCOVERY_POLL_MS)
+
+      expect(reg.ids()).toHaveLength(1)
+      expect(shadow.querySelector(HOLD_SELECTOR)).not.toBeNull()
+
+      discovery.teardown()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("teardown() stops the poll — no further discovery after it", () => {
+    vi.useFakeTimers()
+    try {
+      const reg = registry()
+      const discovery = createShadowScopeDiscovery(reg, () => 0)
+      discovery.observe()
+      discovery.teardown()
+
+      const host = document.createElement("div")
+      document.body.appendChild(host)
+      host.attachShadow({ mode: "open" })
+
+      vi.advanceTimersByTime(DISCOVERY_POLL_MS * 3)
+
+      expect(reg.ids()).toHaveLength(0)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
