@@ -1,4 +1,7 @@
-import { createOcclusionHold } from "@filter/adapter/custody-primitive"
+import {
+  createOcclusionHold,
+  VEIL_STYLE,
+} from "@filter/adapter/custody-primitive"
 import { afterEach, describe, expect, it } from "vitest"
 
 const HOLD_SELECTOR = "[data-scope-registry-hold]"
@@ -242,29 +245,40 @@ describe("createOcclusionHold — isOwnNode (bot-found, #1267's own review, roun
   })
 })
 
-describe("VEIL_STYLE — !important against author-origin CSS (bot-found, #1267's own review, rounds 6-7)", () => {
-  it("declares, and marks !important, the full 'make this invisible or collapse it' property set — not just the properties round 6 already had", () => {
-    // A shadow tree's own <style>/adopted stylesheet containing so much as
-    // `div { display: none !important }` (or a rule targeting the public
-    // HOLD_ATTR selector directly) would otherwise silently defeat this
-    // veil while the plain-string attribute comparison the self-heal
-    // observer runs still reports it intact — a stylesheet rule never
-    // touches the style *attribute's* own text. Only an inline !important
-    // (this) outranks any author-origin stylesheet rule, !important or not
-    // — but only for a property this string actually declares. Round 6's
-    // own first pass added !important to every property it already had,
-    // but never declared `display` at all, so the exact `display: none
-    // !important` example it cited was never actually defended — caught in
-    // round 7 by this same review. This list matches VEIL_STYLE's own
-    // current declarations exactly so a future property regresses the same
-    // way if it's ever dropped without a matching test update.
-    const hold = createOcclusionHold(document)
-    hold.install()
-    const veil = document.documentElement.querySelector(HOLD_SELECTOR)
-    expect(veil).not.toBeNull()
-    if (veil === null) return
+describe("VEIL_STYLE — !important against author-origin CSS (bot-found, #1267's own review, rounds 6-8)", () => {
+  // Rounds 6-8 are one recurring finding, not three distinct ones: round 6
+  // added !important to every property VEIL_STYLE already had, without
+  // adding `display` itself, so the round's own cited `display: none
+  // !important` example was never actually defended (round 7 caught the
+  // gap in the fix). Round 8 found the same shape again with `filter`. Two
+  // rounds finding "one more property" is why VEIL_STYLE's own doc comment
+  // now says plainly there is no finite property list that closes this
+  // class of gap — mask/clip-path/mix-blend-mode/backdrop-filter/
+  // content-visibility and any future property with a similar effect are
+  // all still open to the identical attack, for the identical reason (this
+  // veil lives inside the same shadow tree whose own stylesheet can select
+  // it). The test below is deliberately self-verifying against the actual
+  // constant, not a hand-maintained mirror list, so it cannot silently
+  // drift the way the round-6 property list did — a property added to
+  // VEIL_STYLE without !important fails this test on its own, with no
+  // separate list to remember to update.
+  it("every declaration in VEIL_STYLE itself carries !important", () => {
+    const declarations = VEIL_STYLE.split(";")
+      .map((d) => d.trim())
+      .filter((d) => d.length > 0)
+    expect(declarations.length).toBeGreaterThan(0)
+    for (const declaration of declarations) {
+      expect(declaration, `${declaration} is missing !important`).toMatch(
+        /!important$/
+      )
+    }
+  })
 
-    const style = veil.getAttribute("style") ?? ""
+  it("declares every property in the 'make this invisible, collapse it, or move it' set this review has concretely found so far", () => {
+    // A named-list check, kept deliberately separate from the
+    // self-verifying test above: that test catches a property losing
+    // !important, this one catches a property being dropped from
+    // VEIL_STYLE entirely.
     for (const property of [
       "position",
       "inset",
@@ -276,18 +290,25 @@ describe("VEIL_STYLE — !important against author-origin CSS (bot-found, #1267'
       "display",
       "visibility",
       "opacity",
+      "filter",
       "transform",
       "background-color",
       "pointer-events",
     ]) {
-      const declaration = style
-        .split(";")
-        .find((d) => d.trim().startsWith(`${property}:`))
-      expect(declaration, `missing declaration for ${property}`).toBeDefined()
-      expect(declaration, `${property} is missing !important`).toMatch(
-        /!important\s*$/
+      expect(VEIL_STYLE, `missing declaration for ${property}`).toContain(
+        `${property}:`
       )
     }
+  })
+
+  it("applied to a real veil, defeats the exact author rule each of rounds 6-8 cited", () => {
+    const hold = createOcclusionHold(document)
+    hold.install()
+    const veil = document.documentElement.querySelector(HOLD_SELECTOR)
+    expect(veil).not.toBeNull()
+    if (veil === null) return
+
+    expect(veil.getAttribute("style")).toBe(VEIL_STYLE)
 
     hold.release()
   })

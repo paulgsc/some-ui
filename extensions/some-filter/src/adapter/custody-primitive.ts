@@ -161,36 +161,57 @@ export type OcclusionHold = CustodyPrimitive & {
  * so much as `div { display: none !important }` would silently defeat this
  * hold while the plain-string attribute comparison below still reports it
  * intact, since a stylesheet rule never touches the `style` attribute's own
- * text (bot-found, #1267's own review, round 6).
+ * text (bot-found, #1267's own review, round 6). `!important` only protects
+ * a property this string actually *declares*, though — round 6's own first
+ * pass added `!important` to every property it already had without adding
+ * `display` itself (round 7 caught that), and round 8 of the same review
+ * caught `filter` missing too (`filter: opacity(0) !important` defeats the
+ * veil the same way `opacity` alone does not, since `filter` is a distinct
+ * property CSS never derives from `opacity`).
  *
- * `!important` only protects a property this string actually *declares* —
- * round 6's own first pass added `!important` to every property already
- * present here, but never added `display` in the first place, so an author
- * `div { display: none !important }` rule (the round's own cited example)
- * still won outright: there was no inline declaration for it to lose to.
- * Round 7 (still #1267's own review) caught that gap in the fix itself.
- * `display`/`visibility`/`opacity`/`width`/`height`/`transform` are the
- * standard "make an element invisible or collapse it" property set any
- * competent adversarial page reaches for; all six are pinned here now,
- * explicitly, to the values that keep this box a visible, full-viewport,
- * untransformed, opaque rectangle. `width`/`height` are pinned to `auto`,
- * not a fixed length — with `position: fixed` and all four `inset` offsets
- * constrained, `auto` is what makes CSS 2.1 §10.3.7's absolute-positioning
- * sizing rule compute the box to stretch across the full containing block,
- * which is the stretch-to-fill behavior this hold already relied on before
- * this string ever declared a `width`/`height` opinion at all — pinning
- * `auto` explicitly keeps that same behavior while also no longer leaving
- * the property undeclared for an author rule to fill in instead. This is a
- * defended, not exhaustive, set — `custody-primitive.ts`'s own header
- * already discloses the deeper containing-block gap (`transform`/`filter`/
- * `contain` on a *host or ancestor*, not this element) this string cannot
- * close by itself.
+ * Read plainly, two review rounds finding "one more property" each is a
+ * pattern, not a coincidence, and this file says so rather than letting a
+ * third round rediscover it: **there is no finite property list that closes
+ * this class of gap.** `mask`, `clip-path`, `mix-blend-mode`,
+ * `backdrop-filter`, `content-visibility`, and any future CSS property with
+ * a similar visual effect are all still open to the identical attack, for
+ * the identical reason — this veil lives *inside* the same shadow tree
+ * whose own stylesheet can select it by tag name or by its own public
+ * `HOLD_ATTR`, and `!important` inline declarations only ever protect the
+ * finite set of properties actually enumerated here. The properties pinned
+ * below (`display`/`visibility`/`opacity`/`filter`/`transform` to the
+ * values that keep this box visible, opaque, and untransformed;
+ * `width`/`height` to `auto`, which — with `position: fixed` and all four
+ * `inset` offsets constrained — is what CSS 2.1 §10.3.7's absolute-
+ * positioning sizing rule already computed implicitly before this string
+ * declared an opinion on either) close every *concretely demonstrated*
+ * instance this review has raised, not the whole class.
+ *
+ * The actual root cause, common to this and to the deeper containing-block
+ * gap this file's own header already discloses (a `transform`/`filter`/
+ * `contain`-bearing host or ancestor bounds this veil to that ancestor's own
+ * box, not the viewport): mounting the hold *inside* the scope's own shadow
+ * tree, which SF-RG (#1265) chose deliberately (`custody-primitive.test.ts`'s
+ * "mounts the occlusion inside the shadow root itself" is that choice,
+ * tested) so `register()` could install one per scope instead of falling
+ * back to a single document-wide veil. The complete fix for both gaps at
+ * once is the same one: mount the hold *outside* every host's own
+ * containing-block chain and past the reach of that shadow tree's own
+ * style encapsulation (a document-level veil position-synced to the host's
+ * live bounding rect, tracked via `ResizeObserver`/scroll, rather than a
+ * child of the shadow root itself) — real, cross-cutting work (it reverses
+ * SF-RG's own mounting choice and its existing tests, not just this file)
+ * that deserves its own properly-scoped, properly-tested story rather than
+ * a rushed change mid-review-cycle here. Until then, this string's own
+ * enumerated defense is real and worth having — it closes every concrete
+ * attack found so far — but is not, and cannot by its nature become, a
+ * complete one.
  */
-const VEIL_STYLE =
+export const VEIL_STYLE =
   "position:fixed !important;inset:0 !important;z-index:2147483647 !important;" +
   "margin:0 !important;padding:0 !important;width:auto !important;" +
   "height:auto !important;display:block !important;visibility:visible !important;" +
-  "opacity:1 !important;transform:none !important;" +
+  "opacity:1 !important;filter:none !important;transform:none !important;" +
   "background-color:rgb(10,10,10) !important;pointer-events:none !important;"
 
 /**
