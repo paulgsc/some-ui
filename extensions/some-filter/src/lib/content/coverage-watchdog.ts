@@ -62,9 +62,10 @@
  * document-scope registry does not own, same as `yt-navigate-start`'s own
  * direct call. `createCoverageWatchdog()`'s optional `onVeilRearmed`
  * callback exists so a caller tracking that registry's custody (content.ts,
- * via `documentScope.forgetLastOutcome()`) can invalidate its own
- * idempotency cache exactly when this repair fires, not just when
- * navigation does.
+ * via `documentScope.reengage()`) can reconcile exactly when this repair
+ * fires, not just when navigation does — a plain cache-only reset is not
+ * enough here either (see `document-scope.ts`'s own header for the race
+ * that left open).
  */
 
 import {
@@ -179,7 +180,7 @@ function collectContext(getTabState: () => TabState): CoverageContext {
  * composite it back to dark — trading one gap for a literal flash. The dark
  * veil's color has no such dependency, so no equivalent risk exists here.
  */
-/** Returns whether it actually re-armed the veil, so a caller whose custody bookkeeping lives outside this module (SF-BS, #1266's `documentScope.forgetLastOutcome()`) knows to invalidate it — this call is exactly as much a bypass of the registry as `yt-navigate-start`'s own direct `enablePrepaint()` call, for the same reason. */
+/** Returns whether it actually re-armed the veil, so a caller whose custody bookkeeping lives outside this module (SF-BS, #1266's `documentScope.reengage()`) knows to reconcile — this call is exactly as much a bypass of the registry as `yt-navigate-start`'s own direct `enablePrepaint()` call, for the same reason. */
 function repairDarkDesync(ctx: CoverageContext): boolean {
   if (ctx.tabState !== "auto") return false
   if (!ctx.darkThemeActive || ctx.darkStyleActive) return false
@@ -193,10 +194,11 @@ export function createCoverageWatchdog(
   /**
    * Called immediately after `repairDarkDesync()` actually re-arms the
    * veil (never on a check that finds nothing to repair). content.ts wires
-   * this to `documentScope.forgetLastOutcome()` — without it, the
-   * document-scope custodian's own idempotency cache would mistake the
-   * pipeline's next matching verdict for "unchanged" and never release the
-   * veil this repair just put back up, the same bug class
+   * this to `documentScope.reengage()` — a plain idempotency-cache reset is
+   * not enough here: it would not invalidate a `resolveCommitted()` call
+   * still in flight, which could otherwise complete afterward and tear the
+   * veil this repair just put back up right back down (see
+   * `document-scope.ts`'s own header), the same bug class
    * `yt-navigate-start` needed the same fix for.
    */
   onVeilRearmed?: () => void

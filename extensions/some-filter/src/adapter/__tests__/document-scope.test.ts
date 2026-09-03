@@ -176,14 +176,14 @@ describe("createDocumentScopeCustodian — idempotent routing (#831-class guard)
     )
   })
 
-  it("forgetLastOutcome() makes an unchanged-looking verdict re-release a hold re-armed behind the custodian's back (yt-navigate-start/finish)", async () => {
+  it("reengage() makes an unchanged-looking verdict re-release a hold re-armed behind the custodian's back (yt-navigate-start/finish)", async () => {
     // Regression for the exact yt-navigate-repaint.spec.ts failure this
     // fix was written against: nav-start re-arms the veil through
     // hold.install() directly (content.ts calls enablePrepaint(), not this
     // custodian), then nav-finish's rescan reports the *same* committed
-    // verdict as before. Without forgetLastOutcome(), that "unchanged"
-    // signature would short-circuit and the just-re-armed hold would never
-    // be released again.
+    // verdict as before. Without reconciling, that "unchanged" signature
+    // would short-circuit and the just-re-armed hold would never be
+    // released again.
     const hold = { install: vi.fn(), release: vi.fn() }
     const registry = createScopeRegistry<string, { reason: string }>()
     const custodian = createDocumentScopeCustodian(registry)
@@ -198,10 +198,9 @@ describe("createDocumentScopeCustodian — idempotent routing (#831-class guard)
     await flushCommit()
     expect(hold.release).toHaveBeenCalledTimes(1)
 
-    // yt-navigate-start's own direct enablePrepaint() call, simulated here
-    // as a direct hold.install() — outside the custodian entirely.
-    hold.install()
-    custodian.forgetLastOutcome()
+    // yt-navigate-start's own reengage() call, standing in for the direct
+    // enablePrepaint() + reconciliation it performs in content.ts.
+    custodian.reengage(0)
 
     // yt-navigate-finish's rescan reports the identical verdict.
     custodian.reportPipelineOutcome(OK_COMMITTED)
@@ -213,8 +212,14 @@ describe("createDocumentScopeCustodian — idempotent routing (#831-class guard)
       revision: "default",
     })
   })
+})
 
-  it("without forgetLastOutcome(), the same scenario would wrongly leave the hold released only once (documents the bug this method fixes)", async () => {
+describe("reengage() — invalidating an in-flight resolveCommitted() (bot-found race)", () => {
+  it("a resolveCommitted() still awaiting its atomic-swap gate does not release a hold reengage() just re-armed", async () => {
+    // A cache-only reset (this module's own, removed, first attempt) does
+    // not bump scope-registry.ts's per-scope generation counter — the only
+    // thing resolveCommitted() checks before releasing the hold on
+    // completion. This proves reengage()'s real reRegister() call does.
     const hold = { install: vi.fn(), release: vi.fn() }
     const registry = createScopeRegistry<string, { reason: string }>()
     const custodian = createDocumentScopeCustodian(registry)
@@ -224,15 +229,39 @@ describe("createDocumentScopeCustodian — idempotent routing (#831-class guard)
       contentEpoch: 0,
       hold,
     })
+    registry.startResolving(DOCUMENT_SCOPE_ID)
+    hold.install.mockClear()
 
-    custodian.reportPipelineOutcome(OK_COMMITTED)
-    await flushCommit()
+    // A committed round in flight, deliberately held open — mirrors
+    // resolveCommitted()'s real atomic-swap gate (up to COMMIT_FALLBACK_MS
+    // in production), which yt-navigate-start or the watchdog's repair can
+    // race against in a real browser.
+    let releaseInstall: (() => void) | undefined
+    const install = new Promise<void>((resolve) => {
+      releaseInstall = resolve
+    })
+    const uninstall = vi.fn()
+    const pending = registry.resolveCommitted(DOCUMENT_SCOPE_ID, {
+      revision: "default",
+      install: () => install,
+      uninstall,
+    })
 
-    hold.install() // external re-arm, custodian not told
-    custodian.reportPipelineOutcome(OK_COMMITTED) // identical signature — skipped
-    await flushCommit()
+    // The re-arm races in while that round is still awaiting its gate.
+    custodian.reengage(1)
+    expect(hold.install).toHaveBeenCalledTimes(1)
+    expect(registry.stateOf(DOCUMENT_SCOPE_ID)?.kind).toBe("HELD")
 
-    expect(hold.release).toHaveBeenCalledTimes(1)
+    // Let the stale round's own gate finally settle.
+    releaseInstall?.()
+    await pending
+
+    // The stale completion detects the generation bump and backs off —
+    // uninstalling its own now-orphaned realization — instead of releasing
+    // the hold reengage() just re-armed.
+    expect(hold.release).not.toHaveBeenCalled()
+    expect(uninstall).toHaveBeenCalledTimes(1)
+    expect(registry.stateOf(DOCUMENT_SCOPE_ID)?.kind).toBe("HELD")
   })
 })
 
@@ -260,8 +289,8 @@ describe("createPrepaintCustody", () => {
   })
 })
 
-describe("reengageForAuto() — recovering from off-mode's own direct disablePrepaint() (bot-found)", () => {
-  it("without reengageForAuto(), a thrown round after off->auto produces FAILED_HELD with no real veil (documents the bug)", () => {
+describe("reengage() — recovering from off-mode's own direct disablePrepaint() (bot-found)", () => {
+  it("without reengage(), a thrown round after off->auto produces FAILED_HELD with no real veil (documents the bug)", () => {
     // Reproduces content.ts's applyState("off") calling disablePrepaint()
     // directly — a path this registry does not own — then cycling into
     // auto without telling the custodian.
@@ -290,7 +319,7 @@ describe("reengageForAuto() — recovering from off-mode's own direct disablePre
     document.documentElement.classList.remove("sw-dirty")
     expect(isPrepaintActive()).toBe(false)
 
-    custodian.reengageForAuto(0)
+    custodian.reengage(0)
     expect(isPrepaintActive()).toBe(true)
 
     custodian.reportPipelineOutcome(ERROR_OUTCOME)
@@ -314,7 +343,7 @@ describe("reengageForAuto() — recovering from off-mode's own direct disablePre
     })
     hold.install.mockClear()
 
-    custodian.reengageForAuto(0)
+    custodian.reengage(0)
 
     expect(hold.install).toHaveBeenCalledTimes(1)
     expect(registry.stateOf(DOCUMENT_SCOPE_ID)?.kind).toBe("HELD")
@@ -332,7 +361,7 @@ describe("reengageForAuto() — recovering from off-mode's own direct disablePre
     // same swatch as before.
     document.getElementById(PREPAINT_VEIL_ID)?.remove()
     document.documentElement.classList.remove("sw-dirty")
-    custodian.reengageForAuto(0)
+    custodian.reengage(0)
     expect(document.getElementById(PREPAINT_VEIL_ID)).not.toBeNull()
 
     custodian.reportPipelineOutcome(OK_COMMITTED)

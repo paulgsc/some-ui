@@ -24,14 +24,34 @@
  * activate-theme action" into a single disablePrepaint() branch,
  * indistinguishable from a thrown/failed round) is about.
  *
- * That narrowness has a sharp edge `reengageForAuto()` exists to blunt:
- * off-mode's own direct `disablePrepaint()` call physically releases the
- * hold with no way to tell this registry, which keeps believing whatever
- * resting state it was last in (typically still `HELD` from registration).
- * Re-entering auto mode without reconciling that would run the very first
- * classification round physically uncovered while the registry's states all
- * assert a held page — content.ts's `runAutoTheme()` calls
- * `reengageForAuto()` first, every time, to close that gap.
+ * That narrowness has a sharp edge every caller touching the physical veil
+ * from outside this registry must close: `reengage()`. Two motivating bugs,
+ * both found by this repo's bot reviewer on this same PR:
+ *
+ *   - Off-mode's own direct `disablePrepaint()` call physically releases the
+ *     hold with no way to tell this registry, which keeps believing
+ *     whatever resting state it was last in (typically still `HELD` from
+ *     registration). Re-entering auto mode without reconciling that would
+ *     run the very first classification round physically uncovered while
+ *     the registry's states all assert a held page.
+ *   - A cache-only reset (this module's own, deliberately removed, first
+ *     attempt at this fix) is not enough on its own: `reportPipelineOutcome`'s
+ *     `resolveCommitted()` call can still be in flight, awaiting its
+ *     atomic-swap gate (up to `COMMIT_FALLBACK_MS`), when
+ *     `yt-navigate-start` or the watchdog's repair re-arms the veil. Only a
+ *     real registry transition bumps `scope-registry.ts`'s own per-scope
+ *     `generation` counter — the *only* thing that in-flight
+ *     `resolveCommitted()` call checks before releasing the hold on
+ *     completion. Without that bump, the stale completion sails past its
+ *     own staleness check and tears the freshly re-armed veil back down
+ *     once its gate fires, before the fresh round it should be waiting for
+ *     ever runs.
+ *
+ * `reengage()` fixes both by always driving `scope-registry.ts`'s own
+ * `reRegister()` transition — legal from every resting state including
+ * `RESOLVING`, and the one operation that both re-installs the hold *and*
+ * bumps generation in the same synchronous call — rather than a bespoke,
+ * weaker "just forget what I cached" primitive.
  */
 
 import {
@@ -225,45 +245,27 @@ export type DocumentScopeCustodian = {
   reportPipelineOutcome(outcome: FireOutcome): void
 
   /**
-   * Invalidates `reportPipelineOutcome()`'s own "did I already resolve
-   * this" cache, without touching the registry's state machine — for a
-   * caller that just re-armed the physical veil through a path this
-   * custodian does not own (content.ts's `yt-navigate-start` handler calls
-   * `enablePrepaint()` directly; see this module's header for why that path
-   * stays outside the registry). Without this, a later report whose outcome
-   * signature happens to match whatever was last resolved would wrongly
-   * short-circuit (`reportPipelineOutcome`'s own #831-class idempotency
-   * guard) and leave the just-re-armed veil up forever — exactly the
-   * `yt-navigate-start`/`yt-navigate-finish` sequence this exists to keep
-   * correct: `ensureResolving()` still drives the registry's own FSM
-   * correctly from its actual (possibly stale-relative-to-the-DOM)
-   * `COMMITTED`/`EXONERATED_NATIVE` state regardless — that part was never
-   * the gap — but this cache, if left stale, would stop it from ever being
-   * asked to.
-   */
-  forgetLastOutcome(): void
-
-  /**
-   * Re-engages custody unconditionally when auto mode (re-)starts —
-   * `scope-registry.ts`'s `reRegister()` transition, whose `hold.install()`
-   * side effect is exactly what recovers from off/legacy mode's own direct
-   * `disablePrepaint()` call (a path this registry does not own, same class
-   * as `yt-navigate-start`'s or the coverage watchdog's own direct calls)
-   * having silently released the hold while the registry still believed
-   * `HELD`. Without this, a tab that goes off -> auto starts its very first
-   * classification round physically uncovered while the registry's `HELD`/
-   * `RESOLVING`/`FAILED_HELD` states all assert the opposite — a thrown
-   * round then produces `FAILED_HELD` with no veil to back the "held" claim
-   * up, defeating the fail-closed guarantee #1266 exists to provide.
+   * Reconciles this registry with a physical veil touch it does not own:
+   * `yt-navigate-start`'s own direct `enablePrepaint()` call, the coverage
+   * watchdog's `repairDarkDesync()` repair, and content.ts's own
+   * `runAutoTheme()` recovering from off-mode's `disablePrepaint()` all call
+   * this. Drives `scope-registry.ts`'s `reRegister()` transition — legal
+   * from every resting state including `RESOLVING` — whose `hold.install()`
+   * side effect re-asserts the veil and whose synchronous state mutation
+   * bumps this scope's `generation` counter, invalidating any
+   * `resolveCommitted()` call still in flight so its eventual completion
+   * backs off (uninstalling its own now-orphaned realization) instead of
+   * releasing the hold this call just re-engaged. Also clears
+   * `reportPipelineOutcome()`'s own idempotency cache, since `reRegister()`
+   * always produces a fresh `HELD` no prior cached verdict describes.
    *
-   * A cold entry into auto (nothing has released the hold yet) makes
-   * `hold.install()` a no-op DOM-wise — idempotent, so the cost is paid only
-   * when there is actually something to fix. Also clears
-   * `reportPipelineOutcome()`'s own idempotency cache, same as
-   * `forgetLastOutcome()`, since `reRegister()` always produces a fresh
-   * `HELD` no prior cached verdict describes.
+   * A cold call (nothing has released the hold and nothing is in flight)
+   * makes `hold.install()` a no-op DOM-wise — idempotent, so the cost is
+   * paid only when there is actually something to reconcile. See this
+   * module's own header for the two bugs a weaker, cache-only version of
+   * this method (since removed) left open.
    */
-  reengageForAuto(contentEpoch: Epoch): void
+  reengage(contentEpoch: Epoch): void
 }
 
 export function createDocumentScopeCustodian(
@@ -325,11 +327,7 @@ export function createDocumentScopeCustodian(
       registry.resolveExonerated(DOCUMENT_SCOPE_ID, { proof: { reason } })
     },
 
-    forgetLastOutcome(): void {
-      lastSignature = null
-    },
-
-    reengageForAuto(contentEpoch: Epoch): void {
+    reengage(contentEpoch: Epoch): void {
       registry.reRegister(DOCUMENT_SCOPE_ID, contentEpoch)
       lastSignature = null
     },
