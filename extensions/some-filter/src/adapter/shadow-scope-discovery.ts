@@ -413,11 +413,20 @@ export function createShadowScopeDiscovery<Rho, Pi>(
     walk(shadow, id)
   }
 
+  // retireDetached() runs FIRST in all three call sites below, before either
+  // walk — not an arbitrary ordering choice. A host that moved from its
+  // recorded parent into a *different*, still-live registered scope is
+  // still in idFor at the start of this pass (nothing has forgotten it
+  // yet), so a walk that ran first would find it already-known under its
+  // new location and skip it; only after retireDetached() has cleared its
+  // stale idFor/registry entry does the walk that follows see a genuinely
+  // unregistered root and register it fresh, in this same pass, with no
+  // uncovered interval in between (bot-found, #1267's own review, round 5).
   return {
     discover(root): void {
+      retireDetached()
       walk(root, DOCUMENT_SCOPE_ID)
       rewalkKnownRoots()
-      retireDetached()
     },
 
     observe(): void {
@@ -425,9 +434,9 @@ export function createShadowScopeDiscovery<Rho, Pi>(
       topObserver = new MutationObserver((mutations) => {
         for (const record of mutations) {
           if (isSelfAuthored(record)) continue
+          retireDetached()
           walk(document.documentElement, DOCUMENT_SCOPE_ID)
           rewalkKnownRoots()
-          retireDetached()
           return
         }
       })
@@ -436,9 +445,9 @@ export function createShadowScopeDiscovery<Rho, Pi>(
         subtree: true,
       })
       pollHandle = setInterval(() => {
+        retireDetached()
         walk(document.documentElement, DOCUMENT_SCOPE_ID)
         rewalkKnownRoots()
-        retireDetached()
       }, DISCOVERY_POLL_MS)
     },
 

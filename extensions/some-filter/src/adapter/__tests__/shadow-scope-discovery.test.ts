@@ -491,8 +491,23 @@ describe("createShadowScopeDiscovery — retirement checks reachability from the
 
     discovery.discover(document)
 
+    // The *old* id is retired and purged — never left standing.
     expect(reg.isRegistered(innerId)).toBe(false)
-    expect(innerShadow.querySelector(HOLD_SELECTOR)).toBeNull()
+    // But innerShadow is still reachable (now directly from the document),
+    // so this same discover() call also re-registers it fresh, under a new
+    // id with its own new hold — Definition D.5's "a later re-attachment...
+    // is a new scope with fresh identity," applied within a single pass so
+    // there is no round where it is reachable but neither registered nor
+    // held (retireDetached() now runs before the walks that follow it, in
+    // every call site — bot-found, #1267's own review, round 5).
+    expect(reg.ids()).toHaveLength(2)
+    expect(reg.ids()).not.toContain(innerId)
+    const freshInnerId = reg
+      .ids()
+      .find((id) => reg.snapshot(id)?.ref === innerShadow)
+    expect(freshInnerId).toBeDefined()
+    expect(reg.snapshot(freshInnerId ?? "")?.parent).toBe(DOCUMENT_SCOPE_ID)
+    expect(innerShadow.querySelector(HOLD_SELECTOR)).not.toBeNull()
 
     discovery.teardown()
   })

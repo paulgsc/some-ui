@@ -160,10 +160,19 @@ export function createOcclusionHold(ref: ScopeRef): OcclusionHold {
       // vendor evidence — leaving a disabled, still-connected veil that
       // this custody primitive alone is positioned to repair (bot-found,
       // #1267's own review).
+      //
+      // The removal check is `veil.parentNode !== mount`, not
+      // `!veil.isConnected`: a page that *reparents* the veil into some
+      // other still-connected element (a `display: none` wrapper, say)
+      // rather than removing it outright leaves `isConnected` true
+      // throughout, so that check alone never fires — `appendChild` moves
+      // an already-connected node just as readily as it (re-)inserts a
+      // detached one, so the same call repairs both cases uniformly
+      // (bot-found, #1267's own review, round 5).
       if (observer === null) {
         observer = new MutationObserver((mutations) => {
           if (veil === null) return
-          if (!veil.isConnected) {
+          if (veil.parentNode !== mount) {
             mount.appendChild(veil)
             return
           }

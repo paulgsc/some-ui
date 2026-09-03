@@ -119,6 +119,35 @@ describe("createOcclusionHold — document scope", () => {
 
     hold.release()
   })
+
+  it("self-heals: restores the veil to its mount when reparented into a different still-connected element (bot-found, #1267's review, round 5)", async () => {
+    // A page moving the veil into a display:none wrapper (or any other
+    // still-connected element) rather than removing it outright leaves
+    // `Node.isConnected` true throughout — the old removal-only check
+    // (`!veil.isConnected`) never fired for this. `parentNode !== mount` is
+    // the check that catches both cases uniformly.
+    const hold = createOcclusionHold(document)
+    hold.install()
+    const veil = document.documentElement.querySelector(HOLD_SELECTOR)
+    expect(veil).not.toBeNull()
+    if (veil === null) return
+
+    const wrapper = document.createElement("div")
+    wrapper.style.display = "none"
+    document.documentElement.appendChild(wrapper)
+    wrapper.appendChild(veil)
+
+    expect(veil.isConnected).toBe(true)
+    expect(veil.parentElement).toBe(wrapper)
+
+    await flushMicrotasks()
+
+    expect(veil.parentElement).toBe(document.documentElement)
+    expect(wrapper.contains(veil)).toBe(false)
+
+    hold.release()
+    wrapper.remove()
+  })
 })
 
 describe("createOcclusionHold — shadow-root scope", () => {
