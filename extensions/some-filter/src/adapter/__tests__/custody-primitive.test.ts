@@ -94,6 +94,31 @@ describe("createOcclusionHold — document scope", () => {
 
     hold.release()
   })
+
+  it("self-heals: restores the veil's own style after a page disables it in place, without removing it (bot-found, #1267's review)", async () => {
+    // A page locating the veil by its own public data-my-ext/HOLD_ATTR
+    // marker and disabling it in place (style.display = "none", or
+    // clearing the style attribute outright) never removes it from the
+    // DOM, so the removal-only self-heal above never fires — this is a
+    // separate repair path.
+    const hold = createOcclusionHold(document)
+    hold.install()
+    const veil = document.documentElement.querySelector(HOLD_SELECTOR)
+    expect(veil).not.toBeNull()
+    if (veil === null) return
+    const originalStyle = veil.getAttribute("style")
+
+    veil.setAttribute("style", "display:none;")
+    expect(veil.getAttribute("style")).not.toBe(originalStyle)
+
+    await flushMicrotasks()
+
+    expect(veil.getAttribute("style")).toBe(originalStyle)
+    // Still connected — never removed, just restored in place.
+    expect(document.documentElement.contains(veil)).toBe(true)
+
+    hold.release()
+  })
 })
 
 describe("createOcclusionHold — shadow-root scope", () => {
@@ -116,6 +141,28 @@ describe("createOcclusionHold — shadow-root scope", () => {
 
     hold.release()
     expect(shadow.querySelector(HOLD_SELECTOR)).toBeNull()
+    host.remove()
+  })
+
+  it("self-heals the veil's own style there too, without removing it", async () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    const shadow = host.attachShadow({ mode: "open" })
+
+    const hold = createOcclusionHold(shadow)
+    hold.install()
+    const veil = shadow.querySelector(HOLD_SELECTOR)
+    expect(veil).not.toBeNull()
+    if (veil === null) return
+    const originalStyle = veil.getAttribute("style")
+
+    veil.setAttribute("style", "background-color:transparent;")
+    await flushMicrotasks()
+
+    expect(veil.getAttribute("style")).toBe(originalStyle)
+    expect(shadow.contains(veil)).toBe(true)
+
+    hold.release()
     host.remove()
   })
 })

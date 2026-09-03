@@ -460,3 +460,65 @@ describe("createShadowScopeDiscovery — z-index stacking-order reassertion (bot
     discovery.teardown()
   })
 })
+
+describe("createShadowScopeDiscovery — retirement checks reachability from the recorded parent (bot-found, #1267's own review)", () => {
+  it("retires a scope whose host moved to a different connected location, even though isConnected stays true throughout", () => {
+    // A registered nested scope's host moved directly under document.body —
+    // still `isConnected` (attached to the same top document throughout),
+    // but no longer reachable from its recorded parent (the outer shadow
+    // root it was originally discovered inside).
+    const outerHost = document.createElement("div")
+    document.body.appendChild(outerHost)
+    const outerShadow = outerHost.attachShadow({ mode: "open" })
+    const innerHost = document.createElement("div")
+    outerShadow.appendChild(innerHost)
+    const innerShadow = innerHost.attachShadow({ mode: "open" })
+
+    const reg = registry()
+    const discovery = createShadowScopeDiscovery(reg, () => 0)
+    discovery.discover(document)
+    expect(reg.ids()).toHaveLength(2)
+    const innerId = reg
+      .ids()
+      .find((id) => reg.snapshot(id)?.parent !== DOCUMENT_SCOPE_ID)
+    expect(innerId).toBeDefined()
+    if (innerId === undefined) return
+
+    // Move innerHost out from under outerShadow, directly into the main
+    // document — still connected, just no longer under its recorded parent.
+    document.body.appendChild(innerHost)
+    expect(innerHost.isConnected).toBe(true)
+
+    discovery.discover(document)
+
+    expect(reg.isRegistered(innerId)).toBe(false)
+    expect(innerShadow.querySelector(HOLD_SELECTOR)).toBeNull()
+
+    discovery.teardown()
+  })
+
+  it("cascades retirement to a nested scope in the same pass its parent retires", () => {
+    const outerHost = document.createElement("div")
+    document.body.appendChild(outerHost)
+    const outerShadow = outerHost.attachShadow({ mode: "open" })
+    const innerHost = document.createElement("div")
+    outerShadow.appendChild(innerHost)
+    innerHost.attachShadow({ mode: "open" })
+
+    const reg = registry()
+    const discovery = createShadowScopeDiscovery(reg, () => 0)
+    discovery.discover(document)
+    expect(reg.ids()).toHaveLength(2)
+
+    // Detach the outer host entirely — the inner scope's own host stays
+    // connected *to outerShadow*, but outerShadow itself is no longer
+    // reachable from the document.
+    outerHost.remove()
+
+    discovery.discover(document)
+
+    expect(reg.ids()).toHaveLength(0)
+
+    discovery.teardown()
+  })
+})

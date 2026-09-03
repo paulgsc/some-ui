@@ -276,9 +276,44 @@ export function createShadowScopeDiscovery<Rho, Pi>(
     idFor.delete(shadow)
   }
 
+  /**
+   * The live root a scope's `parent` id resolves to — `document` for
+   * `DOCUMENT_SCOPE_ID`, another scope's own `ShadowRoot` otherwise (looked
+   * up in `rootFor`, so a parent that has *already* been forgotten this same
+   * pass resolves to `undefined`, cascading retirement to its children in
+   * the same call — see `retireDetached()`'s own comment).
+   */
+  function parentRootOf(id: ScopeId): Document | ShadowRoot | undefined {
+    const parentId = registry.snapshot(id)?.parent
+    if (parentId === null || parentId === undefined) return undefined
+    return parentId === DOCUMENT_SCOPE_ID ? document : rootFor.get(parentId)
+  }
+
+  /**
+   * Retires every registered scope whose host is no longer reachable from
+   * its *recorded parent* scope — not merely "connected to some document,"
+   * which `Node.isConnected` alone cannot distinguish from "connected to a
+   * different document, or a different part of this one, than the parent
+   * this scope was registered under." A page moving a registered host into
+   * a same-origin iframe's own document, or from one shadow root into a
+   * different one, leaves `isConnected` true throughout, which would
+   * otherwise never retire the stale record — leaking its hold/observer
+   * indefinitely and, worse, leaving `main`'s own registry still believing
+   * it is responsible for custody of content it no longer structurally
+   * contains (bot-found, #1267's own review).
+   *
+   * Iterating `rootFor` in insertion order is what makes single-pass
+   * cascading retirement correct without a second pass: a nested scope is
+   * only ever registered (`registerShadowRoot`'s own recursive `walk()`
+   * call) *after* its parent's own entry already exists in `rootFor`, so a
+   * parent forgotten earlier in this same loop already resolves to
+   * `undefined` in `parentRootOf` by the time this loop reaches its child,
+   * retiring it too — `L_R(r) ⊆ L_R(r')` (Definition D.4), enforced
+   * structurally rather than by a second sweep.
+   */
   function retireDetached(): void {
     for (const [id, shadow] of rootFor) {
-      if (shadow.host.isConnected) continue
+      if (parentRootOf(id)?.contains(shadow.host) === true) continue
       forget(id, shadow)
     }
   }

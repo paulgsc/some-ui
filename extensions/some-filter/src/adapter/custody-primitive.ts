@@ -106,6 +106,16 @@ export type OcclusionHold = CustodyPrimitive & {
  * already be) and synchronous — there is never a round between calling
  * `install()` and the occlusion being live in the DOM.
  */
+/**
+ * The hold's own required visual style, factored out so the self-healing
+ * observer below can compare against and restore exactly this string — see
+ * `install()`'s own comment for why restoring *this*, not just presence, is
+ * required.
+ */
+const VEIL_STYLE =
+  "position:fixed;inset:0;z-index:2147483647;margin:0;padding:0;" +
+  "background-color:rgb(10,10,10);pointer-events:none;"
+
 export function createOcclusionHold(ref: ScopeRef): OcclusionHold {
   const mount = mountPointFor(ref)
   const ownerDocument = ownerDocumentFor(ref)
@@ -124,11 +134,7 @@ export function createOcclusionHold(ref: ScopeRef): OcclusionHold {
     // observer here reads `data-my-ext` today, but there is no reason for
     // this element to be missing the extension's own ownership tag either.
     el.setAttribute("data-my-ext", "")
-    el.setAttribute(
-      "style",
-      "position:fixed;inset:0;z-index:2147483647;margin:0;padding:0;" +
-        "background-color:rgb(10,10,10);pointer-events:none;"
-    )
+    el.setAttribute("style", VEIL_STYLE)
     mount.appendChild(el)
     return el
   }
@@ -140,15 +146,40 @@ export function createOcclusionHold(ref: ScopeRef): OcclusionHold {
       veil = appendVeil()
 
       // Self-healing: a hold an adversarial (or merely careless) page could
-      // remove is not a hold. Mirrors G0.6's own spike and
-      // `prepaint-start.js`'s existing document-veil re-insertion observer.
+      // remove *or disable in place* is not a hold. Mirrors G0.6's own
+      // spike and `prepaint-start.js`'s existing document-veil re-insertion
+      // observer for removal; the `style`-repair half exists because a page
+      // that locates this element by its own `data-my-ext`/`HOLD_ATTR`
+      // marker (both public, discoverable attributes) and disables it in
+      // place — `hold.style.display = "none"`, clearing the `style`
+      // attribute outright — never removes it from the DOM, so the
+      // removal-only watch above never fires, and `isSelfAuthored`
+      // (`pipeline.ts`, reused by `shadow-scope-discovery.ts`'s per-root
+      // observer) correctly-for-identity-purposes still recognizes the
+      // mutation's target as extension-owned and does not react to it as
+      // vendor evidence — leaving a disabled, still-connected veil that
+      // this custody primitive alone is positioned to repair (bot-found,
+      // #1267's own review).
       if (observer === null) {
-        observer = new MutationObserver(() => {
-          if (veil !== null && !veil.isConnected) {
+        observer = new MutationObserver((mutations) => {
+          if (veil === null) return
+          if (!veil.isConnected) {
             mount.appendChild(veil)
+            return
+          }
+          for (const record of mutations) {
+            if (
+              record.type === "attributes" &&
+              record.target === veil &&
+              record.attributeName === "style" &&
+              veil.getAttribute("style") !== VEIL_STYLE
+            ) {
+              veil.setAttribute("style", VEIL_STYLE)
+            }
           }
         })
         observer.observe(mount, { childList: true })
+        observer.observe(veil, { attributes: true, attributeFilter: ["style"] })
       }
     },
 
