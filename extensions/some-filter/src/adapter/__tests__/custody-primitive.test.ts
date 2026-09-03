@@ -151,6 +151,37 @@ describe("createOcclusionHold — document scope", () => {
     hold.release()
     wrapper.remove()
   })
+
+  it("self-heals: strips a vendor-appended child that paints over the veil's own background (bot-found, #1267's review, round 9)", async () => {
+    // Ordinary CSS painting order always paints a box's children in front
+    // of its own background — a foreign child appended *into* the veil
+    // defeats it regardless of how intact VEIL_STYLE itself stays, and
+    // neither the style-attribute repair nor reassert() (a different
+    // repair, for a *sibling* winning an equal-z-index tie, not a child)
+    // touches the veil's own child list.
+    const hold = createOcclusionHold(document)
+    hold.install()
+    const veil = document.documentElement.querySelector(HOLD_SELECTOR)
+    expect(veil).not.toBeNull()
+    if (veil === null) return
+
+    const vendorChild = document.createElement("div")
+    vendorChild.setAttribute(
+      "style",
+      "position:fixed;inset:0;background:white;"
+    )
+    veil.appendChild(vendorChild)
+    expect(veil.contains(vendorChild)).toBe(true)
+
+    await flushMicrotasks()
+
+    expect(veil.contains(vendorChild)).toBe(false)
+    expect(veil.childNodes.length).toBe(0)
+    // The veil's own style and position are untouched by this repair.
+    expect(document.documentElement.contains(veil)).toBe(true)
+
+    hold.release()
+  })
 })
 
 describe("createOcclusionHold — shadow-root scope", () => {
@@ -192,6 +223,34 @@ describe("createOcclusionHold — shadow-root scope", () => {
     await flushMicrotasks()
 
     expect(veil.getAttribute("style")).toBe(originalStyle)
+    expect(shadow.contains(veil)).toBe(true)
+
+    hold.release()
+    host.remove()
+  })
+
+  it("self-heals: strips a vendor-appended child there too (bot-found, #1267's review, round 9)", async () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    const shadow = host.attachShadow({ mode: "open" })
+
+    const hold = createOcclusionHold(shadow)
+    hold.install()
+    const veil = shadow.querySelector(HOLD_SELECTOR)
+    expect(veil).not.toBeNull()
+    if (veil === null) return
+
+    const vendorChild = document.createElement("div")
+    vendorChild.setAttribute(
+      "style",
+      "position:fixed;inset:0;background:white;"
+    )
+    veil.appendChild(vendorChild)
+
+    await flushMicrotasks()
+
+    expect(veil.contains(vendorChild)).toBe(false)
+    expect(veil.childNodes.length).toBe(0)
     expect(shadow.contains(veil)).toBe(true)
 
     hold.release()

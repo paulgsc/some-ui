@@ -286,6 +286,19 @@ export function createOcclusionHold(ref: ScopeRef): OcclusionHold {
       // an already-connected node just as readily as it (re-)inserts a
       // detached one, so the same call repairs both cases uniformly
       // (bot-found, #1267's own review, round 5).
+      //
+      // A third, structurally distinct attack neither of the above two
+      // touches: appending a child *into* the veil (a
+      // `position: fixed; inset: 0; background: white` vendor-styled div,
+      // say). Ordinary CSS painting order always paints a box's children in
+      // front of its own background, independent of any z-index tie-break
+      // `reassert()` handles — so a foreign child paints over this veil's
+      // dark background regardless of how intact `VEIL_STYLE` itself stays,
+      // and neither the `style`-attribute repair above nor `reassert()`
+      // touches the veil's own child list. This veil is defined to be a
+      // childless leaf, so any childList mutation targeting it directly is
+      // reason enough to clear it back to that state (bot-found, #1267's
+      // own review, round 9).
       if (observer === null) {
         observer = new MutationObserver((mutations) => {
           if (veil === null) return
@@ -294,18 +307,40 @@ export function createOcclusionHold(ref: ScopeRef): OcclusionHold {
             return
           }
           for (const record of mutations) {
-            if (
-              record.type === "attributes" &&
-              record.target === veil &&
-              record.attributeName === "style" &&
-              veil.getAttribute("style") !== VEIL_STYLE
-            ) {
-              veil.setAttribute("style", VEIL_STYLE)
+            if (record.type === "attributes" && record.target === veil) {
+              if (
+                record.attributeName === "style" &&
+                veil.getAttribute("style") !== VEIL_STYLE
+              ) {
+                veil.setAttribute("style", VEIL_STYLE)
+              }
+              continue
+            }
+            // A page that locates this element by its own public markers
+            // and *appends into* it — a `position: fixed; inset: 0`
+            // vendor-styled child paints over this veil's own background
+            // regardless of how intact VEIL_STYLE itself stays, since a
+            // child always paints in front of its own parent's background
+            // (ordinary CSS painting order, independent of any z-index
+            // tie-break) — is a third, structurally distinct attack from
+            // the two this observer already repairs (removing the veil
+            // itself; disabling its own declared style). This veil is
+            // defined to be a childless leaf; any childList mutation
+            // targeting it directly, of any shape, is reason enough to
+            // clear it back to that state rather than trying to identify
+            // and remove only the specific unexpected node (bot-found,
+            // #1267's own review, round 9).
+            if (record.type === "childList" && record.target === veil) {
+              veil.replaceChildren()
             }
           }
         })
         observer.observe(mount, { childList: true })
-        observer.observe(veil, { attributes: true, attributeFilter: ["style"] })
+        observer.observe(veil, {
+          childList: true,
+          attributes: true,
+          attributeFilter: ["style"],
+        })
       }
     },
 
