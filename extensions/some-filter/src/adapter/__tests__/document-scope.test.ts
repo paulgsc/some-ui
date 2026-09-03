@@ -259,3 +259,89 @@ describe("createPrepaintCustody", () => {
     expect(document.getElementById(PREPAINT_VEIL_ID)).toBeNull()
   })
 })
+
+describe("reengageForAuto() — recovering from off-mode's own direct disablePrepaint() (bot-found)", () => {
+  it("without reengageForAuto(), a thrown round after off->auto produces FAILED_HELD with no real veil (documents the bug)", () => {
+    // Reproduces content.ts's applyState("off") calling disablePrepaint()
+    // directly — a path this registry does not own — then cycling into
+    // auto without telling the custodian.
+    const custodian = createDocumentScopeCustodian()
+    custodian.registerDocument(0)
+    expect(document.getElementById(PREPAINT_VEIL_ID)).not.toBeNull()
+
+    document.getElementById(PREPAINT_VEIL_ID)?.remove()
+    document.documentElement.classList.remove("sw-dirty")
+    expect(isPrepaintActive()).toBe(false)
+
+    custodian.reportPipelineOutcome(ERROR_OUTCOME)
+
+    expect(custodian.registry.stateOf(DOCUMENT_SCOPE_ID)?.kind).toBe(
+      "FAILED_HELD"
+    )
+    // The registry claims the document is held; physically it is not.
+    expect(isPrepaintActive()).toBe(false)
+  })
+
+  it("re-engages the real veil before the first round when called (the fix)", () => {
+    const custodian = createDocumentScopeCustodian()
+    custodian.registerDocument(0)
+
+    document.getElementById(PREPAINT_VEIL_ID)?.remove()
+    document.documentElement.classList.remove("sw-dirty")
+    expect(isPrepaintActive()).toBe(false)
+
+    custodian.reengageForAuto(0)
+    expect(isPrepaintActive()).toBe(true)
+
+    custodian.reportPipelineOutcome(ERROR_OUTCOME)
+
+    expect(custodian.registry.stateOf(DOCUMENT_SCOPE_ID)?.kind).toBe(
+      "FAILED_HELD"
+    )
+    // Now the claim is true: the veil really is up.
+    expect(isPrepaintActive()).toBe(true)
+  })
+
+  it("is a no-op DOM-wise on a cold entry into auto — hold.install() is idempotent", () => {
+    const hold = { install: vi.fn(), release: vi.fn() }
+    const registry = createScopeRegistry<string, { reason: string }>()
+    const custodian = createDocumentScopeCustodian(registry)
+    registry.register(DOCUMENT_SCOPE_ID, {
+      ref: document,
+      parent: null,
+      contentEpoch: 0,
+      hold,
+    })
+    hold.install.mockClear()
+
+    custodian.reengageForAuto(0)
+
+    expect(hold.install).toHaveBeenCalledTimes(1)
+    expect(registry.stateOf(DOCUMENT_SCOPE_ID)?.kind).toBe("HELD")
+  })
+
+  it("clears the idempotency cache — a verdict matching the pre-reengage cache still resolves", async () => {
+    const custodian = createDocumentScopeCustodian()
+    custodian.registerDocument(0)
+
+    custodian.reportPipelineOutcome(OK_COMMITTED)
+    await flushCommit()
+    expect(document.getElementById(PREPAINT_VEIL_ID)).toBeNull()
+
+    // off, then back to auto, with the classification landing on the exact
+    // same swatch as before.
+    document.getElementById(PREPAINT_VEIL_ID)?.remove()
+    document.documentElement.classList.remove("sw-dirty")
+    custodian.reengageForAuto(0)
+    expect(document.getElementById(PREPAINT_VEIL_ID)).not.toBeNull()
+
+    custodian.reportPipelineOutcome(OK_COMMITTED)
+    await flushCommit()
+
+    expect(document.getElementById(PREPAINT_VEIL_ID)).toBeNull()
+    expect(custodian.registry.stateOf(DOCUMENT_SCOPE_ID)).toMatchObject({
+      kind: "COMMITTED",
+      revision: "default",
+    })
+  })
+})

@@ -275,6 +275,15 @@ function filterConfigsEqual(a: FilterConfig, b: FilterConfig): boolean {
 // ── Auto theming (apply-then-detect) ────────────────────────────────────────────
 
 function runAutoTheme(): void {
+  // Off/legacy mode's own direct disablePrepaint()/no-op veil handling can
+  // leave the physical veil down (off) while the registry still believes a
+  // prior HELD/RESOLVING/FAILED_HELD/COMMITTED/EXONERATED_NATIVE state —
+  // a path this registry does not own (document-scope.ts's own header).
+  // Re-engaging unconditionally before the first classification round below
+  // closes that gap; it is a no-op DOM-wise on a cold entry into auto,
+  // where nothing has released the hold yet.
+  documentScope.reengageForAuto(sessionLifecycle.epoch)
+
   // Apply-then-detect, now folded into decide() (S3): the pipeline scans
   // true vendor colors under the veil, feeds them to the Estimator, and
   // decide() itself withholds every per-surface action (emitting only

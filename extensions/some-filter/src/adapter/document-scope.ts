@@ -23,6 +23,15 @@
  * one this story's fail-open gap (content.ts's onFire collapsing "no
  * activate-theme action" into a single disablePrepaint() branch,
  * indistinguishable from a thrown/failed round) is about.
+ *
+ * That narrowness has a sharp edge `reengageForAuto()` exists to blunt:
+ * off-mode's own direct `disablePrepaint()` call physically releases the
+ * hold with no way to tell this registry, which keeps believing whatever
+ * resting state it was last in (typically still `HELD` from registration).
+ * Re-entering auto mode without reconciling that would run the very first
+ * classification round physically uncovered while the registry's states all
+ * assert a held page — content.ts's `runAutoTheme()` calls
+ * `reengageForAuto()` first, every time, to close that gap.
  */
 
 import {
@@ -233,6 +242,28 @@ export type DocumentScopeCustodian = {
    * asked to.
    */
   forgetLastOutcome(): void
+
+  /**
+   * Re-engages custody unconditionally when auto mode (re-)starts —
+   * `scope-registry.ts`'s `reRegister()` transition, whose `hold.install()`
+   * side effect is exactly what recovers from off/legacy mode's own direct
+   * `disablePrepaint()` call (a path this registry does not own, same class
+   * as `yt-navigate-start`'s or the coverage watchdog's own direct calls)
+   * having silently released the hold while the registry still believed
+   * `HELD`. Without this, a tab that goes off -> auto starts its very first
+   * classification round physically uncovered while the registry's `HELD`/
+   * `RESOLVING`/`FAILED_HELD` states all assert the opposite — a thrown
+   * round then produces `FAILED_HELD` with no veil to back the "held" claim
+   * up, defeating the fail-closed guarantee #1266 exists to provide.
+   *
+   * A cold entry into auto (nothing has released the hold yet) makes
+   * `hold.install()` a no-op DOM-wise — idempotent, so the cost is paid only
+   * when there is actually something to fix. Also clears
+   * `reportPipelineOutcome()`'s own idempotency cache, same as
+   * `forgetLastOutcome()`, since `reRegister()` always produces a fresh
+   * `HELD` no prior cached verdict describes.
+   */
+  reengageForAuto(contentEpoch: Epoch): void
 }
 
 export function createDocumentScopeCustodian(
@@ -295,6 +326,11 @@ export function createDocumentScopeCustodian(
     },
 
     forgetLastOutcome(): void {
+      lastSignature = null
+    },
+
+    reengageForAuto(contentEpoch: Epoch): void {
+      registry.reRegister(DOCUMENT_SCOPE_ID, contentEpoch)
       lastSignature = null
     },
   }
