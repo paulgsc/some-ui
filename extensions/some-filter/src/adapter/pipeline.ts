@@ -505,7 +505,20 @@ export type ContentSession = {
   teardown(): void
 }
 
-export type OnFire = (actions: ReadonlyArray<FilterAction>) => void
+/**
+ * `fire()`'s per-round result. Distinguishes a genuine decide()/realize()
+ * outcome (`"ok"`, possibly an empty/no-op actions array — swatch null, or
+ * a `restore-native` verdict) from a thrown round (`"error"`) — collapsing
+ * both into "no actions" was #1266's own fail-open gap (`content.ts`'s onFire
+ * could not tell "nothing to do" from "something broke"; both look like
+ * `applied === false`, and both took the same immediate `disablePrepaint()`
+ * branch instead of holding the veil on the latter).
+ */
+export type FireOutcome =
+  | { readonly kind: "ok"; readonly actions: ReadonlyArray<FilterAction> }
+  | { readonly kind: "error"; readonly error: unknown }
+
+export type OnFire = (outcome: FireOutcome) => void
 
 export function createContentSession(
   swatch: Swatch | null,
@@ -579,20 +592,25 @@ export function createContentSession(
   }
 
   function fire(): void {
-    let actions: ReadonlyArray<FilterAction> = []
+    let outcome: FireOutcome
     try {
-      actions = invoke(hypothesis, { decide: (h) => decide(h, swatch) })
+      const actions = invoke(hypothesis, { decide: (h) => decide(h, swatch) })
       realize(actions, lastScan.elementsByKey)
+      outcome = { kind: "ok", actions }
     } catch (error) {
       // onFire must run regardless — content.ts uses it to set the debug
       // attrs a live-browser wait (or a e2e test) polls for and to resolve
-      // the veil (commitVisualState/disablePrepaint). A thrown decide/
-      // realize left this callback un-run entirely, holding the page under
-      // the veil forever with the failure visible nowhere but here.
+      // the veil (commitVisualState/disablePrepaint, now routed through
+      // document-scope.ts's registry custodian). A thrown decide/realize
+      // left this callback un-run entirely, holding the page under the veil
+      // forever with the failure visible nowhere but here — reported as
+      // `"error"` rather than a bare empty actions array so the caller can
+      // tell it apart from a genuine "nothing to do" verdict (#1266).
       // eslint-disable-next-line no-console
       console.error("[some-filter] pipeline fire() failed:", error)
+      outcome = { kind: "error", error }
     }
-    onFire?.(actions)
+    onFire?.(outcome)
   }
 
   /** One full round: sense, then decide/realize on what was sensed. */

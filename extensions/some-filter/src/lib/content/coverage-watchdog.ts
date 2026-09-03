@@ -57,6 +57,15 @@
  * legacy pair and the general "nothing at all is covering the page" case are
  * left to the existing recovery paths (nav-finish, the pipeline's own
  * reactive rescan) for reasons `repairDarkDesync()`'s own comment covers.
+ *
+ * That repair calls `enablePrepaint()` directly — a path SF-BS's (#1266)
+ * document-scope registry does not own, same as `yt-navigate-start`'s own
+ * direct call. `createCoverageWatchdog()`'s optional `onVeilRearmed`
+ * callback exists so a caller tracking that registry's custody (content.ts,
+ * via `documentScope.reengage()`) can reconcile exactly when this repair
+ * fires, not just when navigation does — a plain cache-only reset is not
+ * enough here either (see `document-scope.ts`'s own header for the race
+ * that left open).
  */
 
 import {
@@ -154,7 +163,9 @@ function collectContext(getTabState: () => TabState): CoverageContext {
  * Deliberately narrower than "any CoverageHeld violation": the same
  * invariant also fires, correctly, whenever `decide()` itself emits
  * `restore-native` (the page reads as already dark, so content.ts's onFire
- * calls `disablePrepaint()` on purpose) — there both signals go false
+ * routes an EXONERATED_NATIVE verdict through document-scope.ts's registry
+ * custodian, releasing the veil on purpose — SF-BS, #1266) — there both
+ * signals go false
  * *together*, `darkThemeActive === darkStyleActive` still holds, and
  * `DarkSignalsAgree` does not fire. Keying the repair off that invariant
  * instead of `CoverageHeld` is what keeps a correct "native already dark,
@@ -169,15 +180,28 @@ function collectContext(getTabState: () => TabState): CoverageContext {
  * composite it back to dark — trading one gap for a literal flash. The dark
  * veil's color has no such dependency, so no equivalent risk exists here.
  */
-function repairDarkDesync(ctx: CoverageContext): void {
-  if (ctx.tabState !== "auto") return
-  if (!ctx.darkThemeActive || ctx.darkStyleActive) return
+/** Returns whether it actually re-armed the veil, so a caller whose custody bookkeeping lives outside this module (SF-BS, #1266's `documentScope.reengage()`) knows to reconcile — this call is exactly as much a bypass of the registry as `yt-navigate-start`'s own direct `enablePrepaint()` call, for the same reason. */
+function repairDarkDesync(ctx: CoverageContext): boolean {
+  if (ctx.tabState !== "auto") return false
+  if (!ctx.darkThemeActive || ctx.darkStyleActive) return false
   enablePrepaint()
+  return true
 }
 
 export function createCoverageWatchdog(
   recorder: CoverageRecorder,
-  getTabState: () => TabState
+  getTabState: () => TabState,
+  /**
+   * Called immediately after `repairDarkDesync()` actually re-arms the
+   * veil (never on a check that finds nothing to repair). content.ts wires
+   * this to `documentScope.reengage()` — a plain idempotency-cache reset is
+   * not enough here: it would not invalidate a `resolveCommitted()` call
+   * still in flight, which could otherwise complete afterward and tear the
+   * veil this repair just put back up right back down (see
+   * `document-scope.ts`'s own header), the same bug class
+   * `yt-navigate-start` needed the same fix for.
+   */
+  onVeilRearmed?: () => void
 ): CoverageWatchdog {
   let htmlObserver: MutationObserver | null = null
   let headObserver: MutationObserver | null = null
@@ -216,7 +240,9 @@ export function createCoverageWatchdog(
           result.name === "DarkSignalsAgree" &&
           result.status === "violated"
         ) {
-          repairDarkDesync(ctx)
+          if (repairDarkDesync(ctx)) {
+            onVeilRearmed?.()
+          }
         }
 
         const previous = lastStatus.get(result.name)

@@ -6,7 +6,7 @@ import {
   DARK_THEME_STYLE_ID,
 } from "@filter/lib/content/theme-apply"
 import type { TabState } from "@filter/types/tab"
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 // The watchdog's repair runs behind runInvariants()'s async chain, itself
 // behind the MutationObserver callback's own microtask-scheduled delivery —
@@ -136,5 +136,57 @@ describe("coverage watchdog — dark-signal desync repair", () => {
 
     watchdog.teardown()
     document.documentElement.removeAttribute("data-sw-legacy")
+  })
+
+  it("calls onVeilRearmed exactly when it actually repairs — SF-BS (#1266)'s registry needs to know", async () => {
+    // The registry-tracked custodian (document-scope.ts) does not own this
+    // repair's own enablePrepaint() call, same as yt-navigate-start's own
+    // direct call — a caller with custody bookkeeping (content.ts) needs a
+    // signal exactly when this repair fires, not on every check.
+    installDarkTheme()
+    const tabState: TabState = "auto"
+    const recorder = createCoverageRecorder("test-dark-desync-callback", false)
+    const onVeilRearmed = vi.fn()
+    const watchdog = createCoverageWatchdog(
+      recorder,
+      () => tabState,
+      onVeilRearmed
+    )
+
+    watchdog.observe()
+    await flushMicrotasks()
+    expect(onVeilRearmed).not.toHaveBeenCalled()
+
+    document.getElementById(DARK_THEME_STYLE_ID)?.remove()
+    await flushMicrotasks()
+
+    expect(onVeilRearmed).toHaveBeenCalledTimes(1)
+
+    watchdog.teardown()
+  })
+
+  it("does not call onVeilRearmed when there is nothing to repair (off/legacy/already-dark)", async () => {
+    installDarkTheme()
+    const tabState: TabState = "off"
+    const recorder = createCoverageRecorder(
+      "test-dark-desync-callback-off",
+      false
+    )
+    const onVeilRearmed = vi.fn()
+    const watchdog = createCoverageWatchdog(
+      recorder,
+      () => tabState,
+      onVeilRearmed
+    )
+
+    watchdog.observe()
+    await flushMicrotasks()
+
+    document.getElementById(DARK_THEME_STYLE_ID)?.remove()
+    await flushMicrotasks()
+
+    expect(onVeilRearmed).not.toHaveBeenCalled()
+
+    watchdog.teardown()
   })
 })

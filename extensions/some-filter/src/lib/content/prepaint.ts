@@ -146,6 +146,19 @@ function compensateVeilBackground(veil: HTMLElement): void {
 }
 
 /**
+ * Bumped on every `enablePrepaint()` call, idempotent no-op re-affirmations
+ * included — see `commitVisualState()`'s own doc comment for why an
+ * *idempotent* call still has to count. `commitVisualState()` captures this
+ * at schedule time and checks it before its own eventual `disablePrepaint()`
+ * call, so a caller that re-arms the veil (`yt-navigate-start`,
+ * `document-scope.ts`'s `reengage()`, the coverage watchdog's repair — every
+ * one of them calls `enablePrepaint()`, directly or via `hold.install()`)
+ * invalidates any teardown a *different*, now-superseded caller had already
+ * scheduled.
+ */
+let commitToken = 0
+
+/**
  * Create and show the overlay veil. Idempotent — a no-op if one already exists
  * (e.g. the one inserted by prepaint-start.js). Uses the top layer via the
  * popover API when available so vendor stacking contexts cannot paint over it,
@@ -155,6 +168,13 @@ function compensateVeilBackground(veil: HTMLElement): void {
  * remove it. Also adds the sw-dirty class which activates the CSS backstop.
  */
 export function enablePrepaint(): void {
+  // Bumped unconditionally, before the idempotency guards below: the
+  // dangerous case commitToken exists to guard against is precisely a call
+  // that finds the veil *already* up (so every DOM-write guard below is a
+  // no-op) racing a still-pending commitVisualState() teardown scheduled by
+  // an earlier, now-superseded caller — see this token's own doc comment.
+  commitToken += 1
+
   // `classList.add`/`remove` run the DOM's "update steps" unconditionally —
   // they re-serialize and re-set the `class` attribute even when the token
   // set is unchanged, and a same-value `setAttribute` still queues a
@@ -273,19 +293,34 @@ export function withPrepaintSuppressed<T>(fn: () => T): T {
   loser a no-op so the veil is never torn down twice. On a visible tab the rAF
   pair resolves in ~1 frame, well before the timer, preserving the atomic swap.
 */
-const COMMIT_FALLBACK_MS = 100
+/** Exported for document-scope.ts's `awaitAtomicSwap()`, which mirrors this same gate as a standalone `Promise` (SF-BS, #1266) rather than sharing this function's own body — see `commitVisualState()`'s own doc comment for why. */
+export const COMMIT_FALLBACK_MS = 100
 
 export function commitVisualState(): void {
-  // Called on *every* pipeline fire (content.ts's onFire), not just the
-  // first. Once the veil is down there is nothing left to commit, and
-  // scheduling another rAF pair + fallback timer per fire only creates work
-  // whose sole effect would be a redundant disablePrepaint().
+  // content.ts's auto-mode onFire no longer calls this directly (SF-BS,
+  // #1266, routes that decision through document-scope.ts's registry
+  // custodian instead — its own awaitAtomicSwap() mirrors this same gate,
+  // as a Promise, using COMMIT_FALLBACK_MS above). Still the mechanism
+  // theme-apply.ts's applyTheme() uses (its own `finally` block, for both
+  // "legacy" and "dark" modes) — a standalone, idempotent utility: once the
+  // veil is down there is nothing left to commit, and scheduling another
+  // rAF pair + fallback timer only creates work whose sole effect would be
+  // a redundant disablePrepaint().
   if (!isPrepaintActive()) return
+
+  // Captured at schedule time, not at drop() time: a caller that re-arms
+  // the veil after this point (yt-navigate-start, document-scope.ts's
+  // reengage(), the coverage watchdog's repair — anything calling
+  // enablePrepaint() again) means *this* commit is stale and must not tear
+  // that fresher re-arm back down once its own gate fires — see
+  // `commitToken`'s own doc comment above enablePrepaint().
+  const tokenAtSchedule = commitToken
 
   let dropped = false
   const drop = (): void => {
     if (dropped) return
     dropped = true
+    if (commitToken !== tokenAtSchedule) return
     disablePrepaint()
   }
   requestAnimationFrame(() => {

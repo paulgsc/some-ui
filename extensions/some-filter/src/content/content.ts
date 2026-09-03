@@ -1,4 +1,8 @@
 import {
+  createDocumentScopeCustodian,
+  type DocumentScopeCustodian,
+} from "@filter/adapter/document-scope"
+import {
   createContentSession,
   type ContentSession,
 } from "@filter/adapter/pipeline"
@@ -18,9 +22,7 @@ import {
   isGetTabFilterStateResponse,
 } from "@filter/lib/content/guard"
 import {
-  commitVisualState,
   disablePrepaint,
-  enablePrepaint,
   withPrepaintSuppressed,
 } from "@filter/lib/content/prepaint"
 import { applyTheme, restoreVendor } from "@filter/lib/content/theme-apply"
@@ -84,6 +86,17 @@ let navigatingAway = false
 const sessionLifecycle = createSessionLifecycle()
 let contentSession: ContentSession | null = null
 
+// The document — rendering scope r_0 (Definition D.4) — as SF-RG's registry
+// (#1265) sees it. Registered once, unconditionally, in init() below,
+// before any tab-state decision runs: prepaint-start.js's veil already
+// exists by the time this content script runs, so the registration is
+// catching up to reality (Corollary D.1.1's day-zero case), not creating
+// it. runAutoTheme()'s onFire routes decide/realize outcomes through it;
+// yt-navigate-start and the coverage watchdog's repair call reengage() when
+// they touch the physical veil directly — see document-scope.ts's own
+// header for why legacy/off's own veil calls stay untouched regardless.
+const documentScope: DocumentScopeCustodian = createDocumentScopeCustodian()
+
 // `crypto.randomUUID()` requires a secure context; a content script runs in
 // the page's own origin, so on plain http:// pages it is undefined and
 // throws here — before bootInit()'s try/catch ever runs. getRandomValues()
@@ -112,7 +125,15 @@ const observabilityRecorder: CoverageRecorder = createCoverageRecorder(
 )
 const coverageWatchdog: CoverageWatchdog = createCoverageWatchdog(
   observabilityRecorder,
-  () => currentState
+  () => currentState,
+  // The watchdog's own dark-desync repair calls enablePrepaint() directly,
+  // bypassing the registry the same way yt-navigate-start's own call does
+  // (see that handler's comment). reengage() (not a cache-only reset — see
+  // document-scope.ts's own header for the race a weaker version of this
+  // left open) both re-asserts the veil and invalidates any resolveCommitted()
+  // still in flight, so its eventual completion can't tear this repair's
+  // veil back down.
+  () => documentScope.reengage(sessionLifecycle.epoch)
 )
 
 function touchObservabilityIndex(): void {
@@ -257,6 +278,15 @@ function filterConfigsEqual(a: FilterConfig, b: FilterConfig): boolean {
 // ── Auto theming (apply-then-detect) ────────────────────────────────────────────
 
 function runAutoTheme(): void {
+  // Off/legacy mode's own direct disablePrepaint()/no-op veil handling can
+  // leave the physical veil down (off) while the registry still believes a
+  // prior HELD/RESOLVING/FAILED_HELD/COMMITTED/EXONERATED_NATIVE state —
+  // a path this registry does not own (document-scope.ts's own header).
+  // Re-engaging unconditionally before the first classification round below
+  // closes that gap; it is a no-op DOM-wise on a cold entry into auto,
+  // where nothing has released the hold yet.
+  documentScope.reengage(sessionLifecycle.epoch)
+
   // Apply-then-detect, now folded into decide() (S3): the pipeline scans
   // true vendor colors under the veil, feeds them to the Estimator, and
   // decide() itself withholds every per-surface action (emitting only
@@ -273,27 +303,28 @@ function runAutoTheme(): void {
   // initial verdict; only the MutationObserver's own burst-coalescing
   // (pipeline.ts's observe()) is debounced.
   //
-  // commitVisualState()/disablePrepaint() run on *every* fire, not just the
-  // first: both are idempotent no-ops once the veil is already down, and
-  // re-running them unconditionally is what lets the SPA re-patch path
-  // (yt-navigate-start re-shows the veil, below; yt-navigate-finish's
-  // rescan() drives back into this same callback) reuse this same logic
-  // to lift it again, instead of needing its own copy of it.
+  // documentScope.reportPipelineOutcome() runs on *every* fire, not just the
+  // first: it re-derives whether anything actually changed (its own
+  // signature guard, mirroring the idempotency commitVisualState()/
+  // disablePrepaint() used to provide directly) and drives the registry's
+  // custody transitions accordingly — including re-arming the veil around a
+  // committed->exonerated (or exonerated->committed) re-classification, not
+  // just tearing it down. The SPA re-patch path (yt-navigate-start re-shows
+  // the veil, below; yt-navigate-finish's rescan() drives back into this
+  // same callback) still reuses this same logic to lift it again.
   contentSession = createContentSession(
     SWATCHES[DEFAULT_SWATCH_ID],
     sessionLifecycle,
-    (actions) => {
-      const applied = actions.some((action) => action.kind === "activate-theme")
+    (outcome) => {
+      const applied =
+        outcome.kind === "ok" &&
+        outcome.actions.some((action) => action.kind === "activate-theme")
       document.body.dataset.swThemeApplied = applied ? "dark" : "none"
       updateDebugAttrs()
 
       if (navigatingAway) return
 
-      if (applied) {
-        commitVisualState()
-      } else {
-        disablePrepaint()
-      }
+      documentScope.reportPipelineOutcome(outcome)
     }
   )
 
@@ -314,6 +345,8 @@ function init(): void {
   // the same role updateDebugAttrs()'s swTabState/swThemeApplied already
   // play, just for the observability session rather than the theme state.
   document.body.dataset.swObservabilitySession = observabilitySessionId
+
+  documentScope.registerDocument(sessionLifecycle.epoch)
 
   observabilityRecorder.count("sessions_started")
   observabilityRecorder.record({ kind: "session.start" })
@@ -401,7 +434,12 @@ function init(): void {
     observabilityRecorder.record({ kind: "nav.start" })
     navigatingAway = true
     if (currentState === "off") return
-    enablePrepaint()
+    // reengage() both re-arms the veil (its own reRegister()'s hold.install()
+    // is the same enablePrepaint() call this used to make directly) and
+    // invalidates any resolveCommitted() still in flight from a round that
+    // hadn't settled yet — a cache-only reset left that race open (see
+    // document-scope.ts's own header).
+    documentScope.reengage(sessionLifecycle.epoch)
     coverageWatchdog.check("nav-start")
   })
 
