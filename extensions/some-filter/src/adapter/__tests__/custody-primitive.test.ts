@@ -42,6 +42,11 @@ describe("createOcclusionHold — document scope", () => {
     // from vendor evidence (Axiom 3.5) — the same ownership tag
     // prepaint.ts's own veil already carries.
     expect(veil?.getAttribute("data-my-ext")).toBe("")
+    // Round 11 made the veil an <hr>, which carries an implicit ARIA
+    // `separator` role a plain <div> never had — aria-hidden="true" removes
+    // it from the accessibility tree entirely (bot-found, #1267's own
+    // review, round 12).
+    expect(veil?.getAttribute("aria-hidden")).toBe("true")
 
     hold.release()
   })
@@ -463,5 +468,84 @@ describe("createOcclusionHold — closed shadow content inside the veil (bot-fou
     expect(veil.tagName).toBe("HR")
 
     hold.release()
+  })
+})
+
+describe("createOcclusionHold — hides the veil's own <hr> separator role from assistive technology (bot-found, #1267's own review, round 12)", () => {
+  // Round 11 traded a <div>'s accessibility neutrality away without saying
+  // so: unlike a <div> (implicit role `generic`), <hr> carries an implicit
+  // ARIA role of `separator` — a screen-reader user would otherwise
+  // encounter a spurious separator landmark for a purely visual,
+  // pointer-events:none overlay, for as long as the scope it covers stays
+  // held. aria-hidden="true" removes the element from the accessibility
+  // tree entirely, regardless of its implicit or explicit role.
+  it("document scope: install() marks the veil aria-hidden", () => {
+    const hold = createOcclusionHold(document)
+    hold.install()
+    const veil = document.documentElement.querySelector(HOLD_SELECTOR)
+    expect(veil).not.toBeNull()
+    if (veil === null) return
+
+    expect(veil.getAttribute("aria-hidden")).toBe("true")
+
+    hold.release()
+  })
+
+  it("shadow-root scope: install() marks the veil aria-hidden", () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    const shadow = host.attachShadow({ mode: "open" })
+
+    const hold = createOcclusionHold(shadow)
+    hold.install()
+    const veil = shadow.querySelector(HOLD_SELECTOR)
+    expect(veil).not.toBeNull()
+    if (veil === null) return
+
+    expect(veil.getAttribute("aria-hidden")).toBe("true")
+
+    hold.release()
+    host.remove()
+  })
+
+  it("self-heals: restores aria-hidden after a page strips it, without touching the veil's own visual style", async () => {
+    const hold = createOcclusionHold(document)
+    hold.install()
+    const veil = document.documentElement.querySelector(HOLD_SELECTOR)
+    expect(veil).not.toBeNull()
+    if (veil === null) return
+    const originalStyle = veil.getAttribute("style")
+
+    veil.removeAttribute("aria-hidden")
+    expect(veil.getAttribute("aria-hidden")).toBeNull()
+
+    await flushMicrotasks()
+
+    expect(veil.getAttribute("aria-hidden")).toBe("true")
+    // A distinct repair from the style self-heal — this attack leaves
+    // sighted rendering, and VEIL_STYLE itself, completely untouched.
+    expect(veil.getAttribute("style")).toBe(originalStyle)
+
+    hold.release()
+  })
+
+  it("self-heals aria-hidden in a shadow-root scope too", async () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    const shadow = host.attachShadow({ mode: "open" })
+
+    const hold = createOcclusionHold(shadow)
+    hold.install()
+    const veil = shadow.querySelector(HOLD_SELECTOR)
+    expect(veil).not.toBeNull()
+    if (veil === null) return
+
+    veil.removeAttribute("aria-hidden")
+    await flushMicrotasks()
+
+    expect(veil.getAttribute("aria-hidden")).toBe("true")
+
+    hold.release()
+    host.remove()
   })
 })

@@ -263,6 +263,19 @@ export function createOcclusionHold(ref: ScopeRef): OcclusionHold {
     // absolute-positioning sizing algorithm the same way a <div>'s would
     // be — `border: none` in VEIL_STYLE is the one <hr>-specific default
     // this element needs neutralized that a <div> never carried.
+    //
+    // <hr>'s own trade-off, round 11 traded a <div>'s accessibility
+    // neutrality away without saying so: unlike a <div> (implicit role
+    // `generic`, exposed as nothing), <hr> carries an implicit ARIA role of
+    // `separator` — a screen-reader user would otherwise encounter a
+    // spurious separator landmark for a purely visual, pointer-events:none
+    // overlay, for as long as the scope it covers stays held (bot-found,
+    // #1267's own review, round 12). `aria-hidden="true"` removes the
+    // element (and, were it ever to have any, its descendants) from the
+    // accessibility tree entirely, regardless of its implicit or explicit
+    // role — the correct fix for an element assistive technology should
+    // never surface at all, not a narrower role override that would still
+    // leave it exposed under some other name.
     const el = ownerDocument.createElement("hr")
     ownedVeils.add(el)
     el.setAttribute(HOLD_ATTR, "")
@@ -275,6 +288,7 @@ export function createOcclusionHold(ref: ScopeRef): OcclusionHold {
     // this element to be missing the extension's own ownership tag either.
     el.setAttribute("data-my-ext", "")
     el.setAttribute("style", VEIL_STYLE)
+    el.setAttribute("aria-hidden", "true")
     mount.appendChild(el)
     return el
   }
@@ -361,12 +375,22 @@ export function createOcclusionHold(ref: ScopeRef): OcclusionHold {
           if (veil.getAttribute("style") !== VEIL_STYLE) {
             veil.setAttribute("style", VEIL_STYLE)
           }
+          // A page stripping aria-hidden (directly, or via an
+          // attribute-reconciling framework re-rendering the element without
+          // it) re-exposes <hr>'s own implicit `separator` role to assistive
+          // technology — a distinct attack from disabling the veil's visual
+          // style, since neither sighted rendering nor VEIL_STYLE itself is
+          // affected, only what a screen reader announces (bot-found,
+          // #1267's own review, round 12).
+          if (veil.getAttribute("aria-hidden") !== "true") {
+            veil.setAttribute("aria-hidden", "true")
+          }
         })
         observer.observe(mount, { childList: true })
         observer.observe(veil, {
           childList: true,
           attributes: true,
-          attributeFilter: ["style"],
+          attributeFilter: ["style", "aria-hidden"],
         })
       }
     },
