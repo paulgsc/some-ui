@@ -390,6 +390,7 @@ describe("VEIL_STYLE — !important against author-origin CSS (bot-found, #1267'
       "transform",
       "background-color",
       "pointer-events",
+      "border",
     ]) {
       expect(VEIL_STYLE, `missing declaration for ${property}`).toContain(
         `${property}:`
@@ -405,6 +406,61 @@ describe("VEIL_STYLE — !important against author-origin CSS (bot-found, #1267'
     if (veil === null) return
 
     expect(veil.getAttribute("style")).toBe(VEIL_STYLE)
+
+    hold.release()
+  })
+})
+
+describe("createOcclusionHold — closed shadow content inside the veil (bot-found, #1267's own review, round 11)", () => {
+  // A page calling veil.attachShadow({ mode: "closed" }) and appending a
+  // covering surface inside the returned root is structurally different from
+  // every earlier finding: a closed shadow root is not merely unobserved by
+  // this file's own MutationObserver the way an open one would be, it is
+  // inaccessible to any script that did not create it — veil.shadowRoot
+  // returns null, so no reactive repair (the childList clearing rounds 9/10
+  // added included) can ever see or touch what is inside it. The fix closes
+  // the attack at the platform level instead: the veil is an <hr>, which is
+  // not on attachShadow()'s own host allow-list, so calling attachShadow()
+  // on it throws NotSupportedError unconditionally, in every mode.
+  it("document scope: the veil itself refuses attachShadow() in every mode", () => {
+    const hold = createOcclusionHold(document)
+    hold.install()
+    const veil = document.documentElement.querySelector(HOLD_SELECTOR)
+    expect(veil).not.toBeNull()
+    if (veil === null) return
+
+    expect(() => veil.attachShadow({ mode: "closed" })).toThrow()
+    expect(() => veil.attachShadow({ mode: "open" })).toThrow()
+
+    hold.release()
+  })
+
+  it("shadow-root scope: the veil itself refuses attachShadow() in every mode", () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    const shadow = host.attachShadow({ mode: "open" })
+
+    const hold = createOcclusionHold(shadow)
+    hold.install()
+    const veil = shadow.querySelector(HOLD_SELECTOR)
+    expect(veil).not.toBeNull()
+    if (veil === null) return
+
+    expect(() => veil.attachShadow({ mode: "closed" })).toThrow()
+    expect(() => veil.attachShadow({ mode: "open" })).toThrow()
+
+    hold.release()
+    host.remove()
+  })
+
+  it("the veil is an <hr>, not a <div>", () => {
+    const hold = createOcclusionHold(document)
+    hold.install()
+    const veil = document.documentElement.querySelector(HOLD_SELECTOR)
+    expect(veil).not.toBeNull()
+    if (veil === null) return
+
+    expect(veil.tagName).toBe("HR")
 
     hold.release()
   })

@@ -212,7 +212,8 @@ export const VEIL_STYLE =
   "margin:0 !important;padding:0 !important;width:auto !important;" +
   "height:auto !important;display:block !important;visibility:visible !important;" +
   "opacity:1 !important;filter:none !important;transform:none !important;" +
-  "background-color:rgb(10,10,10) !important;pointer-events:none !important;"
+  "background-color:rgb(10,10,10) !important;pointer-events:none !important;" +
+  "border:none !important;"
 
 /**
  * Creates an `OcclusionHold` scoped to `ref`. `install()`/`release()` are
@@ -225,7 +226,7 @@ export function createOcclusionHold(ref: ScopeRef): OcclusionHold {
   const mount = mountPointFor(ref)
   const ownerDocument = ownerDocumentFor(ref)
 
-  let veil: HTMLDivElement | null = null
+  let veil: HTMLHRElement | null = null
   let observer: MutationObserver | null = null
   // Every element this hold has ever created via appendVeil(), tracked by
   // object identity (a WeakSet, so a since-discarded veil is still GC-able).
@@ -239,8 +240,30 @@ export function createOcclusionHold(ref: ScopeRef): OcclusionHold {
   // once isOwnNode replaced the old attribute-based check with `=== veil`).
   const ownedVeils = new WeakSet<Node>()
 
-  function appendVeil(): HTMLDivElement {
-    const el = ownerDocument.createElement("div")
+  function appendVeil(): HTMLHRElement {
+    // Not a <div>: round 11 of #1267's own review found that a page can
+    // call `veil.attachShadow({ mode: "closed" })` on any element the DOM
+    // spec's own attachShadow() allow-list permits — a plain <div> is on
+    // it — and append a covering surface inside the returned root. A
+    // *closed* shadow root is not merely unobserved by this file's own
+    // MutationObserver the way an open one would be; it is structurally
+    // inaccessible to any script that did not create it, `veil.shadowRoot`
+    // included, so no reactive repair (the child-list clearing round 9/10
+    // added, or anything else) can ever see or touch what is inside it.
+    // `<hr>` is not on attachShadow()'s allow-list at all (per the DOM
+    // spec: "article", "aside", "blockquote", "body", "div", "footer",
+    // "h1"-"h6", "header", "main", "nav", "p", "section", "span", or a
+    // valid custom element name — "hr" is none of these) — calling
+    // attachShadow() on it throws a NotSupportedError unconditionally, in
+    // every mode, closing the whole attack class at the platform level
+    // rather than trying to detect or repair it after the fact. Under
+    // `position: fixed` (VEIL_STYLE below) an <hr>'s own UA-default
+    // rendering (a thin inset line, sized from its border rather than
+    // participating in normal flow) is entirely superseded by the
+    // absolute-positioning sizing algorithm the same way a <div>'s would
+    // be — `border: none` in VEIL_STYLE is the one <hr>-specific default
+    // this element needs neutralized that a <div> never carried.
+    const el = ownerDocument.createElement("hr")
     ownedVeils.add(el)
     el.setAttribute(HOLD_ATTR, "")
     // SF-DC (#1267): a per-root observer reacting to this same scope's own
