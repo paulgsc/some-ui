@@ -300,39 +300,43 @@ export function createOcclusionHold(ref: ScopeRef): OcclusionHold {
       // reason enough to clear it back to that state (bot-found, #1267's
       // own review, round 9).
       if (observer === null) {
-        observer = new MutationObserver((mutations) => {
+        // Checks and repairs all three invariants unconditionally on every
+        // callback — never dispatched by *which* mutation record triggered
+        // it. An earlier version branched per record and `return`ed after
+        // repairing the parent, before a later record in the *same* batch
+        // (a page appending a child and reparenting the veil within one
+        // synchronous task queues both as one batch, delivered to one
+        // callback) ever got processed — repairing the parent but silently
+        // leaving the vendor child behind, painting over the now-correctly-
+        // positioned veil indefinitely (bot-found, #1267's own review,
+        // round 10). Checking every invariant on every firing, regardless
+        // of which one's own mutation woke this callback, has no such
+        // ordering hazard — each check is independently idempotent and
+        // guarded by a `!==`/`.length` comparison against current state,
+        // not against what any particular record says changed, so a
+        // self-generated repair mutation converges on the next callback
+        // (nothing left to fix) rather than looping.
+        observer = new MutationObserver(() => {
           if (veil === null) return
           if (veil.parentNode !== mount) {
             mount.appendChild(veil)
-            return
           }
-          for (const record of mutations) {
-            if (record.type === "attributes" && record.target === veil) {
-              if (
-                record.attributeName === "style" &&
-                veil.getAttribute("style") !== VEIL_STYLE
-              ) {
-                veil.setAttribute("style", VEIL_STYLE)
-              }
-              continue
-            }
-            // A page that locates this element by its own public markers
-            // and *appends into* it — a `position: fixed; inset: 0`
-            // vendor-styled child paints over this veil's own background
-            // regardless of how intact VEIL_STYLE itself stays, since a
-            // child always paints in front of its own parent's background
-            // (ordinary CSS painting order, independent of any z-index
-            // tie-break) — is a third, structurally distinct attack from
-            // the two this observer already repairs (removing the veil
-            // itself; disabling its own declared style). This veil is
-            // defined to be a childless leaf; any childList mutation
-            // targeting it directly, of any shape, is reason enough to
-            // clear it back to that state rather than trying to identify
-            // and remove only the specific unexpected node (bot-found,
-            // #1267's own review, round 9).
-            if (record.type === "childList" && record.target === veil) {
-              veil.replaceChildren()
-            }
+          // A page that locates this element by its own public markers and
+          // *appends into* it — a `position: fixed; inset: 0` vendor-styled
+          // child paints over this veil's own background regardless of how
+          // intact VEIL_STYLE itself stays, since a child always paints in
+          // front of its own parent's background (ordinary CSS painting
+          // order, independent of any z-index tie-break `reassert()`
+          // handles) — a third, structurally distinct attack from removing
+          // the veil or disabling its own declared style. This veil is
+          // defined to be a childless leaf, so any children at all is
+          // reason enough to clear it back to that state (bot-found,
+          // #1267's own review, round 9).
+          if (veil.childNodes.length > 0) {
+            veil.replaceChildren()
+          }
+          if (veil.getAttribute("style") !== VEIL_STYLE) {
+            veil.setAttribute("style", VEIL_STYLE)
           }
         })
         observer.observe(mount, { childList: true })

@@ -182,6 +182,43 @@ describe("createOcclusionHold — document scope", () => {
 
     hold.release()
   })
+
+  it("self-heals both an appended child AND a reparent when they land in the same synchronous batch (bot-found, #1267's review, round 10)", async () => {
+    // A page appending a covering child and reparenting the veil within one
+    // synchronous task queues both as a single MutationObserver batch,
+    // delivered to one callback invocation. An earlier version branched on
+    // *which* record triggered the callback and returned after repairing
+    // the parent, before ever processing the child-list record in the same
+    // batch — silently leaving the vendor child behind, painting over the
+    // now-correctly-positioned veil indefinitely.
+    const hold = createOcclusionHold(document)
+    hold.install()
+    const veil = document.documentElement.querySelector(HOLD_SELECTOR)
+    expect(veil).not.toBeNull()
+    if (veil === null) return
+
+    const vendorChild = document.createElement("div")
+    vendorChild.setAttribute(
+      "style",
+      "position:fixed;inset:0;background:white;"
+    )
+    const wrapper = document.createElement("div")
+    document.documentElement.appendChild(wrapper)
+
+    // Both mutations in the same synchronous task, no await between them —
+    // exactly the batch the bot's finding described.
+    veil.appendChild(vendorChild)
+    wrapper.appendChild(veil)
+
+    await flushMicrotasks()
+
+    expect(veil.parentElement).toBe(document.documentElement)
+    expect(veil.contains(vendorChild)).toBe(false)
+    expect(veil.childNodes.length).toBe(0)
+
+    hold.release()
+    wrapper.remove()
+  })
 })
 
 describe("createOcclusionHold — shadow-root scope", () => {
