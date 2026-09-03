@@ -195,3 +195,87 @@ describe("createOcclusionHold — shadow-root scope", () => {
     host.remove()
   })
 })
+
+describe("createOcclusionHold — isOwnNode (bot-found, #1267's own review, round 6)", () => {
+  it("recognises the veil by identity even after its own HOLD_ATTR/data-my-ext markers are stripped", () => {
+    const hold = createOcclusionHold(document)
+    hold.install()
+    const veil = document.documentElement.querySelector(HOLD_SELECTOR)
+    expect(veil).not.toBeNull()
+    if (veil === null) return
+
+    veil.removeAttribute("data-scope-registry-hold")
+    veil.removeAttribute("data-my-ext")
+
+    expect(hold.isOwnNode(veil)).toBe(true)
+
+    hold.release()
+  })
+
+  it("recognises a since-release()d veil by identity — release() nulls the live reference synchronously, before any reactive callback observing the removal gets a chance to run", () => {
+    const hold = createOcclusionHold(document)
+    hold.install()
+    const veil = document.documentElement.querySelector(HOLD_SELECTOR)
+    expect(veil).not.toBeNull()
+    if (veil === null) return
+
+    hold.release()
+
+    // The exact regression this story's own test suite caught: an
+    // implementation comparing against the hold's mutable `veil` variable
+    // (nulled by release() above) would return false here, right when a
+    // caller reacting to release()'s own removal record needs it most.
+    expect(hold.isOwnNode(veil)).toBe(true)
+  })
+
+  it("does not recognise an unrelated node, markers or not", () => {
+    const hold = createOcclusionHold(document)
+    hold.install()
+
+    const decoy = document.createElement("div")
+    decoy.setAttribute("data-scope-registry-hold", "")
+    decoy.setAttribute("data-my-ext", "")
+
+    expect(hold.isOwnNode(decoy)).toBe(false)
+
+    hold.release()
+  })
+})
+
+describe("VEIL_STYLE — !important against author-origin CSS (bot-found, #1267's own review, round 6)", () => {
+  it("every critical declaration carries !important, not just the plain attribute string", () => {
+    // A shadow tree's own <style>/adopted stylesheet containing so much as
+    // `div { display: none !important }` (or a rule targeting the public
+    // HOLD_ATTR selector directly) would otherwise silently defeat this
+    // veil while the plain-string attribute comparison the self-heal
+    // observer runs still reports it intact — a stylesheet rule never
+    // touches the style *attribute's* own text. Only an inline !important
+    // (this) outranks any author-origin stylesheet rule, !important or not.
+    const hold = createOcclusionHold(document)
+    hold.install()
+    const veil = document.documentElement.querySelector(HOLD_SELECTOR)
+    expect(veil).not.toBeNull()
+    if (veil === null) return
+
+    const style = veil.getAttribute("style") ?? ""
+    for (const property of [
+      "position",
+      "inset",
+      "z-index",
+      "margin",
+      "padding",
+      "background-color",
+      "pointer-events",
+    ]) {
+      const declaration = style
+        .split(";")
+        .find((d) => d.trim().startsWith(`${property}:`))
+      expect(declaration, `missing declaration for ${property}`).toBeDefined()
+      expect(declaration, `${property} is missing !important`).toMatch(
+        /!important\s*$/
+      )
+    }
+
+    hold.release()
+  })
+})

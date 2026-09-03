@@ -40,6 +40,31 @@
  * silently claimed closed here either (§8.3's "unsupported-latent-scope
  * disclosure" checklist item is the same discipline this comment follows).
  *
+ * *A second known gap, disclosed under that same discipline, bot-found by
+ * SF-DC's (#1267) own review (round 6) — this file's own "boundary-crossing"
+ * claim above is narrower than it reads*: "shadow-tree nesting does not
+ * itself establish a new containing block" is true exactly as stated, but a
+ * shadow host — or any of *its* ancestors, up to the viewport — establishing
+ * one via ordinary CSS (`transform`, `filter`, `perspective`, or
+ * `contain: paint|layout|strict|content`) is a completely separate,
+ * shadow-DOM-independent mechanism this primitive does not account for: the
+ * containing-block rule for `position: fixed` operates over the *painted*
+ * (flattened) tree, so a `transform`/`contain`-bearing ancestor bounds this
+ * veil to *that ancestor's own box*, not the viewport, regardless of how
+ * many shadow boundaries sit between them. A live descendant that overflows
+ * that bounded box (`overflow: visible` content wider or taller than the
+ * transformed ancestor) can then paint outside `inset: 0`'s reach while
+ * `Safe_T` still reports the scope `HELD`. Closing this soundly needs either
+ * mounting the veil *outside* every host's own containing-block chain
+ * (tracked per-scope bounding-rect synchronization the veil would then have
+ * to stay pinned to, materially more machinery than this story's own
+ * acceptance criteria call for) or a different primitive entirely for a
+ * transformed/contained host — real, substantial work, not a small
+ * follow-up, and one this comment specifically routes to whichever of
+ * SF-OB (#1270, coverage observability over live scopes) or a dedicated
+ * follow-up takes it on, rather than attempting a rushed, under-tested fix
+ * in the middle of this story's own review cycle.
+ *
  * *A second, narrower gap `reassert()` below closes*: `install()`'s
  * idempotency guard (`if (veil?.isConnected) return`) means a second call
  * never changes the veil's *position* in the tree, only its presence. CSS's
@@ -97,7 +122,51 @@ function ownerDocumentFor(ref: ScopeRef): Document {
 export type OcclusionHold = CustodyPrimitive & {
   /** Moves an already-installed veil back to being the last child of its mount point. A no-op if the veil is not currently installed — this never installs one itself. */
   reassert(): void
+  /**
+   * True when `node` is this hold's own veil element — checked by object
+   * identity, never by any attribute the veil carries. A caller telling
+   * this hold's own DOM churn apart from vendor mutations —
+   * `shadow-scope-discovery.ts`'s per-root observer — must not identify it
+   * by `HOLD_ATTR`/`data-my-ext`: those are public, page-discoverable
+   * attributes a page (or an attribute-reconciling framework) can strip
+   * without removing the element or changing its visible style, and doing
+   * so previously broke identity recognition for every *later* mutation
+   * on this same node — including this hold's own `reassert()` calls,
+   * each of which (per the DOM's own pre-insert algorithm) generates a
+   * remove-then-insert record pair even when moving an already-last-child
+   * node, which would then itself fail an attribute-based check and be
+   * read as fresh vendor evidence, triggering another `reassert()` and
+   * repeating without bound (bot-found, #1267's own review, round 6). True
+   * for a veil `release()` has already torn down, too — a caller reacting
+   * to `release()`'s own removal runs as a queued microtask, after
+   * `release()` has already nulled this closure's live veil reference, so
+   * the check inside is against a `WeakSet` of every veil this hold has
+   * ever created, not that mutable reference (a real regression this same
+   * story's own test suite caught when the implementation first tried the
+   * simpler `=== veil` comparison).
+   */
+  isOwnNode(node: Node): boolean
 }
+
+/**
+ * The hold's own required visual style, factored out so the self-healing
+ * observer below can compare against and restore exactly this string — see
+ * `install()`'s own comment for why restoring *this*, not just presence, is
+ * required. Every declaration carries `!important`: an inline `!important`
+ * declaration outranks *any* author-origin stylesheet rule regardless of
+ * that rule's own specificity or `!important` status (CSS Cascade's origin
+ * ordering ties same-importance author declarations by specificity, and an
+ * element's own inline style has no selector to be out-specificity'd by) —
+ * without it, a shadow tree's own `<style>`/adopted stylesheet containing
+ * so much as `div { display: none !important }` would silently defeat this
+ * hold while the plain-string attribute comparison below still reports it
+ * intact, since a stylesheet rule never touches the `style` attribute's own
+ * text (bot-found, #1267's own review, round 6).
+ */
+const VEIL_STYLE =
+  "position:fixed !important;inset:0 !important;z-index:2147483647 !important;" +
+  "margin:0 !important;padding:0 !important;" +
+  "background-color:rgb(10,10,10) !important;pointer-events:none !important;"
 
 /**
  * Creates an `OcclusionHold` scoped to `ref`. `install()`/`release()` are
@@ -106,25 +175,27 @@ export type OcclusionHold = CustodyPrimitive & {
  * already be) and synchronous — there is never a round between calling
  * `install()` and the occlusion being live in the DOM.
  */
-/**
- * The hold's own required visual style, factored out so the self-healing
- * observer below can compare against and restore exactly this string — see
- * `install()`'s own comment for why restoring *this*, not just presence, is
- * required.
- */
-const VEIL_STYLE =
-  "position:fixed;inset:0;z-index:2147483647;margin:0;padding:0;" +
-  "background-color:rgb(10,10,10);pointer-events:none;"
-
 export function createOcclusionHold(ref: ScopeRef): OcclusionHold {
   const mount = mountPointFor(ref)
   const ownerDocument = ownerDocumentFor(ref)
 
   let veil: HTMLDivElement | null = null
   let observer: MutationObserver | null = null
+  // Every element this hold has ever created via appendVeil(), tracked by
+  // object identity (a WeakSet, so a since-discarded veil is still GC-able).
+  // isOwnNode() below reads *this*, not the mutable `veil` variable: a
+  // caller's MutationObserver callback reacting to release()'s own removal
+  // runs as a queued microtask, by which point release() has already set
+  // `veil = null` synchronously — comparing against the live variable would
+  // read every one of that hold's own legitimate removal records as "not
+  // mine" right when identity matters most (bot-found, #1267's own review,
+  // round 6 — this exact regression surfaced in this story's own test suite
+  // once isOwnNode replaced the old attribute-based check with `=== veil`).
+  const ownedVeils = new WeakSet<Node>()
 
   function appendVeil(): HTMLDivElement {
     const el = ownerDocument.createElement("div")
+    ownedVeils.add(el)
     el.setAttribute(HOLD_ATTR, "")
     // SF-DC (#1267): a per-root observer reacting to this same scope's own
     // mutations (shadow-scope-discovery.ts) must not mistake this veil's own
@@ -201,6 +272,10 @@ export function createOcclusionHold(ref: ScopeRef): OcclusionHold {
 
     reassert(): void {
       if (veil?.isConnected) mount.appendChild(veil)
+    },
+
+    isOwnNode(node: Node): boolean {
+      return ownedVeils.has(node)
     },
   }
 }

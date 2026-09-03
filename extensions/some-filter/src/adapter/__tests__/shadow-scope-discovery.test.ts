@@ -537,3 +537,69 @@ describe("createShadowScopeDiscovery — retirement checks reachability from the
     discovery.teardown()
   })
 })
+
+describe("createShadowScopeDiscovery — isHoldMutation survives marker stripping (bot-found, #1267's own review, round 6)", () => {
+  it("still correctly distinguishes the hold's own churn from genuine vendor evidence after HOLD_ATTR/data-my-ext are stripped from the veil", async () => {
+    // The exact loop this story's own review found: an attribute-based
+    // identity check (the old isHoldChurn) stops recognising the veil once
+    // its own markers are gone — including the removal half of this hold's
+    // own reassert()-driven remove-then-insert churn (the DOM's pre-insert
+    // algorithm generates that pair even when appendChild-ing an
+    // already-last-child node) — misreading it as vendor evidence and
+    // calling reassert() again without bound. isHoldMutation's identity
+    // check must survive the marker being stripped for this to terminate.
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    const shadow = host.attachShadow({ mode: "open" })
+
+    const reg = registry()
+    const discovery = createShadowScopeDiscovery(reg, () => 0)
+    discovery.discover(document)
+    const id = reg.ids()[0]
+    expect(id).toBeDefined()
+    if (id === undefined) return
+
+    reg.startResolving(id)
+    await reg.resolveCommitted(id, {
+      revision: "swatch",
+      install: () => {},
+      uninstall: () => {},
+    })
+    await flushMicrotasks()
+    expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+
+    // COMMITTED released the veil (no successor artifact to install first —
+    // see NativeExoneration's own doc comment for the committed case: the
+    // hold IS the successor here). invalidate() re-engages it (COMMITTED ->
+    // RESOLVING, with hold.install() run as part of that transition) so
+    // there is a live veil to attack.
+    reg.invalidate(id)
+    await flushMicrotasks()
+    expect(reg.stateOf(id)?.kind).toBe("RESOLVING")
+    const veil = shadow.querySelector(HOLD_SELECTOR)
+    expect(veil).not.toBeNull()
+    if (veil === null) return
+    veil.removeAttribute("data-scope-registry-hold")
+    veil.removeAttribute("data-my-ext")
+
+    // Re-commit with the markers gone, then prove a genuine vendor mutation
+    // still invalidates it correctly — the same assertion as the
+    // marker-intact test above, now under attack. Already RESOLVING from
+    // invalidate() above, so resolveCommitted() can run directly.
+    await reg.resolveCommitted(id, {
+      revision: "swatch",
+      install: () => {},
+      uninstall: () => {},
+    })
+    await flushMicrotasks()
+    expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+
+    const vendorNode = document.createElement("div")
+    shadow.appendChild(vendorNode)
+    await flushMicrotasks()
+
+    expect(reg.stateOf(id)?.kind).toBe("RESOLVING")
+
+    discovery.teardown()
+  })
+})

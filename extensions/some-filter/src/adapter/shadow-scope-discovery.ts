@@ -78,24 +78,32 @@
  * legal transition, reused verbatim; (2) recurse for a newly-appearing
  * *nested* shadow host, since Definition D.4 is recursive and a mutation
  * inside a registered root is exactly how a deeper root becomes reachable.
- * `isSelfAuthored` (`pipeline.ts`, Axiom 3.5) is reused as-is for genuine
- * vendor evidence — extending its discipline to a shadow-scoped observer
- * needed two fixes, though. First, in `custody-primitive.ts` alongside this
- * story: the occlusion veil itself now carries `data-my-ext`, the same
- * ownership tag `prepaint.ts`'s veil already carried, so `isSelfAuthored`
- * correctly recognizes the veil's own install/self-heal churn. Second,
- * here: `isSelfAuthored`'s own "removal is never self-authored" rule
- * (Remark 7.2 — calibrated for reacting to a *hostile* removal with one
- * harmless extra scan round) is the wrong call for the veil's *legitimate*
- * removal — `scope-registry.ts`'s `resolveCommitted()`/`resolveExonerated()`
- * release the hold as part of a successful two-phase handoff, and treating
- * that release as vendor evidence would immediately `invalidate()` the very
- * commit/exoneration that release just achieved (caught by this story's own
- * test suite before it ever reached a live page). `isHoldChurn` below closes
- * that gap by name, via `custody-primitive.ts`'s exported `HOLD_ATTR`, so
- * this observer skips *only* the hold element's own add/remove — a mixed
- * record that also touches real content still takes the normal reactive
- * path.
+ * Axiom 3.5's discipline (`pipeline.ts`'s `isSelfAuthored`, reused as-is by
+ * the document-wide observer in `observe()` below) is the wrong shape for
+ * *this* per-root observer specifically, and this story went through two
+ * revisions before landing on why. `isSelfAuthored`'s own "removal is never
+ * self-authored" rule (Remark 7.2 — calibrated for reacting to a *hostile*
+ * removal with one harmless extra scan round) is the wrong call for the
+ * veil's *legitimate* removal — `scope-registry.ts`'s
+ * `resolveCommitted()`/`resolveExonerated()` release the hold as part of a
+ * successful two-phase handoff, and treating that release as vendor evidence
+ * would immediately `invalidate()` the very commit/exoneration that release
+ * just achieved (caught by this story's own test suite before it ever
+ * reached a live page). An initial fix (`custody-primitive.ts` tagging the
+ * veil `data-my-ext`, and a local `isHoldChurn` checking for that tag)
+ * closed that specific case but turned out to still be attribute-based —
+ * and a page (or an attribute-reconciling framework) stripping `data-my-ext`
+ * or `HOLD_ATTR` from the veil, without removing it or touching its style,
+ * silently broke identity recognition for every later mutation on that same
+ * node, including this hold's own `reassert()`-driven churn, which then read
+ * as fresh vendor evidence and re-triggered `reassert()` without bound
+ * (bot-found, #1267's own review, round 6). `isHoldMutation` below replaces
+ * both `isSelfAuthored` and `isHoldChurn` for this observer with one
+ * identity-based check — `OcclusionHold.isOwnNode()`, object identity via
+ * the hold's own closure-scoped element reference, never an attribute — so
+ * this observer skips *only* the hold element's own add/remove/attribute
+ * churn regardless of what markers survive on it. A mixed record that also
+ * touches real content still takes the normal reactive path.
  *
  * ## Root registry lifecycle (§8.3 checklist item)
  *
@@ -129,7 +137,7 @@
 
 import type { Epoch } from "@some-extension/transport/session/epoch"
 
-import { createOcclusionHold, HOLD_ATTR } from "./custody-primitive"
+import { createOcclusionHold, type OcclusionHold } from "./custody-primitive"
 import { DOCUMENT_SCOPE_ID } from "./document-scope"
 import { isSelfAuthored } from "./pipeline"
 import type { ScopeId, ScopeRegistry } from "./scope-registry"
@@ -149,25 +157,36 @@ export function isElementNode(node: Node): node is Element {
 }
 
 /**
- * True when `record` is *purely* the occlusion hold element itself being
- * added or removed from the scope's root — its `install()`/self-heal
- * churn (already caught by `isSelfAuthored` below, since the veil now
- * carries `data-my-ext`) *and* its legitimate `release()` upon a successful
- * commit or exoneration, which `isSelfAuthored`'s own removal branch would
- * otherwise misclassify as vendor evidence (Remark 7.2's "our node is gone
- * is ambiguous" reasoning is calibrated for reacting to a hostile removal
- * with one harmless extra scan round — invalidating a scope this hold's own
- * release just resolved is not harmless, it undoes the resolution). A
- * record touching the hold element *alongside* something else is not
- * filtered — that mixed case still needs the normal reactive path.
+ * True when `record` is *purely* about `hold`'s own veil element — either a
+ * `childList` record adding/removing it, or an `attributes` record targeting
+ * it directly. Identity-checked via `hold.isOwnNode()` (object identity, via
+ * `OcclusionHold`'s own closure-scoped `veil` reference) rather than by any
+ * attribute the veil carries — `HOLD_ATTR`/`data-my-ext` are both public,
+ * page-discoverable, and a page (or an attribute-reconciling framework)
+ * stripping either one, without removing the element or changing its style,
+ * previously broke identity recognition for every later mutation on this
+ * same node, including this hold's own `reassert()`-driven remove-then-insert
+ * churn (the DOM's own pre-insert algorithm generates that pair even when
+ * `appendChild`ing an already-last-child node) — misread as fresh vendor
+ * evidence, that triggered another `reassert()` and repeated without bound
+ * (bot-found, #1267's own review, round 6). This is also why this function
+ * covers `install()`'s own churn, this hold's legitimate `release()` upon a
+ * successful commit/exoneration (Remark 7.2's "removal is never
+ * self-authored" default is the wrong call for *this* element specifically —
+ * see `custody-primitive.ts`'s own header), *and* the `style`-attribute
+ * repair from a mutation the callback below reacted to in the same or an
+ * earlier round — one check, one source of truth, rather than three
+ * separately-reasoned-about cases. A record touching the hold element
+ * *alongside* something else is not filtered — that mixed case still needs
+ * the normal reactive path.
  */
-function isHoldChurn(record: MutationRecord): boolean {
-  if (record.type !== "childList") return false
-  const touched = [...record.addedNodes, ...record.removedNodes]
-  return (
-    touched.length > 0 &&
-    touched.every((node) => isElementNode(node) && node.hasAttribute(HOLD_ATTR))
-  )
+function isHoldMutation(record: MutationRecord, hold: OcclusionHold): boolean {
+  if (record.type === "attributes") return hold.isOwnNode(record.target)
+  if (record.type === "childList") {
+    const touched = [...record.addedNodes, ...record.removedNodes]
+    return touched.length > 0 && touched.every((node) => hold.isOwnNode(node))
+  }
+  return false
 }
 
 /**
@@ -371,8 +390,16 @@ export function createShadowScopeDiscovery<Rho, Pi>(
     })
 
     const observer = new MutationObserver((mutations) => {
+      // Not isSelfAuthored here (unlike the document-wide observer in
+      // observe() below): the only extension-authored node any code path in
+      // this codebase ever places inside a shadow scope is this hold's own
+      // veil, so isHoldMutation's identity check already subsumes it —
+      // without also inheriting isSelfAuthored's attribute-dependent
+      // isExtensionAuthored check, which is exactly the fragile check this
+      // story's round-6 review found breaking under marker-attribute
+      // removal (see isHoldMutation's own doc comment).
       const sawVendorMutation = mutations.some(
-        (record) => !isSelfAuthored(record) && !isHoldChurn(record)
+        (record) => !isHoldMutation(record, hold)
       )
       if (sawVendorMutation) {
         const state = registry.stateOf(id)
