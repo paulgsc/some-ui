@@ -75,6 +75,50 @@ function clearPerSurfaceState(): void {
 }
 
 /**
+ * A realm-independent replacement for `node instanceof HTMLElement` —
+ * mirrors `shadow-scope-discovery.ts`'s own `isElementNode` (`nodeType`,
+ * not a prototype check, so it survives cross-realm adoption) one level
+ * more specific: an element created in a same-origin iframe's own document,
+ * then adopted into this one (`adoptNode()`, or a plain `appendChild()`
+ * across documents, which adopts implicitly), keeps that *other* realm's
+ * `HTMLElement` constructor on its own prototype chain, failing `instanceof`
+ * against *this* realm's `HTMLElement` even though it is a genuine,
+ * connected, walkable HTML element. `namespaceURI` is the realm-independent
+ * equivalent of "is this specifically an HTML element, not SVG/MathML" —
+ * ordinary `document.createElement()` output (in any realm) always carries
+ * the fixed, spec-defined `"http://www.w3.org/1999/xhtml"` value, which
+ * `instanceof HTMLElement` is really testing for indirectly. Used by both
+ * this function and `pipeline.ts`'s `scan()` — SF-AD's own review (round 3)
+ * found this gap in both, and both need the identical fix for a cross-realm
+ * element inside a shadow scope to actually get tagged: `scan()`'s own gap
+ * (fixed there directly) meant such an element was never even classified as
+ * evidence; this one meant that even once classified, it was silently
+ * skipped at tagging time, so its own `emit-surface-color` rule — keyed on
+ * `[data-sw-patched="…"]`, which only this loop ever sets — could never
+ * match it either way.
+ */
+// A private duplicate of shadow-scope-discovery.ts's own exported
+// isElementNode (same one-line nodeType check), not a shared import: that
+// module imports from pipeline.ts, which imports from this one, so
+// importing the other way would be circular. Small and stable enough that
+// duplicating it here is simpler than restructuring the module graph to
+// share it.
+function isElementNode(node: Node): node is Element {
+  return node.nodeType === Node.ELEMENT_NODE
+}
+
+// The XHTML namespace URI — a fixed DOM-spec identifier every element.
+// namespaceURI getter returns verbatim, never a resource this extension
+// (or anything else) fetches; the http:// scheme here is part of the
+// spec's own literal string, not a network address to secure.
+// eslint-disable-next-line no-restricted-syntax
+const XHTML_NS = "http://www.w3.org/1999/xhtml"
+
+export function isHTMLElementNode(node: Node): node is HTMLElement {
+  return isElementNode(node) && node.namespaceURI === XHTML_NS
+}
+
+/**
  * Sets `data-sw-patched` on every element `elementsByKey` maps a
  * `tag-surface` action's key to. Scope-agnostic — an `HTMLElement` tags
  * identically whether it lives in the light DOM or inside a shadow tree —
@@ -89,7 +133,7 @@ export function tagSurfaceElements(
     if (action.kind !== "tag-surface") continue
     const value = action.role === "preserve" ? "preserve" : action.key
     for (const el of elementsByKey.get(action.key) ?? []) {
-      if (el instanceof HTMLElement && el.dataset.swPatched !== value) {
+      if (isHTMLElementNode(el) && el.dataset.swPatched !== value) {
         el.dataset.swPatched = value
       }
     }

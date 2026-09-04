@@ -69,24 +69,51 @@ export type ShadowSceneRegistry = ScopeRegistry<
 
 export type ShadowScopeTheming = {
   /**
-   * Runs one scan/decide/realize round for `id`, provided its current state
-   * is one the custody state machine still allows moving toward COMMITTED
-   * (`HELD`, `RESOLVING`, or `FAILED_HELD` — mirrors
-   * `document-scope.ts`'s own `ensureResolving`) and its registered `ref` is
-   * a `ShadowRoot` — never the document scope, `r_0`, which stays
-   * `content.ts`'s own pipeline's job, entirely unchanged by this story. A
-   * no-op for every other id/state (in particular: a `COMMITTED`/
-   * `EXONERATED_NATIVE` scope is re-opened by
+   * Queues one scan/decide/realize round for `id`, run once every earlier
+   * round queued for the *same* id has fully settled (this factory's own
+   * `inFlight` serialization — see its doc comment for the overlapping-
+   * commit race this closes). A queued round is a no-op once it actually
+   * runs unless `id`'s current state is one the custody state machine still
+   * allows moving toward COMMITTED (`HELD`, `RESOLVING`, or `FAILED_HELD` —
+   * mirrors `document-scope.ts`'s own `ensureResolving`) and its registered
+   * `ref` is a `ShadowRoot` — never the document scope, `r_0`, which stays
+   * `content.ts`'s own pipeline's job, entirely unchanged by this story. In
+   * particular: a `COMMITTED`/`EXONERATED_NATIVE` scope is re-opened by
    * `shadow-scope-discovery.ts`'s own `invalidate()` call *before* it calls
-   * this, so by the time `project()` runs the state has already moved back
-   * to `RESOLVING`/`HELD` — this function itself never invalidates
-   * anything).
+   * this, so by the time a queued round actually runs the state has already
+   * moved back to `RESOLVING`/`HELD` — this function itself never
+   * invalidates anything. Safe (and expected) to call repeatedly for the
+   * same id in rapid succession — `project()` itself returns immediately
+   * either way, never awaiting the round it just queued.
    */
   project(id: ScopeId): void
 }
 
 function errorReason(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
+}
+
+/**
+ * A realm-independent replacement for `ref instanceof ShadowRoot` — the same
+ * cross-realm-adoption reason `shadow-scope-discovery.ts`'s own
+ * `isElementNode` documents: a host created in a same-origin iframe's own
+ * document, then adopted into this one (`adoptNode()`, or a plain
+ * `appendChild()` across documents, which adopts implicitly), keeps that
+ * *other* realm's `ShadowRoot` constructor on its shadow root's prototype
+ * chain, failing `instanceof` against *this* realm's `ShadowRoot` even
+ * though it is a genuine, live shadow root `shadow-scope-discovery.ts`
+ * already registered (its own discovery already uses realm-independent
+ * checks throughout). Left unfixed, such a scope's own `snapshot(id)?.ref`
+ * would never pass this check, so `project()` would return before ever
+ * resolving it — a permanently `HELD` scope, its full-viewport occlusion
+ * never released (bot-found, this story's own review, round 3). `nodeType`
+ * is a plain data property, not a prototype check, so it is
+ * realm-independent; `DOCUMENT_FRAGMENT_NODE` is what distinguishes a
+ * `ShadowRoot` (which extends `DocumentFragment`) from the other member of
+ * `ScopeRef`, `Document` (`DOCUMENT_NODE`).
+ */
+function isShadowRoot(ref: Document | ShadowRoot): ref is ShadowRoot {
+  return ref.nodeType === Node.DOCUMENT_FRAGMENT_NODE
 }
 
 /**
@@ -136,92 +163,158 @@ export function createShadowScopeTheming(
   swatch: Swatch | null,
   epoch: () => Epoch
 ): ShadowScopeTheming {
+  /**
+   * Every scope id with a `projectOnce()` call currently in flight (queued
+   * or running), keyed to that call's own settling `Promise` — the
+   * serialization queue `project()` below chains onto (bot-found, this
+   * story's own review, round 3). Scoped to this factory call, not the
+   * module: each `createShadowScopeTheming()` instance (one per test in
+   * this module's own unit tests; one long-lived instance in `content.ts`)
+   * needs its own independent queue — a module-level map would let two
+   * unrelated instances (or two test cases) serialize against each other
+   * over nothing more than an accidentally-reused scope id string.
+   *
+   * Without this, two observers reacting to mutations in the same
+   * microtask-processing round — `shadow-scope-discovery.ts`'s own host and
+   * per-root observers, both able to fire for one underlying vendor change
+   * that touches a host's class *and* mutates content inside its shadow
+   * root in the same synchronous turn — can each call `project(id)` before
+   * either call's own `resolveCommitted()` has settled. Both then race
+   * `scope-registry.ts`'s two-phase handoff with the *same* starting
+   * `generation` (neither call bumped it, since neither has transitioned
+   * yet): the first to resume after its own `install()` awaits commits
+   * normally, bumping `generation` — but the second, resuming next with a
+   * now-stale `generationAtStart`, takes `resolveCommitted()`'s own "stale
+   * completion" branch and calls *its* `uninstall()`
+   * (`clearShadowSurfaceState()`), indiscriminately stripping the
+   * tags/sheets the *first* call just successfully installed. The registry
+   * is left `COMMITTED` (the first call's own transition, never undone)
+   * with its hold released (also the first call's own doing) while the
+   * scope is visibly unthemed — `Safe_T` violated in exactly the way
+   * `scope-registry.ts`'s own staleness check exists to prevent, just from
+   * a source (two *overlapping* commits for the same id, not a
+   * differently-typed concurrent transition) that check was never designed
+   * to cover. Chaining every call for a given id onto the previous one's
+   * own settling promise means a later call's `projectOnce()` never
+   * *starts* until the earlier one has fully resolved — by which point
+   * `ensureResolving()` correctly reads the fresh `COMMITTED` state and
+   * no-ops, rather than racing a second `resolveCommitted()` against it.
+   * Never a lost update: `projectOnce()`'s own `scan()` is a live,
+   * point-in-time read of current computed style, not tied to *which*
+   * mutation triggered the call, so by the time either call's scan actually
+   * runs (always after the DOM mutations that triggered it — a
+   * `MutationObserver` callback only ever fires once its own records
+   * already reflect a completed change), it already reflects every
+   * mutation that happened before it, queued or not.
+   */
+  const inFlight = new Map<ScopeId, Promise<void>>()
+
+  async function projectOnce(id: ScopeId): Promise<void> {
+    const snapshot = registry.snapshot(id)
+    if (snapshot === undefined) return
+    const root = snapshot.ref
+    if (!isShadowRoot(root)) return
+    if (!ensureResolving(registry, id)) return
+
+    // Mirrors decide()'s own degenerate case (Theorem D.2's null adapter) —
+    // no swatch selected means nothing to project, same reason
+    // (document-scope.ts's own reportPipelineOutcome uses the identical
+    // "no-swatch" reason string for the document scope's counterpart).
+    // clearShadowSurfaceState() before releasing the hold: a scope that was
+    // previously committed and then had its swatch turned off must not keep
+    // showing its last commit's dark styling once native content is
+    // revealed again.
+    if (swatch === null) {
+      clearShadowSurfaceState(root)
+      registry.resolveExonerated(id, { proof: { reason: "no-swatch" } })
+      return
+    }
+
+    // The scan itself, not just decide(), is inside this try: projectOnce()
+    // is invoked (via project(), below) synchronously from
+    // shadow-scope-discovery.ts's own MutationObserver callback, which still
+    // has its own walk(shadow, id) to run *after* this returns (nested-scope
+    // discovery) — an uncaught throw here would abort that callback
+    // entirely, silently breaking discovery for this whole mutation batch,
+    // not just this scope's own classification (mirrors pipeline.ts's own
+    // ingest()/fire() split, adapted to this module's single-call shape).
+    let scanned: ScanResult
+    let actions: ReadonlyArray<FilterAction>
+    try {
+      const hypothesis = createHypothesis<SurfaceKey, SurfaceAttr>()
+      const provenance = createProvenanceStore<SurfaceKey>()
+      scanned = withVendorColorsVisible(() => scan(root))
+      const timestamp = Date.now()
+      for (const [key, attrs] of scanned.attrsByKey) {
+        update(hypothesis, provenance, {
+          key,
+          attrs,
+          epoch: epoch(),
+          tier: "full",
+          timestamp,
+        })
+      }
+      actions = invoke(hypothesis, { decide: (h) => decide(h, swatch) })
+    } catch (error) {
+      registry.resolveFailed(id, errorReason(error))
+      return
+    }
+
+    if (actions.some((action) => action.kind === "restore-native")) {
+      // decide()'s own already-dark verdict withholds every per-surface
+      // action outright — see clearShadowSurfaceState()'s own doc comment
+      // for why a prior commit's tags/colors must be explicitly cleared
+      // here rather than left for a fresh tag-surface action to overwrite
+      // (there isn't one, this round).
+      clearShadowSurfaceState(root)
+      registry.resolveExonerated(id, {
+        proof: { reason: "restore-native" },
+      })
+      return
+    }
+
+    // Awaited, not fire-and-forget: project()'s own serialization queue
+    // (this factory's inFlight map, above) depends on projectOnce()'s
+    // returned promise not settling until the full two-phase handoff has —
+    // see inFlight's own doc comment for the overlapping-commit race this
+    // closes.
+    await registry.resolveCommitted(id, {
+      revision: swatch.id,
+      install: () => {
+        tagSurfaceElements(actions, scanned.elementsByKey)
+        realizeShadowColors(actions, root, swatch)
+      },
+      // Only reachable once this scope has actually been COMMITTED
+      // (scope-registry.ts's invalidate()/retire() are the two callers —
+      // see their own doc comments): the hold is re-engaged (invalidate) or
+      // released permanently (retire) independently of this callback, so
+      // there is no visible window either way. Clearing here is mostly
+      // belt-and-suspenders — the next round's own project() call
+      // self-heals a re-commit (tagSurfaceElements/realizeShadowColors both
+      // key off the *current* actions, not an incremental diff) and an
+      // exoneration explicitly clears via clearShadowSurfaceState() above —
+      // but retire() never calls project() again for this id, so this is
+      // the only cleanup a permanently-removed scope ever gets.
+      uninstall: () => {
+        clearShadowSurfaceState(root)
+      },
+    })
+  }
+
   return {
     project(id: ScopeId): void {
-      const snapshot = registry.snapshot(id)
-      if (snapshot === undefined) return
-      const root = snapshot.ref
-      if (!(root instanceof ShadowRoot)) return
-      if (!ensureResolving(registry, id)) return
-
-      // Mirrors decide()'s own degenerate case (Theorem D.2's null adapter)
-      // — no swatch selected means nothing to project, same reason
-      // (document-scope.ts's own reportPipelineOutcome uses the identical
-      // "no-swatch" reason string for the document scope's counterpart).
-      // clearShadowSurfaceState() before releasing the hold: a scope that
-      // was previously committed and then had its swatch turned off must
-      // not keep showing its last commit's dark styling once native content
-      // is revealed again.
-      if (swatch === null) {
-        clearShadowSurfaceState(root)
-        registry.resolveExonerated(id, { proof: { reason: "no-swatch" } })
-        return
-      }
-
-      // The scan itself, not just decide(), is inside this try: project() is
-      // called synchronously from shadow-scope-discovery.ts's own
-      // MutationObserver callback, which still has its own walk(shadow, id)
-      // to run *after* this returns (nested-scope discovery) — an uncaught
-      // throw here would abort that callback entirely, silently breaking
-      // discovery for this whole mutation batch, not just this scope's own
-      // classification (mirrors pipeline.ts's own ingest()/fire() split,
-      // adapted to this module's single-call shape).
-      let scanned: ScanResult
-      let actions: ReadonlyArray<FilterAction>
-      try {
-        const hypothesis = createHypothesis<SurfaceKey, SurfaceAttr>()
-        const provenance = createProvenanceStore<SurfaceKey>()
-        scanned = withVendorColorsVisible(() => scan(root))
-        const timestamp = Date.now()
-        for (const [key, attrs] of scanned.attrsByKey) {
-          update(hypothesis, provenance, {
-            key,
-            attrs,
-            epoch: epoch(),
-            tier: "full",
-            timestamp,
-          })
-        }
-        actions = invoke(hypothesis, { decide: (h) => decide(h, swatch) })
-      } catch (error) {
-        registry.resolveFailed(id, errorReason(error))
-        return
-      }
-
-      if (actions.some((action) => action.kind === "restore-native")) {
-        // decide()'s own already-dark verdict withholds every per-surface
-        // action outright — see clearShadowSurfaceState()'s own doc comment
-        // for why a prior commit's tags/colors must be explicitly cleared
-        // here rather than left for a fresh tag-surface action to overwrite
-        // (there isn't one, this round).
-        clearShadowSurfaceState(root)
-        registry.resolveExonerated(id, {
-          proof: { reason: "restore-native" },
+      const prior = inFlight.get(id) ?? Promise.resolve()
+      // A prior round's own rejection (projectOnce() itself never throws —
+      // every fallible step resolves the scope to FAILED_HELD instead — but
+      // defend the queue's own continuity regardless of what future code
+      // does) must not abort every future call chained onto this same id.
+      const current = prior.catch(() => {}).then(() => projectOnce(id))
+      inFlight.set(id, current)
+      void current
+        .catch(() => {})
+        .finally(() => {
+          if (inFlight.get(id) === current) inFlight.delete(id)
         })
-        return
-      }
-
-      void registry.resolveCommitted(id, {
-        revision: swatch.id,
-        install: () => {
-          tagSurfaceElements(actions, scanned.elementsByKey)
-          realizeShadowColors(actions, root, swatch)
-        },
-        // Only reachable once this scope has actually been COMMITTED
-        // (scope-registry.ts's invalidate()/retire() are the two callers —
-        // see their own doc comments): the hold is re-engaged (invalidate)
-        // or released permanently (retire) independently of this callback,
-        // so there is no visible window either way. Clearing here is mostly
-        // belt-and-suspenders — the next round's own project() call
-        // self-heals a re-commit (tagSurfaceElements/realizeShadowColors
-        // both key off the *current* actions, not an incremental diff) and
-        // an exoneration explicitly clears via clearShadowSurfaceState()
-        // above — but retire() never calls project() again for this id, so
-        // this is the only cleanup a permanently-removed scope ever gets.
-        uninstall: () => {
-          clearShadowSurfaceState(root)
-        },
-      })
     },
   }
 }

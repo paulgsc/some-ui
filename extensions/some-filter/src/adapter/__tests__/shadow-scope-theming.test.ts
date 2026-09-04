@@ -30,6 +30,21 @@ function shadowRoot(): ShadowRoot {
   return host.attachShadow({ mode: "open" })
 }
 
+/**
+ * Waits for every currently-pending microtask (however many hops deep) to
+ * settle — `project()` (SF-AD's own review, round 3) now chains through a
+ * per-scope serialization queue plus `resolveCommitted()`'s own internal
+ * await, so a fixed count of `await Promise.resolve()` calls is fragile
+ * (right today, wrong the next time either chain grows a hop). A single
+ * macrotask yield is the robust alternative: the JS event loop always fully
+ * drains the microtask queue — including microtasks newly scheduled by ones
+ * already running — before any timer callback fires, regardless of chain
+ * depth.
+ */
+async function flushAll(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0))
+}
+
 afterEach(() => {
   document.body.innerHTML = ""
 })
@@ -41,7 +56,7 @@ describe("createShadowScopeTheming.project — ineligible ids are a no-op", () =
     expect(() => theming.project("nope")).not.toThrow()
   })
 
-  it("does nothing when the scope's ref is not a ShadowRoot (the document scope)", () => {
+  it("does nothing when the scope's ref is not a ShadowRoot (the document scope)", async () => {
     const reg = registry()
     reg.register("r_0", {
       ref: document,
@@ -51,6 +66,7 @@ describe("createShadowScopeTheming.project — ineligible ids are a no-op", () =
     })
     const theming = createShadowScopeTheming(reg, swatch, () => 0)
     theming.project("r_0")
+    await flushAll()
     expect(reg.stateOf("r_0")?.kind).toBe("HELD")
   })
 
@@ -67,11 +83,12 @@ describe("createShadowScopeTheming.project — ineligible ids are a no-op", () =
 
     const theming = createShadowScopeTheming(reg, swatch, () => 0)
     theming.project(id)
+    await flushAll()
 
     expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
   })
 
-  it("does nothing for a RETIRED scope", () => {
+  it("does nothing for a RETIRED scope", async () => {
     const reg = registry()
     const shadow = shadowRoot()
     const id = registerHeld(reg, shadow)
@@ -79,6 +96,7 @@ describe("createShadowScopeTheming.project — ineligible ids are a no-op", () =
 
     const theming = createShadowScopeTheming(reg, swatch, () => 0)
     expect(() => theming.project(id)).not.toThrow()
+    await flushAll()
     expect(reg.stateOf(id)?.kind).toBe("RETIRED")
   })
 })
@@ -96,8 +114,7 @@ describe("createShadowScopeTheming.project — commits a themed shadow scope", (
     theming.project(id)
     // resolveCommitted is async even for a synchronous install() — one
     // microtask hop (see scope-registry.ts's own doc comment).
-    await Promise.resolve()
-    await Promise.resolve()
+    await flushAll()
 
     expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
     expect(surface.dataset.swPatched).toBe("rgb(255, 255, 255)")
@@ -114,8 +131,7 @@ describe("createShadowScopeTheming.project — commits a themed shadow scope", (
 
     const theming = createShadowScopeTheming(reg, swatch, () => 0)
     theming.project(id)
-    await Promise.resolve()
-    await Promise.resolve()
+    await flushAll()
 
     expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
     expect(shadow.adoptedStyleSheets).toHaveLength(2)
@@ -131,8 +147,7 @@ describe("createShadowScopeTheming.project — commits a themed shadow scope", (
     const theming = createShadowScopeTheming(reg, swatch, () => 0)
     theming.project(idA)
     theming.project(idB)
-    await Promise.resolve()
-    await Promise.resolve()
+    await flushAll()
 
     expect(reg.stateOf(idA)?.kind).toBe("COMMITTED")
     expect(reg.stateOf(idB)?.kind).toBe("COMMITTED")
@@ -161,8 +176,7 @@ describe("createShadowScopeTheming.project — commits a themed shadow scope", (
     const theming = createShadowScopeTheming(reg, swatch, () => 0)
     theming.project(outerId)
     theming.project(innerId)
-    await Promise.resolve()
-    await Promise.resolve()
+    await flushAll()
 
     expect(reg.stateOf(outerId)?.kind).toBe("COMMITTED")
     expect(reg.stateOf(innerId)?.kind).toBe("COMMITTED")
@@ -182,14 +196,14 @@ describe("createShadowScopeTheming.project — exoneration", () => {
 
     const themedTheming = createShadowScopeTheming(reg, swatch, () => 0)
     themedTheming.project(id)
-    await Promise.resolve()
-    await Promise.resolve()
+    await flushAll()
     expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
     expect(surface.dataset.swPatched).toBe("rgb(255, 255, 255)")
 
     reg.invalidate(id)
     const nullTheming = createShadowScopeTheming(reg, null, () => 0)
     nullTheming.project(id)
+    await flushAll()
 
     expect(reg.stateOf(id)?.kind).toBe("EXONERATED_NATIVE")
     expect(surface.hasAttribute("data-sw-patched")).toBe(false)
@@ -197,7 +211,7 @@ describe("createShadowScopeTheming.project — exoneration", () => {
     expect(shadow.adoptedStyleSheets ?? []).toHaveLength(0)
   })
 
-  it("exonerates with 'restore-native' when the scope's own content already reads dark, clearing a prior commit's own tags/colors", () => {
+  it("exonerates with 'restore-native' when the scope's own content already reads dark, clearing a prior commit's own tags/colors", async () => {
     const reg = registry()
     const shadow = shadowRoot()
     // >= MIN_EVIDENCE_FOR_DARK_VERDICT (3) distinct dark keys, all rendered
@@ -215,6 +229,7 @@ describe("createShadowScopeTheming.project — exoneration", () => {
     const id = registerHeld(reg, shadow)
     const theming = createShadowScopeTheming(reg, swatch, () => 0)
     theming.project(id)
+    await flushAll()
 
     expect(reg.stateOf(id)?.kind).toBe("EXONERATED_NATIVE")
     expect(staleSurface.hasAttribute("data-sw-patched")).toBe(false)
@@ -222,7 +237,7 @@ describe("createShadowScopeTheming.project — exoneration", () => {
 })
 
 describe("createShadowScopeTheming.project — a thrown scan/decide resolves FAILED_HELD, not an uncaught throw", () => {
-  it("catches a scan() failure and transitions to FAILED_HELD", () => {
+  it("catches a scan() failure and transitions to FAILED_HELD", async () => {
     const reg = registry()
     const shadow = shadowRoot()
     const id = registerHeld(reg, shadow)
@@ -235,6 +250,7 @@ describe("createShadowScopeTheming.project — a thrown scan/decide resolves FAI
     try {
       const theming = createShadowScopeTheming(reg, swatch, () => 0)
       expect(() => theming.project(id)).not.toThrow()
+      await flushAll()
     } finally {
       spy.mockRestore()
     }
@@ -263,13 +279,93 @@ describe("createShadowScopeTheming.project — FAILED_HELD retries", () => {
       })
     const theming = createShadowScopeTheming(reg, swatch, () => 0)
     theming.project(id)
+    await flushAll()
     spy.mockRestore()
     expect(reg.stateOf(id)?.kind).toBe("FAILED_HELD")
 
     theming.project(id)
-    await Promise.resolve()
-    await Promise.resolve()
+    await flushAll()
 
     expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+  })
+})
+
+describe("createShadowScopeTheming.project — serializes overlapping calls (bot-found, review round 3)", () => {
+  it("two overlapping project() calls for the same id never let the second clobber the first's successful commit", async () => {
+    // Simulates shadow-scope-discovery.ts's own host and per-root observers
+    // both firing project(id) for one underlying vendor change that touches
+    // a host's class *and* mutates content inside its shadow root in the
+    // same synchronous turn — before this fix, the second call's own
+    // resolveCommitted() would resume with a stale generation, take
+    // scope-registry.ts's own "stale completion" branch, and call *its*
+    // uninstall() (clearShadowSurfaceState()), stripping the tags/sheets the
+    // first call had just successfully installed, while the registry itself
+    // stayed COMMITTED with its hold released — visibly unthemed, but
+    // reporting healthy.
+    const reg = registry()
+    const shadow = shadowRoot()
+    const surface = document.createElement("div")
+    surface.setAttribute("style", "background-color: rgb(255, 255, 255)")
+    shadow.appendChild(surface)
+    const id = registerHeld(reg, shadow)
+
+    const theming = createShadowScopeTheming(reg, swatch, () => 0)
+    theming.project(id)
+    theming.project(id)
+    await flushAll()
+
+    expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+    expect(surface.dataset.swPatched).toBe("rgb(255, 255, 255)")
+    expect(shadow.adoptedStyleSheets.length).toBeGreaterThan(0)
+  })
+
+  it("three overlapping calls settle the same way as one", async () => {
+    const reg = registry()
+    const shadow = shadowRoot()
+    const surface = document.createElement("div")
+    surface.setAttribute("style", "background-color: rgb(255, 255, 255)")
+    shadow.appendChild(surface)
+    const id = registerHeld(reg, shadow)
+
+    const theming = createShadowScopeTheming(reg, swatch, () => 0)
+    theming.project(id)
+    theming.project(id)
+    theming.project(id)
+    await flushAll()
+
+    expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+    expect(surface.dataset.swPatched).toBe("rgb(255, 255, 255)")
+    expect(shadow.adoptedStyleSheets.length).toBeGreaterThan(0)
+  })
+})
+
+describe("createShadowScopeTheming.project — cross-realm ShadowRoot (bot-found, review round 3)", () => {
+  it("projects a shadow root whose host was created in a different realm and adopted into this document", async () => {
+    const iframe = document.createElement("iframe")
+    document.body.appendChild(iframe)
+    const foreignDoc = iframe.contentDocument
+    expect(foreignDoc).not.toBeNull()
+    if (foreignDoc === null) return
+
+    // Created in the iframe's own realm, then adopted into the top
+    // document — appendChild() across documents adopts implicitly, the
+    // same as a real page moving DOM across a same-origin iframe boundary.
+    const foreignHost = foreignDoc.createElement("div")
+    document.body.appendChild(foreignHost)
+    const foreignShadow = foreignHost.attachShadow({ mode: "open" })
+    expect(foreignShadow instanceof ShadowRoot).toBe(false)
+    const surface = foreignDoc.createElement("div")
+    surface.setAttribute("style", "background-color: rgb(255, 255, 255)")
+    foreignShadow.appendChild(surface)
+
+    const reg = registry()
+    const id = registerHeld(reg, foreignShadow)
+    const theming = createShadowScopeTheming(reg, swatch, () => 0)
+    theming.project(id)
+    await flushAll()
+
+    expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+
+    iframe.remove()
   })
 })

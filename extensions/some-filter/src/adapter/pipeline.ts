@@ -51,7 +51,7 @@ import {
 } from "@some-extension/transport/scheduler/reconcile"
 import type { SessionLifecycle } from "@some-extension/transport/session/lifecycle"
 
-import { DYNAMIC_STYLE_ID, realize } from "./actuator"
+import { DYNAMIC_STYLE_ID, isHTMLElementNode, realize } from "./actuator"
 import type { FilterAction, SurfaceAttr, SurfaceKey } from "./contracts"
 import type { Swatch } from "./swatches"
 import { decide } from "./theme-adapter"
@@ -462,7 +462,12 @@ function surfaceKeyFor(attr: SurfaceAttr): SurfaceKey {
  * D.3's boundary already makes it scope-agnostic): `document.createTreeWalker`
  * accepts any `Node`, and every other read in this function only ever
  * touches the *walked* nodes, which `NodeFilter.SHOW_ELEMENT` guarantees are
- * always `Element`s regardless of what kind of node `root` itself is.
+ * always `Element`s regardless of what kind of node `root` itself is. Uses
+ * `actuator.ts`'s `isHTMLElementNode`, not `node instanceof HTMLElement`,
+ * for the identical reason that module's own doc comment gives: a
+ * cross-realm-adopted element inside a shadow scope was latent (this
+ * function never ran inside one at all, pre-SF-AD) until this story's own
+ * review made it live (round 3).
  */
 export function scan(root: Element | ShadowRoot): ScanResult {
   const elementsByKey = new Map<SurfaceKey, Array<Element>>()
@@ -472,7 +477,7 @@ export function scan(root: Element | ShadowRoot): ScanResult {
   let node: Node | null = walker.nextNode()
 
   while (node !== null) {
-    if (node instanceof HTMLElement && !shouldSkip(node)) {
+    if (isHTMLElementNode(node) && !shouldSkip(node)) {
       const attr = readAttr(node)
       if (attr !== null) {
         const key = surfaceKeyFor(attr)
