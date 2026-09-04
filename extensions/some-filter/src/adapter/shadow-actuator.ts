@@ -1,18 +1,26 @@
 /**
- * The per-scope Actuator counterpart for `emit-surface-color` — SF-AD
- * (#1268), issue #1262's gap #3: `actuator.ts`'s `DYNAMIC_STYLE_ID` `<style>`
- * is injected once into `document.head`, and CSS's own shadow-tree
- * encapsulation means a document-level stylesheet can never select an
- * element inside a shadow root, however that root's own custody state
+ * The per-scope Actuator counterpart for both of `theme-apply.ts`'s CSS
+ * layers — SF-AD (#1268), issue #1262's gap #3: `actuator.ts`'s
+ * `DYNAMIC_STYLE_ID` `<style>` and the document-level static layer
+ * (`buildDarkThemeCSS`) are both injected into `document.head`, and CSS's
+ * own shadow-tree encapsulation means neither can ever select an element
+ * inside a shadow root, however that root's own custody state
  * (`scope-registry.ts`) reads. `tag-surface` has no such gap — setting
  * `data-sw-patched` on an `HTMLElement` works identically inside a shadow
  * tree, so `actuator.ts`'s own `tagSurfaceElements` is reused unchanged
  * (see `shadow-scope-theming.ts`, this story's per-scope orchestrator,
- * which calls both). This module exists purely for the other half:
- * realizing `emit-surface-color` into a `ShadowRoot` via
- * `ShadowRoot.adoptedStyleSheets` — MDN's own documented pattern for
- * sharing style across shadow trees without re-injecting a `<style>`
- * element into each one.
+ * which calls both). This module exists for the other two halves:
+ * realizing `emit-surface-color` *and* the static text/border/form/etc.
+ * layer into a `ShadowRoot` via `ShadowRoot.adoptedStyleSheets` — MDN's own
+ * documented pattern for sharing style across shadow trees without
+ * re-injecting a `<style>` element into each one. The static layer's own
+ * addition here was bot-found on this story's own review: without it, a
+ * shadow-internal `<p>` inheriting a light-theme foreground color from its
+ * own shadow tree's stylesheet stayed dark-on-dark once its ancestor
+ * surface's background was darkened — the per-surface `textCss` mechanism
+ * only ever handles an element's own *explicit* differing color, never
+ * plain inheritance, which is exactly what the static layer's blanket
+ * `p`/`span`/`label`/… rule exists to cover for the light-DOM case.
  *
  * Sheet reuse (#1268's own acceptance criterion): a distinct dark surface
  * color's CSS rule text is parsed into a `CSSStyleSheet` at most once,
@@ -41,6 +49,8 @@
  * reuse, idempotence), not real cascade application — that half is an e2e
  * concern, verified against the actual built extension in a real Chromium.
  */
+
+import { DARK_THEME_BODY_RULES } from "@filter/lib/content/theme-apply"
 
 import { buildSurfaceColorRule, tagSurfaceElements } from "./actuator"
 import type { FilterAction } from "./contracts"
@@ -78,19 +88,54 @@ function sheetFor(cssText: string): CSSStyleSheet {
 const ownedSheetsByRoot = new WeakMap<ShadowRoot, ReadonlySet<CSSStyleSheet>>()
 
 /**
- * Realizes `actions`' `emit-surface-color` members into `root`. Idempotent:
- * re-running an unchanged action list touches `root.adoptedStyleSheets` zero
- * times (the reference itself is left untouched, not merely reassigned to
- * an equal-looking array), mirroring `actuator.ts`'s own `realize()`
- * idempotence discipline for the DOM writes this module *can* observe
- * (`adoptedStyleSheets` assignment is not itself a DOM mutation — no
- * `MutationObserver` anywhere in this codebase can see it — but the
- * discipline is worth keeping for its own sake: no needless array churn on
- * an unchanged round).
+ * The scoped counterpart to `theme-apply.ts`'s own static `<style>` layer
+ * (headings/links/borders/code/tables/forms/scrollbars/selection/dialogs/
+ * media, plus the `[data-sw-patched="preserve"]` revert rule) — built once,
+ * lazily, and shared by every shadow scope regardless of swatch
+ * (`DARK_THEME_BODY_RULES`'s own doc comment has the full reasoning: every
+ * declaration references a `var(--sw-*)` custom property, inherited from
+ * the document's own `:root` across the shadow boundary for free). Built
+ * via a loop of `insertRule()` calls, one rule at a time — `replaceSync`
+ * would take the whole block in one call, but jsdom (this package's own
+ * unit-test environment) has never implemented it, and `insertRule` only
+ * ever parses a single rule per call, which is exactly why
+ * `DARK_THEME_BODY_RULES` is an array of complete, individual rules rather
+ * than one pre-joined block of CSS text.
+ */
+let staticLayerSheet: CSSStyleSheet | null = null
+
+function staticShadowLayer(): CSSStyleSheet {
+  if (staticLayerSheet !== null) return staticLayerSheet
+  const sheet = new CSSStyleSheet()
+  for (const rule of DARK_THEME_BODY_RULES) {
+    sheet.insertRule(rule, sheet.cssRules.length)
+  }
+  staticLayerSheet = sheet
+  return sheet
+}
+
+/**
+ * Realizes `actions` into `root`: the shared static layer (above) whenever
+ * `actions` includes `activate-theme` — `decide()`'s own signal that this
+ * round is actually committing the scope, present unconditionally whenever
+ * a swatch is selected and the scope doesn't read as already-dark,
+ * independent of whether any individual surface also needs its own
+ * `emit-surface-color` color (mirrors `actuator.ts`'s document-level
+ * `realize()`, where `activate-theme`'s static layer is realized
+ * unconditionally alongside, not gated on, any given round's per-surface
+ * actions) — plus one sheet per distinct `emit-surface-color` action.
+ * Idempotent: re-running an unchanged action list touches
+ * `root.adoptedStyleSheets` zero times (the reference itself is left
+ * untouched, not merely reassigned to an equal-looking array), mirroring
+ * `actuator.ts`'s own `realize()` idempotence discipline for the DOM writes
+ * this module *can* observe (`adoptedStyleSheets` assignment is not itself
+ * a DOM mutation — no `MutationObserver` anywhere in this codebase can see
+ * it — but the discipline is worth keeping for its own sake: no needless
+ * array churn on an unchanged round).
  *
- * An empty `actions` list (no `emit-surface-color` members — the uninstall
- * half of a scope's committed realization, `shadow-scope-theming.ts`) clears
- * every sheet this module previously adopted into `root`, leaving any
+ * An empty `actions` list (the uninstall half of a scope's committed
+ * realization, `shadow-scope-theming.ts`) clears every sheet this module
+ * previously adopted into `root`, static layer included, leaving any
  * non-extension entry (should one ever exist) untouched.
  */
 export function realizeShadowColors(
@@ -98,6 +143,9 @@ export function realizeShadowColors(
   root: ShadowRoot
 ): void {
   const desired = new Set<CSSStyleSheet>()
+  if (actions.some((action) => action.kind === "activate-theme")) {
+    desired.add(staticShadowLayer())
+  }
   for (const action of actions) {
     if (action.kind !== "emit-surface-color") continue
     desired.add(sheetFor(buildSurfaceColorRule(action)))
@@ -128,7 +176,8 @@ export function realizeShadowColors(
 /**
  * The per-scope counterpart to `actuator.ts`'s own `clearPerSurfaceState()`
  * (its `restore-native` branch) — strips every `data-sw-patched` tag and
- * adopted color sheet this module's own realization placed on `root`.
+ * every adopted sheet (static layer included) this module's own realization
+ * placed on `root`.
  *
  * `decide()`'s own page-already-dark verdict withholds *every* per-surface
  * action outright (`theme-adapter.ts`'s early `if (pageAlreadyDark(...))

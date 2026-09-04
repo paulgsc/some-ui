@@ -338,6 +338,7 @@ export function createShadowScopeDiscovery<Rho, Pi>(
   const idFor = new WeakMap<ShadowRoot, ScopeId>()
   const rootFor = new Map<ScopeId, ShadowRoot>()
   const observerFor = new Map<ScopeId, MutationObserver>()
+  const hostObserverFor = new Map<ScopeId, MutationObserver>()
   let topObserver: MutationObserver | null = null
   let pollHandle: ReturnType<typeof setInterval> | null = null
   let nextId = 0
@@ -350,6 +351,8 @@ export function createShadowScopeDiscovery<Rho, Pi>(
     registry.purge(id)
     observerFor.get(id)?.disconnect()
     observerFor.delete(id)
+    hostObserverFor.get(id)?.disconnect()
+    hostObserverFor.delete(id)
     rootFor.delete(id)
     // idFor is a WeakMap, so it never needs to be swept for garbage —
     // deleting the entry explicitly is still required, though: a live
@@ -506,6 +509,47 @@ export function createShadowScopeDiscovery<Rho, Pi>(
       attributeOldValue: true,
     })
     observerFor.set(id, observer)
+
+    // SF-AD (#1268), bot-found: the per-root observer above watches *inside*
+    // `shadow` — it cannot see a change to the host's own `class`/`style`,
+    // which lives in the host's *parent* scope, not this one. A component
+    // toggling its own host class to drive a `:host(.dark)` rule inside its
+    // shadow stylesheet (a standard, documented Shadow DOM theming pattern)
+    // would otherwise leave this scope's own COMMITTED/EXONERATED_NATIVE
+    // verdict stale indefinitely, with nothing to re-trigger projection.
+    // Watching `shadow.host` directly (not the whole document, and not
+    // limited to top-level scopes the way a single document-wide observer
+    // would be — this runs per scope, at any nesting depth) closes the
+    // common case. `class`/`style` specifically, mirroring `pipeline.ts`'s
+    // own document-level Sensor: no code path in this codebase ever writes
+    // either attribute on an arbitrary host element (per-surface tagging is
+    // `data-sw-patched`, a distinct attribute this filter already excludes),
+    // so every record this callback sees is genuine vendor evidence, with no
+    // self-authorship check needed.
+    //
+    // Deliberately not, and disclosed rather than silently left unhandled:
+    // an *ancestor* (not the host itself) redefining a CSS custom property
+    // this shadow tree's own stylesheet consumes via `var()` — e.g. a
+    // theme-wide class toggled several levels up. Watching every registered
+    // scope's entire ancestor chain for this would be materially more
+    // machinery (and still incomplete — the same property can change via an
+    // adopted stylesheet with no attribute mutation at all) for a
+    // narrower-in-practice case than the direct host-class pattern this
+    // closes; routed to a dedicated follow-up rather than expanding this
+    // story's scope mid-review.
+    const hostObserver = new MutationObserver((mutations) => {
+      if (mutations.length === 0) return
+      const state = registry.stateOf(id)
+      if (state?.kind === "COMMITTED" || state?.kind === "EXONERATED_NATIVE") {
+        registry.invalidate(id)
+      }
+      onScopeReady?.(id)
+    })
+    hostObserver.observe(shadow.host, {
+      attributes: true,
+      attributeFilter: ["class", "style"],
+    })
+    hostObserverFor.set(id, hostObserver)
 
     // Recurse immediately, before this call returns — a nested root already
     // present at discovery time must not wait for a mutation that may never

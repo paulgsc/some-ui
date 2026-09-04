@@ -757,3 +757,127 @@ describe("createShadowScopeDiscovery — isThemeTaggingMutation (SF-AD, #1268)",
     discovery.teardown()
   })
 })
+
+describe("createShadowScopeDiscovery — host class/style reprojection (bot-found, SF-AD's own review)", () => {
+  it("invalidates a COMMITTED scope and calls onScopeReady when its own host's class changes, with no mutation inside the shadow root itself", async () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    host.attachShadow({ mode: "open" })
+
+    const reg = registry()
+    const ready: Array<string> = []
+    const discovery = createShadowScopeDiscovery(
+      reg,
+      () => 0,
+      (id) => ready.push(id)
+    )
+    discovery.discover(document)
+    const id = reg.ids()[0]
+    expect(id).toBeDefined()
+    if (id === undefined) return
+
+    reg.startResolving(id)
+    await reg.resolveCommitted(id, {
+      revision: "swatch",
+      install: () => {},
+      uninstall: () => {},
+    })
+    await flushMicrotasks()
+    expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+    ready.length = 0
+
+    // Nothing inside `shadow` itself changes — only the host's own class,
+    // in its parent (light-DOM) scope. The per-root observer inside
+    // registerShadowRoot has nothing to react to; only a dedicated observer
+    // on the host itself can see this.
+    host.className = "dark-variant"
+    await flushMicrotasks()
+
+    expect(reg.stateOf(id)?.kind).toBe("RESOLVING")
+    expect(ready).toEqual([id])
+
+    discovery.teardown()
+  })
+
+  it("reprojects a still-HELD (never-committed) scope on its host's own style change too", async () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    host.attachShadow({ mode: "open" })
+
+    const reg = registry()
+    const ready: Array<string> = []
+    const discovery = createShadowScopeDiscovery(
+      reg,
+      () => 0,
+      (id) => ready.push(id)
+    )
+    discovery.discover(document)
+    const id = reg.ids()[0]
+    expect(id).toBeDefined()
+    if (id === undefined) return
+    ready.length = 0
+
+    host.setAttribute("style", "--accent: red")
+    await flushMicrotasks()
+
+    expect(reg.stateOf(id)?.kind).toBe("HELD")
+    expect(ready).toEqual([id])
+
+    discovery.teardown()
+  })
+
+  it("does not react to a class/style change on an unrelated sibling element", async () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    host.attachShadow({ mode: "open" })
+    const sibling = document.createElement("div")
+    document.body.appendChild(sibling)
+
+    const reg = registry()
+    const ready: Array<string> = []
+    const discovery = createShadowScopeDiscovery(
+      reg,
+      () => 0,
+      (id) => ready.push(id)
+    )
+    discovery.discover(document)
+    ready.length = 0
+
+    sibling.className = "unrelated"
+    await flushMicrotasks()
+
+    expect(ready).toEqual([])
+
+    discovery.teardown()
+  })
+
+  it("stops reacting to host attribute changes once retired", async () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    host.attachShadow({ mode: "open" })
+
+    const reg = registry()
+    const ready: Array<string> = []
+    const discovery = createShadowScopeDiscovery(
+      reg,
+      () => 0,
+      (id) => ready.push(id)
+    )
+    discovery.discover(document)
+    const id = reg.ids()[0]
+    expect(id).toBeDefined()
+    if (id === undefined) return
+
+    host.remove()
+    discovery.discover(document)
+    expect(reg.isRegistered(id)).toBe(false)
+    ready.length = 0
+
+    host.className = "still-mutating-after-retirement"
+    await flushMicrotasks()
+
+    expect(ready).toEqual([])
+
+    discovery.teardown()
+  })
+})

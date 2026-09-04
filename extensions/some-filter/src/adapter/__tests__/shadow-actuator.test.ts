@@ -35,7 +35,7 @@ describe("realizeShadowColors — adopts a per-color sheet", () => {
     expect(sheet.cssRules[0]?.cssText).toContain("rgb(10, 10, 20)")
   })
 
-  it("adopts nothing for an action list with no emit-surface-color members", () => {
+  it("adopts nothing for an action list with no emit-surface-color members and no activate-theme", () => {
     const root = shadowRoot()
     realizeShadowColors(
       [{ kind: "tag-surface", key: "rgb(1,2,3)", role: "surface" }],
@@ -46,6 +46,55 @@ describe("realizeShadowColors — adopts a per-color sheet", () => {
     // shadow-actuator.ts's own header.
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     expect(root.adoptedStyleSheets ?? []).toHaveLength(0)
+  })
+})
+
+describe("realizeShadowColors — the shared static layer (bot-found, this story's own review)", () => {
+  it("adopts the static text/border/form/etc. layer whenever activate-theme is present, even with no emit-surface-color actions", () => {
+    const root = shadowRoot()
+    realizeShadowColors([{ kind: "activate-theme", swatchId: "default" }], root)
+
+    expect(root.adoptedStyleSheets).toHaveLength(1)
+    const sheet = root.adoptedStyleSheets[0]
+    expect(sheet).toBeDefined()
+    if (sheet === undefined) return
+    // Spot-check a couple of the rules theme-apply.ts's DARK_THEME_BODY_RULES
+    // carries — the exact set is that module's own concern, not duplicated
+    // here rule-by-rule.
+    const cssText = [...sheet.cssRules].map((r) => r.cssText).join("\n")
+    expect(cssText).toContain("var(--sw-text-1)")
+    expect(cssText).toContain('data-sw-patched="preserve"')
+  })
+
+  it("two different ShadowRoots both realizing activate-theme adopt the identical static-layer sheet object", () => {
+    const rootA = shadowRoot()
+    const rootB = shadowRoot()
+    realizeShadowColors(
+      [{ kind: "activate-theme", swatchId: "default" }],
+      rootA
+    )
+    realizeShadowColors(
+      [{ kind: "activate-theme", swatchId: "cool-blue-gray" }],
+      rootB
+    )
+
+    // Swatch-independent — see DARK_THEME_BODY_RULES's own doc comment.
+    expect(rootA.adoptedStyleSheets[0]).toBe(rootB.adoptedStyleSheets[0])
+  })
+
+  it("realizes both the static layer and a per-color sheet together for a genuine commit", () => {
+    const root = shadowRoot()
+    const key: SurfaceKey = "rgb(255, 255, 255)"
+    realizeShadowColors(
+      [
+        { kind: "activate-theme", swatchId: "default" },
+        { kind: "tag-surface", key, role: "surface" },
+        { kind: "emit-surface-color", key, css: "rgb(10, 10, 20)" },
+      ],
+      root
+    )
+
+    expect(root.adoptedStyleSheets).toHaveLength(2)
   })
 })
 

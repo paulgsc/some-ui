@@ -143,6 +143,65 @@ function swatchTokens(swatch: Swatch): string {
 // Exported so adapter/actuator.ts's dynamic per-surface rules use the same guard.
 export const EXT_GUARD = ":not([data-my-ext]):not([data-my-ext] *)"
 
+/**
+ * Every generic tag-based dark-theme rule that is *not* the `:root` token
+ * declarations or the `html`/`body` canvas rule — one complete rule per
+ * array entry (never multiple rules in one string: a shadow scope's own
+ * static realization, below, inserts each individually via
+ * `CSSStyleSheet.insertRule()`, which only ever parses a single rule per
+ * call — unlike `replaceSync`, which could take the whole block at once but
+ * which jsdom, this package's own unit-test environment, has never
+ * implemented). `buildDarkThemeCSS()` below joins these into the document's
+ * own static `<style>` text; `adapter/shadow-actuator.ts` inserts the same
+ * array, rule by rule, into a shadow scope's own adopted stylesheet — one
+ * source of truth for both, rather than two hand-maintained copies that
+ * could drift (SF-AD, #1268, bot-found: without a shadow-scoped version of
+ * this layer, a shadow-internal `<p>` inheriting a light-theme foreground
+ * color from its own shadow tree's stylesheet stayed dark-on-dark once its
+ * ancestor surface's background was darkened by `emit-surface-color` — the
+ * per-surface `textCss` mechanism only ever handles an element's own
+ * *explicit* differing color (`ownTextColor`, `pipeline.ts`), never plain
+ * inheritance, which is exactly the case this static layer's blanket
+ * `p`/`span`/`label`/… rule exists to cover for the light-DOM case).
+ *
+ * Every declaration here references a `var(--sw-*)` custom property by name
+ * rather than embedding a literal color — deliberately: CSS custom
+ * properties are inherited properties, and inheritance crosses shadow
+ * boundaries via the flat tree unless something in between resets them, so
+ * the *document's* own `:root` token declarations (including any vendor-
+ * invert compensation `injectDarkTheme` already applied before building
+ * them) already reach every open shadow tree for free. These rules need no
+ * `Swatch` parameter of their own as a result — the same text regardless of
+ * which swatch is active, so `shadow-actuator.ts` can adopt them as a single
+ * shared, swatch-independent sheet rather than building one per swatch.
+ */
+export const DARK_THEME_BODY_RULES: ReadonlyArray<string> = [
+  `:where(h1, h2, h3, h4, h5, h6)${EXT_GUARD} { color: var(--sw-text-0) !important; }`,
+  `:where(p, span, label, caption, figcaption, blockquote, cite, li, dt, dd)${EXT_GUARD} { color: var(--sw-text-1) !important; }`,
+  `:where(small, sub, sup, abbr, time)${EXT_GUARD} { color: var(--sw-text-2) !important; }`,
+  `:where(a)${EXT_GUARD} { color: var(--sw-link) !important; }`,
+  `:where(a:visited)${EXT_GUARD} { color: var(--sw-link-visited) !important; }`,
+  `:where(*):not([data-my-ext]):not([data-my-ext] *) { border-color: var(--sw-border) !important; outline-color: rgba(255, 255, 255, 0.12) !important; }`,
+  `:where(hr)${EXT_GUARD} { border-color: var(--sw-border) !important; background-color: var(--sw-border) !important; }`,
+  `:where(code, kbd, samp)${EXT_GUARD} { background-color: var(--sw-bg-3) !important; color: var(--sw-code) !important; }`,
+  `:where(pre)${EXT_GUARD} { background-color: var(--sw-bg-2) !important; color: var(--sw-text-0) !important; }`,
+  `:where(table, thead, tbody, tfoot, tr)${EXT_GUARD} { border-color: var(--sw-border) !important; }`,
+  `:where(th)${EXT_GUARD} { background-color: var(--sw-bg-2) !important; color: var(--sw-text-0) !important; }`,
+  `:where(td)${EXT_GUARD} { color: var(--sw-text-1) !important; }`,
+  `:where(input, textarea, select)${EXT_GUARD} { background-color: var(--sw-input-bg) !important; color: var(--sw-text-0) !important; border-color: var(--sw-input-border) !important; }`,
+  `:where(input::placeholder, textarea::placeholder) { color: var(--sw-text-2) !important; }`,
+  `:where(*)${EXT_GUARD} { scrollbar-color: var(--sw-bg-3) var(--sw-bg-0); }`,
+  `::selection { background-color: var(--sw-selection-bg) !important; }`,
+  `:where(dialog, [popover])${EXT_GUARD} { background-color: var(--sw-surface) !important; color: var(--sw-text-0) !important; }`,
+  `:where(img, video, canvas, picture, embed, object)${EXT_GUARD} { filter: none !important; opacity: 1 !important; }`,
+  `:where(svg text, svg tspan)${EXT_GUARD} { fill: var(--sw-text-1) !important; }`,
+  // Light backgrounds are tagged with their own canonical color as the
+  // attribute value; the matching hue-preserving dark rule is appended to a
+  // separate dynamic stylesheet by the actuator's emit-surface-color action.
+  // Near-black backgrounds are tagged "preserve" and revert here.
+  `[data-sw-patched="preserve"]${EXT_GUARD} { background-color: revert !important; color: revert !important; }`,
+]
+
 export function buildDarkThemeCSS(
   swatch: Swatch = SWATCHES[DEFAULT_SWATCH_ID]
 ): string {
@@ -163,122 +222,7 @@ body${EXT_GUARD} {
   color-scheme: dark !important;
 }
 
-/* ── Text ───────────────────────────────────────────────────────────────── */
-
-:where(h1, h2, h3, h4, h5, h6)${EXT_GUARD} {
-  color: var(--sw-text-0) !important;
-}
-
-:where(p, span, label, caption, figcaption, blockquote, cite, li, dt, dd)${EXT_GUARD} {
-  color: var(--sw-text-1) !important;
-}
-
-:where(small, sub, sup, abbr, time)${EXT_GUARD} {
-  color: var(--sw-text-2) !important;
-}
-
-/* ── Links ──────────────────────────────────────────────────────────────── */
-
-:where(a)${EXT_GUARD} {
-  color: var(--sw-link) !important;
-}
-
-:where(a:visited)${EXT_GUARD} {
-  color: var(--sw-link-visited) !important;
-}
-
-/* ── Borders ────────────────────────────────────────────────────────────── */
-
-:where(*):not([data-my-ext]):not([data-my-ext] *) {
-  border-color: var(--sw-border) !important;
-  outline-color: rgba(255, 255, 255, 0.12) !important;
-}
-
-:where(hr)${EXT_GUARD} {
-  border-color: var(--sw-border) !important;
-  background-color: var(--sw-border) !important;
-}
-
-/* ── Code ───────────────────────────────────────────────────────────────── */
-
-:where(code, kbd, samp)${EXT_GUARD} {
-  background-color: var(--sw-bg-3) !important;
-  color: var(--sw-code) !important;
-}
-
-:where(pre)${EXT_GUARD} {
-  background-color: var(--sw-bg-2) !important;
-  color: var(--sw-text-0) !important;
-}
-
-/* ── Tables ─────────────────────────────────────────────────────────────── */
-
-:where(table, thead, tbody, tfoot, tr)${EXT_GUARD} {
-  border-color: var(--sw-border) !important;
-}
-
-:where(th)${EXT_GUARD} {
-  background-color: var(--sw-bg-2) !important;
-  color: var(--sw-text-0) !important;
-}
-
-:where(td)${EXT_GUARD} {
-  color: var(--sw-text-1) !important;
-}
-
-/* ── Forms ──────────────────────────────────────────────────────────────── */
-
-:where(input, textarea, select)${EXT_GUARD} {
-  background-color: var(--sw-input-bg) !important;
-  color: var(--sw-text-0) !important;
-  border-color: var(--sw-input-border) !important;
-}
-
-:where(input::placeholder, textarea::placeholder) {
-  color: var(--sw-text-2) !important;
-}
-
-/* ── Scrollbars ─────────────────────────────────────────────────────────── */
-
-:where(*)${EXT_GUARD} {
-  scrollbar-color: var(--sw-bg-3) var(--sw-bg-0);
-}
-
-/* ── Selection ──────────────────────────────────────────────────────────── */
-
-::selection {
-  background-color: var(--sw-selection-bg) !important;
-}
-
-/* ── Dialogs ────────────────────────────────────────────────────────────── */
-
-:where(dialog, [popover])${EXT_GUARD} {
-  background-color: var(--sw-surface) !important;
-  color: var(--sw-text-0) !important;
-}
-
-/* ── Media: never touch ─────────────────────────────────────────────────── */
-
-:where(img, video, canvas, picture, embed, object)${EXT_GUARD} {
-  filter: none !important;
-  opacity: 1 !important;
-}
-
-:where(svg text, svg tspan)${EXT_GUARD} {
-  fill: var(--sw-text-1) !important;
-}
-
-/* ── Actuator targets (adapter/actuator.ts) ────────────────────────────── */
-
-/* Light backgrounds are tagged with their own canonical color as the
-   attribute value; the matching hue-preserving dark rule is appended to a
-   separate dynamic stylesheet by the actuator's emit-surface-color action.
-   Near-black backgrounds are tagged "preserve" and revert here. */
-
-[data-sw-patched="preserve"]${EXT_GUARD} {
-  background-color: revert !important;
-  color: revert !important;
-}
+${DARK_THEME_BODY_RULES.join("\n")}
 `
 }
 

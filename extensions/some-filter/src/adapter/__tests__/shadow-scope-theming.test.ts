@@ -101,10 +101,12 @@ describe("createShadowScopeTheming.project — commits a themed shadow scope", (
 
     expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
     expect(surface.dataset.swPatched).toBe("rgb(255, 255, 255)")
-    expect(shadow.adoptedStyleSheets).toHaveLength(1)
+    // The shared static text/border/form/etc. layer, plus this surface's own
+    // per-color sheet — see shadow-actuator.ts's own realizeShadowColors().
+    expect(shadow.adoptedStyleSheets).toHaveLength(2)
   })
 
-  it("does not tag or adopt anything for a scope with no evidenced surfaces", async () => {
+  it("adopts the shared static layer even for a scope with no evidenced surfaces (mirrors decide()'s own unconditional activate-theme)", async () => {
     const reg = registry()
     const shadow = shadowRoot()
     const id = registerHeld(reg, shadow)
@@ -115,8 +117,25 @@ describe("createShadowScopeTheming.project — commits a themed shadow scope", (
     await Promise.resolve()
 
     expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    expect(shadow.adoptedStyleSheets ?? []).toHaveLength(0)
+    expect(shadow.adoptedStyleSheets).toHaveLength(1)
+  })
+
+  it("two scopes committing under the same swatch adopt the exact same static-layer CSSStyleSheet object", async () => {
+    const reg = registry()
+    const shadowA = shadowRoot()
+    const shadowB = shadowRoot()
+    const idA = registerHeld(reg, shadowA)
+    const idB = registerHeld(reg, shadowB)
+
+    const theming = createShadowScopeTheming(reg, swatch, () => 0)
+    theming.project(idA)
+    theming.project(idB)
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(reg.stateOf(idA)?.kind).toBe("COMMITTED")
+    expect(reg.stateOf(idB)?.kind).toBe("COMMITTED")
+    expect(shadowA.adoptedStyleSheets[0]).toBe(shadowB.adoptedStyleSheets[0])
   })
 
   it("themes a scope nested two levels deep, independent of its ancestor's own commit", async () => {
@@ -147,7 +166,7 @@ describe("createShadowScopeTheming.project — commits a themed shadow scope", (
     expect(reg.stateOf(outerId)?.kind).toBe("COMMITTED")
     expect(reg.stateOf(innerId)?.kind).toBe("COMMITTED")
     expect(surface.dataset.swPatched).toBe("rgb(255, 255, 255)")
-    expect(inner.adoptedStyleSheets).toHaveLength(1)
+    expect(inner.adoptedStyleSheets).toHaveLength(2)
   })
 })
 
