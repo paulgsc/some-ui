@@ -50,6 +50,13 @@ These bite during ordinary implementation work, **before any PR exists** — rea
 start of a session, not only once you're driving a PR's CI/review cycle (that part is
 `.claude/skills/steward/SKILL.md`, which only fires once a PR is open).
 
+This section — and `steward/SKILL.md` and `babysit/SKILL.md` — is living, not archival. A
+future session may add a footgun once it's actually recurred or bitten, and may remove one
+that turns out to be stale, wrong, or not worth the bloat it costs every session that reads
+this file. Hold every change to the bar the current entries meet: recurs across more than
+one session, or is a single incident with a silent failure mode and a near-free guard —
+never "sounds like good practice."
+
 - **A fresh clone has no prebuilt `dist/` — `pnpm install` alone isn't enough.** Build with
   `npx turbo run build --filter="www^..." --continue` (the `--continue` matters: without it,
   one unrelated package's build failure aborts the whole graph, and `tsc --noEmit` then
