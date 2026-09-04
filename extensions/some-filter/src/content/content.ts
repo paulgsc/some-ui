@@ -10,6 +10,10 @@ import {
   createShadowScopeDiscovery,
   type ShadowScopeDiscovery,
 } from "@filter/adapter/shadow-scope-discovery"
+import {
+  createShadowScopeTheming,
+  type ShadowScopeTheming,
+} from "@filter/adapter/shadow-scope-theming"
 import { DEFAULT_SWATCH_ID, SWATCHES } from "@filter/adapter/swatches"
 import {
   createCoverageRecorder,
@@ -101,6 +105,20 @@ let contentSession: ContentSession | null = null
 // header for why legacy/off's own veil calls stay untouched regardless.
 const documentScope: DocumentScopeCustodian = createDocumentScopeCustodian()
 
+// Projects the real dark adapter into each discovered shadow scope (SF-AD,
+// #1268) — the scan()/decide()/tag-surface + adopted-stylesheet realization
+// cycle scoped to one ShadowRoot at a time, driven by shadowScopeDiscovery's
+// own onScopeReady hook below. Constructed once, module-scope, for the same
+// reason documentScope/shadowScopeDiscovery are: SWATCHES[DEFAULT_SWATCH_ID]
+// is the one swatch this pipeline can select today (see pipeline.ts's own
+// runAutoTheme() usage; no swatch-picker UI exists yet), so there is nothing
+// per-runAutoTheme-call this instance would ever need to be recreated for.
+const shadowScopeTheming: ShadowScopeTheming = createShadowScopeTheming(
+  documentScope.registry,
+  SWATCHES[DEFAULT_SWATCH_ID],
+  () => sessionLifecycle.epoch
+)
+
 // Shadow-aware discovery + local custody (SF-DC, #1267): registers every
 // open shadow root reachable from the document into the same registry
 // `documentScope` uses, holding each under its own occlusion primitive
@@ -111,10 +129,13 @@ const documentScope: DocumentScopeCustodian = createDocumentScopeCustodian()
 // mode has no custody to speak of. Started/torn down alongside
 // contentSession in runAutoTheme()/applyState() below, not created fresh
 // each time — the registry it shares with documentScope is long-lived for
-// the life of this content script.
+// the life of this content script. onScopeReady wires SF-AD's own
+// per-scope projection into SF-DC's discovery/custody: a scope reaches
+// COMMITTED/EXONERATED_NATIVE only because this callback drives it there.
 const shadowScopeDiscovery: ShadowScopeDiscovery = createShadowScopeDiscovery(
   documentScope.registry,
-  () => sessionLifecycle.epoch
+  () => sessionLifecycle.epoch,
+  (id) => shadowScopeTheming.project(id)
 )
 
 // `crypto.randomUUID()` requires a secure context; a content script runs in

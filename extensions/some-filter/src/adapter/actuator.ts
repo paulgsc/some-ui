@@ -75,6 +75,50 @@ function clearPerSurfaceState(): void {
 }
 
 /**
+ * Sets `data-sw-patched` on every element `elementsByKey` maps a
+ * `tag-surface` action's key to. Scope-agnostic — an `HTMLElement` tags
+ * identically whether it lives in the light DOM or inside a shadow tree —
+ * so `shadow-scope-theming.ts` (SF-AD, #1268) reuses this unchanged rather
+ * than re-implementing the same loop for a per-scope realization.
+ */
+export function tagSurfaceElements(
+  actions: ReadonlyArray<FilterAction>,
+  elementsByKey: ReadonlyMap<SurfaceKey, ReadonlyArray<Element>>
+): void {
+  for (const action of actions) {
+    if (action.kind !== "tag-surface") continue
+    const value = action.role === "preserve" ? "preserve" : action.key
+    for (const el of elementsByKey.get(action.key) ?? []) {
+      if (el instanceof HTMLElement && el.dataset.swPatched !== value) {
+        el.dataset.swPatched = value
+      }
+    }
+  }
+}
+
+/**
+ * Builds the one `[data-sw-patched="…"]{…}` CSS rule text for a single
+ * `emit-surface-color` action. Extracted so `shadow-scope-theming.ts`
+ * (SF-AD, #1268) can construct the identical rule text a shadow scope's own
+ * `ShadowRoot.adoptedStyleSheets` realization needs — this module's own
+ * `DYNAMIC_STYLE_ID` `<style>` element is injected into `document.head` and
+ * cannot select into a shadow tree at all (CSS encapsulation), so a shadow
+ * scope needs its own realization path, built from the same rule text.
+ */
+export function buildSurfaceColorRule(
+  action: Extract<FilterAction, { kind: "emit-surface-color" }>
+): string {
+  const declarations = [`background-color:${action.css}!important`]
+  if (action.textCss !== undefined) {
+    declarations.push(`color:${action.textCss}!important`)
+  }
+  if (action.suppressImage === true) {
+    declarations.push("background-image:none!important")
+  }
+  return `[data-sw-patched="${action.key}"]${EXT_GUARD}{${declarations.join(";")}}`
+}
+
+/**
  * Realizes `actions` (S3's `Fin(A)`) against the DOM. `elementsByKey` is
  * the current scan's `SurfaceKey -> elements` mapping (`pipeline.ts`) —
  * `decide` only ever names a key, never a physical element, so the
@@ -112,15 +156,7 @@ export function realize(
     removeDarkTheme()
   }
 
-  for (const action of actions) {
-    if (action.kind !== "tag-surface") continue
-    const value = action.role === "preserve" ? "preserve" : action.key
-    for (const el of elementsByKey.get(action.key) ?? []) {
-      if (el instanceof HTMLElement && el.dataset.swPatched !== value) {
-        el.dataset.swPatched = value
-      }
-    }
-  }
+  tagSurfaceElements(actions, elementsByKey)
 
   const colorRules = actions
     .filter(
@@ -129,16 +165,7 @@ export function realize(
       ): action is Extract<FilterAction, { kind: "emit-surface-color" }> =>
         action.kind === "emit-surface-color"
     )
-    .map((action) => {
-      const declarations = [`background-color:${action.css}!important`]
-      if (action.textCss !== undefined) {
-        declarations.push(`color:${action.textCss}!important`)
-      }
-      if (action.suppressImage === true) {
-        declarations.push("background-image:none!important")
-      }
-      return `[data-sw-patched="${action.key}"]${EXT_GUARD}{${declarations.join(";")}}`
-    })
+    .map(buildSurfaceColorRule)
 
   if (colorRules.length > 0) {
     const css = colorRules.join("\n")

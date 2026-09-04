@@ -454,8 +454,17 @@ function surfaceKeyFor(attr: SurfaceAttr): SurfaceKey {
   return `${bgKey}|text:${rgbaToCss(attr.text)}`
 }
 
-/** Walks `root`'s descendants (never `root` itself — matches `patchAll`'s old scope; `root`'s own canvas is the static layer's job). */
-export function scan(root: Element): ScanResult {
+/**
+ * Walks `root`'s descendants (never `root` itself — matches `patchAll`'s old
+ * scope; `root`'s own canvas is the static layer's job). `root` accepts a
+ * `ShadowRoot` as well as an `Element` — SF-AD (#1268) calls this scoped to
+ * a shadow scope's own root, reusing this function unchanged (Definition
+ * D.3's boundary already makes it scope-agnostic): `document.createTreeWalker`
+ * accepts any `Node`, and every other read in this function only ever
+ * touches the *walked* nodes, which `NodeFilter.SHOW_ELEMENT` guarantees are
+ * always `Element`s regardless of what kind of node `root` itself is.
+ */
+export function scan(root: Element | ShadowRoot): ScanResult {
   const elementsByKey = new Map<SurfaceKey, Array<Element>>()
   const attrsByKey = new Map<SurfaceKey, SurfaceAttr>()
 
