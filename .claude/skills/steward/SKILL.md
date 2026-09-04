@@ -62,6 +62,14 @@ This gates the _automatic_ continuation only — it never excuses dropping a sti
 finding just to stay under the cap, and it doesn't apply retroactively to rounds already spent;
 it only stops the _next_ auto-triggered one.
 
+The cap stops the automatic _seeking_ of new findings, not the ability to confirm coverage on
+the head you actually land on: after picking a bucket above and pushing whatever fix that
+implies, one closing review of that resulting head is still allowed. Auto-merge and
+`babysit/SKILL.md` both require confirmed coverage on the _exact_ current head, so a capped PR
+could otherwise never legitimately merge at all. That closing review doesn't reopen the loop —
+read whatever it finds through the same three buckets above, it doesn't license another
+automatic round.
+
 ## Verify "CI is green" against live state, not the webhook event that announced it
 
 A `check_suite.completed` webhook event can name a **stale** `head_sha` — this has happened
