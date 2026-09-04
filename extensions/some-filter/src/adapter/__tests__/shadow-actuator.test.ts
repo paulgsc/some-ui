@@ -78,6 +78,21 @@ describe("realizeShadowColors — the shared static layer (bot-found, this story
     expect(cssText).toContain("var(--sw-text-1)")
     expect(cssText).toContain('data-sw-patched="preserve"')
     expect(cssText).toContain(`--sw-text-0: ${defaultSwatch.text0}`)
+    // The host-token sheet's own :host rule forces color, not just the
+    // --sw-* custom properties (bot-found, SF-AD's own review, round 5) —
+    // see buildHostTokenRule's own doc comment for why an inherited (not
+    // per-surface-explicit) host foreground otherwise survives unchanged
+    // onto a darkened surface. Checked against the host-token sheet's own
+    // :host rule specifically, not the joined cssText across every adopted
+    // sheet — the static layer's own pre/th rules already contain the
+    // identical substring ("color: var(--sw-text-0) !important") for an
+    // unrelated reason, which would make a joined-text assertion here pass
+    // whether or not :host itself actually declares it.
+    const hostRule = [...root.adoptedStyleSheets]
+      .flatMap((sheet) => [...sheet.cssRules])
+      .find((r) => r.cssText.startsWith(":host"))
+    expect(hostRule).toBeDefined()
+    expect(hostRule?.cssText).toContain("color: var(--sw-text-0) !important")
   })
 
   it("two different ShadowRoots both realizing activate-theme adopt the identical static-layer sheet object, even under different swatches", () => {

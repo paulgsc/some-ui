@@ -156,9 +156,27 @@ function swatchTokens(swatch: Swatch): string {
  * references resolve against a declaration inside its *own* adopted
  * stylesheets, never the document's, so neither side's verdict can pull the
  * rug out from under the other's.
+ *
+ * The trailing `color: var(--sw-text-0) !important` mirrors
+ * `buildDarkThemeCSS`'s own `html, body { …; color: var(--sw-text-0) }`
+ * canvas rule, one level down (SF-AD's own review, round 5): that rule is
+ * what makes an *inherited* (not per-element explicit) dark foreground
+ * self-heal in the light-DOM case — any descendant that does not itself
+ * declare `color` inherits the document root's newly-forced value through
+ * ordinary cascade, no per-element `textCss` action required. A shadow
+ * scope's own root-equivalent is its host, and until this rule existed
+ * nothing forced the host's own `color` the same way, so a `:host { color:
+ * #111 }` vendor declaration (or any other host-level foreground) kept
+ * flowing, unaltered, into every direct/indirect shadow-tree descendant that
+ * relies on plain inheritance rather than its own explicit color —
+ * `ownTextColor()` (`pipeline.ts`) correctly reports "no own color" for such
+ * a descendant (it isn't lying: the color genuinely isn't overridden at that
+ * element), so nothing else in this pipeline was ever going to catch it.
  */
 export function buildHostTokenRule(swatch: Swatch): string {
-  return `:host {${swatchTokens(swatch)}}`
+  return `:host {${swatchTokens(swatch)}
+  color: var(--sw-text-0) !important;
+}`
 }
 
 // ── CSS layer ─────────────────────────────────────────────────────────────────
