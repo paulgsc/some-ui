@@ -52,7 +52,12 @@ import type {
   DocumentExonerationProof,
   DocumentRevision,
 } from "./document-scope"
-import { scan, withVendorColorsVisible, type ScanResult } from "./pipeline"
+import {
+  isShadowRoot,
+  scan,
+  withVendorColorsVisible,
+  type ScanResult,
+} from "./pipeline"
 import type { ScopeId, ScopeRegistry } from "./scope-registry"
 import {
   clearShadowSurfaceState,
@@ -72,48 +77,29 @@ export type ShadowScopeTheming = {
    * Queues one scan/decide/realize round for `id`, run once every earlier
    * round queued for the *same* id has fully settled (this factory's own
    * `inFlight` serialization — see its doc comment for the overlapping-
-   * commit race this closes). A queued round is a no-op once it actually
-   * runs unless `id`'s current state is one the custody state machine still
-   * allows moving toward COMMITTED (`HELD`, `RESOLVING`, or `FAILED_HELD` —
-   * mirrors `document-scope.ts`'s own `ensureResolving`) and its registered
-   * `ref` is a `ShadowRoot` — never the document scope, `r_0`, which stays
-   * `content.ts`'s own pipeline's job, entirely unchanged by this story. In
-   * particular: a `COMMITTED`/`EXONERATED_NATIVE` scope is re-opened by
+   * commit race this closes, and `projectOnce()`'s own `forceInvalidate`
+   * parameter for the lost-update gap serialization alone left open). A
+   * queued round is a no-op once it actually runs unless `id`'s current
+   * state is one the custody state machine still allows moving toward
+   * COMMITTED (`HELD`, `RESOLVING`, or `FAILED_HELD` — mirrors
+   * `document-scope.ts`'s own `ensureResolving`) and its registered `ref` is
+   * a `ShadowRoot` — never the document scope, `r_0`, which stays
+   * `content.ts`'s own pipeline's job, entirely unchanged by this story. A
+   * `COMMITTED`/`EXONERATED_NATIVE` scope is usually re-opened by
    * `shadow-scope-discovery.ts`'s own `invalidate()` call *before* it calls
-   * this, so by the time a queued round actually runs the state has already
-   * moved back to `RESOLVING`/`HELD` — this function itself never
-   * invalidates anything. Safe (and expected) to call repeatedly for the
-   * same id in rapid succession — `project()` itself returns immediately
-   * either way, never awaiting the round it just queued.
+   * this; when a call instead arrives while a round already queued for the
+   * same id is still settling, this function's own queue invalidates such a
+   * scope itself once that call's turn comes, rather than relying solely on
+   * the caller's own (necessarily earlier) check. Safe (and expected) to
+   * call repeatedly for the same id in rapid succession — `project()` itself
+   * returns immediately either way, never awaiting the round it just
+   * queued.
    */
   project(id: ScopeId): void
 }
 
 function errorReason(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
-}
-
-/**
- * A realm-independent replacement for `ref instanceof ShadowRoot` — the same
- * cross-realm-adoption reason `shadow-scope-discovery.ts`'s own
- * `isElementNode` documents: a host created in a same-origin iframe's own
- * document, then adopted into this one (`adoptNode()`, or a plain
- * `appendChild()` across documents, which adopts implicitly), keeps that
- * *other* realm's `ShadowRoot` constructor on its shadow root's prototype
- * chain, failing `instanceof` against *this* realm's `ShadowRoot` even
- * though it is a genuine, live shadow root `shadow-scope-discovery.ts`
- * already registered (its own discovery already uses realm-independent
- * checks throughout). Left unfixed, such a scope's own `snapshot(id)?.ref`
- * would never pass this check, so `project()` would return before ever
- * resolving it — a permanently `HELD` scope, its full-viewport occlusion
- * never released (bot-found, this story's own review, round 3). `nodeType`
- * is a plain data property, not a prototype check, so it is
- * realm-independent; `DOCUMENT_FRAGMENT_NODE` is what distinguishes a
- * `ShadowRoot` (which extends `DocumentFragment`) from the other member of
- * `ScopeRef`, `Document` (`DOCUMENT_NODE`).
- */
-function isShadowRoot(ref: Document | ShadowRoot): ref is ShadowRoot {
-  return ref.nodeType === Node.DOCUMENT_FRAGMENT_NODE
 }
 
 /**
@@ -199,21 +185,49 @@ export function createShadowScopeTheming(
    * *starts* until the earlier one has fully resolved — by which point
    * `ensureResolving()` correctly reads the fresh `COMMITTED` state and
    * no-ops, rather than racing a second `resolveCommitted()` against it.
-   * Never a lost update: `projectOnce()`'s own `scan()` is a live,
-   * point-in-time read of current computed style, not tied to *which*
-   * mutation triggered the call, so by the time either call's scan actually
-   * runs (always after the DOM mutations that triggered it — a
-   * `MutationObserver` callback only ever fires once its own records
-   * already reflect a completed change), it already reflects every
-   * mutation that happened before it, queued or not.
+   *
+   * That no-op is *only* correct when the later call's own trigger arrived
+   * before the earlier round's `scan()` ran — genuinely redundant evidence
+   * that round already picked up (`scan()` is a live, point-in-time read of
+   * current computed style, not tied to *which* mutation triggered the
+   * call). A trigger that arrives *after* that scan but *while* the round
+   * is still `RESOLVING` (`resolveCommitted()`'s own `install()` await
+   * gives a real, if small, window — long enough for a vendor's own
+   * `MutationObserver` reacting to the `data-sw-patched` write `install()`
+   * just made, or any other unrelated concurrent mutation, to insert new
+   * content before this round's own commit finishes) represents evidence
+   * *no* scan has seen yet. `shadow-scope-discovery.ts`'s own per-root
+   * observer correctly does not `invalidate()` such a trigger (state reads
+   * `RESOLVING`, not `COMMITTED`/`EXONERATED_NATIVE` — invalidate would
+   * throw), but it still calls `onScopeReady`/`project()` unconditionally,
+   * queuing a follow-up here — bot-found, this story's own review, round 4:
+   * without `forceInvalidate` below, that follow-up would find the scope
+   * already `COMMITTED` by the time its own turn in the queue comes up and
+   * silently no-op, permanently leaving the new content unclassified with
+   * the hold already released. `project()` captures whether a round was
+   * already in flight *at the moment this new trigger arrived* and passes
+   * that through; `projectOnce()` uses it to force one `invalidate()` step
+   * before `ensureResolving()`, so a trigger that missed the earlier scan
+   * always gets a fresh one once its own turn comes, whatever state the
+   * earlier round left the scope in.
    */
   const inFlight = new Map<ScopeId, Promise<void>>()
 
-  async function projectOnce(id: ScopeId): Promise<void> {
+  async function projectOnce(
+    id: ScopeId,
+    forceInvalidate: boolean
+  ): Promise<void> {
     const snapshot = registry.snapshot(id)
     if (snapshot === undefined) return
     const root = snapshot.ref
     if (!isShadowRoot(root)) return
+
+    if (forceInvalidate) {
+      const state = registry.stateOf(id)
+      if (state?.kind === "COMMITTED" || state?.kind === "EXONERATED_NATIVE") {
+        registry.invalidate(id)
+      }
+    }
     if (!ensureResolving(registry, id)) return
 
     // Mirrors decide()'s own degenerate case (Theorem D.2's null adapter) —
@@ -303,12 +317,21 @@ export function createShadowScopeTheming(
 
   return {
     project(id: ScopeId): void {
+      // Captured now, synchronously, before queuing this call: true exactly
+      // when another round for this same id is already queued or running —
+      // the condition projectOnce()'s own forceInvalidate parameter (its
+      // doc comment above) needs to tell "genuinely redundant, already-seen
+      // evidence" apart from "arrived after that round's own scan, needs a
+      // fresh one regardless of what state that round settles into."
+      const wasInFlight = inFlight.has(id)
       const prior = inFlight.get(id) ?? Promise.resolve()
       // A prior round's own rejection (projectOnce() itself never throws —
       // every fallible step resolves the scope to FAILED_HELD instead — but
       // defend the queue's own continuity regardless of what future code
       // does) must not abort every future call chained onto this same id.
-      const current = prior.catch(() => {}).then(() => projectOnce(id))
+      const current = prior
+        .catch(() => {})
+        .then(() => projectOnce(id, wasInFlight))
       inFlight.set(id, current)
       void current
         .catch(() => {})

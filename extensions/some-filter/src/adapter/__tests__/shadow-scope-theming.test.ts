@@ -339,6 +339,50 @@ describe("createShadowScopeTheming.project — serializes overlapping calls (bot
   })
 })
 
+describe("createShadowScopeTheming.project — forces a fresh round for a trigger that arrives after the scan but before commit settles (bot-found, review round 4)", () => {
+  it("a second project() call queued while the first is still in flight re-engages the hold for its own round, even though the first already committed by the time the second's turn comes", async () => {
+    // Mirrors shadow-scope-discovery.ts's own per-root observer calling
+    // project(id) again for a mutation that lands after the first round's
+    // own scan() already ran but before resolveCommitted()'s install()
+    // await has settled — real evidence no scan has seen yet. Without
+    // forceInvalidate, project()'s serialization queue (round 3's own fix)
+    // means this second call's projectOnce() does not even start until the
+    // first has fully committed, at which point ensureResolving() reads
+    // COMMITTED and silently no-ops, permanently leaving the new content
+    // unclassified with the hold already released.
+    //
+    // register()'s hold.install() fires once, synchronously, before either
+    // project() call is ever made — a hold-install spy is therefore a
+    // deterministic proxy for "did a round force scope-registry.ts's own
+    // invalidate() (the only other caller of hold.install(), per that
+    // module's own doc comment) before its turn came," without needing to
+    // land a call exactly inside the narrow mid-scan window itself.
+    const reg = registry()
+    const shadow = shadowRoot()
+    const surface = document.createElement("div")
+    surface.setAttribute("style", "background-color: rgb(255, 255, 255)")
+    shadow.appendChild(surface)
+
+    const install = vi.fn()
+    const release = vi.fn()
+    const id = `shadow:${Math.random()}`
+    reg.register(id, {
+      ref: shadow,
+      parent: "r_0",
+      contentEpoch: 0,
+      hold: { install, release },
+    })
+
+    const theming = createShadowScopeTheming(reg, swatch, () => 0)
+    theming.project(id)
+    theming.project(id)
+    await flushAll()
+
+    expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+    expect(install.mock.calls.length).toBeGreaterThanOrEqual(2)
+  })
+})
+
 describe("createShadowScopeTheming.project — cross-realm ShadowRoot (bot-found, review round 3)", () => {
   it("projects a shadow root whose host was created in a different realm and adopted into this document", async () => {
     const iframe = document.createElement("iframe")

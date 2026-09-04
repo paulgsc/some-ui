@@ -114,16 +114,60 @@ const GRADIENT_RE = /(?:repeating-)?(?:linear|radial|conic)-gradient\(/i
 const ASSUMED_LIGHT_IMAGE: SurfaceAttr["color"] = [1, 1, 1, 1]
 
 /**
+ * A realm-independent replacement for `node instanceof ShadowRoot` — see
+ * `shadow-actuator.ts`'s own `isHTMLElementNode`/`isElementNode` for the
+ * identical reasoning applied to other node kinds: a host adopted from a
+ * different realm (a same-origin iframe's own document, then moved in via
+ * `appendChild()`/`adoptNode()`) keeps that *other* realm's `ShadowRoot`
+ * constructor on its own shadow root's prototype chain, failing
+ * `instanceof` against *this* realm's `ShadowRoot` even though it is
+ * genuine and live. `nodeType` is a plain data property, not a prototype
+ * check, so it survives that; `DOCUMENT_FRAGMENT_NODE` is what a
+ * `ShadowRoot` (which extends `DocumentFragment`) carries, distinguishing
+ * it from `scope-registry.ts`'s other `ScopeRef` member, `Document`
+ * (`DOCUMENT_NODE`) — `shadow-scope-theming.ts`'s own `project()` uses this
+ * exact distinction to recognize a scope's registered ref (bot-found, this
+ * story's own review, round 3: without it, a cross-realm-adopted scope
+ * stayed permanently `HELD`, its occlusion never released). Exported so
+ * `shadow-scope-theming.ts` (which already imports `scan`/
+ * `withVendorColorsVisible` from this module — no new import direction)
+ * shares this one rather than keeping its own separate copy.
+ */
+export function isShadowRoot(node: Node): node is ShadowRoot {
+  return node.nodeType === Node.DOCUMENT_FRAGMENT_NODE
+}
+
+/**
  * The element's own, non-inherited text color, or null when it has none of
  * its own (its computed `color` just matches its parent's — plain
  * inheritance, nothing for a surface-role recolor to re-target). `color` is
  * an inherited CSS property, so — unlike `background-color` — a matching
  * value doesn't mean "unset here," it means "not overridden here."
+ *
+ * `el.parentElement` is `null` for a *direct child of a `ShadowRoot`* — its
+ * real parent (the root itself) is a `DocumentFragment`, not an `Element` —
+ * which every element `scan()` ever visits inside the light DOM never hits
+ * (`document.body`'s own descendants always have a real Element parent).
+ * Falling straight through to "no own color" there discarded a genuinely
+ * explicit foreground on exactly the shadow-scope elements most likely to
+ * carry one (SF-AD's own review, round 4): a common
+ * `<div style="background:white;color:#111">` sitting directly inside an
+ * open shadow root darkened only its background, since `decide()` never
+ * saw `textCss` evidence to also lift the text out of the dark it was now
+ * sitting on. CSS's own inheritance model (the flat tree) says a shadow
+ * root's direct children inherit from its *host* element, not from
+ * nothing, so that is what an absent `parentElement` falls back to
+ * comparing against here — the same comparison this function already makes
+ * for every other element, just against the right ancestor.
  */
 function ownTextColor(el: Element, style: CSSStyleDeclaration): RGBA | null {
   const parent = el.parentElement
-  if (parent === null) return null
-  const inherited = getComputedStyle(parent).color
+  const parentNode = el.parentNode
+  const inheritFrom =
+    parent ??
+    (parentNode !== null && isShadowRoot(parentNode) ? parentNode.host : null)
+  if (inheritFrom === null) return null
+  const inherited = getComputedStyle(inheritFrom).color
   if (style.color === inherited) return null
   return parseColor(style.color)
 }
