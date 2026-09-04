@@ -28,7 +28,7 @@ anything else.
 Across this org's relay history the false-positive rate on Codex findings has been at or near
 zero, repeatedly, across unrelated stories and unrelated packages. Don't rubber-stamp a finding
 and don't wave one off as noise without tracing it against the actual code/DOM/data semantics
-involved. When a finding is real: fix it, reply on the *specific* review comment/thread (not a
+involved. When a finding is real: fix it, reply on the _specific_ review comment/thread (not a
 general PR comment) naming the fix and its commit SHA, then resolve that thread. When a finding
 is real but genuinely out of scope for this PR: reply explaining why and where the real fix is
 routed (a follow-up issue, a named future story), and leave the thread **open** — don't resolve
@@ -48,34 +48,20 @@ running.
 
 Standing authorization is scoped to the exact repo(s) it was granted for and must be restated
 in every handoff, not assumed to persist silently — a grant for this repo does not imply
-`paulgsc/server`, or vice versa. When it applies here: confirm CI is green on the *current*
+`paulgsc/server`, or vice versa. When it applies here: confirm CI is green on the _current_
 head (per the freshness check above), confirm `mergeable_state: "clean"`, confirm no unresolved
-review thread represents an unaddressed *fixable* finding (a disclosed-and-replied-to deferred
+review thread represents an unaddressed _fixable_ finding (a disclosed-and-replied-to deferred
 gap is fine to leave open), and confirm Claude Approvals is passing or not required for this
 repo — then merge (squash, matching this repo's existing history) without pausing to ask again.
 After merging: verify the linked issue actually closed, not just that the PR shows merged, then
 unsubscribe from PR activity and cancel any standing check-in trigger for it.
 
-## A tool-permission classifier can deny a call independent of GitHub-side state
-
-Scheduling and cleanup calls (`send_later`/`create_trigger`, `unsubscribe_pr_activity`,
-`delete_trigger`) have each been denied in some sessions and succeeded immediately in others on
-this relay — no call is reliably always-blocked or always-unblocked. Treat each denial as
-independent: retry at most once or twice, and if a closely related tool does functionally the
-same thing (e.g. `create_trigger` under `send_later`), try that once before concluding the
-capability is unavailable this session. If a blocked call actually matters — cleanup didn't
-happen, or there's no way left to get a future check-in scheduled on a PR that's still red —
-say so to the user rather than silently working around it or silently doing without.
-
-## Before every push: diff --stat, not just status; fresh fetch, not a stale local ref
-
-Run `git diff --stat` before committing, not only `git status` — a `Bin ... -> ... bytes` line
-on a file you expect to be text source is the tell for embedded-NUL or other binary corruption
-that no lint, typecheck, or test will catch. Always `git fetch origin main` fresh before
-trusting a local `origin/main` ref for a "does my branch already contain X" question — a stale
-ref produces false alarms in both directions. If the branch's previous PR already merged,
-restart it from the freshly fetched default branch before adding new commits; never stack new
-work on top of already-merged history.
+The tool-permission classifier idiom (a scheduling/cleanup call denied independent of
+GitHub-side state — retry once or twice, try a closely related tool once) and the git hygiene
+discipline (`diff --stat` before committing, fresh `fetch` before trusting a local ref, restart
+a branch whose predecessor PR already merged) apply here too — see the "Cold-start footguns"
+section of `CLAUDE.md`, which isn't PR-lifecycle-specific so it lives there instead of being
+duplicated in this file.
 
 ## Cross-repo PRs: name every one, every time
 
