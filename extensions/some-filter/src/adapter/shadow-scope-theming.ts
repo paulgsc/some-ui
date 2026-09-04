@@ -205,7 +205,7 @@ export function createShadowScopeTheming(
         revision: swatch.id,
         install: () => {
           tagSurfaceElements(actions, scanned.elementsByKey)
-          realizeShadowColors(actions, root)
+          realizeShadowColors(actions, root, swatch)
         },
         // Only reachable once this scope has actually been COMMITTED
         // (scope-registry.ts's invalidate()/retire() are the two callers —

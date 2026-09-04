@@ -50,28 +50,60 @@
  * concern, verified against the actual built extension in a real Chromium.
  */
 
-import { DARK_THEME_BODY_RULES } from "@filter/lib/content/theme-apply"
+import {
+  buildHostTokenRule,
+  DARK_THEME_BODY_RULES,
+} from "@filter/lib/content/theme-apply"
 
 import { buildSurfaceColorRule, tagSurfaceElements } from "./actuator"
 import type { FilterAction } from "./contracts"
+import type { Swatch } from "./swatches"
 
 /** Re-exported so `shadow-scope-theming.ts` has one import for both halves of a shadow scope's realization — this module's own `realizeShadowColors` plus `actuator.ts`'s unchanged tag-surface loop. */
 export { tagSurfaceElements }
 
 /**
- * Every distinct dark-surface CSS rule this extension has ever realized
- * into any shadow scope, keyed by its own exact rule text — shared, never
- * cleared. The number of distinct colors a page's own design vocabulary can
- * produce is bounded independently of how many shadow scopes discover it,
- * so this cannot grow without bound the way a per-element cache could.
+ * Every distinct dark-surface CSS rule this extension has realized into any
+ * shadow scope recently, keyed by its own exact rule text and shared across
+ * every scope that needs it. Bounded, not unlimited (bot-found, this
+ * story's own review round 2): a page whose own script drives a shadow
+ * surface's inline background/text color continuously (a color-cycling
+ * indicator, say) produces a fresh, distinct rule text on every one of the
+ * per-root observer's own reprojection rounds, and a page's own *finite*
+ * design vocabulary is not a reliable bound on that — nothing about a
+ * strong, permanently-growing `Map` would ever shrink back down over a
+ * single long-lived tab's lifetime. `sheetFor()` below evicts the
+ * least-recently-used entry once `MAX_CACHED_SHEETS` is reached, capping
+ * worst-case memory at a bounded, if bot-authored, page rather than trading
+ * cross-scope sharing away entirely — real pages' own actual color
+ * vocabularies (tens of distinct surfaces, not hundreds) stay comfortably
+ * under the cap and keep full reuse; only pathological/animated churn ever
+ * evicts anything, and an eviction costs a re-parse of that one rule on its
+ * next use, never a correctness issue (a scope that still holds a since-
+ * evicted sheet keeps it adopted regardless — eviction only affects whether
+ * a *future* `sheetFor()` call for the same text reuses it or builds a
+ * fresh, functionally-identical object). Exported so this module's own unit
+ * tests can exercise eviction directly rather than looping 500+ times.
  */
+export const MAX_CACHED_SHEETS = 500
 const sheetCache = new Map<string, CSSStyleSheet>()
 
 function sheetFor(cssText: string): CSSStyleSheet {
   const existing = sheetCache.get(cssText)
-  if (existing !== undefined) return existing
+  if (existing !== undefined) {
+    // Re-insertion moves this entry to the end of the Map's own iteration
+    // order (insertion order, per spec) — the cheapest way to track
+    // recency without a second data structure.
+    sheetCache.delete(cssText)
+    sheetCache.set(cssText, existing)
+    return existing
+  }
   const sheet = new CSSStyleSheet()
   sheet.insertRule(cssText, 0)
+  if (sheetCache.size >= MAX_CACHED_SHEETS) {
+    const oldest = sheetCache.keys().next().value
+    if (oldest !== undefined) sheetCache.delete(oldest)
+  }
   sheetCache.set(cssText, sheet)
   return sheet
 }
@@ -115,15 +147,21 @@ function staticShadowLayer(): CSSStyleSheet {
 }
 
 /**
- * Realizes `actions` into `root`: the shared static layer (above) whenever
- * `actions` includes `activate-theme` — `decide()`'s own signal that this
- * round is actually committing the scope, present unconditionally whenever
- * a swatch is selected and the scope doesn't read as already-dark,
- * independent of whether any individual surface also needs its own
- * `emit-surface-color` color (mirrors `actuator.ts`'s document-level
- * `realize()`, where `activate-theme`'s static layer is realized
- * unconditionally alongside, not gated on, any given round's per-surface
- * actions) — plus one sheet per distinct `emit-surface-color` action.
+ * Realizes `actions` into `root`: the shared static layer (above) *plus* a
+ * `:host` rule declaring `swatch`'s own `--sw-*` tokens (`buildHostTokenRule`
+ * — see that function's own doc comment for why a shadow scope cannot just
+ * inherit the document's) whenever `actions` includes `activate-theme` —
+ * `decide()`'s own signal that this round is actually committing the scope,
+ * present unconditionally whenever a swatch is selected and the scope
+ * doesn't read as already-dark, independent of whether any individual
+ * surface also needs its own `emit-surface-color` color (mirrors
+ * `actuator.ts`'s document-level `realize()`, where `activate-theme`'s
+ * static layer is realized unconditionally alongside, not gated on, any
+ * given round's per-surface actions) — plus one sheet per distinct
+ * `emit-surface-color` action. `swatch` is only ever consulted inside that
+ * branch: `decide()`'s own contract guarantees `activate-theme` is present
+ * only when its caller's swatch was non-null, so the `swatch !== null` guard
+ * below is a type-safety formality, not an expected runtime branch.
  * Idempotent: re-running an unchanged action list touches
  * `root.adoptedStyleSheets` zero times (the reference itself is left
  * untouched, not merely reassigned to an equal-looking array), mirroring
@@ -135,16 +173,20 @@ function staticShadowLayer(): CSSStyleSheet {
  *
  * An empty `actions` list (the uninstall half of a scope's committed
  * realization, `shadow-scope-theming.ts`) clears every sheet this module
- * previously adopted into `root`, static layer included, leaving any
- * non-extension entry (should one ever exist) untouched.
+ * previously adopted into `root`, static layer and host tokens included,
+ * leaving any non-extension entry (should one ever exist) untouched —
+ * `swatch` is unused on this path, since nothing in `desired` depends on it
+ * when `actions` is empty.
  */
 export function realizeShadowColors(
   actions: ReadonlyArray<FilterAction>,
-  root: ShadowRoot
+  root: ShadowRoot,
+  swatch: Swatch | null
 ): void {
   const desired = new Set<CSSStyleSheet>()
   if (actions.some((action) => action.kind === "activate-theme")) {
     desired.add(staticShadowLayer())
+    if (swatch !== null) desired.add(sheetFor(buildHostTokenRule(swatch)))
   }
   for (const action of actions) {
     if (action.kind !== "emit-surface-color") continue
@@ -198,5 +240,5 @@ export function clearShadowSurfaceState(root: ShadowRoot): void {
   root.querySelectorAll("[data-sw-patched]").forEach((el) => {
     el.removeAttribute("data-sw-patched")
   })
-  realizeShadowColors([], root)
+  realizeShadowColors([], root, null)
 }

@@ -101,12 +101,13 @@ describe("createShadowScopeTheming.project — commits a themed shadow scope", (
 
     expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
     expect(surface.dataset.swPatched).toBe("rgb(255, 255, 255)")
-    // The shared static text/border/form/etc. layer, plus this surface's own
-    // per-color sheet — see shadow-actuator.ts's own realizeShadowColors().
-    expect(shadow.adoptedStyleSheets).toHaveLength(2)
+    // The shared static text/border/form/etc. layer, this swatch's own
+    // :host token rule, and this surface's own per-color sheet — see
+    // shadow-actuator.ts's own realizeShadowColors().
+    expect(shadow.adoptedStyleSheets).toHaveLength(3)
   })
 
-  it("adopts the shared static layer even for a scope with no evidenced surfaces (mirrors decide()'s own unconditional activate-theme)", async () => {
+  it("adopts the shared static layer and host tokens even for a scope with no evidenced surfaces (mirrors decide()'s own unconditional activate-theme)", async () => {
     const reg = registry()
     const shadow = shadowRoot()
     const id = registerHeld(reg, shadow)
@@ -117,7 +118,7 @@ describe("createShadowScopeTheming.project — commits a themed shadow scope", (
     await Promise.resolve()
 
     expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
-    expect(shadow.adoptedStyleSheets).toHaveLength(1)
+    expect(shadow.adoptedStyleSheets).toHaveLength(2)
   })
 
   it("two scopes committing under the same swatch adopt the exact same static-layer CSSStyleSheet object", async () => {
@@ -166,7 +167,7 @@ describe("createShadowScopeTheming.project — commits a themed shadow scope", (
     expect(reg.stateOf(outerId)?.kind).toBe("COMMITTED")
     expect(reg.stateOf(innerId)?.kind).toBe("COMMITTED")
     expect(surface.dataset.swPatched).toBe("rgb(255, 255, 255)")
-    expect(inner.adoptedStyleSheets).toHaveLength(2)
+    expect(inner.adoptedStyleSheets).toHaveLength(3)
   })
 })
 

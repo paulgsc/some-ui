@@ -135,6 +135,32 @@ function swatchTokens(swatch: Swatch): string {
 `
 }
 
+/**
+ * A single `:host {…}` rule declaring `swatch`'s own `--sw-*` custom
+ * properties — `adapter/shadow-actuator.ts` adopts this into each committed
+ * shadow scope alongside `DARK_THEME_BODY_RULES` (SF-AD, #1268, bot-found,
+ * round 2 of that story's own review).
+ *
+ * Without this, a shadow scope's own static-layer rules resolved their
+ * `var(--sw-*)` references purely by inheriting the *document's* `:root`
+ * declaration (`buildDarkThemeCSS`'s own) across the shadow boundary — which
+ * works only as long as that declaration exists. It does not always: the
+ * document's own verdict and a given shadow scope's own verdict are
+ * independent (`decide()` runs scoped per root, with no shared state), so a
+ * document that reads "already dark" natively — `realize()`'s own
+ * `restore-native` branch removes `#__sw_dark_theme` outright, `:root`
+ * tokens included — can coexist with a *specific* shadow-hosted widget whose
+ * own content is still genuinely light (#1262's own reported shape: an
+ * embedded third-party component inside an otherwise-dark page). Adopting
+ * this rule makes a shadow scope's own theming self-contained: its `var()`
+ * references resolve against a declaration inside its *own* adopted
+ * stylesheets, never the document's, so neither side's verdict can pull the
+ * rug out from under the other's.
+ */
+export function buildHostTokenRule(swatch: Swatch): string {
+  return `:host {${swatchTokens(swatch)}}`
+}
+
 // ── CSS layer ─────────────────────────────────────────────────────────────────
 
 // Guard: never apply theme rules inside extension-owned subtrees.

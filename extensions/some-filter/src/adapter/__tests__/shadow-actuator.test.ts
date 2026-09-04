@@ -1,10 +1,15 @@
 import type { FilterAction, SurfaceKey } from "@filter/adapter/contracts"
 import {
   clearShadowSurfaceState,
+  MAX_CACHED_SHEETS,
   realizeShadowColors,
   tagSurfaceElements,
 } from "@filter/adapter/shadow-actuator"
+import { SWATCHES } from "@filter/adapter/swatches"
 import { afterEach, describe, expect, it } from "vitest"
+
+const defaultSwatch = SWATCHES.default
+const otherSwatch = SWATCHES["cool-blue-gray"]
 
 function shadowRoot(): ShadowRoot {
   const host = document.createElement("div")
@@ -24,7 +29,7 @@ describe("realizeShadowColors — adopts a per-color sheet", () => {
       { kind: "emit-surface-color", key, css: "rgb(10, 10, 20)" },
     ]
 
-    realizeShadowColors(actions, root)
+    realizeShadowColors(actions, root, null)
 
     expect(root.adoptedStyleSheets).toHaveLength(1)
     const sheet = root.adoptedStyleSheets[0]
@@ -39,7 +44,8 @@ describe("realizeShadowColors — adopts a per-color sheet", () => {
     const root = shadowRoot()
     realizeShadowColors(
       [{ kind: "tag-surface", key: "rgb(1,2,3)", role: "surface" }],
-      root
+      root,
+      null
     )
     // jsdom (this test's own environment) never initializes
     // adoptedStyleSheets to [] the way a real ShadowRoot does — see
@@ -52,37 +58,49 @@ describe("realizeShadowColors — adopts a per-color sheet", () => {
 describe("realizeShadowColors — the shared static layer (bot-found, this story's own review)", () => {
   it("adopts the static text/border/form/etc. layer whenever activate-theme is present, even with no emit-surface-color actions", () => {
     const root = shadowRoot()
-    realizeShadowColors([{ kind: "activate-theme", swatchId: "default" }], root)
+    realizeShadowColors(
+      [{ kind: "activate-theme", swatchId: "default" }],
+      root,
+      defaultSwatch
+    )
 
-    expect(root.adoptedStyleSheets).toHaveLength(1)
-    const sheet = root.adoptedStyleSheets[0]
-    expect(sheet).toBeDefined()
-    if (sheet === undefined) return
+    // The shared static layer plus this swatch's own :host token rule (see
+    // buildHostTokenRule's own doc comment for why the tokens can't just be
+    // inherited from the document's :root).
+    expect(root.adoptedStyleSheets).toHaveLength(2)
+    const cssText = [...root.adoptedStyleSheets]
+      .flatMap((sheet) => [...sheet.cssRules])
+      .map((r) => r.cssText)
+      .join("\n")
     // Spot-check a couple of the rules theme-apply.ts's DARK_THEME_BODY_RULES
     // carries — the exact set is that module's own concern, not duplicated
     // here rule-by-rule.
-    const cssText = [...sheet.cssRules].map((r) => r.cssText).join("\n")
     expect(cssText).toContain("var(--sw-text-1)")
     expect(cssText).toContain('data-sw-patched="preserve"')
+    expect(cssText).toContain(`--sw-text-0: ${defaultSwatch.text0}`)
   })
 
-  it("two different ShadowRoots both realizing activate-theme adopt the identical static-layer sheet object", () => {
+  it("two different ShadowRoots both realizing activate-theme adopt the identical static-layer sheet object, even under different swatches", () => {
     const rootA = shadowRoot()
     const rootB = shadowRoot()
     realizeShadowColors(
       [{ kind: "activate-theme", swatchId: "default" }],
-      rootA
+      rootA,
+      defaultSwatch
     )
     realizeShadowColors(
       [{ kind: "activate-theme", swatchId: "cool-blue-gray" }],
-      rootB
+      rootB,
+      otherSwatch
     )
 
     // Swatch-independent — see DARK_THEME_BODY_RULES's own doc comment.
     expect(rootA.adoptedStyleSheets[0]).toBe(rootB.adoptedStyleSheets[0])
+    // The host-token sheet, by contrast, IS swatch-specific.
+    expect(rootA.adoptedStyleSheets[1]).not.toBe(rootB.adoptedStyleSheets[1])
   })
 
-  it("realizes both the static layer and a per-color sheet together for a genuine commit", () => {
+  it("realizes the static layer, host tokens, and a per-color sheet together for a genuine commit", () => {
     const root = shadowRoot()
     const key: SurfaceKey = "rgb(255, 255, 255)"
     realizeShadowColors(
@@ -91,10 +109,11 @@ describe("realizeShadowColors — the shared static layer (bot-found, this story
         { kind: "tag-surface", key, role: "surface" },
         { kind: "emit-surface-color", key, css: "rgb(10, 10, 20)" },
       ],
-      root
+      root,
+      defaultSwatch
     )
 
-    expect(root.adoptedStyleSheets).toHaveLength(2)
+    expect(root.adoptedStyleSheets).toHaveLength(3)
   })
 })
 
@@ -107,8 +126,8 @@ describe("realizeShadowColors — sheet reuse across scopes (#1268 acceptance cr
       { kind: "emit-surface-color", key, css: "rgb(10, 10, 20)" },
     ]
 
-    realizeShadowColors(actions, rootA)
-    realizeShadowColors(actions, rootB)
+    realizeShadowColors(actions, rootA, null)
+    realizeShadowColors(actions, rootB, null)
 
     const sheetA = rootA.adoptedStyleSheets[0]
     const sheetB = rootB.adoptedStyleSheets[0]
@@ -132,7 +151,8 @@ describe("realizeShadowColors — sheet reuse across scopes (#1268 acceptance cr
           css: "rgb(10, 10, 20)",
         },
       ],
-      rootA
+      rootA,
+      null
     )
     realizeShadowColors(
       [
@@ -142,7 +162,8 @@ describe("realizeShadowColors — sheet reuse across scopes (#1268 acceptance cr
           css: "rgb(20, 10, 10)",
         },
       ],
-      rootB
+      rootB,
+      null
     )
 
     expect(rootA.adoptedStyleSheets[0]).not.toBe(rootB.adoptedStyleSheets[0])
@@ -160,10 +181,10 @@ describe("realizeShadowColors — idempotence", () => {
       },
     ]
 
-    realizeShadowColors(actions, root)
+    realizeShadowColors(actions, root, null)
     const firstArray = root.adoptedStyleSheets
 
-    realizeShadowColors(actions, root)
+    realizeShadowColors(actions, root, null)
 
     expect(root.adoptedStyleSheets).toBe(firstArray)
   })
@@ -182,12 +203,13 @@ describe("realizeShadowColors — idempotence", () => {
           css: "rgb(10, 10, 20)",
         },
       ],
-      root
+      root,
+      null
     )
     expect(root.adoptedStyleSheets).toHaveLength(2)
 
     // Next round drops the color entirely.
-    realizeShadowColors([], root)
+    realizeShadowColors([], root, null)
 
     expect(root.adoptedStyleSheets).toHaveLength(1)
     expect(root.adoptedStyleSheets[0]).toBe(foreignSheet)
@@ -223,7 +245,8 @@ describe("clearShadowSurfaceState", () => {
     )
     realizeShadowColors(
       [{ kind: "emit-surface-color", key, css: "rgb(10, 10, 20)" }],
-      root
+      root,
+      null
     )
     expect(div.dataset.swPatched).toBe(key)
     expect(root.adoptedStyleSheets).toHaveLength(1)
@@ -243,7 +266,8 @@ describe("clearShadowSurfaceState", () => {
     const key: SurfaceKey = "rgb(255, 255, 255)"
     realizeShadowColors(
       [{ kind: "emit-surface-color", key, css: "rgb(10, 10, 20)" }],
-      root
+      root,
+      null
     )
     const foreignSheet = new CSSStyleSheet()
     foreignSheet.insertRule("div { color: green; }", 0)
@@ -252,5 +276,50 @@ describe("clearShadowSurfaceState", () => {
     clearShadowSurfaceState(root)
 
     expect(root.adoptedStyleSheets).toEqual([foreignSheet])
+  })
+})
+
+describe("realizeShadowColors — bounded sheet cache (bot-found, review round 2)", () => {
+  it("evicts the least-recently-used sheet once MAX_CACHED_SHEETS is exceeded", () => {
+    const firstKey: SurfaceKey = "rgb(0, 0, 1)"
+    const firstRoot = shadowRoot()
+    realizeShadowColors(
+      [{ kind: "emit-surface-color", key: firstKey, css: "rgb(1, 1, 1)" }],
+      firstRoot,
+      null
+    )
+    const firstSheet = firstRoot.adoptedStyleSheets[0]
+    expect(firstSheet).toBeDefined()
+
+    // MAX_CACHED_SHEETS more distinct colors, each on its own scope so this
+    // only exercises the module-level cache's own eviction, not any single
+    // root's adoption bookkeeping. Comfortably enough insertions to push
+    // the very first entry (and whatever a handful of earlier tests in this
+    // same file already cached) out the front, regardless of execution
+    // order within the file.
+    for (let i = 0; i < MAX_CACHED_SHEETS; i += 1) {
+      const root = shadowRoot()
+      realizeShadowColors(
+        [
+          {
+            kind: "emit-surface-color",
+            key: `rgb(0, 0, ${i + 2})`,
+            css: `rgb(${i + 2}, ${i + 2}, ${i + 2})`,
+          },
+        ],
+        root,
+        null
+      )
+    }
+
+    // A later realize() for the exact same first color no longer reuses the
+    // original sheet object — it was evicted, so a fresh one was built.
+    const laterRoot = shadowRoot()
+    realizeShadowColors(
+      [{ kind: "emit-surface-color", key: firstKey, css: "rgb(1, 1, 1)" }],
+      laterRoot,
+      null
+    )
+    expect(laterRoot.adoptedStyleSheets[0]).not.toBe(firstSheet)
   })
 })
