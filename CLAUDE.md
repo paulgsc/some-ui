@@ -43,3 +43,25 @@ Diff the output against the checked-in copies before replacing them — the diff
 be exactly the routes that changed, nothing else. Never hand-edit
 `routes.server.json` or `routes.ts` to add a route; both are generated, and a
 hand-written entry can silently drift from what the server actually serves.
+
+## Multi-session relay work
+
+Some stories in this repo span many sessions, each picking up from a **self-contained
+handoff document** written by the previous one — a new session has no memory of prior
+conversation and must be able to work from the handoff alone. If you're continuing one:
+re-read the live issue/PR the handoff describes before trusting its summary — it may
+have been edited, or the state may have moved on, since the handoff was written.
+
+If you're leaving unfinished multi-session work at the end of a session: write the next
+handoff from `.claude/skills/steward/handoff-template.md`, and deliver it to the user
+directly (e.g. via `SendUserFile`) rather than committing it to the repository.
+
+See `.claude/skills/steward/SKILL.md` for how to drive a PR (auto-merge mechanics,
+bot-review handling, the re-review-request idiom) and `.claude/skills/babysit/SKILL.md`
+for the separate polling-cadence policy — both are consulted automatically when acting
+on CI or review events, not just on request.
+
+When a test or doc asserts a value computed by generated or derived output (a formatted
+string, a serialized summary, anything with non-obvious ordering or filtering rules),
+verify the prediction against the actual running code before writing it into the
+assertion — don't hand-derive the expected value and trust it uninspected.
