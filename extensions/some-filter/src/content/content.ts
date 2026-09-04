@@ -6,6 +6,10 @@ import {
   createContentSession,
   type ContentSession,
 } from "@filter/adapter/pipeline"
+import {
+  createShadowScopeDiscovery,
+  type ShadowScopeDiscovery,
+} from "@filter/adapter/shadow-scope-discovery"
 import { DEFAULT_SWATCH_ID, SWATCHES } from "@filter/adapter/swatches"
 import {
   createCoverageRecorder,
@@ -97,6 +101,22 @@ let contentSession: ContentSession | null = null
 // header for why legacy/off's own veil calls stay untouched regardless.
 const documentScope: DocumentScopeCustodian = createDocumentScopeCustodian()
 
+// Shadow-aware discovery + local custody (SF-DC, #1267): registers every
+// open shadow root reachable from the document into the same registry
+// `documentScope` uses, holding each under its own occlusion primitive
+// (custody-primitive.ts's createOcclusionHold — a shadow scope has no
+// pre-existing veil like the document's to reuse). Auto-mode-only, same
+// scoping as documentScope itself: legacy's document-level filter already
+// composites correctly across a shadow boundary (Gate 0's G0.7), and off
+// mode has no custody to speak of. Started/torn down alongside
+// contentSession in runAutoTheme()/applyState() below, not created fresh
+// each time — the registry it shares with documentScope is long-lived for
+// the life of this content script.
+const shadowScopeDiscovery: ShadowScopeDiscovery = createShadowScopeDiscovery(
+  documentScope.registry,
+  () => sessionLifecycle.epoch
+)
+
 // `crypto.randomUUID()` requires a secure context; a content script runs in
 // the page's own origin, so on plain http:// pages it is undefined and
 // throws here — before bootInit()'s try/catch ever runs. getRandomValues()
@@ -172,6 +192,11 @@ function applyState(state: TabState): void {
   // or a stale session keeps reacting to mutations under the new mode.
   contentSession?.teardown()
   contentSession = null
+  // Same for shadow-scope discovery: retires every currently-held shadow
+  // scope (releasing its occlusion) and stops both its observers. Correct
+  // to do unconditionally, not just when leaving auto — legacy/off do not
+  // need shadow-scope custody at all (see this module's own header).
+  shadowScopeDiscovery.teardown()
 
   restoreVendor()
 
@@ -286,6 +311,18 @@ function runAutoTheme(): void {
   // closes that gap; it is a no-op DOM-wise on a cold entry into auto,
   // where nothing has released the hold yet.
   documentScope.reengage(sessionLifecycle.epoch)
+
+  // Discover (and hold) every open shadow root already reachable from the
+  // document before the first scan/decide/realize round runs — safe to do
+  // unconditionally here: the document's own veil (documentScope.reengage()
+  // above) is still up for the whole synchronous remainder of this call, so
+  // there is no discovery-latency gap for the very first pass regardless of
+  // ordering (Corollary D.1.1 covers it for free). observe() then starts
+  // the reactive, non-debounced path (this module's own header — Corollary
+  // D.3.1/G0.5 — explains why it cannot be folded into the pipeline's own
+  // debounced coalescer).
+  shadowScopeDiscovery.discover(document)
+  shadowScopeDiscovery.observe()
 
   // Apply-then-detect, now folded into decide() (S3): the pipeline scans
   // true vendor colors under the veil, feeds them to the Estimator, and
@@ -450,6 +487,13 @@ function init(): void {
 
     if (currentState === "auto") {
       sessionLifecycle.resetContent()
+      // Defense in depth alongside the reactive top-level observer already
+      // running (shadowScopeDiscovery.observe(), started in runAutoTheme()
+      // and never torn down across an SPA nav): a route swap that replaces
+      // large parts of the document in one synchronous burst is exactly the
+      // kind of change this discover() call catches deterministically,
+      // rather than relying on the observer's own mutation batching alone.
+      shadowScopeDiscovery.discover(document)
       contentSession?.rescan()
       coverageWatchdog.check("nav-finish:auto")
       return

@@ -141,6 +141,48 @@ describe("scan", () => {
   })
 })
 
+describe("scan — shadow DOM boundary, unchanged by SF-DC (#1262 Gate 0, G0.1)", () => {
+  // G0.1 proved scan()'s TreeWalker never crosses a shadow boundary (a
+  // shadow root is spec-defined to be a distinct node tree from its host's),
+  // which is the structural fact SF-DC (#1267) closes at the *scope* level —
+  // shadow-scope-discovery.ts registers and holds a discovered root, so it
+  // can no longer paint natively uncovered. What SF-DC deliberately does not
+  // do is fold shadow-internal evidence into scan()'s own elementsByKey/
+  // attrsByKey: "Out of scope: Actually theming discovered scopes (SF-AD,
+  // next)" and "No theme-specific logic in this module — [discovery] does
+  // not decide colors" (#1267's own acceptance criteria). This assertion
+  // therefore still holds after SF-DC, unchanged from before it — the
+  // boundary scan() itself observes is the same one; only custody around it
+  // changed. A future SF-AD projecting the real adapter into a committed
+  // shadow scope is expected to be the story that finally flips this.
+  it("produces zero elementsByKey/attrsByKey entries for a surface inside an open shadow root, while an identical light-DOM sibling produces one", () => {
+    document.body.innerHTML =
+      '<div id="light-sibling" style="background-color: rgb(255, 255, 255)"></div>' +
+      '<div id="shadow-host"></div>'
+
+    const host = document.getElementById("shadow-host")
+    expect(host).not.toBeNull()
+    if (host === null) return
+    const root = host.attachShadow({ mode: "open" })
+    const shadowSurface = document.createElement("div")
+    shadowSurface.id = "shadow-surface"
+    shadowSurface.style.backgroundColor = "rgb(255, 255, 255)"
+    root.appendChild(shadowSurface)
+
+    const { elementsByKey, attrsByKey } = scan(document.body)
+
+    const key = "rgb(255, 255, 255)"
+    expect(elementsByKey.get(key)?.map((el) => el.id)).toEqual([
+      "light-sibling",
+    ])
+    for (const elements of elementsByKey.values()) {
+      expect(elements).not.toContain(shadowSurface)
+    }
+    expect(elementsByKey.get(key)?.length).toBe(1)
+    expect(attrsByKey.size).toBe(1)
+  })
+})
+
 describe("scanCanvas — root/canvas evidence for the false-dark-verdict veto", () => {
   it("reads html's own explicit background as canvas evidence, not assumed-bright", () => {
     document.documentElement.style.backgroundColor = "rgb(13, 17, 23)"

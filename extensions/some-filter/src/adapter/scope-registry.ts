@@ -433,6 +433,24 @@ export type ScopeRegistry<Rho = unknown, Pi = unknown> = {
   /** From any state; idempotent if already `RETIRED`. Releases the hold and any committed realization — Definition D.5's fourth `Safe_T` disjunct (`RETIRED` is vacuous) means neither needs to remain. */
   retire(id: ScopeId): void
 
+  /**
+   * Removes a `RETIRED` scope's record entirely, so nothing here — this
+   * registry's own `Map`, in particular its strong reference to the scope's
+   * `ScopeRef` — keeps a detached rendering scope (and everything under it)
+   * reachable once no caller needs to query its state again. `retire()`
+   * alone is a state *transition*, not a removal (§8.3's own "root registry
+   * lifecycle" checklist item and every existing `retire()` test rely on the
+   * record staying queryable as `RETIRED` immediately afterward); `purge()`
+   * is the separate, explicit opt-in for the memory-lifecycle half of
+   * Definition D.4 ("ends when r's host is detached") that a caller with
+   * many short-lived scopes — `shadow-scope-discovery.ts`'s SPA-churn case,
+   * SF-DC #1267 — needs and the document scope `r_0` never does. Idempotent
+   * (a no-op) when `id` is not registered at all; throws if `id` is
+   * registered but not yet `RETIRED`, since silently discarding a live
+   * scope's custody state would be a correctness bug, not a cleanup.
+   */
+  purge(id: ScopeId): void
+
   stateOf(id: ScopeId): RestingScopeState<Rho, Pi> | undefined
   isRegistered(id: ScopeId): boolean
   ids(): ReadonlyArray<ScopeId>
@@ -586,6 +604,17 @@ export function createScopeRegistry<
       r.committedRealization = null
       r.hold.release()
       transitionRecord(r, { kind: "retire" })
+    },
+
+    purge(id): void {
+      const r = records.get(id)
+      if (r === undefined) return
+      if (r.state.kind !== "RETIRED") {
+        throw new Error(
+          `[scope-registry] cannot purge a non-retired scope: ${id} (${r.state.kind})`
+        )
+      }
+      records.delete(id)
     },
 
     stateOf(id): RestingScopeState<Rho, Pi> | undefined {
