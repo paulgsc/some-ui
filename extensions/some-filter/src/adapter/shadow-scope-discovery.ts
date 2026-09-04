@@ -38,46 +38,56 @@
  * A newly-discovered shadow root is registered `HELD` via
  * `custody-primitive.ts`'s `createOcclusionHold` (not `document-scope.ts`'s
  * `createPrepaintCustody` — a shadow scope has no pre-existing veil to
- * reuse) and **stays there**. Nothing in this module ever calls
- * `startResolving`/`resolveCommitted`/`resolveExonerated` — per #1267's own
- * "out of scope" note, projecting the real dark adapter into a discovered
- * scope is SF-AD's (#1268) job, not this one's, and Remark D.3 already
- * describes exactly this shape: instantiated against a scope with no
- * adapter targeting it, a conforming registry leaves that scope permanently
- * in `{HELD, RESOLVING, FAILED_HELD}` — `Phi_scope` still holds throughout
- * (the conservative-presentation disjunct alone discharges it), and Theorem
- * D.3 does not require the interval to be short.
+ * reuse). As of SF-DC (#1267) itself, nothing in *this module* ever called
+ * `startResolving`/`resolveCommitted`/`resolveExonerated` — per that story's
+ * own "out of scope" note, projecting the real dark adapter into a
+ * discovered scope was explicitly routed to SF-AD (#1268), not this one.
+ * SF-AD has since landed: `onScopeReady`, this factory's optional third
+ * parameter, is the seam that closes that gap — called once a scope is
+ * newly registered and again after every genuine vendor mutation inside it
+ * (see the per-root observer below), so a caller wiring it to
+ * `shadow-scope-theming.ts`'s own `project()` (as `content.ts` does) drives
+ * every discovered scope the rest of the way to `COMMITTED`/
+ * `EXONERATED_NATIVE`. This module still never calls those transitions
+ * *itself* — it only ever offers the hook — so a caller with no adapter to
+ * project (every one of this module's own unit tests included) gets exactly
+ * SF-DC's original behavior: Remark D.3's shape, a scope left permanently in
+ * `{HELD, RESOLVING, FAILED_HELD}`, `Phi_scope` still holding throughout via
+ * the conservative-presentation disjunct alone, with no short-interval
+ * requirement from Theorem D.3.
  *
- * The visible consequence, stated plainly because #1267's own posture note
- * requires it ("state in the PR body exactly what changed and why main
- * stays correct through it"): `createOcclusionHold`'s veil is
- * `position: fixed; inset: 0` — boundary-crossing by construction (its
- * containing block is the viewport regardless of which node, document root
- * or nested shadow root, it is mounted under) — so **any auto-mode page
- * carrying at least one open shadow root now shows a full-viewport
- * occlusion for as long as that scope stays registered, until SF-AD adds a
- * resolution path for it.** This is not a bug this story introduces and
- * fails to close; it is the canon's own "on uncertainty, hold the whole
- * affected scope — false-positive custody... [is an] admissible cost"
- * applied literally, and the alternative — leaving a discovered scope
- * unheld until some future story gets around to theming it — is exactly
- * the native-bright leak G0.2/G0.5 exist to rule out. `main` stays correct
- * (zero-leak, `Phi_scope` holds) throughout; it does not stay *unchanged*.
+ * The visible consequence *without* `onScopeReady` wired to a real adapter,
+ * stated plainly because #1267's own posture note requires it ("state in
+ * the PR body exactly what changed and why main stays correct through
+ * it"): `createOcclusionHold`'s veil is `position: fixed; inset: 0` —
+ * boundary-crossing by construction (its containing block is the viewport
+ * regardless of which node, document root or nested shadow root, it is
+ * mounted under) — so any auto-mode page carrying at least one open shadow
+ * root would show a full-viewport occlusion for as long as that scope stays
+ * registered. `content.ts` always wires the real projection now (SF-AD), so
+ * this is no longer this codebase's own live behavior — it remains the
+ * correct fallback for any future caller that discovers scopes with nothing
+ * yet able to theme them, the same "on uncertainty, hold the whole affected
+ * scope" conservatism the whole epic is built on.
  *
  * ## Per-root reactive re-arming
  *
  * A `MutationObserver` is attached to each newly-registered root at
  * registration time (not document-wide `subtree: true` — G0.2's trace 3,
  * and the DOM spec, both establish that never crosses a shadow boundary).
- * Its job today is mostly future-proofing: since a scope discovered by this
- * module never leaves `HELD`, there is nothing for a same-root mutation to
- * re-arm *yet*. It still does the two jobs #1267's acceptance criteria asks
- * for, both load-bearing the day SF-AD starts resolving these scopes: (1)
- * `invalidate()` a `COMMITTED`/`EXONERATED_NATIVE` scope back toward a held
- * state on any non-self-authored mutation inside it — Definition D.5's
- * legal transition, reused verbatim; (2) recurse for a newly-appearing
- * *nested* shadow host, since Definition D.4 is recursive and a mutation
- * inside a registered root is exactly how a deeper root becomes reachable.
+ * At SF-DC (#1267), this observer's job was mostly future-proofing — a
+ * scope discovered by this module alone never left `HELD`, so there was
+ * nothing yet for a same-root mutation to re-arm. SF-AD (#1268) is what
+ * makes that load-bearing: with `onScopeReady` wired to a real projection,
+ * a scope now does reach `COMMITTED`/`EXONERATED_NATIVE`, and this same
+ * observer's three jobs are what keep it correct there — (1) `invalidate()`
+ * a `COMMITTED`/`EXONERATED_NATIVE` scope back toward a held state on any
+ * non-self-authored mutation inside it — Definition D.5's legal transition,
+ * reused verbatim; (2) recurse for a newly-appearing *nested* shadow host,
+ * since Definition D.4 is recursive and a mutation inside a registered root
+ * is exactly how a deeper root becomes reachable; (3) call `onScopeReady`
+ * itself, so that same genuine mutation also drives re-projection, not just
+ * re-invalidation.
  * Axiom 3.5's discipline (`pipeline.ts`'s `isSelfAuthored`, reused as-is by
  * the document-wide observer in `observe()` below) is the wrong shape for
  * *this* per-root observer specifically, and this story went through two
@@ -127,12 +137,28 @@
  * Definition D.5's `re-register` transition on a content-epoch rollover
  * (`document-scope.ts`'s `reengage()` does this for `r_0` alone). That
  * transition exists to invalidate a stale `COMMITTED`/`EXONERATED_NATIVE`
- * value across a same-document navigation — since no shadow scope this
- * module registers ever reaches either state, there is no stale value for
- * a rollover to invalidate, and `Safe_T`'s first disjunct (conservative
- * presentation) does not name the epoch at all. Left as a documented gap
- * for whichever of SF-AD/SF-OB adds real resolution, rather than an
- * unmotivated transition with no observable effect today.
+ * value across a same-document navigation. At SF-DC (#1267) this was moot —
+ * no shadow scope this module registered ever reached either state, so
+ * there was no stale value for a rollover to invalidate. SF-AD (#1268)
+ * changes that (a scope can now genuinely be `COMMITTED`), but a still-live
+ * shadow scope surviving an SPA route swap (one whose host was not detached
+ * — `retireDetached()` above already handles the destroyed-and-recreated
+ * case, which is the common one) is still not force-re-registered here: its
+ * per-root observer already `invalidate()`s and re-`onScopeReady()`s it on
+ * the *next* genuine vendor mutation the new route's content produces inside
+ * it, which is the same reactive path a route swap that mutates that
+ * subtree at all will hit regardless. The gap this leaves is narrower than
+ * SF-DC's own version: a scope whose content the new route leaves
+ * byte-for-byte unchanged keeps a still-valid `COMMITTED` realization
+ * (correct — nothing to invalidate), while one the new route *does* touch is
+ * caught by the observer as described. What is not (yet) covered is a scope
+ * whose stale `COMMITTED` realization becomes wrong for reasons the DOM
+ * itself never signals (extremely narrow; not `Safe_T`-violating either
+ * way — `Phi_scope`'s conservative-presentation disjunct does not name the
+ * epoch). Left as a documented gap for SF-OB (#1270) or a dedicated
+ * follow-up, per this file's own disclosure discipline, rather than
+ * expanding this story's scope to add a `reengage()`-equivalent sweep with
+ * no concrete failing case motivating it yet.
  */
 
 import type { Epoch } from "@some-extension/transport/session/epoch"
@@ -187,6 +213,32 @@ function isHoldMutation(record: MutationRecord, hold: OcclusionHold): boolean {
     return touched.length > 0 && touched.every((node) => hold.isOwnNode(node))
   }
   return false
+}
+
+/**
+ * True for an attribute record that is purely this extension's own
+ * `data-sw-patched` tagging write — SF-AD's (#1268) `shadow-scope-theming.ts`
+ * is the one thing, besides the hold itself, that ever writes an attribute
+ * inside a registered shadow scope: its per-scope realization tags a
+ * classified element via `actuator.ts`'s (reused) `tagSurfaceElements`,
+ * exactly the kind of DOM write `isHoldMutation` does not cover (it targets
+ * an arbitrary vendor element, never the hold's own veil). Unlike
+ * `isHoldMutation`, this is a plain attribute-name check, not an
+ * identity one — safe here specifically because `data-sw-patched` is an
+ * attribute name this codebase alone ever writes (the same reasoning
+ * `pipeline.ts`'s own Sensor observer already relies on by *excluding*
+ * `data-sw-patched` from its `attributeFilter` entirely; this observer
+ * cannot do the same, since it also needs `attributes: true` broadly for
+ * the hold's own `style`/`aria-hidden` self-heal repairs). Left unfiltered,
+ * a fresh per-scope tag write would misread as vendor evidence and
+ * immediately `invalidate()` the very commit that write is itself a part
+ * of — the same self-feedback-loop class #831 and this story's own SF-DC
+ * predecessor (round 6, `HOLD_ATTR`/`isOwnNode`) both had to close.
+ */
+function isThemeTaggingMutation(record: MutationRecord): boolean {
+  return (
+    record.type === "attributes" && record.attributeName === "data-sw-patched"
+  )
 }
 
 /**
@@ -266,11 +318,27 @@ export type ShadowScopeDiscovery = {
 
 export function createShadowScopeDiscovery<Rho, Pi>(
   registry: ScopeRegistry<Rho, Pi>,
-  contentEpoch: () => Epoch
+  contentEpoch: () => Epoch,
+  /**
+   * SF-AD (#1268): called once a scope is ready for its own dark-adapter
+   * projection — immediately after it is first registered (before this
+   * function's own `register()` call returns from `registerShadowRoot()`),
+   * and again after every genuine vendor mutation this module's own
+   * per-root observer reacts to (whether or not that mutation actually
+   * called `invalidate()` — a still-`HELD`, never-yet-committed scope
+   * getting its first real content is exactly as reason to project as an
+   * invalidated `COMMITTED` one). `id`'s own state at call time governs
+   * what happens: `shadow-scope-theming.ts`'s own `project()` no-ops for
+   * anything other than `HELD`/`RESOLVING`/`FAILED_HELD`. Optional —
+   * omitted by every caller that only cares about discovery/custody and
+   * has no adapter to project (this module's own unit tests included).
+   */
+  onScopeReady?: (id: ScopeId) => void
 ): ShadowScopeDiscovery {
   const idFor = new WeakMap<ShadowRoot, ScopeId>()
   const rootFor = new Map<ScopeId, ShadowRoot>()
   const observerFor = new Map<ScopeId, MutationObserver>()
+  const hostObserverFor = new Map<ScopeId, MutationObserver>()
   let topObserver: MutationObserver | null = null
   let pollHandle: ReturnType<typeof setInterval> | null = null
   let nextId = 0
@@ -283,6 +351,8 @@ export function createShadowScopeDiscovery<Rho, Pi>(
     registry.purge(id)
     observerFor.get(id)?.disconnect()
     observerFor.delete(id)
+    hostObserverFor.get(id)?.disconnect()
+    hostObserverFor.delete(id)
     rootFor.delete(id)
     // idFor is a WeakMap, so it never needs to be swept for garbage —
     // deleting the entry explicitly is still required, though: a live
@@ -399,7 +469,8 @@ export function createShadowScopeDiscovery<Rho, Pi>(
       // story's round-6 review found breaking under marker-attribute
       // removal (see isHoldMutation's own doc comment).
       const sawVendorMutation = mutations.some(
-        (record) => !isHoldMutation(record, hold)
+        (record) =>
+          !isHoldMutation(record, hold) && !isThemeTaggingMutation(record)
       )
       if (sawVendorMutation) {
         const state = registry.stateOf(id)
@@ -419,6 +490,11 @@ export function createShadowScopeDiscovery<Rho, Pi>(
         // mutation, not just at registration, keeps winning that tie
         // (bot-found, #1267's own review).
         hold.reassert()
+        // SF-AD (#1268): real content changed inside this scope (its very
+        // first content, if still HELD; a re-classification-worthy change,
+        // if just invalidated above) — project the dark adapter into it
+        // again rather than waiting for some unrelated later trigger.
+        onScopeReady?.(id)
       }
       // Regardless of self-authorship: a mutation inside this root can
       // introduce a newly-attached *nested* shadow host (Definition D.4's
@@ -434,10 +510,58 @@ export function createShadowScopeDiscovery<Rho, Pi>(
     })
     observerFor.set(id, observer)
 
+    // SF-AD (#1268), bot-found: the per-root observer above watches *inside*
+    // `shadow` — it cannot see a change to the host's own `class`/`style`,
+    // which lives in the host's *parent* scope, not this one. A component
+    // toggling its own host class to drive a `:host(.dark)` rule inside its
+    // shadow stylesheet (a standard, documented Shadow DOM theming pattern)
+    // would otherwise leave this scope's own COMMITTED/EXONERATED_NATIVE
+    // verdict stale indefinitely, with nothing to re-trigger projection.
+    // Watching `shadow.host` directly (not the whole document, and not
+    // limited to top-level scopes the way a single document-wide observer
+    // would be — this runs per scope, at any nesting depth) closes the
+    // common case. `class`/`style` specifically, mirroring `pipeline.ts`'s
+    // own document-level Sensor: no code path in this codebase ever writes
+    // either attribute on an arbitrary host element (per-surface tagging is
+    // `data-sw-patched`, a distinct attribute this filter already excludes),
+    // so every record this callback sees is genuine vendor evidence, with no
+    // self-authorship check needed.
+    //
+    // Deliberately not, and disclosed rather than silently left unhandled:
+    // an *ancestor* (not the host itself) redefining a CSS custom property
+    // this shadow tree's own stylesheet consumes via `var()` — e.g. a
+    // theme-wide class toggled several levels up. Watching every registered
+    // scope's entire ancestor chain for this would be materially more
+    // machinery (and still incomplete — the same property can change via an
+    // adopted stylesheet with no attribute mutation at all) for a
+    // narrower-in-practice case than the direct host-class pattern this
+    // closes; routed to a dedicated follow-up rather than expanding this
+    // story's scope mid-review.
+    const hostObserver = new MutationObserver((mutations) => {
+      if (mutations.length === 0) return
+      const state = registry.stateOf(id)
+      if (state?.kind === "COMMITTED" || state?.kind === "EXONERATED_NATIVE") {
+        registry.invalidate(id)
+      }
+      onScopeReady?.(id)
+    })
+    hostObserver.observe(shadow.host, {
+      attributes: true,
+      attributeFilter: ["class", "style"],
+    })
+    hostObserverFor.set(id, hostObserver)
+
     // Recurse immediately, before this call returns — a nested root already
     // present at discovery time must not wait for a mutation that may never
     // come.
     walk(shadow, id)
+
+    // SF-AD (#1268): a newly-registered scope is HELD but never yet
+    // projected — its first classification round must not wait for a
+    // mutation the per-root observer above might never see (a shadow root
+    // populated once at creation and never touched again is exactly the
+    // issue's own reported repro shape).
+    onScopeReady?.(id)
   }
 
   // retireDetached() runs FIRST in all three call sites below, before either

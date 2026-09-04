@@ -183,6 +183,53 @@ describe("scan — shadow DOM boundary, unchanged by SF-DC (#1262 Gate 0, G0.1)"
   })
 })
 
+describe("scan — direct children of a ShadowRoot inherit from the host, not from nothing (bot-found, SF-AD's own review, round 4)", () => {
+  // SF-AD (#1268) is the first caller to scope scan() directly to a
+  // ShadowRoot (shadow-scope-theming.ts's own projectOnce()). A direct
+  // child of that root has no el.parentElement — its real parent is the
+  // ShadowRoot itself, a DocumentFragment, not an Element — which every
+  // element scan() ever walked before this story (always somewhere inside
+  // document.body, where an Element parent is guaranteed) never hit.
+  // ownTextColor()'s `parent ?? ...` fallback used to treat a null
+  // parentElement as "no ancestor to compare against" and discard the
+  // element's own color outright, even when it was genuinely explicit.
+  it("keeps a direct shadow-root child's own explicit text color, compared against the shadow host's computed color", () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    host.style.color = "rgb(0, 0, 0)"
+    const root = host.attachShadow({ mode: "open" })
+    const surface = document.createElement("div")
+    surface.setAttribute(
+      "style",
+      "background-color: rgb(255, 255, 255); color: rgb(17, 17, 17)"
+    )
+    root.appendChild(surface)
+
+    const { attrsByKey } = scan(root)
+
+    const key = "rgb(255, 255, 255)|text:rgb(17, 17, 17)"
+    const attr = attrsByKey.get(key)
+    expect(attr).toBeDefined()
+    expect(attr?.text).toEqual([17 / 255, 17 / 255, 17 / 255, 1])
+  })
+
+  it("reports no own text color for a direct shadow-root child whose color merely inherits the host's (the flat-tree's own inheritance path, not a difference to act on)", () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    host.style.color = "rgb(0, 0, 0)"
+    const root = host.attachShadow({ mode: "open" })
+    const surface = document.createElement("div")
+    surface.setAttribute("style", "background-color: rgb(255, 255, 255)")
+    root.appendChild(surface)
+
+    const { attrsByKey } = scan(root)
+
+    const attr = attrsByKey.get("rgb(255, 255, 255)")
+    expect(attr).toBeDefined()
+    expect(attr?.text).toBeNull()
+  })
+})
+
 describe("scanCanvas — root/canvas evidence for the false-dark-verdict veto", () => {
   it("reads html's own explicit background as canvas evidence, not assumed-bright", () => {
     document.documentElement.style.backgroundColor = "rgb(13, 17, 23)"

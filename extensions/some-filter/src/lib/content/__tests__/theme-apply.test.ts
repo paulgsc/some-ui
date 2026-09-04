@@ -1,6 +1,8 @@
+import { SWATCHES } from "@filter/adapter/swatches"
 import { parseColor, relativeLuminance } from "@filter/lib/content/color"
 import {
   applyTheme,
+  buildHostTokenRule,
   DARK_THEME_ATTR,
   injectDarkTheme,
   removeDarkTheme,
@@ -371,5 +373,31 @@ describe("restoreVendor", () => {
     restoreVendor()
 
     expect(document.body.innerHTML).toBe(before)
+  })
+})
+
+describe("buildHostTokenRule — forces the shadow host's own color, mirroring the document canvas rule (bot-found, SF-AD's own review, round 5)", () => {
+  // buildDarkThemeCSS()'s own `html, body { …; color: var(--sw-text-0) }`
+  // canvas rule is what makes an *inherited* (not per-element-explicit) dark
+  // foreground self-heal for the document: any light-DOM descendant that
+  // declares no color of its own inherits the newly-forced root value
+  // through ordinary cascade. A shadow scope's host is the structural
+  // equivalent of that root for everything inside its own tree — without
+  // this same `color` declaration on `:host`, a vendor's own host-level
+  // foreground (or the shadow content's default inherited black) kept
+  // flowing unaltered into every shadow descendant that relies on plain
+  // inheritance, producing dark-on-dark once that descendant's own
+  // background was independently darkened by an emit-surface-color action.
+  it("declares color on :host, not just the --sw-* custom properties", () => {
+    const rule = buildHostTokenRule(SWATCHES.default)
+
+    expect(rule).toContain(`color: var(--sw-text-0) !important`)
+  })
+
+  it("still declares every --sw-* token the static layer's rules reference", () => {
+    const rule = buildHostTokenRule(SWATCHES.default)
+
+    expect(rule).toContain(`--sw-text-0: ${SWATCHES.default.text0}`)
+    expect(rule).toContain(`--sw-bg-0: ${SWATCHES.default.bg0}`)
   })
 })

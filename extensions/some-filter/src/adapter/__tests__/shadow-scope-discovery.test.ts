@@ -603,3 +603,281 @@ describe("createShadowScopeDiscovery — isHoldMutation survives marker strippin
     discovery.teardown()
   })
 })
+
+describe("createShadowScopeDiscovery — onScopeReady (SF-AD, #1268)", () => {
+  it("fires once a newly-discovered scope is registered, before discover() returns", () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    host.attachShadow({ mode: "open" })
+
+    const reg = registry()
+    const ready: Array<string> = []
+    const discovery = createShadowScopeDiscovery(
+      reg,
+      () => 0,
+      (id) => ready.push(id)
+    )
+    discovery.discover(document)
+
+    expect(ready).toEqual(reg.ids())
+  })
+
+  it("fires again after a genuine vendor mutation, alongside invalidate()", async () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    const shadow = host.attachShadow({ mode: "open" })
+
+    const reg = registry()
+    const ready: Array<string> = []
+    const discovery = createShadowScopeDiscovery(
+      reg,
+      () => 0,
+      (id) => ready.push(id)
+    )
+    discovery.discover(document)
+    const id = reg.ids()[0]
+    expect(id).toBeDefined()
+    if (id === undefined) return
+    expect(ready).toEqual([id])
+
+    shadow.appendChild(document.createElement("div"))
+    await flushMicrotasks()
+
+    expect(ready).toEqual([id, id])
+
+    discovery.teardown()
+  })
+
+  it("is not called again for a mutation that is purely the hold's own churn", async () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    const shadow = host.attachShadow({ mode: "open" })
+
+    const reg = registry()
+    const ready: Array<string> = []
+    const discovery = createShadowScopeDiscovery(
+      reg,
+      () => 0,
+      (id) => ready.push(id)
+    )
+    discovery.discover(document)
+    const id = reg.ids()[0]
+    expect(id).toBeDefined()
+    if (id === undefined) return
+    expect(ready).toEqual([id])
+
+    reg.startResolving(id)
+    await reg.resolveCommitted(id, {
+      revision: "swatch",
+      install: () => {},
+      uninstall: () => {},
+    })
+    // resolveCommitted()'s own release() of the hold is a childList mutation
+    // on this same root — isHoldMutation must keep this from re-firing
+    // onScopeReady, the same way it keeps it from re-invalidating.
+    await flushMicrotasks()
+
+    expect(ready).toEqual([id])
+    expect(shadow.querySelector(HOLD_SELECTOR)).toBeNull()
+
+    discovery.teardown()
+  })
+})
+
+describe("createShadowScopeDiscovery — isThemeTaggingMutation (SF-AD, #1268)", () => {
+  it("does not invalidate a COMMITTED scope when the only mutation is its own data-sw-patched write", async () => {
+    // The exact regression SF-AD's own realization would otherwise cause:
+    // shadow-scope-theming.ts's tagSurfaceElements() sets data-sw-patched on
+    // a classified element *inside* the shadow root it just committed — an
+    // attributes record this observer (attributes: true, no
+    // attributeFilter) does see. Without isThemeTaggingMutation, that write
+    // would misread as vendor evidence and immediately invalidate the very
+    // commit it is part of.
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    const shadow = host.attachShadow({ mode: "open" })
+    const surface = document.createElement("div")
+    shadow.appendChild(surface)
+
+    const reg = registry()
+    const discovery = createShadowScopeDiscovery(reg, () => 0)
+    discovery.discover(document)
+    const id = reg.ids()[0]
+    expect(id).toBeDefined()
+    if (id === undefined) return
+
+    reg.startResolving(id)
+    await reg.resolveCommitted(id, {
+      revision: "swatch",
+      install: () => {},
+      uninstall: () => {},
+    })
+    await flushMicrotasks()
+    expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+
+    surface.dataset.swPatched = "rgb(255, 255, 255)"
+    await flushMicrotasks()
+
+    expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+
+    discovery.teardown()
+  })
+
+  it("still invalidates when a data-sw-patched write is mixed with a real vendor mutation in the same batch", async () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    const shadow = host.attachShadow({ mode: "open" })
+    const surface = document.createElement("div")
+    shadow.appendChild(surface)
+
+    const reg = registry()
+    const discovery = createShadowScopeDiscovery(reg, () => 0)
+    discovery.discover(document)
+    const id = reg.ids()[0]
+    expect(id).toBeDefined()
+    if (id === undefined) return
+
+    reg.startResolving(id)
+    await reg.resolveCommitted(id, {
+      revision: "swatch",
+      install: () => {},
+      uninstall: () => {},
+    })
+    await flushMicrotasks()
+    expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+
+    // Both mutations land in the same synchronous task, so the observer
+    // sees them as one batch.
+    surface.dataset.swPatched = "rgb(255, 255, 255)"
+    shadow.appendChild(document.createElement("div"))
+    await flushMicrotasks()
+
+    expect(reg.stateOf(id)?.kind).toBe("RESOLVING")
+
+    discovery.teardown()
+  })
+})
+
+describe("createShadowScopeDiscovery — host class/style reprojection (bot-found, SF-AD's own review)", () => {
+  it("invalidates a COMMITTED scope and calls onScopeReady when its own host's class changes, with no mutation inside the shadow root itself", async () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    host.attachShadow({ mode: "open" })
+
+    const reg = registry()
+    const ready: Array<string> = []
+    const discovery = createShadowScopeDiscovery(
+      reg,
+      () => 0,
+      (id) => ready.push(id)
+    )
+    discovery.discover(document)
+    const id = reg.ids()[0]
+    expect(id).toBeDefined()
+    if (id === undefined) return
+
+    reg.startResolving(id)
+    await reg.resolveCommitted(id, {
+      revision: "swatch",
+      install: () => {},
+      uninstall: () => {},
+    })
+    await flushMicrotasks()
+    expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+    ready.length = 0
+
+    // Nothing inside `shadow` itself changes — only the host's own class,
+    // in its parent (light-DOM) scope. The per-root observer inside
+    // registerShadowRoot has nothing to react to; only a dedicated observer
+    // on the host itself can see this.
+    host.className = "dark-variant"
+    await flushMicrotasks()
+
+    expect(reg.stateOf(id)?.kind).toBe("RESOLVING")
+    expect(ready).toEqual([id])
+
+    discovery.teardown()
+  })
+
+  it("reprojects a still-HELD (never-committed) scope on its host's own style change too", async () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    host.attachShadow({ mode: "open" })
+
+    const reg = registry()
+    const ready: Array<string> = []
+    const discovery = createShadowScopeDiscovery(
+      reg,
+      () => 0,
+      (id) => ready.push(id)
+    )
+    discovery.discover(document)
+    const id = reg.ids()[0]
+    expect(id).toBeDefined()
+    if (id === undefined) return
+    ready.length = 0
+
+    host.setAttribute("style", "--accent: red")
+    await flushMicrotasks()
+
+    expect(reg.stateOf(id)?.kind).toBe("HELD")
+    expect(ready).toEqual([id])
+
+    discovery.teardown()
+  })
+
+  it("does not react to a class/style change on an unrelated sibling element", async () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    host.attachShadow({ mode: "open" })
+    const sibling = document.createElement("div")
+    document.body.appendChild(sibling)
+
+    const reg = registry()
+    const ready: Array<string> = []
+    const discovery = createShadowScopeDiscovery(
+      reg,
+      () => 0,
+      (id) => ready.push(id)
+    )
+    discovery.discover(document)
+    ready.length = 0
+
+    sibling.className = "unrelated"
+    await flushMicrotasks()
+
+    expect(ready).toEqual([])
+
+    discovery.teardown()
+  })
+
+  it("stops reacting to host attribute changes once retired", async () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    host.attachShadow({ mode: "open" })
+
+    const reg = registry()
+    const ready: Array<string> = []
+    const discovery = createShadowScopeDiscovery(
+      reg,
+      () => 0,
+      (id) => ready.push(id)
+    )
+    discovery.discover(document)
+    const id = reg.ids()[0]
+    expect(id).toBeDefined()
+    if (id === undefined) return
+
+    host.remove()
+    discovery.discover(document)
+    expect(reg.isRegistered(id)).toBe(false)
+    ready.length = 0
+
+    host.className = "still-mutating-after-retirement"
+    await flushMicrotasks()
+
+    expect(ready).toEqual([])
+
+    discovery.teardown()
+  })
+})
