@@ -13,15 +13,15 @@ directory). Nothing here weakens a "never" rule the parent Claude Code instructi
 widen a PR beyond what a finding needs) — it only nails down mechanics sessions on this relay
 have gotten wrong before, so the next one doesn't have to relearn them.
 
-## Re-request review after every substantive push
+## Re-request review after every push
 
 `chatgpt-codex-connector` (this repo's bot reviewer) only reviews a PR on open,
-ready-for-review, or an explicit mention by default — **not on every subsequent push**. A
-session that pushes a fix and moves straight to waiting for the next webhook event gets a
-silent, unreviewed push for the rest of that PR's life, which quietly defeats the "treat every
-bot finding as a bug report" discipline below. After every push that isn't a pure rebase or
-no-op, leave a PR comment explicitly requesting review (`@codex review`) before waiting on
-anything else.
+ready-for-review, or an explicit mention by default — **not on every subsequent push,
+including a rebase**. A rebase changes the head SHA even when the diff content doesn't, and
+`babysit/SKILL.md`'s review-coverage check matches that exact SHA — skip the request on a
+rebase and the PR can never satisfy that check again, however many check-ins pass. After
+every push that changes the head SHA, leave a PR comment explicitly requesting review
+(`@codex review`) before waiting on anything else.
 
 ## Treat every bot finding as a bug report until traced and disproven
 
