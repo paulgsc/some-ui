@@ -85,6 +85,17 @@ closing review's finding, if any, this way instead:
 Either branch terminates. There is no version of this rule where a capped PR waits on one more
 automatic review indefinitely.
 
+**When that closing review (or, short of the cap, any review round) surfaces a substantive
+finding that reveals a real gap wider than this PR's own scope** — not a bug to fix in this
+diff, but a missing structure or invariant a future story needs to build — the default move is
+to **file it as a tracked sub-issue of the story** (`sub_issue_write`, parented to the issue this
+PR closes) rather than only disclosing it on the PR thread per the rule above. A PR thread is
+read once and then scrolls away; a tracked sub-issue survives to whichever future story actually
+needs it. Also record it in that session's own handoff, under "Continuing the relay" — a sub-issue
+filed but never mentioned in the handoff is easy for the next session to miss entirely. This
+applies whether or not the round-cap was actually reached: a substantive, PR-scope-exceeding
+finding earns a tracked sub-issue on its own merits, at whatever round it surfaces.
+
 ## Verify "CI is green" against live state, not the webhook event that announced it
 
 A `check_suite.completed` webhook event can name a **stale** `head_sha` — this has happened
