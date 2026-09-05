@@ -636,12 +636,21 @@ export type RoundCorpusEntry = {
 }
 
 /**
- * N (Ax. 1.1): the corpus-wide bound on presentable alternatives — the same
- * "the option counts this design admits" ceiling Theorem 10.1 cites (`k <=
- * 5`). Named as its own constant rather than importing `types/exercise.ts`'s
+ * The corpus-wide bound on presentable alternatives — the same "the option
+ * counts this design admits" ceiling Theorem 10.1 cites, `k <= 5`
+ * (inclusive: five is a valid, maximal round, not one past the limit).
+ * Named as its own constant rather than importing `types/exercise.ts`'s
  * `RATIONALE_CHOICES_MAX`: that constant bounds LTY-WHY's rationale
  * accordion, a different family (the old step corpus) that happens to share
  * a UI-legibility number with this one, not the same obligation.
+ *
+ * Ax. 1.1's own inequality, `|D| < N`, is a *strict* upper bound on a
+ * variable `N` it does not otherwise pin a value to — this constant is
+ * Thm. 10.1's own inclusive `k <= 5` ceiling, not that `N` directly, so
+ * `checkCardinality` below compares against it with `<=`, not `<` (review
+ * finding on #1283, chatgpt-codex-connector: comparing this value with `<`
+ * silently capped every round at four alternatives, one short of what the
+ * design's own k <= 5 permits).
  */
 export const MAX_PRESENTABLE_DIFFS = 5
 
@@ -651,10 +660,13 @@ function locateRound(round: RoundCorpusEntry): string {
 
 /**
  * Ax. 1.1 / Rem. 1.1's own three-part inequality, `0 < |C| <= |D| < N`, over
- * one round. Not expressible as a refinement on either `ConstraintSetSchema`
- * or `DiffSetSchema` alone (R2/#1205, R4/#1207) because it compares the two
- * against each other — this is the one check in this story that is
- * genuinely new arithmetic, not a re-validation of an existing schema.
+ * one round — `N` instantiated to `MAX_PRESENTABLE_DIFFS`'s own inclusive
+ * `k <= 5` ceiling (Thm. 10.1; see that constant's own doc comment for why
+ * the comparison below is `<=`, not `<`). Not expressible as a refinement
+ * on either `ConstraintSetSchema` or `DiffSetSchema` alone (R2/#1205,
+ * R4/#1207) because it compares the two against each other — this is the
+ * one check in this story that is genuinely new arithmetic, not a
+ * re-validation of an existing schema.
  */
 function checkCardinality(round: RoundCorpusEntry): Array<string> {
   const violations: Array<string> = []
@@ -672,9 +684,9 @@ function checkCardinality(round: RoundCorpusEntry): Array<string> {
       `${where}: |C| = ${constraintCount} > |D| = ${diffCount} — Ax. 1.1/Rem. 1.1 requires |C| <= |D|; a constraint no candidate diff responds to means the round is either decorative or under-authored.`
     )
   }
-  if (!(diffCount < MAX_PRESENTABLE_DIFFS)) {
+  if (!(diffCount <= MAX_PRESENTABLE_DIFFS)) {
     violations.push(
-      `${where}: |D| = ${diffCount} >= N = ${MAX_PRESENTABLE_DIFFS} — Ax. 1.1 bounds the diff set to what can be read in full; an unbounded D turns selection into a search, the blocking regime Axiom P.1 forbids.`
+      `${where}: |D| = ${diffCount} > N = ${MAX_PRESENTABLE_DIFFS} — Ax. 1.1 bounds the diff set to what can be read in full; an unbounded D turns selection into a search, the blocking regime Axiom P.1 forbids.`
     )
   }
   return violations

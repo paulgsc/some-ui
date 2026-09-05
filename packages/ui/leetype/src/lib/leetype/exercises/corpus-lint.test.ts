@@ -484,7 +484,34 @@ describe("lintRoundCorpus — R5 (#1208), the round-shaped corpus lint", () => {
       expect(violations.some((v) => v.includes("|C| = 3 > |D| = 2"))).toBe(true)
     })
 
-    it("fails when |D| >= N", () => {
+    it("fails when |D| > N", () => {
+      const ids: ReadonlyArray<PropositionId> = [
+        "CW-P1",
+        "CW-P2",
+        "CW-P3",
+        "CW-P4",
+        "CW-P5",
+        "CW-P6",
+      ]
+      const diffSet: DiffSet = ids.map((propositionId, index) => ({
+        hunk: {
+          path: `src/fixture/${index}.rs`,
+          oldStart: 1,
+          newStart: 1,
+          segments: [{ kind: "addition", text: `let v${index} = ${index};` }],
+        },
+        propositionId,
+        admissible: index === 0,
+        ...(index === 0 ? {} : { distractorStatement: `distractor ${index}` }),
+      }))
+      expect(diffSet.length).toBe(MAX_PRESENTABLE_DIFFS + 1)
+      const violations = lintRoundCorpus([round({ diffSet })])
+      expect(
+        violations.some((v) => v.includes(`> N = ${MAX_PRESENTABLE_DIFFS}`))
+      ).toBe(true)
+    })
+
+    it("passes the boundary |D| = N — five is a valid, maximal round (Thm. 10.1's k <= 5, review finding on #1283)", () => {
       const ids: ReadonlyArray<PropositionId> = [
         "CW-P1",
         "CW-P2",
@@ -504,30 +531,6 @@ describe("lintRoundCorpus — R5 (#1208), the round-shaped corpus lint", () => {
         ...(index === 0 ? {} : { distractorStatement: `distractor ${index}` }),
       }))
       expect(diffSet.length).toBe(MAX_PRESENTABLE_DIFFS)
-      const violations = lintRoundCorpus([round({ diffSet })])
-      expect(
-        violations.some((v) => v.includes(`>= N = ${MAX_PRESENTABLE_DIFFS}`))
-      ).toBe(true)
-    })
-
-    it("passes the boundary |D| = N - 1", () => {
-      const ids: ReadonlyArray<PropositionId> = [
-        "CW-P1",
-        "CW-P2",
-        "CW-P3",
-        "CW-P4",
-      ]
-      const diffSet: DiffSet = ids.map((propositionId, index) => ({
-        hunk: {
-          path: `src/fixture/${index}.rs`,
-          oldStart: 1,
-          newStart: 1,
-          segments: [{ kind: "addition", text: `let v${index} = ${index};` }],
-        },
-        propositionId,
-        admissible: index === 0,
-        ...(index === 0 ? {} : { distractorStatement: `distractor ${index}` }),
-      }))
       expect(
         withoutCoverageNoise(lintRoundCorpus([round({ diffSet })]))
       ).toEqual([])
