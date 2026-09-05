@@ -1,15 +1,22 @@
+import type { PropositionId } from "@leetype/lib/leetype/proposition-register/generated"
+import { ALL_FIXTURE_ROUNDS } from "@leetype/lib/leetype/round-corpus"
+import type { ConstraintSet } from "@leetype/types/constraint"
 import type {
   Block,
   ConstructionStep,
   DiagnosticStep,
 } from "@leetype/types/exercise"
 import { typingBlockFromDiff } from "@leetype/types/exercise"
+import type { DiffSet } from "@leetype/types/round"
 import { describe, expect, it } from "vitest"
 
+import type { RoundCorpusEntry } from "./corpus-lint"
 import {
   checkNoAssertedComplexityClassLiteral,
   checkNoMeasurementEntailmentClaim,
   lintCorpus,
+  lintRoundCorpus,
+  MAX_PRESENTABLE_DIFFS,
 } from "./corpus-lint"
 import { ALL_FIXTURE_EXERCISES } from "./index"
 
@@ -399,5 +406,373 @@ describe("checkNoAssertedComplexityClassLiteral — no round anywhere holds a Θ
     expect(
       lintCorpus(ALL_FIXTURE_EXERCISES).filter((v) => v.includes("Prop. 2.1"))
     ).toEqual([])
+  })
+})
+
+describe("lintRoundCorpus — R5 (#1208), the round-shaped corpus lint", () => {
+  function round(overrides: Partial<RoundCorpusEntry> = {}): RoundCorpusEntry {
+    const constraints: ConstraintSet = [
+      { dimension: "n", operator: "<=", bound: 1_000 },
+    ]
+    const diffSet: DiffSet = [
+      {
+        hunk: {
+          path: "src/fixture/a.rs",
+          oldStart: 1,
+          newStart: 1,
+          segments: [{ kind: "addition", text: "let repaired = true;" }],
+        },
+        propositionId: "CW-P1",
+        admissible: true,
+      },
+      {
+        hunk: {
+          path: "src/fixture/b.rs",
+          oldStart: 1,
+          newStart: 1,
+          segments: [{ kind: "addition", text: "let other = 1;" }],
+        },
+        propositionId: "CW-P2",
+        admissible: false,
+        distractorStatement: "swaps in a different repair entirely.",
+      },
+    ]
+    return { id: "fixture-round", constraints, diffSet, ...overrides }
+  }
+
+  /**
+   * The corpus-wide coverage checks (rows 3 and 4) are evaluated against
+   * the *whole* real register (Rem. 7.1 / Rem. 10.2 both name "every
+   * instantiable register entry", not "every entry the corpus under test
+   * happens to cite") — by design, an isolated one- or two-round fixture
+   * built to exercise a single per-round check will always be missing most
+   * of the other fifteen propositions' coverage. Tests for a *per-round*
+   * check's own "passes" case filter that expected noise out rather than
+   * asserting the whole call returns no violations at all.
+   */
+  function withoutCoverageNoise(
+    violations: ReadonlyArray<string>
+  ): Array<string> {
+    return violations.filter(
+      (v) =>
+        !v.includes("no corpus instance") &&
+        !v.includes("no round where it is presented purely as a distractor")
+    )
+  }
+
+  it("finds no violations in the real fixture round corpus", () => {
+    expect(lintRoundCorpus(ALL_FIXTURE_ROUNDS)).toEqual([])
+  })
+
+  it("passes a single well-formed round in isolation", () => {
+    expect(withoutCoverageNoise(lintRoundCorpus([round()]))).toEqual([])
+  })
+
+  describe("cardinality (Ax. 1.1, Rem. 1.1)", () => {
+    it("fails when |C| = 0", () => {
+      const violations = lintRoundCorpus([round({ constraints: [] })])
+      expect(violations.some((v) => v.includes("0 < |C|"))).toBe(true)
+    })
+
+    it("fails when |C| > |D|", () => {
+      const constraints: ConstraintSet = [
+        { dimension: "n", operator: "<=", bound: 1_000 },
+        { dimension: "m", operator: "<=", bound: 1_000 },
+        { dimension: "k", operator: "<=", bound: 1_000 },
+      ]
+      const violations = lintRoundCorpus([round({ constraints })])
+      expect(violations.some((v) => v.includes("|C| = 3 > |D| = 2"))).toBe(true)
+    })
+
+    it("fails when |D| > N", () => {
+      const ids: ReadonlyArray<PropositionId> = [
+        "CW-P1",
+        "CW-P2",
+        "CW-P3",
+        "CW-P4",
+        "CW-P5",
+        "CW-P6",
+      ]
+      const diffSet: DiffSet = ids.map((propositionId, index) => ({
+        hunk: {
+          path: `src/fixture/${index}.rs`,
+          oldStart: 1,
+          newStart: 1,
+          segments: [{ kind: "addition", text: `let v${index} = ${index};` }],
+        },
+        propositionId,
+        admissible: index === 0,
+        ...(index === 0 ? {} : { distractorStatement: `distractor ${index}` }),
+      }))
+      expect(diffSet.length).toBe(MAX_PRESENTABLE_DIFFS + 1)
+      const violations = lintRoundCorpus([round({ diffSet })])
+      expect(
+        violations.some((v) => v.includes(`> N = ${MAX_PRESENTABLE_DIFFS}`))
+      ).toBe(true)
+    })
+
+    it("passes the boundary |D| = N — five is a valid, maximal round (Thm. 10.1's k <= 5, review finding on #1283)", () => {
+      const ids: ReadonlyArray<PropositionId> = [
+        "CW-P1",
+        "CW-P2",
+        "CW-P3",
+        "CW-P4",
+        "CW-P5",
+      ]
+      const diffSet: DiffSet = ids.map((propositionId, index) => ({
+        hunk: {
+          path: `src/fixture/${index}.rs`,
+          oldStart: 1,
+          newStart: 1,
+          segments: [{ kind: "addition", text: `let v${index} = ${index};` }],
+        },
+        propositionId,
+        admissible: index === 0,
+        ...(index === 0 ? {} : { distractorStatement: `distractor ${index}` }),
+      }))
+      expect(diffSet.length).toBe(MAX_PRESENTABLE_DIFFS)
+      expect(
+        withoutCoverageNoise(lintRoundCorpus([round({ diffSet })]))
+      ).toEqual([])
+    })
+  })
+
+  describe("schema re-validation (row 6: exactly one member of D is admissible, Ax. 1.1/R4)", () => {
+    it("fails when a round's D has two admissible members", () => {
+      const diffSet: DiffSet = [
+        {
+          hunk: {
+            path: "src/fixture/a.rs",
+            oldStart: 1,
+            newStart: 1,
+            segments: [{ kind: "addition", text: "let a = true;" }],
+          },
+          propositionId: "CW-P1",
+          admissible: true,
+        },
+        {
+          hunk: {
+            path: "src/fixture/b.rs",
+            oldStart: 1,
+            newStart: 1,
+            segments: [{ kind: "addition", text: "let b = true;" }],
+          },
+          propositionId: "CW-P2",
+          admissible: true,
+        },
+      ]
+      const violations = lintRoundCorpus([round({ diffSet })])
+      expect(
+        violations.some((v) => v.includes("exactly one member of D"))
+      ).toBe(true)
+    })
+  })
+
+  describe("discriminability (Prop. 6.1) — deliberately not checked", () => {
+    // Two straight review rounds on #1283 (chatgpt-codex-connector) showed
+    // every attempt at a mechanical Prop. 6.1 check unsound given this
+    // data model (see the doc comment above citationsOfRound in
+    // corpus-lint.ts for the full trace and the tracked follow-up). These
+    // tests document the deferral: none of the shapes a discriminability
+    // check might once have flagged produce a Prop. 6.1 violation now.
+    it("does not flag two diff-set members sharing the same propositionId, admissible or not", () => {
+      const diffSet: DiffSet = [
+        {
+          hunk: {
+            path: "src/fixture/a.rs",
+            oldStart: 1,
+            newStart: 1,
+            segments: [{ kind: "addition", text: "let a = true;" }],
+          },
+          propositionId: "CW-P1",
+          admissible: true,
+        },
+        {
+          hunk: {
+            path: "src/fixture/b.rs",
+            oldStart: 1,
+            newStart: 1,
+            segments: [{ kind: "addition", text: "let b = true;" }],
+          },
+          propositionId: "CW-P1",
+          admissible: false,
+          distractorStatement:
+            "a different rewrite witnessing the same proposition, only one of which restores this round's own budget.",
+        },
+      ]
+      expect(
+        withoutCoverageNoise(lintRoundCorpus([round({ diffSet })])).filter(
+          (v) => v.includes("Prop. 6.1")
+        )
+      ).toEqual([])
+    })
+
+    it("passes when every diff-set member carries a distinct propositionId", () => {
+      expect(withoutCoverageNoise(lintRoundCorpus([round()]))).toEqual([])
+    })
+  })
+
+  describe("citation resolution (Rem. 7.1)", () => {
+    it("fails when a diff-set member's propositionId does not resolve against the register", () => {
+      // Deliberately not "CW-Pn"-shaped: scripts/check-proposition-citations.ts
+      // scans every tracked file for that literal pattern, and this file is
+      // not one of the proposition-register module's own tests.
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- deliberately injecting a value PropositionId's own type rules out, to prove checkCitations' runtime dangling-citation check fires even though DiffSetMember's compile-time type would normally prevent this.
+      const badId = "not-a-real-proposition-id" as PropositionId
+      const diffSet: DiffSet = [
+        {
+          hunk: {
+            path: "src/fixture/a.rs",
+            oldStart: 1,
+            newStart: 1,
+            segments: [{ kind: "addition", text: "let a = true;" }],
+          },
+          propositionId: badId,
+          admissible: true,
+        },
+        {
+          hunk: {
+            path: "src/fixture/b.rs",
+            oldStart: 1,
+            newStart: 1,
+            segments: [{ kind: "addition", text: "let b = true;" }],
+          },
+          propositionId: "CW-P2",
+          admissible: false,
+          distractorStatement: "a plausible but wrong repair.",
+        },
+      ]
+      const violations = lintRoundCorpus([round({ diffSet })])
+      expect(violations.some((v) => v.includes("dangling citation"))).toBe(true)
+    })
+  })
+
+  describe("coverage — an admissible instance (Rem. 7.1, row 3)", () => {
+    it("fails when an active register entry is never a round's admissible member", () => {
+      // Rem. 10.2/Def. 10.2 tie "positive transfer" to a *correct*
+      // selection, so row 3's coverage is about admissible instances
+      // specifically — removing round-cw-p16 (CW-P16's only admissible
+      // appearance) fails row 3 even though CW-P16 still appears as a
+      // distractor in round-cw-p15, which is left untouched on purpose:
+      // that isolates this from row 4's own separate obligation.
+      const withoutCwP16Admissible = ALL_FIXTURE_ROUNDS.filter(
+        (r) => r.id !== "round-cw-p16"
+      )
+      const violations = lintRoundCorpus(withoutCwP16Admissible)
+      expect(
+        violations.some(
+          (v) => v.includes("CW-P16") && v.includes("no corpus instance")
+        )
+      ).toBe(true)
+    })
+
+    it("fails when a register entry appears only as a distractor — that alone is not an admissible instance", () => {
+      // A proposition that is *only* ever a distractor must still fail row
+      // 3 (Codex review finding on #1283): being cited on a non-admissible
+      // member is not "having a corpus instance" in Rem. 10.2's sense.
+      const withoutCwP1Admissible = ALL_FIXTURE_ROUNDS.filter(
+        (r) => r.id !== "round-cw-p1"
+      )
+      const violations = lintRoundCorpus(withoutCwP1Admissible)
+      expect(
+        violations.some(
+          (v) => v.includes("CW-P1") && v.includes("no corpus instance")
+        )
+      ).toBe(true)
+    })
+  })
+
+  describe("coverage — distractor role required (Rem. 10.2, Prop. 10.1, row 4)", () => {
+    it("fails when an active register entry never appears purely as a distractor", () => {
+      // round-cw-p16 is the only round presenting CW-P1 as a distractor;
+      // CW-P1 is still admissible in round-cw-p1, so this isolates row 4
+      // without also breaking row 3's "any instance" coverage for CW-P1.
+      const withoutCwP16 = ALL_FIXTURE_ROUNDS.filter(
+        (r) => r.id !== "round-cw-p16"
+      )
+      const violations = lintRoundCorpus(withoutCwP16)
+      expect(
+        violations.some(
+          (v) =>
+            v.includes("CW-P1") &&
+            v.includes("no round") &&
+            v.includes("distractor")
+        )
+      ).toBe(true)
+    })
+  })
+
+  describe("no authored Θ string anywhere (Prop. 2.1, row 7)", () => {
+    it("fails when a distractorStatement asserts a complexity class literal", () => {
+      const diffSet: DiffSet = [
+        {
+          hunk: {
+            path: "src/fixture/a.rs",
+            oldStart: 1,
+            newStart: 1,
+            segments: [{ kind: "addition", text: "let a = true;" }],
+          },
+          propositionId: "CW-P1",
+          admissible: true,
+        },
+        {
+          hunk: {
+            path: "src/fixture/b.rs",
+            oldStart: 1,
+            newStart: 1,
+            segments: [{ kind: "addition", text: "let b = true;" }],
+          },
+          propositionId: "CW-P2",
+          admissible: false,
+          distractorStatement: "this rewrite is Θ(n²), not a real repair.",
+        },
+      ]
+      const violations = lintRoundCorpus([round({ diffSet })])
+      expect(violations.some((v) => v.includes("Prop. 2.1"))).toBe(true)
+    })
+
+    it("fails when a hunk segment's own text asserts a complexity class literal (review finding on #1283)", () => {
+      // A round's diff is displayed source, not distractorStatement's own
+      // prose, but a segment's text can still carry a comment — and Prop.
+      // 2.1 forbids an asserted class literal anywhere, not just in prose.
+      const diffSet: DiffSet = [
+        {
+          hunk: {
+            path: "src/fixture/a.rs",
+            oldStart: 1,
+            newStart: 1,
+            segments: [
+              {
+                kind: "addition",
+                text: "let a = true; // this repair is Θ(n log n)",
+              },
+            ],
+          },
+          propositionId: "CW-P1",
+          admissible: true,
+        },
+        {
+          hunk: {
+            path: "src/fixture/b.rs",
+            oldStart: 1,
+            newStart: 1,
+            segments: [{ kind: "addition", text: "let b = true;" }],
+          },
+          propositionId: "CW-P2",
+          admissible: false,
+          distractorStatement: "a plausible but wrong repair.",
+        },
+      ]
+      const violations = lintRoundCorpus([round({ diffSet })])
+      expect(violations.some((v) => v.includes("Prop. 2.1"))).toBe(true)
+    })
+
+    it("finds no asserted class literal in the real fixture round corpus", () => {
+      expect(
+        lintRoundCorpus(ALL_FIXTURE_ROUNDS).filter((v) =>
+          v.includes("Prop. 2.1")
+        )
+      ).toEqual([])
+    })
   })
 })
