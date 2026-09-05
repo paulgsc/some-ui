@@ -21,13 +21,21 @@ import { useFittedPage } from "./use-fitted-page"
  * overflows and is given back - leaving the short card's average exactly as
  * it was, so the very same guess fires again next frame.
  *
- * A `ceiling` and a self-rescheduling `settle` fix that, and two further
- * cases pin defects a review caught in the *fix itself* before this file's
- * first version landed: a stale ceiling surviving a change to what is
- * actually being measured (a different page, a same-length item swap), and
- * convergence silently stalling when a step changes what is rendered without
- * changing `content`'s own height (nothing here depended on a resize
- * notification to make progress; see `flushFrame` below).
+ * A `ceiling` and a self-rescheduling `settle` fix that - and several rounds
+ * of review, each against the *fix itself* rather than the original bug,
+ * kept finding a new way for the ceiling to be wrong. The two that mattered
+ * most both trace to the same misstep: the first two fixes tried to answer
+ * "did the content change" by watching signals in the caller's React state
+ * (an item array's identity, a page index), and that question has no
+ * reliable answer from the caller's side alone - it read a merely-rebuilt
+ * array as new content for `PromptPanel` (which does not memoize its rows;
+ * see the `unmemoizedItems` cases below) and missed a real content change
+ * that touched neither the array nor the page (a badge's presence changing
+ * how a row wraps; see the `extra` cases). The hook's own doc comment now
+ * explains why the fix that actually holds asks a different question
+ * entirely - not "what changed", but "does this exact growth attempt still
+ * overflow, measured" - and does not depend on any caller's memoization
+ * discipline for that to be true.
  *
  * jsdom has no ResizeObserver and no real layout, so both are faked: a
  * FakeResizeObserver the test fires by hand (mirroring
@@ -47,12 +55,13 @@ import { useFittedPage } from "./use-fitted-page"
  * Two tiers, each earning its keep for a different reason - not for the same
  * one twice:
  *
- *   - The named `it`s below pin the actual incident and the two defects a
- *     review found in the first fix, at their exact real numbers (a 200px
- *     box against 100+150, a same-length item swap, a box that grows). They
- *     are what a future reader checks against "is this the bug that
- *     happened," and what a stack trace against a regression points back to.
- *   - `fast-check` property block further down asks the question those
+ *   - The named `it`s below pin the actual incident and every defect a
+ *     review found in a fix along the way, at their exact real numbers (a
+ *     200px box against 100+150, a same-length item swap, a box that grows,
+ *     a nonzero page, an unmemoized item array, a badge-sized row). They are
+ *     what a future reader checks against "is this the bug that happened,"
+ *     and what a stack trace against a regression points back to.
+ *   - The `fast-check` property block further down asks the question those
  *     named cases cannot: does convergence hold for row-height combinations
  *     nobody picked by hand? The oscillation's root cause is that *some*
  *     short-then-tall combination defeats an average-based guess - fixing
@@ -120,30 +129,40 @@ type HarnessProps = {
   available: number
   minPerPage?: number
   maxPerPage?: number
+  /**
+   * Rebuild `items` fresh every render instead of memoizing it - mirrors
+   * `PromptPanel` (`evidenceRowsOf(blocks)`, called unmemoized in its render
+   * body). The hook's ceiling must not care: it is keyed on measured DOM
+   * numbers, not on `items`' identity, precisely so a caller with this shape
+   * is not silently unprotected.
+   */
+  unmemoizedItems?: boolean
+  /**
+   * An extra row whose height comes from outside the paged array entirely -
+   * stands in for something like `activity-picker-step.tsx`'s count badge,
+   * which changes a card's rendered height (by changing what wraps) without
+   * touching `visible` or the current page at all.
+   */
+  extra?: number
 }
 
 /**
  * Wires real `clientHeight` / `scrollHeight` readings to plain numbers a test
  * can control: the viewport's height is fixed at `available`, and the
  * content's height is the live sum of whichever rows `pageItems` currently
- * holds - so paging really does change what the hook measures, the same way
- * a real card mounting or unmounting does.
- *
- * `items` is memoized on `heights`, mirroring how a real caller memoizes its
- * list (e.g. `activity-picker-step.tsx`'s `visible`, on `query`) - otherwise
- * every internal re-render this hook itself causes (a `setPerPage` from
- * `settle`) would hand back a *new* array reference for the exact same
- * content, which defeats the hook's own by-reference "did what's being
- * measured actually change" check for reasons that have nothing to do with
- * the hook and everything to do with an unmemoized caller.
+ * holds (plus `extra`, if given) - so paging really does change what the
+ * hook measures, the same way a real card mounting or unmounting does.
  */
 const Harness = ({
   heights,
   available,
   minPerPage,
   maxPerPage,
+  unmemoizedItems,
+  extra,
 }: HarnessProps): React.JSX.Element => {
-  const items = useMemo(() => heights.map((_, index) => index), [heights])
+  const memoized = useMemo(() => heights.map((_, index) => index), [heights])
+  const items = unmemoizedItems ? heights.map((_, index) => index) : memoized
   const { viewportRef, contentRef, pageItems, perPage, page, next } =
     useFittedPage(items, { minPerPage, maxPerPage })
 
@@ -174,6 +193,7 @@ const Harness = ({
           }
         }}
       >
+        {extra !== undefined && <div data-h={extra} />}
         {pageItems.map((index) => (
           <div key={index} data-h={heights[index]} />
         ))}
@@ -368,6 +388,79 @@ describe("useFittedPage: convergence with non-uniform row heights", () => {
         `regrow straight back into the same 100 + 150 = 250px overflow forever.`
     ).toBe(true)
     expect(onPageOne.readings[onPageOne.readings.length - 1]).toBe(1)
+  })
+
+  it("converges even when the caller rebuilds its item array every render", () => {
+    // A review caught this against a real, already-shipped consumer:
+    // `PromptPanel` calls `evidenceRowsOf(blocks)` straight in its render
+    // body, unmemoized. Keying the ceiling on `items`' identity (as an
+    // earlier version of this fix did, to invalidate it on a genuine content
+    // swap) reads that as "different content" on every single settle-driven
+    // re-render and never lets the ceiling stick at all - reproducing the
+    // exact oscillation this file opened with, permanently, for that
+    // consumer. The ceiling has to hold using only measured DOM numbers,
+    // which do not care whether `items` is the same reference twice.
+    render(
+      <Harness heights={[100, 150, 100, 100]} available={200} unmemoizedItems />
+    )
+
+    const { readings, converged } = settleAndReadPerPage(30)
+
+    expect(
+      converged,
+      `never reached a fixed point with an unmemoized item array: ${JSON.stringify(readings)}.`
+    ).toBe(true)
+    expect(readings[readings.length - 1]).toBe(1)
+  })
+
+  it("retries growth once externally-driven content shrinks, with items and page unchanged", () => {
+    // Stands in for activity-picker-step.tsx's count badge: `visible` (the
+    // paged array) and the page both stay exactly the same, but a badge
+    // disappearing un-wraps a row and the box's real content genuinely gets
+    // shorter. A ceiling keyed on items/page (an earlier version of this fix)
+    // sees nothing it tracks change and stays wrongly capped forever; one
+    // keyed on the measured height sees a smaller number and retries.
+    //
+    // `heights` is hoisted to one stable reference used in both renders -
+    // otherwise a fresh array literal on the `rerender` call would make
+    // `items` a new reference too, and this would end up re-testing the
+    // *previous* finding (an items-identity change) instead of isolating
+    // this one (no items or page change at all, only the extra row).
+    const heights = [40, 105]
+    const { rerender } = render(
+      <Harness heights={heights} available={150} extra={10} />
+    )
+    // Row 0 (40) + the "badge" (10) = 50, comfortably under 150: growth to
+    // both rows is attempted. Row 0 + row 1 + the badge = 40 + 105 + 10 =
+    // 155 > 150: that attempt overflows, and gets rejected - a real ceiling,
+    // set from a real measurement, exactly as it would be without `extra`
+    // involved at all.
+    const before = settleAndReadPerPage(20)
+    expect(before.converged).toBe(true)
+    expect(
+      before.readings[before.readings.length - 1],
+      "expected the 2-row attempt to be tried and rejected before settling " +
+        "back to 1, so the ceiling this test is about actually gets set"
+    ).toBe(1)
+
+    // The "badge" goes away: 40 + 105 + 0 = 145 <= 150 now fits, with
+    // `heights` (hence `items`) and the page both exactly as they were.
+    rerender(<Harness heights={heights} available={150} extra={0} />)
+    act(() => {
+      FakeResizeObserver.instances[0]!.fire()
+    })
+    const after = settleAndReadPerPage(20)
+
+    expect(
+      after.converged,
+      `never reached a fixed point after the external content shrank: ${JSON.stringify(after.readings)}.`
+    ).toBe(true)
+    expect(
+      after.readings[after.readings.length - 1],
+      "40 + 105 = 145 <= 150 fits both rows now that the badge is gone, but " +
+        "a ceiling keyed on items/page would see nothing it tracks change " +
+        "and wrongly keep this capped at 1."
+    ).toBe(2)
   })
 
   it("never drops below minPerPage even when that count cannot fit", () => {

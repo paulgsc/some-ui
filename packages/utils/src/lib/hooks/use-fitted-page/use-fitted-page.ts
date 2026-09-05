@@ -58,22 +58,23 @@ const DEFAULT_MAX_PER_PAGE = 24
  * renders. Giving that item back the next frame is correct, but the rows
  * still shown are exactly as short as before, so the very same guess fires
  * again — and forever, once nothing about the input is going to change. A
- * `ceiling` remembers the last count a real measurement rejected *for the
- * exact box and content that measurement was taken against* - the box's own
- * height and width, which item array is being paged, and which logical page
- * of it is showing - so growth stops re-proposing a count already known to
- * overflow there, but is free to try again the instant any of those actually
- * changes (a wider box, a different page, a search swapping in shorter cards
- * at the same length). That is what makes this converge rather than merely
- * "usually converges quickly".
- *
- * "Which page" is the page *index* (`safePage`), not the slice offset
- * (`safePage * perPage`): the offset moves every time `perPage` itself moves,
- * including from the very rejection the ceiling exists to remember, which on
- * any page past the first turns "the box shrank" into "the content changed"
- * from the ceiling's point of view and discards the guard the instant it was
- * set. The page index is stable across that - shrinking only grows
- * `pageCount`, which only loosens the page-index clamp, never moves it.
+ * `ceiling` remembers the last growth attempt a real measurement rejected -
+ * but keyed on what was actually *measured*, not on any signal for "did the
+ * content change" inferred from the caller's React state. Two attempts at
+ * that inference were each wrong in a different, real direction: keying on
+ * the item array's identity reads every render as new content for a caller
+ * that (like `PromptPanel`, right in this tree) rebuilds its rows each
+ * render without memoizing, defeating the guard permanently; keying on the
+ * viewport/page instead misses a genuine content change that never touches
+ * either, such as a badge disappearing and un-wrapping a row. Neither
+ * failure is reachable if the ceiling never asks "did the input change" at
+ * all - only "does this exact growth attempt (this proposed count, at this
+ * box height and width, starting from content that measured to exactly this
+ * many pixels) still overflow the way it did last time." Those numbers come
+ * straight off the DOM, so whether the caller memoizes anything is
+ * irrelevant, and any real change to what is rendered - a shorter search
+ * result, an unwrapped row, a resized box - shows up as a genuinely
+ * different number rather than a same/different verdict on a proxy for one.
  *
  * Reaching the fit can take several of these passes in a row (grow, measure,
  * grow again), and nothing about the DOM necessarily changes size between two
@@ -81,11 +82,14 @@ const DEFAULT_MAX_PER_PAGE = 24
  * changes what is rendered without changing `content`'s own height, so the
  * `ResizeObserver` below reports nothing. Each pass therefore explicitly
  * requests the next one itself when it actually changes `perPage`. The same
- * gap exists one level up: paging to a different page, or a same-length
- * search result swapping in, changes what *should* be measured next without
- * changing `perPage` or necessarily any rendered size either - so those are
- * watched directly (by reference, by page index) and schedule their own pass
- * too, rather than waiting on an observer that may never fire.
+ * gap exists one level up: paging to a different page, or a search result
+ * swapping in, changes what *should* be measured next without changing
+ * `perPage` or necessarily any rendered size either - so those are watched
+ * directly (by reference, by page index) and schedule their own pass too,
+ * rather than waiting on an observer that may never fire. That trigger can
+ * safely over-fire for an unmemoized caller (an extra pass that reconfirms
+ * nothing changed costs a frame, not correctness) in a way a *blocking*
+ * check built on the same signal cannot.
  *
  * Both refs are required: the viewport is the box to fit, the content is what
  * is being fitted. Measuring one element against itself cannot work, since a
@@ -156,18 +160,27 @@ export function useFittedPage<T>(
 
     let frame = 0
 
-    // What a rejected count was measured against: the box's own height and
-    // width, which array is being paged, and which logical page of it was
-    // showing. Any of those changing means the rejection no longer describes
-    // what is about to be measured, so it is cleared rather than carried
-    // over. Page *index*, not slice offset - see the doc comment above for
-    // why the offset itself cannot be trusted here.
+    // A growth attempt this pass is *about* to confirm or refute: the count
+    // it would grow to, the box it was measured against, and the content
+    // height that estimate was based on. Set the moment growth is proposed;
+    // read back on the very next pass, when the same numbers say whether
+    // that specific attempt is the one now overflowing.
+    type PendingGrowth = {
+      proposedCount: number
+      available: number
+      width: number
+      priorUsed: number
+    }
+    let pendingGrowth: PendingGrowth | null = null
+
+    // The last growth attempt a real measurement rejected, purely in terms
+    // of what was measured - see the doc comment above for why this is
+    // deliberately not "what changed" in the caller's items or page.
     type Ceiling = {
       count: number
       available: number
       width: number
-      items: ReadonlyArray<T>
-      page: number
+      baselineUsed: number
     }
     let ceiling: Ceiling | null = null
 
@@ -176,54 +189,67 @@ export function useFittedPage<T>(
       const used = content.scrollHeight
       if (available === 0) return
 
-      const context = {
-        available,
-        width: viewport.clientWidth,
-        items: latestRef.current.items,
-        page: latestRef.current.page,
-      }
-      if (
-        ceiling !== null &&
-        (ceiling.available !== context.available ||
-          ceiling.width !== context.width ||
-          ceiling.items !== context.items ||
-          ceiling.page !== context.page)
-      ) {
-        ceiling = null
-      }
-
+      const width = viewport.clientWidth
       const clamp = (value: number): number =>
         Math.min(maxPerPage, Math.max(minPerPage, value))
 
       const current = latestRef.current.perPage
       let settled = current
 
-      // Overflowing: give back one item, and remember that this count does
-      // not fit this exact box/content so growth does not immediately
-      // re-guess its way back to it.
+      // Overflowing: give back one item. If this is the growth attempt
+      // `pendingGrowth` was tracking, its own numbers - not this pass's,
+      // which already reflect the too-tall result - are what the ceiling
+      // needs: the content height growth looked safe *from*, not the height
+      // that proved it wrong.
       if (used > available && current > minPerPage) {
         settled = clamp(current - 1)
-        ceiling =
-          ceiling === null
-            ? { ...context, count: current }
-            : { ...ceiling, count: Math.min(ceiling.count, current) }
+        if (
+          pendingGrowth !== null &&
+          pendingGrowth.proposedCount === current &&
+          pendingGrowth.available === available &&
+          pendingGrowth.width === width
+        ) {
+          ceiling = {
+            count: current,
+            available,
+            width,
+            baselineUsed: pendingGrowth.priorUsed,
+          }
+        }
       } else {
-        // Room to spare and more items waiting: take one more, unless a real
-        // measurement already rejected that count for this exact box/content.
-        // The estimate uses the current page's average row height, which is
-        // only used to decide *whether* another row could fit - the next
-        // pass re-measures and gives it back if the guess was optimistic.
+        // Room to spare and more items waiting: take one more, unless this
+        // exact attempt - this proposed count, from content that measured to
+        // exactly this many pixels, in a box this size - already proved
+        // overflowing. The estimate uses the current page's average row
+        // height, which is only used to decide *whether* another row could
+        // fit - the next pass re-measures and gives it back if the guess was
+        // optimistic.
         const rowHeight = current > 0 ? used / current : used
         const roomLeft = available - used
         const proposed = current + 1
+        const knownToOverflow =
+          ceiling !== null &&
+          ceiling.count === proposed &&
+          ceiling.available === available &&
+          ceiling.width === width &&
+          ceiling.baselineUsed === used
+
         if (
           used <= available &&
           rowHeight > 0 &&
           roomLeft >= rowHeight &&
           current < items.length &&
-          (ceiling === null || proposed < ceiling.count)
+          !knownToOverflow
         ) {
           settled = clamp(proposed)
+          pendingGrowth = {
+            proposedCount: settled,
+            available,
+            width,
+            priorUsed: used,
+          }
+        } else {
+          pendingGrowth = null
         }
       }
 
