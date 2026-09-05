@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
+import { useMemo } from "react"
 import { act, cleanup, render, screen } from "@testing-library/react"
+import fc from "fast-check"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { useFittedPage } from "./use-fitted-page"
@@ -19,11 +21,45 @@ import { useFittedPage } from "./use-fitted-page"
  * overflows and is given back - leaving the short card's average exactly as
  * it was, so the very same guess fires again next frame.
  *
+ * A `ceiling` and a self-rescheduling `settle` fix that, and two further
+ * cases pin defects a review caught in the *fix itself* before this file's
+ * first version landed: a stale ceiling surviving a change to what is
+ * actually being measured (a different page, a same-length item swap), and
+ * convergence silently stalling when a step changes what is rendered without
+ * changing `content`'s own height (nothing here depended on a resize
+ * notification to make progress; see `flushFrame` below).
+ *
  * jsdom has no ResizeObserver and no real layout, so both are faked: a
  * FakeResizeObserver the test fires by hand (mirroring
- * use-resize-observer.test.tsx's fake), and per-row heights read off
- * `data-h` via a live `scrollHeight` getter, so the "content" really does
- * grow and shrink as `pageItems` changes shape.
+ * use-resize-observer.test.tsx's fake) for changes this hook does not cause
+ * itself, and per-row heights read live off `data-h` via a `scrollHeight`
+ * getter, so the "content" really does grow and shrink as `pageItems`
+ * changes shape.
+ *
+ * `requestAnimationFrame` is faked too, but deliberately *not* synchronously:
+ * `settle` can now schedule another frame itself mid-call, and a synchronous
+ * rAF would run that nested call before React has flushed the state update
+ * that produced it - a "Maximum call stack size exceeded" a real browser
+ * never sees, because a real frame always waits for the next paint. The fake
+ * queues callbacks and only runs the ones due *right now* per `flushFrame`
+ * call, exactly like one real frame does.
+ *
+ * Two tiers, each earning its keep for a different reason - not for the same
+ * one twice:
+ *
+ *   - The named `it`s below pin the actual incident and the two defects a
+ *     review found in the first fix, at their exact real numbers (a 200px
+ *     box against 100+150, a same-length item swap, a box that grows). They
+ *     are what a future reader checks against "is this the bug that
+ *     happened," and what a stack trace against a regression points back to.
+ *   - `fast-check` property block further down asks the question those
+ *     named cases cannot: does convergence hold for row-height combinations
+ *     nobody picked by hand? The oscillation's root cause is that *some*
+ *     short-then-tall combination defeats an average-based guess - fixing
+ *     the one combination that happened to ship (a card with a badge and a
+ *     wrapped hint) and calling it done is exactly the kind of fix that
+ *     leaves the next combination for the next screenshot. Only a property
+ *     over the whole shape generalizes past the instance.
  */
 
 type Entry = { contentRect: { width: number; height: number } }
@@ -47,23 +83,37 @@ class FakeResizeObserver {
   }
 }
 
+let pendingFrames: Map<number, FrameRequestCallback>
+let nextFrameId: number
+
 beforeEach(() => {
   FakeResizeObserver.instances = []
   vi.stubGlobal("ResizeObserver", FakeResizeObserver)
-  // Deterministic and synchronous, so a `fire()` resolves its whole settle
-  // pass (including any state update and re-render) before the next line of
-  // the test runs - no fake timers, no waiting on a real frame.
+
+  pendingFrames = new Map()
+  nextFrameId = 0
   vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback): number => {
-    cb(0)
-    return 0
+    nextFrameId += 1
+    pendingFrames.set(nextFrameId, cb)
+    return nextFrameId
   })
-  vi.stubGlobal("cancelAnimationFrame", (): void => {})
+  vi.stubGlobal("cancelAnimationFrame", (id: number): void => {
+    pendingFrames.delete(id)
+  })
 })
 
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
 })
+
+/** Runs every frame queued *as of now* - mirrors one real animation frame. */
+function flushFrame(): boolean {
+  const due = Array.from(pendingFrames.values())
+  pendingFrames.clear()
+  for (const cb of due) cb(0)
+  return due.length > 0
+}
 
 type HarnessProps = {
   heights: ReadonlyArray<number>
@@ -78,6 +128,14 @@ type HarnessProps = {
  * content's height is the live sum of whichever rows `pageItems` currently
  * holds - so paging really does change what the hook measures, the same way
  * a real card mounting or unmounting does.
+ *
+ * `items` is memoized on `heights`, mirroring how a real caller memoizes its
+ * list (e.g. `activity-picker-step.tsx`'s `visible`, on `query`) - otherwise
+ * every internal re-render this hook itself causes (a `setPerPage` from
+ * `settle`) would hand back a *new* array reference for the exact same
+ * content, which defeats the hook's own by-reference "did what's being
+ * measured actually change" check for reasons that have nothing to do with
+ * the hook and everything to do with an unmemoized caller.
  */
 const Harness = ({
   heights,
@@ -85,7 +143,7 @@ const Harness = ({
   minPerPage,
   maxPerPage,
 }: HarnessProps): React.JSX.Element => {
-  const items = heights.map((_, index) => index)
+  const items = useMemo(() => heights.map((_, index) => index), [heights])
   const { viewportRef, contentRef, pageItems, perPage } = useFittedPage(items, {
     minPerPage,
     maxPerPage,
@@ -127,17 +185,45 @@ const Harness = ({
   )
 }
 
-/** Pumps the fake observer until `perPage` stops changing, or gives up. */
-function settleAndReadPerPage(maxTicks: number): Array<number> {
-  const observer = FakeResizeObserver.instances[0]!
-  const readings: Array<number> = [
-    Number(screen.getByTestId("per-page").textContent),
-  ]
-  for (let tick = 0; tick < maxTicks; tick += 1) {
-    act(() => observer.fire())
-    readings.push(Number(screen.getByTestId("per-page").textContent))
+function readPerPage(): number {
+  return Number(screen.getByTestId("per-page").textContent)
+}
+
+type SettleResult = {
+  /** Every value read after a frame that actually ran a callback. */
+  readings: Array<number>
+  /**
+   * True the moment a `flushFrame` finds nothing pending - i.e. the previous
+   * frame's `settle` decided there was nothing left to change and did not
+   * schedule another. False means `maxFrames` ran out while a frame was
+   * still being scheduled every time, which is exactly the shape an
+   * unbounded oscillation has and never resolves to `true` on its own.
+   */
+  converged: boolean
+}
+
+/**
+ * Advances real frames one at a time until a frame is due that finds
+ * nothing pending, or `maxFrames` is spent - whichever comes first.
+ */
+function settleAndReadPerPage(maxFrames: number): SettleResult {
+  const readings: Array<number> = []
+  for (let frame = 0; frame < maxFrames; frame += 1) {
+    let advanced: boolean = false
+    act(() => {
+      advanced = flushFrame()
+    })
+    // Genuinely reassigned above (confirmed: `tsc --noEmit` is clean, and
+    // deliberately oscillating fixture data in the tests below exercises
+    // both branches) - the linter's control-flow analysis just cannot see
+    // through `act`'s opaque callback to know the assignment inside it runs
+    // before this line, so it narrows `advanced` to its initializer's
+    // literal `false` and reads the check as always true.
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!advanced) return { readings, converged: true }
+    readings.push(readPerPage())
   }
-  return readings
+  return { readings, converged: false }
 }
 
 describe("useFittedPage: convergence with non-uniform row heights", () => {
@@ -147,28 +233,41 @@ describe("useFittedPage: convergence with non-uniform row heights", () => {
     // row. Row 1 is 150px: together they are 250px, over the 200px box.
     render(<Harness heights={[100, 150, 100, 100]} available={200} />)
 
-    const readings = settleAndReadPerPage(30)
-    const tail = readings.slice(-6)
+    const { readings, converged } = settleAndReadPerPage(30)
 
     expect(
-      new Set(tail).size,
-      `perPage kept changing across the last few settle passes: ${JSON.stringify(tail)}. ` +
-        `It must reach a fixed point and stay there - a page that never stops ` +
-        `re-proposing a count it already measured as too tall is a live render ` +
-        `loop, not "still converging".`
-    ).toBe(1)
-    expect(tail[tail.length - 1]).toBe(1)
+      converged,
+      `never reached a fixed point within the frame budget: ${JSON.stringify(readings)}. ` +
+        `A page that never stops re-proposing a count it already measured as ` +
+        `too tall is a live render loop, not "still converging".`
+    ).toBe(true)
+    expect(readings[readings.length - 1]).toBe(1)
   })
 
   it("still fits comfortably when every row is short relative to the box", () => {
     render(<Harness heights={[50, 50, 50, 50]} available={200} />)
 
-    const readings = settleAndReadPerPage(30)
-    const tail = readings.slice(-6)
+    const { readings, converged } = settleAndReadPerPage(30)
 
-    expect(new Set(tail).size).toBe(1)
+    expect(converged).toBe(true)
     // 4 * 50 = 200 <= 200: all four genuinely fit in one page.
-    expect(tail[tail.length - 1]).toBe(4)
+    expect(readings[readings.length - 1]).toBe(4)
+  })
+
+  it("reaches multi-step growth on its own schedule, with no resize notification ever firing", () => {
+    // Five equal rows needs four separate growth steps (1 -> 2 -> 3 -> 4 ->
+    // 5) to reach the true fit. The FakeResizeObserver above is never
+    // fired anywhere in this test - if a step's own re-render happened not
+    // to change `content`'s measured height (the case a review caught: a
+    // grid column filling in beside an equally tall neighbor), and `settle`
+    // relied on the observer alone to notice, convergence would stall
+    // wherever that first happened instead of reaching 5.
+    render(<Harness heights={[40, 40, 40, 40, 40]} available={250} />)
+
+    const { readings, converged } = settleAndReadPerPage(30)
+
+    expect(converged).toBe(true)
+    expect(readings[readings.length - 1]).toBe(5)
   })
 
   it("re-measures rather than staying capped once the box actually grows", () => {
@@ -178,28 +277,131 @@ describe("useFittedPage: convergence with non-uniform row heights", () => {
     // rejection.
     const heights = [100, 150]
     const { rerender } = render(<Harness heights={heights} available={200} />)
-    settleAndReadPerPage(20)
-    expect(Number(screen.getByTestId("per-page").textContent)).toBe(1)
+    const before = settleAndReadPerPage(20)
+    expect(before.converged).toBe(true)
+    expect(before.readings[before.readings.length - 1]).toBe(1)
 
     rerender(<Harness heights={heights} available={300} />)
-    const readings = settleAndReadPerPage(20)
-    const tail = readings.slice(-6)
+    act(() => {
+      FakeResizeObserver.instances[0]!.fire()
+    })
+    const after = settleAndReadPerPage(20)
 
-    expect(new Set(tail).size).toBe(1)
-    expect(tail[tail.length - 1]).toBe(2)
+    expect(after.converged).toBe(true)
+    expect(after.readings[after.readings.length - 1]).toBe(2)
+  })
+
+  it("does not let a stale ceiling survive a same-length item swap with shorter content", () => {
+    // A search replacing the catalogue with a different, same-length result
+    // set: `items.length` is unchanged (so the effect that would otherwise
+    // reset everything never reruns), but the actual rows are shorter. The
+    // rejection learned from the first set must not keep blocking growth for
+    // the second.
+    const { rerender } = render(
+      <Harness heights={[100, 150]} available={200} />
+    )
+    const before = settleAndReadPerPage(20)
+    expect(before.converged).toBe(true)
+    expect(before.readings[before.readings.length - 1]).toBe(1)
+
+    rerender(<Harness heights={[60, 60]} available={200} />)
+    act(() => {
+      FakeResizeObserver.instances[0]!.fire()
+    })
+    const after = settleAndReadPerPage(20)
+
+    expect(
+      after.converged,
+      `never reached a fixed point after the swap: ${JSON.stringify(after.readings)}.`
+    ).toBe(true)
+    expect(
+      after.readings[after.readings.length - 1],
+      "60 + 60 = 120 <= 200 fits, but a ceiling learned from the taller " +
+        "[100, 150] set would wrongly cap this at 1 if it were not " +
+        "invalidated by the item-array swap."
+    ).toBe(2)
   })
 
   it("never drops below minPerPage even when that count cannot fit", () => {
     render(<Harness heights={[100, 150]} available={200} minPerPage={2} />)
 
-    const readings = settleAndReadPerPage(30)
-    const tail = readings.slice(-6)
+    const { readings, converged } = settleAndReadPerPage(30)
 
     // minPerPage: 2 forces an unfittable page rather than oscillating -
     // that floor is a deliberate, documented tradeoff (see the Options doc
-    // comment), and it must still be a *stable* 2, not a 2-vs-something-else
-    // flicker.
-    expect(new Set(tail).size).toBe(1)
-    expect(tail[tail.length - 1]).toBe(2)
+    // comment), and it must still settle on a *stable* 2, not a
+    // 2-vs-something-else flicker.
+    expect(converged).toBe(true)
+    expect(readings[readings.length - 1]).toBe(2)
+  })
+})
+
+describe("useFittedPage: convergence holds for the whole family, not the one incident", () => {
+  // Bounded generously above the largest input this generates (8 rows) so a
+  // genuine non-convergence fails loudly rather than by exhausting the
+  // budget and reading as "close enough."
+  const MAX_FRAMES = 60
+
+  it("always reaches a fixed point that fits, or is pinned at the floor", () => {
+    fc.assert(
+      fc.property(
+        fc.array(fc.integer({ min: 1, max: 500 }), {
+          minLength: 1,
+          maxLength: 8,
+        }),
+        fc.integer({ min: 1, max: 1000 }),
+        (heights, available) => {
+          const { unmount, getByTestId } = render(
+            <Harness heights={heights} available={available} />
+          )
+
+          const readPerPageHere = (): number =>
+            Number(getByTestId("per-page").textContent)
+          const readings: Array<number> = []
+          let converged = false
+          for (let frame = 0; frame < MAX_FRAMES; frame += 1) {
+            let advanced: boolean = false
+            act(() => {
+              advanced = flushFrame()
+            })
+            // See `settleAndReadPerPage`'s identical pattern for why this is
+            // a linter limitation (confirmed clean under `tsc --noEmit`),
+            // not an actually-unnecessary check.
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+            if (!advanced) {
+              converged = true
+              break
+            }
+            readings.push(readPerPageHere())
+          }
+
+          const finalPerPage = readPerPageHere()
+          const usedAtFinal = heights
+            .slice(0, finalPerPage)
+            .reduce((sum, height) => sum + height, 0)
+          unmount()
+
+          expect(
+            converged,
+            `[heights=${JSON.stringify(heights)}, available=${available}] never ` +
+              `reached a fixed point within ${MAX_FRAMES} frames: ${JSON.stringify(readings)}.`
+          ).toBe(true)
+
+          // The hook's own documented contract (see the Options doc comment
+          // on `minPerPage`): every fixed point either genuinely fits, or is
+          // pinned at the floor because nothing smaller was allowed. Anything
+          // else is a fixed point that should not have been possible to land
+          // on - room left over that was never grown into, or an overflow
+          // that was never given back.
+          expect(
+            usedAtFinal <= available || finalPerPage === 1,
+            `[heights=${JSON.stringify(heights)}, available=${available}] settled on ` +
+              `perPage=${finalPerPage} (uses ${usedAtFinal}px of ${available}px) without ` +
+              `either fitting or being pinned at the floor of 1.`
+          ).toBe(true)
+        }
+      ),
+      { numRuns: 200 }
+    )
   })
 })
