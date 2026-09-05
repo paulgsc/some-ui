@@ -94,6 +94,15 @@ export const ActivityPickerStep = ({
   // Destructured rather than held as an object: `useFittedPage` hands back
   // two refs alongside the page data, and react-hooks/refs reads any property
   // access on that object as a ref read during render.
+  //
+  // `minPerPage: 1`, not 2: the grid is `sm:grid-cols-2`, so "2" only means
+  // "one row" above that breakpoint. Below it the grid is a single column, so
+  // a floor of 2 forces two full-height cards to stack inside a box that was
+  // never sized for that - the tallest cards (a maturity badge plus an input
+  // hint, wrapped at phone width) don't fit two-stacked in `h-72` and the
+  // overflow paints over the pager below rather than clipping. A floor of 1
+  // still leaves the algorithm free to grow to a full row wherever there is
+  // room; it just stops forcing an unfittable second row.
   const {
     viewportRef,
     contentRef,
@@ -102,7 +111,7 @@ export const ActivityPickerStep = ({
     pageCount,
     next: nextPage,
     previous: previousPage,
-  } = useFittedPage(visible, { minPerPage: 2, maxPerPage: 12 })
+  } = useFittedPage(visible, { minPerPage: 1, maxPerPage: 12 })
 
   // Numbered against the full list before paginating, so the badge always
   // reflects each instance's true position in the session, not its position
