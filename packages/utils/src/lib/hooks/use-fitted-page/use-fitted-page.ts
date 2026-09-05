@@ -48,9 +48,85 @@ const DEFAULT_MAX_PER_PAGE = 24
  * measured row height: rows here are not uniform (a two-line label is taller
  * than a one-line one), so dividing by an average silently overflows on the
  * pages with the tall rows. Each pass compares the content's real height to
- * the viewport's and steps `perPage` one item toward the fit, which converges
- * in a couple of frames and — importantly — cannot oscillate, because it only
- * ever grows while there is measured room to spare.
+ * the viewport's and steps `perPage` one item toward the fit.
+ *
+ * Growing is a guess, not a measurement — "is there room for one more" is
+ * answered from the *shown* rows' average height, because the row being
+ * considered hasn't rendered yet. That guess can be wrong in one specific,
+ * recurring way: a short row (or the empty page) makes the average look
+ * small, the next row is much taller, and the page overflows the moment it
+ * renders. Giving that item back the next frame is correct, but the rows
+ * still shown are exactly as short as before, so the very same guess fires
+ * again — and forever, once nothing about the input is going to change. A
+ * `ceiling` remembers the last growth attempt a real measurement rejected -
+ * but keyed on what was actually *measured*, not on any signal for "did the
+ * content change" inferred from the caller's React state. Two attempts at
+ * that inference were each wrong in a different, real direction: keying on
+ * the item array's identity reads every render as new content for a caller
+ * that (like `PromptPanel`, right in this tree) rebuilds its rows each
+ * render without memoizing, defeating the guard permanently; keying on the
+ * viewport/page instead misses a genuine content change that never touches
+ * either, such as a badge disappearing and un-wrapping a row. Neither
+ * failure is reachable if the ceiling never asks "did the input change" at
+ * all - only "does this exact growth attempt (this proposed count, at this
+ * box height and width, starting from content that measured to exactly this
+ * many pixels) still overflow the way it did last time." Those numbers come
+ * straight off the DOM, so whether the caller memoizes anything is
+ * irrelevant, and any real change to what is rendered - a shorter search
+ * result, an unwrapped row, a resized box - shows up as a genuinely
+ * different number rather than a same/different verdict on a proxy for one.
+ *
+ * Reaching the fit can take several of these passes in a row (grow, measure,
+ * grow again), and nothing about the DOM necessarily changes size between two
+ * of them - adding a card into a grid row that was already exactly that tall
+ * changes what is rendered without changing `content`'s own height, so the
+ * `ResizeObserver` below reports nothing. Each pass therefore explicitly
+ * requests the next one itself when it actually changes `perPage`. The same
+ * gap exists one level up: paging to a different page, or a search result
+ * swapping in, changes what *should* be measured next without changing
+ * `perPage` or necessarily any rendered size either - so those are watched
+ * directly (by reference, by page index) and schedule their own pass too,
+ * rather than waiting on an observer that may never fire.
+ *
+ * A plain reschedule is not always enough, though: a same-length swap can
+ * leave the *shown* rows measuring identically while changing a row that is
+ * not shown yet - `[100, 150]` becoming `[100, 50]` after 2 was rejected
+ * still measures 100 for the one row on screen, so the ceiling's numbers
+ * still match and block the retry even though the hidden candidate is now
+ * short enough to fit. The measured baseline genuinely cannot see a
+ * candidate that has not rendered - only trying will. So an items/page
+ * change earns the very next attempt a one-shot bypass of the ceiling, not
+ * just a wake-up call: if it overflows again, a fresh ceiling is set
+ * immediately from that real measurement, no worse off than before.
+ *
+ * That bypass has to be earned, not automatic, or it reopens the first
+ * problem from the other direction: this hook's own `setPerPage` causes a
+ * re-render too, and an *unmemoized* caller hands back a new `items`
+ * reference on every render regardless of why it happened - `PromptPanel`
+ * did exactly this (`evidenceRowsOf(blocks)`, called straight in its render
+ * body) until a real re-render source having nothing to do with `blocks` -
+ * the typing engine's own tick - surfaced that a bypass earned on *every*
+ * caller-side re-render, not just this hook's own, would spend itself every
+ * tick and disable the ceiling just as permanently as keying it on identity
+ * did. `settlingRef` only rules out renders `settle` itself triggers, not
+ * every render that happens to leave `blocks` unchanged - a caller has to
+ * memoize what it hands this hook for that identity to mean "the content
+ * changed" rather than merely "a render happened", the same contract
+ * `useEffect`/`useMemo` dependencies already expect everywhere else. That is
+ * a requirement on the caller, not something this hook can enforce or work
+ * around: there is no generic `T` on which to fall back to comparing values.
+ *
+ * That same requirement draws the honest edge of what this can catch. It
+ * bypasses on `items`/page changing, not on "the hidden candidate's real
+ * height changed" in full generality - content that affects a candidate's
+ * height without appearing in `items` at all (a badge keyed off state kept
+ * outside the paged array, say) can leave a ceiling correctly earned once
+ * blocking a count that would fit again, until something else - a resize,
+ * a later items/page change - prompts a fresh look. The outcome is stable
+ * and safe (a merely conservative page, never a repeating loop or a visible
+ * overflow), just not always optimal. Closing that fully would mean this
+ * hook comparing values it cannot generically see; see the PR history for
+ * where that tradeoff was made deliberately rather than chased further.
  *
  * Both refs are required: the viewport is the box to fit, the content is what
  * is being fitted. Measuring one element against itself cannot work, since a
@@ -74,6 +150,7 @@ export function useFittedPage<T>(
 
   const pageCount = Math.max(1, Math.ceil(items.length / Math.max(1, perPage)))
   const safePage = Math.min(page, pageCount - 1)
+  const start = safePage * perPage
 
   // Both adjustments happen during render rather than in an effect (React's
   // own "adjusting state when props change" shape): React discards this render
@@ -90,6 +167,41 @@ export function useFittedPage<T>(
     setPage(safePage)
   }
 
+  // Read inside the layout effect below without being dependencies of it -
+  // the effect only needs to *see* the latest `perPage`/`items`/`safePage`,
+  // not to tear itself down and resubscribe its ResizeObserver whenever one
+  // of them changes (see the doc comment on why that recreation was itself a
+  // bug). A ref cannot be written during render (refs are for effects and
+  // event handlers, not render, and the lint rule for it is not negotiable
+  // here) - so a dedicated, dependency-less layout effect keeps it current
+  // instead, and doubles as the trigger for the "changed without resizing"
+  // gap the doc comment above describes: a page change or an item-array swap
+  // is a React-level event with no necessary DOM size change to be observed,
+  // so this effect schedules a pass itself whenever either differs from what
+  // it saw last render, rather than waiting on a notification that may never
+  // come.
+  const latestRef = useRef({ perPage, items, page: safePage })
+  const scheduleRef = useRef<(() => void) | null>(null)
+  const bypassCeilingRef = useRef(false)
+  // Set immediately before `settle` calls `setPerPage`, so the effect below
+  // can tell its own convergence-driven renders apart from everything else -
+  // see the doc comment on why that distinction, not just "did items or the
+  // page change", is what decides whether to bypass the ceiling.
+  const settlingRef = useRef(false)
+  useLayoutEffect(() => {
+    const previous = latestRef.current
+    latestRef.current = { perPage, items, page: safePage }
+    const isOwnConvergenceStep = settlingRef.current
+    settlingRef.current = false
+    if (
+      !isOwnConvergenceStep &&
+      (previous.items !== items || previous.page !== safePage)
+    ) {
+      bypassCeilingRef.current = true
+      scheduleRef.current?.()
+    }
+  })
+
   useLayoutEffect(() => {
     const viewport = viewportRef.current
     const content = contentRef.current
@@ -97,39 +209,118 @@ export function useFittedPage<T>(
 
     let frame = 0
 
+    // A growth attempt this pass is *about* to confirm or refute: the count
+    // it would grow to, the box it was measured against, and the content
+    // height that estimate was based on. Set the moment growth is proposed;
+    // read back on the very next pass, when the same numbers say whether
+    // that specific attempt is the one now overflowing.
+    type PendingGrowth = {
+      proposedCount: number
+      available: number
+      width: number
+      priorUsed: number
+    }
+    let pendingGrowth: PendingGrowth | null = null
+
+    // The last growth attempt a real measurement rejected, purely in terms
+    // of what was measured - see the doc comment above for why this is
+    // deliberately not "what changed" in the caller's items or page.
+    type Ceiling = {
+      count: number
+      available: number
+      width: number
+      baselineUsed: number
+    }
+    let ceiling: Ceiling | null = null
+
     const settle = (): void => {
       const available = viewport.clientHeight
       const used = content.scrollHeight
       if (available === 0) return
 
-      setPerPage((current) => {
-        const clamp = (value: number): number =>
-          Math.min(maxPerPage, Math.max(minPerPage, value))
+      const width = viewport.clientWidth
+      const clamp = (value: number): number =>
+        Math.min(maxPerPage, Math.max(minPerPage, value))
 
-        // Overflowing: give back one item and try again next frame.
-        if (used > available && current > minPerPage) {
-          return clamp(current - 1)
+      // Consumed here regardless of which branch below actually runs: a
+      // one-shot grant earned by a real items/page change, spent on the
+      // very next attempt whether or not that attempt turns out to need it.
+      const bypassCeiling = bypassCeilingRef.current
+      bypassCeilingRef.current = false
+
+      const current = latestRef.current.perPage
+      let settled = current
+
+      // Overflowing: give back one item. If this is the growth attempt
+      // `pendingGrowth` was tracking, its own numbers - not this pass's,
+      // which already reflect the too-tall result - are what the ceiling
+      // needs: the content height growth looked safe *from*, not the height
+      // that proved it wrong.
+      if (used > available && current > minPerPage) {
+        settled = clamp(current - 1)
+        if (
+          pendingGrowth !== null &&
+          pendingGrowth.proposedCount === current &&
+          pendingGrowth.available === available &&
+          pendingGrowth.width === width
+        ) {
+          ceiling = {
+            count: current,
+            available,
+            width,
+            baselineUsed: pendingGrowth.priorUsed,
+          }
         }
-
-        // Room to spare and more items waiting: take one more. The estimate
-        // uses the current page's average row height, which is only used to
-        // decide *whether* another row could fit - the next pass re-measures
-        // and gives it back if the guess was optimistic.
+      } else {
+        // Room to spare and more items waiting: take one more, unless this
+        // exact attempt - this proposed count, from content that measured to
+        // exactly this many pixels, in a box this size - already proved
+        // overflowing. The estimate uses the current page's average row
+        // height, which is only used to decide *whether* another row could
+        // fit - the next pass re-measures and gives it back if the guess was
+        // optimistic.
         const rowHeight = current > 0 ? used / current : used
         const roomLeft = available - used
+        const proposed = current + 1
+        const knownToOverflow =
+          !bypassCeiling &&
+          ceiling !== null &&
+          ceiling.count === proposed &&
+          ceiling.available === available &&
+          ceiling.width === width &&
+          ceiling.baselineUsed === used
+
         if (
           used <= available &&
           rowHeight > 0 &&
           roomLeft >= rowHeight &&
-          current < items.length
+          current < items.length &&
+          !knownToOverflow
         ) {
-          return clamp(current + 1)
+          settled = clamp(proposed)
+          pendingGrowth = {
+            proposedCount: settled,
+            available,
+            width,
+            priorUsed: used,
+          }
+        } else {
+          pendingGrowth = null
         }
-
-        return current
-      })
+      }
 
       setIsMeasuring(false)
+
+      // Only reschedule on an actual change, and do it unconditionally
+      // (rather than trusting the ResizeObserver below to notice): the DOM
+      // does not necessarily resize between two convergence steps - e.g.
+      // adding a card into a grid row no taller than the row already was -
+      // and a step that changes nothing has nothing left to converge toward.
+      if (settled !== current) {
+        settlingRef.current = true
+        setPerPage(settled)
+        schedule()
+      }
     }
 
     const schedule = (): void => {
@@ -137,6 +328,10 @@ export function useFittedPage<T>(
       frame = requestAnimationFrame(settle)
     }
 
+    // Exposed so the "did the page or item array change" effect above can
+    // request a pass too - it fires on events this effect has no dependency
+    // on (see its own comment), so it cannot call `schedule` directly.
+    scheduleRef.current = schedule
     schedule()
 
     // Absent in jsdom and on the server. Without it the fit is measured once
@@ -144,18 +339,27 @@ export function useFittedPage<T>(
     // rather than throwing - the wrong number of rows is a far smaller
     // problem than a component that cannot render at all.
     if (typeof ResizeObserver === "undefined") {
-      return (): void => cancelAnimationFrame(frame)
+      return (): void => {
+        scheduleRef.current = null
+        cancelAnimationFrame(frame)
+      }
     }
 
+    // Not `[…, perPage]` in the deps below: `settle` now reschedules itself
+    // on every change it makes (see above), so this observer only has to
+    // catch resizes this hook did not itself cause - and recreating it on
+    // every `perPage` change discarded `ceiling` along with it, undoing the
+    // guard above on every single step.
     const observer = new ResizeObserver(schedule)
     observer.observe(viewport)
     observer.observe(content)
 
     return (): void => {
+      scheduleRef.current = null
       cancelAnimationFrame(frame)
       observer.disconnect()
     }
-  }, [items.length, minPerPage, maxPerPage, perPage])
+  }, [items.length, minPerPage, maxPerPage])
 
   const goToPage = useCallback(
     (next: number) => {
@@ -170,7 +374,6 @@ export function useFittedPage<T>(
     [goToPage, safePage]
   )
 
-  const start = safePage * perPage
   const pageItems = items.slice(start, start + perPage)
 
   return {
