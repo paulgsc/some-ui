@@ -636,18 +636,36 @@ describe("lintRoundCorpus — R5 (#1208), the round-shaped corpus lint", () => {
     })
   })
 
-  describe("coverage — any instance at all (Rem. 7.1, row 3)", () => {
-    it("fails when an active register entry appears in no round at all", () => {
-      // Removing both the round where CW-P16 is admissible and the one
-      // round where it is otherwise presented as a distractor leaves it
-      // with zero instances anywhere in the corpus.
-      const withoutCwP16 = ALL_FIXTURE_ROUNDS.filter(
-        (r) => r.id !== "round-cw-p15" && r.id !== "round-cw-p16"
+  describe("coverage — an admissible instance (Rem. 7.1, row 3)", () => {
+    it("fails when an active register entry is never a round's admissible member", () => {
+      // Rem. 10.2/Def. 10.2 tie "positive transfer" to a *correct*
+      // selection, so row 3's coverage is about admissible instances
+      // specifically — removing round-cw-p16 (CW-P16's only admissible
+      // appearance) fails row 3 even though CW-P16 still appears as a
+      // distractor in round-cw-p15, which is left untouched on purpose:
+      // that isolates this from row 4's own separate obligation.
+      const withoutCwP16Admissible = ALL_FIXTURE_ROUNDS.filter(
+        (r) => r.id !== "round-cw-p16"
       )
-      const violations = lintRoundCorpus(withoutCwP16)
+      const violations = lintRoundCorpus(withoutCwP16Admissible)
       expect(
         violations.some(
           (v) => v.includes("CW-P16") && v.includes("no corpus instance")
+        )
+      ).toBe(true)
+    })
+
+    it("fails when a register entry appears only as a distractor — that alone is not an admissible instance", () => {
+      // A proposition that is *only* ever a distractor must still fail row
+      // 3 (Codex review finding on #1283): being cited on a non-admissible
+      // member is not "having a corpus instance" in Rem. 10.2's sense.
+      const withoutCwP1Admissible = ALL_FIXTURE_ROUNDS.filter(
+        (r) => r.id !== "round-cw-p1"
+      )
+      const violations = lintRoundCorpus(withoutCwP1Admissible)
+      expect(
+        violations.some(
+          (v) => v.includes("CW-P1") && v.includes("no corpus instance")
         )
       ).toBe(true)
     })
@@ -696,6 +714,42 @@ describe("lintRoundCorpus — R5 (#1208), the round-shaped corpus lint", () => {
           propositionId: "CW-P2",
           admissible: false,
           distractorStatement: "this rewrite is Θ(n²), not a real repair.",
+        },
+      ]
+      const violations = lintRoundCorpus([round({ diffSet })])
+      expect(violations.some((v) => v.includes("Prop. 2.1"))).toBe(true)
+    })
+
+    it("fails when a hunk segment's own text asserts a complexity class literal (review finding on #1283)", () => {
+      // A round's diff is displayed source, not distractorStatement's own
+      // prose, but a segment's text can still carry a comment — and Prop.
+      // 2.1 forbids an asserted class literal anywhere, not just in prose.
+      const diffSet: DiffSet = [
+        {
+          hunk: {
+            path: "src/fixture/a.rs",
+            oldStart: 1,
+            newStart: 1,
+            segments: [
+              {
+                kind: "addition",
+                text: "let a = true; // this repair is Θ(n log n)",
+              },
+            ],
+          },
+          propositionId: "CW-P1",
+          admissible: true,
+        },
+        {
+          hunk: {
+            path: "src/fixture/b.rs",
+            oldStart: 1,
+            newStart: 1,
+            segments: [{ kind: "addition", text: "let b = true;" }],
+          },
+          propositionId: "CW-P2",
+          admissible: false,
+          distractorStatement: "a plausible but wrong repair.",
         },
       ]
       const violations = lintRoundCorpus([round({ diffSet })])

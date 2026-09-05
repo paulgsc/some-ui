@@ -795,10 +795,16 @@ function checkDistractorCoverage(
 }
 
 /**
- * Prop. 2.1's own no-authored-`Θ`-string rule (row 7), reused verbatim
- * against a round's one authored prose field: `distractorStatement`
- * (Cor. 5.1) — the only place a round's own D carries free text a corpus
- * lint needs to scan the way `lintStep` already scans a step's prose.
+ * Prop. 2.1's own no-authored-`Θ`-string rule (row 7): "no round anywhere
+ * holds a Θ string" is unconditional, not scoped to one field — so this
+ * scans both a round's one authored prose field (`distractorStatement`,
+ * Cor. 5.1) *and* every diff-set member's own hunk segment text. A segment
+ * is ordinarily code, not prose, but its `text` can carry a comment (e.g.
+ * `// this repair is Θ(n log n)`), and a comment is exactly the kind of
+ * authored aside Prop. 2.1 forbids asserting a class in — review finding
+ * on #1283, chatgpt-codex-connector: scoping this to `distractorStatement`
+ * alone let a round pass the lint with an asserted class literal sitting
+ * in its own displayed source.
  */
 function checkRoundProseForClassLiterals(
   round: RoundCorpusEntry
@@ -813,6 +819,14 @@ function checkRoundProseForClassLiterals(
         )
       )
     }
+    member.hunk.segments.forEach((segment, segmentIndex) => {
+      violations.push(
+        ...checkNoAssertedComplexityClassLiteral(
+          segment.text,
+          `${locateRound(round)}, diff-set member ${index}, hunk segment ${segmentIndex}`
+        )
+      )
+    })
   })
   return violations
 }
@@ -838,10 +852,20 @@ export function lintRoundCorpus(
   const allCitations = rounds.flatMap((round) => citationsOfRound(round))
   violations.push(...checkCitations(allCitations, PROPOSITION_REGISTER))
 
-  const instantiatedIds = new Set(allCitations.map((citation) => citation.id))
-  violations.push(
-    ...checkRegisterCoverage(instantiatedIds, PROPOSITION_REGISTER)
+  // Rem. 10.2/Def. 10.2 tie "positive transfer" to a *correct* selection —
+  // row 3's coverage obligation is therefore about a proposition's
+  // admissible instances specifically, not every citation regardless of
+  // role. Review finding on #1283, chatgpt-codex-connector: building this
+  // from every citation let a proposition satisfy both coverage checks
+  // while never once being the true witness, only ever a distractor.
+  const admissibleIds = new Set(
+    rounds.flatMap((round) =>
+      round.diffSet
+        .filter((member) => member.admissible)
+        .map((member) => member.propositionId)
+    )
   )
+  violations.push(...checkRegisterCoverage(admissibleIds, PROPOSITION_REGISTER))
   violations.push(...checkDistractorCoverage(rounds, PROPOSITION_REGISTER))
 
   return violations
