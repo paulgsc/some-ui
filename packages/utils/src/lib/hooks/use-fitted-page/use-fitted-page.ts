@@ -60,22 +60,32 @@ const DEFAULT_MAX_PER_PAGE = 24
  * again — and forever, once nothing about the input is going to change. A
  * `ceiling` remembers the last count a real measurement rejected *for the
  * exact box and content that measurement was taken against* - the box's own
- * height and width, which item array is being paged, and which page of it is
- * showing - so growth stops re-proposing a count already known to overflow
- * there, but is free to try again the instant any of those actually changes
- * (a wider box, a different page, a search swapping in shorter cards at the
- * same length). That is what makes this converge rather than merely "usually
- * converges quickly".
+ * height and width, which item array is being paged, and which logical page
+ * of it is showing - so growth stops re-proposing a count already known to
+ * overflow there, but is free to try again the instant any of those actually
+ * changes (a wider box, a different page, a search swapping in shorter cards
+ * at the same length). That is what makes this converge rather than merely
+ * "usually converges quickly".
+ *
+ * "Which page" is the page *index* (`safePage`), not the slice offset
+ * (`safePage * perPage`): the offset moves every time `perPage` itself moves,
+ * including from the very rejection the ceiling exists to remember, which on
+ * any page past the first turns "the box shrank" into "the content changed"
+ * from the ceiling's point of view and discards the guard the instant it was
+ * set. The page index is stable across that - shrinking only grows
+ * `pageCount`, which only loosens the page-index clamp, never moves it.
  *
  * Reaching the fit can take several of these passes in a row (grow, measure,
  * grow again), and nothing about the DOM necessarily changes size between two
  * of them - adding a card into a grid row that was already exactly that tall
  * changes what is rendered without changing `content`'s own height, so the
  * `ResizeObserver` below reports nothing. Each pass therefore explicitly
- * requests the next one itself when it actually changes `perPage`, rather
- * than relying solely on the observer to notice; the observer still exists
- * for changes this hook did not itself cause (a window resize, the list
- * changing length).
+ * requests the next one itself when it actually changes `perPage`. The same
+ * gap exists one level up: paging to a different page, or a same-length
+ * search result swapping in, changes what *should* be measured next without
+ * changing `perPage` or necessarily any rendered size either - so those are
+ * watched directly (by reference, by page index) and schedule their own pass
+ * too, rather than waiting on an observer that may never fire.
  *
  * Both refs are required: the viewport is the box to fit, the content is what
  * is being fitted. Measuring one element against itself cannot work, since a
@@ -117,19 +127,26 @@ export function useFittedPage<T>(
   }
 
   // Read inside the layout effect below without being dependencies of it -
-  // the effect only needs to *see* the latest `perPage`/`items`/`start`, not
-  // to tear itself down and resubscribe its ResizeObserver whenever one of
-  // them changes (see the doc comment on why that recreation was itself a
+  // the effect only needs to *see* the latest `perPage`/`items`/`safePage`,
+  // not to tear itself down and resubscribe its ResizeObserver whenever one
+  // of them changes (see the doc comment on why that recreation was itself a
   // bug). A ref cannot be written during render (refs are for effects and
   // event handlers, not render, and the lint rule for it is not negotiable
   // here) - so a dedicated, dependency-less layout effect keeps it current
-  // instead. It runs on every commit, before the fitting effect below can
-  // possibly read it: any `settle` call is scheduled asynchronously (a
-  // frame, an observer callback), never synchronously within the same commit
-  // as the render that produced these values.
-  const latestRef = useRef({ perPage, items, start })
+  // instead, and doubles as the trigger for the "changed without resizing"
+  // gap the doc comment above describes: a page change or an item-array swap
+  // is a React-level event with no necessary DOM size change to be observed,
+  // so this effect schedules a pass itself whenever either differs from what
+  // it saw last render, rather than waiting on a notification that may never
+  // come.
+  const latestRef = useRef({ perPage, items, page: safePage })
+  const scheduleRef = useRef<(() => void) | null>(null)
   useLayoutEffect(() => {
-    latestRef.current = { perPage, items, start }
+    const previous = latestRef.current
+    latestRef.current = { perPage, items, page: safePage }
+    if (previous.items !== items || previous.page !== safePage) {
+      scheduleRef.current?.()
+    }
   })
 
   useLayoutEffect(() => {
@@ -140,15 +157,17 @@ export function useFittedPage<T>(
     let frame = 0
 
     // What a rejected count was measured against: the box's own height and
-    // width, which array is being paged, and which slice of it was showing.
-    // Any of those changing means the rejection no longer describes what is
-    // about to be measured, so it is cleared rather than carried over.
+    // width, which array is being paged, and which logical page of it was
+    // showing. Any of those changing means the rejection no longer describes
+    // what is about to be measured, so it is cleared rather than carried
+    // over. Page *index*, not slice offset - see the doc comment above for
+    // why the offset itself cannot be trusted here.
     type Ceiling = {
       count: number
       available: number
       width: number
       items: ReadonlyArray<T>
-      start: number
+      page: number
     }
     let ceiling: Ceiling | null = null
 
@@ -161,14 +180,14 @@ export function useFittedPage<T>(
         available,
         width: viewport.clientWidth,
         items: latestRef.current.items,
-        start: latestRef.current.start,
+        page: latestRef.current.page,
       }
       if (
         ceiling !== null &&
         (ceiling.available !== context.available ||
           ceiling.width !== context.width ||
           ceiling.items !== context.items ||
-          ceiling.start !== context.start)
+          ceiling.page !== context.page)
       ) {
         ceiling = null
       }
@@ -226,6 +245,10 @@ export function useFittedPage<T>(
       frame = requestAnimationFrame(settle)
     }
 
+    // Exposed so the "did the page or item array change" effect above can
+    // request a pass too - it fires on events this effect has no dependency
+    // on (see its own comment), so it cannot call `schedule` directly.
+    scheduleRef.current = schedule
     schedule()
 
     // Absent in jsdom and on the server. Without it the fit is measured once
@@ -233,7 +256,10 @@ export function useFittedPage<T>(
     // rather than throwing - the wrong number of rows is a far smaller
     // problem than a component that cannot render at all.
     if (typeof ResizeObserver === "undefined") {
-      return (): void => cancelAnimationFrame(frame)
+      return (): void => {
+        scheduleRef.current = null
+        cancelAnimationFrame(frame)
+      }
     }
 
     // Not `[…, perPage]` in the deps below: `settle` now reschedules itself
@@ -246,6 +272,7 @@ export function useFittedPage<T>(
     observer.observe(content)
 
     return (): void => {
+      scheduleRef.current = null
       cancelAnimationFrame(frame)
       observer.disconnect()
     }

@@ -144,10 +144,8 @@ const Harness = ({
   maxPerPage,
 }: HarnessProps): React.JSX.Element => {
   const items = useMemo(() => heights.map((_, index) => index), [heights])
-  const { viewportRef, contentRef, pageItems, perPage } = useFittedPage(items, {
-    minPerPage,
-    maxPerPage,
-  })
+  const { viewportRef, contentRef, pageItems, perPage, page, next } =
+    useFittedPage(items, { minPerPage, maxPerPage })
 
   return (
     <div
@@ -181,6 +179,10 @@ const Harness = ({
         ))}
       </div>
       <span data-testid="per-page">{perPage}</span>
+      <span data-testid="page">{page}</span>
+      <button type="button" data-testid="next-page" onClick={next}>
+        next
+      </button>
     </div>
   )
 }
@@ -297,6 +299,13 @@ describe("useFittedPage: convergence with non-uniform row heights", () => {
     // reset everything never reruns), but the actual rows are shorter. The
     // rejection learned from the first set must not keep blocking growth for
     // the second.
+    //
+    // Deliberately *not* firing the fake ResizeObserver after the swap - a
+    // real browser gives no such notification here (nothing about the box's
+    // own size changed), and a review caught an earlier version of this test
+    // masking exactly that by firing it manually anyway. `settleAndReadPerPage`
+    // alone has to be enough, driven by the hook noticing the item array
+    // itself changed.
     const { rerender } = render(
       <Harness heights={[100, 150]} available={200} />
     )
@@ -305,9 +314,6 @@ describe("useFittedPage: convergence with non-uniform row heights", () => {
     expect(before.readings[before.readings.length - 1]).toBe(1)
 
     rerender(<Harness heights={[60, 60]} available={200} />)
-    act(() => {
-      FakeResizeObserver.instances[0]!.fire()
-    })
     const after = settleAndReadPerPage(20)
 
     expect(
@@ -320,6 +326,48 @@ describe("useFittedPage: convergence with non-uniform row heights", () => {
         "[100, 150] set would wrongly cap this at 1 if it were not " +
         "invalidated by the item-array swap."
     ).toBe(2)
+  })
+
+  it("does not let a rejection on a nonzero page reintroduce the oscillation", () => {
+    // A review caught this precisely: `start = safePage * perPage`, so on a
+    // page other than the first, a rejection that shrinks `perPage` changes
+    // `start` as a pure side effect of the formula - even though the logical
+    // page never moved - and a ceiling keyed on that offset reads as "the
+    // content changed" and discards itself the instant it was set. Page 0
+    // above (heights 100/150) at minPerPage 1 shrinks straight to 1 and never
+    // exercises this, since `start` is 0 on every page there regardless of
+    // `perPage`. This needs page 1 or later to matter at all.
+    //
+    // maxPerPage: 2 keeps page 0 uneventful (it settles at the cap, having
+    // rejected nothing) so the *first* rejection anywhere happens on page 1,
+    // where 100 + 150 = 250 overflows the 200px box.
+    render(
+      <Harness
+        heights={[50, 50, 100, 150]}
+        available={200}
+        minPerPage={1}
+        maxPerPage={2}
+      />
+    )
+    const onPageZero = settleAndReadPerPage(20)
+    expect(onPageZero.converged).toBe(true)
+    expect(onPageZero.readings[onPageZero.readings.length - 1]).toBe(2)
+
+    act(() => {
+      screen.getByTestId("next-page").click()
+    })
+    expect(screen.getByTestId("page").textContent).toBe("1")
+
+    const onPageOne = settleAndReadPerPage(20)
+
+    expect(
+      onPageOne.converged,
+      `never reached a fixed point on page 1: ${JSON.stringify(onPageOne.readings)}. ` +
+        `A ceiling keyed on the slice offset rather than the page index would ` +
+        `discard itself the moment the rejection below shrank perPage, and ` +
+        `regrow straight back into the same 100 + 150 = 250px overflow forever.`
+    ).toBe(true)
+    expect(onPageOne.readings[onPageOne.readings.length - 1]).toBe(1)
   })
 
   it("never drops below minPerPage even when that count cannot fit", () => {
