@@ -348,6 +348,42 @@ describe("useFittedPage: convergence with non-uniform row heights", () => {
     ).toBe(2)
   })
 
+  it("retries growth when a same-length swap changes only the hidden candidate", () => {
+    // A review caught this precisely: the swap above ([100, 150] -> [60, 60])
+    // happens to also change the *shown* row (100 -> 60), so the ceiling's
+    // own baseline naturally differs without needing anything extra. This
+    // uses [100, 150] -> [100, 50] instead - row 0, the one actually shown at
+    // perPage 1, is untouched, so the measured baseline the ceiling compares
+    // against is identical before and after. Only the hidden candidate (row
+    // 1) got shorter, and nothing about a measured baseline can see that
+    // until it is actually tried.
+    const { rerender } = render(
+      <Harness heights={[100, 150]} available={200} />
+    )
+    const before = settleAndReadPerPage(20)
+    expect(before.converged).toBe(true)
+    expect(
+      before.readings[before.readings.length - 1],
+      "expected the 2-row attempt (100 + 150 = 250 > 200) to be tried and " +
+        "rejected before settling back to 1, so the ceiling this test is " +
+        "about actually gets set"
+    ).toBe(1)
+
+    rerender(<Harness heights={[100, 50]} available={200} />)
+    const after = settleAndReadPerPage(20)
+
+    expect(
+      after.converged,
+      `never reached a fixed point after the hidden candidate shrank: ${JSON.stringify(after.readings)}.`
+    ).toBe(true)
+    expect(
+      after.readings[after.readings.length - 1],
+      "100 + 50 = 150 <= 200 fits both rows now, but a ceiling that only " +
+        "compares the measured baseline (identical before and after - row 0 " +
+        "never changed) would never re-try the now-shorter row 1."
+    ).toBe(2)
+  })
+
   it("does not let a rejection on a nonzero page reintroduce the oscillation", () => {
     // A review caught this precisely: `start = safePage * perPage`, so on a
     // page other than the first, a rejection that shrinks `perPage` changes

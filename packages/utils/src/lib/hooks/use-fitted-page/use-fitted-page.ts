@@ -86,10 +86,30 @@ const DEFAULT_MAX_PER_PAGE = 24
  * swapping in, changes what *should* be measured next without changing
  * `perPage` or necessarily any rendered size either - so those are watched
  * directly (by reference, by page index) and schedule their own pass too,
- * rather than waiting on an observer that may never fire. That trigger can
- * safely over-fire for an unmemoized caller (an extra pass that reconfirms
- * nothing changed costs a frame, not correctness) in a way a *blocking*
- * check built on the same signal cannot.
+ * rather than waiting on an observer that may never fire.
+ *
+ * A plain reschedule is not always enough, though: a same-length swap can
+ * leave the *shown* rows measuring identically while changing a row that is
+ * not shown yet - `[100, 150]` becoming `[100, 50]` after 2 was rejected
+ * still measures 100 for the one row on screen, so the ceiling's numbers
+ * still match and block the retry even though the hidden candidate is now
+ * short enough to fit. The measured baseline genuinely cannot see a
+ * candidate that has not rendered - only trying will. So an items/page
+ * change earns the very next attempt a one-shot bypass of the ceiling, not
+ * just a wake-up call: if it overflows again, a fresh ceiling is set
+ * immediately from that real measurement, no worse off than before.
+ *
+ * That bypass has to be earned, not automatic, or it reopens the first
+ * problem from the other direction: this hook's own `setPerPage` is exactly
+ * the kind of update that makes an *unmemoized* caller (`PromptPanel`, again)
+ * hand back a new `items` reference on every single settle-driven re-render,
+ * which would spend the bypass every pass and disable the ceiling just as
+ * permanently as keying it on identity did. The distinction that holds is
+ * *who* caused the render: `settlingRef` marks the render `settle` itself
+ * triggers, and only an items/page change on a render that was *not* one of
+ * those - a prop from outside, or `goToPage`/`next`/`previous`, which are
+ * this hook's own public API for "show something else" rather than its
+ * internal convergence loop - earns the bypass.
  *
  * Both refs are required: the viewport is the box to fit, the content is what
  * is being fitted. Measuring one element against itself cannot work, since a
@@ -145,10 +165,22 @@ export function useFittedPage<T>(
   // come.
   const latestRef = useRef({ perPage, items, page: safePage })
   const scheduleRef = useRef<(() => void) | null>(null)
+  const bypassCeilingRef = useRef(false)
+  // Set immediately before `settle` calls `setPerPage`, so the effect below
+  // can tell its own convergence-driven renders apart from everything else -
+  // see the doc comment on why that distinction, not just "did items or the
+  // page change", is what decides whether to bypass the ceiling.
+  const settlingRef = useRef(false)
   useLayoutEffect(() => {
     const previous = latestRef.current
     latestRef.current = { perPage, items, page: safePage }
-    if (previous.items !== items || previous.page !== safePage) {
+    const isOwnConvergenceStep = settlingRef.current
+    settlingRef.current = false
+    if (
+      !isOwnConvergenceStep &&
+      (previous.items !== items || previous.page !== safePage)
+    ) {
+      bypassCeilingRef.current = true
       scheduleRef.current?.()
     }
   })
@@ -193,6 +225,12 @@ export function useFittedPage<T>(
       const clamp = (value: number): number =>
         Math.min(maxPerPage, Math.max(minPerPage, value))
 
+      // Consumed here regardless of which branch below actually runs: a
+      // one-shot grant earned by a real items/page change, spent on the
+      // very next attempt whether or not that attempt turns out to need it.
+      const bypassCeiling = bypassCeilingRef.current
+      bypassCeilingRef.current = false
+
       const current = latestRef.current.perPage
       let settled = current
 
@@ -228,6 +266,7 @@ export function useFittedPage<T>(
         const roomLeft = available - used
         const proposed = current + 1
         const knownToOverflow =
+          !bypassCeiling &&
           ceiling !== null &&
           ceiling.count === proposed &&
           ceiling.available === available &&
@@ -261,6 +300,7 @@ export function useFittedPage<T>(
       // adding a card into a grid row no taller than the row already was -
       // and a step that changes nothing has nothing left to converge toward.
       if (settled !== current) {
+        settlingRef.current = true
         setPerPage(settled)
         schedule()
       }
