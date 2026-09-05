@@ -100,16 +100,33 @@ const DEFAULT_MAX_PER_PAGE = 24
  * immediately from that real measurement, no worse off than before.
  *
  * That bypass has to be earned, not automatic, or it reopens the first
- * problem from the other direction: this hook's own `setPerPage` is exactly
- * the kind of update that makes an *unmemoized* caller (`PromptPanel`, again)
- * hand back a new `items` reference on every single settle-driven re-render,
- * which would spend the bypass every pass and disable the ceiling just as
- * permanently as keying it on identity did. The distinction that holds is
- * *who* caused the render: `settlingRef` marks the render `settle` itself
- * triggers, and only an items/page change on a render that was *not* one of
- * those - a prop from outside, or `goToPage`/`next`/`previous`, which are
- * this hook's own public API for "show something else" rather than its
- * internal convergence loop - earns the bypass.
+ * problem from the other direction: this hook's own `setPerPage` causes a
+ * re-render too, and an *unmemoized* caller hands back a new `items`
+ * reference on every render regardless of why it happened - `PromptPanel`
+ * did exactly this (`evidenceRowsOf(blocks)`, called straight in its render
+ * body) until a real re-render source having nothing to do with `blocks` -
+ * the typing engine's own tick - surfaced that a bypass earned on *every*
+ * caller-side re-render, not just this hook's own, would spend itself every
+ * tick and disable the ceiling just as permanently as keying it on identity
+ * did. `settlingRef` only rules out renders `settle` itself triggers, not
+ * every render that happens to leave `blocks` unchanged - a caller has to
+ * memoize what it hands this hook for that identity to mean "the content
+ * changed" rather than merely "a render happened", the same contract
+ * `useEffect`/`useMemo` dependencies already expect everywhere else. That is
+ * a requirement on the caller, not something this hook can enforce or work
+ * around: there is no generic `T` on which to fall back to comparing values.
+ *
+ * That same requirement draws the honest edge of what this can catch. It
+ * bypasses on `items`/page changing, not on "the hidden candidate's real
+ * height changed" in full generality - content that affects a candidate's
+ * height without appearing in `items` at all (a badge keyed off state kept
+ * outside the paged array, say) can leave a ceiling correctly earned once
+ * blocking a count that would fit again, until something else - a resize,
+ * a later items/page change - prompts a fresh look. The outcome is stable
+ * and safe (a merely conservative page, never a repeating loop or a visible
+ * overflow), just not always optimal. Closing that fully would mean this
+ * hook comparing values it cannot generically see; see the PR history for
+ * where that tradeoff was made deliberately rather than chased further.
  *
  * Both refs are required: the viewport is the box to fit, the content is what
  * is being fitted. Measuring one element against itself cannot work, since a

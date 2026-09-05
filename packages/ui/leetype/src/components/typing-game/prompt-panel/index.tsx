@@ -1,4 +1,5 @@
 import type { FC, ReactNode } from "react"
+import { useMemo } from "react"
 import type { ReadBlock } from "@leetype/types/exercise"
 import { PageControls } from "@some-ui/shared"
 import { assertNever, cn, useFittedPage } from "some-ui-utils"
@@ -155,7 +156,14 @@ export const PromptPanel: FC<PromptPanelProps> = ({
   total,
   className,
 }) => {
-  const rows = evidenceRowsOf(blocks)
+  // Memoized on `blocks`, not recomputed every render: the typing engine
+  // re-renders this panel on its own tick independent of whether the prompt
+  // itself changed, and useFittedPage's own bypass for a genuine content
+  // change trusts `rows`' identity to mean exactly that - an unmemoized
+  // rebuild here would earn that bypass on every tick and re-open the
+  // grow/overflow/shrink cycle the hook exists to prevent, this time
+  // repeating on the tick interval instead of every animation frame.
+  const rows = useMemo(() => evidenceRowsOf(blocks), [blocks])
   const {
     viewportRef,
     contentRef,
