@@ -712,34 +712,44 @@ function checkRoundSchemas(round: RoundCorpusEntry): Array<string> {
 }
 
 /**
- * Prop. 6.1 ("injectivity is not required; discriminability is"): mu need
- * not be injective *across* the corpus — the same proposition may witness
- * diffs in many different rounds, and that repetition is transfer (Def.
- * 10.2). What the proposition forbids is two options *within the same
- * round* both witnessing the same proposition. In this workspace's own
- * realization of a round, the presented option set for one round *is* D,
- * each option labelled by its own `propositionId` (R4's mu) — so two
- * members of the same D sharing a `propositionId` is exactly two presented
- * options both true of whichever diff that proposition actually witnesses,
- * with nothing left in the round to tell them apart. Checks every pair, not
- * just neighbors, the same discipline `checkRationaleChoicesNoSharedPrefix`
- * already uses above.
+ * Prop. 6.1 ("injectivity is not required; discriminability is"): Def. 1.6
+ * explicitly permits mu to be non-injective — many diffs may witness one
+ * proposition, and Def. 10.2 relies on exactly that for cross-round
+ * transfer. Review finding on #1283 (chatgpt-codex-connector): this
+ * check's first version flagged *any* pair of members sharing a
+ * `propositionId`, which rejects data Def. 1.6 explicitly allows — e.g.
+ * two non-admissible members legitimately sharing one off-topic distractor
+ * proposition. Theorem 6.1's real "presented option set" (drawn from `P`,
+ * distinct from `D` itself, with its own truth relation to the selected
+ * diff) isn't data `RoundCorpusEntry` carries, so Prop. 6.1's general form
+ * has no mechanical check here yet.
+ *
+ * One case remains genuinely incoherent given how this workspace actually
+ * computes a verdict (Thm. 6.1: selecting `(d, p)` is correct iff `p =
+ * mu(d)`): if the round's own *admissible* member's `propositionId` is
+ * repeated on a different, non-admissible member, selecting that wrong
+ * diff paired with the same proposition satisfies the identical `p =
+ * mu(d)` check the admissible diff itself satisfies — the round's own data
+ * would score a wrong diff as right. That collision, and only that one, is
+ * what this checks; two non-admissible members sharing a proposition is
+ * left alone, per Def. 1.6.
  */
 function checkDiscriminability(round: RoundCorpusEntry): Array<string> {
   const violations: Array<string> = []
   const where = locateRound(round)
-  const firstSeenAt = new Map<string, number>()
+  const admissible = round.diffSet.find((member) => member.admissible)
+  if (admissible === undefined) return violations
 
   round.diffSet.forEach((member, index) => {
-    const firstIndex = firstSeenAt.get(member.propositionId)
-    if (firstIndex === undefined) {
-      firstSeenAt.set(member.propositionId, index)
-    } else {
+    if (
+      !member.admissible &&
+      member.propositionId === admissible.propositionId
+    ) {
       violations.push(
-        `${where}: diff-set members ${firstIndex} and ${index} both carry propositionId ` +
-          `${member.propositionId} — Prop. 6.1 requires that no two presented options be both ` +
-          "true of the selected diff; two options claiming the same proposition cannot be " +
-          "discriminated by it."
+        `${where}: diff-set member ${index} shares propositionId ` +
+          `${member.propositionId} with the round's own admissible member — a non-admissible ` +
+          "member carrying the same propositionId as the admissible one would score as correct " +
+          "under Thm. 6.1's own p = mu(d) verdict despite being marked wrong (Prop. 6.1)."
       )
     }
   })

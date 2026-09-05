@@ -566,7 +566,7 @@ describe("lintRoundCorpus — R5 (#1208), the round-shaped corpus lint", () => {
   })
 
   describe("discriminability (Prop. 6.1)", () => {
-    it("fails when two diff-set members share the same propositionId", () => {
+    it("fails when a non-admissible member shares the admissible member's own propositionId", () => {
       const diffSet: DiffSet = [
         {
           hunk: {
@@ -594,6 +594,54 @@ describe("lintRoundCorpus — R5 (#1208), the round-shaped corpus lint", () => {
       expect(
         violations.some((v) => v.includes("Prop. 6.1") && v.includes("CW-P1"))
       ).toBe(true)
+    })
+
+    it("passes when two non-admissible members share a propositionId — Def. 1.6 permits non-injective mu (review finding on #1283)", () => {
+      // Codex correctly flagged the first version of this check for
+      // rejecting exactly this: Def. 1.6 explicitly allows many diffs to
+      // witness one proposition. Only a collision with the *admissible*
+      // member's own propositionId is genuinely incoherent (see
+      // checkDiscriminability's own doc comment).
+      const diffSet: DiffSet = [
+        {
+          hunk: {
+            path: "src/fixture/a.rs",
+            oldStart: 1,
+            newStart: 1,
+            segments: [{ kind: "addition", text: "let a = true;" }],
+          },
+          propositionId: "CW-P1",
+          admissible: true,
+        },
+        {
+          hunk: {
+            path: "src/fixture/b.rs",
+            oldStart: 1,
+            newStart: 1,
+            segments: [{ kind: "addition", text: "let b = true;" }],
+          },
+          propositionId: "CW-P2",
+          admissible: false,
+          distractorStatement: "one off-topic distractor rewrite.",
+        },
+        {
+          hunk: {
+            path: "src/fixture/c.rs",
+            oldStart: 1,
+            newStart: 1,
+            segments: [{ kind: "addition", text: "let c = true;" }],
+          },
+          propositionId: "CW-P2",
+          admissible: false,
+          distractorStatement:
+            "a second, different rewrite, same off-topic proposition.",
+        },
+      ]
+      expect(
+        withoutCoverageNoise(lintRoundCorpus([round({ diffSet })])).filter(
+          (v) => v.includes("Prop. 6.1")
+        )
+      ).toEqual([])
     })
 
     it("passes when every diff-set member carries a distinct propositionId", () => {
