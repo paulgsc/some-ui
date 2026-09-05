@@ -115,6 +115,48 @@ backs should be cut, not kept and re-justified.
   and Invariants table: `__sw_overlay_root` is never a descendant of
   `__sw_page_layer`, and theme CSS is scoped to `#__sw_page_layer`.
   Governed by `docs/canon/dom-state-estimation-canon.typ`.
+- *Rendering-scope lifecycle* --- `adapter/scope-registry.ts` (the
+  HELD/RESOLVING/COMMITTED/EXONERATED_NATIVE/FAILED_HELD/RETIRED custody
+  state machine, canon Definition D.5), `adapter/document-scope.ts` (the
+  document as root scope `r_0`), and `adapter/shadow-scope-discovery.ts`
+  (reactive `MutationObserver` discovery of open shadow roots plus a
+  `DISCOVERY_POLL_MS`-bounded poll for a late `attachShadow()`, a
+  per-scope `generation` counter that makes `resolveCommitted()` discard a
+  stale async completion rather than clobber a newer state, and per-root
+  observers that `invalidate()`/re-project on host-page mutation).
+  Unit-tested throughout (`__tests__/scope-registry.test.ts`,
+  `document-scope.test.ts`, `shadow-scope-discovery.test.ts`).
+  Browser-verified in Chromium, per behavior, not as one blanket claim
+  (a P2 finding on PR #1286 correctly caught an earlier draft of this
+  bullet implying otherwise): late-root discovery and coverage of
+  unresolved content by `tests/e2e/specs/issue-1267-sfdc-shadow-custody.spec.ts`
+  (frame-oracle proof of zero native-bright frames across all three G0.2
+  creation-trace orderings); self-healing after host-page mutation, for
+  shadow scopes specifically, by
+  `tests/e2e/specs/issue-1268-sfad-shadow-theming.spec.ts` (a mutated
+  surface re-themes dark) and, for the generic custody primitive
+  underneath both document and shadow scopes, by
+  `tests/e2e/specs/scope-registry-self-heal.spec.ts` (adversarial removal
+  of the covering artifact) and `scope-registry-handoff.spec.ts` (the
+  two-phase install-before-release handoff). The one mechanism with *no*
+  browser coverage, checked directly (neither spec file above, nor any
+  other under `tests/e2e/specs/`, references "generation" or "stale"):
+  the per-scope `generation` counter that makes `resolveCommitted()`
+  discard a stale async completion — that claim rests on
+  `scope-registry.test.ts`'s two "discards a stale completion superseded
+  by a concurrent re-register()/retire()" unit tests alone, which
+  `src/data/resume.typ`'s bullet now states explicitly rather than
+  folding it into an undifferentiated "browser-tested".
+  *Known limitations, disclosed in `adapter/custody-primitive.ts`'s own
+  header*: the occlusion hold is `position: fixed`, so it cannot cover
+  content promoted to the browser's top layer (a native `<dialog>` via
+  `showModal()`, the Popover API, `:fullscreen`) — open, tracked by epic
+  #1263, deferred to SF-LG (#1269) rather than claimed closed here; and a
+  `transform`/`filter`/`perspective`/`contain`-bearing shadow host or
+  ancestor establishes its own containing block, bounding the veil to that
+  ancestor's box instead of the viewport — the full fix (mounting the hold
+  outside every host's containing-block chain) is routed to a future story,
+  not implemented yet.
 - *Comfort metric* --- `adapter/swatches.ts` (`comfortReport` /
   `satisfiesComfort` / `sampleBodyComfort`), generalized from a registry
   `Swatch`'s static hex tokens to any observed `(bg, text)` pair so it can
@@ -179,6 +221,18 @@ backs should be cut, not kept and re-justified.
   changelogs across the workspace; `release.yml`, `www-docker-release.yml`
   (Docker/Docker Hub), `pages.yml` (GitHub Pages + Storybook), `wasm-release.yml`,
   and `extension-sign*.yml` / `_extension-verify.yml` cover the rest.
+- *Human-gated extension release pipeline* --- `extension-release.yml`
+  drafts a changeset-versioned release PR and only builds+signs once a
+  human merges it; `extensions/scripts/build-amo-metadata.mjs` derives the
+  AMO "Version Notes" from `CHANGELOG.md`'s section for the current
+  `package.json` version and the "Notes for Reviewers" from
+  `README.build.md`, failing the build if either is missing, the
+  changelog has no section for that version, or either field exceeds
+  AMO's 3000-char cap; `extensions/scripts/sync-manifest-version.mjs`
+  keeps `public/manifest.firefox.json`'s `version` in lockstep with
+  `package.json`'s, and its `--check` mode (wired into
+  `_extension-sign.yml`, right before signing) fails the sign job outright
+  on drift between them.
 - *Hoisted contract, not a shared runtime* --- `extensions/common`
   (`GOOD_CITIZEN.md` and the "two mandates": disjointness vs. no
   reinvention) with idioms enforced by `packages/eslint`
@@ -234,6 +288,49 @@ exact crate count at all; every mention was changed to "a multi-crate Rust
 workspace". Re-derive this note (not the résumé content) by cloning
 `paulgsc/server` read-only and counting `members` in its `Cargo.toml` before
 reusing the number anywhere that matters.
+
+= Non-engineering employment history (context, not repo evidence)
+
+Unlike every claim above, nothing in this section traces to `paulgsc/server` or
+`paulgsc/some-ui` — it is sourced from the candidate's own separate
+non-engineering résumé (`pg_resume_2026`), tracked here so the full history
+stays legible even though `src/data/personal.typ`'s `additional-experience`
+renders only one of these four entries. Kept out of the rendered résumé
+itself deliberately: an engineering résumé's "Additional experience" section
+exists to prove continuity and name transferable skills from one concrete
+job, not to re-litigate a full separate career — see `personal.typ`'s own
+comment on that field.
+
+- *WIS* --- Inventory Specialist, Sacramento, CA, January 2024 --- Present
+  (current). High-volume cycle counting and 10-key data entry at 99.9%+
+  accuracy; daily reconciliation of physical counts against system records.
+- *CABA Design* --- Data Administrator, Rancho Cordova, CA, August 2020 ---
+  December 2023. The entry `personal.typ` actually renders: Tableau
+  dashboards on PostgreSQL, Google Workspace API-driven executive-reporting
+  automation (10+ hours/week saved), and Python scripts against Odoo's
+  XML-RPC API automating record creation and resolving data issues.
+- *Natera* --- Clinical Data Operator, San Carlos, CA, January 2019 ---
+  August 2020. HIPAA-compliant LIMS sample accessioning at 99.99% accuracy;
+  30+ kits/hour, recognized as a top performer for speed and regulatory
+  adherence.
+- *PayLocity* --- Distribution Assistant, Oakland, CA, January 2017 ---
+  January 2019. Weekly inventory audits with zero discrepancies; named "Top
+  Performing Employee" for error-free execution.
+
+*Why only CABA Design renders*: the previous revision of `personal.typ`
+consolidated all four into one entry (`org: "CABA Design · Natera · WIS"`,
+dates "2017 — Present") to show unbroken employment through today. That
+collapsed four distinct jobs, with their own titles, locations, and
+achievements, into one org string with no single accurate date range —
+narrowing it to CABA Design's own dates while leaving that org string
+untouched was flagged as a real accuracy bug by this repo's bot reviewer
+(PR #1286: dropping Natera/WIS but keeping "2017 — Present" would have read
+as nine years at CABA alone). Naming one real employer with its own real
+dates, location, and bullets is more honest than either the stale
+consolidation or an unsupported single-employer date range — the other
+three stay recorded here rather than silently dropped, exactly so a future
+revision that wants to render a second (or fourth) `additional-experience`
+entry, or correct this one further, has the sourced facts to do it from.
 
 = Method
 
@@ -410,6 +507,78 @@ substantiate those claims.
 
 
 = Current revision
+
+*v12 (2026-09-05).* Corrected a personal-schema error and applied two
+review-suggested bullet replacements, both re-verified against the current
+tree before landing rather than taken on the suggestion's word alone.
+
+- *Fixed the additional-experience entry in `src/data/personal.typ`*: `org`
+  named three employers ("CABA Design · Natera · WIS") under one date range
+  ("2017 — Present"), but only CABA Design belongs in this entry — Natera
+  and WIS are separate past/current jobs on the candidate's own
+  non-engineering résumé, not this one. Narrowing `org` to "CABA Design"
+  while leaving "2017 — Present" untouched was itself a real bug this
+  repo's bot reviewer caught on PR #1286 (nine years misattributed to one
+  employer); fixed by giving CABA Design its own real dates (August 2020 —
+  December 2023, rendered as "2020 — 2023"), title ("Data Administrator"),
+  and three bullets describing what was actually done there (Tableau/
+  PostgreSQL dashboards, Google Workspace API-driven reporting automation,
+  Python/Odoo XML-RPC record automation) rather than the previous
+  composite bullet's generic, multi-employer-averaged claim. Also added
+  the city/state each entry was missing: "Rancho Cordova, CA" for CABA
+  Design, "Merced, CA" for the UC Merced education entry (both rendered
+  via the existing `detail` field every template already prints under the
+  org/institution line). The other three employers (WIS — current, Natera,
+  PayLocity) are recorded with their own real dates/locations/bullets in
+  this file's new *Non-engineering employment history* section rather than
+  silently dropped, per the candidate's own request to track them for
+  context without rendering them in the engineering résumé.
+- *Replaced the release-automation bullet* in `platform`'s "CI/CD and
+  release automation" project (`src/data/resume.typ`) with the human-gated
+  AMO pipeline claim, after reading `extension-release.yml`,
+  `build-amo-metadata.mjs`, and `sync-manifest-version.mjs` directly to
+  confirm each clause: a human merge gates build+sign, release notes come
+  from the versioned changelog, reviewer notes and both fields' length are
+  validated, manifest/package versions are synchronized, and `--check`
+  mode fails signing on drift. See this file's *Platform, release, and
+  reuse* section for the new evidence bullet.
+- *Replaced the DOM-isolation bullet* in `fullstack`'s "Browser extension
+  platform" project with the scope-lifecycle claim, after reading
+  `scope-registry.ts`, `document-scope.ts`, and `shadow-scope-discovery.ts`
+  directly: late-root discovery (reactive + `DISCOVERY_POLL_MS` poll),
+  coverage of unresolved content (the HELD occlusion hold), rejection of
+  stale async completions (the per-scope `generation` counter), and
+  self-healing after host-page mutation (per-root observers) are all real.
+  Recorded the two known gaps `custody-primitive.ts` itself discloses —
+  top-layer content and a transform/filter/contain-established containing
+  block — in this file's *some-filter* section rather than only in the
+  résumé's omission of them.
+- *Follow-up, same PR*: the bot reviewer caught two more real issues in the
+  changes above. First, narrowing the additional-experience `org` to "CABA
+  Design" while leaving its date range at "2017 — Present" misattributed
+  nine years to one employer — fixed with CABA Design's actual dates
+  (August 2020 — December 2023, sourced from the candidate's
+  `pg_resume_2026`) and bullets describing what was actually done there;
+  see the *Non-engineering employment history* section above, added in the
+  same follow-up to track the other three employers (WIS, Natera,
+  PayLocity) with their own real dates rather than dropping them
+  silently — and to retire the unsourced "Rite Aid" mention this file's
+  own `personal.typ` comment previously carried, which a repo-wide search
+  turned up no evidence for once checked, and which the newly supplied
+  résumé's own gapless 2017–present chain across exactly four employers
+  leaves no room for anyway. Second, the "browser-tested" scope-lifecycle
+  bullet initially cited only `scope-registry-handoff.spec.ts` and
+  `scope-registry-self-heal.spec.ts` (neither imports
+  `shadow-scope-discovery.ts` or creates a `ShadowRoot`) for a claim that
+  included the per-scope `generation`/stale-completion mechanism, which
+  those specs never exercise — checked directly (no "generation" or
+  "stale" string anywhere under `tests/e2e/specs/`) and confirmed
+  unit-tested only. Reworded the bullet so "browser-verified" attaches
+  only to what actually is (late-root discovery and coverage, now
+  correctly cited to `issue-1267-sfdc-shadow-custody.spec.ts`; self-healing
+  after mutation, to `issue-1268-sfad-shadow-theming.spec.ts` and the two
+  specs originally cited), with the generation counter named separately as
+  unit-tested.
 
 *v11 (2026-08-29).* Responded to an external ATS/positioning review
 (`docs/canon` sibling review, 2026-08-29) that read the rendered PDFs, the
