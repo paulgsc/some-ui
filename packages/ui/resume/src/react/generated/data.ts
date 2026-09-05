@@ -118,7 +118,7 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
       {
         "institution": "University of California, Merced",
         "credential": "B.S. Mechanical Engineering",
-        "detail": null,
+        "detail": "Merced, CA",
         "dates": "2011 — 2015"
       }
     ],
@@ -128,8 +128,8 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
     "additionalExperience": [
       {
         "role": "Data Administrator / Operations",
-        "org": "CABA Design · Natera · WIS",
-        "detail": null,
+        "org": "CABA Design",
+        "detail": "Rancho Cordova, CA",
         "dates": "2017 — Present",
         "bullets": [
           "Automated ERP record-keeping and reporting with Python and SQL while maintaining 99.9%+ data accuracy in continuous full-time employment."
@@ -168,7 +168,7 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
         "bullets": [
           "Implemented change-scoped GitHub Actions on Turbo/Cargo dependency graphs so lint, typecheck, and test run only against changed packages and their transitive dependents, backed by a full-repo nightly sweep.",
           "Built Docker image build/publish pipelines for the web and server images, SQLx offline-query preparation, and Changesets-driven versioning across the workspace.",
-          "Gated six browser-extension releases on typecheck, unit tests, lint, and signed web-ext packaging (AMO unlisted channel) before publish."
+          "Built a human-gated extension release pipeline that derives AMO notes from versioned changelogs, validates reviewer metadata and field limits, synchronizes manifest/package versions, and blocks signing when source and artifact versions drift."
         ]
       }
     ],
@@ -243,7 +243,7 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
       {
         "institution": "University of California, Merced",
         "credential": "B.S. Mechanical Engineering",
-        "detail": null,
+        "detail": "Merced, CA",
         "dates": "2011 — 2015"
       }
     ],
@@ -253,8 +253,8 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
     "additionalExperience": [
       {
         "role": "Data Administrator / Operations",
-        "org": "CABA Design · Natera · WIS",
-        "detail": null,
+        "org": "CABA Design",
+        "detail": "Rancho Cordova, CA",
         "dates": "2017 — Present",
         "bullets": [
           "Automated ERP record-keeping and reporting with Python and SQL while maintaining 99.9%+ data accuracy in continuous full-time employment."
@@ -294,7 +294,7 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
         "bullets": [
           "Built typed popup/worker/content protocols and MV3 service-worker bundles across six shipped Firefox/Chromium extensions, with platform shims isolating browser-specific APIs.",
           "Modeled UI and resolver states as exhaustive discriminated unions so illegal transitions fail at compile time rather than at runtime.",
-          "Enforced DOM structural isolation between extension overlays and host-page content, verified by a standalone cross-browser Playwright test corpus that bundles the real shipped modules rather than a reimplementation.",
+          "Built and browser-tested a typed lifecycle for document and open-Shadow-DOM scopes that discovers late roots, keeps unresolved content covered, rejects stale asynchronous completions, and self-heals after host-page mutations.",
           "Gated every signed release (web-ext, AMO) on typecheck, unit tests, lint, and license/header checks before publish."
         ]
       }
@@ -370,7 +370,7 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
       {
         "institution": "University of California, Merced",
         "credential": "B.S. Mechanical Engineering",
-        "detail": null,
+        "detail": "Merced, CA",
         "dates": "2011 — 2015"
       }
     ],
@@ -380,8 +380,8 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
     "additionalExperience": [
       {
         "role": "Data Administrator / Operations",
-        "org": "CABA Design · Natera · WIS",
-        "detail": null,
+        "org": "CABA Design",
+        "detail": "Rancho Cordova, CA",
         "dates": "2017 — Present",
         "bullets": [
           "Automated ERP record-keeping and reporting with Python and SQL while maintaining 99.9%+ data accuracy in continuous full-time employment."

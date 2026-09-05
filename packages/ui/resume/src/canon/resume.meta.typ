@@ -115,6 +115,29 @@ backs should be cut, not kept and re-justified.
   and Invariants table: `__sw_overlay_root` is never a descendant of
   `__sw_page_layer`, and theme CSS is scoped to `#__sw_page_layer`.
   Governed by `docs/canon/dom-state-estimation-canon.typ`.
+- *Rendering-scope lifecycle* --- `adapter/scope-registry.ts` (the
+  HELD/RESOLVING/COMMITTED/EXONERATED_NATIVE/FAILED_HELD/RETIRED custody
+  state machine, canon Definition D.5), `adapter/document-scope.ts` (the
+  document as root scope `r_0`), and `adapter/shadow-scope-discovery.ts`
+  (reactive `MutationObserver` discovery of open shadow roots plus a
+  `DISCOVERY_POLL_MS`-bounded poll for a late `attachShadow()`, a
+  per-scope `generation` counter that makes `resolveCommitted()` discard a
+  stale async completion rather than clobber a newer state, and per-root
+  observers that `invalidate()`/re-project on host-page mutation).
+  Unit-tested (`__tests__/scope-registry.test.ts`,
+  `document-scope.test.ts`, `shadow-scope-discovery.test.ts`) and
+  browser-tested (`tests/e2e/specs/scope-registry-handoff.spec.ts`,
+  `scope-registry-self-heal.spec.ts`).
+  *Known limitations, disclosed in `adapter/custody-primitive.ts`'s own
+  header*: the occlusion hold is `position: fixed`, so it cannot cover
+  content promoted to the browser's top layer (a native `<dialog>` via
+  `showModal()`, the Popover API, `:fullscreen`) — open, tracked by epic
+  #1263, deferred to SF-LG (#1269) rather than claimed closed here; and a
+  `transform`/`filter`/`perspective`/`contain`-bearing shadow host or
+  ancestor establishes its own containing block, bounding the veil to that
+  ancestor's box instead of the viewport — the full fix (mounting the hold
+  outside every host's containing-block chain) is routed to a future story,
+  not implemented yet.
 - *Comfort metric* --- `adapter/swatches.ts` (`comfortReport` /
   `satisfiesComfort` / `sampleBodyComfort`), generalized from a registry
   `Swatch`'s static hex tokens to any observed `(bg, text)` pair so it can
@@ -179,6 +202,18 @@ backs should be cut, not kept and re-justified.
   changelogs across the workspace; `release.yml`, `www-docker-release.yml`
   (Docker/Docker Hub), `pages.yml` (GitHub Pages + Storybook), `wasm-release.yml`,
   and `extension-sign*.yml` / `_extension-verify.yml` cover the rest.
+- *Human-gated extension release pipeline* --- `extension-release.yml`
+  drafts a changeset-versioned release PR and only builds+signs once a
+  human merges it; `extensions/scripts/build-amo-metadata.mjs` derives the
+  AMO "Version Notes" from `CHANGELOG.md`'s section for the current
+  `package.json` version and the "Notes for Reviewers" from
+  `README.build.md`, failing the build if either is missing, the
+  changelog has no section for that version, or either field exceeds
+  AMO's 3000-char cap; `extensions/scripts/sync-manifest-version.mjs`
+  keeps `public/manifest.firefox.json`'s `version` in lockstep with
+  `package.json`'s, and its `--check` mode (wired into
+  `_extension-sign.yml`, right before signing) fails the sign job outright
+  on drift between them.
 - *Hoisted contract, not a shared runtime* --- `extensions/common`
   (`GOOD_CITIZEN.md` and the "two mandates": disjointness vs. no
   reinvention) with idioms enforced by `packages/eslint`
@@ -410,6 +445,39 @@ substantiate those claims.
 
 
 = Current revision
+
+*v12 (2026-09-05).* Corrected a personal-schema error and applied two
+review-suggested bullet replacements, both re-verified against the current
+tree before landing rather than taken on the suggestion's word alone.
+
+- *Fixed the additional-experience entry in `src/data/personal.typ`*: `org`
+  named three employers ("CABA Design · Natera · WIS") but the candidate's
+  current non-engineering role is CABA Design alone — Natera and WIS are
+  past employers on that separate résumé, not this one. Also added the
+  city/state each entry was missing: "Rancho Cordova, CA" for the
+  additional-experience role, "Merced, CA" for the UC Merced education
+  entry (both rendered via the existing `detail` field every template
+  already prints under the org/institution line).
+- *Replaced the release-automation bullet* in `platform`'s "CI/CD and
+  release automation" project (`src/data/resume.typ`) with the human-gated
+  AMO pipeline claim, after reading `extension-release.yml`,
+  `build-amo-metadata.mjs`, and `sync-manifest-version.mjs` directly to
+  confirm each clause: a human merge gates build+sign, release notes come
+  from the versioned changelog, reviewer notes and both fields' length are
+  validated, manifest/package versions are synchronized, and `--check`
+  mode fails signing on drift. See this file's *Platform, release, and
+  reuse* section for the new evidence bullet.
+- *Replaced the DOM-isolation bullet* in `fullstack`'s "Browser extension
+  platform" project with the scope-lifecycle claim, after reading
+  `scope-registry.ts`, `document-scope.ts`, and `shadow-scope-discovery.ts`
+  directly: late-root discovery (reactive + `DISCOVERY_POLL_MS` poll),
+  coverage of unresolved content (the HELD occlusion hold), rejection of
+  stale async completions (the per-scope `generation` counter), and
+  self-healing after host-page mutation (per-root observers) are all real,
+  and both unit- and Playwright-tested. Recorded the two known gaps
+  `custody-primitive.ts` itself discloses — top-layer content and a
+  transform/filter/contain-established containing block — in this file's
+  *some-filter* section rather than only in the résumé's omission of them.
 
 *v11 (2026-08-29).* Responded to an external ATS/positioning review
 (`docs/canon` sibling review, 2026-08-29) that read the rendered PDFs, the

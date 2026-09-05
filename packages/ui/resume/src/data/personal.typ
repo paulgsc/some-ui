@@ -52,7 +52,7 @@
     (
       institution: "University of California, Merced",
       credential: "B.S. Mechanical Engineering",
-      detail: none,
+      detail: "Merced, CA",
       dates: "2011 — 2015",
     ),
   ),
@@ -73,18 +73,19 @@
   // for showing continuous employment, and transferable evidence (ownership,
   // throughput, customer contact) belongs on the page when it is real.
   //
-  // Consolidated into one entry rather than one per employer (CABA Design,
-  // Natera, WIS, Rite Aid, PayLocity all appear on the candidate's
-  // non-engineering résumé): the point here is proving employment
-  // continuity and naming transferable, evidence-backed skills, not
-  // re-litigating a separate career in detail on an engineering résumé.
+  // Current non-engineering employer only (CABA Design) — other employers on
+  // the candidate's non-engineering résumé (Natera, WIS, Rite Aid,
+  // PayLocity) are past roles, not this entry: the point here is proving
+  // current full-time employment and naming transferable, evidence-backed
+  // skills, not re-litigating a separate career in detail on an engineering
+  // résumé.
   //
   // (role, org, detail, dates, bullets)
   additional-experience: (
     (
       role: "Data Administrator / Operations",
-      org: "CABA Design · Natera · WIS",
-      detail: none,
+      org: "CABA Design",
+      detail: "Rancho Cordova, CA",
       dates: "2017 — Present",
       bullets: (
         "Automated ERP record-keeping and reporting with Python and SQL while maintaining 99.9%+ data accuracy in continuous full-time employment.",

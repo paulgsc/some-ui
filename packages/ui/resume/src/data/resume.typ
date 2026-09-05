@@ -66,7 +66,7 @@
       (name: "CI/CD and release automation", kind: "GitHub Actions, Turbo, Docker, Changesets, web-ext", premise: "A monorepo's CI should scope to what a change actually touches, and a release should be reproducible from source rather than assembled by hand.", bullets: (
         "Implemented change-scoped GitHub Actions on Turbo/Cargo dependency graphs so lint, typecheck, and test run only against changed packages and their transitive dependents, backed by a full-repo nightly sweep.",
         "Built Docker image build/publish pipelines for the web and server images, SQLx offline-query preparation, and Changesets-driven versioning across the workspace.",
-        "Gated six browser-extension releases on typecheck, unit tests, lint, and signed web-ext packaging (AMO unlisted channel) before publish.",
+        "Built a human-gated extension release pipeline that derives AMO notes from versioned changelogs, validates reviewer metadata and field limits, synchronizes manifest/package versions, and blocks signing when source and artifact versions drift.",
       )),
     ),
     platform: (
@@ -92,7 +92,7 @@
       (name: "Browser extension platform", kind: "TypeScript, Firefox/Chromium MV3, Playwright, WebAssembly", premise: "A browser is host to code it did not author, so an extension's own UI and state must stay provably isolated from the page around it.", bullets: (
         "Built typed popup/worker/content protocols and MV3 service-worker bundles across six shipped Firefox/Chromium extensions, with platform shims isolating browser-specific APIs.",
         "Modeled UI and resolver states as exhaustive discriminated unions so illegal transitions fail at compile time rather than at runtime.",
-        "Enforced DOM structural isolation between extension overlays and host-page content, verified by a standalone cross-browser Playwright test corpus that bundles the real shipped modules rather than a reimplementation.",
+        "Built and browser-tested a typed lifecycle for document and open-Shadow-DOM scopes that discovers late roots, keeps unresolved content covered, rejects stale asynchronous completions, and self-heals after host-page mutations.",
         "Gated every signed release (web-ext, AMO) on typecheck, unit tests, lint, and license/header checks before publish.",
       )),
     ),
