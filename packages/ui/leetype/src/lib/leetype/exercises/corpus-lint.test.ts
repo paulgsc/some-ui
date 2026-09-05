@@ -565,8 +565,14 @@ describe("lintRoundCorpus — R5 (#1208), the round-shaped corpus lint", () => {
     })
   })
 
-  describe("discriminability (Prop. 6.1)", () => {
-    it("fails when a non-admissible member shares the admissible member's own propositionId", () => {
+  describe("discriminability (Prop. 6.1) — deliberately not checked", () => {
+    // Two straight review rounds on #1283 (chatgpt-codex-connector) showed
+    // every attempt at a mechanical Prop. 6.1 check unsound given this
+    // data model (see the doc comment above citationsOfRound in
+    // corpus-lint.ts for the full trace and the tracked follow-up). These
+    // tests document the deferral: none of the shapes a discriminability
+    // check might once have flagged produce a Prop. 6.1 violation now.
+    it("does not flag two diff-set members sharing the same propositionId, admissible or not", () => {
       const diffSet: DiffSet = [
         {
           hunk: {
@@ -586,55 +592,9 @@ describe("lintRoundCorpus — R5 (#1208), the round-shaped corpus lint", () => {
             segments: [{ kind: "addition", text: "let b = true;" }],
           },
           propositionId: "CW-P1",
-          admissible: false,
-          distractorStatement: "a different rewrite, same claimed proposition.",
-        },
-      ]
-      const violations = lintRoundCorpus([round({ diffSet })])
-      expect(
-        violations.some((v) => v.includes("Prop. 6.1") && v.includes("CW-P1"))
-      ).toBe(true)
-    })
-
-    it("passes when two non-admissible members share a propositionId — Def. 1.6 permits non-injective mu (review finding on #1283)", () => {
-      // Codex correctly flagged the first version of this check for
-      // rejecting exactly this: Def. 1.6 explicitly allows many diffs to
-      // witness one proposition. Only a collision with the *admissible*
-      // member's own propositionId is genuinely incoherent (see
-      // checkDiscriminability's own doc comment).
-      const diffSet: DiffSet = [
-        {
-          hunk: {
-            path: "src/fixture/a.rs",
-            oldStart: 1,
-            newStart: 1,
-            segments: [{ kind: "addition", text: "let a = true;" }],
-          },
-          propositionId: "CW-P1",
-          admissible: true,
-        },
-        {
-          hunk: {
-            path: "src/fixture/b.rs",
-            oldStart: 1,
-            newStart: 1,
-            segments: [{ kind: "addition", text: "let b = true;" }],
-          },
-          propositionId: "CW-P2",
-          admissible: false,
-          distractorStatement: "one off-topic distractor rewrite.",
-        },
-        {
-          hunk: {
-            path: "src/fixture/c.rs",
-            oldStart: 1,
-            newStart: 1,
-            segments: [{ kind: "addition", text: "let c = true;" }],
-          },
-          propositionId: "CW-P2",
           admissible: false,
           distractorStatement:
-            "a second, different rewrite, same off-topic proposition.",
+            "a different rewrite witnessing the same proposition, only one of which restores this round's own budget.",
         },
       ]
       expect(

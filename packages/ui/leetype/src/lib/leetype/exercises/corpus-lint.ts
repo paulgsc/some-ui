@@ -712,50 +712,36 @@ function checkRoundSchemas(round: RoundCorpusEntry): Array<string> {
 }
 
 /**
- * Prop. 6.1 ("injectivity is not required; discriminability is"): Def. 1.6
- * explicitly permits mu to be non-injective — many diffs may witness one
- * proposition, and Def. 10.2 relies on exactly that for cross-round
- * transfer. Review finding on #1283 (chatgpt-codex-connector): this
- * check's first version flagged *any* pair of members sharing a
- * `propositionId`, which rejects data Def. 1.6 explicitly allows — e.g.
- * two non-admissible members legitimately sharing one off-topic distractor
- * proposition. Theorem 6.1's real "presented option set" (drawn from `P`,
- * distinct from `D` itself, with its own truth relation to the selected
- * diff) isn't data `RoundCorpusEntry` carries, so Prop. 6.1's general form
- * has no mechanical check here yet.
+ * Prop. 6.1 ("injectivity is not required; discriminability is") — deferred,
+ * deliberately unchecked. Two straight review rounds on #1283
+ * (chatgpt-codex-connector) each showed a different attempt at this check
+ * unsound:
  *
- * One case remains genuinely incoherent given how this workspace actually
- * computes a verdict (Thm. 6.1: selecting `(d, p)` is correct iff `p =
- * mu(d)`): if the round's own *admissible* member's `propositionId` is
- * repeated on a different, non-admissible member, selecting that wrong
- * diff paired with the same proposition satisfies the identical `p =
- * mu(d)` check the admissible diff itself satisfies — the round's own data
- * would score a wrong diff as right. That collision, and only that one, is
- * what this checks; two non-admissible members sharing a proposition is
- * left alone, per Def. 1.6.
+ * 1. Flagging *any* pair of `D` members sharing a `propositionId` rejects
+ *    data Def. 1.6 explicitly permits ("mu need not be injective").
+ * 2. Narrowing that to "a non-admissible member sharing the *admissible*
+ *    member's own propositionId" is *also* wrong: Def. 8.1 branches on the
+ *    derived relation `T_(A+d)(C) <= B` — a structural fact about whether
+ *    applying `d` restores admissibility, computed independently of any
+ *    other diff — while Theorem 6.1's verdict `p = mu(d)` judges the
+ *    proposition paired with *whichever* diff a learner selects. These are
+ *    orthogonal: two different rewrites can legitimately witness the same
+ *    proposition while only one happens to restore this round's own
+ *    budget, and that is not a discriminability defect.
+ *
+ * What Prop. 6.1 actually requires — "no two options in the presented
+ * option set are both true of the selected diff" — needs a presented
+ * option set of *propositions*, drawn from `P` and distinct from `D`
+ * itself (Thm. 6.1's own setup), with its own truth relation to whichever
+ * diff gets selected. `RoundCorpusEntry` (R1-R4 only) carries no such
+ * structure — round.ts's own doc comment already defers assembling a full
+ * `Round` type, and building a presented-option-set model is further,
+ * newer infrastructure than that, not something this story's own "extends
+ * the lint, does not build new lint infrastructure" scope covers. Tracked
+ * as a follow-up (linked from #1208) for whichever future story gives a
+ * round's presented options real data — most plausibly C1 (#1213, Step 6),
+ * once a round's UI actually has proposition options to present.
  */
-function checkDiscriminability(round: RoundCorpusEntry): Array<string> {
-  const violations: Array<string> = []
-  const where = locateRound(round)
-  const admissible = round.diffSet.find((member) => member.admissible)
-  if (admissible === undefined) return violations
-
-  round.diffSet.forEach((member, index) => {
-    if (
-      !member.admissible &&
-      member.propositionId === admissible.propositionId
-    ) {
-      violations.push(
-        `${where}: diff-set member ${index} shares propositionId ` +
-          `${member.propositionId} with the round's own admissible member — a non-admissible ` +
-          "member carrying the same propositionId as the admissible one would score as correct " +
-          "under Thm. 6.1's own p = mu(d) verdict despite being marked wrong (Prop. 6.1)."
-      )
-    }
-  })
-
-  return violations
-}
 
 /** Every `CW-P` id a round cites, as a `Citation` locating it within that round's own D. */
 function citationsOfRound(round: RoundCorpusEntry): Array<Citation> {
@@ -767,15 +753,28 @@ function citationsOfRound(round: RoundCorpusEntry): Array<Citation> {
 }
 
 /**
- * Rem. 10.2 / Prop. 10.1's own stricter coverage obligation, distinct from
- * `checkRegisterCoverage`'s (Rem. 7.1, row 3: "has a corpus instance at
- * all", satisfied by appearing as *any* D member anywhere). Positive
- * transfer alone is not identifying (Thm. 10.1) — the corpus additionally
- * owes each active proposition at least one round where it is presented and
- * loses, i.e. is a non-admissible member's own `propositionId` in a round
- * whose admissible member names something else. Reports every uncovered
- * entry in one run, not the first, the same discipline `checkRegisterCoverage`
- * already uses.
+ * Prop. 10.1's own practical statement ("the corpus owes each instantiable
+ * proposition at least one round where it appears as a distractor for a
+ * nearby true witness") — distinct from `checkRegisterCoverage`'s (Rem.
+ * 7.1, row 3: "has a corpus instance at all", satisfied by appearing as
+ * *any* D member anywhere). "Distractor" is this workspace's own
+ * already-established term (Cor. 5.1, `types/round.ts`): a non-admissible
+ * `DiffSetMember`. Positive transfer alone is not identifying (Thm. 10.1)
+ * — the corpus additionally owes each active proposition at least one
+ * round where it is some non-admissible member's own `propositionId`.
+ * Reports every uncovered entry in one run, not the first, the same
+ * discipline `checkRegisterCoverage` already uses.
+ *
+ * Review finding on #1283 (chatgpt-codex-connector): Rem. 10.2's own fuller
+ * elaboration additionally requires the proposition to sit in "the
+ * presented option set" for a round whose *own* admissible member differs
+ * — a structure distinct from `D` (see the doc comment above
+ * `citationsOfRound`, where Prop. 6.1's own discriminability check was
+ * removed for the identical reason) that `RoundCorpusEntry` does not
+ * carry. This check implements Prop. 10.1's plainer, already-workspace-
+ * compatible statement, not Rem. 10.2's fuller one; the same follow-up
+ * tracked from #1208 covers closing that gap once a presented option set
+ * has real data.
  */
 function checkDistractorCoverage(
   rounds: ReadonlyArray<RoundCorpusEntry>,
@@ -846,6 +845,10 @@ function checkRoundProseForClassLiterals(
  * the corpus is clean. Deterministic order (per-round checks in round
  * order, then the two corpus-wide coverage checks) for the same "a CI
  * failure's diff is stable" reason `lintCorpus` above already gives.
+ *
+ * Six of R5's own seven listed checks; Prop. 6.1 (discriminability) is
+ * deliberately not wired in — see the doc comment above `citationsOfRound`
+ * for why, and the follow-up issue tracked from #1208.
  */
 export function lintRoundCorpus(
   rounds: ReadonlyArray<RoundCorpusEntry>
@@ -855,7 +858,6 @@ export function lintRoundCorpus(
   for (const round of rounds) {
     violations.push(...checkRoundSchemas(round))
     violations.push(...checkCardinality(round))
-    violations.push(...checkDiscriminability(round))
     violations.push(...checkRoundProseForClassLiterals(round))
   }
 
