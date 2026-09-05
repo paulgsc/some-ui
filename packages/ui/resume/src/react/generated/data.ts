@@ -127,12 +127,14 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
     "interests": [],
     "additionalExperience": [
       {
-        "role": "Data Administrator / Operations",
+        "role": "Data Administrator",
         "org": "CABA Design",
         "detail": "Rancho Cordova, CA",
-        "dates": "2017 — Present",
+        "dates": "2020 — 2023",
         "bullets": [
-          "Automated ERP record-keeping and reporting with Python and SQL while maintaining 99.9%+ data accuracy in continuous full-time employment."
+          "Built interactive Tableau dashboards on PostgreSQL for daily operational visibility.",
+          "Automated executive reporting through Google Workspace API integration, saving 10+ hours weekly.",
+          "Automated record creation and resolved data issues with Python scripts against Odoo's XML-RPC API, eliminating manual intervention."
         ]
       }
     ]
@@ -252,12 +254,14 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
     "interests": [],
     "additionalExperience": [
       {
-        "role": "Data Administrator / Operations",
+        "role": "Data Administrator",
         "org": "CABA Design",
         "detail": "Rancho Cordova, CA",
-        "dates": "2017 — Present",
+        "dates": "2020 — 2023",
         "bullets": [
-          "Automated ERP record-keeping and reporting with Python and SQL while maintaining 99.9%+ data accuracy in continuous full-time employment."
+          "Built interactive Tableau dashboards on PostgreSQL for daily operational visibility.",
+          "Automated executive reporting through Google Workspace API integration, saving 10+ hours weekly.",
+          "Automated record creation and resolved data issues with Python scripts against Odoo's XML-RPC API, eliminating manual intervention."
         ]
       }
     ]
@@ -379,12 +383,14 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
     "interests": [],
     "additionalExperience": [
       {
-        "role": "Data Administrator / Operations",
+        "role": "Data Administrator",
         "org": "CABA Design",
         "detail": "Rancho Cordova, CA",
-        "dates": "2017 — Present",
+        "dates": "2020 — 2023",
         "bullets": [
-          "Automated ERP record-keeping and reporting with Python and SQL while maintaining 99.9%+ data accuracy in continuous full-time employment."
+          "Built interactive Tableau dashboards on PostgreSQL for daily operational visibility.",
+          "Automated executive reporting through Google Workspace API integration, saving 10+ hours weekly.",
+          "Automated record creation and resolved data issues with Python scripts against Odoo's XML-RPC API, eliminating manual intervention."
         ]
       }
     ]

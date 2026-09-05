@@ -270,6 +270,49 @@ workspace". Re-derive this note (not the résumé content) by cloning
 `paulgsc/server` read-only and counting `members` in its `Cargo.toml` before
 reusing the number anywhere that matters.
 
+= Non-engineering employment history (context, not repo evidence)
+
+Unlike every claim above, nothing in this section traces to `paulgsc/server` or
+`paulgsc/some-ui` — it is sourced from the candidate's own separate
+non-engineering résumé (`pg_resume_2026`), tracked here so the full history
+stays legible even though `src/data/personal.typ`'s `additional-experience`
+renders only one of these four entries. Kept out of the rendered résumé
+itself deliberately: an engineering résumé's "Additional experience" section
+exists to prove continuity and name transferable skills from one concrete
+job, not to re-litigate a full separate career — see `personal.typ`'s own
+comment on that field.
+
+- *WIS* --- Inventory Specialist, Sacramento, CA, January 2024 --- Present
+  (current). High-volume cycle counting and 10-key data entry at 99.9%+
+  accuracy; daily reconciliation of physical counts against system records.
+- *CABA Design* --- Data Administrator, Rancho Cordova, CA, August 2020 ---
+  December 2023. The entry `personal.typ` actually renders: Tableau
+  dashboards on PostgreSQL, Google Workspace API-driven executive-reporting
+  automation (10+ hours/week saved), and Python scripts against Odoo's
+  XML-RPC API automating record creation and resolving data issues.
+- *Natera* --- Clinical Data Operator, San Carlos, CA, January 2019 ---
+  August 2020. HIPAA-compliant LIMS sample accessioning at 99.99% accuracy;
+  30+ kits/hour, recognized as a top performer for speed and regulatory
+  adherence.
+- *PayLocity* --- Distribution Assistant, Oakland, CA, January 2017 ---
+  January 2019. Weekly inventory audits with zero discrepancies; named "Top
+  Performing Employee" for error-free execution.
+
+*Why only CABA Design renders*: the previous revision of `personal.typ`
+consolidated all four into one entry (`org: "CABA Design · Natera · WIS"`,
+dates "2017 — Present") to show unbroken employment through today. That
+collapsed four distinct jobs, with their own titles, locations, and
+achievements, into one org string with no single accurate date range —
+narrowing it to CABA Design's own dates while leaving that org string
+untouched was flagged as a real accuracy bug by this repo's bot reviewer
+(PR #1286: dropping Natera/WIS but keeping "2017 — Present" would have read
+as nine years at CABA alone). Naming one real employer with its own real
+dates, location, and bullets is more honest than either the stale
+consolidation or an unsupported single-employer date range — the other
+three stay recorded here rather than silently dropped, exactly so a future
+revision that wants to render a second (or fourth) `additional-experience`
+entry, or correct this one further, has the sourced facts to do it from.
+
 = Method
 
 The repository is the dataset: résumé claims are derived from what's
@@ -451,13 +494,26 @@ review-suggested bullet replacements, both re-verified against the current
 tree before landing rather than taken on the suggestion's word alone.
 
 - *Fixed the additional-experience entry in `src/data/personal.typ`*: `org`
-  named three employers ("CABA Design · Natera · WIS") but the candidate's
-  current non-engineering role is CABA Design alone — Natera and WIS are
-  past employers on that separate résumé, not this one. Also added the
-  city/state each entry was missing: "Rancho Cordova, CA" for the
-  additional-experience role, "Merced, CA" for the UC Merced education
-  entry (both rendered via the existing `detail` field every template
-  already prints under the org/institution line).
+  named three employers ("CABA Design · Natera · WIS") under one date range
+  ("2017 — Present"), but only CABA Design belongs in this entry — Natera
+  and WIS are separate past/current jobs on the candidate's own
+  non-engineering résumé, not this one. Narrowing `org` to "CABA Design"
+  while leaving "2017 — Present" untouched was itself a real bug this
+  repo's bot reviewer caught on PR #1286 (nine years misattributed to one
+  employer); fixed by giving CABA Design its own real dates (August 2020 —
+  December 2023, rendered as "2020 — 2023"), title ("Data Administrator"),
+  and three bullets describing what was actually done there (Tableau/
+  PostgreSQL dashboards, Google Workspace API-driven reporting automation,
+  Python/Odoo XML-RPC record automation) rather than the previous
+  composite bullet's generic, multi-employer-averaged claim. Also added
+  the city/state each entry was missing: "Rancho Cordova, CA" for CABA
+  Design, "Merced, CA" for the UC Merced education entry (both rendered
+  via the existing `detail` field every template already prints under the
+  org/institution line). The other three employers (WIS — current, Natera,
+  PayLocity) are recorded with their own real dates/locations/bullets in
+  this file's new *Non-engineering employment history* section rather than
+  silently dropped, per the candidate's own request to track them for
+  context without rendering them in the engineering résumé.
 - *Replaced the release-automation bullet* in `platform`'s "CI/CD and
   release automation" project (`src/data/resume.typ`) with the human-gated
   AMO pipeline claim, after reading `extension-release.yml`,

@@ -73,22 +73,25 @@
   // for showing continuous employment, and transferable evidence (ownership,
   // throughput, customer contact) belongs on the page when it is real.
   //
-  // Current non-engineering employer only (CABA Design) — other employers on
-  // the candidate's non-engineering résumé (Natera, WIS, Rite Aid,
-  // PayLocity) are past roles, not this entry: the point here is proving
-  // current full-time employment and naming transferable, evidence-backed
-  // skills, not re-litigating a separate career in detail on an engineering
-  // résumé.
+  // One specific past non-engineering employer (CABA Design, 2020 — 2023)
+  // rather than a consolidated, date-spanning entry across every employer on
+  // the candidate's non-engineering résumé (Natera, WIS, Rite Aid, PayLocity
+  // also appear there, on their own separate dates): the point here is
+  // naming transferable, evidence-backed skills from one real job, not
+  // re-litigating a separate career in detail — or implying tenure this
+  // entry alone doesn't cover — on an engineering résumé.
   //
   // (role, org, detail, dates, bullets)
   additional-experience: (
     (
-      role: "Data Administrator / Operations",
+      role: "Data Administrator",
       org: "CABA Design",
       detail: "Rancho Cordova, CA",
-      dates: "2017 — Present",
+      dates: "2020 — 2023",
       bullets: (
-        "Automated ERP record-keeping and reporting with Python and SQL while maintaining 99.9%+ data accuracy in continuous full-time employment.",
+        "Built interactive Tableau dashboards on PostgreSQL for daily operational visibility.",
+        "Automated executive reporting through Google Workspace API integration, saving 10+ hours weekly.",
+        "Automated record creation and resolved data issues with Python scripts against Odoo's XML-RPC API, eliminating manual intervention.",
       ),
     ),
   ),
