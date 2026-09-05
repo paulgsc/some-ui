@@ -124,10 +124,29 @@ backs should be cut, not kept and re-justified.
   per-scope `generation` counter that makes `resolveCommitted()` discard a
   stale async completion rather than clobber a newer state, and per-root
   observers that `invalidate()`/re-project on host-page mutation).
-  Unit-tested (`__tests__/scope-registry.test.ts`,
-  `document-scope.test.ts`, `shadow-scope-discovery.test.ts`) and
-  browser-tested (`tests/e2e/specs/scope-registry-handoff.spec.ts`,
-  `scope-registry-self-heal.spec.ts`).
+  Unit-tested throughout (`__tests__/scope-registry.test.ts`,
+  `document-scope.test.ts`, `shadow-scope-discovery.test.ts`).
+  Browser-verified in Chromium, per behavior, not as one blanket claim
+  (a P2 finding on PR #1286 correctly caught an earlier draft of this
+  bullet implying otherwise): late-root discovery and coverage of
+  unresolved content by `tests/e2e/specs/issue-1267-sfdc-shadow-custody.spec.ts`
+  (frame-oracle proof of zero native-bright frames across all three G0.2
+  creation-trace orderings); self-healing after host-page mutation, for
+  shadow scopes specifically, by
+  `tests/e2e/specs/issue-1268-sfad-shadow-theming.spec.ts` (a mutated
+  surface re-themes dark) and, for the generic custody primitive
+  underneath both document and shadow scopes, by
+  `tests/e2e/specs/scope-registry-self-heal.spec.ts` (adversarial removal
+  of the covering artifact) and `scope-registry-handoff.spec.ts` (the
+  two-phase install-before-release handoff). The one mechanism with *no*
+  browser coverage, checked directly (neither spec file above, nor any
+  other under `tests/e2e/specs/`, references "generation" or "stale"):
+  the per-scope `generation` counter that makes `resolveCommitted()`
+  discard a stale async completion — that claim rests on
+  `scope-registry.test.ts`'s two "discards a stale completion superseded
+  by a concurrent re-register()/retire()" unit tests alone, which
+  `src/data/resume.typ`'s bullet now states explicitly rather than
+  folding it into an undifferentiated "browser-tested".
   *Known limitations, disclosed in `adapter/custody-primitive.ts`'s own
   header*: the occlusion hold is `position: fixed`, so it cannot cover
   content promoted to the browser's top layer (a native `<dialog>` via
@@ -529,11 +548,37 @@ tree before landing rather than taken on the suggestion's word alone.
   directly: late-root discovery (reactive + `DISCOVERY_POLL_MS` poll),
   coverage of unresolved content (the HELD occlusion hold), rejection of
   stale async completions (the per-scope `generation` counter), and
-  self-healing after host-page mutation (per-root observers) are all real,
-  and both unit- and Playwright-tested. Recorded the two known gaps
-  `custody-primitive.ts` itself discloses — top-layer content and a
-  transform/filter/contain-established containing block — in this file's
-  *some-filter* section rather than only in the résumé's omission of them.
+  self-healing after host-page mutation (per-root observers) are all real.
+  Recorded the two known gaps `custody-primitive.ts` itself discloses —
+  top-layer content and a transform/filter/contain-established containing
+  block — in this file's *some-filter* section rather than only in the
+  résumé's omission of them.
+- *Follow-up, same PR*: the bot reviewer caught two more real issues in the
+  changes above. First, narrowing the additional-experience `org` to "CABA
+  Design" while leaving its date range at "2017 — Present" misattributed
+  nine years to one employer — fixed with CABA Design's actual dates
+  (August 2020 — December 2023, sourced from the candidate's
+  `pg_resume_2026`) and bullets describing what was actually done there;
+  see the *Non-engineering employment history* section above, added in the
+  same follow-up to track the other three employers (WIS, Natera,
+  PayLocity) with their own real dates rather than dropping them
+  silently — and to retire the unsourced "Rite Aid" mention this file's
+  own `personal.typ` comment previously carried, which a repo-wide search
+  turned up no evidence for once checked, and which the newly supplied
+  résumé's own gapless 2017–present chain across exactly four employers
+  leaves no room for anyway. Second, the "browser-tested" scope-lifecycle
+  bullet initially cited only `scope-registry-handoff.spec.ts` and
+  `scope-registry-self-heal.spec.ts` (neither imports
+  `shadow-scope-discovery.ts` or creates a `ShadowRoot`) for a claim that
+  included the per-scope `generation`/stale-completion mechanism, which
+  those specs never exercise — checked directly (no "generation" or
+  "stale" string anywhere under `tests/e2e/specs/`) and confirmed
+  unit-tested only. Reworded the bullet so "browser-verified" attaches
+  only to what actually is (late-root discovery and coverage, now
+  correctly cited to `issue-1267-sfdc-shadow-custody.spec.ts`; self-healing
+  after mutation, to `issue-1268-sfad-shadow-theming.spec.ts` and the two
+  specs originally cited), with the generation counter named separately as
+  unit-tested.
 
 *v11 (2026-08-29).* Responded to an external ATS/positioning review
 (`docs/canon` sibling review, 2026-08-29) that read the rendered PDFs, the

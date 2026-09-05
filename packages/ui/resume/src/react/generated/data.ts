@@ -298,7 +298,7 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
         "bullets": [
           "Built typed popup/worker/content protocols and MV3 service-worker bundles across six shipped Firefox/Chromium extensions, with platform shims isolating browser-specific APIs.",
           "Modeled UI and resolver states as exhaustive discriminated unions so illegal transitions fail at compile time rather than at runtime.",
-          "Built and browser-tested a typed lifecycle for document and open-Shadow-DOM scopes that discovers late roots, keeps unresolved content covered, rejects stale asynchronous completions, and self-heals after host-page mutations.",
+          "Built a typed lifecycle for document and open-Shadow-DOM scopes, browser-verified in Chromium for late-root discovery, coverage of unresolved content, and self-healing after host-page mutation, plus a per-scope generation counter, unit-tested, that rejects stale asynchronous completions.",
           "Gated every signed release (web-ext, AMO) on typecheck, unit tests, lint, and license/header checks before publish."
         ]
       }

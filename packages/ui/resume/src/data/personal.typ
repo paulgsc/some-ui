@@ -75,9 +75,11 @@
   //
   // One specific past non-engineering employer (CABA Design, 2020 — 2023)
   // rather than a consolidated, date-spanning entry across every employer on
-  // the candidate's non-engineering résumé (Natera, WIS, Rite Aid, PayLocity
-  // also appear there, on their own separate dates): the point here is
-  // naming transferable, evidence-backed skills from one real job, not
+  // the candidate's non-engineering résumé — Natera, WIS, and PayLocity also
+  // appear there, on their own separate dates (see
+  // src/canon/resume.meta.typ's "Non-engineering employment history" for
+  // all four, sourced from that résumé): the point here is naming
+  // transferable, evidence-backed skills from one real job, not
   // re-litigating a separate career in detail — or implying tenure this
   // entry alone doesn't cover — on an engineering résumé.
   //
