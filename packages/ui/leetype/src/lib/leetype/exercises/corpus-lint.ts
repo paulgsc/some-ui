@@ -2,6 +2,15 @@ import {
   EVIDENCE_ROW_BUDGET,
   evidenceRowsOf,
 } from "@leetype/components/typing-game/prompt-panel/rows"
+import type { Citation } from "@leetype/lib/leetype/proposition-register/citation-check"
+import {
+  checkCitations,
+  checkRegisterCoverage,
+} from "@leetype/lib/leetype/proposition-register/citation-check"
+import { PROPOSITION_REGISTER } from "@leetype/lib/leetype/proposition-register/generated"
+import type { PropositionRegisterEntry } from "@leetype/lib/leetype/proposition-register/parse-canon"
+import type { ConstraintSet } from "@leetype/types/constraint"
+import { ConstraintSetSchema } from "@leetype/types/constraint"
 import type { Block, Exercise, Step } from "@leetype/types/exercise"
 import {
   ConstructionStepSchema,
@@ -9,6 +18,8 @@ import {
   promptBlocksOf,
   typingBlockOf,
 } from "@leetype/types/exercise"
+import type { DiffSet } from "@leetype/types/round"
+import { DiffSetSchema } from "@leetype/types/round"
 import { assertNever } from "some-ui-utils"
 
 /**
@@ -599,5 +610,239 @@ export function lintCorpus(exercises: ReadonlyArray<Exercise>): Array<string> {
       violations.push(...lintStep(exercise, step, stepsById))
     }
   }
+  return violations
+}
+
+/**
+ * R5 (LTY-ROUND, #1208) — `docs/canon/complexity-witness-canon.typ` Ax. 1.1,
+ * Rem. 1.1, Rem. 7.1, Rem. 10.2, Prop. 6.1. This extends the corpus lint
+ * above with a round-shaped counterpart: same discipline ("a malformed
+ * round fails at the seam with a message naming the invariant"), a
+ * different object.
+ *
+ * `RoundCorpusEntry` is deliberately the R1-R4 slice of Def. 1.7's full
+ * round tuple `(A, C, B, D, mu, r)` — `C` and `D` (`mu` is folded into each
+ * `D` member as `propositionId`, R4/#1207) — because that is all seven of
+ * this story's own checks ever touch. Assembling `A`, `B` and `r` into one
+ * `Round` type is explicitly not this story's job any more than it was
+ * R4's own (see `types/round.ts`'s own doc comment); nothing below needs a
+ * cost graph or a budget, which is why R5 depends on R1-R4 and not on any
+ * G-family story.
+ */
+export type RoundCorpusEntry = {
+  readonly id: string
+  readonly constraints: ConstraintSet
+  readonly diffSet: DiffSet
+}
+
+/**
+ * N (Ax. 1.1): the corpus-wide bound on presentable alternatives — the same
+ * "the option counts this design admits" ceiling Theorem 10.1 cites (`k <=
+ * 5`). Named as its own constant rather than importing `types/exercise.ts`'s
+ * `RATIONALE_CHOICES_MAX`: that constant bounds LTY-WHY's rationale
+ * accordion, a different family (the old step corpus) that happens to share
+ * a UI-legibility number with this one, not the same obligation.
+ */
+export const MAX_PRESENTABLE_DIFFS = 5
+
+function locateRound(round: RoundCorpusEntry): string {
+  return `round "${round.id}"`
+}
+
+/**
+ * Ax. 1.1 / Rem. 1.1's own three-part inequality, `0 < |C| <= |D| < N`, over
+ * one round. Not expressible as a refinement on either `ConstraintSetSchema`
+ * or `DiffSetSchema` alone (R2/#1205, R4/#1207) because it compares the two
+ * against each other — this is the one check in this story that is
+ * genuinely new arithmetic, not a re-validation of an existing schema.
+ */
+function checkCardinality(round: RoundCorpusEntry): Array<string> {
+  const violations: Array<string> = []
+  const where = locateRound(round)
+  const constraintCount = round.constraints.length
+  const diffCount = round.diffSet.length
+
+  if (!(constraintCount > 0)) {
+    violations.push(
+      `${where}: |C| = ${constraintCount} — Ax. 1.1 requires at least one live constraint (0 < |C|); an empty C leaves Def. 3.1's admissibility with nothing to quantify over.`
+    )
+  }
+  if (!(constraintCount <= diffCount)) {
+    violations.push(
+      `${where}: |C| = ${constraintCount} > |D| = ${diffCount} — Ax. 1.1/Rem. 1.1 requires |C| <= |D|; a constraint no candidate diff responds to means the round is either decorative or under-authored.`
+    )
+  }
+  if (!(diffCount < MAX_PRESENTABLE_DIFFS)) {
+    violations.push(
+      `${where}: |D| = ${diffCount} >= N = ${MAX_PRESENTABLE_DIFFS} — Ax. 1.1 bounds the diff set to what can be read in full; an unbounded D turns selection into a search, the blocking regime Axiom P.1 forbids.`
+    )
+  }
+  return violations
+}
+
+/**
+ * Re-validates a round's `C` and `D` through their own strict schemas
+ * (`ConstraintSetSchema`, `DiffSetSchema`) — the same "held to the same
+ * standard as a host-supplied corpus" posture `lintStep` already takes
+ * toward `DiagnosticStepSchema`/`ConstructionStepSchema` above. This is
+ * where row 6 of R5's own acceptance table ("exactly one member of D is
+ * admissible", Ax. 1.1/R4) is actually enforced: `DiffSetSchema`'s own
+ * refine already rejects zero or two authored-admissible members, so a
+ * round-level re-check would only ever repeat that message, not add one.
+ */
+function checkRoundSchemas(round: RoundCorpusEntry): Array<string> {
+  const violations: Array<string> = []
+  const where = locateRound(round)
+
+  const constraintsResult = ConstraintSetSchema.safeParse(round.constraints)
+  if (!constraintsResult.success) {
+    for (const issue of constraintsResult.error.issues) {
+      violations.push(`${where}: ${issue.message}`)
+    }
+  }
+
+  const diffSetResult = DiffSetSchema.safeParse(round.diffSet)
+  if (!diffSetResult.success) {
+    for (const issue of diffSetResult.error.issues) {
+      violations.push(`${where}: ${issue.message}`)
+    }
+  }
+
+  return violations
+}
+
+/**
+ * Prop. 6.1 ("injectivity is not required; discriminability is"): mu need
+ * not be injective *across* the corpus — the same proposition may witness
+ * diffs in many different rounds, and that repetition is transfer (Def.
+ * 10.2). What the proposition forbids is two options *within the same
+ * round* both witnessing the same proposition. In this workspace's own
+ * realization of a round, the presented option set for one round *is* D,
+ * each option labelled by its own `propositionId` (R4's mu) — so two
+ * members of the same D sharing a `propositionId` is exactly two presented
+ * options both true of whichever diff that proposition actually witnesses,
+ * with nothing left in the round to tell them apart. Checks every pair, not
+ * just neighbors, the same discipline `checkRationaleChoicesNoSharedPrefix`
+ * already uses above.
+ */
+function checkDiscriminability(round: RoundCorpusEntry): Array<string> {
+  const violations: Array<string> = []
+  const where = locateRound(round)
+  const firstSeenAt = new Map<string, number>()
+
+  round.diffSet.forEach((member, index) => {
+    const firstIndex = firstSeenAt.get(member.propositionId)
+    if (firstIndex === undefined) {
+      firstSeenAt.set(member.propositionId, index)
+    } else {
+      violations.push(
+        `${where}: diff-set members ${firstIndex} and ${index} both carry propositionId ` +
+          `${member.propositionId} — Prop. 6.1 requires that no two presented options be both ` +
+          "true of the selected diff; two options claiming the same proposition cannot be " +
+          "discriminated by it."
+      )
+    }
+  })
+
+  return violations
+}
+
+/** Every `CW-P` id a round cites, as a `Citation` locating it within that round's own D. */
+function citationsOfRound(round: RoundCorpusEntry): Array<Citation> {
+  return round.diffSet.map((member, index) => ({
+    id: member.propositionId,
+    file: round.id,
+    line: index + 1,
+  }))
+}
+
+/**
+ * Rem. 10.2 / Prop. 10.1's own stricter coverage obligation, distinct from
+ * `checkRegisterCoverage`'s (Rem. 7.1, row 3: "has a corpus instance at
+ * all", satisfied by appearing as *any* D member anywhere). Positive
+ * transfer alone is not identifying (Thm. 10.1) — the corpus additionally
+ * owes each active proposition at least one round where it is presented and
+ * loses, i.e. is a non-admissible member's own `propositionId` in a round
+ * whose admissible member names something else. Reports every uncovered
+ * entry in one run, not the first, the same discipline `checkRegisterCoverage`
+ * already uses.
+ */
+function checkDistractorCoverage(
+  rounds: ReadonlyArray<RoundCorpusEntry>,
+  register: Readonly<Record<string, PropositionRegisterEntry>>
+): Array<string> {
+  const distractorIds = new Set<string>()
+  for (const round of rounds) {
+    for (const member of round.diffSet) {
+      if (!member.admissible) {
+        distractorIds.add(member.propositionId)
+      }
+    }
+  }
+
+  const violations: Array<string> = []
+  for (const entry of Object.values(register)) {
+    if (entry.status === "active" && !distractorIds.has(entry.id)) {
+      violations.push(
+        `${entry.id} (${entry.title}) is an active proposition register entry with no round ` +
+          "where it is presented purely as a distractor (Rem. 10.2, Prop. 10.1) — positive " +
+          "transfer alone is not identifying; the corpus owes at least one round where this " +
+          "proposition loses to a different true witness."
+      )
+    }
+  }
+  return violations
+}
+
+/**
+ * Prop. 2.1's own no-authored-`Θ`-string rule (row 7), reused verbatim
+ * against a round's one authored prose field: `distractorStatement`
+ * (Cor. 5.1) — the only place a round's own D carries free text a corpus
+ * lint needs to scan the way `lintStep` already scans a step's prose.
+ */
+function checkRoundProseForClassLiterals(
+  round: RoundCorpusEntry
+): Array<string> {
+  const violations: Array<string> = []
+  round.diffSet.forEach((member, index) => {
+    if (member.distractorStatement !== undefined) {
+      violations.push(
+        ...checkNoAssertedComplexityClassLiteral(
+          member.distractorStatement,
+          `${locateRound(round)}, diff-set member ${index} (distractorStatement)`
+        )
+      )
+    }
+  })
+  return violations
+}
+
+/**
+ * Every violation across the whole round corpus (R5, #1208). Empty means
+ * the corpus is clean. Deterministic order (per-round checks in round
+ * order, then the two corpus-wide coverage checks) for the same "a CI
+ * failure's diff is stable" reason `lintCorpus` above already gives.
+ */
+export function lintRoundCorpus(
+  rounds: ReadonlyArray<RoundCorpusEntry>
+): Array<string> {
+  const violations: Array<string> = []
+
+  for (const round of rounds) {
+    violations.push(...checkRoundSchemas(round))
+    violations.push(...checkCardinality(round))
+    violations.push(...checkDiscriminability(round))
+    violations.push(...checkRoundProseForClassLiterals(round))
+  }
+
+  const allCitations = rounds.flatMap((round) => citationsOfRound(round))
+  violations.push(...checkCitations(allCitations, PROPOSITION_REGISTER))
+
+  const instantiatedIds = new Set(allCitations.map((citation) => citation.id))
+  violations.push(
+    ...checkRegisterCoverage(instantiatedIds, PROPOSITION_REGISTER)
+  )
+  violations.push(...checkDistractorCoverage(rounds, PROPOSITION_REGISTER))
+
   return violations
 }
