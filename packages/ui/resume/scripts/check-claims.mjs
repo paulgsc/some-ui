@@ -19,6 +19,13 @@
 // multi-crate Rust workspace" instead of a number that this script could
 // never actually check — see src/canon/resume.meta.typ's Counts note for
 // the dated, manually-verified figure and how to re-derive it.
+//
+// The same problem applies to this repository's own package count when
+// SOME_UI_PRUNED_WORKSPACE is set (apps/www/Dockerfile's release build,
+// via `turbo prune www --docker`): only the packages reachable from www's
+// dependency graph are on disk there, so a filesystem recount would always
+// read wrong through no fault of resume.typ. The text-content checks below
+// don't depend on which packages are present, so they still run.
 import { readdirSync, readFileSync, statSync } from "node:fs"
 import { join, relative } from "node:path"
 
@@ -43,6 +50,10 @@ const WORKSPACE_ROOTS = [
 // together when a recount genuinely changes the number.
 const EXPECTED_PACKAGE_COUNT = 57
 const EXPECTED_EXTENSION_COUNT = 6
+
+// Set by apps/www/Dockerfile's release build, whose `turbo prune` step
+// leaves only the packages www's dependency graph reaches on disk.
+const WORKSPACE_PRUNED = process.env.SOME_UI_PRUNED_WORKSPACE === "1"
 
 function hasPackageJson(dir) {
   try {
@@ -194,6 +205,17 @@ function main() {
   checkForbiddenTerms(text)
   checkUnqualifiedProduction(text)
   checkNoBareWorkspaceCounts(text)
+
+  if (WORKSPACE_PRUNED) {
+    // eslint-disable-next-line no-console
+    console.log(
+      "[resume] claims check passed: no forbidden terms, no unqualified " +
+        "production claims, no bare workspace-size numbers in resume " +
+        "content (workspace/extension package counts skipped — " +
+        "SOME_UI_PRUNED_WORKSPACE is set)"
+    )
+    return
+  }
 
   const packages = countWorkspacePackages()
   const extensions = countBrowserExtensions()
