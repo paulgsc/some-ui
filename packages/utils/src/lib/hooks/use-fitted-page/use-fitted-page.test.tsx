@@ -220,7 +220,7 @@ const Harness = ({
       >
         {extra !== undefined && <div data-h={extra} />}
         {pageItems.map((index) => (
-          <div key={index} data-h={heights[index]} />
+          <div key={index} data-h={heights[index]} data-idx={index} />
         ))}
       </div>
       <span data-testid="per-page">{perPage}</span>
@@ -415,6 +415,61 @@ describe("useFittedPage: convergence with non-uniform row heights", () => {
       screen.getByTestId("page").textContent,
       "the page index must not be silently invalidated by a growth attempt"
     ).toBe("1")
+  })
+
+  it("does not silently reshuffle a nonzero page's content when growth keeps its index valid", () => {
+    // The subtler sibling of the test above, found by checking whether a
+    // page-count guard alone actually closes the gap it was written for -
+    // it doesn't. Five items settle at two per page (a third overflows),
+    // landing on page 1 (items 2 and 3, a genuinely full page: page 0 holds
+    // items 0-1, page 2 holds item 4 alone). A same-length swap earns the
+    // retry from there; growing to three per page keeps page 1 *valid*
+    // (pageCount becomes 2, and 1 is still in range) - so a check that only
+    // asks "does this page index still exist" says yes and allows it. But
+    // the slice at page 1, size 3, is items 3 and 4 - not items 2 and 3 -
+    // because `start = safePage * perPage` moved out from under it. The
+    // reader's page index stays "1" throughout, silently showing different
+    // content instead of visibly bouncing to page 0: no less wrong for
+    // being quieter.
+    const { rerender } = render(
+      <Harness heights={[10, 10, 90, 10, 10]} available={100} />
+    )
+    const before = settleAndReadPerPage(20)
+    expect(before.converged).toBe(true)
+    expect(before.readings[before.readings.length - 1]).toBe(2)
+
+    act(() => {
+      screen.getByTestId("next-page").click()
+    })
+    expect(screen.getByTestId("page").textContent).toBe("1")
+
+    // A same-length swap, small enough that three items would comfortably
+    // fit if growth were ever evidenced by the page it will actually land
+    // on rather than the one already on screen.
+    rerender(<Harness heights={[10, 10, 10, 10, 10]} available={100} />)
+    const after = settleAndReadPerPage(20)
+
+    expect(
+      after.converged,
+      `never reached a fixed point after the swap: ${JSON.stringify(after.readings)}.`
+    ).toBe(true)
+    expect(
+      screen.getByTestId("page").textContent,
+      "the page index is a red herring here - it stays valid throughout, " +
+        "which is exactly how this defect hides from a check that only " +
+        "asks whether the index is still in range"
+    ).toBe("1")
+
+    const shownIndices = Array.from(
+      document.querySelectorAll<HTMLElement>("[data-idx]")
+    ).map((el) => el.dataset.idx)
+    expect(
+      shownIndices,
+      "growth substituted items 3-4 for items 2-3 at the same page index " +
+        "(perPage grew to 3, moving start = 1 * 3 = 3) - the reader's page " +
+        "number never moved, but what it shows did, and item 2 vanished " +
+        "from view entirely without ever being paged past."
+    ).toEqual(["2", "3"])
   })
 
   it("retries growth when a same-length swap changes only the hidden candidate", () => {

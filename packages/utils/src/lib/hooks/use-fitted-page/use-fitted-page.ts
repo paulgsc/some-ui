@@ -323,29 +323,36 @@ export function useFittedPage<T>(
       } else if (used <= available) {
         // Rule 3: spare space on a partial page is the list running out, not
         // room for another item per page. Only a page that is actually full
-        // can testify that the box has room to spare.
-        const isFullPage = currentPage * current + current <= items.length
-        const hasMoreToShow = current < items.length
+        // can testify that the box has room to spare - and "full" has to be
+        // asked of the slice growth would actually produce, not of the one
+        // already on screen. `start = safePage * perPage`, so growing
+        // `perPage` while on a nonzero page changes *which slice* that page
+        // is: checking fullness at the *current* count (`currentPage *
+        // current + current <= items.length`) is also true on the
+        // genuinely last page whenever it happens to divide evenly - two
+        // items at one per page, on page index 1, is "full" by that count
+        // alone. A page-count guard alone isn't enough either: two items at
+        // one per page collapses `pageCount` to 1 and visibly bounces the
+        // reader back to page 0, but a case where the grown page count
+        // still contains this page index just as validly reshuffles its
+        // *content* instead, silently - five items at two per page, on page
+        // index 1 (items 2 and 3), growing to three per page keeps page 1
+        // "valid" (there are 2 pages) while quietly showing items 3 and 4
+        // there instead. Both are the same defect wearing a different
+        // disguise: growth evidenced by a slice other than the one it is
+        // about to render. Asking whether *this* page, at the *grown*
+        // count, would still be entirely filled catches both - it is the
+        // one question that is actually about what's proposed rather than
+        // about what's currently on screen, and every page-0 case
+        // (`currentPage` term vanishes) is exactly as before.
         const proposed = current + 1
-        // `start = safePage * perPage`, so growing `perPage` while on a
-        // nonzero page changes *which slice* that page is - `used` was
-        // measured for the slice at `current`, which is evidence for growth
-        // only if `currentPage` still maps to a real page at `proposed`.
-        // Page 0 always does (0 * anything = 0); a later page does not once
-        // growing would shrink `pageCount` at or below it - exactly the
-        // partial-last-page collapse rule 3 already exists to prevent,
-        // reachable here too: two items settled at one per page, viewing
-        // page 1, and a same-length swap resetting the floor would otherwise
-        // grow to two-per-page, collapsing `pageCount` to 1 and clamping
-        // page 1 back to 0 - the same "Next flashes and bounces back" defect
-        // this hook was rewritten to fix, through a different door.
-        const currentPageStillValid =
-          currentPage < Math.ceil(items.length / proposed)
+        const growthFillsThisPage =
+          currentPage * proposed + proposed <= items.length
+        const hasMoreToShow = current < items.length
 
         if (
-          isFullPage &&
+          growthFillsThisPage &&
           hasMoreToShow &&
-          currentPageStillValid &&
           proposed < overflowFloor &&
           proposed <= maxPerPage
         ) {
