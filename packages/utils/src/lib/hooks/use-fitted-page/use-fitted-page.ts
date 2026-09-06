@@ -140,6 +140,23 @@ const DEFAULT_MAX_PER_PAGE = 24
  * `min-h-0` flex child reports the height it was given, not the height it
  * wants.
  */
+/**
+ * Whether two `itemsSignature` readings (see that variable's own comment)
+ * represent the same items. Reference equality covers the `getItemKey`-less
+ * case exactly as before (`items` itself is the signature there); an
+ * element-by-element comparison, not a joined string, is what makes the
+ * `getItemKey` case collision-free across arbitrary string/number keys.
+ */
+function sameItemsSignature(
+  previous: ReadonlyArray<string | number> | ReadonlyArray<unknown>,
+  current: ReadonlyArray<string | number> | ReadonlyArray<unknown>,
+  hasGetItemKey: boolean
+): boolean {
+  if (previous === current) return true
+  if (!hasGetItemKey || previous.length !== current.length) return false
+  return previous.every((key, index) => key === current[index])
+}
+
 export function useFittedPage<T>(
   items: ReadonlyArray<T>,
   {
@@ -166,10 +183,12 @@ export function useFittedPage<T>(
   // wholesale-swaps `items`. With it, this is the ordered sequence of keys:
   // a caller that rebuilds the array to mutate one item in place (same
   // items, same order, one changed value) produces the same sequence, so it
-  // no longer reads as a swap.
-  const itemsSignature: unknown = getItemKey
-    ? items.map((item, index) => getItemKey(item, index)).join("|")
-    : items
+  // no longer reads as a swap. Kept as an array rather than joined into a
+  // string - `getItemKey` allows arbitrary strings and numbers, and a joined
+  // string is not injective over that (`["a|b", "c"]` and `["a", "b|c"]`
+  // join identically, and so do a numeric key and its string double).
+  const itemsSignature: ReadonlyArray<string | number> | ReadonlyArray<T> =
+    getItemKey ? items.map((item, index) => getItemKey(item, index)) : items
 
   // Both adjustments happen during render rather than in an effect (React's
   // own "adjusting state when props change" shape): React discards this render
@@ -212,7 +231,13 @@ export function useFittedPage<T>(
     latestRef.current = { perPage, itemsSignature, page: safePage }
     const isOwnConvergenceStep = settlingRef.current
     settlingRef.current = false
-    if (previous.itemsSignature !== itemsSignature) {
+    if (
+      !sameItemsSignature(
+        previous.itemsSignature,
+        itemsSignature,
+        Boolean(getItemKey)
+      )
+    ) {
       if (!isOwnConvergenceStep) retryFloorRef.current = true
       scheduleRef.current?.()
     } else if (previous.page !== safePage) {
@@ -302,10 +327,25 @@ export function useFittedPage<T>(
         const isFullPage = currentPage * current + current <= items.length
         const hasMoreToShow = current < items.length
         const proposed = current + 1
+        // `start = safePage * perPage`, so growing `perPage` while on a
+        // nonzero page changes *which slice* that page is - `used` was
+        // measured for the slice at `current`, which is evidence for growth
+        // only if `currentPage` still maps to a real page at `proposed`.
+        // Page 0 always does (0 * anything = 0); a later page does not once
+        // growing would shrink `pageCount` at or below it - exactly the
+        // partial-last-page collapse rule 3 already exists to prevent,
+        // reachable here too: two items settled at one per page, viewing
+        // page 1, and a same-length swap resetting the floor would otherwise
+        // grow to two-per-page, collapsing `pageCount` to 1 and clamping
+        // page 1 back to 0 - the same "Next flashes and bounces back" defect
+        // this hook was rewritten to fix, through a different door.
+        const currentPageStillValid =
+          currentPage < Math.ceil(items.length / proposed)
 
         if (
           isFullPage &&
           hasMoreToShow &&
+          currentPageStillValid &&
           proposed < overflowFloor &&
           proposed <= maxPerPage
         ) {

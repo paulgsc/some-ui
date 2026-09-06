@@ -152,6 +152,13 @@ type HarnessProps = {
    * item in place, without losing per-item identity across that rebuild.
    */
   getItemKey?: boolean
+  /**
+   * Explicit per-position keys, overriding `getItemKey`'s numeric default -
+   * lets a test control exactly how a key sequence changes across a rerender
+   * (e.g. two different sequences that would collide if joined into a
+   * string), rather than being tied to each item's own value.
+   */
+  keys?: ReadonlyArray<string>
 }
 
 /**
@@ -169,6 +176,7 @@ const Harness = ({
   unmemoizedItems,
   extra,
   getItemKey,
+  keys,
 }: HarnessProps): React.JSX.Element => {
   const memoized = useMemo(() => heights.map((_, index) => index), [heights])
   const items = unmemoizedItems ? heights.map((_, index) => index) : memoized
@@ -176,7 +184,11 @@ const Harness = ({
     useFittedPage(items, {
       minPerPage,
       maxPerPage,
-      getItemKey: getItemKey ? (item): number => item : undefined,
+      getItemKey: keys
+        ? (_item, index): string => keys[index] ?? String(index)
+        : getItemKey
+          ? (item): number => item
+          : undefined,
     })
 
   return (
@@ -361,6 +373,50 @@ describe("useFittedPage: convergence with non-uniform row heights", () => {
     ).toBe(2)
   })
 
+  it("does not grow past what keeps a nonzero page's own index valid", () => {
+    // A review caught this precisely: two items settle at one per page
+    // (100 + 150 = 250 > 200), and the same-length swap above is exactly
+    // what earns a retry - but from page 1 (viewing the second of only two
+    // items), growing to two-per-page would collapse `pageCount` to 1,
+    // which cannot hold a page index of 1. `used` was measured for the
+    // one-item slice page 1 already held; growing changes *which* slice
+    // page 1 is (`start = safePage * perPage`), and here it stops being a
+    // page at all. That is the "Next flashes and lands back on page 1" -
+    // sorry, page 0 - defect this hook exists to prevent, reached through a
+    // same-length swap instead of a partial last page.
+    const { rerender } = render(
+      <Harness heights={[100, 150]} available={200} />
+    )
+    const before = settleAndReadPerPage(20)
+    expect(before.converged).toBe(true)
+    expect(before.readings[before.readings.length - 1]).toBe(1)
+
+    act(() => {
+      screen.getByTestId("next-page").click()
+    })
+    expect(screen.getByTestId("page").textContent).toBe("1")
+
+    // Same shape as the swap test above (a same-length replacement with
+    // shorter content, which earns a retry) - but now viewed from page 1.
+    rerender(<Harness heights={[60, 60]} available={200} />)
+    const after = settleAndReadPerPage(20)
+
+    expect(
+      after.converged,
+      `never reached a fixed point after the swap on a nonzero page: ${JSON.stringify(after.readings)}.`
+    ).toBe(true)
+    expect(
+      readPerPage(),
+      "growing to 2 makes pageCount 1, which cannot hold page index 1 - " +
+        "the retry a genuine content swap earns must not be allowed to " +
+        "invalidate the page it is being viewed from."
+    ).toBe(1)
+    expect(
+      screen.getByTestId("page").textContent,
+      "the page index must not be silently invalidated by a growth attempt"
+    ).toBe("1")
+  })
+
   it("retries growth when a same-length swap changes only the hidden candidate", () => {
     // A review caught this precisely: the swap above ([100, 150] -> [60, 60])
     // happens to also change the *shown* row (100 -> 60), so the ceiling's
@@ -439,6 +495,35 @@ describe("useFittedPage: convergence with non-uniform row heights", () => {
         "to a check on the converged value alone."
     ).not.toContain(2)
     expect(readPerPage()).toBe(1)
+  })
+
+  it("treats a per-position key change as a swap even when the joined strings would collide", () => {
+    // A review caught this: joining keys with "|" is not injective -
+    // ["a|b", "c"] and ["a", "b|c"] join to the identical "a|b|c" even
+    // though every position's own key changed. A signature built that way
+    // would read this as "nothing changed" and withhold the retry a genuine
+    // swap earns.
+    const { rerender } = render(
+      <Harness heights={[100, 150]} available={200} keys={["a|b", "c"]} />
+    )
+    const before = settleAndReadPerPage(20)
+    expect(before.converged).toBe(true)
+    expect(before.readings[before.readings.length - 1]).toBe(1)
+
+    rerender(<Harness heights={[60, 60]} available={200} keys={["a", "b|c"]} />)
+    const after = settleAndReadPerPage(20)
+
+    expect(
+      after.converged,
+      `never reached a fixed point after the colliding-signature swap: ${JSON.stringify(after.readings)}.`
+    ).toBe(true)
+    expect(
+      readPerPage(),
+      "60 + 60 = 120 <= 200 fits, but a joined-string signature identical " +
+        'before and after ("a|b|c" both times) would wrongly withhold the ' +
+        "retry this same-length swap earns and leave the floor learned from " +
+        "the taller [100, 150] set in place."
+    ).toBe(2)
   })
 
   it("does not let a rejection on a nonzero page reintroduce the oscillation", () => {
