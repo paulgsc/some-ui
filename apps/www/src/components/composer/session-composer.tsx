@@ -292,6 +292,27 @@ export const SessionComposer = ({
     })
   }
 
+  /**
+   * Whether the step rail may jump straight to `target`.
+   *
+   * Deliberately expressed as the same predicate Back and Continue are
+   * already governed by rather than a second, parallel one: going back is
+   * unconditional (Back's own rule), and going forward needs what Continue
+   * needs. A rail with its own idea of when a step is reachable is a second
+   * source of truth for the wizard's validity, and the first time a step
+   * grows a rule the two disagree.
+   */
+  const canGoToStep = (target: ComposerStep): boolean => {
+    if (target === step) return true
+    if (target < step) return true
+    return canProceedFromStep1
+  }
+
+  const handleGoToStep = (target: ComposerStep): void => {
+    if (!canGoToStep(target)) return
+    setStep(target)
+  }
+
   const finalName = sessionName.trim() || defaultSessionName(selectedIds)
 
   const handleSaveDraft = (): void => {
@@ -361,76 +382,117 @@ export const SessionComposer = ({
       : idle()
 
   return (
-    <div className="max-w-3xl space-y-6">
-      <div className="flex items-center gap-2">
-        {STEP_ORDER.map((s) => (
-          <div
-            key={s}
-            className="flex flex-1 items-center gap-2 last:flex-none"
-          >
+    <div
+      className={cn(
+        "flex h-full min-h-0 w-full max-w-3xl flex-col",
+        // Every seam costs height twice over on a landscape phone: four gaps
+        // at 16px is 64px of a 390px window spent on nothing.
+        "gap-2 [@media(min-height:640px)]:gap-4"
+      )}
+    >
+      {/* The rail is chrome, not content: it never scrolls out of reach, and
+          it never competes with the body for height. */}
+      <nav
+        aria-label="Composer steps"
+        className="-mx-2 flex shrink-0 items-center"
+      >
+        {STEP_ORDER.map((s) => {
+          const reachable = canGoToStep(s)
+          return (
             <div
-              className={cn(
-                "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-medium",
-                s === step
-                  ? "bg-primary text-primary-foreground"
-                  : s < step
-                    ? "bg-primary/20 text-primary"
-                    : "bg-muted text-muted-foreground"
-              )}
+              key={s}
+              className="flex min-w-0 flex-1 items-center gap-2 last:flex-none"
             >
-              {s}
+              <button
+                type="button"
+                onClick={() => handleGoToStep(s)}
+                disabled={!reachable}
+                aria-current={s === step ? "step" : undefined}
+                aria-label={`Step ${s}: ${STEP_LABELS[s]}`}
+                // 44px of touch target around a 28px dot: the dot is the
+                // affordance, the padding is what a thumb actually hits.
+                // Real padding rather than padding-plus-negative-margin - the
+                // latter keeps the dots flush to the rail's edges but makes
+                // every button paint 8px outside the nav that holds it, which
+                // is a leak (docs/ui-fit) even when it looks fine.
+                className="flex shrink-0 items-center gap-2 rounded-full p-2 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <span
+                  className={cn(
+                    "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-medium transition-colors",
+                    s === step
+                      ? "bg-primary text-primary-foreground"
+                      : s < step
+                        ? "bg-primary/20 text-primary"
+                        : "bg-muted text-muted-foreground",
+                    reachable && s !== step && "hover:bg-primary/30"
+                  )}
+                >
+                  {s}
+                </span>
+                <span
+                  className={cn(
+                    // `sm:` is 640px of *window*, which at 780x390 leaves the
+                    // rail ~490px once the sidebar has its 256 - four labels
+                    // and three connectors do not fit that, and they overlap
+                    // rather than wrap. `lg:` is the width the rail actually
+                    // needs; below it the numbered dots are the affordance,
+                    // and each button keeps the label as its aria-label.
+                    "hidden text-sm lg:inline",
+                    s === step ? "font-medium" : "text-muted-foreground"
+                  )}
+                >
+                  {STEP_LABELS[s]}
+                </span>
+              </button>
+              {s !== 4 && (
+                <div className="bg-border mx-2 h-px min-w-0 flex-1" />
+              )}
             </div>
-            <span
-              className={cn(
-                "hidden text-sm sm:inline",
-                s === step ? "font-medium" : "text-muted-foreground"
-              )}
-            >
-              {STEP_LABELS[s]}
-            </span>
-            {s !== 4 && <div className="bg-border h-px flex-1" />}
-          </div>
-        ))}
+          )
+        })}
+      </nav>
+
+      <div className="min-h-0 flex-1">
+        {step === 1 && (
+          <ActivityPickerStep
+            items={items}
+            onAdd={handleAddActivity}
+            onRemove={handleRemoveActivity}
+          />
+        )}
+        {step === 2 && (
+          <ConfigureStep items={items} onFieldChange={handleFieldChange} />
+        )}
+        {step === 3 && (
+          <ArrangementStep
+            basicScenes={basicScenes}
+            mode={arrangementMode}
+            advancedScenes={advancedScenes}
+            onEnableAdvanced={handleEnableAdvanced}
+            onDisableAdvanced={handleDisableAdvanced}
+            onScenesChange={setAdvancedScenes}
+          />
+        )}
+        {step === 4 && (
+          <ReviewStep
+            items={items}
+            scenes={scenes}
+            mode={arrangementMode}
+            sessionName={sessionName}
+            onSessionNameChange={setSessionName}
+            defaultName={defaultSessionName(selectedIds)}
+          />
+        )}
       </div>
 
-      {step === 1 && (
-        <ActivityPickerStep
-          items={items}
-          onAdd={handleAddActivity}
-          onRemove={handleRemoveActivity}
-        />
-      )}
-      {step === 2 && (
-        <ConfigureStep items={items} onFieldChange={handleFieldChange} />
-      )}
-      {step === 3 && (
-        <ArrangementStep
-          basicScenes={basicScenes}
-          mode={arrangementMode}
-          advancedScenes={advancedScenes}
-          onEnableAdvanced={handleEnableAdvanced}
-          onDisableAdvanced={handleDisableAdvanced}
-          onScenesChange={setAdvancedScenes}
-        />
-      )}
-      {step === 4 && (
-        <ReviewStep
-          items={items}
-          scenes={scenes}
-          mode={arrangementMode}
-          sessionName={sessionName}
-          onSessionNameChange={setSessionName}
-          defaultName={defaultSessionName(selectedIds)}
-        />
-      )}
-
       {durationWarning && (
-        <div className="border-destructive/50 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm">
+        <div className="border-destructive/50 bg-destructive/10 text-destructive shrink-0 rounded-md border px-3 py-2 text-sm">
           {durationWarning}
         </div>
       )}
 
-      <div className="flex items-center justify-between border-t pt-4">
+      <div className="flex shrink-0 items-center justify-between border-t pt-2 [@media(min-height:640px)]:pt-4">
         <Button variant="outline" onClick={handleBack} disabled={step === 1}>
           Back
         </Button>

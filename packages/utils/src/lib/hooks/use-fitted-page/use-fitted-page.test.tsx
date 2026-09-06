@@ -144,6 +144,21 @@ type HarnessProps = {
    * touching `visible` or the current page at all.
    */
   extra?: number
+  /**
+   * Pass `getItemKey` through to `useFittedPage`, keyed on each item's own
+   * value (`items` here are the identity indices `heights.map((_, i) => i)`,
+   * so the value doubles as a stable per-item key) - lets a test simulate a
+   * caller like `ConfigureStep` that rebuilds the whole array to mutate one
+   * item in place, without losing per-item identity across that rebuild.
+   */
+  getItemKey?: boolean
+  /**
+   * Explicit per-position keys, overriding `getItemKey`'s numeric default -
+   * lets a test control exactly how a key sequence changes across a rerender
+   * (e.g. two different sequences that would collide if joined into a
+   * string), rather than being tied to each item's own value.
+   */
+  keys?: ReadonlyArray<string>
 }
 
 /**
@@ -160,11 +175,21 @@ const Harness = ({
   maxPerPage,
   unmemoizedItems,
   extra,
+  getItemKey,
+  keys,
 }: HarnessProps): React.JSX.Element => {
   const memoized = useMemo(() => heights.map((_, index) => index), [heights])
   const items = unmemoizedItems ? heights.map((_, index) => index) : memoized
   const { viewportRef, contentRef, pageItems, perPage, page, next } =
-    useFittedPage(items, { minPerPage, maxPerPage })
+    useFittedPage(items, {
+      minPerPage,
+      maxPerPage,
+      getItemKey: keys
+        ? (_item, index): string => keys[index] ?? String(index)
+        : getItemKey
+          ? (item): number => item
+          : undefined,
+    })
 
   return (
     <div
@@ -195,7 +220,7 @@ const Harness = ({
       >
         {extra !== undefined && <div data-h={extra} />}
         {pageItems.map((index) => (
-          <div key={index} data-h={heights[index]} />
+          <div key={index} data-h={heights[index]} data-idx={index} />
         ))}
       </div>
       <span data-testid="per-page">{perPage}</span>
@@ -348,6 +373,159 @@ describe("useFittedPage: convergence with non-uniform row heights", () => {
     ).toBe(2)
   })
 
+  it("does not grow past what keeps a nonzero page's own index valid", () => {
+    // A review caught this precisely: two items settle at one per page
+    // (100 + 150 = 250 > 200), and the same-length swap above is exactly
+    // what earns a retry - but from page 1 (viewing the second of only two
+    // items), growing to two-per-page would collapse `pageCount` to 1,
+    // which cannot hold a page index of 1. `used` was measured for the
+    // one-item slice page 1 already held; growing changes *which* slice
+    // page 1 is (`start = safePage * perPage`), and here it stops being a
+    // page at all. That is the "Next flashes and lands back on page 1" -
+    // sorry, page 0 - defect this hook exists to prevent, reached through a
+    // same-length swap instead of a partial last page.
+    const { rerender } = render(
+      <Harness heights={[100, 150]} available={200} />
+    )
+    const before = settleAndReadPerPage(20)
+    expect(before.converged).toBe(true)
+    expect(before.readings[before.readings.length - 1]).toBe(1)
+
+    act(() => {
+      screen.getByTestId("next-page").click()
+    })
+    expect(screen.getByTestId("page").textContent).toBe("1")
+
+    // Same shape as the swap test above (a same-length replacement with
+    // shorter content, which earns a retry) - but now viewed from page 1.
+    rerender(<Harness heights={[60, 60]} available={200} />)
+    const after = settleAndReadPerPage(20)
+
+    expect(
+      after.converged,
+      `never reached a fixed point after the swap on a nonzero page: ${JSON.stringify(after.readings)}.`
+    ).toBe(true)
+    expect(
+      readPerPage(),
+      "growing to 2 makes pageCount 1, which cannot hold page index 1 - " +
+        "the retry a genuine content swap earns must not be allowed to " +
+        "invalidate the page it is being viewed from."
+    ).toBe(1)
+    expect(
+      screen.getByTestId("page").textContent,
+      "the page index must not be silently invalidated by a growth attempt"
+    ).toBe("1")
+  })
+
+  it("does not silently reshuffle a nonzero page's content when growth keeps its index valid", () => {
+    // The subtler sibling of the test above, found by checking whether a
+    // page-count guard alone actually closes the gap it was written for -
+    // it doesn't. Five items settle at two per page (a third overflows),
+    // landing on page 1 (items 2 and 3, a genuinely full page: page 0 holds
+    // items 0-1, page 2 holds item 4 alone). A same-length swap earns the
+    // retry from there; growing to three per page keeps page 1 *valid*
+    // (pageCount becomes 2, and 1 is still in range) - so a check that only
+    // asks "does this page index still exist" says yes and allows it. But
+    // the slice at page 1, size 3, is items 3 and 4 - not items 2 and 3 -
+    // because `start = safePage * perPage` moved out from under it. The
+    // reader's page index stays "1" throughout, silently showing different
+    // content instead of visibly bouncing to page 0: no less wrong for
+    // being quieter.
+    const { rerender } = render(
+      <Harness heights={[10, 10, 90, 10, 10]} available={100} />
+    )
+    const before = settleAndReadPerPage(20)
+    expect(before.converged).toBe(true)
+    expect(before.readings[before.readings.length - 1]).toBe(2)
+
+    act(() => {
+      screen.getByTestId("next-page").click()
+    })
+    expect(screen.getByTestId("page").textContent).toBe("1")
+
+    // A same-length swap, small enough that three items would comfortably
+    // fit if growth were ever evidenced by the page it will actually land
+    // on rather than the one already on screen.
+    rerender(<Harness heights={[10, 10, 10, 10, 10]} available={100} />)
+    const after = settleAndReadPerPage(20)
+
+    expect(
+      after.converged,
+      `never reached a fixed point after the swap: ${JSON.stringify(after.readings)}.`
+    ).toBe(true)
+    expect(
+      screen.getByTestId("page").textContent,
+      "the page index is a red herring here - it stays valid throughout, " +
+        "which is exactly how this defect hides from a check that only " +
+        "asks whether the index is still in range"
+    ).toBe("1")
+
+    const shownIndices = Array.from(
+      document.querySelectorAll<HTMLElement>("[data-idx]")
+    ).map((el) => el.dataset.idx)
+    expect(
+      shownIndices,
+      "growth substituted items 3-4 for items 2-3 at the same page index " +
+        "(perPage grew to 3, moving start = 1 * 3 = 3) - the reader's page " +
+        "number never moved, but what it shows did, and item 2 vanished " +
+        "from view entirely without ever being paged past."
+    ).toEqual(["2", "3"])
+  })
+
+  it("does not grow at all on a nonzero page, even when the grown slice would be entirely real items", () => {
+    // A review caught that `growthFillsThisPage` alone is not the general
+    // fix the test above found: it happened to also block growth there
+    // because five items could not fill a three-per-page slice starting at
+    // index 3. Four items can fill a two-per-page slice starting at index
+    // 2 - `growthFillsThisPage` says yes, `hasMoreToShow` says yes, and
+    // growth proceeds, silently swapping the one item on page 1 (index 1)
+    // for two entirely different ones (indices 2-3) that were never on
+    // screen and never measured. The only page whose slice start does not
+    // move when `perPage` changes is page 0 - growth is restricted to it.
+    const { rerender } = render(
+      <Harness heights={[50, 50, 50, 50]} available={60} />
+    )
+    const before = settleAndReadPerPage(20)
+    expect(before.converged).toBe(true)
+    expect(
+      before.readings[before.readings.length - 1],
+      "any two of these rows (50 + 50 = 100 > 60) overflow, so this must " +
+        "settle at one per page"
+    ).toBe(1)
+
+    act(() => {
+      screen.getByTestId("next-page").click()
+    })
+    expect(screen.getByTestId("page").textContent).toBe("1")
+
+    // A same-length swap with much shorter content earns the retry - and
+    // growthFillsThisPage(currentPage=1, proposed=2) = 1*2+2 = 4 <= 4 is
+    // true, so only the page-0 restriction stops growth here.
+    rerender(<Harness heights={[10, 10, 10, 10]} available={60} />)
+    const after = settleAndReadPerPage(20)
+
+    expect(
+      after.converged,
+      `never reached a fixed point after the swap: ${JSON.stringify(after.readings)}.`
+    ).toBe(true)
+    expect(
+      readPerPage(),
+      "10 + 10 = 20 <= 60 fits two of these rows, and growthFillsThisPage " +
+        "alone would allow it from page 1 - but nothing ever measured " +
+        "items 2-3 together, only item 1 alone, so growth must wait for " +
+        "page 0."
+    ).toBe(1)
+    const shownIndices = Array.from(
+      document.querySelectorAll<HTMLElement>("[data-idx]")
+    ).map((el) => el.dataset.idx)
+    expect(
+      shownIndices,
+      "must still be showing item 1, the one the reader was actually " +
+        "looking at - not items 2-3, which growthFillsThisPage alone would " +
+        "have silently substituted in."
+    ).toEqual(["1"])
+  })
+
   it("retries growth when a same-length swap changes only the hidden candidate", () => {
     // A review caught this precisely: the swap above ([100, 150] -> [60, 60])
     // happens to also change the *shown* row (100 -> 60), so the ceiling's
@@ -381,6 +559,79 @@ describe("useFittedPage: convergence with non-uniform row heights", () => {
       "100 + 50 = 150 <= 200 fits both rows now, but a ceiling that only " +
         "compares the measured baseline (identical before and after - row 0 " +
         "never changed) would never re-try the now-shorter row 1."
+    ).toBe(2)
+  })
+
+  it("does not grant a retry when a same-length rebuild keeps the same item keys", () => {
+    // Stands in for `ConfigureStep`'s `handleFieldChange`: editing one field
+    // rebuilds the whole array via `.map()` even though the set of
+    // instances, their order, and every card's rendered height are all
+    // unchanged - the same *shape* of update as the same-length swap above,
+    // but not the same *event*. `getItemKey` is how the hook is meant to
+    // tell them apart; without it, this would read exactly like that swap
+    // and hand back a retry mid-edit, regrowing `perPage` past a count
+    // already measured too tall and reshuffling which card is on screen.
+    const heights = [100, 150]
+    const { rerender } = render(
+      <Harness heights={heights} available={200} getItemKey />
+    )
+    const before = settleAndReadPerPage(20)
+    expect(before.converged).toBe(true)
+    expect(before.readings[before.readings.length - 1]).toBe(1)
+
+    // A fresh `heights` reference, same values, same order - the shape a
+    // `.map()` over one edited field produces for every *other* item.
+    rerender(<Harness heights={[...heights]} available={200} getItemKey />)
+    const after = settleAndReadPerPage(20)
+
+    expect(
+      after.converged,
+      `never reached a fixed point after the value-only rebuild: ${JSON.stringify(after.readings)}.`
+    ).toBe(true)
+    // Checking only the *final* value here would pass whether or not this
+    // fix works: 100 + 150 = 250 always overflows a 200px box, so an
+    // erroneous regrant that regrows to 2 gets caught and corrected back to
+    // 1 on the very next frame regardless. `readPerPage()` after settling
+    // cannot tell "never regrew" from "regrew and recovered" - only the
+    // frame-by-frame trace can, which is what actually distinguishes this
+    // test from passing on the exact bug it was written to catch (confirmed
+    // by running it against `getItemKey` wired to a no-op: it stayed green).
+    expect(
+      after.readings,
+      "a rebuild that keeps the same item keys regrew perPage to 2 before " +
+        "settling back to 1 - the transient itself is the defect (it slides " +
+        "a different card under the one being edited), and it is invisible " +
+        "to a check on the converged value alone."
+    ).not.toContain(2)
+    expect(readPerPage()).toBe(1)
+  })
+
+  it("treats a per-position key change as a swap even when the joined strings would collide", () => {
+    // A review caught this: joining keys with "|" is not injective -
+    // ["a|b", "c"] and ["a", "b|c"] join to the identical "a|b|c" even
+    // though every position's own key changed. A signature built that way
+    // would read this as "nothing changed" and withhold the retry a genuine
+    // swap earns.
+    const { rerender } = render(
+      <Harness heights={[100, 150]} available={200} keys={["a|b", "c"]} />
+    )
+    const before = settleAndReadPerPage(20)
+    expect(before.converged).toBe(true)
+    expect(before.readings[before.readings.length - 1]).toBe(1)
+
+    rerender(<Harness heights={[60, 60]} available={200} keys={["a", "b|c"]} />)
+    const after = settleAndReadPerPage(20)
+
+    expect(
+      after.converged,
+      `never reached a fixed point after the colliding-signature swap: ${JSON.stringify(after.readings)}.`
+    ).toBe(true)
+    expect(
+      readPerPage(),
+      "60 + 60 = 120 <= 200 fits, but a joined-string signature identical " +
+        'before and after ("a|b|c" both times) would wrongly withhold the ' +
+        "retry this same-length swap earns and leave the floor learned from " +
+        "the taller [100, 150] set in place."
     ).toBe(2)
   })
 
@@ -510,6 +761,77 @@ describe("useFittedPage: convergence with non-uniform row heights", () => {
     // 2-vs-something-else flicker.
     expect(converged).toBe(true)
     expect(readings[readings.length - 1]).toBe(2)
+  })
+
+  it("does not read a partial last page's spare space as room for one more per page", () => {
+    // The composer's picker, to scale: four activities, three fit the box.
+    // Page 1 then holds a single card in a box sized for three, so two
+    // cards' worth of space is empty - for the sole reason that the list ran
+    // out. Reading that as "room for a fourth per page" grew `perPage` to 4,
+    // which collapsed `pageCount` to 1, which clamped the page index back to
+    // 0: pressing Next flashed the last page and then landed back on the
+    // first one. The button looked dead and the flash looked like a bug in
+    // the pager, and neither was where the defect was.
+    render(<Harness heights={[100, 100, 100, 60]} available={320} />)
+
+    const onPageZero = settleAndReadPerPage(20)
+    expect(onPageZero.converged).toBe(true)
+    expect(onPageZero.readings[onPageZero.readings.length - 1]).toBe(3)
+
+    act(() => {
+      screen.getByTestId("next-page").click()
+    })
+
+    const onPageOne = settleAndReadPerPage(20)
+
+    expect(onPageOne.converged).toBe(true)
+    expect(
+      screen.getByTestId("page").textContent,
+      "growth driven by a partial page collapses pageCount to 1 and clamps " +
+        "the index straight back to 0 - the 'Next does nothing' report."
+    ).toBe("1")
+    expect(readPerPage()).toBe(3)
+  })
+
+  it("probes for the fit rather than trusting an average row height", () => {
+    // 100 + 40 = 140 fits the 150px box, but the average row height after
+    // the first row alone is 100 and the room left is 50, so an estimate
+    // says no and the page stays at one row forever. Rows are not uniform
+    // and the grid they sit in is not necessarily one column - in a
+    // `sm:grid-cols-2` catalogue the next card frequently costs no extra
+    // height at all, because it joins the row already on screen - so the
+    // estimate is not merely imprecise, it is answering a question about a
+    // layout the caller may not have. Trying is what settles it; the floor
+    // learned from a rejection is what stops trying from repeating itself.
+    render(<Harness heights={[100, 40, 40]} available={150} />)
+
+    const { readings, converged } = settleAndReadPerPage(30)
+
+    expect(converged).toBe(true)
+    expect(readings[readings.length - 1]).toBe(2)
+  })
+
+  it("does not re-propose on a later page a count an earlier page rejected", () => {
+    // `perPage` is one number governing every page, so a count that
+    // overflowed page 0 is wrong for the list, not wrong for page 0. Page 1
+    // here holds two short rows with room to spare, and would happily grow
+    // back into the 100 + 150 = 250px overflow page 0 just rejected if the
+    // rejection were remembered per-page rather than per-list.
+    render(<Harness heights={[100, 150, 20, 20, 20, 20]} available={200} />)
+
+    const onPageZero = settleAndReadPerPage(20)
+    expect(onPageZero.converged).toBe(true)
+    expect(onPageZero.readings[onPageZero.readings.length - 1]).toBe(1)
+
+    act(() => {
+      screen.getByTestId("next-page").click()
+    })
+
+    const onPageOne = settleAndReadPerPage(20)
+
+    expect(onPageOne.converged).toBe(true)
+    expect(readPerPage()).toBe(1)
+    expect(screen.getByTestId("page").textContent).toBe("1")
   })
 })
 

@@ -7,11 +7,17 @@ import {
   getActivity,
   searchActivities,
 } from "@some-ui/activity-catalog"
-import { Badge, Button, Card, CardContent, PageControls } from "@some-ui/shared"
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  PageControls,
+  TALL_WINDOW_ONLY,
+} from "@some-ui/shared"
 import { Plus, X } from "lucide-react"
 import { cn, useFittedPage } from "some-ui-utils"
 
-import { usePagination } from "@/hooks/use-pagination"
 import { ActivityIcon } from "@/components/activity-icon"
 import { ActivityInputHint } from "@/components/activity/activity-input"
 import { ActivityMaturityBadge } from "@/components/activity/activity-maturity"
@@ -20,21 +26,21 @@ import {
   useSearchHotkey,
 } from "@/components/activity/activity-search-field"
 import { AudioActivityHint } from "@/components/audio/audio-activity-notice"
-import { PaginationControls } from "@/components/pagination-controls"
-
-/** Rows here are compact (one line each), so a larger page fits comfortably. */
-const MANIFEST_PAGE_SIZE = 10
 
 /**
- * The box the catalogue grid has to fit.
+ * How the step's height is split between the two lists it shows.
  *
- * A fixed height, not a viewport percentage: `max-h-[Nvh]` is banned here
- * (see docs/ui-fit) precisely because it makes the amount of unreachable
- * content a function of the window. Bounding the surface and paging what
- * doesn't fit is the sanctioned move, and `useFittedPage` measures this box
- * to decide how many cards that is.
+ * The catalogue is what the step is *for*, so it gets the larger share; the
+ * manifest of what has been added is a running confirmation and gets the
+ * rest. Both are shares of whatever the wizard's body turns out to be, not
+ * measurements of their own - which is the whole difference from the fixed
+ * `h-72 sm:h-80` this replaced. That box was a design-time constant, so it
+ * fit exactly one window: a tall phone left a third of it empty and paged a
+ * four-item catalogue into four pages, and a landscape phone spent 82% of
+ * the window on it and pushed the wizard's own Continue below the fold.
  */
-const CATALOGUE_BOX = "h-72 sm:h-80"
+const CATALOGUE_SHARE = "min-h-0 flex-[3]"
+const MANIFEST_SHARE = "min-h-0 flex-[2]"
 
 const CATALOGUE: ReadonlyArray<ActivityDefinition> = ACTIVITY_IDS.map(
   (id) => ACTIVITY_CATALOG[id]
@@ -56,12 +62,19 @@ type ActivityPickerStepProps = {
  *
  * Recommendation is the dashboard's answer and the wrong one here - someone
  * composing a session wants to see what exists. Paging is the right one, and
- * half of this file already knew that: the picked-items list below has run
- * through `usePagination` since it was written. The catalogue grid above it
- * did not, and rendered `ACTIVITY_IDS.map` into a fixed grid instead.
+ * half of this file already knew that: the picked-items list below has been
+ * paged since it was written. The catalogue grid above it was not, and
+ * rendered `ACTIVITY_IDS.map` into a fixed grid instead.
  *
  * Search and paging are complements rather than alternatives - the field
  * narrows the catalogue, the pager walks whatever is left.
+ *
+ * Both lists are fitted to shares of the step's own height rather than paged
+ * by a constant, and that is the same decision twice rather than a preference:
+ * a constant page size is wrong at every window but the one it was picked in,
+ * and the two constants that used to live here (a `h-72 sm:h-80` box for the
+ * catalogue, a page of 10 for the manifest) were each picked in a different
+ * one.
  */
 export const ActivityPickerStep = ({
   items,
@@ -96,13 +109,12 @@ export const ActivityPickerStep = ({
   // access on that object as a ref read during render.
   //
   // `minPerPage: 1`, not 2: the grid is `sm:grid-cols-2`, so "2" only means
-  // "one row" above that breakpoint. Below it the grid is a single column, so
-  // a floor of 2 forces two full-height cards to stack inside a box that was
-  // never sized for that - the tallest cards (a maturity badge plus an input
-  // hint, wrapped at phone width) don't fit two-stacked in `h-72` and the
-  // overflow paints over the pager below rather than clipping. A floor of 1
-  // still leaves the algorithm free to grow to a full row wherever there is
-  // room; it just stops forcing an unfittable second row.
+  // "one row" above that breakpoint. Below it the grid is a single column, and
+  // a floor of 2 would force two full-height cards to stack whether or not the
+  // share of the step this box got can hold them - on a short landscape window
+  // it cannot, and the overflow paints over the pager below rather than
+  // clipping. A floor of 1 leaves the fit free to grow to a full row, and
+  // beyond, wherever there is room; it just never forces an unfittable one.
   const {
     viewportRef,
     contentRef,
@@ -115,36 +127,72 @@ export const ActivityPickerStep = ({
 
   // Numbered against the full list before paginating, so the badge always
   // reflects each instance's true position in the session, not its position
-  // within the current page.
-  const numberedItems = items.map((item, index) => ({
-    item,
-    position: index + 1,
-  }))
-  const { pageItems, currentPage, totalPages, goToPreviousPage, goToNextPage } =
-    usePagination(numberedItems, MANIFEST_PAGE_SIZE)
+  // within the current page. Memoized because `useFittedPage` reads a genuine
+  // change of `items` as permission to re-try a page size it had rejected,
+  // and an array rebuilt on every render is not a genuine change - see that
+  // hook's doc comment on what it can and cannot infer from a caller.
+  const numberedItems = useMemo(
+    () => items.map((item, index) => ({ item, position: index + 1 })),
+    [items]
+  )
+  const {
+    viewportRef: manifestViewportRef,
+    contentRef: manifestContentRef,
+    pageItems,
+    page: manifestPage,
+    pageCount: manifestPageCount,
+    next: nextManifestPage,
+    previous: previousManifestPage,
+  } = useFittedPage(numberedItems, { minPerPage: 1, maxPerPage: 20 })
 
   return (
-    <div className="space-y-4">
-      <p className="text-muted-foreground text-sm">
+    <div className="flex h-full min-h-0 flex-col gap-2 [@media(min-height:640px)]:gap-4">
+      {/* A first-run explainer: the first thing a short window sheds. On a
+          landscape phone it wraps to four lines and takes ~80px of a ~170px
+          body - half the room the catalogue it explains has to work in. */}
+      <p
+        className={cn(
+          "text-muted-foreground shrink-0 text-sm",
+          TALL_WINDOW_ONLY
+        )}
+      >
         Add one or more activities to this session. The same activity can be
         added more than once - e.g. two Hangul Honeycomb blocks with different
         modes - and you will configure each one separately in the next step.
       </p>
 
-      <ActivitySearchField
-        value={query}
-        onChange={setQuery}
-        inputRef={searchRef}
-        placeholder="Filter activities"
-      />
+      <div className="shrink-0">
+        <ActivitySearchField
+          value={query}
+          onChange={setQuery}
+          inputRef={searchRef}
+          placeholder="Filter activities"
+        />
+      </div>
 
       {visible.length === 0 ? (
-        <p className="text-muted-foreground rounded-md border border-dashed px-3 py-6 text-center text-sm">
+        <p className="text-muted-foreground shrink-0 rounded-md border border-dashed px-3 py-6 text-center text-sm">
           No activity matches &ldquo;{query.trim()}&rdquo;
         </p>
       ) : (
-        <>
-          <div ref={viewportRef} className={CATALOGUE_BOX}>
+        <div className={cn("flex flex-col gap-3", CATALOGUE_SHARE)}>
+          <div
+            ref={viewportRef}
+            data-scroll-intent="fitted-residue"
+            className={
+              // scroll-intent: fitted-residue — `useFittedPage` guarantees this
+              // box's content fits it, with exactly one documented exception:
+              // at `minPerPage` a single item taller than the whole box has to
+              // overflow somewhere (see the hook's own Options doc). This says
+              // where. It is not a greedy scroll - in every case the fit can
+              // actually solve, the scrollbar never appears because the content
+              // genuinely fits - it is the named home for the residue the fit
+              // is honest about not being able to remove. Clipping it instead
+              // is worse than it sounds: a card whose centre falls outside the
+              // box stops being clickable at all.
+              "min-h-0 flex-1 overflow-y-auto"
+            }
+          >
             <div
               ref={contentRef}
               className="grid content-start gap-3 sm:grid-cols-2"
@@ -171,7 +219,7 @@ export const ActivityPickerStep = ({
                           icon={activity.icon}
                           className="text-primary size-6 shrink-0"
                         />
-                        <div className="flex-1 space-y-1">
+                        <div className="min-w-0 flex-1 space-y-1">
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="font-semibold">{activity.name}</p>
                             <ActivityMaturityBadge activity={activity} />
@@ -212,52 +260,73 @@ export const ActivityPickerStep = ({
             onNext={nextPage}
             label="activities"
           />
-        </>
+        </div>
       )}
 
       {items.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-sm font-medium">
+        <div className={cn("flex flex-col gap-2", MANIFEST_SHARE)}>
+          <p className="shrink-0 text-sm font-medium">
             Added to this session{" "}
             <span className="text-muted-foreground font-normal">
               ({items.length})
             </span>
           </p>
-          <div className="space-y-1.5">
-            {pageItems.map(({ item, position }) => {
-              const activity = getActivity(item.activityId)
-              return (
-                <div
-                  key={item.instanceId}
-                  className="bg-muted/50 flex items-center gap-2 rounded-md border px-3 py-1.5"
-                >
-                  <span className="bg-muted flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                    {position}
-                  </span>
-                  <ActivityIcon
-                    icon={activity.icon}
-                    className="text-primary size-4 shrink-0"
-                  />
-                  <span className="flex-1 text-sm">{activity.name}</span>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => onRemove(item.instanceId)}
-                    title="Remove"
-                    className="text-muted-foreground hover:text-destructive size-6 p-0"
+          <div
+            ref={manifestViewportRef}
+            data-scroll-intent="fitted-residue"
+            className={
+              // scroll-intent: fitted-residue — `useFittedPage` guarantees this
+              // box's content fits it, with exactly one documented exception:
+              // at `minPerPage` a single item taller than the whole box has to
+              // overflow somewhere (see the hook's own Options doc). This says
+              // where. It is not a greedy scroll - in every case the fit can
+              // actually solve, the scrollbar never appears because the content
+              // genuinely fits - it is the named home for the residue the fit
+              // is honest about not being able to remove. Clipping it instead
+              // is worse than it sounds: a card whose centre falls outside the
+              // box stops being clickable at all.
+              "min-h-0 flex-1 overflow-y-auto"
+            }
+          >
+            <div ref={manifestContentRef} className="space-y-1.5">
+              {pageItems.map(({ item, position }) => {
+                const activity = getActivity(item.activityId)
+                return (
+                  <div
+                    key={item.instanceId}
+                    className="bg-muted/50 flex items-center gap-2 rounded-md border px-3 py-1.5"
                   >
-                    <X className="size-3.5" />
-                  </Button>
-                </div>
-              )
-            })}
+                    <span className="bg-muted flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                      {position}
+                    </span>
+                    <ActivityIcon
+                      icon={activity.icon}
+                      className="text-primary size-4 shrink-0"
+                    />
+                    <span className="min-w-0 flex-1 text-sm">
+                      {activity.name}
+                    </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => onRemove(item.instanceId)}
+                      title="Remove"
+                      className="text-muted-foreground hover:text-destructive size-6 p-0"
+                    >
+                      <X className="size-3.5" />
+                    </Button>
+                  </div>
+                )
+              })}
+            </div>
           </div>
-          <PaginationControls
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPrevious={goToPreviousPage}
-            onNext={goToNextPage}
+          <PageControls
+            page={manifestPage}
+            pageCount={manifestPageCount}
+            onPrevious={previousManifestPage}
+            onNext={nextManifestPage}
+            label="added activities"
           />
         </div>
       )}

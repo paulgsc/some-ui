@@ -76,6 +76,18 @@ tsc --noEmit`, `pnpm exec vitest run <path>`), not the repo root.
   (`git fetch origin main && git checkout -B <branch> origin/main`) before adding new
   commits — never stack new work on already-merged history. Fetch fresh; a stale local
   `origin/main` ref produces false alarms in both directions.
+- **`STORYBOOK_WORKSPACE` is a directory name, not a package name.** It is globbed
+  straight into `../packages/ui/<value>/**/*.stories.*`, so it wants `topik`, not
+  `@some-ui/topik` — and getting it wrong does not fail. The build succeeds with only
+  the six always-included design-system stories, and every ui-fit sweep then passes in
+  about a second having measured nothing you cared about. Check the count before
+  believing a fast green run:
+  `python3 -c "import json; print(len(json.load(open('storybook-static/index.json'))['entries']))"`.
+- **A green ui-fit run proves only what is in the viewport matrix.** It is four sizes in
+  `apps/www/tests/ui-fit/harness.ts`, one of which (780×390) exists because the other
+  three are all portrait or landscape-desktop, and a phone held sideways was therefore a
+  shape nothing could fail on. If a report is about an orientation or window shape, check
+  that matrix contains it before concluding the surface is fine.
 - **Run `git diff --cached --stat` before every commit, not only `git status`.** Run it
   after staging (`git add`) — plain `git diff --stat` only shows the unstaged worktree, so
   it can miss binary corruption in content that's already staged and about to be committed.

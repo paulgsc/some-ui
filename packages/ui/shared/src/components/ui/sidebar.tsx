@@ -246,9 +246,21 @@ const Sidebar = forwardRef<
               : "group-data-[collapsible=icon]:w-[var(--sidebar-width-icon)]"
           )}
         />
+        {/* `inset-y-0` alone is what gives this its height, deliberately: it
+            resolves against the viewport this fixed element is positioned in,
+            which is the one that is actually on screen. An `h-svh` here used
+            to override that with the *small* viewport height - the window as
+            it measures with the mobile browser's chrome shown. The chrome
+            retracts as soon as a page scrolls, the visual viewport grows by
+            exactly that much, and this element does not: the sidebar's
+            background and its right border stop a chrome's height above the
+            bottom of the screen, with the page's own background showing
+            through the strip below. Reported as "weird gaps in border and
+            bg" in landscape, where a scrolling route is most likely to have
+            retracted the chrome in the first place. */}
         <div
           className={cn(
-            "fixed inset-y-0 z-10 hidden h-svh w-[var(--sidebar-width)] transition-[left,right,width] duration-200 ease-linear md:flex",
+            "fixed inset-y-0 z-10 hidden w-[var(--sidebar-width)] transition-[left,right,width] duration-200 ease-linear md:flex",
             side === "left"
               ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
               : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
