@@ -423,12 +423,22 @@ describe("useFittedPage: convergence with non-uniform row heights", () => {
       after.converged,
       `never reached a fixed point after the value-only rebuild: ${JSON.stringify(after.readings)}.`
     ).toBe(true)
+    // Checking only the *final* value here would pass whether or not this
+    // fix works: 100 + 150 = 250 always overflows a 200px box, so an
+    // erroneous regrant that regrows to 2 gets caught and corrected back to
+    // 1 on the very next frame regardless. `readPerPage()` after settling
+    // cannot tell "never regrew" from "regrew and recovered" - only the
+    // frame-by-frame trace can, which is what actually distinguishes this
+    // test from passing on the exact bug it was written to catch (confirmed
+    // by running it against `getItemKey` wired to a no-op: it stayed green).
     expect(
-      readPerPage(),
-      "100 + 150 = 250 > 200 still overflows - a rebuild that keeps the same " +
-        "item keys must not regrant the retry a genuine content swap earns, " +
-        "or the floor learned at 1 would be wiped and 2 proposed again."
-    ).toBe(1)
+      after.readings,
+      "a rebuild that keeps the same item keys regrew perPage to 2 before " +
+        "settling back to 1 - the transient itself is the defect (it slides " +
+        "a different card under the one being edited), and it is invisible " +
+        "to a check on the converged value alone."
+    ).not.toContain(2)
+    expect(readPerPage()).toBe(1)
   })
 
   it("does not let a rejection on a nonzero page reintroduce the oscillation", () => {
