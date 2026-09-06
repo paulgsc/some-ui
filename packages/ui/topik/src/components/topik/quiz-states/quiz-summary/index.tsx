@@ -1,4 +1,4 @@
-import { Button, Card } from "@some-ui/shared"
+import { Button, Card, TALL_WINDOW_ONLY } from "@some-ui/shared"
 import {
   CheckCircle2,
   RotateCcw,
@@ -105,8 +105,19 @@ export const QuizSummary = ({
             </div>
           </div>
 
-          {/* Feedback message */}
-          <p className="text-muted-foreground text-center text-sm leading-relaxed">
+          {/* Feedback message: commentary, and the first thing to go when the
+              window is short. On a phone held sideways this sentence wraps to
+              two lines and takes ~40px of a 390px window - which is the whole
+              of the 6px this panel was overflowing by, plus room to spare. It
+              says nothing the score above and the verdict below do not
+              already say; it says it more warmly, which is worth 40px of a
+              tall window and not of a short one. */}
+          <p
+            className={cn(
+              "text-muted-foreground text-center text-sm leading-relaxed",
+              TALL_WINDOW_ONLY
+            )}
+          >
             {message}
           </p>
 

@@ -7,7 +7,14 @@ import {
   getActivity,
   searchActivities,
 } from "@some-ui/activity-catalog"
-import { Badge, Button, Card, CardContent, PageControls } from "@some-ui/shared"
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  PageControls,
+  TALL_WINDOW_ONLY,
+} from "@some-ui/shared"
 import { Plus, X } from "lucide-react"
 import { cn, useFittedPage } from "some-ui-utils"
 
@@ -19,8 +26,6 @@ import {
   useSearchHotkey,
 } from "@/components/activity/activity-search-field"
 import { AudioActivityHint } from "@/components/audio/audio-activity-notice"
-
-import { TALL_WINDOW_ONLY } from "./short-window"
 
 /**
  * How the step's height is split between the two lists it shows.

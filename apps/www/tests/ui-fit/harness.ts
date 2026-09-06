@@ -27,12 +27,36 @@ export const STORYBOOK_STATIC = resolve(
 /**
  * Sizes chosen for what they prove, not for device names: the shortest
  * viewport a laptop realistically presents (a browser with devtools docked),
- * a narrow phone, and a large desktop. A surface that fits all three has been
- * fitted rather than tuned to one breakpoint.
+ * a narrow phone, a large desktop - and a phone turned sideways.
+ *
+ * That last one is here because its absence was load-bearing. Three portrait
+ * or landscape-*desktop* sizes cannot fail on a phone in landscape, so a
+ * workspace could be genuinely unusable in that orientation and still pass
+ * this sweep cleanly - which is not the suite being lenient, it is the suite
+ * never having rendered the case at all. The composer's own catalogue box
+ * (`apps/www/src/components/composer`) took 82% of a 780x390 window and
+ * pushed the wizard's Continue button below the fold for as long as this list
+ * had three entries.
+ *
+ * It is also the orientation that breaks the most assumptions at once, which
+ * is exactly why it earns a slot rather than being a fourth variation on the
+ * same shape:
+ *
+ *   - every width breakpoint below `md` reads as true, so a layout believes
+ *     it has a tablet's room while the axis it is actually short of is height;
+ *   - fixed chrome that is a fine fraction of 780px of height is most of
+ *     390px;
+ *   - and a document that outgrows the window here does so under chrome that
+ *     is pinned to the viewport, which is how a scrolling route tears the
+ *     shell's own background (see the `h-svh` note in `sidebar.tsx`).
+ *
+ * A surface that fits all four has been fitted. A surface that fits the first
+ * three has been fitted for people holding their phone the usual way.
  */
 export const VIEWPORTS = [
   { name: "short-laptop", width: 1280, height: 560 },
   { name: "phone", width: 390, height: 720 },
+  { name: "phone-landscape", width: 780, height: 390 },
   { name: "desktop", width: 1680, height: 1050 },
 ] as const
 

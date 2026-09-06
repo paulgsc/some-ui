@@ -17,20 +17,17 @@ import {
   CardTitle,
   Input,
   Label,
+  LABEL_WHEN_TALL,
   PageControls,
+  ROOMY_WHEN_TALL,
+  SHORT_WINDOW_ONLY,
+  TALL_WINDOW_ONLY,
 } from "@some-ui/shared"
 import type { SceneConfig } from "@some-ui/types"
 import { cn, useFittedPage } from "some-ui-utils"
 
 import { formatDurationMs } from "@/lib/format"
 import { ActivityIcon } from "@/components/activity-icon"
-
-import {
-  LABEL_WHEN_TALL,
-  ROOMY_WHEN_TALL,
-  SHORT_WINDOW_ONLY,
-  TALL_WINDOW_ONLY,
-} from "./short-window"
 
 type ReviewStepProps = {
   items: ReadonlyArray<{
