@@ -511,6 +511,77 @@ describe("useFittedPage: convergence with non-uniform row heights", () => {
     expect(converged).toBe(true)
     expect(readings[readings.length - 1]).toBe(2)
   })
+
+  it("does not read a partial last page's spare space as room for one more per page", () => {
+    // The composer's picker, to scale: four activities, three fit the box.
+    // Page 1 then holds a single card in a box sized for three, so two
+    // cards' worth of space is empty - for the sole reason that the list ran
+    // out. Reading that as "room for a fourth per page" grew `perPage` to 4,
+    // which collapsed `pageCount` to 1, which clamped the page index back to
+    // 0: pressing Next flashed the last page and then landed back on the
+    // first one. The button looked dead and the flash looked like a bug in
+    // the pager, and neither was where the defect was.
+    render(<Harness heights={[100, 100, 100, 60]} available={320} />)
+
+    const onPageZero = settleAndReadPerPage(20)
+    expect(onPageZero.converged).toBe(true)
+    expect(onPageZero.readings[onPageZero.readings.length - 1]).toBe(3)
+
+    act(() => {
+      screen.getByTestId("next-page").click()
+    })
+
+    const onPageOne = settleAndReadPerPage(20)
+
+    expect(onPageOne.converged).toBe(true)
+    expect(
+      screen.getByTestId("page").textContent,
+      "growth driven by a partial page collapses pageCount to 1 and clamps " +
+        "the index straight back to 0 - the 'Next does nothing' report."
+    ).toBe("1")
+    expect(readPerPage()).toBe(3)
+  })
+
+  it("probes for the fit rather than trusting an average row height", () => {
+    // 100 + 40 = 140 fits the 150px box, but the average row height after
+    // the first row alone is 100 and the room left is 50, so an estimate
+    // says no and the page stays at one row forever. Rows are not uniform
+    // and the grid they sit in is not necessarily one column - in a
+    // `sm:grid-cols-2` catalogue the next card frequently costs no extra
+    // height at all, because it joins the row already on screen - so the
+    // estimate is not merely imprecise, it is answering a question about a
+    // layout the caller may not have. Trying is what settles it; the floor
+    // learned from a rejection is what stops trying from repeating itself.
+    render(<Harness heights={[100, 40, 40]} available={150} />)
+
+    const { readings, converged } = settleAndReadPerPage(30)
+
+    expect(converged).toBe(true)
+    expect(readings[readings.length - 1]).toBe(2)
+  })
+
+  it("does not re-propose on a later page a count an earlier page rejected", () => {
+    // `perPage` is one number governing every page, so a count that
+    // overflowed page 0 is wrong for the list, not wrong for page 0. Page 1
+    // here holds two short rows with room to spare, and would happily grow
+    // back into the 100 + 150 = 250px overflow page 0 just rejected if the
+    // rejection were remembered per-page rather than per-list.
+    render(<Harness heights={[100, 150, 20, 20, 20, 20]} available={200} />)
+
+    const onPageZero = settleAndReadPerPage(20)
+    expect(onPageZero.converged).toBe(true)
+    expect(onPageZero.readings[onPageZero.readings.length - 1]).toBe(1)
+
+    act(() => {
+      screen.getByTestId("next-page").click()
+    })
+
+    const onPageOne = settleAndReadPerPage(20)
+
+    expect(onPageOne.converged).toBe(true)
+    expect(readPerPage()).toBe(1)
+    expect(screen.getByTestId("page").textContent).toBe("1")
+  })
 })
 
 describe("useFittedPage: convergence holds for the whole family, not the one incident", () => {
