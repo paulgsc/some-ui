@@ -10,7 +10,8 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**", "build/**", "documents/**", ".contentlayer/**"],
-      "cache": true
+      "cache": true,
+      "passThroughEnv": ["SOME_UI_PRUNED_WORKSPACE"]
     },
     "build:docs": {
       "cache": true,
