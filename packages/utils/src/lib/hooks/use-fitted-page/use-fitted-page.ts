@@ -19,7 +19,7 @@ export type FittedPage<T> = {
   isMeasuring: boolean
 }
 
-type Options = {
+type Options<T> = {
   /**
    * Never show fewer than this many, even if they genuinely do not fit — one
    * item that is taller than the viewport has to overflow *somewhere*, and
@@ -28,6 +28,21 @@ type Options = {
   minPerPage?: number
   /** Upper bound on the fitted count, so a very tall viewport doesn't render an unbounded page. */
   maxPerPage?: number
+  /**
+   * Identifies each item across renders, for a caller whose `items` array is
+   * rebuilt on every update to *any* item even when a given item's own
+   * identity — and hence its rendered height — did not change: editing one
+   * field on one activity rebuilds the whole array via `.map()`, the same
+   * shape as a search swapping in a different result set. Without this, the
+   * hook cannot tell those two apart and grants both the same one-shot
+   * permission to ignore the overflow floor, which can regrow `perPage` past
+   * a count already measured too tall and reshuffle which item is on screen
+   * over a value that never touched layout. Omit when items are only ever
+   * added, removed (both already change `items.length`, which resets the
+   * floor unconditionally) or swapped wholesale, never mutated in place —
+   * the plain identity check already covers those correctly.
+   */
+  getItemKey?: (item: T, index: number) => string | number
 }
 
 const DEFAULT_MIN_PER_PAGE = 1
@@ -89,6 +104,14 @@ const DEFAULT_MAX_PER_PAGE = 24
  *    rebuilds it (see this effect's dependencies). Neither is a proxy for
  *    anything; both are numbers off the DOM and the input.
  *
+ *    A same-length swap (a search result set replacing another) still needs
+ *    a floor learned from the old content to not block the new content's own
+ *    growth, so a one-shot retry is granted whenever the caller's own state
+ *    change, not the hook's own convergence step, changes what `items`
+ *    identifies — see `getItemKey` below for the one case that default
+ *    identity gets wrong: a caller that mutates one item in place and rebuilds
+ *    the array to do it.
+ *
  * 3. **Only a full page is evidence of room.** This is the rule whose absence
  *    was the bug that motivated the rewrite. On the last page the list has
  *    run out, so `used` is small for a reason that has nothing to do with how
@@ -122,7 +145,8 @@ export function useFittedPage<T>(
   {
     minPerPage = DEFAULT_MIN_PER_PAGE,
     maxPerPage = DEFAULT_MAX_PER_PAGE,
-  }: Options = {}
+    getItemKey,
+  }: Options<T> = {}
 ): FittedPage<T> {
   const viewportRef = useRef<HTMLDivElement | null>(null)
   const contentRef = useRef<HTMLDivElement | null>(null)
@@ -135,6 +159,17 @@ export function useFittedPage<T>(
   const pageCount = Math.max(1, Math.ceil(items.length / Math.max(1, perPage)))
   const safePage = Math.min(page, pageCount - 1)
   const start = safePage * perPage
+
+  // What "the items changed" means for the retry grant below. Without
+  // `getItemKey`, this is the array reference itself — the original,
+  // still-correct behavior for a caller that only ever adds, removes, or
+  // wholesale-swaps `items`. With it, this is the ordered sequence of keys:
+  // a caller that rebuilds the array to mutate one item in place (same
+  // items, same order, one changed value) produces the same sequence, so it
+  // no longer reads as a swap.
+  const itemsSignature: unknown = getItemKey
+    ? items.map((item, index) => getItemKey(item, index)).join("|")
+    : items
 
   // Both adjustments happen during render rather than in an effect (React's
   // own "adjusting state when props change" shape): React discards this render
@@ -152,8 +187,8 @@ export function useFittedPage<T>(
   }
 
   // Read inside the layout effect below without being dependencies of it -
-  // the effect only needs to *see* the latest `perPage`/`items`/`safePage`,
-  // not to tear itself down and resubscribe its ResizeObserver whenever one
+  // the effect only needs to *see* the latest `perPage`/`itemsSignature`/
+  // `safePage`, not to tear itself down and resubscribe its ResizeObserver whenever one
   // of them changes, which would discard the accumulated `overflowFloor`
   // along with it and undo rule 2 on every single step. A ref cannot be
   // written during render, so a dedicated, dependency-less layout effect
@@ -162,7 +197,7 @@ export function useFittedPage<T>(
   // swap is a React-level event with no necessary DOM size change to be
   // observed, so this effect schedules a pass itself whenever either differs
   // from what it saw last render.
-  const latestRef = useRef({ perPage, items, page: safePage })
+  const latestRef = useRef({ perPage, itemsSignature, page: safePage })
   const scheduleRef = useRef<(() => void) | null>(null)
   // A one-shot permission for the next growth attempt to ignore the floor,
   // earned by the list's contents actually being swapped out. See rule 2's
@@ -174,10 +209,10 @@ export function useFittedPage<T>(
   const settlingRef = useRef(false)
   useLayoutEffect(() => {
     const previous = latestRef.current
-    latestRef.current = { perPage, items, page: safePage }
+    latestRef.current = { perPage, itemsSignature, page: safePage }
     const isOwnConvergenceStep = settlingRef.current
     settlingRef.current = false
-    if (previous.items !== items) {
+    if (previous.itemsSignature !== itemsSignature) {
       if (!isOwnConvergenceStep) retryFloorRef.current = true
       scheduleRef.current?.()
     } else if (previous.page !== safePage) {

@@ -70,7 +70,18 @@ export const ConfigureStep = ({
     pageCount,
     next: nextPage,
     previous: previousPage,
-  } = useFittedPage(paged, { minPerPage: 1, maxPerPage: 12 })
+  } = useFittedPage(paged, {
+    minPerPage: 1,
+    maxPerPage: 12,
+    // Editing a field rebuilds `items` (and so `paged`) via `.map()` even
+    // though the edited card's rendered height doesn't change - no field
+    // here affects a card's layout (see `ActivityInputNote`, driven only by
+    // `activityId`). Without this, that edit reads as a same-length content
+    // swap and re-tries a page size already measured too tall, which can
+    // grow `perPage` mid-edit and slide a different card under the one being
+    // typed into.
+    getItemKey: (item) => item.instanceId,
+  })
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">

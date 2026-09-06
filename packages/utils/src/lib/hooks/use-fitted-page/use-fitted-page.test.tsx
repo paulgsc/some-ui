@@ -144,6 +144,14 @@ type HarnessProps = {
    * touching `visible` or the current page at all.
    */
   extra?: number
+  /**
+   * Pass `getItemKey` through to `useFittedPage`, keyed on each item's own
+   * value (`items` here are the identity indices `heights.map((_, i) => i)`,
+   * so the value doubles as a stable per-item key) - lets a test simulate a
+   * caller like `ConfigureStep` that rebuilds the whole array to mutate one
+   * item in place, without losing per-item identity across that rebuild.
+   */
+  getItemKey?: boolean
 }
 
 /**
@@ -160,11 +168,16 @@ const Harness = ({
   maxPerPage,
   unmemoizedItems,
   extra,
+  getItemKey,
 }: HarnessProps): React.JSX.Element => {
   const memoized = useMemo(() => heights.map((_, index) => index), [heights])
   const items = unmemoizedItems ? heights.map((_, index) => index) : memoized
   const { viewportRef, contentRef, pageItems, perPage, page, next } =
-    useFittedPage(items, { minPerPage, maxPerPage })
+    useFittedPage(items, {
+      minPerPage,
+      maxPerPage,
+      getItemKey: getItemKey ? (item): number => item : undefined,
+    })
 
   return (
     <div
@@ -382,6 +395,40 @@ describe("useFittedPage: convergence with non-uniform row heights", () => {
         "compares the measured baseline (identical before and after - row 0 " +
         "never changed) would never re-try the now-shorter row 1."
     ).toBe(2)
+  })
+
+  it("does not grant a retry when a same-length rebuild keeps the same item keys", () => {
+    // Stands in for `ConfigureStep`'s `handleFieldChange`: editing one field
+    // rebuilds the whole array via `.map()` even though the set of
+    // instances, their order, and every card's rendered height are all
+    // unchanged - the same *shape* of update as the same-length swap above,
+    // but not the same *event*. `getItemKey` is how the hook is meant to
+    // tell them apart; without it, this would read exactly like that swap
+    // and hand back a retry mid-edit, regrowing `perPage` past a count
+    // already measured too tall and reshuffling which card is on screen.
+    const heights = [100, 150]
+    const { rerender } = render(
+      <Harness heights={heights} available={200} getItemKey />
+    )
+    const before = settleAndReadPerPage(20)
+    expect(before.converged).toBe(true)
+    expect(before.readings[before.readings.length - 1]).toBe(1)
+
+    // A fresh `heights` reference, same values, same order - the shape a
+    // `.map()` over one edited field produces for every *other* item.
+    rerender(<Harness heights={[...heights]} available={200} getItemKey />)
+    const after = settleAndReadPerPage(20)
+
+    expect(
+      after.converged,
+      `never reached a fixed point after the value-only rebuild: ${JSON.stringify(after.readings)}.`
+    ).toBe(true)
+    expect(
+      readPerPage(),
+      "100 + 150 = 250 > 200 still overflows - a rebuild that keeps the same " +
+        "item keys must not regrant the retry a genuine content swap earns, " +
+        "or the floor learned at 1 would be wiped and 2 proposed again."
+    ).toBe(1)
   })
 
   it("does not let a rejection on a nonzero page reintroduce the oscillation", () => {
