@@ -327,30 +327,29 @@ export function useFittedPage<T>(
         // asked of the slice growth would actually produce, not of the one
         // already on screen. `start = safePage * perPage`, so growing
         // `perPage` while on a nonzero page changes *which slice* that page
-        // is: checking fullness at the *current* count (`currentPage *
-        // current + current <= items.length`) is also true on the
-        // genuinely last page whenever it happens to divide evenly - two
-        // items at one per page, on page index 1, is "full" by that count
-        // alone. A page-count guard alone isn't enough either: two items at
-        // one per page collapses `pageCount` to 1 and visibly bounces the
-        // reader back to page 0, but a case where the grown page count
-        // still contains this page index just as validly reshuffles its
-        // *content* instead, silently - five items at two per page, on page
-        // index 1 (items 2 and 3), growing to three per page keeps page 1
-        // "valid" (there are 2 pages) while quietly showing items 3 and 4
-        // there instead. Both are the same defect wearing a different
-        // disguise: growth evidenced by a slice other than the one it is
-        // about to render. Asking whether *this* page, at the *grown*
-        // count, would still be entirely filled catches both - it is the
-        // one question that is actually about what's proposed rather than
-        // about what's currently on screen, and every page-0 case
-        // (`currentPage` term vanishes) is exactly as before.
+        // is, and `growthFillsThisPage` (below) answers "is the grown slice
+        // entirely real items" - but a review caught that "entirely real
+        // items" is not the same question as "the same items the reader was
+        // looking at": four items at one per page, on page index 1 (item 1),
+        // growing to two per page keeps page 1 fully populated (items 2-3)
+        // by that count alone, yet silently swaps out the very item that was
+        // on screen for two different ones - no bounce, no overflow, nothing
+        // rule 1 or the page-count guard before it can see, because the new
+        // slice is both full *and* a valid page index. The only page whose
+        // start is invariant under a change to `perPage` is page 0
+        // (`0 * anything = 0`), so it is the only page on which growth can
+        // ever be evidenced by what is already being looked at rather than
+        // by a slice nobody has measured yet. Growth is therefore restricted
+        // to page 0; a nonzero page still shrinks immediately when it
+        // overflows (rule 1 is unconditional), and picks up any accumulated
+        // room the next time the reader returns to page 0.
         const proposed = current + 1
         const growthFillsThisPage =
           currentPage * proposed + proposed <= items.length
         const hasMoreToShow = current < items.length
 
         if (
+          currentPage === 0 &&
           growthFillsThisPage &&
           hasMoreToShow &&
           proposed < overflowFloor &&

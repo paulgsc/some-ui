@@ -472,6 +472,60 @@ describe("useFittedPage: convergence with non-uniform row heights", () => {
     ).toEqual(["2", "3"])
   })
 
+  it("does not grow at all on a nonzero page, even when the grown slice would be entirely real items", () => {
+    // A review caught that `growthFillsThisPage` alone is not the general
+    // fix the test above found: it happened to also block growth there
+    // because five items could not fill a three-per-page slice starting at
+    // index 3. Four items can fill a two-per-page slice starting at index
+    // 2 - `growthFillsThisPage` says yes, `hasMoreToShow` says yes, and
+    // growth proceeds, silently swapping the one item on page 1 (index 1)
+    // for two entirely different ones (indices 2-3) that were never on
+    // screen and never measured. The only page whose slice start does not
+    // move when `perPage` changes is page 0 - growth is restricted to it.
+    const { rerender } = render(
+      <Harness heights={[50, 50, 50, 50]} available={60} />
+    )
+    const before = settleAndReadPerPage(20)
+    expect(before.converged).toBe(true)
+    expect(
+      before.readings[before.readings.length - 1],
+      "any two of these rows (50 + 50 = 100 > 60) overflow, so this must " +
+        "settle at one per page"
+    ).toBe(1)
+
+    act(() => {
+      screen.getByTestId("next-page").click()
+    })
+    expect(screen.getByTestId("page").textContent).toBe("1")
+
+    // A same-length swap with much shorter content earns the retry - and
+    // growthFillsThisPage(currentPage=1, proposed=2) = 1*2+2 = 4 <= 4 is
+    // true, so only the page-0 restriction stops growth here.
+    rerender(<Harness heights={[10, 10, 10, 10]} available={60} />)
+    const after = settleAndReadPerPage(20)
+
+    expect(
+      after.converged,
+      `never reached a fixed point after the swap: ${JSON.stringify(after.readings)}.`
+    ).toBe(true)
+    expect(
+      readPerPage(),
+      "10 + 10 = 20 <= 60 fits two of these rows, and growthFillsThisPage " +
+        "alone would allow it from page 1 - but nothing ever measured " +
+        "items 2-3 together, only item 1 alone, so growth must wait for " +
+        "page 0."
+    ).toBe(1)
+    const shownIndices = Array.from(
+      document.querySelectorAll<HTMLElement>("[data-idx]")
+    ).map((el) => el.dataset.idx)
+    expect(
+      shownIndices,
+      "must still be showing item 1, the one the reader was actually " +
+        "looking at - not items 2-3, which growthFillsThisPage alone would " +
+        "have silently substituted in."
+    ).toEqual(["1"])
+  })
+
   it("retries growth when a same-length swap changes only the hidden candidate", () => {
     // A review caught this precisely: the swap above ([100, 150] -> [60, 60])
     // happens to also change the *shown* row (100 -> 60), so the ceiling's
