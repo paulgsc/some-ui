@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="alternate icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/logo192.png" />
+    <!-- Same pre-paint safety net as the app-shell index.html - see that
+         file's comment. Duplicated rather than shared because Vite HTML
+         entries are each their own standalone document; the two must be
+         kept in step by hand if the theme boot logic ever changes. -->
+    <style>
+      html:not([data-theme]) {
+        color-scheme: dark;
+      }
+      html:not([data-theme]) body {
+        background-color: oklch(0.145 0 0);
+      }
+    </style>
+    <script>
+      ;(function () {
+        try {
+          var key = "some-ui.theme"
+          var pref = localStorage.getItem(key) || "system"
+          var map = {
+            light: { classes: [], mode: "light" },
+            dark: { classes: ["dark"], mode: "dark" },
+            "strawberry-moon": {
+              classes: ["dark", "strawberry-moon"],
+              mode: "dark",
+            },
+            "peachy-blossom": { classes: ["peachy-blossom"], mode: "light" },
+          }
+          if (pref === "system" || !map[pref]) {
+            var dark =
+              window.matchMedia &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches
+            pref = dark ? "dark" : "light"
+          }
+          var theme = map[pref]
+          var root = document.documentElement
+          if (theme.classes.length)
+            root.classList.add.apply(root.classList, theme.classes)
+          root.dataset.theme = pref
+          root.style.colorScheme = theme.mode
+        } catch (e) {}
+      })()
+    </script>
+    <link href="/src/index.css" rel="stylesheet" />
+
+    <!-- Primary SEO - route-specific for /resume, deliberately not the
+         app-shell's generic "Some UI" title/description. This is the one
+         URL shared as a résumé link (see routes/__root.tsx's public-route
+         allowlist and routes/_dashboard/resume.tsx's document.title
+         effect), so a crawler, link-preview bot, or portfolio checker that
+         never runs the SPA's JS still sees résumé-specific identity here
+         instead of the generic study-session copy 404.html would have
+         served for this path. -->
+    <title>Paul Gathondu — Résumé</title>
+    <meta
+      name="description"
+      content="Résumé for Paul Gathondu, a software engineer building production-oriented services in Rust and TypeScript - backend, platform, and full-stack compositions."
+    />
+    <meta name="resume-id" content="paul-gathondu-resume" />
+    <meta name="theme-color" content="#101010" />
+    <link rel="canonical" href="https://paulgsc.github.io/some-ui/resume/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="profile" />
+    <meta property="profile:first_name" content="Paul" />
+    <meta property="profile:last_name" content="Gathondu" />
+    <meta property="og:site_name" content="Some UI" />
+    <meta property="og:title" content="Paul Gathondu — Résumé" />
+    <meta
+      property="og:description"
+      content="Software engineer building production-oriented services in Rust and TypeScript - backend, platform, and full-stack compositions."
+    />
+    <meta
+      property="og:url"
+      content="https://paulgsc.github.io/some-ui/resume/"
+    />
+    <meta property="og:image" content="/logo512.png" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Paul Gathondu — Résumé" />
+    <meta
+      name="twitter:description"
+      content="Software engineer building production-oriented services in Rust and TypeScript - backend, platform, and full-stack compositions."
+    />
+    <meta name="twitter:image" content="/logo512.png" />
+
+    <!-- Structured data: a stable identifier a crawler or automated
+         portfolio check can read straight from the static response, ahead
+         of and independent from anything the SPA renders once React
+         hydrates over it. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Person",
+        "identifier": "paul-gathondu-resume",
+        "name": "Paul Gathondu",
+        "jobTitle": "Software Engineer",
+        "url": "https://paulgsc.github.io/some-ui/resume/",
+        "sameAs": ["https://github.com/paulgsc"]
+      }
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
