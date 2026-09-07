@@ -359,6 +359,22 @@ export function createCoverageWatchdog(
 /** Diagnostics-freshness cadence only — see this section's own header for why this is a poll rather than a reactive observer, and why its exact value carries no safety weight the way `DISCOVERY_POLL_MS` (that constant's own doc comment) does. */
 export const SCOPE_COVERAGE_POLL_MS = 250
 
+/**
+ * Hard cap on how many individual scope entries the "scopes" snapshot
+ * itemizes, independent of `createCoverageRecorder`'s own (already-widened)
+ * `maxDetailBytes` — bot-found (#1327's own review). A page extreme enough
+ * to exceed even that budget must still produce a *renderable* snapshot
+ * (`byState`/`totalScopes` accurate over every live scope, `scopes` capped
+ * with `truncated: true`) rather than silently failing
+ * `debug/index.ts`'s own `isScopeCoverageSnapshot()` type guard and losing
+ * the per-scope breakdown entirely — the same failure mode the byte-budget
+ * widening alone does not fully close for a sufficiently pathological page.
+ * ~120 bytes/entry (a `shadow:NNN` id, a same-shaped parent id, kind,
+ * boolean) keeps 100 entries comfortably under the 16 KB budget alongside
+ * `byState`/`now`/`reason`'s own small fixed overhead.
+ */
+export const MAX_SNAPSHOT_SCOPE_ENTRIES = 100
+
 /** SF-OB's own per-scope snapshot shape, published under `setSnapshot("scopes", ...)` — read by `debug/index.ts`'s per-scope breakdown table. */
 export type ScopeCoverageSnapshot = {
   readonly now: number
@@ -373,7 +389,14 @@ export type ScopeCoverageSnapshot = {
    * true of code nobody re-verifies from the outside.
    */
   readonly byState: Readonly<Record<ScopeStateKind, number>>
+  /**
+   * Capped at `MAX_SNAPSHOT_SCOPE_ENTRIES` — `totalScopes`/`byState` above
+   * stay accurate over *every* live scope regardless; only this itemized
+   * list is bounded. See `MAX_SNAPSHOT_SCOPE_ENTRIES`'s own doc comment.
+   */
   readonly scopes: ReadonlyArray<ScopeCoverageEntry>
+  /** True when `scopes` above was truncated — `totalScopes - scopes.length` more exist but aren't itemized in this snapshot. */
+  readonly truncated?: boolean
 }
 
 export type ScopeCoverageWatchdog<Rho = unknown, Pi = unknown> = {
@@ -400,6 +423,17 @@ export function createScopeCoverageWatchdog<Rho = unknown, Pi = unknown>(
   const artifactOk = new Map<ScopeId, boolean>()
   const violatedSince = new Map<ScopeId, number>()
   let pollHandle: ReturnType<typeof setInterval> | null = null
+  // Content signature (id/kind/parent/artifactPresent per scope) of the
+  // last *written* "scopes" snapshot — bot-found (#1327's own review): the
+  // 250ms poll calling setSnapshot()/count() unconditionally on every tick
+  // keeps re-arming the recorder's own 1s flush debounce forever, writing
+  // the full diagnostics bundle to storage.local roughly once a second for
+  // the entire lifetime of every open auto-mode tab, changed or not. Only
+  // writing when this signature actually differs from the last check's
+  // makes an idle tab (the overwhelmingly common case) settle into zero
+  // ongoing storage churn, the same way the reactive document watchdog
+  // above already only records on an actual transition.
+  let lastSnapshotSignature: string | undefined
 
   function noteDuration(id: ScopeId, now: number): void {
     const since = enteredAt.get(id)
@@ -441,14 +475,29 @@ export function createScopeCoverageWatchdog<Rho = unknown, Pi = unknown>(
     }
     for (const s of scopes) byState[s.kind] += 1
 
-    recorder.setSnapshot("scopes", {
-      now,
-      totalScopes: scopes.length,
-      byState,
-      scopes,
-      reason,
-    })
-    recorder.count("scope_coverage_checks")
+    // Excludes `now`/`reason`, which always differ — this signature is
+    // "did the actually-interesting content change," not "did time pass."
+    const signature = JSON.stringify({ byState, scopes })
+    if (signature !== lastSnapshotSignature) {
+      lastSnapshotSignature = signature
+      const truncated = scopes.length > MAX_SNAPSHOT_SCOPE_ENTRIES
+      recorder.setSnapshot("scopes", {
+        now,
+        totalScopes: scopes.length,
+        byState,
+        scopes: truncated
+          ? scopes.slice(0, MAX_SNAPSHOT_SCOPE_ENTRIES)
+          : scopes,
+        ...(truncated ? { truncated: true } : {}),
+        reason,
+      })
+      recorder.count("scope_coverage_checks")
+    }
+    // checkArtifactCoverage keeps its own per-scope-id bookkeeping and
+    // records violation/recovery events directly — it must run every check
+    // regardless of the write-gate above, not because it would otherwise
+    // miss a transition (any real one also changes `signature`), but
+    // because it *is* what maintains that per-id state in the first place.
     checkArtifactCoverage(scopes, now, reason)
   }
 

@@ -362,15 +362,23 @@ describe("createScopeCoverageWatchdog — event-driven cumulative counters", () 
 
 describe("createScopeCoverageWatchdog — periodic per-scope snapshot and ScopeCoverageHeld", () => {
   it("check() publishes a per-scope snapshot with live byState counts and per-scope artifact presence, DISCOVERED_UNHELD pinned at zero", () => {
+    // A shadow scope, not the document — its HELD artifact is HOLD_ATTR;
+    // the document scope's own artifacts are exercised separately below and
+    // in coverage-observability.test.ts (bot-found, #1327's own review:
+    // this codebase's actual createPrepaintCustody() never writes HOLD_ATTR
+    // at all, so a document-ref'd scope needs its own dedicated fixture).
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    const shadow = host.attachShadow({ mode: "open" })
     const veil = document.createElement("hr")
     veil.setAttribute(HOLD_ATTR, "")
-    document.body.appendChild(veil)
+    shadow.appendChild(veil)
 
     const recorder = createCoverageRecorder("test-scope-snapshot", false)
     const scopeCoverage = createScopeCoverageWatchdog(recorder)
     const registry = createScopeRegistry(scopeCoverage.registryObserver)
     registry.register("s1", {
-      ref: document,
+      ref: shadow,
       parent: null,
       contentEpoch: 0,
       hold: fakeHold(),
@@ -392,6 +400,88 @@ describe("createScopeCoverageWatchdog — periodic per-scope snapshot and ScopeC
       },
       scopes: [{ id: "s1", kind: "HELD", parent: null, artifactPresent: true }],
     })
+  })
+
+  it("does not re-write the snapshot or re-count scope_coverage_checks across consecutive checks when nothing changed (bot-found, #1327's own review — an idle tab must not flush the recorder forever)", () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    const shadow = host.attachShadow({ mode: "open" })
+    const veil = document.createElement("hr")
+    veil.setAttribute(HOLD_ATTR, "")
+    shadow.appendChild(veil)
+
+    const recorder = createCoverageRecorder("test-scope-no-churn", false)
+    const setSnapshotSpy = vi.spyOn(recorder, "setSnapshot")
+    const scopeCoverage = createScopeCoverageWatchdog(recorder)
+    const registry = createScopeRegistry(scopeCoverage.registryObserver)
+    registry.register("s1", {
+      ref: shadow,
+      parent: null,
+      contentEpoch: 0,
+      hold: fakeHold(),
+    })
+
+    scopeCoverage.check(registry, "first")
+    expect(setSnapshotSpy).toHaveBeenCalledTimes(1)
+    expect(recorder.metrics.snapshot().counters["scope_coverage_checks"]).toBe(
+      1
+    )
+
+    scopeCoverage.check(registry, "second")
+    scopeCoverage.check(registry, "third")
+
+    expect(setSnapshotSpy).toHaveBeenCalledTimes(1)
+    expect(recorder.metrics.snapshot().counters["scope_coverage_checks"]).toBe(
+      1
+    )
+
+    // A real change still writes, on the very next check.
+    registry.startResolving("s1")
+    scopeCoverage.check(registry, "fourth")
+    expect(setSnapshotSpy).toHaveBeenCalledTimes(2)
+    expect(recorder.metrics.snapshot().counters["scope_coverage_checks"]).toBe(
+      2
+    )
+  })
+
+  it("caps the itemized scopes list at MAX_SNAPSHOT_SCOPE_ENTRIES and marks the snapshot truncated, while byState/totalScopes stay accurate over every live scope (bot-found, #1327's own review)", () => {
+    const recorder = createCoverageRecorder("test-scope-truncation", false)
+    const scopeCoverage = createScopeCoverageWatchdog(recorder)
+    const registry = createScopeRegistry(scopeCoverage.registryObserver)
+
+    const total = 120
+    for (let i = 0; i < total; i++) {
+      const host = document.createElement("div")
+      document.body.appendChild(host)
+      const shadow = host.attachShadow({ mode: "open" })
+      registry.register(`shadow:${i}`, {
+        ref: shadow,
+        parent: null,
+        contentEpoch: 0,
+        hold: fakeHold(),
+      })
+    }
+
+    scopeCoverage.check(registry, "test")
+
+    const snapshot = recorder.snapshotEntries()["scopes"]
+    if (snapshot === null || typeof snapshot !== "object") {
+      throw new Error("expected an object snapshot")
+    }
+    expect(Reflect.get(snapshot, "totalScopes")).toBe(total)
+
+    const byState = Reflect.get(snapshot, "byState")
+    if (byState === null || typeof byState !== "object") {
+      throw new Error("expected byState to be an object")
+    }
+    expect(Reflect.get(byState, "HELD")).toBe(total)
+
+    const scopesList = Reflect.get(snapshot, "scopes")
+    if (!Array.isArray(scopesList)) {
+      throw new Error("expected scopes to be an array")
+    }
+    expect(scopesList.length).toBeLessThan(total)
+    expect(Reflect.get(snapshot, "truncated")).toBe(true)
   })
 
   it("flags, then recovers, a COMMITTED scope whose data-sw-patched marker was removed out from under the registry — the desync class no other check in this codebase catches", async () => {

@@ -426,6 +426,14 @@ function scopesSection(b: Bundle): HTMLElement | undefined {
   } else {
     section.appendChild(el("div", { class: "sf-scroll" }, [table]))
   }
+  if (raw.truncated === true) {
+    section.appendChild(
+      el("div", {
+        class: "sf-sub",
+        text: `Showing ${raw.scopes.length} of ${raw.totalScopes} scopes — byState above still counts every one; itemizing more here would exceed this snapshot's own size budget.`,
+      })
+    )
+  }
   return section
 }
 

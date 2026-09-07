@@ -8,6 +8,14 @@ import {
   type ScopeCoverageContext,
   type ScopeCoverageEntry,
 } from "@filter/lib/content/coverage-observability"
+import {
+  PREPAINT_DIRTY_CLASS,
+  PREPAINT_VEIL_ID,
+} from "@filter/lib/content/prepaint"
+import {
+  DARK_THEME_ATTR,
+  DARK_THEME_STYLE_ID,
+} from "@filter/lib/content/theme-apply"
 import type { InvariantOutcome } from "@some-extension/common/observability"
 import { afterEach, describe, expect, it } from "vitest"
 
@@ -289,13 +297,53 @@ describe("scopeArtifactPresent — re-reads the live DOM, never trusts κ alone"
     expect(scopeArtifactPresent(shadow, "RETIRED")).toBeNull()
     expect(scopeArtifactPresent(shadow, "DISCOVERED_UNHELD")).toBeNull()
   })
+})
 
-  it("works over the document itself, not just a ShadowRoot", () => {
+describe("scopeArtifactPresent — the document scope (r_0) uses its own coverage artifacts, not the shadow-scope selectors (bot-found, #1327's own review)", () => {
+  it("HELD/RESOLVING/FAILED_HELD: true when the prepaint veil is present, even with no HOLD_ATTR element anywhere — r_0's own custody primitive is createPrepaintCustody(), never createOcclusionHold()", () => {
     expect(scopeArtifactPresent(document, "HELD")).toBe(false)
-    const veil = document.createElement("hr")
-    veil.setAttribute(HOLD_ATTR, "")
+    const veil = document.createElement("div")
+    veil.id = PREPAINT_VEIL_ID
     document.body.appendChild(veil)
+    for (const kind of ["HELD", "RESOLVING", "FAILED_HELD"] as const) {
+      expect(scopeArtifactPresent(document, kind)).toBe(true)
+    }
+    // Confirms this isn't accidentally still checking HOLD_ATTR.
+    expect(document.querySelector(`[${HOLD_ATTR}]`)).toBeNull()
+  })
+
+  it("HELD: also true from the sw-dirty CSS backstop class alone, with no veil element", () => {
+    expect(scopeArtifactPresent(document, "HELD")).toBe(false)
+    document.documentElement.classList.add(PREPAINT_DIRTY_CLASS)
     expect(scopeArtifactPresent(document, "HELD")).toBe(true)
+    document.documentElement.classList.remove(PREPAINT_DIRTY_CLASS)
+  })
+
+  it("COMMITTED: true when the dark theme attribute and its real stylesheet both agree, false for a bare data-sw-patched element (which a canvas-only page legitimately never has)", () => {
+    const patched = document.createElement("div")
+    patched.dataset["swPatched"] = "surface-1"
+    document.body.appendChild(patched)
+    // The shadow-scope selector's own signal is present, but the document's
+    // real signals are not — must not read as covered.
+    expect(scopeArtifactPresent(document, "COMMITTED")).toBe(false)
+    patched.remove()
+
+    document.documentElement.setAttribute(DARK_THEME_ATTR, "")
+    const style = document.createElement("style")
+    style.id = DARK_THEME_STYLE_ID
+    style.textContent = "html,body{--sw-bg-0:#171c25;}"
+    document.head.appendChild(style)
+
+    expect(scopeArtifactPresent(document, "COMMITTED")).toBe(true)
+
+    document.documentElement.removeAttribute(DARK_THEME_ATTR)
+    style.remove()
+  })
+
+  it("EXONERATED_NATIVE, RETIRED, and DISCOVERED_UNHELD name no document artifact either", () => {
+    expect(scopeArtifactPresent(document, "EXONERATED_NATIVE")).toBeNull()
+    expect(scopeArtifactPresent(document, "RETIRED")).toBeNull()
+    expect(scopeArtifactPresent(document, "DISCOVERED_UNHELD")).toBeNull()
   })
 })
 

@@ -64,6 +64,14 @@
 import { HOLD_ATTR } from "@filter/adapter/custody-primitive"
 import type { ScopeStateKind } from "@filter/adapter/scope-registry"
 import { parseColor, relativeLuminance } from "@filter/lib/content/color"
+import {
+  PREPAINT_DIRTY_CLASS,
+  PREPAINT_VEIL_ID,
+} from "@filter/lib/content/prepaint"
+import {
+  DARK_THEME_ATTR,
+  DARK_THEME_STYLE_ID,
+} from "@filter/lib/content/theme-apply"
 import { ext } from "@filter/platform/content"
 import type { TabState } from "@filter/types/tab"
 import {
@@ -301,16 +309,72 @@ export type ScopeCoverageContext = {
 }
 
 /**
+ * The document scope (r_0) never uses the shadow-scope selectors below —
+ * bot-found (#1327's own review): its custody primitive is
+ * `document-scope.ts`'s `createPrepaintCustody()`, a thin wrapper over the
+ * *pre-existing* `prepaint-start.js` veil/dirty-class backstop, never an
+ * `HOLD_ATTR` element (that element only ever exists inside a shadow scope's
+ * own `createOcclusionHold`). And a valid document COMMITTED round can carry
+ * *zero* `data-sw-patched` elements: a canvas-only/transparent page's own
+ * `decide()` verdict is legitimately just `activate-theme` with no
+ * `tag-surface` actions at all (nothing needs per-surface correction), so
+ * `data-sw-patched`'s absence there is the correct, themed state, not a
+ * desync. Checking the shadow-scope selectors against the document would
+ * read both cases as false violations on every normal auto-mode page.
+ * Reuses exactly the artifacts `CoverageHeld` (coverageInvariants, above)
+ * already checks for the document, at the granularity this function needs.
+ */
+function documentArtifactPresent(
+  doc: Document,
+  kind: ScopeStateKind
+): boolean | null {
+  switch (kind) {
+    case "HELD":
+    case "RESOLVING":
+    case "FAILED_HELD": {
+      const veilPresent = doc.getElementById(PREPAINT_VEIL_ID) !== null
+      const dirtyClassPresent =
+        doc.documentElement.classList.contains(PREPAINT_DIRTY_CLASS)
+      return veilPresent || dirtyClassPresent
+    }
+    case "COMMITTED": {
+      const darkThemeActive = doc.documentElement.hasAttribute(DARK_THEME_ATTR)
+      const darkStyle = doc.getElementById(DARK_THEME_STYLE_ID)
+      const darkStyleActive =
+        darkStyle?.textContent.includes("--sw-bg-0") ?? false
+      return darkThemeActive && darkStyleActive
+    }
+    case "EXONERATED_NATIVE":
+    case "RETIRED":
+    case "DISCOVERED_UNHELD": {
+      return null
+    }
+    default: {
+      const exhaustive: never = kind
+      throw new Error(
+        `[coverage-observability] unhandled scope kind: ${String(exhaustive)}`
+      )
+    }
+  }
+}
+
+/**
  * Reads whether `root`'s own custody artifact for `kind` is actually
  * present. Exported so `coverage-watchdog.ts`'s periodic scope-coverage check can build a
  * `ScopeCoverageContext` entry per scope without duplicating the two
  * selectors this module already owns; `null` for a kind with nothing to
- * check (see `ScopeCoverageEntry`'s own doc comment).
+ * check (see `ScopeCoverageEntry`'s own doc comment). The document scope
+ * (`root instanceof Document`, true only for r_0 — every shadow scope's own
+ * `ref` is a `ShadowRoot`) is routed to `documentArtifactPresent()` instead
+ * of the shadow-scope selectors below — see that function's own header.
  */
 export function scopeArtifactPresent(
   root: Document | ShadowRoot,
   kind: ScopeStateKind
 ): boolean | null {
+  if (root instanceof Document) {
+    return documentArtifactPresent(root, kind)
+  }
   switch (kind) {
     case "HELD":
     case "RESOLVING":
@@ -475,5 +539,20 @@ export function createCoverageRecorder(
     capacity: 300,
     invariants: coverageInvariants,
     persistence,
+    // SF-OB (#1270), bot-found (#1327's own review): the default 2 KB
+    // detail/snapshot clamp (Recorder's own RecorderOptions) was sized for
+    // this module's original, small document-only contexts. The "scopes"
+    // snapshot (coverage-watchdog.ts's createScopeCoverageWatchdog) can
+    // carry one entry per live registered scope, and a Polymer-heavy page
+    // (the epic's own motivating case) can register far more of those than
+    // fit in 2 KB — exceeding it silently replaces the whole snapshot with
+    // a truncated string, which debug/index.ts's own isScopeCoverageSnapshot()
+    // then rejects outright, dropping the per-scope breakdown exactly on the
+    // pages where it matters most. 16 KB is still a small, fixed budget
+    // (this module's own "bounded footprint" discipline, just re-sized for
+    // a real per-scope-array consumer this default predates) — combined with
+    // MAX_SNAPSHOT_SCOPE_ENTRIES' own hard cap as a backstop for a page
+    // extreme enough to exceed even this.
+    maxDetailBytes: 16_384,
   })
 }
