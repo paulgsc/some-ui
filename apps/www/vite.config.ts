@@ -176,6 +176,16 @@ export default defineConfig(
     build: {
       // Enable rollup bundle analysis
       rolldownOptions: {
+        // Two HTML entries, one JS app: both boot the same
+        // src/main.tsx/router, so the /resume shell isn't a second copy of
+        // the app - it's the same SPA under a route-specific document (see
+        // resume/index.html's header comment) that GitHub Pages can serve
+        // as a real 200 at /resume/ instead of the generic app-shell
+        // 404.html fallback every other unmatched path relies on.
+        input: {
+          main: resolve(import.meta.dirname, "index.html"),
+          resume: resolve(import.meta.dirname, "resume/index.html"),
+        },
         // No `output.manualChunks`. The hand-rolled version here matched with
         // `id.includes(pkg)` — a substring test against the full module path —
         // which under pnpm matches far more than the package named. pnpm
