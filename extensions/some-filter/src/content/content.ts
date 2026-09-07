@@ -264,7 +264,21 @@ function applyState(state: TabState): void {
   // already-purged scope indefinitely, since nothing ever checks again
   // outside auto mode to notice shadowScopeDiscovery.teardown() already
   // retired and purged it from the registry.
-  scopeCoverageWatchdog.check(documentScope.registry, "apply-state:teardown")
+  //
+  // Gated on `previous === "auto"` — bot-found (#1327's own review, round
+  // 4): shadowScopeDiscovery only ever discovers/observes from inside
+  // runAutoTheme(), so its teardown() here is already a no-op whenever the
+  // previous mode wasn't auto, and r_0's own registry entry (still whatever
+  // auto last left it, HELD or COMMITTED) is stale by then — a prior
+  // legacy/off transition's own restoreVendor() already stripped that
+  // artifact without ever updating the registry to say so. Checking it
+  // anyway recorded a permanent false scope.coverage_violated on every
+  // non-auto-to-non-auto transition, one this same call's following
+  // teardown() then made unrecoverable by wiping the tracking that would
+  // have recorded the eventual recovery.
+  if (previous === "auto") {
+    scopeCoverageWatchdog.check(documentScope.registry, "apply-state:teardown")
+  }
   scopeCoverageWatchdog.teardown()
 
   restoreVendor()

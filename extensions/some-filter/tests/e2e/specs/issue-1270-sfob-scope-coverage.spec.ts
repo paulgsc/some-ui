@@ -63,7 +63,7 @@ type MinimalBundle = {
   events: ReadonlyArray<{
     kind: string
     severity: string
-    detail?: { id?: string }
+    detail?: { id?: string; reason?: string }
   }>
   metrics: { counters: Record<string, number> }
   snapshots: { scopes?: { scopes: ReadonlyArray<ScopeEntry> } }
@@ -363,5 +363,61 @@ test.describe("SF-OB — the persisted scope snapshot does not go stale after le
       afterLeavingAuto?.snapshots.scopes?.scopes.find((s) => s.id === shadowId),
       "the purged shadow scope should be gone from the very next snapshot, not lingering as COMMITTED"
     ).toBeUndefined()
+  })
+})
+
+test.describe("SF-OB — the mode-exit scope audit only runs when actually leaving auto", () => {
+  test("cycling auto -> off -> legacy records no false scope.coverage_violated for the document scope on the second (non-auto-originated) transition (bot-found, #1327's own review, round 4)", async ({
+    context,
+    fixture,
+  }) => {
+    const page = await fixture.goto("light-page")
+    await waitForClassification(page)
+
+    const sessionId = await page.evaluate(
+      () => document.body.dataset["swObservabilitySession"]
+    )
+    if (sessionId === undefined) throw new Error("unreachable")
+
+    const sw = await backgroundWorker(context)
+    const tabId = await sw.evaluate(async () => {
+      // eslint-disable-next-line no-restricted-globals
+      const tabs = await chrome.tabs.query({})
+      const t = tabs.find((tab) => tab.url?.includes("light-page.html"))
+      if (t?.id === undefined) throw new Error("no matching tab")
+      return t.id
+    })
+
+    // Keyboard cycle (tab-state.ts's STATE_CYCLE): auto -> off -> legacy.
+    // The first hop's own `previous` is "auto" — content.ts's mode-exit
+    // scope-coverage check legitimately runs there, reads the document
+    // scope's registry state while it still matches the live DOM (this
+    // call happens before restoreVendor() strips the artifact), and stays
+    // healthy. The second hop's own `previous` is "off", not "auto":
+    // before this story's own round-4 fix, the same check ran unconditionally
+    // there too, comparing the registry's now-stale COMMITTED entry (never
+    // updated since auto was left) against a DOM that the *first* hop's own
+    // restoreVendor() had already stripped the dark-theme artifact from —
+    // a false "scope.coverage_violated" on every such transition, one the
+    // very next teardown() call then made unrecoverable by wiping the
+    // tracking that would have recorded the eventual recovery.
+    for (let i = 0; i < 2; i++) {
+      await sw.evaluate(async (id) => {
+        // eslint-disable-next-line no-restricted-globals
+        await chrome.tabs.sendMessage(id, { type: "CYCLE_TAB_STATE" })
+      }, tabId)
+      await page.waitForTimeout(150)
+    }
+
+    const bundle = await readBundle(sw, sessionId)
+    const falseViolations = (bundle?.events ?? []).filter(
+      (e) =>
+        e.kind === "scope.coverage_violated" &&
+        e.detail?.reason === "apply-state:teardown"
+    )
+    expect(
+      falseViolations,
+      "no scope.coverage_violated event should ever carry apply-state:teardown as its reason when the mode transition that triggered it didn't originate from auto"
+    ).toEqual([])
   })
 })

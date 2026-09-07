@@ -242,6 +242,42 @@ describe("createScopeCoverageWatchdog — event-driven cumulative counters", () 
     expect(durationAgg?.count).toBe(2)
   })
 
+  it("clears the retired scope's own duration-tracking entry, so a later registration under a reused id does not fold a bogus duration spanning two unrelated identities (bot-found, #1327's own review, round 4)", async () => {
+    const recorder = createCoverageRecorder("test-scope-retire-cleanup", false)
+    const scopeCoverage = createScopeCoverageWatchdog<string>(recorder)
+    const registry = createScopeRegistry<string>(scopeCoverage.registryObserver)
+
+    registry.register("s1", {
+      ref: document,
+      parent: null,
+      contentEpoch: 0,
+      hold: fakeHold(),
+    })
+    registry.startResolving("s1")
+    await registry.resolveCommitted("s1", fakeRealization("rev-1"))
+    registry.retire("s1")
+    registry.purge("s1")
+
+    const countAfterRetire =
+      recorder.metrics.snapshot().aggregates["scope_state_duration_ms"]?.count
+
+    // register() on a genuinely fresh id never folds a duration (no prior
+    // state to measure) — this only stays true here if retire() above
+    // actually cleared "s1"'s own enteredAt entry; otherwise this second
+    // registration reads the retired scope's stale timestamp and folds a
+    // duration spanning two unrelated identities.
+    registry.register("s1", {
+      ref: document,
+      parent: null,
+      contentEpoch: 0,
+      hold: fakeHold(),
+    })
+
+    expect(
+      recorder.metrics.snapshot().aggregates["scope_state_duration_ms"]?.count
+    ).toBe(countAfterRetire)
+  })
+
   it("counts a release+exoneration on resolve-exonerated", () => {
     const recorder = createCoverageRecorder("test-scope-exonerate", false)
     const scopeCoverage = createScopeCoverageWatchdog<string, string>(recorder)

@@ -617,6 +617,18 @@ export function createScopeCoverageWatchdog<Rho = unknown, Pi = unknown>(
           case "retire": {
             recorder.count("scope_releases")
             recorder.record({ kind: "scope.retired", detail: { id } })
+            // noteDuration() above already folded the final
+            // scope_state_duration_ms for whatever state this scope was
+            // retiring out of; its own fresh enteredAt entry for `id` is
+            // now garbage — retire is always immediately followed by
+            // registry.purge(id) (shadow-scope-discovery.ts), which has no
+            // observer callback of its own to clean this map up. Bot-found
+            // (#1327's own review, round 4): left unset, this map grows one
+            // entry per ever-retired scope for the life of a long-lived
+            // auto-mode SPA session, and would misattribute a duration
+            // across two unrelated identities if a purged id were ever
+            // reused.
+            enteredAt.delete(id)
             return
           }
           case "start-resolving":
