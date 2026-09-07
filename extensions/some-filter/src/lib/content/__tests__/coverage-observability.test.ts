@@ -274,18 +274,37 @@ describe("scopeArtifactPresent — re-reads the live DOM, never trusts κ alone"
     }
   })
 
-  it("COMMITTED: true only when at least one data-sw-patched element is present", () => {
+  it("COMMITTED: true when the scope's own host-token rule is adopted, even with zero data-sw-patched elements — bot-found (#1327's own review, round 2): a canvas-only shadow scope commits exactly as legitimately as a tagged one", () => {
     const host = document.createElement("div")
     document.body.appendChild(host)
     const shadow = host.attachShadow({ mode: "open" })
 
     expect(scopeArtifactPresent(shadow, "COMMITTED")).toBe(false)
 
-    const surface = document.createElement("div")
-    surface.dataset["swPatched"] = "surface-1"
-    shadow.appendChild(surface)
+    // shadow-actuator.ts's realizeShadowColors() adopts buildHostTokenRule()'s
+    // own :host rule unconditionally on every commit — this scope has no
+    // data-sw-patched element anywhere, matching decide()'s own
+    // no-evidenced-surfaces case (shadow-scope-theming.test.ts's own
+    // "adopts the shared static layer and host tokens even for a scope
+    // with no evidenced surfaces").
+    const hostTokenSheet = new CSSStyleSheet()
+    hostTokenSheet.insertRule(":host { --sw-bg-0: #171c25; }")
+    shadow.adoptedStyleSheets = [hostTokenSheet]
 
     expect(scopeArtifactPresent(shadow, "COMMITTED")).toBe(true)
+    expect(shadow.querySelector("[data-sw-patched]")).toBeNull()
+  })
+
+  it("COMMITTED: false when adoptedStyleSheets carries only a foreign (vendor) sheet, not this scope's own host-token rule", () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    const shadow = host.attachShadow({ mode: "open" })
+
+    const foreignSheet = new CSSStyleSheet()
+    foreignSheet.insertRule("div { color: blue; }")
+    shadow.adoptedStyleSheets = [foreignSheet]
+
+    expect(scopeArtifactPresent(shadow, "COMMITTED")).toBe(false)
   })
 
   it("EXONERATED_NATIVE, RETIRED, and DISCOVERED_UNHELD name no artifact of their own to check", () => {

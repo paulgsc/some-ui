@@ -484,13 +484,10 @@ describe("createScopeCoverageWatchdog — periodic per-scope snapshot and ScopeC
     expect(Reflect.get(snapshot, "truncated")).toBe(true)
   })
 
-  it("flags, then recovers, a COMMITTED scope whose data-sw-patched marker was removed out from under the registry — the desync class no other check in this codebase catches", async () => {
+  it("flags, then recovers, a COMMITTED scope whose adoptedStyleSheets were reassigned out from under the registry — #1280's own tracked vendor-reassignment scenario, which generates no registry transition at all to signal it", async () => {
     const host = document.createElement("div")
     document.body.appendChild(host)
     const shadow = host.attachShadow({ mode: "open" })
-    const surface = document.createElement("div")
-    surface.dataset["swPatched"] = "surface-1"
-    shadow.appendChild(surface)
 
     const recorder = createCoverageRecorder("test-scope-desync", false)
     const scopeCoverage = createScopeCoverageWatchdog<string>(recorder)
@@ -505,17 +502,31 @@ describe("createScopeCoverageWatchdog — periodic per-scope snapshot and ScopeC
     registry.startResolving("s1")
     await registry.resolveCommitted("s1", fakeRealization("rev-1"))
 
+    // fakeRealization()'s own install() is a no-op mock — stand in for what
+    // shadow-actuator.ts's realizeShadowColors() actually adopts on a real
+    // commit (bot-found round 2: this is the artifact a COMMITTED shadow
+    // scope is actually guaranteed to have, not data-sw-patched — see
+    // coverage-observability.ts's own HOST_TOKEN_RULE_SIGNATURE doc comment).
+    const hostTokenSheet = new CSSStyleSheet()
+    hostTokenSheet.insertRule(":host { --sw-bg-0: #171c25; }")
+    shadow.adoptedStyleSheets = [hostTokenSheet]
+
     scopeCoverage.check(registry, "before")
     expect(
       recorder.metrics.snapshot().counters["scope_coverage_violations"]
     ).toBeUndefined()
 
-    // The desync: the registry still believes s1 is COMMITTED, but its own
-    // realization's tag is gone — the same "declared vs actual" gap
-    // CoverageHeld's own dark/legacy signal-pair checks catch at document
-    // granularity, generalized here to a shadow scope.
-    surface.removeAttribute("data-sw-patched")
-    scopeCoverage.check(registry, "after-removal")
+    // The desync: a vendor component's own wholesale adoptedStyleSheets
+    // reassignment (#1280's own tracked follow-up, filed off PR #1279's own
+    // review) carries our sheet off with no MutationRecord to react to —
+    // the registry still believes s1 is COMMITTED throughout, exactly the
+    // "declared vs actual" gap CoverageHeld's own dark/legacy signal-pair
+    // checks catch at document granularity, generalized here to a shadow
+    // scope.
+    const vendorSheet = new CSSStyleSheet()
+    vendorSheet.insertRule("div { color: blue; }")
+    shadow.adoptedStyleSheets = [vendorSheet]
+    scopeCoverage.check(registry, "after-reassignment")
 
     await Promise.resolve()
     await Promise.resolve()
@@ -527,7 +538,7 @@ describe("createScopeCoverageWatchdog — periodic per-scope snapshot and ScopeC
       recorder.events().some((e) => e.kind === "scope.coverage_violated")
     ).toBe(true)
 
-    surface.dataset["swPatched"] = "surface-1"
+    shadow.adoptedStyleSheets = [vendorSheet, hostTokenSheet]
     scopeCoverage.check(registry, "after-repair")
     await Promise.resolve()
     await Promise.resolve()

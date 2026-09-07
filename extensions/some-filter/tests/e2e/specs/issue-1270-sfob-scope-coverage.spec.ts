@@ -6,21 +6,34 @@
  * `coverage-watchdog.spec.ts`'s own structure exactly — that spec proves the
  * document-level "declared legacy, but the filter rule is gone" desync is
  * visible in the diagnostics bundle; this one proves the scope-level
- * analogue: a COMMITTED shadow scope whose `data-sw-patched` realization was
- * removed out from under the registry, with no registry transition of its
- * own to signal it (shadow-scope-discovery.ts's own `isThemeTaggingMutation`
- * deliberately treats that removal as self-authored, not vendor evidence —
- * see that function's doc comment — so nothing else in this codebase ever
- * notices).
+ * analogue: a COMMITTED shadow scope whose own adopted stylesheets are
+ * wholesale-reassigned out from under the registry by a vendor component —
+ * `#1280`'s own tracked scenario (found on PR #1279's own review) — with no
+ * registry transition of its own to signal it (`adoptedStyleSheets`
+ * assignment is a plain CSSOM property write, not reflected as a DOM
+ * attribute or child node, so it generates no `MutationRecord` for
+ * `shadow-scope-discovery.ts`'s own per-root observer to react to).
+ *
+ * Deliberately not `data-sw-patched` removal (an earlier version of this
+ * spec used that): bot-found (#1327's own review, round 2) that a COMMITTED
+ * shadow scope with zero evidenced surfaces — a legitimate,
+ * `decide()`-produced state, `shadow-scope-theming.test.ts`'s own "adopts
+ * the shared static layer and host tokens even for a scope with no
+ * evidenced surfaces" case — has no `data-sw-patched` element at all, so
+ * checking for one there was itself a false-positive generator, not this
+ * story's own desync class. `coverage-observability.ts`'s
+ * `scopeArtifactPresent()` now checks for the scope's own host-token rule
+ * (always adopted on any commit) instead, which is what this spec's own
+ * desync actually removes.
  *
  * Every poll below targets *this specific shadow scope's own id*, never a
  * bare "any violation happened" counter check: the document scope (r_0) has
  * its own harmless bootstrap-timing violation/recovery blip on every page
  * load (its veil settles a few milliseconds after the watchdog's first,
  * synchronous `observe-start` check) — a generic "violations > 0" poll is
- * satisfied by that alone, racing ahead of this test's own tag-removal
- * before it ever takes effect. Scoping every assertion to the shadow scope's
- * id is what makes this deterministic instead of timing-dependent.
+ * satisfied by that alone, racing ahead of this test's own reassignment
+ * before it ever takes effect. Scoping every assertion to the shadow
+ * scope's id is what makes this deterministic instead of timing-dependent.
  *
  * Reads go through the background service worker, not `page.evaluate()`:
  * `chrome.storage` is an extension-context API, unreachable from a page's
@@ -112,19 +125,43 @@ async function waitForSurfaceCommitted(page: Page): Promise<void> {
   )
 }
 
-async function removeSurfaceTag(page: Page): Promise<void> {
+/**
+ * Simulates #1280's own tracked scenario: a vendor component's wholesale
+ * `shadowRoot.adoptedStyleSheets = [...]` reassignment, carrying this
+ * extension's own realization off with no `MutationRecord` for anything to
+ * react to. Stashes the displaced sheets on `window` so
+ * `restoreOurSheets()` can simulate them coming back (this spec proves
+ * *detection* only — #1280's own self-heal repair does not exist yet).
+ */
+async function simulateVendorSheetReassignment(page: Page): Promise<void> {
   await page.evaluate(() => {
     const host = document.getElementById("shadow-trace-host")
-    const surface = host?.shadowRoot?.getElementById("shadow-trace-surface")
-    surface?.removeAttribute("data-sw-patched")
+    const shadow = host?.shadowRoot
+    if (shadow === null || shadow === undefined) {
+      throw new Error("shadow-trace-host has no shadow root")
+    }
+    // A plain-array copy, not the live reference: `adoptedStyleSheets` is a
+    // WebIDL `[SameObject]` observable array — every read returns the exact
+    // same underlying object, so saving the reference itself (not a copy)
+    // would have this same statement's own reassignment below mutate the
+    // "saved" value right out from under it.
+    Reflect.set(window, "__sfObDisplacedSheets", [...shadow.adoptedStyleSheets])
+    const vendorSheet = new CSSStyleSheet()
+    vendorSheet.replaceSync("div { color: blue; }")
+    shadow.adoptedStyleSheets = [vendorSheet]
   })
 }
 
-async function restoreSurfaceTag(page: Page): Promise<void> {
+async function restoreOurSheets(page: Page): Promise<void> {
   await page.evaluate(() => {
     const host = document.getElementById("shadow-trace-host")
-    const surface = host?.shadowRoot?.getElementById("shadow-trace-surface")
-    surface?.setAttribute("data-sw-patched", "shadow-trace-surface")
+    const shadow = host?.shadowRoot
+    if (shadow === null || shadow === undefined) {
+      throw new Error("shadow-trace-host has no shadow root")
+    }
+    const displaced: unknown = Reflect.get(window, "__sfObDisplacedSheets")
+    if (!Array.isArray(displaced)) throw new Error("no displaced sheets saved")
+    shadow.adoptedStyleSheets = [...shadow.adoptedStyleSheets, ...displaced]
   })
 }
 
@@ -148,7 +185,7 @@ async function findCommittedShadowScopeId(
 }
 
 test.describe("SF-OB — scope coverage watchdog observes a real per-scope desync", () => {
-  test("removing a COMMITTED shadow scope's own data-sw-patched tag out from under the registry is recorded as a scope coverage violation", async ({
+  test("a vendor's wholesale adoptedStyleSheets reassignment on a COMMITTED shadow scope is recorded as a scope coverage violation", async ({
     context,
     fixture,
   }) => {
@@ -170,12 +207,12 @@ test.describe("SF-OB — scope coverage watchdog observes a real per-scope desyn
     const sw = await backgroundWorker(context)
     const shadowId = await findCommittedShadowScopeId(sw, sessionId)
 
-    // The desync: the registry still believes this shadow scope is
-    // COMMITTED, but its own realization's tag is gone — no registry
-    // transition happens (isThemeTaggingMutation treats this as
-    // self-authored, not vendor evidence), so only the periodic
-    // scope-coverage poll can ever notice.
-    await removeSurfaceTag(page)
+    // The desync: a vendor component's own wholesale adoptedStyleSheets
+    // reassignment (#1280's own tracked scenario) carries this extension's
+    // realization off with no MutationRecord for anything to react to — the
+    // registry still believes this shadow scope is COMMITTED throughout, so
+    // only the periodic scope-coverage poll can ever notice.
+    await simulateVendorSheetReassignment(page)
 
     const settled = await pollUntil(
       () => readBundle(sw, sessionId),
@@ -201,10 +238,12 @@ test.describe("SF-OB — scope coverage watchdog observes a real per-scope desyn
     expect(scope?.kind).toBe("COMMITTED")
     expect(scope?.artifactPresent).toBe(false)
 
-    // Recovery: restore the tag and confirm the watchdog notices the repair
-    // too, not just the break — same discipline coverage-watchdog.spec.ts's
-    // own legacy-signal test applies.
-    await restoreSurfaceTag(page)
+    // Recovery: restore the displaced sheets and confirm the watchdog
+    // notices the repair too, not just the break — same discipline
+    // coverage-watchdog.spec.ts's own legacy-signal test applies. (This
+    // proves detection only — #1280's own self-heal repair, which would
+    // trigger this same recovery on a real page, doesn't exist yet.)
+    await restoreOurSheets(page)
     await pollUntil(
       () => readBundle(sw, sessionId),
       (b) =>
@@ -217,7 +256,7 @@ test.describe("SF-OB — scope coverage watchdog observes a real per-scope desyn
 })
 
 test.describe("debug.html renders the per-scope breakdown for a session with a shadow-hosted scope", () => {
-  test("the Live scopes section lists the committed shadow scope, and flags it once its tag is removed", async ({
+  test("the Live scopes section lists the committed shadow scope, and flags it once its realization sheets are reassigned", async ({
     context,
     fixture,
   }) => {
@@ -235,7 +274,7 @@ test.describe("debug.html renders the per-scope breakdown for a session with a s
     const sw = await backgroundWorker(context)
     const shadowId = await findCommittedShadowScopeId(sw, sessionId)
 
-    await removeSurfaceTag(page)
+    await simulateVendorSheetReassignment(page)
     await pollUntil(
       () => readBundle(sw, sessionId),
       (b) =>

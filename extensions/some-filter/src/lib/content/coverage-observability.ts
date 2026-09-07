@@ -278,8 +278,38 @@ export const coverageInvariants: ReadonlyArray<Invariant<CoverageContext>> = [
 // own `tagSurfaceElements()` being the sole writer and exporting no shared
 // constant for it.
 
-/** Mirrors `actuator.ts`'s own literal — see this section's header for why this is a second hardcoded copy, not a shared import. */
-const SURFACE_PATCHED_SELECTOR = "[data-sw-patched]"
+/**
+ * The literal `buildHostTokenRule()` (theme-apply.ts) always embeds in a
+ * committed `:host {}` rule's own swatch-token declarations — the same
+ * substring `documentArtifactPresent()`'s own COMMITTED check already keys
+ * on for the document's real dark stylesheet. Used to detect a shadow
+ * scope's own realization instead of `data-sw-patched` — bot-found
+ * (#1327's own review, round 2): `shadow-scope-theming.ts` commits a scope
+ * with *zero* evidenced surfaces exactly as legitimately as one with
+ * several (`decide()`'s own unconditional `activate-theme`,
+ * `shadow-scope-theming.test.ts`'s own "adopts the shared static layer and
+ * host tokens even for a scope with no evidenced surfaces" case) —
+ * `shadow-actuator.ts`'s `realizeShadowColors()` adopts this `:host` rule
+ * unconditionally on every commit, tagged surfaces or none, so it is the
+ * one artifact every COMMITTED shadow scope is actually guaranteed to have.
+ */
+const HOST_TOKEN_RULE_SIGNATURE = "--sw-bg-0"
+
+/**
+ * Whether `root`'s own `adoptedStyleSheets` currently carry a rule matching
+ * `HOST_TOKEN_RULE_SIGNATURE` — see that constant's own doc comment for why
+ * this, not `data-sw-patched`, is what a COMMITTED shadow scope's Safe_T
+ * disjunct actually requires.
+ */
+function shadowRealizationPresent(root: ShadowRoot): boolean {
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- mirrors shadow-actuator.ts's own realizeShadowColors(): jsdom, this package's own unit-test environment, has no adoptedStyleSheets accessor on a fresh ShadowRoot, unlike the DOM spec's own always-initialized-array guarantee the lib types assume.
+  for (const sheet of root.adoptedStyleSheets ?? []) {
+    for (const rule of Array.from(sheet.cssRules)) {
+      if (rule.cssText.includes(HOST_TOKEN_RULE_SIGNATURE)) return true
+    }
+  }
+  return false
+}
 
 /**
  * One live scope's identity, resting kind, and whether its Definition D.5
@@ -382,7 +412,7 @@ export function scopeArtifactPresent(
       return root.querySelector(`[${HOLD_ATTR}]`) !== null
     }
     case "COMMITTED": {
-      return root.querySelector(SURFACE_PATCHED_SELECTOR) !== null
+      return shadowRealizationPresent(root)
     }
     case "EXONERATED_NATIVE":
     case "RETIRED":
