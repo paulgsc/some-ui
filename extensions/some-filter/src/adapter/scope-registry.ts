@@ -200,6 +200,50 @@ export type ScopeEvent<Rho = unknown, Pi = unknown> =
   | InvalidateEvent
   | RetireEvent
 
+/**
+ * Optional, purely-notificational observation seam — §8.3's "root registry
+ * lifecycle" checklist item, and the extension point this module's own
+ * `DiscoveredUnheldStateKind` doc comment already anticipates ("exported
+ * only for §8.3/SF-OB's future coverage-reporting contract"). SF-OB (#1270).
+ *
+ * Both callbacks fire strictly *after* `createScopeRegistry()`'s wrapper has
+ * already committed the transition/decision they describe — nothing here
+ * changes `transition()` itself, its legality rules, the two-phase handoff
+ * ordering `resolveCommitted()`/`invalidate()` already implement, or *when*
+ * any of that runs. A caller that omits both fields (every one of this
+ * module's own tests, and every caller before SF-OB) gets byte-for-byte the
+ * same registry behavior as before this type existed — this is observation
+ * of an existing side effect, not a new one. Generic over `Rho`/`Pi` only
+ * (never a concrete adapter type), so wiring an observer here does not
+ * compromise Theorem D.2's kernel-independence: `scope-coverage.ts`'s own
+ * consumer supplies the meaning, this module still names none.
+ */
+export type ScopeTransitionObserver<Rho = unknown, Pi = unknown> = {
+  /**
+   * Called once per transition this registry actually commits — including
+   * the initial `register()` — with the event that caused it and the
+   * resting state it landed in. Never called for a transition `transition()`
+   * itself would reject (`IllegalTransitionError` is still thrown first,
+   * before this would fire) and never called twice for one transition.
+   */
+  onTransition?(
+    id: ScopeId,
+    event: ScopeEvent<Rho, Pi>,
+    to: RestingScopeState<Rho, Pi>
+  ): void
+
+  /**
+   * Called when `resolveCommitted()`'s own `ScopeRecord.generation`
+   * staleness check (see that field's doc comment) discards a completed
+   * `install()` because a concurrent `invalidate()`/`reRegister()`/
+   * `retire()` already ran to completion on this same id while it was in
+   * flight. Definition D.5 names no state for this — κ was never written,
+   * the hold was never touched by the discarded call — so this is
+   * diagnostic-only, distinct from every `onTransition` case.
+   */
+  onStaleResolveDiscarded?(id: ScopeId): void
+}
+
 export class IllegalTransitionError extends Error {
   constructor(
     public readonly from: RestingScopeState["kind"] | "unregistered",
@@ -468,19 +512,21 @@ function record<Rho, Pi>(
   return found
 }
 
-/** Applies a transition and bumps the record's generation in one place, so every synchronous mutation this registry makes is visible to `resolveCommitted`'s staleness check. */
+/** Applies a transition and bumps the record's generation in one place, so every synchronous mutation this registry makes is visible to `resolveCommitted`'s staleness check. Notifies `observer.onTransition` last, after both the state and the generation counter it guards are already updated — a callback that itself queries `stateOf()`/`snapshot()` synchronously must see the post-transition value, not a stale one. */
 function transitionRecord<Rho, Pi>(
+  id: ScopeId,
   r: ScopeRecord<Rho, Pi>,
-  event: ScopeEvent<Rho, Pi>
+  event: ScopeEvent<Rho, Pi>,
+  observer: ScopeTransitionObserver<Rho, Pi>
 ): void {
   r.state = transition<Rho, Pi>(r.state, event)
   r.generation += 1
+  observer.onTransition?.(id, event, r.state)
 }
 
-export function createScopeRegistry<
-  Rho = unknown,
-  Pi = unknown,
->(): ScopeRegistry<Rho, Pi> {
+export function createScopeRegistry<Rho = unknown, Pi = unknown>(
+  observer: ScopeTransitionObserver<Rho, Pi> = {}
+): ScopeRegistry<Rho, Pi> {
   const records = new Map<ScopeId, ScopeRecord<Rho, Pi>>()
 
   return {
@@ -490,34 +536,49 @@ export function createScopeRegistry<
       }
       const epoch: ScopeEpoch = { content: registration.contentEpoch, scope: 0 }
       registration.hold.install()
+      const event: ScopeEvent<Rho, Pi> = { kind: "register", epoch }
+      const state = transition<Rho, Pi>(undefined, event)
       records.set(id, {
         ref: registration.ref,
         parent: registration.parent,
         hold: registration.hold,
-        state: transition<Rho, Pi>(undefined, { kind: "register", epoch }),
+        state,
         committedRealization: null,
         generation: 0,
       })
+      observer.onTransition?.(id, event, state)
     },
 
     startResolving(id): void {
-      transitionRecord(record(records, id), { kind: "start-resolving" })
+      transitionRecord(
+        id,
+        record(records, id),
+        { kind: "start-resolving" },
+        observer
+      )
     },
 
     retry(id): void {
-      transitionRecord(record(records, id), { kind: "retry" })
+      transitionRecord(id, record(records, id), { kind: "retry" }, observer)
     },
 
     resolveFailed(id, reason): void {
-      transitionRecord(record(records, id), { kind: "resolve-failed", reason })
+      transitionRecord(
+        id,
+        record(records, id),
+        { kind: "resolve-failed", reason },
+        observer
+      )
     },
 
     resolveExonerated(id, exoneration): void {
       const r = record(records, id)
-      transitionRecord(r, {
-        kind: "resolve-exonerated",
-        proof: exoneration.proof,
-      })
+      transitionRecord(
+        id,
+        r,
+        { kind: "resolve-exonerated", proof: exoneration.proof },
+        observer
+      )
       r.hold.release()
     },
 
@@ -546,17 +607,23 @@ export function createScopeRegistry<
         if (installError === undefined) {
           realization.uninstall()
         }
+        observer.onStaleResolveDiscarded?.(id)
         return
       }
 
       if (installError !== undefined) {
-        transitionRecord(r, {
-          kind: "resolve-failed",
-          reason:
-            installError instanceof Error
-              ? installError.message
-              : String(installError),
-        })
+        transitionRecord(
+          id,
+          r,
+          {
+            kind: "resolve-failed",
+            reason:
+              installError instanceof Error
+                ? installError.message
+                : String(installError),
+          },
+          observer
+        )
         return
       }
 
@@ -566,10 +633,12 @@ export function createScopeRegistry<
       // rule out.
       r.hold.release()
       r.committedRealization = realization
-      transitionRecord(r, {
-        kind: "resolve-committed",
-        revision: realization.revision,
-      })
+      transitionRecord(
+        id,
+        r,
+        { kind: "resolve-committed", revision: realization.revision },
+        observer
+      )
     },
 
     invalidate(id): void {
@@ -581,7 +650,7 @@ export function createScopeRegistry<
       r.hold.install()
       const previousRealization = r.committedRealization
       r.committedRealization = null
-      transitionRecord(r, { kind: "invalidate" })
+      transitionRecord(id, r, { kind: "invalidate" }, observer)
       previousRealization?.uninstall()
     },
 
@@ -590,10 +659,7 @@ export function createScopeRegistry<
       r.hold.install()
       const previousRealization = r.committedRealization
       r.committedRealization = null
-      transitionRecord(r, {
-        kind: "re-register",
-        contentEpoch,
-      })
+      transitionRecord(id, r, { kind: "re-register", contentEpoch }, observer)
       previousRealization?.uninstall()
     },
 
@@ -603,7 +669,7 @@ export function createScopeRegistry<
       r.committedRealization?.uninstall()
       r.committedRealization = null
       r.hold.release()
-      transitionRecord(r, { kind: "retire" })
+      transitionRecord(id, r, { kind: "retire" }, observer)
     },
 
     purge(id): void {

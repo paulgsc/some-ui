@@ -61,6 +61,8 @@
  * since there is no single recorder here for a snapshot map to belong to.
  */
 
+import { HOLD_ATTR } from "@filter/adapter/custody-primitive"
+import type { ScopeStateKind } from "@filter/adapter/scope-registry"
 import { parseColor, relativeLuminance } from "@filter/lib/content/color"
 import { ext } from "@filter/platform/content"
 import type { TabState } from "@filter/types/tab"
@@ -87,6 +89,22 @@ export type CoverageEventKind =
   | "dark.signal_resolved"
   | "veil.color_mismatch"
   | "veil.color_resolved"
+  /**
+   * SF-OB (#1270): per-scope lifecycle events, generalizing the four kinds
+   * above from the document alone to every scope in SF-RG's registry
+   * (`scope-registry.ts`'s `ScopeTransitionObserver`). `scope.reheld` covers
+   * both of Definition D.5's `invalidate` targets and `re-register` — all
+   * three re-engage a scope's hold from a state that had released it.
+   */
+  | "scope.discovered"
+  | "scope.retired"
+  | "scope.committed"
+  | "scope.exonerated"
+  | "scope.failed"
+  | "scope.reheld"
+  | "scope.stale_resolve_discarded"
+  | "scope.coverage_violated"
+  | "scope.coverage_recovered"
 
 export type CoverageCounter =
   | "sessions_started"
@@ -98,8 +116,28 @@ export type CoverageCounter =
   | "legacy_signal_mismatches"
   | "dark_signal_mismatches"
   | "veil_color_mismatches"
+  /**
+   * SF-OB (#1270): quantified per-scope counterparts to the document-only
+   * counters above — see `coverage-watchdog.ts`'s own `createScopeCoverageWatchdog`
+   * header for exactly which `scope-registry.ts` transition/event maps to
+   * which of these.
+   */
+  | "scope_coverage_checks"
+  | "scope_coverage_violations"
+  | "scopes_discovered_census"
+  | "scopes_discovered_reactive"
+  | "scope_holds"
+  | "scope_releases"
+  | "scope_reholds"
+  | "scope_commits"
+  | "scope_exonerations"
+  | "scope_failures"
+  | "scope_stale_resolves_discarded"
 
-export type CoverageAggregate = "violation_duration_ms"
+export type CoverageAggregate =
+  | "violation_duration_ms"
+  /** SF-OB (#1270): wall-clock time a scope spent in one resting state before its next transition — folded on every transition, so the recorder's own mean/min/max/count give "average custody duration" for free. */
+  | "scope_state_duration_ms"
 
 /**
  * Everything the invariants below need, gathered once per watchdog check by
@@ -214,6 +252,121 @@ export const coverageInvariants: ReadonlyArray<Invariant<CoverageContext>> = [
             legacyActive,
             veilBackgroundColor: ctx.veilBackgroundColor,
             veilLuminance: luminance,
+          })
+    },
+  },
+]
+
+// ── SF-OB (#1270): per-scope coverage ───────────────────────────────────────
+//
+// Generalizes this module's own "measurement, not instrumentation of intent"
+// discipline (this file's header) from the document alone to every live
+// scope in SF-RG's registry (`scope-registry.ts`, #1265): re-read each
+// scope's own DOM artifact directly, never trust the registry's `κ` value on
+// its own to mean the artifact is actually there. `data-sw-patched` is
+// checked by attribute presence via a raw selector, mirroring
+// `shadow-scope-discovery.ts`'s own `isThemeTaggingMutation` — this
+// codebase's other hardcoded literal for the same attribute, `actuator.ts`'s
+// own `tagSurfaceElements()` being the sole writer and exporting no shared
+// constant for it.
+
+/** Mirrors `actuator.ts`'s own literal — see this section's header for why this is a second hardcoded copy, not a shared import. */
+const SURFACE_PATCHED_SELECTOR = "[data-sw-patched]"
+
+/**
+ * One live scope's identity, resting kind, and whether its Definition D.5
+ * `Safe_T`-required DOM artifact is actually present — the same
+ * "declared vs actual" split `CoverageContext`'s own field pairs
+ * (`darkThemeActive`/`darkStyleActive`, etc.) already make for the document,
+ * generalized to any scope. `null` when the kind names no artifact of its
+ * own to check: `EXONERATED_NATIVE` is a claim about the *vendor's* DOM, not
+ * something this registry installs (`NativeExoneration`'s own doc comment);
+ * `RETIRED`'s own `Safe_T` disjunct is vacuous (nothing needs to be true).
+ */
+export type ScopeCoverageEntry = {
+  readonly id: string
+  readonly kind: ScopeStateKind
+  readonly parent: string | null
+  readonly artifactPresent: boolean | null
+}
+
+/**
+ * Everything `ScopeCoverageHeld` needs, gathered once per scope-coverage
+ * check by re-reading the live registry and each scope's own root — never
+ * inferred from what `scope-registry.ts`'s own `κ` value alone claims.
+ */
+export type ScopeCoverageContext = {
+  readonly now: number
+  readonly scopes: ReadonlyArray<ScopeCoverageEntry>
+}
+
+/**
+ * Reads whether `root`'s own custody artifact for `kind` is actually
+ * present. Exported so `coverage-watchdog.ts`'s periodic scope-coverage check can build a
+ * `ScopeCoverageContext` entry per scope without duplicating the two
+ * selectors this module already owns; `null` for a kind with nothing to
+ * check (see `ScopeCoverageEntry`'s own doc comment).
+ */
+export function scopeArtifactPresent(
+  root: Document | ShadowRoot,
+  kind: ScopeStateKind
+): boolean | null {
+  switch (kind) {
+    case "HELD":
+    case "RESOLVING":
+    case "FAILED_HELD": {
+      return root.querySelector(`[${HOLD_ATTR}]`) !== null
+    }
+    case "COMMITTED": {
+      return root.querySelector(SURFACE_PATCHED_SELECTOR) !== null
+    }
+    case "EXONERATED_NATIVE":
+    case "RETIRED":
+    case "DISCOVERED_UNHELD": {
+      return null
+    }
+    default: {
+      const exhaustive: never = kind
+      throw new Error(
+        `[coverage-observability] unhandled scope kind: ${String(exhaustive)}`
+      )
+    }
+  }
+}
+
+/**
+ * A single point-in-time aggregate verdict — "is every live scope's own
+ * artifact present, right now" — analogous to `coverageInvariants`' own
+ * `CoverageHeld` shape and independently unit-tested as one. Deliberately
+ * *not* what `coverage-watchdog.ts`'s own `createScopeCoverageWatchdog`
+ * diffs across polls to decide when to record a `scope.coverage_violated`/
+ * `scope.coverage_recovered` event: an aggregate ok/violated boolean,
+ * diffed against one shared "last status," under-counts real violations
+ * whenever one scope's violation resolves and a *different* scope's own
+ * violation begins before a poll ever observes the momentary all-clear in
+ * between — both moments read as "violated" against the same aggregate, so
+ * nothing appears to change. `createScopeCoverageWatchdog`'s own
+ * `checkArtifactCoverage` instead diffs each scope's `artifactPresent`
+ * against that scope's own last-seen value, independently. This invariant
+ * stays exported for its own value as a checkable, canon-traceable
+ * predicate (and a debug-page "Health" row is a natural future consumer)
+ * rather than because anything in this codebase currently evaluates it on
+ * the event-timeline's own hot path.
+ */
+export const scopeCoverageInvariants: ReadonlyArray<
+  Invariant<ScopeCoverageContext>
+> = [
+  {
+    name: "ScopeCoverageHeld",
+    description:
+      "Generalizes CoverageHeld (Remark C.1) to every live registered scope, not just the document: a scope in {HELD, RESOLVING, FAILED_HELD} must have its occlusion hold's veil physically present in its own root (Safe_T's conservative-presentation disjunct), and a COMMITTED scope must have at least one data-sw-patched-tagged element in its own root (Safe_T's committed-realization disjunct) — the same declared-vs-actual check CoverageHeld already makes for the document, at scope granularity.",
+    check: (ctx): InvariantOutcome => {
+      const failing = ctx.scopes.filter((s) => s.artifactPresent === false)
+      return failing.length === 0
+        ? { ok: true }
+        : violated({
+            scopeIds: failing.map((s) => s.id),
+            kinds: failing.map((s) => s.kind),
           })
     },
   },

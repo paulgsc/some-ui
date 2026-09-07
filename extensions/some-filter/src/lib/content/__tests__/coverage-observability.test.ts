@@ -1,9 +1,15 @@
+import { HOLD_ATTR } from "@filter/adapter/custody-primitive"
+import type { ScopeStateKind } from "@filter/adapter/scope-registry"
 import {
   coverageInvariants,
+  scopeArtifactPresent,
+  scopeCoverageInvariants,
   type CoverageContext,
+  type ScopeCoverageContext,
+  type ScopeCoverageEntry,
 } from "@filter/lib/content/coverage-observability"
 import type { InvariantOutcome } from "@some-extension/common/observability"
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it } from "vitest"
 
 function findInvariant(name: string): {
   check: (ctx: CoverageContext) => InvariantOutcome | Promise<InvariantOutcome>
@@ -224,5 +230,137 @@ describe("VeilColorMatchesLegacyState", () => {
       veilBackgroundColor: "rgb(255, 255, 255)",
     })
     expect(check(VeilColorMatchesLegacyState, ctx).ok).toBe(false)
+  })
+})
+
+// ── SF-OB (#1270): per-scope coverage ───────────────────────────────────────
+
+afterEach(() => {
+  document.body.innerHTML = ""
+})
+
+function scopeEntry(
+  kind: ScopeStateKind,
+  artifactPresent: boolean | null,
+  overrides: Partial<ScopeCoverageEntry> = {}
+): ScopeCoverageEntry {
+  return { id: "s1", kind, parent: null, artifactPresent, ...overrides }
+}
+
+describe("scopeArtifactPresent — re-reads the live DOM, never trusts κ alone", () => {
+  it("HELD/RESOLVING/FAILED_HELD: true only when the occlusion hold's veil is actually present", () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    const shadow = host.attachShadow({ mode: "open" })
+
+    for (const kind of ["HELD", "RESOLVING", "FAILED_HELD"] as const) {
+      expect(scopeArtifactPresent(shadow, kind)).toBe(false)
+    }
+
+    const veil = document.createElement("hr")
+    veil.setAttribute(HOLD_ATTR, "")
+    shadow.appendChild(veil)
+
+    for (const kind of ["HELD", "RESOLVING", "FAILED_HELD"] as const) {
+      expect(scopeArtifactPresent(shadow, kind)).toBe(true)
+    }
+  })
+
+  it("COMMITTED: true only when at least one data-sw-patched element is present", () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    const shadow = host.attachShadow({ mode: "open" })
+
+    expect(scopeArtifactPresent(shadow, "COMMITTED")).toBe(false)
+
+    const surface = document.createElement("div")
+    surface.dataset["swPatched"] = "surface-1"
+    shadow.appendChild(surface)
+
+    expect(scopeArtifactPresent(shadow, "COMMITTED")).toBe(true)
+  })
+
+  it("EXONERATED_NATIVE, RETIRED, and DISCOVERED_UNHELD name no artifact of their own to check", () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    const shadow = host.attachShadow({ mode: "open" })
+
+    expect(scopeArtifactPresent(shadow, "EXONERATED_NATIVE")).toBeNull()
+    expect(scopeArtifactPresent(shadow, "RETIRED")).toBeNull()
+    expect(scopeArtifactPresent(shadow, "DISCOVERED_UNHELD")).toBeNull()
+  })
+
+  it("works over the document itself, not just a ShadowRoot", () => {
+    expect(scopeArtifactPresent(document, "HELD")).toBe(false)
+    const veil = document.createElement("hr")
+    veil.setAttribute(HOLD_ATTR, "")
+    document.body.appendChild(veil)
+    expect(scopeArtifactPresent(document, "HELD")).toBe(true)
+  })
+})
+
+function findScopeInvariant(name: string): {
+  check: (
+    ctx: ScopeCoverageContext
+  ) => InvariantOutcome | Promise<InvariantOutcome>
+} {
+  const invariant = scopeCoverageInvariants.find((inv) => inv.name === name)
+  if (invariant === undefined) {
+    throw new Error(`no invariant named ${name}`)
+  }
+  return invariant
+}
+
+const ScopeCoverageHeld = findScopeInvariant("ScopeCoverageHeld")
+
+function checkScopes(
+  scopes: ReadonlyArray<ScopeCoverageEntry>
+): InvariantOutcome {
+  const ctx: ScopeCoverageContext = { now: 0, scopes }
+  const outcome = ScopeCoverageHeld.check(ctx)
+  if (outcome instanceof Promise) {
+    throw new Error("expected a synchronous outcome")
+  }
+  return outcome
+}
+
+describe("ScopeCoverageHeld — generalizes CoverageHeld to every live registered scope", () => {
+  it("holds when there are no scopes at all", () => {
+    expect(checkScopes([])).toEqual({ ok: true })
+  })
+
+  it("holds when every scope's own artifact is present", () => {
+    expect(
+      checkScopes([
+        scopeEntry("HELD", true, { id: "s1" }),
+        scopeEntry("COMMITTED", true, { id: "s2" }),
+        scopeEntry("EXONERATED_NATIVE", null, { id: "s3" }),
+        scopeEntry("RETIRED", null, { id: "s4" }),
+      ])
+    ).toEqual({ ok: true })
+  })
+
+  it("is violated when a HELD scope's occlusion veil is missing", () => {
+    const outcome = checkScopes([scopeEntry("HELD", false, { id: "s1" })])
+    expect(outcome.ok).toBe(false)
+  })
+
+  it("is violated when a COMMITTED scope has lost its data-sw-patched marker out from under the registry", () => {
+    const outcome = checkScopes([scopeEntry("COMMITTED", false, { id: "s1" })])
+    expect(outcome.ok).toBe(false)
+  })
+
+  it("names every failing scope's id and kind in the violation details, not just the first", () => {
+    const outcome = checkScopes([
+      scopeEntry("HELD", true, { id: "ok" }),
+      scopeEntry("HELD", false, { id: "s1" }),
+      scopeEntry("COMMITTED", false, { id: "s2" }),
+    ])
+    expect(outcome.ok).toBe(false)
+    if (outcome.ok) throw new Error("unreachable")
+    expect(outcome.details).toEqual({
+      scopeIds: ["s1", "s2"],
+      kinds: ["HELD", "COMMITTED"],
+    })
   })
 })

@@ -653,6 +653,138 @@ describe("createScopeRegistry — purge (SF-DC, #1267)", () => {
   })
 })
 
+describe("createScopeRegistry — ScopeTransitionObserver (SF-OB, #1270)", () => {
+  it("calls onTransition once per committed transition, including register(), with the causing event and the resting state it landed in", () => {
+    const seen: Array<{ id: string; event: string; to: string }> = []
+    const registry = createScopeRegistry<string>({
+      onTransition: (id, event, to) => {
+        seen.push({ id, event: event.kind, to: to.kind })
+      },
+    })
+
+    registry.register("s1", {
+      ref: REF,
+      parent: null,
+      contentEpoch: 0,
+      hold: fakeHold(),
+    })
+    registry.startResolving("s1")
+    registry.resolveFailed("s1", "no policy installed")
+    registry.retry("s1")
+    registry.reRegister("s1", CONTENT_EPOCH_1)
+    registry.retire("s1")
+
+    expect(seen).toEqual([
+      { id: "s1", event: "register", to: "HELD" },
+      { id: "s1", event: "start-resolving", to: "RESOLVING" },
+      { id: "s1", event: "resolve-failed", to: "FAILED_HELD" },
+      { id: "s1", event: "retry", to: "RESOLVING" },
+      { id: "s1", event: "re-register", to: "HELD" },
+      { id: "s1", event: "retire", to: "RETIRED" },
+    ])
+  })
+
+  it("calls onTransition for resolve-committed/resolve-exonerated/invalidate too, at the point κ actually changes", async () => {
+    const seen: Array<string> = []
+    const registry = createScopeRegistry<string, string>({
+      onTransition: (_id, event) => seen.push(event.kind),
+    })
+    registry.register("s1", {
+      ref: REF,
+      parent: null,
+      contentEpoch: 0,
+      hold: fakeHold(),
+    })
+    registry.startResolving("s1")
+    await registry.resolveCommitted("s1", fakeRealization("rev-1"))
+    registry.invalidate("s1")
+    registry.resolveExonerated("s1", { proof: "proof-1" })
+    registry.invalidate("s1")
+
+    expect(seen).toEqual([
+      "register",
+      "start-resolving",
+      "resolve-committed",
+      "invalidate",
+      "resolve-exonerated",
+      "invalidate",
+    ])
+  })
+
+  it("never calls onTransition for a transition transition() itself rejects", () => {
+    const onTransition = vi.fn()
+    const registry = createScopeRegistry({ onTransition })
+    registry.register("s1", {
+      ref: REF,
+      parent: null,
+      contentEpoch: 0,
+      hold: fakeHold(),
+    })
+    onTransition.mockClear()
+
+    // start-resolving is illegal from HELD -> RESOLVING -> ... already
+    // RESOLVING once; retry() is illegal outside FAILED_HELD.
+    expect(() => registry.retry("s1")).toThrow(IllegalTransitionError)
+    expect(onTransition).not.toHaveBeenCalled()
+  })
+
+  it("calls onStaleResolveDiscarded, not onTransition, when a concurrent reRegister() supersedes an in-flight resolveCommitted()", async () => {
+    const onStaleResolveDiscarded = vi.fn()
+    const transitions: Array<string> = []
+    const registry = createScopeRegistry<string>({
+      onTransition: (_id, event) => transitions.push(event.kind),
+      onStaleResolveDiscarded,
+    })
+    registry.register("s1", {
+      ref: REF,
+      parent: null,
+      contentEpoch: 0,
+      hold: fakeHold(),
+    })
+    registry.startResolving("s1")
+    transitions.length = 0
+
+    let releaseInstall: (() => void) | undefined
+    const installGate = new Promise<void>((resolve) => {
+      releaseInstall = resolve
+    })
+    const realization: CommittedRealization<string> = {
+      revision: "rev-1",
+      install: vi.fn(async () => {
+        await installGate
+      }),
+      uninstall: vi.fn(),
+    }
+
+    const pending = registry.resolveCommitted("s1", realization)
+    registry.reRegister("s1", CONTENT_EPOCH_1)
+    onStaleResolveDiscarded.mockClear()
+    transitions.length = 0
+
+    releaseInstall?.()
+    await pending
+
+    expect(onStaleResolveDiscarded).toHaveBeenCalledTimes(1)
+    expect(onStaleResolveDiscarded).toHaveBeenCalledWith("s1")
+    // The discarded completion writes no κ value at all — nothing for
+    // onTransition to fire about.
+    expect(transitions).toEqual([])
+  })
+
+  it("omitting both callbacks is the default — every existing caller keeps today's exact behavior", () => {
+    const registry = createScopeRegistry()
+    expect(() =>
+      registry.register("s1", {
+        ref: REF,
+        parent: null,
+        contentEpoch: 0,
+        hold: fakeHold(),
+      })
+    ).not.toThrow()
+    expect(registry.stateOf("s1")?.kind).toBe("HELD")
+  })
+})
+
 describe("createScopeRegistry — kernel independence (Remark D.3, Theorem D.2)", () => {
   it("against the null adapter (no CommittedRealization/NativeExoneration ever constructed), every registered scope stays in {HELD, RESOLVING, FAILED_HELD}", () => {
     const registry = createScopeRegistry<never, never>()

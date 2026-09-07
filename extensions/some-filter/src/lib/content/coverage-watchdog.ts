@@ -68,6 +68,13 @@
  * that left open).
  */
 
+import type {
+  ScopeId,
+  ScopeRegistry,
+  ScopeStateKind,
+  ScopeTransitionObserver,
+} from "@filter/adapter/scope-registry"
+import type { ShadowScopeDiscoveryMethod } from "@filter/adapter/shadow-scope-discovery"
 import {
   DARK_THEME_ATTR,
   DARK_THEME_STYLE_ID,
@@ -79,10 +86,12 @@ import { runInvariants } from "@some-extension/common/observability"
 
 import {
   coverageInvariants,
+  scopeArtifactPresent,
   type CoverageContext,
   type CoverageCounter,
   type CoverageEventKind,
   type CoverageRecorder,
+  type ScopeCoverageEntry,
 } from "./coverage-observability"
 import {
   enablePrepaint,
@@ -306,6 +315,312 @@ export function createCoverageWatchdog(
       headObserver?.disconnect()
       headObserver = null
       observedHead = null
+    },
+  }
+}
+
+// ── SF-OB (#1270): scope-quantified coverage ─────────────────────────────────
+//
+// A second, independent watchdog, deliberately not folded into
+// `createCoverageWatchdog` above: that one's whole design (this file's own
+// header) is *purely reactive*, scoped to two cheap, narrow `<html>`/`<head>`
+// observers specifically because the document is the only scope it watches.
+// A live scope can be an arbitrarily-nested `ShadowRoot` anywhere in the
+// page, so there is no equivalently narrow DOM region to observe reactively
+// for "did some scope's own artifact change" — the same reachability
+// argument `shadow-scope-discovery.ts`'s own `DISCOVERY_POLL_MS` backstop
+// already makes for *discovering* a scope applies here to *auditing* one.
+// This watchdog therefore polls, at a cadence chosen for debug-page
+// freshness only (nothing safety-critical depends on this running fast —
+// per #1270's own "out of scope: any new custody logic," this instrument
+// never repairs anything it finds, only reports it).
+//
+// Two halves, wired at different points in a caller's own construction
+// order (`content.ts`'s own module-init sequence, `registryObserver`/
+// `onDiscovered` passed into `createScopeRegistry()`/
+// `createShadowScopeDiscovery()` *before* either exists as a live object,
+// `observe()`/`check()` called *after*, once both do):
+//
+//   1. Event-driven cumulative counters (`registryObserver`, `onDiscovered`)
+//      — fired synchronously by `scope-registry.ts`'s own transition wrapper
+//      and `shadow-scope-discovery.ts`'s own registration call, so these
+//      need no polling at all: hold/release/rehold/commit/exoneration/
+//      failure/stale-discard counts, per-scope state-duration timings, and
+//      the census-vs-reactive discovery split are all exact, not sampled.
+//   2. The periodic per-scope snapshot and `ScopeCoverageHeld` check
+//      (`observe()`/`check()`) — this is the half that actually needs
+//      polling: whether a scope's own DOM artifact is still present can
+//      drift with no registry transition at all (a vendor stripping
+//      `data-sw-patched` off a `COMMITTED` scope's surface is explicitly
+//      *not* treated as vendor evidence by `shadow-scope-discovery.ts`'s own
+//      `isThemeTaggingMutation` filter — see that function's own doc
+//      comment — so nothing else in this codebase ever notices).
+
+/** Diagnostics-freshness cadence only — see this section's own header for why this is a poll rather than a reactive observer, and why its exact value carries no safety weight the way `DISCOVERY_POLL_MS` (that constant's own doc comment) does. */
+export const SCOPE_COVERAGE_POLL_MS = 250
+
+/** SF-OB's own per-scope snapshot shape, published under `setSnapshot("scopes", ...)` — read by `debug/index.ts`'s per-scope breakdown table. */
+export type ScopeCoverageSnapshot = {
+  readonly now: number
+  readonly totalScopes: number
+  /**
+   * Every `ScopeStateKind` (including `DISCOVERED_UNHELD`), zero-filled.
+   * `DISCOVERED_UNHELD`'s own count is asserted zero here by construction —
+   * `scope-registry.ts`'s own type system never lets this registry produce
+   * one as a resting value (`DiscoveredUnheldStateKind`'s own doc comment) —
+   * included so that guarantee is externally checkable in the diagnostics
+   * bundle a human reads, per #1270's own acceptance criterion, not merely
+   * true of code nobody re-verifies from the outside.
+   */
+  readonly byState: Readonly<Record<ScopeStateKind, number>>
+  readonly scopes: ReadonlyArray<ScopeCoverageEntry>
+}
+
+export type ScopeCoverageWatchdog<Rho = unknown, Pi = unknown> = {
+  /** Pass to `createScopeRegistry()` at construction time. */
+  readonly registryObserver: ScopeTransitionObserver<Rho, Pi>
+  /** Pass to `createShadowScopeDiscovery()` at construction time. */
+  onDiscovered(id: ScopeId, method: ShadowScopeDiscoveryMethod): void
+  /** Starts the periodic per-scope check against `registry`. Idempotent. */
+  observe(registry: ScopeRegistry<Rho, Pi>): void
+  /** Force an immediate check outside the poll cadence — call right after a state transition or nav event, mirroring `CoverageWatchdog.check()`'s own rationale. */
+  check(registry: ScopeRegistry<Rho, Pi>, reason: string): void
+  /** Stops the poll. Safe to call when not observing. */
+  teardown(): void
+}
+
+export function createScopeCoverageWatchdog<Rho = unknown, Pi = unknown>(
+  recorder: CoverageRecorder
+): ScopeCoverageWatchdog<Rho, Pi> {
+  const enteredAt = new Map<ScopeId, number>()
+  // Keyed by scope id, not one aggregate flag (ScopeCoverageHeld's own
+  // shape, coverage-observability.ts) — see checkArtifactCoverage()'s own
+  // header for why a single aggregate boolean under-counts real violations
+  // here.
+  const artifactOk = new Map<ScopeId, boolean>()
+  const violatedSince = new Map<ScopeId, number>()
+  let pollHandle: ReturnType<typeof setInterval> | null = null
+
+  function noteDuration(id: ScopeId, now: number): void {
+    const since = enteredAt.get(id)
+    if (since !== undefined) {
+      recorder.observe("scope_state_duration_ms", now - since)
+    }
+    enteredAt.set(id, now)
+  }
+
+  function check(registry: ScopeRegistry<Rho, Pi>, reason: string): void {
+    const now = Date.now()
+    const scopes: Array<ScopeCoverageEntry> = registry.ids().map((id) => {
+      const snap = registry.snapshot(id)
+      // registry.ids() and registry.snapshot() both read the same live
+      // Map — a snapshot is only ever undefined here if a concurrent
+      // caller purged the id between the two calls, which this
+      // synchronous function never does to itself.
+      if (snap === undefined) {
+        throw new Error(`[scope-coverage] no snapshot for live id: ${id}`)
+      }
+      return {
+        id,
+        kind: snap.state.kind,
+        parent: snap.parent,
+        artifactPresent: scopeArtifactPresent(snap.ref, snap.state.kind),
+      }
+    })
+
+    const byState: Record<ScopeStateKind, number> = {
+      HELD: 0,
+      RESOLVING: 0,
+      COMMITTED: 0,
+      EXONERATED_NATIVE: 0,
+      FAILED_HELD: 0,
+      RETIRED: 0,
+      // Asserted zero by construction, never incremented — see
+      // ScopeCoverageSnapshot's own "byState" doc comment.
+      DISCOVERED_UNHELD: 0,
+    }
+    for (const s of scopes) byState[s.kind] += 1
+
+    recorder.setSnapshot("scopes", {
+      now,
+      totalScopes: scopes.length,
+      byState,
+      scopes,
+      reason,
+    })
+    recorder.count("scope_coverage_checks")
+    checkArtifactCoverage(scopes, now, reason)
+  }
+
+  /**
+   * Diffs each scope's own `artifactPresent` against *that scope's own*
+   * last-seen value — never a single aggregate "is anything violated right
+   * now" flag. `ScopeCoverageHeld` (coverage-observability.ts) computes
+   * exactly that aggregate, and is deliberately not used here: diffing the
+   * aggregate against one shared `lastStatus` under-counts real violations
+   * whenever one scope's violation resolves and a *different* scope's own
+   * violation begins before a poll ever observes the momentary all-clear in
+   * between — the aggregate reads "violated" both before and after, so nothing
+   * ever appears to change. Bot-found in this story's own e2e coverage: a
+   * document-scope bootstrap-timing violation (resolved within one poll tick)
+   * masked the very shadow-scope desync this story exists to detect, because
+   * both look identical to a single shared "violated" flag. Per-scope
+   * tracking makes each scope's own transition independently observable
+   * regardless of what any other scope is doing at the same time.
+   */
+  function checkArtifactCoverage(
+    scopes: ReadonlyArray<ScopeCoverageEntry>,
+    now: number,
+    reason: string
+  ): void {
+    const liveIds = new Set<ScopeId>()
+    for (const s of scopes) {
+      if (s.artifactPresent === null) continue
+      liveIds.add(s.id)
+      const previous = artifactOk.get(s.id)
+      artifactOk.set(s.id, s.artifactPresent)
+      if (s.artifactPresent === previous) continue
+
+      if (!s.artifactPresent) {
+        violatedSince.set(s.id, now)
+        recorder.count("scope_coverage_violations")
+        recorder.record({
+          kind: "scope.coverage_violated",
+          severity: "error",
+          detail: { id: s.id, kind: s.kind, reason },
+        })
+        continue
+      }
+
+      if (previous === false) {
+        const since = violatedSince.get(s.id)
+        violatedSince.delete(s.id)
+        if (since !== undefined) {
+          recorder.observe("violation_duration_ms", now - since)
+        }
+        recorder.record({
+          kind: "scope.coverage_recovered",
+          detail: {
+            id: s.id,
+            reason,
+            heldForMs: since !== undefined ? now - since : null,
+          },
+        })
+      }
+    }
+
+    // A retired-and-purged (or artifact-inapplicable) scope stops being
+    // tracked — a later re-registration under the same id (Definition D.5's
+    // "fresh identity" rule) must not read as a spurious recovery against
+    // stale tracking.
+    for (const id of artifactOk.keys()) {
+      if (!liveIds.has(id)) {
+        artifactOk.delete(id)
+        violatedSince.delete(id)
+      }
+    }
+  }
+
+  return {
+    registryObserver: {
+      onTransition(id, event, to): void {
+        noteDuration(id, Date.now())
+        switch (event.kind) {
+          case "register": {
+            // Discovery attribution (census vs. reactive) and the
+            // "scope.discovered" event itself are owned by onDiscovered
+            // below, called separately by shadow-scope-discovery.ts right
+            // after this same register() call — recording it here too would
+            // double the event for every real discovery.
+            recorder.count("scope_holds")
+            return
+          }
+          case "resolve-committed": {
+            recorder.count("scope_releases")
+            recorder.count("scope_commits")
+            recorder.record({ kind: "scope.committed", detail: { id } })
+            return
+          }
+          case "resolve-exonerated": {
+            recorder.count("scope_releases")
+            recorder.count("scope_exonerations")
+            recorder.record({ kind: "scope.exonerated", detail: { id } })
+            return
+          }
+          case "resolve-failed": {
+            recorder.count("scope_failures")
+            recorder.record({
+              kind: "scope.failed",
+              severity: "warn",
+              detail: { id, reason: event.reason },
+            })
+            return
+          }
+          case "invalidate":
+          case "re-register": {
+            recorder.count("scope_reholds")
+            recorder.record({
+              kind: "scope.reheld",
+              detail: { id, cause: event.kind, to: to.kind },
+            })
+            return
+          }
+          case "retire": {
+            recorder.count("scope_releases")
+            recorder.record({ kind: "scope.retired", detail: { id } })
+            return
+          }
+          case "start-resolving":
+          case "retry": {
+            // No hold/release/rehold of its own — the scope stays held
+            // throughout HELD->RESOLVING and FAILED_HELD->RESOLVING alike.
+            return
+          }
+          default: {
+            const exhaustive: never = event
+            throw new Error(
+              `[scope-coverage] unhandled event: ${JSON.stringify(exhaustive)}`
+            )
+          }
+        }
+      },
+      onStaleResolveDiscarded(id): void {
+        recorder.count("scope_stale_resolves_discarded")
+        recorder.record({
+          kind: "scope.stale_resolve_discarded",
+          severity: "warn",
+          detail: { id },
+        })
+      },
+    },
+
+    onDiscovered(id, method): void {
+      recorder.count(
+        method === "census"
+          ? "scopes_discovered_census"
+          : "scopes_discovered_reactive"
+      )
+      recorder.record({ kind: "scope.discovered", detail: { id, method } })
+    },
+
+    observe(registry): void {
+      if (pollHandle !== null) return
+      check(registry, "observe-start")
+      pollHandle = setInterval(() => {
+        check(registry, "poll")
+      }, SCOPE_COVERAGE_POLL_MS)
+    },
+
+    check,
+
+    teardown(): void {
+      if (pollHandle !== null) {
+        clearInterval(pollHandle)
+        pollHandle = null
+      }
+      artifactOk.clear()
+      violatedSince.clear()
+      enteredAt.clear()
     },
   }
 }

@@ -284,6 +284,24 @@ function isThemeTaggingMutation(record: MutationRecord): boolean {
  */
 export const DISCOVERY_POLL_MS = 100
 
+/**
+ * SF-OB (#1270): which of this module's two discovery paths found a scope —
+ * "roots found by initial census vs. reactive mutation discovery," per that
+ * story's own acceptance criteria. `"census"` is an explicit top-down
+ * `discover()` sweep (the initial one, and every later defensive one
+ * `content.ts` runs on `yt-navigate-finish` — both are the same kind of
+ * deliberate, systematic walk, as opposed to a passive reaction to one
+ * specific mutation). `"reactive"` is everything triggered by this module's
+ * own ambient machinery instead: the top-level `MutationObserver` in
+ * `observe()`, the `DISCOVERY_POLL_MS` backstop poll, and a nested root
+ * found by a per-root observer's own re-walk of its scope. A nested root
+ * found *during* an outer scope's own registration (the recursive `walk()`
+ * call inside `registerShadowRoot()`, before that call returns) inherits its
+ * parent's method — it is part of the same pass, not a separate discovery
+ * event.
+ */
+export type ShadowScopeDiscoveryMethod = "census" | "reactive"
+
 export type ShadowScopeDiscovery = {
   /**
    * Walks `root`'s descendants for open shadow roots not yet registered,
@@ -333,7 +351,9 @@ export function createShadowScopeDiscovery<Rho, Pi>(
    * omitted by every caller that only cares about discovery/custody and
    * has no adapter to project (this module's own unit tests included).
    */
-  onScopeReady?: (id: ScopeId) => void
+  onScopeReady?: (id: ScopeId) => void,
+  /** SF-OB (#1270): called once per newly-registered scope, immediately after `registerShadowRoot()`'s own `registry.register()` call, naming which discovery path found it. Optional — omitted by every caller with no coverage instrument to feed (this module's own unit tests included), mirroring `onScopeReady`'s own optionality. */
+  onDiscovered?: (id: ScopeId, method: ShadowScopeDiscoveryMethod) => void
 ): ShadowScopeDiscovery {
   const idFor = new WeakMap<ShadowRoot, ScopeId>()
   const rootFor = new Map<ScopeId, ShadowRoot>()
@@ -420,13 +440,17 @@ export function createShadowScopeDiscovery<Rho, Pi>(
    * indefinitely, not just for one poll interval (bot-found, #1267's own
    * review).
    */
-  function rewalkKnownRoots(): void {
+  function rewalkKnownRoots(method: ShadowScopeDiscoveryMethod): void {
     for (const [id, shadow] of rootFor) {
-      walk(shadow, id)
+      walk(shadow, id, method)
     }
   }
 
-  function walk(root: Node, parentId: ScopeId): void {
+  function walk(
+    root: Node,
+    parentId: ScopeId,
+    method: ShadowScopeDiscoveryMethod
+  ): void {
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT)
     let node = walker.nextNode()
     while (node !== null) {
@@ -440,13 +464,17 @@ export function createShadowScopeDiscovery<Rho, Pi>(
       // is realm-independent (bot-found, #1267's own review).
       if (isElementNode(node) && node.shadowRoot !== null) {
         const shadow = node.shadowRoot
-        if (!idFor.has(shadow)) registerShadowRoot(shadow, parentId)
+        if (!idFor.has(shadow)) registerShadowRoot(shadow, parentId, method)
       }
       node = walker.nextNode()
     }
   }
 
-  function registerShadowRoot(shadow: ShadowRoot, parentId: ScopeId): void {
+  function registerShadowRoot(
+    shadow: ShadowRoot,
+    parentId: ScopeId,
+    method: ShadowScopeDiscoveryMethod
+  ): void {
     const id: ScopeId = `shadow:${(nextId += 1)}`
     const hold = createOcclusionHold(shadow)
     idFor.set(shadow, id)
@@ -458,6 +486,7 @@ export function createShadowScopeDiscovery<Rho, Pi>(
       contentEpoch: contentEpoch(),
       hold,
     })
+    onDiscovered?.(id, method)
 
     const observer = new MutationObserver((mutations) => {
       // Not isSelfAuthored here (unlike the document-wide observer in
@@ -499,8 +528,9 @@ export function createShadowScopeDiscovery<Rho, Pi>(
       // Regardless of self-authorship: a mutation inside this root can
       // introduce a newly-attached *nested* shadow host (Definition D.4's
       // recursive case), which must not wait for its own reaction to be
-      // discovered.
-      walk(shadow, id)
+      // discovered. A mutation-triggered find is "reactive" even here, one
+      // nesting level in.
+      walk(shadow, id, "reactive")
     })
     observer.observe(shadow, {
       childList: true,
@@ -553,8 +583,10 @@ export function createShadowScopeDiscovery<Rho, Pi>(
 
     // Recurse immediately, before this call returns — a nested root already
     // present at discovery time must not wait for a mutation that may never
-    // come.
-    walk(shadow, id)
+    // come. Inherits `method`: a nested root found during this same
+    // registration pass is part of the same discovery event as its parent,
+    // not a separate one.
+    walk(shadow, id, method)
 
     // SF-AD (#1268): a newly-registered scope is HELD but never yet
     // projected — its first classification round must not wait for a
@@ -576,8 +608,8 @@ export function createShadowScopeDiscovery<Rho, Pi>(
   return {
     discover(root): void {
       retireDetached()
-      walk(root, DOCUMENT_SCOPE_ID)
-      rewalkKnownRoots()
+      walk(root, DOCUMENT_SCOPE_ID, "census")
+      rewalkKnownRoots("census")
     },
 
     observe(): void {
@@ -586,8 +618,8 @@ export function createShadowScopeDiscovery<Rho, Pi>(
         for (const record of mutations) {
           if (isSelfAuthored(record)) continue
           retireDetached()
-          walk(document.documentElement, DOCUMENT_SCOPE_ID)
-          rewalkKnownRoots()
+          walk(document.documentElement, DOCUMENT_SCOPE_ID, "reactive")
+          rewalkKnownRoots("reactive")
           return
         }
       })
@@ -597,8 +629,8 @@ export function createShadowScopeDiscovery<Rho, Pi>(
       })
       pollHandle = setInterval(() => {
         retireDetached()
-        walk(document.documentElement, DOCUMENT_SCOPE_ID)
-        rewalkKnownRoots()
+        walk(document.documentElement, DOCUMENT_SCOPE_ID, "reactive")
+        rewalkKnownRoots("reactive")
       }, DISCOVERY_POLL_MS)
     },
 
