@@ -41,7 +41,10 @@
  */
 
 import { expect, test, waitForClassification } from "@filter/playwright/fixture"
-import { backgroundWorker } from "@filter/playwright/fixtures/legacy-mode"
+import {
+  backgroundWorker,
+  enterLegacyMode,
+} from "@filter/playwright/fixtures/legacy-mode"
 import { traceDisconnectedThenInsert } from "@filter/playwright/fixtures/shadow-traces"
 import type { Page, Worker } from "@playwright/test"
 
@@ -318,5 +321,47 @@ test.describe("debug.html renders the per-scope breakdown for a session with a s
     expect(shadowRow?.[3]).toBe("✕")
 
     await debugPage.close()
+  })
+})
+
+test.describe("SF-OB — the persisted scope snapshot does not go stale after leaving auto mode", () => {
+  test("switching a tab from auto to legacy purges the already-retired shadow scope from the very next 'scopes' snapshot, instead of leaving it COMMITTED forever (bot-found, #1327's own review, round 3)", async ({
+    context,
+    fixture,
+  }) => {
+    const page = await fixture.goto("shadow-surface-page")
+    await waitForClassification(page)
+
+    await traceDisconnectedThenInsert(page)
+    await waitForSurfaceCommitted(page)
+
+    const sessionId = await page.evaluate(
+      () => document.body.dataset["swObservabilitySession"]
+    )
+    if (sessionId === undefined) throw new Error("unreachable")
+
+    const sw = await backgroundWorker(context)
+    const shadowId = await findCommittedShadowScopeId(sw, sessionId)
+
+    // applyState("legacy") — reached via the real TOGGLE_FILTER message
+    // route, not a content.ts-internal shortcut — calls
+    // shadowScopeDiscovery.teardown() (retiring and purging this shadow
+    // scope from the registry) immediately followed by
+    // scopeCoverageWatchdog.teardown() (stopping the poll). Before this
+    // story's own round-3 fix, nothing in between ever published the
+    // post-purge registry state, so the persisted "scopes" snapshot kept
+    // reporting this scope COMMITTED indefinitely — content.ts's own fix
+    // adds one last check() call in that gap.
+    await enterLegacyMode(sw, "shadow-surface-page.html")
+
+    const afterLeavingAuto = await pollUntil(
+      () => readBundle(sw, sessionId),
+      (b) => (b?.snapshots.scopes?.scopes ?? []).every((s) => s.id !== shadowId)
+    )
+
+    expect(
+      afterLeavingAuto?.snapshots.scopes?.scopes.find((s) => s.id === shadowId),
+      "the purged shadow scope should be gone from the very next snapshot, not lingering as COMMITTED"
+    ).toBeUndefined()
   })
 })

@@ -256,7 +256,15 @@ function applyState(state: TabState): void {
   // need shadow-scope custody at all (see this module's own header).
   shadowScopeDiscovery.teardown()
   // Same lifecycle as shadowScopeDiscovery: nothing to poll outside auto
-  // mode either (SF-OB, #1270).
+  // mode either (SF-OB, #1270). One last check() here, before teardown()
+  // stops the poll and clears its own tracking, publishes the registry's
+  // post-purge state — bot-found (#1327's own review, round 3): without it,
+  // leaving auto with a shadow scope COMMITTED left the persisted "scopes"
+  // snapshot (and debug.html's "Live scopes" table) showing that
+  // already-purged scope indefinitely, since nothing ever checks again
+  // outside auto mode to notice shadowScopeDiscovery.teardown() already
+  // retired and purged it from the registry.
+  scopeCoverageWatchdog.check(documentScope.registry, "apply-state:teardown")
   scopeCoverageWatchdog.teardown()
 
   restoreVendor()
@@ -580,6 +588,16 @@ function init(): void {
   // signal available from a content script.
   window.addEventListener("pagehide", () => {
     coverageWatchdog.teardown()
+    // Bot-found (#1327's own review, round 3): a pagehide that places the
+    // document in the back-forward cache does not destroy this content
+    // script's context — the 250ms scope-coverage poll below survives it
+    // and, with observabilityRecorder already disposed a statement below,
+    // would keep walking and stringifying the entire scope registry every
+    // tick forever with every recording call silently ignored. Stopping it
+    // here mirrors coverageWatchdog.teardown() immediately above; restarting
+    // either watchdog on a bfcache pageshow is out of scope for this story
+    // (both watchdogs, not just this one, would need it).
+    scopeCoverageWatchdog.teardown()
     void observabilityRecorder.dispose()
     void removeFromIndex(observabilitySessionId)
   })
