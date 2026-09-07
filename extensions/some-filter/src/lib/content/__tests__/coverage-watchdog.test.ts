@@ -619,4 +619,41 @@ describe("createScopeCoverageWatchdog — periodic per-scope snapshot and ScopeC
       vi.useRealTimers()
     }
   })
+
+  it("teardown() folds each still-tracked scope's own open interval into scope_state_duration_ms before clearing it, instead of discarding it outright (bot-found, #1327's own review, round 5)", () => {
+    vi.useFakeTimers()
+    try {
+      const recorder = createCoverageRecorder(
+        "test-scope-teardown-duration",
+        false
+      )
+      const scopeCoverage = createScopeCoverageWatchdog(recorder)
+      const registry = createScopeRegistry(scopeCoverage.registryObserver)
+
+      registry.register("s1", {
+        ref: document,
+        parent: null,
+        contentEpoch: 0,
+        hold: fakeHold(),
+      })
+
+      const countBeforeTeardown =
+        recorder.metrics.snapshot().aggregates["scope_state_duration_ms"]
+          ?.count ?? 0
+
+      // A long resting interval — e.g. a tab sitting COMMITTED for hours —
+      // with no further transition before this watchdog tears down.
+      const restingMs = 3_600_000
+      vi.advanceTimersByTime(restingMs)
+
+      scopeCoverage.teardown()
+
+      const agg =
+        recorder.metrics.snapshot().aggregates["scope_state_duration_ms"]
+      expect(agg?.count).toBe(countBeforeTeardown + 1)
+      expect(agg?.max).toBeGreaterThanOrEqual(restingMs)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })

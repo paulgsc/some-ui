@@ -679,6 +679,18 @@ export function createScopeCoverageWatchdog<Rho = unknown, Pi = unknown>(
         clearInterval(pollHandle)
         pollHandle = null
       }
+      // Bot-found (#1327's own review, round 5): a scope commonly reaches
+      // teardown() still resting in whatever state it last settled into —
+      // the document scope especially, since neither a mode switch away
+      // from auto nor pagehide ever retires it — and clearing enteredAt
+      // unconditionally discarded that entire final interval (frequently
+      // the *longest* one, e.g. hours spent COMMITTED) without ever folding
+      // it into scope_state_duration_ms, systematically biasing the
+      // aggregate toward only the short early transitions.
+      const now = Date.now()
+      for (const since of enteredAt.values()) {
+        recorder.observe("scope_state_duration_ms", now - since)
+      }
       artifactOk.clear()
       violatedSince.clear()
       enteredAt.clear()
