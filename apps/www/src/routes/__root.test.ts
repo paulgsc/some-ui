@@ -39,6 +39,17 @@ describe("root beforeLoad: which routes require a session", () => {
     expect(callBeforeLoad("/resume")).not.toThrow()
   })
 
+  // The canonical, publicly-shared résumé URL (GitHub Pages'
+  // /resume/index.html shell) carries a trailing slash the router's
+  // basepath rewrite doesn't strip - see __root.tsx's beforeLoad comment.
+  it("lets an unauthenticated visitor read /resume/ (trailing slash)", () => {
+    expect(callBeforeLoad("/resume/")).not.toThrow()
+  })
+
+  it("still redirects an unauthenticated visitor away from /app/ (trailing slash)", () => {
+    expect(callBeforeLoad("/app/")).toThrow()
+  })
+
   it("still redirects an unauthenticated visitor away from /app", () => {
     expect(callBeforeLoad("/app")).toThrow()
   })
