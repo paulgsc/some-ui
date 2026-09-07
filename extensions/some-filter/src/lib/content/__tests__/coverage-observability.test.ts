@@ -1,4 +1,7 @@
-import { HOLD_ATTR } from "@filter/adapter/custody-primitive"
+import {
+  createOcclusionHold,
+  HOLD_ATTR,
+} from "@filter/adapter/custody-primitive"
 import type { ScopeStateKind } from "@filter/adapter/scope-registry"
 import {
   coverageInvariants,
@@ -265,9 +268,23 @@ describe("scopeArtifactPresent — re-reads the live DOM, never trusts κ alone"
       expect(scopeArtifactPresent(shadow, kind)).toBe(false)
     }
 
-    const veil = document.createElement("hr")
-    veil.setAttribute(HOLD_ATTR, "")
-    shadow.appendChild(veil)
+    createOcclusionHold(shadow).install()
+
+    for (const kind of ["HELD", "RESOLVING", "FAILED_HELD"] as const) {
+      expect(scopeArtifactPresent(shadow, kind)).toBe(true)
+    }
+  })
+
+  it("HELD/RESOLVING/FAILED_HELD: still true once HOLD_ATTR/data-my-ext are stripped from the veil — bot-found (#1327's own review, round 3): createOcclusionHold()'s self-healer restores the veil's parent, children, style, and aria-hidden on every mutation but deliberately never HOLD_ATTR itself, and isHoldMutation() (shadow-scope-discovery.ts) identity-filters that exact attribute mutation so it never reaches the registry as vendor evidence either — a [HOLD_ATTR] selector here would report a permanent false violation on a veil that stays genuinely intact", () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    const shadow = host.attachShadow({ mode: "open" })
+    createOcclusionHold(shadow).install()
+
+    const veil = shadow.querySelector("hr")
+    if (veil === null) throw new Error("expected the hold's veil to exist")
+    veil.removeAttribute(HOLD_ATTR)
+    veil.removeAttribute("data-my-ext")
 
     for (const kind of ["HELD", "RESOLVING", "FAILED_HELD"] as const) {
       expect(scopeArtifactPresent(shadow, kind)).toBe(true)
@@ -303,6 +320,24 @@ describe("scopeArtifactPresent — re-reads the live DOM, never trusts κ alone"
     const foreignSheet = new CSSStyleSheet()
     foreignSheet.insertRule("div { color: blue; }")
     shadow.adoptedStyleSheets = [foreignSheet]
+
+    expect(scopeArtifactPresent(shadow, "COMMITTED")).toBe(false)
+  })
+
+  it("COMMITTED: false when only the shared static sheet is adopted (its own scrollbar rule references var(--sw-bg-0)) but the scope's own :host token rule is gone — bot-found (#1327's own review, round 3): a bare substring match on '--sw-bg-0' also matches that unrelated var() reference", () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    const shadow = host.attachShadow({ mode: "open" })
+
+    // theme-apply.ts's own DARK_THEME_BODY_RULES carries
+    // `scrollbar-color: var(--sw-bg-3) var(--sw-bg-0);` — adopted into every
+    // committed shadow scope's shared static sheet regardless of whether
+    // that scope's own host-token sheet is still adopted.
+    const staticSheet = new CSSStyleSheet()
+    staticSheet.insertRule(
+      "*{ scrollbar-color: var(--sw-bg-3) var(--sw-bg-0); }"
+    )
+    shadow.adoptedStyleSheets = [staticSheet]
 
     expect(scopeArtifactPresent(shadow, "COMMITTED")).toBe(false)
   })

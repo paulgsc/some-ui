@@ -61,7 +61,7 @@
  * since there is no single recorder here for a snapshot map to belong to.
  */
 
-import { HOLD_ATTR } from "@filter/adapter/custody-primitive"
+import { VEIL_STYLE } from "@filter/adapter/custody-primitive"
 import type { ScopeStateKind } from "@filter/adapter/scope-registry"
 import { parseColor, relativeLuminance } from "@filter/lib/content/color"
 import {
@@ -271,12 +271,38 @@ export const coverageInvariants: ReadonlyArray<Invariant<CoverageContext>> = [
 // discipline (this file's header) from the document alone to every live
 // scope in SF-RG's registry (`scope-registry.ts`, #1265): re-read each
 // scope's own DOM artifact directly, never trust the registry's `κ` value on
-// its own to mean the artifact is actually there. `data-sw-patched` is
-// checked by attribute presence via a raw selector, mirroring
-// `shadow-scope-discovery.ts`'s own `isThemeTaggingMutation` — this
-// codebase's other hardcoded literal for the same attribute, `actuator.ts`'s
-// own `tagSurfaceElements()` being the sole writer and exporting no shared
-// constant for it.
+// its own to mean the artifact is actually there.
+
+/**
+ * `createOcclusionHold()`'s own veil, identified by the artifacts its
+ * self-healing `MutationObserver` callback actually restores on every
+ * firing — `<hr>` tag (never re-created, so never drifts), `aria-hidden`,
+ * and its exact `VEIL_STYLE` text — never by `HOLD_ATTR`. Bot-found (#1327's
+ * own review, round 3): `HOLD_ATTR` is deliberately the one marker that
+ * self-healer does *not* restore (`custody-primitive.ts`'s own `isOwnNode`
+ * doc comment explains why — it and `data-my-ext` are both public,
+ * page-discoverable attributes a vendor or attribute-reconciling framework
+ * can strip without disabling the hold at all), and
+ * `shadow-scope-discovery.ts`'s `isHoldMutation()` identity-filters that
+ * exact attribute mutation so it never reaches the registry as vendor
+ * evidence either — a `[HOLD_ATTR]` selector here would therefore report a
+ * permanent false violation on a veil that is, and stays, genuinely intact.
+ * `isOwnNode()` itself is not usable here: it is a closure-private `WeakSet`
+ * check on a specific `OcclusionHold` instance this module has no reference
+ * to, never a public selector.
+ */
+function shadowOcclusionHoldPresent(root: ShadowRoot): boolean {
+  for (const child of Array.from(root.children)) {
+    if (
+      child.tagName === "HR" &&
+      child.getAttribute("aria-hidden") === "true" &&
+      child.getAttribute("style") === VEIL_STYLE
+    ) {
+      return true
+    }
+  }
+  return false
+}
 
 /**
  * The literal `buildHostTokenRule()` (theme-apply.ts) always embeds in a
@@ -292,20 +318,37 @@ export const coverageInvariants: ReadonlyArray<Invariant<CoverageContext>> = [
  * `shadow-actuator.ts`'s `realizeShadowColors()` adopts this `:host` rule
  * unconditionally on every commit, tagged surfaces or none, so it is the
  * one artifact every COMMITTED shadow scope is actually guaranteed to have.
+ *
+ * Matched only against a rule whose `cssText` *starts with* `:host` — bot-found
+ * (#1327's own review, round 3): a bare substring test also matches
+ * `DARK_THEME_BODY_RULES`' own scrollbar rule (`theme-apply.ts`), which
+ * references `var(--sw-bg-0)` for an unrelated reason and is adopted into
+ * every committed shadow scope's *shared static* sheet regardless of
+ * whether that scope's own host-token sheet is still adopted. Requiring the
+ * `:host`-prefixed rule specifically is the same disambiguation
+ * `shadow-actuator.test.ts`'s own "adopts the static text/border/form/etc.
+ * layer" case already relies on (`r.cssText.startsWith(":host")`), since no
+ * other rule this codebase ever adopts into a shadow scope uses that
+ * selector.
  */
 const HOST_TOKEN_RULE_SIGNATURE = "--sw-bg-0"
 
 /**
- * Whether `root`'s own `adoptedStyleSheets` currently carry a rule matching
- * `HOST_TOKEN_RULE_SIGNATURE` — see that constant's own doc comment for why
- * this, not `data-sw-patched`, is what a COMMITTED shadow scope's Safe_T
- * disjunct actually requires.
+ * Whether `root`'s own `adoptedStyleSheets` currently carry the scope's own
+ * `:host` token rule — see `HOST_TOKEN_RULE_SIGNATURE`'s own doc comment for
+ * why this, not `data-sw-patched` and not a bare substring match, is what a
+ * COMMITTED shadow scope's Safe_T disjunct actually requires.
  */
 function shadowRealizationPresent(root: ShadowRoot): boolean {
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- mirrors shadow-actuator.ts's own realizeShadowColors(): jsdom, this package's own unit-test environment, has no adoptedStyleSheets accessor on a fresh ShadowRoot, unlike the DOM spec's own always-initialized-array guarantee the lib types assume.
   for (const sheet of root.adoptedStyleSheets ?? []) {
     for (const rule of Array.from(sheet.cssRules)) {
-      if (rule.cssText.includes(HOST_TOKEN_RULE_SIGNATURE)) return true
+      if (
+        rule.cssText.startsWith(":host") &&
+        rule.cssText.includes(HOST_TOKEN_RULE_SIGNATURE)
+      ) {
+        return true
+      }
     }
   }
   return false
@@ -409,7 +452,7 @@ export function scopeArtifactPresent(
     case "HELD":
     case "RESOLVING":
     case "FAILED_HELD": {
-      return root.querySelector(`[${HOLD_ATTR}]`) !== null
+      return shadowOcclusionHoldPresent(root)
     }
     case "COMMITTED": {
       return shadowRealizationPresent(root)

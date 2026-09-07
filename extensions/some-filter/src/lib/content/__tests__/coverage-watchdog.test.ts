@@ -1,4 +1,4 @@
-import { HOLD_ATTR } from "@filter/adapter/custody-primitive"
+import { createOcclusionHold } from "@filter/adapter/custody-primitive"
 import {
   createScopeRegistry,
   type CommittedRealization,
@@ -362,17 +362,16 @@ describe("createScopeCoverageWatchdog — event-driven cumulative counters", () 
 
 describe("createScopeCoverageWatchdog — periodic per-scope snapshot and ScopeCoverageHeld", () => {
   it("check() publishes a per-scope snapshot with live byState counts and per-scope artifact presence, DISCOVERED_UNHELD pinned at zero", () => {
-    // A shadow scope, not the document — its HELD artifact is HOLD_ATTR;
-    // the document scope's own artifacts are exercised separately below and
-    // in coverage-observability.test.ts (bot-found, #1327's own review:
-    // this codebase's actual createPrepaintCustody() never writes HOLD_ATTR
-    // at all, so a document-ref'd scope needs its own dedicated fixture).
+    // A shadow scope, not the document — its HELD artifact is
+    // createOcclusionHold()'s own veil; the document scope's own artifacts
+    // are exercised separately below and in coverage-observability.test.ts
+    // (bot-found, #1327's own review: this codebase's actual
+    // createPrepaintCustody() never installs an occlusion hold at all, so a
+    // document-ref'd scope needs its own dedicated fixture).
     const host = document.createElement("div")
     document.body.appendChild(host)
     const shadow = host.attachShadow({ mode: "open" })
-    const veil = document.createElement("hr")
-    veil.setAttribute(HOLD_ATTR, "")
-    shadow.appendChild(veil)
+    createOcclusionHold(shadow).install()
 
     const recorder = createCoverageRecorder("test-scope-snapshot", false)
     const scopeCoverage = createScopeCoverageWatchdog(recorder)
@@ -406,9 +405,7 @@ describe("createScopeCoverageWatchdog — periodic per-scope snapshot and ScopeC
     const host = document.createElement("div")
     document.body.appendChild(host)
     const shadow = host.attachShadow({ mode: "open" })
-    const veil = document.createElement("hr")
-    veil.setAttribute(HOLD_ATTR, "")
-    shadow.appendChild(veil)
+    createOcclusionHold(shadow).install()
 
     const recorder = createCoverageRecorder("test-scope-no-churn", false)
     const setSnapshotSpy = vi.spyOn(recorder, "setSnapshot")
