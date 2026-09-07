@@ -1,5 +1,11 @@
 # @some-extension/suspender-ledger
 
+## 0.2.2
+
+### Patch Changes
+
+- - chore(deps-dev): bump the eslint group across 1 directory with 5 updates (#1320)
+
 ## 0.2.1
 
 - Removed an unused, dead code path (`suspend.html` and `src/suspend/*`) that
