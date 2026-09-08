@@ -1,5 +1,16 @@
+import { createOcclusionHold } from "@filter/adapter/custody-primitive"
+import {
+  createScopeRegistry,
+  type CommittedRealization,
+  type CustodyPrimitive,
+  type ScopeRef,
+} from "@filter/adapter/scope-registry"
 import { createCoverageRecorder } from "@filter/lib/content/coverage-observability"
-import { createCoverageWatchdog } from "@filter/lib/content/coverage-watchdog"
+import {
+  createCoverageWatchdog,
+  createScopeCoverageWatchdog,
+  MAX_SNAPSHOT_SCOPE_ENTRIES,
+} from "@filter/lib/content/coverage-watchdog"
 import { PREPAINT_VEIL_ID } from "@filter/lib/content/prepaint"
 import {
   DARK_THEME_ATTR,
@@ -188,5 +199,523 @@ describe("coverage watchdog — dark-signal desync repair", () => {
     expect(onVeilRearmed).not.toHaveBeenCalled()
 
     watchdog.teardown()
+  })
+})
+
+// ── SF-OB (#1270): createScopeCoverageWatchdog ──────────────────────────────
+
+function fakeHold(): CustodyPrimitive {
+  return { install: vi.fn(), release: vi.fn() }
+}
+
+function fakeRealization<Rho>(revision: Rho): CommittedRealization<Rho> {
+  return { revision, install: vi.fn(), uninstall: vi.fn() }
+}
+
+afterEach(() => {
+  document.body.innerHTML = ""
+})
+
+describe("createScopeCoverageWatchdog — event-driven cumulative counters", () => {
+  it("counts a hold on register(), a release+commit on resolve-committed, and folds a state-duration observation on every transition after the first", async () => {
+    const recorder = createCoverageRecorder("test-scope-holds", false)
+    const scopeCoverage = createScopeCoverageWatchdog<string>(recorder)
+    const registry = createScopeRegistry<string>(scopeCoverage.registryObserver)
+
+    registry.register("s1", {
+      ref: document,
+      parent: null,
+      contentEpoch: 0,
+      hold: fakeHold(),
+    })
+    registry.startResolving("s1")
+    await registry.resolveCommitted("s1", fakeRealization("rev-1"))
+
+    const counters = recorder.metrics.snapshot().counters
+    expect(counters["scope_holds"]).toBe(1)
+    expect(counters["scope_releases"]).toBe(1)
+    expect(counters["scope_commits"]).toBe(1)
+
+    const durationAgg =
+      recorder.metrics.snapshot().aggregates["scope_state_duration_ms"]
+    // One observation per transition after the scope's first (register does
+    // not yet have a prior state to measure the duration of).
+    expect(durationAgg?.count).toBe(2)
+  })
+
+  it("clears the retired scope's own duration-tracking entry, so a later registration under a reused id does not fold a bogus duration spanning two unrelated identities (bot-found, #1327's own review, round 4)", async () => {
+    const recorder = createCoverageRecorder("test-scope-retire-cleanup", false)
+    const scopeCoverage = createScopeCoverageWatchdog<string>(recorder)
+    const registry = createScopeRegistry<string>(scopeCoverage.registryObserver)
+
+    registry.register("s1", {
+      ref: document,
+      parent: null,
+      contentEpoch: 0,
+      hold: fakeHold(),
+    })
+    registry.startResolving("s1")
+    await registry.resolveCommitted("s1", fakeRealization("rev-1"))
+    registry.retire("s1")
+    registry.purge("s1")
+
+    const countAfterRetire =
+      recorder.metrics.snapshot().aggregates["scope_state_duration_ms"]?.count
+
+    // register() on a genuinely fresh id never folds a duration (no prior
+    // state to measure) — this only stays true here if retire() above
+    // actually cleared "s1"'s own enteredAt entry; otherwise this second
+    // registration reads the retired scope's stale timestamp and folds a
+    // duration spanning two unrelated identities.
+    registry.register("s1", {
+      ref: document,
+      parent: null,
+      contentEpoch: 0,
+      hold: fakeHold(),
+    })
+
+    expect(
+      recorder.metrics.snapshot().aggregates["scope_state_duration_ms"]?.count
+    ).toBe(countAfterRetire)
+  })
+
+  it("counts a release+exoneration on resolve-exonerated", () => {
+    const recorder = createCoverageRecorder("test-scope-exonerate", false)
+    const scopeCoverage = createScopeCoverageWatchdog<string, string>(recorder)
+    const registry = createScopeRegistry<string, string>(
+      scopeCoverage.registryObserver
+    )
+    registry.register("s1", {
+      ref: document,
+      parent: null,
+      contentEpoch: 0,
+      hold: fakeHold(),
+    })
+    registry.startResolving("s1")
+    registry.resolveExonerated("s1", { proof: "native-already-dark" })
+
+    const counters = recorder.metrics.snapshot().counters
+    expect(counters["scope_releases"]).toBe(1)
+    expect(counters["scope_exonerations"]).toBe(1)
+    expect(recorder.events().some((e) => e.kind === "scope.exonerated")).toBe(
+      true
+    )
+  })
+
+  it("counts a failure with its reason on resolve-failed, without touching hold/release counters", () => {
+    const recorder = createCoverageRecorder("test-scope-fail", false)
+    const scopeCoverage = createScopeCoverageWatchdog(recorder)
+    const registry = createScopeRegistry(scopeCoverage.registryObserver)
+    registry.register("s1", {
+      ref: document,
+      parent: null,
+      contentEpoch: 0,
+      hold: fakeHold(),
+    })
+    registry.startResolving("s1")
+    registry.resolveFailed("s1", "no policy installed")
+
+    const counters = recorder.metrics.snapshot().counters
+    expect(counters["scope_failures"]).toBe(1)
+    expect(counters["scope_releases"]).toBeUndefined()
+    const failEvent = recorder.events().find((e) => e.kind === "scope.failed")
+    expect(failEvent?.detail).toEqual({
+      id: "s1",
+      reason: "no policy installed",
+    })
+  })
+
+  it("counts a rehold on both invalidate() targets and on re-register()", async () => {
+    const recorder = createCoverageRecorder("test-scope-rehold", false)
+    const scopeCoverage = createScopeCoverageWatchdog<string, string>(recorder)
+    const registry = createScopeRegistry<string, string>(
+      scopeCoverage.registryObserver
+    )
+    registry.register("s1", {
+      ref: document,
+      parent: null,
+      contentEpoch: 0,
+      hold: fakeHold(),
+    })
+    registry.startResolving("s1")
+    await registry.resolveCommitted("s1", fakeRealization("rev-1"))
+    registry.invalidate("s1") // COMMITTED -> RESOLVING
+    registry.resolveExonerated("s1", { proof: "reason" })
+    registry.invalidate("s1") // EXONERATED_NATIVE -> HELD
+    registry.reRegister("s1", 1)
+
+    expect(recorder.metrics.snapshot().counters["scope_reholds"]).toBe(3)
+  })
+
+  it("counts a stale-discarded resolveCommitted() separately from any transition counter", async () => {
+    const recorder = createCoverageRecorder("test-scope-stale", false)
+    const scopeCoverage = createScopeCoverageWatchdog<string>(recorder)
+    const registry = createScopeRegistry<string>(scopeCoverage.registryObserver)
+    registry.register("s1", {
+      ref: document,
+      parent: null,
+      contentEpoch: 0,
+      hold: fakeHold(),
+    })
+    registry.startResolving("s1")
+
+    let releaseInstall: (() => void) | undefined
+    const gate = new Promise<void>((resolve) => {
+      releaseInstall = resolve
+    })
+    const realization: CommittedRealization<string> = {
+      revision: "rev-1",
+      install: vi.fn(async () => {
+        await gate
+      }),
+      uninstall: vi.fn(),
+    }
+    const pending = registry.resolveCommitted("s1", realization)
+    registry.reRegister("s1", 1)
+    releaseInstall?.()
+    await pending
+
+    expect(
+      recorder.metrics.snapshot().counters["scope_stale_resolves_discarded"]
+    ).toBe(1)
+    expect(
+      recorder.metrics.snapshot().counters["scope_commits"]
+    ).toBeUndefined()
+  })
+
+  it("counts a discovered scope under census vs. reactive, per the method onDiscovered is called with", () => {
+    const recorder = createCoverageRecorder("test-scope-discovered", false)
+    const scopeCoverage = createScopeCoverageWatchdog(recorder)
+
+    scopeCoverage.onDiscovered("shadow:1", "census")
+    scopeCoverage.onDiscovered("shadow:2", "reactive")
+    scopeCoverage.onDiscovered("shadow:3", "reactive")
+
+    const counters = recorder.metrics.snapshot().counters
+    expect(counters["scopes_discovered_census"]).toBe(1)
+    expect(counters["scopes_discovered_reactive"]).toBe(2)
+  })
+})
+
+describe("createScopeCoverageWatchdog — periodic per-scope snapshot and ScopeCoverageHeld", () => {
+  it("check() publishes a per-scope snapshot with live byState counts and per-scope artifact presence, DISCOVERED_UNHELD pinned at zero", () => {
+    // A shadow scope, not the document — its HELD artifact is
+    // createOcclusionHold()'s own veil; the document scope's own artifacts
+    // are exercised separately below and in coverage-observability.test.ts
+    // (bot-found, #1327's own review: this codebase's actual
+    // createPrepaintCustody() never installs an occlusion hold at all, so a
+    // document-ref'd scope needs its own dedicated fixture).
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    const shadow = host.attachShadow({ mode: "open" })
+    createOcclusionHold(shadow).install()
+
+    const recorder = createCoverageRecorder("test-scope-snapshot", false)
+    const scopeCoverage = createScopeCoverageWatchdog(recorder)
+    const registry = createScopeRegistry(scopeCoverage.registryObserver)
+    registry.register("s1", {
+      ref: shadow,
+      parent: null,
+      contentEpoch: 0,
+      hold: fakeHold(),
+    })
+
+    scopeCoverage.check(registry, "test")
+
+    const snapshot = recorder.snapshotEntries()["scopes"]
+    expect(snapshot).toMatchObject({
+      totalScopes: 1,
+      byState: {
+        HELD: 1,
+        RESOLVING: 0,
+        COMMITTED: 0,
+        EXONERATED_NATIVE: 0,
+        FAILED_HELD: 0,
+        RETIRED: 0,
+        DISCOVERED_UNHELD: 0,
+      },
+      scopes: [{ id: "s1", kind: "HELD", parent: null, artifactPresent: true }],
+    })
+  })
+
+  it("does not re-write the snapshot or re-count scope_coverage_checks across consecutive checks when nothing changed (bot-found, #1327's own review — an idle tab must not flush the recorder forever)", () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    const shadow = host.attachShadow({ mode: "open" })
+    createOcclusionHold(shadow).install()
+
+    const recorder = createCoverageRecorder("test-scope-no-churn", false)
+    const setSnapshotSpy = vi.spyOn(recorder, "setSnapshot")
+    const scopeCoverage = createScopeCoverageWatchdog(recorder)
+    const registry = createScopeRegistry(scopeCoverage.registryObserver)
+    registry.register("s1", {
+      ref: shadow,
+      parent: null,
+      contentEpoch: 0,
+      hold: fakeHold(),
+    })
+
+    scopeCoverage.check(registry, "first")
+    expect(setSnapshotSpy).toHaveBeenCalledTimes(1)
+    expect(recorder.metrics.snapshot().counters["scope_coverage_checks"]).toBe(
+      1
+    )
+
+    scopeCoverage.check(registry, "second")
+    scopeCoverage.check(registry, "third")
+
+    expect(setSnapshotSpy).toHaveBeenCalledTimes(1)
+    expect(recorder.metrics.snapshot().counters["scope_coverage_checks"]).toBe(
+      1
+    )
+
+    // A real change still writes, on the very next check.
+    registry.startResolving("s1")
+    scopeCoverage.check(registry, "fourth")
+    expect(setSnapshotSpy).toHaveBeenCalledTimes(2)
+    expect(recorder.metrics.snapshot().counters["scope_coverage_checks"]).toBe(
+      2
+    )
+  })
+
+  it("caps the itemized scopes list at MAX_SNAPSHOT_SCOPE_ENTRIES and marks the snapshot truncated, while byState/totalScopes stay accurate over every live scope (bot-found, #1327's own review)", () => {
+    const recorder = createCoverageRecorder("test-scope-truncation", false)
+    const scopeCoverage = createScopeCoverageWatchdog(recorder)
+    const registry = createScopeRegistry(scopeCoverage.registryObserver)
+
+    const total = 120
+    for (let i = 0; i < total; i++) {
+      const host = document.createElement("div")
+      document.body.appendChild(host)
+      const shadow = host.attachShadow({ mode: "open" })
+      registry.register(`shadow:${i}`, {
+        ref: shadow,
+        parent: null,
+        contentEpoch: 0,
+        hold: fakeHold(),
+      })
+    }
+
+    scopeCoverage.check(registry, "test")
+
+    const snapshot = recorder.snapshotEntries()["scopes"]
+    if (snapshot === null || typeof snapshot !== "object") {
+      throw new Error("expected an object snapshot")
+    }
+    expect(Reflect.get(snapshot, "totalScopes")).toBe(total)
+
+    const byState = Reflect.get(snapshot, "byState")
+    if (byState === null || typeof byState !== "object") {
+      throw new Error("expected byState to be an object")
+    }
+    expect(Reflect.get(byState, "HELD")).toBe(total)
+
+    const scopesList = Reflect.get(snapshot, "scopes")
+    if (!Array.isArray(scopesList)) {
+      throw new Error("expected scopes to be an array")
+    }
+    expect(scopesList.length).toBeLessThan(total)
+    expect(Reflect.get(snapshot, "truncated")).toBe(true)
+  })
+
+  it("prioritizes violating scopes over healthy ones when truncating the itemized list, so a real violation past the cap is never hidden from debug.html (bot-found, #1327's own closing review)", () => {
+    const recorder = createCoverageRecorder(
+      "test-scope-truncation-priority",
+      false
+    )
+    const scopeCoverage = createScopeCoverageWatchdog(recorder)
+    const registry = createScopeRegistry(scopeCoverage.registryObserver)
+
+    for (let i = 0; i < MAX_SNAPSHOT_SCOPE_ENTRIES; i++) {
+      const host = document.createElement("div")
+      document.body.appendChild(host)
+      const shadow = host.attachShadow({ mode: "open" })
+      createOcclusionHold(shadow).install()
+      registry.register(`shadow:${i}`, {
+        ref: shadow,
+        parent: null,
+        contentEpoch: 0,
+        hold: fakeHold(),
+      })
+    }
+
+    // Registered last, past the cap, with no veil installed at all — a
+    // genuine violation a plain "keep the first MAX_SNAPSHOT_SCOPE_ENTRIES"
+    // slice would drop entirely, since every one of the healthy scopes above
+    // was registered first.
+    const violatingHost = document.createElement("div")
+    document.body.appendChild(violatingHost)
+    const violatingShadow = violatingHost.attachShadow({ mode: "open" })
+    registry.register("shadow:violating", {
+      ref: violatingShadow,
+      parent: null,
+      contentEpoch: 0,
+      hold: fakeHold(),
+    })
+
+    scopeCoverage.check(registry, "test")
+
+    const snapshot = recorder.snapshotEntries()["scopes"]
+    if (snapshot === null || typeof snapshot !== "object") {
+      throw new Error("expected an object snapshot")
+    }
+    expect(Reflect.get(snapshot, "totalScopes")).toBe(
+      MAX_SNAPSHOT_SCOPE_ENTRIES + 1
+    )
+    expect(Reflect.get(snapshot, "truncated")).toBe(true)
+
+    const scopesList = Reflect.get(snapshot, "scopes")
+    if (!Array.isArray(scopesList)) {
+      throw new Error("expected scopes to be an array")
+    }
+    expect(scopesList.length).toBe(MAX_SNAPSHOT_SCOPE_ENTRIES)
+    expect(
+      scopesList.some(
+        (s: unknown) =>
+          typeof s === "object" &&
+          s !== null &&
+          Reflect.get(s, "id") === "shadow:violating"
+      )
+    ).toBe(true)
+  })
+
+  it("flags, then recovers, a COMMITTED scope whose adoptedStyleSheets were reassigned out from under the registry — #1280's own tracked vendor-reassignment scenario, which generates no registry transition at all to signal it", async () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    const shadow = host.attachShadow({ mode: "open" })
+
+    const recorder = createCoverageRecorder("test-scope-desync", false)
+    const scopeCoverage = createScopeCoverageWatchdog<string>(recorder)
+    const registry = createScopeRegistry<string>(scopeCoverage.registryObserver)
+    const ref: ScopeRef = shadow
+    registry.register("s1", {
+      ref,
+      parent: null,
+      contentEpoch: 0,
+      hold: fakeHold(),
+    })
+    registry.startResolving("s1")
+    await registry.resolveCommitted("s1", fakeRealization("rev-1"))
+
+    // fakeRealization()'s own install() is a no-op mock — stand in for what
+    // shadow-actuator.ts's realizeShadowColors() actually adopts on a real
+    // commit (bot-found round 2: this is the artifact a COMMITTED shadow
+    // scope is actually guaranteed to have, not data-sw-patched — see
+    // coverage-observability.ts's own HOST_TOKEN_RULE_SIGNATURE doc comment).
+    const hostTokenSheet = new CSSStyleSheet()
+    hostTokenSheet.insertRule(":host { --sw-bg-0: #171c25; }")
+    shadow.adoptedStyleSheets = [hostTokenSheet]
+
+    scopeCoverage.check(registry, "before")
+    expect(
+      recorder.metrics.snapshot().counters["scope_coverage_violations"]
+    ).toBeUndefined()
+
+    // The desync: a vendor component's own wholesale adoptedStyleSheets
+    // reassignment (#1280's own tracked follow-up, filed off PR #1279's own
+    // review) carries our sheet off with no MutationRecord to react to —
+    // the registry still believes s1 is COMMITTED throughout, exactly the
+    // "declared vs actual" gap CoverageHeld's own dark/legacy signal-pair
+    // checks catch at document granularity, generalized here to a shadow
+    // scope.
+    const vendorSheet = new CSSStyleSheet()
+    vendorSheet.insertRule("div { color: blue; }")
+    shadow.adoptedStyleSheets = [vendorSheet]
+    scopeCoverage.check(registry, "after-reassignment")
+
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(
+      recorder.metrics.snapshot().counters["scope_coverage_violations"]
+    ).toBe(1)
+    expect(
+      recorder.events().some((e) => e.kind === "scope.coverage_violated")
+    ).toBe(true)
+
+    shadow.adoptedStyleSheets = [vendorSheet, hostTokenSheet]
+    scopeCoverage.check(registry, "after-repair")
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(
+      recorder.events().some((e) => e.kind === "scope.coverage_recovered")
+    ).toBe(true)
+  })
+
+  it("observe() polls at SCOPE_COVERAGE_POLL_MS and teardown() stops it", () => {
+    vi.useFakeTimers()
+    try {
+      const recorder = createCoverageRecorder("test-scope-poll", false)
+      const scopeCoverage = createScopeCoverageWatchdog(recorder)
+      const registry = createScopeRegistry(scopeCoverage.registryObserver)
+
+      scopeCoverage.observe(registry)
+      const checksAfterStart =
+        recorder.metrics.snapshot().counters["scope_coverage_checks"] ?? 0
+      expect(checksAfterStart).toBeGreaterThanOrEqual(1)
+
+      registry.register("s1", {
+        ref: document,
+        parent: null,
+        contentEpoch: 0,
+        hold: fakeHold(),
+      })
+      vi.advanceTimersByTime(1000)
+
+      const checksAfterPoll =
+        recorder.metrics.snapshot().counters["scope_coverage_checks"] ?? 0
+      expect(checksAfterPoll).toBeGreaterThan(checksAfterStart)
+      expect(recorder.snapshotEntries()["scopes"]).toMatchObject({
+        totalScopes: 1,
+      })
+
+      scopeCoverage.teardown()
+      const checksAfterTeardown =
+        recorder.metrics.snapshot().counters["scope_coverage_checks"]
+      vi.advanceTimersByTime(1000)
+      expect(
+        recorder.metrics.snapshot().counters["scope_coverage_checks"]
+      ).toBe(checksAfterTeardown)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("teardown() folds each still-tracked scope's own open interval into scope_state_duration_ms before clearing it, instead of discarding it outright (bot-found, #1327's own review, round 5)", () => {
+    vi.useFakeTimers()
+    try {
+      const recorder = createCoverageRecorder(
+        "test-scope-teardown-duration",
+        false
+      )
+      const scopeCoverage = createScopeCoverageWatchdog(recorder)
+      const registry = createScopeRegistry(scopeCoverage.registryObserver)
+
+      registry.register("s1", {
+        ref: document,
+        parent: null,
+        contentEpoch: 0,
+        hold: fakeHold(),
+      })
+
+      const countBeforeTeardown =
+        recorder.metrics.snapshot().aggregates["scope_state_duration_ms"]
+          ?.count ?? 0
+
+      // A long resting interval — e.g. a tab sitting COMMITTED for hours —
+      // with no further transition before this watchdog tears down.
+      const restingMs = 3_600_000
+      vi.advanceTimersByTime(restingMs)
+
+      scopeCoverage.teardown()
+
+      const agg =
+        recorder.metrics.snapshot().aggregates["scope_state_duration_ms"]
+      expect(agg?.count).toBe(countBeforeTeardown + 1)
+      expect(agg?.max).toBeGreaterThanOrEqual(restingMs)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

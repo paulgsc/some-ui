@@ -881,3 +881,135 @@ describe("createShadowScopeDiscovery — host class/style reprojection (bot-foun
     discovery.teardown()
   })
 })
+
+describe("createShadowScopeDiscovery — onDiscovered (SF-OB, #1270)", () => {
+  it("tags an explicit discover() sweep's own finds as census", () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    host.attachShadow({ mode: "open" })
+
+    const reg = registry()
+    const found: Array<{ id: string; method: string }> = []
+    const discovery = createShadowScopeDiscovery(
+      reg,
+      () => 0,
+      undefined,
+      (id, method) => found.push({ id, method })
+    )
+    discovery.discover(document)
+
+    expect(found).toEqual([{ id: reg.ids()[0], method: "census" }])
+  })
+
+  it("a nested root found during the same registration pass inherits its parent's census method", () => {
+    const outerHost = document.createElement("div")
+    document.body.appendChild(outerHost)
+    const outerShadow = outerHost.attachShadow({ mode: "open" })
+    const innerHost = document.createElement("div")
+    outerShadow.appendChild(innerHost)
+    innerHost.attachShadow({ mode: "open" })
+
+    const reg = registry()
+    const found: Array<{ id: string; method: string }> = []
+    const discovery = createShadowScopeDiscovery(
+      reg,
+      () => 0,
+      undefined,
+      (id, method) => found.push({ id, method })
+    )
+    discovery.discover(document)
+
+    expect(found).toHaveLength(2)
+    expect(found.every((f) => f.method === "census")).toBe(true)
+  })
+
+  it("tags a reactive top-level MutationObserver find as reactive, not census", async () => {
+    const reg = registry()
+    const found: Array<{ id: string; method: string }> = []
+    const discovery = createShadowScopeDiscovery(
+      reg,
+      () => 0,
+      undefined,
+      (id, method) => found.push({ id, method })
+    )
+    discovery.observe()
+
+    const host = document.createElement("div")
+    host.attachShadow({ mode: "open" })
+    document.body.appendChild(host)
+    await flushMicrotasks()
+
+    expect(found).toEqual([{ id: reg.ids()[0], method: "reactive" }])
+    discovery.teardown()
+  })
+
+  it("tags a mutation-triggered nested find inside an already-registered root as reactive", async () => {
+    const outerHost = document.createElement("div")
+    document.body.appendChild(outerHost)
+    const outerShadow = outerHost.attachShadow({ mode: "open" })
+
+    const reg = registry()
+    const found: Array<{ id: string; method: string }> = []
+    const discovery = createShadowScopeDiscovery(
+      reg,
+      () => 0,
+      undefined,
+      (id, method) => found.push({ id, method })
+    )
+    discovery.discover(document)
+    const outerId = reg.ids()[0]
+    expect(outerId).toBeDefined()
+    expect(found).toEqual([{ id: outerId, method: "census" }])
+    found.length = 0
+
+    const innerHost = document.createElement("div")
+    outerShadow.appendChild(innerHost)
+    innerHost.attachShadow({ mode: "open" })
+    await flushMicrotasks()
+
+    const innerId = reg.ids().find((id) => id !== outerId)
+    expect(innerId).toBeDefined()
+    expect(found).toEqual([{ id: innerId, method: "reactive" }])
+    discovery.teardown()
+  })
+
+  it("tags a periodic-poll find as reactive (SS_poll, canon §3.2 — never a census sweep)", async () => {
+    vi.useFakeTimers()
+    try {
+      const reg = registry()
+      const found: Array<{ id: string; method: string }> = []
+      const discovery = createShadowScopeDiscovery(
+        reg,
+        () => 0,
+        undefined,
+        (id, method) => found.push({ id, method })
+      )
+      discovery.observe()
+
+      const host = document.createElement("div")
+      document.body.appendChild(host)
+      await Promise.resolve()
+      await Promise.resolve()
+      const shadow = host.attachShadow({ mode: "open" })
+      shadow.appendChild(document.createElement("div"))
+
+      vi.advanceTimersByTime(DISCOVERY_POLL_MS)
+
+      expect(found).toEqual([{ id: reg.ids()[0], method: "reactive" }])
+      discovery.teardown()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("is optional — omitting it changes nothing about discovery/custody itself", () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    host.attachShadow({ mode: "open" })
+
+    const reg = registry()
+    const discovery = createShadowScopeDiscovery(reg, () => 0)
+    expect(() => discovery.discover(document)).not.toThrow()
+    expect(reg.ids()).toHaveLength(1)
+  })
+})

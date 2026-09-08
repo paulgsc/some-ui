@@ -1,11 +1,14 @@
 import {
   createDocumentScopeCustodian,
+  type DocumentExonerationProof,
+  type DocumentRevision,
   type DocumentScopeCustodian,
 } from "@filter/adapter/document-scope"
 import {
   createContentSession,
   type ContentSession,
 } from "@filter/adapter/pipeline"
+import { createScopeRegistry } from "@filter/adapter/scope-registry"
 import {
   createShadowScopeDiscovery,
   type ShadowScopeDiscovery,
@@ -23,7 +26,9 @@ import {
 } from "@filter/lib/content/coverage-observability"
 import {
   createCoverageWatchdog,
+  createScopeCoverageWatchdog,
   type CoverageWatchdog,
+  type ScopeCoverageWatchdog,
 } from "@filter/lib/content/coverage-watchdog"
 import {
   isExtensionMessage,
@@ -94,6 +99,61 @@ let navigatingAway = false
 const sessionLifecycle = createSessionLifecycle()
 let contentSession: ContentSession | null = null
 
+// `crypto.randomUUID()` requires a secure context; a content script runs in
+// the page's own origin, so on plain http:// pages it is undefined and
+// throws here — before bootInit()'s try/catch ever runs. getRandomValues()
+// carries no such restriction, so build a v4 UUID from that instead.
+function safeRandomUUID(): string {
+  if (typeof crypto.randomUUID === "function") return crypto.randomUUID()
+  const bytes = crypto.getRandomValues(new Uint8Array(16))
+  bytes[6] = ((bytes[6] ?? 0) & 0x0f) | 0x40
+  bytes[8] = ((bytes[8] ?? 0) & 0x3f) | 0x80
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+}
+
+// ── Coverage observability ───────────────────────────────────────────────────
+//
+// One recorder per content-script instance (see coverage-observability.ts's
+// header for why: a shared cross-tab storage key would race). The watchdog
+// re-reads the live DOM on every mutation that could touch the veil, the
+// dark-theme attribute, or the legacy filter's attribute/<style> pair, and
+// evaluates coverage-observability.ts's invariants against what it actually
+// finds — not against what this module believes it last did.
+//
+// Constructed *before* the document scope below (SF-OB, #1270): the scope
+// registry's own transition observer (`scopeCoverageWatchdog.registryObserver`)
+// has to exist before `createScopeRegistry()` does, since that hook is a
+// construction-time parameter, not something wired in afterward.
+const observabilitySessionId = safeRandomUUID()
+const observabilityRecorder: CoverageRecorder = createCoverageRecorder(
+  observabilitySessionId,
+  true
+)
+
+// Quantifies coverage over every live scope in the registry below, not just
+// the document (SF-OB, #1270) — see coverage-watchdog.ts's own header for
+// why this is a second, independent watchdog rather than folded into
+// coverageWatchdog. registryObserver/onDiscovered are wired into
+// scopeRegistry/shadowScopeDiscovery at construction time immediately below;
+// observe()/teardown() are called alongside shadowScopeDiscovery's own
+// lifecycle further down, since scope coverage has nothing to observe
+// outside auto mode either (same reasoning as shadowScopeDiscovery's own).
+const scopeCoverageWatchdog: ScopeCoverageWatchdog<
+  DocumentRevision,
+  DocumentExonerationProof
+> = createScopeCoverageWatchdog(observabilityRecorder)
+
+// The scope registry (SF-RG, #1265) shared by the document scope and every
+// discovered shadow scope — constructed explicitly (rather than relying on
+// createDocumentScopeCustodian()'s own default) so scopeCoverageWatchdog's
+// observer can be wired in from the start, not attached after scopes may
+// already have registered.
+const scopeRegistry = createScopeRegistry<
+  DocumentRevision,
+  DocumentExonerationProof
+>(scopeCoverageWatchdog.registryObserver)
+
 // The document — rendering scope r_0 (Definition D.4) — as SF-RG's registry
 // (#1265) sees it. Registered once, unconditionally, in init() below,
 // before any tab-state decision runs: prepaint-start.js's veil already
@@ -103,7 +163,8 @@ let contentSession: ContentSession | null = null
 // yt-navigate-start and the coverage watchdog's repair call reengage() when
 // they touch the physical veil directly — see document-scope.ts's own
 // header for why legacy/off's own veil calls stay untouched regardless.
-const documentScope: DocumentScopeCustodian = createDocumentScopeCustodian()
+const documentScope: DocumentScopeCustodian =
+  createDocumentScopeCustodian(scopeRegistry)
 
 // Projects the real dark adapter into each discovered shadow scope (SF-AD,
 // #1268) — the scan()/decide()/tag-surface + adopted-stylesheet realization
@@ -132,38 +193,14 @@ const shadowScopeTheming: ShadowScopeTheming = createShadowScopeTheming(
 // the life of this content script. onScopeReady wires SF-AD's own
 // per-scope projection into SF-DC's discovery/custody: a scope reaches
 // COMMITTED/EXONERATED_NATIVE only because this callback drives it there.
+// onDiscovered wires SF-OB's own census-vs-reactive discovery accounting.
 const shadowScopeDiscovery: ShadowScopeDiscovery = createShadowScopeDiscovery(
   documentScope.registry,
   () => sessionLifecycle.epoch,
-  (id) => shadowScopeTheming.project(id)
+  (id) => shadowScopeTheming.project(id),
+  (id, method) => scopeCoverageWatchdog.onDiscovered(id, method)
 )
 
-// `crypto.randomUUID()` requires a secure context; a content script runs in
-// the page's own origin, so on plain http:// pages it is undefined and
-// throws here — before bootInit()'s try/catch ever runs. getRandomValues()
-// carries no such restriction, so build a v4 UUID from that instead.
-function safeRandomUUID(): string {
-  if (typeof crypto.randomUUID === "function") return crypto.randomUUID()
-  const bytes = crypto.getRandomValues(new Uint8Array(16))
-  bytes[6] = ((bytes[6] ?? 0) & 0x0f) | 0x40
-  bytes[8] = ((bytes[8] ?? 0) & 0x3f) | 0x80
-  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
-}
-
-// ── Coverage observability ───────────────────────────────────────────────────
-//
-// One recorder per content-script instance (see coverage-observability.ts's
-// header for why: a shared cross-tab storage key would race). The watchdog
-// re-reads the live DOM on every mutation that could touch the veil, the
-// dark-theme attribute, or the legacy filter's attribute/<style> pair, and
-// evaluates coverage-observability.ts's invariants against what it actually
-// finds — not against what this module believes it last did.
-const observabilitySessionId = safeRandomUUID()
-const observabilityRecorder: CoverageRecorder = createCoverageRecorder(
-  observabilitySessionId,
-  true
-)
 const coverageWatchdog: CoverageWatchdog = createCoverageWatchdog(
   observabilityRecorder,
   () => currentState,
@@ -218,6 +255,31 @@ function applyState(state: TabState): void {
   // to do unconditionally, not just when leaving auto — legacy/off do not
   // need shadow-scope custody at all (see this module's own header).
   shadowScopeDiscovery.teardown()
+  // Same lifecycle as shadowScopeDiscovery: nothing to poll outside auto
+  // mode either (SF-OB, #1270). One last check() here, before teardown()
+  // stops the poll and clears its own tracking, publishes the registry's
+  // post-purge state — bot-found (#1327's own review, round 3): without it,
+  // leaving auto with a shadow scope COMMITTED left the persisted "scopes"
+  // snapshot (and debug.html's "Live scopes" table) showing that
+  // already-purged scope indefinitely, since nothing ever checks again
+  // outside auto mode to notice shadowScopeDiscovery.teardown() already
+  // retired and purged it from the registry.
+  //
+  // Gated on `previous === "auto"` — bot-found (#1327's own review, round
+  // 4): shadowScopeDiscovery only ever discovers/observes from inside
+  // runAutoTheme(), so its teardown() here is already a no-op whenever the
+  // previous mode wasn't auto, and r_0's own registry entry (still whatever
+  // auto last left it, HELD or COMMITTED) is stale by then — a prior
+  // legacy/off transition's own restoreVendor() already stripped that
+  // artifact without ever updating the registry to say so. Checking it
+  // anyway recorded a permanent false scope.coverage_violated on every
+  // non-auto-to-non-auto transition, one this same call's following
+  // teardown() then made unrecoverable by wiping the tracking that would
+  // have recorded the eventual recovery.
+  if (previous === "auto") {
+    scopeCoverageWatchdog.check(documentScope.registry, "apply-state:teardown")
+  }
+  scopeCoverageWatchdog.teardown()
 
   restoreVendor()
 
@@ -227,6 +289,7 @@ function applyState(state: TabState): void {
     // once the first decide/realize cycle actually settles.
     runAutoTheme()
     coverageWatchdog.check("apply-state:auto")
+    scopeCoverageWatchdog.check(documentScope.registry, "apply-state:auto")
     return
   }
 
@@ -344,6 +407,7 @@ function runAutoTheme(): void {
   // debounced coalescer).
   shadowScopeDiscovery.discover(document)
   shadowScopeDiscovery.observe()
+  scopeCoverageWatchdog.observe(documentScope.registry)
 
   // Apply-then-detect, now folded into decide() (S3): the pipeline scans
   // true vendor colors under the veil, feeds them to the Estimator, and
@@ -517,6 +581,7 @@ function init(): void {
       shadowScopeDiscovery.discover(document)
       contentSession?.rescan()
       coverageWatchdog.check("nav-finish:auto")
+      scopeCoverageWatchdog.check(documentScope.registry, "nav-finish:auto")
       return
     }
 
@@ -537,6 +602,16 @@ function init(): void {
   // signal available from a content script.
   window.addEventListener("pagehide", () => {
     coverageWatchdog.teardown()
+    // Bot-found (#1327's own review, round 3): a pagehide that places the
+    // document in the back-forward cache does not destroy this content
+    // script's context — the 250ms scope-coverage poll below survives it
+    // and, with observabilityRecorder already disposed a statement below,
+    // would keep walking and stringifying the entire scope registry every
+    // tick forever with every recording call silently ignored. Stopping it
+    // here mirrors coverageWatchdog.teardown() immediately above; restarting
+    // either watchdog on a bfcache pageshow is out of scope for this story
+    // (both watchdogs, not just this one, would need it).
+    scopeCoverageWatchdog.teardown()
     void observabilityRecorder.dispose()
     void removeFromIndex(observabilitySessionId)
   })

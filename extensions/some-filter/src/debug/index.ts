@@ -28,7 +28,9 @@ import {
   sessionStorageKey,
   type CoverageContext,
   type IndexEntry,
+  type ScopeCoverageEntry,
 } from "@filter/lib/content/coverage-observability"
+import type { ScopeCoverageSnapshot } from "@filter/lib/content/coverage-watchdog"
 import { ext } from "@filter/platform/content"
 import {
   runInvariants,
@@ -335,6 +337,106 @@ function stateSection(b: Bundle): HTMLElement {
   return section
 }
 
+// SF-OB (#1270): a dedicated per-scope breakdown, alongside the existing
+// per-check list above — the generic stateSection below would otherwise
+// flatten this into one unreadable compact() line, the same way it already
+// does for "coverage".
+
+function isScopeCoverageEntry(value: unknown): value is ScopeCoverageEntry {
+  if (value === null || typeof value !== "object") return false
+  return (
+    typeof Reflect.get(value, "id") === "string" &&
+    typeof Reflect.get(value, "kind") === "string"
+  )
+}
+
+function isScopeCoverageSnapshot(
+  value: unknown
+): value is ScopeCoverageSnapshot {
+  if (value === null || typeof value !== "object") return false
+  const scopes = Reflect.get(value, "scopes")
+  return (
+    typeof Reflect.get(value, "now") === "number" &&
+    typeof Reflect.get(value, "totalScopes") === "number" &&
+    Reflect.get(value, "byState") !== null &&
+    typeof Reflect.get(value, "byState") === "object" &&
+    Array.isArray(scopes) &&
+    scopes.every(isScopeCoverageEntry)
+  )
+}
+
+function scopesSection(b: Bundle): HTMLElement | undefined {
+  const raw = b.snapshots["scopes"]
+  if (!isScopeCoverageSnapshot(raw)) return undefined
+
+  const byState = el("div", { class: "sf-grid" })
+  for (const [kind, count] of Object.entries(raw.byState)) {
+    const row = el("div", { class: "sf-metric" })
+    row.append(
+      el("span", { class: "k", text: kind }),
+      el("span", {
+        class: kind === "DISCOVERED_UNHELD" && count > 0 ? "bad" : "",
+        text: String(count),
+      })
+    )
+    byState.appendChild(row)
+  }
+
+  const table = el("table", { class: "sf-scopes" })
+  const head = el("tr")
+  for (const label of ["id", "state", "parent", "artifact"]) {
+    head.appendChild(el("th", { text: label }))
+  }
+  table.appendChild(el("thead", {}, [head]))
+
+  const body = el("tbody")
+  for (const scope of raw.scopes) {
+    const row = el("tr")
+    const artifactText =
+      scope.artifactPresent === null ? "—" : scope.artifactPresent ? "✓" : "✕"
+    row.append(
+      el("td", { text: scope.id }),
+      el("td", { text: scope.kind }),
+      el("td", { class: "muted", text: scope.parent ?? "(root)" }),
+      el("td", {
+        class: scope.artifactPresent === false ? "bad" : "muted",
+        text: artifactText,
+      })
+    )
+    body.appendChild(row)
+  }
+  table.appendChild(body)
+
+  const section = el("section")
+  section.append(
+    el("h2", { text: "Live scopes" }),
+    el("div", {
+      class: "sf-sub",
+      text: `${raw.totalScopes} registered scope(s), as of ${clockTime(raw.now)} (SF-RG's registry, quantified per SF-OB).`,
+    }),
+    byState
+  )
+  if (raw.scopes.length === 0) {
+    section.appendChild(
+      el("div", {
+        class: "sf-empty",
+        text: "No scopes registered — the document itself registers only once auto mode starts.",
+      })
+    )
+  } else {
+    section.appendChild(el("div", { class: "sf-scroll" }, [table]))
+  }
+  if (raw.truncated === true) {
+    section.appendChild(
+      el("div", {
+        class: "sf-sub",
+        text: `Showing ${raw.scopes.length} of ${raw.totalScopes} scopes — byState above still counts every one; itemizing more here would exceed this snapshot's own size budget.`,
+      })
+    )
+  }
+  return section
+}
+
 function matches(event: ObservabilityEvent, f: Filter): boolean {
   if (f.kind && !event.kind.startsWith(f.kind)) return false
   if (f.subject && String(event.subject ?? "") !== f.subject) return false
@@ -488,9 +590,10 @@ async function render(): Promise<void> {
     return
   }
 
+  root.append(healthSection(health), metricsSection(bundle))
+  const scopes = scopesSection(bundle)
+  if (scopes !== undefined) root.appendChild(scopes)
   root.append(
-    healthSection(health),
-    metricsSection(bundle),
     stateSection(bundle),
     timelineSection(bundle, () => void render())
   )
