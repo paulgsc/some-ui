@@ -202,21 +202,52 @@ export type RoundProbe = {
  * says is the real prerequisite for a sound check; wiring that check
  * against it is `#1284`'s own remaining work, not this story's.
  *
+ * # Retired propositions cannot be the answer
+ *
+ * `PropositionIdSchema` (`types/round.ts`) accepts a retired id, by design:
+ * Rem. 7.1/7.2's amendment protocol keeps a retired entry resolvable so
+ * existing citations authored before the retirement keep working, rather
+ * than turning a past amendment into a raft of newly-dangling references.
+ * That is a fact about *citation resolution*, not about what a fresh card
+ * may teach — a retired proposition is "no longer taught" (Rem. 7.3
+ * exemptions it from `checkRegisterCoverage`'s own instantiation
+ * requirement for exactly this reason), so posing one as a live
+ * discrimination card's *answer* would contradict the same reasoning
+ * `propositionPoolOf` already applies to the distractor side (review
+ * finding on this PR, chatgpt-codex-connector: an earlier draft filtered
+ * retired entries out of the distractor pool but not out of the answer
+ * path, which bypassed that filter entirely via a raw register lookup).
+ * `register` is a parameter, not always the live `PROPOSITION_REGISTER`,
+ * purely so a test can exercise this against a synthetic retired entry —
+ * the real register has no retired entries as of this story.
+ *
  * # Totality
  *
- * Total for every `DiffSetMember` a schema-valid `DiffSet` can contain:
- * `selectedDiff.propositionId` always resolves against the register
- * (`PropositionIdSchema`, `types/round.ts`), and `propositionPoolOf`
- * always has at least the answer itself to fall back to, mirroring
- * `claimOf`'s own totality property for the step surface.
+ * Total for every `DiffSetMember` whose `propositionId` names an *active*
+ * register entry — `selectedDiff.propositionId` always resolves against
+ * the register at all (`PropositionIdSchema`, `types/round.ts`), and
+ * `propositionPoolOf` always has at least the answer itself to fall back
+ * to, mirroring `claimOf`'s own totality property for the step surface.
+ * A retired answer is the one input this function deliberately refuses
+ * rather than degrades through, per the section above.
  */
 export function roundProbeOf(
   selectedDiff: DiffSetMember,
   seed: number,
   optionCount: number = READING_OPTION_COUNT,
-  pool: ReadonlyArray<PropositionOption> = propositionPoolOf()
+  pool: ReadonlyArray<PropositionOption> = propositionPoolOf(),
+  register: Readonly<
+    Record<PropositionId, PropositionRegisterEntry>
+  > = PROPOSITION_REGISTER
 ): RoundProbe {
   const answerId = selectedDiff.propositionId
+  const answerEntry = register[answerId]
+  if (answerEntry.status !== "active") {
+    throw new Error(
+      `roundProbeOf: "${answerId}" (${answerEntry.title}) is retired — Rem. 7.1/7.3: still a real citation, but the register no longer teaches it, so it cannot be a live card's answer.`
+    )
+  }
+
   const candidates = pool.filter((option) => option.id !== answerId)
 
   const distractors = shuffledBySeed(candidates, seed).slice(
@@ -224,7 +255,7 @@ export function roundProbeOf(
     Math.max(optionCount - 1, 0)
   )
 
-  const answerOption = propositionOptionOf(PROPOSITION_REGISTER[answerId])
+  const answerOption = propositionOptionOf(answerEntry)
   const options = shuffledBySeed(
     [answerOption, ...distractors],
     seed ^ 0x27d4eb2f

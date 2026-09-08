@@ -128,4 +128,28 @@ describe("roundProbeOf", () => {
       )
     }
   })
+
+  // PropositionIdSchema legitimately accepts a retired id (Rem. 7.1/7.2's
+  // amendment protocol keeps old citations resolving) — but a live card's
+  // *answer* is a different claim than "this citation still resolves,"
+  // and propositionPoolOf already refuses to offer a retired entry as a
+  // distractor. The real register has no retired entries yet, so this
+  // exercises a synthetic one (review finding on this PR: an earlier draft
+  // built the answer straight from the register, bypassing that same
+  // active-only reasoning entirely).
+  it("refuses to answer with a retired proposition, even though it still resolves as a citation", () => {
+    const retiredRegister = {
+      ...PROPOSITION_REGISTER,
+      "CW-P1": { ...PROPOSITION_REGISTER["CW-P1"], status: "retired" as const },
+    }
+    expect(() =>
+      roundProbeOf(
+        memberOf("CW-P1", "a"),
+        1,
+        READING_OPTION_COUNT,
+        propositionPoolOf(),
+        retiredRegister
+      )
+    ).toThrow(/retired/)
+  })
 })
