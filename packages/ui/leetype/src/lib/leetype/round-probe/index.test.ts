@@ -1,4 +1,3 @@
-import { isPropositionId } from "@leetype/lib/leetype/proposition-register/classification"
 import { PROPOSITION_REGISTER } from "@leetype/lib/leetype/proposition-register/generated"
 import type { PropositionId } from "@leetype/lib/leetype/proposition-register/generated"
 import { READING_OPTION_COUNT } from "@leetype/lib/leetype/reading-probe"
@@ -6,7 +5,6 @@ import type { DiffHunk } from "@leetype/types/exercise"
 import type { DiffSetMember } from "@leetype/types/round"
 import { describe, expect, it } from "vitest"
 
-import type { PropositionOption } from "./index"
 import { propositionPoolOf, roundProbeOf } from "./index"
 
 /** A minimal, schema-shaped hunk — its content is never read by anything under test. */
@@ -35,8 +33,9 @@ function memberOf(
       }
 }
 
-const ACTIVE_IDS: ReadonlyArray<PropositionId> =
-  Object.keys(PROPOSITION_REGISTER).filter(isPropositionId)
+const ACTIVE_IDS: ReadonlyArray<PropositionId> = propositionPoolOf().map(
+  (option) => option.id
+)
 
 describe("propositionPoolOf", () => {
   it("is every active register entry, and only active ones", () => {
@@ -99,19 +98,22 @@ describe("roundProbeOf", () => {
     expect(new Set(seeds).size).toBeGreaterThan(1)
   })
 
-  // CW-P13 (substitution) against a hand-picked pool: CW-P7 shares its
-  // family, CW-P9 (loop) does not — real register data, restricted via
-  // `pool`, isolates the one tier this function ranks by.
-  it("prefers a same-family distractor over a different-family one, every seed", () => {
-    const pool: ReadonlyArray<PropositionOption> = (
-      ["CW-P7", "CW-P9"] as const
-    ).map((id) => ({ id, text: PROPOSITION_REGISTER[id].title }))
+  // No preference ranking exists (see round-probe/index.ts's own doc
+  // comment, "No preference ranking," for why): a restricted pool proves
+  // distractors are drawn from exactly the candidates handed in, nothing
+  // more and nothing preferred among them.
+  it("draws distractors only from the pool handed in", () => {
+    const pool = (["CW-P7", "CW-P9"] as const).map((id) => ({
+      id,
+      text: PROPOSITION_REGISTER[id].title,
+    }))
 
     for (const seed of [1, 2, 3, 4, 5]) {
-      const probe = roundProbeOf(memberOf("CW-P13", "a"), seed, 2, pool)
-      const ids = probe.options.map((option) => option.id)
-      expect(ids).toContain("CW-P7")
-      expect(ids).not.toContain("CW-P9")
+      const probe = roundProbeOf(memberOf("CW-P13", "a"), seed, 3, pool)
+      const distractorIds = probe.options
+        .map((option) => option.id)
+        .filter((id) => id !== "CW-P13")
+      expect(distractorIds.sort()).toEqual(["CW-P7", "CW-P9"])
     }
   })
 

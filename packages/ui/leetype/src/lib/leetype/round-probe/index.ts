@@ -1,8 +1,4 @@
 import { shuffledBySeed } from "@leetype/lib/leetype/deterministic-random"
-import {
-  isPropositionId,
-  PROPOSITION_CLASSIFICATION,
-} from "@leetype/lib/leetype/proposition-register/classification"
 import type { PropositionId } from "@leetype/lib/leetype/proposition-register/generated"
 import { PROPOSITION_REGISTER } from "@leetype/lib/leetype/proposition-register/generated"
 import type { PropositionRegisterEntry } from "@leetype/lib/leetype/proposition-register/parse-canon"
@@ -30,10 +26,12 @@ import type { DiffSetMember } from "@leetype/types/round"
  * pool is `P`, the proposition register itself (Rem. 6.2): sentences that
  * are true generally, in the register, independent of any one round.
  * That is the entire generalization the issue asks for — "the option pool
- * becomes register propositions instead of other steps' claims" — and it
- * is why this module owns its own ranking rather than importing
- * `readingProbeOf`'s: a claim's rank keys off `family`/`concepts`, fields a
- * `Claim` carries and a `PropositionRegisterEntry` does not.
+ * becomes register propositions instead of other steps' claims" — and the
+ * epic's own acceptance criterion for this story (`#1236`, Step 5, B2):
+ * "two rounds sharing a CW-P proposition offer the same option pool, drawn
+ * from the register." Both hold regardless of how distractors within that
+ * pool are ordered — see "No preference ranking" below for why none is
+ * implemented.
  *
  * # The answer is μ(d) of the *selected* diff, not always the admissible one
  *
@@ -50,6 +48,51 @@ import type { DiffSetMember } from "@leetype/types/round"
  * `propositionId` is a different, equally real proposition (review
  * finding on this PR, chatgpt-codex-connector) — fixed by taking the
  * member directly instead of deriving one from a whole `DiffSet`.
+ *
+ * # No preference ranking
+ *
+ * Rem. 6.2 names two preferences for choosing distractors ahead of seed
+ * order: a shared input dimension, then a shared structural family. Two
+ * straight review rounds on this PR (chatgpt-codex-connector) showed both
+ * unsound as a static, register-level table:
+ *
+ * - *Dimension*: a proposition's canon statement is a general claim over
+ *   its own locally-scoped variables (Prop. 7.1's `G_1, ..., G_m`, Prop.
+ *   7.2's `r`) — most name no dimension letter at all, and two
+ *   propositions' incidental reuse of a letter (`CW-P1` and `CW-P2`, the
+ *   review's own example, don't even do that) is not "sharing a
+ *   dimension." What Rem. 6.2 means is a dimension a proposition is
+ *   *instantiated at in a given round* — round-level data this function
+ *   never sees and the corpus does not yet index by proposition. Filed
+ *   `#1331` (sub-issue of `#1219`).
+ * - *Structural family*: a first attempt classified each proposition as
+ *   `"seq"`, `"loop"`, or a catch-all `"substitution"` bucket. Round 2's
+ *   review caught that this forced three-way split does not track Def.
+ *   2.1's actual grammar: `CW-P10` ("amortization is a claim about a
+ *   sequence") was filed under `"seq"`, but Def. 2.1's `Seq` is
+ *   *sibling control-flow composition within one cost graph* — an
+ *   unrelated sense of "sequence" from a temporal series of separate
+ *   operation invocations. More broadly, most register entries (bound
+ *   changes, algorithmic trade-offs, expected-vs-worst-case behaviour,
+ *   independence from every bound) are not themselves instances of `W(c)`,
+ *   `Seq`, or `Loop` at all — they are theorems *about* cost graphs
+ *   built from that grammar, or claims outside it entirely (Prop. 7.15
+ *   says outright that `Loop` does not even model recursion). Forcing
+ *   every entry into one of three buckets to get a ranking signal, rather
+ *   than deriving that signal from real structural kinship, is exactly
+ *   the "matching hand-chosen notation" the review named. Filed `#1332`
+ *   (sub-issue of `#1219`); `lib/leetype/proposition-register/
+ *   classification.ts` (and its coverage-gap check) was removed rather
+ *   than narrowed a second time, the same call R5 (`#1208`) made on
+ *   `checkDiscriminability` after two straight unsound narrowings of its
+ *   own — see that story's own PR for the precedent.
+ *
+ * Distractors are therefore chosen uniformly at random (seeded) from the
+ * pool. This still satisfies the epic's own literal acceptance criterion
+ * above — pool membership and selection are a function of the register
+ * and the seed, never of any per-round data — and leaves both real
+ * preferences for whichever future story builds the structure they
+ * actually need.
  *
  * # No `justification` field
  *
@@ -82,6 +125,10 @@ import type { DiffSetMember } from "@leetype/types/round"
 export type PropositionOption = {
   id: PropositionId
   text: string
+}
+
+function isPropositionId(value: string): value is PropositionId {
+  return Object.hasOwn(PROPOSITION_REGISTER, value)
 }
 
 function propositionOptionOf(
@@ -138,33 +185,12 @@ export type RoundProbe = {
  * that it was always the admissible member was wrong). `pool` defaults to
  * the whole live register (`propositionPoolOf()` — "the option pool is
  * the register" is B2's own acceptance criterion) and is only ever
- * overridden by a test that wants a small, controlled candidate set to
- * isolate the preference order below, the same reason `readingProbeOf`
- * takes `pool` as a parameter rather than reading a module-level constant.
+ * overridden by a test that wants a small, controlled candidate set.
  *
- * # Preference ordering — stated in full, per this package's own bar
- *
- * A distractor is *another register proposition*, preferring one sharing
- * `μ(d)`'s own structural family (Def. 2.1's grammar —
- * `lib/leetype/proposition-register/classification.ts`), then seed order.
- *
- * Rem. 6.2 also names a *shared input dimension* as a preference ahead of
- * family. This function does not implement that half: a proposition's
- * canon statement is a general claim over its own locally-scoped
- * variables (Prop. 7.1's `G_1, ..., G_m`, Prop. 7.2's `r` — most entries
- * name no dimension letter at all), and treating two propositions'
- * incidental reuse of the same letter as "the same dimension" is unsound
- * (review finding on this PR, chatgpt-codex-connector — an earlier
- * version of this table did exactly that, including for two propositions,
- * CW-P1 and CW-P2, whose own canon statements name no dimension at all).
- * What Rem. 6.2 actually needs is which dimension a proposition is
- * *instantiated at in a given round's own constraint set* — data that
- * lives on `RoundCorpusEntry.constraints` (a round-level field this
- * function, which only ever sees one `DiffSetMember`, has no access to)
- * and that still would not answer the question for a *candidate*
- * distractor proposition unless some other round in the corpus happens to
- * instantiate it too. No structure in this workspace tracks that
- * cross-round relationship yet. Filed as `#1331` (sub-issue of `#1219`).
+ * Distractors are a uniform seeded sample of the pool minus the answer —
+ * see this module's own doc comment, "No preference ranking," for why
+ * Rem. 6.2's two named preferences (shared dimension, shared structural
+ * family) are not implemented here.
  *
  * # Prop. 6.1 is not checked here
  *
@@ -191,21 +217,12 @@ export function roundProbeOf(
   pool: ReadonlyArray<PropositionOption> = propositionPoolOf()
 ): RoundProbe {
   const answerId = selectedDiff.propositionId
-  const answerFamily = PROPOSITION_CLASSIFICATION[answerId].family
-
   const candidates = pool.filter((option) => option.id !== answerId)
 
-  const sharesFamily = (option: PropositionOption): boolean =>
-    PROPOSITION_CLASSIFICATION[option.id].family === answerFamily
-
-  const rank = (option: PropositionOption): number =>
-    sharesFamily(option) ? 0 : 1
-
-  const distractors = shuffledBySeed(candidates, seed)
-    .map((option, index) => ({ option, index }))
-    .sort((a, b) => rank(a.option) - rank(b.option) || a.index - b.index)
-    .slice(0, Math.max(optionCount - 1, 0))
-    .map((entry) => entry.option)
+  const distractors = shuffledBySeed(candidates, seed).slice(
+    0,
+    Math.max(optionCount - 1, 0)
+  )
 
   const answerOption = propositionOptionOf(PROPOSITION_REGISTER[answerId])
   const options = shuffledBySeed(
