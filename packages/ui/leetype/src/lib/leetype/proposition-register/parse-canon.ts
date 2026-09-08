@@ -185,20 +185,28 @@ function renderMathSpan(innerContent: string): string {
  * before backticks/emphasis are unwrapped (neither appears inside this
  * canon's own math spans today, but scoping the substitution to each
  * span's own capture group, rather than the whole string, keeps it that
- * way regardless). The backslash-unescape runs last and is deliberately
- * narrow: it turns `\[`/`\]` (the case `bodyOfBracketBlock` above already
- * has to recognize for bracket depth) back into a literal bracket. It is
- * not a general typst-escape resolver — an escaped `` \` ``/`\*`/`\$`
- * would still be read by the steps above as a real delimiter, since none
- * of canon §7's bodies do that today and handling it soundly needs
- * resolving escapes before, not after, those steps run (a masking pass,
- * not a plain sequential replace) — real complexity this display-text
- * cleanup shouldn't take on speculatively.
+ * way regardless). The backtick unwrap is run-length-aware for the same
+ * reason `bodyOfBracketBlock` above is (review finding on this PR,
+ * chatgpt-codex-connector): a raw span's opening and closing delimiters
+ * are *some* run of backticks of matching length, not always exactly one,
+ * and a regex that only strips a single pair leaves the outer backticks of
+ * a `` ``two-backtick`` `` span visible. `(`+)([\s\S]+?)\1` — a
+ * backreference to whatever length the opening run actually was — is what
+ * makes that symmetric with the extraction side instead of drifting from
+ * it again. The backslash-unescape runs last and is deliberately narrow:
+ * it turns `\[`/`\]` (the case `bodyOfBracketBlock` above already has to
+ * recognize for bracket depth) back into a literal bracket. It is not a
+ * general typst-escape resolver — an escaped `` \` ``/`\*`/`\$` would
+ * still be read by the steps above as a real delimiter, since none of
+ * canon §7's bodies do that today and handling it soundly needs resolving
+ * escapes before, not after, those steps run (a masking pass, not a plain
+ * sequential replace) — real complexity this display-text cleanup
+ * shouldn't take on speculatively.
  */
 function renderInlineMarkup(text: string): string {
   return text
     .replace(/\$([^$]*)\$/g, (_match, inner: string) => renderMathSpan(inner))
-    .replace(/`([^`]+)`/g, "$1")
+    .replace(/(`+)([\s\S]+?)\1/g, "$2")
     .replace(/\*([^*]+)\*/g, "$1")
     .replace(/---/g, "—")
     .replace(/\\([[\]])/g, "$1")

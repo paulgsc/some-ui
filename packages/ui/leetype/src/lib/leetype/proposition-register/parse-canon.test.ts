@@ -192,6 +192,24 @@ describe("parsePropositionRegister", () => {
         "Bounded by Θ(n^2) in the worst case, provided T_A (C) ≤ B."
       )
     })
+
+    // Review finding, round 2 (chatgpt-codex-connector): `bodyOfBracketBlock`
+    // already recognizes a raw span's delimiter as a run of backticks of
+    // arbitrary length, but the first cut of this unwrap only stripped a
+    // single pair — a double-backtick span left one backtick visible on
+    // each side (`` ``foo`` `` became `` `foo` ``, not `foo`). Fixed to
+    // match the same run-length rule on both sides.
+    it("unwraps a multi-backtick raw span, not just a single pair", () => {
+      const source =
+        `= The proposition register\n\n` +
+        `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
+        "  A double-backtick span like ``foo`` renders clean.\n" +
+        `]\n`
+
+      expect(parsePropositionRegister(source)[0]?.statement).toBe(
+        "A double-backtick span like foo renders clean."
+      )
+    })
   })
 
   it("throws on a gap in the CW-P sequence", () => {
