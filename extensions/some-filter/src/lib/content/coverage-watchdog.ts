@@ -399,6 +399,30 @@ export type ScopeCoverageSnapshot = {
   readonly truncated?: boolean
 }
 
+/**
+ * Selects which `MAX_SNAPSHOT_SCOPE_ENTRIES` scopes survive truncation —
+ * bot-found (#1327's own closing review): a plain `slice(0, limit)` always
+ * keeps the *oldest*-discovered entries, so on a page registering more
+ * scopes than the cap, a violation on scope 101+ never appears in the
+ * persisted "Live scopes" table at all — `checkArtifactCoverage` (which
+ * runs against the full, untruncated `scopes` array) still fires the real
+ * `scope.coverage_violated` event and increments `scope_coverage_violations`
+ * correctly, but a human reading `debug.html` would see only healthy rows
+ * and have no way to find the one that actually broke. Every scope with
+ * `artifactPresent === false` is reserved a slot first (in their original
+ * relative order); the remainder is filled with whatever's left, oldest
+ * first — the same ordering `slice(0, limit)` alone produced when nothing
+ * is violating.
+ */
+function prioritizeViolations(
+  scopes: ReadonlyArray<ScopeCoverageEntry>,
+  limit: number
+): Array<ScopeCoverageEntry> {
+  const violating = scopes.filter((s) => s.artifactPresent === false)
+  const healthy = scopes.filter((s) => s.artifactPresent !== false)
+  return [...violating, ...healthy].slice(0, limit)
+}
+
 export type ScopeCoverageWatchdog<Rho = unknown, Pi = unknown> = {
   /** Pass to `createScopeRegistry()` at construction time. */
   readonly registryObserver: ScopeTransitionObserver<Rho, Pi>
@@ -486,7 +510,7 @@ export function createScopeCoverageWatchdog<Rho = unknown, Pi = unknown>(
         totalScopes: scopes.length,
         byState,
         scopes: truncated
-          ? scopes.slice(0, MAX_SNAPSHOT_SCOPE_ENTRIES)
+          ? prioritizeViolations(scopes, MAX_SNAPSHOT_SCOPE_ENTRIES)
           : scopes,
         ...(truncated ? { truncated: true } : {}),
         reason,

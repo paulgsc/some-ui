@@ -9,6 +9,7 @@ import { createCoverageRecorder } from "@filter/lib/content/coverage-observabili
 import {
   createCoverageWatchdog,
   createScopeCoverageWatchdog,
+  MAX_SNAPSHOT_SCOPE_ENTRIES,
 } from "@filter/lib/content/coverage-watchdog"
 import { PREPAINT_VEIL_ID } from "@filter/lib/content/prepaint"
 import {
@@ -515,6 +516,67 @@ describe("createScopeCoverageWatchdog — periodic per-scope snapshot and ScopeC
     }
     expect(scopesList.length).toBeLessThan(total)
     expect(Reflect.get(snapshot, "truncated")).toBe(true)
+  })
+
+  it("prioritizes violating scopes over healthy ones when truncating the itemized list, so a real violation past the cap is never hidden from debug.html (bot-found, #1327's own closing review)", () => {
+    const recorder = createCoverageRecorder(
+      "test-scope-truncation-priority",
+      false
+    )
+    const scopeCoverage = createScopeCoverageWatchdog(recorder)
+    const registry = createScopeRegistry(scopeCoverage.registryObserver)
+
+    for (let i = 0; i < MAX_SNAPSHOT_SCOPE_ENTRIES; i++) {
+      const host = document.createElement("div")
+      document.body.appendChild(host)
+      const shadow = host.attachShadow({ mode: "open" })
+      createOcclusionHold(shadow).install()
+      registry.register(`shadow:${i}`, {
+        ref: shadow,
+        parent: null,
+        contentEpoch: 0,
+        hold: fakeHold(),
+      })
+    }
+
+    // Registered last, past the cap, with no veil installed at all — a
+    // genuine violation a plain "keep the first MAX_SNAPSHOT_SCOPE_ENTRIES"
+    // slice would drop entirely, since every one of the healthy scopes above
+    // was registered first.
+    const violatingHost = document.createElement("div")
+    document.body.appendChild(violatingHost)
+    const violatingShadow = violatingHost.attachShadow({ mode: "open" })
+    registry.register("shadow:violating", {
+      ref: violatingShadow,
+      parent: null,
+      contentEpoch: 0,
+      hold: fakeHold(),
+    })
+
+    scopeCoverage.check(registry, "test")
+
+    const snapshot = recorder.snapshotEntries()["scopes"]
+    if (snapshot === null || typeof snapshot !== "object") {
+      throw new Error("expected an object snapshot")
+    }
+    expect(Reflect.get(snapshot, "totalScopes")).toBe(
+      MAX_SNAPSHOT_SCOPE_ENTRIES + 1
+    )
+    expect(Reflect.get(snapshot, "truncated")).toBe(true)
+
+    const scopesList = Reflect.get(snapshot, "scopes")
+    if (!Array.isArray(scopesList)) {
+      throw new Error("expected scopes to be an array")
+    }
+    expect(scopesList.length).toBe(MAX_SNAPSHOT_SCOPE_ENTRIES)
+    expect(
+      scopesList.some(
+        (s: unknown) =>
+          typeof s === "object" &&
+          s !== null &&
+          Reflect.get(s, "id") === "shadow:violating"
+      )
+    ).toBe(true)
   })
 
   it("flags, then recovers, a COMMITTED scope whose adoptedStyleSheets were reassigned out from under the registry — #1280's own tracked vendor-reassignment scenario, which generates no registry transition at all to signal it", async () => {
