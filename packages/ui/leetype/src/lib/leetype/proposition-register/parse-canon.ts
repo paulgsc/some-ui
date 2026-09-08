@@ -72,6 +72,66 @@ export type PropositionRegisterEntry = {
 }
 
 /**
+ * The raw span (backtick-delimited) starting at `source[openIndex]` (which
+ * must be `` "`" ``): its own delimiter's run length, its content, and the
+ * index just past the matching same-length closing run — typst's own rule
+ * is that *some* run of backticks opens a raw span and the same-length run
+ * closes it, not always exactly one (`` ``two-backtick`` `` is as valid as
+ * `` `one` ``). Shared by `bodyOfBracketBlock` (which only needs to skip
+ * past one without inspecting it) and `renderInlineMarkup` (which needs its
+ * content too) — the same lexical rule recognized in exactly one place,
+ * rather than two independently drifting copies of it (review finding on
+ * this PR, chatgpt-codex-connector: `renderInlineMarkup`'s own first cut
+ * had a copy that only handled a single pair, already out of sync with
+ * this one).
+ *
+ * Throws on an unterminated span rather than returning a sentinel — by the
+ * time `renderInlineMarkup` ever sees a raw span, `bodyOfBracketBlock` has
+ * already validated the whole body's own spans are well-formed, so this
+ * only fires against malformed input no caller in this module should ever
+ * produce, and failing loudly beats a caller having to remember to check a
+ * sentinel it can never actually receive in practice.
+ */
+function rawSpanAt(
+  source: string,
+  openIndex: number
+): { content: string; afterIndex: number } {
+  let runEnd = openIndex
+  while (source[runEnd] === "`") runEnd += 1
+  const delimiter = source.slice(openIndex, runEnd)
+  const closeIndex = source.indexOf(delimiter, runEnd)
+  if (closeIndex === -1) {
+    throw new Error(
+      `unterminated raw span ("${delimiter}" opened at index ${openIndex} with no matching close).`
+    )
+  }
+  return {
+    content: source.slice(runEnd, closeIndex),
+    afterIndex: closeIndex + delimiter.length,
+  }
+}
+
+/**
+ * The index just past the closing, unescaped `"` of a typst string literal
+ * starting at `source[openIndex]` (which must be `'"'`) — typst escapes a
+ * quote inside a string as `\"`, the same backslash convention this
+ * module's own escape handling already recognizes elsewhere, so that is
+ * skipped as a unit rather than read as the string's own end.
+ */
+function stringLiteralEndAt(source: string, openIndex: number): number {
+  let index = openIndex + 1
+  while (index < source.length && source[index] !== '"') {
+    index += source[index] === "\\" ? 2 : 1
+  }
+  if (index >= source.length) {
+    throw new Error(
+      `unterminated string literal (a '"' opened at index ${openIndex} with no matching close).`
+    )
+  }
+  return index + 1
+}
+
+/**
  * The text strictly between `source[openBracketIndex]` (which must be
  * `"["`) and its matching `"]"`, tracking nesting depth rather than
  * stopping at the first `"]"` — typst content can nest brackets (a
@@ -81,22 +141,34 @@ export type PropositionRegisterEntry = {
  * body, the same "fail loudly, not by producing a wrong answer" posture
  * `parsePropositionRegister`'s own call-site count check already takes.
  *
- * **Two lexical escapes, not just nesting (review finding on this PR,
- * chatgpt-codex-connector).** A literal `[`/`]` inside typst content is not
- * always a content-block delimiter:
+ * **Three lexical exemptions, not just nesting.** A literal `[`/`]` inside
+ * typst content is not always a content-block delimiter:
  *
  * - `\[` / `\]` — typst's own backslash escape for a literal bracket
  *   character. Counting it as structural would either close the body early
  *   (`\]`) or report a false unbalanced block (`\[`).
- * - a raw span (`` `...` ``) — typst does not scan raw-span content for
- *   markup at all, so a bracket inside one (`` `array[0]` ``) is plain text,
- *   never a delimiter. No entry in the canon does this today, but this
- *   parser has already had to fix one "only works by accident of the
- *   current corpus" gap in this same function (the nesting case above);
- *   this is the same class of risk.
+ * - a raw span (`` `...` ``, `rawSpanAt`) — typst does not scan raw-span
+ *   content for markup at all, so a bracket inside one (`` `array[0]` ``)
+ *   is plain text, never a delimiter.
+ * - a string literal (`"..."`, `stringLiteralEndAt`) — a `#link("a]b")`-
+ *   shaped call's own string argument is code-mode content, not markup;
+ *   a bracket inside it is a character in a string, never a delimiter
+ *   (review finding on this PR, chatgpt-codex-connector). This is a
+ *   deliberately blunt rule: it treats *every* unescaped `"..."` pair as a
+ *   string for bracket-counting purposes, even one written as plain
+ *   markup-mode punctuation (a quoted phrase in prose, which has no
+ *   pairing/escaping significance to typst at all in that mode) — real
+ *   canon prose already does this (`` "too slow at this size." ``,
+ *   CW-P16) and it is harmless there since nothing structural sits between
+ *   the marks. Getting this exactly right would mean tracking whether the
+ *   scanner is currently inside typst *code* mode (after a `#name(`, not
+ *   in plain markup) — real parser state this bracket-depth counter
+ *   deliberately does not carry, the same call this module already makes
+ *   about not becoming a general typst parser.
  *
- * Both are skipped over — depth is never touched while scanning past
- * either — before the loop even looks at the character for bracket depth.
+ * None of the three are ever inspected for bracket depth — the loop skips
+ * straight past whichever one it finds before looking at the character at
+ * all.
  */
 function bodyOfBracketBlock(
   source: string,
@@ -113,19 +185,11 @@ function bodyOfBracketBlock(
       continue
     }
     if (ch === "`") {
-      // A raw span: some run of backticks opens it, and the same-length
-      // run closes it (typst's own rule) — skip straight to that close
-      // without inspecting anything in between for bracket depth.
-      let runEnd = index
-      while (source[runEnd] === "`") runEnd += 1
-      const delimiter = source.slice(index, runEnd)
-      const closeIndex = source.indexOf(delimiter, runEnd)
-      if (closeIndex === -1) {
-        throw new Error(
-          `proposition register entry body starting at index ${openBracketIndex} has an unterminated raw span ("${delimiter}" opened at index ${index} with no matching close).`
-        )
-      }
-      index = closeIndex + delimiter.length
+      index = rawSpanAt(source, index).afterIndex
+      continue
+    }
+    if (ch === '"') {
+      index = stringLiteralEndAt(source, index)
       continue
     }
     if (ch === "[") depth += 1
@@ -181,35 +245,80 @@ function renderMathSpan(innerContent: string): string {
  * carries typst source syntax verbatim (`$Theta(n^2)$`, `*worst-case*`,
  * `` `CW-P5` ``, `---`, `\[escaped\]`), and a component rendering it as-is
  * would show that syntax to a learner rather than the sentence it authors.
- * Math substitution reads each span's *own* delimited content, so it runs
- * before backticks/emphasis are unwrapped (neither appears inside this
- * canon's own math spans today, but scoping the substitution to each
- * span's own capture group, rather than the whole string, keeps it that
- * way regardless). The backtick unwrap is run-length-aware for the same
- * reason `bodyOfBracketBlock` above is (review finding on this PR,
- * chatgpt-codex-connector): a raw span's opening and closing delimiters
- * are *some* run of backticks of matching length, not always exactly one,
- * and a regex that only strips a single pair leaves the outer backticks of
- * a `` ``two-backtick`` `` span visible. `(`+)([\s\S]+?)\1` — a
- * backreference to whatever length the opening run actually was — is what
- * makes that symmetric with the extraction side instead of drifting from
- * it again. The backslash-unescape runs last and is deliberately narrow:
- * it turns `\[`/`\]` (the case `bodyOfBracketBlock` above already has to
- * recognize for bracket depth) back into a literal bracket. It is not a
- * general typst-escape resolver — an escaped `` \` ``/`\*`/`\$` would
- * still be read by the steps above as a real delimiter, since none of
- * canon §7's bodies do that today and handling it soundly needs resolving
- * escapes before, not after, those steps run (a masking pass, not a plain
- * sequential replace) — real complexity this display-text cleanup
- * shouldn't take on speculatively.
+ *
+ * **A single left-to-right scan, not independent global replace passes.**
+ * An earlier cut of this function ran `.replace()` once per construct
+ * (math, then backticks, then emphasis, then dashes, then escapes) over
+ * the *whole* string in sequence — which cannot tell a raw span's own
+ * protected content from live markup sitting next to it. A raw span exists
+ * *specifically* so an author can show markup characters literally
+ * (`` `*literal*` ``, `` `$Theta$` `` — typst never processes a raw span's
+ * content for markup at all), and a later pass over the whole string has
+ * no way to know it already passed through one (review finding on this
+ * PR, chatgpt-codex-connector). Scanning once, left to right, and jumping
+ * the cursor straight past whatever construct is recognized at each
+ * position is what makes a raw span's content genuinely opaque to every
+ * other rule — not by special-casing raw spans in each pass, but because
+ * the scanner never revisits characters a raw span already consumed.
+ *
+ * Recognizes, per position: a math span (`$...$`, content run through
+ * `renderMathSpan`), a raw span (`` `...` ``, `rawSpanAt` — content passed
+ * through completely unprocessed), emphasis (`*...*`, content unwrapped
+ * verbatim), typst's `\` escape (the following character emitted
+ * literally, whatever it is — genuinely general here, unlike the old
+ * sequential version, since there is no "before/after" ordering issue left
+ * to get wrong), `---` (a real em dash), and otherwise the character
+ * itself. This is still not a general typst parser — nested markup across
+ * *different* construct kinds (emphasis spanning a raw span, say) is not
+ * attempted, since no canon body does that today and it is a materially
+ * bigger problem than a display-text cleanup should take on speculatively
+ * — but within one kind, this is exact rather than approximate.
  */
 function renderInlineMarkup(text: string): string {
-  return text
-    .replace(/\$([^$]*)\$/g, (_match, inner: string) => renderMathSpan(inner))
-    .replace(/(`+)([\s\S]+?)\1/g, "$2")
-    .replace(/\*([^*]+)\*/g, "$1")
-    .replace(/---/g, "—")
-    .replace(/\\([[\]])/g, "$1")
+  let result = ""
+  let index = 0
+  while (index < text.length) {
+    const ch = text[index]
+    if (ch === "\\") {
+      result += text[index + 1] ?? ""
+      index += 2
+      continue
+    }
+    if (ch === "`") {
+      const span = rawSpanAt(text, index)
+      result += span.content
+      index = span.afterIndex
+      continue
+    }
+    if (ch === "$") {
+      const closeIndex = text.indexOf("$", index + 1)
+      if (closeIndex === -1) {
+        result += text.slice(index)
+        break
+      }
+      result += renderMathSpan(text.slice(index + 1, closeIndex))
+      index = closeIndex + 1
+      continue
+    }
+    if (ch === "*") {
+      const closeIndex = text.indexOf("*", index + 1)
+      if (closeIndex === -1) {
+        result += text.slice(index)
+        break
+      }
+      result += text.slice(index + 1, closeIndex)
+      index = closeIndex + 1
+      continue
+    }
+    if (text.startsWith("---", index)) {
+      result += "—"
+      index += 3
+      continue
+    }
+    result += ch
+    index += 1
+  }
+  return result
 }
 
 /**

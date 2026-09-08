@@ -132,6 +132,53 @@ describe("parsePropositionRegister", () => {
     )
   })
 
+  // Review finding, round 3 (chatgpt-codex-connector): a bracket inside a
+  // typst string literal (a code-mode call's own argument, e.g.
+  // `#link("...")`) is a character in a string, not a content-block
+  // delimiter — it must not decrement depth either. `#link(...)` itself is
+  // not rendered specially (same posture as `#footnote[...]` above), only
+  // no longer breaks bracket counting.
+  it("does not count a bracket inside a string literal as structural", () => {
+    const source =
+      `= The proposition register\n\n` +
+      `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
+      `  A #link("path]part") value follows.\n` +
+      `]\n`
+
+    expect(parsePropositionRegister(source)[0]?.statement).toBe(
+      'A #link("path]part") value follows.'
+    )
+  })
+
+  // Guards the string-literal fix's own documented bluntness: it treats
+  // every unescaped "..." pair as a string regardless of typst's actual
+  // code/markup mode, so an ordinary quoted phrase in prose (no pairing
+  // significance to typst at all) must still parse unchanged. Mirrors the
+  // real canon's own CW-P16 body.
+  it("does not misparse an ordinary quoted phrase in prose", () => {
+    const source =
+      `= The proposition register\n\n` +
+      `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
+      `  The failure is of a different kind from "too slow at this size."\n` +
+      `]\n`
+
+    expect(parsePropositionRegister(source)[0]?.statement).toBe(
+      'The failure is of a different kind from "too slow at this size."'
+    )
+  })
+
+  it("throws on an unterminated string literal", () => {
+    const source =
+      `= The proposition register\n\n` +
+      `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
+      `  A #link("unterminated value follows.\n` +
+      `]\n`
+
+    expect(() => parsePropositionRegister(source)).toThrow(
+      /unterminated string literal/
+    )
+  })
+
   it("throws on an unbalanced body — an unmatched '[' with no closing ']'", () => {
     const source =
       `= The proposition register\n\n` +
@@ -208,6 +255,25 @@ describe("parsePropositionRegister", () => {
 
       expect(parsePropositionRegister(source)[0]?.statement).toBe(
         "A double-backtick span like foo renders clean."
+      )
+    })
+
+    // Review finding, round 3 (chatgpt-codex-connector): a raw span exists
+    // specifically so an author can show markup characters literally —
+    // typst never applies math/emphasis rendering inside one. The earlier
+    // sequential-replace version ran its math/emphasis passes over the
+    // whole string regardless, so a raw span containing "*literal*" or
+    // "$Theta$" got rendered anyway. The single-pass scanner extracts a raw
+    // span's content directly, so no later rule ever sees it.
+    it("does not apply math or emphasis rendering inside a raw span's own content", () => {
+      const source =
+        `= The proposition register\n\n` +
+        `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
+        "  The syntax `*literal*` keeps its asterisks, and `$Theta$` keeps its dollar signs.\n" +
+        `]\n`
+
+      expect(parsePropositionRegister(source)[0]?.statement).toBe(
+        "The syntax *literal* keeps its asterisks, and $Theta$ keeps its dollar signs."
       )
     })
   })
