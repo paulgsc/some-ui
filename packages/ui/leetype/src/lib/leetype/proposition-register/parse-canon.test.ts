@@ -179,6 +179,56 @@ describe("parsePropositionRegister", () => {
     )
   })
 
+  // Review finding, round 4 (chatgpt-codex-connector): a bracket inside a
+  // typst comment (line or block) is comment text, not a content-block
+  // delimiter, in either markup or code mode — unlike the string-literal
+  // case above, there is no mode ambiguity here. `docs/canon/complexity-
+  // witness-canon.typ` already uses `//` extensively elsewhere in the
+  // file (section separators), just not inside a §7 body yet.
+  //
+  // The comment is also gone from the *rendered* statement entirely, not
+  // merely bracket-safe — real typst never shows a comment to a reader,
+  // and this fix's own first attempt (keeping it verbatim, matching the
+  // #link()/#footnote[] precedent) discovered a comment's own "*"
+  // characters get read as emphasis delimiters by renderInlineMarkup,
+  // actively corrupting the output rather than just leaving it unstyled.
+  it("omits a line comment entirely from the rendered statement", () => {
+    const source =
+      `= The proposition register\n\n` +
+      `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
+      `  A real claim. // note about ]\n` +
+      `  A second line follows.\n` +
+      `]\n`
+
+    expect(parsePropositionRegister(source)[0]?.statement).toBe(
+      "A real claim. A second line follows."
+    )
+  })
+
+  it("omits a block comment entirely from the rendered statement, even a nested one", () => {
+    const source =
+      `= The proposition register\n\n` +
+      `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
+      `  A real claim. /* an aside /* nested [ note */ about ] brackets */ follows.\n` +
+      `]\n`
+
+    expect(parsePropositionRegister(source)[0]?.statement).toBe(
+      "A real claim. follows."
+    )
+  })
+
+  it("throws on an unterminated block comment", () => {
+    const source =
+      `= The proposition register\n\n` +
+      `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
+      `  A real claim. /* unterminated aside.\n` +
+      `]\n`
+
+    expect(() => parsePropositionRegister(source)).toThrow(
+      /unterminated block comment/
+    )
+  })
+
   it("throws on an unbalanced body — an unmatched '[' with no closing ']'", () => {
     const source =
       `= The proposition register\n\n` +

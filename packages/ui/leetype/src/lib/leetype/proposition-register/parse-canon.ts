@@ -132,6 +132,42 @@ function stringLiteralEndAt(source: string, openIndex: number): number {
 }
 
 /**
+ * The index just past a typst comment starting at `source[openIndex]`
+ * (which must be the first `"/"` of `"//"` or `"/*"`). A line comment
+ * (`//`) runs to the next newline or end of source; a block comment
+ * (`/* ... *\/`) runs to its own matching `*\/`, nesting-depth-aware
+ * because typst's own block comments nest (`/* a /* b *\/ c *\/` is one
+ * comment, not one comment followed by stray text). Used only by
+ * `bodyOfBracketBlock`, which also omits the comment from the body it
+ * returns — see that function's own comment for why.
+ */
+function commentEndAt(source: string, openIndex: number): number {
+  if (source[openIndex + 1] === "/") {
+    const newlineIndex = source.indexOf("\n", openIndex + 2)
+    return newlineIndex === -1 ? source.length : newlineIndex
+  }
+  let depth = 1
+  let index = openIndex + 2
+  while (index < source.length && depth > 0) {
+    if (source[index] === "/" && source[index + 1] === "*") {
+      depth += 1
+      index += 2
+    } else if (source[index] === "*" && source[index + 1] === "/") {
+      depth -= 1
+      index += 2
+    } else {
+      index += 1
+    }
+  }
+  if (depth !== 0) {
+    throw new Error(
+      `unterminated block comment ("/*" opened at index ${openIndex} with no matching "*/").`
+    )
+  }
+  return index
+}
+
+/**
  * The text strictly between `source[openBracketIndex]` (which must be
  * `"["`) and its matching `"]"`, tracking nesting depth rather than
  * stopping at the first `"]"` — typst content can nest brackets (a
@@ -141,7 +177,7 @@ function stringLiteralEndAt(source: string, openIndex: number): number {
  * body, the same "fail loudly, not by producing a wrong answer" posture
  * `parsePropositionRegister`'s own call-site count check already takes.
  *
- * **Three lexical exemptions, not just nesting.** A literal `[`/`]` inside
+ * **Four lexical exemptions, not just nesting.** A literal `[`/`]` inside
  * typst content is not always a content-block delimiter:
  *
  * - `\[` / `\]` — typst's own backslash escape for a literal bracket
@@ -152,9 +188,8 @@ function stringLiteralEndAt(source: string, openIndex: number): number {
  *   is plain text, never a delimiter.
  * - a string literal (`"..."`, `stringLiteralEndAt`) — a `#link("a]b")`-
  *   shaped call's own string argument is code-mode content, not markup;
- *   a bracket inside it is a character in a string, never a delimiter
- *   (review finding on this PR, chatgpt-codex-connector). This is a
- *   deliberately blunt rule: it treats *every* unescaped `"..."` pair as a
+ *   a bracket inside it is a character in a string, never a delimiter.
+ *   Deliberately blunt: it treats *every* unescaped `"..."` pair as a
  *   string for bracket-counting purposes, even one written as plain
  *   markup-mode punctuation (a quoted phrase in prose, which has no
  *   pairing/escaping significance to typst at all in that mode) — real
@@ -165,10 +200,30 @@ function stringLiteralEndAt(source: string, openIndex: number): number {
  *   in plain markup) — real parser state this bracket-depth counter
  *   deliberately does not carry, the same call this module already makes
  *   about not becoming a general typst parser.
+ * - a comment (`// ...` or `/* ... *\/`, `commentEndAt`) — comment text is
+ *   never markup at all, in either mode (review finding on this PR,
+ *   chatgpt-codex-connector: `docs/canon/complexity-witness-canon.typ`
+ *   already uses `//` extensively as a section-separator convention
+ *   elsewhere in the file, just not inside a §7 body today).
  *
- * None of the three are ever inspected for bracket depth — the loop skips
+ * None of the four are ever inspected for bracket depth — the loop skips
  * straight past whichever one it finds before looking at the character at
  * all.
+ *
+ * **A comment is also the one construct this function omits from the body
+ * it returns, rather than keeping verbatim like a raw span, a string, or
+ * `#link(...)`/`#footnote[...]` syntax.** Real typst never shows a comment
+ * to a reader at all — it is authoring metadata, not content with an
+ * unmodeled rendering (the posture this parser takes on everything else it
+ * does not evaluate) — and, discovered by this fix's own first attempt:
+ * leaving one in would actively corrupt the result rather than merely
+ * stay unstyled, since `renderInlineMarkup`'s emphasis rule reads a block
+ * comment's own `*` characters (`/* ... *\/`) as emphasis delimiters with
+ * nothing to tell them apart. Building `body` incrementally here — as the
+ * scan already walks past each construct, rather than a single `slice()`
+ * once depth reaches zero — is what lets a comment be dropped without
+ * needing a second, later pass to also learn where the (by then
+ * line-joined, boundary-losing) comments were.
  */
 function bodyOfBracketBlock(
   source: string,
@@ -176,24 +231,53 @@ function bodyOfBracketBlock(
 ): { body: string; afterIndex: number } {
   let depth = 1
   let index = openBracketIndex + 1
+  let body = ""
   while (index < source.length && depth > 0) {
     const ch = source[index]
     if (ch === "\\") {
       // typst's escape: the following character is literal, never
-      // structural, regardless of what it is.
+      // structural, regardless of what it is — kept verbatim here;
+      // `renderInlineMarkup` is what actually resolves it later.
+      body += source.slice(index, index + 2)
       index += 2
       continue
     }
     if (ch === "`") {
-      index = rawSpanAt(source, index).afterIndex
+      const span = rawSpanAt(source, index)
+      body += source.slice(index, span.afterIndex)
+      index = span.afterIndex
       continue
     }
     if (ch === '"') {
-      index = stringLiteralEndAt(source, index)
+      const endIndex = stringLiteralEndAt(source, index)
+      body += source.slice(index, endIndex)
+      index = endIndex
       continue
     }
-    if (ch === "[") depth += 1
-    else if (ch === "]") depth -= 1
+    if (
+      ch === "/" &&
+      (source[index + 1] === "/" || source[index + 1] === "*")
+    ) {
+      // Comment text is never appended — see this function's own doc
+      // comment for why, unlike everything else here, it is actually
+      // dropped rather than kept verbatim.
+      index = commentEndAt(source, index)
+      continue
+    }
+    if (ch === "[") {
+      depth += 1
+      body += ch
+      index += 1
+      continue
+    }
+    if (ch === "]") {
+      depth -= 1
+      index += 1
+      if (depth === 0) break
+      body += ch
+      continue
+    }
+    body += ch
     index += 1
   }
   if (depth !== 0) {
@@ -201,10 +285,7 @@ function bodyOfBracketBlock(
       `proposition register entry body starting at index ${openBracketIndex} has no matching "]" — an unbalanced "[" inside the body, or truncated canon source.`
     )
   }
-  return {
-    body: source.slice(openBracketIndex + 1, index - 1),
-    afterIndex: index,
-  }
+  return { body, afterIndex: index }
 }
 
 // typst's own bare-identifier names for math-mode symbols this canon's own
@@ -326,7 +407,12 @@ function renderInlineMarkup(text: string): string {
  * flowing line — the same "one line, not many" shape `title` already has,
  * so `statement` reads as a single sentence-or-two rather than carrying
  * the `.typ` source's own indentation into rendered UI — and renders its
- * inline typst markup as display text (`renderInlineMarkup`).
+ * inline typst markup as display text (`renderInlineMarkup`). A final
+ * whitespace collapse guards a specific artifact of `bodyOfBracketBlock`
+ * now omitting comments mid-line: removing `/* an aside *\/` from the
+ * *middle* of an authored line leaves the space before and the space
+ * after it both still there, and this join only ever collapsed *between*
+ * lines, never within one.
  */
 function normalizeStatement(rawBody: string): string {
   const joined = rawBody
@@ -334,7 +420,7 @@ function normalizeStatement(rawBody: string): string {
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
     .join(" ")
-  return renderInlineMarkup(joined)
+  return renderInlineMarkup(joined).replace(/ {2,}/g, " ").trim()
 }
 
 /**
