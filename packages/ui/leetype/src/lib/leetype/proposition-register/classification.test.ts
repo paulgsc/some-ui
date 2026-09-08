@@ -31,16 +31,9 @@ describe("PROPOSITION_CLASSIFICATION", () => {
     )
   })
 
-  it("gives every entry at least a family, and dimensions only CW-P16 leaves empty", () => {
-    for (const [id, classification] of Object.entries(
-      PROPOSITION_CLASSIFICATION
-    )) {
+  it("gives every entry a real family value", () => {
+    for (const classification of Object.values(PROPOSITION_CLASSIFICATION)) {
       expect(["seq", "loop", "substitution"]).toContain(classification.family)
-      if (id === "CW-P16") {
-        expect(classification.dimensions).toEqual([])
-      } else {
-        expect(classification.dimensions.length).toBeGreaterThan(0)
-      }
     }
   })
 })

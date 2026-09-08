@@ -6,13 +6,12 @@ import { PROPOSITION_REGISTER } from "./generated"
  * 6.2, Def. 2.1.
  *
  * Rem. 6.2 prefers a distractor proposition sharing "an input-dimension or
- * structural family" with the register entry being witnessed. Neither
- * property is text `parsePropositionRegister` can extract from canon §7 —
- * §7's own prose is free-form English, not data — so this is a second,
- * hand-authored table alongside the generated one, the same relationship
- * `concepts` has to a step in `lib/leetype/exercises` (LTY-MOBILE):
- * authored classification metadata, reviewed by a human, total over every
- * register id.
+ * structural family" with the register entry being witnessed. `family` is
+ * not text `parsePropositionRegister` can extract from canon §7 — §7's own
+ * prose is free-form English, not data — so this is a second, hand-authored
+ * table alongside the generated one, the same relationship `concepts` has
+ * to a step in `lib/leetype/exercises` (LTY-MOBILE): authored classification
+ * metadata, reviewed by a human, total over every register id.
  *
  * # Where `family` comes from
  *
@@ -27,44 +26,49 @@ import { PROPOSITION_REGISTER } from "./generated"
  * statement is centrally about, not by mechanical rule — the same authored
  * judgement `claimOf`'s family field rests on for a step.
  *
- * # Where `dimensions` comes from
+ * # No `dimensions` field
  *
- * The symbolic input dimension(s) (Def. 1.2) each proposition's own
- * worked statement is stated over — `["n"]` for the ordinary single-
- * dimension case, `["n", "m"]` where the statement is explicitly about two
- * (CW-P5, CW-P6, CW-P14), and `[]` for `CW-P16`, whose entire point is a
- * term *independent* of every bound. `[]` is not a gap in this table — it
- * is `CW-P16`'s own content, faithfully modeled: nothing shares a
- * dimension with a proposition that has none, so `CW-P16`'s distractors
- * are chosen by family and seed alone (`round-probe/index.test.ts` proves
- * this does not throw or degenerate).
+ * An earlier version of this table also classified each proposition by a
+ * static "input dimension" (`["n"]`, `["n", "m"]`, etc.), meant to serve
+ * Rem. 6.2's other preference, "sharing an input-dimension." Review caught
+ * that this was unsound (chatgpt-codex-connector, this PR): a proposition's
+ * canon statement is a general claim over its own locally-scoped variables
+ * (Prop. 7.1's `G_1, ..., G_m`, Prop. 7.2's `r` — most entries name no
+ * dimension letter at all, including the two, CW-P1 and CW-P2, the review
+ * used as its own example), so two propositions' incidental reuse of the
+ * same letter is not "sharing a dimension" in any sense Rem. 6.2 could
+ * mean. What Rem. 6.2 actually needs is a dimension a proposition is
+ * *instantiated at in a given round*, which is round-level data
+ * (`RoundCorpusEntry.constraints`) this register-level table structurally
+ * cannot carry — filed as `#1331` (sub-issue of `#1219`). This table
+ * therefore classifies `family` only; `round-probe/index.ts`'s own
+ * preference ordering ranks by family and seed alone until `#1331` lands.
  */
 export type PropositionFamily = "seq" | "loop" | "substitution"
 
 export type PropositionClassification = {
   readonly family: PropositionFamily
-  readonly dimensions: ReadonlyArray<string>
 }
 
 export const PROPOSITION_CLASSIFICATION: Readonly<
   Record<PropositionId, PropositionClassification>
 > = {
-  "CW-P1": { family: "seq", dimensions: ["n"] },
-  "CW-P2": { family: "loop", dimensions: ["n"] },
-  "CW-P3": { family: "seq", dimensions: ["n"] },
-  "CW-P4": { family: "substitution", dimensions: ["n"] },
-  "CW-P5": { family: "substitution", dimensions: ["n", "m"] },
-  "CW-P6": { family: "substitution", dimensions: ["n", "m"] },
-  "CW-P7": { family: "substitution", dimensions: ["n"] },
-  "CW-P8": { family: "loop", dimensions: ["n"] },
-  "CW-P9": { family: "loop", dimensions: ["n"] },
-  "CW-P10": { family: "seq", dimensions: ["n"] },
-  "CW-P11": { family: "seq", dimensions: ["n"] },
-  "CW-P12": { family: "loop", dimensions: ["n"] },
-  "CW-P13": { family: "substitution", dimensions: ["m"] },
-  "CW-P14": { family: "loop", dimensions: ["n", "m"] },
-  "CW-P15": { family: "substitution", dimensions: ["n"] },
-  "CW-P16": { family: "substitution", dimensions: [] },
+  "CW-P1": { family: "seq" },
+  "CW-P2": { family: "loop" },
+  "CW-P3": { family: "seq" },
+  "CW-P4": { family: "substitution" },
+  "CW-P5": { family: "substitution" },
+  "CW-P6": { family: "substitution" },
+  "CW-P7": { family: "substitution" },
+  "CW-P8": { family: "loop" },
+  "CW-P9": { family: "loop" },
+  "CW-P10": { family: "seq" },
+  "CW-P11": { family: "seq" },
+  "CW-P12": { family: "loop" },
+  "CW-P13": { family: "substitution" },
+  "CW-P14": { family: "loop" },
+  "CW-P15": { family: "substitution" },
+  "CW-P16": { family: "substitution" },
 }
 
 /**
@@ -95,8 +99,8 @@ export function isPropositionId(value: string): value is PropositionId {
  * drift apart at runtime is `generated.ts` regenerating with a *new* id an
  * old build of this file predates — the same amendment-lands-before-corpus
  * ordering Rem. 7.2 already states. `classification.test.ts` runs this
- * against the live `PROPOSITION_REGISTER` so a canon amendment adding
- * `CW-P17` fails here, loudly, until this table is amended too.
+ * against the live `PROPOSITION_REGISTER` so a canon amendment adding a
+ * new register entry fails here, loudly, until this table is amended too.
  */
 export function classificationCoverageGaps(
   register: Readonly<

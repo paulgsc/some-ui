@@ -7,11 +7,11 @@ import type { PropositionId } from "@leetype/lib/leetype/proposition-register/ge
 import { PROPOSITION_REGISTER } from "@leetype/lib/leetype/proposition-register/generated"
 import type { PropositionRegisterEntry } from "@leetype/lib/leetype/proposition-register/parse-canon"
 import { READING_OPTION_COUNT } from "@leetype/lib/leetype/reading-probe"
-import type { DiffSet, DiffSetMember } from "@leetype/types/round"
+import type { DiffSetMember } from "@leetype/types/round"
 
 /**
  * B2 (LTY-PROBE, #1219) — `docs/canon/complexity-witness-canon.typ` Rem.
- * 6.2, Thm. 6.1, Prop. 6.1, Def. 1.6.
+ * 6.2, Thm. 6.1, Def. 1.6.
  *
  * The round-shaped counterpart to `lib/leetype/reading-probe`'s
  * `claimPoolOf`/`readingProbeOf`, additive rather than a rewrite of it:
@@ -35,31 +35,50 @@ import type { DiffSet, DiffSetMember } from "@leetype/types/round"
  * `readingProbeOf`'s: a claim's rank keys off `family`/`concepts`, fields a
  * `Claim` carries and a `PropositionRegisterEntry` does not.
  *
- * # The answer is μ(d), not a step's claim
+ * # The answer is μ(d) of the *selected* diff, not always the admissible one
  *
- * Thm. 6.1: given `D` and authored `μ`, the verdict on a selected pair
- * `(d, p)` is the identity `p = μ(d)`. This module poses the *proposition*
- * half of that pair as a discrimination card exactly like the step
- * surface's own: `D`'s one admissible member (Ax. 1.1/Prop. 2.1 —
- * `DiffSetSchema` guarantees exactly one) is the round's own selected
- * diff, `admissibleMemberOf` reads it, and its `propositionId` is the
- * answer. Which *diff* the learner picks among `D` (the other half of
- * Thm. 6.1's pair) is B3's own verdict-rendering job (#1220), not this
- * one's — `RoundProbe` below only ever carries the proposition side.
+ * Thm. 6.1 and Def. 8.1 (the round cycle) are both explicit that the
+ * learner's selection is a pair `(d, p)` where `d` ranges over the whole
+ * presented `D`, admissible or not — Def. 8.1's own case 2 ("the round
+ * presents D and the learner selects a pair") never singles out the
+ * admissible member as the only one a learner can point at. `roundProbeOf`
+ * therefore takes the *specific* `DiffSetMember` the card is being posed
+ * for — whichever one the caller has the learner looking at — and reads
+ * `propositionId` straight off it. An earlier draft of this function
+ * assumed the admissible member was always the one being asked about;
+ * that is wrong whenever a learner examines a distractor diff, whose own
+ * `propositionId` is a different, equally real proposition (review
+ * finding on this PR, chatgpt-codex-connector) — fixed by taking the
+ * member directly instead of deriving one from a whole `DiffSet`.
  *
  * # No `justification` field
  *
  * `ReadingProbe.justification` is a *second* authored sentence
  * (`rationale.whyRepairDiscriminates`) distinct from the answer's own
  * `text`, offered as extra corroboration once a step's answer is
- * identified. Thm. 6.1's own proof gives rounds no second sentence: "its
- * justification is the authored statement of `μ(d)` itself" — which is
- * exactly the answer option's own `text`, already present in `options`.
- * A field that would only ever duplicate `options.find(answerId).text` is
- * not a generalization, it is a redundant copy, so `RoundProbe` omits it.
+ * identified. Thm. 6.1's own proof describes a round's analogous
+ * corroboration as "the authored statement of `μ(d)` itself" — which
+ * `PropositionOption.text` does not yet carry (see that type's own doc
+ * comment for why, and `#1330`, filed off this PR's own review). Adding a
+ * field here that could only ever hold the same short `title` `options`
+ * already carries would not be that corroboration, only a redundant copy
+ * of it, so `RoundProbe` omits the field until `#1330`'s own gap closes.
  */
 
-/** One register proposition, offered as a card option. `id` is a `CW-P` id, stable across the whole register. */
+/**
+ * One register proposition, offered as a card option. `id` is a `CW-P` id,
+ * stable across the whole register.
+ *
+ * `text` is the register entry's own `title` — a short name ("Sequential
+ * composition adds"), not canon §7's full authored statement (the body
+ * text after the name, carrying the actual equation or claim). That body
+ * is not parsed anywhere in this workspace yet (`parse-canon.ts` reads
+ * only the `name:` argument); until it is, `text` is the best available
+ * stand-in for "the sentence this option names," sufficient for B2's own
+ * discrimination-card job. Filed as `#1330` (sub-issue of `#1219`): B3
+ * (#1220) needs the fuller statement for its own verdict justification and
+ * will need the parser extended before it can render one.
+ */
 export type PropositionOption = {
   id: PropositionId
   text: string
@@ -97,26 +116,6 @@ export function propositionPoolOf(
 }
 
 /**
- * `D`'s one admissible member (Ax. 1.1, Def. 3.1, Prop. 2.1) — the round's
- * own selected diff, and the source of the answer half of Thm. 6.1's
- * `(d, p)`. `DiffSetSchema`'s own refine already rejects any `DiffSet`
- * with zero or two authored-admissible members at parse time, so a
- * schema-valid `diffSet` always has exactly one; this throws rather than
- * returning `undefined` because a caller reaching this with malformed data
- * has a bug to fix, not a case to degrade through — the same posture
- * `parsePropositionRegister` takes on a malformed canon entry.
- */
-function admissibleMemberOf(diffSet: DiffSet): DiffSetMember {
-  const admissible = diffSet.filter((member) => member.admissible)
-  if (admissible.length !== 1) {
-    throw new Error(
-      `admissibleMemberOf: diffSet has ${admissible.length} admissible member(s) — Def. 3.1/Prop. 2.1 requires exactly one, and DiffSetSchema should have rejected this diffSet before it reached here.`
-    )
-  }
-  return admissible[0]!
-}
-
-/**
  * A round, posed as a proposition-discrimination card.
  *
  * No `family`/`prompt` fields: those exist on `ReadingProbe` because a
@@ -132,27 +131,40 @@ export type RoundProbe = {
 }
 
 /**
- * Builds one round's card from its diff set, the register, and a seed.
- * `pool` defaults to the whole live register (`propositionPoolOf()` — "the
- * option pool is the register" is B2's own acceptance criterion) and is
- * only ever overridden by a test that wants a small, controlled candidate
- * set to isolate one tier of the preference order below, the same reason
- * `readingProbeOf` takes `pool` as a parameter rather than reading a
- * module-level constant.
+ * Builds a card for one diff-set member — `d` in Thm. 6.1's pair `(d, p)`.
+ * `selectedDiff` is whichever member the caller has the learner looking
+ * at, admissible or not; this function does not choose one for itself
+ * (see this module's own doc comment on why an earlier draft's assumption
+ * that it was always the admissible member was wrong). `pool` defaults to
+ * the whole live register (`propositionPoolOf()` — "the option pool is
+ * the register" is B2's own acceptance criterion) and is only ever
+ * overridden by a test that wants a small, controlled candidate set to
+ * isolate the preference order below, the same reason `readingProbeOf`
+ * takes `pool` as a parameter rather than reading a module-level constant.
  *
  * # Preference ordering — stated in full, per this package's own bar
  *
  * A distractor is *another register proposition*, preferring one sharing
- * an input dimension with `μ(d)` (Def. 1.2, Rem. 6.2), then one sharing
  * `μ(d)`'s own structural family (Def. 2.1's grammar —
  * `lib/leetype/proposition-register/classification.ts`), then seed order.
- * Dimension outranks family here, the reverse of `readingProbeOf`'s own
- * family-then-concept order — the issue's own acceptance criterion states
- * it in this order, and it is the more specific signal of the two: two
- * propositions sharing a dimension but not a family are usually a nearer
- * miss (CW-P5 and CW-P13 both turn on the same `m`-shaped hash structure)
- * than two sharing a family but not a dimension (CW-P2 and CW-P12 are both
- * `"loop"` but reason about different quantities).
+ *
+ * Rem. 6.2 also names a *shared input dimension* as a preference ahead of
+ * family. This function does not implement that half: a proposition's
+ * canon statement is a general claim over its own locally-scoped
+ * variables (Prop. 7.1's `G_1, ..., G_m`, Prop. 7.2's `r` — most entries
+ * name no dimension letter at all), and treating two propositions'
+ * incidental reuse of the same letter as "the same dimension" is unsound
+ * (review finding on this PR, chatgpt-codex-connector — an earlier
+ * version of this table did exactly that, including for two propositions,
+ * CW-P1 and CW-P2, whose own canon statements name no dimension at all).
+ * What Rem. 6.2 actually needs is which dimension a proposition is
+ * *instantiated at in a given round's own constraint set* — data that
+ * lives on `RoundCorpusEntry.constraints` (a round-level field this
+ * function, which only ever sees one `DiffSetMember`, has no access to)
+ * and that still would not answer the question for a *candidate*
+ * distractor proposition unless some other round in the corpus happens to
+ * instantiate it too. No structure in this workspace tracks that
+ * cross-round relationship yet. Filed as `#1331` (sub-issue of `#1219`).
  *
  * # Prop. 6.1 is not checked here
  *
@@ -166,32 +178,28 @@ export type RoundProbe = {
  *
  * # Totality
  *
- * Total for every schema-valid `diffSet`: `admissibleMemberOf` never
- * fails against one (see its own doc comment), and `propositionPoolOf`
+ * Total for every `DiffSetMember` a schema-valid `DiffSet` can contain:
+ * `selectedDiff.propositionId` always resolves against the register
+ * (`PropositionIdSchema`, `types/round.ts`), and `propositionPoolOf`
  * always has at least the answer itself to fall back to, mirroring
  * `claimOf`'s own totality property for the step surface.
  */
 export function roundProbeOf(
-  diffSet: DiffSet,
+  selectedDiff: DiffSetMember,
   seed: number,
   optionCount: number = READING_OPTION_COUNT,
   pool: ReadonlyArray<PropositionOption> = propositionPoolOf()
 ): RoundProbe {
-  const answerId = admissibleMemberOf(diffSet).propositionId
-  const answerClassification = PROPOSITION_CLASSIFICATION[answerId]
-  const answerDimensions = new Set(answerClassification.dimensions)
+  const answerId = selectedDiff.propositionId
+  const answerFamily = PROPOSITION_CLASSIFICATION[answerId].family
 
   const candidates = pool.filter((option) => option.id !== answerId)
 
-  const sharesDimension = (option: PropositionOption): boolean =>
-    PROPOSITION_CLASSIFICATION[option.id].dimensions.some((dimension) =>
-      answerDimensions.has(dimension)
-    )
   const sharesFamily = (option: PropositionOption): boolean =>
-    PROPOSITION_CLASSIFICATION[option.id].family === answerClassification.family
+    PROPOSITION_CLASSIFICATION[option.id].family === answerFamily
 
   const rank = (option: PropositionOption): number =>
-    (sharesDimension(option) ? 0 : 2) + (sharesFamily(option) ? 0 : 1)
+    sharesFamily(option) ? 0 : 1
 
   const distractors = shuffledBySeed(candidates, seed)
     .map((option, index) => ({ option, index }))
