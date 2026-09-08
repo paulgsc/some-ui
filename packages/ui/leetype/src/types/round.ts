@@ -63,6 +63,17 @@ const PropositionIdSchema = z.custom<PropositionId>(isKnownPropositionId, {
  * strawman. Required exactly when `admissible` is `false`; an admissible
  * member has nothing to distinguish itself from, so the field is absent
  * there rather than a redundant empty string.
+ *
+ * `propositionGloss` (B3, #1220) is the *round-specific* half of a verdict's
+ * justification — why *this* diff instantiates `propositionId`'s general
+ * claim, as opposed to the register's own `statement` (`#1330`), which is
+ * general by construction and says nothing about this particular hunk.
+ * Always optional: #1220's own acceptance criteria call for leaving a
+ * missing gloss visible rather than papering over it with generated prose,
+ * the same posture `docs/leetype/README.md` already takes for the
+ * construction family's missing `whyRepairDiscriminates` — so a diff-set
+ * member with no gloss authored yet is a real, uncorrected thinness, not a
+ * validation failure.
  */
 export const DiffSetMemberSchema = z
   .object({
@@ -70,6 +81,7 @@ export const DiffSetMemberSchema = z
     propositionId: PropositionIdSchema,
     admissible: z.boolean(),
     distractorStatement: z.string().min(1).optional(),
+    propositionGloss: z.string().min(1).optional(),
   })
   .refine(
     (member) => member.admissible || member.distractorStatement !== undefined,

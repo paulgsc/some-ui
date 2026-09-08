@@ -94,18 +94,30 @@ import type { DiffSetMember } from "@leetype/types/round"
  * preferences for whichever future story builds the structure they
  * actually need.
  *
- * # No `justification` field
+ * # `justification` and `gloss` (B3, #1220)
  *
  * `ReadingProbe.justification` is a *second* authored sentence
  * (`rationale.whyRepairDiscriminates`) distinct from the answer's own
  * `text`, offered as extra corroboration once a step's answer is
  * identified. Thm. 6.1's own proof describes a round's analogous
- * corroboration as "the authored statement of `μ(d)` itself" — which
- * `PropositionOption.text` does not yet carry (see that type's own doc
- * comment for why, and `#1330`, filed off this PR's own review). Adding a
- * field here that could only ever hold the same short `title` `options`
- * already carries would not be that corroboration, only a redundant copy
- * of it, so `RoundProbe` omits the field until `#1330`'s own gap closes.
+ * corroboration as "the authored statement of `μ(d)` itself" — canon §7's
+ * full body text, not `PropositionOption.text` (which stays the register's
+ * short `title`, the discrimination target a learner picks between; see
+ * that type's own doc comment for why the two stay separate). `#1330`
+ * extended `parse-canon.ts` to capture that body as `PropositionRegisterEntry.
+ * statement`, so `roundProbeOf` now reads it straight off the answer entry
+ * as `RoundProbe.justification` — never optional, since every active
+ * register entry has one by construction (canon §7's `#proposition(...)[...]`
+ * syntax requires a body).
+ *
+ * `gloss` is the different, round-specific half Thm. 6.1's own acceptance
+ * criteria also ask for: *why this diff* instantiates the register's
+ * general claim, as opposed to `justification`'s general-by-construction
+ * statement. Read straight off `selectedDiff.propositionGloss`
+ * (`types/round.ts`) — genuinely optional, since #1220's own acceptance
+ * criteria call for leaving a missing gloss visible rather than papering
+ * over it with generated prose, the same posture LTY-MOBILE already takes
+ * for the construction family's missing `whyRepairDiscriminates`.
  */
 
 /**
@@ -113,14 +125,14 @@ import type { DiffSetMember } from "@leetype/types/round"
  * stable across the whole register.
  *
  * `text` is the register entry's own `title` — a short name ("Sequential
- * composition adds"), not canon §7's full authored statement (the body
- * text after the name, carrying the actual equation or claim). That body
- * is not parsed anywhere in this workspace yet (`parse-canon.ts` reads
- * only the `name:` argument); until it is, `text` is the best available
- * stand-in for "the sentence this option names," sufficient for B2's own
- * discrimination-card job. Filed as `#1330` (sub-issue of `#1219`): B3
- * (#1220) needs the fuller statement for its own verdict justification and
- * will need the parser extended before it can render one.
+ * composition adds"), deliberately kept short rather than switched to
+ * canon §7's full authored `statement` (`#1330`) once that became
+ * available: `text` is the discrimination target a learner picks *between*
+ * four options at a glance, and a full paragraph-length statement on every
+ * row would turn the card into a reading task before a single tap. The
+ * full statement is what `RoundProbe.justification` carries instead —
+ * shown once, for the answer alone, after a commitment is recorded (see
+ * this module's own doc comment, "`justification` and `gloss`").
  */
 export type PropositionOption = {
   id: PropositionId
@@ -170,12 +182,26 @@ export function propositionPoolOf(
  * (`rationale.cause`/`obligation`/`goal`) and the card's prompt has to
  * match which one. A round's answer is always "which proposition does this
  * diff witness" — one question, not three — so there is nothing for a
- * `family` field to distinguish and nothing for a `prompt` field to vary.
+ * `family` field to distinguish and nothing for a `prompt` field to vary
+ * (`ROUND_PROBE_PROMPT`, below, is the one fixed question every round
+ * asks).
+ *
+ * `justification` and `gloss`: see this module's own doc comment,
+ * "`justification` and `gloss` (B3, #1220)."
  */
 export type RoundProbe = {
   answerId: PropositionId
   options: ReadonlyArray<PropositionOption>
+  justification: string
+  gloss?: string
 }
+
+/**
+ * The one fixed question every round's discrimination card asks — unlike
+ * `ReadingProbe`'s `FAMILY_PROMPT`, there is only ever one, per `RoundProbe`'s
+ * own doc comment on why it carries no `family`/`prompt` fields of its own.
+ */
+export const ROUND_PROBE_PROMPT = "Which proposition does this diff witness?"
 
 /**
  * Builds a card for one diff-set member — `d` in Thm. 6.1's pair `(d, p)`.
@@ -230,6 +256,13 @@ export type RoundProbe = {
  * to, mirroring `claimOf`'s own totality property for the step surface.
  * A retired answer is the one input this function deliberately refuses
  * rather than degrades through, per the section above.
+ *
+ * `justification` is read straight off the answer entry's own `statement`
+ * (`#1330`) — never optional, since every active entry has one by
+ * construction. `gloss` passes `selectedDiff.propositionGloss` through
+ * unchanged when authored, and is omitted (not defaulted to an empty or
+ * generated string) when it is not — see this module's own doc comment,
+ * "`justification` and `gloss` (B3, #1220)."
  */
 export function roundProbeOf(
   selectedDiff: DiffSetMember,
@@ -261,5 +294,12 @@ export function roundProbeOf(
     seed ^ 0x27d4eb2f
   )
 
-  return { answerId, options }
+  return {
+    answerId,
+    options,
+    justification: answerEntry.statement,
+    ...(selectedDiff.propositionGloss !== undefined
+      ? { gloss: selectedDiff.propositionGloss }
+      : {}),
+  }
 }

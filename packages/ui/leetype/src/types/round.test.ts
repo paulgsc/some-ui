@@ -102,6 +102,31 @@ describe("DiffSetMemberSchema — Def. 1.4's diff plus Def. 1.6's μ", () => {
     }
     expect(DiffSetMemberSchema.parse(member)).toEqual(member)
   })
+
+  // B3 (#1220): propositionGloss is the round-specific half of a verdict's
+  // justification, and always optional — a missing gloss is a real,
+  // disclosed thinness (#1220's own acceptance criteria), not a validation
+  // failure.
+  it("accepts a member with an authored propositionGloss", () => {
+    const member = {
+      hunk: ADMISSIBLE_HUNK,
+      propositionId: "CW-P5",
+      admissible: true,
+      propositionGloss:
+        "this hunk trades the loop's repeated linear search for one preprocessing pass, exactly CW-P5's own rewrite",
+    }
+    expect(DiffSetMemberSchema.parse(member)).toEqual(member)
+  })
+
+  it("accepts a member with no propositionGloss at all", () => {
+    const member = {
+      hunk: ADMISSIBLE_HUNK,
+      propositionId: "CW-P5",
+      admissible: true,
+    }
+    expect(DiffSetMemberSchema.parse(member)).toEqual(member)
+    expect(DiffSetMemberSchema.parse(member).propositionGloss).toBeUndefined()
+  })
 })
 
 describe("DiffSetSchema — Ax. 1.1's floor and Prop. 2.1's exactly-one-admissible constraint", () => {
