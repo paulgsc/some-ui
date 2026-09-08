@@ -80,6 +80,23 @@ export type PropositionRegisterEntry = {
  * Throws on an unbalanced block rather than silently returning a truncated
  * body, the same "fail loudly, not by producing a wrong answer" posture
  * `parsePropositionRegister`'s own call-site count check already takes.
+ *
+ * **Two lexical escapes, not just nesting (review finding on this PR,
+ * chatgpt-codex-connector).** A literal `[`/`]` inside typst content is not
+ * always a content-block delimiter:
+ *
+ * - `\[` / `\]` — typst's own backslash escape for a literal bracket
+ *   character. Counting it as structural would either close the body early
+ *   (`\]`) or report a false unbalanced block (`\[`).
+ * - a raw span (`` `...` ``) — typst does not scan raw-span content for
+ *   markup at all, so a bracket inside one (`` `array[0]` ``) is plain text,
+ *   never a delimiter. No entry in the canon does this today, but this
+ *   parser has already had to fix one "only works by accident of the
+ *   current corpus" gap in this same function (the nesting case above);
+ *   this is the same class of risk.
+ *
+ * Both are skipped over — depth is never touched while scanning past
+ * either — before the loop even looks at the character for bracket depth.
  */
 function bodyOfBracketBlock(
   source: string,
@@ -88,8 +105,31 @@ function bodyOfBracketBlock(
   let depth = 1
   let index = openBracketIndex + 1
   while (index < source.length && depth > 0) {
-    if (source[index] === "[") depth += 1
-    else if (source[index] === "]") depth -= 1
+    const ch = source[index]
+    if (ch === "\\") {
+      // typst's escape: the following character is literal, never
+      // structural, regardless of what it is.
+      index += 2
+      continue
+    }
+    if (ch === "`") {
+      // A raw span: some run of backticks opens it, and the same-length
+      // run closes it (typst's own rule) — skip straight to that close
+      // without inspecting anything in between for bracket depth.
+      let runEnd = index
+      while (source[runEnd] === "`") runEnd += 1
+      const delimiter = source.slice(index, runEnd)
+      const closeIndex = source.indexOf(delimiter, runEnd)
+      if (closeIndex === -1) {
+        throw new Error(
+          `proposition register entry body starting at index ${openBracketIndex} has an unterminated raw span ("${delimiter}" opened at index ${index} with no matching close).`
+        )
+      }
+      index = closeIndex + delimiter.length
+      continue
+    }
+    if (ch === "[") depth += 1
+    else if (ch === "]") depth -= 1
     index += 1
   }
   if (depth !== 0) {
@@ -103,18 +143,81 @@ function bodyOfBracketBlock(
   }
 }
 
+// typst's own bare-identifier names for math-mode symbols this canon's own
+// math spans are known to use, or are stable enough conventions (standard
+// Greek letter names) to be worth handling defensively rather than only
+// reactively — not a general typst-math parser, which real typesetting
+// (superscripts, subscripts, function layout) would need and which is a
+// materially bigger, riskier piece of infrastructure than a display-text
+// cleanup should take on incidentally (the same call `#1330`'s own issue
+// already made about not parsing the body structurally). Anything outside
+// this table (`^(...)`, `_...`, function-call parens) is left as literal
+// text — readable as prose, if not real typesetting.
+const MATH_SYMBOL_NAMES: ReadonlyArray<readonly [RegExp, string]> = [
+  [/\bTheta\b/g, "Θ"],
+  [/\bOmega\b/g, "Ω"],
+  [/\balpha\b/g, "α"],
+  [/\bbeta\b/g, "β"],
+  [/\bdelta\b/g, "δ"],
+  [/\bepsilon\b/g, "ε"],
+  [/\blambda\b/g, "λ"],
+  [/\bsigma\b/g, "σ"],
+  [/\bdot\b/g, "·"],
+  [/<=/g, "≤"],
+  [/>=/g, "≥"],
+]
+
+/** Renders one `$...$` math span's own inner content as display text — see `MATH_SYMBOL_NAMES`'s own comment for what this deliberately does and does not attempt. */
+function renderMathSpan(innerContent: string): string {
+  return MATH_SYMBOL_NAMES.reduce(
+    (text, [pattern, replacement]) => text.replace(pattern, replacement),
+    innerContent
+  )
+}
+
+/**
+ * Turns an authored body's own typst markup into plain display text —
+ * review finding on this PR (chatgpt-codex-connector): the raw statement
+ * carries typst source syntax verbatim (`$Theta(n^2)$`, `*worst-case*`,
+ * `` `CW-P5` ``, `---`, `\[escaped\]`), and a component rendering it as-is
+ * would show that syntax to a learner rather than the sentence it authors.
+ * Math substitution reads each span's *own* delimited content, so it runs
+ * before backticks/emphasis are unwrapped (neither appears inside this
+ * canon's own math spans today, but scoping the substitution to each
+ * span's own capture group, rather than the whole string, keeps it that
+ * way regardless). The backslash-unescape runs last and is deliberately
+ * narrow: it turns `\[`/`\]` (the case `bodyOfBracketBlock` above already
+ * has to recognize for bracket depth) back into a literal bracket. It is
+ * not a general typst-escape resolver — an escaped `` \` ``/`\*`/`\$`
+ * would still be read by the steps above as a real delimiter, since none
+ * of canon §7's bodies do that today and handling it soundly needs
+ * resolving escapes before, not after, those steps run (a masking pass,
+ * not a plain sequential replace) — real complexity this display-text
+ * cleanup shouldn't take on speculatively.
+ */
+function renderInlineMarkup(text: string): string {
+  return text
+    .replace(/\$([^$]*)\$/g, (_match, inner: string) => renderMathSpan(inner))
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/---/g, "—")
+    .replace(/\\([[\]])/g, "$1")
+}
+
 /**
  * Collapses an authored body's own line breaks and indentation into one
  * flowing line — the same "one line, not many" shape `title` already has,
  * so `statement` reads as a single sentence-or-two rather than carrying
- * the `.typ` source's own indentation into rendered UI.
+ * the `.typ` source's own indentation into rendered UI — and renders its
+ * inline typst markup as display text (`renderInlineMarkup`).
  */
 function normalizeStatement(rawBody: string): string {
-  return rawBody
+  const joined = rawBody
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
     .join(" ")
+  return renderInlineMarkup(joined)
 }
 
 /**

@@ -81,7 +81,7 @@ describe("parsePropositionRegister", () => {
       `]\n`
 
     expect(parsePropositionRegister(source)[0]?.statement).toBe(
-      `Sibling control flow executed in sequence contributes the sum of its members' costs: $T("Seq"(G_1, ..., G_m)) = sum_i T(G_i)$.`
+      `Sibling control flow executed in sequence contributes the sum of its members' costs: T("Seq"(G_1, ..., G_m)) = sum_i T(G_i).`
     )
   })
 
@@ -101,6 +101,37 @@ describe("parsePropositionRegister", () => {
     )
   })
 
+  // Review finding on this PR (chatgpt-codex-connector): a raw span's own
+  // content is never scanned for markup by typst, so a literal "[" / "]"
+  // inside one (e.g. a code example like `array[0]`) must not be counted
+  // as a content-block delimiter — it would otherwise truncate the body
+  // early or report a false unbalanced block.
+  it("does not count a literal bracket inside a raw span as structural", () => {
+    const source =
+      `= The proposition register\n\n` +
+      '#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n' +
+      "  Indexes like `array[0]` read the first element.\n" +
+      "]\n"
+
+    expect(parsePropositionRegister(source)[0]?.statement).toBe(
+      "Indexes like array[0] read the first element."
+    )
+  })
+
+  // Same finding: typst's own backslash escape (`\[`, `\]`) makes a bracket
+  // literal too, independent of raw spans.
+  it("does not count an escaped bracket as structural", () => {
+    const source =
+      `= The proposition register\n\n` +
+      `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
+      `  A literal \\[bracket\\] written by hand.\n` +
+      `]\n`
+
+    expect(parsePropositionRegister(source)[0]?.statement).toBe(
+      "A literal [bracket] written by hand."
+    )
+  })
+
   it("throws on an unbalanced body — an unmatched '[' with no closing ']'", () => {
     const source =
       `= The proposition register\n\n` +
@@ -108,6 +139,59 @@ describe("parsePropositionRegister", () => {
       `  Missing its own closing bracket.\n`
 
     expect(() => parsePropositionRegister(source)).toThrow(/no matching "\]"/)
+  })
+
+  // Review finding on this PR (chatgpt-codex-connector): a component
+  // rendering `statement` verbatim would show the canon's own typst source
+  // syntax to a learner, not the sentence it authors.
+  describe("renders inline typst markup as display text", () => {
+    it("unwraps a raw span, keeping its content as plain text", () => {
+      const source =
+        `= The proposition register\n\n` +
+        `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
+        "  See also `CW-P5` for the related rewrite.\n" +
+        `]\n`
+
+      expect(parsePropositionRegister(source)[0]?.statement).toBe(
+        "See also CW-P5 for the related rewrite."
+      )
+    })
+
+    it("unwraps emphasis, keeping its content as plain text", () => {
+      const source =
+        `= The proposition register\n\n` +
+        `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
+        `  Improves the *best* case only.\n` +
+        `]\n`
+
+      expect(parsePropositionRegister(source)[0]?.statement).toBe(
+        "Improves the best case only."
+      )
+    })
+
+    it("renders typst's '---' as a real em dash", () => {
+      const source =
+        `= The proposition register\n\n` +
+        `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
+        `  A fixed cost --- unaffected by any bound.\n` +
+        `]\n`
+
+      expect(parsePropositionRegister(source)[0]?.statement).toBe(
+        "A fixed cost — unaffected by any bound."
+      )
+    })
+
+    it("drops a math span's own '$' delimiters and renders known symbol names", () => {
+      const source =
+        `= The proposition register\n\n` +
+        `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
+        `  Bounded by $Theta(n^2)$ in the worst case, provided $T_A (C) <= B$.\n` +
+        `]\n`
+
+      expect(parsePropositionRegister(source)[0]?.statement).toBe(
+        "Bounded by Θ(n^2) in the worst case, provided T_A (C) ≤ B."
+      )
+    })
   })
 
   it("throws on a gap in the CW-P sequence", () => {
@@ -199,7 +283,7 @@ describe("parsePropositionRegister", () => {
       id: "CW-P1",
       title: "Sequential composition adds",
       statement:
-        'Sibling control flow executed in sequence contributes the sum of its members\' costs: $T("Seq"(G_1, ..., G_m)) = sum_i T(G_i)$.',
+        'Sibling control flow executed in sequence contributes the sum of its members\' costs: T("Seq"(G_1, ..., G_m)) = sum_i T(G_i).',
       status: "active",
     })
   })
