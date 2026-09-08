@@ -32,8 +32,18 @@ describe("parsePropositionRegister", () => {
     ])
 
     expect(parsePropositionRegister(source)).toEqual([
-      { id: "CW-P1", title: "Sequential composition adds", status: "active" },
-      { id: "CW-P2", title: "Nested repetition multiplies", status: "active" },
+      {
+        id: "CW-P1",
+        title: "Sequential composition adds",
+        statement: "Some body text.",
+        status: "active",
+      },
+      {
+        id: "CW-P2",
+        title: "Nested repetition multiplies",
+        statement: "Some body text.",
+        status: "active",
+      },
     ])
   })
 
@@ -47,13 +57,57 @@ describe("parsePropositionRegister", () => {
     ])
 
     expect(parsePropositionRegister(source)).toEqual([
-      { id: "CW-P1", title: "Sequential composition adds", status: "active" },
+      {
+        id: "CW-P1",
+        title: "Sequential composition adds",
+        statement: "Some body text.",
+        status: "active",
+      },
       {
         id: "CW-P2",
         title: "Nested repetition multiplies",
+        statement: "Some body text.",
         status: exampleStatus,
       },
     ])
+  })
+
+  it("captures the bracketed body as `statement`, collapsing its own line breaks and indentation", () => {
+    const source =
+      `= The proposition register\n\n` +
+      `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
+      `  Sibling control flow executed in sequence contributes the sum of its\n` +
+      `  members' costs: $T("Seq"(G_1, ..., G_m)) = sum_i T(G_i)$.\n` +
+      `]\n`
+
+    expect(parsePropositionRegister(source)[0]?.statement).toBe(
+      `Sibling control flow executed in sequence contributes the sum of its members' costs: $T("Seq"(G_1, ..., G_m)) = sum_i T(G_i)$.`
+    )
+  })
+
+  // #1330: typst content between a body's own "[" and its matching "]" can
+  // nest brackets — no canon entry does today, but a parser that only works
+  // by accident of the current corpus is the same silent-miss risk this
+  // module has already had to fix once (the multi-line call-site check).
+  it("is bracket-depth-aware — a nested [...] inside the body does not truncate it", () => {
+    const source =
+      `= The proposition register\n\n` +
+      `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
+      `  See also #footnote[a nested block, itself closed] for detail.\n` +
+      `]\n`
+
+    expect(parsePropositionRegister(source)[0]?.statement).toBe(
+      "See also #footnote[a nested block, itself closed] for detail."
+    )
+  })
+
+  it("throws on an unbalanced body — an unmatched '[' with no closing ']'", () => {
+    const source =
+      `= The proposition register\n\n` +
+      `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
+      `  Missing its own closing bracket.\n`
+
+    expect(() => parsePropositionRegister(source)).toThrow(/no matching "\]"/)
   })
 
   it("throws on a gap in the CW-P sequence", () => {
@@ -117,7 +171,12 @@ describe("parsePropositionRegister", () => {
       `#proposition("8.1", name: "Some other section's result")[\n  Body.\n]\n`
 
     expect(parsePropositionRegister(source)).toEqual([
-      { id: "CW-P1", title: "Sequential composition adds", status: "active" },
+      {
+        id: "CW-P1",
+        title: "Sequential composition adds",
+        statement: "Body.",
+        status: "active",
+      },
     ])
   })
 
@@ -139,6 +198,8 @@ describe("parsePropositionRegister", () => {
     expect(entries[0]).toEqual({
       id: "CW-P1",
       title: "Sequential composition adds",
+      statement:
+        'Sibling control flow executed in sequence contributes the sum of its members\' costs: $T("Seq"(G_1, ..., G_m)) = sum_i T(G_i)$.',
       status: "active",
     })
   })

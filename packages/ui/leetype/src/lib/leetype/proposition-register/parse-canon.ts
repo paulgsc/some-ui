@@ -20,12 +20,29 @@
  * (retired)"`. Worth a second look from whoever amends the canon to
  * actually retire an entry, since this convention has never been exercised
  * against a real one.
+ *
+ * **`statement` (`#1330`) is this story's own addition too.** B1 only ever
+ * read the `name:` argument; it never captured the bracketed body that
+ * follows — canon §7's actual authored claim (the equation or sentence
+ * Thm. 6.1's proof calls "the authored statement of `μ(d)` itself"), as
+ * opposed to `title`, which is only the register's short name for it. The
+ * body is read bracket-depth-aware (`bodyOfBracketBlock` below) rather than
+ * by a `[^\]]*` regex, because typst content between `[` and its matching
+ * `]` may itself contain nested `[...]` — no entry in the canon today
+ * happens to, but a parser that only works by accident of the current
+ * corpus is exactly the kind of silent-miss risk this module's own history
+ * (the multi-line call-site check, the retirement suffix) has already had
+ * to fix once each.
  */
 
 const SECTION_7_HEADING = "= The proposition register"
 const NEXT_TOP_LEVEL_HEADING = /^= /m
 
-const PROPOSITION_ENTRY = /#proposition\("7\.\d+",\s*name:\s*"([^"]*)"\)/g
+// Requires the body's opening bracket immediately after the `name:`
+// argument closes — true of every `#proposition(...)` call in this canon
+// today (verified against the whole file, not just §7) — so a match's own
+// end index always lands one past `[`, ready for `bodyOfBracketBlock`.
+const PROPOSITION_ENTRY = /#proposition\("7\.\d+",\s*name:\s*"([^"]*)"\)\[/g
 // A `#proposition(` call site is not unique to §7 — every numbered section
 // of this canon uses the same macro (Prop. P.1, 1.1, 2.1, ... 10.1 all
 // exist) — so this is only ever counted within `section7Of`'s slice, never
@@ -40,7 +57,64 @@ export type PropositionStatus = "active" | "retired"
 export type PropositionRegisterEntry = {
   readonly id: string
   readonly title: string
+  /**
+   * Canon §7's own authored claim — the bracketed body of the entry's
+   * `#proposition(...)[...]` call, whitespace-normalized to one flowing
+   * line (paragraph breaks collapsed to a single space, same posture
+   * `title` already takes on being one line rather than many). This is
+   * what Thm. 6.1's proof means by "the authored statement of `μ(d)`
+   * itself" — B3 (`#1220`) renders it as a round's verdict justification;
+   * `title` alone is only the register's short name for it, insufficient
+   * on its own (`#1330`).
+   */
+  readonly statement: string
   readonly status: PropositionStatus
+}
+
+/**
+ * The text strictly between `source[openBracketIndex]` (which must be
+ * `"["`) and its matching `"]"`, tracking nesting depth rather than
+ * stopping at the first `"]"` — typst content can nest brackets (a
+ * `#footnote[...]`, a literal array), and this canon's own bodies are not
+ * guaranteed to stay bracket-free forever just because none do today.
+ * Throws on an unbalanced block rather than silently returning a truncated
+ * body, the same "fail loudly, not by producing a wrong answer" posture
+ * `parsePropositionRegister`'s own call-site count check already takes.
+ */
+function bodyOfBracketBlock(
+  source: string,
+  openBracketIndex: number
+): { body: string; afterIndex: number } {
+  let depth = 1
+  let index = openBracketIndex + 1
+  while (index < source.length && depth > 0) {
+    if (source[index] === "[") depth += 1
+    else if (source[index] === "]") depth -= 1
+    index += 1
+  }
+  if (depth !== 0) {
+    throw new Error(
+      `proposition register entry body starting at index ${openBracketIndex} has no matching "]" — an unbalanced "[" inside the body, or truncated canon source.`
+    )
+  }
+  return {
+    body: source.slice(openBracketIndex + 1, index - 1),
+    afterIndex: index,
+  }
+}
+
+/**
+ * Collapses an authored body's own line breaks and indentation into one
+ * flowing line — the same "one line, not many" shape `title` already has,
+ * so `statement` reads as a single sentence-or-two rather than carrying
+ * the `.typ` source's own indentation into rendered UI.
+ */
+function normalizeStatement(rawBody: string): string {
+  return rawBody
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .join(" ")
 }
 
 /**
@@ -113,9 +187,15 @@ export function parsePropositionRegister(
     const rawName = match[1] ?? ""
     const { id, title } = parseEntryName(rawName)
     const retired = title.endsWith(RETIRED_SUFFIX)
+    // `match.index` is where `#proposition(` starts and this match's own
+    // text ends in `"["`, so the open bracket is the match's last
+    // character.
+    const openBracketIndex = match.index + match[0].length - 1
+    const { body } = bodyOfBracketBlock(section7, openBracketIndex)
     entries.push({
       id,
       title: retired ? title.slice(0, -RETIRED_SUFFIX.length) : title,
+      statement: normalizeStatement(body),
       status: retired ? "retired" : "active",
     })
   }
