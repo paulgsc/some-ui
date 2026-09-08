@@ -33,6 +33,20 @@ function memberOf(
       }
 }
 
+/** A diff-set member carrying an authored round-specific gloss. */
+function memberWithGlossOf(
+  propositionId: PropositionId,
+  path: string,
+  gloss: string
+): DiffSetMember {
+  return {
+    hunk: hunkAt(path),
+    propositionId,
+    admissible: true,
+    propositionGloss: gloss,
+  }
+}
+
 const ACTIVE_IDS: ReadonlyArray<PropositionId> = propositionPoolOf().map(
   (option) => option.id
 )
@@ -151,5 +165,54 @@ describe("roundProbeOf", () => {
         retiredRegister
       )
     ).toThrow(/retired/)
+  })
+
+  // B3 (#1220), #1330: the verdict's justification is the answer's own
+  // register statement — canon §7's full authored claim, not the short
+  // `title` `options` carry.
+  describe("justification and gloss (#1220)", () => {
+    it("carries the answer entry's own register statement as justification", () => {
+      const probe = roundProbeOf(memberOf("CW-P1", "a"), 1)
+      expect(probe.justification).toBe(PROPOSITION_REGISTER["CW-P1"].statement)
+      expect(probe.justification).not.toBe(PROPOSITION_REGISTER["CW-P1"].title)
+    })
+
+    it("is total — every active proposition has a non-empty justification", () => {
+      for (let index = 0; index < ACTIVE_IDS.length; index += 1) {
+        const propositionId = ACTIVE_IDS[index]!
+        const probe = roundProbeOf(memberOf(propositionId, "a"), index)
+        expect(probe.justification.length).toBeGreaterThan(0)
+      }
+    })
+
+    it("omits gloss when the selected diff carries none", () => {
+      const probe = roundProbeOf(memberOf("CW-P1", "a"), 1)
+      expect(probe.gloss).toBeUndefined()
+    })
+
+    it("passes the selected diff's own authored gloss through unchanged", () => {
+      const gloss =
+        "this hunk trades the loop's repeated linear search for one preprocessing pass, exactly CW-P5's own rewrite"
+      const probe = roundProbeOf(memberWithGlossOf("CW-P5", "a", gloss), 1)
+      expect(probe.gloss).toBe(gloss)
+    })
+
+    // A distractor diff's own μ(d) is still a real proposition (per this
+    // module's own "answer is μ(d) of the selected diff" section) — its
+    // gloss, when authored, must follow the same diff, not the round's
+    // admissible member.
+    it("reads gloss off the selected diff even when it is the non-admissible one", () => {
+      const gloss = "this distractor rewrite instantiates CW-P9 instead"
+      const distractorMember: DiffSetMember = {
+        hunk: hunkAt("b"),
+        propositionId: "CW-P9",
+        admissible: false,
+        distractorStatement:
+          "a well-formed rewrite that doesn't restore budget",
+        propositionGloss: gloss,
+      }
+      const probe = roundProbeOf(distractorMember, 1)
+      expect(probe.gloss).toBe(gloss)
+    })
   })
 })

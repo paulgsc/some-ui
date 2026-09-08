@@ -9,12 +9,16 @@ import {
 const ENTRY_1: PropositionRegisterEntry = {
   id: "CW-P1",
   title: "Sequential composition adds",
+  statement:
+    "Sibling control flow executed in sequence contributes the sum of its members' costs.",
   status: "active",
 }
 
 const ENTRY_2: PropositionRegisterEntry = {
   id: "CW-P2",
   title: "Nested repetition multiplies",
+  statement:
+    "A body enclosed in a repetition contributes the product of the repetition count and the body's cost.",
   status: "active",
 }
 

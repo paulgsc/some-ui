@@ -22,7 +22,7 @@ export function formatGeneratedModule(
   const registerEntries = entries
     .map(
       (entry) =>
-        `  "${entry.id}": { id: "${entry.id}", title: ${JSON.stringify(entry.title)}, status: "${entry.status}" },`
+        `  "${entry.id}": { id: "${entry.id}", title: ${JSON.stringify(entry.title)}, statement: ${JSON.stringify(entry.statement)}, status: "${entry.status}" },`
     )
     .join("\n")
 
