@@ -312,12 +312,47 @@ const MATH_SYMBOL_NAMES: ReadonlyArray<readonly [RegExp, string]> = [
   [/>=/g, "≥"],
 ]
 
-/** Renders one `$...$` math span's own inner content as display text — see `MATH_SYMBOL_NAMES`'s own comment for what this deliberately does and does not attempt. */
-function renderMathSpan(innerContent: string): string {
+/** Applies `MATH_SYMBOL_NAMES` to a plain (already quote-free) run of math-mode text — see that table's own comment for what this deliberately does and does not attempt. */
+function substituteMathSymbols(text: string): string {
   return MATH_SYMBOL_NAMES.reduce(
-    (text, [pattern, replacement]) => text.replace(pattern, replacement),
-    innerContent
+    (running, [pattern, replacement]) => running.replace(pattern, replacement),
+    text
   )
+}
+
+/**
+ * Renders one `$...$` math span's own inner content as display text.
+ *
+ * A quoted string inside math mode (`` $T("Seq"(G_1, ..., G_m))$ `` — this
+ * canon's own real CW-P1/CW-P2, naming an operator that is not a standard
+ * math symbol) is typst's convention for setting an identifier in upright
+ * text instead of italic; the quote marks themselves are never part of
+ * what a reader sees. Review finding on this PR (chatgpt-codex-connector,
+ * caught against these two real, already-generated statements rather than
+ * a hypothetical): the quotes were passed straight through into display
+ * text, unlike every other construct this module handles. Scanned
+ * separately from `substituteMathSymbols`, and deliberately unsubstituted
+ * — `"Seq"`/`"Loop"` are operator *names*, not symbols the table should
+ * ever rewrite, so a quoted run's content is copied verbatim rather than
+ * run through it.
+ */
+function renderMathSpan(innerContent: string): string {
+  let result = ""
+  let index = 0
+  while (index < innerContent.length) {
+    if (innerContent[index] === '"') {
+      const endIndex = stringLiteralEndAt(innerContent, index)
+      result += innerContent.slice(index + 1, endIndex - 1)
+      index = endIndex
+      continue
+    }
+    const nextQuoteIndex = innerContent.indexOf('"', index)
+    const segmentEnd =
+      nextQuoteIndex === -1 ? innerContent.length : nextQuoteIndex
+    result += substituteMathSymbols(innerContent.slice(index, segmentEnd))
+    index = segmentEnd
+  }
+  return result
 }
 
 /**

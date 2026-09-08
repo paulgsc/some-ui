@@ -34,14 +34,14 @@ export const PROPOSITION_REGISTER: Readonly<
     id: "CW-P1",
     title: "Sequential composition adds",
     statement:
-      'Sibling control flow executed in sequence contributes the sum of its members\' costs: T("Seq"(G_1, ..., G_m)) = sum_i T(G_i).',
+      "Sibling control flow executed in sequence contributes the sum of its members' costs: T(Seq(G_1, ..., G_m)) = sum_i T(G_i).",
     status: "active",
   },
   "CW-P2": {
     id: "CW-P2",
     title: "Nested repetition multiplies",
     statement:
-      'A body enclosed in a repetition contributes the product of the repetition count and the body\'s cost: T("Loop"(r, G)) = r · T(G).',
+      "A body enclosed in a repetition contributes the product of the repetition count and the body's cost: T(Loop(r, G)) = r · T(G).",
     status: "active",
   },
   "CW-P3": {

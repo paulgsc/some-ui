@@ -81,7 +81,7 @@ describe("parsePropositionRegister", () => {
       `]\n`
 
     expect(parsePropositionRegister(source)[0]?.statement).toBe(
-      `Sibling control flow executed in sequence contributes the sum of its members' costs: T("Seq"(G_1, ..., G_m)) = sum_i T(G_i).`
+      `Sibling control flow executed in sequence contributes the sum of its members' costs: T(Seq(G_1, ..., G_m)) = sum_i T(G_i).`
     )
   })
 
@@ -290,6 +290,37 @@ describe("parsePropositionRegister", () => {
       )
     })
 
+    // Review finding, round 5 (chatgpt-codex-connector) — caught against
+    // the real, already-generated CW-P1/CW-P2 statements, not a
+    // hypothetical: a quoted string inside math mode (typst's own
+    // convention for setting an operator name in upright text, e.g.
+    // $T("Seq"(...))$) rendered with its quote marks still visible.
+    // Stripped, and deliberately never run through MATH_SYMBOL_NAMES — a
+    // quoted name is an identifier, not a symbol the table should rewrite.
+    it("strips a quoted string's own delimiters inside math mode, without substituting its content", () => {
+      const source =
+        `= The proposition register\n\n` +
+        `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
+        `  Contributes $T("Seq"(G_1, ..., G_m)) = sum_i T(G_i)$.\n` +
+        `]\n`
+
+      expect(parsePropositionRegister(source)[0]?.statement).toBe(
+        "Contributes T(Seq(G_1, ..., G_m)) = sum_i T(G_i)."
+      )
+    })
+
+    it("does not substitute a math symbol name's content when it appears inside a quoted string", () => {
+      const source =
+        `= The proposition register\n\n` +
+        `#proposition("7.1", name: "CW-P1 · Sequential composition adds")[\n` +
+        `  A rewrite named $"Theta"(x)$ is a literal identifier, not the symbol.\n` +
+        `]\n`
+
+      expect(parsePropositionRegister(source)[0]?.statement).toBe(
+        "A rewrite named Theta(x) is a literal identifier, not the symbol."
+      )
+    })
+
     // Review finding, round 2 (chatgpt-codex-connector): `bodyOfBracketBlock`
     // already recognizes a raw span's delimiter as a run of backticks of
     // arbitrary length, but the first cut of this unwrap only stripped a
@@ -417,7 +448,7 @@ describe("parsePropositionRegister", () => {
       id: "CW-P1",
       title: "Sequential composition adds",
       statement:
-        'Sibling control flow executed in sequence contributes the sum of its members\' costs: T("Seq"(G_1, ..., G_m)) = sum_i T(G_i).',
+        "Sibling control flow executed in sequence contributes the sum of its members' costs: T(Seq(G_1, ..., G_m)) = sum_i T(G_i).",
       status: "active",
     })
   })
