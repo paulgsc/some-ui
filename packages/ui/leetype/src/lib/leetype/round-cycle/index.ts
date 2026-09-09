@@ -19,13 +19,15 @@
  */
 
 import { isAdmissible } from "@leetype/lib/leetype/admissibility"
+import { dimensionsOfConstraints } from "@leetype/lib/leetype/constraint"
 import type { CostGraph } from "@leetype/lib/leetype/cost"
-import { costOf } from "@leetype/lib/leetype/cost"
+import { costOf, dimensionsOfGraph } from "@leetype/lib/leetype/cost"
 import { PROPOSITION_REGISTER } from "@leetype/lib/leetype/proposition-register/generated"
 import type { PropositionId } from "@leetype/lib/leetype/proposition-register/generated"
 import type { PropositionRegisterEntry } from "@leetype/lib/leetype/proposition-register/parse-canon"
 import type { Commitment } from "@leetype/types/commitment"
 import type { Budget, ConstraintSet } from "@leetype/types/constraint"
+import { ConstraintDiffSchema } from "@leetype/types/constraint"
 import type { DiffSetMember } from "@leetype/types/round"
 
 /**
@@ -38,11 +40,14 @@ import type { DiffSetMember } from "@leetype/types/round"
  * authored here, only checked — see `nextRoundCycleState`, below.
  *
  * "Over the same dimensions" (Def. 3.2/8.2) is a real precondition, not
- * decoration: `constraints` must bound exactly `C`'s own dimension set.
- * `nextRoundCycleState` checks this before ever evaluating a candidate,
- * rather than letting a mismatched candidate reach `isAdmissible`'s own
- * `evaluate`, which throws for a graph referencing an unbounded dimension
- * (review finding on this PR, chatgpt-codex-connector).
+ * decoration: `constraints` must be a valid Def. 3.2 constraint diff away
+ * from `C` — same dimensions, same comparison operators, at least one
+ * bound actually differing. `nextRoundCycleState` validates every
+ * candidate against `ConstraintDiffSchema` (`types/constraint.ts`) before
+ * ever evaluating one, rather than letting a mismatched candidate reach
+ * `isAdmissible`'s own `evaluate` (which throws for a graph referencing an
+ * unbounded dimension) or produce a successor state no presentation model
+ * could actually render (review findings on this PR, chatgpt-codex-connector).
  */
 export type RescueCandidate = {
   readonly constraints: ConstraintSet
@@ -238,15 +243,30 @@ export function dimensionIndependentCostOf(graph: CostGraph): number {
     .reduce((total, term) => total + term.coefficient, 0)
 }
 
-function dimensionSetOf(constraints: ConstraintSet): ReadonlySet<string> {
-  return new Set(constraints.map((constraint) => constraint.dimension))
-}
-
-/** Def. 3.2/8.2's own "over the same dimensions" — the same equality `types/constraint.ts`'s `ConstraintDiffSchema` already enforces for an authored `(C, C')` pair, checked here for an authored `(C, C'')` candidate instead. */
-function boundsSameDimensions(a: ConstraintSet, b: ConstraintSet): boolean {
-  const dimsA = dimensionSetOf(a)
-  const dimsB = dimensionSetOf(b)
-  return dimsA.size === dimsB.size && [...dimsA].every((d) => dimsB.has(d))
+/**
+ * A rescue candidate `C″` is only ever meaningful as the constraint diff
+ * `C -> C″` Def. 8.2 case 1 says the next round presents — so it is held to
+ * `ConstraintDiffSchema`'s own validity rules (`types/constraint.ts`)
+ * directly, rather than a hand-rolled, narrower re-check: same dimensions,
+ * same comparison operators, and at least one bound actually differing
+ * (review finding on this PR, chatgpt-codex-connector: an earlier draft
+ * checked only that dimension *names* matched, so a candidate that flipped
+ * `n <= 1000` to `n >= 400` passed even though `isAdmissible` evaluates
+ * only the numeric bound and `ConstraintDiffSchema` itself rejects an
+ * operator change — an accepted candidate `nextRoundCycleState`'s own
+ * successor could never actually present).
+ */
+function invalidRescueCandidateReason(
+  constraints: ConstraintSet,
+  candidate: RescueCandidate
+): string | undefined {
+  const result = ConstraintDiffSchema.safeParse({
+    before: constraints,
+    after: candidate.constraints,
+  })
+  return result.success
+    ? undefined
+    : result.error.issues.map((issue) => issue.message).join("; ")
 }
 
 /**
@@ -283,6 +303,17 @@ function boundsSameDimensions(a: ConstraintSet, b: ConstraintSet): boolean {
  * #1215, already expects of its own `onCommit` caller), not reconstruct an
  * equivalent-looking object.
  *
+ * A diff whose own `graph` repeats over a dimension `C` does not bound is
+ * routed straight to Def. 8.2 case 2 (review finding on this PR,
+ * chatgpt-codex-connector) — `lib/leetype/constraint`'s own
+ * `checkConstraintDimensions` already documents this as a legitimate
+ * modelling choice, not malformed data, and Def. 8.2's own second disjunct
+ * names it directly ("grows in a dimension C does not bound"): `T_{A+d}(C)`
+ * is undefined here (Def. 3.1), so it can never be case 3, and no Def. 3.2
+ * constraint diff could ever bound a dimension outside `C`'s own set either
+ * (the identical "same dimensions" requirement every rescue candidate is
+ * already held to), so no rescue is possible even in principle.
+ *
  * The return type excludes `RoundCyclePosingDiffSelection` — a type-level
  * form of Thm. 8.1's "no learner response returns the cycle to a state
  * already visited": this function cannot produce the state it started
@@ -303,9 +334,27 @@ export function nextRoundCycleState(
     )
   }
 
+  const constraintDimensions = dimensionsOfConstraints(round.constraints)
+  const growsInUnboundedDimension = [...dimensionsOfGraph(diff.graph)].some(
+    (dimension) => !constraintDimensions.has(dimension)
+  )
+
+  if (growsInUnboundedDimension) {
+    return {
+      phase: "posingUnrescuableExplanation",
+      graph: diff.graph,
+      constraints: round.constraints,
+      budget: round.budget,
+      pinnedDiff: diff,
+      pinnedCommitment: commitment,
+      explanationPropositionId: diff.explanationPropositionId,
+    }
+  }
+
   // Def. 8.1, case 3 vs. case 4: T_{A+d}(C) <= B, derived — never read off
   // diff.member.admissible (Rem. 8.0's own lesson, restated for selection
-  // instead of execution).
+  // instead of execution). Safe now: every dimension diff.graph references
+  // is confirmed bounded by round.constraints, so evaluate cannot throw.
   if (isAdmissible(diff.graph, round.constraints, round.budget)) {
     return {
       phase: "admissibleAdvance",
@@ -338,18 +387,25 @@ export function nextRoundCycleState(
   // Otherwise a rescuing C″ is possible in principle (shrinking every
   // bound far enough always drives every non-empty-monomial term toward
   // zero) — find the authored candidate that actually demonstrates one.
-  // Each candidate is checked against Def. 3.2/8.2's own "same dimensions"
-  // requirement before it ever reaches `isAdmissible`, rather than let a
-  // mismatched candidate reach `evaluate`'s own throw for an unbounded
-  // dimension (review finding on this PR, chatgpt-codex-connector).
-  const rescuingCandidate = diff.rescueCandidates.find((candidate) => {
-    if (!boundsSameDimensions(candidate.constraints, round.constraints)) {
+  // Every candidate is validated against ConstraintDiffSchema first, in a
+  // separate pass over the *whole* array — review finding on this PR,
+  // chatgpt-codex-connector: checking each candidate lazily inside `.find`
+  // let a valid rescuing candidate short-circuit the search before a later,
+  // malformed candidate in the same array was ever validated, even though
+  // that whole (unfiltered) array is what the successor state goes on to
+  // carry.
+  for (const candidate of diff.rescueCandidates) {
+    const reason = invalidRescueCandidateReason(round.constraints, candidate)
+    if (reason !== undefined) {
       throw new Error(
-        `nextRoundCycleState: a rescue candidate for "${diff.member.propositionId}" bounds a different dimension set than C — Def. 3.2/8.2 both require "the same dimensions."`
+        `nextRoundCycleState: a rescue candidate for "${diff.member.propositionId}" is not a valid Def. 3.2 constraint diff from C — ${reason}`
       )
     }
-    return isAdmissible(diff.graph, candidate.constraints, round.budget)
-  })
+  }
+
+  const rescuingCandidate = diff.rescueCandidates.find((candidate) =>
+    isAdmissible(diff.graph, candidate.constraints, round.budget)
+  )
 
   if (rescuingCandidate === undefined) {
     throw new Error(

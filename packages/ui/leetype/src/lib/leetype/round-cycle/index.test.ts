@@ -297,8 +297,87 @@ describe("nextRoundCycleState — Def. 8.1 cases 3/4 and Def. 8.2", () => {
           diff,
           commitment: ABSTAIN,
         })
-      ).toThrow(/different dimension set/)
+      ).toThrow(/not a valid Def\. 3\.2 constraint diff/)
     })
+
+    // Review finding on this PR (chatgpt-codex-connector): a candidate that
+    // keeps C's own dimension names but flips a comparison operator
+    // (n <= 1000 -> n >= 400) is type-correct and even isAdmissible-passable
+    // (evaluate reads only the numeric bound), but ConstraintDiffSchema
+    // itself rejects an operator change — the successor's own "present
+    // C -> C''" promise could never actually render such a candidate.
+    it("throws when a rescue candidate changes a dimension's comparison operator", () => {
+      const diff = diffOptionOf({
+        propositionId: "CW-P2",
+        cost: 2000,
+        graph: Loop(dim("n"), W(2)),
+        rescueCandidates: [
+          {
+            constraints: [{ dimension: "n", operator: ">=", bound: 400 }],
+            propositionId: "CW-P4",
+          },
+        ],
+      })
+      expect(() =>
+        nextRoundCycleState(posingRoundWith([diff]), {
+          kind: "selectDiff",
+          diff,
+          commitment: ABSTAIN,
+        })
+      ).toThrow(/not a valid Def\. 3\.2 constraint diff/)
+    })
+
+    // Review finding on this PR (chatgpt-codex-connector): an earlier draft
+    // validated candidates lazily inside `.find`, so a valid rescuing
+    // candidate appearing *before* a malformed one in the array short-
+    // circuited the search and let the malformed candidate through
+    // unvalidated into the successor's own (unfiltered) rescueCandidates.
+    it("validates every rescue candidate even when a valid one appears first", () => {
+      const diff = diffOptionOf({
+        propositionId: "CW-P2",
+        cost: 2000,
+        graph: Loop(dim("n"), W(2)),
+        rescueCandidates: [
+          {
+            // Valid and genuinely rescuing — would satisfy .find() first.
+            constraints: [{ dimension: "n", operator: "<=", bound: 400 }],
+            propositionId: "CW-P4",
+          },
+          {
+            // Malformed: a different dimension than C.
+            constraints: [{ dimension: "m", operator: "<=", bound: 1 }],
+            propositionId: "CW-P4",
+          },
+        ],
+      })
+      expect(() =>
+        nextRoundCycleState(posingRoundWith([diff]), {
+          kind: "selectDiff",
+          diff,
+          commitment: ABSTAIN,
+        })
+      ).toThrow(/not a valid Def\. 3\.2 constraint diff/)
+    })
+  })
+
+  // Review finding on this PR (chatgpt-codex-connector): a diff whose graph
+  // repeats over a dimension C does not bound is Def. 8.2's own second
+  // disjunct ("grows in a dimension C does not bound"), not malformed data
+  // — lib/leetype/constraint's own checkConstraintDimensions already
+  // documents this as a legitimate modelling choice. isAdmissible would
+  // throw on such a graph, so this must be caught before ever reaching it.
+  it("routes a diff whose graph repeats over an unbounded dimension straight to Def. 8.2 case 2", () => {
+    const diff = diffOptionOf({
+      propositionId: "CW-P14",
+      cost: 2000,
+      graph: Loop(dim("m"), W(2)), // C (below) bounds "n", not "m"
+    })
+    const next = nextRoundCycleState(posingRoundWith([diff]), {
+      kind: "selectDiff",
+      diff,
+      commitment: ABSTAIN,
+    })
+    expect(next.phase).toBe("posingUnrescuableExplanation")
   })
 
   // Review finding on this PR (chatgpt-codex-connector): an earlier draft
