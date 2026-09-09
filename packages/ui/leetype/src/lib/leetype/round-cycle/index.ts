@@ -21,7 +21,7 @@
 import { isAdmissible } from "@leetype/lib/leetype/admissibility"
 import { dimensionsOfConstraints } from "@leetype/lib/leetype/constraint"
 import type { CostGraph } from "@leetype/lib/leetype/cost"
-import { costOf, dimensionsOfGraph } from "@leetype/lib/leetype/cost"
+import { dimensionsOfGraph } from "@leetype/lib/leetype/cost"
 import { PROPOSITION_REGISTER } from "@leetype/lib/leetype/proposition-register/generated"
 import type { PropositionId } from "@leetype/lib/leetype/proposition-register/generated"
 import type { PropositionRegisterEntry } from "@leetype/lib/leetype/proposition-register/parse-canon"
@@ -66,13 +66,16 @@ export type RescueCandidate = {
  *   Never `member.admissible`, which is an independent authored claim
  *   about a different question (Prop. 2.1's own agreement check, G3) this
  *   reducer does not re-run — see `nextRoundCycleState`'s own doc comment.
- * - `rescueCandidates` are Def. 8.2 case 1's own candidate `C″`s — offered
- *   to *demonstrate* a concrete rescue once one is known to be possible
- *   (see `dimensionIndependentCostOf`, below, for how that is actually
- *   derived from `graph` itself, not from this list). Possibly empty, a
+ * - `rescueCandidates` are Def. 8.2 case 1's own candidate `C″`s: the
+ *   *only* mechanism `nextRoundCycleState` uses to decide whether a rescue
+ *   exists (see that function's own doc comment for why a graph-only
+ *   derivation was tried and abandoned — this cost algebra allows a term
+ *   to go negative, which breaks any bound-independent lower- or upper-
+ *   bound argument over the graph's own algebra). Possibly empty, a
  *   legitimate corpus choice for a diff whose cost is independent of every
- *   bounded dimension by design (`CW-P16`'s own shape), not a defect this
- *   module reports.
+ *   bounded dimension by design (`CW-P16`'s own shape) — but also the one
+ *   place this module cannot itself catch an author who *should* have
+ *   authored a working candidate and didn't; see that same doc comment.
  * - `explanationPropositionId` is Def. 8.2 case 2's own fallback: the
  *   register entry a learner would need to name when no candidate
  *   rescues. Always present — Thm. 8.1's own proof is explicit that
@@ -221,61 +224,6 @@ export type RoundCycleResponse = {
 }
 
 /**
- * Def. 8.2's own literal case-2 condition ("its cost has a term
- * independent of every dimension and already above B"), computed directly
- * from `T(G)` rather than inferred from whether any authored candidate
- * happens to rescue it: the total contribution of every term in `costOf
- * (graph)` whose monomial is empty. No non-empty monomial can survive that
- * filter while also being "independent of every bounded dimension" — every
- * factor in a non-empty monomial names a dimension, and `evaluate`
- * (`lib/leetype/admissibility`) already requires `C` to bound every
- * dimension `graph` references or it throws (Def. 3.1's own "undefined,
- * not zero or one by convention"). So an empty monomial is the *only* way a
- * term can be independent of every bounded dimension.
- *
- * This value is always a valid *lower bound* on `T(G)` over every same-
- * dimension constraint set (shrinking any `pow` factor's own bound toward
- * zero drives that factor toward zero, and no bound can move an empty
- * monomial at all) — so exceeding budget on its own is always sufficient
- * for Def. 8.2 case 2, unconditionally. It is only a *tight* bound (the
- * actual infimum, so that `<= budget` guarantees a rescuing assignment
- * exists) when `graph` has no `log` factor anywhere — see
- * `graphHasLogFactor`'s own doc comment for why a `log` factor can raise
- * the true infimum above this quantity, and `nextRoundCycleState` for how
- * the two are used together.
- */
-export function dimensionIndependentCostOf(graph: CostGraph): number {
-  return costOf(graph)
-    .filter((term) => term.monomial.length === 0)
-    .reduce((total, term) => total + term.coefficient, 0)
-}
-
-/**
- * Whether any term of `T(G)` includes a `log` factor — the one case
- * `dimensionIndependentCostOf` cannot promote from "lower bound" to
- * "infimum." A `pow` factor's own minimum (zero) is reached by shrinking
- * its dimension's bound toward zero; a `log` factor's own minimum (also
- * zero) is reached at bound `1` instead. When a single dimension carries
- * both kinds across a graph's terms — Def. 2.1 places no restriction
- * against it — those two terms cannot be minimized simultaneously, and the
- * graph's true infimum can sit strictly above `dimensionIndependentCostOf`
- * (review finding on this PR, chatgpt-codex-connector: `Seq(Loop(dim("n",
- * 2), W(1)), Loop(logDim("n", 2), W(1)))`, i.e. `n² + (log₂ n)²`, has no
- * empty-monomial term at all, yet its own minimum over every positive `n`
- * is close to 1 — a budget of `0.5` admits no rescuing bound whatsoever,
- * which the empty-monomial check alone cannot see). Scoped to "any log
- * factor anywhere," not "a log factor sharing a dimension with a pow
- * factor": the coarser rule is what stays correct without solving the
- * general (and not always closed-form) minimization problem a precise
- * per-dimension rule would require.
- */
-function graphHasLogFactor(graph: CostGraph): boolean {
-  return costOf(graph).some((term) =>
-    term.monomial.some((factor) => factor.kind === "log")
-  )
-}
-
-/**
  * A rescue candidate `C″` is only ever meaningful as the constraint diff
  * `C -> C″` Def. 8.2 case 1 says the next round presents — so it is held to
  * `ConstraintDiffSchema`'s own validity rules (`types/constraint.ts`)
@@ -346,6 +294,32 @@ function invalidRescueCandidateReason(
  * (the identical "same dimensions" requirement every rescue candidate is
  * already held to), so no rescue is possible even in principle.
  *
+ * Def. 8.2's own case split, once `growsInUnboundedDimension` is ruled out,
+ * is decided by testing every authored `rescueCandidate` against
+ * `isAdmissible` — never by deriving "does any assignment of the bounds
+ * satisfy the relation" from `diff.graph`'s own algebraic structure alone.
+ * An earlier draft on this PR tried exactly that (an "independent of every
+ * bounded dimension" lower bound, refined further to exempt graphs with a
+ * `log` factor) and two independent review findings each produced a real
+ * cost graph that broke it: `Seq(Loop(dim("n", 2), W(1)), Loop(logDim("n",
+ * 2), W(1)))` (`n² + (log₂ n)²`) has no term independent of every bounded
+ * dimension yet its own true minimum sits near 1, refuting the "no such
+ * term, so a rescue is always possible" half; `Seq(W(2), Loop(logDim("n"),
+ * W(2)))` is rescued by a bound *below* 1 (`log₂` of a fraction is
+ * negative, and multiplying by a positive coefficient keeps it negative,
+ * so the term *subtracts* from the graph's own "independent" cost) at a
+ * bound where a `log` factor is present, refuting the "exceeds the
+ * independent cost, so definitely unrescuable" other half. This cost
+ * algebra has no floor forbidding a bound below 1 or a term from going
+ * negative, so no bound-independent argument over its own algebra can be
+ * trusted in general — `isAdmissible`, run against real authored data, is
+ * the only relation this module treats as ground truth (Prop. 2.1's own
+ * rule, restated one level further in). Whether the corpus has authored a
+ * rescuing candidate for every diff that has one is therefore a real,
+ * disclosed limitation of this design, the same shape as `lib/leetype/
+ * round-probe`'s own disclosed gap on Prop. 6.1 — not something this
+ * function derives further.
+ *
  * The return type excludes `RoundCyclePosingDiffSelection` — a type-level
  * form of Thm. 8.1's "no learner response returns the cycle to a state
  * already visited": this function cannot produce the state it started
@@ -396,41 +370,13 @@ export function nextRoundCycleState(
     }
   }
 
-  // Def. 8.2's own case split, derived from the graph itself where that is
-  // sound: if a term independent of every bounded dimension already
-  // exceeds B on its own, no assignment of any bound can ever move it —
-  // case 2, unconditionally, regardless of what any authored candidate
-  // claims (review finding on this PR, chatgpt-codex-connector: an earlier
-  // draft derived this split from whether an authored candidate happened
-  // to rescue the diff, which answers a different, narrower question than
-  // Def. 8.2's own existential over "any assignment of the bounds").
-  if (dimensionIndependentCostOf(diff.graph) > round.budget.operations) {
-    return {
-      phase: "posingUnrescuableExplanation",
-      graph: diff.graph,
-      constraints: round.constraints,
-      budget: round.budget,
-      pinnedDiff: diff,
-      pinnedCommitment: commitment,
-      explanationPropositionId: diff.explanationPropositionId,
-    }
-  }
-
-  // Not exceeding that lower bound does *not* by itself prove a rescue
-  // exists unless the graph is free of `log` factors (graphHasLogFactor's
-  // own doc comment: a `log` factor can make the graph's true infimum
-  // strictly higher than dimensionIndependentCostOf, review finding on
-  // this PR, chatgpt-codex-connector). Only when it is free of them is an
-  // authored candidate's absence a genuine corpus gap worth throwing over.
-  const rescueGuaranteedPossible = !graphHasLogFactor(diff.graph)
-
-  // Every candidate is validated against ConstraintDiffSchema first, in a
-  // separate pass over the *whole* array — review finding on this PR,
-  // chatgpt-codex-connector: checking each candidate lazily inside `.find`
-  // let a valid rescuing candidate short-circuit the search before a later,
-  // malformed candidate in the same array was ever validated, even though
-  // that whole (unfiltered) array is what the successor state goes on to
-  // carry.
+  // Def. 8.2: every candidate is validated against ConstraintDiffSchema
+  // first, in a dedicated pass over the *whole* array — review finding on
+  // this PR, chatgpt-codex-connector: checking each candidate lazily
+  // inside `.find` let a valid rescuing candidate short-circuit the search
+  // before a later, malformed candidate in the same array was ever
+  // validated, even though that whole (unfiltered) array is what the
+  // successor state goes on to carry.
   for (const candidate of diff.rescueCandidates) {
     const reason = invalidRescueCandidateReason(round.constraints, candidate)
     if (reason !== undefined) {
@@ -440,21 +386,15 @@ export function nextRoundCycleState(
     }
   }
 
+  // Which of Def. 8.2's two cases applies is derived by testing every
+  // authored candidate against isAdmissible (see this function's own doc
+  // comment for why a graph-only derivation is not attempted) — never from
+  // an authored "this diff is rescuable" flag.
   const rescuingCandidate = diff.rescueCandidates.find((candidate) =>
     isAdmissible(diff.graph, candidate.constraints, round.budget)
   )
 
   if (rescuingCandidate === undefined) {
-    if (rescueGuaranteedPossible) {
-      throw new Error(
-        `nextRoundCycleState: "${diff.member.propositionId}"'s own cost has no term independent of every bounded dimension that alone exceeds budget, so Def. 8.2 case 1 applies — but none of its authored rescueCandidates actually demonstrates a rescue. The corpus is missing a working candidate.`
-      )
-    }
-    // The graph mixes pow and log factors, so no assignment of the bounds
-    // is guaranteed to exist — and none of the authored candidates found
-    // one either. Def. 8.2 case 2, per the corpus's own best evidence,
-    // not a claim this function can derive further without solving the
-    // graph's own minimization problem in full.
     return {
       phase: "posingUnrescuableExplanation",
       graph: diff.graph,

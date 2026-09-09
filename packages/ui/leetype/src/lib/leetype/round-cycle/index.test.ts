@@ -18,7 +18,6 @@ import type {
 } from "./index"
 import {
   checkUnrescuableExplanationsResolve,
-  dimensionIndependentCostOf,
   initialRoundCycleState,
   nextRoundCycleState,
 } from "./index"
@@ -138,21 +137,6 @@ describe("initialRoundCycleState — Def. 8.1's entry point", () => {
   })
 })
 
-describe("dimensionIndependentCostOf — Def. 8.2's own literal case-2 condition", () => {
-  it("is zero for a graph with no constant term", () => {
-    expect(dimensionIndependentCostOf(Loop(dim("n"), W(2)))).toBe(0)
-  })
-
-  it("is the bare work cost for a graph independent of every dimension", () => {
-    expect(dimensionIndependentCostOf(W(5000))).toBe(5000)
-  })
-
-  it("sums every dimension-independent term, ignoring dimension-dependent ones", () => {
-    const graph = Seq(W(300), Loop(dim("n"), W(2)))
-    expect(dimensionIndependentCostOf(graph)).toBe(300)
-  })
-})
-
 describe("nextRoundCycleState — Def. 8.1 cases 3/4 and Def. 8.2", () => {
   it("case 3: a diff that restores admissibility advances", () => {
     const diff = diffOptionOf({ propositionId: "CW-P1", cost: 500 })
@@ -194,14 +178,15 @@ describe("nextRoundCycleState — Def. 8.1 cases 3/4 and Def. 8.2", () => {
     expect(next.rescueCandidates).toBe(diff.rescueCandidates)
   })
 
-  it("case 4 -> Def. 8.2 case 2: a term independent of every bounded dimension already exceeds budget", () => {
+  it("case 4 -> Def. 8.2 case 2: no authored candidate demonstrates a rescue", () => {
     const diff = diffOptionOf({
       propositionId: "CW-P16",
       cost: 5000,
       // A bare W(5000): CW-P16's own shape — a cost with a term
       // independent of every bounded dimension. Unlike a Loop(dim("n"), …)
       // graph, no tightening of n's bound can ever bring this within
-      // budget, however tight the candidate.
+      // budget, however tight the candidate — this candidate is a
+      // deliberate distractor, not a rescue.
       graph: W(5000),
       rescueCandidates: [
         {
@@ -254,30 +239,17 @@ describe("nextRoundCycleState — Def. 8.1 cases 3/4 and Def. 8.2", () => {
     expect(next.phase).toBe("posingRescueSelection")
   })
 
-  // Review finding on this PR (chatgpt-codex-connector): an earlier draft
-  // derived Def. 8.2's own case split from whether an *authored* candidate
-  // happened to rescue the diff — a strictly narrower, and therefore
-  // sometimes wrong, question than Def. 8.2's actual existential over "any
-  // assignment of the bounds." Loop(dim("n"), W(2)) has no term independent
-  // of every bounded dimension, so a rescue is always possible in
-  // principle regardless of what the corpus happens to enumerate.
-  describe("Def. 8.2's split is derived from the graph, not from candidate coverage", () => {
-    it("throws when case 1 should apply but no authored candidate demonstrates a rescue", () => {
-      const diff = diffOptionOf({
-        propositionId: "CW-P2",
-        cost: 2000,
-        graph: Loop(dim("n"), W(2)), // no term independent of every dimension
-        rescueCandidates: [], // but the corpus never authored a working one
-      })
-      expect(() =>
-        nextRoundCycleState(posingRoundWith([diff]), {
-          kind: "selectDiff",
-          diff,
-          commitment: ABSTAIN,
-        })
-      ).toThrow(/missing a working candidate/)
-    })
-
+  // Every rescue candidate is held to Def. 3.2/8.2's own validity rules
+  // before it is ever evaluated. An earlier draft on this PR tried to
+  // derive Def. 8.2's whole case split directly from diff.graph's own
+  // algebraic structure (an "independent of every bounded dimension" cost
+  // floor), but two independent review findings each produced a real graph
+  // that broke it — see nextRoundCycleState's own doc comment for both
+  // counterexamples and why this cost algebra (which permits a term to go
+  // negative below bound 1) rules out any bound-independent argument over
+  // it in general. The case split is decided by testing authored
+  // candidates against isAdmissible instead.
+  describe("Def. 8.2's rescue candidates are validated before being tested", () => {
     it("throws when a rescue candidate bounds a different dimension set than C", () => {
       const diff = diffOptionOf({
         propositionId: "CW-P2",
@@ -359,32 +331,80 @@ describe("nextRoundCycleState — Def. 8.1 cases 3/4 and Def. 8.2", () => {
       ).toThrow(/not a valid Def\. 3\.2 constraint diff/)
     })
 
-    // Review finding on this PR (chatgpt-codex-connector): dimensionIndependentCostOf
-    // alone is only a lower bound, not always the true infimum. n² +
-    // (log₂ n)² has no term independent of every bounded dimension (both
-    // terms reference "n"), so the earlier fix's own check would have
-    // wrongly assumed a rescue must exist — but n's pow-shaped term wants
-    // its bound near 0 while its log-shaped term wants its bound near 1,
-    // so the graph's real minimum (~0.9) sits above a budget of 0.5, and no
-    // bound assignment can ever rescue it. With no authored candidate (none
-    // could exist), this must resolve to case 2 without throwing.
-    it("falls back to case 2 without throwing when a log factor makes the graph's true minimum exceed budget, even with no term independent of every dimension", () => {
-      const graph = Seq(Loop(dim("n", 2), W(1)), Loop(logDim("n", 2), W(1)))
-      const diff = diffOptionOf({
-        propositionId: "CW-P2",
-        cost: 2000,
-        graph,
-        explanationPropositionId: "CW-P16",
+    // The two graphs that broke the abandoned graph-derivation approach
+    // (see the describe block's own comment) — both now resolve correctly
+    // because the classification never reasons about the graph's algebra
+    // at all, only about whether some authored candidate actually is
+    // admissible.
+    describe("regression: graphs that defeated the abandoned graph-derivation approach", () => {
+      it("n² + (log₂ n)² with no candidate resolves to case 2 (real minimum ~0.9 exceeds a 0.5 budget, but this module never computes that)", () => {
+        const graph = Seq(Loop(dim("n", 2), W(1)), Loop(logDim("n", 2), W(1)))
+        const diff = diffOptionOf({
+          propositionId: "CW-P2",
+          cost: 2000,
+          graph,
+          explanationPropositionId: "CW-P16",
+        })
+        const round = {
+          ...posingRoundWith([diff]),
+          budget: { operations: 0.5 },
+        }
+        const next = nextRoundCycleState(round, {
+          kind: "selectDiff",
+          diff,
+          commitment: ABSTAIN,
+        })
+        expect(next.phase).toBe("posingUnrescuableExplanation")
       })
-      const round = posingRoundWith([diff])
-      // Confirm the premise: no term independent of every bounded dimension.
-      expect(dimensionIndependentCostOf(graph)).toBe(0)
-      const tightBudget: Budget = { operations: 0.5 }
-      const next = nextRoundCycleState(
-        { ...round, budget: tightBudget },
-        { kind: "selectDiff", diff, commitment: ABSTAIN }
-      )
-      expect(next.phase).toBe("posingUnrescuableExplanation")
+
+      it("a bare log factor with a sub-1 candidate rescues, even though the log term is negative there", () => {
+        // log2(0.5) = -1: the candidate's own term value is negative, which
+        // an "independent cost is a lower bound" argument would have missed
+        // entirely — isAdmissible only ever evaluates the real number.
+        const graph = Seq(W(2), Loop(logDim("n"), W(2)))
+        const diff = diffOptionOf({
+          propositionId: "CW-P2",
+          cost: 2000,
+          graph,
+          rescueCandidates: [
+            {
+              constraints: [{ dimension: "n", operator: "<=", bound: 0.5 }],
+              propositionId: "CW-P4",
+            },
+          ],
+        })
+        const round = { ...posingRoundWith([diff]), budget: { operations: 1 } }
+        const next = nextRoundCycleState(round, {
+          kind: "selectDiff",
+          diff,
+          commitment: ABSTAIN,
+        })
+        expect(next.phase).toBe("posingRescueSelection")
+      })
+
+      it("a bare log factor with no candidate resolves to case 2, even though bound 1 would trivially rescue it", () => {
+        // A rescue is trivially possible here (bound 1 costs 0), but with
+        // no authored candidate this module has no way to find it — a
+        // disclosed limitation (nextRoundCycleState's own doc comment),
+        // not a bug: the alternative (deriving it from the graph) is what
+        // the two tests above prove unsound in general.
+        const graph = Loop(logDim("n"), W(1))
+        const diff = diffOptionOf({
+          propositionId: "CW-P2",
+          cost: 2000,
+          graph,
+        })
+        const round = {
+          ...posingRoundWith([diff]),
+          budget: { operations: 0.5 },
+        }
+        const next = nextRoundCycleState(round, {
+          kind: "selectDiff",
+          diff,
+          commitment: ABSTAIN,
+        })
+        expect(next.phase).toBe("posingUnrescuableExplanation")
+      })
     })
   })
 
