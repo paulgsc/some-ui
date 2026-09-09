@@ -231,16 +231,48 @@ export type RoundCycleResponse = {
  * (`lib/leetype/admissibility`) already requires `C` to bound every
  * dimension `graph` references or it throws (Def. 3.1's own "undefined,
  * not zero or one by convention"). So an empty monomial is the *only* way a
- * term can be independent of every bounded dimension, and shrinking any
- * bound toward its own dimension's admissible floor drives every other
- * term toward zero while leaving this one exactly where it is — this
- * quantity is therefore the infimum of `T(G)` over every constraint set
- * `nextRoundCycleState` could ever be handed for the same dimensions.
+ * term can be independent of every bounded dimension.
+ *
+ * This value is always a valid *lower bound* on `T(G)` over every same-
+ * dimension constraint set (shrinking any `pow` factor's own bound toward
+ * zero drives that factor toward zero, and no bound can move an empty
+ * monomial at all) — so exceeding budget on its own is always sufficient
+ * for Def. 8.2 case 2, unconditionally. It is only a *tight* bound (the
+ * actual infimum, so that `<= budget` guarantees a rescuing assignment
+ * exists) when `graph` has no `log` factor anywhere — see
+ * `graphHasLogFactor`'s own doc comment for why a `log` factor can raise
+ * the true infimum above this quantity, and `nextRoundCycleState` for how
+ * the two are used together.
  */
 export function dimensionIndependentCostOf(graph: CostGraph): number {
   return costOf(graph)
     .filter((term) => term.monomial.length === 0)
     .reduce((total, term) => total + term.coefficient, 0)
+}
+
+/**
+ * Whether any term of `T(G)` includes a `log` factor — the one case
+ * `dimensionIndependentCostOf` cannot promote from "lower bound" to
+ * "infimum." A `pow` factor's own minimum (zero) is reached by shrinking
+ * its dimension's bound toward zero; a `log` factor's own minimum (also
+ * zero) is reached at bound `1` instead. When a single dimension carries
+ * both kinds across a graph's terms — Def. 2.1 places no restriction
+ * against it — those two terms cannot be minimized simultaneously, and the
+ * graph's true infimum can sit strictly above `dimensionIndependentCostOf`
+ * (review finding on this PR, chatgpt-codex-connector: `Seq(Loop(dim("n",
+ * 2), W(1)), Loop(logDim("n", 2), W(1)))`, i.e. `n² + (log₂ n)²`, has no
+ * empty-monomial term at all, yet its own minimum over every positive `n`
+ * is close to 1 — a budget of `0.5` admits no rescuing bound whatsoever,
+ * which the empty-monomial check alone cannot see). Scoped to "any log
+ * factor anywhere," not "a log factor sharing a dimension with a pow
+ * factor": the coarser rule is what stays correct without solving the
+ * general (and not always closed-form) minimization problem a precise
+ * per-dimension rule would require.
+ */
+function graphHasLogFactor(graph: CostGraph): boolean {
+  return costOf(graph).some((term) =>
+    term.monomial.some((factor) => factor.kind === "log")
+  )
 }
 
 /**
@@ -364,14 +396,14 @@ export function nextRoundCycleState(
     }
   }
 
-  // Def. 8.2's own case split, derived from the graph itself: if a term
-  // independent of every bounded dimension already exceeds B on its own,
-  // no assignment of any bound can ever move it — case 2, unconditionally,
-  // regardless of what any authored candidate claims (review finding on
-  // this PR, chatgpt-codex-connector: an earlier draft derived this split
-  // from whether an authored candidate happened to rescue the diff, which
-  // answers a different, narrower question than Def. 8.2's own existential
-  // over "any assignment of the bounds").
+  // Def. 8.2's own case split, derived from the graph itself where that is
+  // sound: if a term independent of every bounded dimension already
+  // exceeds B on its own, no assignment of any bound can ever move it —
+  // case 2, unconditionally, regardless of what any authored candidate
+  // claims (review finding on this PR, chatgpt-codex-connector: an earlier
+  // draft derived this split from whether an authored candidate happened
+  // to rescue the diff, which answers a different, narrower question than
+  // Def. 8.2's own existential over "any assignment of the bounds").
   if (dimensionIndependentCostOf(diff.graph) > round.budget.operations) {
     return {
       phase: "posingUnrescuableExplanation",
@@ -384,9 +416,14 @@ export function nextRoundCycleState(
     }
   }
 
-  // Otherwise a rescuing C″ is possible in principle (shrinking every
-  // bound far enough always drives every non-empty-monomial term toward
-  // zero) — find the authored candidate that actually demonstrates one.
+  // Not exceeding that lower bound does *not* by itself prove a rescue
+  // exists unless the graph is free of `log` factors (graphHasLogFactor's
+  // own doc comment: a `log` factor can make the graph's true infimum
+  // strictly higher than dimensionIndependentCostOf, review finding on
+  // this PR, chatgpt-codex-connector). Only when it is free of them is an
+  // authored candidate's absence a genuine corpus gap worth throwing over.
+  const rescueGuaranteedPossible = !graphHasLogFactor(diff.graph)
+
   // Every candidate is validated against ConstraintDiffSchema first, in a
   // separate pass over the *whole* array — review finding on this PR,
   // chatgpt-codex-connector: checking each candidate lazily inside `.find`
@@ -408,9 +445,25 @@ export function nextRoundCycleState(
   )
 
   if (rescuingCandidate === undefined) {
-    throw new Error(
-      `nextRoundCycleState: "${diff.member.propositionId}"'s own cost has no term independent of every bounded dimension that alone exceeds budget, so Def. 8.2 case 1 applies — but none of its authored rescueCandidates actually demonstrates a rescue. The corpus is missing a working candidate.`
-    )
+    if (rescueGuaranteedPossible) {
+      throw new Error(
+        `nextRoundCycleState: "${diff.member.propositionId}"'s own cost has no term independent of every bounded dimension that alone exceeds budget, so Def. 8.2 case 1 applies — but none of its authored rescueCandidates actually demonstrates a rescue. The corpus is missing a working candidate.`
+      )
+    }
+    // The graph mixes pow and log factors, so no assignment of the bounds
+    // is guaranteed to exist — and none of the authored candidates found
+    // one either. Def. 8.2 case 2, per the corpus's own best evidence,
+    // not a claim this function can derive further without solving the
+    // graph's own minimization problem in full.
+    return {
+      phase: "posingUnrescuableExplanation",
+      graph: diff.graph,
+      constraints: round.constraints,
+      budget: round.budget,
+      pinnedDiff: diff,
+      pinnedCommitment: commitment,
+      explanationPropositionId: diff.explanationPropositionId,
+    }
   }
 
   return {

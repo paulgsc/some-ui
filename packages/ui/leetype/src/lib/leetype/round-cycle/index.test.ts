@@ -1,4 +1,4 @@
-import { dim, Loop, Seq, W } from "@leetype/lib/leetype/cost"
+import { dim, logDim, Loop, Seq, W } from "@leetype/lib/leetype/cost"
 import type { CostGraph } from "@leetype/lib/leetype/cost"
 import { PROPOSITION_REGISTER } from "@leetype/lib/leetype/proposition-register/generated"
 import type { PropositionId } from "@leetype/lib/leetype/proposition-register/generated"
@@ -357,6 +357,34 @@ describe("nextRoundCycleState — Def. 8.1 cases 3/4 and Def. 8.2", () => {
           commitment: ABSTAIN,
         })
       ).toThrow(/not a valid Def\. 3\.2 constraint diff/)
+    })
+
+    // Review finding on this PR (chatgpt-codex-connector): dimensionIndependentCostOf
+    // alone is only a lower bound, not always the true infimum. n² +
+    // (log₂ n)² has no term independent of every bounded dimension (both
+    // terms reference "n"), so the earlier fix's own check would have
+    // wrongly assumed a rescue must exist — but n's pow-shaped term wants
+    // its bound near 0 while its log-shaped term wants its bound near 1,
+    // so the graph's real minimum (~0.9) sits above a budget of 0.5, and no
+    // bound assignment can ever rescue it. With no authored candidate (none
+    // could exist), this must resolve to case 2 without throwing.
+    it("falls back to case 2 without throwing when a log factor makes the graph's true minimum exceed budget, even with no term independent of every dimension", () => {
+      const graph = Seq(Loop(dim("n", 2), W(1)), Loop(logDim("n", 2), W(1)))
+      const diff = diffOptionOf({
+        propositionId: "CW-P2",
+        cost: 2000,
+        graph,
+        explanationPropositionId: "CW-P16",
+      })
+      const round = posingRoundWith([diff])
+      // Confirm the premise: no term independent of every bounded dimension.
+      expect(dimensionIndependentCostOf(graph)).toBe(0)
+      const tightBudget: Budget = { operations: 0.5 }
+      const next = nextRoundCycleState(
+        { ...round, budget: tightBudget },
+        { kind: "selectDiff", diff, commitment: ABSTAIN }
+      )
+      expect(next.phase).toBe("posingUnrescuableExplanation")
     })
   })
 
