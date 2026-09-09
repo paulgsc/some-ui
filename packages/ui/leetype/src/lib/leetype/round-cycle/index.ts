@@ -20,8 +20,8 @@
 
 import { isAdmissible } from "@leetype/lib/leetype/admissibility"
 import { dimensionsOfConstraints } from "@leetype/lib/leetype/constraint"
-import type { CostGraph } from "@leetype/lib/leetype/cost"
-import { dimensionsOfGraph } from "@leetype/lib/leetype/cost"
+import type { CostGraph, Dimension } from "@leetype/lib/leetype/cost"
+import { costOf, dimensionsOfMonomial } from "@leetype/lib/leetype/cost"
 import { PROPOSITION_REGISTER } from "@leetype/lib/leetype/proposition-register/generated"
 import type { PropositionId } from "@leetype/lib/leetype/proposition-register/generated"
 import type { PropositionRegisterEntry } from "@leetype/lib/leetype/proposition-register/parse-canon"
@@ -224,6 +224,29 @@ export type RoundCycleResponse = {
 }
 
 /**
+ * Every dimension a graph's own *computed* cost actually references —
+ * `costOf(graph)`'s surviving terms, never `graph`'s raw structure. Deriving
+ * this from `costOf` rather than walking `Loop`/`Seq`/`W` nodes directly
+ * matters exactly when a term's coefficient normalizes to zero (review
+ * finding on this PR, chatgpt-codex-connector): `Loop(dim("m"), W(0))`
+ * structurally repeats over `m`, but contributes nothing to `T(G)` at all
+ * (`costOf`'s own doc comment: "zero-coefficient terms dropped"), so no
+ * assignment of `m`'s bound — including none at all — can change the
+ * evaluated cost. `nextRoundCycleState`'s own `growsInUnboundedDimension`
+ * check would otherwise flag `m` as unbounded and misroute an admissible
+ * diff to Def. 8.2 case 2.
+ */
+function dimensionsOfCost(graph: CostGraph): ReadonlySet<Dimension> {
+  const dimensions = new Set<Dimension>()
+  for (const term of costOf(graph)) {
+    for (const dimension of dimensionsOfMonomial(term.monomial)) {
+      dimensions.add(dimension)
+    }
+  }
+  return dimensions
+}
+
+/**
  * A rescue candidate `C″` is only ever meaningful as the constraint diff
  * `C -> C″` Def. 8.2 case 1 says the next round presents — so it is held to
  * `ConstraintDiffSchema`'s own validity rules (`types/constraint.ts`)
@@ -294,6 +317,14 @@ function invalidRescueCandidateReason(
  * (the identical "same dimensions" requirement every rescue candidate is
  * already held to), so no rescue is possible even in principle.
  *
+ * "References" here means `costOf(diff.graph)`'s own surviving terms, never
+ * `diff.graph`'s raw structure (review finding on this PR, chatgpt-codex-
+ * connector): a zero-coefficient term normalizes away entirely (`costOf`'s
+ * own doc comment), so e.g. `Loop(dim("m"), W(0))` contributes nothing to
+ * `T(G)` and `isAdmissible` never needs `m` bounded at all — walking the
+ * graph structurally would flag `m` as unbounded and misroute a diff
+ * `isAdmissible` would have happily evaluated to case 2 regardless.
+ *
  * Def. 8.2's own case split, once `growsInUnboundedDimension` is ruled out,
  * is decided by testing every authored `rescueCandidate` against
  * `isAdmissible` — never by deriving "does any assignment of the bounds
@@ -341,7 +372,7 @@ export function nextRoundCycleState(
   }
 
   const constraintDimensions = dimensionsOfConstraints(round.constraints)
-  const growsInUnboundedDimension = [...dimensionsOfGraph(diff.graph)].some(
+  const growsInUnboundedDimension = [...dimensionsOfCost(diff.graph)].some(
     (dimension) => !constraintDimensions.has(dimension)
   )
 

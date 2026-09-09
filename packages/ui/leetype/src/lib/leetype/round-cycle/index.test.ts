@@ -428,6 +428,34 @@ describe("nextRoundCycleState — Def. 8.1 cases 3/4 and Def. 8.2", () => {
     expect(next.phase).toBe("posingUnrescuableExplanation")
   })
 
+  // Review finding on this PR (chatgpt-codex-connector): the check above
+  // must look at costOf(diff.graph)'s own surviving terms, not diff.graph's
+  // raw structure — Loop(dim("m"), W(0)) repeats over "m" structurally, but
+  // a zero-cost body normalizes away entirely (costOf's own doc comment:
+  // "zero-coefficient terms dropped"), so the diff's actual cost never
+  // depends on "m" and isAdmissible would happily evaluate it without ever
+  // needing "m" bounded. Walking the raw graph would misroute this
+  // admissible-once-rescued diff to case 2 regardless.
+  it("does not misroute a diff whose graph structurally repeats over an unbounded dimension when that repetition's own cost normalizes to zero", () => {
+    const diff = diffOptionOf({
+      propositionId: "CW-P14",
+      cost: 2000,
+      graph: Seq(Loop(dim("n"), W(2)), Loop(dim("m"), W(0))), // C bounds only "n"
+      rescueCandidates: [
+        {
+          constraints: [{ dimension: "n", operator: "<=", bound: 400 }],
+          propositionId: "CW-P4",
+        },
+      ],
+    })
+    const next = nextRoundCycleState(posingRoundWith([diff]), {
+      kind: "selectDiff",
+      diff,
+      commitment: ABSTAIN,
+    })
+    expect(next.phase).toBe("posingRescueSelection")
+  })
+
   // Review finding on this PR (chatgpt-codex-connector): an earlier draft
   // trusted any structurally valid RoundDiffOption in the response, never
   // checking it was actually one of the round's own diffOptions.
