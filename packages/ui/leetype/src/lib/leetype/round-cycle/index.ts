@@ -20,6 +20,7 @@
 
 import { isAdmissible } from "@leetype/lib/leetype/admissibility"
 import type { CostGraph } from "@leetype/lib/leetype/cost"
+import { costOf } from "@leetype/lib/leetype/cost"
 import { PROPOSITION_REGISTER } from "@leetype/lib/leetype/proposition-register/generated"
 import type { PropositionId } from "@leetype/lib/leetype/proposition-register/generated"
 import type { PropositionRegisterEntry } from "@leetype/lib/leetype/proposition-register/parse-canon"
@@ -35,6 +36,13 @@ import type { DiffSetMember } from "@leetype/types/round"
  * authored, the same posture every other μ-shaped id in this workspace
  * takes (Ax. 6.1). Whether `constraints` itself actually rescues is never
  * authored here, only checked — see `nextRoundCycleState`, below.
+ *
+ * "Over the same dimensions" (Def. 3.2/8.2) is a real precondition, not
+ * decoration: `constraints` must bound exactly `C`'s own dimension set.
+ * `nextRoundCycleState` checks this before ever evaluating a candidate,
+ * rather than letting a mismatched candidate reach `isAdmissible`'s own
+ * `evaluate`, which throws for a graph referencing an unbounded dimension
+ * (review finding on this PR, chatgpt-codex-connector).
  */
 export type RescueCandidate = {
   readonly constraints: ConstraintSet
@@ -53,10 +61,13 @@ export type RescueCandidate = {
  *   Never `member.admissible`, which is an independent authored claim
  *   about a different question (Prop. 2.1's own agreement check, G3) this
  *   reducer does not re-run — see `nextRoundCycleState`'s own doc comment.
- * - `rescueCandidates` are Def. 8.2 case 1's own candidate `C″`s to test —
- *   possibly empty, a legitimate corpus choice for a diff whose cost is
- *   independent of every bounded dimension by design (`CW-P16`'s own
- *   shape), not a defect this module reports.
+ * - `rescueCandidates` are Def. 8.2 case 1's own candidate `C″`s — offered
+ *   to *demonstrate* a concrete rescue once one is known to be possible
+ *   (see `dimensionIndependentCostOf`, below, for how that is actually
+ *   derived from `graph` itself, not from this list). Possibly empty, a
+ *   legitimate corpus choice for a diff whose cost is independent of every
+ *   bounded dimension by design (`CW-P16`'s own shape), not a defect this
+ *   module reports.
  * - `explanationPropositionId` is Def. 8.2 case 2's own fallback: the
  *   register entry a learner would need to name when no candidate
  *   rescues. Always present — Thm. 8.1's own proof is explicit that
@@ -106,12 +117,19 @@ export type RoundCycleAdmissibleAdvance = {
 
 /**
  * Def. 8.2, case 1: a rescuing `C″` exists. `(d, p)` is held fixed
- * (`pinnedDiff`); the next question is `(c, p)` — which constraint diff,
- * and the proposition explaining why it works. `rescueCandidates` is
- * carried through unfiltered (distractor `C″`s included — the same "not
- * every option is the right one" shape `D` itself already has); a future
- * surface (Step 6, C1) owns presentation. Deriving *whether* one rescues is
- * this module's own job, already done once to reach this phase.
+ * (`pinnedDiff`, `pinnedCommitment`); the next question is `(c, p)` —
+ * which constraint diff, and the proposition explaining why it works.
+ * `pinnedCommitment` is the learner's own prior guess (review finding on
+ * this PR, chatgpt-codex-connector: an earlier draft destructured only
+ * `diff` out of the response and dropped it, so an abstention and a
+ * specific — even correct — guess produced indistinguishable successor
+ * states) — carried through so a future surface can show what the
+ * question is based on, never read by this module to pick the branch.
+ * `rescueCandidates` is carried through unfiltered (distractor `C″`s
+ * included — the same "not every option is the right one" shape `D`
+ * itself already has); a future surface (Step 6, C1) owns presentation.
+ * Deriving *whether* one rescues is this module's own job, already done
+ * once to reach this phase.
  */
 export type RoundCyclePosingRescueSelection = {
   readonly phase: "posingRescueSelection"
@@ -119,14 +137,17 @@ export type RoundCyclePosingRescueSelection = {
   readonly constraints: ConstraintSet
   readonly budget: Budget
   readonly pinnedDiff: RoundDiffOption
+  readonly pinnedCommitment: Commitment
   readonly rescueCandidates: ReadonlyArray<RescueCandidate>
 }
 
 /**
- * Def. 8.2, case 2: no rescuing `C″` exists. `(d, p)` is held fixed; the
- * next question is `(d, p')` — the same diff again, but now the learner is
- * asked to name *why* no constraint rescues it (Rem. 8.1: "a strictly
- * different failure kind from 'too slow at this size'").
+ * Def. 8.2, case 2: no rescuing `C″` exists. `(d, p)` is held fixed
+ * (`pinnedDiff`, `pinnedCommitment` — see the identical note on
+ * `RoundCyclePosingRescueSelection`, above); the next question is
+ * `(d, p')` — the same diff again, but now the learner is asked to name
+ * *why* no constraint rescues it (Rem. 8.1: "a strictly different failure
+ * kind from 'too slow at this size'").
  */
 export type RoundCyclePosingUnrescuableExplanation = {
   readonly phase: "posingUnrescuableExplanation"
@@ -134,6 +155,7 @@ export type RoundCyclePosingUnrescuableExplanation = {
   readonly constraints: ConstraintSet
   readonly budget: Budget
   readonly pinnedDiff: RoundDiffOption
+  readonly pinnedCommitment: Commitment
   readonly explanationPropositionId: PropositionId
 }
 
@@ -194,6 +216,40 @@ export type RoundCycleResponse = {
 }
 
 /**
+ * Def. 8.2's own literal case-2 condition ("its cost has a term
+ * independent of every dimension and already above B"), computed directly
+ * from `T(G)` rather than inferred from whether any authored candidate
+ * happens to rescue it: the total contribution of every term in `costOf
+ * (graph)` whose monomial is empty. No non-empty monomial can survive that
+ * filter while also being "independent of every bounded dimension" — every
+ * factor in a non-empty monomial names a dimension, and `evaluate`
+ * (`lib/leetype/admissibility`) already requires `C` to bound every
+ * dimension `graph` references or it throws (Def. 3.1's own "undefined,
+ * not zero or one by convention"). So an empty monomial is the *only* way a
+ * term can be independent of every bounded dimension, and shrinking any
+ * bound toward its own dimension's admissible floor drives every other
+ * term toward zero while leaving this one exactly where it is — this
+ * quantity is therefore the infimum of `T(G)` over every constraint set
+ * `nextRoundCycleState` could ever be handed for the same dimensions.
+ */
+export function dimensionIndependentCostOf(graph: CostGraph): number {
+  return costOf(graph)
+    .filter((term) => term.monomial.length === 0)
+    .reduce((total, term) => total + term.coefficient, 0)
+}
+
+function dimensionSetOf(constraints: ConstraintSet): ReadonlySet<string> {
+  return new Set(constraints.map((constraint) => constraint.dimension))
+}
+
+/** Def. 3.2/8.2's own "over the same dimensions" — the same equality `types/constraint.ts`'s `ConstraintDiffSchema` already enforces for an authored `(C, C')` pair, checked here for an authored `(C, C'')` candidate instead. */
+function boundsSameDimensions(a: ConstraintSet, b: ConstraintSet): boolean {
+  const dimsA = dimensionSetOf(a)
+  const dimsB = dimensionSetOf(b)
+  return dimsA.size === dimsB.size && [...dimsA].every((d) => dimsB.has(d))
+}
+
+/**
  * Def. 8.1 cases 3/4, and Def. 8.2's own two cases when case 4 fires — the
  * pure reducer `(round, response) -> round` #1221's own acceptance criteria
  * ask for. `round` must already be `posingDiffSelection` (`D` is
@@ -202,16 +258,30 @@ export type RoundCycleResponse = {
  * within this story's scope (persisting the cycle past this point, or
  * reading which corpus round comes next, is #1230 L4's own job).
  *
- * `response.commitment` (the learner's `p` half of the pair) is read
- * nowhere in this function, and neither is `response.diff.member.admissible`
- * (the diff's own *authored* claim). Both are deliberate: Def. 8.1's branch
- * is stated purely in terms of the derived relation `T_{A+d}(C) <= B`, a
- * fact about which diff was picked, never about whether the learner's
- * guess was correct or about what the diff's author claimed. Conflating
- * either with the derived branch is exactly Rem. 8.0's own recorded
- * mistake, restated one level up from "branching on `r`." Scoring the
- * guess is `RoundFeedback`'s job (B3, already landed); this function's only
- * job is which *question* comes next.
+ * `response.commitment` (the learner's `p` half of the pair) is read only
+ * to carry it, unread, into a Def. 8.2 successor's own `pinnedCommitment`
+ * (Def. 8.2: "`(d, p)` is held fixed") — never to pick a branch. Neither is
+ * `response.diff.member.admissible` (the diff's own *authored* claim) ever
+ * read for branching. Both are deliberate: Def. 8.1's branch is stated
+ * purely in terms of the derived relation `T_{A+d}(C) <= B`, a fact about
+ * which diff was picked, never about whether the learner's guess was
+ * correct or about what the diff's author claimed. Conflating either with
+ * the derived branch is exactly Rem. 8.0's own recorded mistake, restated
+ * one level up from "branching on `r`." Scoring the guess is
+ * `RoundFeedback`'s job (B3, already landed); this function's only job is
+ * which *question* comes next.
+ *
+ * `response.diff` must be one of `round.diffOptions`' own objects — Def.
+ * 8.1 case 2 defines this transition over a selection *from the presented
+ * D*, never from a diff the round never offered (review finding on this
+ * PR, chatgpt-codex-connector: an earlier draft trusted any structurally
+ * valid `RoundDiffOption`, so a stale callback or a miswired caller could
+ * advance the cycle on a graph and rescue data the learner was never shown).
+ * Checked by reference identity, not deep equality: a real caller is
+ * expected to hold `round.diffOptions` itself and pass back the literal
+ * element the learner picked (the same discipline `RoundChoices`, C3/
+ * #1215, already expects of its own `onCommit` caller), not reconstruct an
+ * equivalent-looking object.
  *
  * The return type excludes `RoundCyclePosingDiffSelection` — a type-level
  * form of Thm. 8.1's "no learner response returns the cycle to a state
@@ -225,7 +295,13 @@ export function nextRoundCycleState(
   | RoundCycleAdmissibleAdvance
   | RoundCyclePosingRescueSelection
   | RoundCyclePosingUnrescuableExplanation {
-  const { diff } = response
+  const { diff, commitment } = response
+
+  if (!round.diffOptions.includes(diff)) {
+    throw new Error(
+      "nextRoundCycleState: response.diff is not one of this round's own diffOptions — Def. 8.1 case 2 defines this transition over a selection from the presented D."
+    )
+  }
 
   // Def. 8.1, case 3 vs. case 4: T_{A+d}(C) <= B, derived — never read off
   // diff.member.admissible (Rem. 8.0's own lesson, restated for selection
@@ -239,31 +315,56 @@ export function nextRoundCycleState(
     }
   }
 
-  // Def. 8.2: exactly one of its two cases holds, and which one is itself
-  // derived — "does any assignment of the bounds satisfy the relation" —
-  // never an authored "this diff is rescuable" flag.
-  const rescuingCandidateExists = diff.rescueCandidates.some((candidate) =>
-    isAdmissible(diff.graph, candidate.constraints, round.budget)
-  )
-
-  if (rescuingCandidateExists) {
+  // Def. 8.2's own case split, derived from the graph itself: if a term
+  // independent of every bounded dimension already exceeds B on its own,
+  // no assignment of any bound can ever move it — case 2, unconditionally,
+  // regardless of what any authored candidate claims (review finding on
+  // this PR, chatgpt-codex-connector: an earlier draft derived this split
+  // from whether an authored candidate happened to rescue the diff, which
+  // answers a different, narrower question than Def. 8.2's own existential
+  // over "any assignment of the bounds").
+  if (dimensionIndependentCostOf(diff.graph) > round.budget.operations) {
     return {
-      phase: "posingRescueSelection",
+      phase: "posingUnrescuableExplanation",
       graph: diff.graph,
       constraints: round.constraints,
       budget: round.budget,
       pinnedDiff: diff,
-      rescueCandidates: diff.rescueCandidates,
+      pinnedCommitment: commitment,
+      explanationPropositionId: diff.explanationPropositionId,
     }
   }
 
+  // Otherwise a rescuing C″ is possible in principle (shrinking every
+  // bound far enough always drives every non-empty-monomial term toward
+  // zero) — find the authored candidate that actually demonstrates one.
+  // Each candidate is checked against Def. 3.2/8.2's own "same dimensions"
+  // requirement before it ever reaches `isAdmissible`, rather than let a
+  // mismatched candidate reach `evaluate`'s own throw for an unbounded
+  // dimension (review finding on this PR, chatgpt-codex-connector).
+  const rescuingCandidate = diff.rescueCandidates.find((candidate) => {
+    if (!boundsSameDimensions(candidate.constraints, round.constraints)) {
+      throw new Error(
+        `nextRoundCycleState: a rescue candidate for "${diff.member.propositionId}" bounds a different dimension set than C — Def. 3.2/8.2 both require "the same dimensions."`
+      )
+    }
+    return isAdmissible(diff.graph, candidate.constraints, round.budget)
+  })
+
+  if (rescuingCandidate === undefined) {
+    throw new Error(
+      `nextRoundCycleState: "${diff.member.propositionId}"'s own cost has no term independent of every bounded dimension that alone exceeds budget, so Def. 8.2 case 1 applies — but none of its authored rescueCandidates actually demonstrates a rescue. The corpus is missing a working candidate.`
+    )
+  }
+
   return {
-    phase: "posingUnrescuableExplanation",
+    phase: "posingRescueSelection",
     graph: diff.graph,
     constraints: round.constraints,
     budget: round.budget,
     pinnedDiff: diff,
-    explanationPropositionId: diff.explanationPropositionId,
+    pinnedCommitment: commitment,
+    rescueCandidates: diff.rescueCandidates,
   }
 }
 

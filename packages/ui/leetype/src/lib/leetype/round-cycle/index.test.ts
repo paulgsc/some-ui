@@ -1,4 +1,4 @@
-import { dim, Loop, W } from "@leetype/lib/leetype/cost"
+import { dim, Loop, Seq, W } from "@leetype/lib/leetype/cost"
 import type { CostGraph } from "@leetype/lib/leetype/cost"
 import { PROPOSITION_REGISTER } from "@leetype/lib/leetype/proposition-register/generated"
 import type { PropositionId } from "@leetype/lib/leetype/proposition-register/generated"
@@ -10,9 +10,15 @@ import type { DiffSetMember } from "@leetype/types/round"
 import { assertNever } from "some-ui-utils"
 import { describe, expect, it } from "vitest"
 
-import type { RescueCandidate, RoundCycleState, RoundDiffOption } from "./index"
+import type {
+  RescueCandidate,
+  RoundCyclePosingDiffSelection,
+  RoundCycleState,
+  RoundDiffOption,
+} from "./index"
 import {
   checkUnrescuableExplanationsResolve,
+  dimensionIndependentCostOf,
   initialRoundCycleState,
   nextRoundCycleState,
 } from "./index"
@@ -81,6 +87,28 @@ function diffOptionOf(args: {
   }
 }
 
+/**
+ * A `posingDiffSelection` round over an inadmissible `A` (costs 2000 at
+ * `CONSTRAINTS`'s own bound, budget 1000), presenting exactly `diffOptions`
+ * — `nextRoundCycleState` requires `response.diff` to be one of these by
+ * reference, so every test drives this from a round that actually offers
+ * the diff it selects.
+ */
+function posingRoundWith(
+  diffOptions: ReadonlyArray<RoundDiffOption>
+): RoundCyclePosingDiffSelection {
+  const state = initialRoundCycleState(
+    Loop(dim("n"), W(2)),
+    CONSTRAINTS,
+    BUDGET,
+    diffOptions
+  )
+  if (state.phase !== "posingDiffSelection") {
+    throw new Error("fixture setup: expected posingDiffSelection")
+  }
+  return state
+}
+
 const ABSTAIN: Commitment = { kind: "abstain" }
 
 describe("initialRoundCycleState — Def. 8.1's entry point", () => {
@@ -110,20 +138,25 @@ describe("initialRoundCycleState — Def. 8.1's entry point", () => {
   })
 })
 
-describe("nextRoundCycleState — Def. 8.1 cases 3/4 and Def. 8.2", () => {
-  const posingRound = initialRoundCycleState(
-    Loop(dim("n"), W(2)), // inadmissible: costs 2000 > 1000
-    CONSTRAINTS,
-    BUDGET,
-    []
-  )
-  if (posingRound.phase !== "posingDiffSelection") {
-    throw new Error("fixture setup: expected posingDiffSelection")
-  }
+describe("dimensionIndependentCostOf — Def. 8.2's own literal case-2 condition", () => {
+  it("is zero for a graph with no constant term", () => {
+    expect(dimensionIndependentCostOf(Loop(dim("n"), W(2)))).toBe(0)
+  })
 
+  it("is the bare work cost for a graph independent of every dimension", () => {
+    expect(dimensionIndependentCostOf(W(5000))).toBe(5000)
+  })
+
+  it("sums every dimension-independent term, ignoring dimension-dependent ones", () => {
+    const graph = Seq(W(300), Loop(dim("n"), W(2)))
+    expect(dimensionIndependentCostOf(graph)).toBe(300)
+  })
+})
+
+describe("nextRoundCycleState — Def. 8.1 cases 3/4 and Def. 8.2", () => {
   it("case 3: a diff that restores admissibility advances", () => {
     const diff = diffOptionOf({ propositionId: "CW-P1", cost: 500 })
-    const next = nextRoundCycleState(posingRound, {
+    const next = nextRoundCycleState(posingRoundWith([diff]), {
       kind: "selectDiff",
       diff,
       commitment: { kind: "choice", id: "CW-P1" },
@@ -148,18 +181,20 @@ describe("nextRoundCycleState — Def. 8.1 cases 3/4 and Def. 8.2", () => {
         },
       ],
     })
-    const next = nextRoundCycleState(posingRound, {
+    const commitment: Commitment = { kind: "choice", id: "CW-P2" }
+    const next = nextRoundCycleState(posingRoundWith([diff]), {
       kind: "selectDiff",
       diff,
-      commitment: ABSTAIN,
+      commitment,
     })
     expect(next.phase).toBe("posingRescueSelection")
     if (next.phase !== "posingRescueSelection") throw new Error("unreachable")
     expect(next.pinnedDiff).toBe(diff)
+    expect(next.pinnedCommitment).toBe(commitment)
     expect(next.rescueCandidates).toBe(diff.rescueCandidates)
   })
 
-  it("case 4 -> Def. 8.2 case 2: no candidate rescues", () => {
+  it("case 4 -> Def. 8.2 case 2: a term independent of every bounded dimension already exceeds budget", () => {
     const diff = diffOptionOf({
       propositionId: "CW-P16",
       cost: 5000,
@@ -176,16 +211,18 @@ describe("nextRoundCycleState — Def. 8.1 cases 3/4 and Def. 8.2", () => {
       ],
       explanationPropositionId: "CW-P16",
     })
-    const next = nextRoundCycleState(posingRound, {
+    const commitment: Commitment = { kind: "choice", id: "CW-P9" }
+    const next = nextRoundCycleState(posingRoundWith([diff]), {
       kind: "selectDiff",
       diff,
-      commitment: ABSTAIN,
+      commitment,
     })
     expect(next.phase).toBe("posingUnrescuableExplanation")
     if (next.phase !== "posingUnrescuableExplanation") {
       throw new Error("unreachable")
     }
     expect(next.pinnedDiff).toBe(diff)
+    expect(next.pinnedCommitment).toBe(commitment)
     expect(next.explanationPropositionId).toBe("CW-P16")
   })
 
@@ -209,12 +246,74 @@ describe("nextRoundCycleState — Def. 8.1 cases 3/4 and Def. 8.2", () => {
         },
       ],
     })
-    const next = nextRoundCycleState(posingRound, {
+    const next = nextRoundCycleState(posingRoundWith([diff]), {
       kind: "selectDiff",
       diff,
       commitment: ABSTAIN,
     })
     expect(next.phase).toBe("posingRescueSelection")
+  })
+
+  // Review finding on this PR (chatgpt-codex-connector): an earlier draft
+  // derived Def. 8.2's own case split from whether an *authored* candidate
+  // happened to rescue the diff — a strictly narrower, and therefore
+  // sometimes wrong, question than Def. 8.2's actual existential over "any
+  // assignment of the bounds." Loop(dim("n"), W(2)) has no term independent
+  // of every bounded dimension, so a rescue is always possible in
+  // principle regardless of what the corpus happens to enumerate.
+  describe("Def. 8.2's split is derived from the graph, not from candidate coverage", () => {
+    it("throws when case 1 should apply but no authored candidate demonstrates a rescue", () => {
+      const diff = diffOptionOf({
+        propositionId: "CW-P2",
+        cost: 2000,
+        graph: Loop(dim("n"), W(2)), // no term independent of every dimension
+        rescueCandidates: [], // but the corpus never authored a working one
+      })
+      expect(() =>
+        nextRoundCycleState(posingRoundWith([diff]), {
+          kind: "selectDiff",
+          diff,
+          commitment: ABSTAIN,
+        })
+      ).toThrow(/missing a working candidate/)
+    })
+
+    it("throws when a rescue candidate bounds a different dimension set than C", () => {
+      const diff = diffOptionOf({
+        propositionId: "CW-P2",
+        cost: 2000,
+        graph: Loop(dim("n"), W(2)),
+        rescueCandidates: [
+          {
+            // C bounds "n"; this candidate bounds an unrelated dimension.
+            constraints: [{ dimension: "m", operator: "<=", bound: 1 }],
+            propositionId: "CW-P4",
+          },
+        ],
+      })
+      expect(() =>
+        nextRoundCycleState(posingRoundWith([diff]), {
+          kind: "selectDiff",
+          diff,
+          commitment: ABSTAIN,
+        })
+      ).toThrow(/different dimension set/)
+    })
+  })
+
+  // Review finding on this PR (chatgpt-codex-connector): an earlier draft
+  // trusted any structurally valid RoundDiffOption in the response, never
+  // checking it was actually one of the round's own diffOptions.
+  it("throws when response.diff is not one of this round's own diffOptions", () => {
+    const offered = diffOptionOf({ propositionId: "CW-P1", cost: 500 })
+    const stale = diffOptionOf({ propositionId: "CW-P9", cost: 500 })
+    expect(() =>
+      nextRoundCycleState(posingRoundWith([offered]), {
+        kind: "selectDiff",
+        diff: stale,
+        commitment: ABSTAIN,
+      })
+    ).toThrow(/not one of this round's own diffOptions/)
   })
 
   // Rem. 8.0's own lesson, restated one level up from "branching on r":
@@ -223,11 +322,12 @@ describe("nextRoundCycleState — Def. 8.1 cases 3/4 and Def. 8.2", () => {
   describe("Rem. 8.0 — the branch never reads an authored claim", () => {
     it("a diff authored as admissible, but not derived-admissible, still routes to Def. 8.2", () => {
       const diff = diffOptionOf({
-        propositionId: "CW-P2",
-        cost: 5000, // derived: not admissible
+        propositionId: "CW-P16",
+        cost: 5000, // derived: not admissible, independent of every dimension
+        graph: W(5000),
         authoredAdmissible: true, // authored: claims otherwise
       })
-      const next = nextRoundCycleState(posingRound, {
+      const next = nextRoundCycleState(posingRoundWith([diff]), {
         kind: "selectDiff",
         diff,
         commitment: ABSTAIN,
@@ -241,7 +341,7 @@ describe("nextRoundCycleState — Def. 8.1 cases 3/4 and Def. 8.2", () => {
         cost: 500, // derived: admissible
         authoredAdmissible: false, // authored: claims otherwise
       })
-      const next = nextRoundCycleState(posingRound, {
+      const next = nextRoundCycleState(posingRoundWith([diff]), {
         kind: "selectDiff",
         diff,
         commitment: ABSTAIN,
@@ -252,14 +352,18 @@ describe("nextRoundCycleState — Def. 8.1 cases 3/4 and Def. 8.2", () => {
 
   // Rem. 8.0's lesson, restated a second way: the branch never reads the
   // learner's own proposition guess either — only which diff was picked.
+  // (admissibleAdvance itself carries no pinned commitment at all — see
+  // that type's own doc comment — so the two calls' results are expected
+  // to be fully identical, not merely agree on phase.)
   it("the outcome is identical regardless of the learner's proposition guess, including abstention", () => {
     const diff = diffOptionOf({ propositionId: "CW-P1", cost: 500 })
-    const withChoice = nextRoundCycleState(posingRound, {
+    const round = posingRoundWith([diff])
+    const withChoice = nextRoundCycleState(round, {
       kind: "selectDiff",
       diff,
       commitment: { kind: "choice", id: "CW-P9" }, // an arbitrary, even wrong, guess
     })
-    const withAbstain = nextRoundCycleState(posingRound, {
+    const withAbstain = nextRoundCycleState(round, {
       kind: "selectDiff",
       diff,
       commitment: ABSTAIN,
@@ -278,19 +382,6 @@ describe("Thm. 8.1 — the cycle has no absorbing failure state", () => {
     []
   )
 
-  const posingRound = (() => {
-    const state = initialRoundCycleState(
-      Loop(dim("n"), W(2)),
-      CONSTRAINTS,
-      BUDGET,
-      []
-    )
-    if (state.phase !== "posingDiffSelection") {
-      throw new Error("fixture setup: expected posingDiffSelection")
-    }
-    return state
-  })()
-
   const restoringDiff = diffOptionOf({ propositionId: "CW-P1", cost: 500 })
   const rescuableDiff = diffOptionOf({
     propositionId: "CW-P2",
@@ -306,13 +397,13 @@ describe("Thm. 8.1 — the cycle has no absorbing failure state", () => {
     propositionId: "CW-P16",
     cost: 5000,
     graph: W(5000), // independent of every bounded dimension — CW-P16's own shape
-    rescueCandidates: [
-      {
-        constraints: [{ dimension: "n", operator: "<=", bound: 1 }],
-        propositionId: "CW-P4",
-      },
-    ],
   })
+
+  const posingRound = posingRoundWith([
+    restoringDiff,
+    rescuableDiff,
+    unrescuableDiff,
+  ])
 
   const branches: ReadonlyArray<{
     readonly name: string
@@ -405,18 +496,28 @@ describe("Prop. 8.1 — the cycle terminates only by the learner leaving", () =>
     "corpusExhausted",
   ]
 
-  const posingRound = (() => {
-    const state = initialRoundCycleState(
-      Loop(dim("n"), W(2)),
-      CONSTRAINTS,
-      BUDGET,
-      []
-    )
-    if (state.phase !== "posingDiffSelection") {
-      throw new Error("fixture setup: expected posingDiffSelection")
-    }
-    return state
-  })()
+  const restoringDiff = diffOptionOf({ propositionId: "CW-P1", cost: 500 })
+  const rescuableDiff = diffOptionOf({
+    propositionId: "CW-P2",
+    cost: 2000,
+    rescueCandidates: [
+      {
+        constraints: [{ dimension: "n", operator: "<=", bound: 400 }],
+        propositionId: "CW-P4",
+      },
+    ],
+  })
+  const unrescuableDiff = diffOptionOf({
+    propositionId: "CW-P16",
+    cost: 5000,
+    graph: W(5000),
+  })
+
+  const posingRound = posingRoundWith([
+    restoringDiff,
+    rescuableDiff,
+    unrescuableDiff,
+  ])
 
   it("no returned state carries a win, completion, or corpus-exhaustion field", () => {
     const admissible = initialRoundCycleState(
@@ -427,30 +528,17 @@ describe("Prop. 8.1 — the cycle terminates only by the learner leaving", () =>
     )
     const restoring = nextRoundCycleState(posingRound, {
       kind: "selectDiff",
-      diff: diffOptionOf({ propositionId: "CW-P1", cost: 500 }),
+      diff: restoringDiff,
       commitment: ABSTAIN,
     })
     const rescuable = nextRoundCycleState(posingRound, {
       kind: "selectDiff",
-      diff: diffOptionOf({
-        propositionId: "CW-P2",
-        cost: 2000,
-        rescueCandidates: [
-          {
-            constraints: [{ dimension: "n", operator: "<=", bound: 400 }],
-            propositionId: "CW-P4",
-          },
-        ],
-      }),
+      diff: rescuableDiff,
       commitment: ABSTAIN,
     })
     const unrescuable = nextRoundCycleState(posingRound, {
       kind: "selectDiff",
-      diff: diffOptionOf({
-        propositionId: "CW-P16",
-        cost: 5000,
-        graph: W(5000),
-      }),
+      diff: unrescuableDiff,
       commitment: ABSTAIN,
     })
 
@@ -483,11 +571,7 @@ describe("Prop. 8.1 — the cycle terminates only by the learner leaving", () =>
       }
       state = nextRoundCycleState(state, {
         kind: "selectDiff",
-        diff: diffOptionOf({
-          propositionId: "CW-P16",
-          cost: 5000,
-          graph: W(5000),
-        }),
+        diff: unrescuableDiff,
         commitment: ABSTAIN,
       })
     }
