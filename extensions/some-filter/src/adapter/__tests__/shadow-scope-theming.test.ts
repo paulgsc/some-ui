@@ -697,3 +697,94 @@ describe("createShadowScopeTheming.observe/teardown — sheet-integrity poll (#1
     expect(shadow.adoptedStyleSheets.length).toBe(before)
   })
 })
+
+describe("createShadowScopeTheming.observe/teardown — reprojects on a vendor-invert change with nothing else to react to (bot-found, PR review round 1)", () => {
+  afterEach(() => {
+    document.documentElement.style.removeProperty("filter")
+  })
+
+  it("rebuilds a COMMITTED scope's :host token rule once the page's own vendor invert changes after commit, with no sheet ever missing and no other mutation", async () => {
+    const reg = registry()
+    const shadow = shadowRoot()
+    const id = registerHeld(reg, shadow)
+
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
+    theming.project(id)
+    await flushAll()
+    expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+    // Committed with no vendor invert active — the raw, uncompensated
+    // swatch is correct at this point.
+    const hostRuleBefore = [...shadow.adoptedStyleSheets]
+      .flatMap((sheet) => [...sheet.cssRules])
+      .find((r) => r.cssText.startsWith(":host"))
+    expect(hostRuleBefore?.cssText).toContain(`--sw-bg-0: ${swatch.bg0}`)
+
+    // The page turns its own vendor invert on *after* this scope already
+    // committed — a real accessibility-toggle pattern (#741), and one that
+    // touches neither this scope's own subtree nor its host's class/style,
+    // so nothing reactive here would ever see it on its own. Every sheet
+    // this module adopted is still exactly where it was — shadowRealizationIntact
+    // alone would find nothing wrong.
+    document.documentElement.style.filter = "invert(1)"
+
+    vi.useFakeTimers()
+    try {
+      theming.observe()
+      await vi.advanceTimersByTimeAsync(SHEET_INTEGRITY_POLL_MS)
+    } finally {
+      vi.useRealTimers()
+    }
+    await flushAll()
+
+    expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+    const hostRuleAfter = [...shadow.adoptedStyleSheets]
+      .flatMap((sheet) => [...sheet.cssRules])
+      .find((r) => r.cssText.startsWith(":host"))
+    const compensated = compensateSwatch(swatch, 1)
+    expect(hostRuleAfter?.cssText).toContain(`--sw-bg-0: ${compensated.bg0}`)
+    expect(hostRuleAfter?.cssText).not.toContain(`--sw-bg-0: ${swatch.bg0}`)
+  })
+
+  it("a scope committed while a vendor invert is already active is left alone across later ticks if nothing changes", async () => {
+    document.documentElement.style.filter = "invert(1)"
+    const reg = registry()
+    const shadow = shadowRoot()
+    const id = registerHeld(reg, shadow)
+
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
+    theming.project(id)
+    await flushAll()
+    expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+    // realizeShadowColors's own idempotence discipline means the adopted
+    // array's own reference only ever changes when a real
+    // invalidate()+recommit cycle actually runs — the most direct
+    // discriminator for "was this scope touched again," independent of
+    // whether the recomputed content would happen to look the same.
+    const sheetsAfterCommit = shadow.adoptedStyleSheets
+
+    vi.useFakeTimers()
+    try {
+      theming.observe()
+      // First tick after commit: establishes this poll's own baseline
+      // observation of the (unchanged, already-active) invert amount — must
+      // not itself be treated as a change.
+      await vi.advanceTimersByTimeAsync(SHEET_INTEGRITY_POLL_MS)
+      // Second tick: a real baseline now exists, and nothing changed since.
+      await vi.advanceTimersByTimeAsync(SHEET_INTEGRITY_POLL_MS)
+    } finally {
+      vi.useRealTimers()
+    }
+    await flushAll()
+
+    expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+    expect(shadow.adoptedStyleSheets).toBe(sheetsAfterCommit)
+  })
+})

@@ -72,18 +72,22 @@ import { decide } from "./theme-adapter"
 
 /**
  * `SCOPE_COVERAGE_POLL_MS` (`coverage-watchdog.ts`), generalized to this
- * module's own narrower concern: a vendor's own wholesale
- * `ShadowRoot.adoptedStyleSheets` reassignment is a plain CSSOM property
- * write, not a DOM mutation — nothing reactive in this codebase can ever see
- * it (see `shadow-actuator.ts`'s own `shadowRealizationIntact` doc comment).
+ * module's own narrower concern: this poll's own two triggers — a vendor's
+ * wholesale `ShadowRoot.adoptedStyleSheets` reassignment (#1280), and the
+ * page's own vendor-invert amount changing after a scope has already
+ * committed (#1281, bot-found on this pair's own PR review — see
+ * `reconcileCommittedSheets`'s own doc comment) — are each a plain CSSOM
+ * property read/write with no corresponding DOM mutation, so nothing
+ * reactive in this codebase can ever see either on its own (see
+ * `shadow-actuator.ts`'s own `shadowRealizationIntact` doc comment).
  * Diagnostics-freshness cadence only, the same way that constant's own doc
- * comment describes itself — this bounds how long a silently-reverted
- * shadow scope stays unthemed before this module's own poll notices and
- * repairs it, carrying no safety weight the way `DISCOVERY_POLL_MS`
- * (`shadow-scope-discovery.ts`) does for the *initial* coverage guarantee.
- * 250ms matches that existing precedent rather than inventing a third
- * cadence for what is, per tick, an even cheaper check (one `Set` membership
- * test per `COMMITTED` scope, no DOM walk).
+ * comment describes itself — this bounds how long a scope stays stale
+ * before this module's own poll notices and repairs it, carrying no safety
+ * weight the way `DISCOVERY_POLL_MS` (`shadow-scope-discovery.ts`) does for
+ * the *initial* coverage guarantee. 250ms matches that existing precedent
+ * rather than inventing a third cadence for what is, per tick, an even
+ * cheaper check (one `getComputedStyle` read plus a `Set` membership test
+ * per `COMMITTED` scope, no DOM walk).
  */
 export const SHEET_INTEGRITY_POLL_MS = 250
 
@@ -118,13 +122,16 @@ export type ShadowScopeTheming = {
   project(id: ScopeId): void
 
   /**
-   * Starts a `SHEET_INTEGRITY_POLL_MS` periodic poll (#1280) that checks
-   * every currently `COMMITTED` scope's realization via
-   * `shadow-actuator.ts`'s `shadowRealizationIntact` and, for any that a
-   * vendor's own wholesale `adoptedStyleSheets` reassignment has silently
-   * broken, forces the same repair a genuine vendor mutation would: invalidate
-   * the scope (re-engaging its hold, tearing down the stale realization) and
-   * `project()` it again, re-scanning and re-realizing from scratch. Mirrors
+   * Starts a `SHEET_INTEGRITY_POLL_MS` periodic poll that checks every
+   * currently `COMMITTED` scope's realization and, for any scope where
+   * either (a) a vendor's own wholesale `adoptedStyleSheets` reassignment
+   * has silently dropped its sheets (`shadow-actuator.ts`'s
+   * `shadowRealizationIntact`, #1280), or (b) the page's own vendor-invert
+   * amount has changed since it last committed (#1281 —
+   * `reconcileCommittedSheets`'s own doc comment), forces the same repair a
+   * genuine vendor mutation would: invalidate the scope (re-engaging its
+   * hold, tearing down the stale realization) and `project()` it again,
+   * re-scanning and re-realizing from scratch. Mirrors
    * `shadow-scope-discovery.ts`'s own `observe()`/`teardown()` shape;
    * idempotent, safe to call repeatedly.
    */
@@ -402,28 +409,79 @@ export function createShadowScopeTheming(
   }
 
   /**
-   * #1280's own poll body: for every currently `COMMITTED` shadow scope
-   * whose realization a vendor's own wholesale `adoptedStyleSheets`
-   * reassignment has silently broken, force the same repair a genuine
-   * vendor mutation would (`shadow-scope-discovery.ts`'s per-root observer:
-   * `registry.invalidate(id)` then `onScopeReady`/`project(id)`) — invalidate
-   * re-engages the hold and tears down the now-stale realization
+   * The vendor-invert amount every currently-`COMMITTED` scope's own
+   * host-token rule was last built against, as of this poll's own last
+   * tick (bot-found, PR #1336's own round-1 review — a real gap in #1281's
+   * own "recomputed every round" claim). `null` until the first tick, so a
+   * fresh `createShadowScopeTheming()` instance never spuriously treats its
+   * very first observation as a "change."
+   *
+   * `compensateSwatch(rawSwatch, detectVendorInvert())` in `projectOnce()`
+   * above only ever runs *during* a `project()` round — and nothing
+   * currently triggers one when *only* the page's own vendor invert toggles
+   * on/off after a scope has already committed with no other mutation
+   * anywhere near it: that toggle can live on `<html>`, or any ancestor
+   * outside a shadow host's own class/style, so neither
+   * `shadow-scope-discovery.ts`'s per-root observer (watches inside the
+   * shadow root) nor its host observer (watches only the host's own
+   * `class`/`style`) ever sees it, and this module's own sheet-presence
+   * check (`shadowRealizationIntact`, below) finds nothing missing either —
+   * every previously-adopted sheet is still exactly where it was, just
+   * compensated for a vendor-invert state that is no longer current. A
+   * scope committed under one invert amount would otherwise carry a stale
+   * host-token rule forever, until some unrelated later mutation happened
+   * to invalidate it.
+   *
+   * Initialized eagerly, here, at factory-construction time — not lazily on
+   * the poll's own first tick. `content.ts`'s own single, module-scope
+   * `createShadowScopeTheming()` call runs before `runAutoTheme()` (and so
+   * before `shadowScopeDiscovery.discover()` can register, let alone
+   * commit, any scope) ever does, so this is always a real baseline, never
+   * a placeholder standing in for "not observed yet." A lazily-`null`
+   * baseline would miss exactly the case this poll exists to catch: a scope
+   * that already committed under one invert amount before `observe()`'s
+   * own very first tick, with the vendor's own toggle having changed in
+   * between — that tick would wrongly read the *new* value as the
+   * baseline rather than noticing it differs from what the scope was built
+   * against.
+   */
+  let lastVendorInvert = detectVendorInvert()
+
+  /**
+   * #1280/#1281's own poll body: for every currently `COMMITTED` shadow
+   * scope whose realization either (a) a vendor's own wholesale
+   * `adoptedStyleSheets` reassignment has silently broken, or (b) the
+   * page's own vendor-invert amount has changed out from under since it was
+   * last built, force the same repair a genuine vendor mutation would
+   * (`shadow-scope-discovery.ts`'s per-root observer:
+   * `registry.invalidate(id)` then `onScopeReady`/`project(id)`) —
+   * invalidate re-engages the hold and tears down the now-stale realization
    * synchronously; the immediate `project()` call that follows reads the
    * fresh `RESOLVING` state (`ensureResolving`'s own no-throw case for it)
    * and runs a full scan/decide/realize round, re-adopting every sheet this
-   * scope actually needs. A scope still `RESOLVING`/`HELD`/`FAILED_HELD` at
-   * poll time has nothing committed to have gone stale, and `snapshot(id)`
-   * reads live state, so there is no race between this synchronous sweep and
-   * any single in-flight `project()` round — one or the other completes
-   * first, never both interleaved.
+   * scope actually needs, recompensated against the current invert amount.
+   * A scope still `RESOLVING`/`HELD`/`FAILED_HELD` at poll time has nothing
+   * committed to have gone stale, and `snapshot(id)` reads live state, so
+   * there is no race between this synchronous sweep and any single
+   * in-flight `project()` round — one or the other completes first, never
+   * both interleaved.
+   *
+   * `detectVendorInvert()` is read once per tick, not once per scope — it is
+   * a single document-wide value, the same reason `injectDarkTheme()`
+   * itself only ever reads it once per document-level round rather than per
+   * surface.
    */
   function reconcileCommittedSheets(): void {
+    const currentVendorInvert = detectVendorInvert()
+    const vendorInvertChanged = currentVendorInvert !== lastVendorInvert
+    lastVendorInvert = currentVendorInvert
+
     for (const id of registry.ids()) {
       const snapshot = registry.snapshot(id)
       if (snapshot === undefined) continue
       const root = snapshot.ref
       if (!isShadowRoot(root) || snapshot.state.kind !== "COMMITTED") continue
-      if (shadowRealizationIntact(root)) continue
+      if (!vendorInvertChanged && shadowRealizationIntact(root)) continue
       registry.invalidate(id)
       project(id)
     }
