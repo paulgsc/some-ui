@@ -39,6 +39,8 @@
  * that realization is fully installed" acceptance criterion.
  */
 
+import { compensateSwatch } from "@filter/lib/content/theme-apply"
+import { detectVendorInvert } from "@filter/lib/content/vendor-filter"
 import { invoke } from "@some-extension/transport/adapter/invoke"
 import { createHypothesis } from "@some-extension/transport/estimator/hypothesis"
 import {
@@ -62,10 +64,28 @@ import type { ScopeId, ScopeRegistry } from "./scope-registry"
 import {
   clearShadowSurfaceState,
   realizeShadowColors,
+  shadowRealizationIntact,
   tagSurfaceElements,
 } from "./shadow-actuator"
 import type { Swatch } from "./swatches"
 import { decide } from "./theme-adapter"
+
+/**
+ * `SCOPE_COVERAGE_POLL_MS` (`coverage-watchdog.ts`), generalized to this
+ * module's own narrower concern: a vendor's own wholesale
+ * `ShadowRoot.adoptedStyleSheets` reassignment is a plain CSSOM property
+ * write, not a DOM mutation — nothing reactive in this codebase can ever see
+ * it (see `shadow-actuator.ts`'s own `shadowRealizationIntact` doc comment).
+ * Diagnostics-freshness cadence only, the same way that constant's own doc
+ * comment describes itself — this bounds how long a silently-reverted
+ * shadow scope stays unthemed before this module's own poll notices and
+ * repairs it, carrying no safety weight the way `DISCOVERY_POLL_MS`
+ * (`shadow-scope-discovery.ts`) does for the *initial* coverage guarantee.
+ * 250ms matches that existing precedent rather than inventing a third
+ * cadence for what is, per tick, an even cheaper check (one `Set` membership
+ * test per `COMMITTED` scope, no DOM walk).
+ */
+export const SHEET_INTEGRITY_POLL_MS = 250
 
 export type ShadowSceneRegistry = ScopeRegistry<
   DocumentRevision,
@@ -96,6 +116,22 @@ export type ShadowScopeTheming = {
    * queued.
    */
   project(id: ScopeId): void
+
+  /**
+   * Starts a `SHEET_INTEGRITY_POLL_MS` periodic poll (#1280) that checks
+   * every currently `COMMITTED` scope's realization via
+   * `shadow-actuator.ts`'s `shadowRealizationIntact` and, for any that a
+   * vendor's own wholesale `adoptedStyleSheets` reassignment has silently
+   * broken, forces the same repair a genuine vendor mutation would: invalidate
+   * the scope (re-engaging its hold, tearing down the stale realization) and
+   * `project()` it again, re-scanning and re-realizing from scratch. Mirrors
+   * `shadow-scope-discovery.ts`'s own `observe()`/`teardown()` shape;
+   * idempotent, safe to call repeatedly.
+   */
+  observe(): void
+
+  /** Stops the integrity poll `observe()` started. Idempotent. */
+  teardown(): void
 }
 
 function errorReason(error: unknown): string {
@@ -146,7 +182,17 @@ function ensureResolving(registry: ShadowSceneRegistry, id: ScopeId): boolean {
 
 export function createShadowScopeTheming(
   registry: ShadowSceneRegistry,
-  swatch: Swatch | null,
+  /**
+   * A live source, not a value fixed at construction (#1281) — mirrors
+   * `epoch` below. `content.ts`'s own instance currently always returns the
+   * same constant (`SWATCHES[DEFAULT_SWATCH_ID]`; no swatch-picker UI exists
+   * yet), but the *compensation* this module derives from it
+   * (`compensateSwatch`/`detectVendorInvert`, in `projectOnce()` below) is
+   * never constant — a vendor's own invert toggle can flip at any point in a
+   * page's lifetime, the same reason `theme-apply.ts`'s own
+   * `injectDarkTheme()` recomputes it on every call rather than caching it.
+   */
+  swatch: () => Swatch | null,
   epoch: () => Epoch
 ): ShadowScopeTheming {
   /**
@@ -230,6 +276,10 @@ export function createShadowScopeTheming(
     }
     if (!ensureResolving(registry, id)) return
 
+    // Read once per round, not once per factory call (#1281) — swatch is a
+    // live source now, mirroring epoch().
+    const rawSwatch = swatch()
+
     // Mirrors decide()'s own degenerate case (Theorem D.2's null adapter) —
     // no swatch selected means nothing to project, same reason
     // (document-scope.ts's own reportPipelineOutcome uses the identical
@@ -238,7 +288,7 @@ export function createShadowScopeTheming(
     // previously committed and then had its swatch turned off must not keep
     // showing its last commit's dark styling once native content is
     // revealed again.
-    if (swatch === null) {
+    if (rawSwatch === null) {
       clearShadowSurfaceState(root)
       registry.resolveExonerated(id, { proof: { reason: "no-swatch" } })
       return
@@ -268,7 +318,7 @@ export function createShadowScopeTheming(
           timestamp,
         })
       }
-      actions = invoke(hypothesis, { decide: (h) => decide(h, swatch) })
+      actions = invoke(hypothesis, { decide: (h) => decide(h, rawSwatch) })
     } catch (error) {
       registry.resolveFailed(id, errorReason(error))
       return
@@ -293,10 +343,22 @@ export function createShadowScopeTheming(
     // see inFlight's own doc comment for the overlapping-commit race this
     // closes.
     await registry.resolveCommitted(id, {
-      revision: swatch.id,
+      revision: rawSwatch.id,
       install: () => {
         tagSurfaceElements(actions, scanned.elementsByKey)
-        realizeShadowColors(actions, root, swatch)
+        // Compensated here, not passed to decide() above: mirrors the
+        // document-level split (theme-adapter.ts's decide() always runs
+        // against the raw swatch; only theme-apply.ts's own
+        // injectDarkTheme() — the static token-declaration layer —
+        // compensates, right before building CSS text). buildHostTokenRule
+        // (shadow-actuator.ts) is this scope's own equivalent of that
+        // token declaration, and recomputed fresh every round: a vendor's
+        // own invert toggle can flip at any time (#1281).
+        realizeShadowColors(
+          actions,
+          root,
+          compensateSwatch(rawSwatch, detectVendorInvert())
+        )
       },
       // Only reachable once this scope has actually been COMMITTED
       // (scope-registry.ts's invalidate()/retire() are the two callers —
@@ -315,29 +377,74 @@ export function createShadowScopeTheming(
     })
   }
 
+  function project(id: ScopeId): void {
+    // Captured now, synchronously, before queuing this call: true exactly
+    // when another round for this same id is already queued or running —
+    // the condition projectOnce()'s own forceInvalidate parameter (its
+    // doc comment above) needs to tell "genuinely redundant, already-seen
+    // evidence" apart from "arrived after that round's own scan, needs a
+    // fresh one regardless of what state that round settles into."
+    const wasInFlight = inFlight.has(id)
+    const prior = inFlight.get(id) ?? Promise.resolve()
+    // A prior round's own rejection (projectOnce() itself never throws —
+    // every fallible step resolves the scope to FAILED_HELD instead — but
+    // defend the queue's own continuity regardless of what future code
+    // does) must not abort every future call chained onto this same id.
+    const current = prior
+      .catch(() => {})
+      .then(() => projectOnce(id, wasInFlight))
+    inFlight.set(id, current)
+    void current
+      .catch(() => {})
+      .finally(() => {
+        if (inFlight.get(id) === current) inFlight.delete(id)
+      })
+  }
+
+  /**
+   * #1280's own poll body: for every currently `COMMITTED` shadow scope
+   * whose realization a vendor's own wholesale `adoptedStyleSheets`
+   * reassignment has silently broken, force the same repair a genuine
+   * vendor mutation would (`shadow-scope-discovery.ts`'s per-root observer:
+   * `registry.invalidate(id)` then `onScopeReady`/`project(id)`) — invalidate
+   * re-engages the hold and tears down the now-stale realization
+   * synchronously; the immediate `project()` call that follows reads the
+   * fresh `RESOLVING` state (`ensureResolving`'s own no-throw case for it)
+   * and runs a full scan/decide/realize round, re-adopting every sheet this
+   * scope actually needs. A scope still `RESOLVING`/`HELD`/`FAILED_HELD` at
+   * poll time has nothing committed to have gone stale, and `snapshot(id)`
+   * reads live state, so there is no race between this synchronous sweep and
+   * any single in-flight `project()` round — one or the other completes
+   * first, never both interleaved.
+   */
+  function reconcileCommittedSheets(): void {
+    for (const id of registry.ids()) {
+      const snapshot = registry.snapshot(id)
+      if (snapshot === undefined) continue
+      const root = snapshot.ref
+      if (!isShadowRoot(root) || snapshot.state.kind !== "COMMITTED") continue
+      if (shadowRealizationIntact(root)) continue
+      registry.invalidate(id)
+      project(id)
+    }
+  }
+
+  let pollHandle: ReturnType<typeof setInterval> | null = null
+
   return {
-    project(id: ScopeId): void {
-      // Captured now, synchronously, before queuing this call: true exactly
-      // when another round for this same id is already queued or running —
-      // the condition projectOnce()'s own forceInvalidate parameter (its
-      // doc comment above) needs to tell "genuinely redundant, already-seen
-      // evidence" apart from "arrived after that round's own scan, needs a
-      // fresh one regardless of what state that round settles into."
-      const wasInFlight = inFlight.has(id)
-      const prior = inFlight.get(id) ?? Promise.resolve()
-      // A prior round's own rejection (projectOnce() itself never throws —
-      // every fallible step resolves the scope to FAILED_HELD instead — but
-      // defend the queue's own continuity regardless of what future code
-      // does) must not abort every future call chained onto this same id.
-      const current = prior
-        .catch(() => {})
-        .then(() => projectOnce(id, wasInFlight))
-      inFlight.set(id, current)
-      void current
-        .catch(() => {})
-        .finally(() => {
-          if (inFlight.get(id) === current) inFlight.delete(id)
-        })
+    project,
+    observe(): void {
+      if (pollHandle !== null) return
+      pollHandle = setInterval(
+        reconcileCommittedSheets,
+        SHEET_INTEGRITY_POLL_MS
+      )
+    },
+    teardown(): void {
+      if (pollHandle !== null) {
+        clearInterval(pollHandle)
+        pollHandle = null
+      }
     },
   }
 }

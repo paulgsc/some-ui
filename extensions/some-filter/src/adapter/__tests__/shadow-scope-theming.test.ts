@@ -1,9 +1,11 @@
 import { createScopeRegistry } from "@filter/adapter/scope-registry"
 import {
   createShadowScopeTheming,
+  SHEET_INTEGRITY_POLL_MS,
   type ShadowSceneRegistry,
 } from "@filter/adapter/shadow-scope-theming"
 import { DEFAULT_SWATCH_ID, SWATCHES } from "@filter/adapter/swatches"
+import { compensateSwatch } from "@filter/lib/content/theme-apply"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 const swatch = SWATCHES[DEFAULT_SWATCH_ID]
@@ -52,7 +54,11 @@ afterEach(() => {
 describe("createShadowScopeTheming.project — ineligible ids are a no-op", () => {
   it("does nothing for an unregistered id", () => {
     const reg = registry()
-    const theming = createShadowScopeTheming(reg, swatch, () => 0)
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
     expect(() => theming.project("nope")).not.toThrow()
   })
 
@@ -64,7 +70,11 @@ describe("createShadowScopeTheming.project — ineligible ids are a no-op", () =
       contentEpoch: 0,
       hold: { install: () => {}, release: () => {} },
     })
-    const theming = createShadowScopeTheming(reg, swatch, () => 0)
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
     theming.project("r_0")
     await flushAll()
     expect(reg.stateOf("r_0")?.kind).toBe("HELD")
@@ -81,7 +91,11 @@ describe("createShadowScopeTheming.project — ineligible ids are a no-op", () =
       uninstall: () => {},
     })
 
-    const theming = createShadowScopeTheming(reg, swatch, () => 0)
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
     theming.project(id)
     await flushAll()
 
@@ -94,7 +108,11 @@ describe("createShadowScopeTheming.project — ineligible ids are a no-op", () =
     const id = registerHeld(reg, shadow)
     reg.retire(id)
 
-    const theming = createShadowScopeTheming(reg, swatch, () => 0)
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
     expect(() => theming.project(id)).not.toThrow()
     await flushAll()
     expect(reg.stateOf(id)?.kind).toBe("RETIRED")
@@ -110,7 +128,11 @@ describe("createShadowScopeTheming.project — commits a themed shadow scope", (
     shadow.appendChild(surface)
     const id = registerHeld(reg, shadow)
 
-    const theming = createShadowScopeTheming(reg, swatch, () => 0)
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
     theming.project(id)
     // resolveCommitted is async even for a synchronous install() — one
     // microtask hop (see scope-registry.ts's own doc comment).
@@ -129,7 +151,11 @@ describe("createShadowScopeTheming.project — commits a themed shadow scope", (
     const shadow = shadowRoot()
     const id = registerHeld(reg, shadow)
 
-    const theming = createShadowScopeTheming(reg, swatch, () => 0)
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
     theming.project(id)
     await flushAll()
 
@@ -144,7 +170,11 @@ describe("createShadowScopeTheming.project — commits a themed shadow scope", (
     const idA = registerHeld(reg, shadowA)
     const idB = registerHeld(reg, shadowB)
 
-    const theming = createShadowScopeTheming(reg, swatch, () => 0)
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
     theming.project(idA)
     theming.project(idB)
     await flushAll()
@@ -173,7 +203,11 @@ describe("createShadowScopeTheming.project — commits a themed shadow scope", (
       hold: { install: () => {}, release: () => {} },
     })
 
-    const theming = createShadowScopeTheming(reg, swatch, () => 0)
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
     theming.project(outerId)
     theming.project(innerId)
     await flushAll()
@@ -194,14 +228,22 @@ describe("createShadowScopeTheming.project — exoneration", () => {
     shadow.appendChild(surface)
     const id = registerHeld(reg, shadow)
 
-    const themedTheming = createShadowScopeTheming(reg, swatch, () => 0)
+    const themedTheming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
     themedTheming.project(id)
     await flushAll()
     expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
     expect(surface.dataset.swPatched).toBe("rgb(255, 255, 255)")
 
     reg.invalidate(id)
-    const nullTheming = createShadowScopeTheming(reg, null, () => 0)
+    const nullTheming = createShadowScopeTheming(
+      reg,
+      () => null,
+      () => 0
+    )
     nullTheming.project(id)
     await flushAll()
 
@@ -227,7 +269,11 @@ describe("createShadowScopeTheming.project — exoneration", () => {
     staleSurface.dataset.swPatched = "rgb(255, 255, 255)"
 
     const id = registerHeld(reg, shadow)
-    const theming = createShadowScopeTheming(reg, swatch, () => 0)
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
     theming.project(id)
     await flushAll()
 
@@ -248,7 +294,11 @@ describe("createShadowScopeTheming.project — a thrown scan/decide resolves FAI
         throw new Error("boom")
       })
     try {
-      const theming = createShadowScopeTheming(reg, swatch, () => 0)
+      const theming = createShadowScopeTheming(
+        reg,
+        () => swatch,
+        () => 0
+      )
       expect(() => theming.project(id)).not.toThrow()
       await flushAll()
     } finally {
@@ -277,7 +327,11 @@ describe("createShadowScopeTheming.project — FAILED_HELD retries", () => {
       .mockImplementation(() => {
         throw new Error("boom")
       })
-    const theming = createShadowScopeTheming(reg, swatch, () => 0)
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
     theming.project(id)
     await flushAll()
     spy.mockRestore()
@@ -309,7 +363,11 @@ describe("createShadowScopeTheming.project — serializes overlapping calls (bot
     shadow.appendChild(surface)
     const id = registerHeld(reg, shadow)
 
-    const theming = createShadowScopeTheming(reg, swatch, () => 0)
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
     theming.project(id)
     theming.project(id)
     await flushAll()
@@ -327,7 +385,11 @@ describe("createShadowScopeTheming.project — serializes overlapping calls (bot
     shadow.appendChild(surface)
     const id = registerHeld(reg, shadow)
 
-    const theming = createShadowScopeTheming(reg, swatch, () => 0)
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
     theming.project(id)
     theming.project(id)
     theming.project(id)
@@ -373,7 +435,11 @@ describe("createShadowScopeTheming.project — forces a fresh round for a trigge
       hold: { install, release },
     })
 
-    const theming = createShadowScopeTheming(reg, swatch, () => 0)
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
     theming.project(id)
     theming.project(id)
     await flushAll()
@@ -404,12 +470,230 @@ describe("createShadowScopeTheming.project — cross-realm ShadowRoot (bot-found
 
     const reg = registry()
     const id = registerHeld(reg, foreignShadow)
-    const theming = createShadowScopeTheming(reg, swatch, () => 0)
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
     theming.project(id)
     await flushAll()
 
     expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
 
     iframe.remove()
+  })
+})
+
+describe("createShadowScopeTheming.project — vendor-invert compensation for the host-token rule (#1281)", () => {
+  afterEach(() => {
+    document.documentElement.style.removeProperty("filter")
+  })
+
+  it("builds the :host token rule from the compensated swatch, not the raw one, when a vendor invert is active", async () => {
+    document.documentElement.style.filter = "invert(1)"
+    const reg = registry()
+    const shadow = shadowRoot()
+    const id = registerHeld(reg, shadow)
+
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
+    theming.project(id)
+    await flushAll()
+
+    expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+    const hostRule = [...shadow.adoptedStyleSheets]
+      .flatMap((sheet) => [...sheet.cssRules])
+      .find((r) => r.cssText.startsWith(":host"))
+    expect(hostRule).toBeDefined()
+
+    const compensated = compensateSwatch(swatch, 1)
+    expect(hostRule?.cssText).toContain(`--sw-bg-0: ${compensated.bg0}`)
+    // Guards against a vacuous pass: the raw, uncompensated token must not
+    // be what actually got adopted.
+    expect(hostRule?.cssText).not.toContain(`--sw-bg-0: ${swatch.bg0}`)
+  })
+
+  it("recomputes the compensation every round rather than caching it at construction — a scope re-committing after the vendor invert toggles off adopts the raw swatch again", async () => {
+    document.documentElement.style.filter = "invert(1)"
+    const reg = registry()
+    const shadow = shadowRoot()
+    const id = registerHeld(reg, shadow)
+
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
+    theming.project(id)
+    await flushAll()
+    expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+
+    document.documentElement.style.removeProperty("filter")
+    reg.invalidate(id)
+    theming.project(id)
+    await flushAll()
+
+    expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+    const hostRule = [...shadow.adoptedStyleSheets]
+      .flatMap((sheet) => [...sheet.cssRules])
+      .find((r) => r.cssText.startsWith(":host"))
+    expect(hostRule?.cssText).toContain(`--sw-bg-0: ${swatch.bg0}`)
+  })
+
+  it("decide()'s own classification still runs against the raw swatch — the committed revision id is unaffected by compensation", async () => {
+    document.documentElement.style.filter = "invert(1)"
+    const reg = registry()
+    const shadow = shadowRoot()
+    const id = registerHeld(reg, shadow)
+
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
+    theming.project(id)
+    await flushAll()
+
+    const state = reg.stateOf(id)
+    expect(state?.kind).toBe("COMMITTED")
+    if (state?.kind === "COMMITTED") {
+      expect(state.revision).toBe(swatch.id)
+    }
+  })
+})
+
+describe("createShadowScopeTheming.observe/teardown — sheet-integrity poll (#1280)", () => {
+  it("repairs a COMMITTED scope's realization after a vendor's own wholesale adoptedStyleSheets reassignment", async () => {
+    const reg = registry()
+    const shadow = shadowRoot()
+    const surface = document.createElement("div")
+    surface.setAttribute("style", "background-color: rgb(255, 255, 255)")
+    shadow.appendChild(surface)
+    const id = registerHeld(reg, shadow)
+
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
+    theming.project(id)
+    await flushAll()
+    expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+    const before = shadow.adoptedStyleSheets.length
+    expect(before).toBeGreaterThan(0)
+    expect(surface.dataset.swPatched).toBe("rgb(255, 255, 255)")
+
+    // A vendor component's own wholesale reassignment — a plain CSSOM write
+    // no MutationObserver anywhere can see — silently drops every sheet this
+    // module adopted, with no other mutation to react to.
+    shadow.adoptedStyleSheets = []
+
+    vi.useFakeTimers()
+    try {
+      theming.observe()
+      await vi.advanceTimersByTimeAsync(SHEET_INTEGRITY_POLL_MS)
+    } finally {
+      vi.useRealTimers()
+    }
+    await flushAll()
+
+    expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+    expect(shadow.adoptedStyleSheets.length).toBe(before)
+    // The reconciliation is a full re-project, not merely re-adopting old
+    // sheet objects — the surface's own tag survives it too.
+    expect(surface.dataset.swPatched).toBe("rgb(255, 255, 255)")
+  })
+
+  it("teardown() stops the poll — a reassignment after teardown is never repaired", async () => {
+    const reg = registry()
+    const shadow = shadowRoot()
+    const surface = document.createElement("div")
+    surface.setAttribute("style", "background-color: rgb(255, 255, 255)")
+    shadow.appendChild(surface)
+    const id = registerHeld(reg, shadow)
+
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
+    theming.project(id)
+    await flushAll()
+    expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+
+    shadow.adoptedStyleSheets = []
+
+    vi.useFakeTimers()
+    try {
+      theming.observe()
+      theming.teardown()
+      await vi.advanceTimersByTimeAsync(SHEET_INTEGRITY_POLL_MS * 2)
+    } finally {
+      vi.useRealTimers()
+    }
+    await flushAll()
+
+    // Still COMMITTED (nothing invalidated it), but its sheets were never
+    // reinstalled — the poll never fired.
+    expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    expect(shadow.adoptedStyleSheets ?? []).toHaveLength(0)
+  })
+
+  it("leaves a HELD (never-committed) scope alone — nothing to reconcile", async () => {
+    const reg = registry()
+    const shadow = shadowRoot()
+    const id = registerHeld(reg, shadow)
+
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
+
+    vi.useFakeTimers()
+    try {
+      theming.observe()
+      await vi.advanceTimersByTimeAsync(SHEET_INTEGRITY_POLL_MS)
+    } finally {
+      vi.useRealTimers()
+    }
+    await flushAll()
+
+    expect(reg.stateOf(id)?.kind).toBe("HELD")
+  })
+
+  it("observe() is idempotent — calling it twice does not double the poll", async () => {
+    const reg = registry()
+    const shadow = shadowRoot()
+    const surface = document.createElement("div")
+    surface.setAttribute("style", "background-color: rgb(255, 255, 255)")
+    shadow.appendChild(surface)
+    const id = registerHeld(reg, shadow)
+
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
+    theming.project(id)
+    await flushAll()
+    const before = shadow.adoptedStyleSheets.length
+
+    vi.useFakeTimers()
+    try {
+      theming.observe()
+      theming.observe()
+      shadow.adoptedStyleSheets = []
+      await vi.advanceTimersByTimeAsync(SHEET_INTEGRITY_POLL_MS)
+    } finally {
+      vi.useRealTimers()
+    }
+    await flushAll()
+
+    expect(shadow.adoptedStyleSheets.length).toBe(before)
   })
 })

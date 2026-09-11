@@ -3,6 +3,7 @@ import {
   clearShadowSurfaceState,
   MAX_CACHED_SHEETS,
   realizeShadowColors,
+  shadowRealizationIntact,
   tagSurfaceElements,
 } from "@filter/adapter/shadow-actuator"
 import { SWATCHES } from "@filter/adapter/swatches"
@@ -291,6 +292,93 @@ describe("clearShadowSurfaceState", () => {
     clearShadowSurfaceState(root)
 
     expect(root.adoptedStyleSheets).toEqual([foreignSheet])
+  })
+})
+
+describe("shadowRealizationIntact (#1280)", () => {
+  it("is vacuously true for a root nothing has ever been realized into", () => {
+    const root = shadowRoot()
+    expect(shadowRealizationIntact(root)).toBe(true)
+  })
+
+  it("is true immediately after a realization, before anything touches adoptedStyleSheets", () => {
+    const root = shadowRoot()
+    realizeShadowColors(
+      [{ kind: "activate-theme", swatchId: "default" }],
+      root,
+      defaultSwatch
+    )
+    expect(shadowRealizationIntact(root)).toBe(true)
+  })
+
+  it("is false once a vendor's own wholesale reassignment drops this module's sheets", () => {
+    const root = shadowRoot()
+    realizeShadowColors(
+      [{ kind: "activate-theme", swatchId: "default" }],
+      root,
+      defaultSwatch
+    )
+    // A vendor component's own reactive-stylesheet update (Lit/FAST-style) —
+    // a plain CSSOM write, not a DOM mutation.
+    root.adoptedStyleSheets = []
+    expect(shadowRealizationIntact(root)).toBe(false)
+  })
+
+  it("is false when only some owned sheets survive a partial reassignment", () => {
+    const root = shadowRoot()
+    const key: SurfaceKey = "rgb(255, 255, 255)"
+    realizeShadowColors(
+      [
+        { kind: "activate-theme", swatchId: "default" },
+        { kind: "emit-surface-color", key, css: "rgb(10, 10, 20)" },
+      ],
+      root,
+      defaultSwatch
+    )
+    const surviving = root.adoptedStyleSheets[0]
+    expect(surviving).toBeDefined()
+    if (surviving === undefined) return
+    root.adoptedStyleSheets = [surviving]
+    expect(shadowRealizationIntact(root)).toBe(false)
+  })
+
+  it("is true again once realizeShadowColors re-adopts a dropped sheet", () => {
+    const root = shadowRoot()
+    realizeShadowColors(
+      [{ kind: "activate-theme", swatchId: "default" }],
+      root,
+      defaultSwatch
+    )
+    root.adoptedStyleSheets = []
+    expect(shadowRealizationIntact(root)).toBe(false)
+
+    realizeShadowColors(
+      [{ kind: "activate-theme", swatchId: "default" }],
+      root,
+      defaultSwatch
+    )
+    expect(shadowRealizationIntact(root)).toBe(true)
+  })
+
+  it("is vacuously true again once clearShadowSurfaceState empties the owned set", () => {
+    const root = shadowRoot()
+    realizeShadowColors(
+      [{ kind: "activate-theme", swatchId: "default" }],
+      root,
+      defaultSwatch
+    )
+    clearShadowSurfaceState(root)
+    expect(shadowRealizationIntact(root)).toBe(true)
+  })
+
+  it("leaves a foreign, non-extension sheet out of consideration entirely", () => {
+    const root = shadowRoot()
+    const foreignSheet = new CSSStyleSheet()
+    foreignSheet.insertRule("div { color: blue; }", 0)
+    root.adoptedStyleSheets = [foreignSheet]
+    // Nothing this module owns has gone missing — a foreign sheet's own
+    // presence or absence is not this function's concern.
+    expect(shadowRealizationIntact(root)).toBe(true)
   })
 })
 

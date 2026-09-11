@@ -75,8 +75,15 @@ export const LEGACY_THEME_ATTR = "data-sw-legacy"
  * swatch's real, intended dark tokens rather than their bright inverse. A
  * no-op (`invertAmount = 0`, the overwhelming majority case) returns
  * `swatch` unchanged.
+ *
+ * Exported so `shadow-scope-theming.ts` (SF-AD follow-up, #1281) can apply
+ * the identical compensation to a shadow scope's own `:host` token rule
+ * (`shadow-actuator.ts`'s `buildHostTokenRule`) — without it, a page with a
+ * vendor invert active gets correct (compensated) colors at the document
+ * level while every shadow-hosted surface's own tokens are built from the
+ * raw swatch, which the vendor's filter then inverts a second time.
  */
-function compensateSwatch(swatch: Swatch, invertAmount: number): Swatch {
+export function compensateSwatch(swatch: Swatch, invertAmount: number): Swatch {
   if (invertAmount === 0) return swatch
 
   const counter = (css: string): string => {

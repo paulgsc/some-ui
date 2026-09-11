@@ -120,6 +120,37 @@ function sheetFor(cssText: string): CSSStyleSheet {
 const ownedSheetsByRoot = new WeakMap<ShadowRoot, ReadonlySet<CSSStyleSheet>>()
 
 /**
+ * True when every sheet this module last adopted into `root` — the shared
+ * static layer, this scope's own host-token sheet, and any per-surface color
+ * sheets, per `ownedSheetsByRoot` above — is still present in
+ * `root.adoptedStyleSheets`. False the moment a vendor component reassigns
+ * `adoptedStyleSheets` wholesale (a real, documented reactive-stylesheet
+ * pattern — Lit, FAST, and similar libraries do this to update their own
+ * constructed stylesheets) and drops this module's entries along with
+ * whatever else it replaced (#1280).
+ *
+ * That assignment is a plain CSSOM property write, not a DOM mutation — no
+ * `MutationObserver` anywhere in this codebase (or any other) can see it —
+ * so nothing reactive ever notices on its own. `shadow-scope-theming.ts`'s
+ * own integrity poll calls this periodically for every `COMMITTED` scope,
+ * the only state whose realization this function has an opinion about; a
+ * scope this module has never realized anything into (nothing yet in
+ * `ownedSheetsByRoot`, or the empty set the `no-swatch`/`restore-native`
+ * exoneration paths leave behind) is vacuously intact — there is nothing
+ * here that could have gone missing.
+ */
+export function shadowRealizationIntact(root: ShadowRoot): boolean {
+  const owned = ownedSheetsByRoot.get(root)
+  if (owned === undefined || owned.size === 0) return true
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- see this file's own header: jsdom has no adoptedStyleSheets getter on ShadowRoot.prototype at all (jsdom/jsdom#2916).
+  const current = root.adoptedStyleSheets ?? []
+  for (const sheet of owned) {
+    if (!current.includes(sheet)) return false
+  }
+  return true
+}
+
+/**
  * The scoped counterpart to `theme-apply.ts`'s own static `<style>` layer
  * (headings/links/borders/code/tables/forms/scrollbars/selection/dialogs/
  * media, plus the `[data-sw-patched="preserve"]` revert rule) — built once,
