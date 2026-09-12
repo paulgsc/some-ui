@@ -735,7 +735,16 @@ describe("createContentSession — Axiom 3.5: actuation is not evidence (#831)",
       await Promise.resolve()
       vi.advanceTimersByTime(200)
 
-      expect(walkSpy).toHaveBeenCalledTimes(1)
+      // Two walks per round, not one per mutation: scan()'s own vendor-
+      // evidence walk, plus SF-RC1 (#1340)'s independent legibility-audit
+      // walk that runs after decide()/realize() settle within the same
+      // round (this fixture's empty Ĥ still gets activate-theme --
+      // theme-adapter.ts's decide() emits it unconditionally whenever a
+      // swatch is selected and the page doesn't read as already dark --
+      // so the audit's own activate-theme gate is satisfied every round).
+      // The coalescing claim this test exists to prove is exactly the
+      // same either way: one round, not ten.
+      expect(walkSpy).toHaveBeenCalledTimes(2)
 
       contentSession.teardown()
     } finally {
