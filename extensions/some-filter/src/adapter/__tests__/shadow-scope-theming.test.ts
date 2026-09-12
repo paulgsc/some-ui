@@ -5,6 +5,7 @@ import {
   type ShadowSceneRegistry,
 } from "@filter/adapter/shadow-scope-theming"
 import { DEFAULT_SWATCH_ID, SWATCHES } from "@filter/adapter/swatches"
+import { parseColor, relativeLuminance } from "@filter/lib/content/color"
 import { compensateSwatch } from "@filter/lib/content/theme-apply"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -514,6 +515,54 @@ describe("createShadowScopeTheming.project — vendor-invert compensation for th
     // Guards against a vacuous pass: the raw, uncompensated token must not
     // be what actually got adopted.
     expect(hostRule?.cssText).not.toContain(`--sw-bg-0: ${swatch.bg0}`)
+  })
+
+  it("compensates a classified surface's own emit-surface-color background too, not just the :host token rule (bot-found, round 3)", async () => {
+    document.documentElement.style.filter = "invert(1)"
+    const reg = registry()
+    const shadow = shadowRoot()
+    const surface = document.createElement("div")
+    surface.setAttribute("style", "background-color: rgb(255, 255, 255)")
+    shadow.appendChild(surface)
+    const id = registerHeld(reg, shadow)
+
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
+    theming.project(id)
+    await flushAll()
+
+    expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+    expect(surface.dataset.swPatched).toBe("rgb(255, 255, 255)")
+    const surfaceRule = [...shadow.adoptedStyleSheets]
+      .flatMap((sheet) => [...sheet.cssRules])
+      .find((r) => r.cssText.includes('data-sw-patched="rgb(255, 255, 255)"'))
+    expect(surfaceRule).toBeDefined()
+    // Whatever dark background decide()/theme-adapter.ts chose for this
+    // surface, it must not survive into the adopted sheet unmodified — an
+    // earlier version of this fix compensated only the :host token rule,
+    // leaving this declaration exactly as decide() produced it, composited
+    // straight through the page's own filter: invert(1) into a bright
+    // background under (now-correctly-compensated, light-reading) text.
+    const declaredBackground = surfaceRule?.cssText.match(
+      /background-color:\s*([^;!]+)/
+    )?.[1]
+    expect(declaredBackground).toBeDefined()
+    if (declaredBackground === undefined) throw new Error("unreachable")
+    const rgba = parseColor(declaredBackground.trim())
+    expect(rgba).not.toBeNull()
+    if (rgba === null) throw new Error("unreachable")
+    // The declared value, composited through the page's own invert(1),
+    // must still read dark — the same "asSeen" check this codebase's own
+    // e2e specs use for #741.
+    const asSeenLuminance = relativeLuminance(
+      1 - rgba[0],
+      1 - rgba[1],
+      1 - rgba[2]
+    )
+    expect(asSeenLuminance).toBeLessThan(0.3)
   })
 
   it("recomputes the compensation every round rather than caching it at construction — a scope re-committing after the vendor invert toggles off adopts the raw swatch again", async () => {

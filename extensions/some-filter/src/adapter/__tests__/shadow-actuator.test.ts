@@ -7,6 +7,7 @@ import {
   tagSurfaceElements,
 } from "@filter/adapter/shadow-actuator"
 import { SWATCHES } from "@filter/adapter/swatches"
+import { compensateSwatch } from "@filter/lib/content/theme-apply"
 import { afterEach, describe, expect, it } from "vitest"
 
 const defaultSwatch = SWATCHES.default
@@ -292,6 +293,84 @@ describe("clearShadowSurfaceState", () => {
     clearShadowSurfaceState(root)
 
     expect(root.adoptedStyleSheets).toEqual([foreignSheet])
+  })
+})
+
+describe("realizeShadowColors — vendorInvert compensates both the host tokens and per-surface colors (#1281, bot-found round 3)", () => {
+  it("counter-inverts an emit-surface-color action's own background and text colors, not just the :host token rule", () => {
+    const root = shadowRoot()
+    const key: SurfaceKey = "rgb(255, 255, 255)"
+    realizeShadowColors(
+      [
+        { kind: "activate-theme", swatchId: "default" },
+        {
+          kind: "emit-surface-color",
+          key,
+          css: "rgb(10, 20, 30)",
+          textCss: "rgb(200, 210, 220)",
+        },
+      ],
+      root,
+      defaultSwatch,
+      1
+    )
+
+    const cssText = [...root.adoptedStyleSheets]
+      .flatMap((sheet) => [...sheet.cssRules])
+      .map((r) => r.cssText)
+      .join("\n")
+    // invert(1) is an exact per-channel complement (CSS Filter Effects
+    // Level 1) — the same math issue-741's own e2e proofs use.
+    expect(cssText).toContain("background-color: rgb(245, 235, 225)")
+    expect(cssText).toContain("color: rgb(55, 45, 35)")
+    expect(cssText).not.toContain("rgb(10, 20, 30)")
+    expect(cssText).not.toContain("rgb(200, 210, 220)")
+
+    // The :host token rule is compensated too, using the same swatch
+    // compensateSwatch() itself would produce — proven independently here
+    // rather than only by shadow-scope-theming.ts's own integration tests.
+    const hostRule = [...root.adoptedStyleSheets]
+      .flatMap((sheet) => [...sheet.cssRules])
+      .find((r) => r.cssText.startsWith(":host"))
+    const compensated = compensateSwatch(defaultSwatch, 1)
+    expect(hostRule?.cssText).toContain(`--sw-bg-0: ${compensated.bg0}`)
+  })
+
+  it("leaves an action with no textCss alone on that field (no spurious 'undefined' compensation)", () => {
+    const root = shadowRoot()
+    const key: SurfaceKey = "rgb(255, 255, 255)"
+    realizeShadowColors(
+      [{ kind: "emit-surface-color", key, css: "rgb(10, 20, 30)" }],
+      root,
+      null,
+      1
+    )
+
+    const cssText = [...root.adoptedStyleSheets]
+      .flatMap((sheet) => [...sheet.cssRules])
+      .map((r) => r.cssText)
+      .join("\n")
+    expect(cssText).toContain("background-color: rgb(245, 235, 225)")
+    // Not just "not.toContain('color:')" — that substring also occurs
+    // inside "background-color:" itself. A second, textCss-driven
+    // declaration would show up as its own "; color: ..." clause.
+    expect(cssText).not.toMatch(/;\s*color:/)
+  })
+
+  it("defaults to vendorInvert 0 (a no-op) when the caller has no opinion, matching pre-existing behavior", () => {
+    const root = shadowRoot()
+    const key: SurfaceKey = "rgb(255, 255, 255)"
+    realizeShadowColors(
+      [{ kind: "emit-surface-color", key, css: "rgb(10, 20, 30)" }],
+      root,
+      null
+    )
+
+    const cssText = [...root.adoptedStyleSheets]
+      .flatMap((sheet) => [...sheet.cssRules])
+      .map((r) => r.cssText)
+      .join("\n")
+    expect(cssText).toContain("rgb(10, 20, 30)")
   })
 })
 

@@ -107,6 +107,71 @@ test.describe("SF-AD follow-up #1281 — shadow :host tokens survive a vendor's 
         `${asSeenLuminance.toFixed(3)} — expected light text, got dark`
     ).toBeGreaterThan(0.15)
   })
+
+  test("a classified surface's own emit-surface-color background also survives the page's own invert(1), not just the :host tokens (bot-found, round 3)", async ({
+    fixture,
+  }) => {
+    const page = await fixture.goto("shadow-surface-vendor-invert-page")
+    await waitForClassification(page)
+
+    await page.evaluate(() => {
+      const host = document.createElement("div")
+      host.id = "vendor-invert-surface-host"
+      const root = host.attachShadow({ mode: "open" })
+      const surface = document.createElement("div")
+      surface.id = "vendor-invert-surface"
+      surface.setAttribute(
+        "style",
+        "position:fixed;inset:0;z-index:999999;margin:0;padding:0;" +
+          "background-color:rgb(255,255,255);"
+      )
+      root.appendChild(surface)
+      const anchor = document.getElementById("host-anchor")
+      if (anchor === null) throw new Error("fixture missing #host-anchor")
+      anchor.appendChild(host)
+    })
+
+    await page.waitForFunction(
+      () => {
+        const host = document.getElementById("vendor-invert-surface-host")
+        const surface = host?.shadowRoot?.getElementById(
+          "vendor-invert-surface"
+        )
+        return surface?.dataset["swPatched"] !== undefined
+      },
+      undefined,
+      { timeout: 5_000, polling: 100 }
+    )
+
+    const bg = await page.evaluate(() => {
+      const host = document.getElementById("vendor-invert-surface-host")
+      const surface = host?.shadowRoot?.getElementById("vendor-invert-surface")
+      return surface === null || surface === undefined
+        ? null
+        : getComputedStyle(surface).backgroundColor
+    })
+    expect(bg).not.toBeNull()
+    if (bg === null) throw new Error("unreachable")
+    const rgba = parseColor(bg)
+    expect(rgba, `unparseable computed background-color: ${bg}`).not.toBeNull()
+    if (rgba === null) throw new Error("unreachable")
+
+    // Same "asSeen" methodology as the :host-tokens case above: without
+    // compensating the emit-surface-color action's own css, the declared
+    // dark background composites back to bright once the page's own
+    // invert(1) is accounted for.
+    const asSeenLuminance = relativeLuminance(
+      1 - rgba[0],
+      1 - rgba[1],
+      1 - rgba[2]
+    )
+    expect(
+      asSeenLuminance,
+      `declared computed background ${bg}, composited through the page's ` +
+        `own filter: invert(1), reads as luminance ` +
+        `${asSeenLuminance.toFixed(3)} — expected dark, got bright`
+    ).toBeLessThan(0.3)
+  })
 })
 
 // ── #1280 — self-repair after a vendor's own wholesale adoptedStyleSheets reassignment ──

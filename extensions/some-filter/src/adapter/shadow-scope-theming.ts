@@ -39,7 +39,6 @@
  * that realization is fully installed" acceptance criterion.
  */
 
-import { compensateSwatch } from "@filter/lib/content/theme-apply"
 import { detectVendorInvert } from "@filter/lib/content/vendor-filter"
 import { invoke } from "@some-extension/transport/adapter/invoke"
 import { createHypothesis } from "@some-extension/transport/estimator/hypothesis"
@@ -193,9 +192,9 @@ export function createShadowScopeTheming(
    * A live source, not a value fixed at construction (#1281) — mirrors
    * `epoch` below. `content.ts`'s own instance currently always returns the
    * same constant (`SWATCHES[DEFAULT_SWATCH_ID]`; no swatch-picker UI exists
-   * yet), but the *compensation* this module derives from it
-   * (`compensateSwatch`/`detectVendorInvert`, in `projectOnce()` below) is
-   * never constant — a vendor's own invert toggle can flip at any point in a
+   * yet), but the *compensation* `realizeShadowColors` (shadow-actuator.ts)
+   * derives from `detectVendorInvert()` in `projectOnce()` below is never
+   * constant — a vendor's own invert toggle can flip at any point in a
    * page's lifetime, the same reason `theme-apply.ts`'s own
    * `injectDarkTheme()` recomputes it on every call rather than caching it.
    */
@@ -378,20 +377,19 @@ export function createShadowScopeTheming(
       revision: rawSwatch.id,
       install: () => {
         tagSurfaceElements(actions, scanned.elementsByKey)
-        // Compensated here, not passed to decide() above: mirrors the
-        // document-level split (theme-adapter.ts's decide() always runs
-        // against the raw swatch; only theme-apply.ts's own
-        // injectDarkTheme() — the static token-declaration layer —
-        // compensates, right before building CSS text). buildHostTokenRule
-        // (shadow-actuator.ts) is this scope's own equivalent of that
-        // token declaration, and recomputed fresh every round: a vendor's
-        // own invert toggle can flip at any time (#1281).
+        // Not passed to decide() above: mirrors the document-level split
+        // (theme-adapter.ts's decide() always runs against the raw swatch;
+        // only theme-apply.ts's own injectDarkTheme() — the static
+        // token-declaration layer — compensates, right before building CSS
+        // text). realizeShadowColors (shadow-actuator.ts) is this scope's
+        // own equivalent — it compensates both the :host token rule *and*
+        // every per-surface emit-surface-color action's own colors
+        // internally (bot-found, round 3: compensating only the swatch
+        // left surface colors uncompensated, a worse, self-inconsistent
+        // result than neither being compensated) — recomputed fresh every
+        // round: a vendor's own invert toggle can flip at any time (#1281).
         const vendorInvert = detectVendorInvert()
-        realizeShadowColors(
-          actions,
-          root,
-          compensateSwatch(rawSwatch, vendorInvert)
-        )
+        realizeShadowColors(actions, root, rawSwatch, vendorInvert)
         // Recorded so reconcileCommittedSheets()'s own poll can later tell
         // whether *this* commit's own compensation has gone stale, rather
         // than only comparing against whatever the poll itself last

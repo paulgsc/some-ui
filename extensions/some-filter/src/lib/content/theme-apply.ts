@@ -68,13 +68,38 @@ export const DARK_THEME_ATTR = "data-sw-dark"
 export const LEGACY_THEME_ATTR = "data-sw-legacy"
 
 /**
- * Counter-inverts every color a `Swatch` carries so that, once composited
+ * Counter-inverts a single CSS color string so that, once composited
  * through a still-active *vendor* `filter: invert(...)` (#741 — a real
  * accessibility toggle some sites ship on their own `<html>`, distinct from
- * this extension's own legacy filter mode), a human/screenshot sees the
- * swatch's real, intended dark tokens rather than their bright inverse. A
- * no-op (`invertAmount = 0`, the overwhelming majority case) returns
- * `swatch` unchanged.
+ * this extension's own legacy filter mode), a human/screenshot sees `css`'s
+ * own intended color rather than its bright inverse. A no-op
+ * (`invertAmount = 0`, the overwhelming majority case, or an unparseable
+ * `css`) returns `css` unchanged.
+ *
+ * Exported standalone — not just as `compensateSwatch`'s own private helper
+ * — so `shadow-actuator.ts` (SF-AD follow-up, #1281's own round-3 review)
+ * can apply the identical compensation to a shadow scope's own per-surface
+ * `emit-surface-color` actions, not just the swatch tokens
+ * `compensateSwatch` below covers: without it, a shadow scope's `:host`
+ * tokens (hence its inherited text color) get correctly compensated while
+ * an explicitly-tagged surface's own emitted background/text color do not,
+ * which is a *worse*, self-inconsistent result under an active vendor
+ * invert than leaving both uncompensated — low-contrast (or inverted-looking)
+ * text against a background that renders the opposite of what was declared.
+ */
+export function counterInvertCss(css: string, invertAmount: number): string {
+  if (invertAmount === 0) return css
+  const parsed = parseColor(css)
+  return parsed === null
+    ? css
+    : rgbaToCss(counterInvertColor(parsed, invertAmount))
+}
+
+/**
+ * Counter-inverts every color a `Swatch` carries — see `counterInvertCss`'s
+ * own doc comment for the compositing reasoning, applied here token by
+ * token. A no-op (`invertAmount = 0`, the overwhelming majority case)
+ * returns `swatch` unchanged.
  *
  * Exported so `shadow-scope-theming.ts` (SF-AD follow-up, #1281) can apply
  * the identical compensation to a shadow scope's own `:host` token rule
@@ -86,12 +111,7 @@ export const LEGACY_THEME_ATTR = "data-sw-legacy"
 export function compensateSwatch(swatch: Swatch, invertAmount: number): Swatch {
   if (invertAmount === 0) return swatch
 
-  const counter = (css: string): string => {
-    const parsed = parseColor(css)
-    return parsed === null
-      ? css
-      : rgbaToCss(counterInvertColor(parsed, invertAmount))
-  }
+  const counter = (css: string): string => counterInvertCss(css, invertAmount)
 
   return {
     ...swatch,

@@ -52,6 +52,8 @@
 
 import {
   buildHostTokenRule,
+  compensateSwatch,
+  counterInvertCss,
   DARK_THEME_BODY_RULES,
 } from "@filter/lib/content/theme-apply"
 
@@ -208,20 +210,52 @@ function staticShadowLayer(): CSSStyleSheet {
  * leaving any non-extension entry (should one ever exist) untouched —
  * `swatch` is unused on this path, since nothing in `desired` depends on it
  * when `actions` is empty.
+ *
+ * `vendorInvert` (bot-found, #1281's own round-3 review): a page's own
+ * active `filter: invert(...)` (#741) is counter-inverted into *both* the
+ * `:host` token rule (via `compensateSwatch`) *and* every per-surface
+ * `emit-surface-color` action's own `css`/`textCss` (via
+ * `counterInvertCss`), here, together — an earlier version of this fix
+ * counter-inverted only the swatch tokens, which left a classified
+ * surface's own background/text colors uncompensated. Since the host
+ * tokens (hence the scope's inherited text color) render correctly once
+ * composited but a surface's own background does not, that half-fixed
+ * state is a *worse*, self-inconsistent result under an active vendor
+ * invert than leaving both uncompensated: low-contrast (or
+ * inverted-looking) text against a background that renders the opposite of
+ * what was declared. Defaults to `0` (no-op) so every caller that has no
+ * opinion about vendor invert — this module's own unit tests included —
+ * gets byte-for-byte the same behavior as before this parameter existed.
  */
 export function realizeShadowColors(
   actions: ReadonlyArray<FilterAction>,
   root: ShadowRoot,
-  swatch: Swatch | null
+  swatch: Swatch | null,
+  vendorInvert = 0
 ): void {
   const desired = new Set<CSSStyleSheet>()
   if (actions.some((action) => action.kind === "activate-theme")) {
     desired.add(staticShadowLayer())
-    if (swatch !== null) desired.add(sheetFor(buildHostTokenRule(swatch)))
+    if (swatch !== null) {
+      desired.add(
+        sheetFor(buildHostTokenRule(compensateSwatch(swatch, vendorInvert)))
+      )
+    }
   }
   for (const action of actions) {
     if (action.kind !== "emit-surface-color") continue
-    desired.add(sheetFor(buildSurfaceColorRule(action)))
+    const compensated =
+      vendorInvert === 0
+        ? action
+        : {
+            ...action,
+            css: counterInvertCss(action.css, vendorInvert),
+            textCss:
+              action.textCss === undefined
+                ? undefined
+                : counterInvertCss(action.textCss, vendorInvert),
+          }
+    desired.add(sheetFor(buildSurfaceColorRule(compensated)))
   }
 
   const owned = ownedSheetsByRoot.get(root) ?? new Set<CSSStyleSheet>()
