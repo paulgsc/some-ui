@@ -173,6 +173,21 @@ describe("resolveEffectiveBackdrop", () => {
     ])
   })
 
+  it("is underdetermined when an ancestor's background-color uses unparseable CSS Color 4 syntax (Codex review round 4)", () => {
+    // Codex's own example: an opaque oklch() background would otherwise be
+    // silently skipped as "no color, keep climbing" -- hiding a fully
+    // opaque, fully real layer and letting some ancestor further out (or
+    // the assumed-white canvas fallback) "win" the resolved color instead.
+    document.body.innerHTML =
+      '<div id="ancestor" style="background-color: oklch(1 0 0)">' +
+      '<span id="carrier">hi</span>' +
+      "</div>"
+    const carrier = document.getElementById("carrier")
+    if (carrier === null) throw new Error("fixture missing")
+
+    expect(resolveEffectiveBackdrop(carrier)).toBe("underdetermined")
+  })
+
   it("is underdetermined when an ancestor has non-1 CSS opacity", () => {
     // Codex review (PR #1345): opacity < 1 composites the whole element
     // (background and text together) against what's behind it — a group

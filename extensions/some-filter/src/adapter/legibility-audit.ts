@@ -132,6 +132,26 @@ function isShadowRoot(node: Node): node is ShadowRoot {
 const NO_COLOR_SENTINELS = new Set(["", "none", "transparent"])
 
 /**
+ * True when `css` is either an explicit "no color" sentinel or a syntax
+ * `parseColor`/`parseForegroundColor` actually understand (hex or
+ * `rgb()`/`rgba()`) — i.e. a value whose `null` parse result is *meaningful*
+ * (genuinely absent, or present but negligibly transparent), not a syntax
+ * neither parser was ever built to decode at all (CSS Color 4 forms —
+ * `oklch()`, `lab()`, `lch()`, `color(display-p3 …)` — that a real
+ * browser's `getComputedStyle` can serialize `color`/`background-color` as
+ * today). Shared by `ownTextColor`'s foreground check and
+ * `resolveEffectiveBackdrop`'s own background-color check below — both
+ * need the identical disambiguation, for the identical reason: silently
+ * treating an undecodable color as "no color" can hide a fully opaque,
+ * fully real layer entirely.
+ */
+function isRecognizedColorSyntax(css: string): boolean {
+  return (
+    NO_COLOR_SENTINELS.has(css) || css.startsWith("#") || css.startsWith("rgb")
+  )
+}
+
+/**
  * Like `color.ts`'s `parseColor`, but *without* that function's own near-
  * invisible alpha cutoff (`a < 0.05`) — appropriate for background evidence
  * (a barely-visible layer is negligible for "does this surface need
@@ -211,14 +231,7 @@ function ownTextColor(
   const parsed = parseForegroundColor(style.color)
   if (parsed !== null) return parsed
 
-  // Neither parseForegroundColor nor the sentinel set recognized this
-  // value at all — a syntax this module cannot decode (CSS Color 4 forms),
-  // not "no color."
-  if (NO_COLOR_SENTINELS.has(style.color)) return null
-  if (style.color.startsWith("#") || style.color.startsWith("rgb")) {
-    return null
-  }
-  return "underdetermined"
+  return isRecognizedColorSyntax(style.color) ? null : "underdetermined"
 }
 
 /**
@@ -318,6 +331,15 @@ export function resolveEffectiveBackdrop(
       if (layerColor !== null) {
         acc = compositeOver(acc, layerColor)
         if (acc[3] >= 0.999) resolved = [acc[0], acc[1], acc[2], 1]
+      } else if (!isRecognizedColorSyntax(style.backgroundColor)) {
+        // A real, non-transparent background-color declaration sits here
+        // that parseColor cannot decode (CSS Color 4 forms) — silently
+        // treating it as "no color, keep climbing" could hide a fully
+        // opaque layer entirely (bot-found: an opaque oklch() white
+        // background would otherwise let a themed ancestor further out
+        // "win" the resolved color instead, understating the real,
+        // possibly catastrophic, contrast against it).
+        return "underdetermined"
       }
     }
 
