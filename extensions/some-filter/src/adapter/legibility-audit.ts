@@ -225,11 +225,27 @@ function parsePreciseColor(css: string): RGBA | null {
  * genuine — which would have silently defeated this very fix for exactly
  * the adopted elements SF-AD's own review (round 3) already found this
  * class of bug on elsewhere in the codebase (bot-found here too).
+ *
+ * Checks `-webkit-text-fill-color` first, before any of the `color`-based
+ * logic above even runs: when explicitly set (its own initial value is
+ * `currentcolor`, meaning "defer to `color`"), that property — not `color`
+ * — is what actually determines the rendered glyph fill (a real, if
+ * legacy, pattern: `background-clip: text` gradient-text authoring
+ * routinely sets `color` to one value as a non-gradient fallback and this
+ * to another, or to `transparent`, for the real paint). This module does
+ * not model that property's own separate cascade, so a carrier using it is
+ * flagged `"underdetermined"` rather than silently trusting `color`, which
+ * could be arbitrarily wrong for it (bot-found).
  */
 function ownTextColor(
   el: Element,
   style: CSSStyleDeclaration
 ): RGBA | "underdetermined" | null {
+  const webkitTextFillColor = style.getPropertyValue("-webkit-text-fill-color")
+  if (webkitTextFillColor !== "" && webkitTextFillColor !== "currentcolor") {
+    return "underdetermined"
+  }
+
   const parent = el.parentElement
   const parentNode = el.parentNode
   const inheritFrom =
@@ -373,19 +389,27 @@ export function resolveEffectiveBackdrop(
       if (hasPositioningHazard(style)) return "underdetermined"
       if (hasOccludableImageHazard(style)) return "underdetermined"
 
-      const layerColor = parsePreciseColor(style.backgroundColor)
-      if (layerColor !== null) {
-        acc = compositeOver(acc, layerColor)
-        if (acc[3] >= 0.999) resolved = [acc[0], acc[1], acc[2], 1]
-      } else if (!isRecognizedColorSyntax(style.backgroundColor)) {
-        // A real, non-transparent background-color declaration sits here
-        // that parseColor cannot decode (CSS Color 4 forms) — silently
-        // treating it as "no color, keep climbing" could hide a fully
-        // opaque layer entirely (bot-found: an opaque oklch() white
-        // background would otherwise let a themed ancestor further out
-        // "win" the resolved color instead, understating the real,
-        // possibly catastrophic, contrast against it).
-        return "underdetermined"
+      // display:contents generates no box at all, so this element's own
+      // background-color (if any) is never actually painted — its
+      // descendants render directly against whatever sits behind *it*,
+      // i.e. its parent. Treating a boxless element's background as a real
+      // paint layer let it incorrectly "win" as the resolved backdrop
+      // (bot-found).
+      if (style.display !== "contents") {
+        const layerColor = parsePreciseColor(style.backgroundColor)
+        if (layerColor !== null) {
+          acc = compositeOver(acc, layerColor)
+          if (acc[3] >= 0.999) resolved = [acc[0], acc[1], acc[2], 1]
+        } else if (!isRecognizedColorSyntax(style.backgroundColor)) {
+          // A real, non-transparent background-color declaration sits here
+          // that parseColor cannot decode (CSS Color 4 forms) — silently
+          // treating it as "no color, keep climbing" could hide a fully
+          // opaque layer entirely (bot-found: an opaque oklch() white
+          // background would otherwise let a themed ancestor further out
+          // "win" the resolved color instead, understating the real,
+          // possibly catastrophic, contrast against it).
+          return "underdetermined"
+        }
       }
     }
 

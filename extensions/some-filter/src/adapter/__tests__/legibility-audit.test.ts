@@ -110,6 +110,25 @@ describe("resolveEffectiveBackdrop", () => {
     ])
   })
 
+  it("ignores a display:contents element's own background — it generates no box to paint it on (Codex closing review)", () => {
+    // Codex's own example: display:contents;background:rgb(128,128,128)
+    // never actually paints that background -- the real backdrop is
+    // whatever sits behind the boxless element, i.e. its parent.
+    document.body.innerHTML =
+      '<div id="ancestor" style="background-color: rgb(13, 17, 23)">' +
+      '<span id="carrier" style="display: contents; background-color: rgb(128, 128, 128)">hi</span>' +
+      "</div>"
+    const carrier = document.getElementById("carrier")
+    if (carrier === null) throw new Error("fixture missing")
+
+    expect(resolveEffectiveBackdrop(carrier)).toEqual([
+      13 / 255,
+      17 / 255,
+      23 / 255,
+      1,
+    ])
+  })
+
   it("falls back to assumed white when no ancestor declares any background", () => {
     document.body.innerHTML = '<span id="carrier">hi</span>'
     const carrier = document.getElementById("carrier")
@@ -424,6 +443,38 @@ describe("auditLegibility", () => {
     expect(elementsByKey.get(key)?.map((el) => el.id)).toEqual(["carrier"])
 
     iframe.remove()
+  })
+
+  it("flags a carrier as underdetermined when -webkit-text-fill-color overrides the real glyph fill (Codex closing review)", () => {
+    // Codex's own example: a light `color` (harmless-looking) paired with
+    // an explicit -webkit-text-fill-color (the real rendered fill, e.g. for
+    // gradient-text / background-clip:text authoring) must not be silently
+    // classified using `color` alone.
+    document.body.innerHTML =
+      '<div id="carrier" style="color: white; -webkit-text-fill-color: rgb(0, 0, 0)">hi</div>'
+
+    const { attrsByKey, elementsByKey } = auditLegibility(document.body)
+
+    expect(attrsByKey.size).toBe(1)
+    const key = [...attrsByKey.keys()][0]
+    if (key === undefined) throw new Error("expected one legibility key")
+    expect(attrsByKey.get(key)?.foreground).toBe("underdetermined")
+    expect(elementsByKey.get(key)?.map((el) => el.id)).toEqual(["carrier"])
+  })
+
+  it("is not affected by an explicit -webkit-text-fill-color: currentcolor (its own initial value)", () => {
+    document.body.innerHTML =
+      '<div id="ancestor">' +
+      '<span id="carrier" style="color: rgb(0,0,0); -webkit-text-fill-color: currentcolor">hi</span>' +
+      "</div>"
+
+    const { attrsByKey, elementsByKey } = auditLegibility(document.body)
+
+    expect(attrsByKey.size).toBe(1)
+    const key = [...attrsByKey.keys()][0]
+    if (key === undefined) throw new Error("expected one legibility key")
+    expect(attrsByKey.get(key)?.foreground).toEqual([0, 0, 0, 1])
+    expect(elementsByKey.get(key)?.map((el) => el.id)).toEqual(["carrier"])
   })
 
   it("skips a carrier whose own display is not none but sits inside a display:none ancestor (Codex review round 3)", () => {
