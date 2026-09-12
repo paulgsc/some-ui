@@ -108,12 +108,15 @@ describe("resolveEffectiveBackdrop", () => {
     expect(resolveEffectiveBackdrop(carrier)).toBe("underdetermined")
   })
 
-  it("stops climbing once a fully opaque layer resolves, ignoring anything further out", () => {
+  it("stops accumulating color once a fully opaque layer resolves, never blending in anything further out", () => {
+    // The inner layer's own opaque color must win outright -- not a blend
+    // with "outer"'s own (different) color -- proving accumulation itself
+    // stops at the first opaque layer. (Hazard-*checking* is a separate
+    // concern that does keep climbing regardless -- see the filter-beyond-
+    // opaque-layer test below, which is what the old, now-corrected version
+    // of this test conflated the two with.)
     document.body.innerHTML =
-      // If this outer gradient were consulted, the result would be
-      // underdetermined -- it must not be, since the inner div is fully
-      // opaque and the walk should stop there.
-      '<div id="outer" style="background-image: linear-gradient(red, blue)">' +
+      '<div id="outer" style="background-color: rgb(200, 200, 200)">' +
       '<div id="inner" style="background-color: rgb(20, 20, 20)">' +
       '<span id="carrier">hi</span>' +
       "</div></div>"
@@ -124,6 +127,53 @@ describe("resolveEffectiveBackdrop", () => {
       20 / 255,
       20 / 255,
       20 / 255,
+      1,
+    ])
+  })
+
+  it("is underdetermined when a filter sits on an ancestor *beyond* an already-opaque inner layer", () => {
+    // Codex review (PR #1345): a filter recolors its entire rendered
+    // subtree, not just its own background layer — an inner child being
+    // fully opaque does not shield it from an outer filter's effect, so
+    // this must not stop at "inner" the way the gradient case above
+    // correctly does for a mere paint-order concern.
+    document.body.innerHTML =
+      '<div id="outer" style="filter: brightness(0)">' +
+      '<div id="inner" style="background-color: rgb(255, 255, 255)">' +
+      '<span id="carrier">hi</span>' +
+      "</div></div>"
+    const carrier = document.getElementById("carrier")
+    if (carrier === null) throw new Error("fixture missing")
+
+    expect(resolveEffectiveBackdrop(carrier)).toBe("underdetermined")
+  })
+
+  it("is underdetermined when an ancestor has non-1 CSS opacity", () => {
+    // Codex review (PR #1345): opacity < 1 composites the whole element
+    // (background and text together) against what's behind it — a group
+    // effect this module's per-layer background-color model can't resolve.
+    document.body.innerHTML =
+      '<div id="ancestor" style="background-color: rgb(255, 255, 255); opacity: 0.1">' +
+      '<span id="carrier">hi</span>' +
+      "</div>"
+    const carrier = document.getElementById("carrier")
+    if (carrier === null) throw new Error("fixture missing")
+
+    expect(resolveEffectiveBackdrop(carrier)).toBe("underdetermined")
+  })
+
+  it("is not underdetermined for an explicit, spec-default opacity of 1", () => {
+    document.body.innerHTML =
+      '<div id="ancestor" style="background-color: rgb(10, 10, 10); opacity: 1">' +
+      '<span id="carrier">hi</span>' +
+      "</div>"
+    const carrier = document.getElementById("carrier")
+    if (carrier === null) throw new Error("fixture missing")
+
+    expect(resolveEffectiveBackdrop(carrier)).toEqual([
+      10 / 255,
+      10 / 255,
+      10 / 255,
       1,
     ])
   })
@@ -222,6 +272,21 @@ describe("decideLegibility", () => {
   it("MIN_CONTRAST_RATIO matches WCAG 2.1 AA normal text (4.5:1)", () => {
     expect(MIN_CONTRAST_RATIO).toBe(4.5)
   })
+
+  it("composites a translucent own foreground over the backdrop before measuring contrast", () => {
+    // Codex review (PR #1345): rgba(0,0,0,0.5) over white renders as
+    // mid-grey (~4:1), not the opaque-black-vs-white 21:1 a naive read of
+    // the raw foreground channels would report — and 4:1 is a real
+    // violation of the 4.5:1 floor that measuring raw channels would miss
+    // entirely.
+    const attrsByKey = new Map<string, LegibilityAttr>([
+      ["k", { foreground: [0, 0, 0, 0.5], backdrop: [1, 1, 1, 1] }],
+    ])
+
+    expect(decideLegibility(attrsByKey)).toEqual([
+      { kind: "tag-legibility", key: "k", verdict: "violated" },
+    ])
+  })
 })
 
 describe("realizeLegibility", () => {
@@ -232,6 +297,7 @@ describe("realizeLegibility", () => {
     if (a === null || b === null) throw new Error("fixture missing")
 
     realizeLegibility(
+      document.body,
       [{ kind: "tag-legibility", key: "k", verdict: "violated" }],
       new Map([["k", [a, b]]])
     )
@@ -254,7 +320,7 @@ describe("realizeLegibility", () => {
     ]
     const elementsByKey = new Map([["k", [a]]])
 
-    realizeLegibility(actions, elementsByKey)
+    realizeLegibility(document.body, actions, elementsByKey)
 
     const observed: Array<MutationRecord> = []
     const observer = new MutationObserver((records) => {
@@ -262,10 +328,46 @@ describe("realizeLegibility", () => {
     })
     observer.observe(a, { attributes: true })
 
-    realizeLegibility(actions, elementsByKey)
+    realizeLegibility(document.body, actions, elementsByKey)
 
     expect(observer.takeRecords()).toEqual([])
     expect(observed).toEqual([])
     observer.disconnect()
+  })
+
+  it("clears a stale tag once a previously-violated element is no longer in the new actions (Codex review, PR #1345)", () => {
+    document.body.innerHTML = '<div id="a">x</div>'
+    const a = document.getElementById("a")
+    if (a === null) throw new Error("fixture missing")
+
+    realizeLegibility(
+      document.body,
+      [{ kind: "tag-legibility", key: "k", verdict: "violated" }],
+      new Map([["k", [a]]])
+    )
+    expect(a.getAttribute(LEGIBILITY_ATTR)).toBe("violated")
+
+    // A later round: "a" is no longer violated (it converged, or dropped
+    // out of candidacy entirely) — decideLegibility emits nothing for it,
+    // by design. The stale tag must not survive.
+    realizeLegibility(document.body, [], new Map())
+
+    expect(a.hasAttribute(LEGIBILITY_ATTR)).toBe(false)
+  })
+
+  it("leaves an untagged element's unrelated attributes alone while clearing only the legibility tag", () => {
+    document.body.innerHTML = '<div id="a" data-keep="yes">x</div>'
+    const a = document.getElementById("a")
+    if (a === null) throw new Error("fixture missing")
+
+    realizeLegibility(
+      document.body,
+      [{ kind: "tag-legibility", key: "k", verdict: "underdetermined" }],
+      new Map([["k", [a]]])
+    )
+    realizeLegibility(document.body, [], new Map())
+
+    expect(a.hasAttribute(LEGIBILITY_ATTR)).toBe(false)
+    expect(a.getAttribute("data-keep")).toBe("yes")
   })
 })

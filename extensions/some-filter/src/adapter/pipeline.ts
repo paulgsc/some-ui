@@ -676,7 +676,11 @@ export function createContentSession(
       if (actions.some((action) => action.kind === "activate-theme")) {
         const legibilityScan = auditLegibility(lastRoot)
         const legibilityActions = decideLegibility(legibilityScan.attrsByKey)
-        realizeLegibility(legibilityActions, legibilityScan.elementsByKey)
+        realizeLegibility(
+          lastRoot,
+          legibilityActions,
+          legibilityScan.elementsByKey
+        )
       }
 
       outcome = { kind: "ok", actions }

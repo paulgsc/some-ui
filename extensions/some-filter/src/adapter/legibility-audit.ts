@@ -136,6 +136,21 @@ function hasUnresolvableRenderingHazard(style: CSSStyleDeclaration): boolean {
   // plain string — jsdom does not implement backdrop-filter at all, so this
   // is "" unconditionally there, same as every other unset case above.
   if (isUnsetOr(style.getPropertyValue("backdrop-filter"), "none")) return true
+
+  // CSS opacity < 1 composites the *entire* element — its whole rendered
+  // subtree, foreground included — as one group against whatever sits
+  // behind it, not a per-layer background-color concern this module's
+  // "accumulate background colors" model can represent (bot-found: black
+  // text on an opaque white ancestor with opacity:0.1 over a white canvas
+  // renders as light grey on white, not the raw black-on-white this model
+  // would otherwise compare). jsdom's own unset default reads back `""`
+  // here too (confirmed directly, same as every property above), which
+  // Number.parseFloat turns into NaN — excluded from the `< 1` check by
+  // construction, the same "nothing to worry about" outcome a real
+  // browser's spec-correct default of `1` would also produce.
+  const opacity = Number.parseFloat(style.opacity)
+  if (!Number.isNaN(opacity) && opacity < 1) return true
+
   return false
 }
 
@@ -149,26 +164,35 @@ function hasUnresolvableRenderingHazard(style: CSSStyleDeclaration): boolean {
  * white (`ASSUMED_CANVAS`) rather than returning an unresolved partial alpha
  * — the browser's own default canvas paint.
  *
- * Returns `"underdetermined"` instead, the moment any layer along the chain
- * trips `hasUnresolvableRenderingHazard` — a silent "assume it composites
- * fine" here is exactly the failure mode SF-RC1's own acceptance criteria
- * name: gradient/image/filter/blend/backdrop cases must never be silently
- * treated as passing.
+ * Returns `"underdetermined"` instead, the moment any layer *anywhere in the
+ * chain* trips `hasUnresolvableRenderingHazard` — checked all the way to
+ * `document.documentElement` regardless of where color accumulation itself
+ * resolves. A hazard (a CSS filter especially) applies to an ancestor's
+ * *entire* rendered subtree, not just that ancestor's own background layer,
+ * so an outer `filter: brightness(0)` still recolors an inner, already-fully-
+ * opaque child's rendered output (bot-found: black text on an opaque white
+ * child inside such an ancestor renders black-on-black, not the 21:1 this
+ * function would otherwise report if it stopped checking at the opaque
+ * layer). Color *accumulation* still stops once fully opaque — there is
+ * nothing further out left to composite — but hazard-checking does not.
  */
 export function resolveEffectiveBackdrop(
   el: Element
 ): RGBA | "underdetermined" {
   let acc: RGBA = [0, 0, 0, 0]
+  let resolved: RGBA | null = null
   let cur: Element | null = el
 
   while (cur !== null) {
     const style = getComputedStyle(cur)
     if (hasUnresolvableRenderingHazard(style)) return "underdetermined"
 
-    const layerColor = parseColor(style.backgroundColor)
-    if (layerColor !== null) {
-      acc = compositeOver(acc, layerColor)
-      if (acc[3] >= 0.999) return [acc[0], acc[1], acc[2], 1]
+    if (resolved === null) {
+      const layerColor = parseColor(style.backgroundColor)
+      if (layerColor !== null) {
+        acc = compositeOver(acc, layerColor)
+        if (acc[3] >= 0.999) resolved = [acc[0], acc[1], acc[2], 1]
+      }
     }
 
     if (cur === document.documentElement) break
@@ -183,7 +207,7 @@ export function resolveEffectiveBackdrop(
       parentNode !== null && isShadowRoot(parentNode) ? parentNode.host : null
   }
 
-  return compositeOver(acc, ASSUMED_CANVAS)
+  return resolved ?? compositeOver(acc, ASSUMED_CANVAS)
 }
 
 export type LegibilityKey = string
@@ -282,10 +306,17 @@ export function decideLegibility(
       continue
     }
 
+    // A translucent own foreground (e.g. rgba(0,0,0,0.5)) does not render
+    // as its own raw RGB channels — it renders as itself composited over
+    // the resolved (already-opaque) backdrop, exactly like a background
+    // layer does in resolveEffectiveBackdrop above (bot-found: rgba(0,0,0,
+    // 0.5) over white renders as mid-grey at ~4:1, not the 21:1 comparing
+    // raw black against white would report).
+    const renderedForeground = compositeOver(attr.foreground, attr.backdrop)
     const fgLuminance = relativeLuminance(
-      attr.foreground[0],
-      attr.foreground[1],
-      attr.foreground[2]
+      renderedForeground[0],
+      renderedForeground[1],
+      renderedForeground[2]
     )
     const bgLuminance = relativeLuminance(
       attr.backdrop[0],
@@ -304,21 +335,42 @@ export function decideLegibility(
 export const LEGIBILITY_ATTR = "data-sw-legibility"
 
 /**
- * Realizes `actions` against the DOM — the *only* write this channel makes
- * today: a diagnostic `data-sw-legibility="violated"|"underdetermined"`
- * attribute, guarded by the same same-value check `actuator.ts`'s own
- * `tagSurfaceElements` uses, for the identical reason (#831: re-writing an
- * unchanged value still queues a mutation record).
+ * Realizes `actions` against `root`'s own subtree: a diagnostic
+ * `data-sw-legibility="violated"|"underdetermined"` attribute, guarded by
+ * the same same-value check `actuator.ts`'s own `tagSurfaceElements` uses,
+ * for the identical reason (#831: re-writing an unchanged value still
+ * queues a mutation record) — and, just as importantly, *clearing* that
+ * attribute from any previously-tagged element `actions` no longer names.
+ *
+ * `decideLegibility` emits nothing for a carrier that now passes (by
+ * design — see its own doc comment), so a naive "only ever add" realize
+ * left a stale `violated`/`underdetermined` tag on an element indefinitely
+ * once the vendor's own later mutation made it legible again, or once it
+ * stopped being an audited carrier at all (bot-found) — misleading
+ * diagnostic data today, and a real hazard for SF-RC2's future tag-driven
+ * repair channel, which would otherwise "fix" text that is already fine.
+ * Scanning `root` for every currently-tagged element and dropping the
+ * attribute from whichever this round's `actions` didn't just (re)assert
+ * closes both cases the same way, regardless of *why* a given element
+ * dropped out.
  */
 export function realizeLegibility(
+  root: Element | ShadowRoot,
   actions: ReadonlyArray<TagLegibilityAction>,
   elementsByKey: ReadonlyMap<LegibilityKey, ReadonlyArray<Element>>
 ): void {
+  const keep = new Set<Element>()
+
   for (const action of actions) {
     for (const el of elementsByKey.get(action.key) ?? []) {
+      keep.add(el)
       if (isHTMLElementNode(el) && el.dataset.swLegibility !== action.verdict) {
         el.dataset.swLegibility = action.verdict
       }
     }
   }
+
+  root.querySelectorAll(`[${LEGIBILITY_ATTR}]`).forEach((el) => {
+    if (!keep.has(el)) el.removeAttribute(LEGIBILITY_ATTR)
+  })
 }
