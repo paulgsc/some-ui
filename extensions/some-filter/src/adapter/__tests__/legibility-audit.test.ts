@@ -148,6 +148,30 @@ describe("resolveEffectiveBackdrop", () => {
     expect(resolveEffectiveBackdrop(carrier)).toBe("underdetermined")
   })
 
+  it("is NOT underdetermined when an ancestor's background-image is occluded by an opaque inner layer", () => {
+    // Codex review, second round (PR #1345): unlike a filter, a plain
+    // background-image is just a paint layer -- once something fully
+    // opaque paints over it (closer to the carrier), it is genuinely
+    // occluded, ordinary z-order. An earlier version of this fix
+    // over-corrected by treating background-image the same as the
+    // unoccludable group hazards above, which misclassified an ordinary
+    // opaque-card-over-hero-image layout as underdetermined.
+    document.body.innerHTML =
+      '<div id="outer" style="background-image: url(hero.jpg)">' +
+      '<div id="inner" style="background-color: rgb(20, 20, 20)">' +
+      '<span id="carrier">hi</span>' +
+      "</div></div>"
+    const carrier = document.getElementById("carrier")
+    if (carrier === null) throw new Error("fixture missing")
+
+    expect(resolveEffectiveBackdrop(carrier)).toEqual([
+      20 / 255,
+      20 / 255,
+      20 / 255,
+      1,
+    ])
+  })
+
   it("is underdetermined when an ancestor has non-1 CSS opacity", () => {
     // Codex review (PR #1345): opacity < 1 composites the whole element
     // (background and text together) against what's behind it — a group
@@ -237,6 +261,34 @@ describe("auditLegibility", () => {
     const { attrsByKey } = auditLegibility(document.body)
     expect(attrsByKey.size).toBe(1)
   })
+
+  it("classifies an unparseable CSS Color 4 foreground as underdetermined rather than silently dropping the carrier", () => {
+    // Codex review, second round (PR #1345): a real browser's
+    // getComputedStyle can serialize `color` using oklch()/lab()/lch()/
+    // color(display-p3 ...) syntax parseColor was never built to parse.
+    // Confirmed directly against jsdom (which preserves the literal string
+    // rather than rejecting the declaration): silently returning null here
+    // would drop this carrier from candidacy entirely -- worse than
+    // "underdetermined," since it would never even be audited.
+    document.body.innerHTML =
+      '<div id="carrier" style="color: oklch(0.5 0.2 30)">hi</div>'
+
+    const { attrsByKey, elementsByKey } = auditLegibility(document.body)
+
+    expect(attrsByKey.size).toBe(1)
+    const key = [...attrsByKey.keys()][0]
+    if (key === undefined) throw new Error("expected one legibility key")
+    expect(attrsByKey.get(key)?.foreground).toBe("underdetermined")
+    expect(elementsByKey.get(key)?.map((el) => el.id)).toEqual(["carrier"])
+  })
+
+  it("does not flag a carrier whose color is explicitly transparent (invisible, not illegible)", () => {
+    document.body.innerHTML =
+      '<div id="carrier" style="color: transparent">hi</div>'
+
+    const { attrsByKey } = auditLegibility(document.body)
+    expect(attrsByKey.size).toBe(0)
+  })
 })
 
 describe("decideLegibility", () => {
@@ -262,6 +314,16 @@ describe("decideLegibility", () => {
   it("flags underdetermined backdrops rather than silently passing them", () => {
     const attrsByKey = new Map<string, LegibilityAttr>([
       ["k", { foreground: [0, 0, 0, 1], backdrop: "underdetermined" }],
+    ])
+
+    expect(decideLegibility(attrsByKey)).toEqual([
+      { kind: "tag-legibility", key: "k", verdict: "underdetermined" },
+    ])
+  })
+
+  it("flags an underdetermined foreground (e.g. an unparseable CSS Color 4 value) even with a fully resolvable backdrop", () => {
+    const attrsByKey = new Map<string, LegibilityAttr>([
+      ["k", { foreground: "underdetermined", backdrop: [1, 1, 1, 1] }],
     ])
 
     expect(decideLegibility(attrsByKey)).toEqual([

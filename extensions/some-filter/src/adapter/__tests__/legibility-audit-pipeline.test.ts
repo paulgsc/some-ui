@@ -143,6 +143,51 @@ describe("SF-RC1 — isolation from the first pass's own verdict", () => {
   })
 })
 
+describe("SF-RC1 — clears its own diagnostic tags when theme activation ends", () => {
+  it("clears a stale data-sw-legibility tag when a later round transitions from themed to restore-native (Codex review, PR #1345)", () => {
+    // Round 1: themed, with a genuine F-20-style violation tagged.
+    document.body.innerHTML =
+      '<div id="dark-surface" style="background-color: rgb(13, 17, 23); color: rgb(255, 255, 255)">' +
+      '<div id="text-carrier" style="color: rgb(0, 0, 0)">hi</div>' +
+      "</div>"
+    const session = createSessionLifecycle()
+    const contentSession = createContentSession(SWATCHES.default, session)
+
+    contentSession.rescan()
+
+    expect(document.documentElement.hasAttribute(DARK_THEME_ATTR)).toBe(true)
+    expect(
+      document.getElementById("text-carrier")?.getAttribute(LEGIBILITY_ATTR)
+    ).toBe("violated")
+
+    // Round 2: append (not replace) three more dark surfaces and a dark
+    // canvas -- "dark-surface" is now data-sw-patched and excluded from
+    // re-scanning, so these three are what actually cross
+    // MIN_EVIDENCE_FOR_DARK_VERDICT and flip the verdict to restore-native,
+    // with "text-carrier" (and its stale tag) still physically present in
+    // the DOM the whole time -- this is a real transition, not a DOM wipe
+    // that would trivially leave no stale tag to find.
+    document.documentElement.style.backgroundColor = "rgb(13, 17, 23)"
+    document.body.style.backgroundColor = "rgb(13, 17, 23)"
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      '<div id="a" style="background-color: rgb(13, 17, 23)"></div>' +
+        '<div id="b" style="background-color: rgb(5, 5, 5)"></div>' +
+        '<div id="c" style="background-color: rgb(10, 10, 10)"></div>'
+    )
+
+    contentSession.rescan()
+
+    expect(document.documentElement.hasAttribute(DARK_THEME_ATTR)).toBe(false)
+    expect(
+      document.getElementById("text-carrier")?.hasAttribute(LEGIBILITY_ATTR)
+    ).toBe(false)
+    expect(document.querySelectorAll(`[${LEGIBILITY_ATTR}]`).length).toBe(0)
+
+    contentSession.teardown()
+  })
+})
+
 describe("SF-RC1 — a thrown/incomplete audit leaves the round held, not committed", () => {
   it("produces a FireOutcome 'error', mirroring a thrown decide()/realize() (#1266)", () => {
     document.body.innerHTML =

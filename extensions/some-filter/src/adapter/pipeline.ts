@@ -681,6 +681,18 @@ export function createContentSession(
           legibilityActions,
           legibilityScan.elementsByKey
         )
+      } else {
+        // No theme applied this round (no swatch, or pageAlreadyDark()'s own
+        // restore-native) — nothing to audit, but a *prior* round may have
+        // left data-sw-legibility tags behind from when the page was still
+        // themed (bot-found: realize()'s own restoreVendor()/
+        // clearPerSurfaceState() strips data-sw-patched but has no idea this
+        // channel's own attribute exists). An empty action set reuses
+        // realizeLegibility's own stale-tag clearing (see its doc comment)
+        // rather than a second, special-cased cleanup path — to that
+        // function, "no violations exist" is exactly what this already
+        // means.
+        realizeLegibility(lastRoot, [], new Map())
       }
 
       outcome = { kind: "ok", actions }

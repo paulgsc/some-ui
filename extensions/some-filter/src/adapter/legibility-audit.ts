@@ -98,8 +98,27 @@ function isShadowRoot(node: Node): node is ShadowRoot {
   return node.nodeType === Node.DOCUMENT_FRAGMENT_NODE
 }
 
-/** Mirrors `pipeline.ts`'s own `ownTextColor` exactly (own private copy — see this module's header for why). */
-function ownTextColor(el: Element, style: CSSStyleDeclaration): RGBA | null {
+const NO_COLOR_SENTINELS = new Set(["", "none", "transparent"])
+
+/**
+ * Mirrors `pipeline.ts`'s own `ownTextColor` (own private copy — see this
+ * module's header for why), broadened to a three-way result: `null` means
+ * no own color at all (plain inheritance, or an explicit-but-invisible
+ * declaration like `color: transparent` — nothing to audit either way);
+ * `"underdetermined"` means an own, non-inherited declaration exists that
+ * `parseColor` cannot decode — CSS Color 4 forms (`oklch()`, `lab()`,
+ * `lch()`, `color(display-p3 …)`) that a real browser's `getComputedStyle`
+ * can serialize `color` as today, which `parseColor` (hex/`rgb()`/`rgba()`
+ * only) was never built to parse (bot-found: silently returning `null` here
+ * dropped such a carrier from candidacy *entirely*, auditing nothing, even
+ * when the themed backdrop made it genuinely illegible — worse than
+ * flagging it, which is what every other unresolvable case in this module
+ * already does).
+ */
+function ownTextColor(
+  el: Element,
+  style: CSSStyleDeclaration
+): RGBA | "underdetermined" | null {
   const parent = el.parentElement
   const parentNode = el.parentNode
   const inheritFrom =
@@ -108,28 +127,64 @@ function ownTextColor(el: Element, style: CSSStyleDeclaration): RGBA | null {
   if (inheritFrom === null) return null
   const inherited = getComputedStyle(inheritFrom).color
   if (style.color === inherited) return null
-  return parseColor(style.color)
+
+  const parsed = parseColor(style.color)
+  if (parsed !== null) return parsed
+
+  // parseColor returned null for one of three reasons: an explicit
+  // "invisible" sentinel (no legibility concern — nothing renders), real
+  // hex/rgb(a) syntax whose alpha fell below parseColor's own near-
+  // invisible cutoff (the same "too transparent to matter" call this
+  // codebase already makes everywhere else parseColor is used), or a
+  // syntax parseColor simply doesn't recognize at all — only the third
+  // case is this function's own concern; the first two both mean "check
+  // parseColor's own contract elsewhere," not "flag as underdetermined."
+  if (NO_COLOR_SENTINELS.has(style.color)) return null
+  if (style.color.startsWith("#") || style.color.startsWith("rgb")) {
+    return null
+  }
+  return "underdetermined"
 }
 
 /**
- * True when `style` carries any rendering feature this module has no
- * reliable way to reduce to a single composited color — a background image
- * of any kind (not just a gradient: an arbitrary photo's own colors are
- * unknown), a CSS filter, a backdrop-filter, or a non-normal blend mode.
- * `""` is treated identically to the spec's own unset default
- * (`"none"`/`"normal"`) for every one of these checks — jsdom's computed
- * style leaves `background-image`/`filter`/`mix-blend-mode`/`backdrop-filter`
- * all at `""` rather than their spec-defined defaults for an element with no
- * explicit declaration (confirmed directly against jsdom, not assumed), so
- * treating only the literal spec string as "nothing to worry about" would
- * misclassify almost every ordinary element in this test environment as a
- * rendering hazard.
+ * A background-image, gradient or real photo alike: a plain paint layer
+ * that a fully opaque layer painted *on top of* it (closer to the carrier)
+ * genuinely occludes — ordinary z-order, nothing left for this predicate to
+ * worry about once `resolved` is set. Checked only while color
+ * accumulation is still in progress; see `hasGroupCompositingHazard` below
+ * for the hazards that occlusion does *not* neutralize.
  */
-function hasUnresolvableRenderingHazard(style: CSSStyleDeclaration): boolean {
+function hasOccludableImageHazard(style: CSSStyleDeclaration): boolean {
+  return style.backgroundImage !== "" && style.backgroundImage !== "none"
+}
+
+/**
+ * True when `style` carries a rendering feature that composites its
+ * *entire* element — background, text, and every descendant together — as
+ * one group against whatever sits behind it: a CSS filter, a backdrop-
+ * filter, a non-normal blend mode, or non-1 opacity. Unlike a background-
+ * image (`hasOccludableImageHazard` above), none of these can be shielded
+ * by a descendant's own opaque background — the descendant is composited
+ * *inside* the group before the group effect itself is applied (bot-found:
+ * an outer `filter: brightness(0)` still recolors an already-fully-opaque
+ * inner child's rendered output; a naive occlusion check that stopped once
+ * color resolved missed exactly this). Must therefore be checked for every
+ * ancestor up to `document.documentElement`, regardless of where color
+ * accumulation itself resolves.
+ *
+ * `""` is treated identically to the spec's own unset default
+ * (`"none"`/`"normal"`/`1`) for every one of these — jsdom's computed style
+ * leaves `filter`/`mix-blend-mode`/`backdrop-filter`/`opacity` all at `""`
+ * rather than their spec-defined defaults for an element with no explicit
+ * declaration (confirmed directly against jsdom, not assumed), so treating
+ * only the literal spec string as "nothing to worry about" would
+ * misclassify almost every ordinary element in this test environment as a
+ * hazard.
+ */
+function hasGroupCompositingHazard(style: CSSStyleDeclaration): boolean {
   const isUnsetOr = (value: string, none: string): boolean =>
     value !== "" && value !== none
 
-  if (isUnsetOr(style.backgroundImage, "none")) return true
   if (isUnsetOr(style.filter, "none")) return true
   if (isUnsetOr(style.mixBlendMode, "normal")) return true
   // getPropertyValue (rather than the camelCase accessor) always returns a
@@ -137,16 +192,8 @@ function hasUnresolvableRenderingHazard(style: CSSStyleDeclaration): boolean {
   // is "" unconditionally there, same as every other unset case above.
   if (isUnsetOr(style.getPropertyValue("backdrop-filter"), "none")) return true
 
-  // CSS opacity < 1 composites the *entire* element — its whole rendered
-  // subtree, foreground included — as one group against whatever sits
-  // behind it, not a per-layer background-color concern this module's
-  // "accumulate background colors" model can represent (bot-found: black
-  // text on an opaque white ancestor with opacity:0.1 over a white canvas
-  // renders as light grey on white, not the raw black-on-white this model
-  // would otherwise compare). jsdom's own unset default reads back `""`
-  // here too (confirmed directly, same as every property above), which
-  // Number.parseFloat turns into NaN — excluded from the `< 1` check by
-  // construction, the same "nothing to worry about" outcome a real
+  // Number.parseFloat("") is NaN, excluded from the `< 1` check by
+  // construction — the same "nothing to worry about" outcome a real
   // browser's spec-correct default of `1` would also produce.
   const opacity = Number.parseFloat(style.opacity)
   if (!Number.isNaN(opacity) && opacity < 1) return true
@@ -164,17 +211,19 @@ function hasUnresolvableRenderingHazard(style: CSSStyleDeclaration): boolean {
  * white (`ASSUMED_CANVAS`) rather than returning an unresolved partial alpha
  * — the browser's own default canvas paint.
  *
- * Returns `"underdetermined"` instead, the moment any layer *anywhere in the
- * chain* trips `hasUnresolvableRenderingHazard` — checked all the way to
+ * Returns `"underdetermined"` when any ancestor trips
+ * `hasGroupCompositingHazard` — checked all the way to
  * `document.documentElement` regardless of where color accumulation itself
- * resolves. A hazard (a CSS filter especially) applies to an ancestor's
- * *entire* rendered subtree, not just that ancestor's own background layer,
- * so an outer `filter: brightness(0)` still recolors an inner, already-fully-
- * opaque child's rendered output (bot-found: black text on an opaque white
- * child inside such an ancestor renders black-on-black, not the 21:1 this
- * function would otherwise report if it stopped checking at the opaque
- * layer). Color *accumulation* still stops once fully opaque — there is
- * nothing further out left to composite — but hazard-checking does not.
+ * resolves, since none of those hazards can be occluded by an inner opaque
+ * layer — or when a still-unresolved layer trips `hasOccludableImageHazard`
+ * (a background-image *before* anything opaque has painted over it is very
+ * much still visible). Color accumulation itself stops once fully opaque —
+ * there is nothing further out left to composite, and a background-image
+ * beyond that point is genuinely occluded, ordinary paint z-order (bot-
+ * found: treating an occluded outer background-image the same as an
+ * unoccludable group hazard misclassified an ordinary opaque-card-over-
+ * hero-image layout as underdetermined even though its backdrop is fully
+ * known).
  */
 export function resolveEffectiveBackdrop(
   el: Element
@@ -185,9 +234,11 @@ export function resolveEffectiveBackdrop(
 
   while (cur !== null) {
     const style = getComputedStyle(cur)
-    if (hasUnresolvableRenderingHazard(style)) return "underdetermined"
+    if (hasGroupCompositingHazard(style)) return "underdetermined"
 
     if (resolved === null) {
+      if (hasOccludableImageHazard(style)) return "underdetermined"
+
       const layerColor = parseColor(style.backgroundColor)
       if (layerColor !== null) {
         acc = compositeOver(acc, layerColor)
@@ -215,7 +266,7 @@ export type LegibilityKey = string
 export type ContrastVerdict = "violated" | "underdetermined"
 
 export type LegibilityAttr = {
-  readonly foreground: RGBA
+  readonly foreground: RGBA | "underdetermined"
   readonly backdrop: RGBA | "underdetermined"
 }
 
@@ -231,11 +282,15 @@ export type TagLegibilityAction = {
 }
 
 function legibilityKeyFor(attr: LegibilityAttr): LegibilityKey {
+  const foregroundKey =
+    attr.foreground === "underdetermined"
+      ? "underdetermined"
+      : rgbaToCss(attr.foreground)
   const backdropKey =
     attr.backdrop === "underdetermined"
       ? "underdetermined"
       : rgbaToCss(attr.backdrop)
-  return `${rgbaToCss(attr.foreground)}~${backdropKey}`
+  return `${foregroundKey}~${backdropKey}`
 }
 
 /**
@@ -301,7 +356,10 @@ export function decideLegibility(
   const actions: Array<TagLegibilityAction> = []
 
   for (const [key, attr] of attrsByKey) {
-    if (attr.backdrop === "underdetermined") {
+    if (
+      attr.foreground === "underdetermined" ||
+      attr.backdrop === "underdetermined"
+    ) {
       actions.push({ kind: "tag-legibility", key, verdict: "underdetermined" })
       continue
     }
