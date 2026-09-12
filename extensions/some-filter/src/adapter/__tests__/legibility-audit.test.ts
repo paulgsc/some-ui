@@ -14,6 +14,7 @@ function cleanUp(): void {
   document.documentElement.style.backgroundColor = ""
   document.body.style.backgroundColor = ""
   document.documentElement.style.backgroundImage = ""
+  document.body.style.color = ""
   document.querySelectorAll(`[${LEGIBILITY_ATTR}]`).forEach((el) => {
     el.removeAttribute(LEGIBILITY_ATTR)
   })
@@ -289,6 +290,74 @@ describe("auditLegibility", () => {
     const { attrsByKey } = auditLegibility(document.body)
     expect(attrsByKey.size).toBe(0)
   })
+
+  it("flags an explicit inline color that coincidentally matches its parent's (escape route 2, Codex review round 3)", () => {
+    // "outer" has no color of its own -- it genuinely inherits black from
+    // body, so it must NOT itself become a candidate. "carrier"'s own
+    // inline color happens to equal that exact same inherited value
+    // (Codex's own example: a nested control explicitly repeating its
+    // container's color for visual consistency) -- computed-value equality
+    // alone cannot tell that apart from plain inheritance, so an inline
+    // style.color is checked directly instead.
+    document.body.style.color = "rgb(0, 0, 0)"
+    document.body.innerHTML =
+      '<div id="outer">' +
+      '<div id="carrier" style="color: rgb(0, 0, 0); background: white">hi</div>' +
+      "</div>"
+
+    const { attrsByKey, elementsByKey } = auditLegibility(document.body)
+
+    expect(attrsByKey.size).toBe(1)
+    const key = [...attrsByKey.keys()][0]
+    if (key === undefined) throw new Error("expected one legibility key")
+    expect(attrsByKey.get(key)?.foreground).toEqual([0, 0, 0, 1])
+    expect(elementsByKey.get(key)?.map((el) => el.id)).toEqual(["carrier"])
+  })
+
+  it("does not flag plain inheritance just because an ancestor has an explicit color", () => {
+    // The inline-style check is per-element, not a blanket "an ancestor
+    // has an explicit color -> everything under it is a candidate" -- a
+    // carrier with no inline style of its own must still be excluded.
+    document.body.style.color = "rgb(0, 0, 0)"
+    document.body.innerHTML =
+      '<div id="outer"><span id="carrier">hi</span></div>'
+
+    const { attrsByKey } = auditLegibility(document.body)
+    expect(attrsByKey.size).toBe(0)
+  })
+
+  it("skips a carrier whose own display is not none but sits inside a display:none ancestor (Codex review round 3)", () => {
+    // A real browser's getComputedStyle reports a descendant's *own*
+    // computed display (here, the UA default "block") regardless of an
+    // ancestor's display:none -- confirmed as standard behavior, not a
+    // jsdom quirk. Without walking ancestors, this carrier would be
+    // wrongly treated as rendered.
+    document.body.innerHTML =
+      '<div style="display: none">' +
+      '<div id="carrier" style="color: rgb(0,0,0)">hi</div>' +
+      "</div>"
+
+    const { attrsByKey } = auditLegibility(document.body)
+    expect(attrsByKey.size).toBe(0)
+  })
+
+  it("classifies a near-invisible explicit foreground as a candidate rather than dropping it (Codex review round 3)", () => {
+    // rgba(0,0,0,0.04) is below parseColor's own 0.05 near-invisible
+    // cutoff (correct for background evidence) but is not negligible as a
+    // *foreground* -- composited over any backdrop it renders essentially
+    // as that backdrop's own color, which is systematically close to a
+    // real 1:1 contrast violation.
+    document.body.innerHTML =
+      '<div id="carrier" style="color: rgba(0, 0, 0, 0.04)">hi</div>'
+
+    const { attrsByKey, elementsByKey } = auditLegibility(document.body)
+
+    expect(attrsByKey.size).toBe(1)
+    const key = [...attrsByKey.keys()][0]
+    if (key === undefined) throw new Error("expected one legibility key")
+    expect(attrsByKey.get(key)?.foreground).toEqual([0, 0, 0, 0.04])
+    expect(elementsByKey.get(key)?.map((el) => el.id)).toEqual(["carrier"])
+  })
 })
 
 describe("decideLegibility", () => {
@@ -343,6 +412,17 @@ describe("decideLegibility", () => {
     // entirely.
     const attrsByKey = new Map<string, LegibilityAttr>([
       ["k", { foreground: [0, 0, 0, 0.5], backdrop: [1, 1, 1, 1] }],
+    ])
+
+    expect(decideLegibility(attrsByKey)).toEqual([
+      { kind: "tag-legibility", key: "k", verdict: "violated" },
+    ])
+  })
+
+  it("flags a near-invisible foreground as violated — it composites toward the backdrop it sits on", () => {
+    // rgba(0,0,0,0.04) over white renders as essentially white-on-white.
+    const attrsByKey = new Map<string, LegibilityAttr>([
+      ["k", { foreground: [0, 0, 0, 0.04], backdrop: [1, 1, 1, 1] }],
     ])
 
     expect(decideLegibility(attrsByKey)).toEqual([

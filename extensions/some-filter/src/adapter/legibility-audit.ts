@@ -90,8 +90,39 @@ function shouldSkip(el: Element): boolean {
   return SKIP_TAGS.has(el.tagName) || isExtensionOwned(el)
 }
 
-function isRendered(style: CSSStyleDeclaration): boolean {
-  return style.display !== "none" && style.visibility !== "hidden"
+/**
+ * `visibility` is an inherited CSS property, so a descendant's own computed
+ * value already reflects an ancestor's `visibility:hidden` unless it
+ * explicitly overrides back to `visible` — the carrier's own computed style
+ * is sufficient for that half. `display` is not inherited: a real browser's
+ * `getComputedStyle` on a descendant reports *that element's own* computed
+ * `display` (e.g. `"block"`) regardless of an ancestor's `display:none`
+ * (bot-found — confirmed as standard behavior, not a jsdom quirk: an
+ * ancestor's `display:none` removes the whole subtree from rendering
+ * without changing what a descendant's own `display` property computes
+ * to), so this walks every ancestor up to `document.documentElement`
+ * checking each one's *own* computed `display` — mirroring, for
+ * renderedness, the same per-ancestor walk `resolveEffectiveBackdrop` does
+ * for backdrop color, and for the identical reason: a value read only from
+ * the carrier itself cannot see a hazard sitting further up the tree.
+ */
+function isRendered(el: Element, style: CSSStyleDeclaration): boolean {
+  if (style.display === "none" || style.visibility === "hidden") return false
+
+  let cur: Element | null = el.parentElement
+  while (cur !== null) {
+    if (getComputedStyle(cur).display === "none") return false
+    if (cur === document.documentElement) break
+    const parent: Element | null = cur.parentElement
+    if (parent !== null) {
+      cur = parent
+      continue
+    }
+    const parentNode: Node | null = cur.parentNode
+    cur =
+      parentNode !== null && isShadowRoot(parentNode) ? parentNode.host : null
+  }
+  return true
 }
 
 function isShadowRoot(node: Node): node is ShadowRoot {
@@ -101,19 +132,64 @@ function isShadowRoot(node: Node): node is ShadowRoot {
 const NO_COLOR_SENTINELS = new Set(["", "none", "transparent"])
 
 /**
+ * Like `color.ts`'s `parseColor`, but *without* that function's own near-
+ * invisible alpha cutoff (`a < 0.05`) — appropriate for background evidence
+ * (a barely-visible layer is negligible for "does this surface need
+ * retheming"), but wrong for a foreground text color: a translucent
+ * foreground composites *toward whatever backdrop sits behind it*, which
+ * makes it systematically close to a 1:1 contrast violation against that
+ * exact backdrop (bot-found: `rgba(0,0,0,0.04)` over white renders as
+ * essentially white-on-white — precisely the failure this audit exists to
+ * catch, not a negligible one). Duplicates just the rgb()/rgba() regex path
+ * rather than reworking `parseColor` itself, whose existing cutoff is
+ * correct for its other (background) callers.
+ */
+function parseForegroundColor(css: string): RGBA | null {
+  if (css.startsWith("#")) return parseColor(css)
+  const match = css.match(
+    /rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)/
+  )
+  if (match === null) return null
+  const [, r, g, b, alpha] = match
+  if (r === undefined || g === undefined || b === undefined) return null
+  const a = alpha === undefined ? 1 : Number.parseFloat(alpha)
+  if (a <= 0) return null
+  return [
+    Number.parseInt(r, 10) / 255,
+    Number.parseInt(g, 10) / 255,
+    Number.parseInt(b, 10) / 255,
+    a,
+  ]
+}
+
+/**
  * Mirrors `pipeline.ts`'s own `ownTextColor` (own private copy — see this
  * module's header for why), broadened to a three-way result: `null` means
  * no own color at all (plain inheritance, or an explicit-but-invisible
  * declaration like `color: transparent` — nothing to audit either way);
  * `"underdetermined"` means an own, non-inherited declaration exists that
- * `parseColor` cannot decode — CSS Color 4 forms (`oklch()`, `lab()`,
- * `lch()`, `color(display-p3 …)`) that a real browser's `getComputedStyle`
- * can serialize `color` as today, which `parseColor` (hex/`rgb()`/`rgba()`
- * only) was never built to parse (bot-found: silently returning `null` here
- * dropped such a carrier from candidacy *entirely*, auditing nothing, even
- * when the themed backdrop made it genuinely illegible — worse than
- * flagging it, which is what every other unresolvable case in this module
- * already does).
+ * neither `parseForegroundColor` nor the sentinel check below can decode —
+ * CSS Color 4 forms (`oklch()`, `lab()`, `lch()`, `color(display-p3 …)`)
+ * that a real browser's `getComputedStyle` can serialize `color` as today
+ * (bot-found: silently returning `null` here dropped such a carrier from
+ * candidacy *entirely*, auditing nothing, even when the themed backdrop
+ * made it genuinely illegible — worse than flagging it, which is what
+ * every other unresolvable case in this module already does).
+ *
+ * Computed-value equality alone cannot distinguish genuine inheritance
+ * from an explicit declaration that merely *coincides* with the parent's
+ * value (`<div style="color:black"><div style="color:black;background:
+ * white">…` — the epic's own Gate-0 recon calls this "escape route 2," and
+ * it is real: a nested control explicitly repeating its container's color
+ * for visual consistency is an ordinary authoring pattern, not a
+ * contrivance). An own *inline* `style.color` is unambiguous proof of an
+ * explicit declaration regardless of what value it happens to share with
+ * the parent, so it is checked first, before the equality short-circuit —
+ * closing the inline-style instance of escape route 2, which is what the
+ * epic's own recon reproduced. A stylesheet-rule-based coincidental match
+ * (no inline style, but a class rule sets the identical color) remains
+ * undetected — reliably distinguishing that from real inheritance would
+ * need CSSOM rule-matching this function does not attempt.
  */
 function ownTextColor(
   el: Element,
@@ -125,20 +201,19 @@ function ownTextColor(
     parent ??
     (parentNode !== null && isShadowRoot(parentNode) ? parentNode.host : null)
   if (inheritFrom === null) return null
-  const inherited = getComputedStyle(inheritFrom).color
-  if (style.color === inherited) return null
 
-  const parsed = parseColor(style.color)
+  const hasOwnInlineColor = el instanceof HTMLElement && el.style.color !== ""
+  if (!hasOwnInlineColor) {
+    const inherited = getComputedStyle(inheritFrom).color
+    if (style.color === inherited) return null
+  }
+
+  const parsed = parseForegroundColor(style.color)
   if (parsed !== null) return parsed
 
-  // parseColor returned null for one of three reasons: an explicit
-  // "invisible" sentinel (no legibility concern — nothing renders), real
-  // hex/rgb(a) syntax whose alpha fell below parseColor's own near-
-  // invisible cutoff (the same "too transparent to matter" call this
-  // codebase already makes everywhere else parseColor is used), or a
-  // syntax parseColor simply doesn't recognize at all — only the third
-  // case is this function's own concern; the first two both mean "check
-  // parseColor's own contract elsewhere," not "flag as underdetermined."
+  // Neither parseForegroundColor nor the sentinel set recognized this
+  // value at all — a syntax this module cannot decode (CSS Color 4 forms),
+  // not "no color."
   if (NO_COLOR_SENTINELS.has(style.color)) return null
   if (style.color.startsWith("#") || style.color.startsWith("rgb")) {
     return null
@@ -319,7 +394,7 @@ export function auditLegibility(
   while (node !== null) {
     if (isHTMLElementNode(node) && !shouldSkip(node)) {
       const style = getComputedStyle(node)
-      if (isRendered(style)) {
+      if (isRendered(node, style)) {
         const foreground = ownTextColor(node, style)
         if (foreground !== null) {
           const attr: LegibilityAttr = {
