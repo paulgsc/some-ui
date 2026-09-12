@@ -176,7 +176,7 @@ const documentScope: DocumentScopeCustodian =
 // per-runAutoTheme-call this instance would ever need to be recreated for.
 const shadowScopeTheming: ShadowScopeTheming = createShadowScopeTheming(
   documentScope.registry,
-  SWATCHES[DEFAULT_SWATCH_ID],
+  () => SWATCHES[DEFAULT_SWATCH_ID],
   () => sessionLifecycle.epoch
 )
 
@@ -255,6 +255,8 @@ function applyState(state: TabState): void {
   // to do unconditionally, not just when leaving auto — legacy/off do not
   // need shadow-scope custody at all (see this module's own header).
   shadowScopeDiscovery.teardown()
+  // #1280: stops alongside shadowScopeDiscovery, same reasoning.
+  shadowScopeTheming.teardown()
   // Same lifecycle as shadowScopeDiscovery: nothing to poll outside auto
   // mode either (SF-OB, #1270). One last check() here, before teardown()
   // stops the poll and clears its own tracking, publishes the registry's
@@ -407,7 +409,26 @@ function runAutoTheme(): void {
   // debounced coalescer).
   shadowScopeDiscovery.discover(document)
   shadowScopeDiscovery.observe()
+  // scopeCoverageWatchdog.observe() is started *before*
+  // shadowScopeTheming.observe() below, deliberately: both poll on the same
+  // cadence (SCOPE_COVERAGE_POLL_MS/SHEET_INTEGRITY_POLL_MS are both 250ms),
+  // and two same-period setInterval polls fire in registration order on
+  // every tick, forever — registering the diagnostic poll first is what lets
+  // it actually observe a real desync (a vendor's own wholesale
+  // adoptedStyleSheets reassignment, #1280) before this module's own
+  // self-heal below can silently erase the evidence of it having happened at
+  // all. Reversing this order would not make the repair any less correct,
+  // but it would make coverage-watchdog.ts's own violation reporting for
+  // this exact desync class unobservable in practice — undermining SF-OB's
+  // whole point (quantified coverage observability) for the one case #1280
+  // itself exists to fix.
   scopeCoverageWatchdog.observe(documentScope.registry)
+  // #1280's own integrity poll: repairs a committed shadow scope whose
+  // adoptedStyleSheets a vendor's own wholesale reassignment silently
+  // dropped — a plain CSSOM write no MutationObserver here (or anywhere)
+  // can see. Same lifecycle as shadowScopeDiscovery immediately above:
+  // nothing to reconcile outside auto mode either.
+  shadowScopeTheming.observe()
 
   // Apply-then-detect, now folded into decide() (S3): the pipeline scans
   // true vendor colors under the veil, feeds them to the Estimator, and
