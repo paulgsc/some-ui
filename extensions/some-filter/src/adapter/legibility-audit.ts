@@ -133,7 +133,7 @@ const NO_COLOR_SENTINELS = new Set(["", "none", "transparent"])
 
 /**
  * True when `css` is either an explicit "no color" sentinel or a syntax
- * `parseColor`/`parseForegroundColor` actually understand (hex or
+ * `parseColor`/`parsePreciseColor` actually understand (hex or
  * `rgb()`/`rgba()`) — i.e. a value whose `null` parse result is *meaningful*
  * (genuinely absent, or present but negligibly transparent), not a syntax
  * neither parser was ever built to decode at all (CSS Color 4 forms —
@@ -153,18 +153,23 @@ function isRecognizedColorSyntax(css: string): boolean {
 
 /**
  * Like `color.ts`'s `parseColor`, but *without* that function's own near-
- * invisible alpha cutoff (`a < 0.05`) — appropriate for background evidence
- * (a barely-visible layer is negligible for "does this surface need
- * retheming"), but wrong for a foreground text color: a translucent
- * foreground composites *toward whatever backdrop sits behind it*, which
- * makes it systematically close to a 1:1 contrast violation against that
- * exact backdrop (bot-found: `rgba(0,0,0,0.04)` over white renders as
- * essentially white-on-white — precisely the failure this audit exists to
- * catch, not a negligible one). Duplicates just the rgb()/rgba() regex path
- * rather than reworking `parseColor` itself, whose existing cutoff is
- * correct for its other (background) callers.
+ * invisible alpha cutoff (`a < 0.05`) — that cutoff is correct for
+ * `pipeline.ts`'s own vendor-evidence Sensor (a barely-visible layer is
+ * negligible for "does this surface need retheming"), but wrong for exact
+ * contrast compositing: a translucent layer, foreground *or* background,
+ * still contributes to what actually renders, and near a threshold that
+ * contribution can flip the verdict (bot-found, twice: `rgba(0,0,0,0.04)`
+ * text over white renders as essentially white-on-white — a real
+ * violation `parseColor`'s cutoff would otherwise drop entirely; a
+ * `rgba(255,255,255,0.04)` *backdrop* layer over `rgb(114,114,114)`
+ * measurably shifts the composited color enough to flip a borderline
+ * contrast ratio from passing to violated if silently skipped). Used by
+ * both `ownTextColor`'s foreground read and `resolveEffectiveBackdrop`'s
+ * own background-color read below. Duplicates just the rgb()/rgba() regex
+ * path rather than reworking `parseColor` itself, whose existing cutoff
+ * stays correct for its other (page-classification) callers.
  */
-function parseForegroundColor(css: string): RGBA | null {
+function parsePreciseColor(css: string): RGBA | null {
   if (css.startsWith("#")) return parseColor(css)
   const match = css.match(
     /rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)/
@@ -188,7 +193,7 @@ function parseForegroundColor(css: string): RGBA | null {
  * no own color at all (plain inheritance, or an explicit-but-invisible
  * declaration like `color: transparent` — nothing to audit either way);
  * `"underdetermined"` means an own, non-inherited declaration exists that
- * neither `parseForegroundColor` nor the sentinel check below can decode —
+ * neither `parsePreciseColor` nor the sentinel check below can decode —
  * CSS Color 4 forms (`oklch()`, `lab()`, `lch()`, `color(display-p3 …)`)
  * that a real browser's `getComputedStyle` can serialize `color` as today
  * (bot-found: silently returning `null` here dropped such a carrier from
@@ -210,6 +215,16 @@ function parseForegroundColor(css: string): RGBA | null {
  * (no inline style, but a class rule sets the identical color) remains
  * undetected — reliably distinguishing that from real inheritance would
  * need CSSOM rule-matching this function does not attempt.
+ *
+ * Uses `isHTMLElementNode` (realm-independent — `nodeType`/`namespaceURI`,
+ * not a prototype check), not `instanceof HTMLElement`, for the inline-
+ * color guard: a same-origin-iframe-adopted element (`actuator.ts`'s own
+ * `isHTMLElementNode` doc comment has the full mechanism) keeps that other
+ * realm's `HTMLElement` constructor on its prototype chain, failing
+ * `instanceof` against *this* realm's `HTMLElement` even though it is
+ * genuine — which would have silently defeated this very fix for exactly
+ * the adopted elements SF-AD's own review (round 3) already found this
+ * class of bug on elsewhere in the codebase (bot-found here too).
  */
 function ownTextColor(
   el: Element,
@@ -222,13 +237,13 @@ function ownTextColor(
     (parentNode !== null && isShadowRoot(parentNode) ? parentNode.host : null)
   if (inheritFrom === null) return null
 
-  const hasOwnInlineColor = el instanceof HTMLElement && el.style.color !== ""
+  const hasOwnInlineColor = isHTMLElementNode(el) && el.style.color !== ""
   if (!hasOwnInlineColor) {
     const inherited = getComputedStyle(inheritFrom).color
     if (style.color === inherited) return null
   }
 
-  const parsed = parseForegroundColor(style.color)
+  const parsed = parsePreciseColor(style.color)
   if (parsed !== null) return parsed
 
   return isRecognizedColorSyntax(style.color) ? null : "underdetermined"
@@ -244,6 +259,32 @@ function ownTextColor(
  */
 function hasOccludableImageHazard(style: CSSStyleDeclaration): boolean {
   return style.backgroundImage !== "" && style.backgroundImage !== "none"
+}
+
+/**
+ * True for any positioning scheme (`relative`, `absolute`, `fixed`,
+ * `sticky`) under which an element's *rendered* location is no longer
+ * guaranteed to be the union of its DOM ancestors' own painted boxes — the
+ * load-bearing assumption every other check in this walk depends on (bot-
+ * found: a `position: absolute` (or `fixed`) element can be moved anywhere
+ * on the page, overlapping a sibling or unrelated content entirely; even
+ * `relative` shifts an element away from where its ancestors would
+ * otherwise place it). Checked only while `resolved === null` — the exact
+ * portion of the chain whose color the walk actually uses; an outer
+ * ancestor whose own positioning played no role in the color already
+ * settled on need not be flagged.
+ *
+ * This is a bounded, *partial* mitigation, not a general fix: it closes
+ * the dominant, most severe case (an element taken out of normal flow
+ * entirely) but not every way DOM nesting can diverge from paint order —
+ * negative margins, CSS transforms, or floats can also move painted
+ * content away from its ancestor's box while staying `position: static`.
+ * Reliably catching all of those would need real geometry (`getBoundingClientRect`
+ * comparisons) or paint-order analysis, not a computed-style read — a much
+ * larger undertaking this module does not attempt.
+ */
+function hasPositioningHazard(style: CSSStyleDeclaration): boolean {
+  return style.position !== "" && style.position !== "static"
 }
 
 /**
@@ -305,13 +346,17 @@ function hasGroupCompositingHazard(style: CSSStyleDeclaration): boolean {
  * resolves, since none of those hazards can be occluded by an inner opaque
  * layer — or when a still-unresolved layer trips `hasOccludableImageHazard`
  * (a background-image *before* anything opaque has painted over it is very
- * much still visible). Color accumulation itself stops once fully opaque —
- * there is nothing further out left to composite, and a background-image
- * beyond that point is genuinely occluded, ordinary paint z-order (bot-
- * found: treating an occluded outer background-image the same as an
- * unoccludable group hazard misclassified an ordinary opaque-card-over-
- * hero-image layout as underdetermined even though its backdrop is fully
- * known).
+ * much still visible) or `hasPositioningHazard` (a non-`static` element's
+ * rendered location isn't guaranteed to match its DOM ancestors' boxes at
+ * all). Color accumulation itself stops once fully opaque — there is
+ * nothing further out left to composite, and a background-image beyond
+ * that point is genuinely occluded, ordinary paint z-order (bot-found:
+ * treating an occluded outer background-image the same as an unoccludable
+ * group hazard misclassified an ordinary opaque-card-over-hero-image
+ * layout as underdetermined even though its backdrop is fully known).
+ * Background-color parsing uses `parsePreciseColor`, not `parseColor` —
+ * see that function's own doc comment for why the exact-compositing case
+ * needs a different alpha policy than page-classification evidence does.
  */
 export function resolveEffectiveBackdrop(
   el: Element
@@ -325,9 +370,10 @@ export function resolveEffectiveBackdrop(
     if (hasGroupCompositingHazard(style)) return "underdetermined"
 
     if (resolved === null) {
+      if (hasPositioningHazard(style)) return "underdetermined"
       if (hasOccludableImageHazard(style)) return "underdetermined"
 
-      const layerColor = parseColor(style.backgroundColor)
+      const layerColor = parsePreciseColor(style.backgroundColor)
       if (layerColor !== null) {
         acc = compositeOver(acc, layerColor)
         if (acc[3] >= 0.999) resolved = [acc[0], acc[1], acc[2], 1]

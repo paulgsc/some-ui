@@ -57,6 +57,59 @@ describe("resolveEffectiveBackdrop", () => {
     expect(result[3]).toBe(1)
   })
 
+  it("composites a background layer even when its own alpha falls below parseColor's negligibility cutoff (Codex review round 5)", () => {
+    // Codex's own example: dropping a real rgba(255,255,255,0.04) overlay
+    // entirely (parseColor's own cutoff is < 0.05) understates how much
+    // lighter the true composited backdrop is than the outer layer alone —
+    // enough, in a borderline case, to flip a contrast verdict.
+    document.body.innerHTML =
+      '<div id="outer" style="background-color: rgb(114, 114, 114)">' +
+      '<div id="inner" style="background-color: rgba(255, 255, 255, 0.04)">' +
+      '<span id="carrier">hi</span>' +
+      "</div></div>"
+    const carrier = document.getElementById("carrier")
+    if (carrier === null) throw new Error("fixture missing")
+
+    const result = resolveEffectiveBackdrop(carrier)
+    expect(result).not.toBe("underdetermined")
+    if (result === "underdetermined") return
+    expect(result[3]).toBe(1)
+    // Strictly lighter than the outer layer's own unmodified 114/255 --
+    // dropping the low-alpha overlay entirely would produce exactly that
+    // value instead.
+    expect(result[0]).toBeGreaterThan(114 / 255)
+  })
+
+  it("is underdetermined for a positioned element — DOM ancestry no longer guarantees paint order (Codex review round 5)", () => {
+    // Codex's own example: an absolutely/fixed-positioned carrier can be
+    // moved anywhere on the page, so its DOM ancestor's own background is
+    // not necessarily what's actually behind its rendered glyphs.
+    document.body.innerHTML =
+      '<div id="ancestor" style="background-color: rgb(13, 17, 23)">' +
+      '<span id="carrier" style="position: absolute">hi</span>' +
+      "</div>"
+    const carrier = document.getElementById("carrier")
+    if (carrier === null) throw new Error("fixture missing")
+
+    expect(resolveEffectiveBackdrop(carrier)).toBe("underdetermined")
+  })
+
+  it("is not underdetermined for the explicit, spec-default position of static", () => {
+    document.body.innerHTML =
+      '<div id="ancestor" style="background-color: rgb(10, 10, 10)">' +
+      '<span id="carrier" style="position: static">hi</span>' +
+      "</div>"
+    const carrier = document.getElementById("carrier")
+    if (carrier === null) throw new Error("fixture missing")
+
+    expect(resolveEffectiveBackdrop(carrier)).toEqual([
+      10 / 255,
+      10 / 255,
+      10 / 255,
+      1,
+    ])
+  })
+
   it("falls back to assumed white when no ancestor declares any background", () => {
     document.body.innerHTML = '<span id="carrier">hi</span>'
     const carrier = document.getElementById("carrier")
@@ -339,6 +392,38 @@ describe("auditLegibility", () => {
 
     const { attrsByKey } = auditLegibility(document.body)
     expect(attrsByKey.size).toBe(0)
+  })
+
+  it("recognizes an own inline color on an element adopted from a different realm, where instanceof HTMLElement fails (Codex review round 5)", () => {
+    // Mirrors shadow-scope-discovery.test.ts's own cross-realm pattern.
+    // Without the realm-independent isHTMLElementNode check, this element's
+    // own inline color (coincidentally equal to its parent's) would fail
+    // `instanceof HTMLElement` and silently fall through to the ordinary
+    // equality check, misclassifying it as plain inheritance.
+    const iframe = document.createElement("iframe")
+    document.body.appendChild(iframe)
+    const foreignDoc = iframe.contentDocument
+    expect(foreignDoc).not.toBeNull()
+    if (foreignDoc === null) return
+
+    document.body.style.color = "rgb(0, 0, 0)"
+    const foreignCarrier = foreignDoc.createElement("div")
+    foreignCarrier.id = "carrier"
+    foreignCarrier.style.color = "rgb(0, 0, 0)"
+    foreignCarrier.style.background = "white"
+    foreignCarrier.textContent = "hi"
+    expect(foreignCarrier instanceof HTMLElement).toBe(false)
+    document.body.appendChild(foreignCarrier)
+
+    const { attrsByKey, elementsByKey } = auditLegibility(document.body)
+
+    expect(attrsByKey.size).toBe(1)
+    const key = [...attrsByKey.keys()][0]
+    if (key === undefined) throw new Error("expected one legibility key")
+    expect(attrsByKey.get(key)?.foreground).toEqual([0, 0, 0, 1])
+    expect(elementsByKey.get(key)?.map((el) => el.id)).toEqual(["carrier"])
+
+    iframe.remove()
   })
 
   it("skips a carrier whose own display is not none but sits inside a display:none ancestor (Codex review round 3)", () => {
