@@ -43,7 +43,7 @@ every finding as real" (above) is still correct, but combined with an unconditio
 re-request-after-every-push idiom it has no natural stopping point, and every round costs real
 tokens.
 
-**After 5 review rounds since the PR was opened**, stop auto-requesting the next review. Before
+**After 3 review rounds since the PR was opened**, stop auto-requesting the next review. Before
 checking in, read what the pattern of rounds actually shows:
 
 - **Converging** (later rounds smaller, more marginal, unrelated to each other) — accept the
@@ -85,7 +85,7 @@ closing review's finding, if any, this way instead:
 Either branch terminates. There is no version of this rule where a capped PR waits on one more
 automatic review indefinitely.
 
-**Below the cap** — any review round before the 5-round auto-request limit is reached — if a
+**Below the cap** — any review round before the 3-round auto-request limit is reached — if a
 finding reveals a real gap wider than this PR's own scope (not a bug to fix in this diff, but a
 missing structure or invariant a future story needs to build), the default move is to **file it
 as a tracked sub-issue of the story** (`sub_issue_write`, parented to the issue this PR closes)
