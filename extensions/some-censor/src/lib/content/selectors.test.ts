@@ -61,8 +61,9 @@ describe("the stylesheet and the catalogue agree", () => {
 
   it("guards every polymorphic tag with :has(), and no others", () => {
     for (const { tag, requiresVideoLink } of CARD_SELECTORS) {
-      const rule = PREMASK_SELECTOR.split(",\n").find((r) =>
-        r.startsWith(`${tag}:`)
+      const rule = PREMASK_SELECTOR.split(",\n").find(
+        (r) =>
+          r.endsWith(`${tag}:not([data-boyo])`) || r.includes(` ${tag}:has(`)
       )
       expect(rule, `${tag} must appear in the pre-mask rule`).toBeDefined()
       expect(rule?.includes(":has("), `${tag} :has() guard`).toBe(

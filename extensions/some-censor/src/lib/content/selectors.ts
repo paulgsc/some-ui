@@ -94,9 +94,11 @@ export const SEL = VIDEO_SELECTORS.join(",")
  */
 export const PREMASK_SELECTOR = CARD_SELECTORS.map(
   ({ tag, requiresVideoLink }) =>
-    requiresVideoLink
-      ? `${tag}:has(${VIDEO_LINK_SELECTOR}):not([data-boyo])`
-      : `${tag}:not([data-boyo])`
+    `:root:not([data-boyo-disabled]) ${
+      requiresVideoLink
+        ? `${tag}:has(${VIDEO_LINK_SELECTOR}):not([data-boyo])`
+        : `${tag}:not([data-boyo])`
+    }`
 ).join(",\n")
 
 /**

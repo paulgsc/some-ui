@@ -46,6 +46,7 @@ export class Controller {
   private _disposeKeyBindings: KeyBindingDisposer | null = null
   private _navListener: (() => void) | null = null
   private _navDebounce: ReturnType<typeof setTimeout> | null = null
+  private _enabled = true
 
   init(): void {
     this._listenBroadcasts()
@@ -56,6 +57,12 @@ export class Controller {
   // ── Bootstrap ─────────────────────────────────────────────────────────────
 
   private _bootstrap(): void {
+    // CSS is injected before this script and deliberately fails closed. Do not
+    // extend that blocking state by waiting on the background service worker:
+    // Chromium is allowed to suspend it, and a sendMessage promise has no
+    // browser-provided deadline. Start with the safe default immediately, then
+    // reconcile the persisted switch when (or if) the worker answers.
+    this._setEnabled(true)
     ext.runtime
       .sendMessage({ type: "GET_ENABLED" })
       .then((r: unknown) => {
@@ -65,13 +72,16 @@ export class Controller {
           resp?.ok === true && typeof resp.enabled === "boolean"
             ? resp.enabled
             : true
-        if (enabled) this._waitForApp()
-        // If disabled, do nothing — _waitForApp never called, runtime never starts
+        this._setEnabled(enabled)
       })
-      .catch(() => {
-        // Degraded: proceed as enabled (safe default)
-        this._waitForApp()
-      })
+      .catch(() => undefined)
+  }
+
+  private _setEnabled(enabled: boolean): void {
+    this._enabled = enabled
+    document.documentElement.toggleAttribute("data-boyo-disabled", !enabled)
+    if (enabled) this._waitForApp()
+    else this._teardownRuntime()
   }
 
   // ── Runtime setup/teardown ────────────────────────────────────────────────
@@ -93,6 +103,8 @@ export class Controller {
     // Disconnect observer FIRST — no mutations during teardown
     this._observer?.disconnect()
     this._observer = null
+    this._appWaiter?.disconnect()
+    this._appWaiter = null
     this._disposeKeyBindings?.()
     this._disposeKeyBindings = null
     this._mgr.reset()
@@ -110,9 +122,10 @@ export class Controller {
       if (this._navDebounce !== null) clearTimeout(this._navDebounce)
       this._navDebounce = setTimeout(() => {
         this._navDebounce = null
-        // Only restart if we were actually running; if disabled, stay down.
+        // Only restart when enabled; disabled mode must also keep the static
+        // pre-mask bypassed after SPA navigation.
         this._teardownRuntime()
-        this._waitForApp()
+        if (this._enabled) this._waitForApp()
       }, NAV_DEBOUNCE_MS)
     }
     window.addEventListener("yt-navigate-finish", this._navListener)
@@ -121,6 +134,7 @@ export class Controller {
   // ── DOM bootstrap ─────────────────────────────────────────────────────────
 
   private _waitForApp(): void {
+    if (!this._enabled || this._appWaiter !== null) return
     if (document.querySelector("ytd-app")) {
       this._setupRuntime()
       return
@@ -156,11 +170,7 @@ export class Controller {
       // eslint-disable-next-line switch-lint/require-fail-fast-default
       switch (t) {
         case "ENABLED_CHANGED": {
-          if (m.enabled) {
-            this._setupRuntime()
-          } else {
-            this._teardownRuntime()
-          }
+          this._setEnabled(m.enabled === true)
           break
         }
 
