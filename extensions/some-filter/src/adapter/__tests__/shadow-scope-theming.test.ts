@@ -749,6 +749,62 @@ describe("createShadowScopeTheming.observe/teardown — reprojects on a vendor-i
     expect(hostRuleAfter?.cssText).not.toContain(`--sw-bg-0: ${swatch.bg0}`)
   })
 
+  it("reprojects a scope whose own committed invert amount has gone stale even when the poll's own sampled value nets to no change across ticks (bot-found, PR review round 2)", async () => {
+    const reg = registry()
+    const shadow = shadowRoot()
+    const id = registerHeld(reg, shadow)
+
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
+    theming.project(id)
+    await flushAll()
+    expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+
+    // Some *other* event (a genuine vendor mutation invalidating and
+    // recommitting this same scope, in the real pipeline) recommits this
+    // scope while the vendor's own invert is transiently active — never
+    // observed by this poll directly, the same way it would happen for
+    // real between two of the poll's own ticks.
+    document.documentElement.style.filter = "invert(1)"
+    reg.invalidate(id)
+    theming.project(id)
+    await flushAll()
+    expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+    const hostRuleMidway = [...shadow.adoptedStyleSheets]
+      .flatMap((sheet) => [...sheet.cssRules])
+      .find((r) => r.cssText.startsWith(":host"))
+    const compensated = compensateSwatch(swatch, 1)
+    expect(hostRuleMidway?.cssText).toContain(`--sw-bg-0: ${compensated.bg0}`)
+
+    // The vendor invert reverts before the poll's own next tick. A global
+    // "changed since my own last sample" comparison would see the *same*
+    // value (0) it saw before this whole sequence began and conclude
+    // nothing needs fixing — even though this scope's own realization was
+    // actually built for 1, not 0.
+    document.documentElement.style.removeProperty("filter")
+
+    vi.useFakeTimers()
+    try {
+      theming.observe()
+      await vi.advanceTimersByTimeAsync(SHEET_INTEGRITY_POLL_MS)
+    } finally {
+      vi.useRealTimers()
+    }
+    await flushAll()
+
+    expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+    const hostRuleAfter = [...shadow.adoptedStyleSheets]
+      .flatMap((sheet) => [...sheet.cssRules])
+      .find((r) => r.cssText.startsWith(":host"))
+    expect(hostRuleAfter?.cssText).toContain(`--sw-bg-0: ${swatch.bg0}`)
+    expect(hostRuleAfter?.cssText).not.toContain(
+      `--sw-bg-0: ${compensated.bg0}`
+    )
+  })
+
   it("a scope committed while a vendor invert is already active is left alone across later ticks if nothing changes", async () => {
     document.documentElement.style.filter = "invert(1)"
     const reg = registry()

@@ -266,6 +266,31 @@ export function createShadowScopeTheming(
    */
   const inFlight = new Map<ScopeId, Promise<void>>()
 
+  /**
+   * The vendor-invert amount each currently-`COMMITTED` scope's own
+   * host-token rule was actually built against, keyed by scope id — set in
+   * `projectOnce()`'s own `install()` callback below, at the exact moment
+   * that value is used, and cleared in `uninstall()`, which every path that
+   * takes a scope out of `COMMITTED` (`invalidate()`, `reRegister()`,
+   * `retire()` — `scope-registry.ts`'s own three callers) already runs.
+   * Read back by `reconcileCommittedSheets()`'s own poll, below.
+   *
+   * Bot-found, PR #1336's own round-2 review, on an earlier version of this
+   * poll that instead compared the *current* invert amount against only a
+   * single shared "as of this poll's own last tick" sample: that misses a
+   * toggle-and-revert that nets to the same value across two ticks (0 -> 1
+   * -> 0 inside one 250ms window, say) if some *other* event — a genuine
+   * vendor mutation invalidating and recommitting this same scope, for
+   * instance — commits a scope under the transient value in between. The
+   * poll's own two samples read identically in that case, even though that
+   * one scope's own realization was built for a value that is no longer
+   * current. Comparing against what each scope was individually built
+   * against, rather than one shared "did the sampled value change" flag,
+   * closes that regardless of how many times the value has moved between
+   * ticks.
+   */
+  const committedVendorInvertById = new Map<ScopeId, number>()
+
   async function projectOnce(
     id: ScopeId,
     forceInvalidate: boolean
@@ -361,11 +386,18 @@ export function createShadowScopeTheming(
         // (shadow-actuator.ts) is this scope's own equivalent of that
         // token declaration, and recomputed fresh every round: a vendor's
         // own invert toggle can flip at any time (#1281).
+        const vendorInvert = detectVendorInvert()
         realizeShadowColors(
           actions,
           root,
-          compensateSwatch(rawSwatch, detectVendorInvert())
+          compensateSwatch(rawSwatch, vendorInvert)
         )
+        // Recorded so reconcileCommittedSheets()'s own poll can later tell
+        // whether *this* commit's own compensation has gone stale, rather
+        // than only comparing against whatever the poll itself last
+        // sampled (committedVendorInvertById's own doc comment, above, has
+        // the bot-found race this closes).
+        committedVendorInvertById.set(id, vendorInvert)
       },
       // Only reachable once this scope has actually been COMMITTED
       // (scope-registry.ts's invalidate()/retire() are the two callers —
@@ -380,6 +412,7 @@ export function createShadowScopeTheming(
       // the only cleanup a permanently-removed scope ever gets.
       uninstall: () => {
         clearShadowSurfaceState(root)
+        committedVendorInvertById.delete(id)
       },
     })
   }
@@ -409,51 +442,12 @@ export function createShadowScopeTheming(
   }
 
   /**
-   * The vendor-invert amount every currently-`COMMITTED` scope's own
-   * host-token rule was last built against, as of this poll's own last
-   * tick (bot-found, PR #1336's own round-1 review — a real gap in #1281's
-   * own "recomputed every round" claim). `null` until the first tick, so a
-   * fresh `createShadowScopeTheming()` instance never spuriously treats its
-   * very first observation as a "change."
-   *
-   * `compensateSwatch(rawSwatch, detectVendorInvert())` in `projectOnce()`
-   * above only ever runs *during* a `project()` round — and nothing
-   * currently triggers one when *only* the page's own vendor invert toggles
-   * on/off after a scope has already committed with no other mutation
-   * anywhere near it: that toggle can live on `<html>`, or any ancestor
-   * outside a shadow host's own class/style, so neither
-   * `shadow-scope-discovery.ts`'s per-root observer (watches inside the
-   * shadow root) nor its host observer (watches only the host's own
-   * `class`/`style`) ever sees it, and this module's own sheet-presence
-   * check (`shadowRealizationIntact`, below) finds nothing missing either —
-   * every previously-adopted sheet is still exactly where it was, just
-   * compensated for a vendor-invert state that is no longer current. A
-   * scope committed under one invert amount would otherwise carry a stale
-   * host-token rule forever, until some unrelated later mutation happened
-   * to invalidate it.
-   *
-   * Initialized eagerly, here, at factory-construction time — not lazily on
-   * the poll's own first tick. `content.ts`'s own single, module-scope
-   * `createShadowScopeTheming()` call runs before `runAutoTheme()` (and so
-   * before `shadowScopeDiscovery.discover()` can register, let alone
-   * commit, any scope) ever does, so this is always a real baseline, never
-   * a placeholder standing in for "not observed yet." A lazily-`null`
-   * baseline would miss exactly the case this poll exists to catch: a scope
-   * that already committed under one invert amount before `observe()`'s
-   * own very first tick, with the vendor's own toggle having changed in
-   * between — that tick would wrongly read the *new* value as the
-   * baseline rather than noticing it differs from what the scope was built
-   * against.
-   */
-  let lastVendorInvert = detectVendorInvert()
-
-  /**
    * #1280/#1281's own poll body: for every currently `COMMITTED` shadow
    * scope whose realization either (a) a vendor's own wholesale
    * `adoptedStyleSheets` reassignment has silently broken, or (b) the
-   * page's own vendor-invert amount has changed out from under since it was
-   * last built, force the same repair a genuine vendor mutation would
-   * (`shadow-scope-discovery.ts`'s per-root observer:
+   * page's own vendor-invert amount no longer matches what that scope's own
+   * host-token rule was built against, force the same repair a genuine
+   * vendor mutation would (`shadow-scope-discovery.ts`'s per-root observer:
    * `registry.invalidate(id)` then `onScopeReady`/`project(id)`) —
    * invalidate re-engages the hold and tears down the now-stale realization
    * synchronously; the immediate `project()` call that follows reads the
@@ -473,15 +467,17 @@ export function createShadowScopeTheming(
    */
   function reconcileCommittedSheets(): void {
     const currentVendorInvert = detectVendorInvert()
-    const vendorInvertChanged = currentVendorInvert !== lastVendorInvert
-    lastVendorInvert = currentVendorInvert
 
     for (const id of registry.ids()) {
       const snapshot = registry.snapshot(id)
       if (snapshot === undefined) continue
       const root = snapshot.ref
       if (!isShadowRoot(root) || snapshot.state.kind !== "COMMITTED") continue
-      if (!vendorInvertChanged && shadowRealizationIntact(root)) continue
+      const committedVendorInvert = committedVendorInvertById.get(id)
+      const invertStale =
+        committedVendorInvert !== undefined &&
+        committedVendorInvert !== currentVendorInvert
+      if (!invertStale && shadowRealizationIntact(root)) continue
       registry.invalidate(id)
       project(id)
     }
