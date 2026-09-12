@@ -53,6 +53,11 @@ import type { SessionLifecycle } from "@some-extension/transport/session/lifecyc
 
 import { DYNAMIC_STYLE_ID, isHTMLElementNode, realize } from "./actuator"
 import type { FilterAction, SurfaceAttr, SurfaceKey } from "./contracts"
+import {
+  auditLegibility,
+  decideLegibility,
+  realizeLegibility,
+} from "./legibility-audit"
 import type { Swatch } from "./swatches"
 import { decide } from "./theme-adapter"
 
@@ -586,6 +591,7 @@ export function createContentSession(
   const hypothesis = createHypothesis<SurfaceKey, SurfaceAttr>()
   const provenance: ProvenanceStore<SurfaceKey> = createProvenanceStore()
   let lastScan: ScanResult = { elementsByKey: new Map(), attrsByKey: new Map() }
+  let lastRoot: Element = document.body
   let observer: MutationObserver | null = null
   let evidenceEpoch = session.epoch
 
@@ -616,6 +622,7 @@ export function createContentSession(
         canvas: scanCanvas(root),
       }))
       lastScan = scanned
+      lastRoot = root
       const timestamp = Date.now()
       for (const [key, attrs] of lastScan.attrsByKey) {
         update(hypothesis, provenance, {
@@ -654,6 +661,24 @@ export function createContentSession(
     try {
       const actions = invoke(hypothesis, { decide: (h) => decide(h, swatch) })
       realize(actions, lastScan.elementsByKey)
+
+      // SF-RC1 (#1340): the second, independent sense/decide/realize
+      // sub-pass — see legibility-audit.ts's own header for the isolation
+      // this relies on. Gated on activate-theme actually being present:
+      // with no theme applied (no swatch, or pageAlreadyDark()'s own
+      // restore-native) there is nothing this extension painted to audit.
+      // legibilityActions is never merged into (or derived from) `actions`
+      // above — pageAlreadyDark()/decide() never see this channel's
+      // evidence, by construction, not by a runtime check. A throw
+      // anywhere in this block is caught by this same try/catch, exactly
+      // like a thrown decide()/realize() above — #1266's FAILED_HELD
+      // discipline applies unchanged to this channel, not re-derived.
+      if (actions.some((action) => action.kind === "activate-theme")) {
+        const legibilityScan = auditLegibility(lastRoot)
+        const legibilityActions = decideLegibility(legibilityScan.attrsByKey)
+        realizeLegibility(legibilityActions, legibilityScan.elementsByKey)
+      }
+
       outcome = { kind: "ok", actions }
     } catch (error) {
       // onFire must run regardless — content.ts uses it to set the debug
