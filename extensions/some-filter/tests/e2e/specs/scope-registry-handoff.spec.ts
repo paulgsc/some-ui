@@ -28,6 +28,9 @@
  * in the module under test. Registering first means the page is already
  * dark by the time `captureFrames` starts looking, so its callback measures
  * exactly the handoff this spec is about.
+ *
+ * SF4 (#1360) classification: already compliant — asserts against
+ * `frames.ts`'s real video-frame oracle throughout.
  */
 
 import "@filter/playwright/fixtures/scope-registry-window-types"

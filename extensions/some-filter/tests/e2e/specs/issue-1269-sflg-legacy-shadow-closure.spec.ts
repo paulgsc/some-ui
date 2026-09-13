@@ -22,6 +22,14 @@
  * (Popover API, native `<dialog>`, `:fullscreen`) — is a separate mechanism
  * from shadow-DOM encapsulation and is deliberately untouched here. Nothing
  * in this file promotes any node to the top layer.
+ *
+ * SF4 (#1360) classification: already compliant, not one of the 16 needing
+ * classification — this file's own "Structural note" above already states
+ * it, and every assertion is a real `pixels.ts` sample. Flagged here as a
+ * correction to #1360's own inventory, which counted only
+ * `issue-741-auto-defects.spec.ts` and `legacy-invert-regimes.spec.ts` as
+ * sampling real output; this file (added or converted after #1360 was
+ * filed) already meets that bar too.
  */
 
 import { expect, test, waitForClassification } from "@filter/playwright/fixture"

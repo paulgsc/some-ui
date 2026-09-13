@@ -23,6 +23,15 @@
  * fixed. Without it, isGetTabFilterStateResponse(response) is always false
  * against an eternally-unresolved response, and the assertions below fail
  * the same way regardless of whether the filterConfig fix is present.
+ *
+ * SF4 (#1360) classification: internal-state claim, fine as-is. The
+ * assertions read the literal text of the injected style element
+ * (toContain("invert(0)") etc.) — a precise, directly observable claim
+ * about which config string got written, not about how the resulting
+ * filter composites once painted (legacy-invert-regimes.spec.ts already
+ * owns that separate, real pixel-sampled claim for the legacy mechanism).
+ * Promoting this to pixel sampling would prove nothing this string check
+ * doesn't already prove more precisely.
  */
 
 import { expect, test } from "@filter/playwright/fixture"

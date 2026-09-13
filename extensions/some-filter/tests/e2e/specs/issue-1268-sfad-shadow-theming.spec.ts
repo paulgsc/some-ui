@@ -20,6 +20,10 @@
  * realization is an ordinary CSS `background-color` rule (via
  * `ShadowRoot.adoptedStyleSheets`), not a `filter` — computed style already
  * reflects it directly, with no compositing gap to account for.
+ *
+ * SF4 (#1360) classification: visual-claim, already sound — this file's own
+ * paragraph above is exactly the justification #1360 asks every such spec to
+ * carry. No promotion needed.
  */
 
 import { parseColor, relativeLuminance } from "@filter/lib/content/color"

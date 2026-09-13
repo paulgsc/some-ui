@@ -38,6 +38,12 @@
  * Reads go through the background service worker, not `page.evaluate()`:
  * `chrome.storage` is an extension-context API, unreachable from a page's
  * own main-world JS.
+ *
+ * SF4 (#1360) classification: internal-state claim, fine as-is — same
+ * reasoning as `coverage-watchdog.spec.ts`'s own SF4 note (this is its
+ * scope-quantified analogue): every assertion here proves the watchdog
+ * instrument itself, via its own persisted diagnostics, not a rendered
+ * outcome. Not a pixel-sampling candidate.
  */
 
 import { expect, test, waitForClassification } from "@filter/playwright/fixture"

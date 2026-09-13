@@ -15,6 +15,9 @@
  * called — see `scope-registry-handoff.spec.ts`'s own header comment for why
  * this matters: `captureFrames`'s wall-clock seek can otherwise catch the
  * harness page's genuine pre-hold white frame and misreport it as a leak.
+ *
+ * SF4 (#1360) classification: already compliant — asserts against
+ * `frames.ts`'s real video-frame oracle throughout.
  */
 
 import "@filter/playwright/fixtures/scope-registry-window-types"
