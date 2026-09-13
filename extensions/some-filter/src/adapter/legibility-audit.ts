@@ -244,12 +244,32 @@ function parsePreciseColor(css: string): RGBA | null {
  * not model that property's own separate cascade, so a carrier using it is
  * flagged `"underdetermined"` rather than silently trusting `color`, which
  * could be arbitrarily wrong for it (bot-found).
+ *
+ * Reads this off `el.style` (the inline, literal specified value), never
+ * `style` (the computed value) — confirmed directly against real Chromium
+ * (bot-found, #1374): `getComputedStyle(el).getPropertyValue(
+ * "-webkit-text-fill-color")` resolves to a concrete `rgb(...)` color for
+ * *every* element there, mirroring `color`, even with no such declaration
+ * anywhere — never `""` nor the literal string `"currentcolor"`. Reading
+ * the computed value made this guard fire unconditionally in real
+ * Chromium, short-circuiting every carrier to `"underdetermined"` before
+ * any of the logic below ever ran; jsdom's tests passed only because
+ * jsdom preserves the literal `"currentcolor"` string, which is not
+ * representative. `el.style`'s own specified value has no such resolution
+ * step (confirmed the same way: `""` when never declared inline, the
+ * literal `"currentcolor"` when declared as such, a concrete color only
+ * for a genuine inline override) — the same reliably-inline-only signal
+ * the `color` inheritance check above already relies on, with the
+ * identical accepted limitation: a stylesheet-rule-based (non-inline)
+ * `-webkit-text-fill-color` declaration remains undetected.
  */
 function ownTextColor(
   el: Element,
   style: CSSStyleDeclaration
 ): RGBA | "underdetermined" | null {
-  const webkitTextFillColor = style.getPropertyValue("-webkit-text-fill-color")
+  const webkitTextFillColor = isHTMLElementNode(el)
+    ? el.style.getPropertyValue("-webkit-text-fill-color")
+    : ""
   if (webkitTextFillColor !== "" && webkitTextFillColor !== "currentcolor") {
     return "underdetermined"
   }
