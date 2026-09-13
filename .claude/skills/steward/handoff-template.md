@@ -49,7 +49,10 @@ finding as a bug report."
 
 Anything genuinely out of scope for the work just done: what it is, why it wasn't fixed here,
 where it's routed (a follow-up issue/story), and confirmation the review thread (if any) was
-replied to and left open rather than silently resolved.
+replied to and left open rather than silently resolved. A substantive finding surfaced by the
+one closing review allowed after `steward/SKILL.md`'s review-cycle cap is hit is not just
+disclosed here — file it as a tracked sub-issue of the story issue and also list it under
+"Continuing the relay" below, per that file's own default for the substantive branch.
 
 ## Process wrinkles this session hit
 
@@ -69,7 +72,10 @@ footer, merge method — whatever this repo's actual history shows, not a generi
 ## Continuing the relay
 
 What's next, what it depends on (confirm those dependencies are actually landed — don't trust a
-prior handoff's claim without checking), and what's explicitly out of scope for it.
+prior handoff's claim without checking), and what's explicitly out of scope for it. Also list
+any sub-issue filed from a capped closing review's substantive finding (`steward/SKILL.md`),
+with its issue number and a one-line summary, so it surfaces as work to pick up rather than
+being lost with this handoff.
 
 ## Sending the next handoff
 

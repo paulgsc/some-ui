@@ -80,7 +80,14 @@ closing review's finding, if any, this way instead:
   the evidence that's safe, and re-review-forever is exactly the cost this cap exists to bound.
 - **Substantive** (changes real behavior, logic, or a load-bearing rule) — that's the signal to
   stop automating entirely and hand off to the user for approval or manual merge, not push
-  another automatic round hoping it's the last one.
+  another automatic round hoping it's the last one. The default move for the finding itself is
+  to file it as a tracked sub-issue of the story issue this PR closes (`sub_issue_write`), not
+  only leave it disclosed on the PR's own review thread — a thread stops being visible once the
+  PR merges or closes, while a sub-issue survives to be picked up by a later story or session.
+  Also append it to the next handoff's own "Continuing the relay" section
+  (`handoff-template.md`), naming the sub-issue number, so a successor session that never reads
+  this PR's thread still inherits the finding as tracked work rather than losing it at the PR
+  boundary.
 
 Either branch terminates. There is no version of this rule where a capped PR waits on one more
 automatic review indefinitely.
