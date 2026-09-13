@@ -1,16 +1,30 @@
 /**
  * #1374 — `ownTextColor`'s own `-webkit-text-fill-color` guard read the
- * *computed* value, which real Chromium always resolves to a concrete
- * color (mirroring `color`) even with no such declaration anywhere. The
- * guard fired unconditionally, forcing `foreground: "underdetermined"` for
- * every legibility-audit candidate in production — silently turning a real
- * contrast violation into inconclusive noise instead of the meaningful
- * `"violated"` diagnostic this channel exists to produce.
+ * *computed* value in isolation, which real Chromium always resolves to a
+ * concrete color (mirroring `color`) even with no such declaration
+ * anywhere. The guard fired unconditionally, forcing `foreground:
+ * "underdetermined"` for every legibility-audit candidate in production —
+ * silently turning a real contrast violation into inconclusive noise
+ * instead of the meaningful `"violated"` diagnostic this channel exists to
+ * produce.
  *
- * jsdom cannot reproduce this: it preserves the literal `"currentcolor"`
- * string for an unset/`currentcolor`-valued property, which is why
- * `legibility-audit.test.ts`'s own unit tests passed throughout. Only a
- * real Chromium run can prove the fix.
+ * A first fix (inspecting only `el.style`, the inline specified value)
+ * closed that but reopened a different, worse gap Codex's own review of
+ * that fix caught: an inline-only check never sees a stylesheet-rule-based
+ * or inherited `-webkit-text-fill-color` — the actual `background-clip:
+ * text` pattern (`color` set inline as a fallback, the real fill supplied
+ * by a shared class) — silently trusting `color` for a carrier whose real
+ * rendered glyph is a completely different color. The landed fix instead
+ * compares the *computed* `-webkit-text-fill-color` against the computed
+ * `color` on the same element (`legibility-audit.ts`'s own doc comment on
+ * `ownTextColor` has the full reasoning); both specs below guard one half
+ * of that comparison.
+ *
+ * jsdom cannot reproduce either failure mode: it preserves the literal
+ * `"currentcolor"` string for an unset/`currentcolor`-valued property
+ * rather than resolving it, which is why `legibility-audit.test.ts`'s own
+ * unit tests passed throughout both the bug and the first, incomplete fix.
+ * Only a real Chromium run can prove either half.
  *
  * Deliberately not run through the full `--load-extension` pipeline
  * (`../fixture.ts`): the main auto-theme pipeline's own per-surface
@@ -76,6 +90,24 @@ test.use({
   },
 })
 
+async function auditPage(page: {
+  evaluate: <T>(
+    fn: (globalName: typeof LEGIBILITY_AUDIT_GLOBAL) => T,
+    arg: typeof LEGIBILITY_AUDIT_GLOBAL
+  ) => Promise<T>
+}): Promise<{
+  attrs: Array<{ foreground: unknown; backdrop: unknown }>
+  actions: ReadonlyArray<{ kind: string; key: string; verdict: string }>
+}> {
+  return page.evaluate((globalName: typeof LEGIBILITY_AUDIT_GLOBAL) => {
+    const api = window[globalName]
+    if (api === undefined) throw new Error(`window.${globalName} missing`)
+    const { attrsByKey } = api.auditLegibility(document.body)
+    const actions = api.decideLegibility(attrsByKey)
+    return { attrs: Array.from(attrsByKey.values()), actions }
+  }, LEGIBILITY_AUDIT_GLOBAL)
+}
+
 test.describe("legibility audit's -webkit-text-fill-color guard against real Chromium (#1374)", () => {
   test("an explicit-colored carrier with no own -webkit-text-fill-color resolves a real color, not underdetermined", async ({
     page,
@@ -95,16 +127,7 @@ test.describe("legibility audit's -webkit-text-fill-color guard against real Chr
     `)
     await page.addScriptTag({ content: scriptContent })
 
-    const result = await page.evaluate(
-      (globalName: typeof LEGIBILITY_AUDIT_GLOBAL) => {
-        const api = window[globalName]
-        if (api === undefined) throw new Error(`window.${globalName} missing`)
-        const { attrsByKey } = api.auditLegibility(document.body)
-        const actions = api.decideLegibility(attrsByKey)
-        return { attrs: Array.from(attrsByKey.values()), actions }
-      },
-      LEGIBILITY_AUDIT_GLOBAL
-    )
+    const result = await auditPage(page)
 
     // Before the fix: ownTextColor's -webkit-text-fill-color guard read
     // getComputedStyle's own resolved value — a concrete color in real
@@ -131,6 +154,52 @@ test.describe("legibility audit's -webkit-text-fill-color guard against real Chr
         kind: "tag-legibility",
         key: "rgb(20, 20, 20)~rgb(13, 17, 23)",
         verdict: "violated",
+      },
+    ])
+  })
+
+  test("a class-provided -webkit-text-fill-color override is still detected as underdetermined", async ({
+    page,
+    scriptContent,
+  }) => {
+    // Codex's own finding on the first fix (inline-only): the actual
+    // `background-clip: text` pattern supplies -webkit-text-fill-color via
+    // a shared class, not an inline declaration — `color: white` here is
+    // only ever a non-gradient fallback, never what actually renders.
+    // Checking only el.style silently missed this, auditing the carrier as
+    // legible white-on-dark using `color` while the real painted glyph
+    // (#111, from the class) would be effectively invisible against the
+    // same dark backdrop. The fixed guard compares computed
+    // -webkit-text-fill-color against computed color instead, which
+    // catches a class-based override exactly the same way as an inline
+    // one.
+    await page.setContent(`
+      <style>.fill-override { -webkit-text-fill-color: rgb(17, 17, 17); }</style>
+      <div id="ancestor" style="background-color: rgb(17,17,17)">
+        <span id="carrier" class="fill-override" style="color: white">hi</span>
+      </div>
+    `)
+    await page.addScriptTag({ content: scriptContent })
+
+    const result = await auditPage(page)
+
+    expect(
+      result.attrs,
+      "#carrier's real rendered fill comes from a class rule, not `color` " +
+        `— it must still be flagged underdetermined, not read as legible ` +
+        `white-on-dark via \`color\` alone: ${JSON.stringify(result.attrs)}`
+    ).toEqual([
+      {
+        foreground: "underdetermined",
+        backdrop: [17 / 255, 17 / 255, 17 / 255, 1],
+      },
+    ])
+
+    expect(result.actions).toEqual([
+      {
+        kind: "tag-legibility",
+        key: "underdetermined~rgb(17, 17, 17)",
+        verdict: "underdetermined",
       },
     ])
   })

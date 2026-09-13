@@ -245,32 +245,58 @@ function parsePreciseColor(css: string): RGBA | null {
  * flagged `"underdetermined"` rather than silently trusting `color`, which
  * could be arbitrarily wrong for it (bot-found).
  *
- * Reads this off `el.style` (the inline, literal specified value), never
- * `style` (the computed value) — confirmed directly against real Chromium
- * (bot-found, #1374): `getComputedStyle(el).getPropertyValue(
- * "-webkit-text-fill-color")` resolves to a concrete `rgb(...)` color for
- * *every* element there, mirroring `color`, even with no such declaration
- * anywhere — never `""` nor the literal string `"currentcolor"`. Reading
- * the computed value made this guard fire unconditionally in real
- * Chromium, short-circuiting every carrier to `"underdetermined"` before
- * any of the logic below ever ran; jsdom's tests passed only because
- * jsdom preserves the literal `"currentcolor"` string, which is not
- * representative. `el.style`'s own specified value has no such resolution
- * step (confirmed the same way: `""` when never declared inline, the
- * literal `"currentcolor"` when declared as such, a concrete color only
- * for a genuine inline override) — the same reliably-inline-only signal
- * the `color` inheritance check above already relies on, with the
- * identical accepted limitation: a stylesheet-rule-based (non-inline)
- * `-webkit-text-fill-color` declaration remains undetected.
+ * Compares the *computed* `-webkit-text-fill-color` against the computed
+ * `color` on this same element, rather than checking either in isolation
+ * (bot-found, #1374, corrected after a first fix regressed the exact case
+ * below — both confirmed directly against real Chromium):
+ *
+ *   - Reading the computed `-webkit-text-fill-color` alone is wrong: it
+ *     resolves to a concrete `rgb(...)` color for *every* element in real
+ *     Chromium, mirroring `color`, even with no such declaration anywhere
+ *     — never `""` nor the literal string `"currentcolor"` — so a bare
+ *     "is it set" check fires unconditionally, short-circuiting every
+ *     carrier to `"underdetermined"` before any of the logic below runs.
+ *     jsdom's own tests passed regardless, because jsdom preserves the
+ *     literal `"currentcolor"` string, which is not representative.
+ *   - Reading only `el.style` (the inline specified value) avoids that,
+ *     but silently stops detecting the property's two other real sources:
+ *     a stylesheet rule (the actual `background-clip: text` pattern —
+ *     `color` set inline as a fallback, the real fill supplied by a
+ *     shared class) and inheritance from an ancestor. Both leave `el.style`
+ *     empty while still controlling the rendered glyph — a carrier with
+ *     `color: white` and a class-provided `-webkit-text-fill-color: #111`
+ *     would be audited as legible white text, when the glyph actually
+ *     painted is `#111`.
+ *
+ * Comparing the two *computed* values sidesteps both failure modes at
+ * once: `-webkit-text-fill-color`'s own initial value is `currentcolor`
+ * ("defer to `color`"), which a real browser resolves relative to *this
+ * element's own* `color` fresh at every element (confirmed directly: an
+ * element with no declaration anywhere always has
+ * `getComputedStyle(el).getPropertyValue("-webkit-text-fill-color") ===
+ * getComputedStyle(el).color`, regardless of what an ancestor declares).
+ * So when the two computed values are equal, nothing is currently
+ * overriding the rendered fill away from `color` — from *any* source,
+ * inline, stylesheet, or inherited — and it is safe to fall through to the
+ * `color`-based logic below. jsdom's own unset value (`""`, or the literal
+ * keyword `"currentcolor"` it preserves rather than resolving) is handled
+ * by the two explicit checks ahead of the comparison, so this never
+ * depends on jsdom's own non-representative resolution behavior. When the
+ * two computed values differ, an explicit fill is in effect this module
+ * does not model the cascade of, so the carrier is flagged
+ * `"underdetermined"` rather than silently trusting `color`, which could
+ * be arbitrarily wrong for it.
  */
 function ownTextColor(
   el: Element,
   style: CSSStyleDeclaration
 ): RGBA | "underdetermined" | null {
-  const webkitTextFillColor = isHTMLElementNode(el)
-    ? el.style.getPropertyValue("-webkit-text-fill-color")
-    : ""
-  if (webkitTextFillColor !== "" && webkitTextFillColor !== "currentcolor") {
+  const webkitTextFillColor = style.getPropertyValue("-webkit-text-fill-color")
+  if (
+    webkitTextFillColor !== "" &&
+    webkitTextFillColor !== "currentcolor" &&
+    webkitTextFillColor !== style.color
+  ) {
     return "underdetermined"
   }
 
