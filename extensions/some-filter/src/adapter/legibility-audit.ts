@@ -1,4 +1,12 @@
 /**
+ * The paint grammar `resolveEffectiveBackdrop`/`ownTextColor`/
+ * `auditLegibility` implement below — which CSS categories are `sound`,
+ * `heuristic`, or `unknown`, and which test owns each — is documented as a
+ * checked decision table in `../../docs/legibility-paint-grammar.md`
+ * (TSC-SF1, #1357). Consult it before adding a new category here; it exists
+ * so the next gap is a designed table update, not another incident-driven
+ * review round.
+ *
  * SF-RC1 (#1340) — the second, independent sense→decide→realize sub-pass
  * canon C.6/Definition C.3 (`Φ_comfort`) names as a later story: "once the
  * pipeline can assert *rendered* colors converge to a chosen swatch at
