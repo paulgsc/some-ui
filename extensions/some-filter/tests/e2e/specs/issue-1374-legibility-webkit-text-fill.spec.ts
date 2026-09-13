@@ -41,72 +41,10 @@
  * identical shape of problem.
  */
 import {
-  LEGIBILITY_AUDIT_GLOBAL,
-  legibilityAuditScript,
-} from "@filter/playwright/fixtures/legibility-audit-module"
-import { test as base, expect } from "@playwright/test"
-
-type LegibilityAuditWindowApi = {
-  auditLegibility: (root: Element) => {
-    attrsByKey: ReadonlyMap<string, { foreground: unknown; backdrop: unknown }>
-  }
-  decideLegibility: (
-    attrsByKey: ReadonlyMap<string, { foreground: unknown; backdrop: unknown }>
-  ) => ReadonlyArray<{ kind: string; key: string; verdict: string }>
-}
-
-// `page.evaluate` runs this file's callbacks in the browser, where the
-// injected script (page.addScriptTag) has actually assigned
-// window[LEGIBILITY_AUDIT_GLOBAL] — real at runtime, but nothing lib.dom's
-// own `Window` type knows about. Augmenting it for this one specific,
-// literal key (LEGIBILITY_AUDIT_GLOBAL's own inferred `const` type) lets
-// `window[globalName]` type-check directly, with no type assertion needed.
-declare global {
-  // `interface`, not `type`: augmenting the existing global `Window`
-  // interface via declaration merging requires it — `type` cannot merge.
-  // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
-  interface Window {
-    [LEGIBILITY_AUDIT_GLOBAL]?: LegibilityAuditWindowApi
-  }
-}
-
-const test = base.extend<{ scriptContent: string }>({
-  // eslint-disable-next-line no-empty-pattern
-  scriptContent: async ({}, use) => {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    await use(await legibilityAuditScript())
-  },
-})
-
-// This spec uses @playwright/test's own default `page` fixture (a bare
-// page, no extension) rather than ../fixture.ts's launchPersistentContext
-// — so, unlike every other spec here, it never reads
-// PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH on its own. Without this, Playwright
-// falls back to its own auto-managed browser download, which this sandbox
-// (and any environment following fixture.ts's own setup) does not have.
-test.use({
-  launchOptions: {
-    executablePath: process.env["PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"],
-  },
-})
-
-async function auditPage(page: {
-  evaluate: <T>(
-    fn: (globalName: typeof LEGIBILITY_AUDIT_GLOBAL) => T,
-    arg: typeof LEGIBILITY_AUDIT_GLOBAL
-  ) => Promise<T>
-}): Promise<{
-  attrs: Array<{ foreground: unknown; backdrop: unknown }>
-  actions: ReadonlyArray<{ kind: string; key: string; verdict: string }>
-}> {
-  return page.evaluate((globalName: typeof LEGIBILITY_AUDIT_GLOBAL) => {
-    const api = window[globalName]
-    if (api === undefined) throw new Error(`window.${globalName} missing`)
-    const { attrsByKey } = api.auditLegibility(document.body)
-    const actions = api.decideLegibility(attrsByKey)
-    return { attrs: Array.from(attrsByKey.values()), actions }
-  }, LEGIBILITY_AUDIT_GLOBAL)
-}
+  auditPage,
+  legibilityAuditTest as test,
+} from "@filter/playwright/fixtures/legibility-audit-harness"
+import { expect } from "@playwright/test"
 
 test.describe("legibility audit's -webkit-text-fill-color guard against real Chromium (#1374)", () => {
   test("an explicit-colored carrier with no own -webkit-text-fill-color resolves a real color, not underdetermined", async ({

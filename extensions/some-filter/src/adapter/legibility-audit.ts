@@ -84,7 +84,6 @@ const SKIP_TAGS = new Set([
   "EMBED",
   "OBJECT",
   "SVG",
-  "IFRAME",
 ])
 
 function isExtensionOwned(el: Element): boolean {
@@ -92,10 +91,6 @@ function isExtensionOwned(el: Element): boolean {
   if (el.hasAttribute("data-my-ext")) return true
   if (el.closest("[data-my-ext]")) return true
   return false
-}
-
-function shouldSkip(el: Element): boolean {
-  return SKIP_TAGS.has(el.tagName) || isExtensionOwned(el)
 }
 
 /**
@@ -193,6 +188,114 @@ function parsePreciseColor(css: string): RGBA | null {
     Number.parseInt(b, 10) / 255,
     a,
   ]
+}
+
+let supportsPseudoElementStyle: boolean | undefined
+
+/**
+ * `getComputedStyle`'s own two-argument form (`getComputedStyle(el,
+ * "::before")`) is the only way to read a generated pseudo-element's own
+ * resolved style — but jsdom does not implement it (TSC-SF2, #1358):
+ * confirmed directly against jsdom's own source (`Window.js`), a truthy
+ * `pseudoElt` argument logs a "not implemented" warning and then falls
+ * through to computing and returning the *host* element's own declaration,
+ * completely ignoring the pseudo argument. Naively calling
+ * `hasGeneratedPseudoHazard` below without this guard would therefore
+ * misread every jsdom-run element's own (real) `content`/`background-color`
+ * as if it belonged to that element's `::before`, corrupting essentially
+ * every existing candidate in this file's own jsdom unit tests, not just
+ * leaving the new check untested.
+ *
+ * Distinguishes real support from jsdom's pass-through with a single, one-
+ * time probe rather than sniffing the environment by name: `<html>` has no
+ * authored `::before` rule in either environment, so a spec-correct
+ * implementation reports `content: "none"` for it (confirmed directly
+ * against this repo's own Playwright-bundled Chromium) while jsdom's pass-
+ * through reports whatever `<html>`'s own (real) `content` property
+ * computes to — `""`, never `"none"`, since jsdom does not implement the
+ * `content` CSS property on ordinary elements either (confirmed directly).
+ * Memoized: `getComputedStyle` is not free, and this module's own
+ * `auditLegibility` walk calls the function below once per visited element.
+ */
+function pseudoElementStyleIsSupported(): boolean {
+  supportsPseudoElementStyle ??=
+    getComputedStyle(document.documentElement, "::before").content === "none"
+  return supportsPseudoElementStyle
+}
+
+/**
+ * `::before`/`::after`/`::marker` are real paint layers `auditLegibility`'s
+ * `TreeWalker` structurally cannot see — none of them are nodes, so none
+ * can ever enter a `SHOW_ELEMENT` walk (TSC-SF2, #1358; the exact gap
+ * `docs/legibility-paint-grammar.md`'s own `PG-GEN-PSEUDO` row recorded as
+ * `unknown`). A decorative `::before`/`::after` capable of painting a real
+ * background over/behind a carrier's own glyph, or a `::marker` carrying a
+ * color independent of its host's, can each currently produce a false
+ * `"legible"` verdict — or simply never enter this audit at all if the host
+ * itself has no explicit own color for `ownTextColor` to find. This is a
+ * *bounded* hazard check, not real occlusion geometry (this module does not
+ * attempt paint-order/bounding-box analysis anywhere else either, see
+ * `hasPositioningHazard`'s own doc comment on the identical limitation): it
+ * conservatively flags a host `"underdetermined"` whenever a generated
+ * pseudo-element could plausibly paint something the host's own resolved
+ * foreground doesn't already account for, rather than trying to resolve
+ * what actually renders.
+ *
+ * `::before`/`::after`: a real Chromium probe (confirmed directly — jsdom
+ * cannot exercise this at all, see `pseudoElementStyleIsSupported`'s own
+ * doc comment) shows `content` reliably distinguishes "no such pseudo-
+ * element" (`"none"`) from "one exists" (the CSS-serialized form of
+ * whatever `content` resolves to, e.g. `'""'` for an authored empty string,
+ * `'"x"'` for real text) — `display` cannot: real Chromium reports
+ * `"inline"` for `::before`'s own computed `display` unconditionally, even
+ * on an element with no `::before` rule at all, so it carries no signal
+ * about whether the pseudo-element is actually generated. An authored empty
+ * string (`content: ""`, the ordinary clearfix idiom) generates a box but
+ * paints nothing *unless* it also carries its own background — flagging
+ * every clearfix hack on every page as `"underdetermined"` would make this
+ * check far noisier than the risk it guards against, so that one case is
+ * excluded unless a real background is also present.
+ *
+ * `::marker`: generated for any host with computed `display: list-item`
+ * (confirmed directly — a non-list-item element still returns a full
+ * `::marker` declaration from `getComputedStyle`, so `display` on the
+ * *marker itself* carries no signal here either; the host's own `display`
+ * is what actually gates whether a marker box exists). Compares the
+ * marker's own computed `color` against the host's own computed `color` —
+ * the same "equal means nothing is overriding, unequal means something
+ * genuinely is" comparison `ownTextColor`'s own `-webkit-text-fill-color`
+ * guard already established as sound for an identical shape of problem
+ * (#1374): confirmed directly that an ordinary `<li>` with no marker color
+ * override has `getComputedStyle(el, "::marker").color ===
+ * getComputedStyle(el).color`, and that an explicit `::marker { color: … }`
+ * rule makes them differ.
+ */
+function hasGeneratedPseudoHazard(
+  el: Element,
+  style: CSSStyleDeclaration
+): boolean {
+  if (!pseudoElementStyleIsSupported()) return false
+
+  for (const pseudo of ["::before", "::after"] as const) {
+    const pseudoStyle = getComputedStyle(el, pseudo)
+    if (pseudoStyle.content === "none") continue
+    if (pseudoStyle.content === '""') {
+      const hasBackgroundColor =
+        parsePreciseColor(pseudoStyle.backgroundColor) !== null
+      const hasBackgroundImage =
+        pseudoStyle.backgroundImage !== "" &&
+        pseudoStyle.backgroundImage !== "none"
+      if (!hasBackgroundColor && !hasBackgroundImage) continue
+    }
+    return true
+  }
+
+  if (style.display === "list-item") {
+    const markerStyle = getComputedStyle(el, "::marker")
+    if (markerStyle.color !== style.color) return true
+  }
+
+  return false
 }
 
 /**
@@ -514,6 +617,22 @@ function legibilityKeyFor(attr: LegibilityAttr): LegibilityKey {
   return `${foregroundKey}~${backdropKey}`
 }
 
+function registerCandidate(
+  node: Element,
+  attr: LegibilityAttr,
+  elementsByKey: Map<LegibilityKey, Array<Element>>,
+  attrsByKey: Map<LegibilityKey, LegibilityAttr>
+): void {
+  const key = legibilityKeyFor(attr)
+  const list = elementsByKey.get(key)
+  if (list !== undefined) {
+    list.push(node)
+  } else {
+    elementsByKey.set(key, [node])
+    attrsByKey.set(key, attr)
+  }
+}
+
 /**
  * Senses every in-domain, rendered carrier with its own explicit (not
  * inherited) foreground color — D-4's own amended audit boundary (SF-RC's
@@ -527,6 +646,19 @@ function legibilityKeyFor(attr: LegibilityAttr): LegibilityKey {
  * *foreground* color against a *resolved* backdrop, a completely different
  * relation, so an already-tagged surface is exactly as valid a candidate as
  * an untouched one.
+ *
+ * An `IFRAME` is registered as its own `"underdetermined"`/`"underdetermined"`
+ * diagnostic carrier rather than silently skip-listed (TSC-SF2, #1358; the
+ * gap `docs/legibility-paint-grammar.md`'s own `PG-SCOPE-IFRAME-CONTENT` row
+ * recorded as `unknown`): content actually rendered *inside* an iframe's own
+ * document is a completely separate rendering context this audit cannot
+ * see, with its own backdrop this element's own `resolveEffectiveBackdrop`
+ * would not correctly describe either — both channels are unknown, not just
+ * one. Deliberately does not traverse into `contentDocument` (same-origin or
+ * not) to sense or theme what's inside — that would mean recursively
+ * projecting this extension's own pipeline into every frame on the page,
+ * which is a materially larger undertaking (`all_frames`-style theming) than
+ * this diagnostic-only channel's own scope.
  */
 export function auditLegibility(
   root: Element | ShadowRoot
@@ -538,22 +670,28 @@ export function auditLegibility(
   let node: Node | null = walker.nextNode()
 
   while (node !== null) {
-    if (isHTMLElementNode(node) && !shouldSkip(node)) {
+    if (isHTMLElementNode(node) && !isExtensionOwned(node)) {
       const style = getComputedStyle(node)
       if (isRendered(node, style)) {
-        const foreground = ownTextColor(node, style)
-        if (foreground !== null) {
-          const attr: LegibilityAttr = {
-            foreground,
-            backdrop: resolveEffectiveBackdrop(node),
-          }
-          const key = legibilityKeyFor(attr)
-          const list = elementsByKey.get(key)
-          if (list !== undefined) {
-            list.push(node)
-          } else {
-            elementsByKey.set(key, [node])
-            attrsByKey.set(key, attr)
+        if (node.tagName === "IFRAME") {
+          registerCandidate(
+            node,
+            { foreground: "underdetermined", backdrop: "underdetermined" },
+            elementsByKey,
+            attrsByKey
+          )
+        } else if (!SKIP_TAGS.has(node.tagName)) {
+          const ownForeground = ownTextColor(node, style)
+          const foreground = hasGeneratedPseudoHazard(node, style)
+            ? "underdetermined"
+            : ownForeground
+          if (foreground !== null) {
+            registerCandidate(
+              node,
+              { foreground, backdrop: resolveEffectiveBackdrop(node) },
+              elementsByKey,
+              attrsByKey
+            )
           }
         }
       }
