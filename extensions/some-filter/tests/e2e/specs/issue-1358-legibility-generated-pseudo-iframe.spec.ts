@@ -219,6 +219,90 @@ test.describe("legibility audit's generated-pseudo-element hazard against real C
     ).toBe("underdetermined")
   })
 
+  test("a hazard on an ancestor beyond one that already resolved opaque still forces underdetermined", async ({
+    page,
+    scriptContent,
+  }) => {
+    // Codex's own round-2 finding: the round-1 fix still gated the pseudo-
+    // hazard check on resolved === null, same as the genuinely occludable
+    // hazards — so once a *nearer* ancestor's own opaque background
+    // resolved, walking further out to find #outer's own hazardous
+    // ::before never even checked it, incorrectly returning the already-
+    // resolved (real) color instead of underdetermined. #outer authors no
+    // background of its own, so #middle's rgb(200,200,200) is what
+    // resolves first.
+    await page.setContent(`
+      <style>.overlay::before { content: ""; background-color: rgb(10,10,10); }</style>
+      <div id="outer" class="overlay">
+        <div id="middle" style="background-color: rgb(200,200,200)">
+          <span id="descendant" style="color: rgb(0,0,0)">hi</span>
+        </div>
+      </div>
+    `)
+    await page.addScriptTag({ content: scriptContent })
+
+    const result = await auditPage(page)
+
+    const descendantEntry = result.attrs.find(
+      (a) => Array.isArray(a.foreground) && a.foreground[0] === 0
+    )
+    expect(
+      descendantEntry?.backdrop,
+      `expected #descendant's backdrop to be underdetermined despite #middle's own background already resolving opaque: ${JSON.stringify(result.attrs)}`
+    ).toBe("underdetermined")
+  })
+
+  test("a page-wide universal ::before selector does not disable hazard detection (capability probe)", async ({
+    page,
+    scriptContent,
+  }) => {
+    // Codex's own round-2 finding: a synthetic, invented tag name still
+    // matches a page-wide *::before selector by tag name like any other
+    // element — the round-1 fix closed the html::before case but not this
+    // more general one.
+    await page.setContent(`
+      <style>
+        *::before { content: ""; }
+        .badge::before { content: "x"; }
+      </style>
+      <div id="ancestor" style="background-color: rgb(255,255,255)">
+        <span id="carrier" class="badge" style="color: rgb(0,0,0)">hi</span>
+      </div>
+    `)
+    await page.addScriptTag({ content: scriptContent })
+
+    const result = await auditPage(page)
+
+    expect(
+      result.attrs,
+      `expected #carrier's own ::before hazard to still be detected despite a page-wide *::before rule: ${JSON.stringify(result.attrs)}`
+    ).toEqual([{ foreground: "underdetermined", backdrop: "underdetermined" }])
+  })
+
+  test("an unrecognized (CSS Color 4) background on an empty pseudo-element still forces underdetermined", async ({
+    page,
+    scriptContent,
+  }) => {
+    // Codex's own round-2 finding: parsePreciseColor only understands hex
+    // and rgb()/rgba() — a real, opaque oklch() background painted nothing
+    // as far as the round-1 check was concerned, silently exempting a real
+    // occluding layer this module simply can't parse.
+    await page.setContent(`
+      <style>.oklch-bg::before { content: ""; background-color: oklch(0 0 0); }</style>
+      <div id="ancestor" style="background-color: rgb(255,255,255)">
+        <span id="carrier" class="oklch-bg" style="color: rgb(0,0,0)">hi</span>
+      </div>
+    `)
+    await page.addScriptTag({ content: scriptContent })
+
+    const result = await auditPage(page)
+
+    expect(
+      result.attrs,
+      `expected #carrier to be forced fully underdetermined by its own oklch()-painted ::before: ${JSON.stringify(result.attrs)}`
+    ).toEqual([{ foreground: "underdetermined", backdrop: "underdetermined" }])
+  })
+
   test("an ::marker color override registers its host as a new underdetermined candidate", async ({
     page,
     scriptContent,
