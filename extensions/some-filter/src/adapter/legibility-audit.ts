@@ -313,10 +313,17 @@ function pseudoElementStyleIsSupported(): boolean {
  * `content`; confirmed directly that a real Chromium `::before` with both
  * `content: "x"` and `display: none` authored together reports
  * `display: "none"`, distinctly from the same rule without it reporting
- * `"inline"`), so this is checked for both the real-content and empty-
- * content cases alike, before either paint check below ever runs. An
- * authored empty string (`content: ""`, the ordinary clearfix idiom)
- * generates a box but
+ * `"inline"`). `visibility: hidden` is the identical case for a box that
+ * *does* still generate (unlike `display: none`, it keeps the box in
+ * layout, only suppressing its own paint) — checked the same way and for
+ * the same reason (bot-found, Codex's own closing review of this PR:
+ * confirmed directly that a real Chromium `::before` with `content: "x"`
+ * and `visibility: hidden` reports `visibility: "hidden"`, distinctly from
+ * `"visible"`, while its own `display` stays `"inline"` regardless — so
+ * `display` alone would not have caught this one). Both are checked for
+ * the real-content and empty-content cases alike, before either paint
+ * check below ever runs. An authored empty string (`content: ""`, the
+ * ordinary clearfix idiom) generates a box but
  * paints nothing *unless* it also carries its own background, border,
  * outline, or box-shadow (bot-found, Codex review round 1: a border or
  * box-shadow alone, with no background at all, still paints a real,
@@ -360,6 +367,7 @@ function hasGeneratedPseudoHazard(
     const pseudoStyle = getComputedStyle(el, pseudo)
     if (pseudoStyle.content === "none") continue
     if (pseudoStyle.display === "none") continue
+    if (pseudoStyle.visibility === "hidden") continue
     if (pseudoStyle.content === '""') {
       const hasBackgroundColor =
         parsePreciseColor(pseudoStyle.backgroundColor) !== null ||

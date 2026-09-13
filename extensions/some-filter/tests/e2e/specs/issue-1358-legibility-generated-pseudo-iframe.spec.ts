@@ -107,6 +107,30 @@ test.describe("legibility audit's generated-pseudo-element hazard against real C
     ).toEqual([{ foreground: [0, 0, 0, 1], backdrop: [1, 1, 1, 1] }])
   })
 
+  test("a ::before with real content but visibility:hidden does not force underdetermined", async ({
+    page,
+    scriptContent,
+  }) => {
+    // Codex's own closing-review finding: visibility:hidden keeps the
+    // pseudo-element's box in layout (unlike display:none) but still
+    // suppresses its own paint entirely — display alone would not have
+    // caught this, since it stays "inline" regardless.
+    await page.setContent(`
+      <style>.badge::before { content: "x"; visibility: hidden; background-color: rgb(10,10,10); }</style>
+      <div id="ancestor" style="background-color: rgb(255,255,255)">
+        <span id="carrier" class="badge" style="color: rgb(0,0,0)">hi</span>
+      </div>
+    `)
+    await page.addScriptTag({ content: scriptContent })
+
+    const result = await auditPage(page)
+
+    expect(
+      result.attrs,
+      `expected a visibility:hidden ::before not to affect #carrier's own resolved color: ${JSON.stringify(result.attrs)}`
+    ).toEqual([{ foreground: [0, 0, 0, 1], backdrop: [1, 1, 1, 1] }])
+  })
+
   test("an empty-content ::before with its own real background still forces underdetermined", async ({
     page,
     scriptContent,
