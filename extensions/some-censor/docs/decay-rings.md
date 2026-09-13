@@ -1,0 +1,381 @@
+# Decay Rings
+
+> The visual grammar for temporal maturity. Derived from
+> [`quarantine-capsule.md`](./quarantine-capsule.md) — every rule here cites a
+> `D` or `M` number, and a rule that cannot is decoration.
+
+## 1. What the grammar has to say
+
+A sealed card must communicate, without language and without leaking anything
+(D1, D4):
+
+1. how far this artifact is from the present (`M0`–`M4`),
+2. that the distance, not a judgement about the content, is what is being
+   shown (§5),
+3. that nothing is being withheld _from_ the user — the artifact is simply not
+   yet admissible (D7).
+
+The third is the one a naive design gets wrong. Locks, countdown timers,
+progress bars and "unlock" copy all say _there is a reward behind this and you
+are being made to wait_. That is the psychology of the feed reproduced inside
+the tool built to escape it.
+
+### The metaphor
+
+Not a nuclear control room. Accurate about danger, but it leaves the user
+surrounded by alarm, which is the opposite of living quietly inside a capsule.
+
+Two paired metaphors instead:
+
+- **Recent** — heat, emission, containment.
+- **Mature** — sediment, weathering, geological time.
+
+The card does not travel from _bad_ to _good_. It travels from **hot and
+inadmissible** to **cool enough to inspect**:
+
+```
+energy  →  oxidation  →  sediment  →  archive
+```
+
+and never `red alert → amber warning → green success`, which claims something
+time cannot establish (§5).
+
+## 2. The two axes must not share a channel
+
+This is the most important structural rule on the page, and the easiest to
+violate by accident.
+
+A card has two independent properties:
+
+| axis           | question                                         | states                           |
+| -------------- | ------------------------------------------------ | -------------------------------- |
+| **Maturity**   | may this artifact enter the airlock?             | `M0`–`M4`                        |
+| **Disclosure** | how much of it has the user deliberately let in? | masked → meta → title → revealed |
+
+They are orthogonal. A card can be `M4` and still fully masked; that is the
+normal resting state of an admissible card. If maturity and disclosure share a
+colour ramp, a rail or a badge, then "old enough to inspect" and "already
+inspected" become indistinguishable, and the user loses the one distinction the
+whole design exists to make.
+
+**Therefore:**
+
+- **Maturity lives on the perimeter** — card border, a corner medallion, the
+  age notation, and the card's overall stillness.
+- **Disclosure keeps the interior** — the veil, the meta chip, the title chip,
+  the indigo→violet ramp and the progress rail that
+  `src/lib/content/veil-styles.ts` already owns.
+
+Maturity describes the card's relationship to the boundary. Disclosure
+describes what has crossed it. Do not recolour the existing ladder when a card
+matures.
+
+## 3. The medallion
+
+One evolving icon, not five unrelated ones. A row of borrowed symbols — a
+trefoil, a clock, an hourglass, an archive box — requires a legend; a single
+shape whose geometry changes tells one continuous story: **emission becomes
+history**.
+
+```
+   M0            M1             M2            M3           M4
+Unverified      Hot          Cooling      Seasoned     Archival
+
+   ◌?         )))●(((         ( ● )           ◎            ◉
+```
+
+### Anatomy
+
+One SVG, five configurations of the same four parts.
+
+- **Core** — a filled circle: the artifact itself. **Constant size in every
+  state.** The artifact has not changed; only its relationship to time has.
+  Never renders the thumbnail, at any opacity, in any state.
+- **Containment ring** — a complete ring around the core. Present whenever age
+  is known; **dashed** when it is not (`M0`).
+- **Emission marks** — short outward arcs, always _inside_ the containment
+  boundary. Three at `M1`, one or two at early `M2`, none from `M3` on. They
+  say _this is emitting, and it is contained_ — not _you are being irradiated
+  right now_.
+- **Age rings** — concentric rings that accumulate as emissions retract. A
+  partial arc through `M2`, two complete rings at `M3`, three or a faint patina
+  at `M4`.
+
+A threshold notch at twelve o'clock marks `B`. Through `M2` the age arc grows
+toward it; once closed, the notch becomes part of the seal.
+
+### Symbols to avoid, and why
+
+| symbol            | why not                                                               |
+| ----------------- | --------------------------------------------------------------------- |
+| Radiation trefoil | Correct semantics, but thirty of them is an emergency dashboard (D8). |
+| Padlock           | Frames the artifact as a reward awaiting unlock (D7).                 |
+| Hourglass         | Implies active waiting and imminent completion (D7).                  |
+| Clock             | Reads as schedule and time-of-day, not as aging.                      |
+| Shield + check    | Claims security certification. Time certifies nothing (§5).           |
+| Green check       | Same, louder.                                                         |
+| Flame             | Trending iconography. Actively inverts the meaning.                   |
+
+## 4. The five states
+
+Palettes are given as sRGB triplets in the form
+`src/styles/content.css` already uses for its tokens (`--boyo-ink: 232 234 240`),
+so they drop straight into the `:root` block; see §9.
+
+### `M0` — Unverified
+
+Age could not be established (D3). Common, expected, and **not an error**.
+
+- **Icon** `╌ ● ╌` — core inside a dashed containment ring. A question mark, if
+  used at all, is a small cutout and never the dominant form; the broken ring
+  already says "missing evidence" and says it more calmly.
+- **Palette** charcoal and cool grey, no warm accent, no apparent depth behind
+  the veil: surface `17 19 24`, ring `105 112 125`, text `163 169 179`,
+  core `52 57 67`.
+- **Motion** none. Explicitly **no spinner** — a spinner promises resolution and
+  invites waiting.
+- **Copy** `Age unverified` / `Held outside the capsule`. No "Try again."
+
+### `M1` — Hot
+
+Coupled to the present. No disclosure path exists (D2).
+
+- **Icon** `)))●(((` — solid core, three contained emissions.
+- **Palette** deep **ember**, not emergency red: surface `21 15 13`,
+  containment `92 48 33`, emission `216 116 66`, core `240 154 91`,
+  label `228 179 154`. Red implies an actionable error; ember implies residual
+  heat, and heat is a thing that diminishes on its own.
+- **Motion** off by default. If enabled: a containment breath — inner ring
+  ±1–2px, opacity 55%→70%, 5–8s, paused off-screen, no glow past the card
+  edge. Never a notification pulse.
+- **Card** fully opaque. Note that the veil's default glass
+  (`bg-[rgb(var(--boyo-glass)/86%)]` plus backdrop blur) is tuned for a card
+  the user _may_ open; an `M1` card should read as wall, not as window.
+  No hint pill, no rail, nothing shaped like a call to action.
+
+```
+╭────────────────────────────────────────╮
+│  HOT                          11 days  │
+│                                        │
+│               )))●(((                  │
+│                                        │
+╰────────────────────────────────────────╯
+```
+
+### `M2` — Cooling
+
+In quarantine; distance accumulating.
+
+- **Icon** `( ● )` — emissions reduced, one accumulating age arc. The arc
+  doubles as the progress reading: start notch at twelve, length proportional
+  to `age / B`.
+- **Palette** ember oxidising into bronze — early `168 92 53`, middle
+  `146 112 68`, late `124 119 82`, surface `19 20 17`, text `195 185 150`.
+  Saturation falls with age: **time removes visual energy.**
+- **Motion** none. A static arc, updated when the day count changes.
+- **Card** still sealed. May carry more nonsemantic quarantine information than
+  `M1`, since the boundary is in sight. A ring, never a horizontal progress
+  bar — a bar reads as a download that will finish; a ring reads as aging.
+
+### `M3` — Seasoned
+
+Boundary satisfied. **This is the state that unlocks the existing ladder** — and
+the only thing that changes is eligibility. The interior renders exactly as it
+does today.
+
+- **Icon** `◎` — no emissions; two complete, slightly irregular rings. Tree
+  rings, sediment layers, a wax seal. Not a checkmark.
+- **Palette** desaturated lichen — surface `16 20 17`, ring `113 133 109`,
+  core `145 165 138`, text `187 200 183`. The first natural colour in the
+  system, and the shift from ember to lichen carries the whole story without a
+  word of copy.
+- **Motion** none, permanently. Stillness _is_ the signal: motion belongs to
+  the present.
+- **Threshold crossing** — if a card matures while the page is open, one
+  restrained, one-time transition: the final arc closes, the warm accent
+  drains to lichen, emissions retract inward. 600–1000ms, then permanent
+  stillness. No bounce, no flash. Maturity arrives quietly.
+
+```
+┌─ lichen perimeter ────────────────────┐
+│ ◎ SEASONED                    2.4 y   │
+│                                       │
+│           Inspect metadata            │  ← existing disclosure interior
+│                                       │
+└───────────────────────────────────────┘
+```
+
+### `M4` — Archival
+
+Substantially detached from the present. The quietest object in the system.
+
+- **Icon** `◉` — a third ring, or a patina on the outer one. Same grammar; do
+  not swap in an archive-box glyph.
+- **Palette** cool mineral, returning toward the extension's indigo family
+  without reusing the disclosure violet: surface `16 18 22`,
+  rings `115 128 154`, core `144 157 183`, text `190 199 215`.
+- **Motion** none, and less hover response than `M3` — a mild increase in line
+  contrast at most. No lift, no scale, no glow, and never a thumbnail bleeding
+  through the veil.
+
+## 5. What the grammar must never claim
+
+`M3` and `M4` mean the quarantine condition is satisfied. Not safe, not
+accurate, not wholesome, not worth watching. Every avoided symbol in §3 is
+avoided for this reason, and the legend below stops short of the word "safe"
+on purpose:
+
+```
+)))●(((   HOT         Coupled to the present; held outside
+  ( ● )   COOLING     Accumulating temporal distance
+    ◎     SEASONED    Eligible for deliberate inspection
+    ◉     ARCHIVAL    Substantially detached from the present
+   ◌?     UNVERIFIED  Age could not be established; held
+```
+
+## 6. Copy
+
+The visuals do most of the work; the few words must not undo it.
+
+**Use:** unverified · hot · cooling · seasoned · archival · quarantine ·
+matures · admission · inspect metadata · inspect title · temporal boundary ·
+held outside.
+
+**Never:** safe · approved · clean · verified · good · recommended · unlock ·
+reward · trending · fresh · new · ready to watch.
+
+_Fresh_ and _new_ are the sharpest of these. Mainstream interfaces present
+recency as a benefit; here it is the hazard, and the vocabulary must not carry
+the opposite valence in from outside.
+
+Prefer **"matures in"** to **"unlocks in."** Unlocking turns the card into a
+reward box; maturing treats time as a neutral transformation that is happening
+anyway.
+
+### The countdown is a live tension
+
+`quarantine-capsule.md` D7 says nothing may count down toward a payoff. A
+per-card `Admission in 354 days` is, read one way, exactly that: an
+anticipation object, and thirty of them is a waiting room.
+
+**Default:** show a countdown only inside `M2`, where the boundary is in sight
+and the number is a statement about the card rather than an appointment. `M1`
+shows its age and nothing else — there is no date to look forward to, which is
+the point.
+
+```
+M1   HOT · 11 days
+M2   COOLING · 263 days · matures in 102
+M3   SEASONED · 2.4 years
+```
+
+This is a judgement call and it is where D7 will be tested first. If the user
+finds themselves checking on cards, the countdown loses and `M2` falls back to
+a bare age (§9 of the story).
+
+### Age notation
+
+Age is nonsemantic (H2) and central to the policy, so it is shown plainly
+rather than hidden in a tooltip. Compact and exact: `3 h` · `11 d` · `8 mo` ·
+`2.4 y` · `7 y`. Derived from a day count and never from the extracted string
+(D4).
+
+## 7. Feed-level sealing
+
+Per-card medallions are right when the user is examining the airlock. They are
+wrong as the ordinary landscape of the capsule (D8) — a beautifully designed
+visualisation of thirty things being withheld is still thirty things on screen.
+
+Where a recommendation region contains **nothing admissible**, seal the region
+instead of the cards:
+
+```
+╭────────────────────────────────────────╮
+│  32 CURRENT TRANSMISSIONS CONTAINED    │
+│                                        │
+│  Youngest 2 h · oldest 4 mo            │
+│  None meet your 1-year boundary        │
+╰────────────────────────────────────────╯
+```
+
+Counts and age ranges are nonsemantic and may be shown. An `Examine containers`
+control may expand the region into individual cards, but it is never the
+visually primary element, and expanding does not confer eligibility — the cards
+inside are still `M1`.
+
+Where a region is mixed, show the admissible cards and collapse the remainder
+into one trailing summary rather than interleaving sealed and open cards, which
+reproduces the field of mystery boxes at lower density.
+
+A surface header gives the temporal weather at a glance, using the same
+medallions at small size:
+
+```
+HOME TRANSMISSIONS
+──────────────────────────────────
+24 held · 7 cooling · 3 seasoned
+Boundary: 1 year
+```
+
+Atmosphere stays restrained: a one- or two-pixel rule in the dominant band's
+colour, never a page-wide wash. The watch-page sidebar is the surface where
+this matters most — it is where an admitted archival video is surrounded by the
+present.
+
+### The design test
+
+Render two pages side by side: **(A)** thirty individually medallioned `M1`
+cards; **(B)** one panel reading _30 current transmissions contained; none meet
+your one-year boundary_. Whichever feels more like living inside the capsule is
+the default. The expectation is B, decisively, and if it is not then D8 is
+weaker than stated and should be amended.
+
+## 8. Motion and accessibility
+
+> Radioactivity is expressed through energy; maturity is expressed through its
+> absence.
+
+This is the rare case where less animation is not merely accessibility
+hygiene — it is the semantic endpoint. Motion is only ever available to `M1`,
+is off by default, and is removed entirely at `M3`.
+
+The existing reduced-motion contract in `src/styles/content.css` targets
+`[class*="boyo-"]` wholesale, so any medallion built from the namespace
+inherits it. Two additions it does **not** cover:
+
+- **Colour is not the only channel.** Each class differs in geometry
+  (dashed / emissions / arc / rings) as well as in hue, so the ramp survives
+  monochrome and every common colour-vision deficiency. Ember-vs-lichen in
+  particular must not be the sole carrier.
+- **The medallion needs a text equivalent.** `aria-label` on the veil carrying
+  the class name and age (`"Hot, 11 days"`) — the same information a sighted
+  user gets from the perimeter, and no more. It must not carry the title.
+
+## 9. Where this lands in the code
+
+Recorded so the implementing patch does not have to rediscover the workspace's
+constraints.
+
+- **Tokens** go in the `:root` block of `src/styles/content.css`, in the same
+  `R G B` triplet form as `--boyo-ink` and friends. Five surfaces, five rings,
+  five inks — name them `--boyo-m0-*` … `--boyo-m4-*` so the band is legible in
+  the class strings.
+- **Every class string** goes in `src/lib/content/veil-styles.ts` and nowhere
+  else. `uno.config.ts` scans exactly that file and `content.css`; a class
+  authored anywhere else is not generated and silently does nothing.
+- **Keyframes** (the containment breath, the threshold settle) are `@`-rules
+  and therefore belong in `content.css` beside `boyo-rise` / `boyo-thaw`, and
+  are referenced from the utilities by name.
+- **The medallion SVG** is built by `dom-handle.ts`, which owns DOM
+  construction; `veil-styles.ts` names its classes and authors none of its
+  structure.
+- **The projection** — which class, which age string, which copy — is decided
+  in `fsm.ts:project()` and handed to the DOM layer as data, the way
+  `HintModel` and `RailStep` already are. Two consequences worth stating: the
+  presentation layer receives a class and a day count and never the extracted
+  date string (D4), and adding a maturity variant without updating `project()`
+  becomes a compile error rather than a card that paints nothing.
+- **Container queries.** The veil is a `@container/boyo`, and the medallion is
+  subject to the same three-tier scale as everything else: it must survive a
+  ~170px slider tile. Smallest-first — at base, the medallion alone with no
+  label; the class name and age appear at `@[220px]`.
