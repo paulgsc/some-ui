@@ -17,6 +17,13 @@
  * `claude/new-session-vmw51h` needed a frame oracle to demonstrate the leak
  * in the first place).
  *
+ * SF4 (#1360) classification: already compliant, not one of the 16 needing
+ * classification — this file already asserts against `frames.ts`'s real
+ * video-frame oracle, the same bar #1360 is about promoting other specs
+ * toward. Flagged here as a correction to #1360's own inventory, which
+ * counted only `issue-741-auto-defects.spec.ts` and
+ * `legacy-invert-regimes.spec.ts` as sampling real output.
+ *
  * Traces 1 and 2 exercise the interval between a scope's *creation* (light-
  * DOM insertion, in the real DOM's actual event order) and its *registration*
  * — Corollary D.3.1 permits that interval to be nonzero, but only because

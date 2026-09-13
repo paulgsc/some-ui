@@ -13,9 +13,24 @@
  * confirm what YouTube itself is doing internally — only that our pipeline
  * correctly recovers from the general "a page reloads itself shortly after
  * initial paint" pattern, which is the useful, reproducible proxy for it.
+ *
+ * SF4 (#1360) classification: visual-claim, promoted. The reported symptom
+ * ("settles to white after the second document_end") is a rendering claim,
+ * but this spec used to check it only through the pipeline's own
+ * self-reported bookkeeping (`themeApplied`/`hasDarkAttr`, both
+ * `document.*.dataset` values the extension writes about itself) — exactly
+ * the class of proxy this story exists to catch. Added an independent read
+ * of `document.body`'s actual computed background: `buildDarkThemeCSS`
+ * (theme-apply.ts) sets it via a plain `background-color` rule, not
+ * `filter`, so `getComputedStyle` has no compositing gap to hide behind here
+ * (contrast the legacy `filter: invert()` mechanism, where it would).
  */
 
+import { parseColor, relativeLuminance } from "@filter/lib/content/color"
 import { expect, test, waitForClassification } from "@filter/playwright/fixture"
+
+/** Matches issue-1268-sfad-shadow-theming.spec.ts's own bar: below theme-adapter.ts's LIGHT_THRESHOLD (0.3), unambiguously off the original white canvas. */
+const THEMED_LUMINANCE_CEILING = 0.3
 
 test.describe("exogenous self-reload resilience", () => {
   test("settles to the themed dark canvas after the page reloads itself shortly after initial paint", async ({
@@ -35,5 +50,20 @@ test.describe("exogenous self-reload resilience", () => {
     expect(snap.themeApplied).toBe("dark")
     expect(snap.hasDarkAttr).toBe(true)
     expect(snap.hasPrepaintVeil).toBe(false)
+
+    const bodyBg = await page.evaluate(
+      () => getComputedStyle(document.body).backgroundColor
+    )
+    const rgba = parseColor(bodyBg)
+    expect(
+      rgba,
+      `unparseable computed background-color: ${bodyBg}`
+    ).not.toBeNull()
+    if (rgba === null) throw new Error("unreachable")
+    expect(
+      relativeLuminance(rgba[0], rgba[1], rgba[2]),
+      `body background ${bodyBg} after the self-reload — expected the themed ` +
+        `dark canvas, not the original white`
+    ).toBeLessThan(THEMED_LUMINANCE_CEILING)
   })
 })

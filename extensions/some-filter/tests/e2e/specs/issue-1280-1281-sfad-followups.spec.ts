@@ -10,6 +10,15 @@
  * `shadow-actuator.test.ts`) already cover the underlying logic in
  * isolation; these prove the same fixes hold once wired through the real
  * pipeline end to end.
+ *
+ * SF4 (#1360) classification: visual-claim, already sound and exemplary.
+ * The #1281 cases explicitly compensate for the exact getComputedStyle-vs-
+ * `filter` compositing gap #1360 is about (computing the "as seen through
+ * the page's own invert(1)" luminance by hand, with the compositing math
+ * spelled out in-line) rather than trusting the declared value directly; the
+ * #1280 case reads real `background-color` with no filter involved at all.
+ * No promotion needed — if anything, this file is the model the promoted
+ * specs elsewhere in this story followed.
  */
 
 import { parseColor, relativeLuminance } from "@filter/lib/content/color"

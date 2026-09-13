@@ -16,6 +16,15 @@
  * `chrome.storage` is an extension-context API, unreachable from a page's
  * own main-world JS (which is what `page.evaluate()` runs in) even on a page
  * a content script is attached to.
+ *
+ * SF4 (#1360) classification: internal-state claim, fine as-is. Every
+ * assertion here reads the diagnostics instrument's own bookkeeping (the
+ * persisted events/counters bundle, debug.html's rendered table) — a
+ * legitimate, in-scope claim about whether the *watchdog* correctly detects
+ * and records a desync, independent of what the page looks like. This file's
+ * own header already says as much: it proves the instrument, not the flash
+ * (`yt-navigate-repaint.spec.ts` covers that). Not a candidate for
+ * pixel-sampling promotion.
  */
 
 import { expect, test, waitForClassification } from "@filter/playwright/fixture"

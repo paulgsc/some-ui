@@ -18,6 +18,21 @@
  * exactly as their acceptance criteria describe; until then, asserting a
  * swatch this pipeline can never actually select would be testing a
  * capability that doesn't exist.
+ *
+ * SF4 (#1360) classification: mostly visual-claim, already sound — the
+ * per-surface adapter this file exercises patches `background-color`
+ * directly (never `filter`), so `getComputedStyle`/`colorsClose` reads here
+ * have no compositing gap to hide behind, unlike the legacy invert
+ * mechanism. One exception, known gap: the "leak (Δt_eval = 0)" describe
+ * block below claims no *transient* native-bright frame across the full
+ * churn sequence, but only samples `getComputedStyle` at each step's
+ * boundary — it cannot see a flash between two samples the way
+ * `tests/e2e/fixtures/frames.ts`'s `captureFrames`/`firstLeak` video-frame
+ * oracle would (the mechanism `scope-registry-handoff.spec.ts`/
+ * `scope-registry-self-heal.spec.ts` already use for this exact class of
+ * claim). Not promoted in this story: re-deriving this file's own nine-step
+ * churn sequence against a frame recording is a substantially larger rewrite
+ * than this audit's budget covers.
  */
 
 import {

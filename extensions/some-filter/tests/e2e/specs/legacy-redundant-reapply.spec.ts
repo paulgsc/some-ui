@@ -23,6 +23,16 @@
  * compositing layers are sensitive to. Checked here as what's actually
  * measurable: zero DOM writes on a redundant call, not zero pixels — the
  * same standard #831's veil test already holds enablePrepaint() to.
+ *
+ * SF4 (#1360) classification: internal-state claim, fine as-is, for both
+ * tests below. The first (mutation-count) is explicitly, by this file's own
+ * admission above, checking what's measurable in this sandbox instead of
+ * the real pixel claim — an honest, already-documented known gap, not one
+ * this audit needs to restate. The second (reload correction) checks the
+ * injected stylesheet's literal text, the same "which config string got
+ * written" claim as legacy-config-cache.spec.ts's own SF4 note — sound as a
+ * wiring check, and legacy-invert-regimes.spec.ts already owns the separate
+ * real pixel-sampled claim for what a landed legacy filter renders as.
  */
 
 import { LEGACY_PRESETS } from "@filter/lib/legacy-presets"
