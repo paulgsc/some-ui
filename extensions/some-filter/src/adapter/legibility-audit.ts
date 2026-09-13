@@ -207,19 +207,34 @@ let supportsPseudoElementStyle: boolean | undefined
  * leaving the new check untested.
  *
  * Distinguishes real support from jsdom's pass-through with a single, one-
- * time probe rather than sniffing the environment by name: `<html>` has no
- * authored `::before` rule in either environment, so a spec-correct
- * implementation reports `content: "none"` for it (confirmed directly
- * against this repo's own Playwright-bundled Chromium) while jsdom's pass-
- * through reports whatever `<html>`'s own (real) `content` property
- * computes to — `""`, never `"none"`, since jsdom does not implement the
- * `content` CSS property on ordinary elements either (confirmed directly).
- * Memoized: `getComputedStyle` is not free, and this module's own
- * `auditLegibility` walk calls the function below once per visited element.
+ * time probe rather than sniffing the environment by name — against a
+ * freshly created, synthetic-tag, unattached-until-the-probe-itself element
+ * (bot-found, Codex review of this PR: probing `document.documentElement`
+ * directly is wrong on a real *audited page*, as opposed to this file's own
+ * tests, since nothing stops that page's own stylesheet from authoring an
+ * `html::before` rule of its own — confirmed directly, a page with `<style>
+ * html::before { content: "loading" }</style>` made the original probe
+ * permanently misdetect real support as absent, silently disabling this
+ * entire hazard check for the page's whole lifetime). No real page can
+ * author a rule targeting an invented tag name unique to this probe, so a
+ * spec-correct implementation reliably reports `content: "none"` for it
+ * (confirmed directly against this repo's own Playwright-bundled Chromium,
+ * with the exact `html::before`-authoring page above still in effect)
+ * while jsdom's pass-through reports whatever the *probe element's own*
+ * `content` property computes to — `""`, never `"none"`, since jsdom does
+ * not implement the `content` CSS property on ordinary elements either
+ * (confirmed directly). Memoized: `getComputedStyle` is not free, and this
+ * module's own `auditLegibility` walk calls the function below once per
+ * visited element.
  */
 function pseudoElementStyleIsSupported(): boolean {
-  supportsPseudoElementStyle ??=
-    getComputedStyle(document.documentElement, "::before").content === "none"
+  if (supportsPseudoElementStyle === undefined) {
+    const probe = document.createElement("sw-legibility-pseudo-probe")
+    document.documentElement.appendChild(probe)
+    supportsPseudoElementStyle =
+      getComputedStyle(probe, "::before").content === "none"
+    probe.remove()
+  }
   return supportsPseudoElementStyle
 }
 
@@ -236,10 +251,22 @@ function pseudoElementStyleIsSupported(): boolean {
  * *bounded* hazard check, not real occlusion geometry (this module does not
  * attempt paint-order/bounding-box analysis anywhere else either, see
  * `hasPositioningHazard`'s own doc comment on the identical limitation): it
- * conservatively flags a host `"underdetermined"` whenever a generated
- * pseudo-element could plausibly paint something the host's own resolved
+ * conservatively flags `"underdetermined"` whenever a generated pseudo-
+ * element could plausibly paint something the host's own resolved
  * foreground doesn't already account for, rather than trying to resolve
  * what actually renders.
+ *
+ * Called from two places, against every hazard this same function can find
+ * on `el` either way: `auditLegibility`'s own call site checks only the
+ * *candidate itself*, for its own foreground channel; `resolveEffectiveBackdrop`
+ * checks every element in an ancestor *chain*, for the backdrop channel
+ * (bot-found, Codex review of this PR: an ancestor's own pseudo-element —
+ * e.g. a `position: fixed` overlay anchored to no particular containing
+ * block, so `hasPositioningHazard` alone would not catch it either — can
+ * visibly paint over a completely unrelated descendant `el` never has any
+ * other own relationship to; checking only the candidate's own pseudo-
+ * elements left that descendant's *backdrop* silently unaffected, still
+ * resolving a real, unshielded RGBA as if nothing were painted over it).
  *
  * `::before`/`::after`: a real Chromium probe (confirmed directly — jsdom
  * cannot exercise this at all, see `pseudoElementStyleIsSupported`'s own
@@ -251,10 +278,17 @@ function pseudoElementStyleIsSupported(): boolean {
  * on an element with no `::before` rule at all, so it carries no signal
  * about whether the pseudo-element is actually generated. An authored empty
  * string (`content: ""`, the ordinary clearfix idiom) generates a box but
- * paints nothing *unless* it also carries its own background — flagging
- * every clearfix hack on every page as `"underdetermined"` would make this
- * check far noisier than the risk it guards against, so that one case is
- * excluded unless a real background is also present.
+ * paints nothing *unless* it also carries its own background, border,
+ * outline, or box-shadow (bot-found, Codex review of this PR: a border or
+ * box-shadow alone, with no background at all, still paints a real,
+ * potentially occluding shape — confirmed directly that a real Chromium
+ * border/outline computes `borderStyle`/`outlineStyle` as `"none"` and
+ * `borderWidth`/`outlineWidth` as `"0px"` when absent, a real, single-value
+ * `"Npx"`/named style otherwise, and `boxShadow` as the literal string
+ * `"none"` when absent) — flagging every clearfix hack on every page as
+ * `"underdetermined"` would make this check far noisier than the risk it
+ * guards against, so that one case is excluded unless one of these four is
+ * also present.
  *
  * `::marker`: generated for any host with computed `display: list-item`
  * (confirmed directly — a non-list-item element still returns a full
@@ -285,7 +319,21 @@ function hasGeneratedPseudoHazard(
       const hasBackgroundImage =
         pseudoStyle.backgroundImage !== "" &&
         pseudoStyle.backgroundImage !== "none"
-      if (!hasBackgroundColor && !hasBackgroundImage) continue
+      const hasBorder =
+        pseudoStyle.borderStyle !== "none" && pseudoStyle.borderWidth !== "0px"
+      const hasOutline =
+        pseudoStyle.outlineStyle !== "none" &&
+        pseudoStyle.outlineWidth !== "0px"
+      const hasBoxShadow = pseudoStyle.boxShadow !== "none"
+      if (
+        !hasBackgroundColor &&
+        !hasBackgroundImage &&
+        !hasBorder &&
+        !hasOutline &&
+        !hasBoxShadow
+      ) {
+        continue
+      }
     }
     return true
   }
@@ -519,17 +567,26 @@ function hasGroupCompositingHazard(style: CSSStyleDeclaration): boolean {
  * resolves, since none of those hazards can be occluded by an inner opaque
  * layer — or when a still-unresolved layer trips `hasOccludableImageHazard`
  * (a background-image *before* anything opaque has painted over it is very
- * much still visible) or `hasPositioningHazard` (a non-`static` element's
+ * much still visible), `hasPositioningHazard` (a non-`static` element's
  * rendered location isn't guaranteed to match its DOM ancestors' boxes at
- * all). Color accumulation itself stops once fully opaque — there is
- * nothing further out left to composite, and a background-image beyond
- * that point is genuinely occluded, ordinary paint z-order (bot-found:
- * treating an occluded outer background-image the same as an unoccludable
- * group hazard misclassified an ordinary opaque-card-over-hero-image
- * layout as underdetermined even though its backdrop is fully known).
- * Background-color parsing uses `parsePreciseColor`, not `parseColor` —
- * see that function's own doc comment for why the exact-compositing case
- * needs a different alpha policy than page-classification evidence does.
+ * all), or `hasGeneratedPseudoHazard` (bot-found, Codex review of this PR:
+ * an *ancestor's* own `::before`/`::after`/`::marker` — e.g. a
+ * `position: fixed` overlay anchored to no particular containing block at
+ * all, so `hasPositioningHazard` alone does not catch it either — can visibly
+ * paint over a completely unrelated descendant this same ancestor chain
+ * leads to; checking only the candidate's own pseudo-elements, as
+ * `auditLegibility`'s own call site already does for the foreground
+ * channel, left that descendant's backdrop silently unaffected). Color
+ * accumulation itself stops once fully opaque — there is nothing further
+ * out left to composite, and a background-image (or generated-pseudo
+ * overlay) beyond that point is genuinely occluded, ordinary paint z-order
+ * (bot-found: treating an occluded outer background-image the same as an
+ * unoccludable group hazard misclassified an ordinary opaque-card-over-
+ * hero-image layout as underdetermined even though its backdrop is fully
+ * known). Background-color parsing uses `parsePreciseColor`, not
+ * `parseColor` — see that function's own doc comment for why the exact-
+ * compositing case needs a different alpha policy than page-classification
+ * evidence does.
  */
 export function resolveEffectiveBackdrop(
   el: Element
@@ -545,6 +602,7 @@ export function resolveEffectiveBackdrop(
     if (resolved === null) {
       if (hasPositioningHazard(style)) return "underdetermined"
       if (hasOccludableImageHazard(style)) return "underdetermined"
+      if (hasGeneratedPseudoHazard(cur, style)) return "underdetermined"
 
       // display:contents generates no box at all, so this element's own
       // background-color (if any) is never actually painted — its
