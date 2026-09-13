@@ -82,6 +82,31 @@ test.describe("legibility audit's generated-pseudo-element hazard against real C
     ).toEqual([{ foreground: [0, 0, 0, 1], backdrop: [1, 1, 1, 1] }])
   })
 
+  test("a ::before with real content but display:none does not force underdetermined", async ({
+    page,
+    scriptContent,
+  }) => {
+    // Codex's own round-3 finding: a real, plausible authoring pattern —
+    // e.g. a responsive breakpoint hiding a decorative ::before — retains
+    // a non-"none" content declaration while display:none suppresses the
+    // pseudo-element's box entirely. Treating it as a hazard anyway would
+    // make this check noisy on a common pattern, not just conservative.
+    await page.setContent(`
+      <style>.badge::before { content: "x"; display: none; }</style>
+      <div id="ancestor" style="background-color: rgb(255,255,255)">
+        <span id="carrier" class="badge" style="color: rgb(0,0,0)">hi</span>
+      </div>
+    `)
+    await page.addScriptTag({ content: scriptContent })
+
+    const result = await auditPage(page)
+
+    expect(
+      result.attrs,
+      `expected a display:none ::before not to affect #carrier's own resolved color: ${JSON.stringify(result.attrs)}`
+    ).toEqual([{ foreground: [0, 0, 0, 1], backdrop: [1, 1, 1, 1] }])
+  })
+
   test("an empty-content ::before with its own real background still forces underdetermined", async ({
     page,
     scriptContent,

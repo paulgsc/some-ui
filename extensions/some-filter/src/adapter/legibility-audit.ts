@@ -301,11 +301,22 @@ function pseudoElementStyleIsSupported(): boolean {
  * doc comment) shows `content` reliably distinguishes "no such pseudo-
  * element" (`"none"`) from "one exists" (the CSS-serialized form of
  * whatever `content` resolves to, e.g. `'""'` for an authored empty string,
- * `'"x"'` for real text) — `display` cannot: real Chromium reports
- * `"inline"` for `::before`'s own computed `display` unconditionally, even
- * on an element with no `::before` rule at all, so it carries no signal
- * about whether the pseudo-element is actually generated. An authored empty
- * string (`content: ""`, the ordinary clearfix idiom) generates a box but
+ * `'"x"'` for real text). `display` alone carries no such signal — real
+ * Chromium reports `"inline"` for `::before`'s own computed `display`
+ * unconditionally, even on an element with *no* `::before` rule at all —
+ * but once `content` has already confirmed a rule exists, `display` does
+ * become meaningful: an author can retain a `content` declaration while
+ * conditionally suppressing the pseudo-element entirely via `display: none`
+ * (bot-found, Codex review round 3: a real, plausible authoring pattern —
+ * e.g. a responsive breakpoint hiding a decorative `::before` — which
+ * generates no box and paints nothing at all despite a non-`"none"`
+ * `content`; confirmed directly that a real Chromium `::before` with both
+ * `content: "x"` and `display: none` authored together reports
+ * `display: "none"`, distinctly from the same rule without it reporting
+ * `"inline"`), so this is checked for both the real-content and empty-
+ * content cases alike, before either paint check below ever runs. An
+ * authored empty string (`content: ""`, the ordinary clearfix idiom)
+ * generates a box but
  * paints nothing *unless* it also carries its own background, border,
  * outline, or box-shadow (bot-found, Codex review round 1: a border or
  * box-shadow alone, with no background at all, still paints a real,
@@ -348,6 +359,7 @@ function hasGeneratedPseudoHazard(
   for (const pseudo of ["::before", "::after"] as const) {
     const pseudoStyle = getComputedStyle(el, pseudo)
     if (pseudoStyle.content === "none") continue
+    if (pseudoStyle.display === "none") continue
     if (pseudoStyle.content === '""') {
       const hasBackgroundColor =
         parsePreciseColor(pseudoStyle.backgroundColor) !== null ||
