@@ -93,6 +93,18 @@ tsc --noEmit`, `pnpm exec vitest run <path>`), not the repo root.
   it can miss binary corruption in content that's already staged and about to be committed.
   A `Bin ... -> ... bytes` line on a file you expect to be text source is the tell for
   embedded-NUL or other binary corruption that no lint, typecheck, or test will catch.
+- **`bash scripts/claude-e2e.sh` (any `some-filter` e2e run) silently resolves the wrong
+  `playwright` binary in this environment.** `which playwright` finds a global install
+  (`/opt/node22/bin/playwright`, a different version than this workspace's own pinned
+  `@playwright/test`) before the workspace's own `node_modules/.bin/playwright` — the
+  script's own `exec playwright test "$@"` has no reason to prefer one over the other, and
+  PATH order picks the global one. The result is `Error: Playwright Test did not expect
+  test.describe() to be called here`, thrown from the *first* `test.describe()` in whichever
+  spec runs first — reads exactly like a real code/config bug (and the error's own listed
+  causes don't mention PATH at all), for every spec in the suite, not just a new one you just
+  added. Prepend the workspace root before invoking: `PATH="$(git rev-parse
+  --show-toplevel)/node_modules/.bin:$PATH" bash extensions/some-filter/scripts/claude-e2e.sh
+  <args>`.
 
 ## Multi-session relay work
 
