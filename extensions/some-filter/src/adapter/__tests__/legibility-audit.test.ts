@@ -436,11 +436,33 @@ describe("auditLegibility", () => {
 
     const { attrsByKey, elementsByKey } = auditLegibility(document.body)
 
-    expect(attrsByKey.size).toBe(1)
-    const key = [...attrsByKey.keys()][0]
-    if (key === undefined) throw new Error("expected one legibility key")
-    expect(attrsByKey.get(key)?.foreground).toEqual([0, 0, 0, 1])
-    expect(elementsByKey.get(key)?.map((el) => el.id)).toEqual(["carrier"])
+    // Two candidates now: the cross-realm "carrier" div this test is about,
+    // and the <iframe> element itself — TSC-SF2 (#1358) registers every
+    // rendered iframe as its own underdetermined/underdetermined diagnostic
+    // carrier (content actually inside its own document is a separate
+    // rendering context this audit cannot see), rather than the iframe
+    // silently contributing nothing at all.
+    expect(attrsByKey.size).toBe(2)
+    const carrierKey = [...attrsByKey.entries()].find(
+      ([, attr]) => attr.foreground !== "underdetermined"
+    )?.[0]
+    if (carrierKey === undefined)
+      throw new Error("expected a resolved carrier key")
+    expect(attrsByKey.get(carrierKey)?.foreground).toEqual([0, 0, 0, 1])
+    expect(elementsByKey.get(carrierKey)?.map((el) => el.id)).toEqual([
+      "carrier",
+    ])
+
+    const iframeKey = [...attrsByKey.entries()].find(
+      ([, attr]) => attr.foreground === "underdetermined"
+    )?.[0]
+    if (iframeKey === undefined)
+      throw new Error("expected the iframe's own key")
+    expect(attrsByKey.get(iframeKey)).toEqual({
+      foreground: "underdetermined",
+      backdrop: "underdetermined",
+    })
+    expect(elementsByKey.get(iframeKey)).toEqual([iframe])
 
     iframe.remove()
   })
