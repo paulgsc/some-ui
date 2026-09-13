@@ -3,6 +3,23 @@
 Browser extension that profiles and mutates a vendor-controlled DOM. Built on
 the `@some-extension/transport` kernel.
 
+> [!IMPORTANT] > **Story-governed as well as canon-governed — read both before editing this package.**
+>
+> - [`docs/quarantine-capsule.md`](./docs/quarantine-capsule.md) — _The
+>   Quarantine Capsule_ — what the masking is **for**: the hazard model, the
+>   temporal-boundary doctrine (`D1`–`D9`), the maturity classes (`M0`–`M4`),
+>   and an honest map of where the implementation currently contradicts them
+> - [`docs/decay-rings.md`](./docs/decay-rings.md) — the visual grammar for
+>   maturity, and the rule that keeps it from colliding with the disclosure
+>   ladder already on screen
+>
+> The canon below governs how this extension **observes** an unsettled vendor
+> DOM; the story governs what it **does** with what it sees. The two answer
+> different layers and neither substitutes for the other: a change that is
+> sound estimation and a capsule breach is still a bug. A behavioural change
+> that contradicts a `D` number amends the story in the same commit, or does
+> not land.
+
 > [!IMPORTANT] > **Canon-governed workspace — read the canon before editing this package.**
 >
 > - [`docs/canon/dom-state-estimation-canon.typ`](../../docs/canon/dom-state-estimation-canon.typ) — _The Unsettled Surface_ — the observe/estimate/plan/act factorization this extension implements, and the impossibility results (§2) that forbid treating the vendor DOM as settled or fully observed
