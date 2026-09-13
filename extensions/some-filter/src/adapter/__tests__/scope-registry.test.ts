@@ -245,17 +245,19 @@ describe("transition — illegal moves throw IllegalTransitionError", () => {
 })
 
 // ── DISCOVERED_UNHELD unreachability ───────────────────────────────────────
+//
+// Two independent propositions, two independent owners (SF3, #1359):
+//   - static exclusion — RestingScopeState (transition()'s only possible
+//     return type) has no "DISCOVERED_UNHELD" member — is a `tsc --noEmit`
+//     proposition, proved by `../__typechecks__/scope-registry.ts`. Vitest
+//     compiling a `@ts-expect-error` line inside an `it()` never actually
+//     demonstrates the compiler's rejection as a runtime-observable fact;
+//     only `tsc` running over the fixture does.
+//   - exact runtime reachability of Σ's six resting kinds from every legal
+//     transition sequence is a genuine runtime liveness property, owned
+//     solely by the BFS below.
 
 describe("DISCOVERED_UNHELD is unreachable as a resting state", () => {
-  it("is structurally impossible to construct via transition() — a type error, not an unexercised branch", () => {
-    // @ts-expect-error — RestingScopeState (transition()'s only possible
-    // return type) has no "DISCOVERED_UNHELD" member; this line is the
-    // compile-time proof the acceptance criterion asks for, not merely a
-    // runtime assertion no test happens to have contradicted.
-    const impossible: RestingScopeState = { kind: "DISCOVERED_UNHELD" }
-    expect(impossible).toBeDefined()
-  })
-
   it("exhaustive reachability search from 'unregistered' never yields DISCOVERED_UNHELD, and the reachable set is exactly Σ's six resting kinds", () => {
     // Deduped by *kind*, not by exact state value: "re-register" is legal
     // from every non-RETIRED kind and always yields a fresh HELD value with
