@@ -276,12 +276,19 @@ QD2/QD3 — the boundary is worth building before the room behind it.
 A deliberate metadata disclosure — the existing `Inspect metadata` step in the
 ladder — is available only to an artifact that is already eligible (`QM3` or
 `QM4`). It carries the duration and derived age the story already promises
-(§3, "Inspect without contact") and `QD4` already permits, plus, newly,
-a **sanitized textual source identity**: a channel name, stripped of avatar,
-banner, subscriber count, or any other element that itself carries
-current-events weight. Beyond duration, age, and that sanitized identity, it
-may reveal nothing further — never a thumbnail, title, or description
-fragment. That non-contact bar is `QD1`'s, and this result does not relax it.
+(§3, "Inspect without contact") and `QD4` already permits.
+
+A source identity is different, and this document does not license it
+unconditionally. `H1` names a channel's **current** branding as a carrier in
+its own right — a channel renamed or re-branded around a current event is
+exactly that carrier, and stripping its avatar, banner, and subscriber count
+does not launder a name that is itself current-events content. Showing a
+channel's display name is safe only if it can be shown to have been stable
+across the temporal boundary; no such staleness check exists in this
+workspace today. Until one does, a source identity is held under `QD1` like
+the rest of the card — `QD10` does not create a metadata-only exception for
+it. Beyond duration and age, this step may reveal nothing further — never a
+thumbnail, title, description fragment, or unverified source identity.
 
 A held card (`QM0`–`QM2`) exposes neither source nor branding at any
 disclosure step. `QD1`'s non-contact bar has no metadata-only exception for

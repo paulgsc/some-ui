@@ -304,12 +304,18 @@ instead of the cards:
 
 ```
 ╭────────────────────────────────────────╮
-│  32 CURRENT TRANSMISSIONS CONTAINED    │
+│  32 CONTAINED · 27 AGE-KNOWN · 5 UNVERIFIED │
 │                                        │
-│  Youngest 2 h · oldest 4 mo            │
+│  Youngest 2 h · oldest 4 mo (known ages only) │
 │  None meet your 1-year boundary        │
 ╰────────────────────────────────────────╯
 ```
+
+An all-held region can contain `QM0` cards alongside `QM1`/`QM2`, and `QM0`
+has no established age at all (`QD3`). The aggregate must say so rather than
+folding unknown evidence into a recency claim: count unverified entries
+separately, and scope any youngest/oldest range to cards with a known age —
+never silently drop the unverified count to make the range look complete.
 
 Counts and age ranges are nonsemantic and may be shown. An `Examine containers`
 control may expand the region into individual cards, but it is never the
@@ -351,8 +357,14 @@ weaker than stated and should be amended.
 > absence.
 
 This is the rare case where less animation is not merely accessibility
-hygiene — it is the semantic endpoint. Motion is only ever available to `QM1`,
-is off by default, and is removed entirely at `QM3`.
+hygiene — it is the semantic endpoint. **Ongoing, at-rest motion** is only
+ever available to `QM1` (the containment breath), is off by default, and no
+state has looping motion at rest from `QM3` on. The one exception is the
+`QM3` **threshold-crossing transition** (§4): a one-time reaction to a state
+_change_, not a resting animation, that plays once and ends in permanent
+stillness — it does not contradict "removed entirely at `QM3`" because it
+belongs to the instant of arrival, not to being there. `prefers-reduced-motion`
+must still shorten or skip it, the same as any other transition.
 
 The existing reduced-motion contract in `src/styles/content.css` targets
 `[class*="boyo-"]` wholesale — but `animation` and `transition` are not
