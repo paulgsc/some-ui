@@ -36,6 +36,16 @@
   #static-carrier has no interaction rule at all. It is the control: it must
   stay untagged through the whole spec, so a pass that tagged everything
   indiscriminately would fail rather than look like success.
+
+  #stoppropagation-panel wraps #suppressed-carrier and calls
+  `stopPropagation()` on every one of the four events this channel
+  delegates. That is not a contrived hostile page: dropdown, menu and modal
+  components do it routinely to keep their own pointer/focus handling from
+  leaking to ancestors, and this extension exists to run against exactly
+  that kind of third-party component code. With a bubble-phase listener on
+  `document` the event never arrives and the swap goes unaudited with no
+  error anywhere; a capture-phase listener runs on the way down, before this
+  handler exists to suppress anything.
 -->
 <html>
   <head>
@@ -48,6 +58,9 @@
       #focus-carrier:focus {
         color: rgb(12, 12, 12);
         outline: none;
+      }
+      #suppressed-carrier:hover {
+        color: rgb(14, 14, 14);
       }
     </style>
   </head>
@@ -65,6 +78,22 @@
         Focus changes this text's colour.
       </div>
       <div id="static-carrier">This text never changes colour.</div>
+      <div id="stoppropagation-panel">
+        <div id="suppressed-carrier">
+          Hover changes this text's colour, but the panel eats the event.
+        </div>
+      </div>
     </div>
+    <script>
+      // Deliberately registered on the bubble phase, which is where an
+      // ordinary component would put it. It suppresses propagation to every
+      // ancestor, `document` included.
+      const panel = document.getElementById("stoppropagation-panel")
+      for (const type of ["pointerover", "pointerout", "focusin", "focusout"]) {
+        panel.addEventListener(type, (event) => {
+          event.stopPropagation()
+        })
+      }
+    </script>
   </body>
 </html>

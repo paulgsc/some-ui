@@ -133,6 +133,71 @@ test.describe("SF-RC4: a :hover-only colour swap is repaired (#1343)", () => {
     )
   })
 
+  test("a component calling stopPropagation cannot suppress the repair", async ({
+    fixture,
+  }) => {
+    // Bot-found, Codex review round 4. The delegated listener used to sit on
+    // the bubble phase, so any component between the carrier and `document`
+    // that called `stopPropagation()` on these four events stopped the pass
+    // from ever being scheduled — no error, no diagnostic, just an
+    // unaudited colour swap. Dropdown, menu and modal components do this
+    // routinely, which is precisely the third-party code this extension
+    // exists to run against.
+    //
+    // Registering on the capture phase fixes it structurally rather than
+    // defensively: a capture listener on `document` runs on the way *down*,
+    // before the suppressing handler is reached at all. Nothing below the
+    // document can get in front of it.
+    //
+    // This is the one case in this spec where the fix is provable by
+    // reverting a single word — with `capture: false` restored, this test
+    // fails and the other four still pass.
+    const page = await fixture.goto("interaction-state-page")
+    await waitForClassification(page)
+    await page.waitForTimeout(300)
+
+    expect(
+      (await read(page, "suppressed-carrier")).repairKey,
+      "at rest this carrier inherits a corrected colour, exactly like the " +
+        "others — the suppression is the only thing that differs"
+    ).toBeNull()
+
+    // Confirms the fixture really is suppressing, rather than passing
+    // because the page forgot to. Without this the test would still pass if
+    // the panel's handlers silently failed to register, and would then be
+    // proving nothing about capture at all.
+    const reachedDocument = await page.evaluate(() => {
+      let sawIt = false
+      const spy = (): void => {
+        sawIt = true
+      }
+      document.addEventListener("pointerover", spy, { capture: false })
+      document
+        .getElementById("suppressed-carrier")
+        ?.dispatchEvent(new PointerEvent("pointerover", { bubbles: true }))
+      document.removeEventListener("pointerover", spy, { capture: false })
+      return sawIt
+    })
+    expect(
+      reachedDocument,
+      "fixture precondition: the panel must actually be eating the event, " +
+        "or this test proves nothing about the capture phase"
+    ).toBe(false)
+
+    await page.hover("#suppressed-carrier")
+    await settle(page)
+
+    const hovered = await read(page, "suppressed-carrier")
+    expect(
+      hovered.repairKey,
+      "a capture-phase listener runs before the suppressing handler exists " +
+        "to stop it, so page code cannot opt out of being audited"
+    ).not.toBeNull()
+    expect(contrastOf(hovered.color, hovered.backdrop)).toBeGreaterThanOrEqual(
+      MIN_CONTRAST_RATIO
+    )
+  })
+
   test("a carrier with no interaction rule is left alone throughout", async ({
     fixture,
   }) => {

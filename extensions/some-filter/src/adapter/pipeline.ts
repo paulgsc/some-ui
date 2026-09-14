@@ -126,15 +126,34 @@ const INTERACTION_EVENTS = [
 ] as const
 
 /**
- * Passive, and on the bubble phase. Passive because this handler never
- * calls `preventDefault()` — it only schedules a timer — so declaring that
- * up front lets the browser dispatch without waiting on it. The same
+ * Passive, and on the **capture** phase.
+ *
+ * Capture because the bubble phase is suppressible by the page (bot-found,
+ * Codex review round 4 on #1415). A component that handles its own
+ * `pointerover`/`focusin` and calls `stopPropagation()` — routine in
+ * dropdown, menu and modal widgets, which is exactly the third-party
+ * component code this extension runs against — stops the event before it
+ * reaches a delegated listener on `document`, and the interaction-state
+ * colour change then goes unaudited with no error anywhere. A capture
+ * listener on `document` runs on the way *down*, before any descendant
+ * handler exists to call `stopPropagation()`, so no page code below the
+ * document can suppress it.
+ *
+ * This is safe precisely because the handler only observes: it schedules a
+ * timer and reads nothing from the event but `target`, so running earlier
+ * changes nothing about what it computes. It does not call
+ * `stopPropagation()` itself, so the page's own handlers still see every
+ * event exactly as before — moving to capture takes coverage from the page
+ * without taking anything from it.
+ *
+ * Passive because this handler never calls `preventDefault()`, so declaring
+ * that up front lets the browser dispatch without waiting on it. The same
  * options object is passed to `removeEventListener`, where the `capture`
  * flag is the part that has to match for removal to find the listener.
  */
 const INTERACTION_LISTENER: AddEventListenerOptions = {
   passive: true,
-  capture: false,
+  capture: true,
 }
 
 const SKIP_TAGS = new Set([
