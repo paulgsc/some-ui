@@ -511,6 +511,20 @@ export function tagRepairCarriers(
   return matched
 }
 
+/**
+ * `tagRepairCarriers(root, [], new Map())`, reporting whether it actually
+ * removed a tag rather than which actions survived (there are none).
+ * Exists so `shadow-actuator.ts`'s `clearShadowSurfaceState` can tell a real
+ * teardown from a no-op one — see its own return value.
+ */
+export function clearRepairTags(root: Element | ShadowRoot): boolean {
+  const tagged = root.querySelectorAll(`[${REPAIR_ATTR}]`)
+  tagged.forEach((el) => {
+    el.removeAttribute(REPAIR_ATTR)
+  })
+  return tagged.length > 0
+}
+
 export function realizeForegroundRepairs(
   root: Element | ShadowRoot,
   actions: ReadonlyArray<RepairForegroundAction>,

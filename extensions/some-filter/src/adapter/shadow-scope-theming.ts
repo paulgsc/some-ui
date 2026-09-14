@@ -420,6 +420,28 @@ export function createShadowScopeTheming(
     CommittedShadowRealization
   >()
 
+  /**
+   * Scopes whose realization has been torn down since the last round that
+   * reported for them — recorded by `uninstall()` below.
+   *
+   * `clearShadowSurfaceState`'s own return value cannot cover this on its
+   * own, and the gap is not hypothetical (found while regression-testing
+   * the closing review's exoneration finding): the usual path into an
+   * exoneration is `invalidate()` *first* — `shadow-scope-discovery.ts`'s
+   * per-root observer calls it before `onScopeReady`, and `projectScope`'s
+   * own `forceInvalidate` does the same — and `invalidate()` runs
+   * `uninstall()`, which already cleared everything. The exoneration branch
+   * that follows then finds nothing left to clear and would report "nothing
+   * moved", while the descendants resolving their backdrop into this scope
+   * are stale precisely *because* that teardown happened.
+   *
+   * Consumed (and cleared) by whichever exit reports for the scope, so a
+   * teardown is never counted twice and never dropped: a round that exits
+   * without reporting — `resolveFailed`, say — leaves the flag set for the
+   * next one.
+   */
+  const tornDownSinceReport = new Set<ScopeId>()
+
   /** True when `id`'s own registered parent chain passes through `ancestorId`. */
   function isDescendantScope(id: ScopeId, ancestorId: ScopeId): boolean {
     let parent = registry.snapshot(id)?.parent
@@ -502,14 +524,48 @@ export function createShadowScopeTheming(
     )
   }
 
+  /**
+   * One round for `id`, plus the one thing every round owes its
+   * descendants.
+   *
+   * The re-contrast lives *here*, at the single exit, rather than at each
+   * point that changes this scope's realization — and that placement is the
+   * fix for a class of bug, not a style preference. It was originally a call
+   * beside the commit path, which left both exoneration paths
+   * (`no-swatch` and `restore-native`) tearing a realization down and
+   * returning without telling anyone (bot-found, Codex's closing review of
+   * #1412). Enumerating trigger sites is exactly the shape that keeps
+   * missing one; `projectScope` below instead *reports* whether this round
+   * moved this scope's realization, and every exit it has flows through
+   * this line.
+   */
   async function projectOnce(
     id: ScopeId,
     forceInvalidate: boolean
   ): Promise<void> {
+    if (await projectScope(id, forceInvalidate)) recontrastDescendants(id)
+  }
+
+  /**
+   * Runs one round for `id` and returns whether it actually changed this
+   * scope's own realization — the signal `projectOnce` above re-contrasts
+   * descendants on.
+   *
+   * `false` for every exit that leaves the realization exactly as it was:
+   * an unregistered or non-shadow scope, a scope the custody state machine
+   * will not move toward COMMITTED, a round that failed (FAILED_HELD leaves
+   * the previous realization installed), an exoneration that found nothing
+   * to clear, and a commit that did not land (`resolveCommitted`'s own
+   * stale-completion branch, which uninstalls rather than committing).
+   */
+  async function projectScope(
+    id: ScopeId,
+    forceInvalidate: boolean
+  ): Promise<boolean> {
     const snapshot = registry.snapshot(id)
-    if (snapshot === undefined) return
+    if (snapshot === undefined) return false
     const root = snapshot.ref
-    if (!isShadowRoot(root)) return
+    if (!isShadowRoot(root)) return false
 
     if (forceInvalidate) {
       const state = registry.stateOf(id)
@@ -517,7 +573,7 @@ export function createShadowScopeTheming(
         registry.invalidate(id)
       }
     }
-    if (!ensureResolving(registry, id)) return
+    if (!ensureResolving(registry, id)) return false
 
     // Read once per round, not once per factory call (#1281) — swatch is a
     // live source now, mirroring epoch().
@@ -532,9 +588,9 @@ export function createShadowScopeTheming(
     // showing its last commit's dark styling once native content is
     // revealed again.
     if (rawSwatch === null) {
-      clearShadowSurfaceState(root)
+      const cleared = clearShadowSurfaceState(root)
       registry.resolveExonerated(id, { proof: { reason: "no-swatch" } })
-      return
+      return reportRealizationChange(id, cleared)
     }
 
     // The scan itself, not just decide(), is inside this try: projectOnce()
@@ -564,7 +620,9 @@ export function createShadowScopeTheming(
       actions = invoke(hypothesis, { decide: (h) => decide(h, rawSwatch) })
     } catch (error) {
       registry.resolveFailed(id, errorReason(error))
-      return
+      // FAILED_HELD leaves the previous realization installed and the hold
+      // engaged — nothing moved, so no descendant is stale because of it.
+      return false
     }
 
     if (actions.some((action) => action.kind === "restore-native")) {
@@ -573,11 +631,11 @@ export function createShadowScopeTheming(
       // for why a prior commit's tags/colors must be explicitly cleared
       // here rather than left for a fresh tag-surface action to overwrite
       // (there isn't one, this round).
-      clearShadowSurfaceState(root)
+      const cleared = clearShadowSurfaceState(root)
       registry.resolveExonerated(id, {
         proof: { reason: "restore-native" },
       })
-      return
+      return reportRealizationChange(id, cleared)
     }
 
     // Awaited, not fire-and-forget: project()'s own serialization queue
@@ -633,19 +691,30 @@ export function createShadowScopeTheming(
       // but retire() never calls project() again for this id, so this is
       // the only cleanup a permanently-removed scope ever gets.
       uninstall: () => {
-        clearShadowSurfaceState(root)
+        if (clearShadowSurfaceState(root)) tornDownSinceReport.add(id)
         committedVendorInvertById.delete(id)
         committedRealizationById.delete(id)
       },
     })
 
-    // Only after the two-phase handoff has actually landed COMMITTED — the
+    // Only a handoff that actually landed COMMITTED counts — the
     // stale-completion branch (`resolveCommitted`'s own generation check)
     // resolves without committing and has just had its realization
-    // uninstalled, so there is nothing for a descendant to be stale against.
-    if (registry.stateOf(id)?.kind === "COMMITTED") {
-      recontrastDescendants(id)
-    }
+    // uninstalled by whichever concurrent call superseded it, and that call
+    // reports for itself.
+    return reportRealizationChange(
+      id,
+      registry.stateOf(id)?.kind === "COMMITTED"
+    )
+  }
+
+  /**
+   * Folds in any teardown `uninstall()` recorded for `id` and clears it, so
+   * one round reports it exactly once. `changed` is what this round itself
+   * observed.
+   */
+  function reportRealizationChange(id: ScopeId, changed: boolean): boolean {
+    return tornDownSinceReport.delete(id) || changed
   }
 
   function project(id: ScopeId): void {

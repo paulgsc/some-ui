@@ -47,6 +47,7 @@ import {
   DARK_THEME_STYLE_ID,
   EXT_GUARD,
   injectDarkTheme,
+  LEGACY_FILTER_STYLE_ID,
   removeDarkTheme,
   restoreVendor,
 } from "@filter/lib/content/theme-apply"
@@ -77,11 +78,14 @@ function dynamicStyleEl(): HTMLStyleElement {
  * never reaches a `restore-native` round (`content.ts` tears the session
  * down first), so that transition has to clear this state explicitly.
  */
-export function clearPerSurfaceState(): void {
-  document.getElementById(DYNAMIC_STYLE_ID)?.remove()
-  document.querySelectorAll("[data-sw-patched]").forEach((el) => {
+export function clearPerSurfaceState(): boolean {
+  const style = document.getElementById(DYNAMIC_STYLE_ID)
+  style?.remove()
+  const tagged = document.querySelectorAll("[data-sw-patched]")
+  tagged.forEach((el) => {
     el.removeAttribute("data-sw-patched")
   })
+  return style !== null || tagged.length > 0
 }
 
 /**
@@ -190,14 +194,26 @@ export function realize(
     (action) => action.kind === "restore-native"
   )
   if (restoreNative) {
+    // Whether there was anything to tear down, not merely whether teardown
+    // ran (bot-found, Codex's closing review of #1412; an earlier version
+    // returned `true` unconditionally here, on the mistaken premise that
+    // this branch is rare). `decide()` emits `restore-native` on *every*
+    // reactive round for a natively-dark document, not only when the
+    // verdict first flips — so an unconditional `true` makes every
+    // unrelated light-DOM mutation on such a page re-walk every committed
+    // shadow tree, which is exactly the cost this signal exists to avoid.
+    // Sampled before the teardown, since afterwards there is nothing left
+    // to tell the two cases apart.
+    const hadTheme =
+      document.documentElement.hasAttribute(DARK_THEME_ATTR) ||
+      document.getElementById(DARK_THEME_STYLE_ID) !== null ||
+      document.getElementById(LEGACY_FILTER_STYLE_ID) !== null
     restoreVendor()
-    clearPerSurfaceState()
-    // Reported as a write unconditionally, unlike every branch below: both
-    // calls above are wholesale teardowns with no same-value guard of their
-    // own to read a result from, and this branch is rare (a page's verdict
-    // flipping to already-dark), so over-reporting it costs one extra
-    // re-contrast pass rather than a missed one.
-    return true
+    // Deliberately `||` with the call on the right of an already-true
+    // operand's short circuit avoided: clearPerSurfaceState() must run
+    // whatever hadTheme says, so it is called first and combined after.
+    const clearedSurfaces = clearPerSurfaceState()
+    return hadTheme || clearedSurfaces
   }
 
   const activate = actions.find(

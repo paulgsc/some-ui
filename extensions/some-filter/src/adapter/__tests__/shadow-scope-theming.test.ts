@@ -1,12 +1,20 @@
 import { REPAIR_ATTR } from "@filter/adapter/foreground-repair"
 import { LEGIBILITY_ATTR } from "@filter/adapter/legibility-audit"
-import { createScopeRegistry } from "@filter/adapter/scope-registry"
+import {
+  createScopeRegistry,
+  type ScopeId,
+} from "@filter/adapter/scope-registry"
 import {
   createShadowScopeTheming,
   SHEET_INTEGRITY_POLL_MS,
   type ShadowSceneRegistry,
+  type ShadowScopeTheming,
 } from "@filter/adapter/shadow-scope-theming"
-import { DEFAULT_SWATCH_ID, SWATCHES } from "@filter/adapter/swatches"
+import {
+  DEFAULT_SWATCH_ID,
+  SWATCHES,
+  type Swatch,
+} from "@filter/adapter/swatches"
 import { parseColor, relativeLuminance } from "@filter/lib/content/color"
 import { compensateSwatch } from "@filter/lib/content/theme-apply"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -1193,5 +1201,155 @@ describe("createShadowScopeTheming.project — an ancestor commit re-audits nest
     await flushAll()
 
     expect(carrier.hasAttribute(REPAIR_ATTR)).toBe(false)
+  })
+})
+
+describe("createShadowScopeTheming.project — every exit that moves a realization re-contrasts (#1342, bot-found)", () => {
+  /**
+   * The re-contrast used to sit beside the commit path only, so both
+   * exoneration paths tore a realization down and returned silently — a
+   * descendant resolving its backdrop into that scope kept diagnostics and
+   * a repair calculated against the old themed backdrop.
+   *
+   * The ancestor's own surface is a *sibling* of the nested host rather than
+   * its parent: jsdom applies no stylesheet to `getComputedStyle` and caches
+   * an element's computed style permanently after the first read, so the
+   * real backdrop chain cannot be exercised here at all (see this file's
+   * other nested block). What these pin is the mechanism — which exits
+   * report, and which correctly do not.
+   */
+  function scopeWithCommittedDescendant(): {
+    outerId: ScopeId
+    descendantId: ScopeId
+    reg: ShadowSceneRegistry
+    theming: ShadowScopeTheming
+    carrier: HTMLElement
+    outer: ShadowRoot
+    surface: HTMLElement
+    swatchRef: { current: Swatch | null }
+  } {
+    const reg = registry()
+    const outer = shadowRoot()
+    const surface = document.createElement("div")
+    surface.setAttribute("style", "background-color: rgb(255, 255, 255)")
+    const innerHost = document.createElement("div")
+    outer.append(surface, innerHost)
+    const inner = innerHost.attachShadow({ mode: "open" })
+
+    const outerId = registerHeld(reg, outer)
+    reg.register("shadow:desc", {
+      ref: inner,
+      parent: outerId,
+      contentEpoch: 0,
+      hold: { install: () => {}, release: () => {} },
+    })
+
+    const panel = document.createElement("div")
+    panel.setAttribute("style", "background-color: rgb(20, 20, 20)")
+    const carrier = document.createElement("div")
+    carrier.setAttribute("style", "color: rgb(0, 0, 0)")
+    carrier.textContent = "descendant"
+    panel.appendChild(carrier)
+    inner.appendChild(panel)
+
+    const swatchRef: { current: Swatch | null } = { current: swatch }
+    return {
+      outerId,
+      descendantId: "shadow:desc",
+      reg,
+      theming: createShadowScopeTheming(
+        reg,
+        () => swatchRef.current,
+        () => 0
+      ),
+      carrier,
+      outer,
+      surface,
+      swatchRef,
+    }
+  }
+
+  /** Commits both scopes, then clears the descendant's tags so a later re-contrast is unambiguous. */
+  async function settleBoth(
+    theming: ShadowScopeTheming,
+    outerId: ScopeId,
+    descendantId: ScopeId,
+    carrier: HTMLElement
+  ): Promise<void> {
+    theming.project(descendantId)
+    theming.project(outerId)
+    await flushAll()
+    carrier.removeAttribute(REPAIR_ATTR)
+    carrier.removeAttribute(LEGIBILITY_ATTR)
+  }
+
+  it("re-contrasts descendants when an ancestor exonerates as restore-native", async () => {
+    const { outerId, descendantId, reg, theming, carrier, outer, surface } =
+      scopeWithCommittedDescendant()
+
+    await settleBoth(theming, outerId, descendantId, carrier)
+    expect(reg.stateOf(outerId)?.kind).toBe("COMMITTED")
+
+    // *Fresh* elements, not restyled ones: jsdom caches computed style after
+    // the first read, so mutating `surface` in place would leave the scan
+    // still seeing white. Three distinct dark keys is
+    // MIN_EVIDENCE_FOR_DARK_VERDICT, the bar pageAlreadyDark() checks.
+    surface.remove()
+    for (const color of ["rgb(5, 5, 5)", "rgb(6, 6, 6)", "rgb(7, 7, 7)"]) {
+      const el = document.createElement("div")
+      el.setAttribute("style", `background-color: ${color}`)
+      outer.appendChild(el)
+    }
+
+    reg.invalidate(outerId)
+    theming.project(outerId)
+    await flushAll()
+
+    expect(reg.stateOf(outerId)?.kind).toBe("EXONERATED_NATIVE")
+    expect(
+      carrier.getAttribute(REPAIR_ATTR),
+      "tearing an ancestor's realization down moves its descendants' backdrops too"
+    ).toBe("rgb(0, 0, 0)~rgb(20, 20, 20)")
+  })
+
+  it("re-contrasts descendants when an ancestor exonerates for no-swatch", async () => {
+    const { outerId, descendantId, reg, theming, carrier, swatchRef } =
+      scopeWithCommittedDescendant()
+
+    await settleBoth(theming, outerId, descendantId, carrier)
+    expect(reg.stateOf(outerId)?.kind).toBe("COMMITTED")
+
+    swatchRef.current = null
+    reg.invalidate(outerId)
+    theming.project(outerId)
+    await flushAll()
+
+    expect(reg.stateOf(outerId)?.kind).toBe("EXONERATED_NATIVE")
+    expect(carrier.getAttribute(REPAIR_ATTR)).toBe(
+      "rgb(0, 0, 0)~rgb(20, 20, 20)"
+    )
+  })
+
+  it("does not re-contrast when an exoneration round had nothing to tear down", async () => {
+    // The other half of the same finding: a scope that never committed
+    // clears nothing, so its descendants' backdrops did not move. Reporting
+    // unconditionally would trade a missed pass for a repeated one on every
+    // round of a natively-dark scope.
+    const { outerId, descendantId, reg, theming, carrier, swatchRef } =
+      scopeWithCommittedDescendant()
+
+    theming.project(descendantId)
+    await flushAll()
+    carrier.removeAttribute(REPAIR_ATTR)
+
+    swatchRef.current = null
+    theming.project(outerId)
+    await flushAll()
+
+    expect(reg.stateOf(outerId)?.kind).toBe("EXONERATED_NATIVE")
+    expect(
+      carrier.hasAttribute(REPAIR_ATTR),
+      "nothing was torn down, so no descendant needed re-auditing"
+    ).toBe(false)
   })
 })

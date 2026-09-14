@@ -327,7 +327,7 @@ describe("realize — the did-it-write signal content.ts gates its shadow re-con
     expect(realize(recolored, elements)).toBe(true)
   })
 
-  it("reports a write for the restore-native teardown", () => {
+  it("reports a write for the restore-native teardown that actually tears something down", () => {
     const key: SurfaceKey = "rgb(255, 255, 255)"
     document.body.innerHTML = '<div id="a"></div>'
     const a = document.getElementById("a")
@@ -336,5 +336,30 @@ describe("realize — the did-it-write signal content.ts gates its shadow re-con
 
     expect(realize([{ kind: "restore-native" }], new Map())).toBe(true)
     expect(a.hasAttribute("data-sw-patched")).toBe(false)
+  })
+
+  it("reports NO write once restore-native has converged", () => {
+    // decide() emits restore-native on *every* reactive round for a
+    // natively-dark document, not only when the verdict first flips — so an
+    // unconditional `true` here would make every unrelated light-DOM
+    // mutation on such a page re-walk every committed shadow tree, which is
+    // exactly the cost this signal exists to avoid (bot-found, Codex's
+    // closing review of #1412).
+    const key: SurfaceKey = "rgb(255, 255, 255)"
+    document.body.innerHTML = '<div id="a"></div>'
+    const a = document.getElementById("a")
+    if (a === null) throw new Error("fixture missing")
+    realize(surfaceActions(key), new Map([[key, [a]]]))
+    expect(realize([{ kind: "restore-native" }], new Map())).toBe(true)
+
+    expect(
+      realize([{ kind: "restore-native" }], new Map()),
+      "the second and every later round has nothing left to tear down"
+    ).toBe(false)
+  })
+
+  it("reports NO write for restore-native on a page that was never themed", () => {
+    document.body.innerHTML = '<div id="a"></div>'
+    expect(realize([{ kind: "restore-native" }], new Map())).toBe(false)
   })
 })

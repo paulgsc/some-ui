@@ -70,7 +70,7 @@ import { buildSurfaceColorRule, tagSurfaceElements } from "./actuator"
 import type { FilterAction } from "./contracts"
 import {
   buildForegroundRepairRule,
-  tagRepairCarriers,
+  clearRepairTags,
   type RepairForegroundAction,
 } from "./foreground-repair"
 import {
@@ -252,7 +252,7 @@ export function realizeShadowColors(
   swatch: Swatch | null,
   vendorInvert = 0,
   repairs: ReadonlyArray<RepairForegroundAction> = []
-): void {
+): boolean {
   const desired = new Set<CSSStyleSheet>()
   if (actions.some((action) => action.kind === "activate-theme")) {
     desired.add(staticShadowLayer())
@@ -311,6 +311,9 @@ export function realizeShadowColors(
     root.adoptedStyleSheets = next
   }
   ownedSheetsByRoot.set(root, desired)
+  // Reported so `clearShadowSurfaceState` can tell a real teardown from a
+  // no-op one — see its own return value.
+  return changed
 }
 
 /**
@@ -334,7 +337,7 @@ export function realizeShadowColors(
  * commit's dark styling, visibly contradicting the "already correct, leave
  * it alone" verdict that just released the veil over it.
  */
-export function clearShadowSurfaceState(root: ShadowRoot): void {
+export function clearShadowSurfaceState(root: ShadowRoot): boolean {
   // Frozen for the duration (SF-RC3, #1342): dropping this scope's own
   // repair sheet below is a style change, so a carrier with a vendor
   // `transition` on `color` would start transitioning away from the repair
@@ -344,8 +347,9 @@ export function clearShadowSurfaceState(root: ShadowRoot): void {
   // full oscillation; the flush it performs on the way out is what commits
   // the settled authored colour, so lifting the freeze afterwards is not
   // itself a transitionable change.
-  withScopeTransitionsFrozen(root, () => {
-    root.querySelectorAll("[data-sw-patched]").forEach((el) => {
+  return withScopeTransitionsFrozen(root, () => {
+    const tagged = root.querySelectorAll("[data-sw-patched]")
+    tagged.forEach((el) => {
       el.removeAttribute("data-sw-patched")
     })
     // The rendered-contrast channel's own two tag sets, cleared the same way
@@ -373,8 +377,16 @@ export function clearShadowSurfaceState(root: ShadowRoot): void {
     // commits the authored colour while transitions are still off, so the
     // tag removal that follows changes no colour at all and has nothing left
     // to animate.
-    realizeShadowColors([], root, null)
+    const droppedSheets = realizeShadowColors([], root, null)
     flushStyle()
-    tagRepairCarriers(root, [], new Map())
+    const untagged = clearRepairTags(root)
+    // Whether this scope actually had a realization to tear down. A scope
+    // that never committed (or already settled native) clears nothing, and
+    // its descendants' backdrops did not move — so `projectOnce` must not
+    // re-contrast them. Bot-found on the same review that found the
+    // exoneration paths skipping the re-contrast entirely: fixing that by
+    // reporting unconditionally would have traded a missed pass for a
+    // repeated one on every round of a natively-dark scope.
+    return tagged.length > 0 || droppedSheets || untagged
   })
 }
