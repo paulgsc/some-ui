@@ -107,16 +107,32 @@ export const INTERACTION_SETTLE_MS = 120
  * what delegation requires.
  *
  * Covers `:hover` (`pointerover`/`pointerout`) and the `:focus`,
- * `:focus-visible` and `:focus-within` family (`focusin`/`focusout`).
+ * `:focus-visible` and `:focus-within` family (`focusin`/`focusout`) — with
+ * one qualification on `:focus-visible` recorded in the gaps below, since
+ * this list is the boundary statement #1343 asks for and an unqualified
+ * claim there would be false.
  *
  * Known gaps, stated rather than glossed (#1343's own acceptance criterion
- * — this is emphatically not complete CSS-state coverage): `:active`
- * (transient by nature; a repair would routinely land after release);
- * `@keyframes` animations and transitions that change colour with no event
- * at all; media- and container-query state (viewport resize, `prefers-*`
- * flips); `:target`, `:checked`, `:valid`/`:invalid` and other CSS-only
- * state; and anything driven by a script mutating CSSOM directly, which
- * produces no mutation record either (#1280's own lineage).
+ * — this is emphatically not complete CSS-state coverage):
+ *
+ * - `:focus-visible` *modality* transitions on an already-focused element
+ *   (bot-found, Codex review round 5; tracked in #1416). Focus an element
+ *   by pointer and `:focus-visible` does not match; press a key without
+ *   moving focus and it starts matching — the UA re-evaluates on keyboard
+ *   input, and no `focusin` or `focusout` is emitted for it. Measured
+ *   directly in Chromium: `:focus` true and `:focus-visible` false after
+ *   the click, both true after a keypress, with the captured focus-event
+ *   list identical across the two. So the element's initial focus is
+ *   covered and a later modality flip is not, until some unrelated pointer
+ *   or focus transition schedules a pass.
+ * - `:active` — transient by nature; a repair would routinely land after
+ *   release.
+ * - `@keyframes` animations and transitions that change colour with no
+ *   event at all.
+ * - Media- and container-query state (viewport resize, `prefers-*` flips).
+ * - `:target`, `:checked`, `:valid`/`:invalid` and other CSS-only state.
+ * - Anything driven by a script mutating CSSOM directly, which produces no
+ *   mutation record either (#1280's own lineage).
  */
 const INTERACTION_EVENTS = [
   "pointerover",
