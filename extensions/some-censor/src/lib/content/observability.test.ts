@@ -6,6 +6,9 @@ import {
   createBoyoRecorder,
   HEALTH_SAMPLE_INTERVAL_MS,
   INDEX_KEY,
+  MAX_DATE_FORMS_PER_SURFACE,
+  MAX_RAW_DATE_CHARS,
+  MAX_SNAPSHOT_BYTES,
   observability,
   PROMOTION_STALL_MS,
   readIndex,
@@ -700,6 +703,76 @@ describe("the index cap does not orphan payloads (#1397's own review)", () => {
     expect(store.size).toBe(21)
   })
 
+  it("also sheds payloads on the reconciliation write, which evicts too when the index is already at capacity", async () => {
+    let store: Map<string, unknown> | undefined
+    let clobbered = false
+    store = installFakeStorage((key) => {
+      if (key !== INDEX_KEY || clobbered) return
+      clobbered = true
+      // A competing tab writes a full index of its own, without our entry —
+      // so our read-back re-applies at capacity and must evict somebody.
+      store?.set(
+        INDEX_KEY,
+        Array.from({ length: 20 }, (_unused, i) => ({
+          sessionId: `other${String(i)}`,
+          origin: "https://www.youtube.com",
+          surface: "home",
+          sessionOrdinal: 1,
+          updatedAt: NOW + 100 + i,
+        }))
+      )
+    })
+    for (let i = 0; i < 20; i++) {
+      store.set(sessionStorageKey(`other${String(i)}`), { version: 1 })
+    }
+
+    await touchIndex({
+      sessionId: "mine",
+      origin: "https://www.youtube.com",
+      surface: "home",
+      sessionOrdinal: 1,
+      updatedAt: NOW + 1000,
+    })
+
+    expect(clobbered).toBe(true)
+    const index = await readIndex()
+    expect(index).toHaveLength(20)
+    expect(index.map((e) => e.sessionId)).toContain("mine")
+    // other0 is the oldest of the competing tab's entries, so re-applying
+    // ours at capacity pushed it out — its bundle must go with it.
+    expect(index.map((e) => e.sessionId)).not.toContain("other0")
+    expect(store.has(sessionStorageKey("other0"))).toBe(false)
+    expect(store.has(sessionStorageKey("other1"))).toBe(true)
+  })
+
+  it("re-lists a live recording that a competing tab evicted, on its next touch — the cap bounds indexed recordings, and an evicted tab that is still running restores itself", async () => {
+    const store = installFakeStorage()
+    const obs = newObservability()
+
+    await touchIndex({
+      sessionId: obs.sessionId,
+      origin: "https://www.youtube.com",
+      surface: "home",
+      sessionOrdinal: 1,
+      updatedAt: NOW,
+    })
+    expect((await readIndex()).map((e) => e.sessionId)).toContain(obs.sessionId)
+
+    // Another tab evicts us and our bundle is deleted with the entry.
+    for (let i = 0; i < 20; i++) await record(store, i)
+    expect((await readIndex()).map((e) => e.sessionId)).not.toContain(
+      obs.sessionId
+    )
+
+    // Our recorder is still live, so its next health sample re-lists it.
+    await obs.sampleHealth(baseContext({ now: NOW + 5000 }))
+    await vi.waitFor(async () => {
+      expect((await readIndex()).map((e) => e.sessionId)).toContain(
+        obs.sessionId
+      )
+    })
+  })
+
   it("takes the bundle with it when a recording is removed outright", async () => {
     const store = installFakeStorage()
     await record(store, 1)
@@ -708,6 +781,43 @@ describe("the index cap does not orphan payloads (#1397's own review)", () => {
     await removeFromIndex("s1")
     expect(await readIndex()).toEqual([])
     expect(store.has(sessionStorageKey("s1"))).toBe(false)
+  })
+})
+
+describe("the corpus snapshot survives the recorder's own clamp (#1397's own review, round 2)", () => {
+  it("budgets for the worst case the caps allow, escaping included — Recorder.clamp() replaces an oversized value with a truncated string rather than trimming it", () => {
+    const plain = Array.from({ length: MAX_DATE_FORMS_PER_SURFACE }, () =>
+      "x".repeat(MAX_RAW_DATE_CHARS)
+    )
+    // Every character escaping to two is the worst JSON.stringify can do to
+    // a string of this length, and clamp() measures the serialized form.
+    const escaped = Array.from({ length: MAX_DATE_FORMS_PER_SURFACE }, () =>
+      '"'.repeat(MAX_RAW_DATE_CHARS)
+    )
+
+    expect(JSON.stringify(plain).length).toBeLessThanOrEqual(MAX_SNAPSHOT_BYTES)
+    expect(JSON.stringify(escaped).length).toBeLessThanOrEqual(
+      MAX_SNAPSHOT_BYTES
+    )
+    // The default this overrides would not have held it.
+    expect(JSON.stringify(plain).length).toBeGreaterThan(2048)
+  })
+
+  it("keeps a full surface's corpus readable as an array, not a truncated string", () => {
+    const obs = newObservability()
+    for (let i = 0; i < MAX_DATE_FORMS_PER_SURFACE; i++) {
+      // Each form padded to the cap, so the snapshot lands at its true ceiling.
+      obs.uploadDate(
+        `${String(i)} days ago`.padEnd(MAX_RAW_DATE_CHARS, "."),
+        "home",
+        "ytd-rich-item-renderer"
+      )
+    }
+
+    const snapshot = obs.recorder.snapshotEntries()["dates.home"]
+    expect(Array.isArray(snapshot)).toBe(true)
+    expect(snapshot).toHaveLength(MAX_DATE_FORMS_PER_SURFACE)
+    expect(obs.dateForms("home")).toHaveLength(MAX_DATE_FORMS_PER_SURFACE)
   })
 })
 

@@ -420,10 +420,7 @@ export async function touchIndex(entry: IndexEntry): Promise<void> {
       const next = capIndex(entry, existing)
       await ext.storage.local.set({ [INDEX_KEY]: next })
 
-      const kept = new Set(next.map((e) => e.sessionId))
-      for (const evicted of existing) {
-        if (!kept.has(evicted.sessionId)) await dropRecording(evicted.sessionId)
-      }
+      await dropEvicted(existing, next)
 
       // Cross-tab reconciliation. Another tab's concurrent read-modify-write
       // can have read the same `existing` we did and written after us,
@@ -433,12 +430,29 @@ export async function touchIndex(entry: IndexEntry): Promise<void> {
       // clobber in the same instant is left to the next touch.
       const after = await readIndex()
       if (!after.some((e) => e.sessionId === entry.sessionId)) {
-        await ext.storage.local.set({ [INDEX_KEY]: capIndex(entry, after) })
+        // Bot-found (#1397's own review, round 2): re-applying at capacity
+        // evicts somebody too, so this path has to shed payloads exactly like
+        // the one above — otherwise the recovery added for the cross-tab race
+        // reintroduces the orphaned-payload leak it was written alongside.
+        const reconciled = capIndex(entry, after)
+        await ext.storage.local.set({ [INDEX_KEY]: reconciled })
+        await dropEvicted(after, reconciled)
       }
     } catch {
       // Best-effort.
     }
   })
+}
+
+/** Delete the bundle of every recording present in `before` but not in `after`. */
+async function dropEvicted(
+  before: ReadonlyArray<IndexEntry>,
+  after: ReadonlyArray<IndexEntry>
+): Promise<void> {
+  const kept = new Set(after.map((e) => e.sessionId))
+  for (const evicted of before) {
+    if (!kept.has(evicted.sessionId)) await dropRecording(evicted.sessionId)
+  }
 }
 
 /** `entry` first, everything else by recency, truncated to the cap. */
@@ -469,6 +483,13 @@ export async function removeFromIndex(sessionId: string): Promise<void> {
 }
 
 // ── The recorder ─────────────────────────────────────────────────────────────
+
+/**
+ * Ceiling on any one persisted `detail` or snapshot. Sized by the corpus
+ * snapshot, which is the largest thing this adapter stores — see
+ * {@link createBoyoRecorder}, and the test that pins the arithmetic.
+ */
+export const MAX_SNAPSHOT_BYTES = 8192
 
 export type BoyoRecorder = Recorder<
   BoyoEventKind,
@@ -511,6 +532,18 @@ export function createBoyoRecorder(
     capacity: 400,
     invariants: boyoInvariants,
     persistence,
+    // Bot-found (#1397's own review, round 2). The default 2 KB clamp was
+    // sized for small event details, and `clamp()` does not trim an oversized
+    // value — it replaces it with a truncated *string*. The `dates.<surface>`
+    // snapshot is an array of up to MAX_DATE_FORMS_PER_SURFACE forms of up to
+    // MAX_RAW_DATE_CHARS each, which serializes to 40 * (64 + 3) + 1 = 2681
+    // bytes plain, and 5241 with every character escaped — so the corpus this
+    // story exists to accumulate would have silently stopped being an array,
+    // and the OBS2 page could not have read it, well before its own cap.
+    // 8 KB clears the escaped worst case with room to spare and is still a
+    // small fixed budget; `boyoCorpusSnapshotFits()` pins the arithmetic so a
+    // later change to either cap fails a test rather than this ceiling.
+    maxDetailBytes: MAX_SNAPSHOT_BYTES,
   })
 }
 
@@ -528,7 +561,7 @@ export function createBoyoRecorder(
 export const HEALTH_SAMPLE_INTERVAL_MS = 10_000
 
 /** Distinct raw date forms kept per surface. See {@link BoyoObservability}. */
-const MAX_DATE_FORMS_PER_SURFACE = 40
+export const MAX_DATE_FORMS_PER_SURFACE = 40
 
 /** Distinct `<surface>:<renderer>` pairs reported as date-less. */
 const MAX_ABSENT_PROBES = 64
@@ -543,7 +576,7 @@ const MAX_ABSENT_PROBES = 64
  * that: an overlong value is reported as an absence with a reason, never
  * truncated and kept, because a truncated title is still a title.
  */
-const MAX_RAW_DATE_CHARS = 64
+export const MAX_RAW_DATE_CHARS = 64
 
 /**
  * One content-script instance's recording, and the small amount of state that
