@@ -836,15 +836,26 @@ function currentSurface(): BoyoSurface {
 /**
  * A per-content-script-instance id. Unique across tabs, which is the whole
  * point of the per-recording storage key — see this module's header.
+ *
+ * `getRandomValues` rather than `randomUUID` (which needs a secure context)
+ * or `Math.random` (flagged by CodeQL on this PR, and the weaker source
+ * regardless). This id is not a secret and guards nothing — it only has to
+ * not collide between two tabs opening at the same instant — but there is no
+ * reason to reach for a weaker source when the stronger one is available
+ * everywhere `crypto` is.
+ *
+ * Wrapped because it is reached from `Controller.init()`: an engine without
+ * Web Crypto must cost the recording its cross-tab distinctness, never take
+ * the extension down at startup. The clock alone is the honest fallback —
+ * two tabs loading in the same millisecond would share a key, which costs a
+ * clobbered diagnostic bundle and nothing else.
  */
 function mkRecordingId(): string {
-  const c: unknown = globalThis.crypto
-  if (c !== null && typeof c === "object") {
-    const uuid: unknown = Reflect.get(c, "randomUUID")
-    if (typeof uuid === "function") {
-      const value: unknown = Reflect.apply(uuid, c, [])
-      if (typeof value === "string") return value
-    }
+  try {
+    const bytes = new Uint8Array(8)
+    crypto.getRandomValues(bytes)
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")
+  } catch {
+    return `t${String(Date.now())}`
   }
-  return `${String(Date.now())}-${Math.random().toString(36).slice(2, 10)}`
 }

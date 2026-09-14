@@ -5,11 +5,14 @@ import {
   BoyoObservability,
   createBoyoRecorder,
   HEALTH_SAMPLE_INTERVAL_MS,
+  observability,
   PROMOTION_STALL_MS,
   readIndex,
   removeFromIndex,
   RESOLVE_GRACE_MS,
   sessionStorageKey,
+  startObservability,
+  stopObservability,
   surfaceOf,
   type BoyoContext,
   type BoyoEventKind,
@@ -529,6 +532,39 @@ describe("sampleHealth — transitions, not levels", () => {
       false
     )
     expect(obs.shouldSampleHealth(NOW + HEALTH_SAMPLE_INTERVAL_MS)).toBe(true)
+  })
+})
+
+describe("startObservability — one recording per content-script instance", () => {
+  afterEach(() => {
+    stopObservability()
+  })
+
+  it("mints a distinct id per instance, so two tabs cannot write the same storage key", () => {
+    const first = startObservability(memoryPersistence())
+    const firstId = first.sessionId
+    stopObservability()
+    const second = startObservability(memoryPersistence())
+
+    expect(firstId).not.toBe(second.sessionId)
+    expect(sessionStorageKey(firstId)).not.toBe(
+      sessionStorageKey(second.sessionId)
+    )
+    expect(firstId).not.toContain("NaN")
+    expect(firstId.length).toBeGreaterThan(0)
+  })
+
+  it("is idempotent — a re-entered Controller setup (C1/C3) gets the live recording, not an orphaned second key", () => {
+    const first = startObservability(memoryPersistence())
+    expect(startObservability(memoryPersistence())).toBe(first)
+  })
+
+  it("hands every call site the same recording, and a no-op before one is started", () => {
+    expect(observability()).toBeNull()
+    const started = startObservability(memoryPersistence())
+    expect(observability()).toBe(started)
+    stopObservability()
+    expect(observability()).toBeNull()
   })
 })
 
