@@ -26,9 +26,16 @@
  */
 import {
   auditPage,
+  LEGIBILITY_AUDIT_LAUNCH_OPTIONS,
   legibilityAuditTest as test,
 } from "@filter/playwright/fixtures/legibility-audit-harness"
 import { expect } from "@playwright/test"
+
+// Declared here, in the spec file itself, rather than in the shared harness
+// — see LEGIBILITY_AUDIT_LAUNCH_OPTIONS's own doc comment for the
+// Playwright "inconsistent test.use() options" configuration failure a
+// `.use()` in a common helper produces.
+test.use({ launchOptions: LEGIBILITY_AUDIT_LAUNCH_OPTIONS })
 
 test.describe("legibility audit's generated-pseudo-element hazard against real Chromium (#1358)", () => {
   test("a ::before with real content forces its host underdetermined instead of trusting the host's own color", async ({

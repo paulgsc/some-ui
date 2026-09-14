@@ -33,7 +33,7 @@ import type { FsmEvent } from "@censor/types/states"
 import { assertNever, ClickGate } from "@some-extension/common"
 
 import { DomHandle } from "./dom-handle"
-import { extractMeta, extractTitle } from "./extract/index"
+import { extractMeta, extractTitle, extractUploadDate } from "./extract/index"
 import type { ViewState } from "./fsm"
 import {
   applyClick,
@@ -42,6 +42,7 @@ import {
   applyWhitelist,
   project,
 } from "./fsm"
+import { observability, recordUploadDate } from "./observability"
 import type { VideoRecord } from "./record"
 
 type TransformTitleFn = (title: string, channelId: string) => Promise<unknown>
@@ -99,6 +100,14 @@ export class VideoEntry {
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   mount(): void {
+    // The card as it is first seen during ordinary browsing — which is the
+    // only moment most cards are ever observed, since extractMeta() otherwise
+    // runs only when the user clicks one. Two selectors, once per entry, and
+    // the raw string is all that is kept (OBS1, #1395).
+    recordUploadDate(
+      extractUploadDate(this._handle.element),
+      this._handle.element
+    )
     void this._applyView(this._view)
   }
 
@@ -136,6 +145,7 @@ export class VideoEntry {
         const el = this._handle.element
         const meta = extractMeta(el)
         const titleText = extractTitle(el) ?? ""
+        recordUploadDate(meta.uploadDate, el)
 
         const next = applySkipToTitle(this._view, meta, titleText)
 
@@ -195,7 +205,11 @@ export class VideoEntry {
     const { kind } = this._view
     switch (kind) {
       case "masked": {
-        return applyClick(this._view, extractMeta(el))
+        const meta = extractMeta(el)
+        // A second look, free: by now the card is hydrated, so this upgrades a
+        // mount-time absence into a real observation for the same card.
+        recordUploadDate(meta.uploadDate, el)
+        return applyClick(this._view, meta)
       }
       case "meta": {
         return applyClick(this._view, extractTitle(el) ?? "")
@@ -215,6 +229,7 @@ export class VideoEntry {
   private async _applyView(incoming: ViewState): Promise<void> {
     const version = ++this._version
     this._view = incoming
+    observability()?.entryState(incoming.kind, this._record.videoId)
 
     let view: ViewState = incoming
 

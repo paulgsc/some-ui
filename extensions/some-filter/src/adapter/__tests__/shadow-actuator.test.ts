@@ -1,5 +1,10 @@
 import type { FilterAction, SurfaceKey } from "@filter/adapter/contracts"
 import {
+  REPAIR_ATTR,
+  type RepairForegroundAction,
+} from "@filter/adapter/foreground-repair"
+import { LEGIBILITY_ATTR } from "@filter/adapter/legibility-audit"
+import {
   clearShadowSurfaceState,
   MAX_CACHED_SHEETS,
   realizeShadowColors,
@@ -503,5 +508,108 @@ describe("realizeShadowColors — bounded sheet cache (bot-found, review round 2
       null
     )
     expect(laterRoot.adoptedStyleSheets[0]).not.toBe(firstSheet)
+  })
+})
+
+// ── SF-RC3 (#1342) — the rendered-contrast channel, projected per scope ──
+
+const REPAIR_KEY = "rgb(0, 0, 0)~rgb(23, 23, 23)"
+const repair: RepairForegroundAction = {
+  kind: "repair-foreground",
+  key: REPAIR_KEY,
+  css: "rgb(158, 158, 158)",
+}
+
+function repairSheetOf(root: ShadowRoot): CSSStyleSheet | undefined {
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- see shadow-actuator.ts's header (jsdom/jsdom#2916).
+  return (root.adoptedStyleSheets ?? []).find((sheet) =>
+    [...sheet.cssRules].some((rule) => rule.cssText.includes(REPAIR_ATTR))
+  )
+}
+
+describe("realizeShadowColors — foreground repairs (#1342)", () => {
+  it("adopts a sheet carrying the repair rule alongside the surface colours", () => {
+    const root = shadowRoot()
+    realizeShadowColors(
+      [
+        {
+          kind: "emit-surface-color",
+          key: "rgb(255, 255, 255)",
+          css: "rgb(23, 23, 23)",
+        },
+      ],
+      root,
+      null,
+      0,
+      [repair]
+    )
+
+    const sheet = repairSheetOf(root)
+    expect(sheet).toBeDefined()
+    expect(sheet?.cssRules[0]?.cssText).toContain("rgb(158, 158, 158)")
+    expect(root.adoptedStyleSheets).toHaveLength(2)
+  })
+
+  it("two scopes whose carriers resolve to the identical pair adopt one CSSStyleSheet object (#1342's own acceptance criterion)", () => {
+    // Object identity, not merely equal rule text: a fresh parse per scope
+    // would be visually indistinguishable and is exactly what the shared
+    // sheetFor cache exists to avoid.
+    const a = shadowRoot()
+    const b = shadowRoot()
+    realizeShadowColors([], a, null, 0, [repair])
+    realizeShadowColors([], b, null, 0, [repair])
+
+    const sheetA = repairSheetOf(a)
+    const sheetB = repairSheetOf(b)
+    expect(sheetA).toBeDefined()
+    expect(sheetB).toBe(sheetA)
+  })
+
+  it("counter-inverts the repair under an active vendor invert, exactly like emit-surface-color's own colours", () => {
+    const root = shadowRoot()
+    realizeShadowColors([], root, null, 1, [repair])
+
+    const cssText = repairSheetOf(root)?.cssRules[0]?.cssText ?? ""
+    expect(cssText).toContain("rgb(97, 97, 97)")
+    expect(cssText).not.toContain("color: rgb(158, 158, 158)")
+  })
+
+  it("drops a repair sheet the next round no longer asks for, keeping the rest of the realization", () => {
+    const root = shadowRoot()
+    const actions: ReadonlyArray<FilterAction> = [
+      {
+        kind: "emit-surface-color",
+        key: "rgb(255, 255, 255)",
+        css: "rgb(23, 23, 23)",
+      },
+    ]
+    realizeShadowColors(actions, root, null, 0, [repair])
+    expect(root.adoptedStyleSheets).toHaveLength(2)
+
+    realizeShadowColors(actions, root, null, 0, [])
+
+    expect(repairSheetOf(root)).toBeUndefined()
+    expect(root.adoptedStyleSheets).toHaveLength(1)
+  })
+})
+
+describe("clearShadowSurfaceState — the rendered-contrast channel's own tags (#1342)", () => {
+  it("strips data-sw-legibility and data-sw-legibility-fix along with data-sw-patched and every sheet", () => {
+    const root = shadowRoot()
+    root.innerHTML = '<div id="carrier">text</div>'
+    const el = root.getElementById("carrier")
+    if (el === null) throw new Error("fixture missing")
+    el.setAttribute("data-sw-patched", "rgb(255, 255, 255)")
+    el.setAttribute(LEGIBILITY_ATTR, "violated")
+    el.setAttribute(REPAIR_ATTR, REPAIR_KEY)
+    realizeShadowColors([], root, null, 0, [repair])
+
+    clearShadowSurfaceState(root)
+
+    expect(el.hasAttribute("data-sw-patched")).toBe(false)
+    expect(el.hasAttribute(LEGIBILITY_ATTR)).toBe(false)
+    expect(el.hasAttribute(REPAIR_ATTR)).toBe(false)
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- see shadow-actuator.ts's header.
+    expect(root.adoptedStyleSheets ?? []).toHaveLength(0)
   })
 })

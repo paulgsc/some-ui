@@ -751,6 +751,396 @@ function registerCandidate(
 }
 
 /**
+ * The `<style>` element SF-RC2's own repair alphabet
+ * (`foreground-repair.ts`) writes its foreground-only rules into. Declared
+ * *here*, rather than in that module, because this module's own sensing
+ * pass is what has to know which sheet to suppress while it reads — and
+ * this direction (repair imports audit) is the only one that avoids a
+ * cycle, since `foreground-repair.ts` already consumes this module's
+ * `LegibilityAttr`/`LegibilityKey`/`MIN_CONTRAST_RATIO`.
+ *
+ * Also listed in `pipeline.ts`'s own `OWN_COLOR_SHEET_IDS`, so the
+ * *vendor-evidence* Sensor (`scan()`, inside `withVendorColorsVisible`)
+ * never folds this channel's own foreground output back in as fresh vendor
+ * evidence — #831's exact failure mode, one channel over.
+ */
+export const REPAIR_STYLE_ID = "__sw_legibility_repair"
+
+/** The sheet holding the scoped transition freeze `withRepairSuppressed` reads under. */
+export const FREEZE_STYLE_ID = "__sw_legibility_freeze"
+
+/**
+ * `foreground-repair.ts`'s own `REPAIR_ATTR`, duplicated here rather than
+ * imported: that module already imports this one, so the other direction
+ * would be circular — the same small-stable-duplicate resolution this
+ * file's own header explains for `isRendered`/`SKIP_TAGS`. The freeze below
+ * is scoped by it, so the two must agree.
+ */
+const REPAIR_ATTR = "data-sw-legibility-fix"
+
+/**
+ * The one rule both freezes carry (document `<style>` and per-scope adopted
+ * sheet alike), declared once so the two cannot drift.
+ *
+ * Two attributes, both extension-owned, and both for the same reason: a
+ * colour this extension itself just wrote must not still be *animating*
+ * while this channel reads it back.
+ *
+ * `[data-sw-legibility-fix]` is SF-RC2's original case — disabling the
+ * repair sheet to sense the authored foreground is itself a style change,
+ * so on a carrier with a vendor `transition` on `color` the read returns
+ * the transition's start value, which is the repair.
+ *
+ * `[data-sw-patched]` is the same hazard one channel over, on the
+ * *backdrop* (bot-found, Codex review round 3 on #1412). The audit runs
+ * immediately after actuation, in the same task, so a surface with an
+ * authored `transition` on `background-color` is still at (or near) its
+ * native colour when `resolveEffectiveBackdrop` reads it: dark text over a
+ * surface that is about to become dark scores as legible, gets no repair,
+ * and turns unreadable once the transition lands — with no mutation left to
+ * schedule another round, since completing a transition is not one. It
+ * applies to the document path as much as to a shadow scope; `fire()` has
+ * audited right after `realize()` since SF-RC1.
+ *
+ * Deliberately still not `*`, and still no `animation` declaration —
+ * SF-RC2 measured what that costs (a `*` freeze snapped an unrelated
+ * control mid-fade straight to its destination; `animation: none` *removes*
+ * a running animation, so a spinner came back restarted at `currentTime`
+ * 0). Both attributes here mark elements this extension wrote to, so the
+ * only transitions frozen are ones it caused.
+ */
+const FREEZE_RULE = `[${REPAIR_ATTR}], [data-sw-patched] { transition: none !important; }`
+
+/**
+ * The transition freeze `withRepairSuppressed` reads under, as a
+ * *persistent, disabled-by-default* extension-owned sheet rather than a
+ * `<style>` appended and removed around each read.
+ *
+ * `prepaint.ts`'s own `withPrepaintSuppressed` does that append-and-remove,
+ * and it is correct there — it runs once, outside the Sensor's observation
+ * window. Reusing it here does not work, and not subtly: `isSelfAuthored`
+ * deliberately does *not* treat the removal of an extension-owned node as
+ * self-authored (Remark 7.2 — "our node is gone" is ambiguous between our
+ * teardown and the vendor's, and the ambiguity has to resolve toward
+ * reacting). So tearing the freeze down at the end of every audit queues a
+ * mutation the Sensor reacts to, whose round audits again, which tears it
+ * down again — a self-feeding loop, #831's exact shape. Caught by this
+ * package's own quiescence tests, which measured six rounds where one was
+ * expected before this was reduced to a `disabled` toggle. Toggling
+ * `CSSStyleSheet.disabled` mutates no DOM at all, the same reason
+ * `pipeline.ts`'s `withVendorColorsVisible` suppresses its own sheets that
+ * way.
+ *
+ * Scoped to `[${REPAIR_ATTR}]`, and declaring `transition` only — not
+ * `*` and not `animation` — because the freeze exists solely to stop *this
+ * extension's own* sheet toggle from starting a transition on a carrier it
+ * repaired. Anything wider is collateral damage, and measurably so
+ * (bot-found, Codex's own closing review of this PR; confirmed directly
+ * against real Chromium with a `*`-scoped freeze declaring both):
+ *
+ *   - `animation: none` *removes* a running animation rather than pausing
+ *     it. A spinner measured at `currentTime` 799.9ms had zero animations
+ *     during the freeze and came back at `currentTime` 0 — restarted from
+ *     the beginning, not resumed. On a page reconciling often enough, a
+ *     vendor animation would never visibly progress at all. Nothing in this
+ *     channel ever needed it: an `@keyframes` animation is not something a
+ *     stylesheet toggle can start.
+ *   - A `*` scope cancels in-flight transitions on elements this extension
+ *     never touched. A control mid-fade at `rgb(20, 20, 20)` jumped
+ *     straight to its `rgb(255, 255, 255)` destination.
+ *
+ * The same probe with this scope left the spinner's animation running
+ * untouched. What remains in scope is exactly the necessary cost: a carrier
+ * this channel has already repaired, whose in-flight colour transition is
+ * snapped to its destination for the duration of one synchronous read —
+ * which is the settled value the read is after in the first place.
+ */
+function freezeSheet(): CSSStyleSheet | null {
+  const existing = document.getElementById(FREEZE_STYLE_ID)
+  if (existing instanceof HTMLStyleElement) return existing.sheet
+
+  const style = document.createElement("style")
+  style.id = FREEZE_STYLE_ID
+  style.setAttribute("data-my-ext", "")
+  style.textContent = FREEZE_RULE
+  document.head.appendChild(style)
+  const sheet = style.sheet
+  // Inert until a read actually needs it. The window between append and
+  // this line is synchronous, so no frame is ever painted with page
+  // transitions suppressed.
+  if (sheet !== null) sheet.disabled = true
+  return sheet
+}
+
+/**
+ * Runs `fn` with SF-RC2's repair sheet disabled, so every
+ * `getComputedStyle().color` read inside it returns the carrier's *authored*
+ * foreground rather than the repair this channel painted over it.
+ *
+ * Without this the channel oscillates, and visibly: a repaired carrier
+ * reads back as legible on the very next round (our own `!important` rule
+ * is what makes it so), `decideLegibility` therefore emits nothing for it,
+ * `realizeLegibility`/`realizeForegroundRepairs` drop the tag and the rule
+ * as stale, the carrier reverts to its illegible authored color, and the
+ * round after that re-detects and re-repairs it — a flicker driven by
+ * nothing but the extension's own output. Re-deriving the same violation
+ * from the same authored evidence every round is what makes the repair a
+ * genuine fixed point instead (Theorem 7.2's zero-write idempotency:
+ * identical DOM state, identical actions, no writes).
+ *
+ * Background resolution is deliberately *not* suppressed — the repair sheet
+ * only ever declares `color`, so it cannot perturb
+ * `resolveEffectiveBackdrop`, and the backdrop this audit measures against
+ * must remain the post-actuation one (the themed surface actually painted).
+ *
+ * `CSSStyleSheet.disabled` rather than detaching the element, for the same
+ * reason `pipeline.ts`'s own `withVendorColorsVisible` does it that way: it
+ * mutates no DOM (so it queues no MutationRecord to react to) and, because
+ * the whole audit is one synchronous task, no frame is ever painted with
+ * the repair off.
+ *
+ * Both the read and the restore happen with transitions frozen
+ * (`freezeSheet` below), which is what makes the read report the *settled*
+ * authored colour. Disabling the repair sheet is itself a style change, so
+ * on a carrier with a vendor `transition` on `color` it starts a transition
+ * away from the repair — and a `getComputedStyle` taken in the same task
+ * returns that transition's current value, which at progress zero is the
+ * repair itself (bot-found, Codex review round 2; confirmed directly
+ * against real Chromium: a carrier with `transition: color 0.3s` read back
+ * `rgb(158, 158, 158)`, this channel's own repair, where the authored
+ * colour was `rgb(0, 0, 0)`, and read back `rgb(0, 0, 0)` correctly once
+ * the freeze was in effect first). Sensing would otherwise call such a
+ * carrier legible and drop its repair, leaving the transition to finish at
+ * the illegible authored colour with no mutation left to schedule another
+ * round — confirmed end to end against the real built extension, where the
+ * carrier lost its tag outright after one reconcile round.
+ *
+ * The freeze is an author-origin `!important` rule on `*` (0-0-0), so a
+ * vendor `transition: … !important` at any higher specificity outranks it
+ * and the read is unreliable again for that carrier (bot-found, Codex
+ * review round 3; confirmed directly — an inline
+ * `transition: color 2s linear !important` kept `transitionDuration` at
+ * `"2s"` under the freeze and read the repair back). That is the same
+ * author-origin ceiling `foreground-repair.ts`'s own `repairCanWinCascade`
+ * documents and #1410 tracks, not a separate gap: no amount of specificity
+ * closes it, only a different injection origin does.
+ *
+ * `content.ts` already wraps the *initial* rescan in an equivalent freeze
+ * (`withPrepaintSuppressed`) for the identical reason, but mutation-driven
+ * rounds reach `fire()` without it. Applied here unconditionally rather
+ * than only when a repair sheet exists: the freeze is what any
+ * post-actuation colour read needs to be meaningful, and a conditional
+ * would be more code for less correctness.
+ */
+function withRepairSuppressed<T>(fn: () => T): T {
+  // The freeze is unconditional now (bot-found, Codex review round 3 on
+  // #1412). It used to be skipped whenever no repair sheet was applied,
+  // on the reasoning that nothing of ours could then perturb a carrier —
+  // true of the *foreground*, false of the backdrop: `fire()` calls this
+  // audit immediately after `realize()`, so the surfaces this round just
+  // darkened may still be mid-transition, and the very first round of any
+  // page — the one that does the darkening — is exactly the round that
+  // used to take the skip. See `FREEZE_RULE`.
+  const freeze = freezeSheet()
+  if (freeze !== null) {
+    freeze.disabled = false
+    flushStyle()
+  }
+  try {
+    return withRepairSheetDisabled(fn)
+  } finally {
+    if (freeze !== null) {
+      // Mirrors `withScopeTransitionsFrozen`'s own exit flush: commit
+      // whatever the body left behind while transitions are still off, so
+      // lifting the freeze is not itself a transitionable change. The
+      // enabling flush above has usually already settled the backdrop, but
+      // the repair sheet's own restore happens inside the body.
+      flushStyle()
+      freeze.disabled = true
+    }
+  }
+}
+
+/**
+ * The suppression half, split out of `withRepairSuppressed` so the freeze
+ * above can wrap it unconditionally while this stays conditional — there is
+ * genuinely nothing to disable until this channel has emitted a repair.
+ */
+function withRepairSheetDisabled<T>(fn: () => T): T {
+  const el = document.getElementById(REPAIR_STYLE_ID)
+  const sheet = el instanceof HTMLStyleElement ? el.sheet : null
+  if (sheet === null || sheet.disabled) return fn()
+
+  {
+    sheet.disabled = true
+    try {
+      return fn()
+    } finally {
+      sheet.disabled = false
+      // Re-enabling alone is not enough, and this flush is the point of
+      // doing it *here*: a transition starts from whatever computed value
+      // was last resolved, and the read above resolved the authored colour.
+      // Without forcing a second resolve while transitions are still
+      // frozen, the restored repair is only observed at the next rendering
+      // opportunity — by which time the freeze is off again, so the engine
+      // sees authored→repair as a fresh transitionable change and animates
+      // it. Measured directly against the real built extension: the carrier
+      // read back `rgb(18, 18, 18)` after a reconcile round, partway from
+      // black to its `rgb(158, 158, 158)` repair, with the correct rule and
+      // tag both in place the whole time. Resolving here commits the repair
+      // while transitions are still off, so lifting the freeze changes
+      // nothing and no frame is ever painted mid-flight.
+      flushStyle()
+    }
+  }
+}
+
+/**
+ * Forces the pending style recalculation to happen now. `getComputedStyle`
+ * alone is lazy about nothing here — reading a property off it is what
+ * actually resolves the element's style — so the property access is load-
+ * bearing, not a stray expression.
+ */
+export function flushStyle(): void {
+  void getComputedStyle(document.documentElement).color
+}
+
+/**
+ * The scoped counterpart to `freezeSheet()` above: one shared *constructed*
+ * `CSSStyleSheet` carrying the identical `[data-sw-legibility-fix] {
+ * transition: none !important }` rule, adopted into each shadow scope that
+ * needs it — SF-RC3 (#1342).
+ *
+ * A `<style>` element in `document.head` cannot reach inside a shadow tree
+ * at all (CSS encapsulation — the same structural gap `shadow-actuator.ts`
+ * exists for on the colour side). Probed directly against real Chromium
+ * rather than assumed: with the document-level freeze enabled, a carrier
+ * *inside* an open shadow root still read `transitionDuration: "5s"`, so
+ * the document freeze provably does not apply there. The rule text is
+ * identical to the document one's on purpose — one scope's freeze and
+ * another's have nothing to differ about, and reusing the text keeps the
+ * two from drifting.
+ *
+ * One object shared across every scope rather than one per root: adopting
+ * the same constructed sheet into many roots is exactly what
+ * `adoptedStyleSheets` is for (`shadow-actuator.ts`'s own `sheetFor` cache
+ * shares colour sheets the same way), and `disabled` is a property of the
+ * *sheet*, so one toggle covers every scope currently reading — which is
+ * harmless, since every read this guards is synchronous and the rule only
+ * ever matches carriers this channel itself repaired.
+ *
+ * `insertRule` rather than `replaceSync`, and a `?? []` around the
+ * adoptedStyleSheets read, for exactly the two jsdom reasons
+ * `shadow-actuator.ts`'s own header sets out.
+ */
+let scopeFreezeSheet: CSSStyleSheet | null = null
+
+function adoptScopeFreeze(root: ShadowRoot): CSSStyleSheet | null {
+  if (typeof CSSStyleSheet === "undefined") return null
+  if (scopeFreezeSheet === null) {
+    const sheet = new CSSStyleSheet()
+    sheet.insertRule(FREEZE_RULE, 0)
+    sheet.disabled = true
+    scopeFreezeSheet = sheet
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- jsdom has no adoptedStyleSheets accessor on ShadowRoot.prototype (jsdom/jsdom#2916); see shadow-actuator.ts's header.
+  const current = root.adoptedStyleSheets ?? []
+  if (!current.includes(scopeFreezeSheet)) {
+    root.adoptedStyleSheets = [...current, scopeFreezeSheet]
+  }
+  return scopeFreezeSheet
+}
+
+/**
+ * Drops the freeze back out of `root` once the read that needed it is over,
+ * so this module leaves nothing of its own adopted in a scope between
+ * rounds.
+ *
+ * A disabled sheet left behind would be inert, but it would also be a sheet
+ * `shadow-actuator.ts`'s own `ownedSheetsByRoot` does not track and
+ * `clearShadowSurfaceState` therefore does not clear — an extension-owned
+ * artifact surviving in a scope the registry believes it has fully released.
+ * Removing it is safe at every call site for the same reason: by the time
+ * this runs the sheet is already `disabled`, and the only rule in it selects
+ * `[data-sw-legibility-fix]`, so no element's resolved style depends on its
+ * presence either way. Reassigning `adoptedStyleSheets` is a CSSOM property
+ * write, not a DOM mutation, so neither the adoption nor this removal is
+ * something any observer in this codebase can see (#831 does not apply).
+ */
+function releaseScopeFreeze(root: ShadowRoot, sheet: CSSStyleSheet): void {
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- see adoptScopeFreeze.
+  const current = root.adoptedStyleSheets ?? []
+  if (current.includes(sheet)) {
+    root.adoptedStyleSheets = current.filter((s) => s !== sheet)
+  }
+}
+
+/**
+ * Runs `fn` with colour transitions frozen on every carrier this channel
+ * has repaired inside `root` — the per-scope half of what
+ * `withRepairSuppressed` does for the document.
+ *
+ * A shadow scope does not need the *suppression* half. `scope-registry.ts`'s
+ * own custody handoff tears a committed realization down (`uninstall` ->
+ * `shadow-actuator.ts`'s `clearShadowSurfaceState`) before any re-commit's
+ * `install` runs, so by the time a scoped audit reads, this channel's own
+ * repair sheets are already gone from that root and every read is of the
+ * authored colour by construction — there is no enabled sheet left to
+ * disable. What the scope *does* inherit unchanged is the transition
+ * hazard, and from the very teardown that makes suppression unnecessary:
+ * dropping the repair sheet is a style change, so a carrier with a vendor
+ * `transition` on `color` starts transitioning away from the repair, and a
+ * `getComputedStyle` taken in the same task reports that transition's
+ * current value — the repair itself, at progress zero. Without this, the
+ * scoped audit would call such a carrier legible, emit no repair, and let
+ * the transition finish at the illegible authored colour, with no mutation
+ * left to schedule another round. Exactly the oscillation
+ * `withRepairSuppressed`'s own doc comment records, one scope over.
+ *
+ * Both flushes are load-bearing for the same reasons they are there: the
+ * first commits the frozen (settled, authored) value before `fn` reads it,
+ * the second commits whatever `fn` left behind while transitions are still
+ * off, so lifting the freeze afterwards is not itself a transitionable
+ * change.
+ */
+let scopeFreezeDepth = 0
+const frozenRoots = new Set<ShadowRoot>()
+
+export function withScopeTransitionsFrozen<T>(
+  root: ShadowRoot,
+  fn: () => T
+): T {
+  const freeze = adoptScopeFreeze(root)
+  if (freeze === null) return fn()
+  frozenRoots.add(root)
+  // Re-entrant: `shadow-scope-theming.ts`'s own contrast sub-pass wraps a
+  // sequence that itself calls `auditLegibility`, which freezes again. A
+  // non-counting implementation would let the inner call's `finally` lift
+  // the freeze while the outer sequence is still mid-teardown — exactly the
+  // window this whole mechanism exists to close. The sheet is shared, so the
+  // count is module-level rather than per-root, and every root adopted
+  // anywhere in the nest is released together once the outermost call
+  // returns.
+  const outermost = scopeFreezeDepth === 0
+  scopeFreezeDepth += 1
+  if (outermost) {
+    freeze.disabled = false
+    flushStyle()
+  }
+  try {
+    return fn()
+  } finally {
+    scopeFreezeDepth -= 1
+    if (scopeFreezeDepth === 0) {
+      flushStyle()
+      freeze.disabled = true
+      for (const frozen of frozenRoots) releaseScopeFreeze(frozen, freeze)
+      frozenRoots.clear()
+    }
+  }
+}
+
+/**
  * Senses every in-domain, rendered carrier with its own explicit (not
  * inherited) foreground color — D-4's own amended audit boundary (SF-RC's
  * Gate 0 recon, F-18): a non-allowlisted descendant with no explicit color
@@ -780,6 +1170,17 @@ function registerCandidate(
 export function auditLegibility(
   root: Element | ShadowRoot
 ): LegibilityScanResult {
+  // A shadow scope reads under its own adopted freeze, never the document's
+  // — see `withScopeTransitionsFrozen` for why the suppression half is
+  // structurally unnecessary there and the freeze half is not, and why a
+  // `<style>` in `document.head` cannot supply either one across a shadow
+  // boundary.
+  return isShadowRoot(root)
+    ? withScopeTransitionsFrozen(root, () => senseLegibility(root))
+    : withRepairSuppressed(() => senseLegibility(root))
+}
+
+function senseLegibility(root: Element | ShadowRoot): LegibilityScanResult {
   const elementsByKey = new Map<LegibilityKey, Array<Element>>()
   const attrsByKey = new Map<LegibilityKey, LegibilityAttr>()
 
@@ -840,29 +1241,38 @@ export function decideLegibility(
       continue
     }
 
-    // A translucent own foreground (e.g. rgba(0,0,0,0.5)) does not render
-    // as its own raw RGB channels — it renders as itself composited over
-    // the resolved (already-opaque) backdrop, exactly like a background
-    // layer does in resolveEffectiveBackdrop above (bot-found: rgba(0,0,0,
-    // 0.5) over white renders as mid-grey at ~4:1, not the 21:1 comparing
-    // raw black against white would report).
-    const renderedForeground = compositeOver(attr.foreground, attr.backdrop)
-    const fgLuminance = relativeLuminance(
-      renderedForeground[0],
-      renderedForeground[1],
-      renderedForeground[2]
-    )
-    const bgLuminance = relativeLuminance(
-      attr.backdrop[0],
-      attr.backdrop[1],
-      attr.backdrop[2]
-    )
-    if (contrastRatio(fgLuminance, bgLuminance) < MIN_CONTRAST_RATIO) {
+    if (violatesContrast(attr.foreground, attr.backdrop)) {
       actions.push({ kind: "tag-legibility", key, verdict: "violated" })
     }
   }
 
   return actions
+}
+
+/**
+ * The channel's one contrast predicate, shared by `decideLegibility` above
+ * and by SF-RC2's own `decideForegroundRepairs`/`repairedForeground`
+ * (`foreground-repair.ts`) — a repair must be selected against exactly the
+ * relation that flagged the violation in the first place, or the two can
+ * disagree about whether a given carrier is settled and churn against each
+ * other forever.
+ *
+ * A translucent own foreground (e.g. rgba(0,0,0,0.5)) does not render as
+ * its own raw RGB channels — it renders as itself composited over the
+ * resolved (already-opaque) backdrop, exactly like a background layer does
+ * in `resolveEffectiveBackdrop` above (bot-found: rgba(0,0,0,0.5) over
+ * white renders as mid-grey at ~4:1, not the 21:1 comparing raw black
+ * against white would report).
+ */
+export function violatesContrast(foreground: RGBA, backdrop: RGBA): boolean {
+  const renderedForeground = compositeOver(foreground, backdrop)
+  const fgLuminance = relativeLuminance(
+    renderedForeground[0],
+    renderedForeground[1],
+    renderedForeground[2]
+  )
+  const bgLuminance = relativeLuminance(backdrop[0], backdrop[1], backdrop[2])
+  return contrastRatio(fgLuminance, bgLuminance) < MIN_CONTRAST_RATIO
 }
 
 /** The diagnostic-only attribute this channel writes — never a color, see this module's own header. */
@@ -888,6 +1298,22 @@ export const LEGIBILITY_ATTR = "data-sw-legibility"
  * closes both cases the same way, regardless of *why* a given element
  * dropped out.
  */
+/**
+ * Drops every `data-sw-legibility` tag this channel wrote, document-wide.
+ * See `foreground-repair.ts`'s own `clearForegroundRepairs` and
+ * `pipeline.ts`'s `clearRealizedColorState` (this function's only caller)
+ * for why leaving auto mode needs an explicit teardown rather than relying
+ * on a final reconcile round.
+ */
+export function clearLegibilityTags(): void {
+  document.querySelectorAll(`[${LEGIBILITY_ATTR}]`).forEach((el) => {
+    el.removeAttribute(LEGIBILITY_ATTR)
+  })
+  // Safe to remove outright here, unlike during a round: no pipeline is left
+  // observing, so there is nothing for the removal to feed back into.
+  document.getElementById(FREEZE_STYLE_ID)?.remove()
+}
+
 export function realizeLegibility(
   root: Element | ShadowRoot,
   actions: ReadonlyArray<TagLegibilityAction>,

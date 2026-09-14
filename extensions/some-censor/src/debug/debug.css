@@ -1,0 +1,234 @@
+/* Diagnostics page styling — deliberately plain: this page is a debugging
+ * instrument, not product surface, and it must stay readable when the thing
+ * it reports on is broken. Structure and naming mirror some-filter's own
+ * debug.css (extensions/some-filter/src/debug/debug.css), itself mirroring
+ * suspender-ledger's, with a `bc-` prefix instead of `sf-`.
+ *
+ * The one table class that is not a rename: `bc-corpus` replaces some-filter's
+ * `sf-scopes`. This extension has no scope registry to tabulate; what it has
+ * instead is the observed date corpus (OBS1, #1395), which is the reason
+ * #1394 exists ahead of QC2 (#1384) at all.
+ *
+ * Dark unconditionally, matching this workspace's other extension pages. */
+
+:root {
+  color-scheme: dark;
+
+  --bc-bg: #1a1a1a;
+  --bc-fg: #e0e0e0;
+  --bc-muted: #8a8a8a;
+  --bc-panel: #232326;
+  --bc-border: rgb(255 255 255 / 8%);
+  --bc-ok: #4ade80;
+  --bc-warn: #fbbf24;
+  --bc-bad: #f87171;
+  --bc-accent: #6aa6ff;
+}
+
+#app {
+  margin: 0 auto;
+  max-width: 60rem;
+  padding: 1.5rem 1rem 4rem;
+}
+
+.bc-head {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.bc-head h1 {
+  font-size: 1.15rem;
+  margin: 0;
+}
+
+.bc-sub {
+  color: var(--bc-muted);
+  font-size: 0.8rem;
+}
+
+.bc-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+button {
+  background: var(--bc-panel);
+  border: 1px solid var(--bc-border);
+  border-radius: 0.35rem;
+  color: var(--bc-fg);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.35rem 0.75rem;
+}
+
+button:hover {
+  border-color: var(--bc-accent);
+}
+
+section {
+  background: var(--bc-panel);
+  border: 1px solid var(--bc-border);
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.9rem 1rem;
+}
+
+section > h2 {
+  color: var(--bc-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  margin: 0 0 0.75rem;
+  text-transform: uppercase;
+}
+
+.bc-picker {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.bc-picker select {
+  background: var(--bc-bg);
+  border: 1px solid var(--bc-border);
+  border-radius: 0.35rem;
+  color: var(--bc-fg);
+  flex: 1;
+  font: inherit;
+  font-size: 0.8rem;
+  min-width: 14rem;
+  padding: 0.35rem 0.5rem;
+}
+
+.bc-score {
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.bc-score small {
+  color: var(--bc-muted);
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
+.ok {
+  color: var(--bc-ok);
+}
+
+.warn {
+  color: var(--bc-warn);
+}
+
+.bad {
+  color: var(--bc-bad);
+}
+
+.muted {
+  color: var(--bc-muted);
+}
+
+ul.bc-checks {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+}
+
+ul.bc-checks li {
+  border-top: 1px solid var(--bc-border);
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 1.25rem 1fr;
+  padding: 0.35rem 0;
+}
+
+ul.bc-checks .bc-desc {
+  color: var(--bc-muted);
+  font-size: 0.8rem;
+}
+
+.bc-grid {
+  display: grid;
+  gap: 0.5rem 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+}
+
+.bc-metric {
+  border-bottom: 1px dotted var(--bc-border);
+  display: flex;
+  font-variant-numeric: tabular-nums;
+  gap: 0.5rem;
+  justify-content: space-between;
+  padding: 0.2rem 0;
+}
+
+.bc-metric .k {
+  color: var(--bc-muted);
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+table.bc-events,
+table.bc-corpus {
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  width: 100%;
+}
+
+table.bc-events th,
+table.bc-corpus th {
+  color: var(--bc-muted);
+  font-weight: 500;
+  padding: 0.25rem 0.5rem 0.4rem 0;
+  text-align: left;
+}
+
+table.bc-events td,
+table.bc-corpus td {
+  border-top: 1px solid var(--bc-border);
+  padding: 0.2rem 0.5rem 0.2rem 0;
+  vertical-align: top;
+}
+
+table.bc-events td.detail {
+  color: var(--bc-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  word-break: break-word;
+}
+
+.bc-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+
+.bc-filter input,
+.bc-filter select {
+  background: var(--bc-bg);
+  border: 1px solid var(--bc-border);
+  border-radius: 0.35rem;
+  color: var(--bc-fg);
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.5rem;
+}
+
+.bc-empty {
+  color: var(--bc-muted);
+  font-size: 0.85rem;
+  padding: 0.5rem 0;
+}
+
+.bc-scroll {
+  max-height: 28rem;
+  overflow-y: auto;
+}

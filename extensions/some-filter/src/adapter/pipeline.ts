@@ -36,7 +36,11 @@ import {
 } from "@filter/lib/content/color"
 import { rgbaToCss } from "@filter/lib/content/modify-colors"
 import { PREPAINT_DIRTY_CLASS } from "@filter/lib/content/prepaint"
-import { DARK_THEME_STYLE_ID } from "@filter/lib/content/theme-apply"
+import {
+  DARK_THEME_ATTR,
+  DARK_THEME_STYLE_ID,
+} from "@filter/lib/content/theme-apply"
+import { detectVendorInvert } from "@filter/lib/content/vendor-filter"
 import { invoke } from "@some-extension/transport/adapter/invoke"
 import { createHypothesis } from "@some-extension/transport/estimator/hypothesis"
 import {
@@ -51,12 +55,24 @@ import {
 } from "@some-extension/transport/scheduler/reconcile"
 import type { SessionLifecycle } from "@some-extension/transport/session/lifecycle"
 
-import { DYNAMIC_STYLE_ID, isHTMLElementNode, realize } from "./actuator"
+import {
+  clearPerSurfaceState,
+  DYNAMIC_STYLE_ID,
+  isHTMLElementNode,
+  realize,
+} from "./actuator"
 import type { FilterAction, SurfaceAttr, SurfaceKey } from "./contracts"
 import {
+  clearForegroundRepairs,
+  decideForegroundRepairs,
+  realizeForegroundRepairs,
+} from "./foreground-repair"
+import {
   auditLegibility,
+  clearLegibilityTags,
   decideLegibility,
   realizeLegibility,
+  REPAIR_STYLE_ID,
 } from "./legibility-audit"
 import type { Swatch } from "./swatches"
 import { decide } from "./theme-adapter"
@@ -64,6 +80,97 @@ import { decide } from "./theme-adapter"
 /** Definition 7.2's `R`, declared once (§8.3's conformance requirement). */
 export const RECONCILE_POLICY: ReconcilePolicy = { debounceMs: 50 }
 export const BOUNDED_DELIVERY_MS = 250
+
+/**
+ * How long interaction has to stop before SF-RC4 (#1343) re-runs the
+ * rendered-contrast channel.
+ *
+ * Deliberately its own constant rather than `RECONCILE_POLICY`'s 50ms, and
+ * longer: a pointer crossing a page emits `pointerover`/`pointerout` per
+ * element it enters and leaves, so this debounce is what turns a sweep
+ * across fifty elements into one pass after the pointer settles — not fifty
+ * passes, and not one every 50ms of continuous motion. `RECONCILE_POLICY`
+ * governs a genuinely different thing (a burst of vendor *mutations*
+ * collapsing into one round, Definition 7.2) and reusing its value here
+ * would tie two unrelated cadences together.
+ */
+export const INTERACTION_SETTLE_MS = 120
+
+/**
+ * The interaction events SF-RC4 (#1343) listens for, and the reason each is
+ * the *bubbling* member of its pair.
+ *
+ * #1343 names `pointerenter`/`pointerleave`/`focus`/`blur`. None of those
+ * four bubble, so a listener delegated on `document` never sees them — they
+ * would need attaching to every carrier individually, and re-attaching
+ * across every mutation. These are their bubbling counterparts, which is
+ * what delegation requires.
+ *
+ * Covers `:hover` (`pointerover`/`pointerout`) and the `:focus`,
+ * `:focus-visible` and `:focus-within` family (`focusin`/`focusout`) — with
+ * one qualification on `:focus-visible` recorded in the gaps below, since
+ * this list is the boundary statement #1343 asks for and an unqualified
+ * claim there would be false.
+ *
+ * Known gaps, stated rather than glossed (#1343's own acceptance criterion
+ * — this is emphatically not complete CSS-state coverage):
+ *
+ * - `:focus-visible` *modality* transitions on an already-focused element
+ *   (bot-found, Codex review round 5; tracked in #1416). Focus an element
+ *   by pointer and `:focus-visible` does not match; press a key without
+ *   moving focus and it starts matching — the UA re-evaluates on keyboard
+ *   input, and no `focusin` or `focusout` is emitted for it. Measured
+ *   directly in Chromium: `:focus` true and `:focus-visible` false after
+ *   the click, both true after a keypress, with the captured focus-event
+ *   list identical across the two. So the element's initial focus is
+ *   covered and a later modality flip is not, until some unrelated pointer
+ *   or focus transition schedules a pass.
+ * - `:active` — transient by nature; a repair would routinely land after
+ *   release.
+ * - `@keyframes` animations and transitions that change colour with no
+ *   event at all.
+ * - Media- and container-query state (viewport resize, `prefers-*` flips).
+ * - `:target`, `:checked`, `:valid`/`:invalid` and other CSS-only state.
+ * - Anything driven by a script mutating CSSOM directly, which produces no
+ *   mutation record either (#1280's own lineage).
+ */
+const INTERACTION_EVENTS = [
+  "pointerover",
+  "pointerout",
+  "focusin",
+  "focusout",
+] as const
+
+/**
+ * Passive, and on the **capture** phase.
+ *
+ * Capture because the bubble phase is suppressible by the page (bot-found,
+ * Codex review round 4 on #1415). A component that handles its own
+ * `pointerover`/`focusin` and calls `stopPropagation()` — routine in
+ * dropdown, menu and modal widgets, which is exactly the third-party
+ * component code this extension runs against — stops the event before it
+ * reaches a delegated listener on `document`, and the interaction-state
+ * colour change then goes unaudited with no error anywhere. A capture
+ * listener on `document` runs on the way *down*, before any descendant
+ * handler exists to call `stopPropagation()`, so no page code below the
+ * document can suppress it.
+ *
+ * This is safe precisely because the handler only observes: it schedules a
+ * timer and reads nothing from the event but `target`, so running earlier
+ * changes nothing about what it computes. It does not call
+ * `stopPropagation()` itself, so the page's own handlers still see every
+ * event exactly as before — moving to capture takes coverage from the page
+ * without taking anything from it.
+ *
+ * Passive because this handler never calls `preventDefault()`, so declaring
+ * that up front lets the browser dispatch without waiting on it. The same
+ * options object is passed to `removeEventListener`, where the `capture`
+ * flag is the part that has to match for removal to find the listener.
+ */
+const INTERACTION_LISTENER: AddEventListenerOptions = {
+  passive: true,
+  capture: true,
+}
 
 const SKIP_TAGS = new Set([
   "SCRIPT",
@@ -351,6 +458,14 @@ export function scanCanvas(
 const OWN_COLOR_SHEET_IDS: ReadonlyArray<string> = [
   DARK_THEME_STYLE_ID,
   DYNAMIC_STYLE_ID,
+  // SF-RC2 (#1341): the legibility channel's own foreground repair sheet is
+  // just as much "our colors" as the two above. Left out, `scan()`'s own
+  // ownTextColor read would fold this extension's repaired foregrounds back
+  // into the append-only vendor hypothesis as fresh `textCss` evidence —
+  // #831's symptom 2 exactly, one channel over, and self-sustaining in the
+  // same way (each round's repair becomes the next round's "vendor" text
+  // color).
+  REPAIR_STYLE_ID,
 ]
 
 /**
@@ -393,6 +508,44 @@ export function withVendorColorsVisible<T>(fn: () => T): T {
       sheet.disabled = false
     }
   }
+}
+
+/**
+ * Drops every colour artifact this extension's auto-mode realization owns in
+ * the document scope: the per-surface `<style>` and its `data-sw-patched`
+ * tags, the legibility channel's `data-sw-legibility` diagnostics, and the
+ * foreground repair sheet with its `data-sw-legibility-fix` tags.
+ *
+ * `theme-apply.ts`'s own `restoreVendor()` is documented as removing "all
+ * theming", but it only ever knew about the two layers that predate the
+ * adapter: it drops `data-sw-dark` and the static `__sw_dark_theme` sheet,
+ * and nothing else. Everything the per-surface Actuator realizes has, until
+ * now, survived a mode exit outright.
+ *
+ * That gap is not reachable from inside the pipeline, which is why it went
+ * unnoticed: `realize()`'s own `restore-native` branch clears per-surface
+ * state, and `fire()`'s no-`activate-theme` branch clears both legibility
+ * channels, but leaving auto mode reaches neither — `content.ts`'s
+ * `applyState` calls `contentSession.teardown()` (which only disconnects the
+ * observer) *before* `restoreVendor()`, so no further round ever runs. Found
+ * by a bot review of the repair sheet specifically (Codex review round 1);
+ * confirmed by direct measurement against the real built extension that the
+ * pre-existing per-surface half leaks identically and more visibly — after
+ * an auto→off keyboard cycle a themed card still rendered
+ * `background-color: rgb(23, 23, 23)`, i.e. the page stayed dark with the
+ * extension switched off. `tests/e2e/specs/issue-1341-sfrc2-foreground-repair.spec.ts`
+ * regression-locks the whole transition, not just this story's own half:
+ * splitting one artifact out of a "common mode-transition cleanup path"
+ * while knowingly leaving its siblings behind would make the path a fiction.
+ *
+ * Document scope only. A committed shadow scope's own realization is
+ * `shadow-scope-theming.ts`'s `teardown()`, which `applyState` already calls
+ * alongside this.
+ */
+export function clearRealizedColorState(): void {
+  clearPerSurfaceState()
+  clearLegibilityTags()
+  clearForegroundRepairs()
 }
 
 // ── Self-authored mutations (Axiom 3.5, write side) ──────────────────────────
@@ -578,7 +731,21 @@ export type ContentSession = {
  * branch instead of holding the veil on the latter).
  */
 export type FireOutcome =
-  | { readonly kind: "ok"; readonly actions: ReadonlyArray<FilterAction> }
+  | {
+      readonly kind: "ok"
+      readonly actions: ReadonlyArray<FilterAction>
+      /**
+       * Whether `realize()` actually wrote to the DOM this round — a tag
+       * changed, the dynamic sheet's text changed, or the theme attribute
+       * flipped. `content.ts` gates its shadow-scope re-contrast pass on
+       * this (SF-RC3, #1342, bot-found): a shadow carrier's backdrop can
+       * resolve out into the light DOM, so it goes stale exactly when the
+       * document *writes*, which is not the same as when it *decides* —
+       * an element matching a `SurfaceKey` the page already has emits no
+       * new action at all and is still tagged and darkened.
+       */
+      readonly realizationChanged: boolean
+    }
   | { readonly kind: "error"; readonly error: unknown }
 
 export type OnFire = (outcome: FireOutcome) => void
@@ -586,13 +753,31 @@ export type OnFire = (outcome: FireOutcome) => void
 export function createContentSession(
   swatch: Swatch | null,
   session: SessionLifecycle,
-  onFire?: OnFire
+  onFire?: OnFire,
+  /**
+   * Called once interaction has settled, after this module's own
+   * document-scope contrast pass — the seam SF-RC4 (#1343) needs to reach
+   * shadow scopes (bot-found, Codex review round 1 on #1415).
+   *
+   * `auditLegibility`'s `TreeWalker` does not cross a shadow boundary, so
+   * the pass above covers the light DOM and nothing else. The shadow half
+   * lives in `shadow-scope-theming.ts` and is reached through
+   * `content.ts`, the one place that holds both — which is why this is a
+   * callback rather than an import: `pipeline.ts` has no business knowing
+   * the scope registry exists, and SF-SCOPE's Theorem D.2 keeps it that
+   * way deliberately.
+   *
+   * Invoked regardless of whether the document half ran: a shadow scope's
+   * verdict is independent of the document's.
+   */
+  onInteractionSettled?: () => void
 ): ContentSession {
   const hypothesis = createHypothesis<SurfaceKey, SurfaceAttr>()
   const provenance: ProvenanceStore<SurfaceKey> = createProvenanceStore()
   let lastScan: ScanResult = { elementsByKey: new Map(), attrsByKey: new Map() }
   let lastRoot: Element = document.body
   let observer: MutationObserver | null = null
+  let interactionTimer: ReturnType<typeof setTimeout> | null = null
   let evidenceEpoch = session.epoch
 
   /**
@@ -656,11 +841,48 @@ export function createContentSession(
     }
   }
 
+  /**
+   * SF-RC1 (#1340)'s second, independent sense/decide/realize sub-pass —
+   * see `legibility-audit.ts`'s own header for the isolation this relies
+   * on. Extracted from `fire()` for SF-RC4 (#1343), which re-runs exactly
+   * this and nothing else after an interaction settles: a `:hover` colour
+   * swap changes no DOM and produces no action, so a full round would
+   * re-derive an identical verdict at the cost of a second whole-document
+   * `scan()`.
+   *
+   * `legibilityActions` is never merged into (or derived from) `decide()`'s
+   * actions — `pageAlreadyDark()`/`decide()` never see this channel's
+   * evidence, by construction rather than by a runtime check.
+   *
+   * SF-RC2 (#1341)'s repair alphabet is decided from the *same* scan, never
+   * a second sense pass that could disagree with the diagnostic tags written
+   * a line above, and realized into its own sheet as a deliberately separate
+   * action set — see `foreground-repair.ts`'s own header. SF-RC3 (#1342)
+   * threads the vendor-invert compensation through the document half too,
+   * from the same `detectVendorInvert()` read `injectDarkTheme()` already
+   * does per round and for the same reason: a vendor's own invert toggle can
+   * flip at any point in a page's lifetime, so it is never cached.
+   */
+  function runContrastChannel(root: Element): void {
+    const legibilityScan = auditLegibility(root)
+    realizeLegibility(
+      root,
+      decideLegibility(legibilityScan.attrsByKey),
+      legibilityScan.elementsByKey
+    )
+    realizeForegroundRepairs(
+      root,
+      decideForegroundRepairs(legibilityScan.attrsByKey),
+      legibilityScan.elementsByKey,
+      detectVendorInvert()
+    )
+  }
+
   function fire(): void {
     let outcome: FireOutcome
     try {
       const actions = invoke(hypothesis, { decide: (h) => decide(h, swatch) })
-      realize(actions, lastScan.elementsByKey)
+      const realizationChanged = realize(actions, lastScan.elementsByKey)
 
       // SF-RC1 (#1340): the second, independent sense/decide/realize
       // sub-pass — see legibility-audit.ts's own header for the isolation
@@ -674,13 +896,7 @@ export function createContentSession(
       // like a thrown decide()/realize() above — #1266's FAILED_HELD
       // discipline applies unchanged to this channel, not re-derived.
       if (actions.some((action) => action.kind === "activate-theme")) {
-        const legibilityScan = auditLegibility(lastRoot)
-        const legibilityActions = decideLegibility(legibilityScan.attrsByKey)
-        realizeLegibility(
-          lastRoot,
-          legibilityActions,
-          legibilityScan.elementsByKey
-        )
+        runContrastChannel(lastRoot)
       } else {
         // No theme applied this round (no swatch, or pageAlreadyDark()'s own
         // restore-native) — nothing to audit, but a *prior* round may have
@@ -693,9 +909,10 @@ export function createContentSession(
         // function, "no violations exist" is exactly what this already
         // means.
         realizeLegibility(lastRoot, [], new Map())
+        realizeForegroundRepairs(lastRoot, [], new Map())
       }
 
-      outcome = { kind: "ok", actions }
+      outcome = { kind: "ok", actions, realizationChanged }
     } catch (error) {
       // onFire must run regardless — content.ts uses it to set the debug
       // attrs a live-browser wait (or a e2e test) polls for and to resolve
@@ -730,6 +947,76 @@ export function createContentSession(
     cycle(document.body)
   })
 
+  /**
+   * SF-RC4 (#1343): re-run the rendered-contrast channel once interaction
+   * has settled.
+   *
+   * A `:hover`/`:focus` colour swap is a computed-style change with no
+   * corresponding DOM mutation, so the Sensor's observer — `childList`
+   * plus `attributeFilter: ["class", "style"]` — structurally cannot see
+   * it, and neither can any other observation channel in this codebase.
+   * This is the one trigger that can.
+   *
+   * Only the contrast channel, not a full `cycle()`: the interaction
+   * changed no DOM and produces no new `FilterAction`, so `decide()` would
+   * return an identical verdict at the cost of a second whole-document
+   * `scan()`. And gated on a theme actually being applied, so an unthemed
+   * or already-dark page pays nothing at all for listeners it still has
+   * attached.
+   *
+   * Whole-document rather than scoped to the event target, deliberately:
+   * `:hover` matches every ancestor of the pointer's element too, so a
+   * vendor rule like `nav:hover .label { color: … }` repaints a node that
+   * is neither the target nor under it. Bounding this by *frequency* (the
+   * settle debounce) rather than by region is what keeps it honest —
+   * a region bound would have to either miss those rules or re-derive the
+   * whole containing subtree anyway. The pass is also zero-write when
+   * nothing changed (#831's fixed-point discipline), so a spurious one
+   * costs a walk and no DOM writes.
+   */
+  function runInteractionContrast(): void {
+    interactionTimer = null
+    // Gated per half, not once for both (bot-found, Codex review round 1 on
+    // #1415). The document half is gated on a document theme; the shadow
+    // half is not, and must not be — a scope's verdict is independent of the
+    // document's, so a page reading already-dark natively (no
+    // DARK_THEME_ATTR at all) can still hold committed shadow scopes with
+    // live repairs, exactly the coexistence `buildHostTokenRule`'s own doc
+    // comment describes. `recontrastAll()` is self-gating anyway: it
+    // iterates only COMMITTED scopes.
+    if (document.documentElement.hasAttribute(DARK_THEME_ATTR)) {
+      try {
+        runContrastChannel(document.body)
+      } catch (error) {
+        // Mirrors fire()'s own discipline: this runs from a timer with no
+        // caller in a position to recover, so a throw must not escape into
+        // an unhandled rejection that takes the listener path down with it
+        // for the rest of the page's life. Caught per half so one failing
+        // scope does not cost the other half its pass.
+        // eslint-disable-next-line no-console
+        console.error("[some-filter] interaction contrast pass failed:", error)
+      }
+    }
+    try {
+      onInteractionSettled?.()
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("[some-filter] interaction shadow pass failed:", error)
+    }
+  }
+
+  function onInteraction(event: Event): void {
+    // Our own realization never dispatches a pointer or focus event, so
+    // there is no self-authorship check to make here — unlike the Sensor's
+    // observer, whose every write is a potential trigger (Axiom 3.5). What
+    // this does skip is interaction *inside* an extension-owned subtree
+    // (the veil, the debug overlay), which is never vendor evidence.
+    const target = event.target
+    if (target instanceof Node && isExtensionAuthored(target)) return
+    if (interactionTimer !== null) clearTimeout(interactionTimer)
+    interactionTimer = setTimeout(runInteractionContrast, INTERACTION_SETTLE_MS)
+  }
+
   return {
     rescan(root: Element = document.body): void {
       // Immediate, not coalesced: rescan() is always an explicit,
@@ -744,6 +1031,9 @@ export function createContentSession(
       cycle(root)
     },
     observe(): void {
+      for (const type of INTERACTION_EVENTS) {
+        document.addEventListener(type, onInteraction, INTERACTION_LISTENER)
+      }
       if (observer !== null) return
       // Watches <html> (document.documentElement), not document.body: a
       // vendor page can wholesale-replace body (and head) via
@@ -781,6 +1071,13 @@ export function createContentSession(
       })
     },
     teardown(): void {
+      for (const type of INTERACTION_EVENTS) {
+        document.removeEventListener(type, onInteraction, INTERACTION_LISTENER)
+      }
+      if (interactionTimer !== null) {
+        clearTimeout(interactionTimer)
+        interactionTimer = null
+      }
       observer?.disconnect()
       observer = null
       coalescer.dispose()

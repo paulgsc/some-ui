@@ -42,9 +42,16 @@
  */
 import {
   auditPage,
+  LEGIBILITY_AUDIT_LAUNCH_OPTIONS,
   legibilityAuditTest as test,
 } from "@filter/playwright/fixtures/legibility-audit-harness"
 import { expect } from "@playwright/test"
+
+// Declared here, in the spec file itself, rather than in the shared harness
+// — see LEGIBILITY_AUDIT_LAUNCH_OPTIONS's own doc comment for the
+// Playwright "inconsistent test.use() options" configuration failure a
+// `.use()` in a common helper produces.
+test.use({ launchOptions: LEGIBILITY_AUDIT_LAUNCH_OPTIONS })
 
 test.describe("legibility audit's -webkit-text-fill-color guard against real Chromium (#1374)", () => {
   test("an explicit-colored carrier with no own -webkit-text-fill-color resolves a real color, not underdetermined", async ({
