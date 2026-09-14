@@ -87,6 +87,19 @@ let sessions: Array<IndexEntry> = []
 let selectedSessionId: string | undefined
 let filter: Filter = { kind: "" }
 let bundle: Bundle | undefined
+/**
+ * Which session `bundle` actually came from.
+ *
+ * Bot-found (#1407's own review): without this the rendered bundle and the
+ * picker's selection could disagree across the storage read, and the Export
+ * button stayed live throughout — so exporting during that window produced
+ * the *previous* session's file while the page named the new one. A
+ * mislabelled corpus is the one failure this page must not have, since
+ * handing one to QC2 (#1384) is the whole reason it exists.
+ */
+let loadedSessionId: string | undefined
+/** Guards against two loads landing out of order; see {@link load}. */
+let loadToken = 0
 let loadError: string | undefined
 
 function isBundle(value: unknown): value is Bundle {
@@ -243,11 +256,20 @@ function pickerSection(): HTMLElement {
   select.addEventListener("change", () => {
     selectedSessionId = select.value || undefined
     filter = { kind: "" }
+    // Drop the old session's bundle before the read starts, not after it
+    // finishes: the handler that creates the divergence is the one that has
+    // to resolve it. Rendering here immediately takes the Export button out
+    // with it, so there is no window in which it would write the wrong file.
+    clearLoadedBundle()
+    render()
     void load()
   })
 
   const refresh = el("button", { text: "Refresh sessions" })
-  refresh.addEventListener("click", () => void loadSessions(true))
+  // Bot-found (#1407's own review): this used to call loadSessions() alone,
+  // which mutates module state and renders nothing — so a recording created
+  // after the page opened stayed invisible however often it was clicked.
+  refresh.addEventListener("click", () => void load(true))
 
   const section = el("section")
   section.append(
@@ -663,6 +685,11 @@ function render(): void {
   )
 }
 
+function clearLoadedBundle(): void {
+  bundle = undefined
+  loadedSessionId = undefined
+}
+
 async function loadSessions(pickMostRecent: boolean): Promise<void> {
   sessions = await readIndex()
   if (
@@ -674,13 +701,39 @@ async function loadSessions(pickMostRecent: boolean): Promise<void> {
   }
 }
 
-async function load(): Promise<void> {
+/**
+ * Refresh the session list and the selected session's bundle.
+ *
+ * `pickMostRecent` forces the newest recording to be selected, which is what
+ * "Refresh sessions" means; the header's own "Refresh" leaves the selection
+ * alone.
+ *
+ * Every render is gated on `loadToken`. Two loads can be in flight at once —
+ * a fast double-change of the picker is enough — and their storage reads are
+ * not obliged to settle in the order they started, so without this the first
+ * one to finish last would win and paint a session the user is no longer
+ * looking at. Same defect class as the stale-bundle one above, one step
+ * further out.
+ */
+async function load(pickMostRecent = false): Promise<void> {
+  const token = ++loadToken
   loadError = undefined
   try {
-    await loadSessions(false)
-    bundle = selectedSessionId ? await loadBundle(selectedSessionId) : undefined
+    await loadSessions(pickMostRecent)
+    if (token !== loadToken) return
+    if (selectedSessionId !== loadedSessionId) {
+      clearLoadedBundle()
+      render()
+    }
+    const next = selectedSessionId
+      ? await loadBundle(selectedSessionId)
+      : undefined
+    if (token !== loadToken) return
+    bundle = next
+    loadedSessionId = selectedSessionId
     render()
   } catch (e) {
+    if (token !== loadToken) return
     loadError = e instanceof Error ? e.message : String(e)
     render()
   }
