@@ -288,9 +288,23 @@ describe("SF-RC2 — the repair channel rides the audit's own gate", () => {
     // carrier is legible, drops the tag and the rule, and the carrier
     // reverts to being illegible — a flicker driven by nothing but this
     // extension's own output.
+    //
+    // The carrier declares its own `-webkit-text-fill-color` equal to its
+    // `color`, which is the case Codex review round 3 found (an explicit
+    // fill indistinguishable from the `currentcolor` default at sense
+    // time) — and is also what makes this assertion runnable here at all.
+    // jsdom applies a stylesheet's `-webkit-text-fill-color` while ignoring
+    // the same rule's `color`, and ignores `CSSStyleSheet.disabled` for
+    // computed style outright (both confirmed directly), so without an
+    // inline fill to win over it the emitted repair leaks into round 2's
+    // own sensing as a fill/colour mismatch and `ownTextColor` reports
+    // `underdetermined`. The *suppression* half of this claim is therefore
+    // only meaningfully provable in a real browser — see
+    // `tests/e2e/specs/issue-1341-sfrc2-foreground-repair.spec.ts`'s
+    // `#transitioned` carrier, which fails without the freeze.
     document.body.innerHTML =
       '<div id="dark-surface" style="background-color: rgb(13, 17, 23); color: rgb(255, 255, 255)">' +
-      '<div id="text-carrier" style="color: rgb(0, 0, 0)">hi</div>' +
+      '<div id="text-carrier" style="color: rgb(0, 0, 0); -webkit-text-fill-color: rgb(0, 0, 0)">hi</div>' +
       "</div>"
     const session = createSessionLifecycle()
     const contentSession = createContentSession(SWATCHES.default, session)

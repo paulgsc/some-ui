@@ -284,12 +284,36 @@ export function buildForegroundRepairRule(
   action: RepairForegroundAction
 ): string {
   const attr = `[${REPAIR_ATTR}="${action.key}"]`
-  return `${attr}${attr}${EXT_GUARD}{color:${action.css}!important}`
+  // `-webkit-text-fill-color` is declared alongside `color`, not instead of
+  // it. When set, that property — not `color` — is what fills the rendered
+  // glyph, and `ownTextColor` can only detect it by comparing the two
+  // *computed* values, which cannot distinguish an explicit fill that
+  // happens to equal `color` from the `currentcolor` default (bot-found,
+  // Codex review round 3; confirmed directly against real Chromium: a
+  // carrier declaring both `color` and `-webkit-text-fill-color` as black
+  // reads them equal at sense time, so it is never flagged underdetermined,
+  // and a `color`-only repair left the fill painting black while the tag
+  // and sheet claimed success — measured `color: rgb(158, 158, 158)` with
+  // `-webkit-text-fill-color: rgb(0, 0, 0)` still in effect). Declaring the
+  // repaired colour for both closes that without needing to detect it:
+  // where no explicit fill exists the property already resolves to
+  // `currentcolor`, so writing the same colour changes nothing.
+  return `${attr}${attr}${EXT_GUARD}{color:${action.css}!important;-webkit-text-fill-color:${action.css}!important}`
 }
 
 /**
  * Whether an author-origin `!important` rule — which is all this channel
  * can emit — is actually able to win `color` on this carrier.
+ *
+ * This is one instance of a boundary that recurs across the whole channel
+ * and is tracked as #1410: author-origin `!important` loses to any *more
+ * specific* important author declaration, inline ones included. The same
+ * ceiling defeats `legibility-audit.ts`'s own transition freeze against a
+ * vendor `transition: … !important` (its `*` selector is 0-0-0), and it
+ * defeats `actuator.ts`'s `buildSurfaceColorRule` on the background path
+ * identically. One mechanism closes all of them — user-origin CSS, whose
+ * important declarations outrank every author one — and none of them is
+ * closed by more specificity.
  *
  * `buildForegroundRepairRule`'s duplicated attribute selector settles a tie
  * against `buildSurfaceColorRule`, but specificity is only the *last*

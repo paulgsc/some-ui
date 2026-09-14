@@ -852,6 +852,16 @@ function freezeSheet(): CSSStyleSheet | null {
  * round — confirmed end to end against the real built extension, where the
  * carrier lost its tag outright after one reconcile round.
  *
+ * The freeze is an author-origin `!important` rule on `*` (0-0-0), so a
+ * vendor `transition: … !important` at any higher specificity outranks it
+ * and the read is unreliable again for that carrier (bot-found, Codex
+ * review round 3; confirmed directly — an inline
+ * `transition: color 2s linear !important` kept `transitionDuration` at
+ * `"2s"` under the freeze and read the repair back). That is the same
+ * author-origin ceiling `foreground-repair.ts`'s own `repairCanWinCascade`
+ * documents and #1410 tracks, not a separate gap: no amount of specificity
+ * closes it, only a different injection origin does.
+ *
  * `content.ts` already wraps the *initial* rescan in an equivalent freeze
  * (`withPrepaintSuppressed`) for the identical reason, but mutation-driven
  * rounds reach `fire()` without it. Applied here unconditionally rather

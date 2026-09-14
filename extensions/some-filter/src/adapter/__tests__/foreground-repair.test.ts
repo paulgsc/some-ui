@@ -228,6 +228,13 @@ describe("buildForegroundRepairRule", () => {
       )
     ).toBe(true)
     expect(rule).toContain("color:rgb(158, 158, 158)!important")
+    // -webkit-text-fill-color is declared alongside `color`: when an author
+    // sets it explicitly it, not `color`, fills the glyph, and an explicit
+    // fill equal to `color` is indistinguishable from the `currentcolor`
+    // default at sense time. Writing both makes detection unnecessary.
+    expect(rule).toContain(
+      "-webkit-text-fill-color:rgb(158, 158, 158)!important"
+    )
     // Foreground only — this channel never emits a background, ever.
     expect(rule).not.toContain("background")
   })
