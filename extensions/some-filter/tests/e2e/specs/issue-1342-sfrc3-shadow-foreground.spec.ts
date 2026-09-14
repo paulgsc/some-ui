@@ -29,8 +29,10 @@
 import { relativeLuminance } from "@filter/lib/content/color"
 import { expect, test, waitForClassification } from "@filter/playwright/fixture"
 import {
+  mountNestedBackdropCrosser,
   mountNestedShadowWitnesses,
   mountShadowWitnesses,
+  mutateInsideShadowScope,
   readShadowCarrier,
   waitForShadowScopeCommitted,
   type ShadowCarrierReading,
@@ -263,5 +265,107 @@ test.describe("SF-RC3: an active vendor filter: invert(1) (#1342)", () => {
       fixed: document.querySelectorAll("[data-sw-legibility-fix]").length,
     }))
     expect(documentScope).toEqual({ repairSheet: false, fixed: 0 })
+  })
+})
+
+test.describe("SF-RC3: a carrier whose backdrop resolves one scope out (#1342, bot-found)", () => {
+  test("a nested-root carrier with no background of its own is repaired against the outer scope's themed surface", async ({
+    fixture,
+  }) => {
+    // `resolveEffectiveBackdrop` climbs through `ShadowRoot.host`, so this
+    // carrier's backdrop is the *outer* scope's surface — and discovery
+    // registers (and projects) the inner scope first, so its own audit runs
+    // against that surface's still-native white. Nothing the outer scope's
+    // later darkening does is a mutation inside this root, nor a
+    // `class`/`style` change on its host, so nothing re-audits it: without
+    // an ancestor-driven re-contrast the carrier keeps its authored black on
+    // a newly dark surface, permanently.
+    const page = await fixture.goto("shadow-surface-page")
+    await waitForClassification(page)
+    await mountNestedBackdropCrosser(
+      page,
+      "sf-rc3-cross-outer",
+      "sf-rc3-cross-inner"
+    )
+    await waitForShadowScopeCommitted(page, ["sf-rc3-cross-outer"])
+    // The repair lands on the *inner* scope's own later re-contrast, which
+    // the outer commit above triggers — poll for it rather than assuming it
+    // is already there when the outer surface's tag appears.
+    await page.waitForFunction(
+      () => {
+        const outer = document.getElementById("sf-rc3-cross-outer")
+        const inner = outer?.shadowRoot?.getElementById("sf-rc3-cross-inner")
+        return (
+          inner?.shadowRoot
+            ?.querySelector(".sf-rc3-crosser")
+            ?.hasAttribute("data-sw-legibility-fix") === true
+        )
+      },
+      undefined,
+      { timeout: 5_000, polling: 100 }
+    )
+
+    const crosser = await readShadowCarrier(
+      page,
+      ["sf-rc3-cross-outer", "sf-rc3-cross-inner"],
+      "sf-rc3-crosser"
+    )
+    const ratio = contrastOf(crosser)
+    expect(
+      ratio,
+      `cross-scope carrier renders ${crosser.color} on ${crosser.backdrop} — ` +
+        `${ratio.toFixed(3)}:1`
+    ).toBeGreaterThanOrEqual(MIN_CONTRAST_RATIO)
+  })
+})
+
+test.describe("SF-RC3: a repaired shadow carrier survives later rounds (#1342, bot-found)", () => {
+  test("a carrier under a vendor colour transition stays repaired across a reprojection", async ({
+    fixture,
+  }) => {
+    // A scope's teardown (`clearShadowSurfaceState`, on every invalidate)
+    // drops the repair sheet, and the very next thing its re-commit does is
+    // audit. If the freeze stops matching before that drop resolves — which
+    // is what clearing `data-sw-legibility-fix` first does, since the freeze
+    // rule selects the same attribute the repair rule keys on — the audit
+    // reads the transition's start value, the repair itself, calls the
+    // carrier legible, and omits the repair for good.
+    const page = await fixture.goto("shadow-surface-page")
+    await waitForClassification(page)
+    await mountShadowWitnesses(page, "sf-rc3-tx-host")
+    await waitForShadowScopeCommitted(page, ["sf-rc3-tx-host"])
+
+    const first = await readShadowCarrier(
+      page,
+      ["sf-rc3-tx-host"],
+      "sf-rc3-transitioned"
+    )
+    expect(
+      first.repairKey,
+      "precondition: the transitioned carrier is repaired on the first commit"
+    ).not.toBeNull()
+
+    // Past the 0.3s transition, so the round driven below starts from a
+    // *settled* repaired colour — mid-transition the sensed value is still
+    // violating and the bug hides itself.
+    await page.waitForTimeout(700)
+    await mutateInsideShadowScope(page, "sf-rc3-tx-host")
+    await page.waitForTimeout(700)
+
+    const after = await readShadowCarrier(
+      page,
+      ["sf-rc3-tx-host"],
+      "sf-rc3-transitioned"
+    )
+    expect(
+      after.repairKey,
+      "the repair must survive a reprojection round, not oscillate"
+    ).toBe(first.repairKey)
+    const ratio = contrastOf(after)
+    expect(
+      ratio,
+      `transitioned carrier renders ${after.color} on ${after.backdrop} — ` +
+        `${ratio.toFixed(3)}:1 after a reprojection`
+    ).toBeGreaterThanOrEqual(MIN_CONTRAST_RATIO)
   })
 })

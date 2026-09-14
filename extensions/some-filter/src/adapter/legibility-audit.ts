@@ -944,7 +944,7 @@ function withRepairSuppressed<T>(fn: () => T): T {
  * actually resolves the element's style — so the property access is load-
  * bearing, not a stray expression.
  */
-function flushStyle(): void {
+export function flushStyle(): void {
   void getComputedStyle(document.documentElement).color
 }
 
@@ -1046,20 +1046,40 @@ function releaseScopeFreeze(root: ShadowRoot, sheet: CSSStyleSheet): void {
  * off, so lifting the freeze afterwards is not itself a transitionable
  * change.
  */
+let scopeFreezeDepth = 0
+const frozenRoots = new Set<ShadowRoot>()
+
 export function withScopeTransitionsFrozen<T>(
   root: ShadowRoot,
   fn: () => T
 ): T {
   const freeze = adoptScopeFreeze(root)
   if (freeze === null) return fn()
-  freeze.disabled = false
-  flushStyle()
+  frozenRoots.add(root)
+  // Re-entrant: `shadow-scope-theming.ts`'s own contrast sub-pass wraps a
+  // sequence that itself calls `auditLegibility`, which freezes again. A
+  // non-counting implementation would let the inner call's `finally` lift
+  // the freeze while the outer sequence is still mid-teardown — exactly the
+  // window this whole mechanism exists to close. The sheet is shared, so the
+  // count is module-level rather than per-root, and every root adopted
+  // anywhere in the nest is released together once the outermost call
+  // returns.
+  const outermost = scopeFreezeDepth === 0
+  scopeFreezeDepth += 1
+  if (outermost) {
+    freeze.disabled = false
+    flushStyle()
+  }
   try {
     return fn()
   } finally {
-    flushStyle()
-    freeze.disabled = true
-    releaseScopeFreeze(root, freeze)
+    scopeFreezeDepth -= 1
+    if (scopeFreezeDepth === 0) {
+      flushStyle()
+      freeze.disabled = true
+      for (const frozen of frozenRoots) releaseScopeFreeze(frozen, freeze)
+      frozenRoots.clear()
+    }
   }
 }
 

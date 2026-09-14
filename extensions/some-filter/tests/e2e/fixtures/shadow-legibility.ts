@@ -33,6 +33,11 @@ import type { Page } from "@playwright/test"
  *     background: never enters the per-surface hypothesis under any
  *     classification.
  *
+ * Plus `transitioned`: witness B's shape with a vendor `transition` on
+ * `color`, the hazard `legibility-audit.ts`'s own scope freeze exists for.
+ * Its colour differs from `label`'s so it resolves to its own
+ * `LegibilityKey` and its repair can be asserted independently.
+ *
  * The surface owns a light background, so the scope themes rather than
  * reading as already-dark, and both carriers are left dark-on-dark by
  * everything except SF-RC2's own alphabet.
@@ -46,6 +51,10 @@ const WITNESS_MARKUP = `
       Shorts
     </button>
     <div class="sf-rc3-label" style="color:rgb(0,0,0)">Subscriptions</div>
+    <div class="sf-rc3-transitioned"
+         style="color:rgb(5,5,5);transition:color 0.3s linear">
+      A shadow-hosted carrier whose own colour is under a vendor transition.
+    </div>
   </div>
 `
 
@@ -200,4 +209,87 @@ export async function waitForShadowScopeCommitted(
     hostPath,
     { timeout: 5_000, polling: 100 }
   )
+}
+
+/**
+ * Codex review round 1 on #1412's own regression shape: a carrier inside a
+ * *nested* root whose own ancestors are all transparent, so
+ * `resolveEffectiveBackdrop` climbs out through `ShadowRoot.host` and
+ * resolves its backdrop in the **outer** scope.
+ *
+ * `shadow-scope-discovery.ts`'s `registerShadowRoot` recurses into nested
+ * roots before calling `onScopeReady` for the parent, so this carrier's own
+ * scope is audited first, against the outer surface's still-native white —
+ * and nothing the outer scope's later darkening does is visible to any
+ * observer watching this root. Without `recontrastDescendants` the carrier
+ * keeps its authored dark colour on a newly dark surface, permanently.
+ *
+ * Deliberately distinct from `mountNestedShadowWitnesses`, whose inner root
+ * owns its own opaque surface and therefore resolves entirely within itself
+ * — that fixture passes either way, which is exactly why it did not catch
+ * this.
+ */
+export async function mountNestedBackdropCrosser(
+  page: Page,
+  outerHostId: string,
+  innerHostId: string
+): Promise<void> {
+  await page.evaluate(
+    ({
+      outerHostId,
+      innerHostId,
+    }: {
+      outerHostId: string
+      innerHostId: string
+    }) => {
+      const outerHost = document.createElement("div")
+      outerHost.id = outerHostId
+      const outerRoot = outerHost.attachShadow({ mode: "open" })
+
+      // The outer scope's own light surface — what this carrier's backdrop
+      // will resolve to once it is themed.
+      const surface = document.createElement("div")
+      surface.className = "sf-rc3-surface"
+      surface.setAttribute(
+        "style",
+        "margin:0;padding:16px;background-color:rgb(255,255,255)"
+      )
+
+      const innerHost = document.createElement("div")
+      innerHost.id = innerHostId
+      surface.appendChild(innerHost)
+      outerRoot.appendChild(surface)
+
+      // Nothing inside the inner root owns a background, so the backdrop
+      // walk leaves it entirely.
+      const innerRoot = innerHost.attachShadow({ mode: "open" })
+      const carrier = document.createElement("div")
+      carrier.className = "sf-rc3-crosser"
+      carrier.setAttribute("style", "color:rgb(0,0,0)")
+      carrier.textContent =
+        "A carrier that resolves its backdrop one scope out."
+      innerRoot.appendChild(carrier)
+
+      const anchor = document.getElementById("host-anchor")
+      if (anchor === null) throw new Error("fixture missing #host-anchor")
+      anchor.appendChild(outerHost)
+    },
+    { outerHostId, innerHostId }
+  )
+}
+
+/** Drives one genuine vendor mutation inside `hostId`'s own root, the trigger a reconcile round needs. */
+export async function mutateInsideShadowScope(
+  page: Page,
+  hostId: string
+): Promise<void> {
+  await page.evaluate((id: string) => {
+    const root = document.getElementById(id)?.shadowRoot
+    if (root === null || root === undefined) {
+      throw new Error(`#${id} has no open root`)
+    }
+    const late = document.createElement("p")
+    late.textContent = "late content"
+    root.appendChild(late)
+  }, hostId)
 }

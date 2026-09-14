@@ -67,6 +67,7 @@ import {
   auditLegibility,
   decideLegibility,
   realizeLegibility,
+  withScopeTransitionsFrozen,
 } from "./legibility-audit"
 import {
   isShadowRoot,
@@ -201,6 +202,79 @@ function ensureResolving(registry: ShadowSceneRegistry, id: ScopeId): boolean {
   }
 }
 
+/**
+ * What a committed scope last realized, enough to re-run its
+ * rendered-contrast half without re-deriving its classification. Recorded
+ * per scope by `install()` and read back by `recontrastDescendants()`.
+ */
+type CommittedShadowRealization = {
+  readonly actions: ReadonlyArray<FilterAction>
+  readonly swatch: Swatch
+  readonly vendorInvert: number
+}
+
+/**
+ * Realizes `actions` into `root` and then runs the rendered-contrast
+ * channel over it — SF-RC3 (#1342), the scoped counterpart to
+ * `pipeline.ts`'s own `fire()` block.
+ *
+ * The audit is deliberately *after* the theme lands rather than beside it:
+ * this channel measures what was actually painted (canon Definition C.3's
+ * Φ_comfort), so it has to read post-actuation computed style. Audited
+ * first, it would score every carrier against the vendor's own light
+ * backdrop and conclude the page was already fine.
+ *
+ * Its actions are never merged into (or derived from) `actions`, so
+ * rendered-contrast evidence still cannot vote on
+ * `decide()`/`pageAlreadyDark()`'s verdict — #831's discipline, canon
+ * Remark C.6. A throw anywhere here propagates to the caller: out of
+ * `install()` into `resolveCommitted()` (#1266's FAILED_HELD path, the same
+ * treatment a thrown `realizeShadowColors` already gets) on the commit path,
+ * and into `recontrastDescendants`'s own per-scope guard on the other.
+ *
+ * The whole sequence runs under one freeze, and the leading
+ * `realizeShadowColors(..., [])` is what that freeze is for: on the
+ * re-contrast path this scope is already `COMMITTED` with its own repair
+ * sheets adopted and enabled, so the audit would otherwise read back this
+ * channel's own `!important` colour, call the carrier legible, and drop the
+ * repair — SF-RC2's oscillation. Dropping the sheets first makes the read
+ * see the authored colour; doing it inside the freeze is what stops that
+ * drop from starting a vendor `transition` whose start value is the repair.
+ * On the commit path there are no prior repairs and that call is an
+ * idempotent no-op.
+ *
+ * Tagging and rule-realization are split, unlike the document path's single
+ * `realizeForegroundRepairs()` call: the tags go on elements (scope-agnostic,
+ * `foreground-repair.ts`'s `tagRepairCarriers`), but the rules must land in
+ * *this* scope's `adoptedStyleSheets`, which only `realizeShadowColors`
+ * owns. Passing the matched actions back into a second call keeps one
+ * desired sheet set per root — see that function's own `repairs` parameter
+ * for why a separately-tracked second set would be invisible to both the
+ * #1280 integrity poll and `clearShadowSurfaceState`.
+ */
+function projectContrast(
+  root: ShadowRoot,
+  actions: ReadonlyArray<FilterAction>,
+  swatch: Swatch,
+  vendorInvert: number
+): void {
+  withScopeTransitionsFrozen(root, () => {
+    realizeShadowColors(actions, root, swatch, vendorInvert, [])
+    const scanned = auditLegibility(root)
+    realizeLegibility(
+      root,
+      decideLegibility(scanned.attrsByKey),
+      scanned.elementsByKey
+    )
+    const repairs = tagRepairCarriers(
+      root,
+      decideForegroundRepairs(scanned.attrsByKey),
+      scanned.elementsByKey
+    )
+    realizeShadowColors(actions, root, swatch, vendorInvert, repairs)
+  })
+}
+
 export function createShadowScopeTheming(
   registry: ShadowSceneRegistry,
   /**
@@ -305,6 +379,93 @@ export function createShadowScopeTheming(
    */
   const committedVendorInvertById = new Map<ScopeId, number>()
 
+  /**
+   * What each currently-`COMMITTED` scope last realized, so
+   * `recontrastDescendants()` below can re-run its rendered-contrast half
+   * against a changed ancestor without re-deriving its classification (which
+   * did not change: `scan()`/`decide()` classify each element by its *own*
+   * background, scope-locally, and an ancestor scope's theme has no bearing
+   * on that). Set in `install()`, cleared in `uninstall()` — the same
+   * lifetime `committedVendorInvertById` has, and for the same reason.
+   */
+  const committedRealizationById = new Map<
+    ScopeId,
+    CommittedShadowRealization
+  >()
+
+  /** True when `id`'s own registered parent chain passes through `ancestorId`. */
+  function isDescendantScope(id: ScopeId, ancestorId: ScopeId): boolean {
+    let parent = registry.snapshot(id)?.parent
+    // Bounded by the registered scope tree's depth; a cycle is impossible,
+    // since `parent` is fixed at registration to an id that already existed.
+    while (parent !== null && parent !== undefined) {
+      if (parent === ancestorId) return true
+      parent = registry.snapshot(parent)?.parent
+    }
+    return false
+  }
+
+  /**
+   * Re-runs the rendered-contrast half for every committed scope nested
+   * inside `ancestorId`, after that ancestor's own realization has landed.
+   *
+   * Bot-found, Codex review round 1 on this PR, and real:
+   * `shadow-scope-discovery.ts`'s `registerShadowRoot` recurses into nested
+   * roots (`walk`) *before* calling `onScopeReady` for the parent, so a
+   * child's projection is queued first and its audit can score the ancestor's
+   * still-native backdrop. `resolveEffectiveBackdrop` climbs through
+   * `ShadowRoot.host` into the outer scope whenever a carrier's own
+   * ancestors inside its root are all transparent, so that backdrop is
+   * exactly what the ancestor is about to darken — and nothing re-audits the
+   * child afterwards: the ancestor's realization is `adoptedStyleSheets`
+   * writes (not DOM mutations at all) plus attribute writes *inside the
+   * ancestor's* root, which neither the child's own per-root observer
+   * (observers do not cross a shadow boundary) nor its host observer
+   * (`class`/`style` only) can see. The carrier keeps its authored dark
+   * colour on a newly dark surface, permanently.
+   *
+   * Deliberately re-runs only the *contrast* half, and deliberately does not
+   * `invalidate()`: a descendant's own classification is unaffected by an
+   * ancestor's theme (each element is classified by its own background), and
+   * invalidating would re-engage that scope's occlusion hold — a visible veil
+   * flash on every ancestor commit, for a scope whose background realization
+   * is already correct.
+   *
+   * Transitive rather than direct-children-only: a grandchild's backdrop can
+   * resolve through two hosts to this ancestor just as easily as one. Order
+   * among descendants does not matter — no descendant's *background*
+   * realization changes here, so none of them is an input to another's
+   * backdrop. Each is guarded individually so one scope's failure does not
+   * silently skip the rest (this runs after `resolveCommitted` has already
+   * resolved, so a throw here cannot be reported as a FAILED_HELD).
+   */
+  function recontrastDescendants(ancestorId: ScopeId): void {
+    for (const otherId of registry.ids()) {
+      if (otherId === ancestorId) continue
+      const snapshot = registry.snapshot(otherId)
+      if (snapshot?.state.kind !== "COMMITTED") continue
+      const root = snapshot.ref
+      if (!isShadowRoot(root)) continue
+      if (!isDescendantScope(otherId, ancestorId)) continue
+      const realized = committedRealizationById.get(otherId)
+      if (realized === undefined) continue
+      try {
+        projectContrast(
+          root,
+          realized.actions,
+          realized.swatch,
+          realized.vendorInvert
+        )
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error(
+          `[some-filter] re-contrast of ${otherId} after ${ancestorId} failed:`,
+          error
+        )
+      }
+    }
+  }
+
   async function projectOnce(
     id: ScopeId,
     forceInvalidate: boolean
@@ -404,46 +565,19 @@ export function createShadowScopeTheming(
         // result than neither being compensated) — recomputed fresh every
         // round: a vendor's own invert toggle can flip at any time (#1281).
         const vendorInvert = detectVendorInvert()
-        realizeShadowColors(actions, root, rawSwatch, vendorInvert)
-        // SF-RC3 (#1342): the rendered-contrast channel, projected into this
-        // scope — the scoped counterpart to pipeline.ts's own fire() block,
-        // and deliberately *after* realizeShadowColors above rather than
-        // beside it. This channel measures what was actually painted
-        // (canon Definition C.3's Φ_comfort), so it has to read
-        // post-actuation computed style: audited before the theme lands, it
-        // would score every carrier against the vendor's own light backdrop
-        // and conclude the page was already fine.
-        //
-        // Structurally identical to the document block otherwise, including
-        // the isolation that matters: these actions are never merged into
-        // (or derived from) `actions` above, so rendered-contrast evidence
-        // still cannot vote on decide()/pageAlreadyDark()'s own verdict
-        // (#831's discipline, canon Remark C.6). A throw anywhere here
-        // propagates out of install() into resolveCommitted(), which is
-        // exactly #1266's FAILED_HELD path — the same treatment a thrown
-        // realizeShadowColors already gets, not a new one.
-        const legibilityScan = auditLegibility(root)
-        realizeLegibility(
-          root,
-          decideLegibility(legibilityScan.attrsByKey),
-          legibilityScan.elementsByKey
-        )
-        // Tagging and rule-realization are split here, unlike the document
-        // path's single realizeForegroundRepairs() call: the tags go on
-        // elements (scope-agnostic, foreground-repair.ts's own
-        // tagRepairCarriers), but the rules must land in *this* scope's
-        // adoptedStyleSheets, which only realizeShadowColors owns. Passing
-        // the matched actions back into a second realizeShadowColors call
-        // keeps one desired sheet set per root — see that function's own
-        // `repairs` parameter for why a separately-tracked second set would
-        // be invisible to both the #1280 integrity poll and
-        // clearShadowSurfaceState.
-        const repairs = tagRepairCarriers(
-          root,
-          decideForegroundRepairs(legibilityScan.attrsByKey),
-          legibilityScan.elementsByKey
-        )
-        realizeShadowColors(actions, root, rawSwatch, vendorInvert, repairs)
+        // SF-RC3 (#1342): the theme *and* the rendered-contrast channel, in
+        // one call — see projectContrast's own doc comment for the ordering
+        // (the audit must read post-actuation computed style) and for why
+        // this scope's own prior repairs are dropped before it reads.
+        projectContrast(root, actions, rawSwatch, vendorInvert)
+        // Recorded so a later ancestor commit can re-audit this scope
+        // without re-deriving its classification — recontrastDescendants,
+        // below. Cleared in uninstall alongside the invert amount.
+        committedRealizationById.set(id, {
+          actions,
+          swatch: rawSwatch,
+          vendorInvert,
+        })
         // Recorded so reconcileCommittedSheets()'s own poll can later tell
         // whether *this* commit's own compensation has gone stale, rather
         // than only comparing against whatever the poll itself last
@@ -465,8 +599,17 @@ export function createShadowScopeTheming(
       uninstall: () => {
         clearShadowSurfaceState(root)
         committedVendorInvertById.delete(id)
+        committedRealizationById.delete(id)
       },
     })
+
+    // Only after the two-phase handoff has actually landed COMMITTED — the
+    // stale-completion branch (`resolveCommitted`'s own generation check)
+    // resolves without committing and has just had its realization
+    // uninstalled, so there is nothing for a descendant to be stale against.
+    if (registry.stateOf(id)?.kind === "COMMITTED") {
+      recontrastDescendants(id)
+    }
   }
 
   function project(id: ScopeId): void {

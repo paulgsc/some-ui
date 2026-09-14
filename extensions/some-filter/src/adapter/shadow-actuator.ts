@@ -74,6 +74,7 @@ import {
   type RepairForegroundAction,
 } from "./foreground-repair"
 import {
+  flushStyle,
   realizeLegibility,
   withScopeTransitionsFrozen,
 } from "./legibility-audit"
@@ -350,13 +351,30 @@ export function clearShadowSurfaceState(root: ShadowRoot): void {
     // The rendered-contrast channel's own two tag sets, cleared the same way
     // and for the same reason `data-sw-patched` is: a scope moving to
     // EXONERATED_NATIVE (or being invalidated, or retired) gets no fresh
-    // action to naturally overwrite a previous commit's tags, and a stale
-    // `data-sw-legibility-fix` in particular keeps selecting a rule this
-    // clear is in the middle of removing. Both realize functions treat an
-    // empty action list as exactly "nothing is violated here", which is
-    // what this means, so neither needs a second special-cased cleanup path.
+    // action to naturally overwrite a previous commit's tags. Both realize
+    // functions treat an empty action list as exactly "nothing is violated
+    // here", which is what this means, so neither needs a second
+    // special-cased cleanup path.
     realizeLegibility(root, [], new Map())
-    tagRepairCarriers(root, [], new Map())
+
+    // Order is load-bearing, and the freeze alone does not make it safe
+    // (bot-found, Codex review round 1 on this PR): the freeze rule selects
+    // `[data-sw-legibility-fix]`, the *same* attribute the repair rule keys
+    // on, so clearing the tag first stops both from matching at once. The
+    // engine then resolves a repair-to-authored colour change with
+    // transitions live again — whether a transition starts is decided by the
+    // after-change style, and in that style the freeze is gone — and the
+    // audit moments later reads the transition's start value, the repair
+    // itself, concludes the carrier is legible, and omits the repair for
+    // good.
+    //
+    // Dropping the sheets first keeps the tag, hence the freeze, matching
+    // across the one change that actually moves the colour. The flush then
+    // commits the authored colour while transitions are still off, so the
+    // tag removal that follows changes no colour at all and has nothing left
+    // to animate.
     realizeShadowColors([], root, null)
+    flushStyle()
+    tagRepairCarriers(root, [], new Map())
   })
 }

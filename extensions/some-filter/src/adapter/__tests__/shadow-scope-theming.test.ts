@@ -1029,3 +1029,169 @@ describe("createShadowScopeTheming.project — rendered-contrast channel (#1342)
     expect(frozen).toHaveLength(0)
   })
 })
+
+describe("createShadowScopeTheming.project — an ancestor commit re-audits nested scopes (#1342, bot-found)", () => {
+  /**
+   * `shadow-scope-discovery.ts`'s `registerShadowRoot` recurses into nested
+   * roots before calling `onScopeReady` for the parent, so a child's audit
+   * can score an ancestor backdrop that is about to be darkened — and
+   * nothing re-audits it afterwards, since an ancestor's realization is
+   * `adoptedStyleSheets` writes plus attribute writes inside the *ancestor's*
+   * root, neither of which any observer watching the child can see.
+   *
+   * This environment cannot express that claim directly, for two independent
+   * reasons: jsdom applies no stylesheet to `getComputedStyle`, so the
+   * ancestor's own darkening never lands; and jsdom caches an element's
+   * computed style permanently after the first read (confirmed directly — a
+   * later `setAttribute("style", …)` updates the attribute but not
+   * `getComputedStyle`), so a stand-in inline change to an
+   * already-audited backdrop is invisible too.
+   *
+   * What these tests pin instead is the *mechanism*, isolated: no observer
+   * is wired here, so a nested scope's carrier can only be tagged if
+   * committing its ancestor re-ran that scope's contrast half. The
+   * end-to-end claim — a carrier whose backdrop actually resolves through
+   * its host into the outer scope and is repaired only once the outer scope
+   * themes — is `issue-1342-sfrc3-shadow-foreground.spec.ts`'s own
+   * nested-crosser case, against real Chromium.
+   */
+  function nestedScopes(): {
+    outer: ShadowRoot
+    inner: ShadowRoot
+  } {
+    const outer = shadowRoot()
+    const outerSurface = document.createElement("div")
+    outerSurface.setAttribute("style", "background-color: rgb(255, 255, 255)")
+    const innerHost = document.createElement("div")
+    outerSurface.appendChild(innerHost)
+    outer.appendChild(outerSurface)
+    return { outer, inner: innerHost.attachShadow({ mode: "open" }) }
+  }
+
+  /** A dark panel carrying black text — violated on its own evidence, so the audit's verdict does not depend on any stylesheet landing. */
+  function addViolatedCarrier(root: ShadowRoot): HTMLElement {
+    const panel = document.createElement("div")
+    panel.setAttribute("style", "background-color: rgb(20, 20, 20)")
+    const carrier = document.createElement("div")
+    carrier.setAttribute("style", "color: rgb(0, 0, 0)")
+    carrier.textContent = "crosser"
+    panel.appendChild(carrier)
+    root.appendChild(panel)
+    return carrier
+  }
+
+  it("re-runs a nested scope's contrast half when its ancestor commits, without invalidating it", async () => {
+    const reg = registry()
+    const { outer, inner } = nestedScopes()
+    const outerId = registerHeld(reg, outer)
+    const innerId = "shadow:inner-crosser"
+    reg.register(innerId, {
+      ref: inner,
+      parent: outerId,
+      contentEpoch: 0,
+      hold: { install: () => {}, release: () => {} },
+    })
+
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
+
+    // The child projects first, exactly as discovery orders it — with
+    // nothing yet to find.
+    theming.project(innerId)
+    await flushAll()
+    expect(reg.stateOf(innerId)?.kind).toBe("COMMITTED")
+
+    // Stands in for evidence the child's own audit could not have seen when
+    // it ran. Nothing observes this root, so only an ancestor-driven
+    // re-audit can pick it up.
+    const carrier = addViolatedCarrier(inner)
+
+    theming.project(outerId)
+    await flushAll()
+
+    expect(reg.stateOf(outerId)?.kind).toBe("COMMITTED")
+    expect(
+      carrier.getAttribute(REPAIR_ATTR),
+      "committing the ancestor must re-audit the nested scope"
+    ).toBe("rgb(0, 0, 0)~rgb(20, 20, 20)")
+    expect(
+      carrier.getAttribute(LEGIBILITY_ATTR),
+      "the diagnostic half must be re-run too, not just the repair"
+    ).toBe("violated")
+    expect(
+      reg.stateOf(innerId)?.kind,
+      "re-contrast must not re-engage the nested scope's occlusion hold"
+    ).toBe("COMMITTED")
+  })
+
+  it("re-audits a scope nested two levels down, not just a direct child", async () => {
+    // A grandchild's backdrop can resolve through two hosts to this
+    // ancestor just as easily as one, so the walk is transitive.
+    const reg = registry()
+    const { outer, inner } = nestedScopes()
+    const grandHost = document.createElement("div")
+    inner.appendChild(grandHost)
+    const grand = grandHost.attachShadow({ mode: "open" })
+
+    const outerId = registerHeld(reg, outer)
+    reg.register("shadow:mid", {
+      ref: inner,
+      parent: outerId,
+      contentEpoch: 0,
+      hold: { install: () => {}, release: () => {} },
+    })
+    reg.register("shadow:grand", {
+      ref: grand,
+      parent: "shadow:mid",
+      contentEpoch: 0,
+      hold: { install: () => {}, release: () => {} },
+    })
+
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
+    theming.project("shadow:grand")
+    await flushAll()
+    const carrier = addViolatedCarrier(grand)
+
+    theming.project(outerId)
+    await flushAll()
+
+    expect(carrier.getAttribute(REPAIR_ATTR)).toBe(
+      "rgb(0, 0, 0)~rgb(20, 20, 20)"
+    )
+  })
+
+  it("leaves a committed scope alone when it is not a descendant of the committing one", async () => {
+    const reg = registry()
+    const a = nestedScopes()
+    const b = nestedScopes()
+    const aOuterId = registerHeld(reg, a.outer)
+    const bOuterId = registerHeld(reg, b.outer)
+    reg.register("shadow:unrelated-inner", {
+      ref: b.inner,
+      parent: bOuterId,
+      contentEpoch: 0,
+      hold: { install: () => {}, release: () => {} },
+    })
+
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
+    theming.project("shadow:unrelated-inner")
+    await flushAll()
+    const carrier = addViolatedCarrier(b.inner)
+
+    theming.project(aOuterId)
+    await flushAll()
+
+    expect(carrier.hasAttribute(REPAIR_ATTR)).toBe(false)
+  })
+})
