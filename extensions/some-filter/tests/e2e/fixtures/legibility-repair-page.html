@@ -26,6 +26,18 @@
   never entered the hypothesis under any classification. Its ancestor #main
   does get darkened out from under it. Measured 1.14:1 during Gate-0 recon.
 
+  ── Transition hazard ──
+  #transitioned is witness B's shape (own explicit colour, no own background)
+  plus a vendor `transition` on `color`. Disabling the repair sheet to sense
+  the authored colour is itself a style change, and it starts that transition
+  — so a naive suppression reads back the repair's own colour (confirmed
+  directly against real Chromium: `rgb(158, 158, 158)`, not the authored
+  `rgb(0, 0, 0)`), concludes the carrier is legible, and drops the repair,
+  after which the transition completes to the illegible authored colour with
+  no mutation left to schedule another round. Freezing transitions for the
+  duration of the read is what makes the sensed value the settled
+  destination.
+
   ── Negative control (F-18) ──
   #inherits declares no colour of its own at all. Its ancestor #card owns
   both a light background and its own explicit dark text, so #card gets the
@@ -67,6 +79,18 @@
     <main id="main" style="background-color: rgb(250, 250, 250); padding: 16px">
       <div id="label" style="color: rgb(0, 0, 0)">Subscriptions</div>
     </main>
+
+    <section
+      id="panel"
+      style="background-color: rgb(240, 240, 240); padding: 16px"
+    >
+      <div
+        id="transitioned"
+        style="color: rgb(0, 0, 0); transition: color 0.3s linear"
+      >
+        A carrier whose own colour is under a vendor transition.
+      </div>
+    </section>
 
     <section
       id="card"

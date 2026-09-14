@@ -179,6 +179,13 @@ test.describe("SF-RC2: rendered foreground repair, document scope (#1341)", () =
     await waitForClassification(page)
     await page.waitForTimeout(300)
 
+    // Past #transitioned's own 0.3s transition, so the round driven below
+    // starts from a *settled* repaired colour. That is the state in which
+    // suppressing the repair sheet without a transition freeze reads the
+    // repair back as if it were the authored colour — mid-transition the
+    // sensed value is still violating and the bug hides itself.
+    await page.waitForTimeout(700)
+
     const sheetBefore = await page.evaluate(
       () => document.getElementById("__sw_legibility_repair")?.textContent
     )
@@ -194,7 +201,7 @@ test.describe("SF-RC2: rendered foreground repair, document scope (#1341)", () =
       el.textContent = "late content"
       document.body.appendChild(el)
     })
-    await page.waitForTimeout(500)
+    await page.waitForTimeout(700)
 
     const chip = await readCarrier(page, "chip")
     expect(
@@ -202,6 +209,22 @@ test.describe("SF-RC2: rendered foreground repair, document scope (#1341)", () =
       "the repair must survive a later reconcile round, not oscillate"
     ).not.toBeNull()
     expect(contrastOf(chip)).toBeGreaterThanOrEqual(MIN_CONTRAST_RATIO)
+
+    // Same claim for a carrier whose own `color` is under a vendor
+    // transition. Suppressing the repair sheet is itself a style change, so
+    // it *starts* that transition — and a read taken right after returns the
+    // transition's start value, which is this channel's own repair
+    // (confirmed directly against real Chromium). Sensing would then call
+    // the carrier legible and drop the repair, and the transition would
+    // finish at the illegible authored colour with no mutation left to
+    // schedule another round. Only a transition freeze around the read makes
+    // the sensed value the settled destination.
+    const transitioned = await readCarrier(page, "transitioned")
+    expect(
+      transitioned.repairKey,
+      "a carrier under a vendor colour transition must stay repaired too"
+    ).not.toBeNull()
+    expect(contrastOf(transitioned)).toBeGreaterThanOrEqual(MIN_CONTRAST_RATIO)
 
     const sheetAfter = await page.evaluate(
       () => document.getElementById("__sw_legibility_repair")?.textContent
@@ -243,7 +266,7 @@ test.describe("SF-RC2: leaving auto mode returns the page to native (#1341)", ()
     expect(
       themed,
       "precondition: auto mode actually realized all three artifact kinds"
-    ).toEqual({ repairSheet: true, patched: 3, fixed: 2 })
+    ).toEqual({ repairSheet: true, patched: 4, fixed: 3 })
 
     const sw = await backgroundWorker(context)
     const tabId = await sw.evaluate(async () => {
@@ -267,6 +290,7 @@ test.describe("SF-RC2: leaving auto mode returns the page to native (#1341)", ()
       staticSheet: document.getElementById("__sw_dark_theme") !== null,
       dynamicSheet: document.getElementById("__sw_dark_dynamic") !== null,
       repairSheet: document.getElementById("__sw_legibility_repair") !== null,
+      freezeSheet: document.getElementById("__sw_legibility_freeze") !== null,
       patched: document.querySelectorAll("[data-sw-patched]").length,
       fixed: document.querySelectorAll("[data-sw-legibility-fix]").length,
       legibility: document.querySelectorAll("[data-sw-legibility]").length,
@@ -282,6 +306,7 @@ test.describe("SF-RC2: leaving auto mode returns the page to native (#1341)", ()
       staticSheet: false,
       dynamicSheet: false,
       repairSheet: false,
+      freezeSheet: false,
       patched: 0,
       fixed: 0,
       legibility: 0,

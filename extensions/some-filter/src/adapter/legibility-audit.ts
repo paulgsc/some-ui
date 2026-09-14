@@ -767,6 +767,49 @@ function registerCandidate(
 export const REPAIR_STYLE_ID = "__sw_legibility_repair"
 
 /**
+ * The transition/animation freeze `withRepairSuppressed` reads under, as a
+ * *persistent, disabled-by-default* extension-owned sheet rather than a
+ * `<style>` appended and removed around each read.
+ *
+ * `prepaint.ts`'s own `withPrepaintSuppressed` does exactly that append-and-
+ * remove, and it is correct there — it runs once, outside the Sensor's
+ * observation window. Reusing it here does not work, and not subtly:
+ * `isSelfAuthored` deliberately does *not* treat the removal of an
+ * extension-owned node as self-authored (Remark 7.2 — "our node is gone" is
+ * ambiguous between our teardown and the vendor's, and the ambiguity has to
+ * resolve toward reacting). So tearing the freeze down at the end of every
+ * audit queues a mutation the Sensor reacts to, whose round audits again,
+ * which tears it down again — a self-feeding loop, #831's exact shape.
+ * Caught by this package's own quiescence tests, which measured six rounds
+ * where one was expected before this was reduced to a `disabled` toggle.
+ *
+ * Toggling `CSSStyleSheet.disabled` mutates no DOM at all, which is the
+ * same reason `pipeline.ts`'s `withVendorColorsVisible` suppresses its own
+ * sheets that way. The element is created at most once per document and
+ * never removed while the pipeline runs; its creation is an *addition* of a
+ * `[data-my-ext]` node, which `isSelfAuthored` does filter.
+ */
+export const FREEZE_STYLE_ID = "__sw_legibility_freeze"
+
+function freezeSheet(): CSSStyleSheet | null {
+  const existing = document.getElementById(FREEZE_STYLE_ID)
+  if (existing instanceof HTMLStyleElement) return existing.sheet
+
+  const style = document.createElement("style")
+  style.id = FREEZE_STYLE_ID
+  style.setAttribute("data-my-ext", "")
+  style.textContent =
+    "*, *::before, *::after { transition: none !important; animation: none !important; }"
+  document.head.appendChild(style)
+  const sheet = style.sheet
+  // Inert until a read actually needs it. The window between append and
+  // this line is synchronous, so no frame is ever painted with page
+  // transitions suppressed.
+  if (sheet !== null) sheet.disabled = true
+  return sheet
+}
+
+/**
  * Runs `fn` with SF-RC2's repair sheet disabled, so every
  * `getComputedStyle().color` read inside it returns the carrier's *authored*
  * foreground rather than the repair this channel painted over it.
@@ -792,18 +835,74 @@ export const REPAIR_STYLE_ID = "__sw_legibility_repair"
  * mutates no DOM (so it queues no MutationRecord to react to) and, because
  * the whole audit is one synchronous task, no frame is ever painted with
  * the repair off.
+ *
+ * Both the read and the restore happen with transitions frozen
+ * (`freezeSheet` below), which is what makes the read report the *settled*
+ * authored colour. Disabling the repair sheet is itself a style change, so
+ * on a carrier with a vendor `transition` on `color` it starts a transition
+ * away from the repair — and a `getComputedStyle` taken in the same task
+ * returns that transition's current value, which at progress zero is the
+ * repair itself (bot-found, Codex review round 2; confirmed directly
+ * against real Chromium: a carrier with `transition: color 0.3s` read back
+ * `rgb(158, 158, 158)`, this channel's own repair, where the authored
+ * colour was `rgb(0, 0, 0)`, and read back `rgb(0, 0, 0)` correctly once
+ * the freeze was in effect first). Sensing would otherwise call such a
+ * carrier legible and drop its repair, leaving the transition to finish at
+ * the illegible authored colour with no mutation left to schedule another
+ * round — confirmed end to end against the real built extension, where the
+ * carrier lost its tag outright after one reconcile round.
+ *
+ * `content.ts` already wraps the *initial* rescan in an equivalent freeze
+ * (`withPrepaintSuppressed`) for the identical reason, but mutation-driven
+ * rounds reach `fire()` without it. Applied here unconditionally rather
+ * than only when a repair sheet exists: the freeze is what any
+ * post-actuation colour read needs to be meaningful, and a conditional
+ * would be more code for less correctness.
  */
 function withRepairSuppressed<T>(fn: () => T): T {
-  const el = document.getElementById(REPAIR_STYLE_ID)
-  const sheet = el instanceof HTMLStyleElement ? el.sheet : null
-  if (sheet === null || sheet.disabled) return fn()
-
-  sheet.disabled = true
-  try {
-    return fn()
-  } finally {
-    sheet.disabled = false
+  const freeze = freezeSheet()
+  if (freeze !== null) {
+    freeze.disabled = false
+    flushStyle()
   }
+  try {
+    const el = document.getElementById(REPAIR_STYLE_ID)
+    const sheet = el instanceof HTMLStyleElement ? el.sheet : null
+    if (sheet === null || sheet.disabled) return fn()
+
+    sheet.disabled = true
+    try {
+      return fn()
+    } finally {
+      sheet.disabled = false
+      // Re-enabling alone is not enough, and this flush is the point of
+      // doing it *here*: a transition starts from whatever computed value
+      // was last resolved, and the read above resolved the authored colour.
+      // Without forcing a second resolve while transitions are still
+      // frozen, the restored repair is only observed at the next rendering
+      // opportunity — by which time the freeze is off again, so the engine
+      // sees authored→repair as a fresh transitionable change and animates
+      // it. Measured directly against the real built extension: the carrier
+      // read back `rgb(18, 18, 18)` after a reconcile round, partway from
+      // black to its `rgb(158, 158, 158)` repair, with the correct rule and
+      // tag both in place the whole time. Resolving here commits the repair
+      // while transitions are still off, so lifting the freeze changes
+      // nothing and no frame is ever painted mid-flight.
+      flushStyle()
+    }
+  } finally {
+    if (freeze !== null) freeze.disabled = true
+  }
+}
+
+/**
+ * Forces the pending style recalculation to happen now. `getComputedStyle`
+ * alone is lazy about nothing here — reading a property off it is what
+ * actually resolves the element's style — so the property access is load-
+ * bearing, not a stray expression.
+ */
+function flushStyle(): void {
+  void getComputedStyle(document.documentElement).color
 }
 
 /**
@@ -968,6 +1067,9 @@ export function clearLegibilityTags(): void {
   document.querySelectorAll(`[${LEGIBILITY_ATTR}]`).forEach((el) => {
     el.removeAttribute(LEGIBILITY_ATTR)
   })
+  // Safe to remove outright here, unlike during a round: no pipeline is left
+  // observing, so there is nothing for the removal to feed back into.
+  document.getElementById(FREEZE_STYLE_ID)?.remove()
 }
 
 export function realizeLegibility(

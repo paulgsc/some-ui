@@ -324,7 +324,16 @@ export function buildForegroundRepairRule(
  * transformation sits behind, and not this story's to cross.
  */
 function repairCanWinCascade(el: HTMLElement): boolean {
-  return el.style.getPropertyPriority("color") !== "important"
+  if (el.style.getPropertyPriority("color") === "important") return false
+  // `all` is the one shorthand `color` is a longhand of, and CSSOM does not
+  // expand it: for `style="all: initial !important"` a real Chromium reports
+  // `getPropertyPriority("color")` as `""` and `getPropertyValue("color")`
+  // as `""` while `getPropertyPriority("all")` is `"important"` (bot-found,
+  // Codex review round 2; confirmed directly). An inline reset like that
+  // supplies an important inline `color` this rule still loses to, so the
+  // check above alone would tag the carrier and emit a rule that never
+  // renders.
+  return el.style.getPropertyPriority("all") !== "important"
 }
 
 function repairStyleEl(): HTMLStyleElement {

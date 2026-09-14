@@ -308,6 +308,38 @@ describe("realizeForegroundRepairs", () => {
     expect(document.getElementById(REPAIR_STYLE_ID)).toBeNull()
   })
 
+  it("leaves a carrier untagged when an inline `all` shorthand supplies the important colour", () => {
+    // Codex review round 2: `all` is the one shorthand `color` is a longhand
+    // of, and CSSOM does not expand it — real Chromium reports
+    // getPropertyPriority("color") as "" and getPropertyValue("color") as ""
+    // for `style="all: initial !important"`, while
+    // getPropertyPriority("all") is "important" (confirmed directly). The
+    // colour check alone would tag this carrier and emit a rule that never
+    // renders.
+    document.body.innerHTML =
+      '<div id="carrier" style="all: initial !important">hi</div>'
+    const el = document.getElementById("carrier")
+    if (el === null) throw new Error("fixture missing")
+
+    realizeForegroundRepairs(document.body, [ACTION], new Map([[KEY, [el]]]))
+
+    expect(el.hasAttribute(REPAIR_ATTR)).toBe(false)
+    expect(document.getElementById(REPAIR_STYLE_ID)).toBeNull()
+  })
+
+  it("still repairs a carrier whose inline `all` is not important", () => {
+    // The guard must key on priority, not on the presence of `all` — a
+    // non-important inline declaration loses to this rule exactly like any
+    // other, so such a carrier is still repairable.
+    document.body.innerHTML = '<div id="carrier" style="all: initial">hi</div>'
+    const el = document.getElementById("carrier")
+    if (el === null) throw new Error("fixture missing")
+
+    realizeForegroundRepairs(document.body, [ACTION], new Map([[KEY, [el]]]))
+
+    expect(el.getAttribute(REPAIR_ATTR)).toBe(KEY)
+  })
+
   it("emits no rule for an action whose key resolves to no element", () => {
     carrier()
 
