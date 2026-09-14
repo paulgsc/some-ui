@@ -4,7 +4,7 @@
   },
   "dependencies": {
     "clsx": "^2.1.1",
-    "tailwind-merge": "^2.4.0"
+    "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
     "@some-ui/vite-config": "workspace:*",
