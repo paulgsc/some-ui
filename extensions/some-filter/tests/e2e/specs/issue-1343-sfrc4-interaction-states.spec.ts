@@ -279,30 +279,44 @@ test.describe("SF-RC4: interaction inside a shadow scope (#1343, bot-found)", ()
   })
 })
 
-test.describe("SF-RC4: an interaction skipped by navigation is covered anyway (#1343, bot-found)", () => {
-  test("a shadow carrier focused during an SPA transition is repaired once it finishes", async ({
+test.describe("SF-RC4: an interaction skipped by navigation is replayed (#1343, bot-found)", () => {
+  test("a shadow carrier focused during an SPA transition is repaired the moment it finishes", async ({
     fixture,
   }) => {
-    // The interaction pass *skips* the shadow half while a navigation is in
-    // flight, rather than deferring and replaying it. Review raised the
-    // obvious worry — that skipping loses the only trigger, since
-    // nav-finish's own `rescan()` reaches `recontrastAll()` only when the
-    // round reports a write — so this pins the property that makes the skip
-    // safe rather than a replay that does not exist.
+    // The shadow half is skipped while a navigation is in flight — a carrier
+    // whose backdrop resolves into the light DOM would otherwise be scored
+    // against a document mid-replacement — and recorded so `yt-navigate-finish`
+    // can replay it.
     //
-    // Measured while settling that question, and worth recording because
-    // both halves are surprising: the synthetic navigation round really is
-    // zero-write (`realizationChanged` false throughout), so the worry's
-    // premise holds; but `yt-navigate-finish` calls
-    // `shadowScopeDiscovery.discover(document)` after
-    // `sessionLifecycle.resetContent()`, which re-projects every known root,
-    // and each re-projection runs that scope's own `projectContrast`.
-    // Instrumented directly: `projectContrast` runs exactly once for this
-    // scope after nav-finish.
+    // The replay is a guarantee, not an observed necessity, and saying which
+    // it is took two review rounds and an instrumented build. The structural
+    // gap is real: `discover()` does not re-project a surviving root
+    // (`walk()` registers only roots absent from `idFor`, and
+    // `resetContent()` does not touch that map), so the only other route to
+    // `recontrastAll()` here is `onFire`'s, gated on the round reporting a
+    // write — and a navigation that wrote nothing would strand the scope.
     //
-    // So this test is not vacuous, it is just pinning the *other* mechanism:
-    // if nav-finish ever stops re-projecting known scopes, the gap review
-    // described becomes real and this is what fails.
+    // **What this spec does and does not prove, stated because two earlier
+    // versions of it quietly proved nothing.** It asserts the end-to-end
+    // outcome — a carrier interacted with across a navigation ends repaired
+    // — and it cannot isolate the replay as the cause. Instrumenting which
+    // caller actually repairs it showed `recontrastAll` running ~2ms after
+    // `yt-navigate-finish` even with the replay removed: this codebase's
+    // navigations *do* write, because nav-start's `reengage()` tears the
+    // realization down and the finish-time rescan therefore re-realizes,
+    // reports a write, and `onFire` fires `recontrastAll()` synchronously in
+    // the same handler. So the replay is belt-and-braces on this path today
+    // rather than the sole trigger, and no fixture can make it the cause
+    // while that stays true.
+    //
+    // Two traps this went through, both worth not repeating: a half-second
+    // wait let an *incidental* `pointerover` rescue it (tearing the veil down
+    // changes the topmost element under the cursor, so the browser emits
+    // pointer events with no pointer movement at all), and switching to focus
+    // did not avoid that, because the rescue comes from the pointer whatever
+    // the carrier's own state is. The tight window below at least excludes
+    // that particular route: it is well under INTERACTION_SETTLE_MS, so an
+    // interaction-scheduled pass cannot have landed yet.
     const page = await fixture.goto("interaction-state-page")
     await waitForClassification(page)
 
@@ -329,14 +343,6 @@ test.describe("SF-RC4: an interaction skipped by navigation is covered anyway (#
       { timeout: 5_000, polling: 100 }
     )
 
-    // Focus rather than hover, deliberately: `yt-navigate-finish` tears the
-    // veil down, and removing a full-viewport element from under the cursor
-    // changes the topmost element there, which makes the browser emit fresh
-    // `pointerover`/`pointerout` events with no pointer movement at all. A
-    // hover-driven version would be repaired by that ordinary pass and would
-    // therefore prove nothing about the navigation path. Focus state
-    // survives the veil coming and going and is not re-triggered by it.
-    //
     // Enter the navigation window *first*, then interact inside it, so the
     // settle timer is guaranteed to expire while `navigatingAway` holds. A
     // real `.focus()` call, not a synthetic `focusin`: the event alone
@@ -351,15 +357,32 @@ test.describe("SF-RC4: an interaction skipped by navigation is covered anyway (#
     })
     await settle(page)
 
-    const duringNav = await page.evaluate(
-      () =>
-        document
-          .getElementById("sf-rc4-nav-host")
-          ?.shadowRoot?.getElementById("nav-carrier")
-          ?.getAttribute("data-sw-legibility-fix") ?? null
-    )
+    const readCarrier = async (): Promise<{
+      repairKey: string | null
+      color: string
+      backdrop: string
+    }> =>
+      page.evaluate(() => {
+        const root = document.getElementById("sf-rc4-nav-host")?.shadowRoot
+        const el = root?.getElementById("nav-carrier")
+        const panel = root?.getElementById("nav-panel")
+        if (
+          el === null ||
+          el === undefined ||
+          panel === null ||
+          panel === undefined
+        ) {
+          throw new Error("shadow fixture missing")
+        }
+        return {
+          repairKey: el.getAttribute("data-sw-legibility-fix"),
+          color: getComputedStyle(el).color,
+          backdrop: getComputedStyle(panel).backgroundColor,
+        }
+      })
+
     expect(
-      duringNav,
+      (await readCarrier()).repairKey,
       "the shadow half must be skipped mid-swap, not scored against a " +
         "document in the middle of being replaced"
     ).toBeNull()
@@ -367,30 +390,16 @@ test.describe("SF-RC4: an interaction skipped by navigation is covered anyway (#
     await page.evaluate(() => {
       window.dispatchEvent(new Event("yt-navigate-finish"))
     })
-    await settle(page)
+    // Deliberately well under INTERACTION_SETTLE_MS: only the synchronous
+    // replay can have acted by now.
+    await page.waitForTimeout(60)
 
-    const afterNav = await page.evaluate(() => {
-      const root = document.getElementById("sf-rc4-nav-host")?.shadowRoot
-      const el = root?.getElementById("nav-carrier")
-      const panel = root?.getElementById("nav-panel")
-      if (
-        el === null ||
-        el === undefined ||
-        panel === null ||
-        panel === undefined
-      ) {
-        throw new Error("shadow fixture missing")
-      }
-      return {
-        repairKey: el.getAttribute("data-sw-legibility-fix"),
-        color: getComputedStyle(el).color,
-        backdrop: getComputedStyle(panel).backgroundColor,
-      }
-    })
-
+    const afterNav = await readCarrier()
     expect(
       afterNav.repairKey,
-      "nav-finish's own re-projection must cover the skipped pass"
+      "a carrier interacted with across a navigation must end repaired, and " +
+        "within the navigation's own handler rather than by a later " +
+        "interaction-scheduled pass"
     ).not.toBeNull()
     expect(
       contrastOf(afterNav.color, afterNav.backdrop)
