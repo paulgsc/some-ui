@@ -33,6 +33,8 @@ import {
   mountNestedBackdropCrosser,
   mountNestedShadowWitnesses,
   mountShadowWitnesses,
+  mountTransitioningBackdropScope,
+  mountTransitioningDocumentRegion,
   mutateInsideShadowScope,
   readShadowCarrier,
   waitForShadowScopeCommitted,
@@ -420,6 +422,89 @@ test.describe("SF-RC3: a carrier whose backdrop resolves out to the document (#1
       ratio,
       `document-crossing carrier renders ${crosser.color} on ` +
         `${crosser.backdrop} — ${ratio.toFixed(3)}:1`
+    ).toBeGreaterThanOrEqual(MIN_CONTRAST_RATIO)
+  })
+})
+
+test.describe("SF-RC3: the audit reads a settled backdrop, not one mid-transition (#1342, bot-found)", () => {
+  test("a shadow carrier over a surface with an authored background-color transition is still repaired", async ({
+    fixture,
+  }) => {
+    // Darkening the surface starts its authored transition, and the audit
+    // runs in the same task — so `resolveEffectiveBackdrop` reads the
+    // transition's start value, still native white, unless transitions on
+    // what this extension just actuated are frozen first. Scored against
+    // white the carrier is legible, gets no repair, and turns unreadable
+    // when the transition lands; completing a transition is not a mutation,
+    // so nothing schedules another round.
+    const page = await fixture.goto("shadow-surface-page")
+    await waitForClassification(page)
+    await mountTransitioningBackdropScope(page, "sf-rc3-tx-bg-host")
+    await waitForShadowScopeCommitted(page, ["sf-rc3-tx-bg-host"])
+
+    // Well past the 2s transition: whatever verdict the audit reached, the
+    // backdrop has settled by now, so this measures what a reader sees.
+    await page.waitForTimeout(2500)
+
+    const carrier = await readShadowCarrier(
+      page,
+      ["sf-rc3-tx-bg-host"],
+      "sf-rc3-crosser"
+    )
+    expect(
+      carrier.repairKey,
+      "the carrier must be scored against the settled dark backdrop"
+    ).not.toBeNull()
+    const ratio = contrastOf(carrier)
+    expect(
+      ratio,
+      `carrier renders ${carrier.color} on settled ${carrier.backdrop} — ` +
+        `${ratio.toFixed(3)}:1`
+    ).toBeGreaterThanOrEqual(MIN_CONTRAST_RATIO)
+  })
+
+  test("the same holds in the light DOM, where fire() has audited right after realize() since SF-RC1", async ({
+    fixture,
+  }) => {
+    // One freeze rule covers both scopes; this is the document half of it.
+    // Pre-existing rather than introduced by this story — `fire()` has
+    // called the audit immediately after `realize()` since SF-RC1 — but it
+    // is the same line of code, so it is asserted rather than left implied.
+    const page = await fixture.goto("shadow-surface-page")
+    await waitForClassification(page)
+    await mountTransitioningDocumentRegion(
+      page,
+      "sf-rc3-tx-doc-region",
+      "sf-rc3-tx-doc-carrier"
+    )
+    await page.waitForFunction(
+      () =>
+        document
+          .getElementById("sf-rc3-tx-doc-region")
+          ?.hasAttribute("data-sw-patched") === true,
+      undefined,
+      { timeout: 5_000, polling: 100 }
+    )
+    await page.waitForTimeout(2500)
+
+    const reading = await page.evaluate(() => {
+      const el = document.getElementById("sf-rc3-tx-doc-carrier")
+      const region = document.getElementById("sf-rc3-tx-doc-region")
+      if (el === null || region === null) throw new Error("fixture missing")
+      return {
+        repairKey: el.getAttribute("data-sw-legibility-fix"),
+        verdict: el.getAttribute("data-sw-legibility"),
+        color: getComputedStyle(el).color,
+        backdrop: getComputedStyle(region).backgroundColor,
+      }
+    })
+
+    expect(reading.repairKey).not.toBeNull()
+    const ratio = contrastOf(reading)
+    expect(
+      ratio,
+      `light-DOM carrier renders ${reading.color} on settled ` +
+        `${reading.backdrop} — ${ratio.toFixed(3)}:1`
     ).toBeGreaterThanOrEqual(MIN_CONTRAST_RATIO)
   })
 })

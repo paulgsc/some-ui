@@ -779,6 +779,39 @@ export const FREEZE_STYLE_ID = "__sw_legibility_freeze"
 const REPAIR_ATTR = "data-sw-legibility-fix"
 
 /**
+ * The one rule both freezes carry (document `<style>` and per-scope adopted
+ * sheet alike), declared once so the two cannot drift.
+ *
+ * Two attributes, both extension-owned, and both for the same reason: a
+ * colour this extension itself just wrote must not still be *animating*
+ * while this channel reads it back.
+ *
+ * `[data-sw-legibility-fix]` is SF-RC2's original case — disabling the
+ * repair sheet to sense the authored foreground is itself a style change,
+ * so on a carrier with a vendor `transition` on `color` the read returns
+ * the transition's start value, which is the repair.
+ *
+ * `[data-sw-patched]` is the same hazard one channel over, on the
+ * *backdrop* (bot-found, Codex review round 3 on #1412). The audit runs
+ * immediately after actuation, in the same task, so a surface with an
+ * authored `transition` on `background-color` is still at (or near) its
+ * native colour when `resolveEffectiveBackdrop` reads it: dark text over a
+ * surface that is about to become dark scores as legible, gets no repair,
+ * and turns unreadable once the transition lands — with no mutation left to
+ * schedule another round, since completing a transition is not one. It
+ * applies to the document path as much as to a shadow scope; `fire()` has
+ * audited right after `realize()` since SF-RC1.
+ *
+ * Deliberately still not `*`, and still no `animation` declaration —
+ * SF-RC2 measured what that costs (a `*` freeze snapped an unrelated
+ * control mid-fade straight to its destination; `animation: none` *removes*
+ * a running animation, so a spinner came back restarted at `currentTime`
+ * 0). Both attributes here mark elements this extension wrote to, so the
+ * only transitions frozen are ones it caused.
+ */
+const FREEZE_RULE = `[${REPAIR_ATTR}], [data-sw-patched] { transition: none !important; }`
+
+/**
  * The transition freeze `withRepairSuppressed` reads under, as a
  * *persistent, disabled-by-default* extension-owned sheet rather than a
  * `<style>` appended and removed around each read.
@@ -829,7 +862,7 @@ function freezeSheet(): CSSStyleSheet | null {
   const style = document.createElement("style")
   style.id = FREEZE_STYLE_ID
   style.setAttribute("data-my-ext", "")
-  style.textContent = `[${REPAIR_ATTR}] { transition: none !important; }`
+  style.textContent = FREEZE_RULE
   document.head.appendChild(style)
   const sheet = style.sheet
   // Inert until a read actually needs it. The window between append and
@@ -900,19 +933,45 @@ function freezeSheet(): CSSStyleSheet | null {
  * would be more code for less correctness.
  */
 function withRepairSuppressed<T>(fn: () => T): T {
-  const el = document.getElementById(REPAIR_STYLE_ID)
-  const sheet = el instanceof HTMLStyleElement ? el.sheet : null
-  // Nothing of ours is applied, so nothing of ours can perturb a carrier —
-  // and a freeze with nothing to protect against is pure collateral. The
-  // first round of any page takes this path.
-  if (sheet === null || sheet.disabled) return fn()
-
+  // The freeze is unconditional now (bot-found, Codex review round 3 on
+  // #1412). It used to be skipped whenever no repair sheet was applied,
+  // on the reasoning that nothing of ours could then perturb a carrier —
+  // true of the *foreground*, false of the backdrop: `fire()` calls this
+  // audit immediately after `realize()`, so the surfaces this round just
+  // darkened may still be mid-transition, and the very first round of any
+  // page — the one that does the darkening — is exactly the round that
+  // used to take the skip. See `FREEZE_RULE`.
   const freeze = freezeSheet()
   if (freeze !== null) {
     freeze.disabled = false
     flushStyle()
   }
   try {
+    return withRepairSheetDisabled(fn)
+  } finally {
+    if (freeze !== null) {
+      // Mirrors `withScopeTransitionsFrozen`'s own exit flush: commit
+      // whatever the body left behind while transitions are still off, so
+      // lifting the freeze is not itself a transitionable change. The
+      // enabling flush above has usually already settled the backdrop, but
+      // the repair sheet's own restore happens inside the body.
+      flushStyle()
+      freeze.disabled = true
+    }
+  }
+}
+
+/**
+ * The suppression half, split out of `withRepairSuppressed` so the freeze
+ * above can wrap it unconditionally while this stays conditional — there is
+ * genuinely nothing to disable until this channel has emitted a repair.
+ */
+function withRepairSheetDisabled<T>(fn: () => T): T {
+  const el = document.getElementById(REPAIR_STYLE_ID)
+  const sheet = el instanceof HTMLStyleElement ? el.sheet : null
+  if (sheet === null || sheet.disabled) return fn()
+
+  {
     sheet.disabled = true
     try {
       return fn()
@@ -933,8 +992,6 @@ function withRepairSuppressed<T>(fn: () => T): T {
       // nothing and no frame is ever painted mid-flight.
       flushStyle()
     }
-  } finally {
-    if (freeze !== null) freeze.disabled = true
   }
 }
 
@@ -982,7 +1039,7 @@ function adoptScopeFreeze(root: ShadowRoot): CSSStyleSheet | null {
   if (typeof CSSStyleSheet === "undefined") return null
   if (scopeFreezeSheet === null) {
     const sheet = new CSSStyleSheet()
-    sheet.insertRule(`[${REPAIR_ATTR}] { transition: none !important; }`, 0)
+    sheet.insertRule(FREEZE_RULE, 0)
     sheet.disabled = true
     scopeFreezeSheet = sheet
   }

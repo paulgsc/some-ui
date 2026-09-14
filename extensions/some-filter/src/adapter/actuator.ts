@@ -44,6 +44,7 @@
 
 import {
   DARK_THEME_ATTR,
+  DARK_THEME_STYLE_ID,
   EXT_GUARD,
   injectDarkTheme,
   removeDarkTheme,
@@ -137,16 +138,19 @@ export function isHTMLElementNode(node: Node): node is HTMLElement {
 export function tagSurfaceElements(
   actions: ReadonlyArray<FilterAction>,
   elementsByKey: ReadonlyMap<SurfaceKey, ReadonlyArray<Element>>
-): void {
+): boolean {
+  let wrote = false
   for (const action of actions) {
     if (action.kind !== "tag-surface") continue
     const value = action.role === "preserve" ? "preserve" : action.key
     for (const el of elementsByKey.get(action.key) ?? []) {
       if (isHTMLElementNode(el) && el.dataset.swPatched !== value) {
         el.dataset.swPatched = value
+        wrote = true
       }
     }
   }
+  return wrote
 }
 
 /**
@@ -181,20 +185,34 @@ export function buildSurfaceColorRule(
 export function realize(
   actions: ReadonlyArray<FilterAction>,
   elementsByKey: ReadonlyMap<SurfaceKey, ReadonlyArray<Element>>
-): void {
+): boolean {
   const restoreNative = actions.some(
     (action) => action.kind === "restore-native"
   )
   if (restoreNative) {
     restoreVendor()
     clearPerSurfaceState()
-    return
+    // Reported as a write unconditionally, unlike every branch below: both
+    // calls above are wholesale teardowns with no same-value guard of their
+    // own to read a result from, and this branch is rare (a page's verdict
+    // flipping to already-dark), so over-reporting it costs one extra
+    // re-contrast pass rather than a missed one.
+    return true
   }
 
   const activate = actions.find(
     (action): action is Extract<typeof action, { kind: "activate-theme" }> =>
       action.kind === "activate-theme"
   )
+  // Whether this call actually wrote anything to the DOM — what
+  // `content.ts` gates its shadow-scope re-contrast pass on (bot-found,
+  // Codex review round 3 on #1412). An earlier version of that gate
+  // compared the *action list* instead, which measurement showed is wrong:
+  // an element whose background matches a `SurfaceKey` the page already has
+  // emits no new action at all, yet gets tagged and darkened. What moves a
+  // backdrop is a write, so a write is what this reports.
+  let wrote = false
+
   if (activate !== undefined) {
     // `setAttribute` re-queues a mutation record even when the value is
     // unchanged (unlike `removeAttribute`, which no-ops on an absent
@@ -202,14 +220,22 @@ export function realize(
     // unchanged verdict touches nothing at all (#831).
     if (!document.documentElement.hasAttribute(DARK_THEME_ATTR)) {
       document.documentElement.setAttribute(DARK_THEME_ATTR, "")
+      wrote = true
     }
+    // Its own setStyleText guard makes an unchanged swatch a no-op, and the
+    // static layer declares no per-element colour — nothing a shadow
+    // scope's backdrop resolves through — so it is not reported here.
     injectDarkTheme(getSwatch(activate.swatchId))
   } else {
-    document.documentElement.removeAttribute(DARK_THEME_ATTR)
+    if (document.documentElement.hasAttribute(DARK_THEME_ATTR)) {
+      document.documentElement.removeAttribute(DARK_THEME_ATTR)
+      wrote = true
+    }
+    if (document.getElementById(DARK_THEME_STYLE_ID) !== null) wrote = true
     removeDarkTheme()
   }
 
-  tagSurfaceElements(actions, elementsByKey)
+  if (tagSurfaceElements(actions, elementsByKey)) wrote = true
 
   const colorRules = actions
     .filter(
@@ -230,8 +256,15 @@ export function realize(
     // idempotence strategy) into a self-sustaining rescan loop (#831).
     if (style.textContent !== css) {
       style.textContent = css
+      wrote = true
     }
   } else {
-    document.getElementById(DYNAMIC_STYLE_ID)?.remove()
+    const existing = document.getElementById(DYNAMIC_STYLE_ID)
+    if (existing !== null) {
+      existing.remove()
+      wrote = true
+    }
   }
+
+  return wrote
 }

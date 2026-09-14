@@ -347,3 +347,75 @@ export async function mountDocumentBackdropCrosser(
     { ancestorId, hostId }
   )
 }
+
+/**
+ * Codex review round 3 on #1412: the transition hazard on the *backdrop*
+ * channel rather than the foreground one.
+ *
+ * The surface owns an authored `transition` on `background-color`, so
+ * darkening it starts a transition — and the audit runs immediately
+ * afterwards, in the same task, so `resolveEffectiveBackdrop` reads that
+ * transition's start value (still native white) unless it is frozen first.
+ * A carrier scored against white is legible, gets no repair, and turns
+ * unreadable when the transition lands, with no mutation left to schedule
+ * another round.
+ *
+ * 2s, deliberately long: the failure is a read taken at progress ~0, and a
+ * short transition would let a slow round land after it had already settled
+ * and pass vacuously.
+ */
+export async function mountTransitioningBackdropScope(
+  page: Page,
+  hostId: string
+): Promise<void> {
+  await page.evaluate((id: string) => {
+    const host = document.createElement("div")
+    host.id = id
+    const root = host.attachShadow({ mode: "open" })
+    const surface = document.createElement("div")
+    surface.className = "sf-rc3-surface"
+    surface.setAttribute(
+      "style",
+      "margin:0;padding:16px;background-color:rgb(255,255,255);" +
+        "transition:background-color 2s linear"
+    )
+    const carrier = document.createElement("div")
+    carrier.className = "sf-rc3-crosser"
+    carrier.setAttribute("style", "color:rgb(0,0,0)")
+    carrier.textContent =
+      "Text over a surface whose background is transitioning."
+    surface.appendChild(carrier)
+    root.appendChild(surface)
+    const anchor = document.getElementById("host-anchor")
+    if (anchor === null) throw new Error("fixture missing #host-anchor")
+    anchor.appendChild(host)
+  }, hostId)
+}
+
+/** The same backdrop-transition hazard in the light DOM, where `fire()` has audited right after `realize()` since SF-RC1 — the document half of the one freeze rule that closes both. */
+export async function mountTransitioningDocumentRegion(
+  page: Page,
+  regionId: string,
+  carrierId: string
+): Promise<void> {
+  await page.evaluate(
+    ({ regionId, carrierId }: { regionId: string; carrierId: string }) => {
+      const region = document.createElement("div")
+      region.id = regionId
+      region.setAttribute(
+        "style",
+        "margin:0;padding:16px;background-color:rgb(250,250,250);" +
+          "transition:background-color 2s linear"
+      )
+      const carrier = document.createElement("div")
+      carrier.id = carrierId
+      carrier.setAttribute("style", "color:rgb(0,0,0)")
+      carrier.textContent = "Light-DOM text over a transitioning background."
+      region.appendChild(carrier)
+      const anchor = document.getElementById("host-anchor")
+      if (anchor === null) throw new Error("fixture missing #host-anchor")
+      anchor.appendChild(region)
+    },
+    { regionId, carrierId }
+  )
+}
