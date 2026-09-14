@@ -55,7 +55,22 @@
      inheritance cannot leak one element's value to another the way it
      could for a variable a utility sets per-element. styles.test.ts
      regenerates the stylesheet and fails if either of those stops
-     holding, or if a new unbacked variable appears. */
+     holding, or if a new unbacked variable appears.
+
+     ── :has() baseline (#1390 / QC0) ────────────────────────────────
+     The same 112 floor also predates `:has()`. Firefox shipped `:has()`
+     unflagged in version 121 — measured against MDN's browser-compat-data
+     (css/selectors/has.json, firefox.version_added: "121", no experimental
+     flag), not assumed from memory. Firefox 112–120 are therefore declared-
+     supported engines that cannot parse `:has()` at all.
+
+     `strict_min_version` stays at 112 rather than moving to 121: the
+     pre-mask rule below is split one selector per rule specifically so an
+     engine that rejects a `:has()` selector loses occlusion for that tag
+     only, never for the whole list. That already removes the exposure a
+     version bump would otherwise exist to fix — raising the floor would cost
+     every 112–120 user the extension entirely to fix a gap the split already
+     closes for the seven tags that never needed `:has()`. */
   --un-bg-opacity: 100%;
   --un-border-opacity: 100%;
   --un-inset-ring-shadow: 0 0 #0000;
@@ -98,28 +113,107 @@
    card during the (possibly infinite) gap before JS resolves it, which defeats
    the extension's entire reason for existing.
 
-   The selector list is derived from CARD_SELECTORS in lib/content/selectors.ts
-   and is asserted equal to PREMASK_SELECTOR by selectors.test.ts — the two
-   drifting apart is #973. `:has()` on the polymorphic lockup tags is what keeps
-   this rule from occluding a channel or playlist tile that no content script
-   will ever come back for; see selectors.ts for the full argument.
+   Each selector below is derived from CARD_SELECTORS in
+   lib/content/selectors.ts and is asserted, one-for-one, against
+   PREMASK_SELECTORS by selectors.test.ts — the two drifting apart is #973.
+   `:has()` on the polymorphic lockup tags is what keeps this rule from
+   occluding a channel or playlist tile that no content script will ever come
+   back for; see selectors.ts for the full argument.
+
+   Each tag gets its OWN rule below rather than sharing one comma-separated
+   selector list. CSS selector-list invalidation is all-or-nothing: if any
+   one selector in a comma list fails to parse, the entire rule is dropped —
+   which used to mean the seven plain tags here, none of which use `:has()`,
+   lost their occluder too on any engine that couldn't parse the four that
+   do. See the `:has()` baseline note in :root above for the measured
+   Firefox gap this closes (#1390 / QC0).
    ============================================================ */
-ytd-video-renderer:not([data-boyo]),
-ytd-rich-item-renderer:not([data-boyo]),
-ytd-grid-video-renderer:not([data-boyo]),
-ytd-compact-video-renderer:not([data-boyo]),
-ytd-playlist-panel-video-renderer:not([data-boyo]),
-ytd-playlist-video-renderer:not([data-boyo]),
-ytd-reel-item-renderer:not([data-boyo]),
+ytd-video-renderer:not([data-boyo]) {
+  cursor: default !important;
+  filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
+  opacity: 0.5 !important;
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
+ytd-rich-item-renderer:not([data-boyo]) {
+  cursor: default !important;
+  filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
+  opacity: 0.5 !important;
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
+ytd-grid-video-renderer:not([data-boyo]) {
+  cursor: default !important;
+  filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
+  opacity: 0.5 !important;
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
+ytd-compact-video-renderer:not([data-boyo]) {
+  cursor: default !important;
+  filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
+  opacity: 0.5 !important;
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
+ytd-playlist-panel-video-renderer:not([data-boyo]) {
+  cursor: default !important;
+  filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
+  opacity: 0.5 !important;
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
+ytd-playlist-video-renderer:not([data-boyo]) {
+  cursor: default !important;
+  filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
+  opacity: 0.5 !important;
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
+ytd-reel-item-renderer:not([data-boyo]) {
+  cursor: default !important;
+  filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
+  opacity: 0.5 !important;
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
 yt-lockup-view-model:has(a[href*="/watch"], a[href*="/shorts/"]):not(
     [data-boyo]
-  ),
+  ) {
+  cursor: default !important;
+  filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
+  opacity: 0.5 !important;
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
 ytm-shorts-lockup-view-model:has(a[href*="/watch"], a[href*="/shorts/"]):not(
     [data-boyo]
-  ),
+  ) {
+  cursor: default !important;
+  filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
+  opacity: 0.5 !important;
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
 ytm-shorts-lockup-view-model-v2:has(a[href*="/watch"], a[href*="/shorts/"]):not(
     [data-boyo]
-  ),
+  ) {
+  cursor: default !important;
+  filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
+  opacity: 0.5 !important;
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
 ytd-structured-description-video-lockup-renderer:has(
     a[href*="/watch"],
     a[href*="/shorts/"]

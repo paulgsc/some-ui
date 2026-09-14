@@ -19,7 +19,7 @@ import { describe, expect, it } from "vitest"
 import {
   CARD_SELECTORS,
   isVideoCard,
-  PREMASK_SELECTOR,
+  PREMASK_SELECTORS,
   SEL,
   VIDEO_SELECTORS,
 } from "./selectors"
@@ -36,34 +36,80 @@ function normalize(selector: string): string {
 }
 
 /**
- * The selector list attached to the pre-mask occluder — identified by the
- * declaration only that rule carries, so renaming or reordering the rest of the
- * stylesheet cannot make this test silently stop looking at anything.
+ * Every pre-mask occluder rule, one entry per selector — identified by the
+ * declaration only those rules carry, so renaming or reordering the rest of
+ * the stylesheet cannot make this test silently stop looking at anything.
+ *
+ * #1390/QC0 requires each selector to own its own `{ }` block rather than
+ * share one comma-separated list, so this walks every occurrence of the
+ * marker declaration instead of assuming there is exactly one.
  */
-function premaskSelectorFromCss(): string {
+function premaskRulesFromCss(): Array<string> {
   const marker = "filter: brightness(0.35)"
-  const declIndex = CSS.indexOf(marker)
-  expect(declIndex, `the occluder rule (${marker}) must exist`).toBeGreaterThan(
-    -1
-  )
+  const rules: Array<string> = []
+  let searchFrom = 0
+  for (;;) {
+    const declIndex = CSS.indexOf(marker, searchFrom)
+    if (declIndex === -1) break
+    const braceIndex = CSS.lastIndexOf("{", declIndex)
+    const blockEnd = CSS.lastIndexOf("}", braceIndex)
+    const commentEnd = CSS.lastIndexOf("*/", braceIndex)
+    const selectorStart = blockEnd > commentEnd ? blockEnd + 1 : commentEnd + 2
+    rules.push(CSS.slice(selectorStart, braceIndex).trim())
+    searchFrom = declIndex + marker.length
+  }
+  expect(
+    rules.length,
+    `at least one occluder rule (${marker}) must exist`
+  ).toBeGreaterThan(0)
+  return rules
+}
 
-  const braceIndex = CSS.lastIndexOf("{", declIndex)
-  const commentEnd = CSS.lastIndexOf("*/", braceIndex)
-  return CSS.slice(commentEnd + 2, braceIndex)
+/**
+ * Commas outside any parentheses — a rule genuinely covering more than one
+ * selector, as opposed to the comma inside a `:has(a, b)` argument list.
+ */
+function topLevelCommaCount(selector: string): number {
+  let depth = 0
+  let count = 0
+  for (const ch of selector) {
+    if (ch === "(") depth += 1
+    else if (ch === ")") depth -= 1
+    else if (ch === "," && depth === 0) count += 1
+  }
+  return count
 }
 
 describe("the stylesheet and the catalogue agree", () => {
-  it("occludes exactly the tags the content script adopts", () => {
-    expect(normalize(premaskSelectorFromCss())).toBe(
-      normalize(PREMASK_SELECTOR)
+  it("occludes exactly the tags the content script adopts, one rule per tag", () => {
+    expect(premaskRulesFromCss().map(normalize)).toEqual(
+      PREMASK_SELECTORS.map(normalize)
     )
+  })
+
+  it("never shares one rule's declarations across more than one selector", () => {
+    // The regression #1390/QC0 fixes: CSS selector-list invalidation is
+    // all-or-nothing, so one unparseable selector sharing a rule with others
+    // (e.g. `:has()` on a Firefox version that predates 121) used to cost
+    // every other selector in that same rule its occluder too. This fails
+    // against the old single comma-list form, where all eleven selectors
+    // shared one rule.
+    for (const rule of premaskRulesFromCss()) {
+      expect(topLevelCommaCount(rule), rule).toBe(0)
+    }
+  })
+
+  it("keeps the plain Polymer tags free of :has(), so the Firefox 112 floor — which predates :has() entirely — still occludes them", () => {
+    const rule = premaskRulesFromCss().find((r) =>
+      r.startsWith("ytd-video-renderer:")
+    )
+    expect(rule).toBeDefined()
+    expect(rule).not.toContain(":has(")
   })
 
   it("guards every polymorphic tag with :has(), and no others", () => {
     for (const { tag, requiresVideoLink } of CARD_SELECTORS) {
-      const rule = PREMASK_SELECTOR.split(",\n").find((r) =>
-        r.startsWith(`${tag}:`)
-      )
+      const rule = premaskRulesFromCss().find((r) => r.startsWith(`${tag}:`))
       expect(rule, `${tag} must appear in the pre-mask rule`).toBeDefined()
       expect(rule?.includes(":has("), `${tag} :has() guard`).toBe(
         requiresVideoLink
