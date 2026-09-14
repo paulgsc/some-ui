@@ -87,10 +87,23 @@ closing review's finding, if any, this way instead:
 
   That confirming review is the one carve-out to the cap, and it earns it by _confirming_ rather
   than seeking: the head it covers is a targeted fix for findings already raised, not new surface
-  anyone went looking for. **Whatever it returns, the disposition is then the same — file
-  anything still outstanding as a tracked issue on that milestone, and merge. Do not fix and push
-  again.** Another fix would produce another uncovered head and restart the regress this whole
-  cap exists to bound; filing records it without doing so.
+  anyone went looking for. **Dispose of what it returns by _kind_, never by round count:**
+
+  - **Out of this PR's scope** — file on the milestone and merge, exactly as above. Do not fix
+    it; another fix would produce another uncovered head and restart the regress this whole cap
+    exists to bound, and filing records the gap without doing so.
+  - **An in-scope defect — including one the targeted fix itself just introduced** — fix it and
+    take another confirming review. **The cap never licenses merging a defect you already know
+    about.** It bounds the _search_ for new findings; it has never bounded the duty to fix what
+    has actually been found (bot-found, on this rule's own PR: an earlier draft said "whatever it
+    returns, file it and merge", which would have landed a regression introduced by the very fix
+    the confirming review existed to check).
+
+  That distinction is what keeps this terminating without lying about it. Out-of-scope gaps are
+  finite because filing ends them; in-scope defects are finite because a fix that keeps
+  introducing them is unsound. **An in-scope defect count that does not converge across
+  confirming rounds is not a cap problem to route around** — it is the "escalating or clustering"
+  bucket above, and the change wants rework or a narrower re-scope, not another patch.
 
   Skip the confirming review only when the substantive fix is empty — everything the closing
   review named was out of this PR's scope and got filed, so the head being merged is the one the
