@@ -507,6 +507,102 @@ describe("SF-RC4 (#1343) — the interaction-settled contrast pass", () => {
     vi.useRealTimers()
   })
 
+  it("invokes the shadow-scope hook once interaction settles", () => {
+    // auditLegibility's TreeWalker does not cross a shadow boundary, so the
+    // document pass above covers the light DOM and nothing else. The shadow
+    // half is reached through this callback (bot-found, Codex review round 1
+    // on #1415) — content.ts holds both and wires recontrastAll() into it.
+    vi.useFakeTimers()
+    themedPage()
+    const session = createSessionLifecycle()
+    const onInteractionSettled = vi.fn()
+    const contentSession = createContentSession(
+      SWATCHES.default,
+      session,
+      undefined,
+      onInteractionSettled
+    )
+    contentSession.rescan()
+    contentSession.observe()
+    onInteractionSettled.mockClear()
+
+    dispatch("pointerover")
+    expect(onInteractionSettled).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(INTERACTION_SETTLE_MS)
+
+    expect(onInteractionSettled).toHaveBeenCalledTimes(1)
+
+    contentSession.teardown()
+    vi.useRealTimers()
+  })
+
+  it("still invokes the shadow hook when the document itself is unthemed", () => {
+    // A scope's verdict is independent of the document's: a page reading
+    // already-dark natively can hold committed shadow scopes with live
+    // repairs. Gating both halves on DARK_THEME_ATTR would strand them.
+    vi.useFakeTimers()
+    document.body.innerHTML =
+      '<div id="text-carrier" style="color: rgb(20, 20, 20)">hi</div>'
+    const session = createSessionLifecycle()
+    const onInteractionSettled = vi.fn()
+    const contentSession = createContentSession(
+      null,
+      session,
+      undefined,
+      onInteractionSettled
+    )
+    contentSession.rescan()
+    contentSession.observe()
+    expect(document.documentElement.hasAttribute(DARK_THEME_ATTR)).toBe(false)
+    vi.mocked(legibilityAudit.auditLegibility).mockClear()
+    onInteractionSettled.mockClear()
+
+    dispatch("pointerover")
+    vi.advanceTimersByTime(INTERACTION_SETTLE_MS)
+
+    expect(
+      vi.mocked(legibilityAudit.auditLegibility),
+      "the document half stays gated"
+    ).not.toHaveBeenCalled()
+    expect(
+      onInteractionSettled,
+      "the shadow half must run regardless — it is self-gating on COMMITTED"
+    ).toHaveBeenCalledTimes(1)
+
+    contentSession.teardown()
+    vi.useRealTimers()
+  })
+
+  it("runs the shadow hook even if the document half throws", () => {
+    vi.useFakeTimers()
+    themedPage()
+    const session = createSessionLifecycle()
+    const onInteractionSettled = vi.fn()
+    const contentSession = createContentSession(
+      SWATCHES.default,
+      session,
+      undefined,
+      onInteractionSettled
+    )
+    contentSession.rescan()
+    contentSession.observe()
+    onInteractionSettled.mockClear()
+    vi.mocked(legibilityAudit.auditLegibility).mockImplementationOnce(() => {
+      throw new Error("audit blew up")
+    })
+
+    dispatch("pointerover")
+    vi.advanceTimersByTime(INTERACTION_SETTLE_MS)
+
+    expect(
+      onInteractionSettled,
+      "one half failing must not cost the other its pass"
+    ).toHaveBeenCalledTimes(1)
+
+    contentSession.teardown()
+    vi.useRealTimers()
+  })
+
   it("stops listening, and cancels a pending pass, after teardown", () => {
     vi.useFakeTimers()
     themedPage()

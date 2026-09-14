@@ -185,3 +185,96 @@ test.describe("SF-RC4: a :hover-only colour swap is repaired (#1343)", () => {
     ).toBeGreaterThanOrEqual(MIN_CONTRAST_RATIO)
   })
 })
+
+test.describe("SF-RC4: interaction inside a shadow scope (#1343, bot-found)", () => {
+  test("a :hover-only swap on a shadow-hosted carrier is repaired too", async ({
+    fixture,
+  }) => {
+    // `auditLegibility`'s TreeWalker does not cross a shadow boundary, so
+    // the document-scope pass covers the light DOM and nothing else. Without
+    // the shadow half wired in, this story's stated hover/focus coverage
+    // simply would not hold for web-component content — and the light-DOM
+    // specs above would not notice.
+    //
+    // The scope's own stylesheet lives inside the root (a real web-component
+    // pattern), so the rule is scoped there rather than inherited from the
+    // document — a document `<style>` cannot select into a shadow tree at
+    // all, which is the same encapsulation this whole epic keeps running
+    // into.
+    const page = await fixture.goto("interaction-state-page")
+    await waitForClassification(page)
+
+    await page.evaluate(() => {
+      const host = document.createElement("div")
+      host.id = "sf-rc4-host"
+      const root = host.attachShadow({ mode: "open" })
+      root.innerHTML =
+        "<style>#shadow-carrier:hover { color: rgb(10, 10, 10); }</style>" +
+        '<div id="shadow-panel" style="background-color:rgb(250,250,250);' +
+        'color:rgb(40,40,40);padding:24px">' +
+        '<div id="shadow-carrier">Hover changes this text\'s colour.</div>' +
+        "</div>"
+      document.body.appendChild(host)
+    })
+
+    await page.waitForFunction(
+      () =>
+        document
+          .getElementById("sf-rc4-host")
+          ?.shadowRoot?.getElementById("shadow-panel")
+          ?.hasAttribute("data-sw-patched") === true,
+      undefined,
+      { timeout: 5_000, polling: 100 }
+    )
+
+    const readShadow = async (): Promise<Reading> =>
+      page.evaluate(() => {
+        const root = document.getElementById("sf-rc4-host")?.shadowRoot
+        const el = root?.getElementById("shadow-carrier")
+        const panel = root?.getElementById("shadow-panel")
+        if (
+          el === null ||
+          el === undefined ||
+          panel === null ||
+          panel === undefined
+        ) {
+          throw new Error("shadow fixture missing")
+        }
+        return {
+          repairKey: el.getAttribute("data-sw-legibility-fix"),
+          verdict: el.getAttribute("data-sw-legibility"),
+          color: getComputedStyle(el).color,
+          backdrop: getComputedStyle(panel).backgroundColor,
+        }
+      })
+
+    const atRest = await readShadow()
+    expect(
+      atRest.repairKey,
+      "at rest the shadow carrier inherits a corrected colour"
+    ).toBeNull()
+
+    await page.hover("#sf-rc4-host >> nth=0")
+    await page.evaluate(() => {
+      const el = document
+        .getElementById("sf-rc4-host")
+        ?.shadowRoot?.getElementById("shadow-carrier")
+      el?.dispatchEvent(
+        new PointerEvent("pointerover", { bubbles: true, composed: true })
+      )
+    })
+    await settle(page)
+
+    const hovered = await readShadow()
+    expect(
+      hovered.repairKey,
+      "the shadow half of the interaction pass must reach this carrier"
+    ).not.toBeNull()
+    const ratio = contrastOf(hovered.color, hovered.backdrop)
+    expect(
+      ratio,
+      `shadow carrier renders ${hovered.color} on ${hovered.backdrop} — ` +
+        `${ratio.toFixed(3)}:1`
+    ).toBeGreaterThanOrEqual(MIN_CONTRAST_RATIO)
+  })
+})

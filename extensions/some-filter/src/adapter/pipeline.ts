@@ -718,7 +718,24 @@ export type OnFire = (outcome: FireOutcome) => void
 export function createContentSession(
   swatch: Swatch | null,
   session: SessionLifecycle,
-  onFire?: OnFire
+  onFire?: OnFire,
+  /**
+   * Called once interaction has settled, after this module's own
+   * document-scope contrast pass — the seam SF-RC4 (#1343) needs to reach
+   * shadow scopes (bot-found, Codex review round 1 on #1415).
+   *
+   * `auditLegibility`'s `TreeWalker` does not cross a shadow boundary, so
+   * the pass above covers the light DOM and nothing else. The shadow half
+   * lives in `shadow-scope-theming.ts` and is reached through
+   * `content.ts`, the one place that holds both — which is why this is a
+   * callback rather than an import: `pipeline.ts` has no business knowing
+   * the scope registry exists, and SF-SCOPE's Theorem D.2 keeps it that
+   * way deliberately.
+   *
+   * Invoked regardless of whether the document half ran: a shadow scope's
+   * verdict is independent of the document's.
+   */
+  onInteractionSettled?: () => void
 ): ContentSession {
   const hypothesis = createHypothesis<SurfaceKey, SurfaceAttr>()
   const provenance: ProvenanceStore<SurfaceKey> = createProvenanceStore()
@@ -924,16 +941,32 @@ export function createContentSession(
    */
   function runInteractionContrast(): void {
     interactionTimer = null
-    if (!document.documentElement.hasAttribute(DARK_THEME_ATTR)) return
+    // Gated per half, not once for both (bot-found, Codex review round 1 on
+    // #1415). The document half is gated on a document theme; the shadow
+    // half is not, and must not be — a scope's verdict is independent of the
+    // document's, so a page reading already-dark natively (no
+    // DARK_THEME_ATTR at all) can still hold committed shadow scopes with
+    // live repairs, exactly the coexistence `buildHostTokenRule`'s own doc
+    // comment describes. `recontrastAll()` is self-gating anyway: it
+    // iterates only COMMITTED scopes.
+    if (document.documentElement.hasAttribute(DARK_THEME_ATTR)) {
+      try {
+        runContrastChannel(document.body)
+      } catch (error) {
+        // Mirrors fire()'s own discipline: this runs from a timer with no
+        // caller in a position to recover, so a throw must not escape into
+        // an unhandled rejection that takes the listener path down with it
+        // for the rest of the page's life. Caught per half so one failing
+        // scope does not cost the other half its pass.
+        // eslint-disable-next-line no-console
+        console.error("[some-filter] interaction contrast pass failed:", error)
+      }
+    }
     try {
-      runContrastChannel(document.body)
+      onInteractionSettled?.()
     } catch (error) {
-      // Mirrors fire()'s own discipline: this runs from a timer with no
-      // caller in a position to recover, so a throw here must not escape
-      // into an unhandled rejection that takes the listener path down with
-      // it for the rest of the page's life.
       // eslint-disable-next-line no-console
-      console.error("[some-filter] interaction contrast pass failed:", error)
+      console.error("[some-filter] interaction shadow pass failed:", error)
     }
   }
 

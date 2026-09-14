@@ -514,6 +514,20 @@ function runAutoTheme(): void {
       }
 
       documentScope.reportPipelineOutcome(outcome)
+    },
+    // SF-RC4 (#1343), bot-found: the interaction-settled contrast pass
+    // inside pipeline.ts covers the light DOM only — auditLegibility's
+    // TreeWalker does not cross a shadow boundary — so a `:hover`/`:focus`
+    // colour swap on a carrier inside a web component, or a light-DOM
+    // backdrop change such a carrier resolves onto, would leave that
+    // scope's diagnostics and repairs calibrated to pre-interaction
+    // colours. This is the same recontrastAll() the onFire path above
+    // calls, on the one trigger that path never sees: an interaction
+    // produces no round and no write, so `realizationChanged` never gates
+    // it in.
+    () => {
+      if (navigatingAway) return
+      shadowScopeTheming.recontrastAll()
     }
   )
 
