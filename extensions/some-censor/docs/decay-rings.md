@@ -100,10 +100,14 @@ One SVG, five configurations of the same four parts.
 - **Age rings** — concentric rings that accumulate as emissions retract,
   the same open-ended distance-travelled logic at every state: a partial arc
   through `QM2`, two complete rings at `QM3`, three or a faint patina at
-  `QM4`. Length reflects elapsed time since first observed; it is not scaled
-  to `age / B` and does not visually anticipate `B` — a closing arc is the
-  same pending-reward shape §6 rejects for text countdowns, whether or not it
-  counts down numerically.
+  `QM4`. Length reflects the artifact's **estimated age** (from its
+  publication date, the same value the maturity class is computed from) —
+  never elapsed time since the extension first observed it, which would
+  render a newly-encountered archival video as a bare arc instead of the
+  fully-ringed `QM4` it already is. It is not scaled to `age / B` and does
+  not visually anticipate `B` — a closing arc is the same pending-reward
+  shape §6 rejects for text countdowns, whether or not it counts down
+  numerically.
 
 A threshold notch at twelve o'clock marks `B`, used only by the one-time
 `QM3` crossing animation below. It is not a running progress target: the
@@ -172,10 +176,11 @@ Coupled to the present. No disclosure path exists (QD2).
 
 In quarantine; distance accumulating.
 
-- **Icon** `( ● )` — emissions reduced, one accumulating age arc. It grows
-  with elapsed time alone, the same accumulation as `QM3`/`QM4`'s rings —
-  never scaled or capped against `B`, so it has no "full" state to read as a
-  completion.
+- **Icon** `( ● )` — emissions reduced, one accumulating age arc, sized from
+  the artifact's estimated age (see the anatomy note above — never from time
+  since the extension observed it), the same accumulation as `QM3`/`QM4`'s
+  rings — never scaled or capped against `B`, so it has no "full" state to
+  read as a completion.
 - **Palette** ember oxidising into bronze — early `168 92 53`, middle
   `146 112 68`, late `124 119 82`, surface `19 20 17`, text `195 185 150`.
   Saturation falls with age: **time removes visual energy.**
@@ -380,9 +385,13 @@ cover:
   (dashed / emissions / arc / rings) as well as in hue, so the ramp survives
   monochrome and every common colour-vision deficiency. Ember-vs-lichen in
   particular must not be the sole carrier.
-- **The medallion needs a text equivalent.** `aria-label` on the veil carrying
-  the class name and age (`"Hot, 11 days"`) — the same information a sighted
-  user gets from the perimeter, and no more. It must not carry the title.
+- **The medallion needs a text equivalent.** The veil element is a plain
+  `div`, whose implicit `generic` role does not reliably expose an
+  `aria-label` to assistive tech — the label needs a nameable role to attach
+  to. Give the veil `role="img"` (it is a single glyph conveying one piece of
+  state, the same contract as an `<img alt>`) carrying the class name and age
+  (`"Hot, 11 days"`) — the same information a sighted user gets from the
+  perimeter, and no more. It must not carry the title.
 
 ## 9. Where this lands in the code
 

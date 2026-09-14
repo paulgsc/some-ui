@@ -436,6 +436,14 @@ it can be parsed with certainty.
   those surfaces are permanently sealed. This is the correct outcome and should
   be documented as such rather than fixed — a surface that cannot prove its age
   does not get the benefit of the doubt.
+- A parsed date is often an **interval, not a point**: `"2 weeks ago"` names a
+  bucket, not a day count, and treating its midpoint as exact can promote a
+  card near either boundary prematurely. QD3's fail-closed direction extends
+  to imprecision the same way it applies to absence: classify from the
+  **youngest (most present-coupled) plausible reading** of the interval, and
+  do not advance an artifact past `B` or `3 · B` until even that reading has
+  crossed it. Age notation (§6 of `decay-rings.md`) should reflect the same
+  imprecision rather than presenting a false-precision day count.
 - Age changes while the page is open, but monotonicity is conditional, not
   automatic. Maturity may advance one-directionally
   (`QM1 → QM2 → QM3 → QM4`) only while three preconditions all hold: the
