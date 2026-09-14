@@ -53,11 +53,13 @@ checking in, read what the pattern of rounds actually shows:
 - **Escalating or clustering** (each fix reveals a structurally adjacent bug in the same area —
   the way a single SHA-matching requirement kept cascading into every file that referenced it
   here) — that's a smell that the underlying change, not any individual fix, may need a
-  structural rework or a narrower re-scoping. Don't keep auto-patching through it.
-- **Genuinely unclear which** — block for human input rather than guessing.
+  structural rework or a narrower re-scoping. Don't keep auto-patching through it: **file the
+  structural gap as a tracked issue and land the PR anyway**, per the disposition rule below.
+- **Genuinely unclear which** — file the ambiguity as a tracked issue and proceed, rather than
+  stalling the queue on it.
 
 Either way, summarize the pattern for the user (how many rounds, how many findings were real,
-which bucket above) and let them decide whether to keep going, merge as-is, or restructure.
+which bucket above) — as a report of what you did, not a request for permission.
 This gates the _automatic_ continuation only — it never excuses dropping a still-open real
 finding just to stay under the cap, and it doesn't apply retroactively to rounds already spent;
 it only stops the _next_ auto-triggered one.
@@ -78,12 +80,28 @@ closing review's finding, if any, this way instead:
   doesn't change real behavior or a load-bearing rule) — fix it directly and merge. A small fix
   doesn't need its own re-review; this org's near-zero false-positive rate on bot findings is
   the evidence that's safe, and re-review-forever is exactly the cost this cap exists to bound.
-- **Substantive** (changes real behavior, logic, or a load-bearing rule) — that's the signal to
-  stop automating entirely and hand off to the user for approval or manual merge, not push
-  another automatic round hoping it's the last one.
+- **Substantive** (changes real behavior, logic, or a load-bearing rule) — fix what is in this
+  PR's scope, **file whatever is left as a tracked issue on the same milestone as the issue this
+  PR closes, and merge.** Do not stand down and wait for a human to merge it by hand.
 
-Either branch terminates. There is no version of this rule where a capped PR waits on one more
-automatic review indefinitely.
+Either branch terminates in a merge. There is no version of this rule where a green, mergeable
+PR sits waiting — on one more automatic review, or on a human.
+
+**Why the disposition is "track it and merge" rather than "hand it back"** (user decision,
+2026-09-14, after SF-RC2/`#1409` sat green and idle through four monitoring check-ins under the
+older wording): a substantive closing-review finding is nearly always a _scope_ signal, not a
+quality one — the thing it names is real but belongs to a different story. Blocking the merge on
+it stalls every queued story behind a PR whose own acceptance criteria are already met and
+regression-locked, and it converts a schedulable gap into one that exists only in a PR thread.
+Filing the issue is what makes deferring it honest; the merge is what keeps the milestone
+moving. The issue goes on the **same milestone**, so it is queued rather than exiled, and is
+parented to the epic when the gap is wider than the story that surfaced it.
+
+This does not weaken anything above it. A finding inside this PR's own scope is still fixed
+before merging, never filed instead. The merge criteria are unchanged: green CI on the current
+head, `mergeable_state: "clean"`, confirmed review coverage, and no unresolved thread
+representing an unaddressed _fixable_ finding — a disclosed-and-replied-to deferred gap backed
+by a tracked issue is exactly the kind that may stay open.
 
 **Below the cap** — any review round before the 3-round auto-request limit is reached — if a
 finding reveals a real gap wider than this PR's own scope (not a bug to fix in this diff, but a
@@ -94,13 +112,12 @@ then scrolls away; a tracked sub-issue survives to whichever future story actual
 Also record it in that session's own handoff, under "Continuing the relay" — a sub-issue filed
 but never mentioned in the handoff is easy for the next session to miss entirely.
 
-**This does not apply to the capped closing review above.** That branch's own "substantive ->
-stop automating entirely and hand off to the user" already covers it: filing a sub-issue is
-itself an automated action, so a substantive capped-closing-review finding gets _proposed_ to
-the user (sub-issue included, among the options) rather than filed ahead of their say-so. This
-section's own default move is scoped to the below-the-cap case only (review finding on `#1285`,
-chatgpt-codex-connector: an earlier version of this section read as applying to both cases,
-which contradicted the capped branch's own "hand off to the user" instruction).
+**This now applies to the capped closing review too**, which is what its own "substantive ->
+file it and merge" branch above means in practice: file first, then merge, so the deferral is
+tracked before the PR that disclosed it stops being the place anyone is looking. (Superseded
+here — an earlier version scoped this section to below-the-cap findings only, on the grounds
+that filing is itself an automated action and a capped finding had to be _proposed_ to the user
+instead. That branch no longer hands off, so the carve-out no longer has anything to protect.)
 
 ## Verify "CI is green" against live state, not the webhook event that announced it
 
