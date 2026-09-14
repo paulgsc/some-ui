@@ -474,6 +474,41 @@ function runAutoTheme(): void {
 
       if (navigatingAway) return
 
+      // SF-RC3 (#1342), bot-found: a carrier inside a shadow scope whose own
+      // ancestors are all transparent resolves its backdrop out past the
+      // outermost host and into the light DOM — onto an element this round
+      // may have just darkened. The two paths are not synchronized, and this
+      // one is the slower: a top-level host's `class`/`style` change projects
+      // its scope synchronously, while this round waits out
+      // RECONCILE_POLICY's debounce first, so the scope can audit against a
+      // backdrop that is still native. Nothing re-audits it afterwards — the
+      // `data-sw-patched` write that darkens the backdrop is outside that
+      // host observer's own `class`/`style` filter, and shadow scopes see no
+      // mutation at all. Safe here specifically because `realize()` has
+      // already run by the time onFire is called, so the scopes read the
+      // backdrop this round actually painted.
+      //
+      // Every settled round, deliberately ungated. An earlier version here
+      // skipped the call when the round's own action list was unchanged,
+      // which is wrong and was measured to be: a newly-inserted element
+      // whose background matches a `SurfaceKey` the page already has emits
+      // no new action at all — only `tagSurfaceElements` writes
+      // `data-sw-patched` to one more element — so the action list is
+      // byte-identical while a real backdrop went from white to
+      // `rgb(20, 20, 20)` underneath a shadow carrier. What changed is what
+      // was *tagged*, not what was decided.
+      //
+      // The cost is bounded by something this round already paid: it walks
+      // the committed shadow scopes, while the round that just ran walked
+      // the entire document with a `getComputedStyle` per element. And a
+      // re-contrast that finds nothing changed writes nothing — both
+      // realize halves are zero-write on unchanged state (#831).
+      //
+      // Not gated on the round being themed either: a `restore-native`
+      // verdict moves every scope's backdrop back to native, which is
+      // exactly as much of a change to re-audit against.
+      if (outcome.kind === "ok") shadowScopeTheming.recontrastAll()
+
       documentScope.reportPipelineOutcome(outcome)
     }
   )

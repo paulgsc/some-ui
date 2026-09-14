@@ -293,3 +293,57 @@ export async function mutateInsideShadowScope(
     root.appendChild(late)
   }, hostId)
 }
+
+/**
+ * Codex review round 2 on #1412: the same cross-scope backdrop dependency
+ * one level further out, where the stale ancestor is the **document**
+ * rather than an outer shadow scope.
+ *
+ * Everything is created in one synchronous batch on purpose, and the timing
+ * that follows is the whole point. The light-DOM ancestor is still native
+ * white when the batch lands; the top-level discovery observer registers
+ * this host and projects its scope immediately, while the document
+ * pipeline's own round waits out `RECONCILE_POLICY`'s debounce first. So
+ * the scope audits its carrier against white — legible, no repair — and
+ * the document round then tags and darkens that same ancestor. The
+ * `data-sw-patched` write that does it is outside this host observer's own
+ * `class`/`style` filter and is not a mutation inside this root at all, so
+ * without a document-driven re-contrast nothing ever re-audits the carrier.
+ *
+ * The carrier owns no background and neither does its host, so
+ * `resolveEffectiveBackdrop` walks straight out of the shadow tree and
+ * lands on the light-DOM ancestor.
+ */
+export async function mountDocumentBackdropCrosser(
+  page: Page,
+  ancestorId: string,
+  hostId: string
+): Promise<void> {
+  await page.evaluate(
+    ({ ancestorId, hostId }: { ancestorId: string; hostId: string }) => {
+      const anchor = document.getElementById("host-anchor")
+      if (anchor === null) throw new Error("fixture missing #host-anchor")
+
+      const ancestor = document.createElement("div")
+      ancestor.id = ancestorId
+      ancestor.setAttribute(
+        "style",
+        "margin:0;padding:16px;background-color:rgb(255,255,255)"
+      )
+
+      const host = document.createElement("div")
+      host.id = hostId
+      const root = host.attachShadow({ mode: "open" })
+      const carrier = document.createElement("div")
+      carrier.className = "sf-rc3-crosser"
+      carrier.setAttribute("style", "color:rgb(0,0,0)")
+      carrier.textContent =
+        "A carrier that resolves its backdrop to the document."
+      root.appendChild(carrier)
+
+      ancestor.appendChild(host)
+      anchor.appendChild(ancestor)
+    },
+    { ancestorId, hostId }
+  )
+}

@@ -137,6 +137,33 @@ export type ShadowScopeTheming = {
   project(id: ScopeId): void
 
   /**
+   * Re-runs the rendered-contrast half for *every* currently-`COMMITTED`
+   * shadow scope — what `recontrastDescendants` does for a shadow ancestor,
+   * for the one ancestor every scope has: the document.
+   *
+   * Bot-found, Codex review round 2 on #1412, and the same class of defect
+   * as that ancestor case rather than a second one: a carrier whose own
+   * ancestors inside its root are all transparent resolves its backdrop
+   * outward, and the walk does not stop at the outermost shadow host — it
+   * continues into the light DOM and can land on an element the *document*
+   * pipeline is about to darken. The two paths are not synchronized, and
+   * the document's is the slower of the two: a top-level host's own
+   * `class`/`style` change projects its scope immediately (that scope's host
+   * observer calls `onScopeReady` synchronously), while the document's own
+   * round is debounced by `RECONCILE_POLICY` first. So the scope audits
+   * against a still-native light backdrop, and the `data-sw-patched` write
+   * that darkens it moments later is outside that host observer's
+   * `class`/`style` filter — nothing re-audits the scope, and dark explicit
+   * text stays unrepaired on a now-dark backdrop.
+   *
+   * Called by `content.ts` from the document pipeline's own `onFire`, after
+   * `realize()` has already run — on every settled round, deliberately
+   * ungated; see that call site for why an "only when the action list
+   * changed" gate is measurably wrong.
+   */
+  recontrastAll(): void
+
+  /**
    * Starts a `SHEET_INTEGRITY_POLL_MS` periodic poll that checks every
    * currently `COMMITTED` scope's realization and, for any scope where
    * either (a) a vendor's own wholesale `adoptedStyleSheets` reassignment
@@ -439,14 +466,16 @@ export function createShadowScopeTheming(
    * silently skip the rest (this runs after `resolveCommitted` has already
    * resolved, so a throw here cannot be reported as a FAILED_HELD).
    */
-  function recontrastDescendants(ancestorId: ScopeId): void {
+  function recontrastScopes(
+    include: (id: ScopeId) => boolean,
+    cause: string
+  ): void {
     for (const otherId of registry.ids()) {
-      if (otherId === ancestorId) continue
       const snapshot = registry.snapshot(otherId)
       if (snapshot?.state.kind !== "COMMITTED") continue
       const root = snapshot.ref
       if (!isShadowRoot(root)) continue
-      if (!isDescendantScope(otherId, ancestorId)) continue
+      if (!include(otherId)) continue
       const realized = committedRealizationById.get(otherId)
       if (realized === undefined) continue
       try {
@@ -459,11 +488,18 @@ export function createShadowScopeTheming(
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error(
-          `[some-filter] re-contrast of ${otherId} after ${ancestorId} failed:`,
+          `[some-filter] re-contrast of ${otherId} after ${cause} failed:`,
           error
         )
       }
     }
+  }
+
+  function recontrastDescendants(ancestorId: ScopeId): void {
+    recontrastScopes(
+      (id) => id !== ancestorId && isDescendantScope(id, ancestorId),
+      ancestorId
+    )
   }
 
   async function projectOnce(
@@ -682,6 +718,12 @@ export function createShadowScopeTheming(
 
   return {
     project,
+    recontrastAll(): void {
+      // Every committed shadow scope, not a subtree: `r_0` is the one
+      // ancestor every scope has, at every nesting depth, so a document
+      // realization can change the backdrop of a carrier in any of them.
+      recontrastScopes(() => true, "the document scope")
+    },
     observe(): void {
       if (pollHandle !== null) return
       pollHandle = setInterval(

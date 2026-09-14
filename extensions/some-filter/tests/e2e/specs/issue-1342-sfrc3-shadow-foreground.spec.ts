@@ -29,6 +29,7 @@
 import { relativeLuminance } from "@filter/lib/content/color"
 import { expect, test, waitForClassification } from "@filter/playwright/fixture"
 import {
+  mountDocumentBackdropCrosser,
   mountNestedBackdropCrosser,
   mountNestedShadowWitnesses,
   mountShadowWitnesses,
@@ -366,6 +367,59 @@ test.describe("SF-RC3: a repaired shadow carrier survives later rounds (#1342, b
       ratio,
       `transitioned carrier renders ${after.color} on ${after.backdrop} — ` +
         `${ratio.toFixed(3)}:1 after a reprojection`
+    ).toBeGreaterThanOrEqual(MIN_CONTRAST_RATIO)
+  })
+})
+
+test.describe("SF-RC3: a carrier whose backdrop resolves out to the document (#1342, bot-found)", () => {
+  test("a top-level shadow carrier is repaired once the document darkens the light-DOM ancestor behind it", async ({
+    fixture,
+  }) => {
+    // The backdrop walk does not stop at the outermost host — it continues
+    // into the light DOM. Here it lands on an element the *document*
+    // pipeline darkens, and the two paths are not synchronized: this scope
+    // is projected synchronously by the discovery observer, while the
+    // document's round is debounced first. So the audit sees white, and the
+    // `data-sw-patched` write that darkens the ancestor moments later is
+    // outside this host observer's `class`/`style` filter and is not a
+    // mutation inside this root at all. Only a document-driven re-contrast
+    // reaches it.
+    const page = await fixture.goto("shadow-surface-page")
+    await waitForClassification(page)
+    await mountDocumentBackdropCrosser(
+      page,
+      "sf-rc3-doc-ancestor",
+      "sf-rc3-doc-host"
+    )
+
+    await page.waitForFunction(
+      () =>
+        document
+          .getElementById("sf-rc3-doc-ancestor")
+          ?.hasAttribute("data-sw-patched") === true,
+      undefined,
+      { timeout: 5_000, polling: 100 }
+    )
+    await page.waitForFunction(
+      () =>
+        document
+          .getElementById("sf-rc3-doc-host")
+          ?.shadowRoot?.querySelector(".sf-rc3-crosser")
+          ?.hasAttribute("data-sw-legibility-fix") === true,
+      undefined,
+      { timeout: 5_000, polling: 100 }
+    )
+
+    const crosser = await readShadowCarrier(
+      page,
+      ["sf-rc3-doc-host"],
+      "sf-rc3-crosser"
+    )
+    const ratio = contrastOf(crosser)
+    expect(
+      ratio,
+      `document-crossing carrier renders ${crosser.color} on ` +
+        `${crosser.backdrop} — ${ratio.toFixed(3)}:1`
     ).toBeGreaterThanOrEqual(MIN_CONTRAST_RATIO)
   })
 })
