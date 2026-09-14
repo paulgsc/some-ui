@@ -1,4 +1,5 @@
 import { notifyMutation } from "./debug"
+import { observability } from "./observability"
 import { SEL } from "./selectors"
 import type { VideoManager } from "./video-manager"
 
@@ -91,6 +92,7 @@ export function startObserver(mgr: VideoManager): MutationObserver {
 
     // Notify debug layer of mutation activity
     notifyMutation()
+    observability()?.mutationBatch(candidates.size)
   })
 
   obs.observe(document.body, {

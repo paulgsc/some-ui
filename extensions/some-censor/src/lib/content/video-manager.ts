@@ -51,6 +51,8 @@ import { mkSession } from "@some-extension/common"
 
 import { publish, registerDebugSource } from "./debug"
 import { tryExtract } from "./extract/index"
+import { observability } from "./observability"
+import type { BoyoContext, PromotingCard, QueuedCard } from "./observability"
 import { makeProvisionalRecord, makeRecord } from "./record"
 import { isVideoCard, SEL } from "./selectors"
 import { VideoEntry } from "./video-entry"
@@ -76,7 +78,7 @@ type Phase = "idle" | "running"
  * was documented as granting, and would expire faster still on a busy feed —
  * exactly when a slow card most needs the time.
  */
-const RESOLVE_BUDGET_MS = 10_000
+export const RESOLVE_BUDGET_MS = 10_000
 
 export class VideoManager {
   // Primary lookup: videoId → entry
@@ -109,6 +111,15 @@ export class VideoManager {
   private readonly _channelPending: Map<VideoId, HTMLElement> = new Map()
   // Concurrent-promotion guard
   private readonly _promoting: WeakSet<HTMLElement> = new WeakSet()
+  // Observability-only mirror of _promoting: when each element entered the
+  // guard, so PromotionGuardClears (observability.ts) can see one that never
+  // left it. A WeakSet cannot be iterated, and the invariant's whole subject
+  // is the element still sitting in it — so this holds strong refs, the same
+  // trade _rejected already makes and for the same reason. Bounded by the
+  // number of concurrent in-flight promotions (each entry is deleted in
+  // _promote()'s finally, exactly where _promoting is), and cleared by
+  // reset() on every navigation.
+  private readonly _promotingSince: Map<HTMLElement, PromotingCard> = new Map()
   // Per-element staleness guard (#980, M6). Which videoId an element is
   // currently claimed for, and a token bumped whenever that claim changes —
   // set synchronously the instant _promote()/_promoteProvisional() start
@@ -178,6 +189,7 @@ export class VideoManager {
     }
     this._session = mkSession()
     this._phase = "running"
+    observability()?.sessionStart(this._session)
     publish()
     return this._session
   }
@@ -186,6 +198,7 @@ export class VideoManager {
    * Total reset — destroy all entries, clear all maps, return to idle.
    */
   reset(): void {
+    observability()?.sessionReset(this._session)
     for (const entry of this._byVideo.values()) entry.destroy()
     this._byVideo.clear()
     this._unresolved.clear()
@@ -193,6 +206,7 @@ export class VideoManager {
     this._firstSeen.clear()
     this._rejected.clear()
     this._channelGaveUp.clear()
+    this._promotingSince.clear()
 
     if (this._retryInterval !== null) {
       clearInterval(this._retryInterval)
@@ -284,6 +298,10 @@ export class VideoManager {
     const key = elementKey(el)
     this._startBudget(key)
     const wasEmpty = this._unresolved.size === 0
+    // Recorded only on a genuinely new queue entry. The observer re-upserts a
+    // card on every batch it touches, so recording each call would put one
+    // event per mutation per card on the timeline and evict everything else.
+    if (!this._unresolved.has(key)) observability()?.queued(key)
     this._unresolved.set(key, el)
     if (wasEmpty) this._ensureRetryLoop()
   }
@@ -396,6 +414,7 @@ export class VideoManager {
         // very thing extractVideoId reads.
         this._dequeueUnresolved(key)
         this._rejected.add(el)
+        observability()?.rejected(key)
         changed = true
       }
     }
@@ -419,11 +438,13 @@ export class VideoManager {
         // not know whose channel it is.
         this._dropChannelPending(videoId)
         this._channelGaveUp.add(videoId)
+        observability()?.channelAbandoned(videoId)
         changed = true
       }
     }
 
     if (changed) publish()
+    this._sampleHealth()
     this._maybeStopRetryLoop()
   }
 
@@ -542,6 +563,7 @@ export class VideoManager {
     const token = this._claim(el, videoId)
     if (this._promoting.has(el)) return
     this._promoting.add(el)
+    this._promotingSince.set(el, { key: videoId, startedAt: Date.now() })
 
     let stale = false
     try {
@@ -588,9 +610,12 @@ export class VideoManager {
       const entry = new VideoEntry(record, el, isWhitelisted)
       this._byVideo.set(videoId, entry)
       entry.mount()
+      observability()?.mountResolved(videoId)
       publish()
     } finally {
       this._promoting.delete(el)
+      this._promotingSince.delete(el)
+      if (stale) observability()?.staleDiscarded(videoId)
       // A stale bail means el moved on while this call was in flight. Any
       // recycle that landed here while _promoting blocked it (see above) did
       // nothing but bump the claim — re-derive el's *current* truth from the
@@ -643,6 +668,7 @@ export class VideoManager {
     this._byVideo.set(videoId, entry)
     this._trackChannelPending(videoId, el)
     entry.mount()
+    observability()?.mountProvisional(videoId)
     publish()
   }
 
@@ -672,6 +698,7 @@ export class VideoManager {
     if (this._session !== session) return
     if (this._tokenFor(el) !== token) return
     entry.backfillChannel(String(channelId), isWhitelisted)
+    observability()?.channelBackfilled(String(entry.record.videoId))
     publish()
   }
 
@@ -682,6 +709,67 @@ export class VideoManager {
       }
     }
     publish()
+  }
+
+  /**
+   * Hand the live queue census to the observability layer, at that layer's
+   * own cadence rather than this loop's.
+   *
+   * Called from `retryUnresolved()` because that is the only periodic thing
+   * this class already runs — adding a second timer for diagnostics would be
+   * exactly the per-tab background cost Charter §8 (and `RESOLVE_BUDGET_MS`'s
+   * own rationale) is about. `shouldSampleHealth` is a single timestamp
+   * comparison, so the 500 ms passes that are not due cost nothing and the
+   * context below is not built at all.
+   */
+  private _sampleHealth(): void {
+    const obs = observability()
+    if (!obs) return
+    const now = Date.now()
+    if (!obs.shouldSampleHealth(now)) return
+    void obs.sampleHealth(this._observabilityContext(now))
+  }
+
+  /**
+   * The live queue state, as plain data. Read-only with respect to every map
+   * it touches: this reports what the manager already decided, it never gates
+   * or alters a decision (#1395's own non-goal).
+   */
+  private _observabilityContext(now: number): BoyoContext {
+    const unresolved: Array<QueuedCard> = []
+    for (const [key, el] of this._unresolved) {
+      unresolved.push({
+        key,
+        firstSeenAt: this._firstSeen.get(key) ?? now,
+        // Re-read from the live DOM rather than trusting why the element was
+        // queued: a lockup hydrates from the inside out, so the answer at
+        // enqueue time and the answer now are different questions — and it is
+        // the answer *now* that decides whether the pre-mask rule is still
+        // occluding it.
+        videoShaped: isVideoCard(el),
+      })
+    }
+
+    const channelPending: Array<QueuedCard> = []
+    for (const videoId of this._channelPending.keys()) {
+      const key = channelKey(videoId)
+      channelPending.push({
+        key,
+        firstSeenAt: this._firstSeen.get(key) ?? now,
+        // Already mounted and masked, so the pre-mask rule is no longer what
+        // is covering it — the field is about occlusion, and does not apply.
+        videoShaped: false,
+      })
+    }
+
+    return {
+      now,
+      phase: this._phase,
+      resolveBudgetMs: RESOLVE_BUDGET_MS,
+      unresolved,
+      channelPending,
+      promoting: [...this._promotingSince.values()],
+    }
   }
 
   private _ensureRetryLoop(): void {
