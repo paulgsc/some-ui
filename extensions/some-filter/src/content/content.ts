@@ -5,6 +5,7 @@ import {
   type DocumentScopeCustodian,
 } from "@filter/adapter/document-scope"
 import {
+  clearRealizedColorState,
   createContentSession,
   type ContentSession,
 } from "@filter/adapter/pipeline"
@@ -284,6 +285,12 @@ function applyState(state: TabState): void {
   scopeCoverageWatchdog.teardown()
 
   restoreVendor()
+  // restoreVendor() only knows about the two pre-adapter layers (the
+  // `data-sw-dark` attribute and the static theme sheet). Everything the
+  // per-surface Actuator and the legibility channels realize is this call's
+  // to drop — see clearRealizedColorState's own doc comment for why no
+  // pipeline round ever gets the chance to (#1341).
+  clearRealizedColorState()
 
   if (state === "auto") {
     // Do not pre-remove the veil here. runAutoTheme uses withPrepaintSuppressed

@@ -82,8 +82,20 @@ export function hslToRGB({ h, s, l, a }: HSLA): RGBA {
 // Dark-theme target bands (lightness 0–1).
 const BG_DARK_MIN = 0.08
 const BG_DARK_MAX = 0.3
-const FG_LIGHT_MIN = 0.62
-const FG_LIGHT_MAX = 0.9
+/**
+ * The hue-preserving lightness band `modifyForegroundColor` maps a
+ * foreground into. Exported because SF-RC2's own repair alphabet
+ * (`adapter/foreground-repair.ts`) escalates *within this same band* when
+ * the plain `modifyForegroundColor` lift does not by itself clear the
+ * rendered-contrast floor — the epic's own "reusing `modifyForegroundColor`'s
+ * existing band" requirement (#1341), so that a repaired carrier and an
+ * ordinary co-located (#741) `emit-surface-color.textCss` carrier never land
+ * in visibly different colour regimes. The ceiling is what keeps a repair
+ * from ever reaching raw white (Φ_comfort: text is never the brightest thing
+ * on screen).
+ */
+export const FG_LIGHT_MIN = 0.62
+export const FG_LIGHT_MAX = 0.9
 const BORDER_L = 0.25
 
 /**

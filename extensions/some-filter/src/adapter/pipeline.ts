@@ -51,12 +51,24 @@ import {
 } from "@some-extension/transport/scheduler/reconcile"
 import type { SessionLifecycle } from "@some-extension/transport/session/lifecycle"
 
-import { DYNAMIC_STYLE_ID, isHTMLElementNode, realize } from "./actuator"
+import {
+  clearPerSurfaceState,
+  DYNAMIC_STYLE_ID,
+  isHTMLElementNode,
+  realize,
+} from "./actuator"
 import type { FilterAction, SurfaceAttr, SurfaceKey } from "./contracts"
 import {
+  clearForegroundRepairs,
+  decideForegroundRepairs,
+  realizeForegroundRepairs,
+} from "./foreground-repair"
+import {
   auditLegibility,
+  clearLegibilityTags,
   decideLegibility,
   realizeLegibility,
+  REPAIR_STYLE_ID,
 } from "./legibility-audit"
 import type { Swatch } from "./swatches"
 import { decide } from "./theme-adapter"
@@ -351,6 +363,14 @@ export function scanCanvas(
 const OWN_COLOR_SHEET_IDS: ReadonlyArray<string> = [
   DARK_THEME_STYLE_ID,
   DYNAMIC_STYLE_ID,
+  // SF-RC2 (#1341): the legibility channel's own foreground repair sheet is
+  // just as much "our colors" as the two above. Left out, `scan()`'s own
+  // ownTextColor read would fold this extension's repaired foregrounds back
+  // into the append-only vendor hypothesis as fresh `textCss` evidence —
+  // #831's symptom 2 exactly, one channel over, and self-sustaining in the
+  // same way (each round's repair becomes the next round's "vendor" text
+  // color).
+  REPAIR_STYLE_ID,
 ]
 
 /**
@@ -393,6 +413,44 @@ export function withVendorColorsVisible<T>(fn: () => T): T {
       sheet.disabled = false
     }
   }
+}
+
+/**
+ * Drops every colour artifact this extension's auto-mode realization owns in
+ * the document scope: the per-surface `<style>` and its `data-sw-patched`
+ * tags, the legibility channel's `data-sw-legibility` diagnostics, and the
+ * foreground repair sheet with its `data-sw-legibility-fix` tags.
+ *
+ * `theme-apply.ts`'s own `restoreVendor()` is documented as removing "all
+ * theming", but it only ever knew about the two layers that predate the
+ * adapter: it drops `data-sw-dark` and the static `__sw_dark_theme` sheet,
+ * and nothing else. Everything the per-surface Actuator realizes has, until
+ * now, survived a mode exit outright.
+ *
+ * That gap is not reachable from inside the pipeline, which is why it went
+ * unnoticed: `realize()`'s own `restore-native` branch clears per-surface
+ * state, and `fire()`'s no-`activate-theme` branch clears both legibility
+ * channels, but leaving auto mode reaches neither — `content.ts`'s
+ * `applyState` calls `contentSession.teardown()` (which only disconnects the
+ * observer) *before* `restoreVendor()`, so no further round ever runs. Found
+ * by a bot review of the repair sheet specifically (Codex review round 1);
+ * confirmed by direct measurement against the real built extension that the
+ * pre-existing per-surface half leaks identically and more visibly — after
+ * an auto→off keyboard cycle a themed card still rendered
+ * `background-color: rgb(23, 23, 23)`, i.e. the page stayed dark with the
+ * extension switched off. `tests/e2e/specs/issue-1341-sfrc2-foreground-repair.spec.ts`
+ * regression-locks the whole transition, not just this story's own half:
+ * splitting one artifact out of a "common mode-transition cleanup path"
+ * while knowingly leaving its siblings behind would make the path a fiction.
+ *
+ * Document scope only. A committed shadow scope's own realization is
+ * `shadow-scope-theming.ts`'s `teardown()`, which `applyState` already calls
+ * alongside this.
+ */
+export function clearRealizedColorState(): void {
+  clearPerSurfaceState()
+  clearLegibilityTags()
+  clearForegroundRepairs()
 }
 
 // ── Self-authored mutations (Axiom 3.5, write side) ──────────────────────────
@@ -681,6 +739,16 @@ export function createContentSession(
           legibilityActions,
           legibilityScan.elementsByKey
         )
+        // SF-RC2 (#1341): the repair alphabet, decided from the *same*
+        // scan (never a second sense pass, which could disagree with the
+        // diagnostic tags written a line above) and realized into its own
+        // sheet. Deliberately a separate action set from the tags — see
+        // foreground-repair.ts's own header.
+        realizeForegroundRepairs(
+          lastRoot,
+          decideForegroundRepairs(legibilityScan.attrsByKey),
+          legibilityScan.elementsByKey
+        )
       } else {
         // No theme applied this round (no swatch, or pageAlreadyDark()'s own
         // restore-native) — nothing to audit, but a *prior* round may have
@@ -693,6 +761,7 @@ export function createContentSession(
         // function, "no violations exist" is exactly what this already
         // means.
         realizeLegibility(lastRoot, [], new Map())
+        realizeForegroundRepairs(lastRoot, [], new Map())
       }
 
       outcome = { kind: "ok", actions }

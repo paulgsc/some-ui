@@ -67,7 +67,16 @@ function dynamicStyleEl(): HTMLStyleElement {
   return style
 }
 
-function clearPerSurfaceState(): void {
+/**
+ * Drops the per-surface realization outright: the dynamic `<style>` and
+ * every `data-sw-patched` tag whose rules it carried.
+ *
+ * Used by `realize()`'s own `restore-native` branch below, and exported for
+ * `pipeline.ts`'s `clearRealizedColorState` — leaving auto mode altogether
+ * never reaches a `restore-native` round (`content.ts` tears the session
+ * down first), so that transition has to clear this state explicitly.
+ */
+export function clearPerSurfaceState(): void {
   document.getElementById(DYNAMIC_STYLE_ID)?.remove()
   document.querySelectorAll("[data-sw-patched]").forEach((el) => {
     el.removeAttribute("data-sw-patched")
