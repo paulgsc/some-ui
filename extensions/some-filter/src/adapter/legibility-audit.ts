@@ -751,6 +751,62 @@ function registerCandidate(
 }
 
 /**
+ * The `<style>` element SF-RC2's own repair alphabet
+ * (`foreground-repair.ts`) writes its foreground-only rules into. Declared
+ * *here*, rather than in that module, because this module's own sensing
+ * pass is what has to know which sheet to suppress while it reads — and
+ * this direction (repair imports audit) is the only one that avoids a
+ * cycle, since `foreground-repair.ts` already consumes this module's
+ * `LegibilityAttr`/`LegibilityKey`/`MIN_CONTRAST_RATIO`.
+ *
+ * Also listed in `pipeline.ts`'s own `OWN_COLOR_SHEET_IDS`, so the
+ * *vendor-evidence* Sensor (`scan()`, inside `withVendorColorsVisible`)
+ * never folds this channel's own foreground output back in as fresh vendor
+ * evidence — #831's exact failure mode, one channel over.
+ */
+export const REPAIR_STYLE_ID = "__sw_legibility_repair"
+
+/**
+ * Runs `fn` with SF-RC2's repair sheet disabled, so every
+ * `getComputedStyle().color` read inside it returns the carrier's *authored*
+ * foreground rather than the repair this channel painted over it.
+ *
+ * Without this the channel oscillates, and visibly: a repaired carrier
+ * reads back as legible on the very next round (our own `!important` rule
+ * is what makes it so), `decideLegibility` therefore emits nothing for it,
+ * `realizeLegibility`/`realizeForegroundRepairs` drop the tag and the rule
+ * as stale, the carrier reverts to its illegible authored color, and the
+ * round after that re-detects and re-repairs it — a flicker driven by
+ * nothing but the extension's own output. Re-deriving the same violation
+ * from the same authored evidence every round is what makes the repair a
+ * genuine fixed point instead (Theorem 7.2's zero-write idempotency:
+ * identical DOM state, identical actions, no writes).
+ *
+ * Background resolution is deliberately *not* suppressed — the repair sheet
+ * only ever declares `color`, so it cannot perturb
+ * `resolveEffectiveBackdrop`, and the backdrop this audit measures against
+ * must remain the post-actuation one (the themed surface actually painted).
+ *
+ * `CSSStyleSheet.disabled` rather than detaching the element, for the same
+ * reason `pipeline.ts`'s own `withVendorColorsVisible` does it that way: it
+ * mutates no DOM (so it queues no MutationRecord to react to) and, because
+ * the whole audit is one synchronous task, no frame is ever painted with
+ * the repair off.
+ */
+function withRepairSuppressed<T>(fn: () => T): T {
+  const el = document.getElementById(REPAIR_STYLE_ID)
+  const sheet = el instanceof HTMLStyleElement ? el.sheet : null
+  if (sheet === null || sheet.disabled) return fn()
+
+  sheet.disabled = true
+  try {
+    return fn()
+  } finally {
+    sheet.disabled = false
+  }
+}
+
+/**
  * Senses every in-domain, rendered carrier with its own explicit (not
  * inherited) foreground color — D-4's own amended audit boundary (SF-RC's
  * Gate 0 recon, F-18): a non-allowlisted descendant with no explicit color
@@ -780,6 +836,10 @@ function registerCandidate(
 export function auditLegibility(
   root: Element | ShadowRoot
 ): LegibilityScanResult {
+  return withRepairSuppressed(() => senseLegibility(root))
+}
+
+function senseLegibility(root: Element | ShadowRoot): LegibilityScanResult {
   const elementsByKey = new Map<LegibilityKey, Array<Element>>()
   const attrsByKey = new Map<LegibilityKey, LegibilityAttr>()
 
@@ -840,29 +900,38 @@ export function decideLegibility(
       continue
     }
 
-    // A translucent own foreground (e.g. rgba(0,0,0,0.5)) does not render
-    // as its own raw RGB channels — it renders as itself composited over
-    // the resolved (already-opaque) backdrop, exactly like a background
-    // layer does in resolveEffectiveBackdrop above (bot-found: rgba(0,0,0,
-    // 0.5) over white renders as mid-grey at ~4:1, not the 21:1 comparing
-    // raw black against white would report).
-    const renderedForeground = compositeOver(attr.foreground, attr.backdrop)
-    const fgLuminance = relativeLuminance(
-      renderedForeground[0],
-      renderedForeground[1],
-      renderedForeground[2]
-    )
-    const bgLuminance = relativeLuminance(
-      attr.backdrop[0],
-      attr.backdrop[1],
-      attr.backdrop[2]
-    )
-    if (contrastRatio(fgLuminance, bgLuminance) < MIN_CONTRAST_RATIO) {
+    if (violatesContrast(attr.foreground, attr.backdrop)) {
       actions.push({ kind: "tag-legibility", key, verdict: "violated" })
     }
   }
 
   return actions
+}
+
+/**
+ * The channel's one contrast predicate, shared by `decideLegibility` above
+ * and by SF-RC2's own `decideForegroundRepairs`/`repairedForeground`
+ * (`foreground-repair.ts`) — a repair must be selected against exactly the
+ * relation that flagged the violation in the first place, or the two can
+ * disagree about whether a given carrier is settled and churn against each
+ * other forever.
+ *
+ * A translucent own foreground (e.g. rgba(0,0,0,0.5)) does not render as
+ * its own raw RGB channels — it renders as itself composited over the
+ * resolved (already-opaque) backdrop, exactly like a background layer does
+ * in `resolveEffectiveBackdrop` above (bot-found: rgba(0,0,0,0.5) over
+ * white renders as mid-grey at ~4:1, not the 21:1 comparing raw black
+ * against white would report).
+ */
+export function violatesContrast(foreground: RGBA, backdrop: RGBA): boolean {
+  const renderedForeground = compositeOver(foreground, backdrop)
+  const fgLuminance = relativeLuminance(
+    renderedForeground[0],
+    renderedForeground[1],
+    renderedForeground[2]
+  )
+  const bgLuminance = relativeLuminance(backdrop[0], backdrop[1], backdrop[2])
+  return contrastRatio(fgLuminance, bgLuminance) < MIN_CONTRAST_RATIO
 }
 
 /** The diagnostic-only attribute this channel writes — never a color, see this module's own header. */

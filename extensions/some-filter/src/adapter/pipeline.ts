@@ -54,9 +54,14 @@ import type { SessionLifecycle } from "@some-extension/transport/session/lifecyc
 import { DYNAMIC_STYLE_ID, isHTMLElementNode, realize } from "./actuator"
 import type { FilterAction, SurfaceAttr, SurfaceKey } from "./contracts"
 import {
+  decideForegroundRepairs,
+  realizeForegroundRepairs,
+} from "./foreground-repair"
+import {
   auditLegibility,
   decideLegibility,
   realizeLegibility,
+  REPAIR_STYLE_ID,
 } from "./legibility-audit"
 import type { Swatch } from "./swatches"
 import { decide } from "./theme-adapter"
@@ -351,6 +356,14 @@ export function scanCanvas(
 const OWN_COLOR_SHEET_IDS: ReadonlyArray<string> = [
   DARK_THEME_STYLE_ID,
   DYNAMIC_STYLE_ID,
+  // SF-RC2 (#1341): the legibility channel's own foreground repair sheet is
+  // just as much "our colors" as the two above. Left out, `scan()`'s own
+  // ownTextColor read would fold this extension's repaired foregrounds back
+  // into the append-only vendor hypothesis as fresh `textCss` evidence —
+  // #831's symptom 2 exactly, one channel over, and self-sustaining in the
+  // same way (each round's repair becomes the next round's "vendor" text
+  // color).
+  REPAIR_STYLE_ID,
 ]
 
 /**
@@ -681,6 +694,16 @@ export function createContentSession(
           legibilityActions,
           legibilityScan.elementsByKey
         )
+        // SF-RC2 (#1341): the repair alphabet, decided from the *same*
+        // scan (never a second sense pass, which could disagree with the
+        // diagnostic tags written a line above) and realized into its own
+        // sheet. Deliberately a separate action set from the tags — see
+        // foreground-repair.ts's own header.
+        realizeForegroundRepairs(
+          lastRoot,
+          decideForegroundRepairs(legibilityScan.attrsByKey),
+          legibilityScan.elementsByKey
+        )
       } else {
         // No theme applied this round (no swatch, or pageAlreadyDark()'s own
         // restore-native) — nothing to audit, but a *prior* round may have
@@ -693,6 +716,7 @@ export function createContentSession(
         // function, "no violations exist" is exactly what this already
         // means.
         realizeLegibility(lastRoot, [], new Map())
+        realizeForegroundRepairs(lastRoot, [], new Map())
       }
 
       outcome = { kind: "ok", actions }

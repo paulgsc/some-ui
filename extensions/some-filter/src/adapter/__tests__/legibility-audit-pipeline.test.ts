@@ -3,8 +3,12 @@ import {
   DOCUMENT_SCOPE_ID,
   type FireOutcome,
 } from "@filter/adapter/document-scope"
+import { REPAIR_ATTR } from "@filter/adapter/foreground-repair"
 import * as legibilityAudit from "@filter/adapter/legibility-audit"
-import { LEGIBILITY_ATTR } from "@filter/adapter/legibility-audit"
+import {
+  LEGIBILITY_ATTR,
+  REPAIR_STYLE_ID,
+} from "@filter/adapter/legibility-audit"
 import type * as LegibilityAuditModule from "@filter/adapter/legibility-audit"
 import { createContentSession } from "@filter/adapter/pipeline"
 import { SWATCHES } from "@filter/adapter/swatches"
@@ -36,6 +40,10 @@ function cleanUp(): void {
   })
   document.querySelectorAll(`[${LEGIBILITY_ATTR}]`).forEach((el) => {
     el.removeAttribute(LEGIBILITY_ATTR)
+  })
+  document.getElementById(REPAIR_STYLE_ID)?.remove()
+  document.querySelectorAll(`[${REPAIR_ATTR}]`).forEach((el) => {
+    el.removeAttribute(REPAIR_ATTR)
   })
   document.body.innerHTML = ""
   document.documentElement.style.backgroundColor = ""
@@ -239,6 +247,100 @@ describe("SF-RC1 — a thrown/incomplete audit leaves the round held, not commit
     expect(custodian.registry.stateOf(DOCUMENT_SCOPE_ID)?.kind).not.toBe(
       "COMMITTED"
     )
+
+    contentSession.teardown()
+  })
+})
+
+describe("SF-RC2 — the repair channel rides the audit's own gate", () => {
+  it("repairs a violated carrier in the same round the audit tags it", () => {
+    document.body.innerHTML =
+      '<div id="dark-surface" style="background-color: rgb(13, 17, 23); color: rgb(255, 255, 255)">' +
+      '<div id="text-carrier" style="color: rgb(0, 0, 0)">hi</div>' +
+      "</div>"
+    const session = createSessionLifecycle()
+    const contentSession = createContentSession(SWATCHES.default, session)
+
+    contentSession.rescan()
+
+    const carrier = document.getElementById("text-carrier")
+    // The diagnostic tag SF-RC1 writes and the repair SF-RC2 writes are two
+    // separate attributes from two separate action sets, derived from one
+    // scan — a carrier under repair is still reported as a violation of the
+    // *page's own* rendered contrast, which is what it is.
+    expect(carrier?.getAttribute(LEGIBILITY_ATTR)).toBe("violated")
+    expect(carrier?.getAttribute(REPAIR_ATTR)).toBe(
+      "rgb(0, 0, 0)~rgb(13, 17, 23)"
+    )
+
+    const sheet = document.getElementById(REPAIR_STYLE_ID)
+    expect(sheet?.textContent).toContain("color:rgb(158, 158, 158)!important")
+    // Never a background, and never through the per-surface sheet: this
+    // channel owns its own <style> element outright.
+    expect(sheet?.textContent).not.toContain("background")
+
+    contentSession.teardown()
+  })
+
+  it("re-derives the same violation on a second round rather than undoing itself", () => {
+    // The oscillation `withRepairSuppressed` exists to prevent: without it,
+    // round 2 reads back the repair's own !important colour, concludes the
+    // carrier is legible, drops the tag and the rule, and the carrier
+    // reverts to being illegible — a flicker driven by nothing but this
+    // extension's own output.
+    document.body.innerHTML =
+      '<div id="dark-surface" style="background-color: rgb(13, 17, 23); color: rgb(255, 255, 255)">' +
+      '<div id="text-carrier" style="color: rgb(0, 0, 0)">hi</div>' +
+      "</div>"
+    const session = createSessionLifecycle()
+    const contentSession = createContentSession(SWATCHES.default, session)
+
+    contentSession.rescan()
+    const sheetTextAfterFirst =
+      document.getElementById(REPAIR_STYLE_ID)?.textContent
+
+    contentSession.rescan()
+
+    expect(
+      document.getElementById("text-carrier")?.getAttribute(REPAIR_ATTR)
+    ).toBe("rgb(0, 0, 0)~rgb(13, 17, 23)")
+    expect(document.getElementById(REPAIR_STYLE_ID)?.textContent).toBe(
+      sheetTextAfterFirst
+    )
+
+    contentSession.teardown()
+  })
+
+  it("tears its own sheet down when theme activation ends", () => {
+    document.body.innerHTML =
+      '<div id="dark-surface" style="background-color: rgb(13, 17, 23); color: rgb(255, 255, 255)">' +
+      '<div id="text-carrier" style="color: rgb(0, 0, 0)">hi</div>' +
+      "</div>"
+    const session = createSessionLifecycle()
+    const contentSession = createContentSession(SWATCHES.default, session)
+
+    contentSession.rescan()
+    expect(document.getElementById(REPAIR_STYLE_ID)).not.toBeNull()
+
+    // Same transition the SF-RC1 stale-tag test above drives: enough dark
+    // evidence to flip the page verdict to restore-native, with the carrier
+    // still physically present.
+    document.documentElement.style.backgroundColor = "rgb(13, 17, 23)"
+    document.body.style.backgroundColor = "rgb(13, 17, 23)"
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      '<div style="background-color: rgb(10, 10, 12)"></div>' +
+        '<div style="background-color: rgb(11, 11, 13)"></div>' +
+        '<div style="background-color: rgb(12, 12, 14)"></div>'
+    )
+
+    contentSession.rescan()
+
+    expect(document.documentElement.hasAttribute(DARK_THEME_ATTR)).toBe(false)
+    expect(
+      document.getElementById("text-carrier")?.hasAttribute(REPAIR_ATTR)
+    ).toBe(false)
+    expect(document.getElementById(REPAIR_STYLE_ID)).toBeNull()
 
     contentSession.teardown()
   })
