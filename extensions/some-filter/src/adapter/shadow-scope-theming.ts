@@ -21,6 +21,15 @@
  * across a shadow boundary — `shadow-actuator.ts`'s own header has that
  * module's full rationale.
  *
+ * SF-RC3 (#1342) adds this module's second sense/decide/realize sub-pass —
+ * the rendered-contrast channel (`legibility-audit.ts` +
+ * `foreground-repair.ts`), the scoped counterpart to what `pipeline.ts`'s
+ * own `fire()` runs for the document. It lives inside `install()` below,
+ * after the theme is applied rather than beside it, because it measures what
+ * was actually painted; its actions are never merged into `decide()`'s, so
+ * rendered-contrast evidence still cannot vote on the native-dark verdict
+ * (canon Remark C.6).
+ *
  * `decide()` still returns document-scoped actions this module has no use
  * for (`activate-theme` — the static dark-canvas layer is a whole-document
  * concern, already realized once by `content.ts`'s own document-level
@@ -53,6 +62,12 @@ import type {
   DocumentExonerationProof,
   DocumentRevision,
 } from "./document-scope"
+import { decideForegroundRepairs, tagRepairCarriers } from "./foreground-repair"
+import {
+  auditLegibility,
+  decideLegibility,
+  realizeLegibility,
+} from "./legibility-audit"
 import {
   isShadowRoot,
   scan,
@@ -390,6 +405,45 @@ export function createShadowScopeTheming(
         // round: a vendor's own invert toggle can flip at any time (#1281).
         const vendorInvert = detectVendorInvert()
         realizeShadowColors(actions, root, rawSwatch, vendorInvert)
+        // SF-RC3 (#1342): the rendered-contrast channel, projected into this
+        // scope — the scoped counterpart to pipeline.ts's own fire() block,
+        // and deliberately *after* realizeShadowColors above rather than
+        // beside it. This channel measures what was actually painted
+        // (canon Definition C.3's Φ_comfort), so it has to read
+        // post-actuation computed style: audited before the theme lands, it
+        // would score every carrier against the vendor's own light backdrop
+        // and conclude the page was already fine.
+        //
+        // Structurally identical to the document block otherwise, including
+        // the isolation that matters: these actions are never merged into
+        // (or derived from) `actions` above, so rendered-contrast evidence
+        // still cannot vote on decide()/pageAlreadyDark()'s own verdict
+        // (#831's discipline, canon Remark C.6). A throw anywhere here
+        // propagates out of install() into resolveCommitted(), which is
+        // exactly #1266's FAILED_HELD path — the same treatment a thrown
+        // realizeShadowColors already gets, not a new one.
+        const legibilityScan = auditLegibility(root)
+        realizeLegibility(
+          root,
+          decideLegibility(legibilityScan.attrsByKey),
+          legibilityScan.elementsByKey
+        )
+        // Tagging and rule-realization are split here, unlike the document
+        // path's single realizeForegroundRepairs() call: the tags go on
+        // elements (scope-agnostic, foreground-repair.ts's own
+        // tagRepairCarriers), but the rules must land in *this* scope's
+        // adoptedStyleSheets, which only realizeShadowColors owns. Passing
+        // the matched actions back into a second realizeShadowColors call
+        // keeps one desired sheet set per root — see that function's own
+        // `repairs` parameter for why a separately-tracked second set would
+        // be invisible to both the #1280 integrity poll and
+        // clearShadowSurfaceState.
+        const repairs = tagRepairCarriers(
+          root,
+          decideForegroundRepairs(legibilityScan.attrsByKey),
+          legibilityScan.elementsByKey
+        )
+        realizeShadowColors(actions, root, rawSwatch, vendorInvert, repairs)
         // Recorded so reconcileCommittedSheets()'s own poll can later tell
         // whether *this* commit's own compensation has gone stale, rather
         // than only comparing against whatever the poll itself last

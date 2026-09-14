@@ -165,6 +165,8 @@ import type { Epoch } from "@some-extension/transport/session/epoch"
 
 import { createOcclusionHold, type OcclusionHold } from "./custody-primitive"
 import { DOCUMENT_SCOPE_ID } from "./document-scope"
+import { REPAIR_ATTR } from "./foreground-repair"
+import { LEGIBILITY_ATTR } from "./legibility-audit"
 import { isSelfAuthored } from "./pipeline"
 import type { ScopeId, ScopeRegistry } from "./scope-registry"
 
@@ -216,28 +218,57 @@ function isHoldMutation(record: MutationRecord, hold: OcclusionHold): boolean {
 }
 
 /**
- * True for an attribute record that is purely this extension's own
- * `data-sw-patched` tagging write — SF-AD's (#1268) `shadow-scope-theming.ts`
- * is the one thing, besides the hold itself, that ever writes an attribute
- * inside a registered shadow scope: its per-scope realization tags a
- * classified element via `actuator.ts`'s (reused) `tagSurfaceElements`,
- * exactly the kind of DOM write `isHoldMutation` does not cover (it targets
- * an arbitrary vendor element, never the hold's own veil). Unlike
- * `isHoldMutation`, this is a plain attribute-name check, not an
- * identity one — safe here specifically because `data-sw-patched` is an
- * attribute name this codebase alone ever writes (the same reasoning
- * `pipeline.ts`'s own Sensor observer already relies on by *excluding*
- * `data-sw-patched` from its `attributeFilter` entirely; this observer
- * cannot do the same, since it also needs `attributes: true` broadly for
- * the hold's own `style`/`aria-hidden` self-heal repairs). Left unfiltered,
- * a fresh per-scope tag write would misread as vendor evidence and
- * immediately `invalidate()` the very commit that write is itself a part
- * of — the same self-feedback-loop class #831 and this story's own SF-DC
- * predecessor (round 6, `HOLD_ATTR`/`isOwnNode`) both had to close.
+ * Every attribute name this extension's own per-scope realization writes
+ * inside a registered shadow scope.
+ *
+ * `data-sw-patched` is `shadow-scope-theming.ts`'s own surface tagging (via
+ * `actuator.ts`'s reused `tagSurfaceElements`, SF-AD/#1268). The other two
+ * are the rendered-contrast channel's, projected into shadow scopes by
+ * SF-RC3 (#1342): `legibility-audit.ts`'s diagnostic verdict and
+ * `foreground-repair.ts`'s repair key.
+ *
+ * Kept as a name list rather than a `[data-my-ext]`-style identity check
+ * because these are written on *arbitrary vendor elements*, never on a node
+ * this extension owns — an identity check has nothing to test. That is safe
+ * for exactly these names and no others: each is an attribute this codebase
+ * alone ever writes, the same reasoning `pipeline.ts`'s own Sensor observer
+ * already relies on by excluding `data-sw-patched` from its
+ * `attributeFilter` outright. This observer cannot use an
+ * `attributeFilter`, since it needs `attributes: true` broadly for the
+ * hold's own `style`/`aria-hidden` self-heal repairs, so it filters here
+ * instead.
+ */
+const OWN_SCOPE_TAG_ATTRS: ReadonlySet<string> = new Set([
+  "data-sw-patched",
+  LEGIBILITY_ATTR,
+  REPAIR_ATTR,
+])
+
+/**
+ * True for an attribute record that is purely one of this extension's own
+ * per-scope tagging writes (`OWN_SCOPE_TAG_ATTRS`) — the kind of DOM write
+ * `isHoldMutation` does not cover, since it targets an arbitrary vendor
+ * element rather than the hold's own veil.
+ *
+ * Left unfiltered, a fresh per-scope tag write misreads as vendor evidence
+ * and immediately `invalidate()`s the very commit that write is a part of,
+ * whose re-commit writes the tag again — the same self-feedback-loop class
+ * #831 and this story's own SF-DC predecessor (round 6,
+ * `HOLD_ATTR`/`isOwnNode`) both had to close. Measured directly, and only
+ * by e2e: adding SF-RC3's two attributes to `install()` without adding them
+ * here pegged the renderer hard enough that `page.evaluate` never got
+ * scheduled at all — every spec in the new suite timed out at 30s with
+ * "Target page, context or browser has been closed", with no failing
+ * assertion to point at the cause. A unit suite cannot see this: jsdom
+ * delivers `MutationObserver` records, but nothing there drives the
+ * discovery observer and the projection queue against each other the way a
+ * real page does.
  */
 function isThemeTaggingMutation(record: MutationRecord): boolean {
   return (
-    record.type === "attributes" && record.attributeName === "data-sw-patched"
+    record.type === "attributes" &&
+    record.attributeName !== null &&
+    OWN_SCOPE_TAG_ATTRS.has(record.attributeName)
   )
 }
 

@@ -37,6 +37,7 @@ import {
 import { rgbaToCss } from "@filter/lib/content/modify-colors"
 import { PREPAINT_DIRTY_CLASS } from "@filter/lib/content/prepaint"
 import { DARK_THEME_STYLE_ID } from "@filter/lib/content/theme-apply"
+import { detectVendorInvert } from "@filter/lib/content/vendor-filter"
 import { invoke } from "@some-extension/transport/adapter/invoke"
 import { createHypothesis } from "@some-extension/transport/estimator/hypothesis"
 import {
@@ -744,10 +745,16 @@ export function createContentSession(
         // diagnostic tags written a line above) and realized into its own
         // sheet. Deliberately a separate action set from the tags — see
         // foreground-repair.ts's own header.
+        // SF-RC3 (#1342) threads the vendor-invert compensation through the
+        // document half of this channel too, not just the shadow one — the
+        // same `detectVendorInvert()` read `injectDarkTheme()` already does
+        // per round, for the same reason (a vendor's own invert toggle can
+        // flip at any point in a page's lifetime, so it is never cached).
         realizeForegroundRepairs(
           lastRoot,
           decideForegroundRepairs(legibilityScan.attrsByKey),
-          legibilityScan.elementsByKey
+          legibilityScan.elementsByKey,
+          detectVendorInvert()
         )
       } else {
         // No theme applied this round (no swatch, or pageAlreadyDark()'s own

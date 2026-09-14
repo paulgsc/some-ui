@@ -1,3 +1,5 @@
+import { REPAIR_ATTR } from "@filter/adapter/foreground-repair"
+import { LEGIBILITY_ATTR } from "@filter/adapter/legibility-audit"
 import { createScopeRegistry } from "@filter/adapter/scope-registry"
 import {
   createShadowScopeTheming,
@@ -891,5 +893,139 @@ describe("createShadowScopeTheming.observe/teardown — reprojects on a vendor-i
 
     expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
     expect(shadow.adoptedStyleSheets).toBe(sheetsAfterCommit)
+  })
+})
+
+// ── SF-RC3 (#1342) — the rendered-contrast channel, per scope ──
+
+describe("createShadowScopeTheming.project — rendered-contrast channel (#1342)", () => {
+  /**
+   * A light surface (so the scope themes at all rather than reading as
+   * already-dark) containing a dark panel whose own carrier declares black
+   * text against it — the authored, pre-actuation violation SF-RC2's own
+   * witness B has, reproduced inside a shadow scope.
+   *
+   * Authored rather than actuation-induced on purpose: jsdom applies
+   * neither `adoptedStyleSheets` nor a `<style>` rule to `getComputedStyle`,
+   * so a violation that only exists *after* this module's own sheets land
+   * is invisible in this environment by construction. What this test is for
+   * is the wiring — that the scoped audit runs at all, that its two realize
+   * halves reach the right root, and that the repair's rule lands in *this
+   * scope's* adoptedStyleSheets — not the cascade, which is an e2e claim
+   * (`issue-1342-sfrc3-shadow-foreground.spec.ts`) against real Chromium.
+   */
+  function violatedScope(): { shadow: ShadowRoot; carrier: HTMLElement } {
+    const shadow = shadowRoot()
+    const surface = document.createElement("div")
+    surface.setAttribute("style", "background-color: rgb(255, 255, 255)")
+    const panel = document.createElement("div")
+    panel.setAttribute("style", "background-color: rgb(20, 20, 20)")
+    const carrier = document.createElement("div")
+    carrier.setAttribute("style", "color: rgb(0, 0, 0)")
+    carrier.textContent = "illegible"
+    panel.appendChild(carrier)
+    surface.appendChild(panel)
+    shadow.appendChild(surface)
+    return { shadow, carrier }
+  }
+
+  it("tags a violated carrier and adopts its repair rule into that scope's own sheets", async () => {
+    const reg = registry()
+    const { shadow, carrier } = violatedScope()
+    const id = registerHeld(reg, shadow)
+
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
+    theming.project(id)
+    await flushAll()
+
+    expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+    expect(carrier.getAttribute(LEGIBILITY_ATTR)).toBe("violated")
+    const key = carrier.getAttribute(REPAIR_ATTR)
+    expect(key).toBe("rgb(0, 0, 0)~rgb(20, 20, 20)")
+
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- see shadow-actuator.ts's header.
+    const sheets = shadow.adoptedStyleSheets ?? []
+    const repairRule = sheets
+      .flatMap((sheet) => [...sheet.cssRules])
+      .find((rule) => rule.cssText.includes(REPAIR_ATTR))
+    expect(repairRule, "no repair rule adopted into the scope").toBeDefined()
+    expect(repairRule?.cssText).toContain(`${REPAIR_ATTR}="${key ?? ""}"`)
+  })
+
+  it("keeps the repair sheet alongside — not instead of — the scope's static layer, host tokens and surface colours", async () => {
+    // One desired sheet set per root is what keeps shadowRealizationIntact
+    // (#1280) and clearShadowSurfaceState covering everything this extension
+    // put here — see realizeShadowColors's own `repairs` parameter.
+    const reg = registry()
+    const { shadow } = violatedScope()
+    const id = registerHeld(reg, shadow)
+
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
+    theming.project(id)
+    await flushAll()
+
+    // static layer + :host tokens + the white surface's own colour + repair.
+    expect(shadow.adoptedStyleSheets).toHaveLength(4)
+  })
+
+  it("re-projecting an unchanged scope converges on the identical tag and sheet set (no oscillation)", async () => {
+    // Theorem 7.2's fixed point, one scope over: the same authored evidence
+    // must re-derive the same violation every round. A round that instead
+    // read back its *own* repair would call the carrier legible and drop the
+    // tag — SF-RC2's own oscillation, which withScopeTransitionsFrozen and
+    // the teardown-before-install ordering are what prevent here.
+    const reg = registry()
+    const { shadow, carrier } = violatedScope()
+    const id = registerHeld(reg, shadow)
+
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
+    theming.project(id)
+    await flushAll()
+    const firstKey = carrier.getAttribute(REPAIR_ATTR)
+    const firstSheets = [...shadow.adoptedStyleSheets]
+
+    reg.invalidate(id)
+    theming.project(id)
+    await flushAll()
+
+    expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+    expect(carrier.getAttribute(REPAIR_ATTR)).toBe(firstKey)
+    expect([...shadow.adoptedStyleSheets]).toEqual(firstSheets)
+  })
+
+  it("leaves no freeze sheet of its own adopted once a round settles", async () => {
+    // The scope freeze is a read-time artifact, not part of the realization:
+    // anything left behind would be a sheet ownedSheetsByRoot does not track
+    // and clearShadowSurfaceState therefore never clears.
+    const reg = registry()
+    const { shadow } = violatedScope()
+    const id = registerHeld(reg, shadow)
+
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
+    theming.project(id)
+    await flushAll()
+
+    const frozen = shadow.adoptedStyleSheets.filter((sheet) =>
+      [...sheet.cssRules].some((rule) =>
+        rule.cssText.includes("transition: none")
+      )
+    )
+    expect(frozen).toHaveLength(0)
   })
 })
