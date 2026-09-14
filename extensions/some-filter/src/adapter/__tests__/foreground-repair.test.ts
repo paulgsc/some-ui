@@ -334,6 +334,23 @@ describe("realizeForegroundRepairs", () => {
     expect(document.getElementById(REPAIR_STYLE_ID)).toBeNull()
   })
 
+  it("leaves a carrier untagged when its inline glyph fill is important", () => {
+    // Codex's closing review: the rule declares -webkit-text-fill-color as
+    // well, so an important inline declaration of that property defeats the
+    // repair while leaving `color`'s own priority empty — and the audit
+    // never flags the carrier, since an explicit fill equal to `color`
+    // reads identical at sense time.
+    document.body.innerHTML =
+      '<div id="carrier" style="color: rgb(0, 0, 0); -webkit-text-fill-color: rgb(0, 0, 0) !important">hi</div>'
+    const el = document.getElementById("carrier")
+    if (el === null) throw new Error("fixture missing")
+
+    realizeForegroundRepairs(document.body, [ACTION], new Map([[KEY, [el]]]))
+
+    expect(el.hasAttribute(REPAIR_ATTR)).toBe(false)
+    expect(document.getElementById(REPAIR_STYLE_ID)).toBeNull()
+  })
+
   it("still repairs a carrier whose inline `all` is not important", () => {
     // The guard must key on priority, not on the presence of `all` — a
     // non-important inline declaration loses to this rule exactly like any

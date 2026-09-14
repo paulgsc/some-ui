@@ -766,31 +766,62 @@ function registerCandidate(
  */
 export const REPAIR_STYLE_ID = "__sw_legibility_repair"
 
+/** The sheet holding the scoped transition freeze `withRepairSuppressed` reads under. */
+export const FREEZE_STYLE_ID = "__sw_legibility_freeze"
+
 /**
- * The transition/animation freeze `withRepairSuppressed` reads under, as a
+ * `foreground-repair.ts`'s own `REPAIR_ATTR`, duplicated here rather than
+ * imported: that module already imports this one, so the other direction
+ * would be circular — the same small-stable-duplicate resolution this
+ * file's own header explains for `isRendered`/`SKIP_TAGS`. The freeze below
+ * is scoped by it, so the two must agree.
+ */
+const REPAIR_ATTR = "data-sw-legibility-fix"
+
+/**
+ * The transition freeze `withRepairSuppressed` reads under, as a
  * *persistent, disabled-by-default* extension-owned sheet rather than a
  * `<style>` appended and removed around each read.
  *
- * `prepaint.ts`'s own `withPrepaintSuppressed` does exactly that append-and-
- * remove, and it is correct there — it runs once, outside the Sensor's
- * observation window. Reusing it here does not work, and not subtly:
- * `isSelfAuthored` deliberately does *not* treat the removal of an
- * extension-owned node as self-authored (Remark 7.2 — "our node is gone" is
- * ambiguous between our teardown and the vendor's, and the ambiguity has to
- * resolve toward reacting). So tearing the freeze down at the end of every
- * audit queues a mutation the Sensor reacts to, whose round audits again,
- * which tears it down again — a self-feeding loop, #831's exact shape.
- * Caught by this package's own quiescence tests, which measured six rounds
- * where one was expected before this was reduced to a `disabled` toggle.
+ * `prepaint.ts`'s own `withPrepaintSuppressed` does that append-and-remove,
+ * and it is correct there — it runs once, outside the Sensor's observation
+ * window. Reusing it here does not work, and not subtly: `isSelfAuthored`
+ * deliberately does *not* treat the removal of an extension-owned node as
+ * self-authored (Remark 7.2 — "our node is gone" is ambiguous between our
+ * teardown and the vendor's, and the ambiguity has to resolve toward
+ * reacting). So tearing the freeze down at the end of every audit queues a
+ * mutation the Sensor reacts to, whose round audits again, which tears it
+ * down again — a self-feeding loop, #831's exact shape. Caught by this
+ * package's own quiescence tests, which measured six rounds where one was
+ * expected before this was reduced to a `disabled` toggle. Toggling
+ * `CSSStyleSheet.disabled` mutates no DOM at all, the same reason
+ * `pipeline.ts`'s `withVendorColorsVisible` suppresses its own sheets that
+ * way.
  *
- * Toggling `CSSStyleSheet.disabled` mutates no DOM at all, which is the
- * same reason `pipeline.ts`'s `withVendorColorsVisible` suppresses its own
- * sheets that way. The element is created at most once per document and
- * never removed while the pipeline runs; its creation is an *addition* of a
- * `[data-my-ext]` node, which `isSelfAuthored` does filter.
+ * Scoped to `[${REPAIR_ATTR}]`, and declaring `transition` only — not
+ * `*` and not `animation` — because the freeze exists solely to stop *this
+ * extension's own* sheet toggle from starting a transition on a carrier it
+ * repaired. Anything wider is collateral damage, and measurably so
+ * (bot-found, Codex's own closing review of this PR; confirmed directly
+ * against real Chromium with a `*`-scoped freeze declaring both):
+ *
+ *   - `animation: none` *removes* a running animation rather than pausing
+ *     it. A spinner measured at `currentTime` 799.9ms had zero animations
+ *     during the freeze and came back at `currentTime` 0 — restarted from
+ *     the beginning, not resumed. On a page reconciling often enough, a
+ *     vendor animation would never visibly progress at all. Nothing in this
+ *     channel ever needed it: an `@keyframes` animation is not something a
+ *     stylesheet toggle can start.
+ *   - A `*` scope cancels in-flight transitions on elements this extension
+ *     never touched. A control mid-fade at `rgb(20, 20, 20)` jumped
+ *     straight to its `rgb(255, 255, 255)` destination.
+ *
+ * The same probe with this scope left the spinner's animation running
+ * untouched. What remains in scope is exactly the necessary cost: a carrier
+ * this channel has already repaired, whose in-flight colour transition is
+ * snapped to its destination for the duration of one synchronous read —
+ * which is the settled value the read is after in the first place.
  */
-export const FREEZE_STYLE_ID = "__sw_legibility_freeze"
-
 function freezeSheet(): CSSStyleSheet | null {
   const existing = document.getElementById(FREEZE_STYLE_ID)
   if (existing instanceof HTMLStyleElement) return existing.sheet
@@ -798,8 +829,7 @@ function freezeSheet(): CSSStyleSheet | null {
   const style = document.createElement("style")
   style.id = FREEZE_STYLE_ID
   style.setAttribute("data-my-ext", "")
-  style.textContent =
-    "*, *::before, *::after { transition: none !important; animation: none !important; }"
+  style.textContent = `[${REPAIR_ATTR}] { transition: none !important; }`
   document.head.appendChild(style)
   const sheet = style.sheet
   // Inert until a read actually needs it. The window between append and
@@ -870,16 +900,19 @@ function freezeSheet(): CSSStyleSheet | null {
  * would be more code for less correctness.
  */
 function withRepairSuppressed<T>(fn: () => T): T {
+  const el = document.getElementById(REPAIR_STYLE_ID)
+  const sheet = el instanceof HTMLStyleElement ? el.sheet : null
+  // Nothing of ours is applied, so nothing of ours can perturb a carrier —
+  // and a freeze with nothing to protect against is pure collateral. The
+  // first round of any page takes this path.
+  if (sheet === null || sheet.disabled) return fn()
+
   const freeze = freezeSheet()
   if (freeze !== null) {
     freeze.disabled = false
     flushStyle()
   }
   try {
-    const el = document.getElementById(REPAIR_STYLE_ID)
-    const sheet = el instanceof HTMLStyleElement ? el.sheet : null
-    if (sheet === null || sheet.disabled) return fn()
-
     sheet.disabled = true
     try {
       return fn()

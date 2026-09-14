@@ -349,6 +349,19 @@ export function buildForegroundRepairRule(
  */
 function repairCanWinCascade(el: HTMLElement): boolean {
   if (el.style.getPropertyPriority("color") === "important") return false
+  // The rule declares `-webkit-text-fill-color` too (see
+  // `buildForegroundRepairRule`), so an important inline declaration of
+  // *that* property defeats the repair just as completely, while leaving
+  // `color`'s own priority empty — and the audit never flags the carrier,
+  // since an explicit fill equal to `color` reads identical at sense time
+  // (bot-found, Codex's own closing review of this PR; confirmed directly
+  // against real Chromium: with `color: rgb(0,0,0)` and
+  // `-webkit-text-fill-color: rgb(0,0,0) !important`, the emitted rule won
+  // `color` at `rgb(158, 158, 158)` while the fill stayed `rgb(0, 0, 0)` —
+  // the glyph painting black under a tag claiming a repair).
+  if (el.style.getPropertyPriority("-webkit-text-fill-color") === "important") {
+    return false
+  }
   // `all` is the one shorthand `color` is a longhand of, and CSSOM does not
   // expand it: for `style="all: initial !important"` a real Chromium reports
   // `getPropertyPriority("color")` as `""` and `getPropertyValue("color")`
