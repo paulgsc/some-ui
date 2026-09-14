@@ -35,6 +35,18 @@ function shortsLockup(videoId: string): HTMLElement {
   return el
 }
 
+/** Fill `el` with fully-extractable markup (videoId + channelId) for a video. */
+function fillFullCard(el: HTMLElement, videoId: string, channel: string): void {
+  el.innerHTML = `<a id="video-title" href="/watch?v=${videoId}"></a><a href="/@${channel}"></a>`
+}
+
+/** A fully-extractable card (videoId + channelId) for a given video. */
+function fullCard(videoId: string, channel: string): HTMLElement {
+  const el = document.createElement("ytd-rich-item-renderer")
+  fillFullCard(el, videoId, channel)
+  return el
+}
+
 /** Advance n retry passes, letting the awaited whitelist round-trips settle. */
 async function passes(n: number): Promise<void> {
   for (let i = 0; i < n; i++) {
@@ -287,5 +299,75 @@ describe("the retry loop", () => {
     await passes(2)
 
     expect(mgr.size, "adopted once it hydrates").toBe(1)
+  })
+})
+
+describe("per-element staleness across rapid recycling (#980)", () => {
+  // _promote()'s only guard against concurrent calls for the same element is
+  // _promoting, a WeakSet keyed on the element alone — not on which videoId
+  // the call is for. So while one videoId's whitelist round-trip is in
+  // flight, every _promote() call for *any other* videoId the element gets
+  // recycled to in the meantime no-ops immediately (re-entrancy), and the
+  // first call's own stale resolution is the only thing left to mount —
+  // unless it re-validates against the element's *current* claim first.
+
+  it("mounts the last recycled video, not an earlier one still awaiting its whitelist check", async () => {
+    const el = fullCard("vidA", "ChanA")
+    document.body.appendChild(el)
+
+    let releaseA!: () => void
+    const gateA = new Promise<{ ok: boolean; whitelisted: boolean }>(
+      (resolve): void => {
+        releaseA = (): void => resolve({ ok: true, whitelisted: false })
+      }
+    )
+    vi.mocked(browser.runtime.sendMessage).mockReturnValueOnce(gateA)
+
+    mgr.upsert(el) // starts _promote(el, "vidA", …), awaiting IS_WHITELISTED
+
+    // Recycled twice more before that round-trip resolves. Each upsert's own
+    // _promote() call no-ops immediately — _promoting still holds el for
+    // vidA — so nothing mounts for vidB or vidC yet either.
+    fillFullCard(el, "vidB", "ChanB")
+    mgr.upsert(el)
+    fillFullCard(el, "vidC", "ChanC")
+    mgr.upsert(el)
+
+    expect(mgr.size, "vidA's round-trip hasn't resolved yet").toBe(0)
+
+    releaseA()
+    // One pass discards vidA's now-stale resolution and re-derives el's
+    // current state (vidC) via the stale-bail retry in _promote()'s finally
+    // block; a second lets vidC's own whitelist round-trip resolve.
+    await passes(2)
+
+    expect(mgr.size, "exactly one entry survives the recycle storm").toBe(1)
+    expect(
+      el.dataset["boyoVid"],
+      "must reflect the last recycle (vidC), not the stale first one (vidA)"
+    ).toBe("vidC")
+    // vidB was never seen long enough to matter — recycled through entirely
+    // inside vidA's in-flight window, dropped silently, and never mounted.
+    expect(el.getAttribute("data-boyo"), "masked throughout").toBe("0")
+  })
+
+  it("does not disturb an element recycled only once", async () => {
+    // Guard against a fix that over-invalidates: a single, ordinary recycle
+    // (the case _elToVid's existing reuse check already handles) must still
+    // resolve normally, with no spurious extra retry.
+    const el = fullCard("vidX", "ChanX")
+    document.body.appendChild(el)
+    mgr.upsert(el)
+    await passes(2)
+
+    expect(mgr.size).toBe(1)
+    expect(el.dataset["boyoVid"]).toBe("vidX")
+
+    fillFullCard(el, "vidY", "ChanY")
+    mgr.upsert(el)
+    await passes(2)
+
+    expect(mgr.size, "the old entry is replaced, not duplicated").toBe(1)
+    expect(el.dataset["boyoVid"]).toBe("vidY")
   })
 })
