@@ -51,14 +51,21 @@ import {
 } from "@some-extension/transport/scheduler/reconcile"
 import type { SessionLifecycle } from "@some-extension/transport/session/lifecycle"
 
-import { DYNAMIC_STYLE_ID, isHTMLElementNode, realize } from "./actuator"
+import {
+  clearPerSurfaceState,
+  DYNAMIC_STYLE_ID,
+  isHTMLElementNode,
+  realize,
+} from "./actuator"
 import type { FilterAction, SurfaceAttr, SurfaceKey } from "./contracts"
 import {
+  clearForegroundRepairs,
   decideForegroundRepairs,
   realizeForegroundRepairs,
 } from "./foreground-repair"
 import {
   auditLegibility,
+  clearLegibilityTags,
   decideLegibility,
   realizeLegibility,
   REPAIR_STYLE_ID,
@@ -406,6 +413,44 @@ export function withVendorColorsVisible<T>(fn: () => T): T {
       sheet.disabled = false
     }
   }
+}
+
+/**
+ * Drops every colour artifact this extension's auto-mode realization owns in
+ * the document scope: the per-surface `<style>` and its `data-sw-patched`
+ * tags, the legibility channel's `data-sw-legibility` diagnostics, and the
+ * foreground repair sheet with its `data-sw-legibility-fix` tags.
+ *
+ * `theme-apply.ts`'s own `restoreVendor()` is documented as removing "all
+ * theming", but it only ever knew about the two layers that predate the
+ * adapter: it drops `data-sw-dark` and the static `__sw_dark_theme` sheet,
+ * and nothing else. Everything the per-surface Actuator realizes has, until
+ * now, survived a mode exit outright.
+ *
+ * That gap is not reachable from inside the pipeline, which is why it went
+ * unnoticed: `realize()`'s own `restore-native` branch clears per-surface
+ * state, and `fire()`'s no-`activate-theme` branch clears both legibility
+ * channels, but leaving auto mode reaches neither — `content.ts`'s
+ * `applyState` calls `contentSession.teardown()` (which only disconnects the
+ * observer) *before* `restoreVendor()`, so no further round ever runs. Found
+ * by a bot review of the repair sheet specifically (Codex review round 1);
+ * confirmed by direct measurement against the real built extension that the
+ * pre-existing per-surface half leaks identically and more visibly — after
+ * an auto→off keyboard cycle a themed card still rendered
+ * `background-color: rgb(23, 23, 23)`, i.e. the page stayed dark with the
+ * extension switched off. `tests/e2e/specs/issue-1341-sfrc2-foreground-repair.spec.ts`
+ * regression-locks the whole transition, not just this story's own half:
+ * splitting one artifact out of a "common mode-transition cleanup path"
+ * while knowingly leaving its siblings behind would make the path a fiction.
+ *
+ * Document scope only. A committed shadow scope's own realization is
+ * `shadow-scope-theming.ts`'s `teardown()`, which `applyState` already calls
+ * alongside this.
+ */
+export function clearRealizedColorState(): void {
+  clearPerSurfaceState()
+  clearLegibilityTags()
+  clearForegroundRepairs()
 }
 
 // ── Self-authored mutations (Axiom 3.5, write side) ──────────────────────────

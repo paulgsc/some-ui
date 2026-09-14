@@ -1,5 +1,6 @@
 import {
   buildForegroundRepairRule,
+  clearForegroundRepairs,
   decideForegroundRepairs,
   realizeForegroundRepairs,
   REPAIR_ATTR,
@@ -51,11 +52,13 @@ describe("repairedForeground", () => {
   it("lands on modifyForegroundColor's own lift when that already clears the floor", () => {
     // The overwhelmingly common case, and the one that keeps this channel's
     // repairs and theme-adapter.ts's co-located (#741) textCss in the same
-    // colour regime: black text over a themed dark surface lifts to exactly
-    // the achromatic band floor, which clears 4.5:1 comfortably.
+    // colour regime: black text over a themed dark surface lifts to the
+    // achromatic band floor, which clears 4.5:1 comfortably. Quantized to
+    // what rgbaToCss will actually serialize (158/255), not the nominal
+    // 0.62 — the scored colour and the emitted colour are the same colour.
     const repaired = repairedForeground(BLACK, DARK_SURFACE)
 
-    expect(repaired).toEqual([0.62, 0.62, 0.62, 1])
+    expect(repaired).toEqual([158 / 255, 158 / 255, 158 / 255, 1])
   })
 
   it("climbs the band when the plain lift does not clear the floor", () => {
@@ -64,24 +67,25 @@ describe("repairedForeground", () => {
     // repair that is still a violation.
     const backdrop: RGBA = [80 / 255, 80 / 255, 80 / 255, 1]
 
-    const floorOnly: RGBA = [0.62, 0.62, 0.62, 1]
+    const floorOnly: RGBA = [158 / 255, 158 / 255, 158 / 255, 1]
     expect(
       contrastRatio(luminanceOf(floorOnly), luminanceOf(backdrop))
     ).toBeLessThan(MIN_CONTRAST_RATIO)
 
     const repaired = repairedForeground(BLACK, backdrop)
-    expect(repaired).not.toBeNull()
+    expect(repaired).toEqual([194 / 255, 194 / 255, 194 / 255, 1])
     if (repaired === null) return
 
     expect(
       contrastRatio(luminanceOf(repaired), luminanceOf(backdrop))
     ).toBeGreaterThanOrEqual(MIN_CONTRAST_RATIO)
-    // Least-luminant-that-clears: one step below is still a violation, so
-    // this is genuinely the first clearing value and not an overshoot.
+    // Least-luminant-that-clears: the next colour 8-bit sRGB can express
+    // below this one is still a violation, so this is genuinely the first
+    // clearing value and not an overshoot.
     const oneStepDimmer: RGBA = [
-      repaired[0] - 0.005,
-      repaired[1] - 0.005,
-      repaired[2] - 0.005,
+      repaired[0] - 1 / 255,
+      repaired[1] - 1 / 255,
+      repaired[2] - 1 / 255,
       1,
     ]
     expect(
@@ -89,6 +93,38 @@ describe("repairedForeground", () => {
     ).toBeLessThan(MIN_CONTRAST_RATIO)
     // κ_hi: never raw white, never past the band's own ceiling.
     expect(repaired[0]).toBeLessThanOrEqual(FG_LIGHT_MAX)
+  })
+
+  it("scores the colour it will actually serialize, not the full-precision one", () => {
+    // Codex review round 1, confirmed by direct computation: over
+    // rgb(55, 55, 55) the full-precision lightness 0.625 measures 4.518:1
+    // and would be accepted, but serializes to rgb(159, 159, 159), which
+    // renders at 4.4976:1 — below the floor it was selected for. The search
+    // must reject it and take the next representable colour.
+    const backdrop: RGBA = [55 / 255, 55 / 255, 55 / 255, 1]
+
+    const roundedDown: RGBA = [159 / 255, 159 / 255, 159 / 255, 1]
+    expect(
+      contrastRatio(luminanceOf(roundedDown), luminanceOf(backdrop))
+    ).toBeLessThan(MIN_CONTRAST_RATIO)
+
+    const repaired = repairedForeground(BLACK, backdrop)
+    expect(repaired).toEqual([160 / 255, 160 / 255, 160 / 255, 1])
+  })
+
+  it("tests the band's own ceiling before giving up", () => {
+    // Codex review round 1, confirmed by direct computation: an accumulating
+    // `l += step` loop starting from an unaligned baseline last tested 0.895
+    // here (4.458:1) and returned null, while FG_LIGHT_MAX itself reaches
+    // 4.532:1. The indexed loop lands on the ceiling exactly.
+    const backdrop: RGBA = [103 / 255, 103 / 255, 103 / 255, 1]
+
+    const repaired = repairedForeground(BLACK, backdrop)
+    expect(repaired).toEqual([230 / 255, 230 / 255, 230 / 255, 1])
+    if (repaired === null) return
+    expect(
+      contrastRatio(luminanceOf(repaired), luminanceOf(backdrop))
+    ).toBeGreaterThanOrEqual(MIN_CONTRAST_RATIO)
   })
 
   it("preserves hue and saturation", () => {
@@ -254,6 +290,24 @@ describe("realizeForegroundRepairs", () => {
     expect(document.getElementById(REPAIR_STYLE_ID)).toBeNull()
   })
 
+  it("leaves a carrier whose own inline !important colour outranks the rule untagged", () => {
+    // Codex review round 1: an important *inline* declaration is sorted
+    // ahead of any selector-matched important author declaration, however
+    // specific — the duplicated attribute selector cannot win here. Tagging
+    // it anyway would emit a rule that silently loses while the tag claimed
+    // a repair; the diagnostic data-sw-legibility tag still reports the
+    // violation.
+    document.body.innerHTML =
+      '<div id="carrier" style="color: rgb(0, 0, 0) !important">hi</div>'
+    const el = document.getElementById("carrier")
+    if (el === null) throw new Error("fixture missing")
+
+    realizeForegroundRepairs(document.body, [ACTION], new Map([[KEY, [el]]]))
+
+    expect(el.hasAttribute(REPAIR_ATTR)).toBe(false)
+    expect(document.getElementById(REPAIR_STYLE_ID)).toBeNull()
+  })
+
   it("emits no rule for an action whose key resolves to no element", () => {
     carrier()
 
@@ -286,6 +340,30 @@ describe("the negative control (Gate-0 F-18) receives no repair", () => {
     )
 
     expect(descendant.hasAttribute(REPAIR_ATTR)).toBe(false)
+    expect(document.getElementById(REPAIR_STYLE_ID)).toBeNull()
+  })
+})
+
+describe("clearForegroundRepairs", () => {
+  it("drops the sheet and every tag when auto mode is left entirely", () => {
+    // content.ts's applyState tears the session down before calling
+    // restoreVendor(), so no reconcile round ever runs to reconcile this
+    // channel's own state away — see pipeline.ts's clearRealizedColorState.
+    document.body.innerHTML = '<div id="carrier">hi</div>'
+    const el = document.getElementById("carrier")
+    if (el === null) throw new Error("fixture missing")
+    const key = "rgb(0, 0, 0)~rgb(20, 20, 20)"
+
+    realizeForegroundRepairs(
+      document.body,
+      [{ kind: "repair-foreground", key, css: "rgb(158, 158, 158)" }],
+      new Map([[key, [el]]])
+    )
+    expect(document.getElementById(REPAIR_STYLE_ID)).not.toBeNull()
+
+    clearForegroundRepairs()
+
+    expect(el.hasAttribute(REPAIR_ATTR)).toBe(false)
     expect(document.getElementById(REPAIR_STYLE_ID)).toBeNull()
   })
 })

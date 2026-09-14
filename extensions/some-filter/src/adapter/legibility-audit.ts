@@ -957,6 +957,19 @@ export const LEGIBILITY_ATTR = "data-sw-legibility"
  * closes both cases the same way, regardless of *why* a given element
  * dropped out.
  */
+/**
+ * Drops every `data-sw-legibility` tag this channel wrote, document-wide.
+ * See `foreground-repair.ts`'s own `clearForegroundRepairs` and
+ * `pipeline.ts`'s `clearRealizedColorState` (this function's only caller)
+ * for why leaving auto mode needs an explicit teardown rather than relying
+ * on a final reconcile round.
+ */
+export function clearLegibilityTags(): void {
+  document.querySelectorAll(`[${LEGIBILITY_ATTR}]`).forEach((el) => {
+    el.removeAttribute(LEGIBILITY_ATTR)
+  })
+}
+
 export function realizeLegibility(
   root: Element | ShadowRoot,
   actions: ReadonlyArray<TagLegibilityAction>,

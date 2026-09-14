@@ -21,6 +21,7 @@
 
 import { relativeLuminance } from "@filter/lib/content/color"
 import { expect, test, waitForClassification } from "@filter/playwright/fixture"
+import { backgroundWorker } from "@filter/playwright/fixtures/legacy-mode"
 import type { Page } from "@playwright/test"
 
 const MIN_CONTRAST_RATIO = 4.5
@@ -209,5 +210,86 @@ test.describe("SF-RC2: rendered foreground repair, document scope (#1341)", () =
       sheetAfter,
       "an unchanged verdict must rewrite nothing at all (#831)"
     ).toBe(sheetBefore)
+  })
+})
+
+test.describe("SF-RC2: leaving auto mode returns the page to native (#1341)", () => {
+  test("no realized colour artifact survives an auto -> off transition", async ({
+    context,
+    fixture,
+  }) => {
+    // Codex review round 1, on this PR: the repair sheet's only teardown
+    // was a reconcile round that settles without `activate-theme`, and
+    // leaving auto mode never produces one — content.ts's applyState calls
+    // contentSession.teardown() (which merely disconnects the observer)
+    // before restoreVendor(), and restoreVendor() knows only about the two
+    // pre-adapter layers.
+    //
+    // Measured directly while confirming that finding: the per-surface
+    // background half leaks identically and far more visibly — #card
+    // rendered `rgb(23, 23, 23)` with the extension switched *off*, i.e.
+    // the page simply stayed dark. So this asserts the whole transition,
+    // not just this story's own half: a "common mode-transition cleanup
+    // path" that knowingly skipped its siblings would be a fiction.
+    const page = await fixture.goto("legibility-repair-page")
+    await waitForClassification(page)
+    await page.waitForTimeout(300)
+
+    const themed = await page.evaluate(() => ({
+      repairSheet: document.getElementById("__sw_legibility_repair") !== null,
+      patched: document.querySelectorAll("[data-sw-patched]").length,
+      fixed: document.querySelectorAll("[data-sw-legibility-fix]").length,
+    }))
+    expect(
+      themed,
+      "precondition: auto mode actually realized all three artifact kinds"
+    ).toEqual({ repairSheet: true, patched: 3, fixed: 2 })
+
+    const sw = await backgroundWorker(context)
+    const tabId = await sw.evaluate(async () => {
+      // eslint-disable-next-line no-restricted-globals
+      const tabs = await chrome.tabs.query({})
+      const t = tabs.find((tab) =>
+        tab.url?.includes("legibility-repair-page.html")
+      )
+      if (t?.id === undefined) throw new Error("no matching tab")
+      return t.id
+    })
+    // tab-state.ts's STATE_CYCLE: auto -> off.
+    await sw.evaluate(async (id) => {
+      // eslint-disable-next-line no-restricted-globals
+      await chrome.tabs.sendMessage(id, { type: "CYCLE_TAB_STATE" })
+    }, tabId)
+    await page.waitForTimeout(400)
+
+    const off = await page.evaluate(() => ({
+      darkAttr: document.documentElement.hasAttribute("data-sw-dark"),
+      staticSheet: document.getElementById("__sw_dark_theme") !== null,
+      dynamicSheet: document.getElementById("__sw_dark_dynamic") !== null,
+      repairSheet: document.getElementById("__sw_legibility_repair") !== null,
+      patched: document.querySelectorAll("[data-sw-patched]").length,
+      fixed: document.querySelectorAll("[data-sw-legibility-fix]").length,
+      legibility: document.querySelectorAll("[data-sw-legibility]").length,
+      cardBg: getComputedStyle(document.getElementById("card") ?? document.body)
+        .backgroundColor,
+      chipColor: getComputedStyle(
+        document.getElementById("chip") ?? document.body
+      ).color,
+    }))
+
+    expect(off).toEqual({
+      darkAttr: false,
+      staticSheet: false,
+      dynamicSheet: false,
+      repairSheet: false,
+      patched: 0,
+      fixed: 0,
+      legibility: 0,
+      // The fixture's own authored values, back untouched — the real claim
+      // here, since an attribute count of zero would still be satisfied by
+      // a stylesheet nobody cleaned up.
+      cardBg: "rgb(245, 245, 245)",
+      chipColor: "rgb(17, 17, 17)",
+    })
   })
 })

@@ -105,13 +105,37 @@ export const REPAIR_ATTR = "data-sw-legibility-fix"
 
 /**
  * How finely `repairedForeground` escalates through the remainder of
- * `modifyForegroundColor`'s band. 0.005 in lightness is below the
- * granularity 8-bit sRGB can even represent for most hues (≈1.3/255), so a
- * finer step would buy nothing; the loop runs at most ~56 times, once per
- * *distinct key* (not per element), inside a pass that already calls
- * `getComputedStyle` per visited node.
+ * `modifyForegroundColor`'s band: exactly the granularity 8-bit sRGB can
+ * represent, so the search visits every distinct colour the emitted CSS is
+ * actually able to express and skips none of them. A coarser step (0.005
+ * here originally) can step straight over the true least-luminant clearing
+ * value; a finer one would only re-test colours that serialize identically.
+ * At most ~72 iterations, once per *distinct key* (not per element), inside
+ * a pass that already calls `getComputedStyle` per visited node.
  */
-const REPAIR_BAND_STEP = 0.005
+const REPAIR_BAND_STEP = 1 / 255
+
+/**
+ * Rounds a candidate to what `rgbaToCss` will actually serialize it as —
+ * 8-bit channels, alpha to three decimals — so the colour scored against
+ * the contrast floor and the colour written into the emitted rule are the
+ * same colour.
+ *
+ * Scoring full-precision channels and *then* rounding can emit a repair
+ * that does not clear the floor it was selected for (bot-found, Codex
+ * review round 1: confirmed by direct computation — black over
+ * `rgb(55, 55, 55)` picks lightness 0.625 at 4.518:1, which serializes to
+ * `rgb(159, 159, 159)` and renders at 4.4976:1, below the floor; quantizing
+ * first rejects that candidate and selects `rgb(160, 160, 160)` at 4.552:1
+ * instead). Mirrors `rgbaToCss`'s own `to255`/`toFixed(3)` arithmetic
+ * exactly rather than approximating it — the two must agree, or this
+ * function's whole point is lost.
+ */
+function quantizeToSerializedColor([r, g, b, a]: RGBA): RGBA {
+  const to255 = (v: number): number =>
+    Math.round(Math.min(1, Math.max(0, v)) * 255) / 255
+  return [to255(r), to255(g), to255(b), Number(a.toFixed(3))]
+}
 
 /**
  * The color to repaint a violated carrier's glyphs in: hue- and
@@ -154,17 +178,28 @@ export function repairedForeground(
   foreground: RGBA,
   backdrop: RGBA
 ): RGBA | null {
-  const baseline = modifyForegroundColor(foreground)
+  const baseline = quantizeToSerializedColor(modifyForegroundColor(foreground))
   if (!violatesContrast(baseline, backdrop)) return baseline
 
   const { h, s, l: baselineLightness, a } = rgbToHSL(baseline)
+  const span = FG_LIGHT_MAX - baselineLightness
+  if (span <= 0) return null
 
-  for (
-    let l = baselineLightness + REPAIR_BAND_STEP;
-    l <= FG_LIGHT_MAX;
-    l += REPAIR_BAND_STEP
-  ) {
-    const candidate = hslToRGB({ h, s, l, a })
+  // Indexed, not accumulated: the final iteration lands on `FG_LIGHT_MAX`
+  // exactly, and every step is at most `REPAIR_BAND_STEP` wide. A
+  // `l += REPAIR_BAND_STEP` loop guarantees neither, since the baseline is
+  // not aligned to the step — it simply stops at whichever value happens to
+  // fall short of the ceiling, never testing the ceiling itself, and
+  // floating-point accumulation can push the nominal last step past the
+  // bound as well (bot-found, Codex review round 1: confirmed by direct
+  // computation — black over `rgb(103, 103, 103)` last tested lightness
+  // 0.895 at 4.458:1 and gave up, while the band's own ceiling reaches
+  // 4.532:1 and would have repaired it).
+  const steps = Math.ceil(span / REPAIR_BAND_STEP)
+  for (let i = 1; i <= steps; i += 1) {
+    const candidate = quantizeToSerializedColor(
+      hslToRGB({ h, s, l: baselineLightness + (span * i) / steps, a })
+    )
     if (!violatesContrast(candidate, backdrop)) return candidate
   }
 
@@ -252,6 +287,46 @@ export function buildForegroundRepairRule(
   return `${attr}${attr}${EXT_GUARD}{color:${action.css}!important}`
 }
 
+/**
+ * Whether an author-origin `!important` rule — which is all this channel
+ * can emit — is actually able to win `color` on this carrier.
+ *
+ * `buildForegroundRepairRule`'s duplicated attribute selector settles a tie
+ * against `buildSurfaceColorRule`, but specificity is only the *last*
+ * tiebreak in the cascade, and it cannot beat a declaration that outranks
+ * this one earlier: a `style="color: … !important"` attribute is an
+ * important author declaration that the spec sorts ahead of any selector-
+ * matched one, however specific (bot-found, Codex review round 1). Such a
+ * carrier is detected and left untagged rather than tagged with a rule that
+ * silently loses — the diagnostic `data-sw-legibility="violated"` still
+ * reports it, so the violation stays visible instead of looking repaired.
+ *
+ * `getPropertyPriority` reads the element's own inline declaration block
+ * directly, so this costs no style resolution and — unlike reading back
+ * `getComputedStyle` after realization to see whether the rule won — it
+ * works identically in jsdom, where no `<style>` rule is applied to
+ * `getComputedStyle` at all (confirmed directly: an element matching an
+ * `!important` attribute-selector rule still reads back its own inline
+ * colour there). It is also a *predicate*, not a post-hoc correction, so a
+ * carrier this channel cannot help is never written to and then unwritten.
+ *
+ * Known residual, the one cascade loss this cannot see: an important author
+ * *stylesheet* rule with ID-level specificity (`#id { color: … !important }`)
+ * also outranks this rule, and nothing short of CSSOM rule-matching can
+ * detect it from the element alone. No amount of extra attribute
+ * specificity closes it either — specificity compares ID count first, so a
+ * selector carrying one ID beats any number of attribute selectors. The
+ * principled fix is a different injection origin entirely (user-origin CSS
+ * via `chrome.scripting.insertCSS({ origin: "USER" })`, whose important
+ * declarations outrank every author one), which is a materially different
+ * mechanism from the `<style>`-element realization this whole codebase is
+ * built on — the same boundary ADR 0001's own deferred stylesheet-rule
+ * transformation sits behind, and not this story's to cross.
+ */
+function repairCanWinCascade(el: HTMLElement): boolean {
+  return el.style.getPropertyPriority("color") !== "important"
+}
+
 function repairStyleEl(): HTMLStyleElement {
   const existing = document.getElementById(REPAIR_STYLE_ID)
   if (existing instanceof HTMLStyleElement) return existing
@@ -293,6 +368,22 @@ function repairStyleEl(): HTMLStyleElement {
  * absence is also what makes "no carriers" and "no violations" converge on
  * the same zero-write state.
  */
+/**
+ * Drops every artifact this channel owns, document-wide: the repair sheet
+ * and every `data-sw-legibility-fix` tag whose rules it carried.
+ *
+ * A reconcile round reaching `realizeForegroundRepairs` with no actions
+ * already does this, and is the normal path while auto mode is running.
+ * Leaving auto mode entirely is not that path — see `pipeline.ts`'s own
+ * `clearRealizedColorState`, this function's only caller.
+ */
+export function clearForegroundRepairs(): void {
+  document.getElementById(REPAIR_STYLE_ID)?.remove()
+  document.querySelectorAll(`[${REPAIR_ATTR}]`).forEach((el) => {
+    el.removeAttribute(REPAIR_ATTR)
+  })
+}
+
 export function realizeForegroundRepairs(
   root: Element | ShadowRoot,
   actions: ReadonlyArray<RepairForegroundAction>,
@@ -307,6 +398,7 @@ export function realizeForegroundRepairs(
     let matched = false
     for (const el of elementsByKey.get(action.key) ?? []) {
       if (!isHTMLElementNode(el)) continue
+      if (!repairCanWinCascade(el)) continue
       keep.add(el)
       matched = true
       if (el.dataset.swLegibilityFix !== action.key) {
