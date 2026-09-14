@@ -358,6 +358,30 @@ describe("realize — the did-it-write signal content.ts gates its shadow re-con
     ).toBe(false)
   })
 
+  it("reports a write when the static theme sheet is re-created under an unchanged verdict", () => {
+    // The static layer owns `html, body { background: … }`, which a shadow
+    // carrier with transparent ancestors resolves its backdrop onto. A
+    // vendor framework removing that sheet moves the backdrop — and with
+    // `data-sw-dark` already present, nothing else in realize() would
+    // report a write (bot-found, Codex's confirming review of #1412).
+    const key: SurfaceKey = "rgb(255, 255, 255)"
+    document.body.innerHTML = '<div id="a"></div>'
+    const a = document.getElementById("a")
+    if (a === null) throw new Error("fixture missing")
+    const actions = surfaceActions(key)
+    const elements = new Map([[key, [a]]])
+    realize(actions, elements)
+    expect(realize(actions, elements)).toBe(false)
+
+    document.getElementById(STYLE_ID)?.remove()
+
+    expect(
+      realize(actions, elements),
+      "re-creating the canvas sheet is a backdrop change, not a no-op"
+    ).toBe(true)
+    expect(document.getElementById(STYLE_ID)).not.toBeNull()
+  })
+
   it("reports NO write for restore-native on a page that was never themed", () => {
     document.body.innerHTML = '<div id="a"></div>'
     expect(realize([{ kind: "restore-native" }], new Map())).toBe(false)

@@ -424,6 +424,18 @@ export function createShadowScopeTheming(
    * Scopes whose realization has been torn down since the last round that
    * reported for them — recorded by `uninstall()` below.
    *
+   * Keyed by the root rather than the scope id, and a `WeakSet` rather than
+   * a `Set`, for the reason `shadow-actuator.ts`'s own `ownedSheetsByRoot`
+   * gives: `retire()` runs `uninstall()` too, and a retired scope is purged
+   * and never projected again, so an id recorded there could never be
+   * consumed — one retained string per formerly-committed scope, on a page
+   * that churns shadow roots or toggles auto mode (bot-found, Codex's
+   * confirming review of #1412). A retired root becomes unreachable along
+   * with its host, so this entry goes with it and no explicit cleanup is
+   * needed. A state check inside `uninstall()` could not substitute:
+   * `retire()` calls it *before* its own transition, so the state still
+   * reads COMMITTED there.
+   *
    * `clearShadowSurfaceState`'s own return value cannot cover this on its
    * own, and the gap is not hypothetical (found while regression-testing
    * the closing review's exoneration finding): the usual path into an
@@ -440,7 +452,7 @@ export function createShadowScopeTheming(
    * without reporting — `resolveFailed`, say — leaves the flag set for the
    * next one.
    */
-  const tornDownSinceReport = new Set<ScopeId>()
+  const tornDownSinceReport = new WeakSet<ShadowRoot>()
 
   /** True when `id`'s own registered parent chain passes through `ancestorId`. */
   function isDescendantScope(id: ScopeId, ancestorId: ScopeId): boolean {
@@ -590,7 +602,7 @@ export function createShadowScopeTheming(
     if (rawSwatch === null) {
       const cleared = clearShadowSurfaceState(root)
       registry.resolveExonerated(id, { proof: { reason: "no-swatch" } })
-      return reportRealizationChange(id, cleared)
+      return reportRealizationChange(root, cleared)
     }
 
     // The scan itself, not just decide(), is inside this try: projectOnce()
@@ -635,7 +647,7 @@ export function createShadowScopeTheming(
       registry.resolveExonerated(id, {
         proof: { reason: "restore-native" },
       })
-      return reportRealizationChange(id, cleared)
+      return reportRealizationChange(root, cleared)
     }
 
     // Awaited, not fire-and-forget: project()'s own serialization queue
@@ -691,7 +703,7 @@ export function createShadowScopeTheming(
       // but retire() never calls project() again for this id, so this is
       // the only cleanup a permanently-removed scope ever gets.
       uninstall: () => {
-        if (clearShadowSurfaceState(root)) tornDownSinceReport.add(id)
+        if (clearShadowSurfaceState(root)) tornDownSinceReport.add(root)
         committedVendorInvertById.delete(id)
         committedRealizationById.delete(id)
       },
@@ -703,18 +715,21 @@ export function createShadowScopeTheming(
     // uninstalled by whichever concurrent call superseded it, and that call
     // reports for itself.
     return reportRealizationChange(
-      id,
+      root,
       registry.stateOf(id)?.kind === "COMMITTED"
     )
   }
 
   /**
-   * Folds in any teardown `uninstall()` recorded for `id` and clears it, so
-   * one round reports it exactly once. `changed` is what this round itself
-   * observed.
+   * Folds in any teardown `uninstall()` recorded for `root` and clears it,
+   * so one round reports it exactly once. `changed` is what this round
+   * itself observed.
    */
-  function reportRealizationChange(id: ScopeId, changed: boolean): boolean {
-    return tornDownSinceReport.delete(id) || changed
+  function reportRealizationChange(
+    root: ShadowRoot,
+    changed: boolean
+  ): boolean {
+    return tornDownSinceReport.delete(root) || changed
   }
 
   function project(id: ScopeId): void {

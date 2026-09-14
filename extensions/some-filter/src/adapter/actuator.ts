@@ -238,10 +238,16 @@ export function realize(
       document.documentElement.setAttribute(DARK_THEME_ATTR, "")
       wrote = true
     }
-    // Its own setStyleText guard makes an unchanged swatch a no-op, and the
-    // static layer declares no per-element colour — nothing a shadow
-    // scope's backdrop resolves through — so it is not reported here.
-    injectDarkTheme(getSwatch(activate.swatchId))
+    // Reported (bot-found, Codex's confirming review of #1412): an earlier
+    // version skipped this on the claim that "the static layer declares no
+    // per-element colour — nothing a shadow scope's backdrop resolves
+    // through", which is simply false. That layer owns the
+    // `html, body { background: … }` canvas rule, and a shadow carrier
+    // whose own ancestors are all transparent walks straight out of its
+    // root onto `body`. A vendor framework removing or replacing this sheet
+    // therefore moves that backdrop — and with `data-sw-dark` already
+    // present, nothing else here would have reported a write.
+    if (injectDarkTheme(getSwatch(activate.swatchId))) wrote = true
   } else {
     if (document.documentElement.hasAttribute(DARK_THEME_ATTR)) {
       document.documentElement.removeAttribute(DARK_THEME_ATTR)

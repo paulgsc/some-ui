@@ -59,9 +59,10 @@ function createExtensionStyle(id: string): HTMLStyleElement {
  * (Theorem 7.2's idempotence requirement, at the level of *DOM writes*, not
  * just of resulting state).
  */
-function setStyleText(style: HTMLStyleElement, css: string): void {
-  if (style.textContent === css) return
+function setStyleText(style: HTMLStyleElement, css: string): boolean {
+  if (style.textContent === css) return false
   style.textContent = css
+  return true
 }
 
 export const DARK_THEME_ATTR = "data-sw-dark"
@@ -303,25 +304,41 @@ export const DARK_THEME_STYLE_ID = "__sw_dark_theme"
 
 const STYLE_ID = DARK_THEME_STYLE_ID
 
+/**
+ * Returns whether this call actually wrote — the sheet was created, or its
+ * text changed. `adapter/actuator.ts`'s `realize()` folds that into its own
+ * write signal, which `content.ts` gates the shadow-scope re-contrast pass
+ * on (SF-RC3, #1342, bot-found).
+ *
+ * It matters because this layer's own `html, body { background: … }` canvas
+ * rule *is* a backdrop a shadow carrier resolves through: a carrier whose
+ * ancestors are all transparent walks out of its root and lands on `body`.
+ * So a vendor framework removing or replacing this sheet moves that
+ * backdrop, and a scope committed against the old one goes stale — with
+ * `data-sw-dark` already present, nothing else in `realize()` would have
+ * reported a write at all.
+ */
 export function injectDarkTheme(
   swatch: Swatch = SWATCHES[DEFAULT_SWATCH_ID]
-): void {
+): boolean {
   const existing = document.getElementById(STYLE_ID)
   const style: HTMLStyleElement =
     existing instanceof HTMLStyleElement
       ? existing
       : createExtensionStyle(STYLE_ID)
-  if (!(existing instanceof HTMLStyleElement)) {
+  const created = !(existing instanceof HTMLStyleElement)
+  if (created) {
     document.head.appendChild(style)
   }
   // The compensation is recomputed per call (a vendor's own invert toggle
   // can flip at any time), but the assignment still goes through
   // setStyleText: an unchanged filter state rebuilds byte-identical CSS,
   // and rewriting it would be a mutation the Sensor reacts to (#831).
-  setStyleText(
+  const rewritten = setStyleText(
     style,
     buildDarkThemeCSS(compensateSwatch(swatch, detectVendorInvert()))
   )
+  return created || rewritten
   // Per-surface tagging and the dynamic color stylesheet are the actuator's
   // job now (adapter/actuator.ts), driven by decide()'s returned actions —
   // not this function's. Veil removal is the caller's responsibility: inject
