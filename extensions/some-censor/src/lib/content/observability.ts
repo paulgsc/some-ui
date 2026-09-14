@@ -682,7 +682,7 @@ export class BoyoObservability {
   queued(key: string): void {
     this.recorder.record({
       kind: "mount.unresolved",
-      subject: key,
+      subject: redactQueueKey(key),
       severity: "debug",
     })
     this.recorder.count("cards_queued_unresolved")
@@ -691,7 +691,7 @@ export class BoyoObservability {
   rejected(key: string): void {
     this.recorder.record({
       kind: "mount.rejected",
-      subject: key,
+      subject: redactQueueKey(key),
       severity: "debug",
     })
     this.recorder.count("cards_rejected")
@@ -904,12 +904,41 @@ export function startObservability(
 ): BoyoObservability {
   if (_live !== null) return _live
   const sessionId = mkRecordingId()
-  _live = new BoyoObservability(
+  const live = new BoyoObservability(
     sessionId,
     createBoyoRecorder(sessionId, persistence)
   )
-  void _live.recorder.hydrate()
-  return _live
+  _live = live
+  void live.recorder.hydrate()
+
+  // Bot-found (#1397's own review, round 3). The recorder debounces its
+  // writes by a second, so a tab closing — or a real navigation away — inside
+  // that window loses whatever it was holding. `sessionStart()` publishes the
+  // index entry immediately, so a short-lived page could otherwise leave the
+  // OBS2 picker an entry whose bundle was never written at all.
+  //
+  // `flush()`, deliberately, where `some-filter`'s equivalent handler calls
+  // `dispose()` and `removeFromIndex()`:
+  //
+  //   - `dispose()` is permanent, and `pagehide` does *not* always destroy
+  //     the context — a document entering the back-forward cache fires it and
+  //     comes back alive. A disposed recorder silently ignores every later
+  //     `record()`, so the restored page would go on masking with its
+  //     diagnostics dead and no sign of it. That is the trap some-filter's
+  //     own handler documents from its own review; `flush()` persists the
+  //     same state without the recorder being unable to resume.
+  //   - `removeFromIndex()` is right for some-filter, whose recording is
+  //     about a live page, and wrong here: this corpus exists to be exported
+  //     *after* the browsing that produced it (#1394), so delisting it on
+  //     unload would discard the entire point. Dead entries are bounded by
+  //     the index cap instead.
+  if (typeof window !== "undefined") {
+    window.addEventListener("pagehide", () => {
+      void live.recorder.flush()
+    })
+  }
+
+  return live
 }
 
 /** The live recording, or null when none has been started (tests, teardown). */
@@ -929,6 +958,62 @@ export function stopObservability(): void {
  */
 export function recordUploadDate(raw: string | null, el: HTMLElement): void {
   _live?.uploadDate(raw, currentSurface(), el.tagName.toLowerCase())
+}
+
+/**
+ * Longest a recorded `subject` may be.
+ *
+ * Bot-found (#1397's own review, round 3): `Recorder.record()` clamps
+ * `detail` and **not** `subject`, so an unbounded subject is unbounded in the
+ * persisted bundle, with nothing upstream to catch it.
+ */
+const MAX_SUBJECT_CHARS = 64
+
+/**
+ * Reduce one of `elementKey()`'s queue keys to something safe to persist.
+ *
+ * Bot-found (#1397's own review, round 3). `elementKey()` falls back to
+ * `h:${a.href}` — a *complete absolute URL* — for a renderer with no
+ * `data-video-id`, which is exactly the case `mount.unresolved` fires on. So
+ * the events added for the queue were persisting full hrefs, query strings
+ * and all: playlist ids, tracking parameters, whatever the vendor hung off
+ * the anchor. That flatly contradicts the boundary this module draws for
+ * itself three screens up — "derived from `pathname` only — never the query
+ * string ... neither is something a diagnostics bundle has any business
+ * carrying (#1382)" — and the doctrine it cites.
+ *
+ * The key's only job on the timeline is to correlate one element's
+ * `mount.unresolved` with its later `mount.rejected`, which needs stability,
+ * not legibility. So an `h:` key keeps its prefix and surrenders everything
+ * after it to a hash. Other shapes (`v:` a videoId, which mount events
+ * already record as their own subject; `p:TAG:index`; `r:` a nonce) carry no
+ * URL and are kept readable, bounded.
+ */
+export function redactQueueKey(key: string): string {
+  const sep = key.indexOf(":")
+  if (sep === -1) return labelFor(key)
+  const prefix = key.slice(0, sep)
+  const rest = key.slice(sep + 1)
+  return prefix === "h"
+    ? `h:${labelFor(rest)}`
+    : `${prefix}:${rest.slice(0, MAX_SUBJECT_CHARS)}`
+}
+
+/**
+ * A short, stable, bounded label for a string — FNV-1a, 32-bit.
+ *
+ * Not a security primitive and not required to be one: nothing downstream
+ * treats it as unguessable, and the input it stands in for is a URL the user
+ * is looking at on their own screen. It exists to keep two events about the
+ * same element correlatable without persisting the element's address.
+ */
+function labelFor(value: string): string {
+  let h = 0x811c9dc5
+  for (let i = 0; i < value.length; i++) {
+    h ^= value.charCodeAt(i)
+    h = Math.imul(h, 0x01000193) >>> 0
+  }
+  return h.toString(16).padStart(8, "0")
 }
 
 function currentSurface(): BoyoSurface {

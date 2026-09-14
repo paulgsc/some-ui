@@ -12,6 +12,7 @@ import {
   observability,
   PROMOTION_STALL_MS,
   readIndex,
+  redactQueueKey,
   removeFromIndex,
   RESOLVE_GRACE_MS,
   sessionStorageKey,
@@ -449,6 +450,60 @@ describe("uploadDate — the corpus mechanism #1384 depends on", () => {
   })
 })
 
+describe("queue keys never carry a URL into the bundle (#1397's own review, round 3)", () => {
+  it("replaces an href key's URL with a stable bounded label — elementKey() emits a complete absolute URL for exactly the elements mount.unresolved fires on", () => {
+    const key = "h:https://www.youtube.com/feed/watch_later?list=PLabc&si=xyz"
+    const redacted = redactQueueKey(key)
+
+    expect(redacted).not.toContain("youtube.com")
+    expect(redacted).not.toContain("watch_later")
+    expect(redacted).not.toContain("PLabc")
+    expect(redacted).not.toContain("?")
+    expect(redacted).toMatch(/^h:[0-9a-f]{8}$/)
+  })
+
+  it("is stable, so one element's queued and rejected events still correlate", () => {
+    const key = "h:https://www.youtube.com/watch?v=abc"
+    expect(redactQueueKey(key)).toBe(redactQueueKey(key))
+    expect(redactQueueKey(key)).not.toBe(
+      redactQueueKey("h:https://www.youtube.com/watch?v=def")
+    )
+  })
+
+  it("keeps the non-URL key shapes readable — a videoId is already a mount event's own subject, and p:/r: keys carry no address", () => {
+    expect(redactQueueKey("v:dQw4w9WgXcQ")).toBe("v:dQw4w9WgXcQ")
+    expect(redactQueueKey("p:YTD-RICH-ITEM-RENDERER:3")).toBe(
+      "p:YTD-RICH-ITEM-RENDERER:3"
+    )
+  })
+
+  it("bounds every subject it records — Recorder clamps detail but not subject", () => {
+    const long = `v:${"x".repeat(5000)}`
+    expect(redactQueueKey(long).length).toBeLessThanOrEqual(80)
+    expect(redactQueueKey(`h:${"x".repeat(5000)}`).length).toBeLessThanOrEqual(
+      80
+    )
+  })
+
+  it("applies the redaction at the recording call, not just as an exported helper", () => {
+    const obs = newObservability()
+    const key = "h:https://www.youtube.com/feed/watch_later?list=PLsecret"
+    obs.queued(key)
+    obs.rejected(key)
+
+    const serialized = JSON.stringify(obs.recorder.events())
+    expect(serialized).not.toContain("PLsecret")
+    expect(serialized).not.toContain("youtube.com")
+    // Both events still name the same element.
+    const subjects = obs.recorder
+      .events()
+      .filter((e) => e.kind.startsWith("mount."))
+      .map((e) => e.subject)
+    expect(subjects).toHaveLength(2)
+    expect(subjects[0]).toBe(subjects[1])
+  })
+})
+
 // ── Health ───────────────────────────────────────────────────────────────────
 
 describe("sampleHealth — transitions, not levels", () => {
@@ -557,6 +612,40 @@ describe("startObservability — one recording per content-script instance", () 
     )
     expect(firstId).not.toContain("NaN")
     expect(firstId.length).toBeGreaterThan(0)
+  })
+
+  it("flushes on pagehide, so a tab closing inside the 1s write debounce does not lose its bundle", async () => {
+    const persistence = memoryPersistence()
+    const obs = startObservability(persistence)
+    obs.sessionStart(1)
+    obs.uploadDate("3 days ago", "home", "ytd-rich-item-renderer")
+
+    // Still only scheduled — the recorder debounces its writes.
+    expect(persistence.peek()).toBeUndefined()
+
+    window.dispatchEvent(new Event("pagehide"))
+
+    await vi.waitFor(() => {
+      expect(persistence.peek()?.events.map((e) => e.kind)).toContain(
+        "date.observed"
+      )
+    })
+    expect(persistence.peek()?.snapshots["dates.home"]).toEqual(["3 days ago"])
+  })
+
+  it("keeps recording after a pagehide — a document entering the back-forward cache fires it and comes back alive, so the flush must not be a dispose", async () => {
+    const persistence = memoryPersistence()
+    const obs = startObservability(persistence)
+    obs.sessionStart(1)
+    window.dispatchEvent(new Event("pagehide"))
+
+    // Restored from bfcache: the content script never died.
+    obs.mountResolved("vid-after-restore")
+    await obs.recorder.flush()
+
+    expect(persistence.peek()?.events.map((e) => e.kind)).toContain(
+      "mount.resolved"
+    )
   })
 
   it("is idempotent — a re-entered Controller setup (C1/C3) gets the live recording, not an orphaned second key", () => {
