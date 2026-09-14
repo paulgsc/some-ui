@@ -53,10 +53,23 @@ checking in, read what the pattern of rounds actually shows:
 - **Escalating or clustering** (each fix reveals a structurally adjacent bug in the same area —
   the way a single SHA-matching requirement kept cascading into every file that referenced it
   here) — that's a smell that the underlying change, not any individual fix, may need a
-  structural rework or a narrower re-scoping. Don't keep auto-patching through it: **file the
-  structural gap as a tracked issue and land the PR anyway**, per the disposition rule below.
-- **Genuinely unclear which** — file the ambiguity as a tracked issue and proceed, rather than
-  stalling the queue on it.
+  structural rework or a narrower re-scoping. Don't keep auto-patching through it. **What to do
+  instead depends on where the cluster sits**, the same scope split the terminal disposition
+  below uses (bot-found, on this rule's own PR: an earlier draft said "file it and land the PR
+  anyway" unconditionally here, which contradicted both that disposition — it routes
+  non-converging _in-scope_ defects back into this very bucket — and the invariant further down
+  that a known in-scope defect is never merged):
+  - **Clustered outside this PR's scope** — a pre-existing structure the diff keeps colliding
+    with rather than one it introduced: **file the structural gap as a tracked issue and land the
+    PR**, per the disposition rule below.
+  - **Clustered in behavior this PR itself introduced** — rework or narrow the change before
+    merging. That is work to do, not a handoff, and not something a tracked issue substitutes
+    for: filing it would land a defect this PR is responsible for. If the rework itself will not
+    converge, _that_ is the point to put the shape of the change to the user — with the PR
+    explicitly not mergeable, which is a legitimate reason to wait and the only one left.
+- **Genuinely unclear which** — treat it as in-scope until shown otherwise, and say so when you
+  summarize; guessing "out of scope" is the expensive direction to be wrong in, since it files a
+  defect instead of fixing one.
 
 Either way, summarize the pattern for the user (how many rounds, how many findings were real,
 which bucket above) — as a report of what you did, not a request for permission.
