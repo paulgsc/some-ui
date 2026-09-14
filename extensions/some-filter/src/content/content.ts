@@ -94,6 +94,13 @@ let filterConfig: FilterConfig = DEFAULT_FILTER
 // rescan() below runs its own synchronous onFire round with this false again.
 let navigatingAway = false
 
+/**
+ * Set when SF-RC4's interaction-settled shadow pass is skipped because a
+ * navigation is in flight, and replayed by `yt-navigate-finish` once the
+ * route settles. See that callback for why nothing else covers it.
+ */
+let deferredShadowContrast = false
+
 // The content session's epoch source (Definition 5.4). Reset on every
 // SPA-navigation re-patch (Theorem D.1(a)) — a full page reset (refresh)
 // gets a fresh one for free, since this whole module re-initializes.
@@ -291,6 +298,10 @@ function applyState(state: TabState): void {
   // to drop — see clearRealizedColorState's own doc comment for why no
   // pipeline round ever gets the chance to (#1341).
   clearRealizedColorState()
+  // A deferral is only ever replayed by auto mode's own nav-finish handler,
+  // so one still pending when the mode changes has nothing left to replay it
+  // and must not fire into a session that never scheduled it.
+  deferredShadowContrast = false
 
   if (state === "auto") {
     // Do not pre-remove the veil here. runAutoTheme uses withPrepaintSuppressed
@@ -514,6 +525,56 @@ function runAutoTheme(): void {
       }
 
       documentScope.reportPipelineOutcome(outcome)
+    },
+    // SF-RC4 (#1343), bot-found: the interaction-settled contrast pass
+    // inside pipeline.ts covers the light DOM only — auditLegibility's
+    // TreeWalker does not cross a shadow boundary — so a `:hover`/`:focus`
+    // colour swap on a carrier inside a web component, or a light-DOM
+    // backdrop change such a carrier resolves onto, would leave that
+    // scope's diagnostics and repairs calibrated to pre-interaction
+    // colours. This is the same recontrastAll() the onFire path above
+    // calls, on the one trigger that path never sees: an interaction
+    // produces no round and no write, so `realizationChanged` never gates
+    // it in.
+    () => {
+      // Skipped while a navigation is in flight, and *recorded* so it can be
+      // replayed once that navigation settles (bot-found, Codex review
+      // rounds 2 and 3 on #1415).
+      //
+      // Skipping is right on its own: a carrier whose backdrop resolves out
+      // into the light DOM would otherwise be scored against a document in
+      // the middle of being replaced, producing a repair calibrated to
+      // transient colours.
+      //
+      // Replaying is a guarantee rather than an observed necessity, and the
+      // distinction is worth stating because establishing it took three
+      // review rounds and two instrumented builds.
+      //
+      // `discover()` does *not* re-project a surviving root: `walk()` calls
+      // `registerShadowRoot()` only for roots absent from `idFor`, and
+      // `resetContent()` does not touch that map. So the only other route to
+      // `recontrastAll()` on this path is `onFire`'s, gated on the round
+      // reporting a write — and a navigation that wrote nothing would strand
+      // the scope.
+      //
+      // In practice this codebase's navigations *do* write (nav-start's
+      // `reengage()` tears the realization down, so the finish-time rescan
+      // necessarily re-realizes), and `onFire` fires `recontrastAll()`
+      // synchronously about 2ms after `yt-navigate-finish` — measured. That
+      // makes this replay belt-and-braces on the `yt-navigate-*` path today
+      // rather than the sole trigger, and it is why the regression for it
+      // cannot isolate it (see that spec's own note).
+      //
+      // It stays because it costs one boolean and removes the dependency on
+      // that incidental property. Two earlier readings of this were wrong in
+      // opposite directions and both came from under-measuring: "zero-write
+      // navigation confirmed" sampled only the last of several rounds, and
+      // "discover() re-projects" was never true at all.
+      if (navigatingAway) {
+        deferredShadowContrast = true
+        return
+      }
+      shadowScopeTheming.recontrastAll()
     }
   )
 
@@ -647,6 +708,14 @@ function init(): void {
       // rather than relying on the observer's own mutation batching alone.
       shadowScopeDiscovery.discover(document)
       contentSession?.rescan()
+      // After the rescan, so the scopes are re-contrasted against the
+      // settled route rather than the one being torn down — and
+      // synchronously here, which is also what makes the regression for it
+      // able to distinguish this replay from an incidental later trigger.
+      if (deferredShadowContrast) {
+        deferredShadowContrast = false
+        shadowScopeTheming.recontrastAll()
+      }
       coverageWatchdog.check("nav-finish:auto")
       scopeCoverageWatchdog.check(documentScope.registry, "nav-finish:auto")
       return

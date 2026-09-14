@@ -10,7 +10,10 @@ import {
   REPAIR_STYLE_ID,
 } from "@filter/adapter/legibility-audit"
 import type * as LegibilityAuditModule from "@filter/adapter/legibility-audit"
-import { createContentSession } from "@filter/adapter/pipeline"
+import {
+  createContentSession,
+  INTERACTION_SETTLE_MS,
+} from "@filter/adapter/pipeline"
 import { SWATCHES } from "@filter/adapter/swatches"
 import { PREPAINT_VEIL_ID } from "@filter/lib/content/prepaint"
 import { DARK_THEME_ATTR } from "@filter/lib/content/theme-apply"
@@ -357,5 +360,269 @@ describe("SF-RC2 — the repair channel rides the audit's own gate", () => {
     expect(document.getElementById(REPAIR_STYLE_ID)).toBeNull()
 
     contentSession.teardown()
+  })
+})
+
+describe("SF-RC4 (#1343) — the interaction-settled contrast pass", () => {
+  /**
+   * jsdom applies no stylesheet rule to `getComputedStyle`, so a real
+   * `:hover` colour swap cannot be expressed here at all — that half is an
+   * e2e claim (`issue-1343-sfrc4-interaction-states.spec.ts`). What these
+   * pin is the wiring: which events schedule a pass, that a burst collapses
+   * into one, that it is the *contrast* channel and not a full round, and
+   * that an unthemed page and a torn-down session both do nothing.
+   */
+  function themedPage(): void {
+    document.body.innerHTML =
+      '<div id="surface" style="background-color: rgb(255, 255, 255)">' +
+      '<div id="text-carrier" style="color: rgb(20, 20, 20)">hi</div>' +
+      "</div>"
+  }
+
+  function dispatch(type: string, target: Element = document.body): void {
+    target.dispatchEvent(new Event(type, { bubbles: true }))
+  }
+
+  it("re-runs the contrast channel once interaction settles", () => {
+    vi.useFakeTimers()
+    themedPage()
+    const session = createSessionLifecycle()
+    const contentSession = createContentSession(SWATCHES.default, session)
+    contentSession.rescan()
+    contentSession.observe()
+    expect(document.documentElement.hasAttribute(DARK_THEME_ATTR)).toBe(true)
+    vi.mocked(legibilityAudit.auditLegibility).mockClear()
+
+    dispatch(
+      "pointerover",
+      document.getElementById("text-carrier") ?? document.body
+    )
+    expect(
+      vi.mocked(legibilityAudit.auditLegibility),
+      "the pass must wait for interaction to settle, not fire per event"
+    ).not.toHaveBeenCalled()
+
+    vi.advanceTimersByTime(INTERACTION_SETTLE_MS)
+
+    expect(vi.mocked(legibilityAudit.auditLegibility)).toHaveBeenCalledTimes(1)
+
+    contentSession.teardown()
+    vi.useRealTimers()
+  })
+
+  it("collapses a burst of interaction events into a single pass", () => {
+    // A pointer crossing a page emits pointerover/pointerout per element. A
+    // pass per event — or one every debounce window of continuous motion —
+    // is the cost this settle-debounce exists to avoid.
+    vi.useFakeTimers()
+    themedPage()
+    const session = createSessionLifecycle()
+    const contentSession = createContentSession(SWATCHES.default, session)
+    contentSession.rescan()
+    contentSession.observe()
+    vi.mocked(legibilityAudit.auditLegibility).mockClear()
+
+    for (let i = 0; i < 25; i += 1) {
+      dispatch("pointerover")
+      dispatch("pointerout")
+      vi.advanceTimersByTime(INTERACTION_SETTLE_MS - 1)
+    }
+    expect(vi.mocked(legibilityAudit.auditLegibility)).not.toHaveBeenCalled()
+
+    vi.advanceTimersByTime(INTERACTION_SETTLE_MS)
+    expect(vi.mocked(legibilityAudit.auditLegibility)).toHaveBeenCalledTimes(1)
+
+    contentSession.teardown()
+    vi.useRealTimers()
+  })
+
+  it("listens for the bubbling members of each pair, which is what delegation requires", () => {
+    // #1343 names pointerenter/pointerleave/focus/blur; none of those four
+    // bubble, so a listener delegated on `document` never sees them.
+    vi.useFakeTimers()
+    themedPage()
+    const session = createSessionLifecycle()
+    const contentSession = createContentSession(SWATCHES.default, session)
+    contentSession.rescan()
+    contentSession.observe()
+
+    for (const type of ["pointerover", "pointerout", "focusin", "focusout"]) {
+      vi.mocked(legibilityAudit.auditLegibility).mockClear()
+      dispatch(type)
+      vi.advanceTimersByTime(INTERACTION_SETTLE_MS)
+      expect(
+        vi.mocked(legibilityAudit.auditLegibility),
+        `${type} must schedule a pass`
+      ).toHaveBeenCalledTimes(1)
+    }
+
+    contentSession.teardown()
+    vi.useRealTimers()
+  })
+
+  it("does nothing on an unthemed page", () => {
+    // A page with no theme applied has nothing this extension painted to
+    // audit — the listeners stay attached but cost nothing.
+    vi.useFakeTimers()
+    document.body.innerHTML =
+      '<div id="text-carrier" style="color: rgb(20, 20, 20)">hi</div>'
+    const session = createSessionLifecycle()
+    const contentSession = createContentSession(null, session)
+    contentSession.rescan()
+    contentSession.observe()
+    expect(document.documentElement.hasAttribute(DARK_THEME_ATTR)).toBe(false)
+    vi.mocked(legibilityAudit.auditLegibility).mockClear()
+
+    dispatch("pointerover")
+    vi.advanceTimersByTime(INTERACTION_SETTLE_MS)
+
+    expect(vi.mocked(legibilityAudit.auditLegibility)).not.toHaveBeenCalled()
+
+    contentSession.teardown()
+    vi.useRealTimers()
+  })
+
+  it("ignores interaction inside an extension-owned subtree", () => {
+    vi.useFakeTimers()
+    themedPage()
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      '<div data-my-ext><span id="own-child">veil</span></div>'
+    )
+    const session = createSessionLifecycle()
+    const contentSession = createContentSession(SWATCHES.default, session)
+    contentSession.rescan()
+    contentSession.observe()
+    vi.mocked(legibilityAudit.auditLegibility).mockClear()
+
+    dispatch(
+      "pointerover",
+      document.getElementById("own-child") ?? document.body
+    )
+    vi.advanceTimersByTime(INTERACTION_SETTLE_MS)
+
+    expect(vi.mocked(legibilityAudit.auditLegibility)).not.toHaveBeenCalled()
+
+    contentSession.teardown()
+    vi.useRealTimers()
+  })
+
+  it("invokes the shadow-scope hook once interaction settles", () => {
+    // auditLegibility's TreeWalker does not cross a shadow boundary, so the
+    // document pass above covers the light DOM and nothing else. The shadow
+    // half is reached through this callback (bot-found, Codex review round 1
+    // on #1415) — content.ts holds both and wires recontrastAll() into it.
+    vi.useFakeTimers()
+    themedPage()
+    const session = createSessionLifecycle()
+    const onInteractionSettled = vi.fn()
+    const contentSession = createContentSession(
+      SWATCHES.default,
+      session,
+      undefined,
+      onInteractionSettled
+    )
+    contentSession.rescan()
+    contentSession.observe()
+    onInteractionSettled.mockClear()
+
+    dispatch("pointerover")
+    expect(onInteractionSettled).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(INTERACTION_SETTLE_MS)
+
+    expect(onInteractionSettled).toHaveBeenCalledTimes(1)
+
+    contentSession.teardown()
+    vi.useRealTimers()
+  })
+
+  it("still invokes the shadow hook when the document itself is unthemed", () => {
+    // A scope's verdict is independent of the document's: a page reading
+    // already-dark natively can hold committed shadow scopes with live
+    // repairs. Gating both halves on DARK_THEME_ATTR would strand them.
+    vi.useFakeTimers()
+    document.body.innerHTML =
+      '<div id="text-carrier" style="color: rgb(20, 20, 20)">hi</div>'
+    const session = createSessionLifecycle()
+    const onInteractionSettled = vi.fn()
+    const contentSession = createContentSession(
+      null,
+      session,
+      undefined,
+      onInteractionSettled
+    )
+    contentSession.rescan()
+    contentSession.observe()
+    expect(document.documentElement.hasAttribute(DARK_THEME_ATTR)).toBe(false)
+    vi.mocked(legibilityAudit.auditLegibility).mockClear()
+    onInteractionSettled.mockClear()
+
+    dispatch("pointerover")
+    vi.advanceTimersByTime(INTERACTION_SETTLE_MS)
+
+    expect(
+      vi.mocked(legibilityAudit.auditLegibility),
+      "the document half stays gated"
+    ).not.toHaveBeenCalled()
+    expect(
+      onInteractionSettled,
+      "the shadow half must run regardless — it is self-gating on COMMITTED"
+    ).toHaveBeenCalledTimes(1)
+
+    contentSession.teardown()
+    vi.useRealTimers()
+  })
+
+  it("runs the shadow hook even if the document half throws", () => {
+    vi.useFakeTimers()
+    themedPage()
+    const session = createSessionLifecycle()
+    const onInteractionSettled = vi.fn()
+    const contentSession = createContentSession(
+      SWATCHES.default,
+      session,
+      undefined,
+      onInteractionSettled
+    )
+    contentSession.rescan()
+    contentSession.observe()
+    onInteractionSettled.mockClear()
+    vi.mocked(legibilityAudit.auditLegibility).mockImplementationOnce(() => {
+      throw new Error("audit blew up")
+    })
+
+    dispatch("pointerover")
+    vi.advanceTimersByTime(INTERACTION_SETTLE_MS)
+
+    expect(
+      onInteractionSettled,
+      "one half failing must not cost the other its pass"
+    ).toHaveBeenCalledTimes(1)
+
+    contentSession.teardown()
+    vi.useRealTimers()
+  })
+
+  it("stops listening, and cancels a pending pass, after teardown", () => {
+    vi.useFakeTimers()
+    themedPage()
+    const session = createSessionLifecycle()
+    const contentSession = createContentSession(SWATCHES.default, session)
+    contentSession.rescan()
+    contentSession.observe()
+    vi.mocked(legibilityAudit.auditLegibility).mockClear()
+
+    // Scheduled, then torn down before it can fire.
+    dispatch("pointerover")
+    contentSession.teardown()
+    vi.advanceTimersByTime(INTERACTION_SETTLE_MS * 2)
+    expect(vi.mocked(legibilityAudit.auditLegibility)).not.toHaveBeenCalled()
+
+    // And no longer listening at all.
+    dispatch("pointerover")
+    vi.advanceTimersByTime(INTERACTION_SETTLE_MS * 2)
+    expect(vi.mocked(legibilityAudit.auditLegibility)).not.toHaveBeenCalled()
+
+    vi.useRealTimers()
   })
 })
