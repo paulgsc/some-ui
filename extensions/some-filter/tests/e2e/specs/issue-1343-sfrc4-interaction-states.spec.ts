@@ -278,3 +278,122 @@ test.describe("SF-RC4: interaction inside a shadow scope (#1343, bot-found)", ()
     ).toBeGreaterThanOrEqual(MIN_CONTRAST_RATIO)
   })
 })
+
+test.describe("SF-RC4: an interaction skipped by navigation is covered anyway (#1343, bot-found)", () => {
+  test("a shadow carrier focused during an SPA transition is repaired once it finishes", async ({
+    fixture,
+  }) => {
+    // The interaction pass *skips* the shadow half while a navigation is in
+    // flight, rather than deferring and replaying it. Review raised the
+    // obvious worry — that skipping loses the only trigger, since
+    // nav-finish's own `rescan()` reaches `recontrastAll()` only when the
+    // round reports a write — so this pins the property that makes the skip
+    // safe rather than a replay that does not exist.
+    //
+    // Measured while settling that question, and worth recording because
+    // both halves are surprising: the synthetic navigation round really is
+    // zero-write (`realizationChanged` false throughout), so the worry's
+    // premise holds; but `yt-navigate-finish` calls
+    // `shadowScopeDiscovery.discover(document)` after
+    // `sessionLifecycle.resetContent()`, which re-projects every known root,
+    // and each re-projection runs that scope's own `projectContrast`.
+    // Instrumented directly: `projectContrast` runs exactly once for this
+    // scope after nav-finish.
+    //
+    // So this test is not vacuous, it is just pinning the *other* mechanism:
+    // if nav-finish ever stops re-projecting known scopes, the gap review
+    // described becomes real and this is what fails.
+    const page = await fixture.goto("interaction-state-page")
+    await waitForClassification(page)
+
+    await page.evaluate(() => {
+      const host = document.createElement("div")
+      host.id = "sf-rc4-nav-host"
+      const root = host.attachShadow({ mode: "open" })
+      root.innerHTML =
+        "<style>#nav-carrier:focus { color: rgb(10, 10, 10); outline: none; }</style>" +
+        '<div id="nav-panel" style="background-color:rgb(250,250,250);' +
+        'color:rgb(40,40,40);padding:24px">' +
+        '<div id="nav-carrier" tabindex="0">Focused across a navigation.</div>' +
+        "</div>"
+      document.body.appendChild(host)
+    })
+
+    await page.waitForFunction(
+      () =>
+        document
+          .getElementById("sf-rc4-nav-host")
+          ?.shadowRoot?.getElementById("nav-panel")
+          ?.hasAttribute("data-sw-patched") === true,
+      undefined,
+      { timeout: 5_000, polling: 100 }
+    )
+
+    // Focus rather than hover, deliberately: `yt-navigate-finish` tears the
+    // veil down, and removing a full-viewport element from under the cursor
+    // changes the topmost element there, which makes the browser emit fresh
+    // `pointerover`/`pointerout` events with no pointer movement at all. A
+    // hover-driven version would be repaired by that ordinary pass and would
+    // therefore prove nothing about the navigation path. Focus state
+    // survives the veil coming and going and is not re-triggered by it.
+    //
+    // Enter the navigation window *first*, then interact inside it, so the
+    // settle timer is guaranteed to expire while `navigatingAway` holds. A
+    // real `.focus()` call, not a synthetic `focusin`: the event alone
+    // schedules a pass but never puts the element in `:focus`, so its colour
+    // would never change and no repair would ever be warranted.
+    await page.evaluate(() => {
+      window.dispatchEvent(new Event("yt-navigate-start"))
+      document
+        .getElementById("sf-rc4-nav-host")
+        ?.shadowRoot?.getElementById("nav-carrier")
+        ?.focus()
+    })
+    await settle(page)
+
+    const duringNav = await page.evaluate(
+      () =>
+        document
+          .getElementById("sf-rc4-nav-host")
+          ?.shadowRoot?.getElementById("nav-carrier")
+          ?.getAttribute("data-sw-legibility-fix") ?? null
+    )
+    expect(
+      duringNav,
+      "the shadow half must be skipped mid-swap, not scored against a " +
+        "document in the middle of being replaced"
+    ).toBeNull()
+
+    await page.evaluate(() => {
+      window.dispatchEvent(new Event("yt-navigate-finish"))
+    })
+    await settle(page)
+
+    const afterNav = await page.evaluate(() => {
+      const root = document.getElementById("sf-rc4-nav-host")?.shadowRoot
+      const el = root?.getElementById("nav-carrier")
+      const panel = root?.getElementById("nav-panel")
+      if (
+        el === null ||
+        el === undefined ||
+        panel === null ||
+        panel === undefined
+      ) {
+        throw new Error("shadow fixture missing")
+      }
+      return {
+        repairKey: el.getAttribute("data-sw-legibility-fix"),
+        color: getComputedStyle(el).color,
+        backdrop: getComputedStyle(panel).backgroundColor,
+      }
+    })
+
+    expect(
+      afterNav.repairKey,
+      "nav-finish's own re-projection must cover the skipped pass"
+    ).not.toBeNull()
+    expect(
+      contrastOf(afterNav.color, afterNav.backdrop)
+    ).toBeGreaterThanOrEqual(MIN_CONTRAST_RATIO)
+  })
+})

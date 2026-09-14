@@ -526,6 +526,22 @@ function runAutoTheme(): void {
     // produces no round and no write, so `realizationChanged` never gates
     // it in.
     () => {
+      // Skipped while a navigation is in flight, and deliberately not
+      // deferred-and-replayed (bot-found, Codex review round 2 on #1415;
+      // traced and measured, and the finding does not hold on this path).
+      //
+      // The reason to skip is real: a carrier whose backdrop resolves out
+      // into the light DOM would be scored against a document mid-swap,
+      // producing a repair calibrated to transient colours. The reason not
+      // to replay is that nothing is lost — `yt-navigate-finish` below calls
+      // `shadowScopeDiscovery.discover(document)` after
+      // `sessionLifecycle.resetContent()`, which re-projects every known
+      // root, and each re-projection runs `projectContrast` for that scope.
+      // Measured directly: with a replay deliberately removed,
+      // `projectContrast` still runs exactly once for the scope after
+      // nav-finish and the interaction-state repair lands. A replay would be
+      // a second trigger for something already covered — and untestable,
+      // since no fixture can make it the cause.
       if (navigatingAway) return
       shadowScopeTheming.recontrastAll()
     }
