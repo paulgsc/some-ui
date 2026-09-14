@@ -740,7 +740,19 @@ function nextSelection(
  */
 async function load(pickMostRecent = false): Promise<void> {
   const token = ++loadToken
+  // Bot-found (#1407's own review, round 3): clearing the error without
+  // painting it away left the "Unavailable" panel on screen for the whole
+  // retry — and render() returns early while loadError is set, so nothing
+  // else in this function would have repainted it either when the selection
+  // has not changed (the ordinary header-Refresh case). A retry that looks
+  // like it never started is one a user hits again, and again.
+  //
+  // Conditional rather than an unconditional render at the top: on the far
+  // more common no-error path there is nothing to repaint, and a render there
+  // would flash the whole page on every refresh.
+  const hadError = loadError !== undefined
   loadError = undefined
+  if (hadError) render()
   try {
     const index = await readIndex()
     if (token !== loadToken) return

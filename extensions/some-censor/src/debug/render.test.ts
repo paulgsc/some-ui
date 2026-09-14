@@ -24,7 +24,10 @@ const NOW = 1_700_000_000_000
 type Held = { key: string; release: () => void }
 
 /** A fake `storage.local`; `hold` defers a key's read until released. */
-function installFakeStorage(hold?: (key: string) => boolean): {
+function installFakeStorage(
+  hold?: (key: string) => boolean,
+  fail?: (key: string) => boolean
+): {
   store: Map<string, unknown>
   held: Array<Held>
 } {
@@ -33,6 +36,9 @@ function installFakeStorage(hold?: (key: string) => boolean): {
   Reflect.set(ext, "storage", {
     local: {
       get: (key: string): Promise<Record<string, unknown>> => {
+        if (fail?.(key) === true) {
+          return Promise.reject(new Error(`storage unavailable: ${key}`))
+        }
         const value = store.has(key) ? { [key]: store.get(key) } : {}
         if (hold?.(key) === true) {
           return new Promise((resolve) => {
@@ -212,6 +218,63 @@ describe("switching sessions never shows one session under another's name (#1407
 
     expect(corpusText()).toContain("2 weeks ago")
     expect(corpusText()).not.toContain("3 days ago")
+  })
+})
+
+describe("retrying after a failed read (#1407's own review, round 3)", () => {
+  it("clears the Unavailable panel as soon as the retry starts, not when it finishes", async () => {
+    let failBundleReads = false
+    let holdNextBundleRead = false
+    const isBundleKey = (key: string): boolean =>
+      key.startsWith("bc.observability.session.")
+
+    const { store, held } = installFakeStorage(
+      (key) => {
+        if (!isBundleKey(key) || !holdNextBundleRead) return false
+        holdNextBundleRead = false
+        return true
+      },
+      (key) => isBundleKey(key) && failBundleReads
+    )
+    store.set(INDEX_KEY, [entry("s1", 1, NOW)])
+    seedSession(store, "s1", ["3 days ago"])
+
+    // A good first load, so the selection and the loaded bundle agree —
+    // which is what makes the retry take the no-intermediate-render path.
+    await mountPage()
+    await vi.waitFor(() => {
+      expect(corpusText()).toContain("3 days ago")
+    })
+
+    const headerRefresh = (): void => {
+      const button = [...document.querySelectorAll("button")].find(
+        (b) => b.textContent === "Refresh"
+      )
+      button?.click()
+    }
+
+    // Storage goes away; the retry fails and the page says so.
+    failBundleReads = true
+    headerRefresh()
+    await vi.waitFor(() => {
+      expect(document.body.textContent).toContain("Unavailable")
+    })
+
+    // Storage is back, but this read hangs — the whole point is what the page
+    // shows *during* a slow retry.
+    failBundleReads = false
+    holdNextBundleRead = true
+    headerRefresh()
+
+    expect(document.body.textContent).not.toContain("Unavailable")
+
+    await vi.waitFor(() => {
+      expect(held).toHaveLength(1)
+    })
+    held[0]?.release()
+    await vi.waitFor(() => {
+      expect(corpusText()).toContain("3 days ago")
+    })
   })
 })
 
