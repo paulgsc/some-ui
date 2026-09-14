@@ -26,6 +26,20 @@
  *   M5 — Session monotonicity.  _session only advances in startSession() and
  *        reset().  It is NEVER bumped mid-operation — doing so would silently
  *        cancel all concurrent async promotes.
+ *
+ *   M6 — Per-element staleness (#980).  The same technique as VideoEntry's
+ *        Entry-2 (`_version`, checked after an await), applied one level up:
+ *        `_session` catches a *lifecycle* boundary (SPA navigation) but not a
+ *        single element being recycled to a new video mid-await, which is a
+ *        per-card event, not a session event. `_elClaim`'s token is bumped
+ *        every time an element is newly claimed for a different videoId;
+ *        `_promote()` and `_backfill()` capture it before their whitelist-
+ *        check await and discard the resolution if it no longer matches —
+ *        the element has moved on to a different video since the operation
+ *        started. An intermediate videoId recycled through *during* another
+ *        element's in-flight await (never seen long enough to mount) is
+ *        silently dropped; only the element's *current* claim is guaranteed
+ *        to eventually mount, via the stale-bail retry in `_promote()`.
  */
 
 import { ext } from "@censor/platform/content"
@@ -95,6 +109,19 @@ export class VideoManager {
   private readonly _channelPending: Map<VideoId, HTMLElement> = new Map()
   // Concurrent-promotion guard
   private readonly _promoting: WeakSet<HTMLElement> = new WeakSet()
+  // Per-element staleness guard (#980, M6). Which videoId an element is
+  // currently claimed for, and a token bumped whenever that claim changes —
+  // set synchronously the instant _promote()/_promoteProvisional() start
+  // handling el, independent of _elToVid, which is only stamped *after* a
+  // promotion succeeds and so cannot see a recycle that happens during the
+  // very first in-flight promotion for that element. _promote()/_backfill()
+  // capture the token before their whitelist-check await and compare after,
+  // the same technique as VideoEntry's `_version`.
+  private readonly _elClaim: WeakMap<
+    HTMLElement,
+    { videoId: VideoId; token: number }
+  > = new WeakMap()
+  private _tokenSeq = 0
 
   private _phase: Phase = "idle"
   private _session: SessionId = mkSession()
@@ -231,7 +258,7 @@ export class VideoManager {
         const pending = this._byVideo.get(currentId)
         if (pending && !pending.hasChannel) {
           this._dropChannelPending(currentId)
-          void this._backfill(pending, extracted.channelId)
+          void this._backfill(el, pending, extracted.channelId)
         } else {
           void this._promote(el, currentId, extracted.channelId)
         }
@@ -384,7 +411,7 @@ export class VideoManager {
       if (extracted.kind === "full") {
         this._dropChannelPending(videoId)
         const entry = this._byVideo.get(videoId)
-        if (entry) void this._backfill(entry, extracted.channelId)
+        if (entry) void this._backfill(el, entry, extracted.channelId)
       } else if (this._budgetSpent(channelKey(videoId))) {
         // No channel is coming (a shorts lockup exposes none). The entry stays
         // mounted and masked — masking only ever needed the videoId. It simply
@@ -485,14 +512,38 @@ export class VideoManager {
 
   // ── Private ───────────────────────────────────────────────────────────────
 
+  /**
+   * Claim `el` for `videoId`, bumping its staleness token (M6) only if the
+   * claim actually changed, and returning the (possibly unchanged) token.
+   * Idempotent re-upserts for the same video (M2) must not invalidate their
+   * own in-flight promotion, so re-claiming the same videoId is a no-op.
+   */
+  private _claim(el: HTMLElement, videoId: VideoId): number {
+    const current = this._elClaim.get(el)
+    if (current?.videoId === videoId) return current.token
+    const token = ++this._tokenSeq
+    this._elClaim.set(el, { videoId, token })
+    return token
+  }
+
+  /** `el`'s current staleness token, or `undefined` if never claimed. */
+  private _tokenFor(el: HTMLElement): number | undefined {
+    return this._elClaim.get(el)?.token
+  }
+
   private async _promote(
     el: HTMLElement,
     videoId: VideoId,
     channelId: ChannelId
   ): Promise<void> {
+    // Claimed before the re-entrancy check so a recycle that arrives while
+    // another promotion is in flight still records the new claim, even
+    // though _promoting blocks this call from doing anything else with it.
+    const token = this._claim(el, videoId)
     if (this._promoting.has(el)) return
     this._promoting.add(el)
 
+    let stale = false
     try {
       // Scroll-virtualizer reuse guard (second line of defence after upsert).
       const prevVid = this._elToVid.get(el)
@@ -517,10 +568,17 @@ export class VideoManager {
         .then((r: { ok: boolean; whitelisted: boolean }) => r.whitelisted)
         .catch(() => false)
 
-      // Post-await guards: bail if the manager was torn down or a full
-      // reset()+startSession() cycle ran while we were awaiting.
+      // Post-await guards: bail if the manager was torn down, a full
+      // reset()+startSession() cycle ran while we were awaiting (M5), or el
+      // has since been claimed for a different videoId (M6/#980) — the
+      // element was recycled one or more times during this round-trip and no
+      // longer means what it meant when the operation started.
       if (this._phase !== "running") return
       if (this._session !== session) return
+      if (this._tokenFor(el) !== token) {
+        stale = true
+        return
+      }
 
       const record = makeRecord(
         { kind: "full", videoId, channelId },
@@ -533,6 +591,14 @@ export class VideoManager {
       publish()
     } finally {
       this._promoting.delete(el)
+      // A stale bail means el moved on while this call was in flight. Any
+      // recycle that landed here while _promoting blocked it (see above) did
+      // nothing but bump the claim — re-derive el's *current* truth from the
+      // live DOM now that the guard has cleared, rather than trying to carry
+      // a videoId forward through an already-stale call. Safe from looping:
+      // this only re-enters when el actually changed since `token` was
+      // captured, and each recycle can trigger at most one such retry.
+      if (stale && el.isConnected) this.upsert(el)
     }
   }
 
@@ -548,6 +614,11 @@ export class VideoManager {
    * we repair rather than replace.
    */
   private _promoteProvisional(el: HTMLElement, videoId: VideoId): void {
+    // Claim el for videoId (M6/#980) so any *other* in-flight _promote()/
+    // _backfill() call for this element — still awaiting from an earlier,
+    // now-superseded videoId — sees the mismatch once it resumes.
+    this._claim(el, videoId)
+
     const existing = this._byVideo.get(videoId)
     if (existing?.record.session === this._session) {
       existing.repair()
@@ -578,13 +649,20 @@ export class VideoManager {
   /**
    * Backfill a concrete channelId onto a provisional entry, running the
    * whitelist check now that we have a channel to check.  Guarded against
-   * lifecycle changes across the await.
+   * lifecycle changes across the await (M5) and against `el` having been
+   * recycled to a different video while this call was in flight (M6/#980) —
+   * unlike _promote(), a stale bail here needs no retry of its own: whatever
+   * recycled `el` already routed it through a fresh _promote()/
+   * _promoteProvisional() synchronously, so `entry` is simply no longer the
+   * live entry for `el` and backfilling it would write into a corpse.
    */
   private async _backfill(
+    el: HTMLElement,
     entry: VideoEntry,
     channelId: ChannelId
   ): Promise<void> {
     if (entry.hasChannel) return
+    const token = this._claim(el, asVideoId(entry.record.videoId))
     const session = this._session
     const isWhitelisted = await ext.runtime
       .sendMessage({ type: "IS_WHITELISTED", channelId: String(channelId) })
@@ -592,6 +670,7 @@ export class VideoManager {
       .catch(() => false)
     if (this._phase !== "running") return
     if (this._session !== session) return
+    if (this._tokenFor(el) !== token) return
     entry.backfillChannel(String(channelId), isWhitelisted)
     publish()
   }
