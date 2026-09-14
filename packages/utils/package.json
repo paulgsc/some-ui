@@ -18,7 +18,7 @@
     "clsx": "^2.1.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwind-merge": "^2.4.0",
+    "tailwind-merge": "^3.6.0",
     "usehooks-ts": "3.1.1",
     "zod": "catalog:"
   },
@@ -31,7 +31,7 @@
     "@some-ui/wasm-loader": "workspace:*",
     "@some-ui/ws": "workspace:*",
     "clsx": "^2.1.1",
-    "tailwind-merge": "^2.4.0",
+    "tailwind-merge": "^3.6.0",
     "usehooks-ts": "3.1.1",
     "zustand": "^5.0.9"
   },
