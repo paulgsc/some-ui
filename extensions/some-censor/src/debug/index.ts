@@ -690,15 +690,37 @@ function clearLoadedBundle(): void {
   loadedSessionId = undefined
 }
 
-async function loadSessions(pickMostRecent: boolean): Promise<void> {
-  sessions = await readIndex()
+/**
+ * Which session to show, given a freshly read index. Pure, and that is the
+ * point.
+ *
+ * Bot-found (#1407's own review, round 2): this used to be an async
+ * `loadSessions()` that assigned `sessions` and `selectedSessionId` itself —
+ * *before* {@link load}'s token check could discard a superseded run. So a
+ * slow "Refresh sessions" that the user overtook by picking another session
+ * still reset the selection when it finally resolved, leaving
+ * `selectedSessionId` naming one session while `bundle` held another. The
+ * next render that does not reload — a timeline filter change is enough —
+ * then drew the picker on the stale selection with the other session's bundle
+ * still exported behind it: the same mislabelled-export failure round 1 was
+ * about, re-entered through the guard meant to prevent it.
+ *
+ * Computing the candidate and committing it only after the guard is what
+ * makes that structurally impossible rather than ordered-correctly-for-now.
+ */
+function nextSelection(
+  index: ReadonlyArray<IndexEntry>,
+  pickMostRecent: boolean,
+  current: string | undefined
+): string | undefined {
   if (
     pickMostRecent ||
-    selectedSessionId === undefined ||
-    !sessions.some((s) => s.sessionId === selectedSessionId)
+    current === undefined ||
+    !index.some((s) => s.sessionId === current)
   ) {
-    selectedSessionId = sessions[0]?.sessionId
+    return index[0]?.sessionId
   }
+  return current
 }
 
 /**
@@ -708,19 +730,22 @@ async function loadSessions(pickMostRecent: boolean): Promise<void> {
  * "Refresh sessions" means; the header's own "Refresh" leaves the selection
  * alone.
  *
- * Every render is gated on `loadToken`. Two loads can be in flight at once —
- * a fast double-change of the picker is enough — and their storage reads are
- * not obliged to settle in the order they started, so without this the first
- * one to finish last would win and paint a session the user is no longer
- * looking at. Same defect class as the stale-bundle one above, one step
- * further out.
+ * Two loads can be in flight at once — a fast double-change of the picker is
+ * enough — and their storage reads are not obliged to settle in the order
+ * they started. So `loadToken` gates not just every render but **every write
+ * to module state**: a superseded load must leave `sessions`,
+ * `selectedSessionId`, `bundle` and `loadError` exactly as it found them. The
+ * rule this function keeps is that nothing module-scoped is assigned between
+ * an `await` and the token check that follows it.
  */
 async function load(pickMostRecent = false): Promise<void> {
   const token = ++loadToken
   loadError = undefined
   try {
-    await loadSessions(pickMostRecent)
+    const index = await readIndex()
     if (token !== loadToken) return
+    sessions = index
+    selectedSessionId = nextSelection(index, pickMostRecent, selectedSessionId)
     if (selectedSessionId !== loadedSessionId) {
       clearLoadedBundle()
       render()

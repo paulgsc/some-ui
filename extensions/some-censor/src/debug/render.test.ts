@@ -215,6 +215,59 @@ describe("switching sessions never shows one session under another's name (#1407
   })
 })
 
+describe("a superseded load commits nothing (#1407's own review, round 2)", () => {
+  it("does not let a slow Refresh reset the selection the user has since made — that would name one session while exporting another", async () => {
+    let holdNextIndexRead = false
+    const { store, held } = installFakeStorage((key) => {
+      if (key !== INDEX_KEY || !holdNextIndexRead) return false
+      holdNextIndexRead = false
+      return true
+    })
+    // s1 is the most recent, so a stale load(true) would snap back to it.
+    store.set(INDEX_KEY, [entry("s1", 1, NOW + 1000), entry("s2", 2, NOW)])
+    seedSession(store, "s1", ["3 days ago"])
+    seedSession(store, "s2", ["2 weeks ago"])
+
+    await mountPage()
+    await vi.waitFor(() => {
+      expect(corpusText()).toContain("3 days ago")
+    })
+
+    // "Refresh sessions" starts a load(true) whose index read hangs.
+    holdNextIndexRead = true
+    const refresh = [...document.querySelectorAll("button")].find(
+      (b) => b.textContent === "Refresh sessions"
+    )
+    refresh?.click()
+    await vi.waitFor(() => {
+      expect(held).toHaveLength(1)
+    })
+
+    // The user overtakes it by picking s2, which loads and renders normally.
+    change(picker(), "s2")
+    await vi.waitFor(() => {
+      expect(corpusText()).toContain("2 weeks ago")
+    })
+
+    // Now the overtaken refresh finally resolves.
+    held[0]?.release()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    // A rerender that does *not* reload — a timeline filter change is enough —
+    // is where a reset selection would surface, drawing the picker on s1 with
+    // s2's bundle still behind the Export button.
+    const kindSelect =
+      document.querySelector<HTMLSelectElement>(".bc-filter select")
+    expect(kindSelect).not.toBeNull()
+    if (kindSelect) change(kindSelect, "")
+
+    expect(picker().value).toBe("s2")
+    expect(corpusText()).toContain("2 weeks ago")
+    expect(corpusText()).not.toContain("3 days ago")
+  })
+})
+
 describe("Refresh sessions (#1407's own review)", () => {
   it("discovers a recording created after the page opened, and renders it", async () => {
     const { store } = installFakeStorage()
