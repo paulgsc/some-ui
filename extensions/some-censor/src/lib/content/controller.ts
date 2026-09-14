@@ -33,6 +33,7 @@ import type { KeyBindingDisposer } from "@some-extension/common"
 
 import { attachKeyBindings } from "./commands"
 import { attachEvents } from "./events"
+import { observability, startObservability } from "./observability"
 import { SEL, startObserver } from "./observer"
 import { VideoManager } from "./video-manager"
 
@@ -48,6 +49,11 @@ export class Controller {
   private _navDebounce: ReturnType<typeof setTimeout> | null = null
 
   init(): void {
+    // One recording per content-script instance, started before anything can
+    // record into it and deliberately *not* restarted by the teardown/setup
+    // cycle below — see observability.ts's header for why that scope, and not
+    // one per session ordinal, is the right one.
+    startObservability()
     this._listenBroadcasts()
     this._listenNavigation()
     this._bootstrap()
@@ -110,6 +116,7 @@ export class Controller {
       if (this._navDebounce !== null) clearTimeout(this._navDebounce)
       this._navDebounce = setTimeout(() => {
         this._navDebounce = null
+        observability()?.navigation()
         // Only restart if we were actually running; if disabled, stay down.
         this._teardownRuntime()
         this._waitForApp()

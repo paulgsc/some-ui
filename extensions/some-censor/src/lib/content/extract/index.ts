@@ -31,7 +31,7 @@ import type { Extracted } from "./extracted"
 import { extractVideoId } from "./video-id"
 
 export { extractTitle } from "./title"
-export { extractMeta } from "./meta"
+export { extractMeta, extractUploadDate } from "./meta"
 export type { FullyExtracted, VideoOnlyExtracted } from "./extracted"
 export { isFullyExtracted, isVideoOnly } from "./extracted"
 

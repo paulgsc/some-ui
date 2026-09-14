@@ -14,8 +14,15 @@
  * is exercised by advancing the clock rather than by waiting.
  */
 
+import { memoryPersistence } from "@some-extension/common/observability"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import {
+  PROMOTION_STALL_MS,
+  startObservability,
+  stopObservability,
+  type BoyoObservability,
+} from "./observability"
 import { VideoManager } from "./video-manager"
 
 /** The retry loop ticks at 500ms; the budget is 10s of wall clock. */
@@ -369,5 +376,79 @@ describe("per-element staleness across rapid recycling (#980)", () => {
 
     expect(mgr.size, "the old entry is replaced, not duplicated").toBe(1)
     expect(el.dataset["boyoVid"]).toBe("vidY")
+  })
+})
+
+describe("PromotionGuardClears can actually fire (#1397's own review)", () => {
+  let obs: BoyoObservability
+
+  /** A promotion that never settles: the MV3 hazard the invariant is about. */
+  function hangTheWhitelistCheck(): void {
+    vi.mocked(browser.runtime.sendMessage).mockReturnValueOnce(
+      new Promise(() => {
+        // deliberately never settles
+      })
+    )
+  }
+
+  function violations(): Array<string | number | undefined> {
+    return obs.recorder
+      .events()
+      .filter((e) => e.kind === "invariant.violated")
+      .map((e) => e.subject)
+  }
+
+  beforeEach(() => {
+    obs = startObservability(memoryPersistence())
+  })
+
+  afterEach(() => {
+    stopObservability()
+  })
+
+  it("reports a hung promotion on a page with nothing queued — the retry loop never runs there, so nothing else would ever evaluate it", async () => {
+    hangTheWhitelistCheck()
+    const el = fullCard("vid-hangs", "Chan")
+    document.body.appendChild(el)
+
+    // A fully-extracted card neither queues nor tracks a channel, so
+    // _maybeStopRetryLoop() leaves no periodic callback behind.
+    mgr.upsert(el)
+    await vi.advanceTimersByTimeAsync(PASS_MS)
+    expect(violations()).toEqual([])
+
+    await vi.advanceTimersByTimeAsync(PROMOTION_STALL_MS)
+    expect(violations()).toContain("PromotionGuardClears")
+  })
+
+  it("reports nothing for a promotion that settles normally, and stops watching", async () => {
+    const el = fullCard("vid-fine", "Chan")
+    document.body.appendChild(el)
+    mgr.upsert(el)
+    await vi.advanceTimersByTimeAsync(PROMOTION_STALL_MS * 3)
+
+    expect(violations()).toEqual([])
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it("still reports a promotion that outlived an SPA navigation — reset() cannot clear the real _promoting WeakSet, so it must not clear the mirror either", async () => {
+    hangTheWhitelistCheck()
+    const el = fullCard("vid-survives", "Chan")
+    document.body.appendChild(el)
+    mgr.upsert(el)
+    await vi.advanceTimersByTimeAsync(PASS_MS)
+
+    // Controller C2: a yt-navigate-finish tears the runtime down and restarts
+    // it. The element stays connected (chip swaps reuse cards in place).
+    mgr.reset()
+    mgr.startSession()
+
+    // The real guard still holds el, so this upsert is swallowed and the card
+    // can never mount — which is exactly what must stay reportable.
+    mgr.upsert(el)
+    expect(mgr.size).toBe(0)
+
+    await vi.advanceTimersByTimeAsync(PROMOTION_STALL_MS)
+    expect(violations()).toContain("PromotionGuardClears")
   })
 })
