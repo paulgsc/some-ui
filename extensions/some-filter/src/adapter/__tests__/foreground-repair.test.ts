@@ -5,6 +5,7 @@ import {
   realizeForegroundRepairs,
   REPAIR_ATTR,
   repairedForeground,
+  tagRepairCarriers,
   type RepairForegroundAction,
 } from "@filter/adapter/foreground-repair"
 import {
@@ -421,5 +422,169 @@ describe("clearForegroundRepairs", () => {
 
     expect(el.hasAttribute(REPAIR_ATTR)).toBe(false)
     expect(document.getElementById(REPAIR_STYLE_ID)).toBeNull()
+  })
+})
+
+// ── SF-RC3 (#1342) — the scope-agnostic split and the vendor-invert threading ──
+
+describe("tagRepairCarriers — the scope-agnostic half SF-RC3 (#1342) reuses", () => {
+  it("returns exactly the actions that named at least one taggable carrier, preserving order", () => {
+    document.body.innerHTML = '<div id="a">alpha</div><div id="c">gamma</div>'
+    const a = document.getElementById("a")
+    const c = document.getElementById("c")
+    if (a === null || c === null) throw new Error("fixture missing")
+
+    const keyA = "rgb(0, 0, 0)~rgb(20, 20, 20)"
+    const keyB = "rgb(1, 1, 1)~rgb(20, 20, 20)"
+    const keyC = "rgb(2, 2, 2)~rgb(20, 20, 20)"
+    const actions: ReadonlyArray<RepairForegroundAction> = [
+      { kind: "repair-foreground", key: keyA, css: "rgb(158, 158, 158)" },
+      // keyB resolves to nothing — a rule for it could never match.
+      { kind: "repair-foreground", key: keyB, css: "rgb(159, 159, 159)" },
+      { kind: "repair-foreground", key: keyC, css: "rgb(160, 160, 160)" },
+    ]
+
+    const matched = tagRepairCarriers(
+      document.body,
+      actions,
+      new Map([
+        [keyA, [a]],
+        [keyC, [c]],
+      ])
+    )
+
+    expect(matched.map((action) => action.key)).toEqual([keyA, keyC])
+    expect(a.dataset.swLegibilityFix).toBe(keyA)
+    expect(c.dataset.swLegibilityFix).toBe(keyC)
+  })
+
+  it("drops an action whose only carrier an author-origin !important rule cannot win on", () => {
+    document.body.innerHTML =
+      '<div id="pinned" style="color: rgb(0, 0, 0) !important">nope</div>'
+    const el = document.getElementById("pinned")
+    if (el === null) throw new Error("fixture missing")
+    const key = "rgb(0, 0, 0)~rgb(20, 20, 20)"
+
+    const matched = tagRepairCarriers(
+      document.body,
+      [{ kind: "repair-foreground", key, css: "rgb(158, 158, 158)" }],
+      new Map([[key, [el]]])
+    )
+
+    expect(matched).toHaveLength(0)
+    expect(el.hasAttribute(REPAIR_ATTR)).toBe(false)
+  })
+
+  it("reconciles stale tags inside a shadow root, not just the document", () => {
+    // The whole point of the split: `root.querySelectorAll` is already
+    // scoped to whatever it is handed, so a ShadowRoot needs no special
+    // case — only the *rule* half does.
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    const root = host.attachShadow({ mode: "open" })
+    root.innerHTML = '<div id="scoped">scoped carrier</div>'
+    const el = root.getElementById("scoped")
+    if (el === null) throw new Error("fixture missing")
+    const key = "rgb(0, 0, 0)~rgb(20, 20, 20)"
+
+    expect(
+      tagRepairCarriers(
+        root,
+        [{ kind: "repair-foreground", key, css: "rgb(158, 158, 158)" }],
+        new Map([[key, [el]]])
+      )
+    ).toHaveLength(1)
+    expect(el.dataset.swLegibilityFix).toBe(key)
+
+    // A later round for which this carrier is no longer violated.
+    expect(tagRepairCarriers(root, [], new Map())).toHaveLength(0)
+    expect(el.hasAttribute(REPAIR_ATTR)).toBe(false)
+  })
+
+  it("leaves a tag inside an unrelated scope alone", () => {
+    const hostA = document.createElement("div")
+    const hostB = document.createElement("div")
+    document.body.append(hostA, hostB)
+    const rootA = hostA.attachShadow({ mode: "open" })
+    const rootB = hostB.attachShadow({ mode: "open" })
+    rootA.innerHTML = '<div id="a">a</div>'
+    rootB.innerHTML = '<div id="b">b</div>'
+    const a = rootA.getElementById("a")
+    const b = rootB.getElementById("b")
+    if (a === null || b === null) throw new Error("fixture missing")
+    const key = "rgb(0, 0, 0)~rgb(20, 20, 20)"
+    const action: RepairForegroundAction = {
+      kind: "repair-foreground",
+      key,
+      css: "rgb(158, 158, 158)",
+    }
+
+    tagRepairCarriers(rootA, [action], new Map([[key, [a]]]))
+    tagRepairCarriers(rootB, [action], new Map([[key, [b]]]))
+    // Scope A reconciles to "nothing violated" — scope B's tag must survive.
+    tagRepairCarriers(rootA, [], new Map())
+
+    expect(a.hasAttribute(REPAIR_ATTR)).toBe(false)
+    expect(b.dataset.swLegibilityFix).toBe(key)
+  })
+})
+
+describe("buildForegroundRepairRule — vendor-invert compensation (#1342)", () => {
+  const action: RepairForegroundAction = {
+    kind: "repair-foreground",
+    key: "rgb(0, 0, 0)~rgb(20, 20, 20)",
+    css: "rgb(158, 158, 158)",
+  }
+
+  it("emits the action's own colour verbatim at invert 0, the value every ordinary page reports", () => {
+    const rule = buildForegroundRepairRule(action, 0)
+    expect(rule).toBe(buildForegroundRepairRule(action))
+    expect(rule).toContain("color:rgb(158, 158, 158)!important")
+    expect(rule).toContain(
+      "-webkit-text-fill-color:rgb(158, 158, 158)!important"
+    )
+  })
+
+  it("declares the exact complement under invert(1), so the composited glyph is the repair", () => {
+    // invert(1) is an exact per-channel complement (CSS Filter Effects
+    // Level 1), so the declared value must be 255 - 158 = 97 for the
+    // rendered one to be 158 — the same arithmetic emit-surface-color's own
+    // compensation already goes through (theme-apply.ts's counterInvertCss).
+    const rule = buildForegroundRepairRule(action, 1)
+    expect(rule).toContain("color:rgb(97, 97, 97)!important")
+    expect(rule).toContain("-webkit-text-fill-color:rgb(97, 97, 97)!important")
+  })
+
+  it("compensates both declarations identically — a half-compensated rule would paint the fill and the colour differently", () => {
+    const rule = buildForegroundRepairRule(action, 0.75)
+    // Only the two declaration values — the selector itself carries the
+    // key's own uncompensated `rgb(...)` literals, which are correct as-is
+    // (a key names the *sensed* pair, never anything declared).
+    const declared = [...rule.matchAll(/color:(rgb\([^)]*\))!important/g)].map(
+      (match) => match[1]
+    )
+    expect(declared).toHaveLength(2)
+    expect(declared[0]).toBe(declared[1])
+    expect(declared[0]).not.toBe("rgb(158, 158, 158)")
+  })
+})
+
+describe("realizeForegroundRepairs — vendor-invert threading (#1342)", () => {
+  it("writes the compensated colour into the document sheet", () => {
+    document.body.innerHTML = '<div id="carrier">hi</div>'
+    const el = document.getElementById("carrier")
+    if (el === null) throw new Error("fixture missing")
+    const key = "rgb(0, 0, 0)~rgb(20, 20, 20)"
+
+    realizeForegroundRepairs(
+      document.body,
+      [{ kind: "repair-foreground", key, css: "rgb(158, 158, 158)" }],
+      new Map([[key, [el]]]),
+      1
+    )
+
+    const style = document.getElementById(REPAIR_STYLE_ID)
+    expect(style?.textContent).toContain("rgb(97, 97, 97)")
+    expect(style?.textContent).not.toContain("rgb(158, 158, 158)")
   })
 })

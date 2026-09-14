@@ -474,6 +474,45 @@ function runAutoTheme(): void {
 
       if (navigatingAway) return
 
+      // SF-RC3 (#1342), bot-found: a carrier inside a shadow scope whose own
+      // ancestors are all transparent resolves its backdrop out past the
+      // outermost host and into the light DOM — onto an element this round
+      // may have just darkened. The two paths are not synchronized, and this
+      // one is the slower: a top-level host's `class`/`style` change projects
+      // its scope synchronously, while this round waits out
+      // RECONCILE_POLICY's debounce first, so the scope can audit against a
+      // backdrop that is still native. Nothing re-audits it afterwards — the
+      // `data-sw-patched` write that darkens the backdrop is outside that
+      // host observer's own `class`/`style` filter, and shadow scopes see no
+      // mutation at all. Safe here specifically because `realize()` has
+      // already run by the time onFire is called, so the scopes read the
+      // backdrop this round actually painted.
+      //
+      // Gated on the actuator having actually *written*, not on the round's
+      // own action list having changed (bot-found twice, Codex rounds 2 and
+      // 3 on #1412 — first for being absent, then for being too coarse).
+      //
+      // The action list is the wrong signal: an element whose background
+      // matches a `SurfaceKey` the page already has emits no new action at
+      // all, yet `tagSurfaceElements` tags it and the existing rule darkens
+      // it — measured, a real backdrop going white -> `rgb(20, 20, 20)`
+      // under a shadow carrier with a byte-identical action list. Running
+      // it on *every* round is the wrong signal in the other direction: the
+      // "bounded by the scan this round already did" argument was wrong,
+      // since `scan()`'s TreeWalker does not enter shadow trees at all, so
+      // this walk is genuinely additional work — and for a scope holding
+      // repairs `projectContrast` also rewrites `adoptedStyleSheets` twice.
+      // A page with frequent unrelated light-DOM churn would pay both on
+      // every debounced round.
+      //
+      // What actually moves a shadow carrier's backdrop is a write, so a
+      // write is what this asks about. `restore-native` reports one too: it
+      // moves every scope's backdrop back to native, which is exactly as
+      // much of a change to re-audit against.
+      if (outcome.kind === "ok" && outcome.realizationChanged) {
+        shadowScopeTheming.recontrastAll()
+      }
+
       documentScope.reportPipelineOutcome(outcome)
     }
   )

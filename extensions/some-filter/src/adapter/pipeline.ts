@@ -37,6 +37,7 @@ import {
 import { rgbaToCss } from "@filter/lib/content/modify-colors"
 import { PREPAINT_DIRTY_CLASS } from "@filter/lib/content/prepaint"
 import { DARK_THEME_STYLE_ID } from "@filter/lib/content/theme-apply"
+import { detectVendorInvert } from "@filter/lib/content/vendor-filter"
 import { invoke } from "@some-extension/transport/adapter/invoke"
 import { createHypothesis } from "@some-extension/transport/estimator/hypothesis"
 import {
@@ -636,7 +637,21 @@ export type ContentSession = {
  * branch instead of holding the veil on the latter).
  */
 export type FireOutcome =
-  | { readonly kind: "ok"; readonly actions: ReadonlyArray<FilterAction> }
+  | {
+      readonly kind: "ok"
+      readonly actions: ReadonlyArray<FilterAction>
+      /**
+       * Whether `realize()` actually wrote to the DOM this round — a tag
+       * changed, the dynamic sheet's text changed, or the theme attribute
+       * flipped. `content.ts` gates its shadow-scope re-contrast pass on
+       * this (SF-RC3, #1342, bot-found): a shadow carrier's backdrop can
+       * resolve out into the light DOM, so it goes stale exactly when the
+       * document *writes*, which is not the same as when it *decides* —
+       * an element matching a `SurfaceKey` the page already has emits no
+       * new action at all and is still tagged and darkened.
+       */
+      readonly realizationChanged: boolean
+    }
   | { readonly kind: "error"; readonly error: unknown }
 
 export type OnFire = (outcome: FireOutcome) => void
@@ -718,7 +733,7 @@ export function createContentSession(
     let outcome: FireOutcome
     try {
       const actions = invoke(hypothesis, { decide: (h) => decide(h, swatch) })
-      realize(actions, lastScan.elementsByKey)
+      const realizationChanged = realize(actions, lastScan.elementsByKey)
 
       // SF-RC1 (#1340): the second, independent sense/decide/realize
       // sub-pass — see legibility-audit.ts's own header for the isolation
@@ -744,10 +759,16 @@ export function createContentSession(
         // diagnostic tags written a line above) and realized into its own
         // sheet. Deliberately a separate action set from the tags — see
         // foreground-repair.ts's own header.
+        // SF-RC3 (#1342) threads the vendor-invert compensation through the
+        // document half of this channel too, not just the shadow one — the
+        // same `detectVendorInvert()` read `injectDarkTheme()` already does
+        // per round, for the same reason (a vendor's own invert toggle can
+        // flip at any point in a page's lifetime, so it is never cached).
         realizeForegroundRepairs(
           lastRoot,
           decideForegroundRepairs(legibilityScan.attrsByKey),
-          legibilityScan.elementsByKey
+          legibilityScan.elementsByKey,
+          detectVendorInvert()
         )
       } else {
         // No theme applied this round (no swatch, or pageAlreadyDark()'s own
@@ -764,7 +785,7 @@ export function createContentSession(
         realizeForegroundRepairs(lastRoot, [], new Map())
       }
 
-      outcome = { kind: "ok", actions }
+      outcome = { kind: "ok", actions, realizationChanged }
     } catch (error) {
       // onFire must run regardless — content.ts uses it to set the debug
       // attrs a live-browser wait (or a e2e test) polls for and to resolve

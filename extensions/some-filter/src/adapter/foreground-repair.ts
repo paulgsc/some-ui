@@ -73,7 +73,7 @@ import {
   rgbaToCss,
   rgbToHSL,
 } from "@filter/lib/content/modify-colors"
-import { EXT_GUARD } from "@filter/lib/content/theme-apply"
+import { counterInvertCss, EXT_GUARD } from "@filter/lib/content/theme-apply"
 
 import { isHTMLElementNode } from "./actuator"
 import {
@@ -281,9 +281,35 @@ function isSelectorSafeKey(key: LegibilityKey): boolean {
  * most specific argument only — 0-3-0, no bump at all.)
  */
 export function buildForegroundRepairRule(
-  action: RepairForegroundAction
+  action: RepairForegroundAction,
+  vendorInvert = 0
 ): string {
   const attr = `[${REPAIR_ATTR}="${action.key}"]`
+  // Counter-inverted exactly the way `shadow-actuator.ts` already does for
+  // `emit-surface-color`'s own `css`/`textCss` (#1281, #1336) — #1342 asks
+  // for the identical threading here from the start rather than a third
+  // follow-up issue. `counterInvertCss` is a no-op at `0`, the value every
+  // page without an active vendor `filter: invert(...)` reports, so the
+  // overwhelmingly common rule text is byte-identical to what this builder
+  // emitted before the parameter existed.
+  //
+  // Not currently reachable in production, and deliberately shipped anyway
+  // (the reachability analysis, so the next reader does not have to redo
+  // it): `detectVendorInvert()` is non-zero only when `document.
+  // documentElement` itself carries a `filter`, and SF-RC1's own
+  // `hasGroupCompositingHazard` — checked for every ancestor up to
+  // `documentElement` regardless of where colour accumulation resolves —
+  // classifies any such page's every carrier as `"underdetermined"`, which
+  // `decideForegroundRepairs` skips outright. So under a vendor invert this
+  // channel emits no repair at all today, at either scope, and *declining*
+  // is the correct behaviour while #1337 (the document-level background
+  // path's own missing compensation) is open: repairing against a backdrop
+  // whose own realization is uncompensated would pick a colour scored
+  // against a backdrop nobody ever sees. Narrowing that hazard for a
+  // recognized root-level `invert()` is tracked separately; when it lands,
+  // this builder is already correct rather than needing the same fix
+  // retrofitted twice.
+  const css = counterInvertCss(action.css, vendorInvert)
   // `-webkit-text-fill-color` is declared alongside `color`, not instead of
   // it. When set, that property — not `color` — is what fills the rendered
   // glyph, and `ownTextColor` can only detect it by comparing the two
@@ -298,7 +324,7 @@ export function buildForegroundRepairRule(
   // repaired colour for both closes that without needing to detect it:
   // where no explicit fill exists the property already resolves to
   // `currentcolor`, so writing the same colour changes nothing.
-  return `${attr}${attr}${EXT_GUARD}{color:${action.css}!important;-webkit-text-fill-color:${action.css}!important}`
+  return `${attr}${attr}${EXT_GUARD}{color:${css}!important;-webkit-text-fill-color:${css}!important}`
 }
 
 /**
@@ -430,41 +456,91 @@ export function clearForegroundRepairs(): void {
   })
 }
 
-export function realizeForegroundRepairs(
+/**
+ * The scope-agnostic half of this channel's realization: resolves each
+ * action's key back to carriers under `root`, tags the ones an
+ * author-origin `!important` rule can actually win on, clears the tag from
+ * every previously-tagged element this round did not (re)assert, and
+ * returns exactly the actions that ended up naming at least one tagged
+ * carrier.
+ *
+ * Split out for SF-RC3 (#1342) for the same reason `actuator.ts`'s own
+ * `tagSurfaceElements` is reused unchanged by `shadow-actuator.ts`: setting
+ * an attribute on an `HTMLElement` works identically inside a shadow tree,
+ * and `root.querySelectorAll` is already scoped to whatever it is given —
+ * it is only the *rule* half that a shadow boundary makes structurally
+ * different (a `<style>` in `document.head` cannot select across one, so a
+ * shadow scope realizes the very same rule text through
+ * `adoptedStyleSheets` instead).
+ *
+ * Returning the matched subset, rather than having each caller re-derive
+ * it, is what keeps the two realizations honest: a rule nothing can match
+ * is dead weight in a sheet the Sensor re-reads, and both scopes must agree
+ * on *which* actions that leaves. Order is preserved, so the emitted rule
+ * order is a deterministic function of `actions`.
+ */
+export function tagRepairCarriers(
   root: Element | ShadowRoot,
   actions: ReadonlyArray<RepairForegroundAction>,
   elementsByKey: ReadonlyMap<LegibilityKey, ReadonlyArray<Element>>
-): void {
+): ReadonlyArray<RepairForegroundAction> {
   const keep = new Set<Element>()
-  const rules: Array<string> = []
+  const matched: Array<RepairForegroundAction> = []
 
   for (const action of actions) {
     if (!isSelectorSafeKey(action.key)) continue
 
-    let matched = false
+    let any = false
     for (const el of elementsByKey.get(action.key) ?? []) {
       if (!isHTMLElementNode(el)) continue
       if (!repairCanWinCascade(el)) continue
       keep.add(el)
-      matched = true
+      any = true
       if (el.dataset.swLegibilityFix !== action.key) {
         el.dataset.swLegibilityFix = action.key
       }
     }
 
-    if (matched) rules.push(buildForegroundRepairRule(action))
+    if (any) matched.push(action)
   }
 
   root.querySelectorAll(`[${REPAIR_ATTR}]`).forEach((el) => {
     if (!keep.has(el)) el.removeAttribute(REPAIR_ATTR)
   })
 
-  if (rules.length === 0) {
+  return matched
+}
+
+/**
+ * `tagRepairCarriers(root, [], new Map())`, reporting whether it actually
+ * removed a tag rather than which actions survived (there are none).
+ * Exists so `shadow-actuator.ts`'s `clearShadowSurfaceState` can tell a real
+ * teardown from a no-op one — see its own return value.
+ */
+export function clearRepairTags(root: Element | ShadowRoot): boolean {
+  const tagged = root.querySelectorAll(`[${REPAIR_ATTR}]`)
+  tagged.forEach((el) => {
+    el.removeAttribute(REPAIR_ATTR)
+  })
+  return tagged.length > 0
+}
+
+export function realizeForegroundRepairs(
+  root: Element | ShadowRoot,
+  actions: ReadonlyArray<RepairForegroundAction>,
+  elementsByKey: ReadonlyMap<LegibilityKey, ReadonlyArray<Element>>,
+  vendorInvert = 0
+): void {
+  const matched = tagRepairCarriers(root, actions, elementsByKey)
+
+  if (matched.length === 0) {
     document.getElementById(REPAIR_STYLE_ID)?.remove()
     return
   }
 
-  const css = rules.join("\n")
+  const css = matched
+    .map((action) => buildForegroundRepairRule(action, vendorInvert))
+    .join("\n")
   const style = repairStyleEl()
   if (style.textContent !== css) {
     style.textContent = css

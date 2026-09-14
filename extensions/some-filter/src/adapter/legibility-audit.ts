@@ -779,6 +779,39 @@ export const FREEZE_STYLE_ID = "__sw_legibility_freeze"
 const REPAIR_ATTR = "data-sw-legibility-fix"
 
 /**
+ * The one rule both freezes carry (document `<style>` and per-scope adopted
+ * sheet alike), declared once so the two cannot drift.
+ *
+ * Two attributes, both extension-owned, and both for the same reason: a
+ * colour this extension itself just wrote must not still be *animating*
+ * while this channel reads it back.
+ *
+ * `[data-sw-legibility-fix]` is SF-RC2's original case — disabling the
+ * repair sheet to sense the authored foreground is itself a style change,
+ * so on a carrier with a vendor `transition` on `color` the read returns
+ * the transition's start value, which is the repair.
+ *
+ * `[data-sw-patched]` is the same hazard one channel over, on the
+ * *backdrop* (bot-found, Codex review round 3 on #1412). The audit runs
+ * immediately after actuation, in the same task, so a surface with an
+ * authored `transition` on `background-color` is still at (or near) its
+ * native colour when `resolveEffectiveBackdrop` reads it: dark text over a
+ * surface that is about to become dark scores as legible, gets no repair,
+ * and turns unreadable once the transition lands — with no mutation left to
+ * schedule another round, since completing a transition is not one. It
+ * applies to the document path as much as to a shadow scope; `fire()` has
+ * audited right after `realize()` since SF-RC1.
+ *
+ * Deliberately still not `*`, and still no `animation` declaration —
+ * SF-RC2 measured what that costs (a `*` freeze snapped an unrelated
+ * control mid-fade straight to its destination; `animation: none` *removes*
+ * a running animation, so a spinner came back restarted at `currentTime`
+ * 0). Both attributes here mark elements this extension wrote to, so the
+ * only transitions frozen are ones it caused.
+ */
+const FREEZE_RULE = `[${REPAIR_ATTR}], [data-sw-patched] { transition: none !important; }`
+
+/**
  * The transition freeze `withRepairSuppressed` reads under, as a
  * *persistent, disabled-by-default* extension-owned sheet rather than a
  * `<style>` appended and removed around each read.
@@ -829,7 +862,7 @@ function freezeSheet(): CSSStyleSheet | null {
   const style = document.createElement("style")
   style.id = FREEZE_STYLE_ID
   style.setAttribute("data-my-ext", "")
-  style.textContent = `[${REPAIR_ATTR}] { transition: none !important; }`
+  style.textContent = FREEZE_RULE
   document.head.appendChild(style)
   const sheet = style.sheet
   // Inert until a read actually needs it. The window between append and
@@ -900,19 +933,45 @@ function freezeSheet(): CSSStyleSheet | null {
  * would be more code for less correctness.
  */
 function withRepairSuppressed<T>(fn: () => T): T {
-  const el = document.getElementById(REPAIR_STYLE_ID)
-  const sheet = el instanceof HTMLStyleElement ? el.sheet : null
-  // Nothing of ours is applied, so nothing of ours can perturb a carrier —
-  // and a freeze with nothing to protect against is pure collateral. The
-  // first round of any page takes this path.
-  if (sheet === null || sheet.disabled) return fn()
-
+  // The freeze is unconditional now (bot-found, Codex review round 3 on
+  // #1412). It used to be skipped whenever no repair sheet was applied,
+  // on the reasoning that nothing of ours could then perturb a carrier —
+  // true of the *foreground*, false of the backdrop: `fire()` calls this
+  // audit immediately after `realize()`, so the surfaces this round just
+  // darkened may still be mid-transition, and the very first round of any
+  // page — the one that does the darkening — is exactly the round that
+  // used to take the skip. See `FREEZE_RULE`.
   const freeze = freezeSheet()
   if (freeze !== null) {
     freeze.disabled = false
     flushStyle()
   }
   try {
+    return withRepairSheetDisabled(fn)
+  } finally {
+    if (freeze !== null) {
+      // Mirrors `withScopeTransitionsFrozen`'s own exit flush: commit
+      // whatever the body left behind while transitions are still off, so
+      // lifting the freeze is not itself a transitionable change. The
+      // enabling flush above has usually already settled the backdrop, but
+      // the repair sheet's own restore happens inside the body.
+      flushStyle()
+      freeze.disabled = true
+    }
+  }
+}
+
+/**
+ * The suppression half, split out of `withRepairSuppressed` so the freeze
+ * above can wrap it unconditionally while this stays conditional — there is
+ * genuinely nothing to disable until this channel has emitted a repair.
+ */
+function withRepairSheetDisabled<T>(fn: () => T): T {
+  const el = document.getElementById(REPAIR_STYLE_ID)
+  const sheet = el instanceof HTMLStyleElement ? el.sheet : null
+  if (sheet === null || sheet.disabled) return fn()
+
+  {
     sheet.disabled = true
     try {
       return fn()
@@ -933,8 +992,6 @@ function withRepairSuppressed<T>(fn: () => T): T {
       // nothing and no frame is ever painted mid-flight.
       flushStyle()
     }
-  } finally {
-    if (freeze !== null) freeze.disabled = true
   }
 }
 
@@ -944,8 +1001,143 @@ function withRepairSuppressed<T>(fn: () => T): T {
  * actually resolves the element's style — so the property access is load-
  * bearing, not a stray expression.
  */
-function flushStyle(): void {
+export function flushStyle(): void {
   void getComputedStyle(document.documentElement).color
+}
+
+/**
+ * The scoped counterpart to `freezeSheet()` above: one shared *constructed*
+ * `CSSStyleSheet` carrying the identical `[data-sw-legibility-fix] {
+ * transition: none !important }` rule, adopted into each shadow scope that
+ * needs it — SF-RC3 (#1342).
+ *
+ * A `<style>` element in `document.head` cannot reach inside a shadow tree
+ * at all (CSS encapsulation — the same structural gap `shadow-actuator.ts`
+ * exists for on the colour side). Probed directly against real Chromium
+ * rather than assumed: with the document-level freeze enabled, a carrier
+ * *inside* an open shadow root still read `transitionDuration: "5s"`, so
+ * the document freeze provably does not apply there. The rule text is
+ * identical to the document one's on purpose — one scope's freeze and
+ * another's have nothing to differ about, and reusing the text keeps the
+ * two from drifting.
+ *
+ * One object shared across every scope rather than one per root: adopting
+ * the same constructed sheet into many roots is exactly what
+ * `adoptedStyleSheets` is for (`shadow-actuator.ts`'s own `sheetFor` cache
+ * shares colour sheets the same way), and `disabled` is a property of the
+ * *sheet*, so one toggle covers every scope currently reading — which is
+ * harmless, since every read this guards is synchronous and the rule only
+ * ever matches carriers this channel itself repaired.
+ *
+ * `insertRule` rather than `replaceSync`, and a `?? []` around the
+ * adoptedStyleSheets read, for exactly the two jsdom reasons
+ * `shadow-actuator.ts`'s own header sets out.
+ */
+let scopeFreezeSheet: CSSStyleSheet | null = null
+
+function adoptScopeFreeze(root: ShadowRoot): CSSStyleSheet | null {
+  if (typeof CSSStyleSheet === "undefined") return null
+  if (scopeFreezeSheet === null) {
+    const sheet = new CSSStyleSheet()
+    sheet.insertRule(FREEZE_RULE, 0)
+    sheet.disabled = true
+    scopeFreezeSheet = sheet
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- jsdom has no adoptedStyleSheets accessor on ShadowRoot.prototype (jsdom/jsdom#2916); see shadow-actuator.ts's header.
+  const current = root.adoptedStyleSheets ?? []
+  if (!current.includes(scopeFreezeSheet)) {
+    root.adoptedStyleSheets = [...current, scopeFreezeSheet]
+  }
+  return scopeFreezeSheet
+}
+
+/**
+ * Drops the freeze back out of `root` once the read that needed it is over,
+ * so this module leaves nothing of its own adopted in a scope between
+ * rounds.
+ *
+ * A disabled sheet left behind would be inert, but it would also be a sheet
+ * `shadow-actuator.ts`'s own `ownedSheetsByRoot` does not track and
+ * `clearShadowSurfaceState` therefore does not clear — an extension-owned
+ * artifact surviving in a scope the registry believes it has fully released.
+ * Removing it is safe at every call site for the same reason: by the time
+ * this runs the sheet is already `disabled`, and the only rule in it selects
+ * `[data-sw-legibility-fix]`, so no element's resolved style depends on its
+ * presence either way. Reassigning `adoptedStyleSheets` is a CSSOM property
+ * write, not a DOM mutation, so neither the adoption nor this removal is
+ * something any observer in this codebase can see (#831 does not apply).
+ */
+function releaseScopeFreeze(root: ShadowRoot, sheet: CSSStyleSheet): void {
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- see adoptScopeFreeze.
+  const current = root.adoptedStyleSheets ?? []
+  if (current.includes(sheet)) {
+    root.adoptedStyleSheets = current.filter((s) => s !== sheet)
+  }
+}
+
+/**
+ * Runs `fn` with colour transitions frozen on every carrier this channel
+ * has repaired inside `root` — the per-scope half of what
+ * `withRepairSuppressed` does for the document.
+ *
+ * A shadow scope does not need the *suppression* half. `scope-registry.ts`'s
+ * own custody handoff tears a committed realization down (`uninstall` ->
+ * `shadow-actuator.ts`'s `clearShadowSurfaceState`) before any re-commit's
+ * `install` runs, so by the time a scoped audit reads, this channel's own
+ * repair sheets are already gone from that root and every read is of the
+ * authored colour by construction — there is no enabled sheet left to
+ * disable. What the scope *does* inherit unchanged is the transition
+ * hazard, and from the very teardown that makes suppression unnecessary:
+ * dropping the repair sheet is a style change, so a carrier with a vendor
+ * `transition` on `color` starts transitioning away from the repair, and a
+ * `getComputedStyle` taken in the same task reports that transition's
+ * current value — the repair itself, at progress zero. Without this, the
+ * scoped audit would call such a carrier legible, emit no repair, and let
+ * the transition finish at the illegible authored colour, with no mutation
+ * left to schedule another round. Exactly the oscillation
+ * `withRepairSuppressed`'s own doc comment records, one scope over.
+ *
+ * Both flushes are load-bearing for the same reasons they are there: the
+ * first commits the frozen (settled, authored) value before `fn` reads it,
+ * the second commits whatever `fn` left behind while transitions are still
+ * off, so lifting the freeze afterwards is not itself a transitionable
+ * change.
+ */
+let scopeFreezeDepth = 0
+const frozenRoots = new Set<ShadowRoot>()
+
+export function withScopeTransitionsFrozen<T>(
+  root: ShadowRoot,
+  fn: () => T
+): T {
+  const freeze = adoptScopeFreeze(root)
+  if (freeze === null) return fn()
+  frozenRoots.add(root)
+  // Re-entrant: `shadow-scope-theming.ts`'s own contrast sub-pass wraps a
+  // sequence that itself calls `auditLegibility`, which freezes again. A
+  // non-counting implementation would let the inner call's `finally` lift
+  // the freeze while the outer sequence is still mid-teardown — exactly the
+  // window this whole mechanism exists to close. The sheet is shared, so the
+  // count is module-level rather than per-root, and every root adopted
+  // anywhere in the nest is released together once the outermost call
+  // returns.
+  const outermost = scopeFreezeDepth === 0
+  scopeFreezeDepth += 1
+  if (outermost) {
+    freeze.disabled = false
+    flushStyle()
+  }
+  try {
+    return fn()
+  } finally {
+    scopeFreezeDepth -= 1
+    if (scopeFreezeDepth === 0) {
+      flushStyle()
+      freeze.disabled = true
+      for (const frozen of frozenRoots) releaseScopeFreeze(frozen, freeze)
+      frozenRoots.clear()
+    }
+  }
 }
 
 /**
@@ -978,7 +1170,14 @@ function flushStyle(): void {
 export function auditLegibility(
   root: Element | ShadowRoot
 ): LegibilityScanResult {
-  return withRepairSuppressed(() => senseLegibility(root))
+  // A shadow scope reads under its own adopted freeze, never the document's
+  // — see `withScopeTransitionsFrozen` for why the suppression half is
+  // structurally unnecessary there and the freeze half is not, and why a
+  // `<style>` in `document.head` cannot supply either one across a shadow
+  // boundary.
+  return isShadowRoot(root)
+    ? withScopeTransitionsFrozen(root, () => senseLegibility(root))
+    : withRepairSuppressed(() => senseLegibility(root))
 }
 
 function senseLegibility(root: Element | ShadowRoot): LegibilityScanResult {

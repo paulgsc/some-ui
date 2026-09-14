@@ -1,10 +1,20 @@
-import { createScopeRegistry } from "@filter/adapter/scope-registry"
+import { REPAIR_ATTR } from "@filter/adapter/foreground-repair"
+import { LEGIBILITY_ATTR } from "@filter/adapter/legibility-audit"
+import {
+  createScopeRegistry,
+  type ScopeId,
+} from "@filter/adapter/scope-registry"
 import {
   createShadowScopeTheming,
   SHEET_INTEGRITY_POLL_MS,
   type ShadowSceneRegistry,
+  type ShadowScopeTheming,
 } from "@filter/adapter/shadow-scope-theming"
-import { DEFAULT_SWATCH_ID, SWATCHES } from "@filter/adapter/swatches"
+import {
+  DEFAULT_SWATCH_ID,
+  SWATCHES,
+  type Swatch,
+} from "@filter/adapter/swatches"
 import { parseColor, relativeLuminance } from "@filter/lib/content/color"
 import { compensateSwatch } from "@filter/lib/content/theme-apply"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -891,5 +901,455 @@ describe("createShadowScopeTheming.observe/teardown — reprojects on a vendor-i
 
     expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
     expect(shadow.adoptedStyleSheets).toBe(sheetsAfterCommit)
+  })
+})
+
+// ── SF-RC3 (#1342) — the rendered-contrast channel, per scope ──
+
+describe("createShadowScopeTheming.project — rendered-contrast channel (#1342)", () => {
+  /**
+   * A light surface (so the scope themes at all rather than reading as
+   * already-dark) containing a dark panel whose own carrier declares black
+   * text against it — the authored, pre-actuation violation SF-RC2's own
+   * witness B has, reproduced inside a shadow scope.
+   *
+   * Authored rather than actuation-induced on purpose: jsdom applies
+   * neither `adoptedStyleSheets` nor a `<style>` rule to `getComputedStyle`,
+   * so a violation that only exists *after* this module's own sheets land
+   * is invisible in this environment by construction. What this test is for
+   * is the wiring — that the scoped audit runs at all, that its two realize
+   * halves reach the right root, and that the repair's rule lands in *this
+   * scope's* adoptedStyleSheets — not the cascade, which is an e2e claim
+   * (`issue-1342-sfrc3-shadow-foreground.spec.ts`) against real Chromium.
+   */
+  function violatedScope(): { shadow: ShadowRoot; carrier: HTMLElement } {
+    const shadow = shadowRoot()
+    const surface = document.createElement("div")
+    surface.setAttribute("style", "background-color: rgb(255, 255, 255)")
+    const panel = document.createElement("div")
+    panel.setAttribute("style", "background-color: rgb(20, 20, 20)")
+    const carrier = document.createElement("div")
+    carrier.setAttribute("style", "color: rgb(0, 0, 0)")
+    carrier.textContent = "illegible"
+    panel.appendChild(carrier)
+    surface.appendChild(panel)
+    shadow.appendChild(surface)
+    return { shadow, carrier }
+  }
+
+  it("tags a violated carrier and adopts its repair rule into that scope's own sheets", async () => {
+    const reg = registry()
+    const { shadow, carrier } = violatedScope()
+    const id = registerHeld(reg, shadow)
+
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
+    theming.project(id)
+    await flushAll()
+
+    expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+    expect(carrier.getAttribute(LEGIBILITY_ATTR)).toBe("violated")
+    const key = carrier.getAttribute(REPAIR_ATTR)
+    expect(key).toBe("rgb(0, 0, 0)~rgb(20, 20, 20)")
+
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- see shadow-actuator.ts's header.
+    const sheets = shadow.adoptedStyleSheets ?? []
+    const repairRule = sheets
+      .flatMap((sheet) => [...sheet.cssRules])
+      .find((rule) => rule.cssText.includes(REPAIR_ATTR))
+    expect(repairRule, "no repair rule adopted into the scope").toBeDefined()
+    expect(repairRule?.cssText).toContain(`${REPAIR_ATTR}="${key ?? ""}"`)
+  })
+
+  it("keeps the repair sheet alongside — not instead of — the scope's static layer, host tokens and surface colours", async () => {
+    // One desired sheet set per root is what keeps shadowRealizationIntact
+    // (#1280) and clearShadowSurfaceState covering everything this extension
+    // put here — see realizeShadowColors's own `repairs` parameter.
+    const reg = registry()
+    const { shadow } = violatedScope()
+    const id = registerHeld(reg, shadow)
+
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
+    theming.project(id)
+    await flushAll()
+
+    // static layer + :host tokens + the white surface's own colour + repair.
+    expect(shadow.adoptedStyleSheets).toHaveLength(4)
+  })
+
+  it("re-projecting an unchanged scope converges on the identical tag and sheet set (no oscillation)", async () => {
+    // Theorem 7.2's fixed point, one scope over: the same authored evidence
+    // must re-derive the same violation every round. A round that instead
+    // read back its *own* repair would call the carrier legible and drop the
+    // tag — SF-RC2's own oscillation, which withScopeTransitionsFrozen and
+    // the teardown-before-install ordering are what prevent here.
+    const reg = registry()
+    const { shadow, carrier } = violatedScope()
+    const id = registerHeld(reg, shadow)
+
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
+    theming.project(id)
+    await flushAll()
+    const firstKey = carrier.getAttribute(REPAIR_ATTR)
+    const firstSheets = [...shadow.adoptedStyleSheets]
+
+    reg.invalidate(id)
+    theming.project(id)
+    await flushAll()
+
+    expect(reg.stateOf(id)?.kind).toBe("COMMITTED")
+    expect(carrier.getAttribute(REPAIR_ATTR)).toBe(firstKey)
+    expect([...shadow.adoptedStyleSheets]).toEqual(firstSheets)
+  })
+
+  it("leaves no freeze sheet of its own adopted once a round settles", async () => {
+    // The scope freeze is a read-time artifact, not part of the realization:
+    // anything left behind would be a sheet ownedSheetsByRoot does not track
+    // and clearShadowSurfaceState therefore never clears.
+    const reg = registry()
+    const { shadow } = violatedScope()
+    const id = registerHeld(reg, shadow)
+
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
+    theming.project(id)
+    await flushAll()
+
+    const frozen = shadow.adoptedStyleSheets.filter((sheet) =>
+      [...sheet.cssRules].some((rule) =>
+        rule.cssText.includes("transition: none")
+      )
+    )
+    expect(frozen).toHaveLength(0)
+  })
+})
+
+describe("createShadowScopeTheming.project — an ancestor commit re-audits nested scopes (#1342, bot-found)", () => {
+  /**
+   * `shadow-scope-discovery.ts`'s `registerShadowRoot` recurses into nested
+   * roots before calling `onScopeReady` for the parent, so a child's audit
+   * can score an ancestor backdrop that is about to be darkened — and
+   * nothing re-audits it afterwards, since an ancestor's realization is
+   * `adoptedStyleSheets` writes plus attribute writes inside the *ancestor's*
+   * root, neither of which any observer watching the child can see.
+   *
+   * This environment cannot express that claim directly, for two independent
+   * reasons: jsdom applies no stylesheet to `getComputedStyle`, so the
+   * ancestor's own darkening never lands; and jsdom caches an element's
+   * computed style permanently after the first read (confirmed directly — a
+   * later `setAttribute("style", …)` updates the attribute but not
+   * `getComputedStyle`), so a stand-in inline change to an
+   * already-audited backdrop is invisible too.
+   *
+   * What these tests pin instead is the *mechanism*, isolated: no observer
+   * is wired here, so a nested scope's carrier can only be tagged if
+   * committing its ancestor re-ran that scope's contrast half. The
+   * end-to-end claim — a carrier whose backdrop actually resolves through
+   * its host into the outer scope and is repaired only once the outer scope
+   * themes — is `issue-1342-sfrc3-shadow-foreground.spec.ts`'s own
+   * nested-crosser case, against real Chromium.
+   */
+  function nestedScopes(): {
+    outer: ShadowRoot
+    inner: ShadowRoot
+  } {
+    const outer = shadowRoot()
+    const outerSurface = document.createElement("div")
+    outerSurface.setAttribute("style", "background-color: rgb(255, 255, 255)")
+    const innerHost = document.createElement("div")
+    outerSurface.appendChild(innerHost)
+    outer.appendChild(outerSurface)
+    return { outer, inner: innerHost.attachShadow({ mode: "open" }) }
+  }
+
+  /** A dark panel carrying black text — violated on its own evidence, so the audit's verdict does not depend on any stylesheet landing. */
+  function addViolatedCarrier(root: ShadowRoot): HTMLElement {
+    const panel = document.createElement("div")
+    panel.setAttribute("style", "background-color: rgb(20, 20, 20)")
+    const carrier = document.createElement("div")
+    carrier.setAttribute("style", "color: rgb(0, 0, 0)")
+    carrier.textContent = "crosser"
+    panel.appendChild(carrier)
+    root.appendChild(panel)
+    return carrier
+  }
+
+  it("re-runs a nested scope's contrast half when its ancestor commits, without invalidating it", async () => {
+    const reg = registry()
+    const { outer, inner } = nestedScopes()
+    const outerId = registerHeld(reg, outer)
+    const innerId = "shadow:inner-crosser"
+    reg.register(innerId, {
+      ref: inner,
+      parent: outerId,
+      contentEpoch: 0,
+      hold: { install: () => {}, release: () => {} },
+    })
+
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
+
+    // The child projects first, exactly as discovery orders it — with
+    // nothing yet to find.
+    theming.project(innerId)
+    await flushAll()
+    expect(reg.stateOf(innerId)?.kind).toBe("COMMITTED")
+
+    // Stands in for evidence the child's own audit could not have seen when
+    // it ran. Nothing observes this root, so only an ancestor-driven
+    // re-audit can pick it up.
+    const carrier = addViolatedCarrier(inner)
+
+    theming.project(outerId)
+    await flushAll()
+
+    expect(reg.stateOf(outerId)?.kind).toBe("COMMITTED")
+    expect(
+      carrier.getAttribute(REPAIR_ATTR),
+      "committing the ancestor must re-audit the nested scope"
+    ).toBe("rgb(0, 0, 0)~rgb(20, 20, 20)")
+    expect(
+      carrier.getAttribute(LEGIBILITY_ATTR),
+      "the diagnostic half must be re-run too, not just the repair"
+    ).toBe("violated")
+    expect(
+      reg.stateOf(innerId)?.kind,
+      "re-contrast must not re-engage the nested scope's occlusion hold"
+    ).toBe("COMMITTED")
+  })
+
+  it("re-audits a scope nested two levels down, not just a direct child", async () => {
+    // A grandchild's backdrop can resolve through two hosts to this
+    // ancestor just as easily as one, so the walk is transitive.
+    const reg = registry()
+    const { outer, inner } = nestedScopes()
+    const grandHost = document.createElement("div")
+    inner.appendChild(grandHost)
+    const grand = grandHost.attachShadow({ mode: "open" })
+
+    const outerId = registerHeld(reg, outer)
+    reg.register("shadow:mid", {
+      ref: inner,
+      parent: outerId,
+      contentEpoch: 0,
+      hold: { install: () => {}, release: () => {} },
+    })
+    reg.register("shadow:grand", {
+      ref: grand,
+      parent: "shadow:mid",
+      contentEpoch: 0,
+      hold: { install: () => {}, release: () => {} },
+    })
+
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
+    theming.project("shadow:grand")
+    await flushAll()
+    const carrier = addViolatedCarrier(grand)
+
+    theming.project(outerId)
+    await flushAll()
+
+    expect(carrier.getAttribute(REPAIR_ATTR)).toBe(
+      "rgb(0, 0, 0)~rgb(20, 20, 20)"
+    )
+  })
+
+  it("leaves a committed scope alone when it is not a descendant of the committing one", async () => {
+    const reg = registry()
+    const a = nestedScopes()
+    const b = nestedScopes()
+    const aOuterId = registerHeld(reg, a.outer)
+    const bOuterId = registerHeld(reg, b.outer)
+    reg.register("shadow:unrelated-inner", {
+      ref: b.inner,
+      parent: bOuterId,
+      contentEpoch: 0,
+      hold: { install: () => {}, release: () => {} },
+    })
+
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0
+    )
+    theming.project("shadow:unrelated-inner")
+    await flushAll()
+    const carrier = addViolatedCarrier(b.inner)
+
+    theming.project(aOuterId)
+    await flushAll()
+
+    expect(carrier.hasAttribute(REPAIR_ATTR)).toBe(false)
+  })
+})
+
+describe("createShadowScopeTheming.project — every exit that moves a realization re-contrasts (#1342, bot-found)", () => {
+  /**
+   * The re-contrast used to sit beside the commit path only, so both
+   * exoneration paths tore a realization down and returned silently — a
+   * descendant resolving its backdrop into that scope kept diagnostics and
+   * a repair calculated against the old themed backdrop.
+   *
+   * The ancestor's own surface is a *sibling* of the nested host rather than
+   * its parent: jsdom applies no stylesheet to `getComputedStyle` and caches
+   * an element's computed style permanently after the first read, so the
+   * real backdrop chain cannot be exercised here at all (see this file's
+   * other nested block). What these pin is the mechanism — which exits
+   * report, and which correctly do not.
+   */
+  function scopeWithCommittedDescendant(): {
+    outerId: ScopeId
+    descendantId: ScopeId
+    reg: ShadowSceneRegistry
+    theming: ShadowScopeTheming
+    carrier: HTMLElement
+    outer: ShadowRoot
+    surface: HTMLElement
+    swatchRef: { current: Swatch | null }
+  } {
+    const reg = registry()
+    const outer = shadowRoot()
+    const surface = document.createElement("div")
+    surface.setAttribute("style", "background-color: rgb(255, 255, 255)")
+    const innerHost = document.createElement("div")
+    outer.append(surface, innerHost)
+    const inner = innerHost.attachShadow({ mode: "open" })
+
+    const outerId = registerHeld(reg, outer)
+    reg.register("shadow:desc", {
+      ref: inner,
+      parent: outerId,
+      contentEpoch: 0,
+      hold: { install: () => {}, release: () => {} },
+    })
+
+    const panel = document.createElement("div")
+    panel.setAttribute("style", "background-color: rgb(20, 20, 20)")
+    const carrier = document.createElement("div")
+    carrier.setAttribute("style", "color: rgb(0, 0, 0)")
+    carrier.textContent = "descendant"
+    panel.appendChild(carrier)
+    inner.appendChild(panel)
+
+    const swatchRef: { current: Swatch | null } = { current: swatch }
+    return {
+      outerId,
+      descendantId: "shadow:desc",
+      reg,
+      theming: createShadowScopeTheming(
+        reg,
+        () => swatchRef.current,
+        () => 0
+      ),
+      carrier,
+      outer,
+      surface,
+      swatchRef,
+    }
+  }
+
+  /** Commits both scopes, then clears the descendant's tags so a later re-contrast is unambiguous. */
+  async function settleBoth(
+    theming: ShadowScopeTheming,
+    outerId: ScopeId,
+    descendantId: ScopeId,
+    carrier: HTMLElement
+  ): Promise<void> {
+    theming.project(descendantId)
+    theming.project(outerId)
+    await flushAll()
+    carrier.removeAttribute(REPAIR_ATTR)
+    carrier.removeAttribute(LEGIBILITY_ATTR)
+  }
+
+  it("re-contrasts descendants when an ancestor exonerates as restore-native", async () => {
+    const { outerId, descendantId, reg, theming, carrier, outer, surface } =
+      scopeWithCommittedDescendant()
+
+    await settleBoth(theming, outerId, descendantId, carrier)
+    expect(reg.stateOf(outerId)?.kind).toBe("COMMITTED")
+
+    // *Fresh* elements, not restyled ones: jsdom caches computed style after
+    // the first read, so mutating `surface` in place would leave the scan
+    // still seeing white. Three distinct dark keys is
+    // MIN_EVIDENCE_FOR_DARK_VERDICT, the bar pageAlreadyDark() checks.
+    surface.remove()
+    for (const color of ["rgb(5, 5, 5)", "rgb(6, 6, 6)", "rgb(7, 7, 7)"]) {
+      const el = document.createElement("div")
+      el.setAttribute("style", `background-color: ${color}`)
+      outer.appendChild(el)
+    }
+
+    reg.invalidate(outerId)
+    theming.project(outerId)
+    await flushAll()
+
+    expect(reg.stateOf(outerId)?.kind).toBe("EXONERATED_NATIVE")
+    expect(
+      carrier.getAttribute(REPAIR_ATTR),
+      "tearing an ancestor's realization down moves its descendants' backdrops too"
+    ).toBe("rgb(0, 0, 0)~rgb(20, 20, 20)")
+  })
+
+  it("re-contrasts descendants when an ancestor exonerates for no-swatch", async () => {
+    const { outerId, descendantId, reg, theming, carrier, swatchRef } =
+      scopeWithCommittedDescendant()
+
+    await settleBoth(theming, outerId, descendantId, carrier)
+    expect(reg.stateOf(outerId)?.kind).toBe("COMMITTED")
+
+    swatchRef.current = null
+    reg.invalidate(outerId)
+    theming.project(outerId)
+    await flushAll()
+
+    expect(reg.stateOf(outerId)?.kind).toBe("EXONERATED_NATIVE")
+    expect(carrier.getAttribute(REPAIR_ATTR)).toBe(
+      "rgb(0, 0, 0)~rgb(20, 20, 20)"
+    )
+  })
+
+  it("does not re-contrast when an exoneration round had nothing to tear down", async () => {
+    // The other half of the same finding: a scope that never committed
+    // clears nothing, so its descendants' backdrops did not move. Reporting
+    // unconditionally would trade a missed pass for a repeated one on every
+    // round of a natively-dark scope.
+    const { outerId, descendantId, reg, theming, carrier, swatchRef } =
+      scopeWithCommittedDescendant()
+
+    theming.project(descendantId)
+    await flushAll()
+    carrier.removeAttribute(REPAIR_ATTR)
+
+    swatchRef.current = null
+    theming.project(outerId)
+    await flushAll()
+
+    expect(reg.stateOf(outerId)?.kind).toBe("EXONERATED_NATIVE")
+    expect(
+      carrier.hasAttribute(REPAIR_ATTR),
+      "nothing was torn down, so no descendant needed re-auditing"
+    ).toBe(false)
   })
 })
