@@ -82,10 +82,23 @@ closing review's finding, if any, this way instead:
   the evidence that's safe, and re-review-forever is exactly the cost this cap exists to bound.
 - **Substantive** (changes real behavior, logic, or a load-bearing rule) — fix what is in this
   PR's scope, **file whatever is left as a tracked issue on the same milestone as the issue this
-  PR closes, and merge.** Do not stand down and wait for a human to merge it by hand.
+  PR closes**, push, and take **one confirming review of that resulting head** before merging.
+  Do not stand down and wait for a human to merge it by hand.
 
-Either branch terminates in a merge. There is no version of this rule where a green, mergeable
-PR sits waiting — on one more automatic review, or on a human.
+  That confirming review is the one carve-out to the cap, and it earns it by _confirming_ rather
+  than seeking: the head it covers is a targeted fix for findings already raised, not new surface
+  anyone went looking for. **Whatever it returns, the disposition is then the same — file
+  anything still outstanding as a tracked issue on that milestone, and merge. Do not fix and push
+  again.** Another fix would produce another uncovered head and restart the regress this whole
+  cap exists to bound; filing records it without doing so.
+
+  Skip the confirming review only when the substantive fix is empty — everything the closing
+  review named was out of this PR's scope and got filed, so the head being merged is the one the
+  closing review already covered.
+
+Either branch terminates in a merge, on a head some review has actually seen. There is no
+version of this rule where a green, mergeable PR sits waiting — on one more speculative review,
+or on a human.
 
 **Why the disposition is "track it and merge" rather than "hand it back"** (user decision,
 2026-09-14, after SF-RC2/`#1409` sat green and idle through four monitoring check-ins under the
@@ -102,6 +115,12 @@ before merging, never filed instead. The merge criteria are unchanged: green CI 
 head, `mergeable_state: "clean"`, confirmed review coverage, and no unresolved thread
 representing an unaddressed _fixable_ finding — a disclosed-and-replied-to deferred gap backed
 by a tracked issue is exactly the kind that may stay open.
+
+Coverage in particular is not what gets traded away here, and the confirming review above is
+what keeps that true (bot-found, on this rule's own PR — the first draft said "fix the in-scope
+part and merge", which silently lands a head no review ever saw and contradicts the very
+criteria this paragraph calls unchanged). The thing being given up is the _open-ended_ pursuit
+of a zero-finding steady state, not the guarantee that the commit being merged was reviewed.
 
 **Below the cap** — any review round before the 3-round auto-request limit is reached — if a
 finding reveals a real gap wider than this PR's own scope (not a bug to fix in this diff, but a
