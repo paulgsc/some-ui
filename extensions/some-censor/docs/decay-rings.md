@@ -97,12 +97,18 @@ One SVG, five configurations of the same four parts.
   boundary. Three at `QM1`, one or two at early `QM2`, none from `QM3` on. They
   say _this is emitting, and it is contained_ — not _you are being irradiated
   right now_.
-- **Age rings** — concentric rings that accumulate as emissions retract. A
-  partial arc through `QM2`, two complete rings at `QM3`, three or a faint patina
-  at `QM4`.
+- **Age rings** — concentric rings that accumulate as emissions retract,
+  the same open-ended distance-travelled logic at every state: a partial arc
+  through `QM2`, two complete rings at `QM3`, three or a faint patina at
+  `QM4`. Length reflects elapsed time since first observed; it is not scaled
+  to `age / B` and does not visually anticipate `B` — a closing arc is the
+  same pending-reward shape §6 rejects for text countdowns, whether or not it
+  counts down numerically.
 
-A threshold notch at twelve o'clock marks `B`. Through `QM2` the age arc grows
-toward it; once closed, the notch becomes part of the seal.
+A threshold notch at twelve o'clock marks `B`, used only by the one-time
+`QM3` crossing animation below. It is not a running progress target: the
+`QM2` arc does not fill toward it or otherwise telegraph the boundary in
+advance.
 
 ### Symbols to avoid, and why
 
@@ -166,16 +172,18 @@ Coupled to the present. No disclosure path exists (QD2).
 
 In quarantine; distance accumulating.
 
-- **Icon** `( ● )` — emissions reduced, one accumulating age arc. The arc
-  doubles as the progress reading: start notch at twelve, length proportional
-  to `age / B`.
+- **Icon** `( ● )` — emissions reduced, one accumulating age arc. It grows
+  with elapsed time alone, the same accumulation as `QM3`/`QM4`'s rings —
+  never scaled or capped against `B`, so it has no "full" state to read as a
+  completion.
 - **Palette** ember oxidising into bronze — early `168 92 53`, middle
   `146 112 68`, late `124 119 82`, surface `19 20 17`, text `195 185 150`.
   Saturation falls with age: **time removes visual energy.**
 - **Motion** none. A static arc, updated when the day count changes.
 - **Card** still sealed. May carry more nonsemantic quarantine information than
-  `QM1`, since the boundary is in sight. A ring, never a horizontal progress
-  bar — a bar reads as a download that will finish; a ring reads as aging.
+  `QM1`. A ring, never a horizontal progress bar — a bar implies a 0–100%
+  completion baked into its shape; a ring, drawn open-ended per the anatomy
+  note above, reads as accumulating aging rather than approaching a finish.
 
 ### `QM3` — Seasoned
 
