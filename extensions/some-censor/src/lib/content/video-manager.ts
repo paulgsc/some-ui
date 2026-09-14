@@ -51,7 +51,7 @@ import { mkSession } from "@some-extension/common"
 
 import { publish, registerDebugSource } from "./debug"
 import { tryExtract } from "./extract/index"
-import { observability } from "./observability"
+import { observability, PROMOTION_STALL_MS } from "./observability"
 import type { BoyoContext, PromotingCard, QueuedCard } from "./observability"
 import { makeProvisionalRecord, makeRecord } from "./record"
 import { isVideoCard, SEL } from "./selectors"
@@ -115,10 +115,18 @@ export class VideoManager {
   // guard, so PromotionGuardClears (observability.ts) can see one that never
   // left it. A WeakSet cannot be iterated, and the invariant's whole subject
   // is the element still sitting in it — so this holds strong refs, the same
-  // trade _rejected already makes and for the same reason. Bounded by the
-  // number of concurrent in-flight promotions (each entry is deleted in
-  // _promote()'s finally, exactly where _promoting is), and cleared by
-  // reset() on every navigation.
+  // trade _rejected already makes and for the same reason.
+  //
+  // Deliberately exempt from reset()'s clear-everything sweep (M3), unlike
+  // every other map here — bot-found (#1397's own review): reset() cannot
+  // clear `_promoting` itself, because a WeakSet has no iteration and so no
+  // clear-by-content. Clearing only the mirror would let the two disagree
+  // exactly where it matters: an element still held by the real guard after
+  // an SPA navigation blocks every later _promote() for it, and a mirror that
+  // forgot it makes that permanently unreportable. Entries are therefore
+  // removed in one place only — _promote()'s finally, the same place the real
+  // guard is released — so the mirror can only ever retain what `_promoting`
+  // has also retained, and what it retains is precisely the leak.
   private readonly _promotingSince: Map<HTMLElement, PromotingCard> = new Map()
   // Per-element staleness guard (#980, M6). Which videoId an element is
   // currently claimed for, and a token bumped whenever that claim changes —
@@ -137,6 +145,8 @@ export class VideoManager {
   private _phase: Phase = "idle"
   private _session: SessionId = mkSession()
   private _retryInterval: ReturnType<typeof setInterval> | null = null
+  // Observability-only. See _armStallWatch().
+  private _stallWatch: ReturnType<typeof setTimeout> | null = null
 
   constructor() {
     // Register with the debug layer so Playwright can observe state
@@ -189,6 +199,7 @@ export class VideoManager {
     }
     this._session = mkSession()
     this._phase = "running"
+    if (this._promotingSince.size > 0) this._armStallWatch()
     observability()?.sessionStart(this._session)
     publish()
     return this._session
@@ -206,12 +217,15 @@ export class VideoManager {
     this._firstSeen.clear()
     this._rejected.clear()
     this._channelGaveUp.clear()
-    this._promotingSince.clear()
 
     if (this._retryInterval !== null) {
       clearInterval(this._retryInterval)
       this._retryInterval = null
     }
+    // Stopped here and re-armed by startSession() if anything is still held,
+    // so a disabled extension leaves no timer running while a teardown/restart
+    // cycle keeps watching a promotion that survived it.
+    this._disarmStallWatch()
 
     this._phase = "idle"
     publish()
@@ -564,6 +578,7 @@ export class VideoManager {
     if (this._promoting.has(el)) return
     this._promoting.add(el)
     this._promotingSince.set(el, { key: videoId, startedAt: Date.now() })
+    this._armStallWatch()
 
     let stale = false
     try {
@@ -769,6 +784,48 @@ export class VideoManager {
       unresolved,
       channelPending,
       promoting: [...this._promotingSince.values()],
+    }
+  }
+
+  /**
+   * Keep a health cadence alive for as long as anything is inside the
+   * promotion guard.
+   *
+   * Bot-found (#1397's own review). `_sampleHealth()` rides `retryUnresolved()`,
+   * which runs only from the observer's mutation batches and from the retry
+   * interval — and that interval is started by the two *queueing* paths alone.
+   * A fully-extracted card never queues, so a page whose only work item is one
+   * such card leaves no periodic callback running at all. A never-settling
+   * `IS_WHITELISTED` promise could then cross `PROMOTION_STALL_MS` on a quiet
+   * page without `PromotionGuardClears` ever being evaluated — the invariant
+   * missing precisely the failure it was added for.
+   *
+   * Deliberately not solved by keeping `_ensureRetryLoop()` alive instead:
+   * that loop drives a full-document `scan()` every 500 ms, which would make
+   * a diagnostic concern pay a masking-sized cost (Charter §8). This is one
+   * shared one-shot, re-armed only while something is actually held, that
+   * touches nothing but the recorder. Promotions normally settle in
+   * milliseconds, so on any healthy page it fires once, finds an empty map,
+   * and stops.
+   */
+  private _armStallWatch(): void {
+    if (this._stallWatch !== null) return
+    this._stallWatch = setTimeout(() => {
+      this._stallWatch = null
+      if (this._promotingSince.size === 0) return
+      // Bypasses _sampleHealth()'s throttle: this fires at the stall
+      // threshold's own period, which is far slower than that throttle, and a
+      // sample skipped here is the one that had something to report.
+      const obs = observability()
+      if (obs) void obs.sampleHealth(this._observabilityContext(Date.now()))
+      this._armStallWatch()
+    }, PROMOTION_STALL_MS)
+  }
+
+  private _disarmStallWatch(): void {
+    if (this._stallWatch !== null) {
+      clearTimeout(this._stallWatch)
+      this._stallWatch = null
     }
   }
 

@@ -318,7 +318,8 @@ export const boyoInvariants: ReadonlyArray<Invariant<BoyoContext>> = [
 // ── Storage keys and the session index ───────────────────────────────────────
 
 const SESSION_KEY_PREFIX = "bc.observability.session."
-const INDEX_KEY = "bc.observability.index.v1"
+/** Exported so a test can simulate a competing tab writing the same key. */
+export const INDEX_KEY = "bc.observability.index.v1"
 const MAX_INDEX_ENTRIES = 20
 
 export function sessionStorageKey(sessionId: string): string {
@@ -369,32 +370,102 @@ export async function readIndex(): Promise<Array<IndexEntry>> {
 }
 
 /**
- * Publish (or refresh) this recording's index entry. Best-effort: diagnostics
- * degrading must never affect masking, so every failure is swallowed.
+ * Index writes, serialized within this tab.
+ *
+ * Bot-found (#1397's own review): {@link touchIndex} is a read-modify-write
+ * over one shared array, so two overlapping calls can each read the same
+ * `existing` and the later write can drop the earlier one's entry. Chaining
+ * removes that race between this tab's own calls outright. It cannot remove
+ * it *between* tabs — `storage.local` offers no compare-and-set to build a
+ * lock on — so `touchIndex` additionally reads back and re-applies once; see
+ * there.
  */
-export async function touchIndex(entry: IndexEntry): Promise<void> {
+let _indexWrites: Promise<void> = Promise.resolve()
+
+function serializeIndexWrite(op: () => Promise<void>): Promise<void> {
+  const next = _indexWrites.then(op, op)
+  _indexWrites = next.catch(() => undefined)
+  return next
+}
+
+/**
+ * Delete one recording's persisted bundle.
+ *
+ * Bot-found (#1397's own review): an index entry evicted by the cap used to
+ * leave its `bc.observability.session.<id>.v1` payload behind, and every page
+ * load mints a new key — so the bundles nothing could ever list again
+ * accumulated in `storage.local` without bound, until writes began failing
+ * silently. That is the exact storage creep this whole subsystem is built to
+ * refuse, so eviction now takes the payload with it.
+ */
+async function dropRecording(sessionId: string): Promise<void> {
   try {
-    const existing = await readIndex()
-    const next = [
-      entry,
-      ...existing.filter((e) => e.sessionId !== entry.sessionId),
-    ]
-      .sort((a, b) => b.updatedAt - a.updatedAt)
-      .slice(0, MAX_INDEX_ENTRIES)
-    await ext.storage.local.set({ [INDEX_KEY]: next })
+    await ext.storage.local.remove(sessionStorageKey(sessionId))
   } catch {
     // Best-effort.
   }
 }
 
+/**
+ * Publish (or refresh) this recording's index entry, evicting the oldest past
+ * the cap — payload and all.
+ *
+ * Best-effort throughout: diagnostics degrading must never affect masking, so
+ * every failure is swallowed.
+ */
+export async function touchIndex(entry: IndexEntry): Promise<void> {
+  return serializeIndexWrite(async () => {
+    try {
+      const existing = await readIndex()
+      const next = capIndex(entry, existing)
+      await ext.storage.local.set({ [INDEX_KEY]: next })
+
+      const kept = new Set(next.map((e) => e.sessionId))
+      for (const evicted of existing) {
+        if (!kept.has(evicted.sessionId)) await dropRecording(evicted.sessionId)
+      }
+
+      // Cross-tab reconciliation. Another tab's concurrent read-modify-write
+      // can have read the same `existing` we did and written after us,
+      // dropping this entry. One read-back and re-apply closes the window that
+      // actually matters — a tab whose recording would otherwise never appear
+      // in the picker at all — without pretending to be a lock: a second
+      // clobber in the same instant is left to the next touch.
+      const after = await readIndex()
+      if (!after.some((e) => e.sessionId === entry.sessionId)) {
+        await ext.storage.local.set({ [INDEX_KEY]: capIndex(entry, after) })
+      }
+    } catch {
+      // Best-effort.
+    }
+  })
+}
+
+/** `entry` first, everything else by recency, truncated to the cap. */
+function capIndex(
+  entry: IndexEntry,
+  existing: ReadonlyArray<IndexEntry>
+): Array<IndexEntry> {
+  return [entry, ...existing.filter((e) => e.sessionId !== entry.sessionId)]
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .slice(0, MAX_INDEX_ENTRIES)
+}
+
+/** Forget one recording entirely — its index entry and its stored bundle. */
 export async function removeFromIndex(sessionId: string): Promise<void> {
-  try {
-    const existing = await readIndex()
-    const next = existing.filter((e) => e.sessionId !== sessionId)
-    await ext.storage.local.set({ [INDEX_KEY]: next })
-  } catch {
-    // Best-effort.
-  }
+  return serializeIndexWrite(async () => {
+    try {
+      const existing = await readIndex()
+      await ext.storage.local.set({
+        [INDEX_KEY]: existing.filter((e) => e.sessionId !== sessionId),
+      })
+    } catch {
+      // Best-effort.
+    }
+    // Outside the try on purpose: the payload is the larger of the two, so it
+    // is dropped even when rewriting the index itself failed.
+    await dropRecording(sessionId)
+  })
 }
 
 // ── The recorder ─────────────────────────────────────────────────────────────

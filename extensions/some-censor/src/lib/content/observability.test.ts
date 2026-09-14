@@ -5,6 +5,7 @@ import {
   BoyoObservability,
   createBoyoRecorder,
   HEALTH_SAMPLE_INTERVAL_MS,
+  INDEX_KEY,
   observability,
   PROMOTION_STALL_MS,
   readIndex,
@@ -14,6 +15,7 @@ import {
   startObservability,
   stopObservability,
   surfaceOf,
+  touchIndex,
   type BoyoContext,
   type BoyoEventKind,
 } from "@censor/lib/content/observability"
@@ -575,14 +577,20 @@ describe("startObservability — one recording per content-script instance", () 
  * that object at import time — so the area is installed onto it rather than
  * re-stubbing the global, which `ext` would no longer be looking at.
  */
-function installFakeStorage(): Map<string, unknown> {
+function installFakeStorage(
+  /** Fires after each write, so a test can simulate a competing tab. */
+  onSet?: (key: string) => void
+): Map<string, unknown> {
   const store = new Map<string, unknown>()
   Reflect.set(ext, "storage", {
     local: {
       get: (key: string): Promise<Record<string, unknown>> =>
         Promise.resolve(store.has(key) ? { [key]: store.get(key) } : {}),
       set: (items: Record<string, unknown>): Promise<void> => {
-        for (const [k, v] of Object.entries(items)) store.set(k, v)
+        for (const [k, v] of Object.entries(items)) {
+          store.set(k, v)
+          onSet?.(k)
+        }
         return Promise.resolve()
       },
       remove: (key: string): Promise<void> => {
@@ -658,6 +666,110 @@ describe("the session index", () => {
     Reflect.deleteProperty(ext, "storage")
     expect(await readIndex()).toEqual([])
     await expect(removeFromIndex("test-session")).resolves.toBeUndefined()
+  })
+})
+
+describe("the index cap does not orphan payloads (#1397's own review)", () => {
+  afterEach(() => {
+    Reflect.deleteProperty(ext, "storage")
+  })
+
+  /** An indexed recording: its index entry plus its persisted bundle. */
+  async function record(store: Map<string, unknown>, i: number): Promise<void> {
+    store.set(sessionStorageKey(`s${String(i)}`), { version: 1, events: [] })
+    await touchIndex({
+      sessionId: `s${String(i)}`,
+      origin: "https://www.youtube.com",
+      surface: "home",
+      sessionOrdinal: 1,
+      updatedAt: NOW + i,
+    })
+  }
+
+  it("deletes the stored bundle of an entry the cap evicts — every page load mints a new key, so leaving them behind grows storage without bound", async () => {
+    const store = installFakeStorage()
+    for (let i = 0; i < 21; i++) await record(store, i)
+
+    expect(await readIndex()).toHaveLength(20)
+    // s0 is the oldest and the one pushed out by the 21st.
+    expect((await readIndex()).map((e) => e.sessionId)).not.toContain("s0")
+    expect(store.has(sessionStorageKey("s0"))).toBe(false)
+    expect(store.has(sessionStorageKey("s20"))).toBe(true)
+
+    // Nothing but the index key and the 20 live bundles is left behind.
+    expect(store.size).toBe(21)
+  })
+
+  it("takes the bundle with it when a recording is removed outright", async () => {
+    const store = installFakeStorage()
+    await record(store, 1)
+    expect(store.has(sessionStorageKey("s1"))).toBe(true)
+
+    await removeFromIndex("s1")
+    expect(await readIndex()).toEqual([])
+    expect(store.has(sessionStorageKey("s1"))).toBe(false)
+  })
+})
+
+describe("concurrent index writes (#1397's own review)", () => {
+  afterEach(() => {
+    Reflect.deleteProperty(ext, "storage")
+  })
+
+  it("re-applies its own entry when a competing tab's write dropped it", async () => {
+    let store: Map<string, unknown> | undefined
+    let clobbered = false
+    store = installFakeStorage((key) => {
+      // The other tab read the same `existing` we did and wrote after us,
+      // carrying only its own entry.
+      if (key !== INDEX_KEY || clobbered) return
+      clobbered = true
+      store?.set(INDEX_KEY, [
+        {
+          sessionId: "other-tab",
+          origin: "https://www.youtube.com",
+          surface: "watch",
+          sessionOrdinal: 1,
+          updatedAt: NOW,
+        },
+      ])
+    })
+
+    await touchIndex({
+      sessionId: "mine",
+      origin: "https://www.youtube.com",
+      surface: "home",
+      sessionOrdinal: 1,
+      updatedAt: NOW + 1,
+    })
+
+    expect(clobbered).toBe(true)
+    const ids = (await readIndex()).map((e) => e.sessionId)
+    expect(ids).toContain("mine")
+    expect(ids).toContain("other-tab")
+  })
+
+  it("serializes this tab's own overlapping writes, so neither drops the other", async () => {
+    installFakeStorage()
+    await Promise.all(
+      Array.from({ length: 5 }, async (_unused, i) =>
+        touchIndex({
+          sessionId: `s${String(i)}`,
+          origin: "https://www.youtube.com",
+          surface: "home",
+          sessionOrdinal: 1,
+          updatedAt: NOW + i,
+        })
+      )
+    )
+
+    expect((await readIndex()).map((e) => e.sessionId).sort()).toEqual([
+      "s0",
+      "s1",
+      "s2",
+      "s3",
+      "s4",
+    ])
   })
 })
 
