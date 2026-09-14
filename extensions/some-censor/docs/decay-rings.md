@@ -305,8 +305,10 @@ instead of the cards:
 
 Counts and age ranges are nonsemantic and may be shown. An `Examine containers`
 control may expand the region into individual cards, but it is never the
-visually primary element, and expanding does not confer eligibility — the cards
-inside are still `QM1`.
+visually primary element, and expanding does not confer eligibility — each
+card keeps whatever held class it already had (`QM0`, `QM1`, or `QM2`; a
+sealed region is not exclusively `QM1`), rendered in its own held
+presentation.
 
 Where a region is mixed, show the admissible cards and collapse the remainder
 into one trailing summary rather than interleaving sealed and open cards, which
@@ -345,8 +347,14 @@ hygiene — it is the semantic endpoint. Motion is only ever available to `QM1`,
 is off by default, and is removed entirely at `QM3`.
 
 The existing reduced-motion contract in `src/styles/content.css` targets
-`[class*="boyo-"]` wholesale, so any medallion built from the namespace
-inherits it. Two additions it does **not** cover:
+`[class*="boyo-"]` wholesale — but `animation` and `transition` are not
+inherited properties, so that selector only silences an element that itself
+carries a `boyo-*` class. **Every node the medallion animates directly — an
+inner ring or path driving the containment breath or threshold settle, not
+only the outer wrapper — must carry its own `boyo-*`-prefixed class**, or the
+existing contract does not reach it and the animation keeps running under
+`prefers-reduced-motion: reduce`. Two further additions it does **not**
+cover:
 
 - **Colour is not the only channel.** Each class differs in geometry
   (dashed / emissions / arc / rings) as well as in hue, so the ramp survives

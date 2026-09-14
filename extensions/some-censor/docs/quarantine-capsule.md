@@ -275,11 +275,13 @@ QD2/QD3 — the boundary is worth building before the room behind it.
 
 A deliberate metadata disclosure — the existing `Inspect metadata` step in the
 ladder — is available only to an artifact that is already eligible (`QM3` or
-`QM4`), and even then it may reveal only a **sanitized textual source
-identity**: a channel name, stripped of avatar, banner, subscriber count, or
-any other element that itself carries current-events weight. It may never
-reveal a thumbnail, title, or description fragment — that is `QD1`'s job, and
-this result does not relax it.
+`QM4`). It carries the duration and derived age the story already promises
+(§3, "Inspect without contact") and `QD4` already permits, plus, newly,
+a **sanitized textual source identity**: a channel name, stripped of avatar,
+banner, subscriber count, or any other element that itself carries
+current-events weight. Beyond duration, age, and that sanitized identity, it
+may reveal nothing further — never a thumbnail, title, or description
+fragment. That non-contact bar is `QD1`'s, and this result does not relax it.
 
 A held card (`QM0`–`QM2`) exposes neither source nor branding at any
 disclosure step. `QD1`'s non-contact bar has no metadata-only exception for
@@ -348,21 +350,23 @@ valid and common result, and the interface must not render it as a failure.
 Maturity is one axis. **Admission** is the other, and conflating them is the
 mistake the current whitelist makes.
 
-| id    | primitive              | meaning                                                                                                                                                                                       |
-| ----- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `QA1` | **Artifact clearance** | This one video, once it has independently reached `QM3`/`QM4`, stays admitted even if a later re-estimate would reclassify it. It cannot make a `QM1`/`QM2` artifact disclosable — see below. |
-| `QA2` | **Identity trust**     | This channel is genuinely who it claims to be. Provenance, not admission.                                                                                                                     |
-| `QA3` | **Delayed source**     | This channel's uploads become admissible after `B` (or a per-source `B`) — never before it.                                                                                                   |
-| `QA4` | **Boundary exemption** | **Rejected.** Listed only to be ruled out: a channel's uploads skipping the boundary entirely is exactly what `QD2` forbids, however it is framed at the UI.                                  |
+| id    | primitive              | meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ----- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `QA1` | **Artifact clearance** | This one video's `QM3`/`QM4` status is not re-litigated by an ordinary re-estimate — age only grows under §7's stable-identity/evidence/clock preconditions, so a valid estimate never reclassifies downward on its own. `QA1` grants no protection beyond that: if §7's fail-closed rule fires (identity, evidence, or clock invalidated), the artifact reverts to `QM0` like any other invalidated estimate, and `QA1` cannot keep a `QM1`/`QM2` artifact disclosable — see below. |
+| `QA2` | **Identity trust**     | This channel is genuinely who it claims to be. Provenance, not admission.                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `QA3` | **Delayed source**     | This channel's uploads become admissible after `B` (or a per-source `B`) — never before it.                                                                                                                                                                                                                                                                                                                                                                                          |
+| `QA4` | **Boundary exemption** | **Rejected.** Listed only to be ruled out: a channel's uploads skipping the boundary entirely is exactly what `QD2` forbids, however it is framed at the UI.                                                                                                                                                                                                                                                                                                                         |
 
 `QD2` says material newer than the boundary is ineligible "regardless of its
 source, its subject, or how much the user wants to see it in the moment." That
 sentence resolves the admission/exemption question completely, in one
 direction: `QA4` is rejected outright, not merely deprioritized behind `QA3`,
-and `QA1` survives only in the constrained reading above — a permanence
-guarantee for an artifact that is _already_ eligible, never a path that
-admits one that isn't. (This also matches `#1382`'s own non-goals: boundary
-exemption is explicitly out of the implementation floor.)
+and `QA1` survives only in the constrained reading above — a guarantee
+against needlessly re-litigating a still-valid estimate for an artifact
+that is _already_ eligible, never an override of §7's fail-closed rule and
+never a path that admits one that isn't. (This also matches `#1382`'s own
+non-goals: boundary exemption is explicitly out of the implementation
+floor.)
 
 Today's whitelist is `QA4` wearing `QA2`'s label, and under this resolution it
 has no home in the doctrine at all — it is not a stricter `QA3`, it is the
