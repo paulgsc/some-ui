@@ -51,10 +51,19 @@ import { mkSession } from "@some-extension/common"
 
 import { publish, registerDebugSource } from "./debug"
 import { representsVideo, tryExtract } from "./extract/index"
-import { observability, PROMOTION_STALL_MS } from "./observability"
-import type { BoyoContext, PromotingCard, QueuedCard } from "./observability"
+import {
+  observability,
+  OCCLUSION_GRACE_MS,
+  PROMOTION_STALL_MS,
+} from "./observability"
+import type {
+  BoyoContext,
+  OccludedCard,
+  PromotingCard,
+  QueuedCard,
+} from "./observability"
 import { makeProvisionalRecord, makeRecord } from "./record"
-import { isVideoCard, SEL } from "./selectors"
+import { isVideoCard, occludedElements, SEL } from "./selectors"
 import { VideoEntry } from "./video-entry"
 
 type Phase = "idle" | "running"
@@ -128,6 +137,11 @@ export class VideoManager {
   // guard is released — so the mirror can only ever retain what `_promoting`
   // has also retained, and what it retains is precisely the leak.
   private readonly _promotingSince: Map<HTMLElement, PromotingCard> = new Map()
+  // Observability-only, like _promotingSince: when each element was first seen
+  // under the static occluder with no data-boyo. Strong refs for the same
+  // reason, and bounded the same way — _occlusionCensus() prunes it against
+  // the live DOM on every pass, so it holds at most what is on screen.
+  private readonly _occludedSince: Map<HTMLElement, number> = new Map()
   // Per-element staleness guard (#980, M6). Which videoId an element is
   // currently claimed for, and a token bumped whenever that claim changes —
   // set synchronously the instant _promote()/_promoteProvisional() start
@@ -147,6 +161,13 @@ export class VideoManager {
   private _retryInterval: ReturnType<typeof setInterval> | null = null
   // Observability-only. See _armStallWatch().
   private _stallWatch: ReturnType<typeof setTimeout> | null = null
+  // Observability-only, and the same shape as _stallWatch. See
+  // _armOcclusionWatch().
+  private _occlusionWatch: ReturnType<typeof setTimeout> | null = null
+  // Whether the previous occlusion reading found anything under the occluder.
+  // See _occlusionReading(): it is what lets a clean page stay silent without
+  // swallowing the one sample that says a page *became* clean.
+  private _occludedLastReading = false
 
   constructor() {
     // Register with the debug layer so Playwright can observe state
@@ -200,7 +221,15 @@ export class VideoManager {
     this._session = mkSession()
     this._phase = "running"
     if (this._promotingSince.size > 0) this._armStallWatch()
+    this._armOcclusionWatch()
     observability()?.sessionStart(this._session)
+    // Taken now, not promised. Round 3 seeded a flag so the *first tick* would
+    // report regardless of what it found; bot-found in round 4 that a flag is
+    // not a reading — navigation is debounced at 150 ms, so a second one
+    // inside OCCLUSION_GRACE_MS runs `_teardownRuntime()` -> `reset()`, which
+    // cancels the tick that was going to honour it. A verdict describing the
+    // page before the navigation would then stay the latest persisted one.
+    this._occlusionReading(Date.now(), /* force */ true)
     publish()
     return this._session
   }
@@ -217,6 +246,8 @@ export class VideoManager {
     this._firstSeen.clear()
     this._rejected.clear()
     this._channelGaveUp.clear()
+    this._occludedSince.clear()
+    this._occludedLastReading = false
 
     if (this._retryInterval !== null) {
       clearInterval(this._retryInterval)
@@ -226,6 +257,7 @@ export class VideoManager {
     // so a disabled extension leaves no timer running while a teardown/restart
     // cycle keeps watching a promotion that survived it.
     this._disarmStallWatch()
+    this._disarmOcclusionWatch()
 
     this._phase = "idle"
     publish()
@@ -878,7 +910,48 @@ export class VideoManager {
       unresolved,
       channelPending,
       promoting: [...this._promotingSince.values()],
+      occluded: this._occlusionCensus(now),
     }
+  }
+
+  /**
+   * What the static occluder is hiding right now, and since when.
+   *
+   * The one part of this context read from the DOM rather than from a map
+   * here. Every queue above can only describe an element this class is still
+   * tracking; the failures `OccluderReleases` exists for are the ones where an
+   * element fell out of all of them (#1421), so the census has to ask the page
+   * instead of asking us.
+   *
+   * `_occludedSince` is the only state it needs — first-seen timestamps so a
+   * card legitimately mid-adoption is not reported as stranded. It is pruned
+   * against the live answer on every pass, so it is bounded by what is on
+   * screen rather than by session length, and cleared by reset() with
+   * everything else.
+   *
+   * Cost is one `querySelectorAll` per premask selector per *health sample*
+   * (10 s), not per mutation — the Charter §8 line the rest of this layer is
+   * built around.
+   */
+  private _occlusionCensus(now: number): Array<OccludedCard> {
+    const census: Array<OccludedCard> = []
+    const live = new Set<HTMLElement>()
+
+    for (const el of occludedElements(document)) {
+      live.add(el)
+      let sinceAt = this._occludedSince.get(el)
+      if (sinceAt === undefined) {
+        sinceAt = now
+        this._occludedSince.set(el, sinceAt)
+      }
+      census.push({ tag: el.tagName.toLowerCase(), sinceAt })
+    }
+
+    for (const el of this._occludedSince.keys()) {
+      if (!live.has(el)) this._occludedSince.delete(el)
+    }
+
+    return census
   }
 
   /**
@@ -920,6 +993,114 @@ export class VideoManager {
     if (this._stallWatch !== null) {
       clearTimeout(this._stallWatch)
       this._stallWatch = null
+    }
+  }
+
+  /**
+   * Look at the page for stranded cards on a fixed cadence, for as long as a
+   * session is running.
+   *
+   * ## Why a standing cadence and not a conditional one
+   *
+   * Bot-found twice on this PR's own review, and the second finding is what
+   * decided the shape. Both were the same defect: the place that scheduled the
+   * next look sat behind a gate the orphan population cannot pass.
+   *
+   * Round 1 — `_sampleHealth()` rides `retryUnresolved()`, whose interval is
+   * kept alive by `_unresolved` and `_channelPending` alone, and
+   * `_armStallWatch()` covers only `_promotingSince`. An element this class
+   * never adopted is in none of them, so it keeps nothing running: one sample
+   * stamps its `sinceAt`, `now - sinceAt` is zero, and `OccluderReleases`
+   * reports healthy forever.
+   *
+   * Round 2 — arming from inside `_occlusionCensus()` moved the gate rather
+   * than removing it. `_sampleHealth()` consults `shouldSampleHealth()` and
+   * returns *before* building a context, so a card stranded within
+   * `HEALTH_SAMPLE_INTERVAL_MS` of the previous sample produced no census and
+   * therefore no watch. Worse across an SPA navigation: `startObservability()`
+   * runs once per content-script instance and deliberately outlives a session
+   * (see observability.ts's header), so a new session inherited the old one's
+   * `_lastHealthAt` — the `sessionStart()` reset below closes that half.
+   *
+   * Making the cadence conditional means enumerating every path by which an
+   * element can end up occluded and unadopted. This epic exists because that
+   * enumeration is exactly what nobody can do reliably — `destroy()` dropping
+   * `data-boyo` is not even an observer signal (#1423), and #1426 is a card
+   * whose *second* tracked element no path accounts for. An invariant whose
+   * whole point is to read the DOM rather than trust the bookkeeping cannot
+   * have its schedule depend on the bookkeeping's call graph.
+   *
+   * ## What it costs
+   *
+   * A `setTimeout` chain at `OCCLUSION_GRACE_MS` — 30x less often than the
+   * retry loop's 500 ms, and each tick is `PREMASK_SELECTORS.length`
+   * read-only `querySelectorAll` calls against the premask condition, with no
+   * per-element work beyond a tag read. That is strictly less than one
+   * `scan()`, which queries and then calls `upsert()` on every match.
+   *
+   * The expensive half of a health sample is not the query, it is evaluating
+   * every invariant and flushing a snapshot to `storage.local`. So the tick
+   * samples only when the census is non-empty: an idle page with nothing
+   * occluded queries, finds nothing, and writes nothing (Charter §8). A page
+   * that does have something occluded is a page with something to say.
+   *
+   * The period is also the threshold the invariant measures against.
+   * `setTimeout` never fires early, so an element first seen by one tick's
+   * census has necessarily aged past the grace window by the next — reported
+   * on the tick after the one that found it, with no margin needed.
+   */
+  private _armOcclusionWatch(): void {
+    if (this._occlusionWatch !== null) return
+    this._occlusionWatch = setTimeout(() => {
+      this._occlusionWatch = null
+      // Belt to reset()'s braces: either one alone stops the cadence after a
+      // teardown. The guard is what makes an already-scheduled tick correct,
+      // the disarm is what releases the handle promptly rather than up to
+      // OCCLUSION_GRACE_MS later.
+      if (this._phase !== "running") return
+      this._armOcclusionWatch()
+
+      this._occlusionReading(Date.now())
+    }, OCCLUSION_GRACE_MS)
+  }
+
+  /**
+   * Look at the page once, and report only if there is something to report.
+   *
+   * `force` is for the reading `startSession()` takes: a new session must
+   * publish a verdict about the page it is actually on, even a clean one,
+   * because the latest persisted verdict otherwise still describes the page
+   * before the navigation.
+   */
+  private _occlusionReading(now: number, force = false): void {
+    // Prunes and stamps `_occludedSince` as a side effect, which is why it
+    // runs on every reading, including ones that report nothing.
+    // `_observabilityContext()` below repeats it; at the same `now` that is
+    // idempotent, and it happens only on readings already taking a sample.
+    const occluded = this._occlusionCensus(now).length > 0
+    const wasOccluded = this._occludedLastReading
+    this._occludedLastReading = occluded
+
+    // Clean now and clean last time: nothing to say, and saying it would cost
+    // a storage write every tick for as long as the tab is open.
+    //
+    // The `wasOccluded` half is not an optimization detail — it is the sample
+    // that reports a page *became* clean. Bot-found (round 3): skipping it
+    // leaves a healed violation on the diagnostics page forever and never
+    // emits `invariant.recovered`, which is this invariant's own stuck-report
+    // failure with the sign flipped.
+    if (!force && !occluded && !wasOccluded) return
+
+    const obs = observability()
+    // Bypasses _sampleHealth()'s throttle deliberately — round 2 above is what
+    // that throttle does to this invariant when it is in the way.
+    if (obs) void obs.sampleHealth(this._observabilityContext(now))
+  }
+
+  private _disarmOcclusionWatch(): void {
+    if (this._occlusionWatch !== null) {
+      clearTimeout(this._occlusionWatch)
+      this._occlusionWatch = null
     }
   }
 

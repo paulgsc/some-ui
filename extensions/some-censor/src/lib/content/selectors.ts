@@ -110,6 +110,42 @@ export const PREMASK_SELECTORS: ReadonlyArray<string> = CARD_SELECTORS.map(
 )
 
 /**
+ * Every element the static occluder is hiding *right now*: matching a
+ * {@link PREMASK_SELECTORS} entry and carrying no `data-boyo`.
+ *
+ * The premask selectors already spell `:not([data-boyo])`, so this is a direct
+ * reading of the stylesheet's own condition rather than a re-derivation of it —
+ * which is the point. Every other health signal in this workspace reads
+ * `VideoManager`'s bookkeeping, and bookkeeping cannot represent an element
+ * that fell out of every collection it keeps (#1421, #1425).
+ *
+ * Queried one selector at a time rather than as one joined list, for exactly
+ * the reason `content.css` gives each rule its own block (#1390): selector-list
+ * parsing is all-or-nothing, so on an engine that cannot parse `:has()` a
+ * joined query would throw and report *nothing occluded* — a clean bill of
+ * health on precisely the engines where the occluder is most likely to be
+ * misbehaving. Failing per-selector loses only the tags that need `:has()`.
+ *
+ * `root` is required rather than defaulting to `document`: this module is the
+ * logic layer, and naming a browser global here is what
+ * `extension-charter/no-logic-layer-side-effects` forbids. The caller supplies
+ * the tree, which also lets a test scope the query to a fixture.
+ */
+export function occludedElements(root: ParentNode): Array<HTMLElement> {
+  const out: Array<HTMLElement> = []
+  for (const selector of PREMASK_SELECTORS) {
+    try {
+      for (const el of root.querySelectorAll<HTMLElement>(selector)) {
+        out.push(el)
+      }
+    } catch {
+      // Unparseable on this engine; the other selectors still answer.
+    }
+  }
+  return out
+}
+
+/**
  * Is this element a card BOYO should own?
  *
  * Applies the polymorphism guard that {@link SEL} deliberately omits. Called

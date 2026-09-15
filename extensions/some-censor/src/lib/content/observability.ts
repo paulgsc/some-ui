@@ -141,6 +141,16 @@ export const BOYO_COUNTERS = [
   "dates_observed",
   "dates_absent",
   "invariant_violations",
+  /**
+   * How many times the invariants were actually evaluated.
+   *
+   * Without it a `status: "healthy"` export is ambiguous between "checked, and
+   * fine" and "never got to check" — a distinction that cost two debugging
+   * sessions on #1421, both of which began from an export reading healthy on a
+   * visibly broken page. `sampleHealth()` only rides VideoManager's retry loop
+   * and the stall watch, so a quiet page can legitimately evaluate nothing.
+   */
+  "health_samples",
 ] as const
 
 export type BoyoCounter = (typeof BOYO_COUNTERS)[number]
@@ -253,6 +263,26 @@ export type QueuedCard = {
   readonly videoShaped: boolean
 }
 
+/**
+ * How long an element may sit under the static occluder, unadopted, before
+ * {@link boyoInvariants}' `OccluderReleases` calls it stranded.
+ *
+ * Sized above `RESOLVE_BUDGET_MS` on purpose: a card legitimately waiting out
+ * its resolution budget is still occluded and must not read as a violation.
+ * Past that budget plus a margin, nothing in the design is still coming for
+ * it — the occluder is lifted by exactly one thing, and that thing has given
+ * up or never knew.
+ */
+export const OCCLUSION_GRACE_MS = 15_000
+
+/** One element the static occluder is hiding with no `data-boyo` on it. */
+export type OccludedCard = {
+  /** Renderer tag name, lowercased. Never an id, href, or any card content. */
+  readonly tag: string
+  /** When this element was first observed occluded-and-unadopted. */
+  readonly sinceAt: number
+}
+
 /** One element currently inside `_promote()`'s re-entrancy guard. */
 export type PromotingCard = {
   /**
@@ -279,6 +309,13 @@ export type BoyoContext = {
   readonly unresolved: ReadonlyArray<QueuedCard>
   readonly channelPending: ReadonlyArray<QueuedCard>
   readonly promoting: ReadonlyArray<PromotingCard>
+  /**
+   * Read from the DOM, not from any queue — see `OccluderReleases`. This is
+   * the only field here that is not a projection of `VideoManager`'s own
+   * bookkeeping, and that is what makes it able to see what the bookkeeping
+   * cannot.
+   */
+  readonly occluded: ReadonlyArray<OccludedCard>
 }
 
 const violated = (details: JsonValue): InvariantOutcome => ({
@@ -304,6 +341,29 @@ export const boyoInvariants: ReadonlyArray<Invariant<BoyoContext>> = [
             waitedMs: stuck.map((c) => ctx.now - c.firstSeenAt),
             budgetMs: ctx.resolveBudgetMs,
           })
+    },
+  },
+  {
+    name: "OccluderReleases",
+    description:
+      "No element sits under the static pre-mask occluder, without data-boyo, past OCCLUSION_GRACE_MS. Unlike every other check here this reads the DOM rather than VideoManager's bookkeeping, because the failures it exists for are precisely the ones that leave an element in no queue, no registry and no guard — where a bookkeeping check has nothing to look at and reports healthy while the page is visibly broken (#1421). The occluder is lifted by exactly one thing, the content script writing data-boyo; an element it is still hiding after the resolution budget has passed is one nothing is coming back for, and it is inert as well as blurred because that rule sets pointer-events: none.",
+    check: (ctx): InvariantOutcome => {
+      if (ctx.phase !== "running") return { ok: "unknown" }
+      const stranded = ctx.occluded.filter(
+        (c) => ctx.now - c.sinceAt >= OCCLUSION_GRACE_MS
+      )
+      if (stranded.length === 0) return { ok: true }
+      // Tags rather than ids: which *kind* of element is stranded is the whole
+      // diagnostic (a non-video rich-item is #1422, a lockup is #1426), and a
+      // tag name carries nothing about the card (#1382).
+      const byTag: Record<string, number> = {}
+      for (const c of stranded) byTag[c.tag] = (byTag[c.tag] ?? 0) + 1
+      return violated({
+        count: stranded.length,
+        byTag,
+        longestMs: Math.max(...stranded.map((c) => ctx.now - c.sinceAt)),
+        graceMs: OCCLUSION_GRACE_MS,
+      })
     },
   },
   {
@@ -617,6 +677,14 @@ export class BoyoObservability {
 
   sessionStart(ordinal: number): void {
     this._ordinal = ordinal
+    // Bot-found (#1428's own review, round 2). This adapter is created once per
+    // content-script instance and deliberately outlives a session (see this
+    // module's header), so without this a new SPA session inherits the previous
+    // one's throttle — and the sample it swallows is the *first* one after the
+    // page changed underneath us, which is the sample most likely to have
+    // something to say. Every invariant is affected; the one that made it
+    // visible was OccluderReleases.
+    this._lastHealthAt = 0
     this.recorder.record({
       kind: "session.start",
       subject: ordinal,
@@ -847,6 +915,7 @@ export class BoyoObservability {
    */
   async sampleHealth(ctx: BoyoContext): Promise<void> {
     this._lastHealthAt = ctx.now
+    this.recorder.count("health_samples")
 
     this.recorder.observe("unresolved_depth", ctx.unresolved.length)
     this.recorder.observe("channel_pending_depth", ctx.channelPending.length)
