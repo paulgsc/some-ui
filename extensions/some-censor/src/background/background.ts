@@ -43,6 +43,11 @@ ext.runtime.onInstalled.addListener((): void => {
       id: DIAGNOSTICS_MENU.id,
       title: DIAGNOSTICS_MENU.title,
       contexts: ["tab"],
+      // Firefox only wraps an extension's items under its manifest icon +
+      // name when the extension contributes 2+ top-level items; some-censor
+      // has exactly one, so it renders flat unless the item carries its own
+      // icon. Per-item `icons` is keyed by size, same as manifest icons.
+      icons: { 16: "assets/icon-16.png" },
     })
   })
 })
