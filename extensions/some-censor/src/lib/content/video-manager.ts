@@ -581,6 +581,7 @@ export class VideoManager {
     this._armStallWatch()
 
     let stale = false
+    let sessionEnded = false
     try {
       // Scroll-virtualizer reuse guard (second line of defence after upsert).
       const prevVid = this._elToVid.get(el)
@@ -611,7 +612,20 @@ export class VideoManager {
       // element was recycled one or more times during this round-trip and no
       // longer means what it meant when the operation started.
       if (this._phase !== "running") return
-      if (this._session !== session) return
+      if (this._session !== session) {
+        // C2: a chip/feed navigation tore the runtime down and started a
+        // fresh session while this call awaited. _promoting is a WeakSet
+        // reset() cannot clear (see its own comment), so el stayed claimed by
+        // this call for the entire round-trip — including through the new
+        // session's own _scan(), whose upsert() for the very same el (chip
+        // navigations reuse renderer elements in place) had nothing to do but
+        // return at the guard above. That upsert has no other way to be
+        // retried once the guard clears: without requeuing here, el is
+        // silently orphaned — not promoting, never promoted, and still
+        // hidden under the static pre-mask rule with nothing left to lift it.
+        sessionEnded = true
+        return
+      }
       if (this._tokenFor(el) !== token) {
         stale = true
         return
@@ -631,14 +645,15 @@ export class VideoManager {
       this._promoting.delete(el)
       this._promotingSince.delete(el)
       if (stale) observability()?.staleDiscarded(videoId)
-      // A stale bail means el moved on while this call was in flight. Any
-      // recycle that landed here while _promoting blocked it (see above) did
-      // nothing but bump the claim — re-derive el's *current* truth from the
-      // live DOM now that the guard has cleared, rather than trying to carry
-      // a videoId forward through an already-stale call. Safe from looping:
-      // this only re-enters when el actually changed since `token` was
-      // captured, and each recycle can trigger at most one such retry.
-      if (stale && el.isConnected) this.upsert(el)
+      // A stale bail means el moved on while this call was in flight; a
+      // sessionEnded bail means a navigation reset the runtime while it was
+      // in flight. Either way, re-derive el's *current* truth from the live
+      // DOM now that the guard has cleared, rather than trying to carry a
+      // videoId or a session forward through an already-superseded call.
+      // Safe from looping: this only re-enters when el actually changed or a
+      // navigation actually happened since this call started, and each of
+      // those can trigger at most one such retry.
+      if ((stale || sessionEnded) && el.isConnected) this.upsert(el)
     }
   }
 

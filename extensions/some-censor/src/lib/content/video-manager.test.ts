@@ -451,4 +451,52 @@ describe("PromotionGuardClears can actually fire (#1397's own review)", () => {
     await vi.advanceTimersByTimeAsync(PROMOTION_STALL_MS)
     expect(violations()).toContain("PromotionGuardClears")
   })
+
+  it("mounts a card whose whitelist round-trip settles normally just after the SPA navigation that raced it — the ordinary case the hung-promise test above does not cover", async () => {
+    // Unlike hangTheWhitelistCheck(), this round-trip *does* settle — just
+    // after reset()+startSession() already ran. That is the realistic case
+    // (a whitelist check answers in milliseconds), not the pathological one:
+    // a promotion that settles normally must never be the thing that leaves a
+    // card permanently unmounted, because nothing will ever flag it — it
+    // clears _promoting before PROMOTION_STALL_MS has any chance to fire.
+    let release!: () => void
+    const gate = new Promise<{ ok: boolean; whitelisted: boolean }>(
+      (resolve): void => {
+        release = (): void => resolve({ ok: true, whitelisted: false })
+      }
+    )
+    vi.mocked(browser.runtime.sendMessage).mockReturnValueOnce(gate)
+
+    const el = fullCard("vid-races-nav", "Chan")
+    document.body.appendChild(el)
+    mgr.upsert(el) // starts _promote(), awaiting IS_WHITELISTED
+
+    // Controller C2: a chip click tears the runtime down and restarts it
+    // while the round-trip above is still in flight. The element stays
+    // connected (chip swaps reuse cards in place).
+    mgr.reset()
+    mgr.startSession()
+
+    // The still-live _promoting guard from the pre-navigation call swallows
+    // this upsert, exactly as in the hung-promise test.
+    mgr.upsert(el)
+    expect(mgr.size).toBe(0)
+
+    // Now the original round-trip answers normally (M5's session-mismatch
+    // bail fires, not the hang this invariant test above exercises).
+    release()
+    await passes(1)
+
+    expect(
+      mgr.size,
+      "the card must not be orphaned just because its whitelist check outlived a navigation"
+    ).toBe(1)
+    expect(el.getAttribute("data-boyo"), "and it must actually be masked").toBe(
+      "0"
+    )
+    expect(
+      violations(),
+      "recovered on its own — nothing was ever stuck"
+    ).toEqual([])
+  })
 })
