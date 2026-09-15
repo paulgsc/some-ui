@@ -157,6 +157,80 @@ backs should be cut, not kept and re-justified.
   ancestor's box instead of the viewport — the full fix (mounting the hold
   outside every host's containing-block chain) is routed to a future story,
   not implemented yet.
+- *Rendered-contrast closure* --- the claim `src/data/resume.typ`'s full-stack
+  composition now makes in place of a generic signed-release bullet (that
+  bullet's own evidence survives verbatim in the *platform* composition's
+  human-gated release pipeline, so nothing was lost by the swap). Three
+  stories, all in `extensions/some-filter`:
+  - *Foreground repair* --- SF-RC2 (#1341), commit `5c4ab3b`.
+    `adapter/legibility-audit.ts` senses: it re-reads `getComputedStyle`
+    after this extension's own actuation, resolves each carrier's effective
+    backdrop by walking ancestors, and compares against
+    `MIN_CONTRAST_RATIO = 4.5` --- WCAG 2.1 AA's normal-text minimum,
+    which is the *only* WCAG quantity in this channel (see the
+    non-conformance note below). `adapter/foreground-repair.ts` decides and
+    realizes: `repairedForeground` starts at `modifyForegroundColor`'s own
+    lift of the authored color (so this channel and the co-located
+    `emit-surface-color.textCss` one land on the same value in the common
+    case) and climbs its band by `REPAIR_BAND_STEP` to the first hue-,
+    saturation- and alpha-preserving candidate that clears the floor ---
+    never descending, and capped by `FG_LIGHT_MAX` well short of raw white,
+    since canon Definition C.3's kappa-hi treats "bright white text" as its
+    own failure mode. When nothing in the band clears the floor the carrier
+    keeps its authored color and its `violated` diagnostic tag rather than
+    being repainted to something still illegible.
+  - *Shadow DOM projection* --- SF-RC3 (#1342), commit `5c47ced`. The same
+    repair realized inside open shadow roots via
+    `ShadowRoot.adoptedStyleSheets` (`adapter/shadow-actuator.ts`,
+    `adapter/shadow-scope-theming.ts`), because a `<style>` in
+    `document.head` cannot select across a shadow boundary. Closed shadow
+    roots are unreachable by construction, which is why the bullet says
+    *open*.
+  - *Interaction-state repair* --- SF-RC4 (#1343), commit `6fb84d0`.
+    `adapter/pipeline.ts` delegates passive capture-phase
+    `pointerover`/`pointerout`/`focusin`/`focusout` listeners on `document`
+    and re-runs the channel once `INTERACTION_SETTLE_MS = 120` of quiet has
+    passed, so a `:hover`/`:focus` color swap --- a computed-style change
+    that emits no mutation record --- is remeasured instead of missed.
+  Browser-verified against the real built extension in Chromium:
+  `tests/e2e/specs/issue-1341-sfrc2-foreground-repair.spec.ts`,
+  `issue-1342-sfrc3-shadow-foreground.spec.ts`, and
+  `issue-1343-sfrc4-interaction-states.spec.ts`, alongside the unit suites
+  under `src/adapter/__tests__/`.
+
+  *Limitations, disclosed here because the résumé bullet states a mechanism
+  and not a guarantee*:
+  - *Underdetermined paint is reported, never guessed.* When either channel
+    cannot be resolved --- a group-compositing hazard (`opacity`, `filter`,
+    `mix-blend-mode`), a generated-pseudo hazard, a positioning or
+    occludable-image hazard on an ancestor, an unrecognized color syntax, or
+    an `IFRAME` --- the carrier is tagged `"underdetermined"` and
+    `decideForegroundRepairs` emits nothing for it. Such a carrier is
+    surfaced as unknown rather than repaired on a guessed backdrop.
+  - *Iframe contents are not traversed.* An `<iframe>` is registered as its
+    own underdetermined carrier; `auditLegibility` deliberately does not
+    descend into `contentDocument`, same-origin or not. Content rendered
+    inside a frame is outside this channel entirely
+    (`docs/legibility-paint-grammar.md`'s `PG-SCOPE-IFRAME-CONTENT` row).
+  - *CSS-state coverage is not comprehensive, and the source says so.*
+    `pipeline.ts`'s own `INTERACTION_EVENTS` comment enumerates the gaps:
+    `:active` (transient --- a repair would routinely land after release),
+    `@keyframes` animations and CSS transitions that change color with no
+    event at all, media/container-query state,
+    `:target`/`:checked`/`:valid`, a
+    `:focus-visible` modality flip on an already-focused element (#1416),
+    and script mutating CSSOM directly. Two further residuals are recorded
+    in `foreground-repair.ts`'s own header: a coincidental color match set
+    by a stylesheet rule rather than an inline style is not detected as an
+    own declaration, and a violation needing the foreground made *darker*
+    is tagged but not repaired (SF-RC5, #1344, owns reporting it).
+  - *This is not a WCAG conformance claim.* The channel measures one
+    criterion --- 1.4.3's 4.5:1 normal-text ratio --- on carriers it can
+    resolve, in the scopes above. It says nothing about large-text ratios,
+    non-text contrast, or any other success criterion, and an audited page
+    is not thereby conformant. Neither the résumé bullet nor this note
+    should be read as claiming otherwise.
+
 - *Comfort metric* --- `adapter/swatches.ts` (`comfortReport` /
   `satisfiesComfort` / `sampleBodyComfort`), generalized from a registry
   `Swatch`'s static hex tokens to any observed `(bg, text)` pair so it can
