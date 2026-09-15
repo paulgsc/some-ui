@@ -672,6 +672,13 @@ describe("OccluderReleases sees what the queues cannot (#1425)", () => {
       .map((e) => e.subject)
   }
 
+  function recoveries(): Array<string | number | undefined> {
+    return obs.recorder
+      .events()
+      .filter((e) => e.kind === "invariant.recovered")
+      .map((e) => e.subject)
+  }
+
   beforeEach(() => {
     obs = startObservability(memoryPersistence())
   })
@@ -781,8 +788,8 @@ describe("OccluderReleases sees what the queues cannot (#1425)", () => {
 
     expect(
       obs.recorder.metrics.counter("health_samples"),
-      "eight ticks with nothing occluded, and not one sample taken"
-    ).toBe(before)
+      "one reading for the session, then eight quiet ticks"
+    ).toBe(before + 1)
     expect(violations()).not.toContain("OccluderReleases")
   })
 
@@ -799,6 +806,28 @@ describe("OccluderReleases sees what the queues cannot (#1425)", () => {
       obs.recorder.metrics.counter("health_samples"),
       "a page with something under the occluder is a page with something to say"
     ).toBeGreaterThan(before)
+  })
+
+  it("reports the recovery when the last stranded card goes away", async () => {
+    // Bot-found (this PR's own review, round 3). Skipping the sample on a
+    // clean page keeps an idle tab from writing every tick — but the tick
+    // where the page *became* clean is the one that emits
+    // `invariant.recovered` and replaces the violated snapshot. Skip that one
+    // and a healed violation sits on the diagnostics page forever: this
+    // invariant's own stuck-report failure, with the sign flipped.
+    const stranded = document.createElement("ytd-rich-item-renderer")
+    stranded.innerHTML = `<ytd-ad-slot-renderer><div>sponsored</div></ytd-ad-slot-renderer>`
+    document.body.appendChild(stranded)
+
+    await vi.advanceTimersByTimeAsync(OCCLUSION_GRACE_MS * 3)
+    expect(violations(), "precondition: it was reported stranded").toContain(
+      "OccluderReleases"
+    )
+
+    stranded.remove()
+    await vi.advanceTimersByTimeAsync(OCCLUSION_GRACE_MS * 3)
+
+    expect(recoveries()).toContain("OccluderReleases")
   })
 
   it("drops the watch on reset, so a teardown leaves no timer behind", async () => {
