@@ -627,12 +627,50 @@ export class VideoManager {
    *
    * Called by the key-binding adapter (KeyBindingAdapater) on the configured
    * hotkey. Phase-gated and idempotent - safe to call repeatedly.
+   *
+   * ## What "all" means, and why it is now reported (#1424)
+   *
+   * It iterates `_byVideo`, which holds promoted entries only. A card still in
+   * `_unresolved`, or one orphaned under the static occluder with no registry
+   * slot at all (#1421), is outside this loop and always was — which is the
+   * live report that the hotkey "misses some k% of cards", stable across
+   * rebuilds because the causes are structural rather than racy.
+   *
+   * This does not widen the loop. Widening it is #1385's question, not this
+   * one, and pulls the opposite way: `[QC3]` exists to give the command an
+   * *admission predicate* so it stops advancing cards it should not. The two
+   * compose because this change adds no eligibility of its own — it counts
+   * what the loop did and what it never reached, so when `[QC3]` narrows the
+   * set the command names, the same census reports honestly about the narrower
+   * set with nothing to undo here.
    */
   advanceAllToTitle(): void {
     if (this._phase !== "running") return
-    for (const entry of this._byVideo.values()) {
-      entry.advanceToTitle()
+
+    let advanced = 0
+    let alreadyPast = 0
+    let detached = 0
+    let channelPending = 0
+    for (const [videoId, entry] of this._byVideo) {
+      const outcome = entry.advanceToTitle()
+      if (outcome === "advanced") advanced += 1
+      else if (outcome === "already-past") alreadyPast += 1
+      else detached += 1
+      // Counted for the entries the command actually reached, which is the
+      // claim being evidenced — see BulkAdvanceCoverage.channelPending.
+      if (outcome !== "detached" && this._channelPending.has(videoId)) {
+        channelPending += 1
+      }
     }
+
+    observability()?.bulkAdvance({
+      advanced,
+      alreadyPast,
+      detached,
+      unresolved: this._unresolved.size,
+      occludedUntracked: this._untrackedOccludedCount(),
+      channelPending,
+    })
     publish()
   }
 
@@ -952,6 +990,32 @@ export class VideoManager {
     }
 
     return census
+  }
+
+  /**
+   * How many elements the static occluder is hiding that no queue accounts for.
+   *
+   * Deliberately *not* `_occlusionCensus().length`. A card legitimately waiting
+   * in `_unresolved` is occluded too — the occluder is what hides it until
+   * adoption — so counting the raw census would report every mid-resolution
+   * card twice: once under `unresolved`, once here. Subtracting the queue's own
+   * elements leaves exactly the population that is occluded with nothing coming
+   * for it, which is the number worth reporting to a user asking why a bulk
+   * command missed cards.
+   *
+   * Reads the DOM without touching `_occludedSince`. That map is the health
+   * cadence's, and its timestamps are what `OccluderReleases` measures its
+   * grace window from; letting a user keystroke seed entries in it would make
+   * how often someone presses the hotkey an input to whether a stranded card is
+   * reported. A count needs no timestamps, so it takes none.
+   */
+  private _untrackedOccludedCount(): number {
+    const queued = new Set<HTMLElement>(this._unresolved.values())
+    let untracked = 0
+    for (const el of occludedElements(document)) {
+      if (!queued.has(el)) untracked += 1
+    }
+    return untracked
   }
 
   /**

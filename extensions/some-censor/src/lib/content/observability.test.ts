@@ -31,9 +31,28 @@ import {
   memoryPersistence,
   Recorder,
   type InvariantOutcome,
+  type JsonValue,
   type ObservabilityEvent,
 } from "@some-extension/common/observability"
 import { afterEach, describe, expect, it, vi } from "vitest"
+
+/**
+ * The numeric fields of an event detail, as a plain record.
+ *
+ * `detail` is a `JsonValue`, so it may be a primitive or an array; this
+ * narrows it without an assertion, and dropping non-numeric values is what
+ * lets a test assert that a detail carries counts and nothing else (#1382).
+ */
+function numericDetail(detail: JsonValue | undefined): Record<string, number> {
+  if (detail === null || typeof detail !== "object" || Array.isArray(detail)) {
+    return {}
+  }
+  const out: Record<string, number> = {}
+  for (const [key, value] of Object.entries(detail)) {
+    if (typeof value === "number") out[key] = value
+  }
+  return out
+}
 
 // ── Harness ──────────────────────────────────────────────────────────────────
 
@@ -147,6 +166,14 @@ describe("the event union", () => {
     obs.churnIgnored("vid-a")
     obs.channelBackfilled("vid-b")
     obs.channelAbandoned("vid-e")
+    obs.bulkAdvance({
+      advanced: 1,
+      alreadyPast: 0,
+      detached: 0,
+      unresolved: 0,
+      occludedUntracked: 0,
+      channelPending: 0,
+    })
     obs.entryState("masked", "vid-a")
     obs.entryState("meta", "vid-a")
     obs.entryState("title", "vid-a")
@@ -455,6 +482,88 @@ describe("the health throttle is per session, not per content script (#1428)", (
     obs.sessionStart(2)
 
     expect(obs.shouldSampleHealth(NOW + 1)).toBe(true)
+  })
+})
+
+describe("bulkAdvance — the coverage a keystroke actually had (#1424)", () => {
+  const clean = {
+    advanced: 3,
+    alreadyPast: 2,
+    detached: 0,
+    unresolved: 0,
+    occludedUntracked: 0,
+    channelPending: 0,
+  }
+
+  it("does not count a card already at title as skipped", () => {
+    const obs = newObservability()
+    obs.bulkAdvance(clean)
+
+    const event = obs.recorder
+      .events()
+      .find((e) => e.kind === "command.advance_all")
+    // The distinction the whole story turns on: "covered, nothing to do" is
+    // not "missed". Folding the two would make every second press of an
+    // idempotent command look like a regression.
+    expect(event?.detail).toMatchObject({ alreadyPast: 2, skipped: 0 })
+    expect(obs.recorder.metrics.counter("bulk_advance_skipped")).toBe(0)
+  })
+
+  it("sums the three genuinely-uncovered populations into skipped", () => {
+    const obs = newObservability()
+    obs.bulkAdvance({
+      ...clean,
+      detached: 1,
+      unresolved: 4,
+      occludedUntracked: 2,
+    })
+
+    const event = obs.recorder
+      .events()
+      .find((e) => e.kind === "command.advance_all")
+    expect(event?.detail).toMatchObject({ skipped: 7 })
+    expect(obs.recorder.metrics.counter("bulk_advance_skipped")).toBe(7)
+    expect(obs.recorder.metrics.counter("bulk_advance_advanced")).toBe(3)
+  })
+
+  it("folds a clean press into the distribution too", () => {
+    const obs = newObservability()
+    obs.bulkAdvance(clean)
+    obs.bulkAdvance({ ...clean, unresolved: 6 })
+
+    // Dropping the zeroes would bias the aggregate toward exactly the presses
+    // the story is about: "missed 6 once out of two presses" and "misses 6
+    // every press" would read identically.
+    expect(
+      Reflect.get(
+        Object(obs.recorder.metrics.snapshot().aggregates),
+        "bulk_advance_skipped_per_command"
+      )
+    ).toEqual({ count: 2, sum: 6, min: 0, max: 6, last: 6 })
+  })
+
+  it("names no card, because a keystroke is not about one", () => {
+    const obs = newObservability()
+    obs.bulkAdvance({ ...clean, unresolved: 1 })
+
+    const event = obs.recorder
+      .events()
+      .find((e) => e.kind === "command.advance_all")
+    expect(event?.subject).toBeUndefined()
+    // Counts only, and nothing else: every field of BulkAdvanceCoverage plus
+    // the derived `skipped`, all numeric. That the detail survives a
+    // numbers-only filter unchanged is what makes the event structurally
+    // incapable of carrying a videoId, href or title (#1382) — a stronger
+    // guarantee than checking that this particular call happened not to.
+    expect(Object.keys(numericDetail(event?.detail)).sort()).toEqual([
+      "advanced",
+      "alreadyPast",
+      "channelPending",
+      "detached",
+      "occludedUntracked",
+      "skipped",
+      "unresolved",
+    ])
   })
 })
 

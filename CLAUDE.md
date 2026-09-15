@@ -93,6 +93,17 @@ tsc --noEmit`, `pnpm exec vitest run <path>`), not the repo root.
   it can miss binary corruption in content that's already staged and about to be committed.
   A `Bin ... -> ... bytes` line on a file you expect to be text source is the tell for
   embedded-NUL or other binary corruption that no lint, typecheck, or test will catch.
+- **The `some-censor` e2e suite needs an env var whose absence sends you somewhere that does
+  not exist here.** Without it every spec fails in ~3 ms with `[BOYO]
+  PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH is not set`, and the error's own remedy is "enter the
+  playwright nix shell: `nix develop .#playwright`" — which is not available in this sandbox, so
+  following it is a dead end. The browser is already installed; point at it:
+  `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome`
+  (check the directory first — `-1194` is a Playwright revision and will change). Also never run
+  `playwright test` directly for this package: `test:e2e` also runs
+  `node scripts/patch-test-manifest.mjs`, which adds `file://*/*` to `content_scripts.matches`,
+  and skipping it fails 8 of 9 specs with `__BOYO_DEBUG__` null — which reads exactly like a
+  real regression in the extension rather than a missing build step.
 - **`bash scripts/claude-e2e.sh` (any `some-filter` e2e run) silently resolves the wrong
   `playwright` binary in this environment.** `which playwright` finds a global install
   (`/opt/node22/bin/playwright`, a different version than this workspace's own pinned
