@@ -171,7 +171,20 @@ export const SourcePanel: FC<SourcePanelProps> = ({ algorithm, className }) => {
               </span>
             </p>
           </div>
-          <pre className="m-0 overflow-x-auto rounded bg-secondary p-3 font-mono text-xs leading-relaxed">
+          {/*
+            data-scroll-intent, the same marker `DiffCard`/`TypingViewport`
+            declare on their own horizontally-scrolling code region: the
+            ui-fit sweep, and now `ArtifactSwitcher`'s own swipe-to-switch
+            gesture (C1, #1213), both need to tell "this box scrolls because
+            scrolling is the interaction" apart from a box that was handed
+            too much. Without it, dragging a long line here to read past its
+            edge on a phone was indistinguishable from a swipe meant to
+            switch artifacts (review finding, #1430, chatgpt-codex-connector).
+          */}
+          <pre
+            data-scroll-intent="code-display"
+            className="m-0 overflow-x-auto rounded bg-secondary p-3 font-mono text-xs leading-relaxed"
+          >
             <code className={`language-${grammarId}`}>{highlight()}</code>
           </pre>
         </AccordionContent>
