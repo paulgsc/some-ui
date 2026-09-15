@@ -788,8 +788,8 @@ describe("OccluderReleases sees what the queues cannot (#1425)", () => {
 
     expect(
       obs.recorder.metrics.counter("health_samples"),
-      "one reading for the session, then eight quiet ticks"
-    ).toBe(before + 1)
+      "eight ticks with nothing occluded, and not one sample taken"
+    ).toBe(before)
     expect(violations()).not.toContain("OccluderReleases")
   })
 
@@ -828,6 +828,37 @@ describe("OccluderReleases sees what the queues cannot (#1425)", () => {
     await vi.advanceTimersByTimeAsync(OCCLUSION_GRACE_MS * 3)
 
     expect(recoveries()).toContain("OccluderReleases")
+  })
+
+  it("takes the session's reading synchronously, not on a tick 15s away", () => {
+    // Bot-found (this PR's own review, round 4). An earlier version seeded a
+    // flag so the *first tick* would report regardless of what it found — but
+    // a flag is not a reading. Navigation is debounced at 150 ms, so a second
+    // one inside OCCLUSION_GRACE_MS runs `_teardownRuntime()` -> `reset()`,
+    // which cancels the very tick that was going to honour the flag, and the
+    // previous page's verdict stays the latest persisted one.
+    mgr.reset()
+    const before = obs.recorder.metrics.counter("health_samples")
+
+    mgr.startSession()
+
+    expect(
+      obs.recorder.metrics.counter("health_samples"),
+      "taken before any timer exists to be cancelled"
+    ).toBe(before + 1)
+  })
+
+  it("still reports the new session even when the page it lands on is clean", () => {
+    // The case the force flag is for. A clean page takes no reading on an
+    // ordinary tick, by design — but the reading that says *this* page is
+    // clean is what retires a verdict describing the page before it.
+    document.body.innerHTML = ""
+    mgr.reset()
+    const before = obs.recorder.metrics.counter("health_samples")
+
+    mgr.startSession()
+
+    expect(obs.recorder.metrics.counter("health_samples")).toBe(before + 1)
   })
 
   it("drops the watch on reset, so a teardown leaves no timer behind", async () => {

@@ -164,10 +164,10 @@ export class VideoManager {
   // Observability-only, and the same shape as _stallWatch. See
   // _armOcclusionWatch().
   private _occlusionWatch: ReturnType<typeof setTimeout> | null = null
-  // Whether the previous occlusion tick found anything under the occluder.
-  // See the tick in _armOcclusionWatch(): it is what lets a clean page stay
-  // silent without swallowing the one sample that says a page *became* clean.
-  private _occludedLastTick = false
+  // Whether the previous occlusion reading found anything under the occluder.
+  // See _occlusionReading(): it is what lets a clean page stay silent without
+  // swallowing the one sample that says a page *became* clean.
+  private _occludedLastReading = false
 
   constructor() {
     // Register with the debug layer so Playwright can observe state
@@ -221,12 +221,15 @@ export class VideoManager {
     this._session = mkSession()
     this._phase = "running"
     if (this._promotingSince.size > 0) this._armStallWatch()
-    // Seeded true so a new session takes one reading regardless of what it
-    // finds: a report describing the page *before* an SPA navigation must not
-    // outlive the page it described (round 3's finding, across sessions).
-    this._occludedLastTick = true
     this._armOcclusionWatch()
     observability()?.sessionStart(this._session)
+    // Taken now, not promised. Round 3 seeded a flag so the *first tick* would
+    // report regardless of what it found; bot-found in round 4 that a flag is
+    // not a reading — navigation is debounced at 150 ms, so a second one
+    // inside OCCLUSION_GRACE_MS runs `_teardownRuntime()` -> `reset()`, which
+    // cancels the tick that was going to honour it. A verdict describing the
+    // page before the navigation would then stay the latest persisted one.
+    this._occlusionReading(Date.now(), /* force */ true)
     publish()
     return this._session
   }
@@ -244,7 +247,7 @@ export class VideoManager {
     this._rejected.clear()
     this._channelGaveUp.clear()
     this._occludedSince.clear()
-    this._occludedLastTick = false
+    this._occludedLastReading = false
 
     if (this._retryInterval !== null) {
       clearInterval(this._retryInterval)
@@ -1057,30 +1060,41 @@ export class VideoManager {
       if (this._phase !== "running") return
       this._armOcclusionWatch()
 
-      const now = Date.now()
-      // Prunes and stamps `_occludedSince` as a side effect, which is why it
-      // runs on every tick, including ones that report nothing.
-      // `_observabilityContext()` below repeats it; at the same `now` that is
-      // idempotent, and it happens only on ticks already taking a full sample.
-      const occluded = this._occlusionCensus(now).length > 0
-      const wasOccluded = this._occludedLastTick
-      this._occludedLastTick = occluded
-
-      // Clean now and clean last time: nothing to say, and saying it would
-      // cost a storage write every tick for as long as the tab is open.
-      //
-      // The `wasOccluded` half is not an optimization detail — it is the
-      // sample that reports a page *became* clean. Bot-found (round 3):
-      // skipping it leaves a healed violation on the diagnostics page forever
-      // and never emits `invariant.recovered`, which is this invariant's own
-      // stuck-report failure with the sign flipped.
-      if (!occluded && !wasOccluded) return
-
-      const obs = observability()
-      // Bypasses _sampleHealth()'s throttle deliberately — round 2 above is
-      // what that throttle does to this invariant when it is in the way.
-      if (obs) void obs.sampleHealth(this._observabilityContext(now))
+      this._occlusionReading(Date.now())
     }, OCCLUSION_GRACE_MS)
+  }
+
+  /**
+   * Look at the page once, and report only if there is something to report.
+   *
+   * `force` is for the reading `startSession()` takes: a new session must
+   * publish a verdict about the page it is actually on, even a clean one,
+   * because the latest persisted verdict otherwise still describes the page
+   * before the navigation.
+   */
+  private _occlusionReading(now: number, force = false): void {
+    // Prunes and stamps `_occludedSince` as a side effect, which is why it
+    // runs on every reading, including ones that report nothing.
+    // `_observabilityContext()` below repeats it; at the same `now` that is
+    // idempotent, and it happens only on readings already taking a sample.
+    const occluded = this._occlusionCensus(now).length > 0
+    const wasOccluded = this._occludedLastReading
+    this._occludedLastReading = occluded
+
+    // Clean now and clean last time: nothing to say, and saying it would cost
+    // a storage write every tick for as long as the tab is open.
+    //
+    // The `wasOccluded` half is not an optimization detail — it is the sample
+    // that reports a page *became* clean. Bot-found (round 3): skipping it
+    // leaves a healed violation on the diagnostics page forever and never
+    // emits `invariant.recovered`, which is this invariant's own stuck-report
+    // failure with the sign flipped.
+    if (!force && !occluded && !wasOccluded) return
+
+    const obs = observability()
+    // Bypasses _sampleHealth()'s throttle deliberately — round 2 above is what
+    // that throttle does to this invariant when it is in the way.
+    if (obs) void obs.sampleHealth(this._observabilityContext(now))
   }
 
   private _disarmOcclusionWatch(): void {
