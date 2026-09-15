@@ -19,6 +19,7 @@ import { memoryPersistence } from "@some-extension/common/observability"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
+  OCCLUSION_GRACE_MS,
   PROMOTION_STALL_MS,
   startObservability,
   stopObservability,
@@ -704,6 +705,105 @@ describe("OccluderReleases sees what the queues cannot (#1425)", () => {
 
     expect(mgr.size, "precondition: they were all adopted").toBe(3)
     expect(violations()).not.toContain("OccluderReleases")
+  })
+
+  it("keeps looking at a stranded card on a page with nothing left in any queue", async () => {
+    // Bot-found (this PR's own review). The test above reaches its verdict via
+    // the retry loop, which that card keeps alive by sitting in _unresolved —
+    // so it proves the invariant can fire, not that it fires for the
+    // population it was written for. An element this manager never adopted is
+    // in no queue and no guard, and therefore keeps nothing running: one
+    // sample stamps its sinceAt, `now - sinceAt` is zero, and without a
+    // cadence of its own the report stays healthy forever.
+    // A card that resolves outright, so nothing ever queues and the retry
+    // interval is never started.
+    document.body.appendChild(fullCard("vid_a", "Chan"))
+    mgr.scan()
+    await passes(1)
+
+    // Appears *after* the scan and is never upserted — the orphan shape, and
+    // the only way to get one: anything scan() sees, it queues. In the
+    // extension this is a card whose data-boyo was dropped by a teardown the
+    // observer did not turn into a signal (#1423), not a literal late append.
+    const stranded = document.createElement("ytd-rich-item-renderer")
+    stranded.innerHTML = `<ytd-ad-slot-renderer><div>sponsored</div></ytd-ad-slot-renderer>`
+    document.body.appendChild(stranded)
+
+    // The single sample a quiet page gets, standing in for the observer's
+    // mutation batch. retryUnresolved() walks the queues and samples; it does
+    // not scan, so the stranded element stays untracked, which is the point.
+    mgr.retryUnresolved()
+
+    expect(
+      mgr.unresolvedSize,
+      "precondition: nothing is queued, so no retry loop is running"
+    ).toBe(0)
+    expect(
+      violations(),
+      "precondition: one sample in, it is far too early to call it stranded"
+    ).not.toContain("OccluderReleases")
+
+    await vi.advanceTimersByTimeAsync(OCCLUSION_GRACE_MS + 1_000)
+
+    expect(
+      stranded.getAttribute("data-boyo"),
+      "precondition: it really is still under the occluder"
+    ).toBeNull()
+    expect(violations(), "and the invariant got a second look").toContain(
+      "OccluderReleases"
+    )
+  })
+
+  it("stops watching once the page has nothing occluded left", async () => {
+    // The direction that keeps the cadence honest about Charter §8: the watch
+    // must not become a standing 15 s timer on a healthy page. Every card is
+    // occluded for the moment between paint and adoption, so on a real feed
+    // this arms constantly — it has to stop on its own, from the census
+    // finding nothing, rather than from anyone remembering to cancel it.
+    const el = fullCard("vid_a", "Chan")
+    document.body.appendChild(el)
+
+    // In the DOM, not yet adopted: occluded, and enough to arm the watch.
+    mgr.retryUnresolved()
+    expect(
+      vi.getTimerCount(),
+      "precondition: the watch really did arm, so this test is not vacuous"
+    ).toBeGreaterThan(0)
+
+    mgr.scan()
+    await passes(1)
+    expect(
+      el.getAttribute("data-boyo"),
+      "precondition: it was adopted, so the occluder no longer matches it"
+    ).not.toBeNull()
+
+    await vi.advanceTimersByTimeAsync(OCCLUSION_GRACE_MS * 4)
+
+    expect(violations()).not.toContain("OccluderReleases")
+    expect(
+      vi.getTimerCount(),
+      "and nothing re-armed it for a page with nothing left to watch"
+    ).toBe(0)
+  })
+
+  it("drops the watch on reset, so a teardown leaves no timer behind", async () => {
+    // Same rule _disarmStallWatch() follows, and for the same reason: reset()
+    // is what a navigation and a disabled extension both run through, and a
+    // diagnostic timer that outlives the session it was watching is a leak
+    // whichever invariant it was serving. Left armed, this one is worse than a
+    // leak — the census it re-arms from does not consult the phase, so it
+    // would keep re-arming itself against a page no session is watching.
+    document.body.appendChild(fullCard("vid_a", "Chan"))
+    mgr.retryUnresolved()
+    expect(
+      vi.getTimerCount(),
+      "precondition: the watch is armed"
+    ).toBeGreaterThan(0)
+
+    mgr.reset()
+    await vi.advanceTimersByTimeAsync(OCCLUSION_GRACE_MS * 2)
+
+    expect(vi.getTimerCount()).toBe(0)
   })
 
   it("stays quiet about a channel lockup, which the occluder deliberately does not match", async () => {

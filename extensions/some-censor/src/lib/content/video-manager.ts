@@ -51,7 +51,11 @@ import { mkSession } from "@some-extension/common"
 
 import { publish, registerDebugSource } from "./debug"
 import { representsVideo, tryExtract } from "./extract/index"
-import { observability, PROMOTION_STALL_MS } from "./observability"
+import {
+  observability,
+  OCCLUSION_GRACE_MS,
+  PROMOTION_STALL_MS,
+} from "./observability"
 import type {
   BoyoContext,
   OccludedCard,
@@ -157,6 +161,9 @@ export class VideoManager {
   private _retryInterval: ReturnType<typeof setInterval> | null = null
   // Observability-only. See _armStallWatch().
   private _stallWatch: ReturnType<typeof setTimeout> | null = null
+  // Observability-only, and the same shape as _stallWatch. See
+  // _armOcclusionWatch().
+  private _occlusionWatch: ReturnType<typeof setTimeout> | null = null
 
   constructor() {
     // Register with the debug layer so Playwright can observe state
@@ -237,6 +244,7 @@ export class VideoManager {
     // so a disabled extension leaves no timer running while a teardown/restart
     // cycle keeps watching a promotion that survived it.
     this._disarmStallWatch()
+    this._disarmOcclusionWatch()
 
     this._phase = "idle"
     publish()
@@ -930,6 +938,12 @@ export class VideoManager {
       if (!live.has(el)) this._occludedSince.delete(el)
     }
 
+    // Armed from the fresh answer, not from `_occludedSince`, which at this
+    // point is the same thing — but this is the one place that knows whether
+    // anything is still aging, and so the only place that can decide honestly
+    // whether the next look is worth scheduling.
+    if (census.length > 0) this._armOcclusionWatch()
+
     return census
   }
 
@@ -972,6 +986,59 @@ export class VideoManager {
     if (this._stallWatch !== null) {
       clearTimeout(this._stallWatch)
       this._stallWatch = null
+    }
+  }
+
+  /**
+   * Keep a health cadence alive for as long as anything is aging under the
+   * static occluder.
+   *
+   * Bot-found (this PR's own review), and the same defect `_armStallWatch()`
+   * above exists for — reached this time by the invariant that was added to
+   * catch it. `_sampleHealth()` rides `retryUnresolved()`, which runs from the
+   * observer's mutation batches and from the retry interval; that interval is
+   * kept alive by `_unresolved` and `_channelPending` alone. An element this
+   * class never adopted is in neither, and is not inside the promotion guard
+   * either, so it keeps nothing running.
+   *
+   * On a quiet page that is exactly the reported failure: the batch that
+   * added the orphan yields one sample, that sample's census stamps
+   * `sinceAt = now`, `now - sinceAt` is zero, `OccluderReleases` reports
+   * healthy — and no later sample is guaranteed, so it reports healthy
+   * forever. The invariant would have been blind to precisely the population
+   * it was written for, which is the same blindness #1421 is about, one level
+   * up.
+   *
+   * Same shape as the stall watch, and for the same reasons: one shared
+   * one-shot rather than `_ensureRetryLoop()`, whose 500 ms full-document
+   * `scan()` would make a diagnostic concern pay a masking-sized cost
+   * (Charter §8). Re-arming happens inside `_occlusionCensus()` and only while
+   * it still finds something, so a page whose cards all get adopted fires this
+   * at most once more and then stops paying for it.
+   *
+   * The period is `OCCLUSION_GRACE_MS` itself, which is also the threshold the
+   * invariant measures against. `setTimeout` never fires early, so an element
+   * first seen by the census that armed this has necessarily aged past the
+   * grace window by the time the callback runs — the first tick reports it
+   * rather than the second.
+   */
+  private _armOcclusionWatch(): void {
+    if (this._occlusionWatch !== null) return
+    this._occlusionWatch = setTimeout(() => {
+      this._occlusionWatch = null
+      const obs = observability()
+      if (!obs) return
+      // Bypasses _sampleHealth()'s throttle for the same reason the stall
+      // watch does: this fires at its own, far slower period, and a sample
+      // skipped here is the one that had something to report.
+      void obs.sampleHealth(this._observabilityContext(Date.now()))
+    }, OCCLUSION_GRACE_MS)
+  }
+
+  private _disarmOcclusionWatch(): void {
+    if (this._occlusionWatch !== null) {
+      clearTimeout(this._occlusionWatch)
+      this._occlusionWatch = null
     }
   }
 
