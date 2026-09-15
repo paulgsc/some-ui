@@ -160,8 +160,16 @@ backs should be cut, not kept and re-justified.
 - *Rendered-contrast closure* --- the claim `src/data/resume.typ`'s full-stack
   composition now makes in place of a generic signed-release bullet (that
   bullet's own evidence survives verbatim in the *platform* composition's
-  human-gated release pipeline, so nothing was lost by the swap). Three
-  stories, all in `extensions/some-filter`:
+  human-gated release pipeline, so nothing was lost by the swap). It is
+  placed *ahead* of the rendering-scope lifecycle bullet above deliberately:
+  the templates' `bullet-budget` drops a project to three bullets once
+  `lib/fit.typ` solves below scale 0.9, which is every template except
+  `compact` and `conventional`, so a fourth bullet is written but not
+  printed. Both claims survive in `src/react/generated/data.ts` and
+  therefore in the web reading view; on the printed page this one is the
+  newer and strictly wider of the two, and the lifecycle work it displaces
+  is the scope machinery this pass is realized *through*. Three stories,
+  all in `extensions/some-filter`:
   - *Foreground repair* --- SF-RC2 (#1341), commit `5c4ab3b`.
     `adapter/legibility-audit.ts` senses: it re-reads `getComputedStyle`
     after this extension's own actuation, resolves each carrier's effective

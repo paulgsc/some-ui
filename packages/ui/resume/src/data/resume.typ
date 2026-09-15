@@ -92,8 +92,8 @@
       (name: "Browser extension platform", kind: "TypeScript, Firefox/Chromium MV3, Playwright, WebAssembly", premise: "A browser is host to code it did not author, so an extension's own UI and state must stay provably isolated from the page around it.", bullets: (
         "Built typed popup/worker/content protocols and MV3 service-worker bundles across six shipped Firefox/Chromium extensions, with platform shims isolating browser-specific APIs.",
         "Modeled UI and resolver states as exhaustive discriminated unions so illegal transitions fail at compile time rather than at runtime.",
-        "Built a typed lifecycle for document and open-Shadow-DOM scopes, browser-verified in Chromium for late-root discovery, coverage of unresolved content, and self-healing after host-page mutation, plus a per-scope generation counter, unit-tested, that rejects stale asynchronous completions.",
         "Built a post-actuation contrast-closure pass that remeasures computed foreground/background colors against WCAG AA's 4.5:1 floor, selects a hue-preserving foreground repair, realizes it across document and open Shadow DOM scopes, and rechecks hover/focus color changes after interaction settles.",
+        "Built a typed lifecycle for document and open-Shadow-DOM scopes, browser-verified in Chromium for late-root discovery, coverage of unresolved content, and self-healing after host-page mutation, plus a per-scope generation counter, unit-tested, that rejects stale asynchronous completions.",
       )),
     ),
     platform: (
