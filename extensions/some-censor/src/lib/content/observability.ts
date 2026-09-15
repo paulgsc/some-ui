@@ -677,6 +677,14 @@ export class BoyoObservability {
 
   sessionStart(ordinal: number): void {
     this._ordinal = ordinal
+    // Bot-found (#1428's own review, round 2). This adapter is created once per
+    // content-script instance and deliberately outlives a session (see this
+    // module's header), so without this a new SPA session inherits the previous
+    // one's throttle — and the sample it swallows is the *first* one after the
+    // page changed underneath us, which is the sample most likely to have
+    // something to say. Every invariant is affected; the one that made it
+    // visible was OccluderReleases.
+    this._lastHealthAt = 0
     this.recorder.record({
       kind: "session.start",
       subject: ordinal,

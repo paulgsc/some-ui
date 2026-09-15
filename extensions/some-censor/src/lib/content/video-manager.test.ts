@@ -282,16 +282,25 @@ describe("the retry loop", () => {
   it("stops once nothing is left to retry", async () => {
     // The property that actually matters: no live interval afterwards. Asserted
     // through vitest's timer count so it cannot pass by coincidence.
+    //
+    // Exactly one timer survives by design — the occlusion cadence, which runs
+    // for as long as a session does (see _armOcclusionWatch). Asserting the
+    // count rather than zero is the tighter statement, not the looser one: it
+    // fails at 2 if the retry interval leaks, and at 0 if the cadence this
+    // count now allows for has quietly stopped existing.
     document.body.appendChild(channelLockup())
     document.body.appendChild(shortsLockup("short_1"))
     mgr.scan()
 
-    expect(vi.getTimerCount(), "a retry loop is running").toBeGreaterThan(0)
+    expect(vi.getTimerCount(), "a retry loop is running").toBeGreaterThan(1)
 
     await passes(BUDGET_PASSES + 4)
 
     expect(mgr.unresolvedSize).toBe(0)
-    expect(vi.getTimerCount(), "no timer survives the drained queue").toBe(0)
+    expect(
+      vi.getTimerCount(),
+      "no retry interval survives the drained queue"
+    ).toBe(1)
   })
 
   it("keeps running while a real card is still unresolved", async () => {
@@ -729,70 +738,81 @@ describe("OccluderReleases sees what the queues cannot (#1425)", () => {
     stranded.innerHTML = `<ytd-ad-slot-renderer><div>sponsored</div></ytd-ad-slot-renderer>`
     document.body.appendChild(stranded)
 
-    // The single sample a quiet page gets, standing in for the observer's
-    // mutation batch. retryUnresolved() walks the queues and samples; it does
-    // not scan, so the stranded element stays untracked, which is the point.
-    mgr.retryUnresolved()
-
     expect(
       mgr.unresolvedSize,
       "precondition: nothing is queued, so no retry loop is running"
     ).toBe(0)
     expect(
       violations(),
-      "precondition: one sample in, it is far too early to call it stranded"
+      "precondition: far too early to call anything stranded"
     ).not.toContain("OccluderReleases")
 
-    await vi.advanceTimersByTimeAsync(OCCLUSION_GRACE_MS + 1_000)
+    // One tick to see it and stamp its sinceAt, the next to find it has aged
+    // past the grace window. Nothing else on this page is running.
+    await vi.advanceTimersByTimeAsync(OCCLUSION_GRACE_MS * 3)
 
     expect(
       stranded.getAttribute("data-boyo"),
       "precondition: it really is still under the occluder"
     ).toBeNull()
-    expect(violations(), "and the invariant got a second look").toContain(
+    expect(violations(), "and the cadence kept looking").toContain(
       "OccluderReleases"
     )
   })
 
-  it("stops watching once the page has nothing occluded left", async () => {
-    // The direction that keeps the cadence honest about Charter §8: the watch
-    // must not become a standing 15 s timer on a healthy page. Every card is
-    // occluded for the moment between paint and adoption, so on a real feed
-    // this arms constantly — it has to stop on its own, from the census
-    // finding nothing, rather than from anyone remembering to cancel it.
+  it("does not sample a page that has nothing occluded, however long it runs", async () => {
+    // What keeps the standing cadence honest about Charter §8. The tick itself
+    // is read-only queries; the expensive half of a health sample is evaluating
+    // every invariant and flushing a snapshot to storage.local. So a clean page
+    // must tick without sampling — otherwise leaving a tab open writes to disk
+    // every 15 s forever, which is exactly the background cost the budget
+    // machinery in this file exists to avoid.
     const el = fullCard("vid_a", "Chan")
     document.body.appendChild(el)
-
-    // In the DOM, not yet adopted: occluded, and enough to arm the watch.
-    mgr.retryUnresolved()
-    expect(
-      vi.getTimerCount(),
-      "precondition: the watch really did arm, so this test is not vacuous"
-    ).toBeGreaterThan(0)
-
     mgr.scan()
     await passes(1)
     expect(
       el.getAttribute("data-boyo"),
-      "precondition: it was adopted, so the occluder no longer matches it"
+      "precondition: adopted, so the occluder no longer matches it"
     ).not.toBeNull()
 
-    await vi.advanceTimersByTimeAsync(OCCLUSION_GRACE_MS * 4)
+    const before = obs.recorder.metrics.counter("health_samples")
+    await vi.advanceTimersByTimeAsync(OCCLUSION_GRACE_MS * 8)
 
-    expect(violations()).not.toContain("OccluderReleases")
     expect(
-      vi.getTimerCount(),
-      "and nothing re-armed it for a page with nothing left to watch"
-    ).toBe(0)
+      obs.recorder.metrics.counter("health_samples"),
+      "eight ticks with nothing occluded, and not one sample taken"
+    ).toBe(before)
+    expect(violations()).not.toContain("OccluderReleases")
+  })
+
+  it("does sample a page that does have something occluded", async () => {
+    // The other half, so the test above cannot pass by the cadence being dead.
+    const stranded = document.createElement("ytd-rich-item-renderer")
+    stranded.innerHTML = `<ytd-ad-slot-renderer><div>sponsored</div></ytd-ad-slot-renderer>`
+    document.body.appendChild(stranded)
+
+    const before = obs.recorder.metrics.counter("health_samples")
+    await vi.advanceTimersByTimeAsync(OCCLUSION_GRACE_MS * 8)
+
+    expect(
+      obs.recorder.metrics.counter("health_samples"),
+      "a page with something under the occluder is a page with something to say"
+    ).toBeGreaterThan(before)
   })
 
   it("drops the watch on reset, so a teardown leaves no timer behind", async () => {
     // Same rule _disarmStallWatch() follows, and for the same reason: reset()
     // is what a navigation and a disabled extension both run through, and a
-    // diagnostic timer that outlives the session it was watching is a leak
-    // whichever invariant it was serving. Left armed, this one is worse than a
-    // leak — the census it re-arms from does not consult the phase, so it
-    // would keep re-arming itself against a page no session is watching.
+    // cadence that outlives the session it was watching would keep re-arming
+    // itself against a page no session is watching.
+    //
+    // Two mechanisms hold this, deliberately: the tick's phase guard and the
+    // disarm in reset(). Each is individually sufficient, so mutating either
+    // one alone leaves this test green — it fails only when both are gone.
+    // That is defence in depth rather than a redundancy to clean up: the guard
+    // is what makes an already-scheduled tick correct, the disarm is what
+    // releases the handle promptly instead of up to OCCLUSION_GRACE_MS later.
     document.body.appendChild(fullCard("vid_a", "Chan"))
     mgr.retryUnresolved()
     expect(
@@ -869,7 +889,9 @@ describe("PromotionGuardClears can actually fire (#1397's own review)", () => {
     await vi.advanceTimersByTimeAsync(PROMOTION_STALL_MS * 3)
 
     expect(violations()).toEqual([])
-    expect(vi.getTimerCount()).toBe(0)
+    // The one survivor is the occlusion cadence, not this watch — see the
+    // retry-loop test above for why the count is asserted rather than zero.
+    expect(vi.getTimerCount()).toBe(1)
   })
 
   it("still reports a promotion that outlived an SPA navigation — reset() cannot clear the real _promoting WeakSet, so it must not clear the mirror either", async () => {

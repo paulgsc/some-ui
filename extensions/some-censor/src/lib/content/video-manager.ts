@@ -217,6 +217,7 @@ export class VideoManager {
     this._session = mkSession()
     this._phase = "running"
     if (this._promotingSince.size > 0) this._armStallWatch()
+    this._armOcclusionWatch()
     observability()?.sessionStart(this._session)
     publish()
     return this._session
@@ -938,12 +939,6 @@ export class VideoManager {
       if (!live.has(el)) this._occludedSince.delete(el)
     }
 
-    // Armed from the fresh answer, not from `_occludedSince`, which at this
-    // point is the same thing — but this is the one place that knows whether
-    // anything is still aging, and so the only place that can decide honestly
-    // whether the next look is worth scheduling.
-    if (census.length > 0) this._armOcclusionWatch()
-
     return census
   }
 
@@ -990,48 +985,80 @@ export class VideoManager {
   }
 
   /**
-   * Keep a health cadence alive for as long as anything is aging under the
-   * static occluder.
+   * Look at the page for stranded cards on a fixed cadence, for as long as a
+   * session is running.
    *
-   * Bot-found (this PR's own review), and the same defect `_armStallWatch()`
-   * above exists for — reached this time by the invariant that was added to
-   * catch it. `_sampleHealth()` rides `retryUnresolved()`, which runs from the
-   * observer's mutation batches and from the retry interval; that interval is
-   * kept alive by `_unresolved` and `_channelPending` alone. An element this
-   * class never adopted is in neither, and is not inside the promotion guard
-   * either, so it keeps nothing running.
+   * ## Why a standing cadence and not a conditional one
    *
-   * On a quiet page that is exactly the reported failure: the batch that
-   * added the orphan yields one sample, that sample's census stamps
-   * `sinceAt = now`, `now - sinceAt` is zero, `OccluderReleases` reports
-   * healthy — and no later sample is guaranteed, so it reports healthy
-   * forever. The invariant would have been blind to precisely the population
-   * it was written for, which is the same blindness #1421 is about, one level
-   * up.
+   * Bot-found twice on this PR's own review, and the second finding is what
+   * decided the shape. Both were the same defect: the place that scheduled the
+   * next look sat behind a gate the orphan population cannot pass.
    *
-   * Same shape as the stall watch, and for the same reasons: one shared
-   * one-shot rather than `_ensureRetryLoop()`, whose 500 ms full-document
-   * `scan()` would make a diagnostic concern pay a masking-sized cost
-   * (Charter §8). Re-arming happens inside `_occlusionCensus()` and only while
-   * it still finds something, so a page whose cards all get adopted fires this
-   * at most once more and then stops paying for it.
+   * Round 1 — `_sampleHealth()` rides `retryUnresolved()`, whose interval is
+   * kept alive by `_unresolved` and `_channelPending` alone, and
+   * `_armStallWatch()` covers only `_promotingSince`. An element this class
+   * never adopted is in none of them, so it keeps nothing running: one sample
+   * stamps its `sinceAt`, `now - sinceAt` is zero, and `OccluderReleases`
+   * reports healthy forever.
    *
-   * The period is `OCCLUSION_GRACE_MS` itself, which is also the threshold the
-   * invariant measures against. `setTimeout` never fires early, so an element
-   * first seen by the census that armed this has necessarily aged past the
-   * grace window by the time the callback runs — the first tick reports it
-   * rather than the second.
+   * Round 2 — arming from inside `_occlusionCensus()` moved the gate rather
+   * than removing it. `_sampleHealth()` consults `shouldSampleHealth()` and
+   * returns *before* building a context, so a card stranded within
+   * `HEALTH_SAMPLE_INTERVAL_MS` of the previous sample produced no census and
+   * therefore no watch. Worse across an SPA navigation: `startObservability()`
+   * runs once per content-script instance and deliberately outlives a session
+   * (see observability.ts's header), so a new session inherited the old one's
+   * `_lastHealthAt` — the `sessionStart()` reset below closes that half.
+   *
+   * Making the cadence conditional means enumerating every path by which an
+   * element can end up occluded and unadopted. This epic exists because that
+   * enumeration is exactly what nobody can do reliably — `destroy()` dropping
+   * `data-boyo` is not even an observer signal (#1423), and #1426 is a card
+   * whose *second* tracked element no path accounts for. An invariant whose
+   * whole point is to read the DOM rather than trust the bookkeeping cannot
+   * have its schedule depend on the bookkeeping's call graph.
+   *
+   * ## What it costs
+   *
+   * A `setTimeout` chain at `OCCLUSION_GRACE_MS` — 30x less often than the
+   * retry loop's 500 ms, and each tick is `PREMASK_SELECTORS.length`
+   * read-only `querySelectorAll` calls against the premask condition, with no
+   * per-element work beyond a tag read. That is strictly less than one
+   * `scan()`, which queries and then calls `upsert()` on every match.
+   *
+   * The expensive half of a health sample is not the query, it is evaluating
+   * every invariant and flushing a snapshot to `storage.local`. So the tick
+   * samples only when the census is non-empty: an idle page with nothing
+   * occluded queries, finds nothing, and writes nothing (Charter §8). A page
+   * that does have something occluded is a page with something to say.
+   *
+   * The period is also the threshold the invariant measures against.
+   * `setTimeout` never fires early, so an element first seen by one tick's
+   * census has necessarily aged past the grace window by the next — reported
+   * on the tick after the one that found it, with no margin needed.
    */
   private _armOcclusionWatch(): void {
     if (this._occlusionWatch !== null) return
     this._occlusionWatch = setTimeout(() => {
       this._occlusionWatch = null
+      // Belt to reset()'s braces: either one alone stops the cadence after a
+      // teardown. The guard is what makes an already-scheduled tick correct,
+      // the disarm is what releases the handle promptly rather than up to
+      // OCCLUSION_GRACE_MS later.
+      if (this._phase !== "running") return
+      this._armOcclusionWatch()
+
+      const now = Date.now()
+      // Prunes and stamps `_occludedSince` as a side effect, which is why it
+      // runs even on a tick that reports nothing. `_observabilityContext()`
+      // below repeats it; at the same `now` that is idempotent, and it happens
+      // only on ticks already committed to a full sample.
+      if (this._occlusionCensus(now).length === 0) return
+
       const obs = observability()
-      if (!obs) return
-      // Bypasses _sampleHealth()'s throttle for the same reason the stall
-      // watch does: this fires at its own, far slower period, and a sample
-      // skipped here is the one that had something to report.
-      void obs.sampleHealth(this._observabilityContext(Date.now()))
+      // Bypasses _sampleHealth()'s throttle deliberately — round 2 above is
+      // what that throttle does to this invariant when it is in the way.
+      if (obs) void obs.sampleHealth(this._observabilityContext(now))
     }, OCCLUSION_GRACE_MS)
   }
 

@@ -437,6 +437,27 @@ describe("mutationBatch — the observer's firehose, bounded", () => {
   })
 })
 
+describe("the health throttle is per session, not per content script (#1428)", () => {
+  it("forgets the previous session's last-sample time on sessionStart", async () => {
+    // Bot-found on #1428's own review, round 2. This adapter is created once
+    // per content-script instance and deliberately outlives a session, so
+    // without the reset an SPA navigation inherits the old session's throttle —
+    // and the sample it swallows is the first one after the page changed
+    // underneath us, which is the one most likely to have something to say.
+    const obs = newObservability()
+    await obs.sampleHealth(baseContext({ now: NOW }))
+
+    expect(
+      obs.shouldSampleHealth(NOW + 1),
+      "precondition: the throttle is engaged"
+    ).toBe(false)
+
+    obs.sessionStart(2)
+
+    expect(obs.shouldSampleHealth(NOW + 1)).toBe(true)
+  })
+})
+
 // ── The date corpus ──────────────────────────────────────────────────────────
 
 describe("uploadDate — the corpus mechanism #1384 depends on", () => {
