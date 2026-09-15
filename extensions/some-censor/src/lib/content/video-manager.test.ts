@@ -482,6 +482,46 @@ describe("vendor churn is not a recycle (#1423)", () => {
     ).toBe("3")
   })
 
+  it("mounts a reused lockup after an SPA navigation, even though _elToVid still holds the old session's id", async () => {
+    // Bot-found (#1427 review, round 2, P1). reset() cannot clear _elToVid —
+    // it is a WeakMap — but destroy() does remove data-boyo-vid. So a reused
+    // lockup arrives in the NEW session with no stamp (upsert's own churn
+    // branch is skipped) but a stale _elToVid claim that _promote() still
+    // sees. With the old link still in the subtree and no authoritative
+    // data-video-id to contradict it, the churn shortcut would "preserve" an
+    // entry reset() had already destroyed — repair() on undefined is a silent
+    // no-op — and return without mounting anything. Never queued, so nothing
+    // retries it: permanently occluded and inert.
+    const el = document.createElement("yt-lockup-view-model")
+    el.innerHTML = `<a id="video-title" href="/watch?v=lock_orig"></a><a href="/@Chan"></a>`
+    document.body.appendChild(el)
+    mgr.upsert(el)
+    await passes(2)
+    expect(mgr.size).toBe(1)
+
+    // A preview link lands earlier in document order, so the next extraction
+    // answers with it rather than the card's own.
+    addPreviewAnchor(el, "lock_preview")
+
+    // Controller C2: navigation tears down and restarts. The element stays
+    // connected — chip swaps reuse lockups in place.
+    mgr.reset()
+    mgr.startSession()
+    expect(
+      el.dataset["boyoVid"],
+      "destroy() cleared the stamp, so upsert's own churn branch cannot fire"
+    ).toBeUndefined()
+
+    mgr.upsert(el)
+    await passes(2)
+
+    expect(
+      el.getAttribute("data-boyo"),
+      "the card must be adopted by the new session, not stranded under the occluder"
+    ).not.toBeNull()
+    expect(mgr.size, "and it must actually be in the registry").toBe(1)
+  })
+
   it("does not flap when the same element churns repeatedly", async () => {
     const el = fullCard("vid_stable", "ChanA")
     document.body.appendChild(el)

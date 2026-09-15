@@ -274,7 +274,16 @@ export class VideoManager {
       let recycled = false
       if (rawPreviousId && rawPreviousId !== currentId) {
         const rawAsPrevId = asVideoId(rawPreviousId)
-        if (representsVideo(el, rawAsPrevId)) {
+        // Same liveness requirement as _promote()'s sibling branch below: a
+        // shortcut that "preserves" a dead entry strands the element instead
+        // (#1427 review, round 2). Kept symmetric deliberately — the two
+        // branches answer the same question from different evidence, and the
+        // one that drifts is the one that reintroduces the bug.
+        const prevEntry = this._byVideo.get(rawAsPrevId)
+        if (
+          prevEntry?.record.session === this._session &&
+          representsVideo(el, rawAsPrevId)
+        ) {
           // Vendor churn, not a recycle. The artifact we mounted is still here;
           // `currentId` is some other anchor that has come to sit earlier in
           // document order (a hover preview's own link, most often — which is
@@ -288,7 +297,7 @@ export class VideoManager {
           // veil with it, and repairing is idempotent for an entry that still
           // has one (and a no-op for a revealed entry, which has none by
           // design).
-          this._byVideo.get(rawAsPrevId)?.repair()
+          prevEntry.repair()
           observability()?.churnIgnored(rawPreviousId)
           this._maybeStopRetryLoop()
           return
@@ -624,17 +633,34 @@ export class VideoManager {
       const prevVid = this._elToVid.get(el)
       const session = this._session
       if (prevVid !== undefined && prevVid !== videoId) {
-        if (representsVideo(el, prevVid)) {
+        const prevEntry = this._byVideo.get(prevVid)
+        // The churn shortcut requires a *live* entry to preserve, not merely a
+        // prior claim on the element.
+        //
+        // Bot-found (#1427 review, round 2, P1). `_elToVid` is a WeakMap, so
+        // reset() cannot clear it — it survives every SPA navigation, while
+        // destroy() does remove `data-boyo-vid`. A reused Lit lockup therefore
+        // reaches here in the *new* session carrying a stale `prevVid` and no
+        // live entry, and if it still holds the old link (lockups have no
+        // authoritative `data-video-id` to say otherwise) this branch would
+        // "preserve" an entry that no longer exists — repair() on undefined is
+        // a silent no-op — and return without mounting anything. The element
+        // was never queued, so nothing would retry it: permanently occluded
+        // and inert, which is the exact failure this PR exists to remove.
+        if (
+          prevEntry?.record.session === this._session &&
+          representsVideo(el, prevVid)
+        ) {
           // Churn, not a recycle — the same discrimination upsert() makes, for
           // the paths that reach here without passing through it (#1423).
           // Bailing rather than merely skipping the teardown: the element still
           // represents `prevVid`, so mounting `videoId` onto it would put two
           // entries on one card.
-          this._byVideo.get(prevVid)?.repair()
+          prevEntry.repair()
           observability()?.churnIgnored(String(prevVid))
           return
         }
-        this._byVideo.get(prevVid)?.destroy()
+        prevEntry?.destroy()
         this._byVideo.delete(prevVid)
       }
 
