@@ -17,7 +17,8 @@
  * T7 — watch-page sidebar (compact renderers) is masked.
  * T8 — navigation BUMPS the session (the fix for stale state).
  * T9 — dblclick reveals from any state, and the veil stops taking clicks.
- * T10 — a revealed card survives vendor churn instead of going inert (#1423).
+ * T10 — a revealed renderer repointed at a new video re-masks (QD1, #1423).
+ * T11 — a revealed href-only lockup survives preview-anchor churn (#1423).
  */
 
 import { expect, test } from "@censor/playwright/fixture"
@@ -463,6 +464,72 @@ test("T10: a revealed renderer repointed at a new video re-masks, and is never i
     after?.pointerEvents,
     "and still takes clicks — the inert state being ruled out"
   ).not.toBe("none")
+})
+
+test("T11: a revealed href-only lockup survives preview-anchor churn", async ({
+  fixture,
+}) => {
+  // The other half of #1423, and the one the user actually reported: a Lit
+  // lockup has no authoritative `data-video-id`, so anchor membership is the
+  // only evidence there is. A preview anchor landing ahead of the card's own
+  // changes what extraction answers, and re-masking on that would revoke the
+  // user's disclosure and drop the card under the occluder's
+  // `pointer-events: none`. T10 cannot cover this: it writes a contradictory
+  // authoritative id, which is decisive, so it always takes the recycle path.
+  //
+  // The reconciliation that re-upserts a mounted lockup here is the retry
+  // loop's scan() — observer.ts has no signal for "a descendant anchor
+  // changed" (see the round-1 review). That is a real production path, but it
+  // only runs while a queue is non-empty, so this test **asserts** that
+  // precondition rather than assuming it: the fixture's channel lockup cannot
+  // resolve and holds `unresolved` above zero for its ~10s budget. Without
+  // this assertion the test could go quietly vacuous if the fixture changed.
+  const page = await fixture.goto("yt-home")
+
+  await fixture.pollDebug(page, (d) => "lock_aaa" in d.entries, {
+    timeout: 5000,
+  })
+
+  await fixture.fixtureCall<boolean>(page, "dblclickVeil", "lock_aaa")
+  const revealed = await fixture.pollDebug(
+    page,
+    (d) => d.entries["lock_aaa"]?.viewKind === "revealed",
+    { timeout: 3000 }
+  )
+
+  expect(
+    revealed.unresolved,
+    "precondition: a queue is non-empty, so the retry loop's scan() is live and will reconcile"
+  ).toBeGreaterThan(0)
+
+  await fixture.fixtureCall<boolean>(
+    page,
+    "injectPreviewAnchor",
+    "lock_aaa",
+    "preview_zzz"
+  )
+
+  // Several retry passes (the loop ticks at 500ms), well inside the budget
+  // asserted above.
+  await page.waitForTimeout(2000)
+
+  const after = await fixture.fixtureCall<Occlusion | null>(
+    page,
+    "isOccludedByIdFor",
+    "lock_aaa"
+  )
+  expect(after?.dataBoyo, "custody is kept through the churn").toBe("3")
+  expect(after?.blurred, "not handed back to the static occluder").toBe(false)
+  expect(
+    after?.pointerEvents,
+    "and still takes clicks — the inert state being ruled out"
+  ).not.toBe("none")
+
+  const snap = await fixture.readDebug(page)
+  expect(
+    snap?.entries["lock_aaa"]?.viewKind,
+    "the user's own disclosure is not silently revoked"
+  ).toBe("revealed")
 })
 
 test("T9: dblclick reveals a card already progressed to title, not just a fresh masked one", async ({
