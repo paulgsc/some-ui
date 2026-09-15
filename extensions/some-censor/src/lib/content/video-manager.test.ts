@@ -16,6 +16,7 @@
 
 import { asVideoId } from "@censor/types/ids"
 import { memoryPersistence } from "@some-extension/common/observability"
+import type { JsonValue } from "@some-extension/common/observability"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
@@ -26,6 +27,26 @@ import {
   type BoyoObservability,
 } from "./observability"
 import { VideoManager } from "./video-manager"
+
+/**
+ * The numeric fields of an event detail, as a plain record.
+ *
+ * `detail` is a `JsonValue`, so it may be a primitive or an array; this
+ * narrows it without an assertion. Dropping non-numeric values is deliberate
+ * rather than incidental — a bulk-advance detail carries counts and nothing
+ * else (#1382), so a key that survives a round trip through here is a key
+ * whose value really was a number.
+ */
+function numericDetail(detail: JsonValue | undefined): Record<string, number> {
+  if (detail === null || typeof detail !== "object" || Array.isArray(detail)) {
+    return {}
+  }
+  const out: Record<string, number> = {}
+  for (const [key, value] of Object.entries(detail)) {
+    if (typeof value === "number") out[key] = value
+  }
+  return out
+}
 
 /** The retry loop ticks at 500ms; the budget is 10s of wall clock. */
 const PASS_MS = 500
@@ -54,6 +75,20 @@ function fullCard(videoId: string, channel: string): HTMLElement {
   const el = document.createElement("ytd-rich-item-renderer")
   fillFullCard(el, videoId, channel)
   return el
+}
+
+/**
+ * Make the next `IS_WHITELISTED` round trip never settle, pinning an element
+ * inside `_promote()`'s guard for the rest of the test. Module-scoped because
+ * two describes need it: the promotion-guard invariant, and #1429's coverage
+ * attribution for a card that is mid-mount rather than orphaned.
+ */
+function hangTheWhitelistCheck(): void {
+  vi.mocked(browser.runtime.sendMessage).mockReturnValueOnce(
+    new Promise(() => {
+      // deliberately never settles
+    })
+  )
 }
 
 /** Advance n retry passes, letting the awaited whitelist round-trips settle. */
@@ -904,14 +939,6 @@ describe("PromotionGuardClears can actually fire (#1397's own review)", () => {
   let obs: BoyoObservability
 
   /** A promotion that never settles: the MV3 hazard the invariant is about. */
-  function hangTheWhitelistCheck(): void {
-    vi.mocked(browser.runtime.sendMessage).mockReturnValueOnce(
-      new Promise(() => {
-        // deliberately never settles
-      })
-    )
-  }
-
   function violations(): Array<string | number | undefined> {
     return obs.recorder
       .events()
@@ -1021,5 +1048,216 @@ describe("PromotionGuardClears can actually fire (#1397's own review)", () => {
       violations(),
       "recovered on its own — nothing was ever stuck"
     ).toEqual([])
+  })
+})
+
+describe("advance-all reports what it did not advance (#1424)", () => {
+  let obs: BoyoObservability
+
+  /** The detail of the most recent bulk-advance event, or undefined. */
+  function coverage(): Record<string, number> | undefined {
+    const events = obs.recorder
+      .events()
+      .filter((e) => e.kind === "command.advance_all")
+    const last = events[events.length - 1]
+    return last === undefined ? undefined : numericDetail(last.detail)
+  }
+
+  /**
+   * An element the occluder matches on its bare tag and that the manager is
+   * not tracking at all — the orphan shape every ORP story produces, and the
+   * one no queue can represent.
+   */
+  function orphan(): HTMLElement {
+    const el = document.createElement("ytd-rich-item-renderer")
+    el.innerHTML = `<ytd-ad-slot-renderer><div>sponsored</div></ytd-ad-slot-renderer>`
+    document.body.appendChild(el)
+    return el
+  }
+
+  beforeEach(() => {
+    obs = startObservability(memoryPersistence())
+  })
+
+  afterEach(() => {
+    stopObservability()
+  })
+
+  it("counts the cards it advanced and the ones it never reached", async () => {
+    document.body.appendChild(fullCard("vid_a", "Chan"))
+    document.body.appendChild(fullCard("vid_b", "Chan"))
+    mgr.scan()
+    await passes(1)
+    expect(mgr.size, "precondition: two cards are in the registry").toBe(2)
+
+    // Never upserted, so it is in no queue and has no registry slot — but the
+    // stylesheet is occluding it, which is the whole point of the bucket.
+    orphan()
+
+    mgr.advanceAllToTitle()
+
+    expect(coverage()).toMatchObject({
+      advanced: 2,
+      alreadyPast: 0,
+      detached: 0,
+      unresolved: 0,
+      occludedUntracked: 1,
+      skipped: 1,
+    })
+  })
+
+  it("does not count a queued card twice, as both unresolved and occluded", () => {
+    // The card is video-shaped but not yet extractable, so it sits in
+    // _unresolved — and it is occluded too, because the occluder is exactly
+    // what hides a card until adoption. Reporting it in both buckets would
+    // make the skipped total say two cards where there is one.
+    const el = document.createElement("ytd-rich-item-renderer")
+    document.body.appendChild(el)
+    mgr.upsert(el)
+
+    expect(mgr.unresolvedSize, "precondition: it really is queued").toBe(1)
+
+    mgr.advanceAllToTitle()
+
+    expect(coverage()).toMatchObject({
+      advanced: 0,
+      unresolved: 1,
+      occludedUntracked: 0,
+      skipped: 1,
+    })
+  })
+
+  it("does not count a channel lockup the occluder never hid", async () => {
+    // Bot-found (this PR's own review, P1). `upsert()` enqueues every element
+    // failing `isVideoCard()` — a channel lockup, a playlist, an unhydrated
+    // shell — so extraction need not rescan their subtrees each pass. The
+    // premask `:has()` guard deliberately leaves those visible, so they were
+    // never cards and were never missed. Counting `_unresolved.size` reported
+    // them as skipped, worst on search pages where polymorphic lockups are
+    // most of the grid.
+    document.body.appendChild(fullCard("vid_a", "Chan"))
+    for (let i = 0; i < 4; i++) document.body.appendChild(channelLockup())
+    mgr.scan()
+    await passes(1)
+
+    expect(
+      mgr.unresolvedSize,
+      "precondition: the lockups really are sitting in the queue"
+    ).toBe(4)
+
+    mgr.advanceAllToTitle()
+
+    expect(coverage()).toMatchObject({
+      advanced: 1,
+      unresolved: 0,
+      promoting: 0,
+      occludedUntracked: 0,
+      skipped: 0,
+    })
+  })
+
+  it("attributes an in-flight promotion to the mount, not to the orphans", async () => {
+    // Bot-found (this PR's own review, P2). `_promote()` dequeues before
+    // awaiting the IS_WHITELISTED round trip, so for the length of that trip a
+    // perfectly healthy card is occluded, out of `_unresolved`, and not yet in
+    // the registry. "Occluded minus the queue" put it in the orphan bucket —
+    // the one figure whose whole value is that it should trend to zero as
+    // #1421 lands.
+    hangTheWhitelistCheck()
+    const el = fullCard("vid_slow", "Chan")
+    document.body.appendChild(el)
+    mgr.upsert(el)
+    await passes(1)
+
+    expect(
+      el.getAttribute("data-boyo"),
+      "precondition: still occluded, the mount has not completed"
+    ).toBeNull()
+    expect(
+      mgr.unresolvedSize,
+      "precondition: and it has already left the queue"
+    ).toBe(0)
+
+    mgr.advanceAllToTitle()
+
+    expect(coverage()).toMatchObject({
+      advanced: 0,
+      unresolved: 0,
+      promoting: 1,
+      occludedUntracked: 0,
+      skipped: 1,
+    })
+  })
+
+  it("reports a registry entry whose element left the DOM", async () => {
+    const el = fullCard("vid_gone", "Chan")
+    document.body.appendChild(el)
+    mgr.scan()
+    await passes(1)
+    expect(mgr.size, "precondition: it was adopted").toBe(1)
+
+    // Detached without telling the manager — the eviction path has not run, so
+    // the registry still holds the slot. advanceToTitle() has always skipped
+    // this case; before #1424 it did so without saying anything.
+    el.remove()
+
+    mgr.advanceAllToTitle()
+
+    expect(coverage()).toMatchObject({
+      advanced: 0,
+      detached: 1,
+      skipped: 1,
+    })
+  })
+
+  it("counts a second press as covered, not as newly advanced", async () => {
+    document.body.appendChild(fullCard("vid_a", "Chan"))
+    mgr.scan()
+    await passes(1)
+
+    mgr.advanceAllToTitle()
+    mgr.advanceAllToTitle()
+
+    // The command stays idempotent: the second press moves nothing, and says so
+    // rather than reporting a card it did not act on as skipped.
+    expect(coverage()).toMatchObject({
+      advanced: 0,
+      alreadyPast: 1,
+      skipped: 0,
+    })
+    expect(obs.recorder.metrics.counter("bulk_advances")).toBe(2)
+    expect(obs.recorder.metrics.counter("bulk_advance_advanced")).toBe(1)
+    expect(obs.recorder.metrics.counter("bulk_advance_skipped")).toBe(0)
+  })
+
+  it("shows a channel-pending card as covered, which is the opposite of what #1424 assumed", async () => {
+    // A shorts lockup exposes a videoId and no channel, so it mounts
+    // provisionally and is queued for backfill. #1424's evidence lists
+    // _channelPending among the populations the command misses; it is not one,
+    // because _promoteProvisional() puts the entry in _byVideo as well.
+    document.body.appendChild(shortsLockup("vid_short"))
+    mgr.scan()
+    await passes(1)
+
+    mgr.advanceAllToTitle()
+
+    expect(coverage()).toMatchObject({
+      advanced: 1,
+      channelPending: 1,
+      skipped: 0,
+    })
+  })
+
+  it("records nothing at all when the command is phase-gated out", () => {
+    document.body.appendChild(fullCard("vid_a", "Chan"))
+    mgr.scan()
+    mgr.reset()
+
+    mgr.advanceAllToTitle()
+
+    expect(
+      coverage(),
+      "an idle manager did not run the command"
+    ).toBeUndefined()
   })
 })

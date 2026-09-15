@@ -627,12 +627,52 @@ export class VideoManager {
    *
    * Called by the key-binding adapter (KeyBindingAdapater) on the configured
    * hotkey. Phase-gated and idempotent - safe to call repeatedly.
+   *
+   * ## What "all" means, and why it is now reported (#1424)
+   *
+   * It iterates `_byVideo`, which holds promoted entries only. A card still in
+   * `_unresolved`, or one orphaned under the static occluder with no registry
+   * slot at all (#1421), is outside this loop and always was — which is the
+   * live report that the hotkey "misses some k% of cards", stable across
+   * rebuilds because the causes are structural rather than racy.
+   *
+   * This does not widen the loop. Widening it is #1385's question, not this
+   * one, and pulls the opposite way: `[QC3]` exists to give the command an
+   * *admission predicate* so it stops advancing cards it should not. The two
+   * compose because this change adds no eligibility of its own — it counts
+   * what the loop did and what it never reached, so when `[QC3]` narrows the
+   * set the command names, the same census reports honestly about the narrower
+   * set with nothing to undo here.
    */
   advanceAllToTitle(): void {
     if (this._phase !== "running") return
-    for (const entry of this._byVideo.values()) {
-      entry.advanceToTitle()
+
+    let advanced = 0
+    let alreadyPast = 0
+    let detached = 0
+    let channelPending = 0
+    for (const [videoId, entry] of this._byVideo) {
+      const outcome = entry.advanceToTitle()
+      if (outcome === "advanced") advanced += 1
+      else if (outcome === "already-past") alreadyPast += 1
+      else detached += 1
+      // Counted for the entries the command actually reached, which is the
+      // claim being evidenced — see BulkAdvanceCoverage.channelPending.
+      if (outcome !== "detached" && this._channelPending.has(videoId)) {
+        channelPending += 1
+      }
     }
+
+    const census = this._coverageCensus()
+    observability()?.bulkAdvance({
+      advanced,
+      alreadyPast,
+      detached,
+      unresolved: census.unresolved,
+      promoting: census.promoting,
+      occludedUntracked: census.untracked,
+      channelPending,
+    })
     publish()
   }
 
@@ -952,6 +992,61 @@ export class VideoManager {
     }
 
     return census
+  }
+
+  /**
+   * The cards the static occluder is hiding right now, attributed to why.
+   *
+   * ## Why this partitions the occluded set rather than the queues
+   *
+   * Bot-found on #1429's own review, twice, and both findings were the same
+   * mistake: buckets derived from the bookkeeping do not mean what their
+   * labels say.
+   *
+   * `_unresolved.size` is not "cards the command missed". `upsert()` enqueues
+   * every element that fails `isVideoCard()` — a channel lockup, a playlist,
+   * an unhydrated shell — precisely so extraction does not rescan their
+   * subtrees each pass. Those are not cards, and the premask `:has()` guard
+   * deliberately does not occlude them, so the user sees them perfectly well.
+   * Counting them inflated `skipped` with ordinary tiles, worst on search
+   * pages where polymorphic lockups are most of the grid (P1).
+   *
+   * And "occluded minus the queue" is not "orphaned". `_promote()` dequeues
+   * before awaiting the `IS_WHITELISTED` round trip, so for the length of that
+   * trip a perfectly healthy card is occluded, out of `_unresolved`, and
+   * inside `_promoting` — landing in the bucket documented as structural
+   * orphans, which is the one bucket whose whole value is that it should trend
+   * to zero as #1421 lands (P2).
+   *
+   * So the census starts from what the user can actually see — the occluder's
+   * own condition — and asks of each hidden card *why*. Every bucket then
+   * means one thing: `unresolved` is mid-resolution, `promoting` is mid-mount,
+   * `untracked` is nothing coming for it. A tile that is not occluded is not
+   * in any of them, because it was never missed.
+   *
+   * Reads the DOM without touching `_occludedSince`. That map belongs to the
+   * health cadence, and its timestamps are what `OccluderReleases` measures
+   * its grace window from; letting a user keystroke seed entries would make
+   * how often someone presses the hotkey an input to whether a stranded card
+   * is reported. A count needs no timestamps, so it takes none.
+   */
+  private _coverageCensus(): {
+    unresolved: number
+    promoting: number
+    untracked: number
+  } {
+    const queued = new Set<HTMLElement>(this._unresolved.values())
+    let unresolved = 0
+    let promoting = 0
+    let untracked = 0
+
+    for (const el of occludedElements(document)) {
+      if (queued.has(el)) unresolved += 1
+      else if (this._promoting.has(el)) promoting += 1
+      else untracked += 1
+    }
+
+    return { unresolved, promoting, untracked }
   }
 
   /**

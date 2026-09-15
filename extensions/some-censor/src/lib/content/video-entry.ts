@@ -47,6 +47,22 @@ import type { VideoRecord } from "./record"
 
 type TransformTitleFn = (title: string, channelId: string) => Promise<unknown>
 
+/**
+ * What {@link VideoEntry.advanceToTitle} actually did.
+ *
+ * Exists so a bulk advance can report its coverage instead of returning void
+ * and leaving the caller to assume it covered everything (#1424). Three
+ * outcomes rather than a boolean because "did not advance" has two causes that
+ * mean opposite things about the page.
+ */
+export type AdvanceOutcome =
+  /** Was below title, and is now at it. */
+  | "advanced"
+  /** Already at or past title — covered, nothing to do. */
+  | "already-past"
+  /** The element left the DOM; the registry slot outlived the card. */
+  | "detached"
+
 export class VideoEntry {
   private _record: VideoRecord
   readonly gate: ClickGate<FsmEvent>
@@ -130,15 +146,22 @@ export class VideoEntry {
    * Called by VideoManager.advanceAllToTitle() on every entry in the registry.
    * Safe to call unconditionally - the kind guard makes it a no-op for entries
    * thata are already at or past title.
+   *
+   * Returns which of the three things happened rather than nothing, so the
+   * caller can say what the keystroke covered (#1424). The two non-advancing
+   * outcomes are not equivalent and must not be summed: `already-past` is a
+   * card the command had nothing to do to, while `detached` is a registry
+   * entry whose element left the DOM — a card the user can no longer see, but
+   * also a slot the registry is still holding.
    */
-  advanceToTitle(): void {
-    if (!this._handle.element.isConnected) return
+  advanceToTitle(): AdvanceOutcome {
+    if (!this._handle.element.isConnected) return "detached"
 
     switch (this._view.kind) {
       case "title":
       case "revealed":
       case "whitelisted": {
-        return
+        return "already-past"
       }
       case "masked":
       case "meta": {
@@ -150,7 +173,7 @@ export class VideoEntry {
         const next = applySkipToTitle(this._view, meta, titleText)
 
         void this._applyView(next)
-        return
+        return "advanced"
       }
 
       default: {

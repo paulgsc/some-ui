@@ -103,6 +103,13 @@ export const BOYO_EVENT_KINDS = [
   "mount.churn_ignored",
   "channel.backfilled",
   "channel.abandoned",
+  /**
+   * One bulk advance-to-title keystroke, with what it covered (#1424). The
+   * detail, not the count, is the diagnostic: a command named "advance all"
+   * that advanced 6 of 31 visible cards is the reported symptom, and until
+   * this event existed nothing anywhere recorded the denominator.
+   */
+  "command.advance_all",
   // Per-card FSM state, one kind per `ViewState["kind"]` (see ENTRY_EVENT).
   "entry.masked",
   "entry.meta",
@@ -132,6 +139,17 @@ export const BOYO_COUNTERS = [
   "churn_ignored",
   "channels_backfilled",
   "channels_abandoned",
+  /** Bulk advance-to-title keystrokes handled while running (#1424). */
+  "bulk_advances",
+  /** Cards those keystrokes moved from masked/meta to title. */
+  "bulk_advance_advanced",
+  /**
+   * Cards they did not act on and could not have: detached, or hidden by the
+   * occluder while mid-resolution, mid-mount, or untracked. Deliberately
+   * excludes cards already at or past title, which are covered rather than
+   * skipped, and tiles the occluder never hid, which were never cards to miss.
+   */
+  "bulk_advance_skipped",
   "entries_masked",
   "entries_meta",
   "entries_title",
@@ -162,6 +180,14 @@ export const BOYO_AGGREGATES = [
   "unresolved_depth",
   /** `_channelPending.size`, sampled alongside it. */
   "channel_pending_depth",
+  /**
+   * Per-keystroke skipped count for a bulk advance (#1424). An aggregate
+   * rather than only a counter because the shape is the finding: the live
+   * report was a *stable fraction* missed on every press, which a running
+   * total cannot distinguish from one catastrophic press among many clean
+   * ones.
+   */
+  "bulk_advance_skipped_per_command",
 ] as const
 
 export type BoyoAggregate = (typeof BOYO_AGGREGATES)[number]
@@ -281,6 +307,72 @@ export type OccludedCard = {
   readonly tag: string
   /** When this element was first observed occluded-and-unadopted. */
   readonly sinceAt: number
+}
+
+/**
+ * What one bulk advance-to-title keystroke actually covered (#1424).
+ *
+ * The command is named *advance all*, is bound to a single key, and is
+ * documented as acting on "every masked or meta entry" — but it iterates
+ * `_byVideo`, which holds only entries that have already been promoted. Every
+ * other population on the page is silently outside its reach. This is the
+ * denominator that makes the claim checkable.
+ *
+ * The buckets are disjoint by construction, so `advanced + alreadyPast +
+ * detached` is exactly the registry size at keypress time, and the three
+ * non-registry fields partition the rest of the page. They are reported
+ * separately rather than as one "skipped" number because they have different
+ * causes and different fixes: `unresolved` is a card mid-resolution and will
+ * very often be legitimately non-zero on a live feed, while
+ * `occludedUntracked` is the orphan population of #1421 and should trend to
+ * zero as that epic lands.
+ */
+export type BulkAdvanceCoverage = {
+  /** Registry entries moved from masked/meta to title by this keystroke. */
+  readonly advanced: number
+  /** Registry entries already at or past title — covered, nothing to do. */
+  readonly alreadyPast: number
+  /**
+   * Registry entries whose element has left the DOM. `advanceToTitle()` has
+   * always skipped these, and until #1424 did so without saying so.
+   */
+  readonly detached: number
+  /**
+   * Occluded cards waiting in `_unresolved` — hidden, and mid-resolution.
+   *
+   * Not `_unresolved.size`. `upsert()` enqueues every element failing
+   * `isVideoCard()` (a channel lockup, a playlist, an unhydrated shell) so
+   * extraction need not rescan their subtrees each pass, and the premask
+   * `:has()` guard deliberately leaves those visible. They were never cards
+   * and were never missed, so they are not counted (bot-found, #1429 P1).
+   */
+  readonly unresolved: number
+  /**
+   * Occluded cards inside `_promote()`'s guard — hidden, and mid-mount.
+   *
+   * Its own bucket rather than part of the one below, because `_promote()`
+   * dequeues before awaiting the `IS_WHITELISTED` round trip: for the length
+   * of that trip a perfectly healthy card is occluded and in neither
+   * `_unresolved` nor the registry, and attributing it to orphans would muddy
+   * the one figure whose value is that it should trend to zero (#1429 P2).
+   */
+  readonly promoting: number
+  /**
+   * Occluded cards in no queue and no guard — #1422's rejected non-video
+   * renderers and #1423/#1426-class orphans. Nothing is coming for these.
+   */
+  readonly occludedUntracked: number
+  /**
+   * How many of `advanced + alreadyPast` were still awaiting channel backfill.
+   *
+   * Recorded because #1424 asserts that a `_channelPending` card is skipped.
+   * It is not: `_promoteProvisional()` puts the entry in `_byVideo` *and*
+   * queues the backfill, so the command does advance it. This field is what
+   * makes that visible rather than something a future reader has to re-derive
+   * from the source — a non-zero value here alongside a covered card is the
+   * evidence.
+   */
+  readonly channelPending: number
 }
 
 /** One element currently inside `_promote()`'s re-entrancy guard. */
@@ -800,6 +892,41 @@ export class BoyoObservability {
       severity: "debug",
     })
     this.recorder.count("churn_ignored")
+  }
+
+  /**
+   * One bulk advance-to-title keystroke and what it covered (#1424).
+   *
+   * `info` rather than `debug`: unlike the per-card traffic around it this
+   * fires once per deliberate user action, and the whole point of the story is
+   * that a diagnostics export taken after a keypress should say what the
+   * keypress did. A severity that the default export filter drops would put it
+   * back where it started.
+   *
+   * No `subject`: a keystroke is not about one card, and naming one would be
+   * both arbitrary and a card-identity leak the recorder deliberately avoids
+   * elsewhere (#1382).
+   */
+  bulkAdvance(coverage: BulkAdvanceCoverage): void {
+    const skipped =
+      coverage.detached +
+      coverage.unresolved +
+      coverage.promoting +
+      coverage.occludedUntracked
+    this.recorder.record({
+      kind: "command.advance_all",
+      severity: "info",
+      detail: { ...coverage, skipped },
+    })
+    this.recorder.count("bulk_advances")
+    if (coverage.advanced > 0) {
+      this.recorder.count("bulk_advance_advanced", coverage.advanced)
+    }
+    if (skipped > 0) this.recorder.count("bulk_advance_skipped", skipped)
+    // Observed unconditionally, including at zero: a clean press is a real
+    // data point about the distribution, and dropping it would bias the
+    // aggregate toward exactly the presses the story is about.
+    this.recorder.observe("bulk_advance_skipped_per_command", skipped)
   }
 
   channelBackfilled(videoId: string): void {
