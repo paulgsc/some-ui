@@ -88,12 +88,13 @@ const SWIPE_THRESHOLD_PX = 40
  * exercises, prompts, steps or competencies" and "draws what it is
  * handed"; this component knows nothing about answers, commitments or
  * ledgers, and draws whichever `content` it is handed for the artifact
- * currently in view. `artifacts[number].id` is read for exactly one
- * purpose — finding the current artifact's position after a re-render —
- * never to branch rendering or interaction on which artifact it is. There
- * is no `switch (id)` anywhere in this file, and there should never need
- * to be one: a seventh artifact some future story adds costs its caller
- * one more array entry, not a change here.
+ * currently in view. `artifacts[number].id` is read for exactly two
+ * purposes — finding the current artifact's position after a re-render,
+ * and testing Set membership to decide what stays mounted — never to
+ * branch rendering or interaction on which artifact it is. There is no
+ * `switch (id)` anywhere in this file, and there should never need to be
+ * one: a seventh artifact some future story adds costs its caller one
+ * more array entry, not a change here.
  *
  * # Press and swipe, and neither is the only way
  *
@@ -122,11 +123,31 @@ const SWIPE_THRESHOLD_PX = 40
  *
  * # No round state
  *
- * `activeId` is the only state this component owns, and it names a
- * position, never an answer. Nothing here reads a commitment, a ledger, or
- * `runResult`'s own `ok`/`error` discriminant — the artifacts array is
- * opaque `content`, and this component would render identically if every
- * artifact's `content` were replaced with a fixed placeholder.
+ * `activeId` and `mountedIds` are the only state this component owns, and
+ * both name positions, never an answer. Nothing here reads a commitment, a
+ * ledger, or `runResult`'s own `ok`/`error` discriminant — the artifacts
+ * array is opaque `content`, and this component would render identically
+ * if every artifact's `content` were replaced with a fixed placeholder.
+ *
+ * # Switching away never unmounts — it hides
+ *
+ * An artifact's own `content` may hold state that only exists once, the
+ * same way `RoundChoices`'s one-shot `committed` does (review finding on
+ * #1430, chatgpt-codex-connector): rendering only `current.content` would
+ * unmount that state the instant a learner switched away and mount a fresh
+ * instance on switching back, silently re-arming an already-spent
+ * commitment. So every artifact this switcher has ever shown *this round*
+ * stays mounted — `mountedIds` grows as `activeId` visits new positions —
+ * and only the current one is unhidden, via the plain `hidden` attribute
+ * (out of layout and the accessibility tree both, so this is still
+ * "exactly one is load-bearing," Def. 9.2, in every way a learner or a
+ * screen reader can observe). An artifact never visited this round is
+ * never mounted at all, so a `runResult` nobody has looked at yet still
+ * costs nothing. `mountedIds` clears with everything else on a round
+ * advance — carrying a previous round's mounted instances forward would
+ * reintroduce the identical staleness one round later, since not every
+ * artifact's own content resets itself on a prop change the way
+ * `SourcePanel` does for `algorithm.source`.
  */
 export const ArtifactSwitcher: FC<ArtifactSwitcherProps> = ({
   artifacts,
@@ -138,9 +159,13 @@ export const ArtifactSwitcher: FC<ArtifactSwitcherProps> = ({
   const [activeId, setActiveId] = useState<ArtifactId | null>(
     artifacts[0]?.id ?? null
   )
+  const [mountedIds, setMountedIds] = useState<ReadonlySet<ArtifactId>>(
+    () => new Set(artifacts[0] ? [artifacts[0].id] : [])
+  )
   if (roundId !== seenRoundId) {
     setSeenRoundId(roundId)
     setActiveId(artifacts[0]?.id ?? null)
+    setMountedIds(new Set(artifacts[0] ? [artifacts[0].id] : []))
   }
 
   // Derived, never stored: an id that no longer appears in `artifacts` (a
@@ -150,6 +175,15 @@ export const ArtifactSwitcher: FC<ArtifactSwitcherProps> = ({
   const rawIndex = artifacts.findIndex((artifact) => artifact.id === activeId)
   const index = rawIndex === -1 ? 0 : rawIndex
   const current = artifacts[index]
+
+  // The current artifact joins the mounted set the instant it becomes
+  // current — synchronously during render, the same "adjust state during
+  // render" idiom the round-reset above uses, so the very first paint of a
+  // newly-active artifact already includes it rather than a frame of
+  // nothing.
+  if (current !== undefined && !mountedIds.has(current.id)) {
+    setMountedIds(new Set([...mountedIds, current.id]))
+  }
 
   const goTo = (nextIndex: number): void => {
     const clamped = Math.max(0, Math.min(artifacts.length - 1, nextIndex))
@@ -245,7 +279,17 @@ export const ArtifactSwitcher: FC<ArtifactSwitcherProps> = ({
         onTouchEnd={handleTouchEnd}
         onTouchCancel={handleTouchCancel}
       >
-        {current.content}
+        {artifacts
+          .filter((artifact) => mountedIds.has(artifact.id))
+          .map((artifact) => (
+            <div
+              key={artifact.id}
+              hidden={artifact.id !== current.id}
+              className="min-w-0"
+            >
+              {artifact.content}
+            </div>
+          ))}
       </div>
     </div>
   )
