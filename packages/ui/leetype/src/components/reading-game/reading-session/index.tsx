@@ -47,10 +47,11 @@ type ReadingSessionProps = {
  * exercise reaches either one — and a different probe. This surface asks the
  * player to *discriminate* the claim a change makes from claims the corpus
  * makes about other changes (`lib/leetype/reading-probe`); `TypingSession` is
- * the optional production probe attached on a wider viewport, asking the
- * player to *produce* the witness under a masking loop instead — a real
- * channel this surface cannot offer standalone (no phone keyboard), not a
- * piece missing from it.
+ * the optional production probe that takes its place on a wider viewport,
+ * asking the player to *produce* the witness under a masking loop instead of
+ * discriminating one — a real channel this surface cannot offer standalone
+ * (no phone keyboard), not a piece missing from it. The two are never both
+ * mounted: `Leetype` picks exactly one branch, never both.
  *
  * The slogan the decision record opens with is what licenses this: *the game
  * is not a typing game over source code; it is a competency probe whose only
