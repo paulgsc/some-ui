@@ -529,17 +529,18 @@
         },
 
         /**
-         * Inject an extra watch anchor ahead of the card's own, the way a
-         * hover-preview overlay does. The card's original link stays put — the
-         * point is that extraction's first-in-document-order answer changes
-         * while the card itself has not.
+         * Repoint a mounted renderer at a different video the way YouTube
+         * does, by writing its authoritative data-video-id, while leaving the
+         * previous video's anchor in the subtree.
+         *
+         * This is observer.ts's signal (1) — an attribute mutation on an
+         * element matching SEL — so it drives the real production path rather
+         * than relying on the retry loop's scan() happening to still be alive.
          */
-        injectPreviewAnchor(videoId, previewId) {
+        repointRenderer(videoId, newId) {
           const el = window.__FIXTURE__.cardEl(videoId)
           if (!el) return false
-          const a = document.createElement("a")
-          a.setAttribute("href", "/watch?v=" + previewId)
-          el.prepend(a)
+          el.setAttribute("data-video-id", newId)
           return true
         },
 

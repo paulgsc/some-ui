@@ -427,6 +427,61 @@ describe("vendor churn is not a recycle (#1423)", () => {
     ).toBe("0")
   })
 
+  it("re-masks when the renderer's own data-video-id moves on, even if a stale link to the old video is still in the subtree", async () => {
+    // Bot-found (#1427 review, round 1, P1). `data-video-id` is authoritative
+    // and YouTube sets it only after hydration, so a renderer advertising a
+    // new id IS a new artifact however much of the old one is still lying
+    // around in its subtree. Treating the leftover link as evidence of
+    // sameness would keep the old entry — revealed included — while the card
+    // displays something the user never disclosed. A QD1 leak, not a flicker.
+    const el = fullCard("vid_old_auth", "ChanA")
+    el.setAttribute("data-video-id", "vid_old_auth")
+    document.body.appendChild(el)
+    mgr.upsert(el)
+    await passes(2)
+
+    await reveal("vid_old_auth")
+    expect(el.getAttribute("data-boyo"), "revealed").toBe("3")
+
+    // The renderer is repointed at a different video, but the old anchor has
+    // not been cleaned up yet — the exact interleaving the finding names.
+    el.setAttribute("data-video-id", "vid_new_auth")
+    mgr.upsert(el)
+    await passes(2)
+
+    expect(
+      el.dataset["boyoVid"],
+      "the new artifact must be the one mounted"
+    ).toBe("vid_new_auth")
+    expect(
+      el.getAttribute("data-boyo"),
+      "and it must be masked — never inheriting the old card's disclosure"
+    ).toBe("0")
+  })
+
+  it("still uses anchor membership for a lockup, which has no authoritative id", async () => {
+    // The other side of the same rule: the Lit-era lockups never set
+    // data-video-id (observer.ts), so anchor membership is the only evidence
+    // there is for them — and it is the case the churn split exists for.
+    const el = document.createElement("yt-lockup-view-model")
+    el.innerHTML = `<a id="video-title" href="/watch?v=lock_keep"></a><a href="/@Chan"></a>`
+    document.body.appendChild(el)
+    mgr.upsert(el)
+    await passes(2)
+
+    await reveal("lock_keep")
+    expect(el.getAttribute("data-boyo"), "revealed").toBe("3")
+
+    addPreviewAnchor(el, "lock_preview")
+    mgr.upsert(el)
+    await passes(1)
+
+    expect(
+      el.getAttribute("data-boyo"),
+      "a lockup has no authoritative id to contradict the anchor still present"
+    ).toBe("3")
+  })
+
   it("does not flap when the same element churns repeatedly", async () => {
     const el = fullCard("vid_stable", "ChanA")
     document.body.appendChild(el)

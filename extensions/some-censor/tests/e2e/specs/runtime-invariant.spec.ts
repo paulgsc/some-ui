@@ -403,14 +403,19 @@ type Occlusion = {
   dataBoyo: string | null
 }
 
-test("T10: a revealed card stays live when a preview anchor displaces its id", async ({
+test("T10: a revealed renderer repointed at a new video re-masks, and is never inert", async ({
   fixture,
 }) => {
-  // The live report: "double click just reveals the static css mask, which is
-  // no pointer events". Revealing exposes the card, the cursor is still on it,
-  // YouTube's hover preview injects its own links — and that used to read as a
-  // renderer recycle, tearing off data-boyo and handing the card back to the
-  // static occluder, which takes no pointer events. Blurred *and* inert.
+  // Two things at once, both driven through observer.ts's signal (1) — an
+  // attribute mutation on an element matching SEL — so this exercises the real
+  // production path rather than whatever the retry loop happens to be doing.
+  //
+  // 1. The QD1 half: a renderer whose authoritative data-video-id has moved on
+  //    is a different artifact, however much of the old one is still lying
+  //    around in its subtree. It must NOT inherit the old card's `revealed`.
+  // 2. The #1423 half: re-masking must not route through the bare static
+  //    occluder, which takes no pointer events — blurred *and* unclickable was
+  //    the reported symptom.
   const page = await fixture.goto("yt-home")
 
   await fixture.pollDebug(page, (d) => "vid_bbb222" in d.entries, {
@@ -424,35 +429,40 @@ test("T10: a revealed card stays live when a preview anchor displaces its id", a
     { timeout: 3000 }
   )
 
+  // The card's own /watch?v=vid_bbb222 anchor stays exactly where it was.
   await fixture.fixtureCall<boolean>(
     page,
-    "injectPreviewAnchor",
+    "repointRenderer",
     "vid_bbb222",
-    "preview_xyz"
+    "vid_repointed"
   )
-  // Long enough for the observer batch and a retry pass to both have run.
-  await page.waitForTimeout(1200)
+
+  const snap = await fixture.pollDebug(
+    page,
+    (d) => "vid_repointed" in d.entries,
+    { timeout: 5000 }
+  )
+
+  expect(
+    snap.entries["vid_repointed"]?.viewKind,
+    "the new artifact is masked — it never inherits the old card's disclosure"
+  ).toBe("masked")
+  expect(
+    snap.entries["vid_bbb222"],
+    "and the old entry is gone, not left revealed on a card showing something else"
+  ).toBeUndefined()
 
   const after = await fixture.fixtureCall<Occlusion | null>(
     page,
     "isOccludedByIdFor",
-    "vid_bbb222"
+    "vid_repointed"
   )
-
-  expect(after?.dataBoyo, "must not lose custody of the card").toBe("3")
-  expect(after?.blurred, "must not fall back under the static occluder").toBe(
-    false
-  )
+  expect(after?.dataBoyo, "custody is held throughout the swap").toBe("0")
+  expect(after?.blurred, "not handed back to the static occluder").toBe(false)
   expect(
     after?.pointerEvents,
-    "and must still take clicks — this is the inert state being ruled out"
+    "and still takes clicks — the inert state being ruled out"
   ).not.toBe("none")
-
-  const snap = await fixture.readDebug(page)
-  expect(
-    snap?.entries["vid_bbb222"]?.viewKind,
-    "the user's own disclosure is not silently revoked"
-  ).toBe("revealed")
 })
 
 test("T9: dblclick reveals a card already progressed to title, not just a fresh masked one", async ({
