@@ -529,6 +529,60 @@
         },
 
         /**
+         * Inject an extra watch anchor ahead of the card's own, the way a
+         * hover-preview overlay does. The card's own link stays put, and no
+         * authoritative data-video-id is written — so this is the churn case,
+         * where anchor membership is the only evidence there is.
+         */
+        injectPreviewAnchor(videoId, previewId) {
+          const el = window.__FIXTURE__.cardEl(videoId)
+          if (!el) return false
+          const a = document.createElement("a")
+          a.setAttribute("href", "/watch?v=" + previewId)
+          el.prepend(a)
+          return true
+        },
+
+        /**
+         * Repoint a mounted renderer at a different video the way YouTube
+         * does, by writing its authoritative data-video-id, while leaving the
+         * previous video's anchor in the subtree.
+         *
+         * This is observer.ts's signal (1) — an attribute mutation on an
+         * element matching SEL — so it drives the real production path rather
+         * than relying on the retry loop's scan() happening to still be alive.
+         */
+        repointRenderer(videoId, newId) {
+          const el = window.__FIXTURE__.cardEl(videoId)
+          if (!el) return false
+          el.setAttribute("data-video-id", newId)
+          return true
+        },
+
+        /** Is the static pre-mask occluder currently covering this card? */
+        isOccludedByIdFor(videoId) {
+          const el = window.__FIXTURE__.cardEl(videoId)
+          if (!el) return null
+          const cs = getComputedStyle(el)
+          return {
+            blurred: cs.filter.includes("blur"),
+            pointerEvents: cs.pointerEvents,
+            dataBoyo: el.getAttribute("data-boyo"),
+          }
+        },
+
+        /** Dispatch a raw dblclick at the veil, from whatever state it is in. */
+        dblclickVeil(videoId) {
+          const el = window.__FIXTURE__.cardEl(videoId)
+          const veil = el && el.querySelector(".boyo-veil")
+          if (!veil) return false
+          veil.dispatchEvent(
+            new MouseEvent("dblclick", { bubbles: true, cancelable: true })
+          )
+          return true
+        },
+
+        /**
          * Does the veil's content fit inside the card?
          *
          * The #973 overflow, measured rather than inferred: every node the

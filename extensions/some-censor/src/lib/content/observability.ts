@@ -93,6 +93,14 @@ export const BOYO_EVENT_KINDS = [
   "mount.rejected",
   /** A promotion discarded post-await because `el` was recycled (#980, M6). */
   "mount.stale_discarded",
+  /**
+   * An id change on a mounted element that was *not* treated as a recycle,
+   * because the element still advertises the artifact we mounted (#1423).
+   * Recorded because the discrimination is a heuristic against a vendor DOM:
+   * a card the user reports as wrongly re-masked, or wrongly left revealed,
+   * is diagnosed by whether this fired and how often.
+   */
+  "mount.churn_ignored",
   "channel.backfilled",
   "channel.abandoned",
   // Per-card FSM state, one kind per `ViewState["kind"]` (see ENTRY_EVENT).
@@ -120,6 +128,8 @@ export const BOYO_COUNTERS = [
   "cards_queued_unresolved",
   "cards_rejected",
   "stale_promotions_discarded",
+  /** Id changes ruled vendor churn rather than a recycle (#1423). */
+  "churn_ignored",
   "channels_backfilled",
   "channels_abandoned",
   "entries_masked",
@@ -705,6 +715,23 @@ export class BoyoObservability {
       severity: "warn",
     })
     this.recorder.count("stale_promotions_discarded")
+  }
+
+  /**
+   * An id change ruled vendor churn rather than a recycle (#1423).
+   *
+   * `debug` severity: on a page where the user reveals cards this is ordinary
+   * traffic — a hover preview fires it on every revealed card — and it is the
+   * *absence* of a matching mount/entry event afterwards, not this event, that
+   * would indicate something wrong.
+   */
+  churnIgnored(videoId: string): void {
+    this.recorder.record({
+      kind: "mount.churn_ignored",
+      subject: videoId,
+      severity: "debug",
+    })
+    this.recorder.count("churn_ignored")
   }
 
   channelBackfilled(videoId: string): void {

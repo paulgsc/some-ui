@@ -50,7 +50,7 @@ import type { SessionId } from "@some-extension/common"
 import { mkSession } from "@some-extension/common"
 
 import { publish, registerDebugSource } from "./debug"
-import { tryExtract } from "./extract/index"
+import { representsVideo, tryExtract } from "./extract/index"
 import { observability, PROMOTION_STALL_MS } from "./observability"
 import type { BoyoContext, PromotingCard, QueuedCard } from "./observability"
 import { makeProvisionalRecord, makeRecord } from "./record"
@@ -262,16 +262,60 @@ export class VideoManager {
 
       // Detect scroll-virtualizer element reuse: same HTMLElement, new videoId.
       // data-boyo-vid is set at mount time and cleared at destroy().
-      // When it differs from the just-extracted id, the element has been recycled
-      // for a different video — destroy the old entry eagerly so _promote() sees
-      // a clean slate.  Do NOT bump _session: element recycling is a per-card
-      // event, not a lifecycle boundary.  Bumping _session would silently cancel
-      // all concurrent in-flight promotes for every other card on the page.
+      // When it differs from the just-extracted id, the element has *either*
+      // been recycled for a different video or had its subtree churned by the
+      // vendor — `representsVideo` is what tells those apart (#1423).  Do NOT
+      // bump _session either way: both are per-card events, not lifecycle
+      // boundaries.  Bumping _session would silently cancel all concurrent
+      // in-flight promotes for every other card on the page.
       const rawPreviousId = el.dataset["boyoVid"]
       const currentId = extracted.videoId
 
+      let recycled = false
       if (rawPreviousId && rawPreviousId !== currentId) {
         const rawAsPrevId = asVideoId(rawPreviousId)
+        // Three conditions, none of them optional, and each one is a P1 this
+        // PR's review found by removing it (#1427, rounds 1-3):
+        //
+        //   - the entry is live in THIS session — otherwise the shortcut
+        //     "preserves" something reset() already destroyed and returns
+        //     without mounting (round 2);
+        //   - the entry belongs to THIS element — `_byVideo` is keyed by
+        //     video, so an id lookup alone can hand back another renderer's
+        //     entry and repair that instead (round 3, #1426);
+        //   - and the element still advertises the artifact, with an
+        //     authoritative `data-video-id` outranking any stale descendant
+        //     link (round 1).
+        //
+        // This is the only place the discrimination happens. `_promote()`
+        // deliberately does not repeat it: its `_elToVid` claim survives
+        // resets and names a video rather than an element, which is evidence
+        // too weak to skip a mount on.
+        const prevEntry = this._byVideo.get(rawAsPrevId)
+        if (
+          prevEntry?.record.session === this._session &&
+          prevEntry.owns(el) &&
+          representsVideo(el, rawAsPrevId)
+        ) {
+          // Vendor churn, not a recycle. The artifact we mounted is still here;
+          // `currentId` is some other anchor that has come to sit earlier in
+          // document order (a hover preview's own link, most often — which is
+          // why this fires the instant a card is revealed and the cursor is
+          // still on it). Tearing the entry down here would revoke the user's
+          // own disclosure and drop the card back under the static occluder,
+          // which takes no pointer events — so the card would go inert rather
+          // than merely re-masked.
+          //
+          // repair() rather than nothing: the same churn may have taken our
+          // veil with it, and repairing is idempotent for an entry that still
+          // has one (and a no-op for a revealed entry, which has none by
+          // design).
+          prevEntry.repair()
+          observability()?.churnIgnored(rawPreviousId)
+          this._maybeStopRetryLoop()
+          return
+        }
+        recycled = true
         const oldEntry = this._byVideo.get(rawAsPrevId)
         if (oldEntry) {
           oldEntry.destroy()
@@ -287,6 +331,21 @@ export class VideoManager {
         if (pending && !pending.hasChannel) {
           this._dropChannelPending(currentId)
           void this._backfill(el, pending, extracted.channelId)
+        } else if (recycled) {
+          // A recycle has just stripped data-boyo off an element that is still
+          // on screen, so the static occluder is covering it *right now* — and
+          // `_promote()` would not lift that until a background round trip
+          // answers, which is seconds on a cold MV3 worker. Mask synchronously
+          // instead and resolve the channel afterwards: exactly the flow the
+          // video-only path already uses, for the same stated reason — nothing
+          // may leak before the user progresses, and a whitelisted channel
+          // briefly showing masked is harmless.
+          this._promoteProvisional(el, currentId)
+          const fresh = this._byVideo.get(currentId)
+          if (fresh) {
+            this._dropChannelPending(currentId)
+            void this._backfill(el, fresh, extracted.channelId)
+          }
         } else {
           void this._promote(el, currentId, extracted.channelId)
         }
@@ -581,11 +640,32 @@ export class VideoManager {
     this._armStallWatch()
 
     let stale = false
+    let sessionEnded = false
     try {
       // Scroll-virtualizer reuse guard (second line of defence after upsert).
       const prevVid = this._elToVid.get(el)
       const session = this._session
       if (prevVid !== undefined && prevVid !== videoId) {
+        // Deliberately NOT a churn/recycle decision — this destroys and
+        // continues to mount, as it did before #1423.
+        //
+        // An earlier revision of this PR discriminated here too, and it
+        // produced two separate P1s in consecutive review rounds (#1427,
+        // rounds 2 and 3). Both had the same root cause: `_elToVid` is a
+        // WeakMap `reset()` cannot clear and `_byVideo` is keyed by video
+        // rather than by element, so `prevVid` here is not evidence about
+        // *this* element at all — it can outlive a session, and the entry it
+        // names can belong to a different renderer entirely. A shortcut that
+        // returns without mounting on evidence that weak strands the element
+        // under the static occluder, which is the failure this PR exists to
+        // remove.
+        //
+        // The discrimination lives in upsert() alone, keyed on
+        // `data-boyo-vid` — a stamp on the element itself, so it cannot
+        // implicate another renderer. This path is only ever reached after
+        // upsert() has already decided, or from retryUnresolved() for an
+        // element that was never mounted, so nothing is lost by it being the
+        // plain teardown it always was.
         this._byVideo.get(prevVid)?.destroy()
         this._byVideo.delete(prevVid)
       }
@@ -611,7 +691,20 @@ export class VideoManager {
       // element was recycled one or more times during this round-trip and no
       // longer means what it meant when the operation started.
       if (this._phase !== "running") return
-      if (this._session !== session) return
+      if (this._session !== session) {
+        // C2: a chip/feed navigation tore the runtime down and started a
+        // fresh session while this call awaited. _promoting is a WeakSet
+        // reset() cannot clear (see its own comment), so el stayed claimed by
+        // this call for the entire round-trip — including through the new
+        // session's own _scan(), whose upsert() for the very same el (chip
+        // navigations reuse renderer elements in place) had nothing to do but
+        // return at the guard above. That upsert has no other way to be
+        // retried once the guard clears: without requeuing here, el is
+        // silently orphaned — not promoting, never promoted, and still
+        // hidden under the static pre-mask rule with nothing left to lift it.
+        sessionEnded = true
+        return
+      }
       if (this._tokenFor(el) !== token) {
         stale = true
         return
@@ -631,14 +724,15 @@ export class VideoManager {
       this._promoting.delete(el)
       this._promotingSince.delete(el)
       if (stale) observability()?.staleDiscarded(videoId)
-      // A stale bail means el moved on while this call was in flight. Any
-      // recycle that landed here while _promoting blocked it (see above) did
-      // nothing but bump the claim — re-derive el's *current* truth from the
-      // live DOM now that the guard has cleared, rather than trying to carry
-      // a videoId forward through an already-stale call. Safe from looping:
-      // this only re-enters when el actually changed since `token` was
-      // captured, and each recycle can trigger at most one such retry.
-      if (stale && el.isConnected) this.upsert(el)
+      // A stale bail means el moved on while this call was in flight; a
+      // sessionEnded bail means a navigation reset the runtime while it was
+      // in flight. Either way, re-derive el's *current* truth from the live
+      // DOM now that the guard has cleared, rather than trying to carry a
+      // videoId or a session forward through an already-superseded call.
+      // Safe from looping: this only re-enters when el actually changed or a
+      // navigation actually happened since this call started, and each of
+      // those can trigger at most one such retry.
+      if ((stale || sessionEnded) && el.isConnected) this.upsert(el)
     }
   }
 
