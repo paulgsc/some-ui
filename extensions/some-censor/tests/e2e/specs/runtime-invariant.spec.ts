@@ -16,6 +16,7 @@
  * T6 — sessionOrdinal never decreases.
  * T7 — watch-page sidebar (compact renderers) is masked.
  * T8 — navigation BUMPS the session (the fix for stale state).
+ * T9 — dblclick reveals from any state, and the veil stops taking clicks.
  */
 
 import { expect, test } from "@censor/playwright/fixture"
@@ -357,4 +358,63 @@ test("T8: yt-navigate-finish increments sessionOrdinal", async ({
     after.sessionOrdinal,
     "navigation must mint a new session to clear stale state"
   ).toBeGreaterThan(sessionBefore)
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// T9: dblclick reveal — untested by T5, which only exercises single clicks
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("T9: dblclick reveals a masked card directly, and the veil is gone", async ({
+  fixture,
+}) => {
+  const page = await fixture.goto("yt-home")
+
+  await fixture.pollDebug(page, (d) => "vid_bbb222" in d.entries, {
+    timeout: 5000,
+  })
+
+  await fixture.fixtureCall<boolean>(page, "dblclickVeil", "vid_bbb222")
+
+  const snap = await fixture.pollDebug(
+    page,
+    (d) => d.entries["vid_bbb222"]?.viewKind === "revealed",
+    { timeout: 3000 }
+  )
+  expect(snap.entries["vid_bbb222"]?.viewKind).toBe("revealed")
+
+  // removeVeil animates the veil out (see DomHandle._animateRemoveVeil); give
+  // it room to finish rather than the 600ms fallback timeout it races.
+  await page.waitForTimeout(700)
+
+  expect(
+    await fixture.fixtureCall<boolean>(page, "hasVeil", "vid_bbb222"),
+    "the veil must actually leave the DOM, not just the FSM"
+  ).toBe(false)
+})
+
+test("T9: dblclick reveals a card already progressed to title, not just a fresh masked one", async ({
+  fixture,
+}) => {
+  const page = await fixture.goto("yt-home")
+
+  await fixture.pollDebug(page, (d) => "vid_bbb222" in d.entries, {
+    timeout: 5000,
+  })
+
+  // masked -> meta -> title, the same two single clicks T5 exercises.
+  await fixture.fixtureCall<boolean>(page, "clickVeil", "vid_bbb222", 2)
+  await fixture.pollDebug(
+    page,
+    (d) => d.entries["vid_bbb222"]?.viewKind === "title",
+    { timeout: 3000 }
+  )
+
+  await fixture.fixtureCall<boolean>(page, "dblclickVeil", "vid_bbb222")
+
+  const snap = await fixture.pollDebug(
+    page,
+    (d) => d.entries["vid_bbb222"]?.viewKind === "revealed",
+    { timeout: 3000 }
+  )
+  expect(snap.entries["vid_bbb222"]?.viewKind).toBe("revealed")
 })

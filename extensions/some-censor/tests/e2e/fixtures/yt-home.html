@@ -528,6 +528,17 @@
           return true
         },
 
+        /** Dispatch a raw dblclick at the veil, from whatever state it is in. */
+        dblclickVeil(videoId) {
+          const el = window.__FIXTURE__.cardEl(videoId)
+          const veil = el && el.querySelector(".boyo-veil")
+          if (!veil) return false
+          veil.dispatchEvent(
+            new MouseEvent("dblclick", { bubbles: true, cancelable: true })
+          )
+          return true
+        },
+
         /**
          * Does the veil's content fit inside the card?
          *
