@@ -4,7 +4,8 @@
   "description": "Progressive content masking with intentional disclosure",
   "version": "1.0.0",
   "permissions": [
-    "storage"
+    "storage",
+    "contextMenus"
   ],
   "host_permissions": [
     "*://*.youtube.com/*"

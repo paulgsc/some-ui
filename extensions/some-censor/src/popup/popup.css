@@ -1,0 +1,30 @@
+/* Popup styling — deliberately minimal: this page is currently just the
+ * "Diagnostics" entry point (see popup.ts), not the whitelist/enabled
+ * controls `@censor/types/messages` already models. Tokens mirror
+ * `../debug/debug.css`'s `bc-` prefix. */
+
+:root {
+  color-scheme: dark;
+
+  --bc-bg: #1a1a1a;
+  --bc-fg: #e0e0e0;
+  --bc-muted: #8a8a8a;
+  --bc-border: rgb(255 255 255 / 8%);
+}
+
+.popup__footer {
+  border-top: 1px solid var(--bc-border);
+  margin: 0;
+  padding: 8px 12px;
+  text-align: right;
+}
+
+.popup__diagnostics {
+  color: var(--bc-muted);
+  font-size: 11px;
+  text-decoration: none;
+}
+
+.popup__diagnostics:hover {
+  color: var(--bc-fg);
+}
