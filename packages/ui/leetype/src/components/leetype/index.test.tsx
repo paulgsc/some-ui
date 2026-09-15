@@ -118,6 +118,10 @@ describe("Leetype", () => {
     render(<Leetype />)
     expect(screen.getByText("Choose what to practice")).toBeInTheDocument()
     expect(screen.queryByLabelText("Typing input")).not.toBeInTheDocument()
+    // The wide viewport alone does not attach the production probe — an
+    // active exercise does (C2, #1214): merely mounting `Leetype` on a wide
+    // screen with nothing picked yet must not reach for the engine either.
+    expect(loadWasm).not.toHaveBeenCalled()
   })
 
   it("starts a session once the learner picks an exercise from the picker", () => {
@@ -126,6 +130,25 @@ describe("Leetype", () => {
     const [firstTile] = screen.getAllByRole("button")
     fireEvent.click(firstTile!)
     expect(screen.getByLabelText("Typing input")).toBeInTheDocument()
+  })
+
+  // The strengthened half of the negative control above: on a wide
+  // viewport, the engine is fetched only once the production probe is
+  // actually attached — the learner picking an exercise — never merely by
+  // `Leetype` itself mounting. Read together, the two tests pin exactly what
+  // "loads the engine only when the probe is opened, not on mount" means:
+  // "mount" is `Leetype`'s own, before any exercise is active; "opened" is
+  // an active exercise resolving to `TypingSession`.
+  it("attaches the production probe, and its engine fetch, only once an exercise is picked — never merely from mounting wide", () => {
+    setViewport(false)
+    render(<Leetype />)
+    expect(screen.getByText("Choose what to practice")).toBeInTheDocument()
+    expect(loadWasm).not.toHaveBeenCalled()
+
+    const [firstTile] = screen.getAllByRole("button")
+    fireEvent.click(firstTile!)
+    expect(screen.getByLabelText("Typing input")).toBeInTheDocument()
+    expect(loadWasm).toHaveBeenCalled()
   })
 
   it("forwards exerciseBadges to the picker's tiles", () => {

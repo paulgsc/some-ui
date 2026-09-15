@@ -25,7 +25,7 @@ import { cn, useIsMobile } from "some-ui-utils"
  * that means one surface specifically; they are not a user-facing setting and
  * nothing in `apps/www` sets one.
  */
-export type LeetypeSurface = "auto" | "typing" | "reading"
+export type LeetypeSurface = "auto" | "reading" | "typing"
 
 /** Matches `TypingSession`/`ReadingSession`'s own default — see why below at `mountedAt`. */
 const DEFAULT_SESSION_DURATION_MS = 10 * 60_000
@@ -78,28 +78,38 @@ type LeetypeProps = {
  * ```text
  * Leetype                         picks a modality, then an exercise
  * ├── ExercisePicker               no exercise chosen yet (either surface)
- * ├── TypingSession   ≥ 768px      produce the witness  (the M20 surface)
- * └── ReadingSession  < 768px      discriminate the claim (LTY-MOBILE)
+ * ├── ReadingSession  < 768px      the session itself — discriminate the claim (Prop. 9.2)
+ * └── TypingSession   ≥ 768px      the optional production probe, attached where there is room
  * ```
  *
  * # Why a branch here rather than responsive CSS one level down
  *
- * Because the two session surfaces are not the same interaction at two
- * widths. The typing surface's reveal loop, gate, baseline sampling and WPM
- * figures are all facts about a player producing code under time pressure;
- * on a phone there is no keyboard to produce it with, and every one of those
- * figures measures a channel that is switched off. Reflowing that surface
- * into a narrow column yields a screen that *looks* playable and reports
- * numbers that mean nothing — which is worse than not offering it.
+ * Because discrimination and production are not the same interaction at two
+ * widths — Prop. 9.2's own inversion, kept live here rather than only in the
+ * canon: the small-screen surface is not a shrunken production probe, it is
+ * the complete design, and the wide surface is the one that has to justify
+ * what it adds (Rem. 9.3 retires the older framing this section used to
+ * carry — see `docs/leetype/README.md`'s own "Amended" note under
+ * LTY-MOBILE). What the production probe adds is real: `TypingSession`'s
+ * reveal loop, gate, baseline sampling and WPM figures are all facts about a
+ * player producing code under time pressure, measured through keystrokes a
+ * phone has no channel for — but that is an argument for attaching it where
+ * there is room, not for treating the surface without it as the lesser one.
+ * Reflowing it into a narrow column would yield a screen that *looks*
+ * playable and reports numbers that mean nothing, which is worse than not
+ * attaching it.
  *
  * So the breakpoint is not `desktop diff → smaller desktop diff`. It is
- * `production probe → discrimination probe`, and expressing it as a component
- * branch rather than a media query is what lets the mobile path mount none of
- * the engine: `TypingSession` is where `useTypingGame` lives, and a hook
- * cannot be called conditionally. A phone therefore never fetches
- * `@some-ui/leetype-wasm` at all. `ExercisePicker` makes its own, independent
- * mobile/desktop choice for the same reason applied to itself: a picker built
- * for a pointer and one built for a thumb are different layouts.
+ * `the session → the session plus its optional production probe`, and
+ * expressing it as a component branch rather than a media query is what lets
+ * the small-screen path mount none of the engine: `TypingSession` is where
+ * `useTypingGame` lives, and a hook cannot be called conditionally. The
+ * session on a phone therefore never fetches `@some-ui/leetype-wasm` at
+ * all — not because it is missing something, but because the probe it
+ * doesn't attach was never going to ask for it. `ExercisePicker` makes its
+ * own, independent mobile/desktop choice for the same reason applied to
+ * itself: a picker built for a pointer and one built for a thumb are
+ * different layouts.
  *
  * # The breakpoint is `useIsMobile`'s, not a new one
  *

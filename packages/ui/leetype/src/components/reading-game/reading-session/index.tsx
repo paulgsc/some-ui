@@ -36,24 +36,28 @@ type ReadingSessionProps = {
 }
 
 /**
- * The small-screen surface (LTY-MOBILE): read one change, say what it does,
- * read why.
+ * The session itself (Prop. 9.2, C2/#1214): read one change, say what it
+ * does, read why. `Leetype` mounts this whenever the viewport is narrow, and
+ * it is a complete design on its own — not a phone's substitute for
+ * something wider, and not a lesser edition of `TypingSession`.
  *
  * # What this is, next to `TypingSession`
  *
  * The same corpus, the same runner, the same `ExercisePicker` choosing which
- * exercise reaches either one — and a different probe. Desktop asks the
- * player to *produce* the witness under a masking
- * loop; there is no version of that which survives a phone keyboard, so this
- * surface asks them to *discriminate* the claim the change makes from claims
- * the corpus makes about other changes (`lib/leetype/reading-probe`).
+ * exercise reaches either one — and a different probe. This surface asks the
+ * player to *discriminate* the claim a change makes from claims the corpus
+ * makes about other changes (`lib/leetype/reading-probe`); `TypingSession` is
+ * the optional production probe attached on a wider viewport, asking the
+ * player to *produce* the witness under a masking loop instead — a real
+ * channel this surface cannot offer standalone (no phone keyboard), not a
+ * piece missing from it.
  *
  * The slogan the decision record opens with is what licenses this: *the game
  * is not a typing game over source code; it is a competency probe whose only
- * input modality happens to be typing.* On a 390px viewport that modality is
- * unavailable, so it is the modality that changes and not the subject.
+ * input modality happens to be typing.* Discrimination needs no modality at
+ * all, which is exactly why it is the one that is always available.
  *
- * # What this surface deliberately does not have
+ * # What this surface is — not what it lacks
  *
  * No engine. `useTypingGame` is never called here, so `@some-ui/leetype-wasm`
  * is never fetched on a phone — a fact worth more than the bundle it saves,
@@ -62,14 +66,15 @@ type ReadingSessionProps = {
  *
  * No baseline sample, no WPM, no gate, no reveal window, no attempt counter.
  * Every one of those is a fact about production, measured through keystroke
- * timing; there are no keystrokes. A discrimination answer is never blended
- * into `baseline-store`, never reaches `calibrate`, and never moves
- * `weightedWpm` or `gateThreshold` — the `p_credited = false` posture
- * LTY-SEAM already holds for the whole exercise (#1015), inherited rather
- * than re-argued for a weaker channel.
+ * timing; there are no keystrokes here, because production is not this
+ * surface's task. A discrimination answer is never blended into
+ * `baseline-store`, never reaches `calibrate`, and never moves `weightedWpm`
+ * or `gateThreshold` — the `p_credited = false` posture LTY-SEAM already
+ * holds for the whole exercise (#1015), inherited rather than re-argued for
+ * a second-class channel, because it isn't one.
  *
- * No warm-up. Calibration exists to sample a player's copying speed, and this
- * surface has nothing to calibrate.
+ * No warm-up. Calibration exists to sample a player's copying speed, and
+ * discrimination has nothing of that shape to calibrate.
  *
  * # One vertical scroll, and it is the page
  *

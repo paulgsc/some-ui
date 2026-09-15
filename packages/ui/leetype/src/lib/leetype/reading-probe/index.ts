@@ -178,9 +178,9 @@ export type Claim = {
  * Total by construction: `rationale.cause` if the step has one,
  * `obligation` if it has that, and otherwise `goal`, which the schema
  * requires of every step. A corpus can therefore never produce a step the
- * reading surface has no question for — which matters, because the mobile
- * path is the *only* path on a phone and a step it could not pose would be a
- * dead end rather than a degraded one.
+ * reading surface has no question for — which matters, because the reading
+ * path is the session itself on a phone (Prop. 9.2), so a step it could not
+ * pose would be a hard dead end, not a gap the surface could quietly absorb.
  *
  * # This renders `rationale` and `obligation`, which the desktop path may not
  *
