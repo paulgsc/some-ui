@@ -528,6 +528,33 @@
           return true
         },
 
+        /**
+         * Inject an extra watch anchor ahead of the card's own, the way a
+         * hover-preview overlay does. The card's original link stays put — the
+         * point is that extraction's first-in-document-order answer changes
+         * while the card itself has not.
+         */
+        injectPreviewAnchor(videoId, previewId) {
+          const el = window.__FIXTURE__.cardEl(videoId)
+          if (!el) return false
+          const a = document.createElement("a")
+          a.setAttribute("href", "/watch?v=" + previewId)
+          el.prepend(a)
+          return true
+        },
+
+        /** Is the static pre-mask occluder currently covering this card? */
+        isOccludedByIdFor(videoId) {
+          const el = window.__FIXTURE__.cardEl(videoId)
+          if (!el) return null
+          const cs = getComputedStyle(el)
+          return {
+            blurred: cs.filter.includes("blur"),
+            pointerEvents: cs.pointerEvents,
+            dataBoyo: el.getAttribute("data-boyo"),
+          }
+        },
+
         /** Dispatch a raw dblclick at the veil, from whatever state it is in. */
         dblclickVeil(videoId) {
           const el = window.__FIXTURE__.cardEl(videoId)

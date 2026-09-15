@@ -50,7 +50,7 @@ import type { SessionId } from "@some-extension/common"
 import { mkSession } from "@some-extension/common"
 
 import { publish, registerDebugSource } from "./debug"
-import { tryExtract } from "./extract/index"
+import { representsVideo, tryExtract } from "./extract/index"
 import { observability, PROMOTION_STALL_MS } from "./observability"
 import type { BoyoContext, PromotingCard, QueuedCard } from "./observability"
 import { makeProvisionalRecord, makeRecord } from "./record"
@@ -262,16 +262,38 @@ export class VideoManager {
 
       // Detect scroll-virtualizer element reuse: same HTMLElement, new videoId.
       // data-boyo-vid is set at mount time and cleared at destroy().
-      // When it differs from the just-extracted id, the element has been recycled
-      // for a different video — destroy the old entry eagerly so _promote() sees
-      // a clean slate.  Do NOT bump _session: element recycling is a per-card
-      // event, not a lifecycle boundary.  Bumping _session would silently cancel
-      // all concurrent in-flight promotes for every other card on the page.
+      // When it differs from the just-extracted id, the element has *either*
+      // been recycled for a different video or had its subtree churned by the
+      // vendor — `representsVideo` is what tells those apart (#1423).  Do NOT
+      // bump _session either way: both are per-card events, not lifecycle
+      // boundaries.  Bumping _session would silently cancel all concurrent
+      // in-flight promotes for every other card on the page.
       const rawPreviousId = el.dataset["boyoVid"]
       const currentId = extracted.videoId
 
+      let recycled = false
       if (rawPreviousId && rawPreviousId !== currentId) {
         const rawAsPrevId = asVideoId(rawPreviousId)
+        if (representsVideo(el, rawAsPrevId)) {
+          // Vendor churn, not a recycle. The artifact we mounted is still here;
+          // `currentId` is some other anchor that has come to sit earlier in
+          // document order (a hover preview's own link, most often — which is
+          // why this fires the instant a card is revealed and the cursor is
+          // still on it). Tearing the entry down here would revoke the user's
+          // own disclosure and drop the card back under the static occluder,
+          // which takes no pointer events — so the card would go inert rather
+          // than merely re-masked.
+          //
+          // repair() rather than nothing: the same churn may have taken our
+          // veil with it, and repairing is idempotent for an entry that still
+          // has one (and a no-op for a revealed entry, which has none by
+          // design).
+          this._byVideo.get(rawAsPrevId)?.repair()
+          observability()?.churnIgnored(rawPreviousId)
+          this._maybeStopRetryLoop()
+          return
+        }
+        recycled = true
         const oldEntry = this._byVideo.get(rawAsPrevId)
         if (oldEntry) {
           oldEntry.destroy()
@@ -287,6 +309,21 @@ export class VideoManager {
         if (pending && !pending.hasChannel) {
           this._dropChannelPending(currentId)
           void this._backfill(el, pending, extracted.channelId)
+        } else if (recycled) {
+          // A recycle has just stripped data-boyo off an element that is still
+          // on screen, so the static occluder is covering it *right now* — and
+          // `_promote()` would not lift that until a background round trip
+          // answers, which is seconds on a cold MV3 worker. Mask synchronously
+          // instead and resolve the channel afterwards: exactly the flow the
+          // video-only path already uses, for the same stated reason — nothing
+          // may leak before the user progresses, and a whitelisted channel
+          // briefly showing masked is harmless.
+          this._promoteProvisional(el, currentId)
+          const fresh = this._byVideo.get(currentId)
+          if (fresh) {
+            this._dropChannelPending(currentId)
+            void this._backfill(el, fresh, extracted.channelId)
+          }
         } else {
           void this._promote(el, currentId, extracted.channelId)
         }
@@ -587,6 +624,16 @@ export class VideoManager {
       const prevVid = this._elToVid.get(el)
       const session = this._session
       if (prevVid !== undefined && prevVid !== videoId) {
+        if (representsVideo(el, prevVid)) {
+          // Churn, not a recycle — the same discrimination upsert() makes, for
+          // the paths that reach here without passing through it (#1423).
+          // Bailing rather than merely skipping the teardown: the element still
+          // represents `prevVid`, so mounting `videoId` onto it would put two
+          // entries on one card.
+          this._byVideo.get(prevVid)?.repair()
+          observability()?.churnIgnored(String(prevVid))
+          return
+        }
         this._byVideo.get(prevVid)?.destroy()
         this._byVideo.delete(prevVid)
       }

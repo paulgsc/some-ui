@@ -14,6 +14,7 @@
  * is exercised by advancing the clock rather than by waiting.
  */
 
+import { asVideoId } from "@censor/types/ids"
 import { memoryPersistence } from "@some-extension/common/observability"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -306,6 +307,146 @@ describe("the retry loop", () => {
     await passes(2)
 
     expect(mgr.size, "adopted once it hydrates").toBe(1)
+  })
+})
+
+describe("vendor churn is not a recycle (#1423)", () => {
+  // The recycle signal is "the extracted id differs from the one stamped on
+  // the element", and two different things produce it. A hover preview
+  // injecting its own anchor into a card — which is what happens the instant a
+  // card is revealed, because the cursor is still on it — looks identical to
+  // the virtualizer handing the node to a different feed item, unless the
+  // element is asked whether it still advertises what we mounted.
+
+  /** Add a second, earlier-in-document-order link, as a preview overlay does. */
+  function addPreviewAnchor(el: HTMLElement, videoId: string): void {
+    const preview = document.createElement("a")
+    preview.setAttribute("href", `/watch?v=${videoId}`)
+    el.prepend(preview)
+  }
+
+  /** Walk masked -> meta -> title -> revealed on a mounted card. */
+  async function reveal(vid: string): Promise<void> {
+    mgr.handleClick(asVideoId(vid))
+    await vi.advanceTimersByTimeAsync(400)
+    mgr.handleClick(asVideoId(vid))
+    await vi.advanceTimersByTimeAsync(400)
+    mgr.handleDblClick(asVideoId(vid))
+    await vi.advanceTimersByTimeAsync(50)
+  }
+
+  it("keeps a revealed card revealed when a preview anchor displaces its id", async () => {
+    // The reported bug, exactly: veil -> title -> double-click -> the card
+    // dropped back under the static occluder, which takes no pointer events,
+    // so it went inert rather than merely re-masked.
+    const el = fullCard("mix_first", "ChanA")
+    document.body.appendChild(el)
+    mgr.upsert(el)
+    await passes(2)
+
+    await reveal("mix_first")
+    expect(el.getAttribute("data-boyo"), "revealed").toBe("3")
+
+    addPreviewAnchor(el, "mix_second")
+    mgr.upsert(el)
+    await passes(1)
+
+    expect(
+      el.getAttribute("data-boyo"),
+      "must never fall back under the static occluder"
+    ).toBe("3")
+    expect(mgr.size, "and must not gain a second entry for one card").toBe(1)
+  })
+
+  it("keeps a part-progressed card at the step the user reached", async () => {
+    const el = fullCard("vid_meta", "ChanA")
+    document.body.appendChild(el)
+    mgr.upsert(el)
+    await passes(2)
+
+    mgr.handleClick(asVideoId("vid_meta"))
+    await vi.advanceTimersByTimeAsync(400)
+    expect(el.getAttribute("data-boyo"), "meta").toBe("1")
+
+    addPreviewAnchor(el, "vid_other")
+    mgr.upsert(el)
+    await passes(1)
+
+    expect(
+      el.getAttribute("data-boyo"),
+      "churn must not silently revoke a disclosure the user performed"
+    ).toBe("1")
+  })
+
+  it("still re-masks when the element really is handed to a different video", async () => {
+    // The other side of the guard: if the artifact we mounted is gone from the
+    // subtree, this is a genuine recycle and re-masking is mandatory — the node
+    // is showing something the user never disclosed.
+    const el = fullCard("vid_old", "ChanA")
+    document.body.appendChild(el)
+    mgr.upsert(el)
+    await passes(2)
+
+    await reveal("vid_old")
+    expect(el.getAttribute("data-boyo")).toBe("3")
+
+    fillFullCard(el, "vid_new", "ChanB") // replaces the subtree outright
+    mgr.upsert(el)
+    await passes(2)
+
+    expect(el.dataset["boyoVid"], "the new video is mounted").toBe("vid_new")
+    expect(el.getAttribute("data-boyo"), "and it is masked, not revealed").toBe(
+      "0"
+    )
+    expect(mgr.size, "the old entry is replaced, not duplicated").toBe(1)
+  })
+
+  it("never leaves a recycled element under the bare occluder while it re-resolves", async () => {
+    // A recycle strips data-boyo synchronously, and _promote() would not put it
+    // back until a background round trip answers — seconds on a cold MV3
+    // worker. For that whole window the card is blurred AND pointer-events:
+    // none, which is the inert state, not a mask.
+    const el = fullCard("vid_before", "ChanA")
+    document.body.appendChild(el)
+    mgr.upsert(el)
+    await passes(2)
+
+    // A round trip that does not answer within this test's observation window.
+    vi.mocked(browser.runtime.sendMessage).mockReturnValueOnce(
+      new Promise(() => {
+        // deliberately never settles
+      })
+    )
+
+    fillFullCard(el, "vid_after", "ChanB")
+    mgr.upsert(el)
+
+    expect(
+      el.getAttribute("data-boyo"),
+      "masked synchronously, without waiting for the whitelist check"
+    ).toBe("0")
+  })
+
+  it("does not flap when the same element churns repeatedly", async () => {
+    const el = fullCard("vid_stable", "ChanA")
+    document.body.appendChild(el)
+    mgr.upsert(el)
+    await passes(2)
+
+    await reveal("vid_stable")
+
+    for (let i = 0; i < 10; i++) {
+      addPreviewAnchor(el, `preview_${String(i)}`)
+      mgr.upsert(el)
+      expect(
+        el.getAttribute("data-boyo"),
+        `data-boyo must survive churn #${String(i)}`
+      ).toBe("3")
+    }
+
+    await passes(2)
+    expect(mgr.size, "one card, one entry, throughout").toBe(1)
+    expect(el.dataset["boyoVid"]).toBe("vid_stable")
   })
 })
 

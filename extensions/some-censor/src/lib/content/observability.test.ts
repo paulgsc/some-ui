@@ -141,6 +141,7 @@ describe("the event union", () => {
     obs.queued("h:https://youtube.com/watch?v=vid-c")
     obs.rejected("h:https://youtube.com/watch?v=vid-c")
     obs.staleDiscarded("vid-d")
+    obs.churnIgnored("vid-a")
     obs.channelBackfilled("vid-b")
     obs.channelAbandoned("vid-e")
     obs.entryState("masked", "vid-a")

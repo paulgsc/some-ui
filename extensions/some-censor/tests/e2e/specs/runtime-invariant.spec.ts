@@ -17,6 +17,7 @@
  * T7 — watch-page sidebar (compact renderers) is masked.
  * T8 — navigation BUMPS the session (the fix for stale state).
  * T9 — dblclick reveals from any state, and the veil stops taking clicks.
+ * T10 — a revealed card survives vendor churn instead of going inert (#1423).
  */
 
 import { expect, test } from "@censor/playwright/fixture"
@@ -390,6 +391,68 @@ test("T9: dblclick reveals a masked card directly, and the veil is gone", async 
     await fixture.fixtureCall<boolean>(page, "hasVeil", "vid_bbb222"),
     "the veil must actually leave the DOM, not just the FSM"
   ).toBe(false)
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// T10: the reported symptom — reveal, then vendor churn, in a real browser
+// ─────────────────────────────────────────────────────────────────────────────
+
+type Occlusion = {
+  blurred: boolean
+  pointerEvents: string
+  dataBoyo: string | null
+}
+
+test("T10: a revealed card stays live when a preview anchor displaces its id", async ({
+  fixture,
+}) => {
+  // The live report: "double click just reveals the static css mask, which is
+  // no pointer events". Revealing exposes the card, the cursor is still on it,
+  // YouTube's hover preview injects its own links — and that used to read as a
+  // renderer recycle, tearing off data-boyo and handing the card back to the
+  // static occluder, which takes no pointer events. Blurred *and* inert.
+  const page = await fixture.goto("yt-home")
+
+  await fixture.pollDebug(page, (d) => "vid_bbb222" in d.entries, {
+    timeout: 5000,
+  })
+
+  await fixture.fixtureCall<boolean>(page, "dblclickVeil", "vid_bbb222")
+  await fixture.pollDebug(
+    page,
+    (d) => d.entries["vid_bbb222"]?.viewKind === "revealed",
+    { timeout: 3000 }
+  )
+
+  await fixture.fixtureCall<boolean>(
+    page,
+    "injectPreviewAnchor",
+    "vid_bbb222",
+    "preview_xyz"
+  )
+  // Long enough for the observer batch and a retry pass to both have run.
+  await page.waitForTimeout(1200)
+
+  const after = await fixture.fixtureCall<Occlusion | null>(
+    page,
+    "isOccludedByIdFor",
+    "vid_bbb222"
+  )
+
+  expect(after?.dataBoyo, "must not lose custody of the card").toBe("3")
+  expect(after?.blurred, "must not fall back under the static occluder").toBe(
+    false
+  )
+  expect(
+    after?.pointerEvents,
+    "and must still take clicks — this is the inert state being ruled out"
+  ).not.toBe("none")
+
+  const snap = await fixture.readDebug(page)
+  expect(
+    snap?.entries["vid_bbb222"]?.viewKind,
+    "the user's own disclosure is not silently revoked"
+  ).toBe("revealed")
 })
 
 test("T9: dblclick reveals a card already progressed to title, not just a fresh masked one", async ({
