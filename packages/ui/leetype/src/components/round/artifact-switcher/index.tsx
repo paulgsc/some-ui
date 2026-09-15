@@ -148,6 +148,18 @@ const SWIPE_THRESHOLD_PX = 40
  * reintroduce the identical staleness one round later, since not every
  * artifact's own content resets itself on a prop change the way
  * `SourcePanel` does for `algorithm.source`.
+ *
+ * Clearing `mountedIds` alone is not sufficient, and was itself a review
+ * finding (#1430, chatgpt-codex-connector, round 2): consecutive rounds
+ * typically share a first artifact id (`algorithm` is first every round),
+ * so that one child sits at the same keyed position before and after a
+ * round change, and React reconciles a same-key same-type child by
+ * updating its props rather than remounting it — carrying local state
+ * across the round boundary regardless of what this component's own
+ * bookkeeping reset. Every mounted child is therefore keyed on
+ * `` `${roundId}:${artifact.id}` ``, not `artifact.id` alone, so a round
+ * change always produces a genuinely new key and a genuine remount, even
+ * for an artifact whose id and position did not change.
  */
 export const ArtifactSwitcher: FC<ArtifactSwitcherProps> = ({
   artifacts,
@@ -282,8 +294,20 @@ export const ArtifactSwitcher: FC<ArtifactSwitcherProps> = ({
         {artifacts
           .filter((artifact) => mountedIds.has(artifact.id))
           .map((artifact) => (
+            // Keyed on `roundId` too, not just `artifact.id` (review finding
+            // on #1430, chatgpt-codex-connector): consecutive rounds sharing
+            // a first artifact id (the common case — `algorithm` is
+            // typically first every round) would otherwise keep that one
+            // child at the same keyed position across a round change, and
+            // React reconciles same-key same-type children by updating
+            // props rather than remounting — carrying its local state into
+            // the new round despite `mountedIds`/`activeId` both having
+            // reset. Prefixing the key with `roundId` guarantees every
+            // child gets a genuinely new key the instant the round changes,
+            // so "resets on round advance" holds for a child's own state,
+            // not just for this component's position bookkeeping.
             <div
-              key={artifact.id}
+              key={`${roundId}:${artifact.id}`}
               hidden={artifact.id !== current.id}
               className="min-w-0"
             >

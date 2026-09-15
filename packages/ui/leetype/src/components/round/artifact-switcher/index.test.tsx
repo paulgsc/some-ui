@@ -234,6 +234,42 @@ describe("ArtifactSwitcher", () => {
     expect(onCommit).toHaveBeenCalledOnce()
   })
 
+  it("remounts a child's local state on round advance, even when the first artifact's id is unchanged — round 2 of the same review finding", () => {
+    const CommitOnce: FC = () => {
+      const [committed, setCommitted] = useState(false)
+      return (
+        <button type="button" onClick={() => setCommitted(true)}>
+          {committed ? "Committed" : "Commit"}
+        </button>
+      )
+    }
+    // The realistic shape: `algorithm` is first in both rounds, the same
+    // way it is every round — this is exactly the case a plain
+    // `key={artifact.id}` reconciles across the round boundary instead of
+    // remounting, since the id at position 0 never changes.
+    const artifactsWithStatefulFirst: ReadonlyArray<SwitchableArtifact> = [
+      { id: "algorithm", label: "Algorithm", content: <CommitOnce /> },
+      ARTIFACTS[1]!,
+    ]
+    const { rerender } = render(
+      <ArtifactSwitcher
+        artifacts={artifactsWithStatefulFirst}
+        roundId="round-1"
+      />
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Commit" }))
+    expect(screen.getByRole("button", { name: "Committed" })).toBeVisible()
+
+    rerender(
+      <ArtifactSwitcher
+        artifacts={artifactsWithStatefulFirst}
+        roundId="round-2"
+      />
+    )
+    expect(screen.getByRole("button", { name: "Commit" })).toBeVisible()
+  })
+
   it("announces the current artifact and its position for assistive tech", () => {
     render(<ArtifactSwitcher artifacts={ARTIFACTS} roundId="round-1" />)
     expect(
