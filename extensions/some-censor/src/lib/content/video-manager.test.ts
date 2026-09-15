@@ -522,6 +522,43 @@ describe("vendor churn is not a recycle (#1423)", () => {
     expect(mgr.size, "and it must actually be in the registry").toBe(1)
   })
 
+  it("does not take the shortcut on an entry that belongs to a different renderer", async () => {
+    // Bot-found (#1427 review, round 3, P1). `_byVideo` is keyed by videoId,
+    // not by element, so "there is a live entry for this id" says nothing
+    // about which renderer owns it — two elements can carry the same video
+    // (a grid cell wrapping a lockup, #1426). Without an ownership check the
+    // shortcut repairs the *other* renderer and returns, leaving this one
+    // unmounted and under the occluder.
+    const owner = fullCard("vid_shared", "ChanA")
+    document.body.appendChild(owner)
+    mgr.upsert(owner)
+    await passes(2)
+    expect(mgr.size).toBe(1)
+
+    // A second renderer that also claims vid_shared — and whose own link now
+    // sorts after a newer one, so extraction answers with the newer id.
+    const other = document.createElement("yt-lockup-view-model")
+    other.innerHTML = `<a href="/watch?v=vid_other"></a><a id="video-title" href="/watch?v=vid_shared"></a><a href="/@ChanA"></a>`
+    other.dataset["boyoVid"] = "vid_shared"
+    document.body.appendChild(other)
+
+    mgr.upsert(other)
+    await passes(2)
+
+    expect(
+      other.getAttribute("data-boyo"),
+      "the second renderer must be adopted, not stranded under the occluder"
+    ).not.toBeNull()
+
+    // Deliberately NOT asserted here: that `owner` keeps its own custody. It
+    // does not — the fall-through recycle path tears an entry down by videoId
+    // without asking which element owns it, so the id lookup finds owner's
+    // entry and destroys it. That is pre-existing, id-keyed behaviour this PR
+    // does not introduce or fix; it is the whole subject of #1426. Asserting
+    // it here would fail for a reason this PR is not responsible for, and
+    // would quietly widen the change to a registry re-key.
+  })
+
   it("does not flap when the same element churns repeatedly", async () => {
     const el = fullCard("vid_stable", "ChanA")
     document.body.appendChild(el)

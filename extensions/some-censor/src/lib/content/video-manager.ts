@@ -274,14 +274,27 @@ export class VideoManager {
       let recycled = false
       if (rawPreviousId && rawPreviousId !== currentId) {
         const rawAsPrevId = asVideoId(rawPreviousId)
-        // Same liveness requirement as _promote()'s sibling branch below: a
-        // shortcut that "preserves" a dead entry strands the element instead
-        // (#1427 review, round 2). Kept symmetric deliberately — the two
-        // branches answer the same question from different evidence, and the
-        // one that drifts is the one that reintroduces the bug.
+        // Three conditions, none of them optional, and each one is a P1 this
+        // PR's review found by removing it (#1427, rounds 1-3):
+        //
+        //   - the entry is live in THIS session — otherwise the shortcut
+        //     "preserves" something reset() already destroyed and returns
+        //     without mounting (round 2);
+        //   - the entry belongs to THIS element — `_byVideo` is keyed by
+        //     video, so an id lookup alone can hand back another renderer's
+        //     entry and repair that instead (round 3, #1426);
+        //   - and the element still advertises the artifact, with an
+        //     authoritative `data-video-id` outranking any stale descendant
+        //     link (round 1).
+        //
+        // This is the only place the discrimination happens. `_promote()`
+        // deliberately does not repeat it: its `_elToVid` claim survives
+        // resets and names a video rather than an element, which is evidence
+        // too weak to skip a mount on.
         const prevEntry = this._byVideo.get(rawAsPrevId)
         if (
           prevEntry?.record.session === this._session &&
+          prevEntry.owns(el) &&
           representsVideo(el, rawAsPrevId)
         ) {
           // Vendor churn, not a recycle. The artifact we mounted is still here;
@@ -633,34 +646,27 @@ export class VideoManager {
       const prevVid = this._elToVid.get(el)
       const session = this._session
       if (prevVid !== undefined && prevVid !== videoId) {
-        const prevEntry = this._byVideo.get(prevVid)
-        // The churn shortcut requires a *live* entry to preserve, not merely a
-        // prior claim on the element.
+        // Deliberately NOT a churn/recycle decision — this destroys and
+        // continues to mount, as it did before #1423.
         //
-        // Bot-found (#1427 review, round 2, P1). `_elToVid` is a WeakMap, so
-        // reset() cannot clear it — it survives every SPA navigation, while
-        // destroy() does remove `data-boyo-vid`. A reused Lit lockup therefore
-        // reaches here in the *new* session carrying a stale `prevVid` and no
-        // live entry, and if it still holds the old link (lockups have no
-        // authoritative `data-video-id` to say otherwise) this branch would
-        // "preserve" an entry that no longer exists — repair() on undefined is
-        // a silent no-op — and return without mounting anything. The element
-        // was never queued, so nothing would retry it: permanently occluded
-        // and inert, which is the exact failure this PR exists to remove.
-        if (
-          prevEntry?.record.session === this._session &&
-          representsVideo(el, prevVid)
-        ) {
-          // Churn, not a recycle — the same discrimination upsert() makes, for
-          // the paths that reach here without passing through it (#1423).
-          // Bailing rather than merely skipping the teardown: the element still
-          // represents `prevVid`, so mounting `videoId` onto it would put two
-          // entries on one card.
-          prevEntry.repair()
-          observability()?.churnIgnored(String(prevVid))
-          return
-        }
-        prevEntry?.destroy()
+        // An earlier revision of this PR discriminated here too, and it
+        // produced two separate P1s in consecutive review rounds (#1427,
+        // rounds 2 and 3). Both had the same root cause: `_elToVid` is a
+        // WeakMap `reset()` cannot clear and `_byVideo` is keyed by video
+        // rather than by element, so `prevVid` here is not evidence about
+        // *this* element at all — it can outlive a session, and the entry it
+        // names can belong to a different renderer entirely. A shortcut that
+        // returns without mounting on evidence that weak strands the element
+        // under the static occluder, which is the failure this PR exists to
+        // remove.
+        //
+        // The discrimination lives in upsert() alone, keyed on
+        // `data-boyo-vid` — a stamp on the element itself, so it cannot
+        // implicate another renderer. This path is only ever reached after
+        // upsert() has already decided, or from retryUnresolved() for an
+        // element that was never mounted, so nothing is lost by it being the
+        // plain teardown it always was.
+        this._byVideo.get(prevVid)?.destroy()
         this._byVideo.delete(prevVid)
       }
 

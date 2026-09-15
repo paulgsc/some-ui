@@ -167,6 +167,19 @@ export class VideoEntry {
     return this._handle.element.isConnected
   }
 
+  /**
+   * Is this entry the one mounted on `el`?
+   *
+   * `VideoManager._byVideo` is keyed by videoId, not by element, so looking an
+   * entry up by id proves nothing about which renderer it belongs to — two
+   * elements can carry the same video (a grid cell wrapping a lockup, #1426).
+   * Any decision that acts on "the entry for this element" has to say so, and
+   * this is the only thing that can answer it without handing the element out.
+   */
+  owns(el: HTMLElement): boolean {
+    return this._handle.element === el
+  }
+
   /** Exposed for the debug/observability layer — read-only snapshot of FSM kind. */
   get viewKind(): ViewState["kind"] {
     return this._view.kind
