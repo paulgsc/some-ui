@@ -652,6 +652,74 @@ describe("per-element staleness across rapid recycling (#980)", () => {
   })
 })
 
+describe("OccluderReleases sees what the queues cannot (#1425)", () => {
+  let obs: BoyoObservability
+
+  function violations(): Array<string | number | undefined> {
+    return obs.recorder
+      .events()
+      .filter((e) => e.kind === "invariant.violated")
+      .map((e) => e.subject)
+  }
+
+  beforeEach(() => {
+    obs = startObservability(memoryPersistence())
+  })
+
+  afterEach(() => {
+    stopObservability()
+  })
+
+  it("reports a card left under the occluder that no queue is tracking", async () => {
+    // The #1422 shape, which is also the shape of every ORP defect: a
+    // ytd-rich-item-renderer with no video link anywhere. The occluder matches
+    // it on the bare tag, `isVideoCard()` says true unconditionally, so the
+    // rejection path never fires and it is never released — while the manager
+    // reports a perfectly consistent empty queue.
+    const el = document.createElement("ytd-rich-item-renderer")
+    el.innerHTML = `<ytd-ad-slot-renderer><div>sponsored</div></ytd-ad-slot-renderer>`
+    document.body.appendChild(el)
+
+    mgr.upsert(el)
+    await passes(BUDGET_PASSES * 4)
+
+    expect(
+      el.getAttribute("data-boyo"),
+      "precondition: it really is stranded under the occluder"
+    ).toBeNull()
+    expect(violations(), "and the invariant says so").toContain(
+      "OccluderReleases"
+    )
+  })
+
+  it("stays quiet on a page whose cards all get adopted", async () => {
+    // The direction that decides whether this is usable or just noise: a
+    // healthy feed must not report a violation merely because cards spend
+    // their first moments occluded.
+    for (const id of ["vid_a", "vid_b", "vid_c"]) {
+      document.body.appendChild(fullCard(id, "Chan"))
+    }
+    mgr.scan()
+    await passes(BUDGET_PASSES * 4)
+
+    expect(mgr.size, "precondition: they were all adopted").toBe(3)
+    expect(violations()).not.toContain("OccluderReleases")
+  })
+
+  it("stays quiet about a channel lockup, which the occluder deliberately does not match", async () => {
+    // The `:has()` guard means a non-video lockup is never occluded, so it is
+    // correctly invisible here — reporting it would punish the very guard that
+    // exists to stop permanent blurring (#973).
+    const el = channelLockup()
+    document.body.appendChild(el)
+
+    mgr.upsert(el)
+    await passes(BUDGET_PASSES * 4)
+
+    expect(violations()).not.toContain("OccluderReleases")
+  })
+})
+
 describe("PromotionGuardClears can actually fire (#1397's own review)", () => {
   let obs: BoyoObservability
 

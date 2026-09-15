@@ -52,9 +52,14 @@ import { mkSession } from "@some-extension/common"
 import { publish, registerDebugSource } from "./debug"
 import { representsVideo, tryExtract } from "./extract/index"
 import { observability, PROMOTION_STALL_MS } from "./observability"
-import type { BoyoContext, PromotingCard, QueuedCard } from "./observability"
+import type {
+  BoyoContext,
+  OccludedCard,
+  PromotingCard,
+  QueuedCard,
+} from "./observability"
 import { makeProvisionalRecord, makeRecord } from "./record"
-import { isVideoCard, SEL } from "./selectors"
+import { isVideoCard, occludedElements, SEL } from "./selectors"
 import { VideoEntry } from "./video-entry"
 
 type Phase = "idle" | "running"
@@ -128,6 +133,11 @@ export class VideoManager {
   // guard is released — so the mirror can only ever retain what `_promoting`
   // has also retained, and what it retains is precisely the leak.
   private readonly _promotingSince: Map<HTMLElement, PromotingCard> = new Map()
+  // Observability-only, like _promotingSince: when each element was first seen
+  // under the static occluder with no data-boyo. Strong refs for the same
+  // reason, and bounded the same way — _occlusionCensus() prunes it against
+  // the live DOM on every pass, so it holds at most what is on screen.
+  private readonly _occludedSince: Map<HTMLElement, number> = new Map()
   // Per-element staleness guard (#980, M6). Which videoId an element is
   // currently claimed for, and a token bumped whenever that claim changes —
   // set synchronously the instant _promote()/_promoteProvisional() start
@@ -217,6 +227,7 @@ export class VideoManager {
     this._firstSeen.clear()
     this._rejected.clear()
     this._channelGaveUp.clear()
+    this._occludedSince.clear()
 
     if (this._retryInterval !== null) {
       clearInterval(this._retryInterval)
@@ -878,7 +889,48 @@ export class VideoManager {
       unresolved,
       channelPending,
       promoting: [...this._promotingSince.values()],
+      occluded: this._occlusionCensus(now),
     }
+  }
+
+  /**
+   * What the static occluder is hiding right now, and since when.
+   *
+   * The one part of this context read from the DOM rather than from a map
+   * here. Every queue above can only describe an element this class is still
+   * tracking; the failures `OccluderReleases` exists for are the ones where an
+   * element fell out of all of them (#1421), so the census has to ask the page
+   * instead of asking us.
+   *
+   * `_occludedSince` is the only state it needs — first-seen timestamps so a
+   * card legitimately mid-adoption is not reported as stranded. It is pruned
+   * against the live answer on every pass, so it is bounded by what is on
+   * screen rather than by session length, and cleared by reset() with
+   * everything else.
+   *
+   * Cost is one `querySelectorAll` per premask selector per *health sample*
+   * (10 s), not per mutation — the Charter §8 line the rest of this layer is
+   * built around.
+   */
+  private _occlusionCensus(now: number): Array<OccludedCard> {
+    const census: Array<OccludedCard> = []
+    const live = new Set<HTMLElement>()
+
+    for (const el of occludedElements(document)) {
+      live.add(el)
+      let sinceAt = this._occludedSince.get(el)
+      if (sinceAt === undefined) {
+        sinceAt = now
+        this._occludedSince.set(el, sinceAt)
+      }
+      census.push({ tag: el.tagName.toLowerCase(), sinceAt })
+    }
+
+    for (const el of this._occludedSince.keys()) {
+      if (!live.has(el)) this._occludedSince.delete(el)
+    }
+
+    return census
   }
 
   /**
