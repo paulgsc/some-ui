@@ -77,6 +77,20 @@ function fullCard(videoId: string, channel: string): HTMLElement {
   return el
 }
 
+/**
+ * Make the next `IS_WHITELISTED` round trip never settle, pinning an element
+ * inside `_promote()`'s guard for the rest of the test. Module-scoped because
+ * two describes need it: the promotion-guard invariant, and #1429's coverage
+ * attribution for a card that is mid-mount rather than orphaned.
+ */
+function hangTheWhitelistCheck(): void {
+  vi.mocked(browser.runtime.sendMessage).mockReturnValueOnce(
+    new Promise(() => {
+      // deliberately never settles
+    })
+  )
+}
+
 /** Advance n retry passes, letting the awaited whitelist round-trips settle. */
 async function passes(n: number): Promise<void> {
   for (let i = 0; i < n; i++) {
@@ -925,14 +939,6 @@ describe("PromotionGuardClears can actually fire (#1397's own review)", () => {
   let obs: BoyoObservability
 
   /** A promotion that never settles: the MV3 hazard the invariant is about. */
-  function hangTheWhitelistCheck(): void {
-    vi.mocked(browser.runtime.sendMessage).mockReturnValueOnce(
-      new Promise(() => {
-        // deliberately never settles
-      })
-    )
-  }
-
   function violations(): Array<string | number | undefined> {
     return obs.recorder
       .events()
@@ -1116,6 +1122,68 @@ describe("advance-all reports what it did not advance (#1424)", () => {
     expect(coverage()).toMatchObject({
       advanced: 0,
       unresolved: 1,
+      occludedUntracked: 0,
+      skipped: 1,
+    })
+  })
+
+  it("does not count a channel lockup the occluder never hid", async () => {
+    // Bot-found (this PR's own review, P1). `upsert()` enqueues every element
+    // failing `isVideoCard()` — a channel lockup, a playlist, an unhydrated
+    // shell — so extraction need not rescan their subtrees each pass. The
+    // premask `:has()` guard deliberately leaves those visible, so they were
+    // never cards and were never missed. Counting `_unresolved.size` reported
+    // them as skipped, worst on search pages where polymorphic lockups are
+    // most of the grid.
+    document.body.appendChild(fullCard("vid_a", "Chan"))
+    for (let i = 0; i < 4; i++) document.body.appendChild(channelLockup())
+    mgr.scan()
+    await passes(1)
+
+    expect(
+      mgr.unresolvedSize,
+      "precondition: the lockups really are sitting in the queue"
+    ).toBe(4)
+
+    mgr.advanceAllToTitle()
+
+    expect(coverage()).toMatchObject({
+      advanced: 1,
+      unresolved: 0,
+      promoting: 0,
+      occludedUntracked: 0,
+      skipped: 0,
+    })
+  })
+
+  it("attributes an in-flight promotion to the mount, not to the orphans", async () => {
+    // Bot-found (this PR's own review, P2). `_promote()` dequeues before
+    // awaiting the IS_WHITELISTED round trip, so for the length of that trip a
+    // perfectly healthy card is occluded, out of `_unresolved`, and not yet in
+    // the registry. "Occluded minus the queue" put it in the orphan bucket —
+    // the one figure whose whole value is that it should trend to zero as
+    // #1421 lands.
+    hangTheWhitelistCheck()
+    const el = fullCard("vid_slow", "Chan")
+    document.body.appendChild(el)
+    mgr.upsert(el)
+    await passes(1)
+
+    expect(
+      el.getAttribute("data-boyo"),
+      "precondition: still occluded, the mount has not completed"
+    ).toBeNull()
+    expect(
+      mgr.unresolvedSize,
+      "precondition: and it has already left the queue"
+    ).toBe(0)
+
+    mgr.advanceAllToTitle()
+
+    expect(coverage()).toMatchObject({
+      advanced: 0,
+      unresolved: 0,
+      promoting: 1,
       occludedUntracked: 0,
       skipped: 1,
     })

@@ -171,6 +171,7 @@ describe("the event union", () => {
       alreadyPast: 0,
       detached: 0,
       unresolved: 0,
+      promoting: 0,
       occludedUntracked: 0,
       channelPending: 0,
     })
@@ -491,6 +492,7 @@ describe("bulkAdvance — the coverage a keystroke actually had (#1424)", () => 
     alreadyPast: 2,
     detached: 0,
     unresolved: 0,
+    promoting: 0,
     occludedUntracked: 0,
     channelPending: 0,
   }
@@ -509,20 +511,21 @@ describe("bulkAdvance — the coverage a keystroke actually had (#1424)", () => 
     expect(obs.recorder.metrics.counter("bulk_advance_skipped")).toBe(0)
   })
 
-  it("sums the three genuinely-uncovered populations into skipped", () => {
+  it("sums the genuinely-uncovered populations into skipped", () => {
     const obs = newObservability()
     obs.bulkAdvance({
       ...clean,
       detached: 1,
       unresolved: 4,
+      promoting: 1,
       occludedUntracked: 2,
     })
 
     const event = obs.recorder
       .events()
       .find((e) => e.kind === "command.advance_all")
-    expect(event?.detail).toMatchObject({ skipped: 7 })
-    expect(obs.recorder.metrics.counter("bulk_advance_skipped")).toBe(7)
+    expect(event?.detail).toMatchObject({ skipped: 8 })
+    expect(obs.recorder.metrics.counter("bulk_advance_skipped")).toBe(8)
     expect(obs.recorder.metrics.counter("bulk_advance_advanced")).toBe(3)
   })
 
@@ -561,6 +564,7 @@ describe("bulkAdvance — the coverage a keystroke actually had (#1424)", () => 
       "channelPending",
       "detached",
       "occludedUntracked",
+      "promoting",
       "skipped",
       "unresolved",
     ])

@@ -663,12 +663,14 @@ export class VideoManager {
       }
     }
 
+    const census = this._coverageCensus()
     observability()?.bulkAdvance({
       advanced,
       alreadyPast,
       detached,
-      unresolved: this._unresolved.size,
-      occludedUntracked: this._untrackedOccludedCount(),
+      unresolved: census.unresolved,
+      promoting: census.promoting,
+      occludedUntracked: census.untracked,
       channelPending,
     })
     publish()
@@ -993,29 +995,58 @@ export class VideoManager {
   }
 
   /**
-   * How many elements the static occluder is hiding that no queue accounts for.
+   * The cards the static occluder is hiding right now, attributed to why.
    *
-   * Deliberately *not* `_occlusionCensus().length`. A card legitimately waiting
-   * in `_unresolved` is occluded too — the occluder is what hides it until
-   * adoption — so counting the raw census would report every mid-resolution
-   * card twice: once under `unresolved`, once here. Subtracting the queue's own
-   * elements leaves exactly the population that is occluded with nothing coming
-   * for it, which is the number worth reporting to a user asking why a bulk
-   * command missed cards.
+   * ## Why this partitions the occluded set rather than the queues
    *
-   * Reads the DOM without touching `_occludedSince`. That map is the health
-   * cadence's, and its timestamps are what `OccluderReleases` measures its
-   * grace window from; letting a user keystroke seed entries in it would make
-   * how often someone presses the hotkey an input to whether a stranded card is
-   * reported. A count needs no timestamps, so it takes none.
+   * Bot-found on #1429's own review, twice, and both findings were the same
+   * mistake: buckets derived from the bookkeeping do not mean what their
+   * labels say.
+   *
+   * `_unresolved.size` is not "cards the command missed". `upsert()` enqueues
+   * every element that fails `isVideoCard()` — a channel lockup, a playlist,
+   * an unhydrated shell — precisely so extraction does not rescan their
+   * subtrees each pass. Those are not cards, and the premask `:has()` guard
+   * deliberately does not occlude them, so the user sees them perfectly well.
+   * Counting them inflated `skipped` with ordinary tiles, worst on search
+   * pages where polymorphic lockups are most of the grid (P1).
+   *
+   * And "occluded minus the queue" is not "orphaned". `_promote()` dequeues
+   * before awaiting the `IS_WHITELISTED` round trip, so for the length of that
+   * trip a perfectly healthy card is occluded, out of `_unresolved`, and
+   * inside `_promoting` — landing in the bucket documented as structural
+   * orphans, which is the one bucket whose whole value is that it should trend
+   * to zero as #1421 lands (P2).
+   *
+   * So the census starts from what the user can actually see — the occluder's
+   * own condition — and asks of each hidden card *why*. Every bucket then
+   * means one thing: `unresolved` is mid-resolution, `promoting` is mid-mount,
+   * `untracked` is nothing coming for it. A tile that is not occluded is not
+   * in any of them, because it was never missed.
+   *
+   * Reads the DOM without touching `_occludedSince`. That map belongs to the
+   * health cadence, and its timestamps are what `OccluderReleases` measures
+   * its grace window from; letting a user keystroke seed entries would make
+   * how often someone presses the hotkey an input to whether a stranded card
+   * is reported. A count needs no timestamps, so it takes none.
    */
-  private _untrackedOccludedCount(): number {
+  private _coverageCensus(): {
+    unresolved: number
+    promoting: number
+    untracked: number
+  } {
     const queued = new Set<HTMLElement>(this._unresolved.values())
+    let unresolved = 0
+    let promoting = 0
     let untracked = 0
+
     for (const el of occludedElements(document)) {
-      if (!queued.has(el)) untracked += 1
+      if (queued.has(el)) unresolved += 1
+      else if (this._promoting.has(el)) promoting += 1
+      else untracked += 1
     }
-    return untracked
+
+    return { unresolved, promoting, untracked }
   }
 
   /**

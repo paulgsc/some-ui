@@ -144,9 +144,10 @@ export const BOYO_COUNTERS = [
   /** Cards those keystrokes moved from masked/meta to title. */
   "bulk_advance_advanced",
   /**
-   * Cards they did not act on and could not have: queued, detached, or sitting
-   * under the occluder untracked. Deliberately excludes cards already at or
-   * past title, which are covered rather than skipped.
+   * Cards they did not act on and could not have: detached, or hidden by the
+   * occluder while mid-resolution, mid-mount, or untracked. Deliberately
+   * excludes cards already at or past title, which are covered rather than
+   * skipped, and tiles the occluder never hid, which were never cards to miss.
    */
   "bulk_advance_skipped",
   "entries_masked",
@@ -336,13 +337,29 @@ export type BulkAdvanceCoverage = {
    * always skipped these, and until #1424 did so without saying so.
    */
   readonly detached: number
-  /** Cards queued in `_unresolved`: video-shaped, not yet extractable. */
+  /**
+   * Occluded cards waiting in `_unresolved` — hidden, and mid-resolution.
+   *
+   * Not `_unresolved.size`. `upsert()` enqueues every element failing
+   * `isVideoCard()` (a channel lockup, a playlist, an unhydrated shell) so
+   * extraction need not rescan their subtrees each pass, and the premask
+   * `:has()` guard deliberately leaves those visible. They were never cards
+   * and were never missed, so they are not counted (bot-found, #1429 P1).
+   */
   readonly unresolved: number
   /**
-   * Elements the static occluder is still hiding that are in no queue at all —
-   * #1422's rejected non-video renderers and #1423/#1426-class orphans.
-   * Counted from the DOM and with the `_unresolved` elements subtracted, so it
-   * never double-counts a card that is merely waiting its turn.
+   * Occluded cards inside `_promote()`'s guard — hidden, and mid-mount.
+   *
+   * Its own bucket rather than part of the one below, because `_promote()`
+   * dequeues before awaiting the `IS_WHITELISTED` round trip: for the length
+   * of that trip a perfectly healthy card is occluded and in neither
+   * `_unresolved` nor the registry, and attributing it to orphans would muddy
+   * the one figure whose value is that it should trend to zero (#1429 P2).
+   */
+  readonly promoting: number
+  /**
+   * Occluded cards in no queue and no guard — #1422's rejected non-video
+   * renderers and #1423/#1426-class orphans. Nothing is coming for these.
    */
   readonly occludedUntracked: number
   /**
@@ -892,7 +909,10 @@ export class BoyoObservability {
    */
   bulkAdvance(coverage: BulkAdvanceCoverage): void {
     const skipped =
-      coverage.detached + coverage.unresolved + coverage.occludedUntracked
+      coverage.detached +
+      coverage.unresolved +
+      coverage.promoting +
+      coverage.occludedUntracked
     this.recorder.record({
       kind: "command.advance_all",
       severity: "info",
