@@ -314,21 +314,35 @@ export class VideoManager {
     // adoptions race for what is structurally one registry slot. See M7.
     const anchor = outermostCard(el)
     if (anchor !== el) {
-      // `el` may have been its own anchor until just now — YouTube can wrap
-      // a previously-independent renderer in a new outer match just as
-      // easily as it can add a fresh nested one (bot-found, #1432 review,
-      // round 5, P2). Left alone, that stale entry stays alive (`el` is
-      // still connected, so prune() never reaps it): two live entries and
-      // two veils for one visual card, and the anchor's own custody
-      // stamping fighting the stale entry's own repairs over `el`'s
-      // data-boyo on every pass. Retire it before deferring to the anchor
-      // that now owns this element.
+      // `el` may have been its own anchor until just now, in either of two
+      // shapes (bot-found, #1432 review, rounds 5-6, both P2) — YouTube can
+      // wrap a previously-independent renderer in a new outer match just as
+      // easily as it can add a fresh nested one:
+      //
+      //   - a completed entry, left alive with `el` still connected (so
+      //     prune() never reaps it) — two live entries and two veils for
+      //     one visual card, and the anchor's own custody stamping fighting
+      //     the stale entry's own repairs over `el`'s data-boyo every pass;
+      //   - a `_promote()`/`_backfill()` call still in flight *for* `el`,
+      //     which install nothing here (`_registry.get(el)` is empty until
+      //     the await resolves) but will still pass their own M6 staleness
+      //     guard afterwards — nothing about becoming nested changes what
+      //     `el` is claimed for — and install a second entry and veil
+      //     later, on a card this call already redirected away from.
+      //
+      // Retiring only the first shape (round 5 alone) still leaves the
+      // second live, so both are retired together here rather than adding
+      // a third narrow patch for the second: destroy any completed entry,
+      // and invalidate `el`'s claim regardless, so an in-flight call's own
+      // M6 guard (`_tokenFor(el) !== token`) bails and retries through
+      // upsert() — which by then sees `el` as nested and defers correctly.
       const stale = this._registry.get(el)
       if (stale) {
         stale.destroy()
         this._registry.delete(el)
         this._dropChannelPending(el)
       }
+      this._invalidateClaim(el)
       this.upsert(anchor)
       return
     }
@@ -784,6 +798,22 @@ export class VideoManager {
   /** `el`'s current staleness token, or `undefined` if never claimed. */
   private _tokenFor(el: HTMLElement): number | undefined {
     return this._elClaim.get(el)?.token
+  }
+
+  /**
+   * Bump `el`'s staleness token without assigning it a new video (M6,
+   * bot-found #1432 review round 6). Used when `el` is retired as an
+   * independent anchor rather than recycled to a different one — there is
+   * no new videoId to claim it for, only the need to make any in-flight
+   * `_promote()`/`_backfill()` call for `el`'s *old* claim fail its own
+   * post-await staleness check, the same mechanism M6 already relies on for
+   * every other kind of mid-flight recycle. A no-op if `el` was never
+   * claimed, since there is then nothing in flight to invalidate.
+   */
+  private _invalidateClaim(el: HTMLElement): void {
+    const current = this._elClaim.get(el)
+    if (!current) return
+    this._elClaim.set(el, { videoId: current.videoId, token: ++this._tokenSeq })
   }
 
   /**

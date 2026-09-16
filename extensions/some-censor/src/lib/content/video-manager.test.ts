@@ -954,6 +954,57 @@ describe("a nested card is one entry, not two (#1426)", () => {
       "y is now the anchor and owns the veil"
     ).not.toBeNull()
   })
+
+  it("does not let an in-flight promotion install a second entry after its element becomes nested", async () => {
+    // Bot-found (#1432 review, round 6, P2) — the async twin of round 5.
+    // A _promote() call claims its element and awaits IS_WHITELISTED
+    // *before* creating any registry entry, so round 5's "destroy any
+    // completed entry" cleanup finds nothing to destroy while that call is
+    // still in flight. Left alone, the in-flight call's own M6 staleness
+    // guard still passes once its await resolves — becoming nested doesn't
+    // change what the element was claimed for — and it installs a second
+    // entry and veil later, on a card upsert() already redirected away
+    // from.
+    let resolveWhitelist: (v: {
+      ok: boolean
+      whitelisted: boolean
+    }) => void = () => {}
+    vi.mocked(browser.runtime.sendMessage).mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveWhitelist = resolve
+      })
+    )
+
+    const x = fullCard("nest_o", "ChanA")
+    document.body.appendChild(x)
+    mgr.upsert(x)
+    // x's own _promote() is now awaiting the controlled promise above —
+    // nothing has been created in the registry yet.
+    expect(mgr.size, "precondition: x's promotion has not resolved yet").toBe(0)
+
+    // x is reparented beneath a brand new outer wrapper while its own
+    // promotion is still in flight.
+    const y = document.createElement("ytd-rich-item-renderer")
+    document.body.appendChild(y)
+    y.appendChild(x)
+    mgr.upsert(x)
+    await passes(2)
+
+    expect(mgr.size, "y's own promotion has resolved").toBe(1)
+
+    // Now let x's original, stale promotion resolve.
+    resolveWhitelist({ ok: true, whitelisted: false })
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(
+      mgr.size,
+      "x's stale in-flight promotion must not install a second entry"
+    ).toBe(1)
+    expect(
+      x.querySelector(".boyo-veil"),
+      "x must not end up with its own veil"
+    ).toBeNull()
+  })
 })
 
 describe("two cards sharing a video keep independent channel-backfill tracking (#1432 review)", () => {
