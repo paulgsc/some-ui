@@ -905,6 +905,52 @@ describe("two cards sharing a video keep independent channel-backfill tracking (
       stopObservability()
     }
   })
+
+  it("does not carry give-up state across a recycle to a new video", async () => {
+    // Bot-found, round 2: _channelGaveUp keyed by element (not by claim)
+    // meant a stale give-up from an *old* video survived a scroll-
+    // virtualizer recycle onto a brand new video on the same node, silently
+    // blocking that new video's channel from ever being tracked.
+    const obs = startObservability(memoryPersistence())
+    try {
+      const el = document.createElement("yt-lockup-view-model")
+      el.innerHTML = `<a href="/watch?v=vid_old"></a>`
+      document.body.appendChild(el)
+      mgr.upsert(el)
+      await passes(BUDGET_PASSES + 1)
+
+      const abandonedOld = obs.recorder
+        .events()
+        .filter(
+          (e) => e.kind === "channel.abandoned" && e.subject === "vid_old"
+        )
+      expect(
+        abandonedOld,
+        "precondition: el gave up on vid_old's channel"
+      ).toHaveLength(1)
+
+      // Recycled to a genuinely different video on the same DOM node.
+      el.innerHTML = `<a href="/watch?v=vid_new"></a>`
+      mgr.upsert(el)
+
+      // Now give it a channel for the new video.
+      el.innerHTML = `<a href="/watch?v=vid_new"></a><a href="/@ChanNew"></a>`
+      mgr.retryUnresolved()
+      await vi.advanceTimersByTimeAsync(0)
+
+      const backfilledNew = obs.recorder
+        .events()
+        .filter(
+          (e) => e.kind === "channel.backfilled" && e.subject === "vid_new"
+        )
+      expect(
+        backfilledNew,
+        "vid_new's channel backfill must not be blocked by vid_old's stale give-up"
+      ).toHaveLength(1)
+    } finally {
+      stopObservability()
+    }
+  })
 })
 
 describe("per-element staleness across rapid recycling (#980)", () => {

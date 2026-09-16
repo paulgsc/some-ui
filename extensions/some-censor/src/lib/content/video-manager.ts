@@ -128,12 +128,19 @@ export class VideoManager {
   // page, pruned as they disconnect, and cleared by reset() on every
   // navigation.
   private readonly _rejected: Set<HTMLElement> = new Set()
-  // Same, for channel backfill: elements we have stopped looking for a channel
-  // for. Keyed by element, not videoId (M7/#1426) — two distinct cards can
-  // legitimately share a videoId, and one giving up says nothing about
-  // whether the other's own subtree would resolve a channel too. Cleared on
-  // reset() since a new session re-derives entries.
-  private readonly _channelGaveUp: Set<HTMLElement> = new Set()
+  // Same, for channel backfill: claims we have stopped looking for a channel
+  // for. Keyed by _elClaim's own token (bot-found, #1432 review, round 2) —
+  // not by element: `elementKey()` derives from *content* (a data-video-id or
+  // an anchor href), so two distinct elements showing the same video produce
+  // the same string, reintroducing the exact collision M7 exists to remove.
+  // Not by element either: a `Set<HTMLElement>` retains every detached
+  // renderer that ever gave up until reset(), and a recycled element keeps
+  // its *old* video's give-up state blocking the new one's. The claim token
+  // is unique per (element, video) pairing and changes the instant the
+  // element is reclaimed for something else (M6), so it solves all three at
+  // once: distinct elements never share a slot, a stale claim's slot cannot
+  // block a fresh one, and the set holds numbers, not DOM references.
+  private readonly _channelGaveUp: Set<number> = new Set()
   // Mounted-but-channel-pending: element → videoId.  These entries are already
   // masked in the DOM; the retry loop backfills their channelId.  Tracked
   // separately from _unresolved (which is "not even maskable yet") so the retry
@@ -573,13 +580,14 @@ export class VideoManager {
         this._dropChannelPending(el)
         const entry = this._registry.get(el)
         if (entry) void this._backfill(el, entry, extracted.channelId)
-      } else if (this._budgetSpent(channelKey(el))) {
+      } else if (this._budgetSpent(this._channelKey(el))) {
         // No channel is coming (a shorts lockup exposes none). The entry stays
         // mounted and masked — masking only ever needed the videoId. It simply
         // never participates in channel whitelisting, which is correct: we do
         // not know whose channel it is.
         this._dropChannelPending(el)
-        this._channelGaveUp.add(el)
+        const token = this._tokenFor(el)
+        if (token !== undefined) this._channelGaveUp.add(token)
         observability()?.channelAbandoned(videoId)
         changed = true
       }
@@ -597,14 +605,15 @@ export class VideoManager {
    * path again every time.
    */
   private _trackChannelPending(el: HTMLElement, videoId: VideoId): void {
-    if (this._channelGaveUp.has(el)) return
+    const token = this._tokenFor(el)
+    if (token !== undefined && this._channelGaveUp.has(token)) return
     this._channelPending.set(el, videoId)
     this._ensureRetryLoop()
   }
 
   private _dropChannelPending(el: HTMLElement): void {
     this._channelPending.delete(el)
-    this._firstSeen.delete(channelKey(el))
+    this._firstSeen.delete(this._channelKey(el))
   }
 
   /**
@@ -760,6 +769,20 @@ export class VideoManager {
   /** `el`'s current staleness token, or `undefined` if never claimed. */
   private _tokenFor(el: HTMLElement): number | undefined {
     return this._elClaim.get(el)?.token
+  }
+
+  /**
+   * Attempt-budget key for `el`'s channel backfill (M7/#1432 review, round 2).
+   * Keyed on `_elClaim`'s own token, not on `elementKey(el)`: that helper
+   * derives its string from *content* (a data-video-id or an anchor href),
+   * so two distinct elements showing the same video produced the identical
+   * key — reintroducing the exact collision this whole rework exists to
+   * remove. The token is unique per (element, video) claim and changes the
+   * moment `el` is reclaimed for something else, so a stale budget can never
+   * bleed into a fresh claim either.
+   */
+  private _channelKey(el: HTMLElement): string {
+    return `c:${this._tokenFor(el) ?? 0}`
   }
 
   private async _promote(
@@ -980,7 +1003,7 @@ export class VideoManager {
 
     const channelPending: Array<QueuedCard> = []
     for (const el of this._channelPending.keys()) {
-      const key = channelKey(el)
+      const key = this._channelKey(el)
       channelPending.push({
         key,
         firstSeenAt: this._firstSeen.get(key) ?? now,
@@ -1271,17 +1294,6 @@ export class VideoManager {
       this._retryInterval = null
     }
   }
-}
-
-/**
- * Attempt-budget key for a channel backfill. Wraps elementKey() rather than
- * the videoId (M7/#1426) — two distinct cards can share a videoId, and a
- * videoId-keyed budget would let one element's give-up silently reset or
- * cancel a different element's own clock. The `c:` prefix still namespaces
- * it away from elementKey()'s own output for `_unresolved`/`_firstSeen`.
- */
-function channelKey(el: HTMLElement): string {
-  return `c:${elementKey(el)}`
 }
 
 function elementKey(el: HTMLElement): string {
