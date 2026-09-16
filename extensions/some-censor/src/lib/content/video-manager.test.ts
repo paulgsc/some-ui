@@ -1005,6 +1005,97 @@ describe("a nested card is one entry, not two (#1426)", () => {
       "x must not end up with its own veil"
     ).toBeNull()
   })
+
+  it("retires a queued unresolved shell when it becomes nested before it hydrates", async () => {
+    // Bot-found (#1432 review, round 7, P2). Rounds 5-6 retire a completed
+    // entry and an in-flight promotion, but a third shape can outlive the
+    // redirect too: an element still sitting in `_unresolved`, never
+    // promoted at all. Left there under its own queue key, it survives
+    // alongside the new anchor's own queue entry — and once it later
+    // hydrates into a full video card, retryUnresolved() promotes it
+    // directly, bypassing upsert()'s redirect entirely and installing a
+    // second entry and veil for what is now one visual card.
+    const x = document.createElement("yt-lockup-view-model")
+    document.body.appendChild(x)
+    mgr.upsert(x)
+    expect(
+      mgr.unresolvedSize,
+      "precondition: x is queued as an unresolved shell"
+    ).toBe(1)
+
+    // A shell with no watch/shorts anchor and no data-video-id can only ever
+    // get a position-derived elementKey() (the finding's own premise) — a
+    // spacer sibling keeps x's stale key and y's post-move key from
+    // coincidentally landing on the same position and masking the bug.
+    const spacer = document.createElement("div")
+    document.body.appendChild(spacer)
+
+    // x is wrapped by a brand new outer anchor before it ever hydrates.
+    const y = document.createElement("ytd-rich-item-renderer")
+    document.body.appendChild(y)
+    y.appendChild(x)
+    mgr.upsert(x)
+
+    expect(
+      mgr.unresolvedSize,
+      "x's stale queue slot must not survive the redirect — only y's own " +
+        "(not yet extractable) queue entry should remain"
+    ).toBe(1)
+
+    // The deep link insertion that finally hydrates the card.
+    fillFullCard(x, "nest_p", "ChanA")
+    await passes(2)
+
+    expect(
+      mgr.size,
+      "exactly one entry for the whole card, promoted through y"
+    ).toBe(1)
+    expect(
+      x.querySelector(".boyo-veil"),
+      "x must not have been promoted directly off the stale queue slot"
+    ).toBeNull()
+    expect(y.querySelector(".boyo-veil")).not.toBeNull()
+  })
+
+  it("preserves a nested match's custody when it moves directly to a different already-adopted anchor", async () => {
+    // Bot-found (#1432 review, round 7, P2). Round 4's fix only recognizes
+    // a reparented node that became its *own* independent anchor (its own
+    // boyoVid). A node can just as easily move directly into a *different*
+    // anchor's subtree while remaining mere nested custody there too — it
+    // never gets a boyoVid of its own, only the new owner's data-boyo. The
+    // mutation observer processes additions before pruning removals, so
+    // the new owner's repair (stamping the moved node) reliably runs
+    // before the old owner's own next repair (which sees the node missing
+    // and tries to release its now-stale-looking custody).
+    const { outer: outerA, inner } = nestedCard("nest_p", "ChanA")
+    outerA.setAttribute("data-video-id", "nest_p")
+    const outerB = fullCard("nest_q", "ChanB")
+    outerB.setAttribute("data-video-id", "nest_q")
+    document.body.appendChild(outerB)
+    mgr.upsert(outerA)
+    mgr.upsert(outerB)
+    await passes(2)
+    expect(
+      inner.getAttribute("data-boyo"),
+      "precondition: inner is outerA's custody"
+    ).toBe("0")
+
+    // inner moves directly from outerA's subtree into outerB's — never its
+    // own anchor at any point.
+    outerA.removeChild(inner)
+    outerB.appendChild(inner)
+
+    // New owner repairs first (the additions side of a mutation batch)...
+    mgr.upsert(outerB)
+    // ...old owner's own stale-custody cleanup runs after (the pruning side).
+    mgr.upsert(outerA)
+    await passes(1)
+
+    expect(
+      inner.getAttribute("data-boyo"),
+      "outerB's live custody stamp must survive outerA's unrelated cleanup"
+    ).not.toBeNull()
+  })
 })
 
 describe("two cards sharing a video keep independent channel-backfill tracking (#1432 review)", () => {

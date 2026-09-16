@@ -314,35 +314,12 @@ export class VideoManager {
     // adoptions race for what is structurally one registry slot. See M7.
     const anchor = outermostCard(el)
     if (anchor !== el) {
-      // `el` may have been its own anchor until just now, in either of two
-      // shapes (bot-found, #1432 review, rounds 5-6, both P2) — YouTube can
-      // wrap a previously-independent renderer in a new outer match just as
-      // easily as it can add a fresh nested one:
-      //
-      //   - a completed entry, left alive with `el` still connected (so
-      //     prune() never reaps it) — two live entries and two veils for
-      //     one visual card, and the anchor's own custody stamping fighting
-      //     the stale entry's own repairs over `el`'s data-boyo every pass;
-      //   - a `_promote()`/`_backfill()` call still in flight *for* `el`,
-      //     which install nothing here (`_registry.get(el)` is empty until
-      //     the await resolves) but will still pass their own M6 staleness
-      //     guard afterwards — nothing about becoming nested changes what
-      //     `el` is claimed for — and install a second entry and veil
-      //     later, on a card this call already redirected away from.
-      //
-      // Retiring only the first shape (round 5 alone) still leaves the
-      // second live, so both are retired together here rather than adding
-      // a third narrow patch for the second: destroy any completed entry,
-      // and invalidate `el`'s claim regardless, so an in-flight call's own
-      // M6 guard (`_tokenFor(el) !== token`) bails and retries through
-      // upsert() — which by then sees `el` as nested and defers correctly.
-      const stale = this._registry.get(el)
-      if (stale) {
-        stale.destroy()
-        this._registry.delete(el)
-        this._dropChannelPending(el)
-      }
-      this._invalidateClaim(el)
+      // `el` may have been its own anchor, or on its way to becoming one,
+      // until just now — YouTube can wrap a previously-independent renderer
+      // in a new outer match just as easily as it can add a fresh nested
+      // one. See `_retireIndependentState()` for the three shapes this
+      // retires before deferring to the new anchor.
+      this._retireIndependentState(el)
       this.upsert(anchor)
       return
     }
@@ -814,6 +791,48 @@ export class VideoManager {
     const current = this._elClaim.get(el)
     if (!current) return
     this._elClaim.set(el, { videoId: current.videoId, token: ++this._tokenSeq })
+  }
+
+  /**
+   * Retire every trace of `el` having been — or being in the process of
+   * becoming — an independent anchor, before `upsert()` defers to the new
+   * outer anchor that now owns it (M7). Three related findings on this
+   * exact redirect (bot-found, #1432 review, rounds 5-7, all P2) are
+   * consolidated into one mechanism here rather than patched a fourth time
+   * piecemeal, each catching a different way `el`'s old standing could
+   * survive the redirect and produce a second live entry or veil for what
+   * is now one visual card:
+   *
+   *   - a completed registry entry, left alive with `el` still connected
+   *     (so prune() never reaps it) — round 5;
+   *   - a `_promote()`/`_backfill()` call still in flight *for* `el`, which
+   *     installs nothing here (`_registry.get(el)` is empty until the await
+   *     resolves) but will still pass its own M6 staleness guard
+   *     afterwards — nothing about becoming nested changes what `el` was
+   *     claimed for — unless that guard is made to fail by invalidating the
+   *     claim here — round 6;
+   *   - a queued `_unresolved` entry, which `retryUnresolved()` would
+   *     otherwise keep promoting directly, bypassing this redirect
+   *     entirely — round 7. Found by value, not by recomputing
+   *     `elementKey(el)`: that key is content-derived (an href, or a
+   *     parent/index fallback) and can no longer match what `el` was
+   *     originally queued under once it has moved in the DOM to become
+   *     nested — the same drift `_channelKey()` exists to avoid.
+   */
+  private _retireIndependentState(el: HTMLElement): void {
+    const stale = this._registry.get(el)
+    if (stale) {
+      stale.destroy()
+      this._registry.delete(el)
+      this._dropChannelPending(el)
+    }
+    this._invalidateClaim(el)
+    for (const [key, queued] of this._unresolved) {
+      if (queued === el) {
+        this._dequeueUnresolved(key)
+        break
+      }
+    }
   }
 
   /**

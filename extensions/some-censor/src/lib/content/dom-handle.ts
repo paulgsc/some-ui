@@ -46,10 +46,11 @@
  *        apply()/repair() clears a reparented element's stamp the moment the
  *        next pass notices it is gone, not only at eventual destroy(). That
  *        release is conditional, not unconditional (bot-found on this same
- *        fix, round 4, P2): a reparented node can be independently adopted —
- *        its own anchor, its own live `data-boyo` — before this handle next
- *        looks at it, and clearing unconditionally would erase a different,
- *        live entry's correct stamp. See `_releaseCustody()`.
+ *        fix, round 4, P2; generalized round 7, P2): a reparented node can
+ *        land under a different live anchor — its own, or someone else's
+ *        custody now — before this handle next looks at it, and clearing
+ *        unconditionally would erase a different, live entry's correct
+ *        stamp either way. See `_releaseCustody()`.
  *
  * Note: z-index is a utility on the veil (`z-2`), not a rule here, and the
  * renderer's local stacking context comes from styles/content.css — so the
@@ -60,7 +61,7 @@
 import { assertNever } from "@some-extension/common"
 
 import type { RenderModel, VeilContent } from "./fsm"
-import { SEL } from "./selectors"
+import { outermostCard, SEL } from "./selectors"
 import {
   hintClass,
   META,
@@ -184,22 +185,32 @@ export class DomHandle {
   }
 
   /**
-   * Clear a custody stamp this handle owns — unless `nested` has since
-   * become its *own* anchor.
+   * Clear a custody stamp this handle owns — unless `nested` now belongs to
+   * a *different* live anchor.
    *
    * Bot-found (#1432 review, round 4, P2): a reparented nested match can be
    * discovered and independently adopted — its own VideoEntry constructed,
    * its own `data-boyo`/`data-boyo-vid` written — before this handle's own
    * anchor next repairs or is destroyed. Clearing unconditionally would then
    * erase a *different*, live entry's own correct stamp out from under it,
-   * re-occluding a card that is actually mounted and tracked. `boyoVid` is
-   * written only by `VideoEntry`'s own constructor, exclusively for the
-   * element that is *its* anchor (never for mere nested custody) — its
-   * presence is therefore proof `nested` now belongs to someone else, and
-   * that owner, not this handle, is responsible for its lifecycle from here.
+   * re-occluding a card that is actually mounted and tracked.
+   *
+   * Checking `nested` itself for `boyoVid` is not enough (bot-found, round
+   * 7, P2): a reparented match can just as easily land *inside* someone
+   * else's already-adopted card rather than become its own anchor — still
+   * custody, just another handle's custody now. `nested` itself never
+   * carries `boyoVid` in that shape, so the round-4 check alone would still
+   * erase the new owner's stamp out from under it. `boyoVid` is written
+   * only by `VideoEntry`'s own constructor, exclusively for the element
+   * that is *its* anchor, so walking up via {@link outermostCard} to find
+   * the live anchor `nested` currently sits under — itself when it has
+   * become its own anchor, same as round 4 — and checking *that* element's
+   * `boyoVid` covers both shapes with the one call: its presence is proof
+   * `nested` now belongs to someone else, and that owner, not this handle,
+   * is responsible for its lifecycle from here.
    */
   private _releaseCustody(nested: HTMLElement): void {
-    if (nested.dataset["boyoVid"]) return
+    if (outermostCard(nested).dataset["boyoVid"]) return
     delete nested.dataset["boyo"]
   }
 
