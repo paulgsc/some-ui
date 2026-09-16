@@ -133,12 +133,31 @@ describe("WideRoundSurface", () => {
     expect(screen.getByText("Constraints")).toBeInTheDocument()
   })
 
-  it("gates the production probe behind a deliberate open action", () => {
+  it("offers no way to open the production probe before a commitment is recorded", () => {
     render(
       <WideRoundSurface
         roundId="round-1"
         artifacts={ARTIFACTS}
         commitment={null}
+        probeExercise={PROBE_EXERCISE}
+      />
+    )
+    // Absence, not a disabled control — the same reason a round-choices
+    // leak matters here: an uncommitted, still-open option set has no
+    // business sharing the screen with any other interactive surface.
+    expect(
+      screen.queryByRole("region", { name: "Production probe" })
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText("Open production probe")).not.toBeInTheDocument()
+    expect(loadWasm).not.toHaveBeenCalled()
+  })
+
+  it("gates the production probe behind a deliberate open action, once committed", () => {
+    render(
+      <WideRoundSurface
+        roundId="round-1"
+        artifacts={ARTIFACTS}
+        commitment={CHOICE_COMMITMENT}
         probeExercise={PROBE_EXERCISE}
       />
     )
@@ -156,7 +175,7 @@ describe("WideRoundSurface", () => {
       <WideRoundSurface
         roundId="round-1"
         artifacts={ARTIFACTS}
-        commitment={null}
+        commitment={CHOICE_COMMITMENT}
         probeExercise={PROBE_EXERCISE}
       />
     )
@@ -172,7 +191,7 @@ describe("WideRoundSurface", () => {
       <WideRoundSurface
         roundId="round-1"
         artifacts={ARTIFACTS}
-        commitment={null}
+        commitment={CHOICE_COMMITMENT}
         probeExercise={PROBE_EXERCISE}
       />
     )
@@ -183,7 +202,7 @@ describe("WideRoundSurface", () => {
       <WideRoundSurface
         roundId="round-2"
         artifacts={ARTIFACTS}
-        commitment={null}
+        commitment={CHOICE_COMMITMENT}
         probeExercise={PROBE_EXERCISE}
       />
     )

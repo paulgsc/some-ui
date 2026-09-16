@@ -36,12 +36,14 @@ type WideRoundSurfaceProps = {
    * one (both treat artifact `content` as opaque), so whichever caller owns
    * real round-cycle state is the one that watches `RoundChoices`'/
    * `CommitmentControl`'s own `onCommit` and hands the result down here.
-   * `null` before a commitment; the two-switcher layout only ever appears
-   * once this is non-null.
+   * `null` before a commitment gates two things, both absent rather than
+   * merely disabled: the second, simultaneous switcher, and the production
+   * probe's own "Open" affordance (see this component's own doc comment).
    */
   commitment: Commitment | null
   /**
-   * Fed to the production probe once a learner deliberately opens it. A
+   * Fed to the production probe once a learner deliberately opens it —
+   * which, per `commitment` above, is never before a commitment lands. A
    * fixed prop rather than something this component derives, the same
    * "caller resolves, this component only draws" split `Leetype` itself
    * draws around `TypingSession`.
@@ -78,7 +80,8 @@ type WideRoundSurfaceProps = {
  * artifact's own `content` holds, e.g. `SourcePanel`'s toggle) survives the
  * transition instead of resetting the instant a second pane appears.
  *
- * # The production probe is a deliberate, separate gate
+ * # The production probe is a deliberate, separate gate — and stays behind
+ * # the commitment gate too
  *
  * `TypingSession` (the "optional production probe," C2/#1214) is not
  * rendered until a learner presses "Open production probe" — mounting it
@@ -90,6 +93,16 @@ type WideRoundSurfaceProps = {
  * No `onSessionComplete` is wired anywhere from here: whatever the probe
  * produces is discarded, and closing it (or a round advancing, below)
  * unmounts `TypingSession`, which already frees the engine on unmount.
+ *
+ * The "Open production probe" affordance itself doesn't exist at all until
+ * `commitment` is non-null (review finding, #1439, chatgpt-codex-connector):
+ * offering it earlier would let a learner park the still-open, unanswered
+ * option set on screen next to an unrelated interactive surface, which is
+ * the same "several things visible before a commitment" shape Rem. 9.2
+ * rules out for the artifacts themselves — and #1216's own opening line
+ * ("extra room buys size, not simultaneity") draws no exception for the
+ * probe. Absence, not a disabled control — the same idiom `ArtifactSwitcher`
+ * itself uses for an artifact the round hasn't reached yet.
  *
  * # Closing the probe on round advance
  *
@@ -146,34 +159,36 @@ export const WideRoundSurface: FC<WideRoundSurfaceProps> = ({
         )}
       </div>
 
-      <div
-        role="region"
-        aria-label="Production probe"
-        className="min-w-0 rounded-lg border border-border/60 p-4"
-      >
-        {probeOpen ? (
-          <div className="flex flex-col gap-3">
+      {commitment !== null && (
+        <div
+          role="region"
+          aria-label="Production probe"
+          className="min-w-0 rounded-lg border border-border/60 p-4"
+        >
+          {probeOpen ? (
+            <div className="flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={() => setProbeOpen(false)}
+                className="self-end text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Close production probe
+              </button>
+              <div className="relative h-[480px] w-full overflow-hidden rounded-md">
+                <TypingSession exercise={probeExercise} />
+              </div>
+            </div>
+          ) : (
             <button
               type="button"
-              onClick={() => setProbeOpen(false)}
-              className="self-end text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+              onClick={() => setProbeOpen(true)}
+              className="text-sm font-medium text-foreground transition-colors hover:underline"
             >
-              Close production probe
+              Open production probe
             </button>
-            <div className="relative h-[480px] w-full overflow-hidden rounded-md">
-              <TypingSession exercise={probeExercise} />
-            </div>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setProbeOpen(true)}
-            className="text-sm font-medium text-foreground transition-colors hover:underline"
-          >
-            Open production probe
-          </button>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
