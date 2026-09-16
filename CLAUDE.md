@@ -116,6 +116,16 @@ tsc --noEmit`, `pnpm exec vitest run <path>`), not the repo root.
   added. Prepend the workspace root before invoking: `PATH="$(git rev-parse
   --show-toplevel)/node_modules/.bin:$PATH" bash extensions/some-filter/scripts/claude-e2e.sh
   <args>`.
+- **Driving a `storybook build` output with Playwright over a bare `file://` URL silently
+  renders nothing.** The built preview loads its bundle as ES modules, and Chromium enforces
+  CORS on `file://` script/stylesheet requests — every asset fails with "Access to script...
+  has been blocked by CORS policy... Cross origin requests are only supported for protocol
+  schemes: chrome, ... http, https", the page body stays empty, and a query like `page.locator(
+  '[aria-label="..."]').count()` just comes back `0` with no exception thrown — reads exactly
+  like the component isn't rendering what you think it renders, not like a transport problem.
+  Serve the build over a local HTTP server first (`python3 -m http.server <port>` from the
+  `storybook-static` dir, backgrounded) and point Playwright at `http://localhost:<port>/...`
+  instead of the `file://` path.
 
 ## Multi-session relay work
 
