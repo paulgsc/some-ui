@@ -314,7 +314,7 @@ export type OccludedCard = {
  *
  * The command is named *advance all*, is bound to a single key, and is
  * documented as acting on "every masked or meta entry" — but it iterates
- * `_byVideo`, which holds only entries that have already been promoted. Every
+ * `_registry`, which holds only entries that have already been promoted. Every
  * other population on the page is silently outside its reach. This is the
  * denominator that makes the claim checkable.
  *
@@ -366,7 +366,7 @@ export type BulkAdvanceCoverage = {
    * How many of `advanced + alreadyPast` were still awaiting channel backfill.
    *
    * Recorded because #1424 asserts that a `_channelPending` card is skipped.
-   * It is not: `_promoteProvisional()` puts the entry in `_byVideo` *and*
+   * It is not: `_promoteProvisional()` puts the entry in `_registry` *and*
    * queues the backfill, so the command does advance it. This field is what
    * makes that visible rather than something a future reader has to re-derive
    * from the source — a non-zero value here alongside a covered card is the

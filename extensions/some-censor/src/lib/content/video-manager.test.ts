@@ -14,11 +14,11 @@
  * is exercised by advancing the clock rather than by waiting.
  */
 
-import { asVideoId } from "@censor/types/ids"
 import { memoryPersistence } from "@some-extension/common/observability"
 import type { JsonValue } from "@some-extension/common/observability"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { attachEvents } from "./events"
 import {
   OCCLUSION_GRACE_MS,
   PROMOTION_STALL_MS,
@@ -26,6 +26,7 @@ import {
   stopObservability,
   type BoyoObservability,
 } from "./observability"
+import { occludedElements } from "./selectors"
 import { VideoManager } from "./video-manager"
 
 /**
@@ -371,12 +372,12 @@ describe("vendor churn is not a recycle (#1423)", () => {
   }
 
   /** Walk masked -> meta -> title -> revealed on a mounted card. */
-  async function reveal(vid: string): Promise<void> {
-    mgr.handleClick(asVideoId(vid))
+  async function reveal(el: HTMLElement): Promise<void> {
+    mgr.handleClick(el)
     await vi.advanceTimersByTimeAsync(400)
-    mgr.handleClick(asVideoId(vid))
+    mgr.handleClick(el)
     await vi.advanceTimersByTimeAsync(400)
-    mgr.handleDblClick(asVideoId(vid))
+    mgr.handleDblClick(el)
     await vi.advanceTimersByTimeAsync(50)
   }
 
@@ -389,7 +390,7 @@ describe("vendor churn is not a recycle (#1423)", () => {
     mgr.upsert(el)
     await passes(2)
 
-    await reveal("mix_first")
+    await reveal(el)
     expect(el.getAttribute("data-boyo"), "revealed").toBe("3")
 
     addPreviewAnchor(el, "mix_second")
@@ -409,7 +410,7 @@ describe("vendor churn is not a recycle (#1423)", () => {
     mgr.upsert(el)
     await passes(2)
 
-    mgr.handleClick(asVideoId("vid_meta"))
+    mgr.handleClick(el)
     await vi.advanceTimersByTimeAsync(400)
     expect(el.getAttribute("data-boyo"), "meta").toBe("1")
 
@@ -432,7 +433,7 @@ describe("vendor churn is not a recycle (#1423)", () => {
     mgr.upsert(el)
     await passes(2)
 
-    await reveal("vid_old")
+    await reveal(el)
     expect(el.getAttribute("data-boyo")).toBe("3")
 
     fillFullCard(el, "vid_new", "ChanB") // replaces the subtree outright
@@ -485,7 +486,7 @@ describe("vendor churn is not a recycle (#1423)", () => {
     mgr.upsert(el)
     await passes(2)
 
-    await reveal("vid_old_auth")
+    await reveal(el)
     expect(el.getAttribute("data-boyo"), "revealed").toBe("3")
 
     // The renderer is repointed at a different video, but the old anchor has
@@ -514,7 +515,7 @@ describe("vendor churn is not a recycle (#1423)", () => {
     mgr.upsert(el)
     await passes(2)
 
-    await reveal("lock_keep")
+    await reveal(el)
     expect(el.getAttribute("data-boyo"), "revealed").toBe("3")
 
     addPreviewAnchor(el, "lock_preview")
@@ -568,20 +569,21 @@ describe("vendor churn is not a recycle (#1423)", () => {
   })
 
   it("does not take the shortcut on an entry that belongs to a different renderer", async () => {
-    // Bot-found (#1427 review, round 3, P1). `_byVideo` is keyed by videoId,
-    // not by element, so "there is a live entry for this id" says nothing
-    // about which renderer owns it — two elements can carry the same video
-    // (a grid cell wrapping a lockup, #1426). Without an ownership check the
-    // shortcut repairs the *other* renderer and returns, leaving this one
-    // unmounted and under the occluder.
+    // Bot-found (#1427 review, round 3, P1), and the reason #1426 fixed it by
+    // re-keying the registry by element rather than by video: "there is a
+    // live entry for this id" said nothing about which renderer owns it, so
+    // the fall-through recycle path could tear down a *different* renderer's
+    // entry it never touched. `_registry.get(el)` can now only ever answer
+    // about `el` itself — there is no id-based ambiguity left to resolve.
     const owner = fullCard("vid_shared", "ChanA")
     document.body.appendChild(owner)
     mgr.upsert(owner)
     await passes(2)
     expect(mgr.size).toBe(1)
 
-    // A second renderer that also claims vid_shared — and whose own link now
-    // sorts after a newer one, so extraction answers with the newer id.
+    // A second, unrelated renderer that also claims vid_shared — and whose
+    // own link now sorts after a newer one, so extraction answers with the
+    // newer id.
     const other = document.createElement("yt-lockup-view-model")
     other.innerHTML = `<a href="/watch?v=vid_other"></a><a id="video-title" href="/watch?v=vid_shared"></a><a href="/@ChanA"></a>`
     other.dataset["boyoVid"] = "vid_shared"
@@ -595,13 +597,18 @@ describe("vendor churn is not a recycle (#1423)", () => {
       "the second renderer must be adopted, not stranded under the occluder"
     ).not.toBeNull()
 
-    // Deliberately NOT asserted here: that `owner` keeps its own custody. It
-    // does not — the fall-through recycle path tears an entry down by videoId
-    // without asking which element owns it, so the id lookup finds owner's
-    // entry and destroys it. That is pre-existing, id-keyed behaviour this PR
-    // does not introduce or fix; it is the whole subject of #1426. Asserting
-    // it here would fail for a reason this PR is not responsible for, and
-    // would quietly widen the change to a registry re-key.
+    // Now positively asserted (#1426): owner is a completely different
+    // element from other, so adopting other must never reach into owner's
+    // own slot — a videoId-keyed lookup could not tell the two apart, an
+    // element-keyed one structurally cannot confuse them.
+    expect(
+      owner.getAttribute("data-boyo"),
+      "owner must keep its own custody — it was never touched by other's upsert"
+    ).toBe("0")
+    expect(
+      mgr.size,
+      "two distinct renderers, two distinct entries, not a collision"
+    ).toBe(2)
   })
 
   it("does not flap when the same element churns repeatedly", async () => {
@@ -610,7 +617,7 @@ describe("vendor churn is not a recycle (#1423)", () => {
     mgr.upsert(el)
     await passes(2)
 
-    await reveal("vid_stable")
+    await reveal(el)
 
     for (let i = 0; i < 10; i++) {
       addPreviewAnchor(el, `preview_${String(i)}`)
@@ -624,6 +631,192 @@ describe("vendor churn is not a recycle (#1423)", () => {
     await passes(2)
     expect(mgr.size, "one card, one entry, throughout").toBe(1)
     expect(el.dataset["boyoVid"]).toBe("vid_stable")
+  })
+})
+
+describe("a nested card is one entry, not two (#1426)", () => {
+  // YouTube nests a yt-lockup-view-model inside a ytd-rich-item-renderer on
+  // several shelves; both match SEL independently, so a flat scan() sees
+  // them as two elements even though they are structurally one card. The
+  // outer's own subtree already contains the inner's anchors, so extracting
+  // from the outer alone is sufficient — see extract/video-id.ts.
+  function nestedCard(
+    videoId: string,
+    channel: string
+  ): { outer: HTMLElement; inner: HTMLElement } {
+    const outer = document.createElement("ytd-rich-item-renderer")
+    const inner = document.createElement("yt-lockup-view-model")
+    inner.innerHTML = `<a id="video-title" href="/watch?v=${videoId}"></a><a href="/@${channel}"></a>`
+    outer.appendChild(inner)
+    document.body.appendChild(outer)
+    return { outer, inner }
+  }
+
+  it("produces exactly one VideoEntry, outer adopted first", async () => {
+    const { outer, inner } = nestedCard("nest_a", "ChanA")
+    mgr.upsert(outer)
+    await passes(2)
+    mgr.upsert(inner)
+    await passes(2)
+
+    expect(mgr.size, "one card, one entry").toBe(1)
+  })
+
+  it("produces exactly one VideoEntry, inner adopted first", async () => {
+    const { outer, inner } = nestedCard("nest_b", "ChanA")
+    mgr.upsert(inner)
+    await passes(2)
+    mgr.upsert(outer)
+    await passes(2)
+
+    expect(mgr.size, "one card, one entry, regardless of order").toBe(1)
+  })
+
+  it("produces exactly one VideoEntry when both are upserted before either settles", async () => {
+    const { outer, inner } = nestedCard("nest_c", "ChanA")
+    // Both calls land before either's whitelist round trip resolves — the
+    // exact race the issue's "concurrent" reproduction describes. In the old
+    // videoId-keyed registry this produced two veils and an orphaned handle;
+    // here inner's upsert redirects to outer before ever reaching _promote(),
+    // so there is only ever one in-flight promotion to race against.
+    mgr.upsert(outer)
+    mgr.upsert(inner)
+    await passes(2)
+
+    expect(mgr.size, "no collision, no orphaned second entry").toBe(1)
+    expect(outer.getAttribute("data-boyo")).not.toBeNull()
+    expect(inner.getAttribute("data-boyo")).not.toBeNull()
+  })
+
+  it("stamps data-boyo on every element the static occluder is hiding, not just the outer", async () => {
+    const { outer, inner } = nestedCard("nest_d", "ChanA")
+
+    expect(
+      occludedElements(document.body).length,
+      "precondition: the static occluder is hiding both, unadopted"
+    ).toBe(2)
+
+    mgr.upsert(outer)
+    await passes(2)
+
+    // Asserted against the occluder's own condition — element.matches() the
+    // PREMASK_SELECTORS entry via occludedElements() — per #1426's
+    // acceptance criteria, not by reading data-boyo off the source.
+    expect(
+      occludedElements(document.body),
+      "the static occluder must be released from every matching element in the card"
+    ).toHaveLength(0)
+    expect(outer.getAttribute("data-boyo")).not.toBeNull()
+    expect(inner.getAttribute("data-boyo")).not.toBeNull()
+  })
+
+  it("mounts exactly one veil, on the outer element", async () => {
+    const { outer, inner } = nestedCard("nest_e", "ChanA")
+    mgr.upsert(outer)
+    await passes(2)
+
+    expect(outer.querySelector(".boyo-veil")).not.toBeNull()
+    expect(inner.querySelector(".boyo-veil")).toBeNull()
+  })
+
+  it("a click drives the shared entry, and both elements' data-boyo stay in sync", async () => {
+    const { outer, inner } = nestedCard("nest_f", "ChanA")
+    mgr.upsert(outer)
+    await passes(2)
+    expect(outer.getAttribute("data-boyo")).toBe("0")
+    expect(inner.getAttribute("data-boyo")).toBe("0")
+
+    mgr.handleClick(outer)
+    await vi.advanceTimersByTimeAsync(400)
+
+    expect(outer.getAttribute("data-boyo"), "outer advanced to meta").toBe("1")
+    expect(
+      inner.getAttribute("data-boyo"),
+      "custody stamping keeps the nested element's value in sync"
+    ).toBe("1")
+  })
+
+  it("a real click on the outer's veil resolves through events.ts to the shared entry", async () => {
+    // End-to-end through the actual DOM-delegation layer, not the manager
+    // shortcut the other tests in this file use — the acceptance criterion
+    // this proves is "a click drives that card's own entry", and events.ts's
+    // own closest(SEL) walk is part of what answers that.
+    attachEvents(mgr)
+    const { outer, inner } = nestedCard("nest_g", "ChanA")
+    mgr.upsert(outer)
+    await passes(2)
+
+    const veil = outer.querySelector(".boyo-veil")
+    if (!veil) throw new Error("precondition: veil must exist")
+    veil.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true })
+    )
+    await vi.advanceTimersByTimeAsync(400)
+
+    expect(
+      outer.getAttribute("data-boyo"),
+      "resolved to the card's own entry"
+    ).toBe("1")
+    expect(inner.getAttribute("data-boyo")).toBe("1")
+  })
+
+  it("destroying the card clears data-boyo from the nested element too", async () => {
+    const { outer, inner } = nestedCard("nest_h", "ChanA")
+    mgr.upsert(outer)
+    await passes(2)
+    expect(inner.getAttribute("data-boyo")).not.toBeNull()
+
+    mgr.reset()
+
+    expect(outer.hasAttribute("data-boyo")).toBe(false)
+    expect(
+      inner.hasAttribute("data-boyo"),
+      "nested custody is torn down too"
+    ).toBe(false)
+  })
+
+  it("fires mount.resolved at most once per adoption, however the elements are upserted", async () => {
+    const obs = startObservability(memoryPersistence())
+    try {
+      const { outer, inner } = nestedCard("nest_i", "ChanA")
+      mgr.upsert(outer)
+      mgr.upsert(inner)
+      await passes(2)
+      // Idempotent re-upserts, both orders — M2 holds per card.
+      mgr.upsert(inner)
+      mgr.upsert(outer)
+      await passes(2)
+
+      const resolved = obs.recorder
+        .events()
+        .filter((e) => e.kind === "mount.resolved" && e.subject === "nest_i")
+      expect(resolved).toHaveLength(1)
+    } finally {
+      stopObservability()
+    }
+  })
+
+  it("adopting an unrelated sibling never touches the nested card's own entry", async () => {
+    // The other half of M7: a nested pair collapses into one entry, but two
+    // elements that are NOT nested must stay fully independent even if they
+    // are for the same video (the coincidental-duplicate case, not #1426's
+    // own reproduction, but the same registry that must not confuse them).
+    const { outer, inner } = nestedCard("nest_j", "ChanA")
+    mgr.upsert(outer)
+    await passes(2)
+    expect(mgr.size).toBe(1)
+
+    const sibling = fullCard("nest_j", "ChanA")
+    document.body.appendChild(sibling)
+    mgr.upsert(sibling)
+    await passes(2)
+
+    expect(
+      outer.getAttribute("data-boyo"),
+      "the nested card is untouched"
+    ).toBe("0")
+    expect(inner.getAttribute("data-boyo")).toBe("0")
+    expect(mgr.size, "two distinct cards for the same video").toBe(2)
   })
 })
 

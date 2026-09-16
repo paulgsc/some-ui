@@ -40,6 +40,24 @@
  *        element's in-flight await (never seen long enough to mount) is
  *        silently dropped; only the element's *current* claim is guaranteed
  *        to eventually mount, via the stale-bail retry in `_promote()`.
+ *
+ *   M7 — Registry keyed by element, not by video (#1426).  `_registry` is
+ *        `Map<HTMLElement, VideoEntry>`.  YouTube nests a
+ *        `yt-lockup-view-model` inside a `ytd-rich-item-renderer` on several
+ *        shelves; both match `SEL`, so one visual card can produce two
+ *        `upsert()` calls for two different elements carrying the same
+ *        videoId.  A videoId-keyed registry cannot represent that — the
+ *        second element either collides with the first (destroying its
+ *        entry) or silently strands.  `upsert()` resolves every element to
+ *        `outermostCard(el)` before doing anything else, so a nested match
+ *        redirects to its anchor instead of racing it for a slot (M2 holds
+ *        per *card*, not merely per element).  Every internal "does this
+ *        already have an entry" check is `_registry.get(el)` — looked up by
+ *        the element itself, never by videoId — so a lookup can no longer
+ *        return a *different* renderer's entry the way `_byVideo.get(id)`
+ *        could.  Custody of any nested match (stamping `data-boyo` so the
+ *        static occluder releases it) is DomHandle's concern (D6), derived
+ *        from the live DOM rather than tracked here.
  */
 
 import { ext } from "@censor/platform/content"
@@ -63,7 +81,7 @@ import type {
   QueuedCard,
 } from "./observability"
 import { makeProvisionalRecord, makeRecord } from "./record"
-import { isVideoCard, occludedElements, SEL } from "./selectors"
+import { isVideoCard, occludedElements, outermostCard, SEL } from "./selectors"
 import { VideoEntry } from "./video-entry"
 
 type Phase = "idle" | "running"
@@ -90,10 +108,11 @@ type Phase = "idle" | "running"
 export const RESOLVE_BUDGET_MS = 10_000
 
 export class VideoManager {
-  // Primary lookup: videoId → entry
-  private readonly _byVideo: Map<VideoId, VideoEntry> = new Map()
-  // Element → videoId: detects scroll-virtualizer element reuse
-  private readonly _elToVid: WeakMap<HTMLElement, VideoId> = new WeakMap()
+  // Primary lookup: card anchor element → entry (M7/#1426). One slot per
+  // card, never per video — see outermostCard() at every upsert() entry
+  // point for how a nested match is kept from racing its own anchor for
+  // this slot.
+  private readonly _registry: Map<HTMLElement, VideoEntry> = new Map()
   // Failed-resolution queue
   private readonly _unresolved: Map<string, HTMLElement> = new Map()
   // When each queued key was first seen, keyed alongside _unresolved /
@@ -145,7 +164,7 @@ export class VideoManager {
   // Per-element staleness guard (#980, M6). Which videoId an element is
   // currently claimed for, and a token bumped whenever that claim changes —
   // set synchronously the instant _promote()/_promoteProvisional() start
-  // handling el, independent of _elToVid, which is only stamped *after* a
+  // handling el, independent of `_registry`, which is only written *after* a
   // promotion succeeds and so cannot see a recycle that happens during the
   // very first in-flight promotion for that element. _promote()/_backfill()
   // capture the token before their whitelist-check await and compare after,
@@ -182,7 +201,7 @@ export class VideoManager {
         return mgr._phase
       },
       get size(): number {
-        return mgr._byVideo.size
+        return mgr._registry.size
       },
       get unresolvedSize(): number {
         return mgr._unresolved.size
@@ -192,9 +211,9 @@ export class VideoManager {
       },
       entryInfos(): ReadonlyArray<EntryDebugInfo> {
         const out: Array<EntryDebugInfo> = []
-        for (const [videoId, entry] of mgr._byVideo) {
+        for (const entry of mgr._registry.values()) {
           out.push({
-            videoId,
+            videoId: entry.record.videoId,
             channelId: entry.record.channelId,
             viewKind: entry.viewKind,
             isConnected: entry.isConnected,
@@ -239,8 +258,8 @@ export class VideoManager {
    */
   reset(): void {
     observability()?.sessionReset(this._session)
-    for (const entry of this._byVideo.values()) entry.destroy()
-    this._byVideo.clear()
+    for (const entry of this._registry.values()) entry.destroy()
+    this._registry.clear()
     this._unresolved.clear()
     this._channelPending.clear()
     this._firstSeen.clear()
@@ -264,7 +283,7 @@ export class VideoManager {
   }
 
   get size(): number {
-    return this._byVideo.size
+    return this._registry.size
   }
 
   get unresolvedSize(): number {
@@ -275,6 +294,16 @@ export class VideoManager {
 
   upsert(el: HTMLElement): void {
     if (this._phase !== "running") return
+
+    // A nested match (a yt-lockup-view-model inside a ytd-rich-item-renderer,
+    // #1426) is custody its anchor owns, not a second card — redirect before
+    // extracting or claiming anything for `el` itself, or two independent
+    // adoptions race for what is structurally one registry slot. See M7.
+    const anchor = outermostCard(el)
+    if (anchor !== el) {
+      this.upsert(anchor)
+      return
+    }
 
     // A `yt-lockup-view-model` matched by SEL may currently be a channel, a
     // playlist, or a shell YouTube has not filled in yet. Extraction would scan
@@ -306,27 +335,30 @@ export class VideoManager {
       let recycled = false
       if (rawPreviousId && rawPreviousId !== currentId) {
         const rawAsPrevId = asVideoId(rawPreviousId)
-        // Three conditions, none of them optional, and each one is a P1 this
-        // PR's review found by removing it (#1427, rounds 1-3):
+        // Two conditions, both of them P1s this PR's review found by removing
+        // (#1427, rounds 1-3), now checked by looking `el` up in `_registry`
+        // directly rather than by videoId:
         //
         //   - the entry is live in THIS session — otherwise the shortcut
         //     "preserves" something reset() already destroyed and returns
         //     without mounting (round 2);
-        //   - the entry belongs to THIS element — `_byVideo` is keyed by
-        //     video, so an id lookup alone can hand back another renderer's
-        //     entry and repair that instead (round 3, #1426);
         //   - and the element still advertises the artifact, with an
         //     authoritative `data-video-id` outranking any stale descendant
         //     link (round 1).
         //
+        // Round 3's finding — an id lookup handing back a *different*
+        // renderer's entry — cannot recur: `_registry` is keyed by element
+        // (M7/#1426), so `_registry.get(el)` can only ever be `el`'s own
+        // entry or nothing.
+        //
         // This is the only place the discrimination happens. `_promote()`
-        // deliberately does not repeat it: its `_elToVid` claim survives
-        // resets and names a video rather than an element, which is evidence
-        // too weak to skip a mount on.
-        const prevEntry = this._byVideo.get(rawAsPrevId)
+        // deliberately does not repeat it: it tears down whatever is
+        // currently in `el`'s own slot unconditionally, which is correct
+        // there for the same reason it is *not* enough here — this branch
+        // exists precisely to sometimes keep that entry.
+        const prevEntry = this._registry.get(el)
         if (
           prevEntry?.record.session === this._session &&
-          prevEntry.owns(el) &&
           representsVideo(el, rawAsPrevId)
         ) {
           // Vendor churn, not a recycle. The artifact we mounted is still here;
@@ -348,10 +380,9 @@ export class VideoManager {
           return
         }
         recycled = true
-        const oldEntry = this._byVideo.get(rawAsPrevId)
-        if (oldEntry) {
-          oldEntry.destroy()
-          this._byVideo.delete(rawAsPrevId)
+        if (prevEntry) {
+          prevEntry.destroy()
+          this._registry.delete(el)
           this._dropChannelPending(rawAsPrevId)
         }
       }
@@ -359,9 +390,9 @@ export class VideoManager {
       if (extracted.kind === "full") {
         // Full resolution: if a provisional entry exists, backfill it rather
         // than tearing it down (avoids a mask flicker on the fast path).
-        const pending = this._byVideo.get(currentId)
+        const pending = this._registry.get(el)
         if (pending && !pending.hasChannel) {
-          this._dropChannelPending(currentId)
+          this._dropChannelPending(asVideoId(pending.record.videoId))
           void this._backfill(el, pending, extracted.channelId)
         } else if (recycled) {
           // A recycle has just stripped data-boyo off an element that is still
@@ -373,7 +404,7 @@ export class VideoManager {
           // may leak before the user progresses, and a whitelisted channel
           // briefly showing masked is harmless.
           this._promoteProvisional(el, currentId)
-          const fresh = this._byVideo.get(currentId)
+          const fresh = this._registry.get(el)
           if (fresh) {
             this._dropChannelPending(currentId)
             void this._backfill(el, fresh, extracted.channelId)
@@ -534,7 +565,7 @@ export class VideoManager {
       const extracted = tryExtract(el)
       if (extracted.kind === "full") {
         this._dropChannelPending(videoId)
-        const entry = this._byVideo.get(videoId)
+        const entry = this._registry.get(el)
         if (entry) void this._backfill(el, entry, extracted.channelId)
       } else if (this._budgetSpent(channelKey(videoId))) {
         // No channel is coming (a shorts lockup exposes none). The entry stays
@@ -580,26 +611,37 @@ export class VideoManager {
    *   - bulk innerHTML replacements (single removedNodes entry in observer)
    */
   prune(): void {
-    for (const [videoId, entry] of this._byVideo) {
+    for (const [anchorEl, entry] of this._registry) {
       if (!entry.isConnected) {
         entry.destroy()
-        this._byVideo.delete(videoId)
-        this._dropChannelPending(videoId)
+        this._registry.delete(anchorEl)
+        this._dropChannelPending(asVideoId(entry.record.videoId))
       }
     }
     publish()
   }
 
-  handleClick(videoId: VideoId): void {
-    this._byVideo.get(videoId)?.gate.rawClick()
+  /**
+   * Dispatch to the entry that owns `el`.
+   *
+   * `el` is the renderer element `events.ts` already resolved via
+   * `closest(SEL)` from the clicked veil — looked up directly in `_registry`
+   * rather than routed through a videoId, so a click can never be dispatched
+   * to a *different* card's entry than the one the user actually clicked
+   * (M7/#1426): two distinct cards can legitimately show the same video (the
+   * same upload recommended in two shelves), and a videoId-keyed dispatch
+   * would resolve both clicks to whichever entry last claimed that id.
+   */
+  handleClick(el: HTMLElement): void {
+    this._registry.get(el)?.gate.rawClick()
   }
 
-  handleDblClick(videoId: VideoId): void {
-    this._byVideo.get(videoId)?.gate.rawDblClick()
+  handleDblClick(el: HTMLElement): void {
+    this._registry.get(el)?.gate.rawDblClick()
   }
 
   async whitelistChannel(videoId: VideoId): Promise<void> {
-    const entry = this._byVideo.get(videoId)
+    const entry = this._findByVideo(videoId)
     if (!entry) return
 
     const channelName = entry.record.channelId // fallback is the id itself
@@ -623,6 +665,24 @@ export class VideoManager {
   }
 
   /**
+   * The first entry currently mounted for `videoId`, if any.
+   *
+   * A linear scan rather than a second index: whitelisting is user-initiated
+   * and rare, `_registry` is bounded by cards on one page, and channelId is
+   * invariant across any two entries that share a videoId — so which of them
+   * (if more than one legitimately does) answers this lookup cannot matter
+   * for what whitelistChannel() does with the result. Keeping a second,
+   * eagerly-synced videoId index only for this would reintroduce exactly the
+   * "two disjoint keys for one fact" shape #1426 exists to remove.
+   */
+  private _findByVideo(videoId: VideoId): VideoEntry | undefined {
+    for (const entry of this._registry.values()) {
+      if (entry.record.videoId === videoId) return entry
+    }
+    return undefined
+  }
+
+  /**
    * Advance every masked or meta entry to TitleState in one operation.
    *
    * Called by the key-binding adapter (KeyBindingAdapater) on the configured
@@ -630,7 +690,7 @@ export class VideoManager {
    *
    * ## What "all" means, and why it is now reported (#1424)
    *
-   * It iterates `_byVideo`, which holds promoted entries only. A card still in
+   * It iterates `_registry`, which holds promoted entries only. A card still in
    * `_unresolved`, or one orphaned under the static occluder with no registry
    * slot at all (#1421), is outside this loop and always was — which is the
    * live report that the hotkey "misses some k% of cards", stable across
@@ -651,14 +711,17 @@ export class VideoManager {
     let alreadyPast = 0
     let detached = 0
     let channelPending = 0
-    for (const [videoId, entry] of this._byVideo) {
+    for (const entry of this._registry.values()) {
       const outcome = entry.advanceToTitle()
       if (outcome === "advanced") advanced += 1
       else if (outcome === "already-past") alreadyPast += 1
       else detached += 1
       // Counted for the entries the command actually reached, which is the
       // claim being evidenced — see BulkAdvanceCoverage.channelPending.
-      if (outcome !== "detached" && this._channelPending.has(videoId)) {
+      if (
+        outcome !== "detached" &&
+        this._channelPending.has(asVideoId(entry.record.videoId))
+      ) {
         channelPending += 1
       }
     }
@@ -714,42 +777,25 @@ export class VideoManager {
     let stale = false
     let sessionEnded = false
     try {
-      // Scroll-virtualizer reuse guard (second line of defence after upsert).
-      const prevVid = this._elToVid.get(el)
       const session = this._session
-      if (prevVid !== undefined && prevVid !== videoId) {
-        // Deliberately NOT a churn/recycle decision — this destroys and
-        // continues to mount, as it did before #1423.
-        //
-        // An earlier revision of this PR discriminated here too, and it
-        // produced two separate P1s in consecutive review rounds (#1427,
-        // rounds 2 and 3). Both had the same root cause: `_elToVid` is a
-        // WeakMap `reset()` cannot clear and `_byVideo` is keyed by video
-        // rather than by element, so `prevVid` here is not evidence about
-        // *this* element at all — it can outlive a session, and the entry it
-        // names can belong to a different renderer entirely. A shortcut that
-        // returns without mounting on evidence that weak strands the element
-        // under the static occluder, which is the failure this PR exists to
-        // remove.
-        //
-        // The discrimination lives in upsert() alone, keyed on
-        // `data-boyo-vid` — a stamp on the element itself, so it cannot
-        // implicate another renderer. This path is only ever reached after
-        // upsert() has already decided, or from retryUnresolved() for an
-        // element that was never mounted, so nothing is lost by it being the
-        // plain teardown it always was.
-        this._byVideo.get(prevVid)?.destroy()
-        this._byVideo.delete(prevVid)
-      }
 
-      // Same (el, videoId) in current session → veil repair only.
-      const existing = this._byVideo.get(videoId)
-      if (existing?.record.session === this._session) {
+      // Whatever currently occupies el's own slot, whichever video it was
+      // for — looked up by el itself (M7/#1426), so this can never reach
+      // into a different renderer's entry the way a videoId lookup could.
+      // Same (el, videoId) in the current session → veil repair only (M2).
+      // Anything else here (a different video, a stale session, or nothing)
+      // is replaced below; #1427's rounds 2-3 both turned on a *videoId*
+      // lookup handing back evidence that wasn't about this element, which
+      // an element-keyed lookup cannot do.
+      const existing = this._registry.get(el)
+      if (
+        existing?.record.session === this._session &&
+        existing.record.videoId === videoId
+      ) {
         existing.repair()
         return
       }
 
-      // Stale entry (different session) or brand-new entry → replace.
       existing?.destroy()
 
       const isWhitelisted = await ext.runtime
@@ -786,9 +832,8 @@ export class VideoManager {
         { kind: "full", videoId, channelId },
         this._session
       )
-      this._elToVid.set(el, videoId)
       const entry = new VideoEntry(record, el, isWhitelisted)
-      this._byVideo.set(videoId, entry)
+      this._registry.set(el, entry)
       entry.mount()
       observability()?.mountResolved(videoId)
       publish()
@@ -825,28 +870,28 @@ export class VideoManager {
     // now-superseded videoId — sees the mismatch once it resumes.
     this._claim(el, videoId)
 
-    const existing = this._byVideo.get(videoId)
-    if (existing?.record.session === this._session) {
+    // Whatever currently occupies el's own slot — looked up by el itself
+    // (M7/#1426), for the same reason _promote() is.
+    const existing = this._registry.get(el)
+    if (
+      existing?.record.session === this._session &&
+      existing.record.videoId === videoId
+    ) {
       existing.repair()
       if (!existing.hasChannel) this._trackChannelPending(videoId, el)
       return
     }
-    existing?.destroy()
-
-    const prevVid = this._elToVid.get(el)
-    if (prevVid !== undefined && prevVid !== videoId) {
-      this._byVideo.get(prevVid)?.destroy()
-      this._byVideo.delete(prevVid)
-      this._dropChannelPending(prevVid)
+    if (existing) {
+      this._dropChannelPending(asVideoId(existing.record.videoId))
+      existing.destroy()
     }
 
     const record = makeProvisionalRecord(
       { kind: "video-only", videoId, channelId: null },
       this._session
     )
-    this._elToVid.set(el, videoId)
     const entry = new VideoEntry(record, el, /* isWhitelisted */ false)
-    this._byVideo.set(videoId, entry)
+    this._registry.set(el, entry)
     this._trackChannelPending(videoId, el)
     entry.mount()
     observability()?.mountProvisional(videoId)
@@ -884,7 +929,7 @@ export class VideoManager {
   }
 
   private _whitelistChannelLocally(channelId: string): void {
-    for (const entry of this._byVideo.values()) {
+    for (const entry of this._registry.values()) {
       if (entry.record.channelId === channelId) {
         entry.dispatchWhitelist()
       }

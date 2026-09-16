@@ -19,6 +19,7 @@ import { describe, expect, it } from "vitest"
 import {
   CARD_SELECTORS,
   isVideoCard,
+  outermostCard,
   PREMASK_SELECTORS,
   SEL,
   VIDEO_SELECTORS,
@@ -213,5 +214,57 @@ describe("the catalogue itself", () => {
     const channel = document.createElement("yt-lockup-view-model")
     expect(channel.matches(SEL)).toBe(true)
     expect(isVideoCard(channel)).toBe(false)
+  })
+})
+
+describe("outermostCard (#1426)", () => {
+  it("returns the element itself when nothing above it also matches SEL", () => {
+    const el = document.createElement("ytd-rich-item-renderer")
+    document.body.appendChild(el)
+    expect(outermostCard(el)).toBe(el)
+  })
+
+  it("returns the outer element for a nested SEL match", () => {
+    // The exact shape #1426 is about: a yt-lockup-view-model nested inside a
+    // ytd-rich-item-renderer grid cell. Both match SEL independently.
+    const outer = document.createElement("ytd-rich-item-renderer")
+    const inner = document.createElement("yt-lockup-view-model")
+    outer.appendChild(inner)
+    document.body.appendChild(outer)
+
+    expect(outermostCard(inner)).toBe(outer)
+    expect(outermostCard(outer), "the outer is already its own anchor").toBe(
+      outer
+    )
+  })
+
+  it("walks past more than one nested level to the true outermost match", () => {
+    const outer = document.createElement("ytd-rich-item-renderer")
+    const middle = document.createElement("yt-lockup-view-model")
+    const inner = document.createElement("yt-lockup-view-model")
+    middle.appendChild(inner)
+    outer.appendChild(middle)
+    document.body.appendChild(outer)
+
+    expect(outermostCard(inner)).toBe(outer)
+  })
+
+  it("finds the outer match through an intervening wrapper that does not itself match SEL", () => {
+    // YouTube's own markup often has a plain layout div between the grid
+    // cell and the lockup it wraps — the ancestor walk must still find the
+    // renderer through it.
+    const grandparent = document.createElement("ytd-rich-item-renderer")
+    const wrapper = document.createElement("div")
+    const el = document.createElement("yt-lockup-view-model")
+    wrapper.appendChild(el)
+    grandparent.appendChild(wrapper)
+    document.body.appendChild(grandparent)
+
+    expect(outermostCard(el)).toBe(grandparent)
+  })
+
+  it("is safe on a detached element with no parent at all", () => {
+    const el = document.createElement("yt-lockup-view-model")
+    expect(outermostCard(el)).toBe(el)
   })
 })

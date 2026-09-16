@@ -26,6 +26,17 @@
  *        be generated and so would silently do nothing.  This module decides
  *        *what* nodes exist, never what they look like.
  *
+ *   D6 — Nested custody (#1426).  `el` is always the *outermost* element of a
+ *        card (VideoManager never constructs a DomHandle for a nested match —
+ *        see `outermostCard()`), but YouTube sometimes nests a second element
+ *        matching `SEL` inside it (a `yt-lockup-view-model` inside a
+ *        `ytd-rich-item-renderer`). That inner element has its own PREMASK_
+ *        SELECTORS rule and is occluded independently of the outer one, so
+ *        lifting the occluder on `el` alone leaves the inner match blurred
+ *        and inert. apply()/repair() re-derive `el`'s nested matches from the
+ *        live DOM and stamp `data-boyo` on all of them — no veil of their
+ *        own, since the outer veil already covers the whole tile.
+ *
  * Note: z-index is a utility on the veil (`z-2`), not a rule here, and the
  * renderer's local stacking context comes from styles/content.css — so the
  * veil's z-index is relative to the card, not the viewport, and cannot beat a
@@ -35,6 +46,7 @@
 import { assertNever } from "@some-extension/common"
 
 import type { RenderModel, VeilContent } from "./fsm"
+import { SEL } from "./selectors"
 import {
   hintClass,
   META,
@@ -64,6 +76,8 @@ export class DomHandle {
    * Idempotent: calling apply with the same model twice produces the same DOM.
    */
   apply(model: RenderModel): void {
+    this._stampCustody(model.dataBoyo)
+
     if (model.removeVeil) {
       this._animateRemoveVeil()
       this.el.dataset["boyo"] = model.dataBoyo
@@ -87,6 +101,7 @@ export class DomHandle {
    * projection `apply()` would have used.
    */
   repair(model: RenderModel): void {
+    this._stampCustody(model.dataBoyo)
     this.el.dataset["boyo"] = model.dataBoyo
 
     if (!this._veil?.isConnected) {
@@ -104,6 +119,9 @@ export class DomHandle {
     this._veil = null
     delete this.el.dataset["boyo"]
     delete this.el.dataset["boyoVid"]
+    for (const nested of this.el.querySelectorAll<HTMLElement>(SEL)) {
+      delete nested.dataset["boyo"]
+    }
   }
 
   get element(): HTMLElement {
@@ -111,6 +129,21 @@ export class DomHandle {
   }
 
   // ── Private ───────────────────────────────────────────────────────────────
+
+  /**
+   * Stamp `data-boyo` on every element nested inside `el` that also matches
+   * `SEL` (D6/#1426). Re-derived from the live DOM on every apply()/repair()
+   * rather than cached, so a lockup that hydrates after `el` was already
+   * mounted is picked up by the next repair pass instead of needing its own
+   * adoption. Bounded by `el`'s own subtree and a no-op query when there is
+   * nothing nested, which is the common case — no cost for a single-element
+   * card.
+   */
+  private _stampCustody(dataBoyo: string): void {
+    for (const nested of this.el.querySelectorAll<HTMLElement>(SEL)) {
+      nested.dataset["boyo"] = dataBoyo
+    }
+  }
 
   private _ensureVeil(): void {
     if (this._veil?.isConnected) return

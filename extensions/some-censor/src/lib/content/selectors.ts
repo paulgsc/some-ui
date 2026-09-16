@@ -146,6 +146,28 @@ export function occludedElements(root: ParentNode): Array<HTMLElement> {
 }
 
 /**
+ * The outermost element in `el`'s own ancestor chain (`el` included) that
+ * also matches {@link SEL}.
+ *
+ * YouTube nests a `yt-lockup-view-model` card inside a `ytd-rich-item-renderer`
+ * grid cell on several shelves; both match `SEL` independently, so a flat
+ * `document.querySelectorAll(SEL)` returns them as two unrelated-looking
+ * elements that are structurally one card (#1426). Anything that adopts a
+ * card must adopt the outermost match — the inner one is custody the outer
+ * owns, not a second card — or two independent adoptions race for what is
+ * really one registry slot.
+ */
+export function outermostCard(el: HTMLElement): HTMLElement {
+  let top = el
+  let ancestor = top.parentElement?.closest<HTMLElement>(SEL) ?? null
+  while (ancestor) {
+    top = ancestor
+    ancestor = top.parentElement?.closest<HTMLElement>(SEL) ?? null
+  }
+  return top
+}
+
+/**
  * Is this element a card BOYO should own?
  *
  * Applies the polymorphism guard that {@link SEL} deliberately omits. Called
