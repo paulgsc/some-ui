@@ -870,6 +870,50 @@ describe("a nested card is one entry, not two (#1426)", () => {
       "destroy() must clear custody it tracked, not just what it can still query"
     ).toBeNull()
   })
+
+  it("does not erase a reparented node's own live stamp once it has been independently adopted", async () => {
+    // Bot-found (#1432 review, round 4, P2) on the previous fix: a
+    // reparented node can be discovered and adopted as its own standalone
+    // card — its own live data-boyo-vid and data-boyo — before the old
+    // anchor's own entry next repairs. Clearing unconditionally there would
+    // erase that different, live entry's own stamp.
+    const { outer, inner } = nestedCard("nest_m", "ChanA")
+    outer.setAttribute("data-video-id", "nest_m")
+    mgr.upsert(outer)
+    await passes(2)
+    expect(
+      inner.getAttribute("data-boyo"),
+      "precondition: stamped as custody"
+    ).toBe("0")
+
+    // Reparented, then independently adopted as its own standalone card —
+    // a different video entirely — before outer's own entry is touched
+    // again.
+    outer.removeChild(inner)
+    inner.innerHTML = `<a id="video-title" href="/watch?v=nest_m2"></a><a href="/@ChanB"></a>`
+    document.body.appendChild(inner)
+    mgr.upsert(inner)
+    await passes(2)
+
+    expect(
+      inner.dataset["boyoVid"],
+      "precondition: inner now owns its own live entry"
+    ).toBe("nest_m2")
+    const ownStamp = inner.getAttribute("data-boyo")
+    expect(
+      ownStamp,
+      "precondition: inner has its own live stamp"
+    ).not.toBeNull()
+
+    // Outer's own entry repairs — this must not touch inner's own stamp.
+    mgr.upsert(outer)
+    await passes(1)
+
+    expect(
+      inner.getAttribute("data-boyo"),
+      "inner's own live stamp must survive outer's unrelated cleanup"
+    ).toBe(ownStamp)
+  })
 })
 
 describe("two cards sharing a video keep independent channel-backfill tracking (#1432 review)", () => {
