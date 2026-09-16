@@ -69,7 +69,19 @@ type ArtifactSwitcherProps = {
    * than remounting it.
    */
   roundId: string
-  /** Read only by assistive tech, on the visually-hidden position announcement. Defaults to a generic label since this component has no idea what round it is part of. */
+  /**
+   * Read only by assistive tech, on the visually-hidden position
+   * announcement — and, when explicitly supplied, folded into the Previous/
+   * Next buttons' own accessible names too (`"<ariaLabel>: previous
+   * artifact"`), not just left as this component's own generic "Previous
+   * artifact"/"Next artifact" (review finding, #1439, chatgpt-codex-
+   * connector: a caller mounting two instances side by side, as `WideRound
+   * Surface` does post-commitment, otherwise leaves screen-reader and
+   * voice-control users with two pairs of identically-named controls and no
+   * way to tell which switcher a navigation action targets). Left `undefined`
+   * — the common case, every caller before `WideRoundSurface` — the button
+   * labels stay exactly "Previous artifact"/"Next artifact", unchanged.
+   */
   ariaLabel?: string
   className?: string
 }
@@ -164,9 +176,15 @@ const SWIPE_THRESHOLD_PX = 40
 export const ArtifactSwitcher: FC<ArtifactSwitcherProps> = ({
   artifacts,
   roundId,
-  ariaLabel = "Round artifact",
+  ariaLabel,
   className,
 }) => {
+  const announceLabel = ariaLabel ?? "Round artifact"
+  const previousLabel = ariaLabel
+    ? `${ariaLabel}: previous artifact`
+    : "Previous artifact"
+  const nextLabel = ariaLabel ? `${ariaLabel}: next artifact` : "Next artifact"
+
   const [seenRoundId, setSeenRoundId] = useState(roundId)
   const [activeId, setActiveId] = useState<ArtifactId | null>(
     artifacts[0]?.id ?? null
@@ -240,7 +258,7 @@ export const ArtifactSwitcher: FC<ArtifactSwitcherProps> = ({
       <div className="flex items-center justify-between gap-2">
         <button
           type="button"
-          aria-label="Previous artifact"
+          aria-label={previousLabel}
           disabled={index === 0}
           onClick={() => goTo(index - 1)}
           className="flex size-8 shrink-0 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-30 enabled:hover:bg-card/70 enabled:hover:text-foreground"
@@ -269,7 +287,7 @@ export const ArtifactSwitcher: FC<ArtifactSwitcherProps> = ({
 
         <button
           type="button"
-          aria-label="Next artifact"
+          aria-label={nextLabel}
           disabled={index === artifacts.length - 1}
           onClick={() => goTo(index + 1)}
           className="flex size-8 shrink-0 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-30 enabled:hover:bg-card/70 enabled:hover:text-foreground"
@@ -282,7 +300,7 @@ export const ArtifactSwitcher: FC<ArtifactSwitcherProps> = ({
           screen reader — `aria-live="polite"` so a press or a swipe is
           announced without stealing focus. */}
       <p aria-live="polite" className="sr-only">
-        {ariaLabel}: {current.label}, {index + 1} of {artifacts.length}
+        {announceLabel}: {current.label}, {index + 1} of {artifacts.length}
       </p>
 
       <div
