@@ -1,3 +1,5 @@
+import type { FC } from "react"
+import { useState } from "react"
 import { ArtifactSwitcher } from "@leetype/components/round/artifact-switcher"
 import type { SwitchableArtifact } from "@leetype/components/round/artifact-switcher"
 import { BudgetDisplay } from "@leetype/components/round/budget-display"
@@ -12,6 +14,7 @@ import type { PropositionId } from "@leetype/lib/leetype/proposition-register/ge
 import type { PropositionOption } from "@leetype/lib/leetype/round-probe"
 import { ROUND_PROBE_PROMPT } from "@leetype/lib/leetype/round-probe"
 import type { Algorithm } from "@leetype/types/algorithm"
+import type { Commitment } from "@leetype/types/commitment"
 import type {
   Budget,
   ConstraintDiff as ConstraintDiffValue,
@@ -66,7 +69,12 @@ const OPTIONS: ReadonlyArray<PropositionOption> = [
   { id: "CW-P6", text: "Ordering substitutes a logarithm for a scan" },
 ]
 const ANSWER_ID: PropositionId = "CW-P6"
+const ANSWER_TEXT = OPTIONS.find((option) => option.id === ANSWER_ID)!.text
 
+// Static — used only by `Narrow`, the same positional demonstration
+// `ArtifactSwitcher`'s own `ComposedFromRealArtifacts` story already makes,
+// with no commitment to observe. `InteractiveRound` below builds its own
+// array instead, because it has to wire a real `onCommit`.
 const ARTIFACTS: ReadonlyArray<SwitchableArtifact> = [
   {
     id: "algorithm",
@@ -113,6 +121,66 @@ const REVEAL_ARTIFACTS: ReadonlyArray<SwitchableArtifact> = [
 const PROBE_EXERCISE = nextExercise({ preferId: FIXTURE_EXERCISE_ID })
 
 /**
+ * `PreCommitment`/`PostCommitment` share this rather than each building a
+ * fixed snapshot: `commitment` has to be real React state, wired to the
+ * *same* `RoundChoices` instance's `onCommit` that feeds it, or the two
+ * stories only ever show two disconnected renders instead of one
+ * transition a reader can actually watch happen (review finding, #1439,
+ * chatgpt-codex-connector — the original version hard-coded `commitment`
+ * per story while `RoundChoices` kept its own independent, always-fresh
+ * `committed` state, so `PreCommitment` could never open the reveal pane no
+ * matter what a reader clicked, and `PostCommitment` showed the reveal pane
+ * next to option rows that still looked unanswered — the exact
+ * pre-commitment leak this component exists to prevent, on the story meant
+ * to demonstrate the opposite).
+ */
+const InteractiveRound: FC = () => {
+  const [commitment, setCommitment] = useState<Commitment | null>(null)
+
+  const artifacts: ReadonlyArray<SwitchableArtifact> = [
+    {
+      id: "algorithm",
+      label: "Algorithm",
+      content: <SourcePanel algorithm={BINARY_SEARCH} />,
+    },
+    {
+      id: "constraintDiff",
+      label: "Constraints",
+      content: <ConstraintDiff diff={CONSTRAINT_DIFF} />,
+    },
+    {
+      id: "budget",
+      label: "Budget",
+      content: <BudgetDisplay budget={BUDGET} />,
+    },
+    {
+      id: "optionSet",
+      label: "Which proposition?",
+      content: (
+        <RoundChoices
+          prompt={ROUND_PROBE_PROMPT}
+          options={OPTIONS}
+          answerId={ANSWER_ID}
+          onCommit={setCommitment}
+        />
+      ),
+    },
+  ]
+
+  return (
+    <div className="mx-auto w-full max-w-3xl p-6">
+      <WideRoundSurface
+        roundId="story-round"
+        artifacts={artifacts}
+        revealArtifacts={REVEAL_ARTIFACTS}
+        commitment={commitment}
+        probeExercise={PROBE_EXERCISE}
+      />
+    </div>
+  )
+}
+
+/**
  * The same round, at C1's own reference width — this component adds nothing
  * here; a phone gets the plain switcher `#1213` already built, one artifact
  * at a time, no reveal pane and no production probe in sight. Included so
@@ -130,41 +198,46 @@ export const Narrow: Story = {
 
 /**
  * The wide surface's default: one artifact at a time, same as the phone —
- * extra room buys size, not simultaneity (Rem. 9.2). Neither this story nor
+ * extra room buys size, not simultaneity (Rem. 9.2). Genuinely interactive:
+ * pick an option below to watch the reveal pane actually appear, rather
+ * than trusting a caption that it would. Neither this story nor
  * `PostCommitment` below is "the" primary wide story; they're peers showing
  * the same round before and after the one thing that changes what's on
  * screen.
  */
 export const PreCommitment: Story = {
-  render: () => (
-    <div className="mx-auto w-full max-w-3xl p-6">
-      <WideRoundSurface
-        roundId="story-round"
-        artifacts={ARTIFACTS}
-        revealArtifacts={REVEAL_ARTIFACTS}
-        commitment={null}
-        probeExercise={PROBE_EXERCISE}
-      />
-    </div>
-  ),
+  render: () => <InteractiveRound />,
 }
 
 /**
  * Once a commitment lands, simultaneous display is where it belongs: the
- * diff and the now-revealed proposition, side by side — the primary
- * switcher's own instance (and whatever position it was at) survives the
- * transition unchanged.
+ * diff and the now-revealed proposition, side by side. The `play` function
+ * makes the *same* commit gesture a learner would — clicking the answer row
+ * inside `RoundChoices` — rather than hard-coding `commitment` while
+ * `RoundChoices` itself stays fresh and unanswered underneath: that gap is
+ * exactly the commitment leak this component exists to rule out, so this
+ * story's default state has to be reached the same way a real one would be,
+ * not merely made to look reached.
  */
 export const PostCommitment: Story = {
-  render: () => (
-    <div className="mx-auto w-full max-w-3xl p-6">
-      <WideRoundSurface
-        roundId="story-round"
-        artifacts={ARTIFACTS}
-        revealArtifacts={REVEAL_ARTIFACTS}
-        commitment={{ kind: "choice", id: ANSWER_ID }}
-        probeExercise={PROBE_EXERCISE}
-      />
-    </div>
-  ),
+  render: () => <InteractiveRound />,
+  play: async ({ canvasElement }) => {
+    const findAnswerButton = (): HTMLButtonElement | undefined =>
+      Array.from(canvasElement.querySelectorAll("button")).find((button) =>
+        button.textContent.includes(ANSWER_TEXT)
+      )
+
+    // The answer lives on the option-set artifact, reached only after the
+    // switcher visits it — `ArtifactSwitcher` never mounts an artifact
+    // nobody has navigated to, so the button this story wants to click
+    // doesn't exist until "Next" has been pressed enough times to reach it.
+    for (let i = 0; i < 5 && !findAnswerButton(); i++) {
+      canvasElement
+        .querySelector<HTMLButtonElement>('button[aria-label="Next artifact"]')
+        ?.click()
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    }
+
+    findAnswerButton()?.click()
+  },
 }
