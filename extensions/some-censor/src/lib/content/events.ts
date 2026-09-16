@@ -1,5 +1,3 @@
-import { asVideoId } from "@censor/types/ids"
-
 import { SEL } from "./observer"
 import type { VideoManager } from "./video-manager"
 
@@ -48,14 +46,15 @@ export function attachEvents(mgr: VideoManager): void {
       const renderer = veilRenderer(e.target)
       if (!renderer) return
       e.preventDefault()
-      const vid = renderer.dataset.boyoVid
-      if (!vid) return
+      // boyoVid is only stamped once a card is mounted — a cheap proxy for
+      // "does this renderer have a live entry" without asking VideoManager.
+      if (!renderer.dataset.boyoVid) return
       if (
         confirm(
           "Add this channel to whitelist?\n(Always show content from this channel)"
         )
       ) {
-        void mgr.whitelistChannel(asVideoId(vid))
+        void mgr.whitelistChannel(renderer)
       }
     },
     { capture: true }

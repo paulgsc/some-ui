@@ -820,6 +820,93 @@ describe("a nested card is one entry, not two (#1426)", () => {
   })
 })
 
+describe("two cards sharing a video keep independent channel-backfill tracking (#1432 review)", () => {
+  // Both findings below are the same shape as #1426 from the channel side:
+  // _channelPending and whitelistChannel() used to be keyed by videoId, which
+  // could only ever track one of two distinct cards that happen to show the
+  // same video. Bot-found on this PR's own review.
+
+  it("whitelists the channel of the card actually right-clicked, not a same-video card that mounted first", async () => {
+    // b: provisional (video-only, no channel resolved yet), mounted FIRST —
+    // a videoId-keyed lookup's iteration order would have found it before a.
+    const b = document.createElement("yt-lockup-view-model")
+    b.innerHTML = `<a href="/watch?v=shared_vid"></a>`
+    document.body.appendChild(b)
+    mgr.upsert(b)
+    await passes(1)
+    expect(mgr.size, "precondition: b is provisional").toBe(1)
+
+    // a: a distinct element, fully resolved (has a real channel), for the
+    // SAME video.
+    const a = fullCard("shared_vid", "ChanA")
+    document.body.appendChild(a)
+    mgr.upsert(a)
+    await passes(2)
+    expect(mgr.size).toBe(2)
+
+    vi.mocked(browser.runtime.sendMessage).mockClear()
+    await mgr.whitelistChannel(a)
+
+    expect(
+      vi.mocked(browser.runtime.sendMessage).mock.calls[0]?.[0],
+      "must whitelist a's own channel, not b's provisional empty one"
+    ).toMatchObject({ type: "ADD_WHITELIST", channelId: "@ChanA" })
+  })
+
+  it("pruning one disconnected card does not drop another connected card's own pending-channel tracking", async () => {
+    const obs = startObservability(memoryPersistence())
+    try {
+      // a: video-only (provisional), stays connected throughout.
+      const a = document.createElement("yt-lockup-view-model")
+      a.innerHTML = `<a href="/watch?v=shared_vid"></a>`
+      document.body.appendChild(a)
+      mgr.upsert(a)
+      await passes(1)
+
+      // b: also video-only, same video, then evicted — the
+      // scroll-virtualizer path prune() exists for.
+      const b = document.createElement("yt-lockup-view-model")
+      b.innerHTML = `<a href="/watch?v=shared_vid"></a>`
+      document.body.appendChild(b)
+      mgr.upsert(b)
+      await passes(1)
+      expect(
+        mgr.size,
+        "precondition: two independent provisional entries"
+      ).toBe(2)
+
+      b.remove()
+      mgr.prune()
+
+      // a is still connected and still owed a channel backfill. Give it one
+      // and confirm it actually lands, rather than a's tracking having been
+      // silently dropped by b's unrelated pruning.
+      //
+      // retryUnresolved() is called directly here rather than via passes()
+      // (which also fires the interval's own scan() in the same tick): that
+      // combination double-triggers _backfill() for any element that
+      // transitions from video-only to full extraction inside one tick —
+      // a pre-existing race independent of this fix, and not what this test
+      // is about.
+      fillFullCard(a, "shared_vid", "ChanA")
+      mgr.retryUnresolved()
+      await vi.advanceTimersByTimeAsync(0)
+
+      const backfilled = obs.recorder
+        .events()
+        .filter(
+          (e) => e.kind === "channel.backfilled" && e.subject === "shared_vid"
+        )
+      expect(
+        backfilled,
+        "a's own pending-channel tracking must survive b's unrelated pruning"
+      ).toHaveLength(1)
+    } finally {
+      stopObservability()
+    }
+  })
+})
+
 describe("per-element staleness across rapid recycling (#980)", () => {
   // _promote()'s only guard against concurrent calls for the same element is
   // _promoting, a WeakSet keyed on the element alone — not on which videoId

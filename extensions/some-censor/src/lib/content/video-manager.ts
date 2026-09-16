@@ -128,15 +128,21 @@ export class VideoManager {
   // page, pruned as they disconnect, and cleared by reset() on every
   // navigation.
   private readonly _rejected: Set<HTMLElement> = new Set()
-  // Same, for channel backfill: videoIds we have stopped looking for a channel
-  // for. Keyed by videoId (not element) because that is what _channelPending is
-  // keyed by, and cleared on reset() since a new session re-derives entries.
-  private readonly _channelGaveUp: Set<VideoId> = new Set()
-  // Mounted-but-channel-pending: videoId → element.  These entries are already
+  // Same, for channel backfill: elements we have stopped looking for a channel
+  // for. Keyed by element, not videoId (M7/#1426) — two distinct cards can
+  // legitimately share a videoId, and one giving up says nothing about
+  // whether the other's own subtree would resolve a channel too. Cleared on
+  // reset() since a new session re-derives entries.
+  private readonly _channelGaveUp: Set<HTMLElement> = new Set()
+  // Mounted-but-channel-pending: element → videoId.  These entries are already
   // masked in the DOM; the retry loop backfills their channelId.  Tracked
   // separately from _unresolved (which is "not even maskable yet") so the retry
-  // loop stays alive while either set is non-empty.
-  private readonly _channelPending: Map<VideoId, HTMLElement> = new Map()
+  // loop stays alive while either set is non-empty. Keyed by element rather
+  // than videoId (M7/#1426): two distinct cards can share a videoId, and a
+  // videoId-keyed slot could only ever track one of them, silently dropping
+  // the other's backfill — and, worse, evicting a still-connected card's
+  // tracking when an unrelated same-video card elsewhere gets pruned.
+  private readonly _channelPending: Map<HTMLElement, VideoId> = new Map()
   // Concurrent-promotion guard
   private readonly _promoting: WeakSet<HTMLElement> = new WeakSet()
   // Observability-only mirror of _promoting: when each element entered the
@@ -383,7 +389,7 @@ export class VideoManager {
         if (prevEntry) {
           prevEntry.destroy()
           this._registry.delete(el)
-          this._dropChannelPending(rawAsPrevId)
+          this._dropChannelPending(el)
         }
       }
 
@@ -392,7 +398,7 @@ export class VideoManager {
         // than tearing it down (avoids a mask flicker on the fast path).
         const pending = this._registry.get(el)
         if (pending && !pending.hasChannel) {
-          this._dropChannelPending(asVideoId(pending.record.videoId))
+          this._dropChannelPending(el)
           void this._backfill(el, pending, extracted.channelId)
         } else if (recycled) {
           // A recycle has just stripped data-boyo off an element that is still
@@ -406,7 +412,7 @@ export class VideoManager {
           this._promoteProvisional(el, currentId)
           const fresh = this._registry.get(el)
           if (fresh) {
-            this._dropChannelPending(currentId)
+            this._dropChannelPending(el)
             void this._backfill(el, fresh, extracted.channelId)
           }
         } else {
@@ -556,24 +562,24 @@ export class VideoManager {
     }
 
     // Backfill channel for already-masked provisional entries.
-    for (const [videoId, el] of this._channelPending) {
+    for (const [el, videoId] of this._channelPending) {
       if (!el.isConnected) {
-        this._dropChannelPending(videoId)
+        this._dropChannelPending(el)
         changed = true
         continue
       }
       const extracted = tryExtract(el)
       if (extracted.kind === "full") {
-        this._dropChannelPending(videoId)
+        this._dropChannelPending(el)
         const entry = this._registry.get(el)
         if (entry) void this._backfill(el, entry, extracted.channelId)
-      } else if (this._budgetSpent(channelKey(videoId))) {
+      } else if (this._budgetSpent(channelKey(el))) {
         // No channel is coming (a shorts lockup exposes none). The entry stays
         // mounted and masked — masking only ever needed the videoId. It simply
         // never participates in channel whitelisting, which is correct: we do
         // not know whose channel it is.
-        this._dropChannelPending(videoId)
-        this._channelGaveUp.add(videoId)
+        this._dropChannelPending(el)
+        this._channelGaveUp.add(el)
         observability()?.channelAbandoned(videoId)
         changed = true
       }
@@ -590,15 +596,15 @@ export class VideoManager {
    * every card each pass, and a card with no channel takes the provisional
    * path again every time.
    */
-  private _trackChannelPending(videoId: VideoId, el: HTMLElement): void {
-    if (this._channelGaveUp.has(videoId)) return
-    this._channelPending.set(videoId, el)
+  private _trackChannelPending(el: HTMLElement, videoId: VideoId): void {
+    if (this._channelGaveUp.has(el)) return
+    this._channelPending.set(el, videoId)
     this._ensureRetryLoop()
   }
 
-  private _dropChannelPending(videoId: VideoId): void {
-    this._channelPending.delete(videoId)
-    this._firstSeen.delete(channelKey(videoId))
+  private _dropChannelPending(el: HTMLElement): void {
+    this._channelPending.delete(el)
+    this._firstSeen.delete(channelKey(el))
   }
 
   /**
@@ -615,7 +621,11 @@ export class VideoManager {
       if (!entry.isConnected) {
         entry.destroy()
         this._registry.delete(anchorEl)
-        this._dropChannelPending(asVideoId(entry.record.videoId))
+        // By anchorEl, not by videoId (M7/#1426): a still-connected card for
+        // the same video, tracked under its own element, must keep its own
+        // pending-channel entry — dropping by videoId could delete a
+        // different, still-live card's only backfill tracking.
+        this._dropChannelPending(anchorEl)
       }
     }
     publish()
@@ -640,8 +650,19 @@ export class VideoManager {
     this._registry.get(el)?.gate.rawDblClick()
   }
 
-  async whitelistChannel(videoId: VideoId): Promise<void> {
-    const entry = this._findByVideo(videoId)
+  /**
+   * Whitelist the channel behind `el`'s own entry.
+   *
+   * Bot-found (#1432 review): a videoId-keyed lookup here can name a
+   * *different* card than the one the user actually right-clicked — two
+   * distinct cards can share a videoId while only one has finished channel
+   * backfill, and picking the wrong one would send `ADD_WHITELIST` with the
+   * provisional entry's empty channelId. `events.ts` already resolves the
+   * exact renderer the context-menu event fired on; looked up directly in
+   * `_registry` (M7/#1426), the same way handleClick()/handleDblClick() are.
+   */
+  async whitelistChannel(el: HTMLElement): Promise<void> {
+    const entry = this._registry.get(el)
     if (!entry) return
 
     const channelName = entry.record.channelId // fallback is the id itself
@@ -662,24 +683,6 @@ export class VideoManager {
 
   applyWhitelistBroadcast(channelId: string): void {
     this._whitelistChannelLocally(channelId)
-  }
-
-  /**
-   * The first entry currently mounted for `videoId`, if any.
-   *
-   * A linear scan rather than a second index: whitelisting is user-initiated
-   * and rare, `_registry` is bounded by cards on one page, and channelId is
-   * invariant across any two entries that share a videoId — so which of them
-   * (if more than one legitimately does) answers this lookup cannot matter
-   * for what whitelistChannel() does with the result. Keeping a second,
-   * eagerly-synced videoId index only for this would reintroduce exactly the
-   * "two disjoint keys for one fact" shape #1426 exists to remove.
-   */
-  private _findByVideo(videoId: VideoId): VideoEntry | undefined {
-    for (const entry of this._registry.values()) {
-      if (entry.record.videoId === videoId) return entry
-    }
-    return undefined
   }
 
   /**
@@ -711,17 +714,16 @@ export class VideoManager {
     let alreadyPast = 0
     let detached = 0
     let channelPending = 0
-    for (const entry of this._registry.values()) {
+    for (const [anchorEl, entry] of this._registry) {
       const outcome = entry.advanceToTitle()
       if (outcome === "advanced") advanced += 1
       else if (outcome === "already-past") alreadyPast += 1
       else detached += 1
       // Counted for the entries the command actually reached, which is the
       // claim being evidenced — see BulkAdvanceCoverage.channelPending.
-      if (
-        outcome !== "detached" &&
-        this._channelPending.has(asVideoId(entry.record.videoId))
-      ) {
+      // By anchorEl, not videoId (M7/#1426): a videoId can be pending for a
+      // different card sharing that video.
+      if (outcome !== "detached" && this._channelPending.has(anchorEl)) {
         channelPending += 1
       }
     }
@@ -878,11 +880,11 @@ export class VideoManager {
       existing.record.videoId === videoId
     ) {
       existing.repair()
-      if (!existing.hasChannel) this._trackChannelPending(videoId, el)
+      if (!existing.hasChannel) this._trackChannelPending(el, videoId)
       return
     }
     if (existing) {
-      this._dropChannelPending(asVideoId(existing.record.videoId))
+      this._dropChannelPending(el)
       existing.destroy()
     }
 
@@ -892,7 +894,7 @@ export class VideoManager {
     )
     const entry = new VideoEntry(record, el, /* isWhitelisted */ false)
     this._registry.set(el, entry)
-    this._trackChannelPending(videoId, el)
+    this._trackChannelPending(el, videoId)
     entry.mount()
     observability()?.mountProvisional(videoId)
     publish()
@@ -977,8 +979,8 @@ export class VideoManager {
     }
 
     const channelPending: Array<QueuedCard> = []
-    for (const videoId of this._channelPending.keys()) {
-      const key = channelKey(videoId)
+    for (const el of this._channelPending.keys()) {
+      const key = channelKey(el)
       channelPending.push({
         key,
         firstSeenAt: this._firstSeen.get(key) ?? now,
@@ -1272,11 +1274,14 @@ export class VideoManager {
 }
 
 /**
- * Attempt-budget key for a channel backfill. Namespaced away from
- * elementKey()'s output so a videoId can never collide with an element key.
+ * Attempt-budget key for a channel backfill. Wraps elementKey() rather than
+ * the videoId (M7/#1426) — two distinct cards can share a videoId, and a
+ * videoId-keyed budget would let one element's give-up silently reset or
+ * cancel a different element's own clock. The `c:` prefix still namespaces
+ * it away from elementKey()'s own output for `_unresolved`/`_firstSeen`.
  */
-function channelKey(videoId: VideoId): string {
-  return `c:${videoId}`
+function channelKey(el: HTMLElement): string {
+  return `c:${elementKey(el)}`
 }
 
 function elementKey(el: HTMLElement): string {
