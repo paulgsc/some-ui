@@ -811,13 +811,19 @@ export class VideoManager {
    *     afterwards — nothing about becoming nested changes what `el` was
    *     claimed for — unless that guard is made to fail by invalidating the
    *     claim here — round 6;
-   *   - a queued `_unresolved` entry, which `retryUnresolved()` would
+   *   - every queued `_unresolved` entry, which `retryUnresolved()` would
    *     otherwise keep promoting directly, bypassing this redirect
    *     entirely — round 7. Found by value, not by recomputing
    *     `elementKey(el)`: that key is content-derived (an href, or a
    *     parent/index fallback) and can no longer match what `el` was
    *     originally queued under once it has moved in the DOM to become
-   *     nested — the same drift `_channelKey()` exists to avoid.
+   *     nested — the same drift `_channelKey()` exists to avoid. Every
+   *     matching slot is removed, not just the first (bot-found, round 8):
+   *     a position-derived key can drift across repeated `upsert()` calls
+   *     while `el` is still unresolved, so the *same* element can end up
+   *     queued under more than one key at once, and stopping at the first
+   *     match would leave a second slot for `retryUnresolved()` to still
+   *     promote directly.
    */
   private _retireIndependentState(el: HTMLElement): void {
     const stale = this._registry.get(el)
@@ -828,10 +834,7 @@ export class VideoManager {
     }
     this._invalidateClaim(el)
     for (const [key, queued] of this._unresolved) {
-      if (queued === el) {
-        this._dequeueUnresolved(key)
-        break
-      }
+      if (queued === el) this._dequeueUnresolved(key)
     }
   }
 

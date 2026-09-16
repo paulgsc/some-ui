@@ -1057,6 +1057,45 @@ describe("a nested card is one entry, not two (#1426)", () => {
     expect(y.querySelector(".boyo-veil")).not.toBeNull()
   })
 
+  it("retires every queued slot for a shell that acquired more than one position-derived key", () => {
+    // Bot-found (#1432 review, round 8, P2) on the fix directly above. A
+    // shell's elementKey() falls back to its position
+    // (`p:<parentTag>:<index>`) when it has neither a data-video-id nor a
+    // watch/shorts anchor yet, and that position can shift between
+    // upsert() calls made while it is still unresolved — each call
+    // enqueues under whatever key is current, without ever cleaning up an
+    // older one. So by the time it becomes nested, the same element can be
+    // queued under two distinct keys at once; stopping at the first match
+    // (the bug this round fixed) would leave the second for
+    // retryUnresolved() to still promote directly.
+    const x = document.createElement("yt-lockup-view-model")
+    document.body.appendChild(x)
+    mgr.upsert(x)
+
+    // x's position shifts before it is ever wrapped — a second, distinct
+    // position-derived key for the same element.
+    const before = document.createElement("div")
+    document.body.insertBefore(before, x)
+    mgr.upsert(x)
+
+    expect(
+      mgr.unresolvedSize,
+      "precondition: x is queued under two distinct position-derived keys"
+    ).toBe(2)
+
+    const spacer = document.createElement("div")
+    document.body.appendChild(spacer)
+    const y = document.createElement("ytd-rich-item-renderer")
+    document.body.appendChild(y)
+    y.appendChild(x)
+    mgr.upsert(x)
+
+    expect(
+      mgr.unresolvedSize,
+      "both of x's stale slots must be gone — only y's own queue entry remains"
+    ).toBe(1)
+  })
+
   it("preserves a nested match's custody when it moves directly to a different already-adopted anchor", async () => {
     // Bot-found (#1432 review, round 7, P2). Round 4's fix only recognizes
     // a reparented node that became its *own* independent anchor (its own
