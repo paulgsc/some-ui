@@ -35,7 +35,16 @@
  *        lifting the occluder on `el` alone leaves the inner match blurred
  *        and inert. apply()/repair() re-derive `el`'s nested matches from the
  *        live DOM and stamp `data-boyo` on all of them — no veil of their
- *        own, since the outer veil already covers the whole tile.
+ *        own, since the outer veil already covers the whole tile. `_custody`
+ *        tracks exactly which elements were stamped (bot-found, #1432
+ *        review, round 3, P1): if YouTube reparents a nested match *out* of
+ *        `el`'s subtree, a query against the live DOM at cleanup time can no
+ *        longer find it, and its stale `data-boyo` would keep the static
+ *        occluder silenced on it forever — a real leak if that node is later
+ *        adopted as its own standalone card while never seen as nested here
+ *        again. Diffing the tracked set against the live query on every
+ *        apply()/repair() clears a reparented element's stamp the moment the
+ *        next pass notices it is gone, not only at eventual destroy().
  *
  * Note: z-index is a utility on the veil (`z-2`), not a rule here, and the
  * renderer's local stacking context comes from styles/content.css — so the
@@ -60,6 +69,11 @@ import {
 
 export class DomHandle {
   private _veil: HTMLElement | null = null
+  // Elements _stampCustody() has stamped as of the last apply()/repair()
+  // call (D6). Diffed against the live query on every call and cleared in
+  // full on destroy() — see D6 above for why this can't just be re-derived
+  // from the current subtree at cleanup time.
+  private _custody: ReadonlySet<HTMLElement> = new Set()
 
   constructor(private readonly el: HTMLElement) {
     // D1 — anchoring invariant: enforce at construction, not in CSS
@@ -119,9 +133,14 @@ export class DomHandle {
     this._veil = null
     delete this.el.dataset["boyo"]
     delete this.el.dataset["boyoVid"]
-    for (const nested of this.el.querySelectorAll<HTMLElement>(SEL)) {
+    // The tracked set, not a fresh query (D6): a nested match reparented out
+    // of `el`'s subtree since the last apply()/repair() would not be found
+    // by re-querying the live DOM, and its stale data-boyo would keep
+    // silencing the static occluder on it indefinitely.
+    for (const nested of this._custody) {
       delete nested.dataset["boyo"]
     }
+    this._custody = new Set()
   }
 
   get element(): HTMLElement {
@@ -138,11 +157,23 @@ export class DomHandle {
    * adoption. Bounded by `el`'s own subtree and a no-op query when there is
    * nothing nested, which is the common case — no cost for a single-element
    * card.
+   *
+   * Also clears the stamp from any previously-tracked element the fresh
+   * query no longer finds — YouTube reparenting a nested match elsewhere,
+   * not just this card being torn down (bot-found, #1432 review, round 3,
+   * P1). Leaving a stale `data-boyo` on a node that has moved on would keep
+   * the static occluder silenced on it — a real leak once that node is
+   * later adopted as its own standalone card.
    */
   private _stampCustody(dataBoyo: string): void {
-    for (const nested of this.el.querySelectorAll<HTMLElement>(SEL)) {
+    const current = new Set(this.el.querySelectorAll<HTMLElement>(SEL))
+    for (const stale of this._custody) {
+      if (!current.has(stale)) delete stale.dataset["boyo"]
+    }
+    for (const nested of current) {
       nested.dataset["boyo"] = dataBoyo
     }
+    this._custody = current
   }
 
   private _ensureVeil(): void {

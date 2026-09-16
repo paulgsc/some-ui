@@ -818,6 +818,58 @@ describe("a nested card is one entry, not two (#1426)", () => {
     expect(inner.getAttribute("data-boyo")).toBe("0")
     expect(mgr.size, "two distinct cards for the same video").toBe(2)
   })
+
+  it("clears a reparented nested match's stale custody on the next repair pass", async () => {
+    // Bot-found (#1432 review, round 3, P1). YouTube can reparent a nested
+    // match out of its anchor's subtree entirely, not just remove it —
+    // re-querying `outer`'s subtree at that point can no longer find
+    // `inner`, so its earlier data-boyo stamp would silence the static
+    // occluder on it forever unless something tracks what was actually
+    // stamped rather than re-deriving custody from the current DOM.
+    const { outer, inner } = nestedCard("nest_k", "ChanA")
+    // Outer needs its own extractable identity independent of inner's
+    // anchors — real Polymer renderers set this after hydration — so it
+    // stays resolvable (and therefore still repairs on re-upsert) once
+    // inner, its only other content, is reparented away.
+    outer.setAttribute("data-video-id", "nest_k")
+    mgr.upsert(outer)
+    await passes(2)
+    expect(inner.getAttribute("data-boyo"), "precondition: stamped").toBe("0")
+
+    // Reparented to be its own top-level element, no longer nested in outer.
+    outer.removeChild(inner)
+    document.body.appendChild(inner)
+
+    // Any idempotent re-upsert of outer repairs it, which is where custody
+    // is re-derived.
+    mgr.upsert(outer)
+    await passes(1)
+
+    expect(
+      inner.getAttribute("data-boyo"),
+      "a node that left the anchor's subtree must lose its stale stamp"
+    ).toBeNull()
+  })
+
+  it("clears a reparented nested match's stale custody on destroy, even without an intervening repair", async () => {
+    const { outer, inner } = nestedCard("nest_l", "ChanA")
+    mgr.upsert(outer)
+    await passes(2)
+    expect(inner.getAttribute("data-boyo"), "precondition: stamped").toBe("0")
+
+    outer.removeChild(inner)
+    document.body.appendChild(inner)
+
+    // Torn down immediately — no repair pass sees the reparenting first, so
+    // this exercises destroy()'s own tracked-custody cleanup specifically.
+    mgr.reset()
+    mgr.startSession()
+
+    expect(
+      inner.getAttribute("data-boyo"),
+      "destroy() must clear custody it tracked, not just what it can still query"
+    ).toBeNull()
+  })
 })
 
 describe("two cards sharing a video keep independent channel-backfill tracking (#1432 review)", () => {
