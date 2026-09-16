@@ -914,6 +914,46 @@ describe("a nested card is one entry, not two (#1426)", () => {
       "inner's own live stamp must survive outer's unrelated cleanup"
     ).toBe(ownStamp)
   })
+
+  it("retires a stale entry when a previously-independent element becomes nested", async () => {
+    // Bot-found (#1432 review, round 5, P2). The anchor redirect in
+    // upsert() handles a match that is already nested at adoption time, but
+    // not one that *was* its own anchor and has since been wrapped by a new
+    // outer match. Left alone, the stale entry stays alive — the element is
+    // still connected, so prune() never reaps it — leaving two live entries
+    // (and two veils) for what is now one visual card.
+    const x = document.createElement("yt-lockup-view-model")
+    x.innerHTML = `<a id="video-title" href="/watch?v=nest_n"></a><a href="/@ChanA"></a>`
+    document.body.appendChild(x)
+    mgr.upsert(x)
+    await passes(2)
+    expect(mgr.size, "precondition: x is its own independent entry").toBe(1)
+    expect(
+      x.querySelector(".boyo-veil"),
+      "precondition: x has its own veil"
+    ).not.toBeNull()
+
+    // x is reparented beneath a brand new outer wrapper.
+    const y = document.createElement("ytd-rich-item-renderer")
+    document.body.appendChild(y)
+    y.appendChild(x)
+
+    mgr.upsert(x)
+    await passes(2)
+
+    expect(
+      mgr.size,
+      "exactly one entry for the whole card, now anchored at y"
+    ).toBe(1)
+    expect(
+      x.querySelector(".boyo-veil"),
+      "x's own stale veil must be gone once it is no longer the anchor"
+    ).toBeNull()
+    expect(
+      y.querySelector(".boyo-veil"),
+      "y is now the anchor and owns the veil"
+    ).not.toBeNull()
+  })
 })
 
 describe("two cards sharing a video keep independent channel-backfill tracking (#1432 review)", () => {

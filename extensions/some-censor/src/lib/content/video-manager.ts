@@ -314,6 +314,21 @@ export class VideoManager {
     // adoptions race for what is structurally one registry slot. See M7.
     const anchor = outermostCard(el)
     if (anchor !== el) {
+      // `el` may have been its own anchor until just now — YouTube can wrap
+      // a previously-independent renderer in a new outer match just as
+      // easily as it can add a fresh nested one (bot-found, #1432 review,
+      // round 5, P2). Left alone, that stale entry stays alive (`el` is
+      // still connected, so prune() never reaps it): two live entries and
+      // two veils for one visual card, and the anchor's own custody
+      // stamping fighting the stale entry's own repairs over `el`'s
+      // data-boyo on every pass. Retire it before deferring to the anchor
+      // that now owns this element.
+      const stale = this._registry.get(el)
+      if (stale) {
+        stale.destroy()
+        this._registry.delete(el)
+        this._dropChannelPending(el)
+      }
       this.upsert(anchor)
       return
     }
