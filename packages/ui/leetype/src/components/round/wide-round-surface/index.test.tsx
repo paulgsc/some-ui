@@ -68,7 +68,29 @@ describe("WideRoundSurface", () => {
         probeExercise={PROBE_EXERCISE}
       />
     )
-    expect(screen.getAllByLabelText("Previous artifact")).toHaveLength(2)
+    // Both switchers' own "previous artifact" control, whatever each one's
+    // own accessible name is qualified with (both now carry an explicit
+    // `ariaLabel` once a second switcher joins, so their buttons stay
+    // distinguishable — see `ArtifactSwitcher`'s own doc comment).
+    expect(
+      screen.getAllByRole("button", { name: /previous artifact/i })
+    ).toHaveLength(2)
+  })
+
+  it("gives the two switchers distinct, non-colliding navigation labels once both are on screen", () => {
+    render(
+      <WideRoundSurface
+        roundId="round-1"
+        artifacts={ARTIFACTS}
+        revealArtifacts={REVEAL_ARTIFACTS}
+        commitment={CHOICE_COMMITMENT}
+        probeExercise={PROBE_EXERCISE}
+      />
+    )
+    const labels = screen
+      .getAllByRole("button", { name: /previous artifact/i })
+      .map((button) => button.getAttribute("aria-label"))
+    expect(new Set(labels).size).toBe(labels.length)
   })
 
   it("stays at one switcher after a commitment when no revealArtifacts are given — simultaneity is permitted, not forced", () => {

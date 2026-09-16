@@ -127,7 +127,16 @@ export const WideRoundSurface: FC<WideRoundSurfaceProps> = ({
           reveal ? "grid-cols-2" : "grid-cols-1"
         )}
       >
-        <ArtifactSwitcher artifacts={artifacts} roundId={roundId} />
+        <ArtifactSwitcher
+          artifacts={artifacts}
+          roundId={roundId}
+          // Only distinguishing from the reveal switcher's own label below
+          // matters when both are on screen at once — explicit here (rather
+          // than left at the component's own generic default) so the two
+          // switchers' Previous/Next buttons never collide (review finding,
+          // #1439, chatgpt-codex-connector).
+          ariaLabel={reveal ? "Round artifact" : undefined}
+        />
         {reveal && (
           <ArtifactSwitcher
             artifacts={reveal}
