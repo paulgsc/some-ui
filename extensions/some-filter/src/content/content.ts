@@ -9,7 +9,10 @@ import {
   createContentSession,
   type ContentSession,
 } from "@filter/adapter/pipeline"
-import { createScopeRegistry } from "@filter/adapter/scope-registry"
+import {
+  createScopeRegistry,
+  type ScopeId,
+} from "@filter/adapter/scope-registry"
 import {
   createShadowScopeDiscovery,
   type ShadowScopeDiscovery,
@@ -19,6 +22,11 @@ import {
   type ShadowScopeTheming,
 } from "@filter/adapter/shadow-scope-theming"
 import { DEFAULT_SWATCH_ID, SWATCHES } from "@filter/adapter/swatches"
+import {
+  emptyContrastContext,
+  mergeContrastContexts,
+  type ContrastContext,
+} from "@filter/lib/content/contrast-observability"
 import {
   createCoverageRecorder,
   removeFromIndex,
@@ -152,6 +160,28 @@ const observabilityRecorder: CoverageRecorder = createCoverageRecorder(
   true
 )
 
+// SF-RC5 (#1344): the contrastHealth axis, independent of coverageHealth —
+// see contrast-observability.ts's own header for why. Two sources feed the
+// one persisted "contrast" snapshot: the document (pipeline.ts's own
+// runContrastChannel, wired below) and every live shadow scope
+// (shadow-scope-theming.ts's projectContrast, wired further down) —
+// auditLegibility's TreeWalker does not cross a shadow boundary, so neither
+// source alone sees the whole page (bot-found, Codex review round 1 on
+// #1443). Merged with mergeContrastContexts() on every report from either
+// source, so the snapshot always reflects each source's last-known result.
+let documentContrast: ContrastContext = emptyContrastContext(Date.now())
+const shadowContrastByScope = new Map<ScopeId, ContrastContext>()
+
+function recomputeContrastSnapshot(): void {
+  observabilityRecorder.setSnapshot(
+    "contrast",
+    mergeContrastContexts(
+      [documentContrast, ...shadowContrastByScope.values()],
+      Date.now()
+    )
+  )
+}
+
 // Quantifies coverage over every live scope in the registry below, not just
 // the document (SF-OB, #1270) — see coverage-watchdog.ts's own header for
 // why this is a second, independent watchdog rather than folded into
@@ -198,7 +228,13 @@ const documentScope: DocumentScopeCustodian =
 const shadowScopeTheming: ShadowScopeTheming = createShadowScopeTheming(
   documentScope.registry,
   () => SWATCHES[DEFAULT_SWATCH_ID],
-  () => sessionLifecycle.epoch
+  () => sessionLifecycle.epoch,
+  // SF-RC5 (#1344): the shadow half of the merged "contrast" snapshot — see
+  // the documentContrast/shadowContrastByScope block above.
+  (id, ctx) => {
+    shadowContrastByScope.set(id, ctx)
+    recomputeContrastSnapshot()
+  }
 )
 
 // Shadow-aware discovery + local custody (SF-DC, #1267): registers every
@@ -256,6 +292,17 @@ function applyState(state: TabState): void {
   })
   touchObservabilityIndex()
 
+  // SF-RC5 (#1344), bot-found (Codex review round 1 on #1443): must be set
+  // *before* coverageWatchdog.observe() below, not merely before actuation
+  // further down — observe()'s own first call after "off" synchronously
+  // runs its "observe-start" check right there, against a DOM actuation
+  // hasn't touched yet. Setting the flag any later left that exact check
+  // reading `transitioning: false`, silently reproducing the false
+  // coverage.violated/coverage.recovered pair this fix exists to remove.
+  // Still reset in the `finally` below regardless of which branch runs, so
+  // it can never leak past a throw in actuation.
+  transitioning = true
+
   // The watchdog only needs to run while there is something to hold
   // coverage of — "off" is the one state Remark C.1's invariant does not
   // apply to (coverage-observability.ts's CoverageHeld already encodes
@@ -279,6 +326,17 @@ function applyState(state: TabState): void {
   shadowScopeDiscovery.teardown()
   // #1280: stops alongside shadowScopeDiscovery, same reasoning.
   shadowScopeTheming.teardown()
+  // SF-RC5 (#1344): every previously-live shadow scope's own contrast
+  // contribution goes stale the moment shadow-scope custody itself does —
+  // shadow scopes exist only in auto mode (this module's own header), so
+  // leaving it (or re-entering it fresh) is exactly the boundary at which a
+  // scope's last-audited violation must stop counting toward the merged
+  // snapshot, the same reasoning shadowScopeDiscovery.teardown() above
+  // already applies to custody itself.
+  if (shadowContrastByScope.size > 0) {
+    shadowContrastByScope.clear()
+    recomputeContrastSnapshot()
+  }
   // Same lifecycle as shadowScopeDiscovery: nothing to poll outside auto
   // mode either (SF-OB, #1270). One last check() here, before teardown()
   // stops the poll and clears its own tracking, publishes the registry's
@@ -305,12 +363,12 @@ function applyState(state: TabState): void {
   }
   scopeCoverageWatchdog.teardown()
 
-  // SF-RC5 (#1344): `transitioning` must be true for exactly this
-  // synchronous span — from here until actuation below completes — and must
-  // reset even if actuation throws, or CoverageHeld would stay silently
-  // `"unknown"` forever after, masking a real subsequent leak rather than
-  // just declining to judge this one transient window.
-  transitioning = true
+  // `transitioning` was set true above, before coverageWatchdog.observe().
+  // Reset here in a `finally` regardless of which branch below runs or
+  // throws, so it can never stay stuck true past this one synchronous
+  // span — that would leave CoverageHeld silently `"unknown"` forever
+  // after, masking a real subsequent leak rather than just declining to
+  // judge this one transient window.
   try {
     restoreVendor()
     // restoreVendor() only knows about the two pre-adapter layers (the
@@ -606,10 +664,14 @@ function runAutoTheme(): void {
       }
       shadowScopeTheming.recontrastAll()
     },
-    // SF-RC5 (#1344): the second, independent diagnostic axis alongside
-    // coverageWatchdog's own "coverage" snapshot — never folded into it,
-    // see contrast-observability.ts's own header for why.
-    (ctx) => observabilityRecorder.setSnapshot("contrast", ctx)
+    // SF-RC5 (#1344): the document half of the merged "contrast" snapshot —
+    // see the documentContrast/shadowContrastByScope block above. Never
+    // folded into coverageHealth's own "coverage" snapshot, see
+    // contrast-observability.ts's own header for why.
+    (ctx) => {
+      documentContrast = ctx
+      recomputeContrastSnapshot()
+    }
   )
 
   withPrepaintSuppressed(() => {

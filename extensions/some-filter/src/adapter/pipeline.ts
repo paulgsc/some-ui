@@ -34,7 +34,10 @@ import {
   relativeLuminance,
   type RGBA,
 } from "@filter/lib/content/color"
-import type { ContrastContext } from "@filter/lib/content/contrast-observability"
+import {
+  emptyContrastContext,
+  type ContrastContext,
+} from "@filter/lib/content/contrast-observability"
 import { rgbaToCss } from "@filter/lib/content/modify-colors"
 import { PREPAINT_DIRTY_CLASS } from "@filter/lib/content/prepaint"
 import {
@@ -929,13 +932,7 @@ export function createContentSession(
         // (auditedCount: 0) rather than leaving a themed round's stale
         // violated/underdetermined counts standing once the page reads as
         // already-dark or otherwise applies no theme at all.
-        onContrastAudited?.(
-          summarizeContrast(
-            { elementsByKey: new Map(), attrsByKey: new Map() },
-            [],
-            Date.now()
-          )
-        )
+        onContrastAudited?.(emptyContrastContext(Date.now()))
       }
 
       outcome = { kind: "ok", actions, realizationChanged }

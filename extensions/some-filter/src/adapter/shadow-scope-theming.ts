@@ -48,6 +48,7 @@
  * that realization is fully installed" acceptance criterion.
  */
 
+import type { ContrastContext } from "@filter/lib/content/contrast-observability"
 import { detectVendorInvert } from "@filter/lib/content/vendor-filter"
 import { invoke } from "@some-extension/transport/adapter/invoke"
 import { createHypothesis } from "@some-extension/transport/estimator/hypothesis"
@@ -67,6 +68,7 @@ import {
   auditLegibility,
   decideLegibility,
   realizeLegibility,
+  summarizeContrast,
   withScopeTransitionsFrozen,
 } from "./legibility-audit"
 import {
@@ -280,25 +282,28 @@ type CommittedShadowRealization = {
  * #1280 integrity poll and `clearShadowSurfaceState`.
  */
 function projectContrast(
+  id: ScopeId,
   root: ShadowRoot,
   actions: ReadonlyArray<FilterAction>,
   swatch: Swatch,
-  vendorInvert: number
+  vendorInvert: number,
+  onContrastAudited: ((id: ScopeId, ctx: ContrastContext) => void) | undefined
 ): void {
   withScopeTransitionsFrozen(root, () => {
     realizeShadowColors(actions, root, swatch, vendorInvert, [])
     const scanned = auditLegibility(root)
-    realizeLegibility(
-      root,
-      decideLegibility(scanned.attrsByKey),
-      scanned.elementsByKey
-    )
+    const legibilityActions = decideLegibility(scanned.attrsByKey)
+    realizeLegibility(root, legibilityActions, scanned.elementsByKey)
     const repairs = tagRepairCarriers(
       root,
       decideForegroundRepairs(scanned.attrsByKey),
       scanned.elementsByKey
     )
     realizeShadowColors(actions, root, swatch, vendorInvert, repairs)
+    onContrastAudited?.(
+      id,
+      summarizeContrast(scanned, legibilityActions, Date.now())
+    )
   })
 }
 
@@ -315,7 +320,21 @@ export function createShadowScopeTheming(
    * `injectDarkTheme()` recomputes it on every call rather than caching it.
    */
   swatch: () => Swatch | null,
-  epoch: () => Epoch
+  epoch: () => Epoch,
+  /**
+   * SF-RC5 (#1344), bot-found (Codex review round 1 on #1443):
+   * `auditLegibility`'s `TreeWalker` does not cross a shadow boundary, so
+   * `pipeline.ts`'s own document-only `onContrastAudited` structurally
+   * cannot see a violation living inside a shadow root — a page whose only
+   * failing pair is shadow-hosted would otherwise report `contrastHealth`
+   * healthy. Called with `id` and a fresh `ContrastContext` every time
+   * `projectContrast` runs for that scope (the initial commit, and every
+   * `recontrastAll()`/`recontrastDescendants()` re-run alike, since all
+   * three route through that one function) — `content.ts` merges this
+   * per-scope stream with the document's own via
+   * `mergeContrastContexts()`.
+   */
+  onContrastAudited?: (id: ScopeId, ctx: ContrastContext) => void
 ): ShadowScopeTheming {
   /**
    * Every scope id with a `projectOnce()` call currently in flight (queued
@@ -514,10 +533,12 @@ export function createShadowScopeTheming(
       if (realized === undefined) continue
       try {
         projectContrast(
+          otherId,
           root,
           realized.actions,
           realized.swatch,
-          realized.vendorInvert
+          realized.vendorInvert,
+          onContrastAudited
         )
       } catch (error) {
         // eslint-disable-next-line no-console
@@ -675,7 +696,14 @@ export function createShadowScopeTheming(
         // one call — see projectContrast's own doc comment for the ordering
         // (the audit must read post-actuation computed style) and for why
         // this scope's own prior repairs are dropped before it reads.
-        projectContrast(root, actions, rawSwatch, vendorInvert)
+        projectContrast(
+          id,
+          root,
+          actions,
+          rawSwatch,
+          vendorInvert,
+          onContrastAudited
+        )
         // Recorded so a later ancestor commit can re-audit this scope
         // without re-deriving its classification — recontrastDescendants,
         // below. Cleared in uninstall alongside the invert amount.

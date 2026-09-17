@@ -32,7 +32,7 @@ import {
   backgroundWorker,
   enterLegacyMode,
 } from "@filter/playwright/fixtures/legacy-mode"
-import type { Worker } from "@playwright/test"
+import type { Page, Worker } from "@playwright/test"
 
 /** Matches coverage-observability.ts's sessionStorageKey() — the storage-side contract this test reads through, same as any other diagnostics consumer (the debug page included) would. */
 function sessionStorageKey(sessionId: string): string {
@@ -231,5 +231,90 @@ test.describe("debug.html renders the session a violation was recorded against",
     expect(legacyCheck).toContain("✕")
 
     await debugPage.close()
+  })
+})
+
+// ── SF-RC5 (#1344) ───────────────────────────────────────────────────────────
+
+/** tab-state.ts's STATE_CYCLE, driven through the real message path — mirrors issue-1341-sfrc2-foreground-repair.spec.ts's own "auto -> off" usage. */
+async function cycleTabState(sw: Worker, tabId: number): Promise<void> {
+  await sw.evaluate(async (id) => {
+    // eslint-disable-next-line no-restricted-globals
+    await chrome.tabs.sendMessage(id, { type: "CYCLE_TAB_STATE" })
+  }, tabId)
+}
+
+async function findTabId(sw: Worker, urlSubstring: string): Promise<number> {
+  return sw.evaluate(async (needle) => {
+    // eslint-disable-next-line no-restricted-globals
+    const tabs = await chrome.tabs.query({})
+    const t = tabs.find((tab) => tab.url?.includes(needle))
+    if (t?.id === undefined) throw new Error(`no tab matching "${needle}"`)
+    return t.id
+  }, urlSubstring)
+}
+
+test.describe("coverage watchdog — SF-RC5 (#1344): the off->legacy transitioning window", () => {
+  test("no coverage.violated event is recorded across a real off->legacy transition — the exact false pair the story's own live-proof comment traced to this window (bot-found, Codex review round 1 on #1443: the fix was initially a no-op because content.ts set `transitioning` after, not before, coverageWatchdog.observe())", async ({
+    context,
+    fixture,
+  }) => {
+    const page: Page = await fixture.goto("hostile-page")
+    await waitForClassification(page)
+
+    const sessionId = await page.evaluate(
+      () => document.body.dataset["swObservabilitySession"]
+    )
+    if (sessionId === undefined) throw new Error("unreachable")
+
+    const sw = await backgroundWorker(context)
+    const tabId = await findTabId(sw, "hostile-page.html")
+
+    // auto -> off. Reaching "off" first matters (issue #1344's own live-proof
+    // comment): the transitioning race only exists on the *first* observe()
+    // call after "off" — an auto<->legacy switch never tears the watchdog
+    // down in between, so observe() there is already a no-op.
+    await cycleTabState(sw, tabId)
+    await page.waitForFunction(
+      () => document.body.dataset["swTabState"] === "off",
+      undefined,
+      { timeout: 5_000, polling: 100 }
+    )
+
+    const beforeCycle = await readBundle(sw, sessionId)
+    const checksBefore = beforeCycle?.metrics.counters["coverage_checks"] ?? 0
+
+    // off -> legacy: the transition under test.
+    await cycleTabState(sw, tabId)
+    await page.waitForFunction(
+      () =>
+        document.documentElement.hasAttribute("data-sw-legacy") &&
+        document.getElementById("__sw_legacy_filter") !== null,
+      undefined,
+      { timeout: 5_000, polling: 100 }
+    )
+
+    // Poll until both checks this transition performs (the watchdog's own
+    // "observe-start", and applyState's explicit post-actuation
+    // "apply-state:legacy") have actually landed — not just a fixed sleep,
+    // since the second is what a broken `transitioning` flag would corrupt.
+    const settled = await pollUntil(
+      () => readBundle(sw, sessionId),
+      (b) => (b?.metrics.counters["coverage_checks"] ?? 0) >= checksBefore + 2
+    )
+    if (settled === undefined) throw new Error("unreachable")
+
+    // The regression this test locks: with the flag wired correctly,
+    // CoverageHeld reports {ok: "unknown"} during the pre-actuation window,
+    // never {ok: false} — so no coverage.violated (and consequently no
+    // coverage.recovered heldForMs:0 pair) is ever recorded for this
+    // transition, on top of legacy actually, genuinely holding coverage.
+    expect(
+      settled.events.filter((e) => e.kind === "coverage.violated"),
+      `expected zero coverage.violated events across an off->legacy transition, got: ${JSON.stringify(settled.events)}`
+    ).toHaveLength(0)
+    expect(
+      settled.events.filter((e) => e.kind === "coverage.recovered")
+    ).toHaveLength(0)
   })
 })

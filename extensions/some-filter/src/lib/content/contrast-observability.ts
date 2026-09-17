@@ -75,6 +75,62 @@ export type ContrastContext = {
   readonly recentViolations: Array<ContrastViolationSample>
 }
 
+/** A context representing nothing audited yet — the same shape `summarizeContrast` produces for an empty scan. */
+export function emptyContrastContext(now: number): ContrastContext {
+  return {
+    now,
+    auditedCount: 0,
+    passingCount: 0,
+    violatedCount: 0,
+    underdeterminedCount: 0,
+    recentViolations: [],
+  }
+}
+
+/**
+ * SF-RC5 (#1344), bot-found (Codex review round 1 on #1443): the document
+ * (`pipeline.ts`'s `runContrastChannel`) and every shadow scope
+ * (`shadow-scope-theming.ts`'s `projectContrast`) each audit their own root
+ * independently — `auditLegibility`'s `TreeWalker` does not cross a shadow
+ * boundary, the same reason SF-RC3/RC4 needed a second contrast pass for
+ * shadow scopes in the first place. Without this, a page whose only failing
+ * pair lives inside an open shadow root reports `violatedCount: 0` from the
+ * document alone, and `ContrastHeld` falsely certifies the page healthy.
+ *
+ * Pure sum over every source's counts, plus every source's `recentViolations`
+ * concatenated and re-capped at `MAX_CONTRAST_SAMPLES` — `content.ts` calls
+ * this every time *any* source (the document, or one shadow scope) reports a
+ * fresh audit, so the persisted `"contrast"` snapshot always reflects every
+ * source's last-known result, not just whichever audited most recently.
+ */
+export function mergeContrastContexts(
+  contexts: ReadonlyArray<ContrastContext>,
+  now: number
+): ContrastContext {
+  let auditedCount = 0
+  let passingCount = 0
+  let violatedCount = 0
+  let underdeterminedCount = 0
+  const recentViolations: Array<ContrastViolationSample> = []
+
+  for (const ctx of contexts) {
+    auditedCount += ctx.auditedCount
+    passingCount += ctx.passingCount
+    violatedCount += ctx.violatedCount
+    underdeterminedCount += ctx.underdeterminedCount
+    recentViolations.push(...ctx.recentViolations)
+  }
+
+  return {
+    now,
+    auditedCount,
+    passingCount,
+    violatedCount,
+    underdeterminedCount,
+    recentViolations: recentViolations.slice(0, MAX_CONTRAST_SAMPLES),
+  }
+}
+
 const violated = (details: JsonValue): InvariantOutcome => ({
   ok: false,
   details,

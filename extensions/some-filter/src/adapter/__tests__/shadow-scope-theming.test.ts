@@ -16,6 +16,7 @@ import {
   type Swatch,
 } from "@filter/adapter/swatches"
 import { parseColor, relativeLuminance } from "@filter/lib/content/color"
+import type { ContrastContext } from "@filter/lib/content/contrast-observability"
 import { compensateSwatch } from "@filter/lib/content/theme-apply"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -962,6 +963,36 @@ describe("createShadowScopeTheming.project — rendered-contrast channel (#1342)
       .find((rule) => rule.cssText.includes(REPAIR_ATTR))
     expect(repairRule, "no repair rule adopted into the scope").toBeDefined()
     expect(repairRule?.cssText).toContain(`${REPAIR_ATTR}="${key ?? ""}"`)
+  })
+
+  it("reports this scope's own violated pair through onContrastAudited, keyed by its scope id — SF-RC5 (#1344), bot-found (Codex review round 1 on #1443): the document's own contrast snapshot cannot see a shadow-only violation at all, since auditLegibility's TreeWalker does not cross a shadow boundary", async () => {
+    const reg = registry()
+    const { shadow } = violatedScope()
+    const id = registerHeld(reg, shadow)
+    let reportedId: ScopeId | undefined
+    let reportedAuditedCount: number | undefined
+    let reportedViolatedCount: number | undefined
+    const onContrastAudited = vi.fn(
+      (auditedId: ScopeId, ctx: ContrastContext) => {
+        reportedId = auditedId
+        reportedAuditedCount = ctx.auditedCount
+        reportedViolatedCount = ctx.violatedCount
+      }
+    )
+
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0,
+      onContrastAudited
+    )
+    theming.project(id)
+    await flushAll()
+
+    expect(onContrastAudited).toHaveBeenCalled()
+    expect(reportedId).toBe(id)
+    expect(reportedAuditedCount).toBeGreaterThanOrEqual(1)
+    expect(reportedViolatedCount).toBeGreaterThanOrEqual(1)
   })
 
   it("keeps the repair sheet alongside — not instead of — the scope's static layer, host tokens and surface colours", async () => {

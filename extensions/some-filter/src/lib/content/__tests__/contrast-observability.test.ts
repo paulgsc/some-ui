@@ -1,5 +1,8 @@
 import {
   contrastInvariants,
+  emptyContrastContext,
+  MAX_CONTRAST_SAMPLES,
+  mergeContrastContexts,
   type ContrastContext,
 } from "@filter/lib/content/contrast-observability"
 import {
@@ -155,5 +158,69 @@ describe("coverageHealth and contrastHealth report independently — SF-RC5 (#13
     // reported independently, never folded into one scalar.
     expect(coverageResults.some((r) => r.name === "ContrastHeld")).toBe(false)
     expect(contrastResults.some((r) => r.name === "CoverageHeld")).toBe(false)
+  })
+})
+
+describe("mergeContrastContexts — SF-RC5 (#1344), bot-found (Codex review round 1 on #1443)", () => {
+  it("sums counts across every source — the document alone cannot see a shadow-only violation, since auditLegibility's TreeWalker does not cross a shadow boundary", () => {
+    const documentCtx: ContrastContext = {
+      now: 0,
+      auditedCount: 2,
+      passingCount: 2,
+      violatedCount: 0,
+      underdeterminedCount: 0,
+      recentViolations: [],
+    }
+    const shadowCtx: ContrastContext = {
+      now: 0,
+      auditedCount: 1,
+      passingCount: 0,
+      violatedCount: 1,
+      underdeterminedCount: 0,
+      recentViolations: [
+        { key: "k", verdict: "violated", tagName: "SPAN", elementCount: 1 },
+      ],
+    }
+
+    const merged = mergeContrastContexts([documentCtx, shadowCtx], 42)
+
+    expect(merged).toEqual({
+      now: 42,
+      auditedCount: 3,
+      passingCount: 2,
+      violatedCount: 1,
+      underdeterminedCount: 0,
+      recentViolations: shadowCtx.recentViolations,
+    })
+  })
+
+  it("re-caps the concatenated recentViolations at MAX_CONTRAST_SAMPLES", () => {
+    const makeSample = (n: number): ContrastContext => ({
+      now: 0,
+      auditedCount: 1,
+      passingCount: 0,
+      violatedCount: 1,
+      underdeterminedCount: 0,
+      recentViolations: [
+        {
+          key: `k${n}`,
+          verdict: "violated",
+          tagName: "DIV",
+          elementCount: 1,
+        },
+      ],
+    })
+    const sources = Array.from({ length: MAX_CONTRAST_SAMPLES + 5 }, (_, i) =>
+      makeSample(i)
+    )
+
+    const merged = mergeContrastContexts(sources, 0)
+
+    expect(merged.violatedCount).toBe(MAX_CONTRAST_SAMPLES + 5)
+    expect(merged.recentViolations).toHaveLength(MAX_CONTRAST_SAMPLES)
+  })
+
+  it("an empty list of sources merges to the same shape as emptyContrastContext", () => {
+    expect(mergeContrastContexts([], 7)).toEqual(emptyContrastContext(7))
   })
 })
