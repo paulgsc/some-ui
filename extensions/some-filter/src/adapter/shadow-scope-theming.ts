@@ -48,7 +48,7 @@
  * that realization is fully installed" acceptance criterion.
  */
 
-import type { ContrastContext } from "@filter/lib/content/contrast-observability"
+import type { ContrastAudit } from "@filter/lib/content/contrast-observability"
 import { detectVendorInvert } from "@filter/lib/content/vendor-filter"
 import { invoke } from "@some-extension/transport/adapter/invoke"
 import { createHypothesis } from "@some-extension/transport/estimator/hypothesis"
@@ -65,10 +65,10 @@ import type {
 } from "./document-scope"
 import { decideForegroundRepairs, tagRepairCarriers } from "./foreground-repair"
 import {
+  auditContrastPairs,
   auditLegibility,
   decideLegibility,
   realizeLegibility,
-  summarizeContrast,
   withScopeTransitionsFrozen,
 } from "./legibility-audit"
 import {
@@ -287,7 +287,7 @@ function projectContrast(
   actions: ReadonlyArray<FilterAction>,
   swatch: Swatch,
   vendorInvert: number,
-  onContrastAudited: ((id: ScopeId, ctx: ContrastContext) => void) | undefined
+  onContrastAudited: ((id: ScopeId, audit: ContrastAudit) => void) | undefined
 ): void {
   withScopeTransitionsFrozen(root, () => {
     realizeShadowColors(actions, root, swatch, vendorInvert, [])
@@ -300,10 +300,7 @@ function projectContrast(
       scanned.elementsByKey
     )
     realizeShadowColors(actions, root, swatch, vendorInvert, repairs)
-    onContrastAudited?.(
-      id,
-      summarizeContrast(scanned, legibilityActions, Date.now())
-    )
+    onContrastAudited?.(id, auditContrastPairs(scanned, legibilityActions))
   })
 }
 
@@ -327,14 +324,19 @@ export function createShadowScopeTheming(
    * `pipeline.ts`'s own document-only `onContrastAudited` structurally
    * cannot see a violation living inside a shadow root — a page whose only
    * failing pair is shadow-hosted would otherwise report `contrastHealth`
-   * healthy. Called with `id` and a fresh `ContrastContext` every time
-   * `projectContrast` runs for that scope (the initial commit, and every
-   * `recontrastAll()`/`recontrastDescendants()` re-run alike, since all
-   * three route through that one function) — `content.ts` merges this
-   * per-scope stream with the document's own via
-   * `mergeContrastContexts()`.
+   * healthy. Called with `id` and a fresh, uncapped `ContrastAudit` every
+   * time `projectContrast` runs for that scope (the initial commit, and
+   * every `recontrastAll()`/`recontrastDescendants()` re-run alike, since
+   * all three route through that one function) — `content.ts` merges this
+   * per-scope stream with the document's own via `mergeContrastAudits()`.
+   * Never called for a scope that resolves `EXONERATED_NATIVE` (the
+   * `restore-native` branch in `projectScope` below returns before
+   * `projectContrast` ever runs) or that retires — `content.ts` is
+   * responsible for evicting both from its own per-scope map itself, via
+   * the registry's own transition observer, since neither produces a call
+   * here to key an eviction off (bot-found, Codex review round 2 on #1443).
    */
-  onContrastAudited?: (id: ScopeId, ctx: ContrastContext) => void
+  onContrastAudited?: (id: ScopeId, audit: ContrastAudit) => void
 ): ShadowScopeTheming {
   /**
    * Every scope id with a `projectOnce()` call currently in flight (queued

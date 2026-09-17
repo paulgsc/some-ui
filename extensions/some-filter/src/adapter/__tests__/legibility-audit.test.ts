@@ -1,16 +1,15 @@
 import {
+  auditContrastPairs,
   auditLegibility,
   decideLegibility,
   LEGIBILITY_ATTR,
   MIN_CONTRAST_RATIO,
   realizeLegibility,
   resolveEffectiveBackdrop,
-  summarizeContrast,
   type LegibilityAttr,
   type LegibilityScanResult,
   type TagLegibilityAction,
 } from "@filter/adapter/legibility-audit"
-import { MAX_CONTRAST_SAMPLES } from "@filter/lib/content/contrast-observability"
 import { afterEach, describe, expect, it } from "vitest"
 
 function cleanUp(): void {
@@ -691,13 +690,13 @@ describe("realizeLegibility", () => {
   })
 })
 
-describe("summarizeContrast — SF-RC5 (#1344)", () => {
+describe("auditContrastPairs — SF-RC5 (#1344)", () => {
   const dummyAttr: LegibilityAttr = {
     foreground: [0, 0, 0, 1],
     backdrop: [255, 255, 255, 1],
   }
 
-  it("counts by (foreground, backdrop) pair, not by element — several elements sharing one violated key count as one violated pair", () => {
+  it("reports one record per (foreground, backdrop) pair, not by element — several elements sharing one violated key still count as one record", () => {
     document.body.innerHTML = '<div id="a"></div><div id="b"></div>'
     const a = document.getElementById("a")
     const b = document.getElementById("b")
@@ -711,17 +710,13 @@ describe("summarizeContrast — SF-RC5 (#1344)", () => {
       { kind: "tag-legibility", key: "k1", verdict: "violated" },
     ]
 
-    const summary = summarizeContrast(scan, actions, 0)
-    expect(summary.auditedCount).toBe(1)
-    expect(summary.violatedCount).toBe(1)
-    expect(summary.underdeterminedCount).toBe(0)
-    expect(summary.passingCount).toBe(0)
-    expect(summary.recentViolations).toEqual([
+    const audit = auditContrastPairs(scan, actions)
+    expect(audit).toEqual([
       { key: "k1", verdict: "violated", tagName: "DIV", elementCount: 2 },
     ])
   })
 
-  it("derives passingCount as audited minus violated minus underdetermined — a pair with no action at all is passing", () => {
+  it("includes a pair with no matching action at all, verdict 'passing' — uncapped and unfiltered, unlike the old summarized shape", () => {
     const scan: LegibilityScanResult = {
       elementsByKey: new Map(),
       attrsByKey: new Map([
@@ -739,45 +734,19 @@ describe("summarizeContrast — SF-RC5 (#1344)", () => {
       },
     ]
 
-    const summary = summarizeContrast(scan, actions, 0)
-    expect(summary.auditedCount).toBe(3)
-    expect(summary.violatedCount).toBe(1)
-    expect(summary.underdeterminedCount).toBe(1)
-    expect(summary.passingCount).toBe(1)
+    const audit = auditContrastPairs(scan, actions)
+    const byKey = new Map(audit.map((r) => [r.key, r.verdict]))
+    expect(byKey.get("violated-key")).toBe("violated")
+    expect(byKey.get("underdetermined-key")).toBe("underdetermined")
+    expect(byKey.get("passing-key")).toBe("passing")
   })
 
-  it("reports zero audited when nothing was scanned — the no-theme-applied case", () => {
-    const summary = summarizeContrast(
+  it("reports an empty audit when nothing was scanned — the no-theme-applied case", () => {
+    const audit = auditContrastPairs(
       { elementsByKey: new Map(), attrsByKey: new Map() },
-      [],
-      0
+      []
     )
-    expect(summary).toMatchObject({
-      auditedCount: 0,
-      passingCount: 0,
-      violatedCount: 0,
-      underdeterminedCount: 0,
-      recentViolations: [],
-    })
-  })
-
-  it("caps recentViolations at MAX_CONTRAST_SAMPLES while violatedCount stays accurate over every violated pair", () => {
-    const total = MAX_CONTRAST_SAMPLES + 5
-    const attrsByKey = new Map<string, LegibilityAttr>()
-    const actions: Array<TagLegibilityAction> = []
-    for (let i = 0; i < total; i++) {
-      const key = `k${i}`
-      attrsByKey.set(key, dummyAttr)
-      actions.push({ kind: "tag-legibility", key, verdict: "violated" })
-    }
-
-    const summary = summarizeContrast(
-      { elementsByKey: new Map(), attrsByKey },
-      actions,
-      0
-    )
-    expect(summary.violatedCount).toBe(total)
-    expect(summary.recentViolations.length).toBe(MAX_CONTRAST_SAMPLES)
+    expect(audit).toEqual([])
   })
 
   it("carries no page text content or URL data — structural/color metadata only (#1344's own privacy discipline, regression-locked against the real auditLegibility/decideLegibility pipeline, not a synthetic fixture)", () => {
@@ -788,15 +757,15 @@ describe("summarizeContrast — SF-RC5 (#1344)", () => {
 
     const scan = auditLegibility(document.body)
     const actions = decideLegibility(scan.attrsByKey)
-    const summary = summarizeContrast(scan, actions, 0)
+    const audit = auditContrastPairs(scan, actions)
 
     // Same color on itself is the one contrast failure that needs no
     // getComputedStyle pseudo-element support to detect (jsdom's own gap,
     // see this file's cleanUp() and the other tests' console noise) — a
     // trivial fixture that still genuinely exercises the violated path.
-    expect(summary.violatedCount).toBeGreaterThanOrEqual(1)
+    expect(audit.some((r) => r.verdict === "violated")).toBe(true)
 
-    const serialized = JSON.stringify(summary)
+    const serialized = JSON.stringify(audit)
     expect(serialized).not.toContain("TopSecretUserMessage")
     expect(serialized).not.toContain("example.com")
     expect(serialized).not.toContain("PII-12345")

@@ -1,9 +1,10 @@
 import {
   contrastInvariants,
-  emptyContrastContext,
   MAX_CONTRAST_SAMPLES,
-  mergeContrastContexts,
+  mergeContrastAudits,
+  type ContrastAudit,
   type ContrastContext,
+  type ContrastPairRecord,
 } from "@filter/lib/content/contrast-observability"
 import {
   coverageInvariants,
@@ -161,28 +162,24 @@ describe("coverageHealth and contrastHealth report independently — SF-RC5 (#13
   })
 })
 
-describe("mergeContrastContexts — SF-RC5 (#1344), bot-found (Codex review round 1 on #1443)", () => {
-  it("sums counts across every source — the document alone cannot see a shadow-only violation, since auditLegibility's TreeWalker does not cross a shadow boundary", () => {
-    const documentCtx: ContrastContext = {
-      now: 0,
-      auditedCount: 2,
-      passingCount: 2,
-      violatedCount: 0,
-      underdeterminedCount: 0,
-      recentViolations: [],
-    }
-    const shadowCtx: ContrastContext = {
-      now: 0,
-      auditedCount: 1,
-      passingCount: 0,
-      violatedCount: 1,
-      underdeterminedCount: 0,
-      recentViolations: [
-        { key: "k", verdict: "violated", tagName: "SPAN", elementCount: 1 },
-      ],
-    }
+describe("mergeContrastAudits — SF-RC5 (#1344)", () => {
+  const passing = (key: string): ContrastPairRecord => ({
+    key,
+    verdict: "passing",
+    tagName: "DIV",
+    elementCount: 1,
+  })
+  const violatedRecord = (
+    key: string,
+    tagName = "SPAN",
+    elementCount = 1
+  ): ContrastPairRecord => ({ key, verdict: "violated", tagName, elementCount })
 
-    const merged = mergeContrastContexts([documentCtx, shadowCtx], 42)
+  it("unions distinct pairs across sources — the document alone cannot see a shadow-only violation, since auditLegibility's TreeWalker does not cross a shadow boundary", () => {
+    const documentAudit: ContrastAudit = [passing("a"), passing("b")]
+    const shadowAudit: ContrastAudit = [violatedRecord("c")]
+
+    const merged = mergeContrastAudits([documentAudit, shadowAudit], 42)
 
     expect(merged).toEqual({
       now: 42,
@@ -190,37 +187,51 @@ describe("mergeContrastContexts — SF-RC5 (#1344), bot-found (Codex review roun
       passingCount: 2,
       violatedCount: 1,
       underdeterminedCount: 0,
-      recentViolations: shadowCtx.recentViolations,
+      recentViolations: [
+        { key: "c", verdict: "violated", tagName: "SPAN", elementCount: 1 },
+      ],
     })
   })
 
-  it("re-caps the concatenated recentViolations at MAX_CONTRAST_SAMPLES", () => {
-    const makeSample = (n: number): ContrastContext => ({
-      now: 0,
-      auditedCount: 1,
-      passingCount: 0,
-      violatedCount: 1,
-      underdeterminedCount: 0,
-      recentViolations: [
-        {
-          key: `k${n}`,
-          verdict: "violated",
-          tagName: "DIV",
-          elementCount: 1,
-        },
-      ],
-    })
-    const sources = Array.from({ length: MAX_CONTRAST_SAMPLES + 5 }, (_, i) =>
-      makeSample(i)
+  it("dedupes an identical (foreground, backdrop) pair audited in more than one source, bot-found (Codex review round 2 on #1443): counting each source's own record separately reported the same pair as violated once per scope it happened to appear in, contradicting this module's own counted-by-pair (not by scope) design", () => {
+    // The same key — one real color-pair violation — reported by the
+    // document *and* two separate shadow scopes, exactly the case a global
+    // swatch/theme makes common: many scopes render the identical pair.
+    const documentAudit: ContrastAudit = [violatedRecord("shared-key")]
+    const shadowAuditA: ContrastAudit = [violatedRecord("shared-key")]
+    const shadowAuditB: ContrastAudit = [violatedRecord("shared-key")]
+
+    const merged = mergeContrastAudits(
+      [documentAudit, shadowAuditA, shadowAuditB],
+      0
     )
 
-    const merged = mergeContrastContexts(sources, 0)
+    expect(merged.auditedCount).toBe(1)
+    expect(merged.violatedCount).toBe(1)
+    expect(merged.recentViolations).toHaveLength(1)
+  })
 
-    expect(merged.violatedCount).toBe(MAX_CONTRAST_SAMPLES + 5)
+  it("caps recentViolations at MAX_CONTRAST_SAMPLES after deduplication, while violatedCount stays accurate over every distinct violated pair", () => {
+    const total = MAX_CONTRAST_SAMPLES + 5
+    const audit: Array<ContrastPairRecord> = Array.from(
+      { length: total },
+      (_, i) => violatedRecord(`k${i}`)
+    )
+
+    const merged = mergeContrastAudits([audit], 0)
+
+    expect(merged.violatedCount).toBe(total)
     expect(merged.recentViolations).toHaveLength(MAX_CONTRAST_SAMPLES)
   })
 
-  it("an empty list of sources merges to the same shape as emptyContrastContext", () => {
-    expect(mergeContrastContexts([], 7)).toEqual(emptyContrastContext(7))
+  it("an empty list of audits merges to an all-zero context", () => {
+    expect(mergeContrastAudits([], 7)).toEqual({
+      now: 7,
+      auditedCount: 0,
+      passingCount: 0,
+      violatedCount: 0,
+      underdeterminedCount: 0,
+      recentViolations: [],
+    })
   })
 })

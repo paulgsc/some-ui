@@ -54,10 +54,9 @@ import {
   relativeLuminance,
   type RGBA,
 } from "@filter/lib/content/color"
-import {
-  MAX_CONTRAST_SAMPLES,
-  type ContrastContext,
-  type ContrastViolationSample,
+import type {
+  ContrastAudit,
+  ContrastPairRecord,
 } from "@filter/lib/content/contrast-observability"
 import { rgbaToCss } from "@filter/lib/content/modify-colors"
 
@@ -1255,48 +1254,36 @@ export function decideLegibility(
 }
 
 /**
- * SF-RC5 (#1344): pure summary of one audit round, by `(foreground,
- * backdrop)` pair — never by element, and never anything but structural/
- * color metadata (see `contrast-observability.ts`'s own header for why).
- * `scan.elementsByKey` supplies each sample's representative `tagName` and
- * `elementCount`; `actions` (`decideLegibility`'s own output) is the
- * authoritative violated/underdetermined verdict per pair — this function
- * re-derives nothing, it only reshapes that pure decision into the
- * diagnostic contract `contrastInvariants` checks against.
+ * SF-RC5 (#1344): pure per-`(foreground, backdrop)`-pair audit of one round
+ * — never by element, and never anything but structural/color metadata (see
+ * `contrast-observability.ts`'s own header for why). Every pair `scan`
+ * actually audited is represented, including passing ones — bot-found
+ * (Codex review round 2 on #1443): `mergeContrastAudits` needs the full,
+ * uncapped set to dedupe correctly by key across the document and every
+ * shadow scope, not just the failing pairs a capped summary would carry.
+ * `actions` (`decideLegibility`'s own output) is the authoritative
+ * violated/underdetermined verdict per pair — this function re-derives
+ * nothing, it only reshapes that pure decision into the diagnostic contract
+ * `mergeContrastAudits`/`contrastInvariants` check against.
  */
-export function summarizeContrast(
+export function auditContrastPairs(
   scan: LegibilityScanResult,
-  actions: ReadonlyArray<TagLegibilityAction>,
-  now: number
-): ContrastContext {
-  let violatedCount = 0
-  let underdeterminedCount = 0
-  const recentViolations: Array<ContrastViolationSample> = []
+  actions: ReadonlyArray<TagLegibilityAction>
+): ContrastAudit {
+  const verdictByKey = new Map<LegibilityKey, ContrastVerdict>()
+  for (const action of actions) verdictByKey.set(action.key, action.verdict)
 
-  for (const action of actions) {
-    if (action.verdict === "violated") violatedCount++
-    else underdeterminedCount++
-
-    if (recentViolations.length < MAX_CONTRAST_SAMPLES) {
-      const elements = scan.elementsByKey.get(action.key) ?? []
-      recentViolations.push({
-        key: action.key,
-        verdict: action.verdict,
-        tagName: elements[0]?.tagName ?? "unknown",
-        elementCount: elements.length,
-      })
-    }
+  const records: Array<ContrastPairRecord> = []
+  for (const key of scan.attrsByKey.keys()) {
+    const elements = scan.elementsByKey.get(key) ?? []
+    records.push({
+      key,
+      verdict: verdictByKey.get(key) ?? "passing",
+      tagName: elements[0]?.tagName ?? "unknown",
+      elementCount: elements.length,
+    })
   }
-
-  const auditedCount = scan.attrsByKey.size
-  return {
-    now,
-    auditedCount,
-    passingCount: auditedCount - violatedCount - underdeterminedCount,
-    violatedCount,
-    underdeterminedCount,
-    recentViolations,
-  }
+  return records
 }
 
 /**

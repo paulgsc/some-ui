@@ -56,6 +56,26 @@ export type ContrastViolationSample = {
   readonly elementCount: number
 }
 
+/** A single audited pair's own verdict — "passing" alongside the two `ContrastVerdict` values, since a per-source audit (unlike `ContrastContext`'s own capped `recentViolations`) has to carry every audited pair, not just the failing ones, for `mergeContrastAudits` to compute a correct `auditedCount`/`passingCount` after deduplication. */
+export type ContrastPairVerdict = ContrastVerdict | "passing"
+
+/** One `(foreground, backdrop)` pair as one source (the document, or one shadow scope) audited it this round — the same structural/color metadata `ContrastViolationSample` carries, never text or URL content. */
+export type ContrastPairRecord = {
+  readonly key: LegibilityKey
+  readonly verdict: ContrastPairVerdict
+  readonly tagName: string
+  readonly elementCount: number
+}
+
+/**
+ * One source's full, uncapped audit — every `(foreground, backdrop)` pair it
+ * scanned this round, not just the failing ones. Never persisted directly
+ * (it can be arbitrarily large on a page with many distinct pairs); it
+ * exists only as `mergeContrastAudits`' own input, to dedupe by key across
+ * sources before deriving the capped, persisted `ContrastContext`.
+ */
+export type ContrastAudit = ReadonlyArray<ContrastPairRecord>
+
 export type ContrastContext = {
   readonly now: number
   /** Distinct (foreground, backdrop) pairs actually audited this round — 0 whenever no theme is applied (nothing painted, nothing to audit). */
@@ -75,18 +95,6 @@ export type ContrastContext = {
   readonly recentViolations: Array<ContrastViolationSample>
 }
 
-/** A context representing nothing audited yet — the same shape `summarizeContrast` produces for an empty scan. */
-export function emptyContrastContext(now: number): ContrastContext {
-  return {
-    now,
-    auditedCount: 0,
-    passingCount: 0,
-    violatedCount: 0,
-    underdeterminedCount: 0,
-    recentViolations: [],
-  }
-}
-
 /**
  * SF-RC5 (#1344), bot-found (Codex review round 1 on #1443): the document
  * (`pipeline.ts`'s `runContrastChannel`) and every shadow scope
@@ -97,37 +105,62 @@ export function emptyContrastContext(now: number): ContrastContext {
  * pair lives inside an open shadow root reports `violatedCount: 0` from the
  * document alone, and `ContrastHeld` falsely certifies the page healthy.
  *
- * Pure sum over every source's counts, plus every source's `recentViolations`
- * concatenated and re-capped at `MAX_CONTRAST_SAMPLES` — `content.ts` calls
- * this every time *any* source (the document, or one shadow scope) reports a
- * fresh audit, so the persisted `"contrast"` snapshot always reflects every
- * source's last-known result, not just whichever audited most recently.
+ * Dedupes by `LegibilityKey` across every source before counting — bot-found
+ * (Codex review round 2 on #1443): an earlier version summed each source's
+ * own *counts* directly, so the identical `(foreground, backdrop)` pair
+ * showing up in the document and two shadow scopes reported three violated
+ * pairs, contradicting this module's own "counted by pair, not by scope"
+ * design (this file's own header). A `LegibilityKey` already fully encodes
+ * both colors (`legibility-audit.ts`'s own `legibilityKeyFor`), so
+ * `violatesContrast`'s verdict for a given key is the same wherever it is
+ * audited — there is never a genuine conflict to resolve between sources for
+ * the same key, only redundant confirmation of the same pair.
+ *
+ * `content.ts` calls this every time *any* source (the document, or one
+ * shadow scope) reports a fresh audit, so the persisted `"contrast"`
+ * snapshot always reflects every source's last-known result, not just
+ * whichever audited most recently.
  */
-export function mergeContrastContexts(
-  contexts: ReadonlyArray<ContrastContext>,
+export function mergeContrastAudits(
+  audits: ReadonlyArray<ContrastAudit>,
   now: number
 ): ContrastContext {
-  let auditedCount = 0
+  const byKey = new Map<LegibilityKey, ContrastPairRecord>()
+  for (const audit of audits) {
+    for (const record of audit) {
+      byKey.set(record.key, record)
+    }
+  }
+
   let passingCount = 0
   let violatedCount = 0
   let underdeterminedCount = 0
   const recentViolations: Array<ContrastViolationSample> = []
 
-  for (const ctx of contexts) {
-    auditedCount += ctx.auditedCount
-    passingCount += ctx.passingCount
-    violatedCount += ctx.violatedCount
-    underdeterminedCount += ctx.underdeterminedCount
-    recentViolations.push(...ctx.recentViolations)
+  for (const record of byKey.values()) {
+    if (record.verdict === "passing") {
+      passingCount++
+      continue
+    }
+    if (record.verdict === "violated") violatedCount++
+    else underdeterminedCount++
+    if (recentViolations.length < MAX_CONTRAST_SAMPLES) {
+      recentViolations.push({
+        key: record.key,
+        verdict: record.verdict,
+        tagName: record.tagName,
+        elementCount: record.elementCount,
+      })
+    }
   }
 
   return {
     now,
-    auditedCount,
+    auditedCount: byKey.size,
     passingCount,
     violatedCount,
     underdeterminedCount,
-    recentViolations: recentViolations.slice(0, MAX_CONTRAST_SAMPLES),
+    recentViolations,
   }
 }
 

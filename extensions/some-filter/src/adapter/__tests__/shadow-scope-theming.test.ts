@@ -16,7 +16,7 @@ import {
   type Swatch,
 } from "@filter/adapter/swatches"
 import { parseColor, relativeLuminance } from "@filter/lib/content/color"
-import type { ContrastContext } from "@filter/lib/content/contrast-observability"
+import type { ContrastAudit } from "@filter/lib/content/contrast-observability"
 import { compensateSwatch } from "@filter/lib/content/theme-apply"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -970,13 +970,11 @@ describe("createShadowScopeTheming.project — rendered-contrast channel (#1342)
     const { shadow } = violatedScope()
     const id = registerHeld(reg, shadow)
     let reportedId: ScopeId | undefined
-    let reportedAuditedCount: number | undefined
-    let reportedViolatedCount: number | undefined
+    let reportedAudit: ContrastAudit | undefined
     const onContrastAudited = vi.fn(
-      (auditedId: ScopeId, ctx: ContrastContext) => {
+      (auditedId: ScopeId, audit: ContrastAudit) => {
         reportedId = auditedId
-        reportedAuditedCount = ctx.auditedCount
-        reportedViolatedCount = ctx.violatedCount
+        reportedAudit = audit
       }
     )
 
@@ -991,8 +989,8 @@ describe("createShadowScopeTheming.project — rendered-contrast channel (#1342)
 
     expect(onContrastAudited).toHaveBeenCalled()
     expect(reportedId).toBe(id)
-    expect(reportedAuditedCount).toBeGreaterThanOrEqual(1)
-    expect(reportedViolatedCount).toBeGreaterThanOrEqual(1)
+    expect(reportedAudit?.length).toBeGreaterThanOrEqual(1)
+    expect(reportedAudit?.some((r) => r.verdict === "violated")).toBe(true)
   })
 
   it("keeps the repair sheet alongside — not instead of — the scope's static layer, host tokens and surface colours", async () => {

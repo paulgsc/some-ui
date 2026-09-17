@@ -23,9 +23,8 @@ import {
 } from "@filter/adapter/shadow-scope-theming"
 import { DEFAULT_SWATCH_ID, SWATCHES } from "@filter/adapter/swatches"
 import {
-  emptyContrastContext,
-  mergeContrastContexts,
-  type ContrastContext,
+  mergeContrastAudits,
+  type ContrastAudit,
 } from "@filter/lib/content/contrast-observability"
 import {
   createCoverageRecorder,
@@ -167,15 +166,19 @@ const observabilityRecorder: CoverageRecorder = createCoverageRecorder(
 // (shadow-scope-theming.ts's projectContrast, wired further down) —
 // auditLegibility's TreeWalker does not cross a shadow boundary, so neither
 // source alone sees the whole page (bot-found, Codex review round 1 on
-// #1443). Merged with mergeContrastContexts() on every report from either
-// source, so the snapshot always reflects each source's last-known result.
-let documentContrast: ContrastContext = emptyContrastContext(Date.now())
-const shadowContrastByScope = new Map<ScopeId, ContrastContext>()
+// #1443). Each source's own uncapped ContrastAudit (never persisted
+// directly) is kept here and merged with mergeContrastAudits() — which
+// dedupes by (foreground, backdrop) pair across sources — on every report
+// from either source, so the snapshot always reflects each source's
+// last-known result without double-counting an identical pair audited in
+// more than one scope (bot-found, Codex review round 2 on #1443).
+let documentContrast: ContrastAudit = []
+const shadowContrastByScope = new Map<ScopeId, ContrastAudit>()
 
 function recomputeContrastSnapshot(): void {
   observabilityRecorder.setSnapshot(
     "contrast",
-    mergeContrastContexts(
+    mergeContrastAudits(
       [documentContrast, ...shadowContrastByScope.values()],
       Date.now()
     )
@@ -199,11 +202,27 @@ const scopeCoverageWatchdog: ScopeCoverageWatchdog<
 // discovered shadow scope — constructed explicitly (rather than relying on
 // createDocumentScopeCustodian()'s own default) so scopeCoverageWatchdog's
 // observer can be wired in from the start, not attached after scopes may
-// already have registered.
+// already have registered. Wraps that observer rather than passing it
+// directly: SF-RC5 (#1344), bot-found (Codex review round 2 on #1443) — a
+// shadow scope's own last-reported contrast audit must not survive its
+// retirement or its resolving EXONERATED_NATIVE (shadow-scope-theming.ts's
+// own projectContrast never runs on that path, so nothing else would ever
+// evict it), or a component-heavy page both leaks memory here and can keep
+// ContrastHeld violated over a scope that is no longer themed or even live.
 const scopeRegistry = createScopeRegistry<
   DocumentRevision,
   DocumentExonerationProof
->(scopeCoverageWatchdog.registryObserver)
+>({
+  onTransition(id, event, to) {
+    scopeCoverageWatchdog.registryObserver.onTransition?.(id, event, to)
+    if (event.kind === "retire" || event.kind === "resolve-exonerated") {
+      if (shadowContrastByScope.delete(id)) recomputeContrastSnapshot()
+    }
+  },
+  onStaleResolveDiscarded(id) {
+    scopeCoverageWatchdog.registryObserver.onStaleResolveDiscarded?.(id)
+  },
+})
 
 // The document — rendering scope r_0 (Definition D.4) — as SF-RG's registry
 // (#1265) sees it. Registered once, unconditionally, in init() below,
@@ -231,8 +250,8 @@ const shadowScopeTheming: ShadowScopeTheming = createShadowScopeTheming(
   () => sessionLifecycle.epoch,
   // SF-RC5 (#1344): the shadow half of the merged "contrast" snapshot — see
   // the documentContrast/shadowContrastByScope block above.
-  (id, ctx) => {
-    shadowContrastByScope.set(id, ctx)
+  (id, audit) => {
+    shadowContrastByScope.set(id, audit)
     recomputeContrastSnapshot()
   }
 )
@@ -326,14 +345,20 @@ function applyState(state: TabState): void {
   shadowScopeDiscovery.teardown()
   // #1280: stops alongside shadowScopeDiscovery, same reasoning.
   shadowScopeTheming.teardown()
-  // SF-RC5 (#1344): every previously-live shadow scope's own contrast
-  // contribution goes stale the moment shadow-scope custody itself does —
-  // shadow scopes exist only in auto mode (this module's own header), so
-  // leaving it (or re-entering it fresh) is exactly the boundary at which a
-  // scope's last-audited violation must stop counting toward the merged
-  // snapshot, the same reasoning shadowScopeDiscovery.teardown() above
-  // already applies to custody itself.
-  if (shadowContrastByScope.size > 0) {
+  // SF-RC5 (#1344): both contrast sources go stale the moment their own
+  // producer stops running — every shadow scope's own contrast contribution
+  // stops the moment shadow-scope custody itself does (shadow scopes exist
+  // only in auto mode, this module's own header), same as
+  // shadowScopeDiscovery.teardown() above already applies to custody
+  // itself; the document half stops the moment contentSession.teardown()
+  // above disconnects it — bot-found (Codex review round 2 on #1443): an
+  // earlier version cleared only the shadow half, so a document-level
+  // violation from the auto round just left could linger in legacy/off,
+  // where nothing is being audited at all, and if no shadow scope had ever
+  // reported either, this block did not even persist a fresh snapshot to
+  // say so.
+  if (documentContrast.length > 0 || shadowContrastByScope.size > 0) {
+    documentContrast = []
     shadowContrastByScope.clear()
     recomputeContrastSnapshot()
   }
@@ -668,8 +693,8 @@ function runAutoTheme(): void {
     // see the documentContrast/shadowContrastByScope block above. Never
     // folded into coverageHealth's own "coverage" snapshot, see
     // contrast-observability.ts's own header for why.
-    (ctx) => {
-      documentContrast = ctx
+    (audit) => {
+      documentContrast = audit
       recomputeContrastSnapshot()
     }
   )
