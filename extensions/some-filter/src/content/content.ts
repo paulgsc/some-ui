@@ -215,8 +215,37 @@ const scopeRegistry = createScopeRegistry<
 >({
   onTransition(id, event, to) {
     scopeCoverageWatchdog.registryObserver.onTransition?.(id, event, to)
-    if (event.kind === "retire" || event.kind === "resolve-exonerated") {
-      if (shadowContrastByScope.delete(id)) recomputeContrastSnapshot()
+    // SF-RC5 (#1344), bot-found (Codex review round 4 on #1443): "retire"
+    // and "resolve-exonerated" alone left a scope's stale audit behind
+    // across the *other* ways a COMMITTED scope stops meaning what its last
+    // audit said — "invalidate"/"re-register" tear the realization down to
+    // re-resolve (projectContrast() only re-populates the entry if that
+    // re-resolve actually reaches a fresh commit), and "resolve-failed"
+    // lands FAILED_HELD without ever calling projectContrast at all. Evict
+    // on every event except a fresh commit (which projectContrast's own
+    // call already just populated, moments before this fires) and the two
+    // no-op "still resolving" transitions, which change no realization.
+    switch (event.kind) {
+      case "retire":
+      case "resolve-exonerated":
+      case "resolve-failed":
+      case "invalidate":
+      case "re-register": {
+        if (shadowContrastByScope.delete(id)) recomputeContrastSnapshot()
+        return
+      }
+      case "register":
+      case "resolve-committed":
+      case "start-resolving":
+      case "retry": {
+        return
+      }
+      default: {
+        const exhaustive: never = event
+        throw new Error(
+          `[content] unhandled scope event: ${JSON.stringify(exhaustive)}`
+        )
+      }
     }
   },
   onStaleResolveDiscarded(id) {
@@ -311,99 +340,97 @@ function applyState(state: TabState): void {
   })
   touchObservabilityIndex()
 
-  // SF-RC5 (#1344), bot-found (Codex review round 1 on #1443): must be set
-  // *before* coverageWatchdog.observe() below, not merely before actuation
-  // further down — observe()'s own first call after "off" synchronously
-  // runs its "observe-start" check right there, against a DOM actuation
-  // hasn't touched yet. Setting the flag any later left that exact check
-  // reading `transitioning: false`, silently reproducing the false
-  // coverage.violated/coverage.recovered pair this fix exists to remove.
-  // Still reset in the `finally` below regardless of which branch runs, so
-  // it can never leak past a throw in actuation.
+  // SF-RC5 (#1344), bot-found (Codex review rounds 1 and 4 on #1443): must
+  // be set *before* coverageWatchdog.observe() below (round 1) — observe()'s
+  // own first call after "off" synchronously runs its "observe-start" check
+  // right there, against a DOM actuation hasn't touched yet, and setting
+  // the flag any later left that exact check reading `transitioning: false`.
+  // The guard below must also cover every teardown call between here and
+  // actuation, not just actuation itself (round 4): shadowScopeDiscovery.
+  // teardown() can throw while retiring a committed scope (an unguarded
+  // CSSOM uninstall), and a throw anywhere between this assignment and a
+  // narrower try/finally would leave `transitioning` stuck true forever —
+  // not just for this one transient window, but permanently, since nothing
+  // else ever resets it. The post-actuation check further down must also
+  // still run on any exceptional path in this block — bot-found (Codex
+  // review round 3 on #1443): resetting the flag alone left a genuine
+  // uncovered state recorded only as "unknown" until some unrelated later
+  // mutation happened to trigger a reactive check, which might never come.
+  // Caught and re-thrown after that check runs, rather than swallowed, to
+  // preserve the original behavior of a throw here surfacing to whatever
+  // caller (a message handler) invoked applyState.
   transitioning = true
-
-  // The watchdog only needs to run while there is something to hold
-  // coverage of — "off" is the one state Remark C.1's invariant does not
-  // apply to (coverage-observability.ts's CoverageHeld already encodes
-  // this), so tearing it down there is just avoiding dead observer
-  // overhead, not a correctness requirement.
-  if (state === "off") {
-    coverageWatchdog.teardown()
-  } else {
-    coverageWatchdog.observe()
-  }
-
-  // Auto's pipeline owns its own MutationObserver — leaving auto (or
-  // re-entering it) must stop the previous one before anything else runs,
-  // or a stale session keeps reacting to mutations under the new mode.
-  contentSession?.teardown()
-  contentSession = null
-  // Same for shadow-scope discovery: retires every currently-held shadow
-  // scope (releasing its occlusion) and stops both its observers. Correct
-  // to do unconditionally, not just when leaving auto — legacy/off do not
-  // need shadow-scope custody at all (see this module's own header).
-  shadowScopeDiscovery.teardown()
-  // #1280: stops alongside shadowScopeDiscovery, same reasoning.
-  shadowScopeTheming.teardown()
-  // SF-RC5 (#1344): both contrast sources go stale the moment their own
-  // producer stops running — every shadow scope's own contrast contribution
-  // stops the moment shadow-scope custody itself does (shadow scopes exist
-  // only in auto mode, this module's own header), same as
-  // shadowScopeDiscovery.teardown() above already applies to custody
-  // itself; the document half stops the moment contentSession.teardown()
-  // above disconnects it — bot-found (Codex review round 2 on #1443): an
-  // earlier version cleared only the shadow half, so a document-level
-  // violation from the auto round just left could linger in legacy/off,
-  // where nothing is being audited at all, and if no shadow scope had ever
-  // reported either, this block did not even persist a fresh snapshot to
-  // say so.
-  if (documentContrast.length > 0 || shadowContrastByScope.size > 0) {
-    documentContrast = []
-    shadowContrastByScope.clear()
-    recomputeContrastSnapshot()
-  }
-  // Same lifecycle as shadowScopeDiscovery: nothing to poll outside auto
-  // mode either (SF-OB, #1270). One last check() here, before teardown()
-  // stops the poll and clears its own tracking, publishes the registry's
-  // post-purge state — bot-found (#1327's own review, round 3): without it,
-  // leaving auto with a shadow scope COMMITTED left the persisted "scopes"
-  // snapshot (and debug.html's "Live scopes" table) showing that
-  // already-purged scope indefinitely, since nothing ever checks again
-  // outside auto mode to notice shadowScopeDiscovery.teardown() already
-  // retired and purged it from the registry.
-  //
-  // Gated on `previous === "auto"` — bot-found (#1327's own review, round
-  // 4): shadowScopeDiscovery only ever discovers/observes from inside
-  // runAutoTheme(), so its teardown() here is already a no-op whenever the
-  // previous mode wasn't auto, and r_0's own registry entry (still whatever
-  // auto last left it, HELD or COMMITTED) is stale by then — a prior
-  // legacy/off transition's own restoreVendor() already stripped that
-  // artifact without ever updating the registry to say so. Checking it
-  // anyway recorded a permanent false scope.coverage_violated on every
-  // non-auto-to-non-auto transition, one this same call's following
-  // teardown() then made unrecoverable by wiping the tracking that would
-  // have recorded the eventual recovery.
-  if (previous === "auto") {
-    scopeCoverageWatchdog.check(documentScope.registry, "apply-state:teardown")
-  }
-  scopeCoverageWatchdog.teardown()
-
-  // `transitioning` was set true above, before coverageWatchdog.observe().
-  // Reset here regardless of whether actuation below throws, so it can
-  // never stay stuck true past this one synchronous span — that would leave
-  // CoverageHeld silently `"unknown"` forever after, masking a real
-  // subsequent leak rather than just declining to judge this one transient
-  // window. The post-actuation check further down must also still run on
-  // the exceptional path — bot-found (Codex review round 3 on #1443):
-  // resetting the flag alone left a genuine uncovered state (actuation
-  // throwing partway through, before writing anything) recorded only as
-  // "unknown" until some unrelated later mutation happened to trigger a
-  // reactive check — which might never come. Caught and re-thrown after
-  // that check runs, rather than swallowed, to preserve the original
-  // behavior of a throw here surfacing to whatever caller (a message
-  // handler) invoked applyState.
   let actuationError: unknown
   try {
+    // The watchdog only needs to run while there is something to hold
+    // coverage of — "off" is the one state Remark C.1's invariant does not
+    // apply to (coverage-observability.ts's CoverageHeld already encodes
+    // this), so tearing it down there is just avoiding dead observer
+    // overhead, not a correctness requirement.
+    if (state === "off") {
+      coverageWatchdog.teardown()
+    } else {
+      coverageWatchdog.observe()
+    }
+
+    // Auto's pipeline owns its own MutationObserver — leaving auto (or
+    // re-entering it) must stop the previous one before anything else runs,
+    // or a stale session keeps reacting to mutations under the new mode.
+    contentSession?.teardown()
+    contentSession = null
+    // Same for shadow-scope discovery: retires every currently-held shadow
+    // scope (releasing its occlusion) and stops both its observers. Correct
+    // to do unconditionally, not just when leaving auto — legacy/off do not
+    // need shadow-scope custody at all (see this module's own header).
+    shadowScopeDiscovery.teardown()
+    // #1280: stops alongside shadowScopeDiscovery, same reasoning.
+    shadowScopeTheming.teardown()
+    // SF-RC5 (#1344): both contrast sources go stale the moment their own
+    // producer stops running — every shadow scope's own contrast contribution
+    // stops the moment shadow-scope custody itself does (shadow scopes exist
+    // only in auto mode, this module's own header), same as
+    // shadowScopeDiscovery.teardown() above already applies to custody
+    // itself; the document half stops the moment contentSession.teardown()
+    // above disconnects it — bot-found (Codex review round 2 on #1443): an
+    // earlier version cleared only the shadow half, so a document-level
+    // violation from the auto round just left could linger in legacy/off,
+    // where nothing is being audited at all, and if no shadow scope had ever
+    // reported either, this block did not even persist a fresh snapshot to
+    // say so.
+    if (documentContrast.length > 0 || shadowContrastByScope.size > 0) {
+      documentContrast = []
+      shadowContrastByScope.clear()
+      recomputeContrastSnapshot()
+    }
+    // Same lifecycle as shadowScopeDiscovery: nothing to poll outside auto
+    // mode either (SF-OB, #1270). One last check() here, before teardown()
+    // stops the poll and clears its own tracking, publishes the registry's
+    // post-purge state — bot-found (#1327's own review, round 3): without it,
+    // leaving auto with a shadow scope COMMITTED left the persisted "scopes"
+    // snapshot (and debug.html's "Live scopes" table) showing that
+    // already-purged scope indefinitely, since nothing ever checks again
+    // outside auto mode to notice shadowScopeDiscovery.teardown() already
+    // retired and purged it from the registry.
+    //
+    // Gated on `previous === "auto"` — bot-found (#1327's own review, round
+    // 4): shadowScopeDiscovery only ever discovers/observes from inside
+    // runAutoTheme(), so its teardown() here is already a no-op whenever the
+    // previous mode wasn't auto, and r_0's own registry entry (still whatever
+    // auto last left it, HELD or COMMITTED) is stale by then — a prior
+    // legacy/off transition's own restoreVendor() already stripped that
+    // artifact without ever updating the registry to say so. Checking it
+    // anyway recorded a permanent false scope.coverage_violated on every
+    // non-auto-to-non-auto transition, one this same call's following
+    // teardown() then made unrecoverable by wiping the tracking that would
+    // have recorded the eventual recovery.
+    if (previous === "auto") {
+      scopeCoverageWatchdog.check(
+        documentScope.registry,
+        "apply-state:teardown"
+      )
+    }
+    scopeCoverageWatchdog.teardown()
+
     restoreVendor()
     // restoreVendor() only knows about the two pre-adapter layers (the
     // `data-sw-dark` attribute and the static theme sheet). Everything the
