@@ -155,6 +155,20 @@ export type CoverageAggregate =
 export type CoverageContext = {
   now: number
   tabState: TabState
+  /**
+   * SF-RC5 (#1344): true for the single synchronous window between a new
+   * `tabState` being published and that state's actuation (the veil/theme/
+   * filter DOM writes `content.ts`'s `applyState` performs) completing.
+   * `collectContext` re-reads the *live* DOM on every check — including the
+   * `observe-start` check that fires the moment coverage watching (re)starts,
+   * which content.ts's `applyState` triggers *before* running that
+   * actuation. Outside this one window the DOM always reflects `tabState`
+   * already; inside it, the DOM still reflects whatever the *previous* state
+   * left behind, by construction, not because coverage was actually lost.
+   * `CoverageHeld` treats this window as `{ok: "unknown"}` rather than a
+   * violation — see that invariant's own check.
+   */
+  transitioning: boolean
   /** The veil element is present (either the popover or the fallback path). */
   veilPresent: boolean
   /** `sw-dirty` is on `<html>` — the CSS backstop is active even if the veil element itself is gone. */
@@ -199,6 +213,13 @@ export const coverageInvariants: ReadonlyArray<Invariant<CoverageContext>> = [
       'Remark C.1\'s zero-leak invariant, made checkable: "no page is ever displayed at native vendor luminance when dark is required." Whenever the tab is not "off", the veil, the dark theme, or a genuinely-active legacy filter must be covering it.',
     check: (ctx): InvariantOutcome => {
       if (ctx.tabState === "off") return { ok: true }
+      // SF-RC5 (#1344): declining to judge instead of falsely certifying —
+      // see `transitioning`'s own doc comment on `CoverageContext`. Proven
+      // (issue #1344's own live-proof comment) not to mask a real leak: the
+      // off<->legacy and off<->auto transitions this guards produce exactly
+      // one MutationObserver batch, delivered after this synchronous window
+      // closes, so no frame can ever composite while `transitioning` is true.
+      if (ctx.transitioning) return { ok: "unknown" }
       const covered =
         ctx.veilPresent ||
         ctx.dirtyClassPresent ||

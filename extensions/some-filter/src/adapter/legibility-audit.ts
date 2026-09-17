@@ -54,6 +54,10 @@ import {
   relativeLuminance,
   type RGBA,
 } from "@filter/lib/content/color"
+import type {
+  ContrastAudit,
+  ContrastPairRecord,
+} from "@filter/lib/content/contrast-observability"
 import { rgbaToCss } from "@filter/lib/content/modify-colors"
 
 import { isHTMLElementNode } from "./actuator"
@@ -1247,6 +1251,39 @@ export function decideLegibility(
   }
 
   return actions
+}
+
+/**
+ * SF-RC5 (#1344): pure per-`(foreground, backdrop)`-pair audit of one round
+ * — never by element, and never anything but structural/color metadata (see
+ * `contrast-observability.ts`'s own header for why). Every pair `scan`
+ * actually audited is represented, including passing ones — bot-found
+ * (Codex review round 2 on #1443): `mergeContrastAudits` needs the full,
+ * uncapped set to dedupe correctly by key across the document and every
+ * shadow scope, not just the failing pairs a capped summary would carry.
+ * `actions` (`decideLegibility`'s own output) is the authoritative
+ * violated/underdetermined verdict per pair — this function re-derives
+ * nothing, it only reshapes that pure decision into the diagnostic contract
+ * `mergeContrastAudits`/`contrastInvariants` check against.
+ */
+export function auditContrastPairs(
+  scan: LegibilityScanResult,
+  actions: ReadonlyArray<TagLegibilityAction>
+): ContrastAudit {
+  const verdictByKey = new Map<LegibilityKey, ContrastVerdict>()
+  for (const action of actions) verdictByKey.set(action.key, action.verdict)
+
+  const records: Array<ContrastPairRecord> = []
+  for (const key of scan.attrsByKey.keys()) {
+    const elements = scan.elementsByKey.get(key) ?? []
+    records.push({
+      key,
+      verdict: verdictByKey.get(key) ?? "passing",
+      tagName: elements[0]?.tagName ?? "unknown",
+      elementCount: elements.length,
+    })
+  }
+  return records
 }
 
 /**

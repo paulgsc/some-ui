@@ -34,6 +34,7 @@ import {
   relativeLuminance,
   type RGBA,
 } from "@filter/lib/content/color"
+import type { ContrastSourceReport } from "@filter/lib/content/contrast-observability"
 import { rgbaToCss } from "@filter/lib/content/modify-colors"
 import { PREPAINT_DIRTY_CLASS } from "@filter/lib/content/prepaint"
 import {
@@ -68,6 +69,7 @@ import {
   realizeForegroundRepairs,
 } from "./foreground-repair"
 import {
+  auditContrastPairs,
   auditLegibility,
   clearLegibilityTags,
   decideLegibility,
@@ -770,7 +772,27 @@ export function createContentSession(
    * Invoked regardless of whether the document half ran: a shadow scope's
    * verdict is independent of the document's.
    */
-  onInteractionSettled?: () => void
+  onInteractionSettled?: () => void,
+  /**
+   * SF-RC5 (#1344): called with a fresh, uncapped `ContrastAudit` — every
+   * `(foreground, backdrop)` pair this round actually scanned, not just the
+   * failing ones — every time `runContrastChannel` runs (a full round's own
+   * pass, and SF-RC4's interaction-settled re-run alike), and,
+   * symmetrically, with an empty one whenever this round applied no theme
+   * at all, so a stale violated pair from a *prior* themed round does not
+   * linger once the page reads as already-dark. Called with `null` — not an
+   * empty audit — when a round's own scan/repair throws before reaching
+   * this call: `null` means "this round's own state is unknown," an empty
+   * array means "this round genuinely audited nothing," and conflating them
+   * let a failed round read as confidently clean (bot-found, Codex
+   * confirming review round 3 on #1443) — see `ContrastSourceReport`'s own
+   * doc comment. content.ts merges this with every shadow scope's own audit
+   * (`shadow-scope-theming.ts`'s own `onContrastAudited`) via
+   * `mergeContrastAudits()` before persisting the second, independent
+   * `"contrast"` snapshot — never folded into `coverageWatchdog`'s own
+   * `"coverage"` one (see `contrast-observability.ts`'s own header for why).
+   */
+  onContrastAudited?: (audit: ContrastSourceReport) => void
 ): ContentSession {
   const hypothesis = createHypothesis<SurfaceKey, SurfaceAttr>()
   const provenance: ProvenanceStore<SurfaceKey> = createProvenanceStore()
@@ -865,17 +887,15 @@ export function createContentSession(
    */
   function runContrastChannel(root: Element): void {
     const legibilityScan = auditLegibility(root)
-    realizeLegibility(
-      root,
-      decideLegibility(legibilityScan.attrsByKey),
-      legibilityScan.elementsByKey
-    )
+    const legibilityActions = decideLegibility(legibilityScan.attrsByKey)
+    realizeLegibility(root, legibilityActions, legibilityScan.elementsByKey)
     realizeForegroundRepairs(
       root,
       decideForegroundRepairs(legibilityScan.attrsByKey),
       legibilityScan.elementsByKey,
       detectVendorInvert()
     )
+    onContrastAudited?.(auditContrastPairs(legibilityScan, legibilityActions))
   }
 
   function fire(): void {
@@ -910,6 +930,11 @@ export function createContentSession(
         // means.
         realizeLegibility(lastRoot, [], new Map())
         realizeForegroundRepairs(lastRoot, [], new Map())
+        // Nothing was audited this round either — report an empty audit
+        // explicitly rather than leaving a themed round's stale
+        // violated/underdetermined pairs standing once the page reads as
+        // already-dark or otherwise applies no theme at all.
+        onContrastAudited?.([])
       }
 
       outcome = { kind: "ok", actions, realizationChanged }
@@ -925,6 +950,21 @@ export function createContentSession(
       // eslint-disable-next-line no-console
       console.error("[some-filter] pipeline fire() failed:", error)
       outcome = { kind: "error", error }
+      // Bot-found (Codex confirming review on #1443, the ordinary-round
+      // counterpart to runInteractionContrast's own catch above): a throw
+      // from invoke()/realize() or from runContrastChannel() itself, both
+      // above, means onContrastAudited never ran for this round at all — the
+      // *previous* round's document audit would otherwise stand in as
+      // current indefinitely. content.ts's reportPipelineOutcome(outcome)
+      // moves the document scope to FAILED_HELD on this same "error" outcome,
+      // but that transition only reaches shadowContrastByScope (this scope
+      // registry's own shared eviction switch does not know documentContrast
+      // exists at all — pipeline.ts's own boundary, by design); only this
+      // catch is positioned to invalidate the document half. Reports `null`,
+      // not `[]` — see runInteractionContrast's own catch and
+      // ContrastSourceReport's own doc comment for why the two are not
+      // interchangeable (bot-found, Codex confirming review round 3).
+      onContrastAudited?.(null)
     }
     onFire?.(outcome)
   }
@@ -995,6 +1035,20 @@ export function createContentSession(
         // scope does not cost the other half its pass.
         // eslint-disable-next-line no-console
         console.error("[some-filter] interaction contrast pass failed:", error)
+        // Bot-found (Codex confirming review on #1443): a throw from
+        // auditLegibility/realizeLegibility/realizeForegroundRepairs above
+        // happens *before* runContrastChannel's own onContrastAudited call,
+        // so without this the document's last-reported audit — from before
+        // this interaction changed the page's colours — keeps standing in
+        // as current, indefinitely: nothing else re-triggers this channel.
+        // Report `null`, not an empty audit (bot-found, Codex confirming
+        // review round 3 on #1443: an earlier version of this fix used `[]`,
+        // the same shape a genuinely-empty *successful* round already uses,
+        // so a failed document audit merged indistinguishably from "nothing
+        // to report" and could still read as confidently healthy if some
+        // other, unaffected source had only passing pairs) — see
+        // ContrastSourceReport's own doc comment.
+        onContrastAudited?.(null)
       }
     }
     try {

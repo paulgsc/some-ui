@@ -16,6 +16,7 @@ import {
   type Swatch,
 } from "@filter/adapter/swatches"
 import { parseColor, relativeLuminance } from "@filter/lib/content/color"
+import type { ContrastSourceReport } from "@filter/lib/content/contrast-observability"
 import { compensateSwatch } from "@filter/lib/content/theme-apply"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -964,6 +965,34 @@ describe("createShadowScopeTheming.project — rendered-contrast channel (#1342)
     expect(repairRule?.cssText).toContain(`${REPAIR_ATTR}="${key ?? ""}"`)
   })
 
+  it("reports this scope's own violated pair through onContrastAudited, keyed by its scope id — SF-RC5 (#1344), bot-found (Codex review round 1 on #1443): the document's own contrast snapshot cannot see a shadow-only violation at all, since auditLegibility's TreeWalker does not cross a shadow boundary", async () => {
+    const reg = registry()
+    const { shadow } = violatedScope()
+    const id = registerHeld(reg, shadow)
+    let reportedId: ScopeId | undefined
+    let reportedAudit: ContrastSourceReport | undefined
+    const onContrastAudited = vi.fn(
+      (auditedId: ScopeId, audit: ContrastSourceReport) => {
+        reportedId = auditedId
+        reportedAudit = audit
+      }
+    )
+
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0,
+      onContrastAudited
+    )
+    theming.project(id)
+    await flushAll()
+
+    expect(onContrastAudited).toHaveBeenCalled()
+    expect(reportedId).toBe(id)
+    expect(reportedAudit?.length).toBeGreaterThanOrEqual(1)
+    expect(reportedAudit?.some((r) => r.verdict === "violated")).toBe(true)
+  })
+
   it("keeps the repair sheet alongside — not instead of — the scope's static layer, host tokens and surface colours", async () => {
     // One desired sheet set per root is what keeps shadowRealizationIntact
     // (#1280) and clearShadowSurfaceState covering everything this extension
@@ -1133,6 +1162,92 @@ describe("createShadowScopeTheming.project — an ancestor commit re-audits nest
       reg.stateOf(innerId)?.kind,
       "re-contrast must not re-engage the nested scope's occlusion hold"
     ).toBe("COMMITTED")
+  })
+
+  it("reports null for a descendant whose own re-contrast throws, rather than leaving its prior audit standing (bot-found, Codex confirming review on #1443)", async () => {
+    // The descendant itself never transitions on this failure — it stays
+    // COMMITTED (recontrastScopes's own doc comment: "this runs after
+    // resolveCommitted has already resolved, so a throw here cannot be
+    // reported as a FAILED_HELD") — so none of content.ts's
+    // eviction-on-transition switch cases fire either. Without
+    // onContrastAudited reporting `null` from the catch itself, the
+    // descendant's last-good audit from before whatever repaint this
+    // re-contrast was reacting to would stand in as current forever — and
+    // reporting `[]` instead of `null` would only trade that bug for a
+    // subtler one (bot-found, Codex confirming review round 3 on #1443): a
+    // failed scope would then merge indistinguishably from a scope that
+    // genuinely audited nothing this round.
+    const reg = registry()
+    const { outer, inner } = nestedScopes()
+    const outerId = registerHeld(reg, outer)
+    const innerId = "shadow:inner-throws-on-recontrast"
+    reg.register(innerId, {
+      ref: inner,
+      parent: outerId,
+      contentEpoch: 0,
+      hold: { install: () => {}, release: () => {} },
+    })
+    const carrier = addViolatedCarrier(inner)
+
+    const reportedAudits: Array<{ id: ScopeId; audit: ContrastSourceReport }> =
+      []
+    const onContrastAudited = vi.fn(
+      (id: ScopeId, audit: ContrastSourceReport) => {
+        reportedAudits.push({ id, audit })
+      }
+    )
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0,
+      onContrastAudited
+    )
+
+    theming.project(innerId)
+    await flushAll()
+    expect(reg.stateOf(innerId)?.kind).toBe("COMMITTED")
+    const innerCommitAudit = reportedAudits[reportedAudits.length - 1]
+    expect(innerCommitAudit?.id).toBe(innerId)
+    expect(
+      innerCommitAudit?.audit?.some((r) => r.verdict === "violated"),
+      "the scope's own initial commit must report the real violation"
+    ).toBe(true)
+
+    // The spy is installed only now, after inner's own initial commit above
+    // has already run for real — so the next (and only) call it sees for
+    // `inner` is the ancestor-triggered re-contrast, which this makes fail.
+    const originalCreateTreeWalker = document.createTreeWalker.bind(document)
+    const spy = vi
+      .spyOn(document, "createTreeWalker")
+      .mockImplementation((root, whatToShow, filter) => {
+        if (root === inner) {
+          throw new Error("re-contrast boom")
+        }
+        return originalCreateTreeWalker(root, whatToShow, filter)
+      })
+    try {
+      theming.project(outerId)
+      await flushAll()
+    } finally {
+      spy.mockRestore()
+    }
+
+    expect(reg.stateOf(outerId)?.kind).toBe("COMMITTED")
+    expect(
+      reg.stateOf(innerId)?.kind,
+      "a failed re-contrast must not itself move the descendant's own registry state"
+    ).toBe("COMMITTED")
+    // realizeLegibility never re-ran on the failed pass (the throw happens
+    // inside auditLegibility, before it) — the tag stands as the initial
+    // commit left it.
+    expect(carrier.getAttribute(LEGIBILITY_ATTR)).toBe("violated")
+
+    const reportsForInner = reportedAudits.filter((r) => r.id === innerId)
+    const lastReportForInner = reportsForInner[reportsForInner.length - 1]
+    expect(
+      lastReportForInner?.audit,
+      "the failed re-contrast must report null, not leave the prior violated one standing"
+    ).toBeNull()
   })
 
   it("re-audits a scope nested two levels down, not just a direct child", async () => {

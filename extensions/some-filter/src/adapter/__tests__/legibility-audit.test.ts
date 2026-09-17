@@ -1,4 +1,5 @@
 import {
+  auditContrastPairs,
   auditLegibility,
   decideLegibility,
   LEGIBILITY_ATTR,
@@ -6,6 +7,8 @@ import {
   realizeLegibility,
   resolveEffectiveBackdrop,
   type LegibilityAttr,
+  type LegibilityScanResult,
+  type TagLegibilityAction,
 } from "@filter/adapter/legibility-audit"
 import { afterEach, describe, expect, it } from "vitest"
 
@@ -684,5 +687,88 @@ describe("realizeLegibility", () => {
 
     expect(a.hasAttribute(LEGIBILITY_ATTR)).toBe(false)
     expect(a.getAttribute("data-keep")).toBe("yes")
+  })
+})
+
+describe("auditContrastPairs — SF-RC5 (#1344)", () => {
+  const dummyAttr: LegibilityAttr = {
+    foreground: [0, 0, 0, 1],
+    backdrop: [255, 255, 255, 1],
+  }
+
+  it("reports one record per (foreground, backdrop) pair, not by element — several elements sharing one violated key still count as one record", () => {
+    document.body.innerHTML = '<div id="a"></div><div id="b"></div>'
+    const a = document.getElementById("a")
+    const b = document.getElementById("b")
+    if (a === null || b === null) throw new Error("fixture missing")
+
+    const scan: LegibilityScanResult = {
+      elementsByKey: new Map([["k1", [a, b]]]),
+      attrsByKey: new Map([["k1", dummyAttr]]),
+    }
+    const actions: ReadonlyArray<TagLegibilityAction> = [
+      { kind: "tag-legibility", key: "k1", verdict: "violated" },
+    ]
+
+    const audit = auditContrastPairs(scan, actions)
+    expect(audit).toEqual([
+      { key: "k1", verdict: "violated", tagName: "DIV", elementCount: 2 },
+    ])
+  })
+
+  it("includes a pair with no matching action at all, verdict 'passing' — uncapped and unfiltered, unlike the old summarized shape", () => {
+    const scan: LegibilityScanResult = {
+      elementsByKey: new Map(),
+      attrsByKey: new Map([
+        ["violated-key", dummyAttr],
+        ["underdetermined-key", dummyAttr],
+        ["passing-key", dummyAttr],
+      ]),
+    }
+    const actions: ReadonlyArray<TagLegibilityAction> = [
+      { kind: "tag-legibility", key: "violated-key", verdict: "violated" },
+      {
+        kind: "tag-legibility",
+        key: "underdetermined-key",
+        verdict: "underdetermined",
+      },
+    ]
+
+    const audit = auditContrastPairs(scan, actions)
+    const byKey = new Map(audit.map((r) => [r.key, r.verdict]))
+    expect(byKey.get("violated-key")).toBe("violated")
+    expect(byKey.get("underdetermined-key")).toBe("underdetermined")
+    expect(byKey.get("passing-key")).toBe("passing")
+  })
+
+  it("reports an empty audit when nothing was scanned — the no-theme-applied case", () => {
+    const audit = auditContrastPairs(
+      { elementsByKey: new Map(), attrsByKey: new Map() },
+      []
+    )
+    expect(audit).toEqual([])
+  })
+
+  it("carries no page text content or URL data — structural/color metadata only (#1344's own privacy discipline, regression-locked against the real auditLegibility/decideLegibility pipeline, not a synthetic fixture)", () => {
+    document.body.innerHTML =
+      '<a href="https://example.com/secret?token=PII-12345" ' +
+      'style="color: rgb(10,10,10); background-color: rgb(10,10,10)">' +
+      "TopSecretUserMessage-DoNotLeak</a>"
+
+    const scan = auditLegibility(document.body)
+    const actions = decideLegibility(scan.attrsByKey)
+    const audit = auditContrastPairs(scan, actions)
+
+    // Same color on itself is the one contrast failure that needs no
+    // getComputedStyle pseudo-element support to detect (jsdom's own gap,
+    // see this file's cleanUp() and the other tests' console noise) — a
+    // trivial fixture that still genuinely exercises the violated path.
+    expect(audit.some((r) => r.verdict === "violated")).toBe(true)
+
+    const serialized = JSON.stringify(audit)
+    expect(serialized).not.toContain("TopSecretUserMessage")
+    expect(serialized).not.toContain("example.com")
+    expect(serialized).not.toContain("PII-12345")
+    expect(serialized).not.toContain("token=")
   })
 })
