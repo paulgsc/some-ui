@@ -176,6 +176,14 @@ already green. The live check you just ran is the ground truth; act on what it s
 `get_check_runs`, not the legacy commit-status API — this repo's CI runs as GitHub Actions
 checks, and the legacy API can report `total_count: 0` while checks are actively running.
 
+`get_check_runs` on the correct head is necessary but **not sufficient**, and this is the one
+place that distinction has actually cost something: a workflow run cancelled by its concurrency
+group (which is what your own next push does to the previous run) contributes no check runs, so
+its jobs are absent rather than red and the aggregate reads all-green. Before merging, verify
+the run that matters by `head_sha` via `actions_list method=list_workflow_runs` — see the
+cancelled-`Extension CI` entry under "Cold-start footguns" in `CLAUDE.md` for the full trap and
+the exact call.
+
 ## Auto-merge, when the user has standing-authorized it for this repo
 
 Standing authorization is scoped to the exact repo(s) it was granted for and must be restated

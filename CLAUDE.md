@@ -99,12 +99,30 @@ tsc --noEmit`, `pnpm exec vitest run <path>`), not the repo root.
   `@playwright/test`) before the workspace's own `node_modules/.bin/playwright` — the
   script's own `exec playwright test "$@"` has no reason to prefer one over the other, and
   PATH order picks the global one. The result is `Error: Playwright Test did not expect
-  test.describe() to be called here`, thrown from the *first* `test.describe()` in whichever
+test.describe() to be called here`, thrown from the _first_ `test.describe()` in whichever
   spec runs first — reads exactly like a real code/config bug (and the error's own listed
   causes don't mention PATH at all), for every spec in the suite, not just a new one you just
   added. Prepend the workspace root before invoking: `PATH="$(git rev-parse
-  --show-toplevel)/node_modules/.bin:$PATH" bash extensions/some-filter/scripts/claude-e2e.sh
-  <args>`.
+--show-toplevel)/node_modules/.bin:$PATH" bash extensions/some-filter/scripts/claude-e2e.sh
+<args>`.
+- **A cancelled `Extension CI` run reads as a fully green PR — including from
+  `get_check_runs` on the correct head.** Pushing again cancels the in-flight run for the same
+  PR via its concurrency group, and a cancelled run contributes **no check runs at all**. So
+  `Verify some-filter` — the only job that builds this extension and runs its tests in CI —
+  is not missing-and-red, it is simply absent, and every aggregate signal reports success.
+  Observed simultaneously on one head: `get_check_runs` → 14 checks, all `success`;
+  `mergeable_state` → `clean`; a `check_suite.completed` webhook → "No third-party check suite
+  ... is still running or failed". All three agreed, and the extension had been verified by
+  nothing. (The webhook does say "Cancelled suites, suites with no runs ... are not covered",
+  which is easy to skim past.) This is worth a line here rather than only in
+  `steward/SKILL.md` because the misleading part is the _generic_ check every session reaches
+  for first. Before merging, verify the workflow run itself by `head_sha`:
+  `actions_list method=list_workflow_runs resource_id=extension.yml
+workflow_runs_filter={"branch":"<branch>"}`, and require a run whose `head_sha` matches your
+  head with `status: completed` **and** `conclusion: success`. Note also that a job can sit
+  `in_progress` for ~10min in `Post Run .../nix-setup` teardown long after every substantive
+  step passed — `list_workflow_jobs` shows step-level state, but still wait for the job to
+  complete, since a post-step failure can still mark it red.
 
 ## Multi-session relay work
 
