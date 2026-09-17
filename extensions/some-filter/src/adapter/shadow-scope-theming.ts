@@ -48,7 +48,7 @@
  * that realization is fully installed" acceptance criterion.
  */
 
-import type { ContrastAudit } from "@filter/lib/content/contrast-observability"
+import type { ContrastSourceReport } from "@filter/lib/content/contrast-observability"
 import { detectVendorInvert } from "@filter/lib/content/vendor-filter"
 import { invoke } from "@some-extension/transport/adapter/invoke"
 import { createHypothesis } from "@some-extension/transport/estimator/hypothesis"
@@ -287,7 +287,9 @@ function projectContrast(
   actions: ReadonlyArray<FilterAction>,
   swatch: Swatch,
   vendorInvert: number,
-  onContrastAudited: ((id: ScopeId, audit: ContrastAudit) => void) | undefined
+  onContrastAudited:
+    | ((id: ScopeId, audit: ContrastSourceReport) => void)
+    | undefined
 ): void {
   withScopeTransitionsFrozen(root, () => {
     realizeShadowColors(actions, root, swatch, vendorInvert, [])
@@ -335,8 +337,14 @@ export function createShadowScopeTheming(
    * responsible for evicting both from its own per-scope map itself, via
    * the registry's own transition observer, since neither produces a call
    * here to key an eviction off (bot-found, Codex review round 2 on #1443).
+   * Also called with `id` and `null` — not an empty audit — when
+   * `recontrastScopes`'s own catch below invalidates a scope whose
+   * re-contrast threw mid-round: `null` means "this scope's own state this
+   * round is unknown," distinct from a genuine empty audit (bot-found,
+   * Codex confirming review round 3 on #1443) — see `ContrastSourceReport`'s
+   * own doc comment.
    */
-  onContrastAudited?: (id: ScopeId, audit: ContrastAudit) => void
+  onContrastAudited?: (id: ScopeId, audit: ContrastSourceReport) => void
 ): ShadowScopeTheming {
   /**
    * Every scope id with a `projectOnce()` call currently in flight (queued
@@ -554,12 +562,13 @@ export function createShadowScopeTheming(
         // registry — so none of content.ts's exhaustive eviction-on-
         // transition switch cases fire, and the scope's last-reported audit
         // (from before whatever repaint prompted this re-contrast) would
-        // otherwise stand in as current indefinitely. Report an explicit
-        // empty audit for this id, the same "nothing audited this round"
-        // shape projectContrast's own onContrastAudited call already uses
-        // elsewhere, so content.ts's map overwrites the stale entry rather
-        // than leaving it standing.
-        onContrastAudited?.(otherId, [])
+        // otherwise stand in as current indefinitely. Reports `null`, not
+        // `[]` (bot-found, Codex confirming review round 3 on #1443: `[]`
+        // is the same shape a genuinely clean audit uses, so a failed
+        // re-contrast merged indistinguishably from "this scope audited
+        // nothing" instead of "this scope's state is unknown") — see
+        // ContrastSourceReport's own doc comment.
+        onContrastAudited?.(otherId, null)
       }
     }
   }

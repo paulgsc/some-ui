@@ -34,7 +34,7 @@ import {
   relativeLuminance,
   type RGBA,
 } from "@filter/lib/content/color"
-import type { ContrastAudit } from "@filter/lib/content/contrast-observability"
+import type { ContrastSourceReport } from "@filter/lib/content/contrast-observability"
 import { rgbaToCss } from "@filter/lib/content/modify-colors"
 import { PREPAINT_DIRTY_CLASS } from "@filter/lib/content/prepaint"
 import {
@@ -780,14 +780,19 @@ export function createContentSession(
    * pass, and SF-RC4's interaction-settled re-run alike), and,
    * symmetrically, with an empty one whenever this round applied no theme
    * at all, so a stale violated pair from a *prior* themed round does not
-   * linger once the page reads as already-dark. content.ts merges this with
-   * every shadow scope's own audit (`shadow-scope-theming.ts`'s own
-   * `onContrastAudited`) via `mergeContrastAudits()` before persisting the
-   * second, independent `"contrast"` snapshot — never folded into
-   * `coverageWatchdog`'s own `"coverage"` one (see
-   * `contrast-observability.ts`'s own header for why).
+   * linger once the page reads as already-dark. Called with `null` — not an
+   * empty audit — when a round's own scan/repair throws before reaching
+   * this call: `null` means "this round's own state is unknown," an empty
+   * array means "this round genuinely audited nothing," and conflating them
+   * let a failed round read as confidently clean (bot-found, Codex
+   * confirming review round 3 on #1443) — see `ContrastSourceReport`'s own
+   * doc comment. content.ts merges this with every shadow scope's own audit
+   * (`shadow-scope-theming.ts`'s own `onContrastAudited`) via
+   * `mergeContrastAudits()` before persisting the second, independent
+   * `"contrast"` snapshot — never folded into `coverageWatchdog`'s own
+   * `"coverage"` one (see `contrast-observability.ts`'s own header for why).
    */
-  onContrastAudited?: (audit: ContrastAudit) => void
+  onContrastAudited?: (audit: ContrastSourceReport) => void
 ): ContentSession {
   const hypothesis = createHypothesis<SurfaceKey, SurfaceAttr>()
   const provenance: ProvenanceStore<SurfaceKey> = createProvenanceStore()
@@ -955,9 +960,11 @@ export function createContentSession(
       // but that transition only reaches shadowContrastByScope (this scope
       // registry's own shared eviction switch does not know documentContrast
       // exists at all — pipeline.ts's own boundary, by design); only this
-      // catch is positioned to invalidate the document half. Same "nothing
-      // audited this round" empty shape used everywhere else in this file.
-      onContrastAudited?.([])
+      // catch is positioned to invalidate the document half. Reports `null`,
+      // not `[]` — see runInteractionContrast's own catch and
+      // ContrastSourceReport's own doc comment for why the two are not
+      // interchangeable (bot-found, Codex confirming review round 3).
+      onContrastAudited?.(null)
     }
     onFire?.(outcome)
   }
@@ -1034,10 +1041,14 @@ export function createContentSession(
         // so without this the document's last-reported audit — from before
         // this interaction changed the page's colours — keeps standing in
         // as current, indefinitely: nothing else re-triggers this channel.
-        // Report an explicit empty audit, the same "nothing audited this
-        // round" shape fire()'s own no-theme branch already reports, so a
-        // failed re-audit reads as unknown rather than silently stale.
-        onContrastAudited?.([])
+        // Report `null`, not an empty audit (bot-found, Codex confirming
+        // review round 3 on #1443: an earlier version of this fix used `[]`,
+        // the same shape a genuinely-empty *successful* round already uses,
+        // so a failed document audit merged indistinguishably from "nothing
+        // to report" and could still read as confidently healthy if some
+        // other, unaffected source had only passing pairs) — see
+        // ContrastSourceReport's own doc comment.
+        onContrastAudited?.(null)
       }
     }
     try {

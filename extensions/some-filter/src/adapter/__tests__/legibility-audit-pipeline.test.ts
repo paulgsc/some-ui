@@ -254,7 +254,7 @@ describe("SF-RC1 — a thrown/incomplete audit leaves the round held, not commit
     contentSession.teardown()
   })
 
-  it("reports an empty audit, not the stale prior-round one, when the round's own throw is caught (bot-found, Codex confirming review on #1443)", () => {
+  it("reports null, not the stale prior-round audit, when the round's own throw is caught (bot-found, Codex confirming review on #1443)", () => {
     // The two tests above confirm this same throw is caught and reported as
     // FireOutcome "error" — this confirms the contrast channel's own output
     // doesn't go silently stale on that same failure. Without this, a round
@@ -264,7 +264,10 @@ describe("SF-RC1 — a thrown/incomplete audit leaves the round held, not commit
     // failing to produce a clean round — document-scope.ts's own FAILED_HELD
     // transition has no reach into pipeline.ts's own documentContrast (a
     // separate module content.ts alone bridges), so only this catch is
-    // positioned to invalidate it.
+    // positioned to invalidate it. `null`, not `[]` (bot-found, Codex
+    // confirming review round 3 on #1443): the empty-array version of this
+    // fix let a failed round merge indistinguishably from a genuinely clean
+    // one if some other, unaffected source had only passing pairs.
     document.body.innerHTML =
       '<div id="dark-surface" style="background-color: rgb(13, 17, 23); color: rgb(255, 255, 255)">' +
       '<div id="text-carrier" style="color: rgb(0, 0, 0)">hi</div>' +
@@ -290,7 +293,7 @@ describe("SF-RC1 — a thrown/incomplete audit leaves the round held, not commit
     contentSession.rescan()
 
     expect(onContrastAudited).toHaveBeenCalledTimes(1)
-    expect(onContrastAudited).toHaveBeenCalledWith([])
+    expect(onContrastAudited).toHaveBeenCalledWith(null)
 
     contentSession.teardown()
   })
@@ -644,14 +647,17 @@ describe("SF-RC4 (#1343) — the interaction-settled contrast pass", () => {
     vi.useRealTimers()
   })
 
-  it("reports an empty audit, not the stale pre-interaction one, when the document half throws (bot-found, Codex confirming review on #1443)", () => {
+  it("reports null, not the stale pre-interaction audit, when the document half throws (bot-found, Codex confirming review on #1443)", () => {
     // The test above ("runs the shadow hook even if the document half
     // throws") confirms the *shadow* half is unaffected; this confirms the
     // document half's own onContrastAudited does not go silent on its own
     // failure. Without this, runContrastChannel throwing before its own
     // onContrastAudited call left content.ts's documentContrast holding
     // whatever the *previous*, pre-interaction round reported — stale
-    // forever, since nothing else re-triggers this channel.
+    // forever, since nothing else re-triggers this channel. `null`, not `[]`
+    // (bot-found, Codex confirming review round 3 on #1443): the
+    // empty-array version of this fix let a failed round merge
+    // indistinguishably from a genuinely clean one.
     vi.useFakeTimers()
     themedPage()
     const session = createSessionLifecycle()
@@ -676,7 +682,7 @@ describe("SF-RC4 (#1343) — the interaction-settled contrast pass", () => {
     vi.advanceTimersByTime(INTERACTION_SETTLE_MS)
 
     expect(onContrastAudited).toHaveBeenCalledTimes(1)
-    expect(onContrastAudited).toHaveBeenCalledWith([])
+    expect(onContrastAudited).toHaveBeenCalledWith(null)
 
     contentSession.teardown()
     vi.useRealTimers()

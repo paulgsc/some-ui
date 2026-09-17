@@ -76,6 +76,26 @@ export type ContrastPairRecord = {
  */
 export type ContrastAudit = ReadonlyArray<ContrastPairRecord>
 
+/**
+ * One source's report for this round: either its `ContrastAudit` (possibly
+ * `[]` — a theme genuinely applies no colors this source needs to audit,
+ * e.g. `fire()`'s own no-theme branch), or `null` — that source's own audit
+ * did not complete this round (a caught throw mid-scan/mid-repair) and its
+ * state for this round is unknown, not "nothing to report."
+ *
+ * Bot-found (Codex confirming review round 3 on #1443): every failure-path
+ * fix before this one (rounds 5-6) reported a failed re-audit as `[]`, the
+ * same shape a *successful*, genuinely-empty round already used — so a
+ * document audit that failed to run at all was indistinguishable from one
+ * that ran and found nothing, and a passing-only audit from an unaffected
+ * *other* source could then merge with it into `auditedCount > 0,
+ * violatedCount: 0`, reporting the page confidently healthy despite an
+ * entire source never having audited anything this round. `null` carries
+ * that distinction through to `mergeContrastAudits`, which folds it into
+ * `failedSourceCount` rather than silently treating it as zero pairs.
+ */
+export type ContrastSourceReport = ContrastAudit | null
+
 export type ContrastContext = {
   readonly now: number
   /** Distinct (foreground, backdrop) pairs actually audited this round — 0 whenever no theme is applied (nothing painted, nothing to audit). */
@@ -83,6 +103,15 @@ export type ContrastContext = {
   readonly passingCount: number
   readonly violatedCount: number
   readonly underdeterminedCount: number
+  /**
+   * How many sources (the document, or one shadow scope) reported `null` —
+   * an audit that failed to complete this round — rather than a genuine
+   * (possibly empty) `ContrastAudit`. `ContrastHeld` treats this the same
+   * as an underdetermined pair: not a known violation, but never silently
+   * rounded up to a clean bill of health either — see `ContrastSourceReport`'s
+   * own doc comment for the bug this closes.
+   */
+  readonly failedSourceCount: number
   /**
    * Capped at `MAX_CONTRAST_SAMPLES` — see that constant's own doc comment.
    * A plain (not `ReadonlyArray`) array, deliberately: this whole context
@@ -122,11 +151,16 @@ export type ContrastContext = {
  * whichever audited most recently.
  */
 export function mergeContrastAudits(
-  audits: ReadonlyArray<ContrastAudit>,
+  audits: ReadonlyArray<ContrastSourceReport>,
   now: number
 ): ContrastContext {
   const byKey = new Map<LegibilityKey, ContrastPairRecord>()
+  let failedSourceCount = 0
   for (const audit of audits) {
+    if (audit === null) {
+      failedSourceCount++
+      continue
+    }
     for (const record of audit) {
       byKey.set(record.key, record)
     }
@@ -160,6 +194,7 @@ export function mergeContrastAudits(
     passingCount,
     violatedCount,
     underdeterminedCount,
+    failedSourceCount,
     recentViolations,
   }
 }
@@ -187,12 +222,18 @@ export const contrastInvariants: ReadonlyArray<Invariant<ContrastContext>> = [
         })
       }
       // An underdetermined pair could not be classified either way — not a
-      // known violation, but not a clean bill of health either.
-      if (ctx.underdeterminedCount > 0) {
+      // known violation, but not a clean bill of health either. A failed
+      // source (bot-found, Codex confirming review round 3 on #1443) is the
+      // same shape: some other, unaffected source may still have reported
+      // real (even all-passing) pairs, but this source's own state this
+      // round is genuinely unknown, not confidently clean — see
+      // ContrastSourceReport's own doc comment.
+      if (ctx.underdeterminedCount > 0 || ctx.failedSourceCount > 0) {
         return {
           ok: "unknown",
           details: {
             underdeterminedCount: ctx.underdeterminedCount,
+            failedSourceCount: ctx.failedSourceCount,
             auditedCount: ctx.auditedCount,
           },
         }

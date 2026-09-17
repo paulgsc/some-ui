@@ -5,6 +5,7 @@ import {
   type ContrastAudit,
   type ContrastContext,
   type ContrastPairRecord,
+  type ContrastSourceReport,
 } from "@filter/lib/content/contrast-observability"
 import {
   coverageInvariants,
@@ -53,6 +54,7 @@ function baseContext(
     passingCount: 0,
     violatedCount: 0,
     underdeterminedCount: 0,
+    failedSourceCount: 0,
     recentViolations: [],
     ...overrides,
   }
@@ -107,6 +109,38 @@ describe("ContrastHeld", () => {
     })
     expect(check(ContrastHeld, ctx).ok).toBe(false)
   })
+
+  it("declines to judge (unknown), not ok, when a source failed to audit this round even though every pair another source *did* audit passes (bot-found, Codex confirming review round 3 on #1443)", () => {
+    // The exact scenario the finding named: the document's own re-audit
+    // throws (reported as failedSourceCount: 1, per ContrastSourceReport's
+    // own doc comment) while an unaffected shadow scope's own audit found
+    // only passing pairs. auditedCount > 0 and violatedCount === 0 here —
+    // the bug this closes is scoreHealth-adjacent code treating that shape
+    // as a clean bill of health despite an entire source's own state this
+    // round being unknown.
+    const ctx = baseContext({
+      auditedCount: 2,
+      passingCount: 2,
+      violatedCount: 0,
+      underdeterminedCount: 0,
+      failedSourceCount: 1,
+    })
+    expect(check(ContrastHeld, ctx).ok).toBe("unknown")
+  })
+
+  it("is violated even when a source also failed to audit — a known violation from one source is never downgraded to unknown by another source's own failure", () => {
+    const ctx = baseContext({
+      auditedCount: 2,
+      passingCount: 0,
+      violatedCount: 1,
+      underdeterminedCount: 0,
+      failedSourceCount: 1,
+      recentViolations: [
+        { key: "k", verdict: "violated", tagName: "SPAN", elementCount: 1 },
+      ],
+    })
+    expect(check(ContrastHeld, ctx).ok).toBe(false)
+  })
 })
 
 describe("coverageHealth and contrastHealth report independently — SF-RC5 (#1344)'s own acceptance criterion", () => {
@@ -133,6 +167,7 @@ describe("coverageHealth and contrastHealth report independently — SF-RC5 (#13
       passingCount: 0,
       violatedCount: 1,
       underdeterminedCount: 0,
+      failedSourceCount: 0,
       recentViolations: [
         { key: "k", verdict: "violated", tagName: "P", elementCount: 4 },
       ],
@@ -187,6 +222,7 @@ describe("mergeContrastAudits — SF-RC5 (#1344)", () => {
       passingCount: 2,
       violatedCount: 1,
       underdeterminedCount: 0,
+      failedSourceCount: 0,
       recentViolations: [
         { key: "c", verdict: "violated", tagName: "SPAN", elementCount: 1 },
       ],
@@ -231,7 +267,36 @@ describe("mergeContrastAudits — SF-RC5 (#1344)", () => {
       passingCount: 0,
       violatedCount: 0,
       underdeterminedCount: 0,
+      failedSourceCount: 0,
       recentViolations: [],
     })
+  })
+
+  it("counts a null source as failed rather than as zero pairs (bot-found, Codex confirming review round 3 on #1443): an earlier version of every failure-path fix reported a failed re-audit as [], the same shape a genuinely empty successful round already used, so a failed source silently merged as though it had audited nothing rather than as though its own state were unknown", () => {
+    const documentAudit: ContrastSourceReport = null
+    const shadowAudit: ContrastSourceReport = [passing("a"), passing("b")]
+
+    const merged = mergeContrastAudits([documentAudit, shadowAudit], 0)
+
+    expect(merged.failedSourceCount).toBe(1)
+    // The shadow scope's own genuinely-clean pairs still count — a failed
+    // source does not erase evidence a different, unaffected source reported.
+    expect(merged.auditedCount).toBe(2)
+    expect(merged.passingCount).toBe(2)
+    expect(merged.violatedCount).toBe(0)
+  })
+
+  it("counts every null source, not just the first", () => {
+    const merged = mergeContrastAudits([null, [passing("a")], null], 0)
+
+    expect(merged.failedSourceCount).toBe(2)
+    expect(merged.auditedCount).toBe(1)
+  })
+
+  it("a list of only null sources merges to auditedCount: 0 with failedSourceCount recording each one", () => {
+    const merged = mergeContrastAudits([null, null], 0)
+
+    expect(merged.auditedCount).toBe(0)
+    expect(merged.failedSourceCount).toBe(2)
   })
 })

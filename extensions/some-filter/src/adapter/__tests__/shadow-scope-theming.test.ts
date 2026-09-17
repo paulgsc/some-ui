@@ -16,7 +16,7 @@ import {
   type Swatch,
 } from "@filter/adapter/swatches"
 import { parseColor, relativeLuminance } from "@filter/lib/content/color"
-import type { ContrastAudit } from "@filter/lib/content/contrast-observability"
+import type { ContrastSourceReport } from "@filter/lib/content/contrast-observability"
 import { compensateSwatch } from "@filter/lib/content/theme-apply"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -970,9 +970,9 @@ describe("createShadowScopeTheming.project — rendered-contrast channel (#1342)
     const { shadow } = violatedScope()
     const id = registerHeld(reg, shadow)
     let reportedId: ScopeId | undefined
-    let reportedAudit: ContrastAudit | undefined
+    let reportedAudit: ContrastSourceReport | undefined
     const onContrastAudited = vi.fn(
-      (auditedId: ScopeId, audit: ContrastAudit) => {
+      (auditedId: ScopeId, audit: ContrastSourceReport) => {
         reportedId = auditedId
         reportedAudit = audit
       }
@@ -1164,15 +1164,19 @@ describe("createShadowScopeTheming.project — an ancestor commit re-audits nest
     ).toBe("COMMITTED")
   })
 
-  it("reports an empty audit for a descendant whose own re-contrast throws, rather than leaving its prior audit standing (bot-found, Codex confirming review on #1443)", async () => {
+  it("reports null for a descendant whose own re-contrast throws, rather than leaving its prior audit standing (bot-found, Codex confirming review on #1443)", async () => {
     // The descendant itself never transitions on this failure — it stays
     // COMMITTED (recontrastScopes's own doc comment: "this runs after
     // resolveCommitted has already resolved, so a throw here cannot be
     // reported as a FAILED_HELD") — so none of content.ts's
     // eviction-on-transition switch cases fire either. Without
-    // onContrastAudited reporting an explicit empty audit from the catch
-    // itself, the descendant's last-good audit from before whatever repaint
-    // this re-contrast was reacting to would stand in as current forever.
+    // onContrastAudited reporting `null` from the catch itself, the
+    // descendant's last-good audit from before whatever repaint this
+    // re-contrast was reacting to would stand in as current forever — and
+    // reporting `[]` instead of `null` would only trade that bug for a
+    // subtler one (bot-found, Codex confirming review round 3 on #1443): a
+    // failed scope would then merge indistinguishably from a scope that
+    // genuinely audited nothing this round.
     const reg = registry()
     const { outer, inner } = nestedScopes()
     const outerId = registerHeld(reg, outer)
@@ -1185,10 +1189,13 @@ describe("createShadowScopeTheming.project — an ancestor commit re-audits nest
     })
     const carrier = addViolatedCarrier(inner)
 
-    const reportedAudits: Array<{ id: ScopeId; audit: ContrastAudit }> = []
-    const onContrastAudited = vi.fn((id: ScopeId, audit: ContrastAudit) => {
-      reportedAudits.push({ id, audit })
-    })
+    const reportedAudits: Array<{ id: ScopeId; audit: ContrastSourceReport }> =
+      []
+    const onContrastAudited = vi.fn(
+      (id: ScopeId, audit: ContrastSourceReport) => {
+        reportedAudits.push({ id, audit })
+      }
+    )
     const theming = createShadowScopeTheming(
       reg,
       () => swatch,
@@ -1202,7 +1209,7 @@ describe("createShadowScopeTheming.project — an ancestor commit re-audits nest
     const innerCommitAudit = reportedAudits[reportedAudits.length - 1]
     expect(innerCommitAudit?.id).toBe(innerId)
     expect(
-      innerCommitAudit?.audit.some((r) => r.verdict === "violated"),
+      innerCommitAudit?.audit?.some((r) => r.verdict === "violated"),
       "the scope's own initial commit must report the real violation"
     ).toBe(true)
 
@@ -1239,8 +1246,8 @@ describe("createShadowScopeTheming.project — an ancestor commit re-audits nest
     const lastReportForInner = reportsForInner[reportsForInner.length - 1]
     expect(
       lastReportForInner?.audit,
-      "the failed re-contrast must report an empty audit, not leave the prior violated one standing"
-    ).toEqual([])
+      "the failed re-contrast must report null, not leave the prior violated one standing"
+    ).toBeNull()
   })
 
   it("re-audits a scope nested two levels down, not just a direct child", async () => {

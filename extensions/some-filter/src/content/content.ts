@@ -24,7 +24,7 @@ import {
 import { DEFAULT_SWATCH_ID, SWATCHES } from "@filter/adapter/swatches"
 import {
   mergeContrastAudits,
-  type ContrastAudit,
+  type ContrastSourceReport,
 } from "@filter/lib/content/contrast-observability"
 import {
   createCoverageRecorder,
@@ -171,9 +171,12 @@ const observabilityRecorder: CoverageRecorder = createCoverageRecorder(
 // dedupes by (foreground, backdrop) pair across sources — on every report
 // from either source, so the snapshot always reflects each source's
 // last-known result without double-counting an identical pair audited in
-// more than one scope (bot-found, Codex review round 2 on #1443).
-let documentContrast: ContrastAudit = []
-const shadowContrastByScope = new Map<ScopeId, ContrastAudit>()
+// more than one scope (bot-found, Codex review round 2 on #1443). A source
+// reports `null`, not `[]`, when its own audit failed to complete this
+// round — see ContrastSourceReport's own doc comment for the bug conflating
+// the two caused (bot-found, Codex confirming review round 3 on #1443).
+let documentContrast: ContrastSourceReport = []
+const shadowContrastByScope = new Map<ScopeId, ContrastSourceReport>()
 
 function recomputeContrastSnapshot(): void {
   observabilityRecorder.setSnapshot(
@@ -382,7 +385,11 @@ function applyState(state: TabState): void {
   // auto round just left could linger in legacy/off, where nothing is being
   // audited at all, and if no shadow scope had ever reported either, this
   // block did not even persist a fresh snapshot to say so.
-  if (documentContrast.length > 0 || shadowContrastByScope.size > 0) {
+  if (
+    documentContrast === null ||
+    documentContrast.length > 0 ||
+    shadowContrastByScope.size > 0
+  ) {
     documentContrast = []
     shadowContrastByScope.clear()
     recomputeContrastSnapshot()
