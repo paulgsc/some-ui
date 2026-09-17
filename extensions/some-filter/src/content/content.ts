@@ -360,6 +360,33 @@ function applyState(state: TabState): void {
   // preserve the original behavior of a throw here surfacing to whatever
   // caller (a message handler) invoked applyState.
   transitioning = true
+  // SF-RC5 (#1344), bot-found (Codex review round 2, then confirming review
+  // round 6, on #1443): run here, before the try block, rather than after
+  // the teardown calls below as an earlier version did — currentState has
+  // already changed to the new state above regardless of whether any of
+  // those calls (shadowScopeDiscovery.teardown() in particular, which can
+  // throw while retiring a committed scope through an unguarded CSSOM
+  // uninstall) succeed, so the previous state's contrast data is stale the
+  // moment this function is entered, not only once teardown finishes. Must
+  // run before runAutoTheme() below, not after (e.g. in the same `finally`
+  // that resets `transitioning`): rescan() inside runAutoTheme() settles
+  // decide/realize — and this round's own onContrastAudited call —
+  // synchronously within this same call, and resetting after that would
+  // wipe out the fresh value it just reported. Both contrast sources go
+  // stale the moment their own producer stops running — every shadow
+  // scope's own contribution stops the moment shadow-scope custody itself
+  // does (shadow scopes exist only in auto mode, this module's own header);
+  // the document half stops the moment contentSession.teardown() below
+  // disconnects it — bot-found (Codex review round 2): an earlier version
+  // cleared only the shadow half, so a document-level violation from the
+  // auto round just left could linger in legacy/off, where nothing is being
+  // audited at all, and if no shadow scope had ever reported either, this
+  // block did not even persist a fresh snapshot to say so.
+  if (documentContrast.length > 0 || shadowContrastByScope.size > 0) {
+    documentContrast = []
+    shadowContrastByScope.clear()
+    recomputeContrastSnapshot()
+  }
   let actuationError: unknown
   try {
     // The watchdog only needs to run while there is something to hold
@@ -385,23 +412,6 @@ function applyState(state: TabState): void {
     shadowScopeDiscovery.teardown()
     // #1280: stops alongside shadowScopeDiscovery, same reasoning.
     shadowScopeTheming.teardown()
-    // SF-RC5 (#1344): both contrast sources go stale the moment their own
-    // producer stops running — every shadow scope's own contrast contribution
-    // stops the moment shadow-scope custody itself does (shadow scopes exist
-    // only in auto mode, this module's own header), same as
-    // shadowScopeDiscovery.teardown() above already applies to custody
-    // itself; the document half stops the moment contentSession.teardown()
-    // above disconnects it — bot-found (Codex review round 2 on #1443): an
-    // earlier version cleared only the shadow half, so a document-level
-    // violation from the auto round just left could linger in legacy/off,
-    // where nothing is being audited at all, and if no shadow scope had ever
-    // reported either, this block did not even persist a fresh snapshot to
-    // say so.
-    if (documentContrast.length > 0 || shadowContrastByScope.size > 0) {
-      documentContrast = []
-      shadowContrastByScope.clear()
-      recomputeContrastSnapshot()
-    }
     // Same lifecycle as shadowScopeDiscovery: nothing to poll outside auto
     // mode either (SF-OB, #1270). One last check() here, before teardown()
     // stops the poll and clears its own tracking, publishes the registry's

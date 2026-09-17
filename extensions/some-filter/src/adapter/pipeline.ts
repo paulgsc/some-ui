@@ -945,6 +945,19 @@ export function createContentSession(
       // eslint-disable-next-line no-console
       console.error("[some-filter] pipeline fire() failed:", error)
       outcome = { kind: "error", error }
+      // Bot-found (Codex confirming review on #1443, the ordinary-round
+      // counterpart to runInteractionContrast's own catch above): a throw
+      // from invoke()/realize() or from runContrastChannel() itself, both
+      // above, means onContrastAudited never ran for this round at all — the
+      // *previous* round's document audit would otherwise stand in as
+      // current indefinitely. content.ts's reportPipelineOutcome(outcome)
+      // moves the document scope to FAILED_HELD on this same "error" outcome,
+      // but that transition only reaches shadowContrastByScope (this scope
+      // registry's own shared eviction switch does not know documentContrast
+      // exists at all — pipeline.ts's own boundary, by design); only this
+      // catch is positioned to invalidate the document half. Same "nothing
+      // audited this round" empty shape used everywhere else in this file.
+      onContrastAudited?.([])
     }
     onFire?.(outcome)
   }

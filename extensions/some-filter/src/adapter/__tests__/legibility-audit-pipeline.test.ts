@@ -253,6 +253,47 @@ describe("SF-RC1 — a thrown/incomplete audit leaves the round held, not commit
 
     contentSession.teardown()
   })
+
+  it("reports an empty audit, not the stale prior-round one, when the round's own throw is caught (bot-found, Codex confirming review on #1443)", () => {
+    // The two tests above confirm this same throw is caught and reported as
+    // FireOutcome "error" — this confirms the contrast channel's own output
+    // doesn't go silently stale on that same failure. Without this, a round
+    // that themes the page cleanly, then a later round throws (auditLegibility
+    // mocked to fail only on the second call below), would leave the *first*
+    // round's audit standing in as current for as long as the page keeps
+    // failing to produce a clean round — document-scope.ts's own FAILED_HELD
+    // transition has no reach into pipeline.ts's own documentContrast (a
+    // separate module content.ts alone bridges), so only this catch is
+    // positioned to invalidate it.
+    document.body.innerHTML =
+      '<div id="dark-surface" style="background-color: rgb(13, 17, 23); color: rgb(255, 255, 255)">' +
+      '<div id="text-carrier" style="color: rgb(0, 0, 0)">hi</div>' +
+      "</div>"
+    const session = createSessionLifecycle()
+    const onContrastAudited = vi.fn()
+    const contentSession = createContentSession(
+      SWATCHES.default,
+      session,
+      undefined,
+      undefined,
+      onContrastAudited
+    )
+
+    contentSession.rescan()
+    // The first round reports a real (non-empty) audit — clear it so the
+    // assertion below is unambiguously about the failed second round.
+    onContrastAudited.mockClear()
+
+    vi.mocked(legibilityAudit.auditLegibility).mockImplementationOnce(() => {
+      throw new Error("legibility audit boom")
+    })
+    contentSession.rescan()
+
+    expect(onContrastAudited).toHaveBeenCalledTimes(1)
+    expect(onContrastAudited).toHaveBeenCalledWith([])
+
+    contentSession.teardown()
+  })
 })
 
 describe("SF-RC2 — the repair channel rides the audit's own gate", () => {
