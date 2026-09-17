@@ -126,6 +126,29 @@ tsc --noEmit`, `pnpm exec vitest run <path>`), not the repo root.
   Serve the build over a local HTTP server first (`python3 -m http.server <port>` from the
   `storybook-static` dir, backgrounded) and point Playwright at `http://localhost:<port>/...`
   instead of the `file://` path.
+- **A cancelled `Extension CI` run reads as a fully green PR — including from
+  `get_check_runs` on the correct head.** Your own next push cancels the in-flight run for the
+  same PR via its concurrency group, and a cancelled run contributes **no check runs at all**.
+  So `Verify some-filter` — the only job that builds this extension and runs its tests in CI —
+  is not missing-and-red, it is simply absent, and every aggregate signal reports success.
+  Seen simultaneously on one head: `get_check_runs` → 14 checks, all `success`;
+  `mergeable_state` → `clean`; and a `check_suite.completed` webhook saying no suite was still
+  running or failed. All three agreed, and the extension had been verified by nothing. (The
+  webhook does disclose it — "Cancelled suites, suites with no runs ... are not covered" — it
+  is just easy to skim past.) It is worth a line here rather than only in `steward/SKILL.md`
+  because the misleading part is the _generic_ check every session reaches for first. Before
+  merging, verify the workflow run itself by `head_sha` — `actions_list` with
+  `method=list_workflow_runs`, `resource_id=extension.yml` and a branch filter — and require a
+  run whose `head_sha` matches your head with `status: completed` **and**
+  `conclusion: success`. Distinguish the two ways that run can be _absent_, because only one is
+  a problem: a run for your head with `conclusion: cancelled` means nothing was verified and you
+  must wait for the re-run, whereas no run at all on a diff outside the workflow's path filter
+  (a docs-only PR, say — `changes / Detect Changed Paths` succeeds and the downstream jobs
+  report `skipped`) is correct and not something to wait for. `extension.yml`'s own `on:` block
+  is the authoritative filter list. Related: a job can sit `in_progress` for ~10min in a
+  `Post Run .../nix-setup` teardown step long after every substantive step passed;
+  `list_workflow_jobs` shows step-level state, but still wait for the job itself to complete,
+  since a post-step failure can mark it red.
 
 ## Multi-session relay work
 
