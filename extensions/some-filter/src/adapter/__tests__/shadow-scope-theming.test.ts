@@ -1164,6 +1164,85 @@ describe("createShadowScopeTheming.project — an ancestor commit re-audits nest
     ).toBe("COMMITTED")
   })
 
+  it("reports an empty audit for a descendant whose own re-contrast throws, rather than leaving its prior audit standing (bot-found, Codex confirming review on #1443)", async () => {
+    // The descendant itself never transitions on this failure — it stays
+    // COMMITTED (recontrastScopes's own doc comment: "this runs after
+    // resolveCommitted has already resolved, so a throw here cannot be
+    // reported as a FAILED_HELD") — so none of content.ts's
+    // eviction-on-transition switch cases fire either. Without
+    // onContrastAudited reporting an explicit empty audit from the catch
+    // itself, the descendant's last-good audit from before whatever repaint
+    // this re-contrast was reacting to would stand in as current forever.
+    const reg = registry()
+    const { outer, inner } = nestedScopes()
+    const outerId = registerHeld(reg, outer)
+    const innerId = "shadow:inner-throws-on-recontrast"
+    reg.register(innerId, {
+      ref: inner,
+      parent: outerId,
+      contentEpoch: 0,
+      hold: { install: () => {}, release: () => {} },
+    })
+    const carrier = addViolatedCarrier(inner)
+
+    const reportedAudits: Array<{ id: ScopeId; audit: ContrastAudit }> = []
+    const onContrastAudited = vi.fn((id: ScopeId, audit: ContrastAudit) => {
+      reportedAudits.push({ id, audit })
+    })
+    const theming = createShadowScopeTheming(
+      reg,
+      () => swatch,
+      () => 0,
+      onContrastAudited
+    )
+
+    theming.project(innerId)
+    await flushAll()
+    expect(reg.stateOf(innerId)?.kind).toBe("COMMITTED")
+    const innerCommitAudit = reportedAudits[reportedAudits.length - 1]
+    expect(innerCommitAudit?.id).toBe(innerId)
+    expect(
+      innerCommitAudit?.audit.some((r) => r.verdict === "violated"),
+      "the scope's own initial commit must report the real violation"
+    ).toBe(true)
+
+    // The spy is installed only now, after inner's own initial commit above
+    // has already run for real — so the next (and only) call it sees for
+    // `inner` is the ancestor-triggered re-contrast, which this makes fail.
+    const originalCreateTreeWalker = document.createTreeWalker.bind(document)
+    const spy = vi
+      .spyOn(document, "createTreeWalker")
+      .mockImplementation((root, whatToShow, filter) => {
+        if (root === inner) {
+          throw new Error("re-contrast boom")
+        }
+        return originalCreateTreeWalker(root, whatToShow, filter)
+      })
+    try {
+      theming.project(outerId)
+      await flushAll()
+    } finally {
+      spy.mockRestore()
+    }
+
+    expect(reg.stateOf(outerId)?.kind).toBe("COMMITTED")
+    expect(
+      reg.stateOf(innerId)?.kind,
+      "a failed re-contrast must not itself move the descendant's own registry state"
+    ).toBe("COMMITTED")
+    // realizeLegibility never re-ran on the failed pass (the throw happens
+    // inside auditLegibility, before it) — the tag stands as the initial
+    // commit left it.
+    expect(carrier.getAttribute(LEGIBILITY_ATTR)).toBe("violated")
+
+    const reportsForInner = reportedAudits.filter((r) => r.id === innerId)
+    const lastReportForInner = reportsForInner[reportsForInner.length - 1]
+    expect(
+      lastReportForInner?.audit,
+      "the failed re-contrast must report an empty audit, not leave the prior violated one standing"
+    ).toEqual([])
+  })
+
   it("re-audits a scope nested two levels down, not just a direct child", async () => {
     // A grandchild's backdrop can resolve through two hosts to this
     // ancestor just as easily as one, so the walk is transitive.

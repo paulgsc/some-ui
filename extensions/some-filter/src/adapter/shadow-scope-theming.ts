@@ -548,6 +548,18 @@ export function createShadowScopeTheming(
           `[some-filter] re-contrast of ${otherId} after ${cause} failed:`,
           error
         )
+        // Bot-found (Codex confirming review on #1443): this scope stays
+        // COMMITTED on this path — projectContrast threw before its own
+        // onContrastAudited call, and nothing here transitions the
+        // registry — so none of content.ts's exhaustive eviction-on-
+        // transition switch cases fire, and the scope's last-reported audit
+        // (from before whatever repaint prompted this re-contrast) would
+        // otherwise stand in as current indefinitely. Report an explicit
+        // empty audit for this id, the same "nothing audited this round"
+        // shape projectContrast's own onContrastAudited call already uses
+        // elsewhere, so content.ts's map overwrites the stale entry rather
+        // than leaving it standing.
+        onContrastAudited?.(otherId, [])
       }
     }
   }

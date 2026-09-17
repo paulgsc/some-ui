@@ -603,6 +603,44 @@ describe("SF-RC4 (#1343) — the interaction-settled contrast pass", () => {
     vi.useRealTimers()
   })
 
+  it("reports an empty audit, not the stale pre-interaction one, when the document half throws (bot-found, Codex confirming review on #1443)", () => {
+    // The test above ("runs the shadow hook even if the document half
+    // throws") confirms the *shadow* half is unaffected; this confirms the
+    // document half's own onContrastAudited does not go silent on its own
+    // failure. Without this, runContrastChannel throwing before its own
+    // onContrastAudited call left content.ts's documentContrast holding
+    // whatever the *previous*, pre-interaction round reported — stale
+    // forever, since nothing else re-triggers this channel.
+    vi.useFakeTimers()
+    themedPage()
+    const session = createSessionLifecycle()
+    const onContrastAudited = vi.fn()
+    const contentSession = createContentSession(
+      SWATCHES.default,
+      session,
+      undefined,
+      undefined,
+      onContrastAudited
+    )
+    contentSession.rescan()
+    contentSession.observe()
+    // The initial rescan() reports a real (non-empty) audit — clear it so
+    // the assertion below is unambiguously about the interaction pass.
+    onContrastAudited.mockClear()
+    vi.mocked(legibilityAudit.auditLegibility).mockImplementationOnce(() => {
+      throw new Error("audit blew up")
+    })
+
+    dispatch("pointerover")
+    vi.advanceTimersByTime(INTERACTION_SETTLE_MS)
+
+    expect(onContrastAudited).toHaveBeenCalledTimes(1)
+    expect(onContrastAudited).toHaveBeenCalledWith([])
+
+    contentSession.teardown()
+    vi.useRealTimers()
+  })
+
   it("stops listening, and cancels a pending pass, after teardown", () => {
     vi.useFakeTimers()
     themedPage()

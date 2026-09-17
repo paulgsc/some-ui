@@ -1015,6 +1015,16 @@ export function createContentSession(
         // scope does not cost the other half its pass.
         // eslint-disable-next-line no-console
         console.error("[some-filter] interaction contrast pass failed:", error)
+        // Bot-found (Codex confirming review on #1443): a throw from
+        // auditLegibility/realizeLegibility/realizeForegroundRepairs above
+        // happens *before* runContrastChannel's own onContrastAudited call,
+        // so without this the document's last-reported audit — from before
+        // this interaction changed the page's colours — keeps standing in
+        // as current, indefinitely: nothing else re-triggers this channel.
+        // Report an explicit empty audit, the same "nothing audited this
+        // round" shape fire()'s own no-theme branch already reports, so a
+        // failed re-audit reads as unknown rather than silently stale.
+        onContrastAudited?.([])
       }
     }
     try {
