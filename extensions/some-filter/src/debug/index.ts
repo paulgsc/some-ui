@@ -137,18 +137,31 @@ async function computeHealth(b: Bundle): Promise<HealthReport> {
 async function computeContrastHealth(b: Bundle): Promise<HealthReport> {
   const rawCtx = b.snapshots["contrast"]
   const now = Date.now()
-  if (!isContrastContext(rawCtx)) {
-    const results = await runInvariants(contrastInvariants, undefined, now)
-    const { score, status } = scoreHealth(results, 0)
+  const results = isContrastContext(rawCtx)
+    ? await runInvariants(contrastInvariants, rawCtx, now)
+    : await runInvariants(contrastInvariants, undefined, now)
+
+  // SF-RC5 (#1344), bot-found (Codex review round 3 on #1443): scoreHealth
+  // excludes "unknown" results from its own score rather than penalizing
+  // it, so a session that has genuinely audited nothing — no "contrast"
+  // snapshot at all, or a persisted one with auditedCount: 0 (a session
+  // that left auto with nothing to report, or an all-underdetermined
+  // round) — would otherwise score 100/healthy, reading as "audited and
+  // clean" rather than "never usefully evaluated." Unlike coverageHealth's
+  // own no-snapshot case (a brief startup race — every non-off applyState
+  // call writes a "coverage" snapshot almost immediately), this is the
+  // *steady state* for any session that has never entered auto mode at
+  // all, not a race to tolerate.
+  if (results.every((r) => r.status === "unknown")) {
     return {
-      score,
-      status,
+      score: 0,
+      status: "degraded",
       invariants: results,
       recentErrors: 0,
       generatedAt: now,
     }
   }
-  const results = await runInvariants(contrastInvariants, rawCtx, now)
+
   const { score, status } = scoreHealth(results, 0)
   return {
     score,

@@ -389,11 +389,20 @@ function applyState(state: TabState): void {
   scopeCoverageWatchdog.teardown()
 
   // `transitioning` was set true above, before coverageWatchdog.observe().
-  // Reset here in a `finally` regardless of which branch below runs or
-  // throws, so it can never stay stuck true past this one synchronous
-  // span — that would leave CoverageHeld silently `"unknown"` forever
-  // after, masking a real subsequent leak rather than just declining to
-  // judge this one transient window.
+  // Reset here regardless of whether actuation below throws, so it can
+  // never stay stuck true past this one synchronous span — that would leave
+  // CoverageHeld silently `"unknown"` forever after, masking a real
+  // subsequent leak rather than just declining to judge this one transient
+  // window. The post-actuation check further down must also still run on
+  // the exceptional path — bot-found (Codex review round 3 on #1443):
+  // resetting the flag alone left a genuine uncovered state (actuation
+  // throwing partway through, before writing anything) recorded only as
+  // "unknown" until some unrelated later mutation happened to trigger a
+  // reactive check — which might never come. Caught and re-thrown after
+  // that check runs, rather than swallowed, to preserve the original
+  // behavior of a throw here surfacing to whatever caller (a message
+  // handler) invoked applyState.
+  let actuationError: unknown
   try {
     restoreVendor()
     // restoreVendor() only knows about the two pre-adapter layers (the
@@ -418,6 +427,8 @@ function applyState(state: TabState): void {
     } else {
       disablePrepaint()
     }
+  } catch (error) {
+    actuationError = error
   } finally {
     transitioning = false
   }
@@ -425,18 +436,14 @@ function applyState(state: TabState): void {
   if (state === "auto") {
     coverageWatchdog.check("apply-state:auto")
     scopeCoverageWatchdog.check(documentScope.registry, "apply-state:auto")
-    return
-  }
-
-  if (state === "legacy") {
+  } else if (state === "legacy") {
     coverageWatchdog.check("apply-state:legacy")
-    return
+  } else {
+    coverageWatchdog.check("apply-state:off")
+    updateDebugAttrs()
   }
 
-  // off
-  coverageWatchdog.check("apply-state:off")
-
-  updateDebugAttrs()
+  if (actuationError !== undefined) throw actuationError
 }
 
 function cycleState(): void {

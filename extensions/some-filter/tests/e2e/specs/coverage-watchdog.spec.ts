@@ -69,6 +69,27 @@ async function readBundle(
   return isMinimalBundle(raw) ? raw : undefined
 }
 
+/** Matches coverage-observability.ts's INDEX_KEY — the debug page's own session picker reads through this, separately from (and racing independently against) the per-session bundle key readBundle() reads. */
+async function readIndexSessionIds(sw: Worker): Promise<Array<string>> {
+  const raw: unknown = await sw.evaluate(() => {
+    // eslint-disable-next-line no-restricted-globals
+    return chrome.storage.local
+      .get("sf.observability.index.v1")
+      .then(
+        (store: Record<string, unknown>) => store["sf.observability.index.v1"]
+      )
+  })
+  if (!Array.isArray(raw)) return []
+  return raw
+    .filter(
+      (e): e is { sessionId: string } =>
+        e !== null &&
+        typeof e === "object" &&
+        typeof Reflect.get(e, "sessionId") === "string"
+    )
+    .map((e) => e.sessionId)
+}
+
 async function pollUntil<T>(
   read: () => Promise<T>,
   predicate: (value: T) => boolean,
@@ -229,6 +250,76 @@ test.describe("debug.html renders the session a violation was recorded against",
       `expected a LegacySignalsAgree row among: ${JSON.stringify(checks)}`
     ).toBeDefined()
     expect(legacyCheck).toContain("✕")
+
+    await debugPage.close()
+  })
+})
+
+test.describe("debug.html — SF-RC5 (#1344): contrast health for a session that never entered auto", () => {
+  test("reports degraded/unevaluated, not a false-clean 100/healthy — bot-found (Codex review round 3 on #1443): scoreHealth excludes 'unknown' results from its own score, so an all-unknown ContrastHeld result (nothing ever audited) previously read as 100/healthy", async ({
+    context,
+    fixture,
+  }) => {
+    const page = await fixture.goto("hostile-page")
+    const sw = await backgroundWorker(context)
+    await enterLegacyMode(sw, "hostile-page.html")
+
+    await page.waitForFunction(
+      () => document.documentElement.hasAttribute("data-sw-legacy"),
+      undefined,
+      { timeout: 5_000, polling: 100 }
+    )
+
+    // The debug page's own session picker (readIndex()) and its per-session
+    // bundle (readBundle()) are two separately-debounced storage.local
+    // writes that race independently — wait for both, or debug.html can
+    // load before either lands and show "Nothing to show yet." instead of
+    // the health sections this test actually needs to inspect.
+    const sessionId = await page.evaluate(
+      () => document.body.dataset["swObservabilitySession"]
+    )
+    if (sessionId === undefined) throw new Error("unreachable")
+    await pollUntil(
+      () => readIndexSessionIds(sw),
+      (ids) => ids.includes(sessionId)
+    )
+    await pollUntil(
+      () => readBundle(sw, sessionId),
+      (b) => b !== undefined
+    )
+
+    const extensionId = new URL(sw.url()).host
+    const debugPage = await context.newPage()
+    await debugPage.goto(`chrome-extension://${extensionId}/debug.html`)
+
+    // render()'s health sections are appended only after its own async
+    // computeHealth()/computeContrastHealth() calls resolve — the
+    // "Session" section (pickerSection(), synchronous) exists well before
+    // that, so a bare "any section exists" wait is racy against it.
+    await debugPage.waitForFunction(
+      () =>
+        Array.from(document.querySelectorAll("h2")).some(
+          (h) => h.textContent === "Contrast health"
+        ),
+      undefined,
+      { timeout: 5_000, polling: 100 }
+    )
+
+    const sections = await debugPage.evaluate(() =>
+      Array.from(document.querySelectorAll("section")).map((s) => ({
+        heading: s.querySelector("h2")?.textContent ?? null,
+        scoreText: s.querySelector(".sf-score")?.textContent ?? null,
+      }))
+    )
+    const contrastSection = sections.find(
+      (s) => s.heading === "Contrast health"
+    )
+    expect(
+      contrastSection,
+      `expected a "Contrast health" section among: ${JSON.stringify(sections)}`
+    ).toBeDefined()
+    expect(contrastSection?.scoreText).not.toBeNull()
+    expect(contrastSection?.scoreText).not.toContain("healthy")
 
     await debugPage.close()
   })
