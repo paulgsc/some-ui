@@ -4,6 +4,7 @@ import {
   applyTheme,
   buildHostTokenRule,
   DARK_THEME_ATTR,
+  DARK_THEME_BODY_RULES,
   injectDarkTheme,
   removeDarkTheme,
   restoreVendor,
@@ -399,5 +400,68 @@ describe("buildHostTokenRule — forces the shadow host's own color, mirroring t
 
     expect(rule).toContain(`--sw-text-0: ${SWATCHES.default.text0}`)
     expect(rule).toContain(`--sw-bg-0: ${SWATCHES.default.bg0}`)
+  })
+})
+
+describe("the static layer's ARIA popup rule — the prospective half of the popup fix", () => {
+  const popupRule = (): string => {
+    const rule = DARK_THEME_BODY_RULES.find((entry) =>
+      entry.includes('[role="menu"]')
+    )
+    if (rule === undefined) throw new Error("popup role rule missing")
+    return rule
+  }
+
+  it("covers the four roles that are structurally their own floating panel", () => {
+    const rule = popupRule()
+
+    for (const role of [
+      "menu",
+      "listbox",
+      "dialog",
+      "alertdialog",
+      "tooltip",
+    ]) {
+      expect(rule).toContain(`[role="${role}"]`)
+    }
+  })
+
+  it("does not reach roles that are routinely transparent page chrome", () => {
+    const rule = popupRule()
+
+    // Forcing --sw-surface onto one of these paints a dark box where the
+    // vendor drew nothing — a visible regression, which is strictly worse
+    // than the deferred repair this rule exists to avoid.
+    for (const role of [
+      "menubar",
+      "tree",
+      "tablist",
+      "toolbar",
+      "navigation",
+    ]) {
+      expect(rule).not.toContain(`[role="${role}"]`)
+    }
+  })
+
+  it("stays provisional: the actuator's own per-surface rule out-specifies it", () => {
+    // :where() contributes no specificity, so this rule carries EXT_GUARD's
+    // alone — strictly less than the [data-sw-patched="…"] rule the round
+    // emits once it has a real, hue-preserving colour for the surface. The
+    // blanket fill is the floor, never the verdict.
+    expect(popupRule()).toContain(':where([role="menu"]')
+
+    const preserveRule = DARK_THEME_BODY_RULES.find((entry) =>
+      entry.includes('[data-sw-patched="preserve"]')
+    )
+    expect(preserveRule).toBeDefined()
+    expect(preserveRule).not.toContain(":where([data-sw-patched")
+  })
+
+  it("is applied by the built stylesheet, not merely declared", () => {
+    injectDarkTheme(SWATCHES.default)
+    const css = document.getElementById(STYLE_ID)?.textContent ?? ""
+
+    expect(css).toContain('[role="menu"]')
+    expect(css).toContain("var(--sw-surface)")
   })
 })

@@ -265,6 +265,42 @@ export const DARK_THEME_BODY_RULES: ReadonlyArray<string> = [
   `:where(*)${EXT_GUARD} { scrollbar-color: var(--sw-bg-3) var(--sw-bg-0); }`,
   `::selection { background-color: var(--sw-selection-bg) !important; }`,
   `:where(dialog, [popover])${EXT_GUARD} { background-color: var(--sw-surface) !important; color: var(--sw-text-0) !important; }`,
+  // The same surface treatment, reached through ARIA instead of through a
+  // built-in element — the only vocabulary a *vendor-authored* popup
+  // reliably shares with every other vendor's.
+  //
+  // Why this rule is not just a nicety: every other per-surface mechanism
+  // in this extension is retrospective. `pipeline.ts`'s Sensor has to see
+  // an element before `decide()` can name its key and the Actuator can tag
+  // it, so a popup the vendor *creates* on hover (a portal, a popper) is on
+  // screen at its own vendor background until a round reaches it.
+  // `adapter/admission.ts` closes most of that window and cannot close all
+  // of it — it only binds keys the page has already committed a rule for,
+  // and a popup may legitimately be the first carrier of its colour.
+  //
+  // A selector has no such window. It is in the cascade before the element
+  // exists, so it applies at the element's first paint, for a node no scan
+  // has ever visited and no hypothesis has ever heard of. That is the only
+  // property here that is genuinely prospective, and these roles are the
+  // broadest set it can be spent on safely: a popup that is not exposed to
+  // assistive technology is broken as a popup, so the role is present on
+  // essentially every real one.
+  //
+  // Scoped deliberately to the four roles that *are* their own opaque
+  // floating surface. `menubar`, `tree`, `tablist` and friends are just as
+  // well-specified and are routinely transparent strips inside a page's own
+  // chrome; forcing `--sw-surface` onto one paints a dark box where the
+  // vendor drew nothing, which is a visible regression rather than a
+  // deferred repair. Being wrong in that direction is worse than the flash
+  // this closes, so the list stays at what is structurally a panel.
+  //
+  // Provisional by construction, and correctly so: this rule's specificity
+  // is `EXT_GUARD`'s alone (`:where()` contributes nothing), so both the
+  // Actuator's own `[data-sw-patched="…"]` colour rule and the `"preserve"`
+  // revert out-specify it. A popup that reaches a round gets its real,
+  // hue-preserving colour and this generic fill stops applying — flat
+  // `--sw-surface` is the floor, never the verdict.
+  `:where([role="menu"], [role="listbox"], [role="dialog"], [role="alertdialog"], [role="tooltip"])${EXT_GUARD} { background-color: var(--sw-surface) !important; color: var(--sw-text-0) !important; }`,
   `:where(img, video, canvas, picture, embed, object)${EXT_GUARD} { filter: none !important; opacity: 1 !important; }`,
   `:where(svg text, svg tspan)${EXT_GUARD} { fill: var(--sw-text-1) !important; }`,
   // Light backgrounds are tagged with their own canonical color as the

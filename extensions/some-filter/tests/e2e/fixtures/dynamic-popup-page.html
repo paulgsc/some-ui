@@ -1,0 +1,102 @@
+<!doctype html>
+<!--
+  Dynamic-popup fixture — the exogenous-DOM case the admission pass exists for.
+
+  The page is light, so auto mode themes it, and it carries a light card
+  (#eeeeee) that is present at document_end. That card is what teaches the
+  page its key: the first round scans it, decide() emits an
+  emit-surface-color rule for rgb(238, 238, 238), and the actuator commits
+  that rule to the dynamic stylesheet.
+
+  Nothing about the popup exists until the pointer arrives. `pointerover`
+  builds it from scratch — a portal, in the sense every popper library means
+  it — and gives it the *same* background as the card, which is the whole
+  point: the colour is already committed, so the only thing standing between
+  the new node and the right paint is the binding. Before the leading-edge
+  pass that binding took a 50ms debounce plus a round; now it happens in the
+  observer's own microtask, before the frame the popup was created in paints.
+
+  The popup carries no role="menu" deliberately. The static layer's ARIA rule
+  would cover it if it did, and this fixture is here to exercise the *other*
+  half — a plain vendor <div> with nothing semantic about it, which is the
+  case a selector can never reach.
+-->
+<html style="background-color: rgb(255, 255, 255)">
+  <head>
+    <meta charset="utf-8" />
+    <title>Dynamic Popup Fixture</title>
+    <style>
+      body {
+        background-color: rgb(255, 255, 255);
+        margin: 0;
+        font-family: system-ui, sans-serif;
+      }
+      #card {
+        background-color: rgb(238, 238, 238);
+        padding: 24px;
+        margin: 24px;
+      }
+      /*
+        A plain div, never a <button>. A form control's background is a UA
+        system colour (`buttonface`), which resolves differently under the
+        `color-scheme: dark` prepaint.css forces while the veil is up than
+        it does once the veil is gone — so it enters the hypothesis a round
+        later than everything else and makes the dynamic sheet grow for
+        reasons that have nothing to do with the popup. The third test here
+        asserts the sheet does *not* grow, so the fixture must not contain
+        an independent reason for it to.
+      */
+      #trigger {
+        margin: 24px;
+        padding: 8px 16px;
+      }
+      /* A second committed colour, so the popup's *descendant* can bind to a
+         key distinct from the popup's own — otherwise "the subtree is
+         admitted too" is indistinguishable from "the added node is". */
+      #panel {
+        background-color: rgb(221, 221, 221);
+        padding: 16px;
+        margin: 24px;
+      }
+      .vendor-popup {
+        background-color: rgb(238, 238, 238);
+        position: absolute;
+        top: 120px;
+        left: 24px;
+        width: 240px;
+        padding: 12px;
+      }
+      .vendor-popup-item {
+        background-color: rgb(221, 221, 221);
+        padding: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="card">
+      <h1>Dynamic Popup Fixture</h1>
+      <p>This card is present at load, so its colour is committed early.</p>
+    </div>
+
+    <div id="panel">A second surface, in a second committed colour.</div>
+
+    <div id="trigger">Hover me</div>
+
+    <script>
+      // Exogenous by construction: the popup's nodes do not exist until the
+      // pointer event fires, so no scan can have visited them, and no
+      // hypothesis can contain anything about them as such.
+      document.getElementById("trigger").addEventListener("pointerover", () => {
+        if (document.getElementById("popup") !== null) return
+        const popup = document.createElement("div")
+        popup.id = "popup"
+        popup.className = "vendor-popup"
+        const item = document.createElement("div")
+        item.className = "vendor-popup-item"
+        item.textContent = "Menu item"
+        popup.appendChild(item)
+        document.body.appendChild(popup)
+      })
+    </script>
+  </body>
+</html>

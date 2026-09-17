@@ -62,6 +62,15 @@ import {
   isHTMLElementNode,
   realize,
 } from "./actuator"
+import {
+  admit,
+  buildAdmissionIndex,
+  collectAdmissionCandidates,
+  createAdmissionBudget,
+  EMPTY_ADMISSION_INDEX,
+  type AdmissionBudget,
+  type AdmissionIndex,
+} from "./admission"
 import type { FilterAction, SurfaceAttr, SurfaceKey } from "./contracts"
 import {
   clearForegroundRepairs,
@@ -478,8 +487,9 @@ const OWN_COLOR_SHEET_IDS: ReadonlyArray<string> = [
  * `shouldSkip`'s `[data-sw-patched]` exclusion covers only the surfaces the
  * Actuator tagged. The static layer (`buildDarkThemeCSS`) recolors far more
  * than that — `html`/`body`, `th`, `pre`, `code`, `input`, `textarea`,
- * `select`, `dialog` — with `!important` rules keyed on element type, and
- * none of those carriers are tagged. Their post-activation computed
+ * `select`, `dialog`, `[popover]`, and the ARIA popup roles (`menu`,
+ * `listbox`, `dialog`, `alertdialog`, `tooltip`) — with `!important` rules
+ * keyed on element type or role, and none of those carriers are tagged. Their post-activation computed
  * background is our swatch, and the hypothesis is append-only, so every
  * reactive rescan folded more of our own dark output back in as if it were
  * fresh vendor evidence until `pageAlreadyDark()`'s mean crossed the
@@ -803,6 +813,17 @@ export function createContentSession(
   let evidenceEpoch = session.epoch
 
   /**
+   * The keys `fire()` last committed a per-surface rule for — what
+   * `admission.ts`'s leading-edge pass is allowed to bind a brand-new
+   * element to before this round's trailing-edge successor runs. Rebuilt
+   * wholesale from each round's own action list (see `buildAdmissionIndex`
+   * for why that list is complete rather than a delta), and emptied by any
+   * round that does not activate a theme.
+   */
+  let admissionIndex: AdmissionIndex = EMPTY_ADMISSION_INDEX
+  const admissionBudget: AdmissionBudget = createAdmissionBudget()
+
+  /**
    * Theorem D.1(a): a content reset means the page under us was replaced.
    * `update()`'s epoch dominance already keeps stale evidence from *winning*
    * a key that recurs, but Ĥ never forgets a key outright, so keys the new
@@ -903,6 +924,12 @@ export function createContentSession(
     try {
       const actions = invoke(hypothesis, { decide: (h) => decide(h, swatch) })
       const realizationChanged = realize(actions, lastScan.elementsByKey)
+      // Refreshed from the round that just committed, so the leading-edge
+      // pass can only ever bind a key whose rule is in the sheet *now* —
+      // never one this round retired. Deliberately not updated in the catch
+      // below: a round that threw may have realized nothing, and the
+      // previous index names keys whose rules a failed round did not remove.
+      admissionIndex = buildAdmissionIndex(actions)
 
       // SF-RC1 (#1340): the second, independent sense/decide/realize
       // sub-pass — see legibility-audit.ts's own header for the isolation
@@ -967,6 +994,65 @@ export function createContentSession(
       onContrastAudited?.(null)
     }
     onFire?.(outcome)
+  }
+
+  /**
+   * The leading edge: bind what this batch just added to a key the page has
+   * already committed, synchronously, before the browser paints the frame
+   * the vendor created it in. `admission.ts`'s header has the full argument
+   * for why this is safe to run per batch when a `scan()` is not.
+   *
+   * Runs inside `withVendorColorsVisible()` — one suppression around the
+   * whole batch, not one per element — for the same reason `ingest()` does:
+   * the static layer recolors `th`, `pre`, `input`, `dialog` and the ARIA
+   * popup roles by type, so an unsuppressed read of a brand-new popup
+   * returns this extension's own `--sw-surface` rather than the vendor's
+   * colour. Reading our own paint back is how #831 started; that it would
+   * only ever mis*bind* here (this pass contributes no evidence) makes it a
+   * smaller mistake, not an acceptable one.
+   *
+   * Every bail is silent and lossless by design — the element stays
+   * untagged and the trailing-edge round that this pass never replaces tags
+   * it exactly as it did before.
+   */
+  function admitAddedSurfaces(records: ReadonlyArray<MutationRecord>): void {
+    const candidates = collectAdmissionCandidates(records)
+    if (candidates.length === 0) return
+
+    const startedAt = performance.now()
+    try {
+      withVendorColorsVisible(() => {
+        admit(candidates, admissionIndex, (el) => {
+          if (shouldSkip(el)) return null
+          const attr = readAttr(el)
+          return attr === null ? null : surfaceKeyFor(attr)
+        })
+      })
+    } catch (error) {
+      // Same discipline as ingest()'s own catch, and more load-bearing:
+      // this runs inside the observer callback, so an uncaught throw here
+      // would take coalescer.trigger() below with it and the page would
+      // stop reacting to the vendor entirely — a latency optimisation
+      // silently disabling the mechanism it optimises.
+      // eslint-disable-next-line no-console
+      console.error("[some-filter] pipeline admission pass failed:", error)
+    } finally {
+      // Charged even when the pass threw: the time was spent either way,
+      // and a path that throws repeatedly is exactly one the rolling budget
+      // should be backing off from.
+      admissionBudget.spend(performance.now() - startedAt)
+    }
+  }
+
+  /**
+   * Whether the leading-edge pass can do anything at all this batch.
+   *
+   * Checked by the observer *before* it partitions the batch, not inside
+   * `admitAddedSurfaces` — see the callback's own comment for why the
+   * partition is the thing worth avoiding.
+   */
+  function admissionReady(): boolean {
+    return admissionIndex.size > 0 && admissionBudget.available()
   }
 
   /** One full round: sense, then decide/realize on what was sensed. */
@@ -1102,16 +1188,41 @@ export function createContentSession(
       // (not a value captured here) for the same reason: after a body
       // swap, `document.body` the getter already points at the new one.
       observer = new MutationObserver((mutations) => {
-        for (const mutation of mutations) {
-          // Axiom 3.5: our own actuation is not evidence. Without this,
-          // realizing a verdict (injecting the theme sheet, lifting the
-          // veil) is itself a mutation that schedules the next round, which
-          // realizes the same verdict again — a closed loop that never
-          // quiesces and never involves the vendor at all (#831).
-          if (isSelfAuthored(mutation)) continue
-          coalescer.trigger()
+        // Axiom 3.5: our own actuation is not evidence. Without this,
+        // realizing a verdict (injecting the theme sheet, lifting the
+        // veil) is itself a mutation that schedules the next round, which
+        // realizes the same verdict again — a closed loop that never
+        // quiesces and never involves the vendor at all (#831).
+        //
+        // Two shapes, and the cheap one is still the default. Scheduling
+        // needs only the *existence* of a vendor record, so it can stop at
+        // the first one; the leading-edge pass needs the records
+        // themselves, so it has to see the whole batch. `isSelfAuthored`
+        // is not free — it walks ancestors via `closest()` — and a page
+        // emitting thousands of records per batch is exactly the profile
+        // #831 was about, so the full partition is paid for only when
+        // something is actually going to read it.
+        if (!admissionReady()) {
+          for (const mutation of mutations) {
+            if (isSelfAuthored(mutation)) continue
+            coalescer.trigger()
+            return
+          }
           return
         }
+
+        const vendorRecords = mutations.filter(
+          (mutation) => !isSelfAuthored(mutation)
+        )
+        if (vendorRecords.length === 0) return
+
+        // Leading edge first, then trailing. Order matters: this pass runs
+        // in the observer's own microtask, ahead of the frame's rendering
+        // steps, and that is the entire reason it exists — deferring it
+        // behind the scheduler would put it back on the wrong side of the
+        // paint it is there to beat.
+        admitAddedSurfaces(vendorRecords)
+        coalescer.trigger()
       })
       observer.observe(document.documentElement, {
         childList: true,
@@ -1135,6 +1246,11 @@ export function createContentSession(
       observer?.disconnect()
       observer = null
       coalescer.dispose()
+      // A torn-down session's committed keys are not a later session's to
+      // bind against: `content.ts` calls teardown() before restoreVendor()
+      // / clearRealizedColorState(), which is what actually removes the
+      // rules these keys name.
+      admissionIndex = EMPTY_ADMISSION_INDEX
     },
   }
 }
