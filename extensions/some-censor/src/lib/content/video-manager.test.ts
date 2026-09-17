@@ -14,16 +14,39 @@
  * is exercised by advancing the clock rather than by waiting.
  */
 
+import { asVideoId } from "@censor/types/ids"
 import { memoryPersistence } from "@some-extension/common/observability"
+import type { JsonValue } from "@some-extension/common/observability"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
+  OCCLUSION_GRACE_MS,
   PROMOTION_STALL_MS,
   startObservability,
   stopObservability,
   type BoyoObservability,
 } from "./observability"
 import { VideoManager } from "./video-manager"
+
+/**
+ * The numeric fields of an event detail, as a plain record.
+ *
+ * `detail` is a `JsonValue`, so it may be a primitive or an array; this
+ * narrows it without an assertion. Dropping non-numeric values is deliberate
+ * rather than incidental — a bulk-advance detail carries counts and nothing
+ * else (#1382), so a key that survives a round trip through here is a key
+ * whose value really was a number.
+ */
+function numericDetail(detail: JsonValue | undefined): Record<string, number> {
+  if (detail === null || typeof detail !== "object" || Array.isArray(detail)) {
+    return {}
+  }
+  const out: Record<string, number> = {}
+  for (const [key, value] of Object.entries(detail)) {
+    if (typeof value === "number") out[key] = value
+  }
+  return out
+}
 
 /** The retry loop ticks at 500ms; the budget is 10s of wall clock. */
 const PASS_MS = 500
@@ -52,6 +75,20 @@ function fullCard(videoId: string, channel: string): HTMLElement {
   const el = document.createElement("ytd-rich-item-renderer")
   fillFullCard(el, videoId, channel)
   return el
+}
+
+/**
+ * Make the next `IS_WHITELISTED` round trip never settle, pinning an element
+ * inside `_promote()`'s guard for the rest of the test. Module-scoped because
+ * two describes need it: the promotion-guard invariant, and #1429's coverage
+ * attribution for a card that is mid-mount rather than orphaned.
+ */
+function hangTheWhitelistCheck(): void {
+  vi.mocked(browser.runtime.sendMessage).mockReturnValueOnce(
+    new Promise(() => {
+      // deliberately never settles
+    })
+  )
 }
 
 /** Advance n retry passes, letting the awaited whitelist round-trips settle. */
@@ -280,16 +317,25 @@ describe("the retry loop", () => {
   it("stops once nothing is left to retry", async () => {
     // The property that actually matters: no live interval afterwards. Asserted
     // through vitest's timer count so it cannot pass by coincidence.
+    //
+    // Exactly one timer survives by design — the occlusion cadence, which runs
+    // for as long as a session does (see _armOcclusionWatch). Asserting the
+    // count rather than zero is the tighter statement, not the looser one: it
+    // fails at 2 if the retry interval leaks, and at 0 if the cadence this
+    // count now allows for has quietly stopped existing.
     document.body.appendChild(channelLockup())
     document.body.appendChild(shortsLockup("short_1"))
     mgr.scan()
 
-    expect(vi.getTimerCount(), "a retry loop is running").toBeGreaterThan(0)
+    expect(vi.getTimerCount(), "a retry loop is running").toBeGreaterThan(1)
 
     await passes(BUDGET_PASSES + 4)
 
     expect(mgr.unresolvedSize).toBe(0)
-    expect(vi.getTimerCount(), "no timer survives the drained queue").toBe(0)
+    expect(
+      vi.getTimerCount(),
+      "no retry interval survives the drained queue"
+    ).toBe(1)
   })
 
   it("keeps running while a real card is still unresolved", async () => {
@@ -306,6 +352,278 @@ describe("the retry loop", () => {
     await passes(2)
 
     expect(mgr.size, "adopted once it hydrates").toBe(1)
+  })
+})
+
+describe("vendor churn is not a recycle (#1423)", () => {
+  // The recycle signal is "the extracted id differs from the one stamped on
+  // the element", and two different things produce it. A hover preview
+  // injecting its own anchor into a card — which is what happens the instant a
+  // card is revealed, because the cursor is still on it — looks identical to
+  // the virtualizer handing the node to a different feed item, unless the
+  // element is asked whether it still advertises what we mounted.
+
+  /** Add a second, earlier-in-document-order link, as a preview overlay does. */
+  function addPreviewAnchor(el: HTMLElement, videoId: string): void {
+    const preview = document.createElement("a")
+    preview.setAttribute("href", `/watch?v=${videoId}`)
+    el.prepend(preview)
+  }
+
+  /** Walk masked -> meta -> title -> revealed on a mounted card. */
+  async function reveal(vid: string): Promise<void> {
+    mgr.handleClick(asVideoId(vid))
+    await vi.advanceTimersByTimeAsync(400)
+    mgr.handleClick(asVideoId(vid))
+    await vi.advanceTimersByTimeAsync(400)
+    mgr.handleDblClick(asVideoId(vid))
+    await vi.advanceTimersByTimeAsync(50)
+  }
+
+  it("keeps a revealed card revealed when a preview anchor displaces its id", async () => {
+    // The reported bug, exactly: veil -> title -> double-click -> the card
+    // dropped back under the static occluder, which takes no pointer events,
+    // so it went inert rather than merely re-masked.
+    const el = fullCard("mix_first", "ChanA")
+    document.body.appendChild(el)
+    mgr.upsert(el)
+    await passes(2)
+
+    await reveal("mix_first")
+    expect(el.getAttribute("data-boyo"), "revealed").toBe("3")
+
+    addPreviewAnchor(el, "mix_second")
+    mgr.upsert(el)
+    await passes(1)
+
+    expect(
+      el.getAttribute("data-boyo"),
+      "must never fall back under the static occluder"
+    ).toBe("3")
+    expect(mgr.size, "and must not gain a second entry for one card").toBe(1)
+  })
+
+  it("keeps a part-progressed card at the step the user reached", async () => {
+    const el = fullCard("vid_meta", "ChanA")
+    document.body.appendChild(el)
+    mgr.upsert(el)
+    await passes(2)
+
+    mgr.handleClick(asVideoId("vid_meta"))
+    await vi.advanceTimersByTimeAsync(400)
+    expect(el.getAttribute("data-boyo"), "meta").toBe("1")
+
+    addPreviewAnchor(el, "vid_other")
+    mgr.upsert(el)
+    await passes(1)
+
+    expect(
+      el.getAttribute("data-boyo"),
+      "churn must not silently revoke a disclosure the user performed"
+    ).toBe("1")
+  })
+
+  it("still re-masks when the element really is handed to a different video", async () => {
+    // The other side of the guard: if the artifact we mounted is gone from the
+    // subtree, this is a genuine recycle and re-masking is mandatory — the node
+    // is showing something the user never disclosed.
+    const el = fullCard("vid_old", "ChanA")
+    document.body.appendChild(el)
+    mgr.upsert(el)
+    await passes(2)
+
+    await reveal("vid_old")
+    expect(el.getAttribute("data-boyo")).toBe("3")
+
+    fillFullCard(el, "vid_new", "ChanB") // replaces the subtree outright
+    mgr.upsert(el)
+    await passes(2)
+
+    expect(el.dataset["boyoVid"], "the new video is mounted").toBe("vid_new")
+    expect(el.getAttribute("data-boyo"), "and it is masked, not revealed").toBe(
+      "0"
+    )
+    expect(mgr.size, "the old entry is replaced, not duplicated").toBe(1)
+  })
+
+  it("never leaves a recycled element under the bare occluder while it re-resolves", async () => {
+    // A recycle strips data-boyo synchronously, and _promote() would not put it
+    // back until a background round trip answers — seconds on a cold MV3
+    // worker. For that whole window the card is blurred AND pointer-events:
+    // none, which is the inert state, not a mask.
+    const el = fullCard("vid_before", "ChanA")
+    document.body.appendChild(el)
+    mgr.upsert(el)
+    await passes(2)
+
+    // A round trip that does not answer within this test's observation window.
+    vi.mocked(browser.runtime.sendMessage).mockReturnValueOnce(
+      new Promise(() => {
+        // deliberately never settles
+      })
+    )
+
+    fillFullCard(el, "vid_after", "ChanB")
+    mgr.upsert(el)
+
+    expect(
+      el.getAttribute("data-boyo"),
+      "masked synchronously, without waiting for the whitelist check"
+    ).toBe("0")
+  })
+
+  it("re-masks when the renderer's own data-video-id moves on, even if a stale link to the old video is still in the subtree", async () => {
+    // Bot-found (#1427 review, round 1, P1). `data-video-id` is authoritative
+    // and YouTube sets it only after hydration, so a renderer advertising a
+    // new id IS a new artifact however much of the old one is still lying
+    // around in its subtree. Treating the leftover link as evidence of
+    // sameness would keep the old entry — revealed included — while the card
+    // displays something the user never disclosed. A QD1 leak, not a flicker.
+    const el = fullCard("vid_old_auth", "ChanA")
+    el.setAttribute("data-video-id", "vid_old_auth")
+    document.body.appendChild(el)
+    mgr.upsert(el)
+    await passes(2)
+
+    await reveal("vid_old_auth")
+    expect(el.getAttribute("data-boyo"), "revealed").toBe("3")
+
+    // The renderer is repointed at a different video, but the old anchor has
+    // not been cleaned up yet — the exact interleaving the finding names.
+    el.setAttribute("data-video-id", "vid_new_auth")
+    mgr.upsert(el)
+    await passes(2)
+
+    expect(
+      el.dataset["boyoVid"],
+      "the new artifact must be the one mounted"
+    ).toBe("vid_new_auth")
+    expect(
+      el.getAttribute("data-boyo"),
+      "and it must be masked — never inheriting the old card's disclosure"
+    ).toBe("0")
+  })
+
+  it("still uses anchor membership for a lockup, which has no authoritative id", async () => {
+    // The other side of the same rule: the Lit-era lockups never set
+    // data-video-id (observer.ts), so anchor membership is the only evidence
+    // there is for them — and it is the case the churn split exists for.
+    const el = document.createElement("yt-lockup-view-model")
+    el.innerHTML = `<a id="video-title" href="/watch?v=lock_keep"></a><a href="/@Chan"></a>`
+    document.body.appendChild(el)
+    mgr.upsert(el)
+    await passes(2)
+
+    await reveal("lock_keep")
+    expect(el.getAttribute("data-boyo"), "revealed").toBe("3")
+
+    addPreviewAnchor(el, "lock_preview")
+    mgr.upsert(el)
+    await passes(1)
+
+    expect(
+      el.getAttribute("data-boyo"),
+      "a lockup has no authoritative id to contradict the anchor still present"
+    ).toBe("3")
+  })
+
+  it("mounts a reused lockup after an SPA navigation, even though _elToVid still holds the old session's id", async () => {
+    // Bot-found (#1427 review, round 2, P1). reset() cannot clear _elToVid —
+    // it is a WeakMap — but destroy() does remove data-boyo-vid. So a reused
+    // lockup arrives in the NEW session with no stamp (upsert's own churn
+    // branch is skipped) but a stale _elToVid claim that _promote() still
+    // sees. With the old link still in the subtree and no authoritative
+    // data-video-id to contradict it, the churn shortcut would "preserve" an
+    // entry reset() had already destroyed — repair() on undefined is a silent
+    // no-op — and return without mounting anything. Never queued, so nothing
+    // retries it: permanently occluded and inert.
+    const el = document.createElement("yt-lockup-view-model")
+    el.innerHTML = `<a id="video-title" href="/watch?v=lock_orig"></a><a href="/@Chan"></a>`
+    document.body.appendChild(el)
+    mgr.upsert(el)
+    await passes(2)
+    expect(mgr.size).toBe(1)
+
+    // A preview link lands earlier in document order, so the next extraction
+    // answers with it rather than the card's own.
+    addPreviewAnchor(el, "lock_preview")
+
+    // Controller C2: navigation tears down and restarts. The element stays
+    // connected — chip swaps reuse lockups in place.
+    mgr.reset()
+    mgr.startSession()
+    expect(
+      el.dataset["boyoVid"],
+      "destroy() cleared the stamp, so upsert's own churn branch cannot fire"
+    ).toBeUndefined()
+
+    mgr.upsert(el)
+    await passes(2)
+
+    expect(
+      el.getAttribute("data-boyo"),
+      "the card must be adopted by the new session, not stranded under the occluder"
+    ).not.toBeNull()
+    expect(mgr.size, "and it must actually be in the registry").toBe(1)
+  })
+
+  it("does not take the shortcut on an entry that belongs to a different renderer", async () => {
+    // Bot-found (#1427 review, round 3, P1). `_byVideo` is keyed by videoId,
+    // not by element, so "there is a live entry for this id" says nothing
+    // about which renderer owns it — two elements can carry the same video
+    // (a grid cell wrapping a lockup, #1426). Without an ownership check the
+    // shortcut repairs the *other* renderer and returns, leaving this one
+    // unmounted and under the occluder.
+    const owner = fullCard("vid_shared", "ChanA")
+    document.body.appendChild(owner)
+    mgr.upsert(owner)
+    await passes(2)
+    expect(mgr.size).toBe(1)
+
+    // A second renderer that also claims vid_shared — and whose own link now
+    // sorts after a newer one, so extraction answers with the newer id.
+    const other = document.createElement("yt-lockup-view-model")
+    other.innerHTML = `<a href="/watch?v=vid_other"></a><a id="video-title" href="/watch?v=vid_shared"></a><a href="/@ChanA"></a>`
+    other.dataset["boyoVid"] = "vid_shared"
+    document.body.appendChild(other)
+
+    mgr.upsert(other)
+    await passes(2)
+
+    expect(
+      other.getAttribute("data-boyo"),
+      "the second renderer must be adopted, not stranded under the occluder"
+    ).not.toBeNull()
+
+    // Deliberately NOT asserted here: that `owner` keeps its own custody. It
+    // does not — the fall-through recycle path tears an entry down by videoId
+    // without asking which element owns it, so the id lookup finds owner's
+    // entry and destroys it. That is pre-existing, id-keyed behaviour this PR
+    // does not introduce or fix; it is the whole subject of #1426. Asserting
+    // it here would fail for a reason this PR is not responsible for, and
+    // would quietly widen the change to a registry re-key.
+  })
+
+  it("does not flap when the same element churns repeatedly", async () => {
+    const el = fullCard("vid_stable", "ChanA")
+    document.body.appendChild(el)
+    mgr.upsert(el)
+    await passes(2)
+
+    await reveal("vid_stable")
+
+    for (let i = 0; i < 10; i++) {
+      addPreviewAnchor(el, `preview_${String(i)}`)
+      mgr.upsert(el)
+      expect(
+        el.getAttribute("data-boyo"),
+        `data-boyo must survive churn #${String(i)}`
+      ).toBe("3")
+    }
+
+    await passes(2)
+    expect(mgr.size, "one card, one entry, throughout").toBe(1)
+    expect(el.dataset["boyoVid"]).toBe("vid_stable")
   })
 })
 
@@ -379,18 +697,248 @@ describe("per-element staleness across rapid recycling (#980)", () => {
   })
 })
 
+describe("OccluderReleases sees what the queues cannot (#1425)", () => {
+  let obs: BoyoObservability
+
+  function violations(): Array<string | number | undefined> {
+    return obs.recorder
+      .events()
+      .filter((e) => e.kind === "invariant.violated")
+      .map((e) => e.subject)
+  }
+
+  function recoveries(): Array<string | number | undefined> {
+    return obs.recorder
+      .events()
+      .filter((e) => e.kind === "invariant.recovered")
+      .map((e) => e.subject)
+  }
+
+  beforeEach(() => {
+    obs = startObservability(memoryPersistence())
+  })
+
+  afterEach(() => {
+    stopObservability()
+  })
+
+  it("reports a card left under the occluder that no queue is tracking", async () => {
+    // The #1422 shape, which is also the shape of every ORP defect: a
+    // ytd-rich-item-renderer with no video link anywhere. The occluder matches
+    // it on the bare tag, `isVideoCard()` says true unconditionally, so the
+    // rejection path never fires and it is never released — while the manager
+    // reports a perfectly consistent empty queue.
+    const el = document.createElement("ytd-rich-item-renderer")
+    el.innerHTML = `<ytd-ad-slot-renderer><div>sponsored</div></ytd-ad-slot-renderer>`
+    document.body.appendChild(el)
+
+    mgr.upsert(el)
+    await passes(BUDGET_PASSES * 4)
+
+    expect(
+      el.getAttribute("data-boyo"),
+      "precondition: it really is stranded under the occluder"
+    ).toBeNull()
+    expect(violations(), "and the invariant says so").toContain(
+      "OccluderReleases"
+    )
+  })
+
+  it("stays quiet on a page whose cards all get adopted", async () => {
+    // The direction that decides whether this is usable or just noise: a
+    // healthy feed must not report a violation merely because cards spend
+    // their first moments occluded.
+    for (const id of ["vid_a", "vid_b", "vid_c"]) {
+      document.body.appendChild(fullCard(id, "Chan"))
+    }
+    mgr.scan()
+    await passes(BUDGET_PASSES * 4)
+
+    expect(mgr.size, "precondition: they were all adopted").toBe(3)
+    expect(violations()).not.toContain("OccluderReleases")
+  })
+
+  it("keeps looking at a stranded card on a page with nothing left in any queue", async () => {
+    // Bot-found (this PR's own review). The test above reaches its verdict via
+    // the retry loop, which that card keeps alive by sitting in _unresolved —
+    // so it proves the invariant can fire, not that it fires for the
+    // population it was written for. An element this manager never adopted is
+    // in no queue and no guard, and therefore keeps nothing running: one
+    // sample stamps its sinceAt, `now - sinceAt` is zero, and without a
+    // cadence of its own the report stays healthy forever.
+    // A card that resolves outright, so nothing ever queues and the retry
+    // interval is never started.
+    document.body.appendChild(fullCard("vid_a", "Chan"))
+    mgr.scan()
+    await passes(1)
+
+    // Appears *after* the scan and is never upserted — the orphan shape, and
+    // the only way to get one: anything scan() sees, it queues. In the
+    // extension this is a card whose data-boyo was dropped by a teardown the
+    // observer did not turn into a signal (#1423), not a literal late append.
+    const stranded = document.createElement("ytd-rich-item-renderer")
+    stranded.innerHTML = `<ytd-ad-slot-renderer><div>sponsored</div></ytd-ad-slot-renderer>`
+    document.body.appendChild(stranded)
+
+    expect(
+      mgr.unresolvedSize,
+      "precondition: nothing is queued, so no retry loop is running"
+    ).toBe(0)
+    expect(
+      violations(),
+      "precondition: far too early to call anything stranded"
+    ).not.toContain("OccluderReleases")
+
+    // One tick to see it and stamp its sinceAt, the next to find it has aged
+    // past the grace window. Nothing else on this page is running.
+    await vi.advanceTimersByTimeAsync(OCCLUSION_GRACE_MS * 3)
+
+    expect(
+      stranded.getAttribute("data-boyo"),
+      "precondition: it really is still under the occluder"
+    ).toBeNull()
+    expect(violations(), "and the cadence kept looking").toContain(
+      "OccluderReleases"
+    )
+  })
+
+  it("does not sample a page that has nothing occluded, however long it runs", async () => {
+    // What keeps the standing cadence honest about Charter §8. The tick itself
+    // is read-only queries; the expensive half of a health sample is evaluating
+    // every invariant and flushing a snapshot to storage.local. So a clean page
+    // must tick without sampling — otherwise leaving a tab open writes to disk
+    // every 15 s forever, which is exactly the background cost the budget
+    // machinery in this file exists to avoid.
+    const el = fullCard("vid_a", "Chan")
+    document.body.appendChild(el)
+    mgr.scan()
+    await passes(1)
+    expect(
+      el.getAttribute("data-boyo"),
+      "precondition: adopted, so the occluder no longer matches it"
+    ).not.toBeNull()
+
+    const before = obs.recorder.metrics.counter("health_samples")
+    await vi.advanceTimersByTimeAsync(OCCLUSION_GRACE_MS * 8)
+
+    expect(
+      obs.recorder.metrics.counter("health_samples"),
+      "eight ticks with nothing occluded, and not one sample taken"
+    ).toBe(before)
+    expect(violations()).not.toContain("OccluderReleases")
+  })
+
+  it("does sample a page that does have something occluded", async () => {
+    // The other half, so the test above cannot pass by the cadence being dead.
+    const stranded = document.createElement("ytd-rich-item-renderer")
+    stranded.innerHTML = `<ytd-ad-slot-renderer><div>sponsored</div></ytd-ad-slot-renderer>`
+    document.body.appendChild(stranded)
+
+    const before = obs.recorder.metrics.counter("health_samples")
+    await vi.advanceTimersByTimeAsync(OCCLUSION_GRACE_MS * 8)
+
+    expect(
+      obs.recorder.metrics.counter("health_samples"),
+      "a page with something under the occluder is a page with something to say"
+    ).toBeGreaterThan(before)
+  })
+
+  it("reports the recovery when the last stranded card goes away", async () => {
+    // Bot-found (this PR's own review, round 3). Skipping the sample on a
+    // clean page keeps an idle tab from writing every tick — but the tick
+    // where the page *became* clean is the one that emits
+    // `invariant.recovered` and replaces the violated snapshot. Skip that one
+    // and a healed violation sits on the diagnostics page forever: this
+    // invariant's own stuck-report failure, with the sign flipped.
+    const stranded = document.createElement("ytd-rich-item-renderer")
+    stranded.innerHTML = `<ytd-ad-slot-renderer><div>sponsored</div></ytd-ad-slot-renderer>`
+    document.body.appendChild(stranded)
+
+    await vi.advanceTimersByTimeAsync(OCCLUSION_GRACE_MS * 3)
+    expect(violations(), "precondition: it was reported stranded").toContain(
+      "OccluderReleases"
+    )
+
+    stranded.remove()
+    await vi.advanceTimersByTimeAsync(OCCLUSION_GRACE_MS * 3)
+
+    expect(recoveries()).toContain("OccluderReleases")
+  })
+
+  it("takes the session's reading synchronously, not on a tick 15s away", () => {
+    // Bot-found (this PR's own review, round 4). An earlier version seeded a
+    // flag so the *first tick* would report regardless of what it found — but
+    // a flag is not a reading. Navigation is debounced at 150 ms, so a second
+    // one inside OCCLUSION_GRACE_MS runs `_teardownRuntime()` -> `reset()`,
+    // which cancels the very tick that was going to honour the flag, and the
+    // previous page's verdict stays the latest persisted one.
+    mgr.reset()
+    const before = obs.recorder.metrics.counter("health_samples")
+
+    mgr.startSession()
+
+    expect(
+      obs.recorder.metrics.counter("health_samples"),
+      "taken before any timer exists to be cancelled"
+    ).toBe(before + 1)
+  })
+
+  it("still reports the new session even when the page it lands on is clean", () => {
+    // The case the force flag is for. A clean page takes no reading on an
+    // ordinary tick, by design — but the reading that says *this* page is
+    // clean is what retires a verdict describing the page before it.
+    document.body.innerHTML = ""
+    mgr.reset()
+    const before = obs.recorder.metrics.counter("health_samples")
+
+    mgr.startSession()
+
+    expect(obs.recorder.metrics.counter("health_samples")).toBe(before + 1)
+  })
+
+  it("drops the watch on reset, so a teardown leaves no timer behind", async () => {
+    // Same rule _disarmStallWatch() follows, and for the same reason: reset()
+    // is what a navigation and a disabled extension both run through, and a
+    // cadence that outlives the session it was watching would keep re-arming
+    // itself against a page no session is watching.
+    //
+    // Two mechanisms hold this, deliberately: the tick's phase guard and the
+    // disarm in reset(). Each is individually sufficient, so mutating either
+    // one alone leaves this test green — it fails only when both are gone.
+    // That is defence in depth rather than a redundancy to clean up: the guard
+    // is what makes an already-scheduled tick correct, the disarm is what
+    // releases the handle promptly instead of up to OCCLUSION_GRACE_MS later.
+    document.body.appendChild(fullCard("vid_a", "Chan"))
+    mgr.retryUnresolved()
+    expect(
+      vi.getTimerCount(),
+      "precondition: the watch is armed"
+    ).toBeGreaterThan(0)
+
+    mgr.reset()
+    await vi.advanceTimersByTimeAsync(OCCLUSION_GRACE_MS * 2)
+
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it("stays quiet about a channel lockup, which the occluder deliberately does not match", async () => {
+    // The `:has()` guard means a non-video lockup is never occluded, so it is
+    // correctly invisible here — reporting it would punish the very guard that
+    // exists to stop permanent blurring (#973).
+    const el = channelLockup()
+    document.body.appendChild(el)
+
+    mgr.upsert(el)
+    await passes(BUDGET_PASSES * 4)
+
+    expect(violations()).not.toContain("OccluderReleases")
+  })
+})
+
 describe("PromotionGuardClears can actually fire (#1397's own review)", () => {
   let obs: BoyoObservability
 
   /** A promotion that never settles: the MV3 hazard the invariant is about. */
-  function hangTheWhitelistCheck(): void {
-    vi.mocked(browser.runtime.sendMessage).mockReturnValueOnce(
-      new Promise(() => {
-        // deliberately never settles
-      })
-    )
-  }
-
   function violations(): Array<string | number | undefined> {
     return obs.recorder
       .events()
@@ -428,7 +976,9 @@ describe("PromotionGuardClears can actually fire (#1397's own review)", () => {
     await vi.advanceTimersByTimeAsync(PROMOTION_STALL_MS * 3)
 
     expect(violations()).toEqual([])
-    expect(vi.getTimerCount()).toBe(0)
+    // The one survivor is the occlusion cadence, not this watch — see the
+    // retry-loop test above for why the count is asserted rather than zero.
+    expect(vi.getTimerCount()).toBe(1)
   })
 
   it("still reports a promotion that outlived an SPA navigation — reset() cannot clear the real _promoting WeakSet, so it must not clear the mirror either", async () => {
@@ -450,5 +1000,264 @@ describe("PromotionGuardClears can actually fire (#1397's own review)", () => {
 
     await vi.advanceTimersByTimeAsync(PROMOTION_STALL_MS)
     expect(violations()).toContain("PromotionGuardClears")
+  })
+
+  it("mounts a card whose whitelist round-trip settles normally just after the SPA navigation that raced it — the ordinary case the hung-promise test above does not cover", async () => {
+    // Unlike hangTheWhitelistCheck(), this round-trip *does* settle — just
+    // after reset()+startSession() already ran. That is the realistic case
+    // (a whitelist check answers in milliseconds), not the pathological one:
+    // a promotion that settles normally must never be the thing that leaves a
+    // card permanently unmounted, because nothing will ever flag it — it
+    // clears _promoting before PROMOTION_STALL_MS has any chance to fire.
+    let release!: () => void
+    const gate = new Promise<{ ok: boolean; whitelisted: boolean }>(
+      (resolve): void => {
+        release = (): void => resolve({ ok: true, whitelisted: false })
+      }
+    )
+    vi.mocked(browser.runtime.sendMessage).mockReturnValueOnce(gate)
+
+    const el = fullCard("vid-races-nav", "Chan")
+    document.body.appendChild(el)
+    mgr.upsert(el) // starts _promote(), awaiting IS_WHITELISTED
+
+    // Controller C2: a chip click tears the runtime down and restarts it
+    // while the round-trip above is still in flight. The element stays
+    // connected (chip swaps reuse cards in place).
+    mgr.reset()
+    mgr.startSession()
+
+    // The still-live _promoting guard from the pre-navigation call swallows
+    // this upsert, exactly as in the hung-promise test.
+    mgr.upsert(el)
+    expect(mgr.size).toBe(0)
+
+    // Now the original round-trip answers normally (M5's session-mismatch
+    // bail fires, not the hang this invariant test above exercises).
+    release()
+    await passes(1)
+
+    expect(
+      mgr.size,
+      "the card must not be orphaned just because its whitelist check outlived a navigation"
+    ).toBe(1)
+    expect(el.getAttribute("data-boyo"), "and it must actually be masked").toBe(
+      "0"
+    )
+    expect(
+      violations(),
+      "recovered on its own — nothing was ever stuck"
+    ).toEqual([])
+  })
+})
+
+describe("advance-all reports what it did not advance (#1424)", () => {
+  let obs: BoyoObservability
+
+  /** The detail of the most recent bulk-advance event, or undefined. */
+  function coverage(): Record<string, number> | undefined {
+    const events = obs.recorder
+      .events()
+      .filter((e) => e.kind === "command.advance_all")
+    const last = events[events.length - 1]
+    return last === undefined ? undefined : numericDetail(last.detail)
+  }
+
+  /**
+   * An element the occluder matches on its bare tag and that the manager is
+   * not tracking at all — the orphan shape every ORP story produces, and the
+   * one no queue can represent.
+   */
+  function orphan(): HTMLElement {
+    const el = document.createElement("ytd-rich-item-renderer")
+    el.innerHTML = `<ytd-ad-slot-renderer><div>sponsored</div></ytd-ad-slot-renderer>`
+    document.body.appendChild(el)
+    return el
+  }
+
+  beforeEach(() => {
+    obs = startObservability(memoryPersistence())
+  })
+
+  afterEach(() => {
+    stopObservability()
+  })
+
+  it("counts the cards it advanced and the ones it never reached", async () => {
+    document.body.appendChild(fullCard("vid_a", "Chan"))
+    document.body.appendChild(fullCard("vid_b", "Chan"))
+    mgr.scan()
+    await passes(1)
+    expect(mgr.size, "precondition: two cards are in the registry").toBe(2)
+
+    // Never upserted, so it is in no queue and has no registry slot — but the
+    // stylesheet is occluding it, which is the whole point of the bucket.
+    orphan()
+
+    mgr.advanceAllToTitle()
+
+    expect(coverage()).toMatchObject({
+      advanced: 2,
+      alreadyPast: 0,
+      detached: 0,
+      unresolved: 0,
+      occludedUntracked: 1,
+      skipped: 1,
+    })
+  })
+
+  it("does not count a queued card twice, as both unresolved and occluded", () => {
+    // The card is video-shaped but not yet extractable, so it sits in
+    // _unresolved — and it is occluded too, because the occluder is exactly
+    // what hides a card until adoption. Reporting it in both buckets would
+    // make the skipped total say two cards where there is one.
+    const el = document.createElement("ytd-rich-item-renderer")
+    document.body.appendChild(el)
+    mgr.upsert(el)
+
+    expect(mgr.unresolvedSize, "precondition: it really is queued").toBe(1)
+
+    mgr.advanceAllToTitle()
+
+    expect(coverage()).toMatchObject({
+      advanced: 0,
+      unresolved: 1,
+      occludedUntracked: 0,
+      skipped: 1,
+    })
+  })
+
+  it("does not count a channel lockup the occluder never hid", async () => {
+    // Bot-found (this PR's own review, P1). `upsert()` enqueues every element
+    // failing `isVideoCard()` — a channel lockup, a playlist, an unhydrated
+    // shell — so extraction need not rescan their subtrees each pass. The
+    // premask `:has()` guard deliberately leaves those visible, so they were
+    // never cards and were never missed. Counting `_unresolved.size` reported
+    // them as skipped, worst on search pages where polymorphic lockups are
+    // most of the grid.
+    document.body.appendChild(fullCard("vid_a", "Chan"))
+    for (let i = 0; i < 4; i++) document.body.appendChild(channelLockup())
+    mgr.scan()
+    await passes(1)
+
+    expect(
+      mgr.unresolvedSize,
+      "precondition: the lockups really are sitting in the queue"
+    ).toBe(4)
+
+    mgr.advanceAllToTitle()
+
+    expect(coverage()).toMatchObject({
+      advanced: 1,
+      unresolved: 0,
+      promoting: 0,
+      occludedUntracked: 0,
+      skipped: 0,
+    })
+  })
+
+  it("attributes an in-flight promotion to the mount, not to the orphans", async () => {
+    // Bot-found (this PR's own review, P2). `_promote()` dequeues before
+    // awaiting the IS_WHITELISTED round trip, so for the length of that trip a
+    // perfectly healthy card is occluded, out of `_unresolved`, and not yet in
+    // the registry. "Occluded minus the queue" put it in the orphan bucket —
+    // the one figure whose whole value is that it should trend to zero as
+    // #1421 lands.
+    hangTheWhitelistCheck()
+    const el = fullCard("vid_slow", "Chan")
+    document.body.appendChild(el)
+    mgr.upsert(el)
+    await passes(1)
+
+    expect(
+      el.getAttribute("data-boyo"),
+      "precondition: still occluded, the mount has not completed"
+    ).toBeNull()
+    expect(
+      mgr.unresolvedSize,
+      "precondition: and it has already left the queue"
+    ).toBe(0)
+
+    mgr.advanceAllToTitle()
+
+    expect(coverage()).toMatchObject({
+      advanced: 0,
+      unresolved: 0,
+      promoting: 1,
+      occludedUntracked: 0,
+      skipped: 1,
+    })
+  })
+
+  it("reports a registry entry whose element left the DOM", async () => {
+    const el = fullCard("vid_gone", "Chan")
+    document.body.appendChild(el)
+    mgr.scan()
+    await passes(1)
+    expect(mgr.size, "precondition: it was adopted").toBe(1)
+
+    // Detached without telling the manager — the eviction path has not run, so
+    // the registry still holds the slot. advanceToTitle() has always skipped
+    // this case; before #1424 it did so without saying anything.
+    el.remove()
+
+    mgr.advanceAllToTitle()
+
+    expect(coverage()).toMatchObject({
+      advanced: 0,
+      detached: 1,
+      skipped: 1,
+    })
+  })
+
+  it("counts a second press as covered, not as newly advanced", async () => {
+    document.body.appendChild(fullCard("vid_a", "Chan"))
+    mgr.scan()
+    await passes(1)
+
+    mgr.advanceAllToTitle()
+    mgr.advanceAllToTitle()
+
+    // The command stays idempotent: the second press moves nothing, and says so
+    // rather than reporting a card it did not act on as skipped.
+    expect(coverage()).toMatchObject({
+      advanced: 0,
+      alreadyPast: 1,
+      skipped: 0,
+    })
+    expect(obs.recorder.metrics.counter("bulk_advances")).toBe(2)
+    expect(obs.recorder.metrics.counter("bulk_advance_advanced")).toBe(1)
+    expect(obs.recorder.metrics.counter("bulk_advance_skipped")).toBe(0)
+  })
+
+  it("shows a channel-pending card as covered, which is the opposite of what #1424 assumed", async () => {
+    // A shorts lockup exposes a videoId and no channel, so it mounts
+    // provisionally and is queued for backfill. #1424's evidence lists
+    // _channelPending among the populations the command misses; it is not one,
+    // because _promoteProvisional() puts the entry in _byVideo as well.
+    document.body.appendChild(shortsLockup("vid_short"))
+    mgr.scan()
+    await passes(1)
+
+    mgr.advanceAllToTitle()
+
+    expect(coverage()).toMatchObject({
+      advanced: 1,
+      channelPending: 1,
+      skipped: 0,
+    })
+  })
+
+  it("records nothing at all when the command is phase-gated out", () => {
+    document.body.appendChild(fullCard("vid_a", "Chan"))
+    mgr.scan()
+    mgr.reset()
+
+    mgr.advanceAllToTitle()
+
+    expect(
+      coverage(),
+      "an idle manager did not run the command"
+    ).toBeUndefined()
   })
 })

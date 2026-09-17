@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "@vitejs/plugin-react": "^6.1.1",
-    "vite": "^8.2.2",
+    "vite": "^8.3.0",
     "vite-plugin-dts": "^5.1.0"
   },
   "devDependencies": {
@@ -35,7 +35,7 @@
     "tsc-alias": "^1.9.4"
   },
   "peerDependencies": {
-    "vite": "^8.2.2"
+    "vite": "^8.3.0"
   },
   "exports": {
     ".": {

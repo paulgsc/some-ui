@@ -83,12 +83,18 @@ type TypingSessionProps = {
 }
 
 /**
- * The production surface: a competency probe whose input modality is typing.
+ * The optional production probe (Prop. 9.2, C2/#1214): a competency probe
+ * whose input modality is typing, standing in for the session on a wide
+ * enough viewport to actually carry a keyboard interaction. `ReadingSession`
+ * is the session itself — always available, since discrimination needs no
+ * modality — and this is what a wide viewport renders *instead of* it, not
+ * the default the small-screen surface is a substitute for. `Leetype` mounts
+ * exactly one of the two, never both.
  *
- * This is the whole of what `Leetype` used to be, unchanged in behaviour and
- * moved here so that `components/leetype` can pick between it and the
- * small-screen reading surface without either one mounting the other's hooks
- * (LTY-MOBILE). A phone gets `ReadingSession`; everything else gets this.
+ * Its own behaviour is unchanged from what `Leetype` used to be outright,
+ * before LTY-MOBILE split a narrow-viewport session off; it moved here so
+ * that `components/leetype` can pick which of the two mounts without either
+ * one mounting the other's hooks.
  *
  * The loop is *read one sentence → type → observe → repeat*, with no menu
  * inside it: which exercise, `Leetype` (`ExercisePicker`) decides above

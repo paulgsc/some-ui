@@ -93,36 +93,57 @@ tsc --noEmit`, `pnpm exec vitest run <path>`), not the repo root.
   it can miss binary corruption in content that's already staged and about to be committed.
   A `Bin ... -> ... bytes` line on a file you expect to be text source is the tell for
   embedded-NUL or other binary corruption that no lint, typecheck, or test will catch.
+- **The `some-censor` e2e suite needs an env var whose absence sends you somewhere that does
+  not exist here.** Without it every spec fails in ~3 ms with `[BOYO]
+  PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH is not set`, and the error's own remedy is "enter the
+  playwright nix shell: `nix develop .#playwright`" — which is not available in this sandbox, so
+  following it is a dead end. The browser is already installed; point at it:
+  `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome`
+  (check the directory first — `-1194` is a Playwright revision and will change). Also never run
+  `playwright test` directly for this package: `test:e2e` also runs
+  `node scripts/patch-test-manifest.mjs`, which adds `file://*/*` to `content_scripts.matches`,
+  and skipping it fails 8 of 9 specs with `__BOYO_DEBUG__` null — which reads exactly like a
+  real regression in the extension rather than a missing build step.
 - **`bash scripts/claude-e2e.sh` (any `some-filter` e2e run) silently resolves the wrong
   `playwright` binary in this environment.** `which playwright` finds a global install
   (`/opt/node22/bin/playwright`, a different version than this workspace's own pinned
   `@playwright/test`) before the workspace's own `node_modules/.bin/playwright` — the
   script's own `exec playwright test "$@"` has no reason to prefer one over the other, and
   PATH order picks the global one. The result is `Error: Playwright Test did not expect
-test.describe() to be called here`, thrown from the _first_ `test.describe()` in whichever
+  test.describe() to be called here`, thrown from the *first* `test.describe()` in whichever
   spec runs first — reads exactly like a real code/config bug (and the error's own listed
   causes don't mention PATH at all), for every spec in the suite, not just a new one you just
   added. Prepend the workspace root before invoking: `PATH="$(git rev-parse
---show-toplevel)/node_modules/.bin:$PATH" bash extensions/some-filter/scripts/claude-e2e.sh
-<args>`.
+  --show-toplevel)/node_modules/.bin:$PATH" bash extensions/some-filter/scripts/claude-e2e.sh
+  <args>`.
+- **Driving a `storybook build` output with Playwright over a bare `file://` URL silently
+  renders nothing.** The built preview loads its bundle as ES modules, and Chromium enforces
+  CORS on `file://` script/stylesheet requests — every asset fails with "Access to script...
+  has been blocked by CORS policy... Cross origin requests are only supported for protocol
+  schemes: chrome, ... http, https", the page body stays empty, and a query like `page.locator(
+  '[aria-label="..."]').count()` just comes back `0` with no exception thrown — reads exactly
+  like the component isn't rendering what you think it renders, not like a transport problem.
+  Serve the build over a local HTTP server first (`python3 -m http.server <port>` from the
+  `storybook-static` dir, backgrounded) and point Playwright at `http://localhost:<port>/...`
+  instead of the `file://` path.
 - **A cancelled `Extension CI` run reads as a fully green PR — including from
-  `get_check_runs` on the correct head.** Pushing again cancels the in-flight run for the same
-  PR via its concurrency group, and a cancelled run contributes **no check runs at all**. So
-  `Verify some-filter` — the only job that builds this extension and runs its tests in CI —
+  `get_check_runs` on the correct head.** Your own next push cancels the in-flight run for the
+  same PR via its concurrency group, and a cancelled run contributes **no check runs at all**.
+  So `Verify some-filter` — the only job that builds this extension and runs its tests in CI —
   is not missing-and-red, it is simply absent, and every aggregate signal reports success.
-  Observed simultaneously on one head: `get_check_runs` → 14 checks, all `success`;
-  `mergeable_state` → `clean`; a `check_suite.completed` webhook → "No third-party check suite
-  ... is still running or failed". All three agreed, and the extension had been verified by
-  nothing. (The webhook does say "Cancelled suites, suites with no runs ... are not covered",
-  which is easy to skim past.) This is worth a line here rather than only in
-  `steward/SKILL.md` because the misleading part is the _generic_ check every session reaches
-  for first. Before merging, verify the workflow run itself by `head_sha`:
-  `actions_list method=list_workflow_runs resource_id=extension.yml
-workflow_runs_filter={"branch":"<branch>"}`, and require a run whose `head_sha` matches your
-  head with `status: completed` **and** `conclusion: success`. Note also that a job can sit
-  `in_progress` for ~10min in `Post Run .../nix-setup` teardown long after every substantive
-  step passed — `list_workflow_jobs` shows step-level state, but still wait for the job to
-  complete, since a post-step failure can still mark it red.
+  Seen simultaneously on one head: `get_check_runs` → 14 checks, all `success`;
+  `mergeable_state` → `clean`; and a `check_suite.completed` webhook saying no suite was still
+  running or failed. All three agreed, and the extension had been verified by nothing. (The
+  webhook does disclose it — "Cancelled suites, suites with no runs ... are not covered" — it
+  is just easy to skim past.) It is worth a line here rather than only in `steward/SKILL.md`
+  because the misleading part is the _generic_ check every session reaches for first. Before
+  merging, verify the workflow run itself by `head_sha` — `actions_list` with
+  `method=list_workflow_runs`, `resource_id=extension.yml` and a branch filter — and require a
+  run whose `head_sha` matches your head with `status: completed` **and**
+  `conclusion: success`. Related: a job can sit `in_progress` for ~10min in a
+  `Post Run .../nix-setup` teardown step long after every substantive step passed;
+  `list_workflow_jobs` shows step-level state, but still wait for the job itself to complete,
+  since a post-step failure can mark it red.
 
 ## Multi-session relay work
 

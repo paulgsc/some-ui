@@ -60,7 +60,7 @@
     "lucide-react": "catalog:",
     "media-chrome": "^4.17.2",
     "some-ui-utils": "workspace:*",
-    "tailwind-merge": "^2.6.0",
+    "tailwind-merge": "^3.6.0",
     "vaul": "^1.1.2"
   },
   "devDependencies": {

@@ -294,7 +294,7 @@ function severityClass(status: InvariantResult["status"]): string {
  * check (see this module's header), so a score with no indication of when it
  * was taken would invite exactly the misreading the design avoids.
  */
-function healthSection(health: RecordedHealth): HTMLElement {
+function healthSection(health: RecordedHealth, samples: number): HTMLElement {
   const cls =
     health.status === "healthy"
       ? "ok"
@@ -346,6 +346,10 @@ function healthSection(health: RecordedHealth): HTMLElement {
         health.recentErrors === 0
           ? "No errors in the retained window."
           : `${String(health.recentErrors)} error event(s) in the retained window.`
+      } ${
+        samples <= 1
+          ? `Only ${String(samples)} health sample has landed, so this verdict rests on almost no observation — it is closer to "nothing was watched" than to "nothing was wrong".`
+          : `${String(samples)} health samples taken.`
       }`,
     }),
     checks
@@ -432,6 +436,9 @@ const COUNTER_ORDER = [
   "stale_promotions_discarded",
   "channels_backfilled",
   "channels_abandoned",
+  "bulk_advances",
+  "bulk_advance_advanced",
+  "bulk_advance_skipped",
   "dates_observed",
   "dates_absent",
   "invariant_violations",
@@ -677,7 +684,12 @@ function render(): void {
 
   const health = recordedHealth(bundle)
   root.append(
-    health ? healthSection(health) : noHealthSection(),
+    health
+      ? healthSection(
+          health,
+          Number(bundle.metrics.counters["health_samples"] ?? 0)
+        )
+      : noHealthSection(),
     corpusSection(bundle),
     metricsSection(bundle),
     stateSection(bundle),
