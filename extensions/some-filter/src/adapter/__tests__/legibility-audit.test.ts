@@ -5,8 +5,12 @@ import {
   MIN_CONTRAST_RATIO,
   realizeLegibility,
   resolveEffectiveBackdrop,
+  summarizeContrast,
   type LegibilityAttr,
+  type LegibilityScanResult,
+  type TagLegibilityAction,
 } from "@filter/adapter/legibility-audit"
+import { MAX_CONTRAST_SAMPLES } from "@filter/lib/content/contrast-observability"
 import { afterEach, describe, expect, it } from "vitest"
 
 function cleanUp(): void {
@@ -684,5 +688,118 @@ describe("realizeLegibility", () => {
 
     expect(a.hasAttribute(LEGIBILITY_ATTR)).toBe(false)
     expect(a.getAttribute("data-keep")).toBe("yes")
+  })
+})
+
+describe("summarizeContrast — SF-RC5 (#1344)", () => {
+  const dummyAttr: LegibilityAttr = {
+    foreground: [0, 0, 0, 1],
+    backdrop: [255, 255, 255, 1],
+  }
+
+  it("counts by (foreground, backdrop) pair, not by element — several elements sharing one violated key count as one violated pair", () => {
+    document.body.innerHTML = '<div id="a"></div><div id="b"></div>'
+    const a = document.getElementById("a")
+    const b = document.getElementById("b")
+    if (a === null || b === null) throw new Error("fixture missing")
+
+    const scan: LegibilityScanResult = {
+      elementsByKey: new Map([["k1", [a, b]]]),
+      attrsByKey: new Map([["k1", dummyAttr]]),
+    }
+    const actions: ReadonlyArray<TagLegibilityAction> = [
+      { kind: "tag-legibility", key: "k1", verdict: "violated" },
+    ]
+
+    const summary = summarizeContrast(scan, actions, 0)
+    expect(summary.auditedCount).toBe(1)
+    expect(summary.violatedCount).toBe(1)
+    expect(summary.underdeterminedCount).toBe(0)
+    expect(summary.passingCount).toBe(0)
+    expect(summary.recentViolations).toEqual([
+      { key: "k1", verdict: "violated", tagName: "DIV", elementCount: 2 },
+    ])
+  })
+
+  it("derives passingCount as audited minus violated minus underdetermined — a pair with no action at all is passing", () => {
+    const scan: LegibilityScanResult = {
+      elementsByKey: new Map(),
+      attrsByKey: new Map([
+        ["violated-key", dummyAttr],
+        ["underdetermined-key", dummyAttr],
+        ["passing-key", dummyAttr],
+      ]),
+    }
+    const actions: ReadonlyArray<TagLegibilityAction> = [
+      { kind: "tag-legibility", key: "violated-key", verdict: "violated" },
+      {
+        kind: "tag-legibility",
+        key: "underdetermined-key",
+        verdict: "underdetermined",
+      },
+    ]
+
+    const summary = summarizeContrast(scan, actions, 0)
+    expect(summary.auditedCount).toBe(3)
+    expect(summary.violatedCount).toBe(1)
+    expect(summary.underdeterminedCount).toBe(1)
+    expect(summary.passingCount).toBe(1)
+  })
+
+  it("reports zero audited when nothing was scanned — the no-theme-applied case", () => {
+    const summary = summarizeContrast(
+      { elementsByKey: new Map(), attrsByKey: new Map() },
+      [],
+      0
+    )
+    expect(summary).toMatchObject({
+      auditedCount: 0,
+      passingCount: 0,
+      violatedCount: 0,
+      underdeterminedCount: 0,
+      recentViolations: [],
+    })
+  })
+
+  it("caps recentViolations at MAX_CONTRAST_SAMPLES while violatedCount stays accurate over every violated pair", () => {
+    const total = MAX_CONTRAST_SAMPLES + 5
+    const attrsByKey = new Map<string, LegibilityAttr>()
+    const actions: Array<TagLegibilityAction> = []
+    for (let i = 0; i < total; i++) {
+      const key = `k${i}`
+      attrsByKey.set(key, dummyAttr)
+      actions.push({ kind: "tag-legibility", key, verdict: "violated" })
+    }
+
+    const summary = summarizeContrast(
+      { elementsByKey: new Map(), attrsByKey },
+      actions,
+      0
+    )
+    expect(summary.violatedCount).toBe(total)
+    expect(summary.recentViolations.length).toBe(MAX_CONTRAST_SAMPLES)
+  })
+
+  it("carries no page text content or URL data — structural/color metadata only (#1344's own privacy discipline, regression-locked against the real auditLegibility/decideLegibility pipeline, not a synthetic fixture)", () => {
+    document.body.innerHTML =
+      '<a href="https://example.com/secret?token=PII-12345" ' +
+      'style="color: rgb(10,10,10); background-color: rgb(10,10,10)">' +
+      "TopSecretUserMessage-DoNotLeak</a>"
+
+    const scan = auditLegibility(document.body)
+    const actions = decideLegibility(scan.attrsByKey)
+    const summary = summarizeContrast(scan, actions, 0)
+
+    // Same color on itself is the one contrast failure that needs no
+    // getComputedStyle pseudo-element support to detect (jsdom's own gap,
+    // see this file's cleanUp() and the other tests' console noise) — a
+    // trivial fixture that still genuinely exercises the violated path.
+    expect(summary.violatedCount).toBeGreaterThanOrEqual(1)
+
+    const serialized = JSON.stringify(summary)
+    expect(serialized).not.toContain("TopSecretUserMessage")
+    expect(serialized).not.toContain("example.com")
+    expect(serialized).not.toContain("PII-12345")
+    expect(serialized).not.toContain("token=")
   })
 })

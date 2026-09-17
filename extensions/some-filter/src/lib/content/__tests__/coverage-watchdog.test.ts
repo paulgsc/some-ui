@@ -48,7 +48,11 @@ describe("coverage watchdog — dark-signal desync repair", () => {
     installDarkTheme()
     const tabState: TabState = "auto"
     const recorder = createCoverageRecorder("test-dark-desync", false)
-    const watchdog = createCoverageWatchdog(recorder, () => tabState)
+    const watchdog = createCoverageWatchdog(
+      recorder,
+      () => tabState,
+      () => false
+    )
 
     watchdog.observe()
     await flushMicrotasks()
@@ -75,7 +79,11 @@ describe("coverage watchdog — dark-signal desync repair", () => {
     installDarkTheme()
     const tabState: TabState = "auto"
     const recorder = createCoverageRecorder("test-dark-desync-wipe", false)
-    const watchdog = createCoverageWatchdog(recorder, () => tabState)
+    const watchdog = createCoverageWatchdog(
+      recorder,
+      () => tabState,
+      () => false
+    )
 
     watchdog.observe()
     await flushMicrotasks()
@@ -96,7 +104,11 @@ describe("coverage watchdog — dark-signal desync repair", () => {
     installDarkTheme()
     const tabState: TabState = "off"
     const recorder = createCoverageRecorder("test-dark-desync-off", false)
-    const watchdog = createCoverageWatchdog(recorder, () => tabState)
+    const watchdog = createCoverageWatchdog(
+      recorder,
+      () => tabState,
+      () => false
+    )
 
     watchdog.observe()
     await flushMicrotasks()
@@ -113,7 +125,11 @@ describe("coverage watchdog — dark-signal desync repair", () => {
     installDarkTheme()
     const tabState: TabState = "auto"
     const recorder = createCoverageRecorder("test-dark-restore-native", false)
-    const watchdog = createCoverageWatchdog(recorder, () => tabState)
+    const watchdog = createCoverageWatchdog(
+      recorder,
+      () => tabState,
+      () => false
+    )
 
     watchdog.observe()
     await flushMicrotasks()
@@ -133,7 +149,11 @@ describe("coverage watchdog — dark-signal desync repair", () => {
     document.documentElement.setAttribute("data-sw-legacy", "")
     const tabState: TabState = "legacy"
     const recorder = createCoverageRecorder("test-dark-desync-legacy", false)
-    const watchdog = createCoverageWatchdog(recorder, () => tabState)
+    const watchdog = createCoverageWatchdog(
+      recorder,
+      () => tabState,
+      () => false
+    )
 
     watchdog.observe()
     await flushMicrotasks()
@@ -161,6 +181,7 @@ describe("coverage watchdog — dark-signal desync repair", () => {
     const watchdog = createCoverageWatchdog(
       recorder,
       () => tabState,
+      () => false,
       onVeilRearmed
     )
 
@@ -187,6 +208,7 @@ describe("coverage watchdog — dark-signal desync repair", () => {
     const watchdog = createCoverageWatchdog(
       recorder,
       () => tabState,
+      () => false,
       onVeilRearmed
     )
 
@@ -197,6 +219,86 @@ describe("coverage watchdog — dark-signal desync repair", () => {
     await flushMicrotasks()
 
     expect(onVeilRearmed).not.toHaveBeenCalled()
+
+    watchdog.teardown()
+  })
+})
+
+describe("coverage watchdog — SF-RC5 (#1344): the transitioning window", () => {
+  it("observe-start records no coverage.violated/coverage.recovered pair while transitioning is true, even though actuation hasn't written anything yet — the exact false pair issue #1344's own live-proof comment traced to this window", async () => {
+    // Mirrors content.ts's applyState exactly: transitioning goes true,
+    // then observe() runs (and, on this first call, synchronously checks)
+    // *before* actuation has written any of the artifacts CoverageHeld
+    // looks for.
+    let transitioning = true
+    const tabState: TabState = "auto"
+    const recorder = createCoverageRecorder(
+      "test-transitioning-observe-start",
+      false
+    )
+    const watchdog = createCoverageWatchdog(
+      recorder,
+      () => tabState,
+      () => transitioning
+    )
+
+    watchdog.observe()
+    await flushMicrotasks()
+
+    expect(recorder.events().some((e) => e.kind === "coverage.violated")).toBe(
+      false
+    )
+
+    // Actuation "runs" (installs the artifacts CoverageHeld requires) and
+    // transitioning clears, mirroring applyState's finally block.
+    installDarkTheme()
+    transitioning = false
+    watchdog.check("apply-state:auto")
+    await flushMicrotasks()
+
+    expect(recorder.events().some((e) => e.kind === "coverage.violated")).toBe(
+      false
+    )
+    // Not just "no new violation" — no recovered event either, since
+    // lastStatus never passed through "violated" in the first place. A
+    // recovered event with heldForMs: 0 here would be exactly the
+    // transition-model artifact #1344 traced this window to.
+    expect(recorder.events().some((e) => e.kind === "coverage.recovered")).toBe(
+      false
+    )
+
+    watchdog.teardown()
+  })
+
+  it("still catches a genuine coverage gap once transitioning clears — the flag widens the grace window, it does not silence the invariant", async () => {
+    let transitioning = true
+    const tabState: TabState = "auto"
+    const recorder = createCoverageRecorder(
+      "test-transitioning-real-gap",
+      false
+    )
+    const watchdog = createCoverageWatchdog(
+      recorder,
+      () => tabState,
+      () => transitioning
+    )
+
+    watchdog.observe()
+    await flushMicrotasks()
+    expect(recorder.events().some((e) => e.kind === "coverage.violated")).toBe(
+      false
+    )
+
+    // Actuation genuinely fails to cover the page — nothing installed —
+    // and transitioning clears, same as content.ts's finally block runs
+    // regardless of whether actuation actually succeeded.
+    transitioning = false
+    watchdog.check("apply-state:auto")
+    await flushMicrotasks()
+
+    expect(recorder.events().some((e) => e.kind === "coverage.violated")).toBe(
+      true
+    )
 
     watchdog.teardown()
   })

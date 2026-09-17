@@ -137,7 +137,10 @@ const COUNTER_FOR: Readonly<Record<string, CoverageCounter>> = {
   VeilColorMatchesLegacyState: "veil_color_mismatches",
 }
 
-function collectContext(getTabState: () => TabState): CoverageContext {
+function collectContext(
+  getTabState: () => TabState,
+  getTransitioning: () => boolean
+): CoverageContext {
   const html = document.documentElement
   const veil = document.getElementById(PREPAINT_VEIL_ID)
   const legacyStyle = document.getElementById(LEGACY_FILTER_STYLE_ID)
@@ -146,6 +149,7 @@ function collectContext(getTabState: () => TabState): CoverageContext {
   return {
     now: Date.now(),
     tabState: getTabState(),
+    transitioning: getTransitioning(),
     veilPresent: veil !== null,
     dirtyClassPresent: html.classList.contains(PREPAINT_DIRTY_CLASS),
     darkThemeActive: html.hasAttribute(DARK_THEME_ATTR),
@@ -201,6 +205,13 @@ export function createCoverageWatchdog(
   recorder: CoverageRecorder,
   getTabState: () => TabState,
   /**
+   * SF-RC5 (#1344): true for the single synchronous window between
+   * `content.ts`'s `applyState` publishing a new `tabState` and that
+   * state's actuation completing — see `CoverageContext.transitioning`'s
+   * own doc comment for why `CoverageHeld` needs this at all.
+   */
+  getTransitioning: () => boolean,
+  /**
    * Called immediately after `repairDarkDesync()` actually re-arms the
    * veil (never on a check that finds nothing to repair). content.ts wires
    * this to `documentScope.reengage()` — a plain idempotency-cache reset is
@@ -237,7 +248,7 @@ export function createCoverageWatchdog(
   }
 
   function check(reason: string): void {
-    const ctx = collectContext(getTabState)
+    const ctx = collectContext(getTabState, getTransitioning)
     recorder.count("coverage_checks")
     recorder.setSnapshot("coverage", { ...ctx, reason })
 

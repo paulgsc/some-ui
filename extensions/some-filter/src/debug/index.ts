@@ -23,6 +23,10 @@
 // suspender-ledger's own header describes for its page.
 
 import {
+  contrastInvariants,
+  type ContrastContext,
+} from "@filter/lib/content/contrast-observability"
+import {
   coverageInvariants,
   readIndex,
   sessionStorageKey,
@@ -78,6 +82,17 @@ function isCoverageContext(value: unknown): value is CoverageContext {
   )
 }
 
+function isContrastContext(value: unknown): value is ContrastContext {
+  if (value === null || typeof value !== "object") return false
+  return (
+    typeof Reflect.get(value, "now") === "number" &&
+    typeof Reflect.get(value, "auditedCount") === "number" &&
+    typeof Reflect.get(value, "passingCount") === "number" &&
+    typeof Reflect.get(value, "violatedCount") === "number" &&
+    typeof Reflect.get(value, "underdeterminedCount") === "number"
+  )
+}
+
 async function loadBundle(sessionId: string): Promise<Bundle | undefined> {
   const key = sessionStorageKey(sessionId)
   const raw: unknown = await ext.storage.local.get(key)
@@ -108,6 +123,40 @@ async function computeHealth(b: Bundle): Promise<HealthReport> {
   const recentErrors = b.events.filter((e) => e.severity === "error").length
   const { score, status } = scoreHealth(results, recentErrors)
   return { score, status, invariants: results, recentErrors, generatedAt: now }
+}
+
+/**
+ * SF-RC5 (#1344): the contrast/legibility axis, computed the same
+ * pure-projection way `computeHealth` above computes coverageHealth — from
+ * the last persisted `"contrast"` snapshot, never a separately-persisted
+ * verdict — and reported as its own `HealthReport`, never merged into
+ * coverageHealth's. See `contrast-observability.ts`'s own header for why a
+ * session must be able to show `coverage=ok` and `contrast=violated` at
+ * once.
+ */
+async function computeContrastHealth(b: Bundle): Promise<HealthReport> {
+  const rawCtx = b.snapshots["contrast"]
+  const now = Date.now()
+  if (!isContrastContext(rawCtx)) {
+    const results = await runInvariants(contrastInvariants, undefined, now)
+    const { score, status } = scoreHealth(results, 0)
+    return {
+      score,
+      status,
+      invariants: results,
+      recentErrors: 0,
+      generatedAt: now,
+    }
+  }
+  const results = await runInvariants(contrastInvariants, rawCtx, now)
+  const { score, status } = scoreHealth(results, 0)
+  return {
+    score,
+    status,
+    invariants: results,
+    recentErrors: 0,
+    generatedAt: now,
+  }
 }
 
 // ── Formatting ───────────────────────────────────────────────────────────────
@@ -193,7 +242,7 @@ function severityClass(status: InvariantResult["status"]): string {
   return status === "ok" ? "ok" : status === "violated" ? "bad" : "muted"
 }
 
-function healthSection(health: HealthReport): HTMLElement {
+function healthSection(title: string, health: HealthReport): HTMLElement {
   const cls =
     health.status === "healthy"
       ? "ok"
@@ -231,7 +280,7 @@ function healthSection(health: HealthReport): HTMLElement {
 
   const section = el("section")
   section.append(
-    el("h2", { text: "Health" }),
+    el("h2", { text: title }),
     score,
     el("div", {
       class: "sf-sub",
@@ -511,8 +560,14 @@ function timelineSection(b: Bundle, rerender: () => void): HTMLElement {
 
 // ── Actions ──────────────────────────────────────────────────────────────────
 
-function downloadBundle(b: Bundle, health: HealthReport): void {
-  const exportable = { ...b, health }
+function downloadBundle(
+  b: Bundle,
+  health: HealthReport,
+  contrastHealth: HealthReport
+): void {
+  // SF-RC5 (#1344): exported under its own key, alongside `health` — never
+  // merged into it, same discipline as the two live sections below.
+  const exportable = { ...b, health, contrastHealth }
   const blob = new Blob([JSON.stringify(exportable, null, 2)], {
     type: "application/json",
   })
@@ -530,7 +585,8 @@ function downloadBundle(b: Bundle, health: HealthReport): void {
 
 function header(
   b: Bundle | undefined,
-  health: HealthReport | undefined
+  health: HealthReport | undefined,
+  contrastHealth: HealthReport | undefined
 ): HTMLElement {
   const title = el("div")
   title.append(
@@ -549,9 +605,11 @@ function header(
   refresh.addEventListener("click", () => void load())
   const actions = el("div", { class: "sf-actions" }, [refresh])
 
-  if (b && health) {
+  if (b && health && contrastHealth) {
     const exportBtn = el("button", { text: "Export JSON" })
-    exportBtn.addEventListener("click", () => downloadBundle(b, health))
+    exportBtn.addEventListener("click", () =>
+      downloadBundle(b, health, contrastHealth)
+    )
     actions.appendChild(exportBtn)
   }
 
@@ -564,7 +622,10 @@ async function render(): Promise<void> {
   root.replaceChildren()
 
   const health = bundle ? await computeHealth(bundle) : undefined
-  root.appendChild(header(bundle, health))
+  const contrastHealth = bundle
+    ? await computeContrastHealth(bundle)
+    : undefined
+  root.appendChild(header(bundle, health, contrastHealth))
   root.appendChild(pickerSection())
 
   if (loadError !== undefined) {
@@ -577,7 +638,7 @@ async function render(): Promise<void> {
     return
   }
 
-  if (!bundle || !health) {
+  if (!bundle || !health || !contrastHealth) {
     root.appendChild(
       el("div", {
         class: "sf-empty",
@@ -590,7 +651,11 @@ async function render(): Promise<void> {
     return
   }
 
-  root.append(healthSection(health), metricsSection(bundle))
+  root.append(
+    healthSection("Coverage health", health),
+    healthSection("Contrast health", contrastHealth),
+    metricsSection(bundle)
+  )
   const scopes = scopesSection(bundle)
   if (scopes !== undefined) root.appendChild(scopes)
   root.append(

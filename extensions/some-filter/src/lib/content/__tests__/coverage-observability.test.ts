@@ -59,6 +59,7 @@ function baseContext(
   return {
     now: 0,
     tabState: "auto",
+    transitioning: false,
     veilPresent: false,
     dirtyClassPresent: false,
     darkThemeActive: false,
@@ -129,6 +130,33 @@ describe("CoverageHeld — Remark C.1's zero-leak invariant", () => {
 
   it("is violated in legacy mode when nothing at all is covering the page", () => {
     const ctx = baseContext({ tabState: "legacy" })
+    expect(check(CoverageHeld, ctx).ok).toBe(false)
+  })
+})
+
+describe("CoverageHeld — SF-RC5 (#1344): transitioning window", () => {
+  it("declines to judge (unknown), not violated, when nothing covers the page but a transition is in flight", () => {
+    const ctx = baseContext({ tabState: "auto", transitioning: true })
+    expect(check(CoverageHeld, ctx)).toEqual({ ok: "unknown" })
+  })
+
+  it("declines to judge even when the context happens to look covered — transitioning means the DOM cannot be trusted either way, not just when it looks bad", () => {
+    const ctx = baseContext({
+      tabState: "legacy",
+      transitioning: true,
+      legacyAttrPresent: true,
+      legacyStyleActive: true,
+    })
+    expect(check(CoverageHeld, ctx)).toEqual({ ok: "unknown" })
+  })
+
+  it("still holds unconditionally when off, regardless of the transitioning flag", () => {
+    const ctx = baseContext({ tabState: "off", transitioning: true })
+    expect(check(CoverageHeld, ctx)).toEqual({ ok: true })
+  })
+
+  it("evaluates for real (violated, not unknown) once the transition flag is back to false", () => {
+    const ctx = baseContext({ tabState: "auto", transitioning: false })
     expect(check(CoverageHeld, ctx).ok).toBe(false)
   })
 })

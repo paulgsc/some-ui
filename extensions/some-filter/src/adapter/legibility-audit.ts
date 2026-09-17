@@ -54,6 +54,11 @@ import {
   relativeLuminance,
   type RGBA,
 } from "@filter/lib/content/color"
+import {
+  MAX_CONTRAST_SAMPLES,
+  type ContrastContext,
+  type ContrastViolationSample,
+} from "@filter/lib/content/contrast-observability"
 import { rgbaToCss } from "@filter/lib/content/modify-colors"
 
 import { isHTMLElementNode } from "./actuator"
@@ -1247,6 +1252,51 @@ export function decideLegibility(
   }
 
   return actions
+}
+
+/**
+ * SF-RC5 (#1344): pure summary of one audit round, by `(foreground,
+ * backdrop)` pair — never by element, and never anything but structural/
+ * color metadata (see `contrast-observability.ts`'s own header for why).
+ * `scan.elementsByKey` supplies each sample's representative `tagName` and
+ * `elementCount`; `actions` (`decideLegibility`'s own output) is the
+ * authoritative violated/underdetermined verdict per pair — this function
+ * re-derives nothing, it only reshapes that pure decision into the
+ * diagnostic contract `contrastInvariants` checks against.
+ */
+export function summarizeContrast(
+  scan: LegibilityScanResult,
+  actions: ReadonlyArray<TagLegibilityAction>,
+  now: number
+): ContrastContext {
+  let violatedCount = 0
+  let underdeterminedCount = 0
+  const recentViolations: Array<ContrastViolationSample> = []
+
+  for (const action of actions) {
+    if (action.verdict === "violated") violatedCount++
+    else underdeterminedCount++
+
+    if (recentViolations.length < MAX_CONTRAST_SAMPLES) {
+      const elements = scan.elementsByKey.get(action.key) ?? []
+      recentViolations.push({
+        key: action.key,
+        verdict: action.verdict,
+        tagName: elements[0]?.tagName ?? "unknown",
+        elementCount: elements.length,
+      })
+    }
+  }
+
+  const auditedCount = scan.attrsByKey.size
+  return {
+    now,
+    auditedCount,
+    passingCount: auditedCount - violatedCount - underdeterminedCount,
+    violatedCount,
+    underdeterminedCount,
+    recentViolations,
+  }
 }
 
 /**

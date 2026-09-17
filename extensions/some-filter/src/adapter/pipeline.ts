@@ -34,6 +34,7 @@ import {
   relativeLuminance,
   type RGBA,
 } from "@filter/lib/content/color"
+import type { ContrastContext } from "@filter/lib/content/contrast-observability"
 import { rgbaToCss } from "@filter/lib/content/modify-colors"
 import { PREPAINT_DIRTY_CLASS } from "@filter/lib/content/prepaint"
 import {
@@ -73,6 +74,7 @@ import {
   decideLegibility,
   realizeLegibility,
   REPAIR_STYLE_ID,
+  summarizeContrast,
 } from "./legibility-audit"
 import type { Swatch } from "./swatches"
 import { decide } from "./theme-adapter"
@@ -770,7 +772,20 @@ export function createContentSession(
    * Invoked regardless of whether the document half ran: a shadow scope's
    * verdict is independent of the document's.
    */
-  onInteractionSettled?: () => void
+  onInteractionSettled?: () => void,
+  /**
+   * SF-RC5 (#1344): called with a fresh `ContrastContext` every time
+   * `runContrastChannel` runs (a full round's own pass, and SF-RC4's
+   * interaction-settled re-run alike) — and, symmetrically, with an
+   * all-zero one whenever this round applied no theme at all, so a stale
+   * violated snapshot from a *prior* themed round does not linger once the
+   * page reads as already-dark or the tab leaves auto. content.ts wires
+   * this to `observabilityRecorder.setSnapshot("contrast", ...)`, the
+   * second, independent diagnostic axis alongside `coverageWatchdog`'s own
+   * `"coverage"` snapshot — never folded into it (see
+   * `contrast-observability.ts`'s own header for why).
+   */
+  onContrastAudited?: (ctx: ContrastContext) => void
 ): ContentSession {
   const hypothesis = createHypothesis<SurfaceKey, SurfaceAttr>()
   const provenance: ProvenanceStore<SurfaceKey> = createProvenanceStore()
@@ -865,16 +880,16 @@ export function createContentSession(
    */
   function runContrastChannel(root: Element): void {
     const legibilityScan = auditLegibility(root)
-    realizeLegibility(
-      root,
-      decideLegibility(legibilityScan.attrsByKey),
-      legibilityScan.elementsByKey
-    )
+    const legibilityActions = decideLegibility(legibilityScan.attrsByKey)
+    realizeLegibility(root, legibilityActions, legibilityScan.elementsByKey)
     realizeForegroundRepairs(
       root,
       decideForegroundRepairs(legibilityScan.attrsByKey),
       legibilityScan.elementsByKey,
       detectVendorInvert()
+    )
+    onContrastAudited?.(
+      summarizeContrast(legibilityScan, legibilityActions, Date.now())
     )
   }
 
@@ -910,6 +925,17 @@ export function createContentSession(
         // means.
         realizeLegibility(lastRoot, [], new Map())
         realizeForegroundRepairs(lastRoot, [], new Map())
+        // Nothing was audited this round either — report that explicitly
+        // (auditedCount: 0) rather than leaving a themed round's stale
+        // violated/underdetermined counts standing once the page reads as
+        // already-dark or otherwise applies no theme at all.
+        onContrastAudited?.(
+          summarizeContrast(
+            { elementsByKey: new Map(), attrsByKey: new Map() },
+            [],
+            Date.now()
+          )
+        )
       }
 
       outcome = { kind: "ok", actions, realizationChanged }

@@ -86,6 +86,19 @@ function writeCachedState(state: TabState): void {
 let currentState: TabState = DEFAULT_TAB_STATE
 let filterConfig: FilterConfig = DEFAULT_FILTER
 
+/**
+ * SF-RC5 (#1344): true for the single synchronous window inside applyState
+ * between `currentState = state` (below) and that state's actuation
+ * (`restoreVendor`/`runAutoTheme`/`applyTheme`/`disablePrepaint`)
+ * completing. `coverageWatchdog.observe()` runs *inside* that window — on
+ * the first call after an `off` state, it synchronously checks CoverageHeld
+ * against the *new* currentState but the *old* DOM, since actuation hasn't
+ * run yet. See `CoverageContext.transitioning`'s own doc comment for why
+ * that gap needs a diagnostic flag rather than a timing fix (issue #1344's
+ * own live-proof comment: the window produces no paintable frame).
+ */
+let transitioning = false
+
 // True between yt-navigate-start and yt-navigate-finish. Guards runAutoTheme's
 // onFire below: the route swap's own DOM churn can go quiet for pipeline.ts's
 // 50ms debounce before finish ever fires, letting the pipeline's own
@@ -212,6 +225,7 @@ const shadowScopeDiscovery: ShadowScopeDiscovery = createShadowScopeDiscovery(
 const coverageWatchdog: CoverageWatchdog = createCoverageWatchdog(
   observabilityRecorder,
   () => currentState,
+  () => transitioning,
   // The watchdog's own dark-desync repair calls enablePrepaint() directly,
   // bypassing the registry the same way yt-navigate-start's own call does
   // (see that handler's comment). reengage() (not a cache-only reset — see
@@ -291,36 +305,52 @@ function applyState(state: TabState): void {
   }
   scopeCoverageWatchdog.teardown()
 
-  restoreVendor()
-  // restoreVendor() only knows about the two pre-adapter layers (the
-  // `data-sw-dark` attribute and the static theme sheet). Everything the
-  // per-surface Actuator and the legibility channels realize is this call's
-  // to drop — see clearRealizedColorState's own doc comment for why no
-  // pipeline round ever gets the chance to (#1341).
-  clearRealizedColorState()
-  // A deferral is only ever replayed by auto mode's own nav-finish handler,
-  // so one still pending when the mode changes has nothing left to replay it
-  // and must not fire into a session that never scheduled it.
-  deferredShadowContrast = false
+  // SF-RC5 (#1344): `transitioning` must be true for exactly this
+  // synchronous span — from here until actuation below completes — and must
+  // reset even if actuation throws, or CoverageHeld would stay silently
+  // `"unknown"` forever after, masking a real subsequent leak rather than
+  // just declining to judge this one transient window.
+  transitioning = true
+  try {
+    restoreVendor()
+    // restoreVendor() only knows about the two pre-adapter layers (the
+    // `data-sw-dark` attribute and the static theme sheet). Everything the
+    // per-surface Actuator and the legibility channels realize is this
+    // call's to drop — see clearRealizedColorState's own doc comment for
+    // why no pipeline round ever gets the chance to (#1341).
+    clearRealizedColorState()
+    // A deferral is only ever replayed by auto mode's own nav-finish
+    // handler, so one still pending when the mode changes has nothing left
+    // to replay it and must not fire into a session that never scheduled it.
+    deferredShadowContrast = false
+
+    if (state === "auto") {
+      // Do not pre-remove the veil here. runAutoTheme uses
+      // withPrepaintSuppressed for snapshot isolation; the pipeline's onFire
+      // hook handles veil teardown once the first decide/realize cycle
+      // actually settles.
+      runAutoTheme()
+    } else if (state === "legacy") {
+      applyTheme("legacy", filterConfig)
+    } else {
+      disablePrepaint()
+    }
+  } finally {
+    transitioning = false
+  }
 
   if (state === "auto") {
-    // Do not pre-remove the veil here. runAutoTheme uses withPrepaintSuppressed
-    // for snapshot isolation; the pipeline's onFire hook handles veil teardown
-    // once the first decide/realize cycle actually settles.
-    runAutoTheme()
     coverageWatchdog.check("apply-state:auto")
     scopeCoverageWatchdog.check(documentScope.registry, "apply-state:auto")
     return
   }
 
   if (state === "legacy") {
-    applyTheme("legacy", filterConfig)
     coverageWatchdog.check("apply-state:legacy")
     return
   }
 
   // off
-  disablePrepaint()
   coverageWatchdog.check("apply-state:off")
 
   updateDebugAttrs()
@@ -575,7 +605,11 @@ function runAutoTheme(): void {
         return
       }
       shadowScopeTheming.recontrastAll()
-    }
+    },
+    // SF-RC5 (#1344): the second, independent diagnostic axis alongside
+    // coverageWatchdog's own "coverage" snapshot — never folded into it,
+    // see contrast-observability.ts's own header for why.
+    (ctx) => observabilityRecorder.setSnapshot("contrast", ctx)
   )
 
   withPrepaintSuppressed(() => {
