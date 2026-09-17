@@ -140,7 +140,11 @@ tsc --noEmit`, `pnpm exec vitest run <path>`), not the repo root.
   merging, verify the workflow run itself by `head_sha` — `actions_list` with
   `method=list_workflow_runs`, `resource_id=extension.yml` and a branch filter — and require a
   run whose `head_sha` matches your head with `status: completed` **and**
-  `conclusion: success`. Related: a job can sit `in_progress` for ~10min in a
+  `conclusion: success`. Distinguish the two ways that run can be _absent_, because only one is
+  a problem: a run for your head with `conclusion: cancelled` means nothing was verified and you
+  must wait for the re-run, whereas no run at all on a diff the workflow does not apply to (a
+  docs-only PR, say — `changes / Detect Changed Paths` succeeds and the downstream jobs report
+  `skipped`) is correct and not something to wait for. Related: a job can sit `in_progress` for ~10min in a
   `Post Run .../nix-setup` teardown step long after every substantive step passed;
   `list_workflow_jobs` shows step-level state, but still wait for the job itself to complete,
   since a post-step failure can mark it red.
