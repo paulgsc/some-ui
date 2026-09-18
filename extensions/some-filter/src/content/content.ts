@@ -47,6 +47,7 @@ import {
   withPrepaintSuppressed,
 } from "@filter/lib/content/prepaint"
 import { applyTheme, restoreVendor } from "@filter/lib/content/theme-apply"
+import { createVisibilityGate } from "@filter/lib/content/visibility-gate"
 import { DEFAULT_TAB_STATE, nextTabState } from "@filter/lib/tab-state"
 import { ext } from "@filter/platform/content"
 import type { FilterConfig } from "@filter/types/config"
@@ -333,6 +334,14 @@ function touchObservabilityIndex(): void {
   })
 }
 
+/**
+ * Defers auto mode's first round while the tab is hidden — see
+ * `visibility-gate.ts` for why that is what stops a 200-tab profile hanging
+ * the browser, why deferring costs nothing, and why the symmetric
+ * suspend-on-hide half is deliberately not here yet.
+ */
+const visibilityGate = createVisibilityGate()
+
 function applyState(state: TabState): void {
   const previous = currentState
   currentState = state
@@ -460,12 +469,17 @@ function applyState(state: TabState): void {
     // to replay it and must not fire into a session that never scheduled it.
     deferredShadowContrast = false
 
+    // Any pending deferral belongs to the state we are leaving. Left armed,
+    // it would start an auto session in a tab the user has since switched
+    // off or to legacy, the first time they look at it.
+    visibilityGate.cancel()
+
     if (state === "auto") {
       // Do not pre-remove the veil here. runAutoTheme uses
       // withPrepaintSuppressed for snapshot isolation; the pipeline's onFire
       // hook handles veil teardown once the first decide/realize cycle
       // actually settles.
-      runAutoTheme()
+      visibilityGate.whenVisible(runAutoTheme)
     } else if (state === "legacy") {
       applyTheme("legacy", filterConfig)
     } else {

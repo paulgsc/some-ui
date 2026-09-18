@@ -4,6 +4,7 @@ import {
   applyTheme,
   buildHostTokenRule,
   DARK_THEME_ATTR,
+  DARK_THEME_BODY_RULES,
   injectDarkTheme,
   removeDarkTheme,
   restoreVendor,
@@ -399,5 +400,69 @@ describe("buildHostTokenRule — forces the shadow host's own color, mirroring t
 
     expect(rule).toContain(`--sw-text-0: ${SWATCHES.default.text0}`)
     expect(rule).toContain(`--sw-bg-0: ${SWATCHES.default.bg0}`)
+  })
+})
+
+describe("declarative cost — what no rule in the static layer may do", () => {
+  /**
+   * The gate that would have caught a selector which hung Firefox outright.
+   *
+   * Every other cost discipline in this extension measures *its own code*:
+   * the reconcile debounce bounds how often a round starts, #831's
+   * quiescence spec counts DOM writes. A selector's cost appears in neither
+   * — it is zero JS milliseconds and unbounded style-recalc milliseconds, on
+   * the same thread, attributed to the engine rather than to any stack frame
+   * this project owns.
+   *
+   * Since the static layer is a primary mechanism rather than a fallback, it
+   * needs a cost rule of its own. This is that rule, and it is a unit test
+   * over a literal array — no browser, no timing, nothing to flake.
+   *
+   * Written after a `:hover:not(:has(:hover))` rule shipped and was reported
+   * hanging Firefox, with the browser's own "this extension is slowing down
+   * Firefox" notice naming it. It could not be reproduced in this project's
+   * Chromium harness, whose `:has()` invalidation is far better optimised —
+   * which is exactly why this is a lint rather than a measurement. No
+   * measurement available in this repo can see the cost it guards against.
+   */
+  const DYNAMIC_PSEUDO = [
+    ":hover",
+    ":focus-within",
+    ":active",
+    ":focus-visible",
+  ]
+
+  it("never combines :has() with a dynamic pseudo-class", () => {
+    for (const rule of DARK_THEME_BODY_RULES) {
+      const selector = rule.slice(0, rule.indexOf("{"))
+      if (!selector.includes(":has(")) continue
+      for (const pseudo of DYNAMIC_PSEUDO) {
+        // A `:has()` whose match depends on pointer or focus state is
+        // re-evaluated up the ancestor chain on every input event that
+        // changes it. Gecko's invalidation for this is ancestor-scoped, so
+        // it costs work per *input event* rather than per mutation batch —
+        // the only construct in this extension ever to do so.
+        expect(
+          selector.includes(pseudo),
+          `rule combines :has() with ${pseudo} — ${selector.trim()}`
+        ).toBe(false)
+      }
+    }
+  })
+
+  it("never puts a bare universal on the right of a descendant combinator", () => {
+    for (const rule of DARK_THEME_BODY_RULES) {
+      // `:not(...)` groups are stripped first: EXT_GUARD's own
+      // `:not([data-my-ext] *)` is on every rule in this array and matches
+      // the shape textually while being its exact opposite — a negation
+      // that *excludes* a subtree, not a selector that walks one.
+      const selector = rule
+        .slice(0, rule.indexOf("{"))
+        .replace(/:not\([^()]*\)/g, "")
+      expect(
+        /\]\s+\*/.test(selector),
+        `descendant-universal in the static layer — ${selector.trim()}`
+      ).toBe(false)
+    }
   })
 })

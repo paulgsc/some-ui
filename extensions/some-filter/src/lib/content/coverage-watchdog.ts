@@ -702,6 +702,10 @@ export function createScopeCoverageWatchdog<Rho = unknown, Pi = unknown>(
     observe(registry): void {
       if (pollHandle !== null) return
       check(registry, "observe-start")
+      // Lifetime: started by observe() from applyState for any non-"off"
+      // state, stopped by teardown() on entering "off", on pagehide, and
+      // whenever the tab goes hidden (content.ts's suspendAutoWatchers).
+      // eslint-disable-next-line extension-charter/require-named-lifetime -- lifetime stated above
       pollHandle = setInterval(() => {
         check(registry, "poll")
       }, SCOPE_COVERAGE_POLL_MS)

@@ -658,6 +658,12 @@ export function createShadowScopeDiscovery<Rho, Pi>(
         childList: true,
         subtree: true,
       })
+      // Lifetime: started by observe() from runAutoTheme(), stopped by
+      // teardown() on a mode change, on pagehide, and — since the 200-tab
+      // hang — whenever the tab goes hidden (content.ts's
+      // suspendAutoWatchers, driven by visibility-gate.ts). Resumed by the
+      // same runAutoTheme() that starts it.
+      // eslint-disable-next-line extension-charter/require-named-lifetime -- lifetime stated above
       pollHandle = setInterval(() => {
         retireDetached()
         walk(document.documentElement, DOCUMENT_SCOPE_ID, "reactive")

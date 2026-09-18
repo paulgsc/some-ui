@@ -83,6 +83,7 @@ import {
   realizeShadowColors,
   shadowRealizationIntact,
   tagSurfaceElements,
+  withShadowColorsVisible,
 } from "./shadow-actuator"
 import type { Swatch } from "./swatches"
 import { decide } from "./theme-adapter"
@@ -662,7 +663,15 @@ export function createShadowScopeTheming(
     try {
       const hypothesis = createHypothesis<SurfaceKey, SurfaceAttr>()
       const provenance = createProvenanceStore<SurfaceKey>()
-      scanned = withVendorColorsVisible(() => scan(root))
+      // Both halves, because a shadow carrier's colours can come from
+      // either: the document sheets (custom properties inherit across the
+      // boundary, and a carrier's backdrop can resolve out into the light
+      // DOM) and this scope's own adopted realization. Suppressing only the
+      // document half left the scope's static layer live, so the scan read
+      // this extension's own output back as vendor evidence.
+      scanned = withVendorColorsVisible(() =>
+        withShadowColorsVisible(root, () => scan(root))
+      )
       const timestamp = Date.now()
       for (const [key, attrs] of scanned.attrsByKey) {
         update(hypothesis, provenance, {
@@ -861,6 +870,11 @@ export function createShadowScopeTheming(
     },
     observe(): void {
       if (pollHandle !== null) return
+      // Lifetime: identical to shadow-scope-discovery.ts's own poll —
+      // started by observe() from runAutoTheme(), stopped by teardown() on a
+      // mode change, on pagehide, and whenever the tab goes hidden
+      // (content.ts's suspendAutoWatchers).
+      // eslint-disable-next-line extension-charter/require-named-lifetime -- lifetime stated above
       pollHandle = setInterval(
         reconcileCommittedSheets,
         SHEET_INTEGRITY_POLL_MS
