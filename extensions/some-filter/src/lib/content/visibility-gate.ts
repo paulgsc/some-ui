@@ -43,45 +43,95 @@ export type VisibilitySource = Pick<
   "visibilityState" | "addEventListener" | "removeEventListener"
 >
 
+/**
+ * What a caller must say about a resource before this gate will start it.
+ *
+ * All three are required, and that is the whole design. The gap this API
+ * exists to close was *not* missing cleanup — every `setInterval` in this
+ * extension already had a matching `clearInterval` in a `teardown()`. What
+ * was missing is that teardown was wired to one lifecycle (a mode change,
+ * or unload) and not to visibility, so a tab the user visited once and left
+ * open kept three 250ms polls running forever. A lint asking "is there a
+ * matching clear?" would have passed; the question that was never asked is
+ * "what is this resource's *full* lifetime?".
+ *
+ * A type can ask that question in a way a lint cannot, because it makes the
+ * unanswered version fail to compile at the call site rather than requiring
+ * a checker to find a `clearInterval` in a different file and prove it
+ * covers every transition.
+ */
+export type VisibilityLifecycle = {
+  /** Runs when the tab is visible, or once it first becomes visible. */
+  readonly start: () => void
+  /** Runs each time the tab goes hidden after `start` has run. */
+  readonly suspend: () => void
+  /** Runs each time the tab becomes visible again after `suspend`. */
+  readonly resume: () => void
+}
+
 export type VisibilityGate = {
-  /** Runs `start` now if visible, else once the tab first becomes visible. */
-  whenVisible(start: () => void): void
-  /** Drops any pending deferral without running it. */
+  /**
+   * Binds `lifecycle` to this tab's visibility for the rest of the session,
+   * superseding any previous binding.
+   */
+  run(lifecycle: VisibilityLifecycle): void
+  /** Drops the binding: no further start, suspend or resume will fire. */
   cancel(): void
 }
 
 export function createVisibilityGate(
   source: VisibilitySource = document
 ): VisibilityGate {
-  let waiter: (() => void) | null = null
+  let listener: (() => void) | null = null
 
   const cancel = (): void => {
-    if (waiter === null) return
-    source.removeEventListener("visibilitychange", waiter)
-    waiter = null
+    if (listener === null) return
+    source.removeEventListener("visibilitychange", listener)
+    listener = null
   }
 
   return {
     cancel,
-    whenVisible(start: () => void): void {
-      // Any pending deferral belongs to a supserseded caller. Left armed, a
-      // tab toggled auto -> off -> auto while hidden would start two
+    run(lifecycle: VisibilityLifecycle): void {
+      // Any previous binding belongs to a superseded caller. Left attached,
+      // a tab toggled auto -> off -> auto while hidden would start two
       // sessions the moment it is finally shown.
       cancel()
 
-      if (source.visibilityState !== "hidden") {
-        start()
-        return
-      }
+      // Three states, not two: a tab that has never started is not the same
+      // as one that started and was suspended, and only the second may
+      // resume. Collapsing them would run `resume` against watchers that
+      // were never created.
+      let started = false
+      let suspended = false
 
       const onVisible = (): void => {
-        // `visibilitychange` also fires on the visible -> hidden edge.
-        if (source.visibilityState === "hidden") return
-        cancel()
-        start()
+        if (source.visibilityState === "hidden") {
+          // `visibilitychange` fires on both edges.
+          if (started && !suspended) {
+            suspended = true
+            lifecycle.suspend()
+          }
+          return
+        }
+        if (!started) {
+          started = true
+          lifecycle.start()
+          return
+        }
+        if (suspended) {
+          suspended = false
+          lifecycle.resume()
+        }
       }
-      waiter = onVisible
+
+      listener = onVisible
       source.addEventListener("visibilitychange", onVisible)
+
+      if (source.visibilityState !== "hidden") {
+        started = true
+        lifecycle.start()
+      }
     },
   }
 }

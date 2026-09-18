@@ -1,5 +1,8 @@
 import { createVisibilityGate } from "@filter/lib/content/visibility-gate"
-import type { VisibilitySource } from "@filter/lib/content/visibility-gate"
+import type {
+  VisibilityLifecycle,
+  VisibilitySource,
+} from "@filter/lib/content/visibility-gate"
 import { describe, expect, it, vi } from "vitest"
 
 /**
@@ -60,80 +63,142 @@ function fakeDocument(initial: DocumentVisibilityState): FakeDocument {
   }
 }
 
-describe("createVisibilityGate", () => {
-  it("runs immediately in a visible tab", () => {
+/** A lifecycle whose three phases are individually observable. */
+function spyLifecycle(): {
+  lifecycle: VisibilityLifecycle
+  start: ReturnType<typeof vi.fn>
+  suspend: ReturnType<typeof vi.fn>
+  resume: ReturnType<typeof vi.fn>
+} {
+  const start = vi.fn()
+  const suspend = vi.fn()
+  const resume = vi.fn()
+  return { lifecycle: { start, suspend, resume }, start, suspend, resume }
+}
+
+describe("createVisibilityGate — starting", () => {
+  it("starts immediately in a visible tab", () => {
     const doc = fakeDocument("visible")
-    const start = vi.fn()
+    const spy = spyLifecycle()
 
-    createVisibilityGate(doc.source).whenVisible(start)
+    createVisibilityGate(doc.source).run(spy.lifecycle)
 
-    expect(start).toHaveBeenCalledTimes(1)
-    // Nothing to wait for, so nothing is left attached.
-    expect(doc.listeners).toBe(0)
+    expect(spy.start).toHaveBeenCalledTimes(1)
+    expect(spy.suspend).not.toHaveBeenCalled()
   })
 
-  it("defers in a hidden tab and runs on first view", () => {
+  it("does not start in a hidden tab, and starts on first view", () => {
     const doc = fakeDocument("hidden")
-    const start = vi.fn()
+    const spy = spyLifecycle()
 
-    createVisibilityGate(doc.source).whenVisible(start)
-    // This is the whole point: a restored or re-injected background tab does
-    // the expensive round zero times until someone looks at it.
-    expect(start).not.toHaveBeenCalled()
+    createVisibilityGate(doc.source).run(spy.lifecycle)
+    // The whole point: a restored or re-injected background tab runs the
+    // expensive first round zero times until someone looks at it.
+    expect(spy.start).not.toHaveBeenCalled()
 
     doc.show()
-    expect(start).toHaveBeenCalledTimes(1)
+    expect(spy.start).toHaveBeenCalledTimes(1)
   })
 
-  it("ignores a visibilitychange that goes the other way", () => {
+  it("never suspends something that never started", () => {
     const doc = fakeDocument("hidden")
-    const start = vi.fn()
+    const spy = spyLifecycle()
 
-    createVisibilityGate(doc.source).whenVisible(start)
+    createVisibilityGate(doc.source).run(spy.lifecycle)
     doc.hide()
 
-    expect(start).not.toHaveBeenCalled()
+    // "never started" and "started then suspended" are different states;
+    // collapsing them would tear down watchers that were never created.
+    expect(spy.suspend).not.toHaveBeenCalled()
+    expect(spy.resume).not.toHaveBeenCalled()
   })
+})
 
-  it("runs once across repeated visibility flips", () => {
-    const doc = fakeDocument("hidden")
-    const start = vi.fn()
+describe("createVisibilityGate — suspending and resuming", () => {
+  it("suspends on hide and resumes on return, without re-starting", () => {
+    const doc = fakeDocument("visible")
+    const spy = spyLifecycle()
 
-    createVisibilityGate(doc.source).whenVisible(start)
-    doc.show()
+    createVisibilityGate(doc.source).run(spy.lifecycle)
     doc.hide()
     doc.show()
 
-    expect(start).toHaveBeenCalledTimes(1)
-    expect(doc.listeners).toBe(0)
+    expect(spy.start).toHaveBeenCalledTimes(1)
+    expect(spy.suspend).toHaveBeenCalledTimes(1)
+    expect(spy.resume).toHaveBeenCalledTimes(1)
   })
 
-  it("supersedes a pending deferral rather than arming a second", () => {
+  it("suspends once per hide, not once per event", () => {
+    const doc = fakeDocument("visible")
+    const spy = spyLifecycle()
+
+    createVisibilityGate(doc.source).run(spy.lifecycle)
+    doc.hide()
+    doc.hide()
+
+    // A repeated hidden->hidden edge must not tear down twice: the second
+    // call would run against watchers the first already stopped.
+    expect(spy.suspend).toHaveBeenCalledTimes(1)
+  })
+
+  it("resumes once per return, not once per event", () => {
+    const doc = fakeDocument("visible")
+    const spy = spyLifecycle()
+
+    createVisibilityGate(doc.source).run(spy.lifecycle)
+    doc.hide()
+    doc.show()
+    doc.show()
+
+    expect(spy.resume).toHaveBeenCalledTimes(1)
+  })
+
+  it("survives many cycles, which is the tab-switching case", () => {
+    const doc = fakeDocument("visible")
+    const spy = spyLifecycle()
+
+    createVisibilityGate(doc.source).run(spy.lifecycle)
+    for (let i = 0; i < 5; i += 1) {
+      doc.hide()
+      doc.show()
+    }
+
+    expect(spy.start).toHaveBeenCalledTimes(1)
+    expect(spy.suspend).toHaveBeenCalledTimes(5)
+    expect(spy.resume).toHaveBeenCalledTimes(5)
+  })
+})
+
+describe("createVisibilityGate — superseding and cancelling", () => {
+  it("supersedes a previous binding rather than keeping both", () => {
     const doc = fakeDocument("hidden")
-    const first = vi.fn()
-    const second = vi.fn()
+    const first = spyLifecycle()
+    const second = spyLifecycle()
     const gate = createVisibilityGate(doc.source)
 
-    // auto -> off -> auto while hidden. Two armed waiters would start two
+    // auto -> off -> auto while hidden. Two live bindings would start two
     // sessions the moment the tab is finally shown.
-    gate.whenVisible(first)
-    gate.whenVisible(second)
+    gate.run(first.lifecycle)
+    gate.run(second.lifecycle)
     doc.show()
 
-    expect(first).not.toHaveBeenCalled()
-    expect(second).toHaveBeenCalledTimes(1)
+    expect(first.start).not.toHaveBeenCalled()
+    expect(second.start).toHaveBeenCalledTimes(1)
+    expect(doc.listeners).toBe(1)
   })
 
-  it("cancel() drops a pending deferral without running it", () => {
-    const doc = fakeDocument("hidden")
-    const start = vi.fn()
+  it("cancel() detaches and fires nothing further", () => {
+    const doc = fakeDocument("visible")
+    const spy = spyLifecycle()
     const gate = createVisibilityGate(doc.source)
 
-    gate.whenVisible(start)
+    gate.run(spy.lifecycle)
     gate.cancel()
+    doc.hide()
     doc.show()
 
-    expect(start).not.toHaveBeenCalled()
+    expect(spy.suspend).not.toHaveBeenCalled()
+    expect(spy.resume).not.toHaveBeenCalled()
     expect(doc.listeners).toBe(0)
   })
 })

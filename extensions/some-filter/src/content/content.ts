@@ -478,7 +478,11 @@ function applyState(state: TabState): void {
       // withPrepaintSuppressed for snapshot isolation; the pipeline's onFire
       // hook handles veil teardown once the first decide/realize cycle
       // actually settles.
-      visibilityGate.whenVisible(runAutoTheme)
+      visibilityGate.run({
+        start: runAutoTheme,
+        suspend: suspendAutoWatchers,
+        resume: runAutoTheme,
+      })
     } else if (state === "legacy") {
       applyTheme("legacy", filterConfig)
     } else {
@@ -582,6 +586,39 @@ function filterConfigsEqual(a: FilterConfig, b: FilterConfig): boolean {
 }
 
 // ── Auto theming (apply-then-detect) ────────────────────────────────────────────
+
+/**
+ * Stops every watcher auto mode started, and touches nothing else.
+ *
+ * Deliberately *not* `applyState`'s teardown block, which also calls
+ * `restoreVendor()` and `clearRealizedColorState()`. Those are correct when
+ * leaving auto mode and wrong here: a hidden tab must stay themed, or
+ * returning to it would show the vendor's own light page until the resuming
+ * round settles — trading a background cost for a foreground flash, which
+ * is the one direction this extension is not allowed to be wrong in.
+ *
+ * What this does stop is everything that costs while nobody is looking: the
+ * pipeline's `MutationObserver` and debounce, shadow-scope discovery and
+ * theming, and the three 250ms `setInterval` polls those two and the
+ * coverage watchdogs own. That standing cost is per *tab*, so on a profile
+ * carrying 200+ tabs it is the term that dominates — and unlike the
+ * first-classification cost, it applies to every tab the user has ever
+ * visited, not just the ones loading now.
+ *
+ * `runAutoTheme()` is the matching resume, unchanged and unconditional: it
+ * re-engages the veil, re-discovers shadow scopes and re-scans, which is
+ * exactly what a tab that stopped watching needs on its way back. The
+ * re-armed veil is invisible on arrival because the page underneath it is
+ * still themed — dark under dark.
+ */
+function suspendAutoWatchers(): void {
+  contentSession?.teardown()
+  contentSession = null
+  shadowScopeDiscovery.teardown()
+  shadowScopeTheming.teardown()
+  coverageWatchdog.teardown()
+  scopeCoverageWatchdog.teardown()
+}
 
 function runAutoTheme(): void {
   // Off/legacy mode's own direct disablePrepaint()/no-op veil handling can
