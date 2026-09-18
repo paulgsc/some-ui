@@ -107,6 +107,85 @@ export const BOUNDED_DELIVERY_MS = 250
 export const INTERACTION_SETTLE_MS = 120
 
 /**
+ * How far above the interaction target to root its settled-interaction
+ * audit.
+ *
+ * This pass used to audit `document.body`, and that is the single most
+ * expensive thing this extension did per unit of user input. Measured
+ * against the real build on a 1500-row page: **8 long tasks totalling
+ * 4617ms for twelve pointer pauses — ~600ms of blocked main thread every
+ * time the pointer came to rest.** Identical on `origin/main`, so it is not
+ * new, but it is what a "the extension is slowing down Firefox" notice is
+ * made of on any page with a large DOM.
+ *
+ * The cost is not the walk. It is that `auditLegibility` resolves each
+ * carrier's effective backdrop by climbing its ancestors and reads
+ * pseudo-element styles per element, so it is superlinear in document size
+ * and ~130µs per element rather than the ~1µs a plain `getComputedStyle`
+ * costs.
+ *
+ * A hover changes computed style along the pointer's own ancestor chain and
+ * whatever those ancestors' rules reach, so the affected region is local to
+ * the interaction even when the selector that caused it is not. Rooting a
+ * few levels up from the target covers the realistic shapes — a cell whose
+ * row restyles, a label whose control restyles — at a cost bounded by that
+ * subtree instead of the page.
+ *
+ * What this gives up, stated rather than glossed: a vendor rule of the form
+ * `nav:hover .faraway-label`, where the restyled node is neither the target
+ * nor near it, is no longer caught by the interaction pass. It is still
+ * caught by any subsequent full round. That is a real reduction in
+ * coverage, taken deliberately, because the alternative is a six-hundred
+ * millisecond freeze every time the user stops moving the mouse.
+ */
+export const INTERACTION_AUDIT_DEPTH = 4
+
+/**
+ * The climb also stops at any ancestor with more than this many element
+ * children.
+ *
+ * Depth alone is not a bound, and measurement is what showed it: rooting
+ * four levels above a hovered cell took the audit from 4617ms to 2328ms and
+ * no further, because four levels up from a cell in a long list is the
+ * container holding *every* row. A fixed ancestor count says nothing about
+ * how large that ancestor's subtree is, which is the quantity that actually
+ * costs.
+ *
+ * `childElementCount` is O(1), so this stops the climb exactly where the
+ * subtree stops being local — at the list, not at the row — without walking
+ * anything to find out.
+ */
+export const INTERACTION_AUDIT_MAX_FANOUT = 32
+
+/**
+ * How long the settled-interaction audit may take before this page stops
+ * getting one.
+ *
+ * Scoping the audit to the interaction's own neighbourhood took twelve
+ * pointer pauses from 8 long tasks / 4617ms to 4 / 2358ms — real, and not
+ * enough. A localised root is still only a *heuristic* bound: move the
+ * pointer across a container rather than a row and the target is the
+ * container, whose subtree is the page again. No DOM-shape heuristic fixes
+ * that, because the quantity that costs is not a shape.
+ *
+ * So the pass measures itself. It runs once, and if that once exceeded the
+ * budget it does not run again for this page — the full reconcile round
+ * still covers everything this channel would have. The worst case becomes
+ * one long task per page instead of one per time the user stops moving the
+ * mouse, which is the difference between a slow extension and a browser
+ * that appears hung.
+ *
+ * This is the first thing in this extension that bounds itself by *time*
+ * rather than by rate, node count or DOM writes — the gap that let a
+ * six-hundred-millisecond-per-pause freeze ship and stay shipped, on
+ * `origin/main`, through every existing gate.
+ *
+ * 12ms is under one 60Hz frame. A page that cannot be audited inside a
+ * frame is a page whose audit does not belong on the interaction path.
+ */
+export const INTERACTION_AUDIT_BUDGET_MS = 12
+
+/**
  * The interaction events SF-RC4 (#1343) listens for, and the reason each is
  * the *bubbling* member of its pair.
  *
@@ -836,6 +915,14 @@ export function createContentSession(
   let observer: MutationObserver | null = null
   let interactionTimer: ReturnType<typeof setTimeout> | null = null
   let evidenceEpoch = session.epoch
+  /** The element the most recent interaction event targeted. */
+  let lastInteractionTarget: HTMLElement | null = null
+  /**
+   * Set once the settled-interaction audit has overrun its budget on this
+   * page. Cleared on an epoch change, since a route swap can replace the
+   * document with one this channel can afford.
+   */
+  let interactionAuditOverBudget = false
 
   /**
    * Monotonic stamp written onto every provisionally-darkened subtree root,
@@ -868,6 +955,9 @@ export function createContentSession(
     try {
       if (session.epoch !== evidenceEpoch) {
         evidenceEpoch = session.epoch
+        // A route swap can replace a document this channel could not afford
+        // with one it can; the latch is about a page, not a session.
+        interactionAuditOverBudget = false
         dropStaleEvidence()
       }
 
@@ -1119,6 +1209,27 @@ export function createContentSession(
    * nothing changed (#831's fixed-point discipline), so a spurious one
    * costs a walk and no DOM writes.
    */
+  /**
+   * The subtree the settled-interaction pass audits: a bounded climb from
+   * the interaction's own target, falling back to `document.body` only when
+   * there is no target to localise around (a focus event on the document
+   * itself, or a pass scheduled before any target was recorded).
+   */
+  function interactionAuditRoot(): Element {
+    const target = lastInteractionTarget
+    if (!target?.isConnected) return document.body
+    let root: HTMLElement = target
+    for (let i = 0; i < INTERACTION_AUDIT_DEPTH; i += 1) {
+      const parent: HTMLElement | null = root.parentElement
+      if (parent === null || parent === document.body) break
+      // The ancestor that holds the whole list is where "local to the
+      // interaction" stops being true.
+      if (parent.childElementCount > INTERACTION_AUDIT_MAX_FANOUT) break
+      root = parent
+    }
+    return root
+  }
+
   function runInteractionContrast(): void {
     interactionTimer = null
     // Gated per half, not once for both (bot-found, Codex review round 1 on
@@ -1129,9 +1240,24 @@ export function createContentSession(
     // live repairs, exactly the coexistence `buildHostTokenRule`'s own doc
     // comment describes. `recontrastAll()` is self-gating anyway: it
     // iterates only COMMITTED scopes.
-    if (document.documentElement.hasAttribute(DARK_THEME_ATTR)) {
+    if (
+      !interactionAuditOverBudget &&
+      document.documentElement.hasAttribute(DARK_THEME_ATTR)
+    ) {
       try {
-        runContrastChannel(document.body)
+        const startedAt = performance.now()
+        runContrastChannel(interactionAuditRoot())
+        const elapsed = performance.now() - startedAt
+        if (elapsed > INTERACTION_AUDIT_BUDGET_MS) {
+          interactionAuditOverBudget = true
+          // Deliberately visible. A channel silently switching itself off is
+          // worse than one that never ran, because the next person to wonder
+          // why a hover repair stopped happening has nothing to find.
+          // eslint-disable-next-line no-console
+          console.info(
+            `[some-filter] settled-interaction audit took ${Math.round(elapsed)}ms (budget ${INTERACTION_AUDIT_BUDGET_MS}ms); disabling it for this page. Full rounds still cover it.`
+          )
+        }
       } catch (error) {
         // Mirrors fire()'s own discipline: this runs from a timer with no
         // caller in a position to recover, so a throw must not escape into
@@ -1178,6 +1304,11 @@ export function createContentSession(
 
     if (event.type === "pointerover") hoverCancel.mark(node)
     else if (event.type === "pointerout") hoverCancel.clear()
+
+    // Remembered so the settled pass can audit where the interaction
+    // actually happened rather than the whole document.
+    lastInteractionTarget =
+      node !== null && isHTMLElementNode(node) ? node : null
 
     if (interactionTimer !== null) clearTimeout(interactionTimer)
     interactionTimer = setTimeout(runInteractionContrast, INTERACTION_SETTLE_MS)

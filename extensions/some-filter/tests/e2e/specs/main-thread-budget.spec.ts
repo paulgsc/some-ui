@@ -9,11 +9,16 @@
  * still occupy the main thread — "converges" and "converges cheaply" are
  * different propositions and only the first was ever formalised.
  *
- * This measures wall-clock, under the two drivers that actually cost:
- * mutation churn, and a scripted pointer sweep. The sweep is not optional
- * decoration — a selector keyed on interaction state costs nothing until
- * something moves, so a mutation-only fixture cannot see that entire class
- * of regression.
+ * This measures wall-clock, under the three drivers that actually cost:
+ * mutation churn, a continuous pointer sweep, and a *paused* pointer sweep.
+ *
+ * The third is not a variation on the second, and leaving it out is how the
+ * worst regression in this file's history went unmeasured. A continuous
+ * sweep never lets `INTERACTION_SETTLE_MS` elapse, so it never fires the
+ * settled-interaction pass at all — the first version of this spec swept
+ * continuously, reported zero long tasks, and was green while every pointer
+ * *pause* on a large page blocked the main thread for ~600ms. What costs
+ * here is stopping, not moving.
  *
  * ## What this gate does not cover, stated plainly
  *
@@ -49,6 +54,30 @@ declare global {
  */
 const MAX_TOTAL_BLOCKING_MS = 300
 const MAX_SINGLE_TASK_MS = 150
+
+/**
+ * Pauses in the paused sweep, and the count the invariant is stated
+ * against.
+ */
+const PAUSE_COUNT = 12
+
+/**
+ * Long tasks the paused sweep may produce, total, for {@link PAUSE_COUNT}
+ * pauses.
+ *
+ * Deliberately an absolute count rather than a per-pause average, because
+ * the property being defended is that the two are *unrelated*: work on this
+ * path must be bounded per page, not per interaction. Measured, twelve
+ * pauses on a 1500-row page produced 8 long tasks totalling 4617ms before
+ * the settled-interaction audit was scoped and given a self-measuring
+ * budget, and 2 totalling 1138ms after — where one of those two is the
+ * page's own initial classification and the other is the single audit that
+ * overruns, trips the latch, and is never repeated.
+ *
+ * Three leaves headroom for that pair plus a scheduling artifact, and still
+ * fails an order of magnitude below the behaviour it exists to catch.
+ */
+const MAX_PAUSED_SWEEP_TASKS = 3
 
 type Budget = { tasks: number; totalMs: number; maxMs: number }
 
@@ -112,6 +141,56 @@ test.describe("main-thread budget", () => {
       `pointer sweep blocked ${Math.round(budget.totalMs)}ms across ${budget.tasks} long tasks`
     ).toBeLessThan(MAX_TOTAL_BLOCKING_MS)
     expect(budget.maxMs).toBeLessThan(MAX_SINGLE_TASK_MS)
+  })
+
+  test("a PAUSED pointer sweep does not scale long tasks with pauses", async ({
+    fixture,
+  }) => {
+    const page = await fixture.goto("dynamic-popup-page")
+    await waitForClassification(page)
+
+    // Deep and wide, like a real application view rather than a flat list:
+    // the audit this defends against resolves each carrier's backdrop by
+    // climbing ancestors, so depth is part of what makes it expensive.
+    await page.evaluate(() => {
+      const root = document.createElement("div")
+      let cursor: HTMLElement = root
+      for (let depth = 0; depth < 12; depth += 1) {
+        const nest = document.createElement("div")
+        cursor.appendChild(nest)
+        cursor = nest
+      }
+      for (let i = 0; i < 1500; i += 1) {
+        const row = document.createElement("div")
+        row.className = "vendor-row"
+        const label = document.createElement("span")
+        label.textContent = `cell ${i}`
+        const detail = document.createElement("span")
+        detail.style.color = "rgb(40, 40, 40)"
+        detail.textContent = " detail"
+        row.append(label, detail)
+        cursor.appendChild(row)
+      }
+      document.body.appendChild(root)
+    })
+    await page.waitForTimeout(1500)
+
+    const budget = await measure(page, async (p) => {
+      for (let i = 0; i < PAUSE_COUNT; i += 1) {
+        await p.mouse.move(150 + i * 12, 200 + i * 20)
+        // Past INTERACTION_SETTLE_MS, so the settled pass actually fires.
+        // This wait is the entire test.
+        await p.waitForTimeout(180)
+      }
+      await p.waitForTimeout(400)
+    })
+
+    expect(
+      budget.tasks,
+      `${PAUSE_COUNT} pointer pauses produced ${budget.tasks} long tasks ` +
+        `totalling ${Math.round(budget.totalMs)}ms — interaction-path work ` +
+        `must be bounded per page, not per pause`
+    ).toBeLessThanOrEqual(MAX_PAUSED_SWEEP_TASKS)
   })
 
   test("sustained mutation churn costs no long tasks", async ({ fixture }) => {

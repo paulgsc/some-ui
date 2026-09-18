@@ -53,22 +53,41 @@ export type HoverCancel = {
 }
 
 /**
- * At most one element is ever marked, which is the bound the whole design
- * rests on: cancellation costs two attribute writes per pointer transition,
- * and the reference is held so clearing needs no query.
+ * The marked chain is held, not queried, and the next chain is diffed
+ * against it: consecutive events inside one row share almost all of it, so
+ * the steady-state cost is one or two attribute writes per pointer
+ * transition regardless of depth.
  *
  * `HOVER_CANCEL_ATTR` sits outside the Sensor's
  * `attributeFilter: ["class", "style"]`, so these writes queue no mutation
  * records and cannot schedule a round — otherwise moving the pointer would
  * drive the reconcile loop, which is #831 with a mouse.
  */
+/**
+ * How far up the hovered chain to reach.
+ *
+ * `:hover` matches every ancestor of the pointer's element, so the element a
+ * vendor's hover rule actually restyles is rarely the event target — on
+ * `<div class="row"><span>text</span></div>`, `.row:hover` is what turns
+ * white and `event.target` is the `<span>`. An earlier version of this
+ * marked the target alone and therefore cancelled nothing on any page whose
+ * rows contain markup, which is all of them. Its e2e test passed only
+ * because the fixture's row held bare text, making target and row the same
+ * element.
+ *
+ * Bounded rather than climbing to `<body>` because the cost is per pointer
+ * event and the depth of a vendor's DOM is not this extension's to trust.
+ * Eight is past every realistic row/cell/label nesting and far short of the
+ * 30+ levels a framework wrapper stack can reach.
+ */
+const CHAIN_DEPTH = 8
+
 export function createHoverCancel(): HoverCancel {
-  let marked: HTMLElement | null = null
+  let marked: ReadonlyArray<HTMLElement> = []
 
   const clear = (): void => {
-    if (marked === null) return
-    marked.removeAttribute(HOVER_CANCEL_ATTR)
-    marked = null
+    for (const el of marked) el.removeAttribute(HOVER_CANCEL_ATTR)
+    marked = []
   }
 
   return {
@@ -78,18 +97,41 @@ export function createHoverCancel(): HoverCancel {
         clear()
         return
       }
-      // Re-entering the same element (a `pointerover` for a descendant that
-      // bubbled, a repeated move within one box) must not churn the
-      // attribute: an unchanged write is still an invalidation.
-      if (node === marked) return
-      clear()
-      // The Actuator's verdict is the authority wherever one exists, and a
-      // provisionally filled element must keep its fill — cancelling there
-      // would re-expose exactly what the fill is hiding.
-      if (node.hasAttribute("data-sw-patched")) return
-      if (node.hasAttribute(PROVISIONAL_ATTR)) return
-      node.setAttribute(HOVER_CANCEL_ATTR, "")
-      marked = node
+
+      const next: Array<HTMLElement> = []
+      let el: HTMLElement | null = node
+      for (let depth = 0; el !== null && depth < CHAIN_DEPTH; depth += 1) {
+        if (el === document.body) break
+        // The Actuator's verdict is the authority wherever one exists, and a
+        // provisionally filled element must keep its fill — cancelling
+        // either would re-expose exactly what they are there to hide. Skip
+        // them but keep climbing: an untagged ancestor above a tagged one
+        // can still carry a vendor hover background.
+        if (
+          !el.hasAttribute("data-sw-patched") &&
+          !el.hasAttribute(PROVISIONAL_ATTR)
+        ) {
+          next.push(el)
+        }
+        const parent: Element | null = el.parentElement
+        el = parent !== null && isHTMLElementNode(parent) ? parent : null
+      }
+
+      // Diffed, not rewritten. Consecutive `pointerover`s inside one row
+      // share almost their whole chain, so this is one or two attribute
+      // writes per event rather than `CHAIN_DEPTH` of them — and an
+      // unchanged write is still a style invalidation, which at pointer-move
+      // frequency is the difference that matters.
+      for (const previous of marked) {
+        if (!next.includes(previous))
+          previous.removeAttribute(HOVER_CANCEL_ATTR)
+      }
+      for (const current of next) {
+        if (!marked.includes(current)) {
+          current.setAttribute(HOVER_CANCEL_ATTR, "")
+        }
+      }
+      marked = next
     },
   }
 }
