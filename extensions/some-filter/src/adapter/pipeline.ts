@@ -106,8 +106,8 @@ export const INTERACTION_SETTLE_MS = 120
  * thing this extension does per unit of user input. Measured against the
  * real build on a 1500-row page, with this budget removed: **12 long tasks
  * totalling 13108ms for twelve pointer pauses — ~600ms of blocked main
- * thread every time the pointer came to rest.** With it: 2 totalling
- * 2096ms.
+ * thread every time the pointer came to rest.** With it: 1 totalling
+ * 1168ms.
  *
  * The cost is not the walk. `auditLegibility` resolves each carrier's
  * effective backdrop by climbing its ancestors and reads pseudo-element
@@ -146,24 +146,39 @@ export const INTERACTION_SETTLE_MS = 120
 export const INTERACTION_AUDIT_BUDGET_MS = 12
 
 /**
- * How many over-budget passes this channel takes before it stops.
+ * How long this channel stands down for after an over-budget pass.
  *
- * Two, not one, and the extra one is a correctness requirement rather than
- * slack (bot-found, Codex P2 on #1459). A pass triggered by `pointerover` or
- * `focusin` realizes the page *as it is during that interaction* — hover
- * colours included. Latching immediately after it leaves that transient
- * realization as the page's steady state: `pointerout` and `focusout` do
- * schedule a further pass, but a latched channel skips it, and a CSS state
- * change mutates no DOM, so no ordinary reconcile round is guaranteed to
- * come along and retire it. The hover's repair colour simply stays.
+ * A cooldown rather than a latch, and the difference is correctness rather
+ * than taste (bot-found, Codex on #1459 — twice, which is what moved this
+ * from a condition to a redesign).
  *
- * Every engaging interaction is followed by a disengaging one, and that
- * event schedules a pass of its own. Allowing one more overrun means the
- * realization this channel leaves behind is the settled one. A second
- * overrun is the page telling us the same thing the first did, and by then
- * nothing transient is left standing.
+ * A pass realizes the page *as it is at settle time*, hover colours
+ * included, and its realization is global. Any rule that permanently stops
+ * the channel therefore freezes whatever transient state the final pass
+ * happened to observe: `pointerout` schedules a pass that a stopped channel
+ * skips, and a CSS state change mutates no DOM, so no ordinary reconcile
+ * round is guaranteed to retire it. The hover's repair colour simply stays,
+ * for the life of the page.
+ *
+ * An earlier revision tried to fix that by allowing a second overrun, on
+ * the reasoning that every engaging interaction is followed by a
+ * disengaging one. That reasoning does not survive the debounce: moving
+ * between two elements emits `pointerout` then `pointerover`, which resets
+ * the shared settle timer, so the pass observes the *second* element still
+ * hovered. Two such moves exhaust the allowance without either pass ever
+ * seeing a disengaged page. Counting overruns counts the wrong thing, and
+ * classifying passes as engaging or disengaging only moves the guess.
+ *
+ * So the channel never stops; it throttles. Cost stays bounded — at most
+ * one audit per cooldown on a page that cannot afford them, instead of one
+ * per pointer pause — while no realization can outlive the next interaction
+ * by more than this window. The failure mode the two previous revisions
+ * kept reintroducing is structurally absent rather than guarded against.
+ *
+ * 30s is chosen to be long relative to interaction (a burst of hovering
+ * costs one audit, not one per pause) and short relative to reading a page.
  */
-export const INTERACTION_AUDIT_MAX_OVERRUNS = 2
+export const INTERACTION_AUDIT_COOLDOWN_MS = 30_000
 
 /**
  * The interaction events SF-RC4 (#1343) listens for, and the reason each is
@@ -869,11 +884,11 @@ export function createContentSession(
   let interactionTimer: ReturnType<typeof setTimeout> | null = null
   let evidenceEpoch = session.epoch
   /**
-   * How many times the settled-interaction audit has overrun its budget on
-   * this page. Reset on an epoch change, since a route swap can replace the
+   * `performance.now()` before which the settled-interaction audit stands
+   * down. Reset on an epoch change, since a route swap can replace the
    * document with one this channel can afford.
    */
-  let interactionAuditOverruns = 0
+  let interactionAuditBlockedUntil = 0
 
   /**
    * Theorem D.1(a): a content reset means the page under us was replaced.
@@ -895,8 +910,8 @@ export function createContentSession(
       if (session.epoch !== evidenceEpoch) {
         evidenceEpoch = session.epoch
         // A route swap can replace a document this channel could not afford
-        // with one it can; the latch is about a page, not a session.
-        interactionAuditOverruns = 0
+        // with one it can; the cooldown is about a page, not a session.
+        interactionAuditBlockedUntil = 0
         dropStaleEvidence()
       }
 
@@ -1101,7 +1116,7 @@ export function createContentSession(
     // comment describes. `recontrastAll()` is self-gating anyway: it
     // iterates only COMMITTED scopes.
     if (
-      interactionAuditOverruns < INTERACTION_AUDIT_MAX_OVERRUNS &&
+      performance.now() >= interactionAuditBlockedUntil &&
       document.documentElement.hasAttribute(DARK_THEME_ATTR)
     ) {
       try {
@@ -1113,15 +1128,15 @@ export function createContentSession(
         runContrastChannel(document.body)
         const elapsed = performance.now() - startedAt
         if (elapsed > INTERACTION_AUDIT_BUDGET_MS) {
-          interactionAuditOverruns += 1
-          const stopping =
-            interactionAuditOverruns >= INTERACTION_AUDIT_MAX_OVERRUNS
-          // Deliberately visible. A channel silently switching itself off is
-          // worse than one that never ran, because the next person to wonder
-          // why a hover repair stopped happening has nothing to find.
+          interactionAuditBlockedUntil =
+            performance.now() + INTERACTION_AUDIT_COOLDOWN_MS
+          // Deliberately visible. A channel throttling itself is worse than
+          // one that never ran if it does so silently, because the next
+          // person to wonder why a hover repair took a while has nothing to
+          // find.
           // eslint-disable-next-line no-console
           console.info(
-            `[some-filter] settled-interaction audit took ${Math.round(elapsed)}ms (budget ${INTERACTION_AUDIT_BUDGET_MS}ms); ${stopping ? "disabling it for this page. Full rounds still cover it." : "one more pass allowed, so a settled state is what it leaves behind."}`
+            `[some-filter] settled-interaction audit took ${Math.round(elapsed)}ms (budget ${INTERACTION_AUDIT_BUDGET_MS}ms); throttling it to one per ${INTERACTION_AUDIT_COOLDOWN_MS / 1000}s for this page. Full rounds still cover it.`
           )
         }
       } catch (error) {

@@ -935,18 +935,25 @@ function init(): void {
   // every teardown path (a killed process gets neither), but it is the best
   // signal available from a content script.
   window.addEventListener("pagehide", () => {
-    // Bot-found (#1459 review): the same bfcache survival the comments
-    // below describe applies to a deferral armed by the visibility gate,
-    // and it is the one resource here that can *start* things rather than
-    // keep them running — so it goes first, before the teardowns it would
-    // otherwise race. A tab opened in the background gets
-    // `whenVisible(runAutoTheme)` and may be bfcached before it is ever
-    // shown; the listener outlives that, so first display would enter
-    // runAutoTheme against the session torn down just below, installing
-    // discovery observers and interval polls onto a disposed recorder. Not
-    // re-arming on pageshow is the same scope boundary the watchdogs draw:
-    // a restored tab stays veiled, which is dark rather than unthemed.
-    visibilityGate.cancel()
+    // The visibility gate is deliberately NOT cancelled here, and the
+    // reasoning is worth keeping because a previous revision of this PR got
+    // it backwards (bot-found, Codex on #1459, twice).
+    //
+    // A deferral armed by the gate does survive a bfcache pagehide, the same
+    // way the poll described below does. But cancelling it is a no-op on the
+    // path where it would help — a real unload destroys the listener along
+    // with the document — and actively harmful on the path where it fires:
+    // a tab bfcached before it was ever shown would lose its only startup
+    // callback, and since bfcache restoration resumes *this* content script
+    // rather than re-running initialization, nothing would ever start. The
+    // prepaint veil is a solid, opaque, top-layer overlay, so that is not a
+    // page left unthemed; it is a page left blank, permanently.
+    //
+    // Restoring such a tab correctly needs `pageshow` re-initialization of
+    // the recorder and both watchdogs as well as the gate — the same gap the
+    // #1327 comment below scopes out for exactly the same reason. Until that
+    // exists, running against a disposed recorder (degraded diagnostics,
+    // page still themed) is the better of the two available failures.
     coverageWatchdog.teardown()
     // Bot-found (#1327's own review, round 3): a pagehide that places the
     // document in the back-forward cache does not destroy this content

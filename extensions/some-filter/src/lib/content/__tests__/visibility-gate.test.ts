@@ -184,7 +184,8 @@ describe("createVisibilityGate", () => {
       const gate = createVisibilityGate(doc.source)
 
       gate.whenVisible(vi.fn())
-      // What the pagehide handler does.
+      // What applyState() does when the mode changes out from under a
+      // deferral — the gate's one live cancel() caller.
       gate.cancel()
 
       expect(gate.pending).toBe(false)
