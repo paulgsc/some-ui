@@ -123,6 +123,39 @@ export const PROVISIONAL_ATTR = "data-sw-provisional"
  * provisional fill would out-specify nothing but would still be a write
  * this module has no business making.
  */
+/**
+ * Marks this module has written and not yet cleared.
+ *
+ * A *hint*, never an authority — see {@link hasProvisionalMarks}.
+ */
+let outstanding = 0
+
+/**
+ * Whether a provisional mark is likely to exist. O(1) by construction.
+ *
+ * `pipeline.ts` gates its transition freeze on this, and the obvious
+ * implementation — `document.querySelector("[data-sw-provisional]")` — is a
+ * trap: it short-circuits on a *match*, but the overwhelmingly common case
+ * is no match, and then it walks the whole document. That would put an
+ * O(document) query on the per-batch sensing path in the name of taking
+ * cost off it.
+ *
+ * Deliberately a hint rather than a fact, because a count cannot be one. A
+ * vendor `cloneNode(true)` over a marked subtree copies the attribute, and
+ * nothing tells this module it happened, so the counter can undercount the
+ * marks actually in the document. It is therefore used only where a false
+ * negative is survivable — skipping the freeze on a round where a cloned
+ * mark happens to be mid-transition, which costs one misread key that the
+ * next round corrects. It is never used to decide whether to *clear*:
+ * `clearProvisionalThrough` always asks the DOM, because a mark this module
+ * does not know about is exactly the one that would otherwise stay dark
+ * forever. That clearing runs once per debounced round, not per mutation
+ * batch, which is why it can afford to be authoritative.
+ */
+export function hasProvisionalMarks(): boolean {
+  return outstanding > 0
+}
+
 export function markProvisional(
   records: ReadonlyArray<MutationRecord>,
   generation: number
@@ -172,6 +205,7 @@ export function markProvisional(
       if (node.getAttribute(PROVISIONAL_ATTR) === stamp) continue
       node.setAttribute(PROVISIONAL_ATTR, stamp)
       marked += 1
+      outstanding += 1
     }
   }
 
@@ -206,6 +240,11 @@ export function clearProvisionalThrough(generation: number): number {
     el.removeAttribute(PROVISIONAL_ATTR)
     cleared += 1
   }
+  // Recomputed from what is actually left rather than decremented: a marked
+  // element the vendor removed from the document is never seen by this
+  // query, so a running decrement would drift upward forever and pin the
+  // freeze on permanently.
+  outstanding = document.querySelectorAll(`[${PROVISIONAL_ATTR}]`).length
   return cleared
 }
 
@@ -213,5 +252,6 @@ export function clearProvisionalThrough(generation: number): number {
 export function clearAllProvisional(): boolean {
   const marked = document.querySelectorAll(`[${PROVISIONAL_ATTR}]`)
   for (const el of marked) el.removeAttribute(PROVISIONAL_ATTR)
+  outstanding = 0
   return marked.length > 0
 }

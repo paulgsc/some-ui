@@ -206,6 +206,17 @@ export const test = base.extend<FilterFixtures & { page: Page }>({
         openedPages.push(page)
         const filePath = path.join(FIXTURE_DIR, `${name}.html`)
         await page.goto(`file://${filePath}`)
+        // Auto mode now defers its whole first round while the tab is
+        // hidden (content.ts's `whenVisible` — the fix for a 200-tab
+        // profile hanging the browser at `document_end`). Every page this
+        // fixture opens is a new tab in a shared context, so all but the
+        // last would sit deferred and every assertion here would time out
+        // against a page that is behaving exactly as designed.
+        //
+        // Bringing it to front is not a workaround for the gate; it is the
+        // harness saying what it already meant. These specs are all claims
+        // about a page the user is looking at.
+        await page.bringToFront()
         return page
       },
     })

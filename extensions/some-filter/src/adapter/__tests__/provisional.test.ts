@@ -1,6 +1,7 @@
 import {
   clearAllProvisional,
   clearProvisionalThrough,
+  hasProvisionalMarks,
   markProvisional,
   PROVISIONAL_ATTR,
 } from "@filter/adapter/provisional"
@@ -161,5 +162,31 @@ describe("clearAllProvisional", () => {
     expect(clearAllProvisional()).toBe(true)
     expect(document.querySelectorAll(`[${PROVISIONAL_ATTR}]`)).toHaveLength(0)
     expect(clearAllProvisional()).toBe(false)
+  })
+})
+
+describe("hasProvisionalMarks — a hint, and only where a false negative is safe", () => {
+  it("tracks this module's own marks without touching the DOM", () => {
+    const host = connectedHost()
+    host.appendChild(document.createElement("div"))
+
+    expect(hasProvisionalMarks()).toBe(false)
+    markProvisional([addedRecord(host)], 1)
+    expect(hasProvisionalMarks()).toBe(true)
+    clearProvisionalThrough(1)
+    expect(hasProvisionalMarks()).toBe(false)
+  })
+
+  it("clears marks it never counted, which is why clearing asks the DOM", () => {
+    // A vendor `cloneNode(true)` over a marked subtree copies the attribute
+    // and tells this module nothing. Such a mark is invisible to the
+    // counter — and it is precisely the one that would stay dark forever if
+    // clearing trusted the counter instead of the document.
+    const cloned = connectedHost()
+    cloned.setAttribute(PROVISIONAL_ATTR, "1")
+
+    expect(hasProvisionalMarks()).toBe(false)
+    expect(clearProvisionalThrough(1)).toBe(1)
+    expect(cloned.hasAttribute(PROVISIONAL_ATTR)).toBe(false)
   })
 })

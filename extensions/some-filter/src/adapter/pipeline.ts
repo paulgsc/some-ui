@@ -81,8 +81,8 @@ import {
 import {
   clearAllProvisional,
   clearProvisionalThrough,
+  hasProvisionalMarks,
   markProvisional,
-  PROVISIONAL_ATTR,
 } from "./provisional"
 import type { Swatch } from "./swatches"
 import { decide } from "./theme-adapter"
@@ -519,7 +519,7 @@ export function withVendorColorsVisible<T>(fn: () => T): T {
   // on rounds where a provisional mark actually exists, which is precisely
   // the case that made it necessary; a steady page pays exactly what it
   // paid before. `querySelector` stops at the first match.
-  if (document.querySelector(`[${PROVISIONAL_ATTR}]`) === null) {
+  if (!hasProvisionalMarks()) {
     return suppressOwnColorSheets(fn)
   }
   return withDocumentTransitionsFrozen(() => suppressOwnColorSheets(fn))
