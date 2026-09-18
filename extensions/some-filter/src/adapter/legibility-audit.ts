@@ -806,6 +806,19 @@ const REPAIR_ATTR = "data-sw-legibility-fix"
  * applies to the document path as much as to a shadow scope; `fire()` has
  * audited right after `realize()` since SF-RC1.
  *
+ * `[data-sw-provisional]` — and, uniquely, its descendants — is the same
+ * hazard again for `provisional.ts`'s fill, and it is the one case where
+ * the rule must reach *below* the marked element, because the fill does:
+ * one attribute on an inserted root darkens the whole subtree through a
+ * descendant combinator, so any descendant with an authored
+ * `transition: background-color` animates the fill in and is mid-flight
+ * when sensing reads it. Declaring the freeze inside the provisional rule
+ * itself does not work, and was tried: `withVendorColorsVisible` senses by
+ * disabling the sheet that rule lives in, which removes the fill and its
+ * freeze in the same instant, so the read still lands on a transition that
+ * has just started. The freeze has to live in a sheet the suppression does
+ * not touch, which is this one.
+ *
  * Deliberately still not `*`, and still no `animation` declaration —
  * SF-RC2 measured what that costs (a `*` freeze snapped an unrelated
  * control mid-fade straight to its destination; `animation: none` *removes*
@@ -813,7 +826,7 @@ const REPAIR_ATTR = "data-sw-legibility-fix"
  * 0). Both attributes here mark elements this extension wrote to, so the
  * only transitions frozen are ones it caused.
  */
-const FREEZE_RULE = `[${REPAIR_ATTR}], [data-sw-patched] { transition: none !important; }`
+const FREEZE_RULE = `[${REPAIR_ATTR}], [data-sw-patched], [data-sw-provisional], [data-sw-provisional] * { transition: none !important; }`
 
 /**
  * The transition freeze `withRepairSuppressed` reads under, as a
@@ -936,6 +949,36 @@ function freezeSheet(): CSSStyleSheet | null {
  * post-actuation colour read needs to be meaningful, and a conditional
  * would be more code for less correctness.
  */
+/**
+ * Runs `fn` with the document freeze above in effect — every transition
+ * this extension's own writes could have started held at its settled
+ * value, and nothing else's.
+ *
+ * Exported for `pipeline.ts`'s `withVendorColorsVisible`, which has the
+ * identical problem one channel over and had no freeze of its own:
+ * suppressing a colour sheet to read vendor truth *is* a style change, so
+ * on an element carrying an authored transition the read returns the value
+ * the extension itself painted. `decide()` then scores that surface from
+ * our own output — #831's failure mode, reached through the sensing path
+ * rather than through the hypothesis.
+ */
+export function withDocumentTransitionsFrozen<T>(fn: () => T): T {
+  const freeze = freezeSheet()
+  if (freeze === null) return fn()
+  freeze.disabled = false
+  flushStyle()
+  try {
+    return fn()
+  } finally {
+    // Commit whatever the body left behind while transitions are still
+    // off, so lifting the freeze is not itself a transitionable change —
+    // the same exit flush `withRepairSuppressed` and
+    // `withScopeTransitionsFrozen` both perform, for the same reason.
+    flushStyle()
+    freeze.disabled = true
+  }
+}
+
 function withRepairSuppressed<T>(fn: () => T): T {
   // The freeze is unconditional now (bot-found, Codex review round 3 on
   // #1412). It used to be skipped whenever no repair sheet was applied,

@@ -70,6 +70,20 @@
         background-color: rgb(221, 221, 221);
         padding: 8px;
       }
+      /*
+        The github.com/…/issues defect, reproduced: a row that is
+        transparent at rest — so decide() skips it on
+        OPACITY_SKIP_THRESHOLD and it is never tagged — and opaque near-white
+        on hover, with no !important dark rule anywhere to beat. Measured at
+        rgb(234,236,237) in the real recording.
+      */
+      .vendor-row {
+        background-color: transparent;
+        padding: 10px;
+      }
+      .vendor-row:hover {
+        background-color: rgb(234, 236, 237);
+      }
     </style>
   </head>
   <body>
@@ -81,6 +95,15 @@
     <div id="panel">A second surface, in a second committed colour.</div>
 
     <div id="trigger">Hover me</div>
+
+    <div id="rows">
+      <div class="vendor-row" id="row-a">
+        transparent at rest, white on hover
+      </div>
+      <div class="vendor-row" id="row-b">
+        transparent at rest, white on hover
+      </div>
+    </div>
 
     <script>
       // Exogenous by construction: the popup's nodes do not exist until the

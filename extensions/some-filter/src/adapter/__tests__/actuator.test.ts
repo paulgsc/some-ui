@@ -38,20 +38,18 @@ describe("realize — Definition 7.3 structural check", () => {
     const themeAdapter = stripComments(
       readFileSync(join(dir, "theme-adapter.ts"), "utf-8")
     )
-    // admission.ts writes `data-sw-patched` in effect — that is the whole
-    // point of the leading-edge pass — but routes it through this module's
-    // own tagSurfaceElements rather than assigning dataset itself, so the
-    // "only actuator.ts writes the tag" invariant this test guards holds
-    // for it too. Asserted rather than assumed: a dataset assignment there
-    // would be the easiest possible way to reintroduce a second, divergent
-    // tagging implementation.
-    const admission = stripComments(
-      readFileSync(join(dir, "admission.ts"), "utf-8")
+    // provisional.ts is deliberately NOT checked against this pattern: it
+    // writes `data-sw-provisional` by design, which is a different
+    // attribute with a different meaning (a fill standing in for an opinion
+    // nobody has formed yet, never a realized verdict). The invariant this
+    // test guards is about `data-sw-patched` specifically.
+    const provisional = stripComments(
+      readFileSync(join(dir, "provisional.ts"), "utf-8")
     )
 
     expect(pipeline).not.toMatch(domWritePattern)
     expect(themeAdapter).not.toMatch(domWritePattern)
-    expect(admission).not.toMatch(domWritePattern)
+    expect(provisional).not.toMatch(/\.dataset\.swPatched|data-sw-patched/)
   })
 })
 

@@ -1058,9 +1058,17 @@ describe("createShadowScopeTheming.project — rendered-contrast channel (#1342)
     theming.project(id)
     await flushAll()
 
+    // Identified by the freeze rule's own selector, not by the substring
+    // "transition: none": the static shadow layer now carries that
+    // declaration too (provisional.ts's fill must not animate in through a
+    // vendor transition), so the looser match reports the permanent,
+    // correctly-adopted static layer as a leak. `data-sw-legibility-fix`
+    // appears in FREEZE_RULE and nowhere else.
     const frozen = shadow.adoptedStyleSheets.filter((sheet) =>
-      [...sheet.cssRules].some((rule) =>
-        rule.cssText.includes("transition: none")
+      [...sheet.cssRules].some(
+        (rule) =>
+          rule.cssText.includes("transition: none") &&
+          rule.cssText.includes("data-sw-legibility-fix")
       )
     )
     expect(frozen).toHaveLength(0)

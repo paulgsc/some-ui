@@ -62,15 +62,6 @@ import {
   isHTMLElementNode,
   realize,
 } from "./actuator"
-import {
-  admit,
-  buildAdmissionIndex,
-  collectAdmissionCandidates,
-  createAdmissionBudget,
-  EMPTY_ADMISSION_INDEX,
-  type AdmissionBudget,
-  type AdmissionIndex,
-} from "./admission"
 import type { FilterAction, SurfaceAttr, SurfaceKey } from "./contracts"
 import {
   clearForegroundRepairs,
@@ -84,7 +75,13 @@ import {
   decideLegibility,
   realizeLegibility,
   REPAIR_STYLE_ID,
+  withDocumentTransitionsFrozen,
 } from "./legibility-audit"
+import {
+  clearAllProvisional,
+  clearProvisionalThrough,
+  markProvisional,
+} from "./provisional"
 import type { Swatch } from "./swatches"
 import { decide } from "./theme-adapter"
 
@@ -502,6 +499,17 @@ const OWN_COLOR_SHEET_IDS: ReadonlyArray<string> = [
  * synchronous task, no frame is ever painted with the theme off.
  */
 export function withVendorColorsVisible<T>(fn: () => T): T {
+  // Frozen *outside* the suppression, deliberately. Disabling a colour
+  // sheet is itself a style change, so on any element carrying an authored
+  // `transition` the read below returns the transition's start value —
+  // which is whatever this extension last painted there. A freeze declared
+  // inside one of the suppressed sheets cannot close that, because it goes
+  // away in the same instant the colour does; see `FREEZE_RULE`'s own doc
+  // comment, where `provisional.ts`'s fill is the case that made it live.
+  return withDocumentTransitionsFrozen(() => suppressOwnColorSheets(fn))
+}
+
+function suppressOwnColorSheets<T>(fn: () => T): T {
   const suppressed: Array<CSSStyleSheet> = []
 
   for (const id of OWN_COLOR_SHEET_IDS) {
@@ -556,6 +564,7 @@ export function withVendorColorsVisible<T>(fn: () => T): T {
  */
 export function clearRealizedColorState(): void {
   clearPerSurfaceState()
+  clearAllProvisional()
   clearLegibilityTags()
   clearForegroundRepairs()
 }
@@ -813,15 +822,16 @@ export function createContentSession(
   let evidenceEpoch = session.epoch
 
   /**
-   * The keys `fire()` last committed a per-surface rule for — what
-   * `admission.ts`'s leading-edge pass is allowed to bind a brand-new
-   * element to before this round's trailing-edge successor runs. Rebuilt
-   * wholesale from each round's own action list (see `buildAdmissionIndex`
-   * for why that list is complete rather than a delta), and emptied by any
-   * round that does not activate a theme.
+   * Monotonic stamp written onto every provisionally-darkened subtree root,
+   * and the boundary a round uses to clear exactly the marks that already
+   * existed when it sensed.
+   *
+   * Incremented at the start of each round rather than per mark: the value
+   * needs to separate "marked before this round looked" from "marked while
+   * this round was running", and nothing finer. See
+   * `provisional.ts`'s `clearProvisionalThrough`.
    */
-  let admissionIndex: AdmissionIndex = EMPTY_ADMISSION_INDEX
-  const admissionBudget: AdmissionBudget = createAdmissionBudget()
+  let provisionalGeneration = 0
 
   /**
    * Theorem D.1(a): a content reset means the page under us was replaced.
@@ -924,12 +934,6 @@ export function createContentSession(
     try {
       const actions = invoke(hypothesis, { decide: (h) => decide(h, swatch) })
       const realizationChanged = realize(actions, lastScan.elementsByKey)
-      // Refreshed from the round that just committed, so the leading-edge
-      // pass can only ever bind a key whose rule is in the sheet *now* —
-      // never one this round retired. Deliberately not updated in the catch
-      // below: a round that threw may have realized nothing, and the
-      // previous index names keys whose rules a failed round did not remove.
-      admissionIndex = buildAdmissionIndex(actions)
 
       // SF-RC1 (#1340): the second, independent sense/decide/realize
       // sub-pass — see legibility-audit.ts's own header for the isolation
@@ -997,68 +1001,67 @@ export function createContentSession(
   }
 
   /**
-   * The leading edge: bind what this batch just added to a key the page has
-   * already committed, synchronously, before the browser paints the frame
-   * the vendor created it in. `admission.ts`'s header has the full argument
-   * for why this is safe to run per batch when a `scan()` is not.
+   * The leading edge, in its entirety: stamp each root the vendor just
+   * inserted so the static layer fills it dark, and return.
    *
-   * Runs inside `withVendorColorsVisible()` — one suppression around the
-   * whole batch, not one per element — for the same reason `ingest()` does:
-   * the static layer recolors `th`, `pre`, `input`, `dialog` and the ARIA
-   * popup roles by type, so an unsuppressed read of a brand-new popup
-   * returns this extension's own `--sw-surface` rather than the vendor's
-   * colour. Reading our own paint back is how #831 started; that it would
-   * only ever mis*bind* here (this pass contributes no evidence) makes it a
-   * smaller mistake, not an acceptable one.
+   * No style read, therefore no forced recalc, therefore nothing to budget
+   * and nothing to bail out of. `provisional.ts`'s header carries the
+   * measurement that made the previous read-based design untenable — the
+   * reads were ~1 µs/element and the suppression around them ~6 ms of
+   * full-document recalc, per batch.
    *
-   * Every bail is silent and lossless by design — the element stays
-   * untagged and the trailing-edge round that this pass never replaces tags
-   * it exactly as it did before.
+   * Runs inside the observer callback, which is a microtask, so the
+   * attribute is set before the frame the subtree was created in performs
+   * its rendering steps. The browser was already going to recalc style for
+   * a subtree that was just inserted; this adds one attribute to that work
+   * rather than forcing a second, separate pass over the whole document.
    */
-  function admitAddedSurfaces(records: ReadonlyArray<MutationRecord>): void {
-    const candidates = collectAdmissionCandidates(records)
-    if (candidates.length === 0) return
-
-    const startedAt = performance.now()
+  function markAddedSubtrees(records: ReadonlyArray<MutationRecord>): void {
     try {
-      withVendorColorsVisible(() => {
-        admit(candidates, admissionIndex, (el) => {
-          if (shouldSkip(el)) return null
-          const attr = readAttr(el)
-          return attr === null ? null : surfaceKeyFor(attr)
-        })
-      })
+      markProvisional(records, provisionalGeneration + 1)
     } catch (error) {
-      // Same discipline as ingest()'s own catch, and more load-bearing:
-      // this runs inside the observer callback, so an uncaught throw here
-      // would take coalescer.trigger() below with it and the page would
-      // stop reacting to the vendor entirely — a latency optimisation
-      // silently disabling the mechanism it optimises.
+      // Same discipline as ingest()'s own catch, and load-bearing for the
+      // same reason: this runs in the observer callback, so an uncaught
+      // throw would take coalescer.trigger() below with it and the page
+      // would stop reacting to the vendor entirely.
       // eslint-disable-next-line no-console
-      console.error("[some-filter] pipeline admission pass failed:", error)
-    } finally {
-      // Charged even when the pass threw: the time was spent either way,
-      // and a path that throws repeatedly is exactly one the rolling budget
-      // should be backing off from.
-      admissionBudget.spend(performance.now() - startedAt)
+      console.error("[some-filter] pipeline provisional marking failed:", error)
     }
   }
 
   /**
-   * Whether the leading-edge pass can do anything at all this batch.
+   * One full round: sense, then decide/realize on what was sensed, then
+   * lift the provisional fill from everything that was already marked when
+   * sensing began.
    *
-   * Checked by the observer *before* it partitions the batch, not inside
-   * `admitAddedSurfaces` — see the callback's own comment for why the
-   * partition is the thing worth avoiding.
+   * The generation is bumped *before* `ingest()` and cleared *through* that
+   * same value after `fire()`, which is what makes the handover safe in
+   * both directions. A subtree marked before this round was scanned by it,
+   * so the round's verdict (a tag, or the considered absence of one) has
+   * superseded the fill and the mark can go. A subtree inserted while the
+   * round was running carries the *next* generation, was never sensed, and
+   * keeps its fill until the round that does sense it — without that split
+   * there is a window between `scan()` and here in which a fresh subtree
+   * loses its fill having never been classified, which is the one path by
+   * which this mechanism could still put a light surface on screen.
+   *
+   * Clearing after `fire()`, never before: until the Actuator has written,
+   * the fill is the only thing standing between the vendor's colours and
+   * the glass.
    */
-  function admissionReady(): boolean {
-    return admissionIndex.size > 0 && admissionBudget.available()
-  }
-
-  /** One full round: sense, then decide/realize on what was sensed. */
   function cycle(root: Element): void {
+    provisionalGeneration += 1
+    const sensedThrough = provisionalGeneration
     ingest(root)
     fire()
+    try {
+      clearProvisionalThrough(sensedThrough)
+    } catch (error) {
+      // Never fatal: a stale mark leaves a subtree dark, which is the safe
+      // direction by construction, and the next round clears it anyway.
+      // eslint-disable-next-line no-console
+      console.error("[some-filter] pipeline provisional clear failed:", error)
+    }
   }
 
   // The coalesced round senses *inside* the debounce window, not before it.
@@ -1194,34 +1197,23 @@ export function createContentSession(
         // realizes the same verdict again — a closed loop that never
         // quiesces and never involves the vendor at all (#831).
         //
-        // Two shapes, and the cheap one is still the default. Scheduling
-        // needs only the *existence* of a vendor record, so it can stop at
-        // the first one; the leading-edge pass needs the records
-        // themselves, so it has to see the whole batch. `isSelfAuthored`
-        // is not free — it walks ancestors via `closest()` — and a page
-        // emitting thousands of records per batch is exactly the profile
-        // #831 was about, so the full partition is paid for only when
-        // something is actually going to read it.
-        if (!admissionReady()) {
-          for (const mutation of mutations) {
-            if (isSelfAuthored(mutation)) continue
-            coalescer.trigger()
-            return
-          }
-          return
-        }
-
+        // The whole batch is partitioned now, where this used to `return`
+        // on the first vendor record. That costs one extra `isSelfAuthored`
+        // per remaining record — an ancestor walk via `closest()` — and the
+        // previous design guarded against paying it by short-circuiting
+        // whenever its leading-edge pass could not run. That guard is gone
+        // because the pass it protected is gone: marking is unconditional,
+        // so there is no state in which the partition is wasted.
         const vendorRecords = mutations.filter(
           (mutation) => !isSelfAuthored(mutation)
         )
         if (vendorRecords.length === 0) return
 
-        // Leading edge first, then trailing. Order matters: this pass runs
+        // Leading edge first, then trailing. Order is the point: this runs
         // in the observer's own microtask, ahead of the frame's rendering
-        // steps, and that is the entire reason it exists — deferring it
-        // behind the scheduler would put it back on the wrong side of the
-        // paint it is there to beat.
-        admitAddedSurfaces(vendorRecords)
+        // steps, and deferring it behind the scheduler would put it back on
+        // the wrong side of the paint it exists to beat.
+        markAddedSubtrees(vendorRecords)
         coalescer.trigger()
       })
       observer.observe(document.documentElement, {
@@ -1246,11 +1238,11 @@ export function createContentSession(
       observer?.disconnect()
       observer = null
       coalescer.dispose()
-      // A torn-down session's committed keys are not a later session's to
-      // bind against: `content.ts` calls teardown() before restoreVendor()
-      // / clearRealizedColorState(), which is what actually removes the
-      // rules these keys name.
-      admissionIndex = EMPTY_ADMISSION_INDEX
+      // A fill with no session behind it can never be lifted: teardown
+      // stops every round, and the round is the only thing that clears a
+      // mark. Left in place it would darken whatever the vendor inserted
+      // last, permanently, on a page the extension has stopped theming.
+      clearAllProvisional()
     },
   }
 }

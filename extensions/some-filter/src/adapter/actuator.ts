@@ -53,6 +53,7 @@ import {
 } from "@filter/lib/content/theme-apply"
 
 import type { FilterAction, SurfaceKey } from "./contracts"
+import { clearAllProvisional } from "./provisional"
 import { getSwatch } from "./swatches"
 
 export const DYNAMIC_STYLE_ID = "__sw_dark_dynamic"
@@ -210,10 +211,15 @@ export function realize(
       document.getElementById(LEGACY_FILTER_STYLE_ID) !== null
     restoreVendor()
     // Deliberately `||` with the call on the right of an already-true
-    // operand's short circuit avoided: clearPerSurfaceState() must run
-    // whatever hadTheme says, so it is called first and combined after.
+    // operand's short circuit avoided: both of these must run whatever
+    // hadTheme says, so they are called first and combined after.
     const clearedSurfaces = clearPerSurfaceState()
-    return hadTheme || clearedSurfaces
+    // A provisional fill outlives its purpose the moment the verdict is
+    // "this page needs no theme": the round that would otherwise lift it
+    // has just decided there is nothing to hand over to, so nothing else
+    // ever would.
+    const clearedProvisional = clearAllProvisional()
+    return hadTheme || clearedSurfaces || clearedProvisional
   }
 
   const activate = actions.find(

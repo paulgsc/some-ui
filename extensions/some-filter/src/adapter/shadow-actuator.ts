@@ -192,7 +192,23 @@ function staticShadowLayer(): CSSStyleSheet {
   if (staticLayerSheet !== null) return staticLayerSheet
   const sheet = new CSSStyleSheet()
   for (const rule of DARK_THEME_BODY_RULES) {
-    sheet.insertRule(rule, sheet.cssRules.length)
+    try {
+      sheet.insertRule(rule, sheet.cssRules.length)
+    } catch {
+      // One unparseable rule must not cost the other twenty-odd.
+      //
+      // A document `<style>` drops a rule whose selector the engine cannot
+      // parse and keeps the rest; `insertRule` throws instead, so an
+      // engine-dependent selector anywhere in this array would take the
+      // whole shadow static layer down with it — every shadow-hosted
+      // surface left unthemed, with the failure visible nowhere. That is
+      // live now rather than hypothetical: the interaction-cancellation
+      // rule uses `:has()`, which Chromium and Safari have and older
+      // engines do not.
+      //
+      // Skipping matches what the document path already does with the same
+      // rule text, which is the behaviour a shadow scope should mirror.
+    }
   }
   staticLayerSheet = sheet
   return sheet

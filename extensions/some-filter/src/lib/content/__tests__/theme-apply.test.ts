@@ -465,3 +465,72 @@ describe("the static layer's ARIA popup rule — the prospective half of the pop
     expect(css).toContain("var(--sw-surface)")
   })
 })
+
+describe("the provisional fill and the interaction cancel — the two prospective rules", () => {
+  const ruleContaining = (needle: string): string => {
+    const rule = DARK_THEME_BODY_RULES.find((entry) => entry.includes(needle))
+    if (rule === undefined) throw new Error(`no rule containing ${needle}`)
+    return rule
+  }
+
+  it("reaches a provisional subtree's descendants, not just its root", () => {
+    const rule = ruleContaining("data-sw-provisional]")
+
+    // The descendant combinator is what lets provisional.ts write one
+    // attribute per inserted subtree instead of walking it. Lose this and
+    // the JS side silently becomes O(nodes) again — the exact cost the
+    // rewrite exists to remove.
+    expect(rule).toContain("[data-sw-provisional] *")
+  })
+
+  it("keeps the provisional fill out-specified by the Actuator's real verdict", () => {
+    // :where() contributes no specificity, so the fill carries EXT_GUARD's
+    // alone — strictly less than [data-sw-patched="…"]. The fill is what
+    // the page looks like before an opinion exists, never in spite of one.
+    expect(ruleContaining("data-sw-provisional]")).toContain(
+      ":where([data-sw-provisional]"
+    )
+  })
+
+  it("does not suppress background-image on a provisional subtree", () => {
+    // A gradient or photo declared on the element paints above
+    // background-color, so it survives the fill untouched. Adding
+    // `background-image: none` would turn a conservative default into a
+    // destructive one.
+    expect(ruleContaining("data-sw-provisional]")).not.toContain(
+      "background-image"
+    )
+  })
+
+  it("cancels the innermost hovered element's background rather than painting one", () => {
+    const rule = ruleContaining(":hover")
+
+    // transparent, not a dark colour: removing paint can never cover
+    // anything, so unlike the fill it needs no media carve-out and cannot
+    // be wrong in the expensive direction.
+    expect(rule).toContain("background-color: transparent !important")
+    // Without :not(:has(:hover)) this matches every ancestor up to <body>
+    // — the pointer is inside all of them — and blanks the whole page's
+    // backgrounds on any pointer movement.
+    expect(rule).toContain(":not(:has(:hover))")
+  })
+
+  it("leaves tagged and provisional elements' hover alone", () => {
+    const rule = ruleContaining(":hover")
+
+    // The Actuator's rule is the authority once it has decided; and
+    // cancelling a provisional fill on hover would re-expose exactly what
+    // the fill is there to hide, with identical specificity deciding it on
+    // source order alone.
+    expect(rule).toContain(":not([data-sw-patched])")
+    expect(rule).toContain(":not([data-sw-provisional])")
+  })
+
+  it("ships both rules in the built stylesheet", () => {
+    injectDarkTheme(SWATCHES.default)
+    const css = document.getElementById(STYLE_ID)?.textContent ?? ""
+
+    expect(css).toContain("[data-sw-provisional] *")
+    expect(css).toContain(":not(:has(:hover))")
+  })
+})

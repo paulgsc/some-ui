@@ -308,6 +308,91 @@ export const DARK_THEME_BODY_RULES: ReadonlyArray<string> = [
   // separate dynamic stylesheet by the actuator's emit-surface-color action.
   // Near-black backgrounds are tagged "preserve" and revert here.
   `[data-sw-patched="preserve"]${EXT_GUARD} { background-color: revert !important; color: revert !important; }`,
+
+  // ── Provisional fill (adapter/provisional.ts) ────────────────────────────
+  //
+  // A subtree the vendor just inserted, filled dark before anything has
+  // read it. The Sensor cannot classify it without a style read, a style
+  // read on the critical path costs a full-document recalc per mutation
+  // batch, and this extension does not block the main thread — so the
+  // subtree is darkened on the strength of the asymmetry alone: wrong-dark
+  // is invisible on an already-dark page, wrong-light is the defect.
+  //
+  // The descendant combinator is what makes the JS side O(1) per inserted
+  // subtree: `provisional.ts` writes one attribute on the added root and
+  // this rule reaches everything beneath it, so nothing scales with node
+  // count anywhere on the insertion path.
+  //
+  // Specificity is `EXT_GUARD`'s alone — `:where()` contributes nothing —
+  // which is the whole ordering contract. The Actuator's own
+  // `[data-sw-patched="…"]` rule and the `"preserve"` revert above both
+  // out-specify it, so the moment a round reaches this subtree its real
+  // verdict displaces the fill, whether or not the mark has been cleared
+  // yet. The fill is what the page looks like *before* an opinion exists,
+  // never in spite of one.
+  //
+  // `background-image: none` is deliberately NOT set. A gradient or photo
+  // declared on the element paints above `background-color`, so it survives
+  // the fill untouched; suppressing it would turn a conservative default
+  // into a destructive one.
+  //
+  // `transition: none` is load-bearing twice over, and the second reason is
+  // the one that cost a test (SF-RC3's light-DOM case, #1342):
+  //
+  //   1. A vendor `transition: background-color 2s` on the inserted element
+  //      would make the fill *fade in* over two seconds — i.e. the surface
+  //      stays light for most of the window the fill exists to cover, and
+  //      the mechanism silently does nothing on exactly the elements most
+  //      likely to need it.
+  //   2. `pipeline.ts`'s `withVendorColorsVisible` senses by disabling this
+  //      sheet and reading back. Disabling is itself a style change, so on
+  //      an element mid-transition the read returns the transition's
+  //      current value — this extension's own fill — and `decide()` scores
+  //      the surface as already-dark, tags it `"preserve"`, and reverts it
+  //      to a colour the vendor never declared. That is #831's
+  //      read-your-own-paint-back failure reached by a new route, and the
+  //      suppression alone does not close it.
+  //
+  // Scoped to marked subtrees, never `*`, and no `animation` declaration —
+  // the same boundary `legibility-audit.ts`'s own FREEZE_RULE draws, and
+  // for the reasons measured there (a `*` freeze snapped unrelated controls
+  // mid-fade; `animation: none` restarts a running animation rather than
+  // pausing it). Unlike that rule this one does reach descendants, because
+  // the fill does: a child with its own background transition would fade
+  // the fill in exactly as case 1 describes.
+  `:where([data-sw-provisional], [data-sw-provisional] *)${EXT_GUARD} { background-color: var(--sw-bg-0) !important; transition: none !important; }`,
+
+  // ── Interaction-state cancellation ───────────────────────────────────────
+  //
+  // A `:hover` colour swap changes computed style with no DOM mutation, so
+  // the Sensor structurally cannot see it (pipeline.ts's INTERACTION_EVENTS
+  // documents this), and the one channel that does fire on hover runs only
+  // the contrast audit — on the stated grounds that an interaction
+  // "produces no new FilterAction". Measured against real usage that
+  // premise is false: an un-hovered row is transparent, so `decide()` skips
+  // it on OPACITY_SKIP_THRESHOLD and it is never tagged, and hover then
+  // gives it an opaque near-white background with no `!important` dark rule
+  // anywhere to beat. On github.com/…/issues that accounted for 12.5% of a
+  // 54s screen recording, in episodes of 0.7-2.4s — not a flash, a steady
+  // state lasting as long as the pointer rested.
+  //
+  // Cancelled rather than replaced: `transparent` removes paint instead of
+  // adding it, so unlike the fill above it can never cover anything, needs
+  // no media carve-out, and cannot be wrong in the expensive direction. The
+  // cost is the vendor's hover affordance itself, which is a deliberate
+  // trade — a row that does not highlight beats a row that turns white.
+  //
+  // `:hover:not(:has(:hover))` is the innermost hovered element. Without
+  // the `:has()` half this would match every ancestor up to `<body>` (the
+  // pointer is inside all of them) and blank the entire page's backgrounds
+  // on any pointer movement.
+  //
+  // Excluded: anything the Actuator has tagged (its own rule is the
+  // authority, hover or not) and anything currently carrying a provisional
+  // fill (cancelling that would re-expose exactly what the fill is there to
+  // hide, and both rules carry identical specificity, so order alone would
+  // decide it).
+  `:where(:hover:not(:has(:hover)):not([data-sw-patched]):not([data-sw-provisional]))${EXT_GUARD} { background-color: transparent !important; }`,
 ]
 
 export function buildDarkThemeCSS(
