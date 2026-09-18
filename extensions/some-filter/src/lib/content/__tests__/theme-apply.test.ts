@@ -502,28 +502,17 @@ describe("the provisional fill and the interaction cancel — the two prospectiv
     )
   })
 
-  it("cancels the innermost hovered element's background rather than painting one", () => {
-    const rule = ruleContaining(":hover")
+  it("cancels via an attribute, never a dynamic pseudo-class", () => {
+    const rule = ruleContaining("data-sw-hover-cancel")
 
     // transparent, not a dark colour: removing paint can never cover
     // anything, so unlike the fill it needs no media carve-out and cannot
     // be wrong in the expensive direction.
     expect(rule).toContain("background-color: transparent !important")
-    // Without :not(:has(:hover)) this matches every ancestor up to <body>
-    // — the pointer is inside all of them — and blanks the whole page's
-    // backgrounds on any pointer movement.
-    expect(rule).toContain(":not(:has(:hover))")
-  })
-
-  it("leaves tagged and provisional elements' hover alone", () => {
-    const rule = ruleContaining(":hover")
-
-    // The Actuator's rule is the authority once it has decided; and
-    // cancelling a provisional fill on hover would re-expose exactly what
-    // the fill is there to hide, with identical specificity deciding it on
-    // source order alone.
-    expect(rule).toContain(":not([data-sw-patched])")
-    expect(rule).toContain(":not([data-sw-provisional])")
+    // The selector must not ask the style engine which element is hovered.
+    // `adapter/hover-cancel.ts` answers that from `pointerover`'s target in
+    // O(1); the version that asked in CSS hung Firefox.
+    expect(rule).not.toContain(":hover")
   })
 
   it("ships both rules in the built stylesheet", () => {
@@ -531,6 +520,70 @@ describe("the provisional fill and the interaction cancel — the two prospectiv
     const css = document.getElementById(STYLE_ID)?.textContent ?? ""
 
     expect(css).toContain("[data-sw-provisional] *")
-    expect(css).toContain(":not(:has(:hover))")
+    expect(css).toContain("[data-sw-hover-cancel]")
+  })
+})
+
+describe("declarative cost — what no rule in the static layer may do", () => {
+  /**
+   * The gate that would have caught the selector that hung Firefox.
+   *
+   * Every other cost discipline in this extension measures *its own code*:
+   * the reconcile debounce bounds how often a round starts, #831's
+   * quiescence spec counts DOM writes, the admission budget counted
+   * elements. A selector's cost appears in none of those — it is zero JS
+   * milliseconds and unbounded style-recalc milliseconds, on the same
+   * thread, attributed to the engine rather than to any stack frame this
+   * project owns.
+   *
+   * Since the static layer is now a primary mechanism rather than a
+   * fallback (the provisional fill, the ARIA popup rule and the
+   * interaction cancel are all rules, not code), it needs a cost rule of
+   * its own. This is that rule, and it is a unit test over a literal array
+   * — no browser, no timing, nothing to flake.
+   */
+  const DYNAMIC_PSEUDO = [
+    ":hover",
+    ":focus-within",
+    ":active",
+    ":focus-visible",
+  ]
+
+  it("never combines :has() with a dynamic pseudo-class", () => {
+    for (const rule of DARK_THEME_BODY_RULES) {
+      const selector = rule.slice(0, rule.indexOf("{"))
+      if (!selector.includes(":has(")) continue
+      for (const pseudo of DYNAMIC_PSEUDO) {
+        // A `:has()` whose match depends on pointer or focus state is
+        // re-evaluated up the ancestor chain on every input event that
+        // changes it. Gecko's invalidation for this is ancestor-scoped;
+        // shipping one hung the browser outright.
+        expect(
+          selector.includes(pseudo),
+          `rule combines :has() with ${pseudo} — ${selector.trim()}`
+        ).toBe(false)
+      }
+    }
+  })
+
+  it("never puts a bare universal on the right of a descendant combinator, except the provisional fill", () => {
+    for (const rule of DARK_THEME_BODY_RULES) {
+      // `:not(...)` groups are stripped first: EXT_GUARD's own
+      // `:not([data-my-ext] *)` is on every rule in this array and matches
+      // the shape textually while being its exact opposite — a negation
+      // that *excludes* a subtree, not a selector that walks one.
+      const selector = rule
+        .slice(0, rule.indexOf("{"))
+        .replace(/:not\([^()]*\)/g, "")
+      if (!/\]\s+\*/.test(selector)) continue
+      // The provisional fill is the one deliberate case: reaching a whole
+      // inserted subtree from one attribute is precisely what keeps the JS
+      // side O(1) per insertion, and marks are short-lived by construction.
+      // Anything else matching this shape is an accident worth failing on.
+      expect(
+        selector.includes("data-sw-provisional"),
+        `descendant-universal outside the provisional fill — ${selector.trim()}`
+      ).toBe(true)
+    }
   })
 })

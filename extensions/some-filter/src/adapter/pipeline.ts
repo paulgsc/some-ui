@@ -68,6 +68,7 @@ import {
   decideForegroundRepairs,
   realizeForegroundRepairs,
 } from "./foreground-repair"
+import { createHoverCancel } from "./hover-cancel"
 import {
   auditContrastPairs,
   auditLegibility,
@@ -81,6 +82,7 @@ import {
   clearAllProvisional,
   clearProvisionalThrough,
   markProvisional,
+  PROVISIONAL_ATTR,
 } from "./provisional"
 import type { Swatch } from "./swatches"
 import { decide } from "./theme-adapter"
@@ -506,6 +508,20 @@ export function withVendorColorsVisible<T>(fn: () => T): T {
   // inside one of the suppressed sheets cannot close that, because it goes
   // away in the same instant the colour does; see `FREEZE_RULE`'s own doc
   // comment, where `provisional.ts`'s fill is the case that made it live.
+  //
+  // Conditional, and the condition matters more than it looks. The freeze
+  // costs two further forced style flushes on top of the two this function
+  // already pays, i.e. it doubles the cost of the single most expensive
+  // thing on the sensing path. Before the provisional fill existed this
+  // function had no freeze and needed none — `[data-sw-patched]` is a
+  // latent version of the same hazard, but one no test has ever caught and
+  // one that predates this branch by a long way. So the cost is paid only
+  // on rounds where a provisional mark actually exists, which is precisely
+  // the case that made it necessary; a steady page pays exactly what it
+  // paid before. `querySelector` stops at the first match.
+  if (document.querySelector(`[${PROVISIONAL_ATTR}]`) === null) {
+    return suppressOwnColorSheets(fn)
+  }
   return withDocumentTransitionsFrozen(() => suppressOwnColorSheets(fn))
 }
 
@@ -1148,6 +1164,8 @@ export function createContentSession(
     }
   }
 
+  const hoverCancel = createHoverCancel()
+
   function onInteraction(event: Event): void {
     // Our own realization never dispatches a pointer or focus event, so
     // there is no self-authorship check to make here — unlike the Sensor's
@@ -1155,7 +1173,12 @@ export function createContentSession(
     // this does skip is interaction *inside* an extension-owned subtree
     // (the veil, the debug overlay), which is never vendor evidence.
     const target = event.target
-    if (target instanceof Node && isExtensionAuthored(target)) return
+    const node = target instanceof Node ? target : null
+    if (node !== null && isExtensionAuthored(node)) return
+
+    if (event.type === "pointerover") hoverCancel.mark(node)
+    else if (event.type === "pointerout") hoverCancel.clear()
+
     if (interactionTimer !== null) clearTimeout(interactionTimer)
     interactionTimer = setTimeout(runInteractionContrast, INTERACTION_SETTLE_MS)
   }
@@ -1197,24 +1220,32 @@ export function createContentSession(
         // realizes the same verdict again — a closed loop that never
         // quiesces and never involves the vendor at all (#831).
         //
-        // The whole batch is partitioned now, where this used to `return`
-        // on the first vendor record. That costs one extra `isSelfAuthored`
-        // per remaining record — an ancestor walk via `closest()` — and the
-        // previous design guarded against paying it by short-circuiting
-        // whenever its leading-edge pass could not run. That guard is gone
-        // because the pass it protected is gone: marking is unconditional,
-        // so there is no state in which the partition is wasted.
-        const vendorRecords = mutations.filter(
-          (mutation) => !isSelfAuthored(mutation)
-        )
-        if (vendorRecords.length === 0) return
+        // Two passes, both single and neither allocating, because they
+        // want different things and the expensive question is only worth
+        // asking once.
+        //
+        // An earlier version of this replaced the scheduling loop's
+        // `return` with `mutations.filter(m => !isSelfAuthored(m))` so the
+        // marking pass could see the whole batch. That turned an
+        // O(1)-amortized callback into O(batch x depth) with a per-record
+        // allocation, synchronously inside the observer microtask, on pages
+        // whose defining property is that they churn — `isSelfAuthored`
+        // walks ancestors via `closest()`. The commit priced that against
+        // the guarded admission pass it removed, which was the wrong
+        // comparison: what it actually replaced was the `return`.
+        //
+        // Marking does not need `isSelfAuthored` at all. It only has to
+        // avoid our own nodes, and `markProvisional` already checks
+        // `data-my-ext` directly on each added root — an attribute read, not
+        // an ancestor walk. So marking runs first over the raw batch, and
+        // scheduling keeps its original early exit.
+        markAddedSubtrees(mutations)
 
-        // Leading edge first, then trailing. Order is the point: this runs
-        // in the observer's own microtask, ahead of the frame's rendering
-        // steps, and deferring it behind the scheduler would put it back on
-        // the wrong side of the paint it exists to beat.
-        markAddedSubtrees(vendorRecords)
-        coalescer.trigger()
+        for (const mutation of mutations) {
+          if (isSelfAuthored(mutation)) continue
+          coalescer.trigger()
+          return
+        }
       })
       observer.observe(document.documentElement, {
         childList: true,
@@ -1235,6 +1266,7 @@ export function createContentSession(
         clearTimeout(interactionTimer)
         interactionTimer = null
       }
+      hoverCancel.clear()
       observer?.disconnect()
       observer = null
       coalescer.dispose()

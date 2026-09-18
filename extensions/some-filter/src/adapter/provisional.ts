@@ -132,6 +132,16 @@ export function markProvisional(
 
   for (const record of records) {
     if (record.type !== "childList") continue
+    if (record.addedNodes.length === 0) continue
+    // Containment resolved once per record rather than once per added node.
+    // Every node in a `childList` record shares the same parent, so one
+    // O(depth) walk answers it for all of them — and on a page inserting
+    // hundreds of nodes per batch, per-node `body.contains()` is the
+    // difference between O(added) and O(added x depth) on the observer's
+    // own microtask.
+    const parent = record.target
+    if (parent !== document.body && !document.body.contains(parent)) continue
+
     for (const node of record.addedNodes) {
       if (!isHTMLElementNode(node)) continue
       if (!node.isConnected) continue
@@ -145,12 +155,13 @@ export function markProvisional(
       // passes every check an element-shaped filter can make. Marking it
       // paints nothing (a `<head>` has no box) but leaves a mark that
       // survives every teardown keyed on body content.
-      // `contains()` is true for the node itself, so `<body>` has to be
-      // excluded separately — it is reported as an added node whenever a
-      // vendor replaces `<html>`'s children, which is precisely the case
-      // this check exists for.
+      // `<body>` and `<head>` are only ever reachable here when the record's
+      // parent is `<html>`, which the per-record check above already
+      // rejected — `document.body.contains(document.documentElement)` is
+      // false. Kept as a direct guard anyway: it is one identity comparison,
+      // and the alternative is relying on a non-obvious consequence of a
+      // check fifteen lines away.
       if (node === document.body) continue
-      if (!document.body.contains(node)) continue
       // `[data-my-ext]` subtrees are ours; the guard in the CSS rule keeps
       // the fill off them regardless, but marking them would be a pointless
       // write on every veil/stylesheet insertion.

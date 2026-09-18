@@ -376,23 +376,37 @@ export const DARK_THEME_BODY_RULES: ReadonlyArray<string> = [
   // 54s screen recording, in episodes of 0.7-2.4s — not a flash, a steady
   // state lasting as long as the pointer rested.
   //
+  // Keyed on an attribute, NOT on `:hover`, and this is not a style
+  // preference — it is the correction of a shipped defect that hung a
+  // browser.
+  //
+  // The first version of this rule was
+  // `:hover:not(:has(:hover)):not([data-sw-patched])…`, using `:has()` to
+  // select the *innermost* hovered element (without it, every ancestor up
+  // to `<body>` matches, since the pointer is inside all of them). That is
+  // a document-wide `:has()` whose argument is a dynamic pseudo-class: every
+  // pointer move that crosses an element boundary forces the engine to
+  // re-evaluate it up the ancestor chain, and Gecko's `:has()` invalidation
+  // is ancestor-scoped. It is the one construct in this extension that cost
+  // work per *input event* rather than per mutation batch, and it was
+  // reported hanging Firefox outright, with the browser's own "this
+  // extension is slowing down Firefox" notice naming it.
+  //
+  // `pipeline.ts`'s interaction listeners already have the innermost
+  // hovered element for free — `pointerover`'s `event.target` *is* it, by
+  // definition — so the whole selector was solving in the style engine,
+  // per pointer move and document-wide, a problem the event model answers
+  // in O(1). One element carries the attribute at a time; invalidation is
+  // two elements rather than an ancestor chain, and there is no dynamic
+  // pseudo-class in the selector at all.
+  //
   // Cancelled rather than replaced: `transparent` removes paint instead of
-  // adding it, so unlike the fill above it can never cover anything, needs
-  // no media carve-out, and cannot be wrong in the expensive direction. The
-  // cost is the vendor's hover affordance itself, which is a deliberate
-  // trade — a row that does not highlight beats a row that turns white.
-  //
-  // `:hover:not(:has(:hover))` is the innermost hovered element. Without
-  // the `:has()` half this would match every ancestor up to `<body>` (the
-  // pointer is inside all of them) and blank the entire page's backgrounds
-  // on any pointer movement.
-  //
-  // Excluded: anything the Actuator has tagged (its own rule is the
-  // authority, hover or not) and anything currently carrying a provisional
-  // fill (cancelling that would re-expose exactly what the fill is there to
-  // hide, and both rules carry identical specificity, so order alone would
-  // decide it).
-  `:where(:hover:not(:has(:hover)):not([data-sw-patched]):not([data-sw-provisional]))${EXT_GUARD} { background-color: transparent !important; }`,
+  // adding it, so unlike the provisional fill it can never cover anything,
+  // needs no media carve-out, and cannot be wrong in the expensive
+  // direction. The cost is the vendor's hover affordance itself, which is a
+  // deliberate trade — a row that does not highlight beats a row that turns
+  // white.
+  `:where([data-sw-hover-cancel])${EXT_GUARD} { background-color: transparent !important; }`,
 ]
 
 export function buildDarkThemeCSS(
