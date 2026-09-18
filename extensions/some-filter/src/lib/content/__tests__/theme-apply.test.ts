@@ -450,6 +450,16 @@ describe("declarative cost — what no rule in the static layer may do", () => {
     }
   })
 
+  /**
+   * Whitespace followed by a bare `*`, where what precedes the whitespace is
+   * neither a combinator (`>`, `+`, `~` all bound the walk to a fixed
+   * neighbourhood) nor a comma (which starts a new compound selector rather
+   * than continuing one). A leading `*` has no preceding token and so is not
+   * a descendant universal either. The trailing guard rejects `*|a`, where
+   * the `*` is a namespace wildcard rather than a universal selector.
+   */
+  const DESCENDANT_UNIVERSAL = /[^\s>+~,]\s+\*(?![|*])/
+
   it("never puts a bare universal on the right of a descendant combinator", () => {
     for (const rule of DARK_THEME_BODY_RULES) {
       // `:not(...)` groups are stripped first: EXT_GUARD's own
@@ -460,9 +470,45 @@ describe("declarative cost — what no rule in the static layer may do", () => {
         .slice(0, rule.indexOf("{"))
         .replace(/:not\([^()]*\)/g, "")
       expect(
-        /\]\s+\*/.test(selector),
+        DESCENDANT_UNIVERSAL.test(selector),
         `descendant-universal in the static layer — ${selector.trim()}`
       ).toBe(false)
+    }
+  })
+
+  it("detects a descendant universal regardless of what precedes it", () => {
+    // Bot-found (#1459 review): this guard was `/\]\s+\*/`, which only fired
+    // when the preceding compound happened to end in an attribute selector.
+    // Every rule in the array does end that way, so the test passed while
+    // asserting something far narrower than its own name — `body *` and
+    // `.vendor *` have identical cost and went undetected. These cases are
+    // the regression for the regex itself, since the array cannot cover a
+    // shape it is forbidden to contain.
+    for (const bad of [
+      "body *",
+      ".vendor *",
+      ":where(main) *",
+      "[data-sw-patched] *",
+      "main   *",
+      "[x]:has(.y *)",
+    ]) {
+      expect(DESCENDANT_UNIVERSAL.test(bad), `missed — ${bad}`).toBe(true)
+    }
+
+    // A universal bound by a child or sibling combinator visits a fixed
+    // neighbourhood rather than a subtree, and a comma starts a new
+    // compound rather than continuing one. Neither is what this guards.
+    for (const fine of [
+      "[x] > *",
+      "[x] + *",
+      "[x] ~ *",
+      "[x], *",
+      "* [x]",
+      "[x] *|a",
+    ]) {
+      expect(DESCENDANT_UNIVERSAL.test(fine), `false positive — ${fine}`).toBe(
+        false
+      )
     }
   })
 })

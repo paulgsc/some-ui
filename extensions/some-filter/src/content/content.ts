@@ -885,6 +885,18 @@ function init(): void {
     navigatingAway = false
 
     if (currentState === "auto") {
+      // Bot-found (#1459 review): a background-loaded SPA tab reaches this
+      // without ever having been shown, and discover() below is precisely
+      // the whole-document walk the visibility gate deferred — it would
+      // project every shadow root and leave a per-root observer behind, so
+      // the deferral bought the tab nothing. There is no session to reset
+      // or rescan yet either. Leave all of it to the eventual visible
+      // startup, which the still-armed waiter will run against the settled
+      // route rather than the one being torn down.
+      if (visibilityGate.pending) {
+        coverageWatchdog.check("nav-finish:auto-deferred")
+        return
+      }
       sessionLifecycle.resetContent()
       // Defense in depth alongside the reactive top-level observer already
       // running (shadowScopeDiscovery.observe(), started in runAutoTheme()
@@ -923,6 +935,18 @@ function init(): void {
   // every teardown path (a killed process gets neither), but it is the best
   // signal available from a content script.
   window.addEventListener("pagehide", () => {
+    // Bot-found (#1459 review): the same bfcache survival the comments
+    // below describe applies to a deferral armed by the visibility gate,
+    // and it is the one resource here that can *start* things rather than
+    // keep them running — so it goes first, before the teardowns it would
+    // otherwise race. A tab opened in the background gets
+    // `whenVisible(runAutoTheme)` and may be bfcached before it is ever
+    // shown; the listener outlives that, so first display would enter
+    // runAutoTheme against the session torn down just below, installing
+    // discovery observers and interval polls onto a disposed recorder. Not
+    // re-arming on pageshow is the same scope boundary the watchdogs draw:
+    // a restored tab stays veiled, which is dark rather than unthemed.
+    visibilityGate.cancel()
     coverageWatchdog.teardown()
     // Bot-found (#1327's own review, round 3): a pagehide that places the
     // document in the back-forward cache does not destroy this content

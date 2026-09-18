@@ -67,15 +67,21 @@ const PAUSE_COUNT = 12
  *
  * Deliberately an absolute count rather than a per-pause average, because
  * the property being defended is that the two are *unrelated*: work on this
- * path must be bounded per page, not per interaction. Measured, twelve
- * pauses on a 1500-row page produced 8 long tasks totalling 4617ms before
- * the settled-interaction audit was scoped and given a self-measuring
- * budget, and 2 totalling 1138ms after — where one of those two is the
- * page's own initial classification and the other is the single audit that
- * overruns, trips the latch, and is never repeated.
+ * path must be bounded per page, not per interaction. Measured on a
+ * 1500-row page, twelve pauses produce **2 long tasks totalling 2096ms**
+ * with the self-measuring budget in place, against **12 totalling 13108ms**
+ * with it removed — verified by removing it, not assumed.
  *
- * Three leaves headroom for that pair plus a scheduling artifact, and still
- * fails an order of magnitude below the behaviour it exists to catch.
+ * The count is what this defends, not the milliseconds. Each remaining task
+ * got *bigger* when the audit stopped being rooted at the interaction's own
+ * subtree (see INTERACTION_AUDIT_BUDGET_MS — a partial scan could not
+ * safely drive this channel's document-scoped realization), and that is the
+ * right trade: a constant number of large tasks per page is survivable,
+ * one per pointer pause is a browser that appears hung.
+ *
+ * Three leaves headroom for the measured pair plus a scheduling artifact,
+ * and still fails an order of magnitude below the behaviour it exists to
+ * catch.
  */
 const MAX_PAUSED_SWEEP_TASKS = 3
 

@@ -139,4 +139,55 @@ describe("createVisibilityGate", () => {
     expect(start).not.toHaveBeenCalled()
     expect(doc.listeners).toBe(0)
   })
+
+  describe("pending", () => {
+    // Bot-found (#1459 review): callers that do startup-shaped work of their
+    // own have to be able to see a deferral, or they do it anyway and the
+    // gate buys nothing. content.ts's yt-navigate-finish handler is the
+    // case — a background-loaded SPA tab fires it without ever being shown.
+
+    it("is false before anything is deferred and in a visible tab", () => {
+      const visible = fakeDocument("visible")
+      const gate = createVisibilityGate(visible.source)
+      expect(gate.pending).toBe(false)
+
+      gate.whenVisible(vi.fn())
+      // Ran inline; there is nothing outstanding.
+      expect(gate.pending).toBe(false)
+    })
+
+    it("is true only while a hidden tab's deferral is armed", () => {
+      const doc = fakeDocument("hidden")
+      const gate = createVisibilityGate(doc.source)
+
+      gate.whenVisible(vi.fn())
+      expect(gate.pending).toBe(true)
+
+      doc.show()
+      expect(gate.pending).toBe(false)
+    })
+
+    it("tracks a hidden -> hidden change without clearing", () => {
+      const doc = fakeDocument("hidden")
+      const gate = createVisibilityGate(doc.source)
+
+      gate.whenVisible(vi.fn())
+      doc.hide()
+
+      // The waiter ignored that edge, so the deferral is still outstanding
+      // and a caller consulting this must still stand down.
+      expect(gate.pending).toBe(true)
+    })
+
+    it("clears on cancel(), so a torn-down session reports nothing pending", () => {
+      const doc = fakeDocument("hidden")
+      const gate = createVisibilityGate(doc.source)
+
+      gate.whenVisible(vi.fn())
+      // What the pagehide handler does.
+      gate.cancel()
+
+      expect(gate.pending).toBe(false)
+    })
+  })
 })

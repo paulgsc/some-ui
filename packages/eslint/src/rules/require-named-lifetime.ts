@@ -83,7 +83,8 @@ export const requireNamedLifetime: Rule.RuleModule = {
   },
   create(context) {
     // context.options is any[] per @types/eslint.
-    const extraArr: Array<string> = context.options[0]?.additionalResources ?? []
+    const extraArr: Array<string> =
+      context.options[0]?.additionalResources ?? []
     const lifecycleModule: string =
       context.options[0]?.lifecycleModule ?? "your workspace's lifecycle helper"
     const resources = new Set([...STANDING_RESOURCES, ...extraArr])

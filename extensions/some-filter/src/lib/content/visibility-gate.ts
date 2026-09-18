@@ -69,6 +69,20 @@ export type VisibilityGate = {
   whenVisible(start: () => void): void
   /** Drops any pending deferral without running it. */
   cancel(): void
+  /**
+   * True while a deferral is armed — the tab has not been shown yet, so
+   * nothing this gate guards has started.
+   *
+   * Callers that do startup-shaped work of their own must consult this, or
+   * the deferral buys nothing. `content.ts`'s `yt-navigate-finish` handler
+   * is the case that forced it into the type: it calls
+   * `shadowScopeDiscovery.discover(document)` unconditionally in auto mode,
+   * which is a whole-document `TreeWalker` that projects every shadow root
+   * it finds and installs a per-root observer. A background-loaded SPA tab
+   * fires that event without ever being shown, so the walk this gate exists
+   * to defer ran anyway, and the tab held the observers afterwards.
+   */
+  readonly pending: boolean
 }
 
 export function createVisibilityGate(
@@ -84,6 +98,9 @@ export function createVisibilityGate(
 
   return {
     cancel,
+    get pending(): boolean {
+      return waiter !== null
+    },
     whenVisible(start: () => void): void {
       // Any pending deferral belongs to a superseded caller. Left armed, a
       // tab toggled auto -> off -> auto while hidden would start two

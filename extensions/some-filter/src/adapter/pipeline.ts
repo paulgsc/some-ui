@@ -99,72 +99,41 @@ export const BOUNDED_DELIVERY_MS = 250
 export const INTERACTION_SETTLE_MS = 120
 
 /**
- * How far above the interaction target to root its settled-interaction
- * audit.
- *
- * This pass used to audit `document.body`, and that is the single most
- * expensive thing this extension does per unit of user input. Measured
- * against the real build on a 1500-row page: **8 long tasks totalling
- * 4617ms for twelve pointer pauses — ~600ms of blocked main thread every
- * time the pointer came to rest.**
- *
- * The cost is not the walk. It is that `auditLegibility` resolves each
- * carrier's effective backdrop by climbing its ancestors and reads
- * pseudo-element styles per element, so it is superlinear in document size
- * and ~130µs per element rather than the ~1µs a plain `getComputedStyle`
- * costs.
- *
- * A hover changes computed style along the pointer's own ancestor chain and
- * whatever those ancestors' rules reach, so the affected region is local to
- * the interaction even when the selector that caused it is not. Rooting a
- * few levels up from the target covers the realistic shapes — a cell whose
- * row restyles, a label whose control restyles — at a cost bounded by that
- * subtree instead of the page.
- *
- * What this gives up, stated rather than glossed: a vendor rule of the form
- * `nav:hover .faraway-label`, where the restyled node is neither the target
- * nor near it, is no longer caught by the interaction pass. It is still
- * caught by any subsequent full round. That is a real reduction in
- * coverage, taken deliberately, because the alternative is a six-hundred
- * millisecond freeze every time the user stops moving the mouse.
- */
-export const INTERACTION_AUDIT_DEPTH = 4
-
-/**
- * The climb also stops at any ancestor with more than this many element
- * children.
- *
- * Depth alone is not a bound, and measurement is what showed it: rooting
- * four levels above a hovered cell took the audit from 4617ms to 2328ms and
- * no further, because four levels up from a cell in a long list is the
- * container holding *every* row. A fixed ancestor count says nothing about
- * how large that ancestor's subtree is, which is the quantity that actually
- * costs.
- *
- * `childElementCount` is O(1), so this stops the climb exactly where the
- * subtree stops being local — at the list, not at the row — without walking
- * anything to find out.
- */
-export const INTERACTION_AUDIT_MAX_FANOUT = 32
-
-/**
  * How long the settled-interaction audit may take before this page stops
  * getting one.
  *
- * Scoping the audit to the interaction's own neighbourhood was real and not
- * enough: a localised root is still only a *heuristic* bound, and moving the
- * pointer across a container rather than a row makes the target the
- * container, whose subtree is the page again. No DOM-shape heuristic fixes
- * that, because the quantity that costs is not a shape.
+ * This pass audits `document.body`, and that is the single most expensive
+ * thing this extension does per unit of user input. Measured against the
+ * real build on a 1500-row page, with this budget removed: **12 long tasks
+ * totalling 13108ms for twelve pointer pauses — ~600ms of blocked main
+ * thread every time the pointer came to rest.** With it: 2 totalling
+ * 2096ms.
  *
- * So the pass measures itself. It runs, and if that run exceeded the budget
- * it does not run again for this page — the full reconcile round still
- * covers everything this channel would have. The worst case becomes one long
- * task per page instead of one per time the user stops moving the mouse,
+ * The cost is not the walk. `auditLegibility` resolves each carrier's
+ * effective backdrop by climbing its ancestors and reads pseudo-element
+ * styles per element, so it is ~130µs per element rather than the ~1µs a
+ * plain `getComputedStyle` costs.
+ *
+ * An earlier version of this bound also rooted the audit at a bounded climb
+ * from the interaction's own target, on the reasoning that a hover changes
+ * computed style local to the pointer. That is removed, and the reason is
+ * worth keeping (bot-found, Codex P1 on #1459): the audit's *realization* is
+ * document-scoped even when its scan is not. `realizeForegroundRepairs`
+ * rewrites, and on an empty action set removes outright, the single global
+ * `#__sw_legibility_repair` stylesheet — so a clean pass rooted in one
+ * region silently dropped a still-required repair belonging to another,
+ * leaving that carrier's `data-sw-legibility-fix` tag in place to say
+ * nothing was wrong. A partial scan may not drive a total realization. The
+ * localised root was a heuristic bound anyway (sweeping a container rather
+ * than a row makes the target the container), so the honest bound was
+ * always the one below.
+ *
+ * So the pass measures itself. It runs, and once it has overrun it stops
+ * running for this page — the full reconcile round still covers everything
+ * this channel would have. The worst case becomes a constant number of long
+ * tasks per page instead of one per time the user stops moving the mouse,
  * which is the difference between a slow extension and a browser that
- * appears hung. Measured end to end: 8 long tasks / 4617ms for twelve
- * pointer pauses, down to 2 / 1138ms, one of which is the page's own initial
- * classification.
+ * appears hung.
  *
  * This is the first thing in this extension that bounds itself by *time*
  * rather than by rate, node count or DOM writes — the gap that let a
@@ -175,6 +144,26 @@ export const INTERACTION_AUDIT_MAX_FANOUT = 32
  * frame is a page whose audit does not belong on the interaction path.
  */
 export const INTERACTION_AUDIT_BUDGET_MS = 12
+
+/**
+ * How many over-budget passes this channel takes before it stops.
+ *
+ * Two, not one, and the extra one is a correctness requirement rather than
+ * slack (bot-found, Codex P2 on #1459). A pass triggered by `pointerover` or
+ * `focusin` realizes the page *as it is during that interaction* — hover
+ * colours included. Latching immediately after it leaves that transient
+ * realization as the page's steady state: `pointerout` and `focusout` do
+ * schedule a further pass, but a latched channel skips it, and a CSS state
+ * change mutates no DOM, so no ordinary reconcile round is guaranteed to
+ * come along and retire it. The hover's repair colour simply stays.
+ *
+ * Every engaging interaction is followed by a disengaging one, and that
+ * event schedules a pass of its own. Allowing one more overrun means the
+ * realization this channel leaves behind is the settled one. A second
+ * overrun is the page telling us the same thing the first did, and by then
+ * nothing transient is left standing.
+ */
+export const INTERACTION_AUDIT_MAX_OVERRUNS = 2
 
 /**
  * The interaction events SF-RC4 (#1343) listens for, and the reason each is
@@ -879,14 +868,12 @@ export function createContentSession(
   let observer: MutationObserver | null = null
   let interactionTimer: ReturnType<typeof setTimeout> | null = null
   let evidenceEpoch = session.epoch
-  /** The element the most recent interaction event targeted. */
-  let lastInteractionTarget: HTMLElement | null = null
   /**
-   * Set once the settled-interaction audit has overrun its budget on this
-   * page. Cleared on an epoch change, since a route swap can replace the
+   * How many times the settled-interaction audit has overrun its budget on
+   * this page. Reset on an epoch change, since a route swap can replace the
    * document with one this channel can afford.
    */
-  let interactionAuditOverBudget = false
+  let interactionAuditOverruns = 0
 
   /**
    * Theorem D.1(a): a content reset means the page under us was replaced.
@@ -909,7 +896,7 @@ export function createContentSession(
         evidenceEpoch = session.epoch
         // A route swap can replace a document this channel could not afford
         // with one it can; the latch is about a page, not a session.
-        interactionAuditOverBudget = false
+        interactionAuditOverruns = 0
         dropStaleEvidence()
       }
 
@@ -1103,27 +1090,6 @@ export function createContentSession(
    * nothing changed (#831's fixed-point discipline), so a spurious one
    * costs a walk and no DOM writes.
    */
-  /**
-   * The subtree the settled-interaction pass audits: a bounded climb from
-   * the interaction's own target, falling back to `document.body` only when
-   * there is no target to localise around (a focus event on the document
-   * itself, or a pass scheduled before any target was recorded).
-   */
-  function interactionAuditRoot(): Element {
-    const target = lastInteractionTarget
-    if (!target?.isConnected) return document.body
-    let root: HTMLElement = target
-    for (let i = 0; i < INTERACTION_AUDIT_DEPTH; i += 1) {
-      const parent: HTMLElement | null = root.parentElement
-      if (parent === null || parent === document.body) break
-      // The ancestor that holds the whole list is where "local to the
-      // interaction" stops being true.
-      if (parent.childElementCount > INTERACTION_AUDIT_MAX_FANOUT) break
-      root = parent
-    }
-    return root
-  }
-
   function runInteractionContrast(): void {
     interactionTimer = null
     // Gated per half, not once for both (bot-found, Codex review round 1 on
@@ -1135,21 +1101,27 @@ export function createContentSession(
     // comment describes. `recontrastAll()` is self-gating anyway: it
     // iterates only COMMITTED scopes.
     if (
-      !interactionAuditOverBudget &&
+      interactionAuditOverruns < INTERACTION_AUDIT_MAX_OVERRUNS &&
       document.documentElement.hasAttribute(DARK_THEME_ATTR)
     ) {
       try {
         const startedAt = performance.now()
-        runContrastChannel(interactionAuditRoot())
+        // document.body, not a subtree around the interaction: this channel
+        // realizes document-scoped artifacts, so it has to have scanned the
+        // whole document to know what they should contain. See
+        // INTERACTION_AUDIT_BUDGET_MS's own doc comment.
+        runContrastChannel(document.body)
         const elapsed = performance.now() - startedAt
         if (elapsed > INTERACTION_AUDIT_BUDGET_MS) {
-          interactionAuditOverBudget = true
+          interactionAuditOverruns += 1
+          const stopping =
+            interactionAuditOverruns >= INTERACTION_AUDIT_MAX_OVERRUNS
           // Deliberately visible. A channel silently switching itself off is
           // worse than one that never ran, because the next person to wonder
           // why a hover repair stopped happening has nothing to find.
           // eslint-disable-next-line no-console
           console.info(
-            `[some-filter] settled-interaction audit took ${Math.round(elapsed)}ms (budget ${INTERACTION_AUDIT_BUDGET_MS}ms); disabling it for this page. Full rounds still cover it.`
+            `[some-filter] settled-interaction audit took ${Math.round(elapsed)}ms (budget ${INTERACTION_AUDIT_BUDGET_MS}ms); ${stopping ? "disabling it for this page. Full rounds still cover it." : "one more pass allowed, so a settled state is what it leaves behind."}`
           )
         }
       } catch (error) {
@@ -1193,11 +1165,6 @@ export function createContentSession(
     const target = event.target
     const node = target instanceof Node ? target : null
     if (node !== null && isExtensionAuthored(node)) return
-
-    // Remembered so the settled pass can audit where the interaction
-    // actually happened rather than the whole document.
-    lastInteractionTarget =
-      node !== null && isHTMLElementNode(node) ? node : null
 
     if (interactionTimer !== null) clearTimeout(interactionTimer)
     interactionTimer = setTimeout(runInteractionContrast, INTERACTION_SETTLE_MS)
