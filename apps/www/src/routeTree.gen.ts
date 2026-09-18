@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as MissionRouteImport } from './routes/mission'
+import { Route as ExtensionsRouteImport } from './routes/extensions'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as DashboardRouteImport } from './routes/_dashboard'
 import { Route as IndexRouteImport } from './routes/index'
@@ -25,6 +26,11 @@ import { Route as DashboardSessionsSessionIdRouteImport } from './routes/_dashbo
 const MissionRoute = MissionRouteImport.update({
   id: '/mission',
   path: '/mission',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExtensionsRoute = ExtensionsRouteImport.update({
+  id: '/extensions',
+  path: '/extensions',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -86,6 +92,7 @@ const DashboardSessionsSessionIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/extensions': typeof ExtensionsRoute
   '/mission': typeof MissionRoute
   '/app': typeof DashboardAppRoute
   '/jobs': typeof DashboardJobsRoute
@@ -99,6 +106,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/extensions': typeof ExtensionsRoute
   '/mission': typeof MissionRoute
   '/app': typeof DashboardAppRoute
   '/jobs': typeof DashboardJobsRoute
@@ -114,6 +122,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_dashboard': typeof DashboardRouteWithChildren
   '/auth': typeof AuthRoute
+  '/extensions': typeof ExtensionsRoute
   '/mission': typeof MissionRoute
   '/_dashboard/app': typeof DashboardAppRoute
   '/_dashboard/jobs': typeof DashboardJobsRoute
@@ -129,6 +138,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/extensions'
     | '/mission'
     | '/app'
     | '/jobs'
@@ -142,6 +152,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/extensions'
     | '/mission'
     | '/app'
     | '/jobs'
@@ -156,6 +167,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_dashboard'
     | '/auth'
+    | '/extensions'
     | '/mission'
     | '/_dashboard/app'
     | '/_dashboard/jobs'
@@ -171,6 +183,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ExtensionsRoute: typeof ExtensionsRoute
   MissionRoute: typeof MissionRoute
 }
 
@@ -181,6 +194,13 @@ declare module '@tanstack/react-router' {
       path: '/mission'
       fullPath: '/mission'
       preLoaderRoute: typeof MissionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/extensions': {
+      id: '/extensions'
+      path: '/extensions'
+      fullPath: '/extensions'
+      preLoaderRoute: typeof ExtensionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -293,6 +313,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRouteWithChildren,
   AuthRoute: AuthRoute,
+  ExtensionsRoute: ExtensionsRoute,
   MissionRoute: MissionRoute,
 }
 export const routeTree = rootRouteImport

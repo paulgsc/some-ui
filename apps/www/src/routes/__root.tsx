@@ -39,7 +39,11 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     const isPublicRoute =
       normalizedPathname === "/" ||
       normalizedPathname === "/auth" ||
-      normalizedPathname === "/resume"
+      normalizedPathname === "/resume" ||
+      // A page built to be sent to someone who has no account here and
+      // never will - gating it behind the passkey screen would defeat the
+      // only reason it exists.
+      normalizedPathname === "/extensions"
     if (!isPublicRoute && !hasDecorativeSession()) {
       throw redirect({
         to: "/auth",

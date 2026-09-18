@@ -6,6 +6,7 @@ import {
   ArrowUpRight,
   BookOpen,
   FileText,
+  Puzzle,
   Sparkles,
 } from "lucide-react"
 
@@ -32,7 +33,10 @@ type DestinationBase = {
 // typed against the router like the two in-app destinations can.
 type Destination =
   | (DestinationBase & { external: true; href: string })
-  | (DestinationBase & { external?: false; href: "/app" | "/resume" })
+  | (DestinationBase & {
+      external?: false
+      href: "/app" | "/resume" | "/extensions"
+    })
 
 const DESTINATIONS: ReadonlyArray<Destination> = [
   {
@@ -51,6 +55,14 @@ const DESTINATIONS: ReadonlyArray<Destination> = [
     cta: "Browse Storybook",
     href: `${import.meta.env.BASE_URL}storybook/`,
     external: true,
+  },
+  {
+    title: "Browser extensions",
+    description:
+      "Six small tools that run on your machine and talk to no server - what each one does, and how far along it is.",
+    icon: Puzzle,
+    cta: "See the six",
+    href: "/extensions",
   },
   {
     title: "Résumé & background",
