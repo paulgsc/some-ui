@@ -1117,16 +1117,21 @@ export function createContentSession(
    * nothing changed (#831's fixed-point discipline), so a spurious one
    * costs a walk and no DOM writes.
    */
-  function runInteractionContrast(): void {
+  /**
+   * The document half only. Separate from {@link runInteractionContrast} so
+   * the cooldown's trailing retry can re-run *this* and nothing else
+   * (bot-found, Codex on #1459): re-entering the whole pass would run the
+   * shadow half a second time for one deferred settle, since that half is
+   * deliberately not gated on the document cooldown and already ran when
+   * the settle was first deferred.
+   */
+  function runDocumentInteractionAudit(): void {
     interactionTimer = null
-    // Gated per half, not once for both (bot-found, Codex review round 1 on
-    // #1415). The document half is gated on a document theme; the shadow
-    // half is not, and must not be — a scope's verdict is independent of the
-    // document's, so a page reading already-dark natively (no
-    // DARK_THEME_ATTR at all) can still hold committed shadow scopes with
-    // live repairs, exactly the coexistence `buildHostTokenRule`'s own doc
-    // comment describes. `recontrastAll()` is self-gating anyway: it
-    // iterates only COMMITTED scopes.
+    // Gated on a document theme, which the shadow half is not and must not
+    // be (bot-found, Codex review round 1 on #1415) — a page reading
+    // already-dark natively, with no DARK_THEME_ATTR at all, can still hold
+    // committed shadow scopes with live repairs, exactly the coexistence
+    // `buildHostTokenRule`'s own doc comment describes.
     const settledAt = performance.now()
     if (settledAt < interactionAuditBlockedUntil) {
       // Owed, not dropped (bot-found, Codex confirming review on #1459).
@@ -1199,6 +1204,15 @@ export function createContentSession(
         onContrastAudited?.(null)
       }
     }
+  }
+
+  function runInteractionContrast(): void {
+    runDocumentInteractionAudit()
+    // Gated per half, not once for both (bot-found, Codex review round 1 on
+    // #1415), and that is why the trailing retry above targets the document
+    // half alone: a scope's verdict is independent of the document's, so
+    // this must keep running on every settle regardless of what the document
+    // cooldown is doing — but exactly once per settle.
     try {
       onInteractionSettled?.()
     } catch (error) {

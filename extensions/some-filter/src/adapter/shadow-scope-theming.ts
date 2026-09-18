@@ -872,8 +872,8 @@ export function createShadowScopeTheming(
       if (pollHandle !== null) return
       // Lifetime: identical to shadow-scope-discovery.ts's own poll —
       // started by observe() from runAutoTheme(), stopped by teardown() on a
-      // mode change, on pagehide, and whenever the tab goes hidden
-      // (content.ts's suspendAutoWatchers).
+      // mode change and on pagehide, and NOT stopped when the tab goes
+      // hidden. See that file's exemption for why this says so plainly.
       // eslint-disable-next-line extension-charter/require-named-lifetime -- lifetime stated above
       pollHandle = setInterval(
         reconcileCommittedSheets,
