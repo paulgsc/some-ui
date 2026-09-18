@@ -1296,6 +1296,9 @@ importers:
       '@some-ui/wasm-loader':
         specifier: workspace:*
         version: link:../../wasm-loader
+      lucide-react:
+        specifier: 'catalog:'
+        version: 0.562.0(react@19.0.0)
       react:
         specifier: ^19.0.0
         version: 19.0.0

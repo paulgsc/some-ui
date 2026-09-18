@@ -65,4 +65,15 @@ describe("root beforeLoad: which routes require a session", () => {
   it("leaves /auth public", () => {
     expect(callBeforeLoad("/auth")).not.toThrow()
   })
+
+  // Shared with people who have no account here, so the passkey screen would
+  // defeat the point - and the trailing-slash form is what a pasted link or a
+  // static-host rewrite can produce.
+  it("lets an unauthenticated visitor read /extensions", () => {
+    expect(callBeforeLoad("/extensions")).not.toThrow()
+  })
+
+  it("lets an unauthenticated visitor read /extensions/ (trailing slash)", () => {
+    expect(callBeforeLoad("/extensions/")).not.toThrow()
+  })
 })
