@@ -171,9 +171,15 @@ export const INTERACTION_AUDIT_BUDGET_MS = 12
  *
  * So the channel never stops; it throttles. Cost stays bounded — at most
  * one audit per cooldown on a page that cannot afford them, instead of one
- * per pointer pause — while no realization can outlive the next interaction
- * by more than this window. The failure mode the two previous revisions
- * kept reintroducing is structurally absent rather than guarded against.
+ * per pointer pause.
+ *
+ * Throttling alone does not bound how long a transient realization lives,
+ * though, and an earlier revision of this comment claimed it did. A settle
+ * landing inside the cooldown is *owed* a pass rather than denied one: the
+ * `pointerout` that ends a hover is precisely the corrective audit, and if
+ * the user stops interacting after it, no later event would ever schedule
+ * another. `trailingAuditTimer` re-arms at the cooldown's expiry, and that
+ * is what actually makes "at most one cooldown" true.
  *
  * 30s is chosen to be long relative to interaction (a burst of hovering
  * costs one audit, not one per pause) and short relative to reading a page.
@@ -882,6 +888,12 @@ export function createContentSession(
   let lastRoot: Element = document.body
   let observer: MutationObserver | null = null
   let interactionTimer: ReturnType<typeof setTimeout> | null = null
+  /**
+   * Set when a settle fell inside the cooldown, so the pass it asked for is
+   * owed rather than dropped. Fires once the cooldown expires. Lifetime: the
+   * content session — cleared by dispose() alongside `interactionTimer`.
+   */
+  let trailingAuditTimer: ReturnType<typeof setTimeout> | null = null
   let evidenceEpoch = session.epoch
   /**
    * `performance.now()` before which the settled-interaction audit stands
@@ -1115,10 +1127,34 @@ export function createContentSession(
     // live repairs, exactly the coexistence `buildHostTokenRule`'s own doc
     // comment describes. `recontrastAll()` is self-gating anyway: it
     // iterates only COMMITTED scopes.
-    if (
-      performance.now() >= interactionAuditBlockedUntil &&
-      document.documentElement.hasAttribute(DARK_THEME_ATTR)
-    ) {
+    const settledAt = performance.now()
+    if (settledAt < interactionAuditBlockedUntil) {
+      // Owed, not dropped (bot-found, Codex confirming review on #1459).
+      // The cooldown alone does not bound how long a transient realization
+      // survives, and the counterexample is the ordinary one: a `pointerout`
+      // that settles inside the cooldown *is* the corrective pass. Drop it
+      // and, if the user then stops interacting, no later event ever
+      // schedules another — a CSS-only state change mutates no DOM for a
+      // reconcile round to catch — so the hover's repair outlives the
+      // cooldown indefinitely rather than by at most one window.
+      //
+      // Re-arming at the expiry is what makes "at most one cooldown" true.
+      // The audit that eventually runs sees a page with no interaction in
+      // progress, which is exactly the state the corrective pass wanted.
+      //
+      // `??=` rather than a plain assignment: further settles inside the
+      // same cooldown are owed the *same* pass, and the expiry they would
+      // re-arm to is identical, so the first one to notice wins.
+      trailingAuditTimer ??= setTimeout(() => {
+        trailingAuditTimer = null
+        // A settle armed during the cooldown can still be pending here,
+        // and runInteractionContrast() nulls that handle on entry — which
+        // would orphan the timeout rather than cancel it, costing a
+        // redundant pass and breaking "null means not armed".
+        if (interactionTimer !== null) clearTimeout(interactionTimer)
+        runInteractionContrast()
+      }, interactionAuditBlockedUntil - settledAt)
+    } else if (document.documentElement.hasAttribute(DARK_THEME_ATTR)) {
       try {
         const startedAt = performance.now()
         // document.body, not a subtree around the interaction: this channel
@@ -1241,6 +1277,10 @@ export function createContentSession(
     teardown(): void {
       for (const type of INTERACTION_EVENTS) {
         document.removeEventListener(type, onInteraction, INTERACTION_LISTENER)
+      }
+      if (trailingAuditTimer !== null) {
+        clearTimeout(trailingAuditTimer)
+        trailingAuditTimer = null
       }
       if (interactionTimer !== null) {
         clearTimeout(interactionTimer)
