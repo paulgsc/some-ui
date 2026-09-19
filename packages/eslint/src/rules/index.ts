@@ -14,6 +14,7 @@ export { noBareWasmSingleton } from "./no-bare-wasm-singleton.js"
 export { requireReactPeerDependency } from "./require-react-peer-dependency.js"
 export { noManualBuildExclude } from "./no-manual-build-exclude.js"
 export { noUnboundedIntent } from "./no-unbounded-intent.js"
+export { noLoadingElidedDefault } from "./no-loading-elided-default.js"
 export {
   noStructuralPaletteColor,
   noThemeBoundary,

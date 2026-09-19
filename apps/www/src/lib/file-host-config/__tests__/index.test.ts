@@ -12,7 +12,7 @@ import {
   FILE_HOST_PROXY_PATH,
   fileHostUrl,
   resolveFileHostBase,
-} from "."
+} from "@/lib/file-host-config"
 
 afterEach(() => {
   vi.unstubAllEnvs()

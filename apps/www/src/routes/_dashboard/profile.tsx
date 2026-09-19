@@ -20,7 +20,8 @@ import { cn } from "some-ui-utils"
 import { toast } from "sonner"
 
 import { useIntent, useIntentEffect } from "@/lib/intent"
-import { IntentButton } from "@/lib/intent/render"
+import { IntentButton, IntentFailure } from "@/lib/intent/render"
+import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import type { TopikLevel, UserProfile } from "@/lib/tenant"
 import { profileQuery, useProfile, useUpdateProfile } from "@/lib/tenant"
 
@@ -147,13 +148,28 @@ const ProfileForm = ({ profile }: { profile: UserProfile }): JSX.Element => {
 }
 
 const ProfileRoute = (): JSX.Element => {
-  const { data: profile, isLoading } = useProfile()
+  const outcome = queryOutcome(useProfile())
 
-  if (isLoading || !profile) {
-    return <ProfileSkeleton />
-  }
-
-  return <ProfileForm profile={profile} />
+  return matchQueryOutcome(outcome, {
+    pending: () => <ProfileSkeleton />,
+    failed: (error, retry) => <IntentFailure error={error} onRetry={retry} />,
+    ready: (profile, refreshError) => (
+      <div className="max-w-xl space-y-4">
+        {/* A cached profile through a failed background refresh may be
+            stale, so the refresh failure rides alongside the editable form
+            instead of being silently discarded - a bot review caught the
+            identical gap in `sessions/$sessionId.tsx`/`new.tsx` and this
+            file shared it. */}
+        {refreshError && (
+          <IntentFailure
+            error={refreshError.error}
+            onRetry={refreshError.retry}
+          />
+        )}
+        <ProfileForm profile={profile} />
+      </div>
+    ),
+  })
 }
 
 export const Route = createFileRoute("/_dashboard/profile")({

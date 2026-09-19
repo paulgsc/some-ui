@@ -1,7 +1,7 @@
 import type { JSX } from "react"
 import { useState } from "react"
 import { getActivity, summarizeConfig } from "@some-ui/activity-catalog"
-import type { Intent } from "@some-ui/intent-kit"
+import type { Intent, IntentError } from "@some-ui/intent-kit"
 import { matchIntent } from "@some-ui/intent-kit"
 import {
   Badge,
@@ -21,6 +21,7 @@ import { cn, formatRelativeTime } from "some-ui-utils"
 
 import { useIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton, IntentFailure } from "@/lib/intent/render"
+import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import type { SessionRecord, SessionStatus } from "@/lib/tenant"
 import {
   sessionsQuery,
@@ -358,8 +359,13 @@ const IN_PROGRESS_STATUSES: ReadonlyArray<SessionStatus> = [
   "scheduled",
 ]
 
-const SessionsRoute = (): JSX.Element => {
-  const { data: sessions, isLoading } = useSessions()
+const SessionsList = ({
+  sessions,
+  refreshError,
+}: {
+  sessions: Array<SessionRecord>
+  refreshError?: { error: IntentError; retry: () => void }
+}): JSX.Element => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   const handleToggleSelected = (id: string): void => {
@@ -378,8 +384,28 @@ const SessionsRoute = (): JSX.Element => {
     setSelectedIds(new Set())
   }
 
-  if (isLoading || !sessions) {
-    return <SessionsSkeleton />
+  if (sessions.length === 0) {
+    return (
+      <div className="max-w-3xl space-y-4">
+        {/* See the nonempty branch below's identical comment - an empty
+            cache is not exempt from the same stale/failure signal. */}
+        {refreshError && (
+          <IntentFailure
+            error={refreshError.error}
+            onRetry={refreshError.retry}
+          />
+        )}
+        <Card>
+          <CardContent className="text-muted-foreground flex flex-col items-center gap-2 py-10 text-center text-sm">
+            <Sparkles className="size-6" />
+            <p>No sessions yet.</p>
+            <Button asChild size="sm" className="mt-2">
+              <Link to="/app">Start something new</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   const byRecency = [...sessions].sort((a, b) =>
@@ -391,22 +417,18 @@ const SessionsRoute = (): JSX.Element => {
   const drafts = byRecency.filter((s) => s.status === "draft")
   const completed = byRecency.filter((s) => s.status === "completed")
 
-  if (sessions.length === 0) {
-    return (
-      <Card>
-        <CardContent className="text-muted-foreground flex flex-col items-center gap-2 py-10 text-center text-sm">
-          <Sparkles className="size-6" />
-          <p>No sessions yet.</p>
-          <Button asChild size="sm" className="mt-2">
-            <Link to="/app">Start something new</Link>
-          </Button>
-        </CardContent>
-      </Card>
-    )
-  }
-
   return (
     <div className="max-w-3xl space-y-8">
+      {/* A cached list stays on screen while its own background refresh
+          failed (see query-outcome's header) - this banner is the "honest
+          stale/failure signal" the route-arrival invariant requires instead
+          of silently discarding useful content. */}
+      {refreshError && (
+        <IntentFailure
+          error={refreshError.error}
+          onRetry={refreshError.retry}
+        />
+      )}
       {selectedIds.size > 0 && (
         <BulkActionBar
           selectedIds={selectedIds}
@@ -433,6 +455,18 @@ const SessionsRoute = (): JSX.Element => {
       />
     </div>
   )
+}
+
+const SessionsRoute = (): JSX.Element => {
+  const outcome = queryOutcome(useSessions())
+
+  return matchQueryOutcome(outcome, {
+    pending: () => <SessionsSkeleton />,
+    failed: (error, retry) => <IntentFailure error={error} onRetry={retry} />,
+    ready: (sessions, refreshError) => (
+      <SessionsList sessions={sessions} refreshError={refreshError} />
+    ),
+  })
 }
 
 export const Route = createFileRoute("/_dashboard/sessions/")({

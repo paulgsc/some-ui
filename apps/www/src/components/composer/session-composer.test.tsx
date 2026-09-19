@@ -74,7 +74,15 @@ function nameFrom(body: unknown): string {
  * regression tests can count POSTs (creates) vs PATCHes (updates)
  * precisely - the whole point of the double-submit and middle-failure
  * assertions below. */
-function installFileHostSuccess(options: { failPatch?: boolean }): {
+function installFileHostSuccess(options: {
+  failPatch?: boolean
+  /** Default 500 (retryable). Pass a 4xx to reproduce a *definitive*
+   * activate rejection - a bot review's fresh finding: `mapFileHostError`
+   * marks that non-retryable but never `blocksResubmission` (only a
+   * `FileHostUnreachableError` timeout sets that), a shape the earlier
+   * "failPatch" 500 case can't reach. */
+  failPatchStatus?: number
+}): {
   calls: Array<FetchCall>
   restore: () => void
 } {
@@ -113,7 +121,7 @@ function installFileHostSuccess(options: { failPatch?: boolean }): {
           JSON.stringify({
             error: { code: "internal_error", message: "boom" },
           }),
-          { status: 500 }
+          { status: options.failPatchStatus ?? 500 }
         )
       }
       const sessionId = url.split("/sessions/")[1]
@@ -242,6 +250,20 @@ describe("SessionComposer: Save & Play, new session - success path and regressio
     // The chain never navigated - the failure is visible instead.
     expect(navigateSpy).not.toHaveBeenCalled()
 
+    // A bot review's fresh finding beyond the ambiguous-timeout case: the
+    // create here *definitely* succeeded (only the activate PATCH failed),
+    // so `createIntent.state` is `succeeded`, not `failed` - "Save as draft"
+    // must still be disabled, since clicking it would fire a second
+    // `POST /sessions` for a session that already exists under a different
+    // id. "Save & Play" itself must stay enabled, though - its own "Try
+    // again" retries only the (safe, idempotent) activate PATCH, asserted
+    // below.
+    expect(
+      screen
+        .getByRole("button", { name: /save as draft/i })
+        .hasAttribute("disabled")
+    ).toBe(true)
+
     const postsBeforeRetry = calls.filter(
       (c) => c.method === "POST" && c.url.includes("/sessions")
     )
@@ -261,6 +283,46 @@ describe("SessionComposer: Save & Play, new session - success path and regressio
     // Still exactly one session created; retry only re-ran the PATCH.
     expect(postsAfterRetry).toHaveLength(1)
     expect(patches.length).toBeGreaterThanOrEqual(2)
+    restore()
+  })
+
+  it("a definitive (non-retryable) activate failure disables Save & Play too - not just its sibling - so its own onPress fallback can't restart the chain", async () => {
+    const { calls, restore } = installFileHostSuccess({
+      failPatch: true,
+      failPatchStatus: 400,
+    })
+    await renderAtReviewStep()
+
+    const saveAndPlay = screen.getByRole("button", { name: /save.*play/i })
+    fireEvent.click(saveAndPlay)
+
+    await screen.findByRole("alert")
+    // Unlike the 500 case above, a 4xx activate failure is not retryable, so
+    // `IntentButton` shows no "Try again" - and, absent this fix, would fall
+    // back to `onClick={onPress}` (`handleSaveAndPlay`, which restarts the
+    // *whole* chain from `createIntent.start` since it has no way to know a
+    // session already exists). The fix disables the button outright instead
+    // of leaving that fallback reachable.
+    expect(screen.queryByRole("button", { name: /try again/i })).toBeNull()
+    expect(
+      screen
+        .getByRole("button", { name: /save.*play/i })
+        .hasAttribute("disabled")
+    ).toBe(true)
+    expect(
+      screen
+        .getByRole("button", { name: /save as draft/i })
+        .hasAttribute("disabled")
+    ).toBe(true)
+
+    // Clicking a disabled button fires no click event (jsdom mirrors real
+    // browser behavior here) - confirms this isn't just a visual affordance
+    // but actually prevents the second POST.
+    fireEvent.click(saveAndPlay)
+    const posts = calls.filter(
+      (c) => c.method === "POST" && c.url.includes("/sessions")
+    )
+    expect(posts).toHaveLength(1)
     restore()
   })
 })
