@@ -138,6 +138,42 @@ export const SessionComposer = ({
     failed: (error) => !error.retryable && error.blocksResubmission === true,
   })
 
+  /**
+   * Whether a composed button's *own* state currently offers a legitimate
+   * retry (`IntentButton`'s "Try again", wired to the composed `retry`
+   * closure) - as opposed to a state that would fall back to `onPress`
+   * (idle, or a non-retryable failure `IntentButton` doesn't itself block).
+   *
+   * `createBlocked` alone isn't enough to decide whether to force-disable a
+   * button: gating it by `activeAction` (an earlier version of this fix)
+   * correctly left a legitimate 5xx activate-retry enabled, but a bot review
+   * caught the case that distinction missed - a *non-retryable* 4xx on the
+   * activate PATCH after a successful create. There, `saveAndPlayState` is
+   * `failed({retryable: false, blocksResubmission: undefined}, retry)`:
+   * `IntentButton`'s own logic sees a non-*blocked* non-retryable failure and
+   * falls back to `onClick={onPress}` (its generally-correct rule for a
+   * single mutation, where firing `onPress` again is just a fresh, safe
+   * attempt) - but `onPress` here is `handleSaveAndPlay`, which restarts the
+   * *whole* chain from `createIntent.start` because it has no way to know a
+   * session already exists, mismatching that generic rule against this
+   * composer's own compound one. Checking "does this button's own state
+   * offer a retry" instead of "is this the active button" closes that gap
+   * without special-casing activeAction at all: a button is force-disabled
+   * by `createBlocked` unless its own composed state is a *retryable*
+   * failure - a `disabled` HTML button fires no click, so this also removes
+   * the risky `onClick` outright, not just its visible affordance.
+   */
+  function hasOwnRetryableFailure<T, TStep extends string = never>(
+    state: Intent<T, TStep>
+  ): boolean {
+    return matchIntent<T, boolean, TStep>(state, {
+      idle: () => false,
+      working: () => false,
+      succeeded: () => false,
+      failed: (error) => error.retryable,
+    })
+  }
+
   // The chain: a new session's "Save & Play" creates, then activates. The
   // middle failure - created, but couldn't start - is reported honestly
   // rather than folded into a generic message: `composeSequentialIntents`
@@ -537,12 +573,13 @@ export const SessionComposer = ({
               variant="outline"
               disabled={
                 anySaving ||
-                // Only forced when this button is the *sibling* - when it's
-                // the active one, its own `state` already reflects
-                // `createIntent`'s truth (including a legitimate, retryable
-                // activate-PATCH failure after a successful create), and
-                // `IntentButton`'s own logic is what should decide that.
-                (activeAction !== "draft" && createBlocked) ||
+                // Forced disabled whenever a fresh create is unsafe, *unless*
+                // this button's own state currently offers a legitimate
+                // retry of its own (see `hasOwnRetryableFailure`'s header) -
+                // not gated by `activeAction`, which let a non-retryable
+                // activate-PATCH failure on the *active* button slip through
+                // to its `onPress` fallback.
+                (createBlocked && !hasOwnRetryableFailure(saveDraftState)) ||
                 durationCheck.state !== "valid"
               }
             />
@@ -556,7 +593,7 @@ export const SessionComposer = ({
               }
               disabled={
                 anySaving ||
-                (activeAction !== "play" && createBlocked) ||
+                (createBlocked && !hasOwnRetryableFailure(saveAndPlayState)) ||
                 durationCheck.state !== "valid"
               }
             />
