@@ -110,7 +110,7 @@ afterEach(() => {
 
 describe("composer Save & Play, new session (#933's flow)", () => {
   describe.each(REJECTING_MODES)("file_host sabotaged: %s", (mode) => {
-    it("re-enables the button once the request settles (sanity)", async () => {
+    it("re-enables the button once the request settles, for a retryable failure - stays disabled for a non-retryable one (sanity)", async () => {
       await renderAtReviewStep()
       const restore = installFileHostSabotage(mode)
 
@@ -119,12 +119,16 @@ describe("composer Save & Play, new session (#933's flow)", () => {
         clickSaveAndPlay()
       })
 
+      // A non-retryable failure (`not-configured`) disables the button
+      // outright rather than re-enabling it as a resubmittable action - see
+      // IntentButton's own header. Every other rejecting mode here is
+      // retryable, so the button comes back as "Try again".
       await waitFor(() => {
         expect(
           isDisabled(
             screen.getByRole("button", { name: /save.*play|try.*again/i })
           )
-        ).toBe(false)
+        ).toBe(!isRetryableMode(mode))
       })
       restore()
     })
@@ -168,7 +172,7 @@ describe("composer Save & Play, new session (#933's flow)", () => {
     // deadline so this test doesn't itself wait out the real ~10s default;
     // see `client.ts`'s `resolveTimeoutMs` for why a stub set here, after
     // the module has already loaded, still takes effect.
-    it("eventually tells the person something is wrong, once the transport's own deadline fires - with no retry control, since createSession is a POST a bot review caught as unsafe to retry blind", async () => {
+    it("eventually tells the person something is wrong, with the original action disabled rather than resubmittable, since createSession is a POST a bot review caught as unsafe to retry blind", async () => {
       vi.stubEnv("VITE_FILE_HOST_TIMEOUT_MS", "50")
       await renderAtReviewStep()
       const restore = installFileHostSabotage("hang")
@@ -179,15 +183,18 @@ describe("composer Save & Play, new session (#933's flow)", () => {
       })
 
       await expectSomeFailureAffordance(document.body)
-      expect(
-        isDisabled(screen.getByRole("button", { name: /save.*play/i }))
-      ).toBe(false)
       // A timeout on createSession's own POST /sessions cannot tell "never
       // reached file_host" from "file_host already created it and the
-      // response was slow" - offering "Try again" here is a duplicate-
-      // session button with a friendly label. See client.ts's
-      // isNonIdempotent and FileHostUnreachableError's retryable doc.
+      // response was slow" - neither a "Try again" button nor a clickable
+      // original action is safe here, since either would resubmit the same
+      // POST and risk a duplicate session. See client.ts's isNonIdempotent,
+      // FileHostUnreachableError's retryable doc, and IntentButton's own
+      // header on why a non-retryable failure disables outright rather than
+      // falling back to onPress.
       expectRetryAffordanceTracksRetryable(document.body, false)
+      expect(
+        isDisabled(screen.getByRole("button", { name: /save.*play/i }))
+      ).toBe(true)
       restore()
     })
   })

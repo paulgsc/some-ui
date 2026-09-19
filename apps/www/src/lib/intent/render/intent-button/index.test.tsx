@@ -109,7 +109,8 @@ describe("IntentButton", () => {
     expect(retry).toHaveBeenCalledTimes(1)
   })
 
-  it("failed, not retryable: no retry control - the inert-button defect in a new costume, avoided", () => {
+  it("failed, not retryable: no retry control, and the original action is disabled rather than resubmittable", () => {
+    const onPress = vi.fn()
     render(
       <IntentButton
         state={failed(
@@ -121,7 +122,7 @@ describe("IntentButton", () => {
           },
           vi.fn()
         )}
-        onPress={vi.fn()}
+        onPress={onPress}
         idleLabel="Enable"
         workingLabel="Enabling..."
       />
@@ -131,7 +132,15 @@ describe("IntentButton", () => {
       "This feature isn't available on this deployment."
     )
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull()
-    expect(screen.getByRole("button", { name: "Enable" })).toBeTruthy()
+    const button = screen.getByRole("button", { name: "Enable" })
+    // Disabled outright, not a fallback to onPress: a non-retryable failure
+    // can mean "this write may have already succeeded" just as much as
+    // "this feature is unavailable," and this component can't tell which -
+    // see this file's own header on the bot-review finding that caught the
+    // earlier fall-back-to-onPress behavior.
+    expect(button.hasAttribute("disabled")).toBe(true)
+    fireEvent.click(button)
+    expect(onPress).not.toHaveBeenCalled()
   })
 
   it("composes an external disabled condition (e.g. a form's isDirty gate) with the intent's own state", () => {

@@ -18,6 +18,17 @@
  * visible horizontal jump. A retryable failure also replaces the original
  * action with its retry rather than rendering two controls that dispatch the
  * same intent.
+ *
+ * A *non*-retryable failure disables the button outright rather than
+ * falling back to `onPress` - a bot review on the route-arrival PR caught an
+ * earlier version that didn't: `retryable: false` can now mean "this write
+ * may have already succeeded and resubmitting it could duplicate it"
+ * (`file-host-config/client.ts`'s deadline on a non-idempotent `POST`), not
+ * only "this feature is unavailable and trying again fails the same way."
+ * Falling back to `onPress` was harmless for the latter and dangerous for
+ * the former, and this component has no way to tell which kind of
+ * non-retryable `IntentError` it was handed - so it treats every one the
+ * safer way.
  */
 
 import type { JSX, PropsWithChildren, ReactNode } from "react"
@@ -131,8 +142,8 @@ export const IntentButton = <TStep extends string = never>({
               "bg-[linear-gradient(135deg,rgba(0,0,0,0.15)_25%,transparent_25%,transparent_50%,rgba(0,0,0,0.15)_50%,rgba(0,0,0,0.15)_75%,transparent_75%,transparent)]",
               "bg-[size:1rem_1rem]" // Adjust tile size for tighter/wider stripes
             )}
-            disabled={disabled}
-            onClick={error.retryable ? retry : onPress}
+            disabled={disabled || !error.retryable}
+            onClick={error.retryable ? retry : undefined}
             title={title}
           >
             {error.retryable ? "Try again" : idleLabel}
