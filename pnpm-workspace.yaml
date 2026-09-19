@@ -71,3 +71,37 @@ allowBuilds:
   esbuild: true
   spawn-sync: true
   unrs-resolver: true
+
+# Turbo sets `pnpm_config_verify_deps_before_run` in every task's environment
+# (the literal is in its native binary, beside PNPM_HOME and
+# NPM_CONFIG_STORE_DIR), which turns on pnpm's pre-run dependency check. That
+# check is unconditionally broken here, so leave it off — see #1461.
+#
+# `checkDepsStatus` compares each setting recorded in
+# node_modules/.pnpm-workspace-state-v1.json against the freshly resolved
+# config. `enableGlobalVirtualStore` is stored as JSON `null` and resolves to
+# `undefined`, and `equals(null, undefined)` is false — so the comparison
+# trips on every single check, for a setting nothing in this repo sets. pnpm
+# then silently runs a full workspace install before the task's own command,
+# once per task. Running one build in `warn` mode says it out loud:
+#
+#   [WARN] Your node_modules are out of sync with your lockfile.
+#          The value of the enableGlobalVirtualStore setting has changed
+#
+# `warn` is not the conservative middle ground it looks like: all 37 tasks of
+# a full build emit that same line, none of them because anything is actually
+# stale. A warning that fires unconditionally teaches people to skip it, so
+# it is worse than silence for the day the check has something real to say.
+#
+# This has to live HERE, not in .npmrc. When pnpm-workspace.yaml exists its
+# settings overwrite the .npmrc-derived config wholesale, and only the env
+# var is re-applied afterwards — so `verify-deps-before-run=false` in .npmrc
+# looks correct, does nothing, and reads like evidence that the setting is
+# irrelevant. It is not.
+#
+# What this gives up: pnpm no longer auto-heals a stale node_modules before
+# running a task. CI installs with --frozen-lockfile before it builds, and
+# changing a dependency locally means running `pnpm install`, so the cost is
+# a clearer error instead of a silent fixup. Drop this line once pnpm stops
+# serialising an unset setting as `null` and comparing it to `undefined`.
+verifyDepsBeforeRun: false
