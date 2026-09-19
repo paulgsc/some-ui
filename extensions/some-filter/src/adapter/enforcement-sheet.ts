@@ -61,6 +61,21 @@
  * shadow boundaries for an extension-injected sheet specifically (as
  * opposed to whatever mechanism the ADR's own §3.1 measurement used).
  *
+ * Independently confirmed live, not just in this sandbox: the user ran the
+ * identical probe (a fresh `attachShadow({mode:"open"})` host, a child with
+ * `background-color`/`color` set inline with `!important` — the exact case
+ * ADR 0002 §2.1's own table cites as the reason this mechanism is worth a
+ * rewrite in the first place) against a real production page
+ * (github.com), with the tab confirmed `data-sw-tab-state === "off"` first
+ * (so the existing shadow-scope-theming pipeline, which legitimately
+ * themes shadow roots via `adoptedStyleSheets` and is a real, separate
+ * confound if left running, was not a factor). Result: `background-color:
+ * rgba(0, 0, 0, 0)` and `color: rgb(134, 153, 177)` — both properties
+ * overridden, exactly as this sandbox's own e2e case shows. Two
+ * independent Chromium instances, two different pages, one isolated to
+ * rule out the confound above; this is no longer a single-environment
+ * anomaly to hope goes away.
+ *
  * Partial update: the user manually loaded a real `build:firefox` build in
  * live Firefox and reported the canvas rule, the erase rule's `color`, and
  * `borderStrong`'s own `border-color` all landing correctly on a real page —
