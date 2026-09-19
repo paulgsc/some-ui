@@ -169,6 +169,27 @@ export function createFileHostTransport(
  * Every `file_host` route answers with a JSON body, including the deletes
  * (`{ removed }`, `{ deletedCount }`) - there is no 204 to special-case.
  */
+/**
+ * Whether `error` is this transport's own deadline firing, as opposed to a
+ * fast rejection (connection refused, a 5xx) or an unconfigured feature.
+ *
+ * The distinction matters for retry policy, not just diagnostics: TanStack
+ * Query's default `retry: 3` (`providers/tanstack-query.tsx`) is cheap to
+ * honor for a fast failure, but multiplies a *timeout* by however many
+ * attempts it allows - a black-holed connection has no reason to behave
+ * differently on a second attempt, so retrying one just pays the same
+ * deadline again for nothing. `providers/tanstack-query.tsx` uses this to
+ * make a timeout terminal after one attempt while still retrying every
+ * other `file_host` failure.
+ */
+export function isFileHostTimeout(error: unknown): boolean {
+  return (
+    error instanceof FileHostUnreachableError &&
+    error.cause instanceof DOMException &&
+    error.cause.name === "TimeoutError"
+  )
+}
+
 export async function requestJSON<T>(
   transport: FileHostTransport,
   route: string,
