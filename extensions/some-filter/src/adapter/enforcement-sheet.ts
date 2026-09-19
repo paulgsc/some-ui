@@ -24,8 +24,15 @@
  * to run *alongside* that machinery during the flagged rollout, not instead
  * of it: an unguarded erase rule would blank the veil's own opaque cover
  * (and, since the veil carries `popover="manual"`, would also be
- * re-painted by the `[popover]` semantic-surface rule below with the wrong
+ * re-painted by the `[popover]` highlight-table rule below with the wrong
  * color) the moment both are active in the same tab.
+ *
+ * `docs/adr/0003-embrace-shadow-crossing-and-highlight-table.md` amends the
+ * "Open, blocking finding" immediately below (accepts shadow crossing as
+ * the mechanism, conditional on the e2e canary this file's own tests carry
+ * staying in the suite permanently) and implements its §3 highlight table
+ * (`HIGHLIGHT_TABLE`, further down) — everything except that ADR's §3.1
+ * `svg *` row, held back deliberately for its own sign-off.
  *
  * ── Open, blocking finding: ADR 0002 §3.1 did not replicate here ──────────
  *
@@ -151,40 +158,110 @@ const CANVAS_SELECTOR = ":root:root, :root:root body"
 const ERASE_SELECTOR = "*:not(img):not(video):not(svg):not(canvas)"
 
 /**
- * §2.3's named semantic-surface vocabulary — the only vocabulary available
- * without reading the page (§2.3's own argument: structural role, never a
- * vendor's own class/id names). Tier choices mirror `theme-apply.ts`'s own
- * `DARK_THEME_BODY_RULES` (`dialog`/`[popover]` → `surface`,
- * `input`/`textarea`/`select` → `inputBg`, `th` → `bg2`) so a page themed by
- * both layers at once — the flagged state this step ships in — does not
- * show two disagreeing opinions about the same element's elevation.
- * `button` and `nav`/`header`/`aside` have no existing-pipeline precedent to
- * match: `button` joins the input group (§2.3's own listing groups it
- * there), and `nav`/`header`/`aside` get the lowest fill tier (`bg1`) as the
- * smallest available elevation step for a landmark region over an otherwise
- * flattened `bg0` canvas — a placement choice, not a measured one; ADR 0002
- * §7 step 4's eye-strain validation is where that gets checked against a
- * real page rather than argued from here.
+ * ADR 0003 §3 — the compile-time highlight table: an IDE syntax
+ * highlighter's token-to-color grammar, not a page-reading classifier.
+ * Originally just background-color tiers for a §2.3 "semantic surface"
+ * vocabulary (dialog/input/th/nav); generalized here to any property a
+ * static selector table can reasonably own, because the erase rule's own
+ * flat `color: ${swatch.text0}` on every element was itself an unmeasured
+ * "div soup" risk of exactly the kind ADR 0002 §5.4 already named for
+ * borders — this is that same gap, for content.
+ *
+ * Every text-tier/link/code row below is *ported*, not invented: it
+ * reproduces `theme-apply.ts`'s own `DARK_THEME_BODY_RULES`, already
+ * shipped without incident in the existing pipeline. Reusing those exact
+ * selector/tier choices (rather than picking new ones) means a page themed
+ * by both layers at once — the flagged state this step ships in — shows
+ * one opinion about a given element's color, not two disagreeing ones.
+ * `accent-color` has no existing-pipeline precedent — flagged inline below.
+ *
+ * `nav`/`header`/`aside` → `bg1` and `button` joining the input group are
+ * the one placement choice with no ported precedent either way (carried
+ * over unchanged from this table's original, narrower form) — ADR 0002 §7
+ * step 4's eye-strain validation is where that gets checked against a real
+ * page rather than argued from here.
+ *
+ * Deliberately excludes the `svg *` → `fill`/`stroke: currentColor` row ADR
+ * 0003 §3.1 proposes: that one is a strictly new cost (flattens
+ * intentionally multi-color icon content) rather than a ported or additive
+ * win like every row actually below, and ADR 0003 §3.1 itself asks for it
+ * to be seen live before landing, not bundled in on this table's own
+ * precedent.
  *
  * Each selector is wrapped in `:where()` (zero specificity of its own) so
  * every entry's specificity is exactly `EXT_GUARD`'s (0,2,0) regardless of
  * how complex the base selector is — comfortably past the erase rule's
- * (0,0,4) — and to match `theme-apply.ts`'s own `:where(...)${EXT_GUARD}`
- * idiom for the identical reason it's used there.
+ * (0,0,4), for both `color` and `background-color` alike — and to match
+ * `theme-apply.ts`'s own `:where(...)${EXT_GUARD}` idiom for the identical
+ * reason it's used there. `declarations` returns raw CSS text rather than a
+ * single token, since a row like `code`/`pre` needs more than one property.
  */
-const SEMANTIC_SURFACES: ReadonlyArray<{
+const HIGHLIGHT_TABLE: ReadonlyArray<{
   readonly selector: string
-  readonly tier: (swatch: Swatch) => string
+  readonly declarations: (swatch: Swatch) => string
 }> = [
-  { selector: "dialog, [popover]", tier: (s) => s.surface },
+  // Text tiers — ported from DARK_THEME_BODY_RULES.
+  {
+    selector: "h1, h2, h3, h4, h5, h6",
+    declarations: (s) => `color: ${s.text0} !important;`,
+  },
+  {
+    selector:
+      "p, span, label, caption, figcaption, blockquote, cite, li, dt, dd",
+    declarations: (s) => `color: ${s.text1} !important;`,
+  },
+  {
+    selector: "small, sub, sup, abbr, time",
+    declarations: (s) => `color: ${s.text2} !important;`,
+  },
+  { selector: "a", declarations: (s) => `color: ${s.link} !important;` },
+  {
+    selector: "a:visited",
+    declarations: (s) => `color: ${s.linkVisited} !important;`,
+  },
+  {
+    selector: "code, kbd, samp",
+    declarations: (s) =>
+      `background-color: ${s.bg3} !important; color: ${s.codeFg} !important;`,
+  },
+  {
+    selector: "pre",
+    declarations: (s) =>
+      `background-color: ${s.bg2} !important; color: ${s.text0} !important;`,
+  },
+
+  // Semantic surfaces — this table's original rows (#1463).
+  {
+    selector: "dialog, [popover]",
+    declarations: (s) => `background-color: ${s.surface} !important;`,
+  },
   {
     selector:
       '[role="dialog"], [role="menu"], [role="listbox"], [role="tooltip"]',
-    tier: (s) => s.surface,
+    declarations: (s) => `background-color: ${s.surface} !important;`,
   },
-  { selector: "input, textarea, select, button", tier: (s) => s.inputBg },
-  { selector: "th, thead", tier: (s) => s.bg2 },
-  { selector: "nav, header, aside", tier: (s) => s.bg1 },
+  {
+    selector: "input, textarea, select, button",
+    declarations: (s) => `background-color: ${s.inputBg} !important;`,
+  },
+  {
+    selector: "th, thead",
+    declarations: (s) => `background-color: ${s.bg2} !important;`,
+  },
+  {
+    selector: "nav, header, aside",
+    declarations: (s) => `background-color: ${s.bg1} !important;`,
+  },
+
+  // New (ADR 0003 §3, not §3.1's svg row — see this table's own header).
+  // No existing-pipeline precedent: theme-apply.ts never themed native
+  // checkbox/radio/range controls at all. accent-color is the dedicated,
+  // compile-time-only CSS property for exactly this — no DOM reads, no
+  // fill/stroke flattening risk the svg row carries.
+  {
+    selector: "input, textarea, select",
+    declarations: (s) => `accent-color: ${s.link} !important;`,
+  },
 ]
 
 /**
@@ -195,8 +272,10 @@ const SEMANTIC_SURFACES: ReadonlyArray<{
  * Implements ADR 0002 §2.2 (erase, don't paint) + §2.3 (border-led
  * hierarchy via `swatch.borderStrong`, the token `adapter/swatches/index.ts`
  * adds for exactly this) + §3.2 (the canvas specificity boost) + §3.5
- * (`background-image: none`, the required, blunt fidelity cost) + the
- * `[data-my-ext]` exclusion this module's own header explains.
+ * (`background-image: none`, the required, blunt fidelity cost) + ADR 0003
+ * §3 (`HIGHLIGHT_TABLE`, the compile-time token-to-color table replacing
+ * flat erasure for text/links/code/form controls) + the `[data-my-ext]`
+ * exclusion this module's own header explains.
  *
  * Deliberately omits `color-scheme: dark` (§3.3/§3.4), despite §3.3
  * describing it as part of "the full sheet": this file's own
@@ -218,9 +297,9 @@ const SEMANTIC_SURFACES: ReadonlyArray<{
  * environment says otherwise.
  */
 export function buildEnforcementCSS(swatch: Swatch): string {
-  const semanticRules = SEMANTIC_SURFACES.map(
-    ({ selector, tier }) =>
-      `:where(${selector})${EXT_GUARD} { background-color: ${tier(swatch)} !important; }`
+  const highlightRules = HIGHLIGHT_TABLE.map(
+    ({ selector, declarations }) =>
+      `:where(${selector})${EXT_GUARD} { ${declarations(swatch)} }`
   ).join("\n")
 
   return `
@@ -247,13 +326,25 @@ ${ERASE_SELECTOR} {
   border-width: 1px !important;
 }
 
-/* §2.3: re-introduce elevation where structure is nameable without reading
-   the page. */
-${semanticRules}
+/* ADR 0003 §3: the compile-time highlight table — text tiers, links, code,
+   semantic-surface elevation, and native form-control accent color. */
+${highlightRules}
+
+/* Pseudo-elements, not real elements — never competes with ERASE_SELECTOR's
+   own (0,0,4) (the universal selector "*" does not match a pseudo-element
+   at all), so neither needs EXT_GUARD's specificity boost. Ported verbatim
+   from theme-apply.ts's own DARK_THEME_BODY_RULES, including that file's
+   own choice not to guard the placeholder rule with EXT_GUARD either. */
+::selection {
+  background-color: ${swatch.selectionBg} !important;
+}
+:where(input::placeholder, textarea::placeholder) {
+  color: ${swatch.text2} !important;
+}
 
 /* This module's own header: never repaint this extension's own DOM (the
    prepaint veil, the debug overlay) — both carry [data-my-ext]. "all" so a
-   future property added to ERASE_SELECTOR/SEMANTIC_SURFACES above is
+   future property added to ERASE_SELECTOR/HIGHLIGHT_TABLE above is
    covered without this rule needing a matching edit; "revert" (not
    "initial"/"unset") specifically because it rolls back only what *this*
    user-origin sheet would otherwise have contributed, leaving the
