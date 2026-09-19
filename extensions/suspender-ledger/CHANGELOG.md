@@ -1,5 +1,13 @@
 # @some-extension/suspender-ledger
 
+## 0.2.2
+
+### Patch Changes
+
+- - chore(deps-dev): bump eslint from 10.9.1 to 10.10.0 in the eslint group (#1403)
+  - chore(deps): bump vite from 8.2.2 to 8.3.0 in the vite group (#1404)
+  - chore(deps-dev): bump the eslint group across 1 directory with 5 updates (#1320)
+
 ## 0.2.1
 
 - Removed an unused, dead code path (`suspend.html` and `src/suspend/*`) that
