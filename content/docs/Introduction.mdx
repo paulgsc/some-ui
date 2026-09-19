@@ -1,0 +1,152 @@
+import { Meta } from "@storybook/addon-docs/blocks"
+
+<Meta title="Introduction" />
+
+# some-ui Monorepo — Documentation Home
+
+This is the canonical documentation home for all workspaces in the monorepo. It is rendered by Storybook and deployed to GitHub Pages on every push to `main`.
+
+---
+
+## Workspace Map
+
+### Browser Extensions (`extensions/`)
+
+| Workspace | Description |
+|---|---|
+| [`common`](./extensions/common/ARCHITECTURE.md) | Shared commons: keybinding typestate, coexistence primitives, MigrationLedger, Good-Citizen Charter |
+| [`some-filter`](./extensions/some-filter/ARCHITECTURE.md) | Dark-mode filter extension — layer-isolated theme injection with luminance classifier |
+| [`suspender-ledger`](./extensions/suspender-ledger/ARCHITECTURE.md) | Firefox MV3 tab suspender — schedules idle-tab discards; owns the suspend page |
+| [`some-censor`](./extensions/some-censor/ARCHITECTURE.md) | YouTube title-censor extension — pure FSM (Masked → Meta → Title → Revealed) with keybinding unlock |
+| [`some-mujik`](./extensions/some-mujik/ARCHITECTURE.md) | Ambient music visualizer overlay for YouTube/YT Music tabs |
+| [`some-conveyor`](./extensions/some-conveyor/ARCHITECTURE.md) | Polyhedron content conveyor — WASM-driven rotating-cube strip injected into pages |
+| [`some-drama`](./extensions/some-drama/ARCHITECTURE.md) | Drama sentiment tracker — timestamped emotional reactions during C-drama viewing |
+| [`some-schedule`](./extensions/some-schedule/ARCHITECTURE.md) | Ambient music scheduler — domain-classifier-driven background audio player |
+| [`tab-tracker`](./extensions/tab-tracker/ARCHITECTURE.md) | Temporal tab ledger — active-time tracking with HUD overlay and popup ledger |
+| `some-scrobbler` | Last.fm-style listening scrobbler (early-stage) |
+| `some-streak` | Habit streak tracker (early-stage) |
+| `some-cycle` | Cycle tracker (early-stage) |
+| `some-prompt` | Prompt management (early-stage) |
+| `some-tab-meta` | Tab metadata collector used by `suspender-ledger` number-mode |
+
+### UI Packages (`packages/ui/`)
+
+| Workspace | Description |
+|---|---|
+| `@some-ui/styles` | Shared design system — UnoCSS preset + shadcn tokens/themes |
+| `@some-ui/calendar` | Calendar component |
+| `@some-ui/honeycomb` | Honeycomb grid component |
+| `@some-ui/overlays` | Overlay/modal components |
+| `@some-ui/portfolio` | Portfolio chart components |
+| `@some-ui/resume` | Resume layout components |
+| `@some-ui/vidya` | Video/media components |
+| `@some-ui/makjang` | Makjang drama UI components |
+| `@some-ui/attributions` | Attribution/credit components |
+| `maishatu-fetch-kit` | Typed fetch utilities |
+| `umag` | Utilities for magnetic / physics animations |
+| `some-ui-nfl` | NFL data display components |
+| `some-ui-chat` | Chat UI components |
+| `some-ui-input` | Input components |
+| `some-ui-neon-sign` | Neon sign animation component |
+| `some-ui-slideshow` | Slideshow component |
+| `some-ui-stepper` | Stepper/wizard component |
+| `some-ui-searchbar` | Searchbar component |
+| `some-ui-emoji-animations` | Emoji animation components |
+
+### Shared Infrastructure (`packages/`)
+
+| Workspace | Description |
+|---|---|
+| `@some-ui/content` | Shared content components and registry |
+| `@some-ui/styles` | Design system (UnoCSS preset, shadcn tokens) |
+| `some-ui-utils` | Shared utilities |
+| `some-types-utils` | Shared TypeScript types |
+| `packages/eslint` | `maishatu-eslint-kit` — ESLint rules including Good-Citizen lint |
+| `packages/tsconfig` | Shared TypeScript configurations |
+| `packages/rollup-config` | Shared Rollup configurations |
+| `packages/some-vite-config` | Shared Vite configurations |
+
+---
+
+## Documentation Structure
+
+Each workspace follows this layout:
+
+```
+<workspace>/
+  ARCHITECTURE.md          # D1 — entry points, key abstractions, invariants
+  docs/
+    adr/                   # D2 — architecture decision records
+      0001-<decision>.md
+    development.md         # D3 — run / test / build / debug workflow
+    feature-status.md      # D4 — live / deprecated / pending / misaligned
+    posture.md             # D5 — reliability tier, known gaps, security
+```
+
+---
+
+## MDX Authoring Conventions
+
+All documentation MDX lives under `content/docs/` and is auto-picked up by the Storybook glob (`content/**/*.mdx`).
+
+### Front matter
+
+```mdx
+import { Meta } from "@storybook/addon-docs/blocks"
+
+<Meta title="Docs/WorkspaceName/TopicName" />
+```
+
+Use `title` hierarchy to control sidebar placement:
+- `Introduction` — top-level, appears first (via `storySort`)
+- `Docs/<workspace>/<topic>` — per-workspace documentation
+- `Content/<name>` — project specifications, proposals
+
+### Heading levels
+
+| Level | Use |
+|---|---|
+| `#` | Document title (one per file) |
+| `##` | Major section |
+| `###` | Subsection |
+| `####` | Detail item (use sparingly) |
+
+### ADR format
+
+Architecture Decision Records live in `docs/adr/` within each workspace:
+
+```markdown
+# ADR NNNN — <short decision title>
+
+- **Status:** Proposed | Accepted | Superseded by ADR-NNNN
+- **Date:** YYYY-MM-DD
+- **Refs:** #<issue>
+
+## Context
+
+<Why this decision was needed. What constraint or discovery drove it.>
+
+## Decision
+
+<What was decided.>
+
+## Trade-offs accepted
+
+<What you gave up. What risks you accepted. What you explicitly deferred.>
+
+## Alternatives rejected
+
+<What else was considered and why it lost.>
+```
+
+ADRs are never deleted. Superseded decisions are marked `status: superseded by ADR-NNNN`.
+
+---
+
+## Charter
+
+Browser extension workspaces are governed by the [Good-Citizen Charter](../extensions/common/GOOD_CITIZEN.md). Read it before touching any content script.
+
+The two mandates:
+1. **Disjointness** — a diff in workspace A must never produce a bug in workspace B.
+2. **No reinvention** — shared contracts live in `@some-extension/common`; shared lint rules in `maishatu-eslint-kit`.
