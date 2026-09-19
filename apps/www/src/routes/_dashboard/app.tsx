@@ -1,4 +1,5 @@
 import type { JSX } from "react"
+import type { IntentError } from "@some-ui/intent-kit"
 import {
   Avatar,
   AvatarFallback,
@@ -12,7 +13,10 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import { ArrowRight, Play, Sparkles } from "lucide-react"
 import { formatRelativeTime } from "some-ui-utils"
 
-import type { SessionRecord, SessionStatus } from "@/lib/tenant"
+import { IntentFailure } from "@/lib/intent/render"
+import type { QueryOutcome } from "@/lib/query-outcome"
+import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
+import type { SessionRecord, SessionStatus, UserProfile } from "@/lib/tenant"
 import {
   profileQuery,
   sessionsQuery,
@@ -31,28 +35,50 @@ const STATUS_LABEL: Record<SessionStatus, string> = {
 
 const RESUMABLE_STATUSES: ReadonlyArray<SessionStatus> = ["active", "paused"]
 
+/** A named function, not an inline arrow embedded in `ProfileSummary`'s own
+ * JSX - the latter trips `react/no-unstable-nested-components` the moment
+ * an enclosing component returns a JSX literal directly (see
+ * `sessions/index.tsx`'s identical `bulkStatusChangeFailure` precedent). A
+ * lowercase-initial name is what exempts it: the rule only reports against
+ * a PascalCase parent. */
+function profileSummaryContent(
+  outcome: QueryOutcome<UserProfile>
+): JSX.Element {
+  return matchQueryOutcome(outcome, {
+    pending: () => (
+      <>
+        <Skeleton className="size-12 rounded-full" />
+        <Skeleton className="h-5 w-32" />
+      </>
+    ),
+    failed: (error, retry) => (
+      <IntentFailure
+        error={error}
+        onRetry={retry}
+        className="min-w-0 flex-1 py-1.5"
+      />
+    ),
+    ready: (profile) => (
+      <>
+        <Avatar className="size-12 text-2xl">
+          <AvatarFallback>{profile.avatar}</AvatarFallback>
+        </Avatar>
+        <div>
+          <p className="text-muted-foreground text-sm">Welcome back</p>
+          <p className="text-lg font-semibold">{profile.displayName}</p>
+        </div>
+      </>
+    ),
+  })
+}
+
 const ProfileSummary = (): JSX.Element => {
-  const { data: profile, isLoading } = useProfile()
+  const outcome = queryOutcome(useProfile())
 
   return (
     <Card>
       <CardContent className="flex items-center gap-4 pt-6">
-        {isLoading || !profile ? (
-          <>
-            <Skeleton className="size-12 rounded-full" />
-            <Skeleton className="h-5 w-32" />
-          </>
-        ) : (
-          <>
-            <Avatar className="size-12 text-2xl">
-              <AvatarFallback>{profile.avatar}</AvatarFallback>
-            </Avatar>
-            <div>
-              <p className="text-muted-foreground text-sm">Welcome back</p>
-              <p className="text-lg font-semibold">{profile.displayName}</p>
-            </div>
-          </>
-        )}
+        {profileSummaryContent(outcome)}
         <Button asChild variant="outline" className="ml-auto">
           <Link to="/profile">Edit profile</Link>
         </Button>
@@ -88,10 +114,39 @@ const ContinueSessionCard = ({
   )
 }
 
+const RecentSessionsSkeleton = (): JSX.Element => (
+  <section className="space-y-3">
+    <h2 className="text-gradient-heading text-lg font-semibold">
+      Recent sessions
+    </h2>
+    <div className="space-y-2">
+      <Skeleton className="h-16 w-full" />
+      <Skeleton className="h-16 w-full" />
+    </div>
+  </section>
+)
+
+const RecentSessionsFailure = ({
+  error,
+  onRetry,
+}: {
+  error: IntentError
+  onRetry: () => void
+}): JSX.Element => (
+  <section className="space-y-3">
+    <h2 className="text-gradient-heading text-lg font-semibold">
+      Recent sessions
+    </h2>
+    <IntentFailure error={error} onRetry={onRetry} />
+  </section>
+)
+
 const RecentSessions = ({
   sessions,
+  refreshError,
 }: {
   sessions: Array<SessionRecord>
+  refreshError?: { error: IntentError; retry: () => void }
 }): JSX.Element => {
   const recent = [...sessions]
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
@@ -109,6 +164,17 @@ const RecentSessions = ({
           </Link>
         </Button>
       </div>
+
+      {/* See query-outcome's header: a cached list stays on screen while its
+          own background refresh failed, distinguished from an authoritative
+          empty/error state by this banner rather than by silently dropping
+          content. */}
+      {refreshError && (
+        <IntentFailure
+          error={refreshError.error}
+          onRetry={refreshError.retry}
+        />
+      )}
 
       {recent.length === 0 ? (
         <Card>
@@ -147,18 +213,43 @@ const RecentSessions = ({
   )
 }
 
+/** See `profileSummaryContent`'s identical comment on why this is a named,
+ * lowercase-initial function rather than an inline arrow. */
+function recentSessionsContent(
+  outcome: QueryOutcome<Array<SessionRecord>>
+): JSX.Element {
+  return matchQueryOutcome(outcome, {
+    pending: () => <RecentSessionsSkeleton />,
+    failed: (error, retry) => (
+      <RecentSessionsFailure error={error} onRetry={retry} />
+    ),
+    ready: (sessions, refreshError) => (
+      <RecentSessions sessions={sessions} refreshError={refreshError} />
+    ),
+  })
+}
+
+function findResumableSession(
+  outcome: QueryOutcome<Array<SessionRecord>>
+): SessionRecord | undefined {
+  return matchQueryOutcome(outcome, {
+    pending: () => undefined,
+    failed: () => undefined,
+    ready: (sessions) =>
+      sessions.find((s) => RESUMABLE_STATUSES.includes(s.status)),
+  })
+}
+
 const DashboardHome = (): JSX.Element => {
-  const { data: sessions = [] } = useSessions()
-  const resumableSession = sessions.find((s) =>
-    RESUMABLE_STATUSES.includes(s.status)
-  )
+  const outcome = queryOutcome(useSessions())
+  const resumableSession = findResumableSession(outcome)
 
   return (
     <div className="mx-auto max-w-5xl space-y-8">
       <ProfileSummary />
       {resumableSession && <ContinueSessionCard session={resumableSession} />}
       <ActivityLauncher />
-      <RecentSessions sessions={sessions} />
+      {recentSessionsContent(outcome)}
     </div>
   )
 }
