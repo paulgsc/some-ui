@@ -43,6 +43,22 @@ export type IntentError = {
    * from the error class by the boundary's own mapper, never hand-set per
    * call site — see `apps/www/src/lib/intent/errors.ts`'s header for why. */
   readonly retryable: boolean
+  /**
+   * Only meaningful when `retryable` is `false` — defaults to `false`
+   * (safe to resubmit) when omitted. Most non-retryable failures are still
+   * safe to resubmit through the *original* action: a validation rejection
+   * or an unconfigured feature will fail identically no matter how many
+   * times the same request is fired, but a *new* attempt (corrected input,
+   * or just trying again) is harmless because the boundary knows for
+   * certain the earlier one never took effect. Set this `true` only for
+   * the rarer case where even a new attempt is unsafe — the last attempt's
+   * outcome is genuinely unknown (e.g. a deadline fired on a non-idempotent
+   * write after it may have already reached the server), so firing another
+   * one risks duplicating it rather than just repeating a failure that
+   * didn't happen. See `apps/www/src/lib/intent/errors.ts`'s `fromUnreachable`
+   * for the one producer that sets this.
+   */
+  readonly blocksResubmission?: boolean
   /** For a person. Plain text, no markup, safe to render as-is. */
   readonly summary: string
   /**

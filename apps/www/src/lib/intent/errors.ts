@@ -56,11 +56,21 @@ function isRetryableStatus(status: number): boolean {
  * again" would be a duplicate-session button with a friendly label. See
  * `FileHostUnreachableError`'s own `retryable` doc and `client.ts`'s
  * `isNonIdempotent`.
+ *
+ * `blocksResubmission` rides along with that same case, and only that
+ * case: this is the one `IntentError` producer where "not retryable" means
+ * the outcome is genuinely ambiguous rather than definitively settled, so
+ * it's also the one place where even a *new* attempt (not just repeating
+ * the identical one) is unsafe - a bot review on this PR caught
+ * `IntentButton` falling back to the original action for every
+ * non-retryable failure alike, which reopened the exact duplicate-write
+ * risk `retryable: false` was meant to close for this case specifically.
  */
 function fromUnreachable(error: FileHostUnreachableError): IntentError {
   return {
     kind: "unreachable",
     retryable: error.retryable,
+    blocksResubmission: !error.retryable,
     summary: error.retryable
       ? "The study server isn't answering. Check your connection and try again."
       : "The study server didn't respond in time. It may have completed the request anyway - check before trying again.",

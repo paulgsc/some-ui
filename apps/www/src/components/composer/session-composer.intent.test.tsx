@@ -98,6 +98,13 @@ function isRetryableMode(mode: (typeof REJECTING_MODES)[number]): boolean {
   return mode !== "not-configured"
 }
 
+/** None of `REJECTING_MODES` produces the one `IntentError` shape that
+ * blocks resubmission (`blocksResubmission: true`) - that's exclusive to a
+ * `POST` timeout (see the "hang" describe block below and
+ * `lib/intent/errors.ts`'s `fromUnreachable`), which these fast-rejecting
+ * modes never hit. `not-configured` is a definite, if permanent, "no" -
+ * unlike an ambiguous timeout, resubmitting it is harmless, just futile. */
+
 beforeEach(() => {
   navigateSpy.mockClear()
 })
@@ -110,7 +117,7 @@ afterEach(() => {
 
 describe("composer Save & Play, new session (#933's flow)", () => {
   describe.each(REJECTING_MODES)("file_host sabotaged: %s", (mode) => {
-    it("re-enables the button once the request settles, for a retryable failure - stays disabled for a non-retryable one (sanity)", async () => {
+    it("re-enables the button once the request settles, whether or not the failure was retryable (sanity)", async () => {
       await renderAtReviewStep()
       const restore = installFileHostSabotage(mode)
 
@@ -119,16 +126,17 @@ describe("composer Save & Play, new session (#933's flow)", () => {
         clickSaveAndPlay()
       })
 
-      // A non-retryable failure (`not-configured`) disables the button
-      // outright rather than re-enabling it as a resubmittable action - see
-      // IntentButton's own header. Every other rejecting mode here is
-      // retryable, so the button comes back as "Try again".
+      // Every mode here settles to a definite outcome (a real answer, or a
+      // known-unconfigured feature) - never the ambiguous POST-timeout case
+      // that's unsafe to resubmit - so the button always comes back
+      // enabled: "Try again" for a retryable failure, the original action
+      // for a non-retryable-but-definite one. See IntentButton's own header.
       await waitFor(() => {
         expect(
           isDisabled(
             screen.getByRole("button", { name: /save.*play|try.*again/i })
           )
-        ).toBe(!isRetryableMode(mode))
+        ).toBe(false)
       })
       restore()
     })
