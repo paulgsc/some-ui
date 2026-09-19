@@ -1,5 +1,6 @@
 name: Extension Verification
-# Verifies each changed extension: typecheck, lint, test, build, web-ext lint.
+# Verifies each changed extension: typecheck, lint, performance budgets, test,
+# build, web-ext lint.
 #
 # Workspace packages (packages/*/dist) are consumed from the artifact produced
 # by the build-workspace job in extension.yml. This job does NOT rebuild shared
@@ -90,6 +91,43 @@ jobs:
         run: nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" typecheck
       - name: Lint
         run: nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" lint
+      # ── Performance budgets: the browser-unresponsive guard ────────────
+      #
+      # This step blocks the one class of defect an extension must never
+      # ship: code we own at compile time that drives the *browser's own*
+      # "Page unresponsive" / "this page is slowing down your browser" kill
+      # switch. That dialog is not a slow frame the user shrugs off — it is
+      # the browser telling them to kill the tab, attributed to whichever
+      # extension is injecting, and it fires on pages this repo never chose
+      # (a content script runs against <all_urls>; a GitHub "Files changed"
+      # view for a large pull request is north of 100,000 elements).
+      #
+      # It is therefore not a performance nicety that can be deferred to a
+      # follow-up: reaching that dialog means something we compiled is
+      # wrong. A red check here is a release blocker, and is deliberately
+      # its own named step — ordered ahead of the general Test step — so it
+      # is the first thing red on the PR rather than one assertion inside a
+      # wall of unit tests.
+      #
+      # Two halves, matching the two ways an injected surface can cost
+      # O(document):
+      #   • declarative — selectors in page-injected CSS. These live under
+      #     extensions/*/public/ which .prettierignore excludes, so the
+      #     repo-wide `pnpm lint:style` (itself --ignore-path .prettierignore)
+      #     never saw them. Linted explicitly here.
+      #   • imperative — unbounded DOM traversal and per-element computed
+      #     style reads. extensions/some-filter/tests/budgets explains each
+      #     budget and where its number comes from.
+      #
+      # --if-present: only some-filter defines test:budgets today. An
+      # extension without the script is skipped rather than failed.
+      - name: Performance budgets (browser-unresponsive guard)
+        run: |
+          nix develop .#ci --command pnpm exec stylelint \
+            "${{ matrix.extension_path }}/public/*.css" --allow-empty-input
+          nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" \
+            run --if-present test:budgets
+
       - name: Test
         run: nix develop .#ci-playwright --command pnpm --filter "${{ matrix.package_name }}" test
       # Restore cached extension build output. Key covers the extension source

@@ -7,9 +7,11 @@
     "@some-extension/transport": "workspace:*"
   },
   "devDependencies": {
-    "@some-ui/tsconfig": "workspace:*",
+    "@eslint/css-tree": "4.1.0",
     "@some-ui/eslint-kit": "workspace:*",
+    "@some-ui/tsconfig": "workspace:*",
     "@types/firefox-webext-browser": "^120.0.4",
+    "typescript": "^5.7.3",
     "vite": "^8.3.0"
   },
   "exports": {
@@ -63,7 +65,8 @@
     "package:source": "bash ../scripts/package-source.sh",
     "prettier": "prettier . --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
     "prettier:fix": "prettier . --write",
-    "test": "vitest",
+    "test": "vitest run",
+    "test:budgets": "vitest run tests/budgets",
     "test:claude:e2e": "bash scripts/claude-e2e.sh",
     "test:e2e": "pnpm build:chromium && playwright test",
     "test:e2e:debug": "pnpm build:chromium && playwright test --debug",
