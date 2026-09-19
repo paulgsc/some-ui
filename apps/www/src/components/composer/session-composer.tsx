@@ -114,6 +114,23 @@ export const SessionComposer = ({
       failed: () => false,
     })
 
+  // A timed-out `createIntent` (new-session POST) that blocks resubmission
+  // is ambiguous for *both* buttons, not just the one that triggered it:
+  // `saveDraftState`/`saveAndPlayState` below project whichever button
+  // *didn't* just run back to `idle()`, so without this, clicking the other
+  // one still calls `createIntent.start` again and can duplicate the same
+  // write - a bot review caught this sibling-button bypass one round after
+  // the original-action bypass was fixed. `updateIntent` (PATCH, used once
+  // `existingSession` is set) never needs this: a PATCH timeout is always
+  // retryable (see `client.ts`'s `isNonIdempotent`), so it can never set
+  // `blocksResubmission`.
+  const createBlocked = matchIntent(createIntent.state, {
+    idle: () => false,
+    working: () => false,
+    succeeded: () => false,
+    failed: (error) => !error.retryable && error.blocksResubmission === true,
+  })
+
   // The chain: a new session's "Save & Play" creates, then activates. The
   // middle failure - created, but couldn't start - is reported honestly
   // rather than folded into a generic message: `composeSequentialIntents`
@@ -511,7 +528,9 @@ export const SessionComposer = ({
               idleLabel="Save as draft"
               workingLabel="Saving..."
               variant="outline"
-              disabled={anySaving || durationCheck.state !== "valid"}
+              disabled={
+                anySaving || createBlocked || durationCheck.state !== "valid"
+              }
             />
             <IntentButton
               state={saveAndPlayState}
@@ -521,7 +540,9 @@ export const SessionComposer = ({
               workingStepLabel={(step) =>
                 step === "activate" ? "Starting..." : undefined
               }
-              disabled={anySaving || durationCheck.state !== "valid"}
+              disabled={
+                anySaving || createBlocked || durationCheck.state !== "valid"
+              }
             />
           </div>
         )}

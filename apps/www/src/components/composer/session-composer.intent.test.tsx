@@ -205,6 +205,31 @@ describe("composer Save & Play, new session (#933's flow)", () => {
       ).toBe(true)
       restore()
     })
+
+    it("also disables the sibling 'Save as draft' button - it shares the same createSession POST and would otherwise still resubmit it", async () => {
+      vi.stubEnv("VITE_FILE_HOST_TIMEOUT_MS", "50")
+      await renderAtReviewStep()
+      const restore = installFileHostSabotage("hang")
+
+      // eslint-disable-next-line @typescript-eslint/require-await -- see renderAtReviewStep
+      await act(async () => {
+        clickSaveAndPlay()
+      })
+
+      await expectSomeFailureAffordance(document.body)
+      // "Save as draft" never itself failed - it projects to `idle()` while
+      // `activeAction` is "play" (see session-composer.tsx's own comment on
+      // that projection) - but it calls the same shared `createIntent`, so
+      // an idle-looking, enabled button here would still fire a second
+      // `POST /sessions` on click and risk a duplicate session. A bot review
+      // caught this exact sibling-button bypass one round after the
+      // original-action bypass (this same button, before this fix) was
+      // fixed.
+      expect(
+        isDisabled(screen.getByRole("button", { name: /save as draft/i }))
+      ).toBe(true)
+      restore()
+    })
   })
 })
 
@@ -222,6 +247,28 @@ describe("composer Save as draft, new session (#950 coverage extension)", () => 
       await expectSomeFailureAffordance(document.body)
       expectRetryAffordanceTracksRetryable(document.body, isRetryableMode(mode))
       expect(navigateSpy).not.toHaveBeenCalled()
+      restore()
+    })
+  })
+
+  describe("file_host sabotaged: hang", () => {
+    it("disables both create buttons when 'Save as draft' is the one that times out - the mirror direction of the 'Save & Play' case", async () => {
+      vi.stubEnv("VITE_FILE_HOST_TIMEOUT_MS", "50")
+      await renderAtReviewStep()
+      const restore = installFileHostSabotage("hang")
+
+      // eslint-disable-next-line @typescript-eslint/require-await -- see renderAtReviewStep
+      await act(async () => {
+        clickSaveAsDraft()
+      })
+
+      await expectSomeFailureAffordance(document.body)
+      expect(
+        isDisabled(screen.getByRole("button", { name: /save as draft/i }))
+      ).toBe(true)
+      expect(
+        isDisabled(screen.getByRole("button", { name: /save.*play/i }))
+      ).toBe(true)
       restore()
     })
   })
