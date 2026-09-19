@@ -183,11 +183,15 @@ export const LABEL = {
 } as const
 
 /**
- * The page title, and the only prose on the page not earned by an interaction.
+ * The document's heading. It is rendered visually hidden, so it is a label
+ * rather than copy: the comb is the page, and at rest a visitor reads nothing
+ * they did not ask for by touching a cell. It exists because a screen reader
+ * has no comb to look at and a document with no heading gives it nothing to
+ * announce or navigate by.
  *
  * It was "The comb" through design, which names the shape and makes no claim.
- * Under the design law the title is the one place a claim can go without
- * adding prose, so it spends that budget on the property all six actually
- * share — the same one the privacy facet spends a whole level establishing.
+ * Now that it is only ever heard and never seen, it is worth more as the one
+ * sentence that says what all six share — the same property the privacy facet
+ * spends a whole level establishing.
  */
 export const PAGE_TITLE = "Six tools that stay on your machine"

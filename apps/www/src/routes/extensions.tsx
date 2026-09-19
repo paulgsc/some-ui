@@ -30,28 +30,34 @@ const ExtensionsComb = lazy(async () => {
 })
 
 const Extensions = (): JSX.Element => (
-  <main className="bg-background text-foreground min-h-svh">
-    {/* Fixed chrome, matching /mission: the way back and the theme control
-        stay reachable without hunting for a header. */}
-    <div className="fixed inset-x-0 top-0 z-10 flex items-center justify-between px-5 py-4 md:px-8">
+  <main className="bg-background text-foreground relative h-svh overflow-hidden">
+    {/* The only chrome, and it costs the comb no space: a seven-cell comb
+        leaves its two top corners empty at every viewport shape, so the back
+        link and the theme control sit in a region no cell ever reaches and
+        the comb still gets the whole window. Reserving a strip for them
+        instead would be most expensive exactly where there is least to
+        spare - a 390px-tall landscape phone. */}
+    <div className="pointer-events-none fixed inset-x-0 top-0 z-10 flex items-center justify-between px-3 py-3 md:px-6">
       <Link
         to="/"
-        className="text-muted-foreground hover:text-foreground bg-background/70 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm backdrop-blur transition-colors"
+        className="text-muted-foreground hover:text-foreground bg-background/70 pointer-events-auto inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm backdrop-blur transition-colors"
       >
         <ArrowLeft className="size-4" aria-hidden />
         Back
       </Link>
-      <ThemeSwitcher />
+      <div className="pointer-events-auto">
+        <ThemeSwitcher />
+      </div>
     </div>
 
-    <div className="mx-auto flex min-h-svh max-w-6xl items-center px-5 pt-20 pb-10 md:px-8">
-      {/* The comb measures itself, so the fallback reserves no height of its
-          own - a spinner sized differently from the thing it stands in for
-          would make the page jump once the chunk lands. */}
-      <Suspense fallback={null}>
-        <ExtensionsComb />
-      </Suspense>
-    </div>
+    {/* The comb owns the viewport: it is the page, not an illustration on
+        one. It positions itself absolutely against this element and scales to
+        fill it, so the fallback reserves nothing - there is no layout for a
+        spinner to hold open, and sizing one differently from the comb would
+        only make the page jump once the chunk lands. */}
+    <Suspense fallback={null}>
+      <ExtensionsComb />
+    </Suspense>
   </main>
 )
 
