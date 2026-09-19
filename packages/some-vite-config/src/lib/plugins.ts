@@ -4,6 +4,7 @@ import react from "@vitejs/plugin-react"
 import ts from "typescript"
 import type { PluginOption } from "vite"
 import dts from "vite-plugin-dts"
+import type { PluginOptions as DtsPluginOptions } from "vite-plugin-dts"
 
 import type { ViteConfigOptions } from "@/types/index.js"
 
@@ -24,6 +25,20 @@ const diagnosticsFormatHost: ts.FormatDiagnosticsHost = {
 // standalone `tsc` pass was the only thing standing between a type error and
 // a green build, which is why removing that pass could not happen until this
 // was wired up.
+//
+// `afterDiagnostic`'s own diagnostics list is declaration + semantic + syntactic
+// only - it does NOT include options diagnostics (e.g. a `compilerOptions.types`
+// entry that doesn't resolve - TS2688, confirmed via `program.getOptionsDiagnostics()`,
+// NOT `getGlobalDiagnostics()`, which returns nothing for this case) or config-file
+// parsing diagnostics. `tsc -p tsconfig.build.json` reported TS2688; this plugin's
+// own diagnostics list silently didn't. `ts.getPreEmitDiagnostics(program)` is
+// TypeScript's own canonical aggregation of exactly those categories (config-file
+// parsing + options + syntactic + global + semantic - confirmed it reports the
+// TS2688 case), so that plus this plugin's own declaration diagnostics is the
+// complete set. `afterBootstrap` is the one hook that hands back the underlying
+// `ts.Program` (`Runtime` keeps it `protected`; `getProgram()` is its public
+// accessor), so `createPlugins` stashes it there and folds `getPreEmitDiagnostics`
+// into the same check.
 function failOnDiagnostics(diagnostics: ReadonlyArray<ts.Diagnostic>): void {
   if (diagnostics.length === 0) return
   const formatted = ts.formatDiagnosticsWithColorAndContext(
@@ -91,12 +106,22 @@ export function createPlugins(
     ? { tsconfigPath: buildTsconfigPath }
     : {}
 
-  const finalDtsOptions = {
+  let program: ts.Program | undefined
+
+  const finalDtsOptions: DtsPluginOptions = {
     insertTypesEntry: true,
     ...tsconfigPath,
     ...dtsOptions,
     exclude: mergedExclude,
-    afterDiagnostic: failOnDiagnostics,
+    afterBootstrap: (runtime) => {
+      program = runtime.getProgram()
+    },
+    afterDiagnostic: (diagnostics) => {
+      const preEmitDiagnostics = program
+        ? ts.getPreEmitDiagnostics(program)
+        : []
+      failOnDiagnostics([...new Set([...diagnostics, ...preEmitDiagnostics])])
+    },
   }
 
   return [react(), dts(finalDtsOptions), ...additionalPlugins]
