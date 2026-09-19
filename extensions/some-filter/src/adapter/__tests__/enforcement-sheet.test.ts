@@ -35,15 +35,17 @@ describe("buildEnforcementCSS", () => {
     expect(swatch.border).not.toBe(swatch.borderStrong)
   })
 
-  it("forces border-width/border-style on containers only, not on the broad erase rule", () => {
+  it("forces border-width/border-style on affordance controls only, not on the broad erase rule", () => {
     // Regression lock for a live-measured gap: a real vendor element with
     // no border-width of its own left borderStrong's own correct
     // border-color rendering nothing at all. A first fix forced width/style
     // on every erased element and was itself found too visually noisy on a
-    // dense real UI (boxed spans/badges/code) — see this module's own
-    // header, "border-width is forced on containers only, not every erased
-    // carrier". border-color must still be on the broad erase rule; width/
-    // style must NOT be — they moved to BORDER_CONTAINER_SELECTOR.
+    // dense real UI (boxed spans/badges/code); a second fix narrowed it to
+    // every structural container and produced a border *soup* instead — see
+    // this module's own header, "border soup: containers get a lift
+    // gradient, not a forced border". border-color must still be on the
+    // broad erase rule; width/style must NOT be — they now live only on
+    // BORDER_CONTAINER_SELECTOR's narrow, affordance-only selector.
     const css = buildEnforcementCSS(swatch)
     const [eraseBlock] = css.match(
       /\*:not\(img\):not\(video\):not\(svg\):not\(canvas\) \{[^}]*\}/
@@ -57,29 +59,52 @@ describe("buildEnforcementCSS", () => {
     expect(css).toContain("border-width: 1px !important")
   })
 
-  it("scopes border-width/style to container elements — no borders on inline text carriers", () => {
-    // The exact live-measured regression: span/a/code/kbd/samp getting a
-    // rendered border on a dense UI (every chip and badge boxed). Container
-    // tags (div, section, table structure, landmark regions, form controls)
-    // get the width/style rule; inline/text-level carriers must not appear
-    // in that rule's own selector list.
+  it("scopes border-width/style to affordance controls — no forced borders on structural containers", () => {
+    // Structural containers (div, section, table structure, landmark
+    // regions) no longer get a forced border at all — that was the border
+    // soup this module's own header records. Only form controls and dialog
+    // (real interactive affordance) still get one; those same containers
+    // get the lift gradient instead (see the LIFT_SELECTOR tests below).
     const css = buildEnforcementCSS(swatch)
     const [borderWidthBlock] = css.match(
       /[^\n]*\{\s*border-style: solid[^}]*\}/
     ) ?? [""]
-    for (const container of [
-      "div",
-      "section",
-      "nav",
-      "table",
-      "dialog",
+    for (const affordance of [
       "input",
+      "textarea",
+      "select",
+      "button",
+      "dialog",
     ]) {
-      expect(borderWidthBlock).toMatch(new RegExp(`\\b${container}\\b`))
+      expect(borderWidthBlock).toMatch(new RegExp(`\\b${affordance}\\b`))
+    }
+    for (const structural of ["div", "section", "nav", "table", "li", "td"]) {
+      expect(borderWidthBlock).not.toMatch(new RegExp(`\\b${structural}\\b`))
     }
     for (const inline of ["span", "code", "kbd", "samp", "a"]) {
       expect(borderWidthBlock).not.toMatch(new RegExp(`\\b${inline}\\b`))
     }
+  })
+
+  it("lifts structural containers with a top-lit gradient instead of a forced border", () => {
+    const css = buildEnforcementCSS(swatch)
+    expect(css).toContain(`${swatch.lift} 0`)
+    expect(css).toContain("linear-gradient(")
+    expect(css).toContain("transparent 3rem")
+    // Structural containers that got the border in the old scheme now
+    // appear in the lift rule's own selector instead.
+    const [liftBlock] = css.match(/:where\(:is\([^)]*\)[^{]*\{[^}]*\}/) ?? [""]
+    for (const structural of ["div", "section", "nav", "table"]) {
+      expect(liftBlock).toMatch(new RegExp(`\\b${structural}\\b`))
+    }
+  })
+
+  it("never uses :has() — LIFT_SELECTOR is :not(:only-child), not a group-envelope :has()", () => {
+    // The rejected alternative this module's own header records: :has() on
+    // a broad subject with a universal argument is too costly to invalidate
+    // on a streaming or dense page.
+    const css = buildEnforcementCSS(swatch)
+    expect(css).not.toContain(":has(")
   })
 
   it("never sets color-scheme (§3.4) — measured to pierce the shadow boundary in this build", () => {
