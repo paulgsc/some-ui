@@ -60,6 +60,39 @@
  * this Chromium build/version, or whether user-origin genuinely does cross
  * shadow boundaries for an extension-injected sheet specifically (as
  * opposed to whatever mechanism the ADR's own §3.1 measurement used).
+ *
+ * Partial update: the user manually loaded a real `build:firefox` build in
+ * live Firefox and reported the canvas rule, the erase rule's `color`, and
+ * `borderStrong`'s own `border-color` all landing correctly on a real page —
+ * the first evidence either way on ADR 0002 §6's own open question (does
+ * Firefox honor `browser.scripting.insertCSS({ origin: "USER" })` at all).
+ * That page had no open shadow roots, so it says nothing about whether this
+ * §3.1 divergence is Chromium-specific or general — still open. Manual,
+ * not an automated e2e result (this sandbox has no Firefox binary — see
+ * `CLAUDE.md`) — recorded here as a data point, not a verification.
+ *
+ * ── border-width is forced, not just border-color ──────────────────────────
+ *
+ * A live probe against real GitHub markup (a `.Box`-classed div) found
+ * `borderStrong`'s own `border-color` applying exactly as built, but
+ * `border-width: 0px` — the vendor element declared no border of its own, so
+ * nothing rendered despite the correct color. ADR 0002 §2.3 argues borders
+ * carry hierarchy on a generic `<div>` tree precisely because backgrounds
+ * have collapsed to `bg0`; a color with no width to paint through is the
+ * same as no border at all for that argument, and §5.4 already names this
+ * risk ("flat hierarchy on div soup ... unmeasured against the user's real
+ * sites") — this was that measurement.
+ *
+ * `border-style: solid` + `border-width: 1px` are therefore forced on the
+ * same broad `ERASE_SELECTOR`, same as `background-color`/`color` above —
+ * not scoped to `SEMANTIC_SURFACES` or to block-level elements only. This is
+ * the most direct fix for the specific gap just measured, and the bluntest:
+ * it puts a hairline border on every erased element, `<span>`/`<a>`/`<code>`
+ * included, which was not itself measured before shipping. If live testing
+ * finds that too visually noisy, the next-cheapest dial is narrowing this to
+ * block-level/structural selectors rather than every erased carrier — not
+ * reverting to color-only, which is what produced the invisible-border
+ * result in the first place.
  */
 
 import { EXT_GUARD } from "@filter/lib/content/theme-apply"
@@ -184,14 +217,19 @@ ${CANVAS_SELECTOR} {
 }
 
 /* §2.2/§2.3/§3.5: erase every vendor surface; let the canvas show through.
-   Left textually unmodified from the ADR's own snippet — see this
-   constant's own header for why extension-owned elements are excluded by
-   a separate rule below rather than by a guard threaded through this one. */
+   background-color/background-image/color are left textually unmodified
+   from the ADR's own snippet — see this constant's own header for why
+   extension-owned elements are excluded by a separate rule below rather
+   than by a guard threaded through this one. border-style/border-width are
+   not from that snippet — see this module's own header, "border-width is
+   forced, not just border-color", for why they were added on top of it. */
 ${ERASE_SELECTOR} {
   background-color: transparent !important;
   background-image: none !important;
   color: ${swatch.text0} !important;
   border-color: ${swatch.borderStrong} !important;
+  border-style: solid !important;
+  border-width: 1px !important;
 }
 
 /* §2.3: re-introduce elevation where structure is nameable without reading

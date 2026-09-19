@@ -132,6 +132,45 @@ test.describe("ADR 0002 enforcement sheet", () => {
     expect(bodyBg).toBe(ENFORCED_BG)
   })
 
+  test("borderStrong actually renders on a bare vendor element (live-measured gap)", async ({
+    context,
+    fixture,
+  }) => {
+    const sw = await backgroundWorker(context)
+    await enableEnforcementSheet(sw)
+
+    const page = await fixture.goto("light-page")
+    await cycleTabOff(sw, page, "light-page.html")
+
+    await page.waitForFunction(
+      (expected) =>
+        getComputedStyle(document.documentElement).backgroundColor === expected,
+      ENFORCED_BG,
+      { timeout: 5_000, polling: 100 }
+    )
+
+    // light-page.html's own <main> declares no border of its own — exactly
+    // the "bare vendor element" shape that surfaced the gap this test
+    // guards: enforcement-sheet.ts's own header, "border-width is forced,
+    // not just border-color". Correct border-color with border-width still
+    // at its initial 0 renders nothing, which is what shipped before this
+    // fix.
+    const border = await page.evaluate(() => {
+      const main = document.querySelector("main")
+      if (main === null) throw new Error("fixture missing <main>")
+      const style = getComputedStyle(main)
+      return {
+        width: style.borderTopWidth,
+        styleName: style.borderTopStyle,
+        color: style.borderTopColor,
+      }
+    })
+
+    expect(border.width).toBe("1px")
+    expect(border.styleName).toBe("solid")
+    expect(border.color).toBe("rgba(255, 255, 255, 0.35)")
+  })
+
   // §3.1 claims a user-origin rule does not cross a shadow boundary. This
   // regression test — run against Chromium 1194, the same revision the ADR
   // itself measured against — found the opposite: see

@@ -35,6 +35,16 @@ describe("buildEnforcementCSS", () => {
     expect(swatch.border).not.toBe(swatch.borderStrong)
   })
 
+  it("forces border-width/border-style on the erase rule, not just border-color", () => {
+    // Regression lock for a live-measured gap: a real vendor element with
+    // no border-width of its own left borderStrong's own correct
+    // border-color rendering nothing at all. See this module's own header,
+    // "border-width is forced, not just border-color".
+    const css = buildEnforcementCSS(swatch)
+    expect(css).toContain("border-style: solid !important")
+    expect(css).toContain("border-width: 1px !important")
+  })
+
   it("never sets color-scheme (§3.4) — measured to pierce the shadow boundary in this build", () => {
     // Regression lock for buildEnforcementCSS's own header: an earlier
     // version of this sheet included `:root { color-scheme: dark }` per
