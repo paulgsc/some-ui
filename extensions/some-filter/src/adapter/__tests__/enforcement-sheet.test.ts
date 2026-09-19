@@ -35,14 +35,51 @@ describe("buildEnforcementCSS", () => {
     expect(swatch.border).not.toBe(swatch.borderStrong)
   })
 
-  it("forces border-width/border-style on the erase rule, not just border-color", () => {
+  it("forces border-width/border-style on containers only, not on the broad erase rule", () => {
     // Regression lock for a live-measured gap: a real vendor element with
     // no border-width of its own left borderStrong's own correct
-    // border-color rendering nothing at all. See this module's own header,
-    // "border-width is forced, not just border-color".
+    // border-color rendering nothing at all. A first fix forced width/style
+    // on every erased element and was itself found too visually noisy on a
+    // dense real UI (boxed spans/badges/code) — see this module's own
+    // header, "border-width is forced on containers only, not every erased
+    // carrier". border-color must still be on the broad erase rule; width/
+    // style must NOT be — they moved to BORDER_CONTAINER_SELECTOR.
     const css = buildEnforcementCSS(swatch)
+    const [eraseBlock] = css.match(
+      /\*:not\(img\):not\(video\):not\(svg\):not\(canvas\) \{[^}]*\}/
+    ) ?? [""]
+    expect(eraseBlock).toContain(
+      `border-color: ${swatch.borderStrong} !important`
+    )
+    expect(eraseBlock).not.toContain("border-width")
+    expect(eraseBlock).not.toContain("border-style")
     expect(css).toContain("border-style: solid !important")
     expect(css).toContain("border-width: 1px !important")
+  })
+
+  it("scopes border-width/style to container elements — no borders on inline text carriers", () => {
+    // The exact live-measured regression: span/a/code/kbd/samp getting a
+    // rendered border on a dense UI (every chip and badge boxed). Container
+    // tags (div, section, table structure, landmark regions, form controls)
+    // get the width/style rule; inline/text-level carriers must not appear
+    // in that rule's own selector list.
+    const css = buildEnforcementCSS(swatch)
+    const [borderWidthBlock] = css.match(
+      /[^\n]*\{\s*border-style: solid[^}]*\}/
+    ) ?? [""]
+    for (const container of [
+      "div",
+      "section",
+      "nav",
+      "table",
+      "dialog",
+      "input",
+    ]) {
+      expect(borderWidthBlock).toMatch(new RegExp(`\\b${container}\\b`))
+    }
+    for (const inline of ["span", "code", "kbd", "samp", "a"]) {
+      expect(borderWidthBlock).not.toMatch(new RegExp(`\\b${inline}\\b`))
+    }
   })
 
   it("never sets color-scheme (§3.4) — measured to pierce the shadow boundary in this build", () => {

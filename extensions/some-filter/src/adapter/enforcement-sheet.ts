@@ -93,7 +93,7 @@
  * not an automated e2e result (this sandbox has no Firefox binary — see
  * `CLAUDE.md`) — recorded here as a data point, not a verification.
  *
- * ── border-width is forced, not just border-color ──────────────────────────
+ * ── border-width is forced on containers only, not every erased carrier ────
  *
  * A live probe against real GitHub markup (a `.Box`-classed div) found
  * `borderStrong`'s own `border-color` applying exactly as built, but
@@ -105,16 +105,23 @@
  * risk ("flat hierarchy on div soup ... unmeasured against the user's real
  * sites") — this was that measurement.
  *
- * `border-style: solid` + `border-width: 1px` are therefore forced on the
- * same broad `ERASE_SELECTOR`, same as `background-color`/`color` above —
- * not scoped to `SEMANTIC_SURFACES` or to block-level elements only. This is
- * the most direct fix for the specific gap just measured, and the bluntest:
- * it puts a hairline border on every erased element, `<span>`/`<a>`/`<code>`
- * included, which was not itself measured before shipping. If live testing
- * finds that too visually noisy, the next-cheapest dial is narrowing this to
- * block-level/structural selectors rather than every erased carrier — not
- * reverting to color-only, which is what produced the invisible-border
- * result in the first place.
+ * The first fix forced `border-style`/`border-width` on the same broad
+ * `ERASE_SELECTOR` as `background-color`/`color` — every erased element,
+ * `<span>`/`<a>`/`<code>` included. Live testing found exactly the cost its
+ * own comment predicted: loaded against a real, dense UI (this project's own
+ * Claude Code web app, with the extension enabled on that tab), every chip,
+ * badge, code span, and button sitting next to its neighbors got boxed —
+ * visually noisy, not "crisp, low-contrast hierarchy."
+ *
+ * `border-width`/`border-style` now live on the separate, narrower
+ * `BORDER_CONTAINER_SELECTOR` below instead — actual containers (`div`,
+ * `section`, list/table elements, landmark regions, form controls) get a
+ * visible border; inline/text-level carriers (`span`, `a`, `code`/`kbd`/
+ * `samp` explicitly included — `HIGHLIGHT_TABLE` already gives `code` its
+ * own background+foreground pair, and a border on top of that read as
+ * "boxed for no reason" rather than intentional) keep `border-color` only,
+ * from `ERASE_SELECTOR`, same as before this fix existed — present if the
+ * vendor already declared a width, invisible otherwise, never forced.
  */
 
 import { EXT_GUARD } from "@filter/lib/content/theme-apply"
@@ -156,6 +163,30 @@ const CANVAS_SELECTOR = ":root:root, :root:root body"
  * selector, specifically to avoid perturbing this specificity relationship.
  */
 const ERASE_SELECTOR = "*:not(img):not(video):not(svg):not(canvas)"
+
+/**
+ * The narrower selector `border-width`/`border-style` are forced on — see
+ * this module's own header, "border-width is forced on containers only,
+ * not every erased carrier", for the live-measured reason this is separate
+ * from `ERASE_SELECTOR`. Structural/container elements (block-level
+ * grouping, list/table structure, landmark regions) plus the form controls
+ * `HIGHLIGHT_TABLE` already gives a distinct background — a bordered input
+ * or button is expected affordance, not visual noise, unlike a bordered
+ * `<span>` sitting inline among plain text.
+ *
+ * Explicitly excludes `code`/`kbd`/`samp`: `HIGHLIGHT_TABLE` already gives
+ * them their own `bg3`/`codeFg` pair, and stacking a border on top of that
+ * read as "boxed for no reason" in live testing rather than intentional —
+ * unlike `dialog`/`input` et al., a code span's own distinct fill already
+ * does the job a border would otherwise be there for.
+ *
+ * No `:where()`/`EXT_GUARD` boost needed: nothing else in this sheet sets
+ * `border-width`/`border-style`, so there is no specificity to out-rank —
+ * the `[data-my-ext]` exclusion's own (0,1,0) already beats this selector's
+ * plain (0,0,1) regardless.
+ */
+const BORDER_CONTAINER_SELECTOR =
+  "div, section, article, aside, nav, header, footer, main, ul, ol, li, table, tr, td, th, form, fieldset, figure, details, dialog, input, textarea, select, button"
 
 /**
  * ADR 0003 §3 — the compile-time highlight table: an IDE syntax
@@ -311,17 +342,22 @@ ${CANVAS_SELECTOR} {
 }
 
 /* §2.2/§2.3/§3.5: erase every vendor surface; let the canvas show through.
-   background-color/background-image/color are left textually unmodified
-   from the ADR's own snippet — see this constant's own header for why
-   extension-owned elements are excluded by a separate rule below rather
-   than by a guard threaded through this one. border-style/border-width are
-   not from that snippet — see this module's own header, "border-width is
-   forced, not just border-color", for why they were added on top of it. */
+   background-color/background-image/color/border-color are left textually
+   unmodified from the ADR's own snippet — see this constant's own header
+   for why extension-owned elements are excluded by a separate rule below
+   rather than by a guard threaded through this one. border-color alone,
+   never border-width/border-style here — see BORDER_CONTAINER_SELECTOR's
+   own header for why those two are forced on a narrower selector instead. */
 ${ERASE_SELECTOR} {
   background-color: transparent !important;
   background-image: none !important;
   color: ${swatch.text0} !important;
   border-color: ${swatch.borderStrong} !important;
+}
+
+/* See BORDER_CONTAINER_SELECTOR's own header — containers get a rendered
+   border; inline/text-level carriers keep border-color only, above. */
+${BORDER_CONTAINER_SELECTOR} {
   border-style: solid !important;
   border-width: 1px !important;
 }
