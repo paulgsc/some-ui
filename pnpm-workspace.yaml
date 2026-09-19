@@ -72,36 +72,36 @@ allowBuilds:
   spawn-sync: true
   unrs-resolver: true
 
-# Turbo sets `pnpm_config_verify_deps_before_run` in every task's environment
-# (the literal is in its native binary, beside PNPM_HOME and
-# NPM_CONFIG_STORE_DIR), which turns on pnpm's pre-run dependency check. That
-# check is unconditionally broken here, so leave it off — see #1461.
+# Recorded explicitly only to work around pnpm/pnpm#12337, a regression in
+# 11.5.3: the workspace state file stores a setting only when it was set
+# explicitly, while CI coerces an unset `enableGlobalVirtualStore` to `false`.
+# So an install and a run that disagree about CI-ness compare `undefined`
+# against `false`, pnpm's pre-run check decides node_modules is out of sync,
+# and it silently runs a full workspace install before the task's own command
+# - once per task, with no line saying why. Naming the setting here is the
+# fix upstream recommends: it forces the key into the state file, so both
+# sides compare `false`. See #1461.
 #
-# `checkDepsStatus` compares each setting recorded in
-# node_modules/.pnpm-workspace-state-v1.json against the freshly resolved
-# config. `enableGlobalVirtualStore` is stored as JSON `null` and resolves to
-# `undefined`, and `equals(null, undefined)` is false — so the comparison
-# trips on every single check, for a setting nothing in this repo sets. pnpm
-# then silently runs a full workspace install before the task's own command,
-# once per task. Running one build in `warn` mode says it out loud:
+# It is NOT a statement that the global virtual store should be off. `false`
+# is pnpm's own default for an unset value; this only makes that explicit.
+# Drop the line once #12337 is fixed.
 #
-#   [WARN] Your node_modules are out of sync with your lockfile.
-#          The value of the enableGlobalVirtualStore setting has changed
+# Only a CI/non-CI mismatch trips it, so GitHub Actions (install and build
+# both under CI) was never affected. What this fixes is the mixed case: a
+# container image with node_modules baked in at a different CI-ness than the
+# session that later builds, and anyone running a CI=1 build over a local
+# install.
 #
-# `warn` is not the conservative middle ground it looks like: all 37 tasks of
-# a full build emit that same line, none of them because anything is actually
-# stale. A warning that fires unconditionally teaches people to skip it, so
-# it is worse than silence for the day the check has something real to say.
+# Turbo makes it worse rather than causes it: it sets
+# `pnpm_config_verify_deps_before_run` in every task's environment, and the
+# resulting installs take no lock, so N parallel tasks start N installs that
+# race each other over node_modules/.bin - that is pnpm/pnpm#14551, which
+# names Turborepo directly and is the source of the `[WARN] Failed to create
+# bin ... ENOENT` noise.
 #
-# This has to live HERE, not in .npmrc. When pnpm-workspace.yaml exists its
-# settings overwrite the .npmrc-derived config wholesale, and only the env
-# var is re-applied afterwards — so `verify-deps-before-run=false` in .npmrc
-# looks correct, does nothing, and reads like evidence that the setting is
-# irrelevant. It is not.
-#
-# What this gives up: pnpm no longer auto-heals a stale node_modules before
-# running a task. CI installs with --frozen-lockfile before it builds, and
-# changing a dependency locally means running `pnpm install`, so the cost is
-# a clearer error instead of a silent fixup. Drop this line once pnpm stops
-# serialising an unset setting as `null` and comparing it to `undefined`.
-verifyDepsBeforeRun: false
+# If this ever needs disabling wholesale instead, the setting is
+# `verifyDepsBeforeRun` and it must live HERE, not in .npmrc: when
+# pnpm-workspace.yaml exists its settings overwrite the .npmrc-derived config
+# wholesale and only the env var is re-applied afterwards, so the .npmrc form
+# looks correct and does nothing.
+enableGlobalVirtualStore: false
