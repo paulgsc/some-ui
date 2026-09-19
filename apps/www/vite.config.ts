@@ -162,18 +162,7 @@ export default defineConfig(
       ...createStylePlugins(styleContext),
       TanStackRouterVite({
         autoCodeSplitting: true,
-        // src/routes/ is the routing tree: every filename in it is a route
-        // path. Tests live in a `__tests__/` directory per #1471, and this
-        // ignores that directory - nothing else.
-        //
-        // It deliberately does NOT ignore `*.test.tsx` by name any more. That
-        // is what it used to do, and it made the routes tree a comfortable
-        // place to drop tests: `_dashboard.shell.test.tsx` parses as the route
-        // /_dashboard/shell, and the pattern quietly swallowed it. Narrowing
-        // this to the directory means a test file dropped back beside a route
-        // shows up as a phantom route instead of disappearing - loud, which is
-        // the point.
-        routeFileIgnorePattern: String.raw`(^|/)__tests__(/|$)`,
+        routeFileIgnorePattern: String.raw`\.test\.[jt]sx?$`,
       }),
       viteReact(),
       ...(command === "serve" ? [warnMissingContentAssets()] : []),
