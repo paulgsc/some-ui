@@ -107,8 +107,10 @@ async function errorCodeOf(response: Response): Promise<string | null> {
  * waiting on a route read gets a terminal outcome in a time nobody would
  * call "hung." Matches `@some-ui/fetch-kit`'s own default (`DEFAULT_OPTIONS.timeout`),
  * which answers U-2 from the route-arrival handoff: the same policy is safe
- * for both. */
-export const DEFAULT_FILE_HOST_TIMEOUT_MS = 10_000
+ * for both. Not exported - nothing outside `resolveTimeoutMs` needs the
+ * default directly; a test wanting a different deadline overrides it via
+ * `VITE_FILE_HOST_TIMEOUT_MS`, not by importing this value. */
+const DEFAULT_FILE_HOST_TIMEOUT_MS = 10_000
 
 /** Read fresh on every call, not cached at transport-creation time - so a
  * test can `vi.stubEnv` a short deadline for the one call it's exercising
