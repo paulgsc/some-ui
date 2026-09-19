@@ -10,6 +10,8 @@ import {
 } from "@some-ui/shared"
 import { createFileRoute, Link } from "@tanstack/react-router"
 
+import { IntentFailure } from "@/lib/intent/render"
+import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import { sessionQuery, useSession } from "@/lib/tenant"
 import { SessionComposer } from "@/components/composer/session-composer"
 
@@ -46,17 +48,33 @@ const EditSessionNotFound = (): JSX.Element => (
   </Card>
 )
 
-const EditSessionRoute = ({
+/** Exported so tests can drive the outcome logic with a plain `sessionId`
+ * prop - `Route.useSearch()` needs a real matched router context that a
+ * component test has no reason to build. */
+export const EditSessionRoute = ({
   sessionId,
 }: {
   sessionId: string
 }): JSX.Element => {
-  const { data: session, isLoading } = useSession(sessionId)
+  const outcome = queryOutcome(useSession(sessionId))
 
-  if (isLoading) return <ComposerSkeleton />
-  if (!session) return <EditSessionNotFound />
-
-  return <SessionComposer existingSession={session} />
+  return matchQueryOutcome(outcome, {
+    pending: () => <ComposerSkeleton />,
+    // Distinct from `EditSessionNotFound`: a failed read has not told us the
+    // draft is absent, only that we don't yet know - see the route-arrival
+    // handoff's Safety invariant.
+    failed: (error, retry) => (
+      <Card className="max-w-3xl">
+        <CardContent className="pt-6">
+          <IntentFailure error={error} onRetry={retry} />
+        </CardContent>
+      </Card>
+    ),
+    ready: (session) => {
+      if (!session) return <EditSessionNotFound />
+      return <SessionComposer existingSession={session} />
+    },
+  })
 }
 
 const NewSessionRoute = (): JSX.Element => {

@@ -1,7 +1,8 @@
 /**
  * The one `fetch` wrapper every `file_host` caller goes through.
  *
- * It exists for two reasons, and the second is the one that earns the file:
+ * It exists for three reasons, and the last two are the ones that earn the
+ * file:
  *
  * 1. **A seam to test against.** `FileHostTransport` is the whole surface
  *    the sessions repository and the push subscription need, so their tests
@@ -13,6 +14,19 @@
  *    opaque `TypeError: Failed to fetch`. Left bare, the visible symptom is
  *    "sessions don't load" with a browser console warning about CORS that
  *    sends the reader to the wrong repository. See `lib/file-host-config`.
+ * 3. **A bounded wait.** Bare `fetch` has no default timeout - a request
+ *    against a black-holed connection (the LAN box is powered off but the
+ *    switch still answers ARP, a proxy holding the socket open with nothing
+ *    behind it) stays pending until the browser gives up, which can be
+ *    minutes. Every route-arrival outcome downstream of this transport
+ *    (`queryOutcome`'s `pending` state, in particular) depends on this
+ *    settling one way or another within a declared deadline - see the
+ *    route-arrival handoff (r1) and #911, whose original 13-site raw-`fetch`
+ *    census missed this file entirely. `Promise.race`d against the timeout
+ *    rather than relying solely on `fetch` honoring `AbortSignal`: a real
+ *    browser's `fetch` does, but nothing here can assume every caller of
+ *    this module's own test seam does too (see `installFileHostSabotage`'s
+ *    `"hang"` mode), and the deadline must hold either way.
  */
 
 import type { FileHostResolution } from "."
@@ -75,6 +89,29 @@ async function errorCodeOf(response: Response): Promise<string | null> {
   }
 }
 
+/** A LAN service, not a public API over the open internet - long enough
+ * that an ordinary slow response never trips it, short enough that a person
+ * waiting on a route read gets a terminal outcome in a time nobody would
+ * call "hung." Matches `@some-ui/fetch-kit`'s own default (`DEFAULT_OPTIONS.timeout`),
+ * which answers U-2 from the route-arrival handoff: the same policy is safe
+ * for both. */
+export const DEFAULT_FILE_HOST_TIMEOUT_MS = 10_000
+
+/** Read fresh on every call, not cached at transport-creation time - so a
+ * test can `vi.stubEnv` a short deadline for the one call it's exercising
+ * even though `sessionsRepository` (and therefore this transport) is a
+ * module-scope singleton created once. Mirrors `describeFileHost`'s own
+ * `import.meta.env` read for the identical reason. */
+function resolveTimeoutMs(): number {
+  const override: string | undefined = import.meta.env.VITE_FILE_HOST_TIMEOUT_MS
+  if (override === undefined || override === "")
+    return DEFAULT_FILE_HOST_TIMEOUT_MS
+  const parsed = Number(override)
+  return Number.isFinite(parsed) && parsed > 0
+    ? parsed
+    : DEFAULT_FILE_HOST_TIMEOUT_MS
+}
+
 /**
  * Build the default transport for wherever this page is served from.
  *
@@ -90,16 +127,37 @@ export function createFileHostTransport(
 
   return async (route, init) => {
     const url = `${baseUrl.replace(/\/+$/, "")}/${route.replace(/^\/+/, "")}`
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), resolveTimeoutMs())
+
     try {
-      return await fetch(url, {
-        ...init,
-        headers: {
-          "Content-Type": "application/json",
-          ...init?.headers,
-        },
-      })
+      return await Promise.race([
+        fetch(url, {
+          ...init,
+          signal: controller.signal,
+          headers: {
+            "Content-Type": "application/json",
+            ...init?.headers,
+          },
+        }),
+        new Promise<never>((_resolve, reject) => {
+          // Settles this module's own race the instant the deadline fires,
+          // independent of whether `fetch` itself honors `controller.signal`
+          // - see this file's header, point 3.
+          controller.signal.addEventListener("abort", () => {
+            reject(
+              new DOMException(
+                `file_host did not answer ${route} within the deadline`,
+                "TimeoutError"
+              )
+            )
+          })
+        }),
+      ])
     } catch (cause) {
       throw new FileHostUnreachableError(route, cause)
+    } finally {
+      clearTimeout(timeoutId)
     }
   }
 }
