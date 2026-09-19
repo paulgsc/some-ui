@@ -35,9 +35,11 @@ const SIBLING_STATE_KEYS = new Set([
 const HOOK_CALL_PATTERN = /^use[A-Z]/
 
 function isHookCall(init: any): boolean {
-  if (!init || init.type !== "CallExpression") return false
+  if (init?.type !== "CallExpression") return false
   const callee = init.callee
-  return callee.type === "Identifier" && HOOK_CALL_PATTERN.test(callee.name)
+  if (callee.type !== "Identifier") return false
+  const name: string = callee.name
+  return HOOK_CALL_PATTERN.test(name)
 }
 
 export const noLoadingElidedDefault: Rule.RuleModule = {
