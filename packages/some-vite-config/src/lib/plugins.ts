@@ -39,6 +39,18 @@ const diagnosticsFormatHost: ts.FormatDiagnosticsHost = {
 // `ts.Program` (`Runtime` keeps it `protected`; `getProgram()` is its public
 // accessor), so `createPlugins` stashes it there and folds `getPreEmitDiagnostics`
 // into the same check.
+//
+// `getPreEmitDiagnostics` still misses one more thing: `program.getConfigFileParsingDiagnostics()`
+// only returns something if the `ts.Program` was constructed WITH a
+// `configFileParsingDiagnostics` argument - unplugin-dts's own `ts.createProgram({host,
+// rootNames, options, projectReferences})` call doesn't pass one (confirmed by
+// replicating its exact parse-then-createProgram sequence in a standalone script), so
+// a config-file-level error - an unknown compiler option, TS5023 - never reaches the
+// Program at all, and no amount of querying that Program recovers it. `tsc -p` parses
+// the same file itself and catches it independently of the Program. The fix here does
+// the same: parse the tsconfig this plugin is already pointed at a second time, cheaply
+// (`ts.readConfigFile` + `ts.parseJsonConfigFileContent` - a JSON parse and an extends-
+// chain resolution, not a type-checked program build), and fail on `.errors` directly.
 function failOnDiagnostics(diagnostics: ReadonlyArray<ts.Diagnostic>): void {
   if (diagnostics.length === 0) return
   const formatted = ts.formatDiagnosticsWithColorAndContext(
@@ -106,6 +118,27 @@ export function createPlugins(
     ? { tsconfigPath: buildTsconfigPath }
     : {}
 
+  // Same file vite-plugin-dts itself resolves to (its own fallback, when no
+  // tsconfig.build.json exists, is `ts.findConfigFile` from the package root).
+  const effectiveConfigPath = existsSync(buildTsconfigPath)
+    ? buildTsconfigPath
+    : ts.findConfigFile(packageRoot, ts.sys.fileExists)
+
+  const configDiagnostics: ReadonlyArray<ts.Diagnostic> = effectiveConfigPath
+    ? (() => {
+        const configFile = ts.readConfigFile(
+          effectiveConfigPath,
+          ts.sys.readFile
+        )
+        if (configFile.error) return [configFile.error]
+        return ts.parseJsonConfigFileContent(
+          configFile.config,
+          ts.sys,
+          resolve(effectiveConfigPath, "..")
+        ).errors
+      })()
+    : []
+
   let program: ts.Program | undefined
 
   const finalDtsOptions: DtsPluginOptions = {
@@ -120,7 +153,13 @@ export function createPlugins(
       const preEmitDiagnostics = program
         ? ts.getPreEmitDiagnostics(program)
         : []
-      failOnDiagnostics([...new Set([...diagnostics, ...preEmitDiagnostics])])
+      failOnDiagnostics([
+        ...new Set([
+          ...diagnostics,
+          ...preEmitDiagnostics,
+          ...configDiagnostics,
+        ]),
+      ])
     },
   }
 
