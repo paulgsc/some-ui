@@ -114,20 +114,27 @@ export const SessionComposer = ({
       failed: () => false,
     })
 
-  // A timed-out `createIntent` (new-session POST) that blocks resubmission
-  // is ambiguous for *both* buttons, not just the one that triggered it:
-  // `saveDraftState`/`saveAndPlayState` below project whichever button
-  // *didn't* just run back to `idle()`, so without this, clicking the other
-  // one still calls `createIntent.start` again and can duplicate the same
-  // write - a bot review caught this sibling-button bypass one round after
-  // the original-action bypass was fixed. `updateIntent` (PATCH, used once
-  // `existingSession` is set) never needs this: a PATCH timeout is always
-  // retryable (see `client.ts`'s `isNonIdempotent`), so it can never set
-  // `blocksResubmission`.
+  // Whether firing a *fresh* `createIntent.start` (a new `POST /sessions`)
+  // is unsafe given what `createIntent` itself already knows - independent
+  // of which button is `activeAction`. Two distinct cases, both bot-review
+  // findings:
+  //
+  // 1. `failed` with `blocksResubmission` - the create's own POST timed out
+  //    ambiguously (see `client.ts`'s `isNonIdempotent`/`FileHostUnreachableError`).
+  // 2. `succeeded` - a session was *definitely* created already (e.g. "Save
+  //    & Play" created it, then the follow-up activate PATCH failed and the
+  //    composer stayed mounted showing that failure). `createIntent` mints
+  //    at most one session per composer instance; once it has, no button
+  //    should ever fire a second `POST /sessions` from the same instance.
+  //
+  // `updateIntent` (PATCH, used once `existingSession` is set, or for the
+  // activate step of the chain) never needs this itself: a PATCH timeout is
+  // always retryable, so it can never set `blocksResubmission`, and it can't
+  // mint a duplicate resource.
   const createBlocked = matchIntent(createIntent.state, {
     idle: () => false,
     working: () => false,
-    succeeded: () => false,
+    succeeded: () => true,
     failed: (error) => !error.retryable && error.blocksResubmission === true,
   })
 
@@ -529,7 +536,14 @@ export const SessionComposer = ({
               workingLabel="Saving..."
               variant="outline"
               disabled={
-                anySaving || createBlocked || durationCheck.state !== "valid"
+                anySaving ||
+                // Only forced when this button is the *sibling* - when it's
+                // the active one, its own `state` already reflects
+                // `createIntent`'s truth (including a legitimate, retryable
+                // activate-PATCH failure after a successful create), and
+                // `IntentButton`'s own logic is what should decide that.
+                (activeAction !== "draft" && createBlocked) ||
+                durationCheck.state !== "valid"
               }
             />
             <IntentButton
@@ -541,7 +555,9 @@ export const SessionComposer = ({
                 step === "activate" ? "Starting..." : undefined
               }
               disabled={
-                anySaving || createBlocked || durationCheck.state !== "valid"
+                anySaving ||
+                (activeAction !== "play" && createBlocked) ||
+                durationCheck.state !== "valid"
               }
             />
           </div>

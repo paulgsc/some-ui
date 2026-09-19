@@ -242,6 +242,20 @@ describe("SessionComposer: Save & Play, new session - success path and regressio
     // The chain never navigated - the failure is visible instead.
     expect(navigateSpy).not.toHaveBeenCalled()
 
+    // A bot review's fresh finding beyond the ambiguous-timeout case: the
+    // create here *definitely* succeeded (only the activate PATCH failed),
+    // so `createIntent.state` is `succeeded`, not `failed` - "Save as draft"
+    // must still be disabled, since clicking it would fire a second
+    // `POST /sessions` for a session that already exists under a different
+    // id. "Save & Play" itself must stay enabled, though - its own "Try
+    // again" retries only the (safe, idempotent) activate PATCH, asserted
+    // below.
+    expect(
+      screen
+        .getByRole("button", { name: /save as draft/i })
+        .hasAttribute("disabled")
+    ).toBe(true)
+
     const postsBeforeRetry = calls.filter(
       (c) => c.method === "POST" && c.url.includes("/sessions")
     )
