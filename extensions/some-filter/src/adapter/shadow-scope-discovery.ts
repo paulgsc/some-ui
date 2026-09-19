@@ -658,6 +658,22 @@ export function createShadowScopeDiscovery<Rho, Pi>(
         childList: true,
         subtree: true,
       })
+      // Lifetime: started by observe() from runAutoTheme(); stopped by
+      // teardown() on a mode change and on pagehide. That is the whole of
+      // it — it is NOT stopped when the tab goes hidden, so on a tab the
+      // user has visited once it polls for the life of the document,
+      // foreground or not.
+      //
+      // Stating that rather than the teardown one would prefer is the point
+      // of this exemption (bot-found, Codex on #1459: an earlier version of
+      // this comment cited a `content.ts` suspendAutoWatchers that does not
+      // exist anywhere in the repo, carried over from a branch where it
+      // did — so the audit trail this rule exists to create was certifying
+      // the exact per-hidden-tab lifetime the rule was added to expose).
+      // visibility-gate.ts defers startup for a tab never yet shown and
+      // deliberately does not implement suspend-on-hide; its header records
+      // why, and #1460 tracks the re-arm work that half needs.
+      // eslint-disable-next-line extension-charter/require-named-lifetime -- lifetime stated above
       pollHandle = setInterval(() => {
         retireDetached()
         walk(document.documentElement, DOCUMENT_SCOPE_ID, "reactive")

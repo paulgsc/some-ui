@@ -702,6 +702,12 @@ export function createScopeCoverageWatchdog<Rho = unknown, Pi = unknown>(
     observe(registry): void {
       if (pollHandle !== null) return
       check(registry, "observe-start")
+      // Lifetime: started by observe() from applyState for any non-"off"
+      // state, stopped by teardown() on entering "off" and on pagehide, and
+      // NOT stopped when the tab goes hidden. See
+      // shadow-scope-discovery.ts's exemption for why this says so plainly
+      // rather than naming a teardown that was never wired.
+      // eslint-disable-next-line extension-charter/require-named-lifetime -- lifetime stated above
       pollHandle = setInterval(() => {
         check(registry, "poll")
       }, SCOPE_COVERAGE_POLL_MS)

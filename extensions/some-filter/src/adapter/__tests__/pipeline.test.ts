@@ -1,3 +1,7 @@
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
+import { realizeForegroundRepairs } from "@filter/adapter/foreground-repair"
+import { REPAIR_STYLE_ID } from "@filter/adapter/legibility-audit"
 import {
   createContentSession,
   isSelfAuthored,
@@ -935,5 +939,83 @@ describe("createContentSession — evidence is scoped to the content epoch", () 
     expect(document.documentElement.hasAttribute(DARK_THEME_ATTR)).toBe(true)
 
     contentSession.teardown()
+  })
+})
+
+describe("settled-interaction audit — scan scope must equal realization scope", () => {
+  /**
+   * Bot-found (Codex P1 on #1459). An earlier version of the interaction
+   * budget also rooted this pass at a bounded climb from the interaction's
+   * own target, to make it cheaper. That is unsound, and not in a way any
+   * existing test could see: `runContrastChannel`'s realization half is
+   * document-scoped regardless of the root it scanned.
+   * `realizeForegroundRepairs` rewrites — and on an empty action set
+   * *removes* — the single global `#__sw_legibility_repair` stylesheet, and
+   * `tagRepairCarriers` only clears stale tags under the root it was given.
+   * So a hover in one region produced a clean local pass that deleted a
+   * still-required repair belonging to another region, while leaving that
+   * carrier's `data-sw-legibility-fix` tag in place to report that nothing
+   * was wrong.
+   *
+   * Structural rather than behavioural because the failure is a *scope*
+   * mismatch between two halves of one call, which no fixture reproduces
+   * without reconstructing the whole channel. The rule it encodes is simple:
+   * a partial scan may not drive a total realization.
+   */
+  it("only ever runs the contrast channel over a whole-document root", () => {
+    const source = readFileSync(
+      join(process.cwd(), "src/adapter/pipeline.ts"),
+      "utf-8"
+    )
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/.*$/gm, "")
+
+    // `function runContrastChannel(root: Element)` is the declaration, not
+    // a call — match only call sites.
+    const roots = [
+      ...source.matchAll(/(?<!function\s)runContrastChannel\(([^)]*)\)/g),
+    ].map((m) => m[1]?.trim() ?? "")
+
+    // Guards the guard: if the call is renamed, this must not silently pass.
+    expect(roots.length).toBeGreaterThan(0)
+    for (const root of roots) {
+      expect(
+        ["document.body", "lastRoot"],
+        `runContrastChannel(${root}) — a partial scan may not drive the ` +
+          `document-scoped realization this channel performs`
+      ).toContain(root)
+    }
+  })
+})
+
+describe("realizeForegroundRepairs — why the rule above exists", () => {
+  /**
+   * The concrete hazard, pinned so the structural test above reads as a
+   * consequence rather than a rule someone asserted. A repair realized from
+   * a root that does not contain an already-tagged carrier drops that
+   * carrier's stylesheet outright and leaves its tag behind.
+   */
+  it("clears the global repair sheet from a root that excludes tagged carriers", () => {
+    const far = document.createElement("div")
+    far.dataset.swLegibilityFix = "rgb(1,2,3)~rgb(4,5,6)"
+    document.body.appendChild(far)
+
+    const sheet = document.createElement("style")
+    sheet.id = REPAIR_STYLE_ID
+    sheet.textContent = "[data-sw-legibility-fix] { color: #fff }"
+    document.head.appendChild(sheet)
+
+    const elsewhere = document.createElement("section")
+    document.body.appendChild(elsewhere)
+
+    // A clean pass rooted somewhere that contains no carrier at all.
+    realizeForegroundRepairs(elsewhere, [], new Map())
+
+    expect(document.getElementById(REPAIR_STYLE_ID)).toBeNull()
+    // ...and the carrier still claims to be repaired.
+    expect(far.dataset.swLegibilityFix).toBe("rgb(1,2,3)~rgb(4,5,6)")
+
+    far.remove()
+    elsewhere.remove()
   })
 })

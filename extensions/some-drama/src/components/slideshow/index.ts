@@ -182,6 +182,12 @@ export class Slideshow {
 
   startAutoAdvance(intervalMs = SLIDE_INTERVAL_MS): void {
     this.stopAutoAdvance()
+    // Lifetime: bounded by this object's own explicit start/stop pair —
+    // stopAutoAdvance() is called here before re-arming, and by the owner on
+    // teardown. A slideshow that is not being looked at should arguably stop
+    // advancing too, but that is a behaviour question for this component's
+    // owner, not an unstated lifetime.
+    // eslint-disable-next-line extension-charter/require-named-lifetime -- lifetime stated above
     this.timer = setInterval(() => {
       this.setSlide((this.currentSlide + 1) % this.slides.length)
     }, intervalMs)
