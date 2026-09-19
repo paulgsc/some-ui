@@ -141,6 +141,26 @@ describe("DashboardHome: ProfileSummary read outcomes", () => {
     await expectSomeFailureAffordance(document.body)
     expectRetryAffordanceTracksRetryable(document.body, true)
   })
+
+  it("a stale cached profile with a failed refresh keeps showing it, with a visible refresh-failed signal", () => {
+    profileResult = fakeProfileResult({
+      data: FIXTURE_PROFILE,
+      isLoading: false,
+      isError: true,
+      error: new Error("refresh failed"),
+    })
+    sessionsResult = fakeSessionsResult({
+      data: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+    })
+
+    render(withQueryClient(<DashboardHome />))
+
+    expect(screen.getByText("Yuna")).toBeTruthy()
+    expect(document.querySelector('[role="alert"]')).not.toBeNull()
+  })
 })
 
 describe("DashboardHome: RecentSessions read outcomes (#968 acceptance criteria)", () => {

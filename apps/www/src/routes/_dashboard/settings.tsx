@@ -255,7 +255,21 @@ const SettingsRoute = (): JSX.Element => {
   return matchQueryOutcome(outcome, {
     pending: () => <SettingsSkeleton />,
     failed: (error, retry) => <IntentFailure error={error} onRetry={retry} />,
-    ready: (settings) => <SettingsForm settings={settings} />,
+    ready: (settings, refreshError) => (
+      <div className="max-w-xl space-y-4">
+        {/* Same Safety invariant as `profile.tsx`'s identical fix: a cached
+            settings record through a failed background refresh may be
+            stale, so the refresh failure rides alongside the editable form
+            instead of being silently discarded. */}
+        {refreshError && (
+          <IntentFailure
+            error={refreshError.error}
+            onRetry={refreshError.retry}
+          />
+        )}
+        <SettingsForm settings={settings} />
+      </div>
+    ),
   })
 }
 

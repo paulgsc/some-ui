@@ -58,7 +58,7 @@ function profileSummaryContent(
         className="min-w-0 flex-1 py-1.5"
       />
     ),
-    ready: (profile) => (
+    ready: (profile, refreshError) => (
       <>
         <Avatar className="size-12 text-2xl">
           <AvatarFallback>{profile.avatar}</AvatarFallback>
@@ -67,6 +67,18 @@ function profileSummaryContent(
           <p className="text-muted-foreground text-sm">Welcome back</p>
           <p className="text-lg font-semibold">{profile.displayName}</p>
         </div>
+        {/* Same Safety invariant `RecentSessions` below already gets right:
+            a cached profile through a failed background refresh may be
+            stale, so the refresh failure rides alongside it rather than
+            being silently discarded - this arm shared the gap `profile.tsx`/
+            `settings.tsx` had until a bot review caught it there first. */}
+        {refreshError && (
+          <IntentFailure
+            error={refreshError.error}
+            onRetry={refreshError.retry}
+            className="min-w-0 flex-1 py-1.5"
+          />
+        )}
       </>
     ),
   })

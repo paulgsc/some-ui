@@ -153,7 +153,22 @@ const ProfileRoute = (): JSX.Element => {
   return matchQueryOutcome(outcome, {
     pending: () => <ProfileSkeleton />,
     failed: (error, retry) => <IntentFailure error={error} onRetry={retry} />,
-    ready: (profile) => <ProfileForm profile={profile} />,
+    ready: (profile, refreshError) => (
+      <div className="max-w-xl space-y-4">
+        {/* A cached profile through a failed background refresh may be
+            stale, so the refresh failure rides alongside the editable form
+            instead of being silently discarded - a bot review caught the
+            identical gap in `sessions/$sessionId.tsx`/`new.tsx` and this
+            file shared it. */}
+        {refreshError && (
+          <IntentFailure
+            error={refreshError.error}
+            onRetry={refreshError.retry}
+          />
+        )}
+        <ProfileForm profile={profile} />
+      </div>
+    ),
   })
 }
 
