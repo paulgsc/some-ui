@@ -386,15 +386,25 @@ const SessionsList = ({
 
   if (sessions.length === 0) {
     return (
-      <Card>
-        <CardContent className="text-muted-foreground flex flex-col items-center gap-2 py-10 text-center text-sm">
-          <Sparkles className="size-6" />
-          <p>No sessions yet.</p>
-          <Button asChild size="sm" className="mt-2">
-            <Link to="/app">Start something new</Link>
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="max-w-3xl space-y-4">
+        {/* See the nonempty branch below's identical comment - an empty
+            cache is not exempt from the same stale/failure signal. */}
+        {refreshError && (
+          <IntentFailure
+            error={refreshError.error}
+            onRetry={refreshError.retry}
+          />
+        )}
+        <Card>
+          <CardContent className="text-muted-foreground flex flex-col items-center gap-2 py-10 text-center text-sm">
+            <Sparkles className="size-6" />
+            <p>No sessions yet.</p>
+            <Button asChild size="sm" className="mt-2">
+              <Link to="/app">Start something new</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     )
   }
 

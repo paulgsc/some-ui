@@ -27,6 +27,19 @@
  *    browser's `fetch` does, but nothing here can assume every caller of
  *    this module's own test seam does too (see `installFileHostSabotage`'s
  *    `"hang"` mode), and the deadline must hold either way.
+ *
+ *    The deadline lives in `requestJSON`, not inside `createFileHostTransport`
+ *    itself, and covers the *whole* logical request - headers **and** body.
+ *    A first version scoped it to just the `fetch()` call and cleared it the
+ *    moment headers arrived; `file_host` sending headers promptly and then
+ *    stalling the JSON body (a slow disk read, a wedged connection after the
+ *    response started) left `response.json()` with no protection at all,
+ *    which is exactly the kind of non-settling dependency this deadline
+ *    exists to bound. `controller.signal.aborted` (not the specific error
+ *    that happened to win the race) is what `requestJSON` checks to decide
+ *    "did my own deadline fire" - `fetch` reacting to that same abort can
+ *    reject first, with its own `AbortError`, depending on microtask timing,
+ *    and that must still count as this deadline, not a different failure.
  */
 
 import type { FileHostResolution } from "."
@@ -117,7 +130,9 @@ function resolveTimeoutMs(): number {
  *
  * Returns `null` when there is no base URL at all - SSR, or a test with no
  * `window`. Callers treat that as "no backend", which is the same branch
- * the static build takes.
+ * the static build takes. Deliberately has no timeout of its own - see this
+ * file's header, point 3, and `requestJSON` below, which owns the deadline
+ * for the whole request this transport is only the first half of.
  */
 export function createFileHostTransport(
   resolution: FileHostResolution = describeFileHost()
@@ -127,50 +142,22 @@ export function createFileHostTransport(
 
   return async (route, init) => {
     const url = `${baseUrl.replace(/\/+$/, "")}/${route.replace(/^\/+/, "")}`
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), resolveTimeoutMs())
-
     try {
-      return await Promise.race([
-        fetch(url, {
-          ...init,
-          signal: controller.signal,
-          headers: {
-            "Content-Type": "application/json",
-            ...init?.headers,
-          },
-        }),
-        new Promise<never>((_resolve, reject) => {
-          // Settles this module's own race the instant the deadline fires,
-          // independent of whether `fetch` itself honors `controller.signal`
-          // - see this file's header, point 3.
-          controller.signal.addEventListener("abort", () => {
-            reject(
-              new DOMException(
-                `file_host did not answer ${route} within the deadline`,
-                "TimeoutError"
-              )
-            )
-          })
-        }),
-      ])
+      return await fetch(url, {
+        ...init,
+        headers: {
+          "Content-Type": "application/json",
+          ...init?.headers,
+        },
+      })
     } catch (cause) {
       throw new FileHostUnreachableError(route, cause)
-    } finally {
-      clearTimeout(timeoutId)
     }
   }
 }
 
 /**
- * `fetch`, decode, and turn every failure into one of the three errors
- * above.
- *
- * Every `file_host` route answers with a JSON body, including the deletes
- * (`{ removed }`, `{ deletedCount }`) - there is no 204 to special-case.
- */
-/**
- * Whether `error` is this transport's own deadline firing, as opposed to a
+ * Whether `error` is this module's own deadline firing, as opposed to a
  * fast rejection (connection refused, a 5xx) or an unconfigured feature.
  *
  * The distinction matters for retry policy, not just diagnostics: TanStack
@@ -190,25 +177,90 @@ export function isFileHostTimeout(error: unknown): boolean {
   )
 }
 
+/**
+ * `fetch`, decode, and turn every failure into one of the three errors
+ * above - bounded by one deadline covering both halves.
+ *
+ * Every `file_host` route answers with a JSON body, including the deletes
+ * (`{ removed }`, `{ deletedCount }`) - there is no 204 to special-case.
+ *
+ * The deadline is owned here rather than inside the transport: `transport`
+ * only promises headers, and a stalled body after a prompt response would
+ * otherwise have no protection at all (see this file's header). Racing the
+ * *entire* operation - the transport call, the status check, and the body
+ * read, success or error body alike - against one shared abort signal is
+ * what closes that gap, whatever step actually stalls.
+ */
 export async function requestJSON<T>(
   transport: FileHostTransport,
   route: string,
   init?: RequestInit
 ): Promise<T> {
-  const response = await transport(route, init)
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), resolveTimeoutMs())
 
-  if (response.status === 503) throw new FileHostNotConfiguredError(route)
-  if (!response.ok) {
-    throw new FileHostResponseError(
-      response.status,
-      route,
-      await errorCodeOf(response)
-    )
+  const operation = async (): Promise<T> => {
+    const response = await transport(route, {
+      ...init,
+      signal: controller.signal,
+    })
+
+    if (response.status === 503) throw new FileHostNotConfiguredError(route)
+    if (!response.ok) {
+      throw new FileHostResponseError(
+        response.status,
+        route,
+        await errorCodeOf(response)
+      )
+    }
+
+    // `Response.json()` is `any` by definition — there is no schema to check
+    // against here, and the caller's `T` is the claim it is making about the
+    // route it asked for. Narrowing happens where the shape is known.
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    return response.json()
   }
 
-  // `Response.json()` is `any` by definition — there is no schema to check
-  // against here, and the caller's `T` is the claim it is making about the
-  // route it asked for. Narrowing happens where the shape is known.
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-  return response.json()
+  try {
+    return await Promise.race([
+      operation(),
+      new Promise<never>((_resolve, reject) => {
+        // Settles this module's own race the instant the deadline fires,
+        // independent of whether `transport`'s own `fetch` honors
+        // `controller.signal` - see this file's header, point 3.
+        controller.signal.addEventListener("abort", () => {
+          reject(
+            new DOMException(
+              `file_host did not answer ${route} within the deadline`,
+              "TimeoutError"
+            )
+          )
+        })
+      }),
+    ])
+  } catch (cause) {
+    if (
+      cause instanceof FileHostNotConfiguredError ||
+      cause instanceof FileHostResponseError
+    ) {
+      throw cause
+    }
+    // Whichever promise actually won the race above, `controller.signal`
+    // having fired *is* this deadline - not whatever specific rejection
+    // reason happened to propagate first (see this file's header). Folding
+    // both into one canonical, `isFileHostTimeout`-recognizable error keeps
+    // the distinction race-condition-free.
+    if (controller.signal.aborted) {
+      throw new FileHostUnreachableError(
+        route,
+        new DOMException(
+          `file_host did not answer ${route} within the deadline`,
+          "TimeoutError"
+        )
+      )
+    }
+    throw new FileHostUnreachableError(route, cause)
+  } finally {
+    clearTimeout(timeoutId)
+  }
 }

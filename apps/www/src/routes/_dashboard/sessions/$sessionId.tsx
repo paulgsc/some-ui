@@ -1,4 +1,5 @@
 import type { JSX } from "react"
+import type { IntentError } from "@some-ui/intent-kit"
 import {
   Card,
   CardContent,
@@ -55,6 +56,20 @@ const DraftGuard = ({ sessionId }: { sessionId: string }): JSX.Element => (
   </Card>
 )
 
+const PlayerFailure = ({
+  error,
+  onRetry,
+}: {
+  error: IntentError
+  onRetry: () => void
+}): JSX.Element => (
+  <Card className="max-w-3xl">
+    <CardContent className="pt-6">
+      <IntentFailure error={error} onRetry={onRetry} />
+    </CardContent>
+  </Card>
+)
+
 /** Split from `SessionPlayerRoute` so the outcome logic can be exercised
  * directly with a plain `sessionId` prop - `Route.useParams()` needs a real
  * matched router context that a component test has no reason to build. */
@@ -74,15 +89,22 @@ export const SessionPlayer = ({
     // Distinct from `SessionNotFound`: a failed read has not told us the
     // session is absent, only that we don't yet know - see the
     // route-arrival handoff's Safety invariant.
-    failed: (error, retry) => (
-      <Card className="max-w-3xl">
-        <CardContent className="pt-6">
-          <IntentFailure error={error} onRetry={retry} />
-        </CardContent>
-      </Card>
-    ),
-    ready: (session) => {
-      if (!session) return <SessionNotFound />
+    failed: (error, retry) => <PlayerFailure error={error} onRetry={retry} />,
+    ready: (session, refreshError) => {
+      if (!session) {
+        // A cached "no session" through a *failed* refresh hasn't actually
+        // been reconfirmed - the same Safety invariant as the `failed` arm
+        // above, not "not found" wearing a different arm.
+        if (refreshError) {
+          return (
+            <PlayerFailure
+              error={refreshError.error}
+              onRetry={refreshError.retry}
+            />
+          )
+        }
+        return <SessionNotFound />
+      }
       if (session.status === "draft")
         return <DraftGuard sessionId={sessionId} />
       return <LivePlayer key={session.id} session={session} />
