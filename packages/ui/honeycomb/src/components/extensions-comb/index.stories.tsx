@@ -9,10 +9,14 @@ import { ExtensionsComb } from "."
  * them — by clicking a cell — which is also the only way to assert that the
  * transitions work.
  *
+ * The decorator gives it a viewport-sized box and nothing else, because that
+ * is the contract: the comb positions itself absolutely against its host and
+ * scales to fill it. Handing it a box of content height would measure a
+ * layout that never ships.
+ *
  * Swept by `apps/www/tests/ui-fit/no-overflow.spec.ts` at all four viewports,
  * including 780x390: a landscape phone is the shape this layout is most
- * likely to fail on, because the comb is bounded by height there and by width
- * everywhere else.
+ * likely to fail on, because the comb is bounded by its short axis there.
  */
 const meta: Meta<typeof ExtensionsComb> = {
   title: "UI/Honeycomb/ExtensionsComb",
@@ -21,7 +25,7 @@ const meta: Meta<typeof ExtensionsComb> = {
   parameters: { layout: "fullscreen" },
   decorators: [
     (Story) => (
-      <div className="bg-background size-full overflow-hidden p-4 md:p-8">
+      <div className="bg-background relative h-svh w-full overflow-hidden">
         <Story />
       </div>
     ),
@@ -32,7 +36,7 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 /**
- * L0. At rest the DOM holds the `<h1>` and the comb, and no other sentence —
- * the property the whole design law exists to protect.
+ * L0. At rest the DOM renders no prose at all — the heading is visually
+ * hidden and the comb is the whole page.
  */
 export const Index: Story = {}

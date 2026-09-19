@@ -127,19 +127,21 @@ function slotBox(slot: number): { left: number; top: number } {
  * in, so every level is the same drawing at a different magnification and the
  * geometry cannot drift between them.
  *
- * The box's own width is a single CSS expression rather than anything
- * measured, which is what keeps a landscape phone honest. Reading across:
- * never wider than the column, never so tall that the comb stops fitting a
- * short window (the `svh` term, converted through the comb's aspect ratio),
- * never magnified past natural size — and then floored, because a 780x390
- * window would otherwise shrink the whole thing to a thumbnail with
- * unreadable type. The floor is itself clamped by `100%`, so it can never be
- * the term that overflows the column sideways; when the floor wins, the page
- * scrolls vertically the way any long route does.
+ * The scale fits *both* axes of the box and is not capped at 1: the comb is
+ * the page rather than an illustration on it, so on a roomy window it grows
+ * past natural size to fill the viewport instead of sitting small in the
+ * middle of it. Because it fits height as well as width, a landscape phone —
+ * the shape this layout is most likely to fail on — is bounded by its short
+ * axis and still shows all seven registers at once.
+ *
+ * Type scales with the geometry, which is what makes the fit safe to assert
+ * once: the ratio of characters to box is constant at every size, so a
+ * sentence that fits the centroid on a desktop fits it on a phone.
  */
-const K_MIN = 0.62
-const HEIGHT_CAP_SVH = (0.86 * 100 * COMB_W) / COMB_H
-const COMB_BOX_WIDTH = `min(100%, max(${(K_MIN * COMB_W).toFixed(2)}px, min(${HEIGHT_CAP_SVH.toFixed(2)}svh, ${COMB_W.toFixed(2)}px)))`
+function combScale(box: { width?: number; height?: number }): number {
+  if (box.width === undefined || box.height === undefined) return 1
+  return Math.min(box.width / COMB_W, box.height / COMB_H)
+}
 
 // -------------------------------------------------------------------- colour
 
@@ -552,35 +554,38 @@ type View = { subject: number | null; facet: Facet | null }
 
 export const ExtensionsComb = (): JSX.Element => {
   const boxRef = useRef<HTMLDivElement>(null)
-  const { width } = useResizeObserver({ ref: boxRef })
+  const size = useResizeObserver({ ref: boxRef })
   const [view, setView] = useState<View>({ subject: null, facet: null })
   const [peek, setPeek] = useState<number | null>(null)
 
-  const scale = width === undefined ? 1 : width / COMB_W
+  const scale = combScale(size)
   const subject =
     view.subject === null ? null : (EXTENSIONS[view.subject] ?? null)
 
   return (
-    <div className="flex w-full flex-col items-center gap-8 lg:flex-row lg:items-center lg:justify-center lg:gap-14">
-      <div className="w-full lg:w-[26rem] lg:shrink-0">
-        {/* The only prose on the page not earned by an interaction. */}
-        <h1 className="text-gradient-heading text-4xl leading-[1.02] font-bold tracking-tight text-balance md:text-5xl lg:text-6xl">
-          {PAGE_TITLE}
-        </h1>
-      </div>
+    <div ref={boxRef} className="absolute inset-0 overflow-hidden p-3 md:p-6">
+      {/*
+        The page shows no prose at rest at all - not even a title. That is the
+        design law taken to its end: everything a visitor reads, they asked
+        for by touching a cell.
 
-      <div
-        ref={boxRef}
-        className="relative shrink-0"
-        style={{ width: COMB_BOX_WIDTH, aspectRatio: `${COMB_W} / ${COMB_H}` }}
-      >
+        A screen reader has no comb to look at, though, and a document with no
+        heading gives it nothing to announce or navigate by. So the heading
+        exists and is visually hidden: it is a document label, not copy, and
+        it renders nothing. The six cells carry their own names as
+        `aria-label`s, so the structure below it is already legible.
+      */}
+      <h1 className="sr-only">{PAGE_TITLE}</h1>
+
+      <div className="relative size-full">
         <div
-          className="absolute top-0 left-0"
+          className="absolute top-1/2 left-1/2"
           style={{
             width: COMB_W,
             height: COMB_H,
+            marginLeft: -COMB_W / 2,
+            marginTop: -COMB_H / 2,
             transform: `scale(${scale})`,
-            transformOrigin: "top left",
           }}
         >
           {subject === null ? (
