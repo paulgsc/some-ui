@@ -22,6 +22,14 @@
   #text-input/#action-button/#modal-dialog: BORDER_CONTAINER_SELECTOR's
   remaining affordance-only selector — these should still get the forced
   1px solid border the structural containers above no longer do.
+
+  #tall-file/#tall-file-sibling: two sibling divs, one of them 6000px tall —
+  a stand-in for GitHub's PR "Files changed" tab, where each changed file's
+  diff sits in its own CONTAINER-matched sibling box as tall as that file's
+  own line count. Exercises the raster-cost bound: the lift's
+  background-size must stay a fixed 3rem regardless of this box's real
+  height, not scale to it (this module's own header, "the lift's raster
+  cost must not scale with container height").
 -->
 <html style="background-color: rgb(255, 255, 255)">
   <head>
@@ -41,6 +49,8 @@
       <input id="text-input" type="text" />
       <button id="action-button">Action</button>
       <dialog id="modal-dialog" open>Dialog content</dialog>
+      <div id="tall-file" style="height: 6000px">Large file diff stand-in</div>
+      <div id="tall-file-sibling">Next file</div>
     </main>
   </body>
 </html>

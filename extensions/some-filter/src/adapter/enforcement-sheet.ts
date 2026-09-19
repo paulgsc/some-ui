@@ -135,6 +135,30 @@
  *     same visible edge; a full-height fade would be invisible on a tall
  *     container.
  *
+ *  * ── the lift's raster cost must not scale with container height ────────────
+ *
+ * The fixed-height claim above is about *where the fade is visible*, not
+ * about *how much the browser has to rasterize* — those are different
+ * costs, and the first live measurement only checked the first one. A CSS
+ * gradient with no explicit `background-size` sizes itself to the entire
+ * background positioning area; the `0`/`3rem` color-stop lengths in a plain
+ * `linear-gradient(...)` only place colors along that area; they do not
+ * bound it. On a real dense page this is not academic: GitHub's PR "Files
+ * changed" tab wraps each changed file's diff in its own `CONTAINER`-matched
+ * box (`details`, among others) with as many sibling boxes as files
+ * changed, and an expanded diff's own box height scales with that file's
+ * line count — thousands of pixels for a large file. Every one of those
+ * boxes is `:not(:only-child)` (they are siblings of each other), so
+ * without a bound, the lift would cost the browser a full-box-height
+ * gradient raster on every repaint of every expanded file, scaling with
+ * files-changed × lines-changed on exactly the kind of page (many
+ * `CONTAINER` siblings, some of them tall) this mechanism exists for.
+ * `background-size: 100% 3rem` + `no-repeat` + `background-position: top`
+ * (below) bounds the rasterized area to the same 3rem strip regardless of
+ * the box's real height — the visual result is identical (the color stops
+ * inside that fixed-size image still run 0% to 100%), the raster cost is
+ * now `O(1)` per container instead of `O(container height)`.
+ *
  * Rejected: `:is(C):has(> * ~ *)` (lift the group envelope) is the more
  * semantically direct read but is a broad subject with a universal `:has()`
  * argument, which is costly to invalidate on every child mutation — not
@@ -426,13 +450,27 @@ ${BORDER_CONTAINER_SELECTOR} {
 
 /* Lift: separation of UI concerns. Must out-rank ERASE_SELECTOR's (0,0,4)
    background-image: none, hence the :where() + EXT_GUARD (0,2,0) idiom —
-   see this module's own header and LIFT_SELECTOR's own header. */
+   see this module's own header and LIFT_SELECTOR's own header.
+
+   background-size/repeat/position bound the gradient's own raster cost to a
+   fixed 3rem-tall strip, independent of the container's actual height — see
+   this module's own header, "the lift's raster cost must not scale with
+   container height". Without an explicit background-size, a CSS gradient's
+   natural size is the *entire* background positioning area: the color-stop
+   lengths below only decide where each color sits along that area, they do
+   not bound how much of the box the browser has to rasterize. A container
+   many thousands of pixels tall (a large expanded diff, a long thread) would
+   otherwise cost the same to raster as a 3rem-tall one, not the fixed cost
+   the visual design (and LIFT_SELECTOR's own performance argument) assumes. */
 :where(${LIFT_SELECTOR})${EXT_GUARD} {
   background-image: linear-gradient(
     to bottom,
-    ${swatch.lift} 0,
-    transparent 3rem
+    ${swatch.lift},
+    transparent
   ) !important;
+  background-size: 100% 3rem !important;
+  background-repeat: no-repeat !important;
+  background-position: top !important;
 }
 
 /* ADR 0003 §3: the compile-time highlight table — text tiers, links, code,

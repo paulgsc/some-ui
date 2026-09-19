@@ -198,6 +198,46 @@ test.describe("ADR 0002 enforcement sheet", () => {
     expect(backgroundImage).toBe("none")
   })
 
+  test("LIFT_SELECTOR — the raster area stays bounded on a very tall container", async ({
+    context,
+    fixture,
+  }) => {
+    const sw = await backgroundWorker(context)
+    await enableEnforcementSheet(sw)
+
+    const page = await fixture.goto("lift-gradient-page")
+    await cycleTabOff(sw, page, "lift-gradient-page.html")
+
+    await page.waitForFunction(
+      (expected) =>
+        getComputedStyle(document.documentElement).backgroundColor === expected,
+      ENFORCED_BG,
+      { timeout: 5_000, polling: 100 }
+    )
+
+    // #tall-file is 6000px tall (GitHub's "Files changed" tab stand-in — a
+    // large expanded diff, this module's own header). Without an explicit
+    // background-size, a CSS gradient sizes itself to the element's full
+    // box, so the browser would rasterize a 6000px-tall gradient here
+    // instead of the fixed 3rem strip the design calls for. background-size
+    // must report the bounded size, not "auto" (which is what an unbounded
+    // gradient reports) and not the element's own 6000px height.
+    const style = await page.evaluate(() => {
+      const el = document.getElementById("tall-file")
+      if (el === null) throw new Error("fixture missing #tall-file")
+      const computed = getComputedStyle(el)
+      return {
+        backgroundImage: computed.backgroundImage,
+        backgroundSize: computed.backgroundSize,
+        backgroundRepeat: computed.backgroundRepeat,
+      }
+    })
+
+    expect(style.backgroundImage).toContain("linear-gradient")
+    expect(style.backgroundSize).toBe("100% 48px")
+    expect(style.backgroundRepeat).toBe("no-repeat")
+  })
+
   test("border soup fix — a plain container gets no forced border", async ({
     context,
     fixture,

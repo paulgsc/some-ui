@@ -88,15 +88,31 @@ describe("buildEnforcementCSS", () => {
 
   it("lifts structural containers with a top-lit gradient instead of a forced border", () => {
     const css = buildEnforcementCSS(swatch)
-    expect(css).toContain(`${swatch.lift} 0`)
+    expect(css).toContain(swatch.lift)
     expect(css).toContain("linear-gradient(")
-    expect(css).toContain("transparent 3rem")
     // Structural containers that got the border in the old scheme now
     // appear in the lift rule's own selector instead.
     const [liftBlock] = css.match(/:where\(:is\([^)]*\)[^{]*\{[^}]*\}/) ?? [""]
     for (const structural of ["div", "section", "nav", "table"]) {
       expect(liftBlock).toMatch(new RegExp(`\\b${structural}\\b`))
     }
+  })
+
+  it("bounds the lift's raster cost to a fixed strip, independent of container height", () => {
+    // Regression lock for a live-measured hazard: a plain background-image
+    // gradient with no background-size sizes itself to the element's full
+    // box, not the visual 3rem fade — on GitHub's PR "Files changed" tab
+    // (many CONTAINER-matched sibling boxes, one per changed file, each as
+    // tall as that file's own diff), that meant a full-box-height gradient
+    // raster on every repaint of every expanded file. background-size +
+    // no-repeat + a fixed background-position bound the rasterized area to
+    // 3rem regardless of the box's real height — see this module's own
+    // header, "the lift's raster cost must not scale with container height".
+    const css = buildEnforcementCSS(swatch)
+    const [liftBlock] = css.match(/:where\(:is\([^)]*\)[^{]*\{[^}]*\}/) ?? [""]
+    expect(liftBlock).toContain("background-size: 100% 3rem")
+    expect(liftBlock).toContain("background-repeat: no-repeat")
+    expect(liftBlock).toContain("background-position: top")
   })
 
   it("never uses :has() — LIFT_SELECTOR is :not(:only-child), not a group-envelope :has()", () => {
