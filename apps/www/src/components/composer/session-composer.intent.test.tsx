@@ -168,7 +168,7 @@ describe("composer Save & Play, new session (#933's flow)", () => {
     // deadline so this test doesn't itself wait out the real ~10s default;
     // see `client.ts`'s `resolveTimeoutMs` for why a stub set here, after
     // the module has already loaded, still takes effect.
-    it("eventually tells the person something is wrong, once the transport's own deadline fires", async () => {
+    it("eventually tells the person something is wrong, once the transport's own deadline fires - with no retry control, since createSession is a POST a bot review caught as unsafe to retry blind", async () => {
       vi.stubEnv("VITE_FILE_HOST_TIMEOUT_MS", "50")
       await renderAtReviewStep()
       const restore = installFileHostSabotage("hang")
@@ -180,10 +180,14 @@ describe("composer Save & Play, new session (#933's flow)", () => {
 
       await expectSomeFailureAffordance(document.body)
       expect(
-        isDisabled(
-          screen.getByRole("button", { name: /save.*play|try.*again/i })
-        )
+        isDisabled(screen.getByRole("button", { name: /save.*play/i }))
       ).toBe(false)
+      // A timeout on createSession's own POST /sessions cannot tell "never
+      // reached file_host" from "file_host already created it and the
+      // response was slow" - offering "Try again" here is a duplicate-
+      // session button with a friendly label. See client.ts's
+      // isNonIdempotent and FileHostUnreachableError's retryable doc.
+      expectRetryAffordanceTracksRetryable(document.body, false)
       restore()
     })
   })

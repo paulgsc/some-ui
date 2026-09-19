@@ -180,6 +180,20 @@ export function isFileHostTimeout(error: unknown): boolean {
 }
 
 /**
+ * `POST` is the one method this app's `file_host` routes use for a write
+ * that mints a new resource (`HttpSessionsRepository`'s `create`/
+ * `duplicate` - see that file's own route table); `PATCH`/`DELETE` and a
+ * plain `GET` all converge on the same end state if repeated, so aborting
+ * and retrying them is safe. A `POST` whose *response* timed out is the one
+ * shape where the client genuinely cannot tell "never reached the server"
+ * from "the server already created it and the response was slow" - see
+ * `requestJSON`'s own use of this below.
+ */
+function isNonIdempotent(init: RequestInit | undefined): boolean {
+  return init?.method === "POST"
+}
+
+/**
  * `fetch`, decode, and turn every failure into one of the three errors
  * above - bounded by one deadline covering both halves.
  *
@@ -258,7 +272,10 @@ export async function requestJSON<T>(
         new DOMException(
           `file_host did not answer ${route} within the deadline`,
           "TimeoutError"
-        )
+        ),
+        // Not retryable for a non-idempotent write - see `isNonIdempotent`'s
+        // own header and `FileHostUnreachableError`'s `retryable` doc.
+        !isNonIdempotent(init)
       )
     }
     throw new FileHostUnreachableError(route, cause)

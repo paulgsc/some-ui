@@ -93,3 +93,48 @@ describe("requestJSON: bounded wait", () => {
     )
   })
 })
+
+describe("requestJSON: retryability of a timeout depends on whether the write is idempotent", () => {
+  it("marks a timeout on a POST (create/duplicate) as not retryable - the client can't tell 'never sent' from 'server already did it'", async () => {
+    vi.stubEnv("VITE_FILE_HOST_TIMEOUT_MS", "30")
+    const hangingTransport: FileHostTransport = () =>
+      new Promise<Response>(() => {})
+
+    await expect(
+      requestJSON(hangingTransport, "sessions", { method: "POST" })
+    ).rejects.toMatchObject({ retryable: false })
+  })
+
+  it("still marks a timeout on a GET as retryable (no method - list()/get()'s own shape)", async () => {
+    vi.stubEnv("VITE_FILE_HOST_TIMEOUT_MS", "30")
+    const hangingTransport: FileHostTransport = () =>
+      new Promise<Response>(() => {})
+
+    await expect(
+      requestJSON(hangingTransport, "sessions")
+    ).rejects.toMatchObject({ retryable: true })
+  })
+
+  it("still marks a timeout on a PATCH/DELETE as retryable - repeating them converges on the same end state", async () => {
+    vi.stubEnv("VITE_FILE_HOST_TIMEOUT_MS", "30")
+    const hangingTransport: FileHostTransport = () =>
+      new Promise<Response>(() => {})
+
+    await expect(
+      requestJSON(hangingTransport, "sessions", { method: "PATCH" })
+    ).rejects.toMatchObject({ retryable: true })
+    await expect(
+      requestJSON(hangingTransport, "sessions", { method: "DELETE" })
+    ).rejects.toMatchObject({ retryable: true })
+  })
+
+  it("a connection-refused POST (never reached the server) stays retryable, unlike a timed-out one", async () => {
+    vi.stubEnv("VITE_FILE_HOST_TIMEOUT_MS", "5000")
+    const refusedTransport: FileHostTransport = () =>
+      Promise.reject(new TypeError("Failed to fetch"))
+
+    await expect(
+      requestJSON(refusedTransport, "sessions", { method: "POST" })
+    ).rejects.toMatchObject({ retryable: true })
+  })
+})
