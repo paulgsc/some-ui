@@ -31,7 +31,7 @@
     "url": "https://github.com/paulgsc/some-ui"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && vite build",
+    "build": "vite build",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf tsconfig.tsbuildinfo",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",

@@ -1,10 +1,39 @@
 import { existsSync } from "fs"
 import { resolve } from "path"
 import react from "@vitejs/plugin-react"
+import ts from "typescript"
 import type { PluginOption } from "vite"
 import dts from "vite-plugin-dts"
 
 import type { ViteConfigOptions } from "@/types/index.js"
+
+const diagnosticsFormatHost: ts.FormatDiagnosticsHost = {
+  getCurrentDirectory: () => process.cwd(),
+  getCanonicalFileName: (fileName) => fileName,
+  getNewLine: () => ts.sys.newLine,
+}
+
+// vite-plugin-dts (unplugin-dts under the hood) builds its own TypeScript
+// program to emit .d.ts files, and that program computes the same semantic,
+// syntactic and declaration diagnostics `tsc -p tsconfig.build.json` does —
+// confirmed by deliberately introducing a type error, an unused local and a
+// missing return and observing all three reported (TS2322, TS6133, TS2366).
+// But by default it only logs them: `vite build` exits 0 regardless, because
+// nothing calls back into Rollup's failure path for them (see #1447). This
+// hook is what unplugin-dts exposes for exactly that gap - without it, the
+// standalone `tsc` pass was the only thing standing between a type error and
+// a green build, which is why removing that pass could not happen until this
+// was wired up.
+function failOnDiagnostics(diagnostics: ReadonlyArray<ts.Diagnostic>): void {
+  if (diagnostics.length === 0) return
+  const formatted = ts.formatDiagnosticsWithColorAndContext(
+    diagnostics,
+    diagnosticsFormatHost
+  )
+  throw new Error(
+    `${diagnostics.length} type error${diagnostics.length === 1 ? "" : "s"} found while generating declarations:\n\n${formatted}`
+  )
+}
 
 export function createPlugins(
   options: ViteConfigOptions,
@@ -67,6 +96,7 @@ export function createPlugins(
     ...tsconfigPath,
     ...dtsOptions,
     exclude: mergedExclude,
+    afterDiagnostic: failOnDiagnostics,
   }
 
   return [react(), dts(finalDtsOptions), ...additionalPlugins]

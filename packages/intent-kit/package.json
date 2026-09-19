@@ -35,7 +35,7 @@
     "@some-ui/vite-config": "workspace:*"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && vite build",
+    "build": "vite build",
     "build:tsc-alias": "tsc-alias -p tsconfig.json",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf tsconfig.tsbuildinfo tsconfig.build.tsbuildinfo",

@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && vite build",
+    "build": "vite build",
     "build:tsc-alias": "tsc-alias -p tsconfig.build.json",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\"",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",

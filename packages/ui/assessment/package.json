@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && vite build",
+    "build": "vite build",
     "build:tsc-alias": "tsc-alias -p tsconfig.json",
     "build-storybook": "storybook build",
     "watch": "concurrently \"rollup --bundleConfigAsCjs -c --watch\" \"tsc --watch\"",

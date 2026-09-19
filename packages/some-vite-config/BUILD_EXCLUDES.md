@@ -7,22 +7,33 @@ every new workspace (or every new shared-content package) has to _remember_ to
 add the same excludes in its own config, and the first time you forget, those
 modules leak into `dist/`.
 
-## The two passes a UI package runs
+## One pass, not two
 
 Every `packages/ui/*` build script is:
 
 ```jsonc
-"build": "tsc -p tsconfig.build.json && vite build"
+"build": "vite build"
 ```
 
-That is **two independent compiler passes**, and historically each had its own
-exclude list that had to be kept in sync by hand:
+Until #1447 this was **two independent compiler passes** —
+`tsc -p tsconfig.build.json && vite build` — each with its own exclude list
+that had to be kept in sync by hand:
 
-|                      | Pass 1 — `tsc -p tsconfig.build.json`                              | Pass 2 — `vite build` → `vite-plugin-dts`                          |
-| -------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------ |
-| What it does         | Type-checks the build surface (`noEmit: true` — **emits nothing**) | Bundles JS from the entry graph **and emits `.d.ts` into `dist/`** |
-| Governed by          | that package's `tsconfig.build.json` `include`/`exclude`           | previously: only `dtsOptions.exclude` in `vite.config.ts`          |
-| If a glob is missing | slow / failing typecheck of files that aren't yours                | **stray `.d.ts` for that module ships in `dist/`**                 |
+|                      | Pass 1 — `tsc -p tsconfig.build.json` (removed)                       | Pass 2 — `vite build` → `vite-plugin-dts`                          |
+| -------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| What it did / does   | Type-checked the build surface (`noEmit: true` — **emitted nothing**) | Bundles JS from the entry graph **and emits `.d.ts` into `dist/`** |
+| Governed by          | that package's `tsconfig.build.json` `include`/`exclude`              | previously: only `dtsOptions.exclude` in `vite.config.ts`          |
+| If a glob is missing | slow / failing typecheck of files that aren't yours                   | **stray `.d.ts` for that module ships in `dist/`**                 |
+
+`vite-plugin-dts` builds its own TypeScript program from the same
+`tsconfig.build.json` to emit declarations, and that program computes the
+same semantic/syntactic/declaration diagnostics pass 1 did — confirmed by
+deliberately introducing a type error, an unused local and a missing return
+and observing all three reported. It just didn't fail the build on them by
+default. `createPlugins` now wires `afterDiagnostic` (see `plugins.ts`) to
+throw when there are any, which is what let pass 1 be deleted instead of
+merely made redundant: removing it earlier would have silently dropped type
+checking from every one of these builds. See #1447.
 
 ### Why "forgetting some-content-registry in dtsOptions eagerly transpiles it"
 
@@ -42,9 +53,9 @@ candidates. The only thing that stopped it emitting them was the hand-written
 ## What changed
 
 1. **`createPlugins` points `vite-plugin-dts` at `tsconfig.build.json`** (when it
-   exists). Pass 2's declaration emit and pass 1's typecheck now read the **same
-   include/exclude**. `tsconfig.build.json` is the single source of truth; there
-   is no separate dts-only list to keep in sync.
+   exists), so declaration emit and type-checking (via `afterDiagnostic`, since
+   #1447) both read the **same include/exclude**. `tsconfig.build.json` is the
+   single source of truth; there is no separate dts-only list to keep in sync.
 
 2. **The centralized exclude list lives in `createPlugins`, not in each
    `vite.config.ts`.** It always applies:
@@ -77,6 +88,7 @@ that is genuinely unique to that one package.
 
 **`dtsOptions.exclude` vs `tsconfig.build.json` — which do I edit?** For anything
 shared, neither: add it to `createPlugins` here. For a one-off exclude that
-should apply to **both** passes (typecheck + emit), put it in that package's
-`tsconfig.build.json` — that's the single source both passes now honor. Use
-`dtsOptions.exclude` only when you want to affect the emit pass alone.
+should apply to **both** type-checking and emit, put it in that package's
+`tsconfig.build.json` — that's the single source the one remaining pass
+honors for both. Use `dtsOptions.exclude` only when you want to affect the
+emit pass alone.
