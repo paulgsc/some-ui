@@ -96,7 +96,27 @@ export const EditSessionRoute = ({
         }
         return <EditSessionNotFound />
       }
-      return <SessionComposer existingSession={session} />
+      if (!refreshError) {
+        return <SessionComposer existingSession={session} />
+      }
+      // Same Safety invariant as the null-session branch above, for a
+      // cached *non-null* draft: the composer may be editing stale data,
+      // so the refresh failure rides alongside it rather than being
+      // silently dropped - a bot review caught this arm handling only the
+      // null case. SessionComposer's own root is `h-full`, so the extra
+      // flex layer here (mirroring `$sessionId.tsx`'s identical fix) keeps
+      // it the sole height-filling child of its parent.
+      return (
+        <div className="flex h-full min-h-0 w-full max-w-3xl flex-col gap-3">
+          <IntentFailure
+            error={refreshError.error}
+            onRetry={refreshError.retry}
+          />
+          <div className="min-h-0 flex-1">
+            <SessionComposer existingSession={session} />
+          </div>
+        </div>
+      )
     },
   })
 }

@@ -105,9 +105,39 @@ export const SessionPlayer = ({
         }
         return <SessionNotFound />
       }
-      if (session.status === "draft")
-        return <DraftGuard sessionId={sessionId} />
-      return <LivePlayer key={session.id} session={session} />
+      // A cached *non-null* session through a failed refresh is the same
+      // Safety invariant again: the content on screen may be stale, so the
+      // refresh failure rides alongside it instead of being silently
+      // dropped - a bot review caught this arm handling only the null case.
+      const refreshBanner = refreshError && (
+        <IntentFailure
+          error={refreshError.error}
+          onRetry={refreshError.retry}
+        />
+      )
+      if (session.status === "draft") {
+        return (
+          <>
+            {refreshBanner}
+            <DraftGuard sessionId={sessionId} />
+          </>
+        )
+      }
+      if (!refreshBanner) {
+        return <LivePlayer key={session.id} session={session} />
+      }
+      // LivePlayer expects to be the sole height-filling child of its
+      // parent (its own root is `h-full`) - an extra flex layer here keeps
+      // that contract intact while giving the banner room above it, rather
+      // than LivePlayer collapsing to zero height under a plain sibling.
+      return (
+        <div className="flex h-full min-h-0 w-full flex-col gap-3">
+          {refreshBanner}
+          <div className="min-h-0 flex-1">
+            <LivePlayer key={session.id} session={session} />
+          </div>
+        </div>
+      )
     },
   })
 }
