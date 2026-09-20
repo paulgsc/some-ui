@@ -1,4 +1,5 @@
 import type { JSX } from "react"
+import type { IntentError } from "@some-ui/intent-kit"
 import {
   Card,
   CardContent,
@@ -8,6 +9,8 @@ import {
 } from "@some-ui/shared"
 import { createFileRoute, Link } from "@tanstack/react-router"
 
+import { IntentFailure } from "@/lib/intent/render"
+import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import { usePresenceLease } from "@/lib/study-nudge/use-presence-lease"
 import { sessionQuery, useSession } from "@/lib/tenant"
 import { LivePlayer } from "@/components/player/live-player"
@@ -53,20 +56,95 @@ const DraftGuard = ({ sessionId }: { sessionId: string }): JSX.Element => (
   </Card>
 )
 
-const SessionPlayerRoute = (): JSX.Element => {
-  const { sessionId } = Route.useParams()
+const PlayerFailure = ({
+  error,
+  onRetry,
+}: {
+  error: IntentError
+  onRetry: () => void
+}): JSX.Element => (
+  <Card className="max-w-3xl">
+    <CardContent className="pt-6">
+      <IntentFailure error={error} onRetry={onRetry} />
+    </CardContent>
+  </Card>
+)
+
+/** Split from `SessionPlayerRoute` so the outcome logic can be exercised
+ * directly with a plain `sessionId` prop - `Route.useParams()` needs a real
+ * matched router context that a component test has no reason to build. */
+export const SessionPlayer = ({
+  sessionId,
+}: {
+  sessionId: string
+}): JSX.Element => {
   // The same string this route's own URL and the push notification's deep
   // link (`sessions/${id}`) carry, which is what the server compares a lease
   // against — see `usePresenceLease`.
-  usePresenceLease(String(sessionId))
-  const { data: session, isLoading } = useSession(String(sessionId))
+  usePresenceLease(sessionId)
+  const outcome = queryOutcome(useSession(sessionId))
 
-  if (isLoading) return <PlayerSkeleton />
-  if (!session) return <SessionNotFound />
-  if (session.status === "draft")
-    return <DraftGuard sessionId={String(sessionId)} />
+  return matchQueryOutcome(outcome, {
+    pending: () => <PlayerSkeleton />,
+    // Distinct from `SessionNotFound`: a failed read has not told us the
+    // session is absent, only that we don't yet know - see the
+    // route-arrival handoff's Safety invariant.
+    failed: (error, retry) => <PlayerFailure error={error} onRetry={retry} />,
+    ready: (session, refreshError) => {
+      if (!session) {
+        // A cached "no session" through a *failed* refresh hasn't actually
+        // been reconfirmed - the same Safety invariant as the `failed` arm
+        // above, not "not found" wearing a different arm.
+        if (refreshError) {
+          return (
+            <PlayerFailure
+              error={refreshError.error}
+              onRetry={refreshError.retry}
+            />
+          )
+        }
+        return <SessionNotFound />
+      }
+      // A cached *non-null* session through a failed refresh is the same
+      // Safety invariant again: the content on screen may be stale, so the
+      // refresh failure rides alongside it instead of being silently
+      // dropped - a bot review caught this arm handling only the null case.
+      const refreshBanner = refreshError && (
+        <IntentFailure
+          error={refreshError.error}
+          onRetry={refreshError.retry}
+        />
+      )
+      if (session.status === "draft") {
+        return (
+          <>
+            {refreshBanner}
+            <DraftGuard sessionId={sessionId} />
+          </>
+        )
+      }
+      if (!refreshBanner) {
+        return <LivePlayer key={session.id} session={session} />
+      }
+      // LivePlayer expects to be the sole height-filling child of its
+      // parent (its own root is `h-full`) - an extra flex layer here keeps
+      // that contract intact while giving the banner room above it, rather
+      // than LivePlayer collapsing to zero height under a plain sibling.
+      return (
+        <div className="flex h-full min-h-0 w-full flex-col gap-3">
+          {refreshBanner}
+          <div className="min-h-0 flex-1">
+            <LivePlayer key={session.id} session={session} />
+          </div>
+        </div>
+      )
+    },
+  })
+}
 
-  return <LivePlayer key={session.id} session={session} />
+const SessionPlayerRoute = (): JSX.Element => {
+  const { sessionId } = Route.useParams()
+  return <SessionPlayer sessionId={String(sessionId)} />
 }
 
 export const Route = createFileRoute("/_dashboard/sessions/$sessionId")({

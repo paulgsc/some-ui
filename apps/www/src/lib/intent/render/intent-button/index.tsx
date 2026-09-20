@@ -18,6 +18,31 @@
  * visible horizontal jump. A retryable failure also replaces the original
  * action with its retry rather than rendering two controls that dispatch the
  * same intent.
+ *
+ * A non-retryable failure only disables the button outright when
+ * `error.blocksResubmission` says so - two rounds of bot review on the
+ * route-arrival PR shaped this:
+ *
+ * 1. An earlier version fell back to `onClick={onPress}` for *every*
+ *    non-retryable failure. `retryable: false` can mean "this write may
+ *    have already succeeded and resubmitting it could duplicate it"
+ *    (`file-host-config/client.ts`'s deadline on a non-idempotent `POST`),
+ *    and falling back to `onPress` there replays exactly the write that's
+ *    unsafe to replay.
+ * 2. The fix for that - disabling on *any* `retryable: false` - went too
+ *    far the other way: a definitive 4xx rejection (a validation error) is
+ *    also `retryable: false`, but there the request demonstrably never
+ *    took effect, so blocking `onPress` forever left a person unable to
+ *    fix their input and resubmit without remounting the form.
+ *
+ * `blocksResubmission` is the distinct signal that closes both: `false` (or
+ * absent) for a non-retryable failure that's merely pointless to repeat
+ * verbatim (falls back to `onPress`, same as `retryable: true`'s "Try
+ * again" case, just without a literal retry of stale variables); `true`
+ * only when the previous attempt's outcome is genuinely unknown, where even
+ * a *new* attempt is unsafe. See `@some-ui/intent-kit`'s `IntentError` and
+ * `apps/www/src/lib/intent/errors.ts`'s `fromUnreachable` for the one
+ * producer that sets it.
  */
 
 import type { JSX, PropsWithChildren, ReactNode } from "react"
@@ -118,30 +143,33 @@ export const IntentButton = <TStep extends string = never>({
         </Button>
       </ActionStack>
     ),
-    failed: (error, retry) => (
-      <ActionStack>
-        <div className="flex flex-col items-end gap-1.5 pe-1.5">
-          <Button
-            variant={variant}
-            size={size}
-            className={cn(
-              className,
-              "opacity-80 hover:opacity-100 transition-opacity",
-              // Custom striped CSS gradient layered over the existing background
-              "bg-[linear-gradient(135deg,rgba(0,0,0,0.15)_25%,transparent_25%,transparent_50%,rgba(0,0,0,0.15)_50%,rgba(0,0,0,0.15)_75%,transparent_75%,transparent)]",
-              "bg-[size:1rem_1rem]" // Adjust tile size for tighter/wider stripes
-            )}
-            disabled={disabled}
-            onClick={error.retryable ? retry : onPress}
-            title={title}
-          >
-            {error.retryable ? "Try again" : idleLabel}
-          </Button>
-          <IntentFailure
-            error={error}
-            className={cn("w-full", failureClassName)}
-          />
-        </div>
-      </ActionStack>
-    ),
+    failed: (error, retry) => {
+      const blocked = !error.retryable && error.blocksResubmission === true
+      return (
+        <ActionStack>
+          <div className="flex flex-col items-end gap-1.5 pe-1.5">
+            <Button
+              variant={variant}
+              size={size}
+              className={cn(
+                className,
+                "opacity-80 hover:opacity-100 transition-opacity",
+                // Custom striped CSS gradient layered over the existing background
+                "bg-[linear-gradient(135deg,rgba(0,0,0,0.15)_25%,transparent_25%,transparent_50%,rgba(0,0,0,0.15)_50%,rgba(0,0,0,0.15)_75%,transparent_75%,transparent)]",
+                "bg-[size:1rem_1rem]" // Adjust tile size for tighter/wider stripes
+              )}
+              disabled={disabled || blocked}
+              onClick={error.retryable ? retry : blocked ? undefined : onPress}
+              title={title}
+            >
+              {error.retryable ? "Try again" : idleLabel}
+            </Button>
+            <IntentFailure
+              error={error}
+              className={cn("w-full", failureClassName)}
+            />
+          </div>
+        </ActionStack>
+      )
+    },
   })

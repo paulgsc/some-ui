@@ -17,6 +17,8 @@ import {
   intentGuardPlugin,
   lazyRegistryConfig,
   lazyRegistryPlugin,
+  queryGuardConfig,
+  queryGuardPlugin,
   reactConfig,
   reactImportBanSelectors,
   reactPeerDependencyConfig,
@@ -88,6 +90,9 @@ export { reactImportBanSelectors }
 
 // ── Intent boundary guard (#937 S1) ─────────────────────────────────────────
 export { intentGuardConfig, intentGuardPlugin }
+
+// ── Query-hook default-elision guard (#968/MS8) ────────────────────────────
+export { queryGuardConfig, queryGuardPlugin }
 
 // ── Tailwind static-classname idiom rules ──────────────────────────────────
 export { fitsTheBoxConfig, fitsTheBoxPlugin }

@@ -213,15 +213,39 @@ const CANVAS_SELECTOR = ":root:root, :root:root body"
  * meant to be read, not erased — the same class of carrier as the other
  * three, not itself a background-color surface this rule needs to flatten.
  *
- * Verbatim from ADR 0002 §2.2's own measured snippet — kept textually
- * unmodified (no `EXT_GUARD`, no other addition) so its specificity stays
- * exactly (0,0,4), which is what `CANVAS_SELECTOR` above and the
- * `[data-my-ext]` exclusion below are each independently calibrated
- * against. Extension-owned elements are protected by that separate,
- * dedicated exclusion instead of by threading a guard through this
- * selector, specifically to avoid perturbing this specificity relationship.
+ * ADR 0002 §2.2's own measured snippet plus one `:not([data-my-ext])`,
+ * which is how this extension's own DOM (the prepaint veil, the debug
+ * overlay) is kept out of the erase rule. An earlier revision left this
+ * selector verbatim and instead wrote a separate
+ * `[data-my-ext] { all: revert !important }` rule — bot-found on #1463
+ * (Codex, P1): at the *user* origin `revert` rolls the cascade back to the
+ * user-agent origin, not merely past this sheet, so it stripped
+ * `prepaint.css`'s author-origin styling from the veil too (its fixed
+ * positioning, viewport size and dark fill), leaving a UA-default popover
+ * box while the page settled. Exclusion by selector is the only form that
+ * leaves author-origin styling of these elements untouched.
+ *
+ * Specificity is (0,1,4) — one attribute selector on top of the four type
+ * negations. Still strictly below `CANVAS_SELECTOR`'s (0,2,0)/(0,2,1) and
+ * below every `:where(...)${EXT_GUARD}` row's (0,2,0), which is the
+ * relationship the rest of this sheet is calibrated against.
  */
-const ERASE_SELECTOR = "*:not(img):not(video):not(svg):not(canvas)"
+const ERASE_SELECTOR =
+  "*:not(img):not(video):not(svg):not(canvas):not([data-my-ext])"
+
+/**
+ * Same erase policy for generated content. `*` never matches a
+ * pseudo-element, so `ERASE_SELECTOR` alone leaves a vendor's `::before`/
+ * `::after` boxes painting whatever they were authored with — a fixed white
+ * `html::before` overlay, a light card background drawn on `::after`, a
+ * gradient on a pseudo — on top of the erased canvas (bot-found on #1463,
+ * Codex, P1). Independent paint surfaces, so they get the same four
+ * declarations. Specificity: `:where()` contributes nothing, the
+ * pseudo-element counts as one type — (0,0,1) — and user-origin
+ * `!important` is what wins against the vendor regardless.
+ */
+const ERASE_PSEUDO_SELECTOR =
+  ":where(*:not([data-my-ext]))::before, :where(*:not([data-my-ext]))::after"
 
 /**
  * Structural containers eligible for the lift gradient below — see this
@@ -423,27 +447,100 @@ export function buildEnforcementCSS(swatch: Swatch): string {
 /* §3.2: specificity-boosted canvas rule — must out-rank ERASE_SELECTOR. */
 ${CANVAS_SELECTOR} {
   background-color: ${swatch.bg0} !important;
+  /* A vendor's own root-level compositing filter (the "dark mode via an
+     invert(1) filter on html" trick, filter-invert-vendor-page.html) is
+     applied *after* painting and would invert every enforced token back to
+     light — E only holds if the canvas paints unfiltered (bot-found on
+     #1463, Codex round 2). Neutralized on html/body only, the two roots a
+     page-wide filter is put on; a filter on a descendant is that element's
+     own paint, same as any other vendor colour decision, and is erased by
+     the rule below only insofar as its inputs are. Note this also
+     overrides this extension's *own* legacy invert (an author-origin
+     !important filter on html) whenever both are active in one tab, which
+     the flagged rollout permits today — #1489 makes the two mutually
+     exclusive per tab; until then the flag and legacy mode are not meant to
+     be combined. */
+  filter: none !important;
 }
 
 /* §2.2/§2.3/§3.5: erase every vendor surface; let the canvas show through.
-   background-color/background-image/color/border-color are left textually
-   unmodified from the ADR's own snippet — see this constant's own header
-   for why extension-owned elements are excluded by a separate rule below
-   rather than by a guard threaded through this one. border-color alone,
-   never border-width/border-style here — see BORDER_CONTAINER_SELECTOR's
-   own header for the narrow, affordance-only selector those two now live
-   on, and LIFT_SELECTOR's own header for what replaced them on structural
-   containers. */
+   Extension-owned elements are excluded by the selector itself — see
+   ERASE_SELECTOR's own header for why a separate user-origin reset rule
+   was the wrong tool. border-color alone, never border-width/border-style
+   here — see BORDER_CONTAINER_SELECTOR's own header for the narrow,
+   affordance-only selector those two now live on, and LIFT_SELECTOR's own
+   header for what replaced them on structural containers. */
 ${ERASE_SELECTOR} {
   background-color: transparent !important;
   background-image: none !important;
   color: ${swatch.text0} !important;
   border-color: ${swatch.borderStrong} !important;
+  /* Two more paint channels the four declarations above do not reach
+     (bot-found on #1463, Codex round 3). An inset shadow is a fill —
+     box-shadow: inset 0 0 0 9999px white is the paint grammar's own
+     PG-BG-INSET-SHADOW — and a compositing filter on any descendant group
+     (main, #app) post-processes every enforced token inside it, the same
+     way a root filter does on the canvas rule above. Both are erased on the
+     same subject as colour: every non-media element. Vendor elevation
+     shadows and descendant blur/drop-shadow effects go with them, which is
+     the same class of accepted trade as background-image: none (ADR 0002
+     §3.5). Media keep their filters via the img/video/svg/canvas
+     exclusions on ERASE_SELECTOR. */
+  box-shadow: none !important;
+  filter: none !important;
+  /* backdrop-filter post-processes whatever paints *behind* the element —
+     a full-viewport overlay with backdrop-filter: invert(1) inverts the
+     enforced canvas underneath it without painting anything itself
+     (bot-found on #1463, Codex confirming review). Same subject, same
+     trade as filter above. */
+  backdrop-filter: none !important;
+  /* Two more independent glyph/edge channels (bot-found on #1500, Codex
+     round 2). A text-shadow is painted separately from color — a vendor's
+     text-shadow: 0 0 0 white keeps every glyph white (or haloed) under an
+     enforced color, so it is erased. An outline is painted separately from
+     border — outline: 2px solid white stays white under an enforced
+     border-color — so only its colour is imposed, the same way border-color
+     is: width and style stay the vendor's, so focus rings keep their shape.
+     theme-apply.ts's static sheet already enforces outline-color. */
+  text-shadow: none !important;
+  outline-color: ${swatch.borderStrong} !important;
+}
+
+/* Generated content is its own paint surface — see ERASE_PSEUDO_SELECTOR. */
+${ERASE_PSEUDO_SELECTOR} {
+  background-color: transparent !important;
+  background-image: none !important;
+  color: ${swatch.text0} !important;
+  border-color: ${swatch.borderStrong} !important;
+  box-shadow: none !important;
+  filter: none !important;
+  backdrop-filter: none !important;
+  text-shadow: none !important;
+  outline-color: ${swatch.borderStrong} !important;
+}
+
+/* A top-layer backdrop is generated content too, but a transparent one
+   would drop the dimming a modal relies on for focus — so it is imposed
+   dark rather than erased (bot-found on #1463, Codex round 3: a vendor
+   dialog::backdrop or popover backdrop painted white covers the whole
+   viewport regardless of the dialog's own enforced surface). The
+   [data-my-ext] exclusion matters here more than anywhere: the prepaint
+   veil is a popover and prepaint.css styles its own ::backdrop. */
+:where(*:not([data-my-ext]))::backdrop {
+  background-color: rgba(0, 0, 0, 0.6) !important;
+  background-image: none !important;
+  /* The same independent channels the erase rules reset: an inset shadow
+     is a fill, and backdrop-filter re-composites the whole page beneath a
+     viewport-sized backdrop (bot-found on #1463, Codex confirming review). */
+  box-shadow: none !important;
+  filter: none !important;
+  backdrop-filter: none !important;
 }
 
 /* See BORDER_CONTAINER_SELECTOR's own header — form-control affordance
-   only; inline/text-level carriers keep border-color only, above. */
-${BORDER_CONTAINER_SELECTOR} {
+   only; inline/text-level carriers keep border-color only, above.
+   EXT_GUARD for the same reason as every other row: the veil is a <div>. */
+:where(${BORDER_CONTAINER_SELECTOR})${EXT_GUARD} {
   border-style: solid !important;
   border-width: 1px !important;
 }
@@ -477,30 +574,27 @@ ${BORDER_CONTAINER_SELECTOR} {
    semantic-surface elevation, and native form-control accent color. */
 ${highlightRules}
 
-/* Pseudo-elements, not real elements — never competes with ERASE_SELECTOR's
-   own (0,0,4) (the universal selector "*" does not match a pseudo-element
-   at all), so neither needs EXT_GUARD's specificity boost. Ported verbatim
-   from theme-apply.ts's own DARK_THEME_BODY_RULES, including that file's
-   own choice not to guard the placeholder rule with EXT_GUARD either. */
+/* ::selection is a real pseudo-element, so the universal selector "*" of
+   ERASE_SELECTOR never matches it and its (0,0,1) needs no boost. Ported
+   verbatim from theme-apply.ts's own DARK_THEME_BODY_RULES.
+
+   The placeholder rule is NOT the verbatim port, twice over. (1) theme-apply.ts
+   nests the two pseudo-elements inside its :where() list, and a pseudo-element
+   is not a valid member of a :where() list — the forgiving list drops both,
+   :where() is left empty and matches nothing, so that rule has never applied
+   (bot-found on #1500, Codex; the shipped copy is #1501). Here the
+   pseudo-element is appended after the :where(). (2) Chromium implements
+   ::placeholder as a real element inside the control's UA shadow tree, and
+   §8.1 already recorded that this user-origin sheet crosses shadow
+   boundaries: ERASE_SELECTOR's (0,1,4) "color: text0 !important" reaches
+   that element and outranks a bare (0,0,1) placeholder rule (live-measured
+   on #1500's e2e: the placeholder read back text0, not text2). EXT_GUARD's
+   (0,2,0) lifts it above the erase rule. */
 ::selection {
   background-color: ${swatch.selectionBg} !important;
 }
-:where(input::placeholder, textarea::placeholder) {
+:where(input, textarea)${EXT_GUARD}::placeholder {
   color: ${swatch.text2} !important;
-}
-
-/* This module's own header: never repaint this extension's own DOM (the
-   prepaint veil, the debug overlay) — both carry [data-my-ext]. "all" so a
-   future property added to ERASE_SELECTOR/HIGHLIGHT_TABLE above is
-   covered without this rule needing a matching edit; "revert" (not
-   "initial"/"unset") specifically because it rolls back only what *this*
-   user-origin sheet would otherwise have contributed, leaving the
-   extension's own author-origin styling of these elements (prepaint.css,
-   the debug page's own stylesheet) exactly as if this sheet did not exist —
-   never falling through to the UA default the way "unset" could. */
-[data-my-ext],
-[data-my-ext] * {
-  all: revert !important;
 }
 `
 }

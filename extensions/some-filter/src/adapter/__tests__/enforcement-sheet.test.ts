@@ -23,6 +23,62 @@ describe("buildEnforcementCSS", () => {
     expect(css).not.toMatch(/(?<!:root)\bhtml\s*,\s*body\b/)
   })
 
+  it("neutralizes a root-level vendor filter on the canvas rule (bot-found on #1463: html { filter: invert(1) } inverted E back to light)", () => {
+    const css = buildEnforcementCSS(swatch)
+    const start = css.indexOf(":root:root, :root:root body {")
+    expect(start).toBeGreaterThan(-1)
+    const rule = css.slice(start, css.indexOf("}", start))
+    expect(rule).toContain("filter: none !important;")
+  })
+
+  it("erases inset box-shadows and descendant filters on every non-media element (bot-found on #1463, round 3)", () => {
+    const css = buildEnforcementCSS(swatch)
+    const eraseStart = css.indexOf(
+      "*:not(img):not(video):not(svg):not(canvas):not([data-my-ext]) {"
+    )
+    expect(eraseStart).toBeGreaterThan(-1)
+    const erase = css.slice(eraseStart, css.indexOf("}", eraseStart))
+    expect(erase).toContain("box-shadow: none !important;")
+    expect(erase).toContain("filter: none !important;")
+    expect(erase).toContain("backdrop-filter: none !important;")
+    const pseudoStart = css.indexOf(":where(*:not([data-my-ext]))::before")
+    const pseudo = css.slice(pseudoStart, css.indexOf("}", pseudoStart))
+    expect(pseudo).toContain("box-shadow: none !important;")
+    expect(pseudo).toContain("filter: none !important;")
+    expect(pseudo).toContain("backdrop-filter: none !important;")
+  })
+
+  it("erases text-shadows and imposes outline-color on both erase rules (bot-found on #1500, round 2)", () => {
+    const css = buildEnforcementCSS(swatch)
+    const eraseStart = css.indexOf(
+      "*:not(img):not(video):not(svg):not(canvas):not([data-my-ext]) {"
+    )
+    const erase = css.slice(eraseStart, css.indexOf("}", eraseStart))
+    expect(erase).toContain("text-shadow: none !important;")
+    expect(erase).toContain(`outline-color: ${swatch.borderStrong} !important;`)
+    // Colour only — width and style stay the vendor's, like border-color.
+    expect(erase).not.toMatch(/outline-(width|style|offset)/)
+    expect(erase).not.toMatch(/^\s*outline:/m)
+    const pseudoStart = css.indexOf(":where(*:not([data-my-ext]))::before")
+    const pseudo = css.slice(pseudoStart, css.indexOf("}", pseudoStart))
+    expect(pseudo).toContain("text-shadow: none !important;")
+    expect(pseudo).toContain(
+      `outline-color: ${swatch.borderStrong} !important;`
+    )
+  })
+
+  it("imposes a dark top-layer ::backdrop, excluding the veil's own (bot-found on #1463, round 3)", () => {
+    const css = buildEnforcementCSS(swatch)
+    const start = css.indexOf(":where(*:not([data-my-ext]))::backdrop {")
+    expect(start).toBeGreaterThan(-1)
+    const rule = css.slice(start, css.indexOf("}", start))
+    expect(rule).toContain("background-color: rgba(0, 0, 0, 0.6) !important;")
+    expect(rule).not.toContain("transparent")
+    // The backdrop's own independent channels (bot-found, confirming review).
+    expect(rule).toContain("box-shadow: none !important;")
+    expect(rule).toContain("backdrop-filter: none !important;")
+  })
+
   it("erases without reading — the erase selector carries no swatch-specific token", () => {
     const css = buildEnforcementCSS(swatch)
     expect(css).toContain("*:not(img):not(video):not(svg):not(canvas)")
@@ -48,7 +104,7 @@ describe("buildEnforcementCSS", () => {
     // BORDER_CONTAINER_SELECTOR's narrow, affordance-only selector.
     const css = buildEnforcementCSS(swatch)
     const [eraseBlock] = css.match(
-      /\*:not\(img\):not\(video\):not\(svg\):not\(canvas\) \{[^}]*\}/
+      /\*:not\(img\):not\(video\):not\(svg\):not\(canvas\):not\(\[data-my-ext\]\) \{[^}]*\}/
     ) ?? [""]
     expect(eraseBlock).toContain(
       `border-color: ${swatch.borderStrong} !important`
@@ -133,10 +189,32 @@ describe("buildEnforcementCSS", () => {
     expect(css).not.toContain("color-scheme")
   })
 
-  it("excludes this extension's own DOM from every rule it writes", () => {
+  it("excludes this extension's own DOM by selector, never by a user-origin `all: revert` (bot-found on #1463: at the user origin, revert rolls back past the author origin and strips prepaint.css from the veil)", () => {
     const css = buildEnforcementCSS(swatch)
-    expect(css).toContain("[data-my-ext]")
-    expect(css).toContain("all: revert !important")
+    expect(css).not.toContain("revert")
+    // The erase rule carries the exclusion itself.
+    expect(css).toContain(
+      "*:not(img):not(video):not(svg):not(canvas):not([data-my-ext]) {"
+    )
+    // And so does every rule that could otherwise reach the veil (a <div>).
+    const unguarded = css
+      .split("\n")
+      .filter((line) => /^[^\s/].*\{\s*$/.test(line))
+      .filter((line) => !line.includes("data-my-ext"))
+      .filter((line) => !line.startsWith(":root:root"))
+      .filter((line) => !line.startsWith("::selection"))
+    expect(unguarded).toEqual([])
+  })
+
+  it("erases generated content too — a vendor ::before/::after is its own paint surface (bot-found on #1463)", () => {
+    const css = buildEnforcementCSS(swatch)
+    const start = css.indexOf(":where(*:not([data-my-ext]))::before")
+    expect(start).toBeGreaterThan(-1)
+    const rule = css.slice(start, css.indexOf("}", start))
+    expect(rule).toContain("::after")
+    expect(rule).toContain("background-color: transparent !important;")
+    expect(rule).toContain("background-image: none !important;")
+    expect(rule).toContain(`color: ${swatch.text0} !important;`)
   })
 
   it("interpolates the given swatch's own tokens, not another swatch's", () => {
@@ -190,7 +268,15 @@ describe("HIGHLIGHT_TABLE (ADR 0003 §3)", () => {
     const css = buildEnforcementCSS(swatch)
     expect(css).toContain("::selection")
     expect(css).toContain(`background-color: ${swatch.selectionBg} !important;`)
-    expect(css).toContain(":where(input::placeholder, textarea::placeholder)")
+    // Not verbatim: a pseudo-element inside :where() invalidates the whole
+    // forgiving list (bot-found on #1500) — the pseudo-element sits outside.
+    // And EXT_GUARD is on it: Chromium's placeholder is a UA-shadow element
+    // the erase rule reaches (§8.1 crossing), so (0,0,1) alone loses to it.
+    expect(css).toContain(
+      ":where(input, textarea):not([data-my-ext]):not([data-my-ext] *)::placeholder {"
+    )
+    expect(css).not.toContain("::placeholder, ")
+    expect(css).not.toContain("::placeholder)")
   })
 
   it("does NOT include the svg fill/stroke row — held back for ADR 0003 §3.1's own sign-off", () => {

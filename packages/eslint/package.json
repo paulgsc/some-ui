@@ -16,9 +16,8 @@
     "dist"
   ],
   "scripts": {
-    "build:esm": "tsc -b tsconfig.esm.build.json && tsc-alias -p tsconfig.esm.build.json",
     "build:cjs": "tsc -b tsconfig.cjs.build.json && tsc-alias -p tsconfig.cjs.build.json",
-    "build": "pnpm build:esm",
+    "build": "tsc -b tsconfig.esm.build.json && tsc-alias -p tsconfig.esm.build.json",
     "check-dist": "if [ ! -d dist ]; then pnpm run build; fi",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",

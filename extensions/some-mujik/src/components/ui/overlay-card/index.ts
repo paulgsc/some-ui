@@ -176,6 +176,11 @@ export function createOverlayCard(): OverlayCard {
     meta.classList.remove("ytmo-meta--hidden")
     emotionTag.classList.remove("ytmo-emotion-tag--hidden")
 
+    // Lifetime: cleared on the line above before re-arming, and again on
+    // this component's teardown. Bounded by the overlay's own lifetime — it
+    // is a visual cycle belonging to a card that is on screen, and it stops
+    // when the card goes.
+    // eslint-disable-next-line extension-charter/require-named-lifetime -- lifetime stated above
     metaCycleTimer = window.setInterval((): void => {
       metaVisible = !metaVisible
 

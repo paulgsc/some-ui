@@ -94,6 +94,8 @@ async function cycleTabOff(
 // background service worker's raw chrome.* evaluate() context (this file's
 // own backgroundWorker() comment) does not run inside.
 const ENFORCED_BG = "rgb(23, 28, 37)"
+// SWATCHES.default.borderStrong, a literal for the same reason.
+const BORDER_STRONG = "rgba(255, 255, 255, 0.35)"
 
 test.describe("ADR 0002 enforcement sheet", () => {
   test("§3.2 — the canvas rule wins the specificity trap (html/body never blank)", async ({
@@ -130,6 +132,192 @@ test.describe("ADR 0002 enforcement sheet", () => {
     // no-op alike.
     expect(htmlBg).toBe(ENFORCED_BG)
     expect(bodyBg).toBe(ENFORCED_BG)
+  })
+
+  test("a vendor root filter does not invert E back to light (bot-found on #1463)", async ({
+    context,
+    fixture,
+  }) => {
+    const sw = await backgroundWorker(context)
+    await enableEnforcementSheet(sw)
+
+    // light-page.html plus `html { filter: invert(1) }` — the vendor-side
+    // "dark mode via invert" trick. A compositing filter is applied after
+    // painting, so without neutralizing it the enforced bg0 would render as
+    // its inverse (a light grey) and every other token likewise.
+    const page = await fixture.goto("filter-invert-vendor-page")
+    await cycleTabOff(sw, page, "filter-invert-vendor-page.html")
+    await page.waitForFunction(
+      (expected) =>
+        getComputedStyle(document.documentElement).backgroundColor === expected,
+      ENFORCED_BG,
+      { timeout: 5_000, polling: 100 }
+    )
+
+    const [htmlFilter, bodyFilter] = await page.evaluate(() => [
+      getComputedStyle(document.documentElement).filter,
+      getComputedStyle(document.body).filter,
+    ])
+    expect(htmlFilter).toBe("none")
+    expect(bodyFilter).toBe("none")
+  })
+
+  test("inset-shadow fills, descendant filters and a white dialog backdrop are all neutralized (bot-found on #1463, round 3)", async ({
+    context,
+    fixture,
+  }) => {
+    const sw = await backgroundWorker(context)
+    await enableEnforcementSheet(sw)
+
+    const page = await fixture.goto("light-page")
+    await cycleTabOff(sw, page, "light-page.html")
+    await page.waitForFunction(
+      (expected) =>
+        getComputedStyle(document.documentElement).backgroundColor === expected,
+      ENFORCED_BG,
+      { timeout: 5_000, polling: 100 }
+    )
+
+    const probe = await page.evaluate(() => {
+      const style = document.createElement("style")
+      style.textContent = [
+        "#probe-shadow { box-shadow: inset 0 0 0 9999px rgb(255, 255, 255); }",
+        "#probe-filter { filter: invert(1); }",
+        "#probe-dialog::backdrop { background-color: rgb(255, 255, 255); box-shadow: inset 0 0 0 9999px rgb(255, 255, 255); backdrop-filter: invert(1); }",
+        "#probe-overlay { position: fixed; inset: 0; backdrop-filter: invert(1); }",
+        "#probe-glyph { text-shadow: 0 0 0 rgb(255, 255, 255); outline: 2px dashed rgb(255, 255, 255); }",
+      ].join("\n")
+      document.head.appendChild(style)
+      const glyph = document.createElement("p")
+      glyph.id = "probe-glyph"
+      glyph.textContent = "probe"
+      const shadow = document.createElement("div")
+      shadow.id = "probe-shadow"
+      const filtered = document.createElement("main")
+      filtered.id = "probe-filter"
+      const dialog = document.createElement("dialog")
+      dialog.id = "probe-dialog"
+      const overlay = document.createElement("div")
+      overlay.id = "probe-overlay"
+      document.body.append(glyph, shadow, filtered, dialog, overlay)
+      dialog.showModal()
+      const backdrop = getComputedStyle(dialog, "::backdrop")
+      const glyphStyle = getComputedStyle(glyph)
+      return {
+        textShadow: glyphStyle.textShadow,
+        outlineColor: glyphStyle.outlineColor,
+        outlineWidth: glyphStyle.outlineWidth,
+        outlineStyle: glyphStyle.outlineStyle,
+        shadow: getComputedStyle(shadow).boxShadow,
+        filter: getComputedStyle(filtered).filter,
+        overlayBackdropFilter: getComputedStyle(overlay).backdropFilter,
+        backdrop: backdrop.backgroundColor,
+        backdropShadow: backdrop.boxShadow,
+        backdropFilter: backdrop.backdropFilter,
+      }
+    })
+
+    // Glyph and edge channels (bot-found on #1500, round 2): the shadow is
+    // gone, the outline keeps its vendor width/style but not its colour
+    // (SWATCHES.default.borderStrong, a literal for the same reason as
+    // ENFORCED_BG).
+    expect(probe.textShadow).toBe("none")
+    expect(probe.outlineColor).toBe(BORDER_STRONG)
+    expect(probe.outlineWidth).toBe("2px")
+    expect(probe.outlineStyle).toBe("dashed")
+    expect(probe.shadow).toBe("none")
+    expect(probe.filter).toBe("none")
+    expect(probe.overlayBackdropFilter).toBe("none")
+    expect(probe.backdrop).toBe("rgba(0, 0, 0, 0.6)")
+    expect(probe.backdropShadow).toBe("none")
+    expect(probe.backdropFilter).toBe("none")
+  })
+
+  test("an authored ::placeholder colour is overridden by the highlight table (bot-found on #1500: the ported selector never matched)", async ({
+    context,
+    fixture,
+  }) => {
+    const sw = await backgroundWorker(context)
+    await enableEnforcementSheet(sw)
+
+    const page = await fixture.goto("light-page")
+    await cycleTabOff(sw, page, "light-page.html")
+    await page.waitForFunction(
+      (expected) =>
+        getComputedStyle(document.documentElement).backgroundColor === expected,
+      ENFORCED_BG,
+      { timeout: 5_000, polling: 100 }
+    )
+
+    const placeholder = await page.evaluate(() => {
+      const style = document.createElement("style")
+      style.textContent = "#probe-input::placeholder { color: rgb(255, 0, 0); }"
+      document.head.appendChild(style)
+      const input = document.createElement("input")
+      input.id = "probe-input"
+      input.placeholder = "probe"
+      document.body.append(input)
+      return getComputedStyle(input, "::placeholder").color
+    })
+
+    // SWATCHES.default.text2, as a literal for the same reason ENFORCED_BG is.
+    expect(placeholder).toBe("rgb(71, 85, 105)")
+  })
+
+  test("[data-my-ext] keeps its author-origin styling, and vendor ::before/::after are erased (bot-found on #1463)", async ({
+    context,
+    fixture,
+  }) => {
+    const sw = await backgroundWorker(context)
+    await enableEnforcementSheet(sw)
+
+    const page = await fixture.goto("light-page")
+    await cycleTabOff(sw, page, "light-page.html")
+    await page.waitForFunction(
+      (expected) =>
+        getComputedStyle(document.documentElement).backgroundColor === expected,
+      ENFORCED_BG,
+      { timeout: 5_000, polling: 100 }
+    )
+
+    const probe = await page.evaluate(() => {
+      // An author-origin sheet styling an extension-owned element exactly
+      // the way prepaint.css styles the veil, plus two vendor paint
+      // surfaces the erase policy must reach: a plain element and a
+      // fixed, full-viewport `html::before` overlay.
+      const style = document.createElement("style")
+      style.textContent = [
+        "#probe-ext { position: fixed; width: 40px; height: 40px; background-color: rgb(1, 2, 3); }",
+        "#probe-vendor { background-color: rgb(255, 255, 255); }",
+        'html::before { content: ""; position: fixed; inset: 0; background-color: rgb(255, 255, 255); }',
+      ].join("\n")
+      document.head.appendChild(style)
+      const ext = document.createElement("div")
+      ext.id = "probe-ext"
+      ext.setAttribute("data-my-ext", "")
+      const vendor = document.createElement("div")
+      vendor.id = "probe-vendor"
+      document.body.append(ext, vendor)
+      return {
+        extBg: getComputedStyle(ext).backgroundColor,
+        extPosition: getComputedStyle(ext).position,
+        extWidth: getComputedStyle(ext).width,
+        vendorBg: getComputedStyle(vendor).backgroundColor,
+        htmlBeforeBg: getComputedStyle(document.documentElement, "::before")
+          .backgroundColor,
+      }
+    })
+
+    // The extension-owned element is exactly as the author sheet declared
+    // it. An earlier revision's user-origin `all: revert` rule rolled these
+    // back to the UA defaults (transparent, static, auto) — which for the
+    // real veil meant a UA-styled popover box instead of a dark cover.
+    expect(probe.extBg).toBe("rgb(1, 2, 3)")
+    expect(probe.extPosition).toBe("fixed")
+    expect(probe.extWidth).toBe("40px")
+    // Vendor surfaces are erased — the element and the generated box alike.
+    expect(probe.vendorBg).toBe("rgba(0, 0, 0, 0)")
+    expect(probe.htmlBeforeBg).toBe("rgba(0, 0, 0, 0)")
   })
 
   // The following five cases replace a single "borderStrong actually

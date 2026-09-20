@@ -109,7 +109,8 @@ describe("IntentButton", () => {
     expect(retry).toHaveBeenCalledTimes(1)
   })
 
-  it("failed, not retryable: no retry control - the inert-button defect in a new costume, avoided", () => {
+  it("failed, not retryable, resubmission not blocked: no retry control, but the original action still works", () => {
+    const onPress = vi.fn()
     render(
       <IntentButton
         state={failed(
@@ -121,7 +122,7 @@ describe("IntentButton", () => {
           },
           vi.fn()
         )}
-        onPress={vi.fn()}
+        onPress={onPress}
         idleLabel="Enable"
         workingLabel="Enabling..."
       />
@@ -131,7 +132,51 @@ describe("IntentButton", () => {
       "This feature isn't available on this deployment."
     )
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull()
-    expect(screen.getByRole("button", { name: "Enable" })).toBeTruthy()
+    const button = screen.getByRole("button", { name: "Enable" })
+    // This deployment lacking the feature never blocks resubmission - the
+    // request definitely never took effect, so trying again (harmless,
+    // if futile) is safe. Only `blocksResubmission: true` disables outright
+    // - see the next test and this file's own header.
+    expect(button.hasAttribute("disabled")).toBe(false)
+    fireEvent.click(button)
+    expect(onPress).toHaveBeenCalledTimes(1)
+  })
+
+  it("failed, not retryable, resubmission blocked: no retry control, and the original action is disabled rather than resubmittable", () => {
+    const onPress = vi.fn()
+    render(
+      <IntentButton
+        state={failed(
+          {
+            kind: "unreachable",
+            retryable: false,
+            blocksResubmission: true,
+            summary:
+              "The study server didn't respond in time. It may have completed the request anyway - check before trying again.",
+            cause: null,
+          },
+          vi.fn()
+        )}
+        onPress={onPress}
+        idleLabel="Save & Play"
+        workingLabel="Saving..."
+      />
+    )
+
+    expect(screen.getByRole("alert").textContent).toContain(
+      "It may have completed the request anyway"
+    )
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull()
+    const button = screen.getByRole("button", { name: "Save & Play" })
+    // Disabled outright, not a fallback to onPress: the previous attempt's
+    // outcome is genuinely unknown here, so even a *new* attempt risks
+    // duplicating a write that may have already gone through - see this
+    // file's own header on the bot-review finding that caught the earlier
+    // fall-back-to-onPress behavior, and the finding after that which
+    // caught disabling this unconditionally for every non-retryable error.
+    expect(button.hasAttribute("disabled")).toBe(true)
+    fireEvent.click(button)
+    expect(onPress).not.toHaveBeenCalled()
   })
 
   it("composes an external disabled condition (e.g. a form's isDirty gate) with the intent's own state", () => {

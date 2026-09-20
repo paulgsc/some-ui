@@ -15,6 +15,8 @@ import { PREPAINT_VEIL_ID } from "@filter/lib/content/prepaint"
 import {
   DARK_THEME_ATTR,
   DARK_THEME_STYLE_ID,
+  LEGACY_FILTER_STYLE_ID,
+  LEGACY_THEME_ATTR,
 } from "@filter/lib/content/theme-apply"
 import type { TabState } from "@filter/types/tab"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -40,8 +42,24 @@ afterEach(() => {
   document.getElementById(PREPAINT_VEIL_ID)?.remove()
   document.documentElement.classList.remove("sw-dirty")
   document.documentElement.removeAttribute(DARK_THEME_ATTR)
+  document.documentElement.removeAttribute(LEGACY_THEME_ATTR)
   document.head.querySelectorAll("style").forEach((el) => el.remove())
+  document.getElementById(LEGACY_FILTER_STYLE_ID)?.remove()
 })
+
+/**
+ * Mirrors theme-apply.ts's applyLegacyFilter(): the attribute on <html> and
+ * the stylesheet anchored on <html> itself (a sibling of <head>/<body>, not
+ * inside <head>) — the anchor point that survives a vendor <head> swap.
+ */
+function installLegacyFilter(): void {
+  document.documentElement.setAttribute(LEGACY_THEME_ATTR, "")
+  const style = document.createElement("style")
+  style.id = LEGACY_FILTER_STYLE_ID
+  style.setAttribute("data-my-ext", "")
+  style.textContent = "html { filter: invert(1) !important; }"
+  document.documentElement.appendChild(style)
+}
 
 describe("coverage watchdog — dark-signal desync repair", () => {
   it("re-arms the veil when a <head> replacement carries off #__sw_dark_theme but data-sw-dark survives", async () => {
@@ -221,6 +239,79 @@ describe("coverage watchdog — dark-signal desync repair", () => {
     expect(onVeilRearmed).not.toHaveBeenCalled()
 
     watchdog.teardown()
+  })
+})
+
+describe("coverage watchdog — the html-anchored legacy stylesheet", () => {
+  it("records legacy.signal_mismatch when the <html>-anchored legacy stylesheet is wiped in place — outside the <head> observer's reach", async () => {
+    // applyLegacyFilter() anchors #__sw_legacy_filter on <html>, not <head>,
+    // so the head observer's subtree/characterData coverage (which is what
+    // catches the same wipe for #__sw_dark_theme) cannot see it, and the
+    // <html> observer is deliberately not a subtree walk. The element gets
+    // its own narrow observer; this is the case that proves it is attached.
+    installLegacyFilter()
+    const tabState: TabState = "legacy"
+    const recorder = createCoverageRecorder("test-legacy-wipe", false)
+    const record = vi.spyOn(recorder, "record")
+    const watchdog = createCoverageWatchdog(
+      recorder,
+      () => tabState,
+      () => false
+    )
+
+    watchdog.observe()
+    await flushMicrotasks()
+    expect(
+      record.mock.calls.some(([e]) => e.kind === "legacy.signal_mismatch")
+    ).toBe(false)
+
+    const style = document.getElementById(LEGACY_FILTER_STYLE_ID)
+    if (style === null) throw new Error("legacy style missing")
+    style.textContent = ""
+    await flushMicrotasks()
+
+    expect(
+      record.mock.calls.some(([e]) => e.kind === "legacy.signal_mismatch")
+    ).toBe(true)
+
+    watchdog.teardown()
+  })
+
+  it("re-attaches to a re-created legacy stylesheet, and stops observing after teardown()", async () => {
+    installLegacyFilter()
+    const tabState: TabState = "legacy"
+    const recorder = createCoverageRecorder("test-legacy-reattach", false)
+    const count = vi.spyOn(recorder, "count")
+    const watchdog = createCoverageWatchdog(
+      recorder,
+      () => tabState,
+      () => false
+    )
+    const checksSoFar = (): number =>
+      count.mock.calls.filter(([name]) => name === "coverage_checks").length
+
+    watchdog.observe()
+    await flushMicrotasks()
+
+    // Vendor removes and re-creates the element (the html observer sees
+    // both childList mutations and must pick up the new element).
+    document.getElementById(LEGACY_FILTER_STYLE_ID)?.remove()
+    await flushMicrotasks()
+    installLegacyFilter()
+    await flushMicrotasks()
+    const before = checksSoFar()
+
+    const style = document.getElementById(LEGACY_FILTER_STYLE_ID)
+    if (style === null) throw new Error("legacy style missing")
+    style.textContent = ""
+    await flushMicrotasks()
+    expect(checksSoFar()).toBeGreaterThan(before)
+
+    watchdog.teardown()
+    const afterTeardown = checksSoFar()
+    style.textContent = "html { filter: invert(1) !important; }"
+    await flushMicrotasks()
+    expect(checksSoFar()).toBe(afterTeardown)
   })
 })
 
