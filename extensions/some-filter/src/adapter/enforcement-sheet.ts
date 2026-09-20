@@ -213,15 +213,39 @@ const CANVAS_SELECTOR = ":root:root, :root:root body"
  * meant to be read, not erased — the same class of carrier as the other
  * three, not itself a background-color surface this rule needs to flatten.
  *
- * Verbatim from ADR 0002 §2.2's own measured snippet — kept textually
- * unmodified (no `EXT_GUARD`, no other addition) so its specificity stays
- * exactly (0,0,4), which is what `CANVAS_SELECTOR` above and the
- * `[data-my-ext]` exclusion below are each independently calibrated
- * against. Extension-owned elements are protected by that separate,
- * dedicated exclusion instead of by threading a guard through this
- * selector, specifically to avoid perturbing this specificity relationship.
+ * ADR 0002 §2.2's own measured snippet plus one `:not([data-my-ext])`,
+ * which is how this extension's own DOM (the prepaint veil, the debug
+ * overlay) is kept out of the erase rule. An earlier revision left this
+ * selector verbatim and instead wrote a separate
+ * `[data-my-ext] { all: revert !important }` rule — bot-found on #1463
+ * (Codex, P1): at the *user* origin `revert` rolls the cascade back to the
+ * user-agent origin, not merely past this sheet, so it stripped
+ * `prepaint.css`'s author-origin styling from the veil too (its fixed
+ * positioning, viewport size and dark fill), leaving a UA-default popover
+ * box while the page settled. Exclusion by selector is the only form that
+ * leaves author-origin styling of these elements untouched.
+ *
+ * Specificity is (0,1,4) — one attribute selector on top of the four type
+ * negations. Still strictly below `CANVAS_SELECTOR`'s (0,2,0)/(0,2,1) and
+ * below every `:where(...)${EXT_GUARD}` row's (0,2,0), which is the
+ * relationship the rest of this sheet is calibrated against.
  */
-const ERASE_SELECTOR = "*:not(img):not(video):not(svg):not(canvas)"
+const ERASE_SELECTOR =
+  "*:not(img):not(video):not(svg):not(canvas):not([data-my-ext])"
+
+/**
+ * Same erase policy for generated content. `*` never matches a
+ * pseudo-element, so `ERASE_SELECTOR` alone leaves a vendor's `::before`/
+ * `::after` boxes painting whatever they were authored with — a fixed white
+ * `html::before` overlay, a light card background drawn on `::after`, a
+ * gradient on a pseudo — on top of the erased canvas (bot-found on #1463,
+ * Codex, P1). Independent paint surfaces, so they get the same four
+ * declarations. Specificity: `:where()` contributes nothing, the
+ * pseudo-element counts as one type — (0,0,1) — and user-origin
+ * `!important` is what wins against the vendor regardless.
+ */
+const ERASE_PSEUDO_SELECTOR =
+  ":where(*:not([data-my-ext]))::before, :where(*:not([data-my-ext]))::after"
 
 /**
  * Structural containers eligible for the lift gradient below — see this
@@ -426,14 +450,12 @@ ${CANVAS_SELECTOR} {
 }
 
 /* §2.2/§2.3/§3.5: erase every vendor surface; let the canvas show through.
-   background-color/background-image/color/border-color are left textually
-   unmodified from the ADR's own snippet — see this constant's own header
-   for why extension-owned elements are excluded by a separate rule below
-   rather than by a guard threaded through this one. border-color alone,
-   never border-width/border-style here — see BORDER_CONTAINER_SELECTOR's
-   own header for the narrow, affordance-only selector those two now live
-   on, and LIFT_SELECTOR's own header for what replaced them on structural
-   containers. */
+   Extension-owned elements are excluded by the selector itself — see
+   ERASE_SELECTOR's own header for why a separate user-origin reset rule
+   was the wrong tool. border-color alone, never border-width/border-style
+   here — see BORDER_CONTAINER_SELECTOR's own header for the narrow,
+   affordance-only selector those two now live on, and LIFT_SELECTOR's own
+   header for what replaced them on structural containers. */
 ${ERASE_SELECTOR} {
   background-color: transparent !important;
   background-image: none !important;
@@ -441,9 +463,18 @@ ${ERASE_SELECTOR} {
   border-color: ${swatch.borderStrong} !important;
 }
 
+/* Generated content is its own paint surface — see ERASE_PSEUDO_SELECTOR. */
+${ERASE_PSEUDO_SELECTOR} {
+  background-color: transparent !important;
+  background-image: none !important;
+  color: ${swatch.text0} !important;
+  border-color: ${swatch.borderStrong} !important;
+}
+
 /* See BORDER_CONTAINER_SELECTOR's own header — form-control affordance
-   only; inline/text-level carriers keep border-color only, above. */
-${BORDER_CONTAINER_SELECTOR} {
+   only; inline/text-level carriers keep border-color only, above.
+   EXT_GUARD for the same reason as every other row: the veil is a <div>. */
+:where(${BORDER_CONTAINER_SELECTOR})${EXT_GUARD} {
   border-style: solid !important;
   border-width: 1px !important;
 }
@@ -487,20 +518,6 @@ ${highlightRules}
 }
 :where(input::placeholder, textarea::placeholder) {
   color: ${swatch.text2} !important;
-}
-
-/* This module's own header: never repaint this extension's own DOM (the
-   prepaint veil, the debug overlay) — both carry [data-my-ext]. "all" so a
-   future property added to ERASE_SELECTOR/HIGHLIGHT_TABLE above is
-   covered without this rule needing a matching edit; "revert" (not
-   "initial"/"unset") specifically because it rolls back only what *this*
-   user-origin sheet would otherwise have contributed, leaving the
-   extension's own author-origin styling of these elements (prepaint.css,
-   the debug page's own stylesheet) exactly as if this sheet did not exist —
-   never falling through to the UA default the way "unset" could. */
-[data-my-ext],
-[data-my-ext] * {
-  all: revert !important;
 }
 `
 }
