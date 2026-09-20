@@ -144,12 +144,12 @@ const contentScript: ReadonlyMap<string, LedgerEntry> = new Map([
   [
     "MutationObserver",
     {
-      count: 7,
+      count: 8,
       cost: "arrival-source",
       retention: "bounded",
       owner:
-        "adapter/pipeline.ts, adapter/shadow-scope-discovery.ts, lib/content/coverage-watchdog.ts, adapter/document-scope.ts",
-      note: "Subtree observers on documentElement. Coalesced by RECONCILE_POLICY's 50ms debounce, which bounds rounds per unit time but NOT the work inside one round — so the arrival discipline is real and the per-dispatch bound it feeds is not.",
+        "adapter/pipeline.ts, adapter/shadow-scope-discovery.ts, lib/content/coverage-watchdog.ts (x2), adapter/document-scope.ts",
+      note: "Subtree observers on documentElement. Coalesced by RECONCILE_POLICY's 50ms debounce, which bounds rounds per unit time but NOT the work inside one round — so the arrival discipline is real and the per-dispatch bound it feeds is not. The eighth (#1258, coverage-watchdog.ts attachLegacyStyleObserver) observes only the extension's own #__sw_legacy_filter <style> element — childList/characterData on one node this extension writes — so its arrivals are bounded by the extension's own writes, not by S_i; it is re-attached only when the html observer sees that element re-created.",
     },
   ],
   [
@@ -166,12 +166,12 @@ const contentScript: ReadonlyMap<string, LedgerEntry> = new Map([
   [
     "setTimeout",
     {
-      count: 5,
+      count: 6,
       cost: "arrival-source",
       retention: "bounded",
       owner:
-        "adapter/pipeline.ts (coalescer), lib/content/prepaint.ts, content/content.ts",
-      note: "Debounce and veil-teardown timers; each is cancelled or replaced rather than accumulating one pending job per arrival.",
+        "adapter/pipeline.ts (coalescer, trailingAuditTimer), lib/content/prepaint.ts, content/content.ts",
+      note: "Debounce and veil-teardown timers; each is cancelled or replaced rather than accumulating one pending job per arrival. The sixth (#1459, pipeline.ts trailingAuditTimer) is armed with ??= — at most one pending timer regardless of how many settles arrive during the interaction-audit cooldown — and cleared on teardown.",
     },
   ],
   [
@@ -187,11 +187,12 @@ const contentScript: ReadonlyMap<string, LedgerEntry> = new Map([
   [
     "addEventListener",
     {
-      count: 5,
+      count: 6,
       cost: "arrival-source",
       retention: "bounded",
-      owner: "content/content.ts (yt-navigate-finish, pointer/keyboard settle)",
-      note: "Fixed set of named page and runtime events; count is independent of S_i.",
+      owner:
+        "content/content.ts (yt-navigate-finish, pointer/keyboard settle), lib/content/visibility-gate.ts (visibilitychange)",
+      note: "Fixed set of named page and runtime events; count is independent of S_i. The sixth (visibility-gate.ts) is one document-level visibilitychange listener, removed by cancel() before the next arm, so at most one is registered at a time.",
     },
   ],
   [
