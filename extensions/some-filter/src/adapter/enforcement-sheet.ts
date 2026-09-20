@@ -390,6 +390,19 @@ ${ERASE_SELECTOR} {
   background-image: none !important;
   color: ${swatch.text0} !important;
   border-color: ${swatch.borderStrong} !important;
+  /* Two more paint channels the four declarations above do not reach
+     (bot-found on #1463, Codex round 3). An inset shadow is a fill —
+     box-shadow: inset 0 0 0 9999px white is the paint grammar's own
+     PG-BG-INSET-SHADOW — and a compositing filter on any descendant group
+     (main, #app) post-processes every enforced token inside it, the same
+     way a root filter does on the canvas rule above. Both are erased on the
+     same subject as colour: every non-media element. Vendor elevation
+     shadows and descendant blur/drop-shadow effects go with them, which is
+     the same class of accepted trade as background-image: none (ADR 0002
+     §3.5). Media keep their filters via the img/video/svg/canvas
+     exclusions on ERASE_SELECTOR. */
+  box-shadow: none !important;
+  filter: none !important;
 }
 
 /* Generated content is its own paint surface — see ERASE_PSEUDO_SELECTOR. */
@@ -398,6 +411,21 @@ ${ERASE_PSEUDO_SELECTOR} {
   background-image: none !important;
   color: ${swatch.text0} !important;
   border-color: ${swatch.borderStrong} !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+/* A top-layer backdrop is generated content too, but a transparent one
+   would drop the dimming a modal relies on for focus — so it is imposed
+   dark rather than erased (bot-found on #1463, Codex round 3: a vendor
+   dialog::backdrop or popover backdrop painted white covers the whole
+   viewport regardless of the dialog's own enforced surface). The
+   [data-my-ext] exclusion matters here more than anywhere: the prepaint
+   veil is a popover and prepaint.css styles its own ::backdrop. */
+:where(*:not([data-my-ext]))::backdrop {
+  background-color: rgba(0, 0, 0, 0.6) !important;
+  background-image: none !important;
+  filter: none !important;
 }
 
 /* See BORDER_CONTAINER_SELECTOR's own header — containers get a rendered
