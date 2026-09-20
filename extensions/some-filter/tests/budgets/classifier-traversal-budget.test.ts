@@ -87,6 +87,38 @@ export const MAX_RETAINED_ELEMENTS = 1_000
  */
 export const SUBLINEAR_GROWTH_FACTOR = 1.5
 
+/**
+ * Traversals a single reconcile round may perform.
+ *
+ * **Two, not one.** An earlier version of this file asserted one, reasoning
+ * that both channels walk "the same unchanged document" and that their
+ * documented independence is only about which evidence each may see. That
+ * was wrong, and the assertion was unsatisfiable without breaking
+ * correctness.
+ *
+ * The two channels require *contradictory page states*:
+ *
+ *   - `scan()` runs under `withVendorColorsVisible`, which disables the
+ *     theme sheet, the dynamic per-surface sheet AND the repair sheet, so
+ *     it reads the **vendor's** colours. Reading our own output back in is
+ *     #831's self-feedback defect: the append-only hypothesis folds the
+ *     extension's dark output in as fresh vendor evidence until the page
+ *     undoes its own theming.
+ *   - `auditLegibility()` runs under `withRepairSuppressed`, which leaves
+ *     the theme sheets **enabled** and disables only the repair sheet. It
+ *     has to audit what the user actually sees *after* theming; auditing
+ *     the unthemed page would measure contrast nobody ever experiences.
+ *
+ * And `fire()` runs `realize()` between them, so the contrast channel
+ * deliberately observes the state the surface channel's verdict just
+ * produced. No single traversal can observe both states.
+ *
+ * So this is a ratchet, not a target. Responsiveness is bounded by the
+ * per-dispatch credit budget (`src/kernel/`), not by traversal count; total
+ * work is necessarily O(S_i) per observed state.
+ */
+const MAX_TRAVERSALS_PER_ROUND = 2
+
 /** ~3,800 elements — around 3% of the real page this models. */
 const DENSE: DocumentShape = { files: 60, linesPerFile: 20 }
 /** Half of `DENSE`, for the scaling case. */
@@ -216,12 +248,11 @@ describe("auto classifier — contrast channel (legibility-audit.ts auditLegibil
 })
 
 describe("auto classifier — a reconcile round as a whole", () => {
-  it("does not walk the whole document more than once per round", () => {
+  it("performs one traversal per observed page state, and no more", () => {
     buildFilesChangedDocument(DENSE)
 
     // Exactly what pipeline.ts's cycle() -> fire() does for a themed round:
-    // the surface channel, then the contrast channel, on the same tree, in
-    // the same task.
+    // the surface channel, then realize(), then the contrast channel.
     const { metrics } = measure(() => {
       scan(document.body)
       auditLegibility(document.body)
@@ -229,13 +260,12 @@ describe("auto classifier — a reconcile round as a whole", () => {
 
     expect(
       metrics.walkers,
-      `One round started ${metrics.walkers} full-tree walks over the same ` +
-        `unchanged document, costing ${metrics.styleReads} computed-style reads ` +
-        `in total (${projectToRealPage(metrics.styleReads, metrics.nodes)}). ` +
-        `The two channels are kept independent by design — see pipeline.ts's ` +
-        `runContrastChannel — but independence is about which evidence each ` +
-        `channel may see, not about how many times the tree gets walked. One ` +
-        `traversal can feed both.`
-    ).toBeLessThanOrEqual(1)
+      `One round started ${metrics.walkers} full-tree walks, costing ` +
+        `${metrics.styleReads} computed-style reads in total ` +
+        `(${projectToRealPage(metrics.styleReads, metrics.nodes)}). Two is ` +
+        `the correct number and the ceiling; a third means a traversal was ` +
+        `added without a page state to justify it. See ` +
+        `MAX_TRAVERSALS_PER_ROUND for why two is irreducible.`
+    ).toBeLessThanOrEqual(MAX_TRAVERSALS_PER_ROUND)
   })
 })
