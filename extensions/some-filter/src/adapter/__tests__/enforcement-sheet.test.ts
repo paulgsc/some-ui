@@ -48,6 +48,25 @@ describe("buildEnforcementCSS", () => {
     expect(pseudo).toContain("backdrop-filter: none !important;")
   })
 
+  it("erases text-shadows and imposes outline-color on both erase rules (bot-found on #1500, round 2)", () => {
+    const css = buildEnforcementCSS(swatch)
+    const eraseStart = css.indexOf(
+      "*:not(img):not(video):not(svg):not(canvas):not([data-my-ext]) {"
+    )
+    const erase = css.slice(eraseStart, css.indexOf("}", eraseStart))
+    expect(erase).toContain("text-shadow: none !important;")
+    expect(erase).toContain(`outline-color: ${swatch.borderStrong} !important;`)
+    // Colour only — width and style stay the vendor's, like border-color.
+    expect(erase).not.toMatch(/outline-(width|style|offset)/)
+    expect(erase).not.toMatch(/^\s*outline:/m)
+    const pseudoStart = css.indexOf(":where(*:not([data-my-ext]))::before")
+    const pseudo = css.slice(pseudoStart, css.indexOf("}", pseudoStart))
+    expect(pseudo).toContain("text-shadow: none !important;")
+    expect(pseudo).toContain(
+      `outline-color: ${swatch.borderStrong} !important;`
+    )
+  })
+
   it("imposes a dark top-layer ::backdrop, excluding the veil's own (bot-found on #1463, round 3)", () => {
     const css = buildEnforcementCSS(swatch)
     const start = css.indexOf(":where(*:not([data-my-ext]))::backdrop {")

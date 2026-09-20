@@ -409,6 +409,16 @@ ${ERASE_SELECTOR} {
      (bot-found on #1463, Codex confirming review). Same subject, same
      trade as filter above. */
   backdrop-filter: none !important;
+  /* Two more independent glyph/edge channels (bot-found on #1500, Codex
+     round 2). A text-shadow is painted separately from color — a vendor's
+     text-shadow: 0 0 0 white keeps every glyph white (or haloed) under an
+     enforced color, so it is erased. An outline is painted separately from
+     border — outline: 2px solid white stays white under an enforced
+     border-color — so only its colour is imposed, the same way border-color
+     is: width and style stay the vendor's, so focus rings keep their shape.
+     theme-apply.ts's static sheet already enforces outline-color. */
+  text-shadow: none !important;
+  outline-color: ${swatch.borderStrong} !important;
 }
 
 /* Generated content is its own paint surface — see ERASE_PSEUDO_SELECTOR. */
@@ -420,6 +430,8 @@ ${ERASE_PSEUDO_SELECTOR} {
   box-shadow: none !important;
   filter: none !important;
   backdrop-filter: none !important;
+  text-shadow: none !important;
+  outline-color: ${swatch.borderStrong} !important;
 }
 
 /* A top-layer backdrop is generated content too, but a transparent one

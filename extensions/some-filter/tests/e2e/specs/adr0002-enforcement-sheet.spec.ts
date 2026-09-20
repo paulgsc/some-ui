@@ -94,6 +94,8 @@ async function cycleTabOff(
 // background service worker's raw chrome.* evaluate() context (this file's
 // own backgroundWorker() comment) does not run inside.
 const ENFORCED_BG = "rgb(23, 28, 37)"
+// SWATCHES.default.borderStrong, a literal for the same reason.
+const BORDER_STRONG = "rgba(255, 255, 255, 0.35)"
 
 test.describe("ADR 0002 enforcement sheet", () => {
   test("§3.2 — the canvas rule wins the specificity trap (html/body never blank)", async ({
@@ -183,8 +185,12 @@ test.describe("ADR 0002 enforcement sheet", () => {
         "#probe-filter { filter: invert(1); }",
         "#probe-dialog::backdrop { background-color: rgb(255, 255, 255); box-shadow: inset 0 0 0 9999px rgb(255, 255, 255); backdrop-filter: invert(1); }",
         "#probe-overlay { position: fixed; inset: 0; backdrop-filter: invert(1); }",
+        "#probe-glyph { text-shadow: 0 0 0 rgb(255, 255, 255); outline: 2px dashed rgb(255, 255, 255); }",
       ].join("\n")
       document.head.appendChild(style)
+      const glyph = document.createElement("p")
+      glyph.id = "probe-glyph"
+      glyph.textContent = "probe"
       const shadow = document.createElement("div")
       shadow.id = "probe-shadow"
       const filtered = document.createElement("main")
@@ -193,10 +199,15 @@ test.describe("ADR 0002 enforcement sheet", () => {
       dialog.id = "probe-dialog"
       const overlay = document.createElement("div")
       overlay.id = "probe-overlay"
-      document.body.append(shadow, filtered, dialog, overlay)
+      document.body.append(glyph, shadow, filtered, dialog, overlay)
       dialog.showModal()
       const backdrop = getComputedStyle(dialog, "::backdrop")
+      const glyphStyle = getComputedStyle(glyph)
       return {
+        textShadow: glyphStyle.textShadow,
+        outlineColor: glyphStyle.outlineColor,
+        outlineWidth: glyphStyle.outlineWidth,
+        outlineStyle: glyphStyle.outlineStyle,
         shadow: getComputedStyle(shadow).boxShadow,
         filter: getComputedStyle(filtered).filter,
         overlayBackdropFilter: getComputedStyle(overlay).backdropFilter,
@@ -206,6 +217,14 @@ test.describe("ADR 0002 enforcement sheet", () => {
       }
     })
 
+    // Glyph and edge channels (bot-found on #1500, round 2): the shadow is
+    // gone, the outline keeps its vendor width/style but not its colour
+    // (SWATCHES.default.borderStrong, a literal for the same reason as
+    // ENFORCED_BG).
+    expect(probe.textShadow).toBe("none")
+    expect(probe.outlineColor).toBe(BORDER_STRONG)
+    expect(probe.outlineWidth).toBe("2px")
+    expect(probe.outlineStyle).toBe("dashed")
     expect(probe.shadow).toBe("none")
     expect(probe.filter).toBe("none")
     expect(probe.overlayBackdropFilter).toBe("none")

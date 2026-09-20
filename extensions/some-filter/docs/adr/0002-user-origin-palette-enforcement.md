@@ -446,6 +446,12 @@ before #1492's eye-strain run judges fidelity:
   (`:not([data-my-ext] *)`), the same contract `EXT_GUARD` already states,
   subject to #1488's cost measurement.
 
+Round 2 on the landing PR (#1500) added two more independent channels to both
+erase rules: `text-shadow` is erased (a white zero-blur text-shadow keeps
+glyphs white under an enforced `color`), and `outline-color` is imposed with
+`borderStrong` the way `border-color` is — width and style stay the vendor's,
+so focus rings keep their shape.
+
 One consequence of §8.1 surfaced while porting the `::placeholder` rule:
 Chromium implements the placeholder as a real element inside the control's UA
 shadow tree, so the erase rule's `color` reaches it and outranks a bare
