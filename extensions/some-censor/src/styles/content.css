@@ -136,14 +136,6 @@ ytd-video-renderer:not([data-boyo]) {
   user-select: none !important;
 }
 
-ytd-rich-item-renderer:not([data-boyo]) {
-  cursor: default !important;
-  filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
-  opacity: 0.5 !important;
-  pointer-events: none !important;
-  user-select: none !important;
-}
-
 ytd-grid-video-renderer:not([data-boyo]) {
   cursor: default !important;
   filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
@@ -177,6 +169,16 @@ ytd-playlist-video-renderer:not([data-boyo]) {
 }
 
 ytd-reel-item-renderer:not([data-boyo]) {
+  cursor: default !important;
+  filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
+  opacity: 0.5 !important;
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
+ytd-rich-item-renderer:has(a[href*="/watch"], a[href*="/shorts/"]):not(
+    [data-boyo]
+  ) {
   cursor: default !important;
   filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
   opacity: 0.5 !important;

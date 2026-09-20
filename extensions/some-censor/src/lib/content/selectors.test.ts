@@ -134,8 +134,23 @@ describe("the stylesheet and the catalogue agree", () => {
 
 describe("isVideoCard", () => {
   it("accepts an unguarded renderer on its tag alone", () => {
-    const el = document.createElement("ytd-rich-item-renderer")
+    const el = document.createElement("ytd-video-renderer")
     expect(isVideoCard(el)).toBe(true)
+  })
+
+  it("rejects a rich-item cell that wraps something other than a video (#1422)", () => {
+    // The home feed's grid cell is polymorphic in exactly the way a lockup is:
+    // an ad slot, a Shorts shelf or a post renders under the same tag with no
+    // watch href anywhere. Accepting it on the tag alone was the whole of
+    // [ORP1] — occluded by the stylesheet, never resolvable, never released.
+    const ad = document.createElement("ytd-rich-item-renderer")
+    ad.innerHTML =
+      "<ytd-ad-slot-renderer><div>sponsored</div></ytd-ad-slot-renderer>"
+    expect(isVideoCard(ad)).toBe(false)
+
+    const video = document.createElement("ytd-rich-item-renderer")
+    video.innerHTML = '<a id="video-title" href="/watch?v=abc123">t</a>'
+    expect(isVideoCard(video)).toBe(true)
   })
 
   it("rejects an element that is not in the catalogue at all", () => {

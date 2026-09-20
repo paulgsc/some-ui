@@ -458,10 +458,16 @@ export class VideoManager {
         this._rejected.delete(el)
         continue
       }
-      if (!isVideoCard(el)) continue
-      // It is a video now. Clear the rejection and let the normal path run;
-      // upsert() re-queues under a fresh budget if extraction still fails, and
-      // a video-shaped element is exempt from the budget anyway.
+      // The cheap structural check first — most rejected elements are channel
+      // and playlist tiles that never grow a video link — and extraction only
+      // for the ones that pass it. A video-shaped element can be rejected too
+      // (its href carried no parseable id, see retryUnresolved), and reviving
+      // it on shape alone would re-queue it, spend another budget, reject it
+      // again, and so on forever: revival has to mean "extraction would now
+      // succeed", not merely "it looks like a card".
+      if (!isVideoCard(el) || tryExtract(el).kind === "raw") continue
+      // It resolves now. Clear the rejection and let the normal path run —
+      // upsert() takes the resolved branch, which never consults the budget.
       this._rejected.delete(el)
       this._firstSeen.delete(elementKey(el))
       this.upsert(el)
@@ -505,18 +511,29 @@ export class VideoManager {
         // Maskable now — mount provisionally; channel resolves on a later pass.
         this._dequeueUnresolved(key)
         this._promoteProvisional(el, extracted.videoId)
-      } else if (!isVideoCard(el) && this._budgetSpent(key)) {
-        // Out of budget, and still not video-shaped: a channel or playlist
-        // lockup. Give up on it for good. This is safe precisely because it is
-        // not video-shaped — the pre-mask rule's `:has()` guard means the
-        // stylesheet is not occluding it either, so nothing is left blurred
-        // behind us.
+      } else if (this._budgetSpent(key)) {
+        // Out of budget with nothing extractable. Give up on it for good, so
+        // the retry loop — and the full-document scan() it drives — can stop
+        // (Charter §8). `recheckRejected()` is what makes giving up safe: the
+        // element is re-examined on every later mutation batch and revived the
+        // moment extraction would succeed.
         //
-        // A *video-shaped* element is deliberately exempt from the budget: the
-        // stylesheet IS occluding it, so giving up would leave it blurred with
-        // nothing coming to lift the blur. In practice it cannot spin either —
-        // being video-shaped means it has a watch or shorts href, which is the
-        // very thing extractVideoId reads.
+        // Almost always this is an element that is not video-shaped: a channel
+        // or playlist lockup, or a non-video `ytd-rich-item-renderer` cell
+        // (#1422). The pre-mask rule's `:has()` guard means the stylesheet is
+        // not occluding those, so nothing is left blurred behind us.
+        //
+        // An earlier revision exempted *video-shaped* elements from the budget
+        // on the reasoning that "being video-shaped means it has a watch or
+        // shorts href, which is the very thing extractVideoId reads" — so it
+        // could not spin. That was true only for tags whose `isVideoCard()`
+        // actually checks for a link; for a tag it accepted unconditionally the
+        // exemption was the entire mechanism of #1422, and the loop ran for the
+        // life of the tab. The budget therefore now binds every queued element.
+        // The residual case — a video-shaped element whose watch href carries
+        // no parseable id (`/watch?list=…` alone) — stays occluded after
+        // rejection, which is the fail-closed answer (QD1), and
+        // `OccluderReleases` reports it rather than the loop hiding it.
         this._dequeueUnresolved(key)
         this._rejected.add(el)
         observability()?.rejected(key)

@@ -13,24 +13,43 @@
  *
  * ## Two families, and why one of them needs a guard
  *
- * The `ytd-*-renderer` custom elements are YouTube's Polymer generation. Each
- * tag means exactly one thing, and every instance of it is a video, so matching
- * the tag is sufficient.
+ * Most `ytd-*-renderer` custom elements are YouTube's Polymer generation of a
+ * *video* card: `ytd-video-renderer`, `ytd-grid-video-renderer` and friends
+ * each mean exactly one thing, and every instance of one is a video, so
+ * matching the tag is sufficient.
  *
- * `yt-lockup-view-model` is the Lit-era replacement, and it is *polymorphic*:
- * the same tag renders a video, a playlist, a channel, a podcast, or a
- * "collection" shelf tile, distinguished only by its content. This is what #973
- * ran into from the other side — the tag was missing entirely, so every card in
- * the newer shelves (the upcoming-feed slider, watch-next, most of search) went
- * unmasked. Adding the bare tag would have over-corrected: a channel lockup can
- * never produce a videoId, so it would be occluded by the pre-mask rule with no
- * content script coming to replace that occlusion, and it would sit in the
+ * The other family is *polymorphic*: the same tag renders non-video content
+ * too, distinguished only by what is inside it.
+ *
+ *   - `yt-lockup-view-model` is the Lit-era card, and it renders a video, a
+ *     playlist, a channel, a podcast, or a "collection" shelf tile. This is
+ *     what #973 ran into from the other side — the tag was missing entirely,
+ *     so every card in the newer shelves (the upcoming-feed slider, watch-next,
+ *     most of search) went unmasked.
+ *   - `ytd-rich-item-renderer` is Polymer, but it is the home feed's *generic
+ *     grid cell*, not a video renderer: it wraps whatever the feed item is —
+ *     a video, an ad slot (`ytd-ad-slot-renderer`), a Shorts shelf, a
+ *     community post, a playlist tile. An earlier revision of this file
+ *     listed it with the plain tags on the claim that "every instance of it
+ *     is a video"; that claim is false, and it is the whole mechanism of
+ *     #1422 (`[ORP1]`): the ad cell was occluded by the pre-mask rule, could
+ *     never produce a videoId, and so was never released — a permanently
+ *     blurred, permanently unclickable tile — while keeping the retry loop
+ *     alive for the life of the tab.
+ *
+ * Adding a polymorphic tag bare over-corrects in exactly that way: an element
+ * that can never produce a videoId is occluded by the pre-mask rule with no
+ * content script coming to replace that occlusion, and it sits in the
  * manager's unresolved queue keeping the retry loop alive forever.
  *
- * So the polymorphic tags carry `requiresVideoLink`. A lockup counts as a card
- * only once it contains a watch or shorts href — the same condition, expressed
- * as `:has()` in the stylesheet and as {@link isVideoCard} in TypeScript, so
- * the two layers cannot drift into disagreeing about what a card is.
+ * So the polymorphic tags carry `requiresVideoLink`. Such an element counts
+ * as a card only once it contains a watch or shorts href — the same
+ * condition, expressed as `:has()` in the stylesheet and as
+ * {@link isVideoCard} in TypeScript, so the two layers cannot drift into
+ * disagreeing about what a card is. The guard is what lets {@link isVideoCard}
+ * say "not a card" for the ad cell, which is what lets the manager stop
+ * retrying it and what keeps the stylesheet from occluding it in the first
+ * place.
  */
 
 /** A tracked card element type. */
@@ -48,9 +67,8 @@ export type CardSelector = {
 export const VIDEO_LINK_SELECTOR = 'a[href*="/watch"], a[href*="/shorts/"]'
 
 export const CARD_SELECTORS: ReadonlyArray<CardSelector> = [
-  // ── Polymer generation: tag alone is decisive ────────────────────────────
+  // ── Polymer video renderers: tag alone is decisive ───────────────────────
   { tag: "ytd-video-renderer", requiresVideoLink: false },
-  { tag: "ytd-rich-item-renderer", requiresVideoLink: false },
   { tag: "ytd-grid-video-renderer", requiresVideoLink: false },
   { tag: "ytd-compact-video-renderer", requiresVideoLink: false },
   { tag: "ytd-playlist-panel-video-renderer", requiresVideoLink: false },
@@ -60,8 +78,12 @@ export const CARD_SELECTORS: ReadonlyArray<CardSelector> = [
   // Legacy shorts shelf item.
   { tag: "ytd-reel-item-renderer", requiresVideoLink: false },
 
-  // ── Lit generation: polymorphic, needs the video-link guard ──────────────
-  // The unified card behind the upcoming-feed slider, watch-next and search.
+  // ── Polymorphic tags: need the video-link guard ──────────────────────────
+  // The home feed's generic grid cell (Polymer). Wraps videos, but also ad
+  // slots, Shorts shelves, posts and playlist tiles — see the header (#1422).
+  { tag: "ytd-rich-item-renderer", requiresVideoLink: true },
+  // The unified Lit-era card behind the upcoming-feed slider, watch-next and
+  // search.
   { tag: "yt-lockup-view-model", requiresVideoLink: true },
   // Shorts shelves. Two tags because YouTube ships both revisions concurrently.
   { tag: "ytm-shorts-lockup-view-model", requiresVideoLink: true },

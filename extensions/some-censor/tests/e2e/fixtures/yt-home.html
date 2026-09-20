@@ -183,6 +183,17 @@
           <span>5 days ago</span>
         </div>
       </ytd-rich-item-renderer>
+
+      <!-- Card 5: the same grid-cell tag wrapping an ad slot (#1422 / ORP1).
+           No watch or shorts href anywhere, so nothing can ever resolve it.
+           It must be neither adopted nor left under the pre-mask occluder —
+           the latter was a permanently blurred, permanently unclickable tile. -->
+      <ytd-rich-item-renderer id="ad-slot-card">
+        <ytd-ad-slot-renderer>
+          <div class="thumbnail"></div>
+          <div id="metadata-line"><span>Sponsored</span></div>
+        </ytd-ad-slot-renderer>
+      </ytd-rich-item-renderer>
     </div>
 
     <!--
