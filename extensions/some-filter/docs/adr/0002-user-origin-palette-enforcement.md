@@ -418,3 +418,25 @@ not be released on the strength of the sheet being inserted alone. The policy
 the confirmation read and one painted frame after it, removed afterwards so
 steady-state vendor transitions are untouched) and its e2e fixture are
 specified in #1489 (SF-CUT3), which owns the veil handshake.
+
+### 8.4 Second review round — the sheet's remaining paint surfaces
+
+Six further findings (Codex, round 2), all real. Two are fixed on the
+implementation PR (#1463, `ccb4f03`): the canvas rule carries
+`filter: none !important` on `html`/`body`, so a vendor's root-level invert
+(`filter-invert-vendor-page.html`) no longer composites E back to light; and
+`insertCSS` targets `allFrames: true`, reaching every frame that exists at the
+injection event — late-created frames and a per-frame veil are #1489's
+per-document request. The other four are tracked in #1497 and must land
+before #1492's eye-strain run judges fidelity:
+
+- `-webkit-text-fill-color` fills glyphs regardless of `color`; the sheet
+  declares `currentColor` for it.
+- `box-shadow` can paint a complete surface (`inset 0 0 0 9999px white`,
+  `PG-BG-INSET-SHADOW` in the paint grammar); the sheet resets it, which adds
+  vendor elevation shadows to §5.4's fidelity cost.
+- Painting pseudo-elements beyond `::before`/`::after`: `::backdrop`,
+  `::marker`, `::first-letter`, `::first-line`, `::file-selector-button`.
+- Descendants of extension-owned elements are excluded by selector
+  (`:not([data-my-ext] *)`), the same contract `EXT_GUARD` already states,
+  subject to #1488's cost measurement.
