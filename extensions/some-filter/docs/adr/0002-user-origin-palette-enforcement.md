@@ -418,4 +418,3 @@ not be released on the strength of the sheet being inserted alone. The policy
 the confirmation read and one painted frame after it, removed afterwards so
 steady-state vendor transitions are untouched) and its e2e fixture are
 specified in #1489 (SF-CUT3), which owns the veil handshake.
-
