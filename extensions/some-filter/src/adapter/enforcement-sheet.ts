@@ -372,7 +372,7 @@ ${CANVAS_SELECTOR} {
      own paint, same as any other vendor colour decision, and is erased by
      the rule below only insofar as its inputs are. Note this also
      overrides this extension's *own* legacy invert (an author-origin
-     html { filter } !important) whenever both are active in one tab, which
+     !important filter on html) whenever both are active in one tab, which
      the flagged rollout permits today — #1489 makes the two mutually
      exclusive per tab; until then the flag and legacy mode are not meant to
      be combined. */
