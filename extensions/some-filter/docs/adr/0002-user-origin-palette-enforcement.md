@@ -445,3 +445,9 @@ before #1492's eye-strain run judges fidelity:
 - Descendants of extension-owned elements are excluded by selector
   (`:not([data-my-ext] *)`), the same contract `EXT_GUARD` already states,
   subject to #1488's cost measurement.
+
+One consequence of §8.1 surfaced while porting the `::placeholder` rule:
+Chromium implements the placeholder as a real element inside the control's UA
+shadow tree, so the erase rule's `color` reaches it and outranks a bare
+`(0,0,1)` `::placeholder` rule. The ported rule therefore carries `EXT_GUARD`
+too, which is the only reason it wins (live-measured on #1500).

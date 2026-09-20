@@ -143,7 +143,6 @@ describe("buildEnforcementCSS", () => {
       .filter((line) => !line.includes("data-my-ext"))
       .filter((line) => !line.startsWith(":root:root"))
       .filter((line) => !line.startsWith("::selection"))
-      .filter((line) => !line.includes("::placeholder"))
     expect(unguarded).toEqual([])
   })
 
@@ -211,7 +210,11 @@ describe("HIGHLIGHT_TABLE (ADR 0003 §3)", () => {
     expect(css).toContain(`background-color: ${swatch.selectionBg} !important;`)
     // Not verbatim: a pseudo-element inside :where() invalidates the whole
     // forgiving list (bot-found on #1500) — the pseudo-element sits outside.
-    expect(css).toContain(":where(input, textarea)::placeholder {")
+    // And EXT_GUARD is on it: Chromium's placeholder is a UA-shadow element
+    // the erase rule reaches (§8.1 crossing), so (0,0,1) alone loses to it.
+    expect(css).toContain(
+      ":where(input, textarea):not([data-my-ext]):not([data-my-ext] *)::placeholder {"
+    )
     expect(css).not.toContain("::placeholder, ")
     expect(css).not.toContain("::placeholder)")
   })

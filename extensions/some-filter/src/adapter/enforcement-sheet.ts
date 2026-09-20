@@ -452,22 +452,26 @@ ${ERASE_PSEUDO_SELECTOR} {
    semantic-surface elevation, and native form-control accent color. */
 ${highlightRules}
 
-/* Pseudo-elements, not real elements — never competes with ERASE_SELECTOR's
-   own (0,0,4) (the universal selector "*" does not match a pseudo-element
-   at all), so neither needs EXT_GUARD's specificity boost. Ported verbatim
-   from theme-apply.ts's own DARK_THEME_BODY_RULES, including that file's
-   own choice not to guard the placeholder rule with EXT_GUARD either.
+/* ::selection is a real pseudo-element, so the universal selector "*" of
+   ERASE_SELECTOR never matches it and its (0,0,1) needs no boost. Ported
+   verbatim from theme-apply.ts's own DARK_THEME_BODY_RULES.
 
-   The placeholder selector is NOT the verbatim port: theme-apply.ts writes
-   `:where(input::placeholder, textarea::placeholder)`, and a pseudo-element
-   is not a valid member of a `:where()` list — the forgiving list drops
-   both, `:where()` is left empty and matches nothing, so that rule has never
-   applied (bot-found on #1500, Codex; the shipped copy is #1501). The
-   pseudo-element goes outside the `:where()`. */
+   The placeholder rule is NOT the verbatim port, twice over. (1) theme-apply.ts
+   nests the two pseudo-elements inside its :where() list, and a pseudo-element
+   is not a valid member of a :where() list — the forgiving list drops both,
+   :where() is left empty and matches nothing, so that rule has never applied
+   (bot-found on #1500, Codex; the shipped copy is #1501). Here the
+   pseudo-element is appended after the :where(). (2) Chromium implements
+   ::placeholder as a real element inside the control's UA shadow tree, and
+   §8.1 already recorded that this user-origin sheet crosses shadow
+   boundaries: ERASE_SELECTOR's (0,1,4) "color: text0 !important" reaches
+   that element and outranks a bare (0,0,1) placeholder rule (live-measured
+   on #1500's e2e: the placeholder read back text0, not text2). EXT_GUARD's
+   (0,2,0) lifts it above the erase rule. */
 ::selection {
   background-color: ${swatch.selectionBg} !important;
 }
-:where(input, textarea)::placeholder {
+:where(input, textarea)${EXT_GUARD}::placeholder {
   color: ${swatch.text2} !important;
 }
 `
