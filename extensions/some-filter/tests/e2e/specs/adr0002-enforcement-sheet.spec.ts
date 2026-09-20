@@ -214,6 +214,37 @@ test.describe("ADR 0002 enforcement sheet", () => {
     expect(probe.backdropFilter).toBe("none")
   })
 
+  test("an authored ::placeholder colour is overridden by the highlight table (bot-found on #1500: the ported selector never matched)", async ({
+    context,
+    fixture,
+  }) => {
+    const sw = await backgroundWorker(context)
+    await enableEnforcementSheet(sw)
+
+    const page = await fixture.goto("light-page")
+    await cycleTabOff(sw, page, "light-page.html")
+    await page.waitForFunction(
+      (expected) =>
+        getComputedStyle(document.documentElement).backgroundColor === expected,
+      ENFORCED_BG,
+      { timeout: 5_000, polling: 100 }
+    )
+
+    const placeholder = await page.evaluate(() => {
+      const style = document.createElement("style")
+      style.textContent = "#probe-input::placeholder { color: rgb(255, 0, 0); }"
+      document.head.appendChild(style)
+      const input = document.createElement("input")
+      input.id = "probe-input"
+      input.placeholder = "probe"
+      document.body.append(input)
+      return getComputedStyle(input, "::placeholder").color
+    })
+
+    // SWATCHES.default.text2, as a literal for the same reason ENFORCED_BG is.
+    expect(placeholder).toBe("rgb(71, 85, 105)")
+  })
+
   test("[data-my-ext] keeps its author-origin styling, and vendor ::before/::after are erased (bot-found on #1463)", async ({
     context,
     fixture,

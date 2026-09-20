@@ -209,7 +209,11 @@ describe("HIGHLIGHT_TABLE (ADR 0003 §3)", () => {
     const css = buildEnforcementCSS(swatch)
     expect(css).toContain("::selection")
     expect(css).toContain(`background-color: ${swatch.selectionBg} !important;`)
-    expect(css).toContain(":where(input::placeholder, textarea::placeholder)")
+    // Not verbatim: a pseudo-element inside :where() invalidates the whole
+    // forgiving list (bot-found on #1500) — the pseudo-element sits outside.
+    expect(css).toContain(":where(input, textarea)::placeholder {")
+    expect(css).not.toContain("::placeholder, ")
+    expect(css).not.toContain("::placeholder)")
   })
 
   it("does NOT include the svg fill/stroke row — held back for ADR 0003 §3.1's own sign-off", () => {

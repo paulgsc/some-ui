@@ -456,11 +456,18 @@ ${highlightRules}
    own (0,0,4) (the universal selector "*" does not match a pseudo-element
    at all), so neither needs EXT_GUARD's specificity boost. Ported verbatim
    from theme-apply.ts's own DARK_THEME_BODY_RULES, including that file's
-   own choice not to guard the placeholder rule with EXT_GUARD either. */
+   own choice not to guard the placeholder rule with EXT_GUARD either.
+
+   The placeholder selector is NOT the verbatim port: theme-apply.ts writes
+   `:where(input::placeholder, textarea::placeholder)`, and a pseudo-element
+   is not a valid member of a `:where()` list — the forgiving list drops
+   both, `:where()` is left empty and matches nothing, so that rule has never
+   applied (bot-found on #1500, Codex; the shipped copy is #1501). The
+   pseudo-element goes outside the `:where()`. */
 ::selection {
   background-color: ${swatch.selectionBg} !important;
 }
-:where(input::placeholder, textarea::placeholder) {
+:where(input, textarea)::placeholder {
   color: ${swatch.text2} !important;
 }
 `
