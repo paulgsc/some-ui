@@ -77,6 +77,15 @@ export type Swatch = {
   readonly inputBorder: string
   readonly selectionBg: string
   readonly codeFg: string
+  /**
+   * ADR 0002 §2.3 amendment (border-soup finding, `enforcement-sheet.ts`'s
+   * own header): the top-lit lift gradient that replaces forced borders on
+   * structural containers. Translucent light-from-above for a dark swatch
+   * (`rgb(255 255 255 / α)`); a light swatch would use a dark tint instead
+   * (`rgb(0 0 0 / α)`) — every registry entry here is dark, so this file has
+   * no such case yet, but the token is theme-parametric by construction.
+   */
+  readonly lift: string
 }
 
 export const DEFAULT_SWATCH_ID = "default"
@@ -102,6 +111,17 @@ export const DEFAULT_SWATCH_ID = "default"
  * token exists for (§2.3).
  */
 const BORDER_STRONG = "rgba(255, 255, 255, 0.35)"
+
+/**
+ * The one `lift` value shared by every dark registry entry below — same
+ * repeated-literal pattern as `BORDER_STRONG` above, and for the same
+ * reason: every entry in this registry is a dark swatch, so light-from-above
+ * is the one physically-motivated direction for all seven. 0.035 is a
+ * starting value (`enforcement-sheet.ts`'s own header records the lift
+ * mechanism this token feeds); a light swatch, if one is ever added, needs
+ * its own dark-tint value here instead — `Swatch.lift`'s own doc comment.
+ */
+const LIFT = "rgb(255 255 255 / 0.035)"
 
 /**
  * `as const satisfies Record<string, Swatch>` — literal id keys are
@@ -159,6 +179,7 @@ export const SWATCHES = {
     inputBorder: "rgba(255, 255, 255, 0.15)",
     selectionBg: "rgba(122, 162, 247, 0.25)",
     codeFg: "#e879f9",
+    lift: LIFT,
   },
   "cool-blue-gray": {
     id: "cool-blue-gray",
@@ -179,6 +200,7 @@ export const SWATCHES = {
     inputBorder: "rgba(255, 255, 255, 0.15)",
     selectionBg: "rgba(121, 147, 246, 0.25)",
     codeFg: "#f577f8",
+    lift: LIFT,
   },
   "soft-green-gray": {
     id: "soft-green-gray",
@@ -199,6 +221,7 @@ export const SWATCHES = {
     inputBorder: "rgba(255, 255, 255, 0.15)",
     selectionBg: "rgba(121, 246, 194, 0.25)",
     codeFg: "#7795f8",
+    lift: LIFT,
   },
   "purple-gray": {
     id: "purple-gray",
@@ -219,6 +242,7 @@ export const SWATCHES = {
     inputBorder: "rgba(255, 255, 255, 0.15)",
     selectionBg: "rgba(173, 121, 246, 0.25)",
     codeFg: "#f877ab",
+    lift: LIFT,
   },
   "warm-paper-dark": {
     id: "warm-paper-dark",
@@ -239,6 +263,7 @@ export const SWATCHES = {
     inputBorder: "rgba(255, 255, 255, 0.15)",
     selectionBg: "rgba(246, 185, 121, 0.25)",
     codeFg: "#9ff877",
+    lift: LIFT,
   },
   "neutral-gray": {
     id: "neutral-gray",
@@ -259,6 +284,7 @@ export const SWATCHES = {
     inputBorder: "rgba(255, 255, 255, 0.15)",
     selectionBg: "rgba(121, 153, 246, 0.25)",
     codeFg: "#ef77f8",
+    lift: LIFT,
   },
   "low-contrast-comfort": {
     id: "low-contrast-comfort",
@@ -279,6 +305,7 @@ export const SWATCHES = {
     inputBorder: "rgba(255, 255, 255, 0.15)",
     selectionBg: "rgba(121, 153, 246, 0.25)",
     codeFg: "#ef77f8",
+    lift: LIFT,
   },
 } as const satisfies Record<string, Swatch>
 

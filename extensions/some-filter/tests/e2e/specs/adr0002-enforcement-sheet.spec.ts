@@ -320,15 +320,25 @@ test.describe("ADR 0002 enforcement sheet", () => {
     expect(probe.htmlBeforeBg).toBe("rgba(0, 0, 0, 0)")
   })
 
-  test("borderStrong actually renders on a bare vendor element (live-measured gap)", async ({
+  // The following five cases replace a single "borderStrong actually
+  // renders on a bare vendor element" test that asserted light-page.html's
+  // <main> got a forced border. That test predates the lift-gradient
+  // amendment: <main> there is the sole child of <body>, so under the new
+  // scheme it is :only-child (no lift) and no longer in
+  // BORDER_CONTAINER_SELECTOR (no forced border either) — see
+  // `adapter/enforcement-sheet.ts`'s own header, "border soup: containers
+  // get a lift gradient, not a forced border", and lift-gradient-page.html's
+  // own header for the fixture these cases share.
+
+  test("LIFT_SELECTOR — a container with an element sibling gets the lift gradient", async ({
     context,
     fixture,
   }) => {
     const sw = await backgroundWorker(context)
     await enableEnforcementSheet(sw)
 
-    const page = await fixture.goto("light-page")
-    await cycleTabOff(sw, page, "light-page.html")
+    const page = await fixture.goto("lift-gradient-page")
+    await cycleTabOff(sw, page, "lift-gradient-page.html")
 
     await page.waitForFunction(
       (expected) =>
@@ -337,26 +347,185 @@ test.describe("ADR 0002 enforcement sheet", () => {
       { timeout: 5_000, polling: 100 }
     )
 
-    // light-page.html's own <main> declares no border of its own — exactly
-    // the "bare vendor element" shape that surfaced the gap this test
-    // guards: enforcement-sheet.ts's own header, "border-width is forced,
-    // not just border-color". Correct border-color with border-width still
-    // at its initial 0 renders nothing, which is what shipped before this
-    // fix.
-    const border = await page.evaluate(() => {
-      const main = document.querySelector("main")
-      if (main === null) throw new Error("fixture missing <main>")
-      const style = getComputedStyle(main)
+    const backgroundImage = await page.evaluate(() => {
+      const el = document.getElementById("sibling-a")
+      if (el === null) throw new Error("fixture missing #sibling-a")
+      return getComputedStyle(el).backgroundImage
+    })
+
+    expect(backgroundImage).toContain("linear-gradient")
+  })
+
+  test("LIFT_SELECTOR — a single-child wrapper gets no lift", async ({
+    context,
+    fixture,
+  }) => {
+    const sw = await backgroundWorker(context)
+    await enableEnforcementSheet(sw)
+
+    const page = await fixture.goto("lift-gradient-page")
+    await cycleTabOff(sw, page, "lift-gradient-page.html")
+
+    await page.waitForFunction(
+      (expected) =>
+        getComputedStyle(document.documentElement).backgroundColor === expected,
+      ENFORCED_BG,
+      { timeout: 5_000, polling: 100 }
+    )
+
+    // #lone-child is the sole child of #lone-parent — :only-child, so
+    // LIFT_SELECTOR's own :not(:only-child) excludes it. A chain of
+    // single-child wrappers is meant to match nothing (this module's own
+    // header, "wrapper chains collapse").
+    const backgroundImage = await page.evaluate(() => {
+      const el = document.getElementById("lone-child")
+      if (el === null) throw new Error("fixture missing #lone-child")
+      return getComputedStyle(el).backgroundImage
+    })
+
+    expect(backgroundImage).toBe("none")
+  })
+
+  test("LIFT_SELECTOR — the raster area stays bounded on a very tall container", async ({
+    context,
+    fixture,
+  }) => {
+    const sw = await backgroundWorker(context)
+    await enableEnforcementSheet(sw)
+
+    const page = await fixture.goto("lift-gradient-page")
+    await cycleTabOff(sw, page, "lift-gradient-page.html")
+
+    await page.waitForFunction(
+      (expected) =>
+        getComputedStyle(document.documentElement).backgroundColor === expected,
+      ENFORCED_BG,
+      { timeout: 5_000, polling: 100 }
+    )
+
+    // #tall-file is 6000px tall (GitHub's "Files changed" tab stand-in — a
+    // large expanded diff, this module's own header). Without an explicit
+    // background-size, a CSS gradient sizes itself to the element's full
+    // box, so the browser would rasterize a 6000px-tall gradient here
+    // instead of the fixed 3rem strip the design calls for. background-size
+    // must report the bounded size, not "auto" (which is what an unbounded
+    // gradient reports) and not the element's own 6000px height.
+    const style = await page.evaluate(() => {
+      const el = document.getElementById("tall-file")
+      if (el === null) throw new Error("fixture missing #tall-file")
+      const computed = getComputedStyle(el)
       return {
-        width: style.borderTopWidth,
-        styleName: style.borderTopStyle,
-        color: style.borderTopColor,
+        backgroundImage: computed.backgroundImage,
+        backgroundSize: computed.backgroundSize,
+        backgroundRepeat: computed.backgroundRepeat,
       }
     })
 
-    expect(border.width).toBe("1px")
-    expect(border.styleName).toBe("solid")
-    expect(border.color).toBe("rgba(255, 255, 255, 0.35)")
+    expect(style.backgroundImage).toContain("linear-gradient")
+    expect(style.backgroundSize).toBe("100% 48px")
+    expect(style.backgroundRepeat).toBe("no-repeat")
+  })
+
+  test("border soup fix — a plain container gets no forced border", async ({
+    context,
+    fixture,
+  }) => {
+    const sw = await backgroundWorker(context)
+    await enableEnforcementSheet(sw)
+
+    const page = await fixture.goto("lift-gradient-page")
+    await cycleTabOff(sw, page, "lift-gradient-page.html")
+
+    await page.waitForFunction(
+      (expected) =>
+        getComputedStyle(document.documentElement).backgroundColor === expected,
+      ENFORCED_BG,
+      { timeout: 5_000, polling: 100 }
+    )
+
+    // #sibling-a declares no border of its own — the vendor default (0px,
+    // since the initial border-style is "none"), never forced. The
+    // structural-container border this once got is what produced the
+    // border-soup finding this fixture's cases guard against.
+    const borderWidth = await page.evaluate(() => {
+      const el = document.getElementById("sibling-a")
+      if (el === null) throw new Error("fixture missing #sibling-a")
+      return getComputedStyle(el).borderTopWidth
+    })
+
+    expect(borderWidth).toBe("0px")
+  })
+
+  test("BORDER_CONTAINER_SELECTOR — form controls and dialog still get a forced border", async ({
+    context,
+    fixture,
+  }) => {
+    const sw = await backgroundWorker(context)
+    await enableEnforcementSheet(sw)
+
+    const page = await fixture.goto("lift-gradient-page")
+    await cycleTabOff(sw, page, "lift-gradient-page.html")
+
+    await page.waitForFunction(
+      (expected) =>
+        getComputedStyle(document.documentElement).backgroundColor === expected,
+      ENFORCED_BG,
+      { timeout: 5_000, polling: 100 }
+    )
+
+    const borders = await page.evaluate(() => {
+      const ids = ["text-input", "action-button", "modal-dialog"]
+      return ids.map((id) => {
+        const el = document.getElementById(id)
+        if (el === null) throw new Error(`fixture missing #${id}`)
+        const style = getComputedStyle(el)
+        return {
+          id,
+          width: style.borderTopWidth,
+          styleName: style.borderTopStyle,
+        }
+      })
+    })
+
+    for (const border of borders) {
+      expect(border.width).toBe("1px")
+      expect(border.styleName).toBe("solid")
+    }
+  })
+
+  test("[data-my-ext] elements get neither the lift nor a forced border", async ({
+    context,
+    fixture,
+  }) => {
+    const sw = await backgroundWorker(context)
+    await enableEnforcementSheet(sw)
+
+    const page = await fixture.goto("lift-gradient-page")
+    await cycleTabOff(sw, page, "lift-gradient-page.html")
+
+    await page.waitForFunction(
+      (expected) =>
+        getComputedStyle(document.documentElement).backgroundColor === expected,
+      ENFORCED_BG,
+      { timeout: 5_000, polling: 100 }
+    )
+
+    // #ext-marked sits among several other children of <main>, so absent
+    // the [data-my-ext] exclusion it would be :not(:only-child) and match
+    // LIFT_SELECTOR — this asserts the exclusion actually holds, not just
+    // that a div gets no lift by default.
+    const result = await page.evaluate(() => {
+      const el = document.getElementById("ext-marked")
+      if (el === null) throw new Error("fixture missing #ext-marked")
+      const style = getComputedStyle(el)
+      return {
+        backgroundImage: style.backgroundImage,
+        borderTopWidth: style.borderTopWidth,
+      }
+    })
+
+    expect(result.backgroundImage).toBe("none")
+    expect(result.borderTopWidth).toBe("0px")
   })
 
   // §3.1 claims a user-origin rule does not cross a shadow boundary. This

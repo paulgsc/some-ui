@@ -93,7 +93,7 @@
  * not an automated e2e result (this sandbox has no Firefox binary — see
  * `CLAUDE.md`) — recorded here as a data point, not a verification.
  *
- * ── border-width is forced on containers only, not every erased carrier ────
+ * ── border soup: containers get a lift gradient, not a forced border ───────
  *
  * A live probe against real GitHub markup (a `.Box`-classed div) found
  * `borderStrong`'s own `border-color` applying exactly as built, but
@@ -113,15 +113,74 @@
  * badge, code span, and button sitting next to its neighbors got boxed —
  * visually noisy, not "crisp, low-contrast hierarchy."
  *
- * `border-width`/`border-style` now live on the separate, narrower
- * `BORDER_CONTAINER_SELECTOR` below instead — actual containers (`div`,
- * `section`, list/table elements, landmark regions, form controls) get a
- * visible border; inline/text-level carriers (`span`, `a`, `code`/`kbd`/
- * `samp` explicitly included — `HIGHLIGHT_TABLE` already gives `code` its
- * own background+foreground pair, and a border on top of that read as
- * "boxed for no reason" rather than intentional) keep `border-color` only,
- * from `ERASE_SELECTOR`, same as before this fix existed — present if the
- * vendor already declared a width, invisible otherwise, never forced.
+ * A second fix narrowed the forced border to a dedicated container selector
+ * (`div`, `section`, list/table elements, landmark regions, form controls) —
+ * better, but still a border around every `div`/`section`/`li`/`td` on a
+ * div-soup page: a border *soup*, boxes around everything rather than the
+ * intended "crisp, low-contrast hierarchy."
+ *
+ * The mechanism now is a translucent, fixed-height, top-lit gradient (a
+ * "lift") on `LIFT_SELECTOR` — every structural container *that has at least
+ * one sibling* — instead of a border on every container:
+ *
+ *   - Siblings are separate concerns. `:not(:only-child)` marks each concern
+ *     exactly where the tree branches, without reading layout or the vendor's
+ *     own styling.
+ *   - Wrapper chains collapse: a run of single-child wrapper `div`s matches
+ *     nothing, so there's no restart of the cue at every intermediate edge.
+ *   - It composes: translucent-over-transparent layers over the canvas, a
+ *     `HIGHLIGHT_TABLE` `bg1` surface, or a parent's own lift alike —
+ *     brightness steps at the edges become the separation cue.
+ *   - Fixed height (not full-height): a tall `main` and a small card get the
+ *     same visible edge; a full-height fade would be invisible on a tall
+ *     container.
+ *
+ *  * ── the lift's raster cost must not scale with container height ────────────
+ *
+ * The fixed-height claim above is about *where the fade is visible*, not
+ * about *how much the browser has to rasterize* — those are different
+ * costs, and the first live measurement only checked the first one. A CSS
+ * gradient with no explicit `background-size` sizes itself to the entire
+ * background positioning area; the `0`/`3rem` color-stop lengths in a plain
+ * `linear-gradient(...)` only place colors along that area; they do not
+ * bound it. On a real dense page this is not academic: GitHub's PR "Files
+ * changed" tab wraps each changed file's diff in its own `CONTAINER`-matched
+ * box (`details`, among others) with as many sibling boxes as files
+ * changed, and an expanded diff's own box height scales with that file's
+ * line count — thousands of pixels for a large file. Every one of those
+ * boxes is `:not(:only-child)` (they are siblings of each other), so
+ * without a bound, the lift would cost the browser a full-box-height
+ * gradient raster on every repaint of every expanded file, scaling with
+ * files-changed × lines-changed on exactly the kind of page (many
+ * `CONTAINER` siblings, some of them tall) this mechanism exists for.
+ * `background-size: 100% 3rem` + `no-repeat` + `background-position: top`
+ * (below) bounds the rasterized area to the same 3rem strip regardless of
+ * the box's real height — the visual result is identical (the color stops
+ * inside that fixed-size image still run 0% to 100%), the raster cost is
+ * now `O(1)` per container instead of `O(container height)`.
+ *
+ * Rejected: `:is(C):has(> * ~ *)` (lift the group envelope) is the more
+ * semantically direct read but is a broad subject with a universal `:has()`
+ * argument, which is costly to invalidate on every child mutation — not
+ * viable on a streaming or dense page (see `LIFT_SELECTOR`'s own comment).
+ * A descendant depth ladder counts DOM nesting, not concerns, and its
+ * `:has()` form is the worst case of that same cost. Reading vendor styles
+ * or stylesheets to recover depth violates "never read the vendor theme."
+ * JS/`MutationObserver` role tagging is also main-thread work, and the
+ * attribute writes it would need re-trigger style invalidation anyway.
+ * Container queries require forcing `container-type`, which alters vendor
+ * layout. An opaque gradient per container produces identical nested fills —
+ * no separation; a translucent *full fill* per container compounds as
+ * `1 − (1 − α)ⁿ` in div soup and washes the page toward white.
+ *
+ * `border-width`/`border-style` still exist, but only on
+ * `BORDER_CONTAINER_SELECTOR` below, narrowed to where a border is
+ * affordance rather than structure (`input`/`textarea`/`select`/`button`/
+ * `dialog`) — everything that used to be a bordered *structural* container
+ * gets the lift instead. Inline/text-level carriers (`span`, `a`, `code`/
+ * `kbd`/`samp`) still keep `border-color` only, from `ERASE_SELECTOR` —
+ * present if the vendor already declared a width, invisible otherwise, never
+ * forced, same as before this fix existed.
  */
 
 import { EXT_GUARD } from "@filter/lib/content/theme-apply"
@@ -189,28 +248,50 @@ const ERASE_PSEUDO_SELECTOR =
   ":where(*:not([data-my-ext]))::before, :where(*:not([data-my-ext]))::after"
 
 /**
- * The narrower selector `border-width`/`border-style` are forced on — see
- * this module's own header, "border-width is forced on containers only,
- * not every erased carrier", for the live-measured reason this is separate
- * from `ERASE_SELECTOR`. Structural/container elements (block-level
- * grouping, list/table structure, landmark regions) plus the form controls
- * `HIGHLIGHT_TABLE` already gives a distinct background — a bordered input
- * or button is expected affordance, not visual noise, unlike a bordered
- * `<span>` sitting inline among plain text.
+ * Structural containers eligible for the lift gradient below — see this
+ * module's own header, "border soup: containers get a lift gradient, not a
+ * forced border", for why these no longer get a forced border instead.
  *
- * Explicitly excludes `code`/`kbd`/`samp`: `HIGHLIGHT_TABLE` already gives
- * them their own `bg3`/`codeFg` pair, and stacking a border on top of that
- * read as "boxed for no reason" in live testing rather than intentional —
- * unlike `dialog`/`input` et al., a code span's own distinct fill already
- * does the job a border would otherwise be there for.
+ * Form controls, `td`/`tr` (would stripe every table row), and
+ * `code`/`kbd`/`samp`/`pre` (already given their own fill by
+ * `HIGHLIGHT_TABLE`) are deliberately excluded — they have their own
+ * affordance or fill and don't need the lift's separation cue. `li` is also
+ * excluded: it would turn every multi-item list into softly-lit rows, which
+ * may suit a menu but is untested for noise on a long list — left for a
+ * follow-up rather than defaulted on here.
+ */
+const CONTAINER =
+  "div, section, article, aside, nav, header, footer, main, ul, ol, table, form, fieldset, figure, details"
+
+/**
+ * `:not(:only-child)` — the container has at least one sibling, i.e. the
+ * tree branches at this point. Each such branch is a separate UI concern
+ * (this module's own header); a chain of single-child wrappers matches
+ * nothing, so the lift doesn't restart at every intermediate wrapper edge.
+ *
+ * Not `:has(> * ~ *)` (lift the group envelope instead of each sibling):
+ * `:has()` invalidates on every mutation within its argument's reach, and a
+ * broad subject (`CONTAINER`) with a universal argument (`* ~ *`) makes that
+ * cost apply tree-wide on every child mutation — unacceptable on a streaming
+ * or dense page. `:only-child`'s own invalidation is sibling-local: adding
+ * or removing a child only needs to re-check that child's own siblings, not
+ * walk ancestors or descendants.
+ */
+const LIFT_SELECTOR = `:is(${CONTAINER}):not(:only-child)`
+
+/**
+ * Borders only where they are affordance, not structure — see this module's
+ * own header for the border-soup finding this replaces. `HIGHLIGHT_TABLE`
+ * already gives these a distinct background; a border reads as an expected
+ * interactive-control affordance here, unlike a border on a generic `div`
+ * or `section`, which is what the lift now handles instead.
  *
  * No `:where()`/`EXT_GUARD` boost needed: nothing else in this sheet sets
  * `border-width`/`border-style`, so there is no specificity to out-rank —
  * the `[data-my-ext]` exclusion's own (0,1,0) already beats this selector's
  * plain (0,0,1) regardless.
  */
-const BORDER_CONTAINER_SELECTOR =
-  "div, section, article, aside, nav, header, footer, main, ul, ol, li, table, tr, td, th, form, fieldset, figure, details, dialog, input, textarea, select, button"
+const BORDER_CONTAINER_SELECTOR = "input, textarea, select, button, dialog"
 
 /**
  * ADR 0003 §3 — the compile-time highlight table: an IDE syntax
@@ -324,13 +405,16 @@ const HIGHLIGHT_TABLE: ReadonlyArray<{
  * no randomness. Two calls with the same `swatch` produce byte-identical
  * output.
  *
- * Implements ADR 0002 §2.2 (erase, don't paint) + §2.3 (border-led
- * hierarchy via `swatch.borderStrong`, the token `adapter/swatches/index.ts`
- * adds for exactly this) + §3.2 (the canvas specificity boost) + §3.5
- * (`background-image: none`, the required, blunt fidelity cost) + ADR 0003
- * §3 (`HIGHLIGHT_TABLE`, the compile-time token-to-color table replacing
- * flat erasure for text/links/code/form controls) + the `[data-my-ext]`
- * exclusion this module's own header explains.
+ * Implements ADR 0002 §2.2 (erase, don't paint) + §2.3 (visual hierarchy on
+ * a flattened tree — a border via `swatch.borderStrong` on affordance
+ * controls, `BORDER_CONTAINER_SELECTOR`, and a top-lit lift gradient via
+ * `swatch.lift` on structural containers, `LIFT_SELECTOR` — see this
+ * module's own header for why the lift replaces borders on the latter) +
+ * §3.2 (the canvas specificity boost) + §3.5 (`background-image: none`, the
+ * required, blunt fidelity cost) + ADR 0003 §3 (`HIGHLIGHT_TABLE`, the
+ * compile-time token-to-color table replacing flat erasure for
+ * text/links/code/form controls) + the `[data-my-ext]` exclusion this
+ * module's own header explains.
  *
  * Deliberately omits `color-scheme: dark` (§3.3/§3.4), despite §3.3
  * describing it as part of "the full sheet": this file's own
@@ -382,9 +466,10 @@ ${CANVAS_SELECTOR} {
 /* §2.2/§2.3/§3.5: erase every vendor surface; let the canvas show through.
    Extension-owned elements are excluded by the selector itself — see
    ERASE_SELECTOR's own header for why a separate user-origin reset rule
-   was the wrong tool. border-color alone, never border-width/
-   border-style here — see BORDER_CONTAINER_SELECTOR's own header for why
-   those two are forced on a narrower selector instead. */
+   was the wrong tool. border-color alone, never border-width/border-style
+   here — see BORDER_CONTAINER_SELECTOR's own header for the narrow,
+   affordance-only selector those two now live on, and LIFT_SELECTOR's own
+   header for what replaced them on structural containers. */
 ${ERASE_SELECTOR} {
   background-color: transparent !important;
   background-image: none !important;
@@ -452,12 +537,37 @@ ${ERASE_PSEUDO_SELECTOR} {
   backdrop-filter: none !important;
 }
 
-/* See BORDER_CONTAINER_SELECTOR's own header — containers get a rendered
-   border; inline/text-level carriers keep border-color only, above.
+/* See BORDER_CONTAINER_SELECTOR's own header — form-control affordance
+   only; inline/text-level carriers keep border-color only, above.
    EXT_GUARD for the same reason as every other row: the veil is a <div>. */
 :where(${BORDER_CONTAINER_SELECTOR})${EXT_GUARD} {
   border-style: solid !important;
   border-width: 1px !important;
+}
+
+/* Lift: separation of UI concerns. Must out-rank ERASE_SELECTOR's (0,0,4)
+   background-image: none, hence the :where() + EXT_GUARD (0,2,0) idiom —
+   see this module's own header and LIFT_SELECTOR's own header.
+
+   background-size/repeat/position bound the gradient's own raster cost to a
+   fixed 3rem-tall strip, independent of the container's actual height — see
+   this module's own header, "the lift's raster cost must not scale with
+   container height". Without an explicit background-size, a CSS gradient's
+   natural size is the *entire* background positioning area: the color-stop
+   lengths below only decide where each color sits along that area, they do
+   not bound how much of the box the browser has to rasterize. A container
+   many thousands of pixels tall (a large expanded diff, a long thread) would
+   otherwise cost the same to raster as a 3rem-tall one, not the fixed cost
+   the visual design (and LIFT_SELECTOR's own performance argument) assumes. */
+:where(${LIFT_SELECTOR})${EXT_GUARD} {
+  background-image: linear-gradient(
+    to bottom,
+    ${swatch.lift},
+    transparent
+  ) !important;
+  background-size: 100% 3rem !important;
+  background-repeat: no-repeat !important;
+  background-position: top !important;
 }
 
 /* ADR 0003 §3: the compile-time highlight table — text tiers, links, code,
