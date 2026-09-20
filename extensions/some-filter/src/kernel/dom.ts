@@ -44,6 +44,16 @@ import type { BudgetedPass } from "./dispatch"
  * the driver can interrupt, and a `yield` is that point. Callers write
  * `const style = yield* readStyle(el)`, which reads like a call and is one.
  */
+/**
+ * Realm-independent element test. A local one-line `nodeType` check rather
+ * than a shared import, matching the convention `actuator.ts` documents at
+ * its own copy: the duplication is one line and the alternative is an
+ * import edge from the kernel into the adapter layer.
+ */
+function isElementNode(node: Node): node is Element {
+  return node.nodeType === Node.ELEMENT_NODE
+}
+
 export function* readStyle(
   element: Element,
   pseudoElement?: string | null
@@ -79,37 +89,30 @@ export function* walkSubtree(
     yield COST.visit
     const node = walker.nextNode()
     if (node === null) return
-    if (!(node instanceof Element)) continue
+    // `nodeType`, never `instanceof Element`. An element adopted from a
+    // different realm fails `instanceof` while being a perfectly real
+    // element, and this codebase has already been bitten by exactly that
+    // (see `actuator.ts`'s `isHTMLElementNode`, and the cross-realm case in
+    // `legibility-audit.test.ts` that caught an `instanceof` guard here
+    // silently dropping such a node from the scan). `SHOW_ELEMENT` already
+    // guarantees what this narrows to; the check exists only to carry that
+    // guarantee into the type system without an assertion.
+    if (!isElementNode(node)) continue
 
     const nested = visit(node)
     if (nested !== null) yield* nested
   }
 }
 
-/**
- * Walks up from `element` while `predicate` holds, charging per link.
- *
- * The charge is the point. An ancestor walk is O(H_i) per element and
- * O(S_i x H_i) per pass, which is how the contrast channel reached 1.37
- * million style reads on a realistic page while every individual call site
- * looked innocuous. Charging per link makes that cost visible to the meter,
- * so a deep tree yields more often instead of blocking longer.
+/*
+ * There is deliberately no `resolveAncestors` helper here. Both ancestor
+ * walks in this extension (`isRenderedBudgeted`, `resolveEffectiveBackdropBudgeted`)
+ * cross shadow boundaries via `parentNode.host` when `parentElement` runs
+ * out, which a `parentElement`-only helper cannot express — it would have
+ * silently stopped at each shadow root. They charge `COST.ancestorStep`
+ * in place instead. An abstraction that does not fit either caller is worse
+ * than none.
  */
-export function* resolveAncestors<T>(
-  element: Element,
-  step: (current: Element) => Generator<number, T | null, void>
-): Generator<number, T | null, void> {
-  let current: Element | null = element
-
-  while (current !== null) {
-    yield COST.ancestorStep
-    const resolved = yield* step(current)
-    if (resolved !== null) return resolved
-    current = current.parentElement
-  }
-
-  return null
-}
 
 /** Tags an element, charging the write. */
 export function* writeAttribute(
@@ -119,4 +122,28 @@ export function* writeAttribute(
 ): Generator<number, void, void> {
   yield COST.write
   element.setAttribute(name, value)
+}
+
+/**
+ * `Element.closest`, charged per ancestor link.
+ *
+ * `closest` looks like a single cheap call and is O(H_i); the classifier
+ * calls it once per element from two separate guards (`shouldSkip`,
+ * `isExtensionOwned`), which makes those guards O(S_i x H_i) across a pass
+ * — the same shape as the ancestor walk that dominates the contrast
+ * channel, and just as invisible at the call site.
+ *
+ * The charge is an estimate rather than a count: the engine does the walk
+ * internally, so there is no per-link hook. Charging the element's actual
+ * depth would need a second walk to measure it, which costs more than it
+ * saves, so this charges a flat `ancestorStep` — correct in shape, and
+ * deliberately conservative only in the sense that a very deep tree is
+ * undercharged. The e2e canary is the falsifier if that ever matters.
+ */
+export function* closestMatch(
+  element: Element,
+  selector: string
+): Generator<number, Element | null, void> {
+  yield COST.ancestorStep
+  return element.closest(selector)
 }

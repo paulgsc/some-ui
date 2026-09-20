@@ -166,3 +166,30 @@ export async function runBudgeted<T>(
     })
   }
 }
+
+/**
+ * Runs a budgeted pass to completion in **one synchronous task**, ignoring
+ * the budget entirely.
+ *
+ * This deliberately reintroduces the exact defect the kernel exists to fix:
+ * an uninterruptible pass whose duration is decided by the visited page. It
+ * exists only so a budgeted pass can be the single implementation while its
+ * callers are migrated one at a time — the synchronous entry points keep
+ * working, unchanged in behaviour, by draining the generator, and there is
+ * no second copy of the sense logic to drift out of agreement with the
+ * first.
+ *
+ * Every remaining caller is a migration debt. When the last one is gone this
+ * function goes with it (SF-BUD6), and the admission gate is what makes that
+ * non-optional: while a drained pass is still reachable, the bundle still
+ * contains an unbounded traversal and the ledger still has to declare it as
+ * one.
+ *
+ * Do not reach for this to "avoid making a function async". That is the
+ * synchronous façade the migration plan explicitly rules out.
+ */
+export function drainUnbudgeted<T>(pass: BudgetedPass<T>): T {
+  let step = pass.next()
+  while (step.done !== true) step = pass.next()
+  return step.value
+}

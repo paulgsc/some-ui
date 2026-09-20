@@ -47,6 +47,9 @@
  * graph to share one copy.
  */
 
+import { COST } from "@filter/kernel/credit"
+import { drainUnbudgeted, type BudgetedPass } from "@filter/kernel/dispatch"
+import { closestMatch, readStyle, walkSubtree } from "@filter/kernel/dom"
 import {
   compositeOver,
   contrastRatio,
@@ -90,10 +93,13 @@ const SKIP_TAGS = new Set([
   "SVG",
 ])
 
-function isExtensionOwned(el: Element): boolean {
+function* isExtensionOwnedBudgeted(
+  el: Element
+): Generator<number, boolean, void> {
   if (el.id === "__sw_overlay_root") return true
   if (el.hasAttribute("data-my-ext")) return true
-  if (el.closest("[data-my-ext]")) return true
+  // Charged: O(H_i) per element, so O(S_i x H_i) across a pass.
+  if ((yield* closestMatch(el, "[data-my-ext]")) !== null) return true
   return false
 }
 
@@ -113,12 +119,19 @@ function isExtensionOwned(el: Element): boolean {
  * for backdrop color, and for the identical reason: a value read only from
  * the carrier itself cannot see a hazard sitting further up the tree.
  */
-function isRendered(el: Element, style: CSSStyleDeclaration): boolean {
+function* isRenderedBudgeted(
+  el: Element,
+  style: CSSStyleDeclaration
+): Generator<number, boolean, void> {
   if (style.display === "none" || style.visibility === "hidden") return false
 
   let cur: Element | null = el.parentElement
   while (cur !== null) {
-    if (getComputedStyle(cur).display === "none") return false
+    // Charged per link rather than routed through the kernel's
+    // `resolveAncestors`: this walk crosses shadow boundaries via
+    // `parentNode.host`, which a `parentElement`-only helper cannot express.
+    yield COST.ancestorStep
+    if ((yield* readStyle(cur)).display === "none") return false
     if (cur === document.documentElement) break
     const parent: Element | null = cur.parentElement
     if (parent !== null) {
@@ -361,14 +374,14 @@ function pseudoElementStyleIsSupported(): boolean {
  * getComputedStyle(el).color`, and that an explicit `::marker { color: … }`
  * rule makes them differ.
  */
-function hasGeneratedPseudoHazard(
+function* hasGeneratedPseudoHazardBudgeted(
   el: Element,
   style: CSSStyleDeclaration
-): boolean {
+): Generator<number, boolean, void> {
   if (!pseudoElementStyleIsSupported()) return false
 
   for (const pseudo of ["::before", "::after"] as const) {
-    const pseudoStyle = getComputedStyle(el, pseudo)
+    const pseudoStyle = yield* readStyle(el, pseudo)
     if (pseudoStyle.content === "none") continue
     if (pseudoStyle.display === "none") continue
     if (pseudoStyle.visibility === "hidden") continue
@@ -498,10 +511,10 @@ function hasGeneratedPseudoHazard(
  * `"underdetermined"` rather than silently trusting `color`, which could
  * be arbitrarily wrong for it.
  */
-function ownTextColor(
+function* ownTextColorBudgeted(
   el: Element,
   style: CSSStyleDeclaration
-): RGBA | "underdetermined" | null {
+): Generator<number, RGBA | "underdetermined" | null, void> {
   const webkitTextFillColor = style.getPropertyValue("-webkit-text-fill-color")
   if (
     webkitTextFillColor !== "" &&
@@ -520,7 +533,7 @@ function ownTextColor(
 
   const hasOwnInlineColor = isHTMLElementNode(el) && el.style.color !== ""
   if (!hasOwnInlineColor) {
-    const inherited = getComputedStyle(inheritFrom).color
+    const inherited = (yield* readStyle(inheritFrom)).color
     if (style.color === inherited) return null
   }
 
@@ -651,17 +664,24 @@ function hasGroupCompositingHazard(style: CSSStyleDeclaration): boolean {
  * function's own doc comment for why the exact-compositing case needs a
  * different alpha policy than page-classification evidence does.
  */
-export function resolveEffectiveBackdrop(
+export function* resolveEffectiveBackdropBudgeted(
   el: Element
-): RGBA | "underdetermined" {
+): Generator<number, RGBA | "underdetermined", void> {
   let acc: RGBA = [0, 0, 0, 0]
   let resolved: RGBA | null = null
   let cur: Element | null = el
 
   while (cur !== null) {
-    const style = getComputedStyle(cur)
+    // The dominant cost in the whole classifier: this walk is O(H_i) per
+    // element and O(S_i x H_i) per pass, measured at 11.43 style reads per
+    // element against 1.36 for the surface channel. Charging per link is
+    // what makes a deep tree yield more often rather than block longer.
+    yield COST.ancestorStep
+    const style = yield* readStyle(cur)
     if (hasGroupCompositingHazard(style)) return "underdetermined"
-    if (hasGeneratedPseudoHazard(cur, style)) return "underdetermined"
+    if (yield* hasGeneratedPseudoHazardBudgeted(cur, style)) {
+      return "underdetermined"
+    }
 
     if (resolved === null) {
       if (hasPositioningHazard(style)) return "underdetermined"
@@ -1179,22 +1199,38 @@ export function auditLegibility(
   // structurally unnecessary there and the freeze half is not, and why a
   // `<style>` in `document.head` cannot supply either one across a shadow
   // boundary.
+  // Drained in one task for callers not yet on the budgeted round — see
+  // `drainUnbudgeted`. Deleted with the last of them (SF-BUD6).
   return isShadowRoot(root)
-    ? withScopeTransitionsFrozen(root, () => senseLegibility(root))
-    : withRepairSuppressed(() => senseLegibility(root))
+    ? withScopeTransitionsFrozen(root, () =>
+        drainUnbudgeted(senseLegibilityBudgeted(root))
+      )
+    : withRepairSuppressed(() => drainUnbudgeted(senseLegibilityBudgeted(root)))
 }
 
-function senseLegibility(root: Element | ShadowRoot): LegibilityScanResult {
+/**
+ * Synchronous form, drained in one task. Not a second implementation — the
+ * budgeted generator above is the only one — so the two cannot disagree
+ * about what a backdrop resolves to. Retained for callers not yet on the
+ * budgeted round, including `__tests__/legibility-audit.test.ts`, and
+ * deleted with them (SF-BUD6).
+ */
+export function resolveEffectiveBackdrop(
+  el: Element
+): RGBA | "underdetermined" {
+  return drainUnbudgeted(resolveEffectiveBackdropBudgeted(el))
+}
+
+function* senseLegibilityBudgeted(
+  root: Element | ShadowRoot
+): BudgetedPass<LegibilityScanResult> {
   const elementsByKey = new Map<LegibilityKey, Array<Element>>()
   const attrsByKey = new Map<LegibilityKey, LegibilityAttr>()
 
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT)
-  let node: Node | null = walker.nextNode()
-
-  while (node !== null) {
-    if (isHTMLElementNode(node) && !isExtensionOwned(node)) {
-      const style = getComputedStyle(node)
-      if (isRendered(node, style)) {
+  yield* walkSubtree(root, function* (node) {
+    if (isHTMLElementNode(node) && !(yield* isExtensionOwnedBudgeted(node))) {
+      const style = yield* readStyle(node)
+      if (yield* isRenderedBudgeted(node, style)) {
         if (node.tagName === "IFRAME") {
           registerCandidate(
             node,
@@ -1203,14 +1239,20 @@ function senseLegibility(root: Element | ShadowRoot): LegibilityScanResult {
             attrsByKey
           )
         } else if (!SKIP_TAGS.has(node.tagName)) {
-          const ownForeground = ownTextColor(node, style)
-          const foreground = hasGeneratedPseudoHazard(node, style)
+          const ownForeground = yield* ownTextColorBudgeted(node, style)
+          const foreground = (yield* hasGeneratedPseudoHazardBudgeted(
+            node,
+            style
+          ))
             ? "underdetermined"
             : ownForeground
           if (foreground !== null) {
             registerCandidate(
               node,
-              { foreground, backdrop: resolveEffectiveBackdrop(node) },
+              {
+                foreground,
+                backdrop: yield* resolveEffectiveBackdropBudgeted(node),
+              },
               elementsByKey,
               attrsByKey
             )
@@ -1218,8 +1260,7 @@ function senseLegibility(root: Element | ShadowRoot): LegibilityScanResult {
         }
       }
     }
-    node = walker.nextNode()
-  }
+  })
 
   return { elementsByKey, attrsByKey }
 }

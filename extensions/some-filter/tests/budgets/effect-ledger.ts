@@ -38,6 +38,21 @@
  * does verify is that every effect is declared, that no effect is declared
  * with an inadmissible class, and that the set cannot grow silently.
  *
+ * ── counts are observations; classes are claims ──────────────────────────
+ *
+ * During the SF-BUD migration (#1479) these two halves move at different
+ * times and for different reasons. An occurrence `count` is a fact about
+ * the built artifact: when a call site is routed through the kernel the
+ * count changes, and leaving the ledger stale would make the ratchet
+ * report noise for the whole migration instead of real drift. So counts
+ * are updated as call sites move.
+ *
+ * A `cost` or `retention` class is a claim about behaviour, and it stays
+ * inadmissible until the kernel actually enforces it end to end — which is
+ * SF-BUD6 (#1485), after the round itself is budgeted. Updating a class
+ * early would buy a green gate with a false declaration, which is strictly
+ * worse than a red one.
+ *
  * A declaration of `budgeted` on an effect that is not actually budgeted is
  * therefore a *lie the gate will believe*. That is the residual trust
  * surface, it is deliberately concentrated in this one reviewable file, and
@@ -51,12 +66,12 @@ const contentScript: ReadonlyMap<string, LedgerEntry> = new Map([
   [
     "createTreeWalker",
     {
-      count: 3,
+      count: 2,
       cost: "unbounded-per-dispatch",
       retention: "unbounded",
       owner:
         "adapter/pipeline.ts scan(), adapter/legibility-audit.ts senseLegibility(), adapter/shadow-scope-discovery.ts",
-      note: "Each walker is pumped to exhaustion in one synchronous dispatch: O(S_i) visits with no budget, deadline or resumption cursor. Retention is charged here rather than to the style reads because it is the walk's *result* that is kept: both passes push every matched element into a Map<Key, Array<Element>> that createContentSession holds as `lastScan` until the next round — measured at 1.01 Element references per document element across the two channels.",
+      note: "Each walker is pumped to exhaustion in one synchronous dispatch: O(S_i) visits with no budget, deadline or resumption cursor. Retention is charged here rather than to the style reads because it is the walk's *result* that is kept: both passes push every matched element into a Map<Key, Array<Element>> that createContentSession holds as `lastScan` until the next round — measured at 1.01 Element references per document element across the two channels. SF-BUD1: the light-DOM walks now share kernel/dom.ts's single `walkSubtree`; the remaining two are that one and shadow-scope-discovery.ts's, which is not yet migrated.",
     },
   ],
   [
@@ -73,11 +88,11 @@ const contentScript: ReadonlyMap<string, LedgerEntry> = new Map([
   [
     "closest",
     {
-      count: 3,
+      count: 2,
       cost: "unbounded-per-dispatch",
       retention: "none",
       owner: "lib/content/theme-detector.ts, adapter/legibility-audit.ts",
-      note: "O(H_i) per call. Admissible in isolation; not admissible at the call sites here, which sit inside per-element loops, making the pass O(S_i x H_i).",
+      note: "O(H_i) per call. Admissible in isolation; not admissible at the call sites here, which sit inside per-element loops, making the pass O(S_i x H_i). SF-BUD1: routed through kernel/dom.ts's `closestMatch`, which charges per call.",
     },
   ],
   [
@@ -93,12 +108,12 @@ const contentScript: ReadonlyMap<string, LedgerEntry> = new Map([
   [
     "getComputedStyle",
     {
-      count: 13,
+      count: 7,
       cost: "unbounded-per-dispatch",
       retention: "none",
       owner:
         "adapter/legibility-audit.ts (incl. resolveEffectiveBackdrop's ancestor chain), adapter/pipeline.ts, lib/content/color.ts, lib/content/theme-detector.ts, lib/content/vendor-filter.ts, adapter/shadow-scope-theming.ts, lib/content/coverage-watchdog.ts",
-      note: "Measured at 1.36 reads/element for the surface channel and 11.43 for the contrast channel, whose resolveEffectiveBackdrop walks ancestors per element: O(S_i x H_i) style resolutions in one dispatch.",
+      note: "Measured at 1.36 reads/element for the surface channel and 11.43 for the contrast channel, whose resolveEffectiveBackdrop walks ancestors per element: O(S_i x H_i) style resolutions in one dispatch. SF-BUD1: the two sense channels now read through kernel/dom.ts's `readStyle`; the remaining seven are in modules not yet migrated (theme-detector, vendor-filter, coverage-watchdog, shadow-scope-theming, color).",
     },
   ],
   [

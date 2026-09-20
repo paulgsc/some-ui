@@ -29,6 +29,8 @@
  * sense/`decide`/`realize` cycle, sensing included.
  */
 
+import { drainUnbudgeted, type BudgetedPass } from "@filter/kernel/dispatch"
+import { closestMatch, readStyle, walkSubtree } from "@filter/kernel/dom"
 import {
   parseColor,
   relativeLuminance,
@@ -191,11 +193,18 @@ const SKIP_TAGS = new Set([
   "IFRAME",
 ])
 
-function shouldSkip(el: Element): boolean {
+/**
+ * Budgeted form. There is no synchronous twin: the only entry point that
+ * still needs one is `scan()`, which drains the whole pass rather than
+ * draining each helper, so a second copy of this logic never exists.
+ */
+function* shouldSkipBudgeted(el: Element): Generator<number, boolean, void> {
   if (SKIP_TAGS.has(el.tagName)) return true
   if (el.id === "__sw_overlay_root") return true
   if (el.hasAttribute("data-my-ext")) return true
-  if (el.closest("[data-my-ext]")) return true
+  // Charged: `closest` is O(H_i), and this guard runs once per element, so
+  // it is O(S_i x H_i) across a pass. See kernel/dom.ts's `closestMatch`.
+  if ((yield* closestMatch(el, "[data-my-ext]")) !== null) return true
   // A "surface"-tagged element's live computed background is the
   // actuator's own hue-preserving darkened output (actuator.ts's
   // emit-surface-color rule targets it with !important, which always wins
@@ -274,14 +283,17 @@ export function isShadowRoot(node: Node): node is ShadowRoot {
  * comparing against here — the same comparison this function already makes
  * for every other element, just against the right ancestor.
  */
-function ownTextColor(el: Element, style: CSSStyleDeclaration): RGBA | null {
+function* ownTextColorBudgeted(
+  el: Element,
+  style: CSSStyleDeclaration
+): Generator<number, RGBA | null, void> {
   const parent = el.parentElement
   const parentNode = el.parentNode
   const inheritFrom =
     parent ??
     (parentNode !== null && isShadowRoot(parentNode) ? parentNode.host : null)
   if (inheritFrom === null) return null
-  const inherited = getComputedStyle(inheritFrom).color
+  const inherited = (yield* readStyle(inheritFrom)).color
   if (style.color === inherited) return null
   return parseColor(style.color)
 }
@@ -291,8 +303,10 @@ function isRendered(style: CSSStyleDeclaration): boolean {
   return style.display !== "none" && style.visibility !== "hidden"
 }
 
-function readAttr(el: Element): SurfaceAttr | null {
-  const style = getComputedStyle(el)
+function* readAttrBudgeted(
+  el: Element
+): Generator<number, SurfaceAttr | null, void> {
+  const style = yield* readStyle(el)
   const rendered = isRendered(style)
   const c = parseColor(style.backgroundColor)
 
@@ -301,7 +315,7 @@ function readAttr(el: Element): SurfaceAttr | null {
       color: c,
       luminance: relativeLuminance(c[0], c[1], c[2]),
       opacity: c[3],
-      text: ownTextColor(el, style),
+      text: yield* ownTextColorBudgeted(el, style),
       rendered,
     }
   }
@@ -315,7 +329,7 @@ function readAttr(el: Element): SurfaceAttr | null {
       color: ASSUMED_LIGHT_IMAGE,
       luminance: 1,
       opacity: 1,
-      text: ownTextColor(el, style),
+      text: yield* ownTextColorBudgeted(el, style),
       imageOnly: true,
       rendered,
     }
@@ -673,16 +687,15 @@ function surfaceKeyFor(attr: SurfaceAttr): SurfaceKey {
  * function never ran inside one at all, pre-SF-AD) until this story's own
  * review made it live (round 3).
  */
-export function scan(root: Element | ShadowRoot): ScanResult {
+export function* scanBudgeted(
+  root: Element | ShadowRoot
+): BudgetedPass<ScanResult> {
   const elementsByKey = new Map<SurfaceKey, Array<Element>>()
   const attrsByKey = new Map<SurfaceKey, SurfaceAttr>()
 
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT)
-  let node: Node | null = walker.nextNode()
-
-  while (node !== null) {
-    if (isHTMLElementNode(node) && !shouldSkip(node)) {
-      const attr = readAttr(node)
+  yield* walkSubtree(root, function* (node) {
+    if (isHTMLElementNode(node) && !(yield* shouldSkipBudgeted(node))) {
+      const attr = yield* readAttrBudgeted(node)
       if (attr !== null) {
         const key = surfaceKeyFor(attr)
         const list = elementsByKey.get(key)
@@ -708,10 +721,23 @@ export function scan(root: Element | ShadowRoot): ScanResult {
         }
       }
     }
-    node = walker.nextNode()
-  }
+  })
 
   return { elementsByKey, attrsByKey }
+}
+
+/**
+ * The synchronous form, for callers not yet on the budgeted round.
+ *
+ * Not a second implementation — it drains `scanBudgeted` in one task, so
+ * the two cannot disagree about what a scan produces. What it does not
+ * share is the *bound*: draining ignores the credit meter, which is exactly
+ * the O(S_i)-in-one-task defect the kernel exists to fix. Every remaining
+ * caller is migration debt and this function is deleted with the last of
+ * them (SF-BUD6).
+ */
+export function scan(root: Element | ShadowRoot): ScanResult {
+  return drainUnbudgeted(scanBudgeted(root))
 }
 
 export type ContentSession = {
