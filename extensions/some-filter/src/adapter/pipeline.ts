@@ -1160,26 +1160,13 @@ export function createContentSession(
         runInteractionContrast()
       }, interactionAuditBlockedUntil - settledAt)
     } else if (document.documentElement.hasAttribute(DARK_THEME_ATTR)) {
+      const startedAt = performance.now()
       try {
-        const startedAt = performance.now()
         // document.body, not a subtree around the interaction: this channel
         // realizes document-scoped artifacts, so it has to have scanned the
         // whole document to know what they should contain. See
         // INTERACTION_AUDIT_BUDGET_MS's own doc comment.
         runContrastChannel(document.body)
-        const elapsed = performance.now() - startedAt
-        if (elapsed > INTERACTION_AUDIT_BUDGET_MS) {
-          interactionAuditBlockedUntil =
-            performance.now() + INTERACTION_AUDIT_COOLDOWN_MS
-          // Deliberately visible. A channel throttling itself is worse than
-          // one that never ran if it does so silently, because the next
-          // person to wonder why a hover repair took a while has nothing to
-          // find.
-          // eslint-disable-next-line no-console
-          console.info(
-            `[some-filter] settled-interaction audit took ${Math.round(elapsed)}ms (budget ${INTERACTION_AUDIT_BUDGET_MS}ms); throttling it to one per ${INTERACTION_AUDIT_COOLDOWN_MS / 1000}s for this page. Full rounds still cover it.`
-          )
-        }
       } catch (error) {
         // Mirrors fire()'s own discipline: this runs from a timer with no
         // caller in a position to recover, so a throw must not escape into
@@ -1202,6 +1189,29 @@ export function createContentSession(
         // other, unaffected source had only passing pairs) — see
         // ContrastSourceReport's own doc comment.
         onContrastAudited?.(null)
+      } finally {
+        // Measured and applied in `finally`, not after a successful pass
+        // (bot-found, Codex closing review on #1459): a throw partway
+        // through `runContrastChannel` — after the whole-document traversal,
+        // during realization or reporting — used to skip the cooldown
+        // entirely, so on exactly the pages where the audit fails every
+        // subsequent pointer or focus pause repeated the same long
+        // traversal with no bound at all. The traversal's cost is paid
+        // whether or not the pass completes, so the throttle has to key on
+        // the time spent, not on the outcome.
+        const elapsed = performance.now() - startedAt
+        if (elapsed > INTERACTION_AUDIT_BUDGET_MS) {
+          interactionAuditBlockedUntil =
+            performance.now() + INTERACTION_AUDIT_COOLDOWN_MS
+          // Deliberately visible. A channel throttling itself is worse than
+          // one that never ran if it does so silently, because the next
+          // person to wonder why a hover repair took a while has nothing to
+          // find.
+          // eslint-disable-next-line no-console
+          console.info(
+            `[some-filter] settled-interaction audit took ${Math.round(elapsed)}ms (budget ${INTERACTION_AUDIT_BUDGET_MS}ms); throttling it to one per ${INTERACTION_AUDIT_COOLDOWN_MS / 1000}s for this page. Full rounds still cover it.`
+          )
+        }
       }
     }
   }

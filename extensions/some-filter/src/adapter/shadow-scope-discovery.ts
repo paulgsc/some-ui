@@ -659,10 +659,18 @@ export function createShadowScopeDiscovery<Rho, Pi>(
         subtree: true,
       })
       // Lifetime: started by observe() from runAutoTheme(); stopped by
-      // teardown() on a mode change and on pagehide. That is the whole of
-      // it — it is NOT stopped when the tab goes hidden, so on a tab the
-      // user has visited once it polls for the life of the document,
-      // foreground or not.
+      // teardown() on a mode change (content.ts's applyState), and by
+      // nothing else. It is NOT stopped on pagehide — content.ts's pagehide
+      // handler tears down the two coverage watchdogs and disposes the
+      // recorder, not this or shadow-scope-theming.ts's poll, so a
+      // bfcache-restored auto tab resumes this walk against a disposed
+      // recorder (bot-found, Codex closing review on #1459: an earlier
+      // version of this comment claimed a pagehide teardown that is not
+      // wired; wiring it would leave a restored tab with no shadow-scope
+      // discovery at all, which is the worse of the two, so the lifetime is
+      // stated as it is and #1460 owns the pageshow re-arm). And it is NOT
+      // stopped when the tab goes hidden, so on a tab the user has visited
+      // once it polls for the life of the document, foreground or not.
       //
       // Stating that rather than the teardown one would prefer is the point
       // of this exemption (bot-found, Codex on #1459: an earlier version of
