@@ -69,4 +69,61 @@ export default {
     // regression on Safari and iOS, not a cleanup.
     "property-no-vendor-prefix": null,
   },
+  overrides: [
+    {
+      // CSS this repo injects into *other people's pages*.
+      //
+      // A browser extension's content-script CSS is matched against every
+      // element of a document whose size nobody here chose — a GitHub "Files
+      // changed" view for a large pull request is routinely north of 100,000
+      // elements. A selector whose match or invalidation cost scales with
+      // document size does not degrade gracefully there, it hangs the tab,
+      // and it does so on every page the extension is enabled for rather
+      // than on a page someone can be told to avoid.
+      //
+      // Scoped deliberately to page-injected sheets. The extension's own
+      // popup and debug chrome (popup.css, debug.css) are fixed-size
+      // documents this repo authors end to end; popup.css's `*, *::before,
+      // *::after` reset is correct there and banning it would be noise.
+      // extensions/some-filter/tests/budgets/ carries the same budget, with
+      // the same reasoning, for the sheets built as TypeScript strings that
+      // stylelint structurally cannot see.
+      files: ["extensions/*/public/*.css"],
+      rules: {
+        // Every element in the document, on every style recalculation.
+        "selector-max-universal": [
+          0,
+          {
+            message:
+              "Universal selectors match every element in the visited page's tree on every style recalculation — see extensions/some-filter/tests/budgets/selector-cost.ts. Constrain the subject instead.",
+          },
+        ],
+        "selector-max-compound-selectors": [
+          3,
+          {
+            message:
+              "Each compound level is another per-candidate check on an unbounded candidate set. Keep injected selectors shallow.",
+          },
+        ],
+        "selector-disallowed-list": [
+          [
+            // `*:not(...)` — filtering an unbounded candidate set is not the
+            // same as constraining it; the subject is still every element.
+            "/\\*\\s*:not/",
+            // Sibling-counting pseudo-classes: an element's match result
+            // depends on how many siblings it has, so one child insertion
+            // re-evaluates the whole sibling list. A diff view streaming
+            // files in turns each mutation into a tree-wide restyle.
+            "/:(only-child|only-of-type|nth-child|nth-of-type|nth-last-child|nth-last-of-type)\\b/",
+            // :has() invalidates on any mutation within its argument's reach.
+            "/:has\\(/",
+          ],
+          {
+            message:
+              "This selector's cost scales with the visited page's size or mutation rate. See extensions/some-filter/tests/budgets/selector-cost.ts for the cost model; :first-child/:last-child are constant-time and are not banned.",
+          },
+        ],
+      },
+    },
+  ],
 }

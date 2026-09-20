@@ -1,5 +1,6 @@
 name: Extension Verification
-# Verifies each changed extension: typecheck, lint, test, build, web-ext lint.
+# Verifies each changed extension: typecheck, lint, performance budgets, test,
+# build, web-ext lint.
 #
 # Workspace packages (packages/*/dist) are consumed from the artifact produced
 # by the build-workspace job in extension.yml. This job does NOT rebuild shared
@@ -90,6 +91,69 @@ jobs:
         run: nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" typecheck
       - name: Lint
         run: nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" lint
+      # ── Admission gate: the browser-unresponsive guard ─────────────────
+      #
+      # Blocks the one class of defect an extension must never ship: code we
+      # own at compile time that drives the *browser's own* "Page
+      # unresponsive" kill switch. A content script runs against <all_urls>,
+      # so the pages it must survive are ones this repo never chose.
+      #
+      # The gate is a resource-admission rule over the SHIPPED ARTIFACT, not
+      # a review of today's source. It reads dist/, classifies every
+      # page-affecting browser primitive against a fixed alphabet, and
+      # requires each to be declared admissible in effect-ledger.ts. An
+      # effect with no ledger entry fails closed; a declared cost or
+      # retention class that scales with page size is never admitted. That
+      # is what makes it survive an arbitrary diff — an unbounded walk added
+      # to a new module, to an imported workspace package, or to
+      # public/prepaint-start.js still puts its primitives in the bundle.
+      #
+      # Artifact provenance is handled by the `test:budgets` script itself,
+      # which runs `build:chromium && vitest run tests/budgets` — an
+      # unconditional rebuild that ignores the ext-build cache. That matters
+      # because the cache key hashes the extension tree, common/ and the
+      # lockfile but NOT packages/**, so a change to an imported workspace
+      # package can restore a stale dist, and the gate would then certify an
+      # artifact that is not the one shipping.
+      #
+      # Deliberately NOT a separate workflow step. An earlier revision ran
+      # `pnpm --filter <pkg> build:chromium` here for every extension in the
+      # matrix, which fails outright on the ones that define no such script
+      # (some-drama, suspender-ledger) — ERR_PNPM_RECURSIVE_RUN_NO_SCRIPT,
+      # a workflow bug rather than the gate flagging anything. Any build an
+      # extension needs for its own admission analysis belongs inside that
+      # extension's own test:budgets script, where the extension declares
+      # how it is built.
+      #
+      # No --if-present below. An extension listed in PROTECTED must
+      # define test:budgets; deleting the script is otherwise a silent way
+      # to opt out of the gate, which is the same falsely-green admission
+      # the gate exists to prevent.
+      - name: Performance budgets (browser-unresponsive guard)
+        run: |
+          PROTECTED="some-filter"
+          NAME="${{ matrix.extension_name }}"
+
+          nix develop .#ci --command pnpm exec stylelint \
+            "${{ matrix.extension_path }}/public/*.css" --allow-empty-input
+
+          HAS=$(nix develop .#ci --command node -e \
+            "const p=require('./${{ matrix.extension_path }}/package.json');process.stdout.write(p.scripts&&p.scripts['test:budgets']?'yes':'no')")
+
+          for protected_ext in $PROTECTED; do
+            if [ "$NAME" = "$protected_ext" ] && [ "$HAS" != "yes" ]; then
+              echo "::error::$NAME is a protected extension but defines no test:budgets script."
+              echo "The admission gate cannot be removed by deleting its entry point."
+              exit 1
+            fi
+          done
+
+          if [ "$HAS" = "yes" ]; then
+            nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" test:budgets
+          else
+            echo "$NAME defines no test:budgets and is not protected — skipping."
+          fi
+
       - name: Test
         run: nix develop .#ci-playwright --command pnpm --filter "${{ matrix.package_name }}" test
       # Restore cached extension build output. Key covers the extension source

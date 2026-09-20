@@ -1,0 +1,66 @@
+<!doctype html>
+<!--
+  Dense-diff fixture: GitHub's pull-request "Files changed" view, which is the
+  page shape that drives the browser's own "Page unresponsive" dialog.
+
+  Starts small and *stays* small until the test asks for density. The tree is
+  built by `window.__buildDenseDiff(files, linesPerFile)`, called from the
+  spec rather than on load, so that classification settles against a trivial
+  page first and the cost of building the fixture is not mixed into the
+  measurement window of the reconcile round that follows it — see
+  perf-unresponsive-canary.spec.ts for why that separation is what makes the
+  measurement mean anything.
+
+  Explicit inline colors on every row are load-bearing, not decoration: an
+  undecorated tree lets readAttr() return null for every element (color.ts's
+  parseColor rejects a fully transparent background), so the classifier would
+  find no evidence, emit no actions, and the canary would measure an
+  extension that decided to do nothing. Real diff rows carry addition green,
+  deletion red, context white and grey line numbers; so do these.
+-->
+<html style="background-color: rgb(255, 255, 255)">
+  <head>
+    <meta charset="utf-8" />
+    <title>Dense Diff Fixture</title>
+  </head>
+  <body style="background-color: rgb(255, 255, 255); margin: 0">
+    <main style="background-color: rgb(255, 255, 255)">
+      <h1>Files changed</h1>
+      <div id="files-bucket" style="background-color: #ffffff"></div>
+    </main>
+    <script>
+      window.__buildDenseDiff = function (files, linesPerFile) {
+        var out = []
+        for (var f = 0; f < files; f += 1) {
+          var rows = []
+          for (var l = 0; l < linesPerFile; l += 1) {
+            var bg =
+              l % 7 === 0 ? "#e6ffec" : l % 11 === 0 ? "#ffebe9" : "#ffffff"
+            rows.push(
+              '<div class="diff-line" style="background-color:' +
+                bg +
+                '"><span class="blob-num" style="color:#6e7781">' +
+                l +
+                '</span><span class="blob-code" style="color:#1f2328">const value_' +
+                l +
+                " = " +
+                l +
+                ";</span></div>"
+            )
+          }
+          out.push(
+            '<details open class="file" style="background-color:#ffffff">' +
+              '<summary class="file-header" style="background-color:#f6f8fa;color:#1f2328">src/module_' +
+              f +
+              ".ts</summary>" +
+              '<div class="diff-table" style="background-color:#ffffff">' +
+              rows.join("") +
+              "</div></details>"
+          )
+        }
+        document.getElementById("files-bucket").innerHTML = out.join("")
+        return document.querySelectorAll("*").length
+      }
+    </script>
+  </body>
+</html>
