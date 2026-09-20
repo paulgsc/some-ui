@@ -160,6 +160,50 @@ test.describe("ADR 0002 enforcement sheet", () => {
     expect(bodyFilter).toBe("none")
   })
 
+  test("inset-shadow fills, descendant filters and a white dialog backdrop are all neutralized (bot-found on #1463, round 3)", async ({
+    context,
+    fixture,
+  }) => {
+    const sw = await backgroundWorker(context)
+    await enableEnforcementSheet(sw)
+
+    const page = await fixture.goto("light-page")
+    await cycleTabOff(sw, page, "light-page.html")
+    await page.waitForFunction(
+      (expected) =>
+        getComputedStyle(document.documentElement).backgroundColor === expected,
+      ENFORCED_BG,
+      { timeout: 5_000, polling: 100 }
+    )
+
+    const probe = await page.evaluate(() => {
+      const style = document.createElement("style")
+      style.textContent = [
+        "#probe-shadow { box-shadow: inset 0 0 0 9999px rgb(255, 255, 255); }",
+        "#probe-filter { filter: invert(1); }",
+        "#probe-dialog::backdrop { background-color: rgb(255, 255, 255); }",
+      ].join("\n")
+      document.head.appendChild(style)
+      const shadow = document.createElement("div")
+      shadow.id = "probe-shadow"
+      const filtered = document.createElement("main")
+      filtered.id = "probe-filter"
+      const dialog = document.createElement("dialog")
+      dialog.id = "probe-dialog"
+      document.body.append(shadow, filtered, dialog)
+      dialog.showModal()
+      return {
+        shadow: getComputedStyle(shadow).boxShadow,
+        filter: getComputedStyle(filtered).filter,
+        backdrop: getComputedStyle(dialog, "::backdrop").backgroundColor,
+      }
+    })
+
+    expect(probe.shadow).toBe("none")
+    expect(probe.filter).toBe("none")
+    expect(probe.backdrop).toBe("rgba(0, 0, 0, 0.6)")
+  })
+
   test("[data-my-ext] keeps its author-origin styling, and vendor ::before/::after are erased (bot-found on #1463)", async ({
     context,
     fixture,

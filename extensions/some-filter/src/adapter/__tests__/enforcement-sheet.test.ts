@@ -31,6 +31,30 @@ describe("buildEnforcementCSS", () => {
     expect(rule).toContain("filter: none !important;")
   })
 
+  it("erases inset box-shadows and descendant filters on every non-media element (bot-found on #1463, round 3)", () => {
+    const css = buildEnforcementCSS(swatch)
+    const eraseStart = css.indexOf(
+      "*:not(img):not(video):not(svg):not(canvas):not([data-my-ext]) {"
+    )
+    expect(eraseStart).toBeGreaterThan(-1)
+    const erase = css.slice(eraseStart, css.indexOf("}", eraseStart))
+    expect(erase).toContain("box-shadow: none !important;")
+    expect(erase).toContain("filter: none !important;")
+    const pseudoStart = css.indexOf(":where(*:not([data-my-ext]))::before")
+    const pseudo = css.slice(pseudoStart, css.indexOf("}", pseudoStart))
+    expect(pseudo).toContain("box-shadow: none !important;")
+    expect(pseudo).toContain("filter: none !important;")
+  })
+
+  it("imposes a dark top-layer ::backdrop, excluding the veil's own (bot-found on #1463, round 3)", () => {
+    const css = buildEnforcementCSS(swatch)
+    const start = css.indexOf(":where(*:not([data-my-ext]))::backdrop {")
+    expect(start).toBeGreaterThan(-1)
+    const rule = css.slice(start, css.indexOf("}", start))
+    expect(rule).toContain("background-color: rgba(0, 0, 0, 0.6) !important;")
+    expect(rule).not.toContain("transparent")
+  })
+
   it("erases without reading — the erase selector carries no swatch-specific token", () => {
     const css = buildEnforcementCSS(swatch)
     expect(css).toContain("*:not(img):not(video):not(svg):not(canvas)")
