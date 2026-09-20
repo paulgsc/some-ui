@@ -173,7 +173,14 @@ ext.tabs.onUpdated.addListener((tabId, changeInfo): void => {
 
     try {
       await ext.scripting.insertCSS({
-        target: { tabId },
+        // allFrames: CSS never crosses a frame boundary, so a same- or
+        // cross-origin <iframe> kept its native (white) palette under a
+        // supposedly unconditional sheet (bot-found on #1463, Codex round
+        // 2). This reaches every frame that exists at this event; a frame
+        // created or navigated afterwards is not covered — that needs the
+        // per-document, content-script-driven request #1489 specifies
+        // (all_frames + frameIds), not another tabs.onUpdated hook.
+        target: { tabId, allFrames: true },
         origin: "USER",
         css: buildEnforcementCSS(SWATCHES[DEFAULT_SWATCH_ID]),
       })
