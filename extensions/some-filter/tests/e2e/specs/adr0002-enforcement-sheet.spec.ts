@@ -181,7 +181,8 @@ test.describe("ADR 0002 enforcement sheet", () => {
       style.textContent = [
         "#probe-shadow { box-shadow: inset 0 0 0 9999px rgb(255, 255, 255); }",
         "#probe-filter { filter: invert(1); }",
-        "#probe-dialog::backdrop { background-color: rgb(255, 255, 255); }",
+        "#probe-dialog::backdrop { background-color: rgb(255, 255, 255); box-shadow: inset 0 0 0 9999px rgb(255, 255, 255); backdrop-filter: invert(1); }",
+        "#probe-overlay { position: fixed; inset: 0; backdrop-filter: invert(1); }",
       ].join("\n")
       document.head.appendChild(style)
       const shadow = document.createElement("div")
@@ -190,18 +191,27 @@ test.describe("ADR 0002 enforcement sheet", () => {
       filtered.id = "probe-filter"
       const dialog = document.createElement("dialog")
       dialog.id = "probe-dialog"
-      document.body.append(shadow, filtered, dialog)
+      const overlay = document.createElement("div")
+      overlay.id = "probe-overlay"
+      document.body.append(shadow, filtered, dialog, overlay)
       dialog.showModal()
+      const backdrop = getComputedStyle(dialog, "::backdrop")
       return {
         shadow: getComputedStyle(shadow).boxShadow,
         filter: getComputedStyle(filtered).filter,
-        backdrop: getComputedStyle(dialog, "::backdrop").backgroundColor,
+        overlayBackdropFilter: getComputedStyle(overlay).backdropFilter,
+        backdrop: backdrop.backgroundColor,
+        backdropShadow: backdrop.boxShadow,
+        backdropFilter: backdrop.backdropFilter,
       }
     })
 
     expect(probe.shadow).toBe("none")
     expect(probe.filter).toBe("none")
+    expect(probe.overlayBackdropFilter).toBe("none")
     expect(probe.backdrop).toBe("rgba(0, 0, 0, 0.6)")
+    expect(probe.backdropShadow).toBe("none")
+    expect(probe.backdropFilter).toBe("none")
   })
 
   test("[data-my-ext] keeps its author-origin styling, and vendor ::before/::after are erased (bot-found on #1463)", async ({

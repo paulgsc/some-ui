@@ -488,6 +488,12 @@ ${ERASE_SELECTOR} {
      exclusions on ERASE_SELECTOR. */
   box-shadow: none !important;
   filter: none !important;
+  /* backdrop-filter post-processes whatever paints *behind* the element —
+     a full-viewport overlay with backdrop-filter: invert(1) inverts the
+     enforced canvas underneath it without painting anything itself
+     (bot-found on #1463, Codex confirming review). Same subject, same
+     trade as filter above. */
+  backdrop-filter: none !important;
 }
 
 /* Generated content is its own paint surface — see ERASE_PSEUDO_SELECTOR. */
@@ -498,6 +504,7 @@ ${ERASE_PSEUDO_SELECTOR} {
   border-color: ${swatch.borderStrong} !important;
   box-shadow: none !important;
   filter: none !important;
+  backdrop-filter: none !important;
 }
 
 /* A top-layer backdrop is generated content too, but a transparent one
@@ -510,7 +517,12 @@ ${ERASE_PSEUDO_SELECTOR} {
 :where(*:not([data-my-ext]))::backdrop {
   background-color: rgba(0, 0, 0, 0.6) !important;
   background-image: none !important;
+  /* The same independent channels the erase rules reset: an inset shadow
+     is a fill, and backdrop-filter re-composites the whole page beneath a
+     viewport-sized backdrop (bot-found on #1463, Codex confirming review). */
+  box-shadow: none !important;
   filter: none !important;
+  backdrop-filter: none !important;
 }
 
 /* See BORDER_CONTAINER_SELECTOR's own header — form-control affordance
