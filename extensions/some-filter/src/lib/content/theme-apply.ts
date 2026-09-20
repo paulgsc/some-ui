@@ -59,32 +59,60 @@ function createExtensionStyle(id: string): HTMLStyleElement {
  * (Theorem 7.2's idempotence requirement, at the level of *DOM writes*, not
  * just of resulting state).
  */
-function setStyleText(style: HTMLStyleElement, css: string): void {
-  if (style.textContent === css) return
+function setStyleText(style: HTMLStyleElement, css: string): boolean {
+  if (style.textContent === css) return false
   style.textContent = css
+  return true
 }
 
 export const DARK_THEME_ATTR = "data-sw-dark"
 export const LEGACY_THEME_ATTR = "data-sw-legacy"
 
 /**
- * Counter-inverts every color a `Swatch` carries so that, once composited
+ * Counter-inverts a single CSS color string so that, once composited
  * through a still-active *vendor* `filter: invert(...)` (#741 — a real
  * accessibility toggle some sites ship on their own `<html>`, distinct from
- * this extension's own legacy filter mode), a human/screenshot sees the
- * swatch's real, intended dark tokens rather than their bright inverse. A
- * no-op (`invertAmount = 0`, the overwhelming majority case) returns
- * `swatch` unchanged.
+ * this extension's own legacy filter mode), a human/screenshot sees `css`'s
+ * own intended color rather than its bright inverse. A no-op
+ * (`invertAmount = 0`, the overwhelming majority case, or an unparseable
+ * `css`) returns `css` unchanged.
+ *
+ * Exported standalone — not just as `compensateSwatch`'s own private helper
+ * — so `shadow-actuator.ts` (SF-AD follow-up, #1281's own round-3 review)
+ * can apply the identical compensation to a shadow scope's own per-surface
+ * `emit-surface-color` actions, not just the swatch tokens
+ * `compensateSwatch` below covers: without it, a shadow scope's `:host`
+ * tokens (hence its inherited text color) get correctly compensated while
+ * an explicitly-tagged surface's own emitted background/text color do not,
+ * which is a *worse*, self-inconsistent result under an active vendor
+ * invert than leaving both uncompensated — low-contrast (or inverted-looking)
+ * text against a background that renders the opposite of what was declared.
  */
-function compensateSwatch(swatch: Swatch, invertAmount: number): Swatch {
+export function counterInvertCss(css: string, invertAmount: number): string {
+  if (invertAmount === 0) return css
+  const parsed = parseColor(css)
+  return parsed === null
+    ? css
+    : rgbaToCss(counterInvertColor(parsed, invertAmount))
+}
+
+/**
+ * Counter-inverts every color a `Swatch` carries — see `counterInvertCss`'s
+ * own doc comment for the compositing reasoning, applied here token by
+ * token. A no-op (`invertAmount = 0`, the overwhelming majority case)
+ * returns `swatch` unchanged.
+ *
+ * Exported so `shadow-scope-theming.ts` (SF-AD follow-up, #1281) can apply
+ * the identical compensation to a shadow scope's own `:host` token rule
+ * (`shadow-actuator.ts`'s `buildHostTokenRule`) — without it, a page with a
+ * vendor invert active gets correct (compensated) colors at the document
+ * level while every shadow-hosted surface's own tokens are built from the
+ * raw swatch, which the vendor's filter then inverts a second time.
+ */
+export function compensateSwatch(swatch: Swatch, invertAmount: number): Swatch {
   if (invertAmount === 0) return swatch
 
-  const counter = (css: string): string => {
-    const parsed = parseColor(css)
-    return parsed === null
-      ? css
-      : rgbaToCss(counterInvertColor(parsed, invertAmount))
-  }
+  const counter = (css: string): string => counterInvertCss(css, invertAmount)
 
   return {
     ...swatch,
@@ -135,6 +163,50 @@ function swatchTokens(swatch: Swatch): string {
 `
 }
 
+/**
+ * A single `:host {…}` rule declaring `swatch`'s own `--sw-*` custom
+ * properties — `adapter/shadow-actuator.ts` adopts this into each committed
+ * shadow scope alongside `DARK_THEME_BODY_RULES` (SF-AD, #1268, bot-found,
+ * round 2 of that story's own review).
+ *
+ * Without this, a shadow scope's own static-layer rules resolved their
+ * `var(--sw-*)` references purely by inheriting the *document's* `:root`
+ * declaration (`buildDarkThemeCSS`'s own) across the shadow boundary — which
+ * works only as long as that declaration exists. It does not always: the
+ * document's own verdict and a given shadow scope's own verdict are
+ * independent (`decide()` runs scoped per root, with no shared state), so a
+ * document that reads "already dark" natively — `realize()`'s own
+ * `restore-native` branch removes `#__sw_dark_theme` outright, `:root`
+ * tokens included — can coexist with a *specific* shadow-hosted widget whose
+ * own content is still genuinely light (#1262's own reported shape: an
+ * embedded third-party component inside an otherwise-dark page). Adopting
+ * this rule makes a shadow scope's own theming self-contained: its `var()`
+ * references resolve against a declaration inside its *own* adopted
+ * stylesheets, never the document's, so neither side's verdict can pull the
+ * rug out from under the other's.
+ *
+ * The trailing `color: var(--sw-text-0) !important` mirrors
+ * `buildDarkThemeCSS`'s own `html, body { …; color: var(--sw-text-0) }`
+ * canvas rule, one level down (SF-AD's own review, round 5): that rule is
+ * what makes an *inherited* (not per-element explicit) dark foreground
+ * self-heal in the light-DOM case — any descendant that does not itself
+ * declare `color` inherits the document root's newly-forced value through
+ * ordinary cascade, no per-element `textCss` action required. A shadow
+ * scope's own root-equivalent is its host, and until this rule existed
+ * nothing forced the host's own `color` the same way, so a `:host { color:
+ * #111 }` vendor declaration (or any other host-level foreground) kept
+ * flowing, unaltered, into every direct/indirect shadow-tree descendant that
+ * relies on plain inheritance rather than its own explicit color —
+ * `ownTextColor()` (`pipeline.ts`) correctly reports "no own color" for such
+ * a descendant (it isn't lying: the color genuinely isn't overridden at that
+ * element), so nothing else in this pipeline was ever going to catch it.
+ */
+export function buildHostTokenRule(swatch: Swatch): string {
+  return `:host {${swatchTokens(swatch)}
+  color: var(--sw-text-0) !important;
+}`
+}
+
 // ── CSS layer ─────────────────────────────────────────────────────────────────
 
 // Guard: never apply theme rules inside extension-owned subtrees.
@@ -142,6 +214,65 @@ function swatchTokens(swatch: Swatch): string {
 // :not([data-my-ext])    — excludes the marked node itself
 // Exported so adapter/actuator.ts's dynamic per-surface rules use the same guard.
 export const EXT_GUARD = ":not([data-my-ext]):not([data-my-ext] *)"
+
+/**
+ * Every generic tag-based dark-theme rule that is *not* the `:root` token
+ * declarations or the `html`/`body` canvas rule — one complete rule per
+ * array entry (never multiple rules in one string: a shadow scope's own
+ * static realization, below, inserts each individually via
+ * `CSSStyleSheet.insertRule()`, which only ever parses a single rule per
+ * call — unlike `replaceSync`, which could take the whole block at once but
+ * which jsdom, this package's own unit-test environment, has never
+ * implemented). `buildDarkThemeCSS()` below joins these into the document's
+ * own static `<style>` text; `adapter/shadow-actuator.ts` inserts the same
+ * array, rule by rule, into a shadow scope's own adopted stylesheet — one
+ * source of truth for both, rather than two hand-maintained copies that
+ * could drift (SF-AD, #1268, bot-found: without a shadow-scoped version of
+ * this layer, a shadow-internal `<p>` inheriting a light-theme foreground
+ * color from its own shadow tree's stylesheet stayed dark-on-dark once its
+ * ancestor surface's background was darkened by `emit-surface-color` — the
+ * per-surface `textCss` mechanism only ever handles an element's own
+ * *explicit* differing color (`ownTextColor`, `pipeline.ts`), never plain
+ * inheritance, which is exactly the case this static layer's blanket
+ * `p`/`span`/`label`/… rule exists to cover for the light-DOM case).
+ *
+ * Every declaration here references a `var(--sw-*)` custom property by name
+ * rather than embedding a literal color — deliberately: CSS custom
+ * properties are inherited properties, and inheritance crosses shadow
+ * boundaries via the flat tree unless something in between resets them, so
+ * the *document's* own `:root` token declarations (including any vendor-
+ * invert compensation `injectDarkTheme` already applied before building
+ * them) already reach every open shadow tree for free. These rules need no
+ * `Swatch` parameter of their own as a result — the same text regardless of
+ * which swatch is active, so `shadow-actuator.ts` can adopt them as a single
+ * shared, swatch-independent sheet rather than building one per swatch.
+ */
+export const DARK_THEME_BODY_RULES: ReadonlyArray<string> = [
+  `:where(h1, h2, h3, h4, h5, h6)${EXT_GUARD} { color: var(--sw-text-0) !important; }`,
+  `:where(p, span, label, caption, figcaption, blockquote, cite, li, dt, dd)${EXT_GUARD} { color: var(--sw-text-1) !important; }`,
+  `:where(small, sub, sup, abbr, time)${EXT_GUARD} { color: var(--sw-text-2) !important; }`,
+  `:where(a)${EXT_GUARD} { color: var(--sw-link) !important; }`,
+  `:where(a:visited)${EXT_GUARD} { color: var(--sw-link-visited) !important; }`,
+  `:where(*):not([data-my-ext]):not([data-my-ext] *) { border-color: var(--sw-border) !important; outline-color: rgba(255, 255, 255, 0.12) !important; }`,
+  `:where(hr)${EXT_GUARD} { border-color: var(--sw-border) !important; background-color: var(--sw-border) !important; }`,
+  `:where(code, kbd, samp)${EXT_GUARD} { background-color: var(--sw-bg-3) !important; color: var(--sw-code) !important; }`,
+  `:where(pre)${EXT_GUARD} { background-color: var(--sw-bg-2) !important; color: var(--sw-text-0) !important; }`,
+  `:where(table, thead, tbody, tfoot, tr)${EXT_GUARD} { border-color: var(--sw-border) !important; }`,
+  `:where(th)${EXT_GUARD} { background-color: var(--sw-bg-2) !important; color: var(--sw-text-0) !important; }`,
+  `:where(td)${EXT_GUARD} { color: var(--sw-text-1) !important; }`,
+  `:where(input, textarea, select)${EXT_GUARD} { background-color: var(--sw-input-bg) !important; color: var(--sw-text-0) !important; border-color: var(--sw-input-border) !important; }`,
+  `:where(input::placeholder, textarea::placeholder) { color: var(--sw-text-2) !important; }`,
+  `:where(*)${EXT_GUARD} { scrollbar-color: var(--sw-bg-3) var(--sw-bg-0); }`,
+  `::selection { background-color: var(--sw-selection-bg) !important; }`,
+  `:where(dialog, [popover])${EXT_GUARD} { background-color: var(--sw-surface) !important; color: var(--sw-text-0) !important; }`,
+  `:where(img, video, canvas, picture, embed, object)${EXT_GUARD} { filter: none !important; opacity: 1 !important; }`,
+  `:where(svg text, svg tspan)${EXT_GUARD} { fill: var(--sw-text-1) !important; }`,
+  // Light backgrounds are tagged with their own canonical color as the
+  // attribute value; the matching hue-preserving dark rule is appended to a
+  // separate dynamic stylesheet by the actuator's emit-surface-color action.
+  // Near-black backgrounds are tagged "preserve" and revert here.
+  `[data-sw-patched="preserve"]${EXT_GUARD} { background-color: revert !important; color: revert !important; }`,
+]
 
 export function buildDarkThemeCSS(
   swatch: Swatch = SWATCHES[DEFAULT_SWATCH_ID]
@@ -163,122 +294,7 @@ body${EXT_GUARD} {
   color-scheme: dark !important;
 }
 
-/* ── Text ───────────────────────────────────────────────────────────────── */
-
-:where(h1, h2, h3, h4, h5, h6)${EXT_GUARD} {
-  color: var(--sw-text-0) !important;
-}
-
-:where(p, span, label, caption, figcaption, blockquote, cite, li, dt, dd)${EXT_GUARD} {
-  color: var(--sw-text-1) !important;
-}
-
-:where(small, sub, sup, abbr, time)${EXT_GUARD} {
-  color: var(--sw-text-2) !important;
-}
-
-/* ── Links ──────────────────────────────────────────────────────────────── */
-
-:where(a)${EXT_GUARD} {
-  color: var(--sw-link) !important;
-}
-
-:where(a:visited)${EXT_GUARD} {
-  color: var(--sw-link-visited) !important;
-}
-
-/* ── Borders ────────────────────────────────────────────────────────────── */
-
-:where(*):not([data-my-ext]):not([data-my-ext] *) {
-  border-color: var(--sw-border) !important;
-  outline-color: rgba(255, 255, 255, 0.12) !important;
-}
-
-:where(hr)${EXT_GUARD} {
-  border-color: var(--sw-border) !important;
-  background-color: var(--sw-border) !important;
-}
-
-/* ── Code ───────────────────────────────────────────────────────────────── */
-
-:where(code, kbd, samp)${EXT_GUARD} {
-  background-color: var(--sw-bg-3) !important;
-  color: var(--sw-code) !important;
-}
-
-:where(pre)${EXT_GUARD} {
-  background-color: var(--sw-bg-2) !important;
-  color: var(--sw-text-0) !important;
-}
-
-/* ── Tables ─────────────────────────────────────────────────────────────── */
-
-:where(table, thead, tbody, tfoot, tr)${EXT_GUARD} {
-  border-color: var(--sw-border) !important;
-}
-
-:where(th)${EXT_GUARD} {
-  background-color: var(--sw-bg-2) !important;
-  color: var(--sw-text-0) !important;
-}
-
-:where(td)${EXT_GUARD} {
-  color: var(--sw-text-1) !important;
-}
-
-/* ── Forms ──────────────────────────────────────────────────────────────── */
-
-:where(input, textarea, select)${EXT_GUARD} {
-  background-color: var(--sw-input-bg) !important;
-  color: var(--sw-text-0) !important;
-  border-color: var(--sw-input-border) !important;
-}
-
-:where(input::placeholder, textarea::placeholder) {
-  color: var(--sw-text-2) !important;
-}
-
-/* ── Scrollbars ─────────────────────────────────────────────────────────── */
-
-:where(*)${EXT_GUARD} {
-  scrollbar-color: var(--sw-bg-3) var(--sw-bg-0);
-}
-
-/* ── Selection ──────────────────────────────────────────────────────────── */
-
-::selection {
-  background-color: var(--sw-selection-bg) !important;
-}
-
-/* ── Dialogs ────────────────────────────────────────────────────────────── */
-
-:where(dialog, [popover])${EXT_GUARD} {
-  background-color: var(--sw-surface) !important;
-  color: var(--sw-text-0) !important;
-}
-
-/* ── Media: never touch ─────────────────────────────────────────────────── */
-
-:where(img, video, canvas, picture, embed, object)${EXT_GUARD} {
-  filter: none !important;
-  opacity: 1 !important;
-}
-
-:where(svg text, svg tspan)${EXT_GUARD} {
-  fill: var(--sw-text-1) !important;
-}
-
-/* ── Actuator targets (adapter/actuator.ts) ────────────────────────────── */
-
-/* Light backgrounds are tagged with their own canonical color as the
-   attribute value; the matching hue-preserving dark rule is appended to a
-   separate dynamic stylesheet by the actuator's emit-surface-color action.
-   Near-black backgrounds are tagged "preserve" and revert here. */
-
-[data-sw-patched="preserve"]${EXT_GUARD} {
-  background-color: revert !important;
-  color: revert !important;
-}
+${DARK_THEME_BODY_RULES.join("\n")}
 `
 }
 
@@ -288,25 +304,41 @@ export const DARK_THEME_STYLE_ID = "__sw_dark_theme"
 
 const STYLE_ID = DARK_THEME_STYLE_ID
 
+/**
+ * Returns whether this call actually wrote — the sheet was created, or its
+ * text changed. `adapter/actuator.ts`'s `realize()` folds that into its own
+ * write signal, which `content.ts` gates the shadow-scope re-contrast pass
+ * on (SF-RC3, #1342, bot-found).
+ *
+ * It matters because this layer's own `html, body { background: … }` canvas
+ * rule *is* a backdrop a shadow carrier resolves through: a carrier whose
+ * ancestors are all transparent walks out of its root and lands on `body`.
+ * So a vendor framework removing or replacing this sheet moves that
+ * backdrop, and a scope committed against the old one goes stale — with
+ * `data-sw-dark` already present, nothing else in `realize()` would have
+ * reported a write at all.
+ */
 export function injectDarkTheme(
   swatch: Swatch = SWATCHES[DEFAULT_SWATCH_ID]
-): void {
+): boolean {
   const existing = document.getElementById(STYLE_ID)
   const style: HTMLStyleElement =
     existing instanceof HTMLStyleElement
       ? existing
       : createExtensionStyle(STYLE_ID)
-  if (!(existing instanceof HTMLStyleElement)) {
+  const created = !(existing instanceof HTMLStyleElement)
+  if (created) {
     document.head.appendChild(style)
   }
   // The compensation is recomputed per call (a vendor's own invert toggle
   // can flip at any time), but the assignment still goes through
   // setStyleText: an unchanged filter state rebuilds byte-identical CSS,
   // and rewriting it would be a mutation the Sensor reacts to (#831).
-  setStyleText(
+  const rewritten = setStyleText(
     style,
     buildDarkThemeCSS(compensateSwatch(swatch, detectVendorInvert()))
   )
+  return created || rewritten
   // Per-surface tagging and the dynamic color stylesheet are the actuator's
   // job now (adapter/actuator.ts), driven by decide()'s returned actions —
   // not this function's. Veil removal is the caller's responsibility: inject

@@ -1,0 +1,376 @@
+import {
+  createDocumentScopeCustodian,
+  createPrepaintCustody,
+  DOCUMENT_SCOPE_ID,
+  type FireOutcome,
+} from "@filter/adapter/document-scope"
+import { createScopeRegistry } from "@filter/adapter/scope-registry"
+import {
+  isPrepaintActive,
+  PREPAINT_VEIL_ID,
+} from "@filter/lib/content/prepaint"
+import { afterEach, describe, expect, it, vi } from "vitest"
+
+afterEach(() => {
+  document.getElementById(PREPAINT_VEIL_ID)?.remove()
+  document.documentElement.classList.remove("sw-dirty")
+})
+
+const OK_COMMITTED: FireOutcome = {
+  kind: "ok",
+  actions: [{ kind: "activate-theme", swatchId: "default" }],
+}
+
+const OK_COMMITTED_OTHER_SWATCH: FireOutcome = {
+  kind: "ok",
+  actions: [{ kind: "activate-theme", swatchId: "warm" }],
+}
+
+const OK_RESTORE_NATIVE: FireOutcome = {
+  kind: "ok",
+  actions: [{ kind: "restore-native" }],
+}
+
+const OK_NO_SWATCH: FireOutcome = { kind: "ok", actions: [] }
+
+const ERROR_OUTCOME: FireOutcome = {
+  kind: "error",
+  error: new Error("decide() threw"),
+}
+
+// Advances past the double-rAF awaitAtomicSwap() waits on (vitest.setup.ts
+// stubs rAF synchronous, so the gate's own promise resolves eagerly) and
+// drains the microtask queue that resolveCommitted()'s `await` still needs —
+// a real macrotask boundary guarantees every pending microtask has run.
+async function flushCommit(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0))
+}
+
+describe("createDocumentScopeCustodian — registration (Corollary D.1.1)", () => {
+  it("registers the document HELD via a real prepaint custody, engaging the existing veil", () => {
+    const custodian = createDocumentScopeCustodian()
+    custodian.registerDocument(0)
+
+    expect(custodian.registry.stateOf(DOCUMENT_SCOPE_ID)?.kind).toBe("HELD")
+    expect(isPrepaintActive()).toBe(true)
+    expect(document.getElementById(PREPAINT_VEIL_ID)).not.toBeNull()
+  })
+
+  it("is idempotent — a second call does not re-register or throw", () => {
+    const custodian = createDocumentScopeCustodian()
+    custodian.registerDocument(0)
+    expect(() => custodian.registerDocument(0)).not.toThrow()
+    expect(custodian.registry.ids()).toEqual([DOCUMENT_SCOPE_ID])
+  })
+})
+
+describe("createDocumentScopeCustodian — the fail-open gap (#1266)", () => {
+  it("a thrown decide()/realize() produces FAILED_HELD and the real veil stays up", () => {
+    const custodian = createDocumentScopeCustodian()
+    custodian.registerDocument(0)
+    expect(document.getElementById(PREPAINT_VEIL_ID)).not.toBeNull()
+
+    custodian.reportPipelineOutcome(ERROR_OUTCOME)
+
+    expect(custodian.registry.stateOf(DOCUMENT_SCOPE_ID)).toEqual({
+      kind: "FAILED_HELD",
+      epoch: { content: 0, scope: 0 },
+      reason: "decide() threw",
+    })
+    // The actual DOM veil — not just the registry's belief — is still there.
+    expect(isPrepaintActive()).toBe(true)
+    expect(document.getElementById(PREPAINT_VEIL_ID)).not.toBeNull()
+  })
+
+  it("a genuine restore-native verdict, by contrast, releases the veil immediately", () => {
+    const custodian = createDocumentScopeCustodian()
+    custodian.registerDocument(0)
+
+    custodian.reportPipelineOutcome(OK_RESTORE_NATIVE)
+
+    expect(custodian.registry.stateOf(DOCUMENT_SCOPE_ID)?.kind).toBe(
+      "EXONERATED_NATIVE"
+    )
+    expect(isPrepaintActive()).toBe(false)
+    expect(document.getElementById(PREPAINT_VEIL_ID)).toBeNull()
+  })
+
+  it("a committed theme releases the veil only after the atomic-swap gate settles", async () => {
+    const custodian = createDocumentScopeCustodian()
+    custodian.registerDocument(0)
+
+    custodian.reportPipelineOutcome(OK_COMMITTED)
+
+    // resolveCommitted() is async even when rAF is stubbed synchronous —
+    // the veil must still be up synchronously right after the call.
+    expect(document.getElementById(PREPAINT_VEIL_ID)).not.toBeNull()
+
+    await flushCommit()
+
+    expect(custodian.registry.stateOf(DOCUMENT_SCOPE_ID)).toMatchObject({
+      kind: "COMMITTED",
+      revision: "default",
+    })
+    expect(document.getElementById(PREPAINT_VEIL_ID)).toBeNull()
+  })
+})
+
+describe("createDocumentScopeCustodian — idempotent routing (#831-class guard)", () => {
+  it("an unchanged verdict on a later fire does not re-touch the hold", async () => {
+    const hold = { install: vi.fn(), release: vi.fn() }
+    const registry = createScopeRegistry<string, { reason: string }>()
+    const custodian = createDocumentScopeCustodian(registry)
+    registry.register(DOCUMENT_SCOPE_ID, {
+      ref: document,
+      parent: null,
+      contentEpoch: 0,
+      hold,
+    })
+    hold.install.mockClear()
+
+    custodian.reportPipelineOutcome(OK_COMMITTED)
+    await flushCommit()
+    expect(hold.release).toHaveBeenCalledTimes(1)
+
+    custodian.reportPipelineOutcome(OK_COMMITTED)
+    await flushCommit()
+
+    expect(hold.install).not.toHaveBeenCalled()
+    expect(hold.release).toHaveBeenCalledTimes(1)
+  })
+
+  it("a genuinely different committed revision does re-drive the FSM", async () => {
+    const hold = { install: vi.fn(), release: vi.fn() }
+    const registry = createScopeRegistry<string, { reason: string }>()
+    const custodian = createDocumentScopeCustodian(registry)
+    registry.register(DOCUMENT_SCOPE_ID, {
+      ref: document,
+      parent: null,
+      contentEpoch: 0,
+      hold,
+    })
+
+    custodian.reportPipelineOutcome(OK_COMMITTED)
+    await flushCommit()
+
+    custodian.reportPipelineOutcome(OK_COMMITTED_OTHER_SWATCH)
+    await flushCommit()
+
+    expect(registry.stateOf(DOCUMENT_SCOPE_ID)).toMatchObject({
+      kind: "COMMITTED",
+      revision: "warm",
+    })
+    // invalidate() re-engaged the hold once between the two commits.
+    expect(hold.install.mock.calls.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it("repeated identical errors stay FAILED_HELD without re-throwing", () => {
+    const custodian = createDocumentScopeCustodian()
+    custodian.registerDocument(0)
+
+    custodian.reportPipelineOutcome(ERROR_OUTCOME)
+    expect(() => custodian.reportPipelineOutcome(ERROR_OUTCOME)).not.toThrow()
+
+    expect(custodian.registry.stateOf(DOCUMENT_SCOPE_ID)?.kind).toBe(
+      "FAILED_HELD"
+    )
+  })
+
+  it("reengage() makes an unchanged-looking verdict re-release a hold re-armed behind the custodian's back (yt-navigate-start/finish)", async () => {
+    // Regression for the exact yt-navigate-repaint.spec.ts failure this
+    // fix was written against: nav-start re-arms the veil through
+    // hold.install() directly (content.ts calls enablePrepaint(), not this
+    // custodian), then nav-finish's rescan reports the *same* committed
+    // verdict as before. Without reconciling, that "unchanged" signature
+    // would short-circuit and the just-re-armed hold would never be
+    // released again.
+    const hold = { install: vi.fn(), release: vi.fn() }
+    const registry = createScopeRegistry<string, { reason: string }>()
+    const custodian = createDocumentScopeCustodian(registry)
+    registry.register(DOCUMENT_SCOPE_ID, {
+      ref: document,
+      parent: null,
+      contentEpoch: 0,
+      hold,
+    })
+
+    custodian.reportPipelineOutcome(OK_COMMITTED)
+    await flushCommit()
+    expect(hold.release).toHaveBeenCalledTimes(1)
+
+    // yt-navigate-start's own reengage() call, standing in for the direct
+    // enablePrepaint() + reconciliation it performs in content.ts.
+    custodian.reengage(0)
+
+    // yt-navigate-finish's rescan reports the identical verdict.
+    custodian.reportPipelineOutcome(OK_COMMITTED)
+    await flushCommit()
+
+    expect(hold.release).toHaveBeenCalledTimes(2)
+    expect(registry.stateOf(DOCUMENT_SCOPE_ID)).toMatchObject({
+      kind: "COMMITTED",
+      revision: "default",
+    })
+  })
+})
+
+describe("reengage() — invalidating an in-flight resolveCommitted() (bot-found race)", () => {
+  it("a resolveCommitted() still awaiting its atomic-swap gate does not release a hold reengage() just re-armed", async () => {
+    // A cache-only reset (this module's own, removed, first attempt) does
+    // not bump scope-registry.ts's per-scope generation counter — the only
+    // thing resolveCommitted() checks before releasing the hold on
+    // completion. This proves reengage()'s real reRegister() call does.
+    const hold = { install: vi.fn(), release: vi.fn() }
+    const registry = createScopeRegistry<string, { reason: string }>()
+    const custodian = createDocumentScopeCustodian(registry)
+    registry.register(DOCUMENT_SCOPE_ID, {
+      ref: document,
+      parent: null,
+      contentEpoch: 0,
+      hold,
+    })
+    registry.startResolving(DOCUMENT_SCOPE_ID)
+    hold.install.mockClear()
+
+    // A committed round in flight, deliberately held open — mirrors
+    // resolveCommitted()'s real atomic-swap gate (up to COMMIT_FALLBACK_MS
+    // in production), which yt-navigate-start or the watchdog's repair can
+    // race against in a real browser.
+    let releaseInstall: (() => void) | undefined
+    const install = new Promise<void>((resolve) => {
+      releaseInstall = resolve
+    })
+    const uninstall = vi.fn()
+    const pending = registry.resolveCommitted(DOCUMENT_SCOPE_ID, {
+      revision: "default",
+      install: () => install,
+      uninstall,
+    })
+
+    // The re-arm races in while that round is still awaiting its gate.
+    custodian.reengage(1)
+    expect(hold.install).toHaveBeenCalledTimes(1)
+    expect(registry.stateOf(DOCUMENT_SCOPE_ID)?.kind).toBe("HELD")
+
+    // Let the stale round's own gate finally settle.
+    releaseInstall?.()
+    await pending
+
+    // The stale completion detects the generation bump and backs off —
+    // uninstalling its own now-orphaned realization — instead of releasing
+    // the hold reengage() just re-armed.
+    expect(hold.release).not.toHaveBeenCalled()
+    expect(uninstall).toHaveBeenCalledTimes(1)
+    expect(registry.stateOf(DOCUMENT_SCOPE_ID)?.kind).toBe("HELD")
+  })
+})
+
+describe("createDocumentScopeCustodian — no-swatch verdict", () => {
+  it("an empty actions array (swatch === null) also exonerates, not fails", () => {
+    const custodian = createDocumentScopeCustodian()
+    custodian.registerDocument(0)
+
+    custodian.reportPipelineOutcome(OK_NO_SWATCH)
+
+    expect(custodian.registry.stateOf(DOCUMENT_SCOPE_ID)).toMatchObject({
+      kind: "EXONERATED_NATIVE",
+      proof: { reason: "no-swatch" },
+    })
+  })
+})
+
+describe("createPrepaintCustody", () => {
+  it("install()/release() are the real enablePrepaint()/disablePrepaint() — not a second veil", () => {
+    const custody = createPrepaintCustody()
+    custody.install()
+    expect(document.querySelectorAll(`#${PREPAINT_VEIL_ID}`)).toHaveLength(1)
+    custody.release()
+    expect(document.getElementById(PREPAINT_VEIL_ID)).toBeNull()
+  })
+})
+
+describe("reengage() — recovering from off-mode's own direct disablePrepaint() (bot-found)", () => {
+  it("without reengage(), a thrown round after off->auto produces FAILED_HELD with no real veil (documents the bug)", () => {
+    // Reproduces content.ts's applyState("off") calling disablePrepaint()
+    // directly — a path this registry does not own — then cycling into
+    // auto without telling the custodian.
+    const custodian = createDocumentScopeCustodian()
+    custodian.registerDocument(0)
+    expect(document.getElementById(PREPAINT_VEIL_ID)).not.toBeNull()
+
+    document.getElementById(PREPAINT_VEIL_ID)?.remove()
+    document.documentElement.classList.remove("sw-dirty")
+    expect(isPrepaintActive()).toBe(false)
+
+    custodian.reportPipelineOutcome(ERROR_OUTCOME)
+
+    expect(custodian.registry.stateOf(DOCUMENT_SCOPE_ID)?.kind).toBe(
+      "FAILED_HELD"
+    )
+    // The registry claims the document is held; physically it is not.
+    expect(isPrepaintActive()).toBe(false)
+  })
+
+  it("re-engages the real veil before the first round when called (the fix)", () => {
+    const custodian = createDocumentScopeCustodian()
+    custodian.registerDocument(0)
+
+    document.getElementById(PREPAINT_VEIL_ID)?.remove()
+    document.documentElement.classList.remove("sw-dirty")
+    expect(isPrepaintActive()).toBe(false)
+
+    custodian.reengage(0)
+    expect(isPrepaintActive()).toBe(true)
+
+    custodian.reportPipelineOutcome(ERROR_OUTCOME)
+
+    expect(custodian.registry.stateOf(DOCUMENT_SCOPE_ID)?.kind).toBe(
+      "FAILED_HELD"
+    )
+    // Now the claim is true: the veil really is up.
+    expect(isPrepaintActive()).toBe(true)
+  })
+
+  it("is a no-op DOM-wise on a cold entry into auto — hold.install() is idempotent", () => {
+    const hold = { install: vi.fn(), release: vi.fn() }
+    const registry = createScopeRegistry<string, { reason: string }>()
+    const custodian = createDocumentScopeCustodian(registry)
+    registry.register(DOCUMENT_SCOPE_ID, {
+      ref: document,
+      parent: null,
+      contentEpoch: 0,
+      hold,
+    })
+    hold.install.mockClear()
+
+    custodian.reengage(0)
+
+    expect(hold.install).toHaveBeenCalledTimes(1)
+    expect(registry.stateOf(DOCUMENT_SCOPE_ID)?.kind).toBe("HELD")
+  })
+
+  it("clears the idempotency cache — a verdict matching the pre-reengage cache still resolves", async () => {
+    const custodian = createDocumentScopeCustodian()
+    custodian.registerDocument(0)
+
+    custodian.reportPipelineOutcome(OK_COMMITTED)
+    await flushCommit()
+    expect(document.getElementById(PREPAINT_VEIL_ID)).toBeNull()
+
+    // off, then back to auto, with the classification landing on the exact
+    // same swatch as before.
+    document.getElementById(PREPAINT_VEIL_ID)?.remove()
+    document.documentElement.classList.remove("sw-dirty")
+    custodian.reengage(0)
+    expect(document.getElementById(PREPAINT_VEIL_ID)).not.toBeNull()
+
+    custodian.reportPipelineOutcome(OK_COMMITTED)
+    await flushCommit()
+
+    expect(document.getElementById(PREPAINT_VEIL_ID)).toBeNull()
+    expect(custodian.registry.stateOf(DOCUMENT_SCOPE_ID)).toMatchObject({
+      kind: "COMMITTED",
+      revision: "default",
+    })
+  })
+})

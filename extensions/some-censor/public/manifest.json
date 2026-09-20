@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "Progressive content masking with intentional disclosure",
 
-  "permissions": ["storage"],
+  "permissions": ["storage", "contextMenus"],
 
   "host_permissions": ["*://*.youtube.com/*"],
 
@@ -23,6 +23,18 @@
   ],
 
   "action": {
-    "default_popup": "popup.html"
+    "default_title": "BOYO - Content Censor",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "assets/icon-16.png",
+      "48": "assets/icon-48.png",
+      "128": "assets/icon-128.png"
+    }
+  },
+
+  "icons": {
+    "16": "assets/icon-16.png",
+    "48": "assets/icon-48.png",
+    "128": "assets/icon-128.png"
   }
 }

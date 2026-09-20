@@ -76,7 +76,7 @@ box and the content and converges on the count that actually fits.
 
 ## How this is enforced
 
-Three layers, in increasing order of how much they actually prove.
+Four layers, in increasing order of how much they actually prove.
 
 ### 1. `fits-the-box/no-greedy-overflow` (lint, warn)
 
@@ -120,11 +120,11 @@ shell primitive rendered by a route does not.
 
 ### 2. `apps/www/tests/ui-fit` (Playwright, the actual gate)
 
-Renders **every story in the monorepo** at three viewport sizes and fails on
+Renders **every story in the monorepo** at four viewport sizes and fails on
 anything that scrolls sideways or scrolls vertically without declaring intent.
 
 ```bash
-CI=1 pnpm build-storybook -o storybook-static          # or STORYBOOK_WORKSPACE=<pkg> to scope
+CI=1 pnpm build-storybook -o storybook-static          # or STORYBOOK_WORKSPACE=<dir> to scope
 STORYBOOK_STATIC=storybook-static pnpm --filter www test:e2e tests/ui-fit
 ```
 
@@ -157,6 +157,48 @@ to add and is now filtered out in `.storybook/main.ts`.
 
 If you add a sweep like this elsewhere, plant a deliberately-overflowing
 fixture and confirm it goes red before believing a green run.
+
+A third property, added later and for the same reason as the first two —
+because its absence had been load-bearing:
+
+- **One of the four viewports is a phone in landscape** (780×390). For a long
+  time the matrix was three sizes, all of them portrait phone or
+  landscape-_desktop_, which means a workspace could be genuinely unusable on
+  a phone held sideways and still pass every layer of this cleanly. That is
+  not the suite being lenient; it is the suite never having rendered the case.
+  Adding the orientation immediately turned up two real failures in
+  `panel-fit` (`QuizSummary`, advanced and failed, painting 6px past the rect
+  it was granted) that the other three sizes could not see, and in the
+  topik-scoped layer-2 sweep it catches two stories no other viewport catches
+  (`ChangeMaterialDialog` in its Loading and Fatal Error states).
+
+  Landscape earns a slot rather than being a fourth variation on the same
+  shape, because it breaks the most assumptions at once. Every Tailwind width
+  breakpoint below `md` reads as true, so a layout believes it has a tablet's
+  room while the axis it is short of is height. Fixed chrome that is a fine
+  fraction of 780px is most of 390px. And a document that outgrows the window
+  here does so under chrome pinned to the viewport, which is how a scrolling
+  route tears the shell's own background — the `h-svh` note in `sidebar.tsx`
+  is that failure, reported as "weird gaps in border and bg".
+
+  The idiom that answers it lives in `@some-ui/shared`
+  (`lib/short-window.ts`): **on a short window a surface keeps its controls
+  and sheds its commentary.** It is class strings rather than a hook, so the
+  question is answered by CSS at paint time and nothing re-renders when a
+  phone is turned over.
+
+**Scoping the build is by directory name, not package name.**
+`STORYBOOK_WORKSPACE` is globbed straight into
+`../packages/ui/<value>/**/*.stories.*` (see `.storybook/main.ts`), so it
+wants `topik`, not `@some-ui/topik`. Getting this wrong does not fail — it
+builds successfully with only the always-included design-system stories, and
+every sweep then passes in about a second having measured almost nothing.
+Check the story count before believing a fast green run:
+
+```bash
+CI=1 STORYBOOK_WORKSPACE=topik pnpm build-storybook -o storybook-static
+python3 -c "import json; print(len(json.load(open('storybook-static/index.json'))['entries']))"
+```
 
 ### 2b. `apps/www/tests/ui-fit/launcher-fit.spec.ts` (Playwright, for `apps/www`)
 
@@ -234,6 +276,35 @@ entry, which puts it back under the gate.
 `PANEL_STAGES` covers the states a top-level story never reaches. The summary
 only appears after ten answers; sweeping only the applet's initial state is how
 #899 shipped past a green sweep in the first place.
+
+### 2d. `apps/www/tests/composer` (Playwright, and the only one that runs the app)
+
+Every layer above measures something that is not the running application.
+Layer 2 sweeps a built Storybook, `launcher-fit` hand-mirrors the shipped
+classes in static HTML rather than mounting the component, `panel-fit` mounts
+panels inside a synthetic rect, and `tests/csp` fulfils routes without a
+server. Each of those trades is defensible on its own. Together they left a
+gap with a precise shape: **no test in this repository had ever clicked a
+control.**
+
+That gap is what let the composer ship a pager whose "Next" flashed the last
+page and landed back on the first. Every layer was green, the lint rule saw
+nothing to flag, and the hook's own unit tests drove a fake `ResizeObserver`
+that could not produce the geometry the bug needed.
+
+So this suite boots `vite` and drives `/sessions/new` in a real browser, at
+the phone/landscape/laptop trio, asserting behaviour rather than pixels: Next
+advances a page _and stays there_, no multi-item page overflows the box it was
+given, the step rail refuses exactly where Continue refuses, and no step
+scrolls the page or paints outside a box that never said it would clip. Run
+against the code it was written for, it fails seven ways.
+
+```bash
+pnpm --filter www exec playwright test tests/composer
+```
+
+It reuses an already-running dev server if it finds one, so a local `pnpm dev`
+loop stays fast.
 
 ### 3. CI
 

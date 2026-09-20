@@ -1,0 +1,106 @@
+<!doctype html>
+<!--
+  SF-RC2 (#1341) regression fixture — the epic's (#1338) own two Gate-0
+  witnesses plus its negative control, on one page.
+
+  Each region carries a *distinct* light background on purpose: the
+  per-surface hypothesis is keyed by colour, not by element, so three regions
+  sharing one literal white would share one SurfaceKey and one `text`
+  evidence slot, and which region's own text colour won that slot would
+  decide what the co-located (#741) fix emitted for all three. Distinct
+  backgrounds keep the three witnesses independent.
+
+  ── Witness A — escape route 2: explicit-colour-equals-computed-parent ──
+  #chip declares the same colour its #nav parent declares (an ordinary
+  authoring pattern: a nested control repeating its container's colour for
+  visual consistency). #nav owns a light background, so it is classified as
+  a surface, darkened, and gets `textCss` — but #chip's own background is
+  transparent, so #chip never enters the per-surface hypothesis at all, and
+  its own `color` declaration beats the inherited corrected value. Measured
+  1.025:1 against the real built extension during Gate-0 recon.
+
+  ── Witness B — escape route 1: own explicit colour, no own background ──
+  #label declares its own black `color` and owns no background whatsoever.
+  `readAttr` only ever consults `ownTextColor` from inside a branch gated on
+  the *same* element having a parseable background, so #label's foreground
+  never entered the hypothesis under any classification. Its ancestor #main
+  does get darkened out from under it. Measured 1.14:1 during Gate-0 recon.
+
+  ── Transition hazard ──
+  #transitioned is witness B's shape (own explicit colour, no own background)
+  plus a vendor `transition` on `color`. Disabling the repair sheet to sense
+  the authored colour is itself a style change, and it starts that transition
+  — so a naive suppression reads back the repair's own colour (confirmed
+  directly against real Chromium: `rgb(158, 158, 158)`, not the authored
+  `rgb(0, 0, 0)`), concludes the carrier is legible, and drops the repair,
+  after which the transition completes to the illegible authored colour with
+  no mutation left to schedule another round. Freezing transitions for the
+  duration of the read is what makes the sensed value the settled
+  destination.
+
+  ── Negative control (F-18) ──
+  #inherits declares no colour of its own at all. Its ancestor #card owns
+  both a light background and its own explicit dark text, so #card gets the
+  ordinary co-located (#741) fix and #inherits inherits the corrected
+  foreground through plain CSS cascade — measured 7.2:1 during Gate-0 recon,
+  i.e. already legible with no further action needed. It must therefore
+  receive no tag and no rule from SF-RC2's alphabet: re-tagging it would be
+  redundant custody at best, and would override an already hue-matched
+  inherited colour with a generically calibrated one at worst.
+-->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Legibility Repair Page Fixture</title>
+  </head>
+  <body style="background-color: rgb(255, 255, 255); margin: 0">
+    <nav
+      id="nav"
+      style="
+        background-color: rgb(255, 255, 255);
+        color: rgb(17, 17, 17);
+        padding: 16px;
+      "
+    >
+      Nav label
+      <button
+        id="chip"
+        style="
+          background-color: transparent;
+          border: 0;
+          font: inherit;
+          color: rgb(17, 17, 17);
+        "
+      >
+        Shorts
+      </button>
+    </nav>
+
+    <main id="main" style="background-color: rgb(250, 250, 250); padding: 16px">
+      <div id="label" style="color: rgb(0, 0, 0)">Subscriptions</div>
+    </main>
+
+    <section
+      id="panel"
+      style="background-color: rgb(240, 240, 240); padding: 16px"
+    >
+      <div
+        id="transitioned"
+        style="color: rgb(0, 0, 0); transition: color 0.3s linear"
+      >
+        A carrier whose own colour is under a vendor transition.
+      </div>
+    </section>
+
+    <section
+      id="card"
+      style="
+        background-color: rgb(245, 245, 245);
+        color: rgb(20, 20, 20);
+        padding: 16px;
+      "
+    >
+      <div id="inherits">Body copy with no colour declaration of its own.</div>
+    </section>
+  </body>
+</html>

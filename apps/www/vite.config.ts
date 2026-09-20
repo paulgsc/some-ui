@@ -162,7 +162,18 @@ export default defineConfig(
       ...createStylePlugins(styleContext),
       TanStackRouterVite({
         autoCodeSplitting: true,
-        routeFileIgnorePattern: String.raw`\.test\.[jt]sx?$`,
+        // src/routes/ is the routing tree: every filename in it is a route
+        // path. Tests live in a `__tests__/` directory per #1471, and this
+        // ignores that directory - nothing else.
+        //
+        // It deliberately does NOT ignore `*.test.tsx` by name any more. That
+        // is what it used to do, and it made the routes tree a comfortable
+        // place to drop tests: `_dashboard.shell.test.tsx` parses as the route
+        // /_dashboard/shell, and the pattern quietly swallowed it. Narrowing
+        // this to the directory means a test file dropped back beside a route
+        // shows up as a phantom route instead of disappearing - loud, which is
+        // the point.
+        routeFileIgnorePattern: String.raw`(^|/)__tests__(/|$)`,
       }),
       viteReact(),
       ...(command === "serve" ? [warnMissingContentAssets()] : []),
@@ -176,6 +187,16 @@ export default defineConfig(
     build: {
       // Enable rollup bundle analysis
       rolldownOptions: {
+        // Two HTML entries, one JS app: both boot the same
+        // src/main.tsx/router, so the /resume shell isn't a second copy of
+        // the app - it's the same SPA under a route-specific document (see
+        // resume/index.html's header comment) that GitHub Pages can serve
+        // as a real 200 at /resume/ instead of the generic app-shell
+        // 404.html fallback every other unmatched path relies on.
+        input: {
+          main: resolve(import.meta.dirname, "index.html"),
+          resume: resolve(import.meta.dirname, "resume/index.html"),
+        },
         // No `output.manualChunks`. The hand-rolled version here matched with
         // `id.includes(pkg)` — a substring test against the full module path —
         // which under pnpm matches far more than the package named. pnpm

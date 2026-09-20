@@ -32,13 +32,35 @@ import { ThemeSwitcher } from "@/components/theme-switcher"
  * Matches only the session player route (/sessions/$sessionId), whose
  * content owns a fixed viewport V (see docs/session-viewport) — the
  * dashboard shell must not let the page scroll here, or V is never
- * genuinely bounded. Every other route, including /sessions and
- * /sessions/new, stays an ordinary scrolling document.
+ * genuinely bounded.
  */
 const SESSION_PLAYER_PATH = /^\/sessions\/(?!new$)[^/]+$/
 
+/**
+ * The composer (/sessions/new), the shell's second bounded surface.
+ *
+ * A wizard is not an article. It is fixed chrome — a step rail on top, Back
+ * and Continue on the bottom — around one variable body, and the whole point
+ * of the chrome is that it stays reachable while you work the body. Rendered
+ * as an ordinary scrolling document it stopped being that: the body was a
+ * design-time constant (`h-72 sm:h-80`) that matched no viewport, so a tall
+ * phone left a third of the box empty and paged a four-item catalogue into
+ * four pages, while a landscape phone grew the document to twice the window
+ * and pushed Continue below the fold.
+ *
+ * Bounding it is what makes "the layout chooses the size" true here rather
+ * than aspirational (docs/ui-fit): the body becomes `flex-1 min-h-0` and
+ * every step fits by construction, at every viewport, instead of each step
+ * inventing its own constant for how much it guesses it has.
+ */
+const COMPOSER_PATH = /^\/sessions\/new$/
+
 function isViewportPath(pathname: string): boolean {
   return SESSION_PLAYER_PATH.test(pathname)
+}
+
+function isComposerPath(pathname: string): boolean {
+  return COMPOSER_PATH.test(pathname)
 }
 
 type NavItem = {
@@ -144,6 +166,16 @@ const DashboardLayout = (): JSX.Element => {
   const isLiveViewportRoute = isViewportRoute && !isTerminal
 
   /**
+   * Both surfaces the shell hands a definite height to, and therefore must
+   * not let the page scroll behind. `dvh` rather than `svh`: neither of these
+   * routes can scroll, so the mobile browser's chrome never retracts and the
+   * two units never disagree in practice — but when one arrives from a route
+   * that *was* scrolled with the chrome hidden, `dvh` is the height actually
+   * on screen and `svh` is short by exactly the chrome.
+   */
+  const isBoundedRoute = isLiveViewportRoute || isComposerPath(pathname)
+
+  /**
    * The one place the shell gets out of the way entirely.
    *
    * On the session player route at phone width, `V` is the screen. The 56px
@@ -162,9 +194,7 @@ const DashboardLayout = (): JSX.Element => {
   const bareViewport = isLiveViewportRoute && isMobile
 
   return (
-    <SidebarProvider
-      className={cn(isLiveViewportRoute && "h-svh overflow-hidden")}
-    >
+    <SidebarProvider className={cn(isBoundedRoute && "h-dvh overflow-hidden")}>
       <DashboardSidebarContent pathname={pathname} />
       <SidebarInset>
         {!bareViewport && (
@@ -185,13 +215,16 @@ const DashboardLayout = (): JSX.Element => {
         <div
           className={cn(
             "flex-1",
-            bareViewport ? "p-0" : "p-6",
+            // 24px on every side is a desktop budget. On a phone it is ~12%
+            // of the width spent on nothing, which the bounded routes below
+            // can least afford - they have exactly the window and no more.
+            bareViewport ? "p-0" : "p-4 sm:p-6",
             // scroll-intent: page — an ordinary document route scrolls as a
-            // page. The live viewport route is the bounded one, and takes the
-            // overflow-hidden branch precisely so it cannot (docs/ui-fit,
+            // page. The bounded routes take the overflow-hidden branch
+            // precisely so they cannot (docs/ui-fit,
             // docs/session-viewport/02-kill-the-cutoff.md). A terminal
-            // session on this same route is back to an ordinary document.
-            isLiveViewportRoute ? "min-h-0 overflow-hidden" : "overflow-auto"
+            // session on the player route is back to an ordinary document.
+            isBoundedRoute ? "min-h-0 overflow-hidden" : "overflow-auto"
           )}
         >
           <Outlet />

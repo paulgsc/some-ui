@@ -1,0 +1,35 @@
+<!doctype html>
+<!--
+  Shadow-DOM + vendor-invert fixture (#1281). shadow-surface-page.html's own
+  shape (a plain, otherwise-unremarkable light page with a stable
+  #host-anchor for a spec to attach a shadow host to) plus
+  filter-invert-vendor-page.html's own one addition: `html { filter:
+  invert(1) }` — a real, documented vendor accessibility "invert colours"
+  pattern (#741), distinct from this extension's own legacy mode.
+
+  Exists so a spec can prove a shadow scope's own :host token rule
+  (shadow-actuator.ts's buildHostTokenRule) is built from the *compensated*
+  swatch the document layer already gets (theme-apply.ts's injectDarkTheme),
+  not the raw one — see issue-1280-1281-sfad-followups.spec.ts.
+-->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Shadow Surface Vendor-Invert Fixture</title>
+    <style>
+      html {
+        filter: invert(1);
+      }
+    </style>
+  </head>
+  <body style="background-color: rgb(255, 255, 255); margin: 0">
+    <main style="background-color: rgb(255, 255, 255)">
+      <h1>Shadow Surface Vendor-Invert Fixture</h1>
+      <p>
+        Light page under its own vendor filter: invert(1). Shadow hosts are
+        injected only by the spec driving this fixture.
+      </p>
+    </main>
+    <div id="host-anchor"></div>
+  </body>
+</html>

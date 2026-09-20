@@ -340,3 +340,16 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
+      # deploy-pages waits for the deployment to go live, so the freshly
+      # published tree is readable immediately - no polling/retry needed.
+      # Only scripts/check-resume-deploy.mjs is needed here (it has no
+      # dependencies of its own), so this checks out just that file rather
+      # than the whole repo.
+      - name: Check out résumé deploy check
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.rollback_sha || github.sha }}
+          sparse-checkout: apps/www/scripts/check-resume-deploy.mjs
+          sparse-checkout-cone-mode: false
+      - name: Verify /resume/ deployment surface
+        run: node apps/www/scripts/check-resume-deploy.mjs "${{ steps.deployment.outputs.page_url }}resume/"

@@ -20,7 +20,7 @@
     "@playwright/test": "1.62.1",
     "@some-extension/filter": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
-    "@storybook/react-vite": "10.5.10",
+    "@storybook/react-vite": "10.6.0",
     "@types/react": "^19.0.4",
     "@types/react-dom": "^19.0.2",
     "esbuild": "^0.25.0",

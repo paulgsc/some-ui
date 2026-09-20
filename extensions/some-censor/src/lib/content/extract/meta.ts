@@ -32,6 +32,18 @@ function firstText(
   return null
 }
 
+/**
+ * The raw upload-date run, exactly as YouTube rendered it.
+ *
+ * Split out of {@link extractMeta} so the observability layer can bank the
+ * raw string (OBS1, #1395) without re-deriving these two selectors, and
+ * without paying for the channel-name and duration lookups it must not record
+ * anyway. Still pure (E1): the caller decides what to do with the string.
+ */
+export function extractUploadDate(el: HTMLElement): string | null {
+  return text(el, "#metadata-line span:nth-child(2)") ?? lockupUploadDate(el)
+}
+
 export function extractMeta(el: HTMLElement): MetaData {
   return {
     channelName: firstText(el, [
@@ -45,8 +57,7 @@ export function extractMeta(el: HTMLElement): MetaData {
       "span.ytd-thumbnail-overlay-time-status-renderer",
       '[class*="ThumbnailOverlayBadgeViewModel"] [class*="badge-shape"]',
     ]),
-    uploadDate:
-      text(el, "#metadata-line span:nth-child(2)") ?? lockupUploadDate(el),
+    uploadDate: extractUploadDate(el),
   }
 }
 

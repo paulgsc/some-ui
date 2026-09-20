@@ -55,10 +55,11 @@ const PAGE_LUMINANCE_THRESHOLD = 0.4
 // trigger unconfirmed), a reactive rescan can fire while evidence is this
 // sparse and conclude "page is already dark" from pure happenstance. That
 // verdict then emits restore-native, which strips the theme and — via
-// content.ts's onFire, applied=false takes the immediate disablePrepaint()
-// branch rather than the atomic commitVisualState() swap — drops the veil
-// right away, exposing the page's true (light) background with no further
-// correction once more evidence arrives. Below the threshold, the existing
+// content.ts's onFire, routed through document-scope.ts's registry
+// custodian (SF-BS, #1266) into an immediate resolveExonerated() rather
+// than the gated resolveCommitted() swap — drops the veil right away,
+// exposing the page's true (light) background with no further correction
+// once more evidence arrives. Below the threshold, the existing
 // "insufficient evidence -> assume light" bias (previously only count === 0)
 // just extends to "not enough evidence to trust either way."
 const MIN_EVIDENCE_FOR_DARK_VERDICT = 3

@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { useReducer } from "react"
+import { useMemo, useReducer } from "react"
 import {
   closestCenter,
   DndContext,
@@ -21,6 +21,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  PageControls,
   Switch,
 } from "@some-ui/shared"
 import {
@@ -30,14 +31,96 @@ import {
 } from "@some-ui/slideshow"
 import type { EditorState } from "@some-ui/slideshow"
 import type { SceneConfig } from "@some-ui/types"
+import { useFittedPage } from "some-ui-utils"
 
 import { formatTimecode } from "@/lib/format"
-import { usePagination } from "@/hooks/use-pagination"
-import { PaginationControls } from "@/components/pagination-controls"
 
 const CLOSED_EDITOR_STATE: EditorState = { type: "Closed" }
-/** Basic mode's read-only preview list is compact rows, same page size as the other simple lists. */
-const BASIC_SCENE_PAGE_SIZE = 10
+
+type NumberedScene = { scene: SceneConfig; position: number }
+
+type BasicSceneListProps = {
+  scenes: ReadonlyArray<NumberedScene>
+}
+
+/**
+ * The basic-mode read-only scene list, as its own component rather than
+ * inline JSX in `ArrangementStep`'s `mode === "basic"` branch.
+ *
+ * `useFittedPage` measures whatever DOM node its ref is attached to when its
+ * measuring effect first runs - and that effect's dependencies
+ * (`items.length`, `minPerPage`, `maxPerPage`) have nothing to do with
+ * *which* node that is. Toggling Advanced on unmounts this branch's div;
+ * toggling it back off mounts a genuinely new one. If the hook lived in
+ * `ArrangementStep` itself (as it did before this was extracted), its
+ * effect would still be holding the *first* node - detached from the
+ * document, permanently reporting `clientHeight: 0` - and would never
+ * notice the second one exists (a Codex review found this: "disabling
+ * Advanced with the same scene count does not observe or measure the newly
+ * mounted nodes"). Splitting this into its own component ties the hook's
+ * lifetime to the DOM's: React unmounts and remounts both together on every
+ * mode toggle, so there is never a hook instance measuring a node it no
+ * longer owns.
+ */
+const BasicSceneList = ({ scenes }: BasicSceneListProps): JSX.Element => {
+  const {
+    viewportRef,
+    contentRef,
+    pageItems,
+    page,
+    pageCount,
+    previous,
+    next,
+  } = useFittedPage(scenes, { minPerPage: 1, maxPerPage: 20 })
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-2">
+      <div
+        ref={viewportRef}
+        data-scroll-intent="fitted-residue"
+        className={
+          // scroll-intent: fitted-residue — `useFittedPage` guarantees this
+          // box's content fits it, with exactly one documented exception:
+          // at `minPerPage` a single item taller than the whole box has to
+          // overflow somewhere (see the hook's own Options doc). This says
+          // where. It is not a greedy scroll - in every case the fit can
+          // actually solve, the scrollbar never appears because the content
+          // genuinely fits - it is the named home for the residue the fit
+          // is honest about not being able to remove. Clipping it instead
+          // is worse than it sounds: a card whose centre falls outside the
+          // box stops being clickable at all.
+          "min-h-0 flex-1 overflow-y-auto"
+        }
+      >
+        <div ref={contentRef} className="space-y-2">
+          {pageItems.map(({ scene, position }) => (
+            <Card key={scene.scene_name}>
+              <CardContent className="flex items-center justify-between py-4">
+                <div className="flex items-center gap-3">
+                  <span className="bg-muted flex size-6 items-center justify-center rounded-full text-xs font-medium">
+                    {position}
+                  </span>
+                  <p className="font-medium">{scene.scene_name}</p>
+                </div>
+                <p className="text-muted-foreground text-sm">
+                  starts at {formatTimecode(scene.start_time)} •{" "}
+                  {Math.round(scene.duration / 60_000)} min
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+      <PageControls
+        page={page}
+        pageCount={pageCount}
+        onPrevious={previous}
+        onNext={next}
+        label="scenes"
+      />
+    </div>
+  )
+}
 
 type ArrangementStepProps = {
   basicScenes: Array<SceneConfig>
@@ -64,20 +147,19 @@ export const ArrangementStep = ({
     mode === "advanced" ? (advancedScenes ?? basicScenes) : basicScenes
 
   // Numbered against the full list before paginating, so a scene's position
-  // badge stays correct regardless of which page it's on. Called
-  // unconditionally (basicScenes is always available) even though its
-  // result is only rendered in "basic" mode - Rules of Hooks.
-  const numberedBasicScenes = basicScenes.map((scene, index) => ({
-    scene,
-    position: index + 1,
-  }))
-  const {
-    pageItems: basicScenePage,
-    currentPage: basicPageNumber,
-    totalPages: basicTotalPages,
-    goToPreviousPage: goToPreviousBasicPage,
-    goToNextPage: goToNextBasicPage,
-  } = usePagination(numberedBasicScenes, BASIC_SCENE_PAGE_SIZE)
+  // badge stays correct regardless of which page it's on. Computed
+  // unconditionally (basicScenes is always available) even though it's only
+  // consumed by `BasicSceneList`, which only renders in "basic" mode -
+  // there's no hook to keep unconditional here (that's `BasicSceneList`'s
+  // own `useFittedPage` call now, not this component's), just an array this
+  // component would otherwise rebuild for a child it isn't even rendering.
+  // Memoized for the same reason `BasicSceneList` needs a stable reference:
+  // an array rebuilt on every render reads to `useFittedPage` as new
+  // content and re-triggers a growth attempt it had already settled.
+  const numberedBasicScenes = useMemo(
+    () => basicScenes.map((scene, index) => ({ scene, position: index + 1 })),
+    [basicScenes]
+  )
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -108,10 +190,10 @@ export const ArrangementStep = ({
   }
 
   return (
-    <div className="space-y-4">
-      <Card>
+    <div className="flex h-full min-h-0 flex-col gap-4">
+      <Card className="shrink-0">
         <CardContent className="flex items-center justify-between gap-4 pt-6">
-          <div>
+          <div className="min-w-0">
             <p className="font-medium">Advanced arrangement</p>
             <p className="text-muted-foreground text-sm">
               {mode === "advanced"
@@ -129,32 +211,21 @@ export const ArrangementStep = ({
       </Card>
 
       {mode === "basic" ? (
-        <div className="space-y-2">
-          {basicScenePage.map(({ scene, position }) => (
-            <Card key={scene.scene_name}>
-              <CardContent className="flex items-center justify-between py-4">
-                <div className="flex items-center gap-3">
-                  <span className="bg-muted flex size-6 items-center justify-center rounded-full text-xs font-medium">
-                    {position}
-                  </span>
-                  <p className="font-medium">{scene.scene_name}</p>
-                </div>
-                <p className="text-muted-foreground text-sm">
-                  starts at {formatTimecode(scene.start_time)} •{" "}
-                  {Math.round(scene.duration / 60_000)} min
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-          <PaginationControls
-            currentPage={basicPageNumber}
-            totalPages={basicTotalPages}
-            onPrevious={goToPreviousBasicPage}
-            onNext={goToNextBasicPage}
-          />
-        </div>
+        <BasicSceneList scenes={numberedBasicScenes} />
       ) : (
-        <>
+        <div
+          data-scroll-intent="editor"
+          className={
+            // scroll-intent: editor — the advanced timeline is a drag-and-drop
+            // surface, not a list. Paging it would move a scene out from under
+            // the pointer mid-drag, and the two supporting cards below it are
+            // prose that belongs with it rather than after it. This is
+            // docs/ui-fit's case 5: the one place in the wizard where scrolling
+            // is the answer, declared here rather than inherited from a page
+            // that happened to be taller than the window.
+            "min-h-0 flex-1 space-y-4 overflow-y-auto"
+          }
+        >
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Scene timeline</CardTitle>
@@ -203,7 +274,7 @@ export const ArrangementStep = ({
             dispatch={dispatchEditor}
             onSaveEdit={handleSaveEdit}
           />
-        </>
+        </div>
       )}
     </div>
   )

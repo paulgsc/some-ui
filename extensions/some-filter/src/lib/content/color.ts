@@ -116,6 +116,33 @@ export function relativeLuminance(r: number, g: number, b: number): number {
 }
 
 /**
+ * WCAG 2.1 contrast ratio between two relative luminances — order
+ * independent (always ≥ 1, ≤ 21). SF-RC1 (#1340)'s κ_lo/κ_hi invariant
+ * (canon Definition C.3/Remark C.6, `Φ_comfort`) is expressed against this.
+ */
+export function contrastRatio(l1: number, l2: number): number {
+  const lighter = Math.max(l1, l2)
+  const darker = Math.min(l1, l2)
+  return (lighter + 0.05) / (darker + 0.05)
+}
+
+/**
+ * Porter-Duff "top over bottom" alpha compositing, non-premultiplied —
+ * SF-RC1 (#1340)'s `resolveEffectiveBackdrop` walks an ancestor chain
+ * accumulating each layer's own background this way, innermost first, to
+ * resolve the single composited color actually behind a carrier's text.
+ */
+export function compositeOver(top: RGBA, bottom: RGBA): RGBA {
+  const [tr, tg, tb, ta] = top
+  const [br, bg, bb, ba] = bottom
+  const outA = ta + ba * (1 - ta)
+  if (outA <= 0) return [0, 0, 0, 0]
+  const mix = (t: number, b: number): number =>
+    (t * ta + b * ba * (1 - ta)) / outA
+  return [mix(tr, br), mix(tg, bg), mix(tb, bb), outA]
+}
+
+/**
  * Walk up the DOM from el to find the first ancestor with a non-transparent
  * background-color. Returns the parsed color, or null if none found.
  */

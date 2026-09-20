@@ -174,21 +174,24 @@ ul.sf-checks .sf-desc {
   white-space: nowrap;
 }
 
-table.sf-events {
+table.sf-events,
+table.sf-scopes {
   border-collapse: collapse;
   font-size: 0.78rem;
   font-variant-numeric: tabular-nums;
   width: 100%;
 }
 
-table.sf-events th {
+table.sf-events th,
+table.sf-scopes th {
   color: var(--sf-muted);
   font-weight: 500;
   padding: 0.25rem 0.5rem 0.4rem 0;
   text-align: left;
 }
 
-table.sf-events td {
+table.sf-events td,
+table.sf-scopes td {
   border-top: 1px solid var(--sf-border);
   padding: 0.2rem 0.5rem 0.2rem 0;
   vertical-align: top;

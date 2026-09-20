@@ -38,8 +38,30 @@
  * *before* the swap (covering the churn itself, not just its aftermath),
  * and `yt-navigate-finish` settles whichever mode is active (`currentState`,
  * not `autoWasApplied`) once the swap has landed.
+ *
+ * SF4 (#1360) classification:
+ *   - The first and third `describe` blocks below ("the veil covers the
+ *     swap..." and "keeps the veil up through a mid-navigation reconcile
+ *     round") are visual-claims (their whole point is no unveiled native
+ *     frame during the swap) checked only through DOM-presence proxies
+ *     (`__sw_prepaint_veil`'s existence in the tree) rather than the actual
+ *     rendered pixel — a present-but-not-yet-painted-opaque veil element
+ *     would pass these exactly as a correctly-painted one would. This is
+ *     precisely the class of claim `tests/e2e/fixtures/frames.ts`'s
+ *     `captureFrames`/`firstLeak` frame oracle exists for
+ *     (`scope-registry-handoff.spec.ts`/`scope-registry-self-heal.spec.ts`
+ *     already use it for the analogous "no native-bright frame during a
+ *     transition" claim). Known gap, not promoted in this story — converting
+ *     a `page.evaluate()`-synchronous swap assertion into a video-frame
+ *     capture is a real rewrite, not a one-line addition, and out of this
+ *     story's effort budget alongside the rest of #1360's audit.
+ *   - The second `describe` block ("auto mode keeps rescanning...") is a
+ *     visual-claim, promoted: its `hasDarkAttr` check is real DOM state but
+ *     not the rendered color itself; added an independent computed-style
+ *     luminance read below.
  */
 
+import { parseColor, relativeLuminance } from "@filter/lib/content/color"
 import { expect, test, waitForClassification } from "@filter/playwright/fixture"
 import { churn } from "@filter/playwright/fixtures/hostile-page"
 import {
@@ -47,6 +69,9 @@ import {
   enterLegacyMode,
   LEGACY_CONFIG,
 } from "@filter/playwright/fixtures/legacy-mode"
+
+/** Matches issue-1268-sfad-shadow-theming.spec.ts's own bar: below theme-adapter.ts's LIGHT_THRESHOLD (0.3). */
+const THEMED_LUMINANCE_CEILING = 0.3
 
 test.describe("legacy mode survives a yt-navigate-* head/body swap", () => {
   test("the veil covers the swap and the legacy filter is restored, with no unveiled native frame in between", async ({
@@ -223,8 +248,20 @@ test.describe("auto mode keeps rescanning on yt-navigate-finish after a 'no them
 
     const resettled = await page.evaluate(() => ({
       hasDarkAttr: document.documentElement.hasAttribute("data-sw-dark"),
+      bodyBg: getComputedStyle(document.body).backgroundColor,
     }))
     expect(resettled.hasDarkAttr).toBe(true)
+    const rgba = parseColor(resettled.bodyBg)
+    expect(
+      rgba,
+      `unparseable computed background-color: ${resettled.bodyBg}`
+    ).not.toBeNull()
+    if (rgba === null) throw new Error("unreachable")
+    expect(
+      relativeLuminance(rgba[0], rgba[1], rgba[2]),
+      `body background ${resettled.bodyBg} after the re-themed route — ` +
+        `expected the dark canvas to actually be painted, not just declared`
+    ).toBeLessThan(THEMED_LUMINANCE_CEILING)
   })
 })
 

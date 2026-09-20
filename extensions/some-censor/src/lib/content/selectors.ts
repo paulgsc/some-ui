@@ -2,9 +2,10 @@
  * The canonical catalogue of YouTube card elements that BOYO tracks.
  *
  * Shared between observer.ts, video-manager.ts, events.ts and — via
- * `PREMASK_SELECTOR` — the static occluder rule in `styles/content.css`, which
- * is the only thing hiding a card between paint and the content script taking
- * ownership. Those two lists disagreeing is exactly the bug reported in #973:
+ * `PREMASK_SELECTORS` — the static occluder rules in `styles/content.css`,
+ * which are the only thing hiding a card between paint and the content
+ * script taking ownership. Those two lists disagreeing is exactly the bug
+ * reported in #973:
  * a card type present in the CSS but absent here is blurred forever, and a card
  * type present here but absent from the CSS flashes its thumbnail before the
  * veil mounts. `selectors.test.ts` asserts the stylesheet still derives from
@@ -87,17 +88,62 @@ export const VIDEO_SELECTORS: ReadonlyArray<string> = CARD_SELECTORS.map(
 export const SEL = VIDEO_SELECTORS.join(",")
 
 /**
- * The exact selector text the static pre-mask rule must use.
+ * The exact selector text each pre-mask rule must use — one entry per tag,
+ * one CSS rule per entry.
  *
  * Guarded tags get `:has(<video link>)` so a channel or playlist lockup is
  * never occluded by a rule no content script will ever lift.
+ *
+ * Each entry is a standalone selector, not one shared comma list (#1390 /
+ * QC0): CSS selector-list invalidation is all-or-nothing, so an engine that
+ * cannot parse one selector — e.g. `:has()` on Firefox 112–120, which the
+ * manifest declares supported but which predate Firefox 121's unflagged
+ * `:has()` — would otherwise drop the whole rule, including the plain tags
+ * that never needed `:has()` at all. content.css gives each entry here its
+ * own `{ }` block for exactly that reason; see the rationale there.
  */
-export const PREMASK_SELECTOR = CARD_SELECTORS.map(
+export const PREMASK_SELECTORS: ReadonlyArray<string> = CARD_SELECTORS.map(
   ({ tag, requiresVideoLink }) =>
     requiresVideoLink
       ? `${tag}:has(${VIDEO_LINK_SELECTOR}):not([data-boyo])`
       : `${tag}:not([data-boyo])`
-).join(",\n")
+)
+
+/**
+ * Every element the static occluder is hiding *right now*: matching a
+ * {@link PREMASK_SELECTORS} entry and carrying no `data-boyo`.
+ *
+ * The premask selectors already spell `:not([data-boyo])`, so this is a direct
+ * reading of the stylesheet's own condition rather than a re-derivation of it —
+ * which is the point. Every other health signal in this workspace reads
+ * `VideoManager`'s bookkeeping, and bookkeeping cannot represent an element
+ * that fell out of every collection it keeps (#1421, #1425).
+ *
+ * Queried one selector at a time rather than as one joined list, for exactly
+ * the reason `content.css` gives each rule its own block (#1390): selector-list
+ * parsing is all-or-nothing, so on an engine that cannot parse `:has()` a
+ * joined query would throw and report *nothing occluded* — a clean bill of
+ * health on precisely the engines where the occluder is most likely to be
+ * misbehaving. Failing per-selector loses only the tags that need `:has()`.
+ *
+ * `root` is required rather than defaulting to `document`: this module is the
+ * logic layer, and naming a browser global here is what
+ * `extension-charter/no-logic-layer-side-effects` forbids. The caller supplies
+ * the tree, which also lets a test scope the query to a fixture.
+ */
+export function occludedElements(root: ParentNode): Array<HTMLElement> {
+  const out: Array<HTMLElement> = []
+  for (const selector of PREMASK_SELECTORS) {
+    try {
+      for (const el of root.querySelectorAll<HTMLElement>(selector)) {
+        out.push(el)
+      }
+    } catch {
+      // Unparseable on this engine; the other selectors still answer.
+    }
+  }
+  return out
+}
 
 /**
  * Is this element a card BOYO should own?

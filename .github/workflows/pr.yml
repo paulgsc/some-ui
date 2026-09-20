@@ -340,6 +340,32 @@ jobs:
             echo "No session-viewport-relevant www files changed."
           fi
 
+      # A Codex review on #1294 found this suite ran nowhere in CI - every
+      # e2e step in this job scopes `test:e2e` to explicit spec paths (see
+      # the convention note at the top of this file), and this spec was
+      # never named, so the pager/bounded-composer regressions it covers
+      # could return with every required check still green. Unlike every
+      # other step here, this spec drives the actual running app rather
+      # than a Storybook build or a static fixture - `tests/composer/
+      # harness.ts` spawns `vite` itself and waits for it, so no separate
+      # server-start step is needed. Scoped to the composer, dashboard shell,
+      # and fitted-page surfaces the spec actually exercises.
+      - name: E2E — composer regression (www)
+        run: |
+          files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \
+            'apps/www/src/components/composer/**' \
+            'apps/www/src/routes/_dashboard.tsx' \
+            'apps/www/src/routes/_dashboard/sessions/new.tsx' \
+            'packages/utils/src/lib/hooks/use-fitted-page/**' \
+            'apps/www/tests/composer/**' \
+            'apps/www/playwright.config.ts' || true)
+          if [ -n "$files" ]; then
+            nix develop .#ci-playwright --command pnpm --filter www test:e2e \
+              tests/composer/pager.spec.ts
+          else
+            echo "No composer-relevant www files changed."
+          fi
+
   # ── Dependency license audit ────────────────────────────────────────────
   deny:
     name: Deny Checks

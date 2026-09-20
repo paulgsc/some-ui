@@ -30,8 +30,19 @@ import { extractChannelId } from "./channel-id"
 import type { Extracted } from "./extracted"
 import { extractVideoId } from "./video-id"
 
+/**
+ * Exported despite E3, which bars the individual extractors.
+ *
+ * E3 exists so a caller cannot compose partial extraction and bypass E2's
+ * three-way classification. `representsVideo` cannot: it is a predicate over
+ * an id the caller already holds, and it yields no material a `VideoRecord`
+ * could be built from. It answers "is this still the same card", which
+ * `tryExtract` structurally cannot — see its own doc comment.
+ */
+export { representsVideo } from "./video-id"
+
 export { extractTitle } from "./title"
-export { extractMeta } from "./meta"
+export { extractMeta, extractUploadDate } from "./meta"
 export type { FullyExtracted, VideoOnlyExtracted } from "./extracted"
 export { isFullyExtracted, isVideoOnly } from "./extracted"
 

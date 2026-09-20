@@ -23,12 +23,18 @@
 // suspender-ledger's own header describes for its page.
 
 import {
+  contrastInvariants,
+  type ContrastContext,
+} from "@filter/lib/content/contrast-observability"
+import {
   coverageInvariants,
   readIndex,
   sessionStorageKey,
   type CoverageContext,
   type IndexEntry,
+  type ScopeCoverageEntry,
 } from "@filter/lib/content/coverage-observability"
+import type { ScopeCoverageSnapshot } from "@filter/lib/content/coverage-watchdog"
 import { ext } from "@filter/platform/content"
 import {
   runInvariants,
@@ -70,8 +76,20 @@ function isCoverageContext(value: unknown): value is CoverageContext {
     typeof Reflect.get(value, "veilPresent") === "boolean" &&
     typeof Reflect.get(value, "dirtyClassPresent") === "boolean" &&
     typeof Reflect.get(value, "darkThemeActive") === "boolean" &&
+    typeof Reflect.get(value, "darkStyleActive") === "boolean" &&
     typeof Reflect.get(value, "legacyAttrPresent") === "boolean" &&
     typeof Reflect.get(value, "legacyStyleActive") === "boolean"
+  )
+}
+
+function isContrastContext(value: unknown): value is ContrastContext {
+  if (value === null || typeof value !== "object") return false
+  return (
+    typeof Reflect.get(value, "now") === "number" &&
+    typeof Reflect.get(value, "auditedCount") === "number" &&
+    typeof Reflect.get(value, "passingCount") === "number" &&
+    typeof Reflect.get(value, "violatedCount") === "number" &&
+    typeof Reflect.get(value, "underdeterminedCount") === "number"
   )
 }
 
@@ -105,6 +123,53 @@ async function computeHealth(b: Bundle): Promise<HealthReport> {
   const recentErrors = b.events.filter((e) => e.severity === "error").length
   const { score, status } = scoreHealth(results, recentErrors)
   return { score, status, invariants: results, recentErrors, generatedAt: now }
+}
+
+/**
+ * SF-RC5 (#1344): the contrast/legibility axis, computed the same
+ * pure-projection way `computeHealth` above computes coverageHealth — from
+ * the last persisted `"contrast"` snapshot, never a separately-persisted
+ * verdict — and reported as its own `HealthReport`, never merged into
+ * coverageHealth's. See `contrast-observability.ts`'s own header for why a
+ * session must be able to show `coverage=ok` and `contrast=violated` at
+ * once.
+ */
+async function computeContrastHealth(b: Bundle): Promise<HealthReport> {
+  const rawCtx = b.snapshots["contrast"]
+  const now = Date.now()
+  const results = isContrastContext(rawCtx)
+    ? await runInvariants(contrastInvariants, rawCtx, now)
+    : await runInvariants(contrastInvariants, undefined, now)
+
+  // SF-RC5 (#1344), bot-found (Codex review round 3 on #1443): scoreHealth
+  // excludes "unknown" results from its own score rather than penalizing
+  // it, so a session that has genuinely audited nothing — no "contrast"
+  // snapshot at all, or a persisted one with auditedCount: 0 (a session
+  // that left auto with nothing to report, or an all-underdetermined
+  // round) — would otherwise score 100/healthy, reading as "audited and
+  // clean" rather than "never usefully evaluated." Unlike coverageHealth's
+  // own no-snapshot case (a brief startup race — every non-off applyState
+  // call writes a "coverage" snapshot almost immediately), this is the
+  // *steady state* for any session that has never entered auto mode at
+  // all, not a race to tolerate.
+  if (results.every((r) => r.status === "unknown")) {
+    return {
+      score: 0,
+      status: "degraded",
+      invariants: results,
+      recentErrors: 0,
+      generatedAt: now,
+    }
+  }
+
+  const { score, status } = scoreHealth(results, 0)
+  return {
+    score,
+    status,
+    invariants: results,
+    recentErrors: 0,
+    generatedAt: now,
+  }
 }
 
 // ── Formatting ───────────────────────────────────────────────────────────────
@@ -190,7 +255,7 @@ function severityClass(status: InvariantResult["status"]): string {
   return status === "ok" ? "ok" : status === "violated" ? "bad" : "muted"
 }
 
-function healthSection(health: HealthReport): HTMLElement {
+function healthSection(title: string, health: HealthReport): HTMLElement {
   const cls =
     health.status === "healthy"
       ? "ok"
@@ -228,7 +293,7 @@ function healthSection(health: HealthReport): HTMLElement {
 
   const section = el("section")
   section.append(
-    el("h2", { text: "Health" }),
+    el("h2", { text: title }),
     score,
     el("div", {
       class: "sf-sub",
@@ -250,6 +315,7 @@ const COUNTER_ORDER = [
   "coverage_checks",
   "coverage_violations",
   "legacy_signal_mismatches",
+  "dark_signal_mismatches",
   "veil_color_mismatches",
 ]
 
@@ -333,6 +399,106 @@ function stateSection(b: Bundle): HTMLElement {
   return section
 }
 
+// SF-OB (#1270): a dedicated per-scope breakdown, alongside the existing
+// per-check list above — the generic stateSection below would otherwise
+// flatten this into one unreadable compact() line, the same way it already
+// does for "coverage".
+
+function isScopeCoverageEntry(value: unknown): value is ScopeCoverageEntry {
+  if (value === null || typeof value !== "object") return false
+  return (
+    typeof Reflect.get(value, "id") === "string" &&
+    typeof Reflect.get(value, "kind") === "string"
+  )
+}
+
+function isScopeCoverageSnapshot(
+  value: unknown
+): value is ScopeCoverageSnapshot {
+  if (value === null || typeof value !== "object") return false
+  const scopes = Reflect.get(value, "scopes")
+  return (
+    typeof Reflect.get(value, "now") === "number" &&
+    typeof Reflect.get(value, "totalScopes") === "number" &&
+    Reflect.get(value, "byState") !== null &&
+    typeof Reflect.get(value, "byState") === "object" &&
+    Array.isArray(scopes) &&
+    scopes.every(isScopeCoverageEntry)
+  )
+}
+
+function scopesSection(b: Bundle): HTMLElement | undefined {
+  const raw = b.snapshots["scopes"]
+  if (!isScopeCoverageSnapshot(raw)) return undefined
+
+  const byState = el("div", { class: "sf-grid" })
+  for (const [kind, count] of Object.entries(raw.byState)) {
+    const row = el("div", { class: "sf-metric" })
+    row.append(
+      el("span", { class: "k", text: kind }),
+      el("span", {
+        class: kind === "DISCOVERED_UNHELD" && count > 0 ? "bad" : "",
+        text: String(count),
+      })
+    )
+    byState.appendChild(row)
+  }
+
+  const table = el("table", { class: "sf-scopes" })
+  const head = el("tr")
+  for (const label of ["id", "state", "parent", "artifact"]) {
+    head.appendChild(el("th", { text: label }))
+  }
+  table.appendChild(el("thead", {}, [head]))
+
+  const body = el("tbody")
+  for (const scope of raw.scopes) {
+    const row = el("tr")
+    const artifactText =
+      scope.artifactPresent === null ? "—" : scope.artifactPresent ? "✓" : "✕"
+    row.append(
+      el("td", { text: scope.id }),
+      el("td", { text: scope.kind }),
+      el("td", { class: "muted", text: scope.parent ?? "(root)" }),
+      el("td", {
+        class: scope.artifactPresent === false ? "bad" : "muted",
+        text: artifactText,
+      })
+    )
+    body.appendChild(row)
+  }
+  table.appendChild(body)
+
+  const section = el("section")
+  section.append(
+    el("h2", { text: "Live scopes" }),
+    el("div", {
+      class: "sf-sub",
+      text: `${raw.totalScopes} registered scope(s), as of ${clockTime(raw.now)} (SF-RG's registry, quantified per SF-OB).`,
+    }),
+    byState
+  )
+  if (raw.scopes.length === 0) {
+    section.appendChild(
+      el("div", {
+        class: "sf-empty",
+        text: "No scopes registered — the document itself registers only once auto mode starts.",
+      })
+    )
+  } else {
+    section.appendChild(el("div", { class: "sf-scroll" }, [table]))
+  }
+  if (raw.truncated === true) {
+    section.appendChild(
+      el("div", {
+        class: "sf-sub",
+        text: `Showing ${raw.scopes.length} of ${raw.totalScopes} scopes — byState above still counts every one; itemizing more here would exceed this snapshot's own size budget.`,
+      })
+    )
+  }
+  return section
+}
+
 function matches(event: ObservabilityEvent, f: Filter): boolean {
   if (f.kind && !event.kind.startsWith(f.kind)) return false
   if (f.subject && String(event.subject ?? "") !== f.subject) return false
@@ -407,8 +573,14 @@ function timelineSection(b: Bundle, rerender: () => void): HTMLElement {
 
 // ── Actions ──────────────────────────────────────────────────────────────────
 
-function downloadBundle(b: Bundle, health: HealthReport): void {
-  const exportable = { ...b, health }
+function downloadBundle(
+  b: Bundle,
+  health: HealthReport,
+  contrastHealth: HealthReport
+): void {
+  // SF-RC5 (#1344): exported under its own key, alongside `health` — never
+  // merged into it, same discipline as the two live sections below.
+  const exportable = { ...b, health, contrastHealth }
   const blob = new Blob([JSON.stringify(exportable, null, 2)], {
     type: "application/json",
   })
@@ -426,7 +598,8 @@ function downloadBundle(b: Bundle, health: HealthReport): void {
 
 function header(
   b: Bundle | undefined,
-  health: HealthReport | undefined
+  health: HealthReport | undefined,
+  contrastHealth: HealthReport | undefined
 ): HTMLElement {
   const title = el("div")
   title.append(
@@ -445,9 +618,11 @@ function header(
   refresh.addEventListener("click", () => void load())
   const actions = el("div", { class: "sf-actions" }, [refresh])
 
-  if (b && health) {
+  if (b && health && contrastHealth) {
     const exportBtn = el("button", { text: "Export JSON" })
-    exportBtn.addEventListener("click", () => downloadBundle(b, health))
+    exportBtn.addEventListener("click", () =>
+      downloadBundle(b, health, contrastHealth)
+    )
     actions.appendChild(exportBtn)
   }
 
@@ -460,7 +635,10 @@ async function render(): Promise<void> {
   root.replaceChildren()
 
   const health = bundle ? await computeHealth(bundle) : undefined
-  root.appendChild(header(bundle, health))
+  const contrastHealth = bundle
+    ? await computeContrastHealth(bundle)
+    : undefined
+  root.appendChild(header(bundle, health, contrastHealth))
   root.appendChild(pickerSection())
 
   if (loadError !== undefined) {
@@ -473,7 +651,7 @@ async function render(): Promise<void> {
     return
   }
 
-  if (!bundle || !health) {
+  if (!bundle || !health || !contrastHealth) {
     root.appendChild(
       el("div", {
         class: "sf-empty",
@@ -487,8 +665,13 @@ async function render(): Promise<void> {
   }
 
   root.append(
-    healthSection(health),
-    metricsSection(bundle),
+    healthSection("Coverage health", health),
+    healthSection("Contrast health", contrastHealth),
+    metricsSection(bundle)
+  )
+  const scopes = scopesSection(bundle)
+  if (scopes !== undefined) root.appendChild(scopes)
+  root.append(
     stateSection(bundle),
     timelineSection(bundle, () => void render())
   )

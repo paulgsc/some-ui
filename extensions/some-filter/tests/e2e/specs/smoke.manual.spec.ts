@@ -31,6 +31,13 @@
  *     pnpm build:chromium
  *     pnpm exec playwright test smoke.manual
  *
+ * SF4 (#1360) classification: visual-claim, promoted. Same gap and same fix
+ * as smoke.spec.ts's own SF4 note — this file's whole purpose is whether
+ * real CSS injection lands, but its assertions only read the extension's own
+ * `document.*.dataset` bookkeeping. Added the same independent
+ * computed-background-luminance read, kept a twin of smoke.spec.ts's own
+ * `THEMED_LUMINANCE_CEILING` bar.
+ *
  * When to run this:
  *   Before cutting a release build, and after any change to:
  *     - public/manifest.json (content_scripts entries, run_at, matches)
@@ -55,7 +62,11 @@
  *   file keeps only the one outcome-level claim worth re-checking by hand.
  */
 
+import { parseColor, relativeLuminance } from "@filter/lib/content/color"
 import { expect, test, waitForClassification } from "@filter/playwright/fixture"
+
+/** Matches smoke.spec.ts's own bar: below theme-adapter.ts's LIGHT_THRESHOLD (0.3). */
+const THEMED_LUMINANCE_CEILING = 0.3
 
 test.describe("pre-release smoke check (manual only — see file header)", () => {
   test("cold load on a light page: dark theme applies, veil drops", async ({
@@ -67,6 +78,21 @@ test.describe("pre-release smoke check (manual only — see file header)", () =>
     expect(snap.themeApplied).toBe("dark")
     expect(snap.hasDarkAttr).toBe(true)
     expect(snap.hasPrepaintVeil).toBe(false)
+
+    const bodyBg = await page.evaluate(
+      () => getComputedStyle(document.body).backgroundColor
+    )
+    const rgba = parseColor(bodyBg)
+    expect(
+      rgba,
+      `unparseable computed background-color: ${bodyBg}`
+    ).not.toBeNull()
+    if (rgba === null) throw new Error("unreachable")
+    expect(
+      relativeLuminance(rgba[0], rgba[1], rgba[2]),
+      `body background ${bodyBg} — the dark theme CSS must actually be ` +
+        `painting, not just marking itself applied`
+    ).toBeLessThan(THEMED_LUMINANCE_CEILING)
   })
 
   test("cold load on a dark page: theme does not apply, veil still drops", async ({

@@ -108,6 +108,19 @@ COPY Cargo.toml Cargo.lock ./
 COPY crates/ ./crates/
 
 #
+# turbo prune (above) only copies the packages reachable from www's
+# dependency graph, so this image never has the full ~57-package workspace
+# on disk - only the ~41 www actually needs. @some-ui/resume is one of
+# those, and its build recounts workspace packages by walking the
+# filesystem (scripts/check-claims.mjs) to catch its own resume.typ prose
+# drifting from the real count. That recount is meaningless against a
+# pruned checkout, so tell it not to run here rather than have it fail on
+# a package total that was never wrong - full checkouts (local dev, the
+# unfiltered CI build) still get the real check.
+#
+ENV SOME_UI_PRUNED_WORKSPACE=1
+
+#
 # Build only the www application (and everything it depends on).
 #
 # --concurrency=1: the wasm crates' `wasm-pack build` steps race each

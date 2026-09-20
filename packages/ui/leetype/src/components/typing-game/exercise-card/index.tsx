@@ -1,5 +1,5 @@
 import type { FC, RefObject } from "react"
-import { useId } from "react"
+import { useId, useMemo } from "react"
 import { PromptPanel } from "@leetype/components/typing-game/prompt-panel"
 import { StepRail } from "@leetype/components/typing-game/step-rail"
 import { TypingViewport } from "@leetype/components/typing-game/typing-viewport"
@@ -122,6 +122,29 @@ export const ExerciseCard: FC<ExerciseCardProps> = ({
   const canType = gameState === "playing"
   const hint = rejection ? REJECTION_HINT[rejection] : undefined
   const diff = typingBlockOf(step)?.diff
+  // Memoized on `step`, not recomputed every render: `promptBlocksOf` filters
+  // a fresh array on every call regardless of whether `step` changed, and the
+  // session clock re-renders this card every 250ms independent of the step.
+  // PromptPanel memoizes its own derived rows on this `blocks` reference
+  // specifically so useFittedPage can tell "the prompt changed" from "a tick
+  // happened" - an unmemoized call here would hand it a new reference every
+  // tick regardless, defeating that distinction before it ever sees it.
+  //
+  // This repo does not run the React Compiler at build time (no
+  // babel-plugin-react-compiler anywhere in the toolchain); eslint-plugin-
+  // react-hooks bundles the compiler purely as a static lint healthcheck,
+  // and it bails on compiling *this component* for a reason unrelated to
+  // this memo: with `blocks` typed as `ReadonlyArray<ReadBlock>` on
+  // PromptPanel's prop (a large discriminated union), the compiler cannot
+  // get through the `hunk` conditional-object below (`diff && { ...,
+  // lineKinds: ... }`) a few lines down. Verified by bisection - swapping
+  // `ReadBlock` for a plain object type, or dropping the `hunk` expression,
+  // each independently clears the diagnostic with this `useMemo` unchanged.
+  // Since the compiler isn't actually transforming this component, the bail
+  // has no runtime effect; the memoization here is real and hand-written
+  // either way.
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
+  const blocks = useMemo(() => promptBlocksOf(step), [step])
   const hunk = diff && {
     path: diff.path,
     oldStart: diff.oldStart,
@@ -161,7 +184,7 @@ export const ExerciseCard: FC<ExerciseCardProps> = ({
 
       <PromptPanel
         goal={step.goal}
-        blocks={promptBlocksOf(step)}
+        blocks={blocks}
         position={index + 1}
         total={total}
       />

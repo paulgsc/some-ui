@@ -1,8 +1,31 @@
 import {
+  createDocumentScopeCustodian,
+  type DocumentExonerationProof,
+  type DocumentRevision,
+  type DocumentScopeCustodian,
+} from "@filter/adapter/document-scope"
+import {
+  clearRealizedColorState,
   createContentSession,
   type ContentSession,
 } from "@filter/adapter/pipeline"
+import {
+  createScopeRegistry,
+  type ScopeId,
+} from "@filter/adapter/scope-registry"
+import {
+  createShadowScopeDiscovery,
+  type ShadowScopeDiscovery,
+} from "@filter/adapter/shadow-scope-discovery"
+import {
+  createShadowScopeTheming,
+  type ShadowScopeTheming,
+} from "@filter/adapter/shadow-scope-theming"
 import { DEFAULT_SWATCH_ID, SWATCHES } from "@filter/adapter/swatches"
+import {
+  mergeContrastAudits,
+  type ContrastSourceReport,
+} from "@filter/lib/content/contrast-observability"
 import {
   createCoverageRecorder,
   removeFromIndex,
@@ -11,16 +34,16 @@ import {
 } from "@filter/lib/content/coverage-observability"
 import {
   createCoverageWatchdog,
+  createScopeCoverageWatchdog,
   type CoverageWatchdog,
+  type ScopeCoverageWatchdog,
 } from "@filter/lib/content/coverage-watchdog"
 import {
   isExtensionMessage,
   isGetTabFilterStateResponse,
 } from "@filter/lib/content/guard"
 import {
-  commitVisualState,
   disablePrepaint,
-  enablePrepaint,
   withPrepaintSuppressed,
 } from "@filter/lib/content/prepaint"
 import { applyTheme, restoreVendor } from "@filter/lib/content/theme-apply"
@@ -70,6 +93,19 @@ function writeCachedState(state: TabState): void {
 let currentState: TabState = DEFAULT_TAB_STATE
 let filterConfig: FilterConfig = DEFAULT_FILTER
 
+/**
+ * SF-RC5 (#1344): true for the single synchronous window inside applyState
+ * between `currentState = state` (below) and that state's actuation
+ * (`restoreVendor`/`runAutoTheme`/`applyTheme`/`disablePrepaint`)
+ * completing. `coverageWatchdog.observe()` runs *inside* that window — on
+ * the first call after an `off` state, it synchronously checks CoverageHeld
+ * against the *new* currentState but the *old* DOM, since actuation hasn't
+ * run yet. See `CoverageContext.transitioning`'s own doc comment for why
+ * that gap needs a diagnostic flag rather than a timing fix (issue #1344's
+ * own live-proof comment: the window produces no paintable frame).
+ */
+let transitioning = false
+
 // True between yt-navigate-start and yt-navigate-finish. Guards runAutoTheme's
 // onFire below: the route swap's own DOM churn can go quiet for pipeline.ts's
 // 50ms debounce before finish ever fires, letting the pipeline's own
@@ -77,6 +113,13 @@ let filterConfig: FilterConfig = DEFAULT_FILTER
 // the veil yt-navigate-start just re-armed. Deferred, not dropped — finish's
 // rescan() below runs its own synchronous onFire round with this false again.
 let navigatingAway = false
+
+/**
+ * Set when SF-RC4's interaction-settled shadow pass is skipped because a
+ * navigation is in flight, and replayed by `yt-navigate-finish` once the
+ * route settles. See that callback for why nothing else covers it.
+ */
+let deferredShadowContrast = false
 
 // The content session's epoch source (Definition 5.4). Reset on every
 // SPA-navigation re-patch (Theorem D.1(a)) — a full page reset (refresh)
@@ -105,14 +148,179 @@ function safeRandomUUID(): string {
 // dark-theme attribute, or the legacy filter's attribute/<style> pair, and
 // evaluates coverage-observability.ts's invariants against what it actually
 // finds — not against what this module believes it last did.
+//
+// Constructed *before* the document scope below (SF-OB, #1270): the scope
+// registry's own transition observer (`scopeCoverageWatchdog.registryObserver`)
+// has to exist before `createScopeRegistry()` does, since that hook is a
+// construction-time parameter, not something wired in afterward.
 const observabilitySessionId = safeRandomUUID()
 const observabilityRecorder: CoverageRecorder = createCoverageRecorder(
   observabilitySessionId,
   true
 )
+
+// SF-RC5 (#1344): the contrastHealth axis, independent of coverageHealth —
+// see contrast-observability.ts's own header for why. Two sources feed the
+// one persisted "contrast" snapshot: the document (pipeline.ts's own
+// runContrastChannel, wired below) and every live shadow scope
+// (shadow-scope-theming.ts's projectContrast, wired further down) —
+// auditLegibility's TreeWalker does not cross a shadow boundary, so neither
+// source alone sees the whole page (bot-found, Codex review round 1 on
+// #1443). Each source's own uncapped ContrastAudit (never persisted
+// directly) is kept here and merged with mergeContrastAudits() — which
+// dedupes by (foreground, backdrop) pair across sources — on every report
+// from either source, so the snapshot always reflects each source's
+// last-known result without double-counting an identical pair audited in
+// more than one scope (bot-found, Codex review round 2 on #1443). A source
+// reports `null`, not `[]`, when its own audit failed to complete this
+// round — see ContrastSourceReport's own doc comment for the bug conflating
+// the two caused (bot-found, Codex confirming review round 3 on #1443).
+let documentContrast: ContrastSourceReport = []
+const shadowContrastByScope = new Map<ScopeId, ContrastSourceReport>()
+
+function recomputeContrastSnapshot(): void {
+  observabilityRecorder.setSnapshot(
+    "contrast",
+    mergeContrastAudits(
+      [documentContrast, ...shadowContrastByScope.values()],
+      Date.now()
+    )
+  )
+}
+
+// Quantifies coverage over every live scope in the registry below, not just
+// the document (SF-OB, #1270) — see coverage-watchdog.ts's own header for
+// why this is a second, independent watchdog rather than folded into
+// coverageWatchdog. registryObserver/onDiscovered are wired into
+// scopeRegistry/shadowScopeDiscovery at construction time immediately below;
+// observe()/teardown() are called alongside shadowScopeDiscovery's own
+// lifecycle further down, since scope coverage has nothing to observe
+// outside auto mode either (same reasoning as shadowScopeDiscovery's own).
+const scopeCoverageWatchdog: ScopeCoverageWatchdog<
+  DocumentRevision,
+  DocumentExonerationProof
+> = createScopeCoverageWatchdog(observabilityRecorder)
+
+// The scope registry (SF-RG, #1265) shared by the document scope and every
+// discovered shadow scope — constructed explicitly (rather than relying on
+// createDocumentScopeCustodian()'s own default) so scopeCoverageWatchdog's
+// observer can be wired in from the start, not attached after scopes may
+// already have registered. Wraps that observer rather than passing it
+// directly: SF-RC5 (#1344), bot-found (Codex review round 2 on #1443) — a
+// shadow scope's own last-reported contrast audit must not survive its
+// retirement or its resolving EXONERATED_NATIVE (shadow-scope-theming.ts's
+// own projectContrast never runs on that path, so nothing else would ever
+// evict it), or a component-heavy page both leaks memory here and can keep
+// ContrastHeld violated over a scope that is no longer themed or even live.
+const scopeRegistry = createScopeRegistry<
+  DocumentRevision,
+  DocumentExonerationProof
+>({
+  onTransition(id, event, to) {
+    scopeCoverageWatchdog.registryObserver.onTransition?.(id, event, to)
+    // SF-RC5 (#1344), bot-found (Codex review round 4 on #1443): "retire"
+    // and "resolve-exonerated" alone left a scope's stale audit behind
+    // across the *other* ways a COMMITTED scope stops meaning what its last
+    // audit said — "invalidate"/"re-register" tear the realization down to
+    // re-resolve (projectContrast() only re-populates the entry if that
+    // re-resolve actually reaches a fresh commit), and "resolve-failed"
+    // lands FAILED_HELD without ever calling projectContrast at all. Evict
+    // on every event except a fresh commit (which projectContrast's own
+    // call already just populated, moments before this fires) and the two
+    // no-op "still resolving" transitions, which change no realization.
+    switch (event.kind) {
+      case "retire":
+      case "resolve-exonerated":
+      case "resolve-failed":
+      case "invalidate":
+      case "re-register": {
+        if (shadowContrastByScope.delete(id)) recomputeContrastSnapshot()
+        return
+      }
+      case "register":
+      case "resolve-committed":
+      case "start-resolving":
+      case "retry": {
+        return
+      }
+      default: {
+        const exhaustive: never = event
+        throw new Error(
+          `[content] unhandled scope event: ${JSON.stringify(exhaustive)}`
+        )
+      }
+    }
+  },
+  onStaleResolveDiscarded(id) {
+    scopeCoverageWatchdog.registryObserver.onStaleResolveDiscarded?.(id)
+  },
+})
+
+// The document — rendering scope r_0 (Definition D.4) — as SF-RG's registry
+// (#1265) sees it. Registered once, unconditionally, in init() below,
+// before any tab-state decision runs: prepaint-start.js's veil already
+// exists by the time this content script runs, so the registration is
+// catching up to reality (Corollary D.1.1's day-zero case), not creating
+// it. runAutoTheme()'s onFire routes decide/realize outcomes through it;
+// yt-navigate-start and the coverage watchdog's repair call reengage() when
+// they touch the physical veil directly — see document-scope.ts's own
+// header for why legacy/off's own veil calls stay untouched regardless.
+const documentScope: DocumentScopeCustodian =
+  createDocumentScopeCustodian(scopeRegistry)
+
+// Projects the real dark adapter into each discovered shadow scope (SF-AD,
+// #1268) — the scan()/decide()/tag-surface + adopted-stylesheet realization
+// cycle scoped to one ShadowRoot at a time, driven by shadowScopeDiscovery's
+// own onScopeReady hook below. Constructed once, module-scope, for the same
+// reason documentScope/shadowScopeDiscovery are: SWATCHES[DEFAULT_SWATCH_ID]
+// is the one swatch this pipeline can select today (see pipeline.ts's own
+// runAutoTheme() usage; no swatch-picker UI exists yet), so there is nothing
+// per-runAutoTheme-call this instance would ever need to be recreated for.
+const shadowScopeTheming: ShadowScopeTheming = createShadowScopeTheming(
+  documentScope.registry,
+  () => SWATCHES[DEFAULT_SWATCH_ID],
+  () => sessionLifecycle.epoch,
+  // SF-RC5 (#1344): the shadow half of the merged "contrast" snapshot — see
+  // the documentContrast/shadowContrastByScope block above.
+  (id, audit) => {
+    shadowContrastByScope.set(id, audit)
+    recomputeContrastSnapshot()
+  }
+)
+
+// Shadow-aware discovery + local custody (SF-DC, #1267): registers every
+// open shadow root reachable from the document into the same registry
+// `documentScope` uses, holding each under its own occlusion primitive
+// (custody-primitive.ts's createOcclusionHold — a shadow scope has no
+// pre-existing veil like the document's to reuse). Auto-mode-only, same
+// scoping as documentScope itself: legacy's document-level filter already
+// composites correctly across a shadow boundary (Gate 0's G0.7), and off
+// mode has no custody to speak of. Started/torn down alongside
+// contentSession in runAutoTheme()/applyState() below, not created fresh
+// each time — the registry it shares with documentScope is long-lived for
+// the life of this content script. onScopeReady wires SF-AD's own
+// per-scope projection into SF-DC's discovery/custody: a scope reaches
+// COMMITTED/EXONERATED_NATIVE only because this callback drives it there.
+// onDiscovered wires SF-OB's own census-vs-reactive discovery accounting.
+const shadowScopeDiscovery: ShadowScopeDiscovery = createShadowScopeDiscovery(
+  documentScope.registry,
+  () => sessionLifecycle.epoch,
+  (id) => shadowScopeTheming.project(id),
+  (id, method) => scopeCoverageWatchdog.onDiscovered(id, method)
+)
+
 const coverageWatchdog: CoverageWatchdog = createCoverageWatchdog(
   observabilityRecorder,
-  () => currentState
+  () => currentState,
+  () => transitioning,
+  // The watchdog's own dark-desync repair calls enablePrepaint() directly,
+  // bypassing the registry the same way yt-navigate-start's own call does
+  // (see that handler's comment). reengage() (not a cache-only reset — see
+  // document-scope.ts's own header for the race a weaker version of this
+  // left open) both re-asserts the veil and invalidates any resolveCommitted()
+  // still in flight, so its eventual completion can't tear this repair's
+  // veil back down.
+  () => documentScope.reengage(sessionLifecycle.epoch)
 )
 
 function touchObservabilityIndex(): void {
@@ -135,45 +343,151 @@ function applyState(state: TabState): void {
   })
   touchObservabilityIndex()
 
-  // The watchdog only needs to run while there is something to hold
-  // coverage of — "off" is the one state Remark C.1's invariant does not
-  // apply to (coverage-observability.ts's CoverageHeld already encodes
-  // this), so tearing it down there is just avoiding dead observer
-  // overhead, not a correctness requirement.
-  if (state === "off") {
-    coverageWatchdog.teardown()
-  } else {
-    coverageWatchdog.observe()
+  // SF-RC5 (#1344), bot-found (Codex review rounds 1 and 4 on #1443): must
+  // be set *before* coverageWatchdog.observe() below (round 1) — observe()'s
+  // own first call after "off" synchronously runs its "observe-start" check
+  // right there, against a DOM actuation hasn't touched yet, and setting
+  // the flag any later left that exact check reading `transitioning: false`.
+  // The guard below must also cover every teardown call between here and
+  // actuation, not just actuation itself (round 4): shadowScopeDiscovery.
+  // teardown() can throw while retiring a committed scope (an unguarded
+  // CSSOM uninstall), and a throw anywhere between this assignment and a
+  // narrower try/finally would leave `transitioning` stuck true forever —
+  // not just for this one transient window, but permanently, since nothing
+  // else ever resets it. The post-actuation check further down must also
+  // still run on any exceptional path in this block — bot-found (Codex
+  // review round 3 on #1443): resetting the flag alone left a genuine
+  // uncovered state recorded only as "unknown" until some unrelated later
+  // mutation happened to trigger a reactive check, which might never come.
+  // Caught and re-thrown after that check runs, rather than swallowed, to
+  // preserve the original behavior of a throw here surfacing to whatever
+  // caller (a message handler) invoked applyState.
+  transitioning = true
+  // SF-RC5 (#1344), bot-found (Codex review round 2, then confirming review
+  // round 6, on #1443): run here, before the try block, rather than after
+  // the teardown calls below as an earlier version did — currentState has
+  // already changed to the new state above regardless of whether any of
+  // those calls (shadowScopeDiscovery.teardown() in particular, which can
+  // throw while retiring a committed scope through an unguarded CSSOM
+  // uninstall) succeed, so the previous state's contrast data is stale the
+  // moment this function is entered, not only once teardown finishes. Must
+  // run before runAutoTheme() below, not after (e.g. in the same `finally`
+  // that resets `transitioning`): rescan() inside runAutoTheme() settles
+  // decide/realize — and this round's own onContrastAudited call —
+  // synchronously within this same call, and resetting after that would
+  // wipe out the fresh value it just reported. Both contrast sources go
+  // stale the moment their own producer stops running — every shadow
+  // scope's own contribution stops the moment shadow-scope custody itself
+  // does (shadow scopes exist only in auto mode, this module's own header);
+  // the document half stops the moment contentSession.teardown() below
+  // disconnects it — bot-found (Codex review round 2): an earlier version
+  // cleared only the shadow half, so a document-level violation from the
+  // auto round just left could linger in legacy/off, where nothing is being
+  // audited at all, and if no shadow scope had ever reported either, this
+  // block did not even persist a fresh snapshot to say so.
+  if (
+    documentContrast === null ||
+    documentContrast.length > 0 ||
+    shadowContrastByScope.size > 0
+  ) {
+    documentContrast = []
+    shadowContrastByScope.clear()
+    recomputeContrastSnapshot()
   }
+  let actuationError: unknown
+  try {
+    // The watchdog only needs to run while there is something to hold
+    // coverage of — "off" is the one state Remark C.1's invariant does not
+    // apply to (coverage-observability.ts's CoverageHeld already encodes
+    // this), so tearing it down there is just avoiding dead observer
+    // overhead, not a correctness requirement.
+    if (state === "off") {
+      coverageWatchdog.teardown()
+    } else {
+      coverageWatchdog.observe()
+    }
 
-  // Auto's pipeline owns its own MutationObserver — leaving auto (or
-  // re-entering it) must stop the previous one before anything else runs,
-  // or a stale session keeps reacting to mutations under the new mode.
-  contentSession?.teardown()
-  contentSession = null
+    // Auto's pipeline owns its own MutationObserver — leaving auto (or
+    // re-entering it) must stop the previous one before anything else runs,
+    // or a stale session keeps reacting to mutations under the new mode.
+    contentSession?.teardown()
+    contentSession = null
+    // Same for shadow-scope discovery: retires every currently-held shadow
+    // scope (releasing its occlusion) and stops both its observers. Correct
+    // to do unconditionally, not just when leaving auto — legacy/off do not
+    // need shadow-scope custody at all (see this module's own header).
+    shadowScopeDiscovery.teardown()
+    // #1280: stops alongside shadowScopeDiscovery, same reasoning.
+    shadowScopeTheming.teardown()
+    // Same lifecycle as shadowScopeDiscovery: nothing to poll outside auto
+    // mode either (SF-OB, #1270). One last check() here, before teardown()
+    // stops the poll and clears its own tracking, publishes the registry's
+    // post-purge state — bot-found (#1327's own review, round 3): without it,
+    // leaving auto with a shadow scope COMMITTED left the persisted "scopes"
+    // snapshot (and debug.html's "Live scopes" table) showing that
+    // already-purged scope indefinitely, since nothing ever checks again
+    // outside auto mode to notice shadowScopeDiscovery.teardown() already
+    // retired and purged it from the registry.
+    //
+    // Gated on `previous === "auto"` — bot-found (#1327's own review, round
+    // 4): shadowScopeDiscovery only ever discovers/observes from inside
+    // runAutoTheme(), so its teardown() here is already a no-op whenever the
+    // previous mode wasn't auto, and r_0's own registry entry (still whatever
+    // auto last left it, HELD or COMMITTED) is stale by then — a prior
+    // legacy/off transition's own restoreVendor() already stripped that
+    // artifact without ever updating the registry to say so. Checking it
+    // anyway recorded a permanent false scope.coverage_violated on every
+    // non-auto-to-non-auto transition, one this same call's following
+    // teardown() then made unrecoverable by wiping the tracking that would
+    // have recorded the eventual recovery.
+    if (previous === "auto") {
+      scopeCoverageWatchdog.check(
+        documentScope.registry,
+        "apply-state:teardown"
+      )
+    }
+    scopeCoverageWatchdog.teardown()
 
-  restoreVendor()
+    restoreVendor()
+    // restoreVendor() only knows about the two pre-adapter layers (the
+    // `data-sw-dark` attribute and the static theme sheet). Everything the
+    // per-surface Actuator and the legibility channels realize is this
+    // call's to drop — see clearRealizedColorState's own doc comment for
+    // why no pipeline round ever gets the chance to (#1341).
+    clearRealizedColorState()
+    // A deferral is only ever replayed by auto mode's own nav-finish
+    // handler, so one still pending when the mode changes has nothing left
+    // to replay it and must not fire into a session that never scheduled it.
+    deferredShadowContrast = false
+
+    if (state === "auto") {
+      // Do not pre-remove the veil here. runAutoTheme uses
+      // withPrepaintSuppressed for snapshot isolation; the pipeline's onFire
+      // hook handles veil teardown once the first decide/realize cycle
+      // actually settles.
+      runAutoTheme()
+    } else if (state === "legacy") {
+      applyTheme("legacy", filterConfig)
+    } else {
+      disablePrepaint()
+    }
+  } catch (error) {
+    actuationError = error
+  } finally {
+    transitioning = false
+  }
 
   if (state === "auto") {
-    // Do not pre-remove the veil here. runAutoTheme uses withPrepaintSuppressed
-    // for snapshot isolation; the pipeline's onFire hook handles veil teardown
-    // once the first decide/realize cycle actually settles.
-    runAutoTheme()
     coverageWatchdog.check("apply-state:auto")
-    return
-  }
-
-  if (state === "legacy") {
-    applyTheme("legacy", filterConfig)
+    scopeCoverageWatchdog.check(documentScope.registry, "apply-state:auto")
+  } else if (state === "legacy") {
     coverageWatchdog.check("apply-state:legacy")
-    return
+  } else {
+    coverageWatchdog.check("apply-state:off")
+    updateDebugAttrs()
   }
 
-  // off
-  disablePrepaint()
-  coverageWatchdog.check("apply-state:off")
-
-  updateDebugAttrs()
+  if (actuationError !== undefined) throw actuationError
 }
 
 function cycleState(): void {
@@ -257,6 +571,47 @@ function filterConfigsEqual(a: FilterConfig, b: FilterConfig): boolean {
 // ── Auto theming (apply-then-detect) ────────────────────────────────────────────
 
 function runAutoTheme(): void {
+  // Off/legacy mode's own direct disablePrepaint()/no-op veil handling can
+  // leave the physical veil down (off) while the registry still believes a
+  // prior HELD/RESOLVING/FAILED_HELD/COMMITTED/EXONERATED_NATIVE state —
+  // a path this registry does not own (document-scope.ts's own header).
+  // Re-engaging unconditionally before the first classification round below
+  // closes that gap; it is a no-op DOM-wise on a cold entry into auto,
+  // where nothing has released the hold yet.
+  documentScope.reengage(sessionLifecycle.epoch)
+
+  // Discover (and hold) every open shadow root already reachable from the
+  // document before the first scan/decide/realize round runs — safe to do
+  // unconditionally here: the document's own veil (documentScope.reengage()
+  // above) is still up for the whole synchronous remainder of this call, so
+  // there is no discovery-latency gap for the very first pass regardless of
+  // ordering (Corollary D.1.1 covers it for free). observe() then starts
+  // the reactive, non-debounced path (this module's own header — Corollary
+  // D.3.1/G0.5 — explains why it cannot be folded into the pipeline's own
+  // debounced coalescer).
+  shadowScopeDiscovery.discover(document)
+  shadowScopeDiscovery.observe()
+  // scopeCoverageWatchdog.observe() is started *before*
+  // shadowScopeTheming.observe() below, deliberately: both poll on the same
+  // cadence (SCOPE_COVERAGE_POLL_MS/SHEET_INTEGRITY_POLL_MS are both 250ms),
+  // and two same-period setInterval polls fire in registration order on
+  // every tick, forever — registering the diagnostic poll first is what lets
+  // it actually observe a real desync (a vendor's own wholesale
+  // adoptedStyleSheets reassignment, #1280) before this module's own
+  // self-heal below can silently erase the evidence of it having happened at
+  // all. Reversing this order would not make the repair any less correct,
+  // but it would make coverage-watchdog.ts's own violation reporting for
+  // this exact desync class unobservable in practice — undermining SF-OB's
+  // whole point (quantified coverage observability) for the one case #1280
+  // itself exists to fix.
+  scopeCoverageWatchdog.observe(documentScope.registry)
+  // #1280's own integrity poll: repairs a committed shadow scope whose
+  // adoptedStyleSheets a vendor's own wholesale reassignment silently
+  // dropped — a plain CSSOM write no MutationObserver here (or anywhere)
+  // can see. Same lifecycle as shadowScopeDiscovery immediately above:
+  // nothing to reconcile outside auto mode either.
+  shadowScopeTheming.observe()
+
   // Apply-then-detect, now folded into decide() (S3): the pipeline scans
   // true vendor colors under the veil, feeds them to the Estimator, and
   // decide() itself withholds every per-surface action (emitting only
@@ -273,27 +628,125 @@ function runAutoTheme(): void {
   // initial verdict; only the MutationObserver's own burst-coalescing
   // (pipeline.ts's observe()) is debounced.
   //
-  // commitVisualState()/disablePrepaint() run on *every* fire, not just the
-  // first: both are idempotent no-ops once the veil is already down, and
-  // re-running them unconditionally is what lets the SPA re-patch path
-  // (yt-navigate-start re-shows the veil, below; yt-navigate-finish's
-  // rescan() drives back into this same callback) reuse this same logic
-  // to lift it again, instead of needing its own copy of it.
+  // documentScope.reportPipelineOutcome() runs on *every* fire, not just the
+  // first: it re-derives whether anything actually changed (its own
+  // signature guard, mirroring the idempotency commitVisualState()/
+  // disablePrepaint() used to provide directly) and drives the registry's
+  // custody transitions accordingly — including re-arming the veil around a
+  // committed->exonerated (or exonerated->committed) re-classification, not
+  // just tearing it down. The SPA re-patch path (yt-navigate-start re-shows
+  // the veil, below; yt-navigate-finish's rescan() drives back into this
+  // same callback) still reuses this same logic to lift it again.
   contentSession = createContentSession(
     SWATCHES[DEFAULT_SWATCH_ID],
     sessionLifecycle,
-    (actions) => {
-      const applied = actions.some((action) => action.kind === "activate-theme")
+    (outcome) => {
+      const applied =
+        outcome.kind === "ok" &&
+        outcome.actions.some((action) => action.kind === "activate-theme")
       document.body.dataset.swThemeApplied = applied ? "dark" : "none"
       updateDebugAttrs()
 
       if (navigatingAway) return
 
-      if (applied) {
-        commitVisualState()
-      } else {
-        disablePrepaint()
+      // SF-RC3 (#1342), bot-found: a carrier inside a shadow scope whose own
+      // ancestors are all transparent resolves its backdrop out past the
+      // outermost host and into the light DOM — onto an element this round
+      // may have just darkened. The two paths are not synchronized, and this
+      // one is the slower: a top-level host's `class`/`style` change projects
+      // its scope synchronously, while this round waits out
+      // RECONCILE_POLICY's debounce first, so the scope can audit against a
+      // backdrop that is still native. Nothing re-audits it afterwards — the
+      // `data-sw-patched` write that darkens the backdrop is outside that
+      // host observer's own `class`/`style` filter, and shadow scopes see no
+      // mutation at all. Safe here specifically because `realize()` has
+      // already run by the time onFire is called, so the scopes read the
+      // backdrop this round actually painted.
+      //
+      // Gated on the actuator having actually *written*, not on the round's
+      // own action list having changed (bot-found twice, Codex rounds 2 and
+      // 3 on #1412 — first for being absent, then for being too coarse).
+      //
+      // The action list is the wrong signal: an element whose background
+      // matches a `SurfaceKey` the page already has emits no new action at
+      // all, yet `tagSurfaceElements` tags it and the existing rule darkens
+      // it — measured, a real backdrop going white -> `rgb(20, 20, 20)`
+      // under a shadow carrier with a byte-identical action list. Running
+      // it on *every* round is the wrong signal in the other direction: the
+      // "bounded by the scan this round already did" argument was wrong,
+      // since `scan()`'s TreeWalker does not enter shadow trees at all, so
+      // this walk is genuinely additional work — and for a scope holding
+      // repairs `projectContrast` also rewrites `adoptedStyleSheets` twice.
+      // A page with frequent unrelated light-DOM churn would pay both on
+      // every debounced round.
+      //
+      // What actually moves a shadow carrier's backdrop is a write, so a
+      // write is what this asks about. `restore-native` reports one too: it
+      // moves every scope's backdrop back to native, which is exactly as
+      // much of a change to re-audit against.
+      if (outcome.kind === "ok" && outcome.realizationChanged) {
+        shadowScopeTheming.recontrastAll()
       }
+
+      documentScope.reportPipelineOutcome(outcome)
+    },
+    // SF-RC4 (#1343), bot-found: the interaction-settled contrast pass
+    // inside pipeline.ts covers the light DOM only — auditLegibility's
+    // TreeWalker does not cross a shadow boundary — so a `:hover`/`:focus`
+    // colour swap on a carrier inside a web component, or a light-DOM
+    // backdrop change such a carrier resolves onto, would leave that
+    // scope's diagnostics and repairs calibrated to pre-interaction
+    // colours. This is the same recontrastAll() the onFire path above
+    // calls, on the one trigger that path never sees: an interaction
+    // produces no round and no write, so `realizationChanged` never gates
+    // it in.
+    () => {
+      // Skipped while a navigation is in flight, and *recorded* so it can be
+      // replayed once that navigation settles (bot-found, Codex review
+      // rounds 2 and 3 on #1415).
+      //
+      // Skipping is right on its own: a carrier whose backdrop resolves out
+      // into the light DOM would otherwise be scored against a document in
+      // the middle of being replaced, producing a repair calibrated to
+      // transient colours.
+      //
+      // Replaying is a guarantee rather than an observed necessity, and the
+      // distinction is worth stating because establishing it took three
+      // review rounds and two instrumented builds.
+      //
+      // `discover()` does *not* re-project a surviving root: `walk()` calls
+      // `registerShadowRoot()` only for roots absent from `idFor`, and
+      // `resetContent()` does not touch that map. So the only other route to
+      // `recontrastAll()` on this path is `onFire`'s, gated on the round
+      // reporting a write — and a navigation that wrote nothing would strand
+      // the scope.
+      //
+      // In practice this codebase's navigations *do* write (nav-start's
+      // `reengage()` tears the realization down, so the finish-time rescan
+      // necessarily re-realizes), and `onFire` fires `recontrastAll()`
+      // synchronously about 2ms after `yt-navigate-finish` — measured. That
+      // makes this replay belt-and-braces on the `yt-navigate-*` path today
+      // rather than the sole trigger, and it is why the regression for it
+      // cannot isolate it (see that spec's own note).
+      //
+      // It stays because it costs one boolean and removes the dependency on
+      // that incidental property. Two earlier readings of this were wrong in
+      // opposite directions and both came from under-measuring: "zero-write
+      // navigation confirmed" sampled only the last of several rounds, and
+      // "discover() re-projects" was never true at all.
+      if (navigatingAway) {
+        deferredShadowContrast = true
+        return
+      }
+      shadowScopeTheming.recontrastAll()
+    },
+    // SF-RC5 (#1344): the document half of the merged "contrast" snapshot —
+    // see the documentContrast/shadowContrastByScope block above. Never
+    // folded into coverageHealth's own "coverage" snapshot, see
+    // contrast-observability.ts's own header for why.
+    (audit) => {
+      documentContrast = audit
+      recomputeContrastSnapshot()
     }
   )
 
@@ -314,6 +767,8 @@ function init(): void {
   // the same role updateDebugAttrs()'s swTabState/swThemeApplied already
   // play, just for the observability session rather than the theme state.
   document.body.dataset.swObservabilitySession = observabilitySessionId
+
+  documentScope.registerDocument(sessionLifecycle.epoch)
 
   observabilityRecorder.count("sessions_started")
   observabilityRecorder.record({ kind: "session.start" })
@@ -401,7 +856,12 @@ function init(): void {
     observabilityRecorder.record({ kind: "nav.start" })
     navigatingAway = true
     if (currentState === "off") return
-    enablePrepaint()
+    // reengage() both re-arms the veil (its own reRegister()'s hold.install()
+    // is the same enablePrepaint() call this used to make directly) and
+    // invalidates any resolveCommitted() still in flight from a round that
+    // hadn't settled yet — a cache-only reset left that race open (see
+    // document-scope.ts's own header).
+    documentScope.reengage(sessionLifecycle.epoch)
     coverageWatchdog.check("nav-start")
   })
 
@@ -412,8 +872,24 @@ function init(): void {
 
     if (currentState === "auto") {
       sessionLifecycle.resetContent()
+      // Defense in depth alongside the reactive top-level observer already
+      // running (shadowScopeDiscovery.observe(), started in runAutoTheme()
+      // and never torn down across an SPA nav): a route swap that replaces
+      // large parts of the document in one synchronous burst is exactly the
+      // kind of change this discover() call catches deterministically,
+      // rather than relying on the observer's own mutation batching alone.
+      shadowScopeDiscovery.discover(document)
       contentSession?.rescan()
+      // After the rescan, so the scopes are re-contrasted against the
+      // settled route rather than the one being torn down — and
+      // synchronously here, which is also what makes the regression for it
+      // able to distinguish this replay from an incidental later trigger.
+      if (deferredShadowContrast) {
+        deferredShadowContrast = false
+        shadowScopeTheming.recontrastAll()
+      }
       coverageWatchdog.check("nav-finish:auto")
+      scopeCoverageWatchdog.check(documentScope.registry, "nav-finish:auto")
       return
     }
 
@@ -434,6 +910,16 @@ function init(): void {
   // signal available from a content script.
   window.addEventListener("pagehide", () => {
     coverageWatchdog.teardown()
+    // Bot-found (#1327's own review, round 3): a pagehide that places the
+    // document in the back-forward cache does not destroy this content
+    // script's context — the 250ms scope-coverage poll below survives it
+    // and, with observabilityRecorder already disposed a statement below,
+    // would keep walking and stringifying the entire scope registry every
+    // tick forever with every recording call silently ignored. Stopping it
+    // here mirrors coverageWatchdog.teardown() immediately above; restarting
+    // either watchdog on a bfcache pageshow is out of scope for this story
+    // (both watchdogs, not just this one, would need it).
+    scopeCoverageWatchdog.teardown()
     void observabilityRecorder.dispose()
     void removeFromIndex(observabilitySessionId)
   })

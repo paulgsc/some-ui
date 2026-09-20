@@ -21,10 +21,25 @@ export type RouterContext = {
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   beforeLoad: ({ location }) => {
+    // The router's own basepath rewrite preserves a trailing slash (it
+    // only strips the basepath prefix), and GitHub Pages' /resume/index.html
+    // shell (see vite.config.ts's build.rolldownOptions.input) is the
+    // canonical, publicly-shared résumé URL - with the slash. A bare
+    // string match against "/resume" would pass every in-app navigation
+    // (which the router's default trailingSlash: "never" always produces
+    // without one) but fail a fresh visitor's first hit on that exact
+    // canonical link, redirecting them to /auth instead of the résumé they
+    // followed. Stripping a single trailing slash before comparing (never
+    // for "/" itself, which has nothing left to strip) matches that
+    // default instead of special-casing "/resume/" alone.
+    const normalizedPathname =
+      location.pathname !== "/" && location.pathname.endsWith("/")
+        ? location.pathname.slice(0, -1)
+        : location.pathname
     const isPublicRoute =
-      location.pathname === "/" ||
-      location.pathname === "/auth" ||
-      location.pathname === "/resume"
+      normalizedPathname === "/" ||
+      normalizedPathname === "/auth" ||
+      normalizedPathname === "/resume"
     if (!isPublicRoute && !hasDecorativeSession()) {
       throw redirect({
         to: "/auth",

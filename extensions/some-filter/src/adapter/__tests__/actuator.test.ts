@@ -2,8 +2,9 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { realize } from "@filter/adapter/actuator"
 import type { FilterAction, SurfaceKey } from "@filter/adapter/contracts"
+import { DEFAULT_SWATCH_ID } from "@filter/adapter/swatches"
 import { DARK_THEME_ATTR } from "@filter/lib/content/theme-apply"
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it } from "vitest"
 
 const STYLE_ID = "__sw_dark_theme"
 const DYNAMIC_STYLE_ID = "__sw_dark_dynamic"
@@ -24,8 +25,12 @@ describe("realize — Definition 7.3 structural check", () => {
     const stripComments = (source: string): string =>
       source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "")
 
+    // classList's write methods (add/remove/toggle/replace) count as a DOM
+    // write like the rest of this pattern; .contains()/.length and friends
+    // are a read no different from the getComputedStyle() calls pipeline.ts
+    // is built around, so only the write methods are matched here.
     const domWritePattern =
-      /\.setAttribute\(|\.removeAttribute\(|\.dataset\.|\.appendChild\(|\.textContent\s*=|\.classList\./
+      /\.setAttribute\(|\.removeAttribute\(|\.dataset\.|\.appendChild\(|\.textContent\s*=|\.classList\.(add|remove|toggle|replace)\(/
 
     const pipeline = stripComments(
       readFileSync(join(dir, "pipeline.ts"), "utf-8")
@@ -245,5 +250,140 @@ describe("realize — restore-native", () => {
     expect(document.body.innerHTML).toBe(before)
 
     cleanUp()
+  })
+})
+
+// ── SF-RC3 (#1342, bot-found) — realize() reports whether it actually wrote ──
+
+describe("realize — the did-it-write signal content.ts gates its shadow re-contrast on", () => {
+  afterEach(cleanUp)
+
+  const activate: FilterAction = {
+    kind: "activate-theme",
+    swatchId: DEFAULT_SWATCH_ID,
+  }
+
+  function surfaceActions(key: SurfaceKey): ReadonlyArray<FilterAction> {
+    return [
+      activate,
+      { kind: "tag-surface", key, role: "surface" },
+      { kind: "emit-surface-color", key, css: "rgb(23, 23, 23)" },
+    ]
+  }
+
+  it("reports a write for a NEW element under an UNCHANGED action list", () => {
+    // The exact case that makes an action-list comparison the wrong gate
+    // (Codex round 2 on #1412): a later element whose background matches a
+    // SurfaceKey the page already has emits no new action at all, yet gets
+    // tagged and darkened by the rule that already exists. A shadow
+    // carrier resolving its backdrop onto it goes stale with a byte-
+    // identical action list.
+    const key: SurfaceKey = "rgb(255, 255, 255)"
+    document.body.innerHTML = '<div id="a"></div><div id="b"></div>'
+    const a = document.getElementById("a")
+    const b = document.getElementById("b")
+    if (a === null || b === null) throw new Error("fixture missing")
+
+    const actions = surfaceActions(key)
+    expect(realize(actions, new Map([[key, [a]]]))).toBe(true)
+
+    // Same actions, byte for byte — only the element set grew.
+    expect(
+      realize(actions, new Map([[key, [a, b]]])),
+      "tagging a second element is a write, however unchanged the actions are"
+    ).toBe(true)
+    expect(b.dataset.swPatched).toBe(key)
+  })
+
+  it("reports no write when a fully converged round re-runs unchanged", () => {
+    // The other half: without this, the gate would never gate anything and
+    // every document round would re-walk every committed shadow scope.
+    const key: SurfaceKey = "rgb(255, 255, 255)"
+    document.body.innerHTML = '<div id="a"></div>'
+    const a = document.getElementById("a")
+    if (a === null) throw new Error("fixture missing")
+
+    const actions = surfaceActions(key)
+    const elements = new Map([[key, [a]]])
+    realize(actions, elements)
+
+    expect(realize(actions, elements)).toBe(false)
+  })
+
+  it("reports a write when the emitted colour changes", () => {
+    const key: SurfaceKey = "rgb(255, 255, 255)"
+    document.body.innerHTML = '<div id="a"></div>'
+    const a = document.getElementById("a")
+    if (a === null) throw new Error("fixture missing")
+    const elements = new Map([[key, [a]]])
+
+    realize(surfaceActions(key), elements)
+    const recolored: ReadonlyArray<FilterAction> = [
+      activate,
+      { kind: "tag-surface", key, role: "surface" },
+      { kind: "emit-surface-color", key, css: "rgb(30, 30, 30)" },
+    ]
+
+    expect(realize(recolored, elements)).toBe(true)
+  })
+
+  it("reports a write for the restore-native teardown that actually tears something down", () => {
+    const key: SurfaceKey = "rgb(255, 255, 255)"
+    document.body.innerHTML = '<div id="a"></div>'
+    const a = document.getElementById("a")
+    if (a === null) throw new Error("fixture missing")
+    realize(surfaceActions(key), new Map([[key, [a]]]))
+
+    expect(realize([{ kind: "restore-native" }], new Map())).toBe(true)
+    expect(a.hasAttribute("data-sw-patched")).toBe(false)
+  })
+
+  it("reports NO write once restore-native has converged", () => {
+    // decide() emits restore-native on *every* reactive round for a
+    // natively-dark document, not only when the verdict first flips — so an
+    // unconditional `true` here would make every unrelated light-DOM
+    // mutation on such a page re-walk every committed shadow tree, which is
+    // exactly the cost this signal exists to avoid (bot-found, Codex's
+    // closing review of #1412).
+    const key: SurfaceKey = "rgb(255, 255, 255)"
+    document.body.innerHTML = '<div id="a"></div>'
+    const a = document.getElementById("a")
+    if (a === null) throw new Error("fixture missing")
+    realize(surfaceActions(key), new Map([[key, [a]]]))
+    expect(realize([{ kind: "restore-native" }], new Map())).toBe(true)
+
+    expect(
+      realize([{ kind: "restore-native" }], new Map()),
+      "the second and every later round has nothing left to tear down"
+    ).toBe(false)
+  })
+
+  it("reports a write when the static theme sheet is re-created under an unchanged verdict", () => {
+    // The static layer owns `html, body { background: … }`, which a shadow
+    // carrier with transparent ancestors resolves its backdrop onto. A
+    // vendor framework removing that sheet moves the backdrop — and with
+    // `data-sw-dark` already present, nothing else in realize() would
+    // report a write (bot-found, Codex's confirming review of #1412).
+    const key: SurfaceKey = "rgb(255, 255, 255)"
+    document.body.innerHTML = '<div id="a"></div>'
+    const a = document.getElementById("a")
+    if (a === null) throw new Error("fixture missing")
+    const actions = surfaceActions(key)
+    const elements = new Map([[key, [a]]])
+    realize(actions, elements)
+    expect(realize(actions, elements)).toBe(false)
+
+    document.getElementById(STYLE_ID)?.remove()
+
+    expect(
+      realize(actions, elements),
+      "re-creating the canvas sheet is a backdrop change, not a no-op"
+    ).toBe(true)
+    expect(document.getElementById(STYLE_ID)).not.toBeNull()
+  })
+
+  it("reports NO write for restore-native on a page that was never themed", () => {
+    document.body.innerHTML = '<div id="a"></div>'
+    expect(realize([{ kind: "restore-native" }], new Map())).toBe(false)
   })
 })

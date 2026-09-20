@@ -276,6 +276,46 @@ describe("commitVisualState", () => {
       vi.useRealTimers()
     }
   })
+
+  it("a pending commit is invalidated by an intervening enablePrepaint() call (bot-found race, SF-BS #1266)", () => {
+    // theme-apply.ts's applyTheme("legacy", ...) schedules a commit via its
+    // own `finally { commitVisualState() }` — un-cancellable on its own. If
+    // a caller re-arms the veil (yt-navigate-start, document-scope.ts's
+    // reengage(), the coverage watchdog's repair) before that gate fires,
+    // the stale commit must not tear the fresh re-arm back down once its
+    // own rAF pair / fallback timer eventually settles.
+    vi.useFakeTimers()
+    try {
+      enablePrepaint()
+      commitVisualState() // schedules against the veil this enablePrepaint() put up
+
+      // A different caller re-arms the veil before the pending commit's own
+      // gate has fired — same call, but it is no longer this commit's to
+      // tear down.
+      enablePrepaint()
+
+      vi.advanceTimersByTime(200) // both the rAF pair and the 100ms fallback
+
+      expect(document.getElementById(PREPAINT_VEIL_ID)).not.toBeNull()
+      expect(document.documentElement.classList.contains("sw-dirty")).toBe(true)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("with no intervening enablePrepaint(), the same commit still settles normally (control)", () => {
+    vi.useFakeTimers()
+    try {
+      enablePrepaint()
+      commitVisualState()
+
+      vi.advanceTimersByTime(200)
+
+      expect(document.getElementById(PREPAINT_VEIL_ID)).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })
 
 describe("withPrepaintSuppressed", () => {

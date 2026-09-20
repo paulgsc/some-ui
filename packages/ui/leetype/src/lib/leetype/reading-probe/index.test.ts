@@ -98,9 +98,9 @@ describe("claimOf", () => {
     expect(claim.justification).toBeUndefined()
   })
 
-  // The reading surface is the *only* surface on a phone, so a step it could
-  // not pose would be a dead end rather than a degraded card. `goal` is
-  // required by the schema, which is what makes this total.
+  // The reading surface is the session itself on a phone, so a step it could
+  // not pose would be a hard dead end, not a gap the card could quietly
+  // absorb. `goal` is required by the schema, which is what makes this total.
   it("falls back to the goal, so every schema-valid step is posable", () => {
     expect(claimOf(GOAL_ONLY)).toMatchObject({
       family: "goal",

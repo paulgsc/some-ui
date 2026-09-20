@@ -6,6 +6,7 @@ import {
   withVendorColorsVisible,
 } from "@filter/adapter/pipeline"
 import { SWATCHES } from "@filter/adapter/swatches"
+import { PREPAINT_DIRTY_CLASS } from "@filter/lib/content/prepaint"
 import { DARK_THEME_ATTR } from "@filter/lib/content/theme-apply"
 import { createSessionLifecycle } from "@some-extension/transport/session/lifecycle"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -23,6 +24,7 @@ function cleanUp(): void {
   document.body.innerHTML = ""
   document.documentElement.style.backgroundColor = ""
   document.body.style.backgroundColor = ""
+  document.documentElement.classList.remove(PREPAINT_DIRTY_CLASS)
 }
 
 afterEach(() => {
@@ -139,6 +141,95 @@ describe("scan", () => {
   })
 })
 
+describe("scan — shadow DOM boundary, unchanged by SF-DC (#1262 Gate 0, G0.1)", () => {
+  // G0.1 proved scan()'s TreeWalker never crosses a shadow boundary (a
+  // shadow root is spec-defined to be a distinct node tree from its host's),
+  // which is the structural fact SF-DC (#1267) closes at the *scope* level —
+  // shadow-scope-discovery.ts registers and holds a discovered root, so it
+  // can no longer paint natively uncovered. What SF-DC deliberately does not
+  // do is fold shadow-internal evidence into scan()'s own elementsByKey/
+  // attrsByKey: "Out of scope: Actually theming discovered scopes (SF-AD,
+  // next)" and "No theme-specific logic in this module — [discovery] does
+  // not decide colors" (#1267's own acceptance criteria). This assertion
+  // therefore still holds after SF-DC, unchanged from before it — the
+  // boundary scan() itself observes is the same one; only custody around it
+  // changed. A future SF-AD projecting the real adapter into a committed
+  // shadow scope is expected to be the story that finally flips this.
+  it("produces zero elementsByKey/attrsByKey entries for a surface inside an open shadow root, while an identical light-DOM sibling produces one", () => {
+    document.body.innerHTML =
+      '<div id="light-sibling" style="background-color: rgb(255, 255, 255)"></div>' +
+      '<div id="shadow-host"></div>'
+
+    const host = document.getElementById("shadow-host")
+    expect(host).not.toBeNull()
+    if (host === null) return
+    const root = host.attachShadow({ mode: "open" })
+    const shadowSurface = document.createElement("div")
+    shadowSurface.id = "shadow-surface"
+    shadowSurface.style.backgroundColor = "rgb(255, 255, 255)"
+    root.appendChild(shadowSurface)
+
+    const { elementsByKey, attrsByKey } = scan(document.body)
+
+    const key = "rgb(255, 255, 255)"
+    expect(elementsByKey.get(key)?.map((el) => el.id)).toEqual([
+      "light-sibling",
+    ])
+    for (const elements of elementsByKey.values()) {
+      expect(elements).not.toContain(shadowSurface)
+    }
+    expect(elementsByKey.get(key)?.length).toBe(1)
+    expect(attrsByKey.size).toBe(1)
+  })
+})
+
+describe("scan — direct children of a ShadowRoot inherit from the host, not from nothing (bot-found, SF-AD's own review, round 4)", () => {
+  // SF-AD (#1268) is the first caller to scope scan() directly to a
+  // ShadowRoot (shadow-scope-theming.ts's own projectOnce()). A direct
+  // child of that root has no el.parentElement — its real parent is the
+  // ShadowRoot itself, a DocumentFragment, not an Element — which every
+  // element scan() ever walked before this story (always somewhere inside
+  // document.body, where an Element parent is guaranteed) never hit.
+  // ownTextColor()'s `parent ?? ...` fallback used to treat a null
+  // parentElement as "no ancestor to compare against" and discard the
+  // element's own color outright, even when it was genuinely explicit.
+  it("keeps a direct shadow-root child's own explicit text color, compared against the shadow host's computed color", () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    host.style.color = "rgb(0, 0, 0)"
+    const root = host.attachShadow({ mode: "open" })
+    const surface = document.createElement("div")
+    surface.setAttribute(
+      "style",
+      "background-color: rgb(255, 255, 255); color: rgb(17, 17, 17)"
+    )
+    root.appendChild(surface)
+
+    const { attrsByKey } = scan(root)
+
+    const key = "rgb(255, 255, 255)|text:rgb(17, 17, 17)"
+    const attr = attrsByKey.get(key)
+    expect(attr).toBeDefined()
+    expect(attr?.text).toEqual([17 / 255, 17 / 255, 17 / 255, 1])
+  })
+
+  it("reports no own text color for a direct shadow-root child whose color merely inherits the host's (the flat-tree's own inheritance path, not a difference to act on)", () => {
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    host.style.color = "rgb(0, 0, 0)"
+    const root = host.attachShadow({ mode: "open" })
+    const surface = document.createElement("div")
+    surface.setAttribute("style", "background-color: rgb(255, 255, 255)")
+    root.appendChild(surface)
+
+    const { attrsByKey } = scan(root)
+
+    const attr = attrsByKey.get("rgb(255, 255, 255)")
+    expect(attr).toBeDefined()
+    expect(attr?.text).toBeNull()
+  })
+})
+
 describe("scanCanvas — root/canvas evidence for the false-dark-verdict veto", () => {
   it("reads html's own explicit background as canvas evidence, not assumed-bright", () => {
     document.documentElement.style.backgroundColor = "rgb(13, 17, 23)"
@@ -182,6 +273,34 @@ describe("scanCanvas — root/canvas evidence for the false-dark-verdict veto", 
       expect(attr.luminance).toBe(1)
       expect(attr.rendered).toBe(true)
     }
+  })
+
+  it("omits html canvas evidence entirely while sw-dirty's CSS backstop would contaminate the body-fallback read", () => {
+    // prepaint.css's `html.sw-dirty > body { background: ... !important }`
+    // beats any plain (non-!important) vendor body rule in a real browser
+    // (confirmed separately against a real cascade, not reproduced here —
+    // this test only needs bodyCanvasBackstopActive()'s own precondition:
+    // sw-dirty present, html declaring nothing of its own). The fallback
+    // must not report body's read at all in that state, since it cannot
+    // tell this extension's own forced color from the vendor's.
+    document.body.style.backgroundColor = "rgb(255, 255, 255)"
+    document.documentElement.classList.add(PREPAINT_DIRTY_CLASS)
+
+    const canvas = scanCanvas(document.body)
+
+    expect(canvas.has("__canvas__:html")).toBe(false)
+    expect(canvas.size).toBe(0)
+  })
+
+  it("still reads html's own explicit background while sw-dirty is active — the backstop only targets body", () => {
+    document.documentElement.style.backgroundColor = "rgb(13, 17, 23)"
+    document.documentElement.classList.add(PREPAINT_DIRTY_CLASS)
+
+    const canvas = scanCanvas(document.body)
+
+    expect(canvas.size).toBe(1)
+    const attr = canvas.get("__canvas__:html")
+    expect(attr?.luminance).toBeLessThan(0.1)
   })
 
   it("does not add canvas keys to a descendant scan's own elementsByKey/attrsByKey", () => {
@@ -616,7 +735,16 @@ describe("createContentSession — Axiom 3.5: actuation is not evidence (#831)",
       await Promise.resolve()
       vi.advanceTimersByTime(200)
 
-      expect(walkSpy).toHaveBeenCalledTimes(1)
+      // Two walks per round, not one per mutation: scan()'s own vendor-
+      // evidence walk, plus SF-RC1 (#1340)'s independent legibility-audit
+      // walk that runs after decide()/realize() settle within the same
+      // round (this fixture's empty Ĥ still gets activate-theme --
+      // theme-adapter.ts's decide() emits it unconditionally whenever a
+      // swatch is selected and the page doesn't read as already dark --
+      // so the audit's own activate-theme gate is satisfied every round).
+      // The coalescing claim this test exists to prove is exactly the
+      // same either way: one round, not ten.
+      expect(walkSpy).toHaveBeenCalledTimes(2)
 
       contentSession.teardown()
     } finally {

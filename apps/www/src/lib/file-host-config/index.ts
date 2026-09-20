@@ -130,7 +130,23 @@ export function fileHostUrl(route: string): string | undefined {
  * CORS rules on a server that was fine.
  */
 export class FileHostUnreachableError extends Error {
-  constructor(route: string, cause?: unknown) {
+  constructor(
+    route: string,
+    cause?: unknown,
+    /**
+     * `false` only for `requestJSON`'s own deadline firing on a
+     * non-idempotent write (a `POST` - `create`/`duplicate`, the only two
+     * `HttpSessionsRepository` methods that mint a new resource rather than
+     * converging on one). A connection-refused/genuinely-never-sent failure
+     * is safe to retry regardless of method - nothing reached the server. A
+     * *timeout* on an established request is not: `file_host` may have
+     * already processed it and only the response was slow, and a retryable
+     * `POST` is a duplicate-session button with a friendly label. See
+     * `requestJSON` and #911's own note against coupling mutation deadlines
+     * to read-specific retry policy.
+     */
+    readonly retryable: boolean = true
+  ) {
     super(
       `file_host did not answer ${route}. Is it running, and is ${FILE_HOST_PROXY_PATH} proxied to it?`
     )

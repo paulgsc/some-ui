@@ -8,13 +8,26 @@
  * this file is the thin CLI entry that runs it against the real corpus and
  * reports pass/fail the way the other guardrail scripts do.
  *
+ * R5 (#1208) added the second scan below: the round corpus
+ * (`lib/leetype/round-corpus`) is a different family (LTY-ROUND) from the
+ * step corpus above it (the old LTY-SEED/FAMILIES shim) and is checked by a
+ * different lint function, but both are "a malformed corpus fails here,
+ * loudly" guardrails and belong in the same CI gate per R5's own acceptance
+ * criteria ("runs in CI alongside lint:corpus today").
+ *
  * Usage: pnpm --filter @some-ui/leetype lint:corpus
  */
 import { ALL_FIXTURE_EXERCISES } from "@leetype/lib/leetype/exercises"
-import { lintCorpus } from "@leetype/lib/leetype/exercises/corpus-lint"
+import {
+  lintCorpus,
+  lintRoundCorpus,
+} from "@leetype/lib/leetype/exercises/corpus-lint"
+import { ALL_FIXTURE_ROUNDS } from "@leetype/lib/leetype/round-corpus"
 
 function main(): void {
-  const violations = lintCorpus(ALL_FIXTURE_EXERCISES)
+  const stepViolations = lintCorpus(ALL_FIXTURE_EXERCISES)
+  const roundViolations = lintRoundCorpus(ALL_FIXTURE_ROUNDS)
+  const violations = [...stepViolations, ...roundViolations]
 
   if (violations.length > 0) {
     console.error(`Corpus lint failed: ${violations.length} violation(s)\n`)
@@ -29,7 +42,8 @@ function main(): void {
       0
     )
     console.log(
-      `Corpus lint passed: ${stepCount} step(s) across ${exerciseCount} exercise(s) checked.`
+      `Corpus lint passed: ${stepCount} step(s) across ${exerciseCount} exercise(s) checked, ` +
+        `${ALL_FIXTURE_ROUNDS.length} round(s) checked.`
     )
   }
 }

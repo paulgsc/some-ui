@@ -20,12 +20,29 @@
  * (retired)"`. Worth a second look from whoever amends the canon to
  * actually retire an entry, since this convention has never been exercised
  * against a real one.
+ *
+ * **`statement` (`#1330`) is this story's own addition too.** B1 only ever
+ * read the `name:` argument; it never captured the bracketed body that
+ * follows — canon §7's actual authored claim (the equation or sentence
+ * Thm. 6.1's proof calls "the authored statement of `μ(d)` itself"), as
+ * opposed to `title`, which is only the register's short name for it. The
+ * body is read bracket-depth-aware (`bodyOfBracketBlock` below) rather than
+ * by a `[^\]]*` regex, because typst content between `[` and its matching
+ * `]` may itself contain nested `[...]` — no entry in the canon today
+ * happens to, but a parser that only works by accident of the current
+ * corpus is exactly the kind of silent-miss risk this module's own history
+ * (the multi-line call-site check, the retirement suffix) has already had
+ * to fix once each.
  */
 
 const SECTION_7_HEADING = "= The proposition register"
 const NEXT_TOP_LEVEL_HEADING = /^= /m
 
-const PROPOSITION_ENTRY = /#proposition\("7\.\d+",\s*name:\s*"([^"]*)"\)/g
+// Requires the body's opening bracket immediately after the `name:`
+// argument closes — true of every `#proposition(...)` call in this canon
+// today (verified against the whole file, not just §7) — so a match's own
+// end index always lands one past `[`, ready for `bodyOfBracketBlock`.
+const PROPOSITION_ENTRY = /#proposition\("7\.\d+",\s*name:\s*"([^"]*)"\)\[/g
 // A `#proposition(` call site is not unique to §7 — every numbered section
 // of this canon uses the same macro (Prop. P.1, 1.1, 2.1, ... 10.1 all
 // exist) — so this is only ever counted within `section7Of`'s slice, never
@@ -40,7 +57,405 @@ export type PropositionStatus = "active" | "retired"
 export type PropositionRegisterEntry = {
   readonly id: string
   readonly title: string
+  /**
+   * Canon §7's own authored claim — the bracketed body of the entry's
+   * `#proposition(...)[...]` call, whitespace-normalized to one flowing
+   * line (paragraph breaks collapsed to a single space, same posture
+   * `title` already takes on being one line rather than many). This is
+   * what Thm. 6.1's proof means by "the authored statement of `μ(d)`
+   * itself" — B3 (`#1220`) renders it as a round's verdict justification;
+   * `title` alone is only the register's short name for it, insufficient
+   * on its own (`#1330`).
+   */
+  readonly statement: string
   readonly status: PropositionStatus
+}
+
+/**
+ * The raw span (backtick-delimited) starting at `source[openIndex]` (which
+ * must be `` "`" ``): its own delimiter's run length, its content, and the
+ * index just past the matching same-length closing run — typst's own rule
+ * is that *some* run of backticks opens a raw span and the same-length run
+ * closes it, not always exactly one (`` ``two-backtick`` `` is as valid as
+ * `` `one` ``). Shared by `bodyOfBracketBlock` (which only needs to skip
+ * past one without inspecting it) and `renderInlineMarkup` (which needs its
+ * content too) — the same lexical rule recognized in exactly one place,
+ * rather than two independently drifting copies of it (review finding on
+ * this PR, chatgpt-codex-connector: `renderInlineMarkup`'s own first cut
+ * had a copy that only handled a single pair, already out of sync with
+ * this one).
+ *
+ * Throws on an unterminated span rather than returning a sentinel — by the
+ * time `renderInlineMarkup` ever sees a raw span, `bodyOfBracketBlock` has
+ * already validated the whole body's own spans are well-formed, so this
+ * only fires against malformed input no caller in this module should ever
+ * produce, and failing loudly beats a caller having to remember to check a
+ * sentinel it can never actually receive in practice.
+ */
+function rawSpanAt(
+  source: string,
+  openIndex: number
+): { content: string; afterIndex: number } {
+  let runEnd = openIndex
+  while (source[runEnd] === "`") runEnd += 1
+  const delimiter = source.slice(openIndex, runEnd)
+  const closeIndex = source.indexOf(delimiter, runEnd)
+  if (closeIndex === -1) {
+    throw new Error(
+      `unterminated raw span ("${delimiter}" opened at index ${openIndex} with no matching close).`
+    )
+  }
+  return {
+    content: source.slice(runEnd, closeIndex),
+    afterIndex: closeIndex + delimiter.length,
+  }
+}
+
+/**
+ * The index just past the closing, unescaped `"` of a typst string literal
+ * starting at `source[openIndex]` (which must be `'"'`) — typst escapes a
+ * quote inside a string as `\"`, the same backslash convention this
+ * module's own escape handling already recognizes elsewhere, so that is
+ * skipped as a unit rather than read as the string's own end.
+ */
+function stringLiteralEndAt(source: string, openIndex: number): number {
+  let index = openIndex + 1
+  while (index < source.length && source[index] !== '"') {
+    index += source[index] === "\\" ? 2 : 1
+  }
+  if (index >= source.length) {
+    throw new Error(
+      `unterminated string literal (a '"' opened at index ${openIndex} with no matching close).`
+    )
+  }
+  return index + 1
+}
+
+/**
+ * The index just past a typst comment starting at `source[openIndex]`
+ * (which must be the first `"/"` of `"//"` or `"/*"`). A line comment
+ * (`//`) runs to the next newline or end of source; a block comment
+ * (`/* ... *\/`) runs to its own matching `*\/`, nesting-depth-aware
+ * because typst's own block comments nest (`/* a /* b *\/ c *\/` is one
+ * comment, not one comment followed by stray text). Used only by
+ * `bodyOfBracketBlock`, which also omits the comment from the body it
+ * returns — see that function's own comment for why.
+ */
+function commentEndAt(source: string, openIndex: number): number {
+  if (source[openIndex + 1] === "/") {
+    const newlineIndex = source.indexOf("\n", openIndex + 2)
+    return newlineIndex === -1 ? source.length : newlineIndex
+  }
+  let depth = 1
+  let index = openIndex + 2
+  while (index < source.length && depth > 0) {
+    if (source[index] === "/" && source[index + 1] === "*") {
+      depth += 1
+      index += 2
+    } else if (source[index] === "*" && source[index + 1] === "/") {
+      depth -= 1
+      index += 2
+    } else {
+      index += 1
+    }
+  }
+  if (depth !== 0) {
+    throw new Error(
+      `unterminated block comment ("/*" opened at index ${openIndex} with no matching "*/").`
+    )
+  }
+  return index
+}
+
+/**
+ * The text strictly between `source[openBracketIndex]` (which must be
+ * `"["`) and its matching `"]"`, tracking nesting depth rather than
+ * stopping at the first `"]"` — typst content can nest brackets (a
+ * `#footnote[...]`, a literal array), and this canon's own bodies are not
+ * guaranteed to stay bracket-free forever just because none do today.
+ * Throws on an unbalanced block rather than silently returning a truncated
+ * body, the same "fail loudly, not by producing a wrong answer" posture
+ * `parsePropositionRegister`'s own call-site count check already takes.
+ *
+ * **Four lexical exemptions, not just nesting.** A literal `[`/`]` inside
+ * typst content is not always a content-block delimiter:
+ *
+ * - `\[` / `\]` — typst's own backslash escape for a literal bracket
+ *   character. Counting it as structural would either close the body early
+ *   (`\]`) or report a false unbalanced block (`\[`).
+ * - a raw span (`` `...` ``, `rawSpanAt`) — typst does not scan raw-span
+ *   content for markup at all, so a bracket inside one (`` `array[0]` ``)
+ *   is plain text, never a delimiter.
+ * - a string literal (`"..."`, `stringLiteralEndAt`) — a `#link("a]b")`-
+ *   shaped call's own string argument is code-mode content, not markup;
+ *   a bracket inside it is a character in a string, never a delimiter.
+ *   Deliberately blunt: it treats *every* unescaped `"..."` pair as a
+ *   string for bracket-counting purposes, even one written as plain
+ *   markup-mode punctuation (a quoted phrase in prose, which has no
+ *   pairing/escaping significance to typst at all in that mode) — real
+ *   canon prose already does this (`` "too slow at this size." ``,
+ *   CW-P16) and it is harmless there since nothing structural sits between
+ *   the marks. Getting this exactly right would mean tracking whether the
+ *   scanner is currently inside typst *code* mode (after a `#name(`, not
+ *   in plain markup) — real parser state this bracket-depth counter
+ *   deliberately does not carry, the same call this module already makes
+ *   about not becoming a general typst parser.
+ * - a comment (`// ...` or `/* ... *\/`, `commentEndAt`) — comment text is
+ *   never markup at all, in either mode (review finding on this PR,
+ *   chatgpt-codex-connector: `docs/canon/complexity-witness-canon.typ`
+ *   already uses `//` extensively as a section-separator convention
+ *   elsewhere in the file, just not inside a §7 body today).
+ *
+ * None of the four are ever inspected for bracket depth — the loop skips
+ * straight past whichever one it finds before looking at the character at
+ * all.
+ *
+ * **A comment is also the one construct this function omits from the body
+ * it returns, rather than keeping verbatim like a raw span, a string, or
+ * `#link(...)`/`#footnote[...]` syntax.** Real typst never shows a comment
+ * to a reader at all — it is authoring metadata, not content with an
+ * unmodeled rendering (the posture this parser takes on everything else it
+ * does not evaluate) — and, discovered by this fix's own first attempt:
+ * leaving one in would actively corrupt the result rather than merely
+ * stay unstyled, since `renderInlineMarkup`'s emphasis rule reads a block
+ * comment's own `*` characters (`/* ... *\/`) as emphasis delimiters with
+ * nothing to tell them apart. Building `body` incrementally here — as the
+ * scan already walks past each construct, rather than a single `slice()`
+ * once depth reaches zero — is what lets a comment be dropped without
+ * needing a second, later pass to also learn where the (by then
+ * line-joined, boundary-losing) comments were.
+ */
+function bodyOfBracketBlock(
+  source: string,
+  openBracketIndex: number
+): { body: string; afterIndex: number } {
+  let depth = 1
+  let index = openBracketIndex + 1
+  let body = ""
+  while (index < source.length && depth > 0) {
+    const ch = source[index]
+    if (ch === "\\") {
+      // typst's escape: the following character is literal, never
+      // structural, regardless of what it is — kept verbatim here;
+      // `renderInlineMarkup` is what actually resolves it later.
+      body += source.slice(index, index + 2)
+      index += 2
+      continue
+    }
+    if (ch === "`") {
+      const span = rawSpanAt(source, index)
+      body += source.slice(index, span.afterIndex)
+      index = span.afterIndex
+      continue
+    }
+    if (ch === '"') {
+      const endIndex = stringLiteralEndAt(source, index)
+      body += source.slice(index, endIndex)
+      index = endIndex
+      continue
+    }
+    if (
+      ch === "/" &&
+      (source[index + 1] === "/" || source[index + 1] === "*")
+    ) {
+      // Comment text is never appended — see this function's own doc
+      // comment for why, unlike everything else here, it is actually
+      // dropped rather than kept verbatim.
+      index = commentEndAt(source, index)
+      continue
+    }
+    if (ch === "[") {
+      depth += 1
+      body += ch
+      index += 1
+      continue
+    }
+    if (ch === "]") {
+      depth -= 1
+      index += 1
+      if (depth === 0) break
+      body += ch
+      continue
+    }
+    body += ch
+    index += 1
+  }
+  if (depth !== 0) {
+    throw new Error(
+      `proposition register entry body starting at index ${openBracketIndex} has no matching "]" — an unbalanced "[" inside the body, or truncated canon source.`
+    )
+  }
+  return { body, afterIndex: index }
+}
+
+// typst's own bare-identifier names for math-mode symbols this canon's own
+// math spans are known to use, or are stable enough conventions (standard
+// Greek letter names) to be worth handling defensively rather than only
+// reactively — not a general typst-math parser, which real typesetting
+// (superscripts, subscripts, function layout) would need and which is a
+// materially bigger, riskier piece of infrastructure than a display-text
+// cleanup should take on incidentally (the same call `#1330`'s own issue
+// already made about not parsing the body structurally). Anything outside
+// this table (`^(...)`, `_...`, function-call parens) is left as literal
+// text — readable as prose, if not real typesetting.
+const MATH_SYMBOL_NAMES: ReadonlyArray<readonly [RegExp, string]> = [
+  [/\bTheta\b/g, "Θ"],
+  [/\bOmega\b/g, "Ω"],
+  [/\balpha\b/g, "α"],
+  [/\bbeta\b/g, "β"],
+  [/\bdelta\b/g, "δ"],
+  [/\bepsilon\b/g, "ε"],
+  [/\blambda\b/g, "λ"],
+  [/\bsigma\b/g, "σ"],
+  [/\bdot\b/g, "·"],
+  [/<=/g, "≤"],
+  [/>=/g, "≥"],
+]
+
+/** Applies `MATH_SYMBOL_NAMES` to a plain (already quote-free) run of math-mode text — see that table's own comment for what this deliberately does and does not attempt. */
+function substituteMathSymbols(text: string): string {
+  return MATH_SYMBOL_NAMES.reduce(
+    (running, [pattern, replacement]) => running.replace(pattern, replacement),
+    text
+  )
+}
+
+/**
+ * Renders one `$...$` math span's own inner content as display text.
+ *
+ * A quoted string inside math mode (`` $T("Seq"(G_1, ..., G_m))$ `` — this
+ * canon's own real CW-P1/CW-P2, naming an operator that is not a standard
+ * math symbol) is typst's convention for setting an identifier in upright
+ * text instead of italic; the quote marks themselves are never part of
+ * what a reader sees. Review finding on this PR (chatgpt-codex-connector,
+ * caught against these two real, already-generated statements rather than
+ * a hypothetical): the quotes were passed straight through into display
+ * text, unlike every other construct this module handles. Scanned
+ * separately from `substituteMathSymbols`, and deliberately unsubstituted
+ * — `"Seq"`/`"Loop"` are operator *names*, not symbols the table should
+ * ever rewrite, so a quoted run's content is copied verbatim rather than
+ * run through it.
+ */
+function renderMathSpan(innerContent: string): string {
+  let result = ""
+  let index = 0
+  while (index < innerContent.length) {
+    if (innerContent[index] === '"') {
+      const endIndex = stringLiteralEndAt(innerContent, index)
+      result += innerContent.slice(index + 1, endIndex - 1)
+      index = endIndex
+      continue
+    }
+    const nextQuoteIndex = innerContent.indexOf('"', index)
+    const segmentEnd =
+      nextQuoteIndex === -1 ? innerContent.length : nextQuoteIndex
+    result += substituteMathSymbols(innerContent.slice(index, segmentEnd))
+    index = segmentEnd
+  }
+  return result
+}
+
+/**
+ * Turns an authored body's own typst markup into plain display text —
+ * review finding on this PR (chatgpt-codex-connector): the raw statement
+ * carries typst source syntax verbatim (`$Theta(n^2)$`, `*worst-case*`,
+ * `` `CW-P5` ``, `---`, `\[escaped\]`), and a component rendering it as-is
+ * would show that syntax to a learner rather than the sentence it authors.
+ *
+ * **A single left-to-right scan, not independent global replace passes.**
+ * An earlier cut of this function ran `.replace()` once per construct
+ * (math, then backticks, then emphasis, then dashes, then escapes) over
+ * the *whole* string in sequence — which cannot tell a raw span's own
+ * protected content from live markup sitting next to it. A raw span exists
+ * *specifically* so an author can show markup characters literally
+ * (`` `*literal*` ``, `` `$Theta$` `` — typst never processes a raw span's
+ * content for markup at all), and a later pass over the whole string has
+ * no way to know it already passed through one (review finding on this
+ * PR, chatgpt-codex-connector). Scanning once, left to right, and jumping
+ * the cursor straight past whatever construct is recognized at each
+ * position is what makes a raw span's content genuinely opaque to every
+ * other rule — not by special-casing raw spans in each pass, but because
+ * the scanner never revisits characters a raw span already consumed.
+ *
+ * Recognizes, per position: a math span (`$...$`, content run through
+ * `renderMathSpan`), a raw span (`` `...` ``, `rawSpanAt` — content passed
+ * through completely unprocessed), emphasis (`*...*`, content unwrapped
+ * verbatim), typst's `\` escape (the following character emitted
+ * literally, whatever it is — genuinely general here, unlike the old
+ * sequential version, since there is no "before/after" ordering issue left
+ * to get wrong), `---` (a real em dash), and otherwise the character
+ * itself. This is still not a general typst parser — nested markup across
+ * *different* construct kinds (emphasis spanning a raw span, say) is not
+ * attempted, since no canon body does that today and it is a materially
+ * bigger problem than a display-text cleanup should take on speculatively
+ * — but within one kind, this is exact rather than approximate.
+ */
+function renderInlineMarkup(text: string): string {
+  let result = ""
+  let index = 0
+  while (index < text.length) {
+    const ch = text[index]
+    if (ch === "\\") {
+      result += text[index + 1] ?? ""
+      index += 2
+      continue
+    }
+    if (ch === "`") {
+      const span = rawSpanAt(text, index)
+      result += span.content
+      index = span.afterIndex
+      continue
+    }
+    if (ch === "$") {
+      const closeIndex = text.indexOf("$", index + 1)
+      if (closeIndex === -1) {
+        result += text.slice(index)
+        break
+      }
+      result += renderMathSpan(text.slice(index + 1, closeIndex))
+      index = closeIndex + 1
+      continue
+    }
+    if (ch === "*") {
+      const closeIndex = text.indexOf("*", index + 1)
+      if (closeIndex === -1) {
+        result += text.slice(index)
+        break
+      }
+      result += text.slice(index + 1, closeIndex)
+      index = closeIndex + 1
+      continue
+    }
+    if (text.startsWith("---", index)) {
+      result += "—"
+      index += 3
+      continue
+    }
+    result += ch
+    index += 1
+  }
+  return result
+}
+
+/**
+ * Collapses an authored body's own line breaks and indentation into one
+ * flowing line — the same "one line, not many" shape `title` already has,
+ * so `statement` reads as a single sentence-or-two rather than carrying
+ * the `.typ` source's own indentation into rendered UI — and renders its
+ * inline typst markup as display text (`renderInlineMarkup`). A final
+ * whitespace collapse guards a specific artifact of `bodyOfBracketBlock`
+ * now omitting comments mid-line: removing `/* an aside *\/` from the
+ * *middle* of an authored line leaves the space before and the space
+ * after it both still there, and this join only ever collapsed *between*
+ * lines, never within one.
+ */
+function normalizeStatement(rawBody: string): string {
+  const joined = rawBody
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .join(" ")
+  return renderInlineMarkup(joined).replace(/ {2,}/g, " ").trim()
 }
 
 /**
@@ -113,9 +528,15 @@ export function parsePropositionRegister(
     const rawName = match[1] ?? ""
     const { id, title } = parseEntryName(rawName)
     const retired = title.endsWith(RETIRED_SUFFIX)
+    // `match.index` is where `#proposition(` starts and this match's own
+    // text ends in `"["`, so the open bracket is the match's last
+    // character.
+    const openBracketIndex = match.index + match[0].length - 1
+    const { body } = bodyOfBracketBlock(section7, openBracketIndex)
     entries.push({
       id,
       title: retired ? title.slice(0, -RETIRED_SUFFIX.length) : title,
+      statement: normalizeStatement(body),
       status: retired ? "retired" : "active",
     })
   }
