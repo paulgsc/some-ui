@@ -422,9 +422,13 @@ specified in #1489 (SF-CUT3), which owns the veil handshake.
 ### 8.4 Second review round — the sheet's remaining paint surfaces
 
 Six further findings (Codex, round 2), all real. Two are fixed on the
-implementation PR (#1463, `ccb4f03`): the canvas rule carries
-`filter: none !important` on `html`/`body`, so a vendor's root-level invert
-(`filter-invert-vendor-page.html`) no longer composites E back to light; and
+implementation PR (#1463): the canvas rule carries `filter: none !important`
+on `html`/`body` (`ccb4f03`), so a vendor's root-level invert
+(`filter-invert-vendor-page.html`) no longer composites E back to light, and
+the same reset is on both erase rules — every non-media element and its
+`::before`/`::after` (`8af1643`) — so a filter on a descendant group
+(`PG-GROUP-FILTER` in the paint grammar) cannot post-process the tokens
+inside it either; and
 `insertCSS` targets `allFrames: true`, reaching every frame that exists at the
 injection event — late-created frames and a per-frame veil are #1489's
 per-document request. The other four are tracked in #1497 and must land
@@ -433,10 +437,11 @@ before #1492's eye-strain run judges fidelity:
 - `-webkit-text-fill-color` fills glyphs regardless of `color`; the sheet
   declares `currentColor` for it.
 - `box-shadow` can paint a complete surface (`inset 0 0 0 9999px white`,
-  `PG-BG-INSET-SHADOW` in the paint grammar); the sheet resets it, which adds
-  vendor elevation shadows to §5.4's fidelity cost.
-- Painting pseudo-elements beyond `::before`/`::after`: `::backdrop`,
-  `::marker`, `::first-letter`, `::first-line`, `::file-selector-button`.
+  `PG-BG-INSET-SHADOW` in the paint grammar); the sheet resets it
+  (`8af1643`), which adds vendor elevation shadows to §5.4's fidelity cost.
+- Painting pseudo-elements beyond `::before`/`::after`: `::backdrop` is
+  imposed dark rather than erased (`8af1643`); `::marker`, `::first-letter`,
+  `::first-line`, `::file-selector-button` remain open.
 - Descendants of extension-owned elements are excluded by selector
   (`:not([data-my-ext] *)`), the same contract `EXT_GUARD` already states,
   subject to #1488's cost measurement.
