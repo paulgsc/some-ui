@@ -39,6 +39,13 @@ on:
       - ".github/workflows/extension.yml"
       - ".github/workflows/_extension-*.yml"
       - ".github/actions/**"
+      # The admission gate's own configuration. Without these two, a diff
+      # that weakened the CSS selector budget (.stylelintrc.mjs) or rewired
+      # the lint:style:injected script to a no-op (package.json) shipped
+      # with Extension CI never running at all — the validator could be
+      # disabled by a change that did not trigger the validator.
+      - ".stylelintrc.mjs"
+      - "package.json"
   push:
     branches:
       - main
@@ -49,6 +56,13 @@ on:
       - ".github/workflows/extension.yml"
       - ".github/workflows/_extension-*.yml"
       - ".github/actions/**"
+      # The admission gate's own configuration. Without these two, a diff
+      # that weakened the CSS selector budget (.stylelintrc.mjs) or rewired
+      # the lint:style:injected script to a no-op (package.json) shipped
+      # with Extension CI never running at all — the validator could be
+      # disabled by a change that did not trigger the validator.
+      - ".stylelintrc.mjs"
+      - "package.json"
 concurrency:
   group: extension-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true

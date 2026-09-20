@@ -126,6 +126,49 @@ describe("enforcement sheet — selector cost budget", () => {
   })
 })
 
+describe("cost model soundness — known bypasses", () => {
+  // Each case here is a selector whose subject is universal but which an
+  // earlier version of the model admitted. They are kept as regressions
+  // because the model's value is entirely in what it refuses; a false
+  // negative is worse than no model, since it carries a green check.
+  it.each([
+    // Bot-found on #1478. The ancestor `.container` made the whole branch
+    // look constrained; the real subject is `*`.
+    [
+      ":where(.container *)",
+      "functional subject hiding a descendant combinator",
+    ],
+    [":is(#app *)", "same shape via :is()"],
+    [":where(.a .b *)", "two ancestors, subject still universal"],
+    ["[data-x] *", "plain descendant combinator with a universal subject"],
+    [":where(main) *", "constrained ancestor, universal subject"],
+  ])("rejects %s (%s)", (selector) => {
+    const cost = analyzeSelector(selector)
+    expect(
+      cost.universalSubject,
+      `${selector} has subject "${cost.selector}" scored ${cost.cost}; its ` +
+        `rightmost compound matches every element beneath the ancestor, which ` +
+        `on a page whose root carries the ancestor is the whole document.`
+    ).toBe(true)
+  })
+
+  it.each([
+    [":where(div, section)", "every branch names a tag"],
+    [
+      ":where(:is(div, ul):not(:only-child))",
+      "nested :is() constrains the subject",
+    ],
+    ["a:visited", "type selector plus a state pseudo-class"],
+    [
+      ":root:root body",
+      "element-identifying pseudo-class plus a type selector",
+    ],
+    ["input, textarea", "plain type selectors"],
+  ])("still admits %s (%s)", (selector) => {
+    expect(analyzeSelector(selector).universalSubject).toBe(false)
+  })
+})
+
 describe("EXT_GUARD — the shipped ancestor-dependent suffix", () => {
   // EXT_GUARD is `:not([data-my-ext]):not([data-my-ext] *)`, appended to
   // every highlight-table row so this extension never repaints its own DOM.

@@ -175,12 +175,23 @@ function hasQualifyingPart(parts: ReadonlyArray<csstree.CssNode>): boolean {
       MATCHES_ANY_PSEUDOS.has(part.name.toLowerCase())
     ) {
       const lists = argumentLists(part)
-      // Every branch must itself be constrained, otherwise the union is not.
-      const branches: Array<Array<csstree.CssNode>> = []
+      // Every branch must itself be constrained, otherwise the union is not
+      // — and a branch is constrained only if its own *subject compound* is.
+      //
+      // Bot-found (Codex review on #1478), and a genuine soundness hole: an
+      // earlier version passed the whole branch here, so `:where(.container
+      // *)` looked constrained because `.container` appears somewhere in it.
+      // Its actual subject is `*`, a descendant of `.container` — i.e. every
+      // element in that subtree, which on a page whose root carries the
+      // class is every element in the document. It scored 15 against a
+      // budget of 30 and was admitted. Taking the subject compound of each
+      // branch is what makes the recursion agree with how the engine
+      // matches: right to left, from the subject.
+      const branches: Array<ReadonlyArray<csstree.CssNode>> = []
       for (const list of lists) {
         list.children.forEach((branch) => {
           if (branch.type === "Selector") {
-            branches.push([...branch.children.toArray()])
+            branches.push(subjectCompound(branch))
           }
         })
       }

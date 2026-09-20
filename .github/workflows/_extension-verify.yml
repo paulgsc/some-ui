@@ -91,42 +91,61 @@ jobs:
         run: nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" typecheck
       - name: Lint
         run: nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" lint
-      # ── Performance budgets: the browser-unresponsive guard ────────────
+      # ── Admission gate: the browser-unresponsive guard ─────────────────
       #
-      # This step blocks the one class of defect an extension must never
-      # ship: code we own at compile time that drives the *browser's own*
-      # "Page unresponsive" / "this page is slowing down your browser" kill
-      # switch. That dialog is not a slow frame the user shrugs off — it is
-      # the browser telling them to kill the tab, attributed to whichever
-      # extension is injecting, and it fires on pages this repo never chose
-      # (a content script runs against <all_urls>; a GitHub "Files changed"
-      # view for a large pull request is north of 100,000 elements).
+      # Blocks the one class of defect an extension must never ship: code we
+      # own at compile time that drives the *browser's own* "Page
+      # unresponsive" kill switch. A content script runs against <all_urls>,
+      # so the pages it must survive are ones this repo never chose.
       #
-      # It is therefore not a performance nicety that can be deferred to a
-      # follow-up: reaching that dialog means something we compiled is
-      # wrong. A red check here is a release blocker, and is deliberately
-      # its own named step — ordered ahead of the general Test step — so it
-      # is the first thing red on the PR rather than one assertion inside a
-      # wall of unit tests.
+      # The gate is a resource-admission rule over the SHIPPED ARTIFACT, not
+      # a review of today's source. It reads dist/, classifies every
+      # page-affecting browser primitive against a fixed alphabet, and
+      # requires each to be declared admissible in effect-ledger.ts. An
+      # effect with no ledger entry fails closed; a declared cost or
+      # retention class that scales with page size is never admitted. That
+      # is what makes it survive an arbitrary diff — an unbounded walk added
+      # to a new module, to an imported workspace package, or to
+      # public/prepaint-start.js still puts its primitives in the bundle.
       #
-      # Two halves, matching the two ways an injected surface can cost
-      # O(document):
-      #   • declarative — selectors in page-injected CSS. These live under
-      #     extensions/*/public/ which .prettierignore excludes, so the
-      #     repo-wide `pnpm lint:style` (itself --ignore-path .prettierignore)
-      #     never saw them. Linted explicitly here.
-      #   • imperative — unbounded DOM traversal and per-element computed
-      #     style reads. extensions/some-filter/tests/budgets explains each
-      #     budget and where its number comes from.
-      #
-      # --if-present: only some-filter defines test:budgets today. An
-      # extension without the script is skipped rather than failed.
+      # Build immediately before analysing, unconditionally and ignoring the
+      # ext-build cache. The cache key hashes the extension tree, common/
+      # and the lockfile, but NOT packages/** — so a change to an imported
+      # workspace package restores a stale dist, and the gate would then
+      # certify an artifact that is not the one shipping. Provenance of the
+      # analysed bytes is part of the claim, so this rebuild is not
+      # redundant with the cached Build step further down.
+      - name: Build artifact for admission analysis
+        run: nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" build:chromium
+
+      # No --if-present here. An extension listed in PROTECTED below must
+      # define test:budgets; deleting the script is otherwise a silent way
+      # to opt out of the gate, which is the same falsely-green admission
+      # the gate exists to prevent.
       - name: Performance budgets (browser-unresponsive guard)
         run: |
+          PROTECTED="some-filter"
+          NAME="${{ matrix.extension_name }}"
+
           nix develop .#ci --command pnpm exec stylelint \
             "${{ matrix.extension_path }}/public/*.css" --allow-empty-input
-          nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" \
-            run --if-present test:budgets
+
+          HAS=$(nix develop .#ci --command node -e \
+            "const p=require('./${{ matrix.extension_path }}/package.json');process.stdout.write(p.scripts&&p.scripts['test:budgets']?'yes':'no')")
+
+          for protected_ext in $PROTECTED; do
+            if [ "$NAME" = "$protected_ext" ] && [ "$HAS" != "yes" ]; then
+              echo "::error::$NAME is a protected extension but defines no test:budgets script."
+              echo "The admission gate cannot be removed by deleting its entry point."
+              exit 1
+            fi
+          done
+
+          if [ "$HAS" = "yes" ]; then
+            nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" test:budgets
+          else
+            echo "$NAME defines no test:budgets and is not protected — skipping."
+          fi
 
       - name: Test
         run: nix develop .#ci-playwright --command pnpm --filter "${{ matrix.package_name }}" test
