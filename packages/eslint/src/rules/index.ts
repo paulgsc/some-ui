@@ -15,6 +15,7 @@ export { requireReactPeerDependency } from "./require-react-peer-dependency.js"
 export { noManualBuildExclude } from "./no-manual-build-exclude.js"
 export { noUnboundedIntent } from "./no-unbounded-intent.js"
 export { noLoadingElidedDefault } from "./no-loading-elided-default.js"
+export { requireNamedLifetime } from "./require-named-lifetime.js"
 export {
   noStructuralPaletteColor,
   noThemeBoundary,

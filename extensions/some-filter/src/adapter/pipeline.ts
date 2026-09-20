@@ -99,6 +99,94 @@ export const BOUNDED_DELIVERY_MS = 250
 export const INTERACTION_SETTLE_MS = 120
 
 /**
+ * How long the settled-interaction audit may take before this page stops
+ * getting one.
+ *
+ * This pass audits `document.body`, and that is the single most expensive
+ * thing this extension does per unit of user input. Measured against the
+ * real build on a 1500-row page, with this budget removed: **12 long tasks
+ * totalling 13108ms for twelve pointer pauses — ~600ms of blocked main
+ * thread every time the pointer came to rest.** With it: 1 totalling
+ * 1168ms.
+ *
+ * The cost is not the walk. `auditLegibility` resolves each carrier's
+ * effective backdrop by climbing its ancestors and reads pseudo-element
+ * styles per element, so it is ~130µs per element rather than the ~1µs a
+ * plain `getComputedStyle` costs.
+ *
+ * An earlier version of this bound also rooted the audit at a bounded climb
+ * from the interaction's own target, on the reasoning that a hover changes
+ * computed style local to the pointer. That is removed, and the reason is
+ * worth keeping (bot-found, Codex P1 on #1459): the audit's *realization* is
+ * document-scoped even when its scan is not. `realizeForegroundRepairs`
+ * rewrites, and on an empty action set removes outright, the single global
+ * `#__sw_legibility_repair` stylesheet — so a clean pass rooted in one
+ * region silently dropped a still-required repair belonging to another,
+ * leaving that carrier's `data-sw-legibility-fix` tag in place to say
+ * nothing was wrong. A partial scan may not drive a total realization. The
+ * localised root was a heuristic bound anyway (sweeping a container rather
+ * than a row makes the target the container), so the honest bound was
+ * always the one below.
+ *
+ * So the pass measures itself. It runs, and once it has overrun it stops
+ * running for this page — the full reconcile round still covers everything
+ * this channel would have. The worst case becomes a constant number of long
+ * tasks per page instead of one per time the user stops moving the mouse,
+ * which is the difference between a slow extension and a browser that
+ * appears hung.
+ *
+ * This is the first thing in this extension that bounds itself by *time*
+ * rather than by rate, node count or DOM writes — the gap that let a
+ * six-hundred-millisecond-per-pause freeze ship and pass every existing
+ * gate.
+ *
+ * 12ms is under one 60Hz frame. A page that cannot be audited inside a
+ * frame is a page whose audit does not belong on the interaction path.
+ */
+export const INTERACTION_AUDIT_BUDGET_MS = 12
+
+/**
+ * How long this channel stands down for after an over-budget pass.
+ *
+ * A cooldown rather than a latch, and the difference is correctness rather
+ * than taste (bot-found, Codex on #1459 — twice, which is what moved this
+ * from a condition to a redesign).
+ *
+ * A pass realizes the page *as it is at settle time*, hover colours
+ * included, and its realization is global. Any rule that permanently stops
+ * the channel therefore freezes whatever transient state the final pass
+ * happened to observe: `pointerout` schedules a pass that a stopped channel
+ * skips, and a CSS state change mutates no DOM, so no ordinary reconcile
+ * round is guaranteed to retire it. The hover's repair colour simply stays,
+ * for the life of the page.
+ *
+ * An earlier revision tried to fix that by allowing a second overrun, on
+ * the reasoning that every engaging interaction is followed by a
+ * disengaging one. That reasoning does not survive the debounce: moving
+ * between two elements emits `pointerout` then `pointerover`, which resets
+ * the shared settle timer, so the pass observes the *second* element still
+ * hovered. Two such moves exhaust the allowance without either pass ever
+ * seeing a disengaged page. Counting overruns counts the wrong thing, and
+ * classifying passes as engaging or disengaging only moves the guess.
+ *
+ * So the channel never stops; it throttles. Cost stays bounded — at most
+ * one audit per cooldown on a page that cannot afford them, instead of one
+ * per pointer pause.
+ *
+ * Throttling alone does not bound how long a transient realization lives,
+ * though, and an earlier revision of this comment claimed it did. A settle
+ * landing inside the cooldown is *owed* a pass rather than denied one: the
+ * `pointerout` that ends a hover is precisely the corrective audit, and if
+ * the user stops interacting after it, no later event would ever schedule
+ * another. `trailingAuditTimer` re-arms at the cooldown's expiry, and that
+ * is what actually makes "at most one cooldown" true.
+ *
+ * 30s is chosen to be long relative to interaction (a burst of hovering
+ * costs one audit, not one per pause) and short relative to reading a page.
+ */
+export const INTERACTION_AUDIT_COOLDOWN_MS = 30_000
+
+/**
  * The interaction events SF-RC4 (#1343) listens for, and the reason each is
  * the *bubbling* member of its pair.
  *
@@ -800,7 +888,19 @@ export function createContentSession(
   let lastRoot: Element = document.body
   let observer: MutationObserver | null = null
   let interactionTimer: ReturnType<typeof setTimeout> | null = null
+  /**
+   * Set when a settle fell inside the cooldown, so the pass it asked for is
+   * owed rather than dropped. Fires once the cooldown expires. Lifetime: the
+   * content session — cleared by dispose() alongside `interactionTimer`.
+   */
+  let trailingAuditTimer: ReturnType<typeof setTimeout> | null = null
   let evidenceEpoch = session.epoch
+  /**
+   * `performance.now()` before which the settled-interaction audit stands
+   * down. Reset on an epoch change, since a route swap can replace the
+   * document with one this channel can afford.
+   */
+  let interactionAuditBlockedUntil = 0
 
   /**
    * Theorem D.1(a): a content reset means the page under us was replaced.
@@ -821,6 +921,9 @@ export function createContentSession(
     try {
       if (session.epoch !== evidenceEpoch) {
         evidenceEpoch = session.epoch
+        // A route swap can replace a document this channel could not afford
+        // with one it can; the cooldown is about a page, not a session.
+        interactionAuditBlockedUntil = 0
         dropStaleEvidence()
       }
 
@@ -1014,18 +1117,55 @@ export function createContentSession(
    * nothing changed (#831's fixed-point discipline), so a spurious one
    * costs a walk and no DOM writes.
    */
-  function runInteractionContrast(): void {
+  /**
+   * The document half only. Separate from {@link runInteractionContrast} so
+   * the cooldown's trailing retry can re-run *this* and nothing else
+   * (bot-found, Codex on #1459): re-entering the whole pass would run the
+   * shadow half a second time for one deferred settle, since that half is
+   * deliberately not gated on the document cooldown and already ran when
+   * the settle was first deferred.
+   */
+  function runDocumentInteractionAudit(): void {
     interactionTimer = null
-    // Gated per half, not once for both (bot-found, Codex review round 1 on
-    // #1415). The document half is gated on a document theme; the shadow
-    // half is not, and must not be — a scope's verdict is independent of the
-    // document's, so a page reading already-dark natively (no
-    // DARK_THEME_ATTR at all) can still hold committed shadow scopes with
-    // live repairs, exactly the coexistence `buildHostTokenRule`'s own doc
-    // comment describes. `recontrastAll()` is self-gating anyway: it
-    // iterates only COMMITTED scopes.
-    if (document.documentElement.hasAttribute(DARK_THEME_ATTR)) {
+    // Gated on a document theme, which the shadow half is not and must not
+    // be (bot-found, Codex review round 1 on #1415) — a page reading
+    // already-dark natively, with no DARK_THEME_ATTR at all, can still hold
+    // committed shadow scopes with live repairs, exactly the coexistence
+    // `buildHostTokenRule`'s own doc comment describes.
+    const settledAt = performance.now()
+    if (settledAt < interactionAuditBlockedUntil) {
+      // Owed, not dropped (bot-found, Codex confirming review on #1459).
+      // The cooldown alone does not bound how long a transient realization
+      // survives, and the counterexample is the ordinary one: a `pointerout`
+      // that settles inside the cooldown *is* the corrective pass. Drop it
+      // and, if the user then stops interacting, no later event ever
+      // schedules another — a CSS-only state change mutates no DOM for a
+      // reconcile round to catch — so the hover's repair outlives the
+      // cooldown indefinitely rather than by at most one window.
+      //
+      // Re-arming at the expiry is what makes "at most one cooldown" true.
+      // The audit that eventually runs sees a page with no interaction in
+      // progress, which is exactly the state the corrective pass wanted.
+      //
+      // `??=` rather than a plain assignment: further settles inside the
+      // same cooldown are owed the *same* pass, and the expiry they would
+      // re-arm to is identical, so the first one to notice wins.
+      trailingAuditTimer ??= setTimeout(() => {
+        trailingAuditTimer = null
+        // A settle armed during the cooldown can still be pending here,
+        // and runInteractionContrast() nulls that handle on entry — which
+        // would orphan the timeout rather than cancel it, costing a
+        // redundant pass and breaking "null means not armed".
+        if (interactionTimer !== null) clearTimeout(interactionTimer)
+        runInteractionContrast()
+      }, interactionAuditBlockedUntil - settledAt)
+    } else if (document.documentElement.hasAttribute(DARK_THEME_ATTR)) {
+      const startedAt = performance.now()
       try {
+        // document.body, not a subtree around the interaction: this channel
+        // realizes document-scoped artifacts, so it has to have scanned the
+        // whole document to know what they should contain. See
+        // INTERACTION_AUDIT_BUDGET_MS's own doc comment.
         runContrastChannel(document.body)
       } catch (error) {
         // Mirrors fire()'s own discipline: this runs from a timer with no
@@ -1049,8 +1189,40 @@ export function createContentSession(
         // other, unaffected source had only passing pairs) — see
         // ContrastSourceReport's own doc comment.
         onContrastAudited?.(null)
+      } finally {
+        // Measured and applied in `finally`, not after a successful pass
+        // (bot-found, Codex closing review on #1459): a throw partway
+        // through `runContrastChannel` — after the whole-document traversal,
+        // during realization or reporting — used to skip the cooldown
+        // entirely, so on exactly the pages where the audit fails every
+        // subsequent pointer or focus pause repeated the same long
+        // traversal with no bound at all. The traversal's cost is paid
+        // whether or not the pass completes, so the throttle has to key on
+        // the time spent, not on the outcome.
+        const elapsed = performance.now() - startedAt
+        if (elapsed > INTERACTION_AUDIT_BUDGET_MS) {
+          interactionAuditBlockedUntil =
+            performance.now() + INTERACTION_AUDIT_COOLDOWN_MS
+          // Deliberately visible. A channel throttling itself is worse than
+          // one that never ran if it does so silently, because the next
+          // person to wonder why a hover repair took a while has nothing to
+          // find.
+          // eslint-disable-next-line no-console
+          console.info(
+            `[some-filter] settled-interaction audit took ${Math.round(elapsed)}ms (budget ${INTERACTION_AUDIT_BUDGET_MS}ms); throttling it to one per ${INTERACTION_AUDIT_COOLDOWN_MS / 1000}s for this page. Full rounds still cover it.`
+          )
+        }
       }
     }
+  }
+
+  function runInteractionContrast(): void {
+    runDocumentInteractionAudit()
+    // Gated per half, not once for both (bot-found, Codex review round 1 on
+    // #1415), and that is why the trailing retry above targets the document
+    // half alone: a scope's verdict is independent of the document's, so
+    // this must keep running on every settle regardless of what the document
+    // cooldown is doing — but exactly once per settle.
     try {
       onInteractionSettled?.()
     } catch (error) {
@@ -1066,7 +1238,9 @@ export function createContentSession(
     // this does skip is interaction *inside* an extension-owned subtree
     // (the veil, the debug overlay), which is never vendor evidence.
     const target = event.target
-    if (target instanceof Node && isExtensionAuthored(target)) return
+    const node = target instanceof Node ? target : null
+    if (node !== null && isExtensionAuthored(node)) return
+
     if (interactionTimer !== null) clearTimeout(interactionTimer)
     interactionTimer = setTimeout(runInteractionContrast, INTERACTION_SETTLE_MS)
   }
@@ -1127,6 +1301,10 @@ export function createContentSession(
     teardown(): void {
       for (const type of INTERACTION_EVENTS) {
         document.removeEventListener(type, onInteraction, INTERACTION_LISTENER)
+      }
+      if (trailingAuditTimer !== null) {
+        clearTimeout(trailingAuditTimer)
+        trailingAuditTimer = null
       }
       if (interactionTimer !== null) {
         clearTimeout(interactionTimer)

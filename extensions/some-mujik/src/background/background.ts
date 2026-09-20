@@ -128,6 +128,12 @@ function startPolling(): void {
   setTimeout(() => {
     void poll()
   }, 1000)
+  // Lifetime: bounded by startPolling()/stopPolling(), which are the
+  // background worker's own paired entry points — stopPolling() clears it
+  // and nulls the handle, and startPolling() is a no-op while one is live.
+  // A background worker has no visibility to gate on; its lifetime is the
+  // worker's.
+  // eslint-disable-next-line extension-charter/require-named-lifetime -- lifetime stated above
   pollTimer = setInterval(() => {
     void poll()
   }, POLL_INTERVAL_MS)

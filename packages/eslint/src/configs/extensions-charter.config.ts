@@ -3,6 +3,7 @@ import {
   noRawStorage,
   noUnprefixedNamespace,
   noZindexEscalation,
+  requireNamedLifetime,
   requireStoryTitlePrefix,
 } from "@eslint/rules/index.js"
 import { defineConfig } from "eslint/config"
@@ -26,6 +27,7 @@ export const extensionCharterPlugin = {
     "no-logic-layer-side-effects": noLogicLayerSideEffects,
     "no-raw-storage": noRawStorage,
     "require-story-title-prefix": requireStoryTitlePrefix,
+    "require-named-lifetime": requireNamedLifetime,
   },
 }
 
@@ -48,6 +50,15 @@ const extensionsCharterConfig = defineConfig([
     rules: {
       "extension-charter/no-zindex-escalation": "error",
       "extension-charter/no-raw-storage": "error",
+      // §5, added after a 200-tab profile hung the browser on three 250ms
+      // polls per tab. Every one of those polls already had a matching
+      // clearInterval — see the rule's own doc comment for why that is
+      // precisely the reason this is not a cleanup-pairing check.
+      //
+      // Workspace-agnostic by default: it names no module, so the message
+      // falls back to generic wording. A workspace with its own lifecycle
+      // helper should pass `lifecycleModule` so the error points at it.
+      "extension-charter/require-named-lifetime": "error",
     },
   },
   {

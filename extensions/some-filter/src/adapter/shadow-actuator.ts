@@ -192,7 +192,24 @@ function staticShadowLayer(): CSSStyleSheet {
   if (staticLayerSheet !== null) return staticLayerSheet
   const sheet = new CSSStyleSheet()
   for (const rule of DARK_THEME_BODY_RULES) {
-    sheet.insertRule(rule, sheet.cssRules.length)
+    try {
+      sheet.insertRule(rule, sheet.cssRules.length)
+    } catch {
+      // One unparseable rule must not cost the other twenty-odd.
+      //
+      // A document `<style>` drops a rule whose selector the engine cannot
+      // parse and keeps the rest; `insertRule` throws instead, so an
+      // engine-dependent selector anywhere in this array would take the
+      // whole shadow static layer down with it — every shadow-hosted
+      // surface left unthemed, with the failure visible nowhere. The array
+      // is a growing set of rules maintained by hand, and this extension
+      // ships to two engines whose selector support is not identical, so
+      // "no rule in it is ever unparseable anywhere" is not an assumption
+      // worth resting a whole layer on.
+      //
+      // Skipping matches what the document path already does with the same
+      // rule text, which is the behaviour a shadow scope should mirror.
+    }
   }
   staticLayerSheet = sheet
   return sheet
@@ -337,6 +354,49 @@ export function realizeShadowColors(
  * commit's dark styling, visibly contradicting the "already correct, leave
  * it alone" verdict that just released the veil over it.
  */
+/**
+ * Runs `fn` with every sheet this module adopted into `root` disabled, so a
+ * `getComputedStyle` inside it reads the *vendor's* colours rather than the
+ * ones this extension put there.
+ *
+ * `pipeline.ts`'s `withVendorColorsVisible` is the light-DOM half of this
+ * and cannot cover a shadow scope: it suppresses by
+ * `document.getElementById` over `OWN_COLOR_SHEET_IDS`, i.e. document
+ * `<style>` elements, while a scope's realization is a *constructed*
+ * `CSSStyleSheet` with no id, reachable only through `adoptedStyleSheets`.
+ * So a shadow scan ran with this module's static layer fully live and read
+ * back `var(--sw-surface)` and friends as fresh vendor evidence — #831's
+ * symptom 2, one scope over, in the exact place
+ * `withVendorColorsVisible`'s own doc comment warns about.
+ *
+ * Latent for as long as that layer only recoloured `dialog`/`[popover]` by
+ * type. What made it worth closing is that the static layer has since
+ * become a primary mechanism rather than a fallback, so the set of
+ * elements whose colour it decides — and which a scan therefore
+ * misreads — is now large.
+ *
+ * `disabled` rather than detaching, for the reason every other suppression
+ * here gives: it mutates no DOM, so it queues no MutationRecord, and the
+ * whole scan is one synchronous task, so no frame is painted unthemed.
+ */
+export function withShadowColorsVisible<T>(root: ShadowRoot, fn: () => T): T {
+  const owned = ownedSheetsByRoot.get(root)
+  if (owned === undefined || owned.size === 0) return fn()
+
+  const suppressed: Array<CSSStyleSheet> = []
+  for (const sheet of owned) {
+    if (!sheet.disabled) {
+      sheet.disabled = true
+      suppressed.push(sheet)
+    }
+  }
+  try {
+    return fn()
+  } finally {
+    for (const sheet of suppressed) sheet.disabled = false
+  }
+}
+
 export function clearShadowSurfaceState(root: ShadowRoot): boolean {
   // Frozen for the duration (SF-RC3, #1342): dropping this scope's own
   // repair sheet below is a style change, so a carrier with a vendor

@@ -118,6 +118,13 @@ export class PageMonitor implements Disposable {
 
     // Poll for video state every 2s — content scripts don't reliably receive
     // play/pause events from vendor video elements.
+    // Lifetime: cleared by this monitor's own teardown, alongside the
+    // listeners it registers. Not gated on visibility even though it polls
+    // a video element — worth revisiting if this extension ever runs across
+    // a large tab set, since that is the exact shape (a per-tab poll with a
+    // teardown wired to only one lifecycle) that hung a 200-tab profile in
+    // some-filter.
+    // eslint-disable-next-line extension-charter/require-named-lifetime -- lifetime stated above
     this.videoPollInterval = setInterval(() => this.pollVideoState(), 2_000)
 
     // Snap initial state.
