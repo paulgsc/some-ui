@@ -29,13 +29,12 @@
 
 import { readdirSync, statSync } from "fs"
 import { join, relative, sep } from "path"
-import { describe, expect, it } from "vitest"
-
 import {
   renderFindings,
   scanSources,
   type SourceScan,
-} from "./traversal-source-scan"
+} from "@some-extension/common/budgets"
+import { describe, expect, it } from "vitest"
 
 const PACKAGE_ROOT = join(import.meta.dirname, "..", "..")
 

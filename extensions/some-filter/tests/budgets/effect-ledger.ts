@@ -4,9 +4,10 @@
  *
  * ── the admission rule this file participates in ─────────────────────────
  *
- * `bundle-closure-budget.test.ts` enforces four conditions over the built
- * artifact, none of which mentions any function, module or file in this
- * extension:
+ * The rule lives in `@some-extension/common/budgets` and applies to any
+ * extension in this workspace; see `admission.ts` there for its statement
+ * and its limits. It enforces four conditions over the built artifact, none
+ * of which mentions any function, module or file in this extension:
  *
  *   1. **Closure.** Every alphabet occurrence in every shipped bundle has a
  *      ledger entry. No entry ⇒ red. This is what makes the rule survive a
@@ -44,20 +45,7 @@
  * a class.
  */
 
-import type { CostClass, RetentionClass } from "./effect-alphabet"
-
-export type LedgerEntry = {
-  /** Exact number of occurrences expected in this bundle. */
-  readonly count: number
-  readonly cost: CostClass
-  readonly retention: RetentionClass
-  /** Source modules responsible, for review. Not machine-checked — the bundle is mangled. */
-  readonly owner: string
-  /** Why this class, in terms of S_i / H_i / A_i. */
-  readonly note: string
-}
-
-export type EffectLedger = ReadonlyMap<string, ReadonlyMap<string, LedgerEntry>>
+import type { EffectLedger, LedgerEntry } from "@some-extension/common/budgets"
 
 const contentScript: ReadonlyMap<string, LedgerEntry> = new Map([
   [

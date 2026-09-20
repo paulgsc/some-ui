@@ -38,15 +38,14 @@
 import { buildEnforcementCSS } from "@filter/adapter/enforcement-sheet"
 import { SWATCHES, type Swatch } from "@filter/adapter/swatches"
 import { EXT_GUARD } from "@filter/lib/content/theme-apply"
-import { describe, expect, it } from "vitest"
-
 import {
   analyzeSelector,
   analyzeStylesheet,
   MAX_SELECTOR_COST,
   report,
   type SelectorCost,
-} from "./selector-cost"
+} from "@some-extension/common/budgets"
+import { describe, expect, it } from "vitest"
 
 const swatch: Swatch = SWATCHES.default
 const costs: ReadonlyArray<SelectorCost> = analyzeStylesheet(

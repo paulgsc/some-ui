@@ -7,7 +7,6 @@
     "@some-extension/transport": "workspace:*"
   },
   "devDependencies": {
-    "@eslint/css-tree": "4.1.0",
     "@some-ui/eslint-kit": "workspace:*",
     "@some-ui/tsconfig": "workspace:*",
     "@types/firefox-webext-browser": "^120.0.4",

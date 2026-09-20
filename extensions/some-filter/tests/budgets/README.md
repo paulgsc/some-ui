@@ -53,6 +53,42 @@ ignored: exported-but-uncalled code is tree-shaken and never ships, and
 dead code cannot hang a page. Discovering that required a green control —
 the first run of this experiment compared red-to-red and proved nothing.
 
+## Where the rule lives
+
+The rule is not some-filter's. It is `@some-extension/common/budgets`, and
+it applies to any extension in this workspace — every one of them injects
+into pages it does not control, so every one needs the same guarantee.
+
+What lives _here_ is the only irreducibly some-filter-specific part:
+
+| in `common`                                | in this directory                                         |
+| ------------------------------------------ | --------------------------------------------------------- |
+| the effect alphabet                        | `effect-ledger.ts` — what this extension ships, declared  |
+| the bundle scanner                         | thin wiring: three arguments to `describeAdmissionGate`   |
+| the four conditions                        | subjects: this extension's sheet, classifier, source tree |
+| the CSS cost model, dense-document fixture |                                                           |
+
+That split is itself the over-fitting test. If applying the rule to a second
+extension ever required teaching `common` about a particular one, the rule
+would have stopped being a rule. Checked by pointing it, unmodified and with
+an empty ledger, at three extensions it had never seen:
+
+| extension          | bundles derived from its own manifest     | effects found                                            |
+| ------------------ | ----------------------------------------- | -------------------------------------------------------- |
+| `some-censor`      | `background.js`, `content.js`             | 50, incl. `querySelector`, `matches`, `closest`          |
+| `some-mujik`       | `background.js`, `content.js`             | 43, incl. `offsetWidth`, `scrollWidth`, `queueMicrotask` |
+| `suspender-ledger` | `resume-veil.js`, `watch.js`, `worker.js` | 27, incl. `executeScript` ×3                             |
+
+No change to `common` was needed for any of them. `suspender-ledger` is the
+informative one: a completely different artifact shape, three bundles none
+of which is named `content.js`, derived correctly because the bundle set
+comes from the manifest rather than from a list. The effects found there
+include several some-filter does not use at all, so the alphabet is not a
+transcription of this extension's imports.
+
+Those three are **not** wired up as consumers yet — only some-filter
+declares a ledger. Adding one is a ledger plus three lines.
+
 ## The four conditions CI enforces
 
 Over every page-facing bundle, where the set of such bundles is **derived

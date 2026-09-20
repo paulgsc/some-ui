@@ -54,15 +54,14 @@
 
 import { auditLegibility } from "@filter/adapter/legibility-audit"
 import { scan } from "@filter/adapter/pipeline"
-import { beforeEach, describe, expect, it } from "vitest"
-
 import {
   buildFilesChangedDocument,
   measure,
   projectToRealPage,
   retainedElements,
   type DocumentShape,
-} from "./dense-document"
+} from "@some-extension/common/budgets"
+import { beforeEach, describe, expect, it } from "vitest"
 
 /**
  * The most elements one synchronous traversal may visit before it has to
