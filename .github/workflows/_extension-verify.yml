@@ -108,17 +108,24 @@ jobs:
       # to a new module, to an imported workspace package, or to
       # public/prepaint-start.js still puts its primitives in the bundle.
       #
-      # Build immediately before analysing, unconditionally and ignoring the
-      # ext-build cache. The cache key hashes the extension tree, common/
-      # and the lockfile, but NOT packages/** — so a change to an imported
-      # workspace package restores a stale dist, and the gate would then
-      # certify an artifact that is not the one shipping. Provenance of the
-      # analysed bytes is part of the claim, so this rebuild is not
-      # redundant with the cached Build step further down.
-      - name: Build artifact for admission analysis
-        run: nix develop .#ci --command pnpm --filter "${{ matrix.package_name }}" build:chromium
-
-      # No --if-present here. An extension listed in PROTECTED below must
+      # Artifact provenance is handled by the `test:budgets` script itself,
+      # which runs `build:chromium && vitest run tests/budgets` — an
+      # unconditional rebuild that ignores the ext-build cache. That matters
+      # because the cache key hashes the extension tree, common/ and the
+      # lockfile but NOT packages/**, so a change to an imported workspace
+      # package can restore a stale dist, and the gate would then certify an
+      # artifact that is not the one shipping.
+      #
+      # Deliberately NOT a separate workflow step. An earlier revision ran
+      # `pnpm --filter <pkg> build:chromium` here for every extension in the
+      # matrix, which fails outright on the ones that define no such script
+      # (some-drama, suspender-ledger) — ERR_PNPM_RECURSIVE_RUN_NO_SCRIPT,
+      # a workflow bug rather than the gate flagging anything. Any build an
+      # extension needs for its own admission analysis belongs inside that
+      # extension's own test:budgets script, where the extension declares
+      # how it is built.
+      #
+      # No --if-present below. An extension listed in PROTECTED must
       # define test:budgets; deleting the script is otherwise a silent way
       # to opt out of the gate, which is the same falsely-green admission
       # the gate exists to prevent.
