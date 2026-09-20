@@ -1,4 +1,8 @@
-import { appsRecommended, intentGuardConfig } from "@some-ui/eslint-kit"
+import {
+  appsRecommended,
+  intentGuardConfig,
+  queryGuardConfig,
+} from "@some-ui/eslint-kit"
 import { defineConfig } from "eslint/config"
 
 // `appsRecommended`, not the default export: this is a deployable host with
@@ -10,9 +14,14 @@ import { defineConfig } from "eslint/config"
 // (`src/lib/intent/`) to guard. `no-unbounded-intent` catches an effect
 // initiated from inside a JSX event handler without going through
 // `useIntent`/`useAsyncIntent`.
+//
+// queryGuardConfig (#968/MS8) is the same kind of opt-in, for the same
+// reason: this is the one workspace with query hooks (`src/lib/tenant/`)
+// whose `data` is worth guarding against a silently-defaulted destructure.
 export default defineConfig([
   ...appsRecommended,
   ...intentGuardConfig,
+  ...queryGuardConfig,
 
   // #937 S2: the compiler half of the boundary. `switch-exhaustiveness-check`
   // is type-aware (already available here via typescriptConfig's
