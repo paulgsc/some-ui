@@ -113,7 +113,7 @@ describe("useLiveLayoutEditor: autosave durability", () => {
     const session = fixtureSession()
 
     const mounted = renderHook(
-      () => useLiveLayoutEditor(session, NO_LIFETIMES),
+      () => useLiveLayoutEditor(session, NO_LIFETIMES, { editable: true }),
       { wrapper }
     )
 
@@ -129,7 +129,7 @@ describe("useLiveLayoutEditor: autosave durability", () => {
     mounted.unmount()
 
     const remounted = renderHook(
-      () => useLiveLayoutEditor(session, NO_LIFETIMES),
+      () => useLiveLayoutEditor(session, NO_LIFETIMES, { editable: true }),
       { wrapper }
     )
 
@@ -149,9 +149,12 @@ describe("useLiveLayoutEditor: autosave durability", () => {
     const { wrapper } = withQueryClient()
     const session = fixtureSession()
 
-    const first = renderHook(() => useLiveLayoutEditor(session, NO_LIFETIMES), {
-      wrapper,
-    })
+    const first = renderHook(
+      () => useLiveLayoutEditor(session, NO_LIFETIMES, { editable: true }),
+      {
+        wrapper,
+      }
+    )
     act(() => {
       first.result.current.onTreeChange(first.result.current.tree)
     })
@@ -162,7 +165,7 @@ describe("useLiveLayoutEditor: autosave durability", () => {
 
     stubPatch({ fail: false })
     const second = renderHook(
-      () => useLiveLayoutEditor(session, NO_LIFETIMES),
+      () => useLiveLayoutEditor(session, NO_LIFETIMES, { editable: true }),
       { wrapper }
     )
     expect(autosaveSummary(second.result.current.autosaveStatus)).toContain(
@@ -177,9 +180,12 @@ describe("useLiveLayoutEditor: autosave durability", () => {
     })
     second.unmount()
 
-    const third = renderHook(() => useLiveLayoutEditor(session, NO_LIFETIMES), {
-      wrapper,
-    })
+    const third = renderHook(
+      () => useLiveLayoutEditor(session, NO_LIFETIMES, { editable: true }),
+      {
+        wrapper,
+      }
+    )
     expect(autosaveSummary(third.result.current.autosaveStatus)).toBeNull()
   })
 
@@ -202,7 +208,7 @@ describe("useLiveLayoutEditor: autosave durability", () => {
     const { wrapper } = withQueryClient()
     const session = fixtureSession()
     const { result } = renderHook(
-      () => useLiveLayoutEditor(session, NO_LIFETIMES),
+      () => useLiveLayoutEditor(session, NO_LIFETIMES, { editable: true }),
       { wrapper }
     )
 

@@ -48,10 +48,22 @@ vi.mock("some-ui-utils", async () => {
   }
 })
 
+/**
+ * Props the viewport was handed on the last render. Chrome assertions alone
+ * cannot see a *handler* leaking through to a phone - the editor's gestures
+ * are wired as props on this component, not as anything it paints - and a
+ * tripwire that only reads the DOM is one that passes while the thing it
+ * guards is still reachable.
+ */
+let viewportProps: Record<string, unknown> = {}
+
 vi.mock("wireframes", () => ({
-  OrchestratedYouTubeViewport: (): JSX.Element => (
-    <div data-testid="viewport-content" />
-  ),
+  OrchestratedYouTubeViewport: (
+    props: Record<string, unknown>
+  ): JSX.Element => {
+    viewportProps = props
+    return <div data-testid="viewport-content" />
+  },
   LiveEditOverlay: (): JSX.Element => <div data-testid="live-edit-overlay" />,
   applyIntent: (tree: unknown): unknown => tree,
 }))
@@ -82,6 +94,7 @@ const mount = (): ReturnType<typeof render> =>
 
 beforeEach(() => {
   mobile = true
+  viewportProps = {}
 })
 
 afterEach(() => {
@@ -95,6 +108,28 @@ describe("SessionViewport on a phone", () => {
 
     expect(screen.queryByText(/edit layout/i)).toBeNull()
     expect(screen.queryByTestId("live-edit-overlay")).toBeNull()
+  })
+
+  it("does not wire the resize gesture either", () => {
+    mount()
+
+    // `onLeafResize` is what arms the viewport's context-menu resize
+    // handle. A long press *is* a context menu on a touch device, so
+    // handing this down on a phone leaves a layout edit - and the `PATCH`
+    // that persists it - reachable on the one surface the editor is
+    // deliberately absent from. Absent chrome was never the whole
+    // contract; an absent handler is.
+    expect(viewportProps.onLeafResize).toBeUndefined()
+  })
+
+  it("still wires it on a desktop viewport", () => {
+    mobile = false
+    mount()
+
+    // The negative above is only meaningful if the positive holds - a
+    // handler that is undefined everywhere would pass that test while
+    // deleting the feature.
+    expect(typeof viewportProps.onLeafResize).toBe("function")
   })
 
   it("is full-bleed — no frame inset from the edges of the screen", () => {

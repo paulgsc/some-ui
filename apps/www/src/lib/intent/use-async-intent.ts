@@ -38,6 +38,7 @@ import {
   working,
 } from "@some-ui/intent-kit"
 
+import { isSameDispatch, reportDroppedWrite } from "./dropped-write"
 import { mapFileHostError } from "./errors"
 
 export type UseAsyncIntentOptions = {
@@ -82,14 +83,23 @@ export function useAsyncIntent<TVariables, TData>(
     fnRef.current = fn
   })
 
-  // See `use-intent.ts`'s "Thundering-herd guard" - same race, same fix.
-  // Cleared the instant the promise settles rather than via an effect
-  // keyed on a mutation's status, since there is no such status here.
+  // See `use-intent.ts`'s "Thundering-herd guard" - same race, same fix,
+  // and the same variables-based distinction between a double-fire and a
+  // lost write (`dropped-write.ts`). Cleared the instant the promise
+  // settles rather than via an effect keyed on a mutation's status, since
+  // there is no such status here.
   const dispatchingRef = useRef(false)
+  const dispatchedVariablesRef = useRef<TVariables | undefined>(undefined)
 
   const run = useCallback((variables: TVariables): void => {
-    if (dispatchingRef.current) return
+    if (dispatchingRef.current) {
+      if (!isSameDispatch(dispatchedVariablesRef.current, variables)) {
+        reportDroppedWrite("useAsyncIntent.start")
+      }
+      return
+    }
     dispatchingRef.current = true
+    dispatchedVariablesRef.current = variables
     setLocal({ status: "working" })
     fnRef.current(variables).then(
       (value) => {

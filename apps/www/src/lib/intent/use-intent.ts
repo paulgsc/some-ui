@@ -47,6 +47,14 @@
  * `mutation.status` actually changes, so a genuine subsequent action
  * (retry after a real failure, resubmitting a dirty form) is never
  * blocked - only a duplicate within the same burst is.
+ *
+ * "Duplicate" is decided by the variables, not by the timing alone. Two
+ * calls in one burst carrying the *same* variables are one intention
+ * double-fired, and dropping the second is the whole point. Two carrying
+ * *different* variables are two intentions, and dropping the second is
+ * silent data loss - so that case is reported rather than swallowed. See
+ * `dropped-write.ts`, which is where that distinction and what follows from
+ * it are written down.
  */
 
 import { useCallback, useEffect, useRef } from "react"
@@ -64,6 +72,7 @@ import {
 } from "@some-ui/intent-kit"
 import type { UseMutationResult } from "@tanstack/react-query"
 
+import { isSameDispatch, reportDroppedWrite } from "./dropped-write"
 import { mapFileHostError } from "./errors"
 
 export type UseIntentOptions = {
@@ -106,11 +115,20 @@ export function useIntent<TVariables, TData, TStep extends string = never>(
 
   // See this module's header, "Thundering-herd guard".
   const dispatchingRef = useRef(false)
+  // The variables the in-flight dispatch carried, so a dropped call can be
+  // classified as a repeat of it or as a different write being lost. Held
+  // beside `dispatchingRef` rather than read off `mutation.variables`,
+  // which TanStack also keeps populated for a *settled* mutation and so
+  // cannot answer "what is in flight right now".
+  const dispatchedVariablesRef = useRef<TVariables | undefined>(undefined)
   useEffect(() => {
     dispatchingRef.current = false
   }, [status])
 
   const retry = useCallback((): void => {
+    // A retry re-sends the variables already on the result, so a retry
+    // landing on an in-flight dispatch is by construction the same
+    // intention - never the lost-write case `start` below has to report.
     if (dispatchingRef.current) return
     // TanStack retains the variables from the last `mutate()` call on the
     // result itself; re-deriving them locally would risk disagreeing with
@@ -119,13 +137,20 @@ export function useIntent<TVariables, TData, TStep extends string = never>(
     // since `retry` only exists once a mutation has already run once.
     if (variables === undefined) return
     dispatchingRef.current = true
+    dispatchedVariablesRef.current = variables
     mutate(variables)
   }, [mutate, variables])
 
   const start = useCallback(
     (nextVariables: TVariables): void => {
-      if (dispatchingRef.current) return
+      if (dispatchingRef.current) {
+        if (!isSameDispatch(dispatchedVariablesRef.current, nextVariables)) {
+          reportDroppedWrite("useIntent.start")
+        }
+        return
+      }
       dispatchingRef.current = true
+      dispatchedVariablesRef.current = nextVariables
       mutate(nextVariables)
     },
     [mutate]
