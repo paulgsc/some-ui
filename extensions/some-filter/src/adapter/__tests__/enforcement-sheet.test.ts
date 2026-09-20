@@ -40,10 +40,12 @@ describe("buildEnforcementCSS", () => {
     const erase = css.slice(eraseStart, css.indexOf("}", eraseStart))
     expect(erase).toContain("box-shadow: none !important;")
     expect(erase).toContain("filter: none !important;")
+    expect(erase).toContain("backdrop-filter: none !important;")
     const pseudoStart = css.indexOf(":where(*:not([data-my-ext]))::before")
     const pseudo = css.slice(pseudoStart, css.indexOf("}", pseudoStart))
     expect(pseudo).toContain("box-shadow: none !important;")
     expect(pseudo).toContain("filter: none !important;")
+    expect(pseudo).toContain("backdrop-filter: none !important;")
   })
 
   it("imposes a dark top-layer ::backdrop, excluding the veil's own (bot-found on #1463, round 3)", () => {
@@ -53,6 +55,9 @@ describe("buildEnforcementCSS", () => {
     const rule = css.slice(start, css.indexOf("}", start))
     expect(rule).toContain("background-color: rgba(0, 0, 0, 0.6) !important;")
     expect(rule).not.toContain("transparent")
+    // The backdrop's own independent channels (bot-found, confirming review).
+    expect(rule).toContain("box-shadow: none !important;")
+    expect(rule).toContain("backdrop-filter: none !important;")
   })
 
   it("erases without reading — the erase selector carries no swatch-specific token", () => {
