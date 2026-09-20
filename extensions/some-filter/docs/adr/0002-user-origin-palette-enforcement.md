@@ -1,6 +1,6 @@
 # ADR 0002 — User-origin palette enforcement: erase vendor colour, impose E unconditionally
 
-- **Status:** Proposed
+- **Status:** Proposed — see §8 for amendments recorded after review; canon citation pending (#1493)
 - **Date:** 2026-09-19
 - **Supersedes:** ADR 0001 §3(b), §3(c), and three rows of its adopt/skip table (§1.2 below)
 - **Reference:** measurements in §2 were taken against Chromium 1194 (Playwright's
@@ -365,3 +365,83 @@ specificity case, on both engines.
 6. Simplify the veil (§4) last, once enforcement is confirmed on both engines.
 
 Steps 1–4 are reversible behind the flag. Step 5 is not.
+
+---
+
+## 8. Amendments
+
+Recorded after the review of this ADR (Codex, 2026-09-20, three findings, all
+real) rather than rewritten into the sections above, so the measurements and
+reasoning in §2–§7 stay as they were when taken.
+
+### 8.1 §3.1 is reversed — user-origin rules do cross shadow boundaries
+
+The four-variant measurement in §3.1 did not replicate through the real
+extension surface (`chrome.scripting.insertCSS({ origin: "USER" })` from a real
+MV3 service worker): a user-origin `!important` rule overrides explicit,
+`!important`, non-inherited declarations inside open and closed shadow roots,
+on both Blink and Gecko. ADR 0003 records the eight-cell measurement and the
+decision that follows (embrace global crossing; the shadow stack's retention
+in §5.2 becomes conditional). The review finding that a constant
+`adoptedStyleSheets` sheet could not outrank vendor `!important` inside a
+shadow root was correct about author-origin adopted sheets, and is moot under
+ADR 0003: the mechanism inside a shadow root is the same user-origin sheet, not
+an adopted one.
+
+### 8.2 §2.2 erases generated content too
+
+`*` never matches a pseudo-element, so the snippet in §2.2 left a vendor's
+`::before`/`::after` boxes — a fixed white `html::before` overlay, a light card
+drawn on a pseudo — painting as authored on top of the erased canvas. The
+enforcement sheet applies the same four declarations to
+`:where(*:not([data-my-ext]))::before, …::after` (#1463, `2944993`), with a
+unit case pinning the rule and an e2e case asserting a white `html::before`
+reads transparent under the live sheet.
+
+The same commit replaced the sheet's `[data-my-ext] { all: revert !important }`
+exclusion with `:not([data-my-ext])` on the erase rule: at the user origin,
+`revert` rolls the cascade back to the user-agent origin, which stripped
+`prepaint.css`'s author styling from the veil.
+
+### 8.3 §2.1 — transitions outrank every `!important` origin (open)
+
+CSS transition declarations sit above all `!important` origins in the cascade.
+On an element with an authored `transition: background-color 2s`, inserting the
+sheet starts a 2 s interpolation from the vendor's colour to E, during which
+the vendor's colour is what paints — after enforcement is "applied", and after
+a naive confirmation read. The classifier pipeline handled the same hazard with
+`withPrepaintSuppressed`'s transition freeze; the sheet has no policy yet.
+
+Not a change to the mechanism, but a constraint on the handoff: the veil must
+not be released on the strength of the sheet being inserted alone. The policy
+(a transition/animation freeze held from before the injection request until
+the confirmation read and one painted frame after it, removed afterwards so
+steady-state vendor transitions are untouched) and its e2e fixture are
+specified in #1489 (SF-CUT3), which owns the veil handshake.
+
+### 8.4 Second review round — the sheet's remaining paint surfaces
+
+Six further findings (Codex, round 2), all real. Two are fixed on the
+implementation PR (#1463): the canvas rule carries `filter: none !important`
+on `html`/`body` (`ccb4f03`), so a vendor's root-level invert
+(`filter-invert-vendor-page.html`) no longer composites E back to light, and
+the same reset is on both erase rules — every non-media element and its
+`::before`/`::after` (`8af1643`) — so a filter on a descendant group
+(`PG-GROUP-FILTER` in the paint grammar) cannot post-process the tokens
+inside it either; and
+`insertCSS` targets `allFrames: true`, reaching every frame that exists at the
+injection event — late-created frames and a per-frame veil are #1489's
+per-document request. The other four are tracked in #1497 and must land
+before #1492's eye-strain run judges fidelity:
+
+- `-webkit-text-fill-color` fills glyphs regardless of `color`; the sheet
+  declares `currentColor` for it.
+- `box-shadow` can paint a complete surface (`inset 0 0 0 9999px white`,
+  `PG-BG-INSET-SHADOW` in the paint grammar); the sheet resets it
+  (`8af1643`), which adds vendor elevation shadows to §5.4's fidelity cost.
+- Painting pseudo-elements beyond `::before`/`::after`: `::backdrop` is
+  imposed dark rather than erased (`8af1643`); `::marker`, `::first-letter`,
+  `::first-line`, `::file-selector-button` remain open.
+- Descendants of extension-owned elements are excluded by selector
+  (`:not([data-my-ext] *)`), the same contract `EXT_GUARD` already states,
+  subject to #1488's cost measurement.
