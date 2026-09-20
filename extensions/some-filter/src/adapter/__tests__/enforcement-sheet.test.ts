@@ -46,7 +46,7 @@ describe("buildEnforcementCSS", () => {
     // style must NOT be — they moved to BORDER_CONTAINER_SELECTOR.
     const css = buildEnforcementCSS(swatch)
     const [eraseBlock] = css.match(
-      /\*:not\(img\):not\(video\):not\(svg\):not\(canvas\) \{[^}]*\}/
+      /\*:not\(img\):not\(video\):not\(svg\):not\(canvas\):not\(\[data-my-ext\]\) \{[^}]*\}/
     ) ?? [""]
     expect(eraseBlock).toContain(
       `border-color: ${swatch.borderStrong} !important`
@@ -92,10 +92,33 @@ describe("buildEnforcementCSS", () => {
     expect(css).not.toContain("color-scheme")
   })
 
-  it("excludes this extension's own DOM from every rule it writes", () => {
+  it("excludes this extension's own DOM by selector, never by a user-origin `all: revert` (bot-found on #1463: at the user origin, revert rolls back past the author origin and strips prepaint.css from the veil)", () => {
     const css = buildEnforcementCSS(swatch)
-    expect(css).toContain("[data-my-ext]")
-    expect(css).toContain("all: revert !important")
+    expect(css).not.toContain("revert")
+    // The erase rule carries the exclusion itself.
+    expect(css).toContain(
+      "*:not(img):not(video):not(svg):not(canvas):not([data-my-ext]) {"
+    )
+    // And so does every rule that could otherwise reach the veil (a <div>).
+    const unguarded = css
+      .split("\n")
+      .filter((line) => /^[^\s/].*\{\s*$/.test(line))
+      .filter((line) => !line.includes("data-my-ext"))
+      .filter((line) => !line.startsWith(":root:root"))
+      .filter((line) => !line.startsWith("::selection"))
+      .filter((line) => !line.includes("::placeholder"))
+    expect(unguarded).toEqual([])
+  })
+
+  it("erases generated content too — a vendor ::before/::after is its own paint surface (bot-found on #1463)", () => {
+    const css = buildEnforcementCSS(swatch)
+    const start = css.indexOf(":where(*:not([data-my-ext]))::before")
+    expect(start).toBeGreaterThan(-1)
+    const rule = css.slice(start, css.indexOf("}", start))
+    expect(rule).toContain("::after")
+    expect(rule).toContain("background-color: transparent !important;")
+    expect(rule).toContain("background-image: none !important;")
+    expect(rule).toContain(`color: ${swatch.text0} !important;`)
   })
 
   it("interpolates the given swatch's own tokens, not another swatch's", () => {

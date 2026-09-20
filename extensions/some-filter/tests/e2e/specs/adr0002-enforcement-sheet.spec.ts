@@ -132,6 +132,62 @@ test.describe("ADR 0002 enforcement sheet", () => {
     expect(bodyBg).toBe(ENFORCED_BG)
   })
 
+  test("[data-my-ext] keeps its author-origin styling, and vendor ::before/::after are erased (bot-found on #1463)", async ({
+    context,
+    fixture,
+  }) => {
+    const sw = await backgroundWorker(context)
+    await enableEnforcementSheet(sw)
+
+    const page = await fixture.goto("light-page")
+    await cycleTabOff(sw, page, "light-page.html")
+    await page.waitForFunction(
+      (expected) =>
+        getComputedStyle(document.documentElement).backgroundColor === expected,
+      ENFORCED_BG,
+      { timeout: 5_000, polling: 100 }
+    )
+
+    const probe = await page.evaluate(() => {
+      // An author-origin sheet styling an extension-owned element exactly
+      // the way prepaint.css styles the veil, plus two vendor paint
+      // surfaces the erase policy must reach: a plain element and a
+      // fixed, full-viewport `html::before` overlay.
+      const style = document.createElement("style")
+      style.textContent = [
+        "#probe-ext { position: fixed; width: 40px; height: 40px; background-color: rgb(1, 2, 3); }",
+        "#probe-vendor { background-color: rgb(255, 255, 255); }",
+        'html::before { content: ""; position: fixed; inset: 0; background-color: rgb(255, 255, 255); }',
+      ].join("\n")
+      document.head.appendChild(style)
+      const ext = document.createElement("div")
+      ext.id = "probe-ext"
+      ext.setAttribute("data-my-ext", "")
+      const vendor = document.createElement("div")
+      vendor.id = "probe-vendor"
+      document.body.append(ext, vendor)
+      return {
+        extBg: getComputedStyle(ext).backgroundColor,
+        extPosition: getComputedStyle(ext).position,
+        extWidth: getComputedStyle(ext).width,
+        vendorBg: getComputedStyle(vendor).backgroundColor,
+        htmlBeforeBg: getComputedStyle(document.documentElement, "::before")
+          .backgroundColor,
+      }
+    })
+
+    // The extension-owned element is exactly as the author sheet declared
+    // it. An earlier revision's user-origin `all: revert` rule rolled these
+    // back to the UA defaults (transparent, static, auto) — which for the
+    // real veil meant a UA-styled popover box instead of a dark cover.
+    expect(probe.extBg).toBe("rgb(1, 2, 3)")
+    expect(probe.extPosition).toBe("fixed")
+    expect(probe.extWidth).toBe("40px")
+    // Vendor surfaces are erased — the element and the generated box alike.
+    expect(probe.vendorBg).toBe("rgba(0, 0, 0, 0)")
+    expect(probe.htmlBeforeBg).toBe("rgba(0, 0, 0, 0)")
+  })
+
   test("borderStrong actually renders on a bare vendor element (live-measured gap)", async ({
     context,
     fixture,
