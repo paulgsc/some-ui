@@ -16,8 +16,7 @@
     "shared"
   ],
   "scripts": {
-    "build:esm": "tsc --outDir dist/esm && tsc-alias -p tsconfig.tsc-alias.json",
-    "build": "pnpm build:esm",
+    "build": "tsc --outDir dist/esm && tsc-alias -p tsconfig.tsc-alias.json",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",

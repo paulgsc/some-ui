@@ -47,6 +47,10 @@ export {
   intentGuardPlugin,
 } from "./intent-guard.config.js"
 export {
+  default as queryGuardConfig,
+  queryGuardPlugin,
+} from "./query-guard.config.js"
+export {
   default as themeProtocolConfig,
   structuralColorRatchet,
   themeProtocolPlugin,
