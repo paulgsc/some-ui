@@ -23,6 +23,14 @@ describe("buildEnforcementCSS", () => {
     expect(css).not.toMatch(/(?<!:root)\bhtml\s*,\s*body\b/)
   })
 
+  it("neutralizes a root-level vendor filter on the canvas rule (bot-found on #1463: html { filter: invert(1) } inverted E back to light)", () => {
+    const css = buildEnforcementCSS(swatch)
+    const start = css.indexOf(":root:root, :root:root body {")
+    expect(start).toBeGreaterThan(-1)
+    const rule = css.slice(start, css.indexOf("}", start))
+    expect(rule).toContain("filter: none !important;")
+  })
+
   it("erases without reading — the erase selector carries no swatch-specific token", () => {
     const css = buildEnforcementCSS(swatch)
     expect(css).toContain("*:not(img):not(video):not(svg):not(canvas)")

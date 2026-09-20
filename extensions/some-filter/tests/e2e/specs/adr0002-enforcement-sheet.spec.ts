@@ -132,6 +132,34 @@ test.describe("ADR 0002 enforcement sheet", () => {
     expect(bodyBg).toBe(ENFORCED_BG)
   })
 
+  test("a vendor root filter does not invert E back to light (bot-found on #1463)", async ({
+    context,
+    fixture,
+  }) => {
+    const sw = await backgroundWorker(context)
+    await enableEnforcementSheet(sw)
+
+    // light-page.html plus `html { filter: invert(1) }` — the vendor-side
+    // "dark mode via invert" trick. A compositing filter is applied after
+    // painting, so without neutralizing it the enforced bg0 would render as
+    // its inverse (a light grey) and every other token likewise.
+    const page = await fixture.goto("filter-invert-vendor-page")
+    await cycleTabOff(sw, page, "filter-invert-vendor-page.html")
+    await page.waitForFunction(
+      (expected) =>
+        getComputedStyle(document.documentElement).backgroundColor === expected,
+      ENFORCED_BG,
+      { timeout: 5_000, polling: 100 }
+    )
+
+    const [htmlFilter, bodyFilter] = await page.evaluate(() => [
+      getComputedStyle(document.documentElement).filter,
+      getComputedStyle(document.body).filter,
+    ])
+    expect(htmlFilter).toBe("none")
+    expect(bodyFilter).toBe("none")
+  })
+
   test("[data-my-ext] keeps its author-origin styling, and vendor ::before/::after are erased (bot-found on #1463)", async ({
     context,
     fixture,

@@ -363,6 +363,20 @@ export function buildEnforcementCSS(swatch: Swatch): string {
 /* §3.2: specificity-boosted canvas rule — must out-rank ERASE_SELECTOR. */
 ${CANVAS_SELECTOR} {
   background-color: ${swatch.bg0} !important;
+  /* A vendor's own root-level compositing filter (the "dark mode via an
+     invert(1) filter on html" trick, filter-invert-vendor-page.html) is
+     applied *after* painting and would invert every enforced token back to
+     light — E only holds if the canvas paints unfiltered (bot-found on
+     #1463, Codex round 2). Neutralized on html/body only, the two roots a
+     page-wide filter is put on; a filter on a descendant is that element's
+     own paint, same as any other vendor colour decision, and is erased by
+     the rule below only insofar as its inputs are. Note this also
+     overrides this extension's *own* legacy invert (an author-origin
+     html { filter } !important) whenever both are active in one tab, which
+     the flagged rollout permits today — #1489 makes the two mutually
+     exclusive per tab; until then the flag and legacy mode are not meant to
+     be combined. */
+  filter: none !important;
 }
 
 /* §2.2/§2.3/§3.5: erase every vendor surface; let the canvas show through.
