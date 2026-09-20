@@ -31,7 +31,12 @@
 // its typecheck and its esbuild bundling need a path Node/esbuild can
 // resolve on their own — the same reason transport's own cross-package-safe
 // leaf (`contracts/adapter.ts`) uses only relative imports.
-import { relativeLuminance, type RGBA } from "../../lib/content/color"
+import {
+  compositeOver,
+  parseColor,
+  relativeLuminance,
+  type RGBA,
+} from "../../lib/content/color"
 import { rgbToHSL } from "../../lib/content/modify-colors"
 
 /**
@@ -48,6 +53,21 @@ export type Swatch = {
   readonly bg3: string
   readonly surface: string
   readonly border: string
+  /**
+   * ADR 0002 §2.3 ("E becomes border-led"): the enforcement sheet's erasure
+   * strategy (`adapter/enforcement-sheet.ts`) flattens every vendor
+   * background to `bg0`, so on a generic element `border` is the *only*
+   * remaining channel that can carry hierarchy — unlike `border` above
+   * (tuned as a subtle divider alongside the existing bg1/bg2/bg3 fill
+   * ramp, and left untouched here so the shipped pipeline's look is
+   * unaffected), `borderStrong` has to be visible with nothing else to lean
+   * on. `borderHierarchyReport` below is the checkable form of that
+   * requirement. A separate token rather than a redefinition of `border`
+   * itself: the two channels have different jobs and this keeps the change
+   * additive — every existing `var(--sw-border)` consumer in
+   * `theme-apply.ts` is untouched.
+   */
+  readonly borderStrong: string
   readonly text0: string
   readonly text1: string
   readonly text2: string
@@ -60,6 +80,28 @@ export type Swatch = {
 }
 
 export const DEFAULT_SWATCH_ID = "default"
+
+/**
+ * The one `borderStrong` value shared by every registry entry below — same
+ * pattern as `border`/`inputBorder`, which are also swatch-independent
+ * literals repeated per entry rather than derived. A named constant here
+ * (rather than a 7x-repeated literal) because this one *is* derived: 0.35 is
+ * the smallest round white-alpha step that clears `NON_TEXT_CONTRAST_FLOOR`
+ * (WCAG 2.1 SC 1.4.11's 3:1 non-text contrast) against every `bg0` in this
+ * registry, with margin — the exact minimum measured across all seven
+ * entries was 0.329-0.330 (`bg0` luminance ranges 0.0077-0.0115, narrow
+ * enough that one value clears the floor everywhere with comparable
+ * margin). `borderHierarchyReport` below is the checkable, per-swatch form
+ * of the same claim — this constant is not itself trusted; every entry is
+ * still verified against the floor, same as every other `Φ_comfort` clause
+ * is checked rather than assumed from the literal that produced it.
+ *
+ * This is a floor against an *invisible* border, not a claim about what
+ * looks best — final visual tuning is deferred to ADR 0002 §7 step 4's
+ * eye-strain validation, same as the rest of the border-led hierarchy this
+ * token exists for (§2.3).
+ */
+const BORDER_STRONG = "rgba(255, 255, 255, 0.35)"
 
 /**
  * `as const satisfies Record<string, Swatch>` — literal id keys are
@@ -107,6 +149,7 @@ export const SWATCHES = {
     bg3: "#272b37",
     surface: "#242934",
     border: "rgba(255, 255, 255, 0.08)",
+    borderStrong: BORDER_STRONG,
     text0: "#8699b1",
     text1: "#94a3b8",
     text2: "#475569",
@@ -126,6 +169,7 @@ export const SWATCHES = {
     bg3: "#272b37",
     surface: "#242833",
     border: "rgba(255, 255, 255, 0.08)",
+    borderStrong: BORDER_STRONG,
     text0: "#cbd5e1",
     text1: "#8797aa",
     text2: "#44505e",
@@ -145,6 +189,7 @@ export const SWATCHES = {
     bg3: "#29312d",
     surface: "#262d29",
     border: "rgba(255, 255, 255, 0.08)",
+    borderStrong: BORDER_STRONG,
     text0: "#cfe0d4",
     text1: "#8ca794",
     text2: "#475c4d",
@@ -164,6 +209,7 @@ export const SWATCHES = {
     bg3: "#2d2934",
     surface: "#292630",
     border: "rgba(255, 255, 255, 0.08)",
+    borderStrong: BORDER_STRONG,
     text0: "#ddd3e8",
     text1: "#9d8ab1",
     text2: "#534464",
@@ -183,6 +229,7 @@ export const SWATCHES = {
     bg3: "#332e2a",
     surface: "#2f2a27",
     border: "rgba(255, 255, 255, 0.08)",
+    borderStrong: BORDER_STRONG,
     text0: "#ebe1d3",
     text1: "#b6a388",
     text2: "#675741",
@@ -202,6 +249,7 @@ export const SWATCHES = {
     bg3: "#2d2e30",
     surface: "#292a2d",
     border: "rgba(255, 255, 255, 0.08)",
+    borderStrong: BORDER_STRONG,
     text0: "#d9dadc",
     text1: "#999b9e",
     text2: "#515255",
@@ -221,6 +269,7 @@ export const SWATCHES = {
     bg3: "#2b2e32",
     surface: "#282a2f",
     border: "rgba(255, 255, 255, 0.08)",
+    borderStrong: BORDER_STRONG,
     text0: "#a8b0ba",
     text1: "#757d87",
     text2: "#3e4248",
@@ -351,4 +400,72 @@ export function satisfiesComfort(sample: ComfortSample): boolean {
     report.chromaticBias &&
     report.bgNotBlack
   )
+}
+
+// ── Border-led hierarchy (ADR 0002 §2.3) ────────────────────────────────────
+//
+// A distinct, independent predicate from Φ_comfort above — a different
+// concern (can a border alone convey structure) checked over a different
+// pair ((bg, border), never (bg, text)), not a clause folded into
+// `comfortReport`/`ComfortSample`. Kept separate deliberately: this file's
+// own header notes `ComfortSample`/`Φ_comfort` are consumed directly by
+// `filter-classifier` against live-rendered fixtures (#722) — widening that
+// existing type's meaning to also cover border legibility would be a second,
+// unrelated claim riding along on an API whose contract external consumers
+// already depend on.
+//
+// WCAG 2.1 SC 1.4.11 ("Non-text Contrast") sets 3:1 as the contrast floor
+// for a UI component's visual boundary against its background — the
+// standard's own answer to exactly ADR 0002 §2.3's question (can a viewer
+// tell where a border is), applied here to `borderStrong` composited over
+// `bg0` rather than invented from nothing.
+const NON_TEXT_CONTRAST_FLOOR = 3.0
+
+/** The `(bg, border)` pair `borderHierarchyReport` is evaluated over. `border` is composited as translucent-over-opaque (`compositeOver`) before its luminance is read — `borderStrong`'s registry values are semi-transparent white overlays (`rgba(255, 255, 255, α)`), and contrast has to be measured against what a viewer actually sees painted, not against the overlay's own unpremultiplied channel values. */
+export type BorderSample = {
+  readonly bg: RGBA
+  readonly border: RGBA
+}
+
+/** Extracts the (bg0, borderStrong) pair a `Swatch` is checked against. */
+export function borderSample(swatch: Swatch): BorderSample {
+  const border = parseColor(swatch.borderStrong)
+  return {
+    bg: hexToRGBA(swatch.bg0),
+    // Every registry value is a well-formed rgba() string (checked by the
+    // unit test alongside the floor itself), so a null parse here would
+    // itself be the bug the caller wants to see — transparent black is a
+    // safe, maximally-honest default that a floor check will correctly
+    // reject rather than silently pass.
+    border: border ?? [0, 0, 0, 0],
+  }
+}
+
+export type BorderHierarchyReport = {
+  /** `border`, composited over `bg`, clears `NON_TEXT_CONTRAST_FLOOR` against `bg` alone — WCAG 2.1 SC 1.4.11. */
+  readonly nonTextContrastMet: boolean
+}
+
+/** Pure predicate over a `(bg, border)` sample. No DOM access. */
+export function borderHierarchyReport(
+  sample: BorderSample
+): BorderHierarchyReport {
+  const { bg, border } = sample
+  const bgLuminance = relativeLuminance(bg[0], bg[1], bg[2])
+  const composited = compositeOver(border, bg)
+  const compositedLuminance = relativeLuminance(
+    composited[0],
+    composited[1],
+    composited[2]
+  )
+  return {
+    nonTextContrastMet:
+      contrastRatio(compositedLuminance, bgLuminance) >=
+      NON_TEXT_CONTRAST_FLOOR,
+  }
+}
+
+/** The checkable form of ADR 0002 §2.3's border-led claim — every clause of `borderHierarchyReport` holds. */
+export function satisfiesBorderHierarchy(sample: BorderSample): boolean {
+  return borderHierarchyReport(sample).nonTextContrastMet
 }

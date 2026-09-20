@@ -1,3 +1,5 @@
+import { buildEnforcementCSS } from "@filter/adapter/enforcement-sheet"
+import { DEFAULT_SWATCH_ID, SWATCHES } from "@filter/adapter/swatches"
 import { isExtensionMessage } from "@filter/lib/background/guard"
 import {
   DEFAULT_LEGACY_STYLE,
@@ -125,6 +127,70 @@ const OPEN_DIAGNOSTICS_MENU_ID = "sw-open-diagnostics"
 function openDiagnostics(): void {
   void ext.tabs.create({ url: ext.runtime.getURL("debug.html") })
 }
+
+// ─────────────────────────────────────────────
+// ADR 0002 enforcement sheet (behind a flag — §7 step 2)
+// ─────────────────────────────────────────────
+//
+// `chrome.scripting.insertCSS({ origin: "USER" })` (adapter/enforcement-sheet.ts's
+// own header) is only callable from a background/extension-page context —
+// content scripts have no `scripting` API — which is why this lives here
+// rather than alongside `content.ts`'s pipeline.
+//
+// `enforcementSheetEnabled` in storage.local, default false/absent — no UI
+// toggle exists yet (this step's own scope: "behind a flag, alongside the
+// existing pipeline", not a shipped feature). Flip it from an extension
+// context — the background service worker's own console (chrome://extensions
+// → this extension → "service worker" → Console) — with:
+//
+//   chrome.storage.local.set({ enforcementSheetEnabled: true })
+//
+// Read directly here rather than folded into StoredState/getState() above:
+// that type is this file's own "legacy filter + tab state" concern, and
+// this is a deliberately separate, experimental one — coupling the two
+// would make an unrelated future change to either read as touching both.
+const ENFORCEMENT_SHEET_STORAGE_KEY = "enforcementSheetEnabled"
+
+async function isEnforcementSheetEnabled(): Promise<boolean> {
+  const data = await ext.storage.local.get([ENFORCEMENT_SHEET_STORAGE_KEY])
+  return data[ENFORCEMENT_SHEET_STORAGE_KEY] === true
+}
+
+// `changeInfo.status === "loading"`, not `"complete"` (contrast with the
+// legacy-filter re-apply listener under "tab lifecycle" below, which needs
+// the tab already settled): ADR 0002 §4 already accepts that even the
+// earliest available imperative `insertCSS` call races first paint by
+// design — there is no declarative, document_start-equivalent registration
+// for user-origin CSS (§4's own `registerContentScripts` probe). "loading"
+// is simply the earliest hook available without adding the "webNavigation"
+// permission this experiment does not otherwise need; precise race-timing
+// against first paint is explicitly out of scope for this flagged step.
+ext.tabs.onUpdated.addListener((tabId, changeInfo): void => {
+  if (changeInfo.status !== "loading") return
+
+  void (async (): Promise<void> => {
+    if (!(await isEnforcementSheetEnabled())) return
+
+    try {
+      await ext.scripting.insertCSS({
+        // allFrames: CSS never crosses a frame boundary, so a same- or
+        // cross-origin <iframe> kept its native (white) palette under a
+        // supposedly unconditional sheet (bot-found on #1463, Codex round
+        // 2). This reaches every frame that exists at this event; a frame
+        // created or navigated afterwards is not covered — that needs the
+        // per-document, content-script-driven request #1489 specifies
+        // (all_frames + frameIds), not another tabs.onUpdated hook.
+        target: { tabId, allFrames: true },
+        origin: "USER",
+        css: buildEnforcementCSS(SWATCHES[DEFAULT_SWATCH_ID]),
+      })
+    } catch {
+      // Extension pages, the Chrome Web Store, and other
+      // scripting-restricted origins reject insertCSS outright — expected,
+      // not a failure to surface (mirrors sendToTab's own discipline above).
+    }
+  })()
+})
 
 // ─────────────────────────────────────────────
 // install

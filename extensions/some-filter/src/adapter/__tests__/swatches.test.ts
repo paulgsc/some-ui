@@ -1,7 +1,10 @@
 import {
+  borderHierarchyReport,
+  borderSample,
   comfortReport,
   DEFAULT_SWATCH_ID,
   getSwatch,
+  satisfiesBorderHierarchy,
   satisfiesComfort,
   SWATCHES,
   swatchSample,
@@ -71,5 +74,44 @@ describe("Φ_comfort", () => {
 
     expect(comfortReport(swatchSample(achromatic)).chromaticBias).toBe(false)
     expect(satisfiesComfort(swatchSample(achromatic))).toBe(false)
+  })
+})
+
+describe("border hierarchy (ADR 0002 §2.3)", () => {
+  // Same discipline as Φ_comfort's own "no exceptions" test above: a
+  // registry entry whose borderStrong can't clear the floor against its own
+  // bg0 is a shipped regression in the enforcement sheet's border-led
+  // hierarchy, not a documentable exception.
+  it("every registry entry's borderStrong clears the WCAG 1.4.11 non-text-contrast floor against bg0", () => {
+    for (const swatch of Object.values(SWATCHES)) {
+      expect(satisfiesBorderHierarchy(borderSample(swatch)), swatch.id).toBe(
+        true
+      )
+    }
+  })
+
+  it("rejects a border indistinguishable from its background", () => {
+    const invisible: Swatch = {
+      ...SWATCHES[DEFAULT_SWATCH_ID],
+      id: "invisible-border",
+      label: "Invisible Border",
+      borderStrong: "rgba(255, 255, 255, 0.02)",
+    }
+
+    expect(
+      borderHierarchyReport(borderSample(invisible)).nonTextContrastMet
+    ).toBe(false)
+    expect(satisfiesBorderHierarchy(borderSample(invisible))).toBe(false)
+  })
+
+  it("accepts a fully opaque white border (the trivial ceiling case)", () => {
+    const opaque: Swatch = {
+      ...SWATCHES[DEFAULT_SWATCH_ID],
+      id: "opaque-border",
+      label: "Opaque Border",
+      borderStrong: "#ffffff",
+    }
+
+    expect(satisfiesBorderHierarchy(borderSample(opaque))).toBe(true)
   })
 })
