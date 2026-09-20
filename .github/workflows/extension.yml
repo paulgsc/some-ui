@@ -82,18 +82,46 @@ jobs:
         env:
           HUSKY: 0
 
-      # Restore cached dist to skip rebuilding when nothing relevant changed.
-      # Key covers pnpm-lock + the package source trees this job actually
-      # builds. Cargo.toml/Cargo.lock are deliberately not hashed in: a Rust
+      # Hash the tracked contents of everything this job builds, straight out
+      # of the git index. The key this replaces hashed only pnpm-lock.yaml and
+      # packages/**/package.json — manifests, not source — so a diff that
+      # changed only packages/*/src produced a key identical to main's, hit the
+      # cache, skipped the build below, and uploaded a workspace-packages-dist
+      # predating the change. Every verify job then ran against stale dist.
+      # That is silent for a package nothing downstream consumes at verify
+      # time, and fatal for packages/eslint, whose dist *is* what every
+      # extension's `pnpm lint` loads: a new rule in the kit's source is
+      # registered by a config the checkout carries but absent from the dist
+      # the artifact carries, and eslint aborts with "Could not find <rule> in
+      # plugin". Nothing about that failure points at a cache.
+      #
+      # git ls-tree rather than hashFiles: this step runs after `pnpm install`,
+      # so a glob like 'packages/**/src/**' would sweep in populated
+      # node_modules trees. The git index cannot see them.
+      #
+      # Cargo.toml/Cargo.lock are deliberately still not covered: a Rust
       # dependency bump cannot change any output of this job, so hashing it
       # only threw away a valid packages/*/dist cache and forced a full JS
       # rebuild.
+      - name: Compute workspace source key
+        id: ws-key
+        run: |
+          set -euo pipefail
+          tree=$(git ls-tree -r HEAD -- pnpm-lock.yaml packages)
+          # Without this, a git failure feeds sha256sum empty input and yields
+          # the *same* key on every broken run -- a constant key being exactly
+          # the failure mode this step exists to remove.
+          test -n "$tree" || { echo "::error::no tracked files matched" >&2; exit 1; }
+          printf 'hash=%s\n' \
+            "$(printf '%s' "$tree" | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      # Restore cached dist to skip rebuilding when nothing relevant changed.
       - name: Restore workspace dist cache
         id: ws-cache
         uses: actions/cache@v6
         with:
           path: packages/*/dist
-          key: workspace-dist-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'packages/**/package.json') }}
+          key: workspace-dist-${{ runner.os }}-${{ steps.ws-key.outputs.hash }}
           restore-keys: |
             workspace-dist-${{ runner.os }}-
 

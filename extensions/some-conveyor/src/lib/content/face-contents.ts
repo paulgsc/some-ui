@@ -51,6 +51,9 @@ function makePolledFace<P>(spec: PolledFace<P>): FaceContent {
       host.style.height = "100%"
       host.append(spec.placeholder())
       void refresh()
+      // Lifetime: bounded by this face's own onEnter/onExit pair — onExit
+      // clears it, and a face that is not entered has no timer.
+      // eslint-disable-next-line extension-charter/require-named-lifetime -- lifetime stated above
       timer = setInterval(() => void refresh(), spec.intervalMs)
       return host
     },

@@ -688,6 +688,57 @@ describe("SF-RC4 (#1343) — the interaction-settled contrast pass", () => {
     vi.useRealTimers()
   })
 
+  it("applies the cooldown when an over-budget document pass throws (bot-found, Codex closing review on #1459)", () => {
+    // The traversal's cost is paid whether or not the pass completes. A
+    // throw during realization or reporting used to skip the cooldown
+    // entirely, so on exactly the pages where the audit fails every later
+    // pointer or focus pause repeated the same long traversal, unbounded.
+    vi.useFakeTimers()
+    themedPage()
+    const session = createSessionLifecycle()
+    const contentSession = createContentSession(SWATCHES.default, session)
+    contentSession.rescan()
+    contentSession.observe()
+    vi.mocked(legibilityAudit.auditLegibility).mockClear()
+
+    let clock = 0
+    const now = vi.spyOn(performance, "now").mockImplementation(() => clock)
+    vi.mocked(legibilityAudit.auditLegibility).mockImplementationOnce(() => {
+      // Well past INTERACTION_AUDIT_BUDGET_MS, then fail.
+      clock += 1_000
+      throw new Error("audit blew up after a long traversal")
+    })
+    // Spy calls silence the console.error the catch path emits by design.
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
+    const consoleInfo = vi
+      .spyOn(console, "info")
+      .mockImplementation(() => undefined)
+
+    try {
+      dispatch("pointerover")
+      vi.advanceTimersByTime(INTERACTION_SETTLE_MS)
+      expect(vi.mocked(legibilityAudit.auditLegibility)).toHaveBeenCalledTimes(
+        1
+      )
+
+      // A second settle inside the cooldown must not traverse again.
+      dispatch("pointerout")
+      vi.advanceTimersByTime(INTERACTION_SETTLE_MS)
+      expect(
+        vi.mocked(legibilityAudit.auditLegibility),
+        "the throw must not have skipped the cooldown"
+      ).toHaveBeenCalledTimes(1)
+    } finally {
+      now.mockRestore()
+      consoleError.mockRestore()
+      consoleInfo.mockRestore()
+      contentSession.teardown()
+      vi.useRealTimers()
+    }
+  })
+
   it("stops listening, and cancels a pending pass, after teardown", () => {
     vi.useFakeTimers()
     themedPage()

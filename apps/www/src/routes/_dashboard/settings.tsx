@@ -28,7 +28,8 @@ import { createFileRoute } from "@tanstack/react-router"
 import { toast } from "sonner"
 
 import { useIntent, useIntentEffect } from "@/lib/intent"
-import { IntentButton } from "@/lib/intent/render"
+import { IntentButton, IntentFailure } from "@/lib/intent/render"
+import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import type { UserSettings } from "@/lib/tenant"
 import { settingsQuery, useSettings, useUpdateSettings } from "@/lib/tenant"
 import { StudyNudgeSection } from "@/components/settings/study-nudge-section"
@@ -249,13 +250,27 @@ const SettingsForm = ({
 }
 
 const SettingsRoute = (): JSX.Element => {
-  const { data: settings, isLoading } = useSettings()
+  const outcome = queryOutcome(useSettings())
 
-  if (isLoading || !settings) {
-    return <SettingsSkeleton />
-  }
-
-  return <SettingsForm settings={settings} />
+  return matchQueryOutcome(outcome, {
+    pending: () => <SettingsSkeleton />,
+    failed: (error, retry) => <IntentFailure error={error} onRetry={retry} />,
+    ready: (settings, refreshError) => (
+      <div className="max-w-xl space-y-4">
+        {/* Same Safety invariant as `profile.tsx`'s identical fix: a cached
+            settings record through a failed background refresh may be
+            stale, so the refresh failure rides alongside the editable form
+            instead of being silently discarded. */}
+        {refreshError && (
+          <IntentFailure
+            error={refreshError.error}
+            onRetry={refreshError.retry}
+          />
+        )}
+        <SettingsForm settings={settings} />
+      </div>
+    ),
+  })
 }
 
 export const Route = createFileRoute("/_dashboard/settings")({

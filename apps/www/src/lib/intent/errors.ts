@@ -46,15 +46,34 @@ function isRetryableStatus(status: number): boolean {
 /**
  * `FileHostUnreachableError` → `apps/www`'s own attempt at this request
  * never reached a server at all (dead LAN box, mixed content, a proxy with
- * nothing behind it). The transport itself said nothing yet, so retrying is
- * the correct default.
+ * nothing behind it) - retryable by default, since the transport said
+ * nothing yet.
+ *
+ * `error.retryable` is `false` in exactly one case: `requestJSON`'s own
+ * deadline fired on a non-idempotent write (`create`/`duplicate`). There,
+ * unlike a connection refused outright, the request may have already
+ * reached `file_host` and only the response was slow - offering "Try
+ * again" would be a duplicate-session button with a friendly label. See
+ * `FileHostUnreachableError`'s own `retryable` doc and `client.ts`'s
+ * `isNonIdempotent`.
+ *
+ * `blocksResubmission` rides along with that same case, and only that
+ * case: this is the one `IntentError` producer where "not retryable" means
+ * the outcome is genuinely ambiguous rather than definitively settled, so
+ * it's also the one place where even a *new* attempt (not just repeating
+ * the identical one) is unsafe - a bot review on this PR caught
+ * `IntentButton` falling back to the original action for every
+ * non-retryable failure alike, which reopened the exact duplicate-write
+ * risk `retryable: false` was meant to close for this case specifically.
  */
 function fromUnreachable(error: FileHostUnreachableError): IntentError {
   return {
     kind: "unreachable",
-    retryable: true,
-    summary:
-      "The study server isn't answering. Check your connection and try again.",
+    retryable: error.retryable,
+    blocksResubmission: !error.retryable,
+    summary: error.retryable
+      ? "The study server isn't answering. Check your connection and try again."
+      : "The study server didn't respond in time. It may have completed the request anyway - check before trying again.",
     cause: error,
   }
 }

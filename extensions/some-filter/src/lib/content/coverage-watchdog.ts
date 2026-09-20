@@ -12,25 +12,40 @@
  *
  * ## Scope of observation, and why it stays cheap
  *
- * Two observers, neither with `subtree: true`:
+ * Three observers, none of them a `subtree: true` walk over `<html>`:
  *
  *   - one on `document.documentElement` (`childList` + a narrow
  *     `attributeFilter`) — catches `<head>`/`<body>` being swapped wholesale
  *     (they are `<html>`'s direct children) and `<html>`'s own attributes
- *     changing;
+ *     changing. The legacy `<style>` tag (`theme-apply.ts`'s
+ *     `applyLegacyFilter`) is itself anchored directly on `<html>`, not
+ *     `<head>` — the same head-swap vulnerability this watchdog exists to
+ *     catch used to be able to carry that stylesheet off silently, so it no
+ *     longer lives somewhere a whole-`<head>` replacement can take it with
+ *     it. This observer's `childList` on `documentElement` is what notices
+ *     it being individually added or removed now;
  *   - one on `document.head` (`childList` + `subtree` + `characterData`) —
- *     catches the legacy/dark `<style>` tag being individually added or
- *     removed without the rest of `<head>` going with it, *and* a vendor
- *     reconciler that retains the tag but clears or replaces its own
- *     `textContent` in place (a `childList` mutation on the `<style>`
- *     element itself, a descendant of `<head>`, not on `<head>` directly —
- *     invisible to a non-subtree observer here, and invisible to
- *     `pipeline.ts`'s own Sensor too, since that mutation's target carries
- *     `[data-my-ext]` and is filtered out as self-authored). `subtree`
- *     stays scoped to `<head>`, not `<html>`, so it does not become the
- *     `subtree: true` walk this module's intro explains the cost of
- *     avoiding — `<head>`'s children churn nowhere near as often as
- *     `<body>`'s.
+ *     catches the dark `<style>` tag being individually added or removed
+ *     without the rest of `<head>` going with it, *and* a vendor reconciler
+ *     that retains the tag but clears or replaces its own `textContent` in
+ *     place (a `childList` mutation on the `<style>` element itself, a
+ *     descendant of `<head>`, not on `<head>` directly — invisible to a
+ *     non-subtree observer here, and invisible to `pipeline.ts`'s own
+ *     Sensor too, since that mutation's target carries `[data-my-ext]` and
+ *     is filtered out as self-authored). `subtree` stays scoped to
+ *     `<head>`, not `<html>`, so it does not become the `subtree: true`
+ *     walk this module's intro explains the cost of avoiding — `<head>`'s
+ *     children churn nowhere near as often as `<body>`'s;
+ *   - one on the legacy `<style>` element itself (`childList` +
+ *     `subtree` + `characterData`, one element, no descendants but its own
+ *     text node) — the same in-place-wipe case as above for the one
+ *     extension stylesheet that no longer lives under `<head>`. The
+ *     `<html>` observer sees that element come and go (it is `<html>`'s
+ *     direct child) but, being non-subtree by design, cannot see its text
+ *     change; widening the `<html>` observer to `subtree` would be the
+ *     whole-document walk this module exists to avoid, so the element gets
+ *     its own narrow observer, re-attached whenever the `<html>` observer
+ *     fires (which covers the element being re-created).
  *
  * `pipeline.ts`'s own Sensor already pays for a `subtree: true` walk in auto
  * mode, because it needs to find every vendor surface. This watchdog needs
@@ -226,6 +241,8 @@ export function createCoverageWatchdog(
   let htmlObserver: MutationObserver | null = null
   let headObserver: MutationObserver | null = null
   let observedHead: HTMLHeadElement | null = null
+  let legacyStyleObserver: MutationObserver | null = null
+  let observedLegacyStyle: HTMLElement | null = null
   // Invariant name -> epoch ms the violation started, for the duration aggregate.
   const violatedSince = new Map<string, number>()
   let lastStatus = new Map<string, "ok" | "violated" | "unknown">()
@@ -241,6 +258,28 @@ export function createCoverageWatchdog(
     // childList-only observer on <head> itself nor pipeline.ts's Sensor sees
     // it.
     headObserver.observe(document.head, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    })
+  }
+
+  // The legacy <style> is anchored on <html>, outside the head observer's
+  // reach (see this module's header). Same in-place-wipe coverage, scoped to
+  // that one element; re-attached from the html observer's callback so a
+  // re-created element (applyLegacyFilter after a nav, or a vendor removing
+  // and re-adding it) is picked up on the same mutation that announces it.
+  function attachLegacyStyleObserver(): void {
+    const style = document.getElementById(LEGACY_FILTER_STYLE_ID)
+    if (style === observedLegacyStyle) return
+    legacyStyleObserver?.disconnect()
+    legacyStyleObserver = null
+    observedLegacyStyle = style
+    if (style === null) return
+    legacyStyleObserver = new MutationObserver(() =>
+      check("legacy-style-mutation")
+    )
+    legacyStyleObserver.observe(style, {
       childList: true,
       subtree: true,
       characterData: true,
@@ -307,6 +346,7 @@ export function createCoverageWatchdog(
       if (htmlObserver !== null) return
       htmlObserver = new MutationObserver(() => {
         attachHeadObserver()
+        attachLegacyStyleObserver()
         check("html-mutation")
       })
       htmlObserver.observe(document.documentElement, {
@@ -315,6 +355,7 @@ export function createCoverageWatchdog(
         attributeFilter: ["class", DARK_THEME_ATTR, LEGACY_THEME_ATTR],
       })
       attachHeadObserver()
+      attachLegacyStyleObserver()
       lastStatus = new Map()
       violatedSince.clear()
       check("observe-start")
@@ -326,6 +367,9 @@ export function createCoverageWatchdog(
       headObserver?.disconnect()
       headObserver = null
       observedHead = null
+      legacyStyleObserver?.disconnect()
+      legacyStyleObserver = null
+      observedLegacyStyle = null
     },
   }
 }
@@ -702,6 +746,12 @@ export function createScopeCoverageWatchdog<Rho = unknown, Pi = unknown>(
     observe(registry): void {
       if (pollHandle !== null) return
       check(registry, "observe-start")
+      // Lifetime: started by observe() from applyState for any non-"off"
+      // state, stopped by teardown() on entering "off" and on pagehide, and
+      // NOT stopped when the tab goes hidden. See
+      // shadow-scope-discovery.ts's exemption for why this says so plainly
+      // rather than naming a teardown that was never wired.
+      // eslint-disable-next-line extension-charter/require-named-lifetime -- lifetime stated above
       pollHandle = setInterval(() => {
         check(registry, "poll")
       }, SCOPE_COVERAGE_POLL_MS)

@@ -494,6 +494,16 @@ ${ERASE_SELECTOR} {
      (bot-found on #1463, Codex confirming review). Same subject, same
      trade as filter above. */
   backdrop-filter: none !important;
+  /* Two more independent glyph/edge channels (bot-found on #1500, Codex
+     round 2). A text-shadow is painted separately from color — a vendor's
+     text-shadow: 0 0 0 white keeps every glyph white (or haloed) under an
+     enforced color, so it is erased. An outline is painted separately from
+     border — outline: 2px solid white stays white under an enforced
+     border-color — so only its colour is imposed, the same way border-color
+     is: width and style stay the vendor's, so focus rings keep their shape.
+     theme-apply.ts's static sheet already enforces outline-color. */
+  text-shadow: none !important;
+  outline-color: ${swatch.borderStrong} !important;
 }
 
 /* Generated content is its own paint surface — see ERASE_PSEUDO_SELECTOR. */
@@ -505,6 +515,8 @@ ${ERASE_PSEUDO_SELECTOR} {
   box-shadow: none !important;
   filter: none !important;
   backdrop-filter: none !important;
+  text-shadow: none !important;
+  outline-color: ${swatch.borderStrong} !important;
 }
 
 /* A top-layer backdrop is generated content too, but a transparent one
@@ -562,15 +574,26 @@ ${ERASE_PSEUDO_SELECTOR} {
    semantic-surface elevation, and native form-control accent color. */
 ${highlightRules}
 
-/* Pseudo-elements, not real elements — never competes with ERASE_SELECTOR's
-   own (0,0,4) (the universal selector "*" does not match a pseudo-element
-   at all), so neither needs EXT_GUARD's specificity boost. Ported verbatim
-   from theme-apply.ts's own DARK_THEME_BODY_RULES, including that file's
-   own choice not to guard the placeholder rule with EXT_GUARD either. */
+/* ::selection is a real pseudo-element, so the universal selector "*" of
+   ERASE_SELECTOR never matches it and its (0,0,1) needs no boost. Ported
+   verbatim from theme-apply.ts's own DARK_THEME_BODY_RULES.
+
+   The placeholder rule is NOT the verbatim port, twice over. (1) theme-apply.ts
+   nests the two pseudo-elements inside its :where() list, and a pseudo-element
+   is not a valid member of a :where() list — the forgiving list drops both,
+   :where() is left empty and matches nothing, so that rule has never applied
+   (bot-found on #1500, Codex; the shipped copy is #1501). Here the
+   pseudo-element is appended after the :where(). (2) Chromium implements
+   ::placeholder as a real element inside the control's UA shadow tree, and
+   §8.1 already recorded that this user-origin sheet crosses shadow
+   boundaries: ERASE_SELECTOR's (0,1,4) "color: text0 !important" reaches
+   that element and outranks a bare (0,0,1) placeholder rule (live-measured
+   on #1500's e2e: the placeholder read back text0, not text2). EXT_GUARD's
+   (0,2,0) lifts it above the erase rule. */
 ::selection {
   background-color: ${swatch.selectionBg} !important;
 }
-:where(input::placeholder, textarea::placeholder) {
+:where(input, textarea)${EXT_GUARD}::placeholder {
   color: ${swatch.text2} !important;
 }
 `

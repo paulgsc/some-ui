@@ -1201,6 +1201,15 @@ export class VideoManager {
 
   private _ensureRetryLoop(): void {
     if (this._retryInterval !== null) return
+    // Lifetime: cleared by _teardownRetryLoop() and on destroy — but NOT on
+    // visibility. This is the same shape as the three polls that hung a
+    // 200-tab profile in some-filter (a matching clearInterval existed there
+    // too; what was missing was a stop wired to the tab going hidden), and
+    // this one re-scans on every tick rather than merely checking a flag.
+    // Exempted rather than fixed because that is this extension's own call
+    // to make, not a drive-by from another workspace's incident — but the
+    // exemption is the audit trail, and this is the entry to look at first.
+    // eslint-disable-next-line extension-charter/require-named-lifetime -- lifetime stated above, and known-incomplete
     this._retryInterval = setInterval(() => {
       try {
         this.retryUnresolved()
