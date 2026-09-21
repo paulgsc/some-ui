@@ -31,7 +31,10 @@ export function memoryPersistence(): ObservabilityPersistence & {
 
 /** The minimum storage-area surface the port needs. */
 export type StorageAreaLike = {
-  get(keys: string | Array<string> | Record<string, unknown>): Promise<unknown>
+  /** `null` reads the whole area — every key, every payload. */
+  get(
+    keys: string | Array<string> | Record<string, unknown> | null
+  ): Promise<unknown>
   set(items: Record<string, unknown>): Promise<void>
   remove(keys: string | Array<string>): Promise<void>
 }

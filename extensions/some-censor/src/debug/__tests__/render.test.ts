@@ -9,7 +9,7 @@
  */
 
 import {
-  INDEX_KEY,
+  indexStorageKey,
   sessionStorageKey,
   type IndexEntry,
 } from "@censor/lib/content/observability"
@@ -19,6 +19,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 const NOW = 1_700_000_000_000
 
 type Held = { key: string; release: () => void }
+
+/**
+ * The key a whole-area read (`get(null)`, the index enumeration on an engine
+ * without `getKeys()`) is presented to `hold`/`fail` under.
+ */
+const WHOLE_AREA = "*"
 
 /** A fake `storage.local`; `hold` defers a key's read until released. */
 function installFakeStorage(
@@ -30,16 +36,27 @@ function installFakeStorage(
 } {
   const store = new Map<string, unknown>()
   const held: Array<Held> = []
+  const asList = (keys: string | Array<string> | null): Array<string> =>
+    keys === null ? [...store.keys()] : typeof keys === "string" ? [keys] : keys
+  const probes = (keys: string | Array<string> | null): Array<string> =>
+    keys === null ? [WHOLE_AREA] : typeof keys === "string" ? [keys] : keys
   Reflect.set(ext, "storage", {
     local: {
-      get: (key: string): Promise<Record<string, unknown>> => {
-        if (fail?.(key) === true) {
-          return Promise.reject(new Error(`storage unavailable: ${key}`))
+      get: (
+        keys: string | Array<string> | null
+      ): Promise<Record<string, unknown>> => {
+        const probe = probes(keys)
+        if (probe.some((k) => fail?.(k) === true)) {
+          return Promise.reject(
+            new Error(`storage unavailable: ${probe.join(",")}`)
+          )
         }
-        const value = store.has(key) ? { [key]: store.get(key) } : {}
-        if (hold?.(key) === true) {
+        const value: Record<string, unknown> = {}
+        for (const k of asList(keys)) if (store.has(k)) value[k] = store.get(k)
+        const holdKey = probe.find((k) => hold?.(k) === true)
+        if (holdKey !== undefined) {
           return new Promise((resolve) => {
-            held.push({ key, release: () => resolve(value) })
+            held.push({ key: holdKey, release: () => resolve(value) })
           })
         }
         return Promise.resolve(value)
@@ -48,8 +65,8 @@ function installFakeStorage(
         for (const [k, v] of Object.entries(items)) store.set(k, v)
         return Promise.resolve()
       },
-      remove: (key: string): Promise<void> => {
-        store.delete(key)
+      remove: (keys: string | Array<string>): Promise<void> => {
+        for (const k of asList(keys)) store.delete(k)
         return Promise.resolve()
       },
     },
@@ -65,6 +82,14 @@ function entry(id: string, ordinal: number, updatedAt: number): IndexEntry {
     sessionOrdinal: ordinal,
     updatedAt,
   }
+}
+
+/** Publish index entries the way each tab does: one key per session. */
+function listSessions(
+  store: Map<string, unknown>,
+  entries: Array<IndexEntry>
+): void {
+  for (const e of entries) store.set(indexStorageKey(e.sessionId), e)
 }
 
 function seedSession(
@@ -120,7 +145,7 @@ afterEach(() => {
 describe("the diagnostics page", () => {
   it("lists recorded sessions and shows the selected one's corpus", async () => {
     const { store } = installFakeStorage()
-    store.set(INDEX_KEY, [entry("s1", 1, NOW)])
+    listSessions(store, [entry("s1", 1, NOW)])
     seedSession(store, "s1", ["3 days ago"])
 
     await mountPage()
@@ -133,7 +158,7 @@ describe("the diagnostics page", () => {
   it("labels sessions without a page title — on YouTube that is the video title (#1382)", async () => {
     const { store } = installFakeStorage()
     document.title = "Never Gonna Give You Up - YouTube"
-    store.set(INDEX_KEY, [entry("s1", 4, NOW)])
+    listSessions(store, [entry("s1", 4, NOW)])
     seedSession(store, "s1", ["3 days ago"])
 
     await mountPage()
@@ -154,7 +179,7 @@ describe("switching sessions never shows one session under another's name", () =
     const { store, held } = installFakeStorage((key) =>
       key.startsWith("bc.observability.session.")
     )
-    store.set(INDEX_KEY, [entry("s1", 1, NOW + 1), entry("s2", 2, NOW)])
+    listSessions(store, [entry("s1", 1, NOW + 1), entry("s2", 2, NOW)])
     seedSession(store, "s1", ["3 days ago"])
     seedSession(store, "s2", ["2 weeks ago"])
 
@@ -189,7 +214,7 @@ describe("switching sessions never shows one session under another's name", () =
     const { store, held } = installFakeStorage((key) =>
       key.startsWith("bc.observability.session.")
     )
-    store.set(INDEX_KEY, [entry("s1", 1, NOW + 1), entry("s2", 2, NOW)])
+    listSessions(store, [entry("s1", 1, NOW + 1), entry("s2", 2, NOW)])
     seedSession(store, "s1", ["3 days ago"])
     seedSession(store, "s2", ["2 weeks ago"])
 
@@ -233,7 +258,7 @@ describe("retrying after a failed read", () => {
       },
       (key) => isBundleKey(key) && failBundleReads
     )
-    store.set(INDEX_KEY, [entry("s1", 1, NOW)])
+    listSessions(store, [entry("s1", 1, NOW)])
     seedSession(store, "s1", ["3 days ago"])
 
     // A good first load, so the selection and the loaded bundle agree —
@@ -279,12 +304,12 @@ describe("a superseded load commits nothing", () => {
   it("does not let a slow Refresh reset the selection the user has since made — that would name one session while exporting another", async () => {
     let holdNextIndexRead = false
     const { store, held } = installFakeStorage((key) => {
-      if (key !== INDEX_KEY || !holdNextIndexRead) return false
+      if (key !== WHOLE_AREA || !holdNextIndexRead) return false
       holdNextIndexRead = false
       return true
     })
     // s1 is the most recent, so a stale load(true) would snap back to it.
-    store.set(INDEX_KEY, [entry("s1", 1, NOW + 1000), entry("s2", 2, NOW)])
+    listSessions(store, [entry("s1", 1, NOW + 1000), entry("s2", 2, NOW)])
     seedSession(store, "s1", ["3 days ago"])
     seedSession(store, "s2", ["2 weeks ago"])
 
@@ -331,7 +356,7 @@ describe("a superseded load commits nothing", () => {
 describe("Refresh sessions", () => {
   it("discovers a recording created after the page opened, and renders it", async () => {
     const { store } = installFakeStorage()
-    store.set(INDEX_KEY, [entry("s1", 1, NOW)])
+    listSessions(store, [entry("s1", 1, NOW)])
     seedSession(store, "s1", ["3 days ago"])
 
     await mountPage()
@@ -341,7 +366,7 @@ describe("Refresh sessions", () => {
     expect(picker().options).toHaveLength(1)
 
     // A second tab records while this page is open.
-    store.set(INDEX_KEY, [entry("s2", 2, NOW + 1000), entry("s1", 1, NOW)])
+    listSessions(store, [entry("s2", 2, NOW + 1000), entry("s1", 1, NOW)])
     seedSession(store, "s2", ["2 weeks ago"])
 
     const refresh = [...document.querySelectorAll("button")].find(

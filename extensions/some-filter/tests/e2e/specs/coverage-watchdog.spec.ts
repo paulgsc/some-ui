@@ -55,25 +55,23 @@ async function readBundle(
   return isMinimalBundle(raw) ? raw : undefined
 }
 
-/** Matches coverage-observability.ts's INDEX_KEY — the debug page's own session picker reads through this, separately from (and racing independently against) the per-session bundle key readBundle() reads. */
-async function readIndexSessionIds(sw: Worker): Promise<Array<string>> {
-  const raw: unknown = await sw.evaluate(() => {
+/** Matches coverage-observability.ts's indexStorageKey() — the debug page's own session picker reads through this, separately from (and racing independently against) the per-session bundle key readBundle() reads. */
+function indexStorageKey(sessionId: string): string {
+  return `sf.observability.index.${sessionId}.v2`
+}
+
+async function isIndexed(sw: Worker, sessionId: string): Promise<boolean> {
+  const raw: unknown = await sw.evaluate((key) => {
     // eslint-disable-next-line no-restricted-globals
     return chrome.storage.local
-      .get("sf.observability.index.v1")
-      .then(
-        (store: Record<string, unknown>) => store["sf.observability.index.v1"]
-      )
-  })
-  if (!Array.isArray(raw)) return []
-  return raw
-    .filter(
-      (e): e is { sessionId: string } =>
-        e !== null &&
-        typeof e === "object" &&
-        typeof Reflect.get(e, "sessionId") === "string"
-    )
-    .map((e) => e.sessionId)
+      .get(key)
+      .then((store: Record<string, unknown>) => store[key])
+  }, indexStorageKey(sessionId))
+  return (
+    raw !== null &&
+    typeof raw === "object" &&
+    Reflect.get(raw, "sessionId") === sessionId
+  )
 }
 
 async function pollUntil<T>(
@@ -257,8 +255,8 @@ test.describe("debug.html — contrast health for a session that never entered a
     )
     if (sessionId === undefined) throw new Error("unreachable")
     await pollUntil(
-      () => readIndexSessionIds(sw),
-      (ids) => ids.includes(sessionId)
+      () => isIndexed(sw, sessionId),
+      (indexed) => indexed
     )
     await pollUntil(
       () => readBundle(sw, sessionId),

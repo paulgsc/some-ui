@@ -32,8 +32,8 @@
  * (a same-document SPA navigation keeps it, which is the window a nav flash
  * needs observing in). One shared `storage.local` key would let concurrent
  * tabs clobber each other's ring buffer, so each session gets its own key
- * (`sessionStorageKey`) and a small capped index (`readIndex`/`touchIndex`)
- * lets the debug page pick one.
+ * (`sessionStorageKey`) and one index key per session (`touchIndex`) lets
+ * the debug page pick one.
  */
 
 import { VEIL_STYLE } from "@filter/adapter/custody-primitive"
@@ -50,13 +50,17 @@ import {
 import { ext } from "@filter/platform/content"
 import type { TabState } from "@filter/types/tab"
 import {
+  createSessionIndex,
   extensionStoragePersistence,
   memoryPersistence,
   Recorder,
+  type Compaction,
+  type IndexAreaLike,
   type Invariant,
   type InvariantOutcome,
   type JsonValue,
   type ObservabilityPersistence,
+  type SessionIndex,
 } from "@some-extension/common/observability"
 
 export type CoverageEventKind =
@@ -437,11 +441,23 @@ export const scopeCoverageInvariants: ReadonlyArray<
 // ── The recorder ─────────────────────────────────────────────────────────────
 
 const SESSION_KEY_PREFIX = "sf.observability.session."
-const INDEX_KEY = "sf.observability.index.v1"
-const MAX_INDEX_ENTRIES = 20
+const SESSION_KEY_SUFFIX = ".v1"
+const INDEX_NAMESPACE = "sf.observability"
+/**
+ * The legacy shared-array index, migrated to per-session keys on the first
+ * enumeration. Exported so a test can stage that migration.
+ */
+export const LEGACY_INDEX_KEY = `${INDEX_NAMESPACE}.index.v1`
 
 export function sessionStorageKey(sessionId: string): string {
-  return `${SESSION_KEY_PREFIX}${sessionId}.v1`
+  return `${SESSION_KEY_PREFIX}${sessionId}${SESSION_KEY_SUFFIX}`
+}
+
+/** The inverse of {@link sessionStorageKey}, for the orphan sweep. */
+function sessionOfStorageKey(key: string): string | undefined {
+  if (!key.startsWith(SESSION_KEY_PREFIX) || !key.endsWith(SESSION_KEY_SUFFIX))
+    return undefined
+  return key.slice(SESSION_KEY_PREFIX.length, -SESSION_KEY_SUFFIX.length)
 }
 
 export type IndexEntry = {
@@ -463,48 +479,80 @@ function isIndexEntry(value: unknown): value is IndexEntry {
   )
 }
 
-/** The debug page's session picker. Sorted most-recently-updated first. */
-export async function readIndex(): Promise<Array<IndexEntry>> {
-  try {
-    const raw: unknown = await ext.storage.local.get(INDEX_KEY)
-    const value: unknown =
-      raw !== null && typeof raw === "object"
-        ? Reflect.get(raw, INDEX_KEY)
-        : undefined
-    if (!Array.isArray(value)) return []
-    return value.filter(isIndexEntry).sort((a, b) => b.updatedAt - a.updatedAt)
-  } catch {
-    return []
-  }
+function isStorageArea(value: unknown): value is IndexAreaLike {
+  if (value === null || typeof value !== "object") return false
+  return (
+    typeof Reflect.get(value, "get") === "function" &&
+    typeof Reflect.get(value, "set") === "function" &&
+    typeof Reflect.get(value, "remove") === "function"
+  )
 }
 
 /**
- * Publish (or refresh) this session's index entry. Best-effort — a storage
- * failure here must not affect theming, so every call site swallows it.
+ * `ext.storage.local`, resolved per call: the platform stub tests install has
+ * no storage area until a test gives it one, and a real one can be absent
+ * too. Absent, every index operation is a no-op.
  */
-export async function touchIndex(entry: IndexEntry): Promise<void> {
-  try {
-    const existing = await readIndex()
-    const next = [
-      entry,
-      ...existing.filter((e) => e.sessionId !== entry.sessionId),
-    ]
-      .sort((a, b) => b.updatedAt - a.updatedAt)
-      .slice(0, MAX_INDEX_ENTRIES)
-    await ext.storage.local.set({ [INDEX_KEY]: next })
-  } catch {
-    // Best-effort — diagnostics degrading must never affect theming.
-  }
+function storageArea(): IndexAreaLike | undefined {
+  const storage: unknown = Reflect.get(ext, "storage")
+  const local: unknown =
+    storage !== null && typeof storage === "object"
+      ? Reflect.get(storage, "local")
+      : undefined
+  return isStorageArea(local) ? local : undefined
 }
 
-export async function removeFromIndex(sessionId: string): Promise<void> {
-  try {
-    const existing = await readIndex()
-    const next = existing.filter((e) => e.sessionId !== sessionId)
-    await ext.storage.local.set({ [INDEX_KEY]: next })
-  } catch {
-    // Best-effort.
-  }
+/**
+ * One index key per session, so a tab never writes a key another tab writes
+ * (`storage.local` has no compare-and-set). See `createSessionIndex`.
+ */
+const index: SessionIndex<IndexEntry> = createSessionIndex({
+  namespace: INDEX_NAMESPACE,
+  payload: { key: sessionStorageKey, sessionId: sessionOfStorageKey },
+  isEntry: isIndexEntry,
+  area: storageArea,
+})
+
+/** This session's index key. Exported for the debug page's tests. */
+export function indexStorageKey(sessionId: string): string {
+  return index.indexKey(sessionId)
+}
+
+/** The debug page's session picker. Sorted most-recently-updated first. */
+export function readIndex(): Promise<Array<IndexEntry>> {
+  return index.list()
+}
+
+/**
+ * Publish (or refresh) this session's index entry: one write of one key.
+ * Best-effort — a storage failure here must not affect theming, so every
+ * failure is swallowed.
+ */
+export function touchIndex(entry: IndexEntry): Promise<void> {
+  return index.touch(entry)
+}
+
+/**
+ * Enforce the cap, deleting each evicted session's bundle with its entry, and
+ * sweep bundles no index key lists. Every page load mints a new bundle key, so
+ * without this they accumulate against the quota and `storage.local` writes
+ * start failing silently.
+ *
+ * Runs once per session, after its first index touch, and from the debug
+ * page. Not on every touch: on an engine without `storage.local.getKeys()`
+ * the enumeration reads every bundle.
+ */
+export function compactIndex(): Promise<Compaction<IndexEntry>> {
+  return index.compact()
+}
+
+/**
+ * Forget one session: its index entry and its stored bundle. `pagehide` calls
+ * this right after `dispose()` flushed the bundle; delisting alone would leave
+ * that bundle unreachable.
+ */
+export function removeFromIndex(sessionId: string): Promise<void> {
+  return index.remove(sessionId)
 }
 
 export type CoverageRecorder = Recorder<
