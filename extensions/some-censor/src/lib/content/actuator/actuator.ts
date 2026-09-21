@@ -13,14 +13,18 @@
  * Invariants, carried over from `dom-handle.ts` where they apply:
  *
  *   A1 — Anchoring (D1). An anchor gets `position: relative` if it was
- *        static, so the veil's `inset: 0` binds to the card.
+ *        static, so the veil's `inset: 0` binds to the card; the inline
+ *        value it replaced is remembered and put back when the element
+ *        stops being an anchor (A4).
  *   A2 — Single veil (D2). One veil per anchor, re-attached if the vendor
- *        removed it, never duplicated.
+ *        removed it, never duplicated — a veil still animating out is
+ *        removed at once when a new one is mounted.
  *   A3 — Idempotent (D2, and #1437's own bar). Realizing the same actions
  *        twice leaves the same DOM: a render whose model and targets are
  *        unchanged re-asserts the stamps and touches nothing else.
  *   A4 — Full cleanup (D3). `unmount` leaves every element it stamped as it
- *        was before; `dispose` does so for everything at once.
+ *        was before — stamps, veil, a veil still animating out, and the
+ *        anchoring position; `dispose` does so for everything at once.
  *   A5 — Custody is accounted for here, once (D6, and the lesson of #1432's
  *        eighth round). Which elements carry which key's stamp is one map in
  *        this module; a render diffs its targets against it and strips the
@@ -69,11 +73,18 @@ export type Actuator = {
   dispose(): void
 }
 
+type Exit = {
+  veil: HTMLElement
+  fallback: ReturnType<typeof setTimeout>
+}
+
 type Realized = {
   model: RenderModel
   anchors: Set<HTMLElement>
   nested: Set<HTMLElement>
   veils: Map<HTMLElement, HTMLElement>
+  /** Per anchor, the veil playing its exit animation, until it is removed. */
+  exiting: Map<HTMLElement, Exit>
 }
 
 type TransformTitleFn = (title: string, channelId: string) => unknown
@@ -81,8 +92,9 @@ type TransformTitleFn = (title: string, channelId: string) => unknown
 export function createActuator(ports: ActuatorPorts): Actuator {
   const realized = new Map<CardKey, Realized>()
   const owner = new WeakMap<HTMLElement, CardKey>()
+  /** The inline `position` an anchor had before A1 wrote `relative` over it. */
+  const anchored = new WeakMap<HTMLElement, string>()
   const timers = new Map<CardKey, Set<ReturnType<typeof setTimeout>>>()
-  const exits = new Set<ReturnType<typeof setTimeout>>()
   let disposed = false
 
   const gestures: GestureDelegation = attachGestures(ports.doc, {
@@ -111,12 +123,32 @@ export function createActuator(ports: ActuatorPorts): Actuator {
 
   // ── Stamps and veils ───────────────────────────────────────────────────
 
+  /** A1's write, undone: the inline position the element had is restored. */
+  function unanchor(el: HTMLElement): void {
+    const prior = anchored.get(el)
+    if (prior === undefined) return
+    anchored.delete(el)
+    el.style.position = prior
+    if (el.getAttribute("style") === "") el.removeAttribute("style")
+  }
+
+  /** Remove the veil still animating out of `anchor`, if there is one. */
+  function finishExit(anchor: HTMLElement, rec: Realized): void {
+    const exit = rec.exiting.get(anchor)
+    if (exit === undefined) return
+    rec.exiting.delete(anchor)
+    clearTimeout(exit.fallback)
+    exit.veil.remove()
+  }
+
   function strip(el: HTMLElement, rec: Realized): void {
     const veil = rec.veils.get(el)
     if (veil !== undefined) {
       veil.remove()
       rec.veils.delete(el)
     }
+    finishExit(el, rec)
+    unanchor(el)
     delete el.dataset["boyo"]
     delete el.dataset["boyoVid"]
     owner.delete(el)
@@ -135,6 +167,7 @@ export function createActuator(ports: ActuatorPorts): Actuator {
       if (rec !== undefined) {
         rec.veils.get(el)?.remove()
         rec.veils.delete(el)
+        finishExit(el, rec)
         rec.anchors.delete(el)
         rec.nested.delete(el)
       }
@@ -142,19 +175,26 @@ export function createActuator(ports: ActuatorPorts): Actuator {
     owner.set(el, key)
   }
 
+  /**
+   * Start the veil's exit animation. Until it ends — or the fallback fires
+   * — the veil stays reachable through `rec.exiting`, so a remount, an
+   * unmount or `dispose` can remove it at once instead of leaving it to an
+   * `animationend` that a reduced-motion setting may never deliver.
+   */
   function removeVeilAnimated(anchor: HTMLElement, rec: Realized): void {
     const veil = rec.veils.get(anchor)
     if (veil === undefined) return
     rec.veils.delete(anchor)
+    finishExit(anchor, rec)
     beginVeilExit(veil)
     const remove = (): void => {
+      if (rec.exiting.get(anchor)?.veil === veil) rec.exiting.delete(anchor)
       clearTimeout(fallback)
-      exits.delete(fallback)
       veil.remove()
     }
     veil.addEventListener("animationend", remove, { once: true })
     const fallback = setTimeout(remove, VEIL_EXIT_FALLBACK_MS)
-    exits.add(fallback)
+    rec.exiting.set(anchor, { veil, fallback })
   }
 
   function render(
@@ -167,6 +207,7 @@ export function createActuator(ports: ActuatorPorts): Actuator {
       anchors: new Set(),
       nested: new Set(),
       veils: new Map(),
+      exiting: new Map(),
     }
     const modelChanged = !realized.has(key) || !sameModel(rec.model, model)
     const anchors = new Set<HTMLElement>()
@@ -178,11 +219,13 @@ export function createActuator(ports: ActuatorPorts): Actuator {
       if (anchors.has(el) || nested.has(el)) continue
       if (owner.get(el) === key) strip(el, rec)
     }
-    // An anchor demoted to nested custody loses its veil.
+    // An anchor demoted to nested custody loses its veil and its anchoring.
     for (const el of rec.anchors) {
       if (nested.has(el)) {
         rec.veils.get(el)?.remove()
         rec.veils.delete(el)
+        finishExit(el, rec)
+        unanchor(el)
         delete el.dataset["boyoVid"]
       }
     }
@@ -194,6 +237,7 @@ export function createActuator(ports: ActuatorPorts): Actuator {
       // for the element (a bare test document) reports for `static`.
       const position = getComputedStyle(el).position
       if (position === "static" || position === "") {
+        if (!anchored.has(el)) anchored.set(el, el.style.position)
         el.style.position = "relative"
       }
       el.dataset["boyoVid"] = videoId
@@ -210,6 +254,8 @@ export function createActuator(ports: ActuatorPorts): Actuator {
         veil = existing
       } else {
         existing?.remove()
+        // A2: a remask during the exit animation replaces the exiting veil.
+        finishExit(el, rec)
         veil = createVeil(ports.doc)
         el.appendChild(veil)
         rec.veils.set(el, veil)
@@ -218,6 +264,8 @@ export function createActuator(ports: ActuatorPorts): Actuator {
     }
     for (const el of nested) {
       takeOver(el, key)
+      // An element that was another card's anchor keeps nothing of that.
+      unanchor(el)
       el.dataset["boyo"] = model.dataBoyo
     }
 
@@ -233,7 +281,9 @@ export function createActuator(ports: ActuatorPorts): Actuator {
       for (const el of [...rec.anchors, ...rec.nested]) {
         if (owner.get(el) === key) strip(el, rec)
       }
-      // A veil mid-exit is not in `veils` any more; it removes itself.
+      // A veil still animating out is under one of those anchors — `strip`
+      // removed it; an anchor another key took over had its exit finished
+      // by `takeOver`.
     }
     // Targets the runtime still associates with the key but this module
     // never stamped (a race between observation and realization): nothing
@@ -390,8 +440,6 @@ export function createActuator(ports: ActuatorPorts): Actuator {
       disposed = true
       gestures.dispose()
       for (const key of [...realized.keys()]) unmount(key, [])
-      for (const handle of exits) clearTimeout(handle)
-      exits.clear()
     },
   }
 }

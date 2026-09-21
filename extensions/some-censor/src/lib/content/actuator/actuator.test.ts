@@ -163,6 +163,32 @@ describe("render", () => {
     expect(veilOf(el)).toBeNull()
   })
 
+  it("replaces a veil still animating out when the card is remasked (A2)", () => {
+    const el = card()
+    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
+    actuator.realize([render(K, REVEALED, [{ el, role: "anchor" }])])
+    const exiting = veilOf(el)
+    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
+    const veils = el.querySelectorAll(".boyo-veil")
+    expect(veils, "the exiting veil is gone at once").toHaveLength(1)
+    expect(veils[0]).not.toBe(exiting)
+    expect(veils[0]?.textContent).toContain("Click to preview")
+    // Neither the old exit's fallback nor its animation end takes the new one.
+    exiting?.dispatchEvent(new Event("animationend"))
+    vi.advanceTimersByTime(VEIL_EXIT_FALLBACK_MS)
+    expect(el.querySelectorAll(".boyo-veil")).toHaveLength(1)
+    expect(veilOf(el)).toBe(veils[0])
+  })
+
+  it("leaves an anchor's inline position alone when it was already positioned", () => {
+    const el = card()
+    el.style.position = "absolute"
+    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
+    expect(el.style.position).toBe("absolute")
+    actuator.realize([unmount(K)])
+    expect(el.style.position).toBe("absolute")
+  })
+
   it("stamps nested custody without a veil (D6)", () => {
     const anchor = card("yt-lockup-view-model")
     const nested = document.createElement("ytd-rich-item-renderer")
@@ -257,6 +283,30 @@ describe("unmount (A4)", () => {
 
     vi.advanceTimersByTime(WHITELIST_REVEAL_DELAY_MS * 2)
     expect(inbox.filter((i) => i.kind === "timer")).toEqual([])
+  })
+
+  it("restores the anchoring position it wrote (A1, A4)", () => {
+    const el = card()
+    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
+    expect(el.style.position).toBe("relative")
+    actuator.realize([unmount(K)])
+    expect(el.style.position).toBe("")
+    expect(el.hasAttribute("style"), "no trace of the write").toBe(false)
+
+    // Demotion to nested custody is not an anchor either.
+    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
+    actuator.realize([render(K, MASKED, [{ el, role: "nested" }])])
+    expect(el.style.position).toBe("")
+  })
+
+  it("removes a veil still animating out, without waiting for it", () => {
+    const el = card()
+    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
+    actuator.realize([render(K, REVEALED, [{ el, role: "anchor" }])])
+    expect(veilOf(el), "exiting").not.toBeNull()
+    actuator.realize([unmount(K)])
+    expect(veilOf(el), "gone at once, no animationend needed").toBeNull()
+    expect(el.hasAttribute("style")).toBe(false)
   })
 
   it("is a no-op for a key it never realized", () => {
@@ -493,6 +543,21 @@ describe("gestures", () => {
 })
 
 describe("dispose", () => {
+  it("removes a veil still animating out, even without an animationend", () => {
+    const el = card()
+    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
+    actuator.realize([render(K, REVEALED, [{ el, role: "anchor" }])])
+    expect(veilOf(el), "exiting").not.toBeNull()
+    actuator.dispose()
+    expect(
+      veilOf(el),
+      "a reduced-motion user is not left a stale veil"
+    ).toBeNull()
+    expect(el.hasAttribute("style")).toBe(false)
+    vi.advanceTimersByTime(VEIL_EXIT_FALLBACK_MS)
+    expect(el.querySelectorAll(".boyo-veil")).toHaveLength(0)
+  })
+
   it("strips everything, stops listening, and swallows late answers", async () => {
     const el = card()
     let settle: (r: unknown) => void = () => {}
