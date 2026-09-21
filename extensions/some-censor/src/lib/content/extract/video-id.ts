@@ -1,30 +1,9 @@
-import { asVideoId } from "@censor/types/ids"
+import { parseVideoHref } from "@censor/lib/content/core/parse"
 import type { VideoId } from "@censor/types/ids"
+import { asVideoId } from "@censor/types/ids"
 
 const ANCHOR_SELECTOR =
   'a#video-title, a#thumbnail, a.yt-simple-endpoint, a[href*="/watch"], a[href*="/shorts/"], a'
-
-/**
- * The videoId one href encodes, if any.
- *
- * Shared by {@link extractVideoId} and {@link representsVideo} so the two
- * cannot disagree about what an href means — a disagreement there would make
- * `representsVideo` answer about a different id space than the one that was
- * mounted, which is precisely the confusion it exists to resolve.
- */
-function videoIdFromHref(href: string): VideoId | null {
-  // Destructuring with nullish coalescing for safe extraction
-  const [, watch] = href.match(/[?&]v=([^&/#]+)/) ?? []
-  if (watch) return asVideoId(watch)
-
-  const [, shorts] = href.match(/\/shorts\/([^/?#&]+)/) ?? []
-  if (shorts) return asVideoId(shorts)
-
-  const [, path] = href.match(/\/watch\/([^/?#&]+)/) ?? []
-  if (path) return asVideoId(path)
-
-  return null
-}
 
 /**
  * Extract YouTube video ID from a renderer element.
@@ -45,7 +24,7 @@ export function extractVideoId(el: HTMLElement): VideoId | null {
   if (attr) return asVideoId(attr)
 
   for (const a of el.querySelectorAll<HTMLAnchorElement>(ANCHOR_SELECTOR)) {
-    const id = videoIdFromHref(a.href || a.getAttribute("href") || "")
+    const id = parseVideoHref(a.href || a.getAttribute("href") || "")
     if (id) return id
   }
 
@@ -100,7 +79,7 @@ export function representsVideo(el: HTMLElement, videoId: VideoId): boolean {
   // Anchor membership is the only evidence available for those, and it is
   // exactly the case the churn/recycle split was added for.
   for (const a of el.querySelectorAll<HTMLAnchorElement>(ANCHOR_SELECTOR)) {
-    if (videoIdFromHref(a.href || a.getAttribute("href") || "") === videoId) {
+    if (parseVideoHref(a.href || a.getAttribute("href") || "") === videoId) {
       return true
     }
   }

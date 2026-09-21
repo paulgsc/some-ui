@@ -1,0 +1,623 @@
+// @vitest-environment node
+/**
+ * The Core reducer (BC3, #1436), run under vitest's *node* environment on
+ * purpose: there is no `document`, no `window`, no `browser` here, so a Core
+ * file that reached for any of them would fail to import — the kernel-
+ * independence bar `@some-extension/transport` holds itself to (its README's
+ * Theorem D.2 line), made a test rather than a claim.
+ */
+
+import { readdirSync, readFileSync } from "node:fs"
+import { resolve } from "node:path"
+import { asChannelId, asVideoId } from "@censor/types/ids"
+import type { SessionId } from "@some-extension/common"
+import { describe, expect, it } from "vitest"
+
+import type { Action, CoreEvent, CoreState, Observation } from "./index"
+import {
+  cardKey,
+  initialState,
+  reduce,
+  snapshot,
+  WHITELIST_REVEAL_DELAY_MS,
+} from "./index"
+
+// SessionId is a branded number minted by the shell; the reducer only ever
+// carries one, so a literal is enough here.
+// eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+const session = (n: number): SessionId => n as unknown as SessionId
+
+function observation(
+  videoId: string,
+  overrides: Partial<Observation> = {}
+): Observation {
+  return {
+    videoId: asVideoId(videoId),
+    channelId: asChannelId("@chan"),
+    channelName: "Chan",
+    title: `Title of ${videoId}`,
+    duration: "1:23",
+    uploadDate: "3 days ago",
+    surface: "home",
+    renderer: "ytd-rich-item-renderer",
+    shape: "known",
+    ...overrides,
+  }
+}
+
+/** Fold a log from the initial state, collecting every action. */
+function fold(
+  events: ReadonlyArray<CoreEvent>,
+  from: CoreState = initialState(session(0))
+): { state: CoreState; actions: Array<Action> } {
+  let state = from
+  const actions: Array<Action> = []
+  for (const event of events) {
+    const step = reduce(state, event)
+    state = step.state
+    actions.push(...step.actions)
+  }
+  return { state, actions }
+}
+
+const K = cardKey(asVideoId("vid_a"))
+const K2 = cardKey(asVideoId("vid_b"))
+
+const started: CoreEvent = { kind: "start", session: session(1), t: 0 }
+const seenA: CoreEvent = {
+  kind: "observed",
+  key: K,
+  observation: observation("vid_a"),
+  t: 1,
+}
+
+function kinds(actions: ReadonlyArray<Action>): Array<string> {
+  return actions.map((a) =>
+    a.kind === "record" ? `record:${a.fact.kind}` : a.kind
+  )
+}
+
+function viewOf(state: CoreState, key = K): string | undefined {
+  return state.cards.get(key)?.view.kind
+}
+
+describe("kernel independence", () => {
+  it("runs with no DOM and no browser in scope", () => {
+    expect("document" in globalThis).toBe(false)
+    expect("window" in globalThis).toBe(false)
+    // The import at the top already proved the module graph loads here; this
+    // is the reducer doing real work in the same environment.
+    const { state } = fold([started, seenA])
+    expect(state.cards.size).toBe(1)
+  })
+
+  it("names no clock, randomness, session counter or effect in its source", () => {
+    // Belt to the node-environment braces above and to the eslint rule:
+    // the banned identifiers, as text, across every Core file.
+    const dir = resolve(process.cwd(), "src/lib/content/core")
+    const banned =
+      /\b(document|window|browser|chrome|Date\.now|Math\.random|mkSession|setTimeout|setInterval|requestAnimationFrame)\b/
+    for (const file of readdirSync(dir)) {
+      if (!file.endsWith(".ts") || file.endsWith(".test.ts")) continue
+      const source = readFileSync(resolve(dir, file), "utf8")
+        // Comments may mention them by name; code may not.
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/\/\/.*$/gm, "")
+      expect(source, file).not.toMatch(banned)
+    }
+  })
+})
+
+describe("replay determinism (B8)", () => {
+  const log: ReadonlyArray<CoreEvent> = [
+    started,
+    seenA,
+    {
+      kind: "observed",
+      key: K2,
+      observation: observation("vid_b", { channelId: null, channelName: null }),
+      t: 2,
+    },
+    {
+      kind: "whitelist-answer",
+      key: K,
+      channelId: asChannelId("@chan"),
+      whitelisted: false,
+      t: 3,
+    },
+    { kind: "gesture", key: K, gesture: "click", t: 4 },
+    { kind: "gesture", key: K, gesture: "click", t: 5 },
+    { kind: "title-transformed", key: K, version: 2, text: "Translated", t: 6 },
+    { kind: "observed", key: K2, observation: observation("vid_b"), t: 7 },
+    {
+      kind: "whitelist-answer",
+      key: K2,
+      channelId: asChannelId("@chan"),
+      whitelisted: true,
+      t: 8,
+    },
+    { kind: "timer", key: K2, version: 1, t: 9 },
+    {
+      kind: "unknown-shape",
+      tag: "yt-lockup-view-model",
+      surface: "search",
+      reason: "tag-unseen",
+      t: 10,
+    },
+    { kind: "command", command: "advance-all-to-title", t: 11 },
+    { kind: "nav", session: session(2), t: 12 },
+    seenA,
+    { kind: "gesture", key: K, gesture: "dblclick", t: 14 },
+    { kind: "gone", key: K, t: 15 },
+    { kind: "stop", t: 16 },
+  ]
+
+  it("folds the same log to the same state and the same actions, twice", () => {
+    const a = fold(log)
+    const b = fold(log)
+    expect(JSON.stringify(snapshot(a.state))).toBe(
+      JSON.stringify(snapshot(b.state))
+    )
+    expect(JSON.stringify(a.actions)).toBe(JSON.stringify(b.actions))
+  })
+
+  it("never mutates the state it is given", () => {
+    const before = initialState(session(0))
+    const frozen = JSON.stringify(snapshot(before))
+    fold(log, before)
+    expect(JSON.stringify(snapshot(before))).toBe(frozen)
+  })
+})
+
+describe("lifecycle (R1, R3)", () => {
+  it("does nothing while idle, except start", () => {
+    const { state, actions } = fold([
+      seenA,
+      { kind: "gesture", key: K, gesture: "click", t: 1 },
+    ])
+    expect(state.cards.size).toBe(0)
+    expect(actions).toEqual([])
+  })
+
+  it("adopts the shell's session on start and again on navigation", () => {
+    const { state } = fold([started])
+    expect(state.phase).toBe("running")
+    expect(state.session).toBe(session(1))
+    const after = fold([
+      started,
+      seenA,
+      { kind: "nav", session: session(2), t: 5 },
+    ])
+    expect(after.state.session).toBe(session(2))
+    expect(after.state.cards.size, "nothing survives a navigation").toBe(0)
+    expect(kinds(after.actions)).toContain("unmount")
+  })
+
+  it("stop unmounts everything and goes idle", () => {
+    const { state, actions } = fold([started, seenA, { kind: "stop", t: 3 }])
+    expect(state.phase).toBe("idle")
+    expect(state.cards.size).toBe(0)
+    expect(
+      actions.filter((a) => a.kind === "unmount").map((a) => a.key)
+    ).toEqual([K])
+  })
+
+  it("start while running is a no-op (C1/C3)", () => {
+    const first = fold([started, seenA])
+    const again = reduce(first.state, {
+      kind: "start",
+      session: session(9),
+      t: 9,
+    })
+    expect(again.actions).toEqual([])
+    expect(again.state).toBe(first.state)
+  })
+})
+
+describe("adoption (R2, R6)", () => {
+  it("masks a card on first sight and asks about its channel", () => {
+    const { state, actions } = fold([started, seenA])
+    expect(viewOf(state)).toBe("masked")
+    expect(kinds(actions).slice(1)).toEqual([
+      "render",
+      "record:mount.resolved",
+      "record:entry.state",
+      "record:date.observed",
+      "query-whitelist",
+    ])
+    const [render] = actions.filter((a) => a.kind === "render")
+    expect(render?.kind === "render" && render.model.dataBoyo).toBe("0")
+  })
+
+  it("mounts a channel-less card provisionally and asks nothing yet", () => {
+    const { state, actions } = fold([
+      started,
+      {
+        kind: "observed",
+        key: K,
+        observation: observation("vid_a", { channelId: null }),
+        t: 1,
+      },
+    ])
+    expect(state.cards.get(K)?.channel).toEqual({ kind: "unknown" })
+    expect(kinds(actions)).toContain("record:mount.provisional")
+    expect(kinds(actions)).not.toContain("query-whitelist")
+  })
+
+  it("backfills the channel on a later observation, once", () => {
+    const { state, actions } = fold([
+      started,
+      {
+        kind: "observed",
+        key: K,
+        observation: observation("vid_a", { channelId: null }),
+        t: 1,
+      },
+      seenA,
+      seenA,
+    ])
+    expect(state.cards.get(K)?.channel).toMatchObject({ kind: "pending" })
+    expect(actions.filter((a) => a.kind === "query-whitelist")).toHaveLength(1)
+    expect(
+      kinds(actions).filter((k) => k === "record:channel.backfilled")
+    ).toHaveLength(1)
+  })
+
+  it("holds one card per artifact however often it is observed", () => {
+    const { state, actions } = fold([started, seenA, seenA, seenA])
+    expect(state.cards.size).toBe(1)
+    expect(
+      kinds(actions).filter((k) => k === "record:mount.resolved")
+    ).toHaveLength(1)
+    expect(
+      actions.filter((a) => a.kind === "render"),
+      "re-rendered each time (R5)"
+    ).toHaveLength(3)
+  })
+
+  it("keeps evidence an earlier observation had and a later one lost", () => {
+    const { state } = fold([
+      started,
+      seenA,
+      {
+        kind: "observed",
+        key: K,
+        observation: observation("vid_a", { title: null, duration: null }),
+        t: 2,
+      },
+    ])
+    expect(state.cards.get(K)?.observation.title).toBe("Title of vid_a")
+    expect(state.cards.get(K)?.observation.duration).toBe("1:23")
+  })
+
+  it("treats an unknown shape as a card, and counts it (B4)", () => {
+    const { state, actions } = fold([
+      started,
+      {
+        kind: "observed",
+        key: K,
+        observation: observation("vid_a", { shape: "unknown" }),
+        t: 1,
+      },
+      {
+        kind: "unknown-shape",
+        tag: "yt-lockup-view-model",
+        surface: "search",
+        reason: "tag-unseen",
+        t: 2,
+      },
+      {
+        kind: "unknown-shape",
+        tag: "yt-lockup-view-model",
+        surface: "search",
+        reason: "tag-unseen",
+        t: 3,
+      },
+    ])
+    expect(viewOf(state), "still masked, like every card").toBe("masked")
+    expect(state.unknownShapes).toMatchObject({ degraded: 1, "tag-unseen": 2 })
+    expect(
+      kinds(actions).filter((k) => k === "record:shape.unknown")
+    ).toHaveLength(3)
+    const nav = reduce(state, { kind: "nav", session: session(2), t: 4 })
+    expect(nav.state.unknownShapes.degraded, "per session").toBe(0)
+  })
+
+  it("forgets a card that is gone", () => {
+    const { state, actions } = fold([
+      started,
+      seenA,
+      { kind: "gone", key: K, t: 2 },
+    ])
+    expect(state.cards.size).toBe(0)
+    expect(actions.at(-1)).toEqual({ kind: "unmount", key: K })
+    expect(
+      reduce(state, { kind: "gone", key: K, t: 3 }).actions,
+      "idempotent"
+    ).toEqual([])
+  })
+})
+
+describe("the disclosure ladder", () => {
+  it("climbs masked → meta → title on single clicks, with the observed evidence", () => {
+    const one = fold([
+      started,
+      seenA,
+      { kind: "gesture", key: K, gesture: "click", t: 2 },
+    ])
+    expect(viewOf(one.state)).toBe("meta")
+    const two = fold([
+      started,
+      seenA,
+      { kind: "gesture", key: K, gesture: "click", t: 2 },
+      { kind: "gesture", key: K, gesture: "click", t: 3 },
+    ])
+    const card = two.state.cards.get(K)
+    expect(card?.view.kind).toBe("title")
+    if (card?.view.kind !== "title") throw new Error("unreachable")
+    expect(card.view.title.text).toBe("Title of vid_a")
+    expect(card.view.meta.channelName).toBe("Chan")
+    const transform = two.actions.find((a) => a.kind === "transform-title")
+    expect(transform).toMatchObject({
+      key: K,
+      version: 2,
+      text: "Title of vid_a",
+    })
+    const three = reduce(two.state, {
+      kind: "gesture",
+      key: K,
+      gesture: "click",
+      t: 4,
+    })
+    expect(three.actions, "a click at title is nothing").toEqual([])
+  })
+
+  it("reveals on a double click from any state (parity; #1385 narrows this)", () => {
+    for (const prior of [0, 1, 2]) {
+      const clicks: Array<CoreEvent> = Array.from(
+        { length: prior },
+        (_, i) => ({
+          kind: "gesture",
+          key: K,
+          gesture: "click",
+          t: 2 + i,
+        })
+      )
+      const { state, actions } = fold([
+        started,
+        seenA,
+        ...clicks,
+        { kind: "gesture", key: K, gesture: "dblclick", t: 9 },
+      ])
+      expect(viewOf(state), `after ${prior} click(s)`).toBe("revealed")
+      const last = actions.filter((a) => a.kind === "render").at(-1)
+      expect(last?.kind === "render" && last.model.removeVeil).toBe(true)
+    }
+  })
+
+  it("applies a title transform only to the version that asked for it (R4)", () => {
+    const base = fold([
+      started,
+      seenA,
+      { kind: "gesture", key: K, gesture: "click", t: 2 },
+      { kind: "gesture", key: K, gesture: "click", t: 3 },
+    ])
+    const right = reduce(base.state, {
+      kind: "title-transformed",
+      key: K,
+      version: 2,
+      text: "Übersetzt",
+      t: 4,
+    })
+    const card = right.state.cards.get(K)
+    expect(card?.view.kind === "title" && card.view.title).toEqual({
+      text: "Übersetzt",
+      translated: true,
+    })
+
+    const stale = reduce(base.state, {
+      kind: "title-transformed",
+      key: K,
+      version: 1,
+      text: "old",
+      t: 4,
+    })
+    expect(stale.state).toBe(base.state)
+    expect(kinds(stale.actions)).toEqual(["record:stale.discarded"])
+
+    const moved = fold([
+      started,
+      seenA,
+      { kind: "gesture", key: K, gesture: "click", t: 2 },
+      { kind: "gesture", key: K, gesture: "click", t: 3 },
+      { kind: "gesture", key: K, gesture: "dblclick", t: 4 },
+    ])
+    const late = reduce(moved.state, {
+      kind: "title-transformed",
+      key: K,
+      version: 2,
+      text: "late",
+      t: 5,
+    })
+    expect(
+      viewOf(late.state),
+      "a revealed card is not dragged back to title"
+    ).toBe("revealed")
+  })
+})
+
+describe("whitelisting", () => {
+  const answered = (whitelisted: boolean): CoreEvent => ({
+    kind: "whitelist-answer",
+    key: K,
+    channelId: asChannelId("@chan"),
+    whitelisted,
+    t: 2,
+  })
+
+  it("tints a masked card whose channel turns out whitelisted, then reveals it on the timer", () => {
+    const { state, actions } = fold([started, seenA, answered(true)])
+    expect(viewOf(state)).toBe("whitelisted")
+    expect(state.cards.get(K)?.channel).toEqual({
+      kind: "known",
+      channelId: "@chan",
+      whitelisted: true,
+    })
+    const schedule = actions.find((a) => a.kind === "schedule")
+    expect(schedule).toMatchObject({
+      key: K,
+      version: 1,
+      delayMs: WHITELIST_REVEAL_DELAY_MS,
+    })
+
+    const fired = reduce(state, { kind: "timer", key: K, version: 1, t: 3 })
+    expect(viewOf(fired.state)).toBe("revealed")
+  })
+
+  it("leaves a not-whitelisted card masked, and records the verdict", () => {
+    const { state, actions } = fold([started, seenA, answered(false)])
+    expect(viewOf(state)).toBe("masked")
+    expect(state.cards.get(K)?.channel).toEqual({
+      kind: "known",
+      channelId: "@chan",
+      whitelisted: false,
+    })
+    expect(kinds(actions).at(-1), "re-rendered so custody is re-derived").toBe(
+      "render"
+    )
+  })
+
+  it("does not yank a card the user has already progressed (Entry-4)", () => {
+    const { state } = fold([
+      started,
+      seenA,
+      { kind: "gesture", key: K, gesture: "click", t: 2 },
+      answered(true),
+    ])
+    expect(viewOf(state)).toBe("meta")
+    expect(state.cards.get(K)?.channel).toMatchObject({ whitelisted: true })
+  })
+
+  it("discards an answer for a question no longer open (R4)", () => {
+    const base = fold([started, seenA, answered(false)])
+    const again = reduce(base.state, answered(true))
+    expect(viewOf(again.state), "already answered").toBe("masked")
+    expect(kinds(again.actions)).toEqual(["record:stale.discarded"])
+
+    const other = reduce(fold([started, seenA]).state, {
+      kind: "whitelist-answer",
+      key: K,
+      channelId: asChannelId("@someone-else"),
+      whitelisted: true,
+      t: 2,
+    })
+    expect(viewOf(other.state), "a different channel's answer").toBe("masked")
+  })
+
+  it("ignores a timer whose version has moved on", () => {
+    const base = fold([started, seenA, answered(true)])
+    const clicked = reduce(base.state, {
+      kind: "gesture",
+      key: K,
+      gesture: "dblclick",
+      t: 3,
+    })
+    const fired = reduce(clicked.state, {
+      kind: "timer",
+      key: K,
+      version: 1,
+      t: 4,
+    })
+    expect(fired.actions).toEqual([])
+    expect(viewOf(fired.state)).toBe("revealed")
+  })
+
+  it("persists a request and fans it out to every card of that channel", () => {
+    const { state, actions } = fold([
+      started,
+      seenA,
+      { kind: "observed", key: K2, observation: observation("vid_b"), t: 2 },
+      { kind: "whitelist-request", key: K, t: 3 },
+    ])
+    expect(actions.find((a) => a.kind === "persist-whitelist")).toEqual({
+      kind: "persist-whitelist",
+      channelId: "@chan",
+      channelName: "Chan",
+    })
+    expect(viewOf(state, K)).toBe("whitelisted")
+    expect(viewOf(state, K2)).toBe("whitelisted")
+  })
+
+  it("does nothing for a request on a card with no channel", () => {
+    const { state, actions } = fold([
+      started,
+      {
+        kind: "observed",
+        key: K,
+        observation: observation("vid_a", { channelId: null }),
+        t: 1,
+      },
+      { kind: "whitelist-request", key: K, t: 2 },
+    ])
+    expect(viewOf(state)).toBe("masked")
+    expect(actions.find((a) => a.kind === "persist-whitelist")).toBeUndefined()
+  })
+
+  it("applies a broadcast from another tab the same way", () => {
+    const { state } = fold([
+      started,
+      seenA,
+      { kind: "whitelist-broadcast", channelId: asChannelId("@chan"), t: 2 },
+    ])
+    expect(viewOf(state)).toBe("whitelisted")
+  })
+})
+
+describe("advance-all-to-title", () => {
+  it("is pointwise the single legal transition, restricted to cards below title", () => {
+    const setup: Array<CoreEvent> = [
+      started,
+      seenA,
+      { kind: "observed", key: K2, observation: observation("vid_b"), t: 2 },
+      { kind: "gesture", key: K2, gesture: "click", t: 3 },
+      {
+        kind: "observed",
+        key: cardKey(asVideoId("vid_c")),
+        observation: observation("vid_c"),
+        t: 4,
+      },
+      {
+        kind: "gesture",
+        key: cardKey(asVideoId("vid_c")),
+        gesture: "dblclick",
+        t: 5,
+      },
+    ]
+    const before = fold(setup)
+    const bulk = reduce(before.state, {
+      kind: "command",
+      command: "advance-all-to-title",
+      t: 6,
+    })
+
+    // The same cards, each advanced on its own by the singular path.
+    const singly = fold([
+      ...setup,
+      { kind: "gesture", key: K, gesture: "click", t: 7 },
+      { kind: "gesture", key: K, gesture: "click", t: 8 },
+      { kind: "gesture", key: K2, gesture: "click", t: 9 },
+    ])
+    for (const key of before.state.cards.keys()) {
+      expect(bulk.state.cards.get(key)?.view, key).toEqual(
+        singly.state.cards.get(key)?.view
+      )
+    }
+    expect(
+      bulk.actions.find(
+        (a) => a.kind === "record" && a.fact.kind === "bulk.advance"
+      )
+    ).toMatchObject({
+      fact: { advanced: 2, alreadyPast: 1, channelPending: 3 },
+    })
+  })
+})

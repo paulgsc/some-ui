@@ -29,6 +29,10 @@ export default defineConfig(
     //                   lookups (BC1, #1434) — the fingerprint reads only the
     //                   root it is handed, the way selectors.ts's
     //                   occludedElements() does
+    //   core/**         the reducer, its events, actions and state (BC3,
+    //                   #1436) — the enforcement gap that let
+    //                   video-manager.ts violate the contract silently must
+    //                   not reopen here
     //
     // extract/ is deliberately *not* here: it reads a DOM subtree, but only
     // through the element handed to it, never through a global — which is the
@@ -39,6 +43,7 @@ export default defineConfig(
       "src/lib/content/selectors.ts",
       "src/lib/content/veil-styles.ts",
       "src/lib/content/layout/**/*.ts",
+      "src/lib/content/core/**/*.ts",
       "src/types/**/*.ts",
     ],
     ignores: ["src/types/global.d.ts"],

@@ -1,5 +1,6 @@
-import { asChannelId } from "@censor/types/ids"
+import { parseChannelHref } from "@censor/lib/content/core/parse"
 import type { ChannelId } from "@censor/types/ids"
+import { asChannelId } from "@censor/types/ids"
 
 /**
  * Extract YouTube channel identifier from a renderer element.
@@ -14,17 +15,8 @@ export function extractChannelId(el: HTMLElement): ChannelId | null {
     const href = a.href || a.getAttribute("href") || ""
     if (!href) continue
 
-    const [, channelId] = href.match(/\/channel\/([^/?#&]+)/) ?? []
-    if (channelId) return asChannelId(channelId)
-
-    const [, handle] = href.match(/\/@([^/?#&]+)/) ?? []
-    if (handle) return asChannelId(`@${handle}`)
-
-    const [, c] = href.match(/\/c\/([^/?#&]+)/) ?? []
-    if (c) return asChannelId(`@${c}`)
-
-    const [, user] = href.match(/\/user\/([^/?#&]+)/) ?? []
-    if (user) return asChannelId(`@${user}`)
+    const parsed = parseChannelHref(href)
+    if (parsed !== null) return parsed
   }
 
   // Fallback: visible channel name text (less stable but better than null).
