@@ -311,6 +311,17 @@ describe("unmount (A4)", () => {
     expect(el.style.position).toBe("")
   })
 
+  it("keeps an inline position the vendor wrote after the anchoring", () => {
+    const el = card()
+    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
+    expect(el.style.position).toBe("relative")
+    el.style.position = "absolute"
+    actuator.realize([unmount(K)])
+    expect(el.style.position, "the vendor's later value is not undone").toBe(
+      "absolute"
+    )
+  })
+
   it("removes a veil still animating out, without waiting for it", () => {
     const el = card()
     actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])

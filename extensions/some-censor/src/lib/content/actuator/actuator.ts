@@ -123,11 +123,17 @@ export function createActuator(ports: ActuatorPorts): Actuator {
 
   // ── Stamps and veils ───────────────────────────────────────────────────
 
-  /** A1's write, undone: the inline position the element had is restored. */
+  /**
+   * A1's write, undone: the inline position the element had is restored —
+   * unless the inline value is no longer the `relative` this module wrote,
+   * in which case the vendor has taken the property back since and its
+   * value stays.
+   */
   function unanchor(el: HTMLElement): void {
     const prior = anchored.get(el)
     if (prior === undefined) return
     anchored.delete(el)
+    if (el.style.position !== "relative") return
     el.style.position = prior
     if (el.getAttribute("style") === "") el.removeAttribute("style")
   }
