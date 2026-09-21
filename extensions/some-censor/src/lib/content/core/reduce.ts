@@ -505,19 +505,16 @@ function reobserve(
   // answer still in flight for the old one is stale by the channel check in
   // `whitelist-answer`, and a verdict that only ever named the old id cannot
   // reveal the card.
-  const reopened =
+  const reopened: ChannelId | null =
     merged.channelId !== null && channelIdOf(card) !== merged.channelId
-  if (reopened && merged.channelId !== null) {
+      ? merged.channelId
+      : null
+  if (reopened !== null) {
     const query = card.queries + 1
     next = {
       ...next,
       queries: query,
-      channel: {
-        kind: "pending",
-        channelId: merged.channelId,
-        since: t,
-        query,
-      },
+      channel: { kind: "pending", channelId: reopened, since: t, query },
     }
     actions.push(
       {
@@ -525,7 +522,7 @@ function reobserve(
         key: card.key,
         generation: card.generation,
         query,
-        channelId: merged.channelId,
+        channelId: reopened,
       },
       record({ kind: "channel.backfilled", videoId })
     )
@@ -558,7 +555,7 @@ function reobserve(
   // masked; the version bump retires the timer. Views the user climbed to
   // are not touched (Entry-4).
   if (
-    reopened &&
+    reopened !== null &&
     (next.view.kind === "whitelisted" ||
       (next.view.kind === "revealed" && next.autoRevealed))
   ) {
