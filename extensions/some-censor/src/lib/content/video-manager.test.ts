@@ -578,6 +578,46 @@ describe("a cell that merely contains cards (#1504's own review)", () => {
     expect(mgr.size, "still just the lockup").toBe(1)
   })
 
+  it("replaces a live entry whose element stopped being a card, in either order", async () => {
+    // The same video before and after the recycle (#1504's own review, round
+    // 4): the M2 shortcut — "an entry for this video exists, repair it" —
+    // must not fire for an owner that is a wrapper now, whichever of the two
+    // elements the observer happens to hand over first.
+    for (const order of ["inner-first", "outer-first"] as const) {
+      const cell = fullCard("same_x", "Chan")
+      document.body.appendChild(cell)
+      mgr.upsert(cell)
+      await passes(1)
+      expect(cell.getAttribute("data-boyo"), `${order}: precondition`).toBe("0")
+
+      const { inner } = nestedCell("same_x")
+      cell.replaceChildren(inner)
+      const [first, second] =
+        order === "inner-first" ? [inner, cell] : [cell, inner]
+      mgr.upsert(first)
+      mgr.upsert(second)
+      await passes(2)
+
+      expect(
+        inner.getAttribute("data-boyo"),
+        `${order}: the lockup is masked`
+      ).toBe("0")
+      expect(
+        cell.hasAttribute("data-boyo"),
+        `${order}: the cell's stamp is gone`
+      ).toBe(false)
+      expect(
+        cell.querySelector(":scope > .boyo-veil"),
+        `${order}: and its veil`
+      ).toBeNull()
+      expect(mgr.size, `${order}: one entry`).toBe(1)
+
+      mgr.reset()
+      mgr.startSession()
+      document.body.innerHTML = ""
+    }
+  })
+
   it("drops a queued shell that turns into a wrapper", async () => {
     // A cell YouTube fills in *after* the observer saw it empty: queued as a
     // shell, then hydrated with a lockup. It is a wrapper now — the lockup

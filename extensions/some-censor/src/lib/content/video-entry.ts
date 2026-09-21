@@ -44,6 +44,7 @@ import {
 } from "./fsm"
 import { observability, recordUploadDate } from "./observability"
 import type { VideoRecord } from "./record"
+import { classifyCard } from "./selectors"
 
 type TransformTitleFn = (title: string, channelId: string) => Promise<unknown>
 
@@ -201,6 +202,18 @@ export class VideoEntry {
    */
   owns(el: HTMLElement): boolean {
     return this._handle.element === el
+  }
+
+  /**
+   * Is the element this entry is mounted on still a card?
+   *
+   * A live entry can outlast its element's role: the virtualizer hands the
+   * cell to a lockup for the *same* video, and the cell is a container now
+   * (#1504's own review, round 4). The manager asks this before treating
+   * "an entry for this video already exists" as "nothing to do".
+   */
+  isCard(): boolean {
+    return classifyCard(this._handle.element) === "card"
   }
 
   /** Exposed for the debug/observability layer — read-only snapshot of FSM kind. */

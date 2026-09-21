@@ -56,6 +56,12 @@ export { SEL } from "./selectors"
 export function startObserver(mgr: VideoManager): MutationObserver {
   const obs = new MutationObserver((mutations) => {
     const candidates = new Set<HTMLElement>()
+    // Cards whose subtree changed, handed to the manager *before* anything
+    // added inside them: a cell recycled into a lockup for the same video
+    // must retire its own entry before the lockup asks for that video, or
+    // the lockup's upsert finds the cell's entry and repairs it instead
+    // (#1504's own review, round 4).
+    const enclosing = new Set<HTMLElement>()
     let needsPrune = false
 
     for (const m of mutations) {
@@ -83,9 +89,9 @@ export function startObserver(mgr: VideoManager): MutationObserver {
         }
 
         // The card whose subtree this record changed, if it is inside one.
-        const enclosing =
+        const around =
           m.target instanceof Element ? m.target.closest(SEL) : null
-        if (enclosing instanceof HTMLElement) candidates.add(enclosing)
+        if (around instanceof HTMLElement) enclosing.add(around)
 
         // Just flag that a removal happened; don't prune in the loop!
         if (m.removedNodes.length > 0) {
@@ -94,8 +100,11 @@ export function startObserver(mgr: VideoManager): MutationObserver {
       }
     }
 
-    // Process new/updated elements
-    candidates.forEach((el) => mgr.upsert(el))
+    // Process changed cards first, then new/updated elements.
+    enclosing.forEach((el) => mgr.upsert(el))
+    candidates.forEach((el) => {
+      if (!enclosing.has(el)) mgr.upsert(el)
+    })
 
     // Retry previously unresolved elements
     mgr.retryUnresolved()
@@ -114,7 +123,7 @@ export function startObserver(mgr: VideoManager): MutationObserver {
 
     // Notify debug layer of mutation activity
     notifyMutation()
-    observability()?.mutationBatch(candidates.size)
+    observability()?.mutationBatch(candidates.size + enclosing.size)
   })
 
   obs.observe(document.body, {

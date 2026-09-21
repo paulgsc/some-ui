@@ -105,6 +105,26 @@ describe("a card whose subtree is replaced", () => {
     expect(mgr.size).toBe(1)
   })
 
+  it("adopts a lockup that replaces its cell for the same video", async () => {
+    // Round 4 of #1504's own review: the recycled cell and the lockup that
+    // replaced it carry the same video. The lockup must not find the cell's
+    // entry and repair it; the cell is retired first, then the lockup mounts.
+    const cell = videoCell("same_vid")
+    document.body.appendChild(cell)
+    await settle()
+    expect(cell.getAttribute("data-boyo")).toBe("0")
+
+    const inner = lockup("same_vid")
+    cell.replaceChildren(inner)
+    await settle()
+
+    expect(inner.getAttribute("data-boyo"), "the lockup is the card").toBe("0")
+    expect(inner.querySelectorAll(":scope > .boyo-veil")).toHaveLength(1)
+    expect(cell.hasAttribute("data-boyo"), "the cell is retired").toBe(false)
+    expect(cell.querySelectorAll(":scope > .boyo-veil")).toHaveLength(0)
+    expect(mgr.size).toBe(1)
+  })
+
   it("does not disturb a card whose subtree merely churned", async () => {
     // The bounded walk re-upserts the card; upsert() must then find the same
     // artifact and leave the entry alone (M2, #1423).

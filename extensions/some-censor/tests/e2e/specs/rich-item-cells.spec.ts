@@ -23,6 +23,8 @@
  *      stamp, no veil, and not under the occluder either.
  * O8 — An adopted cell wrapped around a lockup in place is retired, and the
  *      lockup becomes the card.
+ * O9 — The same, when the lockup carries the *same* video as the cell did:
+ *      the cell's entry must not be repaired in place of adopting the lockup.
  */
 
 import {
@@ -310,4 +312,48 @@ test("O8: an adopted cell wrapped around a lockup in place is retired, and the l
   expect(shape?.outerStamped, "the cell's stamp is retired").toBe(false)
   expect(shape?.outerOwnVeils, "and its veil is gone").toBe(0)
   expect(shape?.outerBlurred, "and it is not under the occluder").toBe(false)
+})
+
+test("O9: a cell wrapped around a lockup for the same video hands the card to the lockup", async ({
+  fixture,
+}) => {
+  const page = await fixture.goto("yt-home")
+  await fixture.pollDebug(page, (d) => "vid_aaa111" in d.entries, {
+    timeout: 5000,
+  })
+
+  await fixture.fixtureCall<boolean>(
+    page,
+    "wrapCardInLockup",
+    "vid_aaa111",
+    "vid_aaa111",
+    "same-inner"
+  )
+
+  // The entry keeps its id, so the debug snapshot cannot tell the two apart;
+  // the rendered stamps can.
+  await page.waitForFunction(
+    () =>
+      document.getElementById("same-inner")?.getAttribute("data-boyo") === "0",
+    undefined,
+    { timeout: 5000 }
+  )
+  const shape = await page.evaluate(() => {
+    const inner = document.getElementById("same-inner")
+    const outer = inner?.parentElement
+    if (!inner || !(outer instanceof HTMLElement)) return null
+    return {
+      outerStamped: outer.hasAttribute("data-boyo"),
+      outerOwnVeils: outer.querySelectorAll(":scope > .boyo-veil").length,
+      innerVeils: inner.querySelectorAll(".boyo-veil").length,
+      outerBlurred: getComputedStyle(outer).filter.includes("blur"),
+      innerBlurred: getComputedStyle(inner).filter.includes("blur"),
+    }
+  })
+  expect(shape).not.toBeNull()
+  expect(shape?.innerVeils, "the lockup carries the veil").toBe(1)
+  expect(shape?.innerBlurred, "and is not under the occluder").toBe(false)
+  expect(shape?.outerStamped, "the cell's stamp is retired").toBe(false)
+  expect(shape?.outerOwnVeils).toBe(0)
+  expect(shape?.outerBlurred).toBe(false)
 })

@@ -817,14 +817,24 @@ export class VideoManager {
         this._byVideo.delete(prevVid)
       }
 
-      // Same (el, videoId) in current session → veil repair only.
+      // Same (el, videoId) in current session → veil repair only. The same
+      // video on a *different* element that is still a card is left alone
+      // too (#1426's sequential case, unchanged here). But an entry whose
+      // element has stopped being a card — the cell this lockup replaced,
+      // for the same video (#1504's own review, round 4) — is a stale owner:
+      // repairing it would re-stamp the wrapper and leave this card
+      // stranded, so it is retired and the mount proceeds here.
       const existing = this._byVideo.get(videoId)
       if (existing?.record.session === this._session) {
-        existing.repair()
-        return
+        if (existing.owns(el) || existing.isCard()) {
+          existing.repair()
+          return
+        }
+        this._dropChannelPending(videoId)
       }
 
-      // Stale entry (different session) or brand-new entry → replace.
+      // Stale entry (different session, or a live one on a non-card) or
+      // brand-new entry → replace.
       existing?.destroy()
 
       const isWhitelisted = await ext.runtime
@@ -902,9 +912,14 @@ export class VideoManager {
 
     const existing = this._byVideo.get(videoId)
     if (existing?.record.session === this._session) {
-      existing.repair()
-      if (!existing.hasChannel) this._trackChannelPending(videoId, el)
-      return
+      // See _promote(): a live entry on an element that is no longer a card
+      // is a stale owner, not a reason to skip this mount.
+      if (existing.owns(el) || existing.isCard()) {
+        existing.repair()
+        if (!existing.hasChannel) this._trackChannelPending(videoId, el)
+        return
+      }
+      this._dropChannelPending(videoId)
     }
     existing?.destroy()
 
