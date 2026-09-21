@@ -532,6 +532,65 @@
           return document.querySelectorAll("ytd-rich-item-renderer").length
         },
 
+        /** The inner HTML of a YouTube-shaped Lit lockup for a video. */
+        lockupInner(videoId, channel = "SomeoneElse") {
+          return `
+            <a class="yt-lockup-view-model__content-image" href="/watch?v=${videoId}">
+              <span class="lockup-thumb"></span>
+            </a>
+            <div class="yt-lockup-metadata-view-model__metadata">
+              <h3>
+                <a class="yt-lockup-metadata-view-model__title" href="/watch?v=${videoId}">
+                  <span role="text">Lockup ${videoId}</span>
+                </a>
+              </h3>
+              <div class="yt-content-metadata-view-model__metadata-row">
+                <a class="yt-content-metadata-view-model__metadata-text" href="/@${channel}">${channel}</a>
+              </div>
+            </div>`
+        },
+
+        /**
+         * Append a grid cell that already contains its lockup, the way an
+         * infinite-scroll batch inserts one atomically (#1504's review).
+         */
+        appendNestedCell(videoId, cellId) {
+          const grid = document.getElementById("nested-shelf")
+          if (!grid) return false
+          const cell = document.createElement("ytd-rich-item-renderer")
+          cell.id = cellId
+          const inner = document.createElement("yt-lockup-view-model")
+          inner.id = cellId + "-inner"
+          inner.innerHTML = window.__FIXTURE__.lockupInner(videoId)
+          cell.appendChild(inner)
+          grid.appendChild(cell)
+          return true
+        },
+
+        /**
+         * Hand an adopted cell to an ad slot, replacing its children in place
+         * the way the feed virtualizer does. The cell itself is not an added
+         * node — only its children are.
+         */
+        turnCardIntoAd(videoId) {
+          const el = window.__FIXTURE__.cardEl(videoId)
+          if (!el) return false
+          el.innerHTML =
+            '<ytd-ad-slot-renderer><div class="thumbnail"></div><div id="metadata-line"><span>Sponsored</span></div></ytd-ad-slot-renderer>'
+          return true
+        },
+
+        /** Hand an adopted cell to a lockup wrapped inside it, in place. */
+        wrapCardInLockup(videoId, innerVideoId, innerId) {
+          const el = window.__FIXTURE__.cardEl(videoId)
+          if (!el) return false
+          const inner = document.createElement("yt-lockup-view-model")
+          inner.id = innerId
+          inner.innerHTML = window.__FIXTURE__.lockupInner(innerVideoId)
+          el.replaceChildren(inner)
+          return true
+        },
+
         /**
          * Any card the extension may have adopted, of any generation.
          *

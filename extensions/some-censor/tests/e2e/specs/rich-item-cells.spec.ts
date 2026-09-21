@@ -17,6 +17,12 @@
  * O5 — The stylesheet's pre-mask condition and `classifyCard()` agree on
  *      every catalogue element, on a real engine — the unit suite cannot
  *      check this, because jsdom cannot parse `:not(:has())`.
+ * O6 — A cell inserted atomically with its lockup already inside is handled
+ *      through the live observer: the lockup is adopted, the cell is not.
+ * O7 — An adopted cell handed to an ad slot in place is retired: no stale
+ *      stamp, no veil, and not under the occluder either.
+ * O8 — An adopted cell wrapped around a lockup in place is retired, and the
+ *      lockup becomes the card.
  */
 
 import {
@@ -192,4 +198,116 @@ test("O5: the stylesheet and classifyCard() agree on every catalogue element", a
     }
   )
   expect(disagreements).toEqual([])
+})
+
+test("O6: a cell inserted with its lockup already inside is handled by the observer", async ({
+  fixture,
+}) => {
+  const page = await fixture.goto("yt-home")
+  await fixture.pollDebug(page, (d) => d.mounted >= 3, { timeout: 5000 })
+  // The retry loop may or may not be alive here; the observer alone has to
+  // do this, which is why the unit suite drives it without a scan.
+  await fixture.fixtureCall<boolean>(
+    page,
+    "appendNestedCell",
+    "lock_late",
+    "late-cell"
+  )
+
+  const snap = await fixture.pollDebug(page, (d) => "lock_late" in d.entries, {
+    timeout: 5000,
+  })
+  expect(snap.entries["lock_late"]?.viewKind).toBe("masked")
+  expect(
+    await fixture.fixtureCall<boolean>(page, "isMaskedById", "late-cell-inner"),
+    "the lockup is the card"
+  ).toBe(true)
+  expect(
+    await fixture.fixtureCall<boolean>(page, "isMaskedById", "late-cell"),
+    "the cell is not adopted"
+  ).toBe(false)
+  expect(
+    await fixture.fixtureCall<boolean>(page, "isPreMasked", "late-cell"),
+    "and not under the occluder"
+  ).toBe(false)
+})
+
+test("O7: an adopted cell handed to an ad slot in place is retired", async ({
+  fixture,
+}) => {
+  const page = await fixture.goto("yt-home")
+  await fixture.pollDebug(page, (d) => "vid_ccc333" in d.entries, {
+    timeout: 5000,
+  })
+
+  await fixture.fixtureCall<boolean>(page, "turnCardIntoAd", "vid_ccc333")
+
+  const snap = await fixture.pollDebug(
+    page,
+    (d) => !("vid_ccc333" in d.entries),
+    { timeout: 5000 }
+  )
+  expect(snap.entries["vid_ccc333"], "the entry is gone").toBeUndefined()
+
+  const cell = await page.evaluate(() => {
+    const el = document.querySelector(
+      "ytd-rich-item-renderer:has(ytd-ad-slot-renderer)"
+    )
+    if (!(el instanceof HTMLElement)) return null
+    const cs = getComputedStyle(el)
+    return {
+      stamped: el.hasAttribute("data-boyo"),
+      veils: el.querySelectorAll(".boyo-veil").length,
+      blurred: cs.filter.includes("blur"),
+      pointerEvents: cs.pointerEvents,
+    }
+  })
+  expect(cell).not.toBeNull()
+  expect(cell?.stamped, "no stale stamp").toBe(false)
+  expect(cell?.veils, "no veil").toBe(0)
+  expect(cell?.blurred, "not under the occluder").toBe(false)
+  expect(cell?.pointerEvents).not.toBe("none")
+})
+
+test("O8: an adopted cell wrapped around a lockup in place is retired, and the lockup is the card", async ({
+  fixture,
+}) => {
+  const page = await fixture.goto("yt-home")
+  await fixture.pollDebug(page, (d) => "vid_bbb222" in d.entries, {
+    timeout: 5000,
+  })
+
+  await fixture.fixtureCall<boolean>(
+    page,
+    "wrapCardInLockup",
+    "vid_bbb222",
+    "lock_wrapped",
+    "wrapped-inner"
+  )
+
+  const snap = await fixture.pollDebug(
+    page,
+    (d) => "lock_wrapped" in d.entries && !("vid_bbb222" in d.entries),
+    { timeout: 5000 }
+  )
+  expect(snap.entries["lock_wrapped"]?.viewKind).toBe("masked")
+
+  const shape = await page.evaluate(() => {
+    const inner = document.getElementById("wrapped-inner")
+    const outer = inner?.parentElement
+    if (!inner || !(outer instanceof HTMLElement)) return null
+    return {
+      innerStamp: inner.getAttribute("data-boyo"),
+      outerStamped: outer.hasAttribute("data-boyo"),
+      outerOwnVeils: outer.querySelectorAll(":scope > .boyo-veil").length,
+      innerVeils: inner.querySelectorAll(".boyo-veil").length,
+      outerBlurred: getComputedStyle(outer).filter.includes("blur"),
+    }
+  })
+  expect(shape).not.toBeNull()
+  expect(shape?.innerStamp, "the lockup is masked").toBe("0")
+  expect(shape?.innerVeils).toBe(1)
+  expect(shape?.outerStamped, "the cell's stamp is retired").toBe(false)
+  expect(shape?.outerOwnVeils, "and its veil is gone").toBe(0)
+  expect(shape?.outerBlurred, "and it is not under the occluder").toBe(false)
 })
