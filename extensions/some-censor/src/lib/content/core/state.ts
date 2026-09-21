@@ -39,9 +39,23 @@ export type CardState = {
   readonly view: ViewState
   readonly channel: ChannelState
   /**
-   * Bumped on every view change. An async answer (a title transform, the
-   * whitelist reveal timer) carries the version it was issued under and is
+   * Which incarnation of this key this is. Taken from
+   * {@link CoreState.nextGeneration} at adoption, so no two adoptions of one
+   * key — before and after a `gone`, or across a navigation — ever share it.
+   * Every async request (`query-whitelist`, `transform-title`, `schedule`)
+   * carries it and every answer echoes it; an answer from a previous
+   * incarnation is stale however well its other fields match. Bot-found
+   * (#1506's own review): a key re-observed while its first whitelist lookup
+   * was still in flight would otherwise take the old answer for the new card
+   * and discard the new one.
+   */
+  readonly generation: number
+  /**
+   * Bumped on every view change within an incarnation. A title transform or
+   * the whitelist reveal timer carries the version it was issued under and is
    * discarded if the card has moved on — `VideoEntry`'s Entry-2, as data.
+   * Meaningful only together with `generation`: two incarnations both count
+   * from zero.
    */
   readonly version: number
   /** When the card was first observed, and when it was last. */
@@ -55,6 +69,13 @@ export type CoreState = {
   readonly phase: Phase
   readonly session: SessionId
   readonly cards: ReadonlyMap<CardKey, CardState>
+  /**
+   * The next card's {@link CardState.generation}. Monotonic for the life of
+   * the state — deliberately *not* reset by `start` or `nav`, since the whole
+   * point is that an answer issued before a navigation cannot match a card
+   * adopted after it. Explicit state, not a hidden counter (B8).
+   */
+  readonly nextGeneration: number
   /** B4's staleness signal, per session: how often the table had no answer. */
   readonly unknownShapes: Readonly<
     Record<UnknownShapeReason | "degraded", number>
@@ -75,6 +96,7 @@ export function initialState(session: SessionId): CoreState {
     phase: "idle",
     session,
     cards: new Map(),
+    nextGeneration: 0,
     unknownShapes: EMPTY_UNKNOWN_SHAPES,
   }
 }
@@ -87,6 +109,7 @@ export type CoreSnapshot = {
   readonly phase: Phase
   readonly session: number
   readonly cards: ReadonlyArray<CardState>
+  readonly nextGeneration: number
   readonly unknownShapes: CoreState["unknownShapes"]
 }
 
@@ -95,6 +118,7 @@ export function snapshot(state: CoreState): CoreSnapshot {
     phase: state.phase,
     session: state.session,
     cards: [...state.cards.values()],
+    nextGeneration: state.nextGeneration,
     unknownShapes: state.unknownShapes,
   }
 }

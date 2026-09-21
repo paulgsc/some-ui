@@ -31,10 +31,15 @@ export type Action =
     }
   /** Strip everything the extension put on the elements carrying `key`. */
   | { readonly kind: "unmount"; readonly key: CardKey }
-  /** Ask the background whether `channelId` is whitelisted; answer as an Input. */
+  /**
+   * Ask the background whether `channelId` is whitelisted; answer as an
+   * Input, echoing `generation` so the answer lands on the incarnation that
+   * asked and on no later one.
+   */
   | {
       readonly kind: "query-whitelist"
       readonly key: CardKey
+      readonly generation: number
       readonly channelId: ChannelId
     }
   /** Persist a whitelist entry in the background. */
@@ -47,14 +52,16 @@ export type Action =
   | {
       readonly kind: "transform-title"
       readonly key: CardKey
+      readonly generation: number
       readonly version: number
       readonly text: string
       readonly channelId: ChannelId | null
     }
-  /** Fire a `timer` Input after `delayMs`, carrying `version` back. */
+  /** Fire a `timer` Input after `delayMs`, carrying `generation` and `version` back. */
   | {
       readonly kind: "schedule"
       readonly key: CardKey
+      readonly generation: number
       readonly version: number
       readonly delayMs: number
     }
@@ -95,7 +102,12 @@ export type CoreFact =
       readonly reason: UnknownShapeReason | "degraded"
       readonly shape: ShapeConfidence
     }
-  /** The raw date run as first observed for a card — the QC2 corpus (#1395). */
+  /**
+   * A raw date run observed for a card — the QC2 corpus (#1395). Emitted at
+   * adoption and again whenever a later observation supplies a date the card
+   * did not have (bot-found, #1506's own review: YouTube hydrates the date
+   * after the card, so the first observation alone would miss most forms).
+   */
   | {
       readonly kind: "date.observed"
       readonly raw: string | null

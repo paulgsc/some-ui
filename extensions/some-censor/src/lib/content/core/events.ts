@@ -82,10 +82,15 @@ export type Input =
       readonly key: CardKey
       readonly t: number
     }
-  /** The background answered a `query-whitelist` action. */
+  /**
+   * The background answered a `query-whitelist` action. `generation` is the
+   * one the action carried: an answer for a previous incarnation of the key
+   * is stale, whatever its channel says.
+   */
   | {
       readonly kind: "whitelist-answer"
       readonly key: CardKey
+      readonly generation: number
       readonly channelId: ChannelId
       readonly whitelisted: boolean
       readonly t: number
@@ -100,6 +105,7 @@ export type Input =
   | {
       readonly kind: "title-transformed"
       readonly key: CardKey
+      readonly generation: number
       readonly version: number
       readonly text: string
       readonly t: number
@@ -108,6 +114,7 @@ export type Input =
   | {
       readonly kind: "timer"
       readonly key: CardKey
+      readonly generation: number
       readonly version: number
       readonly t: number
     }

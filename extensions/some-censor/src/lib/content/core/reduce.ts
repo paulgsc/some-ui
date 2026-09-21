@@ -17,10 +17,15 @@
  *        #1426's "adopting the same card twice produces exactly one entry").
  *   R3 — Navigation is total. `nav` unmounts and forgets every card and
  *        adopts the shell's new session; nothing survives it (C2, M3, F1).
- *   R4 — Async answers are versioned. A whitelist answer, a title transform
- *        or a reveal timer for a card whose version has moved on is discarded
- *        and recorded as stale (Entry-2, M6 — as data rather than tokens on a
- *        WeakMap).
+ *   R4 — Async answers are correlated. Every request names the card's
+ *        incarnation (`generation`, unique across adoptions of a key) and,
+ *        where the view matters, its `version`; an answer whose generation is
+ *        not the card's, or whose version has moved on, is discarded and
+ *        recorded as stale (Entry-2, M6 — as data rather than tokens on a
+ *        WeakMap). Bot-found (#1506's own review): key and channel alone let
+ *        a re-observed key take its predecessor's whitelist answer, and a
+ *        version that restarts at zero let a predecessor's transform or
+ *        timer through after a `gone` or a navigation.
  *   R5 — Every state change renders. A card's view or channel changing
  *        always emits `render` for it; the Actuator's idempotence is what
  *        makes that cheap, and it is what keeps "what Core believes" and
@@ -112,6 +117,7 @@ function transition(state: CoreState, card: CardState, view: ViewState): Step {
     actions.push({
       kind: "transform-title",
       key: next.key,
+      generation: next.generation,
       version: next.version,
       text: view.title.text,
       channelId: channelIdOf(next),
@@ -121,6 +127,7 @@ function transition(state: CoreState, card: CardState, view: ViewState): Step {
     actions.push({
       kind: "schedule",
       key: next.key,
+      generation: next.generation,
       version: next.version,
       delayMs: WHITELIST_REVEAL_DELAY_MS,
     })
@@ -295,8 +302,10 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
       if (card === undefined) return none(state)
       // Only the answer to the question still open counts: a card whose
       // channel moved on (recycled to another video's channel, or already
-      // answered) treats a late reply as stale (R4).
+      // answered), or a later incarnation of the key than the one that
+      // asked, treats the reply as stale (R4).
       if (
+        card.generation !== event.generation ||
         card.channel.kind !== "pending" ||
         card.channel.channelId !== event.channelId
       ) {
@@ -331,7 +340,11 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
       if (state.phase !== "running") return none(state)
       const card = state.cards.get(event.key)
       if (card === undefined) return none(state)
-      if (card.version !== event.version || card.view.kind !== "title") {
+      if (
+        card.generation !== event.generation ||
+        card.version !== event.version ||
+        card.view.kind !== "title"
+      ) {
         return {
           state,
           actions: [
@@ -354,7 +367,11 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
       if (state.phase !== "running") return none(state)
       const card = state.cards.get(event.key)
       if (card === undefined) return none(state)
-      if (card.version !== event.version || card.view.kind !== "whitelisted") {
+      if (
+        card.generation !== event.generation ||
+        card.version !== event.version ||
+        card.view.kind !== "whitelisted"
+      ) {
         return none(state)
       }
       return transition(state, card, {
@@ -391,6 +408,7 @@ function adopt(
       observation.channelId === null
         ? { kind: "unknown" }
         : { kind: "pending", channelId: observation.channelId, since: t },
+    generation: state.nextGeneration,
     version: 0,
     firstSeenAt: t,
     lastSeenAt: t,
@@ -415,10 +433,14 @@ function adopt(
     actions.push({
       kind: "query-whitelist",
       key,
+      generation: card.generation,
       channelId: observation.channelId,
     })
   }
-  let next = setCard(state, card)
+  let next = setCard(
+    { ...state, nextGeneration: state.nextGeneration + 1 },
+    card
+  )
   if (observation.shape === "unknown") {
     next = {
       ...next,
@@ -459,8 +481,31 @@ function reobserve(
       channel: { kind: "pending", channelId: merged.channelId, since: t },
     }
     actions.push(
-      { kind: "query-whitelist", key: card.key, channelId: merged.channelId },
+      {
+        kind: "query-whitelist",
+        key: card.key,
+        generation: card.generation,
+        channelId: merged.channelId,
+      },
       record({ kind: "channel.backfilled", videoId })
+    )
+  }
+
+  // A date arriving late is corpus (#1395): YouTube hydrates it after the
+  // card, so the adoption-time fact alone would miss most forms. Recorded
+  // when a later observation supplies a date the card did not have, or a
+  // different one — never for a repeat of what was already recorded.
+  if (
+    merged.uploadDate !== null &&
+    merged.uploadDate !== card.observation.uploadDate
+  ) {
+    actions.push(
+      record({
+        kind: "date.observed",
+        raw: merged.uploadDate,
+        surface: merged.surface,
+        renderer: merged.renderer,
+      })
     )
   }
 

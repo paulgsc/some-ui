@@ -121,22 +121,31 @@ describe("replay determinism (B8)", () => {
     {
       kind: "whitelist-answer",
       key: K,
+      generation: 0,
       channelId: asChannelId("@chan"),
       whitelisted: false,
       t: 3,
     },
     { kind: "gesture", key: K, gesture: "click", t: 4 },
     { kind: "gesture", key: K, gesture: "click", t: 5 },
-    { kind: "title-transformed", key: K, version: 2, text: "Translated", t: 6 },
+    {
+      kind: "title-transformed",
+      key: K,
+      generation: 0,
+      version: 2,
+      text: "Translated",
+      t: 6,
+    },
     { kind: "observed", key: K2, observation: observation("vid_b"), t: 7 },
     {
       kind: "whitelist-answer",
       key: K2,
+      generation: 1,
       channelId: asChannelId("@chan"),
       whitelisted: true,
       t: 8,
     },
-    { kind: "timer", key: K2, version: 1, t: 9 },
+    { kind: "timer", key: K2, generation: 1, version: 1, t: 9 },
     {
       kind: "unknown-shape",
       tag: "yt-lockup-view-model",
@@ -405,6 +414,7 @@ describe("the disclosure ladder", () => {
     const right = reduce(base.state, {
       kind: "title-transformed",
       key: K,
+      generation: 0,
       version: 2,
       text: "Übersetzt",
       t: 4,
@@ -418,6 +428,7 @@ describe("the disclosure ladder", () => {
     const stale = reduce(base.state, {
       kind: "title-transformed",
       key: K,
+      generation: 0,
       version: 1,
       text: "old",
       t: 4,
@@ -435,6 +446,7 @@ describe("the disclosure ladder", () => {
     const late = reduce(moved.state, {
       kind: "title-transformed",
       key: K,
+      generation: 0,
       version: 2,
       text: "late",
       t: 5,
@@ -447,9 +459,10 @@ describe("the disclosure ladder", () => {
 })
 
 describe("whitelisting", () => {
-  const answered = (whitelisted: boolean): CoreEvent => ({
+  const answered = (whitelisted: boolean, generation = 0): CoreEvent => ({
     kind: "whitelist-answer",
     key: K,
+    generation,
     channelId: asChannelId("@chan"),
     whitelisted,
     t: 2,
@@ -466,11 +479,18 @@ describe("whitelisting", () => {
     const schedule = actions.find((a) => a.kind === "schedule")
     expect(schedule).toMatchObject({
       key: K,
+      generation: 0,
       version: 1,
       delayMs: WHITELIST_REVEAL_DELAY_MS,
     })
 
-    const fired = reduce(state, { kind: "timer", key: K, version: 1, t: 3 })
+    const fired = reduce(state, {
+      kind: "timer",
+      key: K,
+      generation: 0,
+      version: 1,
+      t: 3,
+    })
     expect(viewOf(fired.state)).toBe("revealed")
   })
 
@@ -507,6 +527,7 @@ describe("whitelisting", () => {
     const other = reduce(fold([started, seenA]).state, {
       kind: "whitelist-answer",
       key: K,
+      generation: 0,
       channelId: asChannelId("@someone-else"),
       whitelisted: true,
       t: 2,
@@ -525,6 +546,7 @@ describe("whitelisting", () => {
     const fired = reduce(clicked.state, {
       kind: "timer",
       key: K,
+      generation: 0,
       version: 1,
       t: 4,
     })
@@ -619,5 +641,199 @@ describe("advance-all-to-title", () => {
     ).toMatchObject({
       fact: { advanced: 2, alreadyPast: 1, channelPending: 3 },
     })
+  })
+})
+
+describe("async correlation across incarnations (R4, #1506's own review)", () => {
+  const goneA: CoreEvent = { kind: "gone", key: K, t: 2 }
+  const seenAgain: CoreEvent = { ...seenA, t: 3 }
+
+  it("gives every adoption of a key its own generation, never reset by gone or nav", () => {
+    const { state, actions } = fold([
+      started,
+      seenA,
+      goneA,
+      seenAgain,
+      { kind: "nav", session: session(2), t: 4 },
+      { ...seenA, t: 5 },
+    ])
+    expect(state.cards.get(K)?.generation).toBe(2)
+    expect(state.nextGeneration).toBe(3)
+    expect(
+      actions.flatMap((a) =>
+        a.kind === "query-whitelist" ? [a.generation] : []
+      )
+    ).toEqual([0, 1, 2])
+  })
+
+  it("discards a whitelist answer from the incarnation that asked before this one, and takes the current one's", () => {
+    // Card seen, gone, and seen again before the first lookup settled: both
+    // lookups name the same key and channel. Only the generation tells them
+    // apart — and the old answer may be wrong (a failed request, a changed
+    // membership) for the card now on the page.
+    const base = fold([started, seenA, goneA, seenAgain])
+    expect(base.state.cards.get(K)?.channel).toMatchObject({ kind: "pending" })
+
+    const oldAnswer = reduce(base.state, {
+      kind: "whitelist-answer",
+      key: K,
+      generation: 0,
+      channelId: asChannelId("@chan"),
+      whitelisted: true,
+      t: 4,
+    })
+    expect(kinds(oldAnswer.actions)).toEqual(["record:stale.discarded"])
+    expect(oldAnswer.state.cards.get(K)?.channel, "still open").toMatchObject({
+      kind: "pending",
+    })
+    expect(viewOf(oldAnswer.state)).toBe("masked")
+
+    const newAnswer = reduce(oldAnswer.state, {
+      kind: "whitelist-answer",
+      key: K,
+      generation: 1,
+      channelId: asChannelId("@chan"),
+      whitelisted: false,
+      t: 5,
+    })
+    expect(newAnswer.state.cards.get(K)?.channel).toEqual({
+      kind: "known",
+      channelId: "@chan",
+      whitelisted: false,
+    })
+    expect(viewOf(newAnswer.state)).toBe("masked")
+  })
+
+  it("discards a title transform from a previous incarnation even when the version matches", () => {
+    const climb = (t: number): Array<CoreEvent> => [
+      { kind: "gesture", key: K, gesture: "click", t },
+      { kind: "gesture", key: K, gesture: "click", t: t + 1 },
+    ]
+    // Version 2 reached twice: once before the navigation, once after.
+    const { state } = fold([
+      started,
+      seenA,
+      ...climb(2),
+      { kind: "nav", session: session(2), t: 4 },
+      { ...seenA, t: 5 },
+      ...climb(6),
+    ])
+    expect(state.cards.get(K)).toMatchObject({ generation: 1, version: 2 })
+
+    const stale = reduce(state, {
+      kind: "title-transformed",
+      key: K,
+      generation: 0,
+      version: 2,
+      text: "from before the navigation",
+      t: 8,
+    })
+    expect(stale.state).toBe(state)
+    expect(kinds(stale.actions)).toEqual(["record:stale.discarded"])
+
+    const current = reduce(state, {
+      kind: "title-transformed",
+      key: K,
+      generation: 1,
+      version: 2,
+      text: "for this card",
+      t: 8,
+    })
+    const card = current.state.cards.get(K)
+    expect(card?.view.kind === "title" && card.view.title.text).toBe(
+      "for this card"
+    )
+  })
+
+  it("ignores a reveal timer from a previous incarnation even when the version matches", () => {
+    const answer = (generation: number, t: number): CoreEvent => ({
+      kind: "whitelist-answer",
+      key: K,
+      generation,
+      channelId: asChannelId("@chan"),
+      whitelisted: true,
+      t,
+    })
+    // Whitelisted (version 1) twice: before and after the navigation.
+    const { state } = fold([
+      started,
+      seenA,
+      answer(0, 2),
+      { kind: "nav", session: session(2), t: 3 },
+      { ...seenA, t: 4 },
+      answer(1, 5),
+    ])
+    expect(state.cards.get(K)).toMatchObject({
+      generation: 1,
+      version: 1,
+      view: { kind: "whitelisted" },
+    })
+
+    const old = reduce(state, {
+      kind: "timer",
+      key: K,
+      generation: 0,
+      version: 1,
+      t: 6,
+    })
+    expect(old.actions).toEqual([])
+    expect(viewOf(old.state)).toBe("whitelisted")
+
+    const current = reduce(state, {
+      kind: "timer",
+      key: K,
+      generation: 1,
+      version: 1,
+      t: 6,
+    })
+    expect(viewOf(current.state)).toBe("revealed")
+  })
+})
+
+describe("the date corpus (#1395, #1506's own review)", () => {
+  const dateFacts = (actions: ReadonlyArray<Action>): Array<string | null> =>
+    actions.flatMap((a) =>
+      a.kind === "record" && a.fact.kind === "date.observed" ? [a.fact.raw] : []
+    )
+
+  it("records a date that arrives on a later observation — YouTube hydrates it after the card", () => {
+    const undated: CoreEvent = {
+      kind: "observed",
+      key: K,
+      observation: observation("vid_a", { uploadDate: null }),
+      t: 1,
+    }
+    const { actions } = fold([
+      started,
+      undated,
+      { ...seenA, t: 2 },
+      { ...seenA, t: 3 },
+    ])
+    // Once at adoption (nothing yet), once when the form appears, and not
+    // again for a repeat of the same form.
+    expect(dateFacts(actions)).toEqual([null, "3 days ago"])
+  })
+
+  it("records a changed date form, but never a repeat", () => {
+    const { actions } = fold([
+      started,
+      seenA,
+      { ...seenA, t: 2 },
+      {
+        kind: "observed",
+        key: K,
+        observation: observation("vid_a", { uploadDate: "4 days ago" }),
+        t: 3,
+      },
+      // A later observation that lost the field keeps the merged value and
+      // records nothing new.
+      {
+        kind: "observed",
+        key: K,
+        observation: observation("vid_a", { uploadDate: null }),
+        t: 4,
+      },
+    ])
+    expect(dateFacts(actions)).toEqual(["3 days ago", "4 days ago"])
   })
 })
