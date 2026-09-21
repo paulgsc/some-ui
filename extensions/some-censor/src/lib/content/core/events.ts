@@ -101,13 +101,21 @@ export type Input =
       readonly channelId: ChannelId
       readonly t: number
     }
-  /** The title-transform hook answered a `transform-title` action. */
+  /**
+   * The title-transform hook answered a `transform-title` action.
+   * `translated` says whether `text` is the hook's output or the original
+   * handed back untouched (the hook absent, throwing, or returning a
+   * non-string — `maybeTransformTitle`'s fallback). Bot-found (#1506's own
+   * review): without it every answer read as a translation, styled and
+   * labelled as one.
+   */
   | {
       readonly kind: "title-transformed"
       readonly key: CardKey
       readonly generation: number
       readonly version: number
       readonly text: string
+      readonly translated: boolean
       readonly t: number
     }
   /** A `schedule` action's timer fired. */

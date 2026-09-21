@@ -134,6 +134,7 @@ describe("replay determinism (B8)", () => {
       generation: 0,
       version: 2,
       text: "Translated",
+      translated: true,
       t: 6,
     },
     { kind: "observed", key: K2, observation: observation("vid_b"), t: 7 },
@@ -417,6 +418,7 @@ describe("the disclosure ladder", () => {
       generation: 0,
       version: 2,
       text: "Übersetzt",
+      translated: true,
       t: 4,
     })
     const card = right.state.cards.get(K)
@@ -431,6 +433,7 @@ describe("the disclosure ladder", () => {
       generation: 0,
       version: 1,
       text: "old",
+      translated: true,
       t: 4,
     })
     expect(stale.state).toBe(base.state)
@@ -449,12 +452,44 @@ describe("the disclosure ladder", () => {
       generation: 0,
       version: 2,
       text: "late",
+      translated: true,
       t: 5,
     })
     expect(
       viewOf(late.state),
       "a revealed card is not dragged back to title"
     ).toBe("revealed")
+  })
+})
+
+describe("a title transform's fallback (#1506's own review)", () => {
+  it("keeps the title untranslated when the hook handed the original back", () => {
+    const base = fold([
+      started,
+      seenA,
+      { kind: "gesture", key: K, gesture: "click", t: 2 },
+      { kind: "gesture", key: K, gesture: "click", t: 3 },
+    ])
+    const fallback = reduce(base.state, {
+      kind: "title-transformed",
+      key: K,
+      generation: 0,
+      version: 2,
+      text: "Title of vid_a",
+      translated: false,
+      t: 4,
+    })
+    const card = fallback.state.cards.get(K)
+    expect(card?.view.kind === "title" && card.view.title).toEqual({
+      text: "Title of vid_a",
+      translated: false,
+    })
+    // Rendered once, as an ordinary title — not styled or labelled as a
+    // translation.
+    expect(kinds(fallback.actions)).toEqual(["render"])
+    const render = fallback.actions[0]
+    const content = render?.kind === "render" ? render.model.veilContent : null
+    expect(content?.kind === "title" && content.title.translated).toBe(false)
   })
 })
 
@@ -726,6 +761,7 @@ describe("async correlation across incarnations (R4, #1506's own review)", () =>
       generation: 0,
       version: 2,
       text: "from before the navigation",
+      translated: true,
       t: 8,
     })
     expect(stale.state).toBe(state)
@@ -737,6 +773,7 @@ describe("async correlation across incarnations (R4, #1506's own review)", () =>
       generation: 1,
       version: 2,
       text: "for this card",
+      translated: true,
       t: 8,
     })
     const card = current.state.cards.get(K)

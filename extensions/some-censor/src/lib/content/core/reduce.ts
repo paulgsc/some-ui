@@ -354,7 +354,7 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
       }
       const view: ViewState = {
         ...card.view,
-        title: { text: event.text, translated: true },
+        title: { text: event.text, translated: event.translated },
       }
       // Same version on purpose: the transform completes the title step, it
       // is not a step of its own, so a reveal timer issued under this version
