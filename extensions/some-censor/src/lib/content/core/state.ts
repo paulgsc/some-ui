@@ -60,6 +60,16 @@ export type CardState = {
   /** How many whitelist lookups this incarnation has issued; see `ChannelState`. */
   readonly queries: number
   /**
+   * Whether the current view was reached from a whitelist verdict rather
+   * than by the user — the `whitelisted` tint, or the `revealed` its timer
+   * completes to. A view the whitelist earned is the whitelist's to take
+   * back when the channel turns out to be another (bot-found, #1506's own
+   * review: the timer's transition to `revealed` otherwise erased whether
+   * the user or a verdict had exposed the card). A gesture or a command
+   * clears it; the user's own reveals are never taken back (Entry-4).
+   */
+  readonly autoRevealed: boolean
+  /**
    * Bumped on every view change within an incarnation. A title transform or
    * the whitelist reveal timer carries the version it was issued under and is
    * discarded if the card has moved on — `VideoEntry`'s Entry-2, as data.

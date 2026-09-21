@@ -109,9 +109,20 @@ function stateFact(card: CardState): Action {
  * the new view is a title with text, ask for the transform; when it is
  * whitelisted, schedule the reveal.
  */
-function transition(state: CoreState, card: CardState, view: ViewState): Step {
+function transition(
+  state: CoreState,
+  card: CardState,
+  view: ViewState,
+  /** Whether a whitelist verdict, not the user, is moving the card. */
+  auto = false
+): Step {
   if (view === card.view) return none(state)
-  const next: CardState = { ...card, view, version: card.version + 1 }
+  const next: CardState = {
+    ...card,
+    view,
+    version: card.version + 1,
+    autoRevealed: auto,
+  }
   const actions: Array<Action> = [render(next), stateFact(next)]
   if (view.kind === "title" && view.title.text !== "") {
     actions.push({
@@ -155,7 +166,8 @@ function whitelistLocally(state: CoreState, channelId: ChannelId): Step {
     const step = transition(
       setCard(current, known),
       known,
-      applyWhitelist(card.view)
+      applyWhitelist(card.view),
+      true
     )
     current = step.state
     actions.push(...step.actions)
@@ -331,7 +343,8 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
         return transition(
           setCard(state, known),
           known,
-          applyWhitelist(card.view)
+          applyWhitelist(card.view),
+          true
         )
       }
       return { state: setCard(state, known), actions: [render(known)] }
@@ -375,10 +388,12 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
       ) {
         return none(state)
       }
-      return transition(state, card, {
-        kind: "revealed",
-        session: card.view.session,
-      })
+      return transition(
+        state,
+        card,
+        { kind: "revealed", session: card.view.session },
+        true
+      )
     }
 
     case "command": {
@@ -417,6 +432,7 @@ function adopt(
     generation: state.nextGeneration,
     queries: observation.channelId === null ? 0 : 1,
     version: 0,
+    autoRevealed: false,
     firstSeenAt: t,
     lastSeenAt: t,
   }
@@ -488,8 +504,10 @@ function reobserve(
   // asked afresh: the card goes back to pending under the new id, so the
   // answer still in flight for the old one is stale by the channel check in
   // `whitelist-answer`, and a verdict that only ever named the old id cannot
-  // reveal the card. The view is left alone (Entry-4).
-  if (merged.channelId !== null && channelIdOf(card) !== merged.channelId) {
+  // reveal the card.
+  const reopened =
+    merged.channelId !== null && channelIdOf(card) !== merged.channelId
+  if (reopened && merged.channelId !== null) {
     const query = card.queries + 1
     next = {
       ...next,
@@ -511,28 +529,14 @@ function reobserve(
       },
       record({ kind: "channel.backfilled", videoId })
     )
-    // A whitelist-derived view was earned by the channel this card no longer
-    // has (bot-found, #1506's own review): a verdict that named only the old
-    // channel must not go on exposing the card, nor may its reveal timer
-    // complete. Back to masked; the version bump retires the timer. Views
-    // the user climbed to are not touched (Entry-4) — `whitelisted` is never
-    // one of those.
-    if (next.view.kind === "whitelisted") {
-      const remasked = transition(setCard(state, next), next, {
-        kind: "masked",
-        session: next.view.session,
-      })
-      return {
-        state: remasked.state,
-        actions: [...actions, ...remasked.actions],
-      }
-    }
   }
 
   // A date arriving late is corpus (#1395): YouTube hydrates it after the
   // card, so the adoption-time fact alone would miss most forms. Recorded
   // when a later observation supplies a date the card did not have, or a
-  // different one — never for a repeat of what was already recorded.
+  // different one — never for a repeat of what was already recorded, and
+  // whatever else this observation did (bot-found, #1506's own review: an
+  // early return on the remask path below used to skip it).
   if (
     merged.uploadDate !== null &&
     merged.uploadDate !== card.observation.uploadDate
@@ -547,9 +551,27 @@ function reobserve(
     )
   }
 
+  // A view the whitelist earned — the tint, or the reveal its timer completed
+  // to — was earned by the channel this card no longer has (bot-found,
+  // #1506's own review): a verdict that named only the old channel must not
+  // go on exposing the card, nor may a pending reveal timer complete. Back to
+  // masked; the version bump retires the timer. Views the user climbed to
+  // are not touched (Entry-4).
+  if (
+    reopened &&
+    (next.view.kind === "whitelisted" ||
+      (next.view.kind === "revealed" && next.autoRevealed))
+  ) {
+    const remasked = transition(setCard(state, next), next, {
+      kind: "masked",
+      session: next.view.session,
+    })
+    return { state: remasked.state, actions: [...actions, ...remasked.actions] }
+  }
+
   // R5: re-render on every observation. The view's meta/title are snapshots
-  // taken at click time (parity with VideoEntry), so a re-observation does
-  // not rewrite them; the render is for custody — a re-observed card may
+  // taken at click time (parity with the former entry), so a re-observation
+  // does not rewrite them; the render is for custody — a re-observed card may
   // have gained or lost elements, and the Actuator re-derives targets.
   actions.push(render(next))
   return { state: setCard(state, next), actions }

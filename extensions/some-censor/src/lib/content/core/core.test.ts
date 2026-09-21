@@ -660,6 +660,104 @@ describe("re-opening a lookup (#1506's own review, round 4)", () => {
   })
 })
 
+describe("re-opening a lookup, round 5 (#1506's own review)", () => {
+  const canonical = asChannelId("@canonical")
+  const seenAs = (
+    channelId: ReturnType<typeof asChannelId>,
+    t: number,
+    uploadDate: string | null = "3 days ago"
+  ): CoreEvent => ({
+    kind: "observed",
+    key: K,
+    observation: observation("vid_a", { channelId, uploadDate }),
+    t,
+  })
+  const whitelistedA: CoreEvent = {
+    kind: "whitelist-answer",
+    key: K,
+    generation: 0,
+    query: 1,
+    channelId: asChannelId("@chan"),
+    whitelisted: true,
+    t: 2,
+  }
+
+  it("remasks a card the whitelist's timer had already revealed, when the channel changes", () => {
+    const { state } = fold([
+      started,
+      seenA,
+      whitelistedA,
+      { kind: "timer", key: K, generation: 0, version: 1, t: 3 },
+    ])
+    expect(state.cards.get(K)).toMatchObject({
+      view: { kind: "revealed" },
+      autoRevealed: true,
+    })
+
+    const changed = reduce(state, seenAs(canonical, 4))
+    expect(viewOf(changed.state)).toBe("masked")
+    expect(changed.state.cards.get(K)?.autoRevealed).toBe(false)
+
+    const denied = reduce(changed.state, {
+      kind: "whitelist-answer",
+      key: K,
+      generation: 0,
+      query: 2,
+      channelId: canonical,
+      whitelisted: false,
+      t: 5,
+    })
+    expect(viewOf(denied.state)).toBe("masked")
+  })
+
+  it("never takes back a reveal the user made (Entry-4)", () => {
+    const { state } = fold([
+      started,
+      seenA,
+      { kind: "gesture", key: K, gesture: "dblclick", t: 2 },
+      seenAs(canonical, 3),
+    ])
+    expect(viewOf(state)).toBe("revealed")
+    expect(state.cards.get(K)?.autoRevealed).toBe(false)
+  })
+
+  it("a gesture after an automatic reveal makes the exposure the user's", () => {
+    const { state } = fold([
+      started,
+      seenA,
+      whitelistedA,
+      { kind: "timer", key: K, generation: 0, version: 1, t: 3 },
+      { kind: "gesture", key: K, gesture: "dblclick", t: 4 },
+      seenAs(canonical, 5),
+    ])
+    // The double click is the user's own reveal of a card the whitelist had
+    // exposed: from then on the exposure is theirs, and a channel change
+    // does not take it back (Entry-4).
+    expect(state.cards.get(K)?.autoRevealed).toBe(false)
+    expect(viewOf(state)).toBe("revealed")
+  })
+
+  it("records a late date even when the same observation remasks the card", () => {
+    const { actions } = fold([
+      started,
+      { ...seenA, observation: observation("vid_a", { uploadDate: null }) },
+      whitelistedA,
+      seenAs(canonical, 3, "2 weeks ago"),
+    ])
+    const dates = actions.flatMap((a) =>
+      a.kind === "record" && a.fact.kind === "date.observed" ? [a.fact.raw] : []
+    )
+    expect(dates).toEqual([null, "2 weeks ago"])
+    const last = actions.at(-1)
+    expect(last?.kind === "record" && last.fact.kind).toBe("entry.state")
+    expect(kinds(actions).slice(-3)).toEqual([
+      "record:date.observed",
+      "render",
+      "record:entry.state",
+    ])
+  })
+})
+
 describe("a title transform's fallback (#1506's own review)", () => {
   it("keeps the title untranslated when the hook handed the original back", () => {
     const base = fold([
