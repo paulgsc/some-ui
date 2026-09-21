@@ -104,6 +104,14 @@ export type CoreFact =
       readonly reason: UnknownShapeReason | "degraded"
       readonly shape: ShapeConfidence
     }
+  // ── Facts the Sensor reports about the DOM (never Core) ───────────────
+  | { readonly kind: "mutation.batch"; readonly candidates: number }
+  | { readonly kind: "mount.queued"; readonly tag: string }
+  | { readonly kind: "mount.rejected"; readonly tag: string }
+  /** An id change ruled vendor churn rather than a recycle (#1423). */
+  | { readonly kind: "churn.ignored"; readonly videoId: VideoId }
+  | { readonly kind: "recycled"; readonly videoId: VideoId }
+  | { readonly kind: "channel.abandoned"; readonly videoId: VideoId }
   /**
    * A raw date run observed for a card — the QC2 corpus (#1395). Emitted at
    * adoption and again whenever a later observation supplies a date the card
