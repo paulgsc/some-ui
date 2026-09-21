@@ -70,7 +70,9 @@
      only, never for the whole list. That already removes the exposure a
      version bump would otherwise exist to fix — raising the floor would cost
      every 112–120 user the extension entirely to fix a gap the split already
-     closes for the seven tags that never needed `:has()`. */
+     closes for the six tags that never needed `:has()`. The seventh,
+     `ytd-rich-item-renderer`, moved behind the guard in #1422 and gets an
+     explicit `@supports not selector(:has(a))` fallback below instead. */
   --un-bg-opacity: 100%;
   --un-border-opacity: 100%;
   --un-inset-ring-shadow: 0 0 #0000;
@@ -116,9 +118,12 @@
    Each selector below is derived from CARD_SELECTORS in
    lib/content/selectors.ts and is asserted, one-for-one, against
    PREMASK_SELECTORS by selectors.test.ts — the two drifting apart is #973.
-   `:has()` on the polymorphic lockup tags is what keeps this rule from
-   occluding a channel or playlist tile that no content script will ever come
-   back for; see selectors.ts for the full argument.
+   `:has()` on the polymorphic tags is what keeps this rule from occluding
+   a channel or playlist tile that no content script will ever come back
+   for, and `:not(:has(<card tags>))` is what keeps it off a cell or shelf
+   that merely *contains* cards — the cards inside are the ones occluded
+   and adopted, never the wrapper (#1426's grid cell, and any shelf); see
+   selectors.ts's classifyCard() for the full argument.
 
    Each tag gets its OWN rule below rather than sharing one comma-separated
    selector list. CSS selector-list invalidation is all-or-nothing: if any
@@ -177,6 +182,19 @@ ytd-reel-item-renderer:not([data-boyo]) {
 }
 
 ytd-rich-item-renderer:has(a[href*="/watch"], a[href*="/shorts/"]):not(
+    :has(
+      ytd-video-renderer,
+      ytd-grid-video-renderer,
+      ytd-compact-video-renderer,
+      ytd-playlist-panel-video-renderer,
+      ytd-playlist-video-renderer,
+      ytd-reel-item-renderer,
+      ytd-rich-item-renderer,
+      yt-lockup-view-model,
+      ytm-shorts-lockup-view-model,
+      ytm-shorts-lockup-view-model-v2,
+      ytd-structured-description-video-lockup-renderer
+    ),
     [data-boyo]
   ) {
   cursor: default !important;
@@ -187,6 +205,19 @@ ytd-rich-item-renderer:has(a[href*="/watch"], a[href*="/shorts/"]):not(
 }
 
 yt-lockup-view-model:has(a[href*="/watch"], a[href*="/shorts/"]):not(
+    :has(
+      ytd-video-renderer,
+      ytd-grid-video-renderer,
+      ytd-compact-video-renderer,
+      ytd-playlist-panel-video-renderer,
+      ytd-playlist-video-renderer,
+      ytd-reel-item-renderer,
+      ytd-rich-item-renderer,
+      yt-lockup-view-model,
+      ytm-shorts-lockup-view-model,
+      ytm-shorts-lockup-view-model-v2,
+      ytd-structured-description-video-lockup-renderer
+    ),
     [data-boyo]
   ) {
   cursor: default !important;
@@ -197,6 +228,19 @@ yt-lockup-view-model:has(a[href*="/watch"], a[href*="/shorts/"]):not(
 }
 
 ytm-shorts-lockup-view-model:has(a[href*="/watch"], a[href*="/shorts/"]):not(
+    :has(
+      ytd-video-renderer,
+      ytd-grid-video-renderer,
+      ytd-compact-video-renderer,
+      ytd-playlist-panel-video-renderer,
+      ytd-playlist-video-renderer,
+      ytd-reel-item-renderer,
+      ytd-rich-item-renderer,
+      yt-lockup-view-model,
+      ytm-shorts-lockup-view-model,
+      ytm-shorts-lockup-view-model-v2,
+      ytd-structured-description-video-lockup-renderer
+    ),
     [data-boyo]
   ) {
   cursor: default !important;
@@ -207,6 +251,19 @@ ytm-shorts-lockup-view-model:has(a[href*="/watch"], a[href*="/shorts/"]):not(
 }
 
 ytm-shorts-lockup-view-model-v2:has(a[href*="/watch"], a[href*="/shorts/"]):not(
+    :has(
+      ytd-video-renderer,
+      ytd-grid-video-renderer,
+      ytd-compact-video-renderer,
+      ytd-playlist-panel-video-renderer,
+      ytd-playlist-video-renderer,
+      ytd-reel-item-renderer,
+      ytd-rich-item-renderer,
+      yt-lockup-view-model,
+      ytm-shorts-lockup-view-model,
+      ytm-shorts-lockup-view-model-v2,
+      ytd-structured-description-video-lockup-renderer
+    ),
     [data-boyo]
   ) {
   cursor: default !important;
@@ -219,12 +276,57 @@ ytm-shorts-lockup-view-model-v2:has(a[href*="/watch"], a[href*="/shorts/"]):not(
 ytd-structured-description-video-lockup-renderer:has(
     a[href*="/watch"],
     a[href*="/shorts/"]
-  ):not([data-boyo]) {
+  ):not(
+    :has(
+      ytd-video-renderer,
+      ytd-grid-video-renderer,
+      ytd-compact-video-renderer,
+      ytd-playlist-panel-video-renderer,
+      ytd-playlist-video-renderer,
+      ytd-reel-item-renderer,
+      ytd-rich-item-renderer,
+      yt-lockup-view-model,
+      ytm-shorts-lockup-view-model,
+      ytm-shorts-lockup-view-model-v2,
+      ytd-structured-description-video-lockup-renderer
+    ),
+    [data-boyo]
+  ) {
   cursor: default !important;
   filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
   opacity: 0.5 !important;
   pointer-events: none !important;
   user-select: none !important;
+}
+
+/* ----------------------------------------------------------
+   :has()-FREE FALLBACK — Firefox 112–120
+
+   The guarded rules above are unparseable on an engine without `:has()`,
+   and an unparseable rule is dropped whole. For the Lit-era lockups that
+   is the accepted price of the guard (an unguarded rule would occlude
+   channel and playlist tiles forever, #973). `ytd-rich-item-renderer` is
+   different: it is the home feed's primary cell, it was occluded
+   unconditionally until #1422 moved it behind the guard, and losing its
+   floor on a declared-supported engine would fail the whole surface open
+   — bot-found on #1504's own review.
+
+   So on those engines only, the pre-#1422 rule stands. The cost there is
+   the pre-#1422 behaviour — a non-video cell stays blurred, which is the
+   fail-closed direction — and `OccluderReleases` reports it. `@supports
+   selector()` has been in Firefox since 69, so the block itself parses on
+   every declared engine; the inner `:has(a)` probe is the exact feature
+   the guarded rules need. Derived from PREMASK_FALLBACK_SELECTORS in
+   lib/content/selectors.ts and asserted by selectors.test.ts.
+   ---------------------------------------------------------- */
+@supports not selector(:has(a)) {
+  ytd-rich-item-renderer:not([data-boyo]) {
+    cursor: default !important;
+    filter: brightness(0.35) contrast(0.85) saturate(0.7) blur(12px) !important;
+    opacity: 0.5 !important;
+    pointer-events: none !important;
+    user-select: none !important;
+  }
 }
 
 /* ----------------------------------------------------------

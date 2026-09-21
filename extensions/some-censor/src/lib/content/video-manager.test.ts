@@ -425,6 +425,95 @@ describe("a rich-item cell that is not a video (#1422)", () => {
   })
 })
 
+describe("a cell that merely contains cards (#1504's own review)", () => {
+  // The home feed nests a `yt-lockup-view-model` inside a
+  // `ytd-rich-item-renderer` grid cell (#1426), and a shelf wraps a row of
+  // shorts the same way. The wrapper necessarily contains its children's
+  // watch links, so a link check alone would adopt it as one card with one
+  // veil over everything inside — and its `pointer-events: none` under the
+  // occluder would make the inner veils unclickable. The cards inside are
+  // the cards; the wrapper is neither adopted, queued, nor occluded.
+
+  function nestedCell(videoId: string): {
+    outer: HTMLElement
+    inner: HTMLElement
+  } {
+    const outer = document.createElement("ytd-rich-item-renderer")
+    outer.innerHTML = `
+      <yt-lockup-view-model>
+        <a class="yt-lockup-view-model__content-image" href="/watch?v=${videoId}"></a>
+        <a class="yt-content-metadata-view-model__metadata-text" href="/@Chan">Chan</a>
+      </yt-lockup-view-model>`
+    const inner = outer.firstElementChild
+    if (!(inner instanceof HTMLElement)) throw new Error("fixture")
+    return { outer, inner }
+  }
+
+  it("adopts the card inside, and not the wrapper, whichever is upserted first", async () => {
+    for (const order of ["outer-first", "inner-first"] as const) {
+      const { outer, inner } = nestedCell(`nested_${order}`)
+      document.body.appendChild(outer)
+
+      const [first, second] =
+        order === "outer-first" ? [outer, inner] : [inner, outer]
+      mgr.upsert(first)
+      mgr.upsert(second)
+      await passes(2)
+
+      expect(mgr.size, `${order}: one entry`).toBe(1)
+      expect(
+        inner.getAttribute("data-boyo"),
+        `${order}: the card is masked`
+      ).toBe("0")
+      expect(
+        outer.hasAttribute("data-boyo"),
+        `${order}: the wrapper is not adopted`
+      ).toBe(false)
+      expect(
+        occludedElements(document).includes(outer),
+        `${order}: and not occluded`
+      ).toBe(false)
+      expect(mgr.unresolvedSize, `${order}: and not queued`).toBe(0)
+
+      mgr.reset()
+      mgr.startSession()
+      document.body.innerHTML = ""
+    }
+  })
+
+  it("is found by a full scan the same way", async () => {
+    const { outer, inner } = nestedCell("nested_scan")
+    document.body.appendChild(outer)
+    mgr.scan()
+    await passes(2)
+
+    expect(mgr.size).toBe(1)
+    expect(inner.getAttribute("data-boyo")).toBe("0")
+    expect(outer.hasAttribute("data-boyo")).toBe(false)
+    expect(mgr.unresolvedSize, "nothing queued").toBe(0)
+  })
+
+  it("drops a queued shell that turns into a wrapper", async () => {
+    // A cell YouTube fills in *after* the observer saw it empty: queued as a
+    // shell, then hydrated with a lockup. It is a wrapper now — the lockup
+    // is the card — so it leaves the queue without ever being rejected.
+    const outer = document.createElement("ytd-rich-item-renderer")
+    document.body.appendChild(outer)
+    mgr.upsert(outer)
+    expect(mgr.unresolvedSize, "queued while it might still hydrate").toBe(1)
+
+    const { inner } = nestedCell("nested_late")
+    outer.appendChild(inner)
+    mgr.upsert(inner)
+    await passes(2)
+
+    expect(mgr.unresolvedSize, "the wrapper left the queue").toBe(0)
+    expect(mgr.size, "and the card inside is the entry").toBe(1)
+    expect(inner.getAttribute("data-boyo")).toBe("0")
+    expect(outer.hasAttribute("data-boyo")).toBe(false)
+  })
+})
+
 describe("a video-shaped card whose href has no parseable id", () => {
   // The residual case the budget's old video-shaped exemption was protecting:
   // the stylesheet occludes it, and the manager cannot resolve it. Giving up

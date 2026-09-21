@@ -18,7 +18,10 @@ import { describe, expect, it } from "vitest"
 
 import {
   CARD_SELECTORS,
+  classifyCard,
   isVideoCard,
+  occludedElements,
+  PREMASK_FALLBACK_SELECTORS,
   PREMASK_SELECTORS,
   SEL,
   VIDEO_SELECTORS,
@@ -44,25 +47,55 @@ function normalize(selector: string): string {
  * share one comma-separated list, so this walks every occurrence of the
  * marker declaration instead of assuming there is exactly one.
  */
-function premaskRulesFromCss(): Array<string> {
+/**
+ * The `:has()`-free fallback block (#1504's own review): everything inside
+ * `@supports not selector(:has(a)) { … }` is a rule only an engine without
+ * `:has()` ever applies, so it is parsed separately from the main list.
+ */
+const FALLBACK_OPEN = "@supports not selector(:has(a)) {"
+
+function splitFallback(): { main: string; fallback: string } {
+  const start = CSS.indexOf(FALLBACK_OPEN)
+  expect(
+    start,
+    "the Firefox 112–120 fallback block must exist"
+  ).toBeGreaterThan(-1)
+  // The block's own rules close with an indented `}`; the block itself is
+  // the first `}` at column 0 after it opens.
+  const end = CSS.indexOf("\n}", start)
+  expect(end).toBeGreaterThan(start)
+  const fallback = CSS.slice(start + FALLBACK_OPEN.length, end)
+  const main = CSS.slice(0, start) + CSS.slice(end + 2)
+  return { main, fallback }
+}
+
+function premaskRulesIn(css: string): Array<string> {
   const marker = "filter: brightness(0.35)"
   const rules: Array<string> = []
   let searchFrom = 0
   for (;;) {
-    const declIndex = CSS.indexOf(marker, searchFrom)
+    const declIndex = css.indexOf(marker, searchFrom)
     if (declIndex === -1) break
-    const braceIndex = CSS.lastIndexOf("{", declIndex)
-    const blockEnd = CSS.lastIndexOf("}", braceIndex)
-    const commentEnd = CSS.lastIndexOf("*/", braceIndex)
+    const braceIndex = css.lastIndexOf("{", declIndex)
+    const blockEnd = css.lastIndexOf("}", braceIndex)
+    const commentEnd = css.lastIndexOf("*/", braceIndex)
     const selectorStart = blockEnd > commentEnd ? blockEnd + 1 : commentEnd + 2
-    rules.push(CSS.slice(selectorStart, braceIndex).trim())
+    rules.push(css.slice(selectorStart, braceIndex).trim())
     searchFrom = declIndex + marker.length
   }
-  expect(
-    rules.length,
-    `at least one occluder rule (${marker}) must exist`
-  ).toBeGreaterThan(0)
   return rules
+}
+
+function premaskRulesFromCss(): Array<string> {
+  const rules = premaskRulesIn(splitFallback().main)
+  expect(rules.length, "at least one occluder rule must exist").toBeGreaterThan(
+    0
+  )
+  return rules
+}
+
+function fallbackRulesFromCss(): Array<string> {
+  return premaskRulesIn(splitFallback().fallback)
 }
 
 /**
@@ -85,6 +118,24 @@ describe("the stylesheet and the catalogue agree", () => {
     expect(premaskRulesFromCss().map(normalize)).toEqual(
       PREMASK_SELECTORS.map(normalize)
     )
+  })
+
+  it("keeps a :has()-free fallback for exactly the tags that declare one", () => {
+    // Firefox 112–120 cannot parse `:has()`, and a rule it cannot parse is
+    // dropped whole. The home feed's primary cell used to be occluded
+    // unconditionally; #1422 moved it behind the guard, so on those engines
+    // it needs the unconditional rule back (bot-found on #1504's own review).
+    expect(fallbackRulesFromCss().map(normalize)).toEqual(
+      PREMASK_FALLBACK_SELECTORS.map(normalize)
+    )
+    expect(PREMASK_FALLBACK_SELECTORS).toEqual([
+      "ytd-rich-item-renderer:not([data-boyo])",
+    ])
+    for (const rule of fallbackRulesFromCss()) {
+      expect(rule, "a fallback rule must not itself need :has()").not.toContain(
+        ":has("
+      )
+    }
   })
 
   it("never shares one rule's declarations across more than one selector", () => {
@@ -129,6 +180,46 @@ describe("the stylesheet and the catalogue agree", () => {
       el.innerHTML = '<a href="/watch?v=abc123">t</a>'
       expect(isVideoCard(el), `${tag} with a watch link`).toBe(true)
     }
+  })
+
+  it("does not occlude a cell or shelf that merely contains cards", () => {
+    // Bot-found on #1504's own review: a wrapper necessarily contains its
+    // children's watch links, so a link check alone would occlude it — and
+    // adopt it as one card with one veil over everything inside. The inner
+    // cards are the cards; the stylesheet and classifyCard() both exclude
+    // the wrapper, so they agree about which element gets the veil.
+    const cell = document.createElement("ytd-rich-item-renderer")
+    cell.innerHTML = `<yt-lockup-view-model><a href="/watch?v=inner_1">t</a></yt-lockup-view-model>`
+    document.body.appendChild(cell)
+    const inner = cell.firstElementChild
+    if (!(inner instanceof HTMLElement)) throw new Error("fixture")
+
+    expect(classifyCard(cell)).toBe("container")
+    expect(isVideoCard(cell)).toBe(false)
+    expect(classifyCard(inner)).toBe("card")
+
+    const occluded = occludedElements(document)
+    expect(occluded, "the wrapper is not occluded").not.toContain(cell)
+    expect(occluded, "the card inside is").toContain(inner)
+
+    const shelf = document.createElement("ytd-rich-item-renderer")
+    shelf.innerHTML = [1, 2, 3]
+      .map(
+        (n) =>
+          `<ytm-shorts-lockup-view-model-v2><a href="/shorts/s${n}"></a></ytm-shorts-lockup-view-model-v2>`
+      )
+      .join("")
+    document.body.appendChild(shelf)
+    expect(classifyCard(shelf), "a shelf of shorts is not one short").toBe(
+      "container"
+    )
+    expect(occludedElements(document)).not.toContain(shelf)
+    expect(
+      occludedElements(document).filter((el) => shelf.contains(el)),
+      "each short inside is"
+    ).toHaveLength(3)
+    cell.remove()
+    shelf.remove()
   })
 })
 

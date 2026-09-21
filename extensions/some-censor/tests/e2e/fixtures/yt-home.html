@@ -79,7 +79,8 @@
         border-radius: 8px;
       }
       /* Same component, full width — the control for the narrow cards above. */
-      #wide-shelf yt-lockup-view-model {
+      #wide-shelf yt-lockup-view-model,
+      #nested-shelf yt-lockup-view-model {
         display: block;
         position: relative;
         width: 420px;
@@ -348,6 +349,55 @@
           </div>
         </div>
       </yt-lockup-view-model>
+    </div>
+
+    <!--
+      The home feed's nested card (#1426 / ORP5). YouTube renders a home-feed
+      card as a `ytd-rich-item-renderer` grid cell *wrapping* a
+      `yt-lockup-view-model`; both tags are in the catalogue and the inner
+      element's watch anchor is inside the outer element's subtree. The cell
+      is a container, not a card: the lockup inside is the card, and the cell
+      must be neither adopted nor occluded (#1504's own review).
+    -->
+    <div id="nested-shelf">
+      <ytd-rich-item-renderer id="nested-outer">
+        <yt-lockup-view-model id="nested-inner">
+          <a
+            class="yt-lockup-view-model__content-image"
+            href="/watch?v=lock_nested"
+          >
+            <span class="lockup-thumb"></span>
+          </a>
+          <div class="ytThumbnailOverlayBadgeViewModelHost">
+            <div class="badge-shape-wiz__text">7:07</div>
+          </div>
+          <div class="yt-lockup-metadata-view-model__metadata">
+            <h3>
+              <a
+                class="yt-lockup-metadata-view-model__title"
+                href="/watch?v=lock_nested"
+              >
+                <span role="text">A Card Nested Inside A Grid Cell</span>
+              </a>
+            </h3>
+            <div class="yt-content-metadata-view-model__metadata-row">
+              <a
+                class="yt-content-metadata-view-model__metadata-text"
+                href="/@NestedChannel"
+                >NestedChannel</a
+              >
+            </div>
+            <div class="yt-content-metadata-view-model__metadata-row">
+              <span class="yt-content-metadata-view-model__metadata-text"
+                >3K views</span
+              >
+              <span class="yt-content-metadata-view-model__metadata-text"
+                >2 days ago</span
+              >
+            </div>
+          </div>
+        </yt-lockup-view-model>
+      </ytd-rich-item-renderer>
     </div>
 
     <script>

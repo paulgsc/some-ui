@@ -58,9 +58,27 @@ export type CardSelector = {
   readonly tag: string
   /**
    * `true` for polymorphic tags that also render non-video content. Such an
-   * element is only treated as a card once it contains a video link.
+   * element is only treated as a card once it contains a video link — and,
+   * because a link somewhere in the subtree is necessary but not sufficient,
+   * only while it does not *contain* another catalogue card. A cell wrapping
+   * a lockup, or a shelf wrapping a row of them, holds plenty of video links
+   * and is not itself a video (see {@link classifyCard}).
    */
   readonly requiresVideoLink: boolean
+  /**
+   * `true` when the pre-mask stylesheet must keep occluding this tag
+   * unconditionally on an engine that cannot parse the `:has()` guard
+   * (Firefox 112–120, per the baseline note in `styles/content.css`).
+   *
+   * Only the tag that used to be occluded unconditionally carries this:
+   * `ytd-rich-item-renderer` is the home feed's primary cell, and losing its
+   * floor on a declared-supported engine would fail the whole surface open.
+   * The price on those engines is the pre-#1422 behaviour — a non-video cell
+   * stays blurred — which is the fail-closed direction. The Lit-era lockups
+   * deliberately do not carry it: their unguarded form occludes channel and
+   * playlist tiles that nothing could ever release (#973, L2).
+   */
+  readonly unguardedFallback?: boolean
 }
 
 /** Anchor shapes that identify an element as pointing at a watchable video. */
@@ -81,7 +99,11 @@ export const CARD_SELECTORS: ReadonlyArray<CardSelector> = [
   // ── Polymorphic tags: need the video-link guard ──────────────────────────
   // The home feed's generic grid cell (Polymer). Wraps videos, but also ad
   // slots, Shorts shelves, posts and playlist tiles — see the header (#1422).
-  { tag: "ytd-rich-item-renderer", requiresVideoLink: true },
+  {
+    tag: "ytd-rich-item-renderer",
+    requiresVideoLink: true,
+    unguardedFallback: true,
+  },
   // The unified Lit-era card behind the upcoming-feed slider, watch-next and
   // search.
   { tag: "yt-lockup-view-model", requiresVideoLink: true },
@@ -127,26 +149,48 @@ export const SEL = VIDEO_SELECTORS.join(",")
 export const PREMASK_SELECTORS: ReadonlyArray<string> = CARD_SELECTORS.map(
   ({ tag, requiresVideoLink }) =>
     requiresVideoLink
-      ? `${tag}:has(${VIDEO_LINK_SELECTOR}):not([data-boyo])`
+      ? `${tag}:has(${VIDEO_LINK_SELECTOR}):not(:has(${SEL}), [data-boyo])`
       : `${tag}:not([data-boyo])`
 )
 
 /**
- * Every element the static occluder is hiding *right now*: matching a
- * {@link PREMASK_SELECTORS} entry and carrying no `data-boyo`.
+ * The rules an engine that cannot parse `:has()` falls back to — one plain
+ * `${tag}:not([data-boyo])` per tag with {@link CardSelector.unguardedFallback}.
+ * `content.css` emits them under `@supports not selector(:has(a))`, so on a
+ * modern engine they never apply and the guarded rule above is the only one.
+ */
+export const PREMASK_FALLBACK_SELECTORS: ReadonlyArray<string> =
+  CARD_SELECTORS.filter((s) => s.unguardedFallback === true).map(
+    ({ tag }) => `${tag}:not([data-boyo])`
+  )
+
+/**
+ * Every element the static occluder is hiding *right now*: a card — per
+ * {@link classifyCard}, the same three-way condition {@link PREMASK_SELECTORS}
+ * spells in CSS — carrying no `data-boyo`.
  *
- * The premask selectors already spell `:not([data-boyo])`, so this is a direct
- * reading of the stylesheet's own condition rather than a re-derivation of it —
- * which is the point. Every other health signal in this workspace reads
- * `VideoManager`'s bookkeeping, and bookkeeping cannot represent an element
- * that fell out of every collection it keeps (#1421, #1425).
+ * This is the stylesheet's condition written in TypeScript rather than a
+ * `querySelectorAll` of the stylesheet's own selector text. It used to be the
+ * latter; the container exclusion (`:not(:has(<card tags>))`, #1504's own
+ * review) is valid CSS on every engine the manifests declare with `:has()`
+ * at all, but jsdom's selector engine cannot parse a `:has()` nested inside
+ * `:not()`, and a reading that silently returns nothing under the unit
+ * suite would leave `OccluderReleases` blind exactly where it is tested.
+ * The two spellings are pinned together on a real engine instead:
+ * `rich-item-cells.spec.ts` asserts, for every catalogue element in the
+ * fixture, that `el.matches(<its pre-mask selector>)` agrees with this
+ * function — so the stylesheet cannot drift from the predicate without a
+ * rendered test failing.
  *
- * Queried one selector at a time rather than as one joined list, for exactly
- * the reason `content.css` gives each rule its own block (#1390): selector-list
- * parsing is all-or-nothing, so on an engine that cannot parse `:has()` a
- * joined query would throw and report *nothing occluded* — a clean bill of
- * health on precisely the engines where the occluder is most likely to be
- * misbehaving. Failing per-selector loses only the tags that need `:has()`.
+ * One consequence worth stating: on an engine that cannot parse `:has()` at
+ * all (Firefox 112–120), the stylesheet drops the guarded rules and is not
+ * occluding those tags, while this reports them as if it were. That errs in
+ * the reporting direction only — a card is called stranded that is in fact
+ * merely unmasked — and never hides a stranded card.
+ *
+ * Every other health signal in this workspace reads `VideoManager`'s
+ * bookkeeping, and bookkeeping cannot represent an element that fell out of
+ * every collection it keeps (#1421, #1425); this asks the page instead.
  *
  * `root` is required rather than defaulting to `document`: this module is the
  * logic layer, and naming a browser global here is what
@@ -155,31 +199,48 @@ export const PREMASK_SELECTORS: ReadonlyArray<string> = CARD_SELECTORS.map(
  */
 export function occludedElements(root: ParentNode): Array<HTMLElement> {
   const out: Array<HTMLElement> = []
-  for (const selector of PREMASK_SELECTORS) {
-    try {
-      for (const el of root.querySelectorAll<HTMLElement>(selector)) {
-        out.push(el)
-      }
-    } catch {
-      // Unparseable on this engine; the other selectors still answer.
-    }
+  for (const el of root.querySelectorAll<HTMLElement>(SEL)) {
+    if (el.hasAttribute("data-boyo")) continue
+    if (classifyCard(el) === "card") out.push(el)
   }
   return out
 }
 
 /**
- * Is this element a card BOYO should own?
+ * What a catalogue element is, right now.
  *
- * Applies the polymorphism guard that {@link SEL} deliberately omits. Called
- * before an element is adopted, so a non-video lockup never reaches the
+ *   `card`      — a video tile BOYO should own.
+ *   `container` — a catalogue tag wrapping *other* catalogue cards: the home
+ *                 feed's grid cell around a lockup (#1426), or a shelf around
+ *                 a row of them. It holds video links, so a link check alone
+ *                 would adopt it and mount one veil over everything inside;
+ *                 the cards inside are the cards, and this is never one. It
+ *                 is not queued and the stylesheet does not occlude it.
+ *   `shell`     — a guarded tag with no video link (yet): a channel or
+ *                 playlist tile, an ad cell, or a card YouTube has not filled
+ *                 in. Queued under the budget in case it hydrates.
+ *   `none`      — not a catalogue tag at all.
+ *
+ * This is the polymorphism guard that {@link SEL} deliberately omits, applied
+ * before an element is adopted so a non-video tile never reaches the
  * unresolved queue — which is what keeps the 500ms retry loop bounded by the
  * number of real video cards on the page rather than by every tile YouTube
- * happens to render (Charter §8).
+ * happens to render (Charter §8). The stylesheet spells the same three-way
+ * condition in {@link PREMASK_SELECTORS}, so the two cannot disagree about
+ * which elements are cards.
  */
-export function isVideoCard(el: HTMLElement): boolean {
+export type CardKind = "card" | "container" | "shell" | "none"
+
+export function classifyCard(el: HTMLElement): CardKind {
   const tag = el.tagName.toLowerCase()
   const entry = CARD_SELECTORS.find((s) => s.tag === tag)
-  if (!entry) return false
-  if (!entry.requiresVideoLink) return true
-  return el.querySelector(VIDEO_LINK_SELECTOR) !== null
+  if (!entry) return "none"
+  if (!entry.requiresVideoLink) return "card"
+  if (el.querySelector(SEL) !== null) return "container"
+  return el.querySelector(VIDEO_LINK_SELECTOR) !== null ? "card" : "shell"
+}
+
+/** Is this element a card BOYO should own? See {@link classifyCard}. */
+export function isVideoCard(el: HTMLElement): boolean {
+  return classifyCard(el) === "card"
 }

@@ -63,7 +63,7 @@ import type {
   QueuedCard,
 } from "./observability"
 import { makeProvisionalRecord, makeRecord } from "./record"
-import { isVideoCard, occludedElements, SEL } from "./selectors"
+import { classifyCard, isVideoCard, occludedElements, SEL } from "./selectors"
 import { VideoEntry } from "./video-entry"
 
 type Phase = "idle" | "running"
@@ -282,7 +282,16 @@ export class VideoManager {
     // such tile on the page — so the cheap structural check runs first and the
     // element goes straight onto the (bounded) retry queue instead. If it later
     // hydrates into a video lockup, the retry loop picks it up there.
-    if (!isVideoCard(el)) {
+    //
+    // A container — a grid cell wrapping a lockup, a shelf wrapping a row of
+    // them — is not queued at all: it is not a card and never will be, the
+    // cards inside it are handled on their own, and the stylesheet does not
+    // occlude it (bot-found on #1504's own review). Skipping it here rather
+    // than queueing it keeps a feed of nested cells from holding the retry
+    // loop open for a full budget per session.
+    const kind = classifyCard(el)
+    if (kind === "container") return
+    if (kind !== "card") {
       this._enqueueUnresolved(el)
       return
     }
@@ -501,9 +510,20 @@ export class VideoManager {
         changed = true
         continue
       }
-      const extracted = isVideoCard(el)
-        ? tryExtract(el)
-        : ({ kind: "raw", videoId: null, channelId: null } as const)
+      const cardKind = classifyCard(el)
+      if (cardKind === "container") {
+        // A queued shell that has since been filled with cards of its own is
+        // a wrapper now, not a card — the cards inside are adopted on their
+        // own, and nothing occludes the wrapper. Drop it without rejecting
+        // it: rejection is for elements that might still become cards.
+        this._dequeueUnresolved(key)
+        changed = true
+        continue
+      }
+      const extracted =
+        cardKind === "card"
+          ? tryExtract(el)
+          : ({ kind: "raw", videoId: null, channelId: null } as const)
       if (extracted.kind === "full") {
         this._dequeueUnresolved(key)
         void this._promote(el, extracted.videoId, extracted.channelId)
