@@ -19,6 +19,7 @@ import { describe, expect, it } from "vitest"
 import {
   CARD_SELECTORS,
   classifyCard,
+  detectOccluderEngine,
   isVideoCard,
   occludedElements,
   PREMASK_FALLBACK_SELECTORS,
@@ -220,6 +221,46 @@ describe("the stylesheet and the catalogue agree", () => {
     ).toHaveLength(3)
     cell.remove()
     shelf.remove()
+  })
+
+  it("counts what the fallback rule occludes on an engine without :has()", () => {
+    // Bot-found on #1504's own review: on Firefox 112–120 the guarded rules
+    // are dropped and the fallback block occludes *every* unstamped
+    // rich-item — shells and containers included. A census that only knew
+    // the guarded condition would call such a page clean while an ad cell
+    // sat blurred and inert on it.
+    const ad = document.createElement("ytd-rich-item-renderer")
+    ad.innerHTML = "<ytd-ad-slot-renderer></ytd-ad-slot-renderer>"
+    const wrapper = document.createElement("ytd-rich-item-renderer")
+    wrapper.innerHTML = `<yt-lockup-view-model><a href="/watch?v=w1">t</a></yt-lockup-view-model>`
+    const channel = document.createElement("yt-lockup-view-model")
+    channel.innerHTML = '<a href="/@c">c</a>'
+    const plain = document.createElement("ytd-video-renderer")
+    document.body.append(ad, wrapper, channel, plain)
+
+    const modern = occludedElements(document, { hasSelector: true })
+    expect(modern).not.toContain(ad)
+    expect(modern).not.toContain(wrapper)
+    expect(modern).not.toContain(channel)
+    expect(modern).toContain(plain)
+
+    const fallback = occludedElements(document, { hasSelector: false })
+    expect(fallback, "the ad cell is blurred there").toContain(ad)
+    expect(fallback, "and so is the wrapper").toContain(wrapper)
+    expect(
+      fallback,
+      "a lockup has no fallback rule, so it is simply unmasked there"
+    ).not.toContain(channel)
+    expect(fallback).toContain(plain)
+
+    expect(
+      detectOccluderEngine(document).hasSelector,
+      "jsdom parses :has()"
+    ).toBe(true)
+    ad.remove()
+    wrapper.remove()
+    channel.remove()
+    plain.remove()
   })
 })
 

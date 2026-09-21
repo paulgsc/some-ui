@@ -290,9 +290,16 @@ export class VideoManager {
     // than queueing it keeps a feed of nested cells from holding the retry
     // loop open for a full budget per session.
     const kind = classifyCard(el)
-    if (kind === "container") return
     if (kind !== "card") {
-      this._enqueueUnresolved(el)
+      // Whatever this element is now, it is not the card it may have been.
+      // Feed virtualization recycles a renderer freely — a cell that showed a
+      // video can be handed an ad slot, or be turned into a wrapper around a
+      // lockup — and an entry left behind would keep its `data-boyo` (lifting
+      // an occluder that no longer applies), let a repair or a bulk advance
+      // rebuild a veil over a non-card, and let a still-awaiting promotion
+      // mount one. Bot-found on #1504's own review.
+      this._retireOwnership(el)
+      if (kind === "shell") this._enqueueUnresolved(el)
       return
     }
 
@@ -714,6 +721,37 @@ export class VideoManager {
   }
 
   // ── Private ───────────────────────────────────────────────────────────────
+
+  /**
+   * Forget everything this manager holds for `el` as a card: the entry it
+   * owns (destroyed, so its veil and `data-boyo*` go with it), its pending
+   * channel backfill, and — by bumping its staleness token without assigning
+   * a new video — any promotion still awaiting its whitelist round trip,
+   * which then fails its own M6 check on resume and installs nothing.
+   *
+   * Only the entry `el` itself carries is touched: `_byVideo` is keyed by
+   * video, so a lookup by the id stamped on `el` can name another renderer's
+   * entry (#1426), and that one is not ours to destroy here.
+   */
+  private _retireOwnership(el: HTMLElement): void {
+    const stamped = el.dataset["boyoVid"]
+    if (stamped) {
+      const stampedId = asVideoId(stamped)
+      const entry = this._byVideo.get(stampedId)
+      if (entry?.owns(el)) {
+        entry.destroy()
+        this._byVideo.delete(stampedId)
+        this._dropChannelPending(stampedId)
+      }
+    }
+    if (this._elClaim.has(el)) {
+      // A token no live claim will ever equal: the in-flight call captured
+      // the previous one, and `_promote()` re-derives `el` from the DOM on
+      // the stale path once its guard clears.
+      this._elClaim.set(el, { videoId: asVideoId(""), token: ++this._tokenSeq })
+    }
+    publish()
+  }
 
   /**
    * Claim `el` for `videoId`, bumping its staleness token (M6) only if the

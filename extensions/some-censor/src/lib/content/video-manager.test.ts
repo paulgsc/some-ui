@@ -493,6 +493,91 @@ describe("a cell that merely contains cards (#1504's own review)", () => {
     expect(mgr.unresolvedSize, "nothing queued").toBe(0)
   })
 
+  it("retires a card that is recycled into a wrapper", async () => {
+    // Bot-found on #1504's own review: an adopted cell handed a lockup by the
+    // virtualizer is a wrapper now. Its old entry must not survive — it would
+    // keep `data-boyo` on a non-card, and a repair or bulk advance would
+    // rebuild a veil over the whole cell.
+    const cell = fullCard("was_video", "Chan")
+    document.body.appendChild(cell)
+    mgr.upsert(cell)
+    await passes(1)
+    expect(cell.getAttribute("data-boyo"), "precondition: adopted").toBe("0")
+
+    const { inner } = nestedCell("now_nested")
+    cell.replaceChildren(inner)
+    mgr.upsert(cell)
+    mgr.upsert(inner)
+    await passes(2)
+
+    expect(cell.hasAttribute("data-boyo"), "the wrapper's stamp is gone").toBe(
+      false
+    )
+    expect(cell.querySelector(":scope > .boyo-veil"), "and its veil").toBeNull()
+    expect(mgr.size, "one entry, the lockup's").toBe(1)
+    expect(inner.getAttribute("data-boyo")).toBe("0")
+
+    mgr.advanceAllToTitle()
+    expect(
+      cell.querySelector(":scope > .boyo-veil"),
+      "a bulk advance cannot rebuild a veil on the wrapper"
+    ).toBeNull()
+  })
+
+  it("retires a card that is recycled into a non-video cell", async () => {
+    const cell = fullCard("was_video_2", "Chan")
+    document.body.appendChild(cell)
+    mgr.upsert(cell)
+    await passes(1)
+    expect(cell.getAttribute("data-boyo")).toBe("0")
+
+    cell.innerHTML = `<ytd-ad-slot-renderer><div>sponsored</div></ytd-ad-slot-renderer>`
+    mgr.upsert(cell)
+    await passes(1)
+
+    expect(cell.hasAttribute("data-boyo")).toBe(false)
+    expect(cell.querySelector(".boyo-veil")).toBeNull()
+    expect(mgr.size).toBe(0)
+    expect(mgr.unresolvedSize, "queued as a shell, under the budget").toBe(1)
+  })
+
+  it("discards a promotion still in flight when the element becomes a wrapper", async () => {
+    // The async half: the whitelist round trip for the cell is still pending
+    // when the virtualizer turns the cell into a wrapper. When it settles it
+    // must install nothing on the wrapper — the retirement bumps the claim
+    // token the in-flight call captured, so its own M6 check fails.
+    let settle: (r: { ok: boolean; whitelisted: boolean }) => void = () => {}
+    vi.mocked(browser.runtime.sendMessage).mockReturnValueOnce(
+      new Promise((resolve) => {
+        settle = resolve
+      })
+    )
+    const cell = fullCard("in_flight", "Chan")
+    document.body.appendChild(cell)
+    mgr.upsert(cell)
+    await passes(1)
+    expect(cell.hasAttribute("data-boyo"), "precondition: still awaiting").toBe(
+      false
+    )
+
+    const { inner } = nestedCell("in_flight_inner")
+    cell.replaceChildren(inner)
+    mgr.upsert(cell)
+    mgr.upsert(inner)
+    await passes(1)
+    expect(mgr.size, "the lockup is adopted meanwhile").toBe(1)
+
+    settle({ ok: true, whitelisted: false })
+    await passes(2)
+
+    expect(
+      cell.hasAttribute("data-boyo"),
+      "nothing mounted on the wrapper"
+    ).toBe(false)
+    expect(cell.querySelector(":scope > .boyo-veil")).toBeNull()
+    expect(mgr.size, "still just the lockup").toBe(1)
+  })
+
   it("drops a queued shell that turns into a wrapper", async () => {
     // A cell YouTube fills in *after* the observer saw it empty: queued as a
     // shell, then hydrated with a lockup. It is a wrapper now — the lockup

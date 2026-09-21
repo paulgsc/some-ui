@@ -165,28 +165,58 @@ export const PREMASK_FALLBACK_SELECTORS: ReadonlyArray<string> =
   )
 
 /**
- * Every element the static occluder is hiding *right now*: a card — per
- * {@link classifyCard}, the same three-way condition {@link PREMASK_SELECTORS}
- * spells in CSS — carrying no `data-boyo`.
+ * What the engine rendering `root` can parse, as far as the pre-mask rules
+ * care: whether `:has()` is a selector it understands. On an engine that
+ * cannot parse it (Firefox 112–120), every guarded rule in `content.css` is
+ * dropped whole and only the plain rules plus the `@supports not
+ * selector(:has(a))` fallback block apply — so which elements the occluder
+ * is hiding depends on the engine, and the census has to know which one it
+ * is on.
+ */
+export type OccluderEngine = {
+  /** `true` when `:has()` parses, so the guarded rules are live. */
+  readonly hasSelector: boolean
+}
+
+/**
+ * Probe `root`'s engine for `:has()` support. A read through the node that
+ * was handed in, not through a global: on an engine without `:has()` the
+ * query throws a `SyntaxError`, which is exactly the condition that drops
+ * the stylesheet's guarded rules.
+ */
+export function detectOccluderEngine(root: ParentNode): OccluderEngine {
+  try {
+    root.querySelector(":has(a)")
+    return { hasSelector: true }
+  } catch {
+    return { hasSelector: false }
+  }
+}
+
+/**
+ * Every element the static occluder is hiding *right now*, on this engine.
  *
- * This is the stylesheet's condition written in TypeScript rather than a
- * `querySelectorAll` of the stylesheet's own selector text. It used to be the
- * latter; the container exclusion (`:not(:has(<card tags>))`, #1504's own
- * review) is valid CSS on every engine the manifests declare with `:has()`
- * at all, but jsdom's selector engine cannot parse a `:has()` nested inside
- * `:not()`, and a reading that silently returns nothing under the unit
- * suite would leave `OccluderReleases` blind exactly where it is tested.
- * The two spellings are pinned together on a real engine instead:
- * `rich-item-cells.spec.ts` asserts, for every catalogue element in the
- * fixture, that `el.matches(<its pre-mask selector>)` agrees with this
- * function — so the stylesheet cannot drift from the predicate without a
- * rendered test failing.
+ * With `:has()` available, the condition is the guarded one: a card per
+ * {@link classifyCard} — the same three-way condition {@link PREMASK_SELECTORS}
+ * spells in CSS — carrying no `data-boyo`. Without it, the guarded rules are
+ * gone and the occluder is the plain rules plus the fallback block: every
+ * unstamped element of a plain tag, and every unstamped element of a tag
+ * with {@link CardSelector.unguardedFallback} — shells and containers
+ * included, which is precisely what makes the fallback engine's stranded
+ * cells visible to `OccluderReleases` (bot-found on #1504's own review).
  *
- * One consequence worth stating: on an engine that cannot parse `:has()` at
- * all (Firefox 112–120), the stylesheet drops the guarded rules and is not
- * occluding those tags, while this reports them as if it were. That errs in
- * the reporting direction only — a card is called stranded that is in fact
- * merely unmasked — and never hides a stranded card.
+ * Both are the stylesheet's condition written in TypeScript rather than a
+ * `querySelectorAll` of the stylesheet's own selector text. It used to be
+ * the latter; the container exclusion (`:not(:has(<card tags>))`) is valid
+ * CSS on every engine that has `:has()` at all, but jsdom's selector engine
+ * cannot parse a `:has()` nested inside `:not()`, and a reading that
+ * silently returned nothing under the unit suite would leave
+ * `OccluderReleases` blind exactly where it is tested. The two spellings
+ * are pinned together on a real engine instead: `rich-item-cells.spec.ts`
+ * asserts, for every catalogue element in the fixture, that
+ * `el.matches(<its pre-mask selector>)` agrees with this function — so the
+ * stylesheet cannot drift from the predicate without a rendered test
+ * failing.
  *
  * Every other health signal in this workspace reads `VideoManager`'s
  * bookkeeping, and bookkeeping cannot represent an element that fell out of
@@ -195,13 +225,25 @@ export const PREMASK_FALLBACK_SELECTORS: ReadonlyArray<string> =
  * `root` is required rather than defaulting to `document`: this module is the
  * logic layer, and naming a browser global here is what
  * `extension-charter/no-logic-layer-side-effects` forbids. The caller supplies
- * the tree, which also lets a test scope the query to a fixture.
+ * the tree, which also lets a test scope the query to a fixture — and, via
+ * `engine`, lets a test stand on the fallback engine without being on it.
  */
-export function occludedElements(root: ParentNode): Array<HTMLElement> {
+export function occludedElements(
+  root: ParentNode,
+  engine: OccluderEngine = detectOccluderEngine(root)
+): Array<HTMLElement> {
   const out: Array<HTMLElement> = []
   for (const el of root.querySelectorAll<HTMLElement>(SEL)) {
     if (el.hasAttribute("data-boyo")) continue
-    if (classifyCard(el) === "card") out.push(el)
+    if (engine.hasSelector) {
+      if (classifyCard(el) === "card") out.push(el)
+      continue
+    }
+    const entry = CARD_SELECTORS.find((s) => s.tag === el.tagName.toLowerCase())
+    if (entry === undefined) continue
+    if (!entry.requiresVideoLink || entry.unguardedFallback === true) {
+      out.push(el)
+    }
   }
   return out
 }
