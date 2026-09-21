@@ -114,7 +114,25 @@ async function crawlOne(
     if (live) {
       // Let the SPA hydrate and the feed virtualizer fill a few screens; a
       // crawl of the skeleton would record the shell, not the cards.
-      await page.waitForSelector("ytd-app", { timeout: 20_000 })
+      //
+      // Best-effort, like the rest of a live crawl: a consent or regional
+      // interstitial has no `ytd-app` at all, and a wait that threw here
+      // used to abort every surface after this one. An unhydrated page is
+      // recorded as no shapes instead, which `assembleTable()` leaves out of
+      // the table so the "*" union serves the surface.
+      const hydrated = await page
+        .waitForSelector("ytd-app", { timeout: 20_000 })
+        .then(
+          () => true,
+          () => false
+        )
+      if (!hydrated) {
+        console.warn(
+          `[layout] ${target.surface} ${target.path}: no ytd-app within 20s — ` +
+            `a consent or regional interstitial, most likely; nothing recorded.`
+        )
+        return { surface: target.surface, paths: [target.path], shapes: [] }
+      }
       for (let i = 0; i < 4; i += 1) {
         await page.mouse.wheel(0, 1200)
         await page.waitForTimeout(800)
