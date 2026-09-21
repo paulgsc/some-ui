@@ -24,7 +24,7 @@ import type { Observation } from "./observation"
 
 // ── Tokens: what the Sensor derives from the vendor (B5) ─────────────────────
 
-type Token =
+export type Token =
   /**
    * A navigation finished. The shell mints the new session so Core never
    * has to (a counter is hidden state, and B8 forbids it); every card of the
