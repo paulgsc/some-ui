@@ -25,6 +25,7 @@ import {
 import { isLayoutTable, LAYOUT_SCHEMA_VERSION } from "./schema"
 import type { LayoutTable, SurfaceLayout } from "./schema"
 import { surfaceOf } from "./surface"
+import { assembleTable } from "./table"
 
 const FIXTURE_DIR = resolve(process.cwd(), "tests/e2e/fixtures")
 
@@ -33,26 +34,55 @@ function fixtureDocument(file: string): Document {
   return new DOMParser().parseFromString(html, "text/html")
 }
 
-/** The table the crawler would write from the fixtures, minus the timestamp. */
-function crawlFixtures(): Omit<LayoutTable, "generatedAt"> {
-  const surfaces: Record<string, SurfaceLayout> = {}
-  const all: Array<SurfaceLayout> = []
-  for (const target of FIXTURE_TARGETS) {
-    const layout = fingerprintSurface(
-      fixtureDocument(target.load),
-      fingerprintInput(target.surface, target.path)
-    )
-    const merged = mergeLayouts(target.surface, [layout])
-    surfaces[target.surface] = merged
-    all.push(merged)
-  }
-  surfaces["*"] = mergeLayouts("*", all)
-  return {
-    schemaVersion: LAYOUT_SCHEMA_VERSION,
+/** The table the crawler would write from the fixtures today. */
+function crawlFixtures(generatedAt: string): LayoutTable {
+  return assembleTable({
     source: "fixtures",
     generator: "pnpm layout:crawl",
-    surfaces,
+    generatedAt,
+    layouts: FIXTURE_TARGETS.map((target) =>
+      fingerprintSurface(
+        fixtureDocument(target.load),
+        fingerprintInput(target.surface, target.path)
+      )
+    ),
+  }).table
+}
+
+function crawledSurfaces(table: LayoutTable): ReadonlyArray<SurfaceLayout> {
+  return Object.entries(table.surfaces)
+    .filter(([key]) => key !== "*")
+    .map(([, layout]) => layout)
+}
+
+/**
+ * What "in sync" means depends on where the table came from.
+ *
+ * A fixture table is what a fixture crawl produces today, exactly: a fixture
+ * edit that changes a shape must land with a regenerated table, and a hand
+ * edit to the table shows up as a diff against what the instrument measures.
+ *
+ * A live table cannot be reproduced offline. For it the fixture crawl is the
+ * instrument's determinism check (the "the instrument" suite below), and the
+ * table itself must be internally consistent: written by the live
+ * invocation, holding no surface the crawl saw nothing on (`assembleTable`
+ * leaves those out so the union serves them), and with `"*"` the union of
+ * exactly the surfaces it holds.
+ */
+function expectInSync(table: LayoutTable): void {
+  if (table.source === "fixtures") {
+    expect(table).toEqual(crawlFixtures(table.generatedAt))
+    return
   }
+  expect(table.generator).toContain("--live")
+  const surfaces = crawledSurfaces(table)
+  expect(surfaces.length).toBeGreaterThan(0)
+  for (const layout of surfaces) {
+    expect(layout.shapes.length, `${layout.surface} is empty`).toBeGreaterThan(
+      0
+    )
+  }
+  expect(table.surfaces["*"]).toEqual(mergeLayouts("*", surfaces))
 }
 
 // Widened from the generated `as const` literal so comparisons against it are
@@ -65,12 +95,8 @@ describe("the checked-in table", () => {
     expect(tableStatus(YOUTUBE_LAYOUT)).toEqual({ kind: "current" })
   })
 
-  it("is exactly what a crawl of the fixtures produces today", () => {
-    // The in-sync check: a fixture edit that changes a shape must land with a
-    // regenerated table, and a hand edit to the table shows up here as a diff
-    // against what the instrument actually measures.
-    const { generatedAt: _ignored, ...checkedIn } = CHECKED_IN
-    expect(checkedIn).toEqual(crawlFixtures())
+  it("is in sync with its source", () => {
+    expectInSync(CHECKED_IN)
   })
 
   it("records the nesting #1426 is about", () => {
@@ -90,6 +116,89 @@ describe("the checked-in table", () => {
     for (const layout of Object.values(CHECKED_IN.surfaces)) {
       for (const path of layout.paths) expect(path).not.toContain("?")
     }
+  })
+})
+
+describe("assembleTable", () => {
+  const home = fingerprintSurface(
+    fixtureDocument("yt-home.html"),
+    fingerprintInput("home", "/")
+  )
+  const watch = fingerprintSurface(
+    fixtureDocument("yt-watch.html"),
+    fingerprintInput("watch", "/watch")
+  )
+  const nothing: SurfaceLayout = {
+    surface: "subscriptions",
+    paths: ["/feed/subscriptions"],
+    shapes: [],
+  }
+
+  it("leaves out a surface whose page showed no catalogue tag, so the union serves it", () => {
+    // A signed-out /feed/subscriptions renders a sign-in prompt and no cards.
+    // Recording that as "subscriptions has no shapes" would make every real
+    // card there `tag-unseen`; leaving it out makes it `fallback`.
+    const { table, skipped } = assembleTable({
+      source: "live",
+      generator: "pnpm layout:crawl -- --live",
+      generatedAt: "2026-01-01T00:00:00.000Z",
+      layouts: [home, nothing, watch],
+    })
+    expect(skipped).toEqual(["subscriptions"])
+    expect(Object.keys(table.surfaces).sort()).toEqual(["*", "home", "watch"])
+    expect(table.surfaces["*"]).toEqual(mergeLayouts("*", [home, watch]))
+    expect(resolveSurface(table, "subscriptions").kind).toBe("fallback")
+    expect(
+      classifyShape(
+        table,
+        VIDEO_SELECTORS,
+        "subscriptions",
+        "ytd-rich-item-renderer",
+        null
+      )
+    ).toEqual({ kind: "anchor" })
+  })
+
+  it("folds several pages of one surface and keys surfaces in sorted order", () => {
+    const { table } = assembleTable({
+      source: "fixtures",
+      generator: "pnpm layout:crawl",
+      generatedAt: "2026-01-01T00:00:00.000Z",
+      layouts: [watch, home, home],
+    })
+    expect(Object.keys(table.surfaces)).toEqual(["home", "watch", "*"])
+    expect(table.surfaces.home).toEqual(mergeLayouts("home", [home, home]))
+    expect(isLayoutTable(table)).toBe(true)
+  })
+
+  it("produces a live table the in-sync check accepts", () => {
+    // The README's workflow: `pnpm layout:crawl -- --live`, commit the table.
+    // The suite must keep passing on the result even though no fixture
+    // crawl can reproduce it.
+    const { table } = assembleTable({
+      source: "live",
+      generator: "pnpm layout:crawl -- --live",
+      generatedAt: "2026-01-01T00:00:00.000Z",
+      layouts: [home, nothing, watch],
+    })
+    expectInSync(table)
+    // …and refuses one that recorded an empty surface anyway.
+    const withEmpty: LayoutTable = {
+      ...table,
+      surfaces: { ...table.surfaces, subscriptions: nothing },
+    }
+    expect(() => expectInSync(withEmpty)).toThrow(/subscriptions is empty/)
+  })
+
+  it("produces the fixture table the in-sync check compares against", () => {
+    const { table, skipped } = assembleTable({
+      source: "fixtures",
+      generator: "pnpm layout:crawl",
+      generatedAt: CHECKED_IN.generatedAt,
+      layouts: [home, watch],
+    })
+    expect(skipped).toEqual([])
+    expect(table).toEqual(CHECKED_IN)
   })
 })
 

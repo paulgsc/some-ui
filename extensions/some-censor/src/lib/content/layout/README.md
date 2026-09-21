@@ -34,6 +34,16 @@ regeneration land together or not at all.
 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` selects the browser; unset, Playwright's
 own Chromium is used.
 
+A live crawl runs in a fresh browser with no YouTube session, so a surface
+that needs one (`/feed/subscriptions`) renders a sign-in prompt and no cards.
+A page that showed **no catalogue tag at all** is left out of the table rather
+than recorded as empty (`table.ts`'s `assembleTable` reports it as skipped and
+the crawler warns), so the `"*"` union serves that surface instead of every
+real card there being `tag-unseen`. To crawl the signed-in surfaces, point
+`LAYOUT_CRAWL_STORAGE_STATE` at a Playwright storage-state file saved from a
+signed-in session (`context.storageState({ path })`); the crawler only reads
+it, and it is never checked in.
+
 ## Reading a regeneration diff
 
 A crawl of an unchanged page produces an identical table except for
@@ -72,9 +82,12 @@ Those pages are YouTube-shaped by construction — each documents the real
 markup it mirrors — and they are the only pages reachable from an offline
 environment, which is why the first checked-in table is built from them.
 A `source: "live"` table supersedes a fixture one; the fixture crawl then
-remains the determinism check, not the production input. Surfaces the fixtures
-do not cover (search, shorts, playlist, channel, subscriptions) are served by
-the `"*"` union until a live crawl visits them.
+remains the determinism check, not the production input. `layout.test.ts`'s
+in-sync check knows the difference: a fixture table must equal a fixture crawl
+exactly, while a live table must be internally consistent — written by the
+`--live` invocation, no empty surface, `"*"` the union of the surfaces it
+holds. Surfaces the fixtures do not cover (search, shorts, playlist, channel,
+subscriptions) are served by the `"*"` union until a live crawl visits them.
 
 ## Schema
 

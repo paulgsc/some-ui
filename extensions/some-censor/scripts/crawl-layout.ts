@@ -14,8 +14,16 @@
  * decides what a shape *means*; it only records what was there.
  *
  * Live crawls are best-effort: YouTube may show a consent wall or serve a
- * different experiment. Read the diff before committing it — it should be
- * exactly the shapes that changed, and `generatedAt`, nothing else. See
+ * different experiment, and `/feed/subscriptions` renders a sign-in prompt
+ * to a browser with no session. A surface whose page showed no catalogue tag
+ * at all is left out of the table rather than recorded as empty (see
+ * `assembleTable()`), so the `"*"` union serves it. To crawl the signed-in
+ * surfaces, point `LAYOUT_CRAWL_STORAGE_STATE` at a Playwright storage-state
+ * file (`context.storageState({ path })` from a signed-in session); it is
+ * read, never written, and never checked in.
+ *
+ * Read the diff before committing it — it should be exactly the shapes that
+ * changed, and `generatedAt`, nothing else. See
  * `src/lib/content/layout/README.md` for when to recrawl.
  */
 
@@ -28,21 +36,16 @@ import {
   LIVE_TARGETS,
   type CrawlTarget,
 } from "@censor/lib/content/layout/crawl-input"
-import {
-  fingerprintSurface,
-  mergeLayouts,
-} from "@censor/lib/content/layout/fingerprint"
-import {
-  isSurfaceLayout,
-  LAYOUT_SCHEMA_VERSION,
-} from "@censor/lib/content/layout/schema"
+import { fingerprintSurface } from "@censor/lib/content/layout/fingerprint"
+import { isSurfaceLayout } from "@censor/lib/content/layout/schema"
 import type {
   LayoutSource,
   LayoutTable,
   SurfaceLayout,
 } from "@censor/lib/content/layout/schema"
-import type { BoyoSurface } from "@censor/lib/content/layout/surface"
+import { assembleTable } from "@censor/lib/content/layout/table"
 import { chromium } from "@playwright/test"
+import type { BrowserContext } from "@playwright/test"
 import { format, resolveConfig } from "prettier"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -58,18 +61,22 @@ const targets = live ? LIVE_TARGETS : FIXTURE_TARGETS
 
 async function crawl(): Promise<LayoutTable> {
   const executablePath = process.env["PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"]
+  const storageState = live
+    ? process.env["LAYOUT_CRAWL_STORAGE_STATE"]
+    : undefined
   const browser = await chromium.launch({
     headless: true,
     ...(executablePath ? { executablePath } : {}),
   })
-  const layouts = new Map<BoyoSurface, Array<SurfaceLayout>>()
+  const layouts: Array<SurfaceLayout> = []
 
   try {
+    const context = await browser.newContext({
+      ...(storageState ? { storageState } : {}),
+    })
     for (const target of targets) {
-      const layout = await crawlOne(browser, target)
-      const list = layouts.get(target.surface) ?? []
-      list.push(layout)
-      layouts.set(target.surface, list)
+      const layout = await crawlOne(context, target)
+      layouts.push(layout)
       console.log(
         `[layout] ${target.surface} ${target.path}: ${layout.shapes.length} shape(s)`
       )
@@ -78,31 +85,27 @@ async function crawl(): Promise<LayoutTable> {
     await browser.close()
   }
 
-  const surfaces: Partial<Record<BoyoSurface | "*", SurfaceLayout>> = {}
-  const all: Array<SurfaceLayout> = []
-  for (const [surface, list] of [...layouts].sort(([a], [b]) =>
-    a < b ? -1 : 1
-  )) {
-    const merged = mergeLayouts(surface, list)
-    surfaces[surface] = merged
-    all.push(merged)
-  }
-  surfaces["*"] = mergeLayouts("*", all)
-
-  return {
-    schemaVersion: LAYOUT_SCHEMA_VERSION,
+  const { table, skipped } = assembleTable({
     source,
-    generatedAt: new Date().toISOString(),
     generator: `pnpm layout:crawl${live ? " -- --live" : ""}`,
-    surfaces,
+    generatedAt: new Date().toISOString(),
+    layouts,
+  })
+  for (const surface of skipped) {
+    console.warn(
+      `[layout] ${surface}: no catalogue tag observed — left out of the table ` +
+        `(the "*" union serves it). A sign-in prompt or consent wall, most ` +
+        `likely; set LAYOUT_CRAWL_STORAGE_STATE to crawl signed-in surfaces.`
+    )
   }
+  return table
 }
 
 async function crawlOne(
-  browser: Awaited<ReturnType<typeof chromium.launch>>,
+  context: BrowserContext,
   target: CrawlTarget
 ): Promise<SurfaceLayout> {
-  const page = await browser.newPage()
+  const page = await context.newPage()
   try {
     const url = live
       ? target.load
@@ -119,12 +122,24 @@ async function crawlOne(
     }
     // The instrument's own source, applied to the page's document. A closure
     // calling `fingerprintSurface` would not serialize (it would reference
-    // this module's scope), so the call is spelled as an expression string.
+    // this module's scope), so its source travels as a string and is
+    // re-materialized in the page; the input travels as data, the way
+    // `page.evaluate()` serializes arguments, never spliced into code.
     const input = fingerprintInput(target.surface, target.path)
-    // esbuild (under tsx) may decorate the serialized source with a `__name`
-    // helper call; the page has no such helper, so a no-op one is provided.
-    const expression = `(() => { const __name = (fn) => fn; return (${fingerprintSurface.toString()})(document, ${JSON.stringify(input)}) })()`
-    const result: unknown = await page.evaluate(expression)
+    const result: unknown = await page.evaluate(
+      ([instrumentSource, instrumentInput]) => {
+        // esbuild (under tsx) may decorate the serialized source with a
+        // `__name` helper call; the page has no such helper, so a no-op one
+        // is bound as the re-materialized function's only free name.
+        // eslint-disable-next-line no-new-func, @typescript-eslint/consistent-type-assertions
+        const instrument = new Function(
+          "__name",
+          `return (${instrumentSource})`
+        )((fn: unknown) => fn) as typeof fingerprintSurface
+        return instrument(document, instrumentInput)
+      },
+      [fingerprintSurface.toString(), input] as const
+    )
     if (!isSurfaceLayout(result)) {
       throw new Error(
         `[layout] ${target.surface}: fingerprint returned an unexpected shape`
