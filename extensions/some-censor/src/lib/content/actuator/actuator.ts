@@ -264,8 +264,10 @@ export function createActuator(ports: ActuatorPorts): Actuator {
     }
     for (const el of nested) {
       takeOver(el, key)
-      // An element that was another card's anchor keeps nothing of that.
+      // An element that was another card's anchor keeps nothing of that:
+      // not the anchoring, not the self-tag (D6).
       unanchor(el)
+      delete el.dataset["boyoVid"]
       el.dataset["boyo"] = model.dataBoyo
     }
 

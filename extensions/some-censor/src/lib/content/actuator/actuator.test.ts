@@ -244,6 +244,18 @@ describe("custody accounting (A5)", () => {
     expect(y.dataset["boyoVid"]).toBe("vid_b")
   })
 
+  it("takes over another key's anchor as nested custody with nothing of the anchor left (D6)", () => {
+    const x = card()
+    actuator.realize([render(K, MASKED, [{ el: x, role: "anchor" }])])
+    expect(x.dataset["boyoVid"]).toBe("vid_a")
+    actuator.realize([render(K2, META, [{ el: x, role: "nested" }])])
+    expect(x.dataset["boyoVid"], "the old self-tag is gone").toBeUndefined()
+    expect(x.dataset["boyo"]).toBe("1")
+    expect(veilOf(x)).toBeNull()
+    expect(x.style.position).toBe("")
+    expect(actuator.custodyOf(K2)).toEqual([x])
+  })
+
   it("demotes an anchor to nested custody by removing its veil", () => {
     const el = card()
     actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
