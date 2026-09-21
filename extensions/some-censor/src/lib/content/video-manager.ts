@@ -63,7 +63,7 @@ import type {
   QueuedCard,
 } from "./observability"
 import { makeProvisionalRecord, makeRecord } from "./record"
-import { isVideoCard, occludedElements, SEL } from "./selectors"
+import { classifyCard, isVideoCard, occludedElements, SEL } from "./selectors"
 import { VideoEntry } from "./video-entry"
 
 type Phase = "idle" | "running"
@@ -282,8 +282,24 @@ export class VideoManager {
     // such tile on the page — so the cheap structural check runs first and the
     // element goes straight onto the (bounded) retry queue instead. If it later
     // hydrates into a video lockup, the retry loop picks it up there.
-    if (!isVideoCard(el)) {
-      this._enqueueUnresolved(el)
+    //
+    // A container — a grid cell wrapping a lockup, a shelf wrapping a row of
+    // them — is not queued at all: it is not a card and never will be, the
+    // cards inside it are handled on their own, and the stylesheet does not
+    // occlude it (bot-found on #1504's own review). Skipping it here rather
+    // than queueing it keeps a feed of nested cells from holding the retry
+    // loop open for a full budget per session.
+    const kind = classifyCard(el)
+    if (kind !== "card") {
+      // Whatever this element is now, it is not the card it may have been.
+      // Feed virtualization recycles a renderer freely — a cell that showed a
+      // video can be handed an ad slot, or be turned into a wrapper around a
+      // lockup — and an entry left behind would keep its `data-boyo` (lifting
+      // an occluder that no longer applies), let a repair or a bulk advance
+      // rebuild a veil over a non-card, and let a still-awaiting promotion
+      // mount one. Bot-found on #1504's own review.
+      this._retireOwnership(el)
+      if (kind === "shell") this._enqueueUnresolved(el)
       return
     }
 
@@ -458,10 +474,16 @@ export class VideoManager {
         this._rejected.delete(el)
         continue
       }
-      if (!isVideoCard(el)) continue
-      // It is a video now. Clear the rejection and let the normal path run;
-      // upsert() re-queues under a fresh budget if extraction still fails, and
-      // a video-shaped element is exempt from the budget anyway.
+      // The cheap structural check first — most rejected elements are channel
+      // and playlist tiles that never grow a video link — and extraction only
+      // for the ones that pass it. A video-shaped element can be rejected too
+      // (its href carried no parseable id, see retryUnresolved), and reviving
+      // it on shape alone would re-queue it, spend another budget, reject it
+      // again, and so on forever: revival has to mean "extraction would now
+      // succeed", not merely "it looks like a card".
+      if (!isVideoCard(el) || tryExtract(el).kind === "raw") continue
+      // It resolves now. Clear the rejection and let the normal path run —
+      // upsert() takes the resolved branch, which never consults the budget.
       this._rejected.delete(el)
       this._firstSeen.delete(elementKey(el))
       this.upsert(el)
@@ -495,9 +517,20 @@ export class VideoManager {
         changed = true
         continue
       }
-      const extracted = isVideoCard(el)
-        ? tryExtract(el)
-        : ({ kind: "raw", videoId: null, channelId: null } as const)
+      const cardKind = classifyCard(el)
+      if (cardKind === "container") {
+        // A queued shell that has since been filled with cards of its own is
+        // a wrapper now, not a card — the cards inside are adopted on their
+        // own, and nothing occludes the wrapper. Drop it without rejecting
+        // it: rejection is for elements that might still become cards.
+        this._dequeueUnresolved(key)
+        changed = true
+        continue
+      }
+      const extracted =
+        cardKind === "card"
+          ? tryExtract(el)
+          : ({ kind: "raw", videoId: null, channelId: null } as const)
       if (extracted.kind === "full") {
         this._dequeueUnresolved(key)
         void this._promote(el, extracted.videoId, extracted.channelId)
@@ -505,18 +538,29 @@ export class VideoManager {
         // Maskable now — mount provisionally; channel resolves on a later pass.
         this._dequeueUnresolved(key)
         this._promoteProvisional(el, extracted.videoId)
-      } else if (!isVideoCard(el) && this._budgetSpent(key)) {
-        // Out of budget, and still not video-shaped: a channel or playlist
-        // lockup. Give up on it for good. This is safe precisely because it is
-        // not video-shaped — the pre-mask rule's `:has()` guard means the
-        // stylesheet is not occluding it either, so nothing is left blurred
-        // behind us.
+      } else if (this._budgetSpent(key)) {
+        // Out of budget with nothing extractable. Give up on it for good, so
+        // the retry loop — and the full-document scan() it drives — can stop
+        // (Charter §8). `recheckRejected()` is what makes giving up safe: the
+        // element is re-examined on every later mutation batch and revived the
+        // moment extraction would succeed.
         //
-        // A *video-shaped* element is deliberately exempt from the budget: the
-        // stylesheet IS occluding it, so giving up would leave it blurred with
-        // nothing coming to lift the blur. In practice it cannot spin either —
-        // being video-shaped means it has a watch or shorts href, which is the
-        // very thing extractVideoId reads.
+        // Almost always this is an element that is not video-shaped: a channel
+        // or playlist lockup, or a non-video `ytd-rich-item-renderer` cell
+        // (#1422). The pre-mask rule's `:has()` guard means the stylesheet is
+        // not occluding those, so nothing is left blurred behind us.
+        //
+        // An earlier revision exempted *video-shaped* elements from the budget
+        // on the reasoning that "being video-shaped means it has a watch or
+        // shorts href, which is the very thing extractVideoId reads" — so it
+        // could not spin. That was true only for tags whose `isVideoCard()`
+        // actually checks for a link; for a tag it accepted unconditionally the
+        // exemption was the entire mechanism of #1422, and the loop ran for the
+        // life of the tab. The budget therefore now binds every queued element.
+        // The residual case — a video-shaped element whose watch href carries
+        // no parseable id (`/watch?list=…` alone) — stays occluded after
+        // rejection, which is the fail-closed answer (QD1), and
+        // `OccluderReleases` reports it rather than the loop hiding it.
         this._dequeueUnresolved(key)
         this._rejected.add(el)
         observability()?.rejected(key)
@@ -679,6 +723,37 @@ export class VideoManager {
   // ── Private ───────────────────────────────────────────────────────────────
 
   /**
+   * Forget everything this manager holds for `el` as a card: the entry it
+   * owns (destroyed, so its veil and `data-boyo*` go with it), its pending
+   * channel backfill, and — by bumping its staleness token without assigning
+   * a new video — any promotion still awaiting its whitelist round trip,
+   * which then fails its own M6 check on resume and installs nothing.
+   *
+   * Only the entry `el` itself carries is touched: `_byVideo` is keyed by
+   * video, so a lookup by the id stamped on `el` can name another renderer's
+   * entry (#1426), and that one is not ours to destroy here.
+   */
+  private _retireOwnership(el: HTMLElement): void {
+    const stamped = el.dataset["boyoVid"]
+    if (stamped) {
+      const stampedId = asVideoId(stamped)
+      const entry = this._byVideo.get(stampedId)
+      if (entry?.owns(el)) {
+        entry.destroy()
+        this._byVideo.delete(stampedId)
+        this._dropChannelPending(stampedId)
+      }
+    }
+    if (this._elClaim.has(el)) {
+      // A token no live claim will ever equal: the in-flight call captured
+      // the previous one, and `_promote()` re-derives `el` from the DOM on
+      // the stale path once its guard clears.
+      this._elClaim.set(el, { videoId: asVideoId(""), token: ++this._tokenSeq })
+    }
+    publish()
+  }
+
+  /**
    * Claim `el` for `videoId`, bumping its staleness token (M6) only if the
    * claim actually changed, and returning the (possibly unchanged) token.
    * Idempotent re-upserts for the same video (M2) must not invalidate their
@@ -742,14 +817,24 @@ export class VideoManager {
         this._byVideo.delete(prevVid)
       }
 
-      // Same (el, videoId) in current session → veil repair only.
+      // Same (el, videoId) in current session → veil repair only. The same
+      // video on a *different* element that is still a card is left alone
+      // too (#1426's sequential case, unchanged here). But an entry whose
+      // element has stopped being a card — the cell this lockup replaced,
+      // for the same video (#1504's own review, round 4) — is a stale owner:
+      // repairing it would re-stamp the wrapper and leave this card
+      // stranded, so it is retired and the mount proceeds here.
       const existing = this._byVideo.get(videoId)
       if (existing?.record.session === this._session) {
-        existing.repair()
-        return
+        if (existing.owns(el) || existing.isCard()) {
+          existing.repair()
+          return
+        }
+        this._dropChannelPending(videoId)
       }
 
-      // Stale entry (different session) or brand-new entry → replace.
+      // Stale entry (different session, or a live one on a non-card) or
+      // brand-new entry → replace.
       existing?.destroy()
 
       const isWhitelisted = await ext.runtime
@@ -827,9 +912,14 @@ export class VideoManager {
 
     const existing = this._byVideo.get(videoId)
     if (existing?.record.session === this._session) {
-      existing.repair()
-      if (!existing.hasChannel) this._trackChannelPending(videoId, el)
-      return
+      // See _promote(): a live entry on an element that is no longer a card
+      // is a stale owner, not a reason to skip this mount.
+      if (existing.owns(el) || existing.isCard()) {
+        existing.repair()
+        if (!existing.hasChannel) this._trackChannelPending(videoId, el)
+        return
+      }
+      this._dropChannelPending(videoId)
     }
     existing?.destroy()
 

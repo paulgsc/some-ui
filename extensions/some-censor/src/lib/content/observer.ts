@@ -18,7 +18,27 @@ export { SEL } from "./selectors"
  *
  *   2. childList + subtree
  *      Catches newly inserted renderer elements that are already hydrated
- *      (e.g. initial page load, SPA navigation completing).
+ *      (e.g. initial page load, SPA navigation completing) — and, since
+ *      #1504's own review, two things about the *shape* of an insertion:
+ *
+ *        - every catalogue element *inside* an added node, whether or not
+ *          the added node is itself one. An infinite-scroll cell arrives
+ *          atomically with its lockup already in it (#1426's nesting), and
+ *          the cell is a container the manager will not adopt — so the card
+ *          inside is the card, and it has to be handed over too;
+ *        - the catalogue element whose *subtree* changed, found with one
+ *          `closest()` from the mutation record's own target. A cell the
+ *          virtualizer hands from a video to an ad slot, or wraps around a
+ *          lockup, never re-enters `upsert()` on its own: its children were
+ *          replaced, not it. Re-upserting it is what lets the manager see it
+ *          is not a card any more and retire the entry it still owns.
+ *
+ *      The second is deliberately one `closest()` per *childList record*,
+ *      not per mutation of any kind. This observer subscribes to no
+ *      characterData and to exactly one attribute, so the player's own
+ *      churn (style, aria, progress) never reaches it; what does is a node
+ *      being added or removed, and for those the walk is bounded by the
+ *      depth of one card.
  *
  * On every mutation batch we also call mgr.retryUnresolved() — this is what
  * makes the unresolved registry event-driven rather than time-bounded.
@@ -28,16 +48,20 @@ export { SEL } from "./selectors"
  * Signal (1) covers the Polymer renderers only: the Lit-era lockups added in
  * #973 never set data-video-id. A lockup is added as a shell and filled in
  * afterwards, so the mutation that makes it a *video* lockup is an insertion
- * deep inside a card the observer has already seen — and re-deriving the
- * enclosing card with `closest()` on every childList batch would mean walking
- * the tree for every mutation YouTube's player makes, which is most of them.
- * Instead the shell is adopted by signal (2) and parked in the manager's
- * unresolved queue, where the retry loop re-checks it under a bounded budget.
- * That reuses machinery that already exists and costs nothing per mutation.
+ * deep inside a card the observer has already seen; that insertion's record
+ * targets a node inside the lockup, and `closest()` from it re-upserts the
+ * lockup — the same bounded walk as above. The manager's unresolved queue and
+ * `recheckRejected()` still cover the cases a batch happens to miss.
  */
 export function startObserver(mgr: VideoManager): MutationObserver {
   const obs = new MutationObserver((mutations) => {
     const candidates = new Set<HTMLElement>()
+    // Cards whose subtree changed, handed to the manager *before* anything
+    // added inside them: a cell recycled into a lockup for the same video
+    // must retire its own entry before the lockup asks for that video, or
+    // the lockup's upsert finds the cell's entry and repairs it instead
+    // (#1504's own review, round 4).
+    const enclosing = new Set<HTMLElement>()
     let needsPrune = false
 
     for (const m of mutations) {
@@ -56,14 +80,18 @@ export function startObserver(mgr: VideoManager): MutationObserver {
       if (m.type === "childList") {
         for (const node of m.addedNodes) {
           if (!(node instanceof HTMLElement)) continue
-          if (node.matches(SEL)) {
-            candidates.add(node)
-          } else {
-            node
-              .querySelectorAll<HTMLElement>(SEL)
-              .forEach((el) => candidates.add(el))
-          }
+          if (node.matches(SEL)) candidates.add(node)
+          // Always look inside as well: the added node may be a container
+          // whose card is the element nested in it (see the header).
+          node
+            .querySelectorAll<HTMLElement>(SEL)
+            .forEach((el) => candidates.add(el))
         }
+
+        // The card whose subtree this record changed, if it is inside one.
+        const around =
+          m.target instanceof Element ? m.target.closest(SEL) : null
+        if (around instanceof HTMLElement) enclosing.add(around)
 
         // Just flag that a removal happened; don't prune in the loop!
         if (m.removedNodes.length > 0) {
@@ -72,8 +100,11 @@ export function startObserver(mgr: VideoManager): MutationObserver {
       }
     }
 
-    // Process new/updated elements
-    candidates.forEach((el) => mgr.upsert(el))
+    // Process changed cards first, then new/updated elements.
+    enclosing.forEach((el) => mgr.upsert(el))
+    candidates.forEach((el) => {
+      if (!enclosing.has(el)) mgr.upsert(el)
+    })
 
     // Retry previously unresolved elements
     mgr.retryUnresolved()
@@ -92,7 +123,7 @@ export function startObserver(mgr: VideoManager): MutationObserver {
 
     // Notify debug layer of mutation activity
     notifyMutation()
-    observability()?.mutationBatch(candidates.size)
+    observability()?.mutationBatch(candidates.size + enclosing.size)
   })
 
   obs.observe(document.body, {

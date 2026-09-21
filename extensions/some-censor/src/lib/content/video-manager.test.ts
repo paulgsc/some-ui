@@ -26,6 +26,7 @@ import {
   stopObservability,
   type BoyoObservability,
 } from "./observability"
+import { occludedElements } from "./selectors"
 import { VideoManager } from "./video-manager"
 
 /**
@@ -74,6 +75,40 @@ function fillFullCard(el: HTMLElement, videoId: string, channel: string): void {
 function fullCard(videoId: string, channel: string): HTMLElement {
   const el = document.createElement("ytd-rich-item-renderer")
   fillFullCard(el, videoId, channel)
+  return el
+}
+
+/**
+ * The #1422 shape: a home-feed grid cell wrapping something that is not a
+ * video. No watch or shorts href anywhere, so nothing can ever resolve it.
+ */
+function adCell(): HTMLElement {
+  const el = document.createElement("ytd-rich-item-renderer")
+  el.innerHTML = `<ytd-ad-slot-renderer><div>sponsored</div></ytd-ad-slot-renderer>`
+  return el
+}
+
+/**
+ * A card the occluder hides — video-shaped, so the `:has()` guard matches —
+ * whose only watch href carries no parseable video id. The manager can never
+ * adopt it, and (unlike {@link adCell} since #1422) the stylesheet keeps
+ * occluding it: the residual, fail-closed orphan shape.
+ */
+function unparseableCard(): HTMLElement {
+  const el = document.createElement("ytd-rich-item-renderer")
+  el.innerHTML = '<a id="video-title" href="/watch?list=PL_only">t</a>'
+  return el
+}
+
+/**
+ * An element the occluder is hiding and that the manager is not tracking at
+ * all — the orphan shape every ORP story produces, and the one no queue can
+ * represent. Only meaningful when appended *after* any scan and never upserted:
+ * it is a perfectly good video card, so anything that sees it adopts it.
+ */
+function strandedCard(videoId: string): HTMLElement {
+  const el = document.createElement("ytd-rich-item-renderer")
+  el.innerHTML = `<a id="video-title" href="/watch?v=${videoId}"></a>`
   return el
 }
 
@@ -310,6 +345,343 @@ describe("giving up is revocable", () => {
     await passes(2)
 
     expect(mgr.size).toBe(1)
+  })
+})
+
+describe("a rich-item cell that is not a video (#1422)", () => {
+  // The occluder's condition for this tag, read from the catalogue rather than
+  // spelled here, so the assertion tracks the stylesheet.
+  function occludedByStylesheet(el: HTMLElement): boolean {
+    return occludedElements(document).includes(el)
+  }
+
+  it("is released from the queue within the budget and the loop stops", async () => {
+    // The reproduction from the issue. Before the fix `isVideoCard()` said
+    // true for the bare tag, the rejection branch was gated on `!isVideoCard`,
+    // and so the cell sat in `_unresolved` — and the 500ms scan() loop ran —
+    // for the life of the tab.
+    const el = adCell()
+    document.body.appendChild(el)
+
+    mgr.upsert(el)
+    expect(mgr.unresolvedSize, "queued while it might still hydrate").toBe(1)
+
+    await passes(BUDGET_PASSES * 3)
+
+    expect(mgr.unresolvedSize, "released once it clearly will not").toBe(0)
+    // Only the occlusion cadence survives (see "the retry loop" below); the
+    // retry interval is gone.
+    expect(vi.getTimerCount(), "the retry loop actually terminates").toBe(1)
+  })
+
+  it("is not re-queued by the next scan", async () => {
+    const el = adCell()
+    document.body.appendChild(el)
+    mgr.upsert(el)
+    await passes(BUDGET_PASSES + 1)
+    expect(mgr.unresolvedSize).toBe(0)
+
+    mgr.scan()
+    await passes(3)
+    expect(mgr.unresolvedSize, "sticky rejection").toBe(0)
+    expect(mgr.size, "and never adopted").toBe(0)
+  })
+
+  it("is not left under the occluder after release", async () => {
+    // The half that makes release safe rather than merely quiet: an element the
+    // stylesheet keeps blurring with no data-boyo is a dead, unclickable tile.
+    // The `:has()` guard the tag now carries is what keeps the rule off it.
+    const el = adCell()
+    document.body.appendChild(el)
+    mgr.upsert(el)
+    await passes(BUDGET_PASSES + 1)
+
+    expect(el.hasAttribute("data-boyo"), "not adopted").toBe(false)
+    expect(occludedByStylesheet(el), "and not occluded either").toBe(false)
+  })
+
+  it("is adopted after all if it later hydrates into a video", async () => {
+    const el = adCell()
+    document.body.appendChild(el)
+    mgr.upsert(el)
+    await passes(BUDGET_PASSES + 1)
+    expect(mgr.unresolvedSize, "rejected").toBe(0)
+
+    fillFullCard(el, "late_rich_1", "Chan")
+    // What the observer calls on the mutation batch that added the link.
+    mgr.recheckRejected()
+    await passes(2)
+
+    expect(mgr.size, "adopted once it is a video").toBe(1)
+    expect(el.getAttribute("data-boyo"), "and masked").toBe("0")
+  })
+
+  it("still occludes a real video cell before adoption", () => {
+    // The trade the guard makes, checked in the direction that matters: a
+    // cell that *is* a video must still be under the occluder at first paint.
+    const el = strandedCard("real_rich_1")
+    document.body.appendChild(el)
+    expect(occludedByStylesheet(el)).toBe(true)
+  })
+})
+
+describe("a cell that merely contains cards (#1504's own review)", () => {
+  // The home feed nests a `yt-lockup-view-model` inside a
+  // `ytd-rich-item-renderer` grid cell (#1426), and a shelf wraps a row of
+  // shorts the same way. The wrapper necessarily contains its children's
+  // watch links, so a link check alone would adopt it as one card with one
+  // veil over everything inside — and its `pointer-events: none` under the
+  // occluder would make the inner veils unclickable. The cards inside are
+  // the cards; the wrapper is neither adopted, queued, nor occluded.
+
+  function nestedCell(videoId: string): {
+    outer: HTMLElement
+    inner: HTMLElement
+  } {
+    const outer = document.createElement("ytd-rich-item-renderer")
+    outer.innerHTML = `
+      <yt-lockup-view-model>
+        <a class="yt-lockup-view-model__content-image" href="/watch?v=${videoId}"></a>
+        <a class="yt-content-metadata-view-model__metadata-text" href="/@Chan">Chan</a>
+      </yt-lockup-view-model>`
+    const inner = outer.firstElementChild
+    if (!(inner instanceof HTMLElement)) throw new Error("fixture")
+    return { outer, inner }
+  }
+
+  it("adopts the card inside, and not the wrapper, whichever is upserted first", async () => {
+    for (const order of ["outer-first", "inner-first"] as const) {
+      const { outer, inner } = nestedCell(`nested_${order}`)
+      document.body.appendChild(outer)
+
+      const [first, second] =
+        order === "outer-first" ? [outer, inner] : [inner, outer]
+      mgr.upsert(first)
+      mgr.upsert(second)
+      await passes(2)
+
+      expect(mgr.size, `${order}: one entry`).toBe(1)
+      expect(
+        inner.getAttribute("data-boyo"),
+        `${order}: the card is masked`
+      ).toBe("0")
+      expect(
+        outer.hasAttribute("data-boyo"),
+        `${order}: the wrapper is not adopted`
+      ).toBe(false)
+      expect(
+        occludedElements(document).includes(outer),
+        `${order}: and not occluded`
+      ).toBe(false)
+      expect(mgr.unresolvedSize, `${order}: and not queued`).toBe(0)
+
+      mgr.reset()
+      mgr.startSession()
+      document.body.innerHTML = ""
+    }
+  })
+
+  it("is found by a full scan the same way", async () => {
+    const { outer, inner } = nestedCell("nested_scan")
+    document.body.appendChild(outer)
+    mgr.scan()
+    await passes(2)
+
+    expect(mgr.size).toBe(1)
+    expect(inner.getAttribute("data-boyo")).toBe("0")
+    expect(outer.hasAttribute("data-boyo")).toBe(false)
+    expect(mgr.unresolvedSize, "nothing queued").toBe(0)
+  })
+
+  it("retires a card that is recycled into a wrapper", async () => {
+    // Bot-found on #1504's own review: an adopted cell handed a lockup by the
+    // virtualizer is a wrapper now. Its old entry must not survive — it would
+    // keep `data-boyo` on a non-card, and a repair or bulk advance would
+    // rebuild a veil over the whole cell.
+    const cell = fullCard("was_video", "Chan")
+    document.body.appendChild(cell)
+    mgr.upsert(cell)
+    await passes(1)
+    expect(cell.getAttribute("data-boyo"), "precondition: adopted").toBe("0")
+
+    const { inner } = nestedCell("now_nested")
+    cell.replaceChildren(inner)
+    mgr.upsert(cell)
+    mgr.upsert(inner)
+    await passes(2)
+
+    expect(cell.hasAttribute("data-boyo"), "the wrapper's stamp is gone").toBe(
+      false
+    )
+    expect(cell.querySelector(":scope > .boyo-veil"), "and its veil").toBeNull()
+    expect(mgr.size, "one entry, the lockup's").toBe(1)
+    expect(inner.getAttribute("data-boyo")).toBe("0")
+
+    mgr.advanceAllToTitle()
+    expect(
+      cell.querySelector(":scope > .boyo-veil"),
+      "a bulk advance cannot rebuild a veil on the wrapper"
+    ).toBeNull()
+  })
+
+  it("retires a card that is recycled into a non-video cell", async () => {
+    const cell = fullCard("was_video_2", "Chan")
+    document.body.appendChild(cell)
+    mgr.upsert(cell)
+    await passes(1)
+    expect(cell.getAttribute("data-boyo")).toBe("0")
+
+    cell.innerHTML = `<ytd-ad-slot-renderer><div>sponsored</div></ytd-ad-slot-renderer>`
+    mgr.upsert(cell)
+    await passes(1)
+
+    expect(cell.hasAttribute("data-boyo")).toBe(false)
+    expect(cell.querySelector(".boyo-veil")).toBeNull()
+    expect(mgr.size).toBe(0)
+    expect(mgr.unresolvedSize, "queued as a shell, under the budget").toBe(1)
+  })
+
+  it("discards a promotion still in flight when the element becomes a wrapper", async () => {
+    // The async half: the whitelist round trip for the cell is still pending
+    // when the virtualizer turns the cell into a wrapper. When it settles it
+    // must install nothing on the wrapper — the retirement bumps the claim
+    // token the in-flight call captured, so its own M6 check fails.
+    let settle: (r: { ok: boolean; whitelisted: boolean }) => void = () => {}
+    vi.mocked(browser.runtime.sendMessage).mockReturnValueOnce(
+      new Promise((resolve) => {
+        settle = resolve
+      })
+    )
+    const cell = fullCard("in_flight", "Chan")
+    document.body.appendChild(cell)
+    mgr.upsert(cell)
+    await passes(1)
+    expect(cell.hasAttribute("data-boyo"), "precondition: still awaiting").toBe(
+      false
+    )
+
+    const { inner } = nestedCell("in_flight_inner")
+    cell.replaceChildren(inner)
+    mgr.upsert(cell)
+    mgr.upsert(inner)
+    await passes(1)
+    expect(mgr.size, "the lockup is adopted meanwhile").toBe(1)
+
+    settle({ ok: true, whitelisted: false })
+    await passes(2)
+
+    expect(
+      cell.hasAttribute("data-boyo"),
+      "nothing mounted on the wrapper"
+    ).toBe(false)
+    expect(cell.querySelector(":scope > .boyo-veil")).toBeNull()
+    expect(mgr.size, "still just the lockup").toBe(1)
+  })
+
+  it("replaces a live entry whose element stopped being a card, in either order", async () => {
+    // The same video before and after the recycle (#1504's own review, round
+    // 4): the M2 shortcut — "an entry for this video exists, repair it" —
+    // must not fire for an owner that is a wrapper now, whichever of the two
+    // elements the observer happens to hand over first.
+    for (const order of ["inner-first", "outer-first"] as const) {
+      const cell = fullCard("same_x", "Chan")
+      document.body.appendChild(cell)
+      mgr.upsert(cell)
+      await passes(1)
+      expect(cell.getAttribute("data-boyo"), `${order}: precondition`).toBe("0")
+
+      const { inner } = nestedCell("same_x")
+      cell.replaceChildren(inner)
+      const [first, second] =
+        order === "inner-first" ? [inner, cell] : [cell, inner]
+      mgr.upsert(first)
+      mgr.upsert(second)
+      await passes(2)
+
+      expect(
+        inner.getAttribute("data-boyo"),
+        `${order}: the lockup is masked`
+      ).toBe("0")
+      expect(
+        cell.hasAttribute("data-boyo"),
+        `${order}: the cell's stamp is gone`
+      ).toBe(false)
+      expect(
+        cell.querySelector(":scope > .boyo-veil"),
+        `${order}: and its veil`
+      ).toBeNull()
+      expect(mgr.size, `${order}: one entry`).toBe(1)
+
+      mgr.reset()
+      mgr.startSession()
+      document.body.innerHTML = ""
+    }
+  })
+
+  it("drops a queued shell that turns into a wrapper", async () => {
+    // A cell YouTube fills in *after* the observer saw it empty: queued as a
+    // shell, then hydrated with a lockup. It is a wrapper now — the lockup
+    // is the card — so it leaves the queue without ever being rejected.
+    const outer = document.createElement("ytd-rich-item-renderer")
+    document.body.appendChild(outer)
+    mgr.upsert(outer)
+    expect(mgr.unresolvedSize, "queued while it might still hydrate").toBe(1)
+
+    const { inner } = nestedCell("nested_late")
+    outer.appendChild(inner)
+    mgr.upsert(inner)
+    await passes(2)
+
+    expect(mgr.unresolvedSize, "the wrapper left the queue").toBe(0)
+    expect(mgr.size, "and the card inside is the entry").toBe(1)
+    expect(inner.getAttribute("data-boyo")).toBe("0")
+    expect(outer.hasAttribute("data-boyo")).toBe(false)
+  })
+})
+
+describe("a video-shaped card whose href has no parseable id", () => {
+  // The residual case the budget's old video-shaped exemption was protecting:
+  // the stylesheet occludes it, and the manager cannot resolve it. Giving up
+  // is still right — the alternative is the loop running forever — and the
+  // card stays occluded, which is the fail-closed answer. `OccluderReleases`
+  // is what reports it (see the #1425 suite).
+
+  it("is rejected at budget rather than retried forever", async () => {
+    const el = unparseableCard()
+    document.body.appendChild(el)
+    mgr.upsert(el)
+    expect(mgr.unresolvedSize).toBe(1)
+
+    await passes(BUDGET_PASSES * 3)
+
+    expect(mgr.unresolvedSize, "budget applies to it too").toBe(0)
+    expect(vi.getTimerCount(), "and the loop stops").toBe(1)
+    expect(mgr.size, "never adopted").toBe(0)
+    expect(
+      occludedElements(document).includes(el),
+      "fails closed: still occluded, and reported by OccluderReleases"
+    ).toBe(true)
+  })
+
+  it("is not revived on shape alone, only once extraction would succeed", async () => {
+    // Reviving on `isVideoCard()` alone would re-queue it, spend a fresh
+    // budget, reject it again, and so on — the loop reappearing by another
+    // route.
+    const el = unparseableCard()
+    document.body.appendChild(el)
+    mgr.upsert(el)
+    await passes(BUDGET_PASSES + 1)
+    expect(mgr.unresolvedSize).toBe(0)
+
+    for (let i = 0; i < 50; i++) mgr.recheckRejected()
+    expect(mgr.unresolvedSize, "no re-queue").toBe(0)
+
+    el.innerHTML = '<a id="video-title" href="/watch?v=parseable_1">t</a>'
+    mgr.recheckRejected()
+    await passes(2)
+
+    expect(mgr.size, "adopted once an id appears").toBe(1)
+    expect(el.getAttribute("data-boyo")).toBe("0")
   })
 })
 
@@ -723,13 +1095,13 @@ describe("OccluderReleases sees what the queues cannot (#1425)", () => {
   })
 
   it("reports a card left under the occluder that no queue is tracking", async () => {
-    // The #1422 shape, which is also the shape of every ORP defect: a
-    // ytd-rich-item-renderer with no video link anywhere. The occluder matches
-    // it on the bare tag, `isVideoCard()` says true unconditionally, so the
-    // rejection path never fires and it is never released — while the manager
-    // reports a perfectly consistent empty queue.
-    const el = document.createElement("ytd-rich-item-renderer")
-    el.innerHTML = `<ytd-ad-slot-renderer><div>sponsored</div></ytd-ad-slot-renderer>`
+    // The residual orphan shape once #1422 is fixed: a video-shaped cell whose
+    // watch href carries no parseable id. The occluder's `:has()` guard
+    // matches it, extraction never succeeds, the budget rejects it — and the
+    // rejection is exactly what empties every queue. The manager then reports
+    // a perfectly consistent empty queue while the card stays blurred, which
+    // is the population this invariant exists to see.
+    const el = unparseableCard()
     document.body.appendChild(el)
 
     mgr.upsert(el)
@@ -776,8 +1148,7 @@ describe("OccluderReleases sees what the queues cannot (#1425)", () => {
     // the only way to get one: anything scan() sees, it queues. In the
     // extension this is a card whose data-boyo was dropped by a teardown the
     // observer did not turn into a signal (#1423), not a literal late append.
-    const stranded = document.createElement("ytd-rich-item-renderer")
-    stranded.innerHTML = `<ytd-ad-slot-renderer><div>sponsored</div></ytd-ad-slot-renderer>`
+    const stranded = strandedCard("stranded_1")
     document.body.appendChild(stranded)
 
     expect(
@@ -830,8 +1201,7 @@ describe("OccluderReleases sees what the queues cannot (#1425)", () => {
 
   it("does sample a page that does have something occluded", async () => {
     // The other half, so the test above cannot pass by the cadence being dead.
-    const stranded = document.createElement("ytd-rich-item-renderer")
-    stranded.innerHTML = `<ytd-ad-slot-renderer><div>sponsored</div></ytd-ad-slot-renderer>`
+    const stranded = strandedCard("stranded_1")
     document.body.appendChild(stranded)
 
     const before = obs.recorder.metrics.counter("health_samples")
@@ -850,8 +1220,7 @@ describe("OccluderReleases sees what the queues cannot (#1425)", () => {
     // `invariant.recovered` and replaces the violated snapshot. Skip that one
     // and a healed violation sits on the diagnostics page forever: this
     // invariant's own stuck-report failure, with the sign flipped.
-    const stranded = document.createElement("ytd-rich-item-renderer")
-    stranded.innerHTML = `<ytd-ad-slot-renderer><div>sponsored</div></ytd-ad-slot-renderer>`
+    const stranded = strandedCard("stranded_1")
     document.body.appendChild(stranded)
 
     await vi.advanceTimersByTimeAsync(OCCLUSION_GRACE_MS * 3)
@@ -1063,14 +1432,9 @@ describe("advance-all reports what it did not advance (#1424)", () => {
     return last === undefined ? undefined : numericDetail(last.detail)
   }
 
-  /**
-   * An element the occluder matches on its bare tag and that the manager is
-   * not tracking at all — the orphan shape every ORP story produces, and the
-   * one no queue can represent.
-   */
+  /** See {@link strandedCard}: appended after the scan, never upserted. */
   function orphan(): HTMLElement {
-    const el = document.createElement("ytd-rich-item-renderer")
-    el.innerHTML = `<ytd-ad-slot-renderer><div>sponsored</div></ytd-ad-slot-renderer>`
+    const el = strandedCard("orphan_1")
     document.body.appendChild(el)
     return el
   }
@@ -1107,11 +1471,11 @@ describe("advance-all reports what it did not advance (#1424)", () => {
   })
 
   it("does not count a queued card twice, as both unresolved and occluded", () => {
-    // The card is video-shaped but not yet extractable, so it sits in
+    // The card is video-shaped but not extractable, so it sits in
     // _unresolved — and it is occluded too, because the occluder is exactly
     // what hides a card until adoption. Reporting it in both buckets would
     // make the skipped total say two cards where there is one.
-    const el = document.createElement("ytd-rich-item-renderer")
+    const el = unparseableCard()
     document.body.appendChild(el)
     mgr.upsert(el)
 

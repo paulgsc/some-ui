@@ -419,7 +419,7 @@ export const boyoInvariants: ReadonlyArray<Invariant<BoyoContext>> = [
   {
     name: "OccludedCardResolves",
     description:
-      "No video-shaped element sits in the unresolved queue past RESOLVE_BUDGET_MS. retryUnresolved() exempts video-shaped elements from the budget deliberately — the pre-mask rule is occluding them, so giving up would leave a permanently blurred card — on the stated assumption that such an element 'cannot spin either, being video-shaped means it has a watch or shorts href, which is the very thing extractVideoId reads'. This checks that assumption instead of trusting it.",
+      "No video-shaped element sits in the unresolved queue past RESOLVE_BUDGET_MS. retryUnresolved() used to exempt video-shaped elements from the budget on the assumption that such an element 'cannot spin either, being video-shaped means it has a watch or shorts href, which is the very thing extractVideoId reads' — an assumption that failed for the one tag isVideoCard() accepted unconditionally (#1422). The budget now binds every queued element, so a violation here means the budget itself has stopped being applied; a video-shaped element rejected at budget and still occluded is OccluderReleases's to report.",
     check: (ctx): InvariantOutcome => {
       if (ctx.phase !== "running") return { ok: "unknown" }
       const deadline = ctx.resolveBudgetMs + RESOLVE_GRACE_MS
