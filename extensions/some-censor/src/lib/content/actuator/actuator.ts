@@ -95,6 +95,18 @@ type InlineDeclaration = {
   priority: string
 }
 
+function positionOf(el: HTMLElement): InlineDeclaration {
+  return {
+    value: el.style.getPropertyValue("position"),
+    priority: el.style.getPropertyPriority("position"),
+  }
+}
+
+/** Exactly the declaration A1 writes — and nothing the vendor would. */
+function isAnchoring(d: InlineDeclaration): boolean {
+  return d.value === "relative" && d.priority === ""
+}
+
 export function createActuator(ports: ActuatorPorts): Actuator {
   const realized = new Map<CardKey, Realized>()
   const owner = new WeakMap<HTMLElement, CardKey>()
@@ -135,15 +147,15 @@ export function createActuator(ports: ActuatorPorts): Actuator {
 
   /**
    * A1's write, undone: the inline position the element had is restored —
-   * unless the inline value is no longer the `relative` this module wrote,
-   * in which case the vendor has taken the property back since and its
-   * value stays.
+   * unless the inline declaration is no longer the one this module wrote
+   * (`relative`, no priority), in which case the vendor has taken the
+   * property back since and its declaration stays.
    */
   function unanchor(el: HTMLElement): void {
     const prior = anchored.get(el)
     if (prior === undefined) return
     anchored.delete(el)
-    if (el.style.position !== "relative") return
+    if (!isAnchoring(positionOf(el))) return
     el.style.setProperty("position", prior.value, prior.priority)
     if (el.getAttribute("style") === "") el.removeAttribute("style")
   }
@@ -253,12 +265,10 @@ export function createActuator(ports: ActuatorPorts): Actuator {
       // for the element (a bare test document) reports for `static`.
       const position = getComputedStyle(el).position
       if (position === "static" || position === "") {
-        if (!anchored.has(el)) {
-          anchored.set(el, {
-            value: el.style.getPropertyValue("position"),
-            priority: el.style.getPropertyPriority("position"),
-          })
-        }
+        // What is written over is what will be restored: the vendor may
+        // have taken the property back since the last anchoring.
+        const current = positionOf(el)
+        if (!isAnchoring(current)) anchored.set(el, current)
         el.style.position = "relative"
       }
       el.dataset["boyoVid"] = videoId

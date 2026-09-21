@@ -339,6 +339,27 @@ describe("unmount (A4)", () => {
     expect(el.style.getPropertyPriority("position")).toBe("important")
   })
 
+  it("keeps a vendor's `relative !important` written over the anchoring", () => {
+    const el = card()
+    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
+    el.style.setProperty("position", "relative", "important")
+    actuator.realize([unmount(K)])
+    expect(el.style.getPropertyValue("position")).toBe("relative")
+    expect(el.style.getPropertyPriority("position")).toBe("important")
+  })
+
+  it("re-anchoring over a value the vendor took back restores that value", () => {
+    const el = card()
+    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
+    el.style.position = "static"
+    actuator.realize([render(K, META, [{ el, role: "anchor" }])])
+    expect(el.style.position, "anchored again").toBe("relative")
+    actuator.realize([unmount(K)])
+    expect(el.style.position, "the vendor's later static, not none").toBe(
+      "static"
+    )
+  })
+
   it("keeps an inline position the vendor wrote after the anchoring", () => {
     const el = card()
     actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
