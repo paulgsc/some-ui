@@ -68,6 +68,8 @@ import {
 } from "@some-extension/common/observability"
 
 import type { ViewState } from "./fsm"
+import type { BoyoSurface } from "./layout/surface"
+import { surfaceOf } from "./layout/surface"
 
 // ── Vocabulary ───────────────────────────────────────────────────────────────
 
@@ -215,46 +217,8 @@ const ENTRY_COUNTER: Readonly<Record<ViewState["kind"], BoyoCounter>> = {
 
 // ── Surfaces ─────────────────────────────────────────────────────────────────
 
-/**
- * The YouTube surface a recording is about, derived from the path alone.
- *
- * These are exactly the surfaces QC2 (#1384) requires its corpus to be built
- * from ("Home, Search, watch sidebar, playlist, Shorts"), which is why the
- * raw date strings are bucketed by them: "3 days ago" on Home and
- * "Streamed 2 hours ago" in a watch sidebar are different parser cases, and a
- * corpus that loses which surface a form came from cannot say which.
- *
- * Derived from `pathname` only — never the query string. A watch URL's `?v=`
- * is a video id and `?search_query=` is the user's own words; neither is
- * something a diagnostics bundle has any business carrying (#1382).
- */
-export type BoyoSurface =
-  | "home"
-  | "search"
-  | "watch"
-  | "playlist"
-  | "shorts"
-  | "channel"
-  | "subscriptions"
-  | "other"
-
-export function surfaceOf(pathname: string): BoyoSurface {
-  if (pathname === "/") return "home"
-  if (pathname === "/results") return "search"
-  if (pathname === "/watch") return "watch"
-  if (pathname === "/playlist") return "playlist"
-  if (pathname.startsWith("/shorts/")) return "shorts"
-  if (pathname === "/feed/subscriptions") return "subscriptions"
-  if (
-    pathname.startsWith("/@") ||
-    pathname.startsWith("/channel/") ||
-    pathname.startsWith("/c/") ||
-    pathname.startsWith("/user/")
-  ) {
-    return "channel"
-  }
-  return "other"
-}
+export type { BoyoSurface } from "./layout/surface"
+export { surfaceOf } from "./layout/surface"
 
 // ── Invariants ───────────────────────────────────────────────────────────────
 
