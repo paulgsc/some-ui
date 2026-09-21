@@ -572,11 +572,12 @@ function reobserve(
   // answer, and the transition asks again under the channel the card has
   // now, from the observed title rather than a translation made for the
   // wrong channel. The user's own step, so provenance stays the user's.
-  if (
-    reopened !== null &&
-    next.view.kind === "title" &&
-    next.view.title.text !== ""
-  ) {
+  // Gated on the view alone, not on the text it shows: a hook may answer
+  // with an empty string, and that answer is as stale as any other
+  // (bot-found, #1506's own review). `transition()` retires the old answer
+  // by version either way and asks again only when there is a title to ask
+  // about.
+  if (reopened !== null && next.view.kind === "title") {
     const retitled = transition(setCard(state, next), next, {
       ...next.view,
       title: {

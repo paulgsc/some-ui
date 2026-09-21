@@ -823,6 +823,47 @@ describe("a title transform in flight when the channel changes (#1506's own revi
   })
 })
 
+describe("an empty transform result is as stale as any other (#1506's own review, round 7)", () => {
+  it("re-issues the title step even when the old channel's hook answered with an empty string", () => {
+    const base = fold([
+      started,
+      seenA,
+      { kind: "gesture", key: K, gesture: "click", t: 2 },
+      { kind: "gesture", key: K, gesture: "click", t: 3 },
+      {
+        kind: "title-transformed",
+        key: K,
+        generation: 0,
+        version: 2,
+        text: "",
+        translated: true,
+        t: 4,
+      },
+    ])
+    const shown = base.state.cards.get(K)
+    expect(shown?.view.kind === "title" && shown.view.title.text).toBe("")
+
+    const changed = reduce(base.state, {
+      kind: "observed",
+      key: K,
+      observation: observation("vid_a", {
+        channelId: asChannelId("@canonical"),
+      }),
+      t: 5,
+    })
+    expect(changed.state.cards.get(K)).toMatchObject({
+      version: 3,
+      view: {
+        kind: "title",
+        title: { text: "Title of vid_a", translated: false },
+      },
+    })
+    expect(
+      changed.actions.filter((a) => a.kind === "transform-title")
+    ).toHaveLength(1)
+  })
+})
+
 describe("a title transform's fallback (#1506's own review)", () => {
   it("keeps the title untranslated when the hook handed the original back", () => {
     const base = fold([
