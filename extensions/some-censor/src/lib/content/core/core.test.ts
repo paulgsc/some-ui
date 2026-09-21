@@ -462,6 +462,96 @@ describe("the disclosure ladder", () => {
   })
 })
 
+describe("a channel that changes on re-observation (#1506's own review)", () => {
+  const canonical = asChannelId("@canonical")
+  const seenCanonical: CoreEvent = {
+    kind: "observed",
+    key: K,
+    observation: observation("vid_a", { channelId: canonical }),
+    t: 2,
+  }
+
+  it("asks again under the new id, and lets the old id's answer go stale", () => {
+    const { state, actions } = fold([started, seenA, seenCanonical])
+    expect(state.cards.get(K)?.channel).toEqual({
+      kind: "pending",
+      channelId: "@canonical",
+      since: 2,
+    })
+    expect(
+      actions.flatMap((a) =>
+        a.kind === "query-whitelist" ? [a.channelId] : []
+      )
+    ).toEqual(["@chan", "@canonical"])
+
+    // The lookup for the display-name id settles now, whitelisted — it must
+    // not reveal a card whose channel is no longer that.
+    const old = reduce(state, {
+      kind: "whitelist-answer",
+      key: K,
+      generation: 0,
+      channelId: asChannelId("@chan"),
+      whitelisted: true,
+      t: 3,
+    })
+    expect(kinds(old.actions)).toEqual(["record:stale.discarded"])
+    expect(viewOf(old.state)).toBe("masked")
+
+    const fresh = reduce(old.state, {
+      kind: "whitelist-answer",
+      key: K,
+      generation: 0,
+      channelId: canonical,
+      whitelisted: true,
+      t: 4,
+    })
+    expect(fresh.state.cards.get(K)?.channel).toMatchObject({
+      kind: "known",
+      channelId: "@canonical",
+      whitelisted: true,
+    })
+    expect(viewOf(fresh.state)).toBe("whitelisted")
+  })
+
+  it("re-opens the question for a card already answered under the old id, without touching its view", () => {
+    const { state, actions } = fold([
+      started,
+      seenA,
+      {
+        kind: "whitelist-answer",
+        key: K,
+        generation: 0,
+        channelId: asChannelId("@chan"),
+        whitelisted: false,
+        t: 2,
+      },
+      { kind: "gesture", key: K, gesture: "click", t: 3 },
+      { ...seenCanonical, t: 4 },
+    ])
+    expect(state.cards.get(K)?.channel).toMatchObject({
+      kind: "pending",
+      channelId: "@canonical",
+    })
+    expect(viewOf(state), "Entry-4: the view is not reset").toBe("meta")
+    expect(actions.filter((a) => a.kind === "query-whitelist")).toHaveLength(2)
+  })
+
+  it("does not ask again for the same channel, nor for a channel a later observation lost", () => {
+    const { actions } = fold([
+      started,
+      seenA,
+      seenA,
+      {
+        kind: "observed",
+        key: K,
+        observation: observation("vid_a", { channelId: null }),
+        t: 3,
+      },
+    ])
+    expect(actions.filter((a) => a.kind === "query-whitelist")).toHaveLength(1)
+  })
+})
+
 describe("a title transform's fallback (#1506's own review)", () => {
   it("keeps the title untranslated when the hook handed the original back", () => {
     const base = fold([

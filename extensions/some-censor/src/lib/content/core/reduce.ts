@@ -474,8 +474,14 @@ function reobserve(
   const videoId = keyVideoId(card.key)
 
   // A channel arriving late upgrades a provisional card (Entry-4): ask the
-  // background about it now, once.
-  if (card.channel.kind === "unknown" && merged.channelId !== null) {
+  // background about it now, once. A channel *changing* — the extractor fell
+  // back to a display name and a later observation carries the hydrated
+  // canonical handle (bot-found, #1506's own review) — is the same question
+  // asked afresh: the card goes back to pending under the new id, so the
+  // answer still in flight for the old one is stale by the channel check in
+  // `whitelist-answer`, and a verdict that only ever named the old id cannot
+  // reveal the card. The view is left alone (Entry-4).
+  if (merged.channelId !== null && channelIdOf(card) !== merged.channelId) {
     next = {
       ...next,
       channel: { kind: "pending", channelId: merged.channelId, since: t },
