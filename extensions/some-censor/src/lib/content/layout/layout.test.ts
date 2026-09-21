@@ -10,18 +10,14 @@
 
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
-import { VIDEO_SELECTORS } from "@censor/lib/content/selectors"
+import type { CardKind } from "@censor/lib/content/selectors"
 import { describe, expect, it } from "vitest"
 
 import { fingerprintInput, FIXTURE_TARGETS } from "./crawl-input"
 import { fingerprintSurface, mergeLayouts } from "./fingerprint"
 import { YOUTUBE_LAYOUT } from "./generated/youtube-layout"
-import {
-  classifyShape,
-  declaredOuters,
-  resolveSurface,
-  tableStatus,
-} from "./lookup"
+import { classifyShape, resolveSurface, tableStatus } from "./lookup"
+import type { ObservedNode } from "./lookup"
 import { isLayoutTable, LAYOUT_SCHEMA_VERSION } from "./schema"
 import type { LayoutTable, SurfaceLayout } from "./schema"
 import { surfaceOf } from "./surface"
@@ -149,13 +145,11 @@ describe("assembleTable", () => {
     expect(table.surfaces["*"]).toEqual(mergeLayouts("*", [home, watch]))
     expect(resolveSurface(table, "subscriptions").kind).toBe("fallback")
     expect(
-      classifyShape(
-        table,
-        VIDEO_SELECTORS,
-        "subscriptions",
-        "ytd-rich-item-renderer",
-        null
-      )
+      classifyShape(table, "subscriptions", {
+        tag: "ytd-rich-item-renderer",
+        card: "card",
+        outer: null,
+      })
     ).toEqual({ kind: "anchor" })
   })
 
@@ -240,6 +234,7 @@ describe("the instrument", () => {
     )
     const outer = layout.shapes.find((s) => s.tag === "ytd-rich-item-renderer")
     expect(outer?.withVideoLink, "both cells contain a watch href").toBe(2)
+    expect(outer?.withChildCard, "only one cell wraps another card").toBe(1)
     expect(
       outer?.fields.title,
       "only the Polymer one has a title node"
@@ -269,13 +264,14 @@ describe("the instrument", () => {
 describe("classifyShape", () => {
   const table = CHECKED_IN
   const classify = (
-    surface: Parameters<typeof classifyShape>[2],
+    surface: Parameters<typeof classifyShape>[1],
     tag: string,
-    outer: string | null
+    outer: string | null,
+    card: CardKind = "card"
   ): ReturnType<typeof classifyShape> =>
-    classifyShape(table, VIDEO_SELECTORS, surface, tag, outer)
+    classifyShape(table, surface, { tag, card, outer })
 
-  it("answers anchor, nested, or not-card from the table alone", () => {
+  it("answers anchor or nested for a card, from the table alone", () => {
     expect(classify("home", "ytd-rich-item-renderer", null)).toEqual({
       kind: "anchor",
     })
@@ -285,8 +281,26 @@ describe("classifyShape", () => {
     expect(classify("home", "yt-lockup-view-model", null)).toEqual({
       kind: "anchor",
     })
-    expect(classify("home", "div", null)).toEqual({ kind: "not-card" })
-    expect(classify("home", "ytd-ad-slot-renderer", null)).toEqual({
+  })
+
+  it("never says anchor without the card guard — a polymorphic tag's ad, shell or container occurrence is what classifyCard() said, whatever the table holds (#1505's own review)", () => {
+    // The home fingerprint records rich items that are anchors by ancestry
+    // and yet not cards; the table cannot tell them apart, so the verdict
+    // comes in as an argument and the table is not consulted for it.
+    const rich = table.surfaces.home?.shapes.find(
+      (s) => s.tag === "ytd-rich-item-renderer" && s.role === "anchor"
+    )
+    expect(rich?.count).toBeGreaterThan(rich?.withVideoLink ?? 0)
+    expect(rich?.withChildCard).toBeGreaterThan(0)
+
+    expect(
+      classify("home", "ytd-rich-item-renderer", null, "container")
+    ).toEqual({ kind: "container" })
+    expect(classify("home", "ytd-rich-item-renderer", null, "shell")).toEqual({
+      kind: "shell",
+    })
+    expect(classify("home", "div", null, "none")).toEqual({ kind: "not-card" })
+    expect(classify("home", "ytd-ad-slot-renderer", null, "none")).toEqual({
       kind: "not-card",
     })
   })
@@ -297,10 +311,6 @@ describe("classifyShape", () => {
       kind: "unknown",
       reason: "tag-unseen",
     })
-    // Seen on the surface, but never inside this outer tag.
-    expect(
-      classify("home", "yt-lockup-view-model", "ytd-compact-video-renderer")
-    ).toEqual({ kind: "unknown", reason: "unexpected-outer" })
     // Seen only nested on a surface with no anchor occurrence at all.
     const nestedOnly: LayoutTable = {
       ...table,
@@ -315,14 +325,30 @@ describe("classifyShape", () => {
       },
     }
     expect(
-      classifyShape(
-        nestedOnly,
-        VIDEO_SELECTORS,
-        "home",
-        "yt-lockup-view-model",
-        null
-      )
+      classifyShape(nestedOnly, "home", {
+        tag: "yt-lockup-view-model",
+        card: "card",
+        outer: null,
+      })
     ).toEqual({ kind: "unknown", reason: "nested-without-outer" })
+  })
+
+  it("reports a parent the crawl never declared as unexpected-outer — which is why the Sensor must confirm the outer against the whole catalogue, not the table's declared parents (#1505's own review)", () => {
+    // yt-lockup-view-model has an anchor shape on home. Had the Sensor asked
+    // closest() only for the parents the table declares, a new parent would
+    // have come back null and this node would have passed as that anchor.
+    const node: ObservedNode = {
+      tag: "yt-lockup-view-model",
+      card: "card",
+      outer: "ytd-compact-video-renderer",
+    }
+    expect(classifyShape(table, "home", node)).toEqual({
+      kind: "unknown",
+      reason: "unexpected-outer",
+    })
+    expect(classifyShape(table, "home", { ...node, outer: null })).toEqual({
+      kind: "anchor",
+    })
   })
 
   it("falls back to the union for a surface the crawl never visited", () => {
@@ -337,21 +363,12 @@ describe("classifyShape", () => {
     const empty: LayoutTable = { ...table, surfaces: {} }
     expect(resolveSurface(empty, "home")).toEqual({ kind: "none" })
     expect(
-      classifyShape(
-        empty,
-        VIDEO_SELECTORS,
-        "home",
-        "ytd-rich-item-renderer",
-        null
-      )
+      classifyShape(empty, "home", {
+        tag: "ytd-rich-item-renderer",
+        card: "card",
+        outer: null,
+      })
     ).toEqual({ kind: "unknown", reason: "surface-uncrawled" })
-  })
-
-  it("names the outer tags a Sensor should confirm with closest()", () => {
-    expect(declaredOuters(table, "home", "yt-lockup-view-model")).toEqual([
-      "ytd-rich-item-renderer",
-    ])
-    expect(declaredOuters(table, "home", "ytd-rich-item-renderer")).toEqual([])
   })
 })
 

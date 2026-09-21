@@ -14,6 +14,15 @@ runtime. When the table has no answer, the Sensor emits `UnknownShape` — a
 state, not an error (B4) — and counts it. That counter is this table's
 staleness signal.
 
+The table describes **shape**, not card-ness. A top-level catalogue tag can be
+an ad slot, a skeleton, or a cell wrapping another card (`withChildCard`), and
+only `../selectors.ts`'s `classifyCard()` — the same predicate the pre-mask
+stylesheet spells — decides which. `classifyShape` therefore takes that
+verdict as an argument and consults the table only for a `card`; and the
+enclosing tag it is handed must come from `closest()` over the whole
+catalogue, exactly as the fingerprint walks it, so a parent YouTube adds after
+the crawl shows up as `unexpected-outer` rather than passing as an anchor.
+
 ## Never edit it by hand
 
 A hand-written shape can describe a DOM the vendor does not serve, and the
@@ -53,6 +62,9 @@ committing.
 
 - A shape gaining or losing `outer` entries is a nesting change — the class
   of drift that produced #1426.
+- `withChildCard` rising on an anchor shape means more of that tag's
+  occurrences are cells around another card than cards themselves; the
+  nested shape it wraps should be gaining in step.
 - A `fields` list shrinking means an extraction selector stopped matching on
   that surface; the extractor in `../extract/` will start returning `null`
   there.

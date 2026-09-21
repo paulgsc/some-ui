@@ -2,15 +2,35 @@
  * Reading the layout table (BC1, #1434): the questions a Sensor asks of it,
  * answered from data alone.
  *
- * Pure. Nothing here touches a node; the Sensor (BC2) supplies the tag it
- * observed and the enclosing catalogue tag it *confirmed* (one table-directed
- * `closest()`, never an open-ended walk), and gets back a classification —
+ * Pure. Nothing here touches a node; the Sensor (BC2) supplies what it
+ * observed — the tag, `classifyCard()`'s verdict on the element, and the
+ * enclosing catalogue tag it *confirmed* — and gets back a classification,
  * including the explicit "I do not know" the Boundary Contract's B4 requires
  * be a state rather than an exception.
+ *
+ * Two rules the arguments encode, both bot-found (#1505's own review):
+ *
+ *   - The table describes *shape* (how catalogue tags sit on a surface), not
+ *     card-ness. A top-level `ytd-rich-item-renderer` may be an ad slot, a
+ *     skeleton, or a cell wrapping a `yt-lockup-view-model`; the checked-in
+ *     home fingerprint records exactly that (6 rich items, 5 with a video
+ *     link). So {@link classifyShape} takes `classifyCard()`'s verdict and
+ *     only consults the table for a `"card"` — `anchor` is unreachable
+ *     without the polymorphic guard the pre-mask stylesheet also spells.
+ *   - `outer` must be the nearest enclosing catalogue tag found with
+ *     `closest()` over the **whole** catalogue — the same walk the fingerprint
+ *     performs — never over the parents the table already declares. A
+ *     lookup directed only at declared parents would report `null` for a
+ *     parent YouTube introduced after the crawl, and a tag with an anchor
+ *     shape would then be accepted as one: the very drift this table's
+ *     `unknown_shape` counter exists to surface, made invisible.
  */
 
+import type { CardKind } from "@censor/lib/content/selectors"
+import { assertNever } from "@some-extension/common"
+
 import { LAYOUT_SCHEMA_VERSION } from "./schema"
-import type { LayoutTable, SurfaceLayout, TagShape } from "./schema"
+import type { LayoutTable, SurfaceLayout } from "./schema"
 import type { BoyoSurface } from "./surface"
 
 /** Whether a Sensor built against this module can read a given table. */
@@ -51,6 +71,18 @@ export function resolveSurface(
   return { kind: "none" }
 }
 
+/** What the Sensor observed about one element, as data. */
+export type ObservedNode = {
+  readonly tag: string
+  /** `classifyCard()`'s verdict — the polymorphic guard, made a parameter. */
+  readonly card: CardKind
+  /**
+   * The nearest enclosing catalogue tag, confirmed with `closest()` over the
+   * whole catalogue, or `null` when there is none.
+   */
+  readonly outer: string | null
+}
+
 /**
  * What a freshly observed node is, per the table.
  *
@@ -61,6 +93,10 @@ export function resolveSurface(
 export type ShapeClassification =
   | { readonly kind: "anchor" }
   | { readonly kind: "nested"; readonly outer: string }
+  /** A catalogue tag wrapping another catalogue card: the inner one is the card. */
+  | { readonly kind: "container" }
+  /** A catalogue tag with no video link yet. */
+  | { readonly kind: "shell" }
   /** Not a catalogue tag at all — nothing the extension tracks. */
   | { readonly kind: "not-card" }
   | { readonly kind: "unknown"; readonly reason: UnknownShapeReason }
@@ -76,56 +112,51 @@ export type UnknownShapeReason =
   | "unexpected-outer"
 
 /**
- * Classify `(surface, tag, outer)`.
+ * Classify one observed node against the table.
  *
- * `outer` is the nearest enclosing catalogue tag the Sensor confirmed, or
- * `null` when it confirmed there is none. `catalogue` is the set of tags the
- * extension tracks at all (`VIDEO_SELECTORS`), passed in so this module
- * stays a function of its arguments.
+ * The card verdict is answered first and without the table: a container,
+ * shell, or non-catalogue element is what `classifyCard()` said it is,
+ * whatever shapes the table holds. Only a `"card"` is placed by shape.
  */
 export function classifyShape(
   table: LayoutTable,
-  catalogue: ReadonlyArray<string>,
   surface: BoyoSurface,
-  tag: string,
-  outer: string | null
+  node: ObservedNode
 ): ShapeClassification {
-  if (!catalogue.includes(tag)) return { kind: "not-card" }
+  switch (node.card) {
+    case "none": {
+      return { kind: "not-card" }
+    }
+    case "container": {
+      return { kind: "container" }
+    }
+    case "shell": {
+      return { kind: "shell" }
+    }
+    case "card": {
+      break
+    }
+    default: {
+      return assertNever(node.card)
+    }
+  }
 
   const resolved = resolveSurface(table, surface)
   if (resolved.kind === "none") {
     return { kind: "unknown", reason: "surface-uncrawled" }
   }
 
-  const seen = resolved.layout.shapes.filter((s) => s.tag === tag)
+  const seen = resolved.layout.shapes.filter((s) => s.tag === node.tag)
   if (seen.length === 0) return { kind: "unknown", reason: "tag-unseen" }
 
-  if (outer === null) {
+  if (node.outer === null) {
     return seen.some((s) => s.role === "anchor")
       ? { kind: "anchor" }
       : { kind: "unknown", reason: "nested-without-outer" }
   }
 
+  const outer = node.outer
   return seen.some((s) => s.role === "nested" && s.outer === outer)
     ? { kind: "nested", outer }
     : { kind: "unknown", reason: "unexpected-outer" }
-}
-
-/**
- * The outer tags a given tag has ever been seen nested inside, on a surface.
- * What the Sensor hands to `closest()` — so the walk is directed at the
- * table's declared parents and nothing else.
- */
-export function declaredOuters(
-  table: LayoutTable,
-  surface: BoyoSurface,
-  tag: string
-): ReadonlyArray<string> {
-  const resolved = resolveSurface(table, surface)
-  if (resolved.kind === "none") return []
-  const outers = resolved.layout.shapes
-    .filter((s: TagShape) => s.tag === tag && s.role === "nested")
-    .map((s) => s.outer)
-    .filter((o): o is string => o !== null)
-  return [...new Set(outers)].sort()
 }

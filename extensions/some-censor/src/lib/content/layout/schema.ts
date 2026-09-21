@@ -46,6 +46,14 @@ export type TagShape = {
   readonly count: number
   /** How many of `count` contained a watch or shorts href anywhere. */
   readonly withVideoLink: number
+  /**
+   * How many of `count` contained another catalogue tag — a cell wrapping a
+   * card rather than being one (`classifyCard()`'s `container`). Recorded so
+   * the table carries the polymorphic facts the runtime guard turns on, not
+   * ancestry alone: `count − withVideoLink` is the shell/ad population of a
+   * shape, `withChildCard` its container population.
+   */
+  readonly withChildCard: number
   /** How many of `count` carried an authoritative `data-video-id`. */
   readonly withDataVideoId: number
   /**
@@ -104,6 +112,7 @@ function isTagShape(value: unknown): value is TagShape {
     return false
   if (typeof value["count"] !== "number") return false
   if (typeof value["withVideoLink"] !== "number") return false
+  if (typeof value["withChildCard"] !== "number") return false
   if (typeof value["withDataVideoId"] !== "number") return false
   const fields = value["fields"]
   if (!isRecord(fields)) return false

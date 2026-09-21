@@ -34,6 +34,7 @@ type Bucket = {
   outer: string | null
   count: number
   withVideoLink: number
+  withChildCard: number
   withDataVideoId: number
   fields: Record<CardField, Set<number>>
 }
@@ -83,6 +84,7 @@ export function fingerprintSurface(
         outer,
         count: 0,
         withVideoLink: 0,
+        withChildCard: 0,
         withDataVideoId: 0,
         fields: {
           title: new Set(),
@@ -96,6 +98,10 @@ export function fingerprintSurface(
 
     bucket.count += 1
     if (el.querySelector(input.videoLink) !== null) bucket.withVideoLink += 1
+    // The polymorphic fact `classifyCard()` turns on, recorded per shape so
+    // the table says how often a top-level tag is a cell around another card
+    // rather than a card itself (#1426's `ytd-rich-item-renderer`).
+    if (el.querySelector(cardSelector) !== null) bucket.withChildCard += 1
     if (el.getAttribute("data-video-id")) bucket.withDataVideoId += 1
     for (const f of fieldNames) {
       const selectors = input.fields[f]
@@ -131,6 +137,7 @@ export function fingerprintSurface(
       outer: b.outer,
       count: b.count,
       withVideoLink: b.withVideoLink,
+      withChildCard: b.withChildCard,
       withDataVideoId: b.withDataVideoId,
       fields: {
         title: sorted(b.fields.title),
@@ -179,6 +186,7 @@ export function mergeLayouts(
         ...existing,
         count: existing.count + shape.count,
         withVideoLink: existing.withVideoLink + shape.withVideoLink,
+        withChildCard: existing.withChildCard + shape.withChildCard,
         withDataVideoId: existing.withDataVideoId + shape.withDataVideoId,
         fields: {
           title: union("title"),
