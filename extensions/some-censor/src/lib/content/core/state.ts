@@ -21,11 +21,18 @@ import type { Observation } from "./observation"
 export type ChannelState =
   /** No channel evidence yet (a provisional mount, canon Def. 4.1's "partial"). */
   | { readonly kind: "unknown" }
-  /** A channel is known and its whitelist verdict was asked for at `since`. */
+  /**
+   * A channel is known and its whitelist verdict was asked for at `since`.
+   * `query` is the lookup's ordinal within this incarnation
+   * ({@link CardState.queries}); the answer echoes it, so an answer to an
+   * earlier question — the same channel asked about twice, A→B→A — cannot
+   * satisfy a later one (bot-found, #1506's own review).
+   */
   | {
       readonly kind: "pending"
       readonly channelId: ChannelId
       readonly since: number
+      readonly query: number
     }
   | {
       readonly kind: "known"
@@ -50,6 +57,8 @@ export type CardState = {
    * and discard the new one.
    */
   readonly generation: number
+  /** How many whitelist lookups this incarnation has issued; see `ChannelState`. */
+  readonly queries: number
   /**
    * Bumped on every view change within an incarnation. A title transform or
    * the whitelist reveal timer carries the version it was issued under and is

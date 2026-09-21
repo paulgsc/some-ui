@@ -91,6 +91,7 @@ export type Input =
       readonly kind: "whitelist-answer"
       readonly key: CardKey
       readonly generation: number
+      readonly query: number
       readonly channelId: ChannelId
       readonly whitelisted: boolean
       readonly t: number

@@ -40,6 +40,8 @@ export type Action =
       readonly kind: "query-whitelist"
       readonly key: CardKey
       readonly generation: number
+      /** The lookup's ordinal within the incarnation; echoed by the answer. */
+      readonly query: number
       readonly channelId: ChannelId
     }
   /** Persist a whitelist entry in the background. */

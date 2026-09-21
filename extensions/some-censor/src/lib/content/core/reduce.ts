@@ -307,6 +307,7 @@ export function reduce(state: CoreState, event: CoreEvent): Step {
       if (
         card.generation !== event.generation ||
         card.channel.kind !== "pending" ||
+        card.channel.query !== event.query ||
         card.channel.channelId !== event.channelId
       ) {
         return {
@@ -407,8 +408,14 @@ function adopt(
     channel:
       observation.channelId === null
         ? { kind: "unknown" }
-        : { kind: "pending", channelId: observation.channelId, since: t },
+        : {
+            kind: "pending",
+            channelId: observation.channelId,
+            since: t,
+            query: 1,
+          },
     generation: state.nextGeneration,
+    queries: observation.channelId === null ? 0 : 1,
     version: 0,
     firstSeenAt: t,
     lastSeenAt: t,
@@ -434,6 +441,7 @@ function adopt(
       kind: "query-whitelist",
       key,
       generation: card.generation,
+      query: card.queries,
       channelId: observation.channelId,
     })
   }
@@ -482,19 +490,43 @@ function reobserve(
   // `whitelist-answer`, and a verdict that only ever named the old id cannot
   // reveal the card. The view is left alone (Entry-4).
   if (merged.channelId !== null && channelIdOf(card) !== merged.channelId) {
+    const query = card.queries + 1
     next = {
       ...next,
-      channel: { kind: "pending", channelId: merged.channelId, since: t },
+      queries: query,
+      channel: {
+        kind: "pending",
+        channelId: merged.channelId,
+        since: t,
+        query,
+      },
     }
     actions.push(
       {
         kind: "query-whitelist",
         key: card.key,
         generation: card.generation,
+        query,
         channelId: merged.channelId,
       },
       record({ kind: "channel.backfilled", videoId })
     )
+    // A whitelist-derived view was earned by the channel this card no longer
+    // has (bot-found, #1506's own review): a verdict that named only the old
+    // channel must not go on exposing the card, nor may its reveal timer
+    // complete. Back to masked; the version bump retires the timer. Views
+    // the user climbed to are not touched (Entry-4) — `whitelisted` is never
+    // one of those.
+    if (next.view.kind === "whitelisted") {
+      const remasked = transition(setCard(state, next), next, {
+        kind: "masked",
+        session: next.view.session,
+      })
+      return {
+        state: remasked.state,
+        actions: [...actions, ...remasked.actions],
+      }
+    }
   }
 
   // A date arriving late is corpus (#1395): YouTube hydrates it after the

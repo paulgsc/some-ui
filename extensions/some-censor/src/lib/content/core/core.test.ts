@@ -122,6 +122,7 @@ describe("replay determinism (B8)", () => {
       kind: "whitelist-answer",
       key: K,
       generation: 0,
+      query: 1,
       channelId: asChannelId("@chan"),
       whitelisted: false,
       t: 3,
@@ -142,6 +143,7 @@ describe("replay determinism (B8)", () => {
       kind: "whitelist-answer",
       key: K2,
       generation: 1,
+      query: 1,
       channelId: asChannelId("@chan"),
       whitelisted: true,
       t: 8,
@@ -477,6 +479,7 @@ describe("a channel that changes on re-observation (#1506's own review)", () => 
       kind: "pending",
       channelId: "@canonical",
       since: 2,
+      query: 2,
     })
     expect(
       actions.flatMap((a) =>
@@ -490,6 +493,7 @@ describe("a channel that changes on re-observation (#1506's own review)", () => 
       kind: "whitelist-answer",
       key: K,
       generation: 0,
+      query: 1,
       channelId: asChannelId("@chan"),
       whitelisted: true,
       t: 3,
@@ -501,6 +505,7 @@ describe("a channel that changes on re-observation (#1506's own review)", () => 
       kind: "whitelist-answer",
       key: K,
       generation: 0,
+      query: 2,
       channelId: canonical,
       whitelisted: true,
       t: 4,
@@ -521,6 +526,7 @@ describe("a channel that changes on re-observation (#1506's own review)", () => 
         kind: "whitelist-answer",
         key: K,
         generation: 0,
+        query: 1,
         channelId: asChannelId("@chan"),
         whitelisted: false,
         t: 2,
@@ -549,6 +555,108 @@ describe("a channel that changes on re-observation (#1506's own review)", () => 
       },
     ])
     expect(actions.filter((a) => a.kind === "query-whitelist")).toHaveLength(1)
+  })
+})
+
+describe("re-opening a lookup (#1506's own review, round 4)", () => {
+  const canonical = asChannelId("@canonical")
+  const seenAs = (
+    channelId: ReturnType<typeof asChannelId>,
+    t: number
+  ): CoreEvent => ({
+    kind: "observed",
+    key: K,
+    observation: observation("vid_a", { channelId }),
+    t,
+  })
+  const answer = (
+    channelId: ReturnType<typeof asChannelId>,
+    query: number,
+    whitelisted: boolean,
+    t: number
+  ): CoreEvent => ({
+    kind: "whitelist-answer",
+    key: K,
+    generation: 0,
+    query,
+    channelId,
+    whitelisted,
+    t,
+  })
+
+  it("remasks a card whose whitelisted view was earned by the channel it no longer has, and retires that reveal timer", () => {
+    const { state, actions } = fold([
+      started,
+      seenA,
+      answer(asChannelId("@chan"), 1, true, 2),
+      seenAs(canonical, 3),
+    ])
+    expect(viewOf(state)).toBe("masked")
+    expect(state.cards.get(K)).toMatchObject({
+      version: 2,
+      channel: { kind: "pending", channelId: "@canonical", query: 2 },
+    })
+    // The timer scheduled under version 1 no longer matches.
+    const fired = reduce(state, {
+      kind: "timer",
+      key: K,
+      generation: 0,
+      version: 1,
+      t: 4,
+    })
+    expect(fired.actions).toEqual([])
+    expect(viewOf(fired.state)).toBe("masked")
+    // The last render is the masked one.
+    const renders = actions.filter((a) => a.kind === "render")
+    const last = renders.at(-1)
+    expect(last?.kind === "render" && last.model.dataBoyo).toBe("0")
+
+    // B's verdict is false: the card stays masked.
+    const denied = reduce(state, answer(canonical, 2, false, 5))
+    expect(viewOf(denied.state)).toBe("masked")
+  })
+
+  it("leaves a view the user climbed to alone when the channel changes (Entry-4)", () => {
+    const { state } = fold([
+      started,
+      seenA,
+      { kind: "gesture", key: K, gesture: "click", t: 2 },
+      seenAs(canonical, 3),
+    ])
+    expect(viewOf(state)).toBe("meta")
+  })
+
+  it("tells two lookups for the same channel apart — A, then B, then A again", () => {
+    const { state, actions } = fold([
+      started,
+      seenA,
+      seenAs(canonical, 2),
+      seenAs(asChannelId("@chan"), 3),
+    ])
+    expect(state.cards.get(K)?.channel).toMatchObject({
+      kind: "pending",
+      channelId: "@chan",
+      query: 3,
+    })
+    expect(
+      actions.flatMap((a) => (a.kind === "query-whitelist" ? [a.query] : []))
+    ).toEqual([1, 2, 3])
+
+    // The first lookup for A settles now, whitelisted — it answers an
+    // earlier question, not the open one.
+    const first = reduce(state, answer(asChannelId("@chan"), 1, true, 4))
+    expect(kinds(first.actions)).toEqual(["record:stale.discarded"])
+    expect(viewOf(first.state)).toBe("masked")
+
+    const current = reduce(
+      first.state,
+      answer(asChannelId("@chan"), 3, false, 5)
+    )
+    expect(current.state.cards.get(K)?.channel).toEqual({
+      kind: "known",
+      channelId: "@chan",
+      whitelisted: false,
+    })
   })
 })
 
@@ -588,6 +696,7 @@ describe("whitelisting", () => {
     kind: "whitelist-answer",
     key: K,
     generation,
+    query: 1,
     channelId: asChannelId("@chan"),
     whitelisted,
     t: 2,
@@ -653,6 +762,7 @@ describe("whitelisting", () => {
       kind: "whitelist-answer",
       key: K,
       generation: 0,
+      query: 1,
       channelId: asChannelId("@someone-else"),
       whitelisted: true,
       t: 2,
@@ -803,6 +913,7 @@ describe("async correlation across incarnations (R4, #1506's own review)", () =>
       kind: "whitelist-answer",
       key: K,
       generation: 0,
+      query: 1,
       channelId: asChannelId("@chan"),
       whitelisted: true,
       t: 4,
@@ -817,6 +928,7 @@ describe("async correlation across incarnations (R4, #1506's own review)", () =>
       kind: "whitelist-answer",
       key: K,
       generation: 1,
+      query: 1,
       channelId: asChannelId("@chan"),
       whitelisted: false,
       t: 5,
@@ -877,6 +989,7 @@ describe("async correlation across incarnations (R4, #1506's own review)", () =>
       kind: "whitelist-answer",
       key: K,
       generation,
+      query: 1,
       channelId: asChannelId("@chan"),
       whitelisted: true,
       t,
