@@ -327,6 +327,18 @@ describe("unmount (A4)", () => {
     expect(el.style.position).toBe("")
   })
 
+  it("restores an inline position's priority along with its value", () => {
+    const el = card()
+    el.style.setProperty("position", "static", "important")
+    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
+    expect(el.style.position, "anchored over the vendor's static").toBe(
+      "relative"
+    )
+    actuator.realize([unmount(K)])
+    expect(el.style.getPropertyValue("position")).toBe("static")
+    expect(el.style.getPropertyPriority("position")).toBe("important")
+  })
+
   it("keeps an inline position the vendor wrote after the anchoring", () => {
     const el = card()
     actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])

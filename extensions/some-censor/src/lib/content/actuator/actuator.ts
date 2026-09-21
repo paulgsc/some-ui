@@ -89,11 +89,21 @@ type Realized = {
 
 type TransformTitleFn = (title: string, channelId: string) => unknown
 
+type InlineDeclaration = {
+  value: string
+  /** `"important"` or `""`, as `getPropertyPriority` reports it. */
+  priority: string
+}
+
 export function createActuator(ports: ActuatorPorts): Actuator {
   const realized = new Map<CardKey, Realized>()
   const owner = new WeakMap<HTMLElement, CardKey>()
-  /** The inline `position` an anchor had before A1 wrote `relative` over it. */
-  const anchored = new WeakMap<HTMLElement, string>()
+  /**
+   * The inline `position` declaration — value and priority — an anchor had
+   * before A1 wrote `relative` over it. Those two are all an inline
+   * declaration of one property carries, so the restore is complete.
+   */
+  const anchored = new WeakMap<HTMLElement, InlineDeclaration>()
   const timers = new Map<CardKey, Set<ReturnType<typeof setTimeout>>>()
   let disposed = false
 
@@ -134,7 +144,7 @@ export function createActuator(ports: ActuatorPorts): Actuator {
     if (prior === undefined) return
     anchored.delete(el)
     if (el.style.position !== "relative") return
-    el.style.position = prior
+    el.style.setProperty("position", prior.value, prior.priority)
     if (el.getAttribute("style") === "") el.removeAttribute("style")
   }
 
@@ -243,7 +253,12 @@ export function createActuator(ports: ActuatorPorts): Actuator {
       // for the element (a bare test document) reports for `static`.
       const position = getComputedStyle(el).position
       if (position === "static" || position === "") {
-        if (!anchored.has(el)) anchored.set(el, el.style.position)
+        if (!anchored.has(el)) {
+          anchored.set(el, {
+            value: el.style.getPropertyValue("position"),
+            priority: el.style.getPropertyPriority("position"),
+          })
+        }
         el.style.position = "relative"
       }
       el.dataset["boyoVid"] = videoId
