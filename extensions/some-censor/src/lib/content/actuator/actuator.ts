@@ -10,7 +10,7 @@
  * a click on a veil — go back to Core as `Input`s through `inbox`, never as
  * calls into it.
  *
- * Invariants, carried over from `dom-handle.ts` where they apply:
+ * Invariants, carried over from the former DOM handle where they apply:
  *
  *   A1 — Anchoring (D1). An anchor gets `position: relative` if it was
  *        static, so the veil's `inset: 0` binds to the card; the inline

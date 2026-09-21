@@ -1,8 +1,8 @@
 /**
- * The veil's subtree (BC4) — `DomHandle._render()` and its chip
+ * The veil's subtree (BC4): its render and its chip
  * builders, as functions over a veil element the Actuator owns.
  *
- * Invariants carried over from `dom-handle.ts`:
+ * Invariants:
  *
  *   D5 — No class names here. Every class string comes from veil-styles.ts,
  *        which is the only file UnoCSS scans; a literal written here would

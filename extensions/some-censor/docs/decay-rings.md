@@ -408,7 +408,7 @@ constraints.
 - **Keyframes** (the containment breath, the threshold settle) are `@`-rules
   and therefore belong in `content.css` beside `boyo-rise` / `boyo-thaw`, and
   are referenced from the utilities by name.
-- **The medallion SVG** is built by `dom-handle.ts`, which owns DOM
+- **The medallion SVG** is built by `actuator/veil.ts`, which owns DOM
   construction; `veil-styles.ts` names its classes and authors none of its
   structure.
 - **The projection** — which class, which age string, which copy — is decided

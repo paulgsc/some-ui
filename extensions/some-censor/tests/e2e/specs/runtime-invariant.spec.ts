@@ -384,7 +384,7 @@ test("T9: dblclick reveals a masked card directly, and the veil is gone", async 
   )
   expect(snap.entries["vid_bbb222"]?.viewKind).toBe("revealed")
 
-  // removeVeil animates the veil out (see DomHandle._animateRemoveVeil); give
+  // removeVeil animates the veil out (see the Actuator's veil exit); give
   // it room to finish rather than the 600ms fallback timeout it races.
   await page.waitForTimeout(700)
 

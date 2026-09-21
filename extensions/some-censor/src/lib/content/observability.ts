@@ -10,8 +10,7 @@
  * entry in a small capped index ({@link readIndex}/{@link touchIndex}) so a
  * debug page (OBS2) can pick a recording.
  *
- * `VideoManager`'s `_session` ordinal is recorded as *event data*, not used
- * as the key:
+ * Core's `session` ordinal is recorded as *event data*, not used as the key:
  *
  *   1. `mkSession()` is per content-script instance, so two YouTube tabs both
  *      mint session 1 and would share a key.
@@ -28,8 +27,7 @@
  * `H2` (`docs/quarantine-capsule.md`) treats an upload date as nonsemantic,
  * so the raw string is recorded verbatim, giving QC2 (#1384) an observed
  * corpus. Nothing else extraction touches is recorded: no title, channel
- * name, thumbnail or href. {@link recordUploadDate} reads only the element's
- * tag name.
+ * name, thumbnail or href; the renderer is its tag name.
  *
  * Distinct raw forms are also deduplicated into a `dates.<surface>` snapshot:
  * the ring buffer sheds oldest events under its byte budget, but metrics and
@@ -60,13 +58,13 @@ import { surfaceOf } from "./layout/surface"
  * and tests and the OBS2 debug page can enumerate it at runtime.
  */
 export const BOYO_EVENT_KINDS = [
-  // Lifecycle. `session.start`/`session.reset` carry VideoManager's own
+  // Lifecycle. `session.start`/`session.reset` carry Core's own
   // `_session` ordinal as their subject — see this module's header.
   "session.start",
   "session.reset",
   "navigation.finish",
   "mutation.batch",
-  // Mount pipeline, one kind per outcome `VideoManager.upsert()` can reach.
+  // Mount pipeline, one kind per outcome an observation can reach.
   "mount.resolved",
   "mount.provisional",
   "mount.unresolved",
@@ -96,6 +94,12 @@ export const BOYO_EVENT_KINDS = [
   // Date extraction — the corpus QC2 (#1384) depends on.
   "date.observed",
   "date.absent",
+  /**
+   * A catalogue node the layout table could not place (BC2, #1435; B4). The
+   * table's staleness signal — see layout/README.md for the recrawl cadence
+   * keyed to it. Subject is the reason; detail carries tag and surface.
+   */
+  "layout.unknown_shape",
   // Invariant transitions, mirroring some-filter's violated/recovered pair.
   "invariant.violated",
   "invariant.recovered",
@@ -136,12 +140,14 @@ type BoyoCounter =
   | "dates_observed"
   | "dates_absent"
   | "invariant_violations"
+  /** `layout.unknown_shape` events, per session: the recrawl trigger. */
+  | "unknown_shapes"
   /**
    * How many times the invariants were actually evaluated.
    *
    * Without it a `status: "healthy"` export is ambiguous between "checked, and
-   * fine" and "never got to check": `sampleHealth()` only rides VideoManager's
-   * cadences, so a quiet page can legitimately evaluate nothing.
+   * fine" and "never got to check": `sampleHealth()` only rides the retry loop
+   * and the stall watch, so a quiet page can legitimately evaluate nothing.
    */
   | "health_samples"
 
@@ -208,8 +214,8 @@ export const PROMOTION_STALL_MS = 30_000
  */
 export const RESOLVE_GRACE_MS = 2_000
 
-/** One element waiting in a `VideoManager` queue, as the invariants see it. */
-export type QueuedCard = {
+/** One element waiting in the Sensor's queue, as the invariants see it. */
+type QueuedCard = {
   /** `elementKey()`'s output (unresolved) or `c:<videoId>` (channel pending). */
   readonly key: string
   /** When the shared attempt budget started for this key. */
@@ -284,7 +290,7 @@ export type BulkAdvanceCoverage = {
 }
 
 /** One element currently inside `_promote()`'s re-entrancy guard. */
-export type PromotingCard = {
+type PromotingCard = {
   /**
    * The videoId this promotion is for — not `elementKey()`'s output, unlike
    * {@link QueuedCard}: it is already in hand (no extra DOM read), and a stuck
@@ -296,7 +302,7 @@ export type PromotingCard = {
 
 /**
  * Everything {@link boyoInvariants} needs, gathered once per health sample by
- * `VideoManager` reading its own live queues. Pure data, so every check below
+ * the runtime reading the Sensor's queues and Core's state. Pure data, so every check below
  * is unit-testable with a plain object and no DOM.
  */
 export type BoyoContext = {
@@ -342,7 +348,7 @@ export const boyoInvariants: ReadonlyArray<Invariant<BoyoContext>> = [
   {
     name: "OccluderReleases",
     description:
-      "No element sits under the static pre-mask occluder, without data-boyo, past OCCLUSION_GRACE_MS. Unlike every other check here this reads the DOM rather than VideoManager's bookkeeping, because the failures it exists for are precisely the ones that leave an element in no queue, no registry and no guard — where a bookkeeping check has nothing to look at and reports healthy while the page is visibly broken (#1421). The occluder is lifted by exactly one thing, the content script writing data-boyo; an element it is still hiding after the resolution budget has passed is one nothing is coming back for, and it is inert as well as blurred because that rule sets pointer-events: none.",
+      "No element sits under the static pre-mask occluder, without data-boyo, past OCCLUSION_GRACE_MS. Unlike every other check here this reads the DOM rather than the pipeline's bookkeeping, because the failures it exists for are precisely the ones that leave an element in no queue, no registry and no guard — where a bookkeeping check has nothing to look at and reports healthy while the page is visibly broken (#1421). The occluder is lifted by exactly one thing, the content script writing data-boyo; an element it is still hiding after the resolution budget has passed is one nothing is coming back for, and it is inert as well as blurred because that rule sets pointer-events: none.",
     check: (ctx): InvariantOutcome => {
       if (ctx.phase !== "running") return { ok: "unknown" }
       const stranded = ctx.occluded.filter(
@@ -402,7 +408,7 @@ export type IndexEntry = {
   sessionId: string
   origin: string
   surface: BoyoSurface
-  /** VideoManager's session ordinal as of the last index touch. */
+  /** Core's session ordinal as of the last index touch. */
   sessionOrdinal: number
   updatedAt: number
 }
@@ -571,7 +577,7 @@ function defaultPersistence(sessionId: string): ObservabilityPersistence {
 
 /**
  * One recorder per content-script instance — see this module's header for why
- * that scope, and not one per `VideoManager` session ordinal, is correct.
+ * that scope, and not one per session ordinal, is correct.
  */
 export function createBoyoRecorder(
   sessionId: string,
@@ -597,8 +603,8 @@ export function createBoyoRecorder(
 /**
  * How often {@link BoyoObservability.sampleHealth} is allowed to run.
  *
- * Running every invariant plus a `storage.local` index touch on the 500 ms
- * retry loop would cost more than the thing observed (Charter §8). The
+ * Running every invariant plus a `storage.local` index touch on the Sensor's
+ * 500 ms retry loop would cost more than the thing observed (Charter §8). The
  * invariants concern states lasting tens of seconds, so 10 s loses nothing.
  */
 export const HEALTH_SAMPLE_INTERVAL_MS = 10_000
@@ -801,6 +807,15 @@ export class BoyoObservability {
       severity: "debug",
     })
     this.recorder.count("channels_abandoned")
+  }
+
+  unknownShape(tag: string, surface: BoyoSurface, reason: string): void {
+    this.recorder.record({
+      kind: "layout.unknown_shape",
+      subject: reason,
+      detail: { tag, surface },
+    })
+    this.recorder.count("unknown_shapes")
   }
 
   entryState(kind: ViewState["kind"], videoId: string): void {
@@ -1018,15 +1033,6 @@ export function observability(): BoyoObservability | null {
 /** Drop the live recording. Exported for tests; nothing in src/ calls it. */
 export function stopObservability(): void {
   _live = null
-}
-
-/**
- * Record one date-extraction attempt against the live recording, deriving the
- * surface from the location and the renderer from the element's tag name —
- * and reading nothing else off the element.
- */
-export function recordUploadDate(raw: string | null, el: HTMLElement): void {
-  _live?.uploadDate(raw, currentSurface(), el.tagName.toLowerCase())
 }
 
 /**

@@ -16,13 +16,11 @@ export default defineConfig(
   {
     // ── Charter §2: Logic ≠ Presentation ≠ Effects ──────────────────────────
     // This workspace's whole design rests on the claim that the state machine
-    // is pure — fsm.ts F1–F4 and record.ts V1 are written as invariants about
-    // exactly that, and DomHandle's docstring calls itself "the ONLY class
-    // permitted to touch the DOM". Until now nothing checked it. These four
-    // are the files that must stay testable without a DOM:
+    // is pure: fsm.ts F1–F4 are invariants about exactly that, and the
+    // Actuator is the only module permitted to touch the DOM. These are the
+    // files that must stay testable without a DOM:
     //
     //   fsm.ts          transitions + the render projection
-    //   record.ts       the pure identity record (V1: "zero DOM imports")
     //   selectors.ts    the card catalogue, also read by the stylesheet test
     //   veil-styles.ts  class strings; it names elements it must not touch
     //   layout/**       the layout table, its schema, its instrument and its
@@ -30,16 +28,13 @@ export default defineConfig(
     //                   root it is handed, the way selectors.ts's
     //                   occludedElements() does
     //   core/**         the reducer, its events, actions and state (BC3,
-    //                   #1436) — the enforcement gap that let
-    //                   video-manager.ts violate the contract silently must
-    //                   not reopen here
+    //                   #1436)
     //
     // extract/ is deliberately *not* here: it reads a DOM subtree, but only
     // through the element handed to it, never through a global — which is the
     // distinction the rule draws and the reason its functions are pure.
     files: [
       "src/lib/content/fsm.ts",
-      "src/lib/content/record.ts",
       "src/lib/content/selectors.ts",
       "src/lib/content/veil-styles.ts",
       "src/lib/content/layout/**/*.ts",

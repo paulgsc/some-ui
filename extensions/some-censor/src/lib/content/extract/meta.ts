@@ -36,7 +36,7 @@ function firstText(
  * without paying for the channel-name and duration lookups it must not record
  * anyway. Still pure (E1): the caller decides what to do with the string.
  */
-export function extractUploadDate(el: HTMLElement): string | null {
+function extractUploadDate(el: HTMLElement): string | null {
   const [polymer] = FIELD_SELECTORS.uploadDate
   return (
     (polymer === undefined ? null : text(el, polymer)) ?? lockupUploadDate(el)

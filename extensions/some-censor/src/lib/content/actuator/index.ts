@@ -4,14 +4,6 @@
  * come back to Core as inputs through the inbox it was given.
  */
 
-export type { Actuator, ActuatorPorts } from "./actuator"
-export { createActuator, VEIL_EXIT_FALLBACK_MS } from "./actuator"
-export type {
-  BoundAction,
-  BoundCardAction,
-  BoundOtherAction,
-  CustodyRole,
-  CustodyTarget,
-} from "./bound"
-export type { GestureDelegation, GesturePorts } from "./gestures"
-export { attachGestures } from "./gestures"
+export type { Actuator } from "./actuator"
+export { createActuator } from "./actuator"
+export type { BoundAction } from "./bound"

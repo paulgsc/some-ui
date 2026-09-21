@@ -27,7 +27,7 @@ test("mints are strictly increasing", () => {
 })
 
 test("a stale token never compares equal to the current one", () => {
-  // The exact shape of the guard in VideoManager._promote: capture before the
+  // The shape of a session guard: capture before the
   // await, compare after. A teardown+restart in between must be detectable.
   const captured = mkSession()
   const afterRestart = mkSession()

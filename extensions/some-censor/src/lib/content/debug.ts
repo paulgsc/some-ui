@@ -8,8 +8,8 @@
  *    the pipeline converged."
  *
  * This module is a pure side-effect registration. It holds a weak reference
- * to VideoManager via a callback interface so it cannot prevent GC and cannot
- * couple the debug layer to VideoManager's internals.
+ * to the runtime via a callback interface so it cannot prevent GC and cannot
+ * couple the debug layer to the runtime's internals.
  *
  * Only active in development builds — tree-shaken in production via the
  * BOYO_DEBUG compile-time constant (Vite defines plugin).
@@ -21,7 +21,7 @@ import type {
   EntryDebugInfo,
 } from "@censor/types/debug"
 
-/** Interface that VideoManager must implement to be observable. */
+/** Interface the runtime implements to be observable. */
 export type DebugSource = {
   readonly phase: "idle" | "running"
   readonly size: number
@@ -37,7 +37,7 @@ let _lastMutationMs: number | null = null
 let _navigations = 0
 
 /**
- * Register a DebugSource (called by VideoManager on construction).
+ * Register a DebugSource (called by the runtime on construction).
  * Safe to call multiple times — last registration wins.
  */
 export function registerDebugSource(source: DebugSource): void {
