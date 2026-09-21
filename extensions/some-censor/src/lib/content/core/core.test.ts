@@ -758,6 +758,71 @@ describe("re-opening a lookup, round 5 (#1506's own review)", () => {
   })
 })
 
+describe("a title transform in flight when the channel changes (#1506's own review, round 6)", () => {
+  const canonical = asChannelId("@canonical")
+
+  it("retires the transform asked under the old channel and asks again under the new one", () => {
+    const base = fold([
+      started,
+      seenA,
+      { kind: "gesture", key: K, gesture: "click", t: 2 },
+      { kind: "gesture", key: K, gesture: "click", t: 3 },
+    ])
+    expect(base.state.cards.get(K)).toMatchObject({
+      version: 2,
+      view: { kind: "title" },
+    })
+
+    const changed = reduce(base.state, {
+      kind: "observed",
+      key: K,
+      observation: observation("vid_a", { channelId: canonical }),
+      t: 4,
+    })
+    expect(changed.state.cards.get(K)).toMatchObject({
+      version: 3,
+      view: {
+        kind: "title",
+        title: { text: "Title of vid_a", translated: false },
+      },
+      autoRevealed: false,
+    })
+    const asked = changed.actions.filter((a) => a.kind === "transform-title")
+    expect(asked).toHaveLength(1)
+    expect(asked[0]).toMatchObject({
+      version: 3,
+      channelId: "@canonical",
+      text: "Title of vid_a",
+    })
+
+    // The answer computed under the old channel arrives now.
+    const stale = reduce(changed.state, {
+      kind: "title-transformed",
+      key: K,
+      generation: 0,
+      version: 2,
+      text: "translated for @chan",
+      translated: true,
+      t: 5,
+    })
+    expect(kinds(stale.actions)).toEqual(["record:stale.discarded"])
+
+    const fresh = reduce(stale.state, {
+      kind: "title-transformed",
+      key: K,
+      generation: 0,
+      version: 3,
+      text: "translated for @canonical",
+      translated: true,
+      t: 6,
+    })
+    const card = fresh.state.cards.get(K)
+    expect(card?.view.kind === "title" && card.view.title.text).toBe(
+      "translated for @canonical"
+    )
+  })
+})
+
 describe("a title transform's fallback (#1506's own review)", () => {
   it("keeps the title untranslated when the hook handed the original back", () => {
     const base = fold([

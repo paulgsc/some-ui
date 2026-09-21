@@ -566,6 +566,27 @@ function reobserve(
     return { state: remasked.state, actions: [...actions, ...remasked.actions] }
   }
 
+  // A title transform in flight was asked with the old channel id (the hook
+  // takes it as input and may answer differently for another — bot-found,
+  // #1506's own review). Re-issue the step: the version bump retires the old
+  // answer, and the transition asks again under the channel the card has
+  // now, from the observed title rather than a translation made for the
+  // wrong channel. The user's own step, so provenance stays the user's.
+  if (
+    reopened !== null &&
+    next.view.kind === "title" &&
+    next.view.title.text !== ""
+  ) {
+    const retitled = transition(setCard(state, next), next, {
+      ...next.view,
+      title: {
+        text: next.observation.title ?? next.view.title.text,
+        translated: false,
+      },
+    })
+    return { state: retitled.state, actions: [...actions, ...retitled.actions] }
+  }
+
   // R5: re-render on every observation. The view's meta/title are snapshots
   // taken at click time (parity with the former entry), so a re-observation
   // does not rewrite them; the render is for custody — a re-observed card may
