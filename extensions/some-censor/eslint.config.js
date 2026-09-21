@@ -25,6 +25,10 @@ export default defineConfig(
     //   record.ts       the pure identity record (V1: "zero DOM imports")
     //   selectors.ts    the card catalogue, also read by the stylesheet test
     //   veil-styles.ts  class strings; it names elements it must not touch
+    //   layout/**       the layout table, its schema, its instrument and its
+    //                   lookups (BC1, #1434) — the fingerprint reads only the
+    //                   root it is handed, the way selectors.ts's
+    //                   occludedElements() does
     //
     // extract/ is deliberately *not* here: it reads a DOM subtree, but only
     // through the element handed to it, never through a global — which is the
@@ -34,6 +38,7 @@ export default defineConfig(
       "src/lib/content/record.ts",
       "src/lib/content/selectors.ts",
       "src/lib/content/veil-styles.ts",
+      "src/lib/content/layout/**/*.ts",
       "src/types/**/*.ts",
     ],
     ignores: ["src/types/global.d.ts"],
@@ -42,6 +47,18 @@ export default defineConfig(
     },
     rules: {
       "extension-charter/no-logic-layer-side-effects": "error",
+    },
+  },
+  {
+    // ── Tooling scripts ─────────────────────────────────────────────────────
+    // `scripts/*.ts` are run with `tsx` from the workspace, never bundled into
+    // the extension. They resolve Playwright and prettier from the repository
+    // root exactly the way `tests/e2e/**` does — where the shared config
+    // already turns this rule off (overrides-deps.config.ts) — so the same
+    // exemption applies here, for the same reason.
+    files: ["scripts/**/*.{ts,mjs}"],
+    rules: {
+      "import/no-extraneous-dependencies": "off",
     },
   },
   {
