@@ -46,7 +46,7 @@
 import {
   BOYO_EVENT_KINDS,
   boyoInvariants,
-  readIndex,
+  compactIndex,
   sessionStorageKey,
   type IndexEntry,
 } from "@censor/lib/content/observability"
@@ -766,9 +766,12 @@ async function load(pickMostRecent = false): Promise<void> {
   loadError = undefined
   if (hadError) render()
   try {
-    const index = await readIndex()
+    // Compacting rather than merely listing: this is the one place a whole-
+    // area enumeration is cheap enough to sweep orphaned bundles as well as
+    // enforce the cap (#1398) — paid once, by a person who asked for it.
+    const { entries: index } = await compactIndex()
     if (token !== loadToken) return
-    sessions = index
+    sessions = [...index]
     selectedSessionId = nextSelection(index, pickMostRecent, selectedSessionId)
     if (selectedSessionId !== loadedSessionId) {
       clearLoadedBundle()

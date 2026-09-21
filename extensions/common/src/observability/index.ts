@@ -39,6 +39,15 @@ export {
   type StorageAreaLike,
 } from "./persistence"
 export { Recorder, type RecordInput, type RecorderOptions } from "./recorder"
+export {
+  createSessionIndex,
+  DEFAULT_INDEX_CAP,
+  type Compaction,
+  type IndexAreaLike,
+  type IndexedEntry,
+  type SessionIndex,
+  type SessionIndexOptions,
+} from "./session-index"
 export type {
   Aggregate,
   DiagnosticsBundle,

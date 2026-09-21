@@ -1,11 +1,12 @@
 /**
- * The page's load/render behaviour.
+ * The diagnostics page's load/render behaviour (#1408).
  *
- * #1396 sets the testing bar at some-filter's debug page, which has none —
- * but its own review found two ways this page could show one session while
- * naming another, and "the export writes the wrong session's file" is the one
- * failure a page whose output feeds QC2 (#1384) must not have. So the load
- * path gets a harness even though the bar did not demand one.
+ * some-censor's page was modelled on this one and inherited two bugs its
+ * review found — "Refresh sessions" rendering nothing, and a session switch
+ * leaving the previous session's bundle rendered with Export live — plus a
+ * third one step out (two reads settling out of order). The fixes are ported
+ * back here with the same harness: a fake `storage.local` that defers reads
+ * on demand, which is what makes the intermediate window observable at all.
  *
  * The module renders on import and holds module-scope state, so each test
  * re-imports it against a fresh fake `storage.local`.
@@ -15,8 +16,8 @@ import {
   indexStorageKey,
   sessionStorageKey,
   type IndexEntry,
-} from "@censor/lib/content/observability"
-import { ext } from "@censor/platform/content"
+} from "@filter/lib/content/coverage-observability"
+import { ext } from "@filter/platform/content"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const NOW = 1_700_000_000_000
@@ -77,12 +78,12 @@ function installFakeStorage(
   return { store, held }
 }
 
-function entry(id: string, ordinal: number, updatedAt: number): IndexEntry {
+function entry(id: string, title: string, updatedAt: number): IndexEntry {
   return {
     sessionId: id,
-    origin: "https://www.youtube.com",
-    surface: "home",
-    sessionOrdinal: ordinal,
+    origin: "https://example.com",
+    title,
+    tabState: "auto",
     updatedAt,
   }
 }
@@ -98,14 +99,22 @@ function listSessions(
 function seedSession(
   store: Map<string, unknown>,
   id: string,
-  forms: Array<string>
+  marker: string
 ): void {
   store.set(sessionStorageKey(id), {
     version: 1,
-    namespace: "some-censor",
-    events: [{ seq: 1, t: NOW, kind: "session.start", severity: "info" }],
+    namespace: "some-filter",
+    events: [
+      {
+        seq: 1,
+        t: NOW,
+        kind: "session.start",
+        severity: "info",
+        detail: { marker },
+      },
+    ],
     metrics: { counters: {}, aggregates: {} },
-    snapshots: { [`dates.home`]: forms },
+    snapshots: {},
     dropped: 0,
     updatedAt: NOW,
   })
@@ -115,7 +124,7 @@ function seedSession(
 async function mountPage(): Promise<void> {
   document.body.innerHTML = '<div id="app"></div>'
   vi.resetModules()
-  await import("@censor/debug/index")
+  await import("@filter/debug/index")
 }
 
 function picker(): HTMLSelectElement {
@@ -128,13 +137,21 @@ function buttonLabels(): Array<string> {
   return [...document.querySelectorAll("button")].map((b) => b.textContent)
 }
 
-function corpusText(): string {
-  return document.querySelector("table.bc-corpus")?.textContent ?? ""
+function timelineText(): string {
+  return document.querySelector("table.sf-events")?.textContent ?? ""
 }
 
 function change(select: HTMLSelectElement, value: string): void {
   select.value = value
   select.dispatchEvent(new Event("change"))
+}
+
+function clickButton(label: string): void {
+  const button = [...document.querySelectorAll("button")].find(
+    (b) => b.textContent === label
+  )
+  expect(button, `no "${label}" button`).toBeDefined()
+  button?.click()
 }
 
 beforeEach(() => {
@@ -146,45 +163,60 @@ afterEach(() => {
 })
 
 describe("the diagnostics page", () => {
-  it("lists recorded sessions and shows the selected one's corpus", async () => {
+  it("lists recorded sessions and shows the selected one's timeline", async () => {
     const { store } = installFakeStorage()
-    listSessions(store, [entry("s1", 1, NOW)])
-    seedSession(store, "s1", ["3 days ago"])
+    listSessions(store, [entry("s1", "First", NOW)])
+    seedSession(store, "s1", "marker-one")
 
     await mountPage()
     await vi.waitFor(() => {
-      expect(corpusText()).toContain("3 days ago")
+      expect(timelineText()).toContain("marker-one")
     })
     expect(picker().options).toHaveLength(1)
-  })
-
-  it("labels sessions without a page title — on YouTube that is the video title (#1382)", async () => {
-    const { store } = installFakeStorage()
-    document.title = "Never Gonna Give You Up - YouTube"
-    listSessions(store, [entry("s1", 4, NOW)])
-    seedSession(store, "s1", ["3 days ago"])
-
-    await mountPage()
-    await vi.waitFor(() => {
-      expect(picker().options).toHaveLength(1)
-    })
-
-    const label = picker().options[0]?.text ?? ""
-    expect(label).not.toContain("Never Gonna Give You Up")
-    expect(label).toContain("https://www.youtube.com")
-    expect(label).toContain("home")
-    expect(label).toContain("session 4")
+    expect(picker().options[0]?.text).toContain("First")
+    expect(buttonLabels()).toContain("Export JSON")
   })
 })
 
-describe("switching sessions never shows one session under another's name (#1407's own review)", () => {
+describe("Refresh sessions (#1408)", () => {
+  it("discovers a recording created after the page opened, and renders it", async () => {
+    const { store } = installFakeStorage()
+    listSessions(store, [entry("s1", "First", NOW)])
+    seedSession(store, "s1", "marker-one")
+
+    await mountPage()
+    await vi.waitFor(() => {
+      expect(timelineText()).toContain("marker-one")
+    })
+    expect(picker().options).toHaveLength(1)
+
+    // A second tab records while this page is open.
+    listSessions(store, [entry("s2", "Second", NOW + 1000)])
+    seedSession(store, "s2", "marker-two")
+
+    clickButton("Refresh sessions")
+
+    await vi.waitFor(() => {
+      expect(picker().options).toHaveLength(2)
+    })
+    // It also selects the newest, which is what "Refresh sessions" means.
+    await vi.waitFor(() => {
+      expect(timelineText()).toContain("marker-two")
+    })
+  })
+})
+
+describe("switching sessions never shows one session under another's name (#1408)", () => {
   it("drops the old bundle and the Export button the moment the picker changes, before the read resolves", async () => {
     const { store, held } = installFakeStorage((key) =>
-      key.startsWith("bc.observability.session.")
+      key.startsWith("sf.observability.session.")
     )
-    listSessions(store, [entry("s1", 1, NOW + 1), entry("s2", 2, NOW)])
-    seedSession(store, "s1", ["3 days ago"])
-    seedSession(store, "s2", ["2 weeks ago"])
+    listSessions(store, [
+      entry("s1", "First", NOW + 1),
+      entry("s2", "Second", NOW),
+    ])
+    seedSession(store, "s1", "marker-one")
+    seedSession(store, "s2", "marker-two")
 
     await mountPage()
     await vi.waitFor(() => {
@@ -192,15 +224,16 @@ describe("switching sessions never shows one session under another's name (#1407
     })
     held[0]?.release()
     await vi.waitFor(() => {
-      expect(corpusText()).toContain("3 days ago")
+      expect(timelineText()).toContain("marker-one")
     })
     expect(buttonLabels()).toContain("Export JSON")
 
     // Switch to s2; its read is held, so this is exactly the window in which
     // an export would have written s1's file while the page named s2.
     change(picker(), "s2")
+    await Promise.resolve()
 
-    expect(corpusText()).not.toContain("3 days ago")
+    expect(timelineText()).not.toContain("marker-one")
     expect(buttonLabels()).not.toContain("Export JSON")
 
     await vi.waitFor(() => {
@@ -208,18 +241,21 @@ describe("switching sessions never shows one session under another's name (#1407
     })
     held[held.length - 1]?.release()
     await vi.waitFor(() => {
-      expect(corpusText()).toContain("2 weeks ago")
+      expect(timelineText()).toContain("marker-two")
     })
     expect(buttonLabels()).toContain("Export JSON")
   })
 
   it("shows the last selection when two reads settle out of order, not the last to arrive", async () => {
     const { store, held } = installFakeStorage((key) =>
-      key.startsWith("bc.observability.session.")
+      key.startsWith("sf.observability.session.")
     )
-    listSessions(store, [entry("s1", 1, NOW + 1), entry("s2", 2, NOW)])
-    seedSession(store, "s1", ["3 days ago"])
-    seedSession(store, "s2", ["2 weeks ago"])
+    listSessions(store, [
+      entry("s1", "First", NOW + 1),
+      entry("s2", "Second", NOW),
+    ])
+    seedSession(store, "s1", "marker-one")
+    seedSession(store, "s2", "marker-two")
 
     await mountPage()
     await vi.waitFor(() => {
@@ -234,24 +270,80 @@ describe("switching sessions never shows one session under another's name (#1407
     })
     held[1]?.release()
     await vi.waitFor(() => {
-      expect(corpusText()).toContain("2 weeks ago")
+      expect(timelineText()).toContain("marker-two")
     })
 
     held[0]?.release()
     await Promise.resolve()
     await Promise.resolve()
+    await Promise.resolve()
 
-    expect(corpusText()).toContain("2 weeks ago")
-    expect(corpusText()).not.toContain("3 days ago")
+    expect(timelineText()).toContain("marker-two")
+    expect(timelineText()).not.toContain("marker-one")
+  })
+
+  it("does not let a slow Refresh reset the selection the user has since made", async () => {
+    let holdNextIndexRead = false
+    const { store, held } = installFakeStorage((key) => {
+      if (key !== WHOLE_AREA || !holdNextIndexRead) return false
+      holdNextIndexRead = false
+      return true
+    })
+    // s1 is the most recent, so a stale load(true) would snap back to it.
+    listSessions(store, [
+      entry("s1", "First", NOW + 1000),
+      entry("s2", "Second", NOW),
+    ])
+    seedSession(store, "s1", "marker-one")
+    seedSession(store, "s2", "marker-two")
+
+    await mountPage()
+    await vi.waitFor(() => {
+      expect(timelineText()).toContain("marker-one")
+    })
+
+    // "Refresh sessions" starts a load(true) whose index read hangs.
+    holdNextIndexRead = true
+    clickButton("Refresh sessions")
+    await vi.waitFor(() => {
+      expect(held).toHaveLength(1)
+    })
+
+    // The user overtakes it by picking s2, which loads and renders normally.
+    change(picker(), "s2")
+    await vi.waitFor(() => {
+      expect(timelineText()).toContain("marker-two")
+    })
+
+    // Now the overtaken refresh finally resolves.
+    held[0]?.release()
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    // A rerender that does *not* reload — a timeline filter change — is where
+    // a reset selection would surface.
+    const kindSelect =
+      document.querySelector<HTMLSelectElement>(".sf-filter select")
+    expect(kindSelect).not.toBeNull()
+    if (kindSelect) change(kindSelect, "")
+
+    // render() here is async (health is recomputed before anything is
+    // appended), so the repaint lands a few microtasks later.
+    await vi.waitFor(() => {
+      expect(picker().value).toBe("s2")
+    })
+    expect(timelineText()).toContain("marker-two")
+    expect(timelineText()).not.toContain("marker-one")
   })
 })
 
-describe("retrying after a failed read (#1407's own review, round 3)", () => {
+describe("retrying after a failed read", () => {
   it("clears the Unavailable panel as soon as the retry starts, not when it finishes", async () => {
     let failBundleReads = false
     let holdNextBundleRead = false
     const isBundleKey = (key: string): boolean =>
-      key.startsWith("bc.observability.session.")
+      key.startsWith("sf.observability.session.")
 
     const { store, held } = installFakeStorage(
       (key) => {
@@ -261,35 +353,24 @@ describe("retrying after a failed read (#1407's own review, round 3)", () => {
       },
       (key) => isBundleKey(key) && failBundleReads
     )
-    listSessions(store, [entry("s1", 1, NOW)])
-    seedSession(store, "s1", ["3 days ago"])
+    listSessions(store, [entry("s1", "First", NOW)])
+    seedSession(store, "s1", "marker-one")
 
-    // A good first load, so the selection and the loaded bundle agree —
-    // which is what makes the retry take the no-intermediate-render path.
     await mountPage()
     await vi.waitFor(() => {
-      expect(corpusText()).toContain("3 days ago")
+      expect(timelineText()).toContain("marker-one")
     })
 
-    const headerRefresh = (): void => {
-      const button = [...document.querySelectorAll("button")].find(
-        (b) => b.textContent === "Refresh"
-      )
-      button?.click()
-    }
-
-    // Storage goes away; the retry fails and the page says so.
     failBundleReads = true
-    headerRefresh()
+    clickButton("Refresh")
     await vi.waitFor(() => {
       expect(document.body.textContent).toContain("Unavailable")
     })
 
-    // Storage is back, but this read hangs — the whole point is what the page
-    // shows *during* a slow retry.
     failBundleReads = false
     holdNextBundleRead = true
-    headerRefresh()
+    clickButton("Refresh")
+    await Promise.resolve()
 
     expect(document.body.textContent).not.toContain("Unavailable")
 
@@ -298,92 +379,7 @@ describe("retrying after a failed read (#1407's own review, round 3)", () => {
     })
     held[0]?.release()
     await vi.waitFor(() => {
-      expect(corpusText()).toContain("3 days ago")
-    })
-  })
-})
-
-describe("a superseded load commits nothing (#1407's own review, round 2)", () => {
-  it("does not let a slow Refresh reset the selection the user has since made — that would name one session while exporting another", async () => {
-    let holdNextIndexRead = false
-    const { store, held } = installFakeStorage((key) => {
-      if (key !== WHOLE_AREA || !holdNextIndexRead) return false
-      holdNextIndexRead = false
-      return true
-    })
-    // s1 is the most recent, so a stale load(true) would snap back to it.
-    listSessions(store, [entry("s1", 1, NOW + 1000), entry("s2", 2, NOW)])
-    seedSession(store, "s1", ["3 days ago"])
-    seedSession(store, "s2", ["2 weeks ago"])
-
-    await mountPage()
-    await vi.waitFor(() => {
-      expect(corpusText()).toContain("3 days ago")
-    })
-
-    // "Refresh sessions" starts a load(true) whose index read hangs.
-    holdNextIndexRead = true
-    const refresh = [...document.querySelectorAll("button")].find(
-      (b) => b.textContent === "Refresh sessions"
-    )
-    refresh?.click()
-    await vi.waitFor(() => {
-      expect(held).toHaveLength(1)
-    })
-
-    // The user overtakes it by picking s2, which loads and renders normally.
-    change(picker(), "s2")
-    await vi.waitFor(() => {
-      expect(corpusText()).toContain("2 weeks ago")
-    })
-
-    // Now the overtaken refresh finally resolves.
-    held[0]?.release()
-    await Promise.resolve()
-    await Promise.resolve()
-
-    // A rerender that does *not* reload — a timeline filter change is enough —
-    // is where a reset selection would surface, drawing the picker on s1 with
-    // s2's bundle still behind the Export button.
-    const kindSelect =
-      document.querySelector<HTMLSelectElement>(".bc-filter select")
-    expect(kindSelect).not.toBeNull()
-    if (kindSelect) change(kindSelect, "")
-
-    expect(picker().value).toBe("s2")
-    expect(corpusText()).toContain("2 weeks ago")
-    expect(corpusText()).not.toContain("3 days ago")
-  })
-})
-
-describe("Refresh sessions (#1407's own review)", () => {
-  it("discovers a recording created after the page opened, and renders it", async () => {
-    const { store } = installFakeStorage()
-    listSessions(store, [entry("s1", 1, NOW)])
-    seedSession(store, "s1", ["3 days ago"])
-
-    await mountPage()
-    await vi.waitFor(() => {
-      expect(corpusText()).toContain("3 days ago")
-    })
-    expect(picker().options).toHaveLength(1)
-
-    // A second tab records while this page is open.
-    listSessions(store, [entry("s2", 2, NOW + 1000), entry("s1", 1, NOW)])
-    seedSession(store, "s2", ["2 weeks ago"])
-
-    const refresh = [...document.querySelectorAll("button")].find(
-      (b) => b.textContent === "Refresh sessions"
-    )
-    expect(refresh).toBeDefined()
-    refresh?.click()
-
-    await vi.waitFor(() => {
-      expect(picker().options).toHaveLength(2)
-    })
-    // It also selects the newest, which is what "Refresh sessions" means.
-    await vi.waitFor(() => {
-      expect(corpusText()).toContain("2 weeks ago")
+      expect(timelineText()).toContain("marker-one")
     })
   })
 })

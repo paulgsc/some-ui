@@ -27,6 +27,7 @@ import {
   type ContrastSourceReport,
 } from "@filter/lib/content/contrast-observability"
 import {
+  compactIndex,
   createCoverageRecorder,
   removeFromIndex,
   touchIndex,
@@ -324,14 +325,23 @@ const coverageWatchdog: CoverageWatchdog = createCoverageWatchdog(
   () => documentScope.reengage(sessionLifecycle.epoch)
 )
 
+let observabilityIndexCompacted = false
+
 function touchObservabilityIndex(): void {
-  void touchIndex({
+  const touched = touchIndex({
     sessionId: observabilitySessionId,
     origin: location.origin,
     title: document.title,
     tabState: currentState,
     updatedAt: Date.now(),
   })
+  // Once per session, and only after this one is listed (#1398, #1399):
+  // compacting first would evict an older session to make room for one it
+  // cannot see yet, and this one would still sit past the cap.
+  if (!observabilityIndexCompacted) {
+    observabilityIndexCompacted = true
+    void touched.then(() => compactIndex())
+  }
 }
 
 /**
@@ -930,7 +940,9 @@ function init(): void {
   })
 
   // Real navigation away (or the tab closing) — flush whatever this session
-  // recorded and drop its index entry so the debug page's picker does not
+  // recorded and drop its index entry *and its bundle* (#1399: delisting
+  // alone left the bundle dispose() had just flushed behind, unreachable,
+  // on every ordinary navigation) so the debug page's picker does not
   // accumulate dead sessions. Best-effort: pagehide is not guaranteed on
   // every teardown path (a killed process gets neither), but it is the best
   // signal available from a content script.

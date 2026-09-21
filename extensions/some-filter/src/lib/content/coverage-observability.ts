@@ -54,9 +54,9 @@
  * `extensionStoragePersistence` is built to be used, would make concurrently
  * open tabs clobber each other's ring buffer on every flush — there is no
  * single writer to coordinate them. Instead each session gets its own
- * storage key (`sessionStorageKey`, below), and a small capped index
- * (`readIndex`/`touchIndex`) lets the debug page discover which sessions
- * exist and pick one, mirroring suspender-ledger's per-tab `tab:${tabId}`
+ * storage key (`sessionStorageKey`, below), and one index key per session
+ * (`touchIndex`; never a shared array — #1398) lets the debug page discover
+ * which sessions exist and pick one, mirroring suspender-ledger's per-tab `tab:${tabId}`
  * snapshots but at the storage-key level rather than the snapshot-map level,
  * since there is no single recorder here for a snapshot map to belong to.
  */
@@ -75,13 +75,17 @@ import {
 import { ext } from "@filter/platform/content"
 import type { TabState } from "@filter/types/tab"
 import {
+  createSessionIndex,
   extensionStoragePersistence,
   memoryPersistence,
   Recorder,
+  type Compaction,
+  type IndexAreaLike,
   type Invariant,
   type InvariantOutcome,
   type JsonValue,
   type ObservabilityPersistence,
+  type SessionIndex,
 } from "@some-extension/common/observability"
 
 export type CoverageEventKind =
@@ -533,11 +537,24 @@ export const scopeCoverageInvariants: ReadonlyArray<
 // ── The recorder ─────────────────────────────────────────────────────────────
 
 const SESSION_KEY_PREFIX = "sf.observability.session."
-const INDEX_KEY = "sf.observability.index.v1"
-const MAX_INDEX_ENTRIES = 20
+const SESSION_KEY_SUFFIX = ".v1"
+const INDEX_NAMESPACE = "sf.observability"
+/**
+ * Where the index lived before #1398: one shared array. Migrated to
+ * per-session keys on the first enumeration after upgrade; exported so a test
+ * can stage that migration.
+ */
+export const LEGACY_INDEX_KEY = `${INDEX_NAMESPACE}.index.v1`
 
 export function sessionStorageKey(sessionId: string): string {
-  return `${SESSION_KEY_PREFIX}${sessionId}.v1`
+  return `${SESSION_KEY_PREFIX}${sessionId}${SESSION_KEY_SUFFIX}`
+}
+
+/** The inverse of {@link sessionStorageKey}, for the orphan sweep. */
+function sessionOfStorageKey(key: string): string | undefined {
+  if (!key.startsWith(SESSION_KEY_PREFIX) || !key.endsWith(SESSION_KEY_SUFFIX))
+    return undefined
+  return key.slice(SESSION_KEY_PREFIX.length, -SESSION_KEY_SUFFIX.length)
 }
 
 export type IndexEntry = {
@@ -559,48 +576,98 @@ function isIndexEntry(value: unknown): value is IndexEntry {
   )
 }
 
-/** The debug page's session picker. Sorted most-recently-updated first. */
-export async function readIndex(): Promise<Array<IndexEntry>> {
-  try {
-    const raw: unknown = await ext.storage.local.get(INDEX_KEY)
-    const value: unknown =
-      raw !== null && typeof raw === "object"
-        ? Reflect.get(raw, INDEX_KEY)
-        : undefined
-    if (!Array.isArray(value)) return []
-    return value.filter(isIndexEntry).sort((a, b) => b.updatedAt - a.updatedAt)
-  } catch {
-    return []
-  }
+function isStorageArea(value: unknown): value is IndexAreaLike {
+  if (value === null || typeof value !== "object") return false
+  return (
+    typeof Reflect.get(value, "get") === "function" &&
+    typeof Reflect.get(value, "set") === "function" &&
+    typeof Reflect.get(value, "remove") === "function"
+  )
 }
 
 /**
- * Publish (or refresh) this session's index entry. Best-effort — a storage
- * failure here must not affect theming, so every call site swallows it.
+ * `ext.storage.local`, resolved per call: the platform stub tests install has
+ * no storage area until a test gives it one, and a real one can be absent
+ * too. Absent, every index operation is a no-op.
  */
-export async function touchIndex(entry: IndexEntry): Promise<void> {
-  try {
-    const existing = await readIndex()
-    const next = [
-      entry,
-      ...existing.filter((e) => e.sessionId !== entry.sessionId),
-    ]
-      .sort((a, b) => b.updatedAt - a.updatedAt)
-      .slice(0, MAX_INDEX_ENTRIES)
-    await ext.storage.local.set({ [INDEX_KEY]: next })
-  } catch {
-    // Best-effort — diagnostics degrading must never affect theming.
-  }
+function storageArea(): IndexAreaLike | undefined {
+  const storage: unknown = Reflect.get(ext, "storage")
+  const local: unknown =
+    storage !== null && typeof storage === "object"
+      ? Reflect.get(storage, "local")
+      : undefined
+  return isStorageArea(local) ? local : undefined
 }
 
-export async function removeFromIndex(sessionId: string): Promise<void> {
-  try {
-    const existing = await readIndex()
-    const next = existing.filter((e) => e.sessionId !== sessionId)
-    await ext.storage.local.set({ [INDEX_KEY]: next })
-  } catch {
-    // Best-effort.
-  }
+/**
+ * One index key per session (#1398).
+ *
+ * The first shape of this index was one shared array under one key, and
+ * publishing an entry was a read-modify-write over it — so two tabs starting
+ * at the same moment could each drop the other's entry, leaving a recording
+ * on disk that nothing could list. `storage.local` has no compare-and-set, so
+ * that race could only ever be narrowed. Per-session keys make it structural:
+ * a tab writes a key no other tab writes. The cost moves to enumeration,
+ * which `createSessionIndex` keeps off the recording path — see its header
+ * for the layout, the migration, and why eviction is self-healing.
+ */
+const index: SessionIndex<IndexEntry> = createSessionIndex({
+  namespace: INDEX_NAMESPACE,
+  payload: { key: sessionStorageKey, sessionId: sessionOfStorageKey },
+  isEntry: isIndexEntry,
+  area: storageArea,
+})
+
+/** This session's index key. Exported for the debug page's tests. */
+export function indexStorageKey(sessionId: string): string {
+  return index.indexKey(sessionId)
+}
+
+/** The debug page's session picker. Sorted most-recently-updated first. */
+export function readIndex(): Promise<Array<IndexEntry>> {
+  return index.list()
+}
+
+/**
+ * Publish (or refresh) this session's index entry: one write of one key.
+ * Best-effort — a storage failure here must not affect theming, so every
+ * failure is swallowed.
+ */
+export function touchIndex(entry: IndexEntry): Promise<void> {
+  return index.touch(entry)
+}
+
+/**
+ * Enforce the cap and sweep orphaned bundles (#1399).
+ *
+ * The cap used to drop the oldest index *entry* and leave its
+ * `sf.observability.session.<id>.v1` bundle behind; every page load mints a
+ * new key, so past the 20th each new session orphaned one bundle nothing
+ * could list again — accumulating against the quota until `storage.local`
+ * writes began failing, which `extensionStoragePersistence.save()` swallows
+ * by design. Eviction now takes the bundle with it, and a bundle whose index
+ * key is gone is swept the next time anyone compacts.
+ *
+ * Runs once per session, after its first index touch, and from the debug
+ * page. Not on every touch: on an engine without `storage.local.getKeys()`
+ * the enumeration reads every bundle.
+ */
+export function compactIndex(): Promise<Compaction<IndexEntry>> {
+  return index.compact()
+}
+
+/**
+ * Forget one session entirely — its index entry *and* its stored bundle.
+ *
+ * #1399: this used to rewrite the index alone, and `content.ts`'s `pagehide`
+ * handler calls it one statement after `dispose()` flushed the bundle — so
+ * every ordinary navigation away delisted a bundle it had just written,
+ * permanently unreachable. Delisting on unload is still what this extension
+ * wants (a recording here is about a live page); what it must not do is
+ * delist without deleting.
+ */
+export function removeFromIndex(sessionId: string): Promise<void> {
+  return index.remove(sessionId)
 }
 
 export type CoverageRecorder = Recorder<

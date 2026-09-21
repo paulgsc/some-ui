@@ -27,8 +27,8 @@ import {
   type ContrastContext,
 } from "@filter/lib/content/contrast-observability"
 import {
+  compactIndex,
   coverageInvariants,
-  readIndex,
   sessionStorageKey,
   type CoverageContext,
   type IndexEntry,
@@ -57,6 +57,17 @@ let sessions: Array<IndexEntry> = []
 let selectedSessionId: string | undefined
 let filter: Filter = { kind: "", subject: "" }
 let bundle: Bundle | undefined
+/**
+ * Which session `bundle` was read for. Tracked rather than assumed equal to
+ * `selectedSessionId`: #1408 (found on some-censor's copy of this page,
+ * #1407's own review) — switching sessions used to leave the previous
+ * session's bundle rendered, Export button live, until the new read
+ * finished, so an export in that window wrote one session's file under
+ * another's name.
+ */
+let loadedSessionId: string | undefined
+/** Guards against two loads landing out of order; see {@link load}. */
+let loadToken = 0
 let loadError: string | undefined
 
 function isBundle(value: unknown): value is Bundle {
@@ -233,11 +244,20 @@ function pickerSection(): HTMLElement {
   select.addEventListener("change", () => {
     selectedSessionId = select.value || undefined
     filter = { kind: "", subject: "" }
+    // Drop the old session's bundle before the read starts, not after it
+    // finishes: the handler that creates the divergence is the one that has
+    // to resolve it. Rendering here immediately takes the Export button out
+    // with it, so there is no window in which it would write the wrong file.
+    clearLoadedBundle()
+    void render()
     void load()
   })
 
   const refresh = el("button", { text: "Refresh sessions" })
-  refresh.addEventListener("click", () => void loadSessions(true))
+  // #1408: this used to call loadSessions() alone, which mutated module state
+  // and rendered nothing — so a recording created after the page opened
+  // stayed invisible however often it was clicked.
+  refresh.addEventListener("click", () => void load(true))
 
   const section = el("section")
   section.append(
@@ -677,22 +697,77 @@ async function render(): Promise<void> {
   )
 }
 
-async function loadSessions(pickMostRecent: boolean): Promise<void> {
-  sessions = await readIndex()
-  if (pickMostRecent || selectedSessionId === undefined) {
-    selectedSessionId = sessions[0]?.sessionId
-  } else if (!sessions.some((s) => s.sessionId === selectedSessionId)) {
-    selectedSessionId = sessions[0]?.sessionId
-  }
+function clearLoadedBundle(): void {
+  bundle = undefined
+  loadedSessionId = undefined
 }
 
-async function load(): Promise<void> {
+/**
+ * Which session to show, given a freshly read index. Pure, and that is the
+ * point: computed first and committed only after {@link load}'s token check,
+ * so a superseded load cannot reset the selection the user has since made.
+ */
+function nextSelection(
+  index: ReadonlyArray<IndexEntry>,
+  pickMostRecent: boolean,
+  current: string | undefined
+): string | undefined {
+  if (
+    pickMostRecent ||
+    current === undefined ||
+    !index.some((s) => s.sessionId === current)
+  ) {
+    return index[0]?.sessionId
+  }
+  return current
+}
+
+/**
+ * Refresh the session list and the selected session's bundle.
+ *
+ * `pickMostRecent` forces the newest recording to be selected, which is what
+ * "Refresh sessions" means; the header's own "Refresh" leaves the selection
+ * alone.
+ *
+ * Two loads can be in flight at once — a fast double-change of the picker is
+ * enough — and their storage reads are not obliged to settle in the order
+ * they started (#1408's third case). So `loadToken` gates not just every
+ * render but **every write to module state**: a superseded load must leave
+ * `sessions`, `selectedSessionId`, `bundle` and `loadError` exactly as it
+ * found them. The rule this function keeps is that nothing module-scoped is
+ * assigned between an `await` and the token check that follows it.
+ */
+async function load(pickMostRecent = false): Promise<void> {
+  const token = ++loadToken
+  // Clearing the error without painting it away would leave the
+  // "Unavailable" panel on screen for the whole retry (render() returns early
+  // while loadError is set). Conditional, so the common no-error path does
+  // not flash the whole page on every refresh.
+  const hadError = loadError !== undefined
   loadError = undefined
+  if (hadError) await render()
   try {
-    await loadSessions(false)
-    bundle = selectedSessionId ? await loadBundle(selectedSessionId) : undefined
+    // Compacting rather than merely listing: this is the one place a whole-
+    // area enumeration is cheap enough to sweep orphaned bundles as well as
+    // enforce the cap (#1398, #1399) — paid once, by a person who asked.
+    const { entries: index } = await compactIndex()
+    if (token !== loadToken) return
+    sessions = [...index]
+    selectedSessionId = nextSelection(index, pickMostRecent, selectedSessionId)
+    if (selectedSessionId !== loadedSessionId) {
+      clearLoadedBundle()
+      await render()
+      if (token !== loadToken) return
+    }
+    const next = selectedSessionId
+      ? await loadBundle(selectedSessionId)
+      : undefined
+    if (token !== loadToken) return
+    bundle = next
+    loadedSessionId = selectedSessionId
     await render()
   } catch (e) {
+    if (token !== loadToken) return
     loadError = e instanceof Error ? e.message : String(e)
     await render()
   }
