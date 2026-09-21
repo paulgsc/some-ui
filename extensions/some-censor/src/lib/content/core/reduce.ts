@@ -6,8 +6,8 @@
  * no DOM, no browser call (Boundary Contract B6, B8). The disclosure ladder
  * is `fsm.ts`'s, ported as-is (F1–F4 still hold: every view carries its
  * session, transitions are typed over their legal sources, `project()` is
- * exhaustive); what this module adds is the *orchestration* `VideoManager`
- * and `VideoEntry` used to do in place — as data in, data out.
+ * exhaustive); what this module adds is the *orchestration* the former manager
+ * and per-card entry used to do in place — as data in, data out.
  *
  * Invariants:
  *

@@ -14,7 +14,7 @@
  * can discover which recordings exist and pick one.
  *
  * #1395 specified the storage key as `…session.${sessionOrdinal}.v1`, keyed
- * by `VideoManager`'s `_session`. That ordinal is the wrong key for two
+ * by Core's `session`. That ordinal is the wrong key for two
  * reasons, so it is recorded as *event data* instead and the storage key is
  * scoped to the content-script instance:
  *
@@ -82,13 +82,13 @@ import { surfaceOf } from "./layout/surface"
  * drifting.
  */
 export const BOYO_EVENT_KINDS = [
-  // Lifecycle. `session.start`/`session.reset` carry VideoManager's own
+  // Lifecycle. `session.start`/`session.reset` carry Core's own
   // `_session` ordinal as their subject — see this module's header.
   "session.start",
   "session.reset",
   "navigation.finish",
   "mutation.batch",
-  // Mount pipeline, one kind per outcome `VideoManager.upsert()` can reach.
+  // Mount pipeline, one kind per outcome an observation can reach.
   "mount.resolved",
   "mount.provisional",
   "mount.unresolved",
@@ -121,6 +121,12 @@ export const BOYO_EVENT_KINDS = [
   // Date extraction — the corpus mechanism QC2 (#1384) depends on.
   "date.observed",
   "date.absent",
+  /**
+   * A catalogue node the layout table could not place (BC2, #1435; B4). The
+   * table's staleness signal — see layout/README.md for the recrawl cadence
+   * keyed to it. Subject is the reason; detail carries tag and surface.
+   */
+  "layout.unknown_shape",
   // Invariant transitions, mirroring some-filter's violated/recovered pair.
   "invariant.violated",
   "invariant.recovered",
@@ -161,13 +167,15 @@ export const BOYO_COUNTERS = [
   "dates_observed",
   "dates_absent",
   "invariant_violations",
+  /** `layout.unknown_shape` events, per session — the recrawl trigger. */
+  "unknown_shapes",
   /**
    * How many times the invariants were actually evaluated.
    *
    * Without it a `status: "healthy"` export is ambiguous between "checked, and
    * fine" and "never got to check" — a distinction that cost two debugging
    * sessions on #1421, both of which began from an export reading healthy on a
-   * visibly broken page. `sampleHealth()` only rides VideoManager's retry loop
+   * visibly broken page. `sampleHealth()` only rides the retry loop
    * and the stall watch, so a quiet page can legitimately evaluate nothing.
    */
   "health_samples",
@@ -243,7 +251,7 @@ export const PROMOTION_STALL_MS = 30_000
  */
 export const RESOLVE_GRACE_MS = 2_000
 
-/** One element waiting in a `VideoManager` queue, as the invariants see it. */
+/** One element waiting in the Sensor's queue, as the invariants see it. */
 export type QueuedCard = {
   /** `elementKey()`'s output (unresolved) or `c:<videoId>` (channel pending). */
   readonly key: string
@@ -354,7 +362,7 @@ export type PromotingCard = {
 
 /**
  * Everything {@link boyoInvariants} needs, gathered once per health sample by
- * `VideoManager` reading its own live queues. Pure data, so every check below
+ * the runtime reading the Sensor's queues and Core's state. Pure data, so every check below
  * is unit-testable with a plain object and no DOM.
  */
 export type BoyoContext = {
@@ -367,7 +375,7 @@ export type BoyoContext = {
   readonly promoting: ReadonlyArray<PromotingCard>
   /**
    * Read from the DOM, not from any queue — see `OccluderReleases`. This is
-   * the only field here that is not a projection of `VideoManager`'s own
+   * the only field here that is not a projection of the pipeline's own
    * bookkeeping, and that is what makes it able to see what the bookkeeping
    * cannot.
    */
@@ -402,7 +410,7 @@ export const boyoInvariants: ReadonlyArray<Invariant<BoyoContext>> = [
   {
     name: "OccluderReleases",
     description:
-      "No element sits under the static pre-mask occluder, without data-boyo, past OCCLUSION_GRACE_MS. Unlike every other check here this reads the DOM rather than VideoManager's bookkeeping, because the failures it exists for are precisely the ones that leave an element in no queue, no registry and no guard — where a bookkeeping check has nothing to look at and reports healthy while the page is visibly broken (#1421). The occluder is lifted by exactly one thing, the content script writing data-boyo; an element it is still hiding after the resolution budget has passed is one nothing is coming back for, and it is inert as well as blurred because that rule sets pointer-events: none.",
+      "No element sits under the static pre-mask occluder, without data-boyo, past OCCLUSION_GRACE_MS. Unlike every other check here this reads the DOM rather than the pipeline's bookkeeping, because the failures it exists for are precisely the ones that leave an element in no queue, no registry and no guard — where a bookkeeping check has nothing to look at and reports healthy while the page is visibly broken (#1421). The occluder is lifted by exactly one thing, the content script writing data-boyo; an element it is still hiding after the resolution budget has passed is one nothing is coming back for, and it is inert as well as blurred because that rule sets pointer-events: none.",
     check: (ctx): InvariantOutcome => {
       if (ctx.phase !== "running") return { ok: "unknown" }
       const stranded = ctx.occluded.filter(
@@ -464,7 +472,7 @@ export type IndexEntry = {
   sessionId: string
   origin: string
   surface: BoyoSurface
-  /** VideoManager's session ordinal as of the last index touch. */
+  /** Core's session ordinal as of the last index touch. */
   sessionOrdinal: number
   updatedAt: number
 }
@@ -646,7 +654,7 @@ function defaultPersistence(sessionId: string): ObservabilityPersistence {
 
 /**
  * One recorder per content-script instance — see this module's header for why
- * that scope, and not one per `VideoManager` session ordinal, is correct.
+ * that scope, and not one per session ordinal, is correct.
  */
 export function createBoyoRecorder(
   sessionId: string,
@@ -678,7 +686,7 @@ export function createBoyoRecorder(
 /**
  * How often {@link BoyoObservability.sampleHealth} is allowed to run.
  *
- * The only cadence available to piggyback on is `VideoManager`'s 500 ms retry
+ * The only cadence available to piggyback on is the Sensor's 500 ms retry
  * loop, and running every invariant plus a `storage.local` index touch at that
  * rate would make the observer more expensive than the thing observed
  * (Charter §8). Both invariants are about states measured in *tens of
@@ -756,7 +764,7 @@ export class BoyoObservability {
     })
     this.recorder.count("sessions_started")
     // Published here as well as on every health sample: sampleHealth only runs
-    // off VideoManager's retry loop, which a page with nothing queued never
+    // off the retry loop, which a page with nothing queued never
     // starts — and a recording the OBS2 picker cannot see is a recording that
     // may as well not exist.
     this._touchIndex(Date.now())
@@ -905,6 +913,15 @@ export class BoyoObservability {
       severity: "debug",
     })
     this.recorder.count("channels_abandoned")
+  }
+
+  unknownShape(tag: string, surface: BoyoSurface, reason: string): void {
+    this.recorder.record({
+      kind: "layout.unknown_shape",
+      subject: reason,
+      detail: { tag, surface },
+    })
+    this.recorder.count("unknown_shapes")
   }
 
   entryState(kind: ViewState["kind"], videoId: string): void {

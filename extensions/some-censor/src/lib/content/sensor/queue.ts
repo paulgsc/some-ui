@@ -1,6 +1,6 @@
 /**
  * The polling channel (BC2, #1435) — canon Definition 3.3's $S_"poll"$, as
- * `VideoManager`'s unresolved queue and budget were, now the Sensor's.
+ * the former manager's unresolved queue and budget were, now the Sensor's.
  *
  * A catalogue element with no extractable id yet — a lockup YouTube has not
  * filled in, a channel or playlist tile that never will be, an ad cell — is

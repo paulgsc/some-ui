@@ -39,7 +39,7 @@ export function extractVideoId(el: HTMLElement): VideoId | null {
  * and useless for deciding whether a card the manager already mounted is still
  * the same card.
  *
- * `VideoManager` needs that second question because its only recycle signal is
+ * The Sensor's identity reconciliation needs that second question because its only recycle signal is
  * "the extracted id differs from the one stamped on the element", and two very
  * different things produce it:
  *

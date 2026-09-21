@@ -16,11 +16,11 @@
  *
  *   E4 — VideoOnlyExtracted is a distinct, intermediate variant: videoId is
  *        guaranteed non-null but channelId is still pending.  It is sufficient
- *        to MASK a card (masking + registry keying need only videoId) but NOT
- *        sufficient to construct a VideoRecord (makeRecord still demands
- *        FullyExtracted — V2 is untouched).  This is what lets a card mount
- *        masked on the fast path while channel-id hydrates late, instead of
- *        being parked indefinitely in the unresolved queue.
+ *        to MASK a card (masking and keying need only videoId) but NOT a
+ *        complete observation: Core mounts it with its channel unknown and
+ *        the Sensor re-observes it until one arrives.  This is what lets a
+ *        card mount masked on the fast path while channel-id hydrates late,
+ *        instead of being parked indefinitely in the unresolved queue.
  */
 
 import type { ChannelId, VideoId } from "@censor/types/ids"

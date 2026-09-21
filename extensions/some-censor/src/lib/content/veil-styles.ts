@@ -11,7 +11,7 @@
  * TypeScript identifiers" arrangement with a positive declaration, and it means
  * the answer to "what can this extension paint?" is one file long.
  *
- * `dom-handle.ts` consumes these constants and owns the DOM invariants; it does
+ * `actuator/veil.ts` consumes these constants and owns the DOM invariants; it does
  * not author class names. Keeping the split makes both halves readable: the
  * styling is a flat table you can diff, and the DOM code is about lifecycle.
  *
@@ -77,7 +77,7 @@ const VEIL_GLASS =
 const VEIL_WHITELISTED =
   "bg-[rgb(4_20_10/50%)] backdrop-blur-4px pointer-events-none"
 
-/** Revealed: thaw out, then dom-handle removes the node on animationend. */
+/** Revealed: thaw out, then the Actuator removes the node on animationend. */
 const VEIL_REVEALED =
   "animate-[boyo-thaw_0.4s_var(--boyo-ease)_forwards] pointer-events-none"
 

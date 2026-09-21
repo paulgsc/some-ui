@@ -312,7 +312,7 @@ export function createSensor(ports: SensorPorts): Sensor {
   function ensureRetryLoop(): void {
     if (retryTimer !== null || !running) return
     // Lifetime: stopped by maybeStopRetryLoop() once nothing is queued, and
-    // by stop(). Not tied to visibility — the same exemption VideoManager's
+    // by stop(). Not tied to visibility — the same exemption the former manager's
     // loop carried, for the same reason (this extension's own call).
     // eslint-disable-next-line extension-charter/require-named-lifetime -- lifetime stated above
     retryTimer = setInterval(() => {

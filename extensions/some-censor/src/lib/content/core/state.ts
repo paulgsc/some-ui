@@ -2,7 +2,7 @@
  * Core's state (BC3, #1436) — Boundary Contract B8: one explicit value,
  * threaded through pure reducers, never a private field.
  *
- * Everything the old `VideoManager` kept across seven `HTMLElement`-keyed
+ * Everything the former manager kept across seven `HTMLElement`-keyed
  * maps, sets and weak maps is here as plain data keyed by {@link CardKey},
  * which is why a recorded event log folds back into the same state every
  * time and why the diagnostics page can render it without reconstructing
@@ -72,7 +72,7 @@ export type CardState = {
   /**
    * Bumped on every view change within an incarnation. A title transform or
    * the whitelist reveal timer carries the version it was issued under and is
-   * discarded if the card has moved on — `VideoEntry`'s Entry-2, as data.
+   * discarded if the card has moved on — the former entry's Entry-2, as data.
    * Meaningful only together with `generation`: two incarnations both count
    * from zero.
    */

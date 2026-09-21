@@ -1,7 +1,7 @@
 /**
  * The canonical catalogue of YouTube card elements that BOYO tracks.
  *
- * Shared between observer.ts, video-manager.ts, events.ts and — via
+ * Shared between the Sensor, the Actuator's gesture delegation and — via
  * `PREMASK_SELECTORS` — the static occluder rules in `styles/content.css`,
  * which are the only thing hiding a card between paint and the content
  * script taking ownership. Those two lists disagreeing is exactly the bug
@@ -218,7 +218,7 @@ export function detectOccluderEngine(root: ParentNode): OccluderEngine {
  * stylesheet cannot drift from the predicate without a rendered test
  * failing.
  *
- * Every other health signal in this workspace reads `VideoManager`'s
+ * Every other health signal in this workspace reads the pipeline's
  * bookkeeping, and bookkeeping cannot represent an element that fell out of
  * every collection it keeps (#1421, #1425); this asks the page instead.
  *

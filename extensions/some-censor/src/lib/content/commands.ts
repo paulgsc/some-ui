@@ -7,9 +7,10 @@
  * lives once in `@some-extension/common`. It was lifted from this workspace's
  * former `key-binding.ts` (see #276/#277), so censor is its first adopter.
  *
- * What stays local here is the *application*: censor's command ids and their
- * handlers. The adapter direction is preserved — this module knows about
- * `VideoManager`; `VideoManager` knows nothing about keybindings.
+ * What stays local here is the *application*: censor's command ids. The
+ * adapter direction is preserved — this module hands a command id to whoever
+ * attached it (the Controller, which dispatches it into Core as an `Input`);
+ * nothing downstream knows about keybindings.
  */
 
 import type {
@@ -18,8 +19,6 @@ import type {
   KeyBindingDisposer,
 } from "@some-extension/common"
 import { attachKeyBindings as attachCommonKeyBindings } from "@some-extension/common"
-
-import type { VideoManager } from "./video-manager"
 
 /** Command ids owned by some-censor. */
 export type CensorCommandId = "advance-all-to-title"
@@ -50,9 +49,11 @@ const KEY_BINDINGS = [
  * Returns a disposer that detaches the capture-phase listener (see the commons
  * `attachKeyBindings`).
  */
-export function attachKeyBindings(mgr: VideoManager): KeyBindingDisposer {
+export function attachKeyBindings(
+  run: (command: CensorCommandId) => void
+): KeyBindingDisposer {
   const registry: CommandRegistry<CensorCommandId> = {
-    "advance-all-to-title": () => mgr.advanceAllToTitle(),
+    "advance-all-to-title": () => run("advance-all-to-title"),
   }
 
   return attachCommonKeyBindings(registry, KEY_BINDINGS)

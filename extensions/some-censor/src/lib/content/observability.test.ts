@@ -25,7 +25,7 @@ import {
   type BoyoEventKind,
 } from "@censor/lib/content/observability"
 import { isVideoCard } from "@censor/lib/content/selectors"
-import { RESOLVE_BUDGET_MS } from "@censor/lib/content/video-manager"
+import { RESOLVE_BUDGET_MS } from "@censor/lib/content/sensor/queue"
 import { ext } from "@censor/platform/content"
 import {
   memoryPersistence,
@@ -182,6 +182,7 @@ describe("the event union", () => {
     obs.entryState("whitelisted", "vid-a")
     obs.uploadDate("3 days ago", "home", "ytd-rich-item-renderer")
     obs.uploadDate(null, "home", "ytm-shorts-lockup-view-model")
+    obs.unknownShape("yt-lockup-view-model", "search", "tag-unseen")
 
     // The two invariant kinds are transitions, so they need a violation and
     // then a recovery to be reachable at all.

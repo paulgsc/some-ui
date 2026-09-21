@@ -22,7 +22,6 @@ export default defineConfig(
     // are the files that must stay testable without a DOM:
     //
     //   fsm.ts          transitions + the render projection
-    //   record.ts       the pure identity record (V1: "zero DOM imports")
     //   selectors.ts    the card catalogue, also read by the stylesheet test
     //   veil-styles.ts  class strings; it names elements it must not touch
     //   layout/**       the layout table, its schema, its instrument and its
@@ -39,7 +38,6 @@ export default defineConfig(
     // distinction the rule draws and the reason its functions are pure.
     files: [
       "src/lib/content/fsm.ts",
-      "src/lib/content/record.ts",
       "src/lib/content/selectors.ts",
       "src/lib/content/veil-styles.ts",
       "src/lib/content/layout/**/*.ts",

@@ -15,7 +15,7 @@
  *        callers from composing partial extraction themselves and bypassing E2.
  *
  *   E4 — Three-way classification:
- *          full       — both ids present; can construct a VideoRecord.
+ *          full       — both ids present; a complete observation.
  *          video-only — videoId present, channelId absent; can MASK now,
  *                       channel backfilled later by the retry loop.
  *          raw        — videoId absent; nothing actionable yet.
@@ -35,7 +35,7 @@ import { extractVideoId } from "./video-id"
  *
  * E3 exists so a caller cannot compose partial extraction and bypass E2's
  * three-way classification. `representsVideo` cannot: it is a predicate over
- * an id the caller already holds, and it yields no material a `VideoRecord`
+ * an id the caller already holds, and it yields no material an observation
  * could be built from. It answers "is this still the same card", which
  * `tryExtract` structurally cannot — see its own doc comment.
  */

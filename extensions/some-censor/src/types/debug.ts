@@ -2,7 +2,7 @@ export type BoyoDebugSnapshot = {
   /** Monotonic counter — increments on every publish() call. */
   readonly tick: number
 
-  /** VideoManager phase */
+  /** Core phase */
   readonly phase: "idle" | "running"
 
   /** Number of fully resolved, mounted video entries */
@@ -28,7 +28,7 @@ export type BoyoDebugSnapshotWire = {
   /** Monotonic counter — increments on every publish() call. */
   readonly tick: number
 
-  /** VideoManager phase */
+  /** Core phase */
   readonly phase: "idle" | "running"
 
   /** Number of fully resolved, mounted video entries */
