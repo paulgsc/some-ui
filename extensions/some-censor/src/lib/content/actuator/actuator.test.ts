@@ -140,6 +140,22 @@ describe("render", () => {
     expect(el.dataset["boyo"], "the stamp is re-asserted too").toBe("0")
   })
 
+  it("replaces a veil the vendor reparented elsewhere, without duplicating it (A2)", () => {
+    const el = card()
+    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
+    const moved = veilOf(el)
+    if (moved === null) throw new Error("no veil mounted")
+    document.body.appendChild(moved)
+    expect(moved.isConnected, "still connected, just not here").toBe(true)
+    actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])
+    expect(veilOf(el), "the anchor has a veil of its own again").not.toBeNull()
+    expect(veilOf(el)).not.toBe(moved)
+    expect(
+      document.querySelectorAll(".boyo-veil"),
+      "the stray one is gone"
+    ).toHaveLength(1)
+  })
+
   it("rebuilds the veil's content when the model changes", () => {
     const el = card()
     actuator.realize([render(K, MASKED, [{ el, role: "anchor" }])])

@@ -252,11 +252,15 @@ export function createActuator(ports: ActuatorPorts): Actuator {
         removeVeilAnimated(el, rec)
         continue
       }
-      // A2
+      // A2. The veil is reused only while it is still this anchor's child:
+      // one the vendor detached — or reparented elsewhere, which leaves it
+      // connected — is replaced, so the stamp never disables the static
+      // occluder on a card with no veil of its own.
       const existing = rec.veils.get(el)
-      const fresh = !existing?.isConnected
+      const attached = existing?.parentElement === el
+      const fresh = !attached
       let veil: HTMLElement
-      if (existing?.isConnected) {
+      if (attached) {
         veil = existing
       } else {
         existing?.remove()
