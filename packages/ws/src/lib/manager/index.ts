@@ -26,6 +26,38 @@ export type WebSocketSnapshot<I = unknown> = {
  * Singleton WebSocket manager with lifecycle coordination
  */
 export class WebSocketManager {
+  /**
+   * The canonical manager for each URL, for the life of the process.
+   *
+   * An entry is written once, by `getInstance`, and never removed. That is
+   * the whole invariant: **one manager per URL, always, whether or not
+   * anyone currently holds a reference to it.** `getInstance` is therefore
+   * total - it cannot return an object that is not the registered one - and
+   * no consumer lifecycle can desynchronize the map from reality.
+   *
+   * `dispose()` used to delete the entry when the reference count reached
+   * zero, which tied *identity* to *liveness* and made every teardown edge a
+   * registry-integrity hazard. Two of them were real and were fixed
+   * individually first (#1515): React's <StrictMode> replays effects as
+   * setup -> cleanup -> setup, so a lone consumer disposed its manager and
+   * re-acquired the same now-unregistered object, after which the next
+   * consumer of that URL built a second manager on a second socket; and
+   * `dispose` deleted by key without checking whose entry it was, so one of
+   * two managers sharing a URL would evict the other. Both were symptoms of
+   * the same thing - a registry that forgets - and both disappear here
+   * rather than needing a guard each.
+   *
+   * Disposal still does everything else: it disconnects, clears listeners
+   * and queues, and resets the lifecycle to `idle`, so the object is
+   * re-acquirable and reconnects on its next `acquire()`.
+   *
+   * The cost is one `Map` entry per distinct URL for the process lifetime,
+   * holding a disconnected object. That is bounded by the number of distinct
+   * socket URLs an app opens, which here is a handful of stable endpoints.
+   * A caller that generated unbounded URLs would want explicit eviction; no
+   * such caller exists, and inventing the API for a hypothetical one is how
+   * this class acquired the complexity being removed.
+   */
   private static instances = new Map<string, WebSocketManager>()
 
   private socket: WebSocket | null = null
@@ -137,24 +169,8 @@ export class WebSocketManager {
   async acquire(init?: InitFunction): Promise<void> {
     const count = this.refCounter.acquire()
 
-    // Re-register on the way back up from zero.
-    //
-    // `dispose()` unregisters us when the last reference goes, but the
-    // caller that held it may still have us captured and come straight back
-    // - React's <StrictMode> replays every effect as setup -> cleanup ->
-    // setup, so a lone consumer disposes us and immediately re-acquires the
-    // same object. Without this, that object is live but absent from the
-    // map: the next consumer of this URL builds a *second* manager on a
-    // second socket, and the per-URL singleton this class exists to
-    // guarantee is quietly gone.
-    //
-    // Only into an empty slot. If something else has since registered for
-    // this URL it owns the name, and overwriting it would strand whatever
-    // references it already holds - the very failure this is fixing, in the
-    // other direction.
-    if (count === 1 && !WebSocketManager.instances.has(this.url)) {
-      WebSocketManager.instances.set(this.url, this)
-    }
+    // No re-registration needed: a manager is registered for its URL from
+    // construction until the process ends. See the note on `instances`.
 
     // Store init function on first acquire
     if (count === 1 && init) {
@@ -399,12 +415,8 @@ export class WebSocketManager {
       reconnectAttempts: 0,
     })
 
-    // Only if the map still points at us. After a dispose/re-acquire cycle
-    // (see `acquire`) a different manager can own this URL, and deleting by
-    // key alone would evict a live entry that is not ours.
-    if (WebSocketManager.instances.get(this.url) === this) {
-      WebSocketManager.instances.delete(this.url)
-    }
+    // Deliberately still registered. `dispose` ends this manager's
+    // *connection*, not its identity - see the note on `instances`.
     this.log("Manager disposed")
   }
 
