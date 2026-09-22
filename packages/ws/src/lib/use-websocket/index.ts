@@ -165,6 +165,30 @@ export function useWebSocket<I, O = unknown>({
     }
   }, [onConnect, onDisconnect, onError, onIncomingMessage])
 
+  /**
+   * `init` held the same way, and for a sharper reason than the others.
+   *
+   * The acquire/release effect below used to list it as a dependency, which
+   * made the *acquisition* churn whenever the caller's `init` identity did.
+   * That is not hypothetical: `useOrchestrator` builds its own with
+   * `useCallback(..., [scenes, stream_id])`, and `scenes` is an array prop,
+   * so any caller passing an array literal re-creates `init` on every
+   * render. The effect then released and re-acquired on every render - which
+   * with the unconditional release is a full dispose and reconnect each
+   * time, every one of them pushing a new snapshot and provoking the next
+   * render. React gives up on that loop with "Maximum update depth
+   * exceeded" and the tree renders nothing at all.
+   *
+   * A ref is the honest shape regardless: `init` is only consulted on the
+   * first acquire of a manager (`acquire` stores it when the count goes to
+   * one), so it was never something an acquisition should be keyed on.
+   */
+  const initRef = useRef(init)
+
+  useEffect(() => {
+    initRef.current = init
+  }, [init])
+
   const handleMessage = useCallback(
     (data: unknown) => {
       const result = incomingMessageSchema.safeParse(data)
@@ -223,7 +247,7 @@ export function useWebSocket<I, O = unknown>({
     //
     // A rejected acquisition still incremented the count, so it is released
     // like any other - it is reported here rather than swallowed at the call.
-    manager.acquire(init).catch((err: unknown) => {
+    manager.acquire(initRef.current).catch((err: unknown) => {
       // eslint-disable-next-line no-console
       console.error("Failed to acquire connection:", err)
     })
@@ -231,7 +255,8 @@ export function useWebSocket<I, O = unknown>({
     return (): void => {
       manager.release()
     }
-  }, [manager, init])
+    // Keyed on the manager alone - see `initRef`.
+  }, [manager])
 
   // Attach message/connection/error listeners
   useEffect(() => {

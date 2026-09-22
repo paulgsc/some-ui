@@ -349,3 +349,37 @@ describe("useWebSocket - StrictMode replay", () => {
     expect(WebSocketManager.getInstance(url)).toBe(result.current.manager)
   })
 })
+
+describe("useWebSocket - an unstable init callback", () => {
+  it("does not re-acquire when only `init` changes identity", async () => {
+    // `useOrchestrator` builds `init` with useCallback(..., [scenes, ...]),
+    // and `scenes` is an array prop - so any caller passing an array literal
+    // gives `init` a fresh identity every render. When the acquire/release
+    // effect was keyed on `init`, that meant a full release-and-re-acquire
+    // per render; with the unconditional release each one disposes and
+    // reconnects, pushes a new snapshot, and provokes the next render.
+    // React ends it with "Maximum update depth exceeded" and the tree
+    // renders nothing - which is what took out every Storybook panel that
+    // mounts the orchestrator, not just the socket-bearing ones.
+    const url = nextUrl()
+    const { rerender } = renderHook(
+      ({ init }: { init: () => void }) =>
+        useWebSocket({ url, incomingMessageSchema: incomingSchema, init }),
+      { initialProps: { init: (): void => {} } }
+    )
+
+    await waitFor(() => {
+      expect(FakeWebSocket.instances).toHaveLength(1)
+    })
+
+    // A fresh `init` identity on each render, exactly as an array-prop
+    // dependency produces.
+    for (let i = 0; i < 5; i += 1) {
+      rerender({ init: (): void => {} })
+    }
+    await Promise.resolve()
+
+    // One socket, still. Churn would have opened a new one per render.
+    expect(FakeWebSocket.instances).toHaveLength(1)
+  })
+})
