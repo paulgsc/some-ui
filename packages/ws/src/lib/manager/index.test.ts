@@ -241,3 +241,58 @@ describe("WebSocketManager - sendMessage", () => {
     ])
   })
 })
+
+describe("WebSocketManager - registration across dispose and re-acquire", () => {
+  /** `acquire()` only settles once the socket opens, and these cases are
+   * about the reference count rather than the connection - `refCounter`
+   * increments synchronously, so a microtask is all they need. */
+  const acquireWithoutConnecting = async (
+    manager: WebSocketManager
+  ): Promise<void> => {
+    void manager.acquire()
+    await Promise.resolve()
+  }
+
+  it("re-registers itself when a captured instance is acquired again", async () => {
+    // The <StrictMode> shape: the last reference goes, we dispose and
+    // unregister, and the same captured object is immediately re-acquired.
+    // It has to reclaim the URL, or the next caller silently gets a second
+    // manager on a second socket.
+    //
+    // Deliberately no `getInstance` between the release and the re-acquire:
+    // that call would itself register a replacement and hide the point.
+    const url = nextUrl()
+    const first = WebSocketManager.getInstance(url)
+
+    await acquireWithoutConnecting(first)
+    first.release()
+
+    await acquireWithoutConnecting(first)
+
+    expect(WebSocketManager.getInstance(url)).toBe(first)
+  })
+
+  it("does not evict a live entry that is not its own", async () => {
+    // Once a replacement owns the URL, the old manager's own disposal must
+    // not delete it by key. Deleting blind would leave the replacement live
+    // but unregistered - the same singleton break, one step removed.
+    const url = nextUrl()
+    const stale = WebSocketManager.getInstance(url)
+
+    await acquireWithoutConnecting(stale)
+    stale.release()
+
+    const replacement = WebSocketManager.getInstance(url)
+    expect(replacement).not.toBe(stale)
+
+    // The stale manager runs a full acquire/release cycle. It must not
+    // reclaim the URL on the way up (the slot is taken) nor evict the
+    // replacement on the way down.
+    await acquireWithoutConnecting(stale)
+    expect(WebSocketManager.getInstance(url)).toBe(replacement)
+
+    stale.release()
+
+    expect(WebSocketManager.getInstance(url)).toBe(replacement)
+  })
+})

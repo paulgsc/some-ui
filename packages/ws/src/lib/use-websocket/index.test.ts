@@ -1,3 +1,4 @@
+import { StrictMode } from "react"
 import { act, renderHook, waitFor } from "@testing-library/react"
 import { FakeWebSocket, nextUrl } from "@ws/lib/__tests__/fake-websocket"
 import { WebSocketManager } from "@ws/lib/manager"
@@ -320,5 +321,31 @@ describe("useWebSocket - url changing after mount", () => {
 
     expect(result.current.manager).toBe(first)
     expect(FakeWebSocket.instances).toHaveLength(1)
+  })
+})
+
+describe("useWebSocket - StrictMode replay", () => {
+  it("stays the registered manager for its url", async () => {
+    // `apps/www/src/main.tsx` renders under <StrictMode>, where React replays
+    // every effect as setup -> cleanup -> setup. With a single consumer that
+    // first cleanup drops the only reference, so `onZero` disposes the
+    // manager and `dispose()` unregisters it - and the second setup then
+    // re-acquires the same captured object, now missing from the map.
+    //
+    // The damage is not to this hook, which keeps working off its own
+    // manager. It is that the per-URL singleton is broken for everyone
+    // after: the next consumer of this url builds a second manager and a
+    // second socket, and whichever disposes first deletes the other's entry.
+    const url = nextUrl()
+    const { result } = renderHook(
+      () => useWebSocket({ url, incomingMessageSchema: incomingSchema }),
+      { wrapper: StrictMode }
+    )
+
+    await waitFor(() => {
+      expect(result.current.manager).not.toBeNull()
+    })
+
+    expect(WebSocketManager.getInstance(url)).toBe(result.current.manager)
   })
 })

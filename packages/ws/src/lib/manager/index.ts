@@ -137,6 +137,25 @@ export class WebSocketManager {
   async acquire(init?: InitFunction): Promise<void> {
     const count = this.refCounter.acquire()
 
+    // Re-register on the way back up from zero.
+    //
+    // `dispose()` unregisters us when the last reference goes, but the
+    // caller that held it may still have us captured and come straight back
+    // - React's <StrictMode> replays every effect as setup -> cleanup ->
+    // setup, so a lone consumer disposes us and immediately re-acquires the
+    // same object. Without this, that object is live but absent from the
+    // map: the next consumer of this URL builds a *second* manager on a
+    // second socket, and the per-URL singleton this class exists to
+    // guarantee is quietly gone.
+    //
+    // Only into an empty slot. If something else has since registered for
+    // this URL it owns the name, and overwriting it would strand whatever
+    // references it already holds - the very failure this is fixing, in the
+    // other direction.
+    if (count === 1 && !WebSocketManager.instances.has(this.url)) {
+      WebSocketManager.instances.set(this.url, this)
+    }
+
     // Store init function on first acquire
     if (count === 1 && init) {
       this.initFunction = init
@@ -380,7 +399,12 @@ export class WebSocketManager {
       reconnectAttempts: 0,
     })
 
-    WebSocketManager.instances.delete(this.url)
+    // Only if the map still points at us. After a dispose/re-acquire cycle
+    // (see `acquire`) a different manager can own this URL, and deleting by
+    // key alone would evict a live entry that is not ours.
+    if (WebSocketManager.instances.get(this.url) === this) {
+      WebSocketManager.instances.delete(this.url)
+    }
     this.log("Manager disposed")
   }
 
