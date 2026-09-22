@@ -63,6 +63,28 @@ never "sounds like good practice."
   reports a wall of `Cannot find module '@some-ui/...'` errors that look real but just mean
   "never built"). Scope `tsc`/`vitest` to the package you're in (`pnpm --filter <pkg> exec
 tsc --noEmit`, `pnpm exec vitest run <path>`), not the repo root.
+- **`@some-ui/resume` is the package that fails that graph build, and neither of its two
+  failures is an environment gap to route around — both are fixable here in about a minute.**
+  It is the only package whose build downloads a pinned `typst` plus nine font files and then
+  validates the _rendered PDFs_ with Poppler's `pdftotext`, so it trips over two things
+  nothing else in the repo touches. (1) `turbo` runs tasks in strict env mode, which stripped
+  `NODE_EXTRA_CA_CERTS` — this sandbox's proxy CA bundle — so every download failed TLS under
+  `turbo` while the byte-identical `fetch` succeeded when run directly. Fixed in `turbo.json`
+  via `globalPassThroughEnv` (which also carries `PDFTOTEXT_BIN`, the escape hatch the check
+  scripts document and strict mode was likewise eating). If it resurfaces the tell is
+  `[resume] fetch failed: self-signed certificate in certificate chain` — check the URL with
+  `curl` (which does honour the proxy env) before believing the network is blocked. (2)
+  `pdftotext` genuinely is absent, but it is one command away:
+  `apt-get update -qq && apt-get install -y --no-install-recommends poppler-utils`. The
+  script's own error names `poppler-utils`; it also names the repo's nix shell, which does
+  not exist in this sandbox — ignore that half rather than concluding the whole remedy is
+  unavailable. Until both hold, `--continue` masks the damage instead of avoiding it:
+  `www:build` still fails outright on `Rolldown failed to resolve import "@some-ui/resume"`,
+  and a `www` build that does get through ships a `/resume` route whose download and desktop
+  preview 404 (`[www] documents/manifest.json not found`). A graph build ending
+  `Failed: @some-ui/resume#build, www#build` is the expected outcome of following the bullet
+  above _without_ these two — it is not pre-existing breakage to note and step around, and
+  "not my change" is the wrong call on it.
 - **A tool call can be denied by this environment's permission classifier independent of
   whether the action itself is valid.** Scheduling and cleanup calls in particular
   (`send_later`/`create_trigger`, `unsubscribe_pr_activity`, `delete_trigger`) have each been
@@ -95,7 +117,7 @@ tsc --noEmit`, `pnpm exec vitest run <path>`), not the repo root.
   embedded-NUL or other binary corruption that no lint, typecheck, or test will catch.
 - **The `some-censor` e2e suite needs an env var whose absence sends you somewhere that does
   not exist here.** Without it every spec fails in ~3 ms with `[BOYO]
-  PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH is not set`, and the error's own remedy is "enter the
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH is not set`, and the error's own remedy is "enter the
   playwright nix shell: `nix develop .#playwright`" — which is not available in this sandbox, so
   following it is a dead end. The browser is already installed; point at it:
   `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome`
@@ -110,18 +132,18 @@ tsc --noEmit`, `pnpm exec vitest run <path>`), not the repo root.
   `@playwright/test`) before the workspace's own `node_modules/.bin/playwright` — the
   script's own `exec playwright test "$@"` has no reason to prefer one over the other, and
   PATH order picks the global one. The result is `Error: Playwright Test did not expect
-  test.describe() to be called here`, thrown from the *first* `test.describe()` in whichever
+test.describe() to be called here`, thrown from the _first_ `test.describe()` in whichever
   spec runs first — reads exactly like a real code/config bug (and the error's own listed
   causes don't mention PATH at all), for every spec in the suite, not just a new one you just
   added. Prepend the workspace root before invoking: `PATH="$(git rev-parse
-  --show-toplevel)/node_modules/.bin:$PATH" bash extensions/some-filter/scripts/claude-e2e.sh
-  <args>`.
+--show-toplevel)/node_modules/.bin:$PATH" bash extensions/some-filter/scripts/claude-e2e.sh
+<args>`.
 - **Driving a `storybook build` output with Playwright over a bare `file://` URL silently
   renders nothing.** The built preview loads its bundle as ES modules, and Chromium enforces
   CORS on `file://` script/stylesheet requests — every asset fails with "Access to script...
   has been blocked by CORS policy... Cross origin requests are only supported for protocol
   schemes: chrome, ... http, https", the page body stays empty, and a query like `page.locator(
-  '[aria-label="..."]').count()` just comes back `0` with no exception thrown — reads exactly
+'[aria-label="..."]').count()` just comes back `0` with no exception thrown — reads exactly
   like the component isn't rendering what you think it renders, not like a transport problem.
   Serve the build over a local HTTP server first (`python3 -m http.server <port>` from the
   `storybook-static` dir, backgrounded) and point Playwright at `http://localhost:<port>/...`
