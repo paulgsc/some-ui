@@ -146,3 +146,79 @@ describe("useWebSocket - unmount before acquire() resolves", () => {
     expect(releaseSpy).not.toHaveBeenCalled()
   })
 })
+
+describe("useWebSocket - no url", () => {
+  it("opens no socket at all", () => {
+    // The failure this guards is silent and expensive rather than loud: a
+    // syntactically fine URL pointing at nothing (a WebView's own
+    // `localhost`, a dead LAN box) gets dialed, fails, and is retried on a
+    // timer for as long as the surface stays mounted.
+    renderHook(() =>
+      useWebSocket({
+        url: undefined,
+        incomingMessageSchema: incomingSchema,
+      })
+    )
+
+    expect(FakeWebSocket.instances).toHaveLength(0)
+  })
+
+  it("reports a calm disconnected snapshot rather than an error", () => {
+    // "Not configured" is a steady state, not a fault: a surface renders its
+    // offline form off `isConnected`, and an `error` here would push it
+    // toward an alarm about a connection nobody asked for.
+    const { result } = renderHook(() =>
+      useWebSocket({
+        url: undefined,
+        incomingMessageSchema: incomingSchema,
+      })
+    )
+
+    expect(result.current.isConnected).toBe(false)
+    expect(result.current.isInitializing).toBe(false)
+    expect(result.current.error).toBeNull()
+    expect(result.current.lastMessage).toBeNull()
+    expect(result.current.manager).toBeNull()
+  })
+
+  it("keeps a stable snapshot identity across re-renders", () => {
+    // useSyncExternalStore compares getSnapshot's result by identity. A
+    // fresh object literal per call reads as "the store changed" every time
+    // and spins the render loop - the reason DISCONNECTED_SNAPSHOT is a
+    // module-level constant. Re-rendering is how that regression surfaces:
+    // an unstable snapshot throws "getSnapshot should be cached".
+    const { result, rerender } = renderHook(() =>
+      useWebSocket({
+        url: undefined,
+        incomingMessageSchema: incomingSchema,
+      })
+    )
+
+    const first = result.current.lastMessage
+    rerender()
+    rerender()
+
+    expect(result.current.lastMessage).toBe(first)
+    expect(FakeWebSocket.instances).toHaveLength(0)
+  })
+
+  it("does not throw when a caller sends into the void", async () => {
+    // sendMessage is fire-and-forget everywhere else, so it stays so here;
+    // sendSerialized already rejects on a disconnected manager and keeps
+    // that contract rather than growing a second "not configured" shape.
+    const { result } = renderHook(() =>
+      useWebSocket<{ type: "known" }, { type: string }>({
+        url: undefined,
+        incomingMessageSchema: incomingSchema,
+      })
+    )
+
+    expect(() => {
+      result.current.sendMessage({ type: "anything" })
+    }).not.toThrow()
+
+    await expect(
+      result.current.sendSerialized({ type: "anything" })
+    ).rejects.toThrow(/not connected/i)
+  })
+})
