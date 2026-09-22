@@ -323,3 +323,127 @@ describe("WebSocketManager - the registry outlives the connection", () => {
     expect(seen.size).toBe(1)
   })
 })
+
+describe("WebSocketManager - initialization generations", () => {
+  it("ignores a stale socket's failure after the manager was re-acquired", async () => {
+    // The <StrictMode> replay, at its worst: setup acquires and starts
+    // connecting, cleanup releases and disposes mid-connect, setup acquires
+    // again on the same object. `dispose` closes the first socket but leaves
+    // its callbacks attached and its initialization continuation suspended,
+    // so the first socket's `onerror` still rejects the *first* init
+    // promise - whose catch runs `transitionTo("idle")` against the
+    // *second* acquisition's "initializing".
+    //
+    // The second socket then opens into a lifecycle that is back at "idle",
+    // where "initialized" is not a legal target, and the manager is wedged
+    // with an open socket it will not use.
+    const url = nextUrl()
+    const manager = WebSocketManager.getInstance(url)
+
+    void manager.acquire()
+    await Promise.resolve()
+    const stale = FakeWebSocket.instances[0]!
+
+    manager.release()
+
+    void manager.acquire()
+    await Promise.resolve()
+    const live = FakeWebSocket.instances.at(-1)!
+    expect(live).not.toBe(stale)
+
+    // The dead socket reports its failure late.
+    stale.simulateError(new Error("stale socket died"))
+    await Promise.resolve()
+
+    // The live socket connects. This must still complete normally.
+    live.simulateOpen()
+    await vi.waitFor(() => {
+      expect(manager.isInitialized).toBe(true)
+    })
+    expect(manager.isConnected).toBe(true)
+  })
+})
+
+describe("WebSocketManager - a superseded init callback", () => {
+  it("does not let an abandoned init callback mark a newer attempt initialized", async () => {
+    // The window the socket-identity guard cannot close: this attempt got
+    // *past* connectSocket and is suspended inside its `init` callback when
+    // dispose abandons it. No socket event is involved, so nothing about
+    // socket identity helps - when that callback finally resolves, the
+    // continuation would run `transitionTo("initialized")` against whatever
+    // attempt is current. That transition is legal from "initializing", so
+    // it corrupts silently: the manager reports initialized while its real
+    // socket is still connecting, and clears the live `initPromise`.
+    const url = nextUrl()
+    const manager = WebSocketManager.getInstance(url)
+
+    let releaseInit: (() => void) | undefined
+    const initBlocked = new Promise<void>((resolve) => {
+      releaseInit = resolve
+    })
+
+    void manager.acquire(() => initBlocked)
+    await Promise.resolve()
+    FakeWebSocket.instances[0]!.simulateOpen()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    // Abandoned mid-callback, then taken up again.
+    manager.release()
+    void manager.acquire()
+    await Promise.resolve()
+    const live = FakeWebSocket.instances.at(-1)!
+
+    // The abandoned callback finally finishes.
+    releaseInit?.()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    // It must not have spoken for the current attempt, whose socket has not
+    // even opened yet.
+    expect(manager.isInitialized).toBe(false)
+
+    live.simulateOpen()
+    await vi.waitFor(() => {
+      expect(manager.isInitialized).toBe(true)
+    })
+  })
+})
+
+describe("WebSocketManager - a dead socket's late events", () => {
+  it("cannot write connection state onto the manager that replaced it", async () => {
+    // Separate from the initialization generations: this is about a closed
+    // socket's final events arriving after a *new* socket is live and
+    // connected. Those handlers close over the manager, not the socket, so
+    // without an identity check a dead socket's `onclose` flips
+    // `isConnected` to false and its `onerror` writes an error - on a
+    // connection that is perfectly healthy.
+    const url = nextUrl()
+    const manager = WebSocketManager.getInstance(url)
+
+    void manager.acquire()
+    await Promise.resolve()
+    const stale = FakeWebSocket.instances[0]!
+
+    manager.release()
+
+    void manager.acquire()
+    await Promise.resolve()
+    const live = FakeWebSocket.instances.at(-1)!
+    expect(live).not.toBe(stale)
+
+    live.simulateOpen()
+    await vi.waitFor(() => {
+      expect(manager.isInitialized).toBe(true)
+    })
+    expect(manager.isConnected).toBe(true)
+
+    // The dead socket reports its end, late.
+    stale.simulateClose()
+    stale.simulateError(new Error("late failure from a closed socket"))
+    await Promise.resolve()
+
+    expect(manager.isConnected).toBe(true)
+    expect(manager.getSnapshot().error).toBeNull()
+  })
+})
