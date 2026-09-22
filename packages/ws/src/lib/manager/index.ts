@@ -59,6 +59,18 @@ export class WebSocketManager {
   private lastInitError: Error | null = null
   private initErrorTime: number = 0
 
+  /**
+   * Which initialization attempt is the current one.
+   *
+   * Bumped by `dispose()`, which abandons any in-flight initialization
+   * without being able to stop the async continuation already running
+   * inside `acquire`. That continuation resumes later - after a *new*
+   * acquisition has begun - and would otherwise drive the new attempt's
+   * lifecycle from its own stale conclusion. It compares this value against
+   * the one it captured and, on a mismatch, touches no shared state.
+   */
+  private initGeneration = 0
+
   private constructor(
     private readonly url: string,
     private readonly options: WebSocketManagerOptions = {}
@@ -188,6 +200,11 @@ export class WebSocketManager {
     this.lifecycle.transitionTo("initializing")
     this.updateSnapshot({ isInitializing: true })
 
+    // Captured, not read live: everything below runs across `await`s, by
+    // which time a dispose may have abandoned this attempt in favour of a
+    // later one. See `initGeneration`.
+    const generation = this.initGeneration
+
     this.initPromise = (async () => {
       try {
         this.log("Starting initialization...")
@@ -199,6 +216,11 @@ export class WebSocketManager {
         if (this.initFunction) {
           this.log("Running init callback...")
           await this.initFunction(this)
+        }
+
+        if (generation !== this.initGeneration) {
+          this.log("Superseded initialization completed; ignoring")
+          return
         }
 
         this.lifecycle.transitionTo("initialized")
@@ -215,6 +237,15 @@ export class WebSocketManager {
         this.log("Initialization complete")
       } catch (err) {
         this.log("Initialization failed:", err)
+
+        if (generation !== this.initGeneration) {
+          // Still rejects, for whoever is awaiting this particular promise,
+          // but records nothing: the error belongs to an attempt that has
+          // been abandoned, and `lastInitError` would otherwise debounce
+          // away the *current* attempt's retries.
+          this.log("Superseded initialization failed; ignoring")
+          throw err
+        }
 
         // ✅ Store error to prevent cascading retries
         this.lastInitError = err instanceof Error ? err : new Error(String(err))
@@ -255,9 +286,22 @@ export class WebSocketManager {
       this.clearReconnectTimer()
 
       try {
-        this.socket = new WebSocket(this.url)
+        // Held locally as well as on `this` so every handler below can ask
+        // "am I still the current socket?". `disconnect()` closes the old
+        // socket and nulls the field, but a closing socket still delivers
+        // its last events, and those closures capture the *manager*. Without
+        // this check a dead socket reports `isConnected: true`, schedules a
+        // reconnect, or rejects an initialization that a newer socket now
+        // owns - see `initGeneration`.
+        const socket = new WebSocket(this.url)
+        this.socket = socket
 
-        this.socket.onopen = (): void => {
+        /** True while `socket` is the one this manager is actually using. */
+        const isCurrent = (): boolean => this.socket === socket
+
+        socket.onopen = (): void => {
+          if (!isCurrent()) return
+
           this.log("Connected")
           this.reconnectAttempts = 0
           this.updateSnapshot({ reconnectAttempts: 0 })
@@ -267,7 +311,9 @@ export class WebSocketManager {
           resolve()
         }
 
-        this.socket.onmessage = (event): void => {
+        socket.onmessage = (event): void => {
+          if (!isCurrent()) return
+
           try {
             const data: unknown = JSON.parse(String(event.data))
             this.messageListeners.notify(data)
@@ -283,7 +329,9 @@ export class WebSocketManager {
           }
         }
 
-        this.socket.onclose = (): void => {
+        socket.onclose = (): void => {
+          if (!isCurrent()) return
+
           this.log("Disconnected")
           this.connectionListeners.notify(false)
           this.updateSnapshot({ isConnected: false })
@@ -317,7 +365,9 @@ export class WebSocketManager {
           }
         }
 
-        this.socket.onerror = (error): void => {
+        socket.onerror = (error): void => {
+          if (!isCurrent()) return
+
           this.log("Connection error:", error)
           this.errorListeners.notify(error)
           this.updateSnapshot({ error: "WebSocket connection error" })
@@ -375,6 +425,9 @@ export class WebSocketManager {
 
     // Allow dispose from any state (handle cancellation)
     this.lifecycle.transitionTo("disposing")
+
+    // Abandon any initialization still in flight - see `initGeneration`.
+    this.initGeneration += 1
 
     this.disconnect()
     this.messageListeners.clear()
