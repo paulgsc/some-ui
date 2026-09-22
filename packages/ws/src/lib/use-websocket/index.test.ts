@@ -130,7 +130,19 @@ describe("useWebSocket - outgoing schema validation", () => {
 })
 
 describe("useWebSocket - unmount before acquire() resolves", () => {
-  it("does not throw and does not release a reference it never finished acquiring", async () => {
+  it("releases the reference it took, without throwing", async () => {
+    // This used to assert the opposite - that `release` was *not* called -
+    // on the reasoning that a pending `acquire()` had not taken a reference
+    // yet. It had: `manager.acquire` runs `refCounter.acquire()` as its
+    // first statement and only then awaits initialization, so the reference
+    // exists from the call, not from the resolution.
+    //
+    // Skipping the release therefore stranded the manager at a count that
+    // could never reach zero: `onZero` never fired, `dispose()` never ran,
+    // and the socket stayed open with its reconnect timer for the life of
+    // the page. Releasing it does not throw, which was the other half of
+    // the old assertion's worry - `ReferenceCounter.release` only throws
+    // below zero, and this release is exactly paired with its acquire.
     const releaseSpy = vi.spyOn(WebSocketManager.prototype, "release")
     const url = nextUrl()
 
@@ -141,9 +153,15 @@ describe("useWebSocket - unmount before acquire() resolves", () => {
     await waitFor(() => expect(FakeWebSocket.instances).toHaveLength(1))
     // Deliberately never call simulateOpen() - acquire() is left pending,
     // matching a component that unmounts mid-connect.
+    const socket = FakeWebSocket.instances[0]!
 
     expect(() => unmount()).not.toThrow()
-    expect(releaseSpy).not.toHaveBeenCalled()
+
+    expect(releaseSpy).toHaveBeenCalledTimes(1)
+    // The observable point of releasing: the manager disposed, so the socket
+    // is closed and the next caller gets a fresh instance rather than this
+    // stranded one.
+    expect(socket.readyState).toBe(FakeWebSocket.CLOSED)
   })
 })
 
@@ -220,5 +238,87 @@ describe("useWebSocket - no url", () => {
     await expect(
       result.current.sendSerialized({ type: "anything" })
     ).rejects.toThrow(/not connected/i)
+  })
+})
+
+/** The hook's own `url` type, named so the `renderHook` props below are
+ * typed by declaration rather than by asserting a literal into shape. */
+type UrlProps = { u: string | undefined }
+
+function initialUrlProps(u: string | undefined): UrlProps {
+  return { u }
+}
+
+describe("useWebSocket - url changing after mount", () => {
+  it("connects when a url arrives on a hook that mounted without one", async () => {
+    // `useOrchestrator`'s `orchestratorUrl` is an optional prop that may be
+    // resolved asynchronously, so undefined-then-a-url is a real sequence
+    // rather than a hypothetical. A manager pinned by a `useState`
+    // initializer leaves such a hook disconnected for good.
+    const url = nextUrl()
+    const { result, rerender } = renderHook(
+      ({ u }: UrlProps) =>
+        useWebSocket({ url: u, incomingMessageSchema: incomingSchema }),
+      { initialProps: initialUrlProps(undefined) }
+    )
+
+    expect(FakeWebSocket.instances).toHaveLength(0)
+    expect(result.current.manager).toBeNull()
+
+    rerender({ u: url })
+
+    await waitFor(() => {
+      expect(result.current.manager).not.toBeNull()
+    })
+    await waitFor(() => {
+      expect(FakeWebSocket.instances).toHaveLength(1)
+    })
+  })
+
+  it("releases the socket when the url goes away", async () => {
+    // The inverse: keeping the old socket alive would defeat the opt-out
+    // the `undefined` url exists to provide.
+    const url = nextUrl()
+    const { result, rerender } = renderHook(
+      ({ u }: UrlProps) =>
+        useWebSocket({ url: u, incomingMessageSchema: incomingSchema }),
+      { initialProps: initialUrlProps(url) }
+    )
+
+    await waitFor(() => {
+      expect(FakeWebSocket.instances).toHaveLength(1)
+    })
+    const acquired = result.current.manager
+    if (!acquired) throw new Error("expected a manager while the url was set")
+    const releaseSpy = vi.spyOn(acquired, "release")
+
+    rerender({ u: undefined })
+
+    expect(releaseSpy).toHaveBeenCalled()
+    expect(result.current.manager).toBeNull()
+    expect(result.current.isConnected).toBe(false)
+  })
+
+  it("keeps one manager across re-renders that do not change the url", async () => {
+    // The memo must not churn: WebSocketManager is a per-URL singleton, so a
+    // recompute for an unchanged url has to hand back the same identity or
+    // the acquire/release effect thrashes the socket on every render.
+    const url = nextUrl()
+    const { result, rerender } = renderHook(
+      ({ u }: UrlProps) =>
+        useWebSocket({ url: u, incomingMessageSchema: incomingSchema }),
+      { initialProps: initialUrlProps(url) }
+    )
+
+    await waitFor(() => {
+      expect(result.current.manager).not.toBeNull()
+    })
+    const first = result.current.manager
+
+    rerender({ u: url })
+    rerender({ u: url })
+
+    expect(result.current.manager).toBe(first)
+    expect(FakeWebSocket.instances).toHaveLength(1)
   })
 })

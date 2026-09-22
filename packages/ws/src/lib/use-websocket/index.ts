@@ -3,7 +3,6 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState,
   useSyncExternalStore,
 } from "react"
 import {
@@ -104,18 +103,31 @@ export function useWebSocket<I, O = unknown>({
   onIncomingMessage,
   debugMode = false,
 }: UseWebSocketOptions<I, O>): UseWebSocketReturn<I, O> {
-  // Get singleton manager instance (lazy-initialized once per mount).
-  // `null` for a `url`-less runtime - see the `url` option. Held in state
-  // rather than a memo so the decision is made once per mount and cannot
-  // be recomputed into a different manager mid-render.
-  const [manager] = useState<WebSocketManager | null>(() =>
-    url === undefined
-      ? null
-      : WebSocketManager.getInstance(url, {
-          autoReconnect,
-          reconnectInterval,
-          debugMode,
-        })
+  // Derived from `url`, not frozen at mount. `WebSocketManager` instances
+  // are singletons keyed by URL, so recomputing for an unchanged `url` hands
+  // back the identical object and nothing downstream re-runs; a changed one
+  // yields a new identity that the acquire/release effect below picks up,
+  // releasing the old socket before acquiring the new.
+  //
+  // This was a `useState` initializer, which runs once per mount and so
+  // pinned the manager for the component's whole life. Under the old
+  // `url: string` that only meant a changing URL was quietly ignored. Now
+  // that `undefined` is a meaningful value it was worse in both directions:
+  // a hook that mounted without a URL could never connect once one arrived
+  // (`useOrchestrator`'s `orchestratorUrl` is an optional prop and may be
+  // resolved asynchronously), and one that mounted with a URL kept its
+  // socket open after the URL went away - defeating the opt-out this option
+  // exists to provide.
+  const manager = useMemo(
+    () =>
+      url === undefined
+        ? null
+        : WebSocketManager.getInstance(url, {
+            autoReconnect,
+            reconnectInterval,
+            debugMode,
+          }),
+    [url, autoReconnect, reconnectInterval, debugMode]
   )
 
   // Subscribe to external store (no React state!). With no manager there is
@@ -196,25 +208,28 @@ export function useWebSocket<I, O = unknown>({
   useEffect(() => {
     if (!manager) return
 
-    let acquired = false
-
-    const acquire = async (): Promise<void> => {
-      try {
-        await manager.acquire(init)
-        acquired = true
-      } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error("Failed to acquire connection:", err)
-      }
-    }
-
-    void acquire()
+    // `acquire` takes the reference *synchronously* - `refCounter.acquire()`
+    // is its first statement - and only then awaits initialization. So the
+    // reference is owed back from the moment this call is made, not from the
+    // moment its promise settles, and the cleanup releases unconditionally.
+    //
+    // Keying the release on the resolved promise (an `acquired` flag set
+    // after the `await`) leaked one reference every time this effect was torn
+    // down while still initializing: the count never fell back to zero, so
+    // `onZero` never fired, `dispose()` never ran, and the socket stayed open
+    // with its reconnect timer. Rare when only unmounts could race it;
+    // routine now that `url` may change mid-connection, which is the
+    // "inverse transition leaves the old socket active" half of this.
+    //
+    // A rejected acquisition still incremented the count, so it is released
+    // like any other - it is reported here rather than swallowed at the call.
+    manager.acquire(init).catch((err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error("Failed to acquire connection:", err)
+    })
 
     return (): void => {
-      // Only release if we successfully acquired
-      if (acquired) {
-        manager.release()
-      }
+      manager.release()
     }
   }, [manager, init])
 
