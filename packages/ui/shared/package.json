@@ -35,11 +35,11 @@
     "@radix-ui/react-tooltip": "catalog:",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
-    "embla-carousel-react": "8.0.0-rc15",
+    "embla-carousel-react": "^8.6.0",
     "lucide-react": "catalog:",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwind-merge": "^2.4.0"
+    "tailwind-merge": "^3.6.0"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "catalog:",
@@ -57,6 +57,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "embla-carousel-react": "^8.6.0",
     "lucide-react": "catalog:",
     "media-chrome": "^4.17.2",
     "some-ui-utils": "workspace:*",
