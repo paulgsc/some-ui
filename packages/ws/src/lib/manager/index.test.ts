@@ -51,19 +51,30 @@ describe("WebSocketManager - thundering herd protection", () => {
 })
 
 describe("WebSocketManager - ref-counted disposal", () => {
-  it("disposes and drops out of the singleton map once the ref count returns to zero", async () => {
+  // These two used to read disposal off the singleton map - "getInstance no
+  // longer returns this object" stood in for "this object was disposed".
+  // The map no longer forgets (see the note on `instances`), so they assert
+  // disposal by its actual effects instead: the lifecycle reset and the
+  // closed socket. That is the thing they were always about; the registry
+  // deletion was an incidental side-effect being used as a probe.
+  it("disposes once the ref count returns to zero", async () => {
     const url = nextUrl()
     const manager = WebSocketManager.getInstance(url)
 
     const p = manager.acquire()
-    FakeWebSocket.instances[0]!.simulateOpen()
+    const socket = FakeWebSocket.instances[0]!
+    socket.simulateOpen()
     await p
 
     expect(manager.isInitialized).toBe(true)
     manager.release()
 
     expect(manager.referenceCount).toBe(0)
-    expect(WebSocketManager.getInstance(url)).not.toBe(manager)
+    expect(manager.isInitialized).toBe(false)
+    expect(manager.isConnected).toBe(false)
+    expect(socket.readyState).toBe(FakeWebSocket.CLOSED)
+    // ...and it is still the manager for this URL.
+    expect(WebSocketManager.getInstance(url)).toBe(manager)
   })
 
   it("does not dispose while other callers still hold a reference", async () => {
@@ -72,14 +83,19 @@ describe("WebSocketManager - ref-counted disposal", () => {
 
     const p1 = manager.acquire()
     const p2 = manager.acquire()
-    FakeWebSocket.instances[0]!.simulateOpen()
+    const socket = FakeWebSocket.instances[0]!
+    socket.simulateOpen()
     await Promise.all([p1, p2])
 
     manager.release()
-    expect(WebSocketManager.getInstance(url)).toBe(manager)
+    expect(manager.referenceCount).toBe(1)
+    expect(manager.isInitialized).toBe(true)
+    expect(socket.readyState).not.toBe(FakeWebSocket.CLOSED)
 
     manager.release()
-    expect(WebSocketManager.getInstance(url)).not.toBe(manager)
+    expect(manager.referenceCount).toBe(0)
+    expect(manager.isInitialized).toBe(false)
+    expect(socket.readyState).toBe(FakeWebSocket.CLOSED)
   })
 })
 
@@ -242,7 +258,7 @@ describe("WebSocketManager - sendMessage", () => {
   })
 })
 
-describe("WebSocketManager - registration across dispose and re-acquire", () => {
+describe("WebSocketManager - the registry outlives the connection", () => {
   /** `acquire()` only settles once the socket opens, and these cases are
    * about the reference count rather than the connection - `refCounter`
    * increments synchronously, so a microtask is all they need. */
@@ -253,47 +269,58 @@ describe("WebSocketManager - registration across dispose and re-acquire", () => 
     await Promise.resolve()
   }
 
-  it("re-registers itself when a captured instance is acquired again", async () => {
-    // The <StrictMode> shape: the last reference goes, we dispose and
-    // unregister, and the same captured object is immediately re-acquired.
-    // It has to reclaim the URL, or the next caller silently gets a second
-    // manager on a second socket.
-    //
-    // Deliberately no `getInstance` between the release and the re-acquire:
-    // that call would itself register a replacement and hide the point.
+  it("keeps a manager registered after its last reference goes", async () => {
+    // Disposal ends the connection, not the identity. This is what makes
+    // `getInstance` total: it can never hand back an object that is not the
+    // registered one for its URL, whatever any consumer is doing.
+    const url = nextUrl()
+    const manager = WebSocketManager.getInstance(url)
+
+    await acquireWithoutConnecting(manager)
+    manager.release()
+
+    expect(WebSocketManager.getInstance(url)).toBe(manager)
+  })
+
+  it("hands the same manager back to a later consumer, which reconnects it", async () => {
+    // The <StrictMode> shape, and any remount: the whole app releases a URL
+    // and something picks it up again later. It must get the same object,
+    // and that object must still work - disposal resets the lifecycle to
+    // idle rather than making it terminal.
     const url = nextUrl()
     const first = WebSocketManager.getInstance(url)
 
     await acquireWithoutConnecting(first)
     first.release()
 
-    await acquireWithoutConnecting(first)
+    const second = WebSocketManager.getInstance(url)
+    expect(second).toBe(first)
 
+    await acquireWithoutConnecting(second)
+    expect(FakeWebSocket.instances.at(-1)?.url).toBe(url)
     expect(WebSocketManager.getInstance(url)).toBe(first)
   })
 
-  it("does not evict a live entry that is not its own", async () => {
-    // Once a replacement owns the URL, the old manager's own disposal must
-    // not delete it by key. Deleting blind would leave the replacement live
-    // but unregistered - the same singleton break, one step removed.
+  it("never lets two managers exist for one url", async () => {
+    // The failure the old delete-on-zero made reachable: a second manager on
+    // a second socket for the same URL, after which either one's disposal
+    // could evict the other's entry. With the registry write-once the
+    // scenario has no construction - every getInstance across a full
+    // acquire/release/re-acquire cycle is the same object, so there is only
+    // ever one socket owner per URL.
     const url = nextUrl()
-    const stale = WebSocketManager.getInstance(url)
+    const seen = new Set<WebSocketManager>()
 
-    await acquireWithoutConnecting(stale)
-    stale.release()
+    for (let i = 0; i < 3; i += 1) {
+      const manager = WebSocketManager.getInstance(url)
+      seen.add(manager)
+      await acquireWithoutConnecting(manager)
+      seen.add(WebSocketManager.getInstance(url))
+      manager.release()
+      seen.add(WebSocketManager.getInstance(url))
+    }
 
-    const replacement = WebSocketManager.getInstance(url)
-    expect(replacement).not.toBe(stale)
-
-    // The stale manager runs a full acquire/release cycle. It must not
-    // reclaim the URL on the way up (the slot is taken) nor evict the
-    // replacement on the way down.
-    await acquireWithoutConnecting(stale)
-    expect(WebSocketManager.getInstance(url)).toBe(replacement)
-
-    stale.release()
-
-    expect(WebSocketManager.getInstance(url)).toBe(replacement)
+    expect(seen.size).toBe(1)
   })
 })
 
