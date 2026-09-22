@@ -189,6 +189,29 @@ export function useWebSocket<I, O = unknown>({
     initRef.current = init
   }, [init])
 
+  /**
+   * What `acquire` actually receives: a stable function that reads the ref
+   * when it runs, rather than the `init` that happened to be current at
+   * acquisition time.
+   *
+   * The indirection is not ceremony. `acquire` copies its argument into
+   * `initFunction` once, when the reference count reaches one, and the
+   * manager runs *that* copy both on initialization and on every automatic
+   * reconnect. Handing over `initRef.current` would therefore freeze the
+   * callback as of the acquiring render: props that change while the socket
+   * is still connecting never reach the wire, and every later reconnect
+   * re-sends the configuration from mount. For `useOrchestrator` that is a
+   * reconnect that silently restores stale `scenes`/`stream_id`.
+   *
+   * Stable identity is what lets the effect stay keyed on `[manager]`, so
+   * this buys freshness without reintroducing the acquisition churn.
+   */
+  const initDelegate = useCallback(
+    (manager: WebSocketManager): void | Promise<void> =>
+      initRef.current?.(manager),
+    []
+  )
+
   const handleMessage = useCallback(
     (data: unknown) => {
       const result = incomingMessageSchema.safeParse(data)
@@ -247,7 +270,7 @@ export function useWebSocket<I, O = unknown>({
     //
     // A rejected acquisition still incremented the count, so it is released
     // like any other - it is reported here rather than swallowed at the call.
-    manager.acquire(initRef.current).catch((err: unknown) => {
+    manager.acquire(initDelegate).catch((err: unknown) => {
       // eslint-disable-next-line no-console
       console.error("Failed to acquire connection:", err)
     })
@@ -255,8 +278,8 @@ export function useWebSocket<I, O = unknown>({
     return (): void => {
       manager.release()
     }
-    // Keyed on the manager alone - see `initRef`.
-  }, [manager])
+    // Keyed on the manager alone - see `initRef` and `initDelegate`.
+  }, [manager, initDelegate])
 
   // Attach message/connection/error listeners
   useEffect(() => {

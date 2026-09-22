@@ -420,3 +420,49 @@ describe("WebSocketManager - a dead socket's late events", () => {
     expect(manager.getSnapshot().error).toBeNull()
   })
 })
+
+describe("WebSocketManager - init on reconnect", () => {
+  it("runs whatever the stored init delegates to, not a value frozen at acquire", async () => {
+    // The reconnect half of the same concern the hook's `initDelegate`
+    // addresses, pinned at the manager where `initFunction` actually lives:
+    // `acquire` stores its argument once, and `reconnect` runs that stored
+    // copy. A caller that keeps its real callback behind a mutable cell must
+    // see the *current* one on every reconnect, or a dropped socket silently
+    // restores the configuration from mount.
+    vi.useFakeTimers()
+    const url = nextUrl()
+    const manager = WebSocketManager.getInstance(url, {
+      autoReconnect: true,
+      reconnectInterval: 100,
+      maxReconnectAttempts: 3,
+    })
+
+    const calls: Array<string> = []
+    const cell = {
+      current: (): void => {
+        calls.push("from-acquire")
+      },
+    }
+    const delegate = (): void => cell.current()
+
+    const p = manager.acquire(delegate)
+    FakeWebSocket.instances[0]!.simulateOpen()
+    await p
+    expect(calls).toEqual(["from-acquire"])
+
+    // The caller's real callback changes after the manager stored the
+    // delegate.
+    cell.current = (): void => {
+      calls.push("current")
+    }
+
+    FakeWebSocket.instances[0]!.simulateClose()
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(FakeWebSocket.instances).toHaveLength(2)
+
+    FakeWebSocket.instances[1]!.simulateOpen()
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(calls).toEqual(["from-acquire", "current"])
+  })
+})

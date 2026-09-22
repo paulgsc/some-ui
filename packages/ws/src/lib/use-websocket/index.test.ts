@@ -383,3 +383,43 @@ describe("useWebSocket - an unstable init callback", () => {
     expect(FakeWebSocket.instances).toHaveLength(1)
   })
 })
+
+describe("useWebSocket - a changing init callback", () => {
+  it("runs the latest init when the socket opens, not the one from mount", async () => {
+    // Keying the acquisition on `[manager]` stopped the churn, but it also
+    // meant `init` was handed to `acquire` exactly once. The manager copies
+    // it into `initFunction` and runs *that* on initialization and on every
+    // automatic reconnect - so props that change while the socket is still
+    // connecting (new `scenes`, a new `stream_id`) never reach the wire, and
+    // every later reconnect re-sends the configuration from mount.
+    const url = nextUrl()
+    const calls: Array<string> = []
+    const { rerender } = renderHook(
+      ({ tag }: { tag: string }) =>
+        useWebSocket({
+          url,
+          incomingMessageSchema: incomingSchema,
+          init: (): void => {
+            calls.push(tag)
+          },
+        }),
+      { initialProps: { tag: "from-mount" } }
+    )
+
+    await waitFor(() => {
+      expect(FakeWebSocket.instances).toHaveLength(1)
+    })
+
+    // The props change while the socket is still connecting.
+    rerender({ tag: "current" })
+
+    await act(async () => {
+      FakeWebSocket.instances[0]!.simulateOpen()
+      await Promise.resolve()
+    })
+
+    await waitFor(() => {
+      expect(calls).toEqual(["current"])
+    })
+  })
+})
