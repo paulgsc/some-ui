@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 import type { AvatarImage } from ".."
 import { cn } from "../../../lib/utils"
 import type { CSSVarProperties } from "../../../types"
+import { AvatarGroupCount } from "../avatar"
 import { Button } from "../button"
 import { WithAvatar } from "../with-avatar"
 
@@ -31,7 +32,14 @@ const AvatarGroup: FC<AvatarGroupProps> = ({
     [showMore, avatars, limit]
   )
 
-  const groupStyle: CSSVarProperties = { "--avatar-spacing": avatarSpacing }
+  // `--avatar-size` is set here as well as per-avatar by WithAvatar, so the
+  // overflow chip inherits the group's diameter rather than guessing one.
+  const groupStyle: CSSVarProperties = {
+    "--avatar-spacing": avatarSpacing,
+    "--avatar-size": avatarSize,
+  }
+
+  const overflow = avatars.length - limit
 
   return (
     <div
@@ -50,18 +58,30 @@ const AvatarGroup: FC<AvatarGroupProps> = ({
         />
       ))}
 
-      {avatars.length > limit && (
-        <Button
-          onClick={
-            isExpandable ? (): void => setShowMore((prev) => !prev) : undefined
-          }
-          className="-ml-2 size-8 shrink-0 cursor-pointer first:ml-0"
-        >
-          <span className="flex size-8 items-center justify-center rounded-full border-2 border-background bg-muted object-cover text-xs text-muted-foreground">
-            {`${showMore ? "-" : "+"}${avatars.length - limit}`}
-          </span>
-        </Button>
-      )}
+      {/*
+        The chip is interactive only when it does something. It used to be a
+        Button unconditionally, with `onClick={undefined}` in the collapsed
+        case — a focus stop that swallowed a tab press and then did nothing.
+      */}
+      {overflow > 0 &&
+        (isExpandable ? (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={(): void => setShowMore((prev) => !prev)}
+            aria-expanded={showMore}
+            aria-label={
+              showMore
+                ? `Collapse to the first ${limit}`
+                : `Show ${overflow} more`
+            }
+            className="size-auto shrink-0 rounded-full p-0 hover:bg-transparent"
+          >
+            <AvatarGroupCount>{`${showMore ? "−" : "+"}${overflow}`}</AvatarGroupCount>
+          </Button>
+        ) : (
+          <AvatarGroupCount>{`+${overflow}`}</AvatarGroupCount>
+        ))}
     </div>
   )
 }

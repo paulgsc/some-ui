@@ -43,4 +43,62 @@ const PopoverAnchor = ({
   return <PopoverPrimitive.Anchor data-slot="popover-anchor" {...props} />
 }
 
-export { Popover, PopoverTrigger, PopoverContent, PopoverAnchor }
+/**
+ * Heading/description slots for popover content, sized against
+ * {@link PopoverContent}'s `w-72` rather than a dialog's width.
+ *
+ * Radix's Popover — unlike its Dialog — ships no Title or Description
+ * primitive and wires no `aria-labelledby` / `aria-describedby` of its own,
+ * and neither does upstream shadcn/ui. What these buy is the semantics:
+ * a real `<h2>` and `<p>` so the content is a labelled region to a screen
+ * reader. Pass `aria-labelledby` on `PopoverContent` with the title's `id` when
+ * the popover needs to announce its own name.
+ */
+const PopoverHeader = ({
+  className,
+  ...props
+}: ComponentProps<"div">): React.JSX.Element => {
+  return (
+    <div
+      data-slot="popover-header"
+      className={cn("flex flex-col gap-1.5", className)}
+      {...props}
+    />
+  )
+}
+
+const PopoverTitle = ({
+  className,
+  ...props
+}: ComponentProps<"h2">): React.JSX.Element => {
+  return (
+    <h2
+      data-slot="popover-title"
+      className={cn("text-sm font-semibold leading-none", className)}
+      {...props}
+    />
+  )
+}
+
+const PopoverDescription = ({
+  className,
+  ...props
+}: ComponentProps<"p">): React.JSX.Element => {
+  return (
+    <p
+      data-slot="popover-description"
+      className={cn("text-muted-foreground text-sm", className)}
+      {...props}
+    />
+  )
+}
+
+export {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverAnchor,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverDescription,
+}
