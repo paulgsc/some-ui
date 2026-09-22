@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "rollup": "^4.63.1"
+    "rollup": "^4.63.3"
   },
   "description": "Shared Vite build and runtime commons for the extension workspaces",
   "devDependencies": {
