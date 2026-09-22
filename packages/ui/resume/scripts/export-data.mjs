@@ -147,7 +147,10 @@ import type { ResumeData, ResumeVariant } from "@resume/types"
 }
 
 main().catch((err) => {
+  // Same reason as scripts/compile.mjs: a `fetch()` failure says nothing
+  // useful until `err.cause` is printed with it.
+  const cause = err.cause?.message ?? err.cause
   // eslint-disable-next-line no-console
-  console.error(`[resume] ${err.message}`)
+  console.error(`[resume] ${err.message}${cause ? `: ${cause}` : ""}`)
   process.exitCode = 1
 })

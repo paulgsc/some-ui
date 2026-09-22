@@ -125,7 +125,13 @@ async function main() {
 }
 
 main().catch((err) => {
+  // `fetch()` collapses every network and TLS failure into the same opaque
+  // "fetch failed" and puts the actionable part — a proxy CA the runtime does
+  // not trust, DNS, a refused connection — only on `err.cause`. Printing the
+  // message alone is what made a stripped `NODE_EXTRA_CA_CERTS` read as an
+  // unreachable network rather than as a one-line environment fix.
+  const cause = err.cause?.message ?? err.cause
   // eslint-disable-next-line no-console
-  console.error(`[resume] ${err.message}`)
+  console.error(`[resume] ${err.message}${cause ? `: ${cause}` : ""}`)
   process.exitCode = 1
 })
