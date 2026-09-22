@@ -36,7 +36,7 @@ catalog:
   # resolve in 0.562.0 before unifying on it. Caret on a 0.x version only
   # admits patches, so this stays on 0.562.x.
   lucide-react: ^0.562.0
-  zod: 4.0.5
+  zod: 4.6.5
   # Radix is here for a second-order reason. These are proper semver ranges,
   # so caret alone would have been enough to converge them — but ten of the
   # eighteen were declared at different ranges (react-accordion had four:

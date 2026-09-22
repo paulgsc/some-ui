@@ -15,12 +15,27 @@ catalogs:
     '@radix-ui/react-collapsible':
       specifier: ^1.1.11
       version: 1.1.14
+    '@radix-ui/react-compose-refs':
+      specifier: ^1.1.1
+      version: 1.1.5
     '@radix-ui/react-dialog':
       specifier: ^1.1.14
       version: 1.1.17
     '@radix-ui/react-dropdown-menu':
       specifier: ^2.1.15
       version: 2.1.18
+    '@radix-ui/react-label':
+      specifier: ^2.1.1
+      version: 2.1.15
+    '@radix-ui/react-popover':
+      specifier: ^1.1.5
+      version: 1.1.23
+    '@radix-ui/react-progress':
+      specifier: ^1.1.1
+      version: 1.1.16
+    '@radix-ui/react-scroll-area':
+      specifier: ^1.2.3
+      version: 1.2.18
     '@radix-ui/react-select':
       specifier: ^2.3.7
       version: 2.3.7
@@ -33,6 +48,9 @@ catalogs:
     '@radix-ui/react-slot':
       specifier: ^1.2.3
       version: 1.3.3
+    '@radix-ui/react-switch':
+      specifier: ^1.1.2
+      version: 1.3.7
     '@radix-ui/react-tabs':
       specifier: 1.1.21
       version: 1.1.21
@@ -43,8 +61,8 @@ catalogs:
       specifier: ^0.562.0
       version: 0.562.0
     zod:
-      specifier: 4.0.5
-      version: 4.0.5
+      specifier: 4.6.5
+      version: 4.6.5
 
 overrides:
   '@types/react': ^19.0.4
@@ -317,7 +335,7 @@ importers:
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@26.0.1)(happy-dom@20.10.6)(jsdom@26.0.0(supports-color@10.2.2))(vite@8.3.0(@types/node@26.0.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
       zod:
         specifier: 'catalog:'
-        version: 4.0.5
+        version: 4.6.5
 
   apps/www:
     dependencies:
@@ -410,7 +428,7 @@ importers:
         version: link:../../packages/ui/wireframes
       zod:
         specifier: 'catalog:'
-        version: 4.0.5
+        version: 4.6.5
     devDependencies:
       '@playwright/test':
         specifier: 1.62.1
@@ -706,7 +724,7 @@ importers:
     dependencies:
       zod:
         specifier: 'catalog:'
-        version: 4.0.5
+        version: 4.6.5
     devDependencies:
       '@some-ui/eslint-kit':
         specifier: workspace:*
@@ -859,7 +877,7 @@ importers:
         version: 19.0.0
       zod:
         specifier: 'catalog:'
-        version: 4.0.5
+        version: 4.6.5
 
   packages/intent-kit:
     devDependencies:
@@ -958,7 +976,7 @@ importers:
         version: link:../ui/wireframes
       zod:
         specifier: 'catalog:'
-        version: 4.0.5
+        version: 4.6.5
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -1067,7 +1085,7 @@ importers:
         version: 19.0.0(react@19.0.0)
       zod:
         specifier: 'catalog:'
-        version: 4.0.5
+        version: 4.6.5
 
   packages/tsconfig: {}
 
@@ -1081,7 +1099,7 @@ importers:
         version: 19.0.0(react@19.0.0)
       zod:
         specifier: 'catalog:'
-        version: 4.0.5
+        version: 4.6.5
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -1128,7 +1146,7 @@ importers:
         version: 19.0.0(react@19.0.0)
       zod:
         specifier: 'catalog:'
-        version: 4.0.5
+        version: 4.6.5
     devDependencies:
       '@some-ui/eslint-kit':
         specifier: workspace:*
@@ -1292,7 +1310,7 @@ importers:
         version: 2.0.7(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       zod:
         specifier: 'catalog:'
-        version: 4.0.5
+        version: 4.6.5
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -1338,7 +1356,7 @@ importers:
         version: link:../../utils
       zod:
         specifier: 'catalog:'
-        version: 4.0.5
+        version: 4.6.5
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -1375,7 +1393,7 @@ importers:
         version: 19.0.0(react@19.0.0)
       zod:
         specifier: 'catalog:'
-        version: 4.0.5
+        version: 4.6.5
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -1424,7 +1442,7 @@ importers:
         version: link:../../utils
       zod:
         specifier: 'catalog:'
-        version: 4.0.5
+        version: 4.6.5
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -1755,7 +1773,7 @@ importers:
         version: link:../../utils
       zod:
         specifier: 'catalog:'
-        version: 4.0.5
+        version: 4.6.5
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -1844,7 +1862,7 @@ importers:
         version: link:../../utils
       zod:
         specifier: 'catalog:'
-        version: 4.0.5
+        version: 4.6.5
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -1893,7 +1911,7 @@ importers:
         version: link:../../utils
       zod:
         specifier: 'catalog:'
-        version: 4.0.5
+        version: 4.6.5
       zustand:
         specifier: ^5.0.9
         version: 5.0.14(@types/react@19.2.17)(react@19.0.0)(use-sync-external-store@1.6.0(react@19.0.0))
@@ -1939,7 +1957,7 @@ importers:
         version: 2.0.7(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       zod:
         specifier: 'catalog:'
-        version: 4.0.5
+        version: 4.6.5
       zustand:
         specifier: ^5.0.9
         version: 5.0.14(@types/react@19.2.17)(react@19.0.0)(use-sync-external-store@1.6.0(react@19.0.0))
@@ -1994,7 +2012,7 @@ importers:
         version: 3.1.1(react@19.0.0)
       zod:
         specifier: 'catalog:'
-        version: 4.0.5
+        version: 4.6.5
       zustand:
         specifier: ^5.0.9
         version: 5.0.14(@types/react@19.2.17)(react@19.0.0)(use-sync-external-store@1.6.0(react@19.0.0))
@@ -2031,7 +2049,7 @@ importers:
         version: 19.0.0(react@19.0.0)
       zod:
         specifier: 'catalog:'
-        version: 4.0.5
+        version: 4.6.5
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -11040,11 +11058,8 @@ packages:
     peerDependencies:
       zod: ^3.25.0 || ^4.0.0
 
-  zod@4.0.5:
-    resolution: {integrity: sha512-/5UuuRPStvHXu7RS+gmvRf4NXrNxpSllGwDnCBcJZtQsKrviYXm54yDGV2KYNLT5kq0lHGcl7lqWJLgSaG+tgA==}
-
-  zod@4.4.3:
-    resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
+  zod@4.6.5:
+    resolution: {integrity: sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q==}
 
   zustand@5.0.14:
     resolution: {integrity: sha512-/8tAspM5LMPr28b3fwLYrtdj77ECpfZviaP75CMTnwO8ISyaE4GDIG/9rDDYq/cH9D2Xw2A2RXglLInmVBQB/g==}
@@ -13936,7 +13951,7 @@ snapshots:
       jiti: 2.7.0
       magic-string: 0.30.21
       prettier: 3.9.0
-      zod: 4.4.3
+      zod: 4.6.5
     transitivePeerDependencies:
       - supports-color
 
@@ -13950,7 +13965,7 @@ snapshots:
       '@tanstack/router-utils': 1.162.2(supports-color@10.2.2)
       chokidar: 5.0.0
       unplugin: 3.2.0(esbuild@0.28.2)(rolldown@1.2.8)(rollup@4.63.3)(vite@8.3.0(@types/node@26.0.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
-      zod: 4.4.3
+      zod: 4.6.5
     optionalDependencies:
       '@tanstack/react-router': 1.170.16(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       vite: 8.3.0(@types/node@26.0.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
@@ -16251,8 +16266,8 @@ snapshots:
       '@babel/parser': 7.29.8
       eslint: 10.10.0(jiti@2.7.0)(supports-color@10.2.2)
       hermes-parser: 0.25.1
-      zod: 4.4.3
-      zod-validation-error: 4.0.2(zod@4.4.3)
+      zod: 4.6.5
+      zod-validation-error: 4.0.2(zod@4.6.5)
     transitivePeerDependencies:
       - supports-color
 
@@ -17435,7 +17450,7 @@ snapshots:
       tinyglobby: 0.2.17
       unbash: 4.0.10
       yaml: 2.9.0
-      zod: 4.4.3
+      zod: 4.6.5
 
   known-css-properties@0.35.0: {}
 
@@ -20185,13 +20200,11 @@ snapshots:
       async: 3.2.6
       jszip: 3.10.1
 
-  zod-validation-error@4.0.2(zod@4.4.3):
+  zod-validation-error@4.0.2(zod@4.6.5):
     dependencies:
-      zod: 4.4.3
+      zod: 4.6.5
 
-  zod@4.0.5: {}
-
-  zod@4.4.3: {}
+  zod@4.6.5: {}
 
   zustand@5.0.14(@types/react@19.2.17)(react@19.0.0)(use-sync-external-store@1.6.0(react@19.0.0)):
     optionalDependencies:
