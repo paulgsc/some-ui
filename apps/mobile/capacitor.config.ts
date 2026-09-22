@@ -20,12 +20,20 @@ const config: CapacitorConfig = {
    * the flag that already means "no backend behind this build" everywhere in
    * www, and `cap sync` copies whatever it left behind.
    *
-   * Note www's `base` must stay `/` for this - the Vite default, so no
-   * `VITE_BASE_PATH`. Capacitor serves the bundle at the *root* of
-   * `https://localhost`, but the document URL follows client-side routing,
-   * so from a deep route like `/sessions/42` a relative base of `./` would
-   * resolve assets against `/sessions/` and 404 every one of them. Absolute
-   * is correct here; the Pages build's `/some-ui/` prefix is not.
+   * www's `base` must be `/` for this, which is why `build:web` pins
+   * `VITE_BASE_PATH=/` rather than leaving it unset. Unset is not the same
+   * thing: `vite.config.ts` reads `process.env.VITE_BASE_PATH || "/"`, turbo
+   * infers and forwards every `VITE_*`, and so a value left in the invoking
+   * shell - from a session that was reproducing the Pages build, say -
+   * would be inherited here and emit every asset under that prefix. The APK
+   * serves from the root of `https://localhost` and would find none of
+   * them: a blank app, with a correct-looking build log.
+   *
+   * `./` is not an alternative. Capacitor serves the bundle at the root, but
+   * the document URL follows client-side routing, so from a deep route like
+   * `/sessions/42` a relative base resolves assets against `/sessions/` and
+   * 404s every one of them. Absolute is correct here; the Pages build's
+   * `/some-ui/` prefix is not.
    */
   webDir: "../www/dist",
 

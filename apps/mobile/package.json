@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Capacitor shell that packages the backendless www build as a sideloadable Android APK",
   "scripts": {
-    "build:web": "cross-env VITE_STATIC_DATA=true turbo run build --filter=www",
+    "build:web": "cross-env VITE_STATIC_DATA=true VITE_BASE_PATH=/ turbo run build --filter=www",
     "sync": "cap sync android",
     "bundle": "pnpm build:web && pnpm sync",
     "apk": "pnpm bundle && cd android && ./gradlew assembleDebug",

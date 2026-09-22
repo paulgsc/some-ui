@@ -21,6 +21,9 @@ public class ExampleInstrumentedTest {
         // Context of the app under test.
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
 
-        assertEquals("com.getcapacitor.app", appContext.getPackageName());
+        // Must track `applicationId` in app/build.gradle. The Capacitor
+        // template ships "com.getcapacitor.app" here, which is not what this
+        // app is built as, so the assertion failed on a correctly built APK.
+        assertEquals("dev.paulgsc.someui", appContext.getPackageName());
     }
 }

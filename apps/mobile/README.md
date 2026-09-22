@@ -46,6 +46,12 @@ workspace dependencies are built first — a fresh clone has no prebuilt `dist/`
 and www resolves `@some-ui/*` to `dist`, so building it alone against stale or
 missing output is how you get an APK bundling last week's packages.
 
+`build:web` also pins `VITE_BASE_PATH=/`. Leaving it unset is not
+equivalent — `apps/www/vite.config.ts` reads `process.env.VITE_BASE_PATH || "/"`
+and turbo forwards every inferred `VITE_*`, so a value lingering in the
+invoking shell would be inherited, emit assets under that prefix, and produce
+an APK that loads nothing. The build log looks entirely normal.
+
 `VITE_STATIC_DATA` survives that hop despite `turbo.json`'s `build` task
 declaring only `SOME_UI_PRUNED_WORKSPACE` under `env`: turbo detects Vite for
 this workspace and _infers_ `VITE_*`, which puts the flag in the task hash and
