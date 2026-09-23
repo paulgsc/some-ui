@@ -35,6 +35,7 @@ const config = ({
   return extensionConfig({
     alias: platformAlias(chromium ? "chrome" : "firefox"),
     entries,
+    brandIcons: true,
     copy: chromium
       ? []
       : [{ from: "public/manifest.firefox.json", to: "manifest.json" }],

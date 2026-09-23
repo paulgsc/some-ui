@@ -54,6 +54,7 @@ const config = ({
   return extensionConfig({
     alias: platformAlias(chromium ? "chrome" : "firefox"),
     entries,
+    brandIcons: true,
     unocss,
     copy: chromium
       ? []

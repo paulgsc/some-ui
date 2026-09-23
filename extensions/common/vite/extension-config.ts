@@ -1,4 +1,5 @@
 import { resolve } from "node:path"
+import { fileURLToPath } from "node:url"
 import { defineConfig } from "vite"
 import type { PluginOption, UserConfig } from "vite"
 
@@ -34,10 +35,29 @@ export type ExtensionConfigOptions = {
   external?: Array<string>
   /** Files/dirs copied into `dist/` after the build (manifest overrides, wasm dist). */
   copy?: Array<CopyStep>
+  /**
+   * Ship the shared honeycomb brand mark (`extensions/common/brand/`) as
+   * `dist/assets/icon-{16,48,128}.png` — the paths the manifests' `icons` and
+   * `action.default_icon` declare — instead of per-extension copies in
+   * `public/assets/` (#1420).
+   */
+  brandIcons?: boolean
   /** UnoCSS stylesheets to emit as part of the build (content/popup CSS). */
   unocss?: Array<UnocssBuild>
   /** Extra plugins, inserted before the flatten pass. */
   plugins?: Array<PluginOption>
+}
+
+// Rasterized from packages/some-styles/brand/favicon.svg (the canonical
+// "Some UI" mark), at the sizes every extension manifest declares.
+const BRAND_ICON_SIZES = [16, 48, 128] as const
+
+function brandIconSteps(): Array<CopyStep> {
+  const brandDir = fileURLToPath(new URL("../brand/", import.meta.url))
+  return BRAND_ICON_SIZES.map((size) => ({
+    from: resolve(brandDir, `icon-${size}.png`),
+    to: `assets/icon-${size}.png`,
+  }))
 }
 
 /**
@@ -55,6 +75,7 @@ export function extensionConfig(options: ExtensionConfigOptions): UserConfig {
     alias = {},
     external = [],
     copy = [],
+    brandIcons = false,
     unocss = [],
     plugins = [],
   } = options
@@ -68,6 +89,7 @@ export function extensionConfig(options: ExtensionConfigOptions): UserConfig {
     fileName: `${entry.name}.js`,
     format: entry.classic === false ? "es" : "iife",
   }))
+  const copySteps = [...(brandIcons ? brandIconSteps() : []), ...copy]
   const resolvedAlias = Object.fromEntries(
     Object.entries(alias).map(([key, value]) => [key, resolve(root, value)])
   )
@@ -76,7 +98,7 @@ export function extensionConfig(options: ExtensionConfigOptions): UserConfig {
     plugins: [
       ...plugins,
       flattenEntries(flattenTargets),
-      ...(copy.length ? [copyFiles(copy)] : []),
+      ...(copySteps.length ? [copyFiles(copySteps)] : []),
       ...(unocss.length ? [emitUnocss(unocss)] : []),
     ],
     resolve: { tsconfigPaths: true, alias: resolvedAlias },
