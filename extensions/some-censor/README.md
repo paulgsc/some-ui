@@ -3,6 +3,31 @@
 Browser extension that profiles and mutates a vendor-controlled DOM. Built on
 the `@some-extension/transport` kernel.
 
+## Architecture at a glance
+
+Four stages, each owning exactly one concern, in a straight line from
+observation to write:
+
+1. **Layout table** (`src/lib/content/layout/`) — a versioned, checked-in
+   description of how YouTube's card DOM is shaped on each surface, built by
+   crawling real (or fixture) pages rather than hand-written. It carries a
+   schema version, so a reader can tell "this table is stale" apart from
+   "this table's schema is one I do not understand."
+2. **Typed observations** — the Sensor classifies a freshly seen node against
+   the layout table (`layout/lookup.ts`'s `classifyShape`) and hands the Core
+   a typed `Observation`. A node the table cannot place comes back as an
+   explicit `unknown` classification rather than an exception.
+3. **Core reducer** (`src/lib/content/core/`) — a pure, total
+   `reduce(state, event) → { state, actions }`: no DOM, `browser.*`, clock,
+   or randomness anywhere under `core/`. Every card's generation (and, where
+   the view matters, its version) correlates the async requests it issues;
+   an answer whose generation has moved on or whose version has been
+   superseded is discarded and recorded as stale rather than applied.
+4. **Actuator** (`src/lib/content/actuator/`) — the sole module that writes
+   to the vendor DOM or calls `browser.*`. It only executes the actions Core
+   named; answers to what it does (a whitelist verdict, a title transform, a
+   timer, a click) return to Core as inputs, never as calls back into it.
+
 > [!IMPORTANT] > **Story-governed as well as canon-governed — read both before editing this package.**
 >
 > - [`docs/quarantine-capsule.md`](./docs/quarantine-capsule.md) — _The
