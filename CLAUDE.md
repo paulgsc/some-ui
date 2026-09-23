@@ -76,7 +76,8 @@ never "sounds like good practice."
   `turbo` while the byte-identical `fetch` succeeded when run directly. Fixed in `turbo.json`
   via `globalPassThroughEnv` (which also carries `PDFTOTEXT_BIN`, the escape hatch the check
   scripts document and strict mode was likewise eating). If it resurfaces the tell is
-  `[resume] fetch failed: self-signed certificate in certificate chain` — check the URL with
+  `self-signed certificate in certificate chain (SELF_SIGNED_CERT_IN_CHAIN)` at the end of a
+  `[resume] Failed to download <url>: fetch failed <- ...` line — check that URL with
   `curl` (which does honour the proxy env) before believing the network is blocked. (2)
   `pdftotext` genuinely is absent. Since #1452 that no longer fails the build: a local build
   without it prints `[resume] WARNING: ... Skipping check-ats.mjs and check-layout.mjs` and
