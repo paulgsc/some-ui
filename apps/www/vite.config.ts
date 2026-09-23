@@ -217,11 +217,14 @@ export default defineConfig(
         // for `advancedChunks` (Rolldown's grouping API) if this ever needs
         // manual grouping again — and match on package *boundaries*, not
         // substrings of the resolved path.
-        output: {
-          // Production builds strip console calls (terser's `drop_console`,
-          // carried over to oxc — see `minify` below).
-          minify: { compress: { dropConsole: true }, mangle: true },
-        },
+        // Production builds strip console calls (terser's `drop_console`,
+        // carried over to oxc — see `minify` below). Not in the analyze
+        // build: this object is spread over Vite's own `minify` setting, so
+        // it would override the `minify: false` that scripts/
+        // analyze-bundle.js passes to keep its chunks unminified.
+        output: analyze
+          ? {}
+          : { minify: { compress: { dropConsole: true }, mangle: true } },
         // Tree shaking options
         treeshake: {
           // Every module is treated as side-effect free, so an import that
