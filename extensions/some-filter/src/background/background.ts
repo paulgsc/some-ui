@@ -213,10 +213,24 @@ async function applyEnforcement(
 // frame), raises that frame's own veil, and requests the sheet for itself —
 // which is what covers a frame created or navigated after load. Registered
 // only while the flag is on, rather than as a manifest `all_frames` entry, so
-// the default (flag-off) path puts no veil and no script into any iframe;
-// `about:blank` frames are skipped because the registration does not set
-// `matchAboutBlank`.
+// the default (flag-off) path puts no veil and no script into any iframe.
 const FRAME_SCRIPT_ID = "sf-enforcement-frames"
+
+// `matchOriginAsFallback` (Chromium 119+, Firefox 128+; not yet in this
+// package's typings, hence a variable rather than an inline literal) also
+// matches `about:blank`, `srcdoc`, `data:` and `blob:` frames by their
+// creator's origin (bot-found on #1521: a same-origin srcdoc iframe with an
+// authored white background got neither a veil nor the sheet). Those frames
+// pay for a veil and one round trip each; an empty one confirms at once.
+const frameScript = {
+  id: FRAME_SCRIPT_ID,
+  matches: ["<all_urls>"],
+  allFrames: true,
+  matchOriginAsFallback: true,
+  runAt: "document_start" as const,
+  css: ["prepaint.css"],
+  js: ["frame.js"],
+}
 
 async function syncFrameScript(): Promise<void> {
   try {
@@ -225,16 +239,7 @@ async function syncFrameScript(): Promise<void> {
       ids: [FRAME_SCRIPT_ID],
     })
     if (enabled && registered.length === 0) {
-      await ext.scripting.registerContentScripts([
-        {
-          id: FRAME_SCRIPT_ID,
-          matches: ["<all_urls>"],
-          allFrames: true,
-          runAt: "document_start",
-          css: ["prepaint.css"],
-          js: ["frame.js"],
-        },
-      ])
+      await ext.scripting.registerContentScripts([frameScript])
     } else if (!enabled && registered.length > 0) {
       await ext.scripting.unregisterContentScripts({ ids: [FRAME_SCRIPT_ID] })
     }

@@ -524,7 +524,13 @@ document:
   background keeps no per-tab state. Two identical `insertCSS` calls stack
   two copies and one `removeCSS` removes one (measured on Chromium 1194), so
   the content side asks only while a read shows the sheet absent, and removes
-  until a read shows it gone.
+  until a read shows it gone. Every ensure and removal for a document runs
+  through one queue, in call order, and each waits until the previous
+  request has _settled_, not merely until its caller stopped waiting. A late
+  insert therefore cannot land after the removal that followed it, and an
+  auto → legacy → auto re-entry cannot confirm a sheet a queued removal is
+  about to take away. Each caller still gets its answer within the liveness
+  bound.
 - **Transitions (§8.3).** A transition/animation freeze goes in before the
   request and comes out after the confirm read and one painted frame. The
   vendor's transitions resume only once the sheet's values are current, so
@@ -540,8 +546,10 @@ document:
 - **Frames.** While the flag is on, the background registers a `frame.js`
   content script for every subframe at `document_start`. It raises that
   frame's own veil and runs the same handshake, which covers frames created
-  after load. It is a dynamic registration rather than a manifest
-  `all_frames` entry, so the default path puts nothing into any iframe.
+  after load, and it matches fallback-origin frames (`about:blank`,
+  `srcdoc`, `data:`) by their creator's origin. It is a dynamic registration
+  rather than a manifest `all_frames` entry, so the default path puts nothing
+  into any iframe.
 - **SPA navigation.** An injected user sheet belongs to the document, so it
   survives a router's `<head>`/`<body>` swap, and every element the new route
   inserts gets its first style under it. With the sheet confirmed present,

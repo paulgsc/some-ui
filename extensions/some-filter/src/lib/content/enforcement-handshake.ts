@@ -72,6 +72,8 @@ export type EnforcementDeps = {
 export type EnsureOutcome =
   | { readonly kind: "confirmed"; readonly sent: number }
   | { readonly kind: "timeout"; readonly sent: number }
+  /** The tab's state moved on before the request reached the head of its queue; nothing was sent. */
+  | { readonly kind: "superseded"; readonly sent: 0 }
 
 function sameRgb(a: string, b: string): boolean {
   const pa = parseColor(a)
@@ -110,58 +112,168 @@ function withLiveness<T>(
 }
 
 /**
- * Requests the sheet for this document and confirms it by reading the
- * cascade. Does not touch the veil: the caller releases it on `confirmed`
- * (through the document scope's custody), and on `timeout` too, onto the
- * native page.
+ * One enforcement operation, split in two. `result` is what the caller acts
+ * on and is bounded by the liveness timeout. `settled` is the underlying
+ * request, which can outlive that bound — a busy or restarting worker still
+ * performs an `insertCSS` it received late — so the queue below holds the
+ * next operation until it settles, not merely until the caller stopped
+ * waiting (bot-found on #1521: a removal that ran while a timed-out insert
+ * was still pending finished first and the insert then landed in an off or
+ * legacy tab).
  */
-export async function ensureEnforcement(
+type Operation<T> = {
+  readonly result: Promise<T>
+  readonly settled: Promise<unknown>
+}
+
+function ensureOperation(
   deps: EnforcementDeps,
   swatchId: string,
   bg0: string
-): Promise<EnsureOutcome> {
-  if (sheetPresent(deps, bg0)) return { kind: "confirmed", sent: 0 }
+): Operation<EnsureOutcome> {
+  if (sheetPresent(deps, bg0)) {
+    return {
+      result: Promise.resolve({ kind: "confirmed", sent: 0 }),
+      settled: Promise.resolve(),
+    }
+  }
 
   const unfreeze = deps.freeze()
   let sent = 0
-  const attempt = async (): Promise<boolean> => {
+  const attempt = (async (): Promise<boolean> => {
     for (let i = 0; i < 2; i++) {
       sent++
       await deps.send({ type: "ENSURE_ENFORCEMENT", swatchId })
       if (sheetPresent(deps, bg0)) return true
     }
     return false
-  }
+  })()
 
-  const result = await withLiveness(deps, attempt(), ENFORCEMENT_LIVENESS_MS)
-  if (result === true) {
-    // The freeze stays until the sheet's values have painted once, so a
-    // vendor transition that resumes afterwards has nothing left to animate.
-    await deps.afterPaint()
+  const result = (async (): Promise<EnsureOutcome> => {
+    const confirmed = await withLiveness(deps, attempt, ENFORCEMENT_LIVENESS_MS)
+    if (confirmed === true) {
+      // The freeze stays until the sheet's values have painted once, so a
+      // vendor transition that resumes afterwards has nothing left to
+      // animate.
+      await deps.afterPaint()
+      unfreeze()
+      return { kind: "confirmed", sent }
+    }
     unfreeze()
-    return { kind: "confirmed", sent }
-  }
-  unfreeze()
-  return { kind: "timeout", sent }
+    return { kind: "timeout", sent }
+  })()
+  return { result, settled: attempt }
+}
+
+function removeOperation(
+  deps: EnforcementDeps,
+  swatchId: string,
+  bg0: string
+): Operation<boolean> {
+  const attempt = (async (): Promise<boolean> => {
+    for (let i = 0; i < MAX_REMOVE_ATTEMPTS; i++) {
+      if (!sheetPresent(deps, bg0)) return true
+      await deps.send({ type: "REMOVE_ENFORCEMENT", swatchId })
+    }
+    return !sheetPresent(deps, bg0)
+  })()
+  const result = withLiveness(deps, attempt, ENFORCEMENT_LIVENESS_MS).then(
+    (removed) => removed === true
+  )
+  return { result, settled: attempt }
+}
+
+/**
+ * Requests the sheet for this document and confirms it by reading the
+ * cascade. Does not touch the veil: the caller releases it on `confirmed`
+ * (through the document scope's custody), and on `timeout` too, onto the
+ * native page. Unqueued — callers use `createEnforcementQueue()`.
+ */
+export function ensureEnforcement(
+  deps: EnforcementDeps,
+  swatchId: string,
+  bg0: string
+): Promise<EnsureOutcome> {
+  return ensureOperation(deps, swatchId, bg0).result
 }
 
 /**
  * Removes the sheet from this document, repeating until a read shows it gone
  * (a stacked duplicate needs one request per copy). Resolves `true` once the
  * read agrees, `false` if the liveness bound or the attempt cap ran out.
+ * Unqueued — callers use `createEnforcementQueue()`.
  */
-export async function removeEnforcement(
+export function removeEnforcement(
   deps: EnforcementDeps,
   swatchId: string,
   bg0: string
 ): Promise<boolean> {
-  const attempt = async (): Promise<boolean> => {
-    for (let i = 0; i < MAX_REMOVE_ATTEMPTS; i++) {
-      if (!sheetPresent(deps, bg0)) return true
-      await deps.send({ type: "REMOVE_ENFORCEMENT", swatchId })
-    }
-    return !sheetPresent(deps, bg0)
+  return removeOperation(deps, swatchId, bg0).result
+}
+
+export type EnforcementQueue = {
+  /**
+   * Queues an ensure. `isCurrent` is re-read when the operation reaches the
+   * head of the queue: a request the tab's state has moved on from resolves
+   * `superseded` without sending anything.
+   */
+  ensure(isCurrent: () => boolean): Promise<EnsureOutcome>
+  remove(): Promise<boolean>
+}
+
+/**
+ * One document's enforcement operations, strictly in call order: each starts
+ * only after the previous one's underlying request has settled, so an ensure
+ * can never read a sheet a queued removal is about to take away, nor a
+ * removal finish ahead of an insert still in flight (bot-found on #1521, the
+ * auto -> legacy -> auto race and the timed-out insert). The caller-facing
+ * answer stays bounded regardless: each call resolves within
+ * `ENFORCEMENT_LIVENESS_MS` of being made, even while it waits behind a
+ * request that never settles — the veil is never held on a dead worker.
+ */
+export function createEnforcementQueue(
+  deps: EnforcementDeps,
+  swatchId: string,
+  bg0: string
+): EnforcementQueue {
+  let tail: Promise<unknown> = Promise.resolve()
+
+  function enqueue<T>(start: () => Operation<T>, timedOut: T): Promise<T> {
+    return new Promise<T>((resolve) => {
+      let answered = false
+      const answer = (value: T): void => {
+        if (answered) return
+        answered = true
+        deps.clearTimer(handle)
+        resolve(value)
+      }
+      const handle = deps.setTimer(
+        () => answer(timedOut),
+        ENFORCEMENT_LIVENESS_MS
+      )
+      tail = tail.then(async () => {
+        const operation = start()
+        void operation.result.then(answer)
+        await operation.settled.then(
+          () => undefined,
+          () => undefined
+        )
+      })
+    })
   }
-  const result = await withLiveness(deps, attempt(), ENFORCEMENT_LIVENESS_MS)
-  return result === true
+
+  return {
+    ensure: (isCurrent) =>
+      enqueue<EnsureOutcome>(
+        () =>
+          isCurrent()
+            ? ensureOperation(deps, swatchId, bg0)
+            : {
+                result: Promise.resolve({ kind: "superseded", sent: 0 }),
+                settled: Promise.resolve(),
+              },
+        { kind: "timeout", sent: 0 }
+      ),
+    remove: () => enqueue(() => removeOperation(deps, swatchId, bg0), false),
+  }
 }

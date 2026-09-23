@@ -24,10 +24,7 @@
 
 import { DEFAULT_SWATCH_ID, SWATCHES } from "@filter/adapter/swatches"
 import { createDocumentEnforcementDeps } from "@filter/lib/content/enforcement-dom"
-import {
-  ensureEnforcement,
-  removeEnforcement,
-} from "@filter/lib/content/enforcement-handshake"
+import { createEnforcementQueue } from "@filter/lib/content/enforcement-handshake"
 import {
   isExtensionMessage,
   isGetTabFilterStateResponse,
@@ -57,28 +54,22 @@ const deps = createDocumentEnforcementDeps((request) =>
 let state: TabState = DEFAULT_TAB_STATE
 let generation = 0
 let mayBePresent = false
-let inflightEnsure: Promise<unknown> = Promise.resolve()
+/** Ensures and removals for this frame's document, strictly in call order. */
+const queue = createEnforcementQueue(deps, DEFAULT_SWATCH_ID, BG0)
 
 async function enforce(current: number): Promise<void> {
   mayBePresent = true
-  // Chained, so an earlier round's insert settles before this presence read
-  // (two reads of "absent" would stack two copies).
-  const round = inflightEnsure.then(() =>
-    ensureEnforcement(deps, DEFAULT_SWATCH_ID, BG0)
-  )
-  inflightEnsure = round
-  await round
+  await queue.ensure(() => current === generation)
   // Confirmed or timed out, the veil comes down: onto the enforced page, or
   // onto the native one — never a permanently blacked-out frame.
   if (current === generation) disablePrepaint()
 }
 
 async function leave(current: number): Promise<void> {
-  await inflightEnsure
-  if (await removeEnforcement(deps, DEFAULT_SWATCH_ID, BG0)) {
-    mayBePresent = false
-  }
-  if (current === generation) disablePrepaint()
+  const removed = await queue.remove()
+  if (current !== generation) return
+  if (removed) mayBePresent = false
+  disablePrepaint()
 }
 
 function apply(next: TabState): void {

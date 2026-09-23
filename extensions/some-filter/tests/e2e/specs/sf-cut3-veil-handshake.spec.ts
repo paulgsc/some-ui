@@ -328,6 +328,86 @@ test.describe("SF-CUT3 veil handshake (flag on)", () => {
     expect(unveiledAndUnenforced(samples)).toEqual([])
   })
 
+  test("a srcdoc <iframe> (a fallback-origin frame) gets the sheet too", async ({
+    context,
+    fixture,
+  }) => {
+    const sw = await backgroundWorker(context)
+    await enableEnforcement(sw)
+    await context.addInitScript(installSampler, 3_000)
+
+    const page = await fixture.goto("light-page")
+    await awaitEnforced(page)
+    await page.evaluate(() => {
+      const frame = document.createElement("iframe")
+      frame.name = "srcdoc-probe"
+      frame.srcdoc =
+        '<html style="background-color: rgb(255, 255, 255)"><body style="background-color: rgb(255, 255, 255)">srcdoc</body></html>'
+      frame.style.cssText = "width: 400px; height: 300px; border: 0"
+      document.body.append(frame)
+    })
+
+    const child = await (async (): Promise<Frame> => {
+      for (let attempt = 0; attempt < 100; attempt++) {
+        const found = page.frames().find((f) => f.name() === "srcdoc-probe")
+        if (found !== undefined) return found
+        await page.waitForTimeout(20)
+      }
+      throw new Error("srcdoc frame never attached")
+    })()
+    await child.waitForFunction(
+      (expected) =>
+        getComputedStyle(document.documentElement).backgroundColor ===
+          expected && document.getElementById("__sw_prepaint_veil") === null,
+      ENFORCED_BG,
+      { timeout: 5_000, polling: 50 }
+    )
+    await samplingDone(child)
+    expect(unveiledAndUnenforced(await samplesOf(child))).toEqual([])
+  })
+
+  test("three cycles sent back to back (auto -> off -> legacy -> auto) end enforced: a removal still in flight cannot take away the sheet the re-entry confirmed", async ({
+    context,
+    fixture,
+  }) => {
+    const sw = await backgroundWorker(context)
+    await enableEnforcement(sw)
+    const page = await fixture.goto("light-page")
+    await awaitEnforced(page)
+
+    await sw.evaluate(async (target: string) => {
+      // eslint-disable-next-line no-restricted-globals
+      const tabs = await chrome.tabs.query({})
+      const tab = tabs.find((t) => t.url?.includes(target))
+      if (tab?.id === undefined) throw new Error(`no tab matching ${target}`)
+      for (let i = 0; i < 3; i++) {
+        // eslint-disable-next-line no-restricted-globals
+        void chrome.tabs.sendMessage(tab.id, { type: "CYCLE_TAB_STATE" })
+      }
+    }, "light-page.html")
+
+    await page.waitForFunction(
+      (id) =>
+        document.documentElement.hasAttribute("data-sw-legacy") === false &&
+        document.getElementById(id) === null &&
+        document.body.dataset["swTabState"] === "auto",
+      VEIL_ID,
+      { timeout: 8_000, polling: 50 }
+    )
+    // Settled, and still enforced a second later: nothing queued behind the
+    // re-entry removes the sheet afterwards.
+    await page.waitForTimeout(1_000)
+    const settled = await page.evaluate(() => {
+      const style = getComputedStyle(document.documentElement)
+      return {
+        bg: style.backgroundColor,
+        filter: style.filter,
+        veil: document.getElementById("__sw_prepaint_veil") !== null,
+      }
+    })
+    expect(settled).toEqual({ bg: ENFORCED_BG, filter: "none", veil: false })
+  })
+
   test("a background that never answers: the veil releases at the liveness bound onto the native page, and the timeout is counted", async ({
     context,
     fixture,

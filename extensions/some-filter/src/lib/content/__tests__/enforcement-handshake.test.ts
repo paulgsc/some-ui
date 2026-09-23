@@ -1,4 +1,5 @@
 import {
+  createEnforcementQueue,
   ENFORCEMENT_LIVENESS_MS,
   ensureEnforcement,
   removeEnforcement,
@@ -29,7 +30,10 @@ type Fake = {
 function fake(
   options: {
     initialCopies?: number
-    respond?: (request: EnforcementRequest, index: number) => boolean
+    respond?: (
+      request: EnforcementRequest,
+      index: number
+    ) => boolean | Promise<void>
     applies?: (request: EnforcementRequest, index: number) => boolean
   } = {}
 ): Fake {
@@ -46,14 +50,21 @@ function fake(
       const index = state.sent.length
       state.sent.push(request)
       state.events.push(`send:${request.type}`)
-      if (options.respond?.(request, index) === false) {
+      const respond = options.respond?.(request, index)
+      if (respond === false) {
         return new Promise(() => {})
       }
-      if (options.applies?.(request, index) !== false) {
-        state.copies += request.type === "ENSURE_ENFORCEMENT" ? 1 : -1
-        state.copies = Math.max(0, state.copies)
+      const apply = (): { ok: true } => {
+        if (options.applies?.(request, index) !== false) {
+          state.copies += request.type === "ENSURE_ENFORCEMENT" ? 1 : -1
+          state.copies = Math.max(0, state.copies)
+        }
+        return { ok: true }
       }
-      return Promise.resolve({ ok: true })
+      // A promise delays the request's effect — a busy worker that performs
+      // the insert late, after the caller has stopped waiting.
+      if (respond instanceof Promise) return respond.then(apply)
+      return Promise.resolve(apply())
     },
     readCanvas: (): string => (state.copies > 0 ? ENFORCED : NATIVE),
     freeze: (): (() => void) => {
@@ -178,5 +189,80 @@ describe("removeEnforcement", () => {
     const f = fake({ initialCopies: 1, applies: () => false })
     expect(await removeEnforcement(f.deps, "default", BG0)).toBe(false)
     expect(f.sent.length).toBe(3)
+  })
+})
+
+describe("createEnforcementQueue — one document's operations, in call order (bot-found on #1521)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("a removal waits for an insert that outlived its caller's liveness bound, so the late insert cannot land after it", async () => {
+    let releaseInsert = (): void => {}
+    const late = new Promise<void>((resolve) => {
+      releaseInsert = resolve
+    })
+    const f = fake({
+      respond: (request) =>
+        request.type === "ENSURE_ENFORCEMENT" ? late : true,
+    })
+    const queue = createEnforcementQueue(f.deps, "default", BG0)
+
+    const ensured = queue.ensure(() => true)
+    await vi.advanceTimersByTimeAsync(ENFORCEMENT_LIVENESS_MS)
+    expect((await ensured).kind).toBe("timeout")
+
+    // The tab leaves auto while the insert is still pending in the worker.
+    const removed = queue.remove()
+    await vi.advanceTimersByTimeAsync(10)
+    expect(f.sent.map((r) => r.type)).toEqual(["ENSURE_ENFORCEMENT"])
+
+    // The worker finally performs the insert; only then does the removal
+    // run, and it takes the late copy out.
+    releaseInsert()
+    await vi.advanceTimersByTimeAsync(10)
+    expect(await removed).toBe(true)
+    expect(f.copies).toBe(0)
+  })
+
+  it("an ensure queued behind a removal (auto -> legacy -> auto) reads after the removal, so it inserts rather than confirming a sheet about to go", async () => {
+    const f = fake({ initialCopies: 1 })
+    const queue = createEnforcementQueue(f.deps, "default", BG0)
+
+    const removed = queue.remove()
+    const ensured = queue.ensure(() => true)
+    expect(await removed).toBe(true)
+    expect(await ensured).toEqual({ kind: "confirmed", sent: 1 })
+    expect(f.copies).toBe(1)
+    expect(f.sent.map((r) => r.type)).toEqual([
+      "REMOVE_ENFORCEMENT",
+      "ENSURE_ENFORCEMENT",
+    ])
+  })
+
+  it("an ensure the tab has moved on from by the time it reaches the head sends nothing", async () => {
+    const f = fake()
+    const queue = createEnforcementQueue(f.deps, "default", BG0)
+    expect(await queue.ensure(() => false)).toEqual({
+      kind: "superseded",
+      sent: 0,
+    })
+    expect(f.sent).toEqual([])
+  })
+
+  it("still answers every caller within the liveness bound while it waits behind a request that never settles", async () => {
+    const f = fake({ respond: () => false })
+    const queue = createEnforcementQueue(f.deps, "default", BG0)
+    void queue.ensure(() => true)
+    const removed = queue.remove()
+    let answered = false
+    void removed.then(() => (answered = true))
+    await vi.advanceTimersByTimeAsync(ENFORCEMENT_LIVENESS_MS - 1)
+    expect(answered).toBe(false)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(await removed).toBe(false)
   })
 })

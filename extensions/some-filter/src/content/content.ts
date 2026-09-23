@@ -40,8 +40,7 @@ import {
 } from "@filter/lib/content/coverage-watchdog"
 import { createDocumentEnforcementDeps } from "@filter/lib/content/enforcement-dom"
 import {
-  ensureEnforcement,
-  removeEnforcement,
+  createEnforcementQueue,
   sheetPresent,
   type EnforcementDeps,
 } from "@filter/lib/content/enforcement-handshake"
@@ -155,13 +154,17 @@ let enforcing = false
  * `filter: none`.
  */
 let enforcementMayBePresent = false
-/** The last ensure request, so a removal never races one still in flight. */
-let inflightEnsure: Promise<unknown> = Promise.resolve()
 /** Bumped by every applyState(); async enforcement steps that see it change stand down. */
 let stateGeneration = 0
 
 const enforcementDeps: EnforcementDeps = createDocumentEnforcementDeps(
   (request) => ext.runtime.sendMessage(request)
+)
+/** Every ensure and removal for this document, strictly in call order — see createEnforcementQueue(). */
+const enforcementQueue = createEnforcementQueue(
+  enforcementDeps,
+  DEFAULT_SWATCH_ID,
+  ENFORCED_SWATCH.bg0
 )
 
 async function readEnforcementFlag(): Promise<boolean> {
@@ -571,13 +574,12 @@ async function leaveEnforcement(
   state: TabState,
   generation: number
 ): Promise<void> {
-  await inflightEnsure
-  const removed = await removeEnforcement(
-    enforcementDeps,
-    DEFAULT_SWATCH_ID,
-    ENFORCED_SWATCH.bg0
-  )
-  if (removed) enforcementMayBePresent = false
+  const removed = await enforcementQueue.remove()
+  // Cleared only while no state change has happened since: a re-entry into
+  // auto has already queued a fresh request behind this removal.
+  if (removed && generation === stateGeneration) {
+    enforcementMayBePresent = false
+  }
   observabilityRecorder.record({
     kind: "enforcement.removed",
     detail: { confirmed: removed },
@@ -712,15 +714,16 @@ function runAutoTheme(): void {
  */
 async function runEnforcementRound(generation: number): Promise<void> {
   enforcementMayBePresent = true
-  // Chained on any round still in flight (an auto re-entry, a nav-finish
-  // re-confirm): its insert must settle before this round's presence read,
-  // or both would read "absent" and stack two copies of the sheet.
-  const round = inflightEnsure.then(() =>
-    ensureEnforcement(enforcementDeps, DEFAULT_SWATCH_ID, ENFORCED_SWATCH.bg0)
+  const outcome = await enforcementQueue.ensure(
+    () => generation === stateGeneration && currentState === "auto"
   )
-  inflightEnsure = round
-  const outcome = await round
-  if (generation !== stateGeneration || currentState !== "auto") return
+  if (
+    outcome.kind === "superseded" ||
+    generation !== stateGeneration ||
+    currentState !== "auto"
+  ) {
+    return
+  }
 
   updateDebugAttrs()
   if (outcome.kind === "confirmed") {
