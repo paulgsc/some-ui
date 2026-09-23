@@ -57,12 +57,16 @@ this file. Hold every change to the bar the current entries meet: recurs across 
 one session, or is a single incident with a silent failure mode and a near-free guard —
 never "sounds like good practice."
 
-- **A fresh clone has no prebuilt `dist/` — `pnpm install` alone isn't enough.** Build with
-  `npx turbo run build --filter="www^..." --continue` (the `--continue` matters: without it,
-  one unrelated package's build failure aborts the whole graph, and `tsc --noEmit` then
-  reports a wall of `Cannot find module '@some-ui/...'` errors that look real but just mean
-  "never built"). Scope `tsc`/`vitest` to the package you're in (`pnpm --filter <pkg> exec
-tsc --noEmit`, `pnpm exec vitest run <path>`), not the repo root.
+- **A fresh clone has no prebuilt `dist/` — `pnpm install` alone isn't enough.** Through
+  turbo this is handled: `typecheck` and `lint:js` declare `dependsOn: ["^build"]` (and
+  `lint:js` also `@some-ui/eslint-kit#build`, which most `eslint.config.js` files import without
+  declaring it), so `npx turbo run typecheck --filter=<pkg>` builds what it needs first
+  (#1454). Anything run _outside_ turbo — `pnpm --filter <pkg> exec tsc --noEmit`, `vitest`,
+  an extension's e2e — still needs the dependencies built: `npx turbo run build
+--filter="www^..." --continue` (the `--continue` matters: without it, one unrelated package's
+  build failure aborts the whole graph, and `tsc --noEmit` then reports a wall of `Cannot find
+  module '@some-ui/...'` errors that look real but just mean "never built"). Scope
+  `tsc`/`vitest` to the package you're in (`pnpm exec vitest run <path>`), not the repo root.
 - **`@some-ui/resume` is the package that fails that graph build, and neither of its two
   failures is an environment gap to route around — both are fixable here in about a minute.**
   It is the only package whose build downloads a pinned `typst` plus nine font files and then

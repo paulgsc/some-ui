@@ -99,11 +99,18 @@ jobs:
             --filter='!./crates/*' \
             --concurrency=100%
 
+      # Same filter set as Build above, so the `^build` these tasks now
+      # declare in turbo.json (#1454) selects only builds that step already
+      # ran: cache hits, not extra work. `!./crates/*` changes nothing today
+      # (crates have no typecheck or lint:js script, and no package depends on
+      # a crate through `workspace:`), but keeping the three filters identical
+      # means a future crate script cannot quietly pull wasm-pack in here.
       - name: Typecheck (affected packages)
         run: |
           nix develop .#ci --command pnpm turbo run typecheck \
             --filter=...[HEAD^1] \
             --filter='!./extensions/**' \
+            --filter='!./crates/*' \
             --concurrency=100%
 
       - name: Lint (affected packages)
@@ -111,6 +118,7 @@ jobs:
           nix develop .#ci --command pnpm turbo run lint:js \
             --filter=...[HEAD^1] \
             --filter='!./extensions/**' \
+            --filter='!./crates/*' \
             --concurrency=100%
 
       # Repo-wide invariant, so not turbo-filtered: a manifest that opts out
