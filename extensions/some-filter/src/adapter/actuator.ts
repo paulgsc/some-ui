@@ -89,6 +89,19 @@ export function clearPerSurfaceState(): boolean {
 }
 
 /**
+ * Removes every `data-sw-patched` tag under `root` and leaves the dynamic
+ * sheet in place. For `pipeline.ts`'s epoch reset, which has to re-sense
+ * tagged elements (the scan skips them) and re-tags them in the same
+ * synchronous round, so their rules must still exist when it does. See
+ * that function's own doc comment.
+ */
+export function untagSurfaces(root: Element): void {
+  for (const el of root.querySelectorAll("[data-sw-patched]")) {
+    el.removeAttribute("data-sw-patched")
+  }
+}
+
+/**
  * A realm-independent replacement for `node instanceof HTMLElement` —
  * mirrors `shadow-scope-discovery.ts`'s own `isElementNode` (`nodeType`,
  * not a prototype check, so it survives cross-realm adoption) one level

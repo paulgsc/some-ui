@@ -61,6 +61,7 @@ import {
   DYNAMIC_STYLE_ID,
   isHTMLElementNode,
   realize,
+  untagSurfaces,
 } from "./actuator"
 import type { FilterAction, SurfaceAttr, SurfaceKey } from "./contracts"
 import {
@@ -909,12 +910,32 @@ export function createContentSession(
    * page does not carry at all would otherwise keep voting in
    * `pageAlreadyDark()`'s mean forever — the previous route's colors
    * deciding the current route's verdict.
+   *
+   * Dropping evidence alone is not enough, because `shouldSkip()` keeps
+   * every `data-sw-patched` element out of every scan: its colour is read
+   * once, before tagging, and never again. An SPA route swap keeps such
+   * elements (YouTube reuses its whole app shell from one watch page to the
+   * next), so after the drop the page's biggest light surfaces cast no vote
+   * at all. The mid-grey controls left over read as already dark, `decide()`
+   * emitted `restore-native`, and the veil lifted onto the native white page
+   * (`yt-navigate-evidence.spec.ts`). Carrying their old keys over instead
+   * would trust a tag that describes the previous route: the vendor may
+   * have recoloured or hidden the element since (bot-found, Codex on #1518).
+   *
+   * So the new epoch re-senses them: every tag under `root` is removed here
+   * (by the actuator, the one module that writes `data-sw-patched`),
+   * the scan that follows reads their current vendor colour like any other
+   * element, and `realize()` re-tags them from that fresh verdict. Both run
+   * inside one synchronous `cycle()`, so no frame paints between the untag
+   * and the re-tag, and `data-sw-patched` is outside the observer's
+   * `attributeFilter`, so neither write schedules a round of its own.
    */
-  function dropStaleEvidence(): void {
+  function dropStaleEvidence(root: Element): void {
     for (const key of [...hypothesis.keys()]) {
       hypothesis.delete(key)
     }
     provenance.clear()
+    untagSurfaces(root)
   }
 
   function ingest(root: Element): void {
@@ -924,7 +945,7 @@ export function createContentSession(
         // A route swap can replace a document this channel could not afford
         // with one it can; the cooldown is about a page, not a session.
         interactionAuditBlockedUntil = 0
-        dropStaleEvidence()
+        dropStaleEvidence(root)
       }
 
       const { scanned, canvas } = withVendorColorsVisible(() => ({
