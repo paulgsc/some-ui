@@ -7,6 +7,10 @@ const swatch = SWATCHES.default
 const ERASE_RULE =
   "*:not(img):not(video):not(svg):not(canvas):not([data-my-ext]):not(:where([data-my-ext] *)) {"
 const GUARDED = ":where(*:not([data-my-ext]):not([data-my-ext] *))"
+const GUARD = ":not([data-my-ext]):not([data-my-ext] *)"
+const TEXT_BLOCK =
+  ":where(p, h1, h2, h3, h4, h5, h6, li, blockquote, dd, dt, figcaption, caption)"
+const TEXT_PSEUDO_RULE = `${TEXT_BLOCK}${GUARD}::first-letter`
 
 /** The declaration block of the first rule whose selector starts with `head`. */
 function ruleBody(css: string, head: string): string {
@@ -227,7 +231,7 @@ describe("buildEnforcementCSS", () => {
     for (const body of [
       ruleBody(css, ERASE_RULE),
       ruleBody(css, `${GUARDED}::before`),
-      ruleBody(css, `${GUARDED}::first-letter`),
+      ruleBody(css, TEXT_PSEUDO_RULE),
     ]) {
       expect(body).toContain(
         "-webkit-text-fill-color: currentColor !important;"
@@ -251,13 +255,23 @@ describe("buildEnforcementCSS", () => {
     expect(file).toContain(`background-color: ${swatch.inputBg} !important;`)
     expect(file).toContain("background-image: none !important;")
     expect(file).toContain("box-shadow: none !important;")
+    // Every channel the erase rule resets (bot-found on #1520: a white
+    // authored outline stayed white around the dark button).
+    expect(file).toContain(`outline-color: ${swatch.borderStrong} !important;`)
+    expect(file).toContain("backdrop-filter: none !important;")
     // Text fragments: channels reset, colour inherited from the originating
     // element — text0 here would repaint the first line of every p (text1).
     const [textHead] = css.match(/^[^\n]*::first-line[^\n]*\{$/m) ?? [""]
+    expect(textHead).toContain(`${TEXT_BLOCK}${GUARD}::first-letter`)
+    expect(textHead).toContain(`${TEXT_BLOCK}${GUARD}::first-line`)
+    expect(textHead).toContain(`:where(li, summary)${GUARD}::marker`)
+    // Never on a universal subject: that makes the engine resolve these
+    // pseudo-styles for every block (measured 117 ms -> 270 ms on a 36k-node
+    // page; see ERASE_TEXT_PSEUDO_SELECTOR's header).
     for (const pseudo of ["::first-letter", "::first-line", "::marker"]) {
-      expect(textHead).toContain(`${GUARDED}${pseudo}`)
+      expect(css).not.toContain(`${GUARDED}${pseudo}`)
     }
-    const text = ruleBody(css, `${GUARDED}::first-letter`)
+    const text = ruleBody(css, TEXT_PSEUDO_RULE)
     expect(text).toContain("color: inherit !important;")
     expect(text).not.toContain(swatch.text0)
     expect(text).toContain("background-color: transparent !important;")
@@ -275,15 +289,17 @@ describe("buildEnforcementCSS", () => {
       ERASE_RULE.replace(":not(:where([data-my-ext] *))", "")
     ).not.toContain("[data-my-ext] *")
     // Every pseudo-element rule carries the full guard.
+    for (const pseudo of ["::before", "::after", "::backdrop"]) {
+      expect(css).toContain(`${GUARDED}${pseudo}`)
+    }
     for (const pseudo of [
-      "::before",
-      "::after",
       "::first-letter",
       "::first-line",
       "::marker",
-      "::backdrop",
+      "::file-selector-button",
+      "::placeholder",
     ]) {
-      expect(css).toContain(`${GUARDED}${pseudo}`)
+      expect(css).toContain(`${GUARD}${pseudo}`)
     }
     expect(css).not.toContain(":where(*:not([data-my-ext]))::")
   })

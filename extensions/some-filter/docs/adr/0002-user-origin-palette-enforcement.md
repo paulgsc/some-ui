@@ -478,7 +478,15 @@ unit case and an e2e case that fails against the previous sheet:
 - **Typographic pseudo-elements.** `::first-letter`, `::first-line` and
   `::marker` get the erase rule's channel resets with `color: inherit`, so a
   paragraph's first line and a list item's bullet keep their element's
-  enforced tier (`text1`) instead of switching to `text0`.
+  enforced tier (`text1`) instead of switching to `text0`. Their subjects are
+  text-block tags (`p`, headings, `li`, `blockquote`, …) and `li`/`summary`
+  for `::marker`, not `*`. A universal subject makes the engine resolve these
+  pseudo-styles for every block: on #1478's 36k-element dense-diff fixture
+  (UpdateLayoutTree from a CDP trace, tab off, medians of 4–6 runs) it took
+  the sheet's initial style pass from 117 ms to 270 ms and streaming 10k rows
+  from 137 ms to 259 ms. The tag-constrained rule measured 129 ms and 137 ms.
+  A vendor first-line or first-letter style on a tag outside that list keeps
+  its authored colour.
 - **`::file-selector-button`** is painted `inputBg` like every other button,
   not erased. Chromium implements it as an `<input type="button">` inside the
   control's UA shadow tree, which the highlight table's input row already
@@ -495,3 +503,9 @@ Selector cost, scored with #1478's model: the new rules add no violating
 selectors. The erase rule's cost rises from 65 to 85 but it is already over
 budget as a universal subject, which #1488 rewrites; the descendant clause
 is part of what that rewrite has to carry.
+
+Measured cost on the same fixture, sheet present against `main`'s sheet
+(no sheet in parentheses): initial style 129 ms vs 105 ms (46), streaming
+137 ms vs 116 ms (62), a class toggle on 1,000 rows 33 ms vs 29 ms (18). The
+sheet as a whole is already 2–2.5 times the no-sheet cost, which is #1488's
+measurement to report; this story adds about a fifth on top.

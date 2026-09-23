@@ -286,14 +286,29 @@ const FILE_BUTTON_SELECTOR = `:where(input)${EXT_GUARD}::file-selector-button`
  * same override `-webkit-text-fill-color: currentColor` avoids for glyphs.
  * `::marker` ignores every property here except `color`; the rest apply to
  * the first-letter/first-line boxes. `:where()` again, so (0,0,1).
+ *
+ * The subjects are tag-constrained, not `*`, because a universal
+ * `::first-line`/`::first-letter` rule makes the engine resolve those
+ * pseudo-styles for every block in the document. Measured on #1478's
+ * dense-diff fixture (36k elements, UpdateLayoutTree summed over a CDP
+ * trace, medians of 4–6 runs, tab off so only the sheet contributes): the
+ * universal three-pseudo rule took the initial style pass from 117 ms to
+ * 270 ms and streaming 10k rows from 137 ms to 259 ms — `::first-letter`
+ * alone +55 ms, `::first-line` +31 ms, `::marker` +8 ms. These subjects
+ * measured 129 ms / 137 ms, inside noise of no rule at all. The trade is a
+ * vendor `::first-line`/`::first-letter` on an element outside
+ * `TEXT_BLOCK` (a `div` lead paragraph, say), which keeps its authored
+ * colour. `::marker` follows `li`/`summary`, the elements that are list items
+ * by default; an element made a list item by `display: list-item` alone is the
+ * same kind of miss.
  */
+const TEXT_BLOCK =
+  "p, h1, h2, h3, h4, h5, h6, li, blockquote, dd, dt, figcaption, caption"
 const ERASE_TEXT_PSEUDO_SELECTOR = [
-  "::first-letter",
-  "::first-line",
-  "::marker",
-]
-  .map((pseudo) => `:where(*${EXT_GUARD})${pseudo}`)
-  .join(", ")
+  `:where(${TEXT_BLOCK})${EXT_GUARD}::first-letter`,
+  `:where(${TEXT_BLOCK})${EXT_GUARD}::first-line`,
+  `:where(li, summary)${EXT_GUARD}::marker`,
+].join(", ")
 
 /**
  * Structural containers eligible for the lift gradient below — see this
@@ -586,7 +601,9 @@ ${FILE_BUTTON_SELECTOR} {
   border-color: ${swatch.borderStrong} !important;
   box-shadow: none !important;
   filter: none !important;
+  backdrop-filter: none !important;
   text-shadow: none !important;
+  outline-color: ${swatch.borderStrong} !important;
   -webkit-text-fill-color: currentColor !important;
   text-decoration-color: currentColor !important;
 }
