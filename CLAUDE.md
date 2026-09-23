@@ -52,12 +52,14 @@ TanStack routing tree (`src/routes/**`) keeps **none** outside `__tests__/`. Ded
 trees named `__tests__/` or `tests/` (`packages/eslint/tests`,
 `packages/some-styles/styles-build/tests`) are exempt from the one-per-directory limit.
 
-This is enforced, not advisory: `build-hygiene/test-layout` in `@some-ui/eslint-kit` is an
-error in every workspace's preset (#772, #1475). Colocating a second test beside the file
-you're editing is the easy path, and it fails lint. When moving tests, prefer the
-package's path alias over `../`, which most workspaces ban. Watch any test that derives a
-directory from `import.meta.url` to scan it: it now sits one level deeper and can pass
-having scanned nothing.
+This is enforced, not advisory: `pnpm check:test-layout` (`scripts/check-test-layout.ts`,
+rule in `packages/eslint/src/test-layout.ts`) fails the PR workflow and root `pnpm lint`
+(#772, #1475). Colocating a second test beside the file you're editing is the easy path,
+and it fails that check. The check is deliberately not an ESLint rule: `eslint --cache`
+re-uses a file's result until the file itself changes, so a sibling-dependent verdict
+goes stale. When moving tests, prefer the package's path alias over `../`, which most
+workspaces ban. Watch any test that derives a directory from `import.meta.url` to scan it:
+it now sits one level deeper and can pass having scanned nothing.
 
 ## Cold-start footguns worth not re-discovering
 

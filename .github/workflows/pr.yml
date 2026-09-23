@@ -130,6 +130,14 @@ jobs:
       - name: Dependency catalog guardrail
         run: node scripts/check-catalog-drift.mjs
 
+      # Repo-wide invariant, so not turbo-filtered: at most one *.test.* per
+      # source directory, none in a src/routes/ tree outside __tests__/ (#772,
+      # #1475). A script rather than an ESLint rule because the verdict for one
+      # file depends on its siblings, which `eslint --cache` cannot see - see
+      # packages/eslint/src/test-layout.ts.
+      - name: Test layout guardrail
+        run: nix develop .#ci --command pnpm check:test-layout
+
       # Repo-wide invariant like the catalog check above, and not turbo-filtered
       # for the same reason: the client/server boundary is a property of the
       # whole repo, and the snapshot it compares against
