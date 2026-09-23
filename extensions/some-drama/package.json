@@ -6,7 +6,8 @@
   "license": "MIT",
   "scripts": {
     "build": "vite build --configLoader runner",
-    "clean": "rimraf dist .turbo .eslintcache",
+    "clean": "rimraf .turbo .eslintcache && pnpm clean:build",
+    "clean:build": "rimraf ./dist ./tsconfig.tsbuildinfo ./tsconfig.build.tsbuildinfo",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
     "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "package:source": "bash ../scripts/package-source.sh",
