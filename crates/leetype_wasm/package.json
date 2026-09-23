@@ -10,7 +10,7 @@
     "build": "wasm-pack build --target web --dev --out-dir dist",
     "wasm:prod": "wasm-pack build --target web --release --out-dir dist",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
-    "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo"
+    "clean:build": "rimraf ./dist"
   },
   "files": [
     "dist"

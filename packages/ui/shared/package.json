@@ -9,7 +9,7 @@
   "scripts": {
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\"",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
-    "clean:build": "rimraf ./dist && rimraf tsconfig.tsbuildinfo tsconfig.build.tsbuildinfo",
+    "clean:build": "rimraf ./dist ./tsconfig.tsbuildinfo",
     "knip": "knip --directory \"$(git rev-parse --show-toplevel)\" --workspace \"$(git rev-parse --show-prefix | sed 's:/*$::')\"",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
     "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",

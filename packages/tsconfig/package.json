@@ -11,6 +11,7 @@
   ],
   "types": "base.json",
   "scripts": {
-    "clean": "rimraf ./dist && rimraf .turbo && rimraf node_modules && rimraf rimraf tsconfig.tsbuildinfo && rimraf .eslintcache"
+    "clean": "rimraf ./dist ./.turbo ./node_modules ./.eslintcache",
+    "clean:build": "rimraf ./dist"
   }
 }
