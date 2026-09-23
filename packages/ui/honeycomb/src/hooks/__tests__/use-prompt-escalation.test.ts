@@ -1,7 +1,6 @@
+import { usePromptEscalation } from "@honeycomb/hooks/use-prompt-escalation"
 import { renderHook } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-
-import { usePromptEscalation } from "./use-prompt-escalation"
 
 beforeEach(() => {
   vi.useFakeTimers()

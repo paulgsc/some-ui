@@ -1,10 +1,15 @@
+import {
+  ALL_FIXTURE_EXERCISES,
+  FIXTURE_EXERCISE_ID,
+} from "@leetype/lib/leetype/exercises"
+import type {
+  Obligation,
+  ObligationGraph,
+} from "@leetype/lib/leetype/exercises/obligation-graph"
+import { linearize } from "@leetype/lib/leetype/exercises/obligation-graph"
 import type { ConstructionStep, Step } from "@leetype/types/exercise"
 import { ConstructionStepSchema } from "@leetype/types/exercise"
 import { describe, expect, it } from "vitest"
-
-import { ALL_FIXTURE_EXERCISES, FIXTURE_EXERCISE_ID } from "."
-import type { Obligation, ObligationGraph } from "./obligation-graph"
-import { linearize } from "./obligation-graph"
 
 /**
  * The real `rust-hashmap-entry` exercise's six obligation-bearing steps

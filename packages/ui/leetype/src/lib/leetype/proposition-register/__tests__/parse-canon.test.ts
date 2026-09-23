@@ -1,10 +1,9 @@
-import { describe, expect, it } from "vitest"
-
-import type { PropositionStatus } from "./parse-canon"
+import type { PropositionStatus } from "@leetype/lib/leetype/proposition-register/parse-canon"
 import {
   parsePropositionRegister,
   propositionDeclarationLineNumbers,
-} from "./parse-canon"
+} from "@leetype/lib/leetype/proposition-register/parse-canon"
+import { describe, expect, it } from "vitest"
 
 // Names `PropositionStatus` explicitly — see generated.test.ts's own note
 // on `PropositionId` for why an unreferenced-by-name type alias needs this

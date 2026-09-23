@@ -1,13 +1,12 @@
-import { describe, expect, it } from "vitest"
-
-import { routeObligation } from "./routing"
-import type { TtfkObservation } from "./ttfk"
+import { routeObligation } from "@leetype/lib/leetype/exercises/routing"
+import type { TtfkObservation } from "@leetype/lib/leetype/exercises/ttfk"
 import {
   aggregateByInstance,
   computeTtfk,
   flagOutliers,
   standardizeTtfk,
-} from "./ttfk"
+} from "@leetype/lib/leetype/exercises/ttfk"
+import { describe, expect, it } from "vitest"
 
 function observation(
   overrides: Partial<TtfkObservation> = {}

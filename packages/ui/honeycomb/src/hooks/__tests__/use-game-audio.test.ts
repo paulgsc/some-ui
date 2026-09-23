@@ -1,8 +1,7 @@
 import { StrictMode } from "react"
+import { useGameAudio } from "@honeycomb/hooks/use-game-audio"
 import { act, renderHook } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-
-import { useGameAudio } from "./use-game-audio"
 
 beforeEach(() => {
   vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined)

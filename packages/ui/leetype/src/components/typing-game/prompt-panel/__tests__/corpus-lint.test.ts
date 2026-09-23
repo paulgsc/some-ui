@@ -1,8 +1,10 @@
+import {
+  EVIDENCE_ROW_BUDGET,
+  evidenceRowsOf,
+} from "@leetype/components/typing-game/prompt-panel/rows"
 import { ALL_FIXTURE_EXERCISES } from "@leetype/lib/leetype/exercises"
 import { promptBlocksOf } from "@leetype/types/exercise"
 import { describe, expect, it } from "vitest"
-
-import { EVIDENCE_ROW_BUDGET, evidenceRowsOf } from "./rows"
 
 /**
  * The corpus lint LTY-EVIDENCE E3 promises: "if a diagnostic observation

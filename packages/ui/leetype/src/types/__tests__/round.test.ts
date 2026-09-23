@@ -1,8 +1,7 @@
+import type { DiffHunk } from "@leetype/types/exercise"
+import type { DiffSet, DiffSetMember } from "@leetype/types/round"
+import { DiffSetMemberSchema, DiffSetSchema } from "@leetype/types/round"
 import { describe, expect, it } from "vitest"
-
-import type { DiffHunk } from "./exercise"
-import type { DiffSet, DiffSetMember } from "./round"
-import { DiffSetMemberSchema, DiffSetSchema } from "./round"
 
 const ADMISSIBLE_HUNK: DiffHunk = {
   path: "src/lib/rate-limit.ts",

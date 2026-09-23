@@ -1,8 +1,7 @@
+import type { Obligation } from "@leetype/lib/leetype/exercises/obligation-graph"
+import { routeObligation } from "@leetype/lib/leetype/exercises/routing"
 import type { Snapshot } from "@leetype/types/leetype"
 import { describe, expect, it } from "vitest"
-
-import type { Obligation } from "./obligation-graph"
-import { routeObligation } from "./routing"
 
 const NO_ALTERNATIVE: Pick<Obligation, "sinkRoutes"> = { sinkRoutes: {} }
 const HAS_ALTERNATIVE: Pick<Obligation, "sinkRoutes"> = {

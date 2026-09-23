@@ -1,10 +1,9 @@
-import { describe, expect, it } from "vitest"
-
-import type { PropositionRegisterEntry } from "./parse-canon"
+import type { PropositionRegisterEntry } from "@leetype/lib/leetype/proposition-register/parse-canon"
 import {
   assertNoRegisteredIdWasRemoved,
   idsInGeneratedFile,
-} from "./registry-integrity"
+} from "@leetype/lib/leetype/proposition-register/registry-integrity"
+import { describe, expect, it } from "vitest"
 
 const ENTRY_1: PropositionRegisterEntry = {
   id: "CW-P1",

@@ -1,7 +1,6 @@
+import { detectArchetype } from "@portfolio/lib/archetypeDetector"
 import type { Leg } from "@portfolio/types"
 import { describe, expect, it } from "vitest"
-
-import { detectArchetype } from "./archetypeDetector"
 
 let nextId = 0
 function leg(overrides: Partial<Leg>): Leg {

@@ -1,19 +1,19 @@
 import type { YouTubeRegion } from "@some-ui/types"
+import { applyIntent, extractLeafIds } from "@wireframes/lib/layout-intent"
+import type { Rect, SolvedNode } from "@wireframes/lib/layout-types"
+import type { LayoutNode } from "@wireframes/lib/layout-weighted"
+import {
+  solveLayout,
+  solveLayoutWithBindings,
+  solveLayoutWithFocus,
+} from "@wireframes/lib/layout-weighted"
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
 import {
   layoutIntentSequenceArbitrary,
   regionArbitrary,
-} from "./__tests__/layout-intent-arbitrary"
-import { applyIntent, extractLeafIds } from "./layout-intent"
-import type { Rect, SolvedNode } from "./layout-types"
-import type { LayoutNode } from "./layout-weighted"
-import {
-  solveLayout,
-  solveLayoutWithBindings,
-  solveLayoutWithFocus,
-} from "./layout-weighted"
+} from "./layout-intent-arbitrary"
 
 const EPSILON = 1e-6
 

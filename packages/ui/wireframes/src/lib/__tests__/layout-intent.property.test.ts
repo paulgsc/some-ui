@@ -1,4 +1,6 @@
 import type { YouTubeRegion } from "@some-ui/types"
+import { applyIntent } from "@wireframes/lib/layout-intent"
+import type { LayoutNode } from "@wireframes/lib/layout-weighted"
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
@@ -6,14 +8,12 @@ import {
   edgeArbitrary,
   layoutIntentSequenceArbitrary,
   regionArbitrary,
-} from "./__tests__/layout-intent-arbitrary"
+} from "./layout-intent-arbitrary"
 import {
   allWeightsPositiveFinite,
   countLeafOccurrences,
   isStructurallyValid,
-} from "./__tests__/tree-invariants"
-import { applyIntent } from "./layout-intent"
-import type { LayoutNode } from "./layout-weighted"
+} from "./tree-invariants"
 
 /**
  * `applyIntent` is the FSM at the center of the wireframes editor: state is a

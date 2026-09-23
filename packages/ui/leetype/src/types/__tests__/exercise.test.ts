@@ -1,6 +1,4 @@
-import { describe, expect, it } from "vitest"
-
-import type { Block, DiffHunk, RationaleChoice } from "./exercise"
+import type { Block, DiffHunk, RationaleChoice } from "@leetype/types/exercise"
 import {
   BlockSchema,
   ConstructionStepSchema,
@@ -23,7 +21,8 @@ import {
   typingBlockFromDiff,
   typingBlockOf,
   TypingBlockSchema,
-} from "./exercise"
+} from "@leetype/types/exercise"
+import { describe, expect, it } from "vitest"
 
 const prompt: Block = { kind: "prompt", lines: ["Why this matters."] }
 const typing: Block = {

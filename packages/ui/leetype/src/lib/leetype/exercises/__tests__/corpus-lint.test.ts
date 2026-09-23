@@ -1,3 +1,12 @@
+import type { RoundCorpusEntry } from "@leetype/lib/leetype/exercises/corpus-lint"
+import {
+  checkNoAssertedComplexityClassLiteral,
+  checkNoMeasurementEntailmentClaim,
+  lintCorpus,
+  lintRoundCorpus,
+  MAX_PRESENTABLE_DIFFS,
+} from "@leetype/lib/leetype/exercises/corpus-lint"
+import { ALL_FIXTURE_EXERCISES } from "@leetype/lib/leetype/exercises/index"
 import type { PropositionId } from "@leetype/lib/leetype/proposition-register/generated"
 import { ALL_FIXTURE_ROUNDS } from "@leetype/lib/leetype/round-corpus"
 import type { ConstraintSet } from "@leetype/types/constraint"
@@ -9,16 +18,6 @@ import type {
 import { typingBlockFromDiff } from "@leetype/types/exercise"
 import type { DiffSet } from "@leetype/types/round"
 import { describe, expect, it } from "vitest"
-
-import type { RoundCorpusEntry } from "./corpus-lint"
-import {
-  checkNoAssertedComplexityClassLiteral,
-  checkNoMeasurementEntailmentClaim,
-  lintCorpus,
-  lintRoundCorpus,
-  MAX_PRESENTABLE_DIFFS,
-} from "./corpus-lint"
-import { ALL_FIXTURE_EXERCISES } from "./index"
 
 const failure: Block = {
   kind: "trace",

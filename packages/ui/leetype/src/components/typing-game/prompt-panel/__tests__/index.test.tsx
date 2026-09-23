@@ -23,13 +23,13 @@ function sourceOf(relativePath: string): string {
 
 describe("PromptPanel stays outside the typing engine", () => {
   it("imports nothing from hooks/leetype or types/leetype", () => {
-    const source = sourceOf("./index.tsx")
+    const source = sourceOf("../index.tsx")
     expect(source).not.toMatch(/@leetype\/hooks\/leetype/)
     expect(source).not.toMatch(/@leetype\/types\/leetype/)
   })
 
   it("its row-flattening helper is equally engine-free", () => {
-    const source = sourceOf("./rows.ts")
+    const source = sourceOf("../rows.ts")
     expect(source).not.toMatch(/@leetype\/hooks\/leetype/)
     expect(source).not.toMatch(/@leetype\/types\/leetype/)
   })
