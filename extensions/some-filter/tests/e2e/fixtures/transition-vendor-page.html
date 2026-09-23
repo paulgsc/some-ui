@@ -1,0 +1,26 @@
+<!doctype html>
+<!--
+  SF-CUT3 (#1489): a vendor page whose canvas animates every background
+  change over five seconds. CSS transitions sit above every !important
+  origin in the cascade, so without a freeze around the enforcement sheet's
+  insertion the canvas would interpolate from white to bg0 for five seconds
+  after the sheet lands, and a confirm read could see a mid-transition value.
+-->
+<html style="background-color: rgb(255, 255, 255)">
+  <head>
+    <meta charset="utf-8" />
+    <title>Transition Vendor Page Fixture</title>
+    <style>
+      html,
+      body {
+        transition: background-color 5s linear;
+      }
+    </style>
+  </head>
+  <body style="background-color: rgb(255, 255, 255); margin: 0">
+    <main style="background-color: rgb(255, 255, 255)">
+      <h1>Transition Vendor Page Fixture</h1>
+      <p>Every background change animates for five seconds.</p>
+    </main>
+  </body>
+</html>

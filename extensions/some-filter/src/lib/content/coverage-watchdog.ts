@@ -99,6 +99,7 @@ import {
 import type { TabState } from "@filter/types/tab"
 import { runInvariants } from "@some-extension/common/observability"
 
+import { parseColor } from "./color"
 import {
   coverageInvariants,
   scopeArtifactPresent,
@@ -154,7 +155,8 @@ const COUNTER_FOR: Readonly<Record<string, CoverageCounter>> = {
 
 function collectContext(
   getTabState: () => TabState,
-  getTransitioning: () => boolean
+  getTransitioning: () => boolean,
+  getEnforcedCanvas: () => string | null
 ): CoverageContext {
   const html = document.documentElement
   const veil = document.getElementById(PREPAINT_VEIL_ID)
@@ -175,7 +177,23 @@ function collectContext(
       veil instanceof HTMLElement
         ? getComputedStyle(veil).backgroundColor
         : null,
+    enforcedCanvas: readEnforcedCanvas(html, getEnforcedCanvas()),
   }
+}
+
+/** SF-CUT3 (#1489): see `CoverageContext.enforcedCanvas`. One style read, and only while enforcing. */
+function readEnforcedCanvas(
+  html: HTMLElement,
+  expected: string | null
+): boolean {
+  if (expected === null) return false
+  const actual = parseColor(getComputedStyle(html).backgroundColor)
+  const want = parseColor(expected)
+  return (
+    actual !== null &&
+    want !== null &&
+    actual.every((channel, i) => channel === want[i])
+  )
 }
 
 /**
@@ -236,7 +254,13 @@ export function createCoverageWatchdog(
    * `document-scope.ts`'s own header), the same bug class
    * `yt-navigate-start` needed the same fix for.
    */
-  onVeilRearmed?: () => void
+  onVeilRearmed?: () => void,
+  /**
+   * SF-CUT3 (#1489): the canvas colour the enforcement sheet paints `<html>`
+   * while this tab is enforcing, or `null` when it is not (flag off, or not
+   * auto). See `CoverageContext.enforcedCanvas`.
+   */
+  getEnforcedCanvas: () => string | null = () => null
 ): CoverageWatchdog {
   let htmlObserver: MutationObserver | null = null
   let headObserver: MutationObserver | null = null
@@ -287,7 +311,7 @@ export function createCoverageWatchdog(
   }
 
   function check(reason: string): void {
-    const ctx = collectContext(getTabState, getTransitioning)
+    const ctx = collectContext(getTabState, getTransitioning, getEnforcedCanvas)
     recorder.count("coverage_checks")
     recorder.setSnapshot("coverage", { ...ctx, reason })
 

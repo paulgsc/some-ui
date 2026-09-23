@@ -1,5 +1,5 @@
 import { buildEnforcementCSS } from "@filter/adapter/enforcement-sheet"
-import { DEFAULT_SWATCH_ID, SWATCHES } from "@filter/adapter/swatches"
+import { getSwatch, SWATCHES } from "@filter/adapter/swatches"
 import { isExtensionMessage } from "@filter/lib/background/guard"
 import {
   DEFAULT_LEGACY_STYLE,
@@ -138,8 +138,9 @@ function openDiagnostics(): void {
 // rather than alongside `content.ts`'s pipeline.
 //
 // `enforcementSheetEnabled` in storage.local, default false/absent — no UI
-// toggle exists yet (this step's own scope: "behind a flag, alongside the
-// existing pipeline", not a shipped feature). Flip it from an extension
+// toggle exists yet (this step's own scope: behind a flag, not a shipped
+// feature; with it on, auto mode is the sheet instead of the classifier,
+// never both in one tab — see content.ts). Flip it from an extension
 // context — the background service worker's own console (chrome://extensions
 // → this extension → "service worker" → Console) — with:
 //
@@ -156,40 +157,98 @@ async function isEnforcementSheetEnabled(): Promise<boolean> {
   return data[ENFORCEMENT_SHEET_STORAGE_KEY] === true
 }
 
-// `changeInfo.status === "loading"`, not `"complete"` (contrast with the
-// legacy-filter re-apply listener under "tab lifecycle" below, which needs
-// the tab already settled): ADR 0002 §4 already accepts that even the
-// earliest available imperative `insertCSS` call races first paint by
-// design — there is no declarative, document_start-equivalent registration
-// for user-origin CSS (§4's own `registerContentScripts` probe). "loading"
-// is simply the earliest hook available without adding the "webNavigation"
-// permission this experiment does not otherwise need; precise race-timing
-// against first paint is explicitly out of scope for this flagged step.
-ext.tabs.onUpdated.addListener((tabId, changeInfo): void => {
-  if (changeInfo.status !== "loading") return
+// SF-CUT3 (#1489): the sheet is requested per document by the content side
+// (`lib/content/enforcement-handshake.ts`) and injected into exactly the
+// requesting frame. This replaced a `tabs.onUpdated` "loading" injection that
+// ran for every tab regardless of its state — into legacy tabs, where the
+// canvas rule's `filter: none` overrides legacy's own invert, and into off
+// tabs — and that no one could confirm had landed before releasing the veil.
+// The content script is the only thing that knows the tab's state.
+//
+// No per-tab bookkeeping here: the content side owns idempotency (it asks
+// only while a read shows the sheet absent, and removes until a read shows
+// it gone), because two identical `insertCSS` calls stack two copies and a
+// restarted worker would have lost any record of the first.
 
-  void (async (): Promise<void> => {
-    if (!(await isEnforcementSheetEnabled())) return
+/** Built once per swatch: `removeCSS` needs the byte-identical string. A restarted worker rebuilds the same one, since `buildEnforcementCSS` is pure. */
+const enforcementCss = new Map<string, string>()
 
-    try {
-      await ext.scripting.insertCSS({
-        // allFrames: CSS never crosses a frame boundary, so a same- or
-        // cross-origin <iframe> kept its native (white) palette under a
-        // supposedly unconditional sheet (bot-found on #1463, Codex round
-        // 2). This reaches every frame that exists at this event; a frame
-        // created or navigated afterwards is not covered — that needs the
-        // per-document, content-script-driven request #1489 specifies
-        // (all_frames + frameIds), not another tabs.onUpdated hook.
-        target: { tabId, allFrames: true },
-        origin: "USER",
-        css: buildEnforcementCSS(SWATCHES[DEFAULT_SWATCH_ID]),
-      })
-    } catch {
-      // Extension pages, the Chrome Web Store, and other
-      // scripting-restricted origins reject insertCSS outright — expected,
-      // not a failure to surface (mirrors sendToTab's own discipline above).
+function enforcementCssFor(swatchId: string): string | null {
+  const cached = enforcementCss.get(swatchId)
+  if (cached !== undefined) return cached
+  if (!(swatchId in SWATCHES)) return null
+  const css = buildEnforcementCSS(getSwatch(swatchId))
+  enforcementCss.set(swatchId, css)
+  return css
+}
+
+async function applyEnforcement(
+  op: "insert" | "remove",
+  swatchId: string,
+  sender: { tab?: { id?: number }; frameId?: number }
+): Promise<boolean> {
+  const tabId = sender.tab?.id
+  const css = enforcementCssFor(swatchId)
+  if (tabId === undefined || css === null) return false
+  const injection = {
+    target: { tabId, frameIds: [sender.frameId ?? 0] },
+    origin: "USER" as const,
+    css,
+  }
+  try {
+    await (op === "insert"
+      ? ext.scripting.insertCSS(injection)
+      : ext.scripting.removeCSS(injection))
+    return true
+  } catch {
+    // Scripting-restricted origins (extension pages, the Web Store) reject
+    // outright. The content side's read is the answer either way.
+    return false
+  }
+}
+
+// Frames. CSS never crosses a frame boundary, and the manifest's content
+// scripts are top-frame only. While the flag is on, a dynamically registered
+// `frame.js` runs at document_start in every subframe (it exits in the top
+// frame), raises that frame's own veil, and requests the sheet for itself —
+// which is what covers a frame created or navigated after load. Registered
+// only while the flag is on, rather than as a manifest `all_frames` entry, so
+// the default (flag-off) path puts no veil and no script into any iframe;
+// `about:blank` frames are skipped because the registration does not set
+// `matchAboutBlank`.
+const FRAME_SCRIPT_ID = "sf-enforcement-frames"
+
+async function syncFrameScript(): Promise<void> {
+  try {
+    const enabled = await isEnforcementSheetEnabled()
+    const registered = await ext.scripting.getRegisteredContentScripts({
+      ids: [FRAME_SCRIPT_ID],
+    })
+    if (enabled && registered.length === 0) {
+      await ext.scripting.registerContentScripts([
+        {
+          id: FRAME_SCRIPT_ID,
+          matches: ["<all_urls>"],
+          allFrames: true,
+          runAt: "document_start",
+          css: ["prepaint.css"],
+          js: ["frame.js"],
+        },
+      ])
+    } else if (!enabled && registered.length > 0) {
+      await ext.scripting.unregisterContentScripts({ ids: [FRAME_SCRIPT_ID] })
     }
-  })()
+  } catch {
+    // A concurrent sync already (un)registered it — the next flag change or
+    // worker start reconciles again.
+  }
+}
+
+void syncFrameScript()
+ext.storage.onChanged.addListener((changes, area): void => {
+  if (area === "local" && ENFORCEMENT_SHEET_STORAGE_KEY in changes) {
+    void syncFrameScript()
+  }
 })
 
 // ─────────────────────────────────────────────
@@ -292,6 +351,20 @@ ext.runtime.onMessage.addListener(
       }
 
       void handler().then(sendResponse)
+      return true
+    }
+
+    if (msg.type === "ENSURE_ENFORCEMENT") {
+      void applyEnforcement("insert", msg.swatchId, sender).then((applied) =>
+        sendResponse({ applied })
+      )
+      return true
+    }
+
+    if (msg.type === "REMOVE_ENFORCEMENT") {
+      void applyEnforcement("remove", msg.swatchId, sender).then((removed) =>
+        sendResponse({ removed })
+      )
       return true
     }
 

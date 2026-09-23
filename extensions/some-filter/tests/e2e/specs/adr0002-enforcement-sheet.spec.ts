@@ -7,19 +7,15 @@
  * `chrome.scripting.insertCSS({ origin: "USER" })` call from a real MV3
  * service worker reaching a real shadow boundary.
  *
- * Every test here cycles the tab to "off" before asserting anything. The
- * existing classify-then-apply pipeline (`content.ts`'s auto mode) runs by
- * default on these same fixtures and, today, happens to land on the exact
- * same `bg0` the enforcement sheet uses (both read `SWATCHES.default` —
- * `content.ts` and `background.ts` each hardcode it independently; no
- * swatch-selection mechanism exists yet, same non-goal `swatch-oracle.spec.ts`'s
- * own header records). Without cycling off, a background-color assertion
- * alone cannot tell "the enforcement sheet did this" from "the old pipeline
- * did this, same swatch, coincidentally identical color" — a bug that broke
- * `background.ts`'s own `insertCSS` call entirely would still read green.
- * Cycling to "off" (and asserting `data-sw-dark` is absent) removes the old
- * pipeline's own contribution, so what's left is attributable to the
- * enforcement sheet alone — the one code path under test here.
+ * Every test here waits for the tab to report the sheet confirmed
+ * (`data-sw-theme-applied="enforced"`) and asserts the classifier never ran
+ * (`data-sw-dark` absent). Since SF-CUT3 (#1489) the flag makes auto mode the
+ * sheet alone — the classifier, shadow stack and scope watchdog are not
+ * started — so what these tests read is attributable to the enforcement
+ * sheet, the one code path under test. (Before #1489 the sheet was injected
+ * on every tab regardless of state and these tests cycled the tab to "off" to
+ * remove the classifier's coincidentally identical `bg0`; an off tab now gets
+ * no sheet at all.)
  */
 
 import { expect, test } from "@filter/playwright/fixture"
@@ -69,33 +65,14 @@ async function enableEnforcementSheet(sw: Worker): Promise<void> {
 }
 
 /**
- * Cycles the given page's tab from the default "auto" to "off" via the same
- * `CYCLE_TAB_STATE` route the real keyboard shortcut uses (`background.ts`'s
- * `commands.onCommand` handler) — see this file's own header for why this
- * step is required before any assertion below.
+ * Waits for the content script's own confirm read (SF-CUT3, #1489) — the
+ * sheet requested for this document and read back from the cascade — and
+ * checks the classifier stayed off: under the flag it must never start in the
+ * same tab as the sheet.
  */
-async function cycleTabOff(
-  sw: Worker,
-  page: Page,
-  urlSubstring: string
-): Promise<void> {
-  // Substring, not exact equality, matching legacy-mode.ts's own
-  // enterLegacyMode() — a file:// path can round-trip through
-  // Playwright/chrome.tabs with different percent-encoding for the same
-  // URL, and this only needs to identify the one open fixture tab.
-  await sw.evaluate(async (targetUrl: string) => {
-    // eslint-disable-next-line no-restricted-globals
-    const tabs = await chrome.tabs.query({})
-    const target = tabs.find((t) => t.url?.includes(targetUrl))
-    if (target?.id === undefined) {
-      throw new Error(`no open tab matching "${targetUrl}"`)
-    }
-    // eslint-disable-next-line no-restricted-globals
-    await chrome.tabs.sendMessage(target.id, { type: "CYCLE_TAB_STATE" })
-  }, urlSubstring)
-
+async function awaitEnforced(page: Page): Promise<void> {
   await page.waitForFunction(
-    () => document.body.dataset["swTabState"] === "off",
+    () => document.body.dataset["swThemeApplied"] === "enforced",
     undefined,
     { timeout: 5_000, polling: 100 }
   )
@@ -124,7 +101,7 @@ test.describe("ADR 0002 enforcement sheet", () => {
     await enableEnforcementSheet(sw)
 
     const page = await fixture.goto("light-page")
-    await cycleTabOff(sw, page, "light-page.html")
+    await awaitEnforced(page)
 
     // Polls rather than asserting immediately: insertCSS is an async round
     // trip through the service worker (ADR 0002 §4's own measured race),
@@ -164,7 +141,7 @@ test.describe("ADR 0002 enforcement sheet", () => {
     // painting, so without neutralizing it the enforced bg0 would render as
     // its inverse (a light grey) and every other token likewise.
     const page = await fixture.goto("filter-invert-vendor-page")
-    await cycleTabOff(sw, page, "filter-invert-vendor-page.html")
+    await awaitEnforced(page)
     await page.waitForFunction(
       (expected) =>
         getComputedStyle(document.documentElement).backgroundColor === expected,
@@ -188,7 +165,7 @@ test.describe("ADR 0002 enforcement sheet", () => {
     await enableEnforcementSheet(sw)
 
     const page = await fixture.goto("light-page")
-    await cycleTabOff(sw, page, "light-page.html")
+    await awaitEnforced(page)
     await page.waitForFunction(
       (expected) =>
         getComputedStyle(document.documentElement).backgroundColor === expected,
@@ -259,7 +236,7 @@ test.describe("ADR 0002 enforcement sheet", () => {
     await enableEnforcementSheet(sw)
 
     const page = await fixture.goto("light-page")
-    await cycleTabOff(sw, page, "light-page.html")
+    await awaitEnforced(page)
     await page.waitForFunction(
       (expected) =>
         getComputedStyle(document.documentElement).backgroundColor === expected,
@@ -290,7 +267,7 @@ test.describe("ADR 0002 enforcement sheet", () => {
     await enableEnforcementSheet(sw)
 
     const page = await fixture.goto("light-page")
-    await cycleTabOff(sw, page, "light-page.html")
+    await awaitEnforced(page)
     await page.waitForFunction(
       (expected) =>
         getComputedStyle(document.documentElement).backgroundColor === expected,
@@ -346,7 +323,7 @@ test.describe("ADR 0002 enforcement sheet", () => {
     await enableEnforcementSheet(sw)
 
     const page = await fixture.goto("light-page")
-    await cycleTabOff(sw, page, "light-page.html")
+    await awaitEnforced(page)
     await page.waitForFunction(
       (expected) =>
         getComputedStyle(document.documentElement).backgroundColor === expected,
@@ -457,7 +434,7 @@ test.describe("ADR 0002 enforcement sheet", () => {
     await enableEnforcementSheet(sw)
 
     const page = await fixture.goto("lift-gradient-page")
-    await cycleTabOff(sw, page, "lift-gradient-page.html")
+    await awaitEnforced(page)
 
     await page.waitForFunction(
       (expected) =>
@@ -483,7 +460,7 @@ test.describe("ADR 0002 enforcement sheet", () => {
     await enableEnforcementSheet(sw)
 
     const page = await fixture.goto("lift-gradient-page")
-    await cycleTabOff(sw, page, "lift-gradient-page.html")
+    await awaitEnforced(page)
 
     await page.waitForFunction(
       (expected) =>
@@ -513,7 +490,7 @@ test.describe("ADR 0002 enforcement sheet", () => {
     await enableEnforcementSheet(sw)
 
     const page = await fixture.goto("lift-gradient-page")
-    await cycleTabOff(sw, page, "lift-gradient-page.html")
+    await awaitEnforced(page)
 
     await page.waitForFunction(
       (expected) =>
@@ -553,7 +530,7 @@ test.describe("ADR 0002 enforcement sheet", () => {
     await enableEnforcementSheet(sw)
 
     const page = await fixture.goto("lift-gradient-page")
-    await cycleTabOff(sw, page, "lift-gradient-page.html")
+    await awaitEnforced(page)
 
     await page.waitForFunction(
       (expected) =>
@@ -583,7 +560,7 @@ test.describe("ADR 0002 enforcement sheet", () => {
     await enableEnforcementSheet(sw)
 
     const page = await fixture.goto("lift-gradient-page")
-    await cycleTabOff(sw, page, "lift-gradient-page.html")
+    await awaitEnforced(page)
 
     await page.waitForFunction(
       (expected) =>
@@ -620,7 +597,7 @@ test.describe("ADR 0002 enforcement sheet", () => {
     await enableEnforcementSheet(sw)
 
     const page = await fixture.goto("lift-gradient-page")
-    await cycleTabOff(sw, page, "lift-gradient-page.html")
+    await awaitEnforced(page)
 
     await page.waitForFunction(
       (expected) =>
@@ -666,7 +643,7 @@ test.describe("ADR 0002 enforcement sheet", () => {
     await enableEnforcementSheet(sw)
 
     const page = await fixture.goto("shadow-surface-page")
-    await cycleTabOff(sw, page, "shadow-surface-page.html")
+    await awaitEnforced(page)
 
     // Confirms the sheet actually landed before trusting the shadow
     // assertion below — a shadow assertion that merely never ran (sheet

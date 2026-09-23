@@ -77,3 +77,21 @@ describe("isGetTabFilterStateResponse", () => {
     expect(isGetTabFilterStateResponse({ enabled: true })).toBe(false)
   })
 })
+
+describe("isExtensionMessage — enforcement requests (SF-CUT3, #1489)", () => {
+  it.each(["ENSURE_ENFORCEMENT", "REMOVE_ENFORCEMENT"])(
+    "accepts %s carrying a swatch id",
+    (type) => {
+      expect(isExtensionMessage({ type, swatchId: "default" })).toBe(true)
+    }
+  )
+
+  it.each(["ENSURE_ENFORCEMENT", "REMOVE_ENFORCEMENT"])(
+    "rejects %s without a usable swatch id",
+    (type) => {
+      expect(isExtensionMessage({ type })).toBe(false)
+      expect(isExtensionMessage({ type, swatchId: "" })).toBe(false)
+      expect(isExtensionMessage({ type, swatchId: 1 })).toBe(false)
+    }
+  )
+})

@@ -1,0 +1,15 @@
+<!doctype html>
+<!--
+  SF-CUT3 (#1489): the document loaded into an <iframe> the spec inserts
+  after the parent has settled — a frame created after load, which only a
+  per-document request (frame.js, registered while the flag is on) covers.
+-->
+<html style="background-color: rgb(255, 255, 255)">
+  <head>
+    <meta charset="utf-8" />
+    <title>Frame Child Fixture</title>
+  </head>
+  <body style="background-color: rgb(255, 255, 255); margin: 0">
+    <p>A white frame document.</p>
+  </body>
+</html>

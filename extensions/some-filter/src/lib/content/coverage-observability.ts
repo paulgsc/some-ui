@@ -113,6 +113,10 @@ export type CoverageEventKind =
   | "scope.stale_resolve_discarded"
   | "scope.coverage_violated"
   | "scope.coverage_recovered"
+  /** SF-CUT3 (#1489): the enforcement sheet's handshake, read from the cascade. */
+  | "enforcement.confirmed"
+  | "enforcement.timeout"
+  | "enforcement.removed"
 
 export type CoverageCounter =
   | "sessions_started"
@@ -141,6 +145,8 @@ export type CoverageCounter =
   | "scope_exonerations"
   | "scope_failures"
   | "scope_stale_resolves_discarded"
+  /** SF-CUT3 (#1489): the liveness bound released the veil onto the native page. */
+  | "enforcement_timeout"
 
 export type CoverageAggregate =
   | "violation_duration_ms"
@@ -183,6 +189,15 @@ export type CoverageContext = {
   legacyStyleActive: boolean
   /** The veil's own resolved `background-color`, or null when no veil is present to read it from. */
   veilBackgroundColor: string | null
+  /**
+   * SF-CUT3 (#1489): the enforcement sheet is in this document's cascade,
+   * read as `<html>`'s computed background matching the swatch's `bg0` —
+   * the sheet's canvas rule is the only thing that paints `<html>` that
+   * colour. Only ever read while the tab is enforcing (flag on, auto);
+   * `false` otherwise, so the classifier path's invariants are unchanged.
+   * Optional so a context built before this field existed reads as absent.
+   */
+  enforcedCanvas?: boolean
 }
 
 const violated = (details: JsonValue): InvariantOutcome => ({
@@ -210,7 +225,7 @@ export const coverageInvariants: ReadonlyArray<Invariant<CoverageContext>> = [
   {
     name: "CoverageHeld",
     description:
-      'Remark C.1\'s zero-leak invariant, made checkable: "no page is ever displayed at native vendor luminance when dark is required." Whenever the tab is not "off", the veil, the dark theme, or a genuinely-active legacy filter must be covering it.',
+      'Remark C.1\'s zero-leak invariant, made checkable: "no page is ever displayed at native vendor luminance when dark is required." Whenever the tab is not "off", the veil, the dark theme, a genuinely-active legacy filter, or the enforcement sheet (read from the cascade) must be covering it.',
     check: (ctx): InvariantOutcome => {
       if (ctx.tabState === "off") return { ok: true }
       // SF-RC5 (#1344): declining to judge instead of falsely certifying —
@@ -224,7 +239,8 @@ export const coverageInvariants: ReadonlyArray<Invariant<CoverageContext>> = [
         ctx.veilPresent ||
         ctx.dirtyClassPresent ||
         (ctx.darkThemeActive && ctx.darkStyleActive) ||
-        (ctx.legacyAttrPresent && ctx.legacyStyleActive)
+        (ctx.legacyAttrPresent && ctx.legacyStyleActive) ||
+        ctx.enforcedCanvas === true
       return covered
         ? { ok: true }
         : violated({
@@ -235,6 +251,7 @@ export const coverageInvariants: ReadonlyArray<Invariant<CoverageContext>> = [
             darkStyleActive: ctx.darkStyleActive,
             legacyAttrPresent: ctx.legacyAttrPresent,
             legacyStyleActive: ctx.legacyStyleActive,
+            enforcedCanvas: ctx.enforcedCanvas ?? false,
           })
     },
   },

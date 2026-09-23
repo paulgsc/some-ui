@@ -12,6 +12,9 @@ const platformAlias = (
 
 const entries = [
   { name: "content", input: "src/content/content.ts" },
+  // SF-CUT3 (#1489): registered dynamically by background.ts, only while the
+  // enforcement-sheet flag is on — not listed in either manifest.
+  { name: "frame", input: "src/frame/frame.ts" },
   { name: "background", input: "src/background/background.ts" },
   { name: "popup", input: "popup.html", classic: false },
   { name: "debug", input: "debug.html", classic: false },

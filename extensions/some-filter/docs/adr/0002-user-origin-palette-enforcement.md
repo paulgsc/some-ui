@@ -408,7 +408,7 @@ exclusion with `:not([data-my-ext])` on the erase rule: at the user origin,
 `revert` rolls the cascade back to the user-agent origin, which stripped
 `prepaint.css`'s author styling from the veil.
 
-### 8.3 §2.1 — transitions outrank every `!important` origin (open)
+### 8.3 §2.1 — transitions outrank every `!important` origin (closed in §8.6)
 
 CSS transition declarations sit above all `!important` origins in the cascade.
 On an element with an authored `transition: background-color 2s`, inserting the
@@ -509,3 +509,43 @@ Measured cost on the same fixture, sheet present against `main`'s sheet
 137 ms vs 116 ms (62), a class toggle on 1,000 rows 33 ms vs 29 ms (18). The
 sheet as a whole is already 2–2.5 times the no-sheet cost, which is #1488's
 measurement to report; this story adds about a fifth on top.
+
+### 8.6 The veil handshake and tab state (#1489)
+
+§8.3's open policy is closed, along with the rest of how the sheet reaches a
+document:
+
+- **Requested per document, confirmed by a read.** The content side sends
+  `ENSURE_ENFORCEMENT` and the background injects the sheet into exactly the
+  requesting frame. The veil comes down only after `<html>`'s computed
+  background reads back as `bg0`, through the same custody commit a
+  classifier round uses. The `tabs.onUpdated` injection is gone: it ran for
+  every tab regardless of state, and nothing confirmed it had landed. The
+  background keeps no per-tab state. Two identical `insertCSS` calls stack
+  two copies and one `removeCSS` removes one (measured on Chromium 1194), so
+  the content side asks only while a read shows the sheet absent, and removes
+  until a read shows it gone.
+- **Transitions (§8.3).** A transition/animation freeze goes in before the
+  request and comes out after the confirm read and one painted frame. The
+  vendor's transitions resume only once the sheet's values are current, so
+  nothing is left to animate, and steady-state transitions are untouched.
+- **Liveness.** The exchange is bounded at 2.5 s, about five times an MV3
+  worker cold start. On expiry the veil comes down onto the native page and
+  `enforcement_timeout` is counted, with one retry the next time the tab
+  becomes visible. The timeout is never read as evidence the sheet landed.
+- **Either engine, never both.** With the flag on, auto mode starts none of
+  the classifier's machinery. Leaving auto removes the sheet under a re-armed
+  veil before legacy's filter goes on, so the canvas rule's `filter: none`
+  never meets legacy's invert. Off tabs get no sheet.
+- **Frames.** While the flag is on, the background registers a `frame.js`
+  content script for every subframe at `document_start`. It raises that
+  frame's own veil and runs the same handshake, which covers frames created
+  after load. It is a dynamic registration rather than a manifest
+  `all_frames` entry, so the default path puts nothing into any iframe.
+- **SPA navigation.** An injected user sheet belongs to the document, so it
+  survives a router's `<head>`/`<body>` swap, and every element the new route
+  inserts gets its first style under it. With the sheet confirmed present,
+  `yt-navigate-start` no longer re-raises the veil. That removes the ~2.3 s
+  blackout per YouTube navigation under the flag. `yt-navigate-finish`
+  re-confirms and raises the veil only if the sheet has gone. A bfcache
+  `pageshow` runs the same confirm step.
