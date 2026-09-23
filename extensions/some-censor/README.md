@@ -5,8 +5,17 @@ the `@some-extension/transport` kernel.
 
 ## Architecture at a glance
 
+**Target architecture, landing in stages — not yet the shipped runtime.**
+The four stages below (Boundary Contract #1433, tracked as #1434–#1437) exist
+today as pure, independently tested modules under
+`src/lib/content/{layout,core,actuator}/`. The shipped entry point
+(`src/content/content.ts` → `Controller` → `VideoManager`) does not yet call
+`classifyShape`, `reduce`, or `createActuator`; `VideoManager`/`DomHandle`
+still do the observing and writing this pipeline is meant to replace. See
+`layout/README.md` for the Sensor's (`BC2`, `#1435`) own landing status.
+
 Four stages, each owning exactly one concern, in a straight line from
-observation to write:
+observation to write, once wired:
 
 1. **Layout table** (`src/lib/content/layout/`) — a versioned, checked-in
    description of how YouTube's card DOM is shaped on each surface, built by
