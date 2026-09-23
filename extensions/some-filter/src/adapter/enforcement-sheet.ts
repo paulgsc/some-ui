@@ -225,13 +225,23 @@ const CANVAS_SELECTOR = ":root:root, :root:root body"
  * box while the page settled. Exclusion by selector is the only form that
  * leaves author-origin styling of these elements untouched.
  *
+ * Descendants of an extension-owned element are excluded too (#1497), the
+ * same contract `EXT_GUARD` states for every highlight row and the
+ * detector's `closest("[data-my-ext]")` applies: nested extension UI (the
+ * overlay root's children, another extension's mounted widget) keeps its
+ * own author styling.
+ *
  * Specificity is (0,1,4) — one attribute selector on top of the four type
  * negations. Still strictly below `CANVAS_SELECTOR`'s (0,2,0)/(0,2,1) and
  * below every `:where(...)${EXT_GUARD}` row's (0,2,0), which is the
- * relationship the rest of this sheet is calibrated against.
+ * relationship the rest of this sheet is calibrated against. That is why the
+ * descendant clause is `:not(:where([data-my-ext] *))` and not `EXT_GUARD`'s
+ * bare `:not([data-my-ext] *)`: `:not()` takes its argument's specificity, so
+ * the bare form would add (0,1,0), lift this rule to (0,2,4), and let it beat
+ * the canvas rule and every highlight row it exists to sit under.
  */
 const ERASE_SELECTOR =
-  "*:not(img):not(video):not(svg):not(canvas):not([data-my-ext])"
+  "*:not(img):not(video):not(svg):not(canvas):not([data-my-ext]):not(:where([data-my-ext] *))"
 
 /**
  * Same erase policy for generated content. `*` never matches a
@@ -242,10 +252,63 @@ const ERASE_SELECTOR =
  * Codex, P1). Independent paint surfaces, so they get the same four
  * declarations. Specificity: `:where()` contributes nothing, the
  * pseudo-element counts as one type — (0,0,1) — and user-origin
- * `!important` is what wins against the vendor regardless.
+ * `!important` is what wins against the vendor regardless. `EXT_GUARD`
+ * inside the `:where()` excludes an extension-owned element's own
+ * pseudo-elements and its descendants' alike, at no specificity cost.
  */
-const ERASE_PSEUDO_SELECTOR =
-  ":where(*:not([data-my-ext]))::before, :where(*:not([data-my-ext]))::after"
+const ERASE_PSEUDO_SELECTOR = ["::before", "::after"]
+  .map((pseudo) => `:where(*${EXT_GUARD})${pseudo}`)
+  .join(", ")
+
+/**
+ * A file input's button (#1497) is painted like every other button — the
+ * `HIGHLIGHT_TABLE` input/button row's `inputBg` — not erased. Chromium
+ * implements `::file-selector-button` as an `<input type="button">` inside
+ * the control's UA shadow tree, which that row already reaches (§8.1
+ * crossing) at (0,2,0), so a transparent erase here loses to it there and
+ * wins in an engine where the pseudo-element is a real one: measured
+ * `inputBg` on Chromium 1194 against a vendor `background-color: white`.
+ * Naming the same token on the pseudo-element makes both engines agree.
+ * `:where(input)` + `EXT_GUARD` before the pseudo-element, the same shape
+ * as the `::placeholder` rule, since a pseudo-element cannot sit inside
+ * `:where()`.
+ */
+const FILE_BUTTON_SELECTOR = `:where(input)${EXT_GUARD}::file-selector-button`
+
+/**
+ * The typographic pseudo-elements (#1497): `::first-letter`, `::first-line`
+ * and `::marker` paint a fragment of their originating element's own text, so
+ * they get the erase rule's channel resets but not its colour. `color:
+ * inherit` hands them whatever colour the originating element was enforced
+ * to — the erase rule's `text0`, or a `HIGHLIGHT_TABLE` row's tier — where a
+ * hard-coded `text0` would repaint the first line of every `p` (`text1`) and
+ * the bullet of every `li` in a different colour from the text beside it, the
+ * same override `-webkit-text-fill-color: currentColor` avoids for glyphs.
+ * `::marker` ignores every property here except `color`; the rest apply to
+ * the first-letter/first-line boxes. `:where()` again, so (0,0,1).
+ *
+ * The subjects are tag-constrained, not `*`, because a universal
+ * `::first-line`/`::first-letter` rule makes the engine resolve those
+ * pseudo-styles for every block in the document. Measured on #1478's
+ * dense-diff fixture (36k elements, UpdateLayoutTree summed over a CDP
+ * trace, medians of 4–6 runs, tab off so only the sheet contributes): the
+ * universal three-pseudo rule took the initial style pass from 117 ms to
+ * 270 ms and streaming 10k rows from 137 ms to 259 ms — `::first-letter`
+ * alone +55 ms, `::first-line` +31 ms, `::marker` +8 ms. These subjects
+ * measured 129 ms / 137 ms, inside noise of no rule at all. The trade is a
+ * vendor `::first-line`/`::first-letter` on an element outside
+ * `TEXT_BLOCK` (a `div` lead paragraph, say), which keeps its authored
+ * colour. `::marker` follows `li`/`summary`, the elements that are list items
+ * by default; an element made a list item by `display: list-item` alone is the
+ * same kind of miss.
+ */
+const TEXT_BLOCK =
+  "p, h1, h2, h3, h4, h5, h6, li, blockquote, dd, dt, figcaption, caption"
+const ERASE_TEXT_PSEUDO_SELECTOR = [
+  `:where(${TEXT_BLOCK})${EXT_GUARD}::first-letter`,
+  `:where(${TEXT_BLOCK})${EXT_GUARD}::first-line`,
+  `:where(li, summary)${EXT_GUARD}::marker`,
+].join(", ")
 
 /**
  * Structural containers eligible for the lift gradient below — see this
@@ -504,6 +567,20 @@ ${ERASE_SELECTOR} {
      theme-apply.ts's static sheet already enforces outline-color. */
   text-shadow: none !important;
   outline-color: ${swatch.borderStrong} !important;
+  /* Two glyph channels that paint independently of color (#1497). An
+     authored -webkit-text-fill-color fills glyphs whatever color says, and
+     an authored text-decoration-color paints the underline on its own —
+     black text or a white underline on the dark canvas either way.
+     currentColor, never text0: both then follow the color the element ends
+     up with, so a HIGHLIGHT_TABLE row (links, code, headings) keeps driving
+     them instead of being silently overridden. It is also what keeps an
+     excluded [data-my-ext] subtree safe: -webkit-text-fill-color inherits,
+     and currentColor inherits as the keyword (CSS Color 4), so a guarded
+     child's glyphs resolve against its own colour, not the enforced colour
+     of an ancestor outside the guard. A fixed token here would leak into
+     every guarded subtree; the #1497 e2e case reads the child's fill back. */
+  -webkit-text-fill-color: currentColor !important;
+  text-decoration-color: currentColor !important;
 }
 
 /* Generated content is its own paint surface — see ERASE_PSEUDO_SELECTOR. */
@@ -517,6 +594,36 @@ ${ERASE_PSEUDO_SELECTOR} {
   backdrop-filter: none !important;
   text-shadow: none !important;
   outline-color: ${swatch.borderStrong} !important;
+  -webkit-text-fill-color: currentColor !important;
+  text-decoration-color: currentColor !important;
+}
+
+/* Painted like a button, not erased — see FILE_BUTTON_SELECTOR. */
+${FILE_BUTTON_SELECTOR} {
+  background-color: ${swatch.inputBg} !important;
+  background-image: none !important;
+  color: ${swatch.text0} !important;
+  border-color: ${swatch.borderStrong} !important;
+  box-shadow: none !important;
+  filter: none !important;
+  backdrop-filter: none !important;
+  text-shadow: none !important;
+  outline-color: ${swatch.borderStrong} !important;
+  -webkit-text-fill-color: currentColor !important;
+  text-decoration-color: currentColor !important;
+}
+
+/* Text fragments inherit their originating element's enforced colour — see
+   ERASE_TEXT_PSEUDO_SELECTOR. */
+${ERASE_TEXT_PSEUDO_SELECTOR} {
+  background-color: transparent !important;
+  background-image: none !important;
+  color: inherit !important;
+  border-color: ${swatch.borderStrong} !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  -webkit-text-fill-color: currentColor !important;
+  text-decoration-color: currentColor !important;
 }
 
 /* A top-layer backdrop is generated content too, but a transparent one
@@ -526,7 +633,7 @@ ${ERASE_PSEUDO_SELECTOR} {
    viewport regardless of the dialog's own enforced surface). The
    [data-my-ext] exclusion matters here more than anywhere: the prepaint
    veil is a popover and prepaint.css styles its own ::backdrop. */
-:where(*:not([data-my-ext]))::backdrop {
+:where(*${EXT_GUARD})::backdrop {
   background-color: rgba(0, 0, 0, 0.6) !important;
   background-image: none !important;
   /* The same independent channels the erase rules reset: an inset shadow
