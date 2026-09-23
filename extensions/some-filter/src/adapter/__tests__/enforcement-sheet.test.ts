@@ -4,6 +4,17 @@ import { describe, expect, it } from "vitest"
 
 const swatch = SWATCHES.default
 
+const ERASE_RULE =
+  "*:not(img):not(video):not(svg):not(canvas):not([data-my-ext]):not(:where([data-my-ext] *)) {"
+const GUARDED = ":where(*:not([data-my-ext]):not([data-my-ext] *))"
+
+/** The declaration block of the first rule whose selector starts with `head`. */
+function ruleBody(css: string, head: string): string {
+  const start = css.indexOf(head)
+  expect(start, `no rule starting ${head}`).toBeGreaterThan(-1)
+  return css.slice(start, css.indexOf("}", start))
+}
+
 describe("buildEnforcementCSS", () => {
   it("is pure — identical output for the same swatch", () => {
     expect(buildEnforcementCSS(swatch)).toBe(buildEnforcementCSS(swatch))
@@ -33,15 +44,13 @@ describe("buildEnforcementCSS", () => {
 
   it("erases inset box-shadows and descendant filters on every non-media element (bot-found on #1463, round 3)", () => {
     const css = buildEnforcementCSS(swatch)
-    const eraseStart = css.indexOf(
-      "*:not(img):not(video):not(svg):not(canvas):not([data-my-ext]) {"
-    )
+    const eraseStart = css.indexOf(ERASE_RULE)
     expect(eraseStart).toBeGreaterThan(-1)
     const erase = css.slice(eraseStart, css.indexOf("}", eraseStart))
     expect(erase).toContain("box-shadow: none !important;")
     expect(erase).toContain("filter: none !important;")
     expect(erase).toContain("backdrop-filter: none !important;")
-    const pseudoStart = css.indexOf(":where(*:not([data-my-ext]))::before")
+    const pseudoStart = css.indexOf(`${GUARDED}::before`)
     const pseudo = css.slice(pseudoStart, css.indexOf("}", pseudoStart))
     expect(pseudo).toContain("box-shadow: none !important;")
     expect(pseudo).toContain("filter: none !important;")
@@ -50,16 +59,14 @@ describe("buildEnforcementCSS", () => {
 
   it("erases text-shadows and imposes outline-color on both erase rules (bot-found on #1500, round 2)", () => {
     const css = buildEnforcementCSS(swatch)
-    const eraseStart = css.indexOf(
-      "*:not(img):not(video):not(svg):not(canvas):not([data-my-ext]) {"
-    )
+    const eraseStart = css.indexOf(ERASE_RULE)
     const erase = css.slice(eraseStart, css.indexOf("}", eraseStart))
     expect(erase).toContain("text-shadow: none !important;")
     expect(erase).toContain(`outline-color: ${swatch.borderStrong} !important;`)
     // Colour only — width and style stay the vendor's, like border-color.
     expect(erase).not.toMatch(/outline-(width|style|offset)/)
     expect(erase).not.toMatch(/^\s*outline:/m)
-    const pseudoStart = css.indexOf(":where(*:not([data-my-ext]))::before")
+    const pseudoStart = css.indexOf(`${GUARDED}::before`)
     const pseudo = css.slice(pseudoStart, css.indexOf("}", pseudoStart))
     expect(pseudo).toContain("text-shadow: none !important;")
     expect(pseudo).toContain(
@@ -69,7 +76,7 @@ describe("buildEnforcementCSS", () => {
 
   it("imposes a dark top-layer ::backdrop, excluding the veil's own (bot-found on #1463, round 3)", () => {
     const css = buildEnforcementCSS(swatch)
-    const start = css.indexOf(":where(*:not([data-my-ext]))::backdrop {")
+    const start = css.indexOf(`${GUARDED}::backdrop {`)
     expect(start).toBeGreaterThan(-1)
     const rule = css.slice(start, css.indexOf("}", start))
     expect(rule).toContain("background-color: rgba(0, 0, 0, 0.6) !important;")
@@ -104,7 +111,7 @@ describe("buildEnforcementCSS", () => {
     // BORDER_CONTAINER_SELECTOR's narrow, affordance-only selector.
     const css = buildEnforcementCSS(swatch)
     const [eraseBlock] = css.match(
-      /\*:not\(img\):not\(video\):not\(svg\):not\(canvas\):not\(\[data-my-ext\]\) \{[^}]*\}/
+      /\*:not\(img\):not\(video\):not\(svg\):not\(canvas\):not\(\[data-my-ext\]\):not\(:where\(\[data-my-ext\] \*\)\) \{[^}]*\}/
     ) ?? [""]
     expect(eraseBlock).toContain(
       `border-color: ${swatch.borderStrong} !important`
@@ -193,9 +200,7 @@ describe("buildEnforcementCSS", () => {
     const css = buildEnforcementCSS(swatch)
     expect(css).not.toContain("revert")
     // The erase rule carries the exclusion itself.
-    expect(css).toContain(
-      "*:not(img):not(video):not(svg):not(canvas):not([data-my-ext]) {"
-    )
+    expect(css).toContain(ERASE_RULE)
     // And so does every rule that could otherwise reach the veil (a <div>).
     const unguarded = css
       .split("\n")
@@ -208,13 +213,79 @@ describe("buildEnforcementCSS", () => {
 
   it("erases generated content too — a vendor ::before/::after is its own paint surface (bot-found on #1463)", () => {
     const css = buildEnforcementCSS(swatch)
-    const start = css.indexOf(":where(*:not([data-my-ext]))::before")
+    const start = css.indexOf(`${GUARDED}::before`)
     expect(start).toBeGreaterThan(-1)
     const rule = css.slice(start, css.indexOf("}", start))
     expect(rule).toContain("::after")
     expect(rule).toContain("background-color: transparent !important;")
     expect(rule).toContain("background-image: none !important;")
     expect(rule).toContain(`color: ${swatch.text0} !important;`)
+  })
+
+  it("resets glyph fill and underline colour to currentColor on both erase rules, never a fixed token (#1497)", () => {
+    const css = buildEnforcementCSS(swatch)
+    for (const body of [
+      ruleBody(css, ERASE_RULE),
+      ruleBody(css, `${GUARDED}::before`),
+      ruleBody(css, `${GUARDED}::first-letter`),
+    ]) {
+      expect(body).toContain(
+        "-webkit-text-fill-color: currentColor !important;"
+      )
+      expect(body).toContain("text-decoration-color: currentColor !important;")
+    }
+    // A fixed token here would override every HIGHLIGHT_TABLE colour row.
+    expect(css).not.toMatch(/-webkit-text-fill-color: (?!currentColor)/)
+    expect(css).not.toMatch(/text-decoration-color: (?!currentColor)/)
+  })
+
+  it("erases the remaining painting pseudo-elements (#1497)", () => {
+    const css = buildEnforcementCSS(swatch)
+    // A file input's button is painted like every other button (inputBg),
+    // matching what the input row already does to Chromium's UA-shadow
+    // implementation of it, with the erase rule's channel resets.
+    const file = ruleBody(
+      css,
+      ":where(input):not([data-my-ext]):not([data-my-ext] *)::file-selector-button {"
+    )
+    expect(file).toContain(`background-color: ${swatch.inputBg} !important;`)
+    expect(file).toContain("background-image: none !important;")
+    expect(file).toContain("box-shadow: none !important;")
+    // Text fragments: channels reset, colour inherited from the originating
+    // element — text0 here would repaint the first line of every p (text1).
+    const [textHead] = css.match(/^[^\n]*::first-line[^\n]*\{$/m) ?? [""]
+    for (const pseudo of ["::first-letter", "::first-line", "::marker"]) {
+      expect(textHead).toContain(`${GUARDED}${pseudo}`)
+    }
+    const text = ruleBody(css, `${GUARDED}::first-letter`)
+    expect(text).toContain("color: inherit !important;")
+    expect(text).not.toContain(swatch.text0)
+    expect(text).toContain("background-color: transparent !important;")
+    expect(text).toContain("background-image: none !important;")
+    expect(text).toContain("text-shadow: none !important;")
+  })
+
+  it("excludes descendants of extension-owned elements without raising the erase rule's specificity (#1497)", () => {
+    const css = buildEnforcementCSS(swatch)
+    // The descendant clause sits inside :where(), so the erase rule stays
+    // at (0,1,4). A bare :not([data-my-ext] *) would make it (0,2,4) and
+    // beat the canvas rule and every (0,2,0) highlight row.
+    expect(ERASE_RULE).toContain(":not(:where([data-my-ext] *))")
+    expect(
+      ERASE_RULE.replace(":not(:where([data-my-ext] *))", "")
+    ).not.toContain("[data-my-ext] *")
+    // Every pseudo-element rule carries the full guard.
+    for (const pseudo of [
+      "::before",
+      "::after",
+      "::first-letter",
+      "::first-line",
+      "::marker",
+      "::backdrop",
+    ]) {
+      expect(css).toContain(`${GUARDED}${pseudo}`)
+    }
+    expect(css).not.toContain(":where(*:not([data-my-ext]))::")
   })
 
   it("interpolates the given swatch's own tokens, not another swatch's", () => {

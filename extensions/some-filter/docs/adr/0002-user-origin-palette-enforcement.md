@@ -319,6 +319,11 @@ teardown atomic.
 - **Flat hierarchy on div soup.** Accepted in §2.3, but unmeasured against the
   user's real sites. The acceptance test is an eye-strain judgement on
   github.com and claude.ai, which no harness in this repo measures.
+- **Vendor elevation and effects.** `box-shadow: none` on every erased element
+  removes vendor elevation shadows, and `filter`/`backdrop-filter: none` on
+  every non-media element removes vendor blur and drop-shadow effects (§8.4).
+  Both are the same class of accepted trade as §3.5's `background-image: none`:
+  either channel can repaint a surface E has already erased.
 - **Firefox parity is unverified.** See §6.
 - **The veil's hold window widens.** Enforcement is now a service-worker round
   trip rather than an inline content script, so the veil is up marginally
@@ -457,3 +462,36 @@ Chromium implements the placeholder as a real element inside the control's UA
 shadow tree, so the erase rule's `color` reaches it and outranks a bare
 `(0,0,1)` `::placeholder` rule. The ported rule therefore carries `EXT_GUARD`
 too, which is the only reason it wins (live-measured on #1500).
+
+### 8.5 The sheet's remaining paint surfaces close (#1497)
+
+The four gaps §8.4 left open are closed in `enforcement-sheet.ts`, each with a
+unit case and an e2e case that fails against the previous sheet:
+
+- **Glyph fill and underline colour.** Both erase rules declare
+  `-webkit-text-fill-color: currentColor` and
+  `text-decoration-color: currentColor`. `currentColor`, not `text0`, so each
+  follows the colour the element ends up with and a highlight-table row
+  (links, headings, code) still drives it. Measured: an authored
+  `rgb(17, 17, 17)` fill read back unchanged under the previous sheet, and a
+  white link underline read back white.
+- **Typographic pseudo-elements.** `::first-letter`, `::first-line` and
+  `::marker` get the erase rule's channel resets with `color: inherit`, so a
+  paragraph's first line and a list item's bullet keep their element's
+  enforced tier (`text1`) instead of switching to `text0`.
+- **`::file-selector-button`** is painted `inputBg` like every other button,
+  not erased. Chromium implements it as an `<input type="button">` inside the
+  control's UA shadow tree, which the highlight table's input row already
+  reaches through §8.1's crossing. The pseudo-element rule names the same
+  token so an engine with a real pseudo-element agrees.
+- **Descendants of extension-owned elements** are excluded from the erase
+  rule, the generated-content rules and `::backdrop`, the contract
+  `EXT_GUARD` already states. On the erase rule the clause is
+  `:not(:where([data-my-ext] *))`: a bare `:not([data-my-ext] *)` adds
+  (0,1,0) and lifts the rule to (0,2,4), above the canvas rule and every
+  highlight row.
+
+Selector cost, scored with #1478's model: the new rules add no violating
+selectors. The erase rule's cost rises from 65 to 85 but it is already over
+budget as a universal subject, which #1488 rewrites; the descendant clause
+is part of what that rewrite has to carry.

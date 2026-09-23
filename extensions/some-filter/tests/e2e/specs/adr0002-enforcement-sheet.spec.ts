@@ -31,7 +31,25 @@ async function backgroundWorker(context: {
   waitForEvent(event: "serviceworker"): Promise<Worker>
 }): Promise<Worker> {
   const [existing] = context.serviceWorkers()
-  return existing ?? context.waitForEvent("serviceworker")
+  const sw = existing ?? (await context.waitForEvent("serviceworker"))
+  // Every test launches a fresh context and calls this before any page
+  // loads, so the worker can be handed back before its global scope is set
+  // up: `chrome.storage` is undefined (enableEnforcementSheet() then throws
+  // "Cannot read properties of undefined (reading 'local')"), and so, in
+  // the same window, is `setTimeout` — about 1 run in 100 under
+  // --repeat-each. A poll inside the worker cannot wait on that, so it
+  // polls from here, one evaluate() per attempt.
+  for (let attempt = 0; attempt < 250; attempt++) {
+    const bound = await sw.evaluate(() => {
+      // Partial: the typings declare every namespace present, which is the
+      // assumption this wait exists to check.
+      const scope: { chrome?: Partial<typeof chrome> } = globalThis
+      return scope.chrome?.storage !== undefined
+    })
+    if (bound) return sw
+    await new Promise((resolve) => setTimeout(resolve, 20))
+  }
+  throw new Error("chrome.storage never bound in the service worker")
 }
 
 /**
@@ -318,6 +336,103 @@ test.describe("ADR 0002 enforcement sheet", () => {
     // Vendor surfaces are erased — the element and the generated box alike.
     expect(probe.vendorBg).toBe("rgba(0, 0, 0, 0)")
     expect(probe.htmlBeforeBg).toBe("rgba(0, 0, 0, 0)")
+  })
+
+  test("glyph fill, underline colour, typographic pseudo-elements and nested extension UI (#1497)", async ({
+    context,
+    fixture,
+  }) => {
+    const sw = await backgroundWorker(context)
+    await enableEnforcementSheet(sw)
+
+    const page = await fixture.goto("light-page")
+    await cycleTabOff(sw, page, "light-page.html")
+    await page.waitForFunction(
+      (expected) =>
+        getComputedStyle(document.documentElement).backgroundColor === expected,
+      ENFORCED_BG,
+      { timeout: 5_000, polling: 100 }
+    )
+
+    const probe = await page.evaluate(() => {
+      const style = document.createElement("style")
+      style.textContent = [
+        "#probe-fill { -webkit-text-fill-color: rgb(17, 17, 17); }",
+        "#probe-link { text-decoration: underline; text-decoration-color: rgb(255, 255, 255); }",
+        "#probe-list li::marker { color: rgb(255, 255, 255); }",
+        "#probe-para::first-line { background-color: rgb(255, 255, 255); color: rgb(255, 255, 255); }",
+        "#probe-para::first-letter { background-color: rgb(255, 255, 255); }",
+        "#probe-file::file-selector-button { background-color: rgb(255, 255, 255); }",
+        "#probe-ext-child { background-color: rgb(1, 2, 3); color: rgb(4, 5, 6); }",
+      ].join("\n")
+      document.head.appendChild(style)
+      const fill = document.createElement("div")
+      fill.id = "probe-fill"
+      fill.textContent = "fill"
+      const link = document.createElement("a")
+      link.id = "probe-link"
+      link.href = "#never-visited-1497"
+      link.textContent = "link"
+      const list = document.createElement("ul")
+      list.id = "probe-list"
+      const item = document.createElement("li")
+      item.textContent = "item"
+      list.append(item)
+      const para = document.createElement("p")
+      para.id = "probe-para"
+      para.textContent = "paragraph"
+      const file = document.createElement("input")
+      file.id = "probe-file"
+      file.type = "file"
+      const ext = document.createElement("div")
+      ext.setAttribute("data-my-ext", "")
+      const extChild = document.createElement("div")
+      extChild.id = "probe-ext-child"
+      extChild.textContent = "nested extension UI"
+      ext.append(extChild)
+      document.body.append(fill, link, list, para, file, ext)
+      const cs = (el: Element, pseudo?: string): CSSStyleDeclaration =>
+        getComputedStyle(el, pseudo)
+      return {
+        fillColor: cs(fill).color,
+        fillText: cs(fill).webkitTextFillColor,
+        linkColor: cs(link).color,
+        linkDecoration: cs(link).textDecorationColor,
+        itemColor: cs(item).color,
+        marker: cs(item, "::marker").color,
+        paraColor: cs(para).color,
+        firstLineBg: cs(para, "::first-line").backgroundColor,
+        firstLineColor: cs(para, "::first-line").color,
+        firstLetterBg: cs(para, "::first-letter").backgroundColor,
+        fileButtonBg: cs(file, "::file-selector-button").backgroundColor,
+        extChildBg: cs(extChild).backgroundColor,
+        extChildColor: cs(extChild).color,
+      }
+    })
+
+    // SWATCHES.default tokens, as literals for the same reason ENFORCED_BG is.
+    const TEXT0 = "rgb(134, 153, 177)"
+    const TEXT1 = "rgb(148, 163, 184)"
+    const LINK = "rgb(122, 162, 247)"
+    // Glyph fill and underline follow the element's enforced colour — the
+    // erase rule's text0 on a div, the highlight table's link on an <a>.
+    expect(probe.fillColor).toBe(TEXT0)
+    expect(probe.fillText).toBe(TEXT0)
+    expect(probe.linkColor).toBe(LINK)
+    expect(probe.linkDecoration).toBe(LINK)
+    // Typographic pseudo-elements inherit the originating element's tier
+    // (li and p are text1 rows), and their boxes are erased.
+    expect(probe.itemColor).toBe(TEXT1)
+    expect(probe.marker).toBe(TEXT1)
+    expect(probe.paraColor).toBe(TEXT1)
+    expect(probe.firstLineColor).toBe(TEXT1)
+    expect(probe.firstLineBg).toBe("rgba(0, 0, 0, 0)")
+    expect(probe.firstLetterBg).toBe("rgba(0, 0, 0, 0)")
+    // Painted like every other button: SWATCHES.default.inputBg.
+    expect(probe.fileButtonBg).toBe("rgb(33, 38, 49)")
+    // A descendant of an extension-owned element keeps its author styling.
+    expect(probe.extChildBg).toBe("rgb(1, 2, 3)")
+    expect(probe.extChildColor).toBe("rgb(4, 5, 6)")
   })
 
   // The following five cases replace a single "borderStrong actually
