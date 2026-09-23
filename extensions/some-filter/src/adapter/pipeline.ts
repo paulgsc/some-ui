@@ -909,12 +909,36 @@ export function createContentSession(
    * page does not carry at all would otherwise keep voting in
    * `pageAlreadyDark()`'s mean forever — the previous route's colors
    * deciding the current route's verdict.
+   *
+   * Except a key some element still carries as its `data-sw-patched` tag.
+   * `shouldSkip()` keeps a tagged element out of every scan, so its key is
+   * learned once, before tagging, and never re-read. An SPA route swap keeps
+   * such elements (YouTube reuses its whole app shell from one watch page to
+   * the next), and dropping their keys meant the verdict after navigation
+   * was decided without the page's biggest light surfaces. The remaining
+   * mid-grey controls read as already dark, `decide()` emitted
+   * `restore-native`, and the veil lifted onto the native white page
+   * (`yt-navigate-evidence.spec.ts`). A tagged element is on the new route by
+   * definition, so its key is not stale.
+   * `realize()` also rebuilds the per-surface sheet from this round's
+   * actions only, so a dropped key took the surviving elements' dark rule
+   * with it even when the verdict stayed themed.
+   *
+   * Only `"surface"` tags carry a key. `"preserve"` tags (near-black
+   * carriers) do not, so their evidence is still dropped, which can only
+   * move the verdict toward theming.
    */
   function dropStaleEvidence(): void {
-    for (const key of [...hypothesis.keys()]) {
-      hypothesis.delete(key)
+    const carried = new Set<string>()
+    for (const el of document.querySelectorAll("[data-sw-patched]")) {
+      const value = el.getAttribute("data-sw-patched")
+      if (value !== null && value !== "preserve") carried.add(value)
     }
-    provenance.clear()
+    for (const key of [...hypothesis.keys()]) {
+      if (carried.has(key)) continue
+      hypothesis.delete(key)
+      provenance.delete(key)
+    }
   }
 
   function ingest(root: Element): void {

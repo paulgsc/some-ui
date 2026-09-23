@@ -940,6 +940,86 @@ describe("createContentSession — evidence is scoped to the content epoch", () 
 
     contentSession.teardown()
   })
+
+  it("keeps the evidence of tagged surfaces that survive the reset", () => {
+    // YouTube's shape (yt-navigate-evidence.spec.ts): a light shell the
+    // first round tagged survives the route swap; only the mid-grey controls
+    // are replaced. scan() skips the tagged shell, so if its keys are
+    // dropped the new greys alone decide the verdict: "already dark".
+    // PREPAINT_DIRTY_CLASS stands in for the veil yt-navigate-start re-arms: with it
+    // set, readHtmlCanvasAttr() reports no canvas evidence for a page whose
+    // html declares no background, so the canvas veto does not mask this.
+    document.documentElement.classList.add(PREPAINT_DIRTY_CLASS)
+    document.documentElement.style.backgroundColor = ""
+    document.body.style.backgroundColor = ""
+    document.body.innerHTML =
+      '<div id="a" style="background-color: rgb(255, 255, 255)"></div>' +
+      '<div id="b" style="background-color: rgb(249, 249, 249)"></div>' +
+      '<div id="c" style="background-color: rgb(242, 242, 242)"></div>' +
+      '<div id="route">' +
+      '<div style="background-color: rgb(80, 80, 80)"></div>' +
+      '<div style="background-color: rgb(96, 96, 96)"></div>' +
+      '<div style="background-color: rgb(112, 112, 112)"></div>' +
+      "</div>"
+
+    const session = createSessionLifecycle()
+    const contentSession = createContentSession(SWATCHES.default, session)
+
+    contentSession.rescan()
+    expect(document.documentElement.hasAttribute(DARK_THEME_ATTR)).toBe(true)
+    expect(document.getElementById("a")?.dataset["swPatched"]).toBe(
+      "rgb(255, 255, 255)"
+    )
+
+    const route = document.getElementById("route")
+    if (route === null) throw new Error("unreachable")
+    route.innerHTML =
+      '<div style="background-color: rgb(85, 85, 85)"></div>' +
+      '<div style="background-color: rgb(100, 100, 100)"></div>' +
+      '<div style="background-color: rgb(118, 118, 118)"></div>'
+    session.resetContent()
+
+    contentSession.rescan()
+
+    expect(document.documentElement.hasAttribute(DARK_THEME_ATTR)).toBe(true)
+    // The surviving shell's own dark rule is still emitted, not just the
+    // page-level verdict.
+    expect(
+      document.getElementById(DYNAMIC_STYLE_ID)?.textContent ?? ""
+    ).toContain('[data-sw-patched="rgb(255, 255, 255)"]')
+
+    contentSession.teardown()
+  })
+
+  it("still drops a tagged key once no element carries it", () => {
+    document.documentElement.classList.add(PREPAINT_DIRTY_CLASS)
+    document.documentElement.style.backgroundColor = ""
+    document.body.style.backgroundColor = ""
+    document.body.innerHTML =
+      '<div style="background-color: rgb(255, 255, 255)"></div>' +
+      '<div style="background-color: rgb(249, 249, 249)"></div>' +
+      '<div style="background-color: rgb(242, 242, 242)"></div>'
+
+    const session = createSessionLifecycle()
+    const contentSession = createContentSession(SWATCHES.default, session)
+
+    contentSession.rescan()
+    expect(document.documentElement.hasAttribute(DARK_THEME_ATTR)).toBe(true)
+
+    // The whole route is replaced, tagged elements included: nothing
+    // carries the light keys any more, so the new dark route decides alone.
+    document.body.innerHTML =
+      '<div style="background-color: rgb(80, 80, 80)"></div>' +
+      '<div style="background-color: rgb(96, 96, 96)"></div>' +
+      '<div style="background-color: rgb(112, 112, 112)"></div>'
+    session.resetContent()
+
+    contentSession.rescan()
+
+    expect(document.documentElement.hasAttribute(DARK_THEME_ATTR)).toBe(false)
+
+    contentSession.teardown()
+  })
 })
 
 describe("settled-interaction audit — scan scope must equal realization scope", () => {
