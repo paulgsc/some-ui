@@ -941,14 +941,15 @@ describe("createContentSession — evidence is scoped to the content epoch", () 
     contentSession.teardown()
   })
 
-  it("keeps the evidence of tagged surfaces that survive the reset", () => {
+  it("re-senses tagged surfaces that survive the reset", () => {
     // YouTube's shape (yt-navigate-evidence.spec.ts): a light shell the
     // first round tagged survives the route swap; only the mid-grey controls
-    // are replaced. scan() skips the tagged shell, so if its keys are
-    // dropped the new greys alone decide the verdict: "already dark".
-    // PREPAINT_DIRTY_CLASS stands in for the veil yt-navigate-start re-arms: with it
-    // set, readHtmlCanvasAttr() reports no canvas evidence for a page whose
-    // html declares no background, so the canvas veto does not mask this.
+    // are replaced. scan() skips a tagged element, so unless the reset
+    // re-senses the shell the new greys alone decide the verdict: "already
+    // dark". PREPAINT_DIRTY_CLASS stands in for the veil yt-navigate-start
+    // re-arms: with it set, readHtmlCanvasAttr() reports no canvas evidence
+    // for a page whose html declares no background, so the canvas veto does
+    // not mask this.
     document.documentElement.classList.add(PREPAINT_DIRTY_CLASS)
     document.documentElement.style.backgroundColor = ""
     document.body.style.backgroundColor = ""
@@ -987,6 +988,47 @@ describe("createContentSession — evidence is scoped to the content epoch", () 
     expect(
       document.getElementById(DYNAMIC_STYLE_ID)?.textContent ?? ""
     ).toContain('[data-sw-patched="rgb(255, 255, 255)"]')
+    expect(document.getElementById("a")?.dataset["swPatched"]).toBe(
+      "rgb(255, 255, 255)"
+    )
+
+    contentSession.teardown()
+  })
+
+  it("follows a surviving tagged surface the vendor recoloured during the swap", () => {
+    // Bot-found (Codex on #1518): a tag describes the previous route. If the
+    // vendor recolours a surviving element, the new route's verdict and the
+    // element's own tag must come from its current colour, not the old one.
+    document.documentElement.classList.add(PREPAINT_DIRTY_CLASS)
+    document.documentElement.style.backgroundColor = ""
+    document.body.style.backgroundColor = ""
+    document.body.innerHTML =
+      '<div id="a" style="background-color: rgb(255, 255, 255)"></div>' +
+      '<div id="b" style="background-color: rgb(249, 249, 249)"></div>' +
+      '<div id="c" style="background-color: rgb(242, 242, 242)"></div>'
+
+    const session = createSessionLifecycle()
+    const contentSession = createContentSession(SWATCHES.default, session)
+
+    contentSession.rescan()
+    expect(document.documentElement.hasAttribute(DARK_THEME_ATTR)).toBe(true)
+
+    // Same elements, now natively dark.
+    for (const [id, bg] of [
+      ["a", "rgb(80, 80, 80)"],
+      ["b", "rgb(96, 96, 96)"],
+      ["c", "rgb(112, 112, 112)"],
+    ] as const) {
+      const el = document.getElementById(id)
+      if (el === null) throw new Error("unreachable")
+      el.style.backgroundColor = bg
+    }
+    session.resetContent()
+
+    contentSession.rescan()
+
+    expect(document.documentElement.hasAttribute(DARK_THEME_ATTR)).toBe(false)
+    expect(document.querySelectorAll("[data-sw-patched]")).toHaveLength(0)
 
     contentSession.teardown()
   })

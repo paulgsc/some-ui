@@ -61,6 +61,7 @@ import {
   DYNAMIC_STYLE_ID,
   isHTMLElementNode,
   realize,
+  untagSurfaces,
 } from "./actuator"
 import type { FilterAction, SurfaceAttr, SurfaceKey } from "./contracts"
 import {
@@ -910,35 +911,31 @@ export function createContentSession(
    * `pageAlreadyDark()`'s mean forever — the previous route's colors
    * deciding the current route's verdict.
    *
-   * Except a key some element still carries as its `data-sw-patched` tag.
-   * `shouldSkip()` keeps a tagged element out of every scan, so its key is
-   * learned once, before tagging, and never re-read. An SPA route swap keeps
-   * such elements (YouTube reuses its whole app shell from one watch page to
-   * the next), and dropping their keys meant the verdict after navigation
-   * was decided without the page's biggest light surfaces. The remaining
-   * mid-grey controls read as already dark, `decide()` emitted
-   * `restore-native`, and the veil lifted onto the native white page
-   * (`yt-navigate-evidence.spec.ts`). A tagged element is on the new route by
-   * definition, so its key is not stale.
-   * `realize()` also rebuilds the per-surface sheet from this round's
-   * actions only, so a dropped key took the surviving elements' dark rule
-   * with it even when the verdict stayed themed.
+   * Dropping evidence alone is not enough, because `shouldSkip()` keeps
+   * every `data-sw-patched` element out of every scan: its colour is read
+   * once, before tagging, and never again. An SPA route swap keeps such
+   * elements (YouTube reuses its whole app shell from one watch page to the
+   * next), so after the drop the page's biggest light surfaces cast no vote
+   * at all. The mid-grey controls left over read as already dark, `decide()`
+   * emitted `restore-native`, and the veil lifted onto the native white page
+   * (`yt-navigate-evidence.spec.ts`). Carrying their old keys over instead
+   * would trust a tag that describes the previous route: the vendor may
+   * have recoloured or hidden the element since (bot-found, Codex on #1518).
    *
-   * Only `"surface"` tags carry a key. `"preserve"` tags (near-black
-   * carriers) do not, so their evidence is still dropped, which can only
-   * move the verdict toward theming.
+   * So the new epoch re-senses them: every tag under `root` is removed here
+   * (by the actuator, the one module that writes `data-sw-patched`),
+   * the scan that follows reads their current vendor colour like any other
+   * element, and `realize()` re-tags them from that fresh verdict. Both run
+   * inside one synchronous `cycle()`, so no frame paints between the untag
+   * and the re-tag, and `data-sw-patched` is outside the observer's
+   * `attributeFilter`, so neither write schedules a round of its own.
    */
-  function dropStaleEvidence(): void {
-    const carried = new Set<string>()
-    for (const el of document.querySelectorAll("[data-sw-patched]")) {
-      const value = el.getAttribute("data-sw-patched")
-      if (value !== null && value !== "preserve") carried.add(value)
-    }
+  function dropStaleEvidence(root: Element): void {
     for (const key of [...hypothesis.keys()]) {
-      if (carried.has(key)) continue
       hypothesis.delete(key)
-      provenance.delete(key)
     }
+    provenance.clear()
+    untagSurfaces(root)
   }
 
   function ingest(root: Element): void {
@@ -948,7 +945,7 @@ export function createContentSession(
         // A route swap can replace a document this channel could not afford
         // with one it can; the cooldown is about a page, not a session.
         interactionAuditBlockedUntil = 0
-        dropStaleEvidence()
+        dropStaleEvidence(root)
       }
 
       const { scanned, canvas } = withVendorColorsVisible(() => ({
