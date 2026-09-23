@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env node
 // Guardrail: the test-layout convention (#772, #1475). At most one *.test.*
 // file per source directory (more go to <dir>/__tests__/), and none in a
 // src/routes/ tree outside __tests__/. The rule itself, and why it is not an
@@ -8,8 +8,13 @@
 // siblings, which is exactly what a per-file, content-keyed lint cache cannot
 // see. Checks every tracked file plus untracked, non-ignored ones, so a stray
 // test fails `pnpm check:test-layout` locally before it is ever committed.
-// Wired into the root `lint` script and into pr.yml as a repo-wide guardrail
-// next to the catalog-drift check.
+// Wired into the root `lint` script and into pr.yml as its own job, which
+// runs on every PR (extension-only ones included) and which CI Gate requires.
+//
+// Runs on Node's built-in type stripping (on by default since Node 22.18 and
+// 23.6; the nix CI shell ships nodejs_latest), with no install: no enums,
+// namespaces or path aliases here or in the imported module, and imports
+// spell their `.ts` extension.
 import { execFileSync } from "node:child_process"
 import { existsSync } from "node:fs"
 import { join } from "node:path"

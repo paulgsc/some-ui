@@ -130,14 +130,6 @@ jobs:
       - name: Dependency catalog guardrail
         run: node scripts/check-catalog-drift.mjs
 
-      # Repo-wide invariant, so not turbo-filtered: at most one *.test.* per
-      # source directory, none in a src/routes/ tree outside __tests__/ (#772,
-      # #1475). A script rather than an ESLint rule because the verdict for one
-      # file depends on its siblings, which `eslint --cache` cannot see - see
-      # packages/eslint/src/test-layout.ts.
-      - name: Test layout guardrail
-        run: nix develop .#ci --command pnpm check:test-layout
-
       # Repo-wide invariant like the catalog check above, and not turbo-filtered
       # for the same reason: the client/server boundary is a property of the
       # whole repo, and the snapshot it compares against
@@ -403,10 +395,27 @@ jobs:
   #
   # Skipped jobs are treated as passing (nothing to check → nothing broke).
   # Failed or cancelled jobs that were required fail the gate.
+  # ── Test layout (repo-wide) ────────────────────────────────────────────
+  # At most one *.test.* per source directory, none in a src/routes/ tree
+  # outside __tests__/ (#772, #1475). Its own job, with no `changes` gate:
+  # the invariant spans every workspace, and the node job above is skipped for
+  # an extensions-only PR, exactly where a stray test can land (bot-found on
+  # #1531). No install: the script runs on Node's built-in type stripping. A script
+  # rather than an ESLint rule because the verdict for one file depends on its
+  # siblings, which `eslint --cache` cannot see (packages/eslint/src/test-layout.ts).
+  test-layout:
+    name: Test layout guardrail
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/nix-setup
+      - name: Check test layout
+        run: nix develop .#ci --command node --no-warnings scripts/check-test-layout.ts
+
   ci-gate:
     name: CI Gate
     runs-on: ubuntu-latest
-    needs: [changes, rust, node, deny]
+    needs: [changes, rust, node, deny, test-layout]
     if: always()
     steps:
       - name: Evaluate results
@@ -429,6 +438,14 @@ jobs:
             FAILED=true
           else
             echo "✅ node: $NODE_RESULT (required: $NODE_REQUIRED)"
+          fi
+
+          LAYOUT_RESULT="${{ needs.test-layout.result }}"
+          if [ "$LAYOUT_RESULT" != "success" ]; then
+            echo "❌ test-layout: $LAYOUT_RESULT (always required)"
+            FAILED=true
+          else
+            echo "✅ test-layout: $LAYOUT_RESULT"
           fi
 
           DENY_RESULT="${{ needs.deny.result }}"
