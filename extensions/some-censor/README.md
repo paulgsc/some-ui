@@ -11,7 +11,9 @@ three exist today as tested modules under
 `src/lib/content/{layout,core,actuator}/`: the Layout table and Core reducer
 are pure, and the Actuator is deliberately not (BC4, #1437 — it is the one
 module allowed to touch the DOM or call `browser.*`). The Sensor (BC2,
-#1435) has not landed; see `layout/README.md` for its status. The shipped
+#1435) has not landed; see
+[`src/lib/content/layout/README.md`](./src/lib/content/layout/README.md) for
+its status. The shipped
 entry point (`src/content/content.ts` → `Controller` → `VideoManager`) does
 not yet call `classifyShape`, `reduce`, or `createActuator` —
 `VideoManager`/`DomHandle` still do the observing and writing this pipeline
