@@ -6,7 +6,7 @@ import { narrow } from "./rationale-match"
 
 /**
  * Routed through a helper taking a variable, not a string literal directly
- * inside `new URL(...)` — the same shape `prompt-panel/index.test.tsx` uses
+ * inside `new URL(...)` — the same shape `prompt-panel/__tests__/index.test.tsx` uses
  * and for the same reason: a literal there triggers Vite's static
  * import.meta.url asset-URL transform, which resolves to a dev-server
  * `http://localhost` URL in this environment instead of a real file path.

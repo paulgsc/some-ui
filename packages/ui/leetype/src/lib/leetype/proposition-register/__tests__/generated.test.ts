@@ -1,12 +1,11 @@
 import { execFileSync } from "node:child_process"
 import { readFileSync } from "node:fs"
 import path from "node:path"
+import { formatGeneratedModule } from "@leetype/lib/leetype/proposition-register/format-generated-module"
+import type { PropositionId } from "@leetype/lib/leetype/proposition-register/generated"
+import { PROPOSITION_REGISTER } from "@leetype/lib/leetype/proposition-register/generated"
+import { parsePropositionRegister } from "@leetype/lib/leetype/proposition-register/parse-canon"
 import { describe, expect, it } from "vitest"
-
-import { formatGeneratedModule } from "./format-generated-module"
-import type { PropositionId } from "./generated"
-import { PROPOSITION_REGISTER } from "./generated"
-import { parsePropositionRegister } from "./parse-canon"
 
 // Names `PropositionId` explicitly: a type alias only ever consumed
 // structurally through another exported type is invisible to knip's

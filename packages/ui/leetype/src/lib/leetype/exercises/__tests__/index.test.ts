@@ -1,3 +1,13 @@
+import {
+  ALL_FIXTURE_EXERCISES,
+  FIXTURE_ADVERSARIAL_EXERCISE_ID,
+  FIXTURE_DIAGNOSTIC_EXERCISE_IDS,
+  FIXTURE_EXERCISE_ID,
+  FIXTURE_HOSTILE_PROMPT_STEP,
+  FIXTURE_LEETCODE_3302_EXERCISE_ID,
+  nextExercise,
+  SESSION_EXERCISE_IDS,
+} from "@leetype/lib/leetype/exercises"
 import type { RenderedDiffLineKind } from "@leetype/types/exercise"
 import {
   ConstructionStepSchema,
@@ -8,17 +18,6 @@ import {
   typingBlockOf,
 } from "@leetype/types/exercise"
 import { describe, expect, it } from "vitest"
-
-import {
-  ALL_FIXTURE_EXERCISES,
-  FIXTURE_ADVERSARIAL_EXERCISE_ID,
-  FIXTURE_DIAGNOSTIC_EXERCISE_IDS,
-  FIXTURE_EXERCISE_ID,
-  FIXTURE_HOSTILE_PROMPT_STEP,
-  FIXTURE_LEETCODE_3302_EXERCISE_ID,
-  nextExercise,
-  SESSION_EXERCISE_IDS,
-} from "."
 
 describe("the exercise shim", () => {
   it("adds the 24-rung engineering-judgment curriculum alongside the existing corpus", () => {

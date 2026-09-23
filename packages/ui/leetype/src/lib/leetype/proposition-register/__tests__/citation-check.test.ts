@@ -1,7 +1,9 @@
+import {
+  checkCitations,
+  checkRegisterCoverage,
+} from "@leetype/lib/leetype/proposition-register/citation-check"
+import type { PropositionRegisterEntry } from "@leetype/lib/leetype/proposition-register/parse-canon"
 import { describe, expect, it } from "vitest"
-
-import { checkCitations, checkRegisterCoverage } from "./citation-check"
-import type { PropositionRegisterEntry } from "./parse-canon"
 
 const ACTIVE_ENTRY: PropositionRegisterEntry = {
   id: "CW-P1",

@@ -1,15 +1,15 @@
 import type { YouTubeRegion } from "@some-ui/types"
-import fc from "fast-check"
-import { describe, expect, it } from "vitest"
-
-import { layoutIntentSequenceArbitrary } from "./__tests__/layout-intent-arbitrary"
-import { applyIntent } from "./layout-intent"
-import type { LayoutNode } from "./layout-weighted"
+import { applyIntent } from "@wireframes/lib/layout-intent"
+import type { LayoutNode } from "@wireframes/lib/layout-weighted"
 import {
   deserializeLayout,
   getTreeHash,
   serializeLayout,
-} from "./tree-serialization"
+} from "@wireframes/lib/tree-serialization"
+import fc from "fast-check"
+import { describe, expect, it } from "vitest"
+
+import { layoutIntentSequenceArbitrary } from "./layout-intent-arbitrary"
 
 /**
  * A saved layout that silently comes back different on reload is invisible

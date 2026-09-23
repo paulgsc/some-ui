@@ -1,7 +1,6 @@
+import { CONCEPT_IDS } from "@leetype/lib/leetype/exercises/concepts"
+import { ALL_FIXTURE_EXERCISES } from "@leetype/lib/leetype/exercises/index"
 import { describe, expect, it } from "vitest"
-
-import { CONCEPT_IDS } from "./concepts"
-import { ALL_FIXTURE_EXERCISES } from "./index"
 
 /** Every id, as a plain `Set<string>` — the corpus check below compares
  * against `step.concepts: Array<string>`, which a `Set<ConceptId>` cannot

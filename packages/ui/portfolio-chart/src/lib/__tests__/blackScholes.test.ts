@@ -1,6 +1,3 @@
-import type { Leg, PLPoint } from "@portfolio/types"
-import { describe, expect, it } from "vitest"
-
 import {
   bsPrice,
   buildPLCurve,
@@ -8,7 +5,9 @@ import {
   computePLMetrics,
   legPLAtSpot,
   positionPLAtSpot,
-} from "./blackScholes"
+} from "@portfolio/lib/blackScholes"
+import type { Leg, PLPoint } from "@portfolio/types"
+import { describe, expect, it } from "vitest"
 
 function leg(overrides: Partial<Leg> = {}): Leg {
   return {

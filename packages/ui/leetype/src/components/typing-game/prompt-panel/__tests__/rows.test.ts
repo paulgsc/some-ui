@@ -1,3 +1,5 @@
+import type { EvidenceRow } from "@leetype/components/typing-game/prompt-panel/rows"
+import { evidenceRowsOf } from "@leetype/components/typing-game/prompt-panel/rows"
 import { ALL_FIXTURE_EXERCISES } from "@leetype/lib/leetype/exercises"
 import type { ReadBlock } from "@leetype/types/exercise"
 import {
@@ -6,9 +8,6 @@ import {
   typingBlockFromDiff,
 } from "@leetype/types/exercise"
 import { describe, expect, it } from "vitest"
-
-import type { EvidenceRow } from "./rows"
-import { evidenceRowsOf } from "./rows"
 
 const prompt: ReadBlock = {
   kind: "prompt",
