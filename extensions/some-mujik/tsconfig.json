@@ -1,6 +1,10 @@
 {
   "extends": "@some-ui/tsconfig/tsconfig.ui.json",
   "compilerOptions": {
+    // Next to this config, not in the outDir inherited from
+    // @some-ui/tsconfig (which resolves into packages/tsconfig/dist and is
+    // shared by every package on that chain, #1522).
+    "tsBuildInfoFile": "./tsconfig.tsbuildinfo",
     "isolatedModules": true,
     "paths": {
       "@mujik/*": ["./src/*"],

@@ -1,6 +1,10 @@
 {
   "extends": "@some-ui/tsconfig/rollupconfig.json",
   "compilerOptions": {
+    // Next to this config, not in the outDir inherited from
+    // @some-ui/tsconfig (which resolves into packages/tsconfig/dist and is
+    // shared by every package on that chain, #1522).
+    "tsBuildInfoFile": "./tsconfig.tsbuildinfo",
     "target": "ES2020",
     "useDefineForClassFields": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable"],

@@ -53,7 +53,7 @@
     "build:chromium": "vite build --mode chromium --configLoader runner",
     "build:firefox": "vite build --mode firefox --configLoader runner",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
-    "clean:build": "rimraf ./dist ./tsconfig.tsbuildinfo",
+    "clean:build": "rimraf ./dist ./tsconfig.tsbuildinfo ./tsconfig.build.tsbuildinfo",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
     "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "package:source": "bash ../scripts/package-source.sh",

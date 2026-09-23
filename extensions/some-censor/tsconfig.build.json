@@ -1,4 +1,10 @@
 {
+  "compilerOptions": {
+    // Next to this config, not in the outDir inherited from
+    // @some-ui/tsconfig (which resolves into packages/tsconfig/dist and is
+    // shared by every package on that chain, #1522).
+    "tsBuildInfoFile": "./tsconfig.build.tsbuildinfo"
+  },
   "extends": "./tsconfig.json",
   "exclude": [
     "node_modules",
