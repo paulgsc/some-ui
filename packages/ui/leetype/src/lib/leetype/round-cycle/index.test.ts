@@ -7,7 +7,6 @@ import type { Commitment } from "@leetype/types/commitment"
 import type { Budget, ConstraintSet } from "@leetype/types/constraint"
 import type { DiffHunk } from "@leetype/types/exercise"
 import type { DiffSetMember } from "@leetype/types/round"
-import { assertNever } from "some-ui-utils"
 import { describe, expect, it } from "vitest"
 
 import type {
@@ -612,29 +611,10 @@ describe("Thm. 8.1 — the cycle has no absorbing failure state", () => {
     expect(phases.size).toBe(4)
   })
 
-  // Compile-time totality: if a fifth phase were ever added to
-  // RoundCycleState without updating this switch, this file fails to
-  // compile — the same exhaustiveness discipline `assertNever` enforces
-  // throughout this workspace, applied here to stand in for Thm. 8.1's own
-  // "the transition function is total."
-  it("RoundCycleState's phases are exhaustively known", () => {
-    function describePhase(state: RoundCycleState): string {
-      switch (state.phase) {
-        case "posingDiffSelection":
-        case "admissibleAdvance":
-        case "posingRescueSelection":
-        case "posingUnrescuableExplanation": {
-          return state.phase
-        }
-        default: {
-          return assertNever(state)
-        }
-      }
-    }
-    for (const branch of branches) {
-      expect(() => describePhase(branch.result)).not.toThrow()
-    }
-  })
+  // Compile-time totality — a fifth RoundCycleState phase added without a
+  // case — is held by `tsc --noEmit` in
+  // `__type-fixtures__/round-cycle-state.fixtures.ts`, not restated here as
+  // a runtime `it()` (TSC-STATIC1, #1365).
 })
 
 describe("Prop. 8.1 — the cycle terminates only by the learner leaving", () => {
