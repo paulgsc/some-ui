@@ -20,8 +20,8 @@ test.describe("Evidence-driven convergence (Theorem 5.1, integration-level)", ()
     page,
   }) => {
     // Duplicate/reordered delivery at the protocol level (Axioms 3.1–3.3)
-    // is exercised at the unit level (src/sensor/fuzz.test.ts,
-    // src/estimator/update.test.ts); here the same key is repeatedly
+    // is exercised at the unit level (src/sensor/__tests__/fuzz.test.ts,
+    // src/estimator/__tests__/update.test.ts); here the same key is repeatedly
     // recycled to different values via a real MutationObserver over a
     // real browser DOM, proving the integration converges to the last
     // written ground truth.
