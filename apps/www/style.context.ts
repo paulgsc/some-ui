@@ -40,7 +40,6 @@ const uiPackages = [
   "leetype",
   "makjang",
   "neon-sign",
-  "nfl",
   "portfolio-chart",
   "resume",
   "shared",

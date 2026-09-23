@@ -164,4 +164,19 @@ describe("www style context", () => {
         `them to uiPackages.`
     ).toEqual([])
   })
+
+  it("scans no package that does not exist", () => {
+    // The reverse direction (#1457): an entry whose directory is gone
+    // matches nothing and fails silently, so a deleted package's glob can
+    // outlive it indefinitely — packages/ui/nfl did.
+    const phantom = [...SCANNED]
+      .filter((pkg) => !existsSync(resolve(UI_ROOT, pkg, "src")))
+      .sort()
+
+    expect(
+      phantom,
+      `apps/www/style.context.ts scans packages/ui/{${phantom.join(", ")}}, ` +
+        `which has no src directory. Remove it from uiPackages.`
+    ).toEqual([])
+  })
 })
