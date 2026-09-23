@@ -9,7 +9,7 @@
     "build:chromium": "tsc -p tsconfig.build.json && vite build --configLoader runner",
     "test:e2e": "pnpm build:chromium && playwright test",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
-    "clean:build": "rimraf ./dist && rimraf rimraf tsconfig.tsbuildinfo",
+    "clean:build": "rimraf ./dist ./tsconfig.build.tsbuildinfo ./tsconfig.tsbuildinfo",
     "dev": "vite --configLoader runner",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
     "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
