@@ -7,6 +7,10 @@ import { visualizer } from "rollup-plugin-visualizer"
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { build } from "vite"
 
+// vite.config.ts reads this to keep sourcemaps and the gzip report, which the
+// default build skips (#1449). Set before `build()` loads the config.
+process.env.WWW_ANALYZE = "1"
+
 async function analyzeBundles() {
   // eslint-disable-next-line no-console
   console.log("🔍 Starting bundle analysis...")
