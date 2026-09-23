@@ -1,8 +1,7 @@
 import { ACTIVITY_CATALOG, ACTIVITY_IDS } from "@activity-catalog/lib/catalog"
+import { sequenceScenes } from "@activity-catalog/lib/to-scene-config"
+import type { SessionActivity } from "@activity-catalog/lib/to-scene-config"
 import { describe, expect, it } from "vitest"
-
-import { sequenceScenes } from "."
-import type { SessionActivity } from "."
 
 /**
  * `paulgsc/server#272`'s round trip, checked from this side of the

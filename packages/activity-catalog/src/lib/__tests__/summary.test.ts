@@ -1,7 +1,9 @@
+import { getActivity } from "@activity-catalog/lib/catalog"
+import {
+  defaultSessionName,
+  summarizeConfig,
+} from "@activity-catalog/lib/summary"
 import { describe, expect, it } from "vitest"
-
-import { getActivity } from "./catalog"
-import { defaultSessionName, summarizeConfig } from "./summary"
 
 describe("summarizeConfig", () => {
   it("reads a select field back as its human label, not its stored value", () => {

@@ -7,6 +7,9 @@
  * backend joins the list below and inherits the whole suite.
  */
 
+import { createHttpSpeechAdapter } from "@speech/lib/adapters/http"
+import type { SpeechAdapter } from "@speech/lib/adapters/types"
+import { createWebSpeechAdapter } from "@speech/lib/adapters/web-speech"
 import { isAbortError } from "@speech/lib/promise/abort"
 import type { FakeAudioContextHandle } from "@speech/lib/testing"
 import {
@@ -16,10 +19,6 @@ import {
   track,
 } from "@speech/lib/testing"
 import { describe, expect, it } from "vitest"
-
-import { createHttpSpeechAdapter } from "./http"
-import type { SpeechAdapter } from "./types"
-import { createWebSpeechAdapter } from "./web-speech"
 
 type Harness = {
   adapter: SpeechAdapter

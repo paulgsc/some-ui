@@ -114,7 +114,7 @@ standing indicator can drop in `SpeechStatusBadge`, or build their own on
 
 Speech is a long-running, interruptible side effect, and the bug class this
 package was rewritten around is a promise that never settles. Every adapter
-obeys four laws, and `lib/adapters/adapter-contract.test.ts` runs the same
+obeys four laws, and `lib/adapters/__tests__/adapter-contract.test.ts` runs the same
 suite against each of them:
 
 1. A `speak()` promise settles **exactly once**.
@@ -141,8 +141,8 @@ queue holding the old session's undelivered items, wedged behind an `await`
 that would never resume.
 
 The tests that pin the fix are worth reading as a description of it:
-`lib/queue/singleton.test.ts` (a session cannot poison the next one),
-`lib/queue/manager.test.ts` (a cancel stops speech now, not when the audio
+`lib/queue/__tests__/singleton.test.ts` (a session cannot poison the next one),
+`lib/queue/__tests__/manager.test.ts` (a cancel stops speech now, not when the audio
 happens to end), `lib/engine/audio-player.test.ts` and
 `lib/promise/index.property.test.ts` (for any interleaving of operations,
 nothing is left pending).

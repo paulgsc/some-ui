@@ -1,10 +1,9 @@
+import type { SpeechAdapter, SpeechAdapterRegistry } from "@speech/lib/adapters"
+import { createSpeechAdapter, resolveSpeechConfig } from "@speech/lib/adapters"
 import { createControllableAdapter } from "@speech/lib/testing"
 import type { VoiceConfig } from "@speech/lib/types/tts-types"
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
-
-import type { SpeechAdapter, SpeechAdapterRegistry } from "."
-import { createSpeechAdapter, resolveSpeechConfig } from "."
 
 /**
  * What this file is really pinning is a boundary, not a lookup table: a

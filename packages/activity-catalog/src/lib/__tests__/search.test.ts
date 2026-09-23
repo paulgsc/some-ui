@@ -1,10 +1,9 @@
+import { ACTIVITY_CATALOG, ACTIVITY_IDS } from "@activity-catalog/lib/catalog"
+import { SEARCH_RESULT_LIMIT } from "@activity-catalog/lib/fit"
+import { rankActivities } from "@activity-catalog/lib/rank"
+import { searchActivities } from "@activity-catalog/lib/search"
 import { syntheticCatalogue } from "@activity-catalog/testing/synthetic-catalogue"
 import { describe, expect, it } from "vitest"
-
-import { ACTIVITY_CATALOG, ACTIVITY_IDS } from "./catalog"
-import { SEARCH_RESULT_LIMIT } from "./fit"
-import { rankActivities } from "./rank"
-import { searchActivities } from "./search"
 
 const REAL = ACTIVITY_IDS.map((id) => ACTIVITY_CATALOG[id])
 

@@ -28,9 +28,9 @@ import {
   SESSION_THEME_CLASSES,
   SESSION_THEMES,
   THEMES,
-} from "./index"
+} from "../index"
 
-const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..")
+const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../..")
 
 /** Every class selector actually declared in the shipped CSS. */
 function shippedClasses(): Set<string> {

@@ -9,6 +9,7 @@
  */
 
 import { isAbortError } from "@speech/lib/promise/abort"
+import { SpeechQueueManager } from "@speech/lib/queue/manager"
 import type { ControllableAdapter } from "@speech/lib/testing"
 import {
   createControllableAdapter,
@@ -16,8 +17,6 @@ import {
   track,
 } from "@speech/lib/testing"
 import { describe, expect, it } from "vitest"
-
-import { SpeechQueueManager } from "./manager"
 
 function setup(): {
   adapter: ControllableAdapter
