@@ -1,8 +1,13 @@
+import {
+  failed,
+  idle,
+  matchIntent,
+  succeeded,
+  working,
+} from "@intent-kit/intent"
+import type { Intent } from "@intent-kit/intent"
+import { toIntentError } from "@intent-kit/intent-error"
 import { describe, expect, it, vi } from "vitest"
-
-import { failed, idle, matchIntent, succeeded, working } from "./intent"
-import type { Intent } from "./intent"
-import { toIntentError } from "./intent-error"
 
 describe("matchIntent", () => {
   it("dispatches idle", () => {

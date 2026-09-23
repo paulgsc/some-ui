@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from "vitest"
 
-import { appearanceClassName, appearanceProps, applyAppearance } from "./index"
+import { appearanceClassName, appearanceProps, applyAppearance } from "../index"
 
 describe("appearanceProps", () => {
   it("emits nothing for the inherit default", () => {

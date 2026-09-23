@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const PACKAGE_JSON_PATH = resolve(HERE, "../package.json")
+const PACKAGE_JSON_PATH = resolve(HERE, "../../package.json")
 
 type PackageManifest = {
   dependencies?: Record<string, string>

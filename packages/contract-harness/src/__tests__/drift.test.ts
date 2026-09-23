@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest"
 
-import type { Contract } from "./contract"
-import { defineContract } from "./contract"
-import type { RouteInventory } from "./drift"
+import type { Contract } from "../contract"
+import { defineContract } from "../contract"
+import type { RouteInventory } from "../drift"
 import {
   checkDrift,
   InventoryShapeError,
   InventoryVersionError,
   parseInventory,
-} from "./drift"
+} from "../drift"
 
 const inventory = (
   overrides: Partial<RouteInventory> = {}

@@ -10,19 +10,18 @@
 
 import { isAbortError } from "@speech/lib/promise/abort"
 import {
-  createControllableAdapter,
-  flushAsync,
-  track,
-} from "@speech/lib/testing"
-import { afterEach, describe, expect, it } from "vitest"
-
-import {
   getSpeechQueue,
   initializeSpeechQueue,
   peekSpeechQueue,
   releaseSpeechQueue,
   resetSpeechQueue,
-} from "./singleton"
+} from "@speech/lib/queue/singleton"
+import {
+  createControllableAdapter,
+  flushAsync,
+  track,
+} from "@speech/lib/testing"
+import { afterEach, describe, expect, it } from "vitest"
 
 afterEach(() => {
   resetSpeechQueue()

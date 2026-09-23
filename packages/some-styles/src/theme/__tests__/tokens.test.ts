@@ -20,9 +20,9 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
 
-import { FEATURE_APPEARANCES, SESSION_THEMES } from "./index"
+import { FEATURE_APPEARANCES, SESSION_THEMES } from "../index"
 
-const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..")
+const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../..")
 
 function read(...parts: Array<string>): string {
   return readFileSync(join(PACKAGE_ROOT, ...parts), "utf8")

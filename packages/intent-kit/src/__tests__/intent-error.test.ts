@@ -1,6 +1,5 @@
+import { toIntentError } from "@intent-kit/intent-error"
 import { describe, expect, it } from "vitest"
-
-import { toIntentError } from "./intent-error"
 
 describe("toIntentError", () => {
   it.each([

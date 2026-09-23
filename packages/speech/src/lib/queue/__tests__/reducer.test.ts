@@ -1,9 +1,8 @@
+import type { SpeechAction } from "@speech/lib/queue/actions"
+import { speechReducer } from "@speech/lib/queue/reducer"
+import type { SpeechQueueState } from "@speech/lib/queue/types"
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
-
-import type { SpeechAction } from "./actions"
-import { speechReducer } from "./reducer"
-import type { SpeechQueueState } from "./types"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FIXTURES

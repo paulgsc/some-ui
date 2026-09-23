@@ -1,9 +1,11 @@
+import { ACTIVITY_CATALOG, ACTIVITY_IDS } from "@activity-catalog/lib/catalog"
+import {
+  MAX_RECOMMENDED_COUNT,
+  recommendedCount,
+} from "@activity-catalog/lib/fit"
+import { pickRecommended } from "@activity-catalog/lib/rank"
 import { syntheticCatalogue } from "@activity-catalog/testing/synthetic-catalogue"
 import { describe, expect, it } from "vitest"
-
-import { ACTIVITY_CATALOG, ACTIVITY_IDS } from "./catalog"
-import { MAX_RECOMMENDED_COUNT, recommendedCount } from "./fit"
-import { pickRecommended } from "./rank"
 
 /**
  * The guardrail for #858: the launcher must not be able to regress into a

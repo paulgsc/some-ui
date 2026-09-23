@@ -44,7 +44,7 @@ const DEFAULT_CALLEE_NAMES = [
  * and typechecks under node16 resolution, so it cannot resolve the design
  * system's source — and a lint kit reaching into the design system to lint it
  * is the wrong direction anyway. The copy is not left to rot:
- * `packages/some-styles/src/theme/registry.test.ts` reads this array back out
+ * `packages/some-styles/src/theme/__tests__/registry.test.ts` reads this array back out
  * of this file and asserts it equals the registry's own
  * `BOUNDARY_OVERRIDE_CLASSES`, so registering a theme and forgetting this list
  * fails there rather than leaving the rule quiet on the new class.

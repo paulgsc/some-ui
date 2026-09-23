@@ -8,7 +8,7 @@ import {
   fullPath,
   requestUrl,
   schemaStatuses,
-} from "./contract"
+} from "../contract"
 
 describe("fullPath", () => {
   it("prefixes versioned routes", () => {

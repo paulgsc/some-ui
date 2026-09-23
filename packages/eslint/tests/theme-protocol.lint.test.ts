@@ -46,7 +46,7 @@ function makeConfig(): Array<Linter.Config> {
 }
 
 // The drift check that pins this rule's inlined class list to the canonical
-// registry lives in packages/some-styles (theme/registry.test.ts). It cannot
+// registry lives in packages/some-styles (theme/__tests__/registry.test.ts). It cannot
 // live here: this package typechecks under node16 resolution and must not
 // resolve the design system's source at all — which is the same constraint
 // that forces the list to be inlined in the first place.

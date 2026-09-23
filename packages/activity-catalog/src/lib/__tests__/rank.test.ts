@@ -1,11 +1,13 @@
+import { ACTIVITY_CATALOG, ACTIVITY_IDS } from "@activity-catalog/lib/catalog"
+import { pickRecommended, rankActivities } from "@activity-catalog/lib/rank"
+import type { ActivityPlay } from "@activity-catalog/lib/rank"
+import type {
+  ActivityDefinition,
+  TopikLevel,
+} from "@activity-catalog/lib/types"
 import { syntheticCatalogue } from "@activity-catalog/testing/synthetic-catalogue"
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
-
-import { ACTIVITY_CATALOG, ACTIVITY_IDS } from "./catalog"
-import { pickRecommended, rankActivities } from "./rank"
-import type { ActivityPlay } from "./rank"
-import type { ActivityDefinition, TopikLevel } from "./types"
 
 const NOW = Date.UTC(2026, 7, 1)
 const DAY = 24 * 60 * 60 * 1000

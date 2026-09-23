@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { z } from "zod"
 
-import { checkConformance } from "./conformance"
+import { checkConformance } from "../conformance"
 
 describe("checkConformance", () => {
   it("accepts a body that matches and reports nothing", () => {
