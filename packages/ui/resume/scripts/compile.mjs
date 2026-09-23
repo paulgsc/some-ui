@@ -105,6 +105,16 @@ function verify() {
 
 async function main() {
   const watch = process.argv.includes("--watch")
+  // Start from an empty directory, and leave one behind on any failure below:
+  // `documents/` is either the complete, verified set with its manifest or
+  // nothing. A directory full of artifacts with no manifest is the worst of
+  // both — it looks built, a later turbo cache hit could restore it, and
+  // apps/www/scripts/sync-resume.mjs would then report "manifest not found"
+  // for a directory that looks full (#1452). Cleared before resolving typst
+  // and the fonts, too: a previous run's complete set must not survive a
+  // rebuild that failed to download them, or sync-resume.mjs would ship it as
+  // current.
+  if (!watch) rmSync(outDir, { recursive: true, force: true })
   const { bin: typstBin, fontPath } = await resolveTypst()
 
   mkdirSync(outDir, { recursive: true })
@@ -142,14 +152,6 @@ async function main() {
     return
   }
 
-  // Start from an empty directory, and leave one behind on any failure below:
-  // `documents/` is either the complete, verified set with its manifest or
-  // nothing. A directory full of artifacts with no manifest is the worst of
-  // both — it looks built, a later turbo cache hit could restore it, and
-  // apps/www/scripts/sync-resume.mjs would then report "manifest not found"
-  // for a directory that looks full (#1452).
-  rmSync(outDir, { recursive: true, force: true })
-  mkdirSync(outDir, { recursive: true })
   try {
     renderAll(typstBin, fontPath)
     verify()
