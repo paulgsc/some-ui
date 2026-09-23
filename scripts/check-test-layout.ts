@@ -11,18 +11,31 @@
 // Wired into the root `lint` script and into pr.yml as a repo-wide guardrail
 // next to the catalog-drift check.
 import { execFileSync } from "node:child_process"
+import { existsSync } from "node:fs"
+import { join } from "node:path"
 
 import {
   describeTestLayoutViolation,
   findTestLayoutViolations,
 } from "../packages/eslint/src/test-layout.ts"
 
+const root = execFileSync("git", ["rev-parse", "--show-toplevel"], {
+  encoding: "utf8",
+}).trim()
 const listed = execFileSync(
   "git",
   ["ls-files", "--cached", "--others", "--exclude-standard", "-z"],
-  { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }
+  { cwd: root, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }
 )
-const violations = findTestLayoutViolations(listed.split("\0").filter(Boolean))
+// `--cached` still lists a tracked file deleted (or moved away) in the working
+// tree until the deletion is staged, so keep only paths that exist: the check
+// describes the tree as it is now, not as the index last saw it (bot-found on
+// #1531).
+const violations = findTestLayoutViolations(
+  listed
+    .split("\0")
+    .filter((path) => path !== "" && existsSync(join(root, path)))
+)
 
 if (violations.length > 0) {
   for (const violation of violations) {
