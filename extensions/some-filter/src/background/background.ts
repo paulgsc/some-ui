@@ -251,7 +251,25 @@ async function syncFrameScript(): Promise<void> {
         // http(s)/file frame is still covered, fallback-origin frames are not.
         await ext.scripting.registerContentScripts([compatibleFrameScript])
       }
-    } else if (!enabled && registered.length > 0) {
+    } else if (enabled) {
+      // A compatible registration made on an older browser persists across
+      // sessions, so it outlives an upgrade to a browser that does support
+      // matchOriginAsFallback (bot-found on #1521, closing review). Upgrade
+      // it in place whenever the key is missing; on a browser that still
+      // rejects the key this fails and the compatible one stays.
+      const current: unknown = registered[0]
+      if (
+        typeof current === "object" &&
+        current !== null &&
+        Reflect.get(current, "matchOriginAsFallback") !== true
+      ) {
+        try {
+          await ext.scripting.updateContentScripts([frameScript])
+        } catch {
+          // Still unsupported here.
+        }
+      }
+    } else if (registered.length > 0) {
       await ext.scripting.unregisterContentScripts({ ids: [FRAME_SCRIPT_ID] })
     }
   } catch {
