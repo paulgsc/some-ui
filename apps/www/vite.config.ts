@@ -28,6 +28,10 @@ const hasLocalCerts = fs.existsSync(certPath) && fs.existsSync(keyPath)
 // TTS_PROXY_TARGET covers a PORT other than 5050 in .env, or a backend
 // running somewhere other than this machine.
 const TTS_PROXY_PATH = "/api/tts"
+// Set by scripts/analyze-bundle.js: the analyze build keeps sourcemaps and the
+// gzip report that the default build skips.
+const analyze = process.env.WWW_ANALYZE === "1"
+
 const ttsProxyTarget = process.env.TTS_PROXY_TARGET || "http://127.0.0.1:5050"
 
 // The same trick for the same reason, one port over: file_host (paulgsc/server)
@@ -213,7 +217,14 @@ export default defineConfig(
         // for `advancedChunks` (Rolldown's grouping API) if this ever needs
         // manual grouping again — and match on package *boundaries*, not
         // substrings of the resolved path.
-        output: {},
+        // Production builds strip console calls (terser's `drop_console`,
+        // carried over to oxc — see `minify` below). Not in the analyze
+        // build: this object is spread over Vite's own `minify` setting, so
+        // it would override the `minify: false` that scripts/
+        // analyze-bundle.js passes to keep its chunks unminified.
+        output: analyze
+          ? {}
+          : { minify: { compress: { dropConsole: true }, mangle: true } },
         // Tree shaking options
         treeshake: {
           // Every module is treated as side-effect free, so an import that
@@ -237,37 +248,29 @@ export default defineConfig(
           annotations: true,
         },
       },
-      // Generate source maps for better analysis
-      sourcemap: true,
-      minify: "terser",
-      terserOptions: {
-        compress: {
-          // Drop console statements in production
-          drop_console: true,
-          // Remove dead code
-          dead_code: true,
-          // Remove unused variables
-          unused: true,
-        },
-        // No `keep_fnames` (it was set on both `compress` and `mangle`).
-        // It was there to keep readable names in the bundle analyzer, but it
-        // applies to every production build, not just analysis runs: function
-        // names survive mangling in shipped code, which is bytes users pay to
-        // download on a page they will never profile. `sourcemap: true` below
-        // already gives the analyzer real names without shipping them, and
-        // `pnpm build:analyze` reads the sourcemaps. Set it in that script's
-        // own build if the analyzer ever needs it, not in the default one.
-      },
+      // Sourcemaps and the gzip column are for `pnpm build:analyze`, which
+      // sets WWW_ANALYZE before building (scripts/analyze-bundle.js). The
+      // default build — CI, the Pages deploy, the Docker image — pays for
+      // neither: the maps were ~4x the code they describe, ~120 of them, and
+      // nothing that ships reads them; reportCompressedSize gzips every chunk
+      // only to print a column (#1449).
+      sourcemap: analyze,
+      reportCompressedSize: analyze,
+      // Vite 8's default minifier (oxc), not terser: terser's renderChunk was
+      // most of the plugin time in every build (#1449). `drop_console` moves
+      // with it as oxc's `dropConsole` — set through `rolldownOptions.output`
+      // above, which Vite spreads over its own `minify: true`.
+      minify: "oxc",
       // Chunk size warnings
       chunkSizeWarningLimit: 1000,
-      // Generate detailed build report
-      reportCompressedSize: true,
     },
     // No `esbuild` block. Vite 8 transforms with oxc, not esbuild, and
     // ignores this key outright — the build printed "Both esbuild and oxc
     // options were set. oxc options will be used and esbuild options will be
     // ignored" on every run. `treeShaking: true` was also already the default,
-    // and `keepNames: true` pulled in the same direction as the `keep_fnames`
-    // removed above, so nothing here was doing work worth keeping.
+    // and `keepNames: true` kept function names through mangling in every
+    // shipped build — bytes users download for the analyzer's sake, when the
+    // analyze build's sourcemaps already give it real names — so nothing here
+    // was doing work worth keeping.
   })
 )
