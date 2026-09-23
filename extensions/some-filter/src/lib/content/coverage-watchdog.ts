@@ -83,6 +83,7 @@
  * that left open).
  */
 
+import { ENFORCEMENT_SENTINEL_PROPERTY } from "@filter/adapter/enforcement-sheet"
 import type {
   ScopeId,
   ScopeRegistry,
@@ -99,7 +100,6 @@ import {
 import type { TabState } from "@filter/types/tab"
 import { runInvariants } from "@some-extension/common/observability"
 
-import { parseColor } from "./color"
 import {
   coverageInvariants,
   scopeArtifactPresent,
@@ -184,15 +184,13 @@ function collectContext(
 /** SF-CUT3 (#1489): see `CoverageContext.enforcedCanvas`. One style read, and only while enforcing. */
 function readEnforcedCanvas(
   html: HTMLElement,
-  expected: string | null
+  expectedSwatchId: string | null
 ): boolean {
-  if (expected === null) return false
-  const actual = parseColor(getComputedStyle(html).backgroundColor)
-  const want = parseColor(expected)
+  if (expectedSwatchId === null) return false
   return (
-    actual !== null &&
-    want !== null &&
-    actual.every((channel, i) => channel === want[i])
+    getComputedStyle(html)
+      .getPropertyValue(ENFORCEMENT_SENTINEL_PROPERTY)
+      .trim() === expectedSwatchId
   )
 }
 
@@ -256,9 +254,9 @@ export function createCoverageWatchdog(
    */
   onVeilRearmed?: () => void,
   /**
-   * SF-CUT3 (#1489): the canvas colour the enforcement sheet paints `<html>`
-   * while this tab is enforcing, or `null` when it is not (flag off, or not
-   * auto). See `CoverageContext.enforcedCanvas`.
+   * SF-CUT3 (#1489): the swatch id the enforcement sheet's sentinel should
+   * carry while this tab is enforcing, or `null` when it is not (flag off,
+   * or not auto). See `CoverageContext.enforcedCanvas`.
    */
   getEnforcedCanvas: () => string | null = () => null
 ): CoverageWatchdog {

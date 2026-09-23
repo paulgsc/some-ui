@@ -8,10 +8,6 @@ import {
 } from "@filter/lib/content/enforcement-handshake"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const BG0 = "#171c25"
-const ENFORCED = "rgb(23, 28, 37)"
-const NATIVE = "rgb(255, 255, 255)"
-
 type Fake = {
   deps: EnforcementDeps
   sent: Array<EnforcementRequest>
@@ -24,7 +20,8 @@ type Fake = {
 /**
  * A background that inserts/removes one copy per request (measured: two
  * identical insertCSS calls stack on Chromium 1194), with the cascade read
- * reporting `bg0` while any copy is present. `respond` decides whether a
+ * reporting the sheet's sentinel (the swatch id, as a computed custom property
+ * reads — with its leading space) while any copy is present. `respond` decides whether a
  * request is answered at all.
  */
 function fake(
@@ -66,7 +63,7 @@ function fake(
       if (respond instanceof Promise) return respond.then(apply)
       return Promise.resolve(apply())
     },
-    readCanvas: (): string => (state.copies > 0 ? ENFORCED : NATIVE),
+    readSentinel: (): string => (state.copies > 0 ? " default" : ""),
     freeze: (): (() => void) => {
       state.frozen++
       state.events.push("freeze")
@@ -103,7 +100,7 @@ describe("ensureEnforcement", () => {
 
   it("requests once, confirms by reading the cascade, and holds the freeze until after a paint", async () => {
     const f = fake()
-    const outcome = await ensureEnforcement(f.deps, "default", BG0)
+    const outcome = await ensureEnforcement(f.deps, "default")
     expect(outcome).toEqual({ kind: "confirmed", sent: 1 })
     expect(f.sent).toEqual([
       { type: "ENSURE_ENFORCEMENT", swatchId: "default" },
@@ -121,7 +118,7 @@ describe("ensureEnforcement", () => {
 
   it("sends nothing when the sheet already reads as present (idempotent: insertCSS stacks copies)", async () => {
     const f = fake({ initialCopies: 1 })
-    const outcome = await ensureEnforcement(f.deps, "default", BG0)
+    const outcome = await ensureEnforcement(f.deps, "default")
     expect(outcome).toEqual({ kind: "confirmed", sent: 0 })
     expect(f.sent).toEqual([])
     expect(f.copies).toBe(1)
@@ -130,13 +127,13 @@ describe("ensureEnforcement", () => {
   it("re-sends exactly once when the first answer arrives before the sheet is in the cascade", async () => {
     // A worker mid-restart can answer before its insertCSS promise settles.
     const f = fake({ applies: (_r, index) => index > 0 })
-    const outcome = await ensureEnforcement(f.deps, "default", BG0)
+    const outcome = await ensureEnforcement(f.deps, "default")
     expect(outcome).toEqual({ kind: "confirmed", sent: 2 })
   })
 
   it("times out after the liveness bound when the background never answers, and removes the freeze", async () => {
     const f = fake({ respond: () => false })
-    const pending = ensureEnforcement(f.deps, "default", BG0)
+    const pending = ensureEnforcement(f.deps, "default")
     await vi.advanceTimersByTimeAsync(ENFORCEMENT_LIVENESS_MS - 1)
     expect(f.frozen).toBe(1)
     await vi.advanceTimersByTimeAsync(1)
@@ -146,7 +143,7 @@ describe("ensureEnforcement", () => {
 
   it("times out, rather than confirming, when both answers leave the sheet absent", async () => {
     const f = fake({ applies: () => false })
-    const pending = ensureEnforcement(f.deps, "default", BG0)
+    const pending = ensureEnforcement(f.deps, "default")
     await vi.advanceTimersByTimeAsync(ENFORCEMENT_LIVENESS_MS)
     // The timeout bounds waiting; it is never read as evidence.
     expect(await pending).toEqual({ kind: "timeout", sent: 2 })
@@ -158,7 +155,7 @@ describe("ensureEnforcement", () => {
       ...f.deps,
       send: () => Promise.reject(new Error("Receiving end does not exist")),
     }
-    const pending = ensureEnforcement(deps, "default", BG0)
+    const pending = ensureEnforcement(deps, "default")
     let settled = false
     void pending.then(() => (settled = true))
     await vi.advanceTimersByTimeAsync(ENFORCEMENT_LIVENESS_MS - 1)
@@ -171,7 +168,7 @@ describe("ensureEnforcement", () => {
 describe("removeEnforcement", () => {
   it("removes until the read shows the sheet gone — one request per stacked copy", async () => {
     const f = fake({ initialCopies: 2 })
-    expect(await removeEnforcement(f.deps, "default", BG0)).toBe(true)
+    expect(await removeEnforcement(f.deps, "default")).toBe(true)
     expect(f.sent).toEqual([
       { type: "REMOVE_ENFORCEMENT", swatchId: "default" },
       { type: "REMOVE_ENFORCEMENT", swatchId: "default" },
@@ -181,13 +178,13 @@ describe("removeEnforcement", () => {
 
   it("sends nothing when the sheet is already absent", async () => {
     const f = fake()
-    expect(await removeEnforcement(f.deps, "default", BG0)).toBe(true)
+    expect(await removeEnforcement(f.deps, "default")).toBe(true)
     expect(f.sent).toEqual([])
   })
 
   it("gives up after a bounded number of requests that remove nothing", async () => {
     const f = fake({ initialCopies: 1, applies: () => false })
-    expect(await removeEnforcement(f.deps, "default", BG0)).toBe(false)
+    expect(await removeEnforcement(f.deps, "default")).toBe(false)
     expect(f.sent.length).toBe(3)
   })
 })
@@ -209,7 +206,7 @@ describe("createEnforcementQueue — one document's operations, in call order (b
       respond: (request) =>
         request.type === "ENSURE_ENFORCEMENT" ? late : true,
     })
-    const queue = createEnforcementQueue(f.deps, "default", BG0)
+    const queue = createEnforcementQueue(f.deps, "default")
 
     const ensured = queue.ensure(() => true)
     await vi.advanceTimersByTimeAsync(ENFORCEMENT_LIVENESS_MS)
@@ -230,7 +227,7 @@ describe("createEnforcementQueue — one document's operations, in call order (b
 
   it("an ensure queued behind a removal (auto -> legacy -> auto) reads after the removal, so it inserts rather than confirming a sheet about to go", async () => {
     const f = fake({ initialCopies: 1 })
-    const queue = createEnforcementQueue(f.deps, "default", BG0)
+    const queue = createEnforcementQueue(f.deps, "default")
 
     const removed = queue.remove()
     const ensured = queue.ensure(() => true)
@@ -245,7 +242,7 @@ describe("createEnforcementQueue — one document's operations, in call order (b
 
   it("an ensure the tab has moved on from by the time it reaches the head sends nothing", async () => {
     const f = fake()
-    const queue = createEnforcementQueue(f.deps, "default", BG0)
+    const queue = createEnforcementQueue(f.deps, "default")
     expect(await queue.ensure(() => false)).toEqual({
       kind: "superseded",
       sent: 0,
@@ -255,7 +252,7 @@ describe("createEnforcementQueue — one document's operations, in call order (b
 
   it("still answers every caller within the liveness bound while it waits behind a request that never settles", async () => {
     const f = fake({ respond: () => false })
-    const queue = createEnforcementQueue(f.deps, "default", BG0)
+    const queue = createEnforcementQueue(f.deps, "default")
     void queue.ensure(() => true)
     const removed = queue.remove()
     let answered = false

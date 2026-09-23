@@ -5,6 +5,8 @@
  * that module stays testable with plain fakes.
  */
 
+import { ENFORCEMENT_SENTINEL_PROPERTY } from "@filter/adapter/enforcement-sheet"
+
 import type {
   EnforcementDeps,
   EnforcementRequest,
@@ -47,8 +49,10 @@ export function createDocumentEnforcementDeps(
 ): EnforcementDeps {
   return {
     send,
-    readCanvas: (): string =>
-      getComputedStyle(document.documentElement).backgroundColor,
+    readSentinel: (): string =>
+      getComputedStyle(document.documentElement).getPropertyValue(
+        ENFORCEMENT_SENTINEL_PROPERTY
+      ),
     freeze: installFreeze,
     afterPaint,
     setTimer: (fn, ms): unknown => setTimeout(fn, ms),

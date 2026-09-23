@@ -191,11 +191,12 @@ export type CoverageContext = {
   veilBackgroundColor: string | null
   /**
    * SF-CUT3 (#1489): the enforcement sheet is in this document's cascade,
-   * read as `<html>`'s computed background matching the swatch's `bg0` —
-   * the sheet's canvas rule is the only thing that paints `<html>` that
-   * colour. Only ever read while the tab is enforcing (flag on, auto);
-   * `false` otherwise, so the classifier path's invariants are unchanged.
-   * Optional so a context built before this field existed reads as absent.
+   * read from its own sentinel custom property on `<html>` (the sheet's
+   * canvas rule declares it with the swatch id), not from the canvas colour,
+   * which a vendor page can match on its own. Only ever read while the tab is
+   * enforcing (flag on, auto); `false` otherwise, so the classifier path's
+   * invariants are unchanged. Optional so a context built before this field
+   * existed reads as absent.
    */
   enforcedCanvas?: boolean
 }

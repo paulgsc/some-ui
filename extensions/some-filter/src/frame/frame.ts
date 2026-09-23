@@ -22,7 +22,7 @@
  * sheet under its own veil before the tab leaves auto.
  */
 
-import { DEFAULT_SWATCH_ID, SWATCHES } from "@filter/adapter/swatches"
+import { DEFAULT_SWATCH_ID } from "@filter/adapter/swatches"
 import { createDocumentEnforcementDeps } from "@filter/lib/content/enforcement-dom"
 import { createEnforcementQueue } from "@filter/lib/content/enforcement-handshake"
 import {
@@ -35,7 +35,6 @@ import { ext } from "@filter/platform/content"
 import type { TabState } from "@filter/types/tab"
 
 const ENFORCEMENT_FLAG_KEY = "enforcementSheetEnabled"
-const BG0 = SWATCHES[DEFAULT_SWATCH_ID].bg0
 
 function isSubframe(): boolean {
   try {
@@ -55,7 +54,7 @@ let state: TabState = DEFAULT_TAB_STATE
 let generation = 0
 let mayBePresent = false
 /** Ensures and removals for this frame's document, strictly in call order. */
-const queue = createEnforcementQueue(deps, DEFAULT_SWATCH_ID, BG0)
+const queue = createEnforcementQueue(deps, DEFAULT_SWATCH_ID)
 
 async function enforce(current: number): Promise<void> {
   mayBePresent = true

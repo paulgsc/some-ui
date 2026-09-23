@@ -16,17 +16,18 @@
  *   - `removeEnforcement()` repeats the request, bounded, until a read shows
  *     the sheet gone, which also cleans up after a stacked duplicate.
  *
- * The presence read is `getComputedStyle(<html>).backgroundColor` against the
- * swatch's `bg0`: the enforcement sheet's canvas rule is the only thing that
- * paints `<html>` that colour (`prepaint.css`'s dirty backstop paints `<body>`,
- * not `<html>`), and a read is the confirmation the issue asks for rather
+ * The presence read is the sheet's own sentinel custom property
+ * (`ENFORCEMENT_SENTINEL_PROPERTY`, declared by its canvas rule with the
+ * swatch id) read from `<html>`'s computed style. It is not the canvas
+ * colour: a vendor page can paint `<html>` exactly `bg0` on its own
+ * (bot-found on #1521). A read is the confirmation the issue asks for, rather
  * than trusting that an `insertCSS` promise resolving means the sheet is in
  * this document's cascade.
  *
  * Transitions: CSS transitions sit above every `!important` origin, so a
  * vendor `transition: background-color 5s` on `<html>` would otherwise
- * interpolate from white to `bg0` *after* the sheet lands, and a confirm read
- * could catch it mid-way. The freeze (`withPrepaintSuppressed`'s own rule)
+ * interpolate from white to `bg0` *after* the sheet lands, and the veil
+ * would come down onto a canvas still mid-way. The freeze (`withPrepaintSuppressed`'s own rule)
  * goes in before the request and comes out only after the confirm read and
  * one painted frame, so the vendor's transitions resume once the sheet's
  * values are already the current ones — nothing is left to animate.
@@ -35,8 +36,6 @@
  * timeout bounds *waiting*; it is never read as evidence that the sheet is
  * present. On expiry the caller releases the veil onto the native page.
  */
-
-import { parseColor } from "./color"
 
 /**
  * An MV3 service worker cold start is a few hundred milliseconds (the worker
@@ -59,8 +58,8 @@ export type EnforcementRequest =
 export type EnforcementDeps = {
   /** `ext.runtime.sendMessage` — resolves with the background's response. */
   readonly send: (request: EnforcementRequest) => Promise<unknown>
-  /** `getComputedStyle(document.documentElement).backgroundColor`. */
-  readonly readCanvas: () => string
+  /** `<html>`'s computed value of `ENFORCEMENT_SENTINEL_PROPERTY` ("" when absent). */
+  readonly readSentinel: () => string
   /** Installs the transition/animation freeze; returns its remover. */
   readonly freeze: () => () => void
   /** Resolves once the current state has painted at least once. */
@@ -75,18 +74,9 @@ export type EnsureOutcome =
   /** The tab's state moved on before the request reached the head of its queue; nothing was sent. */
   | { readonly kind: "superseded"; readonly sent: 0 }
 
-function sameRgb(a: string, b: string): boolean {
-  const pa = parseColor(a)
-  const pb = parseColor(b)
-  if (pa === null || pb === null) return false
-  return (
-    pa[0] === pb[0] && pa[1] === pb[1] && pa[2] === pb[2] && pa[3] === pb[3]
-  )
-}
-
-/** True when this document's cascade currently carries the sheet for `bg0`. */
-export function sheetPresent(deps: EnforcementDeps, bg0: string): boolean {
-  return sameRgb(deps.readCanvas(), bg0)
+/** True when this document's cascade currently carries the sheet for `swatchId`. */
+export function sheetPresent(deps: EnforcementDeps, swatchId: string): boolean {
+  return deps.readSentinel().trim() === swatchId
 }
 
 /** Resolves `"timeout"` after `ms`, or with `work`'s value if it settles first. */
@@ -128,10 +118,9 @@ type Operation<T> = {
 
 function ensureOperation(
   deps: EnforcementDeps,
-  swatchId: string,
-  bg0: string
+  swatchId: string
 ): Operation<EnsureOutcome> {
-  if (sheetPresent(deps, bg0)) {
+  if (sheetPresent(deps, swatchId)) {
     return {
       result: Promise.resolve({ kind: "confirmed", sent: 0 }),
       settled: Promise.resolve(),
@@ -144,7 +133,7 @@ function ensureOperation(
     for (let i = 0; i < 2; i++) {
       sent++
       await deps.send({ type: "ENSURE_ENFORCEMENT", swatchId })
-      if (sheetPresent(deps, bg0)) return true
+      if (sheetPresent(deps, swatchId)) return true
     }
     return false
   })()
@@ -167,15 +156,14 @@ function ensureOperation(
 
 function removeOperation(
   deps: EnforcementDeps,
-  swatchId: string,
-  bg0: string
+  swatchId: string
 ): Operation<boolean> {
   const attempt = (async (): Promise<boolean> => {
     for (let i = 0; i < MAX_REMOVE_ATTEMPTS; i++) {
-      if (!sheetPresent(deps, bg0)) return true
+      if (!sheetPresent(deps, swatchId)) return true
       await deps.send({ type: "REMOVE_ENFORCEMENT", swatchId })
     }
-    return !sheetPresent(deps, bg0)
+    return !sheetPresent(deps, swatchId)
   })()
   const result = withLiveness(deps, attempt, ENFORCEMENT_LIVENESS_MS).then(
     (removed) => removed === true
@@ -191,10 +179,9 @@ function removeOperation(
  */
 export function ensureEnforcement(
   deps: EnforcementDeps,
-  swatchId: string,
-  bg0: string
+  swatchId: string
 ): Promise<EnsureOutcome> {
-  return ensureOperation(deps, swatchId, bg0).result
+  return ensureOperation(deps, swatchId).result
 }
 
 /**
@@ -205,10 +192,9 @@ export function ensureEnforcement(
  */
 export function removeEnforcement(
   deps: EnforcementDeps,
-  swatchId: string,
-  bg0: string
+  swatchId: string
 ): Promise<boolean> {
-  return removeOperation(deps, swatchId, bg0).result
+  return removeOperation(deps, swatchId).result
 }
 
 export type EnforcementQueue = {
@@ -233,8 +219,7 @@ export type EnforcementQueue = {
  */
 export function createEnforcementQueue(
   deps: EnforcementDeps,
-  swatchId: string,
-  bg0: string
+  swatchId: string
 ): EnforcementQueue {
   let tail: Promise<unknown> = Promise.resolve()
 
@@ -267,13 +252,13 @@ export function createEnforcementQueue(
       enqueue<EnsureOutcome>(
         () =>
           isCurrent()
-            ? ensureOperation(deps, swatchId, bg0)
+            ? ensureOperation(deps, swatchId)
             : {
                 result: Promise.resolve({ kind: "superseded", sent: 0 }),
                 settled: Promise.resolve(),
               },
         { kind: "timeout", sent: 0 }
       ),
-    remove: () => enqueue(() => removeOperation(deps, swatchId, bg0), false),
+    remove: () => enqueue(() => removeOperation(deps, swatchId), false),
   }
 }

@@ -208,6 +208,18 @@ import type { Swatch } from "./swatches"
 const CANVAS_SELECTOR = ":root:root, :root:root body"
 
 /**
+ * SF-CUT3 (#1489): a custom property only this sheet declares, carrying the
+ * swatch id, which the content side reads back
+ * (`getComputedStyle(<html>).getPropertyValue(...)`) as proof the sheet is in
+ * the document's cascade. Not the canvas colour: a vendor page can paint its
+ * own `<html>` exactly `bg0` (bot-found on #1521), and the veil would then
+ * come down on an unenforced page. At the user origin, `!important` beats
+ * every author declaration of the same name, `!important` or not, so a page
+ * cannot fake it either.
+ */
+export const ENFORCEMENT_SENTINEL_PROPERTY = "--sw-enforcement-sheet"
+
+/**
  * §2.2 (erase, don't paint): every carrier except the four excluded from
  * `background-image: none` below. `svg` is excluded alongside
  * `img`/`video`/`canvas` because it can carry its own fill/gradient defs
@@ -511,6 +523,8 @@ export function buildEnforcementCSS(swatch: Swatch): string {
 /* §3.2: specificity-boosted canvas rule — must out-rank ERASE_SELECTOR. */
 ${CANVAS_SELECTOR} {
   background-color: ${swatch.bg0} !important;
+  /* The presence sentinel — see ENFORCEMENT_SENTINEL_PROPERTY. */
+  ${ENFORCEMENT_SENTINEL_PROPERTY}: ${swatch.id} !important;
   /* A vendor's own root-level compositing filter (the "dark mode via an
      invert(1) filter on html" trick, filter-invert-vendor-page.html) is
      applied *after* painting and would invert every enforced token back to

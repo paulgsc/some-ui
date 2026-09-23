@@ -216,21 +216,26 @@ async function applyEnforcement(
 // the default (flag-off) path puts no veil and no script into any iframe.
 const FRAME_SCRIPT_ID = "sf-enforcement-frames"
 
-// `matchOriginAsFallback` (Chromium 119+, Firefox 128+; not yet in this
-// package's typings, hence a variable rather than an inline literal) also
-// matches `about:blank`, `srcdoc`, `data:` and `blob:` frames by their
-// creator's origin (bot-found on #1521: a same-origin srcdoc iframe with an
-// authored white background got neither a veil nor the sheet). Those frames
-// pay for a veil and one round trip each; an empty one confirms at once.
-const frameScript = {
+// The definition every supported browser accepts.
+const compatibleFrameScript = {
   id: FRAME_SCRIPT_ID,
   matches: ["<all_urls>"],
   allFrames: true,
-  matchOriginAsFallback: true,
   runAt: "document_start" as const,
   css: ["prepaint.css"],
   js: ["frame.js"],
 }
+
+// Plus `matchOriginAsFallback`, which also matches `about:blank`, `srcdoc`,
+// `data:` and `blob:` frames by their creator's origin (bot-found on #1521:
+// a same-origin srcdoc iframe with an authored white background got neither
+// a veil nor the sheet). Those frames pay for a veil and one round trip each;
+// an empty one confirms at once. The key needs Chromium 119+ / Firefox 128+
+// and is not in this package's typings yet (hence a variable, not an inline
+// literal); an older browser rejects the whole registration over it, so
+// syncFrameScript() falls back to the compatible definition rather than
+// registering nothing (bot-found on #1521, round 2).
+const frameScript = { ...compatibleFrameScript, matchOriginAsFallback: true }
 
 async function syncFrameScript(): Promise<void> {
   try {
@@ -239,7 +244,13 @@ async function syncFrameScript(): Promise<void> {
       ids: [FRAME_SCRIPT_ID],
     })
     if (enabled && registered.length === 0) {
-      await ext.scripting.registerContentScripts([frameScript])
+      try {
+        await ext.scripting.registerContentScripts([frameScript])
+      } catch {
+        // Schema rejection on a browser without matchOriginAsFallback: every
+        // http(s)/file frame is still covered, fallback-origin frames are not.
+        await ext.scripting.registerContentScripts([compatibleFrameScript])
+      }
     } else if (!enabled && registered.length > 0) {
       await ext.scripting.unregisterContentScripts({ ids: [FRAME_SCRIPT_ID] })
     }

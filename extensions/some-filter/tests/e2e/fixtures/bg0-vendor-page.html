@@ -1,0 +1,20 @@
+<!doctype html>
+<!--
+  SF-CUT3 (#1489): a vendor page whose own <html> is exactly the default
+  swatch's bg0 (#171c25) over a white body. A presence check that read the
+  canvas colour would take this for the enforcement sheet already being in
+  place, send nothing, and drop the veil onto the white body (bot-found on
+  #1521). The sheet's own sentinel custom property is what proves presence.
+-->
+<html style="background-color: #171c25">
+  <head>
+    <meta charset="utf-8" />
+    <title>bg0 Vendor Page Fixture</title>
+  </head>
+  <body style="background-color: rgb(255, 255, 255); margin: 0">
+    <main style="background-color: rgb(255, 255, 255)">
+      <h1>bg0 Vendor Page Fixture</h1>
+      <p>The root is bg0 already; everything under it is white.</p>
+    </main>
+  </body>
+</html>

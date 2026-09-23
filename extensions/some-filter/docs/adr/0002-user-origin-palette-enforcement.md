@@ -517,9 +517,12 @@ document:
 
 - **Requested per document, confirmed by a read.** The content side sends
   `ENSURE_ENFORCEMENT` and the background injects the sheet into exactly the
-  requesting frame. The veil comes down only after `<html>`'s computed
-  background reads back as `bg0`, through the same custody commit a
-  classifier round uses. The `tabs.onUpdated` injection is gone: it ran for
+  requesting frame. The veil comes down only after the sheet's own sentinel
+  reads back from `<html>`'s computed style, through the same custody commit a
+  classifier round uses. The sentinel is a custom property the canvas rule
+  declares with the swatch id at user-origin `!important`, which a page
+  cannot override. It is not the canvas colour, which a vendor page can match
+  on its own. The `tabs.onUpdated` injection is gone: it ran for
   every tab regardless of state, and nothing confirmed it had landed. The
   background keeps no per-tab state. Two identical `insertCSS` calls stack
   two copies and one `removeCSS` removes one (measured on Chromium 1194), so
@@ -547,7 +550,9 @@ document:
   content script for every subframe at `document_start`. It raises that
   frame's own veil and runs the same handshake, which covers frames created
   after load, and it matches fallback-origin frames (`about:blank`,
-  `srcdoc`, `data:`) by their creator's origin. It is a dynamic registration
+  `srcdoc`, `data:`) by their creator's origin. On a browser too old for
+  `matchOriginAsFallback`, the registration falls back to one without it, so
+  that browser loses only those frames. It is a dynamic registration
   rather than a manifest `all_frames` entry, so the default path puts nothing
   into any iframe.
 - **SPA navigation.** An injected user sheet belongs to the document, so it

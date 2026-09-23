@@ -142,7 +142,6 @@ let deferredShadowContrast = false
 // for the handshake itself.
 
 const ENFORCEMENT_FLAG_KEY = "enforcementSheetEnabled"
-const ENFORCED_SWATCH = SWATCHES[DEFAULT_SWATCH_ID]
 
 /** True while this tab is in auto with the flag on: the sheet decides. */
 let enforcing = false
@@ -163,8 +162,7 @@ const enforcementDeps: EnforcementDeps = createDocumentEnforcementDeps(
 /** Every ensure and removal for this document, strictly in call order — see createEnforcementQueue(). */
 const enforcementQueue = createEnforcementQueue(
   enforcementDeps,
-  DEFAULT_SWATCH_ID,
-  ENFORCED_SWATCH.bg0
+  DEFAULT_SWATCH_ID
 )
 
 async function readEnforcementFlag(): Promise<boolean> {
@@ -376,7 +374,7 @@ const coverageWatchdog: CoverageWatchdog = createCoverageWatchdog(
   // still in flight, so its eventual completion can't tear this repair's
   // veil back down.
   () => documentScope.reengage(sessionLifecycle.epoch),
-  () => (enforcing && currentState === "auto" ? ENFORCED_SWATCH.bg0 : null)
+  () => (enforcing && currentState === "auto" ? DEFAULT_SWATCH_ID : null)
 )
 
 function touchObservabilityIndex(): void {
@@ -770,7 +768,7 @@ function enforcedAndPresent(): boolean {
   return (
     enforcing &&
     currentState === "auto" &&
-    sheetPresent(enforcementDeps, ENFORCED_SWATCH.bg0)
+    sheetPresent(enforcementDeps, DEFAULT_SWATCH_ID)
   )
 }
 
@@ -1138,7 +1136,7 @@ function init(): void {
   // re-initialisation #1460 also asks for stays out of scope.
   window.addEventListener("pageshow", (event) => {
     if (!event.persisted || !enforcing || currentState !== "auto") return
-    if (!sheetPresent(enforcementDeps, ENFORCED_SWATCH.bg0)) {
+    if (!sheetPresent(enforcementDeps, DEFAULT_SWATCH_ID)) {
       documentScope.reengage(sessionLifecycle.epoch)
     }
     void runEnforcementRound(stateGeneration)

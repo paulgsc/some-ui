@@ -227,6 +227,37 @@ test.describe("SF-CUT3 veil handshake (flag on)", () => {
     })
   }
 
+  test("a vendor <html> that is already exactly bg0 is not mistaken for the sheet: the body under it is still erased before the veil comes down", async ({
+    context,
+    fixture,
+  }) => {
+    const sw = await backgroundWorker(context)
+    await enableEnforcement(sw)
+
+    const page = await fixture.goto("bg0-vendor-page")
+    await awaitEnforced(page)
+    await page.waitForFunction(
+      (id) => document.getElementById(id) === null,
+      VEIL_ID,
+      { timeout: 5_000, polling: 50 }
+    )
+    const released = await page.evaluate(() => ({
+      body: getComputedStyle(document.body).backgroundColor,
+      main: getComputedStyle(document.querySelector("main") ?? document.body)
+        .backgroundColor,
+      sentinel: getComputedStyle(document.documentElement)
+        .getPropertyValue("--sw-enforcement-sheet")
+        .trim(),
+    }))
+    // The sheet really is in the cascade: the canvas rule paints body bg0
+    // and the erase rule clears <main>'s authored white.
+    expect(released).toEqual({
+      body: ENFORCED_BG,
+      main: "rgba(0, 0, 0, 0)",
+      sentinel: "default",
+    })
+  })
+
   test("a slow background (a worker busy for 800 ms, inside the liveness bound): the veil holds until the sheet is read back, not until the request is sent", async ({
     context,
     fixture,
