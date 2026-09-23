@@ -12,7 +12,9 @@
 // for visual diffing) but no longer shipped to the site.
 // Turbo builds @some-ui/resume first via this app's `^build` dependency, so
 // the source is normally already there; running this script directly
-// (bypassing turbo) just warns instead of failing the dev server.
+// (bypassing turbo) just warns about missing PDFs instead of failing the dev
+// server. A missing *module* build is different and fails at once — see the
+// check before the manifest read below.
 import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -46,49 +48,77 @@ function expectedResumePdfs() {
   return JSON.parse(readFileSync(manifestPath, "utf8"))
 }
 
-const expected = expectedResumePdfs()
-const missing =
-  expected === null
-    ? null
-    : expected.filter((file) => !existsSync(join(resumeDir, file)))
-
-if (missing !== null && missing.length === 0) {
-  mkdirSync(publicDir, { recursive: true })
-  for (const file of expected) {
-    copyFileSync(join(resumeDir, file), join(publicDir, file))
-  }
+// #1453: `src/routes/_dashboard/resume.tsx` imports @some-ui/resume as a
+// module, so its built JS is not an artifact that can degrade the way the
+// PDFs below can: without it `vite build` runs for ~8s and then dies inside
+// Rolldown with a stack trace that never says "not built" (and suggests
+// externalizing the import, which would ship a broken bundle). Check for it
+// first and fail at once, in CI and locally alike, naming the package and
+// the command. Read from the package's own manifest so a renamed entry
+// cannot go stale here.
+const resumePackageDir = join(appDir, "../../packages/ui/resume")
+const resumeEntry = join(
+  resumePackageDir,
+  JSON.parse(readFileSync(join(resumePackageDir, "package.json"), "utf8"))
+    .module
+)
+if (!existsSync(resumeEntry)) {
   // eslint-disable-next-line no-console
-  console.log(
-    `[www] synced ${expected.length} résumé PDF(s) from @some-ui/resume`
+  console.error(
+    "[www] @some-ui/resume is not built - its module entry " +
+      `${resumeEntry} does not exist, and /resume imports it. Build it ` +
+      "first: pnpm --filter @some-ui/resume build"
   )
+  process.exitCode = 1
 } else {
-  const detail =
-    missing === null
-      ? "documents/manifest.json not found"
-      : `${missing.length} of ${expected.length} compiled résumé PDFs ` +
-        `missing: ${missing.join(", ")}`
+  syncResumePdfs()
+}
 
-  if (process.env["CI"]) {
-    // Warning is right for a developer and wrong for a release. Missing
-    // PDFs here mean the site ships with a 404 behind every download and
-    // desktop preview, and a warning in a green build is not something
-    // anyone reads.
-    //
-    // This fires if @some-ui/resume's build output ever stops arriving -
-    // the way it did when `documents/` was not listed in turbo.json's
-    // build `outputs` and a cache hit restored nothing.
-    throw new Error(
-      `[www] ${detail} in ${resumeDir}. Refusing to build a site whose ` +
-        "résumé template picker would 404 on those options - check that " +
-        "@some-ui/resume built completely, and that its output directory " +
-        "is listed in turbo.json's build outputs."
+function syncResumePdfs() {
+  const expected = expectedResumePdfs()
+  const missing =
+    expected === null
+      ? null
+      : expected.filter((file) => !existsSync(join(resumeDir, file)))
+
+  if (missing !== null && missing.length === 0) {
+    mkdirSync(publicDir, { recursive: true })
+    for (const file of expected) {
+      copyFileSync(join(resumeDir, file), join(publicDir, file))
+    }
+    // eslint-disable-next-line no-console
+    console.log(
+      `[www] synced ${expected.length} résumé PDF(s) from @some-ui/resume`
+    )
+  } else {
+    const detail =
+      missing === null
+        ? "documents/manifest.json not found"
+        : `${missing.length} of ${expected.length} compiled résumé PDFs ` +
+          `missing: ${missing.join(", ")}`
+
+    if (process.env["CI"]) {
+      // Warning is right for a developer and wrong for a release. Missing
+      // PDFs here mean the site ships with a 404 behind every download and
+      // desktop preview, and a warning in a green build is not something
+      // anyone reads.
+      //
+      // This fires if @some-ui/resume's build output ever stops arriving -
+      // the way it did when `documents/` was not listed in turbo.json's
+      // build `outputs` and a cache hit restored nothing.
+      throw new Error(
+        `[www] ${detail} in ${resumeDir}. Refusing to build a site whose ` +
+          "résumé template picker would 404 on those options - check that " +
+          "@some-ui/resume built completely, and that its output directory " +
+          "is listed in turbo.json's build outputs."
+      )
+    }
+
+    // eslint-disable-next-line no-console
+    console.warn(
+      `\n[www] ${detail} - the /resume route's download and desktop preview ` +
+        "will 404 until they exist. Build the source package first:\n" +
+        "  pnpm --filter @some-ui/resume build\n"
     )
   }
-
-  // eslint-disable-next-line no-console
-  console.warn(
-    `\n[www] ${detail} - the /resume route's download and desktop preview ` +
-      "will 404 until they exist. Build the source package first:\n" +
-      "  pnpm --filter @some-ui/resume build\n"
-  )
 }
