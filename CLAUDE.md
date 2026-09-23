@@ -68,7 +68,7 @@ never "sounds like good practice."
   module '@some-ui/...'` errors that look real but just mean "never built"). Scope
   `tsc`/`vitest` to the package you're in (`pnpm exec vitest run <path>`), not the repo root.
 - **`@some-ui/resume` is the package that fails that graph build, and neither of its two
-  failures is an environment gap to route around — both are fixable here in about a minute.**
+  host-tool gaps is one to route around — both are fixable here in about a minute.**
   It is the only package whose build downloads a pinned `typst` plus nine font files and then
   validates the _rendered PDFs_ with Poppler's `pdftotext`, so it trips over two things
   nothing else in the repo touches. (1) `turbo` runs tasks in strict env mode, which stripped
@@ -76,19 +76,22 @@ never "sounds like good practice."
   `turbo` while the byte-identical `fetch` succeeded when run directly. Fixed in `turbo.json`
   via `globalPassThroughEnv` (which also carries `PDFTOTEXT_BIN`, the escape hatch the check
   scripts document and strict mode was likewise eating). If it resurfaces the tell is
-  `[resume] fetch failed: self-signed certificate in certificate chain` — check the URL with
+  `self-signed certificate in certificate chain (SELF_SIGNED_CERT_IN_CHAIN)` at the end of a
+  `[resume] Failed to download <url>: fetch failed <- ...` line — check that URL with
   `curl` (which does honour the proxy env) before believing the network is blocked. (2)
-  `pdftotext` genuinely is absent, but it is one command away:
+  `pdftotext` genuinely is absent. Since #1452 that no longer fails the build: a local build
+  without it prints `[resume] WARNING: ... Skipping check-ats.mjs and check-layout.mjs` and
+  completes (with `CI` set it fails instead). Install it anyway whenever you touch anything
+  the résumé renders — the warning means the two checks that catch dropped terms and
+  colliding lines did not run, and CI is then the first thing to run them. It is one command:
   `apt-get update -qq && apt-get install -y --no-install-recommends poppler-utils`. The
-  script's own error names `poppler-utils`; it also names the repo's nix shell, which does
-  not exist in this sandbox — ignore that half rather than concluding the whole remedy is
-  unavailable. Until both hold, `--continue` masks the damage instead of avoiding it:
-  `www:build` still fails outright on `Rolldown failed to resolve import "@some-ui/resume"`,
-  and a `www` build that does get through ships a `/resume` route whose download and desktop
-  preview 404 (`[www] documents/manifest.json not found`). A graph build ending
-  `Failed: @some-ui/resume#build, www#build` is the expected outcome of following the bullet
-  above _without_ these two — it is not pre-existing breakage to note and step around, and
-  "not my change" is the wrong call on it.
+  warning names `poppler-utils`; the README also names the repo's nix shell, which does not
+  exist in this sandbox — ignore that half. Until (1) holds, `--continue` masks the damage
+  instead of avoiding it: `www:build` still fails outright on
+  `Rolldown failed to resolve import "@some-ui/resume"`. A graph build ending
+  `Failed: @some-ui/resume#build, www#build`
+  is the expected outcome of following the bullet above without it — it is not pre-existing
+  breakage to note and step around, and "not my change" is the wrong call on it.
 - **A tool call can be denied by this environment's permission classifier independent of
   whether the action itself is valid.** Scheduling and cleanup calls in particular
   (`send_later`/`create_trigger`, `unsubscribe_pr_activity`, `delete_trigger`) have each been

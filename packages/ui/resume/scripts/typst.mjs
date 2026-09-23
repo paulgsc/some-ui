@@ -19,6 +19,7 @@ import { arch, platform, tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
+import { download } from "./download.mjs"
 import { resolveFontPath } from "./fonts.mjs"
 
 const TYPST_VERSION = "0.13.1"
@@ -98,11 +99,7 @@ async function downloadBinary() {
 
   // eslint-disable-next-line no-console
   console.log(`[resume] fetching typst ${TYPST_VERSION} (${triple})...`)
-  const res = await fetch(url)
-  if (!res.ok) {
-    throw new Error(`Failed to download ${url}: HTTP ${res.status}`)
-  }
-  const archiveBytes = new Uint8Array(await res.arrayBuffer())
+  const archiveBytes = await download(url)
 
   const tmpDir = mkdtempSync(join(tmpdir(), "typst-dl-"))
   const archivePath = join(tmpDir, asset)

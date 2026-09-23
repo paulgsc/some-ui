@@ -35,6 +35,8 @@ jobs:
         run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline
         env:
           HUSKY: 0
+
+      - uses: ./.github/actions/resume-assets-cache
       # "All packages" means all *Node* packages. `pnpm build` is
       # `turbo run build --filter='!./crates/*'` (root package.json) - the
       # crates/* wasm workspaces are excluded on purpose. Their `build` script

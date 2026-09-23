@@ -77,6 +77,8 @@ jobs:
         env:
           HUSKY: 0
 
+      - uses: ./.github/actions/resume-assets-cache
+
       # Build only the packages that changed or whose dependents changed.
       # The ...[HEAD^1] syntax means: this package and everything that
       # depends on it, filtered to what changed since the last commit.

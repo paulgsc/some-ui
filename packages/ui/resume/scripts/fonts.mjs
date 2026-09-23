@@ -9,7 +9,7 @@
 // so the families below are downloaded, content-verified, and handed to typst
 // via `--font-path` with system fonts ignored.
 //
-// Same shape as the typst binary fetch in compile.mjs: resolve from cache,
+// Same shape as the typst binary fetch in scripts/typst.mjs: resolve from cache,
 // otherwise download once and cache under node_modules/.cache. Files are
 // pinned by SHA-256 rather than by upstream revision — if Google Fonts reissues
 // a face, the build fails loudly instead of silently re-flowing the page.
@@ -17,6 +17,8 @@ import { createHash } from "node:crypto"
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+
+import { download } from "./download.mjs"
 
 const packageDir = dirname(dirname(fileURLToPath(import.meta.url)))
 const cacheDir = join(packageDir, "node_modules", ".cache", "resume-fonts")
@@ -96,9 +98,7 @@ async function ensureFile(name, path, expected) {
   if (existsSync(target) && digest(readFileSync(target)) === expected) return
 
   const url = `${RAW}/${encodeURI(path)}`
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`Failed to download ${url}: HTTP ${res.status}`)
-  const bytes = Buffer.from(await res.arrayBuffer())
+  const bytes = await download(url)
 
   const actual = digest(bytes)
   if (actual !== expected) {

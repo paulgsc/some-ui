@@ -1,0 +1,33 @@
+name: "Résumé Assets Cache"
+description: "Restore/save @some-ui/resume's pinned typst binary and font files."
+# @some-ui/resume's build downloads a pinned typst release (~30 MB .tar.xz
+# from github.com) and nine pinned font files (raw.githubusercontent.com)
+# into its own node_modules/.cache, and nothing else kept them between runs:
+# pnpm-cache holds only the pnpm store, and the turbo `build` outputs do not
+# include node_modules. So every cold job that built the package re-fetched
+# all ten from hosts with no availability guarantee for this repo (#1451).
+#
+# The key hashes the two files that pin what is downloaded - TYPST_VERSION in
+# typst.mjs, the SHA-256 font table in fonts.mjs - so changing either pin
+# misses the cache and fetches the new set. It cannot serve a stale font
+# anyway: fonts.mjs re-verifies every cached file against its checksum and
+# re-downloads on a mismatch. `runner.arch` is in the key because the typst
+# binary is per-architecture.
+#
+# Not done: adding these directories to turbo's `build` outputs. They live
+# under node_modules, and a turbo cache hit already skips the compile that
+# needs them, so the only thing it would add is a 30 MB binary to every
+# cached build of this package.
+#
+# Use after `pnpm install`, so the install step never sees a half-populated
+# node_modules it did not create.
+runs:
+  using: composite
+  steps:
+    - name: Restore résumé typst + font cache
+      uses: actions/cache@v6
+      with:
+        path: |
+          packages/ui/resume/node_modules/.cache/typst-bin
+          packages/ui/resume/node_modules/.cache/resume-fonts
+        key: resume-assets-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('packages/ui/resume/scripts/typst.mjs', 'packages/ui/resume/scripts/fonts.mjs') }}

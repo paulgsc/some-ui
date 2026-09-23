@@ -190,6 +190,9 @@ jobs:
             --prefer-offline
         env:
           HUSKY: 0
+
+      - uses: ./.github/actions/resume-assets-cache
+
       # honeycomb's sfx lives in packages/some-content (pure assets, no build
       # step of its own) and isn't part of www's own public/ dir. It's
       # tiny/curated enough to bake into the static GitHub Pages build (unlike
@@ -271,6 +274,9 @@ jobs:
             --prefer-offline
         env:
           HUSKY: 0
+
+      - uses: ./.github/actions/resume-assets-cache
+
       # `pnpm build` is `turbo run build --filter='!./crates/*'` (see the root
       # package.json). The filter is what keeps wasm-pack out of this job:
       # crates/* are pnpm workspaces with a `build` script that shells out to

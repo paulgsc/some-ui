@@ -24,6 +24,8 @@ jobs:
             --prefer-offline
         env:
           HUSKY: 0
+
+      - uses: ./.github/actions/resume-assets-cache
       # `pnpm build` excludes crates/* (root package.json). This is the
       # changesets release for the Node packages; the wasm packages have their
       # own publish track in wasm-release.yml, which builds each changed crate
