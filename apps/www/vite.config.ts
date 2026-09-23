@@ -216,19 +216,25 @@ export default defineConfig(
         output: {},
         // Tree shaking options
         treeshake: {
-          // Enable aggressive tree shaking
+          // Every module is treated as side-effect free, so an import that
+          // binds nothing (`import "@some-ui/x/register"`) is dropped from the
+          // bundle along with whatever that module does at load time. Keep
+          // that in mind before adding one: this line overrides the
+          // `sideEffects` field of every workspace package's manifest for JS.
+          //
+          // It does NOT drop stylesheets (#1458, measured on Vite 8 /
+          // Rolldown): with `import "@some-ui/auth/style.css"` added to a
+          // route and a marker rule appended to that file, the marker shipped
+          // in www's CSS both with this setting and without it — Vite's CSS
+          // pipeline keeps CSS modules regardless. So the 22 packages/ui
+          // manifests that declare `sideEffects: ["*.css"]` are not being
+          // overridden here; www imports no package CSS today anyway
+          // (src/index.css runs one Tailwind pass over style.context.ts).
           moduleSideEffects: false,
           // Custom tree shaking for your authored packages
           propertyReadSideEffects: false,
           // Enable pure annotation checking
           annotations: true,
-        },
-        // External dependencies (won't be bundled)
-        external: (id): boolean => {
-          // Don't externalize your authored packages - we want to analyze them
-          if (id.startsWith("some")) return false
-          // You can add other conditions here
-          return false
         },
       },
       // Generate source maps for better analysis
@@ -256,25 +262,6 @@ export default defineConfig(
       chunkSizeWarningLimit: 1000,
       // Generate detailed build report
       reportCompressedSize: true,
-    },
-    // Dependency optimization
-    optimizeDeps: {
-      // Include your authored dependencies for analysis
-      include: [
-        // Add your authored package names here
-        // '@yourorg/package1',
-        // '@yourorg/package2',
-      ],
-      // Exclude packages you want to analyze tree shaking for
-      exclude: [],
-    },
-    // Define globals for tree shaking analysis
-    define: {
-      // This helps with dead code elimination
-      __DEV__: JSON.stringify(process.env.NODE_ENV !== "production"),
-      // Add feature flags for your packages
-      __FEATURE_A__: JSON.stringify(true),
-      __FEATURE_B__: JSON.stringify(false),
     },
     // No `esbuild` block. Vite 8 transforms with oxc, not esbuild, and
     // ignores this key outright — the build printed "Both esbuild and oxc
