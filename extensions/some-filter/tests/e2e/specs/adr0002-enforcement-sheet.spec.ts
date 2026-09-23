@@ -407,6 +407,7 @@ test.describe("ADR 0002 enforcement sheet", () => {
         fileButtonBg: cs(file, "::file-selector-button").backgroundColor,
         extChildBg: cs(extChild).backgroundColor,
         extChildColor: cs(extChild).color,
+        extChildFill: cs(extChild).webkitTextFillColor,
       }
     })
 
@@ -433,6 +434,9 @@ test.describe("ADR 0002 enforcement sheet", () => {
     // A descendant of an extension-owned element keeps its author styling.
     expect(probe.extChildBg).toBe("rgb(1, 2, 3)")
     expect(probe.extChildColor).toBe("rgb(4, 5, 6)")
+    // -webkit-text-fill-color inherits: the glyphs must follow the subtree's
+    // own colour, not the enforced one from an ancestor outside the guard.
+    expect(probe.extChildFill).toBe("rgb(4, 5, 6)")
   })
 
   // The following five cases replace a single "borderStrong actually

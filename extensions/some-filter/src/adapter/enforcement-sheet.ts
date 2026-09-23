@@ -573,7 +573,12 @@ ${ERASE_SELECTOR} {
      black text or a white underline on the dark canvas either way.
      currentColor, never text0: both then follow the color the element ends
      up with, so a HIGHLIGHT_TABLE row (links, code, headings) keeps driving
-     them instead of being silently overridden. */
+     them instead of being silently overridden. It is also what keeps an
+     excluded [data-my-ext] subtree safe: -webkit-text-fill-color inherits,
+     and currentColor inherits as the keyword (CSS Color 4), so a guarded
+     child's glyphs resolve against its own colour, not the enforced colour
+     of an ancestor outside the guard. A fixed token here would leak into
+     every guarded subtree; the #1497 e2e case reads the child's fill back. */
   -webkit-text-fill-color: currentColor !important;
   text-decoration-color: currentColor !important;
 }
