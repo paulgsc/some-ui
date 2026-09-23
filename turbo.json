@@ -56,6 +56,7 @@
       "outputs": []
     },
     "lint:js": {
+      "dependsOn": ["^build", "@some-ui/eslint-kit#build"],
       "cache": false,
       "outputs": []
     },
@@ -71,7 +72,9 @@
     "prettier": {
       "cache": false
     },
-    "typecheck": {},
+    "typecheck": {
+      "dependsOn": ["^build"]
+    },
     "check": {
       "cache": false
     },
