@@ -214,7 +214,11 @@ spacing looks good. Gaps that are too _wide_ remain a judgement call.
 
 `pdftotext` is a build input, not a convenience: it comes from the repo's nix
 shells (`nix/pdf`). Outside nix, install `poppler-utils` or point
-`PDFTOTEXT_BIN` at a compatible executable.
+`PDFTOTEXT_BIN` at a compatible executable. Where it is missing, a local build
+still completes — with a warning, and with the ATS and layout checks skipped —
+but a build with `CI` set fails instead, so CI stays the gate. Any failed build
+removes `documents/` entirely rather than leaving unverified artifacts without
+a manifest.
 
 `apps/www`'s `/resume` route uses the compiled SVG on narrow viewports so mobile
 web views render the document as ordinary web content instead of handing the
