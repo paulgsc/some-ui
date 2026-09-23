@@ -44,6 +44,21 @@ be exactly the routes that changed, nothing else. Never hand-edit
 `routes.server.json` or `routes.ts` to add a route; both are generated, and a
 hand-written entry can silently drift from what the server actually serves.
 
+## Test layout
+
+A source directory keeps **at most one** `*.test.*` file. A second one means all of that
+directory's tests live in `<dir>/__tests__/`, with basenames unchanged. The generated
+TanStack routing tree (`src/routes/**`) keeps **none** outside `__tests__/`. Dedicated test
+trees named `__tests__/` or `tests/` (`packages/eslint/tests`,
+`packages/some-styles/styles-build/tests`) are exempt from the one-per-directory limit.
+
+This is enforced, not advisory: `build-hygiene/test-layout` in `@some-ui/eslint-kit` is an
+error in every workspace's preset (#772, #1475). Colocating a second test beside the file
+you're editing is the easy path, and it fails lint. When moving tests, prefer the
+package's path alias over `../`, which most workspaces ban. Watch any test that derives a
+directory from `import.meta.url` to scan it: it now sits one level deeper and can pass
+having scanned nothing.
+
 ## Cold-start footguns worth not re-discovering
 
 These bite during ordinary implementation work, **before any PR exists** — read this at the

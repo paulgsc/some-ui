@@ -1,4 +1,4 @@
-import { noManualBuildExclude } from "@eslint/rules/index.js"
+import { noManualBuildExclude, testLayout } from "@eslint/rules/index.js"
 import { defineConfig } from "eslint/config"
 
 /**
@@ -12,6 +12,7 @@ export const buildHygienePlugin = {
   meta: { name: "build-hygiene", version: "0.0.1" },
   rules: {
     "no-manual-build-exclude": noManualBuildExclude,
+    "test-layout": testLayout,
   },
 }
 
@@ -28,6 +29,16 @@ export default defineConfig([
     plugins: { "build-hygiene": buildHygienePlugin },
     rules: {
       "build-hygiene/no-manual-build-exclude": "error",
+    },
+  },
+  // The test-layout convention (#772): at most one *.test.* per source
+  // directory, none in a src/routes/ tree outside __tests__/. Scoped to test
+  // files; the rule reads only the linted file's own directory listing.
+  {
+    files: ["**/*.test.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"],
+    plugins: { "build-hygiene": buildHygienePlugin },
+    rules: {
+      "build-hygiene/test-layout": "error",
     },
   },
 ])
