@@ -258,11 +258,14 @@ export function disablePrepaint(): void {
  * sampled, and getBoundingClientRect() forces a synchronous flush so the freeze
  * is in effect before fn() samples.
  */
+/** The transition/animation freeze, shared with the enforcement handshake (`enforcement-dom.ts`). */
+export const TRANSITION_FREEZE_CSS =
+  "*, *::before, *::after { transition: none !important; animation: none !important; }"
+
 export function withPrepaintSuppressed<T>(fn: () => T): T {
   const freeze = document.createElement("style")
   freeze.setAttribute("data-my-ext", "")
-  freeze.textContent =
-    "*, *::before, *::after { transition: none !important; animation: none !important; }"
+  freeze.textContent = TRANSITION_FREEZE_CSS
   document.head.appendChild(freeze)
 
   // Force a synchronous style + layout flush so the freeze is applied before

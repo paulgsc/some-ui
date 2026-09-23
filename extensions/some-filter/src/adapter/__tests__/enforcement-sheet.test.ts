@@ -1,4 +1,7 @@
-import { buildEnforcementCSS } from "@filter/adapter/enforcement-sheet"
+import {
+  buildEnforcementCSS,
+  ENFORCEMENT_SENTINEL_PROPERTY,
+} from "@filter/adapter/enforcement-sheet"
 import { SWATCHES } from "@filter/adapter/swatches"
 import { describe, expect, it } from "vitest"
 
@@ -36,6 +39,19 @@ describe("buildEnforcementCSS", () => {
     const css = buildEnforcementCSS(swatch)
     expect(css).toContain(":root:root, :root:root body")
     expect(css).not.toMatch(/(?<!:root)\bhtml\s*,\s*body\b/)
+  })
+
+  it("declares the presence sentinel on the canvas rule, carrying the swatch id (SF-CUT3: a colour cannot prove the sheet is there)", () => {
+    for (const s of [swatch, SWATCHES["purple-gray"]]) {
+      const rule = ruleBody(
+        buildEnforcementCSS(s),
+        ":root:root, :root:root body {"
+      )
+      expect(rule).toContain(
+        `${ENFORCEMENT_SENTINEL_PROPERTY}: ${s.id} !important;`
+      )
+    }
+    expect(ENFORCEMENT_SENTINEL_PROPERTY.startsWith("--")).toBe(true)
   })
 
   it("neutralizes a root-level vendor filter on the canvas rule (bot-found on #1463: html { filter: invert(1) } inverted E back to light)", () => {

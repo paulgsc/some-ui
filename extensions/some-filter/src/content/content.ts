@@ -38,12 +38,19 @@ import {
   type CoverageWatchdog,
   type ScopeCoverageWatchdog,
 } from "@filter/lib/content/coverage-watchdog"
+import { createDocumentEnforcementDeps } from "@filter/lib/content/enforcement-dom"
+import {
+  createEnforcementQueue,
+  sheetPresent,
+  type EnforcementDeps,
+} from "@filter/lib/content/enforcement-handshake"
 import {
   isExtensionMessage,
   isGetTabFilterStateResponse,
 } from "@filter/lib/content/guard"
 import {
   disablePrepaint,
+  enablePrepaint,
   withPrepaintSuppressed,
 } from "@filter/lib/content/prepaint"
 import { applyTheme, restoreVendor } from "@filter/lib/content/theme-apply"
@@ -121,6 +128,51 @@ let navigatingAway = false
  * route settles. See that callback for why nothing else covers it.
  */
 let deferredShadowContrast = false
+
+// ── Enforcement sheet (SF-CUT3, #1489) ─────────────────────────────────────
+//
+// Behind `enforcementSheetEnabled` (storage.local, default off). When it is
+// on, auto mode is the sheet, not the classifier: runAutoTheme() requests the
+// sheet for this document, confirms it by reading the cascade, and releases
+// the veil through the same custody the classifier's rounds use — and starts
+// none of the classifier's machinery (content session, shadow discovery and
+// theming, scope-coverage watchdog). Either engine, never both, in one tab:
+// the sheet's erase rule overrides shadow-scope theming, and the classifier's
+// scan would read erased colours. See `lib/content/enforcement-handshake.ts`
+// for the handshake itself.
+
+const ENFORCEMENT_FLAG_KEY = "enforcementSheetEnabled"
+
+/** True while this tab is in auto with the flag on: the sheet decides. */
+let enforcing = false
+/**
+ * True from this document's first ENSURE request until a removal read shows
+ * the sheet gone. Set on *send*, not on confirm: a request that outlives its
+ * liveness bound can still land afterwards, and leaving auto must then still
+ * take it out, or legacy's invert would composite under the canvas rule's
+ * `filter: none`.
+ */
+let enforcementMayBePresent = false
+/** Bumped by every applyState(); async enforcement steps that see it change stand down. */
+let stateGeneration = 0
+
+const enforcementDeps: EnforcementDeps = createDocumentEnforcementDeps(
+  (request) => ext.runtime.sendMessage(request)
+)
+/** Every ensure and removal for this document, strictly in call order — see createEnforcementQueue(). */
+const enforcementQueue = createEnforcementQueue(
+  enforcementDeps,
+  DEFAULT_SWATCH_ID
+)
+
+async function readEnforcementFlag(): Promise<boolean> {
+  try {
+    const data = await ext.storage.local.get([ENFORCEMENT_FLAG_KEY])
+    return data[ENFORCEMENT_FLAG_KEY] === true
+  } catch {
+    return false
+  }
+}
 
 // The content session's epoch source (Definition 5.4). Reset on every
 // SPA-navigation re-patch (Theorem D.1(a)) — a full page reset (refresh)
@@ -321,7 +373,8 @@ const coverageWatchdog: CoverageWatchdog = createCoverageWatchdog(
   // left open) both re-asserts the veil and invalidates any resolveCommitted()
   // still in flight, so its eventual completion can't tear this repair's
   // veil back down.
-  () => documentScope.reengage(sessionLifecycle.epoch)
+  () => documentScope.reengage(sessionLifecycle.epoch),
+  () => (enforcing && currentState === "auto" ? DEFAULT_SWATCH_ID : null)
 )
 
 function touchObservabilityIndex(): void {
@@ -345,6 +398,9 @@ const visibilityGate = createVisibilityGate()
 function applyState(state: TabState): void {
   const previous = currentState
   currentState = state
+  stateGeneration++
+  // runAutoTheme() re-derives this from the flag for an auto entry.
+  enforcing = false
   writeCachedState(state)
   observabilityRecorder.record({
     kind: "state.changed",
@@ -480,6 +536,14 @@ function applyState(state: TabState): void {
       // hook handles veil teardown once the first decide/realize cycle
       // actually settles.
       visibilityGate.whenVisible(runAutoTheme)
+    } else if (enforcementMayBePresent) {
+      // SF-CUT3 (#1489): leaving an enforced auto. The sheet comes out
+      // first, under a re-armed veil that hides the swap, and only then does
+      // legacy's filter go on (or the veil come down for off). Legacy and
+      // the sheet must never be active together: the canvas rule's
+      // `filter: none` would override legacy's own invert.
+      enablePrepaint()
+      void leaveEnforcement(state, stateGeneration)
     } else if (state === "legacy") {
       applyTheme("legacy", filterConfig)
     } else {
@@ -502,6 +566,33 @@ function applyState(state: TabState): void {
   }
 
   if (actuationError !== undefined) throw actuationError
+}
+
+async function leaveEnforcement(
+  state: TabState,
+  generation: number
+): Promise<void> {
+  const removed = await enforcementQueue.remove()
+  // Cleared only while no state change has happened since: a re-entry into
+  // auto has already queued a fresh request behind this removal.
+  if (removed && generation === stateGeneration) {
+    enforcementMayBePresent = false
+  }
+  observabilityRecorder.record({
+    kind: "enforcement.removed",
+    detail: { confirmed: removed },
+  })
+  // A later applyState() owns the tab now — including, if it re-entered
+  // auto, a sheet it may have re-requested.
+  if (generation !== stateGeneration) return
+  updateDebugAttrs()
+  if (state === "legacy") {
+    applyTheme("legacy", filterConfig)
+    coverageWatchdog.check("enforcement-removed:legacy")
+  } else {
+    disablePrepaint()
+    coverageWatchdog.check("enforcement-removed:off")
+  }
 }
 
 function cycleState(): void {
@@ -594,6 +685,94 @@ function runAutoTheme(): void {
   // where nothing has released the hold yet.
   documentScope.reengage(sessionLifecycle.epoch)
 
+  // SF-CUT3 (#1489): which engine owns this tab. One storage read under the
+  // veil; a later applyState() supersedes this entry while it is pending.
+  const generation = stateGeneration
+  void readEnforcementFlag().then((flag) => {
+    if (generation !== stateGeneration || currentState !== "auto") return
+    try {
+      if (flag) {
+        enforcing = true
+        void runEnforcementRound(generation)
+      } else {
+        runClassifier()
+      }
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("[some-filter] auto mode failed to start:", error)
+    }
+  })
+}
+
+/**
+ * SF-CUT3 (#1489): one ensure/confirm/release round for the enforcement
+ * sheet. The caller has the veil up (or knows the sheet may be missing);
+ * this releases it through the document scope's custody on a confirm read,
+ * and onto the native page on the liveness timeout.
+ */
+async function runEnforcementRound(generation: number): Promise<void> {
+  enforcementMayBePresent = true
+  const outcome = await enforcementQueue.ensure(
+    () => generation === stateGeneration && currentState === "auto"
+  )
+  if (
+    outcome.kind === "superseded" ||
+    generation !== stateGeneration ||
+    currentState !== "auto"
+  ) {
+    return
+  }
+
+  updateDebugAttrs()
+  if (outcome.kind === "confirmed") {
+    document.body.dataset.swThemeApplied = "enforced"
+    observabilityRecorder.record({
+      kind: "enforcement.confirmed",
+      detail: { sent: outcome.sent },
+    })
+    documentScope.reportEnforcement({
+      kind: "confirmed",
+      swatchId: DEFAULT_SWATCH_ID,
+    })
+  } else {
+    document.body.dataset.swThemeApplied = "none"
+    observabilityRecorder.count("enforcement_timeout")
+    observabilityRecorder.record({
+      kind: "enforcement.timeout",
+      detail: { sent: outcome.sent },
+    })
+    documentScope.reportEnforcement({ kind: "timeout" })
+    retryEnforcementWhenVisible(generation)
+  }
+  coverageWatchdog.check("enforcement")
+}
+
+/**
+ * The one retry the liveness path keeps: the next time the tab becomes
+ * visible, re-raise the veil and run the round again. One-shot, and dropped
+ * if the tab's state has moved on by then.
+ */
+function retryEnforcementWhenVisible(generation: number): void {
+  const onVisible = (): void => {
+    if (document.visibilityState !== "visible") return
+    document.removeEventListener("visibilitychange", onVisible)
+    if (generation !== stateGeneration || !enforcing) return
+    documentScope.reengage(sessionLifecycle.epoch)
+    void runEnforcementRound(generation)
+  }
+  document.addEventListener("visibilitychange", onVisible)
+}
+
+/** True while this tab is enforcing and the sheet reads as present. */
+function enforcedAndPresent(): boolean {
+  return (
+    enforcing &&
+    currentState === "auto" &&
+    sheetPresent(enforcementDeps, DEFAULT_SWATCH_ID)
+  )
+}
+
+function runClassifier(): void {
   // Discover (and hold) every open shadow root already reachable from the
   // document before the first scan/decide/realize round runs — safe to do
   // unconditionally here: the document's own veil (documentScope.reengage()
@@ -870,6 +1049,18 @@ function init(): void {
     observabilityRecorder.record({ kind: "nav.start" })
     navigatingAway = true
     if (currentState === "off") return
+    // SF-CUT3 (#1489): an injected user-origin sheet belongs to the document,
+    // not to an element, so it survives the router's <head>/<body> swap, and
+    // every element the new route inserts gets its first style with the
+    // sheet already in the cascade — there is no vendor colour to flash and
+    // nothing for a transition to animate from. Re-raising the veil here
+    // would only black the page out for the router's whole start-to-finish
+    // (about 2.3 s per navigation on YouTube). nav-finish re-confirms, and
+    // raises the veil then if the sheet has somehow gone.
+    if (enforcedAndPresent()) {
+      coverageWatchdog.check("nav-start:enforced")
+      return
+    }
     // reengage() both re-arms the veil (its own reRegister()'s hold.install()
     // is the same enablePrepaint() call this used to make directly) and
     // invalidates any resolveCommitted() still in flight from a round that
@@ -895,6 +1086,14 @@ function init(): void {
       // route rather than the one being torn down.
       if (visibilityGate.pending) {
         coverageWatchdog.check("nav-finish:auto-deferred")
+        return
+      }
+      if (enforcing) {
+        if (!enforcedAndPresent()) {
+          documentScope.reengage(sessionLifecycle.epoch)
+          void runEnforcementRound(stateGeneration)
+        }
+        coverageWatchdog.check("nav-finish:enforced")
         return
       }
       sessionLifecycle.resetContent()
@@ -927,6 +1126,20 @@ function init(): void {
 
     disablePrepaint()
     coverageWatchdog.check("nav-finish:off")
+  })
+
+  // SF-CUT3 (#1489), and the auto half of #1460: a bfcache restore resumes
+  // this script rather than re-running init(). Under the sheet, re-run the
+  // confirm step — a no-op when the veil was already down and the sheet is
+  // still in place, a release when the veil was up at pagehide, and a fresh
+  // request under the veil if the sheet is gone. The recorder and watchdog
+  // re-initialisation #1460 also asks for stays out of scope.
+  window.addEventListener("pageshow", (event) => {
+    if (!event.persisted || !enforcing || currentState !== "auto") return
+    if (!sheetPresent(enforcementDeps, DEFAULT_SWATCH_ID)) {
+      documentScope.reengage(sessionLifecycle.epoch)
+    }
+    void runEnforcementRound(stateGeneration)
   })
 
   // Real navigation away (or the tab closing) — flush whatever this session
@@ -1018,7 +1231,9 @@ ext.runtime.onMessage.addListener((msg: unknown): void => {
       return
     }
 
-    case "SET_LEGACY_STYLE": {
+    case "SET_LEGACY_STYLE":
+    case "ENSURE_ENFORCEMENT":
+    case "REMOVE_ENFORCEMENT": {
       // background-only message
       return
     }

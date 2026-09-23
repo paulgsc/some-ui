@@ -83,6 +83,7 @@
  * that left open).
  */
 
+import { ENFORCEMENT_SENTINEL_PROPERTY } from "@filter/adapter/enforcement-sheet"
 import type {
   ScopeId,
   ScopeRegistry,
@@ -154,7 +155,8 @@ const COUNTER_FOR: Readonly<Record<string, CoverageCounter>> = {
 
 function collectContext(
   getTabState: () => TabState,
-  getTransitioning: () => boolean
+  getTransitioning: () => boolean,
+  getEnforcedCanvas: () => string | null
 ): CoverageContext {
   const html = document.documentElement
   const veil = document.getElementById(PREPAINT_VEIL_ID)
@@ -175,7 +177,21 @@ function collectContext(
       veil instanceof HTMLElement
         ? getComputedStyle(veil).backgroundColor
         : null,
+    enforcedCanvas: readEnforcedCanvas(html, getEnforcedCanvas()),
   }
+}
+
+/** SF-CUT3 (#1489): see `CoverageContext.enforcedCanvas`. One style read, and only while enforcing. */
+function readEnforcedCanvas(
+  html: HTMLElement,
+  expectedSwatchId: string | null
+): boolean {
+  if (expectedSwatchId === null) return false
+  return (
+    getComputedStyle(html)
+      .getPropertyValue(ENFORCEMENT_SENTINEL_PROPERTY)
+      .trim() === expectedSwatchId
+  )
 }
 
 /**
@@ -236,7 +252,13 @@ export function createCoverageWatchdog(
    * `document-scope.ts`'s own header), the same bug class
    * `yt-navigate-start` needed the same fix for.
    */
-  onVeilRearmed?: () => void
+  onVeilRearmed?: () => void,
+  /**
+   * SF-CUT3 (#1489): the swatch id the enforcement sheet's sentinel should
+   * carry while this tab is enforcing, or `null` when it is not (flag off,
+   * or not auto). See `CoverageContext.enforcedCanvas`.
+   */
+  getEnforcedCanvas: () => string | null = () => null
 ): CoverageWatchdog {
   let htmlObserver: MutationObserver | null = null
   let headObserver: MutationObserver | null = null
@@ -287,7 +309,7 @@ export function createCoverageWatchdog(
   }
 
   function check(reason: string): void {
-    const ctx = collectContext(getTabState, getTransitioning)
+    const ctx = collectContext(getTabState, getTransitioning, getEnforcedCanvas)
     recorder.count("coverage_checks")
     recorder.setSnapshot("coverage", { ...ctx, reason })
 

@@ -257,6 +257,22 @@ export type DocumentScopeCustodian = {
   reportPipelineOutcome(outcome: FireOutcome): void
 
   /**
+   * SF-CUT3 (#1489): the enforcement sheet's counterpart to
+   * `reportPipelineOutcome()`, for a tab where the sheet, not the classifier,
+   * decides the document's resting state. `confirmed` (a cascade read found
+   * the sheet in place) commits exactly as an `activate-theme` round does —
+   * including `awaitAtomicSwap()`'s two frames under the veil — so #1266's
+   * one custody law still holds. `timeout` (the liveness bound ran out)
+   * exonerates with its own reason, releasing the veil onto the native page:
+   * never a permanent blackout, and never read as evidence the sheet landed.
+   */
+  reportEnforcement(
+    result:
+      | { readonly kind: "confirmed"; readonly swatchId: string }
+      | { readonly kind: "timeout" }
+  ): void
+
+  /**
    * Reconciles this registry with a physical veil touch it does not own:
    * `yt-navigate-start`'s own direct `enablePrepaint()` call, the coverage
    * watchdog's `repairDarkDesync()` repair, and content.ts's own
@@ -300,48 +316,62 @@ export function createDocumentScopeCustodian(
     },
 
     reportPipelineOutcome(outcome: FireOutcome): void {
-      const signature = signatureOf(outcome)
-      if (lastSignature !== null && sameSignature(lastSignature, signature)) {
-        return
-      }
-      lastSignature = signature
-      ensureResolving(registry, DOCUMENT_SCOPE_ID)
-
-      if (signature.kind === "committed") {
-        void registry.resolveCommitted(DOCUMENT_SCOPE_ID, {
-          revision: signature.swatchId,
-          install: () => awaitAtomicSwap(),
-          uninstall: () => {
-            // No registry-owned DOM effect to undo: the actual theme
-            // stylesheet is realize()'s/theme-apply.ts's concern, outside
-            // this story's scope (see this module's header). The veil
-            // itself is the hold, re-engaged by invalidate()/reRegister()
-            // separately from this callback.
-          },
-        })
-        return
-      }
-
-      if (signature.kind === "failed") {
-        registry.resolveFailed(DOCUMENT_SCOPE_ID, signature.reason)
-        return
-      }
-
-      // exonerated — release is immediate (Definition D.5's
-      // resolveExonerated has no successor artifact to install first), not
-      // gated on the atomic-swap wait: there is no new CSS to let land
-      // before revealing, only native content that was already correct.
       const reason =
         outcome.kind === "ok" &&
         outcome.actions.some((action) => action.kind === "restore-native")
           ? "restore-native"
           : "no-swatch"
-      registry.resolveExonerated(DOCUMENT_SCOPE_ID, { proof: { reason } })
+      route(signatureOf(outcome), reason)
+    },
+
+    reportEnforcement(result): void {
+      route(
+        result.kind === "confirmed"
+          ? { kind: "committed", swatchId: result.swatchId }
+          : { kind: "exonerated" },
+        "enforcement-timeout"
+      )
     },
 
     reengage(contentEpoch: Epoch): void {
       registry.reRegister(DOCUMENT_SCOPE_ID, contentEpoch)
       lastSignature = null
     },
+  }
+
+  function route(signature: OutcomeSignature, exoneration: string): void {
+    if (lastSignature !== null && sameSignature(lastSignature, signature)) {
+      return
+    }
+    lastSignature = signature
+    ensureResolving(registry, DOCUMENT_SCOPE_ID)
+
+    if (signature.kind === "committed") {
+      void registry.resolveCommitted(DOCUMENT_SCOPE_ID, {
+        revision: signature.swatchId,
+        install: () => awaitAtomicSwap(),
+        uninstall: () => {
+          // No registry-owned DOM effect to undo: the actual theme
+          // stylesheet is realize()'s/theme-apply.ts's concern, outside
+          // this story's scope (see this module's header). The veil
+          // itself is the hold, re-engaged by invalidate()/reRegister()
+          // separately from this callback.
+        },
+      })
+      return
+    }
+
+    if (signature.kind === "failed") {
+      registry.resolveFailed(DOCUMENT_SCOPE_ID, signature.reason)
+      return
+    }
+
+    // exonerated — release is immediate (Definition D.5's
+    // resolveExonerated has no successor artifact to install first), not
+    // gated on the atomic-swap wait: there is no new CSS to let land
+    // before revealing, only native content that was already correct.
+    registry.resolveExonerated(DOCUMENT_SCOPE_ID, {
+      proof: { reason: exoneration },
+    })
   }
 }

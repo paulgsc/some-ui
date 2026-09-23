@@ -23,6 +23,10 @@ export function isExtensionMessage(msg: unknown): msg is ExtensionMessage {
     return typeof msg.enabled === "boolean" && isFilterConfig(msg.config)
   }
 
+  if (msg.type === "ENSURE_ENFORCEMENT" || msg.type === "REMOVE_ENFORCEMENT") {
+    return typeof msg.swatchId === "string" && msg.swatchId.length > 0
+  }
+
   return msg.type === "GET_TAB_FILTER_STATE" || msg.type === "CYCLE_TAB_STATE"
 }
 

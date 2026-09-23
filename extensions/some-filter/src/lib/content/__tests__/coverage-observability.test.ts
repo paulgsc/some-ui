@@ -494,3 +494,15 @@ describe("ScopeCoverageHeld — generalizes CoverageHeld to every live registere
     })
   })
 })
+
+describe("CoverageHeld — the enforcement sheet (SF-CUT3, #1489)", () => {
+  it("holds when the sheet reads as present in the cascade and nothing else covers the page", () => {
+    const ctx = baseContext({ enforcedCanvas: true })
+    expect(check(CoverageHeld, ctx)).toEqual({ ok: true })
+  })
+
+  it("is violated when the sheet is absent and nothing else covers the page", () => {
+    const ctx = baseContext({ enforcedCanvas: false })
+    expect(check(CoverageHeld, ctx).ok).toBe(false)
+  })
+})

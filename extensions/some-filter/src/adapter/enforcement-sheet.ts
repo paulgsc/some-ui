@@ -9,14 +9,15 @@
  * classify-then-apply pipeline's conditional "does this page need theming?"
  * with an unconditional "every page renders in E."
  *
- * §7 step 2, behind a flag, alongside the existing pipeline: this module has
- * no caller in the shipped content-script path (`adapter/pipeline.ts`,
- * `lib/content/theme-apply.ts`) and changes no existing behavior by
- * existing. `background/background.ts` is its only consumer, gated on
- * `enforcementSheetEnabled` in `storage.local` (default `false` — see that
- * module's own header for how to flip it). It does not replace, and is not
- * yet raced against, the veil (§4: "the veil is retained ... only the
- * commit/release decision simplifies").
+ * §7 step 2, behind a flag: this module has no caller in the shipped
+ * content-script path (`adapter/pipeline.ts`, `lib/content/theme-apply.ts`)
+ * and changes no existing behavior by existing. `background/background.ts`
+ * is its only consumer, gated on `enforcementSheetEnabled` in
+ * `storage.local` (default `false` — see that module's own header for how to
+ * flip it). Since SF-CUT3 (#1489) the flag makes auto mode this sheet alone,
+ * requested per document by the content side and confirmed by a cascade read
+ * before the veil is released (`lib/content/enforcement-handshake.ts`; §4:
+ * "the veil is retained ... only the commit/release decision simplifies").
  *
  * Every declaration below is guarded against this extension's own DOM (the
  * prepaint veil, the debug overlay — both carry `[data-my-ext]`, per
@@ -205,6 +206,18 @@ import type { Swatch } from "./swatches"
  * regardless of how many `:not()` clauses the erase rule chains.
  */
 const CANVAS_SELECTOR = ":root:root, :root:root body"
+
+/**
+ * SF-CUT3 (#1489): a custom property only this sheet declares, carrying the
+ * swatch id, which the content side reads back
+ * (`getComputedStyle(<html>).getPropertyValue(...)`) as proof the sheet is in
+ * the document's cascade. Not the canvas colour: a vendor page can paint its
+ * own `<html>` exactly `bg0` (bot-found on #1521), and the veil would then
+ * come down on an unenforced page. At the user origin, `!important` beats
+ * every author declaration of the same name, `!important` or not, so a page
+ * cannot fake it either.
+ */
+export const ENFORCEMENT_SENTINEL_PROPERTY = "--sw-enforcement-sheet"
 
 /**
  * §2.2 (erase, don't paint): every carrier except the four excluded from
@@ -510,6 +523,8 @@ export function buildEnforcementCSS(swatch: Swatch): string {
 /* §3.2: specificity-boosted canvas rule — must out-rank ERASE_SELECTOR. */
 ${CANVAS_SELECTOR} {
   background-color: ${swatch.bg0} !important;
+  /* The presence sentinel — see ENFORCEMENT_SENTINEL_PROPERTY. */
+  ${ENFORCEMENT_SENTINEL_PROPERTY}: ${swatch.id} !important;
   /* A vendor's own root-level compositing filter (the "dark mode via an
      invert(1) filter on html" trick, filter-invert-vendor-page.html) is
      applied *after* painting and would invert every enforced token back to
@@ -519,10 +534,10 @@ ${CANVAS_SELECTOR} {
      own paint, same as any other vendor colour decision, and is erased by
      the rule below only insofar as its inputs are. Note this also
      overrides this extension's *own* legacy invert (an author-origin
-     !important filter on html) whenever both are active in one tab, which
-     the flagged rollout permits today — #1489 makes the two mutually
-     exclusive per tab; until then the flag and legacy mode are not meant to
-     be combined. */
+     !important filter on html) whenever both are active in one tab — which
+     is why, since #1489, the sheet is only ever present in an auto tab: the
+     content side removes it, under the veil, before legacy's filter goes
+     on. */
   filter: none !important;
 }
 

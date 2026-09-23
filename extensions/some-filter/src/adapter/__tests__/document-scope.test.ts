@@ -374,3 +374,47 @@ describe("reengage() — recovering from off-mode's own direct disablePrepaint()
     })
   })
 })
+
+describe("createDocumentScopeCustodian — reportEnforcement (SF-CUT3, #1489)", () => {
+  it("a confirmed sheet commits through the same atomic-swap gate as a themed round", async () => {
+    const custodian = createDocumentScopeCustodian()
+    custodian.registerDocument(0)
+
+    custodian.reportEnforcement({ kind: "confirmed", swatchId: "default" })
+
+    // Still veiled synchronously: the sheet paints under it first.
+    expect(document.getElementById(PREPAINT_VEIL_ID)).not.toBeNull()
+    await flushCommit()
+    expect(custodian.registry.stateOf(DOCUMENT_SCOPE_ID)).toMatchObject({
+      kind: "COMMITTED",
+      revision: "default",
+    })
+    expect(document.getElementById(PREPAINT_VEIL_ID)).toBeNull()
+  })
+
+  it("a liveness timeout releases the veil onto the native page, with its own reason", () => {
+    const custodian = createDocumentScopeCustodian()
+    custodian.registerDocument(0)
+
+    custodian.reportEnforcement({ kind: "timeout" })
+
+    expect(custodian.registry.stateOf(DOCUMENT_SCOPE_ID)).toMatchObject({
+      kind: "EXONERATED_NATIVE",
+      proof: { reason: "enforcement-timeout" },
+    })
+    expect(isPrepaintActive()).toBe(false)
+  })
+
+  it("shares the idempotency cache with pipeline rounds — a repeat confirm does not re-drive the hold", async () => {
+    const custodian = createDocumentScopeCustodian()
+    custodian.registerDocument(0)
+    custodian.reportEnforcement({ kind: "confirmed", swatchId: "default" })
+    await flushCommit()
+    const committed = custodian.registry.stateOf(DOCUMENT_SCOPE_ID)
+
+    custodian.reportEnforcement({ kind: "confirmed", swatchId: "default" })
+
+    expect(custodian.registry.stateOf(DOCUMENT_SCOPE_ID)).toBe(committed)
+    expect(document.getElementById(PREPAINT_VEIL_ID)).toBeNull()
+  })
+})
