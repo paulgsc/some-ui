@@ -27,6 +27,7 @@ const HexCellThemeSchema = z.object({
   strokeWidth: z.number().optional(),
   opacity: z.number().optional(),
   filter: z.string().optional(),
+  className: z.string().optional(),
 })
 
 const HexCellDataSchema = z.object({

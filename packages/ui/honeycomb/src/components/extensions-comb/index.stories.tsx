@@ -11,12 +11,13 @@ import { ExtensionsComb } from "."
  *
  * The decorator gives it a viewport-sized box and nothing else, because that
  * is the contract: the comb positions itself absolutely against its host and
- * scales to fill it. Handing it a box of content height would measure a
- * layout that never ships.
+ * fits itself, and its caption, to that box. Handing it a box of content
+ * height would measure a layout that never ships.
  *
  * Swept by `apps/www/tests/ui-fit/no-overflow.spec.ts` at all four viewports,
  * including 780x390: a landscape phone is the shape this layout is most
- * likely to fail on, because the comb is bounded by its short axis there.
+ * likely to fail on, because the comb is bounded by its short axis there -
+ * which is why the caption moves beside the comb on a short, wide box.
  */
 const meta: Meta<typeof ExtensionsComb> = {
   title: "UI/Honeycomb/ExtensionsComb",
@@ -36,7 +37,7 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 /**
- * L0. At rest the DOM renders no prose at all — the heading is visually
- * hidden and the comb is the whole page.
+ * L0. At rest the page paints no prose but the rest cue — the heading is
+ * visually hidden, the caption is empty, and the comb is the whole page.
  */
 export const Index: Story = {}

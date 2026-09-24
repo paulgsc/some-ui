@@ -12,8 +12,8 @@
  *
  * Copy rules: second person, present tense, no jargon, no apology for
  * unfinished work — say what the tool does for you, not how it is built.
- * `line` must fit the centroid cell at 1.2x without scrolling. Keep it under
- * ~95 characters; past ~110 it overflows before it wraps gracefully.
+ * `line` is set as page type in the caption under the comb, where three lines
+ * on a phone is the budget. Keep it under ~95 characters.
  */
 
 /** How finished a thing is, as a visitor would say it. */
@@ -33,7 +33,7 @@ export const STAGE_LABEL: Readonly<Record<Stage, string>> = {
   ready: "Ready",
 }
 
-/** The centroid's copy at L2 · stage. One per step, not one per extension. */
+/** The caption at L2 · stage. One per step, not one per extension. */
 export const STAGE_LINE: Readonly<Record<Stage, string>> = {
   idea: "On the bench. It runs, and it is clearly not finished.",
   building: "Being built. The idea is proven; the edges are not.",
@@ -63,9 +63,9 @@ export type Emblem =
 export type ExtensionDefinition = {
   /** Stable key. Matches the workspace under extensions/, but is never shown. */
   readonly id: string
-  /** Shown in the centroid at L1, and on hover at L0. */
+  /** Shown in the centroid at L1, on hover at L0, and in the cell on touch. */
   readonly name: string
-  /** The one sentence. The centroid is the only place it may appear. */
+  /** The one sentence. The caption is the only place it may appear. */
   readonly line: string
   /**
    * Honey fill, 0..1. Authored. Carried unchanged from L0 into L1 — a viewer
@@ -172,7 +172,7 @@ export const PRIVACY_ATOMS: ReadonlyArray<{
   { id: "open-source", label: "source is public" },
 ]
 
-/** Fixed micro-labels. Three words maximum, or it belongs in the centroid. */
+/** Fixed micro-labels. Three words maximum, or it belongs in the caption. */
 export const LABEL = {
   runsIn: "runs in",
   reach: "where it acts",

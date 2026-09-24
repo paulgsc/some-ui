@@ -67,6 +67,20 @@ export type HexGridProps<T = unknown> = {
     isLoading: boolean
     error: string | null
   }) => void
+  /**
+   * Whether a shrunk or reduced fit announces itself with a toast. Leave it on
+   * for a board whose cells a player has to read at a size they chose; turn it
+   * off for a surface that is *meant* to scale to its box, where shrinking to
+   * fit is the design rather than a degradation worth interrupting for.
+   * @default true
+   */
+  notifyFit?: boolean
+  /**
+   * What occupies the grid's box while the geometry WASM loads. Defaults to a
+   * short loading line; pass `null` for a surface that must not show prose it
+   * did not ask for.
+   */
+  fallback?: ReactNode
 }
 
 const HEX_ID_REGEX = /(-?\d+)[_-](-?\d+)[_-](-?\d+)/
@@ -99,6 +113,12 @@ export const HexGrid = <T = unknown,>({
   fitStrategy = "shrink-only",
   onFitChange,
   onStatusChange,
+  notifyFit = true,
+  fallback = (
+    <div className="flex h-full w-full items-center justify-center text-gray-400">
+      Loading hexagon grid...
+    </div>
+  ),
 }: HexGridProps<T>): JSX.Element => {
   const measureRef = useRef<HTMLDivElement>(null)
   const { width, height } = useResizeObserver({ ref: measureRef })
@@ -133,6 +153,7 @@ export const HexGrid = <T = unknown,>({
   useEffect(() => {
     if (!fit) return
     onFitChange?.(fit)
+    if (!notifyFit) return
 
     if (fit.status === "shrunk" || fit.status === "reduced-radius") {
       const notify =
@@ -141,7 +162,7 @@ export const HexGrid = <T = unknown,>({
     } else {
       toast.dismiss(HEXGRID_FIT_TOAST_ID)
     }
-  }, [fit, onFitChange])
+  }, [fit, onFitChange, notifyFit])
 
   const effectiveRadius = fit?.radius ?? requestedRadius
   const effectiveHexSize = fit?.hexSize ?? hexSize
@@ -193,11 +214,7 @@ export const HexGrid = <T = unknown,>({
 
   const renderContent = (): ReactNode => {
     if (!hasMeasured || isLoading) {
-      return (
-        <div className="flex h-full w-full items-center justify-center text-gray-400">
-          Loading hexagon grid...
-        </div>
-      )
+      return fallback
     }
 
     if (error) {
@@ -285,6 +302,7 @@ export const HexGrid = <T = unknown,>({
                       strokeWidth={theme.strokeWidth || 1}
                       opacity={theme.opacity ?? 1}
                       filter={theme.filter}
+                      className={theme.className}
                     />
                     {renderCell?.(cell, centerX, centerY, cellWidth, pathData)}
                   </g>

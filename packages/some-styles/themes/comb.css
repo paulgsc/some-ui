@@ -1,0 +1,87 @@
+/* ============================================================
+   COMB — the honeycomb component skin
+   ------------------------------------------------------------
+   A `component`-scoped skin (see src/theme/registry.ts): it declares
+   only its own `--comb-*` tokens and never reassigns the semantic
+   contract, so `@some-ui/honeycomb`'s ExtensionsComb applies it to its
+   own root and the user's session theme still reaches everything
+   around and inside it.
+
+   Two kinds of token live here, and the difference is deliberate:
+
+     1. Honey (`--comb-honey-*`, `--comb-ink`) is the brand pair from
+        brand/favicon.svg widened to a four-stop scale. It is FIXED:
+        the honey level is the comb's one quantitative encoding, so it
+        must read the same in every theme, and the ink that sits on it
+        is fixed for the same reason its ground is.
+     2. Wax (`--comb-cell`, `--comb-edge`, `--comb-on-cell`, …) is the
+        comb's structure. It is DERIVED from the session's
+        `--background` / `--foreground`, so an empty cell reads as
+        empty against whatever ground the user picked, light or dark.
+   ============================================================ */
+
+@layer base {
+  .comb {
+    /* ── Honey: fixed, theme-independent ─────────────────────── */
+    --comb-honey-deep: #b45309;
+    --comb-honey-mid: #f59e0b;
+    --comb-honey-surface: #fbbf24;
+    --comb-honey-meniscus: #fde68a;
+    --comb-ink: oklch(14.5% 0 0deg);
+
+    /* ── Wax: derived from the session substrate ─────────────── */
+
+    /* An empty cell: the page ground with a breath of honey in it. */
+    --comb-cell: color-mix(
+      in oklab,
+      var(--comb-honey-mid) 7%,
+      color-mix(in oklab, var(--foreground) 4%, var(--background))
+    );
+
+    /* The lattice between cells: the comb's wax walls. Warmer and a
+       step brighter than a cell, so seven hexes read as a comb rather
+       than as one shape. */
+    --comb-wax: color-mix(
+      in oklab,
+      var(--comb-honey-mid) 20%,
+      color-mix(in oklab, var(--foreground) 6%, var(--background))
+    );
+
+    /* A cell's own wall, drawn on all six edges. */
+    --comb-edge: color-mix(in oklab, var(--comb-honey-mid) 30%, transparent);
+
+    /* Ink on an empty cell. Pulled toward the foreground, so it is pale
+       gold on a dark ground and deep amber on a light one — the fixed
+       meniscus tone would vanish against white. */
+    --comb-on-cell: color-mix(
+      in oklab,
+      var(--comb-honey-mid) 62%,
+      var(--foreground)
+    );
+
+    /* Secondary ink on an empty cell: micro-labels, muted glyphs. The
+       session's muted tone warmed toward honey, so a theme with a cool
+       grey does not read as a second palette inside the comb. */
+    --comb-on-cell-muted: color-mix(
+      in oklab,
+      var(--comb-honey-mid) 30%,
+      var(--muted-foreground)
+    );
+
+    /* A name set large on an empty cell: the foreground, barely warmed. */
+    --comb-title: color-mix(
+      in oklab,
+      var(--comb-honey-mid) 18%,
+      var(--foreground)
+    );
+
+    /* The mechanism miniatures depict a web page, which is light or dark
+       in its own right, whatever the comb's ground is. */
+    --comb-mini-light: oklch(96.7% 0.001 286deg);
+    --comb-mini-dark: oklch(21% 0.006 286deg);
+    --comb-mini-line: oklch(63% 0.01 286deg / 85%);
+
+    /* The halo a lit cell (hover, focus, the one finished tool) casts. */
+    --comb-glow: color-mix(in oklab, var(--comb-honey-mid) 55%, transparent);
+  }
+}

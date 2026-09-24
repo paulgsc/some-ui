@@ -227,6 +227,16 @@ export const COMPONENT_SKINS = [
     boundary: { classNames: ["headline"], dataTheme: "headline" },
     selectable: false,
   },
+  {
+    // Honey is fixed and wax is derived from the session substrate, so the
+    // skin itself has no mode of its own.
+    id: "comb",
+    label: "Comb",
+    mode: "inherit",
+    scope: "component",
+    boundary: { classNames: ["comb"], dataTheme: "comb" },
+    selectable: false,
+  },
 ] as const satisfies ReadonlyArray<ThemeDefinition>
 
 /**
