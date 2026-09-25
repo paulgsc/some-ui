@@ -130,6 +130,16 @@ jobs:
       - name: Dependency catalog guardrail
         run: node scripts/check-catalog-drift.mjs
 
+      # Repo-wide invariant like the catalog check above: every packages/ui/*
+      # workspace declares its build audience (package.json#someUi). The vite
+      # plugin enforces the same thing, but only when www builds - which a PR
+      # adding a workspace www does not depend on yet never does. Needs the
+      # built reader from @some-ui/vite-config (cached when already built).
+      - name: UI workspace audience guardrail
+        run: |
+          nix develop .#ci --command pnpm turbo run build --filter=@some-ui/vite-config
+          nix develop .#ci --command node scripts/check-ui-manifests.mjs
+
       # Repo-wide invariant like the catalog check above, and not turbo-filtered
       # for the same reason: the client/server boundary is a property of the
       # whole repo, and the snapshot it compares against

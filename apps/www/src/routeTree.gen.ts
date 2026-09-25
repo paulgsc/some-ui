@@ -19,9 +19,11 @@ import { Route as DashboardResumeRouteImport } from './routes/_dashboard/resume'
 import { Route as DashboardProfileRouteImport } from './routes/_dashboard/profile'
 import { Route as DashboardJobsRouteImport } from './routes/_dashboard/jobs'
 import { Route as DashboardAppRouteImport } from './routes/_dashboard/app'
+import { Route as DashboardLanRouteImport } from './routes/_dashboard/_lan'
 import { Route as DashboardSessionsIndexRouteImport } from './routes/_dashboard/sessions/index'
 import { Route as DashboardSessionsNewRouteImport } from './routes/_dashboard/sessions/new'
 import { Route as DashboardSessionsSessionIdRouteImport } from './routes/_dashboard/sessions/$sessionId'
+import { Route as DashboardLanLanRouteImport } from './routes/_dashboard/_lan/lan'
 
 const MissionRoute = MissionRouteImport.update({
   id: '/mission',
@@ -72,6 +74,10 @@ const DashboardAppRoute = DashboardAppRouteImport.update({
   path: '/app',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardLanRoute = DashboardLanRouteImport.update({
+  id: '/_lan',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardSessionsIndexRoute = DashboardSessionsIndexRouteImport.update({
   id: '/sessions/',
   path: '/sessions/',
@@ -88,6 +94,11 @@ const DashboardSessionsSessionIdRoute =
     path: '/sessions/$sessionId',
     getParentRoute: () => DashboardRoute,
   } as any)
+const DashboardLanLanRoute = DashboardLanLanRouteImport.update({
+  id: '/lan',
+  path: '/lan',
+  getParentRoute: () => DashboardLanRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -99,6 +110,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof DashboardProfileRoute
   '/resume': typeof DashboardResumeRoute
   '/settings': typeof DashboardSettingsRoute
+  '/lan': typeof DashboardLanLanRoute
   '/sessions/$sessionId': typeof DashboardSessionsSessionIdRoute
   '/sessions/new': typeof DashboardSessionsNewRoute
   '/sessions/': typeof DashboardSessionsIndexRoute
@@ -113,6 +125,7 @@ export interface FileRoutesByTo {
   '/profile': typeof DashboardProfileRoute
   '/resume': typeof DashboardResumeRoute
   '/settings': typeof DashboardSettingsRoute
+  '/lan': typeof DashboardLanLanRoute
   '/sessions/$sessionId': typeof DashboardSessionsSessionIdRoute
   '/sessions/new': typeof DashboardSessionsNewRoute
   '/sessions': typeof DashboardSessionsIndexRoute
@@ -124,11 +137,13 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/extensions': typeof ExtensionsRoute
   '/mission': typeof MissionRoute
+  '/_dashboard/_lan': typeof DashboardLanRouteWithChildren
   '/_dashboard/app': typeof DashboardAppRoute
   '/_dashboard/jobs': typeof DashboardJobsRoute
   '/_dashboard/profile': typeof DashboardProfileRoute
   '/_dashboard/resume': typeof DashboardResumeRoute
   '/_dashboard/settings': typeof DashboardSettingsRoute
+  '/_dashboard/_lan/lan': typeof DashboardLanLanRoute
   '/_dashboard/sessions/$sessionId': typeof DashboardSessionsSessionIdRoute
   '/_dashboard/sessions/new': typeof DashboardSessionsNewRoute
   '/_dashboard/sessions/': typeof DashboardSessionsIndexRoute
@@ -145,6 +160,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/resume'
     | '/settings'
+    | '/lan'
     | '/sessions/$sessionId'
     | '/sessions/new'
     | '/sessions/'
@@ -159,6 +175,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/resume'
     | '/settings'
+    | '/lan'
     | '/sessions/$sessionId'
     | '/sessions/new'
     | '/sessions'
@@ -169,11 +186,13 @@ export interface FileRouteTypes {
     | '/auth'
     | '/extensions'
     | '/mission'
+    | '/_dashboard/_lan'
     | '/_dashboard/app'
     | '/_dashboard/jobs'
     | '/_dashboard/profile'
     | '/_dashboard/resume'
     | '/_dashboard/settings'
+    | '/_dashboard/_lan/lan'
     | '/_dashboard/sessions/$sessionId'
     | '/_dashboard/sessions/new'
     | '/_dashboard/sessions/'
@@ -259,6 +278,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAppRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/_dashboard/_lan': {
+      id: '/_dashboard/_lan'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof DashboardLanRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/_dashboard/sessions/': {
       id: '/_dashboard/sessions/'
       path: '/sessions'
@@ -280,10 +306,30 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardSessionsSessionIdRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/_dashboard/_lan/lan': {
+      id: '/_dashboard/_lan/lan'
+      path: '/lan'
+      fullPath: '/lan'
+      preLoaderRoute: typeof DashboardLanLanRouteImport
+      parentRoute: typeof DashboardLanRoute
+    }
   }
 }
 
+interface DashboardLanRouteChildren {
+  DashboardLanLanRoute: typeof DashboardLanLanRoute
+}
+
+const DashboardLanRouteChildren: DashboardLanRouteChildren = {
+  DashboardLanLanRoute: DashboardLanLanRoute,
+}
+
+const DashboardLanRouteWithChildren = DashboardLanRoute._addFileChildren(
+  DashboardLanRouteChildren,
+)
+
 interface DashboardRouteChildren {
+  DashboardLanRoute: typeof DashboardLanRouteWithChildren
   DashboardAppRoute: typeof DashboardAppRoute
   DashboardJobsRoute: typeof DashboardJobsRoute
   DashboardProfileRoute: typeof DashboardProfileRoute
@@ -295,6 +341,7 @@ interface DashboardRouteChildren {
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardLanRoute: DashboardLanRouteWithChildren,
   DashboardAppRoute: DashboardAppRoute,
   DashboardJobsRoute: DashboardJobsRoute,
   DashboardProfileRoute: DashboardProfileRoute,

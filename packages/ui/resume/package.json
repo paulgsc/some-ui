@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "someUi": {
+    "audience": "public"
+  },
   "scripts": {
     "build": "node scripts/compile.mjs && pnpm export:data && tsc -p tsconfig.build.json && vite build",
     "watch": "node scripts/compile.mjs --watch",
