@@ -262,12 +262,18 @@
      and a visitor would get six glyphs and nothing else. The name comes to
      the cell instead, and the glyph moves up to make room for it. Keyed on
      the pointer's capability rather than on width, because a narrow desktop
-     window still hovers. */
+     window still hovers.
+
+     `hover` alone describes only the *primary* pointer, so a laptop with a
+     trackpad and a touchscreen reports `hover: hover` and would hide the
+     names from the finger that cannot peek. `any-pointer: coarse` catches
+     any touchscreen present; a hybrid device then shows the names to both
+     inputs, which costs the mouse nothing. */
   .xcomb-name {
     display: none;
   }
 
-  @media (hover: none) {
+  @media (hover: none), (any-pointer: coarse) {
     .xcomb-name {
       display: inline;
     }
