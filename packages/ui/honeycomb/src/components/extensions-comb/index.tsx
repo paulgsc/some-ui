@@ -21,6 +21,7 @@ import {
 } from "lucide-react"
 import { cn } from "some-ui-utils"
 
+import { CombField, useCombFrame } from "./comb-field"
 import type {
   Emblem,
   ExtensionDefinition,
@@ -39,6 +40,7 @@ import {
   STAGE_LINE,
   STAGE_ORDER,
 } from "./extensions.data"
+import { HEX, INSET, VIEWBOX_FACTOR } from "./geometry"
 
 import "./index.css"
 
@@ -90,21 +92,6 @@ import "./index.css"
  */
 
 // ------------------------------------------------------------------ geometry
-
-/**
- * Natural hex circumradius, in viewBox units. `HexGrid` never draws larger
- * than this (it letterbox-scales *down* to its box), so it is also the comb's
- * size cap on a large desktop: a radius-1 pointy-top comb is 5.2 × 5 of these.
- * Every size below is in the same units, so type and glyphs scale with the
- * cells and the ratio of ink to cell is the same on every screen.
- */
-const HEX = 140
-
-/**
- * How much of its wax socket a cell fills. The remaining band is the wall
- * between neighbours: without it seven tessellated hexes read as one blob.
- */
-const INSET = 0.9
 
 /**
  * The seven cells of a radius-1 grid, by cube coordinate — the id format the
@@ -693,6 +680,10 @@ export const ExtensionsComb = (): JSX.Element => {
    */
   const [focusKey, setFocusKey] = useState<string | null>(null)
 
+  const rootRef = useRef<HTMLDivElement>(null)
+  const stageRef = useRef<HTMLDivElement>(null)
+  const frame = useCombFrame(rootRef, stageRef)
+
   const subject =
     view.subject === null ? null : (EXTENSIONS[view.subject] ?? null)
 
@@ -721,7 +712,7 @@ export const ExtensionsComb = (): JSX.Element => {
           })
 
   return (
-    <div className="comb xcomb-root">
+    <div ref={rootRef} className="comb xcomb-root">
       {/*
         The page paints no prose at rest, not even a title. A screen reader
         has no comb to look at, though, and a document with no heading gives
@@ -730,12 +721,14 @@ export const ExtensionsComb = (): JSX.Element => {
       */}
       <h1 className="sr-only">{PAGE_TITLE}</h1>
 
+      {frame && <CombField frame={frame} />}
+
       <div className="xcomb-layout">
-        <div className="xcomb-stage">
+        <div ref={stageRef} className="xcomb-stage">
           <HexGrid
             cellCount={7}
             hexSize={HEX}
-            viewBoxFactor={1.04}
+            viewBoxFactor={VIEWBOX_FACTOR}
             padding={0}
             minHexSize={1}
             backgroundOpacity={0}
