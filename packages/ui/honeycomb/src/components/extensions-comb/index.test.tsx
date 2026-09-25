@@ -111,6 +111,33 @@ describe("ExtensionsComb", () => {
     expect(caption()).toBe(PRIVACY_LINE)
   })
 
+  it("keeps focus inside the comb across every transition", () => {
+    const ext = EXTENSIONS[1]
+    if (!ext) throw new Error("fixture")
+    render(<ExtensionsComb />)
+    const focused = (): string | null =>
+      document.activeElement?.getAttribute("aria-label") ?? null
+    const press = (name: string | RegExp): void => {
+      fireEvent.keyDown(screen.getByRole("button", { name }), { key: "Enter" })
+    }
+
+    press(ext.name)
+    expect(focused()).toMatch(/how far along/i)
+
+    press(/how far along/i)
+    expect(focused()).toBe("Back")
+
+    press("Back")
+    expect(focused()).toMatch(/how far along/i)
+
+    press("What it sends")
+    press("Back")
+    expect(focused()).toBe("What it sends")
+
+    press("Back to all six")
+    expect(focused()).toBe(ext.name)
+  })
+
   it("keeps all seven cells at every depth", () => {
     const { container } = render(<ExtensionsComb />)
     const cells = (): number => container.querySelectorAll(".xcomb-cell").length

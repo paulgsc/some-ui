@@ -19,7 +19,8 @@ import { ThemeSwitcher } from "@/components/theme-switcher"
  * TanStack app, a Storybook build nested at /storybook/, and this app's own
  * /resume route. A visitor landing on "/" cold has no way to know any of
  * that exists, so "/" is this standalone splash - not the learning app -
- * whose only job is to point at the three of them.
+ * whose only job is to point at the three of them - plus /extensions, an
+ * in-app tour of the browser extensions the same monorepo ships.
  */
 type DestinationBase = {
   title: string
@@ -132,14 +133,14 @@ const Landing = (): JSX.Element => (
           Some UI
         </p>
         <h1 className="text-gradient-heading text-3xl font-bold tracking-tight sm:text-4xl">
-          Three projects, one workspace
+          Four projects, one workspace
         </h1>
         <p className="text-muted-foreground mx-auto max-w-xl text-balance">
-          This site hosts an adaptive study app, a component library, and a
-          résumé - built and deployed from a single monorepo. Pick a destination
-          below.
+          This site hosts an adaptive study app, a component library, a set of
+          browser extensions, and a résumé - built and deployed from a single
+          monorepo. Pick a destination below.
         </p>
-        {/* The three cards answer "what is deployed here". /mission answers
+        {/* The four cards answer "what is deployed here". /mission answers
             why any of it exists - kept as a text link so it doesn't compete
             with the destinations for the same glance. */}
         <Link
@@ -150,7 +151,9 @@ const Landing = (): JSX.Element => (
           <ArrowRight className="size-3.5" aria-hidden />
         </Link>
       </div>
-      <div className="grid gap-4 sm:grid-cols-3">
+      {/* Two by two rather than a row of three: with four destinations a
+          third column leaves the last card alone on a second row. */}
+      <div className="grid gap-4 sm:grid-cols-2">
         {DESTINATIONS.map((destination) => (
           <DestinationCard key={destination.title} {...destination} />
         ))}

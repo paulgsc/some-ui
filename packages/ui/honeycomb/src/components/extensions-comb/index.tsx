@@ -1,4 +1,4 @@
-import { useId, useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 import type { CSSProperties, JSX, KeyboardEvent, ReactNode } from "react"
 import { HexGrid } from "@honeycomb/components/hex-grid"
 import type { HexPoint } from "@honeycomb/types/hex-grid"
@@ -200,12 +200,20 @@ const CombCell = ({
   d,
   radius,
   index,
+  focus = false,
 }: {
   spec: CellSpec
   d: string
   radius: number
   index: number
+  /** Take focus on mount; see `focusKey` in `ExtensionsComb`. */
+  focus?: boolean
 }): JSX.Element => {
+  const ref = useRef<SVGGElement>(null)
+  useEffect(() => {
+    if (focus) ref.current?.focus()
+  }, [focus])
+
   const id = useId().replace(/[^a-zA-Z0-9_-]/g, "")
   const hexClip = `${id}-hex`
   const aboveClip = `${id}-above`
@@ -245,6 +253,7 @@ const CombCell = ({
         spec.beacon && "xcomb-cell-beacon"
       )}
       style={style}
+      ref={ref}
       {...a11y}
     >
       <defs>
@@ -660,6 +669,17 @@ export const ExtensionsComb = (): JSX.Element => {
   const [view, setView] = useState<View>({ subject: null, facet: null })
   const [peek, setPeek] = useState<number | null>(null)
 
+  /**
+   * The cell to focus once a transition lands. Every cell is re-keyed when
+   * the level changes (that is what replays the entrance), so the cell that
+   * was just activated unmounts while it holds focus, and focus would fall to
+   * the document: the next Tab would restart at the page chrome, outside the
+   * comb. Each move therefore names where focus goes instead — into the
+   * level's first facet going down, and back to the cell it came from going
+   * up. `null` on arrival, so loading the page steals no focus.
+   */
+  const [focusKey, setFocusKey] = useState<string | null>(null)
+
   const subject =
     view.subject === null ? null : (EXTENSIONS[view.subject] ?? null)
 
@@ -668,16 +688,24 @@ export const ExtensionsComb = (): JSX.Element => {
       ? indexLevel(peek, setPeek, (i) => {
           setPeek(null)
           setView({ subject: i, facet: null })
+          setFocusKey(`subject-stage-${EXTENSIONS[i]?.id ?? ""}`)
         })
       : view.facet === null
         ? subjectLevel(
             subject,
-            () => setView({ subject: null, facet: null }),
-            (facet) => setView({ subject: view.subject, facet })
+            () => {
+              setView({ subject: null, facet: null })
+              setFocusKey(`index-${subject.id}`)
+            },
+            (facet) => {
+              setView({ subject: view.subject, facet })
+              setFocusKey(`facet-${facet}-back`)
+            }
           )
-        : facetLevel(subject, view.facet, () =>
+        : facetLevel(subject, view.facet, () => {
             setView({ subject: view.subject, facet: null })
-          )
+            setFocusKey(`subject-${view.facet ?? "stage"}-${subject.id}`)
+          })
 
   return (
     <div className="comb xcomb-root">
@@ -711,6 +739,7 @@ export const ExtensionsComb = (): JSX.Element => {
                   <CombCell
                     key={spec.key}
                     spec={spec}
+                    focus={spec.key === focusKey}
                     d={d}
                     radius={radius}
                     index={slot === "core" ? 0 : slot + 1}
