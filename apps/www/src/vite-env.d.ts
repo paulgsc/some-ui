@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+/// <reference types="@some-ui/vite-config/build-profile-client" />
 
 // eslint-disable-next-line @typescript-eslint/consistent-type-definitions -- merging into Vite's own ImportMetaEnv requires `interface`; a `type` alias cannot declaration-merge, and silently leaves every key `any` via Vite's index signature
 interface ImportMetaEnv {

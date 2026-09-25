@@ -61,6 +61,9 @@
     "*.css"
   ],
   "type": "module",
+  "someUi": {
+    "audience": "public"
+  },
   "types": "./dist/some-ui-portfolio-chart.d.ts",
   "unpkg": "portfolio-chart.umd.js",
   "version": "0.0.10",

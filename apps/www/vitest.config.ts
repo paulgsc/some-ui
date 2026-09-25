@@ -1,6 +1,8 @@
 import { resolve } from "node:path"
 import { defineConfig } from "vitest/config"
 
+import { buildAudiencePlugin } from "./build.profiles.ts"
+
 /**
  * Without this, `vitest run` (invoked from this package's own directory)
  * falls back to vitest's default include glob, which also picks up
@@ -13,6 +15,9 @@ import { defineConfig } from "vitest/config"
  * Playwright specs live under tests/.
  */
 export default defineConfig({
+  // Serves `virtual:build-profile` (src/lib/build-profile) and enforces the
+  // same import gates as the app build. Tests run the default profile.
+  plugins: [buildAudiencePlugin()],
   test: {
     include: ["src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
     // Repairs `localStorage` where the runtime shipped one of its own and

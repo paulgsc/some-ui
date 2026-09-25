@@ -227,6 +227,9 @@ jobs:
           # build, and it *does* serve public/, so neither of those can tell
           # the two apart.
           VITE_STATIC_DATA: "true"
+          # Nobody reaches this site from the home network, so it leaves out
+          # the LAN-only workspaces entirely - see apps/www/build.profiles.ts.
+          SOME_UI_PROFILE: pages
       - name: Add SPA fallback for client-side routing
         # GitHub Pages has no server-side rewrite; a hard refresh or deep
         # link on a client-side route 404s without this. Serving the same

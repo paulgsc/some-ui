@@ -121,6 +121,15 @@ COPY crates/ ./crates/
 ENV SOME_UI_PRUNED_WORKSPACE=1
 
 #
+# Which deployable this image is (apps/www/build.profiles.ts). The image
+# served on the home network is `lan`, the default; a public image passes
+# --build-arg SOME_UI_PROFILE=<its profile> to leave the LAN-only workspaces
+# out of the bundle.
+#
+ARG SOME_UI_PROFILE=lan
+ENV SOME_UI_PROFILE=${SOME_UI_PROFILE}
+
+#
 # Build only the www application (and everything it depends on).
 #
 # --concurrency=1: the wasm crates' `wasm-pack build` steps race each

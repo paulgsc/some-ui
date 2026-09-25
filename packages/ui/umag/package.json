@@ -62,6 +62,9 @@
     "*.css"
   ],
   "type": "module",
+  "someUi": {
+    "audience": "public"
+  },
   "types": "./dist/umag.d.ts",
   "style": "./dist/umag.css",
   "unpkg": "umag.umd.js",

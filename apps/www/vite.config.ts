@@ -6,6 +6,7 @@ import viteReact from "@vitejs/plugin-react"
 import type { Plugin, UserConfig } from "vite"
 import { defineConfig } from "vite"
 
+import { buildAudiencePlugin } from "./build.profiles.ts"
 import styleContext from "./style.context.ts"
 
 const certPath = resolve(import.meta.dirname, "../../certs/nixos.local+3.pem")
@@ -160,6 +161,10 @@ export default defineConfig(
         : {}),
     },
     plugins: [
+      // Which workspaces this build carries (build.profiles.ts). First, so it
+      // redirects imports of the ones its profile leaves out to stubs before
+      // the router plugin or vite's own resolver sees them.
+      buildAudiencePlugin(),
       // Single Tailwind pass over www's declared graph (style.context.ts):
       // utilities + the shared design layer are generated exactly once, from an
       // explicit @source set, instead of once per package. See #636.

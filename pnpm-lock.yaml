@@ -387,6 +387,9 @@ importers:
       '@some-ui/types':
         specifier: workspace:*
         version: link:../../packages/types
+      '@some-ui/vite-config':
+        specifier: workspace:*
+        version: link:../../packages/some-vite-config
       '@tailwindcss/vite':
         specifier: ^4.0.6
         version: 4.3.1(vite@8.3.0(@types/node@26.0.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
@@ -1042,6 +1045,9 @@ importers:
       vite-plugin-dts:
         specifier: ^5.1.0
         version: 5.1.0(@microsoft/api-extractor@7.58.9(@types/node@26.0.1))(esbuild@0.28.2)(rolldown@1.2.8)(rollup@4.63.3)(supports-color@10.2.2)(typescript@5.9.3)(vite@8.3.0(@types/node@26.0.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*

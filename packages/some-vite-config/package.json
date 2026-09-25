@@ -7,7 +7,8 @@
   "main": "./dist/esm/src/index.js",
   "types": "src/index.ts",
   "files": [
-    "dist/**"
+    "dist/**",
+    "src/audience/client.d.ts"
   ],
   "keywords": [
     "vite",
@@ -22,12 +23,14 @@
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
     "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^6.1.1",
     "vite": "^8.3.0",
-    "vite-plugin-dts": "^5.1.0"
+    "vite-plugin-dts": "^5.1.0",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
@@ -44,6 +47,14 @@
     "./lib": {
       "import": "./dist/esm/src/lib/index.js",
       "require": "./dist/esm/src/lib/index.js"
+    },
+    "./audience": {
+      "types": "./dist/esm/src/audience/index.d.ts",
+      "import": "./dist/esm/src/audience/index.js",
+      "require": "./dist/esm/src/audience/index.js"
+    },
+    "./build-profile-client": {
+      "types": "./src/audience/client.d.ts"
     }
   }
 }

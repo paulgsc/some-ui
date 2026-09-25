@@ -1,0 +1,11 @@
+{
+  // Tests are typechecked and linted, never emitted: the package's own
+  // tsconfig.json drives `tsc --outDir dist/esm`, and including tests/ there
+  // would ship them in dist/.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": ".."
+  },
+  "include": [".", "../src"]
+}

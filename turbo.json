@@ -23,6 +23,12 @@
       "cache": true,
       "env": ["SOME_UI_PRUNED_WORKSPACE"]
     },
+    "www#build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", "build/**", "documents/**", ".contentlayer/**"],
+      "cache": true,
+      "env": ["SOME_UI_PRUNED_WORKSPACE", "SOME_UI_PROFILE"]
+    },
     "build:docs": {
       "cache": true,
       "outputs": [".contentlayer/**"]
