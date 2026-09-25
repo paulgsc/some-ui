@@ -10,17 +10,20 @@ import {
   Sparkles,
 } from "lucide-react"
 
+import { useHasDecorativeSession } from "@/lib/auth-session"
 import { HexCombMark } from "@/components/brand/hex-comb-mark"
+import { ExtensionsPage } from "@/components/extensions/extensions-page"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
 /**
  * This repo's GitHub Pages deployment bundles three unrelated static
  * artifacts under one origin (see .github/workflows/pages.yml): this
  * TanStack app, a Storybook build nested at /storybook/, and this app's own
- * /resume route. A visitor landing on "/" cold has no way to know any of
- * that exists, so "/" is this standalone splash - not the learning app -
- * whose only job is to point at the three of them - plus /extensions, an
- * in-app tour of the browser extensions the same monorepo ships.
+ * /resume route. This landing is the signed-in visitor's "/": a standalone
+ * splash - not the learning app - whose only job is to point at the three of
+ * them, plus /extensions, the tour of the browser extensions the same
+ * monorepo ships. A visitor with no session gets that tour as "/" itself
+ * instead (see `Root` below).
  */
 type DestinationBase = {
   title: string
@@ -162,6 +165,23 @@ const Landing = (): JSX.Element => (
   </main>
 )
 
+/**
+ * `"/"` is two pages, chosen by whether there is a session.
+ *
+ * A visitor without one — a stranger sent a link, which on the public site is
+ * everyone — gets the extensions comb as the front door: the site introduces
+ * itself by showing what it has built rather than listing where to go. A
+ * signed-in visitor gets the landing above, whose cards are the way into
+ * their own work.
+ *
+ * Chosen in the component rather than by redirecting in `beforeLoad`, so the
+ * front door keeps the address `"/"` and a session appearing (the passkey
+ * stub in `lib/auth-session`) swaps the page in place. `useHasDecorativeSession`
+ * is the subscribing read for exactly that.
+ */
+const Root = (): JSX.Element =>
+  useHasDecorativeSession() ? <Landing /> : <ExtensionsPage chrome="front" />
+
 export const Route = createFileRoute("/")({
-  component: Landing,
+  component: Root,
 })
