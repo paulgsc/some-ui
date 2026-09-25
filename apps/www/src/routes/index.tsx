@@ -60,7 +60,7 @@ const DESTINATIONS: ReadonlyArray<Destination> = [
   {
     title: "Browser extensions",
     description:
-      "Six small tools that run on your machine and talk to no server - what each one does, and how far along it is.",
+      "Six small tools for your browser - what each one does, how far along it is, and what it sends.",
     icon: Puzzle,
     cta: "See the six",
     href: "/extensions",
