@@ -56,8 +56,12 @@ export const ExtensionsPage = ({
         controls sit in a region no cell ever reaches and the comb still gets
         the whole window. Reserving a strip for them instead would be most
         expensive exactly where there is least to spare - a 390px-tall
-        landscape phone. */}
-    <div className="pointer-events-none fixed inset-x-0 top-0 z-10 flex items-center justify-between px-3 py-3 md:px-6">
+        landscape phone.
+
+        It wraps rather than overflowing: at a narrow width with enlarged
+        default text, the controls drop to a second row instead of running off
+        the edge, since they are the front door's only navigation. */}
+    <div className="pointer-events-none fixed inset-x-0 top-0 z-10 flex flex-wrap items-center justify-between gap-2 px-3 py-3 md:px-6">
       {chrome === "back" ? (
         <Link to="/" className={CHIP}>
           <ArrowLeft className="size-4" aria-hidden />
@@ -69,12 +73,14 @@ export const ExtensionsPage = ({
               session theme (the `.comb` skin), and a fixed-amber mark beside a
               slate or berry comb would read as a second palette. */}
           <HexCombMark className="text-muted-foreground size-6" />
-          <span className="text-muted-foreground text-sm font-medium tracking-wide uppercase">
+          {/* The wordmark gives way on a phone, where the mark alone
+              carries the brand and the width is the actions'. */}
+          <span className="text-muted-foreground sr-only text-sm font-medium tracking-wide uppercase sm:not-sr-only">
             Some UI
           </span>
         </span>
       )}
-      <div className="pointer-events-auto flex items-center gap-1.5">
+      <div className="pointer-events-auto ml-auto flex flex-wrap items-center justify-end gap-1.5">
         {chrome === "front" && (
           <>
             <Link to="/resume" className={CHIP}>
