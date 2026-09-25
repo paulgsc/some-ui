@@ -197,11 +197,11 @@
   }
 
   .xcomb-cell-ghost .xcomb-body {
-    fill: color-mix(in oklab, var(--comb-cell) 55%, transparent);
+    fill: var(--comb-ghost-cell);
   }
 
   .xcomb-cell-ghost .xcomb-ring {
-    stroke: color-mix(in oklab, var(--comb-edge) 40%, transparent);
+    stroke: var(--comb-ghost-edge);
   }
 
   .xcomb-lift {
@@ -392,7 +392,7 @@
      steps() rather than a slide, because the extension surrenders exactly
      one layer at a time - a smooth wipe would depict a different product. */
   .xcomb-mini-card {
-    fill: color-mix(in oklab, var(--comb-honey-mid) 24%, transparent);
+    fill: var(--comb-mini-tint);
   }
 
   .xcomb-mini-card ~ rect {
@@ -432,8 +432,8 @@
 
   /* Conveyor: three squares ride the belt, turning as they go. */
   .xcomb-mini-rail {
-    fill: color-mix(in oklab, var(--comb-honey-mid) 40%, transparent);
-    stroke: color-mix(in oklab, var(--comb-honey-mid) 40%, transparent);
+    fill: var(--comb-mini-rail);
+    stroke: var(--comb-mini-rail);
     stroke-width: 3px;
   }
 
