@@ -1,0 +1,151 @@
+/* ============================================================
+   COMB — the honeycomb component skin
+   ------------------------------------------------------------
+   A `component`-scoped skin (see src/theme/registry.ts): it declares
+   only its own `--comb-*` tokens and never reassigns the semantic
+   contract, so `@some-ui/honeycomb`'s ExtensionsComb applies it to its
+   own root and the user's session theme still reaches everything
+   around and inside it.
+
+   Two kinds of token live here, and the difference is deliberate:
+
+     1. Honey (`--comb-honey-*`, `--comb-ink`) is the fill: a four-stop
+        scale plus the ink that sits on it. Its default is the brand
+        amber from brand/favicon.svg, and that default is the light
+        theme's. Every other session theme recasts it in its own hue in
+        the blocks at the bottom of this file — hand-picked per theme,
+        not derived from `--primary`, because the light and dark
+        themes' `--primary` is an achromatic near-black / near-white
+        that would make the fill read as grey mud. Within one theme the
+        scale never changes, which is what the fill needs: it is the
+        comb's one quantitative encoding, and a level must look the
+        same at every depth.
+     2. Wax (`--comb-cell`, `--comb-edge`, `--comb-on-cell`, …) is the
+        comb's structure. It is DERIVED from the session's
+        `--background` / `--foreground` and the honey above, so it
+        follows every theme — including ones added later — with no
+        per-theme block at all.
+
+   A session theme added to the registry without a honey block below
+   still renders (in amber), but `tokens.test.ts` fails, so the
+   omission cannot ship silently.
+   ============================================================ */
+
+@layer base {
+  .comb {
+    /* ── Honey: the brand amber, and the light theme's ─────────── */
+    --comb-honey-deep: #b45309;
+    --comb-honey-mid: #f59e0b;
+    --comb-honey-surface: #fbbf24;
+    --comb-honey-meniscus: #fde68a;
+    --comb-ink: oklch(14.5% 0 0deg);
+
+    /* ── Wax: derived from the session substrate ─────────────── */
+
+    /* An empty cell: the page ground with a breath of honey in it. */
+    --comb-cell: color-mix(
+      in oklab,
+      var(--comb-honey-mid) 7%,
+      color-mix(in oklab, var(--foreground) 4%, var(--background))
+    );
+
+    /* The lattice between cells: the comb's wax walls. Warmer and a
+       step brighter than a cell, so seven hexes read as a comb rather
+       than as one shape. */
+    --comb-wax: color-mix(
+      in oklab,
+      var(--comb-honey-mid) 20%,
+      color-mix(in oklab, var(--foreground) 6%, var(--background))
+    );
+
+    /* A cell's own wall, drawn on all six edges. */
+    --comb-edge: color-mix(in oklab, var(--comb-honey-mid) 30%, transparent);
+
+    /* A slot with no register at this depth: drawn, but receding. */
+    --comb-ghost-cell: color-mix(in oklab, var(--comb-cell) 55%, transparent);
+    --comb-ghost-edge: color-mix(in oklab, var(--comb-edge) 40%, transparent);
+
+    /* Ink on an empty cell. Pulled toward the foreground, so it is pale
+       gold on a dark ground and deep amber on a light one — the fixed
+       meniscus tone would vanish against white. */
+    --comb-on-cell: color-mix(
+      in oklab,
+      var(--comb-honey-mid) 62%,
+      var(--foreground)
+    );
+
+    /* Secondary ink on an empty cell: micro-labels, muted glyphs. The
+       session's muted tone warmed toward honey, so a theme with a cool
+       grey does not read as a second palette inside the comb. */
+    --comb-on-cell-muted: color-mix(
+      in oklab,
+      var(--comb-honey-mid) 30%,
+      var(--muted-foreground)
+    );
+
+    /* A name set large on an empty cell: the foreground, barely warmed. */
+    --comb-title: color-mix(
+      in oklab,
+      var(--comb-honey-mid) 18%,
+      var(--foreground)
+    );
+
+    /* The mechanism miniatures depict a web page, which is light or dark
+       in its own right, whatever the comb's ground is. */
+    --comb-mini-light: oklch(96.7% 0.001 286deg);
+    --comb-mini-dark: oklch(21% 0.006 286deg);
+    --comb-mini-line: oklch(63% 0.01 286deg / 85%);
+
+    /* Translucent honey for the miniatures' cards and rails. */
+    --comb-mini-tint: color-mix(
+      in oklab,
+      var(--comb-honey-mid) 24%,
+      transparent
+    );
+    --comb-mini-rail: color-mix(
+      in oklab,
+      var(--comb-honey-mid) 40%,
+      transparent
+    );
+
+    /* The halo a lit cell (hover, focus, the one finished tool) casts. */
+    --comb-glow: color-mix(in oklab, var(--comb-honey-mid) 55%, transparent);
+  }
+
+  /* ── Per-session-theme honey ───────────────────────────────────
+     The theme class sits on the document root and `.comb` on the
+     component, so each rule below outranks the default above. Order
+     matters where two themes share a root: Strawberry Moon carries
+     `.dark` too, so its block comes after dark's and wins the tie. */
+
+  /* Dark: the theme's own slate — the hue of its foreground and muted
+     ink (254-257deg) — as a cool, moonlit fill. */
+  .dark .comb {
+    --comb-honey-deep: oklch(42% 0.06 262deg);
+    --comb-honey-mid: oklch(58% 0.08 258deg);
+    --comb-honey-surface: oklch(70% 0.07 254deg);
+    --comb-honey-meniscus: oklch(86% 0.04 250deg);
+    --comb-ink: oklch(14.5% 0.01 257deg);
+  }
+
+  /* Strawberry Moon: the berry (its --primary, 15deg) rising to the
+     moonlit rose of its ground (350deg). */
+  .strawberry-moon .comb {
+    --comb-honey-deep: oklch(44% 0.15 12deg);
+    --comb-honey-mid: oklch(62% 0.19 15deg);
+    --comb-honey-surface: oklch(72% 0.16 8deg);
+    --comb-honey-meniscus: oklch(88% 0.07 350deg);
+    --comb-ink: oklch(16% 0.03 350deg);
+  }
+
+  /* Peachy Blossom: coral blossom (its --primary, 25deg) up to ripe
+     peach (its --accent, 65deg). Its dusk variant keeps the same two
+     hues, and this block, coming after dark's, wins there too. */
+  .peachy-blossom .comb {
+    --comb-honey-deep: oklch(56% 0.15 28deg);
+    --comb-honey-mid: oklch(72% 0.16 30deg);
+    --comb-honey-surface: oklch(82% 0.13 60deg);
+    --comb-honey-meniscus: oklch(93% 0.06 70deg);
+    --comb-ink: oklch(28% 0.05 40deg);
+  }
+}

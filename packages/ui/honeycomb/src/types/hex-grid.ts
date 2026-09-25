@@ -9,6 +9,12 @@ type HexCellTheme = {
   strokeWidth?: number
   opacity?: number
   filter?: string
+  /**
+   * Styles the cell path from a stylesheet. A CSS `fill` / `stroke` outranks
+   * the presentation attributes above, which is what lets a cell take its
+   * paint from design tokens instead of literals.
+   */
+  className?: string
 }
 
 export type HexCellData<T = unknown> = {

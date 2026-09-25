@@ -1,0 +1,546 @@
+/* The /extensions comb: layout, cell paint, and the motions. Authored CSS
+   rather than Tailwind utilities because almost all of it is SVG paint,
+   keyframes and container queries - see apps/www's main.tsx for how
+   package-local component CSS is pulled in.
+
+   Every colour is a `--comb-*` token from the `.comb` component skin in
+   @some-ui/styles (themes/comb.css) or a semantic token; this file names no
+   colour literal. Every animation is switched off under
+   prefers-reduced-motion at the bottom, including the two that run at rest
+   (the beacon on the one finished tool, and the pulsing rest cue). */
+
+@layer utilities {
+  /* ------------------------------------------------------------ layout
+     The root is a size container, so the comb is fitted against the box it
+     was given (the viewport on /extensions, the story frame in Storybook)
+     rather than against the window. */
+  .xcomb-root {
+    container-type: size;
+    inset: 0;
+    overflow: hidden;
+    position: absolute;
+  }
+
+  /* Portrait and roomy screens: the comb, with its caption under it, centred
+     as one group. 3.5rem at the top clears the page's Back / theme bar. */
+  .xcomb-layout {
+    align-items: center;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    height: 100%;
+    justify-content: center;
+    padding: 3.5rem 0.75rem 1rem;
+    width: 100%;
+  }
+
+  /* The comb's box has the comb's own aspect (5.2 : 5 for a radius-1
+     pointy-top grid) and takes all the width it can while leaving room for
+     the chrome above and the caption below. `HexGrid` letterbox-fits into it
+     and never draws larger than its natural size. */
+  .xcomb-stage {
+    aspect-ratio: 1.0392;
+    flex: none;
+    max-width: 100%;
+    width: min(100%, calc((100cqh - 10rem) * 1.0392));
+  }
+
+  .xcomb-caption {
+    color: var(--muted-foreground);
+    font-size: 1rem;
+    line-height: 1.5;
+    margin: 0;
+    max-width: 30rem;
+    min-height: 4.5rem;
+    text-align: center;
+    text-wrap: balance;
+  }
+
+  .xcomb-caption-text {
+    animation: xcomb-fade 320ms ease-out both;
+    display: block;
+  }
+
+  /* A short, wide box - a phone held sideways, a laptop with the dock up.
+     Stacking the caption under the comb there would cost the comb a third of
+     the only axis bounding it, so the caption moves beside it instead. */
+  @container (aspect-ratio > 1.3) and (height < 600px) {
+    .xcomb-layout {
+      flex-direction: row;
+      gap: 1.5rem;
+      padding: 0.75rem 1rem;
+    }
+
+    .xcomb-stage {
+      width: min(calc(100cqw - 18rem), calc((100cqh - 1.5rem) * 1.0392));
+    }
+
+    .xcomb-caption {
+      font-size: 0.95rem;
+      min-height: 0;
+      text-align: left;
+      width: 14rem;
+    }
+  }
+
+  /* ------------------------------------------------------------- paint */
+
+  /* The lattice: each cell's full socket as `HexGrid` paints it. The cell
+     proper is drawn inset inside it, so the walls are the wax showing
+     through. The same-colour stroke closes the hairline seams antialiasing
+     leaves between adjacent sockets. */
+  .xcomb-wax {
+    fill: var(--comb-wax);
+    stroke: var(--comb-wax);
+    stroke-linejoin: round;
+    stroke-width: 2px;
+  }
+
+  .xcomb-body {
+    fill: var(--comb-cell);
+  }
+
+  .xcomb-ring {
+    fill: transparent;
+    stroke: var(--comb-edge);
+    stroke-linejoin: round;
+    stroke-width: 2px;
+    transition:
+      stroke 220ms ease,
+      stroke-width 220ms ease,
+      filter 220ms ease;
+  }
+
+  .xcomb-stop-deep {
+    stop-color: var(--comb-honey-deep);
+  }
+
+  .xcomb-stop-mid {
+    stop-color: var(--comb-honey-mid);
+  }
+
+  .xcomb-stop-surface {
+    stop-color: var(--comb-honey-surface);
+  }
+
+  .xcomb-meniscus {
+    stroke: var(--comb-honey-meniscus);
+    stroke-width: 4px;
+  }
+
+  .xcomb-tone-cell {
+    color: var(--comb-on-cell);
+  }
+
+  .xcomb-tone-honey {
+    color: var(--comb-ink);
+  }
+
+  .xcomb-tone-cell .xcomb-muted {
+    color: var(--comb-on-cell-muted);
+  }
+
+  .xcomb-tone-cell .xcomb-accent {
+    color: var(--comb-honey-mid);
+  }
+
+  .xcomb-label {
+    font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .xcomb-title {
+    font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .xcomb-tone-cell .xcomb-title {
+    color: var(--comb-title);
+  }
+
+  .xcomb-mark-ring {
+    fill: var(--comb-honey-mid);
+  }
+
+  .xcomb-mark-core {
+    fill: var(--comb-honey-meniscus);
+  }
+
+  .xcomb-off {
+    opacity: 0.2;
+  }
+
+  .xcomb-site-one {
+    fill: var(--comb-honey-surface);
+  }
+
+  .xcomb-site-many {
+    fill: none;
+    stroke: var(--comb-honey-surface);
+    stroke-width: 2.5px;
+  }
+
+  /* --------------------------------------------------------- the cells */
+
+  /* Every cell enters on a level change, clockwise from the centre. The
+     fill mode is `backwards` on purpose: `both` would pin the final
+     transform and the hover lift below could never apply. */
+  .xcomb-cell {
+    animation: xcomb-pop 420ms cubic-bezier(0.2, 0.8, 0.3, 1) backwards;
+    animation-delay: calc(var(--xcomb-i, 0) * 45ms);
+  }
+
+  .xcomb-cell-ghost .xcomb-body {
+    fill: var(--comb-ghost-cell);
+  }
+
+  .xcomb-cell-ghost .xcomb-ring {
+    stroke: var(--comb-ghost-edge);
+  }
+
+  .xcomb-lift {
+    transition: transform 260ms cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+
+  .xcomb-cell-action {
+    cursor: pointer;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  /* The focus ring is the hexagon's own stroke, so it follows all six edges,
+     and is deliberately the same state as hover: one appearance to get right,
+     not two. */
+  .xcomb-cell-action:focus-visible .xcomb-ring {
+    filter: drop-shadow(0 0 10px var(--comb-glow));
+    stroke: var(--comb-honey-meniscus);
+    stroke-width: 5px;
+  }
+
+  .xcomb-cell-action:focus-visible .xcomb-lift {
+    transform: scale(1.04);
+  }
+
+  .xcomb-cell-action:active .xcomb-lift {
+    transform: scale(0.97);
+  }
+
+  /* Lift on hover only where hovering is real: on a touch screen a tap
+     leaves `:hover` stuck on the cell it landed on. */
+  @media (hover: hover) {
+    .xcomb-cell-action:hover .xcomb-lift {
+      transform: scale(1.04);
+    }
+
+    .xcomb-cell-action:hover .xcomb-ring {
+      filter: drop-shadow(0 0 10px var(--comb-glow));
+      stroke: var(--comb-honey-meniscus);
+      stroke-width: 5px;
+    }
+  }
+
+  /* The single at-rest motion of the index level: the one finished tool
+     breathes. */
+  .xcomb-cell-beacon .xcomb-ring {
+    animation: xcomb-breathe 3.6s ease-in-out infinite;
+    stroke: var(--comb-honey-meniscus);
+  }
+
+  .xcomb-cue {
+    animation: xcomb-cue 3s ease-in-out infinite;
+    color: var(--comb-on-cell);
+  }
+
+  /* Touch has no hover, so the L0 name-peek in the centroid is unreachable
+     and a visitor would get six glyphs and nothing else. The name comes to
+     the cell instead, and the glyph moves up to make room for it. Keyed on
+     the pointer's capability rather than on width, because a narrow desktop
+     window still hovers.
+
+     `hover` alone describes only the *primary* pointer, so a laptop with a
+     trackpad and a touchscreen reports `hover: hover` and would hide the
+     names from the finger that cannot peek. `any-pointer: coarse` catches
+     any touchscreen present; a hybrid device then shows the names to both
+     inputs, which costs the mouse nothing. */
+  .xcomb-name {
+    display: none;
+  }
+
+  @media (hover: none), (any-pointer: coarse) {
+    .xcomb-name {
+      display: inline;
+    }
+
+    .xcomb-emblem {
+      transform: translateY(-22px);
+    }
+  }
+
+  @keyframes xcomb-pop {
+    from {
+      opacity: 0;
+      transform: scale(0.86);
+    }
+
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes xcomb-fade {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes xcomb-breathe {
+    0%,
+    100% {
+      filter: drop-shadow(0 0 4px var(--comb-glow));
+      stroke-width: 2px;
+    }
+
+    50% {
+      filter: drop-shadow(0 0 16px var(--comb-glow));
+      stroke-width: 4px;
+    }
+  }
+
+  @keyframes xcomb-cue {
+    0%,
+    100% {
+      opacity: 0.5;
+    }
+
+    50% {
+      opacity: 1;
+    }
+  }
+
+  /* ---------------------------------------------------------- miniatures
+     The L1 mechanism register, one per extension. SVG throughout; each
+     animated shape pivots on its own box (`transform-box: fill-box`), not on
+     the cell's origin, which would fling it across the comb. */
+
+  .xcomb-mini-tab,
+  .xcomb-mini-cube,
+  .xcomb-mini-bar,
+  .xcomb-mini-ping {
+    transform-box: fill-box;
+  }
+
+  /* Suspender Ledger: four tab bars dim and narrow one by one, then restore. */
+  .xcomb-mini-tab {
+    animation: xcomb-tab 4s ease-in-out infinite;
+    fill: var(--comb-honey-surface);
+    transform-origin: left center;
+  }
+
+  @keyframes xcomb-tab {
+    0%,
+    18% {
+      opacity: 1;
+      transform: scaleX(1);
+    }
+
+    38%,
+    88% {
+      opacity: 0.18;
+      transform: scaleX(0.8);
+    }
+
+    100% {
+      opacity: 1;
+      transform: scaleX(1);
+    }
+  }
+
+  /* Page Filter: a mock page flips from light to dark on a cycle. */
+  .xcomb-mini-page {
+    animation: xcomb-theme 5s ease-in-out infinite;
+  }
+
+  .xcomb-mini-page ~ rect {
+    fill: var(--comb-mini-line);
+  }
+
+  .xcomb-mini-page ~ .xcomb-mini-accent {
+    fill: var(--comb-honey-mid);
+  }
+
+  @keyframes xcomb-theme {
+    0%,
+    40% {
+      fill: var(--comb-mini-light);
+    }
+
+    55%,
+    100% {
+      fill: var(--comb-mini-dark);
+    }
+  }
+
+  /* BOYO: a veil over a card steps down in four discrete stops, then resets.
+     steps() rather than a slide, because the extension surrenders exactly
+     one layer at a time - a smooth wipe would depict a different product. */
+  .xcomb-mini-card {
+    fill: var(--comb-mini-tint);
+  }
+
+  .xcomb-mini-card ~ rect {
+    fill: var(--comb-honey-meniscus);
+  }
+
+  .xcomb-mini-veil {
+    animation: xcomb-veil 5.2s steps(1, end) infinite;
+    fill: var(--comb-mini-dark);
+  }
+
+  @keyframes xcomb-veil {
+    0%,
+    24% {
+      transform: translateY(0);
+    }
+
+    25%,
+    49% {
+      transform: translateY(30px);
+    }
+
+    50%,
+    74% {
+      transform: translateY(58px);
+    }
+
+    75%,
+    99% {
+      transform: translateY(88px);
+    }
+
+    100% {
+      transform: translateY(0);
+    }
+  }
+
+  /* Conveyor: three squares ride the belt, turning as they go. */
+  .xcomb-mini-rail {
+    fill: var(--comb-mini-rail);
+    stroke: var(--comb-mini-rail);
+    stroke-width: 3px;
+  }
+
+  .xcomb-mini-cube {
+    animation: xcomb-belt 3.3s linear infinite;
+    fill: none;
+    stroke: var(--comb-honey-surface);
+    stroke-width: 3px;
+    transform-origin: center;
+  }
+
+  @keyframes xcomb-belt {
+    from {
+      transform: translateX(0) rotate(0deg);
+    }
+
+    to {
+      transform: translateX(-176px) rotate(180deg);
+    }
+  }
+
+  /* Music Overlay: six bars bounce at six different periods. */
+  .xcomb-mini-bar {
+    animation-iteration-count: infinite;
+    animation-name: xcomb-eq;
+    animation-timing-function: ease-in-out;
+    fill: var(--comb-honey-surface);
+    transform-origin: bottom;
+  }
+
+  @keyframes xcomb-eq {
+    0%,
+    100% {
+      transform: scaleY(0.22);
+    }
+
+    50% {
+      transform: scaleY(1);
+    }
+  }
+
+  /* Drama Tracker: a dot travels a timeline, pinging as it goes. */
+  .xcomb-mini-travel {
+    animation: xcomb-travel 4.4s ease-in-out infinite;
+  }
+
+  .xcomb-mini-dot {
+    fill: var(--comb-honey-meniscus);
+  }
+
+  .xcomb-mini-ping {
+    animation: xcomb-ping 2.2s ease-out infinite;
+    fill: none;
+    stroke: var(--comb-honey-meniscus);
+    stroke-width: 2px;
+    transform-origin: center;
+  }
+
+  @keyframes xcomb-travel {
+    from {
+      transform: translateX(-64px);
+    }
+
+    to {
+      transform: translateX(64px);
+    }
+  }
+
+  @keyframes xcomb-ping {
+    from {
+      opacity: 0.8;
+      transform: scale(1);
+    }
+
+    to {
+      opacity: 0;
+      transform: scale(2.6);
+    }
+  }
+
+  /* Every animation on this page, including the two that run at rest. It is
+     one list rather than per-component because it is the list that must stay
+     exhaustive, and an omission is silent. */
+  @media (prefers-reduced-motion: reduce) {
+    .xcomb-cell,
+    .xcomb-caption-text,
+    .xcomb-cell-beacon .xcomb-ring,
+    .xcomb-cue,
+    .xcomb-mini-tab,
+    .xcomb-mini-page,
+    .xcomb-mini-veil,
+    .xcomb-mini-cube,
+    .xcomb-mini-bar,
+    .xcomb-mini-travel,
+    .xcomb-mini-ping {
+      animation: none;
+    }
+
+    .xcomb-lift,
+    .xcomb-ring {
+      transition: none;
+    }
+  }
+}

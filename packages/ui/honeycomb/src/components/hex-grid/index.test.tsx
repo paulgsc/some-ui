@@ -1,10 +1,15 @@
 import { HexGrid } from "@honeycomb/components/hex-grid"
 import { useHexgridWasm } from "@honeycomb/hooks/use-hexgrid-wasm"
 import { render } from "@testing-library/react"
+import { toast } from "sonner"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("@honeycomb/hooks/use-hexgrid-wasm", () => ({
   useHexgridWasm: vi.fn(),
+}))
+
+vi.mock("sonner", () => ({
+  toast: { info: vi.fn(), warning: vi.fn(), dismiss: vi.fn() },
 }))
 
 vi.mock("some-ui-utils", () => ({
@@ -32,6 +37,7 @@ function mockUseHexgridWasm(
 
 beforeEach(() => {
   vi.mocked(useHexgridWasm).mockReset()
+  vi.mocked(toast.info).mockReset()
 })
 
 describe("HexGrid onStatusChange", () => {
@@ -94,5 +100,78 @@ describe("HexGrid onStatusChange", () => {
     mockUseHexgridWasm({ isLoading: false, error: "WASM init failed" })
 
     expect(() => render(<HexGrid cellCount={7} hexSize={40} />)).not.toThrow()
+  })
+})
+
+describe("HexGrid fit notices", () => {
+  // The mocked box is 400x400; a radius-1 grid at hexSize 200 needs ~1039x1000
+  // at natural size, so it has to shrink to fit.
+  it("toasts a shrunk fit by default", () => {
+    mockUseHexgridWasm()
+    render(<HexGrid cellCount={7} hexSize={200} />)
+    expect(toast.info).toHaveBeenCalledTimes(1)
+  })
+
+  it("stays quiet with notifyFit={false}, but still reports the fit", () => {
+    mockUseHexgridWasm()
+    const onFitChange = vi.fn()
+    render(
+      <HexGrid
+        cellCount={7}
+        hexSize={200}
+        notifyFit={false}
+        onFitChange={onFitChange}
+      />
+    )
+    expect(toast.info).not.toHaveBeenCalled()
+    expect(onFitChange).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "shrunk" })
+    )
+  })
+})
+
+describe("HexGrid loading fallback", () => {
+  it("renders the default loading line", () => {
+    mockUseHexgridWasm({ isLoading: true })
+    const { container } = render(<HexGrid cellCount={7} hexSize={40} />)
+    expect(container.textContent).toContain("Loading hexagon grid")
+  })
+
+  it("renders nothing but its box with fallback={null}", () => {
+    mockUseHexgridWasm({ isLoading: true })
+    const { container } = render(
+      <HexGrid cellCount={7} hexSize={40} fallback={null} />
+    )
+    expect(container.textContent).toBe("")
+  })
+})
+
+describe("HexGrid cell theme", () => {
+  it("puts theme.className on the cell path", () => {
+    mockUseHexgridWasm({
+      hexCells: [
+        {
+          id: "hex_0_0_0",
+          points: [
+            { x: 0, y: -10 },
+            { x: 8.66, y: -5 },
+            { x: 8.66, y: 5 },
+            { x: 0, y: 10 },
+            { x: -8.66, y: 5 },
+            { x: -8.66, y: -5 },
+          ],
+        },
+      ],
+    })
+    const { container } = render(
+      <HexGrid
+        cellCount={1}
+        hexSize={10}
+        cellContent={[
+          { id: "hex_0_0_0", content: { data: {}, theme: { className: "x" } } },
+        ]}
+      />
+    )
+    expect(container.querySelectorAll("path.x")).toHaveLength(1)
   })
 })

@@ -136,7 +136,7 @@ type Figure = { value: string; label: string }
 
 const FIGURES: ReadonlyArray<Figure> = [
   { value: "58", label: "workspace packages" },
-  { value: "12", label: "browser extensions" },
+  { value: "6", label: "browser extensions" },
   { value: "3", label: "formal canons" },
   { value: "1", label: "engineer" },
 ]
@@ -306,6 +306,12 @@ const Mission = (): JSX.Element => (
           className="text-primary font-medium underline-offset-4 hover:underline"
         >
           Open the app
+        </Link>
+        <Link
+          to="/extensions"
+          className="text-primary font-medium underline-offset-4 hover:underline"
+        >
+          The extensions
         </Link>
         <Link
           to="/resume"

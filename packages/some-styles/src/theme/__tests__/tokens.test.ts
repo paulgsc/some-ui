@@ -172,3 +172,31 @@ describe("session and feature palettes", () => {
     }
   })
 })
+
+describe("comb skin", () => {
+  const comb = read("themes", "comb.css")
+  const HONEY = [
+    "--comb-honey-deep",
+    "--comb-honey-mid",
+    "--comb-honey-surface",
+    "--comb-honey-meniscus",
+    "--comb-ink",
+  ]
+
+  it("declares the whole honey scale by default, which is light's", () => {
+    const declared = declaredIn(comb, "comb")
+    for (const token of HONEY) expect(declared).toContain(token)
+  })
+
+  // The wax follows any theme on its own, but the honey is hand-picked per
+  // theme: a session theme added to the switcher without a block here would
+  // silently render the comb in light's amber.
+  it.each(
+    SESSION_THEMES.filter((t) => t.id !== "light").map((t) => [t.id] as const)
+  )("recasts the honey for the %s session theme", (id) => {
+    const declared = declaredIn(comb, id)
+    for (const token of HONEY) {
+      expect(declared, `.${id} .comb is missing ${token}`).toContain(token)
+    }
+  })
+})
