@@ -72,6 +72,14 @@ export function useCombFrame(
     const observer = new ResizeObserver(measure)
     observer.observe(root)
     observer.observe(stage)
+    // The stage can also *move* without resizing: the layout centres the
+    // stage and the caption as one group, so a caption that outgrows its
+    // reserved height (enlarged text, a narrow frame) shifts the stage up.
+    // ResizeObserver reports size, never position, so watch what moves it -
+    // the stage's siblings in that group.
+    for (const sibling of Array.from(stage.parentElement?.children ?? [])) {
+      if (sibling !== stage) observer.observe(sibling)
+    }
     return (): void => observer.disconnect()
   }, [rootRef, stageRef])
 
