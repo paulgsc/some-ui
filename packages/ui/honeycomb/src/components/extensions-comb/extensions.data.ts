@@ -48,6 +48,24 @@ export type Mechanism = "tabs" | "theme" | "veil" | "cubes" | "bars" | "pulse"
 export type Reach = "one-site" | "everywhere"
 
 /**
+ * What an extension sends over the network, which is the answer the privacy
+ * facet gives. Read off each extension's source, not assumed: the six do not
+ * share one answer, and a page that told a stranger "talks to no server" about
+ * a popup that fetches Google Fonts would be making a false privacy claim.
+ *
+ * - `none`         — no request at all.
+ * - `local-server` — only to a server the user runs on their own machine
+ *                    (`localhost`), which is where it keeps its data.
+ * - `web-fonts`    — its popup fetches typefaces from Google Fonts. Nothing
+ *                    about the user or their pages goes with it.
+ * - `site-images`  — it shows images from the one site it works on, fetched
+ *                    from that site's image server.
+ *
+ * When an extension's network behaviour changes, change this with it.
+ */
+export type Network = "none" | "local-server" | "web-fonts" | "site-images"
+
+/**
  * Which glyph a ring cell carries at L0. Named by role rather than by lucide
  * component so this file stays a content manifest with no React in it — the
  * comb owns the mapping to actual icons.
@@ -79,6 +97,7 @@ export type ExtensionDefinition = {
   readonly reach: Reach
   readonly mechanism: Mechanism
   readonly emblem: Emblem
+  readonly network: Network
 }
 
 export const EXTENSIONS: ReadonlyArray<ExtensionDefinition> = [
@@ -92,6 +111,7 @@ export const EXTENSIONS: ReadonlyArray<ExtensionDefinition> = [
     chrome: false,
     reach: "everywhere",
     mechanism: "tabs",
+    network: "none",
     emblem: "memory",
   },
   {
@@ -104,6 +124,7 @@ export const EXTENSIONS: ReadonlyArray<ExtensionDefinition> = [
     chrome: true,
     reach: "everywhere",
     mechanism: "theme",
+    network: "web-fonts",
     emblem: "contrast",
   },
   {
@@ -116,6 +137,7 @@ export const EXTENSIONS: ReadonlyArray<ExtensionDefinition> = [
     chrome: true,
     reach: "one-site",
     mechanism: "veil",
+    network: "local-server",
     emblem: "covered",
   },
   {
@@ -128,6 +150,7 @@ export const EXTENSIONS: ReadonlyArray<ExtensionDefinition> = [
     chrome: true,
     reach: "everywhere",
     mechanism: "cubes",
+    network: "local-server",
     emblem: "belt",
   },
   {
@@ -140,6 +163,7 @@ export const EXTENSIONS: ReadonlyArray<ExtensionDefinition> = [
     chrome: false,
     reach: "one-site",
     mechanism: "bars",
+    network: "site-images",
     emblem: "music",
   },
   {
@@ -152,22 +176,39 @@ export const EXTENSIONS: ReadonlyArray<ExtensionDefinition> = [
     chrome: false,
     reach: "one-site",
     mechanism: "pulse",
+    network: "web-fonts",
     emblem: "beat",
   },
 ]
 
 /**
- * The L2 · privacy facet. Identical for all six, which is the point — it is a
- * property of how these are built, not a feature any one of them has.
+ * The L2 · privacy facet's caption, one per kind of network use. Each says
+ * first what the visitor cares about (does anything about *them* leave) and
+ * then, plainly, what request the tool does make.
  */
-export const PRIVACY_LINE =
-  "Nothing. It runs on your machine, talks to no server, and you never make an account."
+export const PRIVACY_LINE: Readonly<Record<Network, string>> = {
+  none: "Nothing. It runs on your machine, talks to no server, and you never make an account.",
+  "local-server":
+    "Nothing leaves your machine. It keeps its data in a small server you run yourself, and there is no account.",
+  "web-fonts":
+    "Nothing about you or your pages. Its popup does load its typefaces from Google Fonts, and there is no account.",
+  "site-images":
+    "Nothing about you. Its card loads the video's thumbnail from YouTube's image server, and there is no account.",
+}
 
+/** The first privacy atom: the tool's own network answer, in three words. */
+export const NETWORK_LABEL: Readonly<Record<Network, string>> = {
+  none: "no network",
+  "local-server": "local server",
+  "web-fonts": "google fonts",
+  "site-images": "youtube images",
+}
+
+/** The privacy atoms every one of the six shares. */
 export const PRIVACY_ATOMS: ReadonlyArray<{
   readonly id: string
   readonly label: string
 }> = [
-  { id: "no-network", label: "no network" },
   { id: "no-account", label: "no sign-in" },
   { id: "open-source", label: "source is public" },
 ]
@@ -189,9 +230,8 @@ export const LABEL = {
  * has no comb to look at and a document with no heading gives it nothing to
  * announce or navigate by.
  *
- * It was "The comb" through design, which names the shape and makes no claim.
- * Now that it is only ever heard and never seen, it is worth more as the one
- * sentence that says what all six share — the same property the privacy facet
- * spends a whole level establishing.
+ * It was "The comb" through design, which names the shape and makes no claim,
+ * and then "Six tools that stay on your machine" — a privacy claim the six do
+ * not all meet (see `Network`). It names what the page is instead.
  */
-export const PAGE_TITLE = "Six tools that stay on your machine"
+export const PAGE_TITLE = "Six small tools for your browser"

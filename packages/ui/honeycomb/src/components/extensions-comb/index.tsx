@@ -12,7 +12,10 @@ import {
   EyeOff,
   HardDrive,
   HeartPulse,
+  ImageIcon,
   Music,
+  Server,
+  Type,
   UserX,
   WifiOff,
 } from "lucide-react"
@@ -22,11 +25,13 @@ import type {
   Emblem,
   ExtensionDefinition,
   Mechanism,
+  Network,
   Stage,
 } from "./extensions.data"
 import {
   EXTENSIONS,
   LABEL,
+  NETWORK_LABEL,
   PAGE_TITLE,
   PRIVACY_ATOMS,
   PRIVACY_LINE,
@@ -343,7 +348,15 @@ const EMBLEM_ICON = {
   beat: HeartPulse,
 } as const satisfies Record<Emblem, LucideIcon>
 
-const PRIVACY_ICON = [WifiOff, UserX, CodeXml] as const
+const NETWORK_ICON = {
+  none: WifiOff,
+  "local-server": Server,
+  "web-fonts": Type,
+  "site-images": ImageIcon,
+} as const satisfies Record<Network, LucideIcon>
+
+/** Icons for `PRIVACY_ATOMS`, in order. */
+const PRIVACY_ICON = [UserX, CodeXml] as const
 
 const Glyph = ({
   icon: Icon,
@@ -899,7 +912,12 @@ function subjectLevel(
       onActivate: () => onFacet("privacy"),
       art: () => (
         <>
-          <Glyph icon={WifiOff} size={50} y={-14} className="xcomb-accent" />
+          <Glyph
+            icon={NETWORK_ICON[subject.network]}
+            size={50}
+            y={-14}
+            className="xcomb-accent"
+          />
           <Label text={LABEL.privacy} y={42} className="xcomb-muted" />
         </>
       ),
@@ -963,14 +981,25 @@ function facetLevel(
             ),
           })
         )
-      : PRIVACY_ATOMS.map(
-          (atom, k): CellSpec => ({
+      : [
+          // First, this tool's own network answer; then what all six share.
+          {
+            id: `network-${subject.network}`,
+            label: NETWORK_LABEL[subject.network],
+            icon: NETWORK_ICON[subject.network],
+          },
+          ...PRIVACY_ATOMS.map((atom, k) => ({
+            ...atom,
+            icon: PRIVACY_ICON[k] ?? UserX,
+          })),
+        ].map(
+          (atom): CellSpec => ({
             key: `facet-privacy-${atom.id}`,
             describe: atom.label,
             art: () => (
               <>
                 <Glyph
-                  icon={PRIVACY_ICON[k] ?? WifiOff}
+                  icon={atom.icon}
                   size={50}
                   y={-16}
                   className="xcomb-accent"
@@ -1002,7 +1031,10 @@ function facetLevel(
   return {
     ring,
     core,
-    caption: facet === "stage" ? STAGE_LINE[subject.stage] : PRIVACY_LINE,
+    caption:
+      facet === "stage"
+        ? STAGE_LINE[subject.stage]
+        : PRIVACY_LINE[subject.network],
   }
 }
 

@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url"
 import { ExtensionsComb } from "@honeycomb/components/extensions-comb"
 import {
   EXTENSIONS,
+  NETWORK_LABEL,
   PRIVACY_LINE,
   STAGE_LINE,
 } from "@honeycomb/components/extensions-comb/extensions.data"
@@ -108,7 +109,7 @@ describe("ExtensionsComb", () => {
     fireEvent.keyDown(screen.getByRole("button", { name: "What it sends" }), {
       key: " ",
     })
-    expect(caption()).toBe(PRIVACY_LINE)
+    expect(caption()).toBe(PRIVACY_LINE[ext.network])
   })
 
   it("keeps focus inside the comb across every transition", () => {
@@ -137,6 +138,21 @@ describe("ExtensionsComb", () => {
     press("Back to all six")
     expect(focused()).toBe(ext.name)
   })
+
+  // The privacy facet is a claim to a stranger about what leaves their
+  // machine, so each tool must give its own answer, not a shared one.
+  it.each(EXTENSIONS.map((e) => [e.name, e] as const))(
+    "gives %s its own network answer",
+    (_, ext) => {
+      render(<ExtensionsComb />)
+      fireEvent.click(screen.getByRole("button", { name: ext.name }))
+      fireEvent.click(screen.getByRole("button", { name: "What it sends" }))
+      expect(caption()).toBe(PRIVACY_LINE[ext.network])
+      expect(
+        screen.getByRole("img", { name: NETWORK_LABEL[ext.network] })
+      ).toBeTruthy()
+    }
+  )
 
   it("keeps all seven cells at every depth", () => {
     const { container } = render(<ExtensionsComb />)
