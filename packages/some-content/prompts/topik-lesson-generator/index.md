@@ -95,8 +95,8 @@ T: [Apply Topik Lesson Generator v1.0]
 ```
 
 The generator returns two ` ```json ` blocks and nothing else: the lesson
-file, then its manifest entry. Both are saved and checked by commands, not
-read as prose.
+file, then its manifest entry. **After Generating** is for the person running
+the prompt, not for the generator.
 
 ---
 
@@ -208,7 +208,7 @@ TOPIK level itself yet, so record it in `tags` as `"topik-<level>"` (see
   - `korean` and `content`: the same Korean line;
   - `english`: a natural translation, hidden until the line's probes are
     answered;
-  - `timestamp`: `"HH:MM"`, increasing.
+  - `timestamp`: `"HH:MM"`, never decreasing through the whole lesson.
 - **Conversation `id`s** are `1, 2, 3, …`. Resume points find a conversation
   by it.
 - **`questions`:** 1–2 per conversation. They are the desktop quiz, which
@@ -311,6 +311,8 @@ first-order, and the checker rejects it.
   settings in English: "a clerk, as a customer walks in"; "a guest, leaving
   a friend's home". Each wrong setting must be one where the line is plainly
   wrong. Name who speaks to whom, so a second reading can't make it right.
+  Make the settings differ in what the line's _form_ decides (who is senior,
+  who is leaving), not in what the plot already told the learner.
 
 ### `build`: "Make it negative" / "Say you already did"
 
@@ -319,14 +321,19 @@ first-order, and the checker rejects it.
   - a multi-word target is tiled by word;
   - a single word is tiled by syllable and needs at least 2 Hangul syllables;
   - the board shows the target's tiles plus your first 3 distractors, as
-    many of them as fit within 8 tiles. A fourth distractor is never shown;
+    many of them as fit within 8 tiles. Order them most-instructive first:
+    a long target shows only the first one or two;
   - a target over 8 tiles on its own is left out on a phone. Keep targets
     short.
 - `target` is written without final punctuation. List punctuated or spaced
   variants in `acceptedAnswers` (`"카드로 했어요."`).
 - `distractors` are the confusions, authored: 안 and 못 against 마세요, 할게요
-  against 했어요. Words from the source line make good distractors. Pieces of
+  against 했어요. The source's verb forms make good distractors. Pieces of
   the target never do, because they are silently dropped.
+- **No distractor may combine with the target's tiles into another correct
+  answer.** It would be graded wrong. Before keeping a distractor, try it in
+  every slot: 줄 in 바꿔 \_ 수 있어요 builds a valid sentence the board would
+  mark as a miss. Either drop it, or add that sentence to `acceptedAnswers`.
 - `target` must differ from `source`. If `source` contains the target
   (spaces and punctuation ignored), the source line is hidden and the
   `prompt` has to stand on its own.
@@ -367,6 +374,8 @@ first-order, and the checker rejects it.
 - **1–3 probes per conversation.** Probe the lines that carry structure worth
   judging: a request, a promise, an honorific, a tense, a negation, a reply
   that depends on who is speaking. Do not probe every line.
+- Vary the wrong candidates across the lesson, not only within one probe:
+  the same "반말 to a stranger" foil in every reply probe stops teaching.
 - Mix kinds within a lesson. Where the dialogue allows, each conversation
   gets at least one third-order probe.
 - Two probes on the same line are fine. The line's English stays hidden until
@@ -384,6 +393,20 @@ first-order, and the checker rejects it.
 ## Schema (`packages/ui/topik/src/lib/topik/entity/topik-types.ts`: read it at generation time; this is a snapshot)
 
 ```ts
+type Question = {
+  // the desktop quiz; the phone never shows it
+  type: "multiple-choice" | "text-input"
+  korean: string // the Korean the question is about
+  question: string // in English
+  options?: string[] // multiple-choice only
+  correct?: number // multiple-choice only: 0-based index into options
+  acceptedAnswers?: string[] // text-input only
+  correctAnswer: string // options[correct], or the canonical text answer
+  explanation: string
+  grammarNote?: string
+  anchorMessageId?: string
+}
+
 type ProbeOption = {
   text: string // a Korean utterance, or English prose with lang: "en"
   relation: MorphismRelation
@@ -586,7 +609,7 @@ Two ` ```json ` blocks, in this order.
      "totalQuestions": 5,
      "totalMessages": 14,
      "difficulty": "beginner",
-     "tags": ["topik-1", "makjang"]
+     "tags": ["topik-2", "makjang"]
    }
    ```
 
