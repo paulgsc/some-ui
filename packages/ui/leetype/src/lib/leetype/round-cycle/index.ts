@@ -14,8 +14,9 @@
  *
  * Engine-free, in the register of `lib/leetype/admissibility`,
  * `lib/leetype/cost`, and `lib/leetype/rewrite`: nothing here imports the
- * wasm loader or any hook, and nothing live imports this yet (Step 6, C1,
- * #1213, is where a real UI eventually would).
+ * wasm loader or any hook, and nothing live imports this yet: its one
+ * importer, `WideRoundSurface`, is mounted by no route until the Leetype
+ * cutover, which waits on a real round-assembly path (#1440).
  */
 
 import { isAdmissible } from "@leetype/lib/leetype/admissibility"
@@ -470,8 +471,8 @@ export function nextRoundCycleState(
  * Not yet wired into `lib/leetype/exercises/corpus-lint`'s `lintRoundCorpus`
  * — the same "additive, proven by fixture, not yet load-bearing against
  * real data" posture G3's own `checkAdmissibleClaimsAgreeWithDerivation`
- * took, since no live corpus builds a `RoundDiffOption` yet (Step 6, C1,
- * #1213, has not landed).
+ * took, since no live corpus builds a `RoundDiffOption` yet (C1, #1213,
+ * landed without one; a real round-assembly path is #1440).
  */
 export function checkUnrescuableExplanationsResolve(
   options: ReadonlyArray<RoundDiffOption>,
