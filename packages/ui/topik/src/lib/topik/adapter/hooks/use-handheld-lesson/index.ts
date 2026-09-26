@@ -240,6 +240,8 @@ export function useHandheldLesson({
 
   // ── Persistence ──────────────────────────────────────────────────────────
 
+  const batchId = batch?.id
+
   useEffect(() => {
     if (topikKey === null || restoredFor !== topikKey) return
     if (lesson.finished) {
@@ -248,15 +250,15 @@ export function useHandheldLesson({
     }
     // A check resumes at its line, with its result: NEXT then passes over
     // what was already answered instead of asking it twice.
-    if (resumeMessage) {
+    if (resumeMessage && batchId !== undefined) {
       store.set(topikKey, {
-        batchId: batch?.id,
+        batchId,
         conversation: lesson.conversation,
         messageId: resumeMessage.id,
         outcomes: outcomesOf(lesson),
       })
     }
-  }, [store, topikKey, restoredFor, lesson, resumeMessage])
+  }, [store, topikKey, restoredFor, lesson, resumeMessage, batchId])
 
   // ── Actions ──────────────────────────────────────────────────────────────
 
