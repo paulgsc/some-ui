@@ -1,10 +1,10 @@
-// honeycomb's sfx and (optionally) an LLM-generated hangul vocab file or
-// curated topik study material all live in packages/some-content (see
-// apps/www/.gitignore) and aren't checked into this app's public/ dir. CI's
-// Pages build (pages.yml) copies sfx into public/ at build time - hangul is
-// deliberately NOT part of that copy step, since the static GitHub Pages
-// build has no companion data at all (see src/lib/hangul-vocab). For local
-// `vite dev` this symlinks all three instead, so the dev server serves the
+// honeycomb's sfx and (optionally) an LLM-generated hangul vocab file both
+// live in packages/some-content (see apps/www/.gitignore) and aren't checked
+// into this app's public/ dir. CI's Pages build (pages.yml) copies sfx into
+// public/ at build time - hangul is deliberately NOT part of that copy step,
+// since the static GitHub Pages build has no companion data at all (see
+// src/lib/hangul-vocab). For local
+// `vite dev` this symlinks both instead, so the dev server serves the
 // real files straight out of packages/some-content, live, with no rebuild
 // needed. Run manually via `pnpm run content:link` when you have the actual
 // asset files locally - deliberately NOT wired into a pre/postinstall or
@@ -20,10 +20,17 @@
 // source inline, so no code path fetches a file to start a step, and the
 // exercise shim is the one seam a future generator replaces.
 //
+// topiks went the same way in #1048: lessons are rows in file_host, served by
+// its curriculum routes and added with its `import-curriculum` command, so
+// nothing here links them. packages/some-content/public/topiks is still where
+// lesson files are authored - it is that command's input. A `public/topiks`
+// link an earlier run of this script left behind is removed below, so a
+// stale copy can't sit in public/ looking like it is still served.
+//
 // No-op for any subdir that doesn't exist locally: these assets are
 // curated/gitignored, not part of a fresh checkout, so a machine without
-// them just runs without honeycomb sound / custom hangul vocab / topik
-// material rather than failing.
+// them just runs without honeycomb sound / custom hangul vocab rather than
+// failing.
 import {
   existsSync,
   lstatSync,
@@ -41,7 +48,21 @@ const contentPublicDir = resolve(
   "../../../packages/some-content/public"
 )
 
-for (const name of ["sfx", "hangul", "topiks"]) {
+const retiredTopiks = resolve(appPublicDir, "topiks")
+try {
+  if (
+    lstatSync(retiredTopiks).isSymbolicLink() &&
+    readlinkSync(retiredTopiks) === resolve(contentPublicDir, "topiks")
+  ) {
+    rmSync(retiredTopiks)
+    // eslint-disable-next-line no-console
+    console.log("[link-content-assets] removed retired public/topiks link")
+  }
+} catch {
+  // Nothing there, which is the expected state.
+}
+
+for (const name of ["sfx", "hangul"]) {
   const src = resolve(contentPublicDir, name)
   const dest = resolve(appPublicDir, name)
 

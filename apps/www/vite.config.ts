@@ -57,10 +57,10 @@ const fileHostProxyTarget =
 // "Content-Type text/html is not supported" media error. Surface the actual
 // cause loudly instead of leaving that to guess.
 //
-// hangul and topiks are deliberately not warned about: their absence is
-// expected and legible in the UI on its own (a bundled demo pool for the
-// first, an empty catalogue for topiks), so a startup warning would fire on
-// almost every checkout and mean nothing.
+// hangul is deliberately not warned about: its absence is expected and
+// legible in the UI on its own (a bundled demo pool), so a startup warning
+// would fire on almost every checkout and mean nothing. Topik lessons are not
+// a public/ asset at all any more - they come from file_host (#1048).
 function warnMissingContentAssets(): Plugin {
   return {
     name: "warn-missing-content-assets",
