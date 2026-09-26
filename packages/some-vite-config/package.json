@@ -22,16 +22,18 @@
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
     "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^6.1.1",
-    "vite": "^8.3.0",
-    "vite-plugin-dts": "^5.1.0"
+    "typescript": "^5.7.3",
+    "vite": "^8.3.0"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "tsc-alias": "^1.9.5"
+    "tsc-alias": "^1.9.5",
+    "vitest": "^5.0.1"
   },
   "peerDependencies": {
     "vite": "^8.3.0"
