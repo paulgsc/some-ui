@@ -34,13 +34,19 @@ then a shallow `git clone`) instead of inferring server behavior from the client
 alone or from memory. Read the actual route/handler source at the commit the task
 names — it is more reliable than any paraphrase, including this one.
 
-If the task requires regenerating the checked-in route snapshot, follow
+The snapshot normally arrives on its own: every merge to the server's `main` opens (or
+updates) a PR here on `bot/server-route-snapshot`, and every server PR is checked against
+this repo's contracts before it merges (server `.github/workflows/routes.yml`). Both go
+through `scripts/sync-server-routes.sh`, which is the one thing that writes these two
+files — if they move, update that script and nothing in the server repo.
+
+If you need a snapshot the bot hasn't delivered yet, follow
 `apps/servers/file_host/docs/route-inventory.md` in the server repo: apply the
 `migrations/*.up.sql` files to a throwaway SQLite db (Python's built-in `sqlite3`
-module works fine and avoids needing `sqlx-cli`), set `DATABASE_URL` to it, and run
-`cargo run --bin dump-routes -p file_host` (add `-- --ts` for the TypeScript union).
-Diff the output against the checked-in copies before replacing them — the diff should
-be exactly the routes that changed, nothing else. Never hand-edit
+module works fine and avoids needing `sqlx-cli`), set `DATABASE_URL` to it, run
+`cargo run --bin dump-routes -p file_host` into one file and `-- --ts` into another,
+then pass both to `scripts/sync-server-routes.sh <json> <ts> --verify`. The diff it
+prints should be exactly the routes that changed, nothing else. Never hand-edit
 `routes.server.json` or `routes.ts` to add a route; both are generated, and a
 hand-written entry can silently drift from what the server actually serves.
 
