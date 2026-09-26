@@ -1339,6 +1339,29 @@ rather than as *data*, and the remedy is to exhibit the data.
   interaction with Proposition 3.1 rather than a discovered one.
 ]
 
+#remark("4.8", name: "The relation set is open")[
+  Definition 4.6 is amended in one clause: a relation is not drawn from a
+  finite set. It is authored with the probe and named by its author --- tense
+  shift, negation and felicitous reply, but equally a reason connective
+  exchanged for another (-아서 for -(으)니까), reported speech, or a register
+  lowered by one step --- and the enumeration in Definition 4.6 is
+  illustrative. What is fixed is the invariant, not the list: (i) the probe
+  is never first-order, so its answer is never a gloss, the one relation the
+  system reserves by name; (ii) validity is authored and graded by lookup
+  (Rem. 4.7); (iii) the transformation is commensurate with the level of the
+  content, acting on grammar that level supports. The order of a probe
+  (Def. 4.7) is likewise authored with it, since whether a transformation
+  acts on structure or on use is known to its author and not to any list.
+
+  The closed set was a real defect, not a matter of taste. At the second
+  TOPIK level most of the grammar is clause-linking (-아서, -(으)니까, -는데,
+  -(으)면), for which the enumeration had no relation; a probe naming one was
+  dropped at load by Theorem 8.2's safeguard, which a closed list turned into
+  a silent filter on what could be taught. Which transformation a probe tests
+  is content, like its prompt, and the system that delivers it has no need to
+  know it.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = The Estimator
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2646,6 +2669,15 @@ distinguishes it from Corollary 3.1 (c)'s self-report on competence, and
 places it as input to authoring-time generation (Rem. 3.3). The handheld
 valuation gains a skippable report at the end of each unit (Cor. 3.4).
 Filed ahead of the `packages/ui/topik` survey step, in the same change.
+
+*v1.6 --- 2026-09-26.* Opens the relation set (Rem. 4.8): a probe's relation
+is authored and named with it, and Definition 4.6's enumeration becomes
+illustrative. The invariant that remains is order two or three, authored
+validity, and a transformation commensurate with the content's level; order
+is authored per probe. Records why: a closed set left most TOPIK-2 grammar
+(clause-linking connectives) unprobeable, and dropped silently any probe that
+named it. Filed ahead of the `packages/ui/topik` schema change, in the same
+change.
 
 #pagebreak()
 

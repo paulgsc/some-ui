@@ -96,13 +96,25 @@ describe("auditTopikFile", () => {
     ])
   })
 
-  it("warns when the declared order disagrees with the answer's relation", () => {
-    expect(messages(fileWith(oddOneOut({ order: 3 })))).toEqual([
-      expect.stringMatching(/warning: declared order 3.*"question".*order 2/),
-    ])
+  it("takes any relation its author names, and any declared order (canon Rem. 4.8)", () => {
+    const connectives = {
+      id: "c",
+      kind: "odd-one-out",
+      order: 3,
+      anchorMessageId: "m1",
+      source: "비가 와서 늦었어요.",
+      prompt: "Which is NOT a valid transformation?",
+      options: [
+        option("비가 오니까 늦었어요.", "reason: -아서 → -(으)니까", true),
+        option("비가 와서 늦을 거예요.", "future", true),
+        option("비가 와서 늦었습니다.", "more formal", true),
+        option("비가 와서 늦으세요.", "request", false),
+      ],
+    }
+    expect(messages(fileWith(connectives))).toEqual([])
   })
 
-  it("warns about a structural candidate that rewrites the content words", () => {
+  it("warns about a transformation that rewrites the content words", () => {
     const rewritten = oddOneOut({
       options: [
         option("현금으로 드렸습니다.", "past", true),

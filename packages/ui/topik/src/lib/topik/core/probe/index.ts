@@ -10,7 +10,11 @@ import type { MorphismRelation, Probe, ProbeOption } from "@topik/lib/topik"
 import { seededShuffle } from "@topik/lib/topik/core/tile-assembly"
 import { assertNever } from "some-ui-utils"
 
-const RELATION_LABELS: Record<MorphismRelation, string> = {
+/**
+ * Chips for the relations probes most often name. Any other relation is its
+ * own chip, as its author wrote it (canon Rem. 4.8).
+ */
+const RELATION_LABELS: Record<string, string> = {
   past: "Past tense",
   future: "Future",
   negation: "Negation",
@@ -27,7 +31,7 @@ export function relationLabel(
   relation: MorphismRelation,
   override?: string
 ): string {
-  return override ?? RELATION_LABELS[relation]
+  return override ?? RELATION_LABELS[relation] ?? relation
 }
 
 /** What the learner is asked to do, as a short tag. */

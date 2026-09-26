@@ -65,6 +65,12 @@ describe("probe presentation", () => {
     expect(relationLabel("register", "Politer")).toBe("Politer")
   })
 
+  it("shows any other relation as its author named it (canon Rem. 4.8)", () => {
+    expect(relationLabel("Reason: -아서 → -(으)니까")).toBe(
+      "Reason: -아서 → -(으)니까"
+    )
+  })
+
   it("lists a build probe's accepted forms, target first, without repeats", () => {
     expect(
       acceptedForms({

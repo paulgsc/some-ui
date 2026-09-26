@@ -70,28 +70,23 @@ const QuestionSchema = z.object({
 
 /**
  * How a candidate relates to the utterance it is judged against
- * (adaptive-learning canon Def. 4.6). Structural relations make a probe
- * second-order, pragmatic ones third-order (Def. 4.7).
+ * (adaptive-learning canon Def. 4.6), named by whoever authored the probe:
+ * "past", "reason: -아서 → -(으)니까", "reported speech". The set is open
+ * (Rem. 4.8) - which transformation a probe tests is its content, like its
+ * prompt, and the lesson never needs to know it. One name is reserved:
+ * `GLOSS_RELATION`, a candidate that is the line's meaning, because the one
+ * thing the lesson must refuse is a probe whose answer is a translation
+ * (Prop. 4.2).
  */
-export const MORPHISM_RELATIONS = [
-  "past",
-  "future",
-  "negation",
-  "question",
-  "paraphrase",
-  "register",
-  "reply",
-  "situation",
-  "gloss",
-] as const
+export type MorphismRelation = string
 
-export type MorphismRelation = (typeof MORPHISM_RELATIONS)[number]
+export const GLOSS_RELATION = "gloss"
 
 export type ProbeOption = {
   /** The candidate: an utterance, or a situation/meaning described in prose. */
   text: string
   relation: MorphismRelation
-  /** Overrides the relation's default chip label ("Past tense", ...). */
+  /** Overrides the chip, which is otherwise the relation's own name. */
   label?: string
   /**
    * The answer key, authored. In an odd-one-out: whether `text` really
@@ -142,7 +137,7 @@ export type Probe =
 
 const ProbeOptionSchema = z.object({
   text: z.string().min(1),
-  relation: z.enum(MORPHISM_RELATIONS),
+  relation: z.string().trim().min(1),
   label: z.string().optional(),
   valid: z.boolean(),
   why: z.string(),
@@ -183,7 +178,7 @@ export const ProbeSchema = z.discriminatedUnion("kind", [
   z.object({
     ...probeBase,
     kind: z.literal("build"),
-    relation: z.enum(MORPHISM_RELATIONS),
+    relation: z.string().trim().min(1),
     target: z.string().min(1),
     acceptedAnswers: z.array(z.string()).optional(),
     distractors: z.array(z.string()).optional(),

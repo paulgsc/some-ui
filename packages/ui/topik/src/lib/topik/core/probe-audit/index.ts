@@ -12,12 +12,14 @@
  *
  * Two findings are pedagogy rather than mechanics, both from canon §4: a probe
  * whose keyed candidate is a gloss is a first-order item (Prop. 4.2, withheld
- * by Cor. 4.5), and a structural candidate that rewrites more than its
- * relation acts on lets content-word matching back in.
+ * by Cor. 4.5), and a transformation that rewrites more than it transforms
+ * lets content-word matching back in. Which transformation a probe tests is
+ * its author's to name (Rem. 4.8), so nothing here judges the relation
+ * itself, or the order declared for it.
  */
 
 import type { Message, MorphismRelation, Probe } from "@topik/lib/topik"
-import { ProbeSchema, TopikFileSchema } from "@topik/lib/topik"
+import { GLOSS_RELATION, ProbeSchema, TopikFileSchema } from "@topik/lib/topik"
 import { anchorOf, isDeliverable } from "@topik/lib/topik/core/lesson-track"
 import {
   diffUtterance,
@@ -40,22 +42,6 @@ export type ProbeFinding = {
   message: string
 }
 
-/** Relations whose validity is structural - canon Def. 4.7's order two. */
-const STRUCTURAL: ReadonlySet<MorphismRelation> = new Set([
-  "past",
-  "future",
-  "negation",
-  "question",
-  "paraphrase",
-])
-
-/** Relations whose validity is pragmatic - order three. */
-const PRAGMATIC: ReadonlySet<MorphismRelation> = new Set([
-  "reply",
-  "register",
-  "situation",
-])
-
 const lineText = (message: Message): string => message.korean || message.content
 
 /** Spacing and closing punctuation aside - but not `?`, which is the whole of
@@ -65,7 +51,7 @@ const normalize = (text: string): string => text.replace(/[\s.,!~…'"]+/g, "")
 /**
  * The relation a probe's answer stands in: the one invalid candidate of an
  * odd-one-out, the one valid candidate of a pick-valid, a build's own. It is
- * what the learner is actually judged on, so it decides the probe's order.
+ * what the learner is actually judged on.
  */
 function keyedRelation(probe: Probe): MorphismRelation | undefined {
   switch (probe.kind) {
@@ -108,20 +94,11 @@ function auditProbe(
   const anchorLine = messages[anchor]
   const source = probe.source ?? (anchorLine ? lineText(anchorLine) : "")
 
-  const keyed = keyedRelation(probe)
-  if (keyed === "gloss") {
+  if (keyedRelation(probe)?.trim().toLowerCase() === GLOSS_RELATION) {
     report(
       "error",
       "its answer is a gloss - a first-order item (canon Prop. 4.2), which the handheld lesson must not ask (Cor. 4.5)"
     )
-  } else if (keyed !== undefined) {
-    const expected = STRUCTURAL.has(keyed) ? 2 : PRAGMATIC.has(keyed) ? 3 : null
-    if (expected !== null && expected !== probe.order) {
-      report(
-        "warning",
-        `declared order ${probe.order}, but its answer is a "${keyed}" relation, which is order ${expected} (canon Def. 4.7)`
-      )
-    }
   }
 
   if (probe.kind === "build") {
@@ -168,15 +145,14 @@ function auditProbe(
         `candidate ${label} has no \`why\`: its feedback line would be blank`
       )
     }
-    if (
-      option.lang !== "en" &&
-      STRUCTURAL.has(option.relation) &&
-      source !== ""
-    ) {
+    // An odd-one-out's candidates are transformations of the source, so each
+    // should change what its relation acts on and hold the rest. A reply or a
+    // situation elsewhere is a different sentence by nature.
+    if (probe.kind === "odd-one-out" && option.lang !== "en" && source !== "") {
       if (normalize(option.text) === normalize(source)) {
         report(
           "warning",
-          `candidate ${label} is the source unchanged, not a ${option.relation}`
+          `candidate ${label} is the source unchanged, not a transformation of it`
         )
         continue
       }
@@ -184,7 +160,7 @@ function auditProbe(
       if (similarity < MIN_DIFF_SIMILARITY) {
         report(
           "warning",
-          `candidate ${label} rewrites more than a ${option.relation} acts on (similarity ${similarity.toFixed(2)}): hold the content words fixed (canon Prop. 4.2); its diff will not be shown`
+          `candidate ${label} rewrites more than "${option.relation}" transforms (similarity ${similarity.toFixed(2)}): hold the content words fixed (canon Prop. 4.2); its diff will not be shown`
         )
       }
     }

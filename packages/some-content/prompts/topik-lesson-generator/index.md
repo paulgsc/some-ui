@@ -226,20 +226,37 @@ TOPIK level itself yet, so record it in `tags` as `"topik-<level>"` (see
 
 ## The relations
 
-`relation` is one of `MORPHISM_RELATIONS`. The chip the learner sees is the
-relation's label, unless `label` overrides it.
+A candidate's `relation` names the transformation it claims to be, in your
+words. The learner sees it as the candidate's chip unless `label` overrides
+it. **The set is open** (canon Rem. 4.8): name whatever transformation the
+line and its level call for. What is fixed is the invariant, not a list:
 
-| relation     | chip         | order | a candidate is valid when...                                           |
-| ------------ | ------------ | ----- | ---------------------------------------------------------------------- |
-| `past`       | Past tense   | 2     | it is the line, in the past                                            |
-| `future`     | Future       | 2     | it is the line, about the future (-ㄹ 거예요)                          |
-| `negation`   | Negation     | 2     | it negates the line, with the negation this sentence type takes        |
-| `question`   | Question     | 2     | it asks what the line states or requests (할게요 → 할까요?)            |
-| `paraphrase` | Same meaning | 2     | it says the same thing with different words or grammar                 |
-| `register`   | Politeness   | 3     | it is the line at another politeness level, or explains the level used |
-| `reply`      | Reply        | 3     | it is something the other speaker could felicitously say back          |
-| `situation`  | Situation    | 3     | it describes when, where or to whom the line would be said             |
-| `gloss`      | Meaning      | -     | it is what the line means                                              |
+1. **Never first order.** A probe's answer is never a translation. `"gloss"`
+   is the one reserved relation: a candidate that states what the line means.
+   It may appear as a distractor inside a structural probe, and is never the
+   answer. The checker rejects a probe whose answer is a gloss.
+2. **Validity is yours to author, and it is the whole of grading.** A
+   candidate is `valid` when it really is that transformation of the source:
+   grammatical, same speakers and same situation unless the relation says
+   otherwise.
+3. **Commensurate with the level.** The transformation acts on grammar the
+   level supports (see **Levels**).
+
+Examples, not a menu. The chip is shown in parentheses where it differs from
+the relation:
+
+| level | relation                         | from → to                                               |
+| ----- | -------------------------------- | ------------------------------------------------------- |
+| 1     | `past` (Past tense)              | 할게요 → 했어요                                         |
+| 1     | `negation`                       | 가요 → 안 가요; 주세요 → 주지 마세요                    |
+| 1     | `question`                       | 할게요 → 할까요?                                        |
+| 2     | `reason: -아서 → -(으)니까`      | 비가 와서 → 비가 오니까                                 |
+| 2     | `condition: -(으)면`             | 시간이 있어요 → 시간이 있으면                           |
+| 2     | `ability: -(으)ㄹ 수 있다`       | 해요 → 할 수 있어요                                     |
+| 3     | `reported speech`                | 바빠요 → 바쁘대요                                       |
+| 3     | `conjecture: -(으)ㄴ/는 것 같다` | 화났어요 → 화난 것 같아요                               |
+| any   | `register` (Politeness)          | 먹어 → 드세요                                           |
+| any   | `reply`, `situation`             | what the other speaker says back; when the line is said |
 
 `situation` and `gloss` candidates are English prose, and so are
 explanations of a form: set `"lang": "en"` on each. Every other candidate is
@@ -250,20 +267,14 @@ a Korean utterance.
   true of the line. See the fixture's `c1-honorific`.
 - **-겠- is not always future.** 알겠습니다 and 잘 먹겠습니다 are set
   expressions. Don't build a `future` probe on them.
-- **Register labels.** Use `label` to say which way a `register` candidate
-  moves: "More formal" for -습니다, "Honorific" for -시-, "Casual" for 반말.
-  A candidate at a lower level is a valid register shift. In a "which would be
-  rude?" probe it is the answer instead.
+- **Chips.** A short relation reads well as the chip (`past`,
+  `reported speech`). For a long one, set `label` to what the learner should
+  see ("More formal", "Because → since").
 
-`gloss` is allowed only as a **distractor or supporting candidate** inside a
-structural probe. It is never the answer. A probe whose answer is a gloss is
-first-order, and the checker rejects it.
-
-**A probe's `order` is its answer's relation's order:**
-
-- odd-one-out: the relation of the one invalid candidate;
-- pick-valid: the relation of the one valid candidate;
-- build: its `relation`.
+**`order` is yours to set:** `2` when the transformation acts on structure
+(tense, polarity, a connective, the form of a clause), `3` when it acts on use
+(a reply, a politeness level, when the line would be said). It follows what
+the answer transforms, not a table.
 
 ---
 
@@ -343,9 +354,9 @@ first-order, and the checker rejects it.
   (spaces and punctuation ignored), the source line is hidden and the
   `prompt` has to stand on its own.
 - Always give `explanation`: one line on the rule the build exercises.
-- A build's `relation` is structural (`past`, `future`, `negation`,
-  `question`, `paraphrase`) or `register` ("make it more polite"). A reply or
-  a situation is chosen, not built, and a gloss is never asked.
+- A build asks the learner to perform a transformation: a tense, a
+  negation, a connective, a politeness level. A reply or a situation is
+  chosen, not built, and a gloss is never asked.
 
 ---
 
@@ -414,7 +425,7 @@ type Question = {
 
 type ProbeOption = {
   text: string // a Korean utterance, or English prose with lang: "en"
-  relation: MorphismRelation
+  relation: string // open: the transformation, in your words; "gloss" is reserved
   label?: string // overrides the chip ("More polite")
   valid: boolean
   why: string
@@ -435,7 +446,7 @@ type Probe =
   | (ProbeBase & { kind: "pick-valid"; options: ProbeOption[] }) // ≥2, exactly one valid
   | (ProbeBase & {
       kind: "build"
-      relation: MorphismRelation
+      relation: string // open: the transformation, in your words; "gloss" is reserved
       target: string
       acceptedAnswers?: string[]
       distractors?: string[]
@@ -562,7 +573,6 @@ eye. `[judgment]` items are for the reviewer.
 - [checkable] Every `anchorMessageId` names a line of its own conversation.
 - [checkable] Ids are unique within each conversation.
 - [checkable] No probe's answer is a `gloss`.
-- [checkable] `order` matches the answer's relation.
 - [checkable] Every candidate has a non-blank `why`, and no two candidates of
   one probe have the same text. A reply may be exactly the conversation's
   next line: that is what was actually said.
@@ -580,6 +590,9 @@ eye. `[judgment]` items are for the reviewer.
   level, and its `english` is a faithful translation.
 - [judgment] Every conversation has lines worth probing, not greetings
   alone.
+- [judgment] Each probe's `order` matches what its answer transforms:
+  structure (2) or use (3).
+- [judgment] Every transformation is one the lesson's level supports.
 - [judgment] Every probe passes the one-noun test.
 - [judgment] No `prompt` restates the line's meaning.
 - [judgment] Every `valid` flag is actually true of the Korean. This is the
@@ -664,8 +677,8 @@ Two ` ```json ` blocks, in this order.
 
 ## Versioning
 
-**`v1.0`.** First version, written against canon v1.4 (Def. 4.6, 4.7,
-Prop. 4.2, Rem. 4.7, Cor. 4.5) and the probe schema `@some-ui/topik` shipped in
+**`v1.0`.** First version, written against canon v1.6 (Def. 4.6, 4.7,
+Prop. 4.2, Rem. 4.7, Cor. 4.5, and Rem. 4.8's open relation set) and the probe schema `@some-ui/topik` shipped in
 #1546. It generates a lesson (conversations and their probes) at an
 estimated TOPIK level, steered by the learner's own survey of recent lessons.
 
