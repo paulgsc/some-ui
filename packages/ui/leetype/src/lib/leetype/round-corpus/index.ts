@@ -7,8 +7,10 @@ import type { DiffSet } from "@leetype/types/round"
  * corpus" `checkCitations`/`checkRegisterCoverage` (B1, #1218) were built
  * for but had no data to run against until now (see those functions' own
  * doc comments in `proposition-register/citation-check.ts`). No live
- * product surface produces `Round` data yet (C1/#1213, Step 6, has not
- * landed), so this corpus is hand-authored rather than harvested — held to
+ * product surface produces `Round` data yet (C1, #1213, landed as a
+ * data-in switcher that draws what it is handed; no round-assembly path
+ * exists to hand it one, #1440), so this corpus is hand-authored rather
+ * than harvested — held to
  * the same "shim standard" `lib/leetype/exercises/index.ts` already states
  * for the step corpus: it fails loudly here if malformed, not three
  * components later.

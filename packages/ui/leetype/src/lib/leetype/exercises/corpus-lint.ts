@@ -751,8 +751,9 @@ function checkRoundSchemas(round: RoundCorpusEntry): Array<string> {
  * newer infrastructure than that, not something this story's own "extends
  * the lint, does not build new lint infrastructure" scope covers. Tracked
  * as a follow-up (linked from #1208) for whichever future story gives a
- * round's presented options real data — most plausibly C1 (#1213, Step 6),
- * once a round's UI actually has proposition options to present.
+ * round's presented options real data — not C1 (#1213), which landed as
+ * a data-in switcher with no round data of its own, but the real
+ * round-assembly path the Leetype cutover waits on (#1440).
  */
 
 /** Every `CW-P` id a round cites, as a `Citation` locating it within that round's own D. */
