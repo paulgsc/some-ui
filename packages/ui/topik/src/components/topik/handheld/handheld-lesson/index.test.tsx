@@ -187,16 +187,15 @@ describe("HandheldLesson", () => {
     expect(screen.getByText("I'll pay by card. Thank you.")).toBeTruthy()
   })
 
-  it("keeps answered checks and promised repeats across a reload (Codex, #1544)", async () => {
+  it("keeps answered probes and promised repeats across a reload (Codex, #1544)", async () => {
     const storage = memoryStorage()
     renderLesson(storage)
     fireEvent.click(
       await screen.findByRole("button", { name: /Ordering at a café/ })
     )
     await screen.findByText("어서 오세요. 뭐 드릴까요?")
-    click(/^Next/) // line 2
-    click(/^Next/) // its check
-    fireEvent.click(screen.getByRole("radio", { name: "A cake" }))
+    click(/^Next/) // the reply probe
+    pick(/네, 어서 오세요/)
     click("Check")
     expect(screen.getByText(/comes back once more/)).toBeTruthy()
 
@@ -205,32 +204,31 @@ describe("HandheldLesson", () => {
     renderLesson(storage)
     fireEvent.click(await screen.findByRole("button", { name: /Continue/ }))
 
-    // Back at the check's line; the answered check is passed over.
-    expect(
-      await screen.findByText("아이스 아메리카노 한 잔 주세요.")
-    ).toBeTruthy()
+    // Back at the probe's line; the answered probe is passed over.
+    expect(await screen.findByText("어서 오세요. 뭐 드릴까요?")).toBeTruthy()
     click(/^Next/)
-    expect(screen.getByText("여기서 드시고 가세요?")).toBeTruthy()
-    click(/^Next/) // line 4
-    click(/^Next/) // its tile check
-    const pool = document.querySelector("[data-slot='topik-tile-pool']")!
-    for (const word of ["포장해", "주세요"]) {
-      fireEvent.click(
-        [...pool.querySelectorAll("button")].find(
-          (b) => b.textContent === word
-        )!
-      )
-    }
+    expect(screen.getByText("아이스 아메리카노 한 잔 주세요.")).toBeTruthy()
+
+    click(/^Next/)
+    pick(/Negation.*안 주세요/)
+    click("Check")
+    click(/Continue/)
+    click(/^Next/)
+    pick(/It honours the customer/)
+    click("Check")
+    click(/Continue/)
+    click(/^Next/)
+    buildFromTiles(["포장하지", "마세요"])
     click("Check")
     click(/Continue/)
 
     // The miss from before the reload still comes back.
     expect(screen.getByText("Once more")).toBeTruthy()
-    fireEvent.click(screen.getByRole("radio", { name: "One iced americano" }))
+    pick(/아이스 아메리카노 한 잔 주세요/)
     click("Check")
     click(/Continue/)
     expect(
-      screen.getByText("1 of 2 understood on the first listen")
+      screen.getByText("3 of 4 understood on the first listen")
     ).toBeTruthy()
   })
 

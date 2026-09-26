@@ -303,7 +303,7 @@ export function glossUnlocked(
   )
 }
 
-/** The key a check's results are recorded under: its identity. */
+/** The key a check's results are recorded under: its probe's authored id. */
 export const checkKey = (step: CheckStep): string => step.id
 
 /** The current conversation's results, ready to persist. */

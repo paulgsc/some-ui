@@ -333,12 +333,12 @@ describe("resume outcomes (Codex, #1544)", () => {
         conversation: 0,
         message: 0,
         outcomes: {
-          firstTry: { [id(2)]: true, gone: false },
-          review: [id(2), "gone", id(0)],
+          firstTry: { p2: true, gone: false },
+          review: ["p2", "gone", "p0"],
         },
       },
     ])
-    expect(resumed.firstTry).toEqual({ [id(2)]: true })
+    expect(resumed.firstTry).toEqual({ p2: true })
     expect(resumed.review).toEqual([])
   })
 
@@ -348,7 +348,7 @@ describe("resume outcomes (Codex, #1544)", () => {
         type: "RESUME",
         conversation: 0,
         message: 99,
-        outcomes: { firstTry: { "2": false }, review: ["2"] },
+        outcomes: { firstTry: { p2: false }, review: ["p2"] },
       },
     ])
     expect(resumed).toEqual(createLessonState(true, 0))
