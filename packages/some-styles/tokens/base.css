@@ -41,6 +41,13 @@
   --accent-foreground: oklch(20.5% 0 0deg);
   --destructive: oklch(57.7% 0.245 27.325deg);
   --destructive-foreground: oklch(98.5% 0 0deg);
+
+  /* "Correct" / "holds". Components have used `text-success` for a while
+     (topik's quiz feedback, mathlingo's interactions), but only the opt-in
+     `.topik` appearance defined it, and nothing mapped it into Tailwind - so
+     every one of them rendered it as no colour at all. */
+  --success: oklch(52% 0.14 150deg);
+  --success-foreground: oklch(98.5% 0 0deg);
   --border: oklch(92.2% 0 0deg);
   --input: oklch(92.2% 0 0deg);
   --ring: oklch(70.8% 0 0deg);
@@ -187,6 +194,8 @@
   --accent-foreground: var(--foreground);
   --destructive: oklch(70.4% 0.191 22.216deg);
   --destructive-foreground: oklch(98.5% 0 0deg);
+  --success: oklch(72% 0.13 150deg);
+  --success-foreground: oklch(15% 0.02 150deg);
   --border: oklch(100% 0 0deg / 10%);
   --input: oklch(100% 0 0deg / 15%);
   --ring: oklch(55.6% 0 0deg);
