@@ -28,7 +28,11 @@
  */
 
 import type { ConversationBatch, Message, Probe } from "@topik/lib/topik"
-import { MAX_TILES, tokenize } from "@topik/lib/topik/core/tile-assembly"
+import {
+  hashSeed,
+  MAX_TILES,
+  tokenize,
+} from "@topik/lib/topik/core/tile-assembly"
 import { assertNever } from "some-ui-utils"
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -52,6 +56,8 @@ export type CheckStep = {
   probe: number
   /** The probe's authored id: what first tries and reviews are keyed by. */
   id: string
+  /** Which version of the probe this is (`probeFingerprint`). */
+  fingerprint: string
   /** The message index the check is about. */
   anchor: number
   /** True for the once-only re-presentation of a missed check. */
@@ -124,7 +130,10 @@ export function isDeliverable(probe: Probe): boolean {
 export function planConversation(batch: ConversationBatch): LessonPlan {
   const { messages } = batch
   const probes = batch.probes ?? []
-  const byAnchor = new Map<number, Array<{ probe: number; id: string }>>()
+  const byAnchor = new Map<
+    number,
+    Array<{ probe: number; id: string; fingerprint: string }>
+  >()
   const seen = new Set<string>()
 
   probes.forEach((probe, index) => {
@@ -138,7 +147,11 @@ export function planConversation(batch: ConversationBatch): LessonPlan {
     )
     if (anchor === -1) return
     const bucket = byAnchor.get(anchor) ?? []
-    bucket.push({ probe: index, id: probe.id })
+    bucket.push({
+      probe: index,
+      id: probe.id,
+      fingerprint: probeFingerprint(probe),
+    })
     byAnchor.set(anchor, bucket)
   })
 
@@ -147,8 +160,15 @@ export function planConversation(batch: ConversationBatch): LessonPlan {
   messages.forEach((_, message) => {
     const anchored = byAnchor.get(message) ?? []
     steps.push({ kind: "line", message, checks: anchored.length })
-    for (const { probe, id } of anchored) {
-      steps.push({ kind: "check", probe, id, anchor: message, repeat: false })
+    for (const { probe, id, fingerprint } of anchored) {
+      steps.push({
+        kind: "check",
+        probe,
+        id,
+        fingerprint,
+        anchor: message,
+        repeat: false,
+      })
       checkCount += 1
     }
   })
@@ -306,37 +326,93 @@ export function glossUnlocked(
 /** The key a check's results are recorded under: its probe's authored id. */
 export const checkKey = (step: CheckStep): string => step.id
 
+/**
+ * What a probe asks and what counts as right, as a short hash. An authored id
+ * says which item this is; it cannot say the item was not edited since. A
+ * stored result is only restored onto a probe with the same fingerprint, so a
+ * probe whose candidates, validity or target changed under an unchanged id
+ * starts fresh (Thm. 1.1). Wording that grades nothing - `why`, `label`,
+ * `explanation` - is left out, so a copy edit keeps a learner's result.
+ */
+export function probeFingerprint(probe: Probe): string {
+  const graded =
+    probe.kind === "build"
+      ? [probe.relation, probe.target, probe.acceptedAnswers ?? null]
+      : probe.options.map((option) => [
+          option.text,
+          option.relation,
+          option.valid,
+        ])
+  const content = JSON.stringify([
+    probe.kind,
+    probe.source ?? null,
+    probe.prompt,
+    graded,
+  ])
+  return hashSeed(content).toString(36)
+}
+
+/** A result's persisted key: which probe, and which version of it. */
+const persistedKey = (id: string, fingerprint: string): string =>
+  `${id}@${fingerprint}`
+
+function persistedKeys(plan: LessonPlan): Map<string, string> {
+  const keys = new Map<string, string>()
+  for (const step of plan.steps) {
+    if (step.kind === "check") {
+      keys.set(checkKey(step), persistedKey(step.id, step.fingerprint))
+    }
+  }
+  return keys
+}
+
 /** The current conversation's results, ready to persist. */
-export function outcomesOf(state: LessonState): LessonOutcomes {
+export function outcomesOf(
+  state: LessonState,
+  plan: LessonPlan
+): LessonOutcomes {
+  const keys = persistedKeys(plan)
+  const persist = (id: string): Array<string> => {
+    const key = keys.get(id)
+    return key === undefined ? [] : [key]
+  }
   return {
-    firstTry: { ...state.firstTry },
-    review: [...state.review],
-    reviewed: [...state.reviewed],
+    firstTry: Object.fromEntries(
+      Object.entries(state.firstTry).flatMap(([id, correct]) =>
+        persist(id).map((key) => [key, correct])
+      )
+    ),
+    review: state.review.flatMap(persist),
+    reviewed: state.reviewed.flatMap(persist),
   }
 }
 
 /**
- * Stored results, kept only for checks this plan still has: an id the
- * content no longer carries is an orphan (Thm. 1.1), a review entry without
- * a recorded miss is not a promise anyone made, and a completed repeat is
- * only one that was promised.
+ * Stored results, kept only for probes this plan still has, at the version it
+ * has them: an id the content no longer carries, or one whose probe changed,
+ * is an orphan (Thm. 1.1). A review entry without a recorded miss is not a
+ * promise anyone made, and a completed repeat is only one that was promised.
  */
 function restoreOutcomes(
   plan: LessonPlan,
   outcomes: LessonOutcomes
 ): Pick<LessonState, "firstTry" | "review" | "reviewed"> {
-  const known = new Set<string>()
-  for (const step of plan.steps) {
-    if (step.kind === "check") known.add(checkKey(step))
+  const byKey = new Map<string, string>()
+  for (const [id, key] of persistedKeys(plan)) byKey.set(key, id)
+  const idOf = (key: string): Array<string> => {
+    const id = byKey.get(key)
+    return id === undefined ? [] : [id]
   }
   const firstTry = Object.fromEntries(
-    Object.entries(outcomes.firstTry).filter(([key]) => known.has(key))
+    Object.entries(outcomes.firstTry).flatMap(([key, correct]) =>
+      idOf(key).map((id) => [id, correct])
+    )
   )
-  const review = [...new Set(outcomes.review)].filter(
-    (key) => known.has(key) && firstTry[key] === false
+  const review = [...new Set(outcomes.review.flatMap(idOf))].filter(
+    (id) => firstTry[id] === false
   )
-  const reviewed = [...new Set(outcomes.reviewed ?? [])].filter((key) =>
-    review.includes(key)
+  const reviewed = [...new Set((outcomes.reviewed ?? []).flatMap(idOf))].filter(
+    (id) => review.includes(id)
   )
   return { firstTry, review, reviewed }
 }

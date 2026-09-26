@@ -10,8 +10,8 @@ import {
   lessonReducer,
   outcomesOf,
   planConversation,
+  probeFingerprint,
   progressOf,
-  questionId,
   tallyOf,
 } from "."
 
@@ -71,6 +71,14 @@ const plan = planConversation(batch)
 
 /** The fixture's probes are named for their order: p0, p1, p2. */
 const id = (n: number): string => `p${n}`
+
+/** How a probe's result is keyed once persisted: id at its version. */
+const stored = (probeId: string): string => {
+  const step = plan.steps.find(
+    (candidate) => candidate.kind === "check" && candidate.id === probeId
+  )
+  return step?.kind === "check" ? `${probeId}@${step.fingerprint}` : probeId
+}
 const ctx = (audio = true): LessonContext => ({
   plan,
   conversationCount: 2,
@@ -314,7 +322,7 @@ describe("resume outcomes (Codex, #1544)", () => {
         type: "RESUME",
         conversation: 0,
         message: 1,
-        outcomes: outcomesOf(before),
+        outcomes: outcomesOf(before, plan),
       },
     ])
     expect(resumed.firstTry).toEqual(before.firstTry)
@@ -333,8 +341,8 @@ describe("resume outcomes (Codex, #1544)", () => {
         conversation: 0,
         message: 0,
         outcomes: {
-          firstTry: { p2: true, gone: false },
-          review: ["p2", "gone", "p0"],
+          firstTry: { [stored("p2")]: true, "gone@x": false },
+          review: [stored("p2"), "gone@x", stored("p0")],
         },
       },
     ])
@@ -348,7 +356,10 @@ describe("resume outcomes (Codex, #1544)", () => {
         type: "RESUME",
         conversation: 0,
         message: 99,
-        outcomes: { firstTry: { p2: false }, review: ["p2"] },
+        outcomes: {
+          firstTry: { [stored("p2")]: false },
+          review: [stored("p2")],
+        },
       },
     ])
     expect(resumed).toEqual(createLessonState(true, 0))
@@ -368,7 +379,7 @@ describe("check identity and once-only repeats (Codex, #1544)", () => {
         type: "RESUME",
         conversation: 0,
         message: 0,
-        outcomes: outcomesOf(answered),
+        outcomes: outcomesOf(answered, plan),
       },
       { ...ctx(), plan: planConversation(reordered) }
     )
@@ -403,7 +414,7 @@ describe("check identity and once-only repeats (Codex, #1544)", () => {
         type: "RESUME",
         conversation: 0,
         message: 2,
-        outcomes: outcomesOf(repeated),
+        outcomes: outcomesOf(repeated, plan),
       },
       { type: "NEXT" },
     ])
@@ -412,29 +423,50 @@ describe("check identity and once-only repeats (Codex, #1544)", () => {
   })
 })
 
-describe("questionId (Codex, #1544)", () => {
-  it("changes when anything that decides grading changes", () => {
-    const base = batch.questions[0]!
-    const text = {
-      type: "text-input" as const,
-      korean: "포장해 주세요",
-      question: "Build it",
-      acceptedAnswers: ["포장해 주세요"],
-      correctAnswer: "포장해 주세요",
-      explanation: "",
-    }
-    expect(questionId({ ...base, explanation: "reworded" })).toBe(
-      questionId(base)
-    )
-    expect(questionId({ ...base, correct: 1 })).not.toBe(questionId(base))
-    expect(questionId({ ...base, options: ["b", "a"] })).not.toBe(
-      questionId(base)
+describe("probe versions (canon Thm. 1.1; carried over from #1544)", () => {
+  it("fingerprints what is asked and what counts as right, not the wording around it", () => {
+    const base = batch.probes![0]!
+    expect(base.kind).toBe("pick-valid")
+    if (base.kind === "build") return
+    const [first, ...rest] = base.options
+    expect(probeFingerprint({ ...base, explanation: "reworded" })).toBe(
+      probeFingerprint(base)
     )
     expect(
-      questionId({
-        ...text,
-        acceptedAnswers: ["포장해 주세요", "포장 부탁해요"],
+      probeFingerprint({
+        ...base,
+        options: [{ ...first!, why: "another reason" }, ...rest],
       })
-    ).not.toBe(questionId(text))
+    ).toBe(probeFingerprint(base))
+    expect(
+      probeFingerprint({
+        ...base,
+        options: [{ ...first!, valid: !first!.valid }, ...rest],
+      })
+    ).not.toBe(probeFingerprint(base))
+  })
+
+  it("does not restore a result onto a probe edited under the same id", () => {
+    const answered = run([{ type: "NEXT" }, answer(false)]) // p2 missed
+    const edited: ConversationBatch = {
+      ...batch,
+      probes: batch.probes!.map((candidate) =>
+        candidate.id === "p2"
+          ? { ...candidate, prompt: "a new question" }
+          : candidate
+      ),
+    }
+    const resumed = lessonReducer(
+      createLessonState(true),
+      {
+        type: "RESUME",
+        conversation: 0,
+        message: 0,
+        outcomes: outcomesOf(answered, plan),
+      },
+      { ...ctx(), plan: planConversation(edited) }
+    )
+    expect(resumed.firstTry).toEqual({})
+    expect(resumed.review).toEqual([])
   })
 })
