@@ -60,7 +60,7 @@ export const FIXTURE_BATCHES: Array<ConversationBatch> = [
         kind: "pick-valid",
         order: 3,
         anchorMessageId: "c1-m1",
-        prompt: "The server asks what you'd like. Which reply fits?",
+        prompt: "Which reply fits?",
         options: [
           {
             text: "아이스 아메리카노 한 잔 주세요.",
@@ -165,7 +165,7 @@ export const FIXTURE_BATCHES: Array<ConversationBatch> = [
         order: 2,
         anchorMessageId: "c1-m4",
         source: "포장해 주세요.",
-        prompt: "Ask them NOT to pack it.",
+        prompt: "Turn this into a negative request.",
         relation: "negation",
         target: "포장하지 마세요",
         acceptedAnswers: ["포장하지 마세요."],
@@ -294,7 +294,7 @@ export const FIXTURE_BATCHES: Array<ConversationBatch> = [
         order: 2,
         anchorMessageId: "c2-m2",
         source: "카드로 할게요.",
-        prompt: "Say you already paid by card.",
+        prompt: "Put this into the past tense.",
         relation: "past",
         target: "카드로 했어요",
         acceptedAnswers: ["카드로 했어요."],

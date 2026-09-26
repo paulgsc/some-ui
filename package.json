@@ -38,6 +38,7 @@
     "knip": "knip --no-progress --reporter compact",
     "check:catalog": "node scripts/check-catalog-drift.mjs",
     "check:test-layout": "node --no-warnings scripts/check-test-layout.ts",
+    "check:topik-probes": "tsx --tsconfig packages/ui/topik/tsconfig.json scripts/check-topik-probes.ts",
     "dump:activity-catalog": "tsx scripts/dump-activity-catalog.ts",
     "dump:session-duration-policy": "tsx scripts/dump-session-duration-policy.ts",
     "prepare": "husky",

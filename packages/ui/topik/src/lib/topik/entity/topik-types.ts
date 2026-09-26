@@ -93,7 +93,12 @@ export type ProbeOption = {
   relation: MorphismRelation
   /** Overrides the relation's default chip label ("Past tense", ...). */
   label?: string
-  /** Whether `text` really stands in `relation` to the source (authored). */
+  /**
+   * The answer key, authored. In an odd-one-out: whether `text` really
+   * stands in `relation` to the source. In a pick-valid: whether it is the
+   * one candidate the prompt asks for - which, for "which reply would be
+   * rude?", is the infelicitous one.
+   */
   valid: boolean
   /** One line on why it does or doesn't - the whole of the feedback. */
   why: string

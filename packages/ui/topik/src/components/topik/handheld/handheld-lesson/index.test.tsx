@@ -81,9 +81,7 @@ describe("HandheldLesson", () => {
     expect(screen.queryByRole("button", { name: /Show English/ })).toBeNull()
 
     click(/^Next/)
-    expect(
-      screen.getByText("The server asks what you'd like. Which reply fits?")
-    ).toBeTruthy()
+    expect(screen.getByText("Which reply fits?")).toBeTruthy()
     // The fixture's first-order question is the desktop's; it never appears here.
     expect(screen.queryByText("What did the customer order?")).toBeNull()
     expect(screen.getByRole("button", { name: "Check" })).toHaveProperty(
@@ -128,7 +126,7 @@ describe("HandheldLesson", () => {
     click(/Continue/)
 
     click(/^Next/) // line 4 -> build the negation
-    expect(screen.getByText("Ask them NOT to pack it.")).toBeTruthy()
+    expect(screen.getByText("Turn this into a negative request.")).toBeTruthy()
     buildFromTiles(["포장하지", "마세요"])
     click("Check")
     expect(screen.getByText("Right")).toBeTruthy()
