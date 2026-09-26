@@ -22,6 +22,13 @@ import type { ResumeStore } from "@topik/lib/topik/adapter/resume-point"
 import { createResumeStore } from "@topik/lib/topik/adapter/resume-point"
 import { useTopikMetadataList } from "@topik/lib/topik/adapter/server/topik-metadata-queries"
 import { useTopikBatches } from "@topik/lib/topik/adapter/server/topik-queries"
+import type { SurveyStore } from "@topik/lib/topik/adapter/survey-store"
+import { createSurveyStore } from "@topik/lib/topik/adapter/survey-store"
+import type {
+  LessonSurvey,
+  StuckCandidate,
+} from "@topik/lib/topik/core/lesson-survey"
+import { stuckCandidates } from "@topik/lib/topik/core/lesson-survey"
 import type {
   LessonContext,
   LessonEvent,
@@ -77,6 +84,16 @@ export type HandheldLessonVM = {
   /** Set once a topik is chosen, while its file loads. */
   loading: { topikKey: string; error: string | null } | null
   lesson: HandheldLessonView | null
+  /**
+   * Asked once a lesson is completed, before its closing tally (canon
+   * Cor. 3.4). Never gates anything; null outside a lesson.
+   */
+  survey: {
+    pending: boolean
+    candidates: Array<StuckCandidate>
+    submit: (survey: LessonSurvey) => void
+    skip: () => void
+  } | null
   audio: {
     available: boolean
     speakingId: string | null
@@ -90,6 +107,8 @@ export type HandheldLessonVM = {
 export type UseHandheldLessonOptions = {
   /** Injected in tests and stories; defaults to `localStorage`. */
   resumeStore?: ResumeStore
+  /** Injected in tests and stories; defaults to `localStorage`. */
+  surveyStore?: SurveyStore
 }
 
 const lineText = (message: Message): string => message.korean || message.content
@@ -104,10 +123,12 @@ function voiceFor(
 
 export function useHandheldLesson({
   resumeStore,
+  surveyStore,
 }: UseHandheldLessonOptions = {}): HandheldLessonVM {
   const { topikRepository, metadataRepository, speechAdapter } =
     useSessionConfig()
   const [store] = useState(() => resumeStore ?? createResumeStore())
+  const [surveys] = useState(() => surveyStore ?? createSurveyStore())
   const audioAvailable = speechAdapter?.supported === true
 
   // ── Catalogue and content ────────────────────────────────────────────────
@@ -175,6 +196,33 @@ export function useHandheldLesson({
   }
 
   const batch = batches?.[lesson.conversation]
+
+  // ── Survey ───────────────────────────────────────────────────────────────
+
+  // Probes missed on first presentation, per conversation id, across the
+  // whole lesson: the survey's stuck candidates (canon Cor. 3.4). The lesson
+  // state only holds the current conversation, so they are gathered here.
+  const [missed, setMissed] = useState<Record<number, Array<string>>>({})
+  const [surveyPending, setSurveyPending] = useState(false)
+  const [finishedSeen, setFinishedSeen] = useState(false)
+
+  const missedHere = Object.keys(lesson.firstTry).filter(
+    (id) => lesson.firstTry[id] === false
+  )
+  if (batch && missedHere.some((id) => !missed[batch.id]?.includes(id))) {
+    const known = missed[batch.id] ?? []
+    setMissed({
+      ...missed,
+      [batch.id]: [...known, ...missedHere.filter((id) => !known.includes(id))],
+    })
+  }
+  // A lesson just completed asks once; starting over begins a new lesson.
+  if (lesson.finished !== finishedSeen) {
+    setFinishedSeen(lesson.finished)
+    setSurveyPending(lesson.finished)
+    if (!lesson.finished) setMissed({})
+  }
+
   const context = useMemo(
     () => contextFor(lesson.conversation),
     [contextFor, lesson.conversation]
@@ -282,13 +330,27 @@ export function useHandheldLesson({
     armed.current = true
     setTopikKey(key)
     setRestoredFor(null)
+    setMissed({})
+    setSurveyPending(false)
   }, [])
 
   const leave = useCallback((): void => {
     stopSpeaking()
     setTopikKey(null)
     setRestoredFor(null)
+    setMissed({})
+    setSurveyPending(false)
   }, [stopSpeaking])
+
+  const submitSurvey = useCallback(
+    (survey: LessonSurvey): void => {
+      if (topikKey !== null) surveys.add(topikKey, survey)
+      setSurveyPending(false)
+    },
+    [surveys, topikKey]
+  )
+
+  const skipSurvey = useCallback((): void => setSurveyPending(false), [])
 
   // ── View ─────────────────────────────────────────────────────────────────
 
@@ -341,6 +403,14 @@ export function useHandheldLesson({
             glossUnlocked(context.plan, lesson, step.anchor),
           progress: progressOf(context.plan, lesson),
           tally: tallyOf(context.plan, lesson),
+        }
+      : null,
+    survey: ready
+      ? {
+          pending: surveyPending,
+          candidates: stuckCandidates(batches ?? [], missed),
+          submit: submitSurvey,
+          skip: skipSurvey,
         }
       : null,
     audio: { available: audioAvailable, speakingId, speak },

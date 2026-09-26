@@ -919,6 +919,66 @@ before it can update a belief about $mu$ (Prop. 9.1).
   the present arrangement.
 ]
 
+#definition("3.3", name: "Evaluation report")[
+  An *evaluation report* is a tuple
+  $ epsilon = (c, w, n, d, s, a, t) $
+  in which the learner, at time $t$ and at the end of a unit of content $c$,
+  states whether the unit was worthwhile ($w$), how keen they are for the next
+  one ($n$), how its difficulty felt ($d$: too easy, about right, too hard),
+  which of its items were blocking them ($s$), and, in free text, what they
+  feel the teaching is making them into ($a$). Its
+  object is the teaching, not the learner's competence: it names no concept $k$
+  and carries no outcome $r$, so it is not an observation in the sense of
+  Definition 3.1.
+]
+
+#proposition("3.4", name: "An evaluation report is not evidence of mastery")[
+  No belief update may consume an evaluation report.
+]
+
+#proof[
+  "Too hard" is consistent with low $mu$ over the unit's concepts; with high
+  $mu$ under fatigue or disengagement in $z$; with a presentation that exceeded
+  a nuisance parameter (Def. 9.2); and with a unit that is simply not what the
+  learner wants to learn. These are Axiom 3.1's confounds, reported instead of
+  measured, and the report carries no outcome through which any of the three
+  resolutions of Corollary 3.1 could separate them. Folding it into $U$
+  (Def. 5.1) would write a posterior its own likelihood does not support ---
+  the failure Corollary 3.2 derives for the hint, and the one §10 records for
+  `packages/ui/topik`, where a learner-pressed `BATCH_PASSED` made the
+  evaluation learner self-report and the score decorative.
+]
+
+#remark("3.3", name: "What an evaluation report is for")[
+  The system makes no claim that a unit taught anything: by Theorem 3.1 a
+  single unit's outcomes cannot carry that claim, and this canon does not
+  pretend otherwise. It holds the weaker claim that persistence is how learning
+  happens, so what a unit owes the learner is a reason to come back --- and
+  the evaluation report is a measure of that, of how well the unit fit, not of
+  what it taught. It is input to content generation, which is class IV (Def. 8.1) and happens
+  at authoring time (Rem. 4.7): it steers which forms return, how long lines
+  run and which scenes are chosen, within a level the report does not set. Two
+  properties make it worth asking. It is cheap to falsify, because the
+  observation record of the same unit says whether "too easy" held. And it
+  carries what no observation record contains --- interest, frustration, and
+  what the learner is trying to become --- which is exactly what a generator
+  choosing among open-world outputs lacks. It is distinct from the self-report
+  of Corollary 3.1 (c), which reports on competence and may enter the channel
+  with its own likelihood; this one reports on the teaching and may not.
+]
+
+#corollary("3.4", name: "The handheld lesson asks for one")[
+  The handheld Topik valuation (Cor. 4.5) gains one step: when a unit is
+  completed, and before its closing tally, the learner is asked for an
+  evaluation report. The step is skippable, gates nothing, and changes neither
+  the tally nor any outcome. Its candidates for what was blocking are the
+  probes the learner missed on first presentation, offered as choices: a miss
+  is an outcome and remains one, and the selection is the report --- missing
+  an item is not the same as being blocked by it. The report is persisted, like the resume point
+  (Cor. 4.4 (iii)), outside the belief envelope, and losing one costs that
+  report and nothing else.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = The Exercise: Instrument and Intervention
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2575,6 +2635,18 @@ and amends the handheld valuation so its checks are second- and third-order
 probes and first-order checks are withheld (Cor. 4.5). Filed ahead of the
 `packages/ui/topik` probe renderer, in the same change.
 
+*v1.5 --- 2026-09-26.* Defines the evaluation report (Def. 3.3): the
+learner's own verdict on the teaching --- was it worthwhile, how keen they
+are for the next unit, how difficult it felt, what was blocking, what they
+feel it is making them into. Records that the system claims no unit taught
+anything, only that persistence is how learning happens, so the report
+measures fit rather than learning (Rem. 3.3). Shows
+it is not evidence of mastery and may enter no belief update (Prop. 3.4),
+distinguishes it from Corollary 3.1 (c)'s self-report on competence, and
+places it as input to authoring-time generation (Rem. 3.3). The handheld
+valuation gains a skippable report at the end of each unit (Cor. 3.4).
+Filed ahead of the `packages/ui/topik` survey step, in the same change.
+
 #pagebreak()
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2596,6 +2668,7 @@ probes and first-order checks are withheld (Cor. 4.5). Filed ahead of the
   [$tau$], [Time the entry was last supported by evidence (Def. 2.4, Thm. 5.3)],
   [$lambda$], [Stability; governs decay rate (Def. 5.4)],
   [$o = (k, e, r, Delta t, p, t)$], [Observation (Def. 3.1)],
+  [$epsilon = (c, w, n, d, s, a, t)$], [Evaluation report: the learner's verdict on the teaching (Def. 3.3)],
   [$Y(e, hat(B))$], [Evidential yield: expected uncertainty reduction (Def. 3.2)],
   [$G(e, S)$], [Intervention gain: expected improvement in true state (Def. 4.3)],
   [$e = (k, "obj", c, p, "term")$], [Exercise (Def. 4.1)],

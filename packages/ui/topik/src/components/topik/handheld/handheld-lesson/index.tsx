@@ -16,6 +16,7 @@ import { Button } from "@some-ui/shared"
 import { LineCard } from "@topik/components/topik/handheld/line-card"
 import { MaterialList } from "@topik/components/topik/handheld/material-list"
 import { ProbeCard } from "@topik/components/topik/handheld/probe-card"
+import { SurveyCard } from "@topik/components/topik/handheld/survey-card"
 import { WrapCard } from "@topik/components/topik/handheld/wrap-card"
 import type { UseHandheldLessonOptions } from "@topik/lib/topik/adapter/hooks/use-handheld-lesson"
 import { useHandheldLesson } from "@topik/lib/topik/adapter/hooks/use-handheld-lesson"
@@ -30,8 +31,9 @@ type HandheldLessonProps = UseHandheldLessonOptions & {
 export const HandheldLesson = ({
   short = false,
   resumeStore,
+  surveyStore,
 }: HandheldLessonProps): JSX.Element => {
-  const vm = useHandheldLesson({ resumeStore })
+  const vm = useHandheldLesson({ resumeStore, surveyStore })
   const { lesson, audio, dispatch } = vm
 
   const title = lesson
@@ -181,6 +183,19 @@ export const HandheldLesson = ({
       }
     }
 
+    // A completed lesson asks for the learner's verdict before its recap
+    // (canon Cor. 3.4). Skippable; it gates nothing.
+    if (state.finished && vm.survey?.pending) {
+      return (
+        <SurveyCard
+          key={`${key}:survey`}
+          candidates={vm.survey.candidates}
+          short={short}
+          onSubmit={vm.survey.submit}
+          onSkip={vm.survey.skip}
+        />
+      )
+    }
     return (
       <WrapCard
         key={key}

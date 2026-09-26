@@ -5,6 +5,8 @@ import type { ITopikRepository } from "@topik/lib/topik"
 import { SessionConfigProvider } from "@topik/lib/topik/adapter/context/session-config-context"
 import type { StorageLike } from "@topik/lib/topik/adapter/resume-point"
 import { createResumeStore } from "@topik/lib/topik/adapter/resume-point"
+import type { SurveyStore } from "@topik/lib/topik/adapter/survey-store"
+import { createSurveyStore } from "@topik/lib/topik/adapter/survey-store"
 import { afterEach, describe, expect, it } from "vitest"
 
 import { HandheldLesson } from "."
@@ -25,7 +27,8 @@ const memoryStorage = (): StorageLike => {
 
 function renderLesson(
   storage = memoryStorage(),
-  topikRepository: ITopikRepository = fixtureTopikRepository
+  topikRepository: ITopikRepository = fixtureTopikRepository,
+  surveyStore: SurveyStore = createSurveyStore(memoryStorage())
 ): ReturnType<typeof createResumeStore> {
   const store = createResumeStore(storage)
   const client = new QueryClient({
@@ -41,7 +44,7 @@ function renderLesson(
           speechAdapter: null,
         }}
       >
-        <HandheldLesson resumeStore={store} />
+        <HandheldLesson resumeStore={store} surveyStore={surveyStore} />
       </SessionConfigProvider>
     </QueryClientProvider>
   )
@@ -258,5 +261,71 @@ describe("HandheldLesson", () => {
     fireEvent.click(await screen.findByRole("button", { name: /Continue/ }))
     expect(await screen.findByText("어서 오세요. 뭐 드릴까요?")).toBeTruthy()
     expect(screen.getByText("Conversation 1 of 2")).toBeTruthy()
+  })
+
+  describe("the survey at the end of a lesson (canon Cor. 3.4)", () => {
+    /** Resume into the last conversation, miss one probe, and finish. */
+    const finishWithAMiss = async (surveys: SurveyStore): Promise<void> => {
+      const storage = memoryStorage()
+      createResumeStore(storage).set(FIXTURE_TOPIK_KEY, {
+        batchId: 2,
+        conversation: 1,
+        messageId: "c2-m2",
+      })
+      renderLesson(storage, fixtureTopikRepository, surveys)
+      fireEvent.click(await screen.findByRole("button", { name: /Continue/ }))
+      await screen.findByText("카드로 할게요. 감사합니다.")
+
+      click(/^Next/)
+      pick(/Past tense.*했어요/) // valid, so a miss
+      click("Check")
+      click(/Continue/)
+      buildFromTiles(["카드로", "했어요"])
+      click("Check")
+      click(/Continue/)
+      pick(/Question.*할게요\?/) // the repeat, answered
+      click("Check")
+      click(/Continue/)
+      click(/Finish/)
+    }
+
+    it("asks for the learner's verdict, offers the misses as what was blocking, and keeps it", async () => {
+      const surveys = createSurveyStore(memoryStorage(), () => 5)
+      await finishWithAMiss(surveys)
+
+      expect(screen.getByText("Was this lesson worthwhile?")).toBeTruthy()
+      click("Yes, worth it")
+      click("Too hard")
+      expect(screen.getByText("Was anything blocking you?")).toBeTruthy()
+      fireEvent.click(screen.getByRole("button", { name: /카드로 할게요\./ }))
+      click("Continue")
+      click("Keen for the next one")
+      fireEvent.change(screen.getByRole("textbox"), {
+        target: { value: "following a drama without subtitles" },
+      })
+      click("Done")
+
+      // The recap follows; the survey gated nothing.
+      expect(screen.getByText("Material complete")).toBeTruthy()
+      expect(surveys.list()).toEqual([
+        {
+          topikKey: FIXTURE_TOPIK_KEY,
+          at: 5,
+          worthwhile: "yes",
+          difficulty: "too-hard",
+          enthusiasm: "keen",
+          stuck: [{ batchId: 2, probeId: "c2-promise-forms" }],
+          becoming: "following a drama without subtitles",
+        },
+      ])
+    })
+
+    it("can be left at once, and keeps nothing", async () => {
+      const surveys = createSurveyStore(memoryStorage())
+      await finishWithAMiss(surveys)
+      click("Not now")
+      expect(screen.getByText("Material complete")).toBeTruthy()
+      expect(surveys.list()).toEqual([])
+    })
   })
 })
