@@ -14,8 +14,8 @@
  *
  * Engine-free, in the register of `lib/leetype/admissibility`,
  * `lib/leetype/cost`, and `lib/leetype/rewrite`: nothing here imports the
- * wasm loader or any hook, and nothing live imports this yet: its one
- * importer, `WideRoundSurface`, is mounted by no route until the Leetype
+ * wasm loader or any hook, and nothing outside its own tests and type
+ * fixtures imports this yet. A live consumer arrives with the Leetype
  * cutover, which waits on a real round-assembly path (#1440).
  */
 
