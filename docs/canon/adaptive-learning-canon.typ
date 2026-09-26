@@ -1201,6 +1201,84 @@ rather than as *data*, and the remedy is to exhibit the data.
   is the $p$ of the observation it emits.
 ]
 
+#definition("4.6", name: "Utterance relation")[
+  Let $u$ be an utterance of the content. An *utterance relation* is a
+  labelled relation $r in cal(R)$ between $u$ and a candidate $u'$ --- another
+  utterance, or a description of a situation or of a meaning --- drawn from a
+  finite, authored set: tense shift, negation, question form, paraphrase,
+  register shift, felicitous reply, situation of use, and gloss. A *morphism
+  candidate* is a pair $(r, u')$; it is *valid* iff $u'$ stands in $r$ to $u$.
+  A *morphism probe* is an exercise (Def. 4.1) whose content instance is $u$
+  together with a set of candidates, asking either which candidates are valid,
+  which one is not, or --- with $p_"response" = "assembly"$ (Def. 4.5) --- for
+  the learner to construct the $u'$ that stands in a given $r$ to $u$.
+]
+
+#definition("4.7", name: "Comprehension order")[
+  An exercise over an utterance $u$ is *first-order* when its objective is the
+  image of $u$ under the gloss relation alone --- "what does this mean?" ---
+  *second-order* when it asks for validity under a structural relation (tense,
+  negation, question form, paraphrase), and *third-order* when it asks for
+  validity under a pragmatic relation (felicitous reply, register, situation
+  of use: when would this be rude, what would you say back).
+]
+
+#proposition("4.2", name: "First-order probes are confounded by content-word matching")[
+  A first-order selection whose options differ in content words can be
+  answered by recognising one content word of $u$ and matching it to the
+  option that names it, without parsing the rest of $u$. Its outcome
+  therefore does not discriminate a learner who parsed $u$ from one who
+  recognised a single noun, and by Axiom 3.1 it confounds the competence it
+  is taken to measure with a strictly weaker one.
+]
+
+#proof[
+  By exhibition, from the handheld surface as shipped at v1.3. For
+  $u = $ 가사가 예뻐요 the options were "The lyrics are pretty", "The singer is
+  pretty", "The song is pretty", "The melody is pretty". The options share
+  their predicate and differ only in the noun, so recognising 가사 (lyrics)
+  selects the answer; the predicate 예뻐요, its tense, its register and its
+  polarity need never be parsed. Two learners who differ in exactly those
+  competences produce the same outcome distribution, which is Axiom 3.1's
+  confounding stated for this item. A morphism probe holds the content words
+  of $u$ fixed across its candidates and varies the structure a relation acts
+  on --- 예뻐요 against 예뻤어요, 안 예뻐요, 예쁘세요 --- so its outcome depends on
+  exactly the competence the first-order item let the learner skip.
+]
+
+#remark("4.7", name: "Validity is authored; grading is a lookup")[
+  Deciding that a candidate stands in a relation to an utterance --- that
+  안 주세요 is not the negation of a request, that -ㄹ게요 does not take a question
+  form --- is semantic judgement, class IV under Definition 8.1. Candidates,
+  their validity and their one-line reasons are therefore authored
+  (Prop. 8.1), shipped with the content, and graded at runtime by lookup,
+  which Proposition 8.3 already prefers. A rule-based conjugator that
+  *generated* candidates at runtime would be admissible only where it is a
+  deterministic grader in Proposition 8.3's sense; none is in scope here, and
+  a malformed authored probe is dropped at load rather than failing the
+  topik that carries it (Thm. 8.2).
+]
+
+#corollary("4.5", name: "The handheld Topik valuation, amended")[
+  Corollary 4.4 is retained and amended in one respect: on the handheld
+  surface the *Check* exercise is a morphism probe of order two or three
+  (Def. 4.7), and first-order checks are withheld altogether --- a
+  conversation that carries no probes is delivered as listening alone, rather
+  than falling back to an item Proposition 4.2 shows is confounded. Probes
+  are identified by an authored id, so a first try and a review entry are
+  keyed by identity rather than position (Thm. 1.1). Every other decision of
+  Corollary 4.4 stands: anchoring to a line, the gloss withheld until every
+  probe on that line has been answered, repeat-on-error once, no pass/fail,
+  $p_"credited" = "false"$. Two presentation choices are named. (i) Each
+  candidate is shown with its differences from $u$ highlighted, which tells
+  the learner *where* a relation acts but not *whether* it holds, and so is a
+  rendering of the item rather than a hint on its outcome (Rem. 4.2). (ii) A
+  gloss candidate inside a second-order probe exposes a *candidate* meaning,
+  valid or not; under $p_"credited" = "false"$ this is harmless, and it is
+  recorded here so that the day $p_"credited"$ moves (Rem. 4.5) it is a known
+  interaction with Proposition 3.1 rather than a discovered one.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = The Estimator
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2487,6 +2565,15 @@ Topik valuation (Cor. 4.4): line-paced listening with a progressive
 audio--Hangul--gloss ladder, anchored uncredited checks, repeat-on-error in
 place of batch replay. §10 gains a TPK-HANDHELD row as a new item. Filed
 ahead of the `packages/ui/topik` handheld renderer, in the same change.
+
+*v1.4 --- 2026-09-26.* Defines the utterance relation and the morphism probe
+(Def. 4.6) and orders comprehension into first, second and third order
+(Def. 4.7); shows first-order selection confounded by content-word matching
+(Prop. 4.2), grounded in an item the v1.3 handheld surface actually shipped;
+places candidate validity at authoring time with lookup grading (Rem. 4.7);
+and amends the handheld valuation so its checks are second- and third-order
+probes and first-order checks are withheld (Cor. 4.5). Filed ahead of the
+`packages/ui/topik` probe renderer, in the same change.
 
 #pagebreak()
 

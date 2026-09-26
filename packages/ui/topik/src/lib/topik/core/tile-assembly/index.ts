@@ -1,9 +1,10 @@
 /**
- * Assembly: a typed-answer item realised as tiles on a touch screen.
+ * Assembly: an answer built from tiles on a touch screen.
  *
  * Typing Korean on a phone measures the learner's IME more than their
  * comprehension (adaptive-learning canon Prop. 9.4), so the handheld surface
- * asks for the answer to be *built* from tiles instead (Def. 4.5). The tiles
+ * asks for the answer to be *built* from tiles instead (Def. 4.5) - today, the
+ * utterance a build probe asks for (Def. 4.6): the negation, the past tense. The tiles
  * disclose the answer's pieces and withhold their order, which is why the
  * outcome is recorded as `assembly` and never as free text (Rem. 4.6).
  *
@@ -12,8 +13,6 @@
  * lesson shows the same board. The board is presentation, not pedagogical
  * state (canon Prop. 9.2) - it can always be rebuilt from the item.
  */
-
-import type { Question } from "@topik/lib/topik"
 
 const HANGUL = /[ᄀ-ᇿ㄰-㆏가-힯]/
 const PUNCTUATION = /[.,!?;:"'“”‘’()[\]…~。、]/g
@@ -85,22 +84,37 @@ function shuffle<T>(items: Array<T>, next: () => number): Array<T> {
     .map(({ item }) => item)
 }
 
+/** A deterministic shuffle: the same key always yields the same order. */
+export function seededShuffle<T>(items: Array<T>, seedKey: string): Array<T> {
+  return shuffle(items, random(hashSeed(seedKey)))
+}
+
 /**
- * Tiles for a free-text item, or null when it cannot be tiled.
+ * Tiles for an answer, or null when it cannot be tiled.
  *
- * Distractors come from `pool` (text from the same conversation, so they are
- * plausible) in the answer's own granularity and script, and never duplicate
- * a target tile - a duplicate would make two different boards grade the same.
- * Null is returned for an item with no tileable answer or one too long for a
- * phone; the caller then offers it as a selection, and records it as one.
+ * Distractors are the item's authored foils first, then pieces of `pool` (text
+ * from the same conversation, so they are plausible) in the answer's own
+ * granularity and script. None duplicates a target tile - a duplicate would
+ * make two different boards grade the same. Null is returned for an answer
+ * with nothing to tile or one too long for a phone; a build probe that gets
+ * null is left out of the lesson rather than asked some other way.
  */
 export function buildTileBoard(
-  question: Question,
+  /** Accepted forms of the answer; the first is the one tiled. */
+  accepted: Array<string>,
   seedKey: string,
   pool: Array<string>,
-  distractorCount = 2
+  {
+    distractors: authored = [],
+    distractorCount = 2,
+  }: {
+    /** Plausible wrong pieces authored with the item; preferred over `pool`. */
+    distractors?: Array<string>
+    distractorCount?: number
+  } = {}
 ): TileBoard | null {
-  const answer = question.acceptedAnswers?.[0] ?? question.correctAnswer
+  const [answer] = accepted
+  if (answer === undefined) return null
   const split = tokenize(answer)
   if (!split || split.tokens.length > MAX_TILES) return null
 
@@ -123,7 +137,20 @@ export function buildTileBoard(
   }
 
   const room = Math.max(0, Math.min(distractorCount, MAX_TILES - tokens.length))
-  const distractors = shuffle([...candidates].sort(), next).slice(0, room)
+  // Authored foils first (못 for 안, 할게요 for 했어요 - the confusions worth
+  // provoking), then pieces of the conversation to fill the room.
+  const foils = [
+    ...new Set(
+      authored
+        .map((foil) => stripPunctuation(foil).trim())
+        .filter((foil) => foil !== "" && !taken.has(foil))
+    ),
+  ]
+  const filler = shuffle(
+    [...candidates].filter((piece) => !foils.includes(piece)).sort(),
+    next
+  )
+  const distractors = [...foils, ...filler].slice(0, room)
   let tiles = shuffle([...tokens, ...distractors], next)
 
   // A board that happens to shuffle into the answer asks nothing.
@@ -142,18 +169,17 @@ export function buildTileBoard(
 /**
  * Whether showing `excerpt` would show the answer.
  *
- * A free-text item's Korean excerpt is often the very phrase it asks for. Put
+ * An item's Korean excerpt is often the very phrase it asks for. Put
  * above a tile board, it turns assembly into copying: the answer is on screen,
  * so the outcome says nothing about the learner (canon Prop. 3.1). The
  * handheld check hides such an excerpt; the line itself is still a tap away.
  */
 export function excerptRevealsAnswer(
   excerpt: string,
-  question: Question
+  accepted: Array<string>
 ): boolean {
   const seen = normalizeAnswer(excerpt, "")
   if (seen.length === 0) return false
-  const accepted = [...(question.acceptedAnswers ?? []), question.correctAnswer]
   return accepted.some((answer) => {
     const target = normalizeAnswer(answer, "")
     return target.length > 0 && seen.includes(target)
@@ -163,45 +189,10 @@ export function excerptRevealsAnswer(
 /** Grade placed tiles against every accepted form of the answer. */
 export function gradeAssembly(
   placed: Array<string>,
-  question: Question,
+  accepted: Array<string>,
   joiner: "" | " "
 ): boolean {
   const built = normalizeAnswer(placed.join(joiner), joiner)
   if (built.length === 0) return false
-  const accepted = [...(question.acceptedAnswers ?? []), question.correctAnswer]
   return accepted.some((answer) => normalizeAnswer(answer, joiner) === built)
-}
-
-/**
- * Options for an item that cannot be tiled: its answer and up to three other
- * answers from the same conversation, shuffled by seed. Recorded as a
- * selection, because that is what it is.
- */
-export function buildFallbackOptions(
-  question: Question,
-  seedKey: string,
-  siblings: Array<Question>
-): Array<string> {
-  const answer = question.acceptedAnswers?.[0] ?? question.correctAnswer
-  const others = [
-    ...new Set(
-      siblings
-        .map((sibling) => sibling.acceptedAnswers?.[0] ?? sibling.correctAnswer)
-        .filter(
-          (other) =>
-            normalizeAnswer(other, " ") !== normalizeAnswer(answer, " ")
-        )
-    ),
-  ]
-    .sort()
-    .slice(0, 3)
-  return shuffle([answer, ...others], random(hashSeed(seedKey)))
-}
-
-/** Whether a selected fallback option is one of the item's accepted answers. */
-export function gradeSelection(choice: string, question: Question): boolean {
-  const accepted = [...(question.acceptedAnswers ?? []), question.correctAnswer]
-  return accepted.some(
-    (answer) => normalizeAnswer(answer, " ") === normalizeAnswer(choice, " ")
-  )
 }

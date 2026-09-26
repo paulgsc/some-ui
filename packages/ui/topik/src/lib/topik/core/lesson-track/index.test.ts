@@ -1,13 +1,7 @@
-import type { ConversationBatch, Message, Question } from "@topik/lib/topik"
+import type { ConversationBatch, Message, Probe } from "@topik/lib/topik"
 import { describe, expect, it } from "vitest"
 
-import type {
-  CheckStep,
-  LessonContext,
-  LessonEvent,
-  LessonPlan,
-  LessonState,
-} from "."
+import type { LessonContext, LessonEvent, LessonState } from "."
 import {
   anchorOf,
   createLessonState,
@@ -30,14 +24,20 @@ const message = (id: string, korean: string): Message => ({
   english: `gloss of ${id}`,
 })
 
-const question = (korean: string, extra: Partial<Question> = {}): Question => ({
-  type: "multiple-choice",
-  korean,
-  question: `about ${korean}`,
-  options: ["a", "b"],
-  correct: 0,
-  correctAnswer: "a",
-  explanation: "because",
+const probe = (
+  id: string,
+  source: string,
+  extra: { anchorMessageId?: string } = {}
+): Probe => ({
+  id,
+  kind: "pick-valid",
+  order: 3,
+  source,
+  prompt: `about ${source}`,
+  options: [
+    { text: "a", relation: "reply", valid: true, why: "fits" },
+    { text: "b", relation: "reply", valid: false, why: "does not" },
+  ],
   ...extra,
 })
 
@@ -48,22 +48,29 @@ const batch: ConversationBatch = {
     message("m2", "오늘 날씨가 정말 좋네요."),
     message("m3", "같이 산책할까요?"),
   ],
+  // First-order items: the desktop's, never asked on this surface (Cor. 4.5).
   questions: [
-    question("날씨가 정말 좋네요"), // anchors to m2 by containment
-    question("unrelated"), // falls back to the last line
-    question("", { anchorMessageId: "m1" }), // declared
+    {
+      type: "multiple-choice",
+      korean: "안녕하세요",
+      question: "What does this mean?",
+      options: ["Hello", "Bye"],
+      correct: 0,
+      correctAnswer: "Hello",
+      explanation: "",
+    },
+  ],
+  probes: [
+    probe("p0", "날씨가 정말 좋네요"), // anchors to m2 by containment
+    probe("p1", "unrelated"), // falls back to the last line
+    probe("p2", "", { anchorMessageId: "m1" }), // declared
   ],
 }
 
 const plan = planConversation(batch)
 
-/** The identity the plan gave a question index. */
-const idIn = (target: LessonPlan, question: number): string =>
-  target.steps.find(
-    (step): step is CheckStep =>
-      step.kind === "check" && step.question === question
-  )?.id ?? "missing"
-const id = (question: number): string => idIn(plan, question)
+/** The fixture's probes are named for their order: p0, p1, p2. */
+const id = (n: number): string => `p${n}`
 const ctx = (audio = true): LessonContext => ({
   plan,
   conversationCount: 2,
@@ -86,26 +93,55 @@ const answer = (correct: boolean): LessonEvent => ({
 
 describe("anchorOf", () => {
   it("prefers a declared anchor, then containment, then the last line", () => {
-    expect(anchorOf(batch.questions[2]!, batch.messages)).toBe(0)
-    expect(anchorOf(batch.questions[0]!, batch.messages)).toBe(1)
-    expect(anchorOf(batch.questions[1]!, batch.messages)).toBe(2)
+    expect(anchorOf({ anchorMessageId: "m1" }, batch.messages)).toBe(0)
+    expect(anchorOf({ excerpt: "날씨가 정말 좋네요" }, batch.messages)).toBe(1)
+    expect(anchorOf({ excerpt: "unrelated" }, batch.messages)).toBe(2)
   })
 
   it("ignores a declared anchor that no longer resolves", () => {
-    const orphan = question("같이 산책할까요", { anchorMessageId: "gone" })
-    expect(anchorOf(orphan, batch.messages)).toBe(2)
+    expect(
+      anchorOf(
+        { anchorMessageId: "gone", excerpt: "같이 산책할까요" },
+        batch.messages
+      )
+    ).toBe(2)
   })
 })
 
 describe("planConversation", () => {
   it("puts each check right after the line it is about", () => {
     expect(
-      plan.steps.map((s) =>
-        s.kind === "line" ? `L${s.message}` : `Q${s.question}`
-      )
-    ).toEqual(["L0", "Q2", "L1", "Q0", "L2", "Q1"])
+      plan.steps.map((s) => (s.kind === "line" ? `L${s.message}` : s.id))
+    ).toEqual(["L0", "p2", "L1", "p0", "L2", "p1"])
     expect(plan.lineCount).toBe(3)
     expect(plan.checkCount).toBe(3)
+  })
+
+  it("never plans a first-order question: no probes is a listening lesson", () => {
+    const { probes: _none, ...listening } = batch
+    const bare = planConversation(listening)
+    expect(bare.checkCount).toBe(0)
+    expect(bare.steps.every((s) => s.kind === "line")).toBe(true)
+  })
+
+  it("delivers a duplicated id once, and leaves out a build it cannot tile", () => {
+    const plan2 = planConversation({
+      ...batch,
+      probes: [
+        probe("dup", "날씨가"),
+        probe("dup", "산책"),
+        {
+          id: "b1",
+          kind: "build",
+          order: 2,
+          source: "산책",
+          prompt: "Say it",
+          relation: "negation",
+          target: "no",
+        },
+      ],
+    })
+    expect(plan2.checkCount).toBe(1)
   })
 })
 
@@ -127,7 +163,7 @@ describe("lessonReducer", () => {
     const atCheck = run([{ type: "NEXT" }])
     expect(currentStep(plan, atCheck)).toMatchObject({
       kind: "check",
-      question: 2,
+      id: "p2",
     })
     expect(run([{ type: "NEXT" }], atCheck)).toBe(atCheck)
   })
@@ -158,7 +194,7 @@ describe("lessonReducer", () => {
   it("re-presents a missed check once after the last line, then wraps", () => {
     let state = run([
       { type: "NEXT" },
-      answer(false), // Q2 missed
+      answer(false), // p2 missed
       { type: "NEXT" },
       { type: "NEXT" },
       answer(true),
@@ -169,7 +205,7 @@ describe("lessonReducer", () => {
     ])
     expect(currentStep(plan, state)).toMatchObject({
       kind: "check",
-      question: 2,
+      id: "p2",
       repeat: true,
       anchor: 0,
     })
@@ -221,7 +257,7 @@ describe("lessonReducer", () => {
   })
 
   it("passes over a check already answered when a line is revisited (Codex, #1544)", () => {
-    // L0 -> Q2 (missed) -> L1, then back to L0 and forward again.
+    // L0 -> p2 (missed) -> L1, then back to L0 and forward again.
     const revisited = run([
       { type: "NEXT" },
       answer(false),
@@ -229,14 +265,14 @@ describe("lessonReducer", () => {
       { type: "PREV" },
       { type: "NEXT" },
     ])
-    // Straight to L1, not back into Q2.
+    // Straight to L1, not back into p2.
     expect(currentStep(plan, revisited)).toMatchObject({
       kind: "line",
       message: 1,
     })
     // The first try and the review queue are exactly as the first answer left them.
-    expect(revisited.firstTry).toEqual({ [id(2)]: false })
-    expect(revisited.review).toEqual([id(2)])
+    expect(revisited.firstTry).toEqual({ p2: false })
+    expect(revisited.review).toEqual(["p2"])
   })
 
   it("refuses a second first-try answer even if a check is reached again", () => {
@@ -251,13 +287,13 @@ describe("glossUnlocked", () => {
     const twoOnOne = planConversation({
       id: 9,
       messages: [message("x1", "카드로 할게요. 감사합니다.")],
-      questions: [question("감사합니다"), question("카드로 할게요")],
+      questions: [],
+      probes: [probe("a", "감사합니다"), probe("b", "카드로 할게요")],
     })
-    const [a, b] = [idIn(twoOnOne, 0), idIn(twoOnOne, 1)]
     expect(glossUnlocked(twoOnOne, { firstTry: {} }, 0)).toBe(false)
-    expect(glossUnlocked(twoOnOne, { firstTry: { [a]: true } }, 0)).toBe(false)
+    expect(glossUnlocked(twoOnOne, { firstTry: { a: true } }, 0)).toBe(false)
     expect(
-      glossUnlocked(twoOnOne, { firstTry: { [a]: true, [b]: false } }, 0)
+      glossUnlocked(twoOnOne, { firstTry: { a: true, b: false } }, 0)
     ).toBe(true)
   })
 })
@@ -320,17 +356,12 @@ describe("resume outcomes (Codex, #1544)", () => {
 })
 
 describe("check identity and once-only repeats (Codex, #1544)", () => {
-  it("keys results by content, so a reordered file keeps each result on its question", () => {
-    const answered = run([{ type: "NEXT" }, answer(false)]) // question 2 missed
+  it("keys results by probe id, so a reordered file keeps each result on its probe", () => {
+    const answered = run([{ type: "NEXT" }, answer(false)]) // p2 missed
     const reordered: ConversationBatch = {
       ...batch,
-      questions: [
-        batch.questions[2]!,
-        batch.questions[0]!,
-        batch.questions[1]!,
-      ],
+      probes: [...(batch.probes ?? [])].reverse(),
     }
-    const reorderedPlan = planConversation(reordered)
     const resumed = lessonReducer(
       createLessonState(true),
       {
@@ -339,19 +370,10 @@ describe("check identity and once-only repeats (Codex, #1544)", () => {
         message: 0,
         outcomes: outcomesOf(answered),
       },
-      { ...ctx(), plan: reorderedPlan }
+      { ...ctx(), plan: planConversation(reordered) }
     )
-    // The miss follows the question to its new index 0; nothing else moved.
-    expect(resumed.firstTry).toEqual({ [idIn(reorderedPlan, 0)]: false })
-    expect(idIn(reorderedPlan, 0)).toBe(id(2))
-  })
-
-  it("tells identical questions apart by occurrence", () => {
-    const twins = planConversation({
-      ...batch,
-      questions: [batch.questions[0]!, batch.questions[0]!],
-    })
-    expect(idIn(twins, 0)).not.toBe(idIn(twins, 1))
+    expect(resumed.firstTry).toEqual({ p2: false })
+    expect(resumed.review).toEqual(["p2"])
   })
 
   it("serves a missed check's repeat once, even across a reload", () => {
