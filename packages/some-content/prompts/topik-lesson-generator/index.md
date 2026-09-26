@@ -1,17 +1,28 @@
-# Topik Probe Author
+# Topik Lesson Generator
 
-Prompt template for adding **morphism probes** to one existing topik lesson
-file: an array of `ConversationBatch`, the shape `TopikFileSchema`
-(`packages/ui/topik/src/lib/topik/entity/topik-types.ts`) validates. The output
-is the same file with a `probes` array on each conversation, and nothing
-else changed. Probes are the only checks the handheld (phone) lesson asks. A
-conversation without them plays as listening alone (canon Cor. 4.5), so an
-unprobed file is a lesson that never checks anything on a phone.
+Prompt template for generating one topik lesson: a few short Korean
+conversations at a given **TOPIK level** (1–6), each carrying the **morphism
+probes** the handheld (phone) lesson asks. The output is a lesson file (an
+array of `ConversationBatch`, the shape `TopikFileSchema` in
+`packages/ui/topik/src/lib/topik/entity/topik-types.ts` validates) and its
+manifest entry.
+
+The conversations are material, not the point. Any everyday subject serves,
+and none of them is a statement of what the curriculum should cover. What a
+generated lesson has to do is exercise the lesson engine correctly:
+
+- lines worth probing;
+- probes that pass `pnpm check:topik-probes`;
+- the right answer marked right.
+
+A conversation without probes plays as listening alone on a phone (canon
+Cor. 4.5), so a lesson whose probes are dropped has failed, however natural
+its Korean.
 
 The pedagogy is fixed by the adaptive-learning canon
 (`docs/canon/adaptive-learning-canon.typ`, v1.4, §4). Read Definitions 4.6
 and 4.7, Proposition 4.2 and Remark 4.7 before generating. This prompt
-restates them only as far as authoring needs.
+restates them only as far as generation needs.
 
 ---
 
@@ -74,41 +85,71 @@ the learner has earned it.
 ## Usage Example Header
 
 ```
-Lesson: [the lesson key - the file's name without .json]
-Level: [beginner | intermediate | advanced - the manifest's difficulty]
-Learner: [optional - grammar the learner is known to have, or to be missing]
-T: [Apply Topik Probe Author v1.0]
+Level: [1–6 - the learner's self-assessed TOPIK level]
+Notes: [optional - from the learner's self-survey: what felt easy, hard or repetitive last time]
+Subject: [optional - an everyday setting ("ordering at a café"); pick one if absent]
+Key: [optional - kebab-case lesson key; derive one from the subject if absent]
+Conversations: [optional - default 3]
+T: [Apply Topik Lesson Generator v1.0]
 ```
 
-followed by the lesson file's JSON. The generator returns the whole file,
-JSON only, in one ` ```json ` block. It is saved over the original and
-checked by a command, not read as prose.
-
-Add each `probes` array after its conversation's `questions`, in 2-space
-indentation, and leave every existing line byte-for-byte as it was,
-including the trailing newline. The importer decides whether a lesson
-changed by its exact bytes. The added probes are the change you mean to
-announce; a reformatted line is noise announced to learners as new material.
-
-Take `anchorMessageId`s from the input's own message ids. The fixture's
-`c1-m1` style is that file's convention, not a rule.
+The generator returns two ` ```json ` blocks and nothing else: the lesson
+file, then its manifest entry. Both are saved and checked by commands, not
+read as prose.
 
 ---
 
-## What you may and may not change
+## Levels
 
-- **Add** a `probes` array to each conversation. Replace an existing one only
-  when asked to.
-- **Never change** `messages`, `questions`, conversation `id`s or their order.
-  `questions` are the desktop quiz. Message `id`s are what probes and saved
-  resume points anchor to (canon Thm. 1.1).
-- **Probe ids are identity.** A learner's saved result is keyed by a probe's
-  `id` together with a fingerprint of what it asks and what counts as right,
-  within its conversation. So:
-  - rewording a `why`, `label` or `explanation` keeps results;
-  - changing candidates, validity, `target` or `acceptedAnswers` resets them,
-    which is intended;
-  - reusing an id for a different probe is never allowed.
+`Level` is a **TOPIK** proficiency level, 1–6: the Test of Proficiency in
+Korean's own scale. It is the learner's **self-assessment**, taken as given.
+Don't second-guess it toward what the notes seem to suggest. A self-report
+is cheap to disprove: the first lesson's probes show a wrong level quickly.
+And the level someone picks also says what they aspire to, which is worth
+generating toward. TOPIK I covers levels 1–2, TOPIK II covers 3–6. The level
+decides the grammar the conversations use and the probes' answers may need.
+The table follows TOPIK's grammar bands as a guide, not a syllabus. The
+conversations are spoken, so the upper levels show up as nuance and register
+more than as written-exam grammar.
+
+| TOPIK | `difficulty` | lines per conversation | grammar the lines add                                                                          |
+| ----- | ------------ | ---------------------- | ---------------------------------------------------------------------------------------------- |
+| 1     | beginner     | 3–5                    | -요/-습니다 endings, -았/었-, 안/못, -고 싶다, -(으)세요, -지 마세요, everyday honorific verbs |
+| 2     | beginner     | 4–6                    | -(으)ㄹ게요, -(으)ㄹ까요, -아/어서, -(으)니까, -(으)면, -(으)ㄹ 수 있다, -아/어야 되다, -는데  |
+| 3     | intermediate | 5–7                    | reported speech (-다고 하다), -(으)ㄴ/는 것 같다, -잖아요, -거든요, -게 되다                   |
+| 4     | intermediate | 5–7                    | -더라고요, -는 바람에, -다 보니, -(으)ㄹ 뻔하다, shifts between polite and plain speech        |
+| 5     | advanced     | 6–8                    | -기 마련이다, -는 셈이다, -(으)ㄹ 법하다, formal register in speech                            |
+| 6     | advanced     | 6–8                    | idiom and proverb in context, -(으)ㄹ지언정, abstract or professional discussion               |
+
+Each level includes everything below it. The manifest has no field for the
+TOPIK level itself yet, so record it in `tags` as `"topik-<level>"` (see
+**Output**) and in `difficulty` as the table says.
+
+---
+
+## The conversations
+
+- Two speakers per conversation, alternating. `role` is `"assistant"` for one
+  speaker and `"user"` for the other. The learner hears both.
+- Keep each line short and spoken, never textbook prose. A line is the pacing
+  unit: it is heard, then probed.
+- Write lines that carry structure worth judging: a request, a promise, a
+  tense, a negation, an honorific, a reply that depends on who is speaking.
+  A lesson of greetings alone gives the probes nothing to act on.
+- Conversations follow one another in the same setting, like scenes.
+- **Message fields:**
+  - `id`: `c<conversation>-m<line>` (`c1-m1`);
+  - `korean` and `content`: the same Korean line;
+  - `english`: a natural translation, hidden until the line's probes are
+    answered;
+  - `timestamp`: `"HH:MM"`, increasing.
+- **Conversation `id`s** are `1, 2, 3, …`. Resume points find a conversation
+  by it.
+- **`questions`:** 1–2 per conversation. They are the desktop quiz, which
+  still asks first-order questions and needs something to ask. The phone
+  never shows them. Use the schema's `multiple-choice` or `text-input`
+  shape, with `anchorMessageId` set.
+- **`probes`:** everything from here down.
 
 ---
 
@@ -264,9 +305,9 @@ first-order, and the checker rejects it.
   gets at least one third-order probe.
 - Two probes on the same line are fine. The line's English stays hidden until
   both are answered.
-- Match the level. At `beginner`, a probe's answer stays within the -요 and -습니다 endings, 안 and -지 마세요, the -았/었- past, -ㄹ게요 and -ㄹ까요,
-  and the everyday honorific verbs. Supporting candidates may reach one step
-  further, as the worked example's -시겠어요? does.
+- Match the level. A probe's answer stays within the level's grammar (see
+  **Levels**). Supporting candidates may reach one step further, as the
+  worked example's -시겠어요? does.
 - Probe the line's own structure. The relation acts on what the line says.
   Its answer may need the form that relation takes (negating a request
   needs -지 마세요, even in a conversation that never uses it), and that is
@@ -438,6 +479,10 @@ eye. `[judgment]` items are for the reviewer.
   source. No distractor is a piece of the target.
 - [checkable] Every conversation has at least one probe (a warning, not an
   error, when a conversation genuinely has nothing to probe).
+- [judgment] Every line is natural spoken Korean at the requested TOPIK
+  level, and its `english` is a faithful translation.
+- [judgment] Every conversation has lines worth probing, not greetings
+  alone.
 - [judgment] Every probe passes the one-noun test.
 - [judgment] No `prompt` restates the line's meaning.
 - [judgment] Every `valid` flag is actually true of the Korean. This is the
@@ -455,17 +500,46 @@ learner will see, or not see.
 
 ---
 
+## Output
+
+Two ` ```json ` blocks, in this order.
+
+1. **The lesson file:** an array of conversations, each
+   `{ "id", "messages", "questions", "probes" }`, in 2-space indentation.
+2. **Its manifest entry:**
+
+   ```json
+   {
+     "key": "cafe-order",
+     "displayName": "Ordering at a café",
+     "description": "One sentence on the setting, not on the grammar.",
+     "batchCount": 3,
+     "totalQuestions": 5,
+     "totalMessages": 14,
+     "difficulty": "beginner",
+     "tags": ["topik-1", "cafe"]
+   }
+   ```
+
+   - `batchCount` is the number of conversations.
+   - `totalQuestions` counts the desktop `questions`, not the probes.
+   - `totalMessages` counts every line.
+   - `difficulty` follows **Levels**. `tags` carries `"topik-<level>"` first,
+     then a subject tag.
+
+---
+
 ## After Generating
 
-1. **Save** the file over `packages/some-content/public/topiks/<lesson>.json`.
-   That directory is the lesson corpus's authoring copy: gitignored, local,
-   and created by hand if it isn't there. It is not served; it is the
-   importer's input, and its `manifest.json` has to list the lesson (an
-   existing lesson already is).
+1. **Save** the lesson as `packages/some-content/public/topiks/<key>.json`,
+   and add its entry to `manifest.json` in the same directory. If the file
+   isn't there, create it as `{ "version": "1", "topiks": [] }` first. That
+   directory is local and gitignored. It isn't served; it is the importer's
+   input.
 2. **Check** it, and fix every error before going on:
 
    ```sh
-   pnpm check:topik-probes packages/some-content/public/topiks/<lesson>.json
+   pnpm check:topik-probes packages/some-content/public/topiks/<key>.json
    ```
 
 3. **Review** the `[judgment]` items above. The checker proves the file is
@@ -482,9 +556,8 @@ learner will see, or not see.
 
    Then run it again without `--dry-run`. The importer reads the directory's
    `manifest.json` and one `<key>.json` per lesson. It is idempotent and
-   decides "changed" by content hash, so a lesson that gained probes is
-   imported as changed content, and the study nudge announces it as new
-   material.
+   decides "changed" by content hash, so a new lesson is announced by the
+   study nudge as new material.
 
 5. On a phone-sized window, open the lesson and answer one probe of each
    kind. The feedback screen lists every candidate with its `why`, which is
@@ -496,9 +569,14 @@ learner will see, or not see.
 
 **`v1.0`.** First version, written against canon v1.4 (Def. 4.6, 4.7,
 Prop. 4.2, Rem. 4.7, Cor. 4.5) and the probe schema `@some-ui/topik` shipped in
-#1546. It adds probes to existing lessons and does not generate
-conversations. Two blind trials, each run by an agent that saw only this
-prompt, produced files that passed `check:topik-probes` on the first run.
-Their reviews are folded in: what `valid` means in a pick-valid, prompts that
-must not gloss, answers that must be invalid beyond dispute, and the
-formatting the importer's byte hash needs.
+#1546. It generates a lesson (conversations and their probes) at a
+self-assessed TOPIK level.
+
+Its probe rules were first drafted as a separate prompt that added probes to
+existing lessons. Two blind trials of that draft, each run by an agent that
+saw only the prompt, produced files that passed `check:topik-probes` on the
+first run. Their reviews are folded in:
+
+- what `valid` means in a pick-valid;
+- prompts that must not gloss;
+- answers that must be invalid beyond dispute.

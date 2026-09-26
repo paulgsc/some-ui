@@ -5,9 +5,9 @@
  *
  * Probes fail quietly at runtime on purpose (a malformed one is dropped, an
  * unknown anchor falls back to the last line), so a generated file can lose
- * half its probes and still load. Run this on every file the probe authoring
- * prompt (packages/some-content/prompts/topik-probe-author) produces, before
- * it is imported into file_host.
+ * half its probes and still load. Run this on every file the lesson
+ * generator prompt (packages/some-content/prompts/topik-lesson-generator)
+ * produces, before it is imported into file_host.
  *
  * Usage:
  *
