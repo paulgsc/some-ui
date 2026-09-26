@@ -1139,6 +1139,68 @@ rather than as *data*, and the remedy is to exhibit the data.
   It is not admissible as a unit of belief.
 ]
 
+#definition("4.5", name: "Assembly response")[
+  The range of $p_"response"$ in Definition 4.2 is extended with *assembly*:
+  the learner orders a presented multiset of tokens --- syllables, or
+  space-delimited words (어절) --- drawn from the answer and padded with
+  distractors, and the ordered sequence is the response. Nothing else in
+  Definition 4.2 changes; the extension is a new value of an existing
+  dimension, which is exactly the growth Theorem 4.1 says is cheap.
+]
+
+#remark("4.6", name: "Assembly is neither selection nor free text")[
+  An assembly outcome must be recorded as $p_"response" = "assembly"$ and
+  never folded as if it were free text. The tile inventory discloses the
+  answer's *constituents* while withholding their *order*, so relative to a
+  free-text response it is a partial hint in the sense of Proposition 3.1:
+  its yield about recall of the constituents is reduced (to zero when the
+  distractors are implausible), while its yield about their arrangement is
+  not. Relative to a selection it is strictly more productive: the learner
+  builds the response rather than recognising it. The direction and
+  objective of the exercise are those of the item it realises; only the
+  response channel --- and therefore the nuisance vector $nu$ of
+  Definition 9.2 --- differs.
+]
+
+#corollary("4.4", name: "The handheld Topik valuation, declared")[
+  The handheld renderer of `packages/ui/topik` (capability set per
+  Definition 9.3: $p_"response" in {"selection", "assembly"}$,
+  $p_"modality" in {"audio", "glyph"}$ with audio present iff a speech
+  adapter is, and a budget of one conversation, resumable at line
+  granularity) delivers two exercise kinds, each at a declared valuation.
+
+  *Line* (listening): $p_"modality" = "audio"$, $p_"hint" = "progressive"$
+  over the ladder audio $->$ Hangul $->$ gloss, $p_"pressure" = "none"$,
+  $p_"scored" = "false"$, $p_"credited" = "false"$. Where no speech adapter is
+  present the ladder starts at Hangul, since a rung the renderer cannot
+  realise is outside its capability set.
+
+  *Check* (comprehension): anchored to a line and presented immediately after
+  it; $p_"response" = "selection"$ for a multiple-choice item and
+  $"assembly"$ (Def. 4.5) for a free-text item; the anchor line's gloss is
+  withheld until the check is answered; $p_"pressure" = "none"$,
+  $p_"scored" = "true"$ (a per-conversation tally, never pass/fail),
+  $p_"credited" = "false"$, $p_"retry" = "forbidden"$,
+  $p_"repeat" = "on-error"$ (once, after the conversation's last line), and
+  $p_"reveal" = "explanation"$ together with the withheld gloss.
+
+  Three decisions are named rather than glossed. (i) The pacing unit is the
+  *line*, extending Remark 4.3's admission of the batch as a pacing device to
+  a finer grain; no batch-level pass/fail exists on this surface. (ii) A
+  check's anchor is read from the content when it declares one
+  (`anchorMessageId`, an authoring-time field per Prop. 8.1) and otherwise
+  derived at runtime by textual containment, falling back to the last line;
+  this is admissible because anchoring is pacing, not belief. (iii) The resume
+  point persists a conversation index and a *message identifier*, resolved by
+  identity on read and discarded to the conversation's start when it no
+  longer resolves (Thm. 1.1); it is not a competence claim, so it sits outside
+  O3, and losing it costs a restart and nothing else (Thm. 7.2).
+  As in Corollary 4.3, $p_"credited" = "false"$ makes Proposition 3.1 and
+  Corollary 3.2 hold vacuously, and Remark 4.5's trigger applies unchanged:
+  when O3 exists, each check's $(p_"response", "rung reached on its anchor")$
+  is the $p$ of the observation it emits.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = The Estimator
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1986,6 +2048,63 @@ estimating a cost.
   through the continuation probability, and it must not run through the belief.
 ]
 
+#definition("9.3", name: "Capability set")[
+  A renderer's *capability set* $C_r$ is the subset of the valuations of
+  Definition 4.2 it can realise faithfully: the values of $p_"response"$ its
+  input surface supports without the response channel dominating the outcome,
+  the values of $p_"modality"$ it can present, and an upper bound on the
+  session budget of Definition 4.4. $C_r$ is declared by the renderer, fixed
+  for the lifetime of a mount, and contains no belief and no history.
+]
+
+#proposition("9.3", name: "Capability restricts the policy's codomain, not its domain")[
+  Under a renderer with capability set $C$, the policy is
+  $pi_C : hat(B) -> e$ with $p(e) in C$. Definition 6.1 and Theorem 9.1 are
+  both preserved.
+]
+
+#proof[
+  $pi_C$ reads $hat(B)$ and nothing else; $C$ indexes a family of policies in
+  the same way $alpha$ and $beta$ do (Def. 6.2), and is not an input read at
+  decision time, so Definition 6.1 holds. A change of renderer changes which
+  member of the family is used and no definition of $cal(K)$, $rho$,
+  $delta$, $U$, or of the family itself, so Theorem 9.1 holds. What does
+  change is the *valuation* delivered, which is data (Thm. 4.1) and is
+  recorded on every observation (Def. 3.1) --- so an estimator reading those
+  observations can tell a handheld outcome from a desktop one, which is
+  precisely what Proposition 9.1 requires it to be able to do.
+]
+
+#proposition("9.4", name: "A reflow is a valuation change")[
+  A layout change that alters which material is co-visible with an exercise,
+  or which input device realises its response, changes that exercise's
+  $p_"hint"$ or $p_"response"$ --- whether or not any pedagogical code
+  changed.
+]
+
+#proof[
+  By exhibition in `packages/ui/topik` as of this amendment. At or above the
+  `md` breakpoint `KoreanStudySession` lays the transcript beside the quiz:
+  the conversation a question is about stays on screen while it is answered,
+  i.e. $p_"hint" = "on-demand"$. Below `md` the same components stack, the
+  transcript scrolls out of view above the quiz, and the identical question is
+  answered with $p_"hint" = "none"$. Likewise a free-text item answered on a
+  hardware keyboard and the same item answered through a touch keyboard's
+  Hangul IME share $p_"response" = "free text"$ nominally and differ in $nu$
+  (Def. 9.2) by more than the competence differences in question. In both
+  cases the score's meaning depends on the viewport width, and nothing
+  recorded that it does.
+]
+
+#corollary("9.1", name: "Squeezing is the wrong operation")[
+  Fitting a surface to a smaller capability set by reflowing its components
+  yields an *undeclared* valuation. The admissible operation is to choose a
+  declared valuation inside $C$ (Prop. 9.3) and render that. A small screen
+  therefore gets a different exercise *by declaration* and a renderer built to
+  present it --- and Theorem 9.1 is what makes the second renderer cheap: it
+  shares every object of §§1--8 with the first.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = Grounding Against the Present Source
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2106,6 +2225,29 @@ previously only gesture at as absent.
    surface might persist --- LTY-SEAM S2 (#1016) is the corresponding
    prohibition, not this amendment, and O3 still does not exist for this
    surface to write into.],
+)
+
+#heading(level: 2)[Update --- TPK-HANDHELD (v1.3): `packages/ui/topik` re-grounded]
+
+As with LTY-SEAM above, the original row is retained and this one is added.
+
+#table(
+  columns: (3.3cm, 3.5cm, 1fr),
+  stroke: 0.4pt,
+  inset: 6pt,
+  [*Surface*], [*Current learner model*], [*What changed, and what did not*],
+
+  [`packages/ui/topik`, handheld renderer],
+  [Unchanged: no belief, no persistence of competence. A per-conversation
+   first-try tally and a resume point keyed by message identity],
+  [Below its capability threshold the applet no longer reflows the desktop
+   surface (Cor. 9.1) but mounts a second renderer at a declared valuation
+   (Cor. 4.4): line-paced, checks anchored to lines, free-text items realised
+   as assembly (Def. 4.5), missed checks re-presented once instead of the
+   batch replaying (Rem. 4.3). The desktop surface, its batch pass/fail, and
+   every §10 prediction about it are unchanged; Thm. 1.1 still applies to its
+   positional cursor, and O3 still does not exist for either renderer to
+   write into.],
 )
 
 #heading(level: 2)[The unreconciled duplication]
@@ -2333,6 +2475,18 @@ amendment has a named trigger rather than an implicit one. §10's
 (both LTY-ROUTE) are recorded alongside the declared valuation. Filed ahead
 of `packages/ui/leetype` source (LTY-SEAM S2--S5), per the discipline
 stated at v1.0's filing.
+
+*v1.3 --- 2026-09-26.* Admits the renderer's *capability set* (Def. 9.3)
+as an index on the policy family rather than an input to it
+(Prop. 9.3), preserving Def. 6.1 and Thm. 9.1; records that a reflow which
+changes co-visibility or input device is a valuation change (Prop. 9.4),
+grounded in `packages/ui/topik`'s stacked layout below `md`, and that
+squeezing a surface is therefore the wrong operation (Cor. 9.1). Extends
+$p_"response"$ with *assembly* (Def. 4.5, Rem. 4.6) and declares the handheld
+Topik valuation (Cor. 4.4): line-paced listening with a progressive
+audio--Hangul--gloss ladder, anchored uncredited checks, repeat-on-error in
+place of batch replay. §10 gains a TPK-HANDHELD row as a new item. Filed
+ahead of the `packages/ui/topik` handheld renderer, in the same change.
 
 #pagebreak()
 
