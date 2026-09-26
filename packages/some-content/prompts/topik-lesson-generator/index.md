@@ -134,6 +134,11 @@ third-order probes test.
 - **Reveals and accusations** that put statements into the past tense,
   negation and reported speech.
 
+**The standing cast** is a stand-in. The longer-term home for the ensemble
+is the `@some-ui/makjang` workspace. There the recurring archetypes become
+typed characters with state, and the lessons add up to one coherent drama.
+Until then:
+
 **The standing cast.** Reuse it across lessons, so forms of address stay
 consistent from week to week. Invent minor characters as a scene needs.
 
