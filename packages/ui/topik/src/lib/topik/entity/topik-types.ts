@@ -65,19 +65,157 @@ const QuestionSchema = z.object({
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
+// MORPHISM PROBES
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * How a candidate relates to the utterance it is judged against
+ * (adaptive-learning canon Def. 4.6). Structural relations make a probe
+ * second-order, pragmatic ones third-order (Def. 4.7).
+ */
+export const MORPHISM_RELATIONS = [
+  "past",
+  "future",
+  "negation",
+  "question",
+  "paraphrase",
+  "register",
+  "reply",
+  "situation",
+  "gloss",
+] as const
+
+export type MorphismRelation = (typeof MORPHISM_RELATIONS)[number]
+
+export type ProbeOption = {
+  /** The candidate: an utterance, or a situation/meaning described in prose. */
+  text: string
+  relation: MorphismRelation
+  /** Overrides the relation's default chip label ("Past tense", ...). */
+  label?: string
+  /** Whether `text` really stands in `relation` to the source (authored). */
+  valid: boolean
+  /** One line on why it does or doesn't - the whole of the feedback. */
+  why: string
+  /** "ko" gets a diff against the source; "en" is prose. Default "ko". */
+  lang?: "ko" | "en"
+}
+
+type ProbeBase = {
+  /** Stable identity: first tries and reviews are keyed by it (Thm. 1.1). */
+  id: string
+  /** 2 = structure (tense, negation, ...), 3 = use (reply, register, ...). */
+  order: 2 | 3
+  /** The line this probe is about. */
+  anchorMessageId?: string
+  /** The utterance under test; defaults to the anchor line's Korean. */
+  source?: string
+  prompt: string
+  explanation?: string
+}
+
+export type Probe =
+  | (ProbeBase & {
+      /** "Which of these is NOT a valid transformation?" - exactly one invalid. */
+      kind: "odd-one-out"
+      options: Array<ProbeOption>
+    })
+  | (ProbeBase & {
+      /** "Which reply fits?" - exactly one valid. */
+      kind: "pick-valid"
+      options: Array<ProbeOption>
+    })
+  | (ProbeBase & {
+      /** "Make it negative" - built from tiles (canon Def. 4.5). */
+      kind: "build"
+      relation: MorphismRelation
+      target: string
+      acceptedAnswers?: Array<string>
+      /** Plausible wrong pieces for the tile board, authored. */
+      distractors?: Array<string>
+    })
+
+const ProbeOptionSchema = z.object({
+  text: z.string().min(1),
+  relation: z.enum(MORPHISM_RELATIONS),
+  label: z.string().optional(),
+  valid: z.boolean(),
+  why: z.string(),
+  lang: z.enum(["ko", "en"]).optional(),
+})
+
+const probeBase = {
+  id: z.string().min(1),
+  order: z.union([z.literal(2), z.literal(3)]),
+  anchorMessageId: z.string().optional(),
+  source: z.string().optional(),
+  prompt: z.string().min(1),
+  explanation: z.string().optional(),
+}
+
+const countValid = (options: Array<{ valid: boolean }>): number =>
+  options.filter((option) => option.valid).length
+
+export const ProbeSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      ...probeBase,
+      kind: z.literal("odd-one-out"),
+      options: z.array(ProbeOptionSchema).min(3),
+    })
+    .refine((p) => p.options.length - countValid(p.options) === 1, {
+      message: "an odd-one-out probe has exactly one invalid option",
+    }),
+  z
+    .object({
+      ...probeBase,
+      kind: z.literal("pick-valid"),
+      options: z.array(ProbeOptionSchema).min(2),
+    })
+    .refine((p) => countValid(p.options) === 1, {
+      message: "a pick-valid probe has exactly one valid option",
+    }),
+  z.object({
+    ...probeBase,
+    kind: z.literal("build"),
+    relation: z.enum(MORPHISM_RELATIONS),
+    target: z.string().min(1),
+    acceptedAnswers: z.array(z.string()).optional(),
+    distractors: z.array(z.string()).optional(),
+  }),
+])
+
+/**
+ * Probes parsed one at a time: a malformed probe is dropped, not the topik
+ * that carries it (canon Rem. 4.7, Thm. 8.2). Content authored before probes
+ * existed simply has none.
+ */
+const ProbesSchema = z.array(z.unknown()).transform(
+  (raw): Array<Probe> =>
+    raw.flatMap((candidate) => {
+      const parsed = ProbeSchema.safeParse(candidate)
+      return parsed.success ? [parsed.data] : []
+    })
+)
+
+// ═══════════════════════════════════════════════════════════════════════════
 // BATCH TYPES
 // ═══════════════════════════════════════════════════════════════════════════
 
 export type ConversationBatch = {
   id: number
   messages: Array<Message>
+  /** First-order items; the desktop quiz. Withheld on handheld (Cor. 4.5). */
   questions: Array<Question>
+  /** Second- and third-order items; the handheld checks. */
+  probes?: Array<Probe>
 }
 
 const ConversationBatchSchema = z.object({
   id: z.number(),
   messages: z.array(MessageSchema),
   questions: z.array(QuestionSchema),
+  probes: ProbesSchema.optional(),
 })
 
 // ═══════════════════════════════════════════════════════════════════════════

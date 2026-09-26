@@ -53,79 +53,95 @@ const click = (name: string | RegExp): void => {
   fireEvent.click(screen.getByRole("button", { name }))
 }
 
+const pick = (name: RegExp): void => {
+  fireEvent.click(screen.getByRole("radio", { name }))
+}
+
+const buildFromTiles = (pieces: Array<string>): void => {
+  const pool = document.querySelector("[data-slot='topik-tile-pool']")!
+  for (const piece of pieces) {
+    const tile = [...pool.querySelectorAll("button")].find(
+      (b) => b.textContent === piece && !b.disabled
+    )!
+    fireEvent.click(tile)
+  }
+}
+
 afterEach(cleanup)
 
 describe("HandheldLesson", () => {
-  it("walks a line, then the check anchored to it, with the gloss withheld until answered", async () => {
+  it("follows a line with a probe about it, never a first-order question (canon Cor. 4.5)", async () => {
     renderLesson()
     fireEvent.click(
       await screen.findByRole("button", { name: /Ordering at a café/ })
     )
 
     expect(await screen.findByText("어서 오세요. 뭐 드릴까요?")).toBeTruthy()
-    // This line anchors no check, so its gloss is available.
-    click(/Show English/)
-    expect(screen.getByText("Welcome. What can I get you?")).toBeTruthy()
-
-    click(/^Next/)
-    expect(screen.getByText("아이스 아메리카노 한 잔 주세요.")).toBeTruthy()
-    // This one anchors the order question: no English until it is answered.
+    // The line anchors a probe, so its English waits for the answer.
     expect(screen.queryByRole("button", { name: /Show English/ })).toBeNull()
-    expect(screen.getByText(/English unlocks after the question/)).toBeTruthy()
 
     click(/^Next/)
-    expect(screen.getByText("What did the customer order?")).toBeTruthy()
+    expect(
+      screen.getByText("The server asks what you'd like. Which reply fits?")
+    ).toBeTruthy()
+    // The fixture's first-order question is the desktop's; it never appears here.
+    expect(screen.queryByText("What did the customer order?")).toBeNull()
     expect(screen.getByRole("button", { name: "Check" })).toHaveProperty(
       "disabled",
       true
     )
 
-    fireEvent.click(screen.getByRole("radio", { name: "One iced americano" }))
+    pick(/아이스 아메리카노 한 잔 주세요/)
     click("Check")
-    expect(screen.getByText("Understood")).toBeTruthy()
-    // The anchor line's gloss, now unlocked.
-    expect(screen.getByText("One iced americano, please.")).toBeTruthy()
+    expect(screen.getByText("Right")).toBeTruthy()
+    // Every candidate comes back with its reason, not just the right one.
+    expect(screen.getByText(/a customer never says it back/)).toBeTruthy()
+    // And the line's English is now earned.
+    expect(screen.getByText("Welcome. What can I get you?")).toBeTruthy()
   })
 
-  it("assembles a typed answer from tiles, and brings a miss back after the last line", async () => {
+  it("judges transformations, builds one from tiles, and revisits a miss once", async () => {
     renderLesson()
     fireEvent.click(
       await screen.findByRole("button", { name: /Ordering at a café/ })
     )
     await screen.findByText("어서 오세요. 뭐 드릴까요?")
 
-    click(/^Next/) // line 2
-    click(/^Next/) // order check
-    fireEvent.click(screen.getByRole("radio", { name: "A cake" }))
+    click(/^Next/) // reply probe
+    pick(/아이스 아메리카노 한 잔 주세요/)
+    click("Check")
+    click(/Continue/)
+
+    click(/^Next/) // line 2 -> odd one out
+    expect(
+      screen.getByText("Which is NOT a valid transformation of this request?")
+    ).toBeTruthy()
+    // Candidates carry their claimed relation; this one is valid, so a miss.
+    pick(/Same meaning.*부탁해요/)
     click("Check")
     expect(screen.getByText(/comes back once more/)).toBeTruthy()
     click(/Continue/)
 
-    click(/^Next/) // line 3 -> line 4
-    click(/^Next/) // line 4 -> its tile check
-    expect(
-      screen.getByText("Build how the customer asked for it to go.")
-    ).toBeTruthy()
-
-    const pool = document.querySelector("[data-slot='topik-tile-pool']")!
-    for (const word of ["포장해", "주세요"]) {
-      const tile = [...pool.querySelectorAll("button")].find(
-        (b) => b.textContent === word
-      )!
-      fireEvent.click(tile)
-    }
+    click(/^Next/) // line 3 -> honorific
+    pick(/It honours the customer/)
     click("Check")
-    expect(screen.getByText("Understood")).toBeTruthy()
     click(/Continue/)
 
-    // The missed order question, once more, before the wrap.
+    click(/^Next/) // line 4 -> build the negation
+    expect(screen.getByText("Ask them NOT to pack it.")).toBeTruthy()
+    buildFromTiles(["포장하지", "마세요"])
+    click("Check")
+    expect(screen.getByText("Right")).toBeTruthy()
+    click(/Continue/)
+
+    // The missed odd-one-out, once more, before the wrap.
     expect(screen.getByText("Once more")).toBeTruthy()
-    fireEvent.click(screen.getByRole("radio", { name: "One iced americano" }))
+    pick(/Negation.*안 주세요/)
     click("Check")
     click(/Continue/)
 
     expect(
-      screen.getByText("1 of 2 understood on the first listen")
+      screen.getByText("3 of 4 understood on the first listen")
     ).toBeTruthy()
     expect(screen.getByText("1 revisited after the conversation")).toBeTruthy()
   })
@@ -144,7 +160,7 @@ describe("HandheldLesson", () => {
     expect(screen.getByText("Conversation 2 of 2")).toBeTruthy()
   })
 
-  it("keeps the gloss out of feedback while another check on the line is pending (Codex, #1544)", async () => {
+  it("keeps the gloss out of feedback while another probe on the line is pending (Codex, #1544)", async () => {
     const storage = memoryStorage()
     createResumeStore(storage).set(FIXTURE_TOPIK_KEY, {
       batchId: 2,
@@ -155,39 +171,31 @@ describe("HandheldLesson", () => {
     fireEvent.click(await screen.findByRole("button", { name: /Continue/ }))
     await screen.findByText("카드로 할게요. 감사합니다.")
 
-    // c2-m2 anchors two checks: the 감사합니다 syllable board, then "card".
+    // c2-m2 anchors two probes: the odd-one-out, then the past-tense build.
     click(/^Next/)
-    const pool = document.querySelector("[data-slot='topik-tile-pool']")!
-    for (const syllable of ["감", "사", "합", "니", "다"]) {
-      const tile = [...pool.querySelectorAll("button")].find(
-        (b) => b.textContent === syllable && !b.disabled
-      )!
-      fireEvent.click(tile)
-    }
+    pick(/Question.*할게요\?/)
     click("Check")
-    expect(screen.getByText("Understood")).toBeTruthy()
+    expect(screen.getByText("Right")).toBeTruthy()
     expect(screen.queryByText("I'll pay by card. Thank you.")).toBeNull()
     expect(
       screen.getByText(/English unlocks after the other question/)
     ).toBeTruthy()
 
-    // The second check on the same line: once answered, the gloss is earned.
     click(/Continue/)
-    fireEvent.click(screen.getAllByRole("radio")[0]!)
+    buildFromTiles(["카드로", "했어요"])
     click("Check")
     expect(screen.getByText("I'll pay by card. Thank you.")).toBeTruthy()
   })
 
-  it("keeps answered checks and promised repeats across a reload (Codex, #1544)", async () => {
+  it("keeps answered probes and promised repeats across a reload (Codex, #1544)", async () => {
     const storage = memoryStorage()
     renderLesson(storage)
     fireEvent.click(
       await screen.findByRole("button", { name: /Ordering at a café/ })
     )
     await screen.findByText("어서 오세요. 뭐 드릴까요?")
-    click(/^Next/) // line 2
-    click(/^Next/) // its check
-    fireEvent.click(screen.getByRole("radio", { name: "A cake" }))
+    click(/^Next/) // the reply probe
+    pick(/네, 어서 오세요/)
     click("Check")
     expect(screen.getByText(/comes back once more/)).toBeTruthy()
 
@@ -196,32 +204,31 @@ describe("HandheldLesson", () => {
     renderLesson(storage)
     fireEvent.click(await screen.findByRole("button", { name: /Continue/ }))
 
-    // Back at the check's line; the answered check is passed over.
-    expect(
-      await screen.findByText("아이스 아메리카노 한 잔 주세요.")
-    ).toBeTruthy()
+    // Back at the probe's line; the answered probe is passed over.
+    expect(await screen.findByText("어서 오세요. 뭐 드릴까요?")).toBeTruthy()
     click(/^Next/)
-    expect(screen.getByText("여기서 드시고 가세요?")).toBeTruthy()
-    click(/^Next/) // line 4
-    click(/^Next/) // its tile check
-    const pool = document.querySelector("[data-slot='topik-tile-pool']")!
-    for (const word of ["포장해", "주세요"]) {
-      fireEvent.click(
-        [...pool.querySelectorAll("button")].find(
-          (b) => b.textContent === word
-        )!
-      )
-    }
+    expect(screen.getByText("아이스 아메리카노 한 잔 주세요.")).toBeTruthy()
+
+    click(/^Next/)
+    pick(/Negation.*안 주세요/)
+    click("Check")
+    click(/Continue/)
+    click(/^Next/)
+    pick(/It honours the customer/)
+    click("Check")
+    click(/Continue/)
+    click(/^Next/)
+    buildFromTiles(["포장하지", "마세요"])
     click("Check")
     click(/Continue/)
 
     // The miss from before the reload still comes back.
     expect(screen.getByText("Once more")).toBeTruthy()
-    fireEvent.click(screen.getByRole("radio", { name: "One iced americano" }))
+    pick(/아이스 아메리카노 한 잔 주세요/)
     click("Check")
     click(/Continue/)
     expect(
-      screen.getByText("1 of 2 understood on the first listen")
+      screen.getByText("3 of 4 understood on the first listen")
     ).toBeTruthy()
   })
 

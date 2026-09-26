@@ -13,9 +13,9 @@
 
 import type { JSX } from "react"
 import { Button } from "@some-ui/shared"
-import { CheckCard } from "@topik/components/topik/handheld/check-card"
 import { LineCard } from "@topik/components/topik/handheld/line-card"
 import { MaterialList } from "@topik/components/topik/handheld/material-list"
+import { ProbeCard } from "@topik/components/topik/handheld/probe-card"
 import { WrapCard } from "@topik/components/topik/handheld/wrap-card"
 import type { UseHandheldLessonOptions } from "@topik/lib/topik/adapter/hooks/use-handheld-lesson"
 import { useHandheldLesson } from "@topik/lib/topik/adapter/hooks/use-handheld-lesson"
@@ -152,16 +152,16 @@ export const HandheldLesson = ({
     }
 
     if (step?.kind === "check") {
-      const question = batch.questions[step.question]
+      const probe = batch.probes?.[step.probe]
       const anchor = batch.messages[step.anchor]
-      if (question) {
+      if (probe) {
         return (
-          <CheckCard
+          <ProbeCard
             key={key}
-            question={question}
-            seedKey={`${lesson.topikKey}:${batch.id}:${step.question}`}
+            probe={probe}
+            source={probe.source ?? anchor?.korean ?? anchor?.content ?? ""}
+            seedKey={`${lesson.topikKey}:${batch.id}:${step.id}`}
             anchor={anchor}
-            siblings={batch.questions}
             lines={batch.messages}
             answered={state.answered}
             showGloss={lesson.anchorGloss}

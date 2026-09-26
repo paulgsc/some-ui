@@ -49,9 +49,13 @@ export type {
 export type {
   ConversationBatch,
   Message,
+  MorphismRelation,
+  Probe,
+  ProbeOption,
   Question,
   TopikFile,
 } from "./entity/topik-types"
+export { MORPHISM_RELATIONS, ProbeSchema } from "./entity/topik-types"
 
 export type {
   TopikMetadata,

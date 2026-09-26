@@ -255,10 +255,10 @@ export function useHandheldLesson({
         batchId,
         conversation: lesson.conversation,
         messageId: resumeMessage.id,
-        outcomes: outcomesOf(lesson),
+        outcomes: outcomesOf(lesson, context.plan),
       })
     }
-  }, [store, topikKey, restoredFor, lesson, resumeMessage, batchId])
+  }, [store, topikKey, restoredFor, lesson, context, resumeMessage, batchId])
 
   // ── Actions ──────────────────────────────────────────────────────────────
 

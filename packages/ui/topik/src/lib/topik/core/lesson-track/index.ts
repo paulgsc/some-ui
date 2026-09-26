@@ -6,12 +6,17 @@
  * quizzes it as a batch; on a small screen that quiz is answered with the
  * transcript scrolled out of view, which silently turns an open-book exercise
  * into a closed-book one (adaptive-learning canon Prop. 9.4). Rather than
- * reflow that, this module delivers a *declared* valuation (Cor. 4.4):
+ * reflow that, this module delivers a *declared* valuation (Cor. 4.4, as
+ * amended by Cor. 4.5):
  *
  * - the pacing unit is the line, not the batch (Rem. 4.3, extended);
  * - each line climbs a progressive hint ladder: audio -> Hangul -> gloss;
- * - a comprehension check follows the line it is about, and that line's gloss
- *   stays hidden until the check is answered;
+ * - a check follows the line it is about, and that line's gloss stays hidden
+ *   until the check is answered;
+ * - every check is a morphism probe (Def. 4.6) - is this the past tense, which
+ *   reply fits, build the negation - never a first-order "what does it mean?",
+ *   which a single recognised noun can answer (Prop. 4.2). A conversation with
+ *   no probes is a listening lesson; its legacy `questions` are the desktop's;
  * - a missed check comes back once after the last line, instead of the whole
  *   batch replaying (the policy of maximal ignorance, Rem. 4.3);
  * - there is no pass/fail and nothing is credited: the tally is for the
@@ -22,8 +27,12 @@
  * handful of indexes.
  */
 
-import type { ConversationBatch, Message, Question } from "@topik/lib/topik"
-import { hashSeed } from "@topik/lib/topik/core/tile-assembly"
+import type { ConversationBatch, Message, Probe } from "@topik/lib/topik"
+import {
+  hashSeed,
+  MAX_TILES,
+  tokenize,
+} from "@topik/lib/topik/core/tile-assembly"
 import { assertNever } from "some-ui-utils"
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -43,14 +52,12 @@ export type LineStep = {
 
 export type CheckStep = {
   kind: "check"
-  /** Index into the conversation's questions: where to find it now. */
-  question: number
-  /**
-   * What it is: a fingerprint of the item's content. Results are recorded
-   * under this, never under the index, so a reordered or extended file
-   * cannot hand one question's result to another (Thm. 1.1).
-   */
+  /** Index into the conversation's `probes`. */
+  probe: number
+  /** The probe's authored id: what first tries and reviews are keyed by. */
   id: string
+  /** Which version of the probe this is (`probeFingerprint`). */
+  fingerprint: string
   /** The message index the check is about. */
   anchor: number
   /** True for the once-only re-presentation of a missed check. */
@@ -71,28 +78,30 @@ export type LessonPlan = {
 const collapse = (text: string): string => text.replace(/\s+/g, "").trim()
 
 /**
- * Which line a question is about.
+ * Which line an item is about.
  *
  * Content may say so (`anchorMessageId`, an authoring-time field). Otherwise the
- * first line whose Korean contains the question's Korean excerpt, or is
- * contained by it, is taken. Failing both, the last line: the question is then
- * asked once the whole conversation has been heard, which is where the desktop
- * surface asks every question.
+ * first line whose Korean contains the item's Korean excerpt, or is contained
+ * by it, is taken. Failing both, the last line: the item is then asked once
+ * the whole conversation has been heard.
  *
  * Anchoring is pacing, not belief (canon Cor. 4.4 (ii)), which is why a
  * heuristic is admissible here at all.
  */
-export function anchorOf(question: Question, messages: Array<Message>): number {
+export function anchorOf(
+  item: { anchorMessageId?: string; excerpt?: string },
+  messages: Array<Message>
+): number {
   if (messages.length === 0) return -1
 
-  if (question.anchorMessageId !== undefined) {
+  if (item.anchorMessageId !== undefined) {
     const declared = messages.findIndex(
-      (message) => message.id === question.anchorMessageId
+      (message) => message.id === item.anchorMessageId
     )
     if (declared !== -1) return declared
   }
 
-  const excerpt = collapse(question.korean)
+  const excerpt = collapse(item.excerpt ?? "")
   if (excerpt.length > 0) {
     const matched = messages.findIndex((message) => {
       const line = collapse(message.korean || message.content)
@@ -107,43 +116,43 @@ export function anchorOf(question: Question, messages: Array<Message>): number {
 }
 
 /**
- * A question's identity, from its content. Topik questions carry no authored
- * id, and their index is a position, not an identity: insert one question and
- * every later index names a different item. The fingerprint moves with the
- * item; an edited item gets a new one, which is correct - it is a new item.
+ * Whether a probe can be put to a learner on this surface. A build probe needs
+ * a board a thumb can work (canon Def. 4.5); one whose target cannot be tiled
+ * is left out rather than asked some other way, since asking it as a
+ * selection would be a different exercise than the one authored.
  */
-export function questionId(question: Question): string {
-  // Everything that decides what is asked or what counts as right: change any
-  // of it and the old result no longer describes this item.
-  const content = JSON.stringify([
-    question.type,
-    question.korean,
-    question.question,
-    question.options ?? null,
-    question.correct ?? null,
-    question.correctAnswer,
-    question.acceptedAnswers ?? null,
-  ])
-  return `q-${hashSeed(content).toString(36)}`
+export function isDeliverable(probe: Probe): boolean {
+  if (probe.kind !== "build") return true
+  // The target is the form the board tiles; alternatives are only graded.
+  const split = tokenize(probe.target)
+  return split !== null && split.tokens.length <= MAX_TILES
 }
 
 export function planConversation(batch: ConversationBatch): LessonPlan {
-  const { messages, questions } = batch
-  // Two identical items in one conversation are told apart by occurrence.
-  const occurrences = new Map<string, number>()
-  const ids = questions.map((question) => {
-    const base = questionId(question)
-    const seen = occurrences.get(base) ?? 0
-    occurrences.set(base, seen + 1)
-    return seen === 0 ? base : `${base}~${seen}`
-  })
-  const byAnchor = new Map<number, Array<number>>()
+  const { messages } = batch
+  const probes = batch.probes ?? []
+  const byAnchor = new Map<
+    number,
+    Array<{ probe: number; id: string; fingerprint: string }>
+  >()
+  const seen = new Set<string>()
 
-  questions.forEach((question, index) => {
-    const anchor = anchorOf(question, messages)
+  probes.forEach((probe, index) => {
+    // An id is identity (Thm. 1.1): a duplicate would share a first try, so
+    // only the first probe to claim it is delivered.
+    if (seen.has(probe.id) || !isDeliverable(probe)) return
+    seen.add(probe.id)
+    const anchor = anchorOf(
+      { anchorMessageId: probe.anchorMessageId, excerpt: probe.source },
+      messages
+    )
     if (anchor === -1) return
     const bucket = byAnchor.get(anchor) ?? []
-    bucket.push(index)
+    bucket.push({
+      probe: index,
+      id: probe.id,
+      fingerprint: probeFingerprint(probe),
+    })
     byAnchor.set(anchor, bucket)
   })
 
@@ -152,11 +161,12 @@ export function planConversation(batch: ConversationBatch): LessonPlan {
   messages.forEach((_, message) => {
     const anchored = byAnchor.get(message) ?? []
     steps.push({ kind: "line", message, checks: anchored.length })
-    for (const question of anchored) {
+    for (const { probe, id, fingerprint } of anchored) {
       steps.push({
         kind: "check",
-        question,
-        id: ids[question] ?? String(question),
+        probe,
+        id,
+        fingerprint,
         anchor: message,
         repeat: false,
       })
@@ -314,40 +324,96 @@ export function glossUnlocked(
   )
 }
 
-/** The key a check's results are recorded under: its identity. */
+/** The key a check's results are recorded under: its probe's authored id. */
 export const checkKey = (step: CheckStep): string => step.id
 
+/**
+ * What a probe asks and what counts as right, as a short hash. An authored id
+ * says which item this is; it cannot say the item was not edited since. A
+ * stored result is only restored onto a probe with the same fingerprint, so a
+ * probe whose candidates, validity or target changed under an unchanged id
+ * starts fresh (Thm. 1.1). Wording that grades nothing - `why`, `label`,
+ * `explanation` - is left out, so a copy edit keeps a learner's result.
+ */
+export function probeFingerprint(probe: Probe): string {
+  const graded =
+    probe.kind === "build"
+      ? [probe.relation, probe.target, probe.acceptedAnswers ?? null]
+      : probe.options.map((option) => [
+          option.text,
+          option.relation,
+          option.valid,
+        ])
+  const content = JSON.stringify([
+    probe.kind,
+    probe.source ?? null,
+    probe.prompt,
+    graded,
+  ])
+  return hashSeed(content).toString(36)
+}
+
+/** A result's persisted key: which probe, and which version of it. */
+const persistedKey = (id: string, fingerprint: string): string =>
+  `${id}@${fingerprint}`
+
+function persistedKeys(plan: LessonPlan): Map<string, string> {
+  const keys = new Map<string, string>()
+  for (const step of plan.steps) {
+    if (step.kind === "check") {
+      keys.set(checkKey(step), persistedKey(step.id, step.fingerprint))
+    }
+  }
+  return keys
+}
+
 /** The current conversation's results, ready to persist. */
-export function outcomesOf(state: LessonState): LessonOutcomes {
+export function outcomesOf(
+  state: LessonState,
+  plan: LessonPlan
+): LessonOutcomes {
+  const keys = persistedKeys(plan)
+  const persist = (id: string): Array<string> => {
+    const key = keys.get(id)
+    return key === undefined ? [] : [key]
+  }
   return {
-    firstTry: { ...state.firstTry },
-    review: [...state.review],
-    reviewed: [...state.reviewed],
+    firstTry: Object.fromEntries(
+      Object.entries(state.firstTry).flatMap(([id, correct]) =>
+        persist(id).map((key) => [key, correct])
+      )
+    ),
+    review: state.review.flatMap(persist),
+    reviewed: state.reviewed.flatMap(persist),
   }
 }
 
 /**
- * Stored results, kept only for checks this plan still has: an id the
- * content no longer carries is an orphan (Thm. 1.1), a review entry without
- * a recorded miss is not a promise anyone made, and a completed repeat is
- * only one that was promised.
+ * Stored results, kept only for probes this plan still has, at the version it
+ * has them: an id the content no longer carries, or one whose probe changed,
+ * is an orphan (Thm. 1.1). A review entry without a recorded miss is not a
+ * promise anyone made, and a completed repeat is only one that was promised.
  */
 function restoreOutcomes(
   plan: LessonPlan,
   outcomes: LessonOutcomes
 ): Pick<LessonState, "firstTry" | "review" | "reviewed"> {
-  const known = new Set<string>()
-  for (const step of plan.steps) {
-    if (step.kind === "check") known.add(checkKey(step))
+  const byKey = new Map<string, string>()
+  for (const [id, key] of persistedKeys(plan)) byKey.set(key, id)
+  const idOf = (key: string): Array<string> => {
+    const id = byKey.get(key)
+    return id === undefined ? [] : [id]
   }
   const firstTry = Object.fromEntries(
-    Object.entries(outcomes.firstTry).filter(([key]) => known.has(key))
+    Object.entries(outcomes.firstTry).flatMap(([key, correct]) =>
+      idOf(key).map((id) => [id, correct])
+    )
   )
-  const review = [...new Set(outcomes.review)].filter(
-    (key) => known.has(key) && firstTry[key] === false
+  const review = [...new Set(outcomes.review.flatMap(idOf))].filter(
+    (id) => firstTry[id] === false
   )
-  const reviewed = [...new Set(outcomes.reviewed ?? [])].filter((key) =>
-    review.includes(key)
+  const reviewed = [...new Set((outcomes.reviewed ?? []).flatMap(idOf))].filter(
+    (id) => review.includes(id)
   )
   return { firstTry, review, reviewed }
 }
