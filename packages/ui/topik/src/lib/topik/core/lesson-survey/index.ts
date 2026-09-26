@@ -33,13 +33,27 @@ export type StuckCandidate = {
   source: string
 }
 
+/**
+ * A probe the report names. Its text rides along: lessons are ephemeral, so an
+ * id alone would mean nothing to the model that reads the digest next week.
+ */
+export type SurveyItem = {
+  batchId: number
+  probeId: string
+  source?: string
+  prompt?: string
+}
+
 export type LessonSurvey = {
   worthwhile?: Worthwhile
   /** How keen they are for the next lesson. */
   enthusiasm?: Enthusiasm
   difficulty?: Difficulty
   /** Chosen from the candidates; a miss not chosen is not a report. */
-  stuck: Array<{ batchId: number; probeId: string }>
+  stuck: Array<SurveyItem>
+  /** Answers the learner thinks were keyed wrong - the one check on authoring
+   * that lives inside the learner's own loop (canon Rem. 4.7). */
+  flagged?: Array<SurveyItem>
   /** Free text: what they feel these lessons are making them into. */
   becoming?: string
 }
@@ -82,6 +96,15 @@ export function stuckCandidates(
   return candidates.slice(-MAX_STUCK_CANDIDATES)
 }
 
+/** A kept report: the survey, which lesson it was about, and when. */
+export type SurveyReport = LessonSurvey & {
+  topikKey: string
+  /** The lesson's name, for a digest read after the lesson is gone. */
+  displayName?: string
+  /** Epoch ms. */
+  at: number
+}
+
 /** A report with nothing in it is a skip, and is not kept. */
 export function isBlank(survey: LessonSurvey): boolean {
   return (
@@ -89,6 +112,7 @@ export function isBlank(survey: LessonSurvey): boolean {
     survey.enthusiasm === undefined &&
     survey.difficulty === undefined &&
     survey.stuck.length === 0 &&
+    (survey.flagged ?? []).length === 0 &&
     (survey.becoming ?? "").trim() === ""
   )
 }
