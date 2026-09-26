@@ -15,19 +15,29 @@
  * loudly" guardrails and belong in the same CI gate per R5's own acceptance
  * criteria ("runs in CI alongside lint:corpus today").
  *
+ * LTY-AUTHOR (#1540) added the third: the authored round corpus
+ * (`lib/leetype/authored-rounds`), checked by `lintAuthoredRounds`.
+ *
  * Usage: pnpm --filter @some-ui/leetype lint:corpus
  */
+import { AUTHORED_ROUNDS } from "@leetype/lib/leetype/authored-rounds"
 import { ALL_FIXTURE_EXERCISES } from "@leetype/lib/leetype/exercises"
 import {
   lintCorpus,
   lintRoundCorpus,
 } from "@leetype/lib/leetype/exercises/corpus-lint"
+import { lintAuthoredRounds } from "@leetype/lib/leetype/round-assembly"
 import { ALL_FIXTURE_ROUNDS } from "@leetype/lib/leetype/round-corpus"
 
 function main(): void {
   const stepViolations = lintCorpus(ALL_FIXTURE_EXERCISES)
   const roundViolations = lintRoundCorpus(ALL_FIXTURE_ROUNDS)
-  const violations = [...stepViolations, ...roundViolations]
+  const authoredViolations = lintAuthoredRounds(AUTHORED_ROUNDS)
+  const violations = [
+    ...stepViolations,
+    ...roundViolations,
+    ...authoredViolations,
+  ]
 
   if (violations.length > 0) {
     console.error(`Corpus lint failed: ${violations.length} violation(s)\n`)
@@ -43,7 +53,8 @@ function main(): void {
     )
     console.log(
       `Corpus lint passed: ${stepCount} step(s) across ${exerciseCount} exercise(s) checked, ` +
-        `${ALL_FIXTURE_ROUNDS.length} round(s) checked.`
+        `${ALL_FIXTURE_ROUNDS.length} round(s) checked, ` +
+        `${AUTHORED_ROUNDS.length} authored round(s) checked.`
     )
   }
 }

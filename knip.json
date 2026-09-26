@@ -7,5 +7,5 @@
     "**/__type-fixtures__/**",
     "apps/www/tests/layout-invariants/stress-content.ts"
   ],
-  "ignoreBinaries": ["typst"]
+  "ignoreBinaries": ["typst", "rustc"]
 }

@@ -854,16 +854,13 @@ function checkRoundProseForClassLiterals(
 }
 
 /**
- * Every violation across the whole round corpus (R5, #1208). Empty means
- * the corpus is clean. Deterministic order (per-round checks in round
- * order, then the two corpus-wide coverage checks) for the same "a CI
- * failure's diff is stable" reason `lintCorpus` above already gives.
- *
- * Six of R5's own seven listed checks; Prop. 6.1 (discriminability) is
- * deliberately not wired in — see the doc comment above `citationsOfRound`
- * for why, and the follow-up issue tracked from #1208.
+ * The per-round half of `lintRoundCorpus` (below): schemas, cardinality,
+ * no asserted class literal, and citation resolution, without the two
+ * register-wide coverage checks. Split out for LTY-AUTHOR (#1540), whose
+ * authored rounds (`lib/leetype/round-assembly`'s `lintAuthoredRounds`) are
+ * held to every per-round rule now but do not yet cover the register.
  */
-export function lintRoundCorpus(
+export function lintRoundEntries(
   rounds: ReadonlyArray<RoundCorpusEntry>
 ): Array<string> {
   const violations: Array<string> = []
@@ -876,6 +873,24 @@ export function lintRoundCorpus(
 
   const allCitations = rounds.flatMap((round) => citationsOfRound(round))
   violations.push(...checkCitations(allCitations, PROPOSITION_REGISTER))
+
+  return violations
+}
+
+/**
+ * Every violation across the whole round corpus (R5, #1208). Empty means
+ * the corpus is clean. Deterministic order (per-round checks in round
+ * order, then the two corpus-wide coverage checks) for the same "a CI
+ * failure's diff is stable" reason `lintCorpus` above already gives.
+ *
+ * Six of R5's own seven listed checks; Prop. 6.1 (discriminability) is
+ * deliberately not wired in — see the doc comment above `citationsOfRound`
+ * for why, and the follow-up issue tracked from #1208.
+ */
+export function lintRoundCorpus(
+  rounds: ReadonlyArray<RoundCorpusEntry>
+): Array<string> {
+  const violations = lintRoundEntries(rounds)
 
   // Rem. 10.2/Def. 10.2 tie "positive transfer" to a *correct* selection —
   // row 3's coverage obligation is therefore about a proposition's

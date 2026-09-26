@@ -14,9 +14,10 @@
  *
  * Engine-free, in the register of `lib/leetype/admissibility`,
  * `lib/leetype/cost`, and `lib/leetype/rewrite`: nothing here imports the
- * wasm loader or any hook, and nothing outside its own tests and type
- * fixtures imports this yet. A live consumer arrives with the Leetype
- * cutover, which waits on a real round-assembly path (#1440).
+ * wasm loader or any hook. Outside its own tests and type fixtures its one
+ * importer is `lib/leetype/round-assembly` (LTY-AUTHOR, #1540), which
+ * builds its inputs from authored rounds; nothing live mounts a round until
+ * the Leetype cutover (#1440).
  */
 
 import { isAdmissible } from "@leetype/lib/leetype/admissibility"
@@ -468,11 +469,10 @@ export function nextRoundCycleState(
  * string, not a value the type system can rule out ahead of a check like
  * this one.
  *
- * Not yet wired into `lib/leetype/exercises/corpus-lint`'s `lintRoundCorpus`
- * — the same "additive, proven by fixture, not yet load-bearing against
- * real data" posture G3's own `checkAdmissibleClaimsAgreeWithDerivation`
- * took, since no live corpus builds a `RoundDiffOption` yet (C1, #1213,
- * landed without one; a real round-assembly path is #1440).
+ * Runs against real data in `lib/leetype/round-assembly`'s
+ * `lintAuthoredRounds` (LTY-AUTHOR, #1540), whose authored rounds are the
+ * first corpus to carry `RoundDiffOption`s. `lintRoundCorpus`'s fixture
+ * rounds carry none, so it is not wired there.
  */
 export function checkUnrescuableExplanationsResolve(
   options: ReadonlyArray<RoundDiffOption>,

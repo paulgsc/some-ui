@@ -99,12 +99,10 @@ export function isAdmissible(
  * that type carries no cost graph, since R4's own acceptance criteria never
  * asked for one. This type remains the stand-in `checkAdmissibleClaimsAgreeWithDerivation`
  * (below) is tested against: a label, a member's own cost graph, and the
- * authored boolean. Wiring a real call site still needs each member's own
- * *patched* cost graph — computing that from a diff is G4's job (#1212,
- * `rewriteOf`), not something either this story or R4 derives — so
- * `DiffSetMember.admissible` maps onto `AdmissibleClaim.authoredAdmissible`
- * only once a graph exists to pair it with. This type's own shape still
- * should not need to change once that wiring lands.
+ * authored boolean. LTY-AUTHOR (#1540) supplies the missing half: an
+ * authored round's diff option carries its own `G_{A+d}`
+ * (`types/authored-round.ts`), and `lib/leetype/round-assembly` maps each
+ * option onto this shape unchanged.
  */
 export type AdmissibleClaim = {
   readonly label: string
@@ -115,15 +113,10 @@ export type AdmissibleClaim = {
 /**
  * G3's own acceptance criterion for R4: "R4's authored 'this member is the
  * admissible one' is checked against `isAdmissible`, and a disagreement
- * fails the corpus lint with both values printed." Still not wired into
- * `lib/leetype/exercises/corpus-lint`'s live `lintCorpus` scan even now
- * that R4 (`types/round.ts`) has landed — a `DiffSetMember` carries no cost
- * graph (see this module's own doc comment on `AdmissibleClaim`), so there
- * is still no real corpus data shaped like `AdmissibleClaim` for this to
- * run over until G4 (#1212) computes each member's own patched graph — but
- * the checking mechanism itself exists and is unit-tested against
- * synthetic fixtures, the same "additive, nothing live imports this yet"
- * posture every story on this relay has taken.
+ * fails the corpus lint with both values printed." Runs in `lint:corpus`
+ * over the authored rounds, through `lib/leetype/round-assembly`'s
+ * `lintAuthoredRounds` (LTY-AUTHOR, #1540). The fixture rounds
+ * `lintRoundCorpus` scans carry no cost graphs, so they are not checked.
  */
 export function checkAdmissibleClaimsAgreeWithDerivation(
   claims: ReadonlyArray<AdmissibleClaim>,
