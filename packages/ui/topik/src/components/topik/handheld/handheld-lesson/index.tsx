@@ -13,6 +13,7 @@
 
 import type { JSX } from "react"
 import { Button } from "@some-ui/shared"
+import { GenerateLesson } from "@topik/components/topik/handheld/generate-lesson"
 import { LineCard } from "@topik/components/topik/handheld/line-card"
 import { MaterialList } from "@topik/components/topik/handheld/material-list"
 import { ProbeCard } from "@topik/components/topik/handheld/probe-card"
@@ -20,6 +21,11 @@ import { SurveyCard } from "@topik/components/topik/handheld/survey-card"
 import { WrapCard } from "@topik/components/topik/handheld/wrap-card"
 import type { UseHandheldLessonOptions } from "@topik/lib/topik/adapter/hooks/use-handheld-lesson"
 import { useHandheldLesson } from "@topik/lib/topik/adapter/hooks/use-handheld-lesson"
+import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
+import {
+  LOCAL_LESSON_PREFIX,
+  topikLevelOf,
+} from "@topik/lib/topik/generation/intake"
 import { ChevronLeft, Loader2 } from "lucide-react"
 import { cn } from "some-ui-utils"
 
@@ -32,27 +38,30 @@ export const HandheldLesson = ({
   short = false,
   resumeStore,
   surveyStore,
+  lessonStore,
 }: HandheldLessonProps): JSX.Element => {
-  const vm = useHandheldLesson({ resumeStore, surveyStore })
-  const { lesson, audio, dispatch } = vm
+  const vm = useHandheldLesson({ resumeStore, surveyStore, lessonStore })
+  const { lesson, audio, dispatch, generator } = vm
 
   const title = lesson
     ? lesson.displayName
     : vm.loading
       ? "Loading..."
-      : "Korean listening"
+      : generator.active
+        ? "New lesson"
+        : "Korean listening"
 
   const header = (
     <header className="shrink-0">
       <div
         className={cn("flex items-center gap-2 px-2", short ? "h-11" : "h-14")}
       >
-        {vm.lesson || vm.loading ? (
+        {vm.lesson || vm.loading || generator.active ? (
           <Button
             variant="ghost"
             size="icon"
             className="size-11 shrink-0"
-            onClick={vm.leave}
+            onClick={generator.active ? generator.close : vm.leave}
             aria-label="Back to materials"
           >
             <ChevronLeft className="size-6" />
@@ -115,10 +124,27 @@ export const HandheldLesson = ({
       )
     }
 
+    if (!lesson && generator.active) {
+      // Default to the level of the learner's latest lesson.
+      const lastLevel = topikLevelOf(generator.lessons[0]?.tags)
+      return (
+        <GenerateLesson
+          defaultLevel={TOPIK_LEVELS.find((level) => level === lastLevel) ?? 1}
+          buildPrompt={generator.prompt}
+          onSave={generator.save}
+          short={short}
+        />
+      )
+    }
     if (!lesson) {
       return (
         <MaterialList
-          items={vm.catalog.items}
+          items={vm.catalog.items.filter(
+            (item) => !item.key.startsWith(LOCAL_LESSON_PREFIX)
+          )}
+          mine={generator.lessons}
+          onCreate={generator.open}
+          onRemove={generator.remove}
           loading={vm.catalog.loading}
           error={vm.catalog.error}
           resume={vm.resume}
@@ -178,6 +204,7 @@ export const HandheldLesson = ({
               dispatch({ type: "ANSWER", correct, response, channel })
             }
             onNext={() => dispatch({ type: "NEXT" })}
+            flag={vm.flag ?? undefined}
           />
         )
       }

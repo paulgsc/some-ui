@@ -3,11 +3,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import type { ITopikRepository } from "@topik/lib/topik"
 import { SessionConfigProvider } from "@topik/lib/topik/adapter/context/session-config-context"
+import type { LessonStore } from "@topik/lib/topik/adapter/lesson-store"
+import { createLessonStore } from "@topik/lib/topik/adapter/lesson-store"
 import type { StorageLike } from "@topik/lib/topik/adapter/resume-point"
 import { createResumeStore } from "@topik/lib/topik/adapter/resume-point"
 import type { SurveyStore } from "@topik/lib/topik/adapter/survey-store"
 import { createSurveyStore } from "@topik/lib/topik/adapter/survey-store"
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { HandheldLesson } from "."
 import {
@@ -28,7 +30,8 @@ const memoryStorage = (): StorageLike => {
 function renderLesson(
   storage = memoryStorage(),
   topikRepository: ITopikRepository = fixtureTopikRepository,
-  surveyStore: SurveyStore = createSurveyStore(memoryStorage())
+  surveyStore: SurveyStore = createSurveyStore(memoryStorage()),
+  lessonStore: LessonStore = createLessonStore(memoryStorage())
 ): ReturnType<typeof createResumeStore> {
   const store = createResumeStore(storage)
   const client = new QueryClient({
@@ -44,7 +47,11 @@ function renderLesson(
           speechAdapter: null,
         }}
       >
-        <HandheldLesson resumeStore={store} surveyStore={surveyStore} />
+        <HandheldLesson
+          resumeStore={store}
+          surveyStore={surveyStore}
+          lessonStore={lessonStore}
+        />
       </SessionConfigProvider>
     </QueryClientProvider>
   )
@@ -308,11 +315,19 @@ describe("HandheldLesson", () => {
       expect(surveys.list()).toEqual([
         {
           topikKey: FIXTURE_TOPIK_KEY,
+          displayName: "Ordering at a café",
           at: 5,
           worthwhile: "yes",
           difficulty: "too-hard",
           enthusiasm: "keen",
-          stuck: [{ batchId: 2, probeId: "c2-promise-forms" }],
+          stuck: [
+            {
+              batchId: 2,
+              probeId: "c2-promise-forms",
+              source: "카드로 할게요.",
+              prompt: "Which is NOT a valid transformation?",
+            },
+          ],
           becoming: "following a drama without subtitles",
         },
       ])
@@ -324,6 +339,121 @@ describe("HandheldLesson", () => {
       click("Not now")
       expect(screen.getByText("Material complete")).toBeTruthy()
       expect(surveys.list()).toEqual([])
+    })
+  })
+
+  describe("the generation loop (canon v1.7)", () => {
+    const stubClipboard = (): ReturnType<typeof vi.fn> => {
+      const writeText = vi.fn().mockResolvedValue(undefined)
+      vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } })
+      return writeText
+    }
+
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    const modelReply = [
+      "Here is the lesson:",
+      "```json",
+      JSON.stringify(FIXTURE_BATCHES),
+      "```",
+      "```json",
+      JSON.stringify({
+        key: "first-dinner",
+        displayName: "The first family dinner",
+        description: "Seo-yeon meets Chairman Kang.",
+        tags: ["topik-2", "makjang"],
+      }),
+      "```",
+    ].join("\n")
+
+    it("hands out the prompt, takes the lesson back, keeps it and starts it", async () => {
+      const writeText = stubClipboard()
+      const lessons = createLessonStore(memoryStorage())
+      const surveys = createSurveyStore(memoryStorage())
+      surveys.add(
+        "local:earlier",
+        { worthwhile: "no", stuck: [] },
+        "An earlier lesson"
+      )
+      renderLesson(memoryStorage(), fixtureTopikRepository, surveys, lessons)
+
+      fireEvent.click(
+        await screen.findByRole("button", { name: /Write a new lesson/ })
+      )
+      fireEvent.click(screen.getByRole("radio", { name: "TOPIK 2" }))
+      click(/Copy the prompt/)
+      await screen.findByText(/Copied/)
+      const prompt = String(writeText.mock.calls[0]?.[0])
+      expect(prompt).toContain("Level: 2")
+      // The survey delta rides along, in words.
+      expect(prompt).toContain("1. An earlier lesson: not worthwhile.")
+
+      fireEvent.change(
+        screen.getByRole("textbox", { name: "Your model's reply" }),
+        { target: { value: modelReply } }
+      )
+      click("Check the lesson")
+      expect(
+        screen.getByText(/Every probe will be asked as written/)
+      ).toBeTruthy()
+      click(/Save and start/)
+
+      expect(await screen.findByText("어서 오세요. 뭐 드릴까요?")).toBeTruthy()
+      expect(lessons.list().map((lesson) => lesson.meta.key)).toEqual([
+        "local:first-dinner",
+      ])
+
+      // Back on the list, it is one of the learner's own.
+      click("Back to materials")
+      const mine = await screen.findByRole("region", { name: "Your lessons" })
+      expect(mine.textContent).toMatch(/The first family dinner/)
+      expect(mine.textContent).toMatch(/TOPIK 2/)
+    })
+
+    it("keeps a flagged answer for the next prompt even when the survey is skipped", async () => {
+      const surveys = createSurveyStore(memoryStorage(), () => 9)
+      const storage = memoryStorage()
+      createResumeStore(storage).set(FIXTURE_TOPIK_KEY, {
+        batchId: 2,
+        conversation: 1,
+        messageId: "c2-m2",
+      })
+      renderLesson(storage, fixtureTopikRepository, surveys)
+      fireEvent.click(await screen.findByRole("button", { name: /Continue/ }))
+      await screen.findByText("카드로 할게요. 감사합니다.")
+
+      click(/^Next/)
+      pick(/Question.*할게요\?/)
+      click("Check")
+      click("This answer looks wrong")
+      expect(
+        screen.getByRole("button", { name: /Flagged for your next prompt/ })
+      ).toBeTruthy()
+      click(/Continue/)
+      buildFromTiles(["카드로", "했어요"])
+      click("Check")
+      click(/Continue/)
+      click(/Finish/)
+      click("Not now")
+
+      expect(surveys.list()).toEqual([
+        {
+          topikKey: FIXTURE_TOPIK_KEY,
+          displayName: "Ordering at a café",
+          at: 9,
+          stuck: [],
+          flagged: [
+            {
+              batchId: 2,
+              probeId: "c2-promise-forms",
+              source: "카드로 할게요.",
+              prompt: "Which is NOT a valid transformation?",
+            },
+          ],
+        },
+      ])
     })
   })
 })

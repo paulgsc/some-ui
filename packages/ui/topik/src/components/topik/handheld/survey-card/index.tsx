@@ -141,7 +141,14 @@ export const SurveyCard = ({
           )
         : [
             ...current.stuck,
-            { batchId: candidate.batchId, probeId: candidate.probeId },
+            // The text rides along: the digest is read after the lesson is
+            // gone, when an id alone would mean nothing.
+            {
+              batchId: candidate.batchId,
+              probeId: candidate.probeId,
+              source: candidate.source,
+              prompt: candidate.prompt,
+            },
           ],
     }))
   }
