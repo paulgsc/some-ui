@@ -42,6 +42,13 @@ export type Question = {
   correctAnswer: string
   explanation: string
   grammarNote?: string
+  /**
+   * The id of the message this question is about. Optional, authoring-time
+   * (adaptive-learning canon Prop. 8.1): the handheld lesson presents a
+   * check right after the line it anchors to and derives an anchor itself
+   * when content declares none (Cor. 4.4 (ii)). The desktop quiz ignores it.
+   */
+  anchorMessageId?: string
 }
 
 const QuestionSchema = z.object({
@@ -54,6 +61,7 @@ const QuestionSchema = z.object({
   correctAnswer: z.string(),
   explanation: z.string(),
   grammarNote: z.string().optional(),
+  anchorMessageId: z.string().optional(),
 })
 
 // ═══════════════════════════════════════════════════════════════════════════

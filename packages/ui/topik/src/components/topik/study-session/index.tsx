@@ -29,11 +29,12 @@
  */
 
 import type { JSX } from "react"
-import { useMemo } from "react"
+import { useMemo, useRef } from "react"
 import { useOptionalSpeechAdapter } from "@some-ui/speech"
 import type { Appearance } from "@some-ui/styles/theme"
 import { appearanceClassName } from "@some-ui/styles/theme"
 import { ChatPanel } from "@topik/components/topik/chat-panel"
+import { HandheldLesson } from "@topik/components/topik/handheld/handheld-lesson"
 import { QuizPanel } from "@topik/components/topik/quiz-panel"
 import { SessionHeader } from "@topik/components/topik/session-header"
 import {
@@ -46,6 +47,12 @@ import type {
   ITopikRepository,
 } from "@topik/lib/topik"
 import { SessionConfigProvider } from "@topik/lib/topik/adapter/context/session-config-context"
+import type { SurfacePreference } from "@topik/lib/topik/adapter/hooks/use-surface"
+import {
+  chooseSurface,
+  isShort,
+  useElementBox,
+} from "@topik/lib/topik/adapter/hooks/use-surface"
 import { cn } from "some-ui-utils"
 
 /** Where the manifest lives when a host doesn't say otherwise. */
@@ -83,47 +90,29 @@ export type KoreanStudyPageProps = {
    * restores the old self-contained study surface for a host that wants it.
    */
   appearance?: Appearance
+  /**
+   * Which renderer to mount. `auto` - the default - picks by the room the
+   * host granted: the handheld lesson below `md` width or 480px height, the
+   * desktop session otherwise (see `use-surface`). The two are different
+   * lessons, not two layouts of one (adaptive-learning canon Cor. 9.1).
+   */
+  surface?: SurfacePreference
 }
 
 /**
- * The applet proper. Assumes its context.
- *
- * Exported for the callers that legitimately own the whole config - a story
- * pinning fixtures, a test injecting fakes - which render it inside their
- * own `SessionConfigProvider`. Ordinary hosts render `KoreanStudyPage` and
- * pass the overrides they care about.
+ * The desktop session: transcript and quiz side by side, which is what keeps
+ * its quiz open-book. Mounted only where that fits; below it, the handheld
+ * lesson is mounted instead of this being stacked (canon Prop. 9.4).
  */
-export const KoreanStudySession = ({
-  appearance = "inherit",
-}: {
-  appearance?: Appearance
-} = {}): JSX.Element => {
+const DesktopSession = (): JSX.Element => {
   const vm = useKoreanStudyPageVM()
 
   return (
-    <div
-      // A stable hook for hosts and tests. The theme class used to double as
-      // this, which is why removing it broke four tests that only wanted to
-      // know whether the applet had mounted — a mount probe should not depend
-      // on which palette is in play.
-      data-slot="topik-session"
-      className={cn(
-        appearanceClassName(appearance),
-        "absolute inset-0 flex flex-col bg-background"
-      )}
-    >
+    <>
       <SessionHeader {...vm.header} />
       {/*
-       * The body is the applet's own size-authority boundary: it hands each
-       * pane a share of whatever height the host granted this root, and both
-       * panes must stay inside it. `min-h-0` is what makes that true - a flex
-       * item's automatic minimum size is its content, so without it a pane
-       * whose content is tall silently widens the floor of this row past the
-       * space it was allocated, and the row hands the excess to whatever is
-       * painted below (docs/ui-fit).
-       *
-       * Stacked below `md`, where a 320px conversation rail plus a quiz pane
-       * do not both fit the inline axis.
+       * Still stacks below `md` for a host that forces this surface into a
+       * narrow pane - where, per Prop. 9.4, it is then a closed-book quiz.
        */}
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4 md:flex-row">
         <div className="min-h-0 w-full shrink-0 basis-2/5 md:w-80 md:basis-auto xl:w-96">
@@ -146,6 +135,53 @@ export const KoreanStudySession = ({
           />
         </div>
       </div>
+    </>
+  )
+}
+
+/**
+ * The applet proper. Assumes its context.
+ *
+ * Exported for the callers that legitimately own the whole config - a story
+ * pinning fixtures, a test injecting fakes - which render it inside their
+ * own `SessionConfigProvider`. Ordinary hosts render `KoreanStudyPage` and
+ * pass the overrides they care about.
+ */
+export const KoreanStudySession = ({
+  appearance = "inherit",
+  surface: preference = "auto",
+}: {
+  appearance?: Appearance
+  surface?: SurfacePreference
+} = {}): JSX.Element => {
+  const root = useRef<HTMLDivElement>(null)
+  const box = useElementBox(root)
+  const surface = preference === "auto" ? chooseSurface(box) : preference
+
+  return (
+    <div
+      ref={root}
+      // A stable hook for hosts and tests. The theme class used to double as
+      // this, which is why removing it broke four tests that only wanted to
+      // know whether the applet had mounted — a mount probe should not depend
+      // on which palette is in play.
+      data-slot="topik-session"
+      data-surface={surface}
+      className={cn(
+        appearanceClassName(appearance),
+        "absolute inset-0 flex flex-col bg-background"
+      )}
+    >
+      {/*
+       * Whichever renderer mounts fills the root and must stay inside it:
+       * `min-h-0` down the flex chain is what keeps a tall pane from widening
+       * the row past the height the host granted (docs/ui-fit).
+       */}
+      {surface === "handheld" ? (
+        <HandheldLesson short={isShort(box)} />
+      ) : (
+        <DesktopSession />
+      )}
     </div>
   )
 }
@@ -157,6 +193,7 @@ export const KoreanStudyPage = ({
   loadManifest,
   loadTopik,
   appearance = "inherit",
+  surface = "auto",
 }: KoreanStudyPageProps = {}): JSX.Element => {
   /*
    * The one thing that is legitimately ambient. There is one pair of
@@ -194,7 +231,7 @@ export const KoreanStudyPage = ({
 
   return (
     <SessionConfigProvider value={value}>
-      <KoreanStudySession appearance={appearance} />
+      <KoreanStudySession appearance={appearance} surface={surface} />
     </SessionConfigProvider>
   )
 }
