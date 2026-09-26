@@ -306,9 +306,22 @@ export function aliasTargets(
       specifier.length - suffix.length
     )
     return targets.map((target) =>
-      resolve(pathsBase, target.replace("*", matched))
+      resolve(pathsBase, substituteStar(target, matched))
     )
   })
+}
+
+/**
+ * Puts the matched text where a `paths` target has its `*`. A target holds at
+ * most one: TypeScript rejects more (TS5062, "Substitution ... can have at
+ * most one '*' character"), so a config that reaches this function has one or
+ * none. A target with none maps every match to itself.
+ */
+export function substituteStar(target: string, matched: string): string {
+  const star = target.indexOf("*")
+  return star === -1
+    ? target
+    : `${target.slice(0, star)}${matched}${target.slice(star + 1)}`
 }
 
 /** How TypeScript completes an extensionless target, in its order. */

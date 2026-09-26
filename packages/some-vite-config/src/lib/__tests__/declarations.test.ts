@@ -21,6 +21,7 @@ import {
   declarationSpecifier,
   emittedDeclaration,
   rewriteDeclarationText,
+  substituteStar,
   typesEntrySource,
 } from "@/lib/declarations.js"
 
@@ -70,6 +71,21 @@ describe("aliasTargets", () => {
       join(root, "styles/theme.css"),
     ])
     expect(aliasTargets("@other/x", paths, root)).toEqual([])
+  })
+
+  it("sends every match of a wildcard key to a star-less target", () => {
+    const paths = { "@icons/*": ["./src/icons/index.ts"] }
+    expect(aliasTargets("@icons/star", paths, root)).toEqual([
+      join(root, "src/icons/index.ts"),
+    ])
+  })
+})
+
+describe("substituteStar", () => {
+  it("replaces the target's one star, wherever it sits, or leaves a star-less target", () => {
+    expect(substituteStar("./src/*", "lib/a")).toBe("./src/lib/a")
+    expect(substituteStar("./styles/*.css", "theme")).toBe("./styles/theme.css")
+    expect(substituteStar("./src/index.ts", "x")).toBe("./src/index.ts")
   })
 })
 
