@@ -30,6 +30,8 @@ export const MAX_RESUME_POINTS = 12
 export type ResumeOutcomes = {
   firstTry: Record<string, boolean>
   review: Array<string>
+  /** Repeats already answered, so a reload does not serve them again. */
+  reviewed?: Array<string>
 }
 
 export type ResumePoint = {
@@ -53,6 +55,7 @@ const ResumeDocumentSchema = z.object({
         .object({
           firstTry: z.record(z.string(), z.boolean()),
           review: z.array(z.string()),
+          reviewed: z.array(z.string()).optional(),
         })
         .optional(),
       at: z.number(),

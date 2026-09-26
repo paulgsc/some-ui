@@ -1,7 +1,13 @@
 import type { ConversationBatch, Message, Question } from "@topik/lib/topik"
 import { describe, expect, it } from "vitest"
 
-import type { LessonContext, LessonEvent, LessonState } from "."
+import type {
+  CheckStep,
+  LessonContext,
+  LessonEvent,
+  LessonPlan,
+  LessonState,
+} from "."
 import {
   anchorOf,
   createLessonState,
@@ -49,6 +55,14 @@ const batch: ConversationBatch = {
 }
 
 const plan = planConversation(batch)
+
+/** The identity the plan gave a question index. */
+const idIn = (target: LessonPlan, question: number): string =>
+  target.steps.find(
+    (step): step is CheckStep =>
+      step.kind === "check" && step.question === question
+  )?.id ?? "missing"
+const id = (question: number): string => idIn(plan, question)
 const ctx = (audio = true): LessonContext => ({
   plan,
   conversationCount: 2,
@@ -220,8 +234,8 @@ describe("lessonReducer", () => {
       message: 1,
     })
     // The first try and the review queue are exactly as the first answer left them.
-    expect(revisited.firstTry).toEqual({ 2: false })
-    expect(revisited.review).toEqual([2])
+    expect(revisited.firstTry).toEqual({ [id(2)]: false })
+    expect(revisited.review).toEqual([id(2)])
   })
 
   it("refuses a second first-try answer even if a check is reached again", () => {
@@ -238,10 +252,11 @@ describe("glossUnlocked", () => {
       messages: [message("x1", "카드로 할게요. 감사합니다.")],
       questions: [question("감사합니다"), question("카드로 할게요")],
     })
+    const [a, b] = [idIn(twoOnOne, 0), idIn(twoOnOne, 1)]
     expect(glossUnlocked(twoOnOne, { firstTry: {} }, 0)).toBe(false)
-    expect(glossUnlocked(twoOnOne, { firstTry: { 0: true } }, 0)).toBe(false)
+    expect(glossUnlocked(twoOnOne, { firstTry: { [a]: true } }, 0)).toBe(false)
     expect(
-      glossUnlocked(twoOnOne, { firstTry: { 0: true, 1: false } }, 0)
+      glossUnlocked(twoOnOne, { firstTry: { [a]: true, [b]: false } }, 0)
     ).toBe(true)
   })
 })
@@ -281,12 +296,12 @@ describe("resume outcomes (Codex, #1544)", () => {
         conversation: 0,
         message: 0,
         outcomes: {
-          firstTry: { "2": true, "7": false },
-          review: ["2", "7", "0"],
+          firstTry: { [id(2)]: true, gone: false },
+          review: [id(2), "gone", id(0)],
         },
       },
     ])
-    expect(resumed.firstTry).toEqual({ 2: true })
+    expect(resumed.firstTry).toEqual({ [id(2)]: true })
     expect(resumed.review).toEqual([])
   })
 
@@ -300,5 +315,76 @@ describe("resume outcomes (Codex, #1544)", () => {
       },
     ])
     expect(resumed).toEqual(createLessonState(true, 0))
+  })
+})
+
+describe("check identity and once-only repeats (Codex, #1544)", () => {
+  it("keys results by content, so a reordered file keeps each result on its question", () => {
+    const answered = run([{ type: "NEXT" }, answer(false)]) // question 2 missed
+    const reordered: ConversationBatch = {
+      ...batch,
+      questions: [
+        batch.questions[2]!,
+        batch.questions[0]!,
+        batch.questions[1]!,
+      ],
+    }
+    const reorderedPlan = planConversation(reordered)
+    const resumed = lessonReducer(
+      createLessonState(true),
+      {
+        type: "RESUME",
+        conversation: 0,
+        message: 0,
+        outcomes: outcomesOf(answered),
+      },
+      { ...ctx(), plan: reorderedPlan }
+    )
+    // The miss follows the question to its new index 0; nothing else moved.
+    expect(resumed.firstTry).toEqual({ [idIn(reorderedPlan, 0)]: false })
+    expect(idIn(reorderedPlan, 0)).toBe(id(2))
+  })
+
+  it("tells identical questions apart by occurrence", () => {
+    const twins = planConversation({
+      ...batch,
+      questions: [batch.questions[0]!, batch.questions[0]!],
+    })
+    expect(idIn(twins, 0)).not.toBe(idIn(twins, 1))
+  })
+
+  it("serves a missed check's repeat once, even across a reload", () => {
+    // Miss p2, answer the rest, reach the repeat, answer it.
+    const atRepeat = run([
+      { type: "NEXT" },
+      answer(false),
+      { type: "NEXT" },
+      { type: "NEXT" },
+      answer(true),
+      { type: "NEXT" },
+      { type: "NEXT" },
+      answer(true),
+      { type: "NEXT" },
+    ])
+    const repeated = run([answer(true)], atRepeat)
+    expect(repeated.reviewed).toEqual([id(2)])
+    // No second answer to the same repeat.
+    expect(run([answer(false)], { ...repeated, answered: null })).toEqual({
+      ...repeated,
+      answered: null,
+    })
+
+    // A reload lands on the last line; forward goes straight to the wrap.
+    const reloaded = run([
+      {
+        type: "RESUME",
+        conversation: 0,
+        message: 2,
+        outcomes: outcomesOf(repeated),
+      },
+      { type: "NEXT" },
+    ])
+    expect(currentStep(plan, reloaded)).toEqual({ kind: "wrap" })
+    expect(tallyOf(plan, reloaded)).toMatchObject({ firstTry: 2, revisited: 1 })
   })
 })

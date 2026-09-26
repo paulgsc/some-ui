@@ -23,6 +23,7 @@
  */
 
 import type { ConversationBatch, Message, Question } from "@topik/lib/topik"
+import { hashSeed } from "@topik/lib/topik/core/tile-assembly"
 import { assertNever } from "some-ui-utils"
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -42,8 +43,14 @@ export type LineStep = {
 
 export type CheckStep = {
   kind: "check"
-  /** Index into the conversation's questions. */
+  /** Index into the conversation's questions: where to find it now. */
   question: number
+  /**
+   * What it is: a fingerprint of the item's content. Results are recorded
+   * under this, never under the index, so a reordered or extended file
+   * cannot hand one question's result to another (Thm. 1.1).
+   */
+  id: string
   /** The message index the check is about. */
   anchor: number
   /** True for the once-only re-presentation of a missed check. */
@@ -99,8 +106,32 @@ export function anchorOf(question: Question, messages: Array<Message>): number {
   return messages.length - 1
 }
 
+/**
+ * A question's identity, from its content. Topik questions carry no authored
+ * id, and their index is a position, not an identity: insert one question and
+ * every later index names a different item. The fingerprint moves with the
+ * item; an edited item gets a new one, which is correct - it is a new item.
+ */
+export function questionId(question: Question): string {
+  const content = [
+    question.type,
+    question.korean,
+    question.question,
+    question.correctAnswer,
+  ].join("\u0000")
+  return `q-${hashSeed(content).toString(36)}`
+}
+
 export function planConversation(batch: ConversationBatch): LessonPlan {
   const { messages, questions } = batch
+  // Two identical items in one conversation are told apart by occurrence.
+  const occurrences = new Map<string, number>()
+  const ids = questions.map((question) => {
+    const base = questionId(question)
+    const seen = occurrences.get(base) ?? 0
+    occurrences.set(base, seen + 1)
+    return seen === 0 ? base : `${base}~${seen}`
+  })
   const byAnchor = new Map<number, Array<number>>()
 
   questions.forEach((question, index) => {
@@ -117,7 +148,13 @@ export function planConversation(batch: ConversationBatch): LessonPlan {
     const anchored = byAnchor.get(message) ?? []
     steps.push({ kind: "line", message, checks: anchored.length })
     for (const question of anchored) {
-      steps.push({ kind: "check", question, anchor: message, repeat: false })
+      steps.push({
+        kind: "check",
+        question,
+        id: ids[question] ?? String(question),
+        anchor: message,
+        repeat: false,
+      })
       checkCount += 1
     }
   })
@@ -151,10 +188,12 @@ export type LessonState = {
   heard: Record<number, RevealLevel>
   /** The outcome for the current check, once answered. */
   answered: CheckOutcome | null
-  /** First-presentation outcome per question index, this conversation. */
-  firstTry: Record<number, boolean>
-  /** Missed questions, re-presented once after the last line. */
-  review: Array<number>
+  /** First-presentation outcome per check id, this conversation. */
+  firstTry: Record<string, boolean>
+  /** Ids of missed checks, re-presented once after the last line. */
+  review: Array<string>
+  /** Ids of repeats already answered: once-only means once, across reloads. */
+  reviewed: Array<string>
   /** Set when the last conversation's wrap has been left. */
   finished: boolean
 }
@@ -191,10 +230,12 @@ export type LessonEvent =
       outcomes?: LessonOutcomes
     }
 
-/** A conversation's check results in a storable form: string keys only. */
+/** A conversation's check results in a storable form. */
 export type LessonOutcomes = {
   firstTry: Record<string, boolean>
   review: Array<string>
+  /** Optional: outcomes written before repeats were tracked still restore. */
+  reviewed?: Array<string>
 }
 
 export const startReveal = (audio: boolean): RevealLevel => (audio ? 0 : 1)
@@ -211,6 +252,7 @@ export function createLessonState(
     answered: null,
     firstTry: {},
     review: [],
+    reviewed: [],
     finished: false,
   }
 }
@@ -220,17 +262,11 @@ export function stepsOf(
   plan: LessonPlan,
   state: Pick<LessonState, "review">
 ): Array<LessonStep> {
-  const review: Array<CheckStep> = state.review.map((question) => {
+  const review = state.review.flatMap((id): Array<CheckStep> => {
     const original = plan.steps.find(
-      (step): step is CheckStep =>
-        step.kind === "check" && step.question === question
+      (step): step is CheckStep => step.kind === "check" && step.id === id
     )
-    return {
-      kind: "check",
-      question,
-      anchor: original?.anchor ?? Math.max(plan.lineCount - 1, 0),
-      repeat: true,
-    }
+    return original ? [{ ...original, repeat: true }] : []
   })
   return [...plan.steps, ...review, { kind: "wrap" }]
 }
@@ -269,48 +305,46 @@ export function glossUnlocked(
     (step) =>
       step.kind !== "check" ||
       step.anchor !== message ||
-      step.question in state.firstTry
+      step.id in state.firstTry
   )
 }
 
-/** The key a check's results are recorded under. */
-export const checkKey = (step: CheckStep): string => String(step.question)
+/** The key a check's results are recorded under: its identity. */
+export const checkKey = (step: CheckStep): string => step.id
 
 /** The current conversation's results, ready to persist. */
 export function outcomesOf(state: LessonState): LessonOutcomes {
   return {
-    firstTry: Object.fromEntries(
-      Object.entries(state.firstTry).map(([key, correct]) => [key, correct])
-    ),
-    review: state.review.map(String),
+    firstTry: { ...state.firstTry },
+    review: [...state.review],
+    reviewed: [...state.reviewed],
   }
 }
 
 /**
- * Stored results, kept only for checks this plan still has: a key the
- * content no longer carries is an orphan (Thm. 1.1), and a review entry
- * without a recorded miss is not a promise anyone made.
+ * Stored results, kept only for checks this plan still has: an id the
+ * content no longer carries is an orphan (Thm. 1.1), a review entry without
+ * a recorded miss is not a promise anyone made, and a completed repeat is
+ * only one that was promised.
  */
 function restoreOutcomes(
   plan: LessonPlan,
   outcomes: LessonOutcomes
-): Pick<LessonState, "firstTry" | "review"> {
-  const known = new Map<string, number>()
+): Pick<LessonState, "firstTry" | "review" | "reviewed"> {
+  const known = new Set<string>()
   for (const step of plan.steps) {
-    if (step.kind === "check") known.set(checkKey(step), step.question)
+    if (step.kind === "check") known.add(checkKey(step))
   }
-  const firstTry: Record<number, boolean> = {}
-  for (const [key, correct] of Object.entries(outcomes.firstTry)) {
-    const question = known.get(key)
-    if (question !== undefined) firstTry[question] = correct
-  }
-  const review = [...new Set(outcomes.review)].flatMap((key) => {
-    const question = known.get(key)
-    return question !== undefined && firstTry[question] === false
-      ? [question]
-      : []
-  })
-  return { firstTry, review }
+  const firstTry = Object.fromEntries(
+    Object.entries(outcomes.firstTry).filter(([key]) => known.has(key))
+  )
+  const review = [...new Set(outcomes.review)].filter(
+    (key) => known.has(key) && firstTry[key] === false
+  )
+  const reviewed = [...new Set(outcomes.reviewed ?? [])].filter((key) =>
+    review.includes(key)
+  )
+  return { firstTry, review, reviewed }
 }
 
 /** Position of a message's line step, or -1. */
@@ -375,13 +409,15 @@ export function lessonReducer(
       // A check is left only once answered: skipping it would make the tally
       // a count of the checks the learner chose to take.
       if (step.kind === "check" && state.answered === null) return state
-      // A first-presentation check already answered - reached again by
-      // stepping back to its line - is passed over, not re-asked: a second
-      // answer would overwrite the first try and queue a second review.
+      // A check already answered - reached again by stepping back to its
+      // line, or by a reload - is passed over, not re-asked: a second answer
+      // would overwrite the first try, queue a second review, or serve a
+      // once-only repeat twice.
       const alreadyAsked = (ahead: LessonStep | undefined): boolean =>
         ahead?.kind === "check" &&
-        !ahead.repeat &&
-        ahead.question in state.firstTry
+        (ahead.repeat
+          ? state.reviewed.includes(ahead.id)
+          : ahead.id in state.firstTry)
       let next = state.step + 1
       while (alreadyAsked(steps[next])) next += 1
       return moveTo(plan, state, next, ctx)
@@ -402,19 +438,26 @@ export function lessonReducer(
     case "ANSWER": {
       if (step?.kind !== "check" || state.answered !== null) return state
       // The first try is recorded once; nothing here may rewrite it.
-      if (!step.repeat && step.question in state.firstTry) return state
+      if (
+        step.repeat
+          ? state.reviewed.includes(step.id)
+          : step.id in state.firstTry
+      )
+        return state
       const answered: CheckOutcome = {
         correct: event.correct,
         response: event.response,
         channel: event.channel,
         anchorReveal: state.heard[step.anchor] ?? startReveal(ctx.audio),
       }
-      if (step.repeat) return { ...state, answered }
+      if (step.repeat) {
+        return { ...state, answered, reviewed: [...state.reviewed, step.id] }
+      }
       return {
         ...state,
         answered,
-        firstTry: { ...state.firstTry, [step.question]: event.correct },
-        review: event.correct ? state.review : [...state.review, step.question],
+        firstTry: { ...state.firstTry, [step.id]: event.correct },
+        review: event.correct ? state.review : [...state.review, step.id],
       }
     }
 
