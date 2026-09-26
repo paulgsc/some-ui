@@ -9,16 +9,15 @@ The server's HTTP route surface, generated and checked in — nothing else.
 the `@generated` banner at its top says so. `src/index.ts` re-exports it and
 is the only hand-written source in this package.
 
-Regenerate it from a `server` checkout (with a migrated scratch database —
-`sqlx::query!` verifies against a real database at compile time):
-
-```sh
-cargo run -q --bin dump-routes -- --ts > path/to/some-ui/packages/server-routes/src/generated/routes.ts
-```
+It arrives through `scripts/sync-server-routes.sh`, run by the server's CI:
+checked against this repo on every server PR, and delivered as a PR on
+`bot/server-route-snapshot` on every server merge (see
+`packages/contract-harness/README.md`, "Refreshing the route snapshot", for
+doing it by hand).
 
 `packages/contract-harness/routes.server.json` is the JSON sibling of the
 same run (`dump-routes` without `--ts`) — both come from one
-`RouteInventory` on the server side, so regenerate them together. This
+`RouteInventory` on the server side, and the script always writes both. This
 package's `src/routes.consistency.test.ts` fails the moment the two
 checked-in files disagree, so a regeneration that only touched one of them
 gets caught here rather than in a 404 later.

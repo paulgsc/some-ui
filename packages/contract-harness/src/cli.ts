@@ -97,9 +97,9 @@ pnpm --filter @some-ui/contract-harness contract [options]
   --json                  emit the raw run report as JSON instead of text
   --help                  this
 
-Regenerate the snapshot from the server repo with:
-  DATABASE_URL=sqlite://$PWD/dev.db make routes
-and copy routes.server.json into this package.
+The snapshot arrives from the server's CI as a PR on bot/server-route-snapshot.
+By hand: run \`make routes\` in the server repo, then
+  scripts/sync-server-routes.sh <routes.server.json> <routes.server.ts> --verify
 `.trim()
 
 function loadInventory(path: string): RouteInventory {
@@ -108,7 +108,7 @@ function loadInventory(path: string): RouteInventory {
     raw = readFileSync(path, "utf8")
   } catch {
     throw new Error(
-      `could not read route inventory at ${path}. Generate it in the server repo with \`make routes\` and copy it here.`
+      `could not read route inventory at ${path}. Generate it in the server repo with \`make routes\` and write it with scripts/sync-server-routes.sh.`
     )
   }
   return parseInventory(JSON.parse(raw))

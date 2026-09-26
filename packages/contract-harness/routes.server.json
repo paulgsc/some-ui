@@ -19,6 +19,27 @@
     },
     {
       "method": "GET",
+      "path": "/curriculum/:key",
+      "full_path": "/api/v1/curriculum/:key",
+      "versioned": true,
+      "module": "curriculum"
+    },
+    {
+      "method": "GET",
+      "path": "/curriculum/manifest",
+      "full_path": "/api/v1/curriculum/manifest",
+      "versioned": true,
+      "module": "curriculum"
+    },
+    {
+      "method": "GET",
+      "path": "/curriculum/manifest.json",
+      "full_path": "/api/v1/curriculum/manifest.json",
+      "versioned": true,
+      "module": "curriculum"
+    },
+    {
+      "method": "GET",
       "path": "/health",
       "full_path": "/health",
       "versioned": false,
@@ -100,6 +121,13 @@
       "full_path": "/api/v1/mood_events/week/:week",
       "versioned": true,
       "module": "mood_events"
+    },
+    {
+      "method": "POST",
+      "path": "/outcomes",
+      "full_path": "/api/v1/outcomes",
+      "versioned": true,
+      "module": "outcomes"
     },
     {
       "method": "POST",
@@ -205,6 +233,13 @@
       "full_path": "/api/v1/signals",
       "versioned": true,
       "module": "signals"
+    },
+    {
+      "method": "GET",
+      "path": "/subjects/me/stats",
+      "full_path": "/api/v1/subjects/me/stats",
+      "versioned": true,
+      "module": "subjects"
     },
     {
       "method": "POST",
