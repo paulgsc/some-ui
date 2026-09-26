@@ -190,6 +190,18 @@ describe("lintAuthoredRounds", () => {
     )
   })
 
+  it("reports a patched cost graph that never repeats over a bounded dimension", () => {
+    const base = round()
+    const [first, second] = base.diffOptions
+    if (first === undefined || second === undefined) throw new Error("fixture")
+    const violations = lintAuthoredRounds([
+      { ...base, diffOptions: [{ ...first, graph: W(1) }, second] },
+    ])
+    expect(violations.join("\n")).toMatch(
+      /diff option 0, G_\{A\+d\}: constraint on dimension "n" has no matching repetition/
+    )
+  })
+
   it("reports a rescue candidate that is not a constraint diff from C′", () => {
     const base = round()
     const [first, second] = base.diffOptions

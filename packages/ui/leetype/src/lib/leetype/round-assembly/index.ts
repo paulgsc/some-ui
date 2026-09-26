@@ -205,6 +205,11 @@ function checkAuthoredRound(round: Round): Array<string> {
         `${where}, diff option ${index}: the hunk does not apply to A — ${applied.reason}.`
       )
     }
+    violations.push(
+      ...checkConstraintDimensions(after, option.graph).map(
+        (violation) => `${where}, diff option ${index}, G_{A+d}: ${violation}`
+      )
+    )
     option.rescueCandidates.forEach((candidate, candidateIndex) => {
       const result = ConstraintDiffSchema.safeParse({
         before: after,
