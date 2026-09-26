@@ -35,6 +35,12 @@ export type ResumeOutcomes = {
 }
 
 export type ResumePoint = {
+  /**
+   * The conversation's authored id - what it is. `conversation` is only where
+   * it was, and a file that inserts or reorders conversations moves it
+   * (Thm. 1.1). A point without an id is not resumed.
+   */
+  batchId?: number
   conversation: number
   messageId: string
   outcomes?: ResumeOutcomes
@@ -48,6 +54,7 @@ const ResumeDocumentSchema = z.object({
   points: z.record(
     z.string(),
     z.object({
+      batchId: z.number().optional(),
       conversation: z.number().int().nonnegative(),
       messageId: z.string(),
       // Optional: points written before outcomes were kept still resume.

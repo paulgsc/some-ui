@@ -17,6 +17,7 @@ import {
   outcomesOf,
   planConversation,
   progressOf,
+  questionId,
   tallyOf,
 } from "."
 
@@ -386,5 +387,32 @@ describe("check identity and once-only repeats (Codex, #1544)", () => {
     ])
     expect(currentStep(plan, reloaded)).toEqual({ kind: "wrap" })
     expect(tallyOf(plan, reloaded)).toMatchObject({ firstTry: 2, revisited: 1 })
+  })
+})
+
+describe("questionId (Codex, #1544)", () => {
+  it("changes when anything that decides grading changes", () => {
+    const base = batch.questions[0]!
+    const text = {
+      type: "text-input" as const,
+      korean: "포장해 주세요",
+      question: "Build it",
+      acceptedAnswers: ["포장해 주세요"],
+      correctAnswer: "포장해 주세요",
+      explanation: "",
+    }
+    expect(questionId({ ...base, explanation: "reworded" })).toBe(
+      questionId(base)
+    )
+    expect(questionId({ ...base, correct: 1 })).not.toBe(questionId(base))
+    expect(questionId({ ...base, options: ["b", "a"] })).not.toBe(
+      questionId(base)
+    )
+    expect(
+      questionId({
+        ...text,
+        acceptedAnswers: ["포장해 주세요", "포장 부탁해요"],
+      })
+    ).not.toBe(questionId(text))
   })
 })

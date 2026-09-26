@@ -113,12 +113,17 @@ export function anchorOf(question: Question, messages: Array<Message>): number {
  * item; an edited item gets a new one, which is correct - it is a new item.
  */
 export function questionId(question: Question): string {
-  const content = [
+  // Everything that decides what is asked or what counts as right: change any
+  // of it and the old result no longer describes this item.
+  const content = JSON.stringify([
     question.type,
     question.korean,
     question.question,
+    question.options ?? null,
+    question.correct ?? null,
     question.correctAnswer,
-  ].join("\u0000")
+    question.acceptedAnswers ?? null,
+  ])
   return `q-${hashSeed(content).toString(36)}`
 }
 

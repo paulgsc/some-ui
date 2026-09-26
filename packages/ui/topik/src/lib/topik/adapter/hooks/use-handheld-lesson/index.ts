@@ -148,20 +148,27 @@ export function useHandheldLesson({
     setRestoredFor(topikKey)
     const point = store.get(topikKey)
     let restored = createLessonState(audioAvailable)
-    if (point && point.conversation < batches.length) {
+    // The conversation is found by its authored id, never by its old
+    // position: a file that gained or reordered conversations would otherwise
+    // resume - and restore results into - a different one (Thm. 1.1).
+    const conversation =
+      point?.batchId === undefined
+        ? -1
+        : batches.findIndex((candidate) => candidate.id === point.batchId)
+    if (point && conversation !== -1) {
       const message =
-        batches[point.conversation]?.messages.findIndex(
+        batches[conversation]?.messages.findIndex(
           (candidate) => candidate.id === point.messageId
         ) ?? -1
       restored = lessonReducer(
         restored,
         {
           type: "RESUME",
-          conversation: point.conversation,
+          conversation,
           message,
           outcomes: point.outcomes,
         },
-        contextFor(point.conversation)
+        contextFor(conversation)
       )
     }
     setLesson(restored)
@@ -243,6 +250,7 @@ export function useHandheldLesson({
     // what was already answered instead of asking it twice.
     if (resumeMessage) {
       store.set(topikKey, {
+        batchId: batch?.id,
         conversation: lesson.conversation,
         messageId: resumeMessage.id,
         outcomes: outcomesOf(lesson),

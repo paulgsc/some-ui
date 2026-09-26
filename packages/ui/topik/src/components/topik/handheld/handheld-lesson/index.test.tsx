@@ -1,6 +1,7 @@
 import type { JSX } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import type { ITopikRepository } from "@topik/lib/topik"
 import { SessionConfigProvider } from "@topik/lib/topik/adapter/context/session-config-context"
 import type { StorageLike } from "@topik/lib/topik/adapter/resume-point"
 import { createResumeStore } from "@topik/lib/topik/adapter/resume-point"
@@ -8,6 +9,7 @@ import { afterEach, describe, expect, it } from "vitest"
 
 import { HandheldLesson } from "."
 import {
+  FIXTURE_BATCHES,
   FIXTURE_TOPIK_KEY,
   fixtureMetadataRepository,
   fixtureTopikRepository,
@@ -22,7 +24,8 @@ const memoryStorage = (): StorageLike => {
 }
 
 function renderLesson(
-  storage = memoryStorage()
+  storage = memoryStorage(),
+  topikRepository: ITopikRepository = fixtureTopikRepository
 ): ReturnType<typeof createResumeStore> {
   const store = createResumeStore(storage)
   const client = new QueryClient({
@@ -32,7 +35,7 @@ function renderLesson(
     <QueryClientProvider client={client}>
       <SessionConfigProvider
         value={{
-          topikRepository: fixtureTopikRepository,
+          topikRepository,
           metadataRepository: fixtureMetadataRepository,
           // No voice: the ladder starts at Hangul (canon Def. 9.3).
           speechAdapter: null,
@@ -130,6 +133,7 @@ describe("HandheldLesson", () => {
   it("resumes at the line it was left on, by message id", async () => {
     const storage = memoryStorage()
     createResumeStore(storage).set(FIXTURE_TOPIK_KEY, {
+      batchId: 2,
       conversation: 1,
       messageId: "c2-m2",
     })
@@ -143,6 +147,7 @@ describe("HandheldLesson", () => {
   it("keeps the gloss out of feedback while another check on the line is pending (Codex, #1544)", async () => {
     const storage = memoryStorage()
     createResumeStore(storage).set(FIXTURE_TOPIK_KEY, {
+      batchId: 2,
       conversation: 1,
       messageId: "c2-m2",
     })
@@ -218,5 +223,33 @@ describe("HandheldLesson", () => {
     expect(
       screen.getByText("1 of 2 understood on the first listen")
     ).toBeTruthy()
+  })
+
+  it("finds the saved conversation by its id when the file reorders them (Codex, #1544)", async () => {
+    const storage = memoryStorage()
+    createResumeStore(storage).set(FIXTURE_TOPIK_KEY, {
+      batchId: 2,
+      conversation: 1,
+      messageId: "c2-m2",
+    })
+    // The file now lists conversation 2 first.
+    renderLesson(storage, {
+      load: () => Promise.resolve([...FIXTURE_BATCHES].reverse()),
+    })
+    fireEvent.click(await screen.findByRole("button", { name: /Continue/ }))
+    expect(await screen.findByText("카드로 할게요. 감사합니다.")).toBeTruthy()
+    expect(screen.getByText("Conversation 1 of 2")).toBeTruthy()
+  })
+
+  it("does not resume a point that cannot say which conversation it was", async () => {
+    const storage = memoryStorage()
+    createResumeStore(storage).set(FIXTURE_TOPIK_KEY, {
+      conversation: 1,
+      messageId: "c2-m2",
+    })
+    renderLesson(storage)
+    fireEvent.click(await screen.findByRole("button", { name: /Continue/ }))
+    expect(await screen.findByText("어서 오세요. 뭐 드릴까요?")).toBeTruthy()
+    expect(screen.getByText("Conversation 1 of 2")).toBeTruthy()
   })
 })
