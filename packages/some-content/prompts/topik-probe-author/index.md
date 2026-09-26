@@ -46,7 +46,7 @@ fixed across its candidates and varying only what the relation acts on:
 source      카드로 할게요.
 past        카드로 했어요.        ← only the ending moves
 negation    카드로 안 할게요.
-question    카드로 할게요?        ← the invalid one: -ㄹ게요 has no question form
+negation    카드로 하지 마세요.   ← the invalid one: that tells someone else not to
 ```
 
 and never by swapping 카드 for 현금 while also changing the tense.
@@ -84,10 +84,14 @@ followed by the lesson file's JSON. The generator returns the whole file,
 JSON only, in one ` ```json ` block. It is saved over the original and
 checked by a command, not read as prose.
 
-Keep the input's formatting, and give the new `probes` arrays 2-space
-indentation. The importer decides whether a lesson changed by its exact
-bytes, so a file that is only reformatted is announced to learners as new
-material.
+Add each `probes` array after its conversation's `questions`, in 2-space
+indentation, and leave every existing line byte-for-byte as it was,
+including the trailing newline. The importer decides whether a lesson
+changed by its exact bytes. The added probes are the change you mean to
+announce; a reformatted line is noise announced to learners as new material.
+
+Take `anchorMessageId`s from the input's own message ids. The fixture's
+`c1-m1` style is that file's convention, not a rule.
 
 ---
 
@@ -116,9 +120,9 @@ relation's label, unless `label` overrides it.
 | relation     | chip         | order | a candidate is valid when...                                           |
 | ------------ | ------------ | ----- | ---------------------------------------------------------------------- |
 | `past`       | Past tense   | 2     | it is the line, in the past                                            |
-| `future`     | Future       | 2     | it is the line, about the future (-ㄹ 거예요, -겠-)                    |
+| `future`     | Future       | 2     | it is the line, about the future (-ㄹ 거예요)                          |
 | `negation`   | Negation     | 2     | it negates the line, with the negation this sentence type takes        |
-| `question`   | Question     | 2     | it is the line's question form, and that form exists                   |
+| `question`   | Question     | 2     | it asks what the line states or requests (할게요 → 할까요?)            |
 | `paraphrase` | Same meaning | 2     | it says the same thing with different words or grammar                 |
 | `register`   | Politeness   | 3     | it is the line at another politeness level, or explains the level used |
 | `reply`      | Reply        | 3     | it is something the other speaker could felicitously say back          |
@@ -128,6 +132,16 @@ relation's label, unless `label` overrides it.
 `situation` and `gloss` candidates are English prose, and so are
 explanations of a form: set `"lang": "en"` on each. Every other candidate is
 a Korean utterance.
+
+- **An explanation candidate** ("It puts the sentence in the past tense")
+  takes the relation its claim is about, and is `valid` when the claim is
+  true of the line. See the fixture's `c1-honorific`.
+- **-겠- is not always future.** 알겠습니다 and 잘 먹겠습니다 are set
+  expressions. Don't build a `future` probe on them.
+- **Register labels.** Use `label` to say which way a `register` candidate
+  moves: "More formal" for -습니다, "Honorific" for -시-, "Casual" for 반말.
+  A candidate at a lower level is a valid register shift. In a "which would be
+  rude?" probe it is the answer instead.
 
 `gloss` is allowed only as a **distractor or supporting candidate** inside a
 structural probe. It is never the answer. A probe whose answer is a gloss is
@@ -157,7 +171,10 @@ first-order, and the checker rejects it.
   - the wrong honorific direction;
   - a past tense built on the wrong stem.
 
-  An invalid candidate that is simply ungrammatical noise tests nothing.
+  An invalid candidate that is simply ungrammatical noise tests nothing. And
+  it must be invalid beyond dispute. If a colloquial reading makes it
+  acceptable to some speakers, pick another: the answer key is the whole of
+  grading (Rem. 4.7).
 
 - Korean candidates are shown with their differences from the source
   highlighted, so hold the content words fixed. That is where the diff reads
@@ -185,7 +202,8 @@ first-order, and the checker rejects it.
   - "Why does the server say 드시고 and not 먹고?"
 - A `situation` probe asks when the line would be said. Its candidates are
   settings in English: "a clerk, as a customer walks in"; "a guest, leaving
-  a friend's home".
+  a friend's home". Each wrong setting must be one where the line is plainly
+  wrong. Name who speaks to whom, so a second reading can't make it right.
 
 ### `build`: "Make it negative" / "Say you already did"
 
@@ -193,8 +211,8 @@ first-order, and the checker rejects it.
 - **Tiling:**
   - a multi-word target is tiled by word;
   - a single word is tiled by syllable and needs at least 2 Hangul syllables;
-  - the board shows the target's tiles plus up to 3 of your distractors,
-    8 tiles at most;
+  - the board shows the target's tiles plus your first 3 distractors, as
+    many of them as fit within 8 tiles. A fourth distractor is never shown;
   - a target over 8 tiles on its own is left out on a phone. Keep targets
     short.
 - `target` is written without final punctuation. List punctuated or spaced
@@ -202,8 +220,9 @@ first-order, and the checker rejects it.
 - `distractors` are the confusions, authored: 안 and 못 against 마세요, 할게요
   against 했어요. Words from the source line make good distractors. Pieces of
   the target never do, because they are silently dropped.
-- `target` must differ from `source`. If `source` contains the target, the
-  source line is hidden and the `prompt` has to stand on its own.
+- `target` must differ from `source`. If `source` contains the target
+  (spaces and punctuation ignored), the source line is hidden and the
+  `prompt` has to stand on its own.
 - Always give `explanation`: one line on the rule the build exercises.
 - A build's `relation` is structural (`past`, `future`, `negation`,
   `question`, `paraphrase`) or `register` ("make it more polite"). A reply or
@@ -222,7 +241,10 @@ first-order, and the checker rejects it.
   moves it to the end of the conversation.
 - **`source`:** omit it to test the whole anchor line. Set it to probe one
   clause of a longer line, e.g. `"카드로 할게요."` out of
-  `"카드로 할게요. 감사합니다."`.
+  `"카드로 할게요. 감사합니다."`. It is shown above the candidates and every
+  Korean candidate is diffed against it, so on any kind of probe narrow it to
+  the clause the probe is about: the question being replied to, the promise
+  being transformed.
 - **`prompt`:** one short sentence, in English, addressed to the learner.
 - **`why`:** required on **every** candidate, valid or not, in one line.
   - After answering, the learner sees every candidate with its verdict and
@@ -242,10 +264,13 @@ first-order, and the checker rejects it.
   gets at least one third-order probe.
 - Two probes on the same line are fine. The line's English stays hidden until
   both are answered.
-- Match the level. At `beginner`, stay with the -요 and -습니다 endings,
-  안 and -지 마세요, the -았/었- past, -ㄹ게요 and -ㄹ까요, and the everyday
-  honorific verbs. Do not probe grammar the conversation itself does not
-  use.
+- Match the level. At `beginner`, a probe's answer stays within the -요 and -습니다 endings, 안 and -지 마세요, the -았/었- past, -ㄹ게요 and -ㄹ까요,
+  and the everyday honorific verbs. Supporting candidates may reach one step
+  further, as the worked example's -시겠어요? does.
+- Probe the line's own structure. The relation acts on what the line says.
+  Its answer may need the form that relation takes (negating a request
+  needs -지 마세요, even in a conversation that never uses it), and that is
+  the lesson. But don't bring in grammar the relation doesn't call for.
 
 ---
 
@@ -373,8 +398,9 @@ change the relation made, and the diff is too large to show. Write 카드로
 ```
 
 No learner writes this, so rejecting it teaches nothing. The invalid
-candidate has to be the plausible mistake: 카드로 할게요? as a question, whose
-`why` says that -ㄹ게요 has no question form.
+candidate has to be the plausible mistake: 카드로 하지 마세요 offered as the
+negation, whose `why` says that -지 마세요 tells someone else not to act,
+while negating your own promise takes 안 (안 할게요).
 
 **Rejected #4: a build with nothing to build.**
 
@@ -399,10 +425,15 @@ eye. `[judgment]` items are for the reviewer.
 - [checkable] Ids are unique within each conversation.
 - [checkable] No probe's answer is a `gloss`.
 - [checkable] `order` matches the answer's relation.
-- [checkable] Every candidate has a non-blank `why`, and no candidate repeats.
-- [checkable] Structural Korean candidates stay close enough to the source for
-  their diff to show (similarity ≥ 0.45). The checker warns when one rewrites
-  more than its relation acts on.
+- [checkable] Every candidate has a non-blank `why`, and no two candidates of
+  one probe have the same text. A reply may be exactly the conversation's
+  next line: that is what was actually said.
+- [checkable] Structural Korean candidates (past, future, negation, question,
+  paraphrase) share most of their syllables with the source: 45% or more by
+  a longest-common-subsequence measure. Below that, their diff isn't shown
+  and the checker warns that the candidate rewrites more than its relation
+  acts on. Replies usually fall below it and are shown plainly, which is
+  expected.
 - [checkable] Every build target tiles into 2–8 pieces and differs from its
   source. No distractor is a piece of the target.
 - [checkable] Every conversation has at least one probe (a warning, not an
@@ -414,8 +445,13 @@ eye. `[judgment]` items are for the reviewer.
 - [judgment] Each invalid candidate is a real learner confusion, and its `why`
   names the rule.
 - [judgment] Wrong replies are wrong for different reasons.
-- [judgment] The grammar probed is grammar the conversation uses, at the
-  lesson's level.
+- [judgment] Each answer's grammar is what its relation calls for on this
+  line, at the lesson's level.
+- [judgment] Every invalid candidate is invalid beyond dispute, with no
+  colloquial reading that makes it acceptable.
+
+Warnings don't fail the check, but read every one: each names something the
+learner will see, or not see.
 
 ---
 
@@ -461,4 +497,8 @@ eye. `[judgment]` items are for the reviewer.
 **`v1.0`.** First version, written against canon v1.4 (Def. 4.6, 4.7,
 Prop. 4.2, Rem. 4.7, Cor. 4.5) and the probe schema `@some-ui/topik` shipped in
 #1546. It adds probes to existing lessons and does not generate
-conversations.
+conversations. Two blind trials, each run by an agent that saw only this
+prompt, produced files that passed `check:topik-probes` on the first run.
+Their reviews are folded in: what `valid` means in a pick-valid, prompts that
+must not gloss, answers that must be invalid beyond dispute, and the
+formatting the importer's byte hash needs.
