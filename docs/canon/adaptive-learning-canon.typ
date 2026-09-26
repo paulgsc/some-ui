@@ -979,6 +979,23 @@ before it can update a belief about $mu$ (Prop. 9.1).
   report and nothing else.
 ]
 
+#remark("3.4", name: "The disputed key")[
+  An evaluation report may carry one further component: the set $f$ of items
+  whose authored answer the learner disputes --- "this answer looks wrong",
+  raised on an item already answered. Definition 3.3 is extended by $f$ and
+  otherwise unchanged. Its object is the content, not the learner: it says
+  that a candidate's authored validity (Rem. 4.7) may be mistaken, which is
+  the one judgement Remark 4.7 withholds from runtime. It is therefore not an
+  outcome, alters no outcome already recorded, and falls under
+  Proposition 3.4 like the rest of the report. Because it is about the item
+  rather than the unit, it outlives the rest: a learner who declines the
+  report at the end of the unit has still raised the dispute, and $f$ is kept
+  alone. Where content is authored under review (Prop. 8.1) the dispute is a
+  report to the reviewer; where it is authored by the learner's own model
+  (Def. 8.3) there is no reviewer, and $f$ is the only check on the key that
+  runs inside the loop.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = The Exercise: Instrument and Intervention
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1988,6 +2005,27 @@ also survives its relaxation.
   then do with it.
 ]
 
+#remark("7.3", name: "What may leave the device")[
+  Axiom 7.1 (i) is amended in one respect, and the rest of Axiom 7.1 is
+  retained. Content (Axiom 1.2) may be *served* rather than bundled --- the
+  handheld Topik surface reads its units from the project's file host since
+  CNT1 --- because content is the same for every learner and says nothing
+  about any of them. Everything a learner writes stays on the device: belief,
+  the evidence ring, the resume point, evaluation reports and their $f$
+  (Rem. 3.4). None of it is sent, and nothing on the server may be keyed by
+  who a learner is. The one admissible exception is a learner's *own* content
+  (Def. 8.3), and only in this shape: (a) the learner asks for it, per unit;
+  (b) it is stored against an identity the learner claims, not a profile the
+  server builds; (c) it is capped per claimed identity, so it is a shelf and
+  not a library --- the server is not a catalogue of every unit anyone has
+  generated; (d) it holds content only, never a report, an observation or a
+  belief record; (e) losing it costs the learner a regeneration and nothing
+  else, so Theorem 7.2 holds with the server in the same role as local
+  storage. A per-learner record of what was delivered or changed on the
+  server, such as a watermark of which units a learner has seen, is state and
+  is inadmissible under (d).
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = The Semantic Boundary
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2131,6 +2169,56 @@ estimating a cost.
   and the first is separable in time rather than in space, which is why the
   cost of the project's constraint is a slower content pipeline rather than a
   weaker product.
+]
+
+#definition("8.3", name: "Learner-side authoring")[
+  *Learner-side authoring* is class IV generation performed by a model the
+  learner chooses and runs, at a moment the learner chooses, between units.
+  The application supplies the *grammar* --- the prompt, the content schema,
+  the probe invariants of Remark 4.8, and a digest of the learner's most
+  recent evaluation reports --- and the learner carries it to their model and
+  the reply back, as Definition 7.2's human transport. The application then
+  checks the reply deterministically: it parses it against the schema and
+  runs the same audit that gates reviewed content. What passes is content
+  under Axiom 1.2 in every respect but two: it is not shipped, and it has no
+  reference profile (Def. 5.2).
+]
+
+#proposition("8.4", name: "Learner-side authoring is authoring time")[
+  Learner-side authoring satisfies Theorem 8.1 and Theorem 8.2 unchanged, and
+  the review Proposition 8.1 relies on is replaced by a deterministic check
+  and the learner's dispute.
+]
+
+#proof[
+  The application never calls a model: the prompt leaves and the reply
+  returns through the learner, so no class I--II code path acquires an oracle
+  dependency, and Theorem 8.1 holds. The generation happens between units,
+  so Axiom 8.1's latency is in no one's critical path. With no model at
+  all, the learner has the served content and nothing is broken, which is
+  Theorem 8.2. Proposition 8.1 needs review to resolve non-determinism. The
+  schema and the audit are class I graders, which Proposition 8.3 prefers
+  wherever they exist. They decide everything about a unit except the
+  validity of its authored candidates, which is semantic. That judgement is
+  left to the learner's dispute (Rem. 3.4), which feeds the next generation
+  and not belief. No belief is at risk in the meantime: with no reference
+  profile the unit's observations cannot enter Definition 5.1, and the
+  handheld valuation credits nothing anyway ($p_"credited" = "false"$,
+  Cor. 4.4).
+]
+
+#corollary("8.2", name: "The handheld generation loop")[
+  The handheld Topik valuation (Cor. 4.5) gains a way to write a unit. The
+  learner picks a TOPIK level and, optionally, a scene, and copies a prompt
+  carrying the grammar and a digest of their last five evaluation reports ---
+  the delta, not the path. They paste their model's reply back. The audit
+  names each problem, and its findings are offered as a message for the
+  learner's model, so the loop that repairs a unit runs between the learner
+  and their model and not through the application. A unit that parses may be
+  kept on the device, in a store with a fixed capacity (Thm. 7.1), and
+  replayed at will: going through the same unit again is expected, because
+  persistence is the claim (Rem. 3.3). An item that has been answered can be
+  disputed (Rem. 3.4), and the dispute rides the next prompt.
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2569,6 +2657,15 @@ would cost.
   correct and already non-blocking, but it forfeits whatever efficiency a
   matched bridge would have bought over it.
 
++ *Learners' models cannot author within the audit.* If replies to the
+  generation prompt routinely fail the schema, or pass it only by dropping
+  most probes, then Definition 8.3's grammar is not enough to steer a model
+  the learner happens to have, and Corollary 8.2 delivers listening with few
+  checks. Cost: the grammar is tightened, or the loop is restricted to models
+  known to follow it. Proposition 8.4 is untouched, since a failed reply
+  breaks nothing, but the supply of content it promises is not delivered.
+  Detectable from the audit's own findings, which the learner already sees.
+
 // ═══════════════════════════════════════════════════════════════════════════
 = Amendment Protocol
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2678,6 +2775,22 @@ is authored per probe. Records why: a closed set left most TOPIK-2 grammar
 (clause-linking connectives) unprobeable, and dropped silently any probe that
 named it. Filed ahead of the `packages/ui/topik` schema change, in the same
 change.
+
+*v1.7 --- 2026-09-26.* Defines learner-side authoring (Def. 8.3). The
+learner's own model generates a unit from a grammar the application supplies
+(the prompt, the schema, the probe invariants and a digest of recent
+evaluation reports). The learner carries the prompt out and the reply back.
+Shows this is authoring time: Theorems 8.1 and 8.2 stand, and review is
+replaced by a deterministic audit plus the learner's dispute (Prop. 8.4).
+Extends the evaluation report with the disputed key $f$ (Rem. 3.4). Amends
+Axiom 7.1 (i) to admit served content, and bounds what else may leave the
+device: learner state and reports never do; a learner's own units may, only
+on request, capped per claimed identity, and as content alone (Rem. 7.3).
+The handheld valuation gains the generation loop (Cor. 8.2). Adds a falsifier
+to §12. Filed with `packages/ui/topik`'s generation loop, which lands on
+the same branch one commit earlier and cites it, rather than ahead of it.
+Rem. 7.3 is filed ahead of the file host's lesson storage, which predates
+it and does not yet satisfy it.
 
 #pagebreak()
 
