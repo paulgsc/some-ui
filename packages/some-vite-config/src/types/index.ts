@@ -18,7 +18,11 @@ export type ViteConfigOptions = {
    * field so existing call sites don't need to update in this pass.
    */
   tsConfigPaths?: Record<"projects", Array<string>>
-  /** Build formats to generate */
+  /**
+   * Build formats to generate. Defaults to ESM only: every library here is
+   * `"type": "module"` and private, and nothing in the workspace loads one
+   * with `require()`. Each extra format is another full bundle pass.
+   */
   formats?: Array<"es" | "cjs" | "umd" | "iife">
   /** Additional plugins */
   additionalPlugins?: Array<PluginOption>

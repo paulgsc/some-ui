@@ -21,7 +21,6 @@
     ".": {
       "types": "./dist/@some-ui/speech.d.ts",
       "import": "./dist/@some-ui/speech.es.js",
-      "require": "./dist/@some-ui/speech.cjs.js",
       "default": "./dist/@some-ui/speech.es.js"
     },
     "./style.css": "./dist/speech.css"
@@ -32,7 +31,7 @@
   "homepage": "https://pgdev.maishatu.com/?tab=github",
   "keywords": [],
   "license": "MIT",
-  "main": "./dist/@some-ui/speech.cjs.js",
+  "main": "./dist/@some-ui/speech.es.js",
   "module": "./dist/@some-ui/speech.es.js",
   "name": "@some-ui/speech",
   "private": true,

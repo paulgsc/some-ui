@@ -11,7 +11,6 @@
     ".": {
       "types": "./dist/@some-ui/job-tracker.d.ts",
       "import": "./dist/@some-ui/job-tracker.es.js",
-      "require": "./dist/@some-ui/job-tracker.cjs.js",
       "default": "./dist/@some-ui/job-tracker.es.js"
     },
     "./style.css": "./dist/job-tracker.css"
@@ -22,7 +21,7 @@
   "homepage": "https://pgdev.maishatu.com/?tab=github",
   "keywords": [],
   "license": "MIT",
-  "main": "./dist/@some-ui/job-tracker.cjs.js",
+  "main": "./dist/@some-ui/job-tracker.es.js",
   "module": "./dist/@some-ui/job-tracker.es.js",
   "name": "@some-ui/job-tracker",
   "private": true,

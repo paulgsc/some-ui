@@ -21,7 +21,6 @@
     ".": {
       "types": "./dist/umag.d.ts",
       "import": "./dist/umag.es.js",
-      "require": "./dist/umag.cjs.js",
       "default": "./dist/umag.es.js"
     },
     "./style.css": "./dist/umag.css"
@@ -32,7 +31,7 @@
   "homepage": "https://pgdev.maishatu.com/?tab=github",
   "keywords": [],
   "license": "MIT",
-  "main": "./dist/umag.cjs.js",
+  "main": "./dist/umag.es.js",
   "module": "./dist/umag.es.js",
   "name": "@some-ui/umag",
   "private": true,

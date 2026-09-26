@@ -47,7 +47,7 @@
   "sideEffects": [
     "*.css"
   ],
-  "main": "./dist/some-ui-auth.cjs.js",
+  "main": "./dist/some-ui-auth.es.js",
   "module": "./dist/some-ui-auth.es.js",
   "types": "./dist/some-ui-auth.d.ts",
   "style": "./dist/auth.css",
@@ -55,7 +55,6 @@
     ".": {
       "types": "./dist/some-ui-auth.d.ts",
       "import": "./dist/some-ui-auth.es.js",
-      "require": "./dist/some-ui-auth.cjs.js",
       "default": "./dist/some-ui-auth.es.js"
     },
     "./style.css": "./dist/auth.css"
