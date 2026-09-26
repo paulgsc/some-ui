@@ -40,10 +40,13 @@ function isKnownPropositionId(value: unknown): value is PropositionId {
  * duplicating that distinction here would just be a second, divergent
  * place to get it wrong.
  */
-const PropositionIdSchema = z.custom<PropositionId>(isKnownPropositionId, {
-  message:
-    "propositionId must resolve against the CW-P register (Def. 1.5, B1/#1218) — μ (Def. 1.6) is authored, so an id that does not resolve is a validation failure, not a lint finding.",
-})
+export const PropositionIdSchema = z.custom<PropositionId>(
+  isKnownPropositionId,
+  {
+    message:
+      "propositionId must resolve against the CW-P register (Def. 1.5, B1/#1218) — μ (Def. 1.6) is authored, so an id that does not resolve is a validation failure, not a lint finding.",
+  }
+)
 
 /**
  * One member of `D`: an existing `DiffHunk`, the one proposition it
@@ -130,9 +133,10 @@ function hunkKeyOf(hunk: DiffHunk): string {
  * `isAdmissible`'s own derivation (Prop. 2.1's other half) is out of this
  * story's scope by its own telling — #1198 G3 already built
  * `checkAdmissibleClaimsAgreeWithDerivation` for exactly this comparison,
- * but wiring a real call site needs each member's own patched cost graph,
- * which only G4 (#1212, `rewriteOf`) computes. This schema records the
- * claim; that comparison is a later story's wiring, not this one's.
+ * and it needs each member's own patched cost graph. This schema records
+ * the claim; LTY-AUTHOR (#1540) runs the comparison for authored rounds,
+ * whose diff options carry that graph (`types/authored-round.ts`,
+ * `lib/leetype/round-assembly`).
  */
 export const DiffSetSchema = z
   .array(DiffSetMemberSchema)
