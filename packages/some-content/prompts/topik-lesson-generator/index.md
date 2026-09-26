@@ -7,8 +7,9 @@ array of `ConversationBatch`, the shape `TopikFileSchema` in
 `packages/ui/topik/src/lib/topik/entity/topik-types.ts` validates) and its
 manifest entry.
 
-The conversations are material, not the point. Any everyday subject serves,
-and none of them is a statement of what the curriculum should cover. What a
+Every lesson is a slice of one scene from a fictional **makjang family
+romcom** (see **The setting**). The conversations are material, not the
+point, and no lesson is a statement of what the curriculum should cover. What a
 generated lesson has to do is exercise the lesson engine correctly:
 
 - lines worth probing;
@@ -87,8 +88,8 @@ the learner has earned it.
 ```
 Level: [1–6 - the learner's self-assessed TOPIK level]
 Notes: [optional - from the learner's self-survey: what felt easy, hard or repetitive last time]
-Subject: [optional - an everyday setting ("ordering at a café"); pick one if absent]
-Key: [optional - kebab-case lesson key; derive one from the subject if absent]
+Scene: [optional - a premise for the scene ("the fiancée meets his mother"); invent one if absent]
+Key: [optional - kebab-case lesson key; derive one from the scene if absent]
 Conversations: [optional - default 3]
 T: [Apply Topik Lesson Generator v1.0]
 ```
@@ -96,6 +97,53 @@ T: [Apply Topik Lesson Generator v1.0]
 The generator returns two ` ```json ` blocks and nothing else: the lesson
 file, then its manifest entry. Both are saved and checked by commands, not
 read as prose.
+
+---
+
+## The setting: a makjang family romcom
+
+Makjang (막장) drama runs on family hierarchy, secrets and reversals. That
+is why it suits these probes: its dialogue lives on exactly what second- and
+third-order probes test.
+
+- **Honorifics up and down a family.** 어머님 to a mother-in-law, 회장님 to
+  the chairman, -시- to elders.
+- **Plain speech (반말) as a weapon,** or as a sudden intimacy.
+- **호칭 that mark where everyone stands.** 오빠, 아가씨, 김 비서.
+- **Reveals and accusations** that put statements into the past tense,
+  negation and reported speech.
+
+**The standing cast.** Reuse it across lessons, so forms of address stay
+consistent from week to week. Invent minor characters as a scene needs.
+
+- **Chairman Kang** (강 회장님): the family's matriarch. Formal speech,
+  addressed with full honorifics.
+- **Kang Tae-joon** (강태준): her son and heir. Plain speech to his mother
+  only in anger.
+- **Yoon Seo-yeon** (윤서연): his fiancée, from a modest family. Polite
+  speech throughout, and the viewer's point of view.
+- **Han Min-ji** (한민지): Tae-joon's former fiancée, now a rival. Honeyed
+  politeness with an edge.
+- **Secretary Park** (박 비서): loyal to the chairman. Formal speech.
+
+**Slicing a scene:**
+
+- Each conversation is one **beat** of the scene between exactly two
+  characters. A line has only `role` (`"assistant"` or `"user"`), with no
+  speaker field, so a third character can be talked about but not heard.
+- `"user"` is the character the scene follows, usually Seo-yeon.
+  `"assistant"` is the other.
+- Conversations follow one another through the same scene. The lesson
+  never shows speaker names, so name the characters where the learner needs
+  them:
+  - in the manifest `description`;
+  - in a probe's `prompt` ("Which reply would the chairman find rude?").
+    Naming who speaks is context, not meaning.
+- Keep it romcom: slammed doors, thrown water, whispered secrets. No graphic
+  violence.
+- The genre's registers still sit inside the TOPIK level. A level-1 scene is
+  short, polite lines with one 반말 slip; a level-5 one can sustain a
+  chaebol boardroom's formal register.
 
 ---
 
@@ -356,6 +404,9 @@ it.
 
 ## Worked example
 
+The fixture below is a café, not a drama scene. It is here for the shape of
+a good probe, which is the same in any setting.
+
 From `packages/ui/topik/src/components/topik/handheld/handheld-lesson/fixture.ts`,
 which holds one probe of every kind.
 
@@ -510,14 +561,14 @@ Two ` ```json ` blocks, in this order.
 
    ```json
    {
-     "key": "cafe-order",
-     "displayName": "Ordering at a café",
+     "key": "first-dinner",
+     "displayName": "The first family dinner",
      "description": "One sentence on the setting, not on the grammar.",
      "batchCount": 3,
      "totalQuestions": 5,
      "totalMessages": 14,
      "difficulty": "beginner",
-     "tags": ["topik-1", "cafe"]
+     "tags": ["topik-1", "makjang"]
    }
    ```
 
@@ -525,7 +576,7 @@ Two ` ```json ` blocks, in this order.
    - `totalQuestions` counts the desktop `questions`, not the probes.
    - `totalMessages` counts every line.
    - `difficulty` follows **Levels**. `tags` carries `"topik-<level>"` first,
-     then a subject tag.
+     then `"makjang"`.
 
 ---
 
