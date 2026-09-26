@@ -123,7 +123,8 @@ export function anchorOf(
  */
 export function isDeliverable(probe: Probe): boolean {
   if (probe.kind !== "build") return true
-  const split = tokenize(probe.acceptedAnswers?.[0] ?? probe.target)
+  // The target is the form the board tiles; alternatives are only graded.
+  const split = tokenize(probe.target)
   return split !== null && split.tokens.length <= MAX_TILES
 }
 

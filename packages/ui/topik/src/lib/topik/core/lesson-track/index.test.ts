@@ -151,6 +151,32 @@ describe("planConversation", () => {
     })
     expect(plan2.checkCount).toBe(1)
   })
+
+  it("judges a build by the target its board tiles, not an accepted alternative (Codex, #1546)", () => {
+    const build = (id: string, target: string, alternative: string): Probe => ({
+      id,
+      kind: "build",
+      order: 2,
+      source: "산책",
+      prompt: "Say it",
+      relation: "negation",
+      target,
+      acceptedAnswers: [alternative],
+    })
+    const tooLong = "하나 둘 셋 넷 다섯 여섯 일곱 여덟 아홉"
+    const plan2 = planConversation({
+      ...batch,
+      probes: [
+        // Tileable alternative, untileable target: would render a dead board.
+        build("b-long", tooLong, "안 가요"),
+        // Tileable target, untileable alternative: still a working board.
+        build("b-short", "안 가요", tooLong),
+      ],
+    })
+    expect(
+      plan2.steps.flatMap((s) => (s.kind === "check" ? [s.id] : []))
+    ).toEqual(["b-short"])
+  })
 })
 
 describe("lessonReducer", () => {
