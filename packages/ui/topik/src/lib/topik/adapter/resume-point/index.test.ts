@@ -26,6 +26,34 @@ describe("createResumeStore", () => {
     })
   })
 
+  it("keeps a point's outcomes, and still reads points written without them", () => {
+    const storage = memory()
+    const store = createResumeStore(storage, () => 1)
+    store.set("a", {
+      conversation: 0,
+      messageId: "m2",
+      outcomes: { firstTry: { "0": false }, review: ["0"] },
+    })
+    expect(store.get("a")?.outcomes).toEqual({
+      firstTry: { "0": false },
+      review: ["0"],
+    })
+
+    storage.setItem(
+      RESUME_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        last: "b",
+        points: { b: { conversation: 1, messageId: "m1", at: 2 } },
+      })
+    )
+    expect(createResumeStore(storage).get("b")).toEqual({
+      conversation: 1,
+      messageId: "m1",
+      at: 2,
+    })
+  })
+
   it("keeps only the most recent points", () => {
     let clock = 0
     const store = createResumeStore(memory(), () => (clock += 1))

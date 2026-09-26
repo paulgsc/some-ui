@@ -36,6 +36,7 @@ import {
   currentStep,
   glossUnlocked,
   lessonReducer,
+  outcomesOf,
   planConversation,
   progressOf,
   revealCap,
@@ -154,7 +155,12 @@ export function useHandheldLesson({
         ) ?? -1
       restored = lessonReducer(
         restored,
-        { type: "RESUME", conversation: point.conversation, message },
+        {
+          type: "RESUME",
+          conversation: point.conversation,
+          message,
+          outcomes: point.outcomes,
+        },
         contextFor(point.conversation)
       )
     }
@@ -209,6 +215,13 @@ export function useHandheldLesson({
   const armed = useRef(false)
   const lineMessage =
     step?.kind === "line" ? batch?.messages[step.message] : undefined
+  // Where a reload lands: the line itself, a first-presentation check's line,
+  // or - in the review round - the last line, so a reload does not replay the
+  // lines between a missed check's anchor and the end.
+  const resumeMessage =
+    step?.kind === "check"
+      ? batch?.messages[step.repeat ? batch.messages.length - 1 : step.anchor]
+      : lineMessage
 
   useEffect(() => {
     if (!lineMessage || !armed.current) return
@@ -226,20 +239,16 @@ export function useHandheldLesson({
       store.clear(topikKey)
       return
     }
-    if (lineMessage) {
+    // A check resumes at its line, with its result: NEXT then passes over
+    // what was already answered instead of asking it twice.
+    if (resumeMessage) {
       store.set(topikKey, {
         conversation: lesson.conversation,
-        messageId: lineMessage.id,
+        messageId: resumeMessage.id,
+        outcomes: outcomesOf(lesson),
       })
     }
-  }, [
-    store,
-    topikKey,
-    restoredFor,
-    lesson.conversation,
-    lesson.finished,
-    lineMessage,
-  ])
+  }, [store, topikKey, restoredFor, lesson, resumeMessage])
 
   // ── Actions ──────────────────────────────────────────────────────────────
 

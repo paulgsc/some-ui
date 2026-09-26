@@ -8,6 +8,7 @@ import {
   currentStep,
   glossUnlocked,
   lessonReducer,
+  outcomesOf,
   planConversation,
   progressOf,
   tallyOf,
@@ -242,5 +243,62 @@ describe("glossUnlocked", () => {
     expect(
       glossUnlocked(twoOnOne, { firstTry: { 0: true, 1: false } }, 0)
     ).toBe(true)
+  })
+})
+
+describe("resume outcomes (Codex, #1544)", () => {
+  it("round-trips a conversation's results through a resume", () => {
+    // p2 anchored to L0 missed, p0 on L1 answered right; the learner is on L2.
+    const before = run([
+      { type: "NEXT" },
+      answer(false),
+      { type: "NEXT" },
+      { type: "NEXT" },
+      answer(true),
+      { type: "NEXT" },
+    ])
+    const resumed = run([
+      {
+        type: "RESUME",
+        conversation: 0,
+        message: 1,
+        outcomes: outcomesOf(before),
+      },
+    ])
+    expect(resumed.firstTry).toEqual(before.firstTry)
+    expect(resumed.review).toEqual(before.review)
+    // Resumed at L1: its answered check is passed over, not re-asked.
+    expect(currentStep(plan, run([{ type: "NEXT" }], resumed))).toMatchObject({
+      kind: "line",
+      message: 2,
+    })
+  })
+
+  it("drops keys the content no longer has, and reviews nothing not missed", () => {
+    const resumed = run([
+      {
+        type: "RESUME",
+        conversation: 0,
+        message: 0,
+        outcomes: {
+          firstTry: { "2": true, "7": false },
+          review: ["2", "7", "0"],
+        },
+      },
+    ])
+    expect(resumed.firstTry).toEqual({ 2: true })
+    expect(resumed.review).toEqual([])
+  })
+
+  it("restarts clean when the line itself no longer resolves", () => {
+    const resumed = run([
+      {
+        type: "RESUME",
+        conversation: 0,
+        message: 99,
+        outcomes: { firstTry: { "2": false }, review: ["2"] },
+      },
+    ])
+    expect(resumed).toEqual(createLessonState(true, 0))
   })
 })

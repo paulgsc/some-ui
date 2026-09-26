@@ -183,7 +183,19 @@ export type LessonEvent =
   | { type: "NEXT_CONVERSATION" }
   | { type: "RESTART_CONVERSATION" }
   /** Jump to a conversation's line, e.g. restoring a resume point. */
-  | { type: "RESUME"; conversation: number; message: number }
+  | {
+      type: "RESUME"
+      conversation: number
+      message: number
+      /** The conversation's results so far, as `outcomesOf` wrote them. */
+      outcomes?: LessonOutcomes
+    }
+
+/** A conversation's check results in a storable form: string keys only. */
+export type LessonOutcomes = {
+  firstTry: Record<string, boolean>
+  review: Array<string>
+}
 
 export const startReveal = (audio: boolean): RevealLevel => (audio ? 0 : 1)
 
@@ -259,6 +271,46 @@ export function glossUnlocked(
       step.anchor !== message ||
       step.question in state.firstTry
   )
+}
+
+/** The key a check's results are recorded under. */
+export const checkKey = (step: CheckStep): string => String(step.question)
+
+/** The current conversation's results, ready to persist. */
+export function outcomesOf(state: LessonState): LessonOutcomes {
+  return {
+    firstTry: Object.fromEntries(
+      Object.entries(state.firstTry).map(([key, correct]) => [key, correct])
+    ),
+    review: state.review.map(String),
+  }
+}
+
+/**
+ * Stored results, kept only for checks this plan still has: a key the
+ * content no longer carries is an orphan (Thm. 1.1), and a review entry
+ * without a recorded miss is not a promise anyone made.
+ */
+function restoreOutcomes(
+  plan: LessonPlan,
+  outcomes: LessonOutcomes
+): Pick<LessonState, "firstTry" | "review"> {
+  const known = new Map<string, number>()
+  for (const step of plan.steps) {
+    if (step.kind === "check") known.set(checkKey(step), step.question)
+  }
+  const firstTry: Record<number, boolean> = {}
+  for (const [key, correct] of Object.entries(outcomes.firstTry)) {
+    const question = known.get(key)
+    if (question !== undefined) firstTry[question] = correct
+  }
+  const review = [...new Set(outcomes.review)].flatMap((key) => {
+    const question = known.get(key)
+    return question !== undefined && firstTry[question] === false
+      ? [question]
+      : []
+  })
+  return { firstTry, review }
 }
 
 /** Position of a message's line step, or -1. */
@@ -384,7 +436,14 @@ export function lessonReducer(
       // `ctx.plan` must already describe `event.conversation`; the caller
       // switches plans before resuming into another conversation.
       const index = lineStepIndex(plan, event.message)
-      return index === -1 ? fresh : { ...fresh, step: index }
+      // Unresolvable line: the conversation's start, and its results with it
+      // - a score sheet for a position we cannot find is not trustworthy.
+      if (index === -1) return fresh
+      return {
+        ...fresh,
+        ...(event.outcomes ? restoreOutcomes(plan, event.outcomes) : {}),
+        step: index,
+      }
     }
 
     default: {

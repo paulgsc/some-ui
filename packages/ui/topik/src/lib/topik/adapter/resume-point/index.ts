@@ -19,9 +19,23 @@ export const RESUME_STORAGE_KEY = "topik:handheld-resume"
 /** How many topiks remember a place. Oldest is forgotten first. */
 export const MAX_RESUME_POINTS = 12
 
+/**
+ * The conversation's check results so far, keyed as the lesson keys them.
+ * Without them a resumed conversation would re-ask what was answered and lose
+ * the misses it promised to revisit - a tally that is wrong, not just short.
+ * Still not a competence claim: it is this conversation's score sheet, it is
+ * discarded with the point, and restoring it drops any key the content no
+ * longer has (Thm. 1.1).
+ */
+export type ResumeOutcomes = {
+  firstTry: Record<string, boolean>
+  review: Array<string>
+}
+
 export type ResumePoint = {
   conversation: number
   messageId: string
+  outcomes?: ResumeOutcomes
   /** Epoch ms of the last write; orders eviction. */
   at: number
 }
@@ -34,6 +48,13 @@ const ResumeDocumentSchema = z.object({
     z.object({
       conversation: z.number().int().nonnegative(),
       messageId: z.string(),
+      // Optional: points written before outcomes were kept still resume.
+      outcomes: z
+        .object({
+          firstTry: z.record(z.string(), z.boolean()),
+          review: z.array(z.string()),
+        })
+        .optional(),
       at: z.number(),
     })
   ),
