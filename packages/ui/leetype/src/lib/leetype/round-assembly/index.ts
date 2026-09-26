@@ -2,8 +2,8 @@ import {
   checkAdmissibleClaimsAgreeWithDerivation,
   isAdmissible,
 } from "@leetype/lib/leetype/admissibility"
-import { checkConstraintDimensions } from "@leetype/lib/leetype/constraint"
 import type { CostGraph } from "@leetype/lib/leetype/cost"
+import { costOf, dimensionsOfMonomial } from "@leetype/lib/leetype/cost"
 import { lintRoundEntries } from "@leetype/lib/leetype/exercises/corpus-lint"
 import type {
   RoundCycleAdmissibleAdvance,
@@ -160,6 +160,32 @@ function admissibilityOf(
   }
 }
 
+/**
+ * R2's "a bound on a dimension the cost never depends on is a lint failure",
+ * checked against `costOf(graph)`'s surviving terms rather than the graph's
+ * raw structure. `isAdmissible` evaluates only those terms, so a dimension
+ * that appears only under zero or cancelling work (`Loop(dim("m"), W(0))`)
+ * is a bound admissibility never reads, even though
+ * `lib/leetype/constraint`'s structural `checkConstraintDimensions` would
+ * count it. The same cost-not-structure reading `lib/leetype/round-cycle`
+ * uses to route an unbounded dimension.
+ */
+function checkCostDimensions(
+  constraints: ConstraintSet,
+  graph: CostGraph
+): Array<string> {
+  const costDimensions = new Set(
+    costOf(graph).flatMap((term) => [...dimensionsOfMonomial(term.monomial)])
+  )
+  return constraints
+    .filter((constraint) => !costDimensions.has(constraint.dimension))
+    .map(
+      (constraint) =>
+        `constraint on dimension "${constraint.dimension}" bounds nothing in T(G) — no term of the ` +
+        "computed cost depends on it, so it cannot participate in an admissibility decision."
+    )
+}
+
 /** Every per-round check that needs the whole `Round`, beyond the schema and `lintRoundEntries`. */
 function checkAuthoredRound(round: Round): Array<string> {
   const where = `round "${round.id}"`
@@ -184,7 +210,7 @@ function checkAuthoredRound(round: Round): Array<string> {
   }
 
   violations.push(
-    ...checkConstraintDimensions(after, round.graph).map(
+    ...checkCostDimensions(after, round.graph).map(
       (violation) => `${where}, G_A: ${violation}`
     )
   )
@@ -206,7 +232,7 @@ function checkAuthoredRound(round: Round): Array<string> {
       )
     }
     violations.push(
-      ...checkConstraintDimensions(after, option.graph).map(
+      ...checkCostDimensions(after, option.graph).map(
         (violation) => `${where}, diff option ${index}, G_{A+d}: ${violation}`
       )
     )

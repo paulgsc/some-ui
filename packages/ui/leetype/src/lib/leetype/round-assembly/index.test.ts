@@ -1,4 +1,4 @@
-import { dim, Loop, W } from "@leetype/lib/leetype/cost"
+import { dim, Loop, Seq, W } from "@leetype/lib/leetype/cost"
 import {
   applyHunk,
   assembleRound,
@@ -198,7 +198,27 @@ describe("lintAuthoredRounds", () => {
       { ...base, diffOptions: [{ ...first, graph: W(1) }, second] },
     ])
     expect(violations.join("\n")).toMatch(
-      /diff option 0, G_\{A\+d\}: constraint on dimension "n" has no matching repetition/
+      /diff option 0, G_\{A\+d\}: constraint on dimension "n" bounds nothing in T\(G\)/
+    )
+  })
+
+  it("reports a bounded dimension that only zero-cost work repeats over", () => {
+    const base = round({
+      constraintDiff: {
+        before: [
+          { dimension: "n", operator: "<=", bound: 10 },
+          { dimension: "m", operator: "<=", bound: 10 },
+        ],
+        after: [
+          { dimension: "n", operator: "<=", bound: 1_000 },
+          { dimension: "m", operator: "<=", bound: 1_000 },
+        ],
+      },
+      graph: Seq(Loop(dim("n", 2), W(1)), Loop(dim("m"), W(0))),
+    })
+    const violations = lintAuthoredRounds([base]).join("\n")
+    expect(violations).toMatch(
+      /round "total", G_A: constraint on dimension "m" bounds nothing in T\(G\)/
     )
   })
 
