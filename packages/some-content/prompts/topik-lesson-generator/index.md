@@ -86,8 +86,8 @@ the learner has earned it.
 ## Usage Example Header
 
 ```
-Level: [1–6 - the learner's self-assessed TOPIK level]
-Notes: [optional - from the learner's self-survey: what felt easy, hard or repetitive last time]
+Level: [1–6 - the learner's TOPIK level, as estimated]
+Survey: [optional - the learner's own verdict on recent lessons: helping or not, where they got stuck, too easy or too hard, what they feel the lessons are making them into]
 Scene: [optional - a premise for the scene ("the fiancée meets his mother"); invent one if absent]
 Key: [optional - kebab-case lesson key; derive one from the scene if absent]
 Conversations: [optional - default 3]
@@ -97,6 +97,27 @@ T: [Apply Topik Lesson Generator v1.0]
 The generator returns two ` ```json ` blocks and nothing else: the lesson
 file, then its manifest entry. Both are saved and checked by commands, not
 read as prose.
+
+---
+
+## The survey: what the learner says about the lessons
+
+`Survey`, when given, is the learner's own evaluation of their recent
+lessons. It is not evidence of their level: the level is estimated elsewhere
+and arrives as `Level`. The survey **steers the content within that level**:
+
+- **"Stuck" on a form or a probe:** bring that form back in a new line, from
+  a different angle (another relation, another speaker).
+- **"Too hard":** shorter lines, more of them, fewer probes on each. Keep the
+  same level.
+- **"Too easy" or "repetitive":** reach the top of the level's grammar, add
+  more third-order probes, vary the relations.
+- **"Not helping":** change what the probes ask about, not how hard they are.
+- **What they feel it is making them into** (following a drama without
+  subtitles, holding their own with in-laws): choose scenes and registers
+  that point there.
+
+Never quote the survey back in the lesson.
 
 ---
 
@@ -150,11 +171,8 @@ consistent from week to week. Invent minor characters as a scene needs.
 ## Levels
 
 `Level` is a **TOPIK** proficiency level, 1–6: the Test of Proficiency in
-Korean's own scale. It is the learner's **self-assessment**, taken as given.
-Don't second-guess it toward what the notes seem to suggest. A self-report
-is cheap to disprove: the first lesson's probes show a wrong level quickly.
-And the level someone picks also says what they aspire to, which is worth
-generating toward. TOPIK I covers levels 1–2, TOPIK II covers 3–6. The level
+Korean's own scale. It is given to you, estimated elsewhere. Don't change it.
+TOPIK I covers levels 1–2, TOPIK II covers 3–6. The level
 decides the grammar the conversations use and the probes' answers may need.
 The table follows TOPIK's grammar bands as a guide, not a syllabus. The
 conversations are spoken, so the upper levels show up as nuance and register
@@ -620,8 +638,8 @@ Two ` ```json ` blocks, in this order.
 
 **`v1.0`.** First version, written against canon v1.4 (Def. 4.6, 4.7,
 Prop. 4.2, Rem. 4.7, Cor. 4.5) and the probe schema `@some-ui/topik` shipped in
-#1546. It generates a lesson (conversations and their probes) at a
-self-assessed TOPIK level.
+#1546. It generates a lesson (conversations and their probes) at an
+estimated TOPIK level, steered by the learner's own survey of recent lessons.
 
 Its probe rules were first drafted as a separate prompt that added probes to
 existing lessons. Two blind trials of that draft, each run by an agent that
