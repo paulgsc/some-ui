@@ -1,4 +1,5 @@
-import type { CostGraph } from "@leetype/lib/leetype/cost"
+import type { CostGraph, Monomial } from "@leetype/lib/leetype/cost"
+import { multiplyMonomials, ONE } from "@leetype/lib/leetype/cost"
 import { AlgorithmSchema } from "@leetype/types/algorithm"
 import {
   BudgetSchema,
@@ -35,6 +36,39 @@ const MonomialFactorSchema = z.object({
   exponent: z.number().int(),
 })
 
+/** Structural equality of two monomials, factor by factor (key order never matters). */
+function sameMonomial(a: Monomial, b: Monomial): boolean {
+  return (
+    a.length === b.length &&
+    a.every((factor, index) => {
+      const other = b[index]
+      return (
+        other?.kind === factor.kind &&
+        other.dimension === factor.dimension &&
+        other.exponent === factor.exponent
+      )
+    })
+  )
+}
+
+/**
+ * A repetition expression must already be in `lib/leetype/cost`'s normal
+ * form: no zero exponent, no repeated factor, factors in order. Otherwise
+ * `costOf` normalizes a factor like `n^0` or `n * n^-1` away while
+ * `dimensionsOfGraph` still reports `n`, and `checkConstraintDimensions`
+ * would count a bound that `isAdmissible` never reads.
+ */
+const RepetitionSchema = z
+  .array(MonomialFactorSchema)
+  .refine(
+    (repetition) =>
+      sameMonomial(repetition, multiplyMonomials(repetition, ONE)),
+    {
+      message:
+        "a repetition expression must be normalized: no zero exponent, no repeated or cancelling factor, factors sorted (build it with dim/logDim/multiplyMonomials)",
+    }
+  )
+
 /**
  * `G` (Def. 2.1) as data. Authored, never parsed from source: nothing in
  * this workspace derives a cost graph from a program (`lib/leetype/
@@ -47,7 +81,7 @@ export const CostGraphSchema: z.ZodType<CostGraph> = z.lazy(() =>
     z.object({ kind: z.literal("seq"), children: z.array(CostGraphSchema) }),
     z.object({
       kind: z.literal("loop"),
-      repetition: z.array(MonomialFactorSchema),
+      repetition: RepetitionSchema,
       body: CostGraphSchema,
     }),
   ])

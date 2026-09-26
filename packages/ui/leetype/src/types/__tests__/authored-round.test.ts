@@ -129,6 +129,31 @@ describe("CostGraphSchema", () => {
     ).toBe(true)
   })
 
+  it("rejects a repetition that is not in normal form", () => {
+    const loop = (repetition: unknown): unknown => ({
+      kind: "loop",
+      repetition,
+      body: { kind: "work", cost: 1 },
+    })
+    const n = (exponent: number): unknown => ({
+      kind: "pow",
+      dimension: "n",
+      exponent,
+    })
+    expect(CostGraphSchema.safeParse(loop([n(0)])).success).toBe(false)
+    expect(CostGraphSchema.safeParse(loop([n(1), n(-1)])).success).toBe(false)
+    expect(CostGraphSchema.safeParse(loop([n(1), n(1)])).success).toBe(false)
+    expect(
+      CostGraphSchema.safeParse(
+        loop([
+          { kind: "pow", dimension: "n", exponent: 1 },
+          { kind: "log", dimension: "n", exponent: 1 },
+        ])
+      ).success
+    ).toBe(false)
+    expect(CostGraphSchema.safeParse(loop([n(2)])).success).toBe(true)
+  })
+
   it("rejects an unknown node kind", () => {
     expect(
       CostGraphSchema.safeParse({ kind: "recurse", cost: 1 }).success
