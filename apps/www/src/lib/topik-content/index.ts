@@ -2,57 +2,56 @@
  * Where the Topik applet's study material comes from in this app.
  *
  * `@some-ui/topik` ships two repositories that default to plain HTTP against
- * `/topiks/manifest.json` and `/topiks/<key>.json`, and both factories take
- * a loader precisely so a host can decide where those files actually live
- * (see their factory doc comments). This is that decision for `apps/www`,
- * built on the same `@some-ui/fetch-kit` `createDataSource` that
- * `hangul-vocab` already uses for its content:
+ * a manifest and one file per lesson, and both factories take a loader
+ * precisely so a host can decide where those files actually live (see their
+ * factory doc comments). This is that decision for `apps/www`, built on the
+ * same `@some-ui/fetch-kit` `createDataSource` that `hangul-vocab` uses for
+ * its content:
  *
  * - **`vite dev` / `vite preview` / Docker** (`DATA_MODE === "server"`) -
- *   fetch from `public/topiks`, which is whatever is symlinked (dev, via
- *   `pnpm content:link`) or bind-mounted (Docker, via
- *   `WWW_TOPIK_ASSETS_PATH`) from `packages/some-content/public/topiks`.
- * - **GitHub Pages** (`DATA_MODE === "static"`) - that build deploys no
- *   companion data at all, so there is nothing to fetch. The catalogue
- *   resolves to empty rather than issuing a request that would 404.
+ *   fetch from `file_host`'s curriculum routes (paulgsc/server#276):
+ *   `GET /api/v1/curriculum/manifest.json` and `GET /api/v1/curriculum/:key`,
+ *   at the same base every other `file_host` call resolves
+ *   (`lib/file-host-config`: the same-origin proxy on an HTTPS page, the
+ *   published port on an HTTP one, `VITE_FILE_HOST_ENDPOINT` over both).
+ *   A lesson is a row the server owns, so adding one means importing it
+ *   (`import-curriculum`, paulgsc/server#275), not symlinking or mounting a
+ *   directory into this app's `public/` - both of which are retired
+ *   (some-ui#1048). `packages/some-content/public/topiks` is still where
+ *   lesson files are authored; it is the importer's input, not something
+ *   this app serves.
+ * - **GitHub Pages** (`DATA_MODE === "static"`) - that build has no
+ *   `file_host` at all, so there is nothing to fetch. The catalogue resolves
+ *   to empty rather than issuing a request that could only fail.
  *
  * An empty catalogue is the honest answer for a build with no material, and
  * it is a *valid* manifest rather than an error: the applet renders its
  * "nothing to study" path instead of a failure it cannot do anything about.
- * That is the same shape as honeycomb falling back to its bundled seed -
- * except topik ships no seed, so empty is the seed.
+ * The server says the same thing the same way - a corpus nobody has imported
+ * into is an empty manifest at 200, not a 404.
  *
  * `createDataSource.fetch()` always resolves an endpoint and issues a
  * request - it has no notion of "this mode has no resource" - so the empty
  * fallback above stays a gate in front of it, not something the data source
  * itself decides. Only a 404, or a response that plainly isn't a manifest,
- * falls back to the empty manifest; anything else (a timeout, a 500) is a
- * real failure and surfaces as one, same as `hangul-vocab`'s non-404
- * handling.
+ * falls back to the empty manifest; anything else (a timeout, a 500, the
+ * server's own 400 for a corpus over its manifest ceiling) is a real failure
+ * and surfaces as one, same as `hangul-vocab`'s non-404 handling.
  *
- * That second case is not hypothetical: both `nginx.https.conf` and the
- * Dockerfile's nginx config serve every unmatched path via
- * `try_files $uri $uri/ /index.html`, and `vite preview` does the same for
- * SPA navigation. A `public/topiks` that exists but hasn't been
- * populated/mounted (a fresh checkout, an unmounted `WWW_TOPIK_ASSETS_PATH`)
- * therefore answers `/topiks/manifest.json` with `index.html` at HTTP 200,
- * not a 404 - the exact "nobody has generated any topiks yet" case, just
- * dressed up as success. `manifestShapeSchema` below is what catches that.
+ * `manifestShapeSchema` below was once the only thing standing between the
+ * applet and an nginx `try_files ... /index.html` fallback, which answers a
+ * missing static file with the app shell at HTTP 200. `file_host` answers a
+ * missing lesson with a real 404, so that check is now the second line of
+ * defence rather than the first - and it stays, because a misconfigured
+ * `VITE_FILE_HOST_ENDPOINT` that lands on a static host would bring the same
+ * failure straight back.
  */
 
 import { ApiError, createDataSource } from "@some-ui/fetch-kit"
 import { z } from "zod"
 
 import { DATA_MODE, FETCHES_CONTENT } from "@/lib/data-mode"
-
-/**
- * Mirrors `packages/some-content/public/topiks`. Same relative path in every
- * mode that serves `public/` - the mode gate is whether a request happens at
- * all, not where it points.
- */
-export const TOPIK_CONTENT_ROOT = "/topiks"
-
-export const TOPIK_MANIFEST_URL = `${TOPIK_CONTENT_ROOT}/manifest.json`
+import { fileHostRouteUrl } from "@/lib/file-host-config"
 
 /**
  * A well-formed manifest with nothing in it.
@@ -72,33 +71,29 @@ export const EMPTY_TOPIK_MANIFEST: {
 }
 
 /**
- * Resolves a manifest entry's key to the file that holds its batches.
- *
- * Keys in the manifest are identifiers, not paths - a key that already
- * looks like a path or URL is passed through, so a manifest can point at
- * material that doesn't sit under `/topiks` if it ever needs to.
+ * `createDataSource` locators return `URL`. `fileHostRouteUrl` may return a
+ * same-origin path (the HTTPS proxy) or an absolute URL (the published
+ * port), and resolving against the page's origin handles both. It returns
+ * `undefined` only with no `window`, where no request is made anyway.
  */
-export function locateTopikFile(key: string): string {
-  if (key.startsWith("/") || key.startsWith("http")) return key
-  return `${TOPIK_CONTENT_ROOT}/${key}.json`
+function toUrl(located: string | undefined): URL {
+  if (located === undefined) {
+    throw new Error("No file_host base URL outside a browser")
+  }
+  return new URL(located, window.location.origin)
 }
 
-/**
- * `createDataSource` locators return `URL`, resolved against the page's own
- * origin - same as `hangul-vocab`'s `locateVocabFile`. Both modes share one
- * locator per resource: the interesting decision isn't *where* a file is
- * (same relative path in every mode that serves `public/`), it's *whether*
- * to ask at all, which `loadTopikManifest`/`loadTopikFile` decide via
- * `FETCHES_CONTENT` before either data source is touched.
- */
 function locateTopikManifestUrl(): URL {
-  return new URL(TOPIK_MANIFEST_URL, window.location.origin)
+  return toUrl(fileHostRouteUrl("/api/v1/curriculum/manifest.json"))
 }
 
-function locateTopikFileUrl(key: string): URL {
-  return new URL(locateTopikFile(key), window.location.origin)
+/** A manifest key is a lesson's identity on the server, never a path. */
+export function locateTopikFileUrl(key: string): URL {
+  return toUrl(fileHostRouteUrl("/api/v1/curriculum/:key", { key }))
 }
 
+// The `static` locators are never reached - `FETCHES_CONTENT` gates every
+// request below - but `createDataSource` wants one per mode.
 const manifestSource = createDataSource<void, unknown>(
   { static: locateTopikManifestUrl, server: locateTopikManifestUrl },
   { mode: DATA_MODE }
@@ -122,6 +117,22 @@ const manifestShapeSchema = z.object({
   topiks: z.array(z.unknown()),
 })
 
+/**
+ * Whether `error` is the fetch client refusing a body that failed
+ * `manifestShapeSchema`. It reports that as status 400, which is also the
+ * status `file_host` answers with for a real refusal (a corpus over its
+ * manifest ceiling); only the client's own carries the `validation` issues.
+ */
+function isNotAManifest(error: ApiError): boolean {
+  const { data } = error
+  return (
+    error.status === 400 &&
+    typeof data === "object" &&
+    data !== null &&
+    "validation" in data
+  )
+}
+
 /** Handed to `KoreanStudyPage` as `loadManifest`. */
 export async function loadTopikManifest(): Promise<unknown> {
   if (!FETCHES_CONTENT) return EMPTY_TOPIK_MANIFEST
@@ -129,17 +140,16 @@ export async function loadTopikManifest(): Promise<unknown> {
   try {
     return await manifestSource.fetch(undefined, manifestShapeSchema)
   } catch (error) {
-    // A 404 is the common case on a fresh checkout: the material is curated
-    // and gitignored (see apps/www/.gitignore), so "nobody has generated any
-    // topiks yet" is expected, not broken. A response that fails
-    // `manifestShapeSchema` (status 400, thrown by the shared fetch client)
-    // is the same case wearing an SPA fallback's clothes - see this file's
-    // header comment. An empty catalogue says either in the UI; anything
-    // else (a timeout, a 500) is a real failure and should surface as one
-    // instead of vanishing into the same fallback.
+    // A 404 means this `file_host` has no curriculum route to answer with -
+    // an older server, most likely - and a body that is not a manifest means
+    // the request landed somewhere that is not `file_host` at all. Neither
+    // is anything the applet can act on, so both read as "nothing to study".
+    // Anything else (a timeout, a 500, the server refusing an oversized
+    // corpus) is a real failure and surfaces as one instead of vanishing
+    // into the same fallback.
     if (
       error instanceof ApiError &&
-      (error.status === 404 || error.status === 400)
+      (error.status === 404 || isNotAManifest(error))
     ) {
       return EMPTY_TOPIK_MANIFEST
     }
