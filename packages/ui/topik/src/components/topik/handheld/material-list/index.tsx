@@ -37,7 +37,7 @@ export const MaterialList = ({
       <button
         type="button"
         onClick={() => onSelect(resume.topik.key)}
-        className="bg-primary text-primary-foreground flex min-h-16 items-center gap-3 rounded-xl p-4 text-left"
+        className="bg-primary text-primary-foreground flex min-h-16 items-center gap-3 rounded-2xl p-4 text-left"
       >
         <PlayCircle className="size-8 shrink-0" />
         <span className="min-w-0 flex-1">
@@ -63,7 +63,11 @@ export const MaterialList = ({
     {error && (
       <div className="flex flex-col items-center gap-3 py-8 text-center">
         <p className="text-destructive text-sm">{error}</p>
-        <Button variant="outline" className="h-11" onClick={onReload}>
+        <Button
+          variant="outline"
+          className="h-11 rounded-xl"
+          onClick={onReload}
+        >
           Try again
         </Button>
       </div>
@@ -81,7 +85,7 @@ export const MaterialList = ({
           <button
             type="button"
             onClick={() => onSelect(item.key)}
-            className="bg-card border-border flex min-h-16 w-full items-center gap-3 rounded-xl border p-4 text-left"
+            className="bg-card border-border flex min-h-16 w-full items-center gap-3 rounded-2xl border p-4 text-left"
           >
             <span className="min-w-0 flex-1">
               <span className="block truncate font-semibold">

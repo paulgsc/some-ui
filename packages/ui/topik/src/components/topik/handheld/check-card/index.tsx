@@ -21,6 +21,7 @@ import {
   gradeSelection,
 } from "@topik/lib/topik/core/tile-assembly"
 import {
+  Check,
   CheckCircle2,
   ChevronRight,
   RotateCcw,
@@ -165,7 +166,7 @@ export const CheckCard = ({
       >
         <div
           className={cn(
-            "flex items-center gap-3 rounded-xl border p-3",
+            "flex items-center gap-3 rounded-2xl border p-3",
             answered.correct
               ? "bg-success/10 border-success/30"
               : "bg-destructive/10 border-destructive/30"
@@ -196,12 +197,12 @@ export const CheckCard = ({
           <p className="text-sm leading-relaxed">{question.explanation}</p>
         )}
         {question.grammarNote && (
-          <p className="bg-muted/60 rounded-lg p-3 text-sm leading-relaxed">
+          <p className="bg-muted/60 rounded-xl p-3 text-sm leading-relaxed">
             {question.grammarNote}
           </p>
         )}
         {anchor && (
-          <div className="border-border rounded-lg border p-3">
+          <div className="border-border rounded-xl border p-3">
             <p lang="ko" className="font-semibold break-keep">
               {anchor.korean || anchor.content}
             </p>
@@ -211,7 +212,7 @@ export const CheckCard = ({
       </div>
     )
     const dock = (
-      <Button className="h-12 w-full gap-2" onClick={onNext}>
+      <Button className="h-12 rounded-2xl w-full gap-2" onClick={onNext}>
         Continue <ChevronRight className="size-5" />
       </Button>
     )
@@ -275,17 +276,27 @@ export const CheckCard = ({
               aria-checked={choice === index}
               onClick={() => setChoice(index)}
               className={cn(
-                "min-h-11 rounded-lg border-2 px-3 py-2 text-left text-sm font-medium break-keep transition-colors",
+                "flex min-h-12 items-center gap-3 rounded-2xl border px-4 py-2 text-left text-sm font-medium break-keep transition-colors",
+                // Chosen reads as a tinted fill and a tick, not an outline:
+                // on dark palettes --primary is near-white, and a full-
+                // strength primary border glared like a white frame.
                 choice === index
-                  ? "border-primary bg-primary/10"
+                  ? "border-primary/40 bg-primary/15"
                   : "border-border bg-card"
               )}
             >
-              {option}
+              <span className="min-w-0 flex-1">{option}</span>
+              {choice === index && (
+                <Check className="text-primary size-4 shrink-0" />
+              )}
             </button>
           ))}
         </div>
-        <Button className="h-12 w-full" disabled={!canSubmit} onClick={submit}>
+        <Button
+          className="h-12 rounded-2xl w-full"
+          disabled={!canSubmit}
+          onClick={submit}
+        >
           Check
         </Button>
       </>
@@ -299,7 +310,7 @@ export const CheckCard = ({
         <div className="flex gap-2">
           <Button
             variant="ghost"
-            className="h-12 px-3"
+            className="h-12 rounded-2xl px-3"
             disabled={placedIds.length === 0}
             onClick={() => setPlacedIds([])}
             aria-label="Clear answer"
@@ -307,7 +318,7 @@ export const CheckCard = ({
             <RotateCcw className="size-5" />
           </Button>
           <Button
-            className="h-12 min-w-0 flex-1"
+            className="h-12 rounded-2xl min-w-0 flex-1"
             disabled={!canSubmit}
             onClick={submit}
           >

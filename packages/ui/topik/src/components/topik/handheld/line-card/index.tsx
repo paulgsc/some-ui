@@ -144,7 +144,7 @@ export const LineCard = ({
         {audio && (
           <Button
             variant="secondary"
-            className="h-12 min-w-0 flex-1 gap-2"
+            className="h-12 rounded-2xl min-w-0 flex-1 gap-2"
             onClick={onReplay}
             aria-label="Play line"
           >
@@ -155,7 +155,7 @@ export const LineCard = ({
         {canReveal && (
           <Button
             variant="outline"
-            className="h-12 min-w-0 flex-1 gap-2"
+            className="h-12 rounded-2xl min-w-0 flex-1 gap-2"
             onClick={onReveal}
           >
             {nextRung}
@@ -165,14 +165,17 @@ export const LineCard = ({
       <div className="flex gap-2">
         <Button
           variant="ghost"
-          className="h-12 px-3"
+          className="h-12 rounded-2xl px-3"
           onClick={onPrev}
           disabled={!canGoBack}
           aria-label="Previous line"
         >
           <ChevronLeft className="size-5" />
         </Button>
-        <Button className="h-12 min-w-0 flex-1 gap-2" onClick={onNext}>
+        <Button
+          className="h-12 rounded-2xl min-w-0 flex-1 gap-2"
+          onClick={onNext}
+        >
           Next <ChevronRight className="size-5" />
         </Button>
       </div>

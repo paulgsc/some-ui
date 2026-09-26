@@ -83,7 +83,7 @@ export const HandheldLesson = ({
           className="bg-muted h-1 w-full"
         >
           <div
-            className="bg-primary h-full transition-[width] duration-300"
+            className="bg-primary h-full rounded-r-full transition-[width] duration-300"
             style={{ width: `${lesson.progress * 100}%` }}
           />
         </div>
@@ -98,7 +98,11 @@ export const HandheldLesson = ({
           {vm.loading.error ? (
             <>
               <p className="text-destructive text-sm">{vm.loading.error}</p>
-              <Button variant="outline" className="h-11" onClick={vm.leave}>
+              <Button
+                variant="outline"
+                className="h-11 rounded-xl"
+                onClick={vm.leave}
+              >
                 Back to materials
               </Button>
             </>

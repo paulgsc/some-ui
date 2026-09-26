@@ -28,7 +28,7 @@ export const AnswerTray = ({
     data-slot="topik-answer-tray"
     aria-label="Your answer"
     className={cn(
-      "border-primary/40 bg-muted/40 flex min-h-14 w-full flex-wrap items-center justify-center rounded-xl border-2 border-dashed p-2",
+      "border-primary/40 bg-muted/40 flex min-h-14 w-full flex-wrap items-center justify-center rounded-2xl border-2 border-dashed p-2",
       joiner === "" ? "gap-0.5" : "gap-2"
     )}
   >
@@ -44,7 +44,7 @@ export const AnswerTray = ({
           lang="ko"
           disabled={disabled}
           onClick={() => onRemove(tile.id)}
-          className="bg-primary text-primary-foreground h-11 min-w-11 rounded-lg px-3 text-lg font-semibold break-keep"
+          className="bg-primary text-primary-foreground h-11 min-w-11 rounded-xl px-3 text-lg font-semibold break-keep"
         >
           {tile.text}
         </button>
@@ -83,7 +83,7 @@ export const TilePool = ({
           disabled={disabled || used}
           onClick={() => onPlace(tile.id)}
           className={cn(
-            "bg-card border-border h-11 min-w-11 rounded-lg border-2 px-3 text-lg font-semibold break-keep transition-opacity",
+            "bg-card border-border h-11 min-w-11 rounded-xl border px-3 text-lg font-semibold break-keep transition-opacity",
             used && "opacity-0"
           )}
         >

@@ -58,7 +58,7 @@ export const WrapCard = ({
 
       <ol className="flex flex-col gap-3">
         {lines.map((line) => (
-          <li key={line.id} className="border-border rounded-lg border p-3">
+          <li key={line.id} className="border-border rounded-xl border p-3">
             <p lang="ko" className="font-medium break-keep">
               {line.korean || line.content}
             </p>
@@ -71,12 +71,15 @@ export const WrapCard = ({
 
   const dock = finished ? (
     <>
-      <Button className="h-12 w-full gap-2" onClick={onChooseMaterial}>
+      <Button
+        className="h-12 rounded-2xl w-full gap-2"
+        onClick={onChooseMaterial}
+      >
         <Library className="size-5" /> Choose material
       </Button>
       <Button
         variant="outline"
-        className="h-12 w-full gap-2"
+        className="h-12 rounded-2xl w-full gap-2"
         onClick={onStartOver}
       >
         <RotateCcw className="size-5" /> Start over
@@ -84,13 +87,16 @@ export const WrapCard = ({
     </>
   ) : (
     <>
-      <Button className="h-12 w-full gap-2" onClick={onNextConversation}>
+      <Button
+        className="h-12 rounded-2xl w-full gap-2"
+        onClick={onNextConversation}
+      >
         {conversation + 1 < conversationCount ? "Next conversation" : "Finish"}
         <ChevronRight className="size-5" />
       </Button>
       <Button
         variant="outline"
-        className="h-12 w-full gap-2"
+        className="h-12 rounded-2xl w-full gap-2"
         onClick={onReplay}
       >
         <RotateCcw className="size-5" /> Hear this one again
