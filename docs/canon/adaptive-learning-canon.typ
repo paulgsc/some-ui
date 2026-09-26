@@ -2021,9 +2021,13 @@ also survives its relaxation.
   generated; (d) it holds content only, never a report, an observation or a
   belief record; (e) losing it costs the learner a regeneration and nothing
   else, so Theorem 7.2 holds with the server in the same role as local
-  storage. A per-learner record of what was delivered or changed on the
-  server, such as a watermark of which units a learner has seen, is state and
-  is inadmissible under (d).
+  storage. Nothing on the server may record which units a learner was given
+  or how they did on them: those are observations (Def. 3.1), and a governed
+  surface does not send them. A learner's own unit is never announced to
+  anyone else, and it does not enter a catalogue other learners read. A
+  counter that names no unit and no outcome --- how far a subject's reminders
+  have caught up with newly served content, say --- records neither, and this
+  remark does not reach it.
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
