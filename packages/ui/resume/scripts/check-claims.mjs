@@ -48,7 +48,7 @@ const WORKSPACE_ROOTS = [
 // The known-good counts as of the last recount (see resume.meta.typ's
 // Counts section, which names the date and method). Update both places
 // together when a recount genuinely changes the number.
-const EXPECTED_PACKAGE_COUNT = 57
+const EXPECTED_PACKAGE_COUNT = 58
 const EXPECTED_EXTENSION_COUNT = 6
 
 // Set by apps/www/Dockerfile's release build, whose `turbo prune` step

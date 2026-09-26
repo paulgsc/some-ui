@@ -17,6 +17,7 @@ import {
   useLatestNowPlaying,
   useNowPlayingWebSocket,
 } from "@umag/hooks/now-playing"
+import { resolveCompanionSocketUrl } from "@umag/utils/companion-socket"
 import { AlertCircle, Home, Loader2, RefreshCw } from "lucide-react"
 import { cn } from "some-ui-utils"
 
@@ -30,7 +31,7 @@ export const NowPlayingCard: FC<NowPlayingProps> = ({
   showError = true,
 }) => {
   const { isConnected, isInitializing, error } = useNowPlayingWebSocket({
-    url: `ws://${window.location.hostname}:3000/ws`,
+    url: resolveCompanionSocketUrl(),
   })
 
   const { title, channel, thumbnail } = useLatestNowPlaying()
