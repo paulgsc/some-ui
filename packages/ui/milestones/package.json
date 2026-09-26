@@ -44,14 +44,13 @@
     "dist"
   ],
   "unpkg": "@some-ui/milestones.umd.js",
-  "main": "./dist/@some-ui/milestones.cjs.js",
+  "main": "./dist/@some-ui/milestones.es.js",
   "module": "./dist/@some-ui/milestones.es.js",
   "types": "./dist/@some-ui/milestones.d.ts",
   "exports": {
     ".": {
       "types": "./dist/@some-ui/milestones.d.ts",
       "import": "./dist/@some-ui/milestones.es.js",
-      "require": "./dist/@some-ui/milestones.cjs.js",
       "default": "./dist/@some-ui/milestones.es.js"
     },
     "./style.css": "./dist/milestones.css"

@@ -7,9 +7,6 @@ export default createViteConfig({
   alias: {
     "@input": resolve(import.meta.dirname, "src"),
   },
-  dtsOptions: {
-    exclude: ["**/obs-monitor/**"],
-  },
   tsConfigPaths: {
     projects: [resolve(import.meta.dirname, "tsconfig.build.json")],
   },

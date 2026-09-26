@@ -51,14 +51,13 @@
     "*.css"
   ],
   "unpkg": "some-ui-honeycomb.umd.js",
-  "main": "./dist/some-ui-honeycomb.cjs.js",
+  "main": "./dist/some-ui-honeycomb.es.js",
   "module": "./dist/some-ui-honeycomb.es.js",
   "types": "./dist/some-ui-honeycomb.d.ts",
   "exports": {
     ".": {
       "types": "./dist/some-ui-honeycomb.d.ts",
       "import": "./dist/some-ui-honeycomb.es.js",
-      "require": "./dist/some-ui-honeycomb.cjs.js",
       "default": "./dist/some-ui-honeycomb.es.js"
     },
     "./style.css": "./dist/honeycomb.css"

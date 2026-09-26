@@ -3,8 +3,7 @@
  *
  * LAYER 2 — rule behaviour. The rule is purely syntactic (it reads
  * `importKind` off the declaration and its specifiers), so a plain
- * @typescript-eslint/parser is enough and lintSnippet() suffices. Same
- * rationale as build-hygiene.lint.test.ts.
+ * @typescript-eslint/parser is enough and lintSnippet() suffices.
  *
  * LAYER 1 — preset assembly. This rule is deliberately NOT in
  * maishatuRecommended: a static import can only short-circuit the content

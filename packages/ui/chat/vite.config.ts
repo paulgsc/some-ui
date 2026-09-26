@@ -7,8 +7,6 @@ export default createViteConfig({
   alias: {
     "@chat": resolve(import.meta.dirname, "src"),
   },
-  contentPackage: true,
-  contentPackageDataExclude: ["**/data/chat-messages.ts", "**/data/index.ts"],
   tsConfigPaths: {
     projects: [resolve(import.meta.dirname, "tsconfig.build.json")],
   },
