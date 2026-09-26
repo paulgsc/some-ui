@@ -20,6 +20,7 @@ const meta: Meta = {
     siblings: first.questions,
     lines: first.messages,
     answered: null,
+    showGloss: true,
     repeat: false,
     audio: true,
     speaking: false,

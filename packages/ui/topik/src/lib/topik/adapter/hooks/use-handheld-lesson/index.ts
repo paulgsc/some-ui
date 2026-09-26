@@ -34,6 +34,7 @@ import type {
 import {
   createLessonState,
   currentStep,
+  glossUnlocked,
   lessonReducer,
   planConversation,
   progressOf,
@@ -54,6 +55,11 @@ export type HandheldLessonView = {
   step: LessonStep | undefined
   /** Highest rung the current line may reach right now. */
   cap: RevealLevel
+  /**
+   * On a check: whether its line's gloss may be echoed in the feedback, i.e.
+   * every check on that line has now had its first presentation.
+   */
+  anchorGloss: boolean
   progress: number
   tally: LessonTally
 }
@@ -311,6 +317,9 @@ export function useHandheldLesson({
           step,
           cap:
             step?.kind === "line" ? revealCap(context.plan, lesson, step) : 2,
+          anchorGloss:
+            step?.kind === "check" &&
+            glossUnlocked(context.plan, lesson, step.anchor),
           progress: progressOf(context.plan, lesson),
           tally: tallyOf(context.plan, lesson),
         }

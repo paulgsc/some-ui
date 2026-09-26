@@ -239,14 +239,26 @@ export function revealCap(
   state: LessonState,
   line: LineStep
 ): RevealLevel {
-  if (line.checks === 0) return 2
-  const answeredAll = plan.steps.every(
+  return glossUnlocked(plan, state, line.message) ? 2 : 1
+}
+
+/**
+ * Whether a line's gloss may show: once every check anchored to it has had
+ * its first presentation. The one rule behind both the line's reveal cap and
+ * the check feedback's echo of the line, so neither can show the translation
+ * while a sibling check on the same line is still to come.
+ */
+export function glossUnlocked(
+  plan: LessonPlan,
+  state: Pick<LessonState, "firstTry">,
+  message: number
+): boolean {
+  return plan.steps.every(
     (step) =>
       step.kind !== "check" ||
-      step.anchor !== line.message ||
+      step.anchor !== message ||
       step.question in state.firstTry
   )
-  return answeredAll ? 2 : 1
 }
 
 /** Position of a message's line step, or -1. */
@@ -311,7 +323,16 @@ export function lessonReducer(
       // A check is left only once answered: skipping it would make the tally
       // a count of the checks the learner chose to take.
       if (step.kind === "check" && state.answered === null) return state
-      return moveTo(plan, state, state.step + 1, ctx)
+      // A first-presentation check already answered - reached again by
+      // stepping back to its line - is passed over, not re-asked: a second
+      // answer would overwrite the first try and queue a second review.
+      const alreadyAsked = (ahead: LessonStep | undefined): boolean =>
+        ahead?.kind === "check" &&
+        !ahead.repeat &&
+        ahead.question in state.firstTry
+      let next = state.step + 1
+      while (alreadyAsked(steps[next])) next += 1
+      return moveTo(plan, state, next, ctx)
     }
 
     case "PREV": {
@@ -328,6 +349,8 @@ export function lessonReducer(
 
     case "ANSWER": {
       if (step?.kind !== "check" || state.answered !== null) return state
+      // The first try is recorded once; nothing here may rewrite it.
+      if (!step.repeat && step.question in state.firstTry) return state
       const answered: CheckOutcome = {
         correct: event.correct,
         response: event.response,

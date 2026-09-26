@@ -40,6 +40,12 @@ type CheckCardProps = {
   siblings: Array<Question>
   lines: Array<Message>
   answered: CheckOutcome | null
+  /**
+   * Whether the anchor line's gloss may show in the feedback. False while
+   * another check on the same line is still to come, so answering the first
+   * does not hand over the translation the next one asks about.
+   */
+  showGloss: boolean
   repeat: boolean
   audio: boolean
   speaking: boolean
@@ -107,6 +113,7 @@ export const CheckCard = ({
   siblings,
   lines,
   answered,
+  showGloss,
   repeat,
   audio,
   speaking,
@@ -206,7 +213,13 @@ export const CheckCard = ({
             <p lang="ko" className="font-semibold break-keep">
               {anchor.korean || anchor.content}
             </p>
-            <p className="text-muted-foreground text-sm">{anchor.english}</p>
+            {showGloss ? (
+              <p className="text-muted-foreground text-sm">{anchor.english}</p>
+            ) : (
+              <p className="text-muted-foreground text-xs">
+                English unlocks after the other question about this line.
+              </p>
+            )}
           </div>
         )}
       </div>

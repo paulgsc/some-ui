@@ -6,6 +6,7 @@ import {
   anchorOf,
   createLessonState,
   currentStep,
+  glossUnlocked,
   lessonReducer,
   planConversation,
   progressOf,
@@ -201,5 +202,45 @@ describe("lessonReducer", () => {
     expect(run([{ type: "RESUME", conversation: 5, message: 0 }], out)).toBe(
       out
     )
+  })
+
+  it("passes over a check already answered when a line is revisited (Codex, #1544)", () => {
+    // L0 -> Q2 (missed) -> L1, then back to L0 and forward again.
+    const revisited = run([
+      { type: "NEXT" },
+      answer(false),
+      { type: "NEXT" },
+      { type: "PREV" },
+      { type: "NEXT" },
+    ])
+    // Straight to L1, not back into Q2.
+    expect(currentStep(plan, revisited)).toMatchObject({
+      kind: "line",
+      message: 1,
+    })
+    // The first try and the review queue are exactly as the first answer left them.
+    expect(revisited.firstTry).toEqual({ 2: false })
+    expect(revisited.review).toEqual([2])
+  })
+
+  it("refuses a second first-try answer even if a check is reached again", () => {
+    const answered = run([{ type: "NEXT" }, answer(true)])
+    const forcedBack = { ...answered, answered: null }
+    expect(run([answer(false)], forcedBack)).toBe(forcedBack)
+  })
+})
+
+describe("glossUnlocked", () => {
+  it("waits for every check anchored to the line, not just the first (Codex, #1544)", () => {
+    const twoOnOne = planConversation({
+      id: 9,
+      messages: [message("x1", "카드로 할게요. 감사합니다.")],
+      questions: [question("감사합니다"), question("카드로 할게요")],
+    })
+    expect(glossUnlocked(twoOnOne, { firstTry: {} }, 0)).toBe(false)
+    expect(glossUnlocked(twoOnOne, { firstTry: { 0: true } }, 0)).toBe(false)
+    expect(
+      glossUnlocked(twoOnOne, { firstTry: { 0: true, 1: false } }, 0)
+    ).toBe(true)
   })
 })

@@ -164,6 +164,7 @@ export const HandheldLesson = ({
             siblings={batch.questions}
             lines={batch.messages}
             answered={state.answered}
+            showGloss={lesson.anchorGloss}
             repeat={step.repeat}
             audio={audio.available}
             speaking={

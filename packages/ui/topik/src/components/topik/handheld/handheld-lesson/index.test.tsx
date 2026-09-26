@@ -139,4 +139,37 @@ describe("HandheldLesson", () => {
     expect(await screen.findByText("카드로 할게요. 감사합니다.")).toBeTruthy()
     expect(screen.getByText("Conversation 2 of 2")).toBeTruthy()
   })
+
+  it("keeps the gloss out of feedback while another check on the line is pending (Codex, #1544)", async () => {
+    const storage = memoryStorage()
+    createResumeStore(storage).set(FIXTURE_TOPIK_KEY, {
+      conversation: 1,
+      messageId: "c2-m2",
+    })
+    renderLesson(storage)
+    fireEvent.click(await screen.findByRole("button", { name: /Continue/ }))
+    await screen.findByText("카드로 할게요. 감사합니다.")
+
+    // c2-m2 anchors two checks: the 감사합니다 syllable board, then "card".
+    click(/^Next/)
+    const pool = document.querySelector("[data-slot='topik-tile-pool']")!
+    for (const syllable of ["감", "사", "합", "니", "다"]) {
+      const tile = [...pool.querySelectorAll("button")].find(
+        (b) => b.textContent === syllable && !b.disabled
+      )!
+      fireEvent.click(tile)
+    }
+    click("Check")
+    expect(screen.getByText("Understood")).toBeTruthy()
+    expect(screen.queryByText("I'll pay by card. Thank you.")).toBeNull()
+    expect(
+      screen.getByText(/English unlocks after the other question/)
+    ).toBeTruthy()
+
+    // The second check on the same line: once answered, the gloss is earned.
+    click(/Continue/)
+    fireEvent.click(screen.getAllByRole("radio")[0]!)
+    click("Check")
+    expect(screen.getByText("I'll pay by card. Thank you.")).toBeTruthy()
+  })
 })
