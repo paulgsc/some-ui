@@ -73,6 +73,27 @@ describe("intakeLesson", () => {
     )
   })
 
+  it("withholds a probe an error names, and does not tag what it withheld", () => {
+    const flawed = structuredClone(FIXTURE_BATCHES)
+    const probe = flawed[0]?.probes?.find(
+      (candidate) => candidate.id === "c1-build-negation"
+    )
+    if (probe?.kind !== "build" || !probe.source) {
+      throw new Error("fixture lost c1-build-negation")
+    }
+    // A relation only this probe uses, and an error: its target is its source.
+    probe.relation = "honorific lowering"
+    probe.target = probe.source
+    const intake = intakeLesson(reply(flawed))
+    if (!intake.ok) throw new Error(intake.error)
+    const played = intake.batches.flatMap((batch) =>
+      (batch.probes ?? []).map((candidate) => candidate.id)
+    )
+    expect(played).not.toContain("c1-build-negation")
+    expect(played).toContain("c1-request-forms")
+    expect(intake.meta.tags).not.toContain("relation:honorific lowering")
+  })
+
   it("refuses a reply with no lesson, or one the schema cannot read", () => {
     expect(intakeLesson("Sorry, I can't help with that.")).toEqual({
       ok: false,

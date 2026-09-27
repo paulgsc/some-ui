@@ -337,6 +337,71 @@ describe("HandheldLesson", () => {
       ])
     })
 
+    it("keeps what it will offer across leaving and resuming (Codex, #1554)", async () => {
+      const surveys = createSurveyStore(memoryStorage(), () => 7)
+      const storage = memoryStorage()
+      // Evidence from conversation 1, gathered before an earlier leave.
+      createResumeStore(storage).set(FIXTURE_TOPIK_KEY, {
+        batchId: 2,
+        conversation: 1,
+        messageId: "c2-m2",
+        survey: {
+          missed: { 1: ["c1-request-forms"] },
+          flagged: [
+            {
+              batchId: 1,
+              probeId: "c1-honorific",
+              source: "아이스 아메리카노 한 잔 주세요.",
+              prompt: "Which reply is the most polite?",
+            },
+          ],
+        },
+      })
+      const store = renderLesson(storage, fixtureTopikRepository, surveys)
+      fireEvent.click(await screen.findByRole("button", { name: /Continue/ }))
+      await screen.findByText("카드로 할게요. 감사합니다.")
+
+      click(/^Next/)
+      pick(/Past tense.*했어요/) // valid, so a miss in conversation 2
+      click("Check")
+      click(/Continue/)
+
+      // Leave mid-lesson: the point now holds both conversations' misses.
+      click("Back to materials")
+      expect(store.get(FIXTURE_TOPIK_KEY)?.survey?.missed).toEqual({
+        1: ["c1-request-forms"],
+        2: ["c2-promise-forms"],
+      })
+
+      fireEvent.click(await screen.findByRole("button", { name: /Continue/ }))
+      await screen.findByText("카드로 할게요. 감사합니다.")
+      click(/^Next/)
+      buildFromTiles(["카드로", "했어요"])
+      click("Check")
+      click(/Continue/)
+      pick(/Question.*할게요\?/) // the repeat, answered
+      click("Check")
+      click(/Continue/)
+      click(/Finish/)
+
+      click("Yes, worth it")
+      click("Too hard")
+      expect(screen.getByText("Was anything blocking you?")).toBeTruthy()
+      expect(
+        screen.getByRole("button", { name: /아이스 아메리카노/ })
+      ).toBeTruthy()
+      expect(
+        screen.getByRole("button", { name: /카드로 할게요\./ })
+      ).toBeTruthy()
+      click("Nothing was blocking")
+      click("Keen for the next one")
+      click("Done")
+      // The flag from before the leave rides the report into the next prompt.
+      expect(surveys.list()[0]?.flagged?.map((item) => item.probeId)).toEqual([
+        "c1-honorific",
+      ])
+    })
+
     it("can be left at once, and keeps nothing", async () => {
       const surveys = createSurveyStore(memoryStorage())
       await finishWithAMiss(surveys)

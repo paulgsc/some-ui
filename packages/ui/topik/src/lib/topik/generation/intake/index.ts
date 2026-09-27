@@ -34,6 +34,7 @@ export type Intake =
   | {
       ok: true
       meta: TopikMetadata
+      /** The lesson as it will play: every probe an error names is withheld. */
       batches: Array<ConversationBatch>
       /** Probe-level findings: the lesson plays, minus what they name. */
       findings: Array<ProbeFinding>
@@ -99,10 +100,17 @@ export function intakeLesson(reply: string): Intake {
       }.`,
     }
   }
-  const batches = parsed.data
-  if (batches.length === 0) {
+  if (parsed.data.length === 0) {
     return { ok: false, error: "The lesson has no conversations." }
   }
+  // The audit reads the raw value: the schema already dropped malformed
+  // probes from `parsed.data`, and the point is to say which.
+  const findings = auditTopikFile(raw).filter(
+    (finding) => finding.batch !== null
+  )
+  // What plays. Everything below - tags included - describes this, so a
+  // withheld probe's relation is never advertised to selection.
+  const batches = withholdErrors(parsed.data, findings)
 
   const entry = values.find(isRecord) ?? {}
   const displayName = text(entry.displayName) ?? "Untitled lesson"
@@ -139,14 +147,40 @@ export function intakeLesson(reply: string): Intake {
     ...(tags.length > 0 ? { tags } : {}),
   }
 
-  return {
-    ok: true,
-    meta,
-    batches,
-    // The audit reads the raw value: the schema already dropped malformed
-    // probes from `batches`, and the point is to say which.
-    findings: auditTopikFile(raw).filter((finding) => finding.batch !== null),
-  }
+  return { ok: true, meta, batches, findings }
+}
+
+/**
+ * The lesson minus every probe an error names. The schema lets through
+ * probes that are well-formed but wrong - a keyed gloss, a blank reason, a
+ * build that asks for its own source - and the audit only reports them, so
+ * without this a pasted lesson would ask exactly what it was told it would
+ * not. Warnings are authoring judgement and stay.
+ */
+export function withholdErrors(
+  batches: Array<ConversationBatch>,
+  findings: Array<ProbeFinding>
+): Array<ConversationBatch> {
+  const withheld = new Set(
+    findings.flatMap((finding) =>
+      finding.severity === "error" &&
+      finding.batch !== null &&
+      finding.probe !== null
+        ? [`${finding.batch}:${finding.probe}`]
+        : []
+    )
+  )
+  if (withheld.size === 0) return batches
+  return batches.map((batch) =>
+    batch.probes
+      ? {
+          ...batch,
+          probes: batch.probes.filter(
+            (probe) => !withheld.has(`${batch.id}:${probe.id}`)
+          ),
+        }
+      : batch
+  )
 }
 
 /**

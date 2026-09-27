@@ -214,6 +214,16 @@ export function useHandheldLesson({
 
   // ── Lesson state ─────────────────────────────────────────────────────────
 
+  // Probes missed on first presentation, per conversation id, across the
+  // whole lesson: the survey's stuck candidates (canon Cor. 3.4). The lesson
+  // state only holds the current conversation, so they are gathered here.
+  const [missed, setMissed] = useState<Record<number, Array<string>>>({})
+  const [surveyPending, setSurveyPending] = useState(false)
+  const [finishedSeen, setFinishedSeen] = useState(false)
+  // Answers the learner flagged as keyed wrong during this lesson; they ride
+  // the survey into the next prompt, and survive its being skipped.
+  const [flagged, setFlagged] = useState<Array<SurveyItem>>([])
+
   const [lesson, setLesson] = useState<LessonState>(() =>
     createLessonState(audioAvailable)
   )
@@ -261,6 +271,12 @@ export function useHandheldLesson({
         },
         contextFor(conversation)
       )
+      // The survey's evidence from the conversations before this one: the
+      // outcomes only cover this one (Codex, #1554).
+      if (point.survey) {
+        setMissed(point.survey.missed)
+        setFlagged(point.survey.flagged)
+      }
     }
     setLesson(restored)
   }
@@ -269,24 +285,28 @@ export function useHandheldLesson({
 
   // ── Survey ───────────────────────────────────────────────────────────────
 
-  // Probes missed on first presentation, per conversation id, across the
-  // whole lesson: the survey's stuck candidates (canon Cor. 3.4). The lesson
-  // state only holds the current conversation, so they are gathered here.
-  const [missed, setMissed] = useState<Record<number, Array<string>>>({})
-  const [surveyPending, setSurveyPending] = useState(false)
-  const [finishedSeen, setFinishedSeen] = useState(false)
-  // Answers the learner flagged as keyed wrong during this lesson; they ride
-  // the survey into the next prompt, and survive its being skipped.
-  const [flagged, setFlagged] = useState<Array<SurveyItem>>([])
-
   const missedHere = Object.keys(lesson.firstTry).filter(
     (id) => lesson.firstTry[id] === false
   )
-  if (batch && missedHere.some((id) => !missed[batch.id]?.includes(id))) {
-    const known = missed[batch.id] ?? []
-    setMissed({
-      ...missed,
-      [batch.id]: [...known, ...missedHere.filter((id) => !known.includes(id))],
+  // Only once `lesson` is this topik's: on the render that restores a point,
+  // it is still the previous lesson's state. The merge is an updater so a
+  // restore's own setMissed, queued in the same render, is never overwritten
+  // (Codex, #1554).
+  if (
+    batch &&
+    restoredFor === topikKey &&
+    missedHere.some((id) => !missed[batch.id]?.includes(id))
+  ) {
+    const batchId = batch.id
+    setMissed((current) => {
+      const known = current[batchId] ?? []
+      return {
+        ...current,
+        [batchId]: [
+          ...known,
+          ...missedHere.filter((id) => !known.includes(id)),
+        ],
+      }
     })
   }
   // A lesson just completed asks once; starting over begins a new lesson.
@@ -380,9 +400,20 @@ export function useHandheldLesson({
         conversation: lesson.conversation,
         messageId: resumeMessage.id,
         outcomes: outcomesOf(lesson, context.plan),
+        survey: { missed, flagged },
       })
     }
-  }, [store, topikKey, restoredFor, lesson, context, resumeMessage, batchId])
+  }, [
+    store,
+    topikKey,
+    restoredFor,
+    lesson,
+    context,
+    resumeMessage,
+    batchId,
+    missed,
+    flagged,
+  ])
 
   // ── Actions ──────────────────────────────────────────────────────────────
 
@@ -410,8 +441,11 @@ export function useHandheldLesson({
     setMissed({})
     setFlagged([])
     setSurveyPending(false)
+    setFinishedSeen(false)
   }, [])
 
+  // Leaving clears what is held in memory; the resume point already holds the
+  // survey's evidence, and a resumed lesson restores it.
   const leave = useCallback((): void => {
     stopSpeaking()
     setTopikKey(null)
@@ -419,6 +453,7 @@ export function useHandheldLesson({
     setMissed({})
     setFlagged([])
     setSurveyPending(false)
+    setFinishedSeen(false)
   }, [stopSpeaking])
 
   const current =
