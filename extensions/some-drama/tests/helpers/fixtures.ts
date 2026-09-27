@@ -7,6 +7,7 @@ import type {
   CardEvents,
   CardState,
   DramaEntry,
+  SourceReport,
   WatchlistState,
 } from "@drama/types"
 import { CONTENT_SOURCES } from "@drama/uno.sources"
@@ -92,4 +93,20 @@ export function setVisibility(state: DocumentVisibilityState): void {
     configurable: true,
   })
   document.dispatchEvent(new Event("visibilitychange"))
+}
+
+/** The source tab's report: the drama `videoTime` s in, as of `readAt`. */
+export function sourceReport(
+  videoTime: number,
+  advancing: boolean,
+  readAt = Date.now()
+): SourceReport {
+  return {
+    playback: { videoTime, duration: 3600, episode: "Ep 13" },
+    playing: advancing,
+    lastPlayAt: 0,
+    advancing,
+    rate: 1,
+    readAt,
+  }
 }

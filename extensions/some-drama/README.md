@@ -19,6 +19,13 @@ plays on is yours to say, not a built-in list:
   one playing (of two playing, the one started last), so closing or leaving a
   tab needs no handover.
 
+The card's episode and time follow the source tab live: the source tab tells
+the background whenever its video plays, pauses, stalls, seeks or changes
+speed, and the card runs the clock itself in between — no polling, and no
+clock at all while the video is paused or the card is minimised or hidden.
+Without a marked streaming site the card shows the position last saved from
+the popup.
+
 To mark a site, open the drama's tab and press **Mark as streaming** in the
 popup; **Unmark** (or ✕ in the popup's _Streaming sites_ list) reverts it.
 Open tabs switch roles immediately. Marking covers subdomains (`viki.com`

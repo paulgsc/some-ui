@@ -10,6 +10,9 @@ const report = (
   playback: { videoTime, duration: 3600, episode: "12" },
   playing,
   lastPlayAt,
+  advancing: playing,
+  rate: 1,
+  readAt: 0,
 })
 
 describe("pickSource", () => {

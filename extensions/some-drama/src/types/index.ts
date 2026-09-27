@@ -164,6 +164,12 @@ export type MessageBridge =
   // card was hidden keeps it hidden until it is toggled back on.
   | { type: "GET_CARD_HIDDEN" }
   | { type: "SET_CARD_HIDDEN"; hidden: boolean }
+  // A source tab's video changed state; the background re-elects the source
+  // and broadcasts LIVE_PLAYBACK. Carries nothing: the background asks every
+  // source tab fresh, as it does for a beat.
+  | { type: "PLAYBACK_CHANGED" }
+  // A display tab's first look at where the drama is (LIVE_PLAYBACK after).
+  | { type: "GET_LIVE_PLAYBACK" }
 
 // Wire envelope — what background.ts actually sends back for each message type.
 // `ok: false` is uniform across all variants (error path), so it's factored out.
@@ -183,6 +189,8 @@ export type MessageResponseMap = {
   GET_VERDICTS: Envelope<{ verdicts: Array<VerdictRecord> }>
   GET_CARD_HIDDEN: Envelope<{ hidden: boolean }>
   SET_CARD_HIDDEN: Envelope<object>
+  PLAYBACK_CHANGED: Envelope<object>
+  GET_LIVE_PLAYBACK: Envelope<{ live: SourceReport | null }>
 }
 
 /** Background → content-script broadcast after every watchlist mutation. */
@@ -208,6 +216,22 @@ export type SourceReport = {
   playback: Playback
   playing: boolean // a video on the page is playing right now
   lastPlayAt: number // epoch ms of the page's last `play`; 0 if none yet
+  // Enough for a display to run the clock on without asking again
+  // (logic/playback.ts): whether the time is moving right now (playing and
+  // not stalled buffering), how fast, and when `playback` was read.
+  advancing: boolean
+  rate: number // playbackRate
+  readAt: number // epoch ms
+}
+
+/**
+ * Background → every tab: the drama's playback changed (a play, pause, seek,
+ * rate change, a new source tab, or the source tab going away). The elected
+ * source's report, or null when no source tab has a video.
+ */
+export type LivePlaybackMessage = {
+  type: "LIVE_PLAYBACK"
+  live: SourceReport | null
 }
 
 // ─── Beats: the live emotional log ────────────────────────────────────────────

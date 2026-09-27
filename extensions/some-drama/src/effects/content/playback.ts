@@ -54,9 +54,32 @@ export function readPlayback(): Playback | null {
 export function readSourceReport(): SourceReport | null {
   const video = primaryVideo()
   if (!video) return null
+  const playing = !video.paused && !video.ended
   return {
     playback: playbackOf(video),
-    playing: !video.paused && !video.ended,
+    playing,
     lastPlayAt: playedAt.get(video) ?? 0,
+    // Stalled (buffering) is still "playing", but its time isn't moving.
+    advancing: playing && video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA,
+    rate: video.playbackRate,
+    readAt: Date.now(),
   }
 }
+
+/**
+ * Media events after which a source tab's report reads differently: the
+ * video started, stopped, stalled, jumped, changed speed, or (a new episode)
+ * changed length. `timeupdate` is left out on purpose — between these the
+ * time is a straight line a display draws itself (logic/playback.ts).
+ */
+export const PLAYBACK_EVENTS = [
+  "play",
+  "playing",
+  "pause",
+  "waiting",
+  "seeked",
+  "ratechange",
+  "ended",
+  "durationchange",
+  "emptied",
+] as const

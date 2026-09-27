@@ -39,6 +39,9 @@
 //   SET_CARD_HIDDEN → toggle the sender tab's card off / on (Alt+Shift+D).
 //                     Kept here, not in the page, so a navigation in that tab
 //                     (a fresh content script) keeps the card hidden.
+//   PLAYBACK_CHANGED → a source tab's video changed state; re-elect the
+//                     source and broadcast LIVE_PLAYBACK (also on tab close)
+//   GET_LIVE_PLAYBACK → the elected source's report, for a display's first look
 //
 // Verdict changes are logged wherever they come from: ADJUST_VERDICT (hotkeys,
 // the card) and UPSERT_ENTRY (popup edits, and a new drama's first values).
@@ -51,7 +54,7 @@ import {
   normalizeEpisode,
 } from "@drama/logic/beats"
 import { MOODS } from "@drama/logic/content/constants"
-import { pickSource } from "@drama/logic/source"
+import { electSource } from "@drama/logic/source"
 import { isStreamSite, siteOf, withStreamSite } from "@drama/logic/stream-sites"
 import {
   applyVerdict,
@@ -64,6 +67,7 @@ import type {
   BeatRecord,
   DramaEntry,
   GetPlaybackMessage,
+  LivePlaybackMessage,
   MessageBridge,
   MessageResponseMap,
   MoodType,
@@ -174,7 +178,9 @@ function isBackgroundMessage(v: unknown): v is MessageBridge {
       return typeof v.dramaId === "string"
     }
     case "GET_STATE":
-    case "GET_CARD_HIDDEN": {
+    case "GET_CARD_HIDDEN":
+    case "PLAYBACK_CHANGED":
+    case "GET_LIVE_PLAYBACK": {
       return true
     }
     case "SET_CARD_HIDDEN": {
@@ -304,16 +310,24 @@ function isSourceReport(v: unknown): v is SourceReport {
     isRecord(v) &&
     isPlayback(v.playback) &&
     typeof v.playing === "boolean" &&
-    typeof v.lastPlayAt === "number"
+    typeof v.lastPlayAt === "number" &&
+    typeof v.advancing === "boolean" &&
+    typeof v.rate === "number" &&
+    typeof v.readAt === "number"
   )
 }
 
+/** Where the drama's video is, from the source tab it plays in. */
+async function requestPlayback(): Promise<Playback | null> {
+  return (await requestSourceReport())?.playback ?? null
+}
+
 /**
- * Ask every tab on a marked site where its video is, and pick the drama's
+ * Ask every tab on a marked site where its video is, and elect the drama's
  * (logic/source.ts); null when no source tab answers. Asked fresh each time,
  * so a tab that closed or left the site is never the one asked.
  */
-async function requestPlayback(): Promise<Playback | null> {
+async function requestSourceReport(): Promise<SourceReport | null> {
   const { streamSites } = await getWatchlistState()
   if (streamSites.length === 0) return null
   let tabs: Array<browser.tabs.Tab>
@@ -341,7 +355,28 @@ async function requestPlayback(): Promise<Playback | null> {
       }
     })
   )
-  return pickSource(reports.filter((r): r is SourceReport => r !== null))
+  return electSource(reports.filter((r): r is SourceReport => r !== null))
+}
+
+// ── Live playback ─────────────────────────────────────────────────────────────
+// Displays run the drama's clock themselves from the last report
+// (logic/playback.ts); they only need a new one when the video changes state.
+// Publishes are queued so an older election can't land after a newer one.
+const livePlaybackSerialized = queue()
+
+// The last report broadcast, minus its read time, to skip repeats: a paused
+// video re-reported, or no source both before and after a tab closed. Memory
+// only — after the background is evicted the next publish just goes out.
+let lastLive: string | null = null
+
+function publishLivePlayback(): Promise<void> {
+  return livePlaybackSerialized(async () => {
+    const live = await requestSourceReport()
+    const key = JSON.stringify(live && { ...live, readAt: 0 })
+    if (key === lastLive) return
+    lastLive = key
+    await broadcast({ type: "LIVE_PLAYBACK", live })
+  })
 }
 
 // ── Watchlist helpers ─────────────────────────────────────────────────────────
@@ -407,7 +442,7 @@ const ENTRY_DEFAULTS: Omit<DramaEntry, "id" | "addedAt" | "title"> = {
 
 /** Send to every loaded tab; each content script decides what applies to it. */
 async function broadcast(
-  msg: StateUpdateMessage | BeatLoggedMessage
+  msg: StateUpdateMessage | BeatLoggedMessage | LivePlaybackMessage
 ): Promise<void> {
   let tabs: Array<browser.tabs.Tab>
   try {
@@ -756,6 +791,24 @@ async function handleSetCardHidden(
   }
 }
 
+async function handleGetLivePlayback(
+  sendResponse: Reply<"GET_LIVE_PLAYBACK">
+): Promise<void> {
+  try {
+    sendResponse({ ok: true, live: await requestSourceReport() })
+  } catch (err) {
+    sendResponse({ ok: false, error: String(err) })
+  }
+}
+
+async function handlePlaybackChanged(
+  sendResponse: Reply<"PLAYBACK_CHANGED">
+): Promise<void> {
+  // Answered at once: the source tab has nothing to wait for.
+  sendResponse({ ok: true })
+  await publishLivePlayback().catch(() => undefined)
+}
+
 async function dispatch(
   message: MessageBridge,
   sender: browser.runtime.MessageSender,
@@ -796,6 +849,12 @@ async function dispatch(
     case "SET_CARD_HIDDEN": {
       return handleSetCardHidden(sender.tab?.id, message.hidden, sendResponse)
     }
+    case "PLAYBACK_CHANGED": {
+      return handlePlaybackChanged(sendResponse)
+    }
+    case "GET_LIVE_PLAYBACK": {
+      return handleGetLivePlayback(sendResponse)
+    }
     default: {
       t satisfies never
       assertNever(t)
@@ -825,6 +884,8 @@ browser.runtime.onMessage.addListener(
 
 browser.tabs.onRemoved.addListener((tabId) => {
   void setTabHidden(tabId, false).catch(() => undefined)
+  // It may have been the source; closing it sends no media event.
+  void publishLivePlayback().catch(() => undefined)
 })
 
 browser.runtime.onStartup.addListener(() => {

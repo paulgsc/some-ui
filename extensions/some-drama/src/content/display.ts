@@ -13,6 +13,7 @@ import type {
   DramaEntry,
   MoodType,
   Playback,
+  SourceReport,
   VerdictChange,
   VerdictField,
   VerdictRecord,
@@ -205,6 +206,8 @@ export function adjustVerdict(
 export type Display = {
   apply: (state: WatchlistState) => void
   onBeat: (beat: BeatRecord) => void
+  /** LIVE_PLAYBACK: the drama's video changed state. */
+  onPlayback: (live: SourceReport | null) => void
   toggleVisibility: () => void
   destroy: () => void
 }
@@ -315,6 +318,26 @@ export function createDisplay(deps: DisplayDeps): Display {
     }
   }
 
+  // Where the drama's video is (the source tab's latest report), kept across
+  // rebuilds like `live`. A card asks once when built (GET_LIVE_PLAYBACK) and
+  // then follows LIVE_PLAYBACK broadcasts; a broadcast that lands while that
+  // ask is in flight is newer than its reply, which is then dropped.
+  let playback: SourceReport | null = null
+  let playbackUpdates = 0
+
+  const loadPlayback = async (): Promise<void> => {
+    const seen = playbackUpdates
+    try {
+      const resp = await sendMsg({ type: "GET_LIVE_PLAYBACK" })
+      if (!resp.ok) throw new Error(resp.error)
+      if (seen !== playbackUpdates) return
+      playback = resp.live
+      card?.setPlayback(resp.live)
+    } catch (err) {
+      log.error("GET_LIVE_PLAYBACK failed:", err)
+    }
+  }
+
   // The active drama's verdict history, kept across rebuilds like `live`.
   let history: { dramaId: string; verdicts: Array<VerdictRecord> } | null = null
 
@@ -378,6 +401,8 @@ export function createDisplay(deps: DisplayDeps): Display {
     void loadBeats(entry.id)
     if (history?.dramaId === entry.id) card.setVerdictLog(history.verdicts)
     void loadVerdicts(entry.id)
+    if (playback) card.setPlayback(playback)
+    void loadPlayback()
   }
 
   const renderEmpty = (): void => {
@@ -462,6 +487,12 @@ export function createDisplay(deps: DisplayDeps): Display {
           : { episode: beat.episode, beats: [] }
       live = { dramaId: beat.dramaId, ...applyBeat(base, beat) }
       card?.pushBeat(beat)
+    },
+
+    onPlayback(live: SourceReport | null): void {
+      playbackUpdates++
+      playback = live
+      card?.setPlayback(live)
     },
 
     toggleVisibility(): void {

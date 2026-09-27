@@ -78,11 +78,7 @@ export class RightPanel {
   // ── Public interface ────────────────────────────────────────────────────────
 
   applyState(s: CardState): void {
-    this.epBadge.textContent = s.episode
-    this.timestampEl.textContent = s.timestamp
-
-    const pct = clamp(s.progress, 0, 1) * 100
-    this.progressFill.style.setProperty("--dc-prog-pct", `${pct.toFixed(1)}%`)
+    this.setPosition(s)
 
     const oPct = Math.round(clamp(s.overallProgress, 0, 1) * 100)
     this.progressLabelLeft.textContent = "episode progress"
@@ -92,6 +88,18 @@ export class RightPanel {
     setBumped(this.statLikelihood, likelihoodLabel(s.completionLikelihood))
 
     if (s.activeMood) this.setMoodActive(s.activeMood)
+  }
+
+  /** Where the drama is: the entry's saved position, or the live one. */
+  setPosition(p: {
+    episode: string
+    timestamp: string
+    progress: number
+  }): void {
+    this.epBadge.textContent = p.episode
+    this.timestampEl.textContent = p.timestamp
+    const pct = clamp(p.progress, 0, 1) * 100
+    this.progressFill.style.setProperty("--dc-prog-pct", `${pct.toFixed(1)}%`)
   }
 
   setMoodActive(mood: MoodType): void {

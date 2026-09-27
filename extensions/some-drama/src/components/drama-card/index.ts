@@ -27,6 +27,14 @@
 // that scope, so there is no stop path to keep in step with the start path.
 // A card on a page that is not showing, or one the user toggled off, is never
 // built at all (display.ts); "hidden" is for a card held on screen hidden.
+//
+// Live position: given the source tab's latest report (setPlayback), the
+// episode row shows where the drama is now instead of the entry's saved
+// position, and a one-second clock moves it along. The clock is a second
+// ActiveScope nested in the first — so it stops whenever the card is dormant —
+// held "paused" whenever the video's time isn't moving (paused, stalled,
+// ended, no source): it ticks only while someone can see it *and* the drama
+// is playing.
 
 import { CapturePanel } from "@drama/components/capture-panel"
 import { DragController } from "@drama/components/drag-controller"
@@ -48,6 +56,7 @@ import {
   verdictSpotlight,
 } from "@drama/logic/content/spotlight"
 import { fitInViewport } from "@drama/logic/content/utils"
+import { livePosition } from "@drama/logic/playback"
 import { verdictTrend } from "@drama/logic/verdict-log"
 import type {
   BeatRecord,
@@ -55,6 +64,7 @@ import type {
   CardSize,
   CardState,
   MoodType,
+  SourceReport,
   Spotlight as SpotlightContent,
   VerdictRecord,
 } from "@drama/types"
@@ -92,6 +102,10 @@ export class DramaCard {
   private readonly active: ActiveScope<"entering" | "min" | "hidden">
   private blossoms: Blossoms | null = null
   private spotlit: Disposables | null = null
+  private clock: ActiveScope<"paused"> | null = null
+
+  // The source tab's latest report; null shows the entry's saved position.
+  private playback: SourceReport | null = null
 
   // Where the card wants to be (a saved position, or where it was dropped).
   // What is shown is that, fitted into the viewport — see fit().
@@ -189,6 +203,15 @@ export class DramaCard {
         scope.add(() => {
           this.blossoms = null
         })
+        this.renderPosition()
+        this.clock = new ActiveScope(
+          scope,
+          (ticking) => ticking.interval(() => this.renderPosition(), 1_000),
+          this.playback?.advancing ? [] : ["paused"]
+        )
+        scope.add(() => {
+          this.clock = null
+        })
       },
       ["entering"]
     )
@@ -217,6 +240,13 @@ export class DramaCard {
       this.blossoms?.restyle(this.petalLook())
       this.showSpotlight(spot, 1)
     }
+  }
+
+  /** The source tab's latest report (null: none), for the live position. */
+  setPlayback(report: SourceReport | null): void {
+    this.playback = report
+    this.renderPosition()
+    this.clock?.hold("paused", !report?.advancing)
   }
 
   /** Load an episode's beats into the live strip (no pulse, no spotlight). */
@@ -348,6 +378,7 @@ export class DramaCard {
     this.slideshow.applyRatingState(s.rating)
     this.slideshow.applySummaryState(s)
     this.rightPanel.applyState(s)
+    this.renderPosition()
     this.capturePanel.setVerdicts(s.rating, s.completionLikelihood)
 
     // Theme: the latest beat's mood, else the entry's
@@ -357,6 +388,19 @@ export class DramaCard {
 
     // Bubble
     this.syncBubbleVisibility()
+  }
+
+  /** The live position when there is a report, else the entry's. */
+  private renderPosition(): void {
+    if (!this.playback) {
+      this.rightPanel.setPosition(this.state)
+      return
+    }
+    const live = livePosition(this.playback, Date.now())
+    this.rightPanel.setPosition({
+      ...live,
+      episode: live.episode || this.state.episode,
+    })
   }
 
   private showMood(mood: MoodType): void {

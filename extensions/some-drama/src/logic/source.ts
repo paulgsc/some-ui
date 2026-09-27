@@ -16,6 +16,13 @@ import type { Playback, SourceReport } from "@drama/types"
 export function pickSource(
   reports: ReadonlyArray<SourceReport>
 ): Playback | null {
+  return electSource(reports)?.playback ?? null
+}
+
+/** The elected report itself, for what else it says (logic/playback.ts). */
+export function electSource(
+  reports: ReadonlyArray<SourceReport>
+): SourceReport | null {
   let best: SourceReport | null = null
   for (const report of reports) {
     if (
@@ -26,5 +33,5 @@ export function pickSource(
       best = report
     }
   }
-  return best?.playback ?? null
+  return best
 }

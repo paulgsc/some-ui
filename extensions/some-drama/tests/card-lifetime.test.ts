@@ -21,6 +21,7 @@ import {
   DORMANT_GATE,
   nextFrame,
   NO_EVENTS,
+  sourceReport,
 } from "./helpers/fixtures"
 
 let probe: ResourceProbe
@@ -73,6 +74,35 @@ describe("the card's resources follow its activity", () => {
     card.setVisible(true)
     expect(probe.counts().intervals).toBe(1)
     card.destroy()
+  })
+
+  it("runs its clock only while the drama plays: none while paused, minimised or hidden", async () => {
+    const card = mount()
+    await nextFrame()
+    // The slideshow's timer; no report yet, so no clock.
+    expect(probe.counts().intervals).toBe(1)
+
+    card.setPlayback(sourceReport(60, true))
+    expect(probe.counts().intervals).toBe(2)
+
+    card.setPlayback(sourceReport(60, false))
+    expect(probe.counts().intervals).toBe(1)
+
+    card.setPlayback(sourceReport(60, true))
+    card.setSize("min")
+    expect(probe.counts().intervals).toBe(0)
+    card.setSize("compact")
+    expect(probe.counts().intervals).toBe(2)
+
+    card.setVisible(false)
+    expect(probe.counts().intervals).toBe(0)
+    card.setVisible(true)
+    expect(probe.counts().intervals).toBe(2)
+
+    card.setPlayback(null)
+    expect(probe.counts().intervals).toBe(1)
+    card.destroy()
+    expect(probe.counts()).toEqual(probe.baseline)
   })
 
   it("returns every resource when destroyed", async () => {

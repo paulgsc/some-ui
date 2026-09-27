@@ -11,7 +11,10 @@
 //             drama plays. Renders no card (the drama is never on stream).
 //             Answers GET_PLAYBACK (the background asks every source tab and
 //             picks the playing one), and logs beats from hotkeys with its
-//             own video time.
+//             own video time. Tells the background (PLAYBACK_CHANGED) when
+//             its video plays, pauses, stalls, seeks or changes speed, and
+//             when the page goes away, so every display's clock follows the
+//             drama live (LIVE_PLAYBACK) — events, not polling.
 //
 // Display responsibilities:
 //   1. Render DramaCard from the active entry — all fields real, no dummies.
@@ -53,6 +56,7 @@
 
 import {
   notePlay,
+  PLAYBACK_EVENTS,
   readPlayback,
   readSourceReport,
 } from "@drama/effects/content/playback"
@@ -64,12 +68,17 @@ import { isStreamSite } from "@drama/logic/stream-sites"
 import type {
   BeatLoggedMessage,
   GetPlaybackMessage,
+  LivePlaybackMessage,
   Playback,
   SourceReport,
   StateUpdateMessage,
   WatchlistState,
 } from "@drama/types"
-import { attachKeyBindings, isRecord } from "@some-extension/common"
+import {
+  attachKeyBindings,
+  Disposables,
+  isRecord,
+} from "@some-extension/common"
 import type { CommandRegistry } from "@some-extension/common"
 
 import {
@@ -95,6 +104,74 @@ function isStateUpdateMessage(v: unknown): v is StateUpdateMessage {
   return isRecord(v) && v.type === "STATE_UPDATE" && isRecord(v.payload)
 }
 
+function isLivePlaybackMessage(v: unknown): v is LivePlaybackMessage {
+  return (
+    isRecord(v) &&
+    v.type === "LIVE_PLAYBACK" &&
+    (v.live === null || isRecord(v.live))
+  )
+}
+
+// ─── Source: reporting playback changes ──────────────────────────────────────
+
+// A seek or a buffering stall fires a burst of media events; one report
+// after the burst settles is enough.
+const REPORT_SETTLE_MS = 250
+
+function reportPlaybackChanged(): void {
+  sendMsg({ type: "PLAYBACK_CHANGED" }).catch((err: unknown) =>
+    log.error("PLAYBACK_CHANGED failed:", err)
+  )
+}
+
+/**
+ * While this tab is a source: report each change to its video's playback,
+ * and its leaving (`pagehide`) — after which it stops answering GET_PLAYBACK,
+ * so the background's re-election doesn't pick a page that is going away.
+ * Everything is acquired on `life`, which ends when the tab stops being a
+ * source.
+ */
+function reportPlayback(
+  life: Disposables,
+  setLeaving: (v: boolean) => void
+): void {
+  let settling = false
+  const changed = (): void => {
+    if (settling) return
+    settling = true
+    life.timeout(() => {
+      settling = false
+      reportPlaybackChanged()
+    }, REPORT_SETTLE_MS)
+  }
+  // Media events don't bubble; capture them at the document.
+  for (const type of PLAYBACK_EVENTS) {
+    document.addEventListener(type, changed, {
+      capture: true,
+      signal: life.signal,
+    })
+  }
+  window.addEventListener(
+    "pagehide",
+    () => {
+      setLeaving(true)
+      reportPlaybackChanged()
+    },
+    { signal: life.signal }
+  )
+  window.addEventListener(
+    "pageshow",
+    (e) => {
+      if (!e.persisted) return
+      setLeaving(false)
+      reportPlaybackChanged()
+    },
+    { signal: life.signal }
+  )
+  // A new source (a page load on a marked site, or a site just marked).
+  reportPlaybackChanged()
+}
+
 // ─── Beats ─────────────────────────────────────────────────────────────────────
 
 /** One `beat:<mood>` command per mood, each reading playback at press time. */
@@ -114,6 +191,10 @@ function beatCommands(
 async function main(): Promise<void> {
   let role: "source" | "display" | null = null
   let display: Display | null = null
+  // The source role's resources (reportPlayback); null in any other role.
+  let source: Disposables | null = null
+  // The page is going away (pagehide): it no longer answers GET_PLAYBACK.
+  let leaving = false
   let cardMeta: PersistedCardMeta | null = await loadCardMeta()
   // This tab's card toggle, read with the state; a display built later (a
   // role flip) starts from it.
@@ -128,9 +209,19 @@ async function main(): Promise<void> {
     if (next !== role) {
       display?.destroy()
       display = null
+      if (source) {
+        // No longer a source: the displays' clock must stop following it.
+        source.dispose()
+        source = null
+        reportPlaybackChanged()
+      }
       role = next
       if (next === "source") {
         log.info("Streaming site — no card; beats carry this tab's video time.")
+        source = new Disposables()
+        reportPlayback(source, (v) => {
+          leaving = v
+        })
       } else {
         display = createDisplay({
           cardMeta,
@@ -187,11 +278,12 @@ async function main(): Promise<void> {
   browser.runtime.onMessage.addListener(
     (msg: unknown): Promise<SourceReport | null> | undefined => {
       if (isGetPlaybackMessage(msg)) {
-        return role === "source"
+        return role === "source" && !leaving
           ? Promise.resolve(readSourceReport())
           : undefined
       }
       if (isBeatLoggedMessage(msg)) display?.onBeat(msg.beat)
+      else if (isLivePlaybackMessage(msg)) display?.onPlayback(msg.live)
       else if (isStateUpdateMessage(msg)) apply(msg.payload)
       return undefined
     }
