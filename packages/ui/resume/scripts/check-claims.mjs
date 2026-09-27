@@ -35,6 +35,13 @@
 // coverage report. Prefer figures that cannot go stale (a floor like "40+",
 // or none) over exact ones: an exact count fails this check on the next
 // server merge.
+//
+// That is why package.json lists @some-ui/contract-harness as a
+// devDependency with no import behind it (knip.json ignores it there): it
+// makes this package a dependent of the harness, so PR CI's
+// `--filter=...[HEAD^1]` rebuilds the résumé, and runs this check, on the
+// bot's snapshot-sync PR itself rather than only on the next trunk sweep.
+// turbo.json's `inputs` do the same for a local turbo cache.
 import { spawnSync } from "node:child_process"
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs"
 import { join, relative } from "node:path"
