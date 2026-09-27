@@ -1,6 +1,8 @@
 import { resolve } from "node:path"
 import { defineConfig } from "vitest/config"
 
+import { buildAudiencePlugin } from "./build.profiles.ts"
+
 /**
  * Without this, `vitest run` (invoked from this package's own directory)
  * falls back to vitest's default include glob, which also picks up
@@ -13,6 +15,10 @@ import { defineConfig } from "vitest/config"
  * Playwright specs live under tests/.
  */
 export default defineConfig({
+  // Serves `virtual:build-profile` (src/lib/build-profile). Tests run the
+  // default profile, and without the import-gate check: a test of a gated
+  // route, or one mocking a gated workspace, sits outside the gate by nature.
+  plugins: [buildAudiencePlugin({ checkGates: false })],
   test: {
     include: ["src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
     // Repairs `localStorage` where the runtime shipped one of its own and
@@ -28,6 +34,8 @@ export default defineConfig({
       // matcher takes the first prefix match, so "@" would otherwise shadow
       // this entry and resolve it under src/ instead of the package root.
       "@/style.context": resolve(import.meta.dirname, "./style.context.ts"),
+      // Same reason, same placement: read by the audience-gate test.
+      "@/build.profiles": resolve(import.meta.dirname, "./build.profiles.ts"),
       // Mirrors vite.config.ts's "@" -> "./src" alias - this config doesn't
       // extend that one, so tests importing a "@/..." module (most of src/
       // does) need their own copy of the same mapping.

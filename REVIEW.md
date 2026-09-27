@@ -10,7 +10,8 @@ invariants with an ID (for example `L3`) and four parts: **Claim**, **Falsified 
 **Scope**, **Why not enforced**. See `CLAUDE.md`, "Gray-area invariants: declare them
 falsifiable", for the format. The first full set is the resource-lifetime invariants L1–L8 in
 `extensions/common/GOOD_CITIZEN.md` → "Resource lifetimes: what is enforced, and what is
-not"; modules they govern carry a one-line summary per ID in their doc comment.
+not"; the build-audience invariants A1–A3 are in `packages/some-vite-config/AUDIENCES.md`.
+Modules they govern carry a one-line summary per ID in their doc comment.
 
 When a hunk falls inside an invariant's **Scope**:
 
