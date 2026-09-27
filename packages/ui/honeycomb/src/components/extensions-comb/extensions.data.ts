@@ -42,7 +42,7 @@ export const STAGE_LINE: Readonly<Record<Stage, string>> = {
 }
 
 /** Which miniature plays in the L1 top register. One per extension, no text. */
-export type Mechanism = "tabs" | "theme" | "veil" | "cubes" | "bars" | "pulse"
+export type Mechanism = "tabs" | "theme" | "veil" | "cubes" | "bars" | "ride"
 
 /** Where the extension acts: one named site, or the whole web. */
 export type Reach = "one-site" | "everywhere"
@@ -167,15 +167,19 @@ export const EXTENSIONS: ReadonlyArray<ExtensionDefinition> = [
     emblem: "music",
   },
   {
+    // The drama never goes on stream — the reaction does. It plays in a tab
+    // on a site you mark; a card on every other page (the one your stream
+    // captures) shows each beat as you log it, and draws the episode's ride.
+    // `everywhere`: the card rides along on any page you open.
     id: "some-drama",
-    name: "Drama Tracker",
-    line: "One tap says how a moment felt, stamped to the exact second of the episode.",
-    level: 0.14,
-    stage: "idea",
+    name: "Drama Overlay",
+    line: "One key logs how a scene hit you, and a card draws the ride, live for your stream.",
+    level: 0.3,
+    stage: "building",
     firefox: true,
     chrome: false,
-    reach: "one-site",
-    mechanism: "pulse",
+    reach: "everywhere",
+    mechanism: "ride",
     network: "web-fonts",
     emblem: "beat",
   },

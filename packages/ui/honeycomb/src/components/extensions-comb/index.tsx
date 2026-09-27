@@ -493,6 +493,33 @@ const BrowserMark = ({
 )
 
 /**
+ * Drama Overlay's ride: one episode's beats, in the miniature's box. y is
+ * the mood (up is a high, below the baseline a low) and r how hard it hit —
+ * a warm open, a swoon, tension, a real low, and the peak it closes on.
+ * The curve draws itself left to right and each beat pops as the line
+ * reaches it; the per-beat keyframes in `index.css` are timed to these exact
+ * points (cumulative path length × the 60% draw window), so move one and
+ * retime its `xcomb-beat-N` with it.
+ */
+const RIDE_BEATS: ReadonlyArray<{
+  x: number
+  y: number
+  r: number
+  /** Binds the beat to its own pinned keyframes in index.css. */
+  pop: string
+}> = [
+  { x: -40, y: -14, r: 4, pop: "xcomb-mini-beat-1" },
+  { x: -18, y: -26, r: 5.5, pop: "xcomb-mini-beat-2" },
+  { x: 4, y: 10, r: 4, pop: "xcomb-mini-beat-3" },
+  { x: 26, y: 30, r: 7, pop: "xcomb-mini-beat-4" },
+  { x: 54, y: -32, r: 7.5, pop: "xcomb-mini-beat-5" },
+]
+
+const RIDE_PATH = `M-64 0 ${RIDE_BEATS.map((b) => `L${b.x} ${b.y}`).join(" ")}`
+
+const RIDE_PEAK = RIDE_BEATS[RIDE_BEATS.length - 1] ?? { x: 0, y: 0, r: 0 }
+
+/**
  * The L1 mechanism register: a looping diagram of what the tool does, with no
  * words at all. Drawn in SVG rather than as HTML in a `foreignObject`, which
  * WebKit — every browser on an iPhone — positions wrongly once its content is
@@ -618,20 +645,39 @@ const Mini = ({ kind }: { kind: Mechanism }): JSX.Element => {
         </g>
       )
     }
-    case "pulse": {
+    case "ride": {
       return (
         <g aria-hidden>
-          <rect
-            x={-64}
-            y={-1.5}
-            width={128}
-            height={3}
-            rx={1.5}
-            className="xcomb-mini-rail"
+          <line
+            x1={-64}
+            x2={64}
+            y1={0}
+            y2={0}
+            className="xcomb-mini-baseline"
           />
-          <g className="xcomb-mini-travel">
-            <circle r={9} className="xcomb-mini-ping" />
-            <circle r={8} className="xcomb-mini-dot" />
+          <g className="xcomb-mini-ride">
+            <path d={RIDE_PATH} pathLength={1} className="xcomb-mini-curve" />
+            {RIDE_BEATS.map((beat) => (
+              <circle
+                key={beat.pop}
+                cx={beat.x}
+                cy={beat.y}
+                r={beat.r}
+                // A class, not an inline animation-name: inline would outrank
+                // the prefers-reduced-motion rule in index.css.
+                className={cn(
+                  "xcomb-mini-beat",
+                  beat.pop,
+                  beat.y > 0 && "xcomb-mini-beat-low"
+                )}
+              />
+            ))}
+            <circle
+              cx={RIDE_PEAK.x}
+              cy={RIDE_PEAK.y}
+              r={RIDE_PEAK.r}
+              className="xcomb-mini-beat-ping"
+            />
           </g>
         </g>
       )
