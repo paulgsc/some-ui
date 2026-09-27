@@ -264,6 +264,10 @@ export function useHandheldLesson({
   // Probes missed on first presentation, per conversation id, across the
   // whole lesson: the survey's stuck candidates (canon Cor. 3.4). The lesson
   // state only holds the current conversation, so they are gathered here.
+  // Each is pinned (`id@fp`) to the probe as it was when missed, and never
+  // re-pinned: the file can refresh mid-lesson, and a miss re-pinned to a
+  // revised probe would report content the learner never missed (Codex,
+  // #1554).
   const [missed, setMissed] = useState<Record<number, Array<string>>>({})
   const [surveyPending, setSurveyPending] = useState(false)
   const [finishedSeen, setFinishedSeen] = useState(false)
@@ -321,7 +325,7 @@ export function useHandheldLesson({
       // The survey's evidence from the conversations before this one: the
       // outcomes only cover this one (Codex, #1554).
       if (point.survey) {
-        setMissed(unpinMisses(batches, point.survey.missed))
+        setMissed(point.survey.missed)
         setFlagged(point.survey.flagged)
       }
     }
@@ -339,19 +343,24 @@ export function useHandheldLesson({
   // it is still the previous lesson's state. The merge is an updater so a
   // restore's own setMissed, queued in the same render, is never overwritten
   // (Codex, #1554).
+  const pinnedIds = (keys: Array<string> = []): Array<string> =>
+    keys.map((key) => key.slice(0, key.lastIndexOf("@")))
   if (
     batch &&
     restoredFor === topikKey &&
-    missedHere.some((id) => !missed[batch.id]?.includes(id))
+    missedHere.some((id) => !pinnedIds(missed[batch.id]).includes(id))
   ) {
     const batchId = batch.id
+    // Pinned now, against the probe just answered; an id already held keeps
+    // the pin it was missed under.
+    const pinned = pinMisses([batch], { [batchId]: missedHere })[batchId] ?? []
     setMissed((current) => {
-      const known = current[batchId] ?? []
+      const known = pinnedIds(current[batchId])
       return {
         ...current,
         [batchId]: [
-          ...known,
-          ...missedHere.filter((id) => !known.includes(id)),
+          ...(current[batchId] ?? []),
+          ...pinned.filter((key) => !known.includes(pinnedIds([key])[0] ?? "")),
         ],
       }
     })
@@ -451,7 +460,7 @@ export function useHandheldLesson({
         conversation: lesson.conversation,
         messageId: resumeMessage.id,
         outcomes: outcomesOf(lesson, context.plan),
-        survey: { missed: pinMisses(batches ?? [], missed), flagged },
+        survey: { missed, flagged },
       })
     }
   }, [
@@ -459,7 +468,6 @@ export function useHandheldLesson({
     topikKey,
     restoredFor,
     surveyPending,
-    batches,
     lesson,
     context,
     resumeMessage,
@@ -692,7 +700,11 @@ export function useHandheldLesson({
     survey: ready
       ? {
           pending: surveyPending,
-          candidates: stuckCandidates(batches ?? [], missed),
+          // Only the misses whose probe is still the version missed.
+          candidates: stuckCandidates(
+            batches ?? [],
+            unpinMisses(batches ?? [], missed)
+          ),
           submit: submitSurvey,
           skip: skipSurvey,
         }
