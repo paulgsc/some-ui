@@ -660,6 +660,12 @@ describe("lint: extension-charter — require-scoped-lifetime", () => {
       `const OPTS = { once: true }; OPTS.once = false; document.addEventListener("x", f, OPTS)`,
       `const OPTS = { signal }; Object.assign(OPTS, { signal: undefined }); document.addEventListener("x", f, OPTS)`,
       `const OPTS = { once: true }; tweak(OPTS); window.addEventListener("x", f, OPTS)`,
+      // Built in order, last write wins: a later spread, computed key or
+      // repeated key can undo the lifetime an earlier property gave.
+      `const OPTS = { once: true, ...{ once: false } }; document.addEventListener("x", f, OPTS)`,
+      `document.addEventListener("x", f, { signal, ...extra })`,
+      `document.addEventListener("x", f, { once: true, [key]: false })`,
+      `document.addEventListener("x", f, { once: true, once: false })`,
     ]) {
       const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
       expectMessageForRule(msgs, RULE, code)
@@ -675,6 +681,9 @@ describe("lint: extension-charter — require-scoped-lifetime", () => {
       `addEventListener("resize", f, { signal })`,
       // The same binding passed to both halves of a listener pair.
       `const OPTS = { once: true }; document.addEventListener("x", f, OPTS); document.removeEventListener("x", f, OPTS)`,
+      // A spread before the scoping property is overwritten by it.
+      `document.addEventListener("x", f, { ...base, signal: life.signal })`,
+      `document.addEventListener("x", f, { signal, once: false })`,
     ]) {
       const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
       expectNoMessageForRule(msgs, RULE, code)

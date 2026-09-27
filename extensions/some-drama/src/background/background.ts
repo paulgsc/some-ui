@@ -282,9 +282,23 @@ async function getSourceTabId(): Promise<number | null> {
     return id
   } catch {
     // Closed, or a tab id from a previous browser session.
-    await browser.storage.local.remove(SOURCE_TAB_KEY)
+    await vacateSource(id)
     return null
   }
+}
+
+/**
+ * The one way the source role is given up. Two playing tabs on marked sites:
+ * the one that started last is the source, and when it goes (closed, found
+ * dead on use, or its site unmarked) the other would stay unregistered until
+ * its next `play`. So every vacancy is announced, and a source tab still
+ * playing claims the role back.
+ */
+async function vacateSource(tabId: number): Promise<void> {
+  const r = await browser.storage.local.get(SOURCE_TAB_KEY)
+  if (r[SOURCE_TAB_KEY] !== tabId) return
+  await browser.storage.local.remove(SOURCE_TAB_KEY)
+  await broadcast({ type: "SOURCE_VACANT" })
 }
 
 /** Ask the source tab where its video is; null if there is none to ask. */
@@ -310,17 +324,8 @@ async function requestPlayback(): Promise<Playback | null> {
   }
 }
 
-// Two playing tabs on marked sites: the one that started last is the source.
-// When it closes, the other would stay unregistered until its next `play`, so
-// every open tab hears the vacancy and a source tab still playing reclaims it.
 browser.tabs.onRemoved.addListener((tabId) => {
-  void (async () => {
-    const r = await browser.storage.local.get(SOURCE_TAB_KEY)
-    if (r[SOURCE_TAB_KEY] === tabId) {
-      await browser.storage.local.remove(SOURCE_TAB_KEY)
-      await broadcast({ type: "SOURCE_VACANT" })
-    }
-  })()
+  void vacateSource(tabId)
 })
 
 // ── Watchlist helpers ─────────────────────────────────────────────────────────
@@ -636,14 +641,17 @@ async function handleSetStreamSite(
       // display tab (it re-resolves its role from the broadcast below), so
       // it can no longer answer for the drama's playback.
       const sourceId = await getSourceTabId()
-      if (sourceId !== null) {
-        const tab = await browser.tabs.get(sourceId)
-        if (!isStreamSite(tab.url ?? "", marked.streamSites)) {
-          await browser.storage.local.remove(SOURCE_TAB_KEY)
-        }
-      }
+      const unmarked =
+        sourceId !== null &&
+        !isStreamSite(
+          (await browser.tabs.get(sourceId)).url ?? "",
+          marked.streamSites
+        )
 
       await broadcastState(marked)
+      // After the state broadcast, so the unmarked tab is already a display
+      // tab when the vacancy is announced and doesn't claim the role back.
+      if (unmarked) await vacateSource(sourceId)
       return marked
     })
     sendResponse({ ok: true, state })

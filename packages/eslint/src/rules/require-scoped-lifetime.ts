@@ -218,23 +218,35 @@ function isGlobal(name: string, scope: Scope.Scope): boolean {
  * property, or `once: true`. A `const` holding an object literal is resolved
  * when nothing else can change it; anything else (a boolean capture flag, a
  * parameter) is not scoped.
+ *
+ * The literal is read the way the engine builds it, in order with the last
+ * write winning: a later `once: false` or `signal: undefined` undoes an
+ * earlier one, and a later spread or computed key may write either, so it
+ * undoes both.
  */
 function optionsAreScoped(options: ESTree.Node, scope: Scope.Scope): boolean {
   const object = resolveObject(options, scope)
   if (object === null) return false
-  return object.properties.some((p) => {
-    if (p.type !== "Property" || p.computed) return false
+  let signal = false
+  let once = false
+  for (const p of object.properties) {
+    if (p.type !== "Property" || p.computed) {
+      signal = false
+      once = false
+      continue
+    }
     const key =
       p.key.type === "Identifier"
         ? p.key.name
         : p.key.type === "Literal"
           ? String(p.key.value)
           : null
-    if (key === "signal") return signalIsDefinite(p.value)
-    return (
-      key === "once" && p.value.type === "Literal" && p.value.value === true
-    )
-  })
+    if (key === "signal") signal = signalIsDefinite(p.value)
+    else if (key === "once") {
+      once = p.value.type === "Literal" && p.value.value === true
+    }
+  }
+  return signal || once
 }
 
 /**
