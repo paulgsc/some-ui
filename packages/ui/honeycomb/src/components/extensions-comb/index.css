@@ -371,7 +371,8 @@
   .xcomb-mini-tab,
   .xcomb-mini-cube,
   .xcomb-mini-bar,
-  .xcomb-mini-ping {
+  .xcomb-mini-beat,
+  .xcomb-mini-beat-ping {
     transform-box: fill-box;
   }
 
@@ -426,9 +427,12 @@
     }
   }
 
-  /* BOYO: a veil over a card steps down in four discrete stops, then resets.
-     steps() rather than a slide, because the extension surrenders exactly
-     one layer at a time - a smooth wipe would depict a different product. */
+  /* BOYO: a veil over a card retracts upward in discrete stops, then resets:
+     first the short line (channel, length, age), then the title line, then
+     the picture — the order the extension uncovers a video in, the picture
+     last. steps() rather than a slide, because the extension surrenders
+     exactly one layer at a time - a smooth wipe would depict a different
+     product. */
   .xcomb-mini-card {
     fill: var(--comb-mini-tint);
   }
@@ -450,17 +454,17 @@
 
     25%,
     49% {
-      transform: translateY(30px);
+      transform: translateY(-19px);
     }
 
     50%,
     74% {
-      transform: translateY(58px);
+      transform: translateY(-33px);
     }
 
     75%,
     99% {
-      transform: translateY(88px);
+      transform: translateY(-88px);
     }
 
     100% {
@@ -493,7 +497,58 @@
     }
   }
 
-  /* Music Overlay: six bars bounce at six different periods. */
+  /* Music Overlay: the music plays in a tab behind; on the page in front the
+     content changes as you browse, and the now-playing card stays put in its
+     corner, its bars bouncing at three different periods. */
+  .xcomb-mini-backtab {
+    fill: var(--comb-mini-tint);
+    opacity: 0.7;
+  }
+
+  .xcomb-mini-front {
+    fill: var(--comb-mini-tint);
+  }
+
+  .xcomb-mini-play {
+    fill: var(--comb-honey-mid);
+  }
+
+  .xcomb-mini-browse {
+    animation: xcomb-browse 5s ease-in-out infinite;
+  }
+
+  .xcomb-mini-browse rect {
+    fill: var(--comb-honey-surface);
+  }
+
+  .xcomb-mini-nowplaying {
+    fill: var(--comb-mini-dark);
+  }
+
+  @keyframes xcomb-browse {
+    0%,
+    38% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    46% {
+      opacity: 0;
+      transform: translateX(-12px);
+    }
+
+    54% {
+      opacity: 0;
+      transform: translateX(12px);
+    }
+
+    62%,
+    100% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
   .xcomb-mini-bar {
     animation-iteration-count: infinite;
     animation-name: xcomb-eq;
@@ -513,42 +568,193 @@
     }
   }
 
-  /* Drama Tracker: a dot travels a timeline, pinging as it goes. */
-  .xcomb-mini-travel {
-    animation: xcomb-travel 4.4s ease-in-out infinite;
+  /* Drama Overlay: an episode's ride draws itself along a neutral baseline —
+     highs above, lows below — and each beat pops as the line reaches it,
+     bigger the harder it hit; the peak it closes on pings. Then the ride
+     fades and the next episode starts. One 6s timeline for every part: the
+     line draws over the first 60%, and each xcomb-beat-N is pinned to where
+     the line reaches beat N (see RIDE_BEATS in index.tsx), so nothing drifts
+     out of step however long it loops. */
+  .xcomb-mini-baseline {
+    stroke: var(--comb-mini-rail);
+    stroke-dasharray: 3 5;
+    stroke-width: 2px;
   }
 
-  .xcomb-mini-dot {
-    fill: var(--comb-honey-meniscus);
+  .xcomb-mini-ride {
+    animation: xcomb-ride-fade 6s linear infinite;
   }
 
-  .xcomb-mini-ping {
-    animation: xcomb-ping 2.2s ease-out infinite;
+  .xcomb-mini-curve {
+    animation: xcomb-ride-draw 6s linear infinite;
     fill: none;
+    stroke: var(--comb-honey-surface);
+    stroke-dasharray: 1;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 3px;
+  }
+
+  .xcomb-mini-beat {
+    animation-duration: 6s;
+    animation-iteration-count: infinite;
+    animation-timing-function: linear;
+    fill: var(--comb-honey-meniscus);
+    transform-origin: center;
+  }
+
+  .xcomb-mini-beat-1 {
+    animation-name: xcomb-beat-1;
+  }
+
+  .xcomb-mini-beat-2 {
+    animation-name: xcomb-beat-2;
+  }
+
+  .xcomb-mini-beat-3 {
+    animation-name: xcomb-beat-3;
+  }
+
+  .xcomb-mini-beat-4 {
+    animation-name: xcomb-beat-4;
+  }
+
+  .xcomb-mini-beat-5 {
+    animation-name: xcomb-beat-5;
+  }
+
+  .xcomb-mini-beat-low {
+    fill: var(--comb-honey-mid);
+  }
+
+  .xcomb-mini-beat-ping {
+    animation: xcomb-ride-ping 6s ease-out infinite;
+    fill: none;
+    opacity: 0;
     stroke: var(--comb-honey-meniscus);
     stroke-width: 2px;
     transform-origin: center;
   }
 
-  @keyframes xcomb-travel {
-    from {
-      transform: translateX(-64px);
+  @keyframes xcomb-ride-draw {
+    0% {
+      stroke-dashoffset: 1;
     }
 
-    to {
-      transform: translateX(64px);
+    60%,
+    100% {
+      stroke-dashoffset: 0;
     }
   }
 
-  @keyframes xcomb-ping {
-    from {
+  @keyframes xcomb-ride-fade {
+    0%,
+    86% {
+      opacity: 1;
+    }
+
+    96%,
+    100% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes xcomb-ride-ping {
+    0%,
+    60% {
+      opacity: 0;
+      transform: scale(1);
+    }
+
+    61% {
       opacity: 0.8;
       transform: scale(1);
     }
 
-    to {
+    80%,
+    100% {
       opacity: 0;
       transform: scale(2.6);
+    }
+  }
+
+  @keyframes xcomb-beat-1 {
+    0%,
+    8.6% {
+      transform: scale(0);
+    }
+
+    11.6% {
+      transform: scale(1.4);
+    }
+
+    15.6%,
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  @keyframes xcomb-beat-2 {
+    0%,
+    16.4% {
+      transform: scale(0);
+    }
+
+    19.4% {
+      transform: scale(1.4);
+    }
+
+    23.4%,
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  @keyframes xcomb-beat-3 {
+    0%,
+    29.6% {
+      transform: scale(0);
+    }
+
+    32.6% {
+      transform: scale(1.4);
+    }
+
+    36.6%,
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  @keyframes xcomb-beat-4 {
+    0%,
+    38.8% {
+      transform: scale(0);
+    }
+
+    41.8% {
+      transform: scale(1.4);
+    }
+
+    45.8%,
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  @keyframes xcomb-beat-5 {
+    0%,
+    60% {
+      transform: scale(0);
+    }
+
+    63% {
+      transform: scale(1.4);
+    }
+
+    67%,
+    100% {
+      transform: scale(1);
     }
   }
 
@@ -565,8 +771,11 @@
     .xcomb-mini-veil,
     .xcomb-mini-cube,
     .xcomb-mini-bar,
-    .xcomb-mini-travel,
-    .xcomb-mini-ping {
+    .xcomb-mini-browse,
+    .xcomb-mini-ride,
+    .xcomb-mini-curve,
+    .xcomb-mini-beat,
+    .xcomb-mini-beat-ping {
       animation: none;
     }
 
