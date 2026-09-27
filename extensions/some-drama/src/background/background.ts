@@ -1,6 +1,6 @@
 //
 // Storage schema (browser.storage.local):
-//   drama_moments:  CapturedMoment[]   — mood capture log
+//   drama_moments:  MomentRecord[]   — mood capture log
 //   drama_watchlist: DramaEntry[]      — ordered list, max N=5
 //   drama_active_id: string | null     — id of entry currently displayed
 //
@@ -9,45 +9,22 @@
 //   UPSERT_ENTRY   → add or update a DramaEntry; broadcasts STATE_UPDATE
 //   REMOVE_ENTRY   → remove by id; broadcasts STATE_UPDATE
 //   SET_ACTIVE     → set activeId; broadcasts STATE_UPDATE
-//   SCRAPE_TAB     → executeScript heuristic on given tabId, returns raw meta
 //   SAVE_MOMENT, GET_MOMENTS, CLEAR_MOMENTS — mood capture log (unchanged)
 
-// ── Inline types (no shared chunks) ──────────────────────────────────────────
 import type {
   DramaEntry,
-  MoodType,
-  ScrapedMeta,
+  MessageBridge,
+  MessageResponseMap,
+  MomentRecord,
+  StateUpdateMessage,
   WatchlistState,
 } from "@drama/types"
-import { assertNever } from "@some-extension/common"
+import { assertNever, isRecord } from "@some-extension/common"
 
-type CapturedMoment = {
-  id: string
-  timestamp: number
-  mood: MoodType
-  episodeId: string
-  dramaTitle: string
-  capturedAt: number
-}
-
-type BackgroundMessage =
-  | { type: "SAVE_MOMENT"; payload: CapturedMoment }
-  | { type: "GET_MOMENTS"; payload?: { dramaTitle?: string } }
-  | { type: "CLEAR_MOMENTS" }
-  | { type: "GET_STATE" }
-  | { type: "UPSERT_ENTRY"; entry: Partial<DramaEntry> & { title: string } }
-  | { type: "REMOVE_ENTRY"; id: string }
-  | { type: "SET_ACTIVE"; id: string | null }
-  | { type: "SCRAPE_TAB"; tabId: number }
-
-type BackgroundResponse =
-  | {
-      ok: true
-      moments?: Array<CapturedMoment>
-      state?: WatchlistState
-      data?: ScrapedMeta | null
-    }
-  | { ok: false; error: string }
+/** Replies with the envelope the sender's `sendMsg` is typed to expect. */
+type Reply<T extends MessageBridge["type"]> = (
+  resp: MessageResponseMap[T]
+) => void
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -67,11 +44,7 @@ function uuid(): string {
 // browser.runtime.onMessage hands us `unknown`. These guards are the single
 // validation boundary — no `as` past this point.
 
-function isRecord(v: unknown): v is Record<string, unknown> {
-  return typeof v === "object" && v !== null
-}
-
-function isCapturedMoment(v: unknown): v is CapturedMoment {
+function isMomentRecord(v: unknown): v is MomentRecord {
   return (
     isRecord(v) &&
     typeof v.id === "string" &&
@@ -83,13 +56,13 @@ function isCapturedMoment(v: unknown): v is CapturedMoment {
   )
 }
 
-function isBackgroundMessage(v: unknown): v is BackgroundMessage {
+function isBackgroundMessage(v: unknown): v is MessageBridge {
   if (!isRecord(v)) return false
   if (typeof v.type !== "string") return false
 
   switch (v.type) {
     case "SAVE_MOMENT": {
-      return isCapturedMoment(v.payload)
+      return isMomentRecord(v.payload)
     }
     case "GET_MOMENTS": {
       return (
@@ -112,9 +85,6 @@ function isBackgroundMessage(v: unknown): v is BackgroundMessage {
     case "SET_ACTIVE": {
       return v.id === null || typeof v.id === "string"
     }
-    case "SCRAPE_TAB": {
-      return typeof v.tabId === "number"
-    }
     // eslint-disable-next-line switch-lint/require-fail-fast-default
     default: {
       return false
@@ -133,19 +103,19 @@ function isDramaEntryArray(v: unknown): v is Array<DramaEntry> {
   )
 }
 
-function isCapturedMomentArray(v: unknown): v is Array<CapturedMoment> {
-  return Array.isArray(v) && v.every(isCapturedMoment)
+function isMomentRecordArray(v: unknown): v is Array<MomentRecord> {
+  return Array.isArray(v) && v.every(isMomentRecord)
 }
 
 // ── Moment helpers ────────────────────────────────────────────────────────────
 
-async function loadMoments(): Promise<Array<CapturedMoment>> {
+async function loadMoments(): Promise<Array<MomentRecord>> {
   const r = await browser.storage.local.get(MOMENTS_KEY)
   const stored = r[MOMENTS_KEY]
-  return isCapturedMomentArray(stored) ? stored : []
+  return isMomentRecordArray(stored) ? stored : []
 }
 
-async function saveMoment(moment: CapturedMoment): Promise<void> {
+async function saveMoment(moment: MomentRecord): Promise<void> {
   const existing = await loadMoments()
   existing.push(moment)
   await browser.storage.local.set({ [MOMENTS_KEY]: existing })
@@ -203,7 +173,7 @@ const ENTRY_DEFAULTS: Omit<DramaEntry, "id" | "addedAt" | "title"> = {
   momentum: { value: 50, direction: "steady" },
 }
 
-/** Broadcast updated state to all non-video content-script tabs. */
+/** Broadcast updated state to every loaded tab; content.ts guards itself. */
 async function broadcastState(state: WatchlistState): Promise<void> {
   let tabs: Array<browser.tabs.Tab>
   try {
@@ -214,10 +184,8 @@ async function broadcastState(state: WatchlistState): Promise<void> {
   for (const tab of tabs) {
     if (tab.id === undefined || tab.status !== "complete") continue
     try {
-      await browser.tabs.sendMessage(tab.id, {
-        type: "STATE_UPDATE",
-        payload: state,
-      })
+      const msg: StateUpdateMessage = { type: "STATE_UPDATE", payload: state }
+      await browser.tabs.sendMessage(tab.id, msg)
     } catch {
       // Tab has no content script — expected
     }
@@ -230,8 +198,8 @@ async function broadcastState(state: WatchlistState): Promise<void> {
 // awaits/handles the returned promise so nothing is floating.
 
 async function handleSaveMoment(
-  payload: CapturedMoment,
-  sendResponse: (resp: BackgroundResponse) => void
+  payload: MomentRecord,
+  sendResponse: Reply<"SAVE_MOMENT">
 ): Promise<void> {
   try {
     await saveMoment(payload)
@@ -243,7 +211,7 @@ async function handleSaveMoment(
 
 async function handleGetMoments(
   payload: { dramaTitle?: string } | undefined,
-  sendResponse: (resp: BackgroundResponse) => void
+  sendResponse: Reply<"GET_MOMENTS">
 ): Promise<void> {
   try {
     const moments = await loadMoments()
@@ -258,7 +226,7 @@ async function handleGetMoments(
 }
 
 async function handleClearMoments(
-  sendResponse: (resp: BackgroundResponse) => void
+  sendResponse: Reply<"CLEAR_MOMENTS">
 ): Promise<void> {
   try {
     await browser.storage.local.remove(MOMENTS_KEY)
@@ -268,9 +236,7 @@ async function handleClearMoments(
   }
 }
 
-async function handleGetState(
-  sendResponse: (resp: BackgroundResponse) => void
-): Promise<void> {
+async function handleGetState(sendResponse: Reply<"GET_STATE">): Promise<void> {
   try {
     const state = await getWatchlistState()
     sendResponse({ ok: true, state })
@@ -287,7 +253,7 @@ async function handleGetState(
 //   `id` and `addedAt` are always generated fresh on insert.
 async function handleUpsertEntry(
   incoming: Partial<DramaEntry> & { title: string },
-  sendResponse: (resp: BackgroundResponse) => void
+  sendResponse: Reply<"UPSERT_ENTRY">
 ): Promise<void> {
   try {
     const { watchlist, activeId } = await getWatchlistState()
@@ -332,7 +298,7 @@ async function handleUpsertEntry(
 
 async function handleRemoveEntry(
   id: string,
-  sendResponse: (resp: BackgroundResponse) => void
+  sendResponse: Reply<"REMOVE_ENTRY">
 ): Promise<void> {
   try {
     const { watchlist, activeId } = await getWatchlistState()
@@ -349,7 +315,7 @@ async function handleRemoveEntry(
 
 async function handleSetActive(
   id: string | null,
-  sendResponse: (resp: BackgroundResponse) => void
+  sendResponse: Reply<"SET_ACTIVE">
 ): Promise<void> {
   try {
     const { watchlist } = await getWatchlistState()
@@ -362,96 +328,9 @@ async function handleSetActive(
   }
 }
 
-function isScrapedMeta(v: unknown): v is ScrapedMeta {
-  return (
-    isRecord(v) &&
-    typeof v.title === "string" &&
-    typeof v.episode === "string" &&
-    typeof v.network === "string" &&
-    typeof v.url === "string" &&
-    (v.posterUrl === null || typeof v.posterUrl === "string") &&
-    typeof v.timestamp === "string" &&
-    typeof v.progress === "number" &&
-    typeof v.isPlaying === "boolean" &&
-    typeof v.videoCount === "number"
-  )
-}
-
-async function handleScrapeTab(
-  tabId: number,
-  sendResponse: (resp: BackgroundResponse) => void
-): Promise<void> {
-  try {
-    const results = await browser.tabs.executeScript(tabId, {
-      code: `
-        (function() {
-          var ytTitle   = document.querySelector(
-            'h1.ytd-watch-metadata yt-formatted-string, h1.title.ytd-video-primary-info-renderer'
-          )?.textContent?.trim();
-          var nfTitle   = document.querySelector(
-            '.video-title h4, [data-uia="video-title"]'
-          )?.textContent?.trim();
-          var vikiTitle = document.querySelector(
-            '.episode-title, .show-title'
-          )?.textContent?.trim();
-          var metaTitle = document.querySelector(
-            'meta[property="og:title"]'
-          )?.content?.trim();
-          var docTitle  = document.title?.replace(/\\s*[-|].*$/, '').trim();
-
-          var network = document.querySelector(
-            'meta[name="application-name"]'
-          )?.content?.trim()
-            || new URL(location.href).hostname.replace(/^www\\./, '');
-
-          var epMatch = (ytTitle || vikiTitle || metaTitle || docTitle || '').match(
-            /ep(?:isode)?[.\\s]*([\\d]+)/i
-          );
-
-          var video    = Array.from(document.querySelectorAll('video'))
-            .sort((a, b) => (b.getBoundingClientRect().width * b.getBoundingClientRect().height)
-              - (a.getBoundingClientRect().width * a.getBoundingClientRect().height))[0];
-          var posterUrl = video?.poster
-            || document.querySelector("meta[property='og:image']")?.content
-            || null;
-          var progress  = video && video.duration
-            ? video.currentTime / video.duration : 0;
-          var timestamp = video
-            ? (function(s) {
-                var h = Math.floor(s / 3600),
-                    m = Math.floor((s % 3600) / 60),
-                    sec = Math.floor(s % 60);
-                var p = function(n) { return String(n).padStart(2, '0'); };
-                return h > 0 ? h + ':' + p(m) + ':' + p(sec) : p(m) + ':' + p(sec);
-              })(video.currentTime)
-            : '00:00';
-
-          return {
-            title:      ytTitle || nfTitle || vikiTitle || metaTitle || docTitle || '',
-            episode:    epMatch ? 'Ep ' + epMatch[1] : '',
-            network:    network || '',
-            url:        location.href,
-            posterUrl:  posterUrl,
-            timestamp:  timestamp,
-            progress:   progress,
-            isPlaying:  video ? (!video.paused && !video.ended) : false,
-            videoCount: document.querySelectorAll('video').length,
-          };
-        })()
-      `,
-    })
-
-    const raw = results.length > 0 ? results[0] : undefined
-    const data = isScrapedMeta(raw) ? raw : null
-    sendResponse({ ok: true, data })
-  } catch (err) {
-    sendResponse({ ok: false, error: String(err) })
-  }
-}
-
 async function dispatch(
-  message: BackgroundMessage,
-  sendResponse: (resp: BackgroundResponse) => void
+  message: MessageBridge,
+  sendResponse: Reply<MessageBridge["type"]>
 ): Promise<void> {
   const { type: t } = message
   switch (t) {
@@ -476,9 +355,6 @@ async function dispatch(
     case "SET_ACTIVE": {
       return handleSetActive(message.id, sendResponse)
     }
-    case "SCRAPE_TAB": {
-      return handleScrapeTab(message.tabId, sendResponse)
-    }
     default: {
       t satisfies never
       assertNever(t)
@@ -492,7 +368,7 @@ browser.runtime.onMessage.addListener(
   (
     msg: unknown,
     _sender: browser.runtime.MessageSender,
-    sendResponse: (resp: BackgroundResponse) => void
+    sendResponse: Reply<MessageBridge["type"]>
   ): boolean => {
     if (!isBackgroundMessage(msg)) return false
 

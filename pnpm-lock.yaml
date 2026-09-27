@@ -587,9 +587,9 @@ importers:
         specifier: workspace:*
         version: link:../common
     devDependencies:
-      '@some-ui/fetch-kit':
+      '@some-ui/eslint-kit':
         specifier: workspace:*
-        version: link:../../packages/fetch-kit
+        version: link:../../packages/eslint
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../packages/some-styles
@@ -602,6 +602,9 @@ importers:
       '@unocss/cli':
         specifier: ^66.8.1
         version: 66.8.1
+      eslint:
+        specifier: ^10.10.0
+        version: 10.10.0(jiti@2.7.0)(supports-color@10.2.2)
       typescript:
         specifier: ^5.4.0
         version: 5.9.3

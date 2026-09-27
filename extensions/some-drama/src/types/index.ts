@@ -139,13 +139,18 @@ export type PopupPhase =
   | { tag: "SAVING"; state: WatchlistState; tabId: number }
   | { tag: "ERROR"; message: string; prev: PopupPhase }
 
+// ─── Runtime messages ─────────────────────────────────────────────────────────
+// Popup/content → background requests. background.ts narrows `unknown` into
+// this union at its one validation boundary; every sender goes through the
+// typed `sendMsg` in effects/messaging.ts.
 export type MessageBridge =
   | { type: "GET_STATE" }
-  | { type: "SCRAPE_TAB"; tabId: number }
   | { type: "UPSERT_ENTRY"; entry: Partial<DramaEntry> & { title: string } }
-  | { type: "SET_ACTIVE"; id: string }
+  | { type: "SET_ACTIVE"; id: string | null }
   | { type: "REMOVE_ENTRY"; id: string }
   | { type: "SAVE_MOMENT"; payload: MomentRecord }
+  | { type: "GET_MOMENTS"; payload?: { dramaTitle?: string } }
+  | { type: "CLEAR_MOMENTS" }
 
 // Wire envelope — what background.ts actually sends back for each message type.
 // `ok: false` is uniform across all variants (error path), so it's factored out.
@@ -153,13 +158,18 @@ type Envelope<T> = ({ ok: true } & T) | { ok: false; error: string }
 
 export type MessageResponseMap = {
   GET_STATE: Envelope<{ state: WatchlistState }>
-  SCRAPE_TAB: Envelope<{ data: ScrapedMeta | null }>
   UPSERT_ENTRY: Envelope<{ state: WatchlistState }>
   SET_ACTIVE: Envelope<{ state: WatchlistState }>
   REMOVE_ENTRY: Envelope<{ state: WatchlistState }>
   SAVE_MOMENT: Envelope<{}>
   GET_MOMENTS: Envelope<{ moments: Array<MomentRecord> }>
   CLEAR_MOMENTS: Envelope<{}>
+}
+
+/** Background → content-script broadcast after every watchlist mutation. */
+export type StateUpdateMessage = {
+  type: "STATE_UPDATE"
+  payload: WatchlistState
 }
 
 export type MomentRecord = {

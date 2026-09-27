@@ -1,264 +1,84 @@
-# Drama Sentiment Tracker - Firefox Extension
+# some-drama — Drama Overlay
 
-A browser extension that captures emotional reactions while watching dramas with timestamped sentiment tracking.
+A Firefox (MV2) extension for keeping an emotional record of the dramas you
+watch: a draggable card floats over the page showing the active drama, and a
+popup holds a small watchlist with a factual and an emotional side to each
+entry.
 
-## 🎯 Features
+## What it does today
 
-- **Floating Reaction Bar**: Always-visible pill showing current mood, rating, episode, and timestamp
-- **Quick Capture Panel**: One-tap emoji selection with optional intensity and notes
-- **Runtime Context Detection**: Automatically detects drama title, episode, and video timestamp from page
-- **Zero Friction UX**: 2-second capture flow from impulse to recorded moment
-- **Temporal Granularity**: Each emotion captured is timestamped to the exact video moment
+- **Popup** (`popup.html` → `src/popup/popup.ts`) — a watchlist of up to five
+  dramas, one of which is _active_. Each entry is edited in two tabs:
+  - **Facts** — title, episode, network, year, genre, URL, notes, accent
+    colour. "Extract Tab Context" pre-fills these from the current tab's
+    `<video>` and page metadata (`effects/popup/content-scraper.ts`).
+  - **Feels** — moment tags, a before → after transition, reflection and a
+    quote, rating, momentum, completion likelihood, and four emotional axes
+    (connection, hope, trust, control).
+- **Card** (`src/content/content.ts`) — renders the active entry on every page
+  as a draggable card with three sizes, an auto-advancing circular slideshow
+  (axes, transition, poster, tags, momentum, atmosphere, rating, summary), and
+  a mood picker. Picking a mood appends a record to the moment log.
+- **Background** (`src/background/background.ts`) — owns storage and the
+  message bus; broadcasts `STATE_UPDATE` to every tab after a mutation.
 
-## 🏗️ Architecture
+`Alt+Shift+D` toggles the card (the `toggle-visibility` command).
 
-This extension is built with:
+## Layout
 
-- **TypeScript** for type safety
-- **Vite** for bundling (no shared chunks between scripts)
-- **Tailwind CSS** for styling (compiled to pure CSS)
-- **Vanilla DOM manipulation** (no React runtime)
-
-### Key Design Decisions
-
-1. **No Shared Modules**: Content and background scripts have fully inlined types to avoid shared chunk issues
-2. **Runtime Data Collection**: Drama title, episode, timestamp are all detected from the page at runtime
-3. **Pure CSS Bundle**: Tailwind is compiled at build time, no CSS-in-JS runtime
-4. **Mock Video Detection**: Currently uses `<video>` element detection; easily extensible to specific streaming platforms
-
-## 📁 Project Structure
-
-The tree draws an explicit seam between our owned domain and the external
-browser-API domain (Good-Citizen Charter §2, Logic ≠ Presentation ≠
-Effects): `logic/` is pure and may not reference `document.*` / `browser.*`
-/ `chrome.*` (enforced by the `extension-charter/no-logic-layer-side-effects`
-lint rule); `effects/` is the only place those globals are called from;
-`components/` is presentation. See the `README.md` in `src/logic/` and
-`src/effects/` for the per-domain contract.
+The tree encodes the Good-Citizen Charter's §2 seam
+([`extensions/common/GOOD_CITIZEN.md`](../common/GOOD_CITIZEN.md)):
 
 ```
-drama-sentiment-extension/
-├── src/
-│   ├── content/
-│   │   └── content.ts        # Content-script entrypoint (composition root)
-│   ├── background/
-│   │   └── background.ts     # Background-script entrypoint
-│   ├── popup/
-│   │   └── popup.ts          # Popup entrypoint
-│   ├── logic/                 # Owned domain — pure, no browser/DOM globals
-│   │   ├── content/           # constants, utils (rnd, stars, clamp, …)
-│   │   └── popup/             # constants
-│   ├── effects/                # Browser-API domain — the only DOM/browser callers
-│   │   ├── content/           # dom.ts (el()), keybindings, particles
-│   │   └── popup/             # messaging, content-scraper, fsm
-│   ├── components/             # Presentation (vanilla DOM + React stories)
-│   ├── types/                  # Shared type definitions
-│   └── styles/                 # Tailwind/UnoCSS input files
-├── dist/                     # Build output (ignored in git)
-├── manifest.json            # Firefox extension manifest
-├── vite.config.ts           # Vite bundler configuration
-├── tailwind.config.js       # Tailwind CSS configuration
-├── postcss.config.js        # PostCSS configuration
-├── tsconfig.json            # TypeScript configuration
-└── package.json             # Dependencies
+src/
+├── background/   background-script entrypoint (storage + message bus)
+├── content/      content-script entrypoint (composition root for the card)
+├── popup/        popup entrypoint
+├── logic/        pure — no document/window/browser/chrome (lint-enforced)
+│   ├── content/  moods, commands + key bindings, utils
+│   └── popup/    constants, video-host matching
+├── effects/      the only callers of DOM / browser APIs
+│   ├── messaging.ts  typed sendMsg, shared by popup and content
+│   ├── content/  el(), particles
+│   └── popup/    popup FSM, injected tab scraper
+├── components/   presentation (vanilla DOM) + Storybook stories
+├── types/        message contract and entry shapes — single source
+└── styles/       raw CSS partials compiled with UnoCSS
 ```
 
-## 🚀 Setup & Development
+Shared plumbing comes from [`@some-extension/common`](../common/README.md):
+the Vite build (`extensionConfig`), the brand icons (`brandIcons: true`), the
+keybinding typestate (`attachKeyBindings`), the overlay root, and runtime
+guards (`isRecord`).
 
-### Prerequisites
+## Styles
 
-- Node.js 18+ and npm
-- Firefox Developer Edition (recommended) or Firefox 91+
+Two stylesheets are generated by UnoCSS during `vite build`:
+`dist/styles/content.css` (no preflights — it is injected into every page) and
+`dist/popup.css`. What each one scans is declared once in `uno.sources.ts`,
+scoped to the modules that render into that surface. See the note there before
+widening a glob: scanning bare TypeScript harvests identifiers as utilities.
 
-### Installation
+## Develop
 
 ```bash
-# Install dependencies
-npm install
-
-# Build the extension
-npm run build
-
-# Or watch mode for development
-npm run dev
+pnpm --filter @some-extension/drama build   # → dist/
+pnpm --filter @some-extension/drama lint    # eslint + prettier + tsc
 ```
 
-### Loading in Firefox
+Load `dist/manifest.json` from `about:debugging#/runtime/this-firefox` →
+**Load Temporary Add-on**. Stories live next to each component and run in the
+repo-root Storybook.
 
-1. Open Firefox and navigate to `about:debugging#/runtime/this-firefox`
-2. Click **Load Temporary Add-on**
-3. Navigate to the `dist/` folder and select `manifest.json`
-4. The extension is now loaded!
+## Storage (`browser.storage.local`)
 
-### Testing
+| Key                      | Shape                          |
+| ------------------------ | ------------------------------ |
+| `drama_watchlist`        | `Array<DramaEntry>` (max 5)    |
+| `drama_active_id`        | `string \| null`               |
+| `drama_moments`          | `Array<MomentRecord>`          |
+| `drama_card_position_v3` | `{ x, y, size }` (card layout) |
 
-1. Open any webpage with a `<video>` element (YouTube, Netflix, etc.)
-2. The floating reaction bar should appear in the bottom-right corner
-3. Click the bar to open the quick capture panel
-4. Click an emoji to capture a sentiment moment
-5. Captured moments are logged to console and saved to browser storage
-
-## 🎨 UI Components
-
-### Floating Bar (Collapsed State)
-
-- Location: Bottom-right, above video controls
-- Shows: Current mood emoji, rating, episode number, timestamp
-- Click to expand to capture panel
-
-### Quick Capture Panel (Expanded State)
-
-- 6 core emotions with one-tap capture
-- Intensity slider (optional adjustment)
-- Optional note field
-- Auto-closes after 1.5s or manual close
-
-### Runtime Context Detection
-
-The extension automatically detects:
-
-- **Drama Title**: From page `<title>` tag (parsed)
-- **Episode Number**: Extracted from title via regex patterns
-- **Timestamp**: From `<video>` element's `currentTime`
-
-## 🔧 Customization
-
-### Adding Streaming Platform Support
-
-Edit `src/content/content.ts` in the `detectDramaContext()` function:
-
-```typescript
-function detectDramaContext(): DramaContext {
-  // Add platform-specific selectors
-  if (window.location.hostname.includes("netflix.com")) {
-    const titleEl = document.querySelector(".video-title")
-    // ... Netflix-specific logic
-  }
-
-  if (window.location.hostname.includes("viki.com")) {
-    const titleEl = document.querySelector(".episode-title")
-    // ... Viki-specific logic
-  }
-
-  // Fallback to generic detection
-  // ...
-}
-```
-
-### Modifying Emotions
-
-Edit the `EMOTIONS` array in `src/content/content.ts`:
-
-```typescript
-const EMOTIONS: EmotionConfig[] = [
-  {
-    type: "joy",
-    emoji: "😊",
-    label: "Joy",
-    gradient: "from-pink-400 to-orange-300",
-    glowColor: "shadow-pink-400/50",
-  },
-  // Add or modify emotions here
-]
-```
-
-### Changing Polling Intervals
-
-Currently mocked. To implement:
-
-1. Add interval logic in `src/content/content.ts`
-2. Use `setInterval()` to trigger polling prompt
-3. Store last poll time in state
-
-## 🐛 Debugging
-
-### Enable Console Logs
-
-All key actions log to console:
-
-```
-[Drama Sentiment] Initializing...
-[Drama Sentiment] Initialized { dramaTitle: "...", ... }
-[Background] Saved moment: abc-123
-```
-
-### Check Storage
-
-```javascript
-// In browser console
-browser.storage.local.get(["moments"], console.log)
-```
-
-### Common Issues
-
-**Floating bar not appearing:**
-
-- Check if content script loaded: Look for `[Drama Sentiment] Initializing...` in console
-- Verify CSS compiled: Check `dist/styles/content.css` exists
-- Check z-index conflicts: Extension uses `z-[999999]`
-
-**Context not detected:**
-
-- No `<video>` element on page
-- Add custom selectors for your streaming platform
-
-**Build errors:**
-
-- Clear `dist/` folder: `rm -rf dist && npm run build`
-- Check for TypeScript errors: `npm run type-check`
-
-## 📦 Build Output
-
-After `npm run build`, the `dist/` folder contains:
-
-```
-dist/
-├── manifest.json         # Extension manifest
-├── content.js            # Bundled content script (~50KB)
-├── background.js         # Bundled background script (~5KB)
-├── styles/
-│   └── content.css       # Compiled Tailwind CSS (~15KB)
-└── assets/
-    ├── icon-16.png
-    ├── icon-48.png
-    └── icon-128.png
-```
-
-## 🔐 Permissions
-
-- `storage`: Save captured moments to browser storage
-- `tabs`: Access current tab info
-- `activeTab`: Interact with active page
-
-## 📝 Data Schema
-
-```typescript
-interface CapturedMoment {
-  id: string // Unique identifier
-  timestamp: number // Seconds into video
-  emotion: EmotionType // 'joy' | 'sadness' | 'love' | ...
-  intensity: number // 0-1 scale
-  emoji: string // Visual representation
-  note?: string // Optional user note
-  episodeId: string // e.g., "ep-33"
-  dramaTitle: string // Runtime detected title
-  capturedAt: number // Unix timestamp
-}
-```
-
-## 🚧 Roadmap
-
-- [ ] Polling prompt implementation (periodic check-ins)
-- [ ] Export captured moments to JSON/CSV
-- [ ] Visualization dashboard (bento box design)
-- [ ] Platform-specific integrations (Netflix, Viki, etc.)
-- [ ] Keyboard shortcuts (Cmd+E for quick capture)
-- [ ] Cloud sync across devices
-
-## 📄 License
+## License
 
 MIT
-
----
-
-Built with ❤️ for drama lovers who want to track their emotional journey.

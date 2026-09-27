@@ -1,16 +1,11 @@
 import { defineSomeUiConfig } from "@some-ui/styles/config"
 
+import { POPUP_SOURCES } from "./uno.sources"
+
 export default defineSomeUiConfig(
   { preflight: true },
   {
-    content: {
-      filesystem: [
-        "src/**/*.{ts,tsx,html}",
-        "popup.html",
-        "src/styles/popup.css",
-        "src/styles/components/popup/**/*.css",
-      ],
-    },
+    content: { filesystem: POPUP_SOURCES },
     blocklist: [
       "container",
       "contents",
@@ -40,6 +35,13 @@ export default defineSomeUiConfig(
       "text",
       "ms",
       "px",
+      // Harvested from tag names, identifiers and prose in the scanned modules
+      // (`el("input")`, `btn` variables, "tab" / "badge" in comments).
+      "badge",
+      "btn",
+      "input",
+      "separator",
+      "tab",
     ],
   }
 )

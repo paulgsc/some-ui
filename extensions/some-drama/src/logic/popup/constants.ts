@@ -1,4 +1,12 @@
-export const VIDEO_HOSTS = []
+// Streaming hosts the popup treats as a watch tab (banner + "Extract Tab
+// Context"). Matches the platforms content-scraper.ts's networkSelector names;
+// subdomains match too (see isVideoHost).
+export const VIDEO_HOSTS: Array<string> = [
+  "netflix.com",
+  "viki.com",
+  "youtube.com",
+  "crunchyroll.com",
+]
 
 export const MAX_WATCHLIST = 5
 

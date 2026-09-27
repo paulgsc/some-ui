@@ -6,7 +6,8 @@
 //   3. React to STATE_UPDATE broadcasts from background.
 //   4. Persist card position/size locally.
 //   5. Forward mood captures to background (SAVE_MOMENT).
-//   6. Keybinding: Alt+Shift+D — toggle card visibility, or fetch+render if
+//   6. `toggle-visibility` command (Alt+Shift+D, bound via the commons
+//      keybinding typestate) — toggle card visibility, or fetch+render if
 //      card is null (background was evicted on page load).
 //
 // Typestate:
@@ -25,9 +26,16 @@
 //   BUG-3  Keybinding was a no-op when card === null (EMPTY typestate after
 //          a failed init). Fixed: keybinding calls fetchAndRender() when no
 //          card exists instead of silently doing nothing.
+//   BUG-4  GET_STATE resolves to the `{ ok, state }` envelope, but the reply
+//          was read as a bare WatchlistState — so `watchlist` was always
+//          undefined and the card never rendered on page load, only after a
+//          popup mutation broadcast STATE_UPDATE. Fixed: requests go through
+//          the typed sendMsg and the envelope is unwrapped.
 
 import { DramaCard } from "@drama/components/drama-card"
-import { installKeybindings } from "@drama/effects/content/keybindings"
+import { sendMsg } from "@drama/effects/messaging"
+import { KEY_BINDINGS } from "@drama/logic/content/commands"
+import type { DramaCommandId } from "@drama/logic/content/commands"
 import type {
   CardEvents,
   CardSize,
@@ -35,8 +43,11 @@ import type {
   DramaEntry,
   MomentRecord,
   MoodType,
+  StateUpdateMessage,
   WatchlistState,
 } from "@drama/types"
+import { attachKeyBindings, isRecord } from "@some-extension/common"
+import type { CommandRegistry } from "@some-extension/common"
 import { getOverlayRoot } from "@some-extension/common/lib/layers"
 
 // ─── Local types ──────────────────────────────────────────────────────────────
@@ -51,11 +62,6 @@ type ContentTypestate =
   | { phase: "LOADING" }
   | { phase: "EMPTY" }
   | { phase: "READY"; entry: DramaEntry }
-
-type StateUpdateMessage = {
-  type: "STATE_UPDATE"
-  payload: Partial<WatchlistState>
-}
 
 // ─── Logger ───────────────────────────────────────────────────────────────────
 
@@ -73,10 +79,6 @@ const log = {
 // ─── Storage ──────────────────────────────────────────────────────────────────
 
 const CARD_META_KEY = "drama_card_position_v3"
-
-function isRecord(v: unknown): v is Record<string, unknown> {
-  return typeof v === "object" && v !== null
-}
 
 function isPersistedCardMeta(v: unknown): v is PersistedCardMeta {
   return (
@@ -255,9 +257,11 @@ async function init(): Promise<void> {
           dramaTitle: entry.title,
           capturedAt: Date.now(),
         }
-        browser.runtime
-          .sendMessage({ type: "SAVE_MOMENT", payload: moment })
-          .catch((err) => log.error("SAVE_MOMENT failed:", err))
+        sendMsg({ type: "SAVE_MOMENT", payload: moment })
+          .then((resp) => {
+            if (!resp.ok) log.error("SAVE_MOMENT failed:", resp.error)
+          })
+          .catch((err: unknown) => log.error("SAVE_MOMENT failed:", err))
 
         card?.update({ activeMood: mood })
       },
@@ -300,9 +304,11 @@ async function init(): Promise<void> {
   // where the non-persistent background script is still waking up.
 
   const fetchAndRender = async (retryOnFailure = true): Promise<void> => {
-    let state: WatchlistState | null
+    let state: WatchlistState
     try {
-      state = await browser.runtime.sendMessage({ type: "GET_STATE" })
+      const resp = await sendMsg({ type: "GET_STATE" })
+      if (!resp.ok) throw new Error(resp.error)
+      state = resp.state
     } catch (err) {
       log.error("GET_STATE failed:", err)
       if (retryOnFailure) {
@@ -359,8 +365,10 @@ async function init(): Promise<void> {
 
   // ── Keybindings ───────────────────────────────────────────────────────────
 
-  installKeybindings({
-    toggleVisibility(): void {
+  // Lifetime: the page's. The card lives until the document unloads, so the
+  // disposer is not retained.
+  const commands: CommandRegistry<DramaCommandId> = {
+    "toggle-visibility": (): void => {
       if (card) {
         visible = !visible
         card.setVisible(visible)
@@ -379,7 +387,8 @@ async function init(): Promise<void> {
       log.info("No card on keybind — attempting fetchAndRender")
       void fetchAndRender()
     },
-  })
+  }
+  attachKeyBindings(commands, KEY_BINDINGS)
 
   log.info("Display layer ready.", typestate)
 }
