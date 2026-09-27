@@ -491,6 +491,59 @@ describe("LessonCrm: what a save writes is what the editor holds", () => {
     expect(screen.getByLabelText("Key")).toHaveValue("cafe-order")
   })
 
+  it("retries a failed save with the editor as it is now, not as it was", async () => {
+    viewport(false)
+    const client = fakeClient([])
+    vi.mocked(client.write).mockRejectedValueOnce(new Error("boom"))
+    const reporting = recording()
+    render(<LessonCrm client={client} reporting={reporting} />)
+    await settle()
+
+    fireEvent.click(screen.getByRole("button", { name: /New lesson/ }))
+    step(/Step 2: Lesson/)
+    pasteReply()
+    await settle()
+    step(/Step 5: Check/)
+    fireEvent.click(screen.getByRole("button", { name: /^Save$/ }))
+    await settle()
+    const notice = reporting.notices.at(-1)
+    expect(notice).toMatchObject({ tone: "error" })
+
+    step(/Step 3: Details/)
+    fireEvent.change(screen.getByLabelText("Key"), {
+      target: { value: "cafe-order-2" },
+    })
+    await act(async () => {
+      if (notice?.tone === "error") notice.retry?.()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+    expect(client.writes.map(([key]) => key)).toEqual(["cafe-order-2"])
+    expect(screen.getByLabelText("Key")).toHaveValue("cafe-order-2")
+    expect(screen.getByRole("button", { name: /At the café/ })).toHaveAttribute(
+      "aria-current",
+      "true"
+    )
+  })
+
+  it("won't save a new lesson until the list has loaded", async () => {
+    viewport(false)
+    const client = fakeClient([])
+    vi.mocked(client.list).mockRejectedValueOnce(new Error("down"))
+    render(<LessonCrm client={client} reporting={recording()} />)
+    await settle()
+
+    fireEvent.click(screen.getByRole("button", { name: /New lesson/ }))
+    step(/Step 2: Lesson/)
+    pasteReply()
+    await settle()
+    step(/Step 5: Check/)
+    expect(screen.getByRole("button", { name: /^Save$/ })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole("button", { name: /Try again/ }))
+    await settle()
+    expect(screen.getByRole("button", { name: /^Save$/ })).toBeEnabled()
+  })
+
   it("won't save while a replacement source is still loading", async () => {
     viewport(false)
     render(<LessonCrm client={fakeClient([])} reporting={recording()} />)

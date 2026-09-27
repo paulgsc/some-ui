@@ -14,7 +14,6 @@ import { StepRail } from "@lesson-crm/components/step-rail"
 import type {
   LessonChange,
   LessonCrmClient,
-  LessonWrite,
   OperatorLesson,
 } from "@lesson-crm/lib/client"
 import type { LessonForm } from "@lesson-crm/lib/draft"
@@ -84,9 +83,10 @@ const canReadClipboard = (): boolean =>
  * - A source (paste, upload, clipboard, the read opening a lesson starts,
  *   Remove) claims one shared turn; only the latest turn's result lands, and
  *   nothing is saved while that latest source is still on its way.
- * - A save carries the selection it started from, and holds the key while
- *   it runs; the editor becomes the saved lesson only if it still holds
- *   that selection, so what is shown as stored is what was written.
+ * - A save writes what the editor holds when it runs (a Retry included),
+ *   holds the key while it runs, and makes the editor the saved lesson only
+ *   if it still holds the selection it started from. Nothing is saved before
+ *   the list has loaded, since a new key can't be checked until it has.
  *
  * LAN-only by build, not by access: this workspace's audience is `lan`, and
  * the server's operator routes are guarded by nothing but its origin
@@ -132,10 +132,14 @@ export const LessonCrm = ({
   }
   const scope = useRef<HTMLDivElement | null>(null)
 
+  // Whether the list has loaded at least once. Until it has, a new lesson's
+  // key can't be checked against the others, so nothing is saved.
+  const [indexed, setIndexed] = useState(false)
   const load = useOperation(
     async (): Promise<Array<OperatorLesson>> => {
       const listed = await client.list()
       setLessons(listed)
+      setIndexed(true)
       return listed
     },
     { success: () => null, failure: () => "Couldn't load the lessons" },
@@ -236,9 +240,19 @@ export const LessonCrm = ({
   const clashes =
     editing.kind === "new" && lessons.some((lesson) => lesson.key === form.key)
 
+  const canSave = draft?.ok === true && !clashes && !sourcePending && indexed
+
+  // A save takes nothing from the click that started it: it writes what the
+  // editor holds when it runs. `useOperation` runs the latest closure, so a
+  // failed save's Retry saves the editor as it is now, exactly as pressing
+  // Save again would - never a write captured before the operator edited.
   const save = useOperation(
-    async ({ write, token }: { write: LessonWrite; token: number }) => {
-      const written = await client.write(write.metadata.key, write)
+    async () => {
+      if (!canSave) {
+        throw new Error("The lesson no longer checks out: see Check.")
+      }
+      const token = selection.current
+      const written = await client.write(draft.write.metadata.key, draft.write)
       setLessons((current) => upsert(current, written.lesson))
       // The list always learns of the save; the editor follows it only if it
       // still holds the lesson that was saved.
@@ -250,7 +264,8 @@ export const LessonCrm = ({
     },
     {
       success: (written) => CHANGE_WORDS[written.change](written.lesson.key),
-      failure: ({ write }) => `Couldn't save ${write.metadata.key}`,
+      // The key is held while a save runs, so it is still the one written.
+      failure: () => `Couldn't save ${form.key}`,
     },
     reporting
   )
@@ -296,18 +311,13 @@ export const LessonCrm = ({
   }
 
   const panes = editorPanes(editing)
-  const canSave = draft?.ok === true && !clashes && !sourcePending
 
   const actions = (
     <LessonActions
       save={save.state}
       listing={listing.state}
       canSave={canSave}
-      onSave={() => {
-        if (canSave) {
-          save.start({ write: draft.write, token: selection.current })
-        }
-      }}
+      onSave={() => save.start(undefined)}
       stored={stored}
       onListed={(listed) => {
         if (stored) listing.start({ key: stored.key, listed })

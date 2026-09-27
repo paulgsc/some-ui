@@ -198,11 +198,12 @@ export default defineConfig(
         : []),
     ],
     // An http:// page skips the proxy and asks :3000 directly
-    // (src/lib/file-host-config) - the container. While `make dev` runs, send
-    // it through the proxy too, so every page reaches the server under test.
+    // (src/lib/file-host-config) - the container. While the proxy points
+    // anywhere else (`make dev`, or FILE_HOST_PROXY_TARGET), send it through
+    // the proxy too, so every page reaches the server the proxy names.
     // An explicit VITE_FILE_HOST_ENDPOINT still wins.
     ...(command === "serve" &&
-    fileHost.source === "dev" &&
+    fileHost.source !== "container" &&
     !process.env.VITE_FILE_HOST_ENDPOINT
       ? {
           define: {
