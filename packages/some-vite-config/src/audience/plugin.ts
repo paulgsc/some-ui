@@ -1,6 +1,6 @@
 import { readFileSync } from "fs"
 import { extname, relative, resolve, sep } from "path"
-import type { Plugin, ResolvedConfig } from "vite"
+import type { ESTree, Plugin, ResolvedConfig } from "vite"
 import { parseSync } from "vite"
 
 import type { AudienceWorkspace } from "./manifests.js"
@@ -60,6 +60,55 @@ const SCRIPT_EXTENSION = /^\.[cm]?[jt]sx?$/
 
 type Resolver = (source: string, importer: string) => Promise<string | null>
 
+type BindingPattern = ESTree.VariableDeclarator["id"]
+
+/**
+ * Every name a declaration's binding pattern introduces: `a`, and each of
+ * `{ a, b: { c }, ...d }` or `[a, [b = 1], ...c]`. `export const { a } = x`
+ * exports `a`, so a stub that saw only plain identifiers would miss it.
+ */
+function bindingNames(pattern: BindingPattern, into: Set<string>): void {
+  switch (pattern.type) {
+    case "Identifier": {
+      into.add(pattern.name)
+      return
+    }
+    case "ObjectPattern": {
+      for (const property of pattern.properties) {
+        bindingNames(
+          property.type === "RestElement" ? property.argument : property.value,
+          into
+        )
+      }
+      return
+    }
+    case "ArrayPattern": {
+      for (const element of pattern.elements) {
+        if (element) {
+          bindingNames(
+            element.type === "RestElement" ? element.argument : element,
+            into
+          )
+        }
+      }
+      return
+    }
+    case "AssignmentPattern": {
+      bindingNames(pattern.left, into)
+      return
+    }
+    default: {
+      return assertNever(pattern)
+    }
+  }
+}
+
+function assertNever(value: never): never {
+  throw new Error(
+    `[build-audience] unexpected binding pattern: ${String(value)}`
+  )
+}
+
 /**
  * The names a module exports, following `export *` through `resolve`. The
  * stub has to export exactly these: importing a name a module lacks is a
@@ -93,9 +142,7 @@ async function collectExports(
         }
       }
       if (declaration?.type === "VariableDeclaration") {
-        for (const d of declaration.declarations) {
-          if (d.id.type === "Identifier") names.add(d.id.name)
-        }
+        for (const d of declaration.declarations) bindingNames(d.id, names)
       }
       for (const specifier of node.specifiers) {
         if (specifier.exportKind === "type") continue

@@ -74,6 +74,9 @@ beforeEach(() => {
         // An export name that is no identifier (ES2022 allows any string):
         // the stub has to re-export it verbatim and splice it into code
         // safely, markup and line separators included.
+        // Destructuring declarations export every name their pattern binds.
+        `export const { destructured, nested: { deep }, ...restProps } = { destructured: 1, nested: { deep: 2 }, extra: 3 }`,
+        `export const [first, [second = 2], ...others] = [1, [], 3]`,
         `const hostile = 1`,
         `export { hostile as ${JSON.stringify(HOSTILE_NAME)} }`,
       ].join("\n"),
@@ -108,7 +111,8 @@ beforeEach(() => {
     "app/src/routes/_lan/panel.js",
     [
       `import Panel, { Panel as Named, more, ${JSON.stringify(HOSTILE_NAME)} as hostile } from "@fx/lan-panel"`,
-      `export const component = [Panel, Named, more, hostile]`,
+      `import { destructured, deep, restProps, first, second, others } from "@fx/lan-panel"`,
+      `export const component = [Panel, Named, more, hostile, destructured, deep, restProps, first, second, others]`,
     ].join("\n")
   )
 })

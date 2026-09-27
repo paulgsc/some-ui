@@ -78,16 +78,21 @@ is a regression, not debt. Each falsifier covers deletions and moves as well as 
   `package.json` exports as `./contract`, and every module that one imports relatively,
   import values only from `zod` and from each other; every other import is `import type`.
 - _Falsified by_ a hunk, in such a module, that adds a value import from any other specifier
-  or turns an `import type` into a value import; or a hunk to that workspace's `package.json`
-  that points `exports["./contract"]` at a module not meeting the claim, or makes the
-  workspace non-`public` while its contract module does not meet it.
+  or turns an `import type` into a value import; or that adds a relative import of a module
+  not already in the contract's graph, when that module, or any module it imports relatively,
+  does not meet the claim (read the newly imported module and follow its relative imports);
+  or a hunk to that workspace's `package.json` that points `exports["./contract"]` at a
+  module not meeting the claim, or makes the workspace non-`public` while its contract
+  module does not meet it.
 - _Scope:_ `packages/ui/*` workspaces with a non-`public` audience. Held when written, with
   none in the repo yet; the OBS workspace is expected to be the first.
-- _Why not enforced:_ mechanical; not yet a rule. The plugin never stubs `/contract`, so
+- _Why not enforced:_ mechanical; not yet a test. The plugin never stubs `/contract`, so
   whatever a contract module imports ships in every profile: a size regression, not a
-  broken build, so neither the build nor a test notices. Which file is a contract module is
-  decided by `package.json#exports`, another file; once the first gated workspace fixes the
-  layout (say `src/contract.ts`), a lint rule scoped by that path can check it alone.
+  broken build, so neither the build nor an existing test notices. A lint rule would see one
+  file at a time, but the claim is about the contract's whole relative-import graph, rooted
+  at `package.json#exports` in another file. A test can walk that graph (the way
+  `check:ui-manifests` walks manifests); with no gated workspace yet it would walk nothing,
+  so it lands with the first one.
 
 **A3: Public UI offers a gated route only when the build carries it.**
 
