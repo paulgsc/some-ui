@@ -72,6 +72,22 @@ describe("createResumeStore", () => {
     expect(store.last()).toBeNull()
   })
 
+  it("clears the points a test matches, and hands last to the newest left (Codex, #1555)", () => {
+    let clock = 1
+    const store = createResumeStore(memory(), () => clock++)
+    store.set("served-old", { conversation: 0, messageId: "m" })
+    store.set("served-new", { conversation: 1, messageId: "m" })
+    store.set("local:a", { conversation: 2, messageId: "m" })
+    store.clearWhere((key) => key.startsWith("local:"))
+    expect(store.get("local:a")).toBeNull()
+    expect(store.get("served-old")).not.toBeNull()
+    expect(store.last()?.topikKey).toBe("served-new")
+    // Nothing matches: last stays where it was.
+    store.set("served-old", { conversation: 0, messageId: "m2" })
+    store.clearWhere((key) => key.startsWith("local:"))
+    expect(store.last()?.topikKey).toBe("served-old")
+  })
+
   it("treats unknown shapes, bad JSON and throwing storage as empty", () => {
     const storage = memory()
     storage.setItem(RESUME_STORAGE_KEY, JSON.stringify({ version: 0 }))

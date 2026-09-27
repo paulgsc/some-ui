@@ -811,6 +811,29 @@ describe("HandheldLesson", () => {
       expect(session.get("local:first-dinner")).toBeNull()
     })
 
+    it("drops places left in pasted lessons kept by an older build, and offers the served one to continue (Codex, #1555)", async () => {
+      const storage = memoryStorage()
+      const points = createResumeStore(storage)
+      points.set(FIXTURE_TOPIK_KEY, {
+        batchId: 2,
+        conversation: 1,
+        messageId: "c2-m2",
+      })
+      // Left last, in the localStorage store, by a build that kept lessons.
+      points.set("local:first-dinner", {
+        batchId: 1,
+        conversation: 0,
+        messageId: "c1-m1",
+        survey: { missed: {}, flagged: [] },
+      })
+      const store = renderLesson(storage)
+      expect(
+        await screen.findByRole("button", { name: /Continue/ })
+      ).toBeTruthy()
+      expect(store.get("local:first-dinner")).toBeNull()
+      expect(store.last()?.topikKey).toBe(FIXTURE_TOPIK_KEY)
+    })
+
     it("deletes what the retired lesson store left in localStorage (Codex, #1555)", async () => {
       window.localStorage.setItem(RETIRED_LESSONS_KEY, "[]")
       renderLesson()

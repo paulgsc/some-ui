@@ -203,7 +203,16 @@ export function useHandheldLesson({
 }: UseHandheldLessonOptions = {}): HandheldLessonVM {
   const { topikRepository, metadataRepository, speechAdapter } =
     useSessionConfig()
-  const [store] = useState(() => resumeStore ?? createResumeStore())
+  const [store] = useState(() => {
+    const points = resumeStore ?? createResumeStore()
+    // Places left in pasted lessons by builds that kept them in
+    // `localStorage` go with those lessons (Rem. 7.4): they would hold
+    // outcomes and flags for good, and one left as `last` would hide the
+    // served lesson "Continue" should offer (Codex, #1555). Done before the
+    // first render reads `last`.
+    points.clearWhere((key) => key.startsWith(LOCAL_LESSON_PREFIX))
+    return points
+  })
   const [surveys] = useState(() => surveyStore ?? createSurveyStore())
   const [held] = useState(() => pastedStore ?? createPastedLessonStore())
   const [sessionPoints] = useState(

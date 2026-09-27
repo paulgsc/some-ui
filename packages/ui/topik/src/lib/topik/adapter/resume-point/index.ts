@@ -110,6 +110,12 @@ export type ResumeStore = {
   last(): { topikKey: string; point: ResumePoint } | null
   set(topikKey: string, point: Omit<ResumePoint, "at">): void
   clear(topikKey: string): void
+  /**
+   * Drops every point whose topik key matches. If `last` was among them, the
+   * most recent point left becomes `last`, so "Continue" still offers a
+   * lesson that is there.
+   */
+  clearWhere(matches: (topikKey: string) => boolean): void
 }
 
 export type StorageLike = Pick<Storage, "getItem" | "setItem">
@@ -175,6 +181,17 @@ export function createResumeStore(
         last: doc.last === topikKey ? null : doc.last,
         points,
       })
+    },
+
+    clearWhere: (matches): void => {
+      const doc = read()
+      const kept = Object.entries(doc.points).filter(([key]) => !matches(key))
+      if (kept.length === Object.keys(doc.points).length) return
+      const lastKept =
+        doc.last !== null && !matches(doc.last)
+          ? doc.last
+          : ([...kept].sort(([, a], [, b]) => b.at - a.at)[0]?.[0] ?? null)
+      write({ version: 1, last: lastKept, points: Object.fromEntries(kept) })
     },
   }
 }
