@@ -41,10 +41,46 @@ export type Intake =
     }
   | { ok: false; error: string }
 
-const FENCE = /```(?:json)?\s*\n([\s\S]*?)```/g
+const FENCE = "```"
+const LANGUAGE = "json"
+
+/** Spaces, tabs and a CR are allowed between a fence's opening and its newline. */
+const isInlineSpace = (char: string | undefined): boolean =>
+  char === " " || char === "\t" || char === "\r"
+
+/**
+ * The body of every ``` or ```json fence in `text`, in order.
+ *
+ * A scan, not a regular expression: this reads whatever was pasted, and the
+ * pattern it replaces (```` /```(?:json)?\s*\n([\s\S]*?)```/g ````) backtracked
+ * polynomially on a fence followed by many whitespace-and-newline pairs,
+ * because `\s*` could also consume the newline it then required (CodeQL,
+ * #1564). Each fence is visited once, so this is linear in `text`.
+ */
+export function fencedBodies(text: string): Array<string> {
+  const bodies: Array<string> = []
+  let from = 0
+  for (;;) {
+    const open = text.indexOf(FENCE, from)
+    if (open === -1) return bodies
+    let at = open + FENCE.length
+    if (text.startsWith(LANGUAGE, at)) at += LANGUAGE.length
+    while (isInlineSpace(text[at])) at += 1
+    if (text[at] !== "\n") {
+      // Not an opening fence (```ts, or text after the backticks): look again
+      // from the next character, as the pattern did.
+      from = open + 1
+      continue
+    }
+    const close = text.indexOf(FENCE, at + 1)
+    if (close === -1) return bodies
+    bodies.push(text.slice(at + 1, close))
+    from = close + FENCE.length
+  }
+}
 
 function jsonValues(text: string): Array<unknown> {
-  const fenced = [...text.matchAll(FENCE)].map((match) => match[1] ?? "")
+  const fenced = fencedBodies(text)
   const candidates = fenced.length > 0 ? fenced : [text]
   return candidates.flatMap((candidate) => {
     try {
@@ -79,8 +115,19 @@ const DIFFICULTY_BY_LEVEL: Record<number, TopikMetadata["difficulty"]> = {
   6: "advanced",
 }
 
-/** Reads a pasted reply. Never throws. */
-export function intakeLesson(reply: string): Intake {
+/**
+ * Reads a pasted reply. Never throws.
+ *
+ * `entry`, when given, stands in for any manifest entry in the reply. The
+ * operator's lesson CRM keeps the entry in a form, and a lesson file it reads
+ * back from the server carries none; its authored tags (`topik-3`) must
+ * survive an edit all the same. Counts and `relation:` tags are derived
+ * either way.
+ */
+export function intakeLesson(
+  reply: string,
+  entry?: Record<string, unknown>
+): Intake {
   const values = jsonValues(reply)
   const raw = values.find(Array.isArray)
   if (raw === undefined) {
@@ -123,10 +170,10 @@ export function intakeLesson(reply: string): Intake {
   // withheld probe's relation is never advertised to selection.
   const batches = withholdErrors(parsed.data, findings)
 
-  const entry = values.find(isRecord) ?? {}
-  const displayName = text(entry.displayName) ?? "Untitled lesson"
-  const authored = Array.isArray(entry.tags)
-    ? entry.tags.filter(
+  const given = entry ?? values.find(isRecord) ?? {}
+  const displayName = text(given.displayName) ?? "Untitled lesson"
+  const authored = Array.isArray(given.tags)
+    ? given.tags.filter(
         (tag): tag is string =>
           typeof tag === "string" && !tag.startsWith(RELATION_TAG_PREFIX)
       )
@@ -135,16 +182,16 @@ export function intakeLesson(reply: string): Intake {
   const level = topikLevelOf(tags)
   const difficulty =
     (level ? DIFFICULTY_BY_LEVEL[level] : undefined) ??
-    (entry.difficulty === "beginner" ||
-    entry.difficulty === "intermediate" ||
-    entry.difficulty === "advanced"
-      ? entry.difficulty
+    (given.difficulty === "beginner" ||
+    given.difficulty === "intermediate" ||
+    given.difficulty === "advanced"
+      ? given.difficulty
       : undefined)
 
   const meta: TopikMetadata = {
-    key: `${LOCAL_LESSON_PREFIX}${slug(text(entry.key) ?? displayName)}`,
+    key: `${LOCAL_LESSON_PREFIX}${slug(text(given.key) ?? displayName)}`,
     displayName,
-    description: text(entry.description) ?? "",
+    description: text(given.description) ?? "",
     batchCount: batches.length,
     totalQuestions: batches.reduce(
       (sum, batch) => sum + batch.questions.length,

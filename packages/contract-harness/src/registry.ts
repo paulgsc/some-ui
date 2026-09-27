@@ -11,6 +11,7 @@
  */
 
 import { contracts as activityContracts } from "../contracts/activities.contract"
+import { contracts as curriculumOperatorContracts } from "../contracts/curriculum-operator.contract"
 import { contracts as healthContracts } from "../contracts/health.contract"
 import { contracts as studyNudgeContracts } from "../contracts/study-nudge.contract"
 import { contracts as tabContracts } from "../contracts/tabs.contract"
@@ -18,6 +19,7 @@ import type { Contract } from "./contract"
 
 export const allContracts: ReadonlyArray<Contract> = [
   ...activityContracts,
+  ...curriculumOperatorContracts,
   ...healthContracts,
   ...studyNudgeContracts,
   ...tabContracts,

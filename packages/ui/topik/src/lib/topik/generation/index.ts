@@ -31,6 +31,14 @@ export type LessonRequest = {
   conversations?: number
   /** `surveyDigest` of recent reports; omitted when there are none. */
   survey?: string
+  /**
+   * Who the lesson is for. `learner` (the default) is one person's next
+   * lesson, and a missing survey means it is their first. `batch` is the
+   * operator's weekly batch (canon Cor. 8.3), served to every learner at the
+   * level: no one learner's survey applies, and the prompt says so rather
+   * than calling it anyone's first lesson.
+   */
+  audience?: "learner" | "batch"
 }
 
 export const DEFAULT_CONVERSATIONS = 3
@@ -114,7 +122,9 @@ export function buildLessonPrompt(request: LessonRequest): string {
     "",
     survey
       ? `Survey (newest first):\n${survey}`
-      : "Survey: none yet - this is their first lesson.",
+      : request.audience === "batch"
+        ? "Survey: none - this lesson joins the weekly batch every learner at this level chooses from."
+        : "Survey: none yet - this is their first lesson.",
     "",
   ].join("\n")
 }

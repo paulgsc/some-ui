@@ -105,6 +105,21 @@ describe("requestJSON: retryability of a timeout depends on whether the write is
     ).rejects.toMatchObject({ retryable: false })
   })
 
+  it("marks a timed-out POST retryable when the caller says it converges (the lesson CRM's retire/restore)", async () => {
+    vi.stubEnv("VITE_FILE_HOST_TIMEOUT_MS", "30")
+    const hangingTransport: FileHostTransport = () =>
+      new Promise<Response>(() => {})
+
+    await expect(
+      requestJSON(
+        hangingTransport,
+        "curriculum/operator/lessons/a/retire",
+        { method: "POST" },
+        { idempotent: true }
+      )
+    ).rejects.toMatchObject({ retryable: true })
+  })
+
   it("still marks a timeout on a GET as retryable (no method - list()/get()'s own shape)", async () => {
     vi.stubEnv("VITE_FILE_HOST_TIMEOUT_MS", "30")
     const hangingTransport: FileHostTransport = () =>

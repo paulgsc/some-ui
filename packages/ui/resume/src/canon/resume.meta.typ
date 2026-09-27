@@ -330,7 +330,7 @@ backs should be cut, not kept and re-justified.
 
 == Counts
 
-*57 workspace packages, 6 browser extensions* --- counted 2026-08-29 by
+*58 workspace packages, 6 browser extensions* --- counted 2026-09-27 by
 `scripts/check-claims.mjs`, which walks the globs in `pnpm-workspace.yaml`
 (`packages/ui/*`, `apps/*`, `docs/canon`, `extensions/**`, `packages/*`,
 `crates/*`) for a `package.json`, the same method `pnpm -r list --depth -1`
@@ -342,7 +342,9 @@ catches build scripts): `some-censor`, `some-conveyor`, `some-drama`,
 `filter-classifier`, `docs`, and `scripts` are excluded — shared code and a
 test corpus, not shipped extensions.
 
-The package count is 52 -> 57 since the last recount: new additions include
+The package count is 57 -> 58 on 2026-09-27: `packages/ui/lesson-crm`, the
+operator's lesson CRM and the first `lan`-audience workspace. Before that it
+was 52 -> 57 at the 2026-08-29 recount: new additions include
 `packages/activity-catalog`, `packages/contract-harness`,
 `packages/server-routes`, `packages/intent-kit`, `packages/fetch-kit`,
 `packages/job-tracker` (this revision's own addition — see the job-tracker

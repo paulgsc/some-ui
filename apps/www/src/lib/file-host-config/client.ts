@@ -189,8 +189,24 @@ export function isFileHostTimeout(error: unknown): boolean {
  * from "the server already created it and the response was slow" - see
  * `requestJSON`'s own use of this below.
  */
-function isNonIdempotent(init: RequestInit | undefined): boolean {
-  return init?.method === "POST"
+function isNonIdempotent(
+  init: RequestInit | undefined,
+  options: RequestOptions | undefined
+): boolean {
+  return options?.idempotent === undefined
+    ? init?.method === "POST"
+    : !options.idempotent
+}
+
+export type RequestOptions = {
+  /**
+   * Whether repeating this request converges on the same end state, when its
+   * method alone says otherwise. A `POST` is taken to mint something unless a
+   * caller says it does not - the lesson CRM's retire and restore are
+   * `POST`s that set a state, so a timed-out one is as safe to retry as a
+   * `PATCH`. Omit it to let the method decide.
+   */
+  idempotent?: boolean
 }
 
 /**
@@ -210,7 +226,8 @@ function isNonIdempotent(init: RequestInit | undefined): boolean {
 export async function requestJSON<T>(
   transport: FileHostTransport,
   route: string,
-  init?: RequestInit
+  init?: RequestInit,
+  options?: RequestOptions
 ): Promise<T> {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), resolveTimeoutMs())
@@ -275,7 +292,7 @@ export async function requestJSON<T>(
         ),
         // Not retryable for a non-idempotent write - see `isNonIdempotent`'s
         // own header and `FileHostUnreachableError`'s `retryable` doc.
-        !isNonIdempotent(init)
+        !isNonIdempotent(init, options)
       )
     }
     throw new FileHostUnreachableError(route, cause)

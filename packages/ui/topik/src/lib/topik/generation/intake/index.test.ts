@@ -2,7 +2,13 @@ import { FIXTURE_BATCHES } from "@topik/components/topik/handheld/handheld-lesso
 import { relationTags } from "@topik/lib/topik/core/lesson-selection"
 import { describe, expect, it } from "vitest"
 
-import { fixRequest, intakeLesson, LOCAL_LESSON_PREFIX, topikLevelOf } from "."
+import {
+  fencedBodies,
+  fixRequest,
+  intakeLesson,
+  LOCAL_LESSON_PREFIX,
+  topikLevelOf,
+} from "."
 
 const entry = {
   key: "first-dinner",
@@ -29,6 +35,33 @@ const reply = (lesson: unknown): string =>
   ].join("\n")
 
 describe("intakeLesson", () => {
+  it("takes a given entry in place of the reply's, and still derives counts and relation tags", () => {
+    const intake = intakeLesson(JSON.stringify(FIXTURE_BATCHES), {
+      key: "week-40",
+      displayName: "Edited",
+      description: "From the CRM's form.",
+      tags: ["topik-4", "relation:hand-written"],
+    })
+    if (!intake.ok) throw new Error(intake.error)
+    expect(intake.meta).toEqual({
+      key: `${LOCAL_LESSON_PREFIX}week-40`,
+      displayName: "Edited",
+      description: "From the CRM's form.",
+      batchCount: 2,
+      totalQuestions: intake.meta.totalQuestions,
+      totalMessages: intake.meta.totalMessages,
+      difficulty: "intermediate",
+      tags: ["topik-4", ...relationTags(FIXTURE_BATCHES)],
+    })
+    // The reply's own entry is ignored when one is given.
+    const overridden = intakeLesson(reply(FIXTURE_BATCHES), {
+      displayName: "Mine",
+    })
+    if (!overridden.ok) throw new Error(overridden.error)
+    expect(overridden.meta.displayName).toBe("Mine")
+    expect(overridden.meta.tags).toEqual(relationTags(FIXTURE_BATCHES))
+  })
+
   it("finds the lesson in a model's reply, and recounts rather than trusting it", () => {
     const intake = intakeLesson(reply(FIXTURE_BATCHES))
     if (!intake.ok) throw new Error(intake.error)
@@ -149,5 +182,47 @@ describe("topikLevelOf", () => {
   it("reads the level tag", () => {
     expect(topikLevelOf(["makjang", "topik-4"])).toBe(4)
     expect(topikLevelOf(["topik-9"])).toBeUndefined()
+  })
+})
+
+describe("fencedBodies", () => {
+  // The pattern the scan replaced. Kept here only as the reference the scan
+  // must agree with on ordinary input; it is not safe on hostile input.
+  const OLD_FENCE = /```(?:json)?\s*\n([\s\S]*?)```/g
+  const oldBodies = (text: string): Array<string> =>
+    [...text.matchAll(OLD_FENCE)].map((match) => match[1] ?? "")
+
+  it("finds exactly the fences the old pattern did", () => {
+    const cases = [
+      "no fences",
+      "```json\n[1]\n```",
+      "```\n[1]\n```\ntext\n```json\n{}\n```",
+      "```json  \r\n[1]\n```",
+      "```json\n[1]",
+      "```ts\nconst x = 1\n```\n```json\n[2]\n```",
+      [
+        "intro",
+        "```json",
+        "[1]",
+        "```",
+        "```ts",
+        "const x = 1",
+        "```",
+        "```  ",
+        '{"a":2}',
+        "```",
+      ].join("\n"),
+    ]
+    for (const text of cases) {
+      expect(fencedBodies(text), text).toEqual(oldBodies(text))
+    }
+  })
+
+  it("stays linear on the input that made the old pattern backtrack", () => {
+    const hostile = `\`\`\`\n${"\n ".repeat(100_000)}`
+    const started = performance.now()
+    expect(fencedBodies(hostile)).toEqual([])
+    expect(intakeLesson(hostile)).toMatchObject({ ok: false })
+    expect(performance.now() - started).toBeLessThan(1_000)
   })
 })

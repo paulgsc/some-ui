@@ -7,6 +7,14 @@ digest, and checks the lesson pasted back. It lives there, not here, because
 the app provides the grammar a learner prompts their own model with (canon
 Rem. 4.8 and the v1.7 loop). This file keeps only what is for developers.
 
+## Getting it for the weekly batch
+
+The LAN lesson CRM (`/lessons`, `@some-ui/lesson-crm`) builds it: pick a
+level, optionally a scene, and **Copy the prompt**. The request it appends
+marks the lesson as the weekly batch rather than one learner's next lesson
+(`buildLessonPrompt`'s `audience: "batch"`). Paste the model's reply back on
+the same page, which checks it the way the phone does and saves it.
+
 ## Using it outside the app
 
 - Copy `lesson-prompt.md`, append a request block:

@@ -36,6 +36,7 @@ export default defineConfig({
       "@/style.context": resolve(import.meta.dirname, "./style.context.ts"),
       // Same reason, same placement: read by the audience-gate test.
       "@/build.profiles": resolve(import.meta.dirname, "./build.profiles.ts"),
+      "@/file-host.dev": resolve(import.meta.dirname, "./file-host.dev.ts"),
       // Mirrors vite.config.ts's "@" -> "./src" alias - this config doesn't
       // extend that one, so tests importing a "@/..." module (most of src/
       // does) need their own copy of the same mapping.

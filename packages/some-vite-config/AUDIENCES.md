@@ -85,7 +85,8 @@ is a regression, not debt. Each falsifier covers deletions and moves as well as 
   module not meeting the claim, or makes the workspace non-`public` while its contract
   module does not meet it.
 - _Scope:_ `packages/ui/*` workspaces with a non-`public` audience. Held when written, with
-  none in the repo yet; the OBS workspace is expected to be the first.
+  none in the repo yet. The first, `@some-ui/lesson-crm`, exports no `./contract` at all, so
+  it holds vacuously there; the OBS workspace is expected to be the first with one.
 - _Why not enforced:_ mechanical; not yet a test. The plugin never stubs `/contract`, so
   whatever a contract module imports ships in every profile: a size regression, not a
   broken build, so neither the build nor an existing test notices. A lint rule would see one
@@ -123,5 +124,6 @@ checked against every existing link. What is left is inside such a file.
 
 - **Tailwind still scans gated workspaces in every profile** (#1538). `style.context.ts`
   lists every UI package `www` depends on, as its test requires, so utilities used only by a
-  LAN workspace are generated into the public stylesheet too. Bytes of CSS, no code;
-  planned alongside the first LAN workspace.
+  LAN workspace are generated into the public stylesheet too. Bytes of CSS, no code. The
+  first LAN workspace, `@some-ui/lesson-crm`, landed without fixing it: it is built from
+  `@some-ui/shared` components and adds few utilities of its own.
