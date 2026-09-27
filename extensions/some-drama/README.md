@@ -1,264 +1,164 @@
-# Drama Sentiment Tracker - Firefox Extension
+# some-drama — Drama Overlay
 
-A browser extension that captures emotional reactions while watching dramas with timestamped sentiment tracking.
+A Firefox (MV2) extension for streaming your reaction to a drama rather than
+the drama itself. You watch in one tab; a card on any _other_ page shows how
+you are feeling, live, and that page is what OBS captures. Every reaction is
+also logged, so the ride through an episode — and a series — is kept.
 
-## 🎯 Features
+## Tab roles
 
-- **Floating Reaction Bar**: Always-visible pill showing current mood, rating, episode, and timestamp
-- **Quick Capture Panel**: One-tap emoji selection with optional intensity and notes
-- **Runtime Context Detection**: Automatically detects drama title, episode, and video timestamp from page
-- **Zero Friction UX**: 2-second capture flow from impulse to recorded moment
-- **Temporal Granularity**: Each emotion captured is timestamped to the exact video moment
+Like some-mujik, each tab plays one of two roles — but which sites the drama
+plays on is yours to say, not a built-in list:
 
-## 🏗️ Architecture
+- **Display** — the default, every tab. Renders the card for the active
+  drama; this is the page to capture in OBS. Hotkeys work here too (the
+  background asks the source tab for the video time).
+- **Source** — a tab on a site you marked as a **streaming site**. The drama
+  plays here. No card is drawn; hotkeys log beats with this tab's own video
+  time. A beat pressed in a display tab asks every source tab and takes the
+  one playing (of two playing, the one started last), so closing or leaving a
+  tab needs no handover.
 
-This extension is built with:
+To mark a site, open the drama's tab and press **Mark as streaming** in the
+popup; **Unmark** (or ✕ in the popup's _Streaming sites_ list) reverts it.
+Open tabs switch roles immediately. Marking covers subdomains (`viki.com`
+covers `m.viki.com`). Nothing is marked on a fresh install.
 
-- **TypeScript** for type safety
-- **Vite** for bundling (no shared chunks between scripts)
-- **Tailwind CSS** for styling (compiled to pure CSS)
-- **Vanilla DOM manipulation** (no React runtime)
+## Beats
 
-### Key Design Decisions
+A **beat** is one reaction: a mood, how hard it hit (1–3), and where in the
+episode it happened.
 
-1. **No Shared Modules**: Content and background scripts have fully inlined types to avoid shared chunk issues
-2. **Runtime Data Collection**: Drama title, episode, timestamp are all detected from the page at runtime
-3. **Pure CSS Bundle**: Tailwind is compiled at build time, no CSS-in-JS runtime
-4. **Mock Video Detection**: Currently uses `<video>` element detection; easily extensible to specific streaming platforms
+| Keys                | Command                                    |
+| ------------------- | ------------------------------------------ |
+| `Alt+Shift+1..6`    | beat: joy, love, sad, tension, cringe, meh |
+| `Alt+Shift+=` / `-` | rating up / down half a point (of 10)      |
+| `Alt+Shift+]` / `[` | likelihood to finish up / down 10%         |
+| `Alt+Shift+D`       | show / hide the card                       |
 
-## 📁 Project Structure
+Press the same mood again within 2 s to escalate that beat (●○○ → ●●○ → ●●●)
+instead of logging another. Clicking a mood on the card logs a beat the same
+way. The episode comes from the source page's title ("Ep 12", "12화", "第12集")
+when it has one, otherwise from the drama's catalog entry.
 
-The tree draws an explicit seam between our owned domain and the external
-browser-API domain (Good-Citizen Charter §2, Logic ≠ Presentation ≠
-Effects): `logic/` is pure and may not reference `document.*` / `browser.*`
-/ `chrome.*` (enforced by the `extension-charter/no-logic-layer-side-effects`
-lint rule); `effects/` is the only place those globals are called from;
-`components/` is presentation. See the `README.md` in `src/logic/` and
-`src/effects/` for the per-domain contract.
+On the card, the **live strip** above it pulses on every beat — the mood, big
+enough to read on stream, and the episode's curve so far (x = time in the
+episode, y = mood valence × intensity). Shrunk to its pip, the card keeps only
+the latest mood's emoji.
+
+## Verdicts
+
+The **rating** (0–10) and the **likelihood to finish** (0–100%) change as
+quickly as a beat: the hotkeys above step them from any tab, and clicking the
+card opens a check-in panel with the moods, five stars (2, 4, 6, 8, 10) and
+four finish choices (💤 dropping, 🤔 on the fence, 🍿 likely, 🏁 finishing).
+
+Every change is logged for longitudinal tracking (`drama_verdicts`): which
+verdict, from what to what, in which episode and at what video time. It is
+logged wherever it came from — a hotkey, the card, or a popup edit; a new
+drama's first values are logged with no "from". Steps of one verdict within
+10 s fold into one change (four presses of `=` are "7 → 9", anchored at the
+first press), and stepping back to where it started logs nothing. Removing a
+drama keeps its history. On the card, the rating slide draws both verdicts
+across the episodes they changed in (rating solid, finish dashed) and names
+where the rating started.
+
+## Spotlight and themes
+
+Whatever changed last is the card's face for 4 s: a beat, a rating or a
+likelihood to finish takes over the card with its own effect (joy bounces,
+love beats, sadness droops, tension shakes, cringe squirms; a verdict rises or
+sinks), a burst of petals and a flare in the theme colour, then hands the
+face back. A newer change restarts it; an escalated beat plays harder.
+
+The card wears its current mood — the latest beat's, else the entry's — as a
+theme: every colour on the card derives from three numbers per mood in
+`MOODS` (`logic/content/constants.ts`), and `styles/tokens/theme.css` turns
+them into the card's tokens. The petals follow too: the mood picks their
+glyphs, motion and tint (sadness falls as rain, joy floats up), and the
+rating picks how many there are and how bright.
+
+## Placement
+
+The card mounts in the top-left corner of a tab unless you have dragged it
+somewhere; then it mounts where you left it. Either way it is kept wholly on
+screen: a position saved in a bigger window is pulled back in, and when the
+window shrinks the card moves with it (and returns when the window grows back).
+
+## The popup
+
+A watchlist of up to five dramas; the _active_ one is what beats are logged
+against. Each entry has **Facts** (title, episode, network, …; "Extract Tab
+Context" pre-fills them from the playing tab) and **Feels** (tags, before →
+after, reflection, quote, rating, axes).
+
+## Layout
+
+The tree encodes the Good-Citizen Charter's §2 seam
+([`extensions/common/GOOD_CITIZEN.md`](../common/GOOD_CITIZEN.md)):
 
 ```
-drama-sentiment-extension/
-├── src/
-│   ├── content/
-│   │   └── content.ts        # Content-script entrypoint (composition root)
-│   ├── background/
-│   │   └── background.ts     # Background-script entrypoint
-│   ├── popup/
-│   │   └── popup.ts          # Popup entrypoint
-│   ├── logic/                 # Owned domain — pure, no browser/DOM globals
-│   │   ├── content/           # constants, utils (rnd, stars, clamp, …)
-│   │   └── popup/             # constants
-│   ├── effects/                # Browser-API domain — the only DOM/browser callers
-│   │   ├── content/           # dom.ts (el()), keybindings, particles
-│   │   └── popup/             # messaging, content-scraper, fsm
-│   ├── components/             # Presentation (vanilla DOM + React stories)
-│   ├── types/                  # Shared type definitions
-│   └── styles/                 # Tailwind/UnoCSS input files
-├── dist/                     # Build output (ignored in git)
-├── manifest.json            # Firefox extension manifest
-├── vite.config.ts           # Vite bundler configuration
-├── tailwind.config.js       # Tailwind CSS configuration
-├── postcss.config.js        # PostCSS configuration
-├── tsconfig.json            # TypeScript configuration
-└── package.json             # Dependencies
+src/
+├── background/   storage, message bus, beat log, source-tab election
+├── content/      content-script entrypoint — resolves source / display role
+├── popup/        popup entrypoint
+├── logic/        pure — no document/window/browser/chrome (lint-enforced)
+│   ├── beats.ts       logging + escalation, episode curve, episode parsing
+│   ├── stream-sites.ts  site matching for the user's streaming sites
+│   ├── verdict.ts     rating / likelihood-to-finish ranges and steps
+│   ├── verdict-log.ts  verdict history: folding, per-episode trend
+│   ├── content/  moods + themes, commands + key bindings, spotlight, petals
+│   └── popup/    constants
+├── effects/      the only callers of DOM / browser APIs
+│   ├── messaging.ts  typed sendMsg, shared by popup and content
+│   ├── content/  el(), particles, playback (the source tab's video time)
+│   └── popup/    popup FSM, injected tab scraper
+├── components/   presentation (vanilla DOM) + Storybook stories
+├── types/        message contract, entry and beat shapes — single source
+└── styles/       raw CSS partials compiled with UnoCSS
+tests/            checks on build output (the content stylesheet)
 ```
 
-## 🚀 Setup & Development
+Shared plumbing comes from [`@some-extension/common`](../common/README.md):
+the Vite build (`extensionConfig`), the brand icons (`brandIcons: true`), the
+keybinding typestate (`attachKeyBindings`), the overlay root, and runtime
+guards (`isRecord`).
 
-### Prerequisites
+## Styles
 
-- Node.js 18+ and npm
-- Firefox Developer Edition (recommended) or Firefox 91+
+Two stylesheets are generated by UnoCSS during `vite build`:
+`dist/styles/content.css` (no preflights — it is injected into every page) and
+`dist/popup.css`. What each one scans is declared once in `uno.sources.ts`,
+scoped to the modules that render into that surface. Scanning TypeScript
+harvests bare words — identifiers, tag names, comments — as utilities, and in
+the content sheet those restyle the host page. `tests/content-css.test.ts`
+fails when the sheet would contain a utility no class string uses.
 
-### Installation
+## Develop
 
 ```bash
-# Install dependencies
-npm install
-
-# Build the extension
-npm run build
-
-# Or watch mode for development
-npm run dev
+pnpm --filter @some-extension/drama build   # → dist/
+pnpm --filter @some-extension/drama lint    # eslint + prettier + tsc
+pnpm --filter @some-extension/drama test    # vitest
 ```
 
-### Loading in Firefox
+Load `dist/manifest.json` from `about:debugging#/runtime/this-firefox` →
+**Load Temporary Add-on**. Stories live next to each component and run in the
+repo-root Storybook (`STORYBOOK_WORKSPACE=some-drama`).
 
-1. Open Firefox and navigate to `about:debugging#/runtime/this-firefox`
-2. Click **Load Temporary Add-on**
-3. Navigate to the `dist/` folder and select `manifest.json`
-4. The extension is now loaded!
+## Storage (`browser.storage.local`)
 
-### Testing
+| Key                      | Shape                                       |
+| ------------------------ | ------------------------------------------- |
+| `drama_watchlist`        | `Array<DramaEntry>` (max 5)                 |
+| `drama_active_id`        | `string \| null`                            |
+| `drama_beats`            | `Array<BeatRecord>` (newest 5000)           |
+| `drama_verdicts`         | `Array<VerdictRecord>` (newest 2000)        |
+| `drama_stream_sites`     | `Array<string>` — sites marked as streaming |
+| `drama_card_position_v3` | `{ x, y, size }` (card layout)              |
+| `drama_moments`          | legacy mood log (no video times); not read  |
+| `drama_source_tab`       | legacy registered source tab; not read      |
 
-1. Open any webpage with a `<video>` element (YouTube, Netflix, etc.)
-2. The floating reaction bar should appear in the bottom-right corner
-3. Click the bar to open the quick capture panel
-4. Click an emoji to capture a sentiment moment
-5. Captured moments are logged to console and saved to browser storage
-
-## 🎨 UI Components
-
-### Floating Bar (Collapsed State)
-
-- Location: Bottom-right, above video controls
-- Shows: Current mood emoji, rating, episode number, timestamp
-- Click to expand to capture panel
-
-### Quick Capture Panel (Expanded State)
-
-- 6 core emotions with one-tap capture
-- Intensity slider (optional adjustment)
-- Optional note field
-- Auto-closes after 1.5s or manual close
-
-### Runtime Context Detection
-
-The extension automatically detects:
-
-- **Drama Title**: From page `<title>` tag (parsed)
-- **Episode Number**: Extracted from title via regex patterns
-- **Timestamp**: From `<video>` element's `currentTime`
-
-## 🔧 Customization
-
-### Adding Streaming Platform Support
-
-Edit `src/content/content.ts` in the `detectDramaContext()` function:
-
-```typescript
-function detectDramaContext(): DramaContext {
-  // Add platform-specific selectors
-  if (window.location.hostname.includes("netflix.com")) {
-    const titleEl = document.querySelector(".video-title")
-    // ... Netflix-specific logic
-  }
-
-  if (window.location.hostname.includes("viki.com")) {
-    const titleEl = document.querySelector(".episode-title")
-    // ... Viki-specific logic
-  }
-
-  // Fallback to generic detection
-  // ...
-}
-```
-
-### Modifying Emotions
-
-Edit the `EMOTIONS` array in `src/content/content.ts`:
-
-```typescript
-const EMOTIONS: EmotionConfig[] = [
-  {
-    type: "joy",
-    emoji: "😊",
-    label: "Joy",
-    gradient: "from-pink-400 to-orange-300",
-    glowColor: "shadow-pink-400/50",
-  },
-  // Add or modify emotions here
-]
-```
-
-### Changing Polling Intervals
-
-Currently mocked. To implement:
-
-1. Add interval logic in `src/content/content.ts`
-2. Use `setInterval()` to trigger polling prompt
-3. Store last poll time in state
-
-## 🐛 Debugging
-
-### Enable Console Logs
-
-All key actions log to console:
-
-```
-[Drama Sentiment] Initializing...
-[Drama Sentiment] Initialized { dramaTitle: "...", ... }
-[Background] Saved moment: abc-123
-```
-
-### Check Storage
-
-```javascript
-// In browser console
-browser.storage.local.get(["moments"], console.log)
-```
-
-### Common Issues
-
-**Floating bar not appearing:**
-
-- Check if content script loaded: Look for `[Drama Sentiment] Initializing...` in console
-- Verify CSS compiled: Check `dist/styles/content.css` exists
-- Check z-index conflicts: Extension uses `z-[999999]`
-
-**Context not detected:**
-
-- No `<video>` element on page
-- Add custom selectors for your streaming platform
-
-**Build errors:**
-
-- Clear `dist/` folder: `rm -rf dist && npm run build`
-- Check for TypeScript errors: `npm run type-check`
-
-## 📦 Build Output
-
-After `npm run build`, the `dist/` folder contains:
-
-```
-dist/
-├── manifest.json         # Extension manifest
-├── content.js            # Bundled content script (~50KB)
-├── background.js         # Bundled background script (~5KB)
-├── styles/
-│   └── content.css       # Compiled Tailwind CSS (~15KB)
-└── assets/
-    ├── icon-16.png
-    ├── icon-48.png
-    └── icon-128.png
-```
-
-## 🔐 Permissions
-
-- `storage`: Save captured moments to browser storage
-- `tabs`: Access current tab info
-- `activeTab`: Interact with active page
-
-## 📝 Data Schema
-
-```typescript
-interface CapturedMoment {
-  id: string // Unique identifier
-  timestamp: number // Seconds into video
-  emotion: EmotionType // 'joy' | 'sadness' | 'love' | ...
-  intensity: number // 0-1 scale
-  emoji: string // Visual representation
-  note?: string // Optional user note
-  episodeId: string // e.g., "ep-33"
-  dramaTitle: string // Runtime detected title
-  capturedAt: number // Unix timestamp
-}
-```
-
-## 🚧 Roadmap
-
-- [ ] Polling prompt implementation (periodic check-ins)
-- [ ] Export captured moments to JSON/CSV
-- [ ] Visualization dashboard (bento box design)
-- [ ] Platform-specific integrations (Netflix, Viki, etc.)
-- [ ] Keyboard shortcuts (Cmd+E for quick capture)
-- [ ] Cloud sync across devices
-
-## 📄 License
+## License
 
 MIT
-
----
-
-Built with ❤️ for drama lovers who want to track their emotional journey.

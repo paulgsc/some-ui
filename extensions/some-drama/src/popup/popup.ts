@@ -1,17 +1,21 @@
 import { PopupRenderer } from "@drama/components/popup-renderer"
 import { PopupStateMachine } from "@drama/effects/popup/fsm"
 
-document.addEventListener("DOMContentLoaded", () => {
-  const rootWorkspace = document.getElementById("popup-root")
-  if (!rootWorkspace) return
+document.addEventListener(
+  "DOMContentLoaded",
+  () => {
+    const rootWorkspace = document.getElementById("popup-root")
+    if (!rootWorkspace) return
 
-  // Initialize the clear, decoupled systems architecture
-  const stateMachine = new PopupStateMachine((updatedPhase) => {
-    rendererEngine.render(updatedPhase)
-  })
+    // Initialize the clear, decoupled systems architecture
+    const stateMachine = new PopupStateMachine((updatedPhase) => {
+      rendererEngine.render(updatedPhase)
+    })
 
-  const rendererEngine = new PopupRenderer(rootWorkspace, stateMachine)
+    const rendererEngine = new PopupRenderer(rootWorkspace, stateMachine)
 
-  // Initialize systemic processes
-  void stateMachine.boot()
-})
+    // Initialize systemic processes
+    void stateMachine.boot()
+  },
+  { once: true }
+)

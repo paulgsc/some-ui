@@ -4,17 +4,23 @@
 
    Dependency graph:
      tokens/tokens.css
+     tokens/theme.css                    ← mood theme (--dc-hue, --dc-sat)
        └─ components/root-layout.css
        └─ components/card-shell.css
        └─ components/title-pill.css
        └─ components/slideshow.css       ← chat-bubble fix lives here
        └─ components/right-panel.css
        └─ components/capture-panel.css
+       └─ components/live-strip.css
+       └─ components/spotlight.css
        └─ particles/blossoms.css
    ────────────────────────────────────────────────────────────────────────── */
 
 /* 1. Design tokens — all CSS custom properties */
 @import "./tokens/tokens.css";
+
+/* 1b. Mood theme — the card's colours, derived from the current mood */
+@import "./tokens/theme.css";
 
 /* 2. Root layout + size variants */
 @import "./components/root-layout.css";
@@ -34,5 +40,11 @@
 /* 7. Capture / emotion picker panel */
 @import "./components/capture-panel.css";
 
-/* 8. Blossom particles */
+/* 8. Live strip (beat pulse + episode curve) */
+@import "./components/live-strip.css";
+
+/* 9. Spotlight (the latest change, shown first) */
+@import "./components/spotlight.css";
+
+/* 10. Blossom particles */
 @import "./components/particles.css";
