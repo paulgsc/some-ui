@@ -1,0 +1,156 @@
+/* ── Live Strip ──────────────────────────────────────────────────────────────
+   The broadcast surface above the card: the latest beat, big enough to read
+   from a stream at a glance, and the episode's curve so far.
+
+   Pulse: .dc-live-pulse is re-added on every beat (LiveStrip.pushBeat). The
+   glow and the emoji pop run for --dc-beat-decay (set from decayMs(intensity))
+   and settle to the resting state — the last mood stays visible, unlit.
+   ────────────────────────────────────────────────────────────────────────── */
+
+.dc-live {
+  --dc-beat-hue: 340;
+  --dc-beat-decay: 2500ms;
+
+  -webkit-backdrop-filter: var(--dc-blur);
+  backdrop-filter: var(--dc-blur);
+  background: hsl(var(--dc-hue-2) calc(25% * var(--dc-sat)) 15% / 95%);
+  border: 1.5px solid hsl(var(--dc-beat-hue) 50% 55% / 70%);
+  border-radius: var(--dc-r-card);
+  box-shadow:
+    0 4px 24px var(--dc-shadow),
+    inset 0 1px 0 hsl(var(--dc-beat-hue) 40% 50% / 15%);
+  padding: 10px 14px 10px 10px;
+  transition: border-color 400ms var(--dc-ease);
+}
+
+.dc-live-emoji {
+  font-size: 34px;
+  height: 48px;
+  line-height: 1;
+  width: 48px;
+}
+
+.dc-live-text {
+  min-width: 72px;
+}
+
+.dc-live-label {
+  color: var(--dc-text-primary);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-shadow: var(--dc-text-glow-subtle);
+}
+
+.dc-live-pips {
+  color: hsl(var(--dc-beat-hue) 85% 68%);
+  font-size: 11px;
+  letter-spacing: 3px;
+}
+
+.dc-live-curve {
+  display: block;
+  height: 40px;
+  overflow: visible;
+  width: 132px;
+}
+
+.dc-live-baseline {
+  stroke: hsl(30deg 10% 55% / 35%);
+  stroke-dasharray: 2 3;
+  stroke-width: 1;
+}
+
+.dc-live-path {
+  fill: none;
+  stroke: hsl(var(--dc-beat-hue) 85% 66%);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+  transition: stroke 400ms var(--dc-ease);
+}
+
+.dc-live-head {
+  fill: hsl(var(--dc-beat-hue) 90% 72%);
+}
+
+.dc-live-episode {
+  align-self: flex-end;
+  color: var(--dc-text-muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dc-live[data-empty="true"] .dc-live-label {
+  color: var(--dc-text-muted);
+  font-size: 12px;
+  font-style: italic;
+  font-weight: 400;
+}
+
+.dc-live[data-empty="true"] .dc-live-curve-wrap {
+  opacity: 0.5;
+}
+
+/* ── Pulse ──────────────────────────────────────────────────────────────── */
+.dc-live.dc-live-pulse {
+  animation: dc-live-glow var(--dc-beat-decay) var(--dc-ease) both;
+}
+
+.dc-live.dc-live-pulse .dc-live-emoji {
+  animation: dc-live-pop 600ms var(--dc-ease-bounce) both;
+}
+
+@keyframes dc-live-glow {
+  0% {
+    box-shadow:
+      0 4px 24px var(--dc-shadow),
+      0 0 48px 6px hsl(var(--dc-beat-hue) 90% 60% / 70%);
+  }
+
+  100% {
+    box-shadow:
+      0 4px 24px var(--dc-shadow),
+      0 0 0 0 hsl(var(--dc-beat-hue) 90% 60% / 0%);
+  }
+}
+
+@keyframes dc-live-pop {
+  0% {
+    transform: scale(1);
+  }
+
+  40% {
+    transform: scale(1.45) rotate(-6deg);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Harder beats pop harder. */
+.dc-live[data-intensity="3"].dc-live-pulse .dc-live-emoji {
+  animation-duration: 900ms;
+}
+
+/* ── Sizes ──────────────────────────────────────────────────────────────── */
+
+/* min: the emoji alone, as a pip beside the card's own pip. */
+#dc-root[data-size="min"] .dc-live {
+  border-radius: var(--dc-r-pill);
+  padding: 4px;
+}
+
+#dc-root[data-size="min"] .dc-live-text,
+#dc-root[data-size="min"] .dc-live-curve-wrap {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dc-live.dc-live-pulse,
+  .dc-live.dc-live-pulse .dc-live-emoji {
+    animation: none;
+  }
+}

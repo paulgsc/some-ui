@@ -304,6 +304,10 @@ describe("createDeclarationsPlugin, end to end over a real tsc emit", () => {
     )
   })
 
+  // A real in-process tsc program (lib.d.ts and all) is CPU-bound: ~1–2 s
+  // alone, past vitest's 5 s default when CI runs it beside two dozen other
+  // packages' tests (5.4 s and 5.5 s on #1556). A compiler's speed says
+  // nothing about the plugin, so this test gets room for one real emit.
   it("publishes tsc's declarations with aliases rewritten and the types entry written", async () => {
     emit()
     write("dist/stale.cjs.js", "stale")
@@ -324,7 +328,7 @@ describe("createDeclarationsPlugin, end to end over a real tsc emit", () => {
         ``,
       ].join("\n")
     )
-  })
+  }, 30_000)
 
   it("fails, naming the fix, when vite build runs without tsc first (A1)", async () => {
     const plugin = createDeclarationsPlugin({ packageName: "@demo/pkg" }, root)

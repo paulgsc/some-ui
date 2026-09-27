@@ -1,0 +1,51 @@
+/* ── Mood Theme ──────────────────────────────────────────────────────────────
+   The card's colours follow the current mood. DramaCard (and the blossom
+   layer) set three numbers from MOODS in logic/content/constants.ts — the one
+   source of the themes — and every card colour is derived from them here:
+
+     --dc-hue    main hue   (rose on the default card)
+     --dc-hue-2  second hue (peach; also the surface tint)
+     --dc-sat    saturation multiplier (1 = default; Meh is nearly grey)
+
+   Registered with @property so a mood change animates the whole card through
+   one transition on #dc-root (root-layout.css) instead of snapping. The derived tokens below
+   shadow the :root ones in tokens.css, which the popup still uses; they have
+   to be redeclared here because a var() in a custom property resolves where
+   it is declared, and :root never sees the card's hue.
+   ────────────────────────────────────────────────────────────────────────── */
+
+@property --dc-hue {
+  inherits: true;
+  initial-value: -20;
+  syntax: "<number>";
+}
+
+@property --dc-hue-2 {
+  inherits: true;
+  initial-value: 18;
+  syntax: "<number>";
+}
+
+@property --dc-sat {
+  inherits: true;
+  initial-value: 1;
+  syntax: "<number>";
+}
+
+#dc-root,
+.dc-blossom-layer {
+  --dc-peach: hsl(var(--dc-hue-2) calc(95% * var(--dc-sat)) 65%);
+  --dc-rose: hsl(var(--dc-hue) calc(85% * var(--dc-sat)) 60%);
+  --dc-mood-hue: var(--dc-hue);
+  --dc-border: hsl(var(--dc-hue) calc(40% * var(--dc-sat)) 45% / 50%);
+  --dc-border-strong: hsl(var(--dc-hue) calc(50% * var(--dc-sat)) 55% / 70%);
+  --dc-border-glow: hsl(var(--dc-hue) calc(60% * var(--dc-sat)) 65% / 40%);
+  --dc-shadow: hsl(var(--dc-hue) calc(60% * var(--dc-sat)) 20% / 50%);
+  --dc-shadow-strong: hsl(var(--dc-hue) calc(70% * var(--dc-sat)) 15% / 70%);
+  --dc-shadow-glow: hsl(var(--dc-hue) calc(80% * var(--dc-sat)) 55% / 35%);
+  --dc-text-glow-warm: 0 0 12px
+      hsl(var(--dc-hue-2) calc(90% * var(--dc-sat)) 60% / 50%),
+    0 0 4px hsl(0deg 0% 0% / 80%), 0 1px 2px hsl(0deg 0% 0% / 60%);
+  --dc-text-glow-subtle: 0 1px 3px hsl(0deg 0% 0% / 70%),
+    0 0 8px hsl(var(--dc-hue) calc(60% * var(--dc-sat)) 50% / 30%);
+}

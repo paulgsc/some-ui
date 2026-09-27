@@ -25,3 +25,22 @@ export function likelihoodLabel(p: number): string {
 export function clamp(value: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, value))
 }
+
+type Point = { x: number; y: number }
+type Size = { width: number; height: number }
+
+/**
+ * Where a box of `size` wanting to sit at `at` can sit wholly inside the
+ * viewport, `margin` clear of its edges. A box bigger than the viewport keeps
+ * its top-left corner on screen — the title and the controls are there.
+ */
+export function fitInViewport(
+  at: Point,
+  size: Size,
+  viewport: Size,
+  margin = 0
+): Point {
+  const maxX = Math.max(margin, viewport.width - size.width - margin)
+  const maxY = Math.max(margin, viewport.height - size.height - margin)
+  return { x: clamp(at.x, margin, maxX), y: clamp(at.y, margin, maxY) }
+}
