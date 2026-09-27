@@ -156,7 +156,7 @@ export type HandheldLessonVM = {
      * it. Not before, or a refused clipboard would lose it unsent (Codex,
      * #1555).
      */
-    handedOff: () => void
+    handedOff: (prompt: string) => void
     /** Holds a pasted lesson for this session and starts it. */
     start: (meta: TopikMetadata, batches: Array<ConversationBatch>) => void
     /** Lets the pasted lesson go before the session ends. */
@@ -618,28 +618,37 @@ export function useHandheldLesson({
     setPasted(null)
   }, [held, pasted, sessionPoints])
 
-  // The reports the last prompt built was made from: what a handoff carried.
-  const carried = useRef<Array<SurveyReport>>([])
+  // Each prompt built, and the reports its digest was made from. A handoff
+  // names the prompt it handed off, so it forgets what that prompt carried
+  // and nothing else - not the reports of a later prompt, built while an
+  // earlier one was still on screen to copy (Codex, #1555).
+  const carried = useRef(new Map<string, Array<SurveyReport>>())
 
   const prompt = useCallback(
     (request: Omit<LessonRequest, "survey">): string => {
       const digest = surveys.list().slice(0, DIGEST_LESSONS)
-      carried.current = digest
-      return buildLessonPrompt({
+      const text = buildLessonPrompt({
         ...request,
         survey: surveyDigest(digest, DIGEST_LESSONS),
       })
+      carried.current.set(text, digest)
+      return text
     },
     [surveys]
   )
 
   // The digest's free text has now reached the learner; it is not kept to
-  // say it twice (canon Rem. 7.4). Only the reports that prompt was built
-  // from: the store may have gained one since (Codex, #1555).
-  const promptHandedOff = useCallback((): void => {
-    surveys.forgetBecoming(carried.current)
-    setReports(surveys.list())
-  }, [surveys])
+  // say it twice (canon Rem. 7.4).
+  const promptHandedOff = useCallback(
+    (text: string): void => {
+      const reports = carried.current.get(text)
+      if (!reports) return
+      carried.current.delete(text)
+      surveys.forgetBecoming(reports)
+      setReports(surveys.list())
+    },
+    [surveys]
+  )
 
   // ── View ─────────────────────────────────────────────────────────────────
 

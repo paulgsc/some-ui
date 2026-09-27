@@ -96,7 +96,9 @@ describe("GenerateLesson", () => {
     expect(writeText).toHaveBeenCalledWith(
       "PROMPT level=5 scene=the will is read"
     )
-    expect(onPromptHandedOff).toHaveBeenCalledOnce()
+    expect(onPromptHandedOff).toHaveBeenCalledExactlyOnceWith(
+      "PROMPT level=5 scene=the will is read"
+    )
   })
 
   it("shows the prompt to copy by hand when the clipboard refuses, and says it was handed off only once it is (Codex, #1555)", async () => {
@@ -111,7 +113,9 @@ describe("GenerateLesson", () => {
     expect(screen.queryByText(/Copied/)).toBeNull()
     expect(onPromptHandedOff).not.toHaveBeenCalled()
     fireEvent.copy(manual)
-    expect(onPromptHandedOff).toHaveBeenCalledOnce()
+    expect(onPromptHandedOff).toHaveBeenCalledExactlyOnceWith(
+      "PROMPT level=3 scene=-"
+    )
   })
 
   it("says why a reply is not a lesson, and saves nothing", () => {

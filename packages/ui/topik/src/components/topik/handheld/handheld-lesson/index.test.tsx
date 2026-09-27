@@ -849,6 +849,14 @@ describe("HandheldLesson", () => {
         { stuck: [], becoming: "ordering without pointing" },
         { displayName: "A later lesson" }
       )
+      // A second prompt, carrying it, is built while the clipboard hangs;
+      // the fallback on screen is still the first prompt.
+      vi.stubGlobal("navigator", {
+        ...navigator,
+        clipboard: { writeText: () => new Promise<void>(() => undefined) },
+      })
+      click(/Copy the prompt/)
+      expect(manual.textContent).not.toContain("ordering without pointing")
       fireEvent.copy(manual)
       const [later, earlier] = surveys.list()
       expect(later?.becoming).toBe("ordering without pointing")

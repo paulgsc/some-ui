@@ -15,10 +15,11 @@ type GenerateLessonProps = {
   /** The prompt for a request, with the learner's survey digest appended. */
   buildPrompt: (request: Omit<LessonRequest, "survey">) => string
   /**
-   * The prompt reached the learner: the clipboard took it, or they copied it
-   * from the fallback by hand. Never called when the clipboard refused.
+   * This prompt, exactly as handed off, reached the learner: the clipboard
+   * took it, or they copied it from the fallback by hand. Never called when
+   * the clipboard refused.
    */
-  onPromptHandedOff?: () => void
+  onPromptHandedOff?: (prompt: string) => void
   /** Holds the lesson for this session and starts it (canon Rem. 7.4). */
   onStart: (meta: TopikMetadata, batches: Array<ConversationBatch>) => void
   short: boolean
@@ -74,7 +75,7 @@ export const GenerateLesson = ({
     const done = await copy(text)
     setCopied(done ? kind : null)
     setManual(done ? null : { text, kind })
-    if (done && kind === "prompt") onPromptHandedOff?.()
+    if (done && kind === "prompt") onPromptHandedOff?.(text)
   }
 
   const copyPrompt = (): void =>
@@ -137,7 +138,7 @@ export const GenerateLesson = ({
             rows={4}
             onFocus={(event) => event.currentTarget.select()}
             onCopy={() => {
-              if (manual.kind === "prompt") onPromptHandedOff?.()
+              if (manual.kind === "prompt") onPromptHandedOff?.(manual.text)
             }}
             className="rounded-xl font-mono text-xs"
           />

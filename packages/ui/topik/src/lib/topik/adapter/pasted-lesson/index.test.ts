@@ -72,6 +72,25 @@ describe("createPastedLessonStore", () => {
   })
 })
 
+describe("a replacement storage refuses (Codex, #1555)", () => {
+  it("empties the slot rather than leave the lesson it replaced", () => {
+    const storage = memoryStorage()
+    const store = createPastedLessonStore(storage)
+    store.set(meta("local:a"), FIXTURE_BATCHES)
+    const full: Storage = {
+      ...storage,
+      getItem: (key) => storage.getItem(key),
+      setItem: (key, value) => {
+        // Room for an empty slot, not for a lesson.
+        if (value.length > 0) throw new Error("QuotaExceededError")
+        storage.setItem(key, value)
+      },
+    }
+    createPastedLessonStore(full).set(meta("local:b"), FIXTURE_BATCHES)
+    expect(store.get()).toBeNull()
+  })
+})
+
 describe("purgeRetiredLessons", () => {
   it("deletes what the retired store kept, and nothing else (Codex, #1555)", () => {
     const storage = memoryStorage()

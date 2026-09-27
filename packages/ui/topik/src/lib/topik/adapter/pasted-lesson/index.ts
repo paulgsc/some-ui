@@ -58,6 +58,15 @@ export function createPastedLessonStore(
       storage?.setItem(PASTED_LESSON_KEY, value)
     } catch {
       // Quota, privacy mode: the lesson plays from memory for this visit.
+      // Whatever the slot held before is emptied, not left standing: a
+      // reload would otherwise bring back the lesson this one replaced
+      // (Codex, #1555). An empty value is small enough to fit where the
+      // lesson did not.
+      try {
+        storage?.setItem(PASTED_LESSON_KEY, "")
+      } catch {
+        // Storage refuses even that: nothing can be read back from it either.
+      }
     }
   }
 
