@@ -48,7 +48,11 @@
 //          popup mutation broadcast STATE_UPDATE. Fixed: requests go through
 //          the typed sendMsg and the envelope is unwrapped.
 
-import { isPlaying, readPlayback } from "@drama/effects/content/playback"
+import {
+  notePlay,
+  readPlayback,
+  readSourceReport,
+} from "@drama/effects/content/playback"
 import { sendMsg } from "@drama/effects/messaging"
 import { KEY_BINDINGS } from "@drama/logic/content/commands"
 import type { DramaCommandId } from "@drama/logic/content/commands"
@@ -109,16 +113,6 @@ async function main(): Promise<void> {
   let display: Display | null = null
   let cardMeta: PersistedCardMeta | null = await loadCardMeta()
 
-  // When this page last started playing; the background prefers the tab
-  // that started most recently when two source tabs are playing.
-  let lastPlayAt = 0
-
-  /** This tab's answer to GET_PLAYBACK, or null when it has no video. */
-  const report = (): SourceReport | null => {
-    const playback = readPlayback()
-    return playback && { playback, playing: isPlaying(), lastPlayAt }
-  }
-
   /** Resolve this tab's role from the latest state, then hand state on. */
   const apply = (state: WatchlistState): void => {
     const next = isStreamSite(location.href, state.streamSites)
@@ -170,7 +164,9 @@ async function main(): Promise<void> {
   browser.runtime.onMessage.addListener(
     (msg: unknown): Promise<SourceReport | null> | undefined => {
       if (isGetPlaybackMessage(msg)) {
-        return role === "source" ? Promise.resolve(report()) : undefined
+        return role === "source"
+          ? Promise.resolve(readSourceReport())
+          : undefined
       }
       if (isBeatLoggedMessage(msg)) display?.onBeat(msg.beat)
       else if (isStateUpdateMessage(msg)) apply(msg.payload)
@@ -179,17 +175,14 @@ async function main(): Promise<void> {
   )
 
   // Media events don't bubble; capture them at the document. Of two playing
-  // source tabs, the one that started last is the drama (logic/source.ts).
+  // source tabs, the one whose video started last is the drama
+  // (logic/source.ts), so each video's start time is recorded.
   // Lifetime: the page's. It is the content script's own entry point, which
   // lives exactly as long as the document, and it only records a timestamp.
   // eslint-disable-next-line extension-charter/require-scoped-lifetime -- page-lifetime by design; see above
-  document.addEventListener(
-    "play",
-    () => {
-      lastPlayAt = Date.now()
-    },
-    { capture: true }
-  )
+  document.addEventListener("play", (e) => notePlay(e.target, Date.now()), {
+    capture: true,
+  })
 
   // ── Keybindings ───────────────────────────────────────────────────────────
   // Attached once for the page's lifetime; each handler reads the current
