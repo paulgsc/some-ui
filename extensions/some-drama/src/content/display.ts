@@ -293,10 +293,16 @@ export function createDisplay(deps: DisplayDeps): Display {
   // The active drama's verdict history, kept across rebuilds like `live`.
   let history: { dramaId: string; verdicts: Array<VerdictRecord> } | null = null
 
+  // Each verdict change starts a read; replies can land out of order, and
+  // only the latest read's reply is current.
+  let verdictReads = 0
+
   const loadVerdicts = async (dramaId: string): Promise<void> => {
+    const read = ++verdictReads
     try {
       const resp = await sendMsg({ type: "GET_VERDICTS", dramaId })
       if (!resp.ok) throw new Error(resp.error)
+      if (read !== verdictReads) return
       if (typestate.phase !== "READY" || typestate.entry.id !== dramaId) return
       history = { dramaId, verdicts: resp.verdicts }
       card?.setVerdictLog(resp.verdicts)

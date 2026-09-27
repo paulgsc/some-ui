@@ -13,14 +13,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { nextFrame, setVisibility, STATE } from "./helpers/fixtures"
 
-const sendMessage = vi.fn((msg: { type: string }) =>
-  Promise.resolve(
-    msg.type === "GET_BEATS"
-      ? { ok: true, episode: "Ep 12", beats: [] }
-      : msg.type === "GET_VERDICTS"
-        ? { ok: true, verdicts: [] }
-        : { ok: true }
-  )
+// Replies are what the background would send; `unknown`, as runtime
+// messages are, so a test can hand back any shape it needs.
+const sendMessage = vi.fn(
+  (msg: { type: string }): Promise<unknown> =>
+    Promise.resolve(
+      msg.type === "GET_BEATS"
+        ? { ok: true, episode: "Ep 12", beats: [] }
+        : msg.type === "GET_VERDICTS"
+          ? { ok: true, verdicts: [] }
+          : { ok: true }
+    )
 )
 
 let probe: ResourceProbe
@@ -164,6 +167,58 @@ describe("beats that arrive while the card loads its episode", () => {
 
     expect(card()?.querySelector(".dc-live")?.getAttribute("data-empty")).toBe(
       "false"
+    )
+  })
+})
+
+describe("verdict history that arrives out of order", () => {
+  it("keeps the newer snapshot when an older reply lands after it", async () => {
+    type Reply = Awaited<ReturnType<typeof sendMessage>>
+    const pending: Array<(v: Reply) => void> = []
+    // Only for the three requests this test makes (GET_BEATS, then two
+    // GET_VERDICTS); the file's default mock answers everything after.
+    const holdVerdicts = (msg: { type: string }): Promise<Reply> =>
+      msg.type === "GET_VERDICTS"
+        ? new Promise<Reply>((resolve) => {
+            pending.push(resolve)
+          })
+        : Promise.resolve({ ok: true, episode: "Ep 12", beats: [] })
+    sendMessage
+      .mockImplementationOnce(holdVerdicts)
+      .mockImplementationOnce(holdVerdicts)
+      .mockImplementationOnce(holdVerdicts)
+    setVisibility("visible")
+    const d = mountDisplay()
+    d.apply(STATE)
+    await nextFrame()
+
+    // A verdict moves while the first history read is still in flight.
+    const [entry] = STATE.watchlist
+    if (!entry) throw new Error("fixture has no entry")
+    d.apply({ ...STATE, watchlist: [{ ...entry, rating: entry.rating + 1 }] })
+    expect(pending).toHaveLength(2)
+
+    const change = {
+      dramaId: "d1",
+      dramaTitle: "Queen of Tears",
+      field: "rating" as const,
+      videoTime: null,
+    }
+    const [older, newer] = pending
+    // The newer read (with the change) resolves first, the older one last.
+    newer?.({
+      ok: true,
+      verdicts: [
+        { ...change, id: "v1", episode: "Ep 1", from: 6, to: 8, at: 0 },
+        { ...change, id: "v2", episode: "Ep 2", from: 8, to: 9, at: 1 },
+      ],
+    })
+    await nextFrame()
+    older?.({ ok: true, verdicts: [] })
+    await nextFrame()
+
+    expect(card()?.querySelector(".dc-rating-label")?.textContent).toBe(
+      "from 6.0 · Ep 1"
     )
   })
 })

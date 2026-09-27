@@ -649,6 +649,8 @@ describe("lint: extension-charter — require-scoped-lifetime", () => {
       `document.addEventListener("x", f, { capture: true, passive: true })`,
       `const OPTS = { passive: true }; document.addEventListener("x", f, OPTS)`,
       `document.addEventListener("x", f, { once: false })`,
+      // A bare call is window's: the global object's own method.
+      `addEventListener("resize", onResize)`,
     ]) {
       const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
       expectMessageForRule(msgs, RULE, code)
@@ -661,6 +663,7 @@ describe("lint: extension-charter — require-scoped-lifetime", () => {
       `window.addEventListener("x", f, { capture: true, signal })`,
       `document.addEventListener("x", f, { once: true })`,
       `const OPTS = { signal: life.signal }; document.addEventListener("x", f, OPTS)`,
+      `addEventListener("resize", f, { signal })`,
     ]) {
       const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
       expectNoMessageForRule(msgs, RULE, code)
@@ -674,6 +677,13 @@ describe("lint: extension-charter — require-scoped-lifetime", () => {
       TS_FILE
     )
     expectNoMessageForRule(msgs, RULE, "element listener")
+  })
+
+  it("does NOT fire on a bare call to a local function of that name", async () => {
+    const code = `function addEventListener(type: string, f: () => void) { bus.on(type, f) }
+addEventListener("x", f)`
+    const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
+    expectNoMessageForRule(msgs, RULE, code)
   })
 
   it("fires on a requestAnimationFrame callback that reschedules itself", async () => {

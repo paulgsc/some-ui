@@ -82,11 +82,11 @@ export const requireScopedLifetime: Rule.RuleModule = {
       CallExpression(node): void {
         const callee = node.callee
         const method = calleeName(callee)
-        if (
-          method === "addEventListener" &&
-          callee.type === "MemberExpression"
-        ) {
-          const target = pageLifetimeTarget(callee.object)
+        if (method === "addEventListener") {
+          const target =
+            callee.type === "MemberExpression"
+              ? pageLifetimeTarget(callee.object)
+              : bareGlobalTarget(callee, sourceCode.getScope(node))
           if (target === null) return
           const options = node.arguments[2]
           if (options && optionsAreScoped(options, sourceCode.getScope(node))) {
@@ -156,6 +156,23 @@ function pageLifetimeTarget(object: ESTree.Node): string | null {
     return `document.${object.property.name}`
   }
   return null
+}
+
+/**
+ * A bare `addEventListener(…)` is the global object's own method — window's —
+ * unless the name is bound in the file (a local function of that name).
+ */
+function bareGlobalTarget(
+  callee: ESTree.Node,
+  scope: Scope.Scope
+): string | null {
+  if (callee.type !== "Identifier") return null
+  for (let s: Scope.Scope | null = scope; s !== null; s = s.upper) {
+    const variable = s.set.get(callee.name)
+    // Declared in the file (defs), or an import: not the global.
+    if (variable && variable.defs.length > 0) return null
+  }
+  return "window"
 }
 
 /**
