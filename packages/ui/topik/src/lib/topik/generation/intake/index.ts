@@ -41,10 +41,46 @@ export type Intake =
     }
   | { ok: false; error: string }
 
-const FENCE = /```(?:json)?\s*\n([\s\S]*?)```/g
+const FENCE = "```"
+const LANGUAGE = "json"
+
+/** Spaces, tabs and a CR are allowed between a fence's opening and its newline. */
+const isInlineSpace = (char: string | undefined): boolean =>
+  char === " " || char === "\t" || char === "\r"
+
+/**
+ * The body of every ``` or ```json fence in `text`, in order.
+ *
+ * A scan, not a regular expression: this reads whatever was pasted, and the
+ * pattern it replaces (```` /```(?:json)?\s*\n([\s\S]*?)```/g ````) backtracked
+ * polynomially on a fence followed by many whitespace-and-newline pairs,
+ * because `\s*` could also consume the newline it then required (CodeQL,
+ * #1564). Each fence is visited once, so this is linear in `text`.
+ */
+export function fencedBodies(text: string): Array<string> {
+  const bodies: Array<string> = []
+  let from = 0
+  for (;;) {
+    const open = text.indexOf(FENCE, from)
+    if (open === -1) return bodies
+    let at = open + FENCE.length
+    if (text.startsWith(LANGUAGE, at)) at += LANGUAGE.length
+    while (isInlineSpace(text[at])) at += 1
+    if (text[at] !== "\n") {
+      // Not an opening fence (```ts, or text after the backticks): look again
+      // from the next character, as the pattern did.
+      from = open + 1
+      continue
+    }
+    const close = text.indexOf(FENCE, at + 1)
+    if (close === -1) return bodies
+    bodies.push(text.slice(at + 1, close))
+    from = close + FENCE.length
+  }
+}
 
 function jsonValues(text: string): Array<unknown> {
-  const fenced = [...text.matchAll(FENCE)].map((match) => match[1] ?? "")
+  const fenced = fencedBodies(text)
   const candidates = fenced.length > 0 ? fenced : [text]
   return candidates.flatMap((candidate) => {
     try {
