@@ -105,6 +105,9 @@ export type DramaEntry = {
 export type WatchlistState = {
   watchlist: Array<DramaEntry>
   activeId: string | null
+  // Sites the user marked as streaming sites ("viki.com"). Tabs on them are
+  // source tabs — no card; every other tab shows the card. Empty by default.
+  streamSites: Array<string>
 }
 
 export type ScrapedMeta = {
@@ -125,7 +128,8 @@ export type PopupPhase =
       tag: "IDLE"
       state: WatchlistState
       tabId: number
-      isVideoTab: boolean
+      site: string // the active tab's site; "" when it is not a web page
+      isStreamSite: boolean // the active tab's site is marked
       videoCount: number
     }
   | { tag: "SCRAPING"; state: WatchlistState; tabId: number }
@@ -151,6 +155,7 @@ export type MessageBridge =
   | { type: "LOG_BEAT"; mood: MoodType; playback: Playback | null }
   | { type: "GET_BEATS"; dramaId: string }
   | { type: "REGISTER_SOURCE" }
+  | { type: "SET_STREAM_SITE"; site: string; streaming: boolean }
 
 // Wire envelope — what background.ts actually sends back for each message type.
 // `ok: false` is uniform across all variants (error path), so it's factored out.
@@ -165,6 +170,7 @@ export type MessageResponseMap = {
   // The drama's most recent episode (by its latest beat) and that episode's beats.
   GET_BEATS: Envelope<{ episode: string; beats: Array<BeatRecord> }>
   REGISTER_SOURCE: Envelope<{}>
+  SET_STREAM_SITE: Envelope<{ state: WatchlistState }>
 }
 
 /** Background → content-script broadcast after every watchlist mutation. */

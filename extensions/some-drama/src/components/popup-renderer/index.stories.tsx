@@ -28,6 +28,22 @@ class MockFsm extends PopupStateMachine {
     return Promise.resolve()
   }
 
+  override setStreamSite(
+    site: string,
+    streaming: boolean,
+    _tabId: number
+  ): Promise<void> {
+    // eslint-disable-next-line no-console -- storybook mock; console output is the intended inspection surface
+    console.log("[MockFSM] setStreamSite", site, streaming)
+    return Promise.resolve()
+  }
+
+  override backToIdle(_tabId: number): Promise<void> {
+    // eslint-disable-next-line no-console -- storybook mock; console output is the intended inspection surface
+    console.log("[MockFSM] backToIdle")
+    return Promise.resolve()
+  }
+
   override triggerScrape(
     _state: WatchlistState,
     _tabId: number
@@ -156,14 +172,20 @@ const MOCK_ENTRY_3: DramaEntry = {
   momentum: { value: 90, direction: "rising" },
 }
 
-const EMPTY_STATE: WatchlistState = { watchlist: [], activeId: null }
+const EMPTY_STATE: WatchlistState = {
+  watchlist: [],
+  activeId: null,
+  streamSites: [],
+}
 const SINGLE_STATE: WatchlistState = {
   watchlist: [MOCK_ENTRY_1],
   activeId: "m1",
+  streamSites: ["viki.com"],
 }
 const FULL_STATE: WatchlistState = {
   watchlist: [MOCK_ENTRY_1, MOCK_ENTRY_2, MOCK_ENTRY_3],
   activeId: "m1",
+  streamSites: ["iq.com", "viki.com", "youtube.com"],
 }
 
 // ── Phase builder ─────────────────────────────────────────────────────────────
@@ -171,7 +193,8 @@ const FULL_STATE: WatchlistState = {
 function buildPhase(
   phaseTag: BridgeProps["phaseTag"],
   watchlistSize: BridgeProps["watchlistSize"],
-  isVideoTab: boolean,
+  site: string,
+  isStreamSite: boolean,
   videoCount: number,
   errorMessage: string,
   showEditForm: boolean
@@ -188,7 +211,7 @@ function buildPhase(
       return { tag: "LOADING" }
     }
     case "IDLE": {
-      return { tag: "IDLE", state, tabId: 1, isVideoTab, videoCount }
+      return { tag: "IDLE", state, tabId: 1, site, isStreamSite, videoCount }
     }
     case "SCRAPING": {
       return { tag: "SCRAPING", state, tabId: 1 }
@@ -226,9 +249,11 @@ type BridgeProps = {
   phaseTag: "LOADING" | "IDLE" | "SCRAPING" | "FORM" | "SAVING" | "ERROR"
   /** Number of watchlist entries injected into the mock state */
   watchlistSize: 0 | 1 | 3
-  /** Drives the video-platform banner in IDLE */
-  isVideoTab: boolean
-  /** Video frame count shown in the video banner */
+  /** The active tab's site in IDLE ("" = not a web page) */
+  site: string
+  /** Whether that site is marked as a streaming site */
+  isStreamSite: boolean
+  /** <video> elements counted on the active tab */
   videoCount: number
   /** Error message displayed in the ERROR phase */
   errorMessage: string
@@ -239,7 +264,8 @@ type BridgeProps = {
 const PopupRendererBridge = ({
   phaseTag,
   watchlistSize,
-  isVideoTab,
+  site,
+  isStreamSite,
   videoCount,
   errorMessage,
   showEditForm,
@@ -267,7 +293,8 @@ const PopupRendererBridge = ({
       buildPhase(
         phaseTag,
         watchlistSize,
-        isVideoTab,
+        site,
+        isStreamSite,
         videoCount,
         errorMessage,
         showEditForm
@@ -276,7 +303,8 @@ const PopupRendererBridge = ({
   }, [
     phaseTag,
     watchlistSize,
-    isVideoTab,
+    site,
+    isStreamSite,
     videoCount,
     errorMessage,
     showEditForm,
@@ -375,13 +403,17 @@ const meta: Meta<BridgeProps> = {
       options: [0, 1, 3] satisfies Array<BridgeProps["watchlistSize"]>,
       description: "Number of mock entries injected into the IDLE / FORM state",
     },
-    isVideoTab: {
+    site: {
+      control: "text",
+      description: "The active tab's site in IDLE (empty = not a web page)",
+    },
+    isStreamSite: {
       control: "boolean",
-      description: "Shows the video-platform banner in IDLE",
+      description: "The active tab's site is marked as a streaming site",
     },
     videoCount: {
       control: { type: "range", min: 0, max: 5, step: 1 },
-      description: "Media frames detected — shown in the video banner",
+      description: "<video> elements counted on the active tab",
     },
     errorMessage: {
       control: "text",
@@ -405,7 +437,8 @@ export const Loading: Story = {
   args: {
     phaseTag: "LOADING",
     watchlistSize: 0,
-    isVideoTab: false,
+    site: "notion.so",
+    isStreamSite: false,
     videoCount: 0,
     errorMessage: "Failed to connect to background service",
     showEditForm: false,
@@ -419,18 +452,31 @@ export const IdleEmpty: Story = {
     ...Loading.args,
     phaseTag: "IDLE",
     watchlistSize: 0,
-    isVideoTab: false,
   },
 }
 
-/** Idle / video tab — platform-detected banner + media frame count. */
-export const IdleVideoTab: Story = {
-  name: "Idle / Video Tab",
+/** Idle / streaming site — the drama's tab, already marked; Unmark offered. */
+export const IdleStreamingSite: Story = {
+  name: "Idle / Streaming Site",
   args: {
     ...Loading.args,
     phaseTag: "IDLE",
     watchlistSize: 1,
-    isVideoTab: true,
+    site: "viki.com",
+    isStreamSite: true,
+    videoCount: 1,
+  },
+}
+
+/** Idle / unmarked video site — has videos, shows the card; Mark offered. */
+export const IdleUnmarkedVideoSite: Story = {
+  name: "Idle / Unmarked Video Site",
+  args: {
+    ...Loading.args,
+    phaseTag: "IDLE",
+    watchlistSize: 1,
+    site: "iq.com",
+    isStreamSite: false,
     videoCount: 2,
   },
 }
@@ -442,7 +488,6 @@ export const IdleWithEntries: Story = {
     ...Loading.args,
     phaseTag: "IDLE",
     watchlistSize: 3,
-    isVideoTab: false,
   },
 }
 

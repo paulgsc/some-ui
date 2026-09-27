@@ -1,28 +1,29 @@
-// Injected into every tab; resolves its role once at init (the some-mujik
-// pattern):
+// Injected into every tab. Each tab plays one of two roles (the some-mujik
+// pattern), and the role follows the user's list of streaming sites — it is
+// re-resolved on every STATE_UPDATE, so marking or unmarking a site in the
+// popup flips open tabs without a reload:
 //
-//   SOURCE  — a VIDEO_HOSTS tab, where the drama plays. Renders no card (the
-//             drama is never on stream). Registers itself with the background,
-//             answers GET_PLAYBACK, and logs beats from hotkeys with its own
-//             video time.
-//   DISPLAY — every other tab. Renders the card from the active entry; this is
-//             the page OBS captures. Hotkeys and the mood pickers log beats
-//             too (the background asks the source tab for the video time), and
-//             every BEAT_LOGGED pulses the live strip.
+//   DISPLAY — the default, every tab. Renders the card from the active entry;
+//             this is the page OBS captures. Hotkeys and the mood pickers log
+//             beats (the background asks the source tab for the video time),
+//             and every BEAT_LOGGED pulses the live strip.
+//   SOURCE  — a tab on a site the user marked as a streaming site: where the
+//             drama plays. Renders no card (the drama is never on stream).
+//             Registers itself with the background, answers GET_PLAYBACK, and
+//             logs beats from hotkeys with its own video time.
 //
 // Display responsibilities:
-//   1. Request current state from background (GET_STATE).
-//   2. Render DramaCard from the active entry — all fields real, no dummies.
-//   3. React to STATE_UPDATE broadcasts from background.
-//   4. Persist card position/size locally.
-//   5. Log beats (LOG_BEAT); load the episode's beats (GET_BEATS) and pulse
-//      the live strip on each BEAT_LOGGED.
-//   6. `toggle-visibility` command (Alt+Shift+D, bound via the commons
-//      keybinding typestate) — toggle card visibility, or fetch+render if
-//      card is null (background was evicted on page load).
+//   1. Render DramaCard from the active entry — all fields real, no dummies.
+//   2. React to STATE_UPDATE broadcasts from background.
+//   3. Persist card position/size locally.
+//   4. Load the episode's beats (GET_BEATS); pulse the live strip on each
+//      BEAT_LOGGED.
+//   5. `toggle-visibility` command (Alt+Shift+D, bound via the commons
+//      keybinding typestate) — toggle card visibility, or refetch state if
+//      there is no card (background was evicted on page load).
 //
 // Display typestate:
-//   LOADING — awaiting first GET_STATE response
+//   LOADING — awaiting first state
 //   EMPTY   — no active entry in watchlist
 //   READY   — active entry present, card rendered
 //
@@ -32,10 +33,10 @@
 //          background.ts by broadcasting to ALL tabs and letting content.ts
 //          guard itself.
 //   BUG-2  GET_STATE races with background wake-up when the non-persistent
-//          background script is evicted. Fixed by extracting fetchAndRender()
-//          with a single 300 ms retry on failure.
+//          background script is evicted. Fixed by refresh() with a single
+//          300 ms retry on failure.
 //   BUG-3  Keybinding was a no-op when card === null (EMPTY typestate after
-//          a failed init). Fixed: keybinding calls fetchAndRender() when no
+//          a failed init). Fixed: toggle-visibility refetches state when no
 //          card exists instead of silently doing nothing.
 //   BUG-4  GET_STATE resolves to the `{ ok, state }` envelope, but the reply
 //          was read as a bare WatchlistState — so `watchlist` was always
@@ -49,7 +50,7 @@ import { sendMsg } from "@drama/effects/messaging"
 import { KEY_BINDINGS } from "@drama/logic/content/commands"
 import type { DramaCommandId } from "@drama/logic/content/commands"
 import { MOODS } from "@drama/logic/content/constants"
-import { isVideoHost, VIDEO_HOSTS } from "@drama/logic/video-host"
+import { isStreamSite } from "@drama/logic/stream-sites"
 import type {
   BeatLoggedMessage,
   BeatRecord,
@@ -256,36 +257,25 @@ function beatCommands(
   )
 }
 
-// ─── Source role ──────────────────────────────────────────────────────────────
-
-function initSource(): void {
-  log.info("Source tab — no card; logging beats with this tab's video time.")
-
-  const register = (): void => {
-    sendMsg({ type: "REGISTER_SOURCE" }).catch((err: unknown) =>
-      log.error("REGISTER_SOURCE failed:", err)
-    )
-  }
-  register()
-  // Media events don't bubble; capture them at the document. Whichever video
-  // tab last started playing is the source (two YouTube tabs: the playing one).
-  document.addEventListener("play", register, { capture: true })
-
-  browser.runtime.onMessage.addListener(
-    (msg: unknown): Promise<Playback | null> | undefined => {
-      if (!isGetPlaybackMessage(msg)) return undefined
-      return Promise.resolve(readPlayback())
-    }
-  )
-
-  // Lifetime: the page's (see the display role below).
-  attachKeyBindings(beatCommands(readPlayback), KEY_BINDINGS)
-}
-
 // ─── Display role ─────────────────────────────────────────────────────────────
 
-async function initDisplay(): Promise<void> {
-  log.info("Initialising display layer…")
+type Display = {
+  apply: (state: WatchlistState) => void
+  onBeat: (beat: BeatRecord) => void
+  toggleVisibility: () => void
+  destroy: () => void
+}
+
+type DisplayDeps = {
+  /** Last known card layout — survives the display being torn down. */
+  cardMeta: PersistedCardMeta | null
+  onCardMeta: (meta: PersistedCardMeta) => void
+  /** Called by toggle-visibility when there is nothing on screen to toggle. */
+  refetch: () => void
+}
+
+function createDisplay(deps: DisplayDeps): Display {
+  log.info("Display tab — rendering the card.")
 
   const root = getOverlayRoot()
   const container = document.createElement("div")
@@ -298,7 +288,7 @@ async function initDisplay(): Promise<void> {
   let emptyPillConsumed = false
   let visible: boolean = true
   let currentSize: CardSize = "compact"
-  let cardMeta: PersistedCardMeta | null = await loadCardMeta()
+  let cardMeta: PersistedCardMeta | null = deps.cardMeta
   // The active drama's current episode, kept across card re-renders (every
   // STATE_UPDATE rebuilds the card) so the curve never blinks empty.
   let live: {
@@ -309,6 +299,12 @@ async function initDisplay(): Promise<void> {
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
+  const persist = (meta: PersistedCardMeta): void => {
+    cardMeta = meta
+    deps.onCardMeta(meta)
+    void saveCardMeta(meta)
+  }
+
   const currentCardPosition = (): { x: number; y: number } => {
     if (!card) return cardMeta ?? safeSpawnPosition(290, 130)
     const rect = card.root.getBoundingClientRect()
@@ -318,6 +314,19 @@ async function initDisplay(): Promise<void> {
   const destroyCard = (): void => {
     card?.destroy()
     card = null
+  }
+
+  const loadBeats = async (dramaId: string): Promise<void> => {
+    try {
+      const resp = await sendMsg({ type: "GET_BEATS", dramaId })
+      if (!resp.ok) throw new Error(resp.error)
+      // The active drama may have changed while the request was in flight.
+      if (typestate.phase !== "READY" || typestate.entry.id !== dramaId) return
+      live = { dramaId, episode: resp.episode, beats: resp.beats }
+      card?.setBeats(resp.episode, resp.beats)
+    } catch (err) {
+      log.error("GET_BEATS failed:", err)
+    }
   }
 
   const renderCard = (entry: DramaEntry): void => {
@@ -337,11 +346,11 @@ async function initDisplay(): Promise<void> {
 
       onSizeChange(size: CardSize): void {
         currentSize = size
-        void saveCardMeta({ ...currentCardPosition(), size })
+        persist({ ...currentCardPosition(), size })
       },
 
       onDragEnd(x: number, y: number): void {
-        void saveCardMeta({ x, y, size: currentSize })
+        persist({ x, y, size: currentSize })
       },
     }
 
@@ -361,32 +370,6 @@ async function initDisplay(): Promise<void> {
     void loadBeats(entry.id)
   }
 
-  const loadBeats = async (dramaId: string): Promise<void> => {
-    try {
-      const resp = await sendMsg({ type: "GET_BEATS", dramaId })
-      if (!resp.ok) throw new Error(resp.error)
-      // The active drama may have changed while the request was in flight.
-      if (typestate.phase !== "READY" || typestate.entry.id !== dramaId) return
-      live = { dramaId, episode: resp.episode, beats: resp.beats }
-      card?.setBeats(resp.episode, resp.beats)
-    } catch (err) {
-      log.error("GET_BEATS failed:", err)
-    }
-  }
-
-  const onBeat = (beat: BeatRecord): void => {
-    if (typestate.phase !== "READY" || typestate.entry.id !== beat.dramaId) {
-      return
-    }
-    if (live?.dramaId !== beat.dramaId || live.episode !== beat.episode) {
-      live = { dramaId: beat.dramaId, episode: beat.episode, beats: [] }
-    }
-    const i = live.beats.findIndex((b) => b.id === beat.id)
-    if (i >= 0) live.beats[i] = beat
-    else live.beats.push(beat)
-    card?.pushBeat(beat)
-  }
-
   const renderEmpty = (): void => {
     destroyCard()
     if (emptyPillConsumed) return
@@ -397,82 +380,48 @@ async function initDisplay(): Promise<void> {
     })
   }
 
-  // ── fetchAndRender ────────────────────────────────────────────────────────
-  // GET_STATE then reconcile. Retries once after 300 ms to handle the race
-  // where the non-persistent background script is still waking up.
+  return {
+    apply(state: WatchlistState): void {
+      const next = resolveTypestate(state)
 
-  const fetchAndRender = async (retryOnFailure = true): Promise<void> => {
-    let state: WatchlistState
-    try {
-      const resp = await sendMsg({ type: "GET_STATE" })
-      if (!resp.ok) throw new Error(resp.error)
-      state = resp.state
-    } catch (err) {
-      log.error("GET_STATE failed:", err)
-      if (retryOnFailure) {
-        await new Promise((r) => setTimeout(r, 300))
-        return fetchAndRender(false)
-      }
-      // Both attempts failed — render empty so the page isn't stuck on LOADING
-      renderEmpty()
-      return
-    }
-
-    const next = resolveTypestate(state)
-    if (next.phase === "EMPTY") {
-      typestate = next
-      renderEmpty()
-    } else if (next.phase === "READY") {
-      typestate = next
-      renderCard(next.entry)
-    }
-  }
-
-  // ── Initial render ────────────────────────────────────────────────────────
-
-  await fetchAndRender()
-
-  // ── Background message listener ───────────────────────────────────────────
-
-  browser.runtime.onMessage.addListener((msg: unknown) => {
-    if (isBeatLoggedMessage(msg)) {
-      onBeat(msg.beat)
-      return
-    }
-    if (!isStateUpdateMessage(msg)) return
-
-    const next = resolveTypestate(msg.payload)
-
-    if (next.phase === "EMPTY") {
-      typestate = next
-      renderEmpty()
-      return
-    }
-
-    if (next.phase === "READY") {
-      const prev = typestate
-      const entryChanged =
-        prev.phase !== "READY" ||
-        prev.entry.id !== next.entry.id ||
-        JSON.stringify(prev.entry) !== JSON.stringify(next.entry)
-
-      if (entryChanged) {
-        const pos = currentCardPosition()
-        cardMeta = { x: pos.x, y: pos.y, size: currentSize }
+      if (next.phase === "EMPTY") {
         typestate = next
-        renderCard(next.entry)
+        renderEmpty()
+        return
       }
-    }
-  })
 
-  // ── Keybindings ───────────────────────────────────────────────────────────
+      if (next.phase === "READY") {
+        const prev = typestate
+        const entryChanged =
+          prev.phase !== "READY" ||
+          prev.entry.id !== next.entry.id ||
+          JSON.stringify(prev.entry) !== JSON.stringify(next.entry)
 
-  // Lifetime: the page's. The card lives until the document unloads, so the
-  // disposer is not retained.
-  const commands: CommandRegistry<DramaCommandId> = {
-    // Display tabs have no video of their own; the background asks the source.
-    ...beatCommands(() => null),
-    "toggle-visibility": (): void => {
+        if (entryChanged) {
+          if (card) {
+            const pos = currentCardPosition()
+            cardMeta = { x: pos.x, y: pos.y, size: currentSize }
+          }
+          typestate = next
+          renderCard(next.entry)
+        }
+      }
+    },
+
+    onBeat(beat: BeatRecord): void {
+      if (typestate.phase !== "READY" || typestate.entry.id !== beat.dramaId) {
+        return
+      }
+      if (live?.dramaId !== beat.dramaId || live.episode !== beat.episode) {
+        live = { dramaId: beat.dramaId, episode: beat.episode, beats: [] }
+      }
+      const i = live.beats.findIndex((b) => b.id === beat.id)
+      if (i >= 0) live.beats[i] = beat
+      else live.beats.push(beat)
+      card?.pushBeat(beat)
+    },
+
+    toggleVisibility(): void {
       if (card) {
         visible = !visible
         card.setVisible(visible)
@@ -487,25 +436,125 @@ async function initDisplay(): Promise<void> {
         return
       }
       // No card, no pill — background was likely evicted on page load.
-      // Attempt a fresh fetch; if state is available the card will appear.
-      log.info("No card on keybind — attempting fetchAndRender")
-      void fetchAndRender()
+      log.info("No card on keybind — refetching state")
+      deps.refetch()
+    },
+
+    destroy(): void {
+      destroyCard()
+      removeEmptyPill?.()
+      removeEmptyPill = null
+      container.remove()
+    },
+  }
+}
+
+// ─── Controller ───────────────────────────────────────────────────────────────
+
+async function main(): Promise<void> {
+  let role: "source" | "display" | null = null
+  let display: Display | null = null
+  let cardMeta: PersistedCardMeta | null = await loadCardMeta()
+
+  const registerSource = (): void => {
+    sendMsg({ type: "REGISTER_SOURCE" }).catch((err: unknown) =>
+      log.error("REGISTER_SOURCE failed:", err)
+    )
+  }
+
+  /** Resolve this tab's role from the latest state, then hand state on. */
+  const apply = (state: WatchlistState): void => {
+    const next = isStreamSite(location.href, state.streamSites)
+      ? "source"
+      : "display"
+
+    if (next !== role) {
+      display?.destroy()
+      display = null
+      role = next
+      if (next === "source") {
+        log.info("Streaming site — no card; beats carry this tab's video time.")
+        registerSource()
+      } else {
+        display = createDisplay({
+          cardMeta,
+          onCardMeta: (meta) => {
+            cardMeta = meta
+          },
+          refetch: () => void refresh(),
+        })
+      }
+    }
+
+    display?.apply(state)
+  }
+
+  // GET_STATE, retried once after 300 ms for the race where the
+  // non-persistent background script is still waking up.
+  const refresh = async (retryOnFailure = true): Promise<void> => {
+    try {
+      const resp = await sendMsg({ type: "GET_STATE" })
+      if (!resp.ok) throw new Error(resp.error)
+      apply(resp.state)
+    } catch (err) {
+      log.error("GET_STATE failed:", err)
+      if (retryOnFailure) {
+        await new Promise((r) => setTimeout(r, 300))
+        return refresh(false)
+      }
+      // Both attempts failed — fall back to an empty display so the page
+      // isn't stuck on LOADING.
+      if (role === null)
+        apply({ watchlist: [], activeId: null, streamSites: [] })
+    }
+  }
+
+  // ── Background messages ───────────────────────────────────────────────────
+
+  browser.runtime.onMessage.addListener(
+    (msg: unknown): Promise<Playback | null> | undefined => {
+      if (isGetPlaybackMessage(msg)) {
+        return role === "source" ? Promise.resolve(readPlayback()) : undefined
+      }
+      if (isBeatLoggedMessage(msg)) display?.onBeat(msg.beat)
+      else if (isStateUpdateMessage(msg)) apply(msg.payload)
+      return undefined
+    }
+  )
+
+  // Media events don't bubble; capture them at the document. Whichever
+  // streaming tab last started playing is the source (two tabs on marked
+  // sites: the one playing).
+  document.addEventListener(
+    "play",
+    () => {
+      if (role === "source") registerSource()
+    },
+    { capture: true }
+  )
+
+  // ── Keybindings ───────────────────────────────────────────────────────────
+  // Attached once for the page's lifetime; each handler reads the current
+  // role, so a role flip needs no re-binding.
+
+  const commands: CommandRegistry<DramaCommandId> = {
+    // A display tab has no video of its own; the background asks the source.
+    ...beatCommands(() => (role === "source" ? readPlayback() : null)),
+    "toggle-visibility": (): void => {
+      if (display) display.toggleVisibility()
+      else if (role === null) void refresh()
     },
   }
   attachKeyBindings(commands, KEY_BINDINGS)
 
-  log.info("Display layer ready.", typestate)
+  await refresh()
+  log.info("Ready.", { role })
 }
 
 // ─── Dispatch ─────────────────────────────────────────────────────────────────
 
-function init(): void {
-  if (isVideoHost(location.href, VIDEO_HOSTS)) initSource()
-  else void initDisplay()
-}
-
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", init)
+  document.addEventListener("DOMContentLoaded", () => void main())
 } else {
-  init()
+  void main()
 }

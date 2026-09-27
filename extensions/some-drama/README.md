@@ -7,14 +7,20 @@ also logged, so the ride through an episode — and a series — is kept.
 
 ## Tab roles
 
-Like some-mujik, the content script picks a role per tab at load:
+Like some-mujik, each tab plays one of two roles — but which sites the drama
+plays on is yours to say, not a built-in list:
 
-- **Source** — a tab on one of `VIDEO_HOSTS` (`src/logic/video-host.ts`:
-  Netflix, Viki, YouTube, Crunchyroll). The drama plays here. No card is
-  drawn; hotkeys log beats with this tab's own video time.
-- **Display** — every other tab. Renders the card for the active drama; this
-  is the page to capture in OBS. Hotkeys work here too (the background asks the
-  source tab for the video time).
+- **Display** — the default, every tab. Renders the card for the active
+  drama; this is the page to capture in OBS. Hotkeys work here too (the
+  background asks the source tab for the video time).
+- **Source** — a tab on a site you marked as a **streaming site**. The drama
+  plays here. No card is drawn; hotkeys log beats with this tab's own video
+  time.
+
+To mark a site, open the drama's tab and press **Mark as streaming** in the
+popup; **Unmark** (or ✕ in the popup's _Streaming sites_ list) reverts it.
+Open tabs switch roles immediately. Marking covers subdomains (`viki.com`
+covers `m.viki.com`). Nothing is marked on a fresh install.
 
 ## Beats
 
@@ -55,7 +61,7 @@ src/
 ├── popup/        popup entrypoint
 ├── logic/        pure — no document/window/browser/chrome (lint-enforced)
 │   ├── beats.ts       logging + escalation, episode curve, episode parsing
-│   ├── video-host.ts  which hosts are source tabs
+│   ├── stream-sites.ts  site matching for the user's streaming sites
 │   ├── content/  moods, commands + key bindings, utils
 │   └── popup/    constants
 ├── effects/      the only callers of DOM / browser APIs
@@ -103,6 +109,7 @@ repo-root Storybook (`STORYBOOK_WORKSPACE=some-drama`).
 | `drama_active_id`        | `string \| null`                            |
 | `drama_beats`            | `Array<BeatRecord>` (newest 5000)           |
 | `drama_source_tab`       | `number` — the source tab, validated on use |
+| `drama_stream_sites`     | `Array<string>` — sites marked as streaming |
 | `drama_card_position_v3` | `{ x, y, size }` (card layout)              |
 | `drama_moments`          | legacy mood log (no video times); not read  |
 

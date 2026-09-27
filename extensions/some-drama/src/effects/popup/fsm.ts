@@ -1,5 +1,5 @@
 import { sendMsg } from "@drama/effects/messaging"
-import { isVideoHost, VIDEO_HOSTS } from "@drama/logic/video-host"
+import { isStreamSite, siteOf } from "@drama/logic/stream-sites"
 import type { DramaEntry, PopupPhase, WatchlistState } from "@drama/types"
 
 // Statically import the scraper function using modern ES module syntax
@@ -37,25 +37,7 @@ export class PopupStateMachine {
         )
 
       const [{ id: tabId = -1, url: tabUrl = "" } = {}] = tabs
-      const isVideoTab = isVideoHost(tabUrl, VIDEO_HOSTS)
-
-      let videoCount = 0
-      if (isVideoTab && tabId !== -1) {
-        const diagnostic = await browser.tabs
-          .executeScript(tabId, {
-            code: `document.querySelectorAll('video').length`,
-          })
-          .catch(() => [0])
-        videoCount = diagnostic[0] ?? 0
-      }
-
-      this.transition({
-        tag: "IDLE",
-        state: stateResp.state,
-        tabId,
-        isVideoTab,
-        videoCount,
-      })
+      this.transition(await idlePhase(stateResp.state, tabId, tabUrl))
     } catch (err) {
       this.transition({
         tag: "ERROR",
@@ -165,6 +147,32 @@ export class PopupStateMachine {
     }
   }
 
+  /** Back to the list, re-reading state and the active tab (e.g. Cancel). */
+  public backToIdle(tabId: number): Promise<void> {
+    return this.reloadToIdle(tabId)
+  }
+
+  /** Mark or unmark the active tab's site as a streaming site. */
+  public async setStreamSite(
+    site: string,
+    streaming: boolean,
+    tabId: number
+  ): Promise<void> {
+    try {
+      const resp = await sendMsg({ type: "SET_STREAM_SITE", site, streaming })
+      if (!resp.ok)
+        throw new Error("Failed to set streaming site", { cause: resp.error })
+
+      void this.reloadToIdle(tabId)
+    } catch (err) {
+      this.transition({
+        tag: "ERROR",
+        message: String(err),
+        prev: this.currentPhase,
+      })
+    }
+  }
+
   private async reloadToIdle(tabId: number): Promise<void> {
     try {
       const resp = await sendMsg({
@@ -177,25 +185,7 @@ export class PopupStateMachine {
         active: true,
         currentWindow: true,
       })
-      const url = tabs[0]?.url ?? ""
-
-      let videoCount = 0
-      if (tabId !== -1) {
-        const diagnostic = await browser.tabs
-          .executeScript(tabId, {
-            code: `document.querySelectorAll('video').length`,
-          })
-          .catch(() => [0])
-        videoCount = diagnostic[0] ?? 0
-      }
-
-      this.transition({
-        tag: "IDLE",
-        state: resp.state,
-        tabId,
-        isVideoTab: isVideoHost(url, VIDEO_HOSTS),
-        videoCount,
-      })
+      this.transition(await idlePhase(resp.state, tabId, tabs[0]?.url ?? ""))
     } catch (err) {
       this.transition({
         tag: "ERROR",
@@ -239,5 +229,37 @@ export class PopupStateMachine {
         prev: this.currentPhase,
       })
     }
+  }
+}
+
+/**
+ * The IDLE phase for the active tab: its site, whether that site is marked as
+ * a streaming site, and how many <video> elements it has — counted on every
+ * tab, since any tab may be the one about to be marked. Pages the extension
+ * cannot script (about:, the add-ons store) count as 0.
+ */
+async function idlePhase(
+  state: WatchlistState,
+  tabId: number,
+  tabUrl: string
+): Promise<Extract<PopupPhase, { tag: "IDLE" }>> {
+  const site = siteOf(tabUrl)
+  let videoCount = 0
+  if (site && tabId !== -1) {
+    const diagnostic: Array<unknown> = await browser.tabs
+      .executeScript(tabId, {
+        code: `document.querySelectorAll('video').length`,
+      })
+      .catch(() => [0])
+    const [count] = diagnostic
+    videoCount = typeof count === "number" ? count : 0
+  }
+  return {
+    tag: "IDLE",
+    state,
+    tabId,
+    site,
+    isStreamSite: isStreamSite(tabUrl, state.streamSites),
+    videoCount,
   }
 }

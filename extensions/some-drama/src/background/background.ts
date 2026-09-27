@@ -4,12 +4,14 @@
 //   drama_active_id:  string | null   — id of entry currently displayed
 //   drama_beats:      BeatRecord[]    — the live emotional log (bounded)
 //   drama_source_tab: number | null   — tab playing the drama (validated on use)
+//   drama_stream_sites: string[]      — sites the user marked as streaming sites
 //   drama_moments:    legacy mood log; every record has timestamp 0, so it is
 //                     no longer read — left in place rather than deleted.
 //
-// Tab roles (the some-mujik pattern): the SOURCE tab plays the drama, renders
-// no card, captures hotkeys with its own video time, and answers GET_PLAYBACK.
-// Every other tab is a DISPLAY tab: it renders the card, which OBS captures.
+// Tab roles (the some-mujik pattern): every tab is a DISPLAY tab by default —
+// it renders the card, which OBS captures. A tab on a site the user marked as
+// a streaming site is a SOURCE tab: it plays the drama, renders no card,
+// captures hotkeys with its own video time, and answers GET_PLAYBACK.
 //
 // Message types:
 //   GET_STATE       → { ok, state }
@@ -17,6 +19,7 @@
 //   REMOVE_ENTRY    → remove by id; broadcasts STATE_UPDATE
 //   SET_ACTIVE      → set activeId; broadcasts STATE_UPDATE
 //   REGISTER_SOURCE → the sending tab is now the source tab
+//   SET_STREAM_SITE → mark / unmark a streaming site; broadcasts STATE_UPDATE
 //   LOG_BEAT        → log or escalate a beat for the active drama; broadcasts
 //                     BEAT_LOGGED. Asks the source tab for playback when the
 //                     press came from a display tab.
@@ -29,6 +32,7 @@ import {
   normalizeEpisode,
 } from "@drama/logic/beats"
 import { MOODS } from "@drama/logic/content/constants"
+import { isStreamSite, siteOf, withStreamSite } from "@drama/logic/stream-sites"
 import type {
   BeatLoggedMessage,
   BeatRecord,
@@ -52,6 +56,7 @@ type Reply<T extends MessageBridge["type"]> = (
 
 const BEATS_KEY = "drama_beats"
 const SOURCE_TAB_KEY = "drama_source_tab"
+const STREAM_SITES_KEY = "drama_stream_sites"
 const WATCHLIST_KEY = "drama_watchlist"
 const ACTIVE_ID_KEY = "drama_active_id"
 const MAX_WATCHLIST = 5
@@ -112,6 +117,9 @@ function isBackgroundMessage(v: unknown): v is MessageBridge {
     }
     case "GET_BEATS": {
       return typeof v.dramaId === "string"
+    }
+    case "SET_STREAM_SITE": {
+      return typeof v.site === "string" && typeof v.streaming === "boolean"
     }
     case "REGISTER_SOURCE":
     case "GET_STATE": {
@@ -206,12 +214,20 @@ browser.tabs.onRemoved.addListener((tabId) => {
 // ── Watchlist helpers ─────────────────────────────────────────────────────────
 
 async function getWatchlistState(): Promise<WatchlistState> {
-  const r = await browser.storage.local.get([WATCHLIST_KEY, ACTIVE_ID_KEY])
+  const r = await browser.storage.local.get([
+    WATCHLIST_KEY,
+    ACTIVE_ID_KEY,
+    STREAM_SITES_KEY,
+  ])
   const watchlist = r[WATCHLIST_KEY]
   const activeId = r[ACTIVE_ID_KEY]
+  const streamSites = r[STREAM_SITES_KEY]
   return {
     watchlist: isDramaEntryArray(watchlist) ? watchlist : [],
     activeId: typeof activeId === "string" ? activeId : null,
+    streamSites: Array.isArray(streamSites)
+      ? streamSites.filter((x): x is string => typeof x === "string")
+      : [],
   }
 }
 
@@ -221,6 +237,7 @@ async function setWatchlistState(
   const update: Record<string, unknown> = {}
   if ("watchlist" in patch) update[WATCHLIST_KEY] = patch.watchlist
   if ("activeId" in patch) update[ACTIVE_ID_KEY] = patch.activeId
+  if ("streamSites" in patch) update[STREAM_SITES_KEY] = patch.streamSites
   await browser.storage.local.set(update)
 }
 
@@ -386,7 +403,7 @@ async function handleUpsertEntry(
   sendResponse: Reply<"UPSERT_ENTRY">
 ): Promise<void> {
   try {
-    const { watchlist, activeId } = await getWatchlistState()
+    const { watchlist, activeId, streamSites } = await getWatchlistState()
     const existingIdx = incoming.id
       ? watchlist.findIndex((e) => e.id === incoming.id)
       : -1
@@ -418,7 +435,11 @@ async function handleUpsertEntry(
     const newActive =
       activeId ?? (next.length === 1 ? (firstNext?.id ?? null) : null)
     await setWatchlistState({ watchlist: next, activeId: newActive })
-    const state: WatchlistState = { watchlist: next, activeId: newActive }
+    const state: WatchlistState = {
+      watchlist: next,
+      activeId: newActive,
+      streamSites,
+    }
     await broadcastState(state)
     sendResponse({ ok: true, state })
   } catch (err) {
@@ -431,11 +452,15 @@ async function handleRemoveEntry(
   sendResponse: Reply<"REMOVE_ENTRY">
 ): Promise<void> {
   try {
-    const { watchlist, activeId } = await getWatchlistState()
+    const { watchlist, activeId, streamSites } = await getWatchlistState()
     const next = watchlist.filter((e) => e.id !== id)
     const newActive = activeId === id ? (next[0]?.id ?? null) : activeId
     await setWatchlistState({ watchlist: next, activeId: newActive })
-    const state: WatchlistState = { watchlist: next, activeId: newActive }
+    const state: WatchlistState = {
+      watchlist: next,
+      activeId: newActive,
+      streamSites,
+    }
     await broadcastState(state)
     sendResponse({ ok: true, state })
   } catch (err) {
@@ -448,9 +473,45 @@ async function handleSetActive(
   sendResponse: Reply<"SET_ACTIVE">
 ): Promise<void> {
   try {
-    const { watchlist } = await getWatchlistState()
+    const { watchlist, streamSites } = await getWatchlistState()
     await setWatchlistState({ activeId: id })
-    const state: WatchlistState = { watchlist, activeId: id }
+    const state: WatchlistState = { watchlist, activeId: id, streamSites }
+    await broadcastState(state)
+    sendResponse({ ok: true, state })
+  } catch (err) {
+    sendResponse({ ok: false, error: String(err) })
+  }
+}
+
+async function handleSetStreamSite(
+  site: string,
+  streaming: boolean,
+  sendResponse: Reply<"SET_STREAM_SITE">
+): Promise<void> {
+  try {
+    const current = await getWatchlistState()
+    // Normalized the same way content tabs resolve their own site, so
+    // "WWW.Viki.com" marks the site "viki.com" tabs will match.
+    const normalized = siteOf(`https://${site.trim()}`)
+    const streamSites = withStreamSite(
+      current.streamSites,
+      normalized,
+      streaming
+    )
+    await setWatchlistState({ streamSites })
+
+    // Unmarking the site the source tab is on: that tab turns back into a
+    // display tab (it re-resolves its role from the broadcast below), so it
+    // can no longer answer for the drama's playback.
+    const sourceId = await getSourceTabId()
+    if (sourceId !== null) {
+      const tab = await browser.tabs.get(sourceId)
+      if (!isStreamSite(tab.url ?? "", streamSites)) {
+        await browser.storage.local.remove(SOURCE_TAB_KEY)
+      }
+    }
+
+    const state: WatchlistState = { ...current, streamSites }
     await broadcastState(state)
     sendResponse({ ok: true, state })
   } catch (err) {
@@ -473,6 +534,9 @@ async function dispatch(
     }
     case "REGISTER_SOURCE": {
       return handleRegisterSource(sender.tab?.id, sendResponse)
+    }
+    case "SET_STREAM_SITE": {
+      return handleSetStreamSite(message.site, message.streaming, sendResponse)
     }
     case "GET_STATE": {
       return handleGetState(sendResponse)
@@ -514,7 +578,11 @@ browser.runtime.onInstalled.addListener(() => {
   void (async () => {
     const existing = await browser.storage.local.get([WATCHLIST_KEY])
     if (!existing[WATCHLIST_KEY]) {
-      await setWatchlistState({ watchlist: [], activeId: null })
+      await setWatchlistState({
+        watchlist: [],
+        activeId: null,
+        streamSites: [],
+      })
     }
   })()
 })
