@@ -166,7 +166,12 @@ The extension shares a process with the page. Prefer shared infrastructure:
 7 intervals`. Every allocated resource (rAF, observer, timer, WASM viewport,
 DOM node) must be registered for deterministic teardown.
 
-> **Reference implementation:** `some-conveyor`'s `DisposableRegistry`.
+> **Shared primitives:** `Disposables` and `ActiveScope` in
+> `@some-extension/common` (hoisted from `some-conveyor`'s
+> `DisposableRegistry`). **Enforced by:** `require-named-lifetime` and
+> `require-scoped-lifetime`, plus a workspace lifetime suite built on
+> `@some-extension/common/testing` — see
+> [Resource lifetimes: what is enforced, and what is not](#resource-lifetimes-what-is-enforced-and-what-is-not).
 
 ---
 
@@ -214,7 +219,85 @@ If a page update occurs, the extension degrades gracefully.
 | Commands / keybindings (#3)                              | shared **typestate** (one definition)        | `@some-extension/common`          |
 | Isolation, fullscreen, disposal, attention (#5–#8)       | shared **primitives** (reference impls)      | `@some-extension/common`          |
 | Namespacing, storage, z-index, logic-purity (#2, #4, #6) | shared **lint rules** (per-workspace config) | `@some-ui/eslint-kit`             |
+| Resource lifetimes (#7, #8)                              | primitives + lint rules + a test harness     | see the section below             |
 | Schema changes from any of the above                     | **per-workspace, isolated migrations**       | each workspace's migration ledger |
+
+### Resource lifetimes: what is enforced, and what is not
+
+The idiom: **a resource is held only while the thing consuming it is active.**
+A timer, a frame loop, a listener on the page, an animation, an observer is
+acquired when its consumer starts doing something someone can see, and is gone
+the moment it stops — minimised, hidden, not showing, fullscreen, destroyed,
+or replaced before it ever started.
+
+**What upholds it.**
+
+| Layer      | What                                                                                                                                                                                                  |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Primitives | `Disposables` (a lifetime: `signal`, `interval`, `timeout`, `frame`, `loop`, `child`), `ActiveScope` (acquire in one `start`, released by any named hold), `isPageShowing` / `watchPageShowing`       |
+| Lint       | `require-named-lifetime` (`setInterval`, `requestIdleCallback`); `require-scoped-lifetime` (listeners on `document`/`window` without a `signal` or `once`; self-rescheduling `requestAnimationFrame`) |
+| Tests      | `@some-extension/common/testing`: `probeResources()` counts live intervals, timeouts, frames and page listeners; `ungatedInfiniteAnimations()` finds infinite CSS animations outside a dormant gate   |
+
+`require-scoped-lifetime` is a warning in the shared config and an error in a
+workspace that has adopted the primitives. `some-drama` is the reference: its
+`tests/card-lifetime.test.ts` and `tests/display-lifetime.test.ts` drive the
+card through every transition and assert what is still running.
+
+**What cannot be guarded, and why.** These are the parts of the idiom no lint
+rule or test here can regress against. They are named so that a change near
+them is made knowingly, not so that they are forgotten.
+
+1. **Whether the owner ends at the right time.** A lint rule sees a call site.
+   A `signal` or a `Disposables` proves a resource _has_ an owner, not that the
+   owner ends on every transition that should end it. A scope disposed only at
+   unload satisfies both rules and is exactly the shape of the 200-tab
+   incident (see `require-named-lifetime`). "Which transitions should stop
+   this?" has its answer in whichever module decides activity, not at the call
+   site, so it is a design question, not a syntactic one. _Hold the line
+   by:_ acquiring what runs while active inside an `ActiveScope`'s `start`, and
+   naming every reason to stop as a hold there.
+2. **Transitions nobody wrote a test for.** A lifetime suite checks the states
+   it drives. A new way to go dormant (a new size, a new mode) is untested
+   until someone adds it; no harness can enumerate states it was not told
+   about. _Hold the line by:_ adding each new hold to the suite in the same
+   change that adds it to the `ActiveScope`.
+3. **Exemptions are honour-system.** An `eslint-disable` for either rule
+   passes with any comment; a linter cannot judge whether the prose names a
+   real lifetime. Every exemption stays greppable
+   (`rg "eslint-disable.*require-(named|scoped)-lifetime"`) and must name
+   what ends the resource. Page-lifetime listeners in a content script's own
+   entry point are the legitimate case.
+4. **Resources the rules do not recognise.** `MutationObserver`,
+   `ResizeObserver`, `IntersectionObserver`, `WebSocket`, `BroadcastChannel`,
+   `browser.*.onX.addListener`, listeners on long-lived non-page targets (a
+   `MediaQueryList`, a vendor element that outlives the overlay), and any call
+   through an alias (`const d = document; d.addEventListener(…)`). The rules
+   are syntactic on purpose: widening them either flags correct one-shot uses
+   (why `matchMedia` was dropped from `require-named-lifetime`) or needs type
+   and flow analysis they do not do. _Hold the line by:_ acquiring these
+   through a `Disposables` too — `life.add(() => observer.disconnect())`.
+5. **CSS the harness cannot see.** `ungatedInfiniteAnimations` reads the
+   stylesheet source against the DOM a test builds — jsdom runs no CSS. It
+   does not see animations started from JS (`element.animate`), elements a
+   test never mounts, or effects that never end without being `infinite`
+   (a `transition` re-triggered by a loop). _Hold the line by:_ putting every
+   animated element under the overlay root's dormant gate, and creating any
+   that cannot live there (fixed-position layers) inside the `ActiveScope`.
+6. **What only a real browser does.** Whether a page is showing comes from the
+   browser: an OS window occluded behind another may be reported hidden (and
+   stop painting, which matters for a stream-captured overlay), and a page
+   restored from the back/forward cache comes back without re-running the
+   content script. Unit tests stub `visibilityState`; neither case can be
+   simulated in jsdom, and a Firefox MV2 extension cannot be loaded into
+   Playwright. _Hold the line by:_ keeping activity decided in one place
+   (`watchPageShowing`), so a real-browser check has one seam to test.
+7. **Coverage that depends on CI wiring.** `@some-extension/common`'s own
+   unit suite runs on trunk only: PR CI excludes `extensions/**` from its node
+   job, and the extension matrix skips workspaces with no manifest. A
+   regression in the primitives is caught on a PR only through a workspace
+   suite that exercises them. And nothing forces a workspace to have a
+   lifetime suite at all — adoption is per workspace (tracked in the issue
+   that moves the other workspaces from warn to error).
 
 ### Migrations are per-workspace and isolated
 

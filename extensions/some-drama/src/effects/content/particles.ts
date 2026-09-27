@@ -9,7 +9,7 @@
 //   every particle was anchored to (0,0) regardless of card position.
 //
 //   Fix: two distinct namespaces.
-//     --b-layer-x / --b-layer-y  — set on the layer element by the RAF loop;
+//     --b-layer-x / --b-layer-y  — set on the layer element by reposition();
 //                                   track the card's current viewport position.
 //     --b-px / --b-py            — set per-particle inline; static relative
 //                                   offset from the layer origin.
@@ -26,23 +26,36 @@ import { el } from "./dom"
 const BLOSSOM_GLYPHS = ["🌸", "🌺", "🌼", "✿", "❀"] as const
 const PARTICLE_COUNT = 7
 
+export type Blossoms = {
+  /** Re-read the anchor's rect — call whenever the card moves or resizes. */
+  reposition: () => void
+  /** Remove the layer and its particles. */
+  destroy: () => void
+}
+
 /**
- * Spawn floating blossom particles that track `anchorEl`'s position.
- * Returns a teardown function — call it to remove the layer and stop the RAF.
+ * Spawn floating blossom particles anchored to `anchorEl`'s position.
+ *
+ * No per-frame loop: the card only moves when it is dragged, placed or
+ * resized, and its owner calls `reposition()` at exactly those moments. (A
+ * requestAnimationFrame loop re-reading the anchor's rect every frame, for as
+ * long as the card existed, used to do this.) The particles' drift is CSS and
+ * stops with the layer; the owner destroys the layer whenever the card goes
+ * dormant, since it lives outside the card's dormant gate.
  */
-export function spawnBlossoms(anchorEl: HTMLElement): () => void {
+export function spawnBlossoms(anchorEl: HTMLElement): Blossoms {
   const root = getOverlayRoot()
   const layer = el("div", "dc-blossom-layer")
 
   /** Update --b-layer-x/y on the layer from the anchor's current rect. */
-  const updateOrigin = (): void => {
+  const reposition = (): void => {
     const rect = anchorEl.getBoundingClientRect()
     // Anchor near the right-centre of the card for a natural floating effect
     layer.style.setProperty("--b-layer-x", `${rect.right}px`)
     layer.style.setProperty("--b-layer-y", `${rect.top + rect.height / 2}px`)
   }
 
-  updateOrigin()
+  reposition()
 
   for (let i = 0; i < PARTICLE_COUNT; i++) {
     const glyph = BLOSSOM_GLYPHS[i % BLOSSOM_GLYPHS.length]!
@@ -72,17 +85,8 @@ export function spawnBlossoms(anchorEl: HTMLElement): () => void {
 
   root.appendChild(layer)
 
-  // RAF loop: re-read anchor rect each frame and push to --b-layer-x/y.
-  // Cheap — just two getBoundingClientRect reads + two setProperty calls.
-  let rafId: number
-  const track = (): void => {
-    updateOrigin()
-    rafId = requestAnimationFrame(track)
-  }
-  rafId = requestAnimationFrame(track)
-
-  return (): void => {
-    cancelAnimationFrame(rafId)
-    layer.remove()
+  return {
+    reposition,
+    destroy: (): void => layer.remove(),
   }
 }
