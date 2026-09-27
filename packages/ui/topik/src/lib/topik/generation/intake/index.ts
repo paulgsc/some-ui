@@ -79,8 +79,19 @@ const DIFFICULTY_BY_LEVEL: Record<number, TopikMetadata["difficulty"]> = {
   6: "advanced",
 }
 
-/** Reads a pasted reply. Never throws. */
-export function intakeLesson(reply: string): Intake {
+/**
+ * Reads a pasted reply. Never throws.
+ *
+ * `entry`, when given, stands in for any manifest entry in the reply. The
+ * operator's lesson CRM keeps the entry in a form, and a lesson file it reads
+ * back from the server carries none; its authored tags (`topik-3`) must
+ * survive an edit all the same. Counts and `relation:` tags are derived
+ * either way.
+ */
+export function intakeLesson(
+  reply: string,
+  entry?: Record<string, unknown>
+): Intake {
   const values = jsonValues(reply)
   const raw = values.find(Array.isArray)
   if (raw === undefined) {
@@ -123,10 +134,10 @@ export function intakeLesson(reply: string): Intake {
   // withheld probe's relation is never advertised to selection.
   const batches = withholdErrors(parsed.data, findings)
 
-  const entry = values.find(isRecord) ?? {}
-  const displayName = text(entry.displayName) ?? "Untitled lesson"
-  const authored = Array.isArray(entry.tags)
-    ? entry.tags.filter(
+  const given = entry ?? values.find(isRecord) ?? {}
+  const displayName = text(given.displayName) ?? "Untitled lesson"
+  const authored = Array.isArray(given.tags)
+    ? given.tags.filter(
         (tag): tag is string =>
           typeof tag === "string" && !tag.startsWith(RELATION_TAG_PREFIX)
       )
@@ -135,16 +146,16 @@ export function intakeLesson(reply: string): Intake {
   const level = topikLevelOf(tags)
   const difficulty =
     (level ? DIFFICULTY_BY_LEVEL[level] : undefined) ??
-    (entry.difficulty === "beginner" ||
-    entry.difficulty === "intermediate" ||
-    entry.difficulty === "advanced"
-      ? entry.difficulty
+    (given.difficulty === "beginner" ||
+    given.difficulty === "intermediate" ||
+    given.difficulty === "advanced"
+      ? given.difficulty
       : undefined)
 
   const meta: TopikMetadata = {
-    key: `${LOCAL_LESSON_PREFIX}${slug(text(entry.key) ?? displayName)}`,
+    key: `${LOCAL_LESSON_PREFIX}${slug(text(given.key) ?? displayName)}`,
     displayName,
-    description: text(entry.description) ?? "",
+    description: text(given.description) ?? "",
     batchCount: batches.length,
     totalQuestions: batches.reduce(
       (sum, batch) => sum + batch.questions.length,

@@ -29,6 +29,33 @@ const reply = (lesson: unknown): string =>
   ].join("\n")
 
 describe("intakeLesson", () => {
+  it("takes a given entry in place of the reply's, and still derives counts and relation tags", () => {
+    const intake = intakeLesson(JSON.stringify(FIXTURE_BATCHES), {
+      key: "week-40",
+      displayName: "Edited",
+      description: "From the CRM's form.",
+      tags: ["topik-4", "relation:hand-written"],
+    })
+    if (!intake.ok) throw new Error(intake.error)
+    expect(intake.meta).toEqual({
+      key: `${LOCAL_LESSON_PREFIX}week-40`,
+      displayName: "Edited",
+      description: "From the CRM's form.",
+      batchCount: 2,
+      totalQuestions: intake.meta.totalQuestions,
+      totalMessages: intake.meta.totalMessages,
+      difficulty: "intermediate",
+      tags: ["topik-4", ...relationTags(FIXTURE_BATCHES)],
+    })
+    // The reply's own entry is ignored when one is given.
+    const overridden = intakeLesson(reply(FIXTURE_BATCHES), {
+      displayName: "Mine",
+    })
+    if (!overridden.ok) throw new Error(overridden.error)
+    expect(overridden.meta.displayName).toBe("Mine")
+    expect(overridden.meta.tags).toEqual(relationTags(FIXTURE_BATCHES))
+  })
+
   it("finds the lesson in a model's reply, and recounts rather than trusting it", () => {
     const intake = intakeLesson(reply(FIXTURE_BATCHES))
     if (!intake.ok) throw new Error(intake.error)

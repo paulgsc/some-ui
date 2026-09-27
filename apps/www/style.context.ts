@@ -38,6 +38,7 @@ const uiPackages = [
   "input",
   "interview",
   "leetype",
+  "lesson-crm",
   "makjang",
   "neon-sign",
   "portfolio-chart",

@@ -1,16 +1,21 @@
 import type { JSX } from "react"
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, Link } from "@tanstack/react-router"
 
-/**
- * Index of the LAN-only pages. Empty until the first one lands; the OBS
- * workspace is the first planned.
- */
+/** Index of the LAN-only pages. */
 const LanIndexRoute = (): JSX.Element => (
   <section className="flex flex-col gap-2 p-6">
     <h1 className="text-2xl font-semibold">LAN tools</h1>
     <p className="text-muted-foreground">
-      Pages for services on the home network. Nothing here yet.
+      Pages for services on the home network.
     </p>
+    <ul className="list-disc pl-5">
+      <li>
+        <Link to="/lessons" className="underline underline-offset-4">
+          Lessons
+        </Link>
+        : the lessons the server serves, and this week&apos;s batch.
+      </li>
+    </ul>
   </section>
 )
 
