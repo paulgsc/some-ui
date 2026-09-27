@@ -67,6 +67,67 @@ goes stale. When moving tests, prefer the package's path alias over `../`, which
 workspaces ban. Watch any test that derives a directory from `import.meta.url` to scan it:
 it now sits one level deeper and can pass having scanned nothing.
 
+## Gray-area invariants: declare them falsifiable
+
+Some rules this codebase depends on cannot be enforced by a lint rule, a type, or a test.
+When you rely on one, **declare it as a falsifiable invariant** rather than leaving it as advice.
+Then a reviewer, human or bot (`REVIEW.md`; `AGENTS.md` repeats the rule for Codex), can settle each diff with a single
+yes/no check against the invariant. Advice like "be careful to…" leaves them exploring every
+state the code could reach.
+
+**Only for defensible gaps.** An invariant is not a substitute for a check. Before declaring
+one, rule out each mechanism and say why it fails: lint (the fact is not at the call site,
+or widening the rule would flag correct code), types, and tests (the state space is
+open-ended, or only a real browser shows it). If something _could_ be enforced
+mechanically, enforce it instead. If it is enforceable but not yet enforced, it may be
+declared, but labelled **"mechanical; not yet a rule"** so it reads as debt, not as a
+permanent gap.
+
+**Shape.** Every invariant has an ID and all four parts:
+
+- **Claim** — one sentence about code, over a named scope ("in a class that owns an
+  `ActiveScope`, every `.interval(` … acquires on the scope `start` receives").
+- **Falsified by** — what in a _single hunk_ contradicts the claim, checkable from the hunk,
+  the file it changes (as it stands after the diff), and at most files the invariant names.
+  The changed file is allowed because a hunk shows only a few lines of context, and what a
+  claim relates may sit further apart than that; anything beyond it must be named. If you
+  can't write this line, you have advice, not an invariant. It must cover **every kind of edit that can make the claim false**, not
+  only additions: a hunk that deletes, renames or moves the thing the claim relies on
+  breaks it as surely as one that adds a violation. Since a reviewer stops when the
+  falsifier doesn't match, a regression the falsifier misses goes unreported.
+- **Scope** — the paths or workspaces it covers, and any stated exceptions.
+- **Why not enforced** — which of lint, types and tests fails here, and why.
+
+Something that no diff can falsify (CI wiring, say) is still listed, marked **"not
+reviewable"**, with where it is tracked, so a reviewer knows not to flag it.
+
+**True when it lands.** Check every claim against the code in the same change that declares it.
+If one doesn't hold, fix the code or narrow the claim. A declared invariant must describe the
+code as it is, so any later violation is a regression, not old debt. Say how you checked it,
+for example "all 12 exemptions conform".
+
+**Placement.** Put the full set in the doc that owns the idiom. Put a one-line-per-ID summary in
+the doc comment of the module it governs, so a reviewer reading the hunk finds it. IDs are
+stable: never renumber; retire one by marking it retired with a reason. The first full set is
+the resource-lifetime invariants L1–L8 in `extensions/common/GOOD_CITIZEN.md` → "Resource
+lifetimes: what is enforced, and what is not"; `extensions/common/src/lib/lifetime/index.ts`
+carries their one-line summaries.
+
+A worked example, quoted from that set (`GOOD_CITIZEN.md` is the authoritative copy; all 12
+exemptions conform on `main`):
+
+> **L3: An exemption names what ends the resource.**
+>
+> - _Claim:_ every `eslint-disable` of `require-named-lifetime` or `require-scoped-lifetime`
+>   has a line starting `Lifetime:` in the unbroken `//` comment block directly above it,
+>   saying what ends the resource.
+> - _Falsified by_ a hunk that adds such a directive without that line, that deletes or
+>   rewords the `Lifetime:` line above an existing directive, or that breaks the comment
+>   block between them (inserting a non-comment line).
+> - _Scope:_ the whole repo.
+> - _Why not enforced:_ whether the `Lifetime:` line is true needs a person to read it.
+>   Whether it exists is mechanical ("mechanical; not yet a rule").
+
 ## Cold-start footguns worth not re-discovering
 
 These bite during ordinary implementation work, **before any PR exists** — read this at the
