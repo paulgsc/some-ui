@@ -40,6 +40,34 @@
     },
     {
       "method": "GET",
+      "path": "/curriculum/operator/lessons",
+      "full_path": "/api/v1/curriculum/operator/lessons",
+      "versioned": true,
+      "module": "curriculum_operator"
+    },
+    {
+      "method": "PUT",
+      "path": "/curriculum/operator/lessons/:key",
+      "full_path": "/api/v1/curriculum/operator/lessons/:key",
+      "versioned": true,
+      "module": "curriculum_operator"
+    },
+    {
+      "method": "POST",
+      "path": "/curriculum/operator/lessons/:key/restore",
+      "full_path": "/api/v1/curriculum/operator/lessons/:key/restore",
+      "versioned": true,
+      "module": "curriculum_operator"
+    },
+    {
+      "method": "POST",
+      "path": "/curriculum/operator/lessons/:key/retire",
+      "full_path": "/api/v1/curriculum/operator/lessons/:key/retire",
+      "versioned": true,
+      "module": "curriculum_operator"
+    },
+    {
+      "method": "GET",
       "path": "/health",
       "full_path": "/health",
       "versioned": false,
