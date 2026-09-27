@@ -108,20 +108,22 @@ for example "all 12 exemptions conform".
 
 **Placement.** Put the full set in the doc that owns the idiom. Put a one-line-per-ID summary in
 the doc comment of the module it governs, so a reviewer reading the hunk finds it. IDs are
-stable: never renumber; retire one by marking it retired with a reason. The first full set,
-the resource-lifetime invariants L1–L7, lands in
-`extensions/common/GOOD_CITIZEN.md` → "Resource lifetimes" with the lifetime-invariants
-work.
+stable: never renumber; retire one by marking it retired with a reason. The first full set is
+the resource-lifetime invariants L1–L8 in `extensions/common/GOOD_CITIZEN.md` → "Resource
+lifetimes: what is enforced, and what is not"; `extensions/common/src/lib/lifetime/index.ts`
+carries their one-line summaries.
 
-A worked example, true on `main` when it was written (all 9 exemptions conform):
+A worked example, quoted from that set (`GOOD_CITIZEN.md` is the authoritative copy; all 12
+exemptions conform on `main`):
 
 > **L3: An exemption names what ends the resource.**
 >
-> - _Claim:_ every `eslint-disable` of `extension-charter/require-named-lifetime` has a line
->   starting `Lifetime:` in the unbroken `//` comment block directly above it.
-> - _Falsified by_ a hunk that adds such a directive without that line, or that deletes or
->   rewords the `Lifetime:` line above an existing directive, or breaks the comment block
->   between them (inserting a non-comment line).
+> - _Claim:_ every `eslint-disable` of `require-named-lifetime` or `require-scoped-lifetime`
+>   has a line starting `Lifetime:` in the unbroken `//` comment block directly above it,
+>   saying what ends the resource.
+> - _Falsified by_ a hunk that adds such a directive without that line, that deletes or
+>   rewords the `Lifetime:` line above an existing directive, or that breaks the comment
+>   block between them (inserting a non-comment line).
 > - _Scope:_ the whole repo.
 > - _Why not enforced:_ whether the `Lifetime:` line is true needs a person to read it.
 >   Whether it exists is mechanical ("mechanical; not yet a rule").

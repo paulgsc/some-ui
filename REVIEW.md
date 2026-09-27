@@ -8,10 +8,9 @@ correctness conventions live in `CLAUDE.md`; this file covers how to review agai
 Some rules here cannot be enforced by lint, types, or tests. They are declared as
 invariants with an ID (for example `L3`) and four parts: **Claim**, **Falsified by**,
 **Scope**, **Why not enforced**. See `CLAUDE.md`, "Gray-area invariants: declare them
-falsifiable", for the format. The first full set is the resource-lifetime invariants L1–L7 in
-`extensions/common/GOOD_CITIZEN.md` → "Resource lifetimes" (landing with the
-lifetime-invariants work); modules they govern carry a one-line summary per ID in their
-doc comment.
+falsifiable", for the format. The first full set is the resource-lifetime invariants L1–L8 in
+`extensions/common/GOOD_CITIZEN.md` → "Resource lifetimes: what is enforced, and what is
+not"; modules they govern carry a one-line summary per ID in their doc comment.
 
 When a hunk falls inside an invariant's **Scope**:
 
