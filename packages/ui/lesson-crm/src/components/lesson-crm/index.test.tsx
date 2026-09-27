@@ -384,6 +384,78 @@ describe("LessonCrm on a wide screen: a list rail and a step workflow", () => {
   })
 })
 
+describe("LessonCrm: the latest source asked for is the one kept", () => {
+  it("keeps a paste made while the opened lesson is still being read", async () => {
+    viewport(false)
+    const client = fakeClient([lesson("a")])
+    let finishA: (body: string) => void = () => undefined
+    vi.mocked(client.read).mockImplementation(
+      () =>
+        new Promise<string>((resolve) => {
+          finishA = resolve
+        })
+    )
+    render(<LessonCrm client={client} reporting={recording()} />)
+    await settle()
+
+    fireEvent.click(screen.getByRole("button", { name: /Lesson a/ }))
+    await settle()
+    step(/Step 1: Lesson/)
+    pasteReply()
+    await settle()
+    finishA(BODY)
+    await settle()
+    expect(screen.getByText("pasted-reply.md")).toBeInTheDocument()
+    expect(screen.queryByText("a.json")).toBeNull()
+  })
+
+  it("drops an upload that finishes after the operator pasted another, or removed it", async () => {
+    viewport(false)
+    render(<LessonCrm client={fakeClient([])} reporting={recording()} />)
+    await settle()
+    fireEvent.click(screen.getByRole("button", { name: /New lesson/ }))
+    step(/Step 2: Lesson/)
+
+    const slowFile = (name: string): [File, (text: string) => void] => {
+      let finish: (text: string) => void = () => undefined
+      const file = new File(["ignored"], name)
+      Object.defineProperty(file, "text", {
+        value: () =>
+          new Promise<string>((resolve) => {
+            finish = resolve
+          }),
+      })
+      return [file, (text): void => finish(text)]
+    }
+    const upload = (file: File): void => {
+      fireEvent.change(screen.getByLabelText(/Upload a file/), {
+        target: { files: [file] },
+      })
+    }
+
+    const [first, finishFirst] = slowFile("first.json")
+    upload(first)
+    pasteReply()
+    await settle()
+    await act(async () => {
+      finishFirst(REPLY)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+    expect(screen.getByText("pasted-reply.md")).toBeInTheDocument()
+    expect(screen.queryByText("first.json")).toBeNull()
+
+    const [second, finishSecond] = slowFile("second.json")
+    upload(second)
+    fireEvent.click(screen.getByRole("button", { name: "Remove the lesson" }))
+    await act(async () => {
+      finishSecond(REPLY)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+    expect(screen.queryByText("second.json")).toBeNull()
+    expect(screen.queryByText("pasted-reply.md")).toBeNull()
+  })
+})
+
 describe("LessonCrm on a phone: a bottom tab per pane", () => {
   it("keeps the editor's tabs shut until a lesson is open, then lands on the prompt", async () => {
     viewport(true)

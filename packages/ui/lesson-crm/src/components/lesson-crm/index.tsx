@@ -101,10 +101,17 @@ export const LessonCrm = ({
   const { form, tagsText } = entry
   const [source, setSource] = useState<LessonSource | null>(null)
   // Which lesson the editor holds, as a number that changes every time it
-  // does. Anything that finishes later - a read, an upload, a paste, a save -
-  // carries the value it started with, and lands only if it still matches:
-  // a result for a lesson the operator has moved away from is dropped.
+  // does. A save carries the value it started with, and moves the editor to
+  // what it saved only if it still matches.
   const selection = useRef(0)
+  // Which request for the source is the latest, as a number every change of
+  // source advances: a paste, an upload, a clipboard read, Remove, and the
+  // server read that opening a lesson starts (a new selection clears the
+  // source, so it advances this too). One number for all of them, so no
+  // path's late result can land over another's newer one; each async result
+  // lands only if its turn is still the latest.
+  const sourceTurn = useRef(0)
+  const claimSource = (): number => ++sourceTurn.current
   const scope = useRef<HTMLDivElement | null>(null)
 
   const load = useOperation(
@@ -120,9 +127,9 @@ export const LessonCrm = ({
   useEffect(() => startLoad(undefined), [client, startLoad])
 
   const read = useOperation(
-    async ({ key, token }: { key: string; token: number }): Promise<string> => {
+    async ({ key, turn }: { key: string; turn: number }): Promise<string> => {
       const body = await client.read(key)
-      if (selection.current === token) {
+      if (sourceTurn.current === turn) {
         setSource(sourceFromText(body, "stored", `${key}.json`))
       }
       return body
@@ -142,9 +149,9 @@ export const LessonCrm = ({
 
   // A pasted reply may carry its own manifest entry; for a new lesson it
   // fills whatever the operator has left empty, and never overwrites.
-  // Dropped if the editor has moved to another lesson since it started.
-  const take = (next: LessonSource, token: number): void => {
-    if (selection.current !== token) return
+  // Dropped if any newer source was asked for since this one started.
+  const take = (next: LessonSource, turn: number): void => {
+    if (sourceTurn.current !== turn) return
     setSource(next)
     if (editing.kind === "new") {
       setEntry((current) => {
@@ -155,9 +162,9 @@ export const LessonCrm = ({
   }
 
   const readFile = useOperation(
-    async ({ file, token }: { file: File; token: number }) => {
+    async ({ file, turn }: { file: File; turn: number }) => {
       const next = await sourceFromFile(file)
-      take(next, token)
+      take(next, turn)
       return next
     },
     {
@@ -170,10 +177,10 @@ export const LessonCrm = ({
   )
 
   const pasteClipboard = useOperation(
-    async (token: number): Promise<string> => {
+    async (turn: number): Promise<string> => {
       const text = await navigator.clipboard.readText()
       if (text.trim() === "") throw new Error("The clipboard is empty.")
-      take(sourceFromText(text, "pasted"), token)
+      take(sourceFromText(text, "pasted"), turn)
       return text
     },
     {
@@ -237,6 +244,7 @@ export const LessonCrm = ({
 
   const startNew = (): void => {
     selection.current += 1
+    claimSource()
     const next: Editing = { kind: "new" }
     setEditing(next)
     setFormAndTags(EMPTY_FORM)
@@ -247,13 +255,14 @@ export const LessonCrm = ({
   const open = (key: string): void => {
     const lesson = lessons.find((candidate) => candidate.key === key)
     if (!lesson) return
-    const token = ++selection.current
+    selection.current += 1
+    const turn = claimSource()
     const next: Editing = { kind: "stored", key }
     setEditing(next)
     setFormAndTags(formFromLesson(lesson))
     setSource(null)
     setPane(landingPane(next))
-    read.start({ key, token })
+    read.start({ key, turn })
   }
 
   const panes = editorPanes(editing)
@@ -293,12 +302,13 @@ export const LessonCrm = ({
       <LessonSourcePane
         source={source}
         draft={draft}
-        onText={(text) =>
-          take(sourceFromText(text, "pasted"), selection.current)
-        }
-        onFile={(file) => readFile.start({ file, token: selection.current })}
-        onClear={() => setSource(null)}
-        onPasteButton={() => pasteClipboard.start(selection.current)}
+        onText={(text) => take(sourceFromText(text, "pasted"), claimSource())}
+        onFile={(file) => readFile.start({ file, turn: claimSource() })}
+        onClear={() => {
+          claimSource()
+          setSource(null)
+        }}
+        onPasteButton={() => pasteClipboard.start(claimSource())}
         canReadClipboard={canReadClipboard()}
       />
     ),
