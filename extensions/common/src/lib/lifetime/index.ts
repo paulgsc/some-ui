@@ -8,7 +8,7 @@
  * `require-scoped-lifetime`, and `@some-extension/common/testing`, enforce
  * what can be enforced.
  *
- * What they cannot is written as review invariants L1–L7 in GOOD_CITIZEN.md
+ * What they cannot is written as review invariants L1–L8 in GOOD_CITIZEN.md
  * ("Resource lifetimes: what is enforced, and what is not"): each a claim,
  * the hunk that falsifies it, and its scope, so a review checks one diff
  * against it without exploring states the diff does not touch.
@@ -24,6 +24,9 @@
  *   L6  `visibilityState` / `hidden` / `fullscreenElement` are read only via
  *       `isPageShowing` / `watchPageShowing`
  *   L7  (not reviewable) this package's suite runs on trunk only
+ *   L8  a page listener or frame loop in a shape `require-scoped-lifetime`
+ *       does not read (an alias, a computed member, options through a
+ *       variable) still has a definite signal, `once`, or a `Lifetime:` line
  */
 export * from "./disposables"
 export * from "./active-scope"

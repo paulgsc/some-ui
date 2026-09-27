@@ -44,6 +44,26 @@ const PAGE_LIFETIME_MEMBERS = new Set(["body", "documentElement"])
  * one-shot `requestAnimationFrame(() => …)` is fine; a callback that
  * reschedules *itself* is the loop, and that is what is flagged.
  *
+ * ## What it recognizes, and what it leaves to review
+ *
+ * The rule is syntactic, so it names the shapes it reads and no more:
+ *
+ * - listeners: `addEventListener` called on `document`, `window`,
+ *   `globalThis`, `self`, `document.body` or `document.documentElement`, or
+ *   bare (window's own); scoped by an options object (inline, or a `const`
+ *   holding one) with `once: true` or a `signal` that is a signal on every
+ *   path;
+ * - frame loops: a `requestAnimationFrame` whose callback names the
+ *   function it is called from (`f`, `this.f`, a `.bind(…)` of either) or is
+ *   an inline wrapper that calls it.
+ *
+ * Other spellings of the same resource — an aliased receiver
+ * (`const d = document`), a computed member (`window["addEventListener"]`),
+ * options or callbacks passed through a variable the rule does not resolve —
+ * are out of its reach by construction, not oversights to patch one at a
+ * time. They are held by review invariant L8 in extensions/common's
+ * GOOD_CITIZEN.md.
+ *
  * Exemptions are per call site, with a comment naming what ends the resource.
  * Default severity is `warn` in the shared config: the rule lands as an audit
  * across every workspace, and a workspace makes it an `error` once it has
@@ -191,11 +211,32 @@ function optionsAreScoped(options: ESTree.Node, scope: Scope.Scope): boolean {
         : p.key.type === "Literal"
           ? String(p.key.value)
           : null
-    if (key === "signal") return true
+    if (key === "signal") return signalIsDefinite(p.value)
     return (
       key === "once" && p.value.type === "Literal" && p.value.value === true
     )
   })
+}
+
+/**
+ * A `signal` value that is a signal on every path. `controller?.signal`,
+ * `undefined`, `null`, and `a ? b : c` or `a ?? b` / `a || b` (either side
+ * may be the missing one) can each hand addEventListener nothing, and then
+ * the listener is the page's. An identifier or a plain member is trusted:
+ * its type, not its spelling, would say more, and a type-aware rule is not
+ * what this is.
+ */
+function signalIsDefinite(value: ESTree.Node): boolean {
+  if (
+    value.type === "ChainExpression" ||
+    value.type === "ConditionalExpression" ||
+    value.type === "LogicalExpression"
+  ) {
+    return false
+  }
+  if (value.type === "Identifier") return value.name !== "undefined"
+  if (value.type === "Literal") return value.value !== null
+  return true
 }
 
 function resolveObject(
@@ -275,8 +316,21 @@ function isNode(v: unknown): v is ESTree.Node {
   )
 }
 
-/** The name a callback refers to: `f` → "f", `this.f` → "f". */
+/**
+ * The name a callback refers to: `f` → "f", `this.f` → "f", and a bound
+ * copy of either, `f.bind(…)` / `this.f.bind(…)`, → "f".
+ */
 function callbackName(callback: ESTree.Node): string | null {
+  if (
+    callback.type === "CallExpression" &&
+    callback.callee.type === "MemberExpression" &&
+    !callback.callee.computed &&
+    callback.callee.property.type === "Identifier" &&
+    callback.callee.property.name === "bind" &&
+    callback.callee.object.type !== "Super"
+  ) {
+    return callbackName(callback.callee.object)
+  }
   if (callback.type === "Identifier") return callback.name
   if (
     callback.type === "MemberExpression" &&

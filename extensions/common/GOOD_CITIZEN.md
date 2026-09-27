@@ -243,7 +243,7 @@ workspace that has adopted the primitives. `some-drama` is the reference: its
 `tests/card-lifetime.test.ts` and `tests/display-lifetime.test.ts` drive the
 card through every transition and assert what is still running.
 
-**Invariants L1–L7: what the rules and tests above cannot check.** Each is
+**Invariants L1–L8: what the rules and tests above cannot check.** Each is
 written for review, human or bot, one hunk at a time: a claim, what in a
 diff falsifies it, where it applies, and why it is a review invariant rather
 than a lint rule or test. A reviewer checks the hunk against the claim,
@@ -361,6 +361,35 @@ because a reviewer stops when the falsifier doesn't match.
   primitives is caught only by a workspace suite that exercises them.
 - _Not falsifiable from a diff:_ a reviewer should not flag it on a hunk. It
   is tracked in #1552, and changes only when a workflow does.
+
+**L8: A page listener or frame loop in a shape the rule does not read is
+still owned.**
+
+- _Claim:_ in shipped code (`src/`), every `addEventListener(` or
+  `requestAnimationFrame(` call that `require-scoped-lifetime` does not
+  inspect either passes `once: true` or a `signal` that is a signal on every
+  path (not `x?.signal`, `undefined`, or `a ? b : undefined`), or carries a
+  `Lifetime:` comment as in L3. The rule inspects only the shapes its doc
+  comment lists under "What it recognizes": `addEventListener` on
+  `document`, `window`, `globalThis`, `self`, `document.body` or
+  `document.documentElement`, or bare; options inline or in a `const`; a
+  frame callback that names its own function or is an inline wrapper that
+  calls it. Anything else is not inspected: an aliased receiver
+  (`const d = document; d.addEventListener(…)`), a computed member
+  (`window["addEventListener"]`), options or a callback passed through a
+  parameter, a `let` or a spread. An element the same function created or
+  queried is not a page receiver and is out of scope.
+- _Falsified by_ a hunk, in such code, that adds one of those calls with
+  neither, or that removes the `signal`/`once` or the `Lifetime:` comment
+  from an existing one.
+- _Scope:_ adopted workspaces. When this was written, some-drama's page
+  listeners were all on receivers the rule inspects, and its one
+  `requestAnimationFrame` was a one-shot.
+- _Why not lint or tests:_ the rule is syntactic by design. Following an
+  alias, a variable or a call needs data-flow or type information. Each
+  spelling patched into the rule leaves the next one, and review rounds on
+  #1556 kept finding one. The rule names its limit instead, and this
+  invariant holds the rest. Tests only see the states they drive.
 
 ### Migrations are per-workspace and isolated
 

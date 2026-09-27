@@ -651,6 +651,10 @@ describe("lint: extension-charter — require-scoped-lifetime", () => {
       `document.addEventListener("x", f, { once: false })`,
       // A bare call is window's: the global object's own method.
       `addEventListener("resize", onResize)`,
+      // A signal that may be undefined scopes nothing.
+      `document.addEventListener("x", f, { signal: controller?.signal })`,
+      `document.addEventListener("x", f, { signal: undefined })`,
+      `window.addEventListener("x", f, { signal: on ? ac.signal : undefined })`,
     ]) {
       const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
       expectMessageForRule(msgs, RULE, code)
@@ -696,6 +700,9 @@ addEventListener("x", f)`
       `const tick = () => requestAnimationFrame(() => tick())`,
       `function step(t) { draw(t); requestAnimationFrame((n) => { step(n) }) }`,
       `class C { frame(t) { requestAnimationFrame((n) => this.frame(n)) } }`,
+      // Rescheduled through a bound copy of itself.
+      `function tick() { requestAnimationFrame(tick.bind(null)) }`,
+      `class D { tick() { requestAnimationFrame(this.tick.bind(this)) } }`,
     ]) {
       const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
       expectMessageForRule(msgs, RULE, code)
