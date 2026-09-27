@@ -80,3 +80,33 @@ export function createPastedLessonStore(
     clear: (): void => write(""),
   }
 }
+
+/**
+ * Where lessons were once kept for good: `localStorage`, under this key, until
+ * they were held for the session instead (Rem. 7.4).
+ */
+export const RETIRED_LESSONS_KEY = "topik:local-lessons"
+
+/**
+ * Deletes what the retired store left behind. Stopping writing to it was not
+ * enough: whatever a learner saved there stayed on the device for good, which
+ * is what holding lessons for the session is meant to rule out (Codex,
+ * #1555). Idempotent and silent; the handheld runs it on mount.
+ */
+export function purgeRetiredLessons(
+  storage: Pick<Storage, "removeItem"> | null = localStorageOrNull()
+): void {
+  try {
+    storage?.removeItem(RETIRED_LESSONS_KEY)
+  } catch {
+    // Privacy mode: there is nothing it could have kept.
+  }
+}
+
+function localStorageOrNull(): Storage | null {
+  try {
+    return typeof window === "undefined" ? null : window.localStorage
+  } catch {
+    return null
+  }
+}

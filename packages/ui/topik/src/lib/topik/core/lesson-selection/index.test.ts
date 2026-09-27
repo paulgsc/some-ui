@@ -121,6 +121,22 @@ describe("orderLessons (canon Rem. 3.5)", () => {
     expect(order.find((entry) => entry.item.key === "big")?.recent).toBe(true)
   })
 
+  it("brings back a blocking relation even from the lesson just played (Codex, #1555)", () => {
+    const order = orderLessons(
+      batch,
+      [
+        report({
+          topikKey: "connective",
+          stuck: [
+            { batchId: 1, probeId: "p", relations: ["reason connective"] },
+          ],
+        }),
+      ],
+      2
+    )
+    expect(keys(order)[0]).toBe("connective")
+  })
+
   it("is steered by the recent reports only: the delta, not the path", () => {
     const old = report({
       stuck: [{ batchId: 1, probeId: "p", relations: ["reason connective"] }],

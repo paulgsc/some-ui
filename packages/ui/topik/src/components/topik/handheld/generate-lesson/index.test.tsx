@@ -76,7 +76,8 @@ const paste = (value: string): void => {
 describe("GenerateLesson", () => {
   it("asks for the chosen level and scene", async () => {
     const writeText = stubClipboard(() => Promise.resolve())
-    const { buildPrompt } = renderGenerate()
+    const onPromptHandedOff = vi.fn()
+    const { buildPrompt } = renderGenerate({ onPromptHandedOff })
     expect(
       screen
         .getByRole("radio", { name: "TOPIK 3" })
@@ -95,17 +96,22 @@ describe("GenerateLesson", () => {
     expect(writeText).toHaveBeenCalledWith(
       "PROMPT level=5 scene=the will is read"
     )
+    expect(onPromptHandedOff).toHaveBeenCalledOnce()
   })
 
-  it("shows the prompt to copy by hand when the clipboard refuses", async () => {
+  it("shows the prompt to copy by hand when the clipboard refuses, and says it was handed off only once it is (Codex, #1555)", async () => {
     stubClipboard(() => Promise.reject(new Error("denied")))
-    renderGenerate()
+    const onPromptHandedOff = vi.fn()
+    renderGenerate({ onPromptHandedOff })
     click(/Copy the prompt/)
     const manual = await screen.findByRole("textbox", {
       name: "Prompt to copy",
     })
     expect(manual.textContent).toBe("PROMPT level=3 scene=-")
     expect(screen.queryByText(/Copied/)).toBeNull()
+    expect(onPromptHandedOff).not.toHaveBeenCalled()
+    fireEvent.copy(manual)
+    expect(onPromptHandedOff).toHaveBeenCalledOnce()
   })
 
   it("says why a reply is not a lesson, and saves nothing", () => {
@@ -119,7 +125,8 @@ describe("GenerateLesson", () => {
 
   it("names probe problems, hands the fixes to the model, and still lets it start", async () => {
     const writeText = stubClipboard(() => Promise.resolve())
-    const { onStart } = renderGenerate()
+    const onPromptHandedOff = vi.fn()
+    const { onStart } = renderGenerate({ onPromptHandedOff })
     paste(reply(withIdentityBuild()))
     click("Check the lesson")
 
@@ -135,6 +142,8 @@ describe("GenerateLesson", () => {
     expect(fixes).toContain(
       "- error: conversation 1, probe c1-build-negation: target is the source itself"
     )
+    // The fixes are not the prompt: the survey's free text stays.
+    expect(onPromptHandedOff).not.toHaveBeenCalled()
 
     click(/^Start$/)
     expect(onStart).toHaveBeenCalledTimes(1)

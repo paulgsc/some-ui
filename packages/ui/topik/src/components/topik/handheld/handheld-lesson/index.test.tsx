@@ -4,11 +4,17 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import type { ITopikRepository } from "@topik/lib/topik"
 import { SessionConfigProvider } from "@topik/lib/topik/adapter/context/session-config-context"
 import type { PastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
-import { createPastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
+import {
+  createPastedLessonStore,
+  RETIRED_LESSONS_KEY,
+} from "@topik/lib/topik/adapter/pasted-lesson"
 import type { StorageLike } from "@topik/lib/topik/adapter/resume-point"
 import { createResumeStore } from "@topik/lib/topik/adapter/resume-point"
 import type { SurveyStore } from "@topik/lib/topik/adapter/survey-store"
-import { createSurveyStore } from "@topik/lib/topik/adapter/survey-store"
+import {
+  createSurveyStore,
+  SURVEY_TTL_MS,
+} from "@topik/lib/topik/adapter/survey-store"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { HandheldLesson } from "."
@@ -450,6 +456,84 @@ describe("HandheldLesson", () => {
         /Shorter, since the last one felt too hard\./
       )
     })
+
+    it("stops ordering by a report once it expires, in a tab left open (Codex, #1555)", async () => {
+      let now = 1
+      const surveys = createSurveyStore(memoryStorage(), () => now)
+      surveys.add(
+        "another-lesson",
+        { worthwhile: "yes", stuck: [] },
+        { level: 2 }
+      )
+      renderLesson(memoryStorage(), fixtureTopikRepository, surveys)
+      const level = (n: number): string | null =>
+        screen
+          .getByRole("radio", { name: `TOPIK ${n}` })
+          .getAttribute("aria-checked")
+      await screen.findByRole("region", { name: "Up next" })
+      expect(level(2)).toBe("true")
+
+      now += SURVEY_TTL_MS + 1
+      fireEvent(document, new Event("visibilitychange"))
+      expect(level(1)).toBe("true")
+    })
+
+    it("records the level held for a lesson that has none (Codex, #1555)", async () => {
+      const surveys = createSurveyStore(memoryStorage())
+      const pasted = createPastedLessonStore(memoryStorage())
+      pasted.set(
+        {
+          key: "local:any-level",
+          displayName: "Any level",
+          description: "",
+          batchCount: FIXTURE_BATCHES.length,
+          totalQuestions: 1,
+          totalMessages: 1,
+        },
+        FIXTURE_BATCHES
+      )
+      const session = createResumeStore(memoryStorage())
+      session.set("local:any-level", {
+        batchId: 2,
+        conversation: 1,
+        messageId: "c2-m2",
+      })
+      renderLesson(
+        memoryStorage(),
+        fixtureTopikRepository,
+        surveys,
+        pasted,
+        session
+      )
+      const held = await screen.findByRole("region", {
+        name: "Pasted this session",
+      })
+      fireEvent.click(screen.getByRole("radio", { name: "TOPIK 2" }))
+      fireEvent.click(
+        [...held.querySelectorAll("button")].find((button) =>
+          button.textContent.includes("Any level")
+        )!
+      )
+      await screen.findByText("카드로 할게요. 감사합니다.")
+
+      click(/^Next/)
+      pick(/Question.*할게요\?/)
+      click("Check")
+      click(/Continue/)
+      buildFromTiles(["카드로", "했어요"])
+      click("Check")
+      click(/Continue/)
+      click(/Finish/)
+      click("Yes, worth it")
+      click("About right")
+      click("Keen for the next one")
+      click("Done")
+
+      expect(surveys.list()[0]).toMatchObject({
+        topikKey: "local:any-level",
+        level: 2,
+      })
+    })
   })
 
   describe("the learner's own lesson (canon Cor. 8.2, Rem. 7.4)", () => {
@@ -570,6 +654,41 @@ describe("HandheldLesson", () => {
 
       click("Forget The first family dinner")
       expect(session.get("local:first-dinner")).toBeNull()
+    })
+
+    it("deletes what the retired lesson store left in localStorage (Codex, #1555)", async () => {
+      window.localStorage.setItem(RETIRED_LESSONS_KEY, "[]")
+      renderLesson()
+      await screen.findByRole("region", { name: "Up next" })
+      expect(window.localStorage.getItem(RETIRED_LESSONS_KEY)).toBeNull()
+    })
+
+    it("keeps the survey's free text until the prompt actually reaches the learner (Codex, #1555)", async () => {
+      vi.stubGlobal("navigator", {
+        ...navigator,
+        clipboard: {
+          writeText: vi.fn().mockRejectedValue(new Error("denied")),
+        },
+      })
+      const surveys = createSurveyStore(memoryStorage())
+      surveys.add(
+        "local:earlier",
+        { stuck: [], becoming: "reading webtoons raw" },
+        { displayName: "An earlier lesson" }
+      )
+      renderLesson(memoryStorage(), fixtureTopikRepository, surveys)
+      fireEvent.click(
+        await screen.findByRole("button", { name: /Write your own lesson/ })
+      )
+      click(/Copy the prompt/)
+      const manual = await screen.findByRole("textbox", {
+        name: "Prompt to copy",
+      })
+      expect(manual.textContent).toContain("reading webtoons raw")
+      expect(surveys.list()[0]?.becoming).toBe("reading webtoons raw")
+
+      fireEvent.copy(manual)
+      expect(surveys.list()[0]?.becoming).toBeUndefined()
     })
 
     it("keeps a flagged answer for the next prompt even when the survey is skipped", async () => {

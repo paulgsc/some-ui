@@ -132,7 +132,8 @@ export const HandheldLesson = ({
       return (
         <GenerateLesson
           defaultLevel={TOPIK_LEVELS.find((level) => level === held) ?? 1}
-          buildPrompt={generator.takePrompt}
+          buildPrompt={generator.prompt}
+          onPromptHandedOff={generator.handedOff}
           onStart={generator.start}
           short={short}
         />

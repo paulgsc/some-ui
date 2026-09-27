@@ -14,8 +14,9 @@
  *   Lines are what the handheld plays; `totalQuestions` counts the desktop
  *   quiz, which the handheld never shows, so it says nothing about how long
  *   a lesson is here (Codex, #1555);
- * - its key: a lesson just reported on comes later. It is never dropped,
- *   because going through a lesson again is expected.
+ * - its key: a lesson just reported on comes later, unless it brings back
+ *   what blocked the learner. It is never dropped, because going through a
+ *   lesson again is expected.
  *
  * Everything here is pure and total. A lesson with no tags, or reports with
  * nothing to say, leaves the served order as it was.
@@ -167,8 +168,11 @@ export function orderLessons(
   scored.sort(
     (a, b) =>
       Number(a.unleveled) - Number(b.unleveled) ||
-      Number(a.recent) - Number(b.recent) ||
+      // What blocked the learner outranks having just played it: when the
+      // only lesson that exercises it is the one just reported on, it is
+      // exactly the lesson to go back to (Codex, #1555).
       b.brought.length - a.brought.length ||
+      Number(a.recent) - Number(b.recent) ||
       (size === "smaller"
         ? sizeOf(a.item) - sizeOf(b.item)
         : size === "larger"

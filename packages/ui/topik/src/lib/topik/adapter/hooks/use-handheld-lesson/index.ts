@@ -21,6 +21,7 @@ import { useSessionConfig } from "@topik/lib/topik"
 import type { PastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
 import {
   createPastedLessonStore,
+  purgeRetiredLessons,
   sessionStorageOrNull,
 } from "@topik/lib/topik/adapter/pasted-lesson"
 import type { ResumeStore } from "@topik/lib/topik/adapter/resume-point"
@@ -142,11 +143,15 @@ export type HandheldLessonVM = {
     active: boolean
     open: () => void
     close: () => void
+    /** The prompt for this request, with the learner's survey digest. */
+    prompt: (request: Omit<LessonRequest, "survey">) => string
     /**
-     * The prompt for this request, with the learner's survey digest. Taking
-     * it deletes the digest's free text: the prompt has now carried it.
+     * The prompt reached the learner - the clipboard took it, or they copied
+     * it by hand - so the digest's free text is deleted: the prompt carried
+     * it. Not before, or a refused clipboard would lose it unsent (Codex,
+     * #1555).
      */
-    takePrompt: (request: Omit<LessonRequest, "survey">) => string
+    handedOff: () => void
     /** Holds a pasted lesson for this session and starts it. */
     start: (meta: TopikMetadata, batches: Array<ConversationBatch>) => void
     /** Lets the pasted lesson go before the session ends. */
@@ -212,8 +217,24 @@ export function useHandheldLesson({
     () => [...(pasted ? [pasted.meta] : []), ...served],
     [pasted, served]
   )
-  // Re-read after every write, so selection sees the report just added.
+  // Re-read after every write, so selection sees the report just added, and
+  // whenever the learner comes back to the list or the tab: a report expires
+  // by the clock, and a tab left open for days would otherwise keep ordering
+  // by it (Codex, #1555).
   const [reports, setReports] = useState(() => surveys.list())
+  useEffect(() => {
+    const refresh = (): void => {
+      if (document.visibilityState === "visible") setReports(surveys.list())
+    }
+    document.addEventListener("visibilitychange", refresh)
+    return (): void => document.removeEventListener("visibilitychange", refresh)
+  }, [surveys])
+
+  // Lessons were once kept in `localStorage` for good; what that left on the
+  // device goes, so pasted lessons really last the session (Rem. 7.4).
+  useEffect(() => {
+    purgeRetiredLessons()
+  }, [])
 
   const [topikKey, setTopikKey] = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
@@ -470,12 +491,26 @@ export function useHandheldLesson({
     setFlagged([])
     setSurveyPending(false)
     setFinishedSeen(false)
-  }, [stopSpeaking])
+    setReports(surveys.list())
+  }, [stopSpeaking, surveys])
+
+  const last = store.last()
+  const resumeTopik = last
+    ? items.find((item) => item.key === last.topikKey)
+    : undefined
+
+  // The level the learner holds, until they choose another (Rem. 3.3: the
+  // survey never moves it).
+  const [chosenLevel, setChosenLevel] = useState<number | null>(null)
+  const level = chosenLevel ?? heldLevel(reports, resumeTopik)
 
   const current =
     topikKey === null ? undefined : items.find((item) => item.key === topikKey)
   const lessonName = current?.displayName
-  const lessonLevel = topikLevelOf(current?.tags)
+  // A lesson with no level tag suits any level, and was played at the one
+  // the learner held: that is the level its report carries, or the next
+  // visit would fall back to the last lesson left, or to 1 (Codex, #1555).
+  const lessonLevel = topikLevelOf(current?.tags) ?? level
 
   const submitSurvey = useCallback(
     (survey: LessonSurvey): void => {
@@ -558,35 +593,27 @@ export function useHandheldLesson({
     setPasted(null)
   }, [held, pasted, sessionPoints])
 
-  const takePrompt = useCallback(
-    (request: Omit<LessonRequest, "survey">): string => {
-      const prompt = buildLessonPrompt({
+  const prompt = useCallback(
+    (request: Omit<LessonRequest, "survey">): string =>
+      buildLessonPrompt({
         ...request,
         survey: surveyDigest(surveys.list(), DIGEST_LESSONS),
-      })
-      // The digest's free text has now reached the learner's model; it is
-      // not kept to say it twice (canon Rem. 7.4).
-      surveys.forgetBecoming(DIGEST_LESSONS)
-      setReports(surveys.list())
-      return prompt
-    },
+      }),
     [surveys]
   )
+
+  // The digest's free text has now reached the learner; it is not kept to
+  // say it twice (canon Rem. 7.4).
+  const promptHandedOff = useCallback((): void => {
+    surveys.forgetBecoming(DIGEST_LESSONS)
+    setReports(surveys.list())
+  }, [surveys])
 
   // ── View ─────────────────────────────────────────────────────────────────
 
   const displayName = (key: string): string =>
     items.find((item) => item.key === key)?.displayName ?? key
 
-  const last = store.last()
-  const resumeTopik = last
-    ? items.find((item) => item.key === last.topikKey)
-    : undefined
-
-  // The level the learner holds, until they choose another (Rem. 3.3: the
-  // survey never moves it).
-  const [chosenLevel, setChosenLevel] = useState<number | null>(null)
-  const level = chosenLevel ?? heldLevel(reports, resumeTopik)
   const order = useMemo(
     () => orderLessons(served, reports, level),
     [served, reports, level]
@@ -665,7 +692,8 @@ export function useHandheldLesson({
       active: generating && topikKey === null,
       open: (): void => setGenerating(true),
       close: (): void => setGenerating(false),
-      takePrompt,
+      prompt,
+      handedOff: promptHandedOff,
       start: startPasted,
       forget: forgetPasted,
     },

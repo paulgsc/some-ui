@@ -2,7 +2,12 @@ import { FIXTURE_BATCHES } from "@topik/components/topik/handheld/handheld-lesso
 import type { TopikMetadata } from "@topik/lib/topik"
 import { describe, expect, it } from "vitest"
 
-import { createPastedLessonStore, PASTED_LESSON_KEY } from "."
+import {
+  createPastedLessonStore,
+  PASTED_LESSON_KEY,
+  purgeRetiredLessons,
+  RETIRED_LESSONS_KEY,
+} from "."
 
 const memoryStorage = (): Storage => {
   const data = new Map<string, string>()
@@ -64,5 +69,26 @@ describe("createPastedLessonStore", () => {
     const store = createPastedLessonStore(refusing)
     expect(() => store.set(meta("local:a"), FIXTURE_BATCHES)).not.toThrow()
     expect(store.get()).toBeNull()
+  })
+})
+
+describe("purgeRetiredLessons", () => {
+  it("deletes what the retired store kept, and nothing else (Codex, #1555)", () => {
+    const storage = memoryStorage()
+    storage.setItem(RETIRED_LESSONS_KEY, "[]")
+    storage.setItem(PASTED_LESSON_KEY, "kept")
+    purgeRetiredLessons(storage)
+    expect(storage.getItem(RETIRED_LESSONS_KEY)).toBeNull()
+    expect(storage.getItem(PASTED_LESSON_KEY)).toBe("kept")
+  })
+
+  it("is silent where storage throws", () => {
+    expect(() =>
+      purgeRetiredLessons({
+        removeItem: () => {
+          throw new Error("denied")
+        },
+      })
+    ).not.toThrow()
   })
 })

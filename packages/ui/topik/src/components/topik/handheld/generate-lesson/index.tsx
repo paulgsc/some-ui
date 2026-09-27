@@ -14,6 +14,11 @@ type GenerateLessonProps = {
   defaultLevel: TopikLevel
   /** The prompt for a request, with the learner's survey digest appended. */
   buildPrompt: (request: Omit<LessonRequest, "survey">) => string
+  /**
+   * The prompt reached the learner: the clipboard took it, or they copied it
+   * from the fallback by hand. Never called when the clipboard refused.
+   */
+  onPromptHandedOff?: () => void
   /** Holds the lesson for this session and starts it (canon Rem. 7.4). */
   onStart: (meta: TopikMetadata, batches: Array<ConversationBatch>) => void
   short: boolean
@@ -44,6 +49,7 @@ async function copy(text: string): Promise<boolean> {
 export const GenerateLesson = ({
   defaultLevel,
   buildPrompt,
+  onPromptHandedOff,
   onStart,
   short,
   initialReply = "",
@@ -52,7 +58,10 @@ export const GenerateLesson = ({
   const [scene, setScene] = useState("")
   const [copied, setCopied] = useState<"prompt" | "fixes" | null>(null)
   // Shown when the clipboard refuses: the text, selectable by hand.
-  const [manual, setManual] = useState<string | null>(null)
+  const [manual, setManual] = useState<{
+    text: string
+    kind: "prompt" | "fixes"
+  } | null>(null)
   const [reply, setReply] = useState(initialReply)
   const [intake, setIntake] = useState<Intake | null>(() =>
     initialReply ? intakeLesson(initialReply) : null
@@ -64,7 +73,8 @@ export const GenerateLesson = ({
   ): Promise<void> => {
     const done = await copy(text)
     setCopied(done ? kind : null)
-    setManual(done ? null : text)
+    setManual(done ? null : { text, kind })
+    if (done && kind === "prompt") onPromptHandedOff?.()
   }
 
   const copyPrompt = (): void =>
@@ -123,9 +133,12 @@ export const GenerateLesson = ({
           <Textarea
             aria-label="Prompt to copy"
             readOnly
-            value={manual}
+            value={manual.text}
             rows={4}
             onFocus={(event) => event.currentTarget.select()}
+            onCopy={() => {
+              if (manual.kind === "prompt") onPromptHandedOff?.()
+            }}
             className="rounded-xl font-mono text-xs"
           />
         )}

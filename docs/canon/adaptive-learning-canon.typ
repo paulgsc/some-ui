@@ -1011,6 +1011,8 @@ before it can update a belief about $mu$ (Prop. 9.1).
   puts shorter units first, and "too easy" puts longer ones first;
   (iii) a unit the learner just reported on comes later. It is never
   hidden, because going through a unit again is expected.
+  (i) outranks (iii): when the unit just reported on is the one that
+  exercises what blocked the learner, it is the unit to go back to.
   Generating a unit from the report stays available as the learner's
   opt-in path (Cor. 8.2). Proposition 3.4 is untouched: an order is not a
   belief.
