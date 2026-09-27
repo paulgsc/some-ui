@@ -9,7 +9,7 @@
   backdrop-filter: var(--dc-blur);
 
   /* Solid dark background with warm undertone */
-  background: hsl(25deg 25% 15% / 95%);
+  background: hsl(var(--dc-hue-2) calc(25% * var(--dc-sat)) 15% / 95%);
 
   /* Glowing border */
   border: 1.5px solid var(--dc-border-strong);
@@ -18,8 +18,8 @@
   /* Layered shadow + glow */
   box-shadow:
     0 4px 24px var(--dc-shadow),
-    0 0 40px hsl(340deg 60% 50% / 12%),
-    inset 0 1px 0 hsl(340deg 40% 50% / 15%);
+    0 0 40px hsl(var(--dc-hue) calc(60% * var(--dc-sat)) 50% / 12%),
+    inset 0 1px 0 hsl(var(--dc-hue) calc(40% * var(--dc-sat)) 50% / 15%);
   gap: 10px;
   max-width: 280px;
   padding: 7px 16px 7px 12px;
@@ -48,7 +48,7 @@
   /* Strong glow for visibility */
   box-shadow:
     0 0 8px var(--dc-peach),
-    0 0 16px hsl(18deg 95% 65% / 50%);
+    0 0 16px hsl(var(--dc-hue-2) calc(95% * var(--dc-sat)) 65% / 50%);
   flex-shrink: 0;
   height: 8px;
   width: 8px;
@@ -59,7 +59,7 @@
   100% {
     box-shadow:
       0 0 8px var(--dc-peach),
-      0 0 16px hsl(18deg 95% 65% / 50%);
+      0 0 16px hsl(var(--dc-hue-2) calc(95% * var(--dc-sat)) 65% / 50%);
     opacity: 1;
     transform: scale(1);
   }
@@ -67,7 +67,7 @@
   50% {
     box-shadow:
       0 0 12px var(--dc-peach),
-      0 0 24px hsl(18deg 95% 65% / 60%);
+      0 0 24px hsl(var(--dc-hue-2) calc(95% * var(--dc-sat)) 65% / 60%);
     opacity: 0.8;
     transform: scale(1.3);
   }

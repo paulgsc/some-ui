@@ -7,8 +7,16 @@
 //   RightPanel      — episode/timestamp, progress, stats, mood strip
 //   CapturePanel    — expandable emotion picker
 //   LiveStrip       — beat pulse + episode curve (the broadcast surface)
+//   Spotlight       — the latest change, shown as the card's face for a while
 //   DragController  — pointer drag logic
 //   spawnBlossoms   — particle layer
+//
+// Theme and spotlight: the card wears its current mood — the latest beat's,
+// else the entry's — as a theme (--dc-hue / --dc-hue-2 / --dc-sat, from
+// MOODS; theme.css derives every colour from them), and the petals follow it.
+// A change — a beat, a rating, a likelihood to finish — takes over the card's
+// face for SPOTLIGHT_MS with an effect of its own, bursts petals, and then
+// hands the face back. A newer change restarts that.
 //
 // Resources (Charter §7/§8): the card owns one lifetime, `life`, and every
 // resource it holds is acquired against it or a child of it — destroy() is
@@ -24,16 +32,27 @@ import { DragController } from "@drama/components/drag-controller"
 import { LiveStrip } from "@drama/components/live-strip"
 import { RightPanel } from "@drama/components/right-panel"
 import { Slideshow } from "@drama/components/slideshow"
+import { Spotlight } from "@drama/components/spotlight"
 import { el } from "@drama/effects/content/dom"
 import { spawnBlossoms } from "@drama/effects/content/particles"
 import type { Blossoms } from "@drama/effects/content/particles"
-import { MOODS, SIZE_CYCLE } from "@drama/logic/content/constants"
+import {
+  DEFAULT_THEME,
+  MOODS,
+  SIZE_CYCLE,
+} from "@drama/logic/content/constants"
+import {
+  SPOTLIGHT_MS,
+  spotlightView,
+  verdictSpotlight,
+} from "@drama/logic/content/spotlight"
 import type {
   BeatRecord,
   CardEvents,
   CardSize,
   CardState,
   MoodType,
+  Spotlight as SpotlightContent,
 } from "@drama/types"
 import { ActiveScope, Disposables } from "@some-extension/common"
 
@@ -50,17 +69,22 @@ export class DramaCard {
   private rightPanel: RightPanel
   private capturePanel: CapturePanel
   private liveStrip: LiveStrip
+  private spotlight: Spotlight
   private drag: DragController
 
   // State
   private state: CardState
   private currentSize: CardSize = "compact"
   private events: CardEvents
+  // The latest beat's mood; it outranks the entry's activeMood for the theme,
+  // since a beat is newer than anything saved in the popup.
+  private beatMood: MoodType | null = null
 
   // Lifetimes — see the header.
   private readonly life = new Disposables()
   private readonly active: ActiveScope<"entering" | "min" | "hidden">
   private blossoms: Blossoms | null = null
+  private spotlit: Disposables | null = null
 
   constructor(container: HTMLElement, initial: CardState, events: CardEvents) {
     this.state = { ...initial }
@@ -93,12 +117,14 @@ export class DramaCard {
     // ── Sub-components ────────────────────────────────────────────────────────
     this.slideshow = new Slideshow()
     this.rightPanel = new RightPanel()
-    this.capturePanel = new CapturePanel()
+    this.capturePanel = new CapturePanel(this.life)
     this.liveStrip = new LiveStrip()
+    this.spotlight = new Spotlight()
 
     // ── Assemble card ─────────────────────────────────────────────────────────
     this.card.appendChild(this.slideshow.wrap)
     this.card.appendChild(this.rightPanel.root)
+    this.card.appendChild(this.spotlight.root)
     this.card.appendChild(this.sizeBtn)
 
     // ── Assemble root (top → bottom in flex-column-reverse visual order) ──────
@@ -139,10 +165,8 @@ export class DramaCard {
         this.root.classList.remove("dc-dormant")
         scope.add(() => this.root.classList.add("dc-dormant"))
         this.slideshow.startAutoAdvance(scope)
-        const blossoms = spawnBlossoms(this.root)
-        this.blossoms = blossoms
+        this.blossoms = spawnBlossoms(this.root, scope, this.petalLook())
         scope.add(() => {
-          blossoms.destroy()
           this.blossoms = null
         })
       },
@@ -160,26 +184,44 @@ export class DramaCard {
 
   // ── Public API ──────────────────────────────────────────────────────────────
 
+  /**
+   * Apply new state in place. A changed rating or likelihood to finish is
+   * spotlit — this is how a verdict set anywhere (hotkey, card, popup) shows.
+   */
   update(patch: Partial<CardState>): void {
-    const prevMood = this.state.activeMood
+    const prev = this.state
     this.state = { ...this.state, ...patch }
     this.applyState()
-    if (patch.activeMood !== undefined && patch.activeMood !== prevMood) {
-      this.applyMoodHue(this.state.activeMood)
+    const spot = verdictSpotlight(prev, this.state)
+    if (spot) {
+      this.blossoms?.restyle(this.petalLook())
+      this.showSpotlight(spot, 1)
     }
   }
 
-  /** Load an episode's beats into the live strip (no pulse). */
+  /** Load an episode's beats into the live strip (no pulse, no spotlight). */
   setBeats(episode: string, beats: ReadonlyArray<BeatRecord>): void {
     this.liveStrip.setBeats(episode, beats)
     const latest = beats.at(-1)
     if (latest) this.showMood(latest.mood)
   }
 
-  /** A beat was just logged or escalated: pulse, extend the curve, re-tint. */
+  /**
+   * A beat was just logged or escalated: pulse the strip, re-theme, and
+   * spotlight it — harder for each escalation.
+   */
   pushBeat(beat: BeatRecord): void {
     this.liveStrip.pushBeat(beat)
     this.showMood(beat.mood)
+    this.showSpotlight(
+      {
+        kind: "mood",
+        mood: beat.mood,
+        intensity: beat.intensity,
+        videoTime: beat.videoTime,
+      },
+      beat.intensity
+    )
   }
 
   setPosition(x: number, y: number): void {
@@ -242,19 +284,20 @@ export class DramaCard {
       this.slideshow.restartAutoAdvance()
     }
 
-    // Mood selection from right panel dots
+    // Mood selection from the right panel dots or the capture panel. The
+    // beat's BEAT_LOGGED echo (pushBeat) spotlights it; the theme turns now.
     this.rightPanel.onMoodSelect = (mood): void => {
       this.events.onMoodSelect(mood)
-      this.applyMoodHue(mood)
-      this.rightPanel.setMoodActive(mood)
+      this.showMood(mood)
     }
-
-    // Mood selection from capture panel
     this.capturePanel.onMoodSelect = (mood): void => {
       this.events.onMoodSelect(mood)
-      this.applyMoodHue(mood)
-      this.rightPanel.setMoodActive(mood)
-      this.state = { ...this.state, activeMood: mood }
+      this.showMood(mood)
+    }
+
+    // Stars and finish choices: the STATE_UPDATE echo (update) spotlights.
+    this.capturePanel.onVerdict = (field, change): void => {
+      this.events.onVerdict(field, change)
     }
   }
 
@@ -274,23 +317,65 @@ export class DramaCard {
     this.slideshow.applyRatingState(s.rating)
     this.slideshow.applySummaryState(s)
     this.rightPanel.applyState(s)
+    this.capturePanel.setVerdicts(s.rating, s.completionLikelihood)
 
-    // Mood hue
-    if (s.activeMood) this.applyMoodHue(s.activeMood)
+    // Theme: the latest beat's mood, else the entry's
+    const mood = this.beatMood ?? s.activeMood
+    this.applyTheme(mood)
+    if (mood) this.rightPanel.setMoodActive(mood)
 
     // Bubble
     this.syncBubbleVisibility()
   }
 
   private showMood(mood: MoodType): void {
-    this.state = { ...this.state, activeMood: mood }
-    this.applyMoodHue(mood)
+    const changed = mood !== this.beatMood
+    this.beatMood = mood
+    this.applyTheme(mood)
     this.rightPanel.setMoodActive(mood)
+    if (changed) this.blossoms?.restyle(this.petalLook())
   }
 
-  private applyMoodHue(mood: MoodType | null): void {
-    const m = MOODS.find((x) => x.type === mood)
-    this.root.style.setProperty("--dc-mood-hue", String(m?.hue ?? 340))
+  private petalLook(): { mood: MoodType | null; rating: number } {
+    return {
+      mood: this.beatMood ?? this.state.activeMood,
+      rating: this.state.rating,
+    }
+  }
+
+  private applyTheme(mood: MoodType | null): void {
+    const theme = MOODS.find((x) => x.type === mood) ?? DEFAULT_THEME
+    if (mood) this.root.dataset.mood = mood
+    else delete this.root.dataset.mood
+    this.root.style.setProperty("--dc-hue", String(theme.hue))
+    this.root.style.setProperty("--dc-hue-2", String(theme.accent))
+    this.root.style.setProperty("--dc-sat", String(theme.sat))
+  }
+
+  /**
+   * Make `content` the card's face for SPOTLIGHT_MS, and burst petals for it.
+   * The timer is one-shot on a child of the card's lifetime, replaced by the
+   * next spotlight and gone with the card.
+   */
+  private showSpotlight(content: SpotlightContent, strength: 1 | 2 | 3): void {
+    this.spotlit?.dispose()
+    const spotlit = this.life.child()
+    this.spotlit = spotlit
+
+    // Cleared before show(), whose layout read restarts the card's flare too.
+    delete this.root.dataset.spot
+    this.spotlight.show(spotlightView(content), strength)
+    this.root.dataset.spot = content.kind
+    this.blossoms?.burst(
+      content.kind === "mood"
+        ? { kind: "mood", mood: content.mood, intensity: content.intensity }
+        : { kind: content.kind, rising: content.delta >= 0 }
+    )
+
+    spotlit.timeout(() => {
+      this.spotlight.clear()
+      delete this.root.dataset.spot
+    }, SPOTLIGHT_MS)
   }
 
   private syncBubbleVisibility(): void {

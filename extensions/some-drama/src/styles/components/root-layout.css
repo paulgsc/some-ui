@@ -33,7 +33,10 @@
   transform: translateZ(0);
   transition:
     opacity 400ms var(--dc-ease),
-    transform 400ms var(--dc-ease);
+    transform 400ms var(--dc-ease),
+    --dc-hue 700ms var(--dc-ease),
+    --dc-hue-2 700ms var(--dc-ease),
+    --dc-sat 700ms var(--dc-ease);
   -webkit-user-select: none;
   user-select: none;
   will-change: transform, opacity;

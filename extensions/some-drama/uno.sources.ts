@@ -20,8 +20,9 @@ export const CONTENT_SOURCES: Array<string> = [
   "src/content/**/*.ts",
   "src/effects/content/**/*.ts",
   "src/logic/content/**/*.ts",
-  "src/components/{drama-card,slideshow,right-panel,capture-panel,drag-controller,live-strip}/*.ts",
+  "src/components/{drama-card,slideshow,right-panel,capture-panel,drag-controller,live-strip,spotlight}/*.ts",
   "src/styles/tokens/tokens.css",
+  "src/styles/tokens/theme.css",
   "src/styles/components/root-layout.css",
   "src/styles/components/title-pill.css",
   "src/styles/components/card-shell.css",
@@ -29,6 +30,7 @@ export const CONTENT_SOURCES: Array<string> = [
   "src/styles/components/right-panel.css",
   "src/styles/components/capture-panel.css",
   "src/styles/components/live-strip.css",
+  "src/styles/components/spotlight.css",
   "src/styles/components/particles.css",
 ]
 

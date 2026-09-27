@@ -24,6 +24,8 @@
 //                     BEAT_LOGGED. Asks the source tab for playback when the
 //                     press came from a display tab.
 //   GET_BEATS       → the drama's latest episode and its beats
+//   ADJUST_VERDICT  → set or step the active drama's rating or likelihood to
+//                     finish; broadcasts STATE_UPDATE
 
 import {
   episodeBeats,
@@ -33,6 +35,11 @@ import {
 } from "@drama/logic/beats"
 import { MOODS } from "@drama/logic/content/constants"
 import { isStreamSite, siteOf, withStreamSite } from "@drama/logic/stream-sites"
+import {
+  applyVerdict,
+  isVerdictChange,
+  isVerdictField,
+} from "@drama/logic/verdict"
 import type {
   BeatLoggedMessage,
   BeatRecord,
@@ -43,6 +50,8 @@ import type {
   MoodType,
   Playback,
   StateUpdateMessage,
+  VerdictChange,
+  VerdictField,
   WatchlistState,
 } from "@drama/types"
 import { assertNever, isRecord } from "@some-extension/common"
@@ -121,6 +130,9 @@ function isBackgroundMessage(v: unknown): v is MessageBridge {
     case "SET_STREAM_SITE": {
       return typeof v.site === "string" && typeof v.streaming === "boolean"
     }
+    case "ADJUST_VERDICT": {
+      return isVerdictField(v.field) && isVerdictChange(v.change)
+    }
     case "REGISTER_SOURCE":
     case "GET_STATE": {
       return true
@@ -164,12 +176,13 @@ async function loadBeats(): Promise<Array<BeatRecord>> {
 
 // Every LOG_BEAT is a read-modify-write of the whole log, and repeat presses
 // land a few hundred ms apart — serialize them so an escalation is never lost
-// to an interleaved write.
-let beatWrites: Promise<unknown> = Promise.resolve()
+// to an interleaved write. ADJUST_VERDICT's read-modify-write of the watchlist
+// shares the queue for the same reason: two quick steps must step twice.
+let writes: Promise<unknown> = Promise.resolve()
 
 function serialized<T>(work: () => Promise<T>): Promise<T> {
-  const run = beatWrites.then(work, work)
-  beatWrites = run.catch(() => undefined)
+  const run = writes.then(work, work)
+  writes = run.catch(() => undefined)
   return run
 }
 
@@ -519,6 +532,37 @@ async function handleSetStreamSite(
   }
 }
 
+async function handleAdjustVerdict(
+  field: VerdictField,
+  change: VerdictChange,
+  sendResponse: Reply<"ADJUST_VERDICT">
+): Promise<void> {
+  try {
+    const state = await serialized(async () => {
+      const current = await getWatchlistState()
+      const entry = current.watchlist.find((e) => e.id === current.activeId)
+      if (!entry) return null
+      const value = applyVerdict(entry[field], field, change)
+      const watchlist = current.watchlist.map((e) =>
+        e.id === entry.id ? { ...e, [field]: value } : e
+      )
+      await setWatchlistState({ watchlist })
+      return { ...current, watchlist }
+    })
+    if (!state) {
+      sendResponse({
+        ok: false,
+        error: "No active drama. Pick one in the popup first.",
+      })
+      return
+    }
+    await broadcastState(state)
+    sendResponse({ ok: true, state })
+  } catch (err) {
+    sendResponse({ ok: false, error: String(err) })
+  }
+}
+
 async function dispatch(
   message: MessageBridge,
   sender: browser.runtime.MessageSender,
@@ -549,6 +593,9 @@ async function dispatch(
     }
     case "SET_ACTIVE": {
       return handleSetActive(message.id, sendResponse)
+    }
+    case "ADJUST_VERDICT": {
+      return handleAdjustVerdict(message.field, message.change, sendResponse)
     }
     default: {
       t satisfies never

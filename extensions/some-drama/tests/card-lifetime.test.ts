@@ -83,6 +83,27 @@ describe("the card's resources follow its activity", () => {
     expect(blossoms()).toBeNull()
   })
 
+  it("returns a spotlight's timer and burst when destroyed mid-spotlight", async () => {
+    const card = mount()
+    await nextFrame()
+    card.pushBeat({
+      id: "b1",
+      dramaId: "d1",
+      dramaTitle: "Queen of Tears",
+      episode: "12",
+      mood: "joy",
+      intensity: 3,
+      videoTime: null,
+      duration: null,
+      capturedAt: 0,
+      updatedAt: 0,
+    })
+    card.update({ rating: 9 })
+    expect(probe.counts().timeouts).toBeGreaterThan(probe.baseline.timeouts)
+    card.destroy()
+    expect(probe.counts()).toEqual(probe.baseline)
+  })
+
   it("acquires nothing while entering: destroyed before its first frame", async () => {
     const card = mount()
     card.destroy()

@@ -27,10 +27,12 @@ covers `m.viki.com`). Nothing is marked on a fresh install.
 A **beat** is one reaction: a mood, how hard it hit (1–3), and where in the
 episode it happened.
 
-| Keys             | Command                                    |
-| ---------------- | ------------------------------------------ |
-| `Alt+Shift+1..6` | beat: joy, love, sad, tension, cringe, meh |
-| `Alt+Shift+D`    | show / hide the card                       |
+| Keys                | Command                                    |
+| ------------------- | ------------------------------------------ |
+| `Alt+Shift+1..6`    | beat: joy, love, sad, tension, cringe, meh |
+| `Alt+Shift+=` / `-` | rating up / down half a point (of 10)      |
+| `Alt+Shift+]` / `[` | likelihood to finish up / down 10%         |
+| `Alt+Shift+D`       | show / hide the card                       |
 
 Press the same mood again within 2 s to escalate that beat (●○○ → ●●○ → ●●●)
 instead of logging another. Clicking a mood on the card logs a beat the same
@@ -41,6 +43,28 @@ On the card, the **live strip** above it pulses on every beat — the mood, big
 enough to read on stream, and the episode's curve so far (x = time in the
 episode, y = mood valence × intensity). Shrunk to its pip, the card keeps only
 the latest mood's emoji.
+
+## Verdicts
+
+The **rating** (0–10) and the **likelihood to finish** (0–100%) change as
+quickly as a beat: the hotkeys above step them from any tab, and clicking the
+card opens a check-in panel with the moods, five stars (2, 4, 6, 8, 10) and
+four finish choices (💤 dropping, 🤔 on the fence, 🍿 likely, 🏁 finishing).
+
+## Spotlight and themes
+
+Whatever changed last is the card's face for 4 s: a beat, a rating or a
+likelihood to finish takes over the card with its own effect (joy bounces,
+love beats, sadness droops, tension shakes, cringe squirms; a verdict rises or
+sinks), a burst of petals and a flare in the theme colour, then hands the
+face back. A newer change restarts it; an escalated beat plays harder.
+
+The card wears its current mood — the latest beat's, else the entry's — as a
+theme: every colour on the card derives from three numbers per mood in
+`MOODS` (`logic/content/constants.ts`), and `styles/tokens/theme.css` turns
+them into the card's tokens. The petals follow too: the mood picks their
+glyphs, motion and tint (sadness falls as rain, joy floats up), and the
+rating picks how many there are and how bright.
 
 ## The popup
 
@@ -62,7 +86,8 @@ src/
 ├── logic/        pure — no document/window/browser/chrome (lint-enforced)
 │   ├── beats.ts       logging + escalation, episode curve, episode parsing
 │   ├── stream-sites.ts  site matching for the user's streaming sites
-│   ├── content/  moods, commands + key bindings, utils
+│   ├── verdict.ts     rating / likelihood-to-finish ranges and steps
+│   ├── content/  moods + themes, commands + key bindings, spotlight, petals
 │   └── popup/    constants
 ├── effects/      the only callers of DOM / browser APIs
 │   ├── messaging.ts  typed sendMsg, shared by popup and content

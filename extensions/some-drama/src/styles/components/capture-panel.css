@@ -21,7 +21,7 @@
 }
 
 .dc-capture-panel.dc-panel-open {
-  max-height: 220px;
+  max-height: 320px;
   opacity: 1;
   pointer-events: auto;
   transform: scale(1) translateY(0) translateZ(0);
@@ -34,8 +34,8 @@
   /* Solid dark background */
   background: linear-gradient(
     135deg,
-    hsl(25deg 25% 16% / 97%) 0%,
-    hsl(340deg 20% 14% / 96%) 100%
+    hsl(var(--dc-hue-2) calc(25% * var(--dc-sat)) 16% / 97%) 0%,
+    hsl(var(--dc-hue) calc(20% * var(--dc-sat)) 14% / 96%) 100%
   );
   border: 1.5px solid var(--dc-border-strong);
   border-radius: var(--dc-r-card);
@@ -43,8 +43,9 @@
   /* Glow shadow */
   box-shadow:
     0 6px 28px var(--dc-shadow),
-    0 0 50px hsl(340deg 60% 50% / 12%),
-    inset 0 1px 0 hsl(340deg 40% 50% / 15%);
+    0 0 50px hsl(var(--dc-hue) calc(60% * var(--dc-sat)) 50% / 12%),
+    inset 0 1px 0 hsl(var(--dc-hue) calc(40% * var(--dc-sat)) 50% / 15%);
+  gap: 10px;
   margin-top: 8px;
   padding: 16px 18px;
 }
@@ -64,14 +65,14 @@
 /* Emotion button grid */
 .dc-emo-btn {
   /* Dark button surface */
-  background: hsl(340deg 20% 22% / 90%);
+  background: hsl(var(--dc-hue) calc(20% * var(--dc-sat)) 22% / 90%);
   border: 1.5px solid var(--dc-border);
   border-radius: 12px;
 
   /* Subtle shadow */
   box-shadow:
     0 2px 8px hsl(0deg 0% 0% / 30%),
-    inset 0 1px 0 hsl(340deg 30% 40% / 20%);
+    inset 0 1px 0 hsl(var(--dc-hue) calc(30% * var(--dc-sat)) 40% / 20%);
   cursor: pointer;
   font-size: 20px;
   height: 42px;
@@ -84,12 +85,12 @@
 }
 
 .dc-emo-btn:hover {
-  background: hsl(340deg 25% 28% / 95%);
+  background: hsl(var(--dc-hue) calc(25% * var(--dc-sat)) 28% / 95%);
   border-color: var(--dc-border-strong);
   box-shadow:
-    0 6px 16px hsl(340deg 50% 40% / 35%),
-    0 0 24px hsl(340deg 60% 50% / 20%),
-    inset 0 1px 0 hsl(340deg 40% 50% / 25%);
+    0 6px 16px hsl(var(--dc-hue) calc(50% * var(--dc-sat)) 40% / 35%),
+    0 0 24px hsl(var(--dc-hue) calc(60% * var(--dc-sat)) 50% / 20%),
+    inset 0 1px 0 hsl(var(--dc-hue) calc(40% * var(--dc-sat)) 50% / 25%);
   transform: scale(1.12) translateY(-3px);
 }
 
@@ -98,11 +99,85 @@
   background: linear-gradient(135deg, var(--dc-peach), var(--dc-rose));
   border-color: var(--dc-rose);
   box-shadow:
-    0 4px 18px hsl(340deg 70% 55% / 50%),
-    0 0 30px hsl(18deg 80% 60% / 30%),
+    0 4px 18px hsl(var(--dc-hue) calc(70% * var(--dc-sat)) 55% / 50%),
+    0 0 30px hsl(var(--dc-hue-2) calc(80% * var(--dc-sat)) 60% / 30%),
     inset 0 0 0 2px hsl(0deg 0% 100% / 20%);
 }
 
 .dc-emo-btn.dc-emo-selected:hover {
   transform: scale(1.15) translateY(-3px);
+}
+
+/* ── Verdict rows: rating stars and finish choices ──────────────────────── */
+
+.dc-capture-inner .dc-panel-title {
+  margin-bottom: 2px;
+}
+
+.dc-verdict-label {
+  color: var(--dc-text-muted);
+  font-family: Georgia, serif;
+  font-size: 9px;
+  font-style: italic;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  width: 44px;
+}
+
+.dc-star {
+  background: none;
+  border: 0;
+  color: hsl(var(--dc-hue) calc(15% * var(--dc-sat)) 40%);
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+  padding: 0 2px;
+  transition:
+    color 200ms var(--dc-ease),
+    transform 200ms var(--dc-ease-bounce);
+}
+
+.dc-star.dc-star-on {
+  color: var(--dc-gold);
+  text-shadow: 0 0 10px hsl(42deg 100% 55% / 60%);
+}
+
+/* Hovering a star previews the rating it sets: it and those before it. */
+.dc-stars:hover .dc-star {
+  color: var(--dc-gold);
+}
+
+.dc-stars .dc-star:hover ~ .dc-star {
+  color: hsl(var(--dc-hue) calc(15% * var(--dc-sat)) 40%);
+  text-shadow: none;
+}
+
+.dc-star:hover {
+  transform: scale(1.2);
+}
+
+.dc-finish-btn {
+  background: hsl(var(--dc-hue) calc(20% * var(--dc-sat)) 22% / 90%);
+  border: 1.5px solid var(--dc-border);
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 16px;
+  height: 32px;
+  opacity: 0.55;
+  transition:
+    opacity 200ms var(--dc-ease),
+    transform 200ms var(--dc-ease-bounce),
+    border-color 200ms var(--dc-ease);
+  width: 36px;
+}
+
+.dc-finish-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+}
+
+.dc-finish-btn.dc-finish-on {
+  border-color: var(--dc-rose);
+  box-shadow: 0 0 14px hsl(var(--dc-hue) calc(70% * var(--dc-sat)) 55% / 45%);
+  opacity: 1;
 }

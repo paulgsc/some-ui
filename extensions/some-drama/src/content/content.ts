@@ -18,7 +18,10 @@
 //   3. Persist card position/size locally.
 //   4. Load the episode's beats (GET_BEATS); pulse the live strip on each
 //      BEAT_LOGGED.
-//   5. `toggle-visibility` command (Alt+Shift+D, bound via the commons
+//   5. Verdict commands (Alt+Shift+= / - rating, ] / [ likelihood to finish)
+//      step the active drama's verdicts from any tab; the STATE_UPDATE echo
+//      spotlights the change on every display tab.
+//   6. `toggle-visibility` command (Alt+Shift+D, bound via the commons
 //      keybinding typestate) — toggle card visibility, or refetch state if
 //      there is no card (background was evicted on page load).
 //
@@ -60,7 +63,13 @@ import type {
 import { attachKeyBindings, isRecord } from "@some-extension/common"
 import type { CommandRegistry } from "@some-extension/common"
 
-import { createDisplay, loadCardMeta, log, logBeat } from "./display"
+import {
+  adjustVerdict,
+  createDisplay,
+  loadCardMeta,
+  log,
+  logBeat,
+} from "./display"
 import type { Display, PersistedCardMeta } from "./display"
 
 // ─── Message guards ───────────────────────────────────────────────────────────
@@ -186,6 +195,11 @@ async function main(): Promise<void> {
   const commands: CommandRegistry<DramaCommandId> = {
     // A display tab has no video of its own; the background asks the source.
     ...beatCommands(() => (role === "source" ? readPlayback() : null)),
+    "rating:up": (): void => adjustVerdict("rating", { step: 1 }),
+    "rating:down": (): void => adjustVerdict("rating", { step: -1 }),
+    "finish:up": (): void => adjustVerdict("completionLikelihood", { step: 1 }),
+    "finish:down": (): void =>
+      adjustVerdict("completionLikelihood", { step: -1 }),
     "toggle-visibility": (): void => {
       if (display) display.toggleVisibility()
       else if (role === null) void refresh()

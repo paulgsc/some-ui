@@ -51,6 +51,8 @@ export type CardState = {
 
 export type CardEvents = {
   onMoodSelect: (mood: MoodType) => void
+  /** A verdict was picked on the card (a star, a finish choice). */
+  onVerdict: (field: VerdictField, change: VerdictChange) => void
   onSizeChange: (size: CardSize) => void
   onDragEnd: (x: number, y: number) => void
 }
@@ -156,6 +158,7 @@ export type MessageBridge =
   | { type: "GET_BEATS"; dramaId: string }
   | { type: "REGISTER_SOURCE" }
   | { type: "SET_STREAM_SITE"; site: string; streaming: boolean }
+  | { type: "ADJUST_VERDICT"; field: VerdictField; change: VerdictChange }
 
 // Wire envelope — what background.ts actually sends back for each message type.
 // `ok: false` is uniform across all variants (error path), so it's factored out.
@@ -171,6 +174,7 @@ export type MessageResponseMap = {
   GET_BEATS: Envelope<{ episode: string; beats: Array<BeatRecord> }>
   REGISTER_SOURCE: Envelope<{}>
   SET_STREAM_SITE: Envelope<{ state: WatchlistState }>
+  ADJUST_VERDICT: Envelope<{ state: WatchlistState }>
 }
 
 /** Background → content-script broadcast after every watchlist mutation. */
@@ -214,3 +218,26 @@ export type BeatRecord = {
   capturedAt: number // first press
   updatedAt: number // latest press; the escalation window runs from here
 }
+
+// ─── Verdicts: rating and likelihood to finish ────────────────────────────────
+// The two running judgements of the active drama, changed as quickly as a beat
+// is logged: a hotkey steps one a notch, a star or a finish choice on the card
+// sets it (logic/verdict.ts owns the ranges and the steps).
+
+export type VerdictField = "rating" | "completionLikelihood"
+
+export type VerdictChange = { set: number } | { step: 1 | -1 }
+
+// ─── Spotlight: the latest change, shown first ────────────────────────────────
+// For a few seconds after a mood, rating or finish change, the card shows that
+// change instead of its usual face (logic/content/spotlight.ts).
+
+export type Spotlight =
+  | {
+      kind: "mood"
+      mood: MoodType
+      intensity: Intensity
+      videoTime: number | null
+    }
+  | { kind: "rating"; value: number; delta: number }
+  | { kind: "finish"; value: number; delta: number }

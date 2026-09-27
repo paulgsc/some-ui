@@ -77,6 +77,7 @@ export const CARD_STATE: CardState = {
 
 export const NO_EVENTS: CardEvents = {
   onMoodSelect: () => {},
+  onVerdict: () => {},
   onSizeChange: () => {},
   onDragEnd: () => {},
 }

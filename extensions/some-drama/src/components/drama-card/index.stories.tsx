@@ -1,7 +1,9 @@
 import "@drama/styles/content.css"
 
 import { useEffect, useRef } from "react"
-import type { CardSize, CardState, MoodType } from "@drama/types"
+import { logBeat } from "@drama/logic/beats"
+import { applyVerdict } from "@drama/logic/verdict"
+import type { BeatRecord, CardSize, CardState, MoodType } from "@drama/types"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
 import { DramaCard } from "."
@@ -81,6 +83,10 @@ const DramaCardBridge = ({
 }: BridgeProps) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const cardRef = useRef<DramaCard | null>(null)
+  // Stand-ins for the background: the beat log and the verdicts, so a click
+  // on the card plays the same echo (pushBeat / update) the extension sends.
+  const beatsRef = useRef<Array<BeatRecord>>([])
+  const verdictsRef = useRef({ rating, completionLikelihood })
 
   // ── Mount once ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -104,8 +110,26 @@ const DramaCardBridge = ({
         isPlaying,
       },
       {
-        // eslint-disable-next-line no-console -- storybook mock; console output is the intended inspection surface
-        onMoodSelect: (mood) => console.log("[DramaCard] mood selected:", mood),
+        onMoodSelect: (mood) => {
+          const result = logBeat(beatsRef.current, {
+            id: String(Date.now()),
+            dramaId: "story",
+            dramaTitle,
+            episode: "12",
+            mood,
+            videoTime: 27 * 60 + 53,
+            duration: 60 * 60,
+            at: Date.now(),
+          })
+          beatsRef.current = result.beats
+          cardRef.current?.pushBeat(result.beat)
+        },
+        onVerdict: (field, change) => {
+          const v = verdictsRef.current
+          const next = { ...v, [field]: applyVerdict(v[field], field, change) }
+          verdictsRef.current = next
+          cardRef.current?.update(next)
+        },
         // eslint-disable-next-line no-console -- storybook mock; console output is the intended inspection surface
         onSizeChange: (s) => console.log("[DramaCard] size changed:", s),
         // eslint-disable-next-line no-console -- storybook mock; console output is the intended inspection surface
@@ -126,6 +150,7 @@ const DramaCardBridge = ({
 
   // ── Sync state fields (primitive deps — no object churn) ───────────────────
   useEffect(() => {
+    verdictsRef.current = { rating, completionLikelihood }
     cardRef.current?.update({
       dramaTitle,
       posterUrl,

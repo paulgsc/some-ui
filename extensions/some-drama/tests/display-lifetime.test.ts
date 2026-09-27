@@ -92,3 +92,33 @@ describe("the display builds a card only on a showing page", () => {
     expect(probe.counts()).toMatchObject({ intervals: 0, frames: 0 })
   })
 })
+
+describe("an edit to the showing drama keeps its card", () => {
+  it("updates the card in place, and spotlights a verdict change", async () => {
+    setVisibility("visible")
+    const d = mountDisplay()
+    d.apply(STATE)
+    await nextFrame()
+    const before = card()
+
+    const [entry] = STATE.watchlist
+    if (!entry) throw new Error("fixture has no entry")
+    d.apply({ ...STATE, watchlist: [{ ...entry, rating: entry.rating + 1 }] })
+    expect(card()).toBe(before)
+    expect(card()?.getAttribute("data-spot")).toBe("rating")
+  })
+
+  it("rebuilds the card for a different drama", async () => {
+    setVisibility("visible")
+    const d = mountDisplay()
+    d.apply(STATE)
+    await nextFrame()
+    const before = card()
+
+    const [entry] = STATE.watchlist
+    if (!entry) throw new Error("fixture has no entry")
+    const other = { ...entry, id: "d2", title: "Lovely Runner" }
+    d.apply({ ...STATE, watchlist: [entry, other], activeId: "d2" })
+    expect(card()).not.toBe(before)
+  })
+})

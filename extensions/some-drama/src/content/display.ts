@@ -12,6 +12,8 @@ import type {
   DramaEntry,
   MoodType,
   Playback,
+  VerdictChange,
+  VerdictField,
   WatchlistState,
 } from "@drama/types"
 import {
@@ -187,6 +189,20 @@ export function logBeat(mood: MoodType, playback: Playback | null): void {
     .catch((err: unknown) => log.error("LOG_BEAT failed:", err))
 }
 
+// ─── Verdicts ─────────────────────────────────────────────────────────────────
+
+/** Change the active drama's rating or likelihood to finish. */
+export function adjustVerdict(
+  field: VerdictField,
+  change: VerdictChange
+): void {
+  sendMsg({ type: "ADJUST_VERDICT", field, change })
+    .then((resp) => {
+      if (!resp.ok) log.error("ADJUST_VERDICT failed:", resp.error)
+    })
+    .catch((err: unknown) => log.error("ADJUST_VERDICT failed:", err))
+}
+
 // ─── Display role ─────────────────────────────────────────────────────────────
 
 export type Display = {
@@ -287,6 +303,11 @@ export function createDisplay(deps: DisplayDeps): Display {
       onDragEnd(x: number, y: number): void {
         persist({ x, y, size: currentSize })
       },
+
+      onVerdict(field: VerdictField, change: VerdictChange): void {
+        // The STATE_UPDATE echo updates the card in place and spotlights it.
+        adjustVerdict(field, change)
+      },
     }
 
     card = new DramaCard(container, entryToCardState(entry), events)
@@ -348,14 +369,21 @@ export function createDisplay(deps: DisplayDeps): Display {
           prev.entry.id !== next.entry.id ||
           JSON.stringify(prev.entry) !== JSON.stringify(next.entry)
 
-        if (entryChanged) {
-          if (card) {
-            const pos = currentCardPosition()
-            cardMeta = { x: pos.x, y: pos.y, size: currentSize }
-          }
-          typestate = next
-          if (showing) renderCard(next.entry)
+        if (!entryChanged) return
+        const sameDrama =
+          prev.phase === "READY" && prev.entry.id === next.entry.id
+        typestate = next
+        if (card && sameDrama) {
+          // The same drama, edited: update the card in place. A rebuild would
+          // replay the entrance and lose the spotlight the edit earns.
+          card.update(entryToCardState(next.entry))
+          return
         }
+        if (card) {
+          const pos = currentCardPosition()
+          cardMeta = { x: pos.x, y: pos.y, size: currentSize }
+        }
+        if (showing) renderCard(next.entry)
       }
     },
 
