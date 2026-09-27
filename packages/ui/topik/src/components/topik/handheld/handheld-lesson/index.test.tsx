@@ -1,6 +1,6 @@
 import type { JSX } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import type { ITopikRepository } from "@topik/lib/topik"
 import { SessionConfigProvider } from "@topik/lib/topik/adapter/context/session-config-context"
 import type { LessonStore } from "@topik/lib/topik/adapter/lesson-store"
@@ -32,12 +32,10 @@ function renderLesson(
   storage = memoryStorage(),
   topikRepository: ITopikRepository = fixtureTopikRepository,
   surveyStore: SurveyStore = createSurveyStore(memoryStorage()),
-  lessonStore: LessonStore = createLessonStore(memoryStorage())
+  lessonStore: LessonStore = createLessonStore(memoryStorage()),
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 ): ReturnType<typeof createResumeStore> {
   const store = createResumeStore(storage)
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  })
   const tree = (): JSX.Element => (
     <QueryClientProvider client={client}>
       <SessionConfigProvider
@@ -153,6 +151,62 @@ describe("HandheldLesson", () => {
       screen.getByText("3 of 4 understood on the first listen")
     ).toBeTruthy()
     expect(screen.getByText("1 revisited after the conversation")).toBeTruthy()
+  })
+
+  it("keeps a miss pinned to the probe that was missed when the file refreshes (Codex, #1554)", async () => {
+    let batches = FIXTURE_BATCHES
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    const storage = memoryStorage()
+    const store = renderLesson(
+      storage,
+      { load: () => Promise.resolve(batches) },
+      undefined,
+      undefined,
+      client
+    )
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Ordering at a café/ })
+    )
+    await screen.findByText("어서 오세요. 뭐 드릴까요?")
+    click(/^Next/)
+    pick(/아이스 아메리카노 한 잔 주세요/)
+    click("Check")
+    click(/Continue/)
+    click(/^Next/)
+    pick(/Same meaning.*부탁해요/) // valid, so a miss
+    click("Check")
+    click(/Continue/)
+
+    // The lesson is revised under the same probe id, and the file refetched.
+    const revised = structuredClone(FIXTURE_BATCHES)
+    const probe = revised[0]?.probes?.find(
+      (candidate) => candidate.id === "c1-request-forms"
+    )
+    if (!probe) throw new Error("fixture lost c1-request-forms")
+    probe.prompt = "Which of these is wrong?"
+    batches = revised
+    // Query observers are notified on a later task, not within the refetch.
+    await act(async () => {
+      await client.invalidateQueries()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+
+    // A later miss in the same conversation is pinned to what it is now;
+    // the earlier one keeps the pin it was missed under.
+    click(/^Next/)
+    pick(/past tense/)
+    click("Check")
+    click(/Continue/)
+
+    click("Back to materials")
+    expect(store.get(FIXTURE_TOPIK_KEY)?.survey?.missed).toEqual({
+      1: [
+        ...(pinMisses(FIXTURE_BATCHES, { 1: ["c1-request-forms"] })[1] ?? []),
+        ...(pinMisses(revised, { 1: ["c1-honorific"] })[1] ?? []),
+      ],
+    })
   })
 
   it("resumes at the line it was left on, by message id", async () => {
