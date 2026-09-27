@@ -13,6 +13,8 @@
  * - {@link ./lib/keybindings} — keybinding/command typestate (ModifierSet, KeyBinding, CommandRegistry, attachKeyBindings)
  * - {@link ./lib/click-gate} — click/double-click disambiguation gate
  * - {@link ./lib/session} — opaque monotonic lifecycle token (SessionId, mkSession)
+ * - {@link ./lib/lifetime} — resource lifetimes: Disposables, ActiveScope,
+ *   isPageShowing / watchPageShowing (Charter §7/§8)
  */
 
 export * from "./lib/layers"
@@ -20,4 +22,5 @@ export * from "./lib/migration-ledger"
 export * from "./lib/keybindings/index"
 export * from "./lib/click-gate"
 export * from "./lib/session"
+export * from "./lib/lifetime/index"
 export * from "./utils"

@@ -129,23 +129,14 @@ export class PopupRenderer {
   // ── Idle ───────────────────────────────────────────────────────────────────
 
   private renderIdle(phase: Extract<PopupPhase, { tag: "IDLE" }>): HTMLElement {
-    const { state, tabId, isVideoTab, videoCount } = phase
+    const { state, tabId, site, isStreamSite, videoCount } = phase
     const wrap = this.el("div", "p-idle")
 
-    const banner = this.el(
-      "div",
-      isVideoTab ? "p-banner p-banner-video" : "p-banner p-banner-other"
-    )
-    banner.textContent = isVideoTab
-      ? videoCount > 0
-        ? `📺 ${videoCount} media frame(s) detected`
-        : "📺 Platform detected — no media yet"
-      : "🖥️ Management view"
-    wrap.appendChild(banner)
+    wrap.appendChild(this.renderSiteRow(site, isStreamSite, videoCount, tabId))
 
     const syncRow = this.el("div", "p-sync-action-row")
     const scrapeBtn = this.el("button", "p-btn p-btn-block p-btn-ghost")
-    scrapeBtn.textContent = isVideoTab
+    scrapeBtn.textContent = isStreamSite
       ? "⟳ Extract Tab Context"
       : "⚡ Force Capture"
     scrapeBtn.addEventListener(
@@ -170,7 +161,89 @@ export class PopupRenderer {
     const cap = this.el("div", "p-capacity")
     cap.textContent = `${state.watchlist.length} / ${MAX_WATCHLIST}`
     wrap.appendChild(cap)
+
+    wrap.appendChild(this.renderStreamSites(state.streamSites, tabId))
     return wrap
+  }
+
+  // ── Streaming sites ────────────────────────────────────────────────────────
+  // Every tab shows the card unless its site is marked here; a marked site's
+  // tabs are where the drama plays (no card, beats carry their video time).
+
+  private renderSiteRow(
+    site: string,
+    isStreamSite: boolean,
+    videoCount: number,
+    tabId: number
+  ): HTMLElement {
+    const row = this.el(
+      "div",
+      `p-banner p-site-row flex items-center justify-between gap-2 ${
+        isStreamSite ? "p-banner-video" : "p-banner-other"
+      }`
+    )
+    const label = this.el("span", "p-site-label")
+    const videos =
+      videoCount > 0
+        ? ` · ${videoCount} video${videoCount === 1 ? "" : "s"}`
+        : ""
+    label.textContent = !site
+      ? "🖥️ Not a web page"
+      : isStreamSite
+        ? `📺 ${site} · streaming site${videos}`
+        : `🖥️ ${site} · shows the card${videos}`
+    row.appendChild(label)
+
+    if (site) {
+      const toggle = this.el("button", "p-btn p-btn-ghost p-site-toggle")
+      toggle.textContent = isStreamSite ? "Unmark" : "Mark as streaming"
+      toggle.title = isStreamSite
+        ? `Show the card on ${site} again`
+        : `The drama plays on ${site}: hide the card there and log its video time`
+      toggle.addEventListener(
+        "click",
+        () => void this.fsm.setStreamSite(site, !isStreamSite, tabId)
+      )
+      row.appendChild(toggle)
+    }
+    return row
+  }
+
+  private renderStreamSites(
+    sites: ReadonlyArray<string>,
+    tabId: number
+  ): HTMLElement {
+    const section = this.el("div", "p-sites flex flex-col gap-1.5")
+    const heading = this.el("div", "p-label")
+    heading.textContent = "Streaming sites"
+    section.appendChild(heading)
+
+    if (sites.length === 0) {
+      const hint = this.el("div", "p-sites-empty")
+      hint.textContent =
+        "None yet — every tab shows the card. Open the drama and mark its site."
+      section.appendChild(hint)
+      return section
+    }
+
+    const chips = this.el("div", "flex flex-wrap gap-1.5")
+    for (const site of sites) {
+      const chip = this.el("span", "p-site-chip inline-flex items-center gap-1")
+      const name = this.el("span")
+      name.textContent = site
+      const remove = this.el("button", "p-site-chip-remove")
+      remove.textContent = "✕"
+      remove.title = `Unmark ${site}`
+      remove.addEventListener(
+        "click",
+        () => void this.fsm.setStreamSite(site, false, tabId)
+      )
+      chip.appendChild(name)
+      chip.appendChild(remove)
+      chips.appendChild(chip)
+    }
+    section.appendChild(chips)
+    return section
   }
 
   private renderEntryRow(
@@ -318,13 +391,8 @@ export class PopupRenderer {
     const cancelBtn = this.el("button", "p-btn p-btn-ghost")
     cancelBtn.textContent = "Cancel"
     cancelBtn.addEventListener("click", () => {
-      this.fsm.transition({
-        tag: "IDLE",
-        state,
-        tabId,
-        isVideoTab: false,
-        videoCount: 0,
-      })
+      // Re-read state and the active tab rather than guess the banner.
+      void this.fsm.backToIdle(tabId)
     })
     actions.appendChild(cancelBtn)
 

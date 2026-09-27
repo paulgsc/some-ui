@@ -11,7 +11,8 @@ function rawSend<R = unknown>(msg: unknown): Promise<R> {
 }
 
 /**
- * Sends a strongly-typed message across the background/content runtime boundary.
+ * Sends a strongly-typed request to the background script — the one sender both
+ * the popup and the content script use.
  * Resolves to the full `{ ok, ... }` envelope — callers must narrow on `ok`
  * before reading success fields. `sendMsg` never rejects on an `{ ok: false }`
  * response; that is a successful round-trip carrying an application-level error.
@@ -22,16 +23,4 @@ export async function sendMsg<T extends MessageBridge["type"]>(
   msg: MessageOf<T>
 ): Promise<MessageResponseMap[T]> {
   return rawSend<MessageResponseMap[T]>(msg)
-}
-
-/**
- * Validates whether a target URL matches explicit signature parameters of known streaming platforms.
- */
-export function isVideoHost(url: string, hosts: Array<string>): boolean {
-  try {
-    const host = new URL(url).hostname.replace(/^www\./, "")
-    return hosts.some((h) => host === h || host.endsWith(`.${h}`))
-  } catch {
-    return false
-  }
 }

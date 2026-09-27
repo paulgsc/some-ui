@@ -1,0 +1,341 @@
+/* ── Spotlight ───────────────────────────────────────────────────────────────
+   For a few seconds after a mood, rating or finish change, that change is the
+   card's face: the usual face dims and blurs behind it, the card flares in the
+   new theme colour, and the glyph plays an effect picked by data-tone — the
+   mood itself, or rise / fall for a verdict. --dc-spot-amp (1..3, the beat's
+   intensity) scales how hard it plays. DramaCard sets #dc-root[data-spot]
+   while it shows. Every animation here is finite and inside #dc-root, so the
+   dormant gate stops it too.
+   ────────────────────────────────────────────────────────────────────────── */
+
+.dc-spotlight {
+  --dc-spot-amp: 1;
+
+  background: radial-gradient(
+      circle at 28% 50%,
+      hsl(var(--dc-hue) calc(85% * var(--dc-sat)) 55% / 45%) 0%,
+      transparent 65%
+    ),
+    linear-gradient(
+      135deg,
+      hsl(var(--dc-hue-2) calc(30% * var(--dc-sat)) 17% / 96%) 0%,
+      hsl(var(--dc-hue) calc(35% * var(--dc-sat)) 14% / 96%) 100%
+    );
+  border-radius: inherit;
+  gap: 14px;
+  inset: 0;
+  opacity: 0;
+  overflow: hidden;
+  padding: 0 22px;
+  pointer-events: none;
+  position: absolute;
+  transform: scale(0.92);
+  transition:
+    opacity 280ms var(--dc-ease),
+    transform 420ms var(--dc-ease-bounce);
+  z-index: 15;
+}
+
+.dc-spotlight.dc-spot-on {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.dc-spot-glyph {
+  /* Only the rating's text star takes a colour; emoji ignore it. */
+  color: var(--dc-gold);
+  filter: drop-shadow(
+    0 0 14px hsl(var(--dc-hue) calc(90% * var(--dc-sat)) 60% / 75%)
+  );
+  flex-shrink: 0;
+  font-size: 44px;
+  line-height: 1;
+}
+
+.dc-spot-words {
+  gap: 4px;
+  min-width: 0;
+}
+
+.dc-spot-headline {
+  color: var(--dc-text-primary);
+  font-family: Georgia, serif;
+  font-size: 22px;
+  font-style: italic;
+  font-weight: bold;
+  letter-spacing: 0.02em;
+  text-shadow: var(--dc-text-glow-warm);
+  white-space: nowrap;
+}
+
+.dc-spot-detail {
+  color: hsl(var(--dc-hue) calc(65% * var(--dc-sat)) 80%);
+  font-family: "Courier New", monospace;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  text-shadow: var(--dc-text-glow-subtle);
+  white-space: pre;
+}
+
+/* The usual face steps back while the spotlight is on. Scoped to #dc-root so
+   it outranks slideshow.css; the width/height transitions are kept. */
+#dc-root .dc-circle-wrap,
+#dc-root .dc-card-right {
+  transition:
+    width 300ms var(--dc-ease),
+    height 300ms var(--dc-ease),
+    opacity 300ms var(--dc-ease),
+    filter 300ms var(--dc-ease),
+    transform 300ms var(--dc-ease);
+}
+
+#dc-root[data-spot] .dc-circle-wrap,
+#dc-root[data-spot] .dc-card-right {
+  filter: blur(3px);
+  opacity: 0.12;
+  transform: scale(0.94);
+}
+
+#dc-root[data-spot] .dc-card {
+  animation: dc-spot-flare 1.4s var(--dc-ease) 1;
+}
+
+@keyframes dc-spot-flare {
+  0% {
+    box-shadow:
+      0 0 0 0 hsl(var(--dc-hue) calc(90% * var(--dc-sat)) 60% / 90%),
+      0 8px 32px var(--dc-shadow-strong);
+  }
+
+  100% {
+    box-shadow:
+      0 0 0 calc(18px * var(--dc-spot-amp, 1))
+        hsl(var(--dc-hue) calc(90% * var(--dc-sat)) 60% / 0%),
+      0 8px 32px var(--dc-shadow-strong);
+  }
+}
+
+/* Minimised: the pip shows the glyph alone. */
+#dc-root[data-size="min"] .dc-spotlight {
+  justify-content: center;
+  padding: 0;
+}
+
+#dc-root[data-size="min"] .dc-spot-glyph {
+  font-size: 26px;
+}
+
+#dc-root[data-size="min"] .dc-spot-words {
+  display: none;
+}
+
+/* ── Effects, by tone ─────────────────────────────────────────────────────── */
+
+.dc-spot-on .dc-spot-glyph {
+  animation-duration: 0.6s;
+  animation-fill-mode: both;
+  animation-iteration-count: 1;
+  animation-name: dc-fx-pop;
+  animation-timing-function: var(--dc-ease-bounce);
+}
+
+.dc-spot-on[data-tone="joy"] .dc-spot-glyph {
+  animation-duration: 0.55s;
+  animation-iteration-count: 5;
+  animation-name: dc-fx-bounce;
+}
+
+.dc-spot-on[data-tone="love"] .dc-spot-glyph {
+  animation-duration: 0.9s;
+  animation-iteration-count: 4;
+  animation-name: dc-fx-heartbeat;
+}
+
+.dc-spot-on[data-tone="sadness"] .dc-spot-glyph {
+  animation-duration: 1.6s;
+  animation-iteration-count: 2;
+  animation-name: dc-fx-droop;
+  animation-timing-function: ease-in-out;
+}
+
+.dc-spot-on[data-tone="tension"] .dc-spot-glyph {
+  animation-duration: 0.12s;
+  animation-iteration-count: 18;
+  animation-name: dc-fx-shake;
+  animation-timing-function: linear;
+}
+
+.dc-spot-on[data-tone="cringe"] .dc-spot-glyph {
+  animation-duration: 0.5s;
+  animation-iteration-count: 5;
+  animation-name: dc-fx-squirm;
+  animation-timing-function: ease-in-out;
+}
+
+.dc-spot-on[data-tone="neutral"] .dc-spot-glyph {
+  animation-duration: 1.2s;
+  animation-iteration-count: 2;
+  animation-name: dc-fx-shrug;
+  animation-timing-function: ease-in-out;
+}
+
+.dc-spot-on[data-tone="rise"] .dc-spot-glyph {
+  animation-duration: 0.9s;
+  animation-name: dc-fx-rise;
+}
+
+.dc-spot-on[data-tone="fall"] .dc-spot-glyph {
+  animation-duration: 1s;
+  animation-name: dc-fx-fall;
+  animation-timing-function: ease-in;
+  color: hsl(42deg 25% 60%);
+}
+
+.dc-spot-on[data-tone="rise"] .dc-spot-headline,
+.dc-spot-on[data-tone="fall"] .dc-spot-headline {
+  animation: dc-fx-tick 0.5s var(--dc-ease-bounce) 1 both;
+}
+
+@keyframes dc-fx-pop {
+  0% {
+    transform: scale(0.3);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes dc-fx-bounce {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+
+  40% {
+    transform: translateY(calc(-9px * var(--dc-spot-amp))) scale(1.12, 0.94);
+  }
+
+  70% {
+    transform: translateY(0) scale(0.94, 1.08);
+  }
+}
+
+@keyframes dc-fx-heartbeat {
+  0%,
+  45%,
+  100% {
+    transform: scale(1);
+  }
+
+  15% {
+    transform: scale(calc(1 + 0.14 * var(--dc-spot-amp)));
+  }
+
+  30% {
+    transform: scale(calc(1 + 0.08 * var(--dc-spot-amp)));
+  }
+}
+
+@keyframes dc-fx-droop {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(calc(5px * var(--dc-spot-amp)))
+      rotate(calc(-7deg * var(--dc-spot-amp)));
+  }
+}
+
+@keyframes dc-fx-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(calc(-2px * var(--dc-spot-amp))) rotate(-2deg);
+  }
+
+  75% {
+    transform: translateX(calc(2px * var(--dc-spot-amp))) rotate(2deg);
+  }
+}
+
+@keyframes dc-fx-squirm {
+  0%,
+  100% {
+    transform: scale(1, 1) skewX(0deg);
+  }
+
+  50% {
+    transform: scale(calc(1 - 0.08 * var(--dc-spot-amp)), 1.1)
+      skewX(calc(-6deg * var(--dc-spot-amp)));
+  }
+}
+
+@keyframes dc-fx-shrug {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+
+  30% {
+    transform: rotate(-5deg);
+  }
+
+  70% {
+    transform: rotate(5deg);
+  }
+}
+
+@keyframes dc-fx-rise {
+  0% {
+    transform: translateY(14px) rotate(-180deg) scale(0.4);
+  }
+
+  70% {
+    transform: translateY(-6px) rotate(15deg) scale(1.15);
+  }
+
+  100% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+}
+
+@keyframes dc-fx-fall {
+  0% {
+    transform: translateY(-10px) rotate(0deg);
+  }
+
+  60% {
+    transform: translateY(6px) rotate(-18deg);
+  }
+
+  100% {
+    transform: translateY(3px) rotate(-10deg);
+  }
+}
+
+@keyframes dc-fx-tick {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dc-spotlight,
+  .dc-spotlight *,
+  #dc-root[data-spot] .dc-card {
+    animation: none !important;
+  }
+}

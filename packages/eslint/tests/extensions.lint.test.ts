@@ -600,3 +600,175 @@ describe("lint: charter — no-raw-storage", () => {
     )
   })
 })
+
+// ── §5/§8 — standing resources name their lifetime ────────────────────────
+
+describe("lint: extension-charter — require-named-lifetime", () => {
+  const RULE = "extension-charter/require-named-lifetime"
+
+  it("fires on setInterval and window.setInterval", async () => {
+    for (const code of [
+      `setInterval(() => {}, 1000)`,
+      `window.setInterval(() => {}, 1000)`,
+    ]) {
+      const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
+      expectMessageForRule(msgs, RULE, code)
+    }
+  })
+
+  it("does NOT fire on a one-shot setTimeout", async () => {
+    const msgs = await lintSnippet(
+      extensionsCharterConfig,
+      `setTimeout(() => {}, 80)`,
+      TS_FILE
+    )
+    expectNoMessageForRule(msgs, RULE, "setTimeout")
+  })
+})
+
+describe("lint: extension-charter — require-scoped-lifetime", () => {
+  const RULE = "extension-charter/require-scoped-lifetime"
+
+  // These snippets are parsed as JavaScript. One that doesn't parse runs no
+  // rule, so "does NOT fire" would pass having checked nothing.
+  const expectQuiet = (
+    msgs: Array<{ fatal?: boolean }>,
+    code: string
+  ): void => {
+    if (msgs.some((m) => m.fatal === true)) {
+      throw new Error(`snippet did not parse: ${code}`)
+    }
+  }
+
+  it("is a warning in the shared config — an audit, not a gate", async () => {
+    const msgs = await lintSnippet(
+      extensionsCharterConfig,
+      `document.addEventListener("pointermove", () => {})`,
+      TS_FILE
+    )
+    const hit = msgs.find((m) => m.ruleId === RULE)
+    if (hit?.severity !== 1) {
+      throw new Error(`expected a warning, got ${String(hit?.severity)}`)
+    }
+  })
+
+  it("fires on page-lifetime listeners with no lifetime attached", async () => {
+    for (const code of [
+      `document.addEventListener("pointermove", () => {})`,
+      `window.addEventListener("resize", onResize)`,
+      `document.body.addEventListener("click", f, true)`,
+      `document.addEventListener("x", f, { capture: true, passive: true })`,
+      `const OPTS = { passive: true }; document.addEventListener("x", f, OPTS)`,
+      `document.addEventListener("x", f, { once: false })`,
+      // A bare call is window's: the global object's own method.
+      `addEventListener("resize", onResize)`,
+      // A signal that may be undefined scopes nothing.
+      `document.addEventListener("x", f, { signal: controller?.signal })`,
+      `document.addEventListener("x", f, { signal: undefined })`,
+      `window.addEventListener("x", f, { signal: on ? ac.signal : undefined })`,
+      // Signals are read by allowlist; any other spelling is not one.
+      `document.addEventListener("x", f, { signal: void 0 })`,
+      `document.addEventListener("x", f, { signal: (0, undefined) })`,
+      `document.addEventListener("x", f, { signal: \`\${ac.signal}\` })`,
+      // \`const\` fixes the binding, not the object: anything that could
+      // rewrite the options leaves them unresolved.
+      `const OPTS = { once: true }; OPTS.once = false; document.addEventListener("x", f, OPTS)`,
+      `const OPTS = { signal }; Object.assign(OPTS, { signal: undefined }); document.addEventListener("x", f, OPTS)`,
+      `const OPTS = { once: true }; tweak(OPTS); window.addEventListener("x", f, OPTS)`,
+      // Built in order, last write wins: a later spread, computed key or
+      // repeated key can undo the lifetime an earlier property gave.
+      `const OPTS = { once: true, ...{ once: false } }; document.addEventListener("x", f, OPTS)`,
+      `document.addEventListener("x", f, { signal, ...extra })`,
+      `document.addEventListener("x", f, { once: true, [key]: false })`,
+      `document.addEventListener("x", f, { once: true, once: false })`,
+    ]) {
+      const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
+      expectMessageForRule(msgs, RULE, code)
+    }
+  })
+
+  it("does NOT fire when the listener carries a signal or once", async () => {
+    for (const code of [
+      `document.addEventListener("x", f, { signal: ac.signal })`,
+      `window.addEventListener("x", f, { capture: true, signal })`,
+      `document.addEventListener("x", f, { once: true })`,
+      `const OPTS = { signal: life.signal }; document.addEventListener("x", f, OPTS)`,
+      `addEventListener("resize", f, { signal })`,
+      // The same binding passed to both halves of a listener pair.
+      `const OPTS = { once: true }; document.addEventListener("x", f, OPTS); document.removeEventListener("x", f, OPTS)`,
+      // A spread before the scoping property is overwritten by it.
+      `document.addEventListener("x", f, { ...base, signal: life.signal })`,
+      `document.addEventListener("x", f, { signal, once: false })`,
+      `document.addEventListener("x", f, { signal: AbortSignal.timeout(5000) })`,
+      `document.addEventListener("x", f, { signal: this.life.signal })`,
+    ]) {
+      const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
+      expectQuiet(msgs, code)
+      expectNoMessageForRule(msgs, RULE, code)
+    }
+  })
+
+  it("does NOT fire on an element's own listener — it goes with the element", async () => {
+    const msgs = await lintSnippet(
+      extensionsCharterConfig,
+      `button.addEventListener("click", f)`,
+      TS_FILE
+    )
+    expectQuiet(msgs, "element listener")
+    expectNoMessageForRule(msgs, RULE, "element listener")
+  })
+
+  it("does NOT fire on a bare call to a local function of that name", async () => {
+    const code = `function addEventListener(type, f) { bus.on(type, f) }
+addEventListener("x", f)`
+    const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
+    expectQuiet(msgs, code)
+    expectNoMessageForRule(msgs, RULE, code)
+  })
+
+  it("does NOT fire on a local binding that shadows a page-lifetime name", async () => {
+    for (const code of [
+      `function watch(document) { document.addEventListener("click", f) }`,
+      `const window = frame.contentWindow; window.addEventListener("x", f)`,
+      `function mount(document) { document.body.addEventListener("x", f) }`,
+    ]) {
+      const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
+      expectQuiet(msgs, code)
+      expectNoMessageForRule(msgs, RULE, code)
+    }
+  })
+
+  it("fires on a requestAnimationFrame callback that reschedules itself", async () => {
+    for (const code of [
+      `const track = () => { update(); requestAnimationFrame(track) }; track()`,
+      `function tick() { draw(); window.requestAnimationFrame(tick) }`,
+      `class A { tick = () => { requestAnimationFrame(this.tick) } }`,
+      `class B { loop() { requestAnimationFrame(this.loop) } }`,
+      // Rescheduled through an inline wrapper, not by name.
+      `const tick = () => requestAnimationFrame(() => tick())`,
+      `function step(t) { draw(t); requestAnimationFrame((n) => { step(n) }) }`,
+      `class C { frame(t) { requestAnimationFrame((n) => this.frame(n)) } }`,
+      // Rescheduled through a bound copy of itself.
+      `function tick() { requestAnimationFrame(tick.bind(null)) }`,
+      `class D { tick() { requestAnimationFrame(this.tick.bind(this)) } }`,
+    ]) {
+      const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
+      expectMessageForRule(msgs, RULE, code)
+    }
+  })
+
+  it("does NOT fire on a one-shot requestAnimationFrame", async () => {
+    for (const code of [
+      `requestAnimationFrame(() => el.classList.add("in"))`,
+      `const show = () => el.classList.add("in"); requestAnimationFrame(show)`,
+      // An inline callback that calls some other function is still one-shot.
+      `function open() { requestAnimationFrame(() => reveal()) }`,
+      // A call inside a function the callback only defines is not a call.
+      `function open() { requestAnimationFrame(() => { const later = () => open() }) }`,
+    ]) {
+      const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
+      expectQuiet(msgs, code)
+      expectNoMessageForRule(msgs, RULE, code)
+    }
+  })
+})
