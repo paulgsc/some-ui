@@ -284,6 +284,81 @@ describe("LessonCrm on a wide screen: a list rail and a step workflow", () => {
     expect(screen.getByRole("button", { name: /^Save$/ })).toBeDisabled()
   })
 
+  it("keeps the editor on the lesson the operator moved to when an earlier save finishes", async () => {
+    viewport(false)
+    const client = fakeClient([lesson("b")])
+    let finishSave: () => void = () => undefined
+    vi.mocked(client.write).mockImplementation(
+      (key: string, write: LessonWrite) =>
+        new Promise((resolve) => {
+          finishSave = (): void =>
+            resolve({
+              change: "inserted",
+              lesson: { ...lesson(key), ...write.metadata },
+            })
+        })
+    )
+    render(<LessonCrm client={client} reporting={recording()} />)
+    await settle()
+
+    fireEvent.click(screen.getByRole("button", { name: /New lesson/ }))
+    step(/Step 2: Lesson/)
+    pasteReply()
+    await settle()
+    step(/Step 5: Check/)
+    fireEvent.click(screen.getByRole("button", { name: /^Save$/ }))
+    // Moves to b while the save is in flight.
+    fireEvent.click(screen.getByRole("button", { name: /Lesson b/ }))
+    await settle()
+    await act(async () => {
+      finishSave()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+
+    step(/Step 2: Details/)
+    expect(screen.getByLabelText("Key")).toHaveValue("b")
+    expect(screen.getByRole("button", { name: /Lesson b/ })).toHaveAttribute(
+      "aria-current",
+      "true"
+    )
+    // The list still learned of the save.
+    expect(
+      screen.getByRole("button", { name: /At the café/ })
+    ).toBeInTheDocument()
+  })
+
+  it("drops an upload that finishes after the operator moved to another lesson", async () => {
+    viewport(false)
+    const client = fakeClient([lesson("a"), lesson("b")])
+    render(<LessonCrm client={client} reporting={recording()} />)
+    await settle()
+
+    fireEvent.click(screen.getByRole("button", { name: /Lesson a/ }))
+    await settle()
+    step(/Step 1: Lesson/)
+    let finishText: (text: string) => void = () => undefined
+    const late = new File(["ignored"], "late.json")
+    Object.defineProperty(late, "text", {
+      value: () =>
+        new Promise<string>((resolve) => {
+          finishText = resolve
+        }),
+    })
+    fireEvent.change(screen.getByLabelText(/Upload a file/), {
+      target: { files: [late] },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /Lesson b/ }))
+    await settle()
+    await act(async () => {
+      finishText(REPLY)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+
+    step(/Step 1: Lesson/)
+    expect(screen.getByText("b.json")).toBeInTheDocument()
+    expect(screen.queryByText("late.json")).toBeNull()
+  })
+
   it("drops a slow read for a lesson the operator has moved away from", async () => {
     viewport(false)
     const client = fakeClient([lesson("a"), lesson("b")])

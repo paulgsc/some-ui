@@ -75,7 +75,18 @@ describe("draftLesson", () => {
 
   it("refuses what the server would, and what intake would", () => {
     const form = fillForm(EMPTY_FORM, REPLY)
-    for (const key of ["", "a/b", "https://x", ".hidden", "manifest", " a"]) {
+    for (const key of [
+      "",
+      "a/b",
+      "https://x",
+      ".hidden",
+      "manifest",
+      " a",
+      "a?b",
+      "a#b",
+      "a b",
+      "café",
+    ]) {
       const draft = draftLesson(REPLY, { ...form, key })
       expect(draft.ok, key).toBe(false)
     }
@@ -102,6 +113,7 @@ describe("parseTags and keyProblem", () => {
 
   it("accepts a plain key", () => {
     expect(keyProblem("week-40.a")).toBeNull()
+    expect(keyProblem("week_40~a")).toBeNull()
   })
 })
 

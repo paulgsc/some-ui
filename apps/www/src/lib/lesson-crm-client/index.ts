@@ -10,7 +10,10 @@
  * structurally, where the route hands this to it.
  */
 
-import type { FileHostTransport } from "@/lib/file-host-config/client"
+import type {
+  FileHostTransport,
+  RequestOptions,
+} from "@/lib/file-host-config/client"
 import {
   createFileHostTransport,
   requestJSON,
@@ -59,9 +62,13 @@ export function createLessonCrmClient(
   retire: (key: string) => Promise<OperatorLesson>
   restore: (key: string) => Promise<OperatorLesson>
 } {
-  const request = <T>(route: string, init?: RequestInit): Promise<T> =>
+  const request = <T>(
+    route: string,
+    init?: RequestInit,
+    options?: RequestOptions
+  ): Promise<T> =>
     transport
-      ? requestJSON<T>(transport, route, init)
+      ? requestJSON<T>(transport, route, init, options)
       : Promise.reject(new Error("This build has no file_host to talk to."))
 
   return {
@@ -86,11 +93,19 @@ export function createLessonCrmClient(
         method: "PUT",
         body: JSON.stringify(lesson),
       }),
+    // POSTs that set a state rather than mint one: repeating either
+    // converges, so a timed-out one may be retried.
     retire: (key) =>
-      request<OperatorLesson>(`${lessonPath(key)}/retire`, { method: "POST" }),
+      request<OperatorLesson>(
+        `${lessonPath(key)}/retire`,
+        { method: "POST" },
+        { idempotent: true }
+      ),
     restore: (key) =>
-      request<OperatorLesson>(`${lessonPath(key)}/restore`, {
-        method: "POST",
-      }),
+      request<OperatorLesson>(
+        `${lessonPath(key)}/restore`,
+        { method: "POST" },
+        { idempotent: true }
+      ),
   }
 }

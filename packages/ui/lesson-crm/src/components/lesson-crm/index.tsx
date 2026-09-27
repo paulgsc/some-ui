@@ -92,11 +92,18 @@ export const LessonCrm = ({
   const [lessons, setLessons] = useState<Array<OperatorLesson>>([])
   const [editing, setEditing] = useState<Editing>({ kind: "none" })
   const [pane, setPane] = useState<Pane>("lessons")
-  const [form, setForm] = useState<LessonForm>(EMPTY_FORM)
-  const [tagsText, setTagsText] = useState("")
+  // The entry and its tags as typed, together, so a fill from a paste is a
+  // pure update of whatever is current - never of a copy taken earlier.
+  const [entry, setEntry] = useState<{ form: LessonForm; tagsText: string }>({
+    form: EMPTY_FORM,
+    tagsText: "",
+  })
+  const { form, tagsText } = entry
   const [source, setSource] = useState<LessonSource | null>(null)
-  // The one selection a lesson read may still land in: a slower read for a
-  // lesson the operator has since moved away from is dropped, not shown.
+  // Which lesson the editor holds, as a number that changes every time it
+  // does. Anything that finishes later - a read, an upload, a paste, a save -
+  // carries the value it started with, and lands only if it still matches:
+  // a result for a lesson the operator has moved away from is dropped.
   const selection = useRef(0)
   const scope = useRef<HTMLDivElement | null>(null)
 
@@ -130,42 +137,51 @@ export const LessonCrm = ({
   )
 
   const setFormAndTags = (next: LessonForm): void => {
-    setForm(next)
-    setTagsText(next.tags.join(", "))
+    setEntry({ form: next, tagsText: next.tags.join(", ") })
   }
 
   // A pasted reply may carry its own manifest entry; for a new lesson it
   // fills whatever the operator has left empty, and never overwrites.
-  const take = (next: LessonSource): void => {
+  // Dropped if the editor has moved to another lesson since it started.
+  const take = (next: LessonSource, token: number): void => {
+    if (selection.current !== token) return
     setSource(next)
-    if (editing.kind === "new") setFormAndTags(fillForm(form, next.text))
+    if (editing.kind === "new") {
+      setEntry((current) => {
+        const filled = fillForm(current.form, next.text)
+        return { form: filled, tagsText: filled.tags.join(", ") }
+      })
+    }
   }
 
   const readFile = useOperation(
-    async (file: File): Promise<LessonSource> => {
+    async ({ file, token }: { file: File; token: number }) => {
       const next = await sourceFromFile(file)
-      take(next)
+      take(next, token)
       return next
     },
     {
       success: () => null,
-      failure: (file) => `Couldn't read ${file.name}`,
+      failure: ({ file }) => `Couldn't read ${file.name}`,
     },
-    reporting
+    reporting,
+    // A new file is a new request, not a double click.
+    "supersede"
   )
 
   const pasteClipboard = useOperation(
-    async (): Promise<string> => {
+    async (token: number): Promise<string> => {
       const text = await navigator.clipboard.readText()
       if (text.trim() === "") throw new Error("The clipboard is empty.")
-      take(sourceFromText(text, "pasted"))
+      take(sourceFromText(text, "pasted"), token)
       return text
     },
     {
       success: () => null,
       failure: () => "Couldn't paste from the clipboard",
     },
-    reporting
+    reporting,
+    "supersede"
   )
 
   const draft = useMemo(
@@ -184,16 +200,20 @@ export const LessonCrm = ({
     editing.kind === "new" && lessons.some((lesson) => lesson.key === form.key)
 
   const save = useOperation(
-    async (write: LessonWrite) => {
+    async ({ write, token }: { write: LessonWrite; token: number }) => {
       const written = await client.write(write.metadata.key, write)
       setLessons((current) => upsert(current, written.lesson))
-      selection.current += 1
-      setEditing({ kind: "stored", key: written.lesson.key })
+      // The list always learns of the save; the editor follows it only if it
+      // still holds the lesson that was saved.
+      if (selection.current === token) {
+        selection.current += 1
+        setEditing({ kind: "stored", key: written.lesson.key })
+      }
       return written
     },
     {
       success: (written) => CHANGE_WORDS[written.change](written.lesson.key),
-      failure: (write) => `Couldn't save ${write.metadata.key}`,
+      failure: ({ write }) => `Couldn't save ${write.metadata.key}`,
     },
     reporting
   )
@@ -245,7 +265,9 @@ export const LessonCrm = ({
       listing={listing.state}
       canSave={canSave}
       onSave={() => {
-        if (draft?.ok && !clashes) save.start(draft.write)
+        if (draft?.ok && !clashes) {
+          save.start({ write: draft.write, token: selection.current })
+        }
       }}
       stored={stored}
       onListed={(listed) => {
@@ -271,10 +293,12 @@ export const LessonCrm = ({
       <LessonSourcePane
         source={source}
         draft={draft}
-        onText={(text) => take(sourceFromText(text, "pasted"))}
-        onFile={(file) => readFile.start(file)}
+        onText={(text) =>
+          take(sourceFromText(text, "pasted"), selection.current)
+        }
+        onFile={(file) => readFile.start({ file, token: selection.current })}
         onClear={() => setSource(null)}
-        onPasteButton={() => pasteClipboard.start(undefined)}
+        onPasteButton={() => pasteClipboard.start(selection.current)}
         canReadClipboard={canReadClipboard()}
       />
     ),
@@ -284,11 +308,13 @@ export const LessonCrm = ({
         tagsText={tagsText}
         keyLocked={editing.kind === "stored"}
         clashes={clashes}
-        onForm={setForm}
-        onTags={(typed) => {
-          setTagsText(typed)
-          setForm({ ...form, tags: parseTags(typed) })
-        }}
+        onForm={(next) => setEntry((current) => ({ ...current, form: next }))}
+        onTags={(typed) =>
+          setEntry((current) => ({
+            form: { ...current.form, tags: parseTags(typed) },
+            tagsText: typed,
+          }))
+        }
       />
     ),
     preview: draft?.ok ? (

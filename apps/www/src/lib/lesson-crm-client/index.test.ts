@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type { FileHostTransport } from "@/lib/file-host-config/client"
 import { createLessonCrmClient } from "@/lib/lesson-crm-client"
@@ -29,7 +29,23 @@ function recording(body: unknown): {
   return { transport, calls }
 }
 
+afterEach(() => {
+  vi.unstubAllEnvs()
+})
+
 describe("createLessonCrmClient", () => {
+  it("offers a retry after a timed-out retire or restore: repeating either converges", async () => {
+    vi.stubEnv("VITE_FILE_HOST_TIMEOUT_MS", "30")
+    const hanging: FileHostTransport = () => new Promise<Response>(() => {})
+    const client = createLessonCrmClient(hanging)
+    await expect(client.retire("a")).rejects.toMatchObject({
+      retryable: true,
+    })
+    await expect(client.restore("a")).rejects.toMatchObject({
+      retryable: true,
+    })
+  })
+
   it("names the server's operator routes, with keys encoded", async () => {
     const { transport, calls } = recording(lesson)
     const client = createLessonCrmClient(transport)

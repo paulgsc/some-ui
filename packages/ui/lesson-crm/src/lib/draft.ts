@@ -50,6 +50,11 @@ export function keyProblem(key: string): string | null {
   if (/[/\\]/.test(key) || key.startsWith("http") || key.startsWith(".")) {
     return "A key is a name, not a path or URL."
   }
+  // Learners fetch `/curriculum/<key>.json`: a key is a URL path segment, so
+  // only characters one carries unencoded (the server's rule too).
+  if (!/^[A-Za-z0-9._~-]+$/.test(key)) {
+    return "A key uses only letters, digits, and - . _ ~"
+  }
   if (key === "manifest" || key === "manifest.json") {
     return "That key is taken by the manifest route."
   }
