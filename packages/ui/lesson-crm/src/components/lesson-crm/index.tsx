@@ -16,6 +16,7 @@ import {
   parseTags,
 } from "@lesson-crm/lib/draft"
 import { Button, Input, Label, Textarea } from "@some-ui/shared"
+import { ConversationPreview } from "@some-ui/topik"
 import { Archive, ArchiveRestore, Save, Upload } from "lucide-react"
 
 type LessonCrmProps = {
@@ -314,6 +315,22 @@ export const LessonCrm = ({ client }: LessonCrmProps): JSX.Element => {
             </div>
 
             <LessonPreview draft={draft} />
+
+            {draft?.ok && (
+              <section
+                aria-label="Conversation preview"
+                className="flex flex-col gap-2"
+              >
+                <h3 className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+                  What learners will read
+                </h3>
+                <ConversationPreview
+                  // A different lesson starts the preview over.
+                  key={editing.kind === "stored" ? editing.key : "new"}
+                  batches={draft.intake.batches}
+                />
+              </section>
+            )}
 
             <div className="flex flex-wrap gap-2">
               <Button

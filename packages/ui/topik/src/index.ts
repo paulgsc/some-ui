@@ -30,3 +30,5 @@ export type { Intake } from "./lib/topik/generation/intake"
 export { RELATION_TAG_PREFIX } from "./lib/topik/core/lesson-selection"
 export type { ProbeFinding } from "./lib/topik/core/probe-audit"
 export type { ConversationBatch, TopikMetadata } from "./lib/topik"
+/** The lesson's conversations as the study session's chat plays them. */
+export { ConversationPreview } from "./components/topik/conversation-preview"

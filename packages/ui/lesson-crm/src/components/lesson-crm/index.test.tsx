@@ -77,6 +77,12 @@ describe("LessonCrm", () => {
     expect(
       screen.getByRole("status", { name: "Lesson check" })
     ).toHaveTextContent("relation:reply")
+    // The lesson's conversation, as learners will read it.
+    expect(
+      within(
+        screen.getByRole("region", { name: "Conversation preview" })
+      ).getByText("커피 한 잔 주세요.")
+    ).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole("button", { name: /Retire/ }))
     await settle()
