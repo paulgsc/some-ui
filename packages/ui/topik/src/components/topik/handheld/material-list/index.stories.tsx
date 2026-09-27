@@ -48,6 +48,14 @@ const week = [
     ["reason connective", "negation"]
   ),
   lesson(
+    "engagement",
+    "The engagement party",
+    2,
+    9,
+    "Everyone is polite, because everyone is lying.",
+    ["reason connective"]
+  ),
+  lesson(
     "hospital",
     "The hospital corridor",
     2,
@@ -102,7 +110,10 @@ const meta: Meta = {
 }
 export default meta
 
-/** Up next brings back what blocked them, shorter since it felt too hard. */
+/**
+ * Up next brings back what blocked them, and is the shorter of the two that
+ * do, since the last one felt too hard.
+ */
 export const UpNext: Story = {}
 
 export const FirstVisit: Story = {

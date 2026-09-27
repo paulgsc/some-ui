@@ -106,18 +106,6 @@ export function createSurveyStore(
       .filter((report) => report.at >= at - SURVEY_TTL_MS)
       .slice(0, MAX_SURVEYS)
 
-  const read = (at: number): Array<SurveyReport> => {
-    try {
-      const raw = storage?.getItem(SURVEY_STORAGE_KEY)
-      if (!raw) return []
-      const parsed = SurveyDocumentSchema.safeParse(JSON.parse(raw))
-      // A shape this build does not know is discarded, not migrated.
-      return parsed.success ? fresh(parsed.data.reports, at) : []
-    } catch {
-      return []
-    }
-  }
-
   const write = (reports: Array<SurveyReport>, at: number): void => {
     try {
       storage?.setItem(
@@ -126,6 +114,24 @@ export function createSurveyStore(
       )
     } catch {
       // Quota, privacy mode: a lost report is one report, nothing more.
+    }
+  }
+
+  const read = (at: number): Array<SurveyReport> => {
+    try {
+      const raw = storage?.getItem(SURVEY_STORAGE_KEY)
+      if (!raw) return []
+      const parsed = SurveyDocumentSchema.safeParse(JSON.parse(raw))
+      // A shape this build does not know is discarded, not migrated.
+      if (!parsed.success) return []
+      const kept = fresh(parsed.data.reports, at)
+      // What a read drops is deleted, not just hidden: an expired report's
+      // free text and evidence would otherwise stay on the device until the
+      // next survey happened to rewrite it (Codex, #1555).
+      if (kept.length < parsed.data.reports.length) write(kept, at)
+      return kept
+    } catch {
+      return []
     }
   }
 

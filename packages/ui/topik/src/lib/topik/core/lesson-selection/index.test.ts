@@ -102,6 +102,30 @@ describe("orderLessons (canon Rem. 3.5)", () => {
     ).toEqual(["short", "long"])
   })
 
+  it("says a lesson is shorter only when size is what put it first (Codex, #1555)", () => {
+    // Long, but it brings back what blocked the learner; the short one does not.
+    const long = lesson("long", 2, 9, ["negation"])
+    const short = lesson("short", 2, 2)
+    const shorter = lesson("shorter", 2, 1)
+    const order = orderLessons(
+      [short, long, shorter],
+      [
+        report({
+          difficulty: "too-hard",
+          stuck: [{ batchId: 1, probeId: "p", relations: ["negation"] }],
+        }),
+      ],
+      2
+    )
+    expect(keys(order)).toEqual(["long", "shorter", "short"])
+    const kinds = (index: number): Array<string> =>
+      order[index]?.reasons.map((reason) => reason.kind) ?? []
+    expect(kinds(0)).toEqual(["brings-back"])
+    expect(kinds(1)).toEqual(["smaller"])
+    // Last among its peers: nothing it was chosen over.
+    expect(kinds(2)).toEqual([])
+  })
+
   it("lets running out of steam outrank 'too easy'", () => {
     const [first] = orderLessons(
       batch,

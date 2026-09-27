@@ -69,6 +69,20 @@ describe("createSurveyStore", () => {
     expect(createSurveyStore(storage, () => clock).list()).toEqual([])
   })
 
+  it("deletes an expired report from storage on the read that drops it (Codex, #1555)", () => {
+    const storage = memory()
+    let clock = 1_000
+    const store = createSurveyStore(storage, () => clock)
+    store.add("old", { stuck: [], becoming: "reading webtoons raw" })
+    clock += SURVEY_TTL_MS / 2
+    store.add("new", { worthwhile: "yes", stuck: [] })
+    clock += SURVEY_TTL_MS / 2 + 1
+    expect(store.list().map((report) => report.topikKey)).toEqual(["new"])
+    const kept = storage.getItem(SURVEY_STORAGE_KEY) ?? ""
+    expect(kept).not.toContain("reading webtoons raw")
+    expect(kept).toContain('"new"')
+  })
+
   it("records the lesson's level and name with the report", () => {
     const store = createSurveyStore(memory(), () => 5)
     store.add(

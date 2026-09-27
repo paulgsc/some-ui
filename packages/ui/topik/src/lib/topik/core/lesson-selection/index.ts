@@ -181,18 +181,40 @@ export function orderLessons(
       a.served - b.served
   )
 
-  return scored.map((entry) => ({
+  // A lesson is said to be shorter (or longer) only when that is what put it
+  // ahead of another: it ties with a later lesson on everything ranked above
+  // size, and is the smaller (or larger) of the two. A long lesson that comes
+  // first for what it brings back is not "shorter" (Codex, #1555).
+  const wonOnSize = (index: number): boolean => {
+    const entry = scored[index]
+    if (!entry || size === null) return false
+    return scored
+      .slice(index + 1)
+      .some(
+        (later) =>
+          later.unleveled === entry.unleveled &&
+          later.brought.length === entry.brought.length &&
+          later.recent === entry.recent &&
+          (size === "smaller"
+            ? sizeOf(entry.item) < sizeOf(later.item)
+            : sizeOf(entry.item) > sizeOf(later.item))
+      )
+  }
+
+  return scored.map((entry, index) => ({
     item: entry.item,
     recent: entry.recent,
     reasons: [
       ...(entry.brought.length > 0
         ? [{ kind: "brings-back" as const, relations: entry.brought.sort() }]
         : []),
-      ...(size === "smaller" && because
-        ? [{ kind: "smaller" as const, because }]
-        : size === "larger"
-          ? [{ kind: "larger" as const }]
-          : []),
+      ...(!wonOnSize(index)
+        ? []
+        : size === "smaller" && because
+          ? [{ kind: "smaller" as const, because }]
+          : size === "larger"
+            ? [{ kind: "larger" as const }]
+            : []),
     ],
   }))
 }

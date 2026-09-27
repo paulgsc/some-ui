@@ -474,12 +474,50 @@ describe("HandheldLesson", () => {
         },
         { level: 1 }
       )
-      renderLesson(memoryStorage(), fixtureTopikRepository, surveys)
+      // A longer twin of the café lesson, bringing back the same: size is
+      // what puts the café first, so it may say so (Codex, #1555).
+      const manifest = await fixtureMetadataRepository.loadCatalog()
+      const [cafe, ...rest] = manifest.topiks
+      if (!cafe) throw new Error("fixture lost its café lesson")
+      const longer = {
+        ...cafe,
+        key: "cafe-long",
+        displayName: "Ordering for the whole office",
+        totalMessages: cafe.totalMessages * 3,
+      }
+      renderLesson(
+        memoryStorage(),
+        fixtureTopikRepository,
+        surveys,
+        undefined,
+        undefined,
+        {
+          loadCatalog: () =>
+            Promise.resolve({ ...manifest, topiks: [longer, cafe, ...rest] }),
+        }
+      )
       const upNext = await screen.findByRole("region", { name: "Up next" })
+      expect(upNext.textContent).toMatch(/Ordering at a café/)
       expect(upNext.textContent).toMatch(/Brings back negation\./)
       expect(upNext.textContent).toMatch(
         /Shorter, since the last one felt too hard\./
       )
+    })
+
+    it("does not call the only lesson at its level shorter (Codex, #1555)", async () => {
+      const surveys = createSurveyStore(memoryStorage())
+      surveys.add(
+        "another-lesson",
+        {
+          difficulty: "too-hard",
+          stuck: [{ batchId: 9, probeId: "x", relations: ["negation"] }],
+        },
+        { level: 1 }
+      )
+      renderLesson(memoryStorage(), fixtureTopikRepository, surveys)
+      const upNext = await screen.findByRole("region", { name: "Up next" })
+      expect(upNext.textContent).toMatch(/Brings back negation\./)
+      expect(upNext.textContent).not.toMatch(/Shorter/)
     })
 
     it("stops ordering by a report once it expires, in a tab left open (Codex, #1555)", async () => {
