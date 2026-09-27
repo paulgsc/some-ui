@@ -161,7 +161,7 @@ export const GenerateLesson = ({
               <>
                 <p className="text-muted-foreground">
                   {errors > 0
-                    ? `${errors} probe problem${errors === 1 ? "" : "s"}: those won't be asked as written. You can start anyway, or send the fixes to your model.`
+                    ? `${errors} probe problem${errors === 1 ? "" : "s"}: those probes are left out. You can start without them, or send the fixes to your model.`
                     : "Warnings only: the lesson plays as written."}
                 </p>
                 <ul className="flex flex-col gap-1">

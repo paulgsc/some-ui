@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { FIXTURE_BATCHES } from "@topik/components/topik/handheld/handheld-lesson/fixture"
 import type { ConversationBatch, TopikMetadata } from "@topik/lib/topik"
 import type { LessonRequest } from "@topik/lib/topik/generation"
+import type { Mock } from "vitest"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { GenerateLesson } from "."
@@ -39,7 +40,7 @@ const renderGenerate = (
   props: Partial<Parameters<typeof GenerateLesson>[0]> = {}
 ): {
   buildPrompt: ReturnType<typeof vi.fn>
-  onSave: ReturnType<typeof vi.fn>
+  onSave: Mock<(meta: TopikMetadata, batches: Array<ConversationBatch>) => void>
 } => {
   const buildPrompt = vi.fn(
     (request: Omit<LessonRequest, "survey">) =>
@@ -139,6 +140,14 @@ describe("GenerateLesson", () => {
       key: "local:untitled-lesson",
       batchCount: FIXTURE_BATCHES.length,
     })
+    // The probe the audit named is withheld from what plays; the rest stay
+    // (Codex, #1554).
+    const played = onSave.mock.calls[0]?.[1] ?? []
+    const ids = played.flatMap((batch) =>
+      (batch.probes ?? []).map((probe) => probe.id)
+    )
+    expect(ids).not.toContain("c1-build-negation")
+    expect(ids).toContain("c1-request-forms")
   })
 
   it("asks for a fresh check after the reply changes", () => {
