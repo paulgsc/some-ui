@@ -42,7 +42,7 @@ export const STAGE_LINE: Readonly<Record<Stage, string>> = {
 }
 
 /** Which miniature plays in the L1 top register. One per extension, no text. */
-export type Mechanism = "tabs" | "theme" | "veil" | "cubes" | "bars" | "pulse"
+export type Mechanism = "tabs" | "theme" | "veil" | "cubes" | "follow" | "ride"
 
 /** Where the extension acts: one named site, or the whole web. */
 export type Reach = "one-site" | "everywhere"
@@ -58,10 +58,17 @@ export type Reach = "one-site" | "everywhere"
  *                    (`localhost`), which is where it keeps its data.
  * - `web-fonts`    — its popup fetches typefaces from Google Fonts. Nothing
  *                    about the user or their pages goes with it.
- * - `site-images`  — it shows images from the one site it works on, fetched
- *                    from that site's image server.
+ * - `site-images`  — its card shows an image fetched from the site the item
+ *                    came from (Drama Overlay: the drama's poster), so that
+ *                    site sees a request from whatever page the card is on.
+ *
+ * One value per extension, so it names the request that says the most: an
+ * extension with site images and web fonts is `site-images`.
  *
  * When an extension's network behaviour changes, change this with it.
+ * `local-server` currently describes none of the six — BOYO and Conveyor only
+ * reach a local server in development builds — and is kept for when one of
+ * them does.
  */
 export type Network = "none" | "local-server" | "web-fonts" | "site-images"
 
@@ -105,8 +112,11 @@ export const EXTENSIONS: ReadonlyArray<ExtensionDefinition> = [
     id: "suspender-ledger",
     name: "Suspender Ledger",
     line: "Idle tabs go quiet and give their memory back. Click one and it is there again.",
-    level: 1.0,
-    stage: "ready",
+    // Not `ready`: the manifest ships it as "(Beta)", and it is signed on
+    // AMO's unlisted channel, which has no review — so "finished, reviewed"
+    // would overclaim. In daily use, which is what `testing` says.
+    level: 0.8,
+    stage: "testing",
     firefox: true,
     chrome: false,
     reach: "everywhere",
@@ -117,7 +127,7 @@ export const EXTENSIONS: ReadonlyArray<ExtensionDefinition> = [
   {
     id: "some-filter",
     name: "Page Filter",
-    line: "One calm palette on every site you open, instead of a different glare on each.",
+    line: "Bright sites turn the same soft dark, so they stop glaring at you; sites already dark keep their own look.",
     level: 0.5,
     stage: "testing",
     firefox: true,
@@ -130,27 +140,31 @@ export const EXTENSIONS: ReadonlyArray<ExtensionDefinition> = [
   {
     id: "some-censor",
     name: "BOYO",
-    line: "Recommendations arrive covered. You lift the cover a step at a time.",
+    line: "YouTube videos arrive covered; each tap uncovers a little more, and a double-click shows the picture.",
     level: 0.38,
     stage: "building",
     firefox: true,
     chrome: true,
     reach: "one-site",
     mechanism: "veil",
-    network: "local-server",
+    // Its dev-only API client throws before any fetch in a production build
+    // (api-client.ts _assertDev), so what ships requests nothing.
+    network: "none",
     emblem: "covered",
   },
   {
     id: "some-conveyor",
     name: "Conveyor",
-    line: "A slow strip of turning cubes carries what you asked to be reminded of.",
+    line: "Turning cubes drift along the foot of every page, showing the time and today's progress.",
     level: 0.2,
     stage: "idea",
     firefox: true,
     chrome: true,
     reach: "everywhere",
     mechanism: "cubes",
-    network: "local-server",
+    // effect-bus.ts can call localhost, but no face action dispatches it —
+    // the only wired action opens the popup — so it requests nothing.
+    network: "none",
     emblem: "belt",
   },
   {
@@ -161,22 +175,32 @@ export const EXTENSIONS: ReadonlyArray<ExtensionDefinition> = [
     stage: "idea",
     firefox: true,
     chrome: false,
-    reach: "one-site",
-    mechanism: "bars",
-    network: "site-images",
+    // It reads the song from YouTube, but the card it draws rides along on
+    // every page you open — that is where it acts.
+    reach: "everywhere",
+    mechanism: "follow",
+    // The card builds a thumbnail URL but never displays it, so no image is
+    // fetched.
+    network: "none",
     emblem: "music",
   },
   {
+    // The drama never goes on stream — the reaction does. It plays in a tab
+    // on a site you mark; a card on every other page (the one your stream
+    // captures) shows each beat as you log it, and draws the episode's ride.
+    // `everywhere`: the card rides along on any page you open.
+    // `site-images`: the card shows the drama's poster, fetched from the
+    // streaming site it was saved from (its popup also loads Google Fonts).
     id: "some-drama",
-    name: "Drama Tracker",
-    line: "One tap says how a moment felt, stamped to the exact second of the episode.",
-    level: 0.14,
-    stage: "idea",
+    name: "Drama Overlay",
+    line: "One key logs how a scene hit you, and a card draws the ride, live for your stream.",
+    level: 0.3,
+    stage: "building",
     firefox: true,
     chrome: false,
-    reach: "one-site",
-    mechanism: "pulse",
-    network: "web-fonts",
+    reach: "everywhere",
+    mechanism: "ride",
+    network: "site-images",
     emblem: "beat",
   },
 ]
@@ -193,7 +217,7 @@ export const PRIVACY_LINE: Readonly<Record<Network, string>> = {
   "web-fonts":
     "Nothing about you or your pages. Its popup does load its typefaces from Google Fonts, and there is no account.",
   "site-images":
-    "Nothing about you. Its card loads the video's thumbnail from YouTube's image server, and there is no account.",
+    "No account, and nothing you type. Its card loads a picture from the site it came from, so that site sees a request from the page the card is on.",
 }
 
 /** The first privacy atom: the tool's own network answer, in three words. */
@@ -201,7 +225,7 @@ export const NETWORK_LABEL: Readonly<Record<Network, string>> = {
   none: "no network",
   "local-server": "local server",
   "web-fonts": "google fonts",
-  "site-images": "youtube images",
+  "site-images": "site images",
 }
 
 /** The privacy atoms every one of the six shares. */

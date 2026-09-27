@@ -21,6 +21,10 @@
       "import": "./src/observability/index.ts",
       "types": "./src/observability/index.ts"
     },
+    "./testing": {
+      "import": "./src/testing/index.ts",
+      "types": "./src/testing/index.ts"
+    },
     "./*": {
       "import": "./src/*.ts",
       "types": "./src/*.ts"
@@ -50,7 +54,8 @@
     "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
     "seed": "tsx src/scripts/mood-events/seed.ts",
-    "test": "playwright test --config playwright.config.ts",
+    "test": "vitest run && playwright test --config playwright.config.ts",
+    "test:unit": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "type": "module",

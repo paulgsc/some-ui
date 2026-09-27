@@ -8,6 +8,18 @@ import { MOODS } from "@drama/logic/content/constants"
 import { clamp, likelihoodLabel } from "@drama/logic/content/utils"
 import type { CardState, MoodType } from "@drama/types"
 
+/** Set `text`, and play the stat's bump when it actually changed. */
+function setBumped(value: HTMLSpanElement, text: string): void {
+  if (value.textContent === text) return
+  const first = value.textContent === ""
+  value.textContent = text
+  if (first) return
+  value.classList.remove("dc-stat-bump")
+  // A layout read between the class changes restarts the animation.
+  void value.offsetWidth
+  value.classList.add("dc-stat-bump")
+}
+
 export class RightPanel {
   /** Root element — append to .dc-card */
   readonly root: HTMLDivElement
@@ -76,8 +88,8 @@ export class RightPanel {
     this.progressLabelLeft.textContent = "episode progress"
     this.progressLabelRight.textContent = `${oPct}% overall`
 
-    this.statRating.textContent = `${s.rating.toFixed(1)} / 10`
-    this.statLikelihood.textContent = likelihoodLabel(s.completionLikelihood)
+    setBumped(this.statRating, `${s.rating.toFixed(1)} / 10`)
+    setBumped(this.statLikelihood, likelihoodLabel(s.completionLikelihood))
 
     if (s.activeMood) this.setMoodActive(s.activeMood)
   }
@@ -118,6 +130,8 @@ export class RightPanel {
     MOODS.forEach((m) => {
       const dot = el("span", "dc-mood-dot")
       dot.title = m.label
+      // Each dot in its own mood's colour, whatever the card's theme is.
+      dot.style.setProperty("--dc-dot-hue", String(m.hue))
       dot.addEventListener("click", (e) => {
         e.stopPropagation()
         this.onMoodSelect?.(m.type)

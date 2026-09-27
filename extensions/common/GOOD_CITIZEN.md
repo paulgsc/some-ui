@@ -166,7 +166,12 @@ The extension shares a process with the page. Prefer shared infrastructure:
 7 intervals`. Every allocated resource (rAF, observer, timer, WASM viewport,
 DOM node) must be registered for deterministic teardown.
 
-> **Reference implementation:** `some-conveyor`'s `DisposableRegistry`.
+> **Shared primitives:** `Disposables` and `ActiveScope` in
+> `@some-extension/common` (hoisted from `some-conveyor`'s
+> `DisposableRegistry`). **Enforced by:** `require-named-lifetime` and
+> `require-scoped-lifetime`, plus a workspace lifetime suite built on
+> `@some-extension/common/testing` — see
+> [Resource lifetimes: what is enforced, and what is not](#resource-lifetimes-what-is-enforced-and-what-is-not).
 
 ---
 
@@ -214,7 +219,177 @@ If a page update occurs, the extension degrades gracefully.
 | Commands / keybindings (#3)                              | shared **typestate** (one definition)        | `@some-extension/common`          |
 | Isolation, fullscreen, disposal, attention (#5–#8)       | shared **primitives** (reference impls)      | `@some-extension/common`          |
 | Namespacing, storage, z-index, logic-purity (#2, #4, #6) | shared **lint rules** (per-workspace config) | `@some-ui/eslint-kit`             |
+| Resource lifetimes (#7, #8)                              | primitives + lint rules + a test harness     | see the section below             |
 | Schema changes from any of the above                     | **per-workspace, isolated migrations**       | each workspace's migration ledger |
+
+### Resource lifetimes: what is enforced, and what is not
+
+The idiom: **a resource is held only while the thing consuming it is active.**
+A timer, a frame loop, a listener on the page, an animation, an observer is
+acquired when its consumer starts doing something someone can see, and is gone
+the moment it stops — minimised, hidden, not showing, fullscreen, destroyed,
+or replaced before it ever started.
+
+**What upholds it.**
+
+| Layer      | What                                                                                                                                                                                                  |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Primitives | `Disposables` (a lifetime: `signal`, `interval`, `timeout`, `frame`, `loop`, `child`), `ActiveScope` (acquire in one `start`, released by any named hold), `isPageShowing` / `watchPageShowing`       |
+| Lint       | `require-named-lifetime` (`setInterval`, `requestIdleCallback`); `require-scoped-lifetime` (listeners on `document`/`window` without a `signal` or `once`; self-rescheduling `requestAnimationFrame`) |
+| Tests      | `@some-extension/common/testing`: `probeResources()` counts live intervals, timeouts, frames and page listeners; `ungatedInfiniteAnimations()` finds infinite CSS animations outside a dormant gate   |
+
+`require-scoped-lifetime` is a warning in the shared config and an error in a
+workspace that has adopted the primitives. `some-drama` is the reference: its
+`tests/card-lifetime.test.ts` and `tests/display-lifetime.test.ts` drive the
+card through every transition and assert what is still running.
+
+**Invariants L1–L8: what the rules and tests above cannot check.** Each is
+written for review, human or bot, one hunk at a time: a claim, what in a
+diff falsifies it, where it applies, and why it is a review invariant rather
+than a lint rule or test. A reviewer checks the hunk against the claim,
+reading at most the file the hunk changes (as it stands after the diff) and
+any files the invariant names, since a hunk shows only a few lines of
+context; no invariant asks for exploring states the diff does not touch. "Adopted
+workspaces" means those with `require-scoped-lifetime` at `error` (today:
+`some-drama`). Each held on every adopted workspace when it was written; a
+violation is a regression, not debt. Each falsifier covers every edit that
+can break its claim, deletions and moves included, not only additions,
+because a reviewer stops when the falsifier doesn't match.
+
+**L1: A repeating resource lives on the active scope.**
+
+- _Claim:_ in a class that owns an `ActiveScope`, every `.interval(` and
+  `.loop(` call, and every `spawn*(` call, acquires on the `scope` its
+  `start` receives or on a child of that scope.
+- _Falsified by_ a hunk, in such a file, that calls `.interval(` or `.loop(`
+  on the class's own lifetime (`this.life`) or on a `new Disposables()`, or
+  calls `spawn*(` outside `start`. A move out of `start` counts: the call
+  reappears as an added line elsewhere.
+- _Scope:_ adopted workspaces. One-shot `.frame(` and `.timeout(` on the
+  class's own lifetime are fine: they end by themselves.
+- _Why not lint or tests:_ both rules can see that a resource has an owner,
+  but not whether it is the right owner. That is a fact about the component,
+  and tests only cover the states they drive (L2).
+
+**L2: Every dormant reason is tested.**
+
+- _Claim:_ every hold name an `ActiveScope` uses appears in the title of an
+  `it(` in that workspace's lifetime suite (`tests/*lifetime*.test.ts`). The
+  hold names are the type argument, the initial holds, and each
+  `.hold(`/`.release(` literal. Substrings count ("min" is in "minimised").
+- _Falsified by_ a hunk that adds a hold name with no `it(` title containing
+  it anywhere in the workspace's suite after the diff, or that removes or
+  retitles an `it(` so an existing hold name no longer appears in any title.
+- _Scope:_ adopted workspaces.
+- _Why not lint or tests:_ a harness only drives the states it is given,
+  and no test can list the dormant states a component will grow later.
+
+**L3: An exemption names what ends the resource.**
+
+- _Claim:_ every `eslint-disable` of `require-named-lifetime` or
+  `require-scoped-lifetime` has a line starting `Lifetime:` in the unbroken
+  `//` comment block directly above it, saying what ends the resource.
+- _Falsified by_ a hunk that adds such a directive without that line, that
+  deletes or rewords the `Lifetime:` line above an existing directive, or
+  that breaks the comment block between them (inserting a non-comment line).
+- _Scope:_ the whole repo. All 12 exemptions met it when it was written.
+- _Why not lint or tests:_ whether the `Lifetime:` line is true needs a
+  person to read it. Whether it exists is mechanical, so this could become a
+  lint rule; until it does, the review checks it.
+
+**L4: A resource the rules do not recognise is still owned.**
+
+- _Claim:_ outside a script's entry module (`background.ts`, `content.ts`,
+  `popup.ts`), each of these either registers its release with `<life>.add(`
+  in the same function, or carries a `Lifetime:` comment as in L3:
+  - `new MutationObserver(`, `ResizeObserver(`, `IntersectionObserver(` or
+    `PerformanceObserver(`;
+  - `new WebSocket(`, `BroadcastChannel(` or `EventSource(`;
+  - `.onX.addListener(` on `browser.*` or `chrome.*`.
+- _Falsified by_ a hunk that adds one of these in a non-entry module whose
+  function has neither, or that deletes the `<life>.add(` registration or
+  the `Lifetime:` comment of an existing one.
+- _Scope:_ adopted workspaces. Entry modules are exempt because page or
+  worker lifetime is the right lifetime there.
+- _Why not lint or tests:_ the rules are syntactic on purpose. Adding these
+  kinds would flag correct one-shot and entry-point uses; that is why
+  `matchMedia` was dropped. Aliased calls (`const d = document`) are out of
+  reach altogether.
+
+**L5: Every infinite animation is behind the dormant gate.**
+
+- _Claim:_ three things hold:
+  - the workspace's content stylesheet has a `<root>.<dormant> *` rule with
+    `animation: none`;
+  - every element that gets an `infinite` animation either sits inside the
+    overlay root in the DOM, or is created inside `ActiveScope.start` (or by
+    a function that only `start` calls);
+  - `.animate(` is called only inside `start`.
+- _Falsified by_ a hunk that:
+  - removes or weakens the gate rule;
+  - gives an element appended outside the overlay root an `infinite`
+    animation, when that element is created somewhere other than `start`,
+    or moves the creation of such an element out of `start`;
+  - or adds `.animate(` outside `start`.
+- _Scope:_ adopted workspaces with an overlay (today: some-drama's
+  `#dc-root.dc-dormant`).
+- _Why not lint or tests:_ jsdom runs no CSS. `ungatedInfiniteAnimations`
+  compares the stylesheet source to the DOM a test builds, so it cannot see
+  elements a test never builds, animations started from JavaScript, or a
+  transition that a loop keeps restarting.
+
+**L6: Only one module decides whether the page is showing.**
+
+- _Claim:_ shipped code reads `document.visibilityState`, `document.hidden`
+  or `document.fullscreenElement` only through `isPageShowing` or
+  `watchPageShowing`.
+- _Falsified by_ a hunk that adds such a read anywhere else.
+- _Scope:_ adopted workspaces.
+- _Why not lint or tests:_ this one is mechanical and could become a
+  `no-restricted-syntax` rule. What stays out of reach is what "showing"
+  means in a real browser: an OS window covered by another can report hidden
+  and stop painting, and a page restored from the back/forward cache comes
+  back without re-running the content script. jsdom can simulate neither,
+  and Playwright cannot load a Firefox MV2 extension. Keeping one seam means
+  a real-browser check has one place to cover.
+
+**L7 (not reviewable): coverage that depends on CI wiring.**
+
+- _Statement:_ `@some-extension/common`'s own unit suite runs on trunk only.
+  PR CI filters `extensions/**` out of its test job, and the extension matrix
+  skips workspaces without a manifest. On a PR, a regression in the
+  primitives is caught only by a workspace suite that exercises them.
+- _Not falsifiable from a diff:_ a reviewer should not flag it on a hunk. It
+  is tracked in #1552, and changes only when a workflow does.
+
+**L8: A page listener or frame loop in a shape the rule does not read is
+still owned.**
+
+- _Claim:_ in shipped code (`src/`), every `addEventListener(` or
+  `requestAnimationFrame(` call that `require-scoped-lifetime` does not
+  inspect either passes `once: true` or a `signal` that is a signal on every
+  path (not `x?.signal`, `undefined`, or `a ? b : undefined`), or carries a
+  `Lifetime:` comment as in L3. The rule inspects only the shapes its doc
+  comment lists under "What it recognizes": `addEventListener` on
+  `document`, `window`, `globalThis`, `self`, `document.body` or
+  `document.documentElement`, or bare; options inline or in a `const`; a
+  frame callback that names its own function or is an inline wrapper that
+  calls it. Anything else is not inspected: an aliased receiver
+  (`const d = document; d.addEventListener(…)`), a computed member
+  (`window["addEventListener"]`), options or a callback passed through a
+  parameter, a `let` or a spread. An element the same function created or
+  queried is not a page receiver and is out of scope.
+- _Falsified by_ a hunk, in such code, that adds one of those calls with
+  neither, or that removes the `signal`/`once` or the `Lifetime:` comment
+  from an existing one.
+- _Scope:_ adopted workspaces. When this was written, some-drama's page
+  listeners were all on receivers the rule inspects, and its one
+  `requestAnimationFrame` was a one-shot.
+- _Why not lint or tests:_ the rule is syntactic by design. Following an
+  alias, a variable or a call needs data-flow or type information. Each
+  spelling patched into the rule leaves the next one, and review rounds on
+  #1556 kept finding one. The rule names its limit instead, and this
+  invariant holds the rest. Tests only see the states they drive.
 
 ### Migrations are per-workspace and isolated
 
