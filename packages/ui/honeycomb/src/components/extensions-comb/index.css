@@ -427,9 +427,12 @@
     }
   }
 
-  /* BOYO: a veil over a card steps down in four discrete stops, then resets.
-     steps() rather than a slide, because the extension surrenders exactly
-     one layer at a time - a smooth wipe would depict a different product. */
+  /* BOYO: a veil over a card retracts upward in discrete stops, then resets:
+     first the short line (channel, length, age), then the title line, then
+     the picture — the order the extension uncovers a video in, the picture
+     last. steps() rather than a slide, because the extension surrenders
+     exactly one layer at a time - a smooth wipe would depict a different
+     product. */
   .xcomb-mini-card {
     fill: var(--comb-mini-tint);
   }
@@ -451,17 +454,17 @@
 
     25%,
     49% {
-      transform: translateY(30px);
+      transform: translateY(-19px);
     }
 
     50%,
     74% {
-      transform: translateY(58px);
+      transform: translateY(-33px);
     }
 
     75%,
     99% {
-      transform: translateY(88px);
+      transform: translateY(-88px);
     }
 
     100% {
@@ -494,7 +497,58 @@
     }
   }
 
-  /* Music Overlay: six bars bounce at six different periods. */
+  /* Music Overlay: the music plays in a tab behind; on the page in front the
+     content changes as you browse, and the now-playing card stays put in its
+     corner, its bars bouncing at three different periods. */
+  .xcomb-mini-backtab {
+    fill: var(--comb-mini-tint);
+    opacity: 0.7;
+  }
+
+  .xcomb-mini-front {
+    fill: var(--comb-mini-tint);
+  }
+
+  .xcomb-mini-play {
+    fill: var(--comb-honey-mid);
+  }
+
+  .xcomb-mini-browse {
+    animation: xcomb-browse 5s ease-in-out infinite;
+  }
+
+  .xcomb-mini-browse rect {
+    fill: var(--comb-honey-surface);
+  }
+
+  .xcomb-mini-nowplaying {
+    fill: var(--comb-mini-dark);
+  }
+
+  @keyframes xcomb-browse {
+    0%,
+    38% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    46% {
+      opacity: 0;
+      transform: translateX(-12px);
+    }
+
+    54% {
+      opacity: 0;
+      transform: translateX(12px);
+    }
+
+    62%,
+    100% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
   .xcomb-mini-bar {
     animation-iteration-count: infinite;
     animation-name: xcomb-eq;
@@ -717,6 +771,7 @@
     .xcomb-mini-veil,
     .xcomb-mini-cube,
     .xcomb-mini-bar,
+    .xcomb-mini-browse,
     .xcomb-mini-ride,
     .xcomb-mini-curve,
     .xcomb-mini-beat,

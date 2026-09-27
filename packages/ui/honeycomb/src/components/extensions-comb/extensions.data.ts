@@ -42,7 +42,7 @@ export const STAGE_LINE: Readonly<Record<Stage, string>> = {
 }
 
 /** Which miniature plays in the L1 top register. One per extension, no text. */
-export type Mechanism = "tabs" | "theme" | "veil" | "cubes" | "bars" | "ride"
+export type Mechanism = "tabs" | "theme" | "veil" | "cubes" | "follow" | "ride"
 
 /** Where the extension acts: one named site, or the whole web. */
 export type Reach = "one-site" | "everywhere"
@@ -62,6 +62,10 @@ export type Reach = "one-site" | "everywhere"
  *                    from that site's image server.
  *
  * When an extension's network behaviour changes, change this with it.
+ * `local-server` and `site-images` currently describe none of the six — BOYO
+ * and Conveyor only reach a local server in development builds, and Music
+ * Overlay builds a thumbnail URL it never shows — and are kept for when one
+ * of them does.
  */
 export type Network = "none" | "local-server" | "web-fonts" | "site-images"
 
@@ -105,8 +109,11 @@ export const EXTENSIONS: ReadonlyArray<ExtensionDefinition> = [
     id: "suspender-ledger",
     name: "Suspender Ledger",
     line: "Idle tabs go quiet and give their memory back. Click one and it is there again.",
-    level: 1.0,
-    stage: "ready",
+    // Not `ready`: the manifest ships it as "(Beta)", and it is signed on
+    // AMO's unlisted channel, which has no review — so "finished, reviewed"
+    // would overclaim. In daily use, which is what `testing` says.
+    level: 0.8,
+    stage: "testing",
     firefox: true,
     chrome: false,
     reach: "everywhere",
@@ -117,7 +124,7 @@ export const EXTENSIONS: ReadonlyArray<ExtensionDefinition> = [
   {
     id: "some-filter",
     name: "Page Filter",
-    line: "One calm palette on every site you open, instead of a different glare on each.",
+    line: "Every site you open turns the same soft dark, so bright pages stop glaring at you.",
     level: 0.5,
     stage: "testing",
     firefox: true,
@@ -130,27 +137,31 @@ export const EXTENSIONS: ReadonlyArray<ExtensionDefinition> = [
   {
     id: "some-censor",
     name: "BOYO",
-    line: "Recommendations arrive covered. You lift the cover a step at a time.",
+    line: "YouTube videos arrive covered; each tap uncovers a little more, the picture last.",
     level: 0.38,
     stage: "building",
     firefox: true,
     chrome: true,
     reach: "one-site",
     mechanism: "veil",
-    network: "local-server",
+    // Its dev-only API client throws before any fetch in a production build
+    // (api-client.ts _assertDev), so what ships requests nothing.
+    network: "none",
     emblem: "covered",
   },
   {
     id: "some-conveyor",
     name: "Conveyor",
-    line: "A slow strip of turning cubes carries what you asked to be reminded of.",
+    line: "Turning cubes drift along the foot of every page, showing the time and today's progress.",
     level: 0.2,
     stage: "idea",
     firefox: true,
     chrome: true,
     reach: "everywhere",
     mechanism: "cubes",
-    network: "local-server",
+    // effect-bus.ts can call localhost, but no face action dispatches it —
+    // the only wired action opens the popup — so it requests nothing.
+    network: "none",
     emblem: "belt",
   },
   {
@@ -161,9 +172,13 @@ export const EXTENSIONS: ReadonlyArray<ExtensionDefinition> = [
     stage: "idea",
     firefox: true,
     chrome: false,
-    reach: "one-site",
-    mechanism: "bars",
-    network: "site-images",
+    // It reads the song from YouTube, but the card it draws rides along on
+    // every page you open — that is where it acts.
+    reach: "everywhere",
+    mechanism: "follow",
+    // The card builds a thumbnail URL but never displays it, so no image is
+    // fetched.
+    network: "none",
     emblem: "music",
   },
   {

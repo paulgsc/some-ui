@@ -627,19 +627,52 @@ const Mini = ({ kind }: { kind: Mechanism }): JSX.Element => {
         </g>
       )
     }
-    case "bars": {
+    case "follow": {
       return (
         <g aria-hidden>
-          {[0, 1, 2, 3, 4, 5].map((k) => (
+          {/* The tab the music plays in, behind the one you are on. */}
+          <rect
+            x={-66}
+            y={-46}
+            width={64}
+            height={40}
+            rx={6}
+            className="xcomb-mini-backtab"
+          />
+          <path d="M-42 -34 L-42 -20 L-30 -27 Z" className="xcomb-mini-play" />
+          {/* The page you are on; its content changes as you browse. */}
+          <rect
+            x={-40}
+            y={-24}
+            width={106}
+            height={70}
+            rx={8}
+            className="xcomb-mini-front"
+          />
+          <g className="xcomb-mini-browse">
+            <rect x={-30} y={-14} width={70} height={6} rx={3} />
+            <rect x={-30} y={-2} width={84} height={6} rx={3} />
+            <rect x={-30} y={10} width={40} height={6} rx={3} />
+          </g>
+          {/* The card stays put in the corner, playing. */}
+          <rect
+            x={16}
+            y={16}
+            width={42}
+            height={24}
+            rx={5}
+            className="xcomb-mini-nowplaying"
+          />
+          {[0, 1, 2].map((k) => (
             <rect
               key={k}
-              x={-54 + k * 19}
-              y={-36}
-              width={12}
-              height={72}
-              rx={4}
+              x={24 + k * 10}
+              y={21}
+              width={6}
+              height={14}
+              rx={2}
               className="xcomb-mini-bar"
-              style={{ animationDuration: `${(0.7 + k * 0.19).toFixed(2)}s` }}
+              style={{ animationDuration: `${(0.7 + k * 0.23).toFixed(2)}s` }}
             />
           ))}
         </g>
