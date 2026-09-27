@@ -7,9 +7,6 @@ export default createViteConfig({
   alias: {
     "@umag": resolve(import.meta.dirname, "src"),
   },
-  dtsOptions: {
-    exclude: ["**/demo/**"],
-  },
   tsConfigPaths: {
     projects: [resolve(import.meta.dirname, "tsconfig.build.json")],
   },

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/contract-harness/routes.server.json",
+        "$TURBO_ROOT$/packages/contract-harness/README.md",
+        "$TURBO_ROOT$/packages/contract-harness/contracts/**",
+        "$TURBO_ROOT$/packages/contract-harness/src/**"
+      ]
+    }
+  }
+}

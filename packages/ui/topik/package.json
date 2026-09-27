@@ -52,7 +52,7 @@
     "*.css"
   ],
   "unpkg": "@some-ui/topik.umd.js",
-  "main": "./dist/@some-ui/topik.cjs.js",
+  "main": "./dist/@some-ui/topik.es.js",
   "module": "./dist/@some-ui/topik.es.js",
   "types": "./dist/@some-ui/topik.d.ts",
   "style": "./dist/topik.css",
@@ -60,7 +60,6 @@
     ".": {
       "types": "./dist/@some-ui/topik.d.ts",
       "import": "./dist/@some-ui/topik.es.js",
-      "require": "./dist/@some-ui/topik.cjs.js",
       "default": "./dist/@some-ui/topik.es.js"
     },
     "./style.css": "./dist/topik.css"

@@ -58,7 +58,7 @@
     "*.css"
   ],
   "unpkg": "@some-ui/leetype.umd.js",
-  "main": "./dist/@some-ui/leetype.cjs.js",
+  "main": "./dist/@some-ui/leetype.es.js",
   "module": "./dist/@some-ui/leetype.es.js",
   "types": "./dist/@some-ui/leetype.d.ts",
   "style": "./dist/leetype.css",
@@ -66,7 +66,6 @@
     ".": {
       "types": "./dist/@some-ui/leetype.d.ts",
       "import": "./dist/@some-ui/leetype.es.js",
-      "require": "./dist/@some-ui/leetype.cjs.js",
       "default": "./dist/@some-ui/leetype.es.js"
     },
     "./style.css": "./dist/leetype.css"

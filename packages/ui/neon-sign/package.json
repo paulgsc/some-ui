@@ -45,14 +45,13 @@
     "*.css"
   ],
   "unpkg": "some-ui-neon-sign.umd.js",
-  "main": "./dist/some-ui-neon-sign.cjs.js",
+  "main": "./dist/some-ui-neon-sign.es.js",
   "module": "./dist/some-ui-neon-sign.es.js",
   "types": "./dist/some-ui-neon-sign.d.ts",
   "exports": {
     ".": {
       "types": "./dist/some-ui-neon-sign.d.ts",
       "import": "./dist/some-ui-neon-sign.es.js",
-      "require": "./dist/some-ui-neon-sign.cjs.js",
       "default": "./dist/some-ui-neon-sign.es.js"
     },
     "./style.css": "./dist/some-ui-neon-sign.css"

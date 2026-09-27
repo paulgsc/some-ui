@@ -21,7 +21,6 @@
     ".": {
       "types": "./dist/some-ui-portfolio-chart.d.ts",
       "import": "./dist/some-ui-portfolio-chart.es.js",
-      "require": "./dist/some-ui-portfolio-chart.cjs.js",
       "default": "./dist/some-ui-portfolio-chart.es.js"
     },
     "./style.css": "./dist/portfolio.css"
@@ -32,7 +31,7 @@
   "homepage": "https://pgdev.maishatu.com/?tab=github",
   "keywords": [],
   "license": "MIT",
-  "main": "./dist/some-ui-portfolio-chart.cjs.js",
+  "main": "./dist/some-ui-portfolio-chart.es.js",
   "module": "./dist/some-ui-portfolio-chart.es.js",
   "name": "@some-ui/portfolio",
   "private": true,

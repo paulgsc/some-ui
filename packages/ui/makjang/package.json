@@ -15,7 +15,6 @@
     ".": {
       "types": "./dist/some-ui-makjang.d.ts",
       "import": "./dist/some-ui-makjang.es.js",
-      "require": "./dist/some-ui-makjang.cjs.js",
       "default": "./dist/some-ui-makjang.es.js"
     },
     "./style.css": "./dist/makjang.css"
@@ -26,7 +25,7 @@
   "homepage": "https://pgdev.maishatu.com/?tab=github",
   "keywords": [],
   "license": "MIT",
-  "main": "./dist/some-ui-makjang.cjs.js",
+  "main": "./dist/some-ui-makjang.es.js",
   "module": "./dist/some-ui-makjang.es.js",
   "name": "@some-ui/makjang",
   "private": true,

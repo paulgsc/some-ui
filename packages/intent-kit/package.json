@@ -14,14 +14,13 @@
     "url": "https://github.com/paulgsc/some-ui/issues"
   },
   "keywords": [],
-  "main": "./dist/@some-ui/intent-kit.cjs.js",
+  "main": "./dist/@some-ui/intent-kit.es.js",
   "module": "./dist/@some-ui/intent-kit.es.js",
   "types": "./dist/@some-ui/intent-kit.d.ts",
   "exports": {
     ".": {
       "types": "./dist/@some-ui/intent-kit.d.ts",
       "import": "./dist/@some-ui/intent-kit.es.js",
-      "require": "./dist/@some-ui/intent-kit.cjs.js",
       "default": "./dist/@some-ui/intent-kit.es.js"
     },
     "./style.css": "./dist/intent-kit.css"

@@ -44,14 +44,13 @@
     "*.css"
   ],
   "unpkg": "some-ui-searchbar.umd.js",
-  "main": "./dist/some-ui-searchbar.cjs.js",
+  "main": "./dist/some-ui-searchbar.es.js",
   "module": "./dist/some-ui-searchbar.es.js",
   "types": "./dist/some-ui-searchbar.d.ts",
   "exports": {
     ".": {
       "types": "./dist/some-ui-searchbar.d.ts",
       "import": "./dist/some-ui-searchbar.es.js",
-      "require": "./dist/some-ui-searchbar.cjs.js",
       "default": "./dist/some-ui-searchbar.es.js"
     },
     "./style.css": "./dist/some-ui-searchbar.css"

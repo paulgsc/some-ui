@@ -23,7 +23,6 @@
     ".": {
       "types": "./dist/wireframes.d.ts",
       "import": "./dist/wireframes.es.js",
-      "require": "./dist/wireframes.cjs.js",
       "default": "./dist/wireframes.es.js"
     },
     "./style.css": "./dist/wireframes.css"
@@ -34,7 +33,7 @@
   "homepage": "https://pgdev.maishatu.com/?tab=github",
   "keywords": [],
   "license": "MIT",
-  "main": "./dist/wireframes.cjs.js",
+  "main": "./dist/wireframes.es.js",
   "module": "./dist/wireframes.es.js",
   "name": "wireframes",
   "private": true,

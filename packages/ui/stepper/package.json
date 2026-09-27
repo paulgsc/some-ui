@@ -54,7 +54,7 @@
     "*.css"
   ],
   "unpkg": "some-ui-stepper.umd.js",
-  "main": "./dist/some-ui-stepper.cjs.js",
+  "main": "./dist/some-ui-stepper.es.js",
   "module": "./dist/some-ui-stepper.es.js",
   "types": "./dist/some-ui-stepper.d.ts",
   "style": "./dist/stepper.css",
@@ -62,7 +62,6 @@
     ".": {
       "types": "./dist/some-ui-stepper.d.ts",
       "import": "./dist/some-ui-stepper.es.js",
-      "require": "./dist/some-ui-stepper.cjs.js",
       "default": "./dist/some-ui-stepper.es.js"
     },
     "./style.css": "./dist/stepper.css"
