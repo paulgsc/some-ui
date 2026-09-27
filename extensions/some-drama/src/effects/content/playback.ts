@@ -22,6 +22,13 @@ function primaryVideo(): HTMLVideoElement | null {
   return best
 }
 
+/** True while any video on the page is playing. */
+export function isPlaying(): boolean {
+  return Array.from(document.querySelectorAll("video")).some(
+    (v) => !v.paused && !v.ended
+  )
+}
+
 /** Current playback of the primary video, or null when the page has none. */
 export function readPlayback(): Playback | null {
   const video = primaryVideo()

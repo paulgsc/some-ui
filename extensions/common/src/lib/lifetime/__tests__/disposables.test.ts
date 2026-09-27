@@ -50,6 +50,17 @@ describe("Disposables", () => {
     expect(probe.counts().frames).toBe(0)
   })
 
+  it("stops a loop whose own callback ends the lifetime", async () => {
+    const life = new Disposables()
+    const tick = vi.fn(() => life.dispose())
+    life.loop(tick)
+    await nextFrame()
+    await nextFrame()
+    await nextFrame()
+    expect(tick).toHaveBeenCalledOnce()
+    expect(probe.counts().frames).toBe(0)
+  })
+
   it("releases at once anything acquired after it ended", () => {
     const life = new Disposables()
     life.dispose()

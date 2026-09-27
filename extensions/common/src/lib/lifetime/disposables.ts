@@ -82,6 +82,10 @@ export class Disposables {
     let id = 0
     const tick = (now: number): void => {
       callback(now)
+      // The callback may have ended this lifetime (destroyed its component).
+      // dispose() already ran and cancelled the frame being delivered, so a
+      // frame scheduled now would be one nothing ever cancels.
+      if (this.disposed) return
       // Lifetime: this Disposables — the pending frame is cancelled by
       // dispose(), which ends the loop.
       // eslint-disable-next-line extension-charter/require-scoped-lifetime -- lifetime is this object; see above

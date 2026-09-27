@@ -47,7 +47,7 @@
 //          popup mutation broadcast STATE_UPDATE. Fixed: requests go through
 //          the typed sendMsg and the envelope is unwrapped.
 
-import { readPlayback } from "@drama/effects/content/playback"
+import { isPlaying, readPlayback } from "@drama/effects/content/playback"
 import { sendMsg } from "@drama/effects/messaging"
 import { KEY_BINDINGS } from "@drama/logic/content/commands"
 import type { DramaCommandId } from "@drama/logic/content/commands"
@@ -125,7 +125,11 @@ async function main(): Promise<void> {
       role = next
       if (next === "source") {
         log.info("Streaming site — no card; beats carry this tab's video time.")
-        registerSource()
+        // Marking a site turns every open tab on it into a source at once,
+        // and the background keeps whichever registers last — so only a tab
+        // that is playing claims it now. The rest claim it when they start
+        // playing (the `play` listener below).
+        if (isPlaying()) registerSource()
       } else {
         display = createDisplay({
           cardMeta,
