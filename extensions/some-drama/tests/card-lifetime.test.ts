@@ -83,7 +83,7 @@ describe("the card's resources follow its activity", () => {
     expect(blossoms()).toBeNull()
   })
 
-  it("acquires nothing if it is destroyed before its first frame", async () => {
+  it("acquires nothing while entering: destroyed before its first frame", async () => {
     const card = mount()
     card.destroy()
     await nextFrame()
