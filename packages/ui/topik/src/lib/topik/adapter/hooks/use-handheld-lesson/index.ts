@@ -18,10 +18,27 @@ import type {
   TopikMetadata,
 } from "@topik/lib/topik"
 import { useSessionConfig } from "@topik/lib/topik"
+import type { LessonStore } from "@topik/lib/topik/adapter/lesson-store"
+import {
+  createLessonStore,
+  MAX_LOCAL_LESSONS,
+} from "@topik/lib/topik/adapter/lesson-store"
 import type { ResumeStore } from "@topik/lib/topik/adapter/resume-point"
 import { createResumeStore } from "@topik/lib/topik/adapter/resume-point"
 import { useTopikMetadataList } from "@topik/lib/topik/adapter/server/topik-metadata-queries"
 import { useTopikBatches } from "@topik/lib/topik/adapter/server/topik-queries"
+import type { SurveyStore } from "@topik/lib/topik/adapter/survey-store"
+import { createSurveyStore } from "@topik/lib/topik/adapter/survey-store"
+import type {
+  LessonSurvey,
+  StuckCandidate,
+  SurveyItem,
+} from "@topik/lib/topik/core/lesson-survey"
+import {
+  pinMisses,
+  stuckCandidates,
+  unpinMisses,
+} from "@topik/lib/topik/core/lesson-survey"
 import type {
   LessonContext,
   LessonEvent,
@@ -42,6 +59,9 @@ import {
   revealCap,
   tallyOf,
 } from "@topik/lib/topik/core/lesson-track"
+import type { LessonRequest } from "@topik/lib/topik/generation"
+import { buildLessonPrompt, surveyDigest } from "@topik/lib/topik/generation"
+import { LOCAL_LESSON_PREFIX } from "@topik/lib/topik/generation/intake"
 
 const EMPTY_PLAN: LessonPlan = { steps: [], lineCount: 0, checkCount: 0 }
 const SPOKEN_LANGUAGE = "ko"
@@ -77,11 +97,39 @@ export type HandheldLessonVM = {
   /** Set once a topik is chosen, while its file loads. */
   loading: { topikKey: string; error: string | null } | null
   lesson: HandheldLessonView | null
+  /**
+   * Asked once a lesson is completed, before its closing tally (canon
+   * Cor. 3.4). Never gates anything; null outside a lesson.
+   */
+  survey: {
+    pending: boolean
+    candidates: Array<StuckCandidate>
+    submit: (survey: LessonSurvey) => void
+    skip: () => void
+  } | null
   audio: {
     available: boolean
     speakingId: string | null
     speak: (message: Message) => void
   }
+  /**
+   * The generation loop (canon v1.7): the prompt goes out to the learner's
+   * own model, and the lesson comes back pasted, checked and kept locally.
+   */
+  generator: {
+    /** Kept lessons, newest first; also listed in `catalog.items`. */
+    lessons: Array<TopikMetadata>
+    active: boolean
+    open: () => void
+    close: () => void
+    /** The prompt for this request, with the learner's survey digest. */
+    prompt: (request: Omit<LessonRequest, "survey">) => string
+    /** Keeps a lesson and starts it. */
+    save: (meta: TopikMetadata, batches: Array<ConversationBatch>) => void
+    remove: (key: string) => void
+  }
+  /** "This answer looks wrong" on the current check's feedback. */
+  flag: { flagged: boolean; toggle: () => void } | null
   select: (topikKey: string) => void
   leave: () => void
   dispatch: (event: LessonEvent) => void
@@ -90,6 +138,10 @@ export type HandheldLessonVM = {
 export type UseHandheldLessonOptions = {
   /** Injected in tests and stories; defaults to `localStorage`. */
   resumeStore?: ResumeStore
+  /** Injected in tests and stories; defaults to `localStorage`. */
+  surveyStore?: SurveyStore
+  /** Injected in tests and stories; defaults to `localStorage`. */
+  lessonStore?: LessonStore
 }
 
 const lineText = (message: Message): string => message.korean || message.content
@@ -104,24 +156,61 @@ function voiceFor(
 
 export function useHandheldLesson({
   resumeStore,
+  surveyStore,
+  lessonStore,
 }: UseHandheldLessonOptions = {}): HandheldLessonVM {
   const { topikRepository, metadataRepository, speechAdapter } =
     useSessionConfig()
   const [store] = useState(() => resumeStore ?? createResumeStore())
+  const [surveys] = useState(() => surveyStore ?? createSurveyStore())
+  const [kept] = useState(() => lessonStore ?? createLessonStore())
   const audioAvailable = speechAdapter?.supported === true
 
   // ── Catalogue and content ────────────────────────────────────────────────
 
   const catalogQuery = useTopikMetadataList(metadataRepository)
-  const items = useMemo(() => catalogQuery.data ?? [], [catalogQuery.data])
+  // Lessons the learner generated come first, from this device; served
+  // material follows. A local key never reaches the server.
+  const [localLessons, setLocalLessons] = useState(() => kept.list())
+  const items = useMemo(
+    () => [
+      ...localLessons.map((local) => local.meta),
+      ...(catalogQuery.data ?? []),
+    ],
+    [localLessons, catalogQuery.data]
+  )
 
   const [topikKey, setTopikKey] = useState<string | null>(null)
+  const [generating, setGenerating] = useState(false)
+  const isLocal = topikKey?.startsWith(LOCAL_LESSON_PREFIX) === true
   const batchesQuery = useTopikBatches(topikRepository, topikKey ?? "", {
-    enabled: topikKey !== null,
+    enabled: topikKey !== null && !isLocal,
   })
-  const batches = topikKey === null ? undefined : batchesQuery.data
+  const localBatches = useMemo(
+    () =>
+      isLocal
+        ? localLessons.find((local) => local.meta.key === topikKey)?.batches
+        : undefined,
+    [isLocal, localLessons, topikKey]
+  )
+  const batches =
+    topikKey === null ? undefined : isLocal ? localBatches : batchesQuery.data
 
   // ── Lesson state ─────────────────────────────────────────────────────────
+
+  // Probes missed on first presentation, per conversation id, across the
+  // whole lesson: the survey's stuck candidates (canon Cor. 3.4). The lesson
+  // state only holds the current conversation, so they are gathered here.
+  // Each is pinned (`id@fp`) to the probe as it was when missed, and never
+  // re-pinned: the file can refresh mid-lesson, and a miss re-pinned to a
+  // revised probe would report content the learner never missed (Codex,
+  // #1554).
+  const [missed, setMissed] = useState<Record<number, Array<string>>>({})
+  const [surveyPending, setSurveyPending] = useState(false)
+  const [finishedSeen, setFinishedSeen] = useState(false)
+  // Answers the learner flagged as keyed wrong during this lesson; they ride
+  // the survey into the next prompt, and survive its being skipped.
+  const [flagged, setFlagged] = useState<Array<SurveyItem>>([])
 
   const [lesson, setLesson] = useState<LessonState>(() =>
     createLessonState(audioAvailable)
@@ -170,11 +259,59 @@ export function useHandheldLesson({
         },
         contextFor(conversation)
       )
+      // The survey's evidence from the conversations before this one: the
+      // outcomes only cover this one (Codex, #1554).
+      if (point.survey) {
+        setMissed(point.survey.missed)
+        setFlagged(point.survey.flagged)
+      }
     }
     setLesson(restored)
   }
 
   const batch = batches?.[lesson.conversation]
+
+  // ── Survey ───────────────────────────────────────────────────────────────
+
+  const missedHere = Object.keys(lesson.firstTry).filter(
+    (id) => lesson.firstTry[id] === false
+  )
+  // Only once `lesson` is this topik's: on the render that restores a point,
+  // it is still the previous lesson's state. The merge is an updater so a
+  // restore's own setMissed, queued in the same render, is never overwritten
+  // (Codex, #1554).
+  const pinnedIds = (keys: Array<string> = []): Array<string> =>
+    keys.map((key) => key.slice(0, key.lastIndexOf("@")))
+  if (
+    batch &&
+    restoredFor === topikKey &&
+    missedHere.some((id) => !pinnedIds(missed[batch.id]).includes(id))
+  ) {
+    const batchId = batch.id
+    // Pinned now, against the probe just answered; an id already held keeps
+    // the pin it was missed under.
+    const pinned = pinMisses([batch], { [batchId]: missedHere })[batchId] ?? []
+    setMissed((current) => {
+      const known = pinnedIds(current[batchId])
+      return {
+        ...current,
+        [batchId]: [
+          ...(current[batchId] ?? []),
+          ...pinned.filter((key) => !known.includes(pinnedIds([key])[0] ?? "")),
+        ],
+      }
+    })
+  }
+  // A lesson just completed asks once; starting over begins a new lesson.
+  if (lesson.finished !== finishedSeen) {
+    setFinishedSeen(lesson.finished)
+    setSurveyPending(lesson.finished)
+    if (!lesson.finished) {
+      setMissed({})
+      setFlagged([])
+    }
+  }
+
   const context = useMemo(
     () => contextFor(lesson.conversation),
     [contextFor, lesson.conversation]
@@ -244,8 +381,12 @@ export function useHandheldLesson({
 
   useEffect(() => {
     if (topikKey === null || restoredFor !== topikKey) return
+    // A finished lesson's place goes once its survey is answered or skipped,
+    // not before: a reload or a leave while the survey is open would restart
+    // the lesson and lose what the survey was about to offer (Codex, #1554).
+    // Until then the point left before finishing stands.
     if (lesson.finished) {
-      store.clear(topikKey)
+      if (!surveyPending) store.clear(topikKey)
       return
     }
     // A check resumes at its line, with its result: NEXT then passes over
@@ -256,9 +397,21 @@ export function useHandheldLesson({
         conversation: lesson.conversation,
         messageId: resumeMessage.id,
         outcomes: outcomesOf(lesson, context.plan),
+        survey: { missed, flagged },
       })
     }
-  }, [store, topikKey, restoredFor, lesson, context, resumeMessage, batchId])
+  }, [
+    store,
+    topikKey,
+    restoredFor,
+    surveyPending,
+    lesson,
+    context,
+    resumeMessage,
+    batchId,
+    missed,
+    flagged,
+  ])
 
   // ── Actions ──────────────────────────────────────────────────────────────
 
@@ -280,15 +433,125 @@ export function useHandheldLesson({
 
   const select = useCallback((key: string): void => {
     armed.current = true
+    setGenerating(false)
     setTopikKey(key)
     setRestoredFor(null)
+    setMissed({})
+    setFlagged([])
+    setSurveyPending(false)
+    setFinishedSeen(false)
   }, [])
 
+  // Leaving clears what is held in memory; the resume point already holds the
+  // survey's evidence, and a resumed lesson restores it.
   const leave = useCallback((): void => {
     stopSpeaking()
     setTopikKey(null)
     setRestoredFor(null)
+    setMissed({})
+    setFlagged([])
+    setSurveyPending(false)
+    setFinishedSeen(false)
   }, [stopSpeaking])
+
+  const lessonName =
+    topikKey === null
+      ? undefined
+      : items.find((item) => item.key === topikKey)?.displayName
+
+  const submitSurvey = useCallback(
+    (survey: LessonSurvey): void => {
+      if (topikKey !== null) {
+        surveys.add(topikKey, { ...survey, flagged }, lessonName)
+      }
+      setSurveyPending(false)
+    },
+    [surveys, topikKey, flagged, lessonName]
+  )
+
+  // Skipping the survey drops its answers, not the learner's flags: a flag
+  // was a deliberate tap, and the next prompt should hear it.
+  const skipSurvey = useCallback((): void => {
+    if (topikKey !== null && flagged.length > 0) {
+      surveys.add(topikKey, { stuck: [], flagged }, lessonName)
+    }
+    setSurveyPending(false)
+  }, [surveys, topikKey, flagged, lessonName])
+
+  const flaggable =
+    step?.kind === "check" && lesson.answered !== null && batch
+      ? { batch, step }
+      : null
+  const flagItem: SurveyItem | null = ((): SurveyItem | null => {
+    if (!flaggable) return null
+    const probe = flaggable.batch.probes?.[flaggable.step.probe]
+    const anchor = flaggable.batch.messages[flaggable.step.anchor]
+    return {
+      batchId: flaggable.batch.id,
+      probeId: flaggable.step.id,
+      source: probe?.source ?? (anchor ? lineText(anchor) : undefined),
+      prompt: probe?.prompt,
+    }
+  })()
+  const isFlagged =
+    flagItem !== null &&
+    flagged.some(
+      (item) =>
+        item.batchId === flagItem.batchId && item.probeId === flagItem.probeId
+    )
+  const toggleFlag = (): void => {
+    if (!flagItem) return
+    setFlagged((current) =>
+      isFlagged
+        ? current.filter(
+            (item) =>
+              item.batchId !== flagItem.batchId ||
+              item.probeId !== flagItem.probeId
+          )
+        : [...current, flagItem]
+    )
+  }
+
+  // A place belongs to the lesson it was left in. A lesson saved under a key
+  // starts fresh, and a removed lesson takes its place with it: a later lesson
+  // under the same key must not resume into the old one's position, outcomes
+  // or survey evidence (Codex, #1554).
+  //
+  // What this session holds is kept in memory, not re-read from storage: a
+  // write that fails (quota, privacy mode) is silent, and re-reading after it
+  // would lose the lesson just pasted or start an older one saved under its
+  // key (Codex, #1554). Storage only carries lessons to the next visit.
+  const saveLesson = useCallback(
+    (meta: TopikMetadata, lessonBatches: Array<ConversationBatch>): void => {
+      kept.save(meta, lessonBatches)
+      store.clear(meta.key)
+      setLocalLessons((current) =>
+        [
+          { meta, batches: lessonBatches, at: Date.now() },
+          ...current.filter((local) => local.meta.key !== meta.key),
+        ].slice(0, MAX_LOCAL_LESSONS)
+      )
+      select(meta.key)
+    },
+    [kept, store, select]
+  )
+
+  const removeLesson = useCallback(
+    (key: string): void => {
+      kept.remove(key)
+      store.clear(key)
+      setLocalLessons((current) =>
+        current.filter((local) => local.meta.key !== key)
+      )
+    },
+    [kept, store]
+  )
+
+  const promptFor = useCallback(
+    (request: Omit<LessonRequest, "survey">): string =>
+      buildLessonPrompt({ ...request, survey: surveyDigest(surveys.list()) }),
+    [surveys]
+  )
 
   // ── View ─────────────────────────────────────────────────────────────────
 
@@ -318,11 +581,14 @@ export function useHandheldLesson({
       topikKey !== null && !ready
         ? {
             topikKey,
-            error: batchesQuery.error
-              ? batchesQuery.error.message
-              : batches?.length === 0
-                ? "This material has no conversations yet."
-                : null,
+            error:
+              isLocal && localBatches === undefined
+                ? "This lesson is no longer on this device."
+                : batchesQuery.error
+                  ? batchesQuery.error.message
+                  : batches?.length === 0
+                    ? "This material has no conversations yet."
+                    : null,
           }
         : null,
     lesson: ready
@@ -343,6 +609,28 @@ export function useHandheldLesson({
           tally: tallyOf(context.plan, lesson),
         }
       : null,
+    survey: ready
+      ? {
+          pending: surveyPending,
+          // Only the misses whose probe is still the version missed.
+          candidates: stuckCandidates(
+            batches ?? [],
+            unpinMisses(batches ?? [], missed)
+          ),
+          submit: submitSurvey,
+          skip: skipSurvey,
+        }
+      : null,
+    generator: {
+      lessons: localLessons.map((local) => local.meta),
+      active: generating && topikKey === null,
+      open: (): void => setGenerating(true),
+      close: (): void => setGenerating(false),
+      prompt: promptFor,
+      save: saveLesson,
+      remove: removeLesson,
+    },
+    flag: flagItem ? { flagged: isFlagged, toggle: toggleFlag } : null,
     audio: { available: audioAvailable, speakingId, speak },
     select,
     leave,

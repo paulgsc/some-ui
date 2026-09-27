@@ -44,6 +44,7 @@ import {
   Check,
   CheckCircle2,
   ChevronRight,
+  Flag,
   RotateCcw,
   Volume2,
   XCircle,
@@ -74,6 +75,12 @@ type ProbeCardProps = {
     channel: ResponseChannel
   ) => void
   onNext: () => void
+  /**
+   * "This answer looks wrong": the key was written by the learner's model, and
+   * this is the one check on it that lives in the learner's loop (canon
+   * Rem. 4.7). Absent where nothing would carry the flag anywhere.
+   */
+  flag?: { flagged: boolean; toggle: () => void }
 }
 
 const Chip = ({
@@ -134,6 +141,7 @@ export const ProbeCard = ({
   onReplayAnchor,
   onAnswer,
   onNext,
+  flag,
 }: ProbeCardProps): JSX.Element => {
   const choice = probe.kind === "build" ? null : probe
   const options = useMemo(
@@ -337,9 +345,30 @@ export const ProbeCard = ({
       </div>
     )
     const dock = (
-      <Button className="h-12 w-full gap-2 rounded-2xl" onClick={onNext}>
-        Continue <ChevronRight className="size-5" />
-      </Button>
+      <>
+        <Button className="h-12 w-full gap-2 rounded-2xl" onClick={onNext}>
+          Continue <ChevronRight className="size-5" />
+        </Button>
+        {flag && (
+          <Button
+            variant="ghost"
+            aria-pressed={flag.flagged}
+            className="text-muted-foreground h-10 w-full gap-2 rounded-2xl text-sm"
+            onClick={flag.toggle}
+          >
+            {flag.flagged ? (
+              <>
+                <Flag className="size-4 fill-current" /> Flagged for your next
+                prompt
+              </>
+            ) : (
+              <>
+                <Flag className="size-4" /> This answer looks wrong
+              </>
+            )}
+          </Button>
+        )}
+      </>
     )
     return <StepLayout short={short} stage={stage} dock={dock} longForm />
   }

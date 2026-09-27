@@ -55,7 +55,7 @@ export type {
   Question,
   TopikFile,
 } from "./entity/topik-types"
-export { MORPHISM_RELATIONS, ProbeSchema } from "./entity/topik-types"
+export { GLOSS_RELATION, ProbeSchema } from "./entity/topik-types"
 
 export type {
   TopikMetadata,

@@ -919,6 +919,83 @@ before it can update a belief about $mu$ (Prop. 9.1).
   the present arrangement.
 ]
 
+#definition("3.3", name: "Evaluation report")[
+  An *evaluation report* is a tuple
+  $ epsilon = (c, w, n, d, s, a, t) $
+  in which the learner, at time $t$ and at the end of a unit of content $c$,
+  states whether the unit was worthwhile ($w$), how keen they are for the next
+  one ($n$), how its difficulty felt ($d$: too easy, about right, too hard),
+  which of its items were blocking them ($s$), and, in free text, what they
+  feel the teaching is making them into ($a$). Its
+  object is the teaching, not the learner's competence: it names no concept $k$
+  and carries no outcome $r$, so it is not an observation in the sense of
+  Definition 3.1.
+]
+
+#proposition("3.4", name: "An evaluation report is not evidence of mastery")[
+  No belief update may consume an evaluation report.
+]
+
+#proof[
+  "Too hard" is consistent with low $mu$ over the unit's concepts; with high
+  $mu$ under fatigue or disengagement in $z$; with a presentation that exceeded
+  a nuisance parameter (Def. 9.2); and with a unit that is simply not what the
+  learner wants to learn. These are Axiom 3.1's confounds, reported instead of
+  measured, and the report carries no outcome through which any of the three
+  resolutions of Corollary 3.1 could separate them. Folding it into $U$
+  (Def. 5.1) would write a posterior its own likelihood does not support ---
+  the failure Corollary 3.2 derives for the hint, and the one §10 records for
+  `packages/ui/topik`, where a learner-pressed `BATCH_PASSED` made the
+  evaluation learner self-report and the score decorative.
+]
+
+#remark("3.3", name: "What an evaluation report is for")[
+  The system makes no claim that a unit taught anything: by Theorem 3.1 a
+  single unit's outcomes cannot carry that claim, and this canon does not
+  pretend otherwise. It holds the weaker claim that persistence is how learning
+  happens, so what a unit owes the learner is a reason to come back --- and
+  the evaluation report is a measure of that, of how well the unit fit, not of
+  what it taught. It is input to content generation, which is class IV (Def. 8.1) and happens
+  at authoring time (Rem. 4.7): it steers which forms return, how long lines
+  run and which scenes are chosen, within a level the report does not set. Two
+  properties make it worth asking. It is cheap to falsify, because the
+  observation record of the same unit says whether "too easy" held. And it
+  carries what no observation record contains --- interest, frustration, and
+  what the learner is trying to become --- which is exactly what a generator
+  choosing among open-world outputs lacks. It is distinct from the self-report
+  of Corollary 3.1 (c), which reports on competence and may enter the channel
+  with its own likelihood; this one reports on the teaching and may not.
+]
+
+#corollary("3.4", name: "The handheld lesson asks for one")[
+  The handheld Topik valuation (Cor. 4.5) gains one step: when a unit is
+  completed, and before its closing tally, the learner is asked for an
+  evaluation report. The step is skippable, gates nothing, and changes neither
+  the tally nor any outcome. Its candidates for what was blocking are the
+  probes the learner missed on first presentation, offered as choices: a miss
+  is an outcome and remains one, and the selection is the report --- missing
+  an item is not the same as being blocked by it. The report is persisted, like the resume point
+  (Cor. 4.4 (iii)), outside the belief envelope, and losing one costs that
+  report and nothing else.
+]
+
+#remark("3.4", name: "The disputed key")[
+  An evaluation report may carry one further component: the set $f$ of items
+  whose authored answer the learner disputes --- "this answer looks wrong",
+  raised on an item already answered. Definition 3.3 is extended by $f$ and
+  otherwise unchanged. Its object is the content, not the learner: it says
+  that a candidate's authored validity (Rem. 4.7) may be mistaken, which is
+  the one judgement Remark 4.7 withholds from runtime. It is therefore not an
+  outcome, alters no outcome already recorded, and falls under
+  Proposition 3.4 like the rest of the report. Because it is about the item
+  rather than the unit, it outlives the rest: a learner who declines the
+  report at the end of the unit has still raised the dispute, and $f$ is kept
+  alone. Where content is authored under review (Prop. 8.1) the dispute is a
+  report to the reviewer; where it is authored by the learner's own model
+  (Def. 8.3) there is no reviewer, and $f$ is the only check on the key that
+  runs inside the loop.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = The Exercise: Instrument and Intervention
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1277,6 +1354,29 @@ rather than as *data*, and the remedy is to exhibit the data.
   valid or not; under $p_"credited" = "false"$ this is harmless, and it is
   recorded here so that the day $p_"credited"$ moves (Rem. 4.5) it is a known
   interaction with Proposition 3.1 rather than a discovered one.
+]
+
+#remark("4.8", name: "The relation set is open")[
+  Definition 4.6 is amended in one clause: a relation is not drawn from a
+  finite set. It is authored with the probe and named by its author --- tense
+  shift, negation and felicitous reply, but equally a reason connective
+  exchanged for another (-아서 for -(으)니까), reported speech, or a register
+  lowered by one step --- and the enumeration in Definition 4.6 is
+  illustrative. What is fixed is the invariant, not the list: (i) the probe
+  is never first-order, so its answer is never a gloss, the one relation the
+  system reserves by name; (ii) validity is authored and graded by lookup
+  (Rem. 4.7); (iii) the transformation is commensurate with the level of the
+  content, acting on grammar that level supports. The order of a probe
+  (Def. 4.7) is likewise authored with it, since whether a transformation
+  acts on structure or on use is known to its author and not to any list.
+
+  The closed set was a real defect, not a matter of taste. At the second
+  TOPIK level most of the grammar is clause-linking (-아서, -(으)니까, -는데,
+  -(으)면), for which the enumeration had no relation; a probe naming one was
+  dropped at load by Theorem 8.2's safeguard, which a closed list turned into
+  a silent filter on what could be taught. Which transformation a probe tests
+  is content, like its prompt, and the system that delivers it has no need to
+  know it.
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1905,6 +2005,31 @@ also survives its relaxation.
   then do with it.
 ]
 
+#remark("7.3", name: "What may leave the device")[
+  Axiom 7.1 (i) is amended in one respect, and the rest of Axiom 7.1 is
+  retained. Content (Axiom 1.2) may be *served* rather than bundled --- the
+  handheld Topik surface reads its units from the project's file host since
+  CNT1 --- because content is the same for every learner and says nothing
+  about any of them. Everything a learner writes stays on the device: belief,
+  the evidence ring, the resume point, evaluation reports and their $f$
+  (Rem. 3.4). None of it is sent, and nothing on the server may be keyed by
+  who a learner is. The one admissible exception is a learner's *own* content
+  (Def. 8.3), and only in this shape: (a) the learner asks for it, per unit;
+  (b) it is stored against an identity the learner claims, not a profile the
+  server builds; (c) it is capped per claimed identity, so it is a shelf and
+  not a library --- the server is not a catalogue of every unit anyone has
+  generated; (d) it holds content only, never a report, an observation or a
+  belief record; (e) losing it costs the learner a regeneration and nothing
+  else, so Theorem 7.2 holds with the server in the same role as local
+  storage. Nothing on the server may record which units a learner was given
+  or how they did on them: those are observations (Def. 3.1), and a governed
+  surface does not send them. A learner's own unit is never announced to
+  anyone else, and it does not enter a catalogue other learners read. A
+  counter that names no unit and no outcome --- how far a subject's reminders
+  have caught up with newly served content, say --- records neither, and this
+  remark does not reach it.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = The Semantic Boundary
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2048,6 +2173,56 @@ estimating a cost.
   and the first is separable in time rather than in space, which is why the
   cost of the project's constraint is a slower content pipeline rather than a
   weaker product.
+]
+
+#definition("8.3", name: "Learner-side authoring")[
+  *Learner-side authoring* is class IV generation performed by a model the
+  learner chooses and runs, at a moment the learner chooses, between units.
+  The application supplies the *grammar* --- the prompt, the content schema,
+  the probe invariants of Remark 4.8, and a digest of the learner's most
+  recent evaluation reports --- and the learner carries it to their model and
+  the reply back, as Definition 7.2's human transport. The application then
+  checks the reply deterministically: it parses it against the schema and
+  runs the same audit that gates reviewed content. What passes is content
+  under Axiom 1.2 in every respect but two: it is not shipped, and it has no
+  reference profile (Def. 5.2).
+]
+
+#proposition("8.4", name: "Learner-side authoring is authoring time")[
+  Learner-side authoring satisfies Theorem 8.1 and Theorem 8.2 unchanged, and
+  the review Proposition 8.1 relies on is replaced by a deterministic check
+  and the learner's dispute.
+]
+
+#proof[
+  The application never calls a model: the prompt leaves and the reply
+  returns through the learner, so no class I--II code path acquires an oracle
+  dependency, and Theorem 8.1 holds. The generation happens between units,
+  so Axiom 8.1's latency is in no one's critical path. With no model at
+  all, the learner has the served content and nothing is broken, which is
+  Theorem 8.2. Proposition 8.1 needs review to resolve non-determinism. The
+  schema and the audit are class I graders, which Proposition 8.3 prefers
+  wherever they exist. They decide everything about a unit except the
+  validity of its authored candidates, which is semantic. That judgement is
+  left to the learner's dispute (Rem. 3.4), which feeds the next generation
+  and not belief. No belief is at risk in the meantime: with no reference
+  profile the unit's observations cannot enter Definition 5.1, and the
+  handheld valuation credits nothing anyway ($p_"credited" = "false"$,
+  Cor. 4.4).
+]
+
+#corollary("8.2", name: "The handheld generation loop")[
+  The handheld Topik valuation (Cor. 4.5) gains a way to write a unit. The
+  learner picks a TOPIK level and, optionally, a scene, and copies a prompt
+  carrying the grammar and a digest of their last five evaluation reports ---
+  the delta, not the path. They paste their model's reply back. The audit
+  names each problem, and its findings are offered as a message for the
+  learner's model, so the loop that repairs a unit runs between the learner
+  and their model and not through the application. A unit that parses may be
+  kept on the device, in a store with a fixed capacity (Thm. 7.1), and
+  replayed at will: going through the same unit again is expected, because
+  persistence is the claim (Rem. 3.3). An item that has been answered can be
+  disputed (Rem. 3.4), and the dispute rides the next prompt.
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2486,6 +2661,15 @@ would cost.
   correct and already non-blocking, but it forfeits whatever efficiency a
   matched bridge would have bought over it.
 
++ *Learners' models cannot author within the audit.* If replies to the
+  generation prompt routinely fail the schema, or pass it only by dropping
+  most probes, then Definition 8.3's grammar is not enough to steer a model
+  the learner happens to have, and Corollary 8.2 delivers listening with few
+  checks. Cost: the grammar is tightened, or the loop is restricted to models
+  known to follow it. Proposition 8.4 is untouched, since a failed reply
+  breaks nothing, but the supply of content it promises is not delivered.
+  Detectable from the audit's own findings, which the learner already sees.
+
 // ═══════════════════════════════════════════════════════════════════════════
 = Amendment Protocol
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2575,6 +2759,43 @@ and amends the handheld valuation so its checks are second- and third-order
 probes and first-order checks are withheld (Cor. 4.5). Filed ahead of the
 `packages/ui/topik` probe renderer, in the same change.
 
+*v1.5 --- 2026-09-26.* Defines the evaluation report (Def. 3.3): the
+learner's own verdict on the teaching --- was it worthwhile, how keen they
+are for the next unit, how difficult it felt, what was blocking, what they
+feel it is making them into. Records that the system claims no unit taught
+anything, only that persistence is how learning happens, so the report
+measures fit rather than learning (Rem. 3.3). Shows
+it is not evidence of mastery and may enter no belief update (Prop. 3.4),
+distinguishes it from Corollary 3.1 (c)'s self-report on competence, and
+places it as input to authoring-time generation (Rem. 3.3). The handheld
+valuation gains a skippable report at the end of each unit (Cor. 3.4).
+Filed ahead of the `packages/ui/topik` survey step, in the same change.
+
+*v1.6 --- 2026-09-26.* Opens the relation set (Rem. 4.8): a probe's relation
+is authored and named with it, and Definition 4.6's enumeration becomes
+illustrative. The invariant that remains is order two or three, authored
+validity, and a transformation commensurate with the content's level; order
+is authored per probe. Records why: a closed set left most TOPIK-2 grammar
+(clause-linking connectives) unprobeable, and dropped silently any probe that
+named it. Filed ahead of the `packages/ui/topik` schema change, in the same
+change.
+
+*v1.7 --- 2026-09-26.* Defines learner-side authoring (Def. 8.3). The
+learner's own model generates a unit from a grammar the application supplies
+(the prompt, the schema, the probe invariants and a digest of recent
+evaluation reports). The learner carries the prompt out and the reply back.
+Shows this is authoring time: Theorems 8.1 and 8.2 stand, and review is
+replaced by a deterministic audit plus the learner's dispute (Prop. 8.4).
+Extends the evaluation report with the disputed key $f$ (Rem. 3.4). Amends
+Axiom 7.1 (i) to admit served content, and bounds what else may leave the
+device: learner state and reports never do; a learner's own units may, only
+on request, capped per claimed identity, and as content alone (Rem. 7.3).
+The handheld valuation gains the generation loop (Cor. 8.2). Adds a falsifier
+to §12. Filed with `packages/ui/topik`'s generation loop, which lands on
+the same branch one commit earlier and cites it, rather than ahead of it.
+Rem. 7.3 is filed ahead of the file host's lesson storage, which predates
+it and does not yet satisfy it.
+
 #pagebreak()
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2596,6 +2817,7 @@ probes and first-order checks are withheld (Cor. 4.5). Filed ahead of the
   [$tau$], [Time the entry was last supported by evidence (Def. 2.4, Thm. 5.3)],
   [$lambda$], [Stability; governs decay rate (Def. 5.4)],
   [$o = (k, e, r, Delta t, p, t)$], [Observation (Def. 3.1)],
+  [$epsilon = (c, w, n, d, s, a, t)$], [Evaluation report: the learner's verdict on the teaching (Def. 3.3)],
   [$Y(e, hat(B))$], [Evidential yield: expected uncertainty reduction (Def. 3.2)],
   [$G(e, S)$], [Intervention gain: expected improvement in true state (Def. 4.3)],
   [$e = (k, "obj", c, p, "term")$], [Exercise (Def. 4.1)],

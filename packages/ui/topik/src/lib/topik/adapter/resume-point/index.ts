@@ -12,6 +12,7 @@
  * resolves means the conversation's start (Thm. 1.1).
  */
 
+import type { SurveyItem } from "@topik/lib/topik/core/lesson-survey"
 import { z } from "zod"
 
 export const RESUME_STORAGE_KEY = "topik:handheld-resume"
@@ -34,6 +35,20 @@ export type ResumeOutcomes = {
   reviewed?: Array<string>
 }
 
+/**
+ * What the end-of-lesson survey will offer, gathered so far: the probes
+ * missed on first presentation in every conversation (by conversation id),
+ * and the answers flagged as keyed wrong (canon Cor. 3.4, Rem. 3.4). The
+ * outcomes above only cover the current conversation, so without this a
+ * learner who leaves and comes back would be surveyed on half a lesson.
+ * Like the outcomes, it goes with the point when the lesson finishes.
+ */
+export type ResumeSurveyEvidence = {
+  /** Pinned to the probe version missed, `id@fp` (`pinMisses`). */
+  missed: Record<number, Array<string>>
+  flagged: Array<SurveyItem>
+}
+
 export type ResumePoint = {
   /**
    * The conversation's authored id - what it is. `conversation` is only where
@@ -44,6 +59,7 @@ export type ResumePoint = {
   conversation: number
   messageId: string
   outcomes?: ResumeOutcomes
+  survey?: ResumeSurveyEvidence
   /** Epoch ms of the last write; orders eviction. */
   at: number
 }
@@ -63,6 +79,20 @@ const ResumeDocumentSchema = z.object({
           firstTry: z.record(z.string(), z.boolean()),
           review: z.array(z.string()),
           reviewed: z.array(z.string()).optional(),
+        })
+        .optional(),
+      // Optional: points written before the survey's evidence was kept.
+      survey: z
+        .object({
+          missed: z.record(z.coerce.number(), z.array(z.string())),
+          flagged: z.array(
+            z.object({
+              batchId: z.number(),
+              probeId: z.string(),
+              source: z.string().optional(),
+              prompt: z.string().optional(),
+            })
+          ),
         })
         .optional(),
       at: z.number(),

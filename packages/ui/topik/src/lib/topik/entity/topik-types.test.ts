@@ -60,6 +60,20 @@ describe("ProbeSchema", () => {
       true
     )
   })
+
+  it("takes any relation its author names, and refuses only a blank one (canon Rem. 4.8)", () => {
+    const named = (relation: string): boolean =>
+      ProbeSchema.safeParse({
+        ...oddOneOut,
+        options: [
+          { ...option("a", true), relation: "reason: -아서 → -(으)니까" },
+          { ...option("b", true), relation: "reported speech" },
+          { ...option("c", false), relation },
+        ],
+      }).success
+    expect(named("condition: -(으)면")).toBe(true)
+    expect(named("  ")).toBe(false)
+  })
 })
 
 describe("TopikFileSchema probes", () => {
