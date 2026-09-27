@@ -32,6 +32,7 @@ let display: Display | null = null
 beforeEach(() => {
   document.body.innerHTML = ""
   sendMessage.mockClear()
+  onHidden.mockClear()
   Object.defineProperty(globalThis, "browser", {
     value: {
       runtime: { sendMessage },
@@ -58,10 +59,14 @@ const card = (): Element | null => document.querySelector("#dc-root")
 const askedForBeats = (): boolean =>
   sendMessage.mock.calls.some(([m]) => m.type === "GET_BEATS")
 
-function mountDisplay(): Display {
+const onHidden = vi.fn((_hidden: boolean): void => {})
+
+function mountDisplay(hidden = false): Display {
   display = createDisplay({
     cardMeta: null,
     onCardMeta: () => {},
+    hidden,
+    onHidden,
     refetch: () => {},
   })
   return display
@@ -95,6 +100,53 @@ describe("the display builds a card only on a showing page", () => {
     setVisibility("hidden")
     expect(card()).toBeNull()
     expect(probe.counts()).toMatchObject({ intervals: 0, frames: 0 })
+  })
+})
+
+describe("a card toggled off holds nothing until toggled back on", () => {
+  it("releases the card on toggle-off, and ignores state until toggled on", async () => {
+    setVisibility("visible")
+    const d = mountDisplay()
+    d.apply(STATE)
+    await nextFrame()
+    expect(probe.counts().intervals).toBe(1)
+
+    d.toggleVisibility()
+    expect(onHidden).toHaveBeenLastCalledWith(true)
+    expect(card()).toBeNull()
+    expect(probe.counts()).toMatchObject({ intervals: 0, frames: 0 })
+
+    // A state change (another drama, an edit) or the tab being shown again
+    // builds nothing and asks for nothing while the card is off.
+    sendMessage.mockClear()
+    const [entry] = STATE.watchlist
+    if (!entry) throw new Error("fixture has no entry")
+    d.apply({ ...STATE, watchlist: [{ ...entry, rating: entry.rating + 1 }] })
+    setVisibility("hidden")
+    setVisibility("visible")
+    await nextFrame()
+    expect(card()).toBeNull()
+    expect(sendMessage).not.toHaveBeenCalled()
+
+    d.toggleVisibility()
+    expect(onHidden).toHaveBeenLastCalledWith(false)
+    await nextFrame()
+    expect(card()).not.toBeNull()
+    expect(askedForBeats()).toBe(true)
+  })
+
+  it("starts hidden in a tab where it was toggled off (a navigation)", async () => {
+    setVisibility("visible")
+    const d = mountDisplay(true)
+    d.apply(STATE)
+    await nextFrame()
+    expect(card()).toBeNull()
+    expect(askedForBeats()).toBe(false)
+    expect(probe.counts().intervals).toBe(0)
+
+    d.toggleVisibility()
+    await nextFrame()
+    expect(card()).not.toBeNull()
   })
 })
 

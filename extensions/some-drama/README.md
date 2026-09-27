@@ -36,6 +36,10 @@ episode it happened.
 | `Alt+Shift+]` / `[` | likelihood to finish up / down 10%         |
 | `Alt+Shift+D`       | show / hide the card                       |
 
+`Alt+Shift+D` is per tab and sticks: a card hidden in a tab stays hidden — and
+releases everything it held — through navigations in that tab until you press
+it again.
+
 Press the same mood again within 2 s to escalate that beat (●○○ → ●●○ → ●●●)
 instead of logging another. Clicking a mood on the card logs a beat the same
 way. The episode comes from the source page's title ("Ep 12", "12화", "第12集")

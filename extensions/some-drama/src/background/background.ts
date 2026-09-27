@@ -6,6 +6,9 @@
 //   drama_verdicts:   VerdictRecord[] — rating / likelihood-to-finish changes,
 //                                       for longitudinal tracking (bounded)
 //   drama_stream_sites: string[]      — sites the user marked as streaming sites
+//   drama_hidden_tabs: number[]       — tabs whose card the user toggled off;
+//                                       dropped as each tab closes, and all
+//                                       at browser start (tab ids restart)
 //   drama_moments:    legacy mood log; every record has timestamp 0, so it is
 //                     no longer read — left in place rather than deleted.
 //   drama_source_tab: legacy registered source tab; source tabs are now asked
@@ -32,6 +35,10 @@
 //                     finish; logs the change; broadcasts STATE_UPDATE (display
 //                     tabs refetch GET_VERDICTS when a verdict moved)
 //   GET_VERDICTS    → every logged verdict change of one drama
+//   GET_CARD_HIDDEN → whether the sender tab's card is toggled off
+//   SET_CARD_HIDDEN → toggle the sender tab's card off / on (Alt+Shift+D).
+//                     Kept here, not in the page, so a navigation in that tab
+//                     (a fresh content script) keeps the card hidden.
 //
 // Verdict changes are logged wherever they come from: ADJUST_VERDICT (hotkeys,
 // the card) and UPSERT_ENTRY (popup edits, and a new drama's first values).
@@ -82,6 +89,7 @@ const VERDICTS_KEY = "drama_verdicts"
 const STREAM_SITES_KEY = "drama_stream_sites"
 const WATCHLIST_KEY = "drama_watchlist"
 const ACTIVE_ID_KEY = "drama_active_id"
+const HIDDEN_TABS_KEY = "drama_hidden_tabs"
 const MAX_WATCHLIST = 5
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -165,8 +173,12 @@ function isBackgroundMessage(v: unknown): v is MessageBridge {
     case "GET_VERDICTS": {
       return typeof v.dramaId === "string"
     }
-    case "GET_STATE": {
+    case "GET_STATE":
+    case "GET_CARD_HIDDEN": {
       return true
+    }
+    case "SET_CARD_HIDDEN": {
+      return typeof v.hidden === "boolean"
     }
     case "UPSERT_ENTRY": {
       return isRecord(v.entry) && typeof v.entry.title === "string"
@@ -264,13 +276,21 @@ function verdictMoves(
 // operation also publishes (STATE_UPDATE, BEAT_LOGGED) before it leaves the
 // queue, so tabs hear changes in the order they were written: a slow first
 // broadcast can't land after the one that superseded it.
-let writes: Promise<unknown> = Promise.resolve()
-
-function serialized<T>(work: () => Promise<T>): Promise<T> {
-  const run = writes.then(work, work)
-  writes = run.catch(() => undefined)
-  return run
+function queue(): <T>(work: () => Promise<T>) => Promise<T> {
+  let tail: Promise<unknown> = Promise.resolve()
+  return <T>(work: () => Promise<T>): Promise<T> => {
+    const run = tail.then(work, work)
+    tail = run.catch(() => undefined)
+    return run
+  }
 }
+
+const serialized = queue()
+
+// The hidden-tabs list has a queue of its own: a toggle must not wait behind
+// a beat's playback lookup, and a page loading right after a toggle must read
+// what the toggle wrote.
+const hiddenTabsSerialized = queue()
 
 // ── Source tabs ──────────────────────────────────────────────────────────────
 
@@ -409,6 +429,28 @@ async function broadcast(
 
 function broadcastState(state: WatchlistState): Promise<void> {
   return broadcast({ type: "STATE_UPDATE", payload: state })
+}
+
+// ── Hidden cards ──────────────────────────────────────────────────────────────
+
+async function loadHiddenTabs(): Promise<Array<number>> {
+  const r = await browser.storage.local.get(HIDDEN_TABS_KEY)
+  const stored = r[HIDDEN_TABS_KEY]
+  return Array.isArray(stored)
+    ? stored.filter((id): id is number => typeof id === "number")
+    : []
+}
+
+function setTabHidden(tabId: number, hidden: boolean): Promise<void> {
+  return hiddenTabsSerialized(async () => {
+    const tabs = await loadHiddenTabs()
+    if (tabs.includes(tabId) === hidden) return
+    await browser.storage.local.set({
+      [HIDDEN_TABS_KEY]: hidden
+        ? [...tabs, tabId]
+        : tabs.filter((id) => id !== tabId),
+    })
+  })
 }
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
@@ -682,8 +724,41 @@ async function handleGetVerdicts(
   }
 }
 
+async function handleGetCardHidden(
+  tabId: number | undefined,
+  sendResponse: Reply<"GET_CARD_HIDDEN">
+): Promise<void> {
+  try {
+    // Only a tab has a card; the popup asking gets "shown".
+    const hidden =
+      tabId !== undefined &&
+      (await hiddenTabsSerialized(loadHiddenTabs)).includes(tabId)
+    sendResponse({ ok: true, hidden })
+  } catch (err) {
+    sendResponse({ ok: false, error: String(err) })
+  }
+}
+
+async function handleSetCardHidden(
+  tabId: number | undefined,
+  hidden: boolean,
+  sendResponse: Reply<"SET_CARD_HIDDEN">
+): Promise<void> {
+  try {
+    if (tabId === undefined) {
+      sendResponse({ ok: false, error: "Only a tab has a card to hide." })
+      return
+    }
+    await setTabHidden(tabId, hidden)
+    sendResponse({ ok: true })
+  } catch (err) {
+    sendResponse({ ok: false, error: String(err) })
+  }
+}
+
 async function dispatch(
   message: MessageBridge,
+  sender: browser.runtime.MessageSender,
   sendResponse: Reply<MessageBridge["type"]>
 ): Promise<void> {
   const { type: t } = message
@@ -715,6 +790,12 @@ async function dispatch(
     case "GET_VERDICTS": {
       return handleGetVerdicts(message.dramaId, sendResponse)
     }
+    case "GET_CARD_HIDDEN": {
+      return handleGetCardHidden(sender.tab?.id, sendResponse)
+    }
+    case "SET_CARD_HIDDEN": {
+      return handleSetCardHidden(sender.tab?.id, message.hidden, sendResponse)
+    }
     default: {
       t satisfies never
       assertNever(t)
@@ -727,15 +808,30 @@ async function dispatch(
 browser.runtime.onMessage.addListener(
   (
     msg: unknown,
-    _sender: browser.runtime.MessageSender,
+    sender: browser.runtime.MessageSender,
     sendResponse: Reply<MessageBridge["type"]>
   ): boolean => {
     if (!isBackgroundMessage(msg)) return false
 
-    void dispatch(msg, sendResponse)
+    void dispatch(msg, sender, sendResponse)
     return true
   }
 )
+
+// ── Tab lifetime ──────────────────────────────────────────────────────────────
+// A hidden card's entry lives as long as its tab. Tab ids are reused after a
+// browser restart, so the whole list goes at startup: a new session's tab
+// must not inherit an old one's toggle.
+
+browser.tabs.onRemoved.addListener((tabId) => {
+  void setTabHidden(tabId, false).catch(() => undefined)
+})
+
+browser.runtime.onStartup.addListener(() => {
+  void hiddenTabsSerialized(() =>
+    browser.storage.local.remove(HIDDEN_TABS_KEY)
+  ).catch(() => undefined)
+})
 
 // ── Install ───────────────────────────────────────────────────────────────────
 

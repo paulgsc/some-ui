@@ -25,7 +25,8 @@
 // one place, the ActiveScope's start(), and runs only while no hold is on:
 // "entering" (before the first frame), "min", "hidden". Any hold disposes
 // that scope, so there is no stop path to keep in step with the start path.
-// A card on a page that is not showing is never built at all (display.ts).
+// A card on a page that is not showing, or one the user toggled off, is never
+// built at all (display.ts); "hidden" is for a card held on screen hidden.
 
 import { CapturePanel } from "@drama/components/capture-panel"
 import { DragController } from "@drama/components/drag-controller"

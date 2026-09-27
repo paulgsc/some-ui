@@ -159,6 +159,11 @@ export type MessageBridge =
   | { type: "SET_STREAM_SITE"; site: string; streaming: boolean }
   | { type: "ADJUST_VERDICT"; field: VerdictField; change: VerdictChange }
   | { type: "GET_VERDICTS"; dramaId: string }
+  // The sender tab's card toggle (Alt+Shift+D). Per tab, keyed by the
+  // sender's tab id, so it outlives the page: a navigation in a tab where the
+  // card was hidden keeps it hidden until it is toggled back on.
+  | { type: "GET_CARD_HIDDEN" }
+  | { type: "SET_CARD_HIDDEN"; hidden: boolean }
 
 // Wire envelope — what background.ts actually sends back for each message type.
 // `ok: false` is uniform across all variants (error path), so it's factored out.
@@ -176,6 +181,8 @@ export type MessageResponseMap = {
   ADJUST_VERDICT: Envelope<{ state: WatchlistState }>
   // Every logged verdict change of one drama, oldest first.
   GET_VERDICTS: Envelope<{ verdicts: Array<VerdictRecord> }>
+  GET_CARD_HIDDEN: Envelope<{ hidden: boolean }>
+  SET_CARD_HIDDEN: Envelope<object>
 }
 
 /** Background → content-script broadcast after every watchlist mutation. */

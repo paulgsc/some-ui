@@ -24,7 +24,10 @@
 //      spotlights the change on every display tab.
 //   6. `toggle-visibility` command (Alt+Shift+D, bound via the commons
 //      keybinding typestate) — toggle card visibility, or refetch state if
-//      there is no card (background was evicted on page load).
+//      there is no card (background was evicted on page load). The toggle is
+//      this tab's, kept by the background (SET_CARD_HIDDEN) and read back on
+//      load (GET_CARD_HIDDEN): a hidden card stays hidden — and unbuilt —
+//      across navigations in the tab until the user toggles it back on.
 //
 // Display typestate:
 //   LOADING — awaiting first state
@@ -112,6 +115,9 @@ async function main(): Promise<void> {
   let role: "source" | "display" | null = null
   let display: Display | null = null
   let cardMeta: PersistedCardMeta | null = await loadCardMeta()
+  // This tab's card toggle, read with the state; a display built later (a
+  // role flip) starts from it.
+  let cardHidden = false
 
   /** Resolve this tab's role from the latest state, then hand state on. */
   const apply = (state: WatchlistState): void => {
@@ -131,6 +137,17 @@ async function main(): Promise<void> {
           onCardMeta: (meta) => {
             cardMeta = meta
           },
+          hidden: cardHidden,
+          onHidden: (hidden) => {
+            cardHidden = hidden
+            sendMsg({ type: "SET_CARD_HIDDEN", hidden })
+              .then((resp) => {
+                if (!resp.ok) log.error("SET_CARD_HIDDEN failed:", resp.error)
+              })
+              .catch((err: unknown) =>
+                log.error("SET_CARD_HIDDEN failed:", err)
+              )
+          },
           refetch: () => void refresh(),
         })
       }
@@ -139,12 +156,18 @@ async function main(): Promise<void> {
     display?.apply(state)
   }
 
-  // GET_STATE, retried once after 300 ms for the race where the
-  // non-persistent background script is still waking up.
+  // GET_STATE (with this tab's card toggle, so a hidden card is never built
+  // first), retried once after 300 ms for the race where the non-persistent
+  // background script is still waking up.
   const refresh = async (retryOnFailure = true): Promise<void> => {
     try {
-      const resp = await sendMsg({ type: "GET_STATE" })
+      const [resp, toggle] = await Promise.all([
+        sendMsg({ type: "GET_STATE" }),
+        sendMsg({ type: "GET_CARD_HIDDEN" }),
+      ])
       if (!resp.ok) throw new Error(resp.error)
+      if (!toggle.ok) throw new Error(toggle.error)
+      cardHidden = toggle.hidden
       apply(resp.state)
     } catch (err) {
       log.error("GET_STATE failed:", err)
