@@ -153,6 +153,15 @@ function stubModule(
  * schemas and loaders are therefore identical across profiles, and a stubbed
  * route renders not-found by way of its gate instead of vanishing from the
  * router's types.
+ *
+ * What the build, CI and tests enforce, and what they cannot, is in
+ * AUDIENCES.md. The review invariants, one line each:
+ *
+ *   A1  a gated route's `loaderDeps`, `search` and `context` use nothing from
+ *       a gated workspace's main entry (only its `/contract`)
+ *   A2  a gated workspace's contract module imports values only from `zod`
+ *       and its own contract modules
+ *   A3  public UI links to a gated route only behind `hasAudience(...)`
  */
 export function audiencePlugin<P extends Record<string, BuildProfile>>(
   options: AudiencePluginOptions<P>

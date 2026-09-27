@@ -1,4 +1,5 @@
 import { resolve } from "node:path"
+import type { GatedAudience } from "@some-ui/vite-config"
 import { audiencePlugin } from "@some-ui/vite-config"
 import { defineProfiles } from "@some-ui/vite-config/audience"
 import type { Plugin } from "vite"
@@ -24,14 +25,24 @@ const profiles = defineProfiles({
   pages: { audiences: ["public"] },
 })
 
+/** Directories whose immediate children carry `package.json#someUi`. */
+export const workspaceRoots = [
+  resolve(import.meta.dirname, "../../packages/ui"),
+] as const
+
 /**
- * www's `audiencePlugin`, shared by vite.config.ts and vitest.config.ts.
- *
- * `gates` is where each gated audience may be imported from: only routes
- * under `_lan/`, whose layout sends a visit to not-found in builds that stub
- * the audience out. The build fails on an import from anywhere else, in every
- * profile.
+ * Where each gated audience's workspaces may be imported from: only routes
+ * under `_lan/`, whose layout (`_lan.tsx`, beside the directory) sends a visit
+ * to not-found in builds that stub the audience out. The build fails on an
+ * import from anywhere else, in every profile; and
+ * `src/routes/__tests__/audience-gates.test.ts` fails if a gate directory has
+ * no guarded layout, or a route under it loads without its audience.
  */
+export const gates: Readonly<Record<GatedAudience, ReadonlyArray<string>>> = {
+  lan: ["src/routes/_dashboard/_lan"],
+}
+
+/** www's `audiencePlugin`, shared by vite.config.ts and vitest.config.ts. */
 export function buildAudiencePlugin(
   profile: string | undefined = process.env.SOME_UI_PROFILE
 ): Plugin {
@@ -39,7 +50,7 @@ export function buildAudiencePlugin(
     profiles,
     profile,
     defaultProfile: "lan",
-    workspaceRoots: [resolve(import.meta.dirname, "../../packages/ui")],
-    gates: { lan: ["src/routes/_dashboard/_lan"] },
+    workspaceRoots,
+    gates,
   })
 }

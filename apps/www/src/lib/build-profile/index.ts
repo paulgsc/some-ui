@@ -4,6 +4,9 @@ import { notFound } from "@tanstack/react-router"
 // typed by @some-ui/vite-config/build-profile-client; there is no file for the
 // import resolver to find. This module is its only importer on purpose: UI
 // that needs to ask (a nav link to a LAN page, say) re-exports from here.
+//
+//   A3  public UI links to a gated route only behind `hasAudience(...)`
+//       (packages/some-vite-config/AUDIENCES.md)
 // eslint-disable-next-line import/no-unresolved -- vite virtual module, see above
 import { hasAudience } from "virtual:build-profile"
 

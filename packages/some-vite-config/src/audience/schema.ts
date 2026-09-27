@@ -38,12 +38,17 @@ export type SomeUiManifestField = z.infer<typeof SomeUiManifestFieldSchema>
 /**
  * The one subpath of an excluded workspace that is never stubbed.
  *
- * Route definitions run code before any guard can: TanStack evaluates a
- * route's `validateSearch` while matching the URL. Anything a route needs at
- * that point - search schemas, param parsers, the types they infer - lives in
- * the workspace's `./contract` export, which ships in every profile and must
- * stay small. Components, queries and everything heavy live behind the main
- * entry and are stubbed out of profiles that don't include the audience.
+ * A route under a gate runs some code before its guard: `loaderDeps`,
+ * `search.middlewares` and `context` among it, and a stub called there fails
+ * matching before the guard can send the visit to not-found (AUDIENCES.md,
+ * A1). What that code needs - search schemas, param parsers, the types they
+ * infer - comes from the workspace's `./contract` export, which ships in every
+ * profile and so must stay small (A2). Components, queries and everything
+ * heavy live behind the main entry and are stubbed out of profiles that don't
+ * include the audience.
+ *
+ *   A2  a gated workspace's contract module imports values only from `zod`
+ *       and its own contract modules
  */
 export const CONTRACT_SUBPATH = "/contract"
 
