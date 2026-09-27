@@ -243,61 +243,114 @@ workspace that has adopted the primitives. `some-drama` is the reference: its
 `tests/card-lifetime.test.ts` and `tests/display-lifetime.test.ts` drive the
 card through every transition and assert what is still running.
 
-**What cannot be guarded, and why.** These are the parts of the idiom no lint
-rule or test here can regress against. They are named so that a change near
-them is made knowingly, not so that they are forgotten.
+**Invariants L1–L7: what the rules and tests above cannot check.** Each is
+written for review, human or bot, one hunk at a time: a claim, what in a
+diff falsifies it, where it applies, and why it is a review invariant rather
+than a lint rule or test. A reviewer checks the hunk against the claim; no
+invariant asks for exploring states the diff does not touch. "Adopted
+workspaces" means those with `require-scoped-lifetime` at `error` (today:
+`some-drama`). Each held on every adopted workspace when it was written; a
+violation is a regression, not debt.
 
-1. **Whether the owner ends at the right time.** A lint rule sees a call site.
-   A `signal` or a `Disposables` proves a resource _has_ an owner, not that the
-   owner ends on every transition that should end it. A scope disposed only at
-   unload satisfies both rules and is exactly the shape of the 200-tab
-   incident (see `require-named-lifetime`). "Which transitions should stop
-   this?" has its answer in whichever module decides activity, not at the call
-   site, so it is a design question, not a syntactic one. _Hold the line
-   by:_ acquiring what runs while active inside an `ActiveScope`'s `start`, and
-   naming every reason to stop as a hold there.
-2. **Transitions nobody wrote a test for.** A lifetime suite checks the states
-   it drives. A new way to go dormant (a new size, a new mode) is untested
-   until someone adds it; no harness can enumerate states it was not told
-   about. _Hold the line by:_ adding each new hold to the suite in the same
-   change that adds it to the `ActiveScope`.
-3. **Exemptions are honour-system.** An `eslint-disable` for either rule
-   passes with any comment; a linter cannot judge whether the prose names a
-   real lifetime. Every exemption stays greppable
-   (`rg "eslint-disable.*require-(named|scoped)-lifetime"`) and must name
-   what ends the resource. Page-lifetime listeners in a content script's own
-   entry point are the legitimate case.
-4. **Resources the rules do not recognise.** `MutationObserver`,
-   `ResizeObserver`, `IntersectionObserver`, `WebSocket`, `BroadcastChannel`,
-   `browser.*.onX.addListener`, listeners on long-lived non-page targets (a
-   `MediaQueryList`, a vendor element that outlives the overlay), and any call
-   through an alias (`const d = document; d.addEventListener(…)`). The rules
-   are syntactic on purpose: widening them either flags correct one-shot uses
-   (why `matchMedia` was dropped from `require-named-lifetime`) or needs type
-   and flow analysis they do not do. _Hold the line by:_ acquiring these
-   through a `Disposables` too — `life.add(() => observer.disconnect())`.
-5. **CSS the harness cannot see.** `ungatedInfiniteAnimations` reads the
-   stylesheet source against the DOM a test builds — jsdom runs no CSS. It
-   does not see animations started from JS (`element.animate`), elements a
-   test never mounts, or effects that never end without being `infinite`
-   (a `transition` re-triggered by a loop). _Hold the line by:_ putting every
-   animated element under the overlay root's dormant gate, and creating any
-   that cannot live there (fixed-position layers) inside the `ActiveScope`.
-6. **What only a real browser does.** Whether a page is showing comes from the
-   browser: an OS window occluded behind another may be reported hidden (and
-   stop painting, which matters for a stream-captured overlay), and a page
-   restored from the back/forward cache comes back without re-running the
-   content script. Unit tests stub `visibilityState`; neither case can be
-   simulated in jsdom, and a Firefox MV2 extension cannot be loaded into
-   Playwright. _Hold the line by:_ keeping activity decided in one place
-   (`watchPageShowing`), so a real-browser check has one seam to test.
-7. **Coverage that depends on CI wiring.** `@some-extension/common`'s own
-   unit suite runs on trunk only: PR CI excludes `extensions/**` from its node
-   job, and the extension matrix skips workspaces with no manifest. A
-   regression in the primitives is caught on a PR only through a workspace
-   suite that exercises them. And nothing forces a workspace to have a
-   lifetime suite at all — adoption is per workspace (tracked in the issue
-   that moves the other workspaces from warn to error).
+**L1: A repeating resource lives on the active scope.**
+
+- _Claim:_ in a class that owns an `ActiveScope`, every `.interval(` and
+  `.loop(` call, and every `spawn*(` call, acquires on the `scope` its
+  `start` receives or on a child of that scope.
+- _Falsified by_ a hunk, in such a file, that calls `.interval(` or `.loop(`
+  on the class's own lifetime (`this.life`) or on a `new Disposables()`, or
+  calls `spawn*(` outside `start`.
+- _Scope:_ adopted workspaces. One-shot `.frame(` and `.timeout(` on the
+  class's own lifetime are fine: they end by themselves.
+- _Why not lint or tests:_ both rules can see that a resource has an owner,
+  but not whether it is the right owner. That is a fact about the component,
+  and tests only cover the states they drive (L2).
+
+**L2: Every dormant reason is tested.**
+
+- _Claim:_ every hold name an `ActiveScope` uses appears in the title of an
+  `it(` in that workspace's lifetime suite (`tests/*lifetime*.test.ts`). The
+  hold names are the type argument, the initial holds, and each
+  `.hold(`/`.release(` literal. Substrings count ("min" is in "minimised").
+- _Falsified by_ a hunk that adds a hold name with no `it(` title containing
+  it anywhere in the workspace's suite after the diff.
+- _Scope:_ adopted workspaces.
+- _Why not lint or tests:_ a harness only drives the states it is given,
+  and no test can list the dormant states a component will grow later.
+
+**L3: An exemption names what ends the resource.**
+
+- _Claim:_ every `eslint-disable` of `require-named-lifetime` or
+  `require-scoped-lifetime` has a line starting `Lifetime:` in the unbroken
+  `//` comment block directly above it, saying what ends the resource.
+- _Falsified by_ a hunk that adds such a directive without that line.
+- _Scope:_ the whole repo. All 12 exemptions met it when it was written.
+- _Why not lint or tests:_ whether the `Lifetime:` line is true needs a
+  person to read it. Whether it exists is mechanical, so this could become a
+  lint rule; until it does, the review checks it.
+
+**L4: A resource the rules do not recognise is still owned.**
+
+- _Claim:_ outside a script's entry module (`background.ts`, `content.ts`,
+  `popup.ts`), each of these either registers its release with `<life>.add(`
+  in the same function, or carries a `Lifetime:` comment as in L3:
+  - `new MutationObserver(`, `ResizeObserver(`, `IntersectionObserver(` or
+    `PerformanceObserver(`;
+  - `new WebSocket(`, `BroadcastChannel(` or `EventSource(`;
+  - `.onX.addListener(` on `browser.*` or `chrome.*`.
+- _Falsified by_ a hunk that adds one of these in a non-entry module whose
+  function has neither.
+- _Scope:_ adopted workspaces. Entry modules are exempt because page or
+  worker lifetime is the right lifetime there.
+- _Why not lint or tests:_ the rules are syntactic on purpose. Adding these
+  kinds would flag correct one-shot and entry-point uses; that is why
+  `matchMedia` was dropped. Aliased calls (`const d = document`) are out of
+  reach altogether.
+
+**L5: Every infinite animation is behind the dormant gate.**
+
+- _Claim:_ three things hold:
+  - the workspace's content stylesheet has a `<root>.<dormant> *` rule with
+    `animation: none`;
+  - every element that gets an `infinite` animation either sits inside the
+    overlay root in the DOM, or is created inside `ActiveScope.start` (or by
+    a function that only `start` calls);
+  - `.animate(` is called only inside `start`.
+- _Falsified by_ a hunk that:
+  - removes or weakens the gate rule;
+  - gives an element appended outside the overlay root an `infinite`
+    animation, when that element is created somewhere other than `start`;
+  - or adds `.animate(` outside `start`.
+- _Scope:_ adopted workspaces with an overlay (today: some-drama's
+  `#dc-root.dc-dormant`).
+- _Why not lint or tests:_ jsdom runs no CSS. `ungatedInfiniteAnimations`
+  compares the stylesheet source to the DOM a test builds, so it cannot see
+  elements a test never builds, animations started from JavaScript, or a
+  transition that a loop keeps restarting.
+
+**L6: Only one module decides whether the page is showing.**
+
+- _Claim:_ shipped code reads `document.visibilityState`, `document.hidden`
+  or `document.fullscreenElement` only through `isPageShowing` or
+  `watchPageShowing`.
+- _Falsified by_ a hunk that adds such a read anywhere else.
+- _Scope:_ adopted workspaces.
+- _Why not lint or tests:_ this one is mechanical and could become a
+  `no-restricted-syntax` rule. What stays out of reach is what "showing"
+  means in a real browser: an OS window covered by another can report hidden
+  and stop painting, and a page restored from the back/forward cache comes
+  back without re-running the content script. jsdom can simulate neither,
+  and Playwright cannot load a Firefox MV2 extension. Keeping one seam means
+  a real-browser check has one place to cover.
+
+**L7 (not reviewable): coverage that depends on CI wiring.**
+
+- _Statement:_ `@some-extension/common`'s own unit suite runs on trunk only.
+  PR CI filters `extensions/**` out of its test job, and the extension matrix
+  skips workspaces without a manifest. On a PR, a regression in the
+  primitives is caught only by a workspace suite that exercises them.
+- _Not falsifiable from a diff:_ a reviewer should not flag it on a hunk. It
+  is tracked in #1552, and changes only when a workflow does.
 
 ### Migrations are per-workspace and isolated
 
