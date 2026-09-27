@@ -115,6 +115,13 @@ describe("parseTags and keyProblem", () => {
     expect(keyProblem("week-40.a")).toBeNull()
     expect(keyProblem("week_40~a")).toBeNull()
   })
+
+  it("refuses a key that collides with another route or lesson", () => {
+    expect(keyProblem("manifest")).not.toBeNull()
+    expect(keyProblem("week-40.json")).not.toBeNull()
+    expect(keyProblem("week-40.JSON")).not.toBeNull()
+    expect(keyProblem("a?b")).not.toBeNull()
+  })
 })
 
 function intakeOk(text: string): Parameters<typeof servedBody>[0] {

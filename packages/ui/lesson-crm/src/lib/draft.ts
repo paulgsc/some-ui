@@ -55,9 +55,12 @@ export function keyProblem(key: string): string | null {
   if (!/^[A-Za-z0-9._~-]+$/.test(key)) {
     return "A key uses only letters, digits, and - . _ ~"
   }
-  if (key === "manifest" || key === "manifest.json") {
-    return "That key is taken by the manifest route."
+  // `<key>.json` and `<key>` are the same lesson to a learner, so a key
+  // that ends in `.json` would collide with its stem.
+  if (key.toLowerCase().endsWith(".json")) {
+    return "A key doesn't end in .json; the route adds it."
   }
+  if (key === "manifest") return "That key is taken by the manifest route."
   return null
 }
 
