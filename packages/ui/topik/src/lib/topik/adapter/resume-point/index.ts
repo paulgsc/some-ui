@@ -44,6 +44,7 @@ export type ResumeOutcomes = {
  * Like the outcomes, it goes with the point when the lesson finishes.
  */
 export type ResumeSurveyEvidence = {
+  /** Pinned to the probe version missed, `id@fp` (`pinMisses`). */
   missed: Record<number, Array<string>>
   flagged: Array<SurveyItem>
 }

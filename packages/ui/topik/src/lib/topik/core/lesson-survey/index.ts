@@ -13,7 +13,7 @@
  */
 
 import type { ConversationBatch } from "@topik/lib/topik"
-import { anchorOf } from "@topik/lib/topik/core/lesson-track"
+import { anchorOf, probeFingerprint } from "@topik/lib/topik/core/lesson-track"
 
 export const WORTHWHILE = ["yes", "somewhat", "no"] as const
 export type Worthwhile = (typeof WORTHWHILE)[number]
@@ -94,6 +94,54 @@ export function stuckCandidates(
     })
   })
   return candidates.slice(-MAX_STUCK_CANDIDATES)
+}
+
+/**
+ * Misses, pinned to the version of each probe that was missed: `id@fp`, the
+ * way the resume point's outcomes are keyed. A miss whose probe is no longer
+ * in its conversation is not kept.
+ */
+export function pinMisses(
+  batches: Array<ConversationBatch>,
+  missed: Record<number, Array<string>>
+): Record<number, Array<string>> {
+  return Object.fromEntries(
+    batches.flatMap((batch) => {
+      const ids = missed[batch.id]
+      if (!ids?.length) return []
+      const pinned = ids.flatMap((id) => {
+        const probe = batch.probes?.find((candidate) => candidate.id === id)
+        return probe ? [`${id}@${probeFingerprint(probe)}`] : []
+      })
+      return pinned.length > 0 ? [[batch.id, pinned]] : []
+    })
+  )
+}
+
+/**
+ * The pinned misses that still describe the lesson as it is now. A probe
+ * revised under an unchanged id was not the one missed, so its miss is
+ * dropped rather than offered as blocking and carried into the next prompt
+ * (Codex, #1554). An unpinned id, written before misses were pinned, cannot
+ * be checked and is dropped too.
+ */
+export function unpinMisses(
+  batches: Array<ConversationBatch>,
+  pinned: Record<number, Array<string>>
+): Record<number, Array<string>> {
+  return Object.fromEntries(
+    batches.flatMap((batch) => {
+      const current = new Set(
+        (batch.probes ?? []).map(
+          (probe) => `${probe.id}@${probeFingerprint(probe)}`
+        )
+      )
+      const ids = (pinned[batch.id] ?? []).flatMap((key) =>
+        current.has(key) ? [key.slice(0, key.lastIndexOf("@"))] : []
+      )
+      return ids.length > 0 ? [[batch.id, ids]] : []
+    })
+  )
 }
 
 /** A kept report: the survey, which lesson it was about, and when. */

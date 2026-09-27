@@ -1,7 +1,13 @@
 import { FIXTURE_BATCHES } from "@topik/components/topik/handheld/handheld-lesson/fixture"
 import { describe, expect, it } from "vitest"
 
-import { isBlank, MAX_STUCK_CANDIDATES, stuckCandidates } from "."
+import {
+  isBlank,
+  MAX_STUCK_CANDIDATES,
+  pinMisses,
+  stuckCandidates,
+  unpinMisses,
+} from "."
 
 describe("stuckCandidates", () => {
   it("offers the missed probes, in lesson order, with what they were about", () => {
@@ -49,5 +55,31 @@ describe("isBlank", () => {
     expect(isBlank({ stuck: [], difficulty: "right" })).toBe(false)
     expect(isBlank({ stuck: [], enthusiasm: "drained" })).toBe(false)
     expect(isBlank({ stuck: [{ batchId: 1, probeId: "p" }] })).toBe(false)
+  })
+})
+
+describe("pinned misses (Codex, #1554)", () => {
+  it("keeps a miss only while its probe is the version that was missed", () => {
+    const pinned = pinMisses(FIXTURE_BATCHES, {
+      1: ["c1-request-forms", "gone"],
+      2: ["c2-promise-forms"],
+    })
+    expect(pinned[1]).toHaveLength(1)
+    expect(unpinMisses(FIXTURE_BATCHES, pinned)).toEqual({
+      1: ["c1-request-forms"],
+      2: ["c2-promise-forms"],
+    })
+
+    const revised = structuredClone(FIXTURE_BATCHES)
+    const probe = revised[1]?.probes?.find(
+      (candidate) => candidate.id === "c2-promise-forms"
+    )
+    if (!probe) throw new Error("fixture lost c2-promise-forms")
+    probe.prompt = "Which one is wrong?"
+    expect(unpinMisses(revised, pinned)).toEqual({ 1: ["c1-request-forms"] })
+    // Bare ids, from before misses were pinned, cannot be checked.
+    expect(unpinMisses(FIXTURE_BATCHES, { 1: ["c1-request-forms"] })).toEqual(
+      {}
+    )
   })
 })

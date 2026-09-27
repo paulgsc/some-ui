@@ -9,6 +9,7 @@ import type { StorageLike } from "@topik/lib/topik/adapter/resume-point"
 import { createResumeStore } from "@topik/lib/topik/adapter/resume-point"
 import type { SurveyStore } from "@topik/lib/topik/adapter/survey-store"
 import { createSurveyStore } from "@topik/lib/topik/adapter/survey-store"
+import { pinMisses } from "@topik/lib/topik/core/lesson-survey"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { HandheldLesson } from "."
@@ -270,7 +271,9 @@ describe("HandheldLesson", () => {
 
   describe("the survey at the end of a lesson (canon Cor. 3.4)", () => {
     /** Resume into the last conversation, miss one probe, and finish. */
-    const finishWithAMiss = async (surveys: SurveyStore): Promise<void> => {
+    const finishWithAMiss = async (
+      surveys: SurveyStore
+    ): Promise<StorageLike> => {
       const storage = memoryStorage()
       createResumeStore(storage).set(FIXTURE_TOPIK_KEY, {
         batchId: 2,
@@ -292,7 +295,38 @@ describe("HandheldLesson", () => {
       click("Check")
       click(/Continue/)
       click(/Finish/)
+      return storage
     }
+
+    it("keeps the lesson's place while its survey is open, and lets it go once answered (Codex, #1554)", async () => {
+      const surveys = createSurveyStore(memoryStorage())
+      const storage = await finishWithAMiss(surveys)
+      expect(screen.getByText("Was this lesson worthwhile?")).toBeTruthy()
+      expect(createResumeStore(storage).get(FIXTURE_TOPIK_KEY)).not.toBeNull()
+
+      // A reload with the survey open: the lesson comes back, not from the
+      // top, and finishing it asks again with the same miss on offer.
+      cleanup()
+      renderLesson(storage, fixtureTopikRepository, surveys)
+      fireEvent.click(await screen.findByRole("button", { name: /Continue/ }))
+      await screen.findByText("카드로 할게요. 감사합니다.")
+      // Its checks were answered; stepping on passes over them to the end.
+      for (let step = 0; step < 10; step += 1) {
+        if (screen.queryByRole("button", { name: /Finish/ })) break
+        click(/^Next/)
+      }
+      click(/Finish/)
+      click("Yes, worth it")
+      click("Too hard")
+      expect(
+        screen.getByRole("button", { name: /카드로 할게요\./ })
+      ).toBeTruthy()
+
+      click("Nothing was blocking")
+      click("Keen for the next one")
+      click("Done")
+      expect(createResumeStore(storage).get(FIXTURE_TOPIK_KEY)).toBeNull()
+    })
 
     it("asks for the learner's verdict, offers the misses as what was blocking, and keeps it", async () => {
       const surveys = createSurveyStore(memoryStorage(), () => 5)
@@ -342,7 +376,7 @@ describe("HandheldLesson", () => {
         conversation: 1,
         messageId: "c2-m2",
         survey: {
-          missed: { 1: ["c1-request-forms"] },
+          missed: pinMisses(FIXTURE_BATCHES, { 1: ["c1-request-forms"] }),
           flagged: [
             {
               batchId: 1,
@@ -364,10 +398,12 @@ describe("HandheldLesson", () => {
 
       // Leave mid-lesson: the point now holds both conversations' misses.
       click("Back to materials")
-      expect(store.get(FIXTURE_TOPIK_KEY)?.survey?.missed).toEqual({
-        1: ["c1-request-forms"],
-        2: ["c2-promise-forms"],
-      })
+      expect(store.get(FIXTURE_TOPIK_KEY)?.survey?.missed).toEqual(
+        pinMisses(FIXTURE_BATCHES, {
+          1: ["c1-request-forms"],
+          2: ["c2-promise-forms"],
+        })
+      )
 
       fireEvent.click(await screen.findByRole("button", { name: /Continue/ }))
       await screen.findByText("카드로 할게요. 감사합니다.")

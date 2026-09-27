@@ -34,7 +34,11 @@ import type {
   StuckCandidate,
   SurveyItem,
 } from "@topik/lib/topik/core/lesson-survey"
-import { stuckCandidates } from "@topik/lib/topik/core/lesson-survey"
+import {
+  pinMisses,
+  stuckCandidates,
+  unpinMisses,
+} from "@topik/lib/topik/core/lesson-survey"
 import type {
   LessonContext,
   LessonEvent,
@@ -254,7 +258,7 @@ export function useHandheldLesson({
       // The survey's evidence from the conversations before this one: the
       // outcomes only cover this one (Codex, #1554).
       if (point.survey) {
-        setMissed(point.survey.missed)
+        setMissed(unpinMisses(batches, point.survey.missed))
         setFlagged(point.survey.flagged)
       }
     }
@@ -368,8 +372,12 @@ export function useHandheldLesson({
 
   useEffect(() => {
     if (topikKey === null || restoredFor !== topikKey) return
+    // A finished lesson's place goes once its survey is answered or skipped,
+    // not before: a reload or a leave while the survey is open would restart
+    // the lesson and lose what the survey was about to offer (Codex, #1554).
+    // Until then the point left before finishing stands.
     if (lesson.finished) {
-      store.clear(topikKey)
+      if (!surveyPending) store.clear(topikKey)
       return
     }
     // A check resumes at its line, with its result: NEXT then passes over
@@ -380,13 +388,15 @@ export function useHandheldLesson({
         conversation: lesson.conversation,
         messageId: resumeMessage.id,
         outcomes: outcomesOf(lesson, context.plan),
-        survey: { missed, flagged },
+        survey: { missed: pinMisses(batches ?? [], missed), flagged },
       })
     }
   }, [
     store,
     topikKey,
     restoredFor,
+    surveyPending,
+    batches,
     lesson,
     context,
     resumeMessage,
