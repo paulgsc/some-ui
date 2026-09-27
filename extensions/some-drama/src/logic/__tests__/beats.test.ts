@@ -1,4 +1,5 @@
 import {
+  applyBeat,
   curvePath,
   decayMs,
   episodeBeats,
@@ -38,6 +39,29 @@ const beat = (over: Partial<BeatRecord> = {}): BeatRecord => ({
   capturedAt: 1_000,
   updatedAt: 1_000,
   ...over,
+})
+
+describe("applyBeat", () => {
+  const snapshot = { episode: "Ep 3", beats: [beat({ id: "a" })] }
+
+  it("appends a new beat, and replaces the one an escalation updates", () => {
+    const added = applyBeat(snapshot, beat({ id: "b" }))
+    expect(added.beats.map((b) => b.id)).toEqual(["a", "b"])
+    const escalated = applyBeat(added, beat({ id: "a", intensity: 2 }))
+    expect(escalated.beats.map((b) => b.intensity)).toEqual([2, 1])
+  })
+
+  it("starts a beat's episode afresh when it is another episode", () => {
+    expect(applyBeat(snapshot, beat({ id: "c", episode: "Ep 4" }))).toEqual({
+      episode: "Ep 4",
+      beats: [beat({ id: "c", episode: "Ep 4" })],
+    })
+  })
+
+  it("leaves the snapshot it was given unchanged", () => {
+    applyBeat(snapshot, beat({ id: "b" }))
+    expect(snapshot.beats).toHaveLength(1)
+  })
 })
 
 describe("logBeat", () => {

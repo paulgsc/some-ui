@@ -682,6 +682,10 @@ describe("lint: extension-charter — require-scoped-lifetime", () => {
       `function tick() { draw(); window.requestAnimationFrame(tick) }`,
       `class A { tick = () => { requestAnimationFrame(this.tick) } }`,
       `class B { loop() { requestAnimationFrame(this.loop) } }`,
+      // Rescheduled through an inline wrapper, not by name.
+      `const tick = () => requestAnimationFrame(() => tick())`,
+      `function step(t) { draw(t); requestAnimationFrame((n) => { step(n) }) }`,
+      `class C { frame(t) { requestAnimationFrame((n) => this.frame(n)) } }`,
     ]) {
       const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
       expectMessageForRule(msgs, RULE, code)
@@ -692,6 +696,10 @@ describe("lint: extension-charter — require-scoped-lifetime", () => {
     for (const code of [
       `requestAnimationFrame(() => el.classList.add("in"))`,
       `const show = () => el.classList.add("in"); requestAnimationFrame(show)`,
+      // An inline callback that calls some other function is still one-shot.
+      `function open() { requestAnimationFrame(() => reveal()) }`,
+      // A call inside a function the callback only defines is not a call.
+      `function open() { requestAnimationFrame(() => { const later = () => open() }) }`,
     ]) {
       const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
       expectNoMessageForRule(msgs, RULE, code)

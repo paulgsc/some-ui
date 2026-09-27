@@ -103,13 +103,15 @@ export const requireScopedLifetime: Rule.RuleModule = {
         if (method === "requestAnimationFrame") {
           const callback = node.arguments[0]
           if (!callback) return
-          const name = callbackName(callback)
-          if (name === null) return
+          const names = callbackNames(callback)
+          if (names.length === 0) return
           // getAncestors is root-first, so each entry's parent is the one
           // before it.
           const ancestors = sourceCode.getAncestors(node)
           if (
-            ancestors.some((a, i) => isFunctionNamed(a, ancestors[i - 1], name))
+            ancestors.some((a, i) =>
+              names.some((name) => isFunctionNamed(a, ancestors[i - 1], name))
+            )
           ) {
             context.report({
               node,
@@ -199,6 +201,61 @@ function resolveObject(
     return null
   }
   return null
+}
+
+/**
+ * The names a frame callback may reschedule through: the function it names
+ * (`f`, `this.f`), or — for an inline wrapper, `() => tick()` — every function
+ * its body calls by name. Calls inside functions the wrapper only defines are
+ * not calls it makes, so those are not followed.
+ */
+function callbackNames(callback: ESTree.Node): Array<string> {
+  const named = callbackName(callback)
+  if (named !== null) return [named]
+  if (
+    callback.type !== "ArrowFunctionExpression" &&
+    callback.type !== "FunctionExpression"
+  ) {
+    return []
+  }
+  const names: Array<string> = []
+  const visit = (node: ESTree.Node): void => {
+    if (
+      node.type === "FunctionDeclaration" ||
+      node.type === "FunctionExpression" ||
+      node.type === "ArrowFunctionExpression"
+    ) {
+      return
+    }
+    if (node.type === "CallExpression") {
+      const name = callbackName(node.callee)
+      if (name !== null) names.push(name)
+    }
+    for (const child of childNodes(node)) visit(child)
+  }
+  visit(callback.body)
+  return names
+}
+
+/** The AST nodes directly under `node` (ESLint's `parent` link excluded). */
+function childNodes(node: ESTree.Node): Array<ESTree.Node> {
+  const out: Array<ESTree.Node> = []
+  for (const [key, value] of Object.entries(node)) {
+    if (key === "parent") continue
+    for (const item of Array.isArray(value) ? value : [value]) {
+      if (isNode(item)) out.push(item)
+    }
+  }
+  return out
+}
+
+function isNode(v: unknown): v is ESTree.Node {
+  return (
+    typeof v === "object" &&
+    v !== null &&
+    "type" in v &&
+    typeof v.type === "string"
+  )
 }
 
 /** The name a callback refers to: `f` → "f", `this.f` → "f". */

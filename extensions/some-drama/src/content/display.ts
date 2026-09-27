@@ -4,6 +4,7 @@
 
 import { DramaCard } from "@drama/components/drama-card"
 import { sendMsg } from "@drama/effects/messaging"
+import { applyBeat } from "@drama/logic/beats"
 import type {
   BeatRecord,
   CardEvents,
@@ -263,16 +264,29 @@ export function createDisplay(deps: DisplayDeps): Display {
     card = null
   }
 
+  // Beats broadcast while a GET_BEATS is in flight, one buffer per request:
+  // the reply is a snapshot read before them, so they are applied on top of
+  // it rather than lost to it.
+  const arrivedDuringLoad = new Set<Array<BeatRecord>>()
+
   const loadBeats = async (dramaId: string): Promise<void> => {
+    const arrived: Array<BeatRecord> = []
+    arrivedDuringLoad.add(arrived)
     try {
       const resp = await sendMsg({ type: "GET_BEATS", dramaId })
       if (!resp.ok) throw new Error(resp.error)
       // The active drama may have changed while the request was in flight.
       if (typestate.phase !== "READY" || typestate.entry.id !== dramaId) return
-      live = { dramaId, episode: resp.episode, beats: resp.beats }
-      card?.setBeats(resp.episode, resp.beats)
+      const current = arrived.reduce(applyBeat, {
+        episode: resp.episode,
+        beats: resp.beats,
+      })
+      live = { dramaId, ...current }
+      card?.setBeats(current.episode, current.beats)
     } catch (err) {
       log.error("GET_BEATS failed:", err)
+    } finally {
+      arrivedDuringLoad.delete(arrived)
     }
   }
 
@@ -408,12 +422,12 @@ export function createDisplay(deps: DisplayDeps): Display {
       if (typestate.phase !== "READY" || typestate.entry.id !== beat.dramaId) {
         return
       }
-      if (live?.dramaId !== beat.dramaId || live.episode !== beat.episode) {
-        live = { dramaId: beat.dramaId, episode: beat.episode, beats: [] }
-      }
-      const i = live.beats.findIndex((b) => b.id === beat.id)
-      if (i >= 0) live.beats[i] = beat
-      else live.beats.push(beat)
+      for (const arrived of arrivedDuringLoad) arrived.push(beat)
+      const base =
+        live?.dramaId === beat.dramaId
+          ? live
+          : { episode: beat.episode, beats: [] }
+      live = { dramaId: beat.dramaId, ...applyBeat(base, beat) }
       card?.pushBeat(beat)
     },
 

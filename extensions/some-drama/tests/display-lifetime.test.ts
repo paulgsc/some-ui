@@ -129,3 +129,41 @@ describe("an edit to the showing drama keeps its card", () => {
     expect(card()).not.toBe(before)
   })
 })
+
+describe("beats that arrive while the card loads its episode", () => {
+  it("survive the reply, which was read before they were logged", async () => {
+    type Reply = Awaited<ReturnType<typeof sendMessage>>
+    let reply: (v: Reply) => void = () => {}
+    sendMessage.mockImplementationOnce(
+      () =>
+        new Promise<Reply>((resolve) => {
+          reply = resolve
+        })
+    )
+    setVisibility("visible")
+    const d = mountDisplay()
+    d.apply(STATE)
+    await nextFrame()
+
+    // GET_BEATS is in flight; a beat is logged and broadcast meanwhile.
+    d.onBeat({
+      id: "b1",
+      dramaId: "d1",
+      dramaTitle: "Queen of Tears",
+      episode: "Ep 12",
+      mood: "love",
+      intensity: 1,
+      videoTime: 60,
+      duration: 3600,
+      capturedAt: 0,
+      updatedAt: 0,
+    })
+    // …and then the stale snapshot arrives, without it.
+    reply({ ok: true, episode: "Ep 12", beats: [] })
+    await nextFrame()
+
+    expect(card()?.querySelector(".dc-live")?.getAttribute("data-empty")).toBe(
+      "false"
+    )
+  })
+})

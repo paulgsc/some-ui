@@ -75,6 +75,30 @@ export function logBeat(
   }
 }
 
+/** One episode's beats, as the card holds them. */
+export type EpisodeBeats = { episode: string; beats: Array<BeatRecord> }
+
+/**
+ * An episode's beats after `beat` arrives: an escalation replaces the beat it
+ * escalates, a new beat is appended, and a beat from another episode starts
+ * that episode afresh. Applying the beats broadcast since a snapshot was read
+ * brings the snapshot up to date.
+ */
+export function applyBeat(
+  current: EpisodeBeats,
+  beat: BeatRecord
+): EpisodeBeats {
+  if (beat.episode !== current.episode) {
+    return { episode: beat.episode, beats: [beat] }
+  }
+  const i = current.beats.findIndex((b) => b.id === beat.id)
+  const beats =
+    i >= 0
+      ? current.beats.map((b, j) => (j === i ? beat : b))
+      : [...current.beats, beat]
+  return { episode: current.episode, beats }
+}
+
 /** Beats belonging to one episode of one drama, in log order. */
 export function episodeBeats(
   beats: ReadonlyArray<BeatRecord>,
