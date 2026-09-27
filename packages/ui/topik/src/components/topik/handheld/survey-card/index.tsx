@@ -142,12 +142,14 @@ export const SurveyCard = ({
         : [
             ...current.stuck,
             // The text rides along: the digest is read after the lesson is
-            // gone, when an id alone would mean nothing.
+            // gone, when an id alone would mean nothing. The relations let a
+            // lesson that exercises them come back (canon Rem. 3.5).
             {
               batchId: candidate.batchId,
               probeId: candidate.probeId,
               source: candidate.source,
               prompt: candidate.prompt,
+              relations: candidate.relations,
             },
           ],
     }))

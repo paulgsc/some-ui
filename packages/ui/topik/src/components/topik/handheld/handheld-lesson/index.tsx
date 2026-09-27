@@ -22,10 +22,6 @@ import { WrapCard } from "@topik/components/topik/handheld/wrap-card"
 import type { UseHandheldLessonOptions } from "@topik/lib/topik/adapter/hooks/use-handheld-lesson"
 import { useHandheldLesson } from "@topik/lib/topik/adapter/hooks/use-handheld-lesson"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
-import {
-  LOCAL_LESSON_PREFIX,
-  topikLevelOf,
-} from "@topik/lib/topik/generation/intake"
 import { ChevronLeft, Loader2 } from "lucide-react"
 import { cn } from "some-ui-utils"
 
@@ -38,9 +34,15 @@ export const HandheldLesson = ({
   short = false,
   resumeStore,
   surveyStore,
-  lessonStore,
+  pastedStore,
+  pastedResumeStore,
 }: HandheldLessonProps): JSX.Element => {
-  const vm = useHandheldLesson({ resumeStore, surveyStore, lessonStore })
+  const vm = useHandheldLesson({
+    resumeStore,
+    surveyStore,
+    pastedStore,
+    pastedResumeStore,
+  })
   const { lesson, audio, dispatch, generator } = vm
 
   const title = lesson
@@ -125,13 +127,14 @@ export const HandheldLesson = ({
     }
 
     if (!lesson && generator.active) {
-      // Default to the level of the learner's latest lesson.
-      const lastLevel = topikLevelOf(generator.lessons[0]?.tags)
+      // The level the learner holds on the list, for a prompt at that level.
+      const held = vm.selection.level
       return (
         <GenerateLesson
-          defaultLevel={TOPIK_LEVELS.find((level) => level === lastLevel) ?? 1}
+          defaultLevel={TOPIK_LEVELS.find((level) => level === held) ?? 1}
           buildPrompt={generator.prompt}
-          onSave={generator.save}
+          onPromptHandedOff={generator.handedOff}
+          onStart={generator.start}
           short={short}
         />
       )
@@ -139,12 +142,13 @@ export const HandheldLesson = ({
     if (!lesson) {
       return (
         <MaterialList
-          items={vm.catalog.items.filter(
-            (item) => !item.key.startsWith(LOCAL_LESSON_PREFIX)
-          )}
-          mine={generator.lessons}
+          order={vm.selection.order}
+          others={vm.selection.others}
+          level={vm.selection.level}
+          onLevel={vm.selection.chooseLevel}
+          pasted={generator.pasted}
           onCreate={generator.open}
-          onRemove={generator.remove}
+          onForget={generator.forget}
           loading={vm.catalog.loading}
           error={vm.catalog.error}
           resume={vm.resume}

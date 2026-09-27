@@ -1,4 +1,5 @@
 import { FIXTURE_BATCHES } from "@topik/components/topik/handheld/handheld-lesson/fixture"
+import { relationTags } from "@topik/lib/topik/core/lesson-selection"
 import { describe, expect, it } from "vitest"
 
 import { fixRequest, intakeLesson, LOCAL_LESSON_PREFIX, topikLevelOf } from "."
@@ -11,7 +12,8 @@ const entry = {
   totalQuestions: 99,
   totalMessages: 99,
   difficulty: "advanced",
-  tags: ["topik-2", "makjang"],
+  // The model's own relation tag is dropped: the app derives them.
+  tags: ["topik-2", "makjang", "relation:invented"],
 }
 
 const reply = (lesson: unknown): string =>
@@ -40,8 +42,10 @@ describe("intakeLesson", () => {
       totalMessages: 6,
       // The level tag decides, over a mislabelled difficulty.
       difficulty: "beginner",
-      tags: ["topik-2", "makjang"],
+      tags: ["topik-2", "makjang", ...relationTags(FIXTURE_BATCHES)],
     })
+    expect(relationTags(FIXTURE_BATCHES)).toContain("relation:negation")
+    expect(intake.meta.tags).not.toContain("relation:invented")
     expect(intake.findings).toEqual([])
   })
 
@@ -67,6 +71,27 @@ describe("intakeLesson", () => {
     expect(fixRequest(intake.findings)).toMatch(
       /Fix them and return the whole lesson[\s\S]*- error: conversation 1, probe c1-reply:/
     )
+  })
+
+  it("withholds a probe an error names, and does not tag what it withheld", () => {
+    const flawed = structuredClone(FIXTURE_BATCHES)
+    const probe = flawed[0]?.probes?.find(
+      (candidate) => candidate.id === "c1-build-negation"
+    )
+    if (probe?.kind !== "build" || !probe.source) {
+      throw new Error("fixture lost c1-build-negation")
+    }
+    // A relation only this probe uses, and an error: its target is its source.
+    probe.relation = "honorific lowering"
+    probe.target = probe.source
+    const intake = intakeLesson(reply(flawed))
+    if (!intake.ok) throw new Error(intake.error)
+    const played = intake.batches.flatMap((batch) =>
+      (batch.probes ?? []).map((candidate) => candidate.id)
+    )
+    expect(played).not.toContain("c1-build-negation")
+    expect(played).toContain("c1-request-forms")
+    expect(intake.meta.tags).not.toContain("relation:honorific lowering")
   })
 
   it("withholds only the later of two probes sharing an id (Codex, #1554)", () => {

@@ -8,11 +8,14 @@
  * learner is a reason to come back. The report asks whether it did - was it
  * worthwhile, how keen are they for the next, how hard it felt, what was
  * blocking, what they feel it is making them into. It never enters a belief
- * (Prop. 3.4); it steers the authoring-time generator that writes the next
- * lessons (Rem. 3.3). Nothing here reads or writes an outcome.
+ * (Prop. 3.4). By default it orders the served lessons the learner meets
+ * next, on the device (Rem. 3.5, `core/lesson-selection`); on the learner's
+ * opt-in path it also rides the prompt for their own model (Cor. 8.2).
+ * Nothing here reads or writes an outcome.
  */
 
 import type { ConversationBatch } from "@topik/lib/topik"
+import { probeRelations } from "@topik/lib/topik/core/lesson-selection"
 import { anchorOf, probeFingerprint } from "@topik/lib/topik/core/lesson-track"
 
 export const WORTHWHILE = ["yes", "somewhat", "no"] as const
@@ -31,6 +34,8 @@ export type StuckCandidate = {
   prompt: string
   /** The Korean the probe was about. */
   source: string
+  /** What the probe exercises, so a lesson that exercises it can return. */
+  relations: Array<string>
 }
 
 /**
@@ -42,6 +47,8 @@ export type SurveyItem = {
   probeId: string
   source?: string
   prompt?: string
+  /** The relations the probe exercises (`probeRelations`), normalized. */
+  relations?: Array<string>
 }
 
 export type LessonSurvey = {
@@ -89,6 +96,7 @@ export function stuckCandidates(
           probeId: probe.id,
           prompt: probe.prompt,
           source: probe.source ?? anchor?.korean ?? anchor?.content ?? "",
+          relations: probeRelations(probe),
         },
       ]
     })
@@ -149,6 +157,8 @@ export type SurveyReport = LessonSurvey & {
   topikKey: string
   /** The lesson's name, for a digest read after the lesson is gone. */
   displayName?: string
+  /** The lesson's TOPIK level: the level the learner held when reporting. */
+  level?: number
   /** Epoch ms. */
   at: number
 }

@@ -14,7 +14,16 @@ type GenerateLessonProps = {
   defaultLevel: TopikLevel
   /** The prompt for a request, with the learner's survey digest appended. */
   buildPrompt: (request: Omit<LessonRequest, "survey">) => string
-  onSave: (meta: TopikMetadata, batches: Array<ConversationBatch>) => void
+  /**
+   * This prompt, exactly as handed off, reached the learner: the clipboard
+   * took it, or they said they copied it from the fallback. A copy event on
+   * the fallback is not enough - it proves some text was copied, not all of
+   * it (Codex, #1555) - so the learner confirms. Never called when the
+   * clipboard refused and nothing was confirmed.
+   */
+  onPromptHandedOff?: (prompt: string) => void
+  /** Holds the lesson for this session and starts it (canon Rem. 7.4). */
+  onStart: (meta: TopikMetadata, batches: Array<ConversationBatch>) => void
   short: boolean
   /** Stories open with a reply already pasted. */
   initialReply?: string
@@ -36,12 +45,15 @@ async function copy(text: string): Promise<boolean> {
  * The generation loop on a phone (adaptive-learning canon v1.7): the app hands
  * the learner the prompt for their own model, and takes the lesson back.
  * Nothing leaves the device - the prompt goes out through the clipboard, the
- * lesson comes back the same way, and the check runs here.
+ * lesson comes back the same way, and the check runs here. This is the
+ * learner's option (Cor. 8.3); the lesson lasts the session, and their
+ * model's chat is where it is kept (Rem. 7.4).
  */
 export const GenerateLesson = ({
   defaultLevel,
   buildPrompt,
-  onSave,
+  onPromptHandedOff,
+  onStart,
   short,
   initialReply = "",
 }: GenerateLessonProps): JSX.Element => {
@@ -49,7 +61,10 @@ export const GenerateLesson = ({
   const [scene, setScene] = useState("")
   const [copied, setCopied] = useState<"prompt" | "fixes" | null>(null)
   // Shown when the clipboard refuses: the text, selectable by hand.
-  const [manual, setManual] = useState<string | null>(null)
+  const [manual, setManual] = useState<{
+    text: string
+    kind: "prompt" | "fixes"
+  } | null>(null)
   const [reply, setReply] = useState(initialReply)
   const [intake, setIntake] = useState<Intake | null>(() =>
     initialReply ? intakeLesson(initialReply) : null
@@ -61,7 +76,16 @@ export const GenerateLesson = ({
   ): Promise<void> => {
     const done = await copy(text)
     setCopied(done ? kind : null)
-    setManual(done ? null : text)
+    setManual(done ? null : { text, kind })
+    if (done && kind === "prompt") onPromptHandedOff?.(text)
+  }
+
+  // The learner's word that the fallback's whole prompt reached their model.
+  const confirmManualCopy = (): void => {
+    if (manual?.kind !== "prompt") return
+    onPromptHandedOff?.(manual.text)
+    setManual(null)
+    setCopied("prompt")
   }
 
   const copyPrompt = (): void =>
@@ -113,17 +137,29 @@ export const GenerateLesson = ({
         />
         <p className="text-muted-foreground text-sm">
           The prompt carries the lesson&apos;s rules and your last few survey
-          answers. Paste it into any model, then paste its reply below.
+          answers. Paste it into any model, then paste its reply below. The
+          lesson lasts this session; your chat with the model keeps it.
         </p>
         {manual !== null && (
-          <Textarea
-            aria-label="Prompt to copy"
-            readOnly
-            value={manual}
-            rows={4}
-            onFocus={(event) => event.currentTarget.select()}
-            className="rounded-xl font-mono text-xs"
-          />
+          <>
+            <Textarea
+              aria-label="Prompt to copy"
+              readOnly
+              value={manual.text}
+              rows={4}
+              onFocus={(event) => event.currentTarget.select()}
+              className="rounded-xl font-mono text-xs"
+            />
+            {manual.kind === "prompt" && (
+              <Button
+                variant="outline"
+                className="h-11 gap-2 rounded-xl"
+                onClick={confirmManualCopy}
+              >
+                <Check className="size-4" /> I&apos;ve copied it
+              </Button>
+            )}
+          </>
         )}
       </section>
 
@@ -243,9 +279,9 @@ export const GenerateLesson = ({
       <>
         <Button
           className="h-12 w-full gap-2 rounded-2xl"
-          onClick={() => onSave(intake.meta, intake.batches)}
+          onClick={() => onStart(intake.meta, intake.batches)}
         >
-          <Play className="size-5" /> Save and start
+          <Play className="size-5" /> Start
         </Button>
         {intake.findings.length > 0 && (
           <Button

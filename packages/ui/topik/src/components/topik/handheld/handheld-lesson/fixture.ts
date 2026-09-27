@@ -14,6 +14,7 @@ import type {
   ITopikRepository,
   TopikManifestFile,
 } from "@topik/lib/topik"
+import { relationTags } from "@topik/lib/topik/core/lesson-selection"
 
 export const FIXTURE_TOPIK_KEY = "cafe-order"
 
@@ -335,6 +336,8 @@ export const FIXTURE_MANIFEST: TopikManifestFile = {
       totalQuestions: 4,
       totalMessages: 6,
       difficulty: "beginner",
+      // Derived, as intake derives them for a served batch (canon Rem. 3.5).
+      tags: ["topik-1", ...relationTags(FIXTURE_BATCHES)],
     },
     {
       key: "subway-transfer",
@@ -344,6 +347,7 @@ export const FIXTURE_MANIFEST: TopikManifestFile = {
       totalQuestions: 9,
       totalMessages: 14,
       difficulty: "intermediate",
+      tags: ["topik-2"],
     },
   ],
 }

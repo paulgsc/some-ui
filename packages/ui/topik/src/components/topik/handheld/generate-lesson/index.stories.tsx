@@ -33,7 +33,7 @@ const meta: Meta = {
   args: {
     defaultLevel: 2,
     buildPrompt: buildLessonPrompt,
-    onSave: noop,
+    onStart: noop,
     short: false,
   },
   // The applet owns the whole screen on a phone; Storybook's padding would

@@ -11,6 +11,7 @@ const candidate = {
   probeId: "c1-request-forms",
   prompt: "Which is NOT a valid transformation?",
   source: "아이스 아메리카노 한 잔 주세요.",
+  relations: ["request"],
 }
 
 const click = (name: string | RegExp): void => {
