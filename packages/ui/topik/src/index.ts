@@ -30,5 +30,12 @@ export type { Intake } from "./lib/topik/generation/intake"
 export { RELATION_TAG_PREFIX } from "./lib/topik/core/lesson-selection"
 export type { ProbeFinding } from "./lib/topik/core/probe-audit"
 export type { ConversationBatch, TopikMetadata } from "./lib/topik"
+/** The generator prompt, for the operator to hand a model a batch lesson. */
+export {
+  buildLessonPrompt,
+  DEFAULT_CONVERSATIONS,
+  TOPIK_LEVELS,
+} from "./lib/topik/generation"
+export type { TopikLevel } from "./lib/topik/generation"
 /** The lesson's conversations as the study session's chat plays them. */
 export { ConversationPreview } from "./components/topik/conversation-preview"

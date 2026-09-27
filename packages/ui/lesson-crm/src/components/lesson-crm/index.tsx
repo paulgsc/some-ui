@@ -2,6 +2,7 @@ import type { ChangeEvent, JSX } from "react"
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react"
 import { LessonList } from "@lesson-crm/components/lesson-list"
 import { LessonPreview } from "@lesson-crm/components/lesson-preview"
+import { PromptCard } from "@lesson-crm/components/prompt-card"
 import type {
   LessonChange,
   LessonCrmClient,
@@ -234,6 +235,7 @@ export const LessonCrm = ({ client }: LessonCrmProps): JSX.Element => {
           </p>
         ) : (
           <>
+            {editing.kind === "new" && <PromptCard />}
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="flex flex-col gap-1">
                 <Label htmlFor="lesson-key">Key</Label>

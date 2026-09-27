@@ -72,6 +72,8 @@ describe("LessonCrm", () => {
     fireEvent.click(screen.getByRole("button", { name: /Lesson a/ }))
     await settle()
     expect(client.read).toHaveBeenCalledWith("a")
+    // A stored lesson is edited, not generated: no prompt.
+    expect(screen.queryByRole("region", { name: "Lesson prompt" })).toBeNull()
     expect(screen.getByLabelText(/Lesson: a model/)).toHaveValue(BODY)
     expect(screen.getByLabelText(/^Tags/)).toHaveValue("topik-1")
     expect(
@@ -103,6 +105,10 @@ describe("LessonCrm", () => {
     await settle()
 
     fireEvent.click(screen.getByRole("button", { name: /New lesson/ }))
+    // A new lesson starts from the prompt that asks a model for one.
+    expect(
+      screen.getByRole("region", { name: "Lesson prompt" })
+    ).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText(/Lesson: a model/), {
       target: { value: REPLY },
     })
