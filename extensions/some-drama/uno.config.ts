@@ -50,6 +50,11 @@ export default defineSomeUiConfig(
       "py",
       // `display: table` on every host element with class="table" (Bootstrap).
       "table",
+      // Also prose: "every other tab", "(not `absolute`)".
+      "absolute",
+      "tab",
+      // tests/content-css.test.ts fails on the next one — add it here, or
+      // reword the comment that produced it.
     ],
   }
 )

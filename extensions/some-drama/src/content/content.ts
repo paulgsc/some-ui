@@ -1,16 +1,27 @@
-// Display consumer only. No video detection, no scraping, no watchlist mutations.
+// Injected into every tab; resolves its role once at init (the some-mujik
+// pattern):
 //
-// Responsibilities:
+//   SOURCE  — a VIDEO_HOSTS tab, where the drama plays. Renders no card (the
+//             drama is never on stream). Registers itself with the background,
+//             answers GET_PLAYBACK, and logs beats from hotkeys with its own
+//             video time.
+//   DISPLAY — every other tab. Renders the card from the active entry; this is
+//             the page OBS captures. Hotkeys and the mood pickers log beats
+//             too (the background asks the source tab for the video time), and
+//             every BEAT_LOGGED pulses the live strip.
+//
+// Display responsibilities:
 //   1. Request current state from background (GET_STATE).
 //   2. Render DramaCard from the active entry — all fields real, no dummies.
 //   3. React to STATE_UPDATE broadcasts from background.
 //   4. Persist card position/size locally.
-//   5. Forward mood captures to background (SAVE_MOMENT).
+//   5. Log beats (LOG_BEAT); load the episode's beats (GET_BEATS) and pulse
+//      the live strip on each BEAT_LOGGED.
 //   6. `toggle-visibility` command (Alt+Shift+D, bound via the commons
 //      keybinding typestate) — toggle card visibility, or fetch+render if
 //      card is null (background was evicted on page load).
 //
-// Typestate:
+// Display typestate:
 //   LOADING — awaiting first GET_STATE response
 //   EMPTY   — no active entry in watchlist
 //   READY   — active entry present, card rendered
@@ -33,16 +44,22 @@
 //          the typed sendMsg and the envelope is unwrapped.
 
 import { DramaCard } from "@drama/components/drama-card"
+import { readPlayback } from "@drama/effects/content/playback"
 import { sendMsg } from "@drama/effects/messaging"
 import { KEY_BINDINGS } from "@drama/logic/content/commands"
 import type { DramaCommandId } from "@drama/logic/content/commands"
+import { MOODS } from "@drama/logic/content/constants"
+import { isVideoHost, VIDEO_HOSTS } from "@drama/logic/video-host"
 import type {
+  BeatLoggedMessage,
+  BeatRecord,
   CardEvents,
   CardSize,
   CardState,
   DramaEntry,
-  MomentRecord,
+  GetPlaybackMessage,
   MoodType,
+  Playback,
   StateUpdateMessage,
   WatchlistState,
 } from "@drama/types"
@@ -87,6 +104,14 @@ function isPersistedCardMeta(v: unknown): v is PersistedCardMeta {
     typeof v.y === "number" &&
     typeof v.size === "string"
   )
+}
+
+function isBeatLoggedMessage(v: unknown): v is BeatLoggedMessage {
+  return isRecord(v) && v.type === "BEAT_LOGGED" && isRecord(v.beat)
+}
+
+function isGetPlaybackMessage(v: unknown): v is GetPlaybackMessage {
+  return isRecord(v) && v.type === "GET_PLAYBACK"
 }
 
 function isStateUpdateMessage(v: unknown): v is StateUpdateMessage {
@@ -208,9 +233,58 @@ function renderEmptyPill(
   }
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// ─── Beats ─────────────────────────────────────────────────────────────────────
 
-async function init(): Promise<void> {
+/** Log a beat; the background resolves drama, episode and (if null) playback. */
+function logBeat(mood: MoodType, playback: Playback | null): void {
+  sendMsg({ type: "LOG_BEAT", mood, playback })
+    .then((resp) => {
+      if (!resp.ok) log.error("LOG_BEAT failed:", resp.error)
+    })
+    .catch((err: unknown) => log.error("LOG_BEAT failed:", err))
+}
+
+/** One `beat:<mood>` command per mood, each reading playback at press time. */
+function beatCommands(
+  playback: () => Playback | null
+): CommandRegistry<DramaCommandId> {
+  return Object.fromEntries(
+    MOODS.map((m) => [
+      `beat:${m.type}`,
+      (): void => logBeat(m.type, playback()),
+    ])
+  )
+}
+
+// ─── Source role ──────────────────────────────────────────────────────────────
+
+function initSource(): void {
+  log.info("Source tab — no card; logging beats with this tab's video time.")
+
+  const register = (): void => {
+    sendMsg({ type: "REGISTER_SOURCE" }).catch((err: unknown) =>
+      log.error("REGISTER_SOURCE failed:", err)
+    )
+  }
+  register()
+  // Media events don't bubble; capture them at the document. Whichever video
+  // tab last started playing is the source (two YouTube tabs: the playing one).
+  document.addEventListener("play", register, { capture: true })
+
+  browser.runtime.onMessage.addListener(
+    (msg: unknown): Promise<Playback | null> | undefined => {
+      if (!isGetPlaybackMessage(msg)) return undefined
+      return Promise.resolve(readPlayback())
+    }
+  )
+
+  // Lifetime: the page's (see the display role below).
+  attachKeyBindings(beatCommands(readPlayback), KEY_BINDINGS)
+}
+
+// ─── Display role ─────────────────────────────────────────────────────────────
+
+async function initDisplay(): Promise<void> {
   log.info("Initialising display layer…")
 
   const root = getOverlayRoot()
@@ -225,6 +299,13 @@ async function init(): Promise<void> {
   let visible: boolean = true
   let currentSize: CardSize = "compact"
   let cardMeta: PersistedCardMeta | null = await loadCardMeta()
+  // The active drama's current episode, kept across card re-renders (every
+  // STATE_UPDATE rebuilds the card) so the curve never blinks empty.
+  let live: {
+    dramaId: string
+    episode: string
+    beats: Array<BeatRecord>
+  } | null = null
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -249,21 +330,9 @@ async function init(): Promise<void> {
 
     const events: CardEvents = {
       onMoodSelect(mood: MoodType): void {
-        const moment: MomentRecord = {
-          id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          timestamp: 0,
-          mood,
-          episodeId: entry.episode,
-          dramaTitle: entry.title,
-          capturedAt: Date.now(),
-        }
-        sendMsg({ type: "SAVE_MOMENT", payload: moment })
-          .then((resp) => {
-            if (!resp.ok) log.error("SAVE_MOMENT failed:", resp.error)
-          })
-          .catch((err: unknown) => log.error("SAVE_MOMENT failed:", err))
-
-        card?.update({ activeMood: mood })
+        // Clicked on the card: same path as a hotkey. The BEAT_LOGGED echo
+        // pulses the strip.
+        logBeat(mood, null)
       },
 
       onSizeChange(size: CardSize): void {
@@ -287,6 +356,35 @@ async function init(): Promise<void> {
     card.setPosition(spawn.x, spawn.y)
     if (cardMeta?.size) card.setSize(cardMeta.size, false)
     if (!visible) card.setVisible(false)
+
+    if (live?.dramaId === entry.id) card.setBeats(live.episode, live.beats)
+    void loadBeats(entry.id)
+  }
+
+  const loadBeats = async (dramaId: string): Promise<void> => {
+    try {
+      const resp = await sendMsg({ type: "GET_BEATS", dramaId })
+      if (!resp.ok) throw new Error(resp.error)
+      // The active drama may have changed while the request was in flight.
+      if (typestate.phase !== "READY" || typestate.entry.id !== dramaId) return
+      live = { dramaId, episode: resp.episode, beats: resp.beats }
+      card?.setBeats(resp.episode, resp.beats)
+    } catch (err) {
+      log.error("GET_BEATS failed:", err)
+    }
+  }
+
+  const onBeat = (beat: BeatRecord): void => {
+    if (typestate.phase !== "READY" || typestate.entry.id !== beat.dramaId) {
+      return
+    }
+    if (live?.dramaId !== beat.dramaId || live.episode !== beat.episode) {
+      live = { dramaId: beat.dramaId, episode: beat.episode, beats: [] }
+    }
+    const i = live.beats.findIndex((b) => b.id === beat.id)
+    if (i >= 0) live.beats[i] = beat
+    else live.beats.push(beat)
+    card?.pushBeat(beat)
   }
 
   const renderEmpty = (): void => {
@@ -337,6 +435,10 @@ async function init(): Promise<void> {
   // ── Background message listener ───────────────────────────────────────────
 
   browser.runtime.onMessage.addListener((msg: unknown) => {
+    if (isBeatLoggedMessage(msg)) {
+      onBeat(msg.beat)
+      return
+    }
     if (!isStateUpdateMessage(msg)) return
 
     const next = resolveTypestate(msg.payload)
@@ -368,6 +470,8 @@ async function init(): Promise<void> {
   // Lifetime: the page's. The card lives until the document unloads, so the
   // disposer is not retained.
   const commands: CommandRegistry<DramaCommandId> = {
+    // Display tabs have no video of their own; the background asks the source.
+    ...beatCommands(() => null),
     "toggle-visibility": (): void => {
       if (card) {
         visible = !visible
@@ -393,8 +497,15 @@ async function init(): Promise<void> {
   log.info("Display layer ready.", typestate)
 }
 
+// ─── Dispatch ─────────────────────────────────────────────────────────────────
+
+function init(): void {
+  if (isVideoHost(location.href, VIDEO_HOSTS)) initSource()
+  else void initDisplay()
+}
+
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => void init())
+  document.addEventListener("DOMContentLoaded", init)
 } else {
-  void init()
+  init()
 }

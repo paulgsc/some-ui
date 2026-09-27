@@ -6,17 +6,25 @@
 //   Slideshow       — circle ring, slides, nav dots, chat bubble
 //   RightPanel      — episode/timestamp, progress, stats, mood strip
 //   CapturePanel    — expandable emotion picker
+//   LiveStrip       — beat pulse + episode curve (the broadcast surface)
 //   DragController  — pointer drag logic
 //   spawnBlossoms   — particle layer
 
 import { CapturePanel } from "@drama/components/capture-panel"
 import { DragController } from "@drama/components/drag-controller"
+import { LiveStrip } from "@drama/components/live-strip"
 import { RightPanel } from "@drama/components/right-panel"
 import { Slideshow } from "@drama/components/slideshow"
 import { el } from "@drama/effects/content/dom"
 import { spawnBlossoms } from "@drama/effects/content/particles"
 import { MOODS, SIZE_CYCLE } from "@drama/logic/content/constants"
-import type { CardEvents, CardSize, CardState, MoodType } from "@drama/types"
+import type {
+  BeatRecord,
+  CardEvents,
+  CardSize,
+  CardState,
+  MoodType,
+} from "@drama/types"
 
 export class DramaCard {
   // Public — content.ts may need direct root access for positioning
@@ -30,6 +38,7 @@ export class DramaCard {
   private slideshow: Slideshow
   private rightPanel: RightPanel
   private capturePanel: CapturePanel
+  private liveStrip: LiveStrip
   private drag: DragController
 
   // State
@@ -72,6 +81,7 @@ export class DramaCard {
     this.slideshow = new Slideshow()
     this.rightPanel = new RightPanel()
     this.capturePanel = new CapturePanel()
+    this.liveStrip = new LiveStrip()
 
     // ── Assemble card ─────────────────────────────────────────────────────────
     this.card.appendChild(this.slideshow.wrap)
@@ -81,6 +91,7 @@ export class DramaCard {
     // ── Assemble root (top → bottom in flex-column-reverse visual order) ──────
     this.root.appendChild(titlePill)
     this.root.appendChild(this.capturePanel.root)
+    this.root.appendChild(this.liveStrip.root)
     this.root.appendChild(this.card)
 
     container.appendChild(this.root)
@@ -118,6 +129,19 @@ export class DramaCard {
     if (patch.activeMood !== undefined && patch.activeMood !== prevMood) {
       this.applyMoodHue(this.state.activeMood)
     }
+  }
+
+  /** Load an episode's beats into the live strip (no pulse). */
+  setBeats(episode: string, beats: ReadonlyArray<BeatRecord>): void {
+    this.liveStrip.setBeats(episode, beats)
+    const latest = beats.at(-1)
+    if (latest) this.showMood(latest.mood)
+  }
+
+  /** A beat was just logged or escalated: pulse, extend the curve, re-tint. */
+  pushBeat(beat: BeatRecord): void {
+    this.liveStrip.pushBeat(beat)
+    this.showMood(beat.mood)
   }
 
   setPosition(x: number, y: number): void {
@@ -221,6 +245,12 @@ export class DramaCard {
 
     // Bubble
     this.syncBubbleVisibility()
+  }
+
+  private showMood(mood: MoodType): void {
+    this.state = { ...this.state, activeMood: mood }
+    this.applyMoodHue(mood)
+    this.rightPanel.setMoodActive(mood)
   }
 
   private applyMoodHue(mood: MoodType | null): void {

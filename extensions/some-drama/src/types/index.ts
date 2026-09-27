@@ -148,9 +148,9 @@ export type MessageBridge =
   | { type: "UPSERT_ENTRY"; entry: Partial<DramaEntry> & { title: string } }
   | { type: "SET_ACTIVE"; id: string | null }
   | { type: "REMOVE_ENTRY"; id: string }
-  | { type: "SAVE_MOMENT"; payload: MomentRecord }
-  | { type: "GET_MOMENTS"; payload?: { dramaTitle?: string } }
-  | { type: "CLEAR_MOMENTS" }
+  | { type: "LOG_BEAT"; mood: MoodType; playback: Playback | null }
+  | { type: "GET_BEATS"; dramaId: string }
+  | { type: "REGISTER_SOURCE" }
 
 // Wire envelope — what background.ts actually sends back for each message type.
 // `ok: false` is uniform across all variants (error path), so it's factored out.
@@ -161,9 +161,10 @@ export type MessageResponseMap = {
   UPSERT_ENTRY: Envelope<{ state: WatchlistState }>
   SET_ACTIVE: Envelope<{ state: WatchlistState }>
   REMOVE_ENTRY: Envelope<{ state: WatchlistState }>
-  SAVE_MOMENT: Envelope<{}>
-  GET_MOMENTS: Envelope<{ moments: Array<MomentRecord> }>
-  CLEAR_MOMENTS: Envelope<{}>
+  LOG_BEAT: Envelope<{ beat: BeatRecord }>
+  // The drama's most recent episode (by its latest beat) and that episode's beats.
+  GET_BEATS: Envelope<{ episode: string; beats: Array<BeatRecord> }>
+  REGISTER_SOURCE: Envelope<{}>
 }
 
 /** Background → content-script broadcast after every watchlist mutation. */
@@ -172,11 +173,38 @@ export type StateUpdateMessage = {
   payload: WatchlistState
 }
 
-export type MomentRecord = {
+/** Background → display tabs, the instant a beat is logged or escalated. */
+export type BeatLoggedMessage = {
+  type: "BEAT_LOGGED"
+  beat: BeatRecord
+}
+
+/** Background → the source tab: "where is the video right now?" */
+export type GetPlaybackMessage = { type: "GET_PLAYBACK" }
+
+// ─── Beats: the live emotional log ────────────────────────────────────────────
+// A beat is one reaction while watching: a mood, how hard it hit, and where in
+// the episode it happened. Pressing the same mood again within a couple of
+// seconds escalates the beat instead of logging a second one (logic/beats.ts).
+
+export type Intensity = 1 | 2 | 3
+
+/** What the source tab (the one playing the drama) reports about playback. */
+export type Playback = {
+  videoTime: number // seconds into the episode
+  duration: number | null // seconds; null while the video has no metadata
+  episode: string // parsed from the source page title, "" when absent
+}
+
+export type BeatRecord = {
   id: string
-  timestamp: number
-  mood: MoodType
-  episodeId: string
+  dramaId: string
   dramaTitle: string
-  capturedAt: number
+  episode: string
+  mood: MoodType
+  intensity: Intensity
+  videoTime: number | null // null when no source tab could be reached
+  duration: number | null
+  capturedAt: number // first press
+  updatedAt: number // latest press; the escalation window runs from here
 }

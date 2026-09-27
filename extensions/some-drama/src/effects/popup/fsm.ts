@@ -1,6 +1,5 @@
 import { sendMsg } from "@drama/effects/messaging"
-import { VIDEO_HOSTS } from "@drama/logic/popup/constants"
-import { isVideoHost } from "@drama/logic/popup/video-host"
+import { isVideoHost, VIDEO_HOSTS } from "@drama/logic/video-host"
 import type { DramaEntry, PopupPhase, WatchlistState } from "@drama/types"
 
 // Statically import the scraper function using modern ES module syntax

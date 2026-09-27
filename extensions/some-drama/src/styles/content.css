@@ -10,6 +10,7 @@
        └─ components/slideshow.css       ← chat-bubble fix lives here
        └─ components/right-panel.css
        └─ components/capture-panel.css
+       └─ components/live-strip.css
        └─ particles/blossoms.css
    ────────────────────────────────────────────────────────────────────────── */
 
@@ -34,5 +35,8 @@
 /* 7. Capture / emotion picker panel */
 @import "./components/capture-panel.css";
 
-/* 8. Blossom particles */
+/* 8. Live strip (beat pulse + episode curve) */
+@import "./components/live-strip.css";
+
+/* 9. Blossom particles */
 @import "./components/particles.css";

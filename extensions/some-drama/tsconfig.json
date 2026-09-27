@@ -23,16 +23,20 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "@drama/*": ["./src/*"]
+      "@drama/*": ["./src/*"],
+      "@drama/uno.config": ["./uno.config"],
+      "@drama/uno.sources": ["./uno.sources"]
     },
     "types": ["firefox-webext-browser", "chrome"]
   },
   "include": [
     "src",
+    "tests",
     "vite.config.ts",
     "uno.config.ts",
     "uno.config.popup.ts",
     "uno.sources.ts",
+    "vitest.config.ts",
     "eslint.config.js"
   ]
 }

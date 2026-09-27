@@ -1,21 +1,43 @@
 //
 // Storage schema (browser.storage.local):
-//   drama_moments:  MomentRecord[]   — mood capture log
-//   drama_watchlist: DramaEntry[]      — ordered list, max N=5
-//   drama_active_id: string | null     — id of entry currently displayed
+//   drama_watchlist:  DramaEntry[]    — ordered list, max N=5
+//   drama_active_id:  string | null   — id of entry currently displayed
+//   drama_beats:      BeatRecord[]    — the live emotional log (bounded)
+//   drama_source_tab: number | null   — tab playing the drama (validated on use)
+//   drama_moments:    legacy mood log; every record has timestamp 0, so it is
+//                     no longer read — left in place rather than deleted.
+//
+// Tab roles (the some-mujik pattern): the SOURCE tab plays the drama, renders
+// no card, captures hotkeys with its own video time, and answers GET_PLAYBACK.
+// Every other tab is a DISPLAY tab: it renders the card, which OBS captures.
 //
 // Message types:
-//   GET_STATE      → { ok, state }
-//   UPSERT_ENTRY   → add or update a DramaEntry; broadcasts STATE_UPDATE
-//   REMOVE_ENTRY   → remove by id; broadcasts STATE_UPDATE
-//   SET_ACTIVE     → set activeId; broadcasts STATE_UPDATE
-//   SAVE_MOMENT, GET_MOMENTS, CLEAR_MOMENTS — mood capture log (unchanged)
+//   GET_STATE       → { ok, state }
+//   UPSERT_ENTRY    → add or update a DramaEntry; broadcasts STATE_UPDATE
+//   REMOVE_ENTRY    → remove by id; broadcasts STATE_UPDATE
+//   SET_ACTIVE      → set activeId; broadcasts STATE_UPDATE
+//   REGISTER_SOURCE → the sending tab is now the source tab
+//   LOG_BEAT        → log or escalate a beat for the active drama; broadcasts
+//                     BEAT_LOGGED. Asks the source tab for playback when the
+//                     press came from a display tab.
+//   GET_BEATS       → the drama's latest episode and its beats
 
+import {
+  episodeBeats,
+  latestEpisode,
+  logBeat,
+  normalizeEpisode,
+} from "@drama/logic/beats"
+import { MOODS } from "@drama/logic/content/constants"
 import type {
+  BeatLoggedMessage,
+  BeatRecord,
   DramaEntry,
+  GetPlaybackMessage,
   MessageBridge,
   MessageResponseMap,
-  MomentRecord,
+  MoodType,
+  Playback,
   StateUpdateMessage,
   WatchlistState,
 } from "@drama/types"
@@ -28,7 +50,8 @@ type Reply<T extends MessageBridge["type"]> = (
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const MOMENTS_KEY = "drama_moments"
+const BEATS_KEY = "drama_beats"
+const SOURCE_TAB_KEY = "drama_source_tab"
 const WATCHLIST_KEY = "drama_watchlist"
 const ACTIVE_ID_KEY = "drama_active_id"
 const MAX_WATCHLIST = 5
@@ -44,15 +67,36 @@ function uuid(): string {
 // browser.runtime.onMessage hands us `unknown`. These guards are the single
 // validation boundary — no `as` past this point.
 
-function isMomentRecord(v: unknown): v is MomentRecord {
+function isMoodType(v: unknown): v is MoodType {
+  return MOODS.some((m) => m.type === v)
+}
+
+function isNumberOrNull(v: unknown): v is number | null {
+  return v === null || typeof v === "number"
+}
+
+function isPlayback(v: unknown): v is Playback {
+  return (
+    isRecord(v) &&
+    typeof v.videoTime === "number" &&
+    isNumberOrNull(v.duration) &&
+    typeof v.episode === "string"
+  )
+}
+
+function isBeatRecord(v: unknown): v is BeatRecord {
   return (
     isRecord(v) &&
     typeof v.id === "string" &&
-    typeof v.timestamp === "number" &&
-    typeof v.mood === "string" &&
-    typeof v.episodeId === "string" &&
+    typeof v.dramaId === "string" &&
     typeof v.dramaTitle === "string" &&
-    typeof v.capturedAt === "number"
+    typeof v.episode === "string" &&
+    isMoodType(v.mood) &&
+    (v.intensity === 1 || v.intensity === 2 || v.intensity === 3) &&
+    isNumberOrNull(v.videoTime) &&
+    isNumberOrNull(v.duration) &&
+    typeof v.capturedAt === "number" &&
+    typeof v.updatedAt === "number"
   )
 }
 
@@ -61,18 +105,15 @@ function isBackgroundMessage(v: unknown): v is MessageBridge {
   if (typeof v.type !== "string") return false
 
   switch (v.type) {
-    case "SAVE_MOMENT": {
-      return isMomentRecord(v.payload)
-    }
-    case "GET_MOMENTS": {
+    case "LOG_BEAT": {
       return (
-        v.payload === undefined ||
-        (isRecord(v.payload) &&
-          (!("dramaTitle" in v.payload) ||
-            typeof v.payload.dramaTitle === "string"))
+        isMoodType(v.mood) && (v.playback === null || isPlayback(v.playback))
       )
     }
-    case "CLEAR_MOMENTS":
+    case "GET_BEATS": {
+      return typeof v.dramaId === "string"
+    }
+    case "REGISTER_SOURCE":
     case "GET_STATE": {
       return true
     }
@@ -103,23 +144,64 @@ function isDramaEntryArray(v: unknown): v is Array<DramaEntry> {
   )
 }
 
-function isMomentRecordArray(v: unknown): v is Array<MomentRecord> {
-  return Array.isArray(v) && v.every(isMomentRecord)
+// ── Beat log ──────────────────────────────────────────────────────────────────
+
+async function loadBeats(): Promise<Array<BeatRecord>> {
+  const r = await browser.storage.local.get(BEATS_KEY)
+  const stored = r[BEATS_KEY]
+  // Per-record filter, not all-or-nothing: one malformed record must not cost
+  // the whole log.
+  return Array.isArray(stored) ? stored.filter(isBeatRecord) : []
 }
 
-// ── Moment helpers ────────────────────────────────────────────────────────────
+// Every LOG_BEAT is a read-modify-write of the whole log, and repeat presses
+// land a few hundred ms apart — serialize them so an escalation is never lost
+// to an interleaved write.
+let beatWrites: Promise<unknown> = Promise.resolve()
 
-async function loadMoments(): Promise<Array<MomentRecord>> {
-  const r = await browser.storage.local.get(MOMENTS_KEY)
-  const stored = r[MOMENTS_KEY]
-  return isMomentRecordArray(stored) ? stored : []
+function serialized<T>(work: () => Promise<T>): Promise<T> {
+  const run = beatWrites.then(work, work)
+  beatWrites = run.catch(() => undefined)
+  return run
 }
 
-async function saveMoment(moment: MomentRecord): Promise<void> {
-  const existing = await loadMoments()
-  existing.push(moment)
-  await browser.storage.local.set({ [MOMENTS_KEY]: existing })
+// ── Source tab ────────────────────────────────────────────────────────────────
+
+async function getSourceTabId(): Promise<number | null> {
+  const r = await browser.storage.local.get(SOURCE_TAB_KEY)
+  const id = r[SOURCE_TAB_KEY]
+  if (typeof id !== "number") return null
+  try {
+    await browser.tabs.get(id)
+    return id
+  } catch {
+    // Closed, or a tab id from a previous browser session.
+    await browser.storage.local.remove(SOURCE_TAB_KEY)
+    return null
+  }
 }
+
+/** Ask the source tab where its video is; null if there is none to ask. */
+async function requestPlayback(): Promise<Playback | null> {
+  const tabId = await getSourceTabId()
+  if (tabId === null) return null
+  try {
+    const msg: GetPlaybackMessage = { type: "GET_PLAYBACK" }
+    const reply: unknown = await browser.tabs.sendMessage(tabId, msg)
+    return isPlayback(reply) ? reply : null
+  } catch {
+    return null
+  }
+}
+
+browser.tabs.onRemoved.addListener((tabId) => {
+  void (async () => {
+    const r = await browser.storage.local.get(SOURCE_TAB_KEY)
+    if (r[SOURCE_TAB_KEY] === tabId) {
+      await browser.storage.local.remove(SOURCE_TAB_KEY)
+    }
+  })()
+})
 
 // ── Watchlist helpers ─────────────────────────────────────────────────────────
 
@@ -173,23 +255,30 @@ const ENTRY_DEFAULTS: Omit<DramaEntry, "id" | "addedAt" | "title"> = {
   momentum: { value: 50, direction: "steady" },
 }
 
-/** Broadcast updated state to every loaded tab; content.ts guards itself. */
-async function broadcastState(state: WatchlistState): Promise<void> {
+/** Send to every loaded tab; each content script decides what applies to it. */
+async function broadcast(
+  msg: StateUpdateMessage | BeatLoggedMessage
+): Promise<void> {
   let tabs: Array<browser.tabs.Tab>
   try {
     tabs = await browser.tabs.query({})
   } catch {
     return
   }
-  for (const tab of tabs) {
-    if (tab.id === undefined || tab.status !== "complete") continue
-    try {
-      const msg: StateUpdateMessage = { type: "STATE_UPDATE", payload: state }
-      await browser.tabs.sendMessage(tab.id, msg)
-    } catch {
-      // Tab has no content script — expected
-    }
-  }
+  await Promise.all(
+    tabs.map(async (tab) => {
+      if (tab.id === undefined || tab.status !== "complete") return
+      try {
+        await browser.tabs.sendMessage(tab.id, msg)
+      } catch {
+        // Tab has no content script — expected
+      }
+    })
+  )
+}
+
+function broadcastState(state: WatchlistState): Promise<void> {
+  return broadcast({ type: "STATE_UPDATE", payload: state })
 }
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
@@ -197,39 +286,80 @@ async function broadcastState(state: WatchlistState): Promise<void> {
 // Each handler owns its sendResponse call(s) and returns void; the listener
 // awaits/handles the returned promise so nothing is floating.
 
-async function handleSaveMoment(
-  payload: MomentRecord,
-  sendResponse: Reply<"SAVE_MOMENT">
+async function handleLogBeat(
+  mood: MoodType,
+  playback: Playback | null,
+  sendResponse: Reply<"LOG_BEAT">
 ): Promise<void> {
   try {
-    await saveMoment(payload)
-    sendResponse({ ok: true })
+    const { watchlist, activeId } = await getWatchlistState()
+    const entry = watchlist.find((e) => e.id === activeId)
+    if (!entry) {
+      sendResponse({
+        ok: false,
+        error: "No active drama. Pick one in the popup first.",
+      })
+      return
+    }
+    // A press on the source tab carries its own playback; a press anywhere
+    // else asks the source tab. Neither reachable → a beat with no video time.
+    const pb = playback ?? (await requestPlayback())
+    const beat = await serialized(async () => {
+      const result = logBeat(await loadBeats(), {
+        id: uuid(),
+        dramaId: entry.id,
+        dramaTitle: entry.title,
+        episode: normalizeEpisode(pb?.episode || entry.episode),
+        mood,
+        videoTime: pb?.videoTime ?? null,
+        duration: pb?.duration ?? null,
+        at: Date.now(),
+      })
+      await browser.storage.local.set({ [BEATS_KEY]: result.beats })
+      return result.beat
+    })
+    await broadcast({ type: "BEAT_LOGGED", beat })
+    sendResponse({ ok: true, beat })
   } catch (err) {
     sendResponse({ ok: false, error: String(err) })
   }
 }
 
-async function handleGetMoments(
-  payload: { dramaTitle?: string } | undefined,
-  sendResponse: Reply<"GET_MOMENTS">
+async function handleGetBeats(
+  dramaId: string,
+  sendResponse: Reply<"GET_BEATS">
 ): Promise<void> {
   try {
-    const moments = await loadMoments()
-    const filter = payload?.dramaTitle
-    const filtered = filter
-      ? moments.filter((m) => m.dramaTitle === filter)
-      : moments
-    sendResponse({ ok: true, moments: filtered })
+    const [{ watchlist }, beats] = await Promise.all([
+      getWatchlistState(),
+      loadBeats(),
+    ])
+    const entry = watchlist.find((e) => e.id === dramaId)
+    const episode = latestEpisode(
+      beats,
+      dramaId,
+      normalizeEpisode(entry?.episode ?? "")
+    )
+    sendResponse({
+      ok: true,
+      episode,
+      beats: episodeBeats(beats, dramaId, episode),
+    })
   } catch (err) {
     sendResponse({ ok: false, error: String(err) })
   }
 }
 
-async function handleClearMoments(
-  sendResponse: Reply<"CLEAR_MOMENTS">
+async function handleRegisterSource(
+  tabId: number | undefined,
+  sendResponse: Reply<"REGISTER_SOURCE">
 ): Promise<void> {
   try {
-    await browser.storage.local.remove(MOMENTS_KEY)
+    if (tabId === undefined) {
+      sendResponse({ ok: false, error: "REGISTER_SOURCE needs a sender tab" })
+      return
+    }
+    await browser.storage.local.set({ [SOURCE_TAB_KEY]: tabId })
     sendResponse({ ok: true })
   } catch (err) {
     sendResponse({ ok: false, error: String(err) })
@@ -330,18 +460,19 @@ async function handleSetActive(
 
 async function dispatch(
   message: MessageBridge,
+  sender: browser.runtime.MessageSender,
   sendResponse: Reply<MessageBridge["type"]>
 ): Promise<void> {
   const { type: t } = message
   switch (t) {
-    case "SAVE_MOMENT": {
-      return handleSaveMoment(message.payload, sendResponse)
+    case "LOG_BEAT": {
+      return handleLogBeat(message.mood, message.playback, sendResponse)
     }
-    case "GET_MOMENTS": {
-      return handleGetMoments(message.payload, sendResponse)
+    case "GET_BEATS": {
+      return handleGetBeats(message.dramaId, sendResponse)
     }
-    case "CLEAR_MOMENTS": {
-      return handleClearMoments(sendResponse)
+    case "REGISTER_SOURCE": {
+      return handleRegisterSource(sender.tab?.id, sendResponse)
     }
     case "GET_STATE": {
       return handleGetState(sendResponse)
@@ -367,12 +498,12 @@ async function dispatch(
 browser.runtime.onMessage.addListener(
   (
     msg: unknown,
-    _sender: browser.runtime.MessageSender,
+    sender: browser.runtime.MessageSender,
     sendResponse: Reply<MessageBridge["type"]>
   ): boolean => {
     if (!isBackgroundMessage(msg)) return false
 
-    void dispatch(msg, sendResponse)
+    void dispatch(msg, sender, sendResponse)
     return true
   }
 )
