@@ -58,6 +58,15 @@ describe("applyBeat", () => {
     })
   })
 
+  it("keeps the newer version when an older one of the same beat arrives late", () => {
+    const escalated = applyBeat(
+      snapshot,
+      beat({ id: "a", intensity: 2, updatedAt: 2_000 })
+    )
+    const late = applyBeat(escalated, beat({ id: "a", updatedAt: 1_000 }))
+    expect(late.beats[0]?.intensity).toBe(2)
+  })
+
   it("leaves the snapshot it was given unchanged", () => {
     applyBeat(snapshot, beat({ id: "b" }))
     expect(snapshot.beats).toHaveLength(1)

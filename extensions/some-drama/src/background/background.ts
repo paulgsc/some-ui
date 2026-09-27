@@ -258,7 +258,10 @@ function verdictMoves(
 // (UPSERT_ENTRY, REMOVE_ENTRY, SET_ACTIVE, SET_STREAM_SITE, ADJUST_VERDICT)
 // and of the verdict log shares the queue for the same reason: two quick
 // verdict steps must step twice, and a removal racing a verdict write must
-// not be undone by the verdict writer's stale copy of the list.
+// not be undone by the verdict writer's stale copy of the list. Each
+// operation also publishes (STATE_UPDATE, BEAT_LOGGED) before it leaves the
+// queue, so tabs hear changes in the order they were written: a slow first
+// broadcast can't land after the one that superseded it.
 let writes: Promise<unknown> = Promise.resolve()
 
 function serialized<T>(work: () => Promise<T>): Promise<T> {
@@ -427,9 +430,11 @@ async function handleLogBeat(
         at: Date.now(),
       })
       await browser.storage.local.set({ [BEATS_KEY]: result.beats })
+      // Published inside the queue, so displays hear a beat and its
+      // escalations in the order they were written.
+      await broadcast({ type: "BEAT_LOGGED", beat: result.beat })
       return result.beat
     })
-    await broadcast({ type: "BEAT_LOGGED", beat })
     sendResponse({ ok: true, beat })
   } catch (err) {
     sendResponse({ ok: false, error: String(err) })
@@ -534,6 +539,7 @@ async function handleUpsertEntry(
         activeId: newActive,
         streamSites,
       }
+      await broadcastState(state)
       return { ok: true as const, state }
     })
 
@@ -541,7 +547,6 @@ async function handleUpsertEntry(
       sendResponse({ ok: false, error: result.error })
       return
     }
-    await broadcastState(result.state)
     sendResponse({ ok: true, state: result.state })
   } catch (err) {
     sendResponse({ ok: false, error: String(err) })
@@ -563,9 +568,9 @@ async function handleRemoveEntry(
         activeId: newActive,
         streamSites,
       }
+      await broadcastState(removed)
       return removed
     })
-    await broadcastState(state)
     sendResponse({ ok: true, state })
   } catch (err) {
     sendResponse({ ok: false, error: String(err) })
@@ -581,9 +586,9 @@ async function handleSetActive(
       const { watchlist, streamSites } = await getWatchlistState()
       await setWatchlistState({ activeId: id })
       const activated: WatchlistState = { watchlist, activeId: id, streamSites }
+      await broadcastState(activated)
       return activated
     })
-    await broadcastState(state)
     sendResponse({ ok: true, state })
   } catch (err) {
     sendResponse({ ok: false, error: String(err) })
@@ -606,22 +611,21 @@ async function handleSetStreamSite(
         streamSites: withStreamSite(read.streamSites, normalized, streaming),
       }
       await setWatchlistState({ streamSites: marked.streamSites })
+
+      // Unmarking the site the source tab is on: that tab turns back into a
+      // display tab (it re-resolves its role from the broadcast below), so
+      // it can no longer answer for the drama's playback.
+      const sourceId = await getSourceTabId()
+      if (sourceId !== null) {
+        const tab = await browser.tabs.get(sourceId)
+        if (!isStreamSite(tab.url ?? "", marked.streamSites)) {
+          await browser.storage.local.remove(SOURCE_TAB_KEY)
+        }
+      }
+
+      await broadcastState(marked)
       return marked
     })
-    const { streamSites } = state
-
-    // Unmarking the site the source tab is on: that tab turns back into a
-    // display tab (it re-resolves its role from the broadcast below), so it
-    // can no longer answer for the drama's playback.
-    const sourceId = await getSourceTabId()
-    if (sourceId !== null) {
-      const tab = await browser.tabs.get(sourceId)
-      if (!isStreamSite(tab.url ?? "", streamSites)) {
-        await browser.storage.local.remove(SOURCE_TAB_KEY)
-      }
-    }
-
-    await broadcastState(state)
     sendResponse({ ok: true, state })
   } catch (err) {
     sendResponse({ ok: false, error: String(err) })
@@ -653,6 +657,7 @@ async function handleAdjustVerdict(
         playback
       )
       const state: WatchlistState = { ...current, watchlist }
+      await broadcastState(state)
       return state
     })
     if (!result) {
@@ -662,7 +667,6 @@ async function handleAdjustVerdict(
       })
       return
     }
-    await broadcastState(result)
     sendResponse({ ok: true, state: result })
   } catch (err) {
     sendResponse({ ok: false, error: String(err) })

@@ -80,8 +80,8 @@ export type EpisodeBeats = { episode: string; beats: Array<BeatRecord> }
 
 /**
  * An episode's beats after `beat` arrives: an escalation replaces the beat it
- * escalates, a new beat is appended, and a beat from another episode starts
- * that episode afresh. Applying the beats broadcast since a snapshot was read
+ * escalates (an older version of it never does), a new beat is appended, and
+ * a beat from another episode starts that episode afresh. Applying the beats broadcast since a snapshot was read
  * brings the snapshot up to date.
  */
 export function applyBeat(
@@ -92,6 +92,11 @@ export function applyBeat(
     return { episode: beat.episode, beats: [beat] }
   }
   const i = current.beats.findIndex((b) => b.id === beat.id)
+  // An older version of a beat already held (a broadcast that arrived late)
+  // never replaces the newer one.
+  if (i >= 0 && (current.beats[i]?.updatedAt ?? 0) > beat.updatedAt) {
+    return current
+  }
   const beats =
     i >= 0
       ? current.beats.map((b, j) => (j === i ? beat : b))
