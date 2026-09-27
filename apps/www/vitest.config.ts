@@ -15,9 +15,10 @@ import { buildAudiencePlugin } from "./build.profiles.ts"
  * Playwright specs live under tests/.
  */
 export default defineConfig({
-  // Serves `virtual:build-profile` (src/lib/build-profile) and enforces the
-  // same import gates as the app build. Tests run the default profile.
-  plugins: [buildAudiencePlugin()],
+  // Serves `virtual:build-profile` (src/lib/build-profile). Tests run the
+  // default profile, and without the import-gate check: a test of a gated
+  // route, or one mocking a gated workspace, sits outside the gate by nature.
+  plugins: [buildAudiencePlugin({ checkGates: false })],
   test: {
     include: ["src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
     // Repairs `localStorage` where the runtime shipped one of its own and

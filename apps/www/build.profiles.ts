@@ -42,15 +42,21 @@ export const gates: Readonly<Record<GatedAudience, ReadonlyArray<string>>> = {
   lan: ["src/routes/_dashboard/_lan"],
 }
 
-/** www's `audiencePlugin`, shared by vite.config.ts and vitest.config.ts. */
-export function buildAudiencePlugin(
-  profile: string | undefined = process.env.SOME_UI_PROFILE
-): Plugin {
+/**
+ * www's `audiencePlugin`, shared by vite.config.ts and vitest.config.ts. The
+ * test runner passes `checkGates: false`: tests are not bundled, and the ones
+ * that exercise a gated route or mock a gated workspace live outside the gate.
+ */
+export function buildAudiencePlugin({
+  profile = process.env.SOME_UI_PROFILE,
+  checkGates = true,
+}: { profile?: string; checkGates?: boolean } = {}): Plugin {
   return audiencePlugin({
     profiles,
     profile,
     defaultProfile: "lan",
     workspaceRoots,
     gates,
+    checkGates,
   })
 }

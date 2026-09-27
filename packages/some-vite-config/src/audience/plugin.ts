@@ -38,6 +38,13 @@ export type AudiencePluginOptions<P extends Record<string, BuildProfile>> = {
    * fail in whichever deploy happens to exclude it.
    */
   gates: Readonly<Record<GatedAudience, ReadonlyArray<string>>>
+  /**
+   * Whether to fail on an import from outside its gate. `false` only for a
+   * test runner: tests are never bundled, and a test of a gated route, or one
+   * that mocks a gated workspace, necessarily lives outside the gate. Stubbing
+   * and the profile module are unaffected. Defaults to `true`.
+   */
+  checkGates?: boolean
 }
 
 function isInside(file: string, dir: string): boolean {
@@ -189,6 +196,7 @@ export function audiencePlugin<P extends Record<string, BuildProfile>>(
     )
   }
   const audiences = profile.audiences
+  const checkGates = options.checkGates ?? true
   const { workspaces, problems } = readAudienceWorkspaces(
     options.workspaceRoots
   )
@@ -237,7 +245,7 @@ export function audiencePlugin<P extends Record<string, BuildProfile>>(
       if (!target) return null
       if (source.slice(target.name.length) === CONTRACT_SUBPATH) return null
 
-      if (importer && !mayImport(importer, target)) {
+      if (checkGates && importer && !mayImport(importer, target)) {
         this.error(
           `[build-audience] ${relative(root, idPath(importer))} imports ` +
             `${source}, a "${target.audience}"-audience workspace, from ` +

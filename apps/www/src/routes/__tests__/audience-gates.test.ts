@@ -21,11 +21,20 @@
  *   before the guard runs. That the first two are tolerated is itself pinned
  *   below, so a router upgrade that changes it fails here.
  *
- * What this cannot see is a stub reached only on a branch the probe URL does
- * not take (a search param it does not set); that is invariant A1 in
- * packages/some-vite-config/AUDIENCES.md.
+ * It also scans www's source outside the gates for links to a gated path: a
+ * file that has one must import `hasAudience`, so a public build never offers
+ * a link to a page it answers with not-found. The gated paths come from the
+ * route tree, so moving a page under a gate or adding a gate directory is
+ * checked against every existing link without either of them being touched.
+ *
+ * What this cannot see: a stub reached only on a branch the probe URL does not
+ * take (a search param it does not set), and a link that sits outside the
+ * `hasAudience` branch of a file that does check. Those are invariants A1 and
+ * A3 in packages/some-vite-config/AUDIENCES.md.
  */
 
+import { readdirSync, readFileSync } from "node:fs"
+import { join, relative, resolve } from "node:path"
 import { gates, workspaceRoots } from "@/build.profiles"
 import { readAudienceWorkspaces } from "@some-ui/vite-config/audience"
 import { QueryClient } from "@tanstack/react-query"
@@ -69,7 +78,35 @@ function stubbedWorkspace(name: string): object {
   )
 }
 
-type Gate = { audience: string; routeId: string; urls: Array<string> }
+type Gate = {
+  audience: string
+  routeId: string
+  dir: string
+  /** The gated routes' paths as a `to` names them, params unfilled. */
+  paths: Array<string>
+  urls: Array<string>
+}
+
+const APP_ROOT = resolve(import.meta.dirname, "../../..")
+
+/** Every .ts/.tsx file under `dir`, as paths relative to the app root. */
+function sourceFiles(dir: string): Array<string> {
+  return readdirSync(join(APP_ROOT, dir), {
+    recursive: true,
+    withFileTypes: true,
+  })
+    .filter((e) => e.isFile() && /\.tsx?$/.test(e.name))
+    .map((e) => relative(APP_ROOT, join(e.parentPath, e.name)))
+}
+
+/** Whether `source` names `path` as a whole quoted string: `"/lan"`, `'/lan'`. */
+function namesPath(source: string, path: string): boolean {
+  const quoted = path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  return new RegExp(`(["'\`])${quoted}\\1`).test(source)
+}
+
+const IMPORTS_HAS_AUDIENCE =
+  /import\s*\{[^}]*\bhasAudience\b[^}]*\}\s*from\s*["']@\/lib\/build-profile["']/
 
 let routeTree: AnyRouter["routeTree"]
 let gated: Array<Gate>
@@ -110,6 +147,10 @@ beforeAll(async () => {
         routeId: routes.some((r) => r.id === routeId)
           ? routeId
           : `(no layout route for ${dir})`,
+        dir,
+        paths: [
+          ...new Set(children.map((r) => r.fullPath.replace(/(.)\/$/, "$1"))),
+        ],
         urls: [...new Set(children.map((r) => probeUrl(r.fullPath)))],
       }
     })
@@ -144,6 +185,41 @@ describe("audience gates", () => {
       }
     }
     build.audiences = new Set(["public"])
+  })
+
+  it("the link scan recognises a quoted path and nothing looser", () => {
+    expect(namesPath(`<Link to="/lan">`, "/lan")).toBe(true)
+    expect(namesPath(`navigate({ to: '/lan' })`, "/lan")).toBe(true)
+    expect(namesPath("redirect({ to: `/obs/$id` })", "/obs/$id")).toBe(true)
+    expect(namesPath(`<Link to="/lang">`, "/lan")).toBe(false)
+    expect(namesPath(`"/_dashboard/_lan/lan"`, "/lan")).toBe(false)
+    expect(
+      IMPORTS_HAS_AUDIENCE.test(
+        `import { hasAudience } from "@/lib/build-profile"`
+      )
+    ).toBe(true)
+  })
+
+  it("public source links to a gated page only where it can ask hasAudience", () => {
+    const gateDirs = gated.map((g) => g.dir)
+    const files = sourceFiles("src").filter(
+      (f) =>
+        !gateDirs.some((d) => f.startsWith(`${d}/`)) &&
+        !f.includes("__tests__") &&
+        !f.endsWith("routeTree.gen.ts")
+    )
+    // Guards against scanning nothing (a wrong root reads as all-clear).
+    expect(files).toContain("src/main.tsx")
+
+    const unguarded = files.flatMap((file) => {
+      const source = readFileSync(join(APP_ROOT, file), "utf8")
+      if (IMPORTS_HAS_AUDIENCE.test(source)) return []
+      return gated
+        .flatMap((g) => g.paths)
+        .filter((path) => namesPath(source, path))
+        .map((path) => `${file} links to ${path}`)
+    })
+    expect(unguarded).toEqual([])
   })
 
   // The router behaviour the design leans on, isolated from www's routes: a

@@ -39,7 +39,7 @@
     "check:catalog": "node scripts/check-catalog-drift.mjs",
     "check:test-layout": "node --no-warnings scripts/check-test-layout.ts",
     "check:topik-probes": "tsx --tsconfig packages/ui/topik/tsconfig.json scripts/check-topik-probes.ts",
-    "check:ui-manifests": "node scripts/check-ui-manifests.mjs",
+    "check:ui-manifests": "tsx scripts/check-ui-manifests.ts",
     "dump:activity-catalog": "tsx scripts/dump-activity-catalog.ts",
     "dump:session-duration-policy": "tsx scripts/dump-session-duration-policy.ts",
     "prepare": "husky",

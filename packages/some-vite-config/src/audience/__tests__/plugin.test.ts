@@ -130,7 +130,8 @@ type Built = {
 
 async function buildApp(
   profile: string | undefined,
-  entry = "src/main.js"
+  entry = "src/main.js",
+  extra: { checkGates?: boolean } = {}
 ): Promise<Built> {
   const stubs: Array<string> = []
   const result = await build({
@@ -144,6 +145,7 @@ async function buildApp(
         defaultProfile: "lan",
         workspaceRoots: [join(root, "packages/ui")],
         gates: { lan: ["src/routes/_lan"] },
+        ...extra,
       }),
       // The bundle re-generates code (renames bindings, re-escapes strings),
       // so what the plugin itself spliced together is only visible here.
@@ -225,6 +227,13 @@ describe("audiencePlugin", { timeout: 30_000 }, () => {
       )
     }
   )
+
+  it("lets an import outside the gate through when checkGates is off", async () => {
+    write("app/src/nav.js", `export { Panel } from "@fx/lan-panel"`)
+
+    const { code } = await buildApp("lan", "src/nav.js", { checkGates: false })
+    expect(code).toContain(IMPL)
+  })
 
   it("rejects a workspace manifest without a valid someUi field", () => {
     workspace("unmarked", "@fx/unmarked", undefined, {})

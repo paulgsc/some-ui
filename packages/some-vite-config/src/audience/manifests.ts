@@ -23,7 +23,7 @@ export type AudienceWorkspaces = {
  *
  * The one reader both enforcement points share: `audiencePlugin` throws on
  * any problem, so a bad manifest fails `vite dev`/`vite build`, and
- * `scripts/check-ui-manifests.mjs` reports them repo-wide in CI, so the PR
+ * `scripts/check-ui-manifests.ts` reports them repo-wide in CI, so the PR
  * that introduces one fails even when it builds no app.
  */
 export function readAudienceWorkspaces(
