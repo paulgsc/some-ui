@@ -83,6 +83,10 @@ export function predicts(
  * costs the asking and nothing more. Calls run one at a time, in order, so an
  * older election can't land after a newer one.
  *
+ * Cost (LP3) per call: one `ask` + at most one `send`. Kept once calls
+ * settle: one report, O(1), however many were made; P calls waiting their
+ * turn hold O(P) until they run.
+ *
  * Kept here, pure, so the rule is tested (logic/__tests__/playback.test.ts)
  * rather than trusted; background.ts only wires it (invariant LP2, README).
  */

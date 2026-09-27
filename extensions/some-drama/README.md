@@ -48,7 +48,7 @@ a card extrapolates in between, and only while someone can see it move.
 | No card, so no clock, on a page that is not showing or toggled off                                                | `tests/display-lifetime.test.ts`                                             |
 | A source tab's report says whether its time is moving (a stalled video is not)                                    | `tests/playback.test.ts`                                                     |
 
-**Invariants LP1–LP2: what those cannot check.** Written for review one hunk at
+**Invariants LP1–LP3: what those cannot check.** Written for review one hunk at
 a time, in the format of `CLAUDE.md` → "Gray-area invariants"; both held when
 they were written (checked: every timer in LP1's scope is a one-shot — the
 empty pill's fade in `display.ts`, the report settle and the `GET_STATE` retry
@@ -98,6 +98,39 @@ listens for `timeupdate` or `progress`; `"LIVE_PLAYBACK"` appears in
   `background.ts` routes through it is not: it is an entry module with no
   harness. Rejecting the literal outside one call is mechanical ("mechanical;
   not yet a rule").
+
+**LP3: A stated cost matches the code it describes.**
+
+Where a function's cost can't be read off its own body — it sits in a
+callee, a closure, a multiplier across tabs, or a bound kept by code
+elsewhere — a `Cost (LP3):` comment states it, in these terms: **N** open
+tabs, **K** tabs on a marked streaming site (K ≤ N), **S** marked sites,
+**V** `<video>` elements on a source page, **H** entries in
+`drama_hidden_tabs`. A function whose cost is plain from its body (one
+visible loop, pure O(1) arithmetic) carries none.
+
+- _Claim:_ every `Cost (LP3):` comment is true of the code it annotates,
+  including the callees it names.
+- _Falsified by_ a hunk that, in code under such a comment or in a callee it
+  names:
+  - adds iteration over a collection the comment doesn't count, or nests one
+    loop inside another where it counts a single factor;
+  - adds a message send, `tabs.query`, or storage call the comment doesn't
+    count, or moves one into a loop;
+  - makes something kept past the call grow per call, where the comment says
+    what is kept;
+  - deletes or weakens code the comment names as a bound (the
+    `tabs.onRemoved` and `onStartup` listeners that bound H);
+  - or deletes a `Cost (LP3):` comment whose code is still there.
+- _Scope:_ the `Cost (LP3):` comments in `extensions/some-drama/src/`; when
+  written, in `background.ts`, `content.ts`, `effects/content/playback.ts`
+  and `logic/playback.ts`. Checked against the code in the change that
+  declared them.
+- _Why not enforced:_ types don't carry cost; lint can see a loop but not
+  what it iterates or how large that is; tests count messages only in the
+  scenarios they drive (`livePublisher`'s do: one ask, at most one send), not
+  over an open-ended N tabs, and `background.ts` and `content.ts` are entry
+  modules with no harness.
 
 ## Beats
 

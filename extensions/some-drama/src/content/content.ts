@@ -20,6 +20,7 @@
 //   LP1  no repeating timer and no `timeupdate`/`progress` listener in this
 //        file: a video is read on a message, a hotkey or a media event, and
 //        the one timer on the reporting path is the one-shot settle below
+//   LP3  a `Cost (LP3):` comment is true of the code under it (reportPlayback)
 //
 // Display responsibilities:
 //   1. Render DramaCard from the active entry — all fields real, no dummies.
@@ -135,6 +136,14 @@ function reportPlaybackChanged(): void {
  * so the background's re-election doesn't pick a page that is going away.
  * Everything is acquired on `life`, which ends when the tab stops being a
  * source.
+ *
+ * Cost (LP3), per source tab: 11 listeners (PLAYBACK_EVENTS' 9, pagehide,
+ * pageshow), O(1) per event, and at most one PLAYBACK_CHANGED per
+ * REPORT_SETTLE_MS (≤ 4/s), plus one each on start, on leaving, on a return
+ * from the back/forward cache, and on ceasing to be a source. Each report
+ * costs the background a publishLivePlayback — K asks — so K source tabs all
+ * reporting at the cap is ≤ 4K publishes/s, O(K²) asks/s; N sends follow only
+ * a report that breaks the displays' prediction.
  */
 function reportPlayback(
   life: Disposables,

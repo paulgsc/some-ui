@@ -327,6 +327,12 @@ async function requestPlayback(): Promise<Playback | null> {
  * Ask every tab on a marked site where its video is, and elect the drama's
  * (logic/source.ts); null when no source tab answers. Asked fresh each time,
  * so a tab that closed or left the site is never the one asked.
+ *
+ * Cost (LP3): 1 storage read (getWatchlistState) + 1 tabs.query + O(N·S)
+ * time (isStreamSite is O(S), once per tab) + K asks, each ≤
+ * PLAYBACK_TIMEOUT_MS; nothing kept.
+ * No site marked: the read and nothing else. Each ask also costs the source
+ * tab one primaryVideo (effects/content/playback.ts).
  */
 async function requestSourceReport(): Promise<SourceReport | null> {
   const { streamSites } = await getWatchlistState()
@@ -366,7 +372,12 @@ async function requestSourceReport(): Promise<SourceReport | null> {
 //   LP1  no repeating timer here: source tabs are asked on a message or a
 //        tab closing, never on a schedule
 //   LP2  LIVE_PLAYBACK is sent only through publishLivePlayback
+//   LP3  a `Cost (LP3):` comment is true of the code under it
 // (full text: README.md → "Live playback: what is enforced, and what is not")
+//
+// Cost (LP3) per call: one requestSourceReport (above), plus a broadcast
+// (1 tabs.query + N sends) only when the last report sent no longer predicts
+// the new one; kept: that one report.
 const publishLivePlayback = livePublisher(requestSourceReport, (live) =>
   broadcast({ type: "LIVE_PLAYBACK", live })
 )
@@ -459,6 +470,10 @@ function broadcastState(state: WatchlistState): Promise<void> {
 }
 
 // ── Hidden cards ──────────────────────────────────────────────────────────────
+// Cost (LP3): O(H) time per read or toggle, 1 read + at most 1 write per
+// toggle. H stays ≤ open tabs only because tabs.onRemoved drops each closed
+// tab's id and onStartup clears the list ("Tab lifetime", below) — those two
+// listeners are the bound, not anything in these functions.
 
 async function loadHiddenTabs(): Promise<Array<number>> {
   const r = await browser.storage.local.get(HIDDEN_TABS_KEY)
@@ -874,6 +889,10 @@ browser.runtime.onMessage.addListener(
 // browser restart, so the whole list goes at startup: a new session's tab
 // must not inherit an old one's toggle.
 
+// Cost (LP3) per closed tab — any tab in the browser, not just drama's: one
+// setTabHidden (1 read; a write only if the tab was hidden) + one
+// publishLivePlayback (K asks; N sends only if the prediction broke, i.e. the
+// closed tab was the source).
 browser.tabs.onRemoved.addListener((tabId) => {
   void setTabHidden(tabId, false).catch(() => undefined)
   // It may have been the source; closing it sends no media event.

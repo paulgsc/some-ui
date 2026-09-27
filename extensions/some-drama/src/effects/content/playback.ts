@@ -7,6 +7,11 @@
 import { parseEpisode } from "@drama/logic/beats"
 import type { Playback, SourceReport } from "@drama/types"
 
+/**
+ * Cost (LP3): one querySelectorAll("video") + V getBoundingClientRect calls,
+ * each of which can force a layout. Runs once per GET_PLAYBACK this tab
+ * answers and per hotkey beat — never on a timer (LP1).
+ */
 function primaryVideo(): HTMLVideoElement | null {
   let best: HTMLVideoElement | null = null
   let bestScore = 0
