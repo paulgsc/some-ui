@@ -7,6 +7,11 @@ import type { Plugin, UserConfig } from "vite"
 import { defineConfig } from "vite"
 
 import { buildAudiencePlugin } from "./build.profiles.ts"
+import {
+  describeTarget,
+  fileHostDevPlugin,
+  resolveFileHostTarget,
+} from "./file-host.dev.ts"
 import styleContext from "./style.context.ts"
 
 const certPath = resolve(import.meta.dirname, "../../certs/nixos.local+3.pem")
@@ -44,11 +49,14 @@ const ttsProxyTarget = process.env.TTS_PROXY_TARGET || "http://127.0.0.1:5050"
 //
 // Kept in step by hand with the location block in apps/www/nginx.https.conf
 // and with FILE_HOST_PROXY_PATH in src/lib/file-host-config - changing it means
-// changing all three. FILE_HOST_PROXY_TARGET covers file_host running on
-// another host or port.
+// changing all three.
+//
+// Where it points is file-host.dev.ts's call: paulgsc/server's `make dev` while
+// it runs (it records its port when the container already holds 3000), the
+// container otherwise, and FILE_HOST_PROXY_TARGET over both.
 const FILE_HOST_PROXY_PATH = "/api/file-host"
-const fileHostProxyTarget =
-  process.env.FILE_HOST_PROXY_TARGET || "http://127.0.0.1:3000"
+const fileHost = resolveFileHostTarget()
+const fileHostProxyTarget = fileHost.target
 
 // honeycomb's sfx (see scripts/link-content-assets.js) is curated,
 // gitignored, and only ever present if a developer symlinked it in on purpose
@@ -137,11 +145,11 @@ export default defineConfig(
               if (error.code !== "ECONNREFUSED") return
               // eslint-disable-next-line no-console
               console.warn(
-                `\n[www] nothing is listening on ${fileHostProxyTarget} - file_host is down.\n` +
+                `\n[www] nothing is listening on ${describeTarget(fileHost)} - file_host is down.\n` +
                   `  Sessions and study reminders will fail; everything else works.\n` +
-                  `  Start it from paulgsc/server:\n` +
-                  `    cargo run -p file_host\n` +
-                  `  (set FILE_HOST_PROXY_TARGET if it runs on another host or port.)\n`
+                  `  Start it from paulgsc/server (it finds a free port beside the container):\n` +
+                  `    make dev\n` +
+                  `  (set FILE_HOST_PROXY_TARGET if it runs on another host.)\n`
               )
             })
           },
@@ -185,8 +193,25 @@ export default defineConfig(
         routeFileIgnorePattern: String.raw`(^|/)__tests__(/|$)`,
       }),
       viteReact(),
-      ...(command === "serve" ? [warnMissingContentAssets()] : []),
+      ...(command === "serve"
+        ? [warnMissingContentAssets(), fileHostDevPlugin(fileHost)]
+        : []),
     ],
+    // An http:// page skips the proxy and asks :3000 directly
+    // (src/lib/file-host-config) - the container. While `make dev` runs, send
+    // it through the proxy too, so every page reaches the server under test.
+    // An explicit VITE_FILE_HOST_ENDPOINT still wins.
+    ...(command === "serve" &&
+    fileHost.source === "dev" &&
+    !process.env.VITE_FILE_HOST_ENDPOINT
+      ? {
+          define: {
+            "import.meta.env.VITE_FILE_HOST_ENDPOINT": JSON.stringify(
+              `${FILE_HOST_PROXY_PATH}/api/v1`
+            ),
+          },
+        }
+      : {}),
     resolve: {
       alias: {
         "@": resolve(import.meta.dirname, "./src"),
