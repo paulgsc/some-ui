@@ -477,6 +477,39 @@ describe("HandheldLesson", () => {
       expect(mine.textContent).toMatch(/TOPIK 2/)
     })
 
+    it("starts a lesson saved under an old key fresh, and removing it takes its place with it (Codex, #1554)", async () => {
+      stubClipboard()
+      const resume = memoryStorage()
+      // A place left in an earlier lesson that had the same key.
+      const points = createResumeStore(resume)
+      points.set("local:first-dinner", {
+        batchId: 2,
+        conversation: 1,
+        messageId: "c2-m2",
+      })
+      const lessons = createLessonStore(memoryStorage())
+      renderLesson(resume, fixtureTopikRepository, undefined, lessons)
+
+      fireEvent.click(
+        await screen.findByRole("button", { name: /Write a new lesson/ })
+      )
+      fireEvent.change(
+        screen.getByRole("textbox", { name: "Your model's reply" }),
+        { target: { value: modelReply } }
+      )
+      click("Check the lesson")
+      click(/Save and start/)
+      // The first line, not the old lesson's conversation 2.
+      expect(await screen.findByText("어서 오세요. 뭐 드릴까요?")).toBeTruthy()
+      expect(screen.queryByText("카드로 할게요. 감사합니다.")).toBeNull()
+
+      click(/^Next/)
+      click("Back to materials")
+      expect(points.get("local:first-dinner")).not.toBeNull()
+      click("Remove The first family dinner")
+      expect(points.get("local:first-dinner")).toBeNull()
+    })
+
     it("keeps a flagged answer for the next prompt even when the survey is skipped", async () => {
       const surveys = createSurveyStore(memoryStorage(), () => 9)
       const storage = memoryStorage()

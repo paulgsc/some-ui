@@ -491,21 +491,27 @@ export function useHandheldLesson({
     )
   }
 
+  // A place belongs to the lesson it was left in. A lesson saved under a key
+  // starts fresh, and a removed lesson takes its place with it: a later lesson
+  // under the same key must not resume into the old one's position, outcomes
+  // or survey evidence (Codex, #1554).
   const saveLesson = useCallback(
     (meta: TopikMetadata, lessonBatches: Array<ConversationBatch>): void => {
       kept.save(meta, lessonBatches)
+      store.clear(meta.key)
       setLocalLessons(kept.list())
       select(meta.key)
     },
-    [kept, select]
+    [kept, store, select]
   )
 
   const removeLesson = useCallback(
     (key: string): void => {
       kept.remove(key)
+      store.clear(key)
       setLocalLessons(kept.list())
     },
-    [kept]
+    [kept, store]
   )
 
   const promptFor = useCallback(
