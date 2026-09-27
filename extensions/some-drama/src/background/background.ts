@@ -287,12 +287,22 @@ async function getSourceTabId(): Promise<number | null> {
 }
 
 /** Ask the source tab where its video is; null if there is none to ask. */
+// Beats and verdict steps ask for playback from inside the write queue (so
+// they are applied in the order they were pressed); a source tab that does
+// not answer must not hold every later write, so the ask is bounded.
+const PLAYBACK_TIMEOUT_MS = 500
+
 async function requestPlayback(): Promise<Playback | null> {
   const tabId = await getSourceTabId()
   if (tabId === null) return null
   try {
     const msg: GetPlaybackMessage = { type: "GET_PLAYBACK" }
-    const reply: unknown = await browser.tabs.sendMessage(tabId, msg)
+    const reply: unknown = await Promise.race([
+      browser.tabs.sendMessage(tabId, msg),
+      new Promise<null>((resolve) =>
+        setTimeout(() => resolve(null), PLAYBACK_TIMEOUT_MS)
+      ),
+    ])
     return isPlayback(reply) ? reply : null
   } catch {
     return null
@@ -405,20 +415,18 @@ async function handleLogBeat(
   playback: Playback | null,
   sendResponse: Reply<"LOG_BEAT">
 ): Promise<void> {
+  // The press's place in the queue, and its time, are taken now, before any
+  // await: two quick presses are applied in the order they were made, not
+  // the order their playback lookups happened to return.
+  const at = Date.now()
   try {
-    const { watchlist, activeId } = await getWatchlistState()
-    const entry = watchlist.find((e) => e.id === activeId)
-    if (!entry) {
-      sendResponse({
-        ok: false,
-        error: "No active drama. Pick one in the popup first.",
-      })
-      return
-    }
-    // A press on the source tab carries its own playback; a press anywhere
-    // else asks the source tab. Neither reachable → a beat with no video time.
-    const pb = playback ?? (await requestPlayback())
     const beat = await serialized(async () => {
+      const { watchlist, activeId } = await getWatchlistState()
+      const entry = watchlist.find((e) => e.id === activeId)
+      if (!entry) return null
+      // A press on the source tab carries its own playback; a press anywhere
+      // else asks the source tab. Neither reachable → no video time.
+      const pb = playback ?? (await requestPlayback())
       const result = logBeat(await loadBeats(), {
         id: uuid(),
         dramaId: entry.id,
@@ -427,7 +435,7 @@ async function handleLogBeat(
         mood,
         videoTime: pb?.videoTime ?? null,
         duration: pb?.duration ?? null,
-        at: Date.now(),
+        at,
       })
       await browser.storage.local.set({ [BEATS_KEY]: result.beats })
       // Published inside the queue, so displays hear a beat and its
@@ -435,6 +443,13 @@ async function handleLogBeat(
       await broadcast({ type: "BEAT_LOGGED", beat: result.beat })
       return result.beat
     })
+    if (!beat) {
+      sendResponse({
+        ok: false,
+        error: "No active drama. Pick one in the popup first.",
+      })
+      return
+    }
     sendResponse({ ok: true, beat })
   } catch (err) {
     sendResponse({ ok: false, error: String(err) })
@@ -638,12 +653,14 @@ async function handleAdjustVerdict(
   sendResponse: Reply<"ADJUST_VERDICT">
 ): Promise<void> {
   try {
-    // Where the drama is, for the log — asked before the queue, like a beat.
-    const playback = await requestPlayback()
+    // Queued before any await, like a beat: down-then-up must land in that
+    // order whichever playback lookup returns first.
     const result = await serialized(async () => {
       const current = await getWatchlistState()
       const entry = current.watchlist.find((e) => e.id === current.activeId)
       if (!entry) return null
+      // Where the drama is, for the log.
+      const playback = await requestPlayback()
       const value = applyVerdict(entry[field], field, change)
       const watchlist = current.watchlist.map((e) =>
         e.id === entry.id ? { ...e, [field]: value } : e
