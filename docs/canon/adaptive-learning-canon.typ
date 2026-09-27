@@ -996,6 +996,26 @@ before it can update a belief about $mu$ (Prop. 9.1).
   runs inside the loop.
 ]
 
+#remark("3.5", name: "The report selects by default")[
+  Remark 3.3 placed the evaluation report as input to content generation. It
+  is amended in one respect: by default the report steers *selection*, not
+  generation. The learner chooses among a small set of served units
+  (Cor. 8.3), and the report orders them on the device. That makes it a
+  class I decision under Definition 8.1, with no oracle involved. The report
+  still does not set the level: the order is taken within the level the
+  learner holds. It acts through three things a unit's manifest entry
+  carries:
+  (i) a unit whose authored relations include one the learner named
+  blocking comes first, so what blocked them returns;
+  (ii) length follows the verdict: "too hard" or "running out of steam"
+  puts shorter units first, and "too easy" puts longer ones first;
+  (iii) a unit the learner just reported on comes later. It is never
+  hidden, because going through a unit again is expected.
+  Generating a unit from the report stays available as the learner's
+  opt-in path (Cor. 8.2). Proposition 3.4 is untouched: an order is not a
+  belief.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = The Exercise: Instrument and Intervention
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2030,6 +2050,25 @@ also survives its relaxation.
   remark does not reach it.
 ]
 
+#remark("7.4", name: "Learner records are brief")[
+  What Remark 7.3 keeps on the device is kept briefly. Evaluation reports are
+  capped at ten, the most recent, and expire after thirty days. A report's
+  free text is deleted once a prompt has carried it to the learner's model:
+  it said what it had to say once. A unit the learner pasted is held for the
+  session (the browser tab) and not kept past it. Their conversation with
+  their own model already holds that unit, and replaying it means pasting it
+  again. Three facts argue against keeping more:
+  (a) client storage is synchronous, and a store of whole units validated on
+  every read costs a phone its frames;
+  (b) its quota is shared with everything else the origin stores
+  (Axiom 7.1 (v));
+  (c) a user agent may evict it without notice after days of disuse
+  (Axiom 7.1 (iv)), so a device-kept shelf of units fails exactly the
+  learner who drifts away and comes back.
+  Theorem 7.2 is what makes brevity safe: losing any of these degrades
+  adaptation and nothing else.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = The Semantic Boundary
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2223,6 +2262,19 @@ estimating a cost.
   replayed at will: going through the same unit again is expected, because
   persistence is the claim (Rem. 3.3). An item that has been answered can be
   disputed (Rem. 3.4), and the dispute rides the next prompt.
+]
+
+#corollary("8.3", name: "The weekly batch, and the loop as an option")[
+  The handheld surface's default content is a small batch of units the
+  operator generates at authoring time and reviews before serving, which is
+  Proposition 8.1 exactly. The batch is rotated weekly, the same for every
+  learner, and served as content under Remark 7.3. The learner reaches the
+  next unit by the selection of Remark 3.5, with no setup, no wait and no
+  model of their own. The generation loop of Corollary 8.2 remains as the
+  learner's option, amended by Remark 7.4 in what it keeps. It runs through
+  the learner's clipboard only: the application holds no model credential,
+  so Proposition 8.4's "the application never calls a model" is a decision
+  and not merely the present state.
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2795,6 +2847,20 @@ to §12. Filed with `packages/ui/topik`'s generation loop, which lands on
 the same branch one commit earlier and cites it, rather than ahead of it.
 Rem. 7.3 is filed ahead of the file host's lesson storage, which predates
 it and does not yet satisfy it.
+
+*v1.8 --- 2026-09-27.* Moves the learner's default path from generating to
+selecting. The evaluation report orders a small served batch on the device
+(Rem. 3.5): blocking relations return, length follows the verdict, and
+recent units come later, all within the level the report does not set. The
+default content is an operator-generated, reviewed batch rotated weekly
+(Cor. 8.3). The generation loop stays as the learner's option, through the
+clipboard only. Learner records on the device are made brief (Rem. 7.4): a
+pasted unit lasts the session, and reports are capped at ten, expire after
+thirty days and lose their free text once used. Motivated by the loop's cost
+to engagement (the learner did the plumbing for every unit) and by
+measurement: a kept unit is ~9k characters, and the store validated all of
+them on every synchronous read, within an origin-wide quota. Filed ahead of
+the `packages/ui/topik` change that implements it, on the same branch.
 
 #pagebreak()
 
