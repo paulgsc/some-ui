@@ -250,7 +250,9 @@ than a lint rule or test. A reviewer checks the hunk against the claim; no
 invariant asks for exploring states the diff does not touch. "Adopted
 workspaces" means those with `require-scoped-lifetime` at `error` (today:
 `some-drama`). Each held on every adopted workspace when it was written; a
-violation is a regression, not debt.
+violation is a regression, not debt. Each falsifier covers every edit that
+can break its claim, deletions and moves included, not only additions,
+because a reviewer stops when the falsifier doesn't match.
 
 **L1: A repeating resource lives on the active scope.**
 
@@ -259,7 +261,8 @@ violation is a regression, not debt.
   `start` receives or on a child of that scope.
 - _Falsified by_ a hunk, in such a file, that calls `.interval(` or `.loop(`
   on the class's own lifetime (`this.life`) or on a `new Disposables()`, or
-  calls `spawn*(` outside `start`.
+  calls `spawn*(` outside `start`. A move out of `start` counts: the call
+  reappears as an added line elsewhere.
 - _Scope:_ adopted workspaces. One-shot `.frame(` and `.timeout(` on the
   class's own lifetime are fine: they end by themselves.
 - _Why not lint or tests:_ both rules can see that a resource has an owner,
@@ -273,7 +276,8 @@ violation is a regression, not debt.
   hold names are the type argument, the initial holds, and each
   `.hold(`/`.release(` literal. Substrings count ("min" is in "minimised").
 - _Falsified by_ a hunk that adds a hold name with no `it(` title containing
-  it anywhere in the workspace's suite after the diff.
+  it anywhere in the workspace's suite after the diff, or that removes or
+  retitles an `it(` so an existing hold name no longer appears in any title.
 - _Scope:_ adopted workspaces.
 - _Why not lint or tests:_ a harness only drives the states it is given,
   and no test can list the dormant states a component will grow later.
@@ -283,7 +287,9 @@ violation is a regression, not debt.
 - _Claim:_ every `eslint-disable` of `require-named-lifetime` or
   `require-scoped-lifetime` has a line starting `Lifetime:` in the unbroken
   `//` comment block directly above it, saying what ends the resource.
-- _Falsified by_ a hunk that adds such a directive without that line.
+- _Falsified by_ a hunk that adds such a directive without that line, that
+  deletes or rewords the `Lifetime:` line above an existing directive, or
+  that breaks the comment block between them (inserting a non-comment line).
 - _Scope:_ the whole repo. All 12 exemptions met it when it was written.
 - _Why not lint or tests:_ whether the `Lifetime:` line is true needs a
   person to read it. Whether it exists is mechanical, so this could become a
@@ -299,7 +305,8 @@ violation is a regression, not debt.
   - `new WebSocket(`, `BroadcastChannel(` or `EventSource(`;
   - `.onX.addListener(` on `browser.*` or `chrome.*`.
 - _Falsified by_ a hunk that adds one of these in a non-entry module whose
-  function has neither.
+  function has neither, or that deletes the `<life>.add(` registration or
+  the `Lifetime:` comment of an existing one.
 - _Scope:_ adopted workspaces. Entry modules are exempt because page or
   worker lifetime is the right lifetime there.
 - _Why not lint or tests:_ the rules are syntactic on purpose. Adding these
@@ -319,7 +326,8 @@ violation is a regression, not debt.
 - _Falsified by_ a hunk that:
   - removes or weakens the gate rule;
   - gives an element appended outside the overlay root an `infinite`
-    animation, when that element is created somewhere other than `start`;
+    animation, when that element is created somewhere other than `start`,
+    or moves the creation of such an element out of `start`;
   - or adds `.animate(` outside `start`.
 - _Scope:_ adopted workspaces with an overlay (today: some-drama's
   `#dc-root.dc-dormant`).
