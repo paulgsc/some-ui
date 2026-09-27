@@ -65,7 +65,7 @@ type StyleRule = { selector: string; body: string }
 
 /** Style rules at any depth of @media/@supports/@layer; @keyframes skipped. */
 function styleRules(css: string): Array<StyleRule> {
-  const src = css.replace(/\/\*[\s\S]*?\*\//g, "")
+  const src = stripComments(css)
   const out: Array<StyleRule> = []
   const walk = (text: string): void => {
     let i = 0
@@ -84,6 +84,26 @@ function styleRules(css: string): Array<StyleRule> {
     }
   }
   walk(src)
+  return out
+}
+
+/**
+ * `css` without its comments. A linear scan: the equivalent lazy regex is
+ * polynomial on input with many unclosed `/*` openers (CodeQL
+ * js/polynomial-redos), and this runs on whatever stylesheet a test passes.
+ * An unclosed comment runs to the end, as it does in CSS.
+ */
+function stripComments(css: string): string {
+  let out = ""
+  let i = 0
+  while (i < css.length) {
+    const open = css.indexOf("/*", i)
+    if (open === -1) return out + css.slice(i)
+    out += css.slice(i, open)
+    const close = css.indexOf("*/", open + 2)
+    if (close === -1) return out
+    i = close + 2
+  }
   return out
 }
 

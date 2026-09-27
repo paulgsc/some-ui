@@ -35,4 +35,18 @@ describe("ungatedInfiniteAnimations", () => {
       []
     )
   })
+
+  it("ignores rules inside comments, closed or not", () => {
+    const commented = `/* .xx-orbit { animation: spin 1s infinite } */
+      .xx-once { animation: spin 1s 1 }
+      /* unclosed .xx-orbit { animation: spin 1s infinite }`
+    expect(ungatedInfiniteAnimations(document, commented, GATE)).toEqual([])
+  })
+
+  it("reads a stylesheet of many unclosed comment openers in linear time", () => {
+    const hostile = `/*${"a/*".repeat(50_000)}`
+    const start = performance.now()
+    expect(ungatedInfiniteAnimations(document, hostile, GATE)).toEqual([])
+    expect(performance.now() - start).toBeLessThan(1_000)
+  })
 })
