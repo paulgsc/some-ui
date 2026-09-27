@@ -71,6 +71,10 @@ export function readSourceReport(): SourceReport | null {
  * video started, stopped, stalled, jumped, changed speed, or (a new episode)
  * changed length. `timeupdate` is left out on purpose — between these the
  * time is a straight line a display draws itself (logic/playback.ts).
+ *
+ *   LP1  never add `timeupdate` or `progress` here: they fire several times a
+ *        second while playing, which would turn every source tab into a
+ *        poller of the background (README.md → "Live playback")
  */
 export const PLAYBACK_EVENTS = [
   "play",

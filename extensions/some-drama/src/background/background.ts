@@ -54,6 +54,7 @@ import {
   normalizeEpisode,
 } from "@drama/logic/beats"
 import { MOODS } from "@drama/logic/content/constants"
+import { livePublisher } from "@drama/logic/playback"
 import { electSource } from "@drama/logic/source"
 import { isStreamSite, siteOf, withStreamSite } from "@drama/logic/stream-sites"
 import {
@@ -360,24 +361,15 @@ async function requestSourceReport(): Promise<SourceReport | null> {
 
 // ── Live playback ─────────────────────────────────────────────────────────────
 // Displays run the drama's clock themselves from the last report
-// (logic/playback.ts); they only need a new one when the video changes state.
-// Publishes are queued so an older election can't land after a newer one.
-const livePlaybackSerialized = queue()
-
-// The last report broadcast, minus its read time, to skip repeats: a paused
-// video re-reported, or no source both before and after a tab closed. Memory
-// only — after the background is evicted the next publish just goes out.
-let lastLive: string | null = null
-
-function publishLivePlayback(): Promise<void> {
-  return livePlaybackSerialized(async () => {
-    const live = await requestSourceReport()
-    const key = JSON.stringify(live && { ...live, readAt: 0 })
-    if (key === lastLive) return
-    lastLive = key
-    await broadcast({ type: "LIVE_PLAYBACK", live })
-  })
-}
+// (logic/playback.ts); they only need a new one when that clock would be
+// wrong. livePublisher decides that, and is tested; this only wires it.
+//   LP1  no repeating timer here: source tabs are asked on a message or a
+//        tab closing, never on a schedule
+//   LP2  LIVE_PLAYBACK is sent only through publishLivePlayback
+// (full text: README.md → "Live playback: what is enforced, and what is not")
+const publishLivePlayback = livePublisher(requestSourceReport, (live) =>
+  broadcast({ type: "LIVE_PLAYBACK", live })
+)
 
 // ── Watchlist helpers ─────────────────────────────────────────────────────────
 

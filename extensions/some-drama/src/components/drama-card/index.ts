@@ -34,7 +34,10 @@
 // ActiveScope nested in the first — so it stops whenever the card is dormant —
 // held "paused" whenever the video's time isn't moving (paused, stalled,
 // ended, no source): it ticks only while someone can see it *and* the drama
-// is playing.
+// is playing. It only extrapolates: it never reads a video or sends a
+// message. Both limits are tested in tests/card-lifetime.test.ts — "runs its
+// clock only while the drama plays…" and "ticks no faster than once a
+// second…" (so a per-frame loop can't come back as a faster interval).
 
 import { CapturePanel } from "@drama/components/capture-panel"
 import { DragController } from "@drama/components/drag-controller"

@@ -13,7 +13,7 @@ import {
   ungatedInfiniteAnimations,
 } from "@some-extension/common/testing"
 import type { ResourceProbe } from "@some-extension/common/testing"
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
   CARD_STATE,
@@ -103,6 +103,25 @@ describe("the card's resources follow its activity", () => {
     expect(probe.counts().intervals).toBe(1)
     card.destroy()
     expect(probe.counts()).toEqual(probe.baseline)
+  })
+
+  it("ticks no faster than once a second, whatever is running", async () => {
+    // The live clock (and the slideshow) are the card's only repeating
+    // timers; neither may become a per-frame loop in disguise.
+    const card = mount()
+    await nextFrame()
+    // Spied from here: jsdom runs requestAnimationFrame on a 16 ms interval
+    // of its own, which the entrance frame above started. Minimise and
+    // restore to restart everything the active scope runs.
+    const spy = vi.spyOn(window, "setInterval")
+    card.setPlayback(sourceReport(60, true))
+    card.setSize("min")
+    card.setSize("compact")
+    const delays = spy.mock.calls.map(([, ms]) => ms ?? 0)
+    spy.mockRestore()
+    expect(delays.length).toBeGreaterThanOrEqual(2)
+    for (const ms of delays) expect(ms).toBeGreaterThanOrEqual(1_000)
+    card.destroy()
   })
 
   it("returns every resource when destroyed", async () => {

@@ -24,12 +24,80 @@ the background whenever its video plays, pauses, stalls, seeks or changes
 speed, and the card runs the clock itself in between — no polling, and no
 clock at all while the video is paused or the card is minimised or hidden.
 Without a marked streaming site the card shows the position last saved from
-the popup.
+the popup. What keeps it that way: [Live playback](#live-playback-what-is-enforced-and-what-is-not).
 
 To mark a site, open the drama's tab and press **Mark as streaming** in the
 popup; **Unmark** (or ✕ in the popup's _Streaming sites_ list) reverts it.
 Open tabs switch roles immediately. Marking covers subdomains (`viki.com`
 covers `m.viki.com`). Nothing is marked on a fresh install.
+
+## Live playback: what is enforced, and what is not
+
+The idiom: **playback is pushed on change, never pulled on a schedule.** A
+source tab reports when its video changes state; the background re-elects the
+source and broadcasts only when the displays' clocks would otherwise be wrong;
+a card extrapolates in between, and only while someone can see it move.
+
+**What upholds it.**
+
+| Guarantee                                                                                                         | Enforced by                                                                  |
+| ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| A report is broadcast only when the last one sent no longer predicts the video (seek, pause, rate, episode, gone) | `livePublisher` / `predicts` tests, `src/logic/__tests__/playback.test.ts`   |
+| The card's clock runs only while the video advances and the card is active (not minimised, hidden, entering)      | `tests/card-lifetime.test.ts` → "runs its clock only while the drama plays…" |
+| No timer the card runs ticks faster than once a second                                                            | `tests/card-lifetime.test.ts` → "ticks no faster than once a second…"        |
+| No card, so no clock, on a page that is not showing or toggled off                                                | `tests/display-lifetime.test.ts`                                             |
+| A source tab's report says whether its time is moving (a stalled video is not)                                    | `tests/playback.test.ts`                                                     |
+
+**Invariants LP1–LP2: what those cannot check.** Written for review one hunk at
+a time, in the format of `CLAUDE.md` → "Gray-area invariants"; both held when
+they were written (checked: every timer in LP1's scope is a one-shot — the
+empty pill's fade in `display.ts`, the report settle and the `GET_STATE` retry
+in `content.ts`, the playback-ask timeout in `background.ts` — and no code
+listens for `timeupdate` or `progress`; `"LIVE_PLAYBACK"` appears in
+`background.ts` only in `publishLivePlayback`).
+
+**LP1: Playback is read on events, never on a schedule.**
+
+- _Claim:_ in some-drama's `src/` outside `src/components/`, there is no
+  repeating timer — no `setInterval(`, `.interval(`, `.loop(`,
+  `browser.alarms`, or `setTimeout(`/`.timeout(` re-armed from its own
+  callback — and nothing listens for the media `timeupdate` or `progress`
+  events. So every read of a video's position is triggered by a message, a
+  hotkey, a media event or a tab closing.
+- _Falsified by_ a hunk, in that scope, that adds one of those timers, adds a
+  `timeupdate` or `progress` listener (including adding either name to
+  `PLAYBACK_EVENTS` in `src/effects/content/playback.ts`), or changes an
+  existing one-shot timer so that its callback arms it again. A timer moved
+  into the scope from elsewhere counts: it appears as an added line.
+- _Scope:_ `extensions/some-drama/src/`, except `src/components/` (the card's
+  own timers, held by L1 in `extensions/common/GOOD_CITIZEN.md` and the tests
+  above), `__tests__/` and `*.stories.*`.
+- _Why not enforced:_ lint — `require-named-lifetime` flags a bare
+  `setInterval`, but `.interval(` on a `Disposables` is the sanctioned form
+  the card itself uses, and whether a timer polls depends on what its
+  callback reads, which needs data flow. Banning those names in this scope is
+  mechanical ("mechanical; not yet a rule": a path-scoped
+  `no-restricted-syntax`). Tests — `content.ts` and `background.ts` are entry
+  modules that run on import against browser globals; nothing drives them,
+  and a test sees only the states it drives.
+
+**LP2: `LIVE_PLAYBACK` goes out only through the publisher.**
+
+- _Claim:_ in `background.ts`, the only code that sends a `LIVE_PLAYBACK`
+  message is the `send` passed to `livePublisher(` where
+  `publishLivePlayback` is defined, and every re-election goes through
+  `publishLivePlayback()`.
+- _Falsified by_ a hunk in `background.ts` that adds the string literal
+  `"LIVE_PLAYBACK"`, quotes included (so not `"GET_LIVE_PLAYBACK"`, and not
+  a comment), anywhere but that `livePublisher(` call, or that deletes, renames or
+  bypasses the `livePublisher(` call in `publishLivePlayback`'s definition
+  (a direct `broadcast` of a fresh `requestSourceReport()`, say).
+- _Scope:_ `extensions/some-drama/src/background/background.ts`.
+- _Why not enforced:_ the decision itself — send only when the last report
+  sent no longer predicts the new one — is tested (table above). Whether
+  `background.ts` routes through it is not: it is an entry module with no
+  harness. Rejecting the literal outside one call is mechanical ("mechanical;
+  not yet a rule").
 
 ## Beats
 

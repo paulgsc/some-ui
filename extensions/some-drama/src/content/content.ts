@@ -16,6 +16,11 @@
 //             when the page goes away, so every display's clock follows the
 //             drama live (LIVE_PLAYBACK) — events, not polling.
 //
+// Live playback (README.md → "Live playback: what is enforced, and what is not"):
+//   LP1  no repeating timer and no `timeupdate`/`progress` listener in this
+//        file: a video is read on a message, a hotkey or a media event, and
+//        the one timer on the reporting path is the one-shot settle below
+//
 // Display responsibilities:
 //   1. Render DramaCard from the active entry — all fields real, no dummies.
 //   2. React to STATE_UPDATE broadcasts from background.
