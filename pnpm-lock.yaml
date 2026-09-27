@@ -1483,6 +1483,9 @@ importers:
 
   packages/ui/lesson-crm:
     dependencies:
+      '@some-ui/intent-kit':
+        specifier: workspace:*
+        version: link:../../intent-kit
       '@some-ui/shared':
         specifier: workspace:*
         version: link:../shared

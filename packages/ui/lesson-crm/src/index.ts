@@ -6,3 +6,4 @@ export type {
   LessonWritten,
   OperatorLesson,
 } from "./lib/client"
+export type { CrmNotice, Reporting } from "./lib/operation"

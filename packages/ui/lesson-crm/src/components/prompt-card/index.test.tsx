@@ -1,4 +1,6 @@
 import { PromptCard } from "@lesson-crm/components/prompt-card"
+import type { CrmNotice, Reporting } from "@lesson-crm/lib/operation"
+import { toIntentError } from "@some-ui/intent-kit"
 import { buildLessonPrompt } from "@some-ui/topik"
 import { act, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -15,6 +17,15 @@ function stubClipboard(clipboard: unknown): void {
   })
 }
 
+function recording(): Reporting & { notices: Array<CrmNotice> } {
+  const notices: Array<CrmNotice> = []
+  return {
+    notices,
+    notify: (notice) => notices.push(notice),
+    mapError: toIntentError,
+  }
+}
+
 afterEach(() => {
   stubClipboard(undefined)
 })
@@ -23,7 +34,8 @@ describe("PromptCard", () => {
   it("copies the generator prompt for the weekly batch, with the chosen request", async () => {
     const writeText = vi.fn(() => Promise.resolve())
     stubClipboard({ writeText })
-    render(<PromptCard />)
+    const reporting = recording()
+    render(<PromptCard reporting={reporting} />)
 
     fireEvent.click(screen.getByRole("radio", { name: "TOPIK 4" }))
     fireEvent.change(screen.getByLabelText("Scene"), {
@@ -44,18 +56,26 @@ describe("PromptCard", () => {
       })
     )
     expect(screen.getByRole("button", { name: /Copied/ })).toBeInTheDocument()
+    expect(reporting.notices).toEqual([
+      { tone: "success", title: "Prompt copied: paste it into your model" },
+    ])
   })
 
   it("shows the prompt to copy by hand where the page has no clipboard", async () => {
     stubClipboard(undefined)
-    render(<PromptCard />)
+    const reporting = recording()
+    render(<PromptCard reporting={reporting} />)
 
     fireEvent.click(screen.getByRole("button", { name: /Copy the prompt/ }))
     await settle()
 
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      /isn.t served over HTTPS/
-    )
+    expect(reporting.notices).toMatchObject([
+      {
+        tone: "error",
+        title: "Couldn't copy the prompt",
+        error: { summary: expect.stringMatching(/isn.t served over HTTPS/) },
+      },
+    ])
     expect(screen.getByLabelText("Prompt to copy")).toHaveValue(
       buildLessonPrompt({ level: 2, conversations: 3, audience: "batch" })
     )
@@ -63,7 +83,8 @@ describe("PromptCard", () => {
 
   it("forgets a copy once the request changes", async () => {
     stubClipboard({ writeText: vi.fn(() => Promise.resolve()) })
-    render(<PromptCard />)
+    const reporting = recording()
+    render(<PromptCard reporting={reporting} />)
 
     fireEvent.click(screen.getByRole("button", { name: /Copy the prompt/ }))
     await settle()

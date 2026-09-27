@@ -5,8 +5,36 @@ import type {
   LessonWrite,
   OperatorLesson,
 } from "@lesson-crm/lib/client"
+import type { CrmNotice, Reporting } from "@lesson-crm/lib/operation"
+import { toIntentError } from "@some-ui/intent-kit"
 import { act, fireEvent, render, screen, within } from "@testing-library/react"
-import { describe, expect, it, vi } from "vitest"
+import type * as SomeUiUtils from "some-ui-utils"
+import { afterEach, describe, expect, it, vi } from "vitest"
+
+// jsdom lays nothing out, so a measured page would settle on one row. This
+// file is about the CRM's flow, not about fitting - `useFittedPage` has its
+// own tests, and the ui-fit sweep measures real boxes - so every page here
+// holds everything.
+vi.mock("some-ui-utils", async () => {
+  const actual = await vi.importActual<typeof SomeUiUtils>("some-ui-utils")
+  return {
+    ...actual,
+    useFittedPage: <T,>(
+      items: ReadonlyArray<T>
+    ): ReturnType<typeof SomeUiUtils.useFittedPage<T>> => ({
+      viewportRef: { current: null },
+      contentRef: { current: null },
+      pageItems: [...items],
+      page: 0,
+      pageCount: 1,
+      perPage: items.length,
+      goToPage: (): void => undefined,
+      next: (): void => undefined,
+      previous: (): void => undefined,
+      isMeasuring: false,
+    }),
+  }
+})
 
 const BODY = `${JSON.stringify(LESSON, null, 2)}\n`
 
@@ -50,102 +78,214 @@ function fakeClient(initial: Array<OperatorLesson>): LessonCrmClient & {
   }
 }
 
-/** Lets pending promises and deferred renders land. */
+function recording(): Reporting & { notices: Array<CrmNotice> } {
+  const notices: Array<CrmNotice> = []
+  return {
+    notices,
+    notify: (notice) => notices.push(notice),
+    mapError: toIntentError,
+  }
+}
+
+/** `useIsMobile` reads a media query; jsdom has none, so each test picks. */
+function viewport(mobile: boolean): void {
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    value: (
+      query: string
+    ): Pick<
+      MediaQueryList,
+      "matches" | "media" | "addEventListener" | "removeEventListener"
+    > => ({
+      matches: mobile,
+      media: query,
+      addEventListener: (): void => undefined,
+      removeEventListener: (): void => undefined,
+    }),
+  })
+}
+
+afterEach(() => {
+  Reflect.deleteProperty(window, "matchMedia")
+})
+
+/** Lets pending promises and the renders they cause land. */
 const settle = (): Promise<void> =>
   act(async () => {
     await new Promise((resolve) => setTimeout(resolve, 0))
   })
 
-const listSection = (title: RegExp): HTMLElement => {
-  const heading = screen.getByRole("heading", { name: title })
-  const section = heading.closest("section")
-  if (!section) throw new Error("no section")
-  return section
+const step = (name: RegExp): void => {
+  fireEvent.click(screen.getByRole("button", { name }))
 }
 
-describe("LessonCrm", () => {
-  it("opens a stored lesson, checks it, and retires and restores it", async () => {
+const pasteReply = (): void => {
+  fireEvent.paste(screen.getByLabelText("Paste the lesson here"), {
+    clipboardData: { getData: () => REPLY, files: [] },
+  })
+}
+
+describe("LessonCrm on a wide screen: a list rail and a step workflow", () => {
+  it("opens a stored lesson at its check, previews it, and retires and restores it - saying so each time", async () => {
+    viewport(false)
     const client = fakeClient([lesson("a"), lesson("b")])
-    render(<LessonCrm client={client} />)
+    const reporting = recording()
+    render(<LessonCrm client={client} reporting={reporting} />)
     await settle()
 
     fireEvent.click(screen.getByRole("button", { name: /Lesson a/ }))
     await settle()
     expect(client.read).toHaveBeenCalledWith("a")
-    // A stored lesson is edited, not generated: no prompt.
-    expect(screen.queryByRole("region", { name: "Lesson prompt" })).toBeNull()
-    expect(screen.getByLabelText(/Lesson: a model/)).toHaveValue(BODY)
-    expect(screen.getByLabelText(/^Tags/)).toHaveValue("topik-1")
+    // A stored lesson is edited, not generated: no Ask step, and it lands on Check.
+    expect(screen.queryByRole("button", { name: /Step \d: Ask/ })).toBeNull()
+    expect(
+      screen.getByRole("button", { name: "Step 4: Check" })
+    ).toHaveAttribute("aria-current", "step")
     expect(
       screen.getByRole("status", { name: "Lesson check" })
     ).toHaveTextContent("relation:reply")
-    // The lesson's conversation, as learners will read it.
-    expect(
-      within(
-        screen.getByRole("region", { name: "Conversation preview" })
-      ).getByText("커피 한 잔 주세요.")
-    ).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole("button", { name: /Retire/ }))
+    step(/Step 3: Preview/)
+    expect(screen.getByText("커피 한 잔 주세요.")).toBeInTheDocument()
+
+    step(/Step 1: Lesson/)
+    // The lesson is a file, not a column of text.
+    expect(screen.getByText("a.json")).toBeInTheDocument()
+    expect(screen.queryByDisplayValue(BODY)).toBeNull()
+
+    step(/Step 4: Check/)
+    fireEvent.click(screen.getByRole("button", { name: "Retire" }))
     await settle()
     expect(client.retire).toHaveBeenCalledWith("a")
-    expect(
-      within(listSection(/Retired/)).getByRole("button", { name: /Lesson a/ })
-    ).toBeInTheDocument()
+    expect(reporting.notices.at(-1)).toMatchObject({
+      tone: "success",
+      title: expect.stringMatching(/^a retired/),
+    })
+    fireEvent.click(screen.getByRole("tab", { name: /Retired · 1/ }))
+    expect(screen.getByRole("button", { name: /Lesson a/ })).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole("button", { name: /Restore/ }))
+    fireEvent.click(screen.getByRole("button", { name: "Restore" }))
     await settle()
     expect(client.restore).toHaveBeenCalledWith("a")
-    expect(screen.queryByRole("heading", { name: /Retired/ })).toBeNull()
+    expect(reporting.notices.at(-1)).toMatchObject({
+      tone: "success",
+      title: "a is back in the manifest",
+    })
   })
 
-  it("saves a pasted reply as a new lesson, filled from its entry", async () => {
+  it("walks a new lesson from the prompt to a save: pasted as a file, filled from its entry", async () => {
+    viewport(false)
     const client = fakeClient([])
-    render(<LessonCrm client={client} />)
+    const reporting = recording()
+    render(<LessonCrm client={client} reporting={reporting} />)
     await settle()
 
     fireEvent.click(screen.getByRole("button", { name: /New lesson/ }))
-    // A new lesson starts from the prompt that asks a model for one.
     expect(
       screen.getByRole("region", { name: "Lesson prompt" })
     ).toBeInTheDocument()
-    fireEvent.change(screen.getByLabelText(/Lesson: a model/), {
-      target: { value: REPLY },
-    })
+
+    step(/Continue/)
+    pasteReply()
     await settle()
+    expect(screen.getByText("pasted-reply.md")).toBeInTheDocument()
+    expect(
+      within(
+        document.querySelector<HTMLElement>('[data-slot="lesson-file"]') ??
+          document.body
+      ).getByText(/1 conversations/)
+    ).toBeInTheDocument()
+
+    step(/Continue/)
     expect(screen.getByLabelText("Key")).toHaveValue("cafe-order")
-    fireEvent.click(screen.getByRole("button", { name: /Save/ }))
+
+    step(/Step 5: Check/)
+    fireEvent.click(screen.getByRole("button", { name: /^Save$/ }))
     await settle()
 
-    expect(client.writes).toHaveLength(1)
     const [key, write] = client.writes[0] ?? []
     expect(key).toBe("cafe-order")
     expect(write?.metadata.tags).toEqual(["topik-1", "cafe", "relation:reply"])
-    expect(screen.getByText("Added to the manifest")).toBeInTheDocument()
+    expect(reporting.notices.at(-1)).toEqual({
+      tone: "success",
+      title: "cafe-order added to the manifest",
+    })
     expect(
-      within(listSection(/In the manifest/)).getByRole("button", {
-        name: /At the café/,
-      })
+      within(screen.getByRole("navigation", { name: "Lessons" })).getByRole(
+        "button",
+        { name: /At the café/ }
+      )
     ).toBeInTheDocument()
   })
 
-  it("won't save a new lesson over an existing key", async () => {
-    const client = fakeClient([lesson("cafe-order")])
-    render(<LessonCrm client={client} />)
+  it("says why a save failed, and offers to try again", async () => {
+    viewport(false)
+    const client = fakeClient([])
+    vi.mocked(client.write).mockRejectedValueOnce(new Error("boom"))
+    const reporting = recording()
+    render(<LessonCrm client={client} reporting={reporting} />)
     await settle()
 
     fireEvent.click(screen.getByRole("button", { name: /New lesson/ }))
-    fireEvent.change(screen.getByLabelText(/Lesson: a model/), {
-      target: { value: REPLY },
-    })
+    step(/Step 2: Lesson/)
+    pasteReply()
     await settle()
+    step(/Step 5: Check/)
+    fireEvent.click(screen.getByRole("button", { name: /^Save$/ }))
+    await settle()
+
+    const notice = reporting.notices.at(-1)
+    expect(notice).toMatchObject({
+      tone: "error",
+      title: "Couldn't save cafe-order",
+    })
+    expect(
+      screen.getByRole("button", { name: /Try saving again/ })
+    ).toBeInTheDocument()
+    await act(async () => {
+      if (notice?.tone === "error") notice.retry?.()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+    expect(client.write).toHaveBeenCalledTimes(2)
+    expect(reporting.notices.at(-1)).toMatchObject({ tone: "success" })
+  })
+
+  it("says the list failed to load, and keeps a way to try again", async () => {
+    viewport(false)
+    const client = fakeClient([lesson("a")])
+    vi.mocked(client.list).mockRejectedValueOnce(new Error("down"))
+    const reporting = recording()
+    render(<LessonCrm client={client} reporting={reporting} />)
+    await settle()
+
+    expect(reporting.notices).toMatchObject([
+      { tone: "error", title: "Couldn't load the lessons" },
+    ])
+    fireEvent.click(screen.getByRole("button", { name: /Try again/ }))
+    await settle()
+    expect(screen.getByRole("button", { name: /Lesson a/ })).toBeInTheDocument()
+  })
+
+  it("won't save a new lesson over an existing key", async () => {
+    viewport(false)
+    const client = fakeClient([lesson("cafe-order")])
+    render(<LessonCrm client={client} reporting={recording()} />)
+    await settle()
+
+    fireEvent.click(screen.getByRole("button", { name: /New lesson/ }))
+    step(/Step 2: Lesson/)
+    pasteReply()
+    await settle()
+    step(/Step 3: Details/)
     expect(
       screen.getByText(/A lesson with this key exists/)
     ).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: /Save/ })).toBeDisabled()
+    step(/Step 5: Check/)
+    expect(screen.getByRole("button", { name: /^Save$/ })).toBeDisabled()
   })
 
-  it("drops a slow read for a lesson the operator has clicked away from", async () => {
+  it("drops a slow read for a lesson the operator has moved away from", async () => {
+    viewport(false)
     const client = fakeClient([lesson("a"), lesson("b")])
     let finishA: (body: string) => void = () => undefined
     vi.mocked(client.read).mockImplementation((key: string) =>
@@ -155,7 +295,7 @@ describe("LessonCrm", () => {
           })
         : Promise.resolve("[]")
     )
-    render(<LessonCrm client={client} />)
+    render(<LessonCrm client={client} reporting={recording()} />)
     await settle()
 
     fireEvent.click(screen.getByRole("button", { name: /Lesson a/ }))
@@ -163,7 +303,57 @@ describe("LessonCrm", () => {
     await settle()
     finishA(BODY)
     await settle()
-    expect(screen.getByLabelText("Key")).toHaveValue("b")
-    expect(screen.getByLabelText(/Lesson: a model/)).toHaveValue("[]")
+    step(/Step 1: Lesson/)
+    expect(screen.getByText("b.json")).toBeInTheDocument()
+    expect(screen.queryByText("a.json")).toBeNull()
+  })
+})
+
+describe("LessonCrm on a phone: a bottom tab per pane", () => {
+  it("keeps the editor's tabs shut until a lesson is open, then lands on the prompt", async () => {
+    viewport(true)
+    render(<LessonCrm client={fakeClient([])} reporting={recording()} />)
+    await settle()
+
+    expect(screen.getByRole("tab", { name: "Lessons" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    )
+    expect(screen.getByRole("tab", { name: "Check" })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole("button", { name: /New lesson/ }))
+    expect(screen.getByRole("tab", { name: "Ask" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    )
+    fireEvent.click(screen.getByRole("tab", { name: "Lesson" }))
+    pasteReply()
+    await settle()
+    fireEvent.click(screen.getByRole("tab", { name: "Check" }))
+    // On a phone, Save lives in the Check pane itself.
+    expect(screen.getByRole("button", { name: /^Save$/ })).toBeEnabled()
+  })
+
+  it("tucks the tab bar away while a pane scrolls down, and brings it back on the way up", async () => {
+    viewport(true)
+    const { container } = render(
+      <LessonCrm client={fakeClient([lesson("a")])} reporting={recording()} />
+    )
+    await settle()
+    const bar = (): Element | null => container.querySelector("[data-shown]")
+    const scroller = screen.getByRole("navigation", { name: "Lessons" })
+
+    const scrollTo = (top: number): void => {
+      Object.defineProperty(scroller, "scrollTop", {
+        configurable: true,
+        value: top,
+      })
+      fireEvent.scroll(scroller)
+    }
+    expect(bar()).toHaveAttribute("data-shown", "true")
+    scrollTo(120)
+    expect(bar()).toHaveAttribute("data-shown", "false")
+    scrollTo(60)
+    expect(bar()).toHaveAttribute("data-shown", "true")
   })
 })

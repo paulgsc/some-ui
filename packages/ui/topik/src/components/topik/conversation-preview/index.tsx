@@ -27,6 +27,9 @@ type ConversationPreviewProps = {
  *
  * Lines are spoken when a `<SpeechProvider>` is mounted, as in the session;
  * without one the speak button does nothing.
+ *
+ * It fills the box its host gives it (`h-full`), so the host decides how
+ * tall a preview is; it has no fixed height of its own.
  */
 export const ConversationPreview = ({
   batches,
@@ -94,12 +97,15 @@ export const ConversationPreview = ({
   }
 
   return (
-    <div data-slot="topik-conversation-preview" className="flex flex-col gap-2">
+    <div
+      data-slot="topik-conversation-preview"
+      className="flex h-full min-h-0 flex-col gap-2"
+    >
       {batches.length > 1 && (
         <div
           role="tablist"
           aria-label="Conversations"
-          className="flex flex-wrap gap-1"
+          className="flex shrink-0 flex-wrap gap-1"
         >
           {batches.map((batch, position) => (
             <button
@@ -121,7 +127,9 @@ export const ConversationPreview = ({
           ))}
         </div>
       )}
-      <div className="h-[28rem]">
+      {/* The chat takes what its host gives it: the preview has no height of
+          its own to impose, and the chat scrolls inside itself. */}
+      <div className="min-h-0 flex-1">
         <ChatPanel
           messages={messages}
           visibleMessages={messages.slice(0, shown)}

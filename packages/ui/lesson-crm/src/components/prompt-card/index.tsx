@@ -1,5 +1,8 @@
 import type { JSX } from "react"
-import { useState } from "react"
+import { useMemo, useState } from "react"
+import type { Reporting } from "@lesson-crm/lib/operation"
+import { useOperation } from "@lesson-crm/lib/operation"
+import type { IntentError } from "@some-ui/intent-kit"
 import { Button, Input, Label, Textarea } from "@some-ui/shared"
 import type { TopikLevel } from "@some-ui/topik"
 import {
@@ -13,15 +16,16 @@ import { cn } from "some-ui-utils"
 /** The most conversations a batch lesson asks for; a scene, not a course. */
 const MAX_CONVERSATIONS = 6
 
-async function copy(text: string): Promise<boolean> {
-  try {
-    // Throws where there is no clipboard API at all - outside a secure
-    // context, which a LAN page on plain http:// is: the fallback's case.
-    await navigator.clipboard.writeText(text)
-    return true
-  } catch {
-    return false
-  }
+/**
+ * Not a transport failure, so not the host's to name: the clipboard API is
+ * absent outside a secure context, which a LAN page on plain `http://` is.
+ */
+const NO_CLIPBOARD: IntentError = {
+  kind: "unavailable",
+  retryable: false,
+  summary:
+    "This page can't use the clipboard (it isn't served over HTTPS). The prompt is shown below to copy by hand.",
+  cause: null,
 }
 
 /**
@@ -30,50 +34,55 @@ async function copy(text: string): Promise<boolean> {
  * (`buildLessonPrompt`, `@some-ui/topik`), with the request marked as the
  * weekly batch rather than one learner's next lesson.
  *
- * Copied to the clipboard where the page may use it. Where it may not - the
- * CRM is a LAN page, and plain `http://` is no secure context - the prompt is
- * shown instead, selected on focus, to copy by hand.
+ * Copying is an intent: it says it worked, or why not. Where the clipboard is
+ * out of reach the prompt is shown instead, filling the rest of the pane and
+ * selected on focus, to copy by hand.
  */
-export const PromptCard = (): JSX.Element => {
+export const PromptCard = ({
+  reporting,
+}: {
+  reporting: Reporting
+}): JSX.Element => {
   const [level, setLevel] = useState<TopikLevel>(2)
   const [scene, setScene] = useState("")
   const [conversations, setConversations] = useState(DEFAULT_CONVERSATIONS)
-  const [copied, setCopied] = useState(false)
-  const [manual, setManual] = useState<string | null>(null)
 
-  const prompt = (): string =>
-    buildLessonPrompt({
-      level,
-      scene: scene.trim() || undefined,
-      conversations,
-      audience: "batch",
-    })
+  const prompt = buildLessonPrompt({
+    level,
+    scene: scene.trim() || undefined,
+    conversations,
+    audience: "batch",
+  })
 
-  // A changed request is a different prompt: what was copied is stale.
-  const changed = (): void => {
-    setCopied(false)
-    setManual(null)
-  }
-
-  const copyPrompt = async (): Promise<void> => {
-    const text = prompt()
-    const done = await copy(text)
-    setCopied(done)
-    setManual(done ? null : text)
-  }
+  const copyReporting = useMemo(
+    (): Reporting => ({ ...reporting, mapError: () => NO_CLIPBOARD }),
+    [reporting]
+  )
+  const copy = useOperation(
+    async (text: string): Promise<string> => {
+      await navigator.clipboard.writeText(text)
+      return text
+    },
+    {
+      success: () => "Prompt copied: paste it into your model",
+      failure: () => "Couldn't copy the prompt",
+    },
+    copyReporting
+  )
+  // What was copied is only current while the request that made it is: a
+  // changed level, scene or count is a different prompt.
+  const copied =
+    copy.state.status === "succeeded" && copy.state.value === prompt
 
   return (
     <section
       aria-label="Lesson prompt"
-      className="border-border flex flex-col gap-3 rounded-xl border p-3"
+      className="flex h-full min-h-0 flex-col gap-3"
     >
-      <h3 className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
-        1 · Ask a model
-      </h3>
       <div
         role="radiogroup"
         aria-label="TOPIK level"
-        className="grid grid-cols-6 gap-1"
+        className="grid shrink-0 grid-cols-6 gap-1"
       >
         {TOPIK_LEVELS.map((value) => (
           <button
@@ -82,10 +91,7 @@ export const PromptCard = (): JSX.Element => {
             role="radio"
             aria-checked={level === value}
             aria-label={`TOPIK ${value}`}
-            onClick={() => {
-              setLevel(value)
-              changed()
-            }}
+            onClick={() => setLevel(value)}
             className={cn(
               "h-9 rounded-lg border text-sm font-semibold",
               level === value
@@ -97,15 +103,12 @@ export const PromptCard = (): JSX.Element => {
           </button>
         ))}
       </div>
-      <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+      <div className="grid shrink-0 gap-2 sm:grid-cols-[1fr_auto]">
         <Input
           aria-label="Scene"
           placeholder="Scene (optional): the fiancée meets his mother"
           value={scene}
-          onChange={(event) => {
-            setScene(event.target.value)
-            changed()
-          }}
+          onChange={(event) => setScene(event.target.value)}
         />
         <div className="flex items-center gap-2">
           <Label htmlFor="lesson-conversations" className="text-xs">
@@ -121,7 +124,6 @@ export const PromptCard = (): JSX.Element => {
               const next = Number(event.target.value)
               if (Number.isInteger(next) && next >= 1) {
                 setConversations(Math.min(next, MAX_CONVERSATIONS))
-                changed()
               }
             }}
             className="w-16"
@@ -130,8 +132,9 @@ export const PromptCard = (): JSX.Element => {
       </div>
       <Button
         variant="outline"
-        className="gap-2 self-start"
-        onClick={() => void copyPrompt()}
+        className="shrink-0 gap-2 self-start"
+        disabled={copy.state.status === "working"}
+        onClick={() => copy.start(prompt)}
       >
         {copied ? (
           <>
@@ -143,25 +146,22 @@ export const PromptCard = (): JSX.Element => {
           </>
         )}
       </Button>
-      {manual !== null && (
-        <div className="flex flex-col gap-1">
-          <p role="alert" className="text-muted-foreground text-xs">
-            This page can&apos;t use the clipboard (it isn&apos;t served over
-            HTTPS). Select the prompt and copy it by hand:
-          </p>
-          <Textarea
-            aria-label="Prompt to copy"
-            readOnly
-            value={manual}
-            rows={6}
-            onFocus={(event) => event.currentTarget.select()}
-            className="font-mono text-xs"
-          />
-        </div>
+      {copy.state.status === "failed" && (
+        <Textarea
+          aria-label="Prompt to copy"
+          data-scroll-intent="long-form"
+          readOnly
+          value={prompt}
+          onFocus={(event) => event.currentTarget.select()}
+          className={
+            // scroll-intent: long-form - the whole prompt, to copy by hand; the box is what is left of the pane
+            "field-sizing-fixed min-h-0 flex-1 resize-none font-mono text-xs"
+          }
+        />
       )}
-      <p className="text-muted-foreground text-xs">
-        Then paste the model&apos;s whole reply below: the lesson, and the entry
-        that names it.
+      <p className="text-muted-foreground shrink-0 text-xs">
+        Then bring the model&apos;s whole reply to the Lesson step: the lesson,
+        and the entry that names it.
       </p>
     </section>
   )
