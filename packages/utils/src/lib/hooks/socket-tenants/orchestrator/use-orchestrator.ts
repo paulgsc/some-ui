@@ -7,13 +7,29 @@ import type {
 } from "@some-ui/types"
 import { IncomingEventSchema, OutgoingMessageSchema } from "@some-ui/types"
 import type { WebSocketManager } from "@some-ui/ws"
-import { useWebSocket } from "@some-ui/ws"
+import { resolveLanSocketUrl, useWebSocket } from "@some-ui/ws"
 
 import { useOrchestratorStore } from "../../../context/zustand-store"
+
+/**
+ * `file_host`'s port and socket route. Spelled here rather than imported:
+ * see the identical note in `@some-ui/umag`'s `companion-socket` for why
+ * one integer does not earn a shared package under
+ * `packages/SHARED_WORKSPACE_DOCTRINE.md` §1.
+ */
+const FILE_HOST_PORT = 3000
+const FILE_HOST_SOCKET_PATH = "/ws"
 
 export type UseOrchestratorConfig = {
   stream_id: string
   scenes: Array<SceneConfig>
+  /**
+   * Explicit socket URL. Left unset, the orchestrator asks
+   * `resolveLanSocketUrl` for `file_host`'s, which answers `undefined` on
+   * any origin that has no LAN companion server behind it - and
+   * `useWebSocket` then stays deliberately disconnected rather than dialing
+   * a port that is not there.
+   */
   orchestratorUrl?: string
   onSceneChange?: (from: string | null, to: string | null) => void
   onError?: (error: Event | Error) => void
@@ -102,7 +118,9 @@ export function useOrchestrator({
   )
 
   const ws = useWebSocket<IncomingEvent, OutgoingMessage>({
-    url: orchestratorUrl ?? `ws://${window.location.hostname}:3000/ws`,
+    url:
+      orchestratorUrl ??
+      resolveLanSocketUrl(FILE_HOST_PORT, FILE_HOST_SOCKET_PATH),
     incomingMessageSchema: IncomingEventSchema,
     outgoingMessageSchema: OutgoingMessageSchema,
     autoReconnect: true,

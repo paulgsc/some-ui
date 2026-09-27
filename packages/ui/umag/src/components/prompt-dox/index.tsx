@@ -9,6 +9,7 @@ import {
 } from "@umag/components/now-playing/now-playing-card"
 import { VoiceSelectorTrigger } from "@umag/components/voice-selector"
 import { useUtteranceWebSocket } from "@umag/hooks/prompt-utterance"
+import { resolveCompanionSocketUrl } from "@umag/utils/companion-socket"
 
 type DoxPromptProps = {
   className?: string
@@ -29,7 +30,7 @@ export const DoxPrompt: FC<DoxPromptProps> = ({
     isInitializing,
     error,
   } = useUtteranceWebSocket({
-    url: `ws://${window.location.hostname}:3000/ws`,
+    url: resolveCompanionSocketUrl(),
   })
 
   // `voices`/`defaultVoice` come straight off the queue now. This used to

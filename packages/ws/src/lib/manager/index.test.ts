@@ -241,3 +241,228 @@ describe("WebSocketManager - sendMessage", () => {
     ])
   })
 })
+
+describe("WebSocketManager - registration across dispose and re-acquire", () => {
+  /** `acquire()` only settles once the socket opens, and these cases are
+   * about the reference count rather than the connection - `refCounter`
+   * increments synchronously, so a microtask is all they need. */
+  const acquireWithoutConnecting = async (
+    manager: WebSocketManager
+  ): Promise<void> => {
+    void manager.acquire()
+    await Promise.resolve()
+  }
+
+  it("re-registers itself when a captured instance is acquired again", async () => {
+    // The <StrictMode> shape: the last reference goes, we dispose and
+    // unregister, and the same captured object is immediately re-acquired.
+    // It has to reclaim the URL, or the next caller silently gets a second
+    // manager on a second socket.
+    //
+    // Deliberately no `getInstance` between the release and the re-acquire:
+    // that call would itself register a replacement and hide the point.
+    const url = nextUrl()
+    const first = WebSocketManager.getInstance(url)
+
+    await acquireWithoutConnecting(first)
+    first.release()
+
+    await acquireWithoutConnecting(first)
+
+    expect(WebSocketManager.getInstance(url)).toBe(first)
+  })
+
+  it("does not evict a live entry that is not its own", async () => {
+    // Once a replacement owns the URL, the old manager's own disposal must
+    // not delete it by key. Deleting blind would leave the replacement live
+    // but unregistered - the same singleton break, one step removed.
+    const url = nextUrl()
+    const stale = WebSocketManager.getInstance(url)
+
+    await acquireWithoutConnecting(stale)
+    stale.release()
+
+    const replacement = WebSocketManager.getInstance(url)
+    expect(replacement).not.toBe(stale)
+
+    // The stale manager runs a full acquire/release cycle. It must not
+    // reclaim the URL on the way up (the slot is taken) nor evict the
+    // replacement on the way down.
+    await acquireWithoutConnecting(stale)
+    expect(WebSocketManager.getInstance(url)).toBe(replacement)
+
+    stale.release()
+
+    expect(WebSocketManager.getInstance(url)).toBe(replacement)
+  })
+})
+
+describe("WebSocketManager - initialization generations", () => {
+  it("ignores a stale socket's failure after the manager was re-acquired", async () => {
+    // The <StrictMode> replay, at its worst: setup acquires and starts
+    // connecting, cleanup releases and disposes mid-connect, setup acquires
+    // again on the same object. `dispose` closes the first socket but leaves
+    // its callbacks attached and its initialization continuation suspended,
+    // so the first socket's `onerror` still rejects the *first* init
+    // promise - whose catch runs `transitionTo("idle")` against the
+    // *second* acquisition's "initializing".
+    //
+    // The second socket then opens into a lifecycle that is back at "idle",
+    // where "initialized" is not a legal target, and the manager is wedged
+    // with an open socket it will not use.
+    const url = nextUrl()
+    const manager = WebSocketManager.getInstance(url)
+
+    void manager.acquire()
+    await Promise.resolve()
+    const stale = FakeWebSocket.instances[0]!
+
+    manager.release()
+
+    void manager.acquire()
+    await Promise.resolve()
+    const live = FakeWebSocket.instances.at(-1)!
+    expect(live).not.toBe(stale)
+
+    // The dead socket reports its failure late.
+    stale.simulateError(new Error("stale socket died"))
+    await Promise.resolve()
+
+    // The live socket connects. This must still complete normally.
+    live.simulateOpen()
+    await vi.waitFor(() => {
+      expect(manager.isInitialized).toBe(true)
+    })
+    expect(manager.isConnected).toBe(true)
+  })
+})
+
+describe("WebSocketManager - a superseded init callback", () => {
+  it("does not let an abandoned init callback mark a newer attempt initialized", async () => {
+    // The window the socket-identity guard cannot close: this attempt got
+    // *past* connectSocket and is suspended inside its `init` callback when
+    // dispose abandons it. No socket event is involved, so nothing about
+    // socket identity helps - when that callback finally resolves, the
+    // continuation would run `transitionTo("initialized")` against whatever
+    // attempt is current. That transition is legal from "initializing", so
+    // it corrupts silently: the manager reports initialized while its real
+    // socket is still connecting, and clears the live `initPromise`.
+    const url = nextUrl()
+    const manager = WebSocketManager.getInstance(url)
+
+    let releaseInit: (() => void) | undefined
+    const initBlocked = new Promise<void>((resolve) => {
+      releaseInit = resolve
+    })
+
+    void manager.acquire(() => initBlocked)
+    await Promise.resolve()
+    FakeWebSocket.instances[0]!.simulateOpen()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    // Abandoned mid-callback, then taken up again.
+    manager.release()
+    void manager.acquire()
+    await Promise.resolve()
+    const live = FakeWebSocket.instances.at(-1)!
+
+    // The abandoned callback finally finishes.
+    releaseInit?.()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    // It must not have spoken for the current attempt, whose socket has not
+    // even opened yet.
+    expect(manager.isInitialized).toBe(false)
+
+    live.simulateOpen()
+    await vi.waitFor(() => {
+      expect(manager.isInitialized).toBe(true)
+    })
+  })
+})
+
+describe("WebSocketManager - a dead socket's late events", () => {
+  it("cannot write connection state onto the manager that replaced it", async () => {
+    // Separate from the initialization generations: this is about a closed
+    // socket's final events arriving after a *new* socket is live and
+    // connected. Those handlers close over the manager, not the socket, so
+    // without an identity check a dead socket's `onclose` flips
+    // `isConnected` to false and its `onerror` writes an error - on a
+    // connection that is perfectly healthy.
+    const url = nextUrl()
+    const manager = WebSocketManager.getInstance(url)
+
+    void manager.acquire()
+    await Promise.resolve()
+    const stale = FakeWebSocket.instances[0]!
+
+    manager.release()
+
+    void manager.acquire()
+    await Promise.resolve()
+    const live = FakeWebSocket.instances.at(-1)!
+    expect(live).not.toBe(stale)
+
+    live.simulateOpen()
+    await vi.waitFor(() => {
+      expect(manager.isInitialized).toBe(true)
+    })
+    expect(manager.isConnected).toBe(true)
+
+    // The dead socket reports its end, late.
+    stale.simulateClose()
+    stale.simulateError(new Error("late failure from a closed socket"))
+    await Promise.resolve()
+
+    expect(manager.isConnected).toBe(true)
+    expect(manager.getSnapshot().error).toBeNull()
+  })
+})
+
+describe("WebSocketManager - init on reconnect", () => {
+  it("runs whatever the stored init delegates to, not a value frozen at acquire", async () => {
+    // The reconnect half of the same concern the hook's `initDelegate`
+    // addresses, pinned at the manager where `initFunction` actually lives:
+    // `acquire` stores its argument once, and `reconnect` runs that stored
+    // copy. A caller that keeps its real callback behind a mutable cell must
+    // see the *current* one on every reconnect, or a dropped socket silently
+    // restores the configuration from mount.
+    vi.useFakeTimers()
+    const url = nextUrl()
+    const manager = WebSocketManager.getInstance(url, {
+      autoReconnect: true,
+      reconnectInterval: 100,
+      maxReconnectAttempts: 3,
+    })
+
+    const calls: Array<string> = []
+    const cell = {
+      current: (): void => {
+        calls.push("from-acquire")
+      },
+    }
+    const delegate = (): void => cell.current()
+
+    const p = manager.acquire(delegate)
+    FakeWebSocket.instances[0]!.simulateOpen()
+    await p
+    expect(calls).toEqual(["from-acquire"])
+
+    // The caller's real callback changes after the manager stored the
+    // delegate.
+    cell.current = (): void => {
+      calls.push("current")
+    }
+
+    FakeWebSocket.instances[0]!.simulateClose()
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(FakeWebSocket.instances).toHaveLength(2)
+
+    FakeWebSocket.instances[1]!.simulateOpen()
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(calls).toEqual(["from-acquire", "current"])
+  })
+})

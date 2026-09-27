@@ -26,7 +26,13 @@ export { MutationQueue } from "./mutation-queue"
 export { ListenerRegistry } from "./listener-registry"
 
 export { WebSocketManager } from "./manager"
-export type { WebSocketManagerOptions, InitFunction } from "./manager"
+export type {
+  WebSocketManagerOptions,
+  InitFunction,
+  WebSocketSnapshot,
+} from "./manager"
+
+export { resolveLanSocketUrl } from "./lan-socket-url"
 
 export { useWebSocket } from "./use-websocket"
 export type { UseWebSocketOptions, UseWebSocketReturn } from "./use-websocket"
