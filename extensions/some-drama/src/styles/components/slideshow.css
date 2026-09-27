@@ -130,7 +130,7 @@
     hsl(var(--dc-hue-2) calc(85% * var(--dc-sat)) 55%) 100%
   );
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .dc-rating-value {
@@ -619,4 +619,34 @@
   font-style: italic;
   letter-spacing: 0.04em;
   text-shadow: 0 1px 3px hsl(var(--dc-hue) calc(50% * var(--dc-sat)) 25% / 50%);
+}
+
+/* Slide 6: the verdicts' trend across episodes (logic/verdict-log.ts) */
+.dc-rating-trend {
+  display: block;
+  height: 10px;
+  overflow: visible;
+  width: 56px;
+}
+
+.dc-rating-trend.dc-trend-empty {
+  display: none;
+}
+
+.dc-trend-rating,
+.dc-trend-finish {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dc-trend-rating {
+  stroke: var(--dc-gold);
+  stroke-width: 1.6;
+}
+
+.dc-trend-finish {
+  stroke: hsl(0deg 0% 100% / 70%);
+  stroke-dasharray: 2 2;
+  stroke-width: 1.2;
 }

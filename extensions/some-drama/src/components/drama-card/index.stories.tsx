@@ -3,7 +3,14 @@ import "@drama/styles/content.css"
 import { useEffect, useRef } from "react"
 import { logBeat } from "@drama/logic/beats"
 import { applyVerdict } from "@drama/logic/verdict"
-import type { BeatRecord, CardSize, CardState, MoodType } from "@drama/types"
+import { logVerdict } from "@drama/logic/verdict-log"
+import type {
+  BeatRecord,
+  CardSize,
+  CardState,
+  MoodType,
+  VerdictRecord,
+} from "@drama/types"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
 import { DramaCard } from "."
@@ -87,6 +94,7 @@ const DramaCardBridge = ({
   // on the card plays the same echo (pushBeat / update) the extension sends.
   const beatsRef = useRef<Array<BeatRecord>>([])
   const verdictsRef = useRef({ rating, completionLikelihood })
+  const verdictLogRef = useRef<Array<VerdictRecord>>([])
 
   // ── Mount once ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -128,7 +136,21 @@ const DramaCardBridge = ({
           const v = verdictsRef.current
           const next = { ...v, [field]: applyVerdict(v[field], field, change) }
           verdictsRef.current = next
+          // Each change lands in a later episode, so the trend has a shape.
+          const logged = verdictLogRef.current
+          verdictLogRef.current = logVerdict(logged, {
+            id: String(Date.now()),
+            dramaId: "story",
+            dramaTitle,
+            episode: `Ep ${logged.length + 1}`,
+            field,
+            from: v[field],
+            to: next[field],
+            videoTime: null,
+            at: Date.now(),
+          }).verdicts
           cardRef.current?.update(next)
+          cardRef.current?.setVerdictLog(verdictLogRef.current)
         },
         // eslint-disable-next-line no-console -- storybook mock; console output is the intended inspection surface
         onSizeChange: (s) => console.log("[DramaCard] size changed:", s),

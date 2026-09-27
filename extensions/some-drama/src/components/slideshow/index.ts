@@ -17,8 +17,16 @@ import {
   SLIDE_INTERVAL_MS,
 } from "@drama/logic/content/constants"
 import { starsFor } from "@drama/logic/content/utils"
+import { trendPath } from "@drama/logic/verdict-log"
+import type { TrendPoint } from "@drama/logic/verdict-log"
 import type { CardState, MomentTag } from "@drama/types"
 import type { Disposables } from "@some-extension/common"
+
+const SVG_NS = "http://www.w3.org/2000/svg" // eslint-disable-line no-restricted-syntax -- XML namespace identifier, not a fetched URL
+
+// The rating slide's trend line, in viewBox units.
+const TREND_W = 56
+const TREND_H = 10
 
 // Display glyphs for tags — cosmetic only, mirrors form-opinionated's TAG_META.
 const TAG_GLYPH: Record<MomentTag, string> = {
@@ -102,6 +110,10 @@ export class Slideshow {
   private ratingValue!: HTMLSpanElement
   private ratingStars!: HTMLSpanElement
   private ratingMomentum!: HTMLSpanElement
+  private ratingLabel!: HTMLSpanElement
+  private ratingTrend!: SVGSVGElement
+  private ratingTrendPath!: SVGPathElement
+  private finishTrendPath!: SVGPathElement
   // Slide 7 — summary
   private summaryBody!: HTMLDivElement
 
@@ -331,6 +343,29 @@ export class Slideshow {
     this.ratingStars.textContent = starsFor(rating)
   }
 
+  /**
+   * How the verdicts moved across episodes (logic/verdict-log.ts). The label
+   * names where the rating started, so the trend reads without axes.
+   */
+  applyTrendState(
+    rating: ReadonlyArray<TrendPoint>,
+    finish: ReadonlyArray<TrendPoint>
+  ): void {
+    const r = trendPath(rating, 10, TREND_W, TREND_H)
+    const f = trendPath(finish, 1, TREND_W, TREND_H)
+    this.ratingTrendPath.setAttribute("d", r)
+    this.finishTrendPath.setAttribute("d", f)
+    this.ratingTrend.classList.toggle("dc-trend-empty", !r && !f)
+    const start = rating[0]
+    // Short enough for the round slide: "from 8.6 · Ep 1".
+    this.ratingLabel.textContent =
+      rating.length >= 2 && start
+        ? [`from ${start.value.toFixed(1)}`, start.episode]
+            .filter(Boolean)
+            .join(" · ")
+        : "my rating"
+  }
+
   // ── Slide 7: summary (derived, display-only) ──────────────────────────────
   applySummaryState(state: CardState): void {
     this.summaryBody.innerHTML = ""
@@ -476,12 +511,26 @@ export class Slideshow {
     const slide = el("div", "dc-slide dc-slide-rating")
     this.ratingValue = el("span", "dc-rating-value")
     this.ratingStars = el("span", "dc-rating-stars")
-    const label = el("span", "dc-rating-label")
-    label.textContent = "my rating"
+    this.ratingLabel = el("span", "dc-rating-label")
+    this.ratingLabel.textContent = "my rating"
     this.ratingMomentum = el("span", "dc-rating-momentum")
+
+    // Longitudinal trend: rating (solid) and likelihood to finish (dashed)
+    // across the episodes they changed in. Hidden until there are two points.
+    this.ratingTrend = document.createElementNS(SVG_NS, "svg")
+    this.ratingTrend.setAttribute("class", "dc-rating-trend")
+    this.ratingTrend.setAttribute("viewBox", `0 0 ${TREND_W} ${TREND_H}`)
+    this.ratingTrend.setAttribute("aria-hidden", "true")
+    this.ratingTrendPath = document.createElementNS(SVG_NS, "path")
+    this.ratingTrendPath.setAttribute("class", "dc-trend-rating")
+    this.finishTrendPath = document.createElementNS(SVG_NS, "path")
+    this.finishTrendPath.setAttribute("class", "dc-trend-finish")
+    this.ratingTrend.append(this.finishTrendPath, this.ratingTrendPath)
+
     slide.appendChild(this.ratingValue)
     slide.appendChild(this.ratingStars)
-    slide.appendChild(label)
+    slide.appendChild(this.ratingTrend)
+    slide.appendChild(this.ratingLabel)
     slide.appendChild(this.ratingMomentum)
     return slide
   }

@@ -46,6 +46,8 @@ import {
   spotlightView,
   verdictSpotlight,
 } from "@drama/logic/content/spotlight"
+import { fitInViewport } from "@drama/logic/content/utils"
+import { verdictTrend } from "@drama/logic/verdict-log"
 import type {
   BeatRecord,
   CardEvents,
@@ -53,8 +55,12 @@ import type {
   CardState,
   MoodType,
   Spotlight as SpotlightContent,
+  VerdictRecord,
 } from "@drama/types"
 import { ActiveScope, Disposables } from "@some-extension/common"
+
+// The least gap kept between the card and the viewport's edges.
+const VIEWPORT_MARGIN = 8
 
 export class DramaCard {
   // Public — content.ts may need direct root access for positioning
@@ -85,6 +91,10 @@ export class DramaCard {
   private readonly active: ActiveScope<"entering" | "min" | "hidden">
   private blossoms: Blossoms | null = null
   private spotlit: Disposables | null = null
+
+  // Where the card wants to be (a saved position, or where it was dropped).
+  // What is shown is that, fitted into the viewport — see fit().
+  private anchor = { x: 0, y: 0 }
 
   constructor(container: HTMLElement, initial: CardState, events: CardEvents) {
     this.state = { ...initial }
@@ -149,8 +159,17 @@ export class DramaCard {
       ],
       this.life
     )
-    this.drag.onMove = (x, y): void => this.applyPosition(x, y)
+    this.drag.onMove = (x, y): void => {
+      this.anchor = { x, y }
+      this.applyPosition(x, y)
+    }
     this.drag.onDragEnd = (x, y): void => this.events.onDragEnd(x, y)
+
+    // A smaller window must not strand the card off screen; refit from its
+    // anchor, so growing the window back restores where it was.
+    window.addEventListener("resize", () => this.fit(), {
+      signal: this.life.signal,
+    })
 
     // ── Initial render ────────────────────────────────────────────────────────
     this.applyState()
@@ -224,8 +243,18 @@ export class DramaCard {
     )
   }
 
+  /** Load the drama's verdict history into the rating slide's trend. */
+  setVerdictLog(verdicts: ReadonlyArray<VerdictRecord>): void {
+    this.slideshow.applyTrendState(
+      verdictTrend(verdicts, "rating"),
+      verdictTrend(verdicts, "completionLikelihood")
+    )
+  }
+
+  /** Place the card at (x, y), or as near as fits in the viewport. */
   setPosition(x: number, y: number): void {
-    this.applyPosition(x, y)
+    this.anchor = { x, y }
+    this.fit()
   }
 
   setSize(size: CardSize, emit = true): void {
@@ -237,8 +266,9 @@ export class DramaCard {
     this.active.hold("min", size === "min")
     // Bubble only visible in full + poster slide
     this.syncBubbleVisibility()
-    // The card's box changed; the blossoms anchor to it.
-    this.blossoms?.reposition()
+    // The card's box changed: keep it on screen (fit repositions the
+    // blossoms, which anchor to it).
+    this.fit()
   }
 
   setVisible(v: boolean): void {
@@ -383,6 +413,18 @@ export class DramaCard {
       this.slideshow.current === this.slideshow.posterSlideIndex &&
       this.currentSize === "full"
     this.slideshow.setBubbleVisible(visible)
+  }
+
+  /** Show the card at its anchor, moved just enough to be wholly visible. */
+  private fit(): void {
+    const rect = this.root.getBoundingClientRect()
+    const at = fitInViewport(
+      this.anchor,
+      rect,
+      { width: window.innerWidth, height: window.innerHeight },
+      VIEWPORT_MARGIN
+    )
+    this.applyPosition(at.x, at.y)
   }
 
   private applyPosition(x: number, y: number): void {

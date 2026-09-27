@@ -17,7 +17,9 @@ const sendMessage = vi.fn((msg: { type: string }) =>
   Promise.resolve(
     msg.type === "GET_BEATS"
       ? { ok: true, episode: "Ep 12", beats: [] }
-      : { ok: true }
+      : msg.type === "GET_VERDICTS"
+        ? { ok: true, verdicts: [] }
+        : { ok: true }
   )
 )
 
@@ -106,6 +108,11 @@ describe("an edit to the showing drama keeps its card", () => {
     d.apply({ ...STATE, watchlist: [{ ...entry, rating: entry.rating + 1 }] })
     expect(card()).toBe(before)
     expect(card()?.getAttribute("data-spot")).toBe("rating")
+    // …and refetches the verdict history the change was just logged to.
+    const verdictFetches = sendMessage.mock.calls.filter(
+      ([m]) => m.type === "GET_VERDICTS"
+    )
+    expect(verdictFetches).toHaveLength(2)
   })
 
   it("rebuilds the card for a different drama", async () => {

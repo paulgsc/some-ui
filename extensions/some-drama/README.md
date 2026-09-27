@@ -51,6 +51,16 @@ quickly as a beat: the hotkeys above step them from any tab, and clicking the
 card opens a check-in panel with the moods, five stars (2, 4, 6, 8, 10) and
 four finish choices (💤 dropping, 🤔 on the fence, 🍿 likely, 🏁 finishing).
 
+Every change is logged for longitudinal tracking (`drama_verdicts`): which
+verdict, from what to what, in which episode and at what video time. It is
+logged wherever it came from — a hotkey, the card, or a popup edit; a new
+drama's first values are logged with no "from". Steps of one verdict within
+10 s fold into one change (four presses of `=` are "7 → 9", anchored at the
+first press), and stepping back to where it started logs nothing. Removing a
+drama keeps its history. On the card, the rating slide draws both verdicts
+across the episodes they changed in (rating solid, finish dashed) and names
+where the rating started.
+
 ## Spotlight and themes
 
 Whatever changed last is the card's face for 4 s: a beat, a rating or a
@@ -65,6 +75,13 @@ theme: every colour on the card derives from three numbers per mood in
 them into the card's tokens. The petals follow too: the mood picks their
 glyphs, motion and tint (sadness falls as rain, joy floats up), and the
 rating picks how many there are and how bright.
+
+## Placement
+
+The card mounts in the top-left corner of a tab unless you have dragged it
+somewhere; then it mounts where you left it. Either way it is kept wholly on
+screen: a position saved in a bigger window is pulled back in, and when the
+window shrinks the card moves with it (and returns when the window grows back).
 
 ## The popup
 
@@ -87,6 +104,7 @@ src/
 │   ├── beats.ts       logging + escalation, episode curve, episode parsing
 │   ├── stream-sites.ts  site matching for the user's streaming sites
 │   ├── verdict.ts     rating / likelihood-to-finish ranges and steps
+│   ├── verdict-log.ts  verdict history: folding, per-episode trend
 │   ├── content/  moods + themes, commands + key bindings, spotlight, petals
 │   └── popup/    constants
 ├── effects/      the only callers of DOM / browser APIs
@@ -133,6 +151,7 @@ repo-root Storybook (`STORYBOOK_WORKSPACE=some-drama`).
 | `drama_watchlist`        | `Array<DramaEntry>` (max 5)                 |
 | `drama_active_id`        | `string \| null`                            |
 | `drama_beats`            | `Array<BeatRecord>` (newest 5000)           |
+| `drama_verdicts`         | `Array<VerdictRecord>` (newest 2000)        |
 | `drama_source_tab`       | `number` — the source tab, validated on use |
 | `drama_stream_sites`     | `Array<string>` — sites marked as streaming |
 | `drama_card_position_v3` | `{ x, y, size }` (card layout)              |

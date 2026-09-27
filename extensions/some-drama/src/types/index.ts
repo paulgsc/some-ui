@@ -159,6 +159,7 @@ export type MessageBridge =
   | { type: "REGISTER_SOURCE" }
   | { type: "SET_STREAM_SITE"; site: string; streaming: boolean }
   | { type: "ADJUST_VERDICT"; field: VerdictField; change: VerdictChange }
+  | { type: "GET_VERDICTS"; dramaId: string }
 
 // Wire envelope — what background.ts actually sends back for each message type.
 // `ok: false` is uniform across all variants (error path), so it's factored out.
@@ -175,6 +176,8 @@ export type MessageResponseMap = {
   REGISTER_SOURCE: Envelope<{}>
   SET_STREAM_SITE: Envelope<{ state: WatchlistState }>
   ADJUST_VERDICT: Envelope<{ state: WatchlistState }>
+  // Every logged verdict change of one drama, oldest first.
+  GET_VERDICTS: Envelope<{ verdicts: Array<VerdictRecord> }>
 }
 
 /** Background → content-script broadcast after every watchlist mutation. */
@@ -227,6 +230,24 @@ export type BeatRecord = {
 export type VerdictField = "rating" | "completionLikelihood"
 
 export type VerdictChange = { set: number } | { step: 1 | -1 }
+
+/**
+ * One change of a verdict, kept for longitudinal tracking: what it was, what
+ * it became, and where in the drama that happened. Quick repeated steps of the
+ * same verdict fold into one record (logic/verdict-log.ts), so "7 → 9" is one
+ * change, not four half-point presses.
+ */
+export type VerdictRecord = {
+  id: string
+  dramaId: string
+  dramaTitle: string
+  episode: string
+  field: VerdictField
+  from: number | null // null: the first value the drama was given
+  to: number
+  videoTime: number | null // null outside playback (popup edits, no source)
+  at: number // latest change; the folding window runs from here
+}
 
 // ─── Spotlight: the latest change, shown first ────────────────────────────────
 // For a few seconds after a mood, rating or finish change, the card shows that

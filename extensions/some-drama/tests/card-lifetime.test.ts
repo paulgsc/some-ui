@@ -118,18 +118,18 @@ describe("page listeners live only as long as what needs them", () => {
   it("holds document listeners only for the length of a drag", async () => {
     const card = mount()
     await nextFrame()
-    expect(probe.counts().pageListeners).toBe(probe.baseline.pageListeners)
+    // One for the card's life: the window resize that keeps it on screen.
+    const idle = probe.baseline.pageListeners + 1
+    expect(probe.counts().pageListeners).toBe(idle)
 
     const handle = card.root.querySelector(".dc-card")
     handle?.dispatchEvent(
       new MouseEvent("pointerdown", { bubbles: true, clientX: 10, clientY: 10 })
     )
-    expect(probe.counts().pageListeners).toBeGreaterThan(
-      probe.baseline.pageListeners
-    )
+    expect(probe.counts().pageListeners).toBeGreaterThan(idle)
 
     document.dispatchEvent(new MouseEvent("pointerup", { bubbles: true }))
-    expect(probe.counts().pageListeners).toBe(probe.baseline.pageListeners)
+    expect(probe.counts().pageListeners).toBe(idle)
     card.destroy()
   })
 

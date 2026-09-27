@@ -76,6 +76,26 @@ describe("a beat takes over the card", () => {
   })
 })
 
+describe("the verdict history", () => {
+  it("draws the trend and names where the rating started", () => {
+    const change = {
+      dramaId: "d1",
+      dramaTitle: "Queen of Tears",
+      field: "rating" as const,
+      videoTime: null,
+    }
+    card.setVerdictLog([
+      { ...change, id: "v1", episode: "Ep 1", from: 6, to: 7, at: 0 },
+      { ...change, id: "v2", episode: "Ep 4", from: 7, to: 8.5, at: 1 },
+    ])
+    const path = root().querySelector(".dc-trend-rating")?.getAttribute("d")
+    expect(path).toMatch(/^M.* L.* L/)
+    expect(root().querySelector(".dc-rating-label")?.textContent).toBe(
+      "from 6.0 · Ep 1"
+    )
+  })
+})
+
 describe("a verdict takes over the card", () => {
   it("spotlights a rating change", () => {
     card.update({ rating: CARD_STATE.rating + 0.5 })

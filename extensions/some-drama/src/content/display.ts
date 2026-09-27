@@ -14,6 +14,7 @@ import type {
   Playback,
   VerdictChange,
   VerdictField,
+  VerdictRecord,
   WatchlistState,
 } from "@drama/types"
 import {
@@ -81,19 +82,14 @@ async function saveCardMeta(meta: PersistedCardMeta): Promise<void> {
   }
 }
 
-// ─── Position helpers ─────────────────────────────────────────────────────────
+// ─── Position ─────────────────────────────────────────────────────────────────
 
-const SPAWN_MARGIN = 24
-
-function safeSpawnPosition(
-  cardW: number,
-  cardH: number
-): { x: number; y: number } {
-  return {
-    x: window.innerWidth - cardW - SPAWN_MARGIN,
-    y: window.innerHeight - cardH - SPAWN_MARGIN,
-  }
-}
+// Where a card with no saved position mounts: the top-left corner. The card
+// grows downward (title pill, live strip, card, and the check-in panel when
+// open), so anchoring at the top keeps it on screen whatever its height; the
+// bottom-right spawn it replaces guessed that height and regularly guessed
+// short, leaving the card clipped past the viewport's bottom edge.
+export const DEFAULT_SPAWN = { x: 24, y: 24 } as const
 
 // ─── Entry → CardState ────────────────────────────────────────────────────────
 
@@ -257,7 +253,7 @@ export function createDisplay(deps: DisplayDeps): Display {
   }
 
   const currentCardPosition = (): { x: number; y: number } => {
-    if (!card) return cardMeta ?? safeSpawnPosition(290, 130)
+    if (!card) return cardMeta ?? DEFAULT_SPAWN
     const rect = card.root.getBoundingClientRect()
     return { x: rect.left, y: rect.top }
   }
@@ -277,6 +273,21 @@ export function createDisplay(deps: DisplayDeps): Display {
       card?.setBeats(resp.episode, resp.beats)
     } catch (err) {
       log.error("GET_BEATS failed:", err)
+    }
+  }
+
+  // The active drama's verdict history, kept across rebuilds like `live`.
+  let history: { dramaId: string; verdicts: Array<VerdictRecord> } | null = null
+
+  const loadVerdicts = async (dramaId: string): Promise<void> => {
+    try {
+      const resp = await sendMsg({ type: "GET_VERDICTS", dramaId })
+      if (!resp.ok) throw new Error(resp.error)
+      if (typestate.phase !== "READY" || typestate.entry.id !== dramaId) return
+      history = { dramaId, verdicts: resp.verdicts }
+      card?.setVerdictLog(resp.verdicts)
+    } catch (err) {
+      log.error("GET_VERDICTS failed:", err)
     }
   }
 
@@ -312,18 +323,17 @@ export function createDisplay(deps: DisplayDeps): Display {
 
     card = new DramaCard(container, entryToCardState(entry), events)
 
-    const approxW = currentSize === "full" ? 340 : 290
-    const approxH = currentSize === "full" ? 160 : 130
-    const spawn = cardMeta
-      ? { x: cardMeta.x, y: cardMeta.y }
-      : safeSpawnPosition(approxW, approxH)
-
+    // A saved position is from whatever window saved it; the card fits it
+    // into this one (DramaCard.fit), measuring its real size.
+    const spawn = cardMeta ? { x: cardMeta.x, y: cardMeta.y } : DEFAULT_SPAWN
     card.setPosition(spawn.x, spawn.y)
     if (cardMeta?.size) card.setSize(cardMeta.size, false)
     if (!visible) card.setVisible(false)
 
     if (live?.dramaId === entry.id) card.setBeats(live.episode, live.beats)
     void loadBeats(entry.id)
+    if (history?.dramaId === entry.id) card.setVerdictLog(history.verdicts)
+    void loadVerdicts(entry.id)
   }
 
   const renderEmpty = (): void => {
@@ -377,6 +387,13 @@ export function createDisplay(deps: DisplayDeps): Display {
           // The same drama, edited: update the card in place. A rebuild would
           // replay the entrance and lose the spotlight the edit earns.
           card.update(entryToCardState(next.entry))
+          // A verdict moved: the background logged it before broadcasting.
+          if (
+            prev.entry.rating !== next.entry.rating ||
+            prev.entry.completionLikelihood !== next.entry.completionLikelihood
+          ) {
+            void loadVerdicts(next.entry.id)
+          }
           return
         }
         if (card) {

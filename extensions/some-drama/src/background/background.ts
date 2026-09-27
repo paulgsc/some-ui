@@ -3,6 +3,8 @@
 //   drama_watchlist:  DramaEntry[]    — ordered list, max N=5
 //   drama_active_id:  string | null   — id of entry currently displayed
 //   drama_beats:      BeatRecord[]    — the live emotional log (bounded)
+//   drama_verdicts:   VerdictRecord[] — rating / likelihood-to-finish changes,
+//                                       for longitudinal tracking (bounded)
 //   drama_source_tab: number | null   — tab playing the drama (validated on use)
 //   drama_stream_sites: string[]      — sites the user marked as streaming sites
 //   drama_moments:    legacy mood log; every record has timestamp 0, so it is
@@ -25,7 +27,13 @@
 //                     press came from a display tab.
 //   GET_BEATS       → the drama's latest episode and its beats
 //   ADJUST_VERDICT  → set or step the active drama's rating or likelihood to
-//                     finish; broadcasts STATE_UPDATE
+//                     finish; logs the change; broadcasts STATE_UPDATE (display
+//                     tabs refetch GET_VERDICTS when a verdict moved)
+//   GET_VERDICTS    → every logged verdict change of one drama
+//
+// Verdict changes are logged wherever they come from: ADJUST_VERDICT (hotkeys,
+// the card) and UPSERT_ENTRY (popup edits, and a new drama's first values).
+// Removing a drama keeps its history.
 
 import {
   episodeBeats,
@@ -40,6 +48,7 @@ import {
   isVerdictChange,
   isVerdictField,
 } from "@drama/logic/verdict"
+import { dramaVerdicts, logVerdict } from "@drama/logic/verdict-log"
 import type {
   BeatLoggedMessage,
   BeatRecord,
@@ -52,6 +61,7 @@ import type {
   StateUpdateMessage,
   VerdictChange,
   VerdictField,
+  VerdictRecord,
   WatchlistState,
 } from "@drama/types"
 import { assertNever, isRecord } from "@some-extension/common"
@@ -64,6 +74,7 @@ type Reply<T extends MessageBridge["type"]> = (
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const BEATS_KEY = "drama_beats"
+const VERDICTS_KEY = "drama_verdicts"
 const SOURCE_TAB_KEY = "drama_source_tab"
 const STREAM_SITES_KEY = "drama_stream_sites"
 const WATCHLIST_KEY = "drama_watchlist"
@@ -114,6 +125,21 @@ function isBeatRecord(v: unknown): v is BeatRecord {
   )
 }
 
+function isVerdictRecord(v: unknown): v is VerdictRecord {
+  return (
+    isRecord(v) &&
+    typeof v.id === "string" &&
+    typeof v.dramaId === "string" &&
+    typeof v.dramaTitle === "string" &&
+    typeof v.episode === "string" &&
+    isVerdictField(v.field) &&
+    isNumberOrNull(v.from) &&
+    typeof v.to === "number" &&
+    isNumberOrNull(v.videoTime) &&
+    typeof v.at === "number"
+  )
+}
+
 function isBackgroundMessage(v: unknown): v is MessageBridge {
   if (!isRecord(v)) return false
   if (typeof v.type !== "string") return false
@@ -132,6 +158,9 @@ function isBackgroundMessage(v: unknown): v is MessageBridge {
     }
     case "ADJUST_VERDICT": {
       return isVerdictField(v.field) && isVerdictChange(v.change)
+    }
+    case "GET_VERDICTS": {
+      return typeof v.dramaId === "string"
     }
     case "REGISTER_SOURCE":
     case "GET_STATE": {
@@ -174,10 +203,60 @@ async function loadBeats(): Promise<Array<BeatRecord>> {
   return Array.isArray(stored) ? stored.filter(isBeatRecord) : []
 }
 
+// ── Verdict log ───────────────────────────────────────────────────────────────
+
+async function loadVerdicts(): Promise<Array<VerdictRecord>> {
+  const r = await browser.storage.local.get(VERDICTS_KEY)
+  const stored = r[VERDICTS_KEY]
+  return Array.isArray(stored) ? stored.filter(isVerdictRecord) : []
+}
+
+type VerdictMove = { field: VerdictField; from: number | null; to: number }
+
+/**
+ * Log `moves` of `entry`'s verdicts. Call inside `serialized`: it is a
+ * read-modify-write of the whole log.
+ */
+async function recordVerdicts(
+  entry: DramaEntry,
+  moves: ReadonlyArray<VerdictMove>,
+  playback: Playback | null
+): Promise<void> {
+  if (moves.length === 0) return
+  let verdicts = await loadVerdicts()
+  for (const move of moves) {
+    const result = logVerdict(verdicts, {
+      id: uuid(),
+      dramaId: entry.id,
+      dramaTitle: entry.title,
+      episode: normalizeEpisode(playback?.episode || entry.episode),
+      ...move,
+      videoTime: playback?.videoTime ?? null,
+      at: Date.now(),
+    })
+    verdicts = result.verdicts
+  }
+  await browser.storage.local.set({ [VERDICTS_KEY]: verdicts })
+}
+
+/** The verdicts `incoming` changes on `prev` (a new drama when prev is null). */
+function verdictMoves(
+  prev: DramaEntry | null,
+  next: DramaEntry,
+  incoming: Partial<DramaEntry>
+): Array<VerdictMove> {
+  const fields: ReadonlyArray<VerdictField> = ["rating", "completionLikelihood"]
+  return fields
+    .filter((f) => typeof incoming[f] === "number")
+    .map((f) => ({ field: f, from: prev ? prev[f] : null, to: next[f] }))
+    .filter((m) => m.from !== m.to)
+}
+
 // Every LOG_BEAT is a read-modify-write of the whole log, and repeat presses
 // land a few hundred ms apart — serialize them so an escalation is never lost
-// to an interleaved write. ADJUST_VERDICT's read-modify-write of the watchlist
-// shares the queue for the same reason: two quick steps must step twice.
+// to an interleaved write. The watchlist writes that can move a verdict
+// (ADJUST_VERDICT, UPSERT_ENTRY) and the verdict log share the queue for the
+// same reason: two quick steps must step twice, and log as one change.
 let writes: Promise<unknown> = Promise.resolve()
 
 function serialized<T>(work: () => Promise<T>): Promise<T> {
@@ -416,45 +495,52 @@ async function handleUpsertEntry(
   sendResponse: Reply<"UPSERT_ENTRY">
 ): Promise<void> {
   try {
-    const { watchlist, activeId, streamSites } = await getWatchlistState()
-    const existingIdx = incoming.id
-      ? watchlist.findIndex((e) => e.id === incoming.id)
-      : -1
+    const result = await serialized(async () => {
+      const { watchlist, activeId, streamSites } = await getWatchlistState()
+      const prev = incoming.id
+        ? (watchlist.find((e) => e.id === incoming.id) ?? null)
+        : null
 
-    let next: Array<DramaEntry>
-
-    if (existingIdx >= 0) {
-      next = watchlist.map((e, i) =>
-        i === existingIdx ? { ...e, ...incoming } : e
-      )
-    } else {
-      if (watchlist.length >= MAX_WATCHLIST) {
-        sendResponse({
-          ok: false,
-          error: `Watchlist full (max ${MAX_WATCHLIST}). Remove an entry first.`,
-        })
-        return
+      let entry: DramaEntry
+      let next: Array<DramaEntry>
+      if (prev) {
+        entry = { ...prev, ...incoming }
+        next = watchlist.map((e) => (e.id === prev.id ? entry : e))
+      } else {
+        if (watchlist.length >= MAX_WATCHLIST) {
+          return {
+            ok: false as const,
+            error: `Watchlist full (max ${MAX_WATCHLIST}). Remove an entry first.`,
+          }
+        }
+        entry = {
+          ...ENTRY_DEFAULTS,
+          ...incoming,
+          id: uuid(),
+          addedAt: Date.now(),
+        }
+        next = [...watchlist, entry]
       }
-      const newEntry: DramaEntry = {
-        ...ENTRY_DEFAULTS,
-        ...incoming,
-        id: uuid(),
-        addedAt: Date.now(),
-      }
-      next = [...watchlist, newEntry]
-    }
 
-    const [firstNext] = next
-    const newActive =
-      activeId ?? (next.length === 1 ? (firstNext?.id ?? null) : null)
-    await setWatchlistState({ watchlist: next, activeId: newActive })
-    const state: WatchlistState = {
-      watchlist: next,
-      activeId: newActive,
-      streamSites,
+      const [firstNext] = next
+      const newActive =
+        activeId ?? (next.length === 1 ? (firstNext?.id ?? null) : null)
+      await setWatchlistState({ watchlist: next, activeId: newActive })
+      await recordVerdicts(entry, verdictMoves(prev, entry, incoming), null)
+      const state: WatchlistState = {
+        watchlist: next,
+        activeId: newActive,
+        streamSites,
+      }
+      return { ok: true as const, state }
+    })
+
+    if (!result.ok) {
+      sendResponse({ ok: false, error: result.error })
+      return
     }
-    await broadcastState(state)
-    sendResponse({ ok: true, state })
+    await broadcastState(result.state)
+    sendResponse({ ok: true, state: result.state })
   } catch (err) {
     sendResponse({ ok: false, error: String(err) })
   }
@@ -538,7 +624,9 @@ async function handleAdjustVerdict(
   sendResponse: Reply<"ADJUST_VERDICT">
 ): Promise<void> {
   try {
-    const state = await serialized(async () => {
+    // Where the drama is, for the log — asked before the queue, like a beat.
+    const playback = await requestPlayback()
+    const result = await serialized(async () => {
       const current = await getWatchlistState()
       const entry = current.watchlist.find((e) => e.id === current.activeId)
       if (!entry) return null
@@ -547,17 +635,39 @@ async function handleAdjustVerdict(
         e.id === entry.id ? { ...e, [field]: value } : e
       )
       await setWatchlistState({ watchlist })
-      return { ...current, watchlist }
+      await recordVerdicts(
+        entry,
+        value === entry[field]
+          ? []
+          : [{ field, from: entry[field], to: value }],
+        playback
+      )
+      const state: WatchlistState = { ...current, watchlist }
+      return state
     })
-    if (!state) {
+    if (!result) {
       sendResponse({
         ok: false,
         error: "No active drama. Pick one in the popup first.",
       })
       return
     }
-    await broadcastState(state)
-    sendResponse({ ok: true, state })
+    await broadcastState(result)
+    sendResponse({ ok: true, state: result })
+  } catch (err) {
+    sendResponse({ ok: false, error: String(err) })
+  }
+}
+
+async function handleGetVerdicts(
+  dramaId: string,
+  sendResponse: Reply<"GET_VERDICTS">
+): Promise<void> {
+  try {
+    sendResponse({
+      ok: true,
+      verdicts: dramaVerdicts(await loadVerdicts(), dramaId),
+    })
   } catch (err) {
     sendResponse({ ok: false, error: String(err) })
   }
@@ -596,6 +706,9 @@ async function dispatch(
     }
     case "ADJUST_VERDICT": {
       return handleAdjustVerdict(message.field, message.change, sendResponse)
+    }
+    case "GET_VERDICTS": {
+      return handleGetVerdicts(message.dramaId, sendResponse)
     }
     default: {
       t satisfies never
