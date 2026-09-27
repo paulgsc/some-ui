@@ -168,6 +168,47 @@ describe("auditTopikFile", () => {
     ])
   })
 
+  it("places each finding among the probes that load, so a namesake is not blamed (Codex, #1554)", () => {
+    const findings = auditTopikFile(
+      fileWith({ id: "broken" }, oddOneOut(), oddOneOut())
+    )
+    expect(findings.map((f) => [f.probe, f.index])).toEqual([
+      ["broken", undefined],
+      ["p", 1],
+    ])
+  })
+
+  it("refuses a conversation or line id used twice: they are identities (Codex, #1554)", () => {
+    const conversation = (id: number, ...lines: Array<string>): unknown => ({
+      id,
+      messages: lines.map((lineId) => line(lineId, "네.")),
+      questions: [],
+      probes: [oddOneOut({ anchorMessageId: lines[0] })],
+    })
+    expect(
+      auditTopikFile([conversation(1, "m1"), conversation(1, "m2")]).filter(
+        (f) => f.severity === "error"
+      )
+    ).toEqual([
+      expect.objectContaining({
+        batch: null,
+        probe: null,
+        message: "conversation id 1 is used by more than one conversation",
+      }),
+    ])
+    expect(
+      auditTopikFile([conversation(1, "m1", "m1")]).filter(
+        (f) => f.severity === "error"
+      )
+    ).toEqual([
+      expect.objectContaining({
+        batch: 1,
+        probe: null,
+        message: 'line id "m1" is used by more than one line',
+      }),
+    ])
+  })
+
   it("notes a conversation left without probes, and refuses a non-topik file", () => {
     expect(
       messages([{ id: 1, messages: [line("m1", "네.")], questions: [] }])

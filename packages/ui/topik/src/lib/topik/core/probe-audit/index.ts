@@ -37,6 +37,13 @@ export type ProbeFinding = {
   batch: number | null
   /** The probe's id, or its position (`#2`) when it has none. */
   probe: string | null
+  /**
+   * Where the probe sits among the conversation's probes that load, so the
+   * one named can be withheld without its namesakes: two probes can share an
+   * id, and only the later is in error (Codex, #1554). Absent when the probe
+   * does not load at all, or the finding is not about one probe.
+   */
+  index?: number
   /** An error changes what is delivered; a warning is authoring judgement. */
   severity: "error" | "warning"
   message: string
@@ -187,6 +194,35 @@ export function auditTopikFile(raw: unknown): Array<ProbeFinding> {
   }
 
   const findings: Array<ProbeFinding> = []
+
+  // Conversation and line ids are identities, not labels: a resume point
+  // finds its place by them, and survey evidence is keyed by them. A second
+  // holder of one would be resumed into the first (Codex, #1554).
+  const conversations = new Set<number>()
+  for (const batch of parsed.data) {
+    if (conversations.has(batch.id)) {
+      findings.push({
+        batch: null,
+        probe: null,
+        severity: "error",
+        message: `conversation id ${batch.id} is used by more than one conversation`,
+      })
+    }
+    conversations.add(batch.id)
+    const lines = new Set<string>()
+    for (const message of batch.messages) {
+      if (lines.has(message.id)) {
+        findings.push({
+          batch: batch.id,
+          probe: null,
+          severity: "error",
+          message: `line id "${message.id}" is used by more than one line`,
+        })
+      }
+      lines.add(message.id)
+    }
+  }
+
   parsed.data.forEach((batch, index) => {
     const entry: unknown = raw[index]
     const rawProbes: Array<unknown> =
@@ -209,6 +245,7 @@ export function auditTopikFile(raw: unknown): Array<ProbeFinding> {
     }
 
     const ids = new Set<string>()
+    let loaded = 0
     rawProbes.forEach((candidate, position) => {
       const name =
         typeof candidate === "object" &&
@@ -217,14 +254,22 @@ export function auditTopikFile(raw: unknown): Array<ProbeFinding> {
         typeof candidate.id === "string"
           ? candidate.id
           : `#${position}`
+      let at: number | undefined
       const report = (
         severity: ProbeFinding["severity"],
         message: string
       ): void => {
-        findings.push({ batch: batch.id, probe: name, severity, message })
+        findings.push({
+          batch: batch.id,
+          probe: name,
+          ...(at === undefined ? {} : { index: at }),
+          severity,
+          message,
+        })
       }
 
       const probe = ProbeSchema.safeParse(candidate)
+      if (probe.success) at = loaded++
       if (!probe.success) {
         const issue = probe.error.issues[0]
         const where = issue?.path.length ? `${issue.path.join(".")}: ` : ""

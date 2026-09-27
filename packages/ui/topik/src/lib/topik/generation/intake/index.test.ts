@@ -94,6 +94,41 @@ describe("intakeLesson", () => {
     expect(intake.meta.tags).not.toContain("relation:honorific lowering")
   })
 
+  it("withholds only the later of two probes sharing an id (Codex, #1554)", () => {
+    const [one, ...rest] = structuredClone(FIXTURE_BATCHES)
+    const probes = one?.probes ?? []
+    // A probe the schema drops, ahead of them, must not shift which is which.
+    const doubled = [
+      { ...one, probes: [{ id: "unreadable" }, ...probes, probes[0]] },
+      ...rest,
+    ]
+    const intake = intakeLesson(reply(doubled))
+    if (!intake.ok) throw new Error(intake.error)
+    const ids = (intake.batches[0]?.probes ?? []).map((probe) => probe.id)
+    expect(ids).toEqual(FIXTURE_BATCHES[0]?.probes?.map((probe) => probe.id))
+  })
+
+  it("sends back a lesson whose conversation or line ids repeat (Codex, #1554)", () => {
+    const [one, two] = structuredClone(FIXTURE_BATCHES)
+    if (!one || !two) throw new Error("fixture lost a conversation")
+    expect(intakeLesson(reply([one, { ...two, id: one.id }]))).toEqual({
+      ok: false,
+      error: expect.stringMatching(
+        /can't be played: conversation id 1 is used by more than one/
+      ),
+    })
+    const [line] = one.messages
+    if (!line) throw new Error("fixture lost a line")
+    expect(
+      intakeLesson(reply([{ ...one, messages: [...one.messages, line] }, two]))
+    ).toEqual({
+      ok: false,
+      error: expect.stringMatching(
+        /can't be played: conversation 1: line id ".+" is used by more than one line/
+      ),
+    })
+  })
+
   it("refuses a reply with no lesson, or one the schema cannot read", () => {
     expect(intakeLesson("Sorry, I can't help with that.")).toEqual({
       ok: false,
