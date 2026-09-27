@@ -137,9 +137,20 @@ export function intakeLesson(reply: string): Intake {
 
   // The audit reads the raw value: the schema already dropped malformed
   // probes from `batches`, and the point is to say which.
-  const findings = auditTopikFile(raw).filter(
-    (finding) => finding.batch !== null
+  const audit = auditTopikFile(raw)
+  // An error about no one probe is about the lesson's structure - a
+  // conversation or line id used twice - and no probe can be withheld to
+  // mend it: the lesson is sent back instead.
+  const structural = audit.find(
+    (finding) => finding.severity === "error" && finding.probe === null
   )
+  if (structural) {
+    return {
+      ok: false,
+      error: `The lesson can't be played: ${structural.batch === null ? "" : `conversation ${structural.batch}: `}${structural.message}.`,
+    }
+  }
+  const findings = audit.filter((finding) => finding.batch !== null)
   return {
     ok: true,
     meta,
@@ -159,12 +170,15 @@ export function withholdErrors(
   batches: Array<ConversationBatch>,
   findings: Array<ProbeFinding>
 ): Array<ConversationBatch> {
+  // By position among the probes that loaded, not by id: when two probes
+  // share an id only the later is in error, and the first still plays
+  // (Codex, #1554). A probe that did not load has no position, and is gone.
   const withheld = new Set(
     findings.flatMap((finding) =>
       finding.severity === "error" &&
       finding.batch !== null &&
-      finding.probe !== null
-        ? [`${finding.batch}:${finding.probe}`]
+      finding.index !== undefined
+        ? [`${finding.batch}:${finding.index}`]
         : []
     )
   )
@@ -174,7 +188,7 @@ export function withholdErrors(
       ? {
           ...batch,
           probes: batch.probes.filter(
-            (probe) => !withheld.has(`${batch.id}:${probe.id}`)
+            (_probe, index) => !withheld.has(`${batch.id}:${index}`)
           ),
         }
       : batch

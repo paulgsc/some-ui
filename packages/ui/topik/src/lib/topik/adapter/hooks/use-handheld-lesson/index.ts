@@ -19,7 +19,10 @@ import type {
 } from "@topik/lib/topik"
 import { useSessionConfig } from "@topik/lib/topik"
 import type { LessonStore } from "@topik/lib/topik/adapter/lesson-store"
-import { createLessonStore } from "@topik/lib/topik/adapter/lesson-store"
+import {
+  createLessonStore,
+  MAX_LOCAL_LESSONS,
+} from "@topik/lib/topik/adapter/lesson-store"
 import type { ResumeStore } from "@topik/lib/topik/adapter/resume-point"
 import { createResumeStore } from "@topik/lib/topik/adapter/resume-point"
 import { useTopikMetadataList } from "@topik/lib/topik/adapter/server/topik-metadata-queries"
@@ -495,11 +498,21 @@ export function useHandheldLesson({
   // starts fresh, and a removed lesson takes its place with it: a later lesson
   // under the same key must not resume into the old one's position, outcomes
   // or survey evidence (Codex, #1554).
+  //
+  // What this session holds is kept in memory, not re-read from storage: a
+  // write that fails (quota, privacy mode) is silent, and re-reading after it
+  // would lose the lesson just pasted or start an older one saved under its
+  // key (Codex, #1554). Storage only carries lessons to the next visit.
   const saveLesson = useCallback(
     (meta: TopikMetadata, lessonBatches: Array<ConversationBatch>): void => {
       kept.save(meta, lessonBatches)
       store.clear(meta.key)
-      setLocalLessons(kept.list())
+      setLocalLessons((current) =>
+        [
+          { meta, batches: lessonBatches, at: Date.now() },
+          ...current.filter((local) => local.meta.key !== meta.key),
+        ].slice(0, MAX_LOCAL_LESSONS)
+      )
       select(meta.key)
     },
     [kept, store, select]
@@ -509,7 +522,9 @@ export function useHandheldLesson({
     (key: string): void => {
       kept.remove(key)
       store.clear(key)
-      setLocalLessons(kept.list())
+      setLocalLessons((current) =>
+        current.filter((local) => local.meta.key !== key)
+      )
     },
     [kept, store]
   )

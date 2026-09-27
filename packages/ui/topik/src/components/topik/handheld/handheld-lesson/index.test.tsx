@@ -510,6 +510,52 @@ describe("HandheldLesson", () => {
       expect(points.get("local:first-dinner")).toBeNull()
     })
 
+    it("plays the lesson it was handed when the device refuses to keep it (Codex, #1554)", async () => {
+      stubClipboard()
+      const storage = memoryStorage()
+      // An older lesson under the same key, then storage that takes no more.
+      createLessonStore(storage).save(
+        {
+          key: "local:first-dinner",
+          displayName: "An older dinner",
+          description: "",
+          batchCount: 1,
+          totalQuestions: 1,
+          totalMessages: 1,
+        },
+        FIXTURE_BATCHES.slice(1)
+      )
+      const full: StorageLike = {
+        getItem: (key) => storage.getItem(key),
+        setItem: () => {
+          throw new Error("QuotaExceededError")
+        },
+      }
+      renderLesson(
+        memoryStorage(),
+        fixtureTopikRepository,
+        undefined,
+        createLessonStore(full)
+      )
+
+      fireEvent.click(
+        await screen.findByRole("button", { name: /Write a new lesson/ })
+      )
+      fireEvent.change(
+        screen.getByRole("textbox", { name: "Your model's reply" }),
+        { target: { value: modelReply } }
+      )
+      click("Check the lesson")
+      click(/Save and start/)
+      // The lesson just pasted, from its first conversation - not the older
+      // one storage still holds under the key.
+      expect(await screen.findByText("어서 오세요. 뭐 드릴까요?")).toBeTruthy()
+      click("Back to materials")
+      const mine = await screen.findByRole("region", { name: "Your lessons" })
+      expect(mine.textContent).toMatch(/The first family dinner/)
+      expect(mine.textContent).not.toMatch(/An older dinner/)
+    })
+
     it("keeps a flagged answer for the next prompt even when the survey is skipped", async () => {
       const surveys = createSurveyStore(memoryStorage(), () => 9)
       const storage = memoryStorage()
