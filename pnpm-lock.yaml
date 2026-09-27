@@ -1611,6 +1611,9 @@ importers:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
     devDependencies:
+      '@some-ui/contract-harness':
+        specifier: workspace:*
+        version: link:../../contract-harness
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../tsconfig
