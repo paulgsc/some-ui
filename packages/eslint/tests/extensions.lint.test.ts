@@ -600,3 +600,101 @@ describe("lint: charter — no-raw-storage", () => {
     )
   })
 })
+
+// ── §5/§8 — standing resources name their lifetime ────────────────────────
+
+describe("lint: extension-charter — require-named-lifetime", () => {
+  const RULE = "extension-charter/require-named-lifetime"
+
+  it("fires on setInterval and window.setInterval", async () => {
+    for (const code of [
+      `setInterval(() => {}, 1000)`,
+      `window.setInterval(() => {}, 1000)`,
+    ]) {
+      const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
+      expectMessageForRule(msgs, RULE, code)
+    }
+  })
+
+  it("does NOT fire on a one-shot setTimeout", async () => {
+    const msgs = await lintSnippet(
+      extensionsCharterConfig,
+      `setTimeout(() => {}, 80)`,
+      TS_FILE
+    )
+    expectNoMessageForRule(msgs, RULE, "setTimeout")
+  })
+})
+
+describe("lint: extension-charter — require-scoped-lifetime", () => {
+  const RULE = "extension-charter/require-scoped-lifetime"
+
+  it("is a warning in the shared config — an audit, not a gate", async () => {
+    const msgs = await lintSnippet(
+      extensionsCharterConfig,
+      `document.addEventListener("pointermove", () => {})`,
+      TS_FILE
+    )
+    const hit = msgs.find((m) => m.ruleId === RULE)
+    if (hit?.severity !== 1) {
+      throw new Error(`expected a warning, got ${String(hit?.severity)}`)
+    }
+  })
+
+  it("fires on page-lifetime listeners with no lifetime attached", async () => {
+    for (const code of [
+      `document.addEventListener("pointermove", () => {})`,
+      `window.addEventListener("resize", onResize)`,
+      `document.body.addEventListener("click", f, true)`,
+      `document.addEventListener("x", f, { capture: true, passive: true })`,
+      `const OPTS = { passive: true }; document.addEventListener("x", f, OPTS)`,
+      `document.addEventListener("x", f, { once: false })`,
+    ]) {
+      const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
+      expectMessageForRule(msgs, RULE, code)
+    }
+  })
+
+  it("does NOT fire when the listener carries a signal or once", async () => {
+    for (const code of [
+      `document.addEventListener("x", f, { signal: ac.signal })`,
+      `window.addEventListener("x", f, { capture: true, signal })`,
+      `document.addEventListener("x", f, { once: true })`,
+      `const OPTS = { signal: life.signal }; document.addEventListener("x", f, OPTS)`,
+    ]) {
+      const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
+      expectNoMessageForRule(msgs, RULE, code)
+    }
+  })
+
+  it("does NOT fire on an element's own listener — it goes with the element", async () => {
+    const msgs = await lintSnippet(
+      extensionsCharterConfig,
+      `button.addEventListener("click", f)`,
+      TS_FILE
+    )
+    expectNoMessageForRule(msgs, RULE, "element listener")
+  })
+
+  it("fires on a requestAnimationFrame callback that reschedules itself", async () => {
+    for (const code of [
+      `const track = () => { update(); requestAnimationFrame(track) }; track()`,
+      `function tick() { draw(); window.requestAnimationFrame(tick) }`,
+      `class A { tick = () => { requestAnimationFrame(this.tick) } }`,
+      `class B { loop() { requestAnimationFrame(this.loop) } }`,
+    ]) {
+      const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
+      expectMessageForRule(msgs, RULE, code)
+    }
+  })
+
+  it("does NOT fire on a one-shot requestAnimationFrame", async () => {
+    for (const code of [
+      `requestAnimationFrame(() => el.classList.add("in"))`,
+      `const show = () => el.classList.add("in"); requestAnimationFrame(show)`,
+    ]) {
+      const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
+      expectNoMessageForRule(msgs, RULE, code)
+    }
+  })
+})
