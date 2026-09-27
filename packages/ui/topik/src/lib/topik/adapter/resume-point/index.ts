@@ -121,7 +121,7 @@ export type ResumeStore = {
 export type StorageLike = Pick<Storage, "getItem" | "setItem">
 
 /** `window.localStorage`, or null wherever touching it throws. */
-function defaultStorage(): StorageLike | null {
+function defaultStorage(): Storage | null {
   try {
     return typeof window === "undefined" ? null : window.localStorage
   } catch {
@@ -130,7 +130,9 @@ function defaultStorage(): StorageLike | null {
 }
 
 export function createResumeStore(
-  storage: StorageLike | null = defaultStorage(),
+  storage:
+    | (StorageLike & Partial<Pick<Storage, "removeItem">>)
+    | null = defaultStorage(),
   now: () => number = Date.now
 ): ResumeStore {
   const read = (): ResumeDocument => {
@@ -146,11 +148,14 @@ export function createResumeStore(
     }
   }
 
-  const write = (doc: ResumeDocument): void => {
+  /** False when storage refused the write. */
+  const write = (doc: ResumeDocument): boolean => {
     try {
       storage?.setItem(RESUME_STORAGE_KEY, JSON.stringify(doc))
+      return true
     } catch {
       // Quota, privacy mode: a lost resume point is a restart, nothing more.
+      return false
     }
   }
 
@@ -191,7 +196,22 @@ export function createResumeStore(
         doc.last !== null && !matches(doc.last)
           ? doc.last
           : ([...kept].sort(([, a], [, b]) => b.at - a.at)[0]?.[0] ?? null)
-      write({ version: 1, last: lastKept, points: Object.fromEntries(kept) })
+      const written = write({
+        version: 1,
+        last: lastKept,
+        points: Object.fromEntries(kept),
+      })
+      // What a purge drops must go even when storage refuses the rewrite
+      // but still reads: the whole document is removed, and the points it
+      // would have kept go with it - a restart, not retained data (Codex,
+      // #1555).
+      if (!written) {
+        try {
+          storage?.removeItem?.(RESUME_STORAGE_KEY)
+        } catch {
+          // Refuses that too; there is nothing further to try.
+        }
+      }
     },
   }
 }
