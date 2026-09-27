@@ -35,8 +35,14 @@ export const HandheldLesson = ({
   resumeStore,
   surveyStore,
   pastedStore,
+  pastedResumeStore,
 }: HandheldLessonProps): JSX.Element => {
-  const vm = useHandheldLesson({ resumeStore, surveyStore, pastedStore })
+  const vm = useHandheldLesson({
+    resumeStore,
+    surveyStore,
+    pastedStore,
+    pastedResumeStore,
+  })
   const { lesson, audio, dispatch, generator } = vm
 
   const title = lesson

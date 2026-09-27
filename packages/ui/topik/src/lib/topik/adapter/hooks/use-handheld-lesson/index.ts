@@ -19,7 +19,10 @@ import type {
 } from "@topik/lib/topik"
 import { useSessionConfig } from "@topik/lib/topik"
 import type { PastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
-import { createPastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
+import {
+  createPastedLessonStore,
+  sessionStorageOrNull,
+} from "@topik/lib/topik/adapter/pasted-lesson"
 import type { ResumeStore } from "@topik/lib/topik/adapter/resume-point"
 import { createResumeStore } from "@topik/lib/topik/adapter/resume-point"
 import { useTopikMetadataList } from "@topik/lib/topik/adapter/server/topik-metadata-queries"
@@ -163,6 +166,13 @@ export type UseHandheldLessonOptions = {
   surveyStore?: SurveyStore
   /** Injected in tests and stories; defaults to `sessionStorage`. */
   pastedStore?: PastedLessonStore
+  /**
+   * Where a pasted lesson's place is kept; defaults to `sessionStorage`. A
+   * place lasts exactly as long as its lesson: in `localStorage` it outlived
+   * the tab, pointed "Continue" at a lesson that was gone, and handed its
+   * progress to the next lesson pasted under the same key (Codex, #1555).
+   */
+  pastedResumeStore?: ResumeStore
 }
 
 const lineText = (message: Message): string => message.korean || message.content
@@ -179,12 +189,16 @@ export function useHandheldLesson({
   resumeStore,
   surveyStore,
   pastedStore,
+  pastedResumeStore,
 }: UseHandheldLessonOptions = {}): HandheldLessonVM {
   const { topikRepository, metadataRepository, speechAdapter } =
     useSessionConfig()
   const [store] = useState(() => resumeStore ?? createResumeStore())
   const [surveys] = useState(() => surveyStore ?? createSurveyStore())
   const [held] = useState(() => pastedStore ?? createPastedLessonStore())
+  const [sessionPoints] = useState(
+    () => pastedResumeStore ?? createResumeStore(sessionStorageOrNull())
+  )
   const audioAvailable = speechAdapter?.supported === true
 
   // ── Catalogue and content ────────────────────────────────────────────────
@@ -204,6 +218,8 @@ export function useHandheldLesson({
   const [topikKey, setTopikKey] = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
   const isLocal = topikKey?.startsWith(LOCAL_LESSON_PREFIX) === true
+  // Where this lesson's place is kept: with the lesson (canon Rem. 7.4).
+  const points = isLocal ? sessionPoints : store
   const batchesQuery = useTopikBatches(topikRepository, topikKey ?? "", {
     enabled: topikKey !== null && !isLocal,
   })
@@ -247,7 +263,7 @@ export function useHandheldLesson({
   // resumed line rather than line one followed by a jump.
   if (topikKey !== null && batches && restoredFor !== topikKey) {
     setRestoredFor(topikKey)
-    const point = store.get(topikKey)
+    const point = points.get(topikKey)
     let restored = createLessonState(audioAvailable)
     // The conversation is found by its authored id, never by its old
     // position: a file that gained or reordered conversations would otherwise
@@ -389,13 +405,13 @@ export function useHandheldLesson({
   useEffect(() => {
     if (topikKey === null || restoredFor !== topikKey) return
     if (lesson.finished) {
-      store.clear(topikKey)
+      points.clear(topikKey)
       return
     }
     // A check resumes at its line, with its result: NEXT then passes over
     // what was already answered instead of asking it twice.
     if (resumeMessage && batchId !== undefined) {
-      store.set(topikKey, {
+      points.set(topikKey, {
         batchId,
         conversation: lesson.conversation,
         messageId: resumeMessage.id,
@@ -404,7 +420,7 @@ export function useHandheldLesson({
       })
     }
   }, [
-    store,
+    points,
     topikKey,
     restoredFor,
     lesson,
@@ -527,16 +543,20 @@ export function useHandheldLesson({
   const startPasted = useCallback(
     (meta: TopikMetadata, lessonBatches: Array<ConversationBatch>): void => {
       held.set(meta, lessonBatches)
+      // A newly pasted lesson starts fresh, whatever an earlier one under the
+      // same key left behind (Codex, #1554).
+      sessionPoints.clear(meta.key)
       setPasted({ meta, batches: lessonBatches })
       select(meta.key)
     },
-    [held, select]
+    [held, sessionPoints, select]
   )
 
   const forgetPasted = useCallback((): void => {
+    if (pasted) sessionPoints.clear(pasted.meta.key)
     held.clear()
     setPasted(null)
-  }, [held])
+  }, [held, pasted, sessionPoints])
 
   const takePrompt = useCallback(
     (request: Omit<LessonRequest, "survey">): string => {

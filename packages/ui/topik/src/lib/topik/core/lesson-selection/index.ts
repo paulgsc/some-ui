@@ -9,9 +9,11 @@
  *
  * - its `relation:` tags: a lesson that exercises a relation the learner
  *   named blocking comes first, so what blocked them returns;
- * - its size (`totalQuestions`, then `totalMessages`): "too hard" or "running
- *   out of steam" puts smaller lessons first, and "too easy" puts larger ones
- *   first;
+ * - its size, in lines (`totalMessages`): "too hard" or "running out of
+ *   steam" puts smaller lessons first, and "too easy" puts larger ones first.
+ *   Lines are what the handheld plays; `totalQuestions` counts the desktop
+ *   quiz, which the handheld never shows, so it says nothing about how long
+ *   a lesson is here (Codex, #1555);
  * - its key: a lesson just reported on comes later. It is never dropped,
  *   because going through a lesson again is expected.
  *
@@ -120,8 +122,8 @@ function sizePreference(reports: Array<SurveyReport>): {
   return { size: null }
 }
 
-const sizeOf = (item: TopikMetadata): number =>
-  item.totalQuestions * 1000 + item.totalMessages
+/** How long a lesson is on the handheld: the lines it plays. */
+const sizeOf = (item: TopikMetadata): number => item.totalMessages
 
 /**
  * The lessons at `level`, in the order the learner should meet them. Lessons

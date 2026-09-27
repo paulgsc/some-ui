@@ -94,6 +94,14 @@ describe("orderLessons (canon Rem. 3.5)", () => {
     ).toEqual(["big", "connective", "small", "any-level"])
   })
 
+  it("measures size in the lines the handheld plays, not desktop questions (Codex, #1555)", () => {
+    const long = { ...lesson("long", 2, 1), totalMessages: 100 }
+    const short = { ...lesson("short", 2, 2), totalMessages: 5 }
+    expect(
+      keys(orderLessons([long, short], [report({ difficulty: "too-hard" })], 2))
+    ).toEqual(["short", "long"])
+  })
+
   it("lets running out of steam outrank 'too easy'", () => {
     const [first] = orderLessons(
       batch,

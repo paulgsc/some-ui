@@ -38,8 +38,11 @@ const PastedDocumentSchema = z.object({
   batches: TopikFileSchema,
 })
 
-/** `window.sessionStorage`, or null wherever touching it throws. */
-function defaultStorage(): StorageLike | null {
+/**
+ * `window.sessionStorage`, or null wherever touching it throws. Also where a
+ * pasted lesson's resume point lives: a place lasts as long as its lesson.
+ */
+export function sessionStorageOrNull(): StorageLike | null {
   try {
     return typeof window === "undefined" ? null : window.sessionStorage
   } catch {
@@ -48,7 +51,7 @@ function defaultStorage(): StorageLike | null {
 }
 
 export function createPastedLessonStore(
-  storage: StorageLike | null = defaultStorage()
+  storage: StorageLike | null = sessionStorageOrNull()
 ): PastedLessonStore {
   const write = (value: string): void => {
     try {

@@ -31,7 +31,8 @@ function renderLesson(
   storage = memoryStorage(),
   topikRepository: ITopikRepository = fixtureTopikRepository,
   surveyStore: SurveyStore = createSurveyStore(memoryStorage()),
-  pastedStore: PastedLessonStore = createPastedLessonStore(memoryStorage())
+  pastedStore: PastedLessonStore = createPastedLessonStore(memoryStorage()),
+  pastedResumeStore = createResumeStore(memoryStorage())
 ): ReturnType<typeof createResumeStore> {
   const store = createResumeStore(storage)
   const client = new QueryClient({
@@ -51,6 +52,7 @@ function renderLesson(
           resumeStore={store}
           surveyStore={surveyStore}
           pastedStore={pastedStore}
+          pastedResumeStore={pastedResumeStore}
         />
       </SessionConfigProvider>
     </QueryClientProvider>
@@ -526,6 +528,48 @@ describe("HandheldLesson", () => {
         screen.queryByRole("region", { name: "Pasted this session" })
       ).toBeNull()
       expect(pasted.get()).toBeNull()
+    })
+
+    it("keeps a pasted lesson's place with the lesson: fresh on paste, gone on forget, never in localStorage (Codex, #1554, #1555)", async () => {
+      stubClipboard()
+      const served = memoryStorage()
+      const session = createResumeStore(memoryStorage())
+      // A place left in an earlier lesson pasted under the same key.
+      session.set("local:first-dinner", {
+        batchId: 2,
+        conversation: 1,
+        messageId: "c2-m2",
+      })
+      const store = renderLesson(
+        served,
+        fixtureTopikRepository,
+        undefined,
+        undefined,
+        session
+      )
+
+      fireEvent.click(
+        await screen.findByRole("button", { name: /Write your own lesson/ })
+      )
+      fireEvent.change(
+        screen.getByRole("textbox", { name: "Your model's reply" }),
+        { target: { value: modelReply } }
+      )
+      click("Check the lesson")
+      click(/^Start$/)
+      // The first line, not the old lesson's conversation 2.
+      expect(await screen.findByText("어서 오세요. 뭐 드릴까요?")).toBeTruthy()
+      expect(screen.queryByText("카드로 할게요. 감사합니다.")).toBeNull()
+
+      click(/^Next/)
+      click("Back to materials")
+      // Its place is in the session, and nowhere that outlives the tab.
+      expect(session.get("local:first-dinner")).not.toBeNull()
+      expect(store.get("local:first-dinner")).toBeNull()
+      expect(store.last()).toBeNull()
+
+      click("Forget The first family dinner")
+      expect(session.get("local:first-dinner")).toBeNull()
     })
 
     it("keeps a flagged answer for the next prompt even when the survey is skipped", async () => {
