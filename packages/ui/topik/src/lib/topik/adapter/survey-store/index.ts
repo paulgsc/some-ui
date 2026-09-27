@@ -78,10 +78,13 @@ export type SurveyStore = {
   /** Newest first; never older than SURVEY_TTL_MS. */
   list(): Array<SurveyReport>
   /**
-   * Removes the free text of the newest `count` reports: a prompt has now
-   * carried it to the learner's model, and it has said what it had to say.
+   * Removes the free text of exactly these reports, by lesson and moment: a
+   * prompt has now carried it to the learner's model, and it has said what
+   * it had to say. Named rather than counted, because the store can change
+   * between building a prompt and handing it off - another tab can add a
+   * report - and the newest `n` then are not the ones carried (Codex, #1555).
    */
-  forgetBecoming(count: number): void
+  forgetBecoming(carried: Array<Pick<SurveyReport, "topikKey" | "at">>): void
 }
 
 /** `window.localStorage`, or null wherever touching it throws. */
@@ -157,13 +160,19 @@ export function createSurveyStore(
 
     list: (): Array<SurveyReport> => read(now()),
 
-    forgetBecoming: (count): void => {
+    forgetBecoming: (carried): void => {
       const at = now()
       const reports = read(at)
-      if (!reports.slice(0, count).some((report) => report.becoming)) return
+      const isCarried = (report: SurveyReport): boolean =>
+        carried.some(
+          (item) => item.topikKey === report.topikKey && item.at === report.at
+        )
+      if (!reports.some((report) => report.becoming && isCarried(report))) {
+        return
+      }
       write(
-        reports.map((report, index) => {
-          if (index >= count) return report
+        reports.map((report) => {
+          if (!isCarried(report)) return report
           const { becoming: _carried, ...rest } = report
           return rest
         }),

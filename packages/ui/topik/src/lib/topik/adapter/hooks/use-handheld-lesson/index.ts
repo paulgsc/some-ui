@@ -40,6 +40,7 @@ import type {
   LessonSurvey,
   StuckCandidate,
   SurveyItem,
+  SurveyReport,
 } from "@topik/lib/topik/core/lesson-survey"
 import {
   pinMisses,
@@ -617,19 +618,26 @@ export function useHandheldLesson({
     setPasted(null)
   }, [held, pasted, sessionPoints])
 
+  // The reports the last prompt built was made from: what a handoff carried.
+  const carried = useRef<Array<SurveyReport>>([])
+
   const prompt = useCallback(
-    (request: Omit<LessonRequest, "survey">): string =>
-      buildLessonPrompt({
+    (request: Omit<LessonRequest, "survey">): string => {
+      const digest = surveys.list().slice(0, DIGEST_LESSONS)
+      carried.current = digest
+      return buildLessonPrompt({
         ...request,
-        survey: surveyDigest(surveys.list(), DIGEST_LESSONS),
-      }),
+        survey: surveyDigest(digest, DIGEST_LESSONS),
+      })
+    },
     [surveys]
   )
 
   // The digest's free text has now reached the learner; it is not kept to
-  // say it twice (canon Rem. 7.4).
+  // say it twice (canon Rem. 7.4). Only the reports that prompt was built
+  // from: the store may have gained one since (Codex, #1555).
   const promptHandedOff = useCallback((): void => {
-    surveys.forgetBecoming(DIGEST_LESSONS)
+    surveys.forgetBecoming(carried.current)
     setReports(surveys.list())
   }, [surveys])
 

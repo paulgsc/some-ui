@@ -98,8 +98,14 @@ describe("createSurveyStore", () => {
     const store = createSurveyStore(memory(), () => clock++)
     store.add("a", { stuck: [], becoming: "older" })
     store.add("b", { stuck: [], becoming: "newer" })
-    store.forgetBecoming(1)
-    const [newest, older] = store.list()
+    const [carried] = store.list()
+    // Another tab adds a report after the prompt was built.
+    store.add("c", { stuck: [], becoming: "after the prompt" })
+    store.forgetBecoming(carried ? [carried] : [])
+    const [latest, newest, older] = store.list()
+    // Not carried, so not forgotten, though it is now the newest (Codex,
+    // #1555).
+    expect(latest?.becoming).toBe("after the prompt")
     expect(newest?.becoming).toBeUndefined()
     // A report left with nothing else in it is still the learner's verdict
     // that the lesson happened; it stays.

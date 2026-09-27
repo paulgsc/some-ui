@@ -842,8 +842,17 @@ describe("HandheldLesson", () => {
       expect(manual.textContent).toContain("reading webtoons raw")
       expect(surveys.list()[0]?.becoming).toBe("reading webtoons raw")
 
+      // Another tab adds a report while the fallback is open; this prompt
+      // never carried it (Codex, #1555).
+      surveys.add(
+        "local:later",
+        { stuck: [], becoming: "ordering without pointing" },
+        { displayName: "A later lesson" }
+      )
       fireEvent.copy(manual)
-      expect(surveys.list()[0]?.becoming).toBeUndefined()
+      const [later, earlier] = surveys.list()
+      expect(later?.becoming).toBe("ordering without pointing")
+      expect(earlier?.becoming).toBeUndefined()
     })
 
     it("plays the lesson it was handed when the device refuses to keep it (Codex, #1554)", async () => {
