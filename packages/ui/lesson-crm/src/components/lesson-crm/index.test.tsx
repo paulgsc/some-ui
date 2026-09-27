@@ -456,6 +456,93 @@ describe("LessonCrm: the latest source asked for is the one kept", () => {
   })
 })
 
+describe("LessonCrm: what a save writes is what the editor holds", () => {
+  it("holds a new lesson's key while its save is on the way", async () => {
+    viewport(false)
+    const client = fakeClient([])
+    let finishSave: () => void = () => undefined
+    vi.mocked(client.write).mockImplementation(
+      (key: string, write: LessonWrite) =>
+        new Promise((resolve) => {
+          finishSave = (): void =>
+            resolve({
+              change: "inserted",
+              lesson: { ...lesson(key), ...write.metadata },
+            })
+        })
+    )
+    render(<LessonCrm client={client} reporting={recording()} />)
+    await settle()
+
+    fireEvent.click(screen.getByRole("button", { name: /New lesson/ }))
+    step(/Step 2: Lesson/)
+    pasteReply()
+    await settle()
+    step(/Step 3: Details/)
+    expect(screen.getByLabelText("Key")).not.toHaveAttribute("readonly")
+    step(/Step 5: Check/)
+    fireEvent.click(screen.getByRole("button", { name: /^Save$/ }))
+    step(/Step 3: Details/)
+    expect(screen.getByLabelText("Key")).toHaveAttribute("readonly")
+    await act(async () => {
+      finishSave()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+    expect(screen.getByLabelText("Key")).toHaveValue("cafe-order")
+  })
+
+  it("won't save while a replacement source is still loading", async () => {
+    viewport(false)
+    render(<LessonCrm client={fakeClient([])} reporting={recording()} />)
+    await settle()
+    fireEvent.click(screen.getByRole("button", { name: /New lesson/ }))
+    step(/Step 2: Lesson/)
+    pasteReply()
+    await settle()
+
+    let finish: (text: string) => void = () => undefined
+    const replacement = new File(["ignored"], "replacement.json")
+    Object.defineProperty(replacement, "text", {
+      value: () =>
+        new Promise<string>((resolve) => {
+          finish = resolve
+        }),
+    })
+    fireEvent.change(screen.getByLabelText(/Upload a file/), {
+      target: { files: [replacement] },
+    })
+    step(/Step 5: Check/)
+    expect(screen.getByRole("button", { name: /^Save$/ })).toBeDisabled()
+
+    await act(async () => {
+      finish(REPLY)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+    expect(screen.getByRole("button", { name: /^Save$/ })).toBeEnabled()
+  })
+
+  it("can save again once a replacement source fails to load", async () => {
+    viewport(false)
+    render(<LessonCrm client={fakeClient([])} reporting={recording()} />)
+    await settle()
+    fireEvent.click(screen.getByRole("button", { name: /New lesson/ }))
+    step(/Step 2: Lesson/)
+    pasteReply()
+    await settle()
+
+    const broken = new File(["ignored"], "broken.json")
+    Object.defineProperty(broken, "text", {
+      value: () => Promise.reject(new Error("unreadable")),
+    })
+    fireEvent.change(screen.getByLabelText(/Upload a file/), {
+      target: { files: [broken] },
+    })
+    await settle()
+    step(/Step 5: Check/)
+    expect(screen.getByRole("button", { name: /^Save$/ })).toBeEnabled()
+  })
+})
+
 describe("LessonCrm on a phone: a bottom tab per pane", () => {
   it("keeps the editor's tabs shut until a lesson is open, then lands on the prompt", async () => {
     viewport(true)

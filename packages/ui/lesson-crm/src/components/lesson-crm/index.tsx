@@ -80,6 +80,14 @@ const canReadClipboard = (): boolean =>
  * Every action is an intent the operator hears about (`lib/operation`):
  * its control holds while it runs, and it ends in a toast either way.
  *
+ * What finishes later never lands on an editor that has moved on:
+ * - A source (paste, upload, clipboard, the read opening a lesson starts,
+ *   Remove) claims one shared turn; only the latest turn's result lands, and
+ *   nothing is saved while that latest source is still on its way.
+ * - A save carries the selection it started from, and holds the key while
+ *   it runs; the editor becomes the saved lesson only if it still holds
+ *   that selection, so what is shown as stored is what was written.
+ *
  * LAN-only by build, not by access: this workspace's audience is `lan`, and
  * the server's operator routes are guarded by nothing but its origin
  * allowlist.
@@ -111,7 +119,17 @@ export const LessonCrm = ({
   // path's late result can land over another's newer one; each async result
   // lands only if its turn is still the latest.
   const sourceTurn = useRef(0)
-  const claimSource = (): number => ++sourceTurn.current
+  // Whether the latest source asked for is still on its way. Nothing is
+  // saved meanwhile: the source on show is no longer the operator's choice.
+  const [sourcePending, setSourcePending] = useState(false)
+  const claimSource = (pending: boolean): number => {
+    setSourcePending(pending)
+    return ++sourceTurn.current
+  }
+  /** Ends the wait for a source, if `turn` is still the one waited for. */
+  const settleSource = (turn: number): void => {
+    if (sourceTurn.current === turn) setSourcePending(false)
+  }
   const scope = useRef<HTMLDivElement | null>(null)
 
   const load = useOperation(
@@ -128,11 +146,15 @@ export const LessonCrm = ({
 
   const read = useOperation(
     async ({ key, turn }: { key: string; turn: number }): Promise<string> => {
-      const body = await client.read(key)
-      if (sourceTurn.current === turn) {
-        setSource(sourceFromText(body, "stored", `${key}.json`))
+      try {
+        const body = await client.read(key)
+        if (sourceTurn.current === turn) {
+          setSource(sourceFromText(body, "stored", `${key}.json`))
+        }
+        return body
+      } finally {
+        settleSource(turn)
       }
-      return body
     },
     {
       success: () => null,
@@ -163,9 +185,13 @@ export const LessonCrm = ({
 
   const readFile = useOperation(
     async ({ file, turn }: { file: File; turn: number }) => {
-      const next = await sourceFromFile(file)
-      take(next, turn)
-      return next
+      try {
+        const next = await sourceFromFile(file)
+        take(next, turn)
+        return next
+      } finally {
+        settleSource(turn)
+      }
     },
     {
       success: () => null,
@@ -178,10 +204,14 @@ export const LessonCrm = ({
 
   const pasteClipboard = useOperation(
     async (turn: number): Promise<string> => {
-      const text = await navigator.clipboard.readText()
-      if (text.trim() === "") throw new Error("The clipboard is empty.")
-      take(sourceFromText(text, "pasted"), turn)
-      return text
+      try {
+        const text = await navigator.clipboard.readText()
+        if (text.trim() === "") throw new Error("The clipboard is empty.")
+        take(sourceFromText(text, "pasted"), turn)
+        return text
+      } finally {
+        settleSource(turn)
+      }
     },
     {
       success: () => null,
@@ -244,7 +274,7 @@ export const LessonCrm = ({
 
   const startNew = (): void => {
     selection.current += 1
-    claimSource()
+    claimSource(false)
     const next: Editing = { kind: "new" }
     setEditing(next)
     setFormAndTags(EMPTY_FORM)
@@ -256,7 +286,7 @@ export const LessonCrm = ({
     const lesson = lessons.find((candidate) => candidate.key === key)
     if (!lesson) return
     selection.current += 1
-    const turn = claimSource()
+    const turn = claimSource(true)
     const next: Editing = { kind: "stored", key }
     setEditing(next)
     setFormAndTags(formFromLesson(lesson))
@@ -266,7 +296,7 @@ export const LessonCrm = ({
   }
 
   const panes = editorPanes(editing)
-  const canSave = draft?.ok === true && !clashes
+  const canSave = draft?.ok === true && !clashes && !sourcePending
 
   const actions = (
     <LessonActions
@@ -274,7 +304,7 @@ export const LessonCrm = ({
       listing={listing.state}
       canSave={canSave}
       onSave={() => {
-        if (draft?.ok && !clashes) {
+        if (canSave) {
           save.start({ write: draft.write, token: selection.current })
         }
       }}
@@ -302,13 +332,15 @@ export const LessonCrm = ({
       <LessonSourcePane
         source={source}
         draft={draft}
-        onText={(text) => take(sourceFromText(text, "pasted"), claimSource())}
-        onFile={(file) => readFile.start({ file, turn: claimSource() })}
+        onText={(text) =>
+          take(sourceFromText(text, "pasted"), claimSource(false))
+        }
+        onFile={(file) => readFile.start({ file, turn: claimSource(true) })}
         onClear={() => {
-          claimSource()
+          claimSource(false)
           setSource(null)
         }}
-        onPasteButton={() => pasteClipboard.start(claimSource())}
+        onPasteButton={() => pasteClipboard.start(claimSource(true))}
         canReadClipboard={canReadClipboard()}
       />
     ),
@@ -316,7 +348,9 @@ export const LessonCrm = ({
       <LessonDetails
         form={form}
         tagsText={tagsText}
-        keyLocked={editing.kind === "stored"}
+        // A key is the lesson's identity: fixed once stored, and held while
+        // a save is on its way, so the save lands on the key it wrote.
+        keyLocked={editing.kind === "stored" || save.state.status === "working"}
         clashes={clashes}
         onForm={(next) => setEntry((current) => ({ ...current, form: next }))}
         onTags={(typed) =>
