@@ -89,7 +89,10 @@ permanent gap.
   `ActiveScope`, every `.interval(` … acquires on the scope `start` receives").
 - **Falsified by** — what in a _single hunk_ contradicts the claim, checkable from the hunk
   plus at most files the invariant names. If you can't write this line, you have advice,
-  not an invariant.
+  not an invariant. It must cover **every kind of edit that can make the claim false**, not
+  only additions: a hunk that deletes, renames or moves the thing the claim relies on
+  breaks it as surely as one that adds a violation. Since a reviewer stops when the
+  falsifier doesn't match, a regression the falsifier misses goes unreported.
 - **Scope** — the paths or workspaces it covers, and any stated exceptions.
 - **Why not enforced** — which of lint, types and tests fails here, and why.
 
@@ -114,7 +117,9 @@ A worked example, true on `main` when it was written (all 9 exemptions conform):
 >
 > - _Claim:_ every `eslint-disable` of `extension-charter/require-named-lifetime` has a line
 >   starting `Lifetime:` in the unbroken `//` comment block directly above it.
-> - _Falsified by_ a hunk that adds such a directive without that line.
+> - _Falsified by_ a hunk that adds such a directive without that line, or that deletes or
+>   rewords the `Lifetime:` line above an existing directive, or breaks the comment block
+>   between them (inserting a non-comment line).
 > - _Scope:_ the whole repo.
 > - _Why not enforced:_ whether the `Lifetime:` line is true needs a person to read it.
 >   Whether it exists is mechanical ("mechanical; not yet a rule").

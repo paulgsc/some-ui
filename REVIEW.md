@@ -33,6 +33,8 @@ Flag the declaration itself when it:
 
 - is missing any of the four parts, or has a **Falsified by** that can't be decided from a
   single hunk (advice, or a claim about the whole program);
+- has a **Falsified by** that covers only additions, missing a deletion, rename or move
+  that would also make the claim false;
 - covers something a lint rule, type or test could enforce, without saying why that
   mechanism fails, or without the label "mechanical; not yet a rule";
 - is false on the code in the same change;

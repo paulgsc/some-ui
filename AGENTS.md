@@ -16,7 +16,7 @@ apply to any agent working here, not only Claude.
   - **it matches:** one finding citing the ID and the lines. Invariants marked "not
     reviewable" are never flagged.
 - **A change that declares or edits an invariant:** flag it if it is missing a part, has a
-  falsifier that can't be decided from a single hunk, covers something a lint rule, type or
+  falsifier that can't be decided from a single hunk or that covers only additions (missing a deletion, rename or move that also breaks the claim), covers something a lint rule, type or
   test could enforce without saying why that fails, is false on the code in the same
   change, or renumbers or removes an ID instead of retiring it.
 
