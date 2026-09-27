@@ -16,12 +16,16 @@ describe("stuckCandidates", () => {
         probeId: "c1-request-forms",
         prompt: "Which is NOT a valid transformation of this request?",
         source: "아이스 아메리카노 한 잔 주세요.",
+        // Every relation its options stand in: a learner blocked by it
+        // cannot say which one did it (canon Rem. 3.5).
+        relations: ["paraphrase", "register", "negation", "question"],
       },
       {
         batchId: 2,
         probeId: "c2-promise-forms",
         prompt: "Which is NOT a valid transformation?",
         source: "카드로 할게요.",
+        relations: ["past", "negation", "paraphrase", "question"],
       },
     ])
   })

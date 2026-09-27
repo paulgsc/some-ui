@@ -3,8 +3,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import type { ITopikRepository } from "@topik/lib/topik"
 import { SessionConfigProvider } from "@topik/lib/topik/adapter/context/session-config-context"
-import type { LessonStore } from "@topik/lib/topik/adapter/lesson-store"
-import { createLessonStore } from "@topik/lib/topik/adapter/lesson-store"
+import type { PastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
+import { createPastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
 import type { StorageLike } from "@topik/lib/topik/adapter/resume-point"
 import { createResumeStore } from "@topik/lib/topik/adapter/resume-point"
 import type { SurveyStore } from "@topik/lib/topik/adapter/survey-store"
@@ -31,7 +31,7 @@ function renderLesson(
   storage = memoryStorage(),
   topikRepository: ITopikRepository = fixtureTopikRepository,
   surveyStore: SurveyStore = createSurveyStore(memoryStorage()),
-  lessonStore: LessonStore = createLessonStore(memoryStorage())
+  pastedStore: PastedLessonStore = createPastedLessonStore(memoryStorage())
 ): ReturnType<typeof createResumeStore> {
   const store = createResumeStore(storage)
   const client = new QueryClient({
@@ -50,7 +50,7 @@ function renderLesson(
         <HandheldLesson
           resumeStore={store}
           surveyStore={surveyStore}
-          lessonStore={lessonStore}
+          pastedStore={pastedStore}
         />
       </SessionConfigProvider>
     </QueryClientProvider>
@@ -316,6 +316,7 @@ describe("HandheldLesson", () => {
         {
           topikKey: FIXTURE_TOPIK_KEY,
           displayName: "Ordering at a café",
+          level: 1,
           at: 5,
           worthwhile: "yes",
           difficulty: "too-hard",
@@ -326,6 +327,9 @@ describe("HandheldLesson", () => {
               probeId: "c2-promise-forms",
               source: "카드로 할게요.",
               prompt: "Which is NOT a valid transformation?",
+              // What the probe exercised, so a lesson that exercises it can
+              // come back (canon Rem. 3.5).
+              relations: ["past", "negation", "paraphrase", "question"],
             },
           ],
           becoming: "following a drama without subtitles",
@@ -342,7 +346,46 @@ describe("HandheldLesson", () => {
     })
   })
 
-  describe("the generation loop (canon v1.7)", () => {
+  describe("choosing what comes next (canon Rem. 3.5)", () => {
+    it("puts the held level's lesson up next, and moves only when the learner does", async () => {
+      renderLesson()
+      const upNext = await screen.findByRole("region", { name: "Up next" })
+      expect(upNext.textContent).toMatch(/Ordering at a café/)
+      expect(
+        screen
+          .getByRole("radio", { name: "TOPIK 1" })
+          .getAttribute("aria-checked")
+      ).toBe("true")
+      expect(
+        screen.getByRole("region", { name: "Other levels" }).textContent
+      ).toMatch(/Changing subway lines/)
+
+      fireEvent.click(screen.getByRole("radio", { name: "TOPIK 2" }))
+      expect(
+        screen.getByRole("region", { name: "Up next" }).textContent
+      ).toMatch(/Changing subway lines/)
+    })
+
+    it("says why: what blocked the learner comes back, shorter after too hard", async () => {
+      const surveys = createSurveyStore(memoryStorage())
+      surveys.add(
+        "another-lesson",
+        {
+          difficulty: "too-hard",
+          stuck: [{ batchId: 9, probeId: "x", relations: ["negation"] }],
+        },
+        { level: 1 }
+      )
+      renderLesson(memoryStorage(), fixtureTopikRepository, surveys)
+      const upNext = await screen.findByRole("region", { name: "Up next" })
+      expect(upNext.textContent).toMatch(/Brings back negation\./)
+      expect(upNext.textContent).toMatch(
+        /Shorter, since the last one felt too hard\./
+      )
+    })
+  })
+
+  describe("the learner's own lesson (canon Cor. 8.2, Rem. 7.4)", () => {
     const stubClipboard = (): ReturnType<typeof vi.fn> => {
       const writeText = vi.fn().mockResolvedValue(undefined)
       vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } })
@@ -368,27 +411,30 @@ describe("HandheldLesson", () => {
       "```",
     ].join("\n")
 
-    it("hands out the prompt, takes the lesson back, keeps it and starts it", async () => {
+    it("hands out the prompt, takes the lesson back, and holds it for the session only", async () => {
       const writeText = stubClipboard()
-      const lessons = createLessonStore(memoryStorage())
+      const pasted = createPastedLessonStore(memoryStorage())
       const surveys = createSurveyStore(memoryStorage())
       surveys.add(
         "local:earlier",
-        { worthwhile: "no", stuck: [] },
-        "An earlier lesson"
+        { worthwhile: "no", stuck: [], becoming: "reading webtoons raw" },
+        { displayName: "An earlier lesson" }
       )
-      renderLesson(memoryStorage(), fixtureTopikRepository, surveys, lessons)
+      renderLesson(memoryStorage(), fixtureTopikRepository, surveys, pasted)
 
       fireEvent.click(
-        await screen.findByRole("button", { name: /Write a new lesson/ })
+        await screen.findByRole("button", { name: /Write your own lesson/ })
       )
       fireEvent.click(screen.getByRole("radio", { name: "TOPIK 2" }))
       click(/Copy the prompt/)
       await screen.findByText(/Copied/)
       const prompt = String(writeText.mock.calls[0]?.[0])
       expect(prompt).toContain("Level: 2")
-      // The survey delta rides along, in words.
+      // The survey delta rides along, in words, free text included...
       expect(prompt).toContain("1. An earlier lesson: not worthwhile.")
+      expect(prompt).toContain('Making them into: "reading webtoons raw"')
+      // ...and the free text is not kept once carried (canon Rem. 7.4).
+      expect(surveys.list()[0]?.becoming).toBeUndefined()
 
       fireEvent.change(
         screen.getByRole("textbox", { name: "Your model's reply" }),
@@ -398,18 +444,23 @@ describe("HandheldLesson", () => {
       expect(
         screen.getByText(/Every probe will be asked as written/)
       ).toBeTruthy()
-      click(/Save and start/)
+      click(/^Start$/)
 
       expect(await screen.findByText("어서 오세요. 뭐 드릴까요?")).toBeTruthy()
-      expect(lessons.list().map((lesson) => lesson.meta.key)).toEqual([
-        "local:first-dinner",
-      ])
+      expect(pasted.get()?.meta.key).toBe("local:first-dinner")
 
-      // Back on the list, it is one of the learner's own.
+      // Back on the list, it is held for this session, and can be let go.
       click("Back to materials")
-      const mine = await screen.findByRole("region", { name: "Your lessons" })
-      expect(mine.textContent).toMatch(/The first family dinner/)
-      expect(mine.textContent).toMatch(/TOPIK 2/)
+      const held = await screen.findByRole("region", {
+        name: "Pasted this session",
+      })
+      expect(held.textContent).toMatch(/The first family dinner/)
+      expect(held.textContent).toMatch(/until this tab closes/)
+      click("Forget The first family dinner")
+      expect(
+        screen.queryByRole("region", { name: "Pasted this session" })
+      ).toBeNull()
+      expect(pasted.get()).toBeNull()
     })
 
     it("keeps a flagged answer for the next prompt even when the survey is skipped", async () => {
@@ -442,6 +493,7 @@ describe("HandheldLesson", () => {
         {
           topikKey: FIXTURE_TOPIK_KEY,
           displayName: "Ordering at a café",
+          level: 1,
           at: 9,
           stuck: [],
           flagged: [

@@ -9,15 +9,25 @@
  *
  * Counts in the manifest entry are recomputed from the conversations rather
  * than trusted: a model that miscounts should not be able to mislabel a
- * lesson.
+ * lesson. So are its `relation:` tags, which selection reads (canon
+ * Rem. 3.5): they come from the probes, whatever the model wrote. The
+ * operator's weekly batch goes through this same intake, so served entries
+ * carry derived tags too.
  */
 
 import type { ConversationBatch, TopikMetadata } from "@topik/lib/topik"
 import { TopikFileSchema } from "@topik/lib/topik"
+import {
+  RELATION_TAG_PREFIX,
+  relationTags,
+  topikLevelOf,
+} from "@topik/lib/topik/core/lesson-selection"
 import type { ProbeFinding } from "@topik/lib/topik/core/probe-audit"
 import { auditTopikFile } from "@topik/lib/topik/core/probe-audit"
 
-/** Keys of lessons kept on this device; never confused with a served one. */
+export { topikLevelOf }
+
+/** Keys of lessons pasted this session; never confused with a served one. */
 export const LOCAL_LESSON_PREFIX = "local:"
 
 export type Intake =
@@ -68,15 +78,6 @@ const DIFFICULTY_BY_LEVEL: Record<number, TopikMetadata["difficulty"]> = {
   6: "advanced",
 }
 
-/** The TOPIK level a lesson's tags carry (`topik-2`), if any. */
-export function topikLevelOf(tags: Array<string> = []): number | undefined {
-  for (const tag of tags) {
-    const match = /^topik-([1-6])$/.exec(tag)
-    if (match) return Number(match[1])
-  }
-  return undefined
-}
-
 /** Reads a pasted reply. Never throws. */
 export function intakeLesson(reply: string): Intake {
   const values = jsonValues(reply)
@@ -105,9 +106,13 @@ export function intakeLesson(reply: string): Intake {
 
   const entry = values.find(isRecord) ?? {}
   const displayName = text(entry.displayName) ?? "Untitled lesson"
-  const tags = Array.isArray(entry.tags)
-    ? entry.tags.filter((tag): tag is string => typeof tag === "string")
-    : undefined
+  const authored = Array.isArray(entry.tags)
+    ? entry.tags.filter(
+        (tag): tag is string =>
+          typeof tag === "string" && !tag.startsWith(RELATION_TAG_PREFIX)
+      )
+    : []
+  const tags = [...authored, ...relationTags(batches)]
   const level = topikLevelOf(tags)
   const difficulty =
     (level ? DIFFICULTY_BY_LEVEL[level] : undefined) ??
@@ -131,7 +136,7 @@ export function intakeLesson(reply: string): Intake {
       0
     ),
     ...(difficulty ? { difficulty } : {}),
-    ...(tags && tags.length > 0 ? { tags } : {}),
+    ...(tags.length > 0 ? { tags } : {}),
   }
 
   return {

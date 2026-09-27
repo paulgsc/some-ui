@@ -14,7 +14,8 @@ type GenerateLessonProps = {
   defaultLevel: TopikLevel
   /** The prompt for a request, with the learner's survey digest appended. */
   buildPrompt: (request: Omit<LessonRequest, "survey">) => string
-  onSave: (meta: TopikMetadata, batches: Array<ConversationBatch>) => void
+  /** Holds the lesson for this session and starts it (canon Rem. 7.4). */
+  onStart: (meta: TopikMetadata, batches: Array<ConversationBatch>) => void
   short: boolean
   /** Stories open with a reply already pasted. */
   initialReply?: string
@@ -36,12 +37,14 @@ async function copy(text: string): Promise<boolean> {
  * The generation loop on a phone (adaptive-learning canon v1.7): the app hands
  * the learner the prompt for their own model, and takes the lesson back.
  * Nothing leaves the device - the prompt goes out through the clipboard, the
- * lesson comes back the same way, and the check runs here.
+ * lesson comes back the same way, and the check runs here. This is the
+ * learner's option (Cor. 8.3); the lesson lasts the session, and their
+ * model's chat is where it is kept (Rem. 7.4).
  */
 export const GenerateLesson = ({
   defaultLevel,
   buildPrompt,
-  onSave,
+  onStart,
   short,
   initialReply = "",
 }: GenerateLessonProps): JSX.Element => {
@@ -113,7 +116,8 @@ export const GenerateLesson = ({
         />
         <p className="text-muted-foreground text-sm">
           The prompt carries the lesson&apos;s rules and your last few survey
-          answers. Paste it into any model, then paste its reply below.
+          answers. Paste it into any model, then paste its reply below. The
+          lesson lasts this session; your chat with the model keeps it.
         </p>
         {manual !== null && (
           <Textarea
@@ -243,9 +247,9 @@ export const GenerateLesson = ({
       <>
         <Button
           className="h-12 w-full gap-2 rounded-2xl"
-          onClick={() => onSave(intake.meta, intake.batches)}
+          onClick={() => onStart(intake.meta, intake.batches)}
         >
-          <Play className="size-5" /> Save and start
+          <Play className="size-5" /> Start
         </Button>
         {intake.findings.length > 0 && (
           <Button

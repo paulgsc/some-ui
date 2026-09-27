@@ -610,11 +610,13 @@ Return two ` ```json ` blocks and nothing else, in this order.
    - `totalQuestions` counts the desktop `questions`, not the probes.
    - `totalMessages` counts every line.
    - `difficulty` follows **Levels**. `tags` carries `"topik-<level>"` first,
-     then `"makjang"`.
+     then `"makjang"`. Don't add `relation:` tags: the app derives one per
+     relation your probes use.
 
 ---
 
 ## Versioning
 
-**`v1.1`.** The prompt the app assembles. The app appends **This request**
-below.
+**`v1.2`.** The prompt the app assembles. The app appends **This request**
+below. Since `v1.2`, `relation:` tags are derived from the probes, never
+written by the model.

@@ -1,4 +1,5 @@
 import { FIXTURE_BATCHES } from "@topik/components/topik/handheld/handheld-lesson/fixture"
+import { relationTags } from "@topik/lib/topik/core/lesson-selection"
 import { describe, expect, it } from "vitest"
 
 import { fixRequest, intakeLesson, LOCAL_LESSON_PREFIX, topikLevelOf } from "."
@@ -11,7 +12,8 @@ const entry = {
   totalQuestions: 99,
   totalMessages: 99,
   difficulty: "advanced",
-  tags: ["topik-2", "makjang"],
+  // The model's own relation tag is dropped: the app derives them.
+  tags: ["topik-2", "makjang", "relation:invented"],
 }
 
 const reply = (lesson: unknown): string =>
@@ -40,8 +42,10 @@ describe("intakeLesson", () => {
       totalMessages: 6,
       // The level tag decides, over a mislabelled difficulty.
       difficulty: "beginner",
-      tags: ["topik-2", "makjang"],
+      tags: ["topik-2", "makjang", ...relationTags(FIXTURE_BATCHES)],
     })
+    expect(relationTags(FIXTURE_BATCHES)).toContain("relation:negation")
+    expect(intake.meta.tags).not.toContain("relation:invented")
     expect(intake.findings).toEqual([])
   })
 

@@ -18,14 +18,20 @@ import type {
   TopikMetadata,
 } from "@topik/lib/topik"
 import { useSessionConfig } from "@topik/lib/topik"
-import type { LessonStore } from "@topik/lib/topik/adapter/lesson-store"
-import { createLessonStore } from "@topik/lib/topik/adapter/lesson-store"
+import type { PastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
+import { createPastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
 import type { ResumeStore } from "@topik/lib/topik/adapter/resume-point"
 import { createResumeStore } from "@topik/lib/topik/adapter/resume-point"
 import { useTopikMetadataList } from "@topik/lib/topik/adapter/server/topik-metadata-queries"
 import { useTopikBatches } from "@topik/lib/topik/adapter/server/topik-queries"
 import type { SurveyStore } from "@topik/lib/topik/adapter/survey-store"
 import { createSurveyStore } from "@topik/lib/topik/adapter/survey-store"
+import type { Selection } from "@topik/lib/topik/core/lesson-selection"
+import {
+  heldLevel,
+  orderLessons,
+  topikLevelOf,
+} from "@topik/lib/topik/core/lesson-selection"
 import type {
   LessonSurvey,
   StuckCandidate,
@@ -53,7 +59,11 @@ import {
   tallyOf,
 } from "@topik/lib/topik/core/lesson-track"
 import type { LessonRequest } from "@topik/lib/topik/generation"
-import { buildLessonPrompt, surveyDigest } from "@topik/lib/topik/generation"
+import {
+  buildLessonPrompt,
+  DIGEST_LESSONS,
+  surveyDigest,
+} from "@topik/lib/topik/generation"
 import { LOCAL_LESSON_PREFIX } from "@topik/lib/topik/generation/intake"
 
 const EMPTY_PLAN: LessonPlan = { steps: [], lineCount: 0, checkCount: 0 }
@@ -87,6 +97,19 @@ export type HandheldLessonVM = {
   }
   /** Where the learner left off, for the start screen. */
   resume: { topik: TopikMetadata; conversation: number } | null
+  /**
+   * The served lessons, in the order the learner should meet them (canon
+   * Rem. 3.5): ordered by their recent surveys, within the level they hold.
+   */
+  selection: {
+    level: number
+    /** The learner moving to another level; the survey never does. */
+    chooseLevel: (level: number) => void
+    /** At `level`; the first is up next. */
+    order: Array<Selection>
+    /** Served lessons at other levels, in served order. */
+    others: Array<TopikMetadata>
+  }
   /** Set once a topik is chosen, while its file loads. */
   loading: { topikKey: string; error: string | null } | null
   lesson: HandheldLessonView | null
@@ -106,20 +129,25 @@ export type HandheldLessonVM = {
     speak: (message: Message) => void
   }
   /**
-   * The generation loop (canon v1.7): the prompt goes out to the learner's
-   * own model, and the lesson comes back pasted, checked and kept locally.
+   * The learner's opt-in path (canon Cor. 8.2, 8.3): the prompt goes out to
+   * their own model through the clipboard, and the lesson comes back pasted
+   * and checked, held for this session only (Rem. 7.4).
    */
   generator: {
-    /** Kept lessons, newest first; also listed in `catalog.items`. */
-    lessons: Array<TopikMetadata>
+    /** The lesson pasted this session, if any; also in `catalog.items`. */
+    pasted: TopikMetadata | null
     active: boolean
     open: () => void
     close: () => void
-    /** The prompt for this request, with the learner's survey digest. */
-    prompt: (request: Omit<LessonRequest, "survey">) => string
-    /** Keeps a lesson and starts it. */
-    save: (meta: TopikMetadata, batches: Array<ConversationBatch>) => void
-    remove: (key: string) => void
+    /**
+     * The prompt for this request, with the learner's survey digest. Taking
+     * it deletes the digest's free text: the prompt has now carried it.
+     */
+    takePrompt: (request: Omit<LessonRequest, "survey">) => string
+    /** Holds a pasted lesson for this session and starts it. */
+    start: (meta: TopikMetadata, batches: Array<ConversationBatch>) => void
+    /** Lets the pasted lesson go before the session ends. */
+    forget: () => void
   }
   /** "This answer looks wrong" on the current check's feedback. */
   flag: { flagged: boolean; toggle: () => void } | null
@@ -133,8 +161,8 @@ export type UseHandheldLessonOptions = {
   resumeStore?: ResumeStore
   /** Injected in tests and stories; defaults to `localStorage`. */
   surveyStore?: SurveyStore
-  /** Injected in tests and stories; defaults to `localStorage`. */
-  lessonStore?: LessonStore
+  /** Injected in tests and stories; defaults to `sessionStorage`. */
+  pastedStore?: PastedLessonStore
 }
 
 const lineText = (message: Message): string => message.korean || message.content
@@ -150,28 +178,28 @@ function voiceFor(
 export function useHandheldLesson({
   resumeStore,
   surveyStore,
-  lessonStore,
+  pastedStore,
 }: UseHandheldLessonOptions = {}): HandheldLessonVM {
   const { topikRepository, metadataRepository, speechAdapter } =
     useSessionConfig()
   const [store] = useState(() => resumeStore ?? createResumeStore())
   const [surveys] = useState(() => surveyStore ?? createSurveyStore())
-  const [kept] = useState(() => lessonStore ?? createLessonStore())
+  const [held] = useState(() => pastedStore ?? createPastedLessonStore())
   const audioAvailable = speechAdapter?.supported === true
 
   // ── Catalogue and content ────────────────────────────────────────────────
 
   const catalogQuery = useTopikMetadataList(metadataRepository)
-  // Lessons the learner generated come first, from this device; served
-  // material follows. A local key never reaches the server.
-  const [localLessons, setLocalLessons] = useState(() => kept.list())
+  const served = useMemo(() => catalogQuery.data ?? [], [catalogQuery.data])
+  // The lesson pasted this session comes first; served material follows. A
+  // pasted lesson's key never reaches the server.
+  const [pasted, setPasted] = useState(() => held.get())
   const items = useMemo(
-    () => [
-      ...localLessons.map((local) => local.meta),
-      ...(catalogQuery.data ?? []),
-    ],
-    [localLessons, catalogQuery.data]
+    () => [...(pasted ? [pasted.meta] : []), ...served],
+    [pasted, served]
   )
+  // Re-read after every write, so selection sees the report just added.
+  const [reports, setReports] = useState(() => surveys.list())
 
   const [topikKey, setTopikKey] = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
@@ -179,13 +207,8 @@ export function useHandheldLesson({
   const batchesQuery = useTopikBatches(topikRepository, topikKey ?? "", {
     enabled: topikKey !== null && !isLocal,
   })
-  const localBatches = useMemo(
-    () =>
-      isLocal
-        ? localLessons.find((local) => local.meta.key === topikKey)?.batches
-        : undefined,
-    [isLocal, localLessons, topikKey]
-  )
+  const localBatches =
+    isLocal && pasted?.meta.key === topikKey ? pasted.batches : undefined
   const batches =
     topikKey === null ? undefined : isLocal ? localBatches : batchesQuery.data
 
@@ -398,29 +421,39 @@ export function useHandheldLesson({
     setSurveyPending(false)
   }, [stopSpeaking])
 
-  const lessonName =
-    topikKey === null
-      ? undefined
-      : items.find((item) => item.key === topikKey)?.displayName
+  const current =
+    topikKey === null ? undefined : items.find((item) => item.key === topikKey)
+  const lessonName = current?.displayName
+  const lessonLevel = topikLevelOf(current?.tags)
 
   const submitSurvey = useCallback(
     (survey: LessonSurvey): void => {
       if (topikKey !== null) {
-        surveys.add(topikKey, { ...survey, flagged }, lessonName)
+        surveys.add(
+          topikKey,
+          { ...survey, flagged },
+          { displayName: lessonName, level: lessonLevel }
+        )
+        setReports(surveys.list())
       }
       setSurveyPending(false)
     },
-    [surveys, topikKey, flagged, lessonName]
+    [surveys, topikKey, flagged, lessonName, lessonLevel]
   )
 
   // Skipping the survey drops its answers, not the learner's flags: a flag
   // was a deliberate tap, and the next prompt should hear it.
   const skipSurvey = useCallback((): void => {
     if (topikKey !== null && flagged.length > 0) {
-      surveys.add(topikKey, { stuck: [], flagged }, lessonName)
+      surveys.add(
+        topikKey,
+        { stuck: [], flagged },
+        { displayName: lessonName, level: lessonLevel }
+      )
+      setReports(surveys.list())
     }
     setSurveyPending(false)
-  }, [surveys, topikKey, flagged, lessonName])
+  }, [surveys, topikKey, flagged, lessonName, lessonLevel])
 
   const flaggable =
     step?.kind === "check" && lesson.answered !== null && batch
@@ -456,26 +489,32 @@ export function useHandheldLesson({
     )
   }
 
-  const saveLesson = useCallback(
+  const startPasted = useCallback(
     (meta: TopikMetadata, lessonBatches: Array<ConversationBatch>): void => {
-      kept.save(meta, lessonBatches)
-      setLocalLessons(kept.list())
+      held.set(meta, lessonBatches)
+      setPasted({ meta, batches: lessonBatches })
       select(meta.key)
     },
-    [kept, select]
+    [held, select]
   )
 
-  const removeLesson = useCallback(
-    (key: string): void => {
-      kept.remove(key)
-      setLocalLessons(kept.list())
+  const forgetPasted = useCallback((): void => {
+    held.clear()
+    setPasted(null)
+  }, [held])
+
+  const takePrompt = useCallback(
+    (request: Omit<LessonRequest, "survey">): string => {
+      const prompt = buildLessonPrompt({
+        ...request,
+        survey: surveyDigest(surveys.list(), DIGEST_LESSONS),
+      })
+      // The digest's free text has now reached the learner's model; it is
+      // not kept to say it twice (canon Rem. 7.4).
+      surveys.forgetBecoming(DIGEST_LESSONS)
+      setReports(surveys.list())
+      return prompt
     },
-    [kept]
-  )
-
-  const promptFor = useCallback(
-    (request: Omit<LessonRequest, "survey">): string =>
-      buildLessonPrompt({ ...request, survey: surveyDigest(surveys.list()) }),
     [surveys]
   )
 
@@ -488,6 +527,23 @@ export function useHandheldLesson({
   const resumeTopik = last
     ? items.find((item) => item.key === last.topikKey)
     : undefined
+
+  // The level the learner holds, until they choose another (Rem. 3.3: the
+  // survey never moves it).
+  const [chosenLevel, setChosenLevel] = useState<number | null>(null)
+  const level = chosenLevel ?? heldLevel(reports, resumeTopik)
+  const order = useMemo(
+    () => orderLessons(served, reports, level),
+    [served, reports, level]
+  )
+  const others = useMemo(
+    () =>
+      served.filter((item) => {
+        const itemLevel = topikLevelOf(item.tags)
+        return itemLevel !== undefined && itemLevel !== level
+      }),
+    [served, level]
+  )
 
   const ready =
     topikKey !== null && batch !== undefined && restoredFor === topikKey
@@ -509,7 +565,7 @@ export function useHandheldLesson({
             topikKey,
             error:
               isLocal && localBatches === undefined
-                ? "This lesson is no longer on this device."
+                ? "A pasted lesson lasts only the session it was pasted in."
                 : batchesQuery.error
                   ? batchesQuery.error.message
                   : batches?.length === 0
@@ -543,14 +599,20 @@ export function useHandheldLesson({
           skip: skipSurvey,
         }
       : null,
+    selection: {
+      level,
+      chooseLevel: setChosenLevel,
+      order,
+      others,
+    },
     generator: {
-      lessons: localLessons.map((local) => local.meta),
+      pasted: pasted?.meta ?? null,
       active: generating && topikKey === null,
       open: (): void => setGenerating(true),
       close: (): void => setGenerating(false),
-      prompt: promptFor,
-      save: saveLesson,
-      remove: removeLesson,
+      takePrompt,
+      start: startPasted,
+      forget: forgetPasted,
     },
     flag: flagItem ? { flagged: isFlagged, toggle: toggleFlag } : null,
     audio: { available: audioAvailable, speakingId, speak },

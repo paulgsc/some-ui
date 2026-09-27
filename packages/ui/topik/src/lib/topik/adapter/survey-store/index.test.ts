@@ -1,7 +1,12 @@
 import type { StorageLike } from "@topik/lib/topik/adapter/resume-point"
 import { describe, expect, it } from "vitest"
 
-import { createSurveyStore, MAX_SURVEYS, SURVEY_STORAGE_KEY } from "."
+import {
+  createSurveyStore,
+  MAX_SURVEYS,
+  SURVEY_STORAGE_KEY,
+  SURVEY_TTL_MS,
+} from "."
 
 const memory = (): StorageLike & { map: Map<string, string> } => {
   const map = new Map<string, string>()
@@ -49,6 +54,43 @@ describe("createSurveyStore", () => {
     const reports = store.list()
     expect(reports).toHaveLength(MAX_SURVEYS)
     expect(reports.at(-1)?.topikKey).toBe("t1")
+  })
+
+  it("never reads a report past its expiry, even with nothing written since (canon Rem. 7.4)", () => {
+    const storage = memory()
+    let clock = 1_000
+    createSurveyStore(storage, () => clock).add("old", {
+      worthwhile: "no",
+      stuck: [],
+    })
+    clock += SURVEY_TTL_MS - 1
+    expect(createSurveyStore(storage, () => clock).list()).toHaveLength(1)
+    clock += 2
+    expect(createSurveyStore(storage, () => clock).list()).toEqual([])
+  })
+
+  it("records the lesson's level and name with the report", () => {
+    const store = createSurveyStore(memory(), () => 5)
+    store.add(
+      "k",
+      { difficulty: "right", stuck: [] },
+      { displayName: "Dinner", level: 2 }
+    )
+    expect(store.list()[0]).toMatchObject({ displayName: "Dinner", level: 2 })
+  })
+
+  it("forgets the free text of the reports a prompt carried, and only theirs", () => {
+    let clock = 1
+    const store = createSurveyStore(memory(), () => clock++)
+    store.add("a", { stuck: [], becoming: "older" })
+    store.add("b", { stuck: [], becoming: "newer" })
+    store.forgetBecoming(1)
+    const [newest, older] = store.list()
+    expect(newest?.becoming).toBeUndefined()
+    // A report left with nothing else in it is still the learner's verdict
+    // that the lesson happened; it stays.
+    expect(newest?.topikKey).toBe("b")
+    expect(older?.becoming).toBe("older")
   })
 
   it("discards a document it cannot read, and survives storage that throws", () => {

@@ -39,24 +39,24 @@ const renderGenerate = (
   props: Partial<Parameters<typeof GenerateLesson>[0]> = {}
 ): {
   buildPrompt: ReturnType<typeof vi.fn>
-  onSave: ReturnType<typeof vi.fn>
+  onStart: ReturnType<typeof vi.fn>
 } => {
   const buildPrompt = vi.fn(
     (request: Omit<LessonRequest, "survey">) =>
       `PROMPT level=${request.level} scene=${request.scene ?? "-"}`
   )
-  const onSave =
+  const onStart =
     vi.fn<(meta: TopikMetadata, batches: Array<ConversationBatch>) => void>()
   render(
     <GenerateLesson
       defaultLevel={3}
       buildPrompt={buildPrompt}
-      onSave={onSave}
+      onStart={onStart}
       short={false}
       {...props}
     />
   )
-  return { buildPrompt, onSave }
+  return { buildPrompt, onStart }
 }
 
 const click = (name: string | RegExp): void => {
@@ -106,17 +106,17 @@ describe("GenerateLesson", () => {
   })
 
   it("says why a reply is not a lesson, and saves nothing", () => {
-    const { onSave } = renderGenerate()
+    const { onStart } = renderGenerate()
     paste("Sorry, I can't help with that.")
     click("Check the lesson")
     expect(screen.getByRole("alert").textContent).toMatch(/No lesson found/)
-    expect(screen.queryByRole("button", { name: /Save and start/ })).toBeNull()
-    expect(onSave).not.toHaveBeenCalled()
+    expect(screen.queryByRole("button", { name: /^Start$/ })).toBeNull()
+    expect(onStart).not.toHaveBeenCalled()
   })
 
   it("names probe problems, hands the fixes to the model, and still lets it start", async () => {
     const writeText = stubClipboard(() => Promise.resolve())
-    const { onSave } = renderGenerate()
+    const { onStart } = renderGenerate()
     paste(reply(withIdentityBuild()))
     click("Check the lesson")
 
@@ -133,9 +133,9 @@ describe("GenerateLesson", () => {
       "- error: conversation 1, probe c1-build-negation: target is the source itself"
     )
 
-    click(/Save and start/)
-    expect(onSave).toHaveBeenCalledTimes(1)
-    expect(onSave.mock.calls[0]?.[0]).toMatchObject({
+    click(/^Start$/)
+    expect(onStart).toHaveBeenCalledTimes(1)
+    expect(onStart.mock.calls[0]?.[0]).toMatchObject({
       key: "local:untitled-lesson",
       batchCount: FIXTURE_BATCHES.length,
     })
@@ -143,9 +143,9 @@ describe("GenerateLesson", () => {
 
   it("asks for a fresh check after the reply changes", () => {
     renderGenerate({ initialReply: reply(FIXTURE_BATCHES) })
-    expect(screen.getByRole("button", { name: /Save and start/ })).toBeTruthy()
+    expect(screen.getByRole("button", { name: /^Start$/ })).toBeTruthy()
     paste(`${reply(FIXTURE_BATCHES)}\n`)
-    expect(screen.queryByRole("button", { name: /Save and start/ })).toBeNull()
+    expect(screen.queryByRole("button", { name: /^Start$/ })).toBeNull()
     expect(
       screen.getByRole("button", { name: "Check the lesson" })
     ).toBeTruthy()

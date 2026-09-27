@@ -1,5 +1,7 @@
 import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 import type { TopikMetadata } from "@topik/lib/topik"
+import { orderLessons } from "@topik/lib/topik/core/lesson-selection"
+import type { SurveyReport } from "@topik/lib/topik/core/lesson-survey"
 
 import { MaterialList } from "."
 
@@ -12,56 +14,80 @@ const lesson = (
   key: string,
   displayName: string,
   level: number,
-  description: string
+  size: number,
+  description: string,
+  relations: Array<string> = []
 ): TopikMetadata => ({
   key,
   displayName,
   description,
   batchCount: 3,
-  totalQuestions: 6,
-  totalMessages: 14,
-  tags: [`topik-${level}`, "makjang"],
+  totalQuestions: size,
+  totalMessages: size * 4,
+  tags: [
+    `topik-${level}`,
+    "makjang",
+    ...relations.map((relation) => `relation:${relation}`),
+  ],
 })
 
-const firstDinner = lesson(
-  "local:first-dinner",
-  "The first family dinner",
-  2,
-  "Seo-yeon meets Chairman Kang, who has already decided."
-)
-
-const mine = [
-  firstDinner,
+const week = [
   lesson(
-    "local:the-will",
+    "the-will",
     "The will is read",
-    3,
+    2,
+    8,
     "The eldest son learns the company was never his."
   ),
+  lesson(
+    "first-dinner",
+    "The first family dinner",
+    2,
+    4,
+    "Seo-yeon meets Chairman Kang, who has already decided.",
+    ["reason connective", "negation"]
+  ),
+  lesson(
+    "hospital",
+    "The hospital corridor",
+    2,
+    6,
+    "Two sisters, one secret, and a doctor who talks too much."
+  ),
+  lesson("cafe", "Ordering at a café", 1, 3, "Requests, politely and less so."),
 ]
 
-const served = [
-  lesson(
-    "ordering-at-a-cafe",
-    "Ordering at a café",
-    1,
-    "Requests, politely and less so."
-  ),
+const blockedOnConnectives: Array<SurveyReport> = [
+  {
+    topikKey: "the-will",
+    at: 1,
+    level: 2,
+    difficulty: "too-hard",
+    stuck: [
+      {
+        batchId: 1,
+        probeId: "c1-because",
+        relations: ["reason connective"],
+      },
+    ],
+  },
 ]
 
 const meta: Meta = {
   title: "UI/Chat/Components/Topik/Handheld/MaterialList",
   component: MaterialList,
   args: {
-    items: served,
-    mine,
+    order: orderLessons(week, blockedOnConnectives, 2),
+    others: week.filter((item) => item.tags?.includes("topik-1")),
+    level: 2,
+    onLevel: noop,
     loading: false,
     error: null,
     resume: null,
     onSelect: noop,
     onReload: noop,
     onCreate: noop,
-    onRemove: noop,
+    onForget: noop,
   },
   // The applet owns the whole screen on a phone; Storybook's padding would
   // push its dock below the fold and misreport the layout.
@@ -76,11 +102,29 @@ const meta: Meta = {
 }
 export default meta
 
-export const YourLessons: Story = {}
+/** Up next brings back what blocked them, shorter since it felt too hard. */
+export const UpNext: Story = {}
 
-export const Resuming: Story = {
-  args: { resume: { topik: firstDinner, conversation: 1 } },
+export const FirstVisit: Story = {
+  args: { order: orderLessons(week, [], 2) },
 }
 
-/** A first visit: nothing served, nothing kept. */
-export const Empty: Story = { args: { items: [], mine: [] } }
+export const WithAPastedLesson: Story = {
+  args: {
+    pasted: lesson(
+      "local:in-laws",
+      "The in-laws arrive early",
+      3,
+      5,
+      "Written by the learner's own model."
+    ),
+  },
+}
+
+export const Resuming: Story = {
+  args: {
+    resume: { topik: week[1] ?? lesson("x", "x", 2, 1, ""), conversation: 1 },
+  },
+}
+
+export const NothingThisWeek: Story = { args: { order: [], others: [] } }
