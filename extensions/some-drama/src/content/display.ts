@@ -14,7 +14,12 @@ import type {
   Playback,
   WatchlistState,
 } from "@drama/types"
-import { isRecord } from "@some-extension/common"
+import {
+  Disposables,
+  isPageShowing,
+  isRecord,
+  watchPageShowing,
+} from "@some-extension/common"
 import { getOverlayRoot } from "@some-extension/common/lib/layers"
 
 // ─── Local types ──────────────────────────────────────────────────────────────
@@ -221,6 +226,11 @@ export function createDisplay(deps: DisplayDeps): Display {
     episode: string
     beats: Array<BeatRecord>
   } | null = null
+  // A card exists only while the page is showing (Charter §7): a background
+  // tab keeps the latest state and position, but builds nothing and asks for
+  // nothing until it is shown. Watched for as long as this display lives.
+  const life = new Disposables()
+  let showing = isPageShowing()
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -305,13 +315,29 @@ export function createDisplay(deps: DisplayDeps): Display {
     })
   }
 
+  watchPageShowing(life, (now) => {
+    showing = now
+    if (!now) {
+      if (card) {
+        const pos = currentCardPosition()
+        cardMeta = { x: pos.x, y: pos.y, size: currentSize }
+      }
+      destroyCard()
+      removeEmptyPill?.()
+      removeEmptyPill = null
+    } else if (typestate.phase === "READY") {
+      renderCard(typestate.entry)
+    }
+  })
+
   return {
     apply(state: WatchlistState): void {
       const next = resolveTypestate(state)
 
       if (next.phase === "EMPTY") {
         typestate = next
-        renderEmpty()
+        if (showing) renderEmpty()
+        else destroyCard()
         return
       }
 
@@ -328,7 +354,7 @@ export function createDisplay(deps: DisplayDeps): Display {
             cardMeta = { x: pos.x, y: pos.y, size: currentSize }
           }
           typestate = next
-          renderCard(next.entry)
+          if (showing) renderCard(next.entry)
         }
       }
     },
@@ -366,6 +392,7 @@ export function createDisplay(deps: DisplayDeps): Display {
     },
 
     destroy(): void {
+      life.dispose()
       destroyCard()
       removeEmptyPill?.()
       removeEmptyPill = null

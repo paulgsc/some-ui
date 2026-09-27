@@ -167,6 +167,10 @@ async function main(): Promise<void> {
   // Media events don't bubble; capture them at the document. Whichever
   // streaming tab last started playing is the source (two tabs on marked
   // sites: the one playing).
+  // Lifetime: the page's. It is the content script's own entry point, which
+  // lives exactly as long as the document; it does nothing unless the role is
+  // "source", and the role follows every STATE_UPDATE.
+  // eslint-disable-next-line extension-charter/require-scoped-lifetime -- page-lifetime by design; see above
   document.addEventListener(
     "play",
     () => {
@@ -196,7 +200,9 @@ async function main(): Promise<void> {
 // ─── Dispatch ─────────────────────────────────────────────────────────────────
 
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => void main())
+  document.addEventListener("DOMContentLoaded", () => void main(), {
+    once: true,
+  })
 } else {
   void main()
 }

@@ -9,6 +9,15 @@
 //   LiveStrip       — beat pulse + episode curve (the broadcast surface)
 //   DragController  — pointer drag logic
 //   spawnBlossoms   — particle layer
+//
+// Resources (Charter §7/§8): the card owns one lifetime, `life`, and every
+// resource it holds is acquired against it or a child of it — destroy() is
+// one dispose. What should run only while someone can see the card (the
+// slideshow's timer, the blossom layer, its CSS animations) is acquired in
+// one place, the ActiveScope's start(), and runs only while no hold is on:
+// "entering" (before the first frame), "min", "hidden". Any hold disposes
+// that scope, so there is no stop path to keep in step with the start path.
+// A card on a page that is not showing is never built at all (display.ts).
 
 import { CapturePanel } from "@drama/components/capture-panel"
 import { DragController } from "@drama/components/drag-controller"
@@ -17,6 +26,7 @@ import { RightPanel } from "@drama/components/right-panel"
 import { Slideshow } from "@drama/components/slideshow"
 import { el } from "@drama/effects/content/dom"
 import { spawnBlossoms } from "@drama/effects/content/particles"
+import type { Blossoms } from "@drama/effects/content/particles"
 import { MOODS, SIZE_CYCLE } from "@drama/logic/content/constants"
 import type {
   BeatRecord,
@@ -25,6 +35,7 @@ import type {
   CardState,
   MoodType,
 } from "@drama/types"
+import { ActiveScope, Disposables } from "@some-extension/common"
 
 export class DramaCard {
   // Public — content.ts may need direct root access for positioning
@@ -46,8 +57,10 @@ export class DramaCard {
   private currentSize: CardSize = "compact"
   private events: CardEvents
 
-  // Particles teardown — assigned in rAF callback, never called before then
-  private killBlossoms: (() => void) | null = null
+  // Lifetimes — see the header.
+  private readonly life = new Disposables()
+  private readonly active: ActiveScope<"entering" | "min" | "hidden">
+  private blossoms: Blossoms | null = null
 
   constructor(container: HTMLElement, initial: CardState, events: CardEvents) {
     this.state = { ...initial }
@@ -100,11 +113,16 @@ export class DramaCard {
     this.wireEvents()
 
     // ── Drag controller ───────────────────────────────────────────────────────
-    this.drag = new DragController(this.card, this.root, [
-      "button",
-      ".dc-mood-dot",
-      // ".dc-circle-wrap",
-    ])
+    this.drag = new DragController(
+      this.card,
+      this.root,
+      [
+        "button",
+        ".dc-mood-dot",
+        // ".dc-circle-wrap",
+      ],
+      this.life
+    )
     this.drag.onMove = (x, y): void => this.applyPosition(x, y)
     this.drag.onDragEnd = (x, y): void => this.events.onDragEnd(x, y)
 
@@ -112,11 +130,31 @@ export class DramaCard {
     this.applyState()
     this.slideshow.setSlide(0)
 
+    // ── Activity ──────────────────────────────────────────────────────────────
+    // Dormant until the entrance frame; see the header.
+    this.root.classList.add("dc-dormant")
+    this.active = new ActiveScope(
+      this.life,
+      (scope) => {
+        this.root.classList.remove("dc-dormant")
+        scope.add(() => this.root.classList.add("dc-dormant"))
+        this.slideshow.startAutoAdvance(scope)
+        const blossoms = spawnBlossoms(this.root)
+        this.blossoms = blossoms
+        scope.add(() => {
+          blossoms.destroy()
+          this.blossoms = null
+        })
+      },
+      ["entering"]
+    )
+
     // ── Entrance ──────────────────────────────────────────────────────────────
-    requestAnimationFrame(() => {
+    // After first paint, so the fade-in has a start state; cancelled with the
+    // card if it is replaced before then.
+    this.life.frame(() => {
       this.root.classList.add("dc-visible")
-      this.slideshow.startAutoAdvance()
-      this.killBlossoms = spawnBlossoms(this.root)
+      this.active.release("entering")
     })
   }
 
@@ -154,22 +192,20 @@ export class DramaCard {
     if (emit) this.events.onSizeChange(size)
     // Close capture panel when minimising
     if (size === "min" && this.capturePanel.isOpen) this.capturePanel.close()
-    if (size === "min") {
-      this.slideshow.stopAutoAdvance()
-    } else {
-      this.slideshow.startAutoAdvance()
-    }
+    this.active.hold("min", size === "min")
     // Bubble only visible in full + poster slide
     this.syncBubbleVisibility()
+    // The card's box changed; the blossoms anchor to it.
+    this.blossoms?.reposition()
   }
 
   setVisible(v: boolean): void {
     this.root.classList.toggle("dc-hidden", !v)
+    this.active.hold("hidden", !v)
   }
 
   destroy(): void {
-    this.slideshow.destroy()
-    this.killBlossoms?.()
+    this.life.dispose()
     this.root.remove()
   }
 
@@ -199,12 +235,11 @@ export class DramaCard {
     // Circle click → advance slide
     this.slideshow.onSlideClick = (): void => {
       if (this.drag.didDrag) return
-      this.slideshow.stopAutoAdvance()
       this.slideshow.setSlide(
         (this.slideshow.current + 1) % this.slideshow.slideCount
       )
       this.syncBubbleVisibility()
-      this.slideshow.startAutoAdvance()
+      this.slideshow.restartAutoAdvance()
     }
 
     // Mood selection from right panel dots
@@ -270,5 +305,6 @@ export class DramaCard {
     this.root.style.top = `${y}px`
     this.root.style.right = "unset"
     this.root.style.bottom = "unset"
+    this.blossoms?.reposition()
   }
 }

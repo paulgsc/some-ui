@@ -18,6 +18,7 @@ import {
 } from "@drama/logic/content/constants"
 import { starsFor } from "@drama/logic/content/utils"
 import type { CardState, MomentTag } from "@drama/types"
+import type { Disposables } from "@some-extension/common"
 
 // Display glyphs for tags — cosmetic only, mirrors form-opinionated's TAG_META.
 const TAG_GLYPH: Record<MomentTag, string> = {
@@ -109,7 +110,11 @@ export class Slideshow {
   private bubbleQuote: HTMLSpanElement
 
   private currentSlide = 0
-  private timer: ReturnType<typeof setInterval> | null = null
+  private advance: {
+    scope: Disposables
+    timer: Disposables
+    intervalMs: number
+  } | null = null
 
   /** Called when user clicks circle to advance slide manually */
   onSlideClick?: () => void
@@ -180,22 +185,34 @@ export class Slideshow {
     return this.slides.length
   }
 
-  startAutoAdvance(intervalMs = SLIDE_INTERVAL_MS): void {
+  /**
+   * Advance every `intervalMs` for as long as `scope` lives — the owner's
+   * active scope, so the timer ends the moment the card is minimised, hidden
+   * or destroyed, without a stop call anyone has to remember.
+   */
+  startAutoAdvance(scope: Disposables, intervalMs = SLIDE_INTERVAL_MS): void {
     this.stopAutoAdvance()
-    // Lifetime: bounded by this object's own explicit start/stop pair —
-    // stopAutoAdvance() is called here before re-arming, and by the owner on
-    // teardown. A slideshow that is not being looked at should arguably stop
-    // advancing too, but that is a behaviour question for this component's
-    // owner, not an unstated lifetime.
-    // eslint-disable-next-line extension-charter/require-named-lifetime -- lifetime stated above
-    this.timer = setInterval(() => {
+    const timer = scope.child()
+    timer.interval(() => {
       this.setSlide((this.currentSlide + 1) % this.slides.length)
     }, intervalMs)
+    timer.add(() => {
+      if (this.advance?.timer === timer) this.advance = null
+    })
+    this.advance = { scope, timer, intervalMs }
+  }
+
+  /** Re-arm a running timer from now (after a manual advance). */
+  restartAutoAdvance(): void {
+    const running = this.advance
+    if (running && !running.scope.disposed) {
+      this.startAutoAdvance(running.scope, running.intervalMs)
+    }
   }
 
   stopAutoAdvance(): void {
-    if (this.timer) clearInterval(this.timer)
-    this.timer = null
+    this.advance?.timer.dispose()
+    this.advance = null
   }
 
   setBubbleVisible(visible: boolean): void {
