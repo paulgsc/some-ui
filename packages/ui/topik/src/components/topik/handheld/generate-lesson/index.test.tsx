@@ -112,10 +112,15 @@ describe("GenerateLesson", () => {
     expect(manual.textContent).toBe("PROMPT level=3 scene=-")
     expect(screen.queryByText(/Copied/)).toBeNull()
     expect(onPromptHandedOff).not.toHaveBeenCalled()
+    // A copy event proves some text was copied, not all of it (Codex, #1555).
     fireEvent.copy(manual)
+    expect(onPromptHandedOff).not.toHaveBeenCalled()
+    click(/I've copied it/)
     expect(onPromptHandedOff).toHaveBeenCalledExactlyOnceWith(
       "PROMPT level=3 scene=-"
     )
+    expect(screen.queryByRole("textbox", { name: "Prompt to copy" })).toBeNull()
+    expect(screen.getByText(/Copied/)).toBeTruthy()
   })
 
   it("says why a reply is not a lesson, and saves nothing", () => {

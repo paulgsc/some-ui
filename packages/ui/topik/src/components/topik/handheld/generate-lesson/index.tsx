@@ -16,8 +16,10 @@ type GenerateLessonProps = {
   buildPrompt: (request: Omit<LessonRequest, "survey">) => string
   /**
    * This prompt, exactly as handed off, reached the learner: the clipboard
-   * took it, or they copied it from the fallback by hand. Never called when
-   * the clipboard refused.
+   * took it, or they said they copied it from the fallback. A copy event on
+   * the fallback is not enough - it proves some text was copied, not all of
+   * it (Codex, #1555) - so the learner confirms. Never called when the
+   * clipboard refused and nothing was confirmed.
    */
   onPromptHandedOff?: (prompt: string) => void
   /** Holds the lesson for this session and starts it (canon Rem. 7.4). */
@@ -78,6 +80,14 @@ export const GenerateLesson = ({
     if (done && kind === "prompt") onPromptHandedOff?.(text)
   }
 
+  // The learner's word that the fallback's whole prompt reached their model.
+  const confirmManualCopy = (): void => {
+    if (manual?.kind !== "prompt") return
+    onPromptHandedOff?.(manual.text)
+    setManual(null)
+    setCopied("prompt")
+  }
+
   const copyPrompt = (): void =>
     void hand(
       buildPrompt({ level, scene: scene.trim() || undefined }),
@@ -131,17 +141,25 @@ export const GenerateLesson = ({
           lesson lasts this session; your chat with the model keeps it.
         </p>
         {manual !== null && (
-          <Textarea
-            aria-label="Prompt to copy"
-            readOnly
-            value={manual.text}
-            rows={4}
-            onFocus={(event) => event.currentTarget.select()}
-            onCopy={() => {
-              if (manual.kind === "prompt") onPromptHandedOff?.(manual.text)
-            }}
-            className="rounded-xl font-mono text-xs"
-          />
+          <>
+            <Textarea
+              aria-label="Prompt to copy"
+              readOnly
+              value={manual.text}
+              rows={4}
+              onFocus={(event) => event.currentTarget.select()}
+              className="rounded-xl font-mono text-xs"
+            />
+            {manual.kind === "prompt" && (
+              <Button
+                variant="outline"
+                className="h-11 gap-2 rounded-xl"
+                onClick={confirmManualCopy}
+              >
+                <Check className="size-4" /> I&apos;ve copied it
+              </Button>
+            )}
+          </>
         )}
       </section>
 

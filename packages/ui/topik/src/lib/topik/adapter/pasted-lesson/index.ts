@@ -42,7 +42,7 @@ const PastedDocumentSchema = z.object({
  * `window.sessionStorage`, or null wherever touching it throws. Also where a
  * pasted lesson's resume point lives: a place lasts as long as its lesson.
  */
-export function sessionStorageOrNull(): StorageLike | null {
+export function sessionStorageOrNull(): Storage | null {
   try {
     return typeof window === "undefined" ? null : window.sessionStorage
   } catch {
@@ -51,21 +51,25 @@ export function sessionStorageOrNull(): StorageLike | null {
 }
 
 export function createPastedLessonStore(
-  storage: StorageLike | null = sessionStorageOrNull()
+  storage:
+    | (StorageLike & Partial<Pick<Storage, "removeItem">>)
+    | null = sessionStorageOrNull()
 ): PastedLessonStore {
   const write = (value: string): void => {
     try {
       storage?.setItem(PASTED_LESSON_KEY, value)
     } catch {
       // Quota, privacy mode: the lesson plays from memory for this visit.
-      // Whatever the slot held before is emptied, not left standing: a
+      // Whatever the slot held before is removed, not left standing: a
       // reload would otherwise bring back the lesson this one replaced
-      // (Codex, #1555). An empty value is small enough to fit where the
-      // lesson did not.
+      // (Codex, #1555). Removing needs no room; storage that refuses
+      // writes may still read, so the old value must go, not merely fail
+      // to be overwritten.
       try {
-        storage?.setItem(PASTED_LESSON_KEY, "")
+        if (storage?.removeItem) storage.removeItem(PASTED_LESSON_KEY)
+        else storage?.setItem(PASTED_LESSON_KEY, "")
       } catch {
-        // Storage refuses even that: nothing can be read back from it either.
+        // Storage refuses even that; there is nothing further to try.
       }
     }
   }

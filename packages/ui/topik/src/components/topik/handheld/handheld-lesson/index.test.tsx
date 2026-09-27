@@ -857,7 +857,10 @@ describe("HandheldLesson", () => {
       })
       click(/Copy the prompt/)
       expect(manual.textContent).not.toContain("ordering without pointing")
+      // Copying proves nothing on its own; the learner's confirmation does.
       fireEvent.copy(manual)
+      expect(surveys.list()[1]?.becoming).toBe("reading webtoons raw")
+      click(/I've copied it/)
       const [later, earlier] = surveys.list()
       expect(later?.becoming).toBe("ordering without pointing")
       expect(earlier?.becoming).toBeUndefined()

@@ -89,6 +89,23 @@ describe("a replacement storage refuses (Codex, #1555)", () => {
     createPastedLessonStore(full).set(meta("local:b"), FIXTURE_BATCHES)
     expect(store.get()).toBeNull()
   })
+
+  it("removes the lesson it replaced when storage takes no write at all", () => {
+    const storage = memoryStorage()
+    const store = createPastedLessonStore(storage)
+    store.set(meta("local:a"), FIXTURE_BATCHES)
+    // Reads and removals still work; every write is refused.
+    const full: Storage = {
+      ...storage,
+      getItem: (key) => storage.getItem(key),
+      removeItem: (key) => storage.removeItem(key),
+      setItem: () => {
+        throw new Error("QuotaExceededError")
+      },
+    }
+    createPastedLessonStore(full).set(meta("local:b"), FIXTURE_BATCHES)
+    expect(store.get()).toBeNull()
+  })
 })
 
 describe("purgeRetiredLessons", () => {
