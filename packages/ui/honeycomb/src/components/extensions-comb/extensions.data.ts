@@ -58,14 +58,17 @@ export type Reach = "one-site" | "everywhere"
  *                    (`localhost`), which is where it keeps its data.
  * - `web-fonts`    — its popup fetches typefaces from Google Fonts. Nothing
  *                    about the user or their pages goes with it.
- * - `site-images`  — it shows images from the one site it works on, fetched
- *                    from that site's image server.
+ * - `site-images`  — its card shows an image fetched from the site the item
+ *                    came from (Drama Overlay: the drama's poster), so that
+ *                    site sees a request from whatever page the card is on.
+ *
+ * One value per extension, so it names the request that says the most: an
+ * extension with site images and web fonts is `site-images`.
  *
  * When an extension's network behaviour changes, change this with it.
- * `local-server` and `site-images` currently describe none of the six — BOYO
- * and Conveyor only reach a local server in development builds, and Music
- * Overlay builds a thumbnail URL it never shows — and are kept for when one
- * of them does.
+ * `local-server` currently describes none of the six — BOYO and Conveyor only
+ * reach a local server in development builds — and is kept for when one of
+ * them does.
  */
 export type Network = "none" | "local-server" | "web-fonts" | "site-images"
 
@@ -186,6 +189,8 @@ export const EXTENSIONS: ReadonlyArray<ExtensionDefinition> = [
     // on a site you mark; a card on every other page (the one your stream
     // captures) shows each beat as you log it, and draws the episode's ride.
     // `everywhere`: the card rides along on any page you open.
+    // `site-images`: the card shows the drama's poster, fetched from the
+    // streaming site it was saved from (its popup also loads Google Fonts).
     id: "some-drama",
     name: "Drama Overlay",
     line: "One key logs how a scene hit you, and a card draws the ride, live for your stream.",
@@ -195,7 +200,7 @@ export const EXTENSIONS: ReadonlyArray<ExtensionDefinition> = [
     chrome: false,
     reach: "everywhere",
     mechanism: "ride",
-    network: "web-fonts",
+    network: "site-images",
     emblem: "beat",
   },
 ]
@@ -212,7 +217,7 @@ export const PRIVACY_LINE: Readonly<Record<Network, string>> = {
   "web-fonts":
     "Nothing about you or your pages. Its popup does load its typefaces from Google Fonts, and there is no account.",
   "site-images":
-    "Nothing about you. Its card loads the video's thumbnail from YouTube's image server, and there is no account.",
+    "No account, and nothing you type. Its card loads a picture from the site it came from, so that site sees a request from the page the card is on.",
 }
 
 /** The first privacy atom: the tool's own network answer, in three words. */
@@ -220,7 +225,7 @@ export const NETWORK_LABEL: Readonly<Record<Network, string>> = {
   none: "no network",
   "local-server": "local server",
   "web-fonts": "google fonts",
-  "site-images": "youtube images",
+  "site-images": "site images",
 }
 
 /** The privacy atoms every one of the six shares. */
