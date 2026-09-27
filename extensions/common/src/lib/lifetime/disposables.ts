@@ -62,18 +62,30 @@ export class Disposables {
     this.add(() => clearInterval(id))
   }
 
-  /** One-shot `setTimeout`, cancelled if this lifetime ends first. */
+  /**
+   * One-shot `setTimeout`, cancelled if this lifetime ends first. Once it has
+   * fired it forgets its canceller, so a long-lived lifetime that schedules
+   * one-shots all session long (a burst per beat) does not grow.
+   */
   timeout(callback: () => void, ms: number): void {
     if (this.disposed) return
-    const id = setTimeout(callback, ms)
-    this.add(() => clearTimeout(id))
+    const id = setTimeout(() => {
+      this.disposers.delete(cancel)
+      callback()
+    }, ms)
+    const cancel: Disposer = () => clearTimeout(id)
+    this.add(cancel)
   }
 
-  /** One-shot `requestAnimationFrame`, cancelled if this lifetime ends first. */
+  /** One-shot `requestAnimationFrame`; like `timeout`, forgotten once fired. */
   frame(callback: (now: number) => void): void {
     if (this.disposed) return
-    const id = requestAnimationFrame(callback)
-    this.add(() => cancelAnimationFrame(id))
+    const id = requestAnimationFrame((now) => {
+      this.disposers.delete(cancel)
+      callback(now)
+    })
+    const cancel: Disposer = () => cancelAnimationFrame(id)
+    this.add(cancel)
   }
 
   /** A frame loop: `callback` every frame until this lifetime ends. */

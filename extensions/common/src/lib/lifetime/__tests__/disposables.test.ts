@@ -61,6 +61,21 @@ describe("Disposables", () => {
     expect(probe.counts().frames).toBe(0)
   })
 
+  it("forgets a one-shot once it has fired", async () => {
+    const life = new Disposables()
+    const clearTimeoutSpy = vi.spyOn(globalThis, "clearTimeout")
+    const cancelFrameSpy = vi.spyOn(globalThis, "cancelAnimationFrame")
+    await new Promise<void>((resolve) => life.timeout(resolve, 0))
+    await new Promise<void>((resolve) => life.frame(() => resolve()))
+    // Both have fired: ending the lifetime has nothing left to cancel. A
+    // lifetime that schedules one-shots all session long must not grow.
+    life.dispose()
+    expect(clearTimeoutSpy).not.toHaveBeenCalled()
+    expect(cancelFrameSpy).not.toHaveBeenCalled()
+    clearTimeoutSpy.mockRestore()
+    cancelFrameSpy.mockRestore()
+  })
+
   it("releases at once anything acquired after it ended", () => {
     const life = new Disposables()
     life.dispose()

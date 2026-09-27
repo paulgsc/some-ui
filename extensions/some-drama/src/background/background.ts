@@ -254,9 +254,11 @@ function verdictMoves(
 
 // Every LOG_BEAT is a read-modify-write of the whole log, and repeat presses
 // land a few hundred ms apart — serialize them so an escalation is never lost
-// to an interleaved write. The watchlist writes that can move a verdict
-// (ADJUST_VERDICT, UPSERT_ENTRY) and the verdict log share the queue for the
-// same reason: two quick steps must step twice, and log as one change.
+// to an interleaved write. Every read-modify-write of the watchlist state
+// (UPSERT_ENTRY, REMOVE_ENTRY, SET_ACTIVE, SET_STREAM_SITE, ADJUST_VERDICT)
+// and of the verdict log shares the queue for the same reason: two quick
+// verdict steps must step twice, and a removal racing a verdict write must
+// not be undone by the verdict writer's stale copy of the list.
 let writes: Promise<unknown> = Promise.resolve()
 
 function serialized<T>(work: () => Promise<T>): Promise<T> {
@@ -551,15 +553,18 @@ async function handleRemoveEntry(
   sendResponse: Reply<"REMOVE_ENTRY">
 ): Promise<void> {
   try {
-    const { watchlist, activeId, streamSites } = await getWatchlistState()
-    const next = watchlist.filter((e) => e.id !== id)
-    const newActive = activeId === id ? (next[0]?.id ?? null) : activeId
-    await setWatchlistState({ watchlist: next, activeId: newActive })
-    const state: WatchlistState = {
-      watchlist: next,
-      activeId: newActive,
-      streamSites,
-    }
+    const state = await serialized(async () => {
+      const { watchlist, activeId, streamSites } = await getWatchlistState()
+      const next = watchlist.filter((e) => e.id !== id)
+      const newActive = activeId === id ? (next[0]?.id ?? null) : activeId
+      await setWatchlistState({ watchlist: next, activeId: newActive })
+      const removed: WatchlistState = {
+        watchlist: next,
+        activeId: newActive,
+        streamSites,
+      }
+      return removed
+    })
     await broadcastState(state)
     sendResponse({ ok: true, state })
   } catch (err) {
@@ -572,9 +577,12 @@ async function handleSetActive(
   sendResponse: Reply<"SET_ACTIVE">
 ): Promise<void> {
   try {
-    const { watchlist, streamSites } = await getWatchlistState()
-    await setWatchlistState({ activeId: id })
-    const state: WatchlistState = { watchlist, activeId: id, streamSites }
+    const state = await serialized(async () => {
+      const { watchlist, streamSites } = await getWatchlistState()
+      await setWatchlistState({ activeId: id })
+      const activated: WatchlistState = { watchlist, activeId: id, streamSites }
+      return activated
+    })
     await broadcastState(state)
     sendResponse({ ok: true, state })
   } catch (err) {
@@ -588,16 +596,19 @@ async function handleSetStreamSite(
   sendResponse: Reply<"SET_STREAM_SITE">
 ): Promise<void> {
   try {
-    const current = await getWatchlistState()
     // Normalized the same way content tabs resolve their own site, so
     // "WWW.Viki.com" marks the site "viki.com" tabs will match.
     const normalized = siteOf(`https://${site.trim()}`)
-    const streamSites = withStreamSite(
-      current.streamSites,
-      normalized,
-      streaming
-    )
-    await setWatchlistState({ streamSites })
+    const state = await serialized(async () => {
+      const read = await getWatchlistState()
+      const marked: WatchlistState = {
+        ...read,
+        streamSites: withStreamSite(read.streamSites, normalized, streaming),
+      }
+      await setWatchlistState({ streamSites: marked.streamSites })
+      return marked
+    })
+    const { streamSites } = state
 
     // Unmarking the site the source tab is on: that tab turns back into a
     // display tab (it re-resolves its role from the broadcast below), so it
@@ -610,7 +621,6 @@ async function handleSetStreamSite(
       }
     }
 
-    const state: WatchlistState = { ...current, streamSites }
     await broadcastState(state)
     sendResponse({ ok: true, state })
   } catch (err) {
