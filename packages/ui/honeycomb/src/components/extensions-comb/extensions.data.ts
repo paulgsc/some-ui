@@ -127,7 +127,7 @@ export const EXTENSIONS: ReadonlyArray<ExtensionDefinition> = [
   {
     id: "some-filter",
     name: "Page Filter",
-    line: "Every site you open turns the same soft dark, so bright pages stop glaring at you.",
+    line: "Bright sites turn the same soft dark, so they stop glaring at you; sites already dark keep their own look.",
     level: 0.5,
     stage: "testing",
     firefox: true,
@@ -140,7 +140,7 @@ export const EXTENSIONS: ReadonlyArray<ExtensionDefinition> = [
   {
     id: "some-censor",
     name: "BOYO",
-    line: "YouTube videos arrive covered; each tap uncovers a little more, the picture last.",
+    line: "YouTube videos arrive covered; each tap uncovers a little more, and a double-click shows the picture.",
     level: 0.38,
     stage: "building",
     firefox: true,
