@@ -85,7 +85,9 @@ vi.mock(
   }
 )
 
-const { StudyNudgeSection } = await import("./study-nudge-section")
+const { StudyNudgeSection } = await import(
+  "@/components/settings/study-nudge-section"
+)
 
 function withQueryClient(children: ReactNode): JSX.Element {
   const client = new QueryClient()

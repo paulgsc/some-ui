@@ -58,9 +58,10 @@ vi.mock("virtual:build-profile", () => ({
 }))
 
 // The root layout sends a signed-out visit to /auth before any gate runs.
-vi.mock("@/lib/auth-session", async (importOriginal) => ({
+vi.mock("@/lib/auth", async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  hasDecorativeSession: (): boolean => true,
+  hasSession: (): boolean => true,
+  resolveSession: (): Promise<boolean> => Promise.resolve(true),
 }))
 
 /** What `audiencePlugin` serves in place of an excluded workspace. */

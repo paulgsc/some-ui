@@ -57,7 +57,11 @@ export type ContractOutcome = {
 export type ProbeOptions = {
   baseUrl: string
   timeoutMs?: number
+  /** The `__Host-session` cookie's value, for contracts marked `session`. */
+  sessionCookie?: string
 }
+
+export const SESSION_COOKIE = "__Host-session"
 
 const DEFAULT_TIMEOUT_MS = 10_000
 
@@ -92,6 +96,21 @@ export async function probeContract(
       ...base,
       status: "skipped",
       findings: [{ code: "skipped", severity: "info", message: contract.skip }],
+    }
+  }
+
+  if (contract.session === true && options.sessionCookie === undefined) {
+    return {
+      ...base,
+      status: "skipped",
+      findings: [
+        {
+          code: "session-skipped",
+          severity: "info",
+          message:
+            "per-person route; pass --session-cookie (or $CONTRACT_SESSION_COOKIE) to run it",
+        },
+      ],
     }
   }
 
@@ -136,6 +155,9 @@ export async function probeContract(
       headers: {
         accept: "application/json",
         ...(hasBody ? { "content-type": "application/json" } : {}),
+        ...(contract.session === true && options.sessionCookie !== undefined
+          ? { cookie: `${SESSION_COOKIE}=${options.sessionCookie}` }
+          : {}),
         ...contract.request?.headers,
       },
       body: hasBody ? JSON.stringify(contract.request?.body) : undefined,

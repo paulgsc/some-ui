@@ -17,13 +17,15 @@
  * sites that don't bother to write their own don't invent sixteen
  * different phrasings of the same failure.
  *
- * ## `unauthorized` is absent
+ * ## `unauthorized` is not its own kind
  *
- * `file_host` has no auth layer today. Per #942/#935's own recommendation,
- * an error kind with no producer is dropped rather than kept as a
- * placeholder — a `kind` a `matchIntent`-style caller must handle but can
- * never actually receive teaches that arms are decorative. Add it back the
- * day `file_host` grows an auth layer that can produce one.
+ * `file_host` answers `401` when a passkey session is missing, expired or
+ * revoked. No caller acts on that differently from any other refusal: the
+ * transport's unauthorized handler has already ended the session
+ * (`lib/auth`), and `SignedOutRedirect` sends the person to the passkey
+ * screen. So a 401 is a `rejected` with its own wording, not a `kind` every
+ * `matchIntent`-style caller would have to grow an arm for and do nothing
+ * in (#942/#935: an arm nobody acts on teaches that arms are decorative).
  */
 
 import type { IntentError } from "@some-ui/intent-kit"
@@ -100,6 +102,14 @@ function fromNotConfigured(error: FileHostNotConfiguredError): IntentError {
  * `internal_error`, …) are not written for a human to read cold.
  */
 function fromResponseError(error: FileHostResponseError): IntentError {
+  if (error.status === 401) {
+    return {
+      kind: "rejected",
+      retryable: false,
+      summary: "Your session has ended. Sign in with your passkey to continue.",
+      cause: error,
+    }
+  }
   return {
     kind: "rejected",
     retryable: isRetryableStatus(error.status),

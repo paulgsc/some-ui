@@ -49,8 +49,8 @@ vi.mock("@/lib/tenant/queries", async (importOriginal) => {
 })
 
 let hasSession = false
-vi.mock("@/lib/auth-session", () => ({
-  useHasDecorativeSession: (): boolean => hasSession,
+vi.mock("@/lib/auth", () => ({
+  useHasSession: (): boolean => hasSession,
 }))
 
 function wrapper(

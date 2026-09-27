@@ -30,7 +30,7 @@ import {
   vi,
 } from "vitest"
 
-import { createDecorativeSession } from "@/lib/auth-session"
+import { markSignedIn } from "@/lib/auth"
 import { SettingsRepository } from "@/lib/tenant/settings-repository"
 
 const toastSpy = vi.fn()
@@ -71,7 +71,7 @@ beforeEach(() => {
   // This route only ever renders behind the router's auth guard - the
   // settings query it reads stays disabled without a session (see
   // `lib/tenant/hooks.ts`), so tests rendering it directly need one too.
-  createDecorativeSession()
+  markSignedIn()
 })
 
 afterEach(() => {

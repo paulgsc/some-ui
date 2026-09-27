@@ -55,6 +55,7 @@ type Options = {
   showUncovered: boolean
   json: boolean
   timeoutMs: number
+  sessionCookie: string | undefined
 }
 
 function parseArgs(argv: ReadonlyArray<string>): Options {
@@ -81,6 +82,8 @@ function parseArgs(argv: ReadonlyArray<string>): Options {
     showUncovered: has("--show-uncovered"),
     json: has("--json"),
     timeoutMs: Number.isFinite(parsedTimeout) ? parsedTimeout : 10_000,
+    sessionCookie:
+      value("--session-cookie") ?? process.env["CONTRACT_SESSION_COOKIE"],
   }
 }
 
@@ -94,6 +97,8 @@ pnpm --filter @some-ui/contract-harness contract [options]
   --include-mutations     also run contracts marked as mutating (they are skipped by default)
   --show-uncovered        list server routes that no contract covers
   --timeout <ms>          per-request timeout (default 10000)
+  --session-cookie <val>  a signed-in __Host-session value, for per-person routes
+                          (or $CONTRACT_SESSION_COOKIE); without it they are skipped
   --json                  emit the raw run report as JSON instead of text
   --help                  this
 
@@ -167,6 +172,7 @@ async function main(): Promise<number> {
         await probeContract(contract, {
           baseUrl: options.baseUrl,
           timeoutMs: options.timeoutMs,
+          sessionCookie: options.sessionCookie,
         })
       )
     }

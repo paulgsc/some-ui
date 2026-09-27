@@ -110,6 +110,18 @@ async function errorCodeOf(response: Response): Promise<string | null> {
  * for both. Not exported - nothing outside `resolveTimeoutMs` needs the
  * default directly; a test wanting a different deadline overrides it via
  * `VITE_FILE_HOST_TIMEOUT_MS`, not by importing this value. */
+let unauthorizedHandler: (() => void) | null = null
+
+/**
+ * Called whenever `file_host` answers `401`: the session cookie is missing,
+ * expired or revoked (signed out everywhere, account deleted). Registered by
+ * `lib/auth-session` rather than imported here, which would be a cycle: that
+ * module is itself a caller of this one.
+ */
+export function onFileHostUnauthorized(handler: (() => void) | null): void {
+  unauthorizedHandler = handler
+}
+
 const DEFAULT_FILE_HOST_TIMEOUT_MS = 10_000
 
 /** Read fresh on every call, not cached at transport-creation time - so a
@@ -239,6 +251,7 @@ export async function requestJSON<T>(
     })
 
     if (response.status === 503) throw new FileHostNotConfiguredError(route)
+    if (response.status === 401) unauthorizedHandler?.()
     if (!response.ok) {
       throw new FileHostResponseError(
         response.status,
