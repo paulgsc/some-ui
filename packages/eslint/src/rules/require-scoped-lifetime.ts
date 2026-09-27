@@ -49,10 +49,11 @@ const PAGE_LIFETIME_MEMBERS = new Set(["body", "documentElement"])
  * The rule is syntactic, so it names the shapes it reads and no more:
  *
  * - listeners: `addEventListener` called on `document`, `window`,
- *   `globalThis`, `self`, `document.body` or `document.documentElement`, or
- *   bare (window's own); scoped by an options object (inline, or a `const`
- *   holding one) with `once: true` or a `signal` that is a signal on every
- *   path;
+ *   `globalThis`, `self`, `document.body` or `document.documentElement` (the
+ *   globals, not a parameter or local of that name), or bare (window's own);
+ *   scoped by an options object (inline, or a `const` holding one that is
+ *   used only as a listener argument) with `once: true` or a `signal` that is
+ *   a signal on every path;
  * - frame loops: a `requestAnimationFrame` whose callback names the
  *   function it is called from (`f`, `this.f`, a `.bind(…)` of either) or is
  *   an inline wrapper that calls it.
@@ -103,13 +104,14 @@ export const requireScopedLifetime: Rule.RuleModule = {
         const callee = node.callee
         const method = calleeName(callee)
         if (method === "addEventListener") {
+          const scope = sourceCode.getScope(node)
           const target =
             callee.type === "MemberExpression"
-              ? pageLifetimeTarget(callee.object)
-              : bareGlobalTarget(callee, sourceCode.getScope(node))
+              ? pageLifetimeTarget(callee.object, scope)
+              : bareGlobalTarget(callee, scope)
           if (target === null) return
           const options = node.arguments[2]
-          if (options && optionsAreScoped(options, sourceCode.getScope(node))) {
+          if (options && optionsAreScoped(options, scope)) {
             return
           }
           context.report({
@@ -160,9 +162,20 @@ function calleeName(callee: ESTree.Node): string | null {
   return null
 }
 
-/** `document` / `window` / `document.body` … as written, or null. */
-function pageLifetimeTarget(object: ESTree.Node): string | null {
-  if (object.type === "Identifier" && PAGE_LIFETIME_TARGETS.has(object.name)) {
+/**
+ * `document` / `window` / `document.body` … as written, or null. A name the
+ * file binds itself — a parameter or local called `document` — is not the
+ * page's.
+ */
+function pageLifetimeTarget(
+  object: ESTree.Node,
+  scope: Scope.Scope
+): string | null {
+  if (
+    object.type === "Identifier" &&
+    PAGE_LIFETIME_TARGETS.has(object.name) &&
+    isGlobal(object.name, scope)
+  ) {
     return object.name
   }
   if (
@@ -170,6 +183,7 @@ function pageLifetimeTarget(object: ESTree.Node): string | null {
     !object.computed &&
     object.object.type === "Identifier" &&
     object.object.name === "document" &&
+    isGlobal("document", scope) &&
     object.property.type === "Identifier" &&
     PAGE_LIFETIME_MEMBERS.has(object.property.name)
   ) {
@@ -187,18 +201,23 @@ function bareGlobalTarget(
   scope: Scope.Scope
 ): string | null {
   if (callee.type !== "Identifier") return null
+  return isGlobal(callee.name, scope) ? "window" : null
+}
+
+/** The name is not declared in the file (defs) or imported: the global's. */
+function isGlobal(name: string, scope: Scope.Scope): boolean {
   for (let s: Scope.Scope | null = scope; s !== null; s = s.upper) {
-    const variable = s.set.get(callee.name)
-    // Declared in the file (defs), or an import: not the global.
-    if (variable && variable.defs.length > 0) return null
+    const variable = s.set.get(name)
+    if (variable && variable.defs.length > 0) return false
   }
-  return "window"
+  return true
 }
 
 /**
  * The options argument ties the listener to a lifetime: it has a `signal`
- * property, or `once: true`. A `const` holding an object literal is resolved;
- * anything else (a boolean capture flag, a parameter) is not scoped.
+ * property, or `once: true`. A `const` holding an object literal is resolved
+ * when nothing else can change it; anything else (a boolean capture flag, a
+ * parameter) is not scoped.
  */
 function optionsAreScoped(options: ESTree.Node, scope: Scope.Scope): boolean {
   const object = resolveObject(options, scope)
@@ -252,13 +271,30 @@ function resolveObject(
     if (
       def?.type === "Variable" &&
       def.node.init?.type === "ObjectExpression" &&
-      def.parent.kind === "const"
+      def.parent.kind === "const" &&
+      variable.references.every(
+        (ref) => ref.init === true || isListenerArg(ref.identifier)
+      )
     ) {
       return def.node.init
     }
     return null
   }
   return null
+}
+
+/**
+ * `const` fixes the binding, not the object: `options.once = false`,
+ * `Object.assign(options, …)` or a helper that receives it can each unscope
+ * the listener after the literal was read. So the literal is trusted only
+ * while every use of the binding is as an add/removeEventListener argument.
+ */
+function isListenerArg(id: object): boolean {
+  const parent: unknown = "parent" in id ? id.parent : undefined
+  if (!isNode(parent) || parent.type !== "CallExpression") return false
+  if (parent.callee === id) return false
+  const method = calleeName(parent.callee)
+  return method === "addEventListener" || method === "removeEventListener"
 }
 
 /**

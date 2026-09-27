@@ -195,6 +195,12 @@ export type BeatLoggedMessage = {
 /** Background → the source tab: "where is the video right now?" */
 export type GetPlaybackMessage = { type: "GET_PLAYBACK" }
 
+/**
+ * Background → every tab, when the registered source tab closes: a source tab
+ * still playing claims the role back, so beats keep their video time.
+ */
+export type SourceVacantMessage = { type: "SOURCE_VACANT" }
+
 // ─── Beats: the live emotional log ────────────────────────────────────────────
 // A beat is one reaction while watching: a mood, how hard it hit, and where in
 // the episode it happened. Pressing the same mood again within a couple of

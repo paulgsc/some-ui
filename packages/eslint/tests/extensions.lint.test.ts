@@ -655,6 +655,11 @@ describe("lint: extension-charter — require-scoped-lifetime", () => {
       `document.addEventListener("x", f, { signal: controller?.signal })`,
       `document.addEventListener("x", f, { signal: undefined })`,
       `window.addEventListener("x", f, { signal: on ? ac.signal : undefined })`,
+      // \`const\` fixes the binding, not the object: anything that could
+      // rewrite the options leaves them unresolved.
+      `const OPTS = { once: true }; OPTS.once = false; document.addEventListener("x", f, OPTS)`,
+      `const OPTS = { signal }; Object.assign(OPTS, { signal: undefined }); document.addEventListener("x", f, OPTS)`,
+      `const OPTS = { once: true }; tweak(OPTS); window.addEventListener("x", f, OPTS)`,
     ]) {
       const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
       expectMessageForRule(msgs, RULE, code)
@@ -668,6 +673,8 @@ describe("lint: extension-charter — require-scoped-lifetime", () => {
       `document.addEventListener("x", f, { once: true })`,
       `const OPTS = { signal: life.signal }; document.addEventListener("x", f, OPTS)`,
       `addEventListener("resize", f, { signal })`,
+      // The same binding passed to both halves of a listener pair.
+      `const OPTS = { once: true }; document.addEventListener("x", f, OPTS); document.removeEventListener("x", f, OPTS)`,
     ]) {
       const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
       expectNoMessageForRule(msgs, RULE, code)
@@ -688,6 +695,17 @@ describe("lint: extension-charter — require-scoped-lifetime", () => {
 addEventListener("x", f)`
     const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
     expectNoMessageForRule(msgs, RULE, code)
+  })
+
+  it("does NOT fire on a local binding that shadows a page-lifetime name", async () => {
+    for (const code of [
+      `function watch(document: HTMLElement) { document.addEventListener("click", f) }`,
+      `const window = frame.contentWindow; window.addEventListener("x", f)`,
+      `function mount(document: Document) { document.body.addEventListener("x", f) }`,
+    ]) {
+      const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
+      expectNoMessageForRule(msgs, RULE, code)
+    }
   })
 
   it("fires on a requestAnimationFrame callback that reschedules itself", async () => {

@@ -57,6 +57,7 @@ import type {
   BeatLoggedMessage,
   GetPlaybackMessage,
   Playback,
+  SourceVacantMessage,
   StateUpdateMessage,
   WatchlistState,
 } from "@drama/types"
@@ -84,6 +85,10 @@ function isGetPlaybackMessage(v: unknown): v is GetPlaybackMessage {
 
 function isStateUpdateMessage(v: unknown): v is StateUpdateMessage {
   return isRecord(v) && v.type === "STATE_UPDATE" && isRecord(v.payload)
+}
+
+function isSourceVacantMessage(v: unknown): v is SourceVacantMessage {
+  return isRecord(v) && v.type === "SOURCE_VACANT"
 }
 
 // ─── Beats ─────────────────────────────────────────────────────────────────────
@@ -173,6 +178,10 @@ async function main(): Promise<void> {
       }
       if (isBeatLoggedMessage(msg)) display?.onBeat(msg.beat)
       else if (isStateUpdateMessage(msg)) apply(msg.payload)
+      // The source tab closed; one still playing takes over (the rest claim
+      // it when they start playing, as on a role flip).
+      else if (isSourceVacantMessage(msg) && role === "source" && isPlaying())
+        registerSource()
       return undefined
     }
   )

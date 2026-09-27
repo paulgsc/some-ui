@@ -15,7 +15,8 @@ plays on is yours to say, not a built-in list:
   background asks the source tab for the video time).
 - **Source** — a tab on a site you marked as a **streaming site**. The drama
   plays here. No card is drawn; hotkeys log beats with this tab's own video
-  time.
+  time. With several source tabs open, the one that started playing last is
+  the source; close it and another still playing takes over.
 
 To mark a site, open the drama's tab and press **Mark as streaming** in the
 popup; **Unmark** (or ✕ in the popup's _Streaming sites_ list) reverts it.

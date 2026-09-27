@@ -58,6 +58,7 @@ import type {
   MessageResponseMap,
   MoodType,
   Playback,
+  SourceVacantMessage,
   StateUpdateMessage,
   VerdictChange,
   VerdictField,
@@ -309,11 +310,15 @@ async function requestPlayback(): Promise<Playback | null> {
   }
 }
 
+// Two playing tabs on marked sites: the one that started last is the source.
+// When it closes, the other would stay unregistered until its next `play`, so
+// every open tab hears the vacancy and a source tab still playing reclaims it.
 browser.tabs.onRemoved.addListener((tabId) => {
   void (async () => {
     const r = await browser.storage.local.get(SOURCE_TAB_KEY)
     if (r[SOURCE_TAB_KEY] === tabId) {
       await browser.storage.local.remove(SOURCE_TAB_KEY)
+      await broadcast({ type: "SOURCE_VACANT" })
     }
   })()
 })
@@ -381,7 +386,7 @@ const ENTRY_DEFAULTS: Omit<DramaEntry, "id" | "addedAt" | "title"> = {
 
 /** Send to every loaded tab; each content script decides what applies to it. */
 async function broadcast(
-  msg: StateUpdateMessage | BeatLoggedMessage
+  msg: StateUpdateMessage | BeatLoggedMessage | SourceVacantMessage
 ): Promise<void> {
   let tabs: Array<browser.tabs.Tab>
   try {
