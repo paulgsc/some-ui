@@ -4,7 +4,7 @@ import { createStylePlugins } from "@some-ui/styles/styles-build/dev-config"
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite"
 import viteReact from "@vitejs/plugin-react"
 import type { Plugin, UserConfig } from "vite"
-import { defineConfig } from "vite"
+import { defineConfig, loadEnv } from "vite"
 
 import { buildAudiencePlugin } from "./build.profiles.ts"
 import {
@@ -94,7 +94,7 @@ function warnMissingContentAssets(): Plugin {
 
 // https://vitejs.dev/config/
 export default defineConfig(
-  ({ command }): UserConfig => ({
+  ({ command, mode }): UserConfig => ({
     // GitHub Pages serves this app under /<repo>/ instead of domain root;
     // Docker/nginx and local dev serve it at "/". Unset -> "/" for both.
     base: process.env.VITE_BASE_PATH || "/",
@@ -201,10 +201,12 @@ export default defineConfig(
     // (src/lib/file-host-config) - the container. While the proxy points
     // anywhere else (`make dev`, or FILE_HOST_PROXY_TARGET), send it through
     // the proxy too, so every page reaches the server the proxy names.
-    // An explicit VITE_FILE_HOST_ENDPOINT still wins.
+    // An explicit VITE_FILE_HOST_ENDPOINT still wins, from the shell or an
+    // env file: Vite reads env files only after this config, so they are
+    // loaded here to see one.
     ...(command === "serve" &&
     fileHost.source !== "container" &&
-    !process.env.VITE_FILE_HOST_ENDPOINT
+    !loadEnv(mode, import.meta.dirname, "VITE_").VITE_FILE_HOST_ENDPOINT
       ? {
           define: {
             "import.meta.env.VITE_FILE_HOST_ENDPOINT": JSON.stringify(
