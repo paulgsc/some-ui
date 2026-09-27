@@ -117,13 +117,27 @@ async function collectExports(
   return names
 }
 
+/**
+ * `value` as a JavaScript string (or array) literal, safe to splice into
+ * generated code. `JSON.stringify` alone is valid inside an ES module, but it
+ * leaves `</script>`, `<!--` and the line separators U+2028/U+2029 as they are,
+ * which matters once generated code ends up anywhere but a standalone module.
+ * Everything spliced into a stub or the profile module goes through here.
+ */
+function jsLiteral(value: unknown): string {
+  return JSON.stringify(value).replace(
+    /[<>/\u2028\u2029]/g,
+    (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`
+  )
+}
+
 function stubModule(
   source: string,
   profile: string,
   audience: Audience,
   names: Set<string>
 ): string {
-  const message = JSON.stringify(
+  const message = jsLiteral(
     `${source} is a "${audience}"-audience workspace, stubbed out of the ` +
       `"${profile}" build profile. Nothing should reach this at runtime: ` +
       `the route that imports it is gated by requireAudience("${audience}").`
@@ -133,7 +147,7 @@ function stubModule(
     ...[...names].map((name) =>
       name === "default"
         ? "export default excluded"
-        : `export { excluded as ${JSON.stringify(name)} }`
+        : `export { excluded as ${jsLiteral(name)} }`
     ),
   ]
   return lines.join("\n")
@@ -247,8 +261,8 @@ export function audiencePlugin<P extends Record<string, BuildProfile>>(
     async load(id): Promise<string | null> {
       if (id === RESOLVED_BUILD_PROFILE) {
         return [
-          `export const profile = ${JSON.stringify(profileName)}`,
-          `export const audiences = Object.freeze(${JSON.stringify(audiences)})`,
+          `export const profile = ${jsLiteral(profileName)}`,
+          `export const audiences = Object.freeze(${jsLiteral(audiences)})`,
           "export const hasAudience = (audience) => audiences.includes(audience)",
         ].join("\n")
       }

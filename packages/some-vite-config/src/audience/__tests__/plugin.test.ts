@@ -14,6 +14,7 @@ const REEXPORTED = "LAN_REEXPORTED_MARKER"
 const CONTRACT = "LAN_CONTRACT_MARKER"
 const CSS = "lan-authored-css-marker"
 const PUBLIC = "PUBLIC_IMPLEMENTATION_MARKER"
+const HOSTILE_NAME = "</script><!--\u2028"
 
 const profiles = defineProfiles({
   pages: { audiences: ["public"] },
@@ -70,6 +71,11 @@ beforeEach(() => {
         `export const marker = "${IMPL}"`,
         `export function Panel() { return marker }`,
         `export default Panel`,
+        // An export name that is no identifier (ES2022 allows any string):
+        // the stub has to re-export it verbatim and splice it into code
+        // safely, markup and line separators included.
+        `const hostile = 1`,
+        `export { hostile as ${JSON.stringify(HOSTILE_NAME)} }`,
       ].join("\n"),
       "dist/more.js": `export const more = () => "${REEXPORTED}"`,
       "dist/contract.js": `export const searchSchema = "${CONTRACT}"`,
@@ -101,8 +107,8 @@ beforeEach(() => {
   write(
     "app/src/routes/_lan/panel.js",
     [
-      `import Panel, { Panel as Named, more } from "@fx/lan-panel"`,
-      `export const component = [Panel, Named, more]`,
+      `import Panel, { Panel as Named, more, ${JSON.stringify(HOSTILE_NAME)} as hostile } from "@fx/lan-panel"`,
+      `export const component = [Panel, Named, more, hostile]`,
     ].join("\n")
   )
 })
@@ -115,12 +121,18 @@ function isOutput(value: unknown): value is Rolldown.RolldownOutput {
   return typeof value === "object" && value !== null && "output" in value
 }
 
-type Built = { code: string; css: string }
+type Built = {
+  code: string
+  css: string
+  /** Every stub module exactly as the plugin generated it, before bundling. */
+  stubs: Array<string>
+}
 
 async function buildApp(
   profile: string | undefined,
   entry = "src/main.js"
 ): Promise<Built> {
+  const stubs: Array<string> = []
   const result = await build({
     root: join(root, "app"),
     logLevel: "silent",
@@ -133,6 +145,15 @@ async function buildApp(
         workspaceRoots: [join(root, "packages/ui")],
         gates: { lan: ["src/routes/_lan"] },
       }),
+      // The bundle re-generates code (renames bindings, re-escapes strings),
+      // so what the plugin itself spliced together is only visible here.
+      {
+        name: "capture-stubs",
+        transform(code: string, id: string): null {
+          if (id.startsWith("\0audience-stub:")) stubs.push(code)
+          return null
+        },
+      },
     ],
     build: {
       write: false,
@@ -143,6 +164,7 @@ async function buildApp(
   const outputs: Array<unknown> = Array.isArray(result) ? result : [result]
   const files = outputs.flatMap((o) => (isOutput(o) ? o.output : []))
   return {
+    stubs,
     code: files.map((f) => (f.type === "chunk" ? f.code : "")).join("\n"),
     css: files
       .map((f) =>
@@ -168,7 +190,7 @@ describe("audiencePlugin", { timeout: 30_000 }, () => {
   })
 
   it("stubs a workspace the profile leaves out, keeping its contract", async () => {
-    const { code, css } = await buildApp("pages")
+    const { code, css, stubs } = await buildApp("pages")
 
     expect(code).not.toContain(IMPL)
     expect(code).not.toContain(REEXPORTED)
@@ -177,6 +199,14 @@ describe("audiencePlugin", { timeout: 30_000 }, () => {
     expect(code).toContain(CONTRACT)
     expect(code).toContain(PUBLIC)
     expect(code).toContain('"pages"')
+    // The stub re-exported the hostile name (the import above linked it),
+    // and spliced it into its own source escaped, not raw.
+    expect(stubs).toHaveLength(1)
+    const [stub] = stubs
+    expect(stub).toContain("\\u003c\\u002fscript\\u003e\\u003c!--\\u2028")
+    expect(stub).not.toContain("</script>")
+    expect(stub).not.toContain("<!--")
+    expect(stub).not.toContain("\u2028")
   })
 
   it("falls back to the default profile when none is requested", async () => {
