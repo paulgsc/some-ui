@@ -246,8 +246,10 @@ card through every transition and assert what is still running.
 **Invariants L1–L7: what the rules and tests above cannot check.** Each is
 written for review, human or bot, one hunk at a time: a claim, what in a
 diff falsifies it, where it applies, and why it is a review invariant rather
-than a lint rule or test. A reviewer checks the hunk against the claim; no
-invariant asks for exploring states the diff does not touch. "Adopted
+than a lint rule or test. A reviewer checks the hunk against the claim,
+reading at most the file the hunk changes (as it stands after the diff) and
+any files the invariant names, since a hunk shows only a few lines of
+context; no invariant asks for exploring states the diff does not touch. "Adopted
 workspaces" means those with `require-scoped-lifetime` at `error` (today:
 `some-drama`). Each held on every adopted workspace when it was written; a
 violation is a regression, not debt. Each falsifier covers every edit that
