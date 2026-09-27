@@ -77,10 +77,14 @@ const requiredQualificationsByVariant = {
     "Docker",
     "testing",
     "CI/CD",
+    "JSON",
+    "Node.js",
+    "GitHub Actions",
   ],
   platform: [
     "TypeScript",
     "Rust",
+    "Node.js",
     "GitHub Actions",
     "CI/CD",
     "Docker",
@@ -95,6 +99,8 @@ const requiredQualificationsByVariant = {
     "component",
     "browser",
     "testing",
+    "Node.js",
+    "GitHub Actions",
   ],
 }
 

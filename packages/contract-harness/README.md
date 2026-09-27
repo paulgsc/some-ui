@@ -185,9 +185,13 @@ Worth knowing before trusting a green run.
   one declaration — that removes the copy without making the check circular,
   since the server side still comes from the wire.
 
-- **Coverage is 15 of 52 routes.** Not a gap to close for its own sake; the
-  valuable contracts are the ones on boundaries that actually move. Run
-  `contract:coverage` to see what's unwritten.
+- **Coverage is partial.** Not a gap to close for its own sake; the valuable
+  contracts are the ones on boundaries that actually move. Run
+  `contract:coverage` for the current covered/total figure and what's
+  unwritten. This README doesn't repeat the figure: the snapshot changes on
+  every server merge, so a written count is wrong by the next one.
+  (`@some-ui/resume`'s `check-claims.mjs` fails the build if a "N of M routes"
+  figure here disagrees with that report.)
 
 - **This is not a browser test.** Requests go server-to-server, deliberately.
   The tabs and mood-event routes pin CORS to a single origin, so a
