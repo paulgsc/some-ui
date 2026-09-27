@@ -15,8 +15,9 @@ plays on is yours to say, not a built-in list:
   background asks the source tab for the video time).
 - **Source** — a tab on a site you marked as a **streaming site**. The drama
   plays here. No card is drawn; hotkeys log beats with this tab's own video
-  time. With several source tabs open, the one that started playing last is
-  the source; close it and another still playing takes over.
+  time. A beat pressed in a display tab asks every source tab and takes the
+  one playing (of two playing, the one started last), so closing or leaving a
+  tab needs no handover.
 
 To mark a site, open the drama's tab and press **Mark as streaming** in the
 popup; **Unmark** (or ✕ in the popup's _Streaming sites_ list) reverts it.
@@ -98,7 +99,7 @@ The tree encodes the Good-Citizen Charter's §2 seam
 
 ```
 src/
-├── background/   storage, message bus, beat log, source-tab tracking
+├── background/   storage, message bus, beat log, source-tab election
 ├── content/      content-script entrypoint — resolves source / display role
 ├── popup/        popup entrypoint
 ├── logic/        pure — no document/window/browser/chrome (lint-enforced)
@@ -153,10 +154,10 @@ repo-root Storybook (`STORYBOOK_WORKSPACE=some-drama`).
 | `drama_active_id`        | `string \| null`                            |
 | `drama_beats`            | `Array<BeatRecord>` (newest 5000)           |
 | `drama_verdicts`         | `Array<VerdictRecord>` (newest 2000)        |
-| `drama_source_tab`       | `number` — the source tab, validated on use |
 | `drama_stream_sites`     | `Array<string>` — sites marked as streaming |
 | `drama_card_position_v3` | `{ x, y, size }` (card layout)              |
 | `drama_moments`          | legacy mood log (no video times); not read  |
+| `drama_source_tab`       | legacy registered source tab; not read      |
 
 ## License
 

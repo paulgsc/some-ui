@@ -9,8 +9,9 @@
 //             and every BEAT_LOGGED pulses the live strip.
 //   SOURCE  — a tab on a site the user marked as a streaming site: where the
 //             drama plays. Renders no card (the drama is never on stream).
-//             Registers itself with the background, answers GET_PLAYBACK, and
-//             logs beats from hotkeys with its own video time.
+//             Answers GET_PLAYBACK (the background asks every source tab and
+//             picks the playing one), and logs beats from hotkeys with its
+//             own video time.
 //
 // Display responsibilities:
 //   1. Render DramaCard from the active entry — all fields real, no dummies.
@@ -57,7 +58,7 @@ import type {
   BeatLoggedMessage,
   GetPlaybackMessage,
   Playback,
-  SourceVacantMessage,
+  SourceReport,
   StateUpdateMessage,
   WatchlistState,
 } from "@drama/types"
@@ -87,10 +88,6 @@ function isStateUpdateMessage(v: unknown): v is StateUpdateMessage {
   return isRecord(v) && v.type === "STATE_UPDATE" && isRecord(v.payload)
 }
 
-function isSourceVacantMessage(v: unknown): v is SourceVacantMessage {
-  return isRecord(v) && v.type === "SOURCE_VACANT"
-}
-
 // ─── Beats ─────────────────────────────────────────────────────────────────────
 
 /** One `beat:<mood>` command per mood, each reading playback at press time. */
@@ -112,10 +109,14 @@ async function main(): Promise<void> {
   let display: Display | null = null
   let cardMeta: PersistedCardMeta | null = await loadCardMeta()
 
-  const registerSource = (): void => {
-    sendMsg({ type: "REGISTER_SOURCE" }).catch((err: unknown) =>
-      log.error("REGISTER_SOURCE failed:", err)
-    )
+  // When this page last started playing; the background prefers the tab
+  // that started most recently when two source tabs are playing.
+  let lastPlayAt = 0
+
+  /** This tab's answer to GET_PLAYBACK, or null when it has no video. */
+  const report = (): SourceReport | null => {
+    const playback = readPlayback()
+    return playback && { playback, playing: isPlaying(), lastPlayAt }
   }
 
   /** Resolve this tab's role from the latest state, then hand state on. */
@@ -130,11 +131,6 @@ async function main(): Promise<void> {
       role = next
       if (next === "source") {
         log.info("Streaming site — no card; beats carry this tab's video time.")
-        // Marking a site turns every open tab on it into a source at once,
-        // and the background keeps whichever registers last — so only a tab
-        // that is playing claims it now. The rest claim it when they start
-        // playing (the `play` listener below).
-        if (isPlaying()) registerSource()
       } else {
         display = createDisplay({
           cardMeta,
@@ -172,31 +168,25 @@ async function main(): Promise<void> {
   // ── Background messages ───────────────────────────────────────────────────
 
   browser.runtime.onMessage.addListener(
-    (msg: unknown): Promise<Playback | null> | undefined => {
+    (msg: unknown): Promise<SourceReport | null> | undefined => {
       if (isGetPlaybackMessage(msg)) {
-        return role === "source" ? Promise.resolve(readPlayback()) : undefined
+        return role === "source" ? Promise.resolve(report()) : undefined
       }
       if (isBeatLoggedMessage(msg)) display?.onBeat(msg.beat)
       else if (isStateUpdateMessage(msg)) apply(msg.payload)
-      // The source tab closed; one still playing takes over (the rest claim
-      // it when they start playing, as on a role flip).
-      else if (isSourceVacantMessage(msg) && role === "source" && isPlaying())
-        registerSource()
       return undefined
     }
   )
 
-  // Media events don't bubble; capture them at the document. Whichever
-  // streaming tab last started playing is the source (two tabs on marked
-  // sites: the one playing).
+  // Media events don't bubble; capture them at the document. Of two playing
+  // source tabs, the one that started last is the drama (logic/source.ts).
   // Lifetime: the page's. It is the content script's own entry point, which
-  // lives exactly as long as the document; it does nothing unless the role is
-  // "source", and the role follows every STATE_UPDATE.
+  // lives exactly as long as the document, and it only records a timestamp.
   // eslint-disable-next-line extension-charter/require-scoped-lifetime -- page-lifetime by design; see above
   document.addEventListener(
     "play",
     () => {
-      if (role === "source") registerSource()
+      lastPlayAt = Date.now()
     },
     { capture: true }
   )

@@ -53,7 +53,7 @@ const PAGE_LIFETIME_MEMBERS = new Set(["body", "documentElement"])
  *   globals, not a parameter or local of that name), or bare (window's own);
  *   scoped by an options object (inline, or a `const` holding one that is
  *   used only as a listener argument) with `once: true` or a `signal` that is
- *   a signal on every path;
+ *   a name, a plain member or a call;
  * - frame loops: a `requestAnimationFrame` whose callback names the
  *   function it is called from (`f`, `this.f`, a `.bind(…)` of either) or is
  *   an inline wrapper that calls it.
@@ -250,24 +250,18 @@ function optionsAreScoped(options: ESTree.Node, scope: Scope.Scope): boolean {
 }
 
 /**
- * A `signal` value that is a signal on every path. `controller?.signal`,
- * `undefined`, `null`, and `a ? b : c` or `a ?? b` / `a || b` (either side
- * may be the missing one) can each hand addEventListener nothing, and then
- * the listener is the page's. An identifier or a plain member is trusted:
- * its type, not its spelling, would say more, and a type-aware rule is not
- * what this is.
+ * A `signal` value that is a signal on every path, by allowlist: a name
+ * (other than `undefined`), a plain member (`life.signal`, `this.ac.signal`)
+ * or a call's result (`AbortSignal.timeout(…)`). Every other spelling —
+ * `controller?.signal`, `a ? b : c`, `a ?? b`, `void 0`, a literal, a type
+ * assertion — can hand addEventListener nothing, or isn't one this rule
+ * reads, and then the listener is the page's. A name, member or call is
+ * trusted: its type, not its spelling, would say more, and a type-aware rule
+ * is not what this is.
  */
 function signalIsDefinite(value: ESTree.Node): boolean {
-  if (
-    value.type === "ChainExpression" ||
-    value.type === "ConditionalExpression" ||
-    value.type === "LogicalExpression"
-  ) {
-    return false
-  }
   if (value.type === "Identifier") return value.name !== "undefined"
-  if (value.type === "Literal") return value.value !== null
-  return true
+  return value.type === "MemberExpression" || value.type === "CallExpression"
 }
 
 function resolveObject(

@@ -629,6 +629,17 @@ describe("lint: extension-charter — require-named-lifetime", () => {
 describe("lint: extension-charter — require-scoped-lifetime", () => {
   const RULE = "extension-charter/require-scoped-lifetime"
 
+  // These snippets are parsed as JavaScript. One that doesn't parse runs no
+  // rule, so "does NOT fire" would pass having checked nothing.
+  const expectQuiet = (
+    msgs: Array<{ fatal?: boolean }>,
+    code: string
+  ): void => {
+    if (msgs.some((m) => m.fatal === true)) {
+      throw new Error(`snippet did not parse: ${code}`)
+    }
+  }
+
   it("is a warning in the shared config — an audit, not a gate", async () => {
     const msgs = await lintSnippet(
       extensionsCharterConfig,
@@ -655,6 +666,10 @@ describe("lint: extension-charter — require-scoped-lifetime", () => {
       `document.addEventListener("x", f, { signal: controller?.signal })`,
       `document.addEventListener("x", f, { signal: undefined })`,
       `window.addEventListener("x", f, { signal: on ? ac.signal : undefined })`,
+      // Signals are read by allowlist; any other spelling is not one.
+      `document.addEventListener("x", f, { signal: void 0 })`,
+      `document.addEventListener("x", f, { signal: (0, undefined) })`,
+      `document.addEventListener("x", f, { signal: \`\${ac.signal}\` })`,
       // \`const\` fixes the binding, not the object: anything that could
       // rewrite the options leaves them unresolved.
       `const OPTS = { once: true }; OPTS.once = false; document.addEventListener("x", f, OPTS)`,
@@ -684,8 +699,11 @@ describe("lint: extension-charter — require-scoped-lifetime", () => {
       // A spread before the scoping property is overwritten by it.
       `document.addEventListener("x", f, { ...base, signal: life.signal })`,
       `document.addEventListener("x", f, { signal, once: false })`,
+      `document.addEventListener("x", f, { signal: AbortSignal.timeout(5000) })`,
+      `document.addEventListener("x", f, { signal: this.life.signal })`,
     ]) {
       const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
+      expectQuiet(msgs, code)
       expectNoMessageForRule(msgs, RULE, code)
     }
   })
@@ -696,23 +714,26 @@ describe("lint: extension-charter — require-scoped-lifetime", () => {
       `button.addEventListener("click", f)`,
       TS_FILE
     )
+    expectQuiet(msgs, "element listener")
     expectNoMessageForRule(msgs, RULE, "element listener")
   })
 
   it("does NOT fire on a bare call to a local function of that name", async () => {
-    const code = `function addEventListener(type: string, f: () => void) { bus.on(type, f) }
+    const code = `function addEventListener(type, f) { bus.on(type, f) }
 addEventListener("x", f)`
     const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
+    expectQuiet(msgs, code)
     expectNoMessageForRule(msgs, RULE, code)
   })
 
   it("does NOT fire on a local binding that shadows a page-lifetime name", async () => {
     for (const code of [
-      `function watch(document: HTMLElement) { document.addEventListener("click", f) }`,
+      `function watch(document) { document.addEventListener("click", f) }`,
       `const window = frame.contentWindow; window.addEventListener("x", f)`,
-      `function mount(document: Document) { document.body.addEventListener("x", f) }`,
+      `function mount(document) { document.body.addEventListener("x", f) }`,
     ]) {
       const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
+      expectQuiet(msgs, code)
       expectNoMessageForRule(msgs, RULE, code)
     }
   })
@@ -746,6 +767,7 @@ addEventListener("x", f)`
       `function open() { requestAnimationFrame(() => { const later = () => open() }) }`,
     ]) {
       const msgs = await lintSnippet(extensionsCharterConfig, code, TS_FILE)
+      expectQuiet(msgs, code)
       expectNoMessageForRule(msgs, RULE, code)
     }
   })

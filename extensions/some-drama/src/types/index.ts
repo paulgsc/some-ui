@@ -156,7 +156,6 @@ export type MessageBridge =
   | { type: "REMOVE_ENTRY"; id: string }
   | { type: "LOG_BEAT"; mood: MoodType; playback: Playback | null }
   | { type: "GET_BEATS"; dramaId: string }
-  | { type: "REGISTER_SOURCE" }
   | { type: "SET_STREAM_SITE"; site: string; streaming: boolean }
   | { type: "ADJUST_VERDICT"; field: VerdictField; change: VerdictChange }
   | { type: "GET_VERDICTS"; dramaId: string }
@@ -173,7 +172,6 @@ export type MessageResponseMap = {
   LOG_BEAT: Envelope<{ beat: BeatRecord }>
   // The drama's most recent episode (by its latest beat) and that episode's beats.
   GET_BEATS: Envelope<{ episode: string; beats: Array<BeatRecord> }>
-  REGISTER_SOURCE: Envelope<{}>
   SET_STREAM_SITE: Envelope<{ state: WatchlistState }>
   ADJUST_VERDICT: Envelope<{ state: WatchlistState }>
   // Every logged verdict change of one drama, oldest first.
@@ -192,14 +190,18 @@ export type BeatLoggedMessage = {
   beat: BeatRecord
 }
 
-/** Background → the source tab: "where is the video right now?" */
+/**
+ * Background → every tab on a marked site: "where is your video right now?"
+ * A source tab answers with a SourceReport; any other tab doesn't answer.
+ */
 export type GetPlaybackMessage = { type: "GET_PLAYBACK" }
 
-/**
- * Background → every tab, when the registered source tab closes: a source tab
- * still playing claims the role back, so beats keep their video time.
- */
-export type SourceVacantMessage = { type: "SOURCE_VACANT" }
+/** A source tab's answer to GET_PLAYBACK; logic/source.ts picks among them. */
+export type SourceReport = {
+  playback: Playback
+  playing: boolean // a video on the page is playing right now
+  lastPlayAt: number // epoch ms of the page's last `play`; 0 if none yet
+}
 
 // ─── Beats: the live emotional log ────────────────────────────────────────────
 // A beat is one reaction while watching: a mood, how hard it hit, and where in

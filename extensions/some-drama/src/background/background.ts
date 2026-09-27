@@ -5,25 +5,27 @@
 //   drama_beats:      BeatRecord[]    — the live emotional log (bounded)
 //   drama_verdicts:   VerdictRecord[] — rating / likelihood-to-finish changes,
 //                                       for longitudinal tracking (bounded)
-//   drama_source_tab: number | null   — tab playing the drama (validated on use)
 //   drama_stream_sites: string[]      — sites the user marked as streaming sites
 //   drama_moments:    legacy mood log; every record has timestamp 0, so it is
 //                     no longer read — left in place rather than deleted.
+//   drama_source_tab: legacy registered source tab; source tabs are now asked
+//                     fresh on every beat, so it is no longer read.
 //
 // Tab roles (the some-mujik pattern): every tab is a DISPLAY tab by default —
 // it renders the card, which OBS captures. A tab on a site the user marked as
 // a streaming site is a SOURCE tab: it plays the drama, renders no card,
-// captures hotkeys with its own video time, and answers GET_PLAYBACK.
+// captures hotkeys with its own video time, and answers GET_PLAYBACK. No tab
+// is registered as "the" source: a display tab's beat asks every tab on a
+// marked site and logic/source.ts picks the answer (the playing one).
 //
 // Message types:
 //   GET_STATE       → { ok, state }
 //   UPSERT_ENTRY    → add or update a DramaEntry; broadcasts STATE_UPDATE
 //   REMOVE_ENTRY    → remove by id; broadcasts STATE_UPDATE
 //   SET_ACTIVE      → set activeId; broadcasts STATE_UPDATE
-//   REGISTER_SOURCE → the sending tab is now the source tab
 //   SET_STREAM_SITE → mark / unmark a streaming site; broadcasts STATE_UPDATE
 //   LOG_BEAT        → log or escalate a beat for the active drama; broadcasts
-//                     BEAT_LOGGED. Asks the source tab for playback when the
+//                     BEAT_LOGGED. Asks the source tabs for playback when the
 //                     press came from a display tab.
 //   GET_BEATS       → the drama's latest episode and its beats
 //   ADJUST_VERDICT  → set or step the active drama's rating or likelihood to
@@ -42,6 +44,7 @@ import {
   normalizeEpisode,
 } from "@drama/logic/beats"
 import { MOODS } from "@drama/logic/content/constants"
+import { pickSource } from "@drama/logic/source"
 import { isStreamSite, siteOf, withStreamSite } from "@drama/logic/stream-sites"
 import {
   applyVerdict,
@@ -58,7 +61,7 @@ import type {
   MessageResponseMap,
   MoodType,
   Playback,
-  SourceVacantMessage,
+  SourceReport,
   StateUpdateMessage,
   VerdictChange,
   VerdictField,
@@ -76,7 +79,6 @@ type Reply<T extends MessageBridge["type"]> = (
 
 const BEATS_KEY = "drama_beats"
 const VERDICTS_KEY = "drama_verdicts"
-const SOURCE_TAB_KEY = "drama_source_tab"
 const STREAM_SITES_KEY = "drama_stream_sites"
 const WATCHLIST_KEY = "drama_watchlist"
 const ACTIVE_ID_KEY = "drama_active_id"
@@ -163,7 +165,6 @@ function isBackgroundMessage(v: unknown): v is MessageBridge {
     case "GET_VERDICTS": {
       return typeof v.dramaId === "string"
     }
-    case "REGISTER_SOURCE":
     case "GET_STATE": {
       return true
     }
@@ -271,62 +272,57 @@ function serialized<T>(work: () => Promise<T>): Promise<T> {
   return run
 }
 
-// ── Source tab ────────────────────────────────────────────────────────────────
+// ── Source tabs ──────────────────────────────────────────────────────────────
 
-async function getSourceTabId(): Promise<number | null> {
-  const r = await browser.storage.local.get(SOURCE_TAB_KEY)
-  const id = r[SOURCE_TAB_KEY]
-  if (typeof id !== "number") return null
-  try {
-    await browser.tabs.get(id)
-    return id
-  } catch {
-    // Closed, or a tab id from a previous browser session.
-    await vacateSource(id)
-    return null
-  }
+// Beats and verdict steps ask for playback from inside the write queue (so
+// they are applied in the order they were pressed); a source tab that does
+// not answer must not hold every later write, so each ask is bounded.
+const PLAYBACK_TIMEOUT_MS = 500
+
+function isSourceReport(v: unknown): v is SourceReport {
+  return (
+    isRecord(v) &&
+    isPlayback(v.playback) &&
+    typeof v.playing === "boolean" &&
+    typeof v.lastPlayAt === "number"
+  )
 }
 
 /**
- * The one way the source role is given up. Two playing tabs on marked sites:
- * the one that started last is the source, and when it goes (closed, found
- * dead on use, or its site unmarked) the other would stay unregistered until
- * its next `play`. So every vacancy is announced, and a source tab still
- * playing claims the role back.
+ * Ask every tab on a marked site where its video is, and pick the drama's
+ * (logic/source.ts); null when no source tab answers. Asked fresh each time,
+ * so a tab that closed or left the site is never the one asked.
  */
-async function vacateSource(tabId: number): Promise<void> {
-  const r = await browser.storage.local.get(SOURCE_TAB_KEY)
-  if (r[SOURCE_TAB_KEY] !== tabId) return
-  await browser.storage.local.remove(SOURCE_TAB_KEY)
-  await broadcast({ type: "SOURCE_VACANT" })
-}
-
-/** Ask the source tab where its video is; null if there is none to ask. */
-// Beats and verdict steps ask for playback from inside the write queue (so
-// they are applied in the order they were pressed); a source tab that does
-// not answer must not hold every later write, so the ask is bounded.
-const PLAYBACK_TIMEOUT_MS = 500
-
 async function requestPlayback(): Promise<Playback | null> {
-  const tabId = await getSourceTabId()
-  if (tabId === null) return null
+  const { streamSites } = await getWatchlistState()
+  if (streamSites.length === 0) return null
+  let tabs: Array<browser.tabs.Tab>
   try {
-    const msg: GetPlaybackMessage = { type: "GET_PLAYBACK" }
-    const reply: unknown = await Promise.race([
-      browser.tabs.sendMessage(tabId, msg),
-      new Promise<null>((resolve) =>
-        setTimeout(() => resolve(null), PLAYBACK_TIMEOUT_MS)
-      ),
-    ])
-    return isPlayback(reply) ? reply : null
+    tabs = await browser.tabs.query({})
   } catch {
     return null
   }
+  const msg: GetPlaybackMessage = { type: "GET_PLAYBACK" }
+  const reports = await Promise.all(
+    tabs.map(async (tab): Promise<SourceReport | null> => {
+      if (tab.id === undefined || !isStreamSite(tab.url ?? "", streamSites)) {
+        return null
+      }
+      try {
+        const reply: unknown = await Promise.race([
+          browser.tabs.sendMessage(tab.id, msg),
+          new Promise<null>((resolve) =>
+            setTimeout(() => resolve(null), PLAYBACK_TIMEOUT_MS)
+          ),
+        ])
+        return isSourceReport(reply) ? reply : null
+      } catch {
+        return null
+      }
+    })
+  )
+  return pickSource(reports.filter((r): r is SourceReport => r !== null))
 }
-
-browser.tabs.onRemoved.addListener((tabId) => {
-  void vacateSource(tabId)
-})
 
 // ── Watchlist helpers ─────────────────────────────────────────────────────────
 
@@ -391,7 +387,7 @@ const ENTRY_DEFAULTS: Omit<DramaEntry, "id" | "addedAt" | "title"> = {
 
 /** Send to every loaded tab; each content script decides what applies to it. */
 async function broadcast(
-  msg: StateUpdateMessage | BeatLoggedMessage | SourceVacantMessage
+  msg: StateUpdateMessage | BeatLoggedMessage
 ): Promise<void> {
   let tabs: Array<browser.tabs.Tab>
   try {
@@ -486,22 +482,6 @@ async function handleGetBeats(
       episode,
       beats: episodeBeats(beats, dramaId, episode),
     })
-  } catch (err) {
-    sendResponse({ ok: false, error: String(err) })
-  }
-}
-
-async function handleRegisterSource(
-  tabId: number | undefined,
-  sendResponse: Reply<"REGISTER_SOURCE">
-): Promise<void> {
-  try {
-    if (tabId === undefined) {
-      sendResponse({ ok: false, error: "REGISTER_SOURCE needs a sender tab" })
-      return
-    }
-    await browser.storage.local.set({ [SOURCE_TAB_KEY]: tabId })
-    sendResponse({ ok: true })
   } catch (err) {
     sendResponse({ ok: false, error: String(err) })
   }
@@ -636,22 +616,7 @@ async function handleSetStreamSite(
         streamSites: withStreamSite(read.streamSites, normalized, streaming),
       }
       await setWatchlistState({ streamSites: marked.streamSites })
-
-      // Unmarking the site the source tab is on: that tab turns back into a
-      // display tab (it re-resolves its role from the broadcast below), so
-      // it can no longer answer for the drama's playback.
-      const sourceId = await getSourceTabId()
-      const unmarked =
-        sourceId !== null &&
-        !isStreamSite(
-          (await browser.tabs.get(sourceId)).url ?? "",
-          marked.streamSites
-        )
-
       await broadcastState(marked)
-      // After the state broadcast, so the unmarked tab is already a display
-      // tab when the vacancy is announced and doesn't claim the role back.
-      if (unmarked) await vacateSource(sourceId)
       return marked
     })
     sendResponse({ ok: true, state })
@@ -719,7 +684,6 @@ async function handleGetVerdicts(
 
 async function dispatch(
   message: MessageBridge,
-  sender: browser.runtime.MessageSender,
   sendResponse: Reply<MessageBridge["type"]>
 ): Promise<void> {
   const { type: t } = message
@@ -729,9 +693,6 @@ async function dispatch(
     }
     case "GET_BEATS": {
       return handleGetBeats(message.dramaId, sendResponse)
-    }
-    case "REGISTER_SOURCE": {
-      return handleRegisterSource(sender.tab?.id, sendResponse)
     }
     case "SET_STREAM_SITE": {
       return handleSetStreamSite(message.site, message.streaming, sendResponse)
@@ -766,12 +727,12 @@ async function dispatch(
 browser.runtime.onMessage.addListener(
   (
     msg: unknown,
-    sender: browser.runtime.MessageSender,
+    _sender: browser.runtime.MessageSender,
     sendResponse: Reply<MessageBridge["type"]>
   ): boolean => {
     if (!isBackgroundMessage(msg)) return false
 
-    void dispatch(msg, sender, sendResponse)
+    void dispatch(msg, sendResponse)
     return true
   }
 )
