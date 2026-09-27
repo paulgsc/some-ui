@@ -87,9 +87,11 @@ permanent gap.
 
 - **Claim** — one sentence about code, over a named scope ("in a class that owns an
   `ActiveScope`, every `.interval(` … acquires on the scope `start` receives").
-- **Falsified by** — what in a _single hunk_ contradicts the claim, checkable from the hunk
-  plus at most files the invariant names. If you can't write this line, you have advice,
-  not an invariant. It must cover **every kind of edit that can make the claim false**, not
+- **Falsified by** — what in a _single hunk_ contradicts the claim, checkable from the hunk,
+  the file it changes (as it stands after the diff), and at most files the invariant names.
+  The changed file is allowed because a hunk shows only a few lines of context, and what a
+  claim relates may sit further apart than that; anything beyond it must be named. If you
+  can't write this line, you have advice, not an invariant. It must cover **every kind of edit that can make the claim false**, not
   only additions: a hunk that deletes, renames or moves the thing the claim relies on
   breaks it as surely as one that adds a violation. Since a reviewer stops when the
   falsifier doesn't match, a regression the falsifier misses goes unreported.

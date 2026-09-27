@@ -15,8 +15,8 @@ doc comment.
 
 When a hunk falls inside an invariant's **Scope**:
 
-1. Evaluate the hunk against that invariant's **Falsified by** line, using only the hunk
-   and any files that line names.
+1. Evaluate the hunk against that invariant's **Falsified by** line, using only the hunk,
+   the file it changes (as it stands after the diff), and any files that line names.
 2. **Null (nothing in the hunk matches):** no comment. Do not go on to explore other states,
    call paths or configurations to look for a violation somewhere else. The invariant was
    written so this check is the whole check.
@@ -31,8 +31,8 @@ tracked.
 
 Flag the declaration itself when it:
 
-- is missing any of the four parts, or has a **Falsified by** that can't be decided from a
-  single hunk (advice, or a claim about the whole program);
+- is missing any of the four parts, or has a **Falsified by** that can't be decided from the hunk
+  and the file it changes (advice, or a claim about the whole program);
 - has a **Falsified by** that covers only additions, missing a deletion, rename or move
   that would also make the claim false;
 - covers something a lint rule, type or test could enforce, without saying why that
