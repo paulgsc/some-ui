@@ -26,7 +26,7 @@ import {
 } from "@topik/lib/topik/adapter/pasted-lesson"
 import type { ResumeStore } from "@topik/lib/topik/adapter/resume-point"
 import { createResumeStore } from "@topik/lib/topik/adapter/resume-point"
-import { useTopikMetadataList } from "@topik/lib/topik/adapter/server/topik-metadata-queries"
+import { useTopikManifest } from "@topik/lib/topik/adapter/server/topik-metadata-queries"
 import { useTopikBatches } from "@topik/lib/topik/adapter/server/topik-queries"
 import type { SurveyStore } from "@topik/lib/topik/adapter/survey-store"
 import { createSurveyStore } from "@topik/lib/topik/adapter/survey-store"
@@ -208,8 +208,14 @@ export function useHandheldLesson({
 
   // ── Catalogue and content ────────────────────────────────────────────────
 
-  const catalogQuery = useTopikMetadataList(metadataRepository)
-  const served = useMemo(() => catalogQuery.data ?? [], [catalogQuery.data])
+  // In the manifest's own order: it is the operator's, and selection falls
+  // back to it (canon Rem. 3.5). The sorted list the desktop picker reads
+  // would put the alphabetically first lesson up next (Codex, #1555).
+  const catalogQuery = useTopikManifest(metadataRepository)
+  const served = useMemo(
+    () => catalogQuery.data?.topiks ?? [],
+    [catalogQuery.data]
+  )
   // The lesson pasted this session comes first; served material follows. A
   // pasted lesson's key never reaches the server.
   const [pasted, setPasted] = useState(() => held.get())

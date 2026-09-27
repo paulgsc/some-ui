@@ -1,7 +1,10 @@
 import type { JSX } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
-import type { ITopikRepository } from "@topik/lib/topik"
+import type {
+  ITopikMetadataRepository,
+  ITopikRepository,
+} from "@topik/lib/topik"
 import { SessionConfigProvider } from "@topik/lib/topik/adapter/context/session-config-context"
 import type { PastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
 import {
@@ -38,7 +41,8 @@ function renderLesson(
   topikRepository: ITopikRepository = fixtureTopikRepository,
   surveyStore: SurveyStore = createSurveyStore(memoryStorage()),
   pastedStore: PastedLessonStore = createPastedLessonStore(memoryStorage()),
-  pastedResumeStore = createResumeStore(memoryStorage())
+  pastedResumeStore = createResumeStore(memoryStorage()),
+  metadataRepository: ITopikMetadataRepository = fixtureMetadataRepository
 ): ReturnType<typeof createResumeStore> {
   const store = createResumeStore(storage)
   const client = new QueryClient({
@@ -49,7 +53,7 @@ function renderLesson(
       <SessionConfigProvider
         value={{
           topikRepository,
-          metadataRepository: fixtureMetadataRepository,
+          metadataRepository,
           // No voice: the ladder starts at Hangul (canon Def. 9.3).
           speechAdapter: null,
         }}
@@ -437,6 +441,27 @@ describe("HandheldLesson", () => {
       expect(
         screen.getByRole("region", { name: "Up next" }).textContent
       ).toMatch(/Changing subway lines/)
+    })
+
+    it("falls back to the operator's order, not the alphabet (Codex, #1555)", async () => {
+      const manifest = await fixtureMetadataRepository.loadCatalog()
+      const [cafe] = manifest.topiks
+      if (!cafe) throw new Error("fixture lost its café lesson")
+      const zebra = { ...cafe, key: "zebra", displayName: "Zebra crossing" }
+      renderLesson(
+        memoryStorage(),
+        fixtureTopikRepository,
+        undefined,
+        undefined,
+        undefined,
+        {
+          loadCatalog: () =>
+            Promise.resolve({ ...manifest, topiks: [zebra, cafe] }),
+        }
+      )
+      const upNext = await screen.findByRole("region", { name: "Up next" })
+      expect(upNext.textContent).toMatch(/Zebra crossing/)
+      expect(upNext.textContent).not.toMatch(/Ordering at a café/)
     })
 
     it("says why: what blocked the learner comes back, shorter after too hard", async () => {
