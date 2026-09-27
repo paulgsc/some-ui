@@ -57,6 +57,11 @@ jobs:
               - '.nvmrc'
               - 'tsconfig*.json'
               - 'vite.config.*'
+              # Read by @some-ui/resume's check-claims.mjs, which fails on a
+              # stale route figure; without these a README-only edit would
+              # skip the build that runs it.
+              - 'packages/ui/resume/**'
+              - 'packages/contract-harness/README.md'
               - '!**/*.md'
             extensions:
               - 'extensions/**'

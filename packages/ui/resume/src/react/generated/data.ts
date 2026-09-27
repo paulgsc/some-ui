@@ -19,14 +19,14 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
     },
     "label": "Backend & event-driven systems",
     "summary": "Software engineer building production-oriented web services in Rust and TypeScript: versioned REST/HTTP APIs, WebSockets, asynchronous workers, SQL query and schema design, message-broker pipelines, caching, and container delivery. Independently designed and built across a multi-crate Rust workspace and a TypeScript client platform, owning contracts from browser mutation to durable storage and background actuation.",
-    "skills": "Rust; TypeScript; Axum; Tokio; SQLx/SQLite; Redis; NATS JetStream; WebSockets; REST and HTTP/JSON APIs; SQL query and schema design; distributed and event-driven systems; asynchronous processing; Docker; Prometheus/Grafana/OpenTelemetry; unit, integration, contract, and Playwright testing; CI/CD pipeline automation",
+    "skills": "Rust; TypeScript; Axum; Tokio; SQLx/SQLite; Redis; NATS JetStream; WebSockets; REST APIs; JSON; Node.js; SQL query and schema design; distributed and event-driven systems; asynchronous processing; Docker; Prometheus/Grafana/OpenTelemetry; unit, integration, contract, and Playwright testing; GitHub Actions CI/CD",
     "projects": [
       {
         "name": "file_host backend service",
         "kind": "Rust, Axum, Tokio, SQLx, Redis, NATS JetStream",
         "premise": "A backend boundary is production-ready only when overload, dependency failure, contract drift, and shutdown are designed states rather than surprises.",
         "bullets": [
-          "Authored a Rust/Axum service exposing 42 inventoried HTTP operations plus WebSocket transport for sessions, engagement signals, push subscriptions, mood events, tab state, media metadata, and asynchronous processing.",
+          "Authored a Rust/Axum service exposing 40+ inventoried HTTP operations plus WebSocket transport for sessions, engagement signals, push subscriptions, mood events, tab state, media metadata, and asynchronous processing.",
           "Modeled sessions, consent, engagement gates, interventions, tabs, and mood events in SQLite/SQLx repositories with paired migrations, compile-time query validation, WAL mode, bounded pools, and explicit last-write-wins semantics.",
           "Built per-client token buckets, concurrency/body limits, load shedding, timeouts, typed 429/413/503 outcomes, and refusal metrics that distinguish rejected work from successful low latency.",
           "Connected Redis caching and in-flight coalescing to NATS/JetStream jobs; retryable worker failures are NAKed for redelivery while cache invalidation follows database mutations.",
@@ -42,13 +42,13 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
           "Separated warrant, admissibility, and actuation across pure Rust policy, file_host constraints, and push_kit VAPID/RFC 8291/8292 delivery behind a testable transport trait.",
           "Represented engagement as a decaying vector, solved threshold crossings per signal, persisted eligible_at, and reduced the asynchronous waker to an indexed due-work query.",
           "Made consent a data-model precondition; malformed or empty grants become silence, while VAPID key mismatch fails at startup instead of invalidating delivery invisibly.",
-          "Integrated typed TypeScript/Zod clients checked by a contract harness covering 21 of 42 inventoried routes with 13 tests, plus Playwright coverage of a real Chromium push/service-worker hop.",
+          "Integrated typed TypeScript/Zod clients checked by a contract harness that diffs every contract against the server's generated route inventory, plus Playwright coverage of a real Chromium push/service-worker hop.",
           "Classified expiry, payload rejection, authentication, rate limiting, and transport failure; removed expired subscriptions and persisted outcomes so quiet behavior remains explainable."
         ]
       }
     ],
     "platform": [
-      "Maintain a multi-crate Rust workspace with strict all/pedantic/nursery Clippy groups, cargo-deny, migrated SQLx schema preparation, 300+ test functions, and change-scoped GitHub Actions.",
+      "Maintain a multi-crate Rust workspace under a ratcheted all/pedantic/nursery Clippy baseline that blocks new findings, cargo-deny, migrated SQLx schema preparation, 300+ test functions, and change-scoped GitHub Actions.",
       "Ship distroless Docker images and compose Axum, Redis, NATS, Caddy, Prometheus, Grafana, exporters, and analytics behind explicit health/readiness boundaries.",
       "Define six falsifiable fault states — unreachable, dependency-down, rejecting, saturated, stalled, and observability-blind — in bounded-cardinality metrics and generated dashboards.",
       "Render missing telemetry as unknown rather than healthy; probe SQLite, NATS, and Redis independently under bounded timeouts.",
@@ -56,7 +56,7 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
     ],
     "highlights": [
       {
-        "title": "42-operation service surface",
+        "title": "40+ operation service surface",
         "body": "Authored file_host's inventoried HTTP and WebSocket surface, published as schema-versioned JSON and held to source parity by test."
       },
       {
@@ -69,7 +69,7 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
       },
       {
         "title": "300+ tests across a multi-crate Rust workspace",
-        "body": "Strict all/pedantic/nursery Clippy, cargo-deny, SQLx preparation, route parity, live contracts, and real-browser coverage."
+        "body": "Ratcheted all/pedantic/nursery Clippy baseline, cargo-deny, SQLx preparation, route parity, live contracts, and real-browser coverage."
       }
     ],
     "toolbox": [
@@ -151,7 +151,7 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
     },
     "label": "Developer platform & release engineering",
     "summary": "Software engineer building developer-platform tooling across a large TypeScript/Rust monorepo: change-scoped CI/CD pipeline automation, cross-repo contract and route-parity checks, containerized release delivery, and signed browser-extension releases. Work is verified by unit, contract, and browser test suites that gate every release rather than by hand.",
-    "skills": "TypeScript; Rust; GitHub Actions; Turbo and Cargo dependency graphs; Docker; DevOps automation; CI/CD pipeline automation; contract and route-parity testing; SQLx schema preparation; Changesets release automation; Playwright; Prometheus/Grafana; observability",
+    "skills": "TypeScript; Rust; Node.js; GitHub Actions; Turbo and Cargo dependency graphs; Docker; DevOps automation; CI/CD pipeline automation; contract and route-parity testing; SQLx schema preparation; Changesets release automation; Playwright; Prometheus/Grafana; observability",
     "projects": [
       {
         "name": "Cross-repo contract and route parity",
@@ -159,7 +159,7 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
         "premise": "A client and server repository that each describe the same API independently will drift unless something proves they still agree.",
         "bullets": [
           "Authored a TypeScript/Zod contract harness checked against a schema-versioned server route inventory and live HTTP responses across two independently deployed repositories.",
-          "Covered 21 of 42 inventoried server routes with 13 contract tests, including integration tests that start a real HTTP server and assert concrete schema and route divergence.",
+          "Gated server pull requests on the client's contracts so a route change that breaks one fails before merge, with integration tests that start a real HTTP server and assert concrete schema and route divergence.",
           "Distinguished contract-breaking drift from informative slack — an undeclared field the server added, or a declared-optional field it never sends — instead of collapsing both into one failure."
         ]
       },
@@ -175,7 +175,7 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
       }
     ],
     "platform": [
-      "Run strict Rust/TypeScript CI, SQLx checks, route parity, API contracts, browser conformance, and signed release gates.",
+      "Run Rust/TypeScript CI with a ratcheted Clippy baseline, SQLx checks, route parity, API contracts, browser conformance, and signed release gates.",
       "Compose distroless services with Caddy, Redis, NATS, Prometheus, Grafana, exporters, and service-specific readiness probes.",
       "Generate dashboards from Jsonnet with measured-good, measured-bad, and missing/unknown as irreducible states.",
       "Use bounded-cardinality Prometheus metrics and OpenTelemetry traces for HTTP, dependencies, pools, cache, admission, connections, and loop progress.",
@@ -184,7 +184,7 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
     "highlights": [
       {
         "title": "Cross-repo contract parity",
-        "body": "A TypeScript/Zod contract harness checked against a generated server route inventory and live HTTP responses, covering 21 of 42 routes."
+        "body": "A TypeScript/Zod contract harness checked against a generated server route inventory and live HTTP responses; a server PR that breaks a client contract fails before merge."
       },
       {
         "title": "Change-scoped CI",
@@ -278,7 +278,7 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
     },
     "label": "Full-stack web & product engineering",
     "summary": "Full-stack software engineer building TypeScript/React web applications, reusable frontend components, browser extensions, and Rust/WebAssembly engines backed by versioned REST APIs. Owns features from domain modeling and UI implementation through persistence, automated testing, container builds, and release workflows.",
-    "skills": "TypeScript; React; Rust/WebAssembly; reusable React components; REST API contracts; browser extensions; MV3 service workers; responsive web UI; cross-browser Playwright testing; Vite; TanStack; Vitest; CI/CD",
+    "skills": "TypeScript; React; Rust/WebAssembly; reusable React components; REST API contracts; browser extensions; MV3 service workers; responsive web UI; cross-browser Playwright testing; Node.js; Vite; TanStack; Vitest; GitHub Actions CI/CD",
     "projects": [
       {
         "name": "Adaptive learning platform",
@@ -305,7 +305,7 @@ export const resumeData: Record<ResumeVariant, ResumeData> = {
     ],
     "platform": [
       "Ship Rust services and web UI in Docker behind Caddy/Nginx with TLS, readiness, Redis, NATS, Prometheus, Grafana, and Docker Hub/GitHub Actions delivery.",
-      "Exercise a multi-crate Rust workspace with 300+ tests, strict Clippy, cargo-deny, SQLx preparation, route parity, and downstream contract/browser suites.",
+      "Exercise a multi-crate Rust workspace with 300+ tests, a ratcheted Clippy baseline, cargo-deny, SQLx preparation, route parity, and downstream contract/browser suites.",
       "Treat missing telemetry as a fault; dashboards expose unreachable, dependency-down, rejecting, saturated, stalled, and blind states.",
       "Derive architecture from written domain boundaries and falsifiable failures kept beside migrations, source, metrics, and tests.",
       "Own the path from learning-state model through schema, HTTP contract, decision worker, push provider, browser worker, UI, and operational dashboard."
