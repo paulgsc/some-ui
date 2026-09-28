@@ -72,3 +72,42 @@ describe("RepCard's mark", () => {
     expect(marked()).toEqual(["잔"])
   })
 })
+
+describe("a sentence's mark", () => {
+  it("holds a longer word for longer", () => {
+    // 한 잔 주세요: one, one, then three syllables over a 5s turn.
+    const oneCup: SetItem = {
+      kind: "sentence",
+      key: "s:cafe-order-tail",
+      lineId: "none",
+      text: "한 잔 주세요.",
+      syllables: 5,
+      wordIds: [],
+    }
+    render(
+      <RepCard
+        deck={STARTER_DECK}
+        entry={{ item: oneCup, role: "rep" }}
+        step="turn"
+        stepMs={5000}
+        stepKey={9}
+        reported={false}
+        playing={false}
+        short={false}
+        onStuck={noop}
+        onSkip={noop}
+        onResume={noop}
+      />
+    )
+    const at = (ms: number): Array<string> => {
+      act(() => {
+        vi.advanceTimersByTime(ms)
+      })
+      return marked()
+    }
+    expect(marked()).toEqual(["한"])
+    expect(at(1000)).toEqual(["잔"])
+    expect(at(1000)).toEqual(["주세요"])
+    expect(at(2500)).toEqual(["주세요"])
+  })
+})

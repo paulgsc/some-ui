@@ -5,7 +5,11 @@ import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import { GlyphLine } from "@topik/components/topik/read-aloud/glyph-line"
 import type { ReadAloudDeck } from "@topik/lib/topik/read-aloud/content"
 import type { GlyphMode } from "@topik/lib/topik/read-aloud/glyphs"
-import { glossOf, markUnits } from "@topik/lib/topik/read-aloud/glyphs"
+import {
+  glossOf,
+  markAt,
+  markWeights,
+} from "@topik/lib/topik/read-aloud/glyphs"
 import type {
   IntroductionStep,
   QueueEntry,
@@ -58,30 +62,34 @@ const MODE: Record<RepCardStep, GlyphMode> = {
 }
 
 /**
- * Steps the mark through `units` blocks over `ms`, starting again whenever
- * `runKey` changes; null when inactive.
+ * Steps the mark through the blocks over `ms`, a syllable's share at a
+ * time, so each block holds it for as many syllables as it has; starts
+ * again whenever `runKey` changes, and is null when inactive.
  */
 function useMarch(
-  units: number,
+  weights: Array<number>,
   ms: number,
   runKey: number,
   active: boolean
 ): number | null {
-  const [tick, setTick] = useState({ runKey, index: 0 })
+  const total = weights.reduce((sum, weight) => sum + weight, 0)
+  const [tick, setTick] = useState({ runKey, syllable: 0 })
   useEffect(() => {
-    if (!active || units < 1) return
-    const every = Math.max(1, ms / units)
+    if (!active || total < 1) return
+    const every = Math.max(1, ms / total)
     const timer = setInterval(() => {
-      setTick((prev) =>
-        prev.runKey === runKey
-          ? { runKey, index: Math.min(prev.index + 1, units - 1) }
-          : { runKey, index: Math.min(1, units - 1) }
-      )
+      setTick((prev) => ({
+        runKey,
+        syllable: Math.min(
+          prev.runKey === runKey ? prev.syllable + 1 : 1,
+          total - 1
+        ),
+      }))
     }, every)
     return (): void => clearInterval(timer)
-  }, [units, ms, runKey, active])
+  }, [total, ms, runKey, active])
   if (!active) return null
-  return tick.runKey === runKey ? tick.index : 0
+  return markAt(weights, tick.runKey === runKey ? tick.syllable : 0)
 }
 
 /** A bar that empties over the step's clock: the turn, or the echo. */
@@ -131,13 +139,13 @@ export const RepCard = ({
 }: RepCardProps): JSX.Element => {
   const { item } = entry
   const introduction = step === "intro-audio" || step === "intro-hold"
-  const units = markUnits(item)
+  const weights = markWeights(item)
   const marchMs =
     step === "turn"
       ? (stepMs ?? 0)
       : Math.max(1, item.syllables * SPEECH_MS_PER_SYLLABLE)
   const mark = useMarch(
-    units,
+    weights,
     marchMs,
     stepKey,
     // The audio's mark starts with the sound, not with the request for it:

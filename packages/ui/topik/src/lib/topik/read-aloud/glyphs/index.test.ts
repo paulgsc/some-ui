@@ -3,7 +3,8 @@ import {
   glossOf,
   glyphCells,
   isMarked,
-  markUnits,
+  markAt,
+  markWeights,
 } from "@topik/lib/topik/read-aloud/glyphs"
 import type { SetItem } from "@topik/lib/topik/read-aloud/set-builder"
 import { STARTER_DECK } from "@topik/lib/topik/read-aloud/starter"
@@ -77,8 +78,8 @@ describe("glyphCells (Cor. 4.6 (iv))", () => {
 
 describe("the mark", () => {
   it("steps a syllable at a time for a word, a word at a time for a sentence", () => {
-    expect(markUnits(WONIMNIDA)).toBe(4)
-    expect(markUnits(PRICE)).toBe(2)
+    expect(markWeights(WONIMNIDA)).toEqual([1, 1, 1, 1])
+    expect(markWeights(PRICE)).toEqual([4, 4])
     const word = glyphCells(STARTER_DECK, WONIMNIDA, "spelled")
     expect(word.map((cell) => isMarked(WONIMNIDA, cell, 1))).toEqual([
       false,
@@ -94,6 +95,18 @@ describe("the mark", () => {
         .join("")
     ).toBe("원입니다")
     expect(sentence.some((cell) => isMarked(PRICE, cell, null))).toBe(false)
+  })
+})
+
+describe("markAt", () => {
+  it("holds each block for as many syllables as it has", () => {
+    // 한 잔 주세요: one, one, then three syllables.
+    const weights = [1, 1, 3]
+    expect([0, 1, 2, 3, 4].map((at) => markAt(weights, at))).toEqual([
+      0, 1, 2, 2, 2,
+    ])
+    expect(markAt(weights, 99)).toBe(2)
+    expect(markAt([], 0)).toBe(0)
   })
 })
 

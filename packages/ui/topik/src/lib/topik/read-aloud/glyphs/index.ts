@@ -119,11 +119,25 @@ export function glyphCells(
   return cells
 }
 
-/** How many blocks the mark steps through: syllables of a word, words of a sentence. */
-export function markUnits(item: SetItem): number {
+/**
+ * The blocks the mark steps through, each weighted by its syllables: a
+ * word's syllables one by one, or a sentence's words, so a long word holds
+ * the mark longer than a short one, as it does when read or heard.
+ */
+export function markWeights(item: SetItem): Array<number> {
   return item.kind === "word"
-    ? item.syllables
-    : (item.text.match(/[가-힣]+/g) ?? []).length
+    ? Array.from({ length: item.syllables }, () => 1)
+    : Array.from(item.text.match(/[가-힣]+/g) ?? [], (run) => run.length)
+}
+
+/** The block holding the given syllable, counted across the item. */
+export function markAt(weights: Array<number>, syllable: number): number {
+  let seen = 0
+  for (const [index, weight] of weights.entries()) {
+    seen += weight
+    if (syllable < seen) return index
+  }
+  return Math.max(0, weights.length - 1)
 }
 
 /** Whether a cell is the block the mark is on. */
