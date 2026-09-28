@@ -378,6 +378,48 @@ describe("a stuck report", () => {
     ])
   })
 
+  it("keeps a report through a pause and a hidden page", () => {
+    for (const interruption of [
+      ["pause", "resume"],
+      ["hidden", "shown"],
+    ] as const) {
+      const host = new Host()
+      host.begin(SET)
+      host.send({ type: "stuck", at: 0 })
+      host.send({ type: interruption[0], at: host.now })
+      host.send({ type: interruption[1], at: host.now })
+      expect(host.state.phase.name).toBe("glyphs")
+      expect(host.state.reported).toBe(true)
+      host.finishEntry()
+      expect(host.roles()).toEqual(["rep", "rep", "rep", "return"])
+      expect(host.of("save-pace").at(-1)?.pace.factor).toBe(1.4)
+    }
+  })
+
+  it("keeps a report through the end of a sitting", () => {
+    const host = new Host()
+    host.begin(SET)
+    host.send({ type: "stuck", at: 0 })
+    host.now += SITTING_MS
+    host.send({ type: "pause", at: host.now })
+    const progress = progressOf(host.state)
+    expect(progress?.reported).toBe(true)
+    const next = new Host()
+    if (progress) {
+      next.send({ type: "begin-set", at: 0, level: 1, progress, paces: SEEN })
+    }
+    next.finishEntry()
+    expect(next.roles()).toEqual(["rep", "rep", "rep", "return"])
+  })
+
+  it("does not carry a report on to the next entry", () => {
+    const host = new Host()
+    host.begin(SET)
+    host.send({ type: "stuck", at: 0 })
+    host.finishEntry()
+    expect(host.state.reported).toBe(false)
+  })
+
   it("places a return where it makes no three alike, when it can", () => {
     const host = new Host()
     host.begin([JUSEYO, ONE_CUP, KEOPI, word("jan", "잔"), ONE_CUP])

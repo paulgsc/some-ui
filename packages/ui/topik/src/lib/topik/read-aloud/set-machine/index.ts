@@ -18,7 +18,8 @@
  *   reported on first sight is introduced first, then returns (Cor. 4.6).
  * - Counting (Prop. 6.4): a rep counts only when its gloss ran to the end,
  *   so a skipped rep, and a rep interrupted by a pause or a hidden page,
- *   counts nothing; the interrupted rep starts over. A reported rep counts
+ *   counts nothing; the interrupted rep starts over, keeping any stuck
+ *   report already made, across sittings too. A reported rep counts
  *   like any other; the returns and introductions a report causes count
  *   nothing. Credit is the rep's nominal duration, never the clock.
  * - Pace (Cor. 4.6 (iii)): a word's factor moves when the word runs to the
@@ -73,6 +74,8 @@ export type SetProgress = {
   returns: Record<string, number>
   /** Reps of the set counted so far, for its summary. */
   counted: number
+  /** Whether the first entry was reported stuck before it was interrupted. */
+  reported: boolean
 }
 
 export type RepStep = "glyphs" | "turn" | "audio" | "echo" | "gloss"
@@ -101,7 +104,10 @@ export type SetMachineState = {
   queue: Array<QueueEntry>
   cursor: number
   returns: Record<string, number>
-  /** Whether the entry at `cursor` has been reported stuck. */
+  /**
+   * Whether the entry at `cursor` has been reported stuck. It is cleared only
+   * on moving to the next entry, so a report outlives a restart.
+   */
   reported: boolean
   /** Reps counted in this set: what the summary shows. */
   counted: number
@@ -193,6 +199,7 @@ export const freshSet = (items: Array<SetItem>): SetProgress => ({
   queue: items.map((item) => ({ item, role: "rep" })),
   returns: {},
   counted: 0,
+  reported: false,
 })
 
 /** What is left of the set in progress, for resuming it; null when none is. */
@@ -202,6 +209,7 @@ export function progressOf(state: SetMachineState): SetProgress | null {
     queue: state.queue.slice(state.cursor),
     returns: state.returns,
     counted: state.counted,
+    reported: state.reported,
   }
 }
 
@@ -271,14 +279,16 @@ function endSitting(state: SetMachineState): SetTransition {
   return { state: enter(state, { name: "sitting-over" }), effects: [] }
 }
 
-/** Begin the entry at `cursor`, unless the sitting is over. */
+/**
+ * Begin the entry at `cursor`, unless the sitting is over. A restart after a
+ * pause or a hidden page keeps the entry's stuck report.
+ */
 function startEntry(state: SetMachineState, at: number): SetTransition {
   const entry = currentEntry(state)
   if (!entry) return closeSet(state, at)
   if (sittingOver(state, at)) return endSitting(state)
-  const fresh = { ...state, reported: false }
   if (entry.role === "introduction") {
-    const next = enter(fresh, { name: "intro-audio" })
+    const next = enter(state, { name: "intro-audio" })
     return {
       state: next,
       effects: [
@@ -291,7 +301,7 @@ function startEntry(state: SetMachineState, at: number): SetTransition {
       ],
     }
   }
-  const next = enter(fresh, { name: "glyphs" })
+  const next = enter(state, { name: "glyphs" })
   return {
     state: next,
     effects: [{ type: "wait", seq: next.seq, ms: SETTLE_MS }],
@@ -314,7 +324,10 @@ function advance(
   at: number,
   effects: Array<SetEffect>
 ): SetTransition {
-  const moved = startEntry({ ...state, cursor: state.cursor + 1 }, at)
+  const moved = startEntry(
+    { ...state, cursor: state.cursor + 1, reported: false },
+    at
+  )
   return { state: moved.state, effects: [...effects, ...moved.effects] }
 }
 
@@ -556,6 +569,7 @@ export function setMachineReducer(
           returns: event.progress.returns,
           cursor: 0,
           counted: event.progress.counted,
+          reported: event.progress.reported,
           paces: event.paces,
           sittingStartedAt: state.sittingStartedAt ?? event.at,
         },
