@@ -2041,12 +2041,16 @@ rather than as *data*, and the remedy is to exhibit the data.
 ]
 
 #axiom("6.2", name: "Honest repetition teaches")[
-  There is a fixed $g in (0, 1]$ such that every read-aloud rep (Def. 4.8)
-  on an item $k$ that the learner practises honestly --- reading aloud in
-  the turn, repeating in the echo, and reporting stuck when the item did not
-  click --- has intervention gain (Def. 4.3) of at least
-  $g dot (1 - mu_t (k))$, whether or not anything measures it; and no rep,
-  honest or not, and no introduction (Cor. 4.6) has negative gain.
+  For a read-aloud rep $e$ (Def. 4.8) on an item $k$, write $G_h (e, S)$
+  for its intervention gain (Def. 4.3) conditioned on the learner practising
+  it honestly --- reading aloud in the turn, repeating in the echo, and
+  reporting stuck when the item did not click --- and $G_(not h) (e, S)$ for
+  the gain conditioned on their not doing so, so that
+  $G = pi dot G_h + (1 - pi) dot G_(not h)$, where $pi$ is the probability
+  that the learner practises $e$ honestly. There is a fixed $g in (0, 1]$
+  such that $G_h (e, S) >= g dot (1 - mu_t (k))$ for every such rep,
+  whether or not anything measures it; $G_(not h) >= 0$; and no
+  introduction (Cor. 4.6) has negative gain.
 ]
 
 This is Remark 3.3's weaker claim, that persistence is how learning happens,
@@ -2063,11 +2067,12 @@ rereading what is known.
   Under Axiom 6.2, the objective of Definition 6.2 for the read-aloud
   exercise has no $beta$ term, and
   $ J >= alpha g dot EE[N_gamma], quad
-    N_gamma = sum_(t=0)^(T) gamma^t dot h_t dot (1 - mu_t (k_t)) dot "Pr"["continue" | e_(<=t)], $
-  where $h_t$ is one if rep $t$ was practised honestly and zero otherwise.
-  $N_gamma$ counts the honest reps the learner goes on to practise, each
-  discounted by when it comes, weighted by the chance the learner is still
-  there, and weighted by how much of its item remains to learn. Since
+    N_gamma = sum_(t=0)^(T) gamma^t dot pi_t dot (1 - mu_t (k_t)) dot "Pr"["continue" | e_(<=t)], $
+  where $pi_t$ is the probability that rep $t$ is practised honestly, and
+  zero for an introduction. $N_gamma$ is the expected count of honest reps
+  the learner goes on to practise, each discounted by when it comes,
+  weighted by the chance the learner is still there, and weighted by how
+  much of its item remains to learn. Since
   nothing on this surface observes $G$, $N_gamma$ is the only part of $J$
   the exercise can act on. It has no score but that.
 ]
@@ -2079,10 +2084,10 @@ rereading what is known.
   sealed check's outcome (Def. 4.9) reaches only an aggregate that is not a
   belief (Rem. 6.5), so it changes none of this. The $beta$ term therefore
   vanishes, and what remains is the sum over $t$ of
-  $gamma^t dot alpha dot G(e_t, S_t) dot "Pr"["continue" | e_(<=t)]$. By
-  Axiom 6.2 each term with $h_t = 1$ is at least
-  $gamma^t dot alpha g dot (1 - mu_t (k_t)) dot "Pr"["continue" | e_(<=t)]$,
-  and every other term is non-negative. The exercises in the sum are this
+  $gamma^t dot alpha dot G(e_t, S_t) dot "Pr"["continue" | e_(<=t)]$. For
+  a rep, Axiom 6.2 gives
+  $G = pi_t dot G_h + (1 - pi_t) dot G_(not h) >= pi_t dot g dot (1 - mu_t (k_t))$,
+  since $G_(not h) >= 0$; an introduction's term is non-negative. The exercises in the sum are this
   surface's reps and introductions; the sealed check is not an exercise
   (Def. 4.9) and contributes no term, and whatever it costs the learner in
   patience acts through $"Pr"["continue"]$, which $N_gamma$ already weights.
@@ -2105,7 +2110,7 @@ rereading what is known.
   carries no outcome, so it is not an observation, and Proposition 2.1
   already says what it is not: a count, read by no policy, correct as a
   display (Cor. 2.1). It is an undiscounted, unweighted view of the reps
-  $N_gamma$ counts, the one quantity Corollary 6.4 leaves this exercise to
+  $N_gamma$ weighs, the one quantity Corollary 6.4 leaves this exercise to
   act on. It cannot tell a rep read aloud
   from one watched in silence, and nothing on the surface can. Across many
   sets the sealed checks can tell sets followed from sets left running
@@ -2150,16 +2155,23 @@ rereading what is known.
   and (iii) excludes it.
 ]
 
-#proposition("6.5", name: "The sealed outcome touches nothing the learner sees")[
+#proposition("6.5", name: "The sealed outcome is disclosed by nothing the learner sees")[
   A sealed check's outcome may not alter the practice record, end or extend
-  a set, or change anything else the learner is shown. It may be read only
-  by the aggregate of Remark 6.5 and by the choice of stories
-  (Rem. 6.6), and never to judge a single set.
+  a set, or change anything shown about the set it closes or the set after
+  it. It may be read only by the aggregate of Remark 6.5, and the aggregate
+  may act on what the learner is shown in one way only: by moving the
+  familiarity band from which later stories are chosen (Rem. 6.6), a move
+  made on many sets' outcomes together and never on one.
 ]
 
 #proof[
-  An outcome that altered anything shown would be disclosed by it, and the
-  check would stop being sealed. It would also make an honest miss cost
+  An outcome that altered anything shown about its own set, or anything the
+  learner could trace back to it, would be disclosed by it, and the check
+  would stop being sealed. The band move is not such a change. It is made
+  on an aggregate of many sets, so no single outcome decides it; and it
+  changes only which of several stories that fit the learner's level comes
+  next, which the learner sees without being able to read any answer back
+  from it. It would also make an honest miss cost
   something: a learner who read every line and misunderstood the story is
   practising honestly in Axiom 6.2's sense, and a record that dropped their
   set would pay for the pretence of understanding, which Proposition 6.4
@@ -2174,17 +2186,23 @@ rereading what is known.
   They turn part of what the §12 falsifiers ask the learner to notice into
   something the system records. Outcomes are kept only as counts ---
   answered well, answered badly, passed over --- per band of story
-  familiarity (Def. 6.7), so the aggregate reads as a curve of comprehension
-  against familiarity. Every story is heard as well as read, so a check
+  familiarity (Def. 6.7) per recent week, so the aggregate reads as a curve
+  of comprehension against familiarity that can be compared with itself
+  over time. Every story is heard as well as read, so a check
   measures the story as understood through either channel. It can
   therefore tell a set followed from one left running unattended; it cannot
   tell a set read aloud from one listened to in silence, nor reading from
-  listening. Three shapes are distinguishable in it. Answers that hold up
-  on unfamiliar stories and improve over time are consistent with Axiom 6.2,
-  though listening alone could produce them. Answers that are good on
-  familiar stories and poor on unfamiliar ones say the gain was fitted to
-  what is familiar (Rem. 4.9). Answers that are poor everywhere while the
-  practice record grows say sets are running unattended. A learner who
+  listening. At any one time, familiar stories are expected to be answered
+  better than unfamiliar ones by any learner, honest or not, because an
+  unfamiliar story holds more words the learner has not met; that gap says
+  nothing by itself. What is compared is each band with itself over time,
+  since a band fixes the share of seen words and so controls for vocabulary.
+  Three shapes are distinguishable that way. Answers that improve within
+  every band, the unfamiliar ones included, are consistent with Axiom 6.2,
+  though listening alone could produce them. Improvement confined to the
+  familiar bands, with the unfamiliar ones flat, says the gain was fitted
+  to what is familiar (Rem. 4.9). Answers that stay poor in every band
+  while the practice record grows say sets are running unattended. A learner who
   follows every story by ear without reading aloud leaves the same curve as
   one who reads aloud, and only a channel (§12) separates them. This aggregate
   is not a belief: it names no concept, feeds no estimator and is read by
@@ -3119,8 +3137,9 @@ would cost.
   there. Cost: the exercise acquires a measurement of reading itself
   ($beta > 0$) --- the spoken response captured as a class III sensor
   (Prop. 8.2) --- and Corollary 6.4 is withdrawn for it. Partly detectable
-  in the sealed aggregate, as answers that are good on familiar stories and
-  poor on unfamiliar ones or that stop improving (Rem. 6.5); since every
+  in the sealed aggregate, as improvement confined to the familiar bands
+  while the unfamiliar ones stay flat, or no improvement in any band
+  (Rem. 6.5); since every
   story is also heard, the aggregate cannot isolate reading, and whether
   reading itself carried over is left to the learner's own notice.
 
@@ -3130,16 +3149,16 @@ would cost.
   the learner finds the record growing on sets they did not practise, or the
   exercise inviting them to watch rather than read, the record is counting
   attendance. Sets left running unattended are detectable in the sealed
-  aggregate, as answers that are poor at every familiarity while the record
-  grows (Rem. 6.5). A learner who follows every story by ear without reading
+  aggregate, as answers that stay poor in every band while the record grows
+  (Rem. 6.5). A learner who follows every story by ear without reading
   aloud leaves no such trace, and only the cost below would catch it. Cost:
   a signal
   that the turn was used --- the microphone detecting speech, not grading
   it --- becomes a condition of Proposition 6.4 (i).
 
 + *The sealed checks do not discriminate.* If answers sit at the same rate
-  at every familiarity --- near the guessing floor, or near ceiling ---
-  whatever the learner does, the questions are measuring the options rather
+  in every band and every week --- near the guessing floor, or near
+  ceiling --- whatever the learner does, the questions are measuring the options rather
   than the reading, and Remark 6.5's three shapes cannot be told apart.
   Cost: the questions are rewritten against Proposition 4.3 (i), or given
   more items per story; until then the two falsifiers above fall back to
@@ -3301,10 +3320,12 @@ honest one, while naming the one it cannot tell apart (Prop. 6.4), and
 bounds it (Rem. 7.5). Closes story sets on a sealed check (Def. 4.9): a
 question about how the story fits together, answered before any of its
 glosses are shown and built so that no single word answers it (Prop. 4.3),
-whose outcome touches nothing the learner sees (Prop. 6.5) and is kept only
-as counts by story familiarity: a partial test of the exercise's own axiom,
-able to tell a set followed from one left running unattended but not
-reading aloud from listening (Rem. 6.5). The sealed check is not an
+whose outcome no display discloses (Prop. 6.5) and is kept only as counts
+by story familiarity and week, acting on what is shown only by moving the
+familiarity band on many sets together: a partial test of the exercise's
+own axiom, read within each band over time, able to tell a set followed
+from one left running unattended but not reading aloud from listening
+(Rem. 6.5). The sealed check is not an
 exercise, since it names no concept (Def. 4.9). Counts exposure per dictionary form in a fixed-size
 sketch (Def. 6.7) and uses it to prefer new stories made mostly of seen
 words, as an order and not a belief (Rem. 6.6). Adds three falsifiers to §12
@@ -3352,7 +3373,8 @@ ahead of the `packages/ui/topik` read-aloud renderer.
   [$J(pi)$], [Pedagogical objective, survival-weighted (Def. 6.2)],
   [$alpha, beta$], [Explicit allocation between intervention and measurement (Def. 6.2, Cor. 4.2)],
   [$g$], [Lower bound on the gain of an honest read-aloud rep (Axiom 6.2)],
-  [$N_gamma$], [Discounted, survival- and mastery-weighted count of honest read-aloud reps (Cor. 6.4)],
+  [$G_h, G_(not h), pi$], [Gain given honest practice, gain otherwise, and the probability of honest practice (Axiom 6.2)],
+  [$N_gamma$], [Expected discounted, survival- and mastery-weighted count of honest read-aloud reps (Cor. 6.4)],
   [$phi$], [Familiarity of a story: share of its words with exposure past a threshold (Def. 6.7)],
   [$nu$], [Renderer nuisance parameters (Def. 9.2)],
 )
