@@ -12,6 +12,7 @@
  */
 
 import type { JSX } from "react"
+import { useState } from "react"
 import { Button } from "@some-ui/shared"
 import { GenerateLesson } from "@topik/components/topik/handheld/generate-lesson"
 import { LineCard } from "@topik/components/topik/handheld/line-card"
@@ -19,8 +20,11 @@ import { MaterialList } from "@topik/components/topik/handheld/material-list"
 import { ProbeCard } from "@topik/components/topik/handheld/probe-card"
 import { SurveyCard } from "@topik/components/topik/handheld/survey-card"
 import { WrapCard } from "@topik/components/topik/handheld/wrap-card"
+import { ReadAloudScreen } from "@topik/components/topik/read-aloud/read-aloud-screen"
+import { useSessionConfig } from "@topik/lib/topik/adapter/context/session-config-context"
 import type { UseHandheldLessonOptions } from "@topik/lib/topik/adapter/hooks/use-handheld-lesson"
 import { useHandheldLesson } from "@topik/lib/topik/adapter/hooks/use-handheld-lesson"
+import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
 import { ChevronLeft, Loader2 } from "lucide-react"
 import { cn } from "some-ui-utils"
@@ -28,6 +32,8 @@ import { cn } from "some-ui-utils"
 type HandheldLessonProps = UseHandheldLessonOptions & {
   /** Landscape phone: two columns, compact chrome. */
   short?: boolean
+  /** Injected in tests and stories; defaults to `localStorage`. */
+  readAloudStore?: ReadAloudStore
 }
 
 export const HandheldLesson = ({
@@ -36,6 +42,7 @@ export const HandheldLesson = ({
   surveyStore,
   pastedStore,
   pastedResumeStore,
+  readAloudStore,
 }: HandheldLessonProps): JSX.Element => {
   const vm = useHandheldLesson({
     resumeStore,
@@ -44,6 +51,28 @@ export const HandheldLesson = ({
     pastedResumeStore,
   })
   const { lesson, audio, dispatch, generator } = vm
+  const { speechAdapter } = useSessionConfig()
+  // The read-aloud drill takes the whole screen, header included; leaving it
+  // returns to the material list it was opened from.
+  const [reading, setReading] = useState(false)
+
+  if (reading) {
+    return (
+      <div
+        data-slot="topik-handheld"
+        data-short={short || undefined}
+        className="flex size-full min-h-0 flex-col"
+      >
+        <ReadAloudScreen
+          topikLevel={vm.selection.level}
+          speech={speechAdapter}
+          store={readAloudStore}
+          short={short}
+          onExit={() => setReading(false)}
+        />
+      </div>
+    )
+  }
 
   const title = lesson
     ? lesson.displayName
@@ -149,6 +178,7 @@ export const HandheldLesson = ({
           pasted={generator.pasted}
           onCreate={generator.open}
           onForget={generator.forget}
+          onReadAloud={() => setReading(true)}
           loading={vm.catalog.loading}
           error={vm.catalog.error}
           resume={vm.resume}

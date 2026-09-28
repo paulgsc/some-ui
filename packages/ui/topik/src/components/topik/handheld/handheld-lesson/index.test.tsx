@@ -119,6 +119,18 @@ describe("HandheldLesson", () => {
     expect(screen.getByText("Welcome. What can I get you?")).toBeTruthy()
   })
 
+  it("opens the read-aloud drill from the material list, and comes back", async () => {
+    renderLesson()
+    fireEvent.click(await screen.findByRole("button", { name: /Read aloud/ }))
+    // No voice in this test: the drill says so rather than run (canon Cor. 4.6).
+    expect(screen.getByText(/no voice to play it with/i)).toBeTruthy()
+    expect(screen.getByLabelText("Your reading aloud")).toBeTruthy()
+    click("Back")
+    expect(
+      await screen.findByRole("button", { name: /Ordering at a café/ })
+    ).toBeTruthy()
+  })
+
   it("judges transformations, builds one from tiles, and revisits a miss once", async () => {
     renderLesson()
     fireEvent.click(

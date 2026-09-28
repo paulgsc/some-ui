@@ -96,6 +96,7 @@ const meta: Meta = {
     onReload: noop,
     onCreate: noop,
     onForget: noop,
+    onReadAloud: noop,
   },
   // The applet owns the whole screen on a phone; Storybook's padding would
   // push its dock below the fold and misreport the layout.
