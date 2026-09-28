@@ -330,7 +330,8 @@ async function requestPlayback(): Promise<Playback | null> {
  *
  * Cost (LP3): 1 storage read (getWatchlistState) + 1 tabs.query + O(N·S)
  * time (isStreamSite is O(S), once per tab) + K asks, each ≤
- * PLAYBACK_TIMEOUT_MS; nothing kept.
+ * PLAYBACK_TIMEOUT_MS; nothing kept — each ask's deadline timer is cleared
+ * when the ask settles.
  * No site marked: the read and nothing else. Each ask also costs the source
  * tab one primaryVideo (effects/content/playback.ts).
  */
@@ -349,16 +350,21 @@ async function requestSourceReport(): Promise<SourceReport | null> {
       if (tab.id === undefined || !isStreamSite(tab.url ?? "", streamSites)) {
         return null
       }
+      // The deadline is cleared once the ask settles, either way: an answer
+      // must not leave a timer behind for the rest of the 500 ms.
+      let deadline: ReturnType<typeof setTimeout> | undefined
       try {
         const reply: unknown = await Promise.race([
           browser.tabs.sendMessage(tab.id, msg),
-          new Promise<null>((resolve) =>
-            setTimeout(() => resolve(null), PLAYBACK_TIMEOUT_MS)
-          ),
+          new Promise<null>((resolve) => {
+            deadline = setTimeout(() => resolve(null), PLAYBACK_TIMEOUT_MS)
+          }),
         ])
         return isSourceReport(reply) ? reply : null
       } catch {
         return null
+      } finally {
+        clearTimeout(deadline)
       }
     })
   )

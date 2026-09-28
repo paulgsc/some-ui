@@ -320,17 +320,19 @@ export function createDisplay(deps: DisplayDeps): Display {
 
   // Where the drama's video is (the source tab's latest report), kept across
   // rebuilds like `live`. A card asks once when built (GET_LIVE_PLAYBACK) and
-  // then follows LIVE_PLAYBACK broadcasts; a broadcast that lands while that
-  // ask is in flight is newer than its reply, which is then dropped.
+  // then follows LIVE_PLAYBACK broadcasts. Every ask and every broadcast takes
+  // a new version, and a reply applies only if nothing has taken one since:
+  // a broadcast that lands while an ask is in flight, or a later ask (a card
+  // rebuilt meanwhile), is newer than that reply, which is then dropped.
   let playback: SourceReport | null = null
-  let playbackUpdates = 0
+  let playbackVersion = 0
 
   const loadPlayback = async (): Promise<void> => {
-    const seen = playbackUpdates
+    const version = ++playbackVersion
     try {
       const resp = await sendMsg({ type: "GET_LIVE_PLAYBACK" })
       if (!resp.ok) throw new Error(resp.error)
-      if (seen !== playbackUpdates) return
+      if (version !== playbackVersion) return
       playback = resp.live
       card?.setPlayback(resp.live)
     } catch (err) {
@@ -490,7 +492,7 @@ export function createDisplay(deps: DisplayDeps): Display {
     },
 
     onPlayback(live: SourceReport | null): void {
-      playbackUpdates++
+      playbackVersion++
       playback = live
       card?.setPlayback(live)
     },

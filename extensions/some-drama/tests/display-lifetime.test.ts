@@ -207,6 +207,37 @@ describe("the card follows the drama's video live", () => {
   })
 })
 
+describe("first-look replies that arrive out of order", () => {
+  it("keeps the newer ask's reply when an older one lands after it", async () => {
+    type Reply = Awaited<ReturnType<typeof sendMessage>>
+    const replies: Array<(v: Reply) => void> = []
+    sendMessage.mockImplementation((msg: { type: string }) =>
+      msg.type === "GET_LIVE_PLAYBACK"
+        ? new Promise<Reply>((resolve) => {
+            replies.push(resolve)
+          })
+        : defaultReply(msg)
+    )
+    setVisibility("visible")
+    const d = mountDisplay()
+    d.apply(STATE)
+    await nextFrame()
+    // The tab is hidden and shown again: the card is rebuilt and asks again
+    // while the first ask is still out.
+    setVisibility("hidden")
+    setVisibility("visible")
+    await nextFrame()
+    expect(replies).toHaveLength(2)
+
+    const [older, newer] = replies
+    newer?.({ ok: true, live: sourceReport(300, false) })
+    await nextFrame()
+    older?.({ ok: true, live: sourceReport(10, false) })
+    await nextFrame()
+    expect(card()?.querySelector(".dc-timestamp")?.textContent).toBe("05:00")
+  })
+})
+
 describe("an edit to the showing drama keeps its card", () => {
   it("updates the card in place, and spotlights a verdict change", async () => {
     setVisibility("visible")

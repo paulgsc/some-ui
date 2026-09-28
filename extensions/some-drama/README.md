@@ -85,8 +85,10 @@ listens for `timeupdate` or `progress`; `"LIVE_PLAYBACK"` appears in
 
 - _Claim:_ in `background.ts`, the only code that sends a `LIVE_PLAYBACK`
   message is the `send` passed to `livePublisher(` where
-  `publishLivePlayback` is defined, and every re-election goes through
-  `publishLivePlayback()`.
+  `publishLivePlayback` is defined. Elections that answer one requester and
+  broadcast nothing — `requestPlayback()` for a beat or verdict,
+  `handleGetLivePlayback()` for a display's first look — call
+  `requestSourceReport()` directly and are outside the claim.
 - _Falsified by_ a hunk in `background.ts` that adds the string literal
   `"LIVE_PLAYBACK"`, quotes included (so not `"GET_LIVE_PLAYBACK"`, and not
   a comment), anywhere but that `livePublisher(` call, or that deletes, renames or
@@ -121,6 +123,10 @@ visible loop, pure O(1) arithmetic) carries none.
     what is kept;
   - deletes or weakens code the comment names as a bound (the
     `tabs.onRemoved` and `onStartup` listeners that bound H);
+  - edits a `Cost (LP3):` comment itself — rewords, narrows or drops a term,
+    moves it off the code it describes, or leaves it behind when that code
+    is moved or renamed — so that it no longer matches the code under it
+    (checked against that code as the changed file has it);
   - or deletes a `Cost (LP3):` comment whose code is still there.
 - _Scope:_ the `Cost (LP3):` comments in `extensions/some-drama/src/`; when
   written, in `background.ts`, `content.ts`, `effects/content/playback.ts`
