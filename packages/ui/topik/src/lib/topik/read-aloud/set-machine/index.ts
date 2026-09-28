@@ -251,24 +251,32 @@ function countTriples(queue: ReadonlyArray<QueueEntry>): number {
 }
 
 /**
- * Insert an entry at `from` or later, at the first place that adds no run of
- * three alike (Cor. 4.6 (i)); at `from` when every place would.
+ * Insert an entry no earlier than `earliest`, preferably at `from` or later,
+ * at the first place that adds no run of three alike (Cor. 4.6 (i)): every
+ * place from `from` on, then the places before it, nearest first. Only when
+ * every place would add a run does the entry go at `from`.
  */
 function insertEntry(
   queue: Array<QueueEntry>,
+  earliest: number,
   from: number,
   entry: QueueEntry
 ): { queue: Array<QueueEntry>; index: number } {
-  const start = Math.min(from, queue.length)
+  const start = Math.min(Math.max(from, earliest), queue.length)
+  const lowest = Math.min(earliest, start)
+  const places = [
+    ...Array.from({ length: queue.length - start + 1 }, (_, n) => start + n),
+    ...Array.from({ length: start - lowest }, (_, n) => start - 1 - n),
+  ]
+  const at = (index: number): Array<QueueEntry> => [
+    ...queue.slice(0, index),
+    entry,
+    ...queue.slice(index),
+  ]
   const before = countTriples(queue)
-  for (let index = start; index <= queue.length; index += 1) {
-    const candidate = [...queue.slice(0, index), entry, ...queue.slice(index)]
-    if (countTriples(candidate) <= before) return { queue: candidate, index }
-  }
-  return {
-    queue: [...queue.slice(0, start), entry, ...queue.slice(start)],
-    index: start,
-  }
+  const index =
+    places.find((place) => countTriples(at(place)) <= before) ?? start
+  return { queue: at(index), index }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -417,16 +425,20 @@ function scheduleReturn(
   const firstSight =
     item.kind === "word" && paceOf(before.paces, item.wordId).seen === 0
   let queue = next.queue
+  let earliest = before.cursor + 1
   let from = before.cursor + RETURN_GAP
   if (firstSight && role === "rep") {
-    const introduced = insertEntry(queue, before.cursor + INTRODUCTION_GAP, {
-      item,
-      role: "introduction",
-    })
+    const introduced = insertEntry(
+      queue,
+      before.cursor + 1,
+      before.cursor + INTRODUCTION_GAP,
+      { item, role: "introduction" }
+    )
     queue = introduced.queue
+    earliest = introduced.index + 1
     from = introduced.index + RETURN_GAP
   }
-  queue = insertEntry(queue, from, { item, role: "return" }).queue
+  queue = insertEntry(queue, earliest, from, { item, role: "return" }).queue
   return {
     ...next,
     queue,

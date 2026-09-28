@@ -420,6 +420,21 @@ describe("a stuck report", () => {
     expect(host.state.reported).toBe(false)
   })
 
+  it("places a return before its gap when only that avoids three alike", () => {
+    const host = new Host()
+    host.begin([JUSEYO, ONE_CUP, KEOPI, word("jan", "잔")])
+    host.send({ type: "stuck", at: 0 })
+    host.finishEntry()
+    expect(host.state.queue.map((entry) => entry.item.kind)).toEqual([
+      "word",
+      "word",
+      "sentence",
+      "word",
+      "word",
+    ])
+    expect(host.roles()).toEqual(["rep", "return", "rep", "rep", "rep"])
+  })
+
   it("places a return where it makes no three alike, when it can", () => {
     const host = new Host()
     host.begin([JUSEYO, ONE_CUP, KEOPI, word("jan", "잔"), ONE_CUP])
