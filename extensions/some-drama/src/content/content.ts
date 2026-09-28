@@ -200,6 +200,29 @@ function beatCommands(
   )
 }
 
+// ─── Card toggle ──────────────────────────────────────────────────────────────
+
+/**
+ * This tab's card toggle (GET_CARD_HIDDEN). main() awaits it before it
+ * registers the message listener, so no display — not even one a
+ * STATE_UPDATE would build — exists before the toggle is known. Retried once
+ * after 300 ms for a background still waking up; shown if it never answers.
+ */
+async function loadCardHidden(retryOnFailure = true): Promise<boolean> {
+  try {
+    const resp = await sendMsg({ type: "GET_CARD_HIDDEN" })
+    if (!resp.ok) throw new Error(resp.error)
+    return resp.hidden
+  } catch (err) {
+    if (!retryOnFailure) {
+      log.error("GET_CARD_HIDDEN failed:", err)
+      return false
+    }
+    await new Promise((r) => setTimeout(r, 300))
+    return loadCardHidden(false)
+  }
+}
+
 // ─── Controller ───────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
@@ -210,9 +233,9 @@ async function main(): Promise<void> {
   // The page is going away (pagehide): it no longer answers GET_PLAYBACK.
   let leaving = false
   let cardMeta: PersistedCardMeta | null = await loadCardMeta()
-  // This tab's card toggle, read with the state; a display built later (a
-  // role flip) starts from it.
-  let cardHidden = false
+  // This tab's card toggle, known before any display can be built (see
+  // loadCardHidden); a display built later (a role flip) starts from it.
+  let cardHidden = await loadCardHidden()
 
   /** Resolve this tab's role from the latest state, then hand state on. */
   const apply = (state: WatchlistState): void => {
@@ -261,18 +284,13 @@ async function main(): Promise<void> {
     display?.apply(state)
   }
 
-  // GET_STATE (with this tab's card toggle, so a hidden card is never built
-  // first), retried once after 300 ms for the race where the non-persistent
-  // background script is still waking up.
+  // GET_STATE, retried once after 300 ms for the race where the
+  // non-persistent background script is still waking up. (This tab's card
+  // toggle is already known: see loadCardHidden.)
   const refresh = async (retryOnFailure = true): Promise<void> => {
     try {
-      const [resp, toggle] = await Promise.all([
-        sendMsg({ type: "GET_STATE" }),
-        sendMsg({ type: "GET_CARD_HIDDEN" }),
-      ])
+      const resp = await sendMsg({ type: "GET_STATE" })
       if (!resp.ok) throw new Error(resp.error)
-      if (!toggle.ok) throw new Error(toggle.error)
-      cardHidden = toggle.hidden
       apply(resp.state)
     } catch (err) {
       log.error("GET_STATE failed:", err)

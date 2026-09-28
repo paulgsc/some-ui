@@ -49,12 +49,16 @@ a card extrapolates in between, and only while someone can see it move.
 | A source tab's report says whether its time is moving (a stalled video is not)                                    | `tests/playback.test.ts`                                                     |
 
 **Invariants LP1–LP3: what those cannot check.** Written for review one hunk at
-a time, in the format of `CLAUDE.md` → "Gray-area invariants"; both held when
-they were written (checked: every timer in LP1's scope is a one-shot — the
-empty pill's fade in `display.ts`, the report settle and the `GET_STATE` retry
-in `content.ts`, the playback-ask timeout in `background.ts` — and no code
-listens for `timeupdate` or `progress`; `"LIVE_PLAYBACK"` appears in
-`background.ts` only in `publishLivePlayback`).
+a time, in the format of `CLAUDE.md` → "Gray-area invariants"; all three held
+when they were written (checked: every timer in LP1's scope is a one-shot —
+the empty pill's fade in `display.ts`, the report settle and the `GET_STATE`
+and `GET_CARD_HIDDEN` retries in `content.ts`, the playback-ask timeout in
+`background.ts` — and no code listens for `timeupdate` or `progress`;
+`"LIVE_PLAYBACK"` appears in `background.ts` only in `publishLivePlayback`,
+`LivePlaybackMessage` only in its import and `broadcast`'s parameter, and
+every other `broadcast(`/`tabs.sendMessage(` passes a literal object or a
+value typed as another message; each `Cost (LP3):` comment was checked
+against its code).
 
 **LP1: Playback is read on events, never on a schedule.**
 
@@ -62,8 +66,8 @@ listens for `timeupdate` or `progress`; `"LIVE_PLAYBACK"` appears in
   repeating timer — no `setInterval(`, `.interval(`, `.loop(`,
   `browser.alarms`, or `setTimeout(`/`.timeout(` re-armed from its own
   callback — and nothing listens for the media `timeupdate` or `progress`
-  events. So every read of a video's position is triggered by a message, a
-  hotkey, a media event or a tab closing.
+  events. It is a claim about polling only: which events may trigger a
+  read of a video's position is not part of it.
 - _Falsified by_ a hunk, in that scope, that adds one of those timers, adds a
   `timeupdate` or `progress` listener (including adding either name to
   `PLAYBACK_EVENTS` in `src/effects/content/playback.ts`), or changes an
@@ -89,11 +93,20 @@ listens for `timeupdate` or `progress`; `"LIVE_PLAYBACK"` appears in
   broadcast nothing — `requestPlayback()` for a beat or verdict,
   `handleGetLivePlayback()` for a display's first look — call
   `requestSourceReport()` directly and are outside the claim.
-- _Falsified by_ a hunk in `background.ts` that adds the string literal
-  `"LIVE_PLAYBACK"`, quotes included (so not `"GET_LIVE_PLAYBACK"`, and not
-  a comment), anywhere but that `livePublisher(` call, or that deletes, renames or
-  bypasses the `livePublisher(` call in `publishLivePlayback`'s definition
-  (a direct `broadcast` of a fresh `requestSourceReport()`, say).
+- _Falsified by_ a hunk in `background.ts` that, anywhere but that
+  `livePublisher(` call:
+  - adds the string literal `"LIVE_PLAYBACK"`, quotes included (so not
+    `"GET_LIVE_PLAYBACK"`, and not a comment), or a constant or variable
+    holding it;
+  - adds a use of the `LivePlaybackMessage` type other than its import and
+    `broadcast`'s parameter type;
+  - adds a `broadcast(` or `tabs.sendMessage(` call, outside `broadcast`'s
+    own body, whose message is not visibly another message — a literal
+    object with another `type`, or a value declared with another message
+    type;
+  - or deletes, renames or bypasses the `livePublisher(` call in
+    `publishLivePlayback`'s definition (a direct `broadcast` of a fresh
+    `requestSourceReport()`, say).
 - _Scope:_ `extensions/some-drama/src/background/background.ts`.
 - _Why not enforced:_ the decision itself — send only when the last report
   sent no longer predicts the new one — is tested (table above). Whether
@@ -123,6 +136,9 @@ visible loop, pure O(1) arithmetic) carries none.
     what is kept;
   - deletes or weakens code the comment names as a bound (the
     `tabs.onRemoved` and `onStartup` listeners that bound H);
+  - removes, renames or moves out work the comment counts — a counted call,
+    loop, send, storage call or named callee — so that it now overcounts or
+    names what is no longer there;
   - edits a `Cost (LP3):` comment itself — rewords, narrows or drops a term,
     moves it off the code it describes, or leaves it behind when that code
     is moved or renamed — so that it no longer matches the code under it
