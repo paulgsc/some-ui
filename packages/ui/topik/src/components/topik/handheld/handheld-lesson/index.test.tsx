@@ -11,6 +11,7 @@ import {
   createPastedLessonStore,
   RETIRED_LESSONS_KEY,
 } from "@topik/lib/topik/adapter/pasted-lesson"
+import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import type { StorageLike } from "@topik/lib/topik/adapter/resume-point"
 import { createResumeStore } from "@topik/lib/topik/adapter/resume-point"
 import type { SurveyStore } from "@topik/lib/topik/adapter/survey-store"
@@ -119,11 +120,50 @@ describe("HandheldLesson", () => {
     expect(screen.getByText("Welcome. What can I get you?")).toBeTruthy()
   })
 
-  it("opens the read-aloud drill from the material list, and comes back", async () => {
+  it("does not offer read-aloud without a voice (canon Cor. 4.6)", async () => {
     renderLesson()
+    await screen.findByRole("button", { name: /Ordering at a café/ })
+    expect(screen.queryByRole("button", { name: /Read aloud/ })).toBeNull()
+  })
+
+  it("opens the read-aloud drill from the material list, and comes back", async () => {
+    render(
+      <QueryClientProvider
+        client={
+          new QueryClient({ defaultOptions: { queries: { retry: false } } })
+        }
+      >
+        <SessionConfigProvider
+          value={{
+            topikRepository: fixtureTopikRepository,
+            metadataRepository: fixtureMetadataRepository,
+            speechAdapter: {
+              id: "web-speech",
+              supported: true,
+              voices: [],
+              pending: 0,
+              speak: (): Promise<void> => Promise.resolve(),
+              stop: (): void => undefined,
+              pause: (): void => undefined,
+              resume: (): void => undefined,
+              setVolume: (): void => undefined,
+              setPlaybackRate: (): void => undefined,
+              dispose: (): void => undefined,
+            },
+          }}
+        >
+          <HandheldLesson
+            resumeStore={createResumeStore(memoryStorage())}
+            surveyStore={createSurveyStore(memoryStorage())}
+            pastedStore={createPastedLessonStore(memoryStorage())}
+            pastedResumeStore={createResumeStore(memoryStorage())}
+            readAloudStore={createReadAloudStore(memoryStorage())}
+          />
+        </SessionConfigProvider>
+      </QueryClientProvider>
+    )
     fireEvent.click(await screen.findByRole("button", { name: /Read aloud/ }))
-    // No voice in this test: the drill says so rather than run (canon Cor. 4.6).
-    expect(screen.getByText(/no voice to play it with/i)).toBeTruthy()
+    expect(screen.getByRole("button", { name: /Start/ })).toBeTruthy()
     expect(screen.getByLabelText("Your reading aloud")).toBeTruthy()
     click("Back")
     expect(

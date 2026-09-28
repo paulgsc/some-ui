@@ -178,7 +178,11 @@ export const HandheldLesson = ({
           pasted={generator.pasted}
           onCreate={generator.open}
           onForget={generator.forget}
-          onReadAloud={() => setReading(true)}
+          // Read-aloud's audio is the rep: with no voice here it is not
+          // offered at all (canon Cor. 4.6).
+          onReadAloud={
+            audio.available ? (): void => setReading(true) : undefined
+          }
           loading={vm.catalog.loading}
           error={vm.catalog.error}
           resume={vm.resume}
