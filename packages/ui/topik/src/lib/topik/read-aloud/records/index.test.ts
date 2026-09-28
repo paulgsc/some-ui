@@ -84,6 +84,10 @@ describe("the pace book (Cor. 4.6 (iii))", () => {
       })
     ).toEqual({ juda: { factor: 1.2, seen: 3 } })
     expect(parsePaceBook(["juda"])).toEqual({})
+    const book = parsePaceBook(
+      JSON.parse('{"__proto__": {"factor": 1, "seen": 1}}')
+    )
+    expect(Object.getPrototypeOf(book)).toBe(Object.prototype)
     expect(parsePaceBook(undefined)).toEqual({})
   })
 

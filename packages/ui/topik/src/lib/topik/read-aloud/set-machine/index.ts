@@ -14,8 +14,8 @@
  *   its fallback wait runs out, so every step has an end.
  * - A stuck report during the glyphs or the turn ends the turn and plays the
  *   audio. The item returns later in the set, at most twice (Cor. 4.6,
- *   `p_repeat = on-report`); a word reported on first sight is introduced
- *   first, then returns (Cor. 4.6).
+ *   `p_repeat = on-report`), even if the rep is then skipped; a word
+ *   reported on first sight is introduced first, then returns (Cor. 4.6).
  * - Counting (Prop. 6.4): a rep counts only when its gloss ran to the end,
  *   so a skipped rep, and a rep interrupted by a pause or a hidden page,
  *   counts nothing; the interrupted rep starts over. A reported rep counts
@@ -208,8 +208,12 @@ export function progressOf(state: SetMachineState): SetProgress | null {
 export const currentEntry = (state: SetMachineState): QueueEntry | undefined =>
   state.queue[state.cursor]
 
+/** A record's own entry: a word id such as `constructor` must not find `Object.prototype`'s. */
+const own = <T>(record: Record<string, T>, key: string): T | undefined =>
+  Object.hasOwn(record, key) ? record[key] : undefined
+
 const paceOf = (paces: PaceBook, wordId: string): PaceEntry =>
-  paces[wordId] ?? { factor: 1, seen: 0 }
+  own(paces, wordId) ?? { factor: 1, seen: 0 }
 
 const sittingOver = (state: SetMachineState, at: number): boolean =>
   state.sittingStartedAt !== null && at - state.sittingStartedAt >= SITTING_MS
@@ -371,8 +375,6 @@ function completeRep(
     next = { ...next, counted: next.counted + 1 }
   }
 
-  const firstSight =
-    item.kind === "word" && paceOf(state.paces, item.wordId).seen === 0
   if (item.kind === "word") {
     const pace = paceOf(state.paces, item.wordId)
     const updated: PaceEntry = {
@@ -383,27 +385,40 @@ function completeRep(
     effects.push({ type: "save-pace", wordId: item.wordId, pace: updated })
   }
 
-  const returned = state.returns[item.key] ?? 0
-  if (state.reported && returned < MAX_RETURNS) {
-    let queue = next.queue
-    let from = state.cursor + RETURN_GAP
-    if (firstSight && role === "rep") {
-      const introduced = insertEntry(queue, state.cursor + INTRODUCTION_GAP, {
-        item,
-        role: "introduction",
-      })
-      queue = introduced.queue
-      from = introduced.index + RETURN_GAP
-    }
-    queue = insertEntry(queue, from, { item, role: "return" }).queue
-    next = {
-      ...next,
-      queue,
-      returns: { ...next.returns, [item.key]: returned + 1 },
-    }
-  }
+  return advance(scheduleReturn(next, state, entry), at, effects)
+}
 
-  return advance(next, at, effects)
+/**
+ * Bring a reported entry back later in the set, at most `MAX_RETURNS` times,
+ * introducing a word reported on first sight before it returns (Cor. 4.6).
+ * `before` is the state the entry ran in, whose pace book says whether the
+ * word had been seen; `next` is where the return is scheduled.
+ */
+function scheduleReturn(
+  next: SetMachineState,
+  before: SetMachineState,
+  { item, role }: QueueEntry
+): SetMachineState {
+  const returned = own(before.returns, item.key) ?? 0
+  if (!before.reported || returned >= MAX_RETURNS) return next
+  const firstSight =
+    item.kind === "word" && paceOf(before.paces, item.wordId).seen === 0
+  let queue = next.queue
+  let from = before.cursor + RETURN_GAP
+  if (firstSight && role === "rep") {
+    const introduced = insertEntry(queue, before.cursor + INTRODUCTION_GAP, {
+      item,
+      role: "introduction",
+    })
+    queue = introduced.queue
+    from = introduced.index + RETURN_GAP
+  }
+  queue = insertEntry(queue, from, { item, role: "return" }).queue
+  return {
+    ...next,
+    queue,
+    returns: { ...next.returns, [item.key]: returned + 1 },
+  }
 }
 
 function resumeFromPause(
@@ -589,8 +604,11 @@ export function setMachineReducer(
     }
 
     case "skip": {
-      if (!onEntry(phase)) return unchanged
-      return advance({ ...state, reported: false }, event.at, [
+      // A skipped rep counts nothing and leaves its pace alone, but a stuck
+      // report made before the skip still brings the item back.
+      const entry = currentEntry(state)
+      if (!entry || !onEntry(phase)) return unchanged
+      return advance(scheduleReturn(state, state, entry), event.at, [
         { type: "stop-speech" },
       ])
     }

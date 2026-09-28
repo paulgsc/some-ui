@@ -43,12 +43,13 @@ const PaceEntrySchema = z.object({
 export function parsePaceBook(raw: unknown): PaceBook {
   const parsed = z.record(z.string(), z.unknown()).safeParse(raw)
   if (!parsed.success) return {}
-  const book: PaceBook = {}
-  for (const [wordId, entry] of Object.entries(parsed.data)) {
-    const checked = PaceEntrySchema.safeParse(entry)
-    if (checked.success) book[wordId] = checked.data
-  }
-  return book
+  // Built from entries, never by assignment, so no id can reach a prototype.
+  return Object.fromEntries(
+    Object.entries(parsed.data).flatMap(([wordId, entry]) => {
+      const checked = PaceEntrySchema.safeParse(entry)
+      return checked.success ? [[wordId, checked.data] as const] : []
+    })
+  )
 }
 
 /** The pace book limited to words the vocabulary still names (Rem. 7.5). */

@@ -155,6 +155,13 @@ describe("a rep's ladder (Def. 4.8)", () => {
     expect(host.of("wait").at(-1)?.ms).toBe(sentenceTurnMs(5, 1))
   })
 
+  it("paces a word whose id names an Object.prototype property", () => {
+    const host = new Host()
+    host.begin([word("constructor", "커피")], {})
+    host.step()
+    expect(host.of("wait").at(-1)?.ms).toBe(wordTurnMs(2, 1))
+  })
+
   it("ends the audio on its fallback when speech never reports", () => {
     const host = new Host()
     host.begin(SET)
@@ -340,6 +347,35 @@ describe("a stuck report", () => {
     expect(during.some((effect) => effect.type === "save-pace")).toBe(false)
     host.run()
     expect(host.of("count-rep")).toHaveLength(4)
+  })
+
+  it("still brings back an item reported stuck, then skipped", () => {
+    const host = new Host()
+    host.begin(SET)
+    host.send({ type: "stuck", at: 0 })
+    host.send({ type: "skip", at: 0 })
+    expect(host.roles()).toEqual(["rep", "rep", "rep", "return"])
+    host.run()
+    expect(host.of("count-rep")).toHaveLength(2)
+    expect(host.of("save-pace").map((each) => each.pace)).toEqual([
+      { factor: 0.88, seen: 4 },
+      { factor: 0.88, seen: 4 },
+    ])
+  })
+
+  it("introduces a first-sight word reported stuck, then skipped", () => {
+    const host = new Host()
+    host.begin([JUSEYO, ONE_CUP, KEOPI, ONE_CUP], {})
+    host.send({ type: "stuck", at: 0 })
+    host.send({ type: "skip", at: 0 })
+    expect(host.roles()).toEqual([
+      "rep",
+      "rep",
+      "introduction",
+      "rep",
+      "rep",
+      "return",
+    ])
   })
 
   it("places a return where it makes no three alike, when it can", () => {
