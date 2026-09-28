@@ -80,6 +80,9 @@ export function readSourceReport(): SourceReport | null {
  *   LP1  never add `timeupdate` or `progress` here: they fire several times a
  *        second while playing, which would turn every source tab into a
  *        poller of the background (README.md → "Live playback")
+ *
+ * Counted by Cost (LP3) in content.ts (reportPlayback): its length is the 9
+ * in "11 listeners".
  */
 export const PLAYBACK_EVENTS = [
   "play",

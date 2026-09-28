@@ -15,7 +15,13 @@ export function siteOf(url: string): string {
   }
 }
 
-/** Whether `url` is on a marked site. Subdomains count: "viki.com" covers "m.viki.com". */
+/**
+ * Whether `url` is on a marked site. Subdomains count: "viki.com" covers
+ * "m.viki.com".
+ *
+ * Counted by Cost (LP3) in background.ts (requestSourceReport): O(S), once
+ * per tab.
+ */
 export function isStreamSite(
   url: string,
   sites: ReadonlyArray<string>

@@ -54,11 +54,12 @@ when they were written (checked: every timer in LP1's scope is a one-shot —
 the empty pill's fade in `display.ts`, the report settle and the `GET_STATE`
 and `GET_CARD_HIDDEN` retries in `content.ts`, the playback-ask timeout in
 `background.ts` — and no code listens for `timeupdate` or `progress`;
-`"LIVE_PLAYBACK"` appears in `background.ts` only in `publishLivePlayback`,
-`LivePlaybackMessage` only in its import and `broadcast`'s parameter, and
-every other `broadcast(`/`tabs.sendMessage(` passes a literal object or a
-value typed as another message; each `Cost (LP3):` comment was checked
-against its code).
+`"LIVE_PLAYBACK"` and `LivePlaybackMessage` appear in `src/` only in the
+type's definition, the content script's receiving guard, imports,
+`broadcast`'s parameter and the `publishLivePlayback` call; every other
+`broadcast(`/`tabs.sendMessage(` passes a literal object or a value typed as
+another message; each `Cost (LP3):` comment was checked against its code, and
+its cross-file dependencies carry their `Counted by` lines).
 
 **LP1: Playback is read on events, never on a schedule.**
 
@@ -87,27 +88,30 @@ against its code).
 
 **LP2: `LIVE_PLAYBACK` goes out only through the publisher.**
 
-- _Claim:_ in `background.ts`, the only code that sends a `LIVE_PLAYBACK`
-  message is the `send` passed to `livePublisher(` where
-  `publishLivePlayback` is defined. Elections that answer one requester and
+- _Claim:_ in some-drama's `src/`, the only code that sends a
+  `LIVE_PLAYBACK` message is the `send` passed to `livePublisher(` where
+  `publishLivePlayback` is defined in `background.ts`. Elections that answer one requester and
   broadcast nothing — `requestPlayback()` for a beat or verdict,
   `handleGetLivePlayback()` for a display's first look — call
   `requestSourceReport()` directly and are outside the claim.
-- _Falsified by_ a hunk in `background.ts` that, anywhere but that
-  `livePublisher(` call:
+- _Falsified by_ a hunk anywhere in `src/` that, outside that
+  `livePublisher(` call, the type's definition in `types/index.ts`, and the
+  receiving guard `isLivePlaybackMessage` in `content.ts` (which reads the
+  message, never sends one):
   - adds the string literal `"LIVE_PLAYBACK"`, quotes included (so not
     `"GET_LIVE_PLAYBACK"`, and not a comment), or a constant or variable
-    holding it;
-  - adds a use of the `LivePlaybackMessage` type other than its import and
+    holding it — so a helper elsewhere that builds the message to send it,
+    which needs one or the other, matches here too;
+  - adds a use of the `LivePlaybackMessage` type other than an import and
     `broadcast`'s parameter type;
-  - adds a `broadcast(` or `tabs.sendMessage(` call, outside `broadcast`'s
+  - adds, in `background.ts`, a `broadcast(` or `tabs.sendMessage(` call, outside `broadcast`'s
     own body, whose message is not visibly another message — a literal
     object with another `type`, or a value declared with another message
     type;
   - or deletes, renames or bypasses the `livePublisher(` call in
     `publishLivePlayback`'s definition (a direct `broadcast` of a fresh
     `requestSourceReport()`, say).
-- _Scope:_ `extensions/some-drama/src/background/background.ts`.
+- _Scope:_ `extensions/some-drama/src/`, except `__tests__/`.
 - _Why not enforced:_ the decision itself — send only when the last report
   sent no longer predicts the new one — is tested (table above). Whether
   `background.ts` routes through it is not: it is an entry module with no
@@ -125,8 +129,12 @@ tabs, **K** tabs on a marked streaming site (K ≤ N), **S** marked sites,
 visible loop, pure O(1) arithmetic) carries none.
 
 - _Claim:_ every `Cost (LP3):` comment is true of the code it annotates,
-  including the callees it names.
-- _Falsified by_ a hunk that, in code under such a comment or in a callee it
+  including what it names — callees, and constants or other data it counts
+  (`PLAYBACK_EVENTS`' length is the 9 in "11 listeners"). A named dependency
+  in another file whose content the count depends on carries a line
+  `Counted by Cost (LP3) in <file> (<function>)`, so a hunk that changes it
+  shows which count to check; today `PLAYBACK_EVENTS` and `isStreamSite`.
+- _Falsified by_ a hunk that, in code under such a comment or in anything it
   names:
   - adds iteration over a collection the comment doesn't count, or nests one
     loop inside another where it counts a single factor;
@@ -139,6 +147,9 @@ visible loop, pure O(1) arithmetic) carries none.
   - removes, renames or moves out work the comment counts — a counted call,
     loop, send, storage call or named callee — so that it now overcounts or
     names what is no longer there;
+  - changes a named constant or other data so the count no longer holds (an
+    entry added to or removed from `PLAYBACK_EVENTS`), or deletes the
+    `Counted by Cost (LP3)` line of a dependency that is still counted;
   - edits a `Cost (LP3):` comment itself — rewords, narrows or drops a term,
     moves it off the code it describes, or leaves it behind when that code
     is moved or renamed — so that it no longer matches the code under it
