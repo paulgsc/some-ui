@@ -79,7 +79,7 @@
     `@some-ui/interview` · `pedagogy/` · and every tutor skill
   ]
   #v(1em)
-  #text(size: 9.5pt)[Version 1.9 --- 2026-09-28]
+  #text(size: 9.5pt)[Version 1.10 --- 2026-09-28]
   #v(2cm)
 ]
 
@@ -1528,6 +1528,21 @@ rather than as *data*, and the remedy is to exhibit the data.
   no three alike in a row, is a presentation constraint and selects nothing.
 ]
 
+#remark("4.10", name: "The read-aloud session budget, amended")[
+  Corollary 4.6 declared its capability set with "no bound on a session
+  beyond the learner's continuation". That clause is amended, and the rest
+  of Corollary 4.6 stands. Definition 9.3 requires a capability set to
+  declare an upper bound on the session budget, and Definition 4.4 bounds a
+  session by a wall clock as well as by continuation, so the clause declared
+  a capability set no renderer can supply. The read-aloud renderer declares
+  instead: sets run hands-free one at a time, as many as the learner
+  chooses, within a sitting of at most thirty minutes. When the budget runs
+  out the set in progress finishes and the session ends; the learner may
+  begin another at once. The bound marks a sitting and nothing else: no
+  count is reset by it, nothing is withheld, and Proposition 6.4 compares
+  ways through a set, never through a session.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = The Estimator
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2141,6 +2156,24 @@ repeating what is already known buys little.
   from closed each set with the learner's average turn length. The turn
   shortens only on reps run without a stuck report, so that summary
   rewarded withholding the report, and (iii) excludes it.
+]
+
+#remark("6.7", name: "Engagement is the lever, not the whole objective")[
+  Two phrases filed at v1.9 say more than Corollary 6.4 does: the §10
+  TPK-READ row's "an objective that is continuation alone", and the v1.9
+  log entry's "a read-aloud exercise whose only objective is engagement".
+  Both are to be read as Corollary 6.4 states it, and this remark records
+  the reading rather than rewriting either. The objective of Definition 6.2
+  keeps its intervention term $alpha dot G$ for this exercise; what
+  Corollary 6.4 bounds from below is that term, through $N_gamma$, and what
+  the surface aims at is $N_gamma$, through the practice record as a proxy
+  for its continuation factor (Def. 6.6). The difference matters to an
+  implementer: a ladder that raises continuation while lowering the gain of
+  an honest rep is not preferred on engagement alone. Choices that act on
+  $G_h$ --- the order of the ladder, the glyphs that follow the sound, the
+  variation of Remark 4.9 --- are argued from the canon and tested by the
+  falsifiers of §12, and a change that trades them for engagement has to be
+  argued the same way.
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2866,6 +2899,10 @@ of the source it describes.
    did this exercise would have nothing to write into it.],
 )
 
+The row is retained as filed. Its "continuation alone" is read as
+Remark 6.7 states it (v1.10): continuation is the lever the exercise aims
+at, and the objective keeps its intervention term.
+
 #heading(level: 2)[The unreconciled duplication]
 
 The most consequential finding of the audit is not in the table. Two
@@ -3231,6 +3268,18 @@ review and split out to issue \#1568, which records what review settled and
 what remains open. Moves the front-matter version line, which had stayed at
 1.2 through v1.3--v1.8. Filed ahead of the `packages/ui/topik` read-aloud
 renderer.
+
+*v1.10 --- 2026-09-28.* Corrects two statements filed at v1.9, as new items
+rather than rewrites. Remark 4.10 replaces Corollary 4.6's unbounded session
+with a sitting of at most thirty minutes, since Definition 9.3 requires a
+capability set to bound the session and Definition 4.4 bounds it by the
+clock. Remark 6.7 records how the v1.9 phrases "only objective is
+engagement" and "continuation alone" are to be read: the objective keeps its
+intervention term, and continuation is the lever the exercise aims at, so a
+ladder that trades teaching for engagement is not preferred on engagement
+alone. A note under the TPK-READ row points to it. Motivated by the final
+review of the v1.9 change (issue \#1569). The sealed story check planned as
+the next amendment (issue \#1568) now follows this one.
 
 #pagebreak()
 
