@@ -79,7 +79,7 @@
     `@some-ui/interview` · `pedagogy/` · and every tutor skill
   ]
   #v(1em)
-  #text(size: 9.5pt)[Version 1.2 --- 2026-08-16]
+  #text(size: 9.5pt)[Version 1.9 --- 2026-09-28]
   #v(2cm)
 ]
 
@@ -1018,6 +1018,22 @@ before it can update a belief about $mu$ (Prop. 9.1).
   belief.
 ]
 
+#remark("3.6", name: "A stuck report is a pacing signal")[
+  The read-aloud exercise (Def. 4.8) accepts one report from the learner
+  while an item is showing: that it did not click --- they could not sound it
+  out, or sounded it out and did not know it. The report names one item, is
+  made in the moment, and is the learner's word alone: nothing checks it, and
+  with the spoken response unobserved (Cor. 4.6) nothing could. It is
+  therefore not an observation (Def. 3.1), since it carries no outcome the
+  system could assign a likelihood to, and not an evaluation report
+  (Def. 3.3), since its object is one item rather than the unit.
+  Proposition 3.4's argument applies to it unchanged, and it may enter no
+  belief update. What it may do is steer pacing: the item returns later in
+  the set and its pause lengthens (Cor. 4.6). A report that is only worth
+  anything when it is made honestly must cost the learner nothing to make
+  (Prop. 6.4 (ii)).
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = The Exercise: Instrument and Intervention
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1399,6 +1415,100 @@ rather than as *data*, and the remedy is to exhibit the data.
   a silent filter on what could be taught. Which transformation a probe tests
   is content, like its prompt, and the system that delivers it has no need to
   know it.
+]
+
+#definition("4.8", name: "Read-aloud rep")[
+  A *read-aloud rep* is an exercise (Def. 4.1) whose content instance is a
+  word or a sentence, presented as glyphs, and whose objective is
+  production: the learner reads the item aloud before hearing it. It runs a
+  fixed ladder advanced by the clock rather than by request --- the glyphs,
+  the learner's *turn* to read them aloud, the item's audio, a second turn
+  to repeat it (the *echo*), and its gloss --- and it ends when the ladder
+  does. The learner's spoken response is not captured:
+  $p_"response" = "spoken"$, unobserved. A *set* is a short run of reps
+  closed by a summary; it is the exercise's pacing unit in Remark 4.3's
+  sense and nothing more, and a session (Def. 4.4) is as many sets as the
+  learner chooses to run.
+
+  The ladder is Corollary 4.4's *Line* ladder reversed. There the learner
+  hears a line before reading it, which is the order in which a learner can
+  understand every line by ear while never having read one.
+]
+
+#corollary("4.6", name: "The read-aloud valuation, declared")[
+  The read-aloud renderer of `packages/ui/topik` (capability set per
+  Definition 9.3: $p_"response" = "spoken"$ and unobserved,
+  $p_"modality" in {"glyph", "audio"}$ with audio present iff a speech
+  adapter is, and a budget of one set, run hands-free) delivers the
+  read-aloud rep (Def. 4.8) at one declared valuation:
+  $p_"modality" = "glyph"$, then $"audio"$;
+  $p_"hint" = "progressive"$ over glyph $->$ audio $->$ gloss, advanced by
+  the clock;
+  $p_"pressure" = "soft"$ --- the turn ends and the audio plays, and nothing
+  is lost when it does;
+  $p_"scored" = "false"$; $p_"credited" = "false"$;
+  $p_"retry" = "free"$, realised as the echo;
+  $p_"repeat" = "on-report"$ --- an item the learner reports stuck
+  (Rem. 3.6) returns later in the same set, at most twice, and a word
+  reported on first sight returns first with its ladder started at the
+  audio;
+  $p_"reveal" = "answer"$ (the audio and, where it differs from the
+  spelling, the pronunciation), then the gloss.
+
+  Five decisions are named rather than glossed.
+  (i) *Mixed sets.* A set interleaves words with sentences of several
+  lengths, in an order drawn afresh for each set, and never presents three
+  items of one kind in a row (Rem. 4.9).
+  (ii) *A sentence's turn is set by level.* It lasts as long as a reader at
+  the learner's chosen level needs to read that many syllables aloud, at a
+  rate fixed per level, and nothing the learner does moves it. A parameter
+  that is not learner-driven cannot couple observations as Axiom 3.2
+  describes, whatever $p_"credited"$ becomes.
+  (iii) *A word's turn adapts, and that is pacing.* It shortens a little each
+  time the word runs without a stuck report and lengthens when one is made.
+  The per-word factor is Corollary 6.1's pacing dial held per item rather
+  than shared: it is keyed by the word's authored identity (Thm. 1.1), read
+  by nothing but the pause, never shown as an achievement (Prop. 6.4 (iii)),
+  persisted outside O3 like the resume point (Cor. 4.4 (iii)), and losing it
+  costs the learner their pace and nothing else (Thm. 7.2).
+  (iv) *The glyphs follow the sound.* While the learner reads and while the
+  audio plays, the block being read or heard is marked --- a syllable at a
+  time for a word, a word at a time for a sentence --- and while the audio
+  and the echo run, blocks whose pronunciation differs from their spelling
+  are shown as pronounced, then restored at the gloss. A word's division
+  into stem and ending is shown only at the gloss, where it bears on
+  meaning; shown earlier it would dim the syllables the learner still has
+  to say. All of this renders $p_"hint" = "progressive"$ (Rem. 4.2) and
+  belongs to the renderer. Its inputs --- where a stem ends, and a
+  pronunciation where it differs --- are authored with the content
+  (Prop. 8.1, Rem. 4.7); an entry whose pronunciation does not align with
+  its spelling is shown without the substitution rather than dropped
+  (Thm. 8.2).
+  (v) *Nothing is checked.* The gloss is shown, never asked for, so
+  Proposition 4.2 has nothing to act on. This is not the handheld lesson
+  with its checks removed but a different exercise with none to give.
+
+  As in Corollaries 4.3 and 4.4, $p_"credited" = "false"$ makes
+  Proposition 3.1 and Corollary 3.2 hold vacuously. Remark 4.5's trigger
+  does not carry over: with the spoken response unobserved this exercise
+  emits no outcome, so O3 existing would give it nothing to credit. It would
+  first need a channel (Cor. 3.1 (c), Prop. 8.2).
+]
+
+#remark("4.9", name: "Variation against fitting the drill")[
+  A drill whose items share a shape teaches the shape. A learner who only
+  ever reads isolated words, each alone on the screen and each given the
+  same pause, becomes practised at exactly that: decoding one short word at
+  a comfortable rate, primed by the length of the pause and the rhythm of
+  the set. Reading is not that. A reader reads a line, a long one included,
+  in about the time the line takes to say. Corollary 4.6 (i) varies the
+  three things a learner could otherwise fit --- the kind of item, its
+  length, and its place in the set --- and (ii) ties a sentence's time to
+  the level rather than to the learner, so the target is the rate at which
+  that level reads, not one the learner has settled into. The order is
+  drawn uniformly, which Proposition 6.2 shows is exactly right for a
+  surface that holds no belief (Rem. 6.2); the one constraint on the draw,
+  no three alike in a row, is a presentation constraint and selects nothing.
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1876,6 +1986,81 @@ rather than as *data*, and the remedy is to exhibit the data.
   enumerating $Sigma$'s coverage of human causes of blockage.
 ]
 
+#axiom("6.2", name: "Honest repetition teaches")[
+  Every read-aloud rep (Def. 4.8) the learner practises honestly --- reading
+  aloud in the turn, repeating in the echo, and reporting stuck when the
+  item did not click --- has intervention gain (Def. 4.3) bounded below by
+  some $g > 0$, whether or not anything measures it.
+]
+
+This is Remark 3.3's weaker claim, that persistence is how learning happens,
+stated for one exercise so that it can be falsified (§12). It is an
+assumption and not a result: the exercise observes nothing from which it
+could be derived.
+
+#corollary("6.4", name: "For read-aloud, engagement is the objective")[
+  Under Axiom 6.2, the objective of Definition 6.2 for the read-aloud
+  exercise satisfies $J >= alpha g dot EE[N]$, where $N$ is the number of
+  honest reps the learner practises before they stop, and $J$ has no other
+  term. The exercise has no score but $N$.
+]
+
+#proof[
+  With $p_"credited" = "false"$ and the spoken response unobserved
+  (Cor. 4.6), no outcome reaches the estimator, so the belief after a rep
+  equals the belief before it and $Y = 0$ for every rep (Def. 3.2). The
+  $beta$ term therefore vanishes. By Axiom 6.2 each honest rep contributes
+  at least $alpha g$ to the $alpha$ term, and a rep the learner did not
+  practise is assumed to contribute nothing. Taking $gamma$ near one over
+  the horizon of a practice habit, the survival-weighted sum of
+  Definition 6.2 is bounded below by $alpha g$ times the expected number of
+  honest reps survived, which is $EE[N]$. Every design decision for this
+  exercise is therefore judged by what it does to $N$: Remark 6.1's
+  continuation term is not one term of the objective here but all of it.
+]
+
+#definition("6.6", name: "Practice record")[
+  The *practice record* of the read-aloud exercise is what the learner is
+  shown of their own engagement: for each recent day, how many reps ran to
+  the end, how many sets were finished, and how long they spent practising,
+  with running totals of the same three counts. It names no item and
+  carries no outcome, so it is not an observation, and Proposition 2.1
+  already says what it is not: a count, read by no policy, correct as a
+  display (Cor. 2.1). It is the learner's view of $N$, the one quantity
+  Corollary 6.4 says this exercise is for. It cannot tell a rep read aloud
+  from one watched in silence, and without a channel nothing on the surface
+  can; that limit is the learner's side of Axiom 6.2, and §12 names it.
+]
+
+#proposition("6.4", name: "The record must not pay for dishonesty")[
+  A practice record is admissible only if no quantity it shows can be
+  raised by practising less honestly. In particular:
+  (i) a rep counts only if every step of its ladder ran to the end while the
+  exercise was on screen, so a skipped rep, a rep abandoned by leaving, and
+  a rep interrupted by the page being hidden do not count;
+  (ii) a stuck report costs nothing: it lowers no count and ends no set
+  early, and a rep reported stuck counts like any other;
+  (iii) no quantity shown is a rate, a pace, or any other function that
+  improves as stuck reports are withheld;
+  (iv) practice time counts only while the exercise is on screen and not
+  paused.
+]
+
+#proof[
+  What the learner is shown acts on continuation (Rem. 9.1), so a shown
+  quantity rewards whatever raises it. Suppose one rises when a stuck report
+  is withheld. Withholding is then rewarded; a withheld report means the
+  item does not return ($p_"repeat" = "on-report"$, Cor. 4.6) and its pause
+  keeps shrinking, so the item the learner could not read is the one they
+  stop being given time to read. That rep is not honest in Axiom 6.2's
+  sense, and the record grows while $N$ does not. Clauses (i) and (iv) close
+  the same gap for reps and time that were never practised at all. By
+  exhibition: the prototype this amendment was drawn from closed each set
+  with the learner's average turn length. The turn shortens only on reps run
+  without a stuck report, so that summary rewarded withholding the report,
+  and (iii) excludes it.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = The Persistence Budget
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2069,6 +2254,17 @@ also survives its relaxation.
   learner who drifts away and comes back.
   Theorem 7.2 is what makes brevity safe: losing any of these degrades
   adaptation and nothing else.
+]
+
+#remark("7.5", name: "The practice record is bounded")[
+  Definition 6.6's record is not an interaction log (Prop. 7.1). It keeps one
+  entry per day for a fixed number of recent days (sixty), three counts
+  each, and three running totals, so its footprint is constant however much
+  the learner practises (Thm. 7.1). The per-word pace of Corollary 4.6 (iii)
+  is bounded by the size of the vocabulary shipped. Both stay on the device
+  (Rem. 7.3). Losing either costs the learner their history or their pace
+  and nothing else (Thm. 7.2), so a write that fails is swallowed
+  (Prop. 7.2).
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2557,6 +2753,28 @@ As with LTY-SEAM above, the original row is retained and this one is added.
    write into.],
 )
 
+#heading(level: 2)[Update --- TPK-READ (v1.9): `packages/ui/topik` read-aloud renderer]
+
+As above, earlier rows are retained and this one is added. It is filed ahead
+of the source it describes.
+
+#table(
+  columns: (3.3cm, 3.5cm, 1fr),
+  stroke: 0.4pt,
+  inset: 6pt,
+  [*Surface*], [*Current learner model*], [*What changed, and what did not*],
+
+  [`packages/ui/topik`, read-aloud renderer],
+  [No belief and no persistence of competence. A per-word pace factor keyed
+   by authored word identity, and a bounded practice record (Def. 6.6,
+   Rem. 7.5)],
+  [A new exercise on the surface, declared rather than derived from the
+   lesson (Cor. 4.6): glyphs before audio, the spoken response unobserved,
+   stuck reports steering repeat and pace only (Rem. 3.6), and an objective
+   that is continuation alone (Cor. 6.4). O3 still does not exist, and if it
+   did this exercise would have nothing to write into it.],
+)
+
 #heading(level: 2)[The unreconciled duplication]
 
 The most consequential finding of the audit is not in the table. Two
@@ -2724,6 +2942,29 @@ would cost.
   breaks nothing, but the supply of content it promises is not delivered.
   Detectable from the audit's own findings, which the learner already sees.
 
++ *Honest repetition does not carry over to reading.* Axiom 6.2 is an
+  assumption the read-aloud exercise cannot check from inside, so the check
+  comes from outside it: a learner who has practised many honest sets at a
+  level should read unseen text of that level aloud --- a handheld lesson's
+  lines, read before they are heard --- at about that level's rate. If they
+  cannot, and in particular if they read the drill's own items fluently and
+  unseen text no better than before, or read only while the blocks are
+  marked for them, the gain was fitted to the drill (Rem. 4.9) or was never
+  there. Cost: the exercise acquires a measurement ($beta > 0$) --- cold
+  reads of unseen sentences as uncredited checks, or the spoken response
+  captured as a class III sensor (Prop. 8.2) --- and Corollary 6.4 is
+  withdrawn for it. Detectable by the learner without any instrument, which
+  is the only detector this exercise has.
+
++ *The record grows without practice.* Proposition 6.4 closes the gaps the
+  surface can see, and it cannot see whether a rep was read aloud: a set run
+  hands-free and watched in silence counts the same as one read aloud. If
+  the learner finds the record growing on sets they did not practise, or the
+  exercise inviting them to watch rather than read, the record is counting
+  attendance. Cost: a signal that the turn was used --- the microphone
+  detecting speech, not grading it --- becomes a condition of
+  Proposition 6.4 (i).
+
 // ═══════════════════════════════════════════════════════════════════════════
 = Amendment Protocol
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2864,6 +3105,26 @@ measurement: a kept unit is ~9k characters, and the store validated all of
 them on every synchronous read, within an origin-wide quota. Filed ahead of
 the `packages/ui/topik` change that implements it, on the same branch.
 
+*v1.9 --- 2026-09-28.* Declares a read-aloud exercise whose only objective is
+engagement. Defines the read-aloud rep (Def. 4.8): glyphs before audio, a
+ladder of turn, audio, echo and gloss advanced by the clock, and the spoken
+response unobserved. Declares its valuation (Cor. 4.6): mixed sets, a
+sentence's turn fixed by level, a word's turn adapting as pacing, and glyphs
+that follow the sound. Records why the sets vary (Rem. 4.9) and what a stuck
+report is and is not (Rem. 3.6). States as an axiom what Remark 3.3 held as a
+claim, that honest repetition teaches (Axiom 6.2), and derives that this
+exercise's objective is then the number of honest reps alone (Cor. 6.4).
+Defines the practice record that shows it (Def. 6.6), constrains it so that
+nothing it shows can be raised by practising less honestly (Prop. 6.4), and
+bounds it (Rem. 7.5). Adds two falsifiers to §12 and a TPK-READ row to §10.
+Motivated by a learner's report: they decode a word too slowly to recognise
+it, then know it the moment they hear it, and new vocabulary in a line
+compounds the stall. Corollary 4.4's audio-first ladder never asks them to
+read before they hear. Also motivated by a prototype of the exercise, whose
+end-of-set pace summary is the exhibit in Proposition 6.4's proof. Moves the
+front-matter version line, which had stayed at 1.2 through v1.3--v1.8. Filed
+ahead of the `packages/ui/topik` read-aloud renderer.
+
 #pagebreak()
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2898,6 +3159,8 @@ the `packages/ui/topik` change that implements it, on the same branch.
   [$pi : hat(B) -> e$], [Policy (Def. 6.1)],
   [$J(pi)$], [Pedagogical objective, survival-weighted (Def. 6.2)],
   [$alpha, beta$], [Explicit allocation between intervention and measurement (Def. 6.2, Cor. 4.2)],
+  [$g$], [Lower bound on the gain of an honest read-aloud rep (Axiom 6.2)],
+  [$N$], [Number of honest read-aloud reps practised before the learner stops (Cor. 6.4)],
   [$nu$], [Renderer nuisance parameters (Def. 9.2)],
 )
 
