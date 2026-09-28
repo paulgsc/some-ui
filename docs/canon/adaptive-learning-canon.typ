@@ -1452,9 +1452,10 @@ rather than as *data*, and the remedy is to exhibit the data.
   $p_"scored" = "false"$; $p_"credited" = "false"$;
   $p_"retry" = "free"$, realised as the echo;
   $p_"repeat" = "on-report"$ --- an item the learner reports stuck
-  (Rem. 3.6) returns later in the same set, at most twice, and a word
-  reported on first sight returns first with its ladder started at the
-  audio;
+  (Rem. 3.6) returns later in the same set, at most twice. A word reported
+  on first sight is first *introduced* --- its audio, glyphs and gloss shown
+  together, which is not a read-aloud rep and counts toward nothing
+  (Prop. 6.4 (i)) --- and then returns as a rep;
   $p_"reveal" = "answer"$ (the audio and, where it differs from the
   spelling, the pronunciation), then the gloss --- except that in a story
   set a sentence's gloss is withheld until the sealed check has been
@@ -2038,22 +2039,35 @@ rather than as *data*, and the remedy is to exhibit the data.
 ]
 
 #axiom("6.2", name: "Honest repetition teaches")[
-  Every read-aloud rep (Def. 4.8) the learner practises honestly --- reading
-  aloud in the turn, repeating in the echo, and reporting stuck when the
-  item did not click --- has intervention gain (Def. 4.3) bounded below by
-  some $g > 0$, whether or not anything measures it.
+  There is a fixed $g in (0, 1]$ such that every read-aloud rep (Def. 4.8)
+  on an item $k$ that the learner practises honestly --- reading aloud in
+  the turn, repeating in the echo, and reporting stuck when the item did not
+  click --- has intervention gain (Def. 4.3) of at least
+  $g dot (1 - mu_t (k))$, whether or not anything measures it; and no rep,
+  honest or not, has negative gain.
 ]
 
 This is Remark 3.3's weaker claim, that persistence is how learning happens,
 stated for one exercise so that it can be falsified (§12). It is an
 assumption and not a result: the exercise observes nothing from which it
-could be derived.
+could be derived. The bound shrinks as the item nears mastery, as it must:
+$mu$ is bounded by one (Def. 2.1), so no fixed positive gain could hold for
+every rep. What it asserts is that honest practice on an item not yet
+mastered always helps, and helps more the less the item is mastered ---
+which is why Corollary 4.6 (vi) prefers new text and unmet words to
+rereading what is known.
 
-#corollary("6.4", name: "For read-aloud, engagement is the objective")[
+#corollary("6.4", name: "For read-aloud, honest engagement is the lever")[
   Under Axiom 6.2, the objective of Definition 6.2 for the read-aloud
-  exercise satisfies $J >= alpha g dot EE[N]$, where $N$ is the number of
-  honest reps the learner practises before they stop, and $J$ has no other
-  term. The exercise has no score but $N$.
+  exercise has no $beta$ term, and
+  $ J >= alpha g dot EE[N_gamma], quad
+    N_gamma = sum_(t=0)^(T) gamma^t dot h_t dot (1 - mu_t (k_t)) dot "Pr"["continue" | e_(<=t)], $
+  where $h_t$ is one if rep $t$ was practised honestly and zero otherwise.
+  $N_gamma$ counts the honest reps the learner goes on to practise, each
+  discounted by when it comes, weighted by the chance the learner is still
+  there, and weighted by how much of its item remains to learn. Since
+  nothing on this surface observes $G$, $N_gamma$ is the only part of $J$
+  the exercise can act on. It has no score but that.
 ]
 
 #proof[
@@ -2062,14 +2076,20 @@ could be derived.
   equals the belief before it and $Y = 0$ for every rep (Def. 3.2). The
   sealed check's outcome (Def. 4.9) reaches only an aggregate that is not a
   belief (Rem. 6.5), so it changes none of this. The $beta$ term therefore
-  vanishes. By Axiom 6.2 each honest rep contributes
-  at least $alpha g$ to the $alpha$ term, and a rep the learner did not
-  practise is assumed to contribute nothing. Taking $gamma$ near one over
-  the horizon of a practice habit, the survival-weighted sum of
-  Definition 6.2 is bounded below by $alpha g$ times the expected number of
-  honest reps survived, which is $EE[N]$. Every design decision for this
-  exercise is therefore judged by what it does to $N$: Remark 6.1's
-  continuation term is not one term of the objective here but all of it.
+  vanishes, and what remains is the sum over $t$ of
+  $gamma^t dot alpha dot G(e_t, S_t) dot "Pr"["continue" | e_(<=t)]$. By
+  Axiom 6.2 each term with $h_t = 1$ is at least
+  $gamma^t dot alpha g dot (1 - mu_t (k_t)) dot "Pr"["continue" | e_(<=t)]$,
+  and every other term is non-negative. Summing and taking expectations
+  gives the bound. It is a bound and not an identity: $G$ may exceed it, so
+  two designs with equal $EE[N_gamma]$ may differ in $J$. But no design
+  decision on this surface can be taken on that difference, because nothing
+  observes $G$. What a decision can be judged by is its effect on
+  $N_gamma$, and it moves $N_gamma$ in three ways only: whether the learner
+  keeps coming back, whether they practise honestly, and whether the items
+  they practise are ones they have not yet mastered. Remark 6.1's
+  continuation term is therefore not one term among several here; it is the
+  lever this exercise has.
 ]
 
 #definition("6.6", name: "Practice record")[
@@ -2079,16 +2099,18 @@ could be derived.
   with running totals of the same three counts. It names no item and
   carries no outcome, so it is not an observation, and Proposition 2.1
   already says what it is not: a count, read by no policy, correct as a
-  display (Cor. 2.1). It is the learner's view of $N$, the one quantity
-  Corollary 6.4 says this exercise is for. It cannot tell a rep read aloud
+  display (Cor. 2.1). It is an undiscounted, unweighted view of the reps
+  $N_gamma$ counts, the one quantity Corollary 6.4 leaves this exercise to
+  act on. It cannot tell a rep read aloud
   from one watched in silence, and nothing on the surface can for a single
   set. Across many sets the sealed checks can (Rem. 6.5); the record itself
   never learns what they found (Prop. 6.5).
 ]
 
 #proposition("6.4", name: "The record must not pay for dishonesty")[
-  A practice record is admissible only if no quantity it shows can be
-  raised by practising less honestly. In particular:
+  A practice record is admissible only if no quantity it shows is higher
+  for a less honest way through a set than for the honest one. In
+  particular:
   (i) a rep counts only if every step of its ladder ran to the end while the
   exercise was on screen, so a skipped rep, a rep abandoned by leaving, and
   a rep interrupted by the page being hidden do not count;
@@ -2098,6 +2120,10 @@ could be derived.
   improves as stuck reports are withheld;
   (iv) practice time counts only while the exercise is on screen and not
   paused.
+  Where the surface cannot tell two ways through a set apart --- the set
+  read aloud, and the same set left running and watched in silence --- the
+  record shows the same for both. The proposition permits that and does not
+  claim to exclude it: it is Definition 6.6's limit, and §12 names it.
 ]
 
 #proof[
@@ -2107,8 +2133,11 @@ could be derived.
   item does not return ($p_"repeat" = "on-report"$, Cor. 4.6) and its pause
   keeps shrinking, so the item the learner could not read is the one they
   stop being given time to read. That rep is not honest in Axiom 6.2's
-  sense, and the record grows while $N$ does not. Clauses (i) and (iv) close
-  the same gap for reps and time that were never practised at all. By
+  sense, and the record grows while $N_gamma$ does not. Clauses (i) and (iv)
+  close the same gap for reps and time skipped, abandoned or left behind a
+  hidden page. None of the four can make a set watched in silence count for
+  less than one read aloud, because nothing shown depends on a difference
+  the surface cannot see; they ensure only that it never counts for more. By
   exhibition: the prototype this amendment was drawn from closed each set
   with the learner's average turn length. The turn shortens only on reps run
   without a stuck report, so that summary rewarded withholding the report,
@@ -3248,9 +3277,11 @@ sentence's turn fixed by level, a word's turn adapting as pacing, and glyphs
 that follow the sound. Records why the sets vary (Rem. 4.9) and what a stuck
 report is and is not (Rem. 3.6). States as an axiom what Remark 3.3 held as a
 claim, that honest repetition teaches (Axiom 6.2), and derives that this
-exercise's objective is then the number of honest reps alone (Cor. 6.4).
+exercise can then act on its objective only through the discounted,
+survival-weighted count of honest reps on items not yet mastered (Cor. 6.4).
 Defines the practice record that shows it (Def. 6.6), constrains it so that
-nothing it shows can be raised by practising less honestly (Prop. 6.4), and
+nothing it shows is higher for a less honest way through a set than for the
+honest one, while naming the one it cannot tell apart (Prop. 6.4), and
 bounds it (Rem. 7.5). Closes story sets on a sealed check (Def. 4.9): a
 question about how the story fits together, answered before any of its
 glosses are shown and built so that no single word answers it (Prop. 4.3),
@@ -3303,7 +3334,7 @@ ahead of the `packages/ui/topik` read-aloud renderer.
   [$J(pi)$], [Pedagogical objective, survival-weighted (Def. 6.2)],
   [$alpha, beta$], [Explicit allocation between intervention and measurement (Def. 6.2, Cor. 4.2)],
   [$g$], [Lower bound on the gain of an honest read-aloud rep (Axiom 6.2)],
-  [$N$], [Number of honest read-aloud reps practised before the learner stops (Cor. 6.4)],
+  [$N_gamma$], [Discounted, survival- and mastery-weighted count of honest read-aloud reps (Cor. 6.4)],
   [$phi$], [Familiarity of a story: share of its words with exposure past a threshold (Def. 6.7)],
   [$nu$], [Renderer nuisance parameters (Def. 9.2)],
 )
