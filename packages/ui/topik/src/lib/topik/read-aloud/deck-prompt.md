@@ -57,10 +57,12 @@ different words never share an id, and one word never has two.
 the word `keopi`, written with 를. A number written as one run of syllables
 (사천오백) is one word.
 
-**Every word in a line is listed, in order.** List each word the line uses,
-in the order it is read. A `surface` must appear in `korean` exactly as
-written, after the previous one. Particles attached to a word stay in its
-`surface` (커피를, not 커피).
+**Every written word in a line is listed, once, in order.** Each run of
+Hangul in `korean`, between spaces or punctuation, is exactly one entry in
+`words`, and its `surface` is that whole run, exactly as written. Particles
+and endings attached to a word stay in its `surface` (커피를, not 커피; 원입니다,
+not 원). Never list part of a run, and never leave a run out: a line whose
+entries do not account for every run is dropped as incomplete.
 
 **`stemEnd` marks where the stem ends.** Count the syllables of `surface`
 that carry the word itself; the rest is its ending. 드릴까요 is 드릴 + 까요,
@@ -110,7 +112,8 @@ meaning (주다: give). When a form means something the gloss does not say
 
 Check each line against these, and fix it rather than explaining:
 
-1. Every `surface` appears in `korean`, in order.
+1. The entries' `surface`s are exactly the runs of Hangul in `korean`, one
+   each, in order.
 2. Every `wordId` is in `words`, and every word is used by some line.
 3. `stemEnd` is between 1 and the syllable count of `surface`.
 4. Every `pronunciation` has the same number of syllables as its `surface`,

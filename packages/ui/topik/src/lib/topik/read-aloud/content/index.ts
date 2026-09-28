@@ -3,16 +3,20 @@
  * presents (adaptive-learning canon Def. 4.8, Cor. 4.6).
  *
  * A deck names its words once, by an authored identifier (Def. 1.3), and each
- * line lists the words it is authored with, as they are written in that line.
+ * line lists every word it is written with: each run of Hangul in the line,
+ * between spaces or punctuation, is exactly one listed occurrence, in reading
+ * order.
  * A word rep shows one such written form; a sentence rep examines every word
  * its line lists (Def. 4.8's `K_e`). What the drill draws on the glyphs is
  * authored here too: where a written form's stem ends, and how it is
  * pronounced when that differs from its spelling (Cor. 4.6 (iv)).
  *
  * Content is checked at load, not trusted (Prop. 8.1, Thm. 8.2). A malformed
- * word, line or occurrence is dropped and reported, never the whole deck; a
- * pronunciation that does not align with its spelling is dropped on its own,
- * and the occurrence is shown without the substitution (Cor. 4.6 (iv)).
+ * word, line or occurrence is dropped and reported, never the whole deck. A
+ * line whose occurrences do not account for every word in it is dropped as
+ * incomplete, since a sentence rep examines all of its words. A pronunciation
+ * that does not align with its spelling is dropped on its own, and the
+ * occurrence is shown without the substitution (Cor. 4.6 (iv)).
  * Only a deck whose outer shape is wrong fails, and the caller falls back to
  * the bundled starter deck.
  *
@@ -44,7 +48,10 @@ export type ReadAloudWord = {
 /** One word as it is written in one line. */
 export type WordOccurrence = {
   wordId: string
-  /** The written form, exactly as it appears in the line: 드릴까요. */
+  /**
+   * One whole run of Hangul from the line, exactly as written, with any
+   * attached particle or ending: 드릴까요, 커피를. Never part of a run.
+   */
   surface: string
   /**
    * How many of `surface`'s syllables belong to the stem; the rest are shown
@@ -88,6 +95,7 @@ export type ContentFindingKind =
   | "occurrence-stem-out-of-range"
   | "pronunciation-misaligned"
   | "pronunciation-redundant"
+  | "line-incomplete"
   | "line-without-words"
 
 /** Something dropped at load, and why. */
@@ -156,11 +164,24 @@ const summarise = (error: z.ZodError): string =>
  * names. Returns the occurrence as it may be shown - possibly without its
  * pronunciation - or null when it cannot be shown at all.
  */
+type LineAudit = {
+  id: string
+  /** The line's runs of Hangul, in reading order: its written words. */
+  runs: Array<string>
+  /** Which runs a kept occurrence accounts for. */
+  covered: Array<boolean>
+  /** The first run the next occurrence may match. */
+  next: number
+}
+
+/** A line's words as written: its maximal runs of Hangul syllables. */
+const hangulRuns = (korean: string): Array<string> =>
+  Array.from(korean.matchAll(/[가-힣]+/g), (match) => match[0])
+
 function auditOccurrence(
   occurrence: WordOccurrence,
-  line: { id: string; korean: string },
+  line: LineAudit,
   wordIds: ReadonlySet<string>,
-  cursor: { at: number },
   findings: Array<ContentFinding>
 ): WordOccurrence | null {
   const where = `${line.id}/${occurrence.surface}`
@@ -173,18 +194,21 @@ function auditOccurrence(
     return null
   }
 
-  // Occurrences are listed in reading order, so each is looked for after the
-  // one before it: a sentence rep marks its words in that order.
-  const found = line.korean.indexOf(occurrence.surface, cursor.at)
+  // An occurrence is a whole run, never part of one (한 inside 따뜻한 is not
+  // the word "one"), and occurrences come in reading order, so each is
+  // matched against the runs after the previous one's.
+  const found = line.runs.findIndex(
+    (run, index) => index >= line.next && run === occurrence.surface
+  )
   if (found === -1) {
     findings.push({
       kind: "occurrence-not-in-line",
       where,
-      detail: `"${occurrence.surface}" does not appear in the line after the previous word`,
+      detail: `"${occurrence.surface}" is not one of the line's written words after the previous one`,
     })
     return null
   }
-  cursor.at = found + occurrence.surface.length
+  line.next = found + 1
 
   const syllables = [...occurrence.surface].length
   if (occurrence.stemEnd > syllables) {
@@ -196,6 +220,7 @@ function auditOccurrence(
     return null
   }
 
+  line.covered[found] = true
   const { pronunciation, ...rest } = occurrence
   if (pronunciation === undefined) return occurrence
   if (pronunciation === occurrence.surface) {
@@ -222,9 +247,11 @@ function auditOccurrence(
  * Parse a read-aloud deck, dropping and reporting what cannot be shown.
  *
  * Words and lines are parsed one at a time, so one bad entry costs only
- * itself. A line keeps whichever of its occurrences survive; a line left with
- * none has no concepts to examine (Def. 4.8) and is dropped with it. A word
- * that no line uses is kept: it can still be read on its own.
+ * itself. A line is kept only if its surviving occurrences account for every
+ * word written in it: a sentence rep examines all of them (Def. 4.8), so a
+ * line missing one is dropped as incomplete, and a line with no words at all
+ * has no concepts to examine. A word that no line uses is kept: it can still
+ * be read on its own.
  */
 export function parseReadAloudDeck(raw: unknown): ParsedDeck {
   const outer = DeckSchema.safeParse(raw)
@@ -280,7 +307,13 @@ export function parseReadAloudDeck(raw: unknown): ParsedDeck {
     }
     lineIds.add(line.id)
 
-    const cursor = { at: 0 }
+    const runs = hangulRuns(line.korean)
+    const audit: LineAudit = {
+      id: line.id,
+      runs,
+      covered: runs.map(() => false),
+      next: 0,
+    }
     const occurrences = line.words.flatMap((rawOccurrence, position) => {
       const shaped = OccurrenceSchema.safeParse(rawOccurrence)
       if (!shaped.success) {
@@ -291,10 +324,19 @@ export function parseReadAloudDeck(raw: unknown): ParsedDeck {
         })
         return []
       }
-      const kept = auditOccurrence(shaped.data, line, wordIds, cursor, findings)
+      const kept = auditOccurrence(shaped.data, audit, wordIds, findings)
       return kept ? [kept] : []
     })
 
+    const missing = runs.filter((_, index) => !audit.covered[index])
+    if (missing.length > 0) {
+      findings.push({
+        kind: "line-incomplete",
+        where: line.id,
+        detail: `no kept occurrence for ${missing.map((run) => `"${run}"`).join(", ")}; the line is dropped`,
+      })
+      return
+    }
     if (occurrences.length === 0) {
       findings.push({
         kind: "line-without-words",
