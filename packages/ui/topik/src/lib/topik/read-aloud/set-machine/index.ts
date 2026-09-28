@@ -122,7 +122,8 @@ export type SetEffect =
   | { type: "wait"; seq: number; ms: number }
   /**
    * Say `text`; dispatch `spoken` with this `seq` when it ends. When playback
-   * starts, replace this step's wait with one of `playingMs`.
+   * starts, replace this step's wait with one of `playingMs`, but never one
+   * that ends after the step's first wait would have.
    */
   | { type: "speak"; seq: number; text: string; playingMs: number }
   | { type: "stop-speech" }
@@ -293,8 +294,9 @@ function endSitting(state: SetMachineState): SetTransition {
 
 /**
  * Speak an entry, bounded: the wait allows for a voice to synthesise before
- * it plays, and the host renews it as `playingMs` once playback starts
- * (Rem. 4.10's bound holds either way).
+ * it plays, and the host renews it as `playingMs` once playback starts,
+ * never past the first wait's deadline, so the step never outlasts
+ * `audioWaitMs` and Rem. 4.10's bound holds.
  */
 function speakEffects(seq: number, entry: QueueEntry): Array<SetEffect> {
   const { syllables, text } = entry.item

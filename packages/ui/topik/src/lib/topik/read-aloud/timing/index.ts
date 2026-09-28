@@ -95,7 +95,8 @@ export const speechFallbackMs = (syllables: number): number =>
 /**
  * The first wait for the audio, from the moment it is asked for: its
  * fallback plus time for a voice that synthesises before it plays (a server
- * voice). Once playback starts, the wait is renewed as the fallback alone.
+ * voice). Once playback starts, the wait is renewed as the fallback alone,
+ * but never past this deadline: this is the most the audio step can last.
  */
 export const audioWaitMs = (syllables: number): number =>
   speechFallbackMs(syllables) + SYNTHESIS_MS

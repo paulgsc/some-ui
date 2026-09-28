@@ -7,7 +7,11 @@ import type {
 import { useReadAloud } from "@topik/lib/topik/adapter/hooks/use-read-aloud"
 import type { SetProgress } from "@topik/lib/topik/read-aloud/set-machine"
 import { STARTER_DECK } from "@topik/lib/topik/read-aloud/starter"
-import { echoMs, speechFallbackMs } from "@topik/lib/topik/read-aloud/timing"
+import {
+  audioWaitMs,
+  echoMs,
+  speechFallbackMs,
+} from "@topik/lib/topik/read-aloud/timing"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 /** How long the fake voice takes to say anything. */
@@ -221,6 +225,32 @@ describe("useReadAloud", () => {
     act(() => play?.())
     expect(result.current.step?.ms).toBe(speechFallbackMs(syllables))
     await advance(SPOKEN_MS)
+    expect(result.current.state.phase.name).toBe("echo")
+  })
+
+  it("never lets a late start stretch the audio past its first deadline", async () => {
+    const { options, speech } = harness()
+    let play: (() => void) | undefined
+    const late: typeof speech = {
+      ...speech,
+      speak: (_text, speakOptions): Promise<void> =>
+        // Never resolves: the fallback alone must end the step.
+        new Promise<void>(() => {
+          play = (): void => speakOptions?.onStart?.()
+        }),
+    }
+    const { result } = renderHook(() =>
+      useReadAloud({ ...options, speech: late })
+    )
+    act(() => result.current.begin())
+    while (result.current.state.phase.name !== "audio") await advance(50)
+    const syllables = result.current.entry?.item.syllables ?? 0
+    const bound = audioWaitMs(syllables)
+    // Playback starts a second before the first wait would end.
+    await advance(bound - 1000)
+    act(() => play?.())
+    expect(result.current.step?.ms).toBeLessThanOrEqual(1000)
+    await advance(1000)
     expect(result.current.state.phase.name).toBe("echo")
   })
 

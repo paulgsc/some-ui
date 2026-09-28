@@ -116,6 +116,8 @@ function createRunner(
 ): Runner {
   let state = createSetMachine(options().level)
   let step: ReadAloudStep = null
+  /** When the current step's first wait runs out; a renewal never passes it. */
+  let deadline: { seq: number; at: number } | null = null
   let playing: number | null = null
   let empty = false
   let timer: ReturnType<typeof setTimeout> | null = null
@@ -175,14 +177,19 @@ function createRunner(
           if (utterance !== controller) return
           playing = seq
           // The first wait allowed for synthesis; from here the fallback
-          // runs from the sound itself, so a slow voice is not cut off.
-          if (state.seq === seq) {
-            clearTimer()
-            timer = setTimeout(() => {
-              timer = null
-              dispatch({ type: "elapsed", at: now(), seq })
-            }, playingMs)
-            step = { seq, ms: playingMs }
+          // runs from the sound itself, so a slow voice is not cut off. It
+          // never runs past the first wait's deadline, so the step stays
+          // within the bound the machine declared (Rem. 4.10).
+          if (state.seq === seq && deadline?.seq === seq) {
+            const ms = Math.min(playingMs, deadline.at - now())
+            if (ms > 0) {
+              clearTimer()
+              timer = setTimeout(() => {
+                timer = null
+                dispatch({ type: "elapsed", at: now(), seq })
+              }, ms)
+              step = { seq, ms }
+            }
           }
           render({ state, step, playing, empty })
         },
@@ -216,6 +223,7 @@ function createRunner(
           dispatch({ type: "elapsed", at: now(), seq })
         }, ms)
         step = { seq, ms }
+        deadline = { seq, at: now() + ms }
         return
       }
       case "speak": {
