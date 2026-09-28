@@ -1537,9 +1537,12 @@ rather than as *data*, and the remedy is to exhibit the data.
   a capability set no renderer can supply. The read-aloud renderer declares
   instead: sets run hands-free one at a time, as many as the learner
   chooses, and a sitting lasts at most thirty-two minutes. After thirty
-  minutes no new rep begins; the rep in progress finishes, and the session
-  ends. A rep's ladder is bounded (Cor. 4.6), and the renderer declares
-  that bound as at most two minutes, which is what makes the budget finite.
+  minutes no new rep and no new introduction (Cor. 4.6) begins; whichever
+  is in progress finishes, and the session ends. A rep's ladder is bounded
+  (Cor. 4.6), and an introduction is shorter than a rep, since it runs the
+  same audio, glyphs and gloss without the learner's turns; the renderer
+  declares both bounded at two minutes, which is what makes the budget
+  finite.
   The set in progress is not abandoned: it resumes at its next rep when the
   learner next sits down, and the learner may do so at once. The bound marks
   a sitting and nothing else: no count is reset by it, nothing is withheld,
@@ -3275,8 +3278,8 @@ renderer.
 
 *v1.10 --- 2026-09-28.* Corrects two statements filed at v1.9, as new items
 rather than rewrites. Remark 4.10 replaces Corollary 4.6's unbounded session
-with a sitting of at most thirty-two minutes (no rep begins after thirty,
-and a rep is bounded at two), since Definition 9.3 requires a
+with a sitting of at most thirty-two minutes (no rep or introduction begins
+after thirty, and each is bounded at two), since Definition 9.3 requires a
 capability set to bound the session and Definition 4.4 bounds it by the
 clock. Remark 6.7 records how the v1.9 phrases "only objective is
 engagement" and "continuation alone" are to be read: the objective keeps its
