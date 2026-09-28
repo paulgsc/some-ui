@@ -15,10 +15,12 @@ import {
   setMachineReducer,
 } from "@topik/lib/topik/read-aloud/set-machine"
 import {
+  audioWaitMs,
   MAX_SCREEN_MS,
   nominalRepMs,
   sentenceTurnMs,
   SITTING_MS,
+  speechFallbackMs,
   wordTurnMs,
 } from "@topik/lib/topik/read-aloud/timing"
 import { describe, expect, it } from "vitest"
@@ -172,6 +174,16 @@ describe("a rep's ladder (Def. 4.8)", () => {
     host.send({ type: "elapsed", at: 10_000, seq: wait?.seq ?? -1 })
     expect(host.state.phase.name).toBe("echo")
     expect(host.effects.at(-2)).toEqual({ type: "stop-speech" })
+  })
+
+  it("allows the audio time to synthesise, renewed from playback", () => {
+    const host = new Host()
+    host.begin(SET)
+    host.step()
+    host.step()
+    expect(host.state.phase.name).toBe("audio")
+    expect(host.of("speak").at(-1)?.playingMs).toBe(speechFallbackMs(3))
+    expect(host.of("wait").at(-1)?.ms).toBe(audioWaitMs(3))
   })
 
   it("ignores a stale timer", () => {

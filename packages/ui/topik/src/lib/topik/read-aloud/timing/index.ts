@@ -41,6 +41,8 @@ export const SUMMARY_MS = 4000
 export const MAX_TURN_MS = 60_000
 /** The longest the runtime waits for speech before moving on regardless. */
 export const MAX_SPEECH_MS = 30_000
+/** How long a voice may take to start playing before the audio moves on. */
+export const SYNTHESIS_MS = 10_000
 export const MIN_ECHO_MS = 1400
 export const MAX_ECHO_MS = { word: 5500, sentence: 12_000 } as const
 /** Remark 4.10's bound on any screen the renderer shows. */
@@ -83,9 +85,21 @@ export function sentenceTurnMs(
   return Math.round(clamp(ms, 0, MAX_TURN_MS))
 }
 
-/** How long the runtime waits for speech that never reports its end. */
+/**
+ * How long the runtime waits, once the audio is playing, for speech that
+ * never reports its end.
+ */
 export const speechFallbackMs = (syllables: number): number =>
   clamp(800 + syllables * SPEECH_MS_PER_SYLLABLE * 2, 0, MAX_SPEECH_MS)
+
+/**
+ * The first wait for the audio, from the moment it is asked for: its
+ * fallback plus time for a voice that synthesises before it plays (a server
+ * voice). Once playback starts, the wait is renewed as the fallback alone,
+ * but never past this deadline: this is the most the audio step can last.
+ */
+export const audioWaitMs = (syllables: number): number =>
+  speechFallbackMs(syllables) + SYNTHESIS_MS
 
 /** The echo: time to repeat what was just heard. */
 export function echoMs(heardMs: number, kind: "word" | "sentence"): number {
