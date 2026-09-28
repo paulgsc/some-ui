@@ -95,6 +95,20 @@ describe("ReadAloudSession", () => {
     expect(screen.queryByRole("button", { name: /start/i })).toBeNull()
   })
 
+  it("says so, and offers a way back, when the level has nothing to read", () => {
+    const { onExit } = renderSession({
+      deck: {
+        ...STARTER_DECK,
+        lines: STARTER_DECK.lines.filter((line) => line.level === 3),
+      },
+    })
+    fireEvent.click(screen.getByRole("button", { name: /start/i }))
+    expect(screen.getByText(/nothing at this level/i)).toBeTruthy()
+    expect(screen.queryByRole("button", { name: /start/i })).toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: /back/i }))
+    expect(onExit).toHaveBeenCalledOnce()
+  })
+
   it("offers to continue an unfinished set", () => {
     renderSession({
       resume: {

@@ -75,6 +75,14 @@ export type ReadAloudVM = {
   audio: boolean
   entry: QueueEntry | undefined
   step: ReadAloudStep
+  /**
+   * The step whose audio is audible now: set when playback starts, which a
+   * server voice may reach well after the step does, so the glyphs can
+   * follow the sound rather than the request for it.
+   */
+  playing: number | null
+  /** No set can be drawn: the deck has nothing at or below this level. */
+  empty: boolean
   begin: () => void
   stuck: () => void
   skip: () => void
@@ -84,7 +92,12 @@ export type ReadAloudVM = {
   startSitting: () => void
 }
 
-type Snapshot = { state: SetMachineState; step: ReadAloudStep }
+type Snapshot = {
+  state: SetMachineState
+  step: ReadAloudStep
+  playing: number | null
+  empty: boolean
+}
 
 type Runner = {
   dispatch: (event: SetEvent) => void
@@ -103,6 +116,8 @@ function createRunner(
 ): Runner {
   let state = createSetMachine(options().level)
   let step: ReadAloudStep = null
+  let playing: number | null = null
+  let empty = false
   let timer: ReturnType<typeof setTimeout> | null = null
   let utterance: AbortController | null = null
   const queue: Array<SetEvent> = []
@@ -127,7 +142,13 @@ function createRunner(
       level,
       seedKey: seedKey?.() ?? `${now()}`,
     })
-    if (items.length === 0) return
+    if (items.length === 0) {
+      // Nothing at or below this level: say so rather than wait for a set
+      // that cannot come.
+      empty = true
+      render({ state, step, playing, empty })
+      return
+    }
     dispatch({
       type: "begin-set",
       at: now(),
@@ -151,6 +172,9 @@ function createRunner(
         voice: voiceFor(speech),
         onStart: () => {
           started = now()
+          if (utterance !== controller) return
+          playing = seq
+          render({ state, step, playing, empty })
         },
       })
       .then(() => {
@@ -229,8 +253,11 @@ function createRunner(
         if (!next) break
         const transition = setMachineReducer(state, next)
         if (transition.state === state) continue
-        // A new step has no clock until its own wait sets one.
-        if (transition.state.seq !== state.seq) step = null
+        // A new step has no clock, and no audio, until its own effects start them.
+        if (transition.state.seq !== state.seq) {
+          step = null
+          playing = null
+        }
         state = transition.state
         for (const effect of transition.effects) run(effect)
         options().onProgress?.(progressOf(state))
@@ -238,7 +265,7 @@ function createRunner(
     } finally {
       dispatching = false
     }
-    render({ state, step })
+    render({ state, step, playing, empty })
   }
 
   return {
@@ -285,6 +312,8 @@ export function useReadAloud(options: UseReadAloudOptions): ReadAloudVM {
   })
 
   const [snapshot, setSnapshot] = useState<Snapshot>(() => ({
+    playing: null,
+    empty: false,
     state: createSetMachine(options.level),
     step: null,
   }))
@@ -320,6 +349,8 @@ export function useReadAloud(options: UseReadAloudOptions): ReadAloudVM {
     audio: options.speech?.supported === true,
     entry: currentEntry(snapshot.state),
     step: snapshot.step,
+    playing: snapshot.playing,
+    empty: snapshot.empty,
     begin: (): void => {
       const runner = runnerRef.current
       if (started || !runner) return

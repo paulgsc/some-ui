@@ -38,6 +38,7 @@ const meta: Meta = {
     stepMs: null,
     stepKey: 1,
     reported: false,
+    playing: true,
     short: false,
     onStuck: noop,
     onSkip: noop,

@@ -95,12 +95,13 @@ export const ReadAloudSession = ({
   )
 
   const body = ((): JSX.Element | null => {
-    if (!vm.started) {
+    if (!vm.started || vm.empty) {
       return (
         <SetCard
           kind="ready"
           level={options.level}
           audio={vm.audio}
+          empty={vm.empty}
           resuming={(options.resume?.queue.length ?? 0) > 0}
           short={short}
           onStart={vm.begin}
@@ -153,6 +154,7 @@ export const ReadAloudSession = ({
         stepMs={vm.step?.seq === state.seq ? vm.step.ms : null}
         stepKey={state.seq}
         reported={state.reported}
+        playing={vm.playing === state.seq}
         short={short}
         onStuck={vm.stuck}
         onSkip={vm.skip}

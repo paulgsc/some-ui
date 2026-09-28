@@ -14,6 +14,8 @@ export type SetCardProps = { short: boolean; onStop: () => void } & (
       audio: boolean
       /** An unfinished set is waiting from an earlier sitting. */
       resuming: boolean
+      /** The deck has nothing at or below this level to draw a set from. */
+      empty?: boolean
       onStart: () => void
     }
   | {
@@ -168,7 +170,12 @@ export const SetCard = (props: SetCardProps): JSX.Element => {
           <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
             Level {props.level}
           </span>
-          {props.audio ? (
+          {props.empty ? (
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              There is nothing at this level to read yet. Choose a lower level,
+              or load more lines.
+            </p>
+          ) : props.audio ? (
             <p className="text-muted-foreground text-sm leading-relaxed">
               Read each word or sentence aloud before you hear it, then say it
               again. It runs by itself; tap Stuck when one won&apos;t come.
@@ -183,7 +190,7 @@ export const SetCard = (props: SetCardProps): JSX.Element => {
       }
       dock={
         <>
-          {props.audio && (
+          {props.audio && !props.empty && (
             <Button className="h-12 gap-2 rounded-2xl" onClick={props.onStart}>
               <Play className="size-5" />{" "}
               {props.resuming ? "Continue" : "Start"}

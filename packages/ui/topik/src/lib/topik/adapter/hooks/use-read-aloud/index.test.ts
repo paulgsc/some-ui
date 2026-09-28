@@ -171,6 +171,44 @@ describe("useReadAloud", () => {
     expect(result.current.state.queue).toHaveLength(7)
   })
 
+  it("marks the audio as playing only once the voice starts", async () => {
+    const { options, speech } = harness()
+    let begin: (() => void) | undefined
+    const slow: typeof speech = {
+      ...speech,
+      speak: (text, speakOptions): Promise<void> =>
+        new Promise<void>((resolve) => {
+          // A server voice: synthesis first, then playback.
+          begin = (): void => {
+            speakOptions?.onStart?.()
+            setTimeout(resolve, SPOKEN_MS)
+          }
+          void text
+        }),
+    }
+    const { result } = renderHook(() =>
+      useReadAloud({ ...options, speech: slow })
+    )
+    act(() => result.current.begin())
+    while (result.current.state.phase.name !== "audio") await advance(50)
+    expect(result.current.playing).toBeNull()
+    act(() => begin?.())
+    expect(result.current.playing).toBe(result.current.state.seq)
+  })
+
+  it("says so when the deck has nothing at or below the level", () => {
+    const { options } = harness({
+      deck: {
+        ...STARTER_DECK,
+        lines: STARTER_DECK.lines.filter((line) => line.level === 3),
+      },
+    })
+    const { result } = renderHook(() => useReadAloud(options))
+    act(() => result.current.begin())
+    expect(result.current.empty).toBe(true)
+    expect(result.current.state.phase.name).toBe("idle")
+  })
+
   it("says whether audio is available", () => {
     const { options } = harness({ speech: null })
     const { result } = renderHook(() => useReadAloud(options))

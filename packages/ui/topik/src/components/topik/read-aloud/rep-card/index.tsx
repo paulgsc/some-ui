@@ -26,6 +26,8 @@ type RepCardProps = {
   stepKey: number
   /** Whether the learner has reported this entry stuck. */
   reported: boolean
+  /** Whether this step's audio has started playing. */
+  playing: boolean
   short: boolean
   onStuck: () => void
   onSkip: () => void
@@ -121,6 +123,7 @@ export const RepCard = ({
   stepMs,
   stepKey,
   reported,
+  playing,
   short,
   onStuck,
   onSkip,
@@ -137,7 +140,9 @@ export const RepCard = ({
     units,
     marchMs,
     stepKey,
-    step === "turn" || step === "audio"
+    // The audio's mark starts with the sound, not with the request for it:
+    // a server voice can take a while to begin.
+    step === "turn" || (step === "audio" && playing)
   )
   const gloss = step === "gloss" || introduction ? glossOf(deck, item) : null
   const metered = (step === "turn" || step === "echo") && stepMs !== null
