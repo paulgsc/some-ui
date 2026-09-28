@@ -1536,13 +1536,16 @@ rather than as *data*, and the remedy is to exhibit the data.
   session by a wall clock as well as by continuation, so the clause declared
   a capability set no renderer can supply. The read-aloud renderer declares
   instead: sets run hands-free one at a time, as many as the learner
-  chooses, and a sitting lasts at most thirty-two minutes. After thirty
-  minutes no new rep and no new introduction (Cor. 4.6) begins; whichever
-  is in progress finishes, and the session ends. A rep's ladder is bounded
-  (Cor. 4.6), and an introduction is shorter than a rep, since it runs the
-  same audio, glyphs and gloss without the learner's turns; the renderer
-  declares both bounded at two minutes, which is what makes the budget
-  finite.
+  chooses, and a sitting lasts at most thirty-two minutes. The rule is
+  stated over everything the renderer shows, not over a list of screens:
+  after thirty minutes nothing new begins --- no rep, no introduction
+  (Cor. 4.6), no set summary (Def. 4.8), nor anything else --- and whatever
+  is showing finishes, and the session ends. The renderer declares every
+  screen it shows bounded at two minutes: a rep's ladder is bounded by its
+  clock (Cor. 4.6), an introduction runs the same audio, glyphs and gloss
+  without the learner's turns and is shorter, and a set summary closes
+  itself when its countdown runs out. That bound on every screen, not on
+  any one kind of screen, is what makes the budget finite.
   The set in progress is not abandoned: it resumes at its next rep when the
   learner next sits down, and the learner may do so at once. The bound marks
   a sitting and nothing else: no count is reset by it, nothing is withheld,
@@ -3278,8 +3281,8 @@ renderer.
 
 *v1.10 --- 2026-09-28.* Corrects two statements filed at v1.9, as new items
 rather than rewrites. Remark 4.10 replaces Corollary 4.6's unbounded session
-with a sitting of at most thirty-two minutes (no rep or introduction begins
-after thirty, and each is bounded at two), since Definition 9.3 requires a
+with a sitting of at most thirty-two minutes (nothing new begins after
+thirty, and every screen the renderer shows is bounded at two), since Definition 9.3 requires a
 capability set to bound the session and Definition 4.4 bounds it by the
 clock. Remark 6.7 records how the v1.9 phrases "only objective is
 engagement" and "continuation alone" are to be read: the objective keeps its
