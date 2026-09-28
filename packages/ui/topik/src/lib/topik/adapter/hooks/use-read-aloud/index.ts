@@ -158,7 +158,7 @@ function createRunner(
     })
   }
 
-  const speak = (seq: number, text: string): void => {
+  const speak = (seq: number, text: string, playingMs: number): void => {
     const { speech } = options()
     if (!speech?.supported) return
     utterance?.abort()
@@ -174,6 +174,16 @@ function createRunner(
           started = now()
           if (utterance !== controller) return
           playing = seq
+          // The first wait allowed for synthesis; from here the fallback
+          // runs from the sound itself, so a slow voice is not cut off.
+          if (state.seq === seq) {
+            clearTimer()
+            timer = setTimeout(() => {
+              timer = null
+              dispatch({ type: "elapsed", at: now(), seq })
+            }, playingMs)
+            step = { seq, ms: playingMs }
+          }
           render({ state, step, playing, empty })
         },
       })
@@ -209,7 +219,7 @@ function createRunner(
         return
       }
       case "speak": {
-        speak(effect.seq, effect.text)
+        speak(effect.seq, effect.text, effect.playingMs)
         return
       }
       case "stop-speech": {

@@ -7,7 +7,7 @@ import type {
 import { useReadAloud } from "@topik/lib/topik/adapter/hooks/use-read-aloud"
 import type { SetProgress } from "@topik/lib/topik/read-aloud/set-machine"
 import { STARTER_DECK } from "@topik/lib/topik/read-aloud/starter"
-import { echoMs } from "@topik/lib/topik/read-aloud/timing"
+import { echoMs, speechFallbackMs } from "@topik/lib/topik/read-aloud/timing"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 /** How long the fake voice takes to say anything. */
@@ -194,6 +194,34 @@ describe("useReadAloud", () => {
     expect(result.current.playing).toBeNull()
     act(() => begin?.())
     expect(result.current.playing).toBe(result.current.state.seq)
+  })
+
+  it("lets a slow voice synthesise, then times the audio from playback", async () => {
+    const { options, speech } = harness()
+    let play: (() => void) | undefined
+    const slow: typeof speech = {
+      ...speech,
+      speak: (_text, speakOptions): Promise<void> =>
+        new Promise<void>((resolve) => {
+          play = (): void => {
+            speakOptions?.onStart?.()
+            setTimeout(resolve, SPOKEN_MS)
+          }
+        }),
+    }
+    const { result } = renderHook(() =>
+      useReadAloud({ ...options, speech: slow })
+    )
+    act(() => result.current.begin())
+    while (result.current.state.phase.name !== "audio") await advance(50)
+    const syllables = result.current.entry?.item.syllables ?? 0
+    // Longer than the fallback alone: a request-timed wait would cut it off.
+    await advance(speechFallbackMs(syllables) + 1000)
+    expect(result.current.state.phase.name).toBe("audio")
+    act(() => play?.())
+    expect(result.current.step?.ms).toBe(speechFallbackMs(syllables))
+    await advance(SPOKEN_MS)
+    expect(result.current.state.phase.name).toBe("echo")
   })
 
   it("says so when the deck has nothing at or below the level", () => {

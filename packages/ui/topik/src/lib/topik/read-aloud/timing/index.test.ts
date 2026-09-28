@@ -1,4 +1,5 @@
 import {
+  audioWaitMs,
   echoMs,
   GLOSS_MS,
   INTRODUCTION_HOLD_MS,
@@ -17,6 +18,7 @@ import {
   speechFallbackMs,
   SUMMARY_MS,
   syllablesOf,
+  SYNTHESIS_MS,
   wordTurnMs,
 } from "@topik/lib/topik/read-aloud/timing"
 import { describe, expect, it } from "vitest"
@@ -97,6 +99,7 @@ describe("the two-minute screen bound (Rem. 4.10)", () => {
       expect(
         SETTLE_MS +
           MAX_TURN_MS +
+          SYNTHESIS_MS +
           MAX_SPEECH_MS +
           MAX_ECHO_MS[kind] +
           GLOSS_MS[kind]
@@ -105,13 +108,14 @@ describe("the two-minute screen bound (Rem. 4.10)", () => {
   })
 
   it("holds for an introduction and a summary", () => {
-    expect(MAX_SPEECH_MS + INTRODUCTION_HOLD_MS).toBeLessThanOrEqual(
-      MAX_SCREEN_MS
-    )
+    expect(
+      SYNTHESIS_MS + MAX_SPEECH_MS + INTRODUCTION_HOLD_MS
+    ).toBeLessThanOrEqual(MAX_SCREEN_MS)
     expect(SUMMARY_MS).toBeLessThanOrEqual(MAX_SCREEN_MS)
   })
 
   it("caps the wait for speech", () => {
     expect(speechFallbackMs(10_000)).toBe(MAX_SPEECH_MS)
+    expect(audioWaitMs(10_000)).toBe(MAX_SPEECH_MS + SYNTHESIS_MS)
   })
 })

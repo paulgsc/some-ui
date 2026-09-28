@@ -38,6 +38,7 @@ import type { ReadAloudLevel } from "@topik/lib/topik/read-aloud/content"
 import type { PaceBook, PaceEntry } from "@topik/lib/topik/read-aloud/records"
 import type { SetItem } from "@topik/lib/topik/read-aloud/set-builder"
 import {
+  audioWaitMs,
   echoMs,
   GLOSS_MS,
   INTRODUCTION_HOLD_MS,
@@ -119,8 +120,11 @@ export type SetMachineState = {
 export type SetEffect =
   /** Dispatch `elapsed` with this `seq` after `ms`, cancelling any other wait. */
   | { type: "wait"; seq: number; ms: number }
-  /** Say `text`; dispatch `spoken` with this `seq` when it ends. */
-  | { type: "speak"; seq: number; text: string }
+  /**
+   * Say `text`; dispatch `spoken` with this `seq` when it ends. When playback
+   * starts, replace this step's wait with one of `playingMs`.
+   */
+  | { type: "speak"; seq: number; text: string; playingMs: number }
   | { type: "stop-speech" }
   /** Add one rep and its nominal practice to the record (Def. 6.6). */
   | { type: "count-rep"; creditMs: number }
@@ -288,6 +292,19 @@ function endSitting(state: SetMachineState): SetTransition {
 }
 
 /**
+ * Speak an entry, bounded: the wait allows for a voice to synthesise before
+ * it plays, and the host renews it as `playingMs` once playback starts
+ * (Rem. 4.10's bound holds either way).
+ */
+function speakEffects(seq: number, entry: QueueEntry): Array<SetEffect> {
+  const { syllables, text } = entry.item
+  return [
+    { type: "speak", seq, text, playingMs: speechFallbackMs(syllables) },
+    { type: "wait", seq, ms: audioWaitMs(syllables) },
+  ]
+}
+
+/**
  * Begin the entry at `cursor`, unless the sitting is over. A restart after a
  * pause or a hidden page keeps the entry's stuck report.
  */
@@ -299,14 +316,7 @@ function startEntry(state: SetMachineState, at: number): SetTransition {
     const next = enter(state, { name: "intro-audio" })
     return {
       state: next,
-      effects: [
-        { type: "speak", seq: next.seq, text: entry.item.text },
-        {
-          type: "wait",
-          seq: next.seq,
-          ms: speechFallbackMs(entry.item.syllables),
-        },
-      ],
+      effects: speakEffects(next.seq, entry),
     }
   }
   const next = enter(state, { name: "glyphs" })
@@ -353,14 +363,7 @@ function startAudio(state: SetMachineState, entry: QueueEntry): SetTransition {
   const next = enter(state, { name: "audio" })
   return {
     state: next,
-    effects: [
-      { type: "speak", seq: next.seq, text: entry.item.text },
-      {
-        type: "wait",
-        seq: next.seq,
-        ms: speechFallbackMs(entry.item.syllables),
-      },
-    ],
+    effects: speakEffects(next.seq, entry),
   }
 }
 

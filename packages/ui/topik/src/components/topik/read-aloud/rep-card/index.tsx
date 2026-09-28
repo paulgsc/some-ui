@@ -75,7 +75,7 @@ function useMarch(
       setTick((prev) =>
         prev.runKey === runKey
           ? { runKey, index: Math.min(prev.index + 1, units - 1) }
-          : { runKey, index: 1 }
+          : { runKey, index: Math.min(1, units - 1) }
       )
     }, every)
     return (): void => clearInterval(timer)
