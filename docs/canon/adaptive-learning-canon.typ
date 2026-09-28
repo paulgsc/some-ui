@@ -1536,11 +1536,15 @@ rather than as *data*, and the remedy is to exhibit the data.
   session by a wall clock as well as by continuation, so the clause declared
   a capability set no renderer can supply. The read-aloud renderer declares
   instead: sets run hands-free one at a time, as many as the learner
-  chooses, within a sitting of at most thirty minutes. When the budget runs
-  out the set in progress finishes and the session ends; the learner may
-  begin another at once. The bound marks a sitting and nothing else: no
-  count is reset by it, nothing is withheld, and Proposition 6.4 compares
-  ways through a set, never through a session.
+  chooses, and a sitting lasts at most thirty-two minutes. After thirty
+  minutes no new rep begins; the rep in progress finishes, and the session
+  ends. A rep's ladder is bounded (Cor. 4.6), and the renderer declares
+  that bound as at most two minutes, which is what makes the budget finite.
+  The set in progress is not abandoned: it resumes at its next rep when the
+  learner next sits down, and the learner may do so at once. The bound marks
+  a sitting and nothing else: no count is reset by it, nothing is withheld,
+  no rep is cut short by it, and Proposition 6.4 compares ways through a
+  set, never through a session.
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3271,7 +3275,8 @@ renderer.
 
 *v1.10 --- 2026-09-28.* Corrects two statements filed at v1.9, as new items
 rather than rewrites. Remark 4.10 replaces Corollary 4.6's unbounded session
-with a sitting of at most thirty minutes, since Definition 9.3 requires a
+with a sitting of at most thirty-two minutes (no rep begins after thirty,
+and a rep is bounded at two), since Definition 9.3 requires a
 capability set to bound the session and Definition 4.4 bounds it by the
 clock. Remark 6.7 records how the v1.9 phrases "only objective is
 engagement" and "continuation alone" are to be read: the objective keeps its
