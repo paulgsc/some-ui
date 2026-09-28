@@ -1455,7 +1455,7 @@ rather than as *data*, and the remedy is to exhibit the data.
   (Rem. 3.6) returns later in the same set, at most twice. A word reported
   on first sight is first *introduced* --- its audio, glyphs and gloss shown
   together, which is not a read-aloud rep and counts toward nothing
-  (Prop. 6.4 (i)) --- and then returns as a rep;
+  (Prop. 6.4 (ii)) --- and then returns as a rep;
   $p_"reveal" = "answer"$ (the audio and, where it differs from the
   spelling, the pronunciation), then the gloss --- except that in a story
   set a sentence's gloss is withheld until the sealed check has been
@@ -2125,12 +2125,15 @@ rereading what is known.
   (i) a rep counts only if every step of its ladder ran to the end while the
   exercise was on screen, so a skipped rep, a rep abandoned by leaving, and
   a rep interrupted by the page being hidden do not count;
-  (ii) a stuck report costs nothing: it lowers no count and ends no set
-  early, and a rep reported stuck counts like any other;
+  (ii) a stuck report neither costs nor pays: it lowers no count and ends
+  no set early, and a rep reported stuck counts like any other; the returns
+  and the introduction it causes run like any rep but add nothing to the
+  record, neither reps nor time, so a set shows the same whether or not a
+  report was made;
   (iii) no quantity shown is a rate, a pace, or any other function that
   improves as stuck reports are withheld;
   (iv) practice time counts only while the exercise is on screen and not
-  paused.
+  paused, and not while a return or an introduction runs.
   Where the surface cannot tell two ways through a set apart --- the set
   read aloud, and the same set left running and watched in silence --- the
   record shows the same for both. The proposition permits that and does not
@@ -2144,7 +2147,11 @@ rereading what is known.
   item does not return ($p_"repeat" = "on-report"$, Cor. 4.6) and its pause
   keeps shrinking, so the item the learner could not read is the one they
   stop being given time to read. That rep is not honest in Axiom 6.2's
-  sense, and the record grows while $N_gamma$ does not. Clauses (i) and (iv)
+  sense, and the record grows while $N_gamma$ does not. The converse is
+  closed by (ii): a report made when the item did click would bring it back,
+  and if returns counted, false reports would farm the record; since returns
+  add nothing, a report can move nothing shown in either direction. Clauses
+  (i) and (iv)
   close the same gap for reps and time skipped, abandoned or left behind a
   hidden page. None of the four can make a set watched in silence count for
   less than one read aloud, because nothing shown depends on a difference
@@ -2192,17 +2199,21 @@ rereading what is known.
   measures the story as understood through either channel. It can
   therefore tell a set followed from one left running unattended; it cannot
   tell a set read aloud from one listened to in silence, nor reading from
-  listening. At any one time, familiar stories are expected to be answered
-  better than unfamiliar ones by any learner, honest or not, because an
-  unfamiliar story holds more words the learner has not met; that gap says
-  nothing by itself. What is compared is each band with itself over time,
-  since a band fixes the share of seen words and so controls for vocabulary.
-  Three shapes are distinguishable that way. Answers that improve within
-  every band, the unfamiliar ones included, are consistent with Axiom 6.2,
-  though listening alone could produce them. Improvement confined to the
-  familiar bands, with the unfamiliar ones flat, says the gain was fitted
-  to what is familiar (Rem. 4.9). Answers that stay poor in every band
-  while the practice record grows say sets are running unattended. A learner who
+  listening. One reading of the aggregate is firm, because it does not
+  depend on which stories were drawn: answers at the rate of guessing, in
+  every band and week after week while the practice record grows, say sets
+  are running unattended, since a guess succeeds at one over the number of
+  options whatever the story. Every other reading is suggestive only. A
+  band fixes the share of seen words, not which words, nor the grammar or
+  the length of the story, and the stories drawn into a band change from
+  week to week (Rem. 6.6), so a band's rate can move without any learning,
+  and a gap between bands is expected of any learner. Improvement within
+  every band, the unfamiliar ones included, is consistent with Axiom 6.2;
+  improvement confined to the familiar bands is consistent with a gain
+  fitted to what is familiar (Rem. 4.9); neither is established by the
+  aggregate. Turning either into evidence would need matched stories ---
+  authored in pairs of like length, grammar and vocabulary, one read
+  earlier and one later --- which this amendment does not provide. A learner who
   follows every story by ear without reading aloud leaves the same curve as
   one who reads aloud, and only a channel (§12) separates them. This aggregate
   is not a belief: it names no concept, feeds no estimator and is read by
@@ -3136,12 +3147,11 @@ would cost.
   marked for them, the gain was fitted to the drill (Rem. 4.9) or was never
   there. Cost: the exercise acquires a measurement of reading itself
   ($beta > 0$) --- the spoken response captured as a class III sensor
-  (Prop. 8.2) --- and Corollary 6.4 is withdrawn for it. Partly detectable
-  in the sealed aggregate, as improvement confined to the familiar bands
-  while the unfamiliar ones stay flat, or no improvement in any band
-  (Rem. 6.5); since every
-  story is also heard, the aggregate cannot isolate reading, and whether
-  reading itself carried over is left to the learner's own notice.
+  (Prop. 8.2) --- and Corollary 6.4 is withdrawn for it. Detectable by the
+  learner's own notice. The sealed aggregate can suggest it, as improvement
+  confined to the familiar bands, but cannot establish it: its bands do not
+  match stories (Rem. 6.5), and every story is also heard, so it cannot
+  isolate reading either.
 
 + *The record grows without practice.* Proposition 6.4 closes the gaps the
   surface can see, and it cannot see whether a rep was read aloud: a set run
@@ -3149,17 +3159,18 @@ would cost.
   the learner finds the record growing on sets they did not practise, or the
   exercise inviting them to watch rather than read, the record is counting
   attendance. Sets left running unattended are detectable in the sealed
-  aggregate, as answers that stay poor in every band while the record grows
-  (Rem. 6.5). A learner who follows every story by ear without reading
+  aggregate, as answers at the rate of guessing in every band while the
+  record grows (Rem. 6.5). A learner who follows every story by ear without reading
   aloud leaves no such trace, and only the cost below would catch it. Cost:
   a signal
   that the turn was used --- the microphone detecting speech, not grading
   it --- becomes a condition of Proposition 6.4 (i).
 
-+ *The sealed checks do not discriminate.* If answers sit at the same rate
-  in every band and every week --- near the guessing floor, or near
-  ceiling --- whatever the learner does, the questions are measuring the options rather
-  than the reading, and Remark 6.5's three shapes cannot be told apart.
++ *The sealed checks do not discriminate.* If answers sit near ceiling in
+  every band whatever the learner does, or near the rate of guessing on
+  sets the learner knows they followed, the questions are measuring the
+  options rather than the story, and Remark 6.5's one firm reading --- sets
+  running unattended --- cannot be told from the checks' own failure.
   Cost: the questions are rewritten against Proposition 4.3 (i), or given
   more items per story; until then the two falsifiers above fall back to
   the learner's own notice.
@@ -3322,10 +3333,12 @@ question about how the story fits together, answered before any of its
 glosses are shown and built so that no single word answers it (Prop. 4.3),
 whose outcome no display discloses (Prop. 6.5) and is kept only as counts
 by story familiarity and week, acting on what is shown only by moving the
-familiarity band on many sets together: a partial test of the exercise's
-own axiom, read within each band over time, able to tell a set followed
-from one left running unattended but not reading aloud from listening
-(Rem. 6.5). The sealed check is not an
+familiarity band on many sets together. Of its readings one is firm ---
+answers at the rate of guessing in every band mean sets are running
+unattended --- and the rest are suggestive until stories are matched
+(Rem. 6.5); it cannot tell reading aloud from listening. Stuck reports
+neither lower nor raise the record: the returns they cause count toward
+nothing (Prop. 6.4 (ii)). The sealed check is not an
 exercise, since it names no concept (Def. 4.9). Counts exposure per dictionary form in a fixed-size
 sketch (Def. 6.7) and uses it to prefer new stories made mostly of seen
 words, as an order and not a belief (Rem. 6.6). Adds three falsifiers to §12
