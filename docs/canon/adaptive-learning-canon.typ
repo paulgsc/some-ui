@@ -1030,8 +1030,8 @@ before it can update a belief about $mu$ (Prop. 9.1).
   Proposition 3.4's argument applies to it unchanged, and it may enter no
   belief update. What it may do is steer pacing: the item returns later in
   the set and its pause lengthens (Cor. 4.6). A report that is only worth
-  anything when it is made honestly must cost the learner nothing to make
-  (Prop. 6.4 (ii)).
+  anything when it is made honestly must neither cost the learner anything
+  nor pay them anything (Prop. 6.4 (ii)).
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1425,13 +1425,12 @@ rather than as *data*, and the remedy is to exhibit the data.
   the learner's *turn* to read them aloud, the item's audio, a second turn
   to repeat it (the *echo*), and its gloss --- and it ends when the ladder
   does. The learner's spoken response is not captured:
-  $p_"response" = "spoken"$, unobserved. A *set* is a short run of reps
-  closed by a summary; it is the exercise's pacing unit in Remark 4.3's
-  sense and nothing more, and a session (Def. 4.4) is as many sets as the
-  learner chooses to run. A *story set* is a set built around a *story*: a
-  short passage of sentences, authored to be read in order and to mean
-  something as a whole, whose sentences keep their order in the set while
-  words are interleaved between them.
+  $p_"response" = "spoken"$, unobserved. The concepts a rep examines are the
+  words it presents, each identified by its dictionary form (Def. 1.3): a
+  word rep examines one, and a sentence rep examines each word its line is
+  authored with. A *set* is a short run of reps closed by a summary; it is
+  the exercise's pacing unit in Remark 4.3's sense and nothing more, and a
+  session (Def. 4.4) is as many sets as the learner chooses to run.
 
   The ladder is Corollary 4.4's *Line* ladder reversed. There the learner
   hears a line before reading it, which is the order in which a learner can
@@ -1440,8 +1439,8 @@ rather than as *data*, and the remedy is to exhibit the data.
 
 #corollary("4.6", name: "The read-aloud valuation, declared")[
   The read-aloud renderer of `packages/ui/topik` (capability set per
-  Definition 9.3: $p_"response" = "spoken"$ and unobserved for reps, and
-  $"selection"$ for the sealed check; $p_"modality" in {"glyph", "audio"}$ with audio present iff a speech
+  Definition 9.3: $p_"response" = "spoken"$ and unobserved,
+  $p_"modality" in {"glyph", "audio"}$ with audio present iff a speech
   adapter is, and a budget of one set, run hands-free) delivers the
   read-aloud rep (Def. 4.8) at one declared valuation:
   $p_"modality" = "glyph"$, then $"audio"$;
@@ -1457,17 +1456,12 @@ rather than as *data*, and the remedy is to exhibit the data.
   together, which is not a read-aloud rep and counts toward nothing
   (Prop. 6.4 (ii)) --- and then returns as a rep;
   $p_"reveal" = "answer"$ (the audio and, where it differs from the
-  spelling, the pronunciation), then the gloss --- except that in a story
-  set a sentence's gloss is withheld until the sealed check has been
-  answered or passed over, and the story's glosses are then shown together.
+  spelling, the pronunciation), then the gloss.
 
-  Six decisions are named rather than glossed.
+  Four decisions are named rather than glossed.
   (i) *Mixed sets.* A set interleaves words with sentences of several
   lengths, in an order drawn afresh for each set, and never presents three
-  items of one kind in a row (Rem. 4.9). A story set keeps its sentences in
-  their authored order, because the order is what they mean together, and
-  draws the rest afresh: which words, from the story and beyond it, and
-  where they fall between its sentences.
+  items of one kind in a row (Rem. 4.9).
   (ii) *A sentence's turn is set by level.* It lasts as long as a reader at
   the learner's chosen level needs to read that many syllables aloud, at a
   rate fixed per level, and nothing the learner does moves it. A parameter
@@ -1478,8 +1472,8 @@ rather than as *data*, and the remedy is to exhibit the data.
   The per-word factor is Corollary 6.1's pacing dial held per item rather
   than shared: it is keyed by the word's authored identity (Thm. 1.1), read
   by nothing but the pause, never shown as an achievement (Prop. 6.4 (iii)),
-  persisted outside O3 like the resume point (Cor. 4.4 (iii)), and losing it
-  costs the learner their pace and nothing else (Thm. 7.2).
+  persisted outside O3 like the resume point (Cor. 4.4 (iii); Rem. 7.5),
+  and losing it costs the learner their pace and nothing else (Thm. 7.2).
   (iv) *The glyphs follow the sound.* While the learner reads and while the
   audio plays, the block being read or heard is marked --- a syllable at a
   time for a word, a word at a time for a sentence --- and while the audio
@@ -1493,20 +1487,16 @@ rather than as *data*, and the remedy is to exhibit the data.
   (Prop. 8.1, Rem. 4.7); an entry whose pronunciation does not align with
   its spelling is shown without the substitution rather than dropped
   (Thm. 8.2).
-  (v) *A story set closes on a sealed check* (Def. 4.9). Its outcome is
-  recorded and never shown, blocks nothing, and moves no belief; what it may
-  do is bounded by Proposition 6.5. A set without a story has no check.
-  (vi) *New arrangements of known words are preferred.* Among the stories
-  the learner's level admits, one not read before and whose words the
-  learner has mostly seen is preferred (Def. 6.7, Rem. 6.6), so what varies
-  from set to set is the text, not only the order.
 
-  As in Corollaries 4.3 and 4.4, $p_"credited" = "false"$ makes
-  Proposition 3.1 and Corollary 3.2 hold vacuously. Remark 4.5's trigger
-  does not carry over: the only response this surface records is the sealed
-  check's, which names no concept (Def. 4.9), so O3 existing would give it
-  nothing to credit. Crediting spoken reading
-  would first need a channel (Cor. 3.1 (c), Prop. 8.2).
+  Nothing is checked: the gloss is shown, never asked for, so
+  Proposition 4.2 has nothing to act on. As in Corollaries 4.3 and 4.4,
+  $p_"credited" = "false"$ makes Proposition 3.1 and Corollary 3.2 hold
+  vacuously. Remark 4.5's trigger does not carry over: with the spoken
+  response unobserved this exercise emits no outcome, so O3 existing would
+  give it nothing to credit. It would first need a channel (Cor. 3.1 (c),
+  Prop. 8.2). A check at the end of a set, whose outcome the learner never
+  sees, is drafted for a later amendment (issue \#1568) and is not part of
+  this one.
 ]
 
 #remark("4.9", name: "Variation against fitting the drill")[
@@ -1523,47 +1513,7 @@ rather than as *data*, and the remedy is to exhibit the data.
   drawn uniformly, which Proposition 6.2 shows is exactly right for a
   surface that holds no belief (Rem. 6.2); the one constraint on the draw,
   no three alike in a row, is a presentation constraint and selects nothing.
-  A story fixes its own sentence order, so in a story set the variation has
-  to come from the story itself: a drill that kept returning the same
-  stories would teach those stories, and Corollary 4.6 (vi) is what makes
-  them change.
 ]
-
-#definition("4.9", name: "Sealed check")[
-  A *sealed check* is one or two selection items put to the learner when a
-  story set's last rep has run, each asking how the story fits together ---
-  who did what, in which order, and why. The learner answers or passes
-  over it and the next set begins. Its outcome is recorded and is never
-  shown, neither then nor later, and the check gates nothing. It is not an
-  exercise in Definition 4.1's sense: its object is not a concept but the
-  set just practised --- whether the story was followed --- so, like an
-  evaluation report (Def. 3.3), it names no $k$, and its outcome is not an
-  observation (Def. 3.1). Definition 4.2's vocabulary describes it for the
-  renderer only: a selection, unscored, answered once, with nothing
-  revealed.
-]
-
-#proposition("4.3", name: "A sealed check must bind the story, and must come before its glosses")[
-  A sealed check yields evidence about the set only if (i) its question
-  cannot be answered by recognising a single content word of the story, and
-  (ii) no sentence's gloss has been shown before it is answered.
-]
-
-#proof[
-  (i) is Proposition 4.2 applied to the story: a question whose options
-  differ in a content word is answered by recognising that word, and a
-  learner who recognised one word while the set ran in silence answers it
-  as well as one who read every line. The admissible form holds the story's
-  content words fixed across the options and varies the relations between
-  them --- who acted, what came first, what caused what --- which is the
-  morphism probe's construction (Def. 4.6) at the scale of a passage.
-  Options are authored with the story and graded by lookup (Rem. 4.7).
-  (ii) is Proposition 3.1: with the glosses on screen the answer is in the
-  display, so the outcome depends on reading English and $Y = 0$ with
-  respect to the set. This is Corollary 4.4's rule that a line's gloss waits
-  for its check, applied to a story and its check.
-]
-
 
 // ═══════════════════════════════════════════════════════════════════════════
 = The Estimator
@@ -2041,14 +1991,17 @@ rather than as *data*, and the remedy is to exhibit the data.
 ]
 
 #axiom("6.2", name: "Honest repetition teaches")[
-  For a read-aloud rep $e$ (Def. 4.8) on an item $k$, write $G_h (e, S)$
-  for its intervention gain (Def. 4.3) conditioned on the learner practising
-  it honestly --- reading aloud in the turn, repeating in the echo, and
+  For a read-aloud rep $e$ (Def. 4.8) whose concepts are $K_e$, take its
+  intervention gain (Def. 4.3) to be the mean over $k in K_e$ of the gain on
+  $k$, and write $overline(mu)_t (e)$ for the mean of $mu_t (k)$ over the
+  same set; for a word rep both reduce to Definition 4.3's. Write
+  $G_h (e, S)$ for that gain conditioned on the learner practising $e$
+  honestly --- reading aloud in the turn, repeating in the echo, and
   reporting stuck when the item did not click --- and $G_(not h) (e, S)$ for
   the gain conditioned on their not doing so, so that
   $G = pi dot G_h + (1 - pi) dot G_(not h)$, where $pi$ is the probability
   that the learner practises $e$ honestly. There is a fixed $g in (0, 1]$
-  such that $G_h (e, S) >= g dot (1 - mu_t (k))$ for every such rep,
+  such that $G_h (e, S) >= g dot (1 - overline(mu)_t (e))$ for every rep,
   whether or not anything measures it; $G_(not h) >= 0$; and no
   introduction (Cor. 4.6) has negative gain.
 ]
@@ -2056,50 +2009,44 @@ rather than as *data*, and the remedy is to exhibit the data.
 This is Remark 3.3's weaker claim, that persistence is how learning happens,
 stated for one exercise so that it can be falsified (§12). It is an
 assumption and not a result: the exercise observes nothing from which it
-could be derived. The bound shrinks as the item nears mastery, as it must:
-$mu$ is bounded by one (Def. 2.1), so no fixed positive gain could hold for
-every rep. What it asserts is that honest practice on an item not yet
-mastered always helps, and helps more the less the item is mastered ---
-which is why Corollary 4.6 (vi) prefers new text and unmet words to
-rereading what is known.
+could be derived. The bound shrinks as the rep's words near mastery, as it
+must: $mu$ is bounded by one (Def. 2.1), so no fixed positive gain could
+hold for every rep. What it asserts is that honest practice on words not yet
+mastered always helps, and helps more the less they are mastered, while
+repeating what is already known buys little.
 
 #corollary("6.4", name: "For read-aloud, honest engagement is the lever")[
   Under Axiom 6.2, the objective of Definition 6.2 for the read-aloud
   exercise has no $beta$ term, and
   $ J >= alpha g dot EE[N_gamma], quad
-    N_gamma = sum_(t=0)^(T) gamma^t dot pi_t dot (1 - mu_t (k_t)) dot "Pr"["continue" | e_(<=t)], $
+    N_gamma = sum_(t=0)^(T) gamma^t dot pi_t dot (1 - overline(mu)_t (e_t)) dot "Pr"["continue" | e_(<=t)], $
   where $pi_t$ is the probability that rep $t$ is practised honestly, and
   zero for an introduction. $N_gamma$ is the expected count of honest reps
   the learner goes on to practise, each discounted by when it comes,
   weighted by the chance the learner is still there, and weighted by how
-  much of its item remains to learn. Since
-  nothing on this surface observes $G$, $N_gamma$ is the only part of $J$
-  the exercise can act on. It has no score but that.
+  much of its words remains to learn. Since nothing on this surface
+  observes $G$, $N_gamma$ is the only part of $J$ the exercise can act on.
+  It has no score but that.
 ]
 
 #proof[
   With $p_"credited" = "false"$ and the spoken response unobserved
   (Cor. 4.6), no outcome reaches the estimator, so the belief after a rep
   equals the belief before it and $Y = 0$ for every rep (Def. 3.2). The
-  sealed check's outcome (Def. 4.9) reaches only an aggregate that is not a
-  belief (Rem. 6.5), so it changes none of this. The $beta$ term therefore
-  vanishes, and what remains is the sum over $t$ of
+  $beta$ term therefore vanishes, and what remains is the sum over $t$ of
   $gamma^t dot alpha dot G(e_t, S_t) dot "Pr"["continue" | e_(<=t)]$. For
   a rep, Axiom 6.2 gives
-  $G = pi_t dot G_h + (1 - pi_t) dot G_(not h) >= pi_t dot g dot (1 - mu_t (k_t))$,
-  since $G_(not h) >= 0$; an introduction's term is non-negative. The exercises in the sum are this
-  surface's reps and introductions; the sealed check is not an exercise
-  (Def. 4.9) and contributes no term, and whatever it costs the learner in
-  patience acts through $"Pr"["continue"]$, which $N_gamma$ already weights.
-  Summing and taking expectations gives the bound. It is a bound and not an identity: $G$ may exceed it, so
-  two designs with equal $EE[N_gamma]$ may differ in $J$. But no design
-  decision on this surface can be taken on that difference, because nothing
-  observes $G$. What a decision can be judged by is its effect on
-  $N_gamma$, and it moves $N_gamma$ in three ways only: whether the learner
-  keeps coming back, whether they practise honestly, and whether the items
-  they practise are ones they have not yet mastered. Remark 6.1's
-  continuation term is therefore not one term among several here; it is the
-  lever this exercise has.
+  $G = pi_t dot G_h + (1 - pi_t) dot G_(not h) >= pi_t dot g dot (1 - overline(mu)_t (e_t))$,
+  since $G_(not h) >= 0$; an introduction's term is non-negative. Summing
+  and taking expectations gives the bound. It is a bound and not an
+  identity: $G$ may exceed it, so two designs with equal $EE[N_gamma]$ may
+  differ in $J$. But no design decision on this surface can be taken on
+  that difference, because nothing observes $G$. What a decision can be
+  judged by is its effect on $N_gamma$, and it moves $N_gamma$ in three
+  ways only: whether the learner keeps coming back, whether they practise
+  honestly, and whether the words they practise are ones they have not yet
+  mastered. Remark 6.1's continuation term is therefore not one term among
+  several here; it is the lever this exercise has.
 ]
 
 #definition("6.6", name: "Practice record")[
@@ -2111,11 +2058,9 @@ rereading what is known.
   already says what it is not: a count, read by no policy, correct as a
   display (Cor. 2.1). It is an undiscounted, unweighted view of the reps
   $N_gamma$ weighs, the one quantity Corollary 6.4 leaves this exercise to
-  act on. It cannot tell a rep read aloud
-  from one watched in silence, and nothing on the surface can. Across many
-  sets the sealed checks can tell sets followed from sets left running
-  unattended (Rem. 6.5), though not reading aloud from attentive listening;
-  the record itself never learns what they found (Prop. 6.5).
+  act on. It cannot tell a rep read aloud from one watched in silence, and
+  nothing on the surface can; that limit is the learner's side of
+  Axiom 6.2, and §12 names it.
 ]
 
 #proposition("6.4", name: "The record must not pay for dishonesty")[
@@ -2151,101 +2096,14 @@ rereading what is known.
   closed by (ii): a report made when the item did click would bring it back,
   and if returns counted, false reports would farm the record; since returns
   add nothing, a report can move nothing shown in either direction. Clauses
-  (i) and (iv)
-  close the same gap for reps and time skipped, abandoned or left behind a
-  hidden page. None of the four can make a set watched in silence count for
-  less than one read aloud, because nothing shown depends on a difference
-  the surface cannot see; they ensure only that it never counts for more. By
-  exhibition: the prototype this amendment was drawn from closed each set
-  with the learner's average turn length. The turn shortens only on reps run
-  without a stuck report, so that summary rewarded withholding the report,
-  and (iii) excludes it.
-]
-
-#proposition("6.5", name: "The sealed outcome is disclosed by nothing the learner sees")[
-  A sealed check's outcome may not alter the practice record, end or extend
-  a set, or change anything shown about the set it closes or the set after
-  it. It may be read only by the aggregate of Remark 6.5, and the aggregate
-  may act on what the learner is shown in one way only: by moving the
-  familiarity band from which later stories are chosen (Rem. 6.6), a move
-  made on many sets' outcomes together and never on one.
-]
-
-#proof[
-  An outcome that altered anything shown about its own set, or anything the
-  learner could trace back to it, would be disclosed by it, and the check
-  would stop being sealed. The band move is not such a change. It is made
-  on an aggregate of many sets, so no single outcome decides it; and it
-  changes only which of several stories that fit the learner's level comes
-  next, which the learner sees without being able to read any answer back
-  from it. It would also make an honest miss cost
-  something: a learner who read every line and misunderstood the story is
-  practising honestly in Axiom 6.2's sense, and a record that dropped their
-  set would pay for the pretence of understanding, which Proposition 6.4
-  (ii) already forbids for a stuck report. A single set cannot be judged in
-  any case: its check is one or two selections, a guess succeeds at the
-  rate of one over the number of options, and by Theorem 3.1 one binary
-  outcome does not separate inattention from misunderstanding, a hard story
-  or a lucky guess.
-]
-
-#remark("6.5", name: "What the sealed checks are for")[
-  They turn part of what the §12 falsifiers ask the learner to notice into
-  something the system records. Outcomes are kept only as counts ---
-  answered well, answered badly, passed over --- per band of story
-  familiarity (Def. 6.7) per recent week, so the aggregate reads as a curve
-  of comprehension against familiarity that can be compared with itself
-  over time. Every story is heard as well as read, so a check
-  measures the story as understood through either channel. It can
-  therefore tell a set followed from one left running unattended; it cannot
-  tell a set read aloud from one listened to in silence, nor reading from
-  listening. One reading of the aggregate is firm, because it does not
-  depend on which stories were drawn: answers at the rate of guessing, in
-  every band and week after week while the practice record grows, say sets
-  are running unattended, since a guess succeeds at one over the number of
-  options whatever the story. Every other reading is suggestive only. A
-  band fixes the share of seen words, not which words, nor the grammar or
-  the length of the story, and the stories drawn into a band change from
-  week to week (Rem. 6.6), so a band's rate can move without any learning,
-  and a gap between bands is expected of any learner. Improvement within
-  every band, the unfamiliar ones included, is consistent with Axiom 6.2;
-  improvement confined to the familiar bands is consistent with a gain
-  fitted to what is familiar (Rem. 4.9); neither is established by the
-  aggregate. Turning either into evidence would need matched stories ---
-  authored in pairs of like length, grammar and vocabulary, one read
-  earlier and one later --- which this amendment does not provide. A learner who
-  follows every story by ear without reading aloud leaves the same curve as
-  one who reads aloud, and only a channel (§12) separates them. This aggregate
-  is not a belief: it names no concept, feeds no estimator and is read by
-  no policy over $hat(B)$. It is the exercise's partial test of its own
-  axiom, which the learner may export and look at as a builder does,
-  and does not see as a learner.
-]
-
-#definition("6.7", name: "Exposure and familiarity")[
-  The *exposure* of a word is how often it has been presented to the
-  learner, counted by its dictionary form so that one verb's conjugations
-  count as one word, and held in a fixed-size counting sketch keyed by a
-  hash of that form, whose estimates can only overcount. A story's
-  *familiarity* $phi$ is the share of its words whose exposure has reached a
-  fixed threshold. A capped set of hashes of stories already read records
-  which are no longer new.
-]
-
-#remark("6.6", name: "Exposure orders; it does not believe")[
-  Proposition 2.3 forbids treating a record of what was presented as a
-  state of what is known, and exposure is not used as one: it says what the
-  learner has seen, not what they can read. It orders stories, which
-  Remark 3.5 already admits for a device-side record: a story not yet read
-  comes before one that has been, and among unread stories those whose
-  familiarity falls in a target band come first. Reading research commonly
-  places comfortable reading at nearly all words known; a practice band sits
-  somewhat below that, so a set is mostly known words in an arrangement the
-  learner has not seen, with a few they have not met. The sealed aggregate
-  (Rem. 6.5) may move the band within the learner's level --- down when
-  unfamiliar stories are going badly, up when they are going well --- and
-  that is the only way it acts on what the learner is given. An order is
-  not a belief, and none of this sets the level.
+  (i) and (iv) close the same gap for reps and time skipped, abandoned or
+  left behind a hidden page. None of the four can make a set watched in
+  silence count for less than one read aloud, because nothing shown depends
+  on a difference the surface cannot see; they ensure only that it never
+  counts for more. By exhibition: the prototype this amendment was drawn
+  from closed each set with the learner's average turn length. The turn
+  shortens only on reps run without a stuck report, so that summary
+  rewarded withholding the report, and (iii) excludes it.
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2443,20 +2301,24 @@ also survives its relaxation.
   adaptation and nothing else.
 ]
 
-#remark("7.5", name: "The practice record is bounded")[
-  Definition 6.6's record is not an interaction log (Prop. 7.1). It keeps one
-  entry per day for a fixed number of recent days (sixty), three counts
-  each, and three running totals, so its footprint is constant however much
-  the learner practises (Thm. 7.1). The per-word pace of Corollary 4.6 (iii)
-  is bounded by the size of the vocabulary shipped. The exposure sketch of
-  Definition 6.7 has a fixed size however many words pass through it; the
-  set of stories read is capped, and a story that falls out of it merely
-  looks new again; and the sealed aggregate of Remark 6.5 is a few counts
-  per familiarity band over a fixed number of recent weeks. All of them
-  stay on the device (Rem. 7.3). Losing any of them costs the learner their
-  history, their pace, the preference for new stories, or the aggregate,
-  and nothing else (Thm. 7.2), so a write that fails is swallowed
-  (Prop. 7.2).
+#remark("7.5", name: "Records outside the envelope, bounded")[
+  Definition 7.1 says the persisted footprint is the belief envelope's and
+  that nothing else is persisted. It is amended in one respect: that clause
+  governs the envelope (O3). Records the canon admits outside it are
+  persisted too --- the resume point (Cor. 4.4 (iii)), evaluation reports
+  (Rem. 7.4), and now the practice record (Def. 6.6) and the per-word pace
+  of Corollary 4.6 (iii) --- and the storage budget is the envelope's
+  footprint plus theirs. Each must satisfy Theorem 7.1's condition on its
+  own: bounded independently of how many interactions produced it. The
+  practice record keeps one entry per day for a fixed number of recent days
+  (sixty), three counts each, and three running totals; the pace is bounded
+  by the size of the vocabulary shipped. Neither is an interaction log
+  (Prop. 7.1). Both stay on the device (Rem. 7.3). Losing either costs the
+  learner their history or their pace and nothing else (Thm. 7.2), so a
+  write that fails is swallowed (Prop. 7.2). The portability obligation
+  (Def. 7.2) extends to the practice record, which is the learner's own
+  history; the pace is cheaper to relearn than to carry, and need not
+  travel.
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2958,16 +2820,13 @@ of the source it describes.
 
   [`packages/ui/topik`, read-aloud renderer],
   [No belief and no persistence of competence. A per-word pace factor keyed
-   by authored word identity, a bounded practice record (Def. 6.6), an
-   exposure sketch and a set of stories read (Def. 6.7), and a sealed
-   aggregate of story checks by familiarity (Rem. 6.5), all bounded
-   (Rem. 7.5)],
+   by authored word identity, and a bounded practice record (Def. 6.6,
+   Rem. 7.5)],
   [A new exercise on the surface, declared rather than derived from the
    lesson (Cor. 4.6): glyphs before audio, the spoken response unobserved,
-   stuck reports steering repeat and pace only (Rem. 3.6), story sets closed
-   by a sealed check whose outcome no display reads (Prop. 6.5), and an
-   objective that is continuation alone (Cor. 6.4). O3 still does not exist,
-   and if it did this exercise would have nothing to write into it.],
+   stuck reports steering repeat and pace only (Rem. 3.6), and an objective
+   that is continuation alone (Cor. 6.4). O3 still does not exist, and if it
+   did this exercise would have nothing to write into it.],
 )
 
 #heading(level: 2)[The unreconciled duplication]
@@ -3147,33 +3006,18 @@ would cost.
   marked for them, the gain was fitted to the drill (Rem. 4.9) or was never
   there. Cost: the exercise acquires a measurement of reading itself
   ($beta > 0$) --- the spoken response captured as a class III sensor
-  (Prop. 8.2) --- and Corollary 6.4 is withdrawn for it. Detectable by the
-  learner's own notice. The sealed aggregate can suggest it, as improvement
-  confined to the familiar bands, but cannot establish it: its bands do not
-  match stories (Rem. 6.5), and every story is also heard, so it cannot
-  isolate reading either.
+  (Prop. 8.2) --- and Corollary 6.4 is withdrawn for it. Detectable only by
+  the learner's own notice; a system-side signal is drafted in issue \#1568
+  and is not part of this amendment.
 
 + *The record grows without practice.* Proposition 6.4 closes the gaps the
   surface can see, and it cannot see whether a rep was read aloud: a set run
   hands-free and watched in silence counts the same as one read aloud. If
   the learner finds the record growing on sets they did not practise, or the
   exercise inviting them to watch rather than read, the record is counting
-  attendance. Sets left running unattended are detectable in the sealed
-  aggregate, as answers at the rate of guessing in every band while the
-  record grows (Rem. 6.5). A learner who follows every story by ear without reading
-  aloud leaves no such trace, and only the cost below would catch it. Cost:
-  a signal
-  that the turn was used --- the microphone detecting speech, not grading
-  it --- becomes a condition of Proposition 6.4 (i).
-
-+ *The sealed checks do not discriminate.* If answers sit near ceiling in
-  every band whatever the learner does, or near the rate of guessing on
-  sets the learner knows they followed, the questions are measuring the
-  options rather than the story, and Remark 6.5's one firm reading --- sets
-  running unattended --- cannot be told from the checks' own failure.
-  Cost: the questions are rewritten against Proposition 4.3 (i), or given
-  more items per story; until then the two falsifiers above fall back to
-  the learner's own notice.
+  attendance. Cost: a signal that the turn was used --- the microphone
+  detecting speech, not grading it --- becomes a condition of
+  Proposition 6.4 (i).
 
 // ═══════════════════════════════════════════════════════════════════════════
 = Amendment Protocol
@@ -3317,39 +3161,32 @@ the `packages/ui/topik` change that implements it, on the same branch.
 
 *v1.9 --- 2026-09-28.* Declares a read-aloud exercise whose only objective is
 engagement. Defines the read-aloud rep (Def. 4.8): glyphs before audio, a
-ladder of turn, audio, echo and gloss advanced by the clock, and the spoken
-response unobserved. Declares its valuation (Cor. 4.6): mixed sets, a
-sentence's turn fixed by level, a word's turn adapting as pacing, and glyphs
-that follow the sound. Records why the sets vary (Rem. 4.9) and what a stuck
-report is and is not (Rem. 3.6). States as an axiom what Remark 3.3 held as a
-claim, that honest repetition teaches (Axiom 6.2), and derives that this
-exercise can then act on its objective only through the discounted,
-survival-weighted count of honest reps on items not yet mastered (Cor. 6.4).
-Defines the practice record that shows it (Def. 6.6), constrains it so that
-nothing it shows is higher for a less honest way through a set than for the
-honest one, while naming the one it cannot tell apart (Prop. 6.4), and
-bounds it (Rem. 7.5). Closes story sets on a sealed check (Def. 4.9): a
-question about how the story fits together, answered before any of its
-glosses are shown and built so that no single word answers it (Prop. 4.3),
-whose outcome no display discloses (Prop. 6.5) and is kept only as counts
-by story familiarity and week, acting on what is shown only by moving the
-familiarity band on many sets together. Of its readings one is firm ---
-answers at the rate of guessing in every band mean sets are running
-unattended --- and the rest are suggestive until stories are matched
-(Rem. 6.5); it cannot tell reading aloud from listening. Stuck reports
-neither lower nor raise the record: the returns they cause count toward
-nothing (Prop. 6.4 (ii)). The sealed check is not an
-exercise, since it names no concept (Def. 4.9). Counts exposure per dictionary form in a fixed-size
-sketch (Def. 6.7) and uses it to prefer new stories made mostly of seen
-words, as an order and not a belief (Rem. 6.6). Adds three falsifiers to §12
-and a TPK-READ row to §10.
+ladder of turn, audio, echo and gloss advanced by the clock, the spoken
+response unobserved, and as its concepts the words it presents. Declares its
+valuation (Cor. 4.6): mixed sets, a sentence's turn fixed by level, a word's
+turn adapting as pacing, glyphs that follow the sound, and a word reported
+stuck on first sight introduced before it returns. Records why the sets vary
+(Rem. 4.9) and what a stuck report is and is not (Rem. 3.6). States as an
+axiom what Remark 3.3 held as a claim, that honest repetition teaches, with
+the gain conditioned on honest practice and saturating at mastery
+(Axiom 6.2), and derives that the exercise can act on its objective only
+through the discounted, survival-weighted expected count of honest reps on
+words not yet mastered (Cor. 6.4). Defines the practice record that shows it
+(Def. 6.6), constrains it so that nothing it shows is higher for a less
+honest way through a set than for the honest one, stuck reports included in
+both directions, while naming the case it cannot tell apart (Prop. 6.4), and
+amends Definition 7.1 to name and bound the records kept outside the
+envelope (Rem. 7.5). Adds two falsifiers to §12 and a TPK-READ row to §10.
 Motivated by a learner's report: they decode a word too slowly to recognise
 it, then know it the moment they hear it, and new vocabulary in a line
 compounds the stall. Corollary 4.4's audio-first ladder never asks them to
 read before they hear. Also motivated by a prototype of the exercise, whose
-end-of-set pace summary is the exhibit in Proposition 6.4's proof. Moves the
-front-matter version line, which had stayed at 1.2 through v1.3--v1.8. Filed
-ahead of the `packages/ui/topik` read-aloud renderer.
+end-of-set pace summary is the exhibit in Proposition 6.4's proof. A sealed
+end-of-set story check and exposure-driven story selection were drafted in
+review and split out to issue \#1568, which records what review settled and
+what remains open. Moves the front-matter version line, which had stayed at
+1.2 through v1.3--v1.8. Filed ahead of the `packages/ui/topik` read-aloud
+renderer.
 
 #pagebreak()
 
@@ -3385,10 +3222,10 @@ ahead of the `packages/ui/topik` read-aloud renderer.
   [$pi : hat(B) -> e$], [Policy (Def. 6.1)],
   [$J(pi)$], [Pedagogical objective, survival-weighted (Def. 6.2)],
   [$alpha, beta$], [Explicit allocation between intervention and measurement (Def. 6.2, Cor. 4.2)],
-  [$g$], [Lower bound on the gain of an honest read-aloud rep (Axiom 6.2)],
+  [$g$], [Lower bound on the gain of an honest read-aloud rep, relative to what remains to learn (Axiom 6.2)],
   [$G_h, G_(not h), pi$], [Gain given honest practice, gain otherwise, and the probability of honest practice (Axiom 6.2)],
+  [$overline(mu)_t (e)$], [Mean mastery over the words a read-aloud rep presents (Axiom 6.2)],
   [$N_gamma$], [Expected discounted, survival- and mastery-weighted count of honest read-aloud reps (Cor. 6.4)],
-  [$phi$], [Familiarity of a story: share of its words with exposure past a threshold (Def. 6.7)],
   [$nu$], [Renderer nuisance parameters (Def. 9.2)],
 )
 
