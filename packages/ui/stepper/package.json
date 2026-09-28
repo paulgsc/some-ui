@@ -21,7 +21,7 @@
   "peerDependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "canvas-confetti": "1.9.3"
+    "canvas-confetti": "1.9.4"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "catalog:",
@@ -30,7 +30,7 @@
     "@some-ui/styles": "workspace:*",
     "@types/canvas-confetti": "1.9.0",
     "@types/react": "^19.0.4",
-    "canvas-confetti": "1.9.3",
+    "canvas-confetti": "1.9.4",
     "lucide-react": "catalog:",
     "some-ui-input": "workspace:*",
     "some-ui-utils": "workspace:*"
