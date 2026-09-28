@@ -39,3 +39,25 @@ export {
 export type { TopikLevel } from "./lib/topik/generation"
 /** The lesson's conversations as the study session's chat plays them. */
 export { ConversationPreview } from "./components/topik/conversation-preview"
+
+/**
+ * Read-aloud content (canon Def. 4.8, Cor. 4.6): the deck format, its
+ * load-time check, and the bundled starter deck. Public so a host can load a
+ * served or generated deck and fall back to the starter when it fails to
+ * parse (canon Thm. 8.2).
+ */
+export {
+  parseReadAloudDeck,
+  READ_ALOUD_LEVELS,
+} from "./lib/topik/read-aloud/content"
+export type {
+  ContentFinding,
+  ContentFindingKind,
+  ParsedDeck,
+  ReadAloudDeck,
+  ReadAloudLevel,
+  ReadAloudLine,
+  ReadAloudWord,
+  WordOccurrence,
+} from "./lib/topik/read-aloud/content"
+export { STARTER_DECK } from "./lib/topik/read-aloud/starter"
