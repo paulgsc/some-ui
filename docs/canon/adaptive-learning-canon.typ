@@ -1419,8 +1419,11 @@ rather than as *data*, and the remedy is to exhibit the data.
 
 #definition("4.8", name: "Read-aloud rep")[
   A *read-aloud rep* is an exercise (Def. 4.1) whose content instance is a
-  word or a sentence, presented as glyphs, and whose objective is
-  production: the learner reads the item aloud before hearing it. It runs a
+  word or a sentence, presented as glyphs, and whose objective is decoding
+  aloud: the learner reads the item aloud before hearing it. Its direction
+  is neither of Definition 4.2's --- not recognition (stimulus $->$
+  meaning), nor production (meaning $->$ stimulus) --- but written form $->$
+  spoken form, and $p_"direction"$ is extended with that value, *decoding*. It runs a
   fixed ladder advanced by the clock rather than by request --- the glyphs,
   the learner's *turn* to read them aloud, the item's audio, a second turn
   to repeat it (the *echo*), and its gloss --- and it ends when the ladder
@@ -1445,13 +1448,15 @@ rather than as *data*, and the remedy is to exhibit the data.
 #corollary("4.6", name: "The read-aloud valuation, declared")[
   The read-aloud renderer of `packages/ui/topik` (capability set per
   Definition 9.3: $p_"response" = "spoken"$ and unobserved,
-  $p_"modality" = {"glyph", "audio"}$, and a budget of one set, run
-  hands-free) delivers the read-aloud rep (Def. 4.8) at one declared
+  $p_"modality" = {"glyph", "audio"}$, and sets run hands-free one at a
+  time, with no bound on a session beyond the learner's continuation,
+  Def. 4.4) delivers the read-aloud rep (Def. 4.8) at one declared
   valuation. Audio is part of the capability set rather than optional in
   it: the ladder's audio and echo are the rep, so where no speech adapter
   is present the exercise is not offered at all, unlike Corollary 4.4's
   line, which falls back to starting at Hangul. The valuation:
   $p_"modality" = "glyph"$, then $"audio"$;
+  $p_"direction" = "decoding"$ (Def. 4.8);
   $p_"hint" = "progressive"$ over glyph $->$ audio $->$ gloss, advanced by
   the clock;
   $p_"pressure" = "soft"$ --- the turn ends and the audio plays, and nothing
@@ -2023,7 +2028,7 @@ hold for every rep. What it asserts is that honest practice on words not yet
 mastered always helps, and helps more the less they are mastered, while
 repeating what is already known buys little.
 
-#corollary("6.4", name: "For read-aloud, honest engagement is the visible lever")[
+#corollary("6.4", name: "For read-aloud, honest engagement is the lever it aims at")[
   Under Axiom 6.2, the objective of Definition 6.2 for the read-aloud
   exercise has no $beta$ term, and
   $ J >= alpha g dot EE[N_gamma], quad
@@ -2032,9 +2037,10 @@ repeating what is already known buys little.
   zero for an introduction. $N_gamma$ is the expected count of honest reps
   the learner goes on to practise, each discounted by when it comes,
   weighted by the chance the learner is still there, and weighted by how
-  much of its words remains to learn. $N_gamma$ is the part of $J$ this
-  surface's own records can speak to, and the exercise shows no score but a
-  view of it (Def. 6.6).
+  much of its words remains to learn. $N_gamma$ is not observed either ---
+  neither $pi_t$ nor $mu_t$ is --- but it names what the surface's design
+  aims at, and the exercise shows no score but a proxy for one of its
+  factors (Def. 6.6).
 ]
 
 #proof[
@@ -2053,12 +2059,15 @@ repeating what is already known buys little.
   corollary settles is narrower. Nothing on this surface measures $G_h$, so
   choices that act on it (the order of the ladder, the glyphs that follow
   the sound) are argued from the canon, as Corollary 4.6 and Remark 4.9
-  argue them, and tested only by the falsifiers of §12. What the surface
-  can record and act on is $N_gamma$, which moves in three ways: whether the
-  learner keeps coming back, whether they practise honestly, and whether
-  the words they practise are ones they have not yet mastered. Remark 6.1's
+  argue them, and tested only by the falsifiers of §12. $N_gamma$ moves in
+  three ways --- whether the learner keeps coming back, whether they
+  practise honestly, and whether the words they practise are ones they have
+  not yet mastered --- and the surface measures none of them. It can count
+  reps that ran, a proxy for the first (Def. 6.6); it can arrange that
+  honesty is never rewarded against (Prop. 6.4), without observing it; and
+  without O3 it cannot tell which words are mastered. Remark 6.1's
   continuation term is therefore not one term among several here; it is the
-  lever this exercise can see.
+  lever this exercise aims at, through a proxy.
 ]
 
 #definition("6.6", name: "Practice record")[
@@ -2071,17 +2080,17 @@ repeating what is already known buys little.
   pause does can move it. It names no item and
   carries no outcome, so it is not an observation, and Proposition 2.1
   already says what it is not: a count, read by no policy, correct as a
-  display (Cor. 2.1). It is an undiscounted, unweighted view of the reps
-  $N_gamma$ weighs, the quantity Corollary 6.4 leaves this surface able to
-  record. It cannot tell a rep read aloud from one watched in silence, and
+  display (Cor. 2.1). It is a proxy for the continuation factor of
+  $N_gamma$ (Cor. 6.4): it counts reps that ran, not whether they were
+  practised honestly or whether their words were already known. It cannot tell a rep read aloud from one watched in silence, and
   nothing on the surface can; that limit is the learner's side of
   Axiom 6.2, and §12 names it.
 ]
 
 #proposition("6.4", name: "The record must not pay for dishonesty")[
   A practice record is admissible only if no quantity it shows is higher
-  for a less honest way through a set than for the honest one. In
-  particular:
+  for a less honest way through a given set than for the honest way through
+  the same set. In particular:
   (i) a rep counts only if every step of its ladder ran to the end while the
   exercise was on screen, so a skipped rep, a rep abandoned by leaving, and
   a rep interrupted by the page being hidden do not count;
@@ -2098,7 +2107,12 @@ repeating what is already known buys little.
   Where the surface cannot tell two ways through a set apart --- the set
   read aloud, and the same set left running and watched in silence --- the
   record shows the same for both. The proposition permits that and does not
-  claim to exclude it: it is Definition 6.6's limit, and §12 names it.
+  claim to exclude it: it is Definition 6.6's limit, and §12 names it. The
+  comparison is per set, not per minute. In a sitting bounded by the clock
+  (Def. 4.4), an honest stuck report spends time on returns that earn
+  nothing, so withholding it can fit more sets into the same minutes; the
+  record cannot remove that cost without paying for returns, which (ii)
+  forbids, and the proposition does not claim to.
 ]
 
 #proof[
@@ -2116,7 +2130,11 @@ repeating what is already known buys little.
   and clocked time would pay for the longer pause on every later rep of the
   word, which is why (iv) credits practice at a nominal duration instead.
   Clauses (i) and (iv) close the same gap for reps skipped, abandoned or
-  left behind a hidden page. None of the four can make a set watched in
+  left behind a hidden page. What remains is the time an honest report
+  costs within a clock-bounded sitting, which the per-set comparison does
+  not cover; clause (iii) at least keeps it from showing as a score, since
+  no rate or pace is displayed that would turn the time into a number the
+  learner is rewarded for raising. None of the four can make a set watched in
   silence count for less than one read aloud, because nothing shown depends
   on a difference the surface cannot see; they ensure only that it never
   counts for more. By exhibition: the prototype this amendment was drawn
@@ -3181,8 +3199,9 @@ the `packages/ui/topik` change that implements it, on the same branch.
 *v1.9 --- 2026-09-28.* Declares a read-aloud exercise whose only objective is
 engagement. Defines the read-aloud rep (Def. 4.8): glyphs before audio, a
 ladder of turn, audio, echo and gloss advanced by the clock, the spoken
-response unobserved, and as its concepts the set of words it presents, by
-authored identifier, extending Definition 4.1's $k$ to a set. Declares its
+response unobserved, its direction a new value, *decoding* (written form to
+spoken form), and as its concepts the set of words it presents, by authored
+identifier, extending Definition 4.1's $k$ to a set. Declares its
 valuation (Cor. 4.6), offered only where audio is: mixed sets, a sentence's turn fixed by level, a word's
 turn adapting as pacing, glyphs that follow the sound, and a word reported
 stuck on first sight introduced before it returns. Records why the sets vary
@@ -3191,10 +3210,13 @@ axiom what Remark 3.3 held as a claim, that honest repetition teaches, with
 the gain conditioned on honest practice and saturating at mastery
 (Axiom 6.2), and derives a lower bound on its objective in the discounted,
 survival-weighted expected count of honest reps on words not yet mastered,
-the part of the objective the surface can record; design choices that act
-on the gain itself are argued, not measured (Cor. 6.4). Defines the practice record that shows it
+which the surface aims at but does not observe, showing only a proxy for
+its continuation factor; design choices that act on the gain itself are
+argued, not measured (Cor. 6.4). Defines the practice record that shows it
 (Def. 6.6), constrains it so that nothing it shows is higher for a less
-honest way through a set than for the honest one, stuck reports included in
+honest way through a given set than for the honest way through the same
+set, naming the time an honest report costs in a clock-bounded sitting as
+outside that guarantee, stuck reports included in
 both directions and practice credited at a nominal duration rather than by
 the clock, while naming the case it cannot tell apart (Prop. 6.4), and
 amends Definition 7.1 to name and bound the records kept outside the
