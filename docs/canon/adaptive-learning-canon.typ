@@ -1503,9 +1503,9 @@ rather than as *data*, and the remedy is to exhibit the data.
 
   As in Corollaries 4.3 and 4.4, $p_"credited" = "false"$ makes
   Proposition 3.1 and Corollary 3.2 hold vacuously. Remark 4.5's trigger
-  does not carry over: the only outcome this exercise emits is the sealed
-  check's, which bears on a set's attention rather than on any concept, so
-  O3 existing would give it nothing to credit. Crediting spoken reading
+  does not carry over: the only response this surface records is the sealed
+  check's, which names no concept (Def. 4.9), so O3 existing would give it
+  nothing to credit. Crediting spoken reading
   would first need a channel (Cor. 3.1 (c), Prop. 8.2).
 ]
 
@@ -1534,11 +1534,13 @@ rather than as *data*, and the remedy is to exhibit the data.
   story set's last rep has run, each asking how the story fits together ---
   who did what, in which order, and why. The learner answers or passes
   over it and the next set begins. Its outcome is recorded and is never
-  shown, neither then nor later, and the check gates nothing. It is an
-  exercise in Definition 4.1's sense, with $p_"response" = "selection"$,
-  $p_"scored" = "false"$, $p_"credited" = "false"$, $p_"retry" =
-  "forbidden"$ and $p_"reveal" = "nothing"$; its object is not a concept but
-  the set just practised: whether it was read with attention.
+  shown, neither then nor later, and the check gates nothing. It is not an
+  exercise in Definition 4.1's sense: its object is not a concept but the
+  set just practised --- whether the story was followed --- so, like an
+  evaluation report (Def. 3.3), it names no $k$, and its outcome is not an
+  observation (Def. 3.1). Definition 4.2's vocabulary describes it for the
+  renderer only: a selection, unscored, answered once, with nothing
+  revealed.
 ]
 
 #proposition("4.3", name: "A sealed check must bind the story, and must come before its glosses")[
@@ -2044,7 +2046,7 @@ rather than as *data*, and the remedy is to exhibit the data.
   the turn, repeating in the echo, and reporting stuck when the item did not
   click --- has intervention gain (Def. 4.3) of at least
   $g dot (1 - mu_t (k))$, whether or not anything measures it; and no rep,
-  honest or not, has negative gain.
+  honest or not, and no introduction (Cor. 4.6) has negative gain.
 ]
 
 This is Remark 3.3's weaker claim, that persistence is how learning happens,
@@ -2080,8 +2082,11 @@ rereading what is known.
   $gamma^t dot alpha dot G(e_t, S_t) dot "Pr"["continue" | e_(<=t)]$. By
   Axiom 6.2 each term with $h_t = 1$ is at least
   $gamma^t dot alpha g dot (1 - mu_t (k_t)) dot "Pr"["continue" | e_(<=t)]$,
-  and every other term is non-negative. Summing and taking expectations
-  gives the bound. It is a bound and not an identity: $G$ may exceed it, so
+  and every other term is non-negative. The exercises in the sum are this
+  surface's reps and introductions; the sealed check is not an exercise
+  (Def. 4.9) and contributes no term, and whatever it costs the learner in
+  patience acts through $"Pr"["continue"]$, which $N_gamma$ already weights.
+  Summing and taking expectations gives the bound. It is a bound and not an identity: $G$ may exceed it, so
   two designs with equal $EE[N_gamma]$ may differ in $J$. But no design
   decision on this surface can be taken on that difference, because nothing
   observes $G$. What a decision can be judged by is its effect on
@@ -2102,9 +2107,10 @@ rereading what is known.
   display (Cor. 2.1). It is an undiscounted, unweighted view of the reps
   $N_gamma$ counts, the one quantity Corollary 6.4 leaves this exercise to
   act on. It cannot tell a rep read aloud
-  from one watched in silence, and nothing on the surface can for a single
-  set. Across many sets the sealed checks can (Rem. 6.5); the record itself
-  never learns what they found (Prop. 6.5).
+  from one watched in silence, and nothing on the surface can. Across many
+  sets the sealed checks can tell sets followed from sets left running
+  unattended (Rem. 6.5), though not reading aloud from attentive listening;
+  the record itself never learns what they found (Prop. 6.5).
 ]
 
 #proposition("6.4", name: "The record must not pay for dishonesty")[
@@ -2165,19 +2171,25 @@ rereading what is known.
 ]
 
 #remark("6.5", name: "What the sealed checks are for")[
-  They turn the two falsifiers §12 files against this exercise from
-  something only the learner could notice into something the system
-  records. Outcomes are kept only as counts --- answered well, answered
-  badly, passed over --- per band of story familiarity (Def. 6.7), so the
-  aggregate reads as a curve of attention against familiarity. Three shapes
-  are distinguishable in it. Answers that hold up on unfamiliar stories and
-  improve over time are what Axiom 6.2 predicts. Answers that are good on
+  They turn part of what the §12 falsifiers ask the learner to notice into
+  something the system records. Outcomes are kept only as counts ---
+  answered well, answered badly, passed over --- per band of story
+  familiarity (Def. 6.7), so the aggregate reads as a curve of comprehension
+  against familiarity. Every story is heard as well as read, so a check
+  measures the story as understood through either channel. It can
+  therefore tell a set followed from one left running unattended; it cannot
+  tell a set read aloud from one listened to in silence, nor reading from
+  listening. Three shapes are distinguishable in it. Answers that hold up
+  on unfamiliar stories and improve over time are consistent with Axiom 6.2,
+  though listening alone could produce them. Answers that are good on
   familiar stories and poor on unfamiliar ones say the gain was fitted to
-  the drill (Rem. 4.9). Answers that are poor everywhere while the practice
-  record grows say sets are being watched rather than read. This aggregate
+  what is familiar (Rem. 4.9). Answers that are poor everywhere while the
+  practice record grows say sets are running unattended. A learner who
+  follows every story by ear without reading aloud leaves the same curve as
+  one who reads aloud, and only a channel (§12) separates them. This aggregate
   is not a belief: it names no concept, feeds no estimator and is read by
-  no policy over $hat(B)$. It is the exercise's instrument for testing its
-  own axiom, which the learner may export and look at as a builder does,
+  no policy over $hat(B)$. It is the exercise's partial test of its own
+  axiom, which the learner may export and look at as a builder does,
   and does not see as a learner.
 ]
 
@@ -3106,18 +3118,22 @@ would cost.
   marked for them, the gain was fitted to the drill (Rem. 4.9) or was never
   there. Cost: the exercise acquires a measurement of reading itself
   ($beta > 0$) --- the spoken response captured as a class III sensor
-  (Prop. 8.2) --- and Corollary 6.4 is withdrawn for it. Detectable in the
-  sealed aggregate as answers that are good on familiar stories and poor on
-  unfamiliar ones, or that stop improving (Rem. 6.5), and by the learner
-  without any instrument.
+  (Prop. 8.2) --- and Corollary 6.4 is withdrawn for it. Partly detectable
+  in the sealed aggregate, as answers that are good on familiar stories and
+  poor on unfamiliar ones or that stop improving (Rem. 6.5); since every
+  story is also heard, the aggregate cannot isolate reading, and whether
+  reading itself carried over is left to the learner's own notice.
 
 + *The record grows without practice.* Proposition 6.4 closes the gaps the
   surface can see, and it cannot see whether a rep was read aloud: a set run
   hands-free and watched in silence counts the same as one read aloud. If
   the learner finds the record growing on sets they did not practise, or the
   exercise inviting them to watch rather than read, the record is counting
-  attendance. Detectable in the sealed aggregate as answers that are poor
-  at every familiarity while the record grows (Rem. 6.5). Cost: a signal
+  attendance. Sets left running unattended are detectable in the sealed
+  aggregate, as answers that are poor at every familiarity while the record
+  grows (Rem. 6.5). A learner who follows every story by ear without reading
+  aloud leaves no such trace, and only the cost below would catch it. Cost:
+  a signal
   that the turn was used --- the microphone detecting speech, not grading
   it --- becomes a condition of Proposition 6.4 (i).
 
@@ -3286,8 +3302,10 @@ bounds it (Rem. 7.5). Closes story sets on a sealed check (Def. 4.9): a
 question about how the story fits together, answered before any of its
 glosses are shown and built so that no single word answers it (Prop. 4.3),
 whose outcome touches nothing the learner sees (Prop. 6.5) and is kept only
-as counts by story familiarity, the exercise's instrument for testing its
-own axiom (Rem. 6.5). Counts exposure per dictionary form in a fixed-size
+as counts by story familiarity: a partial test of the exercise's own axiom,
+able to tell a set followed from one left running unattended but not
+reading aloud from listening (Rem. 6.5). The sealed check is not an
+exercise, since it names no concept (Def. 4.9). Counts exposure per dictionary form in a fixed-size
 sketch (Def. 6.7) and uses it to prefer new stories made mostly of seen
 words, as an order and not a belief (Rem. 6.6). Adds three falsifiers to §12
 and a TPK-READ row to §10.
