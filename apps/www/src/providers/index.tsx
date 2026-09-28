@@ -1,5 +1,4 @@
 import type { JSX, ReactNode } from "react"
-import { Toaster } from "sonner"
 
 import { useHasDecorativeSession } from "@/lib/auth-session"
 
@@ -7,6 +6,7 @@ import { OrchestratorWrapper } from "./orchestrator"
 import { StudyNudgeWatcher } from "./study-nudge"
 import { QueryProvider } from "./tanstack-query"
 import { ThemeProvider } from "./theme"
+import { AppToaster } from "./toaster"
 import { TTSProvider } from "./tts"
 
 export const AppProviders = ({
@@ -31,7 +31,7 @@ export const AppProviders = ({
           <OrchestratorWrapper>{children}</OrchestratorWrapper>
         </TTSProvider>
       </QueryProvider>
-      <Toaster />
+      <AppToaster />
     </ThemeProvider>
   )
 }

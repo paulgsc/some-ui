@@ -59,6 +59,37 @@ async function openComposer(page: Page): Promise<void> {
   await expect(
     page.getByRole("button", { name: "Continue", exact: true })
   ).toBeVisible()
+  await waitForSettledFit(page)
+}
+
+/**
+ * Waits until the fitted box reads the same twice running.
+ *
+ * `useFittedPage` settles one frame at a time - it grows the page, sees the
+ * overflow, and shrinks back on the next frame - so a read taken straight
+ * after mount can land on the frame in between, a transient overflow the
+ * hook is already undoing. Every assertion here is about the fit it settles
+ * on; one that never settles still fails them, it just fails on a stable
+ * layout.
+ */
+async function waitForSettledFit(page: Page): Promise<void> {
+  const read = (): Promise<string> =>
+    page.evaluate(() => {
+      const box = document.querySelector<HTMLElement>(
+        '[data-scroll-intent="fitted-residue"]'
+      )
+      const content = box?.firstElementChild
+      const used = content instanceof HTMLElement ? content.scrollHeight : -1
+      const cards = document.querySelectorAll(".grid > button").length
+      return `${String(box?.clientHeight)}:${String(used)}:${String(cards)}`
+    })
+  let previous = await read()
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    await page.waitForTimeout(100)
+    const current = await read()
+    if (current === previous) return
+    previous = current
+  }
 }
 
 /** "2 / 4" -> { page: 2, pageCount: 4 }, or null when the list fits one page. */

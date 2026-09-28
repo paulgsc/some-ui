@@ -24,6 +24,12 @@ vi.mock("@/providers/study-nudge", () => ({
   },
 }))
 
+// Reads the viewport (`useIsMobile`), which this file has no reason to
+// stand up; its position has its own test (toaster.test.tsx).
+vi.mock("@/providers/toaster", () => ({
+  AppToaster: (): null => null,
+}))
+
 vi.mock("@/providers/tts", () => ({
   TTSProvider: ({ children }: { children?: ReactNode }): ReactNode => children,
 }))

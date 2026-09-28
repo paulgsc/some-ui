@@ -369,6 +369,9 @@ importers:
       '@some-ui/job-tracker':
         specifier: workspace:*
         version: link:../../packages/job-tracker
+      '@some-ui/lesson-crm':
+        specifier: workspace:*
+        version: link:../../packages/ui/lesson-crm
       '@some-ui/resume':
         specifier: workspace:*
         version: link:../../packages/ui/resume
@@ -387,6 +390,9 @@ importers:
       '@some-ui/types':
         specifier: workspace:*
         version: link:../../packages/types
+      '@some-ui/vite-config':
+        specifier: workspace:*
+        version: link:../../packages/some-vite-config
       '@tailwindcss/vite':
         specifier: ^4.0.6
         version: 4.3.1(vite@8.3.0(@types/node@26.0.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
@@ -1048,6 +1054,9 @@ importers:
       vite:
         specifier: ^8.3.0
         version: 8.3.0(@types/node@26.0.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*
@@ -1471,6 +1480,46 @@ importers:
       tsx:
         specifier: ^4.22.4
         version: 4.22.4
+
+  packages/ui/lesson-crm:
+    dependencies:
+      '@some-ui/intent-kit':
+        specifier: workspace:*
+        version: link:../../intent-kit
+      '@some-ui/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@some-ui/styles':
+        specifier: workspace:*
+        version: link:../../some-styles
+      '@some-ui/topik':
+        specifier: workspace:*
+        version: link:../topik
+      lucide-react:
+        specifier: 'catalog:'
+        version: 0.562.0(react@19.0.0)
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.0.0(react@19.0.0)
+      some-ui-utils:
+        specifier: workspace:*
+        version: link:../../utils
+    devDependencies:
+      '@some-ui/tsconfig':
+        specifier: workspace:*
+        version: link:../../tsconfig
+      '@some-ui/vite-config':
+        specifier: workspace:*
+        version: link:../../some-vite-config
+      '@types/react':
+        specifier: ^19.0.4
+        version: 19.2.17
+      concurrently:
+        specifier: 10.0.3
+        version: 10.0.3
 
   packages/ui/makjang:
     dependencies:

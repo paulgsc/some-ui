@@ -12,7 +12,11 @@
     "forceConsistentCasingInFileNames": true,
     "noEmit": false,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      // client.d.ts names this package by its public subpath (an ambient
+      // module cannot import relatively), so resolve that subpath to source
+      // here rather than to a dist/ that does not exist before the first build.
+      "@some-ui/vite-config/audience": ["./src/audience/index.ts"]
     }
   },
   "include": ["src"],

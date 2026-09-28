@@ -185,9 +185,10 @@ export type UseHandheldLessonOptions = {
   pastedResumeStore?: ResumeStore
 }
 
-const lineText = (message: Message): string => message.korean || message.content
+export const lineText = (message: Message): string =>
+  message.korean || message.content
 
-function voiceFor(
+export function voiceFor(
   adapter: SpeechAdapter
 ): SpeechAdapter["voices"][number] | undefined {
   return adapter.voices.find((candidate) =>

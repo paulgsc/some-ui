@@ -79,6 +79,18 @@ describe("buildLessonPrompt", () => {
     expect(prompt).toContain("Survey: none yet")
   })
 
+  it("tells the model a batch lesson is for every learner at the level, not anyone's first", () => {
+    const prompt = buildLessonPrompt({ level: 3, audience: "batch" })
+    expect(prompt).toContain(
+      "Survey: none - this lesson joins the weekly batch"
+    )
+    expect(prompt).not.toContain("first lesson")
+    // A learner's prompt is unchanged by the option existing.
+    expect(buildLessonPrompt({ level: 3 })).toBe(
+      buildLessonPrompt({ level: 3, audience: "learner" })
+    )
+  })
+
   it("ships a prompt that points at nothing outside itself", () => {
     // The learner pastes it into any model; the repo is not there.
     expect(LESSON_PROMPT).not.toMatch(/packages\/|pnpm |canon |cargo /)

@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.9",
   "type": "module",
+  "someUi": {
+    "audience": "public"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && vite build",
     "build:tsc-alias": "tsc-alias -p tsconfig.json",
