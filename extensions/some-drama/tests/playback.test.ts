@@ -14,11 +14,15 @@ function video(state: {
   ended?: boolean
   size: number
   time?: number
+  readyState?: number
 }): HTMLVideoElement {
   const v = document.createElement("video")
   Object.defineProperty(v, "paused", { value: state.paused })
   Object.defineProperty(v, "ended", { value: state.ended ?? false })
   Object.defineProperty(v, "currentTime", { value: state.time ?? 0 })
+  Object.defineProperty(v, "readyState", {
+    value: state.readyState ?? HTMLMediaElement.HAVE_ENOUGH_DATA,
+  })
   v.getBoundingClientRect = (): DOMRect =>
     DOMRect.fromRect({ width: state.size, height: state.size })
   document.body.appendChild(v)
@@ -53,6 +57,22 @@ describe("readSourceReport", () => {
     const report = readSourceReport()
     expect(report?.playing).toBe(true)
     expect(report?.lastPlayAt).toBe(500)
+  })
+
+  it("a stalled video is playing but its time is not advancing", () => {
+    video({
+      paused: false,
+      size: 800,
+      readyState: HTMLMediaElement.HAVE_CURRENT_DATA,
+    })
+    const report = readSourceReport()
+    expect(report?.playing).toBe(true)
+    expect(report?.advancing).toBe(false)
+  })
+
+  it("a playing, buffered video advances", () => {
+    video({ paused: false, size: 800 })
+    expect(readSourceReport()?.advancing).toBe(true)
   })
 
   it("an ended video is not playing", () => {

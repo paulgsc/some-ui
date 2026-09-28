@@ -13,6 +13,7 @@ import type {
   DramaEntry,
   MoodType,
   Playback,
+  SourceReport,
   VerdictChange,
   VerdictField,
   VerdictRecord,
@@ -205,6 +206,8 @@ export function adjustVerdict(
 export type Display = {
   apply: (state: WatchlistState) => void
   onBeat: (beat: BeatRecord) => void
+  /** LIVE_PLAYBACK: the drama's video changed state. */
+  onPlayback: (live: SourceReport | null) => void
   toggleVisibility: () => void
   destroy: () => void
 }
@@ -213,6 +216,10 @@ export type DisplayDeps = {
   /** Last known card layout — survives the display being torn down. */
   cardMeta: PersistedCardMeta | null
   onCardMeta: (meta: PersistedCardMeta) => void
+  /** This tab's card toggle (Alt+Shift+D), as the background last had it. */
+  hidden: boolean
+  /** The user toggled the card; the caller persists it for this tab. */
+  onHidden: (hidden: boolean) => void
   /** Called by toggle-visibility when there is nothing on screen to toggle. */
   refetch: () => void
 }
@@ -229,7 +236,6 @@ export function createDisplay(deps: DisplayDeps): Display {
   let card: DramaCard | null = null
   let removeEmptyPill: (() => void) | null = null
   let emptyPillConsumed = false
-  let visible: boolean = true
   let currentSize: CardSize = "compact"
   let cardMeta: PersistedCardMeta | null = deps.cardMeta
   // The active drama's current episode, kept across card re-renders (every
@@ -239,11 +245,18 @@ export function createDisplay(deps: DisplayDeps): Display {
     episode: string
     beats: Array<BeatRecord>
   } | null = null
-  // A card exists only while the page is showing (Charter §7): a background
-  // tab keeps the latest state and position, but builds nothing and asks for
-  // nothing until it is shown. Watched for as long as this display lives.
+  // A card exists only while the page is showing (Charter §7) and the user
+  // has not toggled it off: a background tab, or a tab whose card is hidden,
+  // keeps the latest state and position, but builds nothing and asks for
+  // nothing until it is shown / toggled back on. Hiding releases the card
+  // outright — not a transparent card still holding its listeners and still
+  // fetching on every STATE_UPDATE. The toggle is per tab and outlives the
+  // page (the background keeps it), so only the user turns the card back on.
+  // Page showing is watched for as long as this display lives.
   const life = new Disposables()
   let showing = isPageShowing()
+  let hidden = deps.hidden
+  const onScreen = (): boolean => showing && !hidden
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -262,6 +275,21 @@ export function createDisplay(deps: DisplayDeps): Display {
   const destroyCard = (): void => {
     card?.destroy()
     card = null
+  }
+
+  /** Keep where the card is, for whenever it is rebuilt. */
+  const stashPosition = (): void => {
+    if (!card) return
+    const pos = currentCardPosition()
+    cardMeta = { x: pos.x, y: pos.y, size: currentSize }
+  }
+
+  /** Release everything on screen: the card, or the empty pill. */
+  const takeDown = (): void => {
+    stashPosition()
+    destroyCard()
+    removeEmptyPill?.()
+    removeEmptyPill = null
   }
 
   // Beats broadcast while a GET_BEATS is in flight, one buffer per request:
@@ -287,6 +315,28 @@ export function createDisplay(deps: DisplayDeps): Display {
       log.error("GET_BEATS failed:", err)
     } finally {
       arrivedDuringLoad.delete(arrived)
+    }
+  }
+
+  // Where the drama's video is (the source tab's latest report), kept across
+  // rebuilds like `live`. A card asks once when built (GET_LIVE_PLAYBACK) and
+  // then follows LIVE_PLAYBACK broadcasts. Every ask and every broadcast takes
+  // a new version, and a reply applies only if nothing has taken one since:
+  // a broadcast that lands while an ask is in flight, or a later ask (a card
+  // rebuilt meanwhile), is newer than that reply, which is then dropped.
+  let playback: SourceReport | null = null
+  let playbackVersion = 0
+
+  const loadPlayback = async (): Promise<void> => {
+    const version = ++playbackVersion
+    try {
+      const resp = await sendMsg({ type: "GET_LIVE_PLAYBACK" })
+      if (!resp.ok) throw new Error(resp.error)
+      if (version !== playbackVersion) return
+      playback = resp.live
+      card?.setPlayback(resp.live)
+    } catch (err) {
+      log.error("GET_LIVE_PLAYBACK failed:", err)
     }
   }
 
@@ -348,12 +398,13 @@ export function createDisplay(deps: DisplayDeps): Display {
     const spawn = cardMeta ? { x: cardMeta.x, y: cardMeta.y } : DEFAULT_SPAWN
     card.setPosition(spawn.x, spawn.y)
     if (cardMeta?.size) card.setSize(cardMeta.size, false)
-    if (!visible) card.setVisible(false)
 
     if (live?.dramaId === entry.id) card.setBeats(live.episode, live.beats)
     void loadBeats(entry.id)
     if (history?.dramaId === entry.id) card.setVerdictLog(history.verdicts)
     void loadVerdicts(entry.id)
+    if (playback) card.setPlayback(playback)
+    void loadPlayback()
   }
 
   const renderEmpty = (): void => {
@@ -368,18 +419,24 @@ export function createDisplay(deps: DisplayDeps): Display {
 
   watchPageShowing(life, (now) => {
     showing = now
-    if (!now) {
-      if (card) {
-        const pos = currentCardPosition()
-        cardMeta = { x: pos.x, y: pos.y, size: currentSize }
-      }
-      destroyCard()
-      removeEmptyPill?.()
-      removeEmptyPill = null
-    } else if (typestate.phase === "READY") {
-      renderCard(typestate.entry)
-    }
+    if (!onScreen()) takeDown()
+    else if (typestate.phase === "READY") renderCard(typestate.entry)
   })
+
+  const setHidden = (next: boolean): void => {
+    hidden = next
+    deps.onHidden(next)
+    log.info(`Visibility → ${next ? "hidden" : "visible"}`)
+    if (!onScreen()) {
+      takeDown()
+      return
+    }
+    if (typestate.phase === "READY") renderCard(typestate.entry)
+    else if (typestate.phase === "EMPTY") {
+      emptyPillConsumed = false
+      renderEmpty()
+    }
+  }
 
   return {
     apply(state: WatchlistState): void {
@@ -387,7 +444,7 @@ export function createDisplay(deps: DisplayDeps): Display {
 
       if (next.phase === "EMPTY") {
         typestate = next
-        if (showing) renderEmpty()
+        if (onScreen()) renderEmpty()
         else destroyCard()
         return
       }
@@ -416,11 +473,8 @@ export function createDisplay(deps: DisplayDeps): Display {
           }
           return
         }
-        if (card) {
-          const pos = currentCardPosition()
-          cardMeta = { x: pos.x, y: pos.y, size: currentSize }
-        }
-        if (showing) renderCard(next.entry)
+        stashPosition()
+        if (onScreen()) renderCard(next.entry)
       }
     },
 
@@ -437,11 +491,20 @@ export function createDisplay(deps: DisplayDeps): Display {
       card?.pushBeat(beat)
     },
 
+    onPlayback(live: SourceReport | null): void {
+      playbackVersion++
+      playback = live
+      card?.setPlayback(live)
+    },
+
     toggleVisibility(): void {
+      // Hidden: the only way back is this toggle.
+      if (hidden) {
+        setHidden(false)
+        return
+      }
       if (card) {
-        visible = !visible
-        card.setVisible(visible)
-        log.info(`Visibility → ${visible ? "visible" : "hidden"}`)
+        setHidden(true)
         return
       }
       if (removeEmptyPill) {

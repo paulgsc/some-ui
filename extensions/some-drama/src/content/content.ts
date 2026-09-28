@@ -11,7 +11,16 @@
 //             drama plays. Renders no card (the drama is never on stream).
 //             Answers GET_PLAYBACK (the background asks every source tab and
 //             picks the playing one), and logs beats from hotkeys with its
-//             own video time.
+//             own video time. Tells the background (PLAYBACK_CHANGED) when
+//             its video plays, pauses, stalls, seeks or changes speed, and
+//             when the page goes away, so every display's clock follows the
+//             drama live (LIVE_PLAYBACK) — events, not polling.
+//
+// Live playback (README.md → "Live playback: what is enforced, and what is not"):
+//   LP1  no repeating timer and no `timeupdate`/`progress` listener in this
+//        file: a video is read on a message, a hotkey or a media event, and
+//        the one timer on the reporting path is the one-shot settle below
+//   LP3  a `Cost (LP3):` comment is true of the code under it (reportPlayback)
 //
 // Display responsibilities:
 //   1. Render DramaCard from the active entry — all fields real, no dummies.
@@ -24,7 +33,10 @@
 //      spotlights the change on every display tab.
 //   6. `toggle-visibility` command (Alt+Shift+D, bound via the commons
 //      keybinding typestate) — toggle card visibility, or refetch state if
-//      there is no card (background was evicted on page load).
+//      there is no card (background was evicted on page load). The toggle is
+//      this tab's, kept by the background (SET_CARD_HIDDEN) and read back on
+//      load (GET_CARD_HIDDEN): a hidden card stays hidden — and unbuilt —
+//      across navigations in the tab until the user toggles it back on.
 //
 // Display typestate:
 //   LOADING — awaiting first state
@@ -50,6 +62,7 @@
 
 import {
   notePlay,
+  PLAYBACK_EVENTS,
   readPlayback,
   readSourceReport,
 } from "@drama/effects/content/playback"
@@ -61,12 +74,17 @@ import { isStreamSite } from "@drama/logic/stream-sites"
 import type {
   BeatLoggedMessage,
   GetPlaybackMessage,
+  LivePlaybackMessage,
   Playback,
   SourceReport,
   StateUpdateMessage,
   WatchlistState,
 } from "@drama/types"
-import { attachKeyBindings, isRecord } from "@some-extension/common"
+import {
+  attachKeyBindings,
+  Disposables,
+  isRecord,
+} from "@some-extension/common"
 import type { CommandRegistry } from "@some-extension/common"
 
 import {
@@ -92,6 +110,82 @@ function isStateUpdateMessage(v: unknown): v is StateUpdateMessage {
   return isRecord(v) && v.type === "STATE_UPDATE" && isRecord(v.payload)
 }
 
+function isLivePlaybackMessage(v: unknown): v is LivePlaybackMessage {
+  return (
+    isRecord(v) &&
+    v.type === "LIVE_PLAYBACK" &&
+    (v.live === null || isRecord(v.live))
+  )
+}
+
+// ─── Source: reporting playback changes ──────────────────────────────────────
+
+// A seek or a buffering stall fires a burst of media events; one report
+// after the burst settles is enough.
+const REPORT_SETTLE_MS = 250
+
+function reportPlaybackChanged(): void {
+  sendMsg({ type: "PLAYBACK_CHANGED" }).catch((err: unknown) =>
+    log.error("PLAYBACK_CHANGED failed:", err)
+  )
+}
+
+/**
+ * While this tab is a source: report each change to its video's playback,
+ * and its leaving (`pagehide`) — after which it stops answering GET_PLAYBACK,
+ * so the background's re-election doesn't pick a page that is going away.
+ * Everything is acquired on `life`, which ends when the tab stops being a
+ * source.
+ *
+ * Cost (LP3), per source tab: 11 listeners (PLAYBACK_EVENTS' 9, pagehide,
+ * pageshow), O(1) per event, and at most one PLAYBACK_CHANGED per
+ * REPORT_SETTLE_MS (≤ 4/s), plus one each on start, on leaving, on a return
+ * from the back/forward cache, and on ceasing to be a source. Each report
+ * costs the background a publishLivePlayback — K asks — so K source tabs all
+ * reporting at the cap is ≤ 4K publishes/s, O(K²) asks/s; N sends follow only
+ * a report that breaks the displays' prediction.
+ */
+function reportPlayback(
+  life: Disposables,
+  setLeaving: (v: boolean) => void
+): void {
+  let settling = false
+  const changed = (): void => {
+    if (settling) return
+    settling = true
+    life.timeout(() => {
+      settling = false
+      reportPlaybackChanged()
+    }, REPORT_SETTLE_MS)
+  }
+  // Media events don't bubble; capture them at the document.
+  for (const type of PLAYBACK_EVENTS) {
+    document.addEventListener(type, changed, {
+      capture: true,
+      signal: life.signal,
+    })
+  }
+  window.addEventListener(
+    "pagehide",
+    () => {
+      setLeaving(true)
+      reportPlaybackChanged()
+    },
+    { signal: life.signal }
+  )
+  window.addEventListener(
+    "pageshow",
+    (e) => {
+      if (!e.persisted) return
+      setLeaving(false)
+      reportPlaybackChanged()
+    },
+    { signal: life.signal }
+  )
+  // A new source (a page load on a marked site, or a site just marked).
+  reportPlaybackChanged()
+}
+
 // ─── Beats ─────────────────────────────────────────────────────────────────────
 
 /** One `beat:<mood>` command per mood, each reading playback at press time. */
@@ -106,12 +200,42 @@ function beatCommands(
   )
 }
 
+// ─── Card toggle ──────────────────────────────────────────────────────────────
+
+/**
+ * This tab's card toggle (GET_CARD_HIDDEN). main() awaits it before it
+ * registers the message listener, so no display — not even one a
+ * STATE_UPDATE would build — exists before the toggle is known. Retried once
+ * after 300 ms for a background still waking up; shown if it never answers.
+ */
+async function loadCardHidden(retryOnFailure = true): Promise<boolean> {
+  try {
+    const resp = await sendMsg({ type: "GET_CARD_HIDDEN" })
+    if (!resp.ok) throw new Error(resp.error)
+    return resp.hidden
+  } catch (err) {
+    if (!retryOnFailure) {
+      log.error("GET_CARD_HIDDEN failed:", err)
+      return false
+    }
+    await new Promise((r) => setTimeout(r, 300))
+    return loadCardHidden(false)
+  }
+}
+
 // ─── Controller ───────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
   let role: "source" | "display" | null = null
   let display: Display | null = null
+  // The source role's resources (reportPlayback); null in any other role.
+  let source: Disposables | null = null
+  // The page is going away (pagehide): it no longer answers GET_PLAYBACK.
+  let leaving = false
   let cardMeta: PersistedCardMeta | null = await loadCardMeta()
+  // This tab's card toggle, known before any display can be built (see
+  // loadCardHidden); a display built later (a role flip) starts from it.
+  let cardHidden = await loadCardHidden()
 
   /** Resolve this tab's role from the latest state, then hand state on. */
   const apply = (state: WatchlistState): void => {
@@ -122,14 +246,35 @@ async function main(): Promise<void> {
     if (next !== role) {
       display?.destroy()
       display = null
+      if (source) {
+        // No longer a source: the displays' clock must stop following it.
+        source.dispose()
+        source = null
+        reportPlaybackChanged()
+      }
       role = next
       if (next === "source") {
         log.info("Streaming site — no card; beats carry this tab's video time.")
+        source = new Disposables()
+        reportPlayback(source, (v) => {
+          leaving = v
+        })
       } else {
         display = createDisplay({
           cardMeta,
           onCardMeta: (meta) => {
             cardMeta = meta
+          },
+          hidden: cardHidden,
+          onHidden: (hidden) => {
+            cardHidden = hidden
+            sendMsg({ type: "SET_CARD_HIDDEN", hidden })
+              .then((resp) => {
+                if (!resp.ok) log.error("SET_CARD_HIDDEN failed:", resp.error)
+              })
+              .catch((err: unknown) =>
+                log.error("SET_CARD_HIDDEN failed:", err)
+              )
           },
           refetch: () => void refresh(),
         })
@@ -140,7 +285,8 @@ async function main(): Promise<void> {
   }
 
   // GET_STATE, retried once after 300 ms for the race where the
-  // non-persistent background script is still waking up.
+  // non-persistent background script is still waking up. (This tab's card
+  // toggle is already known: see loadCardHidden.)
   const refresh = async (retryOnFailure = true): Promise<void> => {
     try {
       const resp = await sendMsg({ type: "GET_STATE" })
@@ -164,11 +310,12 @@ async function main(): Promise<void> {
   browser.runtime.onMessage.addListener(
     (msg: unknown): Promise<SourceReport | null> | undefined => {
       if (isGetPlaybackMessage(msg)) {
-        return role === "source"
+        return role === "source" && !leaving
           ? Promise.resolve(readSourceReport())
           : undefined
       }
       if (isBeatLoggedMessage(msg)) display?.onBeat(msg.beat)
+      else if (isLivePlaybackMessage(msg)) display?.onPlayback(msg.live)
       else if (isStateUpdateMessage(msg)) apply(msg.payload)
       return undefined
     }

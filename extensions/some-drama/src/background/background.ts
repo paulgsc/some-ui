@@ -6,6 +6,9 @@
 //   drama_verdicts:   VerdictRecord[] — rating / likelihood-to-finish changes,
 //                                       for longitudinal tracking (bounded)
 //   drama_stream_sites: string[]      — sites the user marked as streaming sites
+//   drama_hidden_tabs: number[]       — tabs whose card the user toggled off;
+//                                       dropped as each tab closes, and all
+//                                       at browser start (tab ids restart)
 //   drama_moments:    legacy mood log; every record has timestamp 0, so it is
 //                     no longer read — left in place rather than deleted.
 //   drama_source_tab: legacy registered source tab; source tabs are now asked
@@ -32,6 +35,13 @@
 //                     finish; logs the change; broadcasts STATE_UPDATE (display
 //                     tabs refetch GET_VERDICTS when a verdict moved)
 //   GET_VERDICTS    → every logged verdict change of one drama
+//   GET_CARD_HIDDEN → whether the sender tab's card is toggled off
+//   SET_CARD_HIDDEN → toggle the sender tab's card off / on (Alt+Shift+D).
+//                     Kept here, not in the page, so a navigation in that tab
+//                     (a fresh content script) keeps the card hidden.
+//   PLAYBACK_CHANGED → a source tab's video changed state; re-elect the
+//                     source and broadcast LIVE_PLAYBACK (also on tab close)
+//   GET_LIVE_PLAYBACK → the elected source's report, for a display's first look
 //
 // Verdict changes are logged wherever they come from: ADJUST_VERDICT (hotkeys,
 // the card) and UPSERT_ENTRY (popup edits, and a new drama's first values).
@@ -44,7 +54,8 @@ import {
   normalizeEpisode,
 } from "@drama/logic/beats"
 import { MOODS } from "@drama/logic/content/constants"
-import { pickSource } from "@drama/logic/source"
+import { livePublisher } from "@drama/logic/playback"
+import { electSource } from "@drama/logic/source"
 import { isStreamSite, siteOf, withStreamSite } from "@drama/logic/stream-sites"
 import {
   applyVerdict,
@@ -57,6 +68,7 @@ import type {
   BeatRecord,
   DramaEntry,
   GetPlaybackMessage,
+  LivePlaybackMessage,
   MessageBridge,
   MessageResponseMap,
   MoodType,
@@ -82,6 +94,7 @@ const VERDICTS_KEY = "drama_verdicts"
 const STREAM_SITES_KEY = "drama_stream_sites"
 const WATCHLIST_KEY = "drama_watchlist"
 const ACTIVE_ID_KEY = "drama_active_id"
+const HIDDEN_TABS_KEY = "drama_hidden_tabs"
 const MAX_WATCHLIST = 5
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -165,8 +178,14 @@ function isBackgroundMessage(v: unknown): v is MessageBridge {
     case "GET_VERDICTS": {
       return typeof v.dramaId === "string"
     }
-    case "GET_STATE": {
+    case "GET_STATE":
+    case "GET_CARD_HIDDEN":
+    case "PLAYBACK_CHANGED":
+    case "GET_LIVE_PLAYBACK": {
       return true
+    }
+    case "SET_CARD_HIDDEN": {
+      return typeof v.hidden === "boolean"
     }
     case "UPSERT_ENTRY": {
       return isRecord(v.entry) && typeof v.entry.title === "string"
@@ -264,13 +283,21 @@ function verdictMoves(
 // operation also publishes (STATE_UPDATE, BEAT_LOGGED) before it leaves the
 // queue, so tabs hear changes in the order they were written: a slow first
 // broadcast can't land after the one that superseded it.
-let writes: Promise<unknown> = Promise.resolve()
-
-function serialized<T>(work: () => Promise<T>): Promise<T> {
-  const run = writes.then(work, work)
-  writes = run.catch(() => undefined)
-  return run
+function queue(): <T>(work: () => Promise<T>) => Promise<T> {
+  let tail: Promise<unknown> = Promise.resolve()
+  return <T>(work: () => Promise<T>): Promise<T> => {
+    const run = tail.then(work, work)
+    tail = run.catch(() => undefined)
+    return run
+  }
 }
+
+const serialized = queue()
+
+// The hidden-tabs list has a queue of its own: a toggle must not wait behind
+// a beat's playback lookup, and a page loading right after a toggle must read
+// what the toggle wrote.
+const hiddenTabsSerialized = queue()
 
 // ── Source tabs ──────────────────────────────────────────────────────────────
 
@@ -284,16 +311,31 @@ function isSourceReport(v: unknown): v is SourceReport {
     isRecord(v) &&
     isPlayback(v.playback) &&
     typeof v.playing === "boolean" &&
-    typeof v.lastPlayAt === "number"
+    typeof v.lastPlayAt === "number" &&
+    typeof v.advancing === "boolean" &&
+    typeof v.rate === "number" &&
+    typeof v.readAt === "number"
   )
 }
 
+/** Where the drama's video is, from the source tab it plays in. */
+async function requestPlayback(): Promise<Playback | null> {
+  return (await requestSourceReport())?.playback ?? null
+}
+
 /**
- * Ask every tab on a marked site where its video is, and pick the drama's
+ * Ask every tab on a marked site where its video is, and elect the drama's
  * (logic/source.ts); null when no source tab answers. Asked fresh each time,
  * so a tab that closed or left the site is never the one asked.
+ *
+ * Cost (LP3): 1 storage read (getWatchlistState) + 1 tabs.query + O(N·S)
+ * time (isStreamSite is O(S), once per tab) + K asks, each ≤
+ * PLAYBACK_TIMEOUT_MS; nothing kept — each ask's deadline timer is cleared
+ * when the ask settles.
+ * No site marked: the read and nothing else. Each ask also costs the source
+ * tab one primaryVideo (effects/content/playback.ts).
  */
-async function requestPlayback(): Promise<Playback | null> {
+async function requestSourceReport(): Promise<SourceReport | null> {
   const { streamSites } = await getWatchlistState()
   if (streamSites.length === 0) return null
   let tabs: Array<browser.tabs.Tab>
@@ -308,21 +350,43 @@ async function requestPlayback(): Promise<Playback | null> {
       if (tab.id === undefined || !isStreamSite(tab.url ?? "", streamSites)) {
         return null
       }
+      // The deadline is cleared once the ask settles, either way: an answer
+      // must not leave a timer behind for the rest of the 500 ms.
+      let deadline: ReturnType<typeof setTimeout> | undefined
       try {
         const reply: unknown = await Promise.race([
           browser.tabs.sendMessage(tab.id, msg),
-          new Promise<null>((resolve) =>
-            setTimeout(() => resolve(null), PLAYBACK_TIMEOUT_MS)
-          ),
+          new Promise<null>((resolve) => {
+            deadline = setTimeout(() => resolve(null), PLAYBACK_TIMEOUT_MS)
+          }),
         ])
         return isSourceReport(reply) ? reply : null
       } catch {
         return null
+      } finally {
+        clearTimeout(deadline)
       }
     })
   )
-  return pickSource(reports.filter((r): r is SourceReport => r !== null))
+  return electSource(reports.filter((r): r is SourceReport => r !== null))
 }
+
+// ── Live playback ─────────────────────────────────────────────────────────────
+// Displays run the drama's clock themselves from the last report
+// (logic/playback.ts); they only need a new one when that clock would be
+// wrong. livePublisher decides that, and is tested; this only wires it.
+//   LP1  no repeating timer here: source tabs are asked on a message or a
+//        tab closing, never on a schedule
+//   LP2  LIVE_PLAYBACK is sent only through publishLivePlayback
+//   LP3  a `Cost (LP3):` comment is true of the code under it
+// (full text: README.md → "Live playback: what is enforced, and what is not")
+//
+// Cost (LP3) per call: one requestSourceReport (above), plus a broadcast
+// (1 tabs.query + N sends) only when the last report sent no longer predicts
+// the new one; kept: that one report.
+const publishLivePlayback = livePublisher(requestSourceReport, (live) =>
+  broadcast({ type: "LIVE_PLAYBACK", live })
+)
 
 // ── Watchlist helpers ─────────────────────────────────────────────────────────
 
@@ -387,7 +451,7 @@ const ENTRY_DEFAULTS: Omit<DramaEntry, "id" | "addedAt" | "title"> = {
 
 /** Send to every loaded tab; each content script decides what applies to it. */
 async function broadcast(
-  msg: StateUpdateMessage | BeatLoggedMessage
+  msg: StateUpdateMessage | BeatLoggedMessage | LivePlaybackMessage
 ): Promise<void> {
   let tabs: Array<browser.tabs.Tab>
   try {
@@ -409,6 +473,32 @@ async function broadcast(
 
 function broadcastState(state: WatchlistState): Promise<void> {
   return broadcast({ type: "STATE_UPDATE", payload: state })
+}
+
+// ── Hidden cards ──────────────────────────────────────────────────────────────
+// Cost (LP3): O(H) time per read or toggle, 1 read + at most 1 write per
+// toggle. H stays ≤ open tabs only because tabs.onRemoved drops each closed
+// tab's id and onStartup clears the list ("Tab lifetime", below) — those two
+// listeners are the bound, not anything in these functions.
+
+async function loadHiddenTabs(): Promise<Array<number>> {
+  const r = await browser.storage.local.get(HIDDEN_TABS_KEY)
+  const stored = r[HIDDEN_TABS_KEY]
+  return Array.isArray(stored)
+    ? stored.filter((id): id is number => typeof id === "number")
+    : []
+}
+
+function setTabHidden(tabId: number, hidden: boolean): Promise<void> {
+  return hiddenTabsSerialized(async () => {
+    const tabs = await loadHiddenTabs()
+    if (tabs.includes(tabId) === hidden) return
+    await browser.storage.local.set({
+      [HIDDEN_TABS_KEY]: hidden
+        ? [...tabs, tabId]
+        : tabs.filter((id) => id !== tabId),
+    })
+  })
 }
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
@@ -682,8 +772,59 @@ async function handleGetVerdicts(
   }
 }
 
+async function handleGetCardHidden(
+  tabId: number | undefined,
+  sendResponse: Reply<"GET_CARD_HIDDEN">
+): Promise<void> {
+  try {
+    // Only a tab has a card; the popup asking gets "shown".
+    const hidden =
+      tabId !== undefined &&
+      (await hiddenTabsSerialized(loadHiddenTabs)).includes(tabId)
+    sendResponse({ ok: true, hidden })
+  } catch (err) {
+    sendResponse({ ok: false, error: String(err) })
+  }
+}
+
+async function handleSetCardHidden(
+  tabId: number | undefined,
+  hidden: boolean,
+  sendResponse: Reply<"SET_CARD_HIDDEN">
+): Promise<void> {
+  try {
+    if (tabId === undefined) {
+      sendResponse({ ok: false, error: "Only a tab has a card to hide." })
+      return
+    }
+    await setTabHidden(tabId, hidden)
+    sendResponse({ ok: true })
+  } catch (err) {
+    sendResponse({ ok: false, error: String(err) })
+  }
+}
+
+async function handleGetLivePlayback(
+  sendResponse: Reply<"GET_LIVE_PLAYBACK">
+): Promise<void> {
+  try {
+    sendResponse({ ok: true, live: await requestSourceReport() })
+  } catch (err) {
+    sendResponse({ ok: false, error: String(err) })
+  }
+}
+
+async function handlePlaybackChanged(
+  sendResponse: Reply<"PLAYBACK_CHANGED">
+): Promise<void> {
+  // Answered at once: the source tab has nothing to wait for.
+  sendResponse({ ok: true })
+  await publishLivePlayback().catch(() => undefined)
+}
+
 async function dispatch(
   message: MessageBridge,
+  sender: browser.runtime.MessageSender,
   sendResponse: Reply<MessageBridge["type"]>
 ): Promise<void> {
   const { type: t } = message
@@ -715,6 +856,18 @@ async function dispatch(
     case "GET_VERDICTS": {
       return handleGetVerdicts(message.dramaId, sendResponse)
     }
+    case "GET_CARD_HIDDEN": {
+      return handleGetCardHidden(sender.tab?.id, sendResponse)
+    }
+    case "SET_CARD_HIDDEN": {
+      return handleSetCardHidden(sender.tab?.id, message.hidden, sendResponse)
+    }
+    case "PLAYBACK_CHANGED": {
+      return handlePlaybackChanged(sendResponse)
+    }
+    case "GET_LIVE_PLAYBACK": {
+      return handleGetLivePlayback(sendResponse)
+    }
     default: {
       t satisfies never
       assertNever(t)
@@ -727,15 +880,36 @@ async function dispatch(
 browser.runtime.onMessage.addListener(
   (
     msg: unknown,
-    _sender: browser.runtime.MessageSender,
+    sender: browser.runtime.MessageSender,
     sendResponse: Reply<MessageBridge["type"]>
   ): boolean => {
     if (!isBackgroundMessage(msg)) return false
 
-    void dispatch(msg, sendResponse)
+    void dispatch(msg, sender, sendResponse)
     return true
   }
 )
+
+// ── Tab lifetime ──────────────────────────────────────────────────────────────
+// A hidden card's entry lives as long as its tab. Tab ids are reused after a
+// browser restart, so the whole list goes at startup: a new session's tab
+// must not inherit an old one's toggle.
+
+// Cost (LP3) per closed tab — any tab in the browser, not just drama's: one
+// setTabHidden (1 read; a write only if the tab was hidden) + one
+// publishLivePlayback (K asks; N sends only if the prediction broke, i.e. the
+// closed tab was the source).
+browser.tabs.onRemoved.addListener((tabId) => {
+  void setTabHidden(tabId, false).catch(() => undefined)
+  // It may have been the source; closing it sends no media event.
+  void publishLivePlayback().catch(() => undefined)
+})
+
+browser.runtime.onStartup.addListener(() => {
+  void hiddenTabsSerialized(() =>
+    browser.storage.local.remove(HIDDEN_TABS_KEY)
+  ).catch(() => undefined)
+})
 
 // ── Install ───────────────────────────────────────────────────────────────────
 

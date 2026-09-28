@@ -19,10 +19,151 @@ plays on is yours to say, not a built-in list:
   one playing (of two playing, the one started last), so closing or leaving a
   tab needs no handover.
 
+The card's episode and time follow the source tab live: the source tab tells
+the background whenever its video plays, pauses, stalls, seeks or changes
+speed, and the card runs the clock itself in between — no polling, and no
+clock at all while the video is paused or the card is minimised or hidden.
+Without a marked streaming site the card shows the position last saved from
+the popup. What keeps it that way: [Live playback](#live-playback-what-is-enforced-and-what-is-not).
+
 To mark a site, open the drama's tab and press **Mark as streaming** in the
 popup; **Unmark** (or ✕ in the popup's _Streaming sites_ list) reverts it.
 Open tabs switch roles immediately. Marking covers subdomains (`viki.com`
 covers `m.viki.com`). Nothing is marked on a fresh install.
+
+## Live playback: what is enforced, and what is not
+
+The idiom: **playback is pushed on change, never pulled on a schedule.** A
+source tab reports when its video changes state; the background re-elects the
+source and broadcasts only when the displays' clocks would otherwise be wrong;
+a card extrapolates in between, and only while someone can see it move.
+
+**What upholds it.**
+
+| Guarantee                                                                                                         | Enforced by                                                                  |
+| ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| A report is broadcast only when the last one sent no longer predicts the video (seek, pause, rate, episode, gone) | `livePublisher` / `predicts` tests, `src/logic/__tests__/playback.test.ts`   |
+| The card's clock runs only while the video advances and the card is active (not minimised, hidden, entering)      | `tests/card-lifetime.test.ts` → "runs its clock only while the drama plays…" |
+| No timer the card runs ticks faster than once a second                                                            | `tests/card-lifetime.test.ts` → "ticks no faster than once a second…"        |
+| No card, so no clock, on a page that is not showing or toggled off                                                | `tests/display-lifetime.test.ts`                                             |
+| A source tab's report says whether its time is moving (a stalled video is not)                                    | `tests/playback.test.ts`                                                     |
+
+**Invariants LP1–LP3: what those cannot check.** Written for review one hunk at
+a time, in the format of `CLAUDE.md` → "Gray-area invariants"; all three held
+when they were written (checked: every timer in LP1's scope is a one-shot —
+the empty pill's fade in `display.ts`, the report settle and the `GET_STATE`
+and `GET_CARD_HIDDEN` retries in `content.ts`, the playback-ask timeout in
+`background.ts` — and no code listens for `timeupdate` or `progress`;
+`"LIVE_PLAYBACK"` and `LivePlaybackMessage` appear in `src/` only in the
+type's definition, the content script's receiving guard, imports,
+`broadcast`'s parameter and the `publishLivePlayback` call; every other
+`broadcast(`/`tabs.sendMessage(` passes a literal object or a value typed as
+another message; each `Cost (LP3):` comment was checked against its code, and
+its cross-file dependencies carry their `Counted by` lines).
+
+**LP1: Playback is read on events, never on a schedule.**
+
+- _Claim:_ in some-drama's `src/` outside `src/components/`, there is no
+  repeating timer — no `setInterval(`, `.interval(`, `.loop(`,
+  `browser.alarms`, or `setTimeout(`/`.timeout(` re-armed from its own
+  callback — and nothing listens for the media `timeupdate` or `progress`
+  events. It is a claim about polling only: which events may trigger a
+  read of a video's position is not part of it.
+- _Falsified by_ a hunk, in that scope, that adds one of those timers, adds a
+  `timeupdate` or `progress` listener (including adding either name to
+  `PLAYBACK_EVENTS` in `src/effects/content/playback.ts`), or changes an
+  existing one-shot timer so that its callback arms it again. A timer moved
+  into the scope from elsewhere counts: it appears as an added line.
+- _Scope:_ `extensions/some-drama/src/`, except `src/components/` (the card's
+  own timers, held by L1 in `extensions/common/GOOD_CITIZEN.md` and the tests
+  above), `__tests__/` and `*.stories.*`.
+- _Why not enforced:_ lint — `require-named-lifetime` flags a bare
+  `setInterval`, but `.interval(` on a `Disposables` is the sanctioned form
+  the card itself uses, and whether a timer polls depends on what its
+  callback reads, which needs data flow. Banning those names in this scope is
+  mechanical ("mechanical; not yet a rule": a path-scoped
+  `no-restricted-syntax`). Tests — `content.ts` and `background.ts` are entry
+  modules that run on import against browser globals; nothing drives them,
+  and a test sees only the states it drives.
+
+**LP2: `LIVE_PLAYBACK` goes out only through the publisher.**
+
+- _Claim:_ in some-drama's `src/`, the only code that sends a
+  `LIVE_PLAYBACK` message is the `send` passed to `livePublisher(` where
+  `publishLivePlayback` is defined in `background.ts`. Elections that answer one requester and
+  broadcast nothing — `requestPlayback()` for a beat or verdict,
+  `handleGetLivePlayback()` for a display's first look — call
+  `requestSourceReport()` directly and are outside the claim.
+- _Falsified by_ a hunk anywhere in `src/` that, outside that
+  `livePublisher(` call, the type's definition in `types/index.ts`, and the
+  receiving guard `isLivePlaybackMessage` in `content.ts` (which reads the
+  message, never sends one):
+  - adds the string literal `"LIVE_PLAYBACK"`, quotes included (so not
+    `"GET_LIVE_PLAYBACK"`, and not a comment), or a constant or variable
+    holding it — so a helper elsewhere that builds the message to send it,
+    which needs one or the other, matches here too;
+  - adds a use of the `LivePlaybackMessage` type other than an import and
+    `broadcast`'s parameter type;
+  - adds, in `background.ts`, a `broadcast(` or `tabs.sendMessage(` call, outside `broadcast`'s
+    own body, whose message is not visibly another message — a literal
+    object with another `type`, or a value declared with another message
+    type;
+  - or deletes, renames or bypasses the `livePublisher(` call in
+    `publishLivePlayback`'s definition (a direct `broadcast` of a fresh
+    `requestSourceReport()`, say).
+- _Scope:_ `extensions/some-drama/src/`, except `__tests__/`.
+- _Why not enforced:_ the decision itself — send only when the last report
+  sent no longer predicts the new one — is tested (table above). Whether
+  `background.ts` routes through it is not: it is an entry module with no
+  harness. Rejecting the literal outside one call is mechanical ("mechanical;
+  not yet a rule").
+
+**LP3: A stated cost matches the code it describes.**
+
+Where a function's cost can't be read off its own body — it sits in a
+callee, a closure, a multiplier across tabs, or a bound kept by code
+elsewhere — a `Cost (LP3):` comment states it, in these terms: **N** open
+tabs, **K** tabs on a marked streaming site (K ≤ N), **S** marked sites,
+**V** `<video>` elements on a source page, **H** entries in
+`drama_hidden_tabs`. A function whose cost is plain from its body (one
+visible loop, pure O(1) arithmetic) carries none.
+
+- _Claim:_ every `Cost (LP3):` comment is true of the code it annotates,
+  including what it names — callees, and constants or other data it counts
+  (`PLAYBACK_EVENTS`' length is the 9 in "11 listeners"). A named dependency
+  in another file whose content the count depends on carries a line
+  `Counted by Cost (LP3) in <file> (<function>)`, so a hunk that changes it
+  shows which count to check; today `PLAYBACK_EVENTS` and `isStreamSite`.
+- _Falsified by_ a hunk that, in code under such a comment or in anything it
+  names:
+  - adds iteration over a collection the comment doesn't count, or nests one
+    loop inside another where it counts a single factor;
+  - adds a message send, `tabs.query`, or storage call the comment doesn't
+    count, or moves one into a loop;
+  - makes something kept past the call grow per call, where the comment says
+    what is kept;
+  - deletes or weakens code the comment names as a bound (the
+    `tabs.onRemoved` and `onStartup` listeners that bound H);
+  - removes, renames or moves out work the comment counts — a counted call,
+    loop, send, storage call or named callee — so that it now overcounts or
+    names what is no longer there;
+  - changes a named constant or other data so the count no longer holds (an
+    entry added to or removed from `PLAYBACK_EVENTS`), or deletes the
+    `Counted by Cost (LP3)` line of a dependency that is still counted;
+  - edits a `Cost (LP3):` comment itself — rewords, narrows or drops a term,
+    moves it off the code it describes, or leaves it behind when that code
+    is moved or renamed — so that it no longer matches the code under it
+    (checked against that code as the changed file has it);
+  - or deletes a `Cost (LP3):` comment whose code is still there.
+- _Scope:_ the `Cost (LP3):` comments in `extensions/some-drama/src/`; when
+  written, in `background.ts`, `content.ts`, `effects/content/playback.ts`
+  and `logic/playback.ts`. Checked against the code in the change that
+  declared them.
+- _Why not enforced:_ types don't carry cost; lint can see a loop but not
+  what it iterates or how large that is; tests count messages only in the
+  scenarios they drive (`livePublisher`'s do: one ask, at most one send), not
+  over an open-ended N tabs, and `background.ts` and `content.ts` are entry
+  modules with no harness.
 
 ## Beats
 
@@ -35,6 +176,10 @@ episode it happened.
 | `Alt+Shift+=` / `-` | rating up / down half a point (of 10)      |
 | `Alt+Shift+]` / `[` | likelihood to finish up / down 10%         |
 | `Alt+Shift+D`       | show / hide the card                       |
+
+`Alt+Shift+D` is per tab and sticks: a card hidden in a tab stays hidden — and
+releases everything it held — through navigations in that tab until you press
+it again.
 
 Press the same mood again within 2 s to escalate that beat (●○○ → ●●○ → ●●●)
 instead of logging another. Clicking a mood on the card logs a beat the same

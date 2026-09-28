@@ -11,27 +11,35 @@ import { probeResources } from "@some-extension/common/testing"
 import type { ResourceProbe } from "@some-extension/common/testing"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { nextFrame, setVisibility, STATE } from "./helpers/fixtures"
+import {
+  nextFrame,
+  setVisibility,
+  sourceReport,
+  STATE,
+} from "./helpers/fixtures"
 
 // Replies are what the background would send; `unknown`, as runtime
 // messages are, so a test can hand back any shape it needs.
-const sendMessage = vi.fn(
-  (msg: { type: string }): Promise<unknown> =>
-    Promise.resolve(
-      msg.type === "GET_BEATS"
-        ? { ok: true, episode: "Ep 12", beats: [] }
-        : msg.type === "GET_VERDICTS"
-          ? { ok: true, verdicts: [] }
+const defaultReply = (msg: { type: string }): Promise<unknown> =>
+  Promise.resolve(
+    msg.type === "GET_BEATS"
+      ? { ok: true, episode: "Ep 12", beats: [] }
+      : msg.type === "GET_VERDICTS"
+        ? { ok: true, verdicts: [] }
+        : msg.type === "GET_LIVE_PLAYBACK"
+          ? { ok: true, live: null }
           : { ok: true }
-    )
-)
+  )
+const sendMessage = vi.fn(defaultReply)
 
 let probe: ResourceProbe
 let display: Display | null = null
 
 beforeEach(() => {
   document.body.innerHTML = ""
-  sendMessage.mockClear()
+  sendMessage.mockReset()
+  sendMessage.mockImplementation(defaultReply)
+  onHidden.mockClear()
   Object.defineProperty(globalThis, "browser", {
     value: {
       runtime: { sendMessage },
@@ -58,10 +66,14 @@ const card = (): Element | null => document.querySelector("#dc-root")
 const askedForBeats = (): boolean =>
   sendMessage.mock.calls.some(([m]) => m.type === "GET_BEATS")
 
-function mountDisplay(): Display {
+const onHidden = vi.fn((_hidden: boolean): void => {})
+
+function mountDisplay(hidden = false): Display {
   display = createDisplay({
     cardMeta: null,
     onCardMeta: () => {},
+    hidden,
+    onHidden,
     refetch: () => {},
   })
   return display
@@ -95,6 +107,134 @@ describe("the display builds a card only on a showing page", () => {
     setVisibility("hidden")
     expect(card()).toBeNull()
     expect(probe.counts()).toMatchObject({ intervals: 0, frames: 0 })
+  })
+})
+
+describe("a card toggled off holds nothing until toggled back on", () => {
+  it("releases the card on toggle-off, and ignores state until toggled on", async () => {
+    setVisibility("visible")
+    const d = mountDisplay()
+    d.apply(STATE)
+    await nextFrame()
+    expect(probe.counts().intervals).toBe(1)
+
+    d.toggleVisibility()
+    expect(onHidden).toHaveBeenLastCalledWith(true)
+    expect(card()).toBeNull()
+    expect(probe.counts()).toMatchObject({ intervals: 0, frames: 0 })
+
+    // A state change (another drama, an edit) or the tab being shown again
+    // builds nothing and asks for nothing while the card is off.
+    sendMessage.mockClear()
+    const [entry] = STATE.watchlist
+    if (!entry) throw new Error("fixture has no entry")
+    d.apply({ ...STATE, watchlist: [{ ...entry, rating: entry.rating + 1 }] })
+    setVisibility("hidden")
+    setVisibility("visible")
+    await nextFrame()
+    expect(card()).toBeNull()
+    expect(sendMessage).not.toHaveBeenCalled()
+
+    d.toggleVisibility()
+    expect(onHidden).toHaveBeenLastCalledWith(false)
+    await nextFrame()
+    expect(card()).not.toBeNull()
+    expect(askedForBeats()).toBe(true)
+  })
+
+  it("starts hidden in a tab where it was toggled off (a navigation)", async () => {
+    setVisibility("visible")
+    const d = mountDisplay(true)
+    d.apply(STATE)
+    await nextFrame()
+    expect(card()).toBeNull()
+    expect(askedForBeats()).toBe(false)
+    expect(probe.counts().intervals).toBe(0)
+
+    d.toggleVisibility()
+    await nextFrame()
+    expect(card()).not.toBeNull()
+  })
+})
+
+describe("the card follows the drama's video live", () => {
+  const timestamp = (): string | null | undefined =>
+    card()?.querySelector(".dc-timestamp")?.textContent
+
+  it("shows where the video is now, from the latest report, not the saved entry", async () => {
+    setVisibility("visible")
+    const d = mountDisplay()
+    d.apply(STATE)
+    await nextFrame()
+    expect(timestamp()).toBe("00:00") // the entry's saved position
+
+    // Reported 65 s ago at 1:00, playing since: 2:05 now.
+    d.onPlayback(sourceReport(60, true, Date.now() - 65_000))
+    expect(timestamp()).toBe("02:05")
+    expect(card()?.querySelector(".dc-ep-badge")?.textContent).toBe("Ep 13")
+
+    // Paused: the time stays where the report says.
+    d.onPlayback(sourceReport(200, false, Date.now() - 65_000))
+    expect(timestamp()).toBe("03:20")
+  })
+
+  it("keeps the report across a rebuild, and drops a first-look reply a broadcast overtook", async () => {
+    type Reply = Awaited<ReturnType<typeof sendMessage>>
+    const replies: Array<(v: Reply) => void> = []
+    sendMessage.mockImplementation((msg: { type: string }) =>
+      msg.type === "GET_LIVE_PLAYBACK"
+        ? new Promise<Reply>((resolve) => {
+            replies.push(resolve)
+          })
+        : defaultReply(msg)
+    )
+    setVisibility("visible")
+    const d = mountDisplay()
+    d.apply(STATE)
+    await nextFrame()
+
+    d.onPlayback(sourceReport(300, false))
+    replies[0]?.({ ok: true, live: sourceReport(10, false) })
+    await nextFrame()
+    expect(timestamp()).toBe("05:00")
+
+    // A different drama rebuilds the card; it starts from the report.
+    const [entry] = STATE.watchlist
+    if (!entry) throw new Error("fixture has no entry")
+    const other = { ...entry, id: "d2", title: "Lovely Runner" }
+    d.apply({ ...STATE, watchlist: [entry, other], activeId: "d2" })
+    expect(timestamp()).toBe("05:00")
+  })
+})
+
+describe("first-look replies that arrive out of order", () => {
+  it("keeps the newer ask's reply when an older one lands after it", async () => {
+    type Reply = Awaited<ReturnType<typeof sendMessage>>
+    const replies: Array<(v: Reply) => void> = []
+    sendMessage.mockImplementation((msg: { type: string }) =>
+      msg.type === "GET_LIVE_PLAYBACK"
+        ? new Promise<Reply>((resolve) => {
+            replies.push(resolve)
+          })
+        : defaultReply(msg)
+    )
+    setVisibility("visible")
+    const d = mountDisplay()
+    d.apply(STATE)
+    await nextFrame()
+    // The tab is hidden and shown again: the card is rebuilt and asks again
+    // while the first ask is still out.
+    setVisibility("hidden")
+    setVisibility("visible")
+    await nextFrame()
+    expect(replies).toHaveLength(2)
+
+    const [older, newer] = replies
+    newer?.({ ok: true, live: sourceReport(300, false) })
+    await nextFrame()
+    older?.({ ok: true, live: sourceReport(10, false) })
+    await nextFrame()
+    expect(card()?.querySelector(".dc-timestamp")?.textContent).toBe("05:00")
   })
 })
 
@@ -175,15 +315,17 @@ describe("verdict history that arrives out of order", () => {
   it("keeps the newer snapshot when an older reply lands after it", async () => {
     type Reply = Awaited<ReturnType<typeof sendMessage>>
     const pending: Array<(v: Reply) => void> = []
-    // Only for the three requests this test makes (GET_BEATS, then two
-    // GET_VERDICTS); the file's default mock answers everything after.
+    // Only for the four requests this test makes (GET_BEATS, GET_VERDICTS,
+    // GET_LIVE_PLAYBACK, then GET_VERDICTS again); the file's default mock
+    // answers everything after.
     const holdVerdicts = (msg: { type: string }): Promise<Reply> =>
       msg.type === "GET_VERDICTS"
         ? new Promise<Reply>((resolve) => {
             pending.push(resolve)
           })
-        : Promise.resolve({ ok: true, episode: "Ep 12", beats: [] })
+        : defaultReply(msg)
     sendMessage
+      .mockImplementationOnce(holdVerdicts)
       .mockImplementationOnce(holdVerdicts)
       .mockImplementationOnce(holdVerdicts)
       .mockImplementationOnce(holdVerdicts)

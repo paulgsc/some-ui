@@ -128,6 +128,17 @@ exemptions conform on `main`):
 > - _Why not enforced:_ whether the `Lifetime:` line is true needs a person to read it.
 >   Whether it exists is mechanical ("mechanical; not yet a rule").
 
+**Per-site tags: state the fact where the code hides it.** When a claim is about many sites
+rather than one rule, as L3's `Lifetime:` line is, the invariant can govern a tagged comment
+at each site that names its ID. `Cost (LP3):` in `extensions/some-drama/README.md` → "Live
+playback" does this for costs. A reviewer then checks a hunk against the tag right above it
+instead of re-deriving the fact. Write a tag only where a reviewer reading that one function
+couldn't see the fact: it sits in a callee, a closure, a multiplier across tabs or instances,
+or a bound kept by code elsewhere. Where the body shows it (one visible loop, O(1)
+arithmetic), leave the tag out: it adds nothing to review and is one more claim to keep true.
+The invariant defines the tag's terms (for costs, the variables) and makes deleting a tag
+whose code remains part of its falsifier.
+
 ## Cold-start footguns worth not re-discovering
 
 These bite during ordinary implementation work, **before any PR exists** — read this at the
