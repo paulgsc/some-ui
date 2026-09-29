@@ -111,4 +111,13 @@ describe("keepWithoutReplacing", () => {
       key: "k-2",
     })
   })
+
+  it("finds the same bytes under any held copy, past the scan window", async () => {
+    const shelf = port({ "k-5": '{"a":5}' })
+    await expect(keepWithoutReplacing(shelf, "k", '{"a":5}')).resolves.toEqual({
+      change: "unchanged",
+      key: "k-5",
+    })
+    expect(shelf.keep).not.toHaveBeenCalled()
+  })
 })

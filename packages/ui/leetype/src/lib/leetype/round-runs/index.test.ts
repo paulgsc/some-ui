@@ -122,6 +122,13 @@ describe("resolveRoundRuns — one shape from either source (X2)", () => {
     await expect(resolveRoundRuns(edited)).resolves.toBeNull()
   })
 
+  it("shows nothing, rather than rejecting, for a round that does not parse", async () => {
+    // `serializeRound` parses; a round handed in unparsed must not escape
+    // as a rejection (review, #1601).
+    const broken: Round = { ...HAS_DUPLICATE, diffOptions: [] }
+    await expect(resolveRoundRuns(broken)).resolves.toBeNull()
+  })
+
   it("shows nothing for a round nobody recorded, and never rejects", async () => {
     const own: Round = { ...HAS_DUPLICATE, id: "own:has-duplicate" }
     await expect(

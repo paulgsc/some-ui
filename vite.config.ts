@@ -41,6 +41,12 @@ export default defineConfig({
         import.meta.dirname,
         "./packages/ui/leetype/src"
       ),
+      // The bundled run transcripts (`round-runs/bundled.ts`): dev resolves
+      // through this file, so without it every story reaching them fails.
+      "@leetype-corpus": path.resolve(
+        import.meta.dirname,
+        "./packages/ui/leetype/corpus"
+      ),
       "@topik": path.resolve(import.meta.dirname, "./packages/ui/topik/src"),
       "@interview": path.resolve(
         import.meta.dirname,

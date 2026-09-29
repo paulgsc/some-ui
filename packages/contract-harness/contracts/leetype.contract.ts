@@ -43,19 +43,19 @@ const RoundEntrySchema = z.object({
  * `leetype_round_repo::RunResult` (`crates/db/leetype_round/src/runs.rs`).
  */
 const RunResultSchema = z.discriminatedUnion("kind", [
-  z.object({
+  z.strictObject({
     kind: z.literal("ok"),
     inputSize: z.number().int().nonnegative(),
-    observation: z.object({
+    observation: z.strictObject({
       output: z.string(),
       logs: z.array(z.string()),
-      elapsed: z.object({ milliseconds: z.number().nonnegative() }),
+      elapsed: z.strictObject({ milliseconds: z.number().nonnegative() }),
     }),
   }),
-  z.object({
+  z.strictObject({
     kind: z.literal("error"),
     inputSize: z.number().int().nonnegative(),
-    error: z.object({
+    error: z.strictObject({
       errorClass: z.enum(["compile", "runtime", "budget-exceeded"]),
       message: z.string(),
     }),
@@ -65,9 +65,11 @@ const RunResultSchema = z.discriminatedUnion("kind", [
 /**
  * `GET /leetype/rounds/:id/runs` (`leetype_round_repo::RoundRuns`): the
  * transcript recorded for the round's current bytes. Its keys are the whole
- * contract (`unknownFields: "reject"` below): X5's never #3 is that the
- * route never returns a complexity claim, so a field this schema does not
- * know, a `class` say, is a finding rather than growth.
+ * contract (`unknownFields: "reject"` below, which audits the top-level
+ * objects; the harness does not look inside unions, so `result` and its
+ * parts are `z.strictObject`): X5's never #3 is that the route never
+ * returns a complexity claim, so a field this schema does not know, a
+ * `class` say, is a finding rather than growth.
  */
 const RoundRunsSchema = z.object({
   roundId: z.string().min(1),

@@ -534,6 +534,40 @@ describe("RoundSession — recorded runs (X2, #1223)", () => {
     )
   })
 
+  it("shows no runs between choosing a rewrite and committing its proposition", async () => {
+    // The window a leak would live in (review, #1601): the rewrite is
+    // chosen, so its C′ run would say whether it fits, and `p` is not yet
+    // committed.
+    render(
+      <RoundSession
+        rounds={[HAS_DUPLICATE]}
+        sessionSeed={3}
+        pastedStore={memoryStore()}
+        loadRuns={() => Promise.resolve(BUNDLED_ROUND_RUNS[HAS_DUPLICATE.id])}
+      />
+    )
+    await settle()
+    goTo("Rewrites")
+    const card = screen
+      .getAllByRole("region", { name: /^Rewrite / })
+      .find((node) => memberOfCard(node).admissible)!
+    fireEvent.click(
+      within(card).getByRole("button", { name: /^Choose rewrite/ })
+    )
+    await settle()
+    // Every artifact in the cycle, and back round: none is the runs.
+    for (let step = 0; step < 8; step += 1) {
+      expect(runsPanel()).not.toBeInTheDocument()
+      const runsLabel = screen
+        .queryAllByText("Runs", { selector: "p, span" })
+        .filter((node) => node.closest("[hidden]") === null)
+      expect(runsLabel).toHaveLength(0)
+      fireEvent.click(
+        screen.getByRole("button", { name: "Round: next artifact" })
+      )
+    }
+  })
+
   it("shows the chosen rewrite's own runs, whichever the learner chose", async () => {
     render(
       <RoundSession

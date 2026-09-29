@@ -148,7 +148,13 @@ export async function resolveRoundRuns(
   load?: RoundRunsLoader,
   bundled: Readonly<Record<string, unknown>> = BUNDLED_ROUND_RUNS
 ): Promise<RoundRuns | null> {
-  const contentHash = await roundContentHash(round)
+  let contentHash: string | null
+  try {
+    // `serializeRound` parses: a round handed in unparsed can throw here.
+    contentHash = await roundContentHash(round)
+  } catch {
+    return null
+  }
   if (contentHash === null) return null
   if (load !== undefined) {
     try {
