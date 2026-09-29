@@ -4,9 +4,10 @@
  * on the device (adaptive-learning canon Cor. 4.6 (iii), Def. 6.6,
  * Rem. 4.10, Rem. 7.5).
  *
- * The deck is the bundled starter deck. The drill's level follows the one
- * the learner holds on the material list, capped at the drill's highest
- * (TOPIK 3), since that is where its vocabulary stops.
+ * The deck is the bundled one: the starter lines and the level-one lines.
+ * The drill's level follows the one the learner holds on the material list,
+ * capped at the drill's highest (TOPIK 3), since that is where its
+ * vocabulary stops.
  */
 
 import type { JSX } from "react"
@@ -15,12 +16,12 @@ import type { SpeechAdapter } from "@some-ui/speech"
 import { ReadAloudSession } from "@topik/components/topik/read-aloud/read-aloud-session"
 import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
+import { BUNDLED_DECK } from "@topik/lib/topik/read-aloud/bundled"
 import type {
   ReadAloudDeck,
   ReadAloudLevel,
 } from "@topik/lib/topik/read-aloud/content"
 import { dayKey } from "@topik/lib/topik/read-aloud/records"
-import { STARTER_DECK } from "@topik/lib/topik/read-aloud/starter"
 
 type ReadAloudScreenProps = {
   /** The TOPIK level held on the material list, one to six. */
@@ -42,7 +43,7 @@ export const ReadAloudScreen = ({
   topikLevel,
   speech,
   store: given,
-  deck = STARTER_DECK,
+  deck = BUNDLED_DECK,
   short = false,
   onExit,
   now = Date.now,
