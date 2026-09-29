@@ -7,6 +7,7 @@ import {
   parsePaceBook,
   parsePracticeRecord,
   prunePaceBook,
+  recentCounts,
   RECORD_DAYS,
 } from "@topik/lib/topik/read-aloud/records"
 import { describe, expect, it } from "vitest"
@@ -41,6 +42,27 @@ describe("the practice record (Def. 6.6)", () => {
 
   it("keys days by local date", () => {
     expect(dayKey(new Date(2026, 8, 5, 23, 59))).toBe("2026-09-05")
+  })
+})
+
+describe("recentCounts", () => {
+  it("sums the days ending today, across a month boundary", () => {
+    let record = emptyRecord()
+    record = addRep(record, "2026-09-24", 1000)
+    record = addRep(record, "2026-09-30", 2000)
+    record = addSet(record, "2026-10-01")
+    record = addRep(record, "2026-10-01", 3000)
+    expect(recentCounts(record, "2026-10-01", 1)).toEqual({
+      reps: 1,
+      sets: 1,
+      practiceMs: 3000,
+    })
+    expect(recentCounts(record, "2026-10-01", 7)).toEqual({
+      reps: 2,
+      sets: 1,
+      practiceMs: 5000,
+    })
+    expect(recentCounts(record, "2026-10-01", 8).reps).toBe(3)
   })
 })
 

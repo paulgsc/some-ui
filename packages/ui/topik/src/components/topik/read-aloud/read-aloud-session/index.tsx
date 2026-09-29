@@ -19,17 +19,21 @@ import { RepCard } from "@topik/components/topik/read-aloud/rep-card"
 import { SetCard } from "@topik/components/topik/read-aloud/set-card"
 import type { UseReadAloudOptions } from "@topik/lib/topik/adapter/hooks/use-read-aloud"
 import { useReadAloud } from "@topik/lib/topik/adapter/hooks/use-read-aloud"
+import type { PracticeRecord } from "@topik/lib/topik/read-aloud/records"
 import { Pause, Play, X } from "lucide-react"
 import { cn } from "some-ui-utils"
 
 export type ReadAloudSessionProps = UseReadAloudOptions & {
   /** A phone on its side: stage and dock side by side. */
   short?: boolean
+  /** The practice record to show on the start screen, and today's key. */
+  record?: { record: PracticeRecord; today: string }
   onExit: () => void
 }
 
 export const ReadAloudSession = ({
   short = false,
+  record,
   onExit,
   ...options
 }: ReadAloudSessionProps): JSX.Element => {
@@ -103,6 +107,7 @@ export const ReadAloudSession = ({
           audio={vm.audio}
           empty={vm.empty}
           resuming={(options.resume?.queue.length ?? 0) > 0}
+          record={record}
           short={short}
           onStart={vm.begin}
           onStop={onExit}

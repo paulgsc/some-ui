@@ -7,7 +7,14 @@ import type {
 } from "@topik/lib/topik/core/lesson-selection"
 import { topikLevelOf } from "@topik/lib/topik/core/lesson-selection"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
-import { ChevronRight, Loader2, PlayCircle, Sparkles, X } from "lucide-react"
+import {
+  BookOpenText,
+  ChevronRight,
+  Loader2,
+  PlayCircle,
+  Sparkles,
+  X,
+} from "lucide-react"
 import { assertNever, cn } from "some-ui-utils"
 
 type MaterialListProps = {
@@ -29,6 +36,8 @@ type MaterialListProps = {
   onCreate?: () => void
   /** Lets the pasted lesson go before the session ends. */
   onForget?: () => void
+  /** Opens the read-aloud drill; absent where it isn't offered. */
+  onReadAloud?: () => void
 }
 
 const details = (item: TopikMetadata): string => {
@@ -119,6 +128,7 @@ export const MaterialList = ({
   onReload,
   onCreate,
   onForget,
+  onReadAloud,
 }: MaterialListProps): JSX.Element => {
   const [next, ...rest] = order
   const why = next ? reasonText(next.reasons) : null
@@ -205,6 +215,23 @@ export const MaterialList = ({
             <ChevronRight className="text-muted-foreground size-5 shrink-0" />
           </button>
         </section>
+      )}
+
+      {onReadAloud && (
+        <button
+          type="button"
+          onClick={onReadAloud}
+          className="bg-card border-border flex min-h-16 shrink-0 items-center gap-3 rounded-2xl border p-4 text-left"
+        >
+          <BookOpenText className="text-primary size-6 shrink-0" />
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold">Read aloud</span>
+            <span className="text-muted-foreground block text-sm">
+              Read words and sentences aloud, then hear them. It runs by itself.
+            </span>
+          </span>
+          <ChevronRight className="text-muted-foreground size-5 shrink-0" />
+        </button>
       )}
 
       {pasted && (

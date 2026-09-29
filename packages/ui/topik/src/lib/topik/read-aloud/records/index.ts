@@ -156,6 +156,32 @@ export const addRep = (
 export const addSet = (record: PracticeRecord, day: string): PracticeRecord =>
   add(record, day, { reps: 0, sets: 1, practiceMs: 0 })
 
+/**
+ * The counts of the `days` days ending on `today`, today included: what the
+ * record shows for "today" and "this week". Counts only, never a rate
+ * (Prop. 6.4 (iii)).
+ */
+export function recentCounts(
+  record: PracticeRecord,
+  today: string,
+  days: number
+): PracticeCounts {
+  const [year, month, date] = today.split("-").map(Number)
+  const first = dayKey(
+    new Date(year ?? 0, (month ?? 1) - 1, (date ?? 1) - (days - 1))
+  )
+  return record.days
+    .filter((entry) => entry.day >= first && entry.day <= today)
+    .reduce(
+      (sum, entry) => ({
+        reps: sum.reps + entry.reps,
+        sets: sum.sets + entry.sets,
+        practiceMs: sum.practiceMs + entry.practiceMs,
+      }),
+      { ...ZERO }
+    )
+}
+
 /** A stored record, or an empty one when it does not parse. */
 export function parsePracticeRecord(raw: unknown): PracticeRecord {
   const parsed = PracticeRecordSchema.safeParse(raw)

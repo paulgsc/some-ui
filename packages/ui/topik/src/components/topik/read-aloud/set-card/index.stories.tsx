@@ -1,4 +1,9 @@
 import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
+import {
+  addRep,
+  addSet,
+  emptyRecord,
+} from "@topik/lib/topik/read-aloud/records"
 
 import { SetCard } from "."
 
@@ -29,6 +34,48 @@ export const Ready: Story = {
     audio: true,
     resuming: false,
     short: false,
+    onStart: noop,
+    onStop: noop,
+  },
+}
+
+/** A week of practice: counts only, never a rate (Prop. 6.4 (iii)). */
+const WEEK = [1, 2, 3, 5, 6, 7].reduce(
+  (record, day) =>
+    addSet(
+      addRep(
+        addRep(record, `2026-09-2${day}`, 9000 + day * 500),
+        `2026-09-2${day}`,
+        7000
+      ),
+      `2026-09-2${day}`
+    ),
+  emptyRecord()
+)
+
+/** With the practice record kept on the device. */
+export const ReadyWithRecord: Story = {
+  args: {
+    kind: "ready",
+    level: 2,
+    audio: true,
+    resuming: false,
+    record: { record: WEEK, today: "2026-09-27" },
+    short: false,
+    onStart: noop,
+    onStop: noop,
+  },
+}
+
+/** The same, on a phone held sideways: the start screen scrolls. */
+export const LandscapeReadyWithRecord: Story = {
+  args: {
+    kind: "ready",
+    level: 2,
+    audio: true,
+    resuming: true,
+    record: { record: WEEK, today: "2026-09-27" },
+    short: true,
     onStart: noop,
     onStop: noop,
   },

@@ -2,7 +2,9 @@ import type { JSX } from "react"
 import { useEffect, useState } from "react"
 import { Button } from "@some-ui/shared"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
+import { PracticeRecordView } from "@topik/components/topik/read-aloud/practice-record"
 import type { ReadAloudLevel } from "@topik/lib/topik/read-aloud/content"
+import type { PracticeRecord } from "@topik/lib/topik/read-aloud/records"
 import { SUMMARY_MS } from "@topik/lib/topik/read-aloud/timing"
 import { BookOpenText, Play, VolumeX } from "lucide-react"
 
@@ -16,6 +18,8 @@ export type SetCardProps = { short: boolean; onStop: () => void } & (
       resuming: boolean
       /** The deck has nothing at or below this level to draw a set from. */
       empty?: boolean
+      /** The practice record and the learner's local day, where one is kept. */
+      record?: { record: PracticeRecord; today: string }
       onStart: () => void
     }
   | {
@@ -154,18 +158,23 @@ export const SetCard = (props: SetCardProps): JSX.Element => {
   return (
     <StepLayout
       short={short}
+      // With the record, the start screen is taller than a phone on its
+      // side; it scrolls rather than clip.
+      longForm={props.record !== undefined}
       stage={
         <div
           data-slot="read-aloud-ready"
-          className="flex max-w-sm flex-col items-center gap-3 text-center"
+          className="mx-auto flex max-w-sm flex-col items-center gap-3 text-center"
         >
-          <div className="bg-primary/10 text-primary flex size-16 items-center justify-center rounded-full">
-            {props.audio ? (
-              <BookOpenText className="size-8" />
-            ) : (
-              <VolumeX className="size-8" />
-            )}
-          </div>
+          {!short && (
+            <div className="bg-primary/10 text-primary flex size-16 items-center justify-center rounded-full">
+              {props.audio ? (
+                <BookOpenText className="size-8" />
+              ) : (
+                <VolumeX className="size-8" />
+              )}
+            </div>
+          )}
           <p className="text-2xl font-semibold">Read aloud</p>
           <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
             Level {props.level}
@@ -185,6 +194,12 @@ export const SetCard = (props: SetCardProps): JSX.Element => {
               Read-aloud plays every item after you read it, and this device has
               no voice to play it with.
             </p>
+          )}
+          {props.record && (
+            <PracticeRecordView
+              record={props.record.record}
+              today={props.record.today}
+            />
           )}
         </div>
       }
