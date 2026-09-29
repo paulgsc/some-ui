@@ -15,8 +15,23 @@ import { RoundOutcome } from "@leetype/components/round/round-outcome"
 import { SourcePanel } from "@leetype/components/round/source-panel"
 import { shuffledBySeed } from "@leetype/lib/leetype/deterministic-random"
 import { buildRoundPrompt } from "@leetype/lib/leetype/generation"
+import type { Ledger } from "@leetype/lib/leetype/ledger"
+import { recordObservations } from "@leetype/lib/leetype/ledger"
+import { observationsOfCommitment } from "@leetype/lib/leetype/ledger/observation"
+import type { EntryReading } from "@leetype/lib/leetype/ledger/state"
+import {
+  LEDGER_STATE_COPY,
+  readEntry,
+  touchedIn,
+  whatIsLeft,
+} from "@leetype/lib/leetype/ledger/state"
+import type { LedgerStore } from "@leetype/lib/leetype/ledger/store"
+import { createLedgerStore } from "@leetype/lib/leetype/ledger/store"
 import type { PastedRoundStore } from "@leetype/lib/leetype/pasted-round"
 import { createPastedRoundStore } from "@leetype/lib/leetype/pasted-round"
+import { PROPOSITION_REGISTER } from "@leetype/lib/leetype/proposition-register/generated"
+import type { PropositionId } from "@leetype/lib/leetype/proposition-register/generated"
+import { rewriteKeyOf, rewriteOf } from "@leetype/lib/leetype/rewrite"
 import type { AssembledRound } from "@leetype/lib/leetype/round-assembly"
 import {
   assembleRound,
@@ -28,6 +43,7 @@ import {
   ROUND_PROBE_PROMPT,
   roundProbeOf,
 } from "@leetype/lib/leetype/round-probe"
+import { nextRound } from "@leetype/lib/leetype/round-sampler"
 import type { Round } from "@leetype/types/authored-round"
 import type { Commitment } from "@leetype/types/commitment"
 import { Button } from "@some-ui/shared"
@@ -36,6 +52,24 @@ import { cn } from "some-ui-utils"
 
 /** Decorrelates consecutive rounds' seeds; the same stride `ReadingSession` uses per step. */
 const ROUND_SEED_STRIDE = 0x9e3779b9
+
+/** Separates a draw's seed from the same round's presentation seed. */
+const DRAW_SEED_SALT = 0x5bd1e995
+
+/** The seed of the session's `index`-th round (0-based): presentation order and distractors. */
+function roundSeedOf(seed: number, index: number): number {
+  return (seed ^ Math.imul(index + 1, ROUND_SEED_STRIDE)) >>> 0
+}
+
+/**
+ * A session id for the ledger's observations: one per mount and one per
+ * Restart. L3's session boundary compares these, together with time
+ * (`SPACED_RETRIEVAL_MIN_GAP_MS`).
+ */
+function newSessionId(): string {
+  const [random] = crypto.getRandomValues(new Uint32Array(1))
+  return `s-${Date.now().toString(36)}-${(random ?? 0).toString(36)}`
+}
 
 type RoundSessionProps = {
   /**
@@ -52,6 +86,8 @@ type RoundSessionProps = {
   onSessionComplete?: () => void
   /** Where the learner's own round is held; `sessionStorage` unless a test passes one. */
   pastedStore?: PastedRoundStore
+  /** Where the ledger is kept; `localStorage` unless a test passes one. */
+  ledgerStore?: LedgerStore
   className?: string
 }
 
@@ -74,6 +110,54 @@ type Progress = {
 }
 
 const FRESH: Progress = { picked: null, outcome: null }
+
+type SummaryRow = {
+  readonly id: PropositionId
+  readonly title: string
+  readonly reading: EntryReading
+}
+
+/**
+ * The session-complete screen's view of the ledger: each entry this
+ * session presented, its state in Cor. 10.1's words, and for an entry not
+ * yet demonstrated which of Def. 10.2's conjuncts are still open. Words
+ * only: no figure that could add `recognized` and `demonstrated` together.
+ */
+const LedgerSummary: FC<{ rows: ReadonlyArray<SummaryRow> }> = ({ rows }) => {
+  if (rows.length === 0) return null
+  return (
+    <section aria-label="Your ledger" className="w-full min-w-0 text-left">
+      <p className="text-sm font-medium text-foreground">
+        What this session put in your ledger
+      </p>
+      <ul className="mt-2 flex flex-col gap-2">
+        {rows.map(({ id, title, reading }) => {
+          if (reading.state === "unseen") return null
+          const open =
+            reading.state === "exposed" ? [] : whatIsLeft(reading.demonstration)
+          return (
+            <li
+              key={id}
+              className="min-w-0 rounded-lg border border-border/60 px-3 py-2"
+            >
+              <p className="text-pretty text-sm font-medium text-foreground">
+                {title}
+              </p>
+              <p className="text-pretty text-sm text-muted-foreground">
+                {LEDGER_STATE_COPY[reading.state]}
+              </p>
+              {open.length > 0 && (
+                <p className="text-pretty text-xs text-muted-foreground">
+                  Still open: {open.join("; ")}.
+                </p>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    </section>
+  )
+}
 
 /** Rounds that pass the authored-round lint and open on a diff selection. */
 function playable(rounds: ReadonlyArray<Round>): Array<Round> {
@@ -108,13 +192,30 @@ function playable(rounds: ReadonlyArray<Round>): Array<Round> {
  * a round is complete without `r` (Rem. 8.0), and execution is
  * `paulgsc/server#381`'s to add.
  *
- * # Variety
+ * # Which round comes next (L4, #1230)
  *
- * The corpus is shuffled by the session seed, so two sessions see rounds
- * in different orders, the way `ReadingSession` varied exercises through
- * `SESSION_EXERCISE_IDS`. Within a round, `D`'s presentation order is
- * shuffled by the round's own seed, so position never says which diff is
- * admissible (the corpus authors it first).
+ * `nextRound` (`lib/leetype/round-sampler`) draws each corpus round from
+ * the ledger, the corpus and the session seed, at the moment the previous
+ * round is left (or the session opens): a confident error brings back a
+ * round that tells the confused pair apart, an abstention a plainer
+ * instance, a correct answer a new rewrite of the same proposition
+ * (Prop. 9.1). Every round keeps a positive weight, so nothing is ever
+ * unreachable and nothing is withheld (Thm. 9.1, Ax. 9.1); an empty or
+ * cleared ledger draws uniformly (Thm. 7.2). Within a round, `D`'s
+ * presentation order is shuffled by the round's own seed, so position
+ * never says which diff is admissible (the corpus authors it first).
+ *
+ * # The ledger (L1–L3, #1227–#1229)
+ *
+ * Each `(d, p)` commitment is filed into the ledger
+ * (`observationsOfCommitment`, `recordObservations`) under this session's
+ * id and persisted through `ledgerStore`, silently (Prop. 7.2). Nothing
+ * here reads it except the draw and the four-state list on the
+ * session-complete screen, which says only what Cor. 10.1 allows: the
+ * state's name, and for a recognized entry which of Def. 10.2's conjuncts
+ * are still open. No percentage, streak, level or count of rounds against
+ * a total. The learner's own round is played but never filed: its JSON
+ * carried every μ, so it was answered with the key in hand (Ax. 9.2).
  *
  * # The learner's own round
  *
@@ -129,27 +230,39 @@ export const RoundSession: FC<RoundSessionProps> = ({
   sessionSeed,
   onSessionComplete,
   pastedStore,
+  ledgerStore,
   className,
 }) => {
   const [seed] = useState(
     () => sessionSeed ?? crypto.getRandomValues(new Uint32Array(1))[0]!
   )
   const [store] = useState(() => pastedStore ?? createPastedRoundStore())
-  const queue = useMemo(
-    () => shuffledBySeed(playable(rounds), seed),
-    [rounds, seed]
-  )
+  const [ledgers] = useState(() => ledgerStore ?? createLedgerStore())
+  const corpus = useMemo(() => playable(rounds), [rounds])
+
+  /**
+   * The ledger and the clock the current corpus round is drawn under. Set
+   * when a round is left (and at mount and Restart), never on a commit, so
+   * filing the learner's answer cannot redraw the round they are on.
+   */
+  const [drawBasis, setDrawBasis] = useState<{
+    readonly ledger: Ledger
+    readonly now: number
+  }>(() => ({ ledger: ledgers.get(), now: Date.now() }))
+  /** The live ledger: `drawBasis.ledger` plus this round's commitment, if any. */
+  const [ledger, setLedger] = useState<Ledger>(() => drawBasis.ledger)
+  const [sessionId, setSessionId] = useState(newSessionId)
 
   /** Rounds played so far this session, own rounds included; also the seed stride. */
   const [played, setPlayed] = useState(0)
-  /** Position in `queue`, advanced only by corpus rounds. */
-  const [position, setPosition] = useState(0)
   const [own, setOwn] = useState<Round | null>(() => store.get())
   const [generating, setGenerating] = useState(false)
   const [progress, setProgress] = useState<Progress>(FRESH)
   const [recent, setRecent] = useState<ReadonlyArray<string>>([])
 
-  const [finished, setFinished] = useState(false)
+  /** When the term ran out, or null while the session is on. */
+  const [finishedAt, setFinishedAt] = useState<number | null>(null)
+  const finished = finishedAt !== null
   const [sessionClockMs, setSessionClockMs] = useState(0)
   const [sessionGeneration, setSessionGeneration] = useState(0)
   const onSessionCompleteRef = useRef(onSessionComplete)
@@ -177,13 +290,24 @@ export const RoundSession: FC<RoundSessionProps> = ({
     // owns, the same shape and justification as `ReadingSession`'s own
     // end-of-session effect.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setFinished(true)
+    setFinishedAt(Date.now())
     onSessionCompleteRef.current?.()
   }, [finished, sessionClockMs, sessionDurationMs])
 
+  const drawn = useMemo(
+    () =>
+      nextRound(
+        drawBasis.ledger,
+        corpus,
+        (roundSeedOf(seed, played) ^ DRAW_SEED_SALT) >>> 0,
+        drawBasis.now
+      ),
+    [drawBasis, corpus, seed, played]
+  )
+
   const play = useMemo((): Play | null => {
-    const roundSeed = (seed ^ Math.imul(played + 1, ROUND_SEED_STRIDE)) >>> 0
-    const round = own ?? queue[position % Math.max(queue.length, 1)]
+    const roundSeed = roundSeedOf(seed, played)
+    const round = own ?? drawn
     if (round === undefined) return null
     try {
       return {
@@ -195,7 +319,7 @@ export const RoundSession: FC<RoundSessionProps> = ({
     } catch {
       return null
     }
-  }, [own, queue, position, played, seed])
+  }, [own, drawn, played, seed])
 
   const order = useMemo(
     () =>
@@ -226,7 +350,7 @@ export const RoundSession: FC<RoundSessionProps> = ({
 
   const handleCommit = useCallback(
     (commitment: Commitment): void => {
-      if (play === null || pickedOption === undefined) return
+      if (play === null || pickedOption === undefined || probe === null) return
       const initial = play.assembled.initialState
       if (initial.phase !== "posingDiffSelection") return
       setProgress((current) => ({
@@ -237,22 +361,37 @@ export const RoundSession: FC<RoundSessionProps> = ({
           commitment,
         }),
       }))
+      // Ax. 9.2: the learner's own round was answered with its key in hand.
+      if (play.own) return
+      const next = recordObservations(
+        ledger,
+        observationsOfCommitment({
+          answerId: probe.answerId,
+          presented: probe.options.map(({ id }) => id),
+          commitment,
+          roundId: play.round.id,
+          rewriteKey: rewriteKeyOf(
+            rewriteOf(play.round.graph, pickedOption.graph)
+          ),
+          sessionId,
+          at: Date.now(),
+        })
+      )
+      setLedger(next)
+      ledgers.set(next)
     },
-    [play, pickedOption]
+    [play, pickedOption, probe, ledger, ledgers, sessionId]
   )
 
   const handleNext = useCallback((): void => {
     if (play !== null) {
       setRecent((ids) => [play.round.id, ...ids].slice(0, 5))
     }
-    if (own !== null) {
-      setOwn(null)
-    } else {
-      setPosition((current) => current + 1)
-    }
+    setOwn(null)
     setPlayed((count) => count + 1)
+    setDrawBasis({ ledger, now: Date.now() })
     setProgress(FRESH)
-  }, [own, play])
+  }, [play, ledger])
 
   const handleOwnRound = useCallback(
     (round: Round): void => {
@@ -265,40 +404,57 @@ export const RoundSession: FC<RoundSessionProps> = ({
   )
 
   // A fresh session, as `ReadingSession`'s restart is: the counters, the
-  // queue position and the recent-rounds history all start over (review
-  // finding on #1598). The learner's own round stays held; it is the
-  // session store's, and plays first again the way it does after a reload.
+  // draw and the recent-rounds history all start over (review finding on
+  // #1598), under a new session id. The ledger carries over; it is the
+  // learner's, not the session's. The learner's own round stays held; it
+  // is the session store's, and plays first again the way it does after a
+  // reload.
   const handleRestart = useCallback((): void => {
-    setFinished(false)
+    setFinishedAt(null)
     setSessionClockMs(0)
     setSessionGeneration((generation) => generation + 1)
     setProgress(FRESH)
     setPlayed(0)
-    setPosition(0)
+    setDrawBasis({ ledger, now: Date.now() })
+    setSessionId(newSessionId())
     setRecent([])
     setOwn(store.get())
     setGenerating(false)
-  }, [store])
+  }, [store, ledger])
+
+  const summary = useMemo(
+    () =>
+      finishedAt === null
+        ? []
+        : touchedIn(ledger, sessionId).map((id) => ({
+            id,
+            title: PROPOSITION_REGISTER[id].title,
+            reading: readEntry(id, ledger, finishedAt),
+          })),
+    [finishedAt, ledger, sessionId]
+  )
 
   if (finished) {
+    const page =
+      // scroll-intent: reading-page — the ledger list can be taller than a
+      // phone held sideways; the page scrolls, nothing inside it does.
+      "flex h-full flex-col overflow-y-auto px-4 py-6"
     return (
-      <div
-        className={cn(
-          "flex h-full flex-col items-center justify-center gap-4 px-4 text-center",
-          className
-        )}
-      >
-        <div>
-          <p className="text-base font-medium text-foreground">
-            Session complete
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {played} {played === 1 ? "round" : "rounds"} played
-          </p>
+      <div data-scroll-intent="reading-page" className={cn(page, className)}>
+        <div className="m-auto flex w-full max-w-lg flex-col items-center gap-4 text-center">
+          <div>
+            <p className="text-base font-medium text-foreground">
+              Session complete
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {played} {played === 1 ? "round" : "rounds"} played
+            </p>
+          </div>
+          <LedgerSummary rows={summary} />
+          <Button onClick={handleRestart} size="lg">
+            Restart
+          </Button>
         </div>
-        <Button onClick={handleRestart} size="lg">
-          Restart
-        </Button>
       </div>
     )
   }
