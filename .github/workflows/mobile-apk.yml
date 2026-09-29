@@ -1,0 +1,96 @@
+name: Mobile APK
+
+# Builds the sideloadable debug APK (`apps/mobile`) and uploads it as a run
+# artifact, so a phone can install what this branch actually contains.
+#
+# Scoped to the mobile staging branch on purpose. That branch is a long-lived
+# spine that is not headed for `main` until the on-device experience is
+# settled, and no other workflow here runs on a push to it (trunk.yml and
+# pages.yml are `main`-only; pr.yml is pull_request-only). A push trigger reads
+# this file from the pushed commit, so it runs from the branch alone - nothing
+# on `main` has to know it exists. When the branch does land, widen or retire
+# this trigger in that same change.
+#
+# Why CI builds it rather than a laptop or the agent sandbox: Gradle needs the
+# Android SDK (`compileSdkVersion` in apps/mobile/android/variables.gradle),
+# which `ubuntu-latest` ships preinstalled at $ANDROID_HOME, and which the
+# Claude Code sandbox cannot install (dl.google.com is outside its egress
+# policy).
+on:
+  push:
+    branches: [ccr-25f1eb44-ep84g6]
+    paths:
+      - "apps/mobile/**"
+      - "apps/www/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/mobile-apk.yml"
+      - ".github/actions/**"
+
+concurrency:
+  group: mobile-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    name: Build debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/nix-setup
+      - uses: ./.github/actions/pnpm-cache
+      - name: Cache workspace build outputs
+        uses: actions/cache@v6
+        with:
+          path: packages/*/dist
+          key: workspace-dist-${{ runner.os }}-${{ hashFiles('packages/**/src/**') }}
+          restore-keys: workspace-dist-${{ runner.os }}-
+      - name: Install dependencies
+        run: |
+          nix develop .#ci --command pnpm install \
+            --frozen-lockfile \
+            --prefer-offline
+        env:
+          HUSKY: 0
+      - uses: ./.github/actions/resume-assets-cache
+
+      # www's build (with the flags `build:web` pins) into apps/www/dist, then
+      # `cap sync` copies it and the Capacitor plugins into the Gradle project.
+      - name: Build www for the device and sync it into Android
+        run: nix develop .#ci --command pnpm --filter @some-ui/mobile bundle
+        env:
+          NODE_ENV: production
+
+      # Outside the nix shell on purpose: Gradle wants the runner's JDK and the
+      # preinstalled SDK, neither of which the ci devShell carries.
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+          cache-dependency-path: |
+            apps/mobile/android/**/*.gradle*
+            apps/mobile/android/gradle/wrapper/gradle-wrapper.properties
+      - name: Assemble debug APK
+        working-directory: apps/mobile/android
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Name the APK after its commit
+        id: name
+        run: |
+          short="${GITHUB_SHA::7}"
+          out="some-ui-${short}-debug.apk"
+          cp apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk "$out"
+          echo "file=$out" >> "$GITHUB_OUTPUT"
+          echo "Built \`$out\` ($(du -h "$out" | cut -f1))." >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: some-ui-apk-${{ github.sha }}
+          path: ${{ steps.name.outputs.file }}
+          if-no-files-found: error
+          retention-days: 30
