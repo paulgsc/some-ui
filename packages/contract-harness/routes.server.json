@@ -368,6 +368,34 @@
       "module": "sessions"
     },
     {
+      "method": "GET",
+      "path": "/shelf/:activity",
+      "full_path": "/api/v1/shelf/:activity",
+      "versioned": true,
+      "module": "shelf"
+    },
+    {
+      "method": "DELETE",
+      "path": "/shelf/:activity/:key",
+      "full_path": "/api/v1/shelf/:activity/:key",
+      "versioned": true,
+      "module": "shelf"
+    },
+    {
+      "method": "GET",
+      "path": "/shelf/:activity/:key",
+      "full_path": "/api/v1/shelf/:activity/:key",
+      "versioned": true,
+      "module": "shelf"
+    },
+    {
+      "method": "PUT",
+      "path": "/shelf/:activity/:key",
+      "full_path": "/api/v1/shelf/:activity/:key",
+      "versioned": true,
+      "module": "shelf"
+    },
+    {
       "method": "POST",
       "path": "/signals",
       "full_path": "/api/v1/signals",

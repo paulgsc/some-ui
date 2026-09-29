@@ -22,6 +22,7 @@ import type { PastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
 import {
   createPastedLessonStore,
   purgeRetiredLessons,
+  serializePastedLesson,
   sessionStorageOrNull,
 } from "@topik/lib/topik/adapter/pasted-lesson"
 import type { ResumeStore } from "@topik/lib/topik/adapter/resume-point"
@@ -145,6 +146,17 @@ export type HandheldLessonVM = {
   generator: {
     /** The lesson pasted this session, if any; also in `catalog.items`. */
     pasted: TopikMetadata | null
+    /**
+     * The pasted slot's document, the body "Keep on this account" sends;
+     * null with nothing pasted.
+     */
+    pastedDocument: string | null
+    /**
+     * The document as kept under a shelf key: the same, with `meta.key` that
+     * key's `local:` form, so a replayed copy serializes back to its kept
+     * bytes. Null with nothing pasted.
+     */
+    keptBodyFor: ((shelfKey: string) => string) | null
     active: boolean
     open: () => void
     close: () => void
@@ -157,7 +169,10 @@ export type HandheldLessonVM = {
      * #1555).
      */
     handedOff: (prompt: string) => void
-    /** Holds a pasted lesson for this session and starts it. */
+    /**
+     * Holds a pasted lesson for this session and starts it. Also how a
+     * lesson replayed from the shelf plays: it becomes the pasted lesson.
+     */
     start: (meta: TopikMetadata, batches: Array<ConversationBatch>) => void
     /** Lets the pasted lesson go before the session ends. */
     forget: () => void
@@ -681,6 +696,22 @@ export function useHandheldLesson({
   const ready =
     topikKey !== null && batch !== undefined && restoredFor === topikKey
 
+  const pastedDocument = useMemo(
+    () => (pasted ? serializePastedLesson(pasted.meta, pasted.batches) : null),
+    [pasted]
+  )
+  const keptBodyFor = useMemo(
+    () =>
+      pasted
+        ? (shelfKey: string): string =>
+            serializePastedLesson(
+              { ...pasted.meta, key: `${LOCAL_LESSON_PREFIX}${shelfKey}` },
+              pasted.batches
+            )
+        : null,
+    [pasted]
+  )
+
   return {
     catalog: {
       items,
@@ -744,6 +775,8 @@ export function useHandheldLesson({
     },
     generator: {
       pasted: pasted?.meta ?? null,
+      pastedDocument,
+      keptBodyFor,
       active: generating && topikKey === null,
       open: (): void => setGenerating(true),
       close: (): void => setGenerating(false),

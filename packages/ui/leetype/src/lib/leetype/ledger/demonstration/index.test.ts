@@ -143,6 +143,27 @@ describe("demonstrated — Def. 10.2's conjunction, each conjunct reported", () 
     ).toEqual({ met: true, distinctRewrites: 3 })
   })
 
+  it("is a matching, not the smaller of the round and key counts", () => {
+    // Three rounds and three keys, but B and C offer only a: a matching
+    // pairs two (A with b or c, and one of B, C with a); min(3, 3) is 3.
+    const spec = (roundId: string, rewriteKey: string, at: number): Spec => ({
+      ...transfer(rewriteKey, "s1", at),
+      roundId,
+    })
+    const result = demonstrated(
+      P,
+      ledgerOf([
+        spec("A", "rw:a", T0),
+        spec("A", "rw:b", T0 + 1),
+        spec("A", "rw:c", T0 + 2),
+        spec("B", "rw:a", T0 + 3),
+        spec("C", "rw:a", T0 + 4),
+      ]),
+      T0 + 5
+    )
+    expect(result.transfer).toEqual({ met: false, distinctRewrites: 2 })
+  })
+
   it("is not demonstrated without a correct rejection (Prop. 10.1)", () => {
     // The always-select-it learner: right every time it is the answer.
     const result = demonstrated(

@@ -12,6 +12,7 @@ import { GenerateRound } from "@leetype/components/round/generate-round"
 import { RoundChoices } from "@leetype/components/round/round-choices"
 import { RoundFeedback } from "@leetype/components/round/round-feedback"
 import { RoundOutcome } from "@leetype/components/round/round-outcome"
+import { KeepRound, RoundShelf } from "@leetype/components/round/round-shelf"
 import { SourcePanel } from "@leetype/components/round/source-panel"
 import { shuffledBySeed } from "@leetype/lib/leetype/deterministic-random"
 import { buildRoundPrompt } from "@leetype/lib/leetype/generation"
@@ -39,11 +40,14 @@ import {
 } from "@leetype/lib/leetype/round-assembly"
 import type { RoundCycleState } from "@leetype/lib/leetype/round-cycle"
 import { nextRoundCycleState } from "@leetype/lib/leetype/round-cycle"
+import { serializeRound } from "@leetype/lib/leetype/round-export"
 import {
   ROUND_PROBE_PROMPT,
   roundProbeOf,
 } from "@leetype/lib/leetype/round-probe"
 import { nextRound } from "@leetype/lib/leetype/round-sampler"
+import type { ShelfPort } from "@leetype/lib/leetype/shelf"
+import { shelfKeyOf } from "@leetype/lib/leetype/shelf"
 import type { Round } from "@leetype/types/authored-round"
 import type { Commitment } from "@leetype/types/commitment"
 import { Button } from "@some-ui/shared"
@@ -88,6 +92,12 @@ type RoundSessionProps = {
   pastedStore?: PastedRoundStore
   /** Where the ledger is kept; `localStorage` unless a test passes one. */
   ledgerStore?: LedgerStore
+  /**
+   * The learner shelf, where the host has one (`lib/leetype/shelf`): their
+   * own round can be kept on their account, and a kept one replayed.
+   * Absent, nothing offers to keep, and the session is otherwise the same.
+   */
+  shelf?: ShelfPort
   className?: string
 }
 
@@ -223,6 +233,11 @@ function playable(rounds: ReadonlyArray<Round>): Array<Round> {
  * next, is held for the session (`lib/leetype/pasted-round`), and plays
  * first again after a reload. Its id is namespaced so it can never be
  * confused with a corpus round of the same name.
+ *
+ * Where the host passes a `shelf`, the learner's own round can be kept on
+ * their account ("Keep on this account", one tap per round), and the
+ * generator lists what they kept: a kept round replayed goes through the
+ * paste's own check and then plays exactly as a pasted one does.
  */
 export const RoundSession: FC<RoundSessionProps> = ({
   rounds,
@@ -231,6 +246,7 @@ export const RoundSession: FC<RoundSessionProps> = ({
   onSessionComplete,
   pastedStore,
   ledgerStore,
+  shelf,
   className,
 }) => {
   const [seed] = useState(
@@ -256,6 +272,11 @@ export const RoundSession: FC<RoundSessionProps> = ({
   /** Rounds played so far this session, own rounds included; also the seed stride. */
   const [played, setPlayed] = useState(0)
   const [own, setOwn] = useState<Round | null>(() => store.get())
+  // What "Keep on this account" sends: the one serialization of a round.
+  const ownBody = useMemo(
+    () => (own === null ? null : serializeRound(own)),
+    [own]
+  )
   const [generating, setGenerating] = useState(false)
   const [progress, setProgress] = useState<Progress>(FRESH)
   const [recent, setRecent] = useState<ReadonlyArray<string>>([])
@@ -478,6 +499,7 @@ export const RoundSession: FC<RoundSessionProps> = ({
           buildPrompt={(request) => buildRoundPrompt({ ...request, recent })}
           onStart={handleOwnRound}
         />
+        {shelf && <RoundShelf shelf={shelf} onReplay={handleOwnRound} />}
       </div>
     )
   }
@@ -549,11 +571,14 @@ export const RoundSession: FC<RoundSessionProps> = ({
     // time inside it, and nothing nested scrolls vertically.
     <div data-scroll-intent="reading-page" className={cn(column, className)}>
       {generating && (
-        <GenerateRound
-          buildPrompt={(request) => buildRoundPrompt({ ...request, recent })}
-          onStart={handleOwnRound}
-          onCancel={() => setGenerating(false)}
-        />
+        <>
+          <GenerateRound
+            buildPrompt={(request) => buildRoundPrompt({ ...request, recent })}
+            onStart={handleOwnRound}
+            onCancel={() => setGenerating(false)}
+          />
+          {shelf && <RoundShelf shelf={shelf} onReplay={handleOwnRound} />}
+        </>
       )}
       {/* Hidden, not unmounted, while the generator is open: a committed
           `RoundChoices` holds its one-shot state itself, and remounting it
@@ -573,6 +598,18 @@ export const RoundSession: FC<RoundSessionProps> = ({
             <Sparkles className="size-4" aria-hidden="true" /> Make your own
           </Button>
         </div>
+
+        {play.own && shelf && ownBody !== null && (
+          <KeepRound
+            // Each own round is its own question: back to "Keep". Keyed on
+            // its bytes, not only `roundKey`: a second own round can share
+            // the first's id and `played` (review, #1600).
+            key={`${roundKey}:${ownBody}`}
+            shelf={shelf}
+            shelfKey={shelfKeyOf(round.id)}
+            body={ownBody}
+          />
+        )}
 
         <ArtifactSwitcher
           artifacts={artifacts}

@@ -15,6 +15,10 @@ import type { JSX } from "react"
 import { useState } from "react"
 import { Button } from "@some-ui/shared"
 import { GenerateLesson } from "@topik/components/topik/handheld/generate-lesson"
+import {
+  KeepLesson,
+  LessonShelf,
+} from "@topik/components/topik/handheld/lesson-shelf"
 import { LineCard } from "@topik/components/topik/handheld/line-card"
 import { MaterialList } from "@topik/components/topik/handheld/material-list"
 import { ProbeCard } from "@topik/components/topik/handheld/probe-card"
@@ -25,6 +29,7 @@ import { useSessionConfig } from "@topik/lib/topik/adapter/context/session-confi
 import type { UseHandheldLessonOptions } from "@topik/lib/topik/adapter/hooks/use-handheld-lesson"
 import { useHandheldLesson } from "@topik/lib/topik/adapter/hooks/use-handheld-lesson"
 import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
+import { shelfKeyOf } from "@topik/lib/topik/adapter/shelf"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
 import { ChevronLeft, Loader2 } from "lucide-react"
 import { cn } from "some-ui-utils"
@@ -51,7 +56,7 @@ export const HandheldLesson = ({
     pastedResumeStore,
   })
   const { lesson, audio, dispatch, generator } = vm
-  const { speechAdapter } = useSessionConfig()
+  const { speechAdapter, shelf } = useSessionConfig()
   // The read-aloud drill takes the whole screen, header included; leaving it
   // returns to the material list it was opened from.
   const [reading, setReading] = useState(false)
@@ -165,6 +170,14 @@ export const HandheldLesson = ({
           onPromptHandedOff={generator.handedOff}
           onStart={generator.start}
           short={short}
+          kept={
+            shelf ? (
+              <LessonShelf
+                shelf={shelf}
+                onReplay={(kept) => generator.start(kept.meta, kept.batches)}
+              />
+            ) : undefined
+          }
         />
       )
     }
@@ -178,6 +191,20 @@ export const HandheldLesson = ({
           pasted={generator.pasted}
           onCreate={generator.open}
           onForget={generator.forget}
+          keep={
+            shelf &&
+            generator.pasted &&
+            generator.pastedDocument !== null &&
+            generator.keptBodyFor !== null ? (
+              <KeepLesson
+                // A newly pasted lesson is a new question: back to "Keep".
+                key={generator.pastedDocument}
+                shelf={shelf}
+                shelfKey={shelfKeyOf(generator.pasted.key)}
+                bodyFor={generator.keptBodyFor}
+              />
+            ) : undefined
+          }
           // Read-aloud's audio is the rep: with no voice here it is not
           // offered at all (canon Cor. 4.6).
           onReadAloud={

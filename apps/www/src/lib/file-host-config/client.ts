@@ -245,7 +245,9 @@ export type RequestOptions = {
  * above - bounded by one deadline covering both halves.
  *
  * Every `file_host` route answers with a JSON body, including the deletes
- * (`{ removed }`, `{ deletedCount }`) - there is no 204 to special-case.
+ * (`{ removed }`, `{ deletedCount }`), with one exception: the learner
+ * shelf's `DELETE` is a bodiless `204`, which `lib/shelf-client` reads as
+ * `null` before it reaches here.
  *
  * The deadline is owned here rather than inside the transport: `transport`
  * only promises headers, and a stalled body after a prompt response would
