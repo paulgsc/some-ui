@@ -15,6 +15,10 @@ overrides:
   # bump; <= 1.8.3 is GHSA-affected (quote() leaves newlines in .op). One
   # repo-wide floor also dedupes concurrently's exact 1.8.4 pin.
   shell-quote: ^1.9.0
+  # Transitive via ajv@8 (web-ext's addons-linter, api-extractor); Dependabot
+  # cannot bump it without a direct dependency to move. < 3.1.7 is
+  # advisory-affected.
+  fast-uri: ^3.1.7
 minimumReleaseAgeExclude:
   - "@some-ui/leetype-wasm"
 # Single source of truth for dependencies that more than one workspace needs
