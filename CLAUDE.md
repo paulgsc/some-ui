@@ -38,7 +38,10 @@ The snapshot normally arrives on its own: every merge to the server's `main` ope
 updates) a PR here on `bot/server-route-snapshot`, and every server PR is checked against
 this repo's contracts before it merges (server `.github/workflows/routes.yml`). Both go
 through `scripts/sync-server-routes.sh`, which is the one thing that writes these two
-files — if they move, update that script and nothing in the server repo.
+files — if they move, update that script and nothing in the server repo. That server job
+is the bot PR's only writer; `.github/workflows/server-route-snapshot.yml` just re-runs it
+when this repo's snapshot files change on `main`, or on a `/resync` comment on the bot PR,
+so a PR whose snapshot already reached `main` another way closes itself.
 
 If you need a snapshot the bot hasn't delivered yet, follow
 `apps/servers/file_host/docs/route-inventory.md` in the server repo: apply the

@@ -1,0 +1,91 @@
+name: Server route snapshot
+# The route snapshot PR (branch `bot/server-route-snapshot`) has exactly one
+# writer: paulgsc/server's `.github/workflows/routes.yml`. Its `sync` job
+# computes the PR from two inputs, the routes on the server's main and this
+# repo's main, and opens, updates or closes it (create-pull-request with
+# `delete-branch`: when main already carries the snapshot, the branch is
+# deleted and the PR closes).
+#
+# That job ran only when the server's main moved. When the snapshot reached
+# this repo's main another way (the auth routes landed with #1595, two
+# minutes after the bot opened #1597 with the same files), the PR stayed
+# open with nothing in it until the next server merge.
+#
+# This workflow only asks the server to run that job again. It never writes
+# the branch itself: a second writer would race the first, and could
+# disagree with it about what the PR should hold.
+#
+#   push to main touching either snapshot file   resync
+#   a comment starting `/resync` on the bot PR   resync (owners, members and
+#                                                collaborators only)
+#   workflow_dispatch                            resync
+#
+# Needs the SERVER_ROUTES_DISPATCH_TOKEN secret: a fine-grained token on
+# paulgsc/server with Actions read/write, which `gh workflow run` needs. The
+# default GITHUB_TOKEN cannot reach another repository. Without it the job
+# fails, naming the secret, rather than silently resyncing nothing.
+on:
+  push:
+    branches: [main]
+    paths:
+      - packages/contract-harness/routes.server.json
+      - packages/server-routes/src/generated/routes.ts
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  resync:
+    name: Ask paulgsc/server to resync
+    # `issue_comment` fires for every comment on every issue and PR; only a
+    # trusted `/resync` on a PR gets past here. Which PR is checked below,
+    # because the comment payload does not carry the head branch. This
+    # workflow always runs from main, so no PR can change what it does.
+    if: >-
+      github.event_name != 'issue_comment' || (
+        github.event.issue.pull_request &&
+        startsWith(github.event.comment.body, '/resync') &&
+        contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write # the reaction on a /resync comment
+      pull-requests: read # which branch the commented PR is from
+    steps:
+      - name: Only the route snapshot PR
+        id: target
+        if: github.event_name == 'issue_comment'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+          head=$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json headRefName --jq .headRefName)
+          if [ "$head" != "bot/server-route-snapshot" ]; then
+            echo "::notice::/resync only applies to the route snapshot PR (bot/server-route-snapshot); #$PR is from $head."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Acknowledge the comment
+        if: github.event_name == 'issue_comment' && steps.target.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+        run: gh api --method POST "repos/$GITHUB_REPOSITORY/issues/comments/$COMMENT_ID/reactions" -f content=eyes > /dev/null
+
+      # The server's workflow cancels its own older runs on main, so several
+      # dispatches close together end in one sync against the latest state.
+      - name: Run the server's sync
+        if: steps.target.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.SERVER_ROUTES_DISPATCH_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error title=Route snapshot not resynced::SERVER_ROUTES_DISPATCH_TOKEN is not set. See the header of .github/workflows/server-route-snapshot.yml."
+            exit 1
+          fi
+          gh workflow run routes.yml --repo paulgsc/server --ref main
+          echo "Dispatched paulgsc/server's routes.yml on main. Its sync job opens, updates or closes the route snapshot PR." >> "$GITHUB_STEP_SUMMARY"
