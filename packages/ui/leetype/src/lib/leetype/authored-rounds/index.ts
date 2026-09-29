@@ -151,6 +151,28 @@ const COUNT_PRESENT: Round = {
       explanationPropositionId: UNRESCUABLE_EXPLANATION,
     },
   ],
+  harness: {
+    source: [
+      "fn main() {",
+      "    let mut n = 0usize;",
+      "    let mut m = 0usize;",
+      "    for arg in std::env::args().skip(1) {",
+      "        let (dimension, value) = arg.split_once('=').expect(\"dimension=value\");",
+      '        let value: usize = value.parse().expect("a size");',
+      "        match dimension {",
+      '            "n" => n = value,',
+      '            "m" => m = value,',
+      '            other => panic!("unknown dimension {other}"),',
+      "        }",
+      "    }",
+      "    // Worst case: no query is present, so no scan stops early.",
+      "    let items: Vec<u32> = (0..m as u32).map(|i| i * 2).collect();",
+      "    let queries: Vec<u32> = (0..n as u32).map(|i| i * 2 + 1).collect();",
+      '    println!("{}", count_present(&items, &queries));',
+      "}",
+      "",
+    ].join("\n"),
+  },
 }
 
 const HAS_DUPLICATE: Round = {
@@ -250,6 +272,25 @@ const HAS_DUPLICATE: Round = {
       explanationPropositionId: UNRESCUABLE_EXPLANATION,
     },
   ],
+  harness: {
+    source: [
+      "fn main() {",
+      "    let mut n = 0usize;",
+      "    for arg in std::env::args().skip(1) {",
+      "        let (dimension, value) = arg.split_once('=').expect(\"dimension=value\");",
+      '        let value: usize = value.parse().expect("a size");',
+      "        match dimension {",
+      '            "n" => n = value,',
+      '            other => panic!("unknown dimension {other}"),',
+      "        }",
+      "    }",
+      "    // Worst case: every value distinct, so no pair ends the search.",
+      "    let values: Vec<i64> = (0..n as i64).collect();",
+      '    println!("{}", has_duplicate(&values));',
+      "}",
+      "",
+    ].join("\n"),
+  },
 }
 
 const RANGE_SUMS: Round = {
@@ -387,6 +428,29 @@ const RANGE_SUMS: Round = {
       explanationPropositionId: UNRESCUABLE_EXPLANATION,
     },
   ],
+  harness: {
+    source: [
+      "fn main() {",
+      "    let mut n = 0usize;",
+      "    let mut q = 0usize;",
+      "    for arg in std::env::args().skip(1) {",
+      "        let (dimension, value) = arg.split_once('=').expect(\"dimension=value\");",
+      '        let value: usize = value.parse().expect("a size");',
+      "        match dimension {",
+      '            "n" => n = value,',
+      '            "q" => q = value,',
+      '            other => panic!("unknown dimension {other}"),',
+      "        }",
+      "    }",
+      "    // Worst case: every range spans the whole slice.",
+      "    let values: Vec<i64> = (0..n as i64).map(|i| i % 7 - 3).collect();",
+      "    let queries: Vec<(usize, usize)> = vec![(0, n); q];",
+      "    let sums = range_sums(&values, &queries);",
+      '    println!("{} {}", sums.len(), sums.iter().fold(0i64, |a, b| a.wrapping_add(*b)));',
+      "}",
+      "",
+    ].join("\n"),
+  },
 }
 
 const COUNT_AT_LEAST_MAX: Round = {
@@ -529,6 +593,28 @@ const COUNT_AT_LEAST_MAX: Round = {
       explanationPropositionId: UNRESCUABLE_EXPLANATION,
     },
   ],
+  harness: {
+    source: [
+      "fn main() {",
+      "    let mut n = 0usize;",
+      "    let mut q = 0usize;",
+      "    for arg in std::env::args().skip(1) {",
+      "        let (dimension, value) = arg.split_once('=').expect(\"dimension=value\");",
+      '        let value: usize = value.parse().expect("a size");',
+      "        match dimension {",
+      '            "n" => n = value,',
+      '            "q" => q = value,',
+      '            other => panic!("unknown dimension {other}"),',
+      "        }",
+      "    }",
+      "    // Worst case: i64::MAX never appears, so no scan stops early.",
+      "    let values: Vec<i64> = (0..n as i64).collect();",
+      "    let queries: Vec<i64> = (0..q as i64).collect();",
+      '    println!("{}", count_at_least_max(&values, &queries));',
+      "}",
+      "",
+    ].join("\n"),
+  },
 }
 
 const MIN_GAP: Round = {
@@ -662,6 +748,25 @@ const MIN_GAP: Round = {
       explanationPropositionId: UNRESCUABLE_EXPLANATION,
     },
   ],
+  harness: {
+    source: [
+      "fn main() {",
+      "    let mut n = 0usize;",
+      "    for arg in std::env::args().skip(1) {",
+      "        let (dimension, value) = arg.split_once('=').expect(\"dimension=value\");",
+      '        let value: usize = value.parse().expect("a size");',
+      "        match dimension {",
+      '            "n" => n = value,',
+      '            other => panic!("unknown dimension {other}"),',
+      "        }",
+      "    }",
+      "    // Every pair is examined whatever the values; these are spaced by 3.",
+      "    let values: Vec<i64> = (0..n as i64).map(|i| i * 3).collect();",
+      '    println!("{}", min_gap(&values));',
+      "}",
+      "",
+    ].join("\n"),
+  },
 }
 
 export const AUTHORED_ROUNDS: ReadonlyArray<Round> = [
