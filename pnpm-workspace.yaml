@@ -25,6 +25,15 @@ overrides:
   # Scoped to the 1.x line (minimatch@3); 2.x/5.x consumers are untouched.
   # Same Dependabot gap as fast-uri/tar. 1.x < 1.1.18 is advisory-affected.
   "brace-expansion@1": ^1.1.18
+  # pnpm audit backlog Dependabot cannot bump (transitive-only). Each is
+  # scoped to the affected major, and every dependent's declared range
+  # already admits the patched version.
+  "brace-expansion@2": ^2.1.4
+  "js-yaml@3": ^3.15.2
+  "js-yaml@4": ^4.3.2
+  browserslist: ^4.28.7
+  colord: ^2.9.4
+  baseline-browser-mapping: ^2.11.0
 minimumReleaseAgeExclude:
   - "@some-ui/leetype-wasm"
 # Single source of truth for dependencies that more than one workspace needs
