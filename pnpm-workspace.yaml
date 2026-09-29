@@ -22,6 +22,9 @@ overrides:
   # Transitive via @tailwindcss/oxide@4.1.12 (tar ^7.4.3); same Dependabot
   # gap as fast-uri. < 7.5.21 is advisory-affected.
   tar: ^7.5.21
+  # Scoped to the 1.x line (minimatch@3); 2.x/5.x consumers are untouched.
+  # Same Dependabot gap as fast-uri/tar. 1.x < 1.1.18 is advisory-affected.
+  "brace-expansion@1": ^1.1.18
 minimumReleaseAgeExclude:
   - "@some-ui/leetype-wasm"
 # Single source of truth for dependencies that more than one workspace needs
