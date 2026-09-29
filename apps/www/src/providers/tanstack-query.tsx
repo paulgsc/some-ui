@@ -1,6 +1,7 @@
 import type { JSX, ReactNode } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
+import { onAccountChange } from "@/lib/auth"
 import { isFileHostTimeout } from "@/lib/file-host-config/client"
 
 const createQueryClient = (): QueryClient =>
@@ -35,6 +36,12 @@ const createQueryClient = (): QueryClient =>
  * warming a cache nobody reads.
  */
 export const queryClient = createQueryClient()
+
+// Per-person reads share keys across accounts (`["tenant", "sessions"]`), and
+// stay fresh for 15 minutes. So when the account may have changed (a session
+// ended, or a ceremony started one), nothing cached may be shown to whoever
+// is signed in next.
+onAccountChange(() => queryClient.clear())
 
 export const QueryProvider = ({
   children,

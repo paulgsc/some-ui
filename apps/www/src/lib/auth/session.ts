@@ -36,7 +36,14 @@ type SessionView = { expiresAt: number }
 
 let status: SessionStatus = "unknown"
 let pending: Promise<boolean> | null = null
+/**
+ * Bumped by every ceremony or sign-out, so a `/auth/session` probe that was
+ * already in flight cannot overwrite what they learned: a slow cookieless
+ * probe answering 401 after a sign-in must not sign the person back out.
+ */
+let generation = 0
 const listeners = new Set<() => void>()
+const accountListeners = new Set<() => void>()
 
 function publish(next: SessionStatus): void {
   if (next === status) return
@@ -60,22 +67,52 @@ export function getSessionStatus(): SessionStatus {
   return status
 }
 
+/**
+ * Call `listener` whenever the account this tab acts for may have changed:
+ * a session ended, or a ceremony started one (possibly for another account).
+ * The app clears its query cache on it (`providers/tanstack-query`), so
+ * nothing one account fetched is shown to the next. Not called when a page
+ * load learns of an existing session, which changes no account.
+ */
+export function onAccountChange(listener: () => void): () => void {
+  accountListeners.add(listener)
+  return () => {
+    accountListeners.delete(listener)
+  }
+}
+
+function announceAccountChange(): void {
+  for (const listener of accountListeners) listener()
+}
+
 /** A ceremony (or a test) established a session. */
 export function markSignedIn(): void {
+  generation += 1
+  announceAccountChange()
   publish("signed-in")
 }
 
 /** The server said no session, or the person signed out. */
 export function markSignedOut(): void {
+  generation += 1
+  if (status === "signed-in") announceAccountChange()
   publish("signed-out")
 }
 
-onFileHostUnauthorized(markSignedOut)
+// A 401 ends the session only if nothing has changed it since that request
+// was sent (see `generation`).
+onFileHostUnauthorized(() => {
+  const sent = generation
+  return (): void => {
+    if (generation === sent) markSignedOut()
+  }
+})
 
 /** Forget what is known, so the next `resolveSession` asks again. Tests. */
 export function resetSessionForTests(): void {
   pending = null
   status = "unknown"
+  generation += 1
   for (const listener of listeners) listener()
 }
 
@@ -105,15 +142,15 @@ export function resolveSession(): Promise<boolean> {
     return Promise.resolve(false)
   }
 
+  const asked = generation
+  // A ceremony or sign-out since this probe was sent knows better than it.
+  const settle = (answer: SessionStatus): boolean => {
+    if (generation === asked) publish(answer)
+    return hasSession()
+  }
   pending = requestJSON<SessionView>(transport, "/auth/session")
-    .then(() => {
-      publish("signed-in")
-      return true
-    })
-    .catch(() => {
-      publish("signed-out")
-      return false
-    })
+    .then(() => settle("signed-in"))
+    .catch(() => settle("signed-out"))
     .finally(() => {
       pending = null
     })

@@ -37,6 +37,7 @@ vi.mock("@/providers/tts", () => ({
 let hasSession = false
 vi.mock("@/lib/auth", () => ({
   useHasSession: (): boolean => hasSession,
+  onAccountChange: (): (() => void) => () => undefined,
 }))
 
 describe("AppProviders: does not mount StudyNudgeWatcher before there is a session", () => {

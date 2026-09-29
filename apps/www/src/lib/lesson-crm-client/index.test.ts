@@ -20,13 +20,16 @@ const lesson = {
 function recording(body: unknown): {
   transport: FileHostTransport
   calls: Array<[string, string]>
+  credentials: Array<RequestCredentials | undefined>
 } {
   const calls: Array<[string, string]> = []
+  const credentials: Array<RequestCredentials | undefined> = []
   const transport: FileHostTransport = (route, init) => {
     calls.push([init?.method ?? "GET", route])
+    credentials.push(init?.credentials)
     return Promise.resolve(Response.json(body))
   }
-  return { transport, calls }
+  return { transport, calls, credentials }
 }
 
 afterEach(() => {
@@ -75,6 +78,8 @@ describe("createLessonCrmClient", () => {
       '[\n  {\n    "id": 1\n  }\n]\n'
     )
     expect(read.calls).toEqual([["GET", "/curriculum/a"]])
+    // The public curriculum module answers CORS without credentials.
+    expect(read.credentials).toEqual(["same-origin"])
   })
 
   it("rejects, saying why, in a build with no file_host", async () => {

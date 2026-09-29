@@ -110,15 +110,22 @@ async function errorCodeOf(response: Response): Promise<string | null> {
  * for both. Not exported - nothing outside `resolveTimeoutMs` needs the
  * default directly; a test wanting a different deadline overrides it via
  * `VITE_FILE_HOST_TIMEOUT_MS`, not by importing this value. */
-let unauthorizedHandler: (() => void) | null = null
+let unauthorizedHandler: (() => () => void) | null = null
 
 /**
- * Called whenever `file_host` answers `401`: the session cookie is missing,
+ * What to do when `file_host` answers `401`: the session cookie is missing,
  * expired or revoked (signed out everywhere, account deleted). Registered by
  * `lib/auth` rather than imported here, which would be a cycle: that
  * module is itself a caller of this one.
+ *
+ * `handler` is called as each request is sent, and returns what to run if
+ * that request is refused. So the response is judged against the session
+ * the request was sent under: a slow cookieless request answering `401`
+ * after a sign-in says nothing about the new session.
  */
-export function onFileHostUnauthorized(handler: (() => void) | null): void {
+export function onFileHostUnauthorized(
+  handler: (() => () => void) | null
+): void {
   unauthorizedHandler = handler
 }
 
@@ -256,6 +263,7 @@ export async function requestJSON<T>(
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), resolveTimeoutMs())
 
+  const onUnauthorized = unauthorizedHandler?.()
   const operation = async (): Promise<T> => {
     const response = await transport(route, {
       ...init,
@@ -263,7 +271,7 @@ export async function requestJSON<T>(
     })
 
     if (response.status === 503) throw new FileHostNotConfiguredError(route)
-    if (response.status === 401) unauthorizedHandler?.()
+    if (response.status === 401) onUnauthorized?.()
     if (!response.ok) {
       throw new FileHostResponseError(
         response.status,

@@ -23,7 +23,7 @@ type Call = { route: string; init?: RequestInit }
 
 const server = vi.hoisted(() => {
   const calls: Array<{ route: string; init?: RequestInit }> = []
-  const answer = (_route: string): Response =>
+  const answer = (_route: string): Response | Promise<Response> =>
     new Response("{}", { status: 200 })
   return { calls, answer }
 })
@@ -113,6 +113,52 @@ describe("resolveSession", () => {
       throw new TypeError("Failed to fetch")
     }
     await expect(auth.resolveSession()).resolves.toBe(false)
+  })
+})
+
+describe("a probe overtaken by a ceremony", () => {
+  it("does not sign the person back out when its late 401 arrives", async () => {
+    let release: () => void = () => undefined
+    server.answer = (route: string): Response | Promise<Response> => {
+      if (route === "/auth/session") {
+        return new Promise<Response>((resolve) => {
+          release = (): void => resolve(unauthorized())
+        })
+      }
+      return route === "/auth/sign-in/start"
+        ? json({ ceremony: "c-2", options: { publicKey: { challenge: "y" } } })
+        : json({ expiresAt: 1 })
+    }
+
+    const probe = auth.resolveSession()
+    await auth.signIn()
+    release()
+
+    await expect(probe).resolves.toBe(true)
+    expect(auth.getSessionStatus()).toBe("signed-in")
+  })
+})
+
+describe("onAccountChange", () => {
+  it("fires when a session ends or a ceremony starts one, not when a page load finds one", async () => {
+    const changes = vi.fn()
+    const stop = auth.onAccountChange(changes)
+    server.answer = (route: string): Response =>
+      route === "/auth/sign-in/start"
+        ? json({ ceremony: "c-3", options: { publicKey: { challenge: "z" } } })
+        : json({ expiresAt: 1 })
+
+    await auth.resolveSession()
+    expect(changes).not.toHaveBeenCalled()
+
+    auth.markSignedOut()
+    expect(changes).toHaveBeenCalledTimes(1)
+    auth.markSignedOut()
+    expect(changes).toHaveBeenCalledTimes(1)
+
+    await auth.signIn()
+    expect(changes).toHaveBeenCalledTimes(2)
+    stop()
   })
 })
 
