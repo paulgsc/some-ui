@@ -23,6 +23,7 @@ import { Route as DashboardLanRouteImport } from './routes/_dashboard/_lan'
 import { Route as DashboardSessionsIndexRouteImport } from './routes/_dashboard/sessions/index'
 import { Route as DashboardSessionsNewRouteImport } from './routes/_dashboard/sessions/new'
 import { Route as DashboardSessionsSessionIdRouteImport } from './routes/_dashboard/sessions/$sessionId'
+import { Route as DashboardLanRoundsRouteImport } from './routes/_dashboard/_lan/rounds'
 import { Route as DashboardLanLessonsRouteImport } from './routes/_dashboard/_lan/lessons'
 import { Route as DashboardLanLanRouteImport } from './routes/_dashboard/_lan/lan'
 
@@ -95,6 +96,11 @@ const DashboardSessionsSessionIdRoute =
     path: '/sessions/$sessionId',
     getParentRoute: () => DashboardRoute,
   } as any)
+const DashboardLanRoundsRoute = DashboardLanRoundsRouteImport.update({
+  id: '/rounds',
+  path: '/rounds',
+  getParentRoute: () => DashboardLanRoute,
+} as any)
 const DashboardLanLessonsRoute = DashboardLanLessonsRouteImport.update({
   id: '/lessons',
   path: '/lessons',
@@ -118,6 +124,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof DashboardSettingsRoute
   '/lan': typeof DashboardLanLanRoute
   '/lessons': typeof DashboardLanLessonsRoute
+  '/rounds': typeof DashboardLanRoundsRoute
   '/sessions/$sessionId': typeof DashboardSessionsSessionIdRoute
   '/sessions/new': typeof DashboardSessionsNewRoute
   '/sessions/': typeof DashboardSessionsIndexRoute
@@ -134,6 +141,7 @@ export interface FileRoutesByTo {
   '/settings': typeof DashboardSettingsRoute
   '/lan': typeof DashboardLanLanRoute
   '/lessons': typeof DashboardLanLessonsRoute
+  '/rounds': typeof DashboardLanRoundsRoute
   '/sessions/$sessionId': typeof DashboardSessionsSessionIdRoute
   '/sessions/new': typeof DashboardSessionsNewRoute
   '/sessions': typeof DashboardSessionsIndexRoute
@@ -153,6 +161,7 @@ export interface FileRoutesById {
   '/_dashboard/settings': typeof DashboardSettingsRoute
   '/_dashboard/_lan/lan': typeof DashboardLanLanRoute
   '/_dashboard/_lan/lessons': typeof DashboardLanLessonsRoute
+  '/_dashboard/_lan/rounds': typeof DashboardLanRoundsRoute
   '/_dashboard/sessions/$sessionId': typeof DashboardSessionsSessionIdRoute
   '/_dashboard/sessions/new': typeof DashboardSessionsNewRoute
   '/_dashboard/sessions/': typeof DashboardSessionsIndexRoute
@@ -171,6 +180,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/lan'
     | '/lessons'
+    | '/rounds'
     | '/sessions/$sessionId'
     | '/sessions/new'
     | '/sessions/'
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/lan'
     | '/lessons'
+    | '/rounds'
     | '/sessions/$sessionId'
     | '/sessions/new'
     | '/sessions'
@@ -205,6 +216,7 @@ export interface FileRouteTypes {
     | '/_dashboard/settings'
     | '/_dashboard/_lan/lan'
     | '/_dashboard/_lan/lessons'
+    | '/_dashboard/_lan/rounds'
     | '/_dashboard/sessions/$sessionId'
     | '/_dashboard/sessions/new'
     | '/_dashboard/sessions/'
@@ -318,6 +330,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardSessionsSessionIdRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/_dashboard/_lan/rounds': {
+      id: '/_dashboard/_lan/rounds'
+      path: '/rounds'
+      fullPath: '/rounds'
+      preLoaderRoute: typeof DashboardLanRoundsRouteImport
+      parentRoute: typeof DashboardLanRoute
+    }
     '/_dashboard/_lan/lessons': {
       id: '/_dashboard/_lan/lessons'
       path: '/lessons'
@@ -338,11 +357,13 @@ declare module '@tanstack/react-router' {
 interface DashboardLanRouteChildren {
   DashboardLanLanRoute: typeof DashboardLanLanRoute
   DashboardLanLessonsRoute: typeof DashboardLanLessonsRoute
+  DashboardLanRoundsRoute: typeof DashboardLanRoundsRoute
 }
 
 const DashboardLanRouteChildren: DashboardLanRouteChildren = {
   DashboardLanLanRoute: DashboardLanLanRoute,
   DashboardLanLessonsRoute: DashboardLanLessonsRoute,
+  DashboardLanRoundsRoute: DashboardLanRoundsRoute,
 }
 
 const DashboardLanRouteWithChildren = DashboardLanRoute._addFileChildren(

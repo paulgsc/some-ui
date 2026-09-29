@@ -15,6 +15,7 @@ import { LiveEditOverlay, OrchestratedYouTubeViewport } from "wireframes"
 import { useAudioPreferences } from "@/lib/audio-preferences/use-audio-preferences"
 import { useHangulVocab } from "@/lib/hangul-vocab"
 import { AmbientIntentStatus } from "@/lib/intent/render"
+import { loadLeetypeRounds } from "@/lib/leetype-content"
 import type { SessionRecord } from "@/lib/tenant"
 import { loadTopikFile, loadTopikManifest } from "@/lib/topik-content"
 
@@ -89,10 +90,11 @@ export const SessionViewport = ({
   // statically here rather than by merging one bag onto every panel in the
   // viewport.
   //
-  // `leetype` is deliberately absent: it needs nothing injected. Its
-  // exercises come from its own shim (@some-ui/leetype's
-  // lib/leetype/exercises), which is the single seam a future generator
-  // replaces - a corpus threaded through this app would be a second one.
+  // `leetype`'s exercises still need nothing injected: they come from its
+  // own shim (@some-ui/leetype's lib/leetype/exercises). Its rounds do
+  // (H1, #1231; canon Rem. 11.4): `loadRounds` fetches the served round
+  // corpus, and the package falls back to its bundled rounds when this
+  // resolves empty (a static build) or rejects. See src/lib/leetype-content.
   //
   // That stayed true when it grew a second surface. Below the small-screen
   // breakpoint the activity switches from a typing probe to a reading one
@@ -120,6 +122,11 @@ export const SessionViewport = ({
           // the registry's lazy import. See src/lib/topik-content.
           loadManifest: loadTopikManifest,
           loadTopik: loadTopikFile,
+        },
+        leetype: {
+          // A plain function for the same reason; the package parses what
+          // it returns.
+          loadRounds: loadLeetypeRounds,
         },
       }),
     [sessionKey, suspended, hangulWords, audioPreferences.effects]

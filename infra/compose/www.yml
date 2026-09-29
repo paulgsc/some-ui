@@ -54,6 +54,10 @@
 # sources now, so the activity fetches nothing and there is nothing to mount.
 # That also removes the only difference the Pages and Docker builds had for
 # this activity - they now run the same code path.
+# Revised (H1, some-ui#1231; canon Rem. 11.4): that holds for exercises. Rounds
+# are rows in file_host (paulgsc/server#325), fetched through the same
+# /api/file-host proxy as lessons; nothing is mounted for them either. Adding
+# one means `import-leetype-rounds` or the /rounds CRM, not a volume.
 #
 # topiks used to be mounted here too (WWW_TOPIK_ASSETS_PATH). Lessons are rows
 # in file_host now (paulgsc/server#276, some-ui#1048): this container reaches

@@ -32,8 +32,9 @@ const reporting: Reporting = {
 /**
  * The lesson CRM: the lessons `file_host` serves every learner, and the
  * weekly batch among them. LAN-only because `@some-ui/lesson-crm` is a `lan`
- * workspace, not because anything here is protected - the server's operator
- * routes answer anyone its origin allowlist admits.
+ * workspace; the server answers its operator routes only to a passkey
+ * session whose subject is in `OPERATOR_SUBJECTS` (401 otherwise, or 403
+ * for anyone else signed in).
  *
  * Bounded (`lib/route-bounds`): the CRM is panes of fixed chrome around what
  * they hold, so it takes the window and the page never scrolls behind it.

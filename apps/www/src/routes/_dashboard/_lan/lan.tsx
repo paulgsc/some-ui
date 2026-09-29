@@ -15,6 +15,12 @@ const LanIndexRoute = (): JSX.Element => (
         </Link>
         : the lessons the server serves, and this week&apos;s batch.
       </li>
+      <li>
+        <Link to="/rounds" className="underline underline-offset-4">
+          Rounds
+        </Link>
+        : the LeetType rounds the server serves.
+      </li>
     </ul>
   </section>
 )
