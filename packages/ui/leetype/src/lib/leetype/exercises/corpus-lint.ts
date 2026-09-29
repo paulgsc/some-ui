@@ -833,13 +833,21 @@ function checkRoundProseForClassLiterals(
 ): Array<string> {
   const violations: Array<string> = []
   round.diffSet.forEach((member, index) => {
-    if (member.distractorStatement !== undefined) {
-      violations.push(
-        ...checkNoAssertedComplexityClassLiteral(
-          member.distractorStatement,
-          `${locateRound(round)}, diff-set member ${index} (distractorStatement)`
+    // Every authored prose field on a member (review finding on #1543:
+    // `propositionGloss`, the round-specific half of a verdict, went
+    // unscanned while `distractorStatement` was checked).
+    for (const [field, text] of [
+      ["distractorStatement", member.distractorStatement],
+      ["propositionGloss", member.propositionGloss],
+    ] as const) {
+      if (text !== undefined) {
+        violations.push(
+          ...checkNoAssertedComplexityClassLiteral(
+            text,
+            `${locateRound(round)}, diff-set member ${index} (${field})`
+          )
         )
-      )
+      }
     }
     member.hunk.segments.forEach((segment, segmentIndex) => {
       violations.push(
@@ -892,20 +900,21 @@ export function lintRoundCorpus(
 ): Array<string> {
   const violations = lintRoundEntries(rounds)
 
-  // Rem. 10.2/Def. 10.2 tie "positive transfer" to a *correct* selection —
-  // row 3's coverage obligation is therefore about a proposition's
-  // admissible instances specifically, not every citation regardless of
-  // role. Review finding on #1283, chatgpt-codex-connector: building this
-  // from every citation let a proposition satisfy both coverage checks
-  // while never once being the true witness, only ever a distractor.
-  const admissibleIds = new Set(
+  // Row 3 counts μ on *any* member of D, admissible or not (decided on
+  // #1540, reversing the #1283 review finding that restricted it to
+  // admissible members). Rem. 10.2 states the obligation as "at least one
+  // round with it as μ(d)", with no condition on d, and Thm. 6.1 scores the
+  // pair p = μ(d) for whichever d is selected, so a correct pair on a
+  // distractor is a correct selection. The admissible-only reading also
+  // made the register uninstantiable by real rounds: CW-P4, P8, P9, P11
+  // and P16 each say a rewrite *cannot* restore admissibility, so an
+  // admissible member witnessing one contradicts its own statement.
+  const citedIds = new Set(
     rounds.flatMap((round) =>
-      round.diffSet
-        .filter((member) => member.admissible)
-        .map((member) => member.propositionId)
+      round.diffSet.map((member) => member.propositionId)
     )
   )
-  violations.push(...checkRegisterCoverage(admissibleIds, PROPOSITION_REGISTER))
+  violations.push(...checkRegisterCoverage(citedIds, PROPOSITION_REGISTER))
   violations.push(...checkDistractorCoverage(rounds, PROPOSITION_REGISTER))
 
   return violations

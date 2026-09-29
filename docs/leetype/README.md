@@ -793,6 +793,16 @@ can always eventually reach the end" stops being true. The affordance is one
 line on the step rail and nothing else: a dialog explaining that you were too
 slow would break the loop's only rule.
 
+> **Revised (H1, #1231; canon Rem. 11.4).** The paragraph below was true of
+> M20's step corpus and still is: `Exercise` is not fetched. Rounds are.
+> `apps/www`'s `lib/leetype-content` fetches the served round corpus in
+> `server` mode (`GET /api/v1/leetype/rounds`, paulgsc/server#327), and
+> `Leetype` falls back to the bundled, reviewed `AUTHORED_ROUNDS` in `static`
+> mode or when the server is unreachable. The seam returns because a round is
+> a different object (Rem. 11.4), not because this argument was wrong about
+> `Exercise`; review still gates what reaches a player, through
+> `corpus/rounds/`, the importer and the round CRM's own checks.
+
 **The corpus-fetch seam is gone, not re-typed.** `apps/www` no longer fetches
 anything for this activity, and the `public/leetype` plumbing, the
 code-samples tree and the Curriculum Decomposer prompt went with it (see

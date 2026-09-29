@@ -4,7 +4,10 @@ import {
 } from "@leetype/lib/leetype/admissibility"
 import type { CostGraph } from "@leetype/lib/leetype/cost"
 import { costOf, dimensionsOfMonomial } from "@leetype/lib/leetype/cost"
-import { lintRoundEntries } from "@leetype/lib/leetype/exercises/corpus-lint"
+import {
+  checkNoAssertedComplexityClassLiteral,
+  lintRoundEntries,
+} from "@leetype/lib/leetype/exercises/corpus-lint"
 import type {
   RoundCycleAdmissibleAdvance,
   RoundCyclePosingDiffSelection,
@@ -191,6 +194,19 @@ function checkAuthoredRound(round: Round): Array<string> {
   const where = `round "${round.id}"`
   const violations: Array<string> = []
   const { before, after } = round.constraintDiff
+
+  // Prop. 2.1's "no round anywhere holds a Θ string" reaches `A` too: its
+  // source can carry a comment and its input alphabet is authored prose.
+  violations.push(
+    ...checkNoAssertedComplexityClassLiteral(
+      round.algorithm.source,
+      `${where}, algorithm.source`
+    ),
+    ...checkNoAssertedComplexityClassLiteral(
+      round.algorithm.inputAlphabet,
+      `${where}, algorithm.inputAlphabet`
+    )
+  )
 
   const atBefore = admissibilityOf(round.graph, before, round.budget)
   if ("error" in atBefore) {

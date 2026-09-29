@@ -1,9 +1,9 @@
 import { Leetype } from "@leetype/components/leetype"
+import { AUTHORED_ROUNDS } from "@leetype/lib/leetype/authored-rounds"
 import {
   FIXTURE_EXERCISE_ID,
   nextExercise,
 } from "@leetype/lib/leetype/exercises"
-import { claimOf } from "@leetype/lib/leetype/reading-probe"
 import { act, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -105,13 +105,16 @@ describe("Leetype", () => {
 
   // The registry contract: an entry must render with no props and no ambient
   // React context (@some-ui/content-registry's own rule). With no `exercise`
-  // forced, that render is the picker — the seeded schedule this used to
-  // land on is gone.
-  it("mounts with no props at all, landing on the picker, on either surface", () => {
+  // forced, a phone lands on rounds (the Leetype cutover, #1440) and a wide
+  // screen on the picker.
+  it("mounts with no props at all: rounds on a phone, the picker on a wide screen", () => {
     setViewport(true)
-    const { unmount } = render(<Leetype />)
-    expect(screen.getByText("Choose what to practice")).toBeInTheDocument()
-    expect(screen.queryByRole("group")).not.toBeInTheDocument()
+    const { unmount } = render(<Leetype sessionSeed={7} />)
+    expect(screen.getByText("Round 1")).toBeInTheDocument()
+    expect(
+      screen.queryByText("Choose what to practice")
+    ).not.toBeInTheDocument()
+    expect(loadWasm).not.toHaveBeenCalled()
     unmount()
 
     setViewport(false)
@@ -122,6 +125,51 @@ describe("Leetype", () => {
     // active exercise does (C2, #1214): merely mounting `Leetype` on a wide
     // screen with nothing picked yet must not reach for the engine either.
     expect(loadWasm).not.toHaveBeenCalled()
+  })
+
+  it("plays served rounds on a phone, and the bundled ones when loading fails", async () => {
+    setViewport(true)
+    const served = [{ ...AUTHORED_ROUNDS[1]!, id: "served-round" }]
+    const loadRounds = vi.fn(() => Promise.resolve(served))
+    const { unmount } = render(
+      <Leetype sessionSeed={7} loadRounds={loadRounds} />
+    )
+    expect(screen.getByText("Loading rounds…")).toBeInTheDocument()
+    expect(await screen.findByText("Round 1")).toBeInTheDocument()
+    expect(loadRounds).toHaveBeenCalledTimes(1)
+    unmount()
+
+    const failing = vi.fn(() => Promise.reject(new Error("offline")))
+    render(<Leetype sessionSeed={7} loadRounds={failing} />)
+    expect(await screen.findByText("Round 1")).toBeInTheDocument()
+  })
+
+  it("falls back to the bundled rounds when no served round passes the round checks", async () => {
+    setViewport(true)
+    // Parses as a round, but its A is admissible before and after the
+    // constraint diff, so the round has nothing to ask.
+    const unplayable = {
+      ...AUTHORED_ROUNDS[0]!,
+      id: "served-but-broken",
+      graph: { kind: "work", cost: 1 },
+    }
+    render(
+      <Leetype
+        sessionSeed={7}
+        loadRounds={() => Promise.resolve([unplayable])}
+      />
+    )
+    expect(await screen.findByText("Round 1")).toBeInTheDocument()
+    expect(
+      screen.queryByText(/No rounds are available/)
+    ).not.toBeInTheDocument()
+  })
+
+  it("never loads rounds on a wide screen", () => {
+    setViewport(false)
+    const loadRounds = vi.fn(() => Promise.resolve(AUTHORED_ROUNDS))
+    render(<Leetype loadRounds={loadRounds} />)
+    expect(loadRounds).not.toHaveBeenCalled()
   })
 
   it("starts a session once the learner picks an exercise from the picker", () => {
@@ -163,40 +211,13 @@ describe("Leetype", () => {
     expect(tile?.textContent).toContain("7")
   })
 
-  it("returns to the picker once a picker-chosen session finishes, and never shows it for a forced exercise", () => {
-    // A one-step diagnostic, read through the mobile surface: no wasm, and
-    // one correct pick ends the whole session.
-    setViewport(true)
-    const onSessionComplete = vi.fn()
-    render(<Leetype onSessionComplete={onSessionComplete} />)
-
-    const oneStep = nextExercise({ preferId: "diagnostic-loop-progress" })
-    fireEvent.click(screen.getByText(oneStep.title))
-    expect(
-      screen.queryByText("Choose what to practice")
-    ).not.toBeInTheDocument()
-
-    const answer = claimOf(oneStep.steps[0]!).text
-    fireEvent.click(screen.getByText(answer))
-    fireEvent.click(screen.getByRole("button", { name: /check answer/i }))
-    fireEvent.click(screen.getByRole("button", { name: /next change/i }))
-
-    expect(onSessionComplete).toHaveBeenCalledTimes(1)
-    expect(screen.getByText("Choose what to practice")).toBeInTheDocument()
-  })
-
-  it("subtracts time spent browsing the picker from the session's own budget", () => {
+  it("subtracts time spent loading rounds from the session's own budget", async () => {
     // The orchestrator removes the whole component at its own mount time
-    // plus sessionDurationMs, fixed the instant Leetype mounts -- before
-    // the learner has picked anything. Without accounting for that, a
-    // session picked late would still be handed the full, un-shrunk
-    // duration and could be unmounted by the orchestrator before its own
-    // completion effect ever ran (review finding on some-ui#1182).
-    setViewport(true) // reading surface: no wasm, deterministic completion
-    // `performance` is not in vitest's default fake-timer set, but both
-    // Leetype's own elapsed-time snapshot and ReadingSession's clock read
-    // performance.now() directly, so it has to advance in lockstep with
-    // the interval ticks this test drives.
+    // plus sessionDurationMs, fixed the instant Leetype mounts. Time spent
+    // waiting for the served rounds has to come out of the session's own
+    // term, for the reason picker time did (review finding on
+    // some-ui#1182).
+    setViewport(true)
     vi.useFakeTimers({
       toFake: [
         "setTimeout",
@@ -208,31 +229,30 @@ describe("Leetype", () => {
     })
     try {
       const onSessionComplete = vi.fn()
+      const loadRounds = (): Promise<typeof AUTHORED_ROUNDS> =>
+        new Promise((resolve) => {
+          setTimeout(() => resolve(AUTHORED_ROUNDS), 700)
+        })
       render(
         <Leetype
           sessionDurationMs={1000}
+          sessionSeed={7}
+          loadRounds={loadRounds}
           onSessionComplete={onSessionComplete}
         />
       )
-
-      const oneStep = nextExercise({ preferId: "diagnostic-loop-progress" })
-      act(() => {
-        vi.advanceTimersByTime(700)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(700)
       })
-      fireEvent.click(screen.getByText(oneStep.title))
+      expect(screen.getByText("Round 1")).toBeInTheDocument()
 
-      // Only ~300ms of the 1000ms budget should remain; the session polls
-      // its clock every 250ms, so 500ms more (two ticks) is enough to end
-      // it if and only if the picker's own 700ms was actually subtracted
-      // rather than given away for free -- 500ms would not be enough
-      // against the full, un-shrunk 1000ms budget. Completion returns
-      // straight to the picker (the same shape the round-trip test above
-      // pins), so that reappearing is the observable proof.
+      // About 300ms remain; two 250ms ticks end the session only if the
+      // 700ms spent loading was subtracted.
       act(() => {
         vi.advanceTimersByTime(500)
       })
       expect(onSessionComplete).toHaveBeenCalledTimes(1)
-      expect(screen.getByText("Choose what to practice")).toBeInTheDocument()
+      expect(screen.getByText("Session complete")).toBeInTheDocument()
     } finally {
       vi.useRealTimers()
     }
