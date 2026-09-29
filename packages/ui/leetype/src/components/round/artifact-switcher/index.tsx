@@ -83,6 +83,15 @@ type ArtifactSwitcherProps = {
    * labels stay exactly "Previous artifact"/"Next artifact", unchanged.
    */
   ariaLabel?: string
+  /**
+   * The artifact to bring into view, when it changes. A round reveals
+   * artifacts as it goes (no option set before a diff is picked), and the
+   * one just revealed is the one the learner needs next. Compared during
+   * render against what was last seen, like `roundId`, but moving position
+   * without remounting anything, so an artifact's own state (a committed
+   * `RoundChoices`) survives the move. An id not in `artifacts` is ignored.
+   */
+  focusId?: ArtifactId
   className?: string
 }
 
@@ -177,6 +186,7 @@ export const ArtifactSwitcher: FC<ArtifactSwitcherProps> = ({
   artifacts,
   roundId,
   ariaLabel,
+  focusId,
   className,
 }) => {
   const announceLabel = ariaLabel ?? "Round artifact"
@@ -196,6 +206,16 @@ export const ArtifactSwitcher: FC<ArtifactSwitcherProps> = ({
     setSeenRoundId(roundId)
     setActiveId(artifacts[0]?.id ?? null)
     setMountedIds(new Set(artifacts[0] ? [artifacts[0].id] : []))
+  }
+  const [seenFocusId, setSeenFocusId] = useState(focusId)
+  if (focusId !== seenFocusId) {
+    setSeenFocusId(focusId)
+    if (
+      focusId !== undefined &&
+      artifacts.some((artifact) => artifact.id === focusId)
+    ) {
+      setActiveId(focusId)
+    }
   }
 
   // Derived, never stored: an id that no longer appears in `artifacts` (a

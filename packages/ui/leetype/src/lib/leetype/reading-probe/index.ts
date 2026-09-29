@@ -1,5 +1,9 @@
 import { shuffledBySeed } from "@leetype/lib/leetype/deterministic-random"
-import type { RenderedDiffLineKind, Step } from "@leetype/types/exercise"
+import type {
+  DiffHunk,
+  RenderedDiffLineKind,
+  Step,
+} from "@leetype/types/exercise"
 import { renderedDiffLineKinds, typingBlockOf } from "@leetype/types/exercise"
 
 /**
@@ -96,17 +100,38 @@ function withoutContextDelimiters(source: string): string {
 export function readingHunkOf(step: Step): ReadingHunk | null {
   const typing = typingBlockOf(step)
   if (typing === undefined) return null
+  if (typing.diff) return readingHunkOfDiff(typing.diff, typing.language)
+  return {
+    language: typing.language,
+    rows: withoutContextDelimiters(typing.source)
+      .split("\n")
+      .map(
+        (line, index): ReadingRow => ({
+          index,
+          kind: "context",
+          text: line,
+          oldLine: index + 1,
+          newLine: index + 1,
+        })
+      ),
+  }
+}
 
-  const diff = typing.diff
-  const text = diff
-    ? diff.segments.map((segment) => segment.text).join("")
-    : withoutContextDelimiters(typing.source)
-  const kinds: ReadonlyArray<RenderedDiffLineKind> = diff
-    ? renderedDiffLineKinds(diff)
-    : []
+/**
+ * A Def. 1.4 hunk as the mobile card draws it: the same rows
+ * `readingHunkOf` derives for a step's diff overlay. A round's `D` members
+ * are bare hunks with no step around them, so the round surface reaches
+ * `DiffCard` through this.
+ */
+export function readingHunkOfDiff(
+  diff: DiffHunk,
+  language: string
+): ReadingHunk {
+  const text = diff.segments.map((segment) => segment.text).join("")
+  const kinds = renderedDiffLineKinds(diff)
 
-  let oldLine = diff?.oldStart ?? 1
-  let newLine = diff?.newStart ?? 1
+  let oldLine = diff.oldStart
+  let newLine = diff.newStart
 
   const rows = text.split("\n").map((line, index): ReadingRow => {
     // A `lineKinds` shorter than the rendered line count is legal (LTY-PATCH
@@ -127,11 +152,7 @@ export function readingHunkOf(step: Step): ReadingHunk | null {
     return row
   })
 
-  return {
-    ...(diff ? { path: diff.path } : {}),
-    language: typing.language,
-    rows,
-  }
+  return { path: diff.path, language, rows }
 }
 
 /**

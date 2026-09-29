@@ -1,13 +1,17 @@
 import type { FC } from "react"
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import type { ExercisePickerBadge } from "@leetype/components/exercise-picker"
 import { ExercisePicker } from "@leetype/components/exercise-picker"
 import { ReadingSession } from "@leetype/components/reading-game/reading-session"
+import { RoundSession } from "@leetype/components/round/round-session"
 import { TypingSession } from "@leetype/components/typing-game/typing-session"
+import { AUTHORED_ROUNDS } from "@leetype/lib/leetype/authored-rounds"
 import {
   nextExercise,
   SESSION_EXERCISE_IDS,
 } from "@leetype/lib/leetype/exercises"
+import type { Round } from "@leetype/types/authored-round"
+import { RoundSchema } from "@leetype/types/authored-round"
 import type { Exercise } from "@leetype/types/exercise"
 import type {
   CompletedSessionStats,
@@ -70,6 +74,15 @@ type LeetypeProps = {
    * plain, badge-free picker.
    */
   exerciseBadges?: Readonly<Record<string, ExercisePickerBadge>>
+  /**
+   * Where the phone's rounds come from: the served corpus, fetched by the
+   * host (`apps/www`'s `loadLeetypeRounds`, which knows `DATA_MODE`). Absent,
+   * or when it rejects, the bundled corpus (`AUTHORED_ROUNDS`) plays: the
+   * rounds are the practice surface, so an unreachable server degrades to
+   * the reviewed seed rather than to an empty screen (H1, #1231). Called
+   * only on the phone surface; the typing surface never reads a round.
+   */
+  loadRounds?: () => Promise<ReadonlyArray<unknown>>
 }
 
 /**
@@ -155,6 +168,7 @@ export const Leetype: FC<LeetypeProps> = ({
   appearance = "inherit",
   surface = "auto",
   exerciseBadges,
+  loadRounds,
 }) => {
   const isMobile = useIsMobile()
   const resolved =
@@ -171,6 +185,45 @@ export const Leetype: FC<LeetypeProps> = ({
    * never fire (review finding on some-ui#1182).
    */
   const [mountedAt] = useState(() => performance.now())
+
+  const playsRounds = resolved === "reading" && exercise === undefined
+  // The rounds and the session budget left once they arrived, snapshotted
+  // together: time spent loading comes out of the term, for the reason
+  // `picked` below snapshots it (the orchestrator's deadline is fixed at
+  // this component's mount).
+  const [roundPlay, setRoundPlay] = useState<{
+    rounds: ReadonlyArray<Round>
+    remainingMs: number
+  } | null>(() =>
+    loadRounds === undefined
+      ? { rounds: AUTHORED_ROUNDS, remainingMs: sessionDurationMs }
+      : null
+  )
+  useEffect(() => {
+    if (!playsRounds || loadRounds === undefined) return
+    let live = true
+    const settle = (bodies: ReadonlyArray<unknown>): void => {
+      if (!live) return
+      // Parsed here, not by the host: the host's loader stays free of this
+      // package so its chunk stays lazy. `RoundSession` then skips any
+      // round that fails the authored-round checks.
+      const rounds = bodies.flatMap((body) => {
+        const parsed = RoundSchema.safeParse(body)
+        return parsed.success ? [parsed.data] : []
+      })
+      setRoundPlay({
+        rounds: rounds.length > 0 ? rounds : AUTHORED_ROUNDS,
+        remainingMs: Math.max(
+          0,
+          sessionDurationMs - (performance.now() - mountedAt)
+        ),
+      })
+    }
+    loadRounds().then(settle, () => settle(AUTHORED_ROUNDS))
+    return (): void => {
+      live = false
+    }
+  }, [playsRounds, loadRounds, sessionDurationMs, mountedAt])
 
   // Both the id and the remaining budget are snapshotted once, at the
   // moment of selection — not recomputed on every render, which would keep
@@ -205,6 +258,32 @@ export const Leetype: FC<LeetypeProps> = ({
     },
     [onSessionComplete, exercise]
   )
+
+  // The Leetype cutover (#1440): on a phone with no exercise forced, the
+  // session is rounds (Def. 1.7), not the step corpus's picker. An explicit
+  // `exercise` (a deep link, a preview, a test) still plays the reading
+  // session it names, and the wide surface is unchanged.
+  if (playsRounds) {
+    return (
+      <div className={cn(appearanceClassName(appearance), "absolute inset-0")}>
+        {roundPlay === null ? (
+          <p
+            role="status"
+            className="flex h-full items-center justify-center text-sm text-muted-foreground"
+          >
+            Loading rounds…
+          </p>
+        ) : (
+          <RoundSession
+            rounds={roundPlay.rounds}
+            sessionDurationMs={roundPlay.remainingMs}
+            {...(sessionSeed === undefined ? {} : { sessionSeed })}
+            onSessionComplete={(): void => onSessionComplete?.()}
+          />
+        )}
+      </div>
+    )
+  }
 
   if (!active) {
     const items = SESSION_EXERCISE_IDS.map((id) => {
