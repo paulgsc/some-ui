@@ -555,17 +555,30 @@ describe("RoundSession — recorded runs (X2, #1223)", () => {
       within(card).getByRole("button", { name: /^Choose rewrite/ })
     )
     await settle()
-    // Every artifact in the cycle, and back round: none is the runs.
-    for (let step = 0; step < 8; step += 1) {
+    // The pick moves the switcher to the last artifact (the proposition
+    // card), and it does not wrap: walk back to the first, checking each,
+    // then forward again. None may be, or hold, the runs.
+    const noRuns = (): void => {
       expect(runsPanel()).not.toBeInTheDocument()
       const runsLabel = screen
         .queryAllByText("Runs", { selector: "p, span" })
         .filter((node) => node.closest("[hidden]") === null)
       expect(runsLabel).toHaveLength(0)
-      fireEvent.click(
-        screen.getByRole("button", { name: "Round: next artifact" })
-      )
     }
+    const step = (name: string): boolean => {
+      const button = screen.getByRole("button", { name })
+      if (button.hasAttribute("disabled")) return false
+      fireEvent.click(button)
+      return true
+    }
+    let visited = 1
+    noRuns()
+    while (step("Round: previous artifact")) {
+      noRuns()
+      visited += 1
+    }
+    while (step("Round: next artifact")) noRuns()
+    expect(visited).toBeGreaterThanOrEqual(5)
   })
 
   it("shows the chosen rewrite's own runs, whichever the learner chose", async () => {
