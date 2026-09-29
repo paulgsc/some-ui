@@ -166,3 +166,8 @@ docs/.docusaurus/
 .typedoc/
 api-docs/
 api/
+
+# LeetType's exported round corpus: scripts/export-round-corpus.ts writes it,
+# and paulgsc/server stores each file's bytes verbatim, so a reformat would
+# change what learners fetch and fail `export-round-corpus.ts --check`.
+packages/ui/leetype/corpus/
