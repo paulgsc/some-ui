@@ -134,7 +134,9 @@ describe("parseLedger — validated on read, every failure empty (Thm. 7.2, 7.3)
       ...good,
       entries: {
         ...good.entries,
-        "CW-P99": good.entries["CW-P6"],
+        // Not "CW-Pn"-shaped: scripts/check-proposition-citations.ts
+        // would flag that literal as a real dangling citation.
+        "not-a-real-proposition-id": good.entries["CW-P6"],
         "CW-P3": { ring: [{ outcome: { kind: "sort-of" } }] },
         "CW-P8": { ring: [] },
       },
