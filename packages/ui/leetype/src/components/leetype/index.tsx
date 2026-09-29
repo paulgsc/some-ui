@@ -10,6 +10,7 @@ import {
   nextExercise,
   SESSION_EXERCISE_IDS,
 } from "@leetype/lib/leetype/exercises"
+import { lintAuthoredRounds } from "@leetype/lib/leetype/round-assembly"
 import type { Round } from "@leetype/types/authored-round"
 import { RoundSchema } from "@leetype/types/authored-round"
 import type { Exercise } from "@leetype/types/exercise"
@@ -205,9 +206,13 @@ export const Leetype: FC<LeetypeProps> = ({
     const settle = (bodies: ReadonlyArray<unknown>): void => {
       if (!live) return
       // Parsed here, not by the host: the host's loader stays free of this
-      // package so its chunk stays lazy. `RoundSession` then skips any
-      // round that fails the authored-round checks.
+      // package so its chunk stays lazy.
+      // A served round that parses but fails the authored-round checks is
+      // not playable, so it cannot stand in for the bundled corpus either
+      // (review finding on #1598: all-unplayable served rounds used to
+      // bypass the fallback and leave the learner with no rounds).
       const rounds = bodies.flatMap((body) => {
+        if (lintAuthoredRounds([body]).length > 0) return []
         const parsed = RoundSchema.safeParse(body)
         return parsed.success ? [parsed.data] : []
       })

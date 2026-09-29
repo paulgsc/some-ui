@@ -144,6 +144,27 @@ describe("Leetype", () => {
     expect(await screen.findByText("Round 1")).toBeInTheDocument()
   })
 
+  it("falls back to the bundled rounds when no served round passes the round checks", async () => {
+    setViewport(true)
+    // Parses as a round, but its A is admissible before and after the
+    // constraint diff, so the round has nothing to ask.
+    const unplayable = {
+      ...AUTHORED_ROUNDS[0]!,
+      id: "served-but-broken",
+      graph: { kind: "work", cost: 1 },
+    }
+    render(
+      <Leetype
+        sessionSeed={7}
+        loadRounds={() => Promise.resolve([unplayable])}
+      />
+    )
+    expect(await screen.findByText("Round 1")).toBeInTheDocument()
+    expect(
+      screen.queryByText(/No rounds are available/)
+    ).not.toBeInTheDocument()
+  })
+
   it("never loads rounds on a wide screen", () => {
     setViewport(false)
     const loadRounds = vi.fn(() => Promise.resolve(AUTHORED_ROUNDS))

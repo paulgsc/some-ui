@@ -308,20 +308,17 @@ export const RoundSession: FC<RoundSessionProps> = ({
     // the reason `ReadingSession` gives; nothing nested scrolls vertically.
     "mx-auto flex h-full w-full max-w-lg flex-col gap-4 overflow-y-auto px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3"
 
-  if (generating || play === null) {
+  if (play === null) {
     return (
       // scroll-intent: reading-page — the same one-column page as the round
       // itself; the form is taller than a phone.
       <div data-scroll-intent="reading-page" className={cn(column, className)}>
-        {play === null && (
-          <p className="text-sm text-muted-foreground">
-            No rounds are available right now. You can make your own.
-          </p>
-        )}
+        <p className="text-sm text-muted-foreground">
+          No rounds are available right now. You can make your own.
+        </p>
         <GenerateRound
           buildPrompt={(request) => buildRoundPrompt({ ...request, recent })}
           onStart={handleOwnRound}
-          {...(play === null ? {} : { onCancel: () => setGenerating(false) })}
         />
       </div>
     )
@@ -393,35 +390,48 @@ export const RoundSession: FC<RoundSessionProps> = ({
     // reason `ReadingSession` gives; the switcher shows one artifact at a
     // time inside it, and nothing nested scrolls vertically.
     <div data-scroll-intent="reading-page" className={cn(column, className)}>
-      <div className="flex shrink-0 items-center justify-between gap-3 px-1">
-        <span className="text-sm font-medium text-foreground">
-          {play.own ? "Your round" : `Round ${played + 1}`}
-        </span>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="min-h-11 gap-1.5"
-          onClick={() => setGenerating(true)}
-        >
-          <Sparkles className="size-4" aria-hidden="true" /> Make your own
-        </Button>
-      </div>
-
-      <ArtifactSwitcher
-        artifacts={artifacts}
-        roundId={roundKey}
-        focusId={focusId}
-        ariaLabel="Round"
-        className="shrink-0"
-      />
-
-      {progress.outcome !== null && (
-        <div className="shrink-0 pb-2 pt-1">
-          <Button className="w-full" size="lg" onClick={handleNext}>
-            Next round
+      {generating && (
+        <GenerateRound
+          buildPrompt={(request) => buildRoundPrompt({ ...request, recent })}
+          onStart={handleOwnRound}
+          onCancel={() => setGenerating(false)}
+        />
+      )}
+      {/* Hidden, not unmounted, while the generator is open: a committed
+          `RoundChoices` holds its one-shot state itself, and remounting it
+          would re-enable a commitment already made (review finding on
+          #1598). */}
+      <div hidden={generating} className="flex min-w-0 flex-col gap-4">
+        <div className="flex shrink-0 items-center justify-between gap-3 px-1">
+          <span className="text-sm font-medium text-foreground">
+            {play.own ? "Your round" : `Round ${played + 1}`}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="min-h-11 gap-1.5"
+            onClick={() => setGenerating(true)}
+          >
+            <Sparkles className="size-4" aria-hidden="true" /> Make your own
           </Button>
         </div>
-      )}
+
+        <ArtifactSwitcher
+          artifacts={artifacts}
+          roundId={roundKey}
+          focusId={focusId}
+          ariaLabel="Round"
+          className="shrink-0"
+        />
+
+        {progress.outcome !== null && (
+          <div className="shrink-0 pb-2 pt-1">
+            <Button className="w-full" size="lg" onClick={handleNext}>
+              Next round
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

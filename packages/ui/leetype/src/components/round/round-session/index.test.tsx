@@ -165,6 +165,28 @@ describe("RoundSession", () => {
     }
   })
 
+  it("keeps a committed answer committed across opening and cancelling the generator", () => {
+    render(
+      <RoundSession
+        rounds={[COUNT_PRESENT]}
+        sessionSeed={3}
+        pastedStore={memoryStore()}
+      />
+    )
+    goTo("Rewrites")
+    chooseRewriteContaining("binary_search")
+    const answer = new RegExp(PROPOSITION_REGISTER["CW-P6"].title)
+    fireEvent.click(screen.getByRole("button", { name: answer }))
+
+    fireEvent.click(screen.getByRole("button", { name: /Make your own/ }))
+    fireEvent.click(screen.getByRole("button", { name: "Back to the rounds" }))
+
+    // Still one-shot: the option rows stay disabled after the round is
+    // shown again.
+    expect(screen.getByRole("button", { name: answer })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Next round" })).toBeEnabled()
+  })
+
   it("skips a round that fails the authored-round checks rather than playing it", () => {
     const broken: Round = {
       ...COUNT_PRESENT,
