@@ -127,16 +127,24 @@ async function finish(
   transport: FileHostTransport,
   path: string,
   ceremony: string,
-  credential: unknown
+  credential: unknown,
+  extra: Record<string, string> = {}
 ): Promise<void> {
   await requestJSON(transport, path, {
     method: "POST",
-    body: JSON.stringify({ ceremony, credential }),
+    body: JSON.stringify({ ceremony, credential, ...extra }),
   })
 }
 
-/** Create a new account with a new passkey, and sign in to it. */
-export async function createAccount(): Promise<void> {
+/**
+ * Create a new account with a new passkey, and sign in to it.
+ *
+ * `legacyClaim` is the operator's one-time `AUTH_LEGACY_CLAIM_TOKEN`
+ * (`readLegacyClaim`). With it, the new account inherits what the server
+ * kept before accounts existed. The server refuses a wrong token (403) or a
+ * second claim (409). Without it, the account starts empty.
+ */
+export async function createAccount(legacyClaim?: string): Promise<void> {
   const transport = transportOrNull()
   if (transport) {
     const started = await requestJSON<CeremonyStarted<CreationOptionsJSON>>(
@@ -149,10 +157,21 @@ export async function createAccount(): Promise<void> {
       transport,
       "/auth/register/finish",
       started.ceremony,
-      credential
+      credential,
+      legacyClaim === undefined ? {} : { legacyClaim }
     )
   }
   markSignedIn()
+}
+
+/**
+ * The claim token in an `/auth#claim=<token>` link, if this page has one.
+ * It rides in the fragment because a browser never sends a fragment to any
+ * server, so no access log or proxy sees the token.
+ */
+export function readLegacyClaim(hash: string): string | undefined {
+  const claim = new URLSearchParams(hash.replace(/^#/, "")).get("claim")
+  return claim === null || claim === "" ? undefined : claim
 }
 
 /** Sign in with any passkey this browser holds for the site. */

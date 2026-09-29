@@ -5,10 +5,13 @@ import {
 } from "@/lib/file-host-config/client"
 import { PasskeyCancelledError } from "@/lib/passkey"
 
-/** What went wrong, in words about the person's passkey, not the protocol. */
+/**
+ * What went wrong, in words about the person's passkey, not the protocol.
+ * A `"claim"` is a `"create"` through an operator's `#claim=` link.
+ */
 export function describeAuthError(
   error: unknown,
-  attempt: "sign-in" | "create"
+  attempt: "sign-in" | "create" | "claim"
 ): string {
   if (error instanceof PasskeyCancelledError) {
     return attempt === "sign-in"
@@ -24,6 +27,12 @@ export function describeAuthError(
   if (error instanceof FileHostResponseError) {
     if (error.status === 401) {
       return "That passkey doesn't open an account here. It may belong to an account that was deleted."
+    }
+    if (attempt === "claim" && error.status === 403) {
+      return "That claim link isn't valid for this server. Check it with whoever runs the server."
+    }
+    if (attempt === "claim" && error.status === 409) {
+      return "This server's earlier data has already been claimed. Open /auth without the link to create a new, empty account."
     }
     if (error.status === 409) {
       return "That passkey is already registered here. Sign in with it instead."

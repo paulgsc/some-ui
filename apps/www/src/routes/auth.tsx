@@ -4,7 +4,12 @@ import { AuthPageTemplate } from "@some-ui/auth"
 import type { AuthFlowStep } from "@some-ui/auth"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 
-import { createAccount, describeAuthError, signIn } from "@/lib/auth"
+import {
+  createAccount,
+  describeAuthError,
+  readLegacyClaim,
+  signIn,
+} from "@/lib/auth"
 import { DATA_MODE } from "@/lib/data-mode"
 import { passkeysSupported } from "@/lib/passkey"
 
@@ -28,14 +33,25 @@ const AuthPage = (): JSX.Element => {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const supported = DATA_MODE === "static" || passkeysSupported()
+  // An operator's `/auth#claim=<token>` link: the account created from it
+  // inherits what the server kept before accounts. Read once; a static
+  // build has no server to claim from.
+  const [claim] = useState(() =>
+    DATA_MODE === "static" || typeof window === "undefined"
+      ? undefined
+      : readLegacyClaim(window.location.hash)
+  )
 
   const run = (attempt: "sign-in" | "create"): void => {
     setPending(true)
     setError(null)
-    const ceremony = attempt === "sign-in" ? signIn : createAccount
+    const ceremony =
+      attempt === "sign-in" ? signIn : (): Promise<void> => createAccount(claim)
+    const described =
+      attempt === "create" && claim !== undefined ? "claim" : attempt
     ceremony()
       .then(() => navigate({ href: redirect }))
-      .catch((cause: unknown) => setError(describeAuthError(cause, attempt)))
+      .catch((cause: unknown) => setError(describeAuthError(cause, described)))
       .finally(() => setPending(false))
   }
 
@@ -54,7 +70,9 @@ const AuthPage = (): JSX.Element => {
       onResetPassword={noop}
       onVerifyCode={noop}
       onPasskeySignIn={() => run("sign-in")}
-      onCreatePasskey={() => run("create")}
+      // Without passkey support, "Create a passkey" could only fail, so the
+      // flow shows no create action at all.
+      {...(supported ? { onCreatePasskey: () => run("create") } : {})}
       pending={pending}
       error={error}
       passkeyAvailable={supported}
@@ -80,11 +98,17 @@ const AuthPage = (): JSX.Element => {
                 description:
                   "This browser or connection can't use passkeys. Open the app over HTTPS in a current browser.",
               }
-            : {
-                title: "What the server keeps",
-                description:
-                  "A random account ID and your passkey's public key. Never a name, an email or your device's details.",
-              }
+            : claim !== undefined
+              ? {
+                  title: "Claiming this server's earlier data",
+                  description:
+                    "Create a passkey to make the account that takes over what this server kept before accounts. The link works once.",
+                }
+              : {
+                  title: "What the server keeps",
+                  description:
+                    "A random account ID and your passkey's public key. Never a name, an email or your device's details.",
+                }
       }
     />
   )

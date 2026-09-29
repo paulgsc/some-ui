@@ -18,10 +18,52 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { FileHostUnreachableError } from "@/lib/file-host-config"
 import type { FileHostTransport } from "@/lib/file-host-config/client"
-import { requestJSON } from "@/lib/file-host-config/client"
+import {
+  createFileHostTransport,
+  requestJSON,
+} from "@/lib/file-host-config/client"
 
 afterEach(() => {
   vi.unstubAllEnvs()
+  vi.unstubAllGlobals()
+})
+
+describe("createFileHostTransport: credentials", () => {
+  const fetchSpy = (): ReturnType<typeof vi.fn> => {
+    const spy = vi.fn(() => Promise.resolve(new Response("{}")))
+    vi.stubGlobal("fetch", spy)
+    return spy
+  }
+
+  it("sends the session cookie to a published-port file_host, which is cross-origin", async () => {
+    const spy = fetchSpy()
+    const transport = createFileHostTransport({
+      baseUrl: "http://localhost:3000/api/v1",
+      source: "published-port",
+    })
+
+    await transport?.("auth/session")
+
+    expect(spy).toHaveBeenCalledWith(
+      "http://localhost:3000/api/v1/auth/session",
+      expect.objectContaining({ credentials: "include" })
+    )
+  })
+
+  it("lets a caller of an uncredentialed read module opt out", async () => {
+    const spy = fetchSpy()
+    const transport = createFileHostTransport({
+      baseUrl: "http://localhost:3000/api/v1",
+      source: "published-port",
+    })
+
+    await transport?.("curriculum", { credentials: "same-origin" })
+
+    expect(spy).toHaveBeenCalledWith(
+      "http://localhost:3000/api/v1/curriculum",
+      expect.objectContaining({ credentials: "same-origin" })
+    )
+  })
 })
 
 describe("requestJSON: bounded wait", () => {

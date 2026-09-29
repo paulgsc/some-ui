@@ -147,6 +147,17 @@ function resolveTimeoutMs(): number {
  * the static build takes. Deliberately has no timeout of its own - see this
  * file's header, point 3, and `requestJSON` below, which owns the deadline
  * for the whole request this transport is only the first half of.
+ *
+ * Sends credentials (`credentials: "include"`), because the passkey session
+ * is an `HttpOnly` cookie and a `published-port` base URL is cross-origin,
+ * where fetch's default `same-origin` would neither store the cookie a
+ * sign-in sets nor send it back. A caller can still override it per request.
+ * Every module this transport reaches answers with
+ * `Access-Control-Allow-Credentials` (paulgsc/server `routes/cors.rs`,
+ * `allowlisted_cors_with_credentials`). A browser drops a credentialed
+ * cross-origin response without that header, so a caller of one of the
+ * server's uncredentialed read modules (`db/curriculum`, `db/activities`)
+ * must pass `credentials: "same-origin"`.
  */
 export function createFileHostTransport(
   resolution: FileHostResolution = describeFileHost()
@@ -158,6 +169,7 @@ export function createFileHostTransport(
     const url = `${baseUrl.replace(/\/+$/, "")}/${route.replace(/^\/+/, "")}`
     try {
       return await fetch(url, {
+        credentials: "include",
         ...init,
         headers: {
           "Content-Type": "application/json",

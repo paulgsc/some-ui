@@ -36,6 +36,17 @@ describe("describeAuthError", () => {
       /already registered/,
     ],
     [
+      new FileHostResponseError(403, "/auth/register/finish", "forbidden"),
+      "claim",
+      /claim link isn't valid/,
+    ],
+    [
+      new FileHostResponseError(409, "/auth/register/finish", "conflict"),
+      "claim",
+      /already been claimed/,
+    ],
+    [new PasskeyCancelledError(), "claim", /No passkey was created/],
+    [
       new FileHostResponseError(
         422,
         "/auth/register/finish",
