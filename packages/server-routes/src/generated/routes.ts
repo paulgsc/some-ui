@@ -28,6 +28,7 @@ export type ServerRoute =
   | "/api/v1/leetype/operator/rounds/:id/retire"
   | "/api/v1/leetype/rounds"
   | "/api/v1/leetype/rounds/:id"
+  | "/api/v1/leetype/rounds/:id/runs"
   | "/api/v1/mood_events"
   | "/api/v1/mood_events/:id"
   | "/api/v1/mood_events/batch"

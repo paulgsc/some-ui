@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from "vitest"
 import type { ShelfPort } from "."
 import {
   keepWithoutReplacing,
+  keptBodyOf,
   keptLessonOf,
   shelfFailureOf,
   shelfKeyOf,
@@ -150,13 +151,11 @@ describe("keepWithoutReplacing", () => {
         JSON.parse(serializePastedLesson(meta, FIXTURE_BATCHES)),
         "first-dinner"
       )!
+    // The hook's own substitution (`keptBodyFor`), not a copy of it.
     const bodyFor =
       (lesson: PastedLesson) =>
       (key: string): string =>
-        serializePastedLesson(
-          { ...lesson.meta, key: `local:${key}` },
-          lesson.batches
-        )
+        keptBodyOf(lesson, key)
     const shelf = port({})
     await keepWithoutReplacing(shelf, "first-dinner", bodyFor(pasted(META)))
     await expect(
@@ -213,5 +212,15 @@ describe("keepWithoutReplacing", () => {
     } finally {
       vi.unstubAllGlobals()
     }
+  })
+
+  it("finds the same bytes under any held copy, past the scan window", async () => {
+    // Only `k-5` is left after removals; pasting its lesson again is it.
+    const shelf = port({ "k-5": '{"a":5}' })
+    await expect(keepWithoutReplacing(shelf, "k", '{"a":5}')).resolves.toEqual({
+      change: "unchanged",
+      key: "k-5",
+    })
+    expect(shelf.keep).not.toHaveBeenCalled()
   })
 })

@@ -2,7 +2,8 @@
  * LeetType's rounds: the public read routes (paulgsc/server,
  * `routes::db::leetype`) and the operator routes beside them
  * (`routes::db::leetype_operator`). `apps/www`'s `lib/leetype-content` reads
- * the first two; `@some-ui/lesson-crm`'s `RoundCrm`, through
+ * the first two, and the round's recorded runs (X2/X5, paulgsc/server#381);
+ * `@some-ui/lesson-crm`'s `RoundCrm`, through
  * `apps/www/src/lib/round-crm-client`, calls the rest.
  *
  * Hand-written, like every contract here: `RoundManifestSchema` is what
@@ -36,12 +37,67 @@ const RoundEntrySchema = z.object({
   witnesses: z.array(WitnessSchema),
 })
 
+/**
+ * `RunResult` (X1, `@some-ui/leetype`'s `lib/leetype/run-result`), as the
+ * runs route carries it: checked by hand against the server's
+ * `leetype_round_repo::RunResult` (`crates/db/leetype_round/src/runs.rs`).
+ */
+const RunResultSchema = z.discriminatedUnion("kind", [
+  z.strictObject({
+    kind: z.literal("ok"),
+    inputSize: z.number().int().nonnegative(),
+    observation: z.strictObject({
+      output: z.string(),
+      logs: z.array(z.string()),
+      elapsed: z.strictObject({ milliseconds: z.number().nonnegative() }),
+    }),
+  }),
+  z.strictObject({
+    kind: z.literal("error"),
+    inputSize: z.number().int().nonnegative(),
+    error: z.strictObject({
+      errorClass: z.enum(["compile", "runtime", "budget-exceeded"]),
+      message: z.string(),
+    }),
+  }),
+])
+
+/**
+ * `GET /leetype/rounds/:id/runs` (`leetype_round_repo::RoundRuns`): the
+ * transcript recorded for the round's current bytes. Its keys are the whole
+ * contract (`unknownFields: "reject"` below, which audits the top-level
+ * objects; the harness does not look inside unions, so `result` and its
+ * parts are `z.strictObject`): X5's never #3 is that the route never
+ * returns a complexity claim, so a field this schema does not know, a
+ * `class` say, is a finding rather than growth.
+ */
+const RoundRunsSchema = z.object({
+  roundId: z.string().min(1),
+  contentHash: z.string().regex(/^[0-9a-f]{64}$/),
+  runs: z.array(
+    z.object({
+      variant: z.string().regex(/^(A|d[0-9])$/),
+      bounds: z.enum(["before", "after"]),
+      sizes: z.record(z.string(), z.number().int().nonnegative()),
+      result: RunResultSchema,
+    })
+  ),
+})
+
 const OperatorRoundSchema = RoundEntrySchema.extend({
   retiredAt: z.string().nullable(),
 })
 
 /** An id no environment holds, so every miss below is a real miss. */
 const ABSENT_ID = "contract-harness-does-not-exist"
+
+/**
+ * A reviewed round's id (`corpus/rounds/` in `@some-ui/leetype`), for the
+ * runs contract's shape. An environment that has not imported the corpus
+ * answers `404`, which that contract accepts without a schema: the shape is
+ * checked wherever the round exists.
+ */
+const CORPUS_ROUND_ID = "has-duplicate-sort-adjacent"
 
 export const contracts = [
   defineContract({
@@ -69,6 +125,33 @@ export const contracts = [
       "an id no round has is a JSON 404, never an app shell at 200 (#327)",
     request: { path: { id: ABSENT_ID } },
     expect: { status: 404 },
+  }),
+
+  defineContract({
+    id: "leetype.runs_not_found",
+    module: "leetype",
+    method: "GET",
+    path: "/leetype/rounds/:id/runs",
+    summary:
+      "an id no round has is a JSON 404, the case a client meets first (#1226)",
+    request: { path: { id: ABSENT_ID } },
+    expect: { status: 404 },
+  }),
+
+  defineContract({
+    id: "leetype.runs",
+    module: "leetype",
+    method: "GET",
+    path: "/leetype/rounds/:id/runs",
+    summary:
+      "a round's recorded runs for its current bytes: variant, bounds, sizes and a RunResult each, and no complexity claim",
+    request: { path: { id: CORPUS_ROUND_ID } },
+    expect: {
+      status: [200, 404],
+      schema: RoundRunsSchema,
+      schemaFor: 200,
+      unknownFields: "reject",
+    },
   }),
 
   defineContract({

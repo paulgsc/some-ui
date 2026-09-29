@@ -11,6 +11,7 @@ import type { PastedRoundStore } from "@leetype/lib/leetype/pasted-round"
 import { PROPOSITION_REGISTER } from "@leetype/lib/leetype/proposition-register/generated"
 import type { PropositionId } from "@leetype/lib/leetype/proposition-register/generated"
 import { serializeRound } from "@leetype/lib/leetype/round-export"
+import { BUNDLED_ROUND_RUNS } from "@leetype/lib/leetype/round-runs/bundled"
 import { BOOST_CAP, WEIGHT_FLOOR } from "@leetype/lib/leetype/round-sampler"
 import type { Round } from "@leetype/types/authored-round"
 import type { DiffSetMember } from "@leetype/types/round"
@@ -448,4 +449,259 @@ describe("RoundSession", () => {
       )
     ).toBeInTheDocument()
   })
+})
+
+describe("RoundSession — recorded runs (X2, #1223)", () => {
+  const HAS_DUPLICATE = AUTHORED_ROUNDS.find(
+    (round) => round.id === "has-duplicate-sort-adjacent"
+  )!
+
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  /** Lets `resolveRoundRuns` (a Web Crypto digest, then the loader) settle. */
+  async function settle(): Promise<void> {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    })
+  }
+
+  /** Chooses the rewrite whose member is (or is not) admissible, then commits `p`. */
+  function commit(admissible: boolean, correct: boolean): void {
+    goTo("Rewrites")
+    const card = screen
+      .getAllByRole("region", { name: /^Rewrite / })
+      .find((node) => memberOfCard(node).admissible === admissible)!
+    const answer = PROPOSITION_REGISTER[memberOfCard(card).propositionId]
+    fireEvent.click(
+      within(card).getByRole("button", { name: /^Choose rewrite/ })
+    )
+    const button = screen
+      .getAllByRole("button")
+      .find(
+        (node) =>
+          Object.values(PROPOSITION_REGISTER).some(({ title }) =>
+            node.textContent.includes(title)
+          ) && node.textContent.includes(answer.title) === correct
+      )!
+    fireEvent.click(button)
+  }
+
+  function runsPanel(): HTMLElement | null {
+    return screen.queryByRole("region", { name: "Recorded runs" })
+  }
+
+  it("shows A's runs and the chosen rewrite's only once (d, p) is committed", async () => {
+    const loadRuns = vi.fn(() =>
+      Promise.resolve(BUNDLED_ROUND_RUNS[HAS_DUPLICATE.id])
+    )
+    render(
+      <RoundSession
+        rounds={[HAS_DUPLICATE]}
+        sessionSeed={3}
+        pastedStore={memoryStore()}
+        loadRuns={loadRuns}
+      />
+    )
+    await settle()
+    expect(loadRuns).toHaveBeenCalledWith(HAS_DUPLICATE.id)
+    // Before the commitment the transcript is loaded but nowhere: it would
+    // give the answer away (Ax. 9.2).
+    for (const label of ["Program", "Bounds", "Budget", "Rewrites"]) {
+      goTo(label)
+      expect(runsPanel()).not.toBeInTheDocument()
+    }
+    expect(screen.queryByText("Runs")).not.toBeInTheDocument()
+
+    commit(true, true)
+    goTo("Runs")
+    const panel = runsPanel()!
+    expect(panel).toBeInTheDocument()
+    expect(within(panel).getByText("The original program")).toBeVisible()
+    expect(within(panel).getByText("Your rewrite")).toBeVisible()
+    expect(
+      within(panel).getByText(
+        "Did not finish within the time limit, and was stopped."
+      )
+    ).toBeInTheDocument()
+    expect(
+      within(panel).getByText("Finished in 8 ms and printed false.")
+    ).toBeInTheDocument()
+    // Evidence, never the grade, never a class, never a count.
+    expect(panel.textContent).not.toMatch(
+      /Θ|\bO\(|quadratic|linear|logarithmic|admissible|correct|\d+ of \d+/i
+    )
+  })
+
+  it("shows no runs between choosing a rewrite and committing its proposition", async () => {
+    // The window a leak would live in (review, #1601): the rewrite is
+    // chosen, so its C′ run would say whether it fits, and `p` is not yet
+    // committed.
+    render(
+      <RoundSession
+        rounds={[HAS_DUPLICATE]}
+        sessionSeed={3}
+        pastedStore={memoryStore()}
+        loadRuns={() => Promise.resolve(BUNDLED_ROUND_RUNS[HAS_DUPLICATE.id])}
+      />
+    )
+    await settle()
+    goTo("Rewrites")
+    const card = screen
+      .getAllByRole("region", { name: /^Rewrite / })
+      .find((node) => memberOfCard(node).admissible)!
+    fireEvent.click(
+      within(card).getByRole("button", { name: /^Choose rewrite/ })
+    )
+    await settle()
+    // The pick moves the switcher to the last artifact (the proposition
+    // card), and it does not wrap: walk back to the first, checking each,
+    // then forward again. None may be, or hold, the runs.
+    const noRuns = (): void => {
+      expect(runsPanel()).not.toBeInTheDocument()
+      const runsLabel = screen
+        .queryAllByText("Runs", { selector: "p, span" })
+        .filter((node) => node.closest("[hidden]") === null)
+      expect(runsLabel).toHaveLength(0)
+    }
+    const step = (name: string): boolean => {
+      const button = screen.getByRole("button", { name })
+      if (button.hasAttribute("disabled")) return false
+      fireEvent.click(button)
+      return true
+    }
+    let visited = 1
+    noRuns()
+    while (step("Round: previous artifact")) {
+      noRuns()
+      visited += 1
+    }
+    while (step("Round: next artifact")) noRuns()
+    expect(visited).toBeGreaterThanOrEqual(5)
+  })
+
+  it("shows the chosen rewrite's own runs, whichever the learner chose", async () => {
+    render(
+      <RoundSession
+        rounds={[HAS_DUPLICATE]}
+        sessionSeed={3}
+        pastedStore={memoryStore()}
+      />
+    )
+    await settle()
+    commit(false, false)
+    goTo("Runs")
+    const rewrite = within(runsPanel()!)
+      .getByText("Your rewrite")
+      .closest("div")!
+    // The distractor did not finish at the new bounds either.
+    expect(
+      within(rewrite).getByText(
+        "Did not finish within the time limit, and was stopped."
+      )
+    ).toBeInTheDocument()
+  })
+
+  it("falls back to the bundled transcript when the server cannot be reached", async () => {
+    render(
+      <RoundSession
+        rounds={[HAS_DUPLICATE]}
+        sessionSeed={3}
+        pastedStore={memoryStore()}
+        loadRuns={() => Promise.reject(new Error("unreachable"))}
+      />
+    )
+    await settle()
+    commit(true, true)
+    goTo("Runs")
+    expect(runsPanel()).toBeInTheDocument()
+  })
+
+  it("shows no runs for a round whose bytes no transcript was recorded for", async () => {
+    const edited: Round = {
+      ...HAS_DUPLICATE,
+      budget: { ...HAS_DUPLICATE.budget, wallClock: "a second or so" },
+    }
+    render(
+      <RoundSession
+        rounds={[edited]}
+        sessionSeed={3}
+        pastedStore={memoryStore()}
+        loadRuns={() => Promise.resolve(BUNDLED_ROUND_RUNS[HAS_DUPLICATE.id])}
+      />
+    )
+    await settle()
+    commit(true, true)
+    await settle()
+    expect(screen.queryByText("Runs")).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Next round" })).toBeEnabled()
+  })
+
+  it("never asks for, or shows, runs of the learner's own round", async () => {
+    const loadRuns = vi.fn(() =>
+      Promise.resolve(BUNDLED_ROUND_RUNS[HAS_DUPLICATE.id])
+    )
+    render(
+      <RoundSession
+        rounds={[COUNT_PRESENT]}
+        sessionSeed={3}
+        pastedStore={memoryStore(HAS_DUPLICATE)}
+        loadRuns={loadRuns}
+      />
+    )
+    expect(screen.getByText("Your round")).toBeInTheDocument()
+    await settle()
+    commit(true, true)
+    await settle()
+    expect(loadRuns).not.toHaveBeenCalled()
+    expect(screen.queryByText("Runs")).not.toBeInTheDocument()
+  })
+
+  it("draws the same rounds whether runs load, fail or are absent (Thm. 8.1)", async () => {
+    const sources: ReadonlyArray<
+      ((roundId: string) => Promise<unknown>) | undefined
+    > = [
+      undefined,
+      (roundId): Promise<unknown> =>
+        Promise.resolve(BUNDLED_ROUND_RUNS[roundId]),
+      (): Promise<unknown> => Promise.reject(new Error("unreachable")),
+    ]
+    const drawn: Array<Array<string>> = []
+    for (const loadRuns of sources) {
+      const ledgerStore = memoryLedgerStore()
+      const { unmount } = render(
+        <RoundSession
+          rounds={AUTHORED_ROUNDS}
+          sessionSeed={11}
+          pastedStore={memoryStore()}
+          ledgerStore={ledgerStore}
+          {...(loadRuns === undefined ? {} : { loadRuns })}
+        />
+      )
+      const ids: Array<string> = []
+      for (let round = 0; round < 6; round += 1) {
+        await settle()
+        goTo("Rewrites")
+        const member = memberOfCard(
+          screen.getAllByRole("region", { name: /^Rewrite / })[0]!
+        )
+        ids.push(
+          AUTHORED_ROUNDS.find((candidate) =>
+            candidate.diffOptions.some((option) => option.member === member)
+          )!.id
+        )
+        commit(round % 2 === 0, round % 3 !== 0)
+        fireEvent.click(screen.getByRole("button", { name: "Next round" }))
+      }
+      drawn.push(ids)
+      unmount()
+    }
+    expect(drawn[0]).toHaveLength(6)
+    expect(new Set(drawn[0]).size).toBeGreaterThan(1)
+    expect(drawn[1]).toEqual(drawn[0])
+    expect(drawn[2]).toEqual(drawn[0])
+    // Three whole sessions of six rounds, each waiting for runs to settle:
+    // about 3.3 s here and 5.5 s on CI's runner, past vitest's 5 s default.
+  }, 15_000)
 })

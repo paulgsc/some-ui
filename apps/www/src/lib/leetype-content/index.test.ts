@@ -142,3 +142,58 @@ describe("loadLeetypeRounds - builds with a file_host", () => {
     await expect(loadLeetypeRounds()).rejects.toBeDefined()
   })
 })
+
+describe("loadLeetypeRoundRuns - a round's recorded runs (X2, X5)", () => {
+  const runsUrl = (id: string): string => `${httpBase()}/${id}/runs`
+
+  it("resolves null in a static build without issuing a single request", async () => {
+    vi.stubEnv("VITE_STATIC_DATA", "true")
+    const fetchSpy = vi.fn()
+    vi.stubGlobal("fetch", fetchSpy)
+
+    const { loadLeetypeRoundRuns } = await loadModule()
+
+    // The package shows its bundled transcript instead.
+    await expect(loadLeetypeRoundRuns("a")).resolves.toBeNull()
+    expect(fetchSpy).toHaveBeenCalledTimes(0)
+  })
+
+  it("fetches the round's runs route once and hands back its body unparsed", async () => {
+    vi.stubEnv("VITE_STATIC_DATA", undefined)
+    const body = { roundId: "a", contentHash: "0".repeat(64), runs: [] }
+    const fetchSpy = vi.fn((url: URL) =>
+      Promise.resolve(
+        url.href === runsUrl("a")
+          ? jsonResponse(body)
+          : new Response(null, { status: 500 })
+      )
+    )
+    vi.stubGlobal("fetch", fetchSpy)
+
+    const { loadLeetypeRoundRuns } = await loadModule()
+
+    await expect(loadLeetypeRoundRuns("a")).resolves.toEqual(body)
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it("rejects, once and without retrying, when the route is absent or the round unknown", async () => {
+    vi.stubEnv("VITE_STATIC_DATA", undefined)
+    const fetchSpy = vi.fn(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ error: "not found" }), {
+          status: 404,
+          headers: { "content-type": "application/json" },
+        })
+      )
+    )
+    vi.stubGlobal("fetch", fetchSpy)
+
+    const { loadLeetypeRoundRuns } = await loadModule()
+
+    // `Leetype` then falls back to the bundled transcript, or shows none.
+    await expect(loadLeetypeRoundRuns("gone")).rejects.toMatchObject({
+      status: 404,
+    })
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+  })
+})

@@ -16,7 +16,7 @@
     "knip": "knip --directory \"$(git rev-parse --show-toplevel)\" --workspace \"$(git rev-parse --show-prefix | sed 's:/*$::')\"",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
     "export:rounds": "tsx scripts/export-round-corpus.ts",
-    "lint:corpus": "tsx scripts/check-corpus-lint.ts && tsx scripts/check-proposition-citations.ts && tsx scripts/check-round-programs-compile.ts && tsx scripts/export-round-corpus.ts --check",
+    "lint:corpus": "tsx scripts/check-corpus-lint.ts && tsx scripts/check-proposition-citations.ts && tsx scripts/check-round-programs-compile.ts && tsx scripts/export-round-corpus.ts --check && tsx scripts/check-round-runs.ts",
     "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
     "test:deletions-are-free": "tsx scripts/check-deletions-are-free.ts",

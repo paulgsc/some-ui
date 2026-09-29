@@ -9,6 +9,12 @@
  * only, with warnings denied. `rustc` comes from the `.#ci` dev shell that
  * the PR workflow's corpus-lint step already runs under.
  *
+ * X5 (`paulgsc/server#381`): every reviewed round also carries a harness,
+ * and each program is compiled a second time as a binary with the harness
+ * appended, exactly the program the server's runner builds. A round in
+ * the reviewed corpus without a harness fails here: the runner would have
+ * nothing to run it with, and the static snapshot no transcript to ship.
+ *
  * Usage: pnpm --filter @some-ui/leetype lint:corpus
  */
 import { execFileSync } from "node:child_process"
@@ -18,19 +24,46 @@ import { join } from "node:path"
 import { AUTHORED_ROUNDS } from "@leetype/lib/leetype/authored-rounds"
 import { assembleRound } from "@leetype/lib/leetype/round-assembly"
 
-type Program = { readonly label: string; readonly source: string }
+type Program = {
+  readonly label: string
+  readonly source: string
+  readonly crateType: "lib" | "bin"
+}
 
 function programsOf(): ReadonlyArray<Program> {
   return AUTHORED_ROUNDS.flatMap((round) => {
     const { patchedSources } = assembleRound(round)
-    return [
+    const variants = [
       { label: `${round.id}: A`, source: round.algorithm.source },
       ...round.diffOptions.map((option, index) => ({
         label: `${round.id}: A + diff option ${index} (${option.member.propositionId})`,
         source: patchedSources[index] ?? "",
       })),
     ]
+    const harness = round.harness?.source
+    return variants.flatMap(
+      (variant): Array<Program> => [
+        { ...variant, crateType: "lib" },
+        ...(harness === undefined
+          ? []
+          : [
+              {
+                label: `${variant.label} with its harness`,
+                source: `${variant.source}\n${harness}`,
+                crateType: "bin" as const,
+              },
+            ]),
+      ]
+    )
   })
+}
+
+/** Reviewed rounds without a harness: the runner could not run them. */
+function missingHarnesses(): Array<string> {
+  return AUTHORED_ROUNDS.filter((round) => round.harness === undefined).map(
+    (round) =>
+      `${round.id}: no harness; every reviewed round needs one (paulgsc/server#381)`
+  )
 }
 
 /** `execFileSync`'s error carries the child's stderr; anything else is reported as-is. */
@@ -43,7 +76,7 @@ function stderrOf(error: unknown): string {
 
 function main(): void {
   const directory = mkdtempSync(join(tmpdir(), "leetype-rounds-"))
-  const failures: Array<string> = []
+  const failures: Array<string> = missingHarnesses()
   const programs = programsOf()
   try {
     programs.forEach((program, index) => {
@@ -56,7 +89,7 @@ function main(): void {
             "--edition",
             "2021",
             "--crate-type",
-            "lib",
+            program.crateType,
             "--emit=metadata",
             "-D",
             "warnings",

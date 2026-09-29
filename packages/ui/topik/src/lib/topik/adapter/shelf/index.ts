@@ -28,6 +28,7 @@
  */
 
 import type { PastedLesson } from "@topik/lib/topik/adapter/pasted-lesson"
+import { serializePastedLesson } from "@topik/lib/topik/adapter/pasted-lesson"
 import {
   intakeLesson,
   LOCAL_LESSON_PREFIX,
@@ -104,7 +105,7 @@ async function holdsSame(
  * comes from a name their model chose, so two different items can share one
  * (`first-dinner`, `two-sum`), and a `PUT` to a held key replaces it: past
  * the cap, too, since only a *new* key is refused (review, #1600). So the
- * tap reads the listing first. If `base` or a `-2`, `-3`… variant already
+ * tap reads the listing first. If `base` or any held `-N` variant already
  * holds these bytes, that is reported unchanged and nothing is written;
  * otherwise the item goes under the first of those keys the shelf does not
  * hold, and a full shelf still answers `full`.
@@ -127,8 +128,14 @@ export async function keepWithoutReplacing(
   const candidates = Array.from({ length: held.size + 1 }, (_, index) =>
     index === 0 ? base : `${base}-${index + 1}`
   )
+  // Every held copy of this name too, however high its suffix: after
+  // removals `base-5` can hold these bytes with `base` free (review, #1600).
+  const copies = [...held.keys()].filter(
+    (key) =>
+      key.startsWith(`${base}-`) && /^\d+$/.test(key.slice(base.length + 1))
+  )
   let free: string | undefined
-  for (const key of candidates) {
+  for (const key of new Set([...candidates, ...copies])) {
     const heldHash = held.get(key)
     if (heldHash === undefined) {
       free ??= key
@@ -140,6 +147,19 @@ export async function keepWithoutReplacing(
   const key = free ?? `${base}-${candidates.length + 1}`
   const { change } = await shelf.keep(key, bodyAt(key))
   return { change: change === "unchanged" ? "unchanged" : "kept", key }
+}
+
+/**
+ * A lesson's document as kept under `shelfKey`: the pasted slot's document
+ * with `meta.key` the `local:` form of that key. `keptLessonOf` plays a
+ * kept lesson under the same key, so a replayed copy serializes back to
+ * exactly these bytes and is found again rather than kept twice.
+ */
+export function keptBodyOf(lesson: PastedLesson, shelfKey: string): string {
+  return serializePastedLesson(
+    { ...lesson.meta, key: `${LOCAL_LESSON_PREFIX}${shelfKey}` },
+    lesson.batches
+  )
 }
 
 const NOT_UNRESERVED = /[^A-Za-z0-9._~-]+/g

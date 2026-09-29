@@ -16,7 +16,7 @@ import { useAudioPreferences } from "@/lib/audio-preferences/use-audio-preferenc
 import { useHasSession } from "@/lib/auth"
 import { useHangulVocab } from "@/lib/hangul-vocab"
 import { AmbientIntentStatus } from "@/lib/intent/render"
-import { loadLeetypeRounds } from "@/lib/leetype-content"
+import { loadLeetypeRoundRuns, loadLeetypeRounds } from "@/lib/leetype-content"
 import { createShelfClient } from "@/lib/shelf-client"
 import type { SessionRecord } from "@/lib/tenant"
 import { loadTopikFile, loadTopikManifest } from "@/lib/topik-content"
@@ -147,6 +147,9 @@ export const SessionViewport = ({
           // A plain function for the same reason; the package parses what
           // it returns.
           loadRounds: loadLeetypeRounds,
+          // A round's recorded runs, the same way: fetched in `server`
+          // mode, nothing in `static` mode (the package bundles them).
+          loadRuns: loadLeetypeRoundRuns,
           shelf: shelves?.leetype,
         },
       }),

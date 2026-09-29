@@ -6,6 +6,9 @@
     "outDir": "./dist",
     "paths": {
       "@leetype/*": ["./src/*"],
+      // The checked-in corpus exports (`corpus/`), for the one module that
+      // bundles them (`lib/leetype/round-runs/bundled.ts`).
+      "@leetype-corpus/*": ["./corpus/*"],
       // The wasm package is consumed as a workspace crate whose dist/ only
       // exists after a wasm-pack build, so tsc resolves the hand-written
       // stub instead — the same mapping tsconfig.eslint.json uses, hoisted
@@ -26,6 +29,9 @@
   },
   "include": [
     "src",
+    // The recorded runs `lib/leetype/round-runs/bundled.ts` imports: a
+    // composite project must list every file it reads, JSON included.
+    "corpus/runs/*.json",
     "scripts",
     "vite.config.ts",
     "vitest.config.ts",

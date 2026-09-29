@@ -20,7 +20,17 @@ export function serializeRound(round: Round): string {
   return `${JSON.stringify(RoundSchema.parse(round), null, 2)}\n`
 }
 
-/** `corpus/rounds/manifest.json`: the ids to import, in corpus order. */
+/**
+ * `corpus/rounds/manifest.json`: the ids to import, sorted by id (UTF-16
+ * code-unit order, which for the corpus's ASCII ids is byte order).
+ *
+ * Sorted rather than in `AUTHORED_ROUNDS` order so this file is byte for
+ * byte the manifest `paulgsc/server`'s `dump-leetype-snapshot` writes: the
+ * server's table keeps no authored order and lists rounds by id. Nothing
+ * reads the manifest's order: the importer imports every listed round, and
+ * which round plays next is `lib/leetype/round-sampler`'s draw, never
+ * corpus position.
+ */
 type RoundCorpusManifest = { readonly rounds: ReadonlyArray<string> }
 
 /**
@@ -32,7 +42,9 @@ export function roundCorpusFiles(
   rounds: ReadonlyArray<Round>
 ): Map<string, string> {
   const manifest: RoundCorpusManifest = {
-    rounds: rounds.map((round) => round.id),
+    rounds: rounds
+      .map((round) => round.id)
+      .sort((left, right) => (left < right ? -1 : left > right ? 1 : 0)),
   }
   const files = new Map<string, string>([
     ["manifest.json", `${JSON.stringify(manifest, null, 2)}\n`],

@@ -29,6 +29,7 @@ import type { ResumeStore } from "@topik/lib/topik/adapter/resume-point"
 import { createResumeStore } from "@topik/lib/topik/adapter/resume-point"
 import { useTopikManifest } from "@topik/lib/topik/adapter/server/topik-metadata-queries"
 import { useTopikBatches } from "@topik/lib/topik/adapter/server/topik-queries"
+import { keptBodyOf } from "@topik/lib/topik/adapter/shelf"
 import type { SurveyStore } from "@topik/lib/topik/adapter/survey-store"
 import { createSurveyStore } from "@topik/lib/topik/adapter/survey-store"
 import type { Selection } from "@topik/lib/topik/core/lesson-selection"
@@ -703,11 +704,7 @@ export function useHandheldLesson({
   const keptBodyFor = useMemo(
     () =>
       pasted
-        ? (shelfKey: string): string =>
-            serializePastedLesson(
-              { ...pasted.meta, key: `${LOCAL_LESSON_PREFIX}${shelfKey}` },
-              pasted.batches
-            )
+        ? (shelfKey: string): string => keptBodyOf(pasted, shelfKey)
         : null,
     [pasted]
   )

@@ -118,6 +118,25 @@ const RoundDiffOptionSchema = z.object({
 })
 
 /**
+ * How a round is run (X5, `paulgsc/server#381`): Rust source appended after
+ * `A` (or `A + d`) to make a binary. Its `main` reads one `<dimension>=<n>`
+ * argument per constrained dimension, builds a worst-case input of those
+ * sizes, calls the entry point and prints one short line of output. The
+ * runner runs it at `constraintDiff.before`'s bounds and at `after`'s.
+ *
+ * Optional: a round is complete without it (the cycle never branches on a
+ * run, Rem. 8.0), and a learner's own round is never run. Every round in the
+ * reviewed corpus carries one, and CI compiles it against `A` and every
+ * `A + d` (`scripts/check-round-programs-compile.ts`). Worst case, because
+ * admissibility is a worst-case relation (Def. 3.1): a harness feeding an
+ * input the early exit happens to catch would show a run that says nothing
+ * about the budget.
+ */
+const RoundHarnessSchema = z.object({
+  source: z.string().min(1),
+})
+
+/**
  * Def. 1.7's `(A, C, B, D, μ)`. `constraintDiff.before` is the `C` under
  * which `A` is admissible and `constraintDiff.after` the `C′` under which
  * it is not, so the round opens on Def. 8.1 case 1's constraint diff and
@@ -133,6 +152,7 @@ export const RoundSchema = z
     budget: BudgetSchema,
     graph: CostGraphSchema,
     diffOptions: z.array(RoundDiffOptionSchema),
+    harness: RoundHarnessSchema.optional(),
   })
   .superRefine((round, context) => {
     const result = DiffSetSchema.safeParse(
