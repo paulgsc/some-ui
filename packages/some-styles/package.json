@@ -51,7 +51,7 @@
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
-    "@tailwindcss/vite": "4.3.1",
+    "@tailwindcss/vite": "4.3.3",
     "@types/node": "^26.0.1",
     "@unocss/cli": "^66.8.1",
     "unocss": "^66.0.0",
