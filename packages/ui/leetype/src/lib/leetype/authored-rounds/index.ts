@@ -22,11 +22,12 @@ import type { Round } from "@leetype/types/authored-round"
  * worst case, because admissibility is a worst-case relation (Def. 3.1,
  * `CW-P8`).
  *
- * Coverage is partial on purpose. Several register entries say a rewrite
- * *cannot* restore admissibility (`CW-P4`, `CW-P8`, `CW-P9`, `CW-P11`,
- * `CW-P16`), so they appear here as the μ of distractors rather than of
- * admissible members. How the register-wide coverage obligation (Rem. 7.1,
- * Rem. 10.2) applies to them is open on #1540.
+ * Several register entries say a rewrite *cannot* restore admissibility
+ * (`CW-P4`, `CW-P8`, `CW-P9`, `CW-P11`, `CW-P16`), so they appear here as
+ * the μ of distractors rather than of admissible members. That counts
+ * toward Rem. 7.1's coverage: a proposition is instantiated by μ(d) on any
+ * member of D (decided on #1540). The corpus does not cover the register
+ * yet, so `lintAuthoredRounds` does not run the register-wide checks.
  */
 
 /** Rounds share one budget: 10^8 primitive operations, an order-of-magnitude figure (Ax. 3.1). */

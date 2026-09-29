@@ -646,18 +646,14 @@ describe("lintRoundCorpus — R5 (#1208), the round-shaped corpus lint", () => {
     })
   })
 
-  describe("coverage — an admissible instance (Rem. 7.1, row 3)", () => {
-    it("fails when an active register entry is never a round's admissible member", () => {
-      // Rem. 10.2/Def. 10.2 tie "positive transfer" to a *correct*
-      // selection, so row 3's coverage is about admissible instances
-      // specifically — removing round-cw-p16 (CW-P16's only admissible
-      // appearance) fails row 3 even though CW-P16 still appears as a
-      // distractor in round-cw-p15, which is left untouched on purpose:
-      // that isolates this from row 4's own separate obligation.
-      const withoutCwP16Admissible = ALL_FIXTURE_ROUNDS.filter(
-        (r) => r.id !== "round-cw-p16"
+  describe("coverage — an instance as μ(d) of any member (Rem. 7.1, Rem. 10.2, row 3)", () => {
+    it("fails when an active register entry is cited by no member of any round", () => {
+      // CW-P16 is μ of round-cw-p16's admissible member and of
+      // round-cw-p15's distractor; removing both leaves it uncited.
+      const withoutCwP16 = ALL_FIXTURE_ROUNDS.filter(
+        (r) => r.id !== "round-cw-p16" && r.id !== "round-cw-p15"
       )
-      const violations = lintRoundCorpus(withoutCwP16Admissible)
+      const violations = lintRoundCorpus(withoutCwP16)
       expect(
         violations.some(
           (v) => v.includes("CW-P16") && v.includes("no corpus instance")
@@ -665,19 +661,20 @@ describe("lintRoundCorpus — R5 (#1208), the round-shaped corpus lint", () => {
       ).toBe(true)
     })
 
-    it("fails when a register entry appears only as a distractor — that alone is not an admissible instance", () => {
-      // A proposition that is *only* ever a distractor must still fail row
-      // 3 (Codex review finding on #1283): being cited on a non-admissible
-      // member is not "having a corpus instance" in Rem. 10.2's sense.
+    it("passes row 3 when a register entry appears only as a distractor (decided on #1540)", () => {
+      // Rem. 10.2's "a round with it as μ(d)" puts no condition on d, and
+      // Thm. 6.1 scores p = μ(d) for whichever d is selected. Removing
+      // round-cw-p1 leaves CW-P1 only as round-cw-p16's distractor, and
+      // that still counts as an instance.
       const withoutCwP1Admissible = ALL_FIXTURE_ROUNDS.filter(
         (r) => r.id !== "round-cw-p1"
       )
       const violations = lintRoundCorpus(withoutCwP1Admissible)
       expect(
         violations.some(
-          (v) => v.includes("CW-P1") && v.includes("no corpus instance")
+          (v) => v.includes("CW-P1 ") && v.includes("no corpus instance")
         )
-      ).toBe(true)
+      ).toBe(false)
     })
   })
 
