@@ -19,6 +19,9 @@ overrides:
   # cannot bump it without a direct dependency to move. < 3.1.7 is
   # advisory-affected.
   fast-uri: ^3.1.7
+  # Transitive via @tailwindcss/oxide@4.1.12 (tar ^7.4.3); same Dependabot
+  # gap as fast-uri. < 7.5.21 is advisory-affected.
+  tar: ^7.5.21
 minimumReleaseAgeExclude:
   - "@some-ui/leetype-wasm"
 # Single source of truth for dependencies that more than one workspace needs
