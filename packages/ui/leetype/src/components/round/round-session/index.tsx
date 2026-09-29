@@ -9,6 +9,7 @@ import { BudgetDisplay } from "@leetype/components/round/budget-display"
 import { ConstraintDiff } from "@leetype/components/round/constraint-diff"
 import { DiffSetChoices } from "@leetype/components/round/diff-set-choices"
 import { GenerateRound } from "@leetype/components/round/generate-round"
+import { RecordedRuns } from "@leetype/components/round/recorded-runs"
 import { RoundChoices } from "@leetype/components/round/round-choices"
 import { RoundFeedback } from "@leetype/components/round/round-feedback"
 import { RoundOutcome } from "@leetype/components/round/round-outcome"
@@ -45,6 +46,11 @@ import {
   ROUND_PROBE_PROMPT,
   roundProbeOf,
 } from "@leetype/lib/leetype/round-probe"
+import type {
+  RoundRuns,
+  RoundRunsLoader,
+} from "@leetype/lib/leetype/round-runs"
+import { resolveRoundRuns, variantOf } from "@leetype/lib/leetype/round-runs"
 import { nextRound } from "@leetype/lib/leetype/round-sampler"
 import type { ShelfPort } from "@leetype/lib/leetype/shelf"
 import { shelfKeyOf } from "@leetype/lib/leetype/shelf"
@@ -98,6 +104,14 @@ type RoundSessionProps = {
    * Absent, nothing offers to keep, and the session is otherwise the same.
    */
   shelf?: ShelfPort
+  /**
+   * The host's source of a round's recorded runs (`lib/leetype/round-runs`,
+   * X2): `apps/www` fetches `GET /leetype/rounds/:id/runs` in `server` mode.
+   * Absent, rejecting, or answering for other bytes, the bundled transcript
+   * is used when it matches the round; otherwise the round shows no runs and
+   * plays the same. Never called for the learner's own round.
+   */
+  loadRuns?: RoundRunsLoader
   className?: string
 }
 
@@ -198,9 +212,17 @@ function playable(rounds: ReadonlyArray<Round>): Array<Round> {
  * No completion fraction, no "k of N", no end of the corpus (Prop. 8.1):
  * rounds cycle for as long as the session term lasts, and only the term
  * ends it. Progress is unconditional (Ax. 9.1): "Next round" is available
- * the moment `(d, p)` is committed, right or wrong. No run result either:
- * a round is complete without `r` (Rem. 8.0), and execution is
- * `paulgsc/server#381`'s to add.
+ * the moment `(d, p)` is committed, right or wrong.
+ *
+ * # Recorded runs (X2, #1223)
+ *
+ * Once `(d, p)` is committed, a "Runs" artifact shows what `A` and the
+ * chosen `A + d` did at `C` and at `C′` (`RecordedRuns`), when the round has
+ * a transcript recorded for its exact bytes (`resolveRoundRuns`). Never
+ * before the commitment: a run of each rewrite at `C′` would give the
+ * answer away. Never for the learner's own round: nobody recorded it. And
+ * never as the grade: the cycle's state comes from the cost graphs alone,
+ * and a round with no transcript is complete without one (Rem. 8.0).
  *
  * # Which round comes next (L4, #1230)
  *
@@ -247,6 +269,7 @@ export const RoundSession: FC<RoundSessionProps> = ({
   pastedStore,
   ledgerStore,
   shelf,
+  loadRuns,
   className,
 }) => {
   const [seed] = useState(
@@ -368,6 +391,30 @@ export const RoundSession: FC<RoundSessionProps> = ({
         : roundProbeOf(pickedOption.member, play.seed),
     [pickedOption, play]
   )
+
+  /**
+   * The current corpus round's transcript, tagged with the round it belongs
+   * to, so a late answer for a round already left is never shown against
+   * the next one. Fetched when the round opens, shown only after the
+   * commitment (below).
+   */
+  const [runs, setRuns] = useState<{
+    readonly round: Round
+    readonly transcript: RoundRuns
+  } | null>(null)
+  const runsRound = play === null || play.own ? null : play.round
+  useEffect(() => {
+    if (runsRound === null) return
+    let live = true
+    void resolveRoundRuns(runsRound, loadRuns).then((transcript) => {
+      if (live && transcript !== null) {
+        setRuns({ round: runsRound, transcript })
+      }
+    })
+    return (): void => {
+      live = false
+    }
+  }, [runsRound, loadRuns])
 
   const handleCommit = useCallback(
     (commitment: Commitment): void => {
@@ -558,6 +605,29 @@ export const RoundSession: FC<RoundSessionProps> = ({
             </>
           )}
         </div>
+      ),
+    })
+  }
+  const pickedIndex =
+    progress.picked === null ? undefined : order[progress.picked]
+  if (
+    progress.outcome !== null &&
+    pickedIndex !== undefined &&
+    !play.own &&
+    runs !== null &&
+    runs.round === round
+  ) {
+    artifacts.push({
+      id: "runResult",
+      label: "Runs",
+      content: (
+        <RecordedRuns
+          transcript={runs.transcript}
+          chosen={variantOf(pickedIndex)}
+          dimensions={round.constraintDiff.after.map(
+            (constraint) => constraint.dimension
+          )}
+        />
       ),
     })
   }

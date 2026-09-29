@@ -1,0 +1,149 @@
+{
+  "roundId": "count-at-least-max-hoist",
+  "contentHash": "7e69251964ddf8024d0c1e773625e9627d83cb0a770c83451d336a6eb6884a54",
+  "runs": [
+    {
+      "variant": "A",
+      "bounds": "before",
+      "sizes": {
+        "n": 1000,
+        "q": 1000
+      },
+      "result": {
+        "kind": "ok",
+        "inputSize": 1000,
+        "observation": {
+          "output": "1",
+          "logs": [],
+          "elapsed": {
+            "milliseconds": 8
+          }
+        }
+      }
+    },
+    {
+      "variant": "A",
+      "bounds": "after",
+      "sizes": {
+        "n": 100000,
+        "q": 100000
+      },
+      "result": {
+        "kind": "error",
+        "inputSize": 100000,
+        "error": {
+          "errorClass": "budget-exceeded",
+          "message": "the program did not finish within the 2000 ms wall-clock ceiling, and was killed"
+        }
+      }
+    },
+    {
+      "variant": "d0",
+      "bounds": "before",
+      "sizes": {
+        "n": 1000,
+        "q": 1000
+      },
+      "result": {
+        "kind": "ok",
+        "inputSize": 1000,
+        "observation": {
+          "output": "1",
+          "logs": [],
+          "elapsed": {
+            "milliseconds": 3
+          }
+        }
+      }
+    },
+    {
+      "variant": "d0",
+      "bounds": "after",
+      "sizes": {
+        "n": 100000,
+        "q": 100000
+      },
+      "result": {
+        "kind": "ok",
+        "inputSize": 100000,
+        "observation": {
+          "output": "1",
+          "logs": [],
+          "elapsed": {
+            "milliseconds": 7
+          }
+        }
+      }
+    },
+    {
+      "variant": "d1",
+      "bounds": "before",
+      "sizes": {
+        "n": 1000,
+        "q": 1000
+      },
+      "result": {
+        "kind": "ok",
+        "inputSize": 1000,
+        "observation": {
+          "output": "1",
+          "logs": [],
+          "elapsed": {
+            "milliseconds": 7
+          }
+        }
+      }
+    },
+    {
+      "variant": "d1",
+      "bounds": "after",
+      "sizes": {
+        "n": 100000,
+        "q": 100000
+      },
+      "result": {
+        "kind": "error",
+        "inputSize": 100000,
+        "error": {
+          "errorClass": "budget-exceeded",
+          "message": "the program did not finish within the 2000 ms wall-clock ceiling, and was killed"
+        }
+      }
+    },
+    {
+      "variant": "d2",
+      "bounds": "before",
+      "sizes": {
+        "n": 1000,
+        "q": 1000
+      },
+      "result": {
+        "kind": "ok",
+        "inputSize": 1000,
+        "observation": {
+          "output": "1",
+          "logs": [],
+          "elapsed": {
+            "milliseconds": 6
+          }
+        }
+      }
+    },
+    {
+      "variant": "d2",
+      "bounds": "after",
+      "sizes": {
+        "n": 100000,
+        "q": 100000
+      },
+      "result": {
+        "kind": "error",
+        "inputSize": 100000,
+        "error": {
+          "errorClass": "budget-exceeded",
+          "message": "the program did not finish within the 2000 ms wall-clock ceiling, and was killed"
+        }
+      }
+    }
+  ]
+}

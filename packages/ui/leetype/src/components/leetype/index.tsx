@@ -11,6 +11,7 @@ import {
   SESSION_EXERCISE_IDS,
 } from "@leetype/lib/leetype/exercises"
 import { lintAuthoredRounds } from "@leetype/lib/leetype/round-assembly"
+import type { RoundRunsLoader } from "@leetype/lib/leetype/round-runs"
 import type { ShelfPort } from "@leetype/lib/leetype/shelf"
 import type { Round } from "@leetype/types/authored-round"
 import { RoundSchema } from "@leetype/types/authored-round"
@@ -93,6 +94,16 @@ type LeetypeProps = {
    * surface, where rounds are made.
    */
   shelf?: ShelfPort
+  /**
+   * A round's recorded runs (X2, #1223): `apps/www` fetches
+   * `GET /leetype/rounds/:id/runs` in `server` mode and resolves `null`,
+   * with no request, in `static` mode. A plain function for the same reason
+   * as `loadRounds`; the package parses and checks what it returns
+   * (`lib/leetype/round-runs`). Absent or failing, the bundled transcript
+   * (`corpus/runs/`) is shown when it matches the round's bytes, and a round
+   * with neither plays exactly as before. Read only on the phone surface.
+   */
+  loadRuns?: RoundRunsLoader
 }
 
 /**
@@ -180,6 +191,7 @@ export const Leetype: FC<LeetypeProps> = ({
   exerciseBadges,
   loadRounds,
   shelf,
+  loadRuns,
 }) => {
   const isMobile = useIsMobile()
   const resolved =
@@ -294,6 +306,7 @@ export const Leetype: FC<LeetypeProps> = ({
             sessionDurationMs={roundPlay.remainingMs}
             {...(sessionSeed === undefined ? {} : { sessionSeed })}
             {...(shelf === undefined ? {} : { shelf })}
+            {...(loadRuns === undefined ? {} : { loadRuns })}
             onSessionComplete={(): void => onSessionComplete?.()}
           />
         )}

@@ -6,6 +6,7 @@ export default createViteConfig({
   libraryName: "SomeUILeetype",
   alias: {
     "@leetype": resolve(import.meta.dirname, "src"),
+    "@leetype-corpus": resolve(import.meta.dirname, "corpus"),
   },
   tsConfigPaths: {
     projects: [resolve(import.meta.dirname, "tsconfig.build.json")],

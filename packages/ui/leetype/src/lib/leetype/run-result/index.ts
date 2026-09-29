@@ -17,7 +17,8 @@
  *
  * Engine-free, in the register of `lib/leetype/cost` and
  * `lib/leetype/reading-probe`: nothing here imports the wasm loader or any
- * hook, and nothing live imports this yet.
+ * hook. Its one live reader is `lib/leetype/round-runs` (X2), which
+ * parses recorded runs into this shape for display and nothing else.
  */
 
 /** The input size a run was executed at (Def. 4.1) — a measurement with no size attached cannot do the one job Prop. 4.1 permits. */

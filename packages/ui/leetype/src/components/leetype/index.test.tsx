@@ -165,6 +165,28 @@ describe("Leetype", () => {
     ).not.toBeInTheDocument()
   })
 
+  it("asks the host for a round's recorded runs on a phone, never on a wide screen", async () => {
+    setViewport(true)
+    const loadRuns = vi.fn(
+      (_roundId: string): Promise<unknown> =>
+        Promise.reject(new Error("offline"))
+    )
+    const { unmount } = render(<Leetype sessionSeed={7} loadRuns={loadRuns} />)
+    expect(await screen.findByText("Round 1")).toBeInTheDocument()
+    await vi.waitFor(() => expect(loadRuns).toHaveBeenCalledTimes(1))
+    expect(
+      AUTHORED_ROUNDS.map((round) => round.id).includes(
+        loadRuns.mock.calls[0]![0]
+      )
+    ).toBe(true)
+    unmount()
+
+    setViewport(false)
+    const wide = vi.fn(() => Promise.resolve(null))
+    render(<Leetype loadRuns={wide} />)
+    expect(wide).not.toHaveBeenCalled()
+  })
+
   it("never loads rounds on a wide screen", () => {
     setViewport(false)
     const loadRounds = vi.fn(() => Promise.resolve(AUTHORED_ROUNDS))

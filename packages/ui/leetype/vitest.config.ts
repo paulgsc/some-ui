@@ -33,6 +33,8 @@ export default defineConfig({
       // Mirror the "@leetype/*" -> "./src/*" path mapping from tsconfig.json
       // so tests can import modules that use the alias internally.
       "@leetype": path.resolve(import.meta.dirname, "./src"),
+      // And "@leetype-corpus/*" -> "./corpus/*" (the bundled recorded runs).
+      "@leetype-corpus": path.resolve(import.meta.dirname, "./corpus"),
       // The wasm package is a workspace crate whose dist/ only exists after
       // a wasm-pack build. Tests never want the real binary anyway (they
       // `vi.mock` it), so this points the specifier at the hand-written
