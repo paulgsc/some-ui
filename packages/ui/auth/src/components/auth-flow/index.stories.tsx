@@ -185,6 +185,30 @@ export const StepPasskeyEnrollment: Story = {
   },
 }
 
+/** A passkey-only deployment: no email, password or provider anywhere. */
+export const PasskeyOnlySignIn: Story = {
+  args: {
+    step: "sign-in",
+    passkeyAvailable: true,
+    passkeyFirst: true,
+    passkeyOnly: true,
+    productName: "Some UI",
+    onPasskeySignIn: () => undefined,
+    onCreatePasskey: () => undefined,
+  },
+}
+
+/** The same deployment's new-account step: the passkey is the account. */
+export const PasskeyOnlyCreateAccount: Story = {
+  args: {
+    step: "passkey-enrollment",
+    passkeyOnly: true,
+    productName: "Some UI",
+    onCreatePasskey: () => undefined,
+    onSkipPasskey: () => undefined,
+  },
+}
+
 const meta: Meta = {
   title: "UI/Auth/Components/AuthFlow",
   component: AuthFlow,

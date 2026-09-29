@@ -1,6 +1,6 @@
 import type { JSX, ReactNode } from "react"
 
-import { useHasDecorativeSession } from "@/lib/auth-session"
+import { useHasSession } from "@/lib/auth"
 
 import { OrchestratorWrapper } from "./orchestrator"
 import { StudyNudgeWatcher } from "./study-nudge"
@@ -21,7 +21,7 @@ export const AppProviders = ({
   // happen for a visitor with no tenant workspace to watch yet. This is not
   // a security boundary (the server still decides who sees what) - it is
   // the client declining to do work whose result would be thrown away.
-  const hasSession = useHasDecorativeSession()
+  const hasSession = useHasSession()
 
   return (
     <ThemeProvider>

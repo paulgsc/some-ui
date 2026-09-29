@@ -69,6 +69,18 @@ let baseUrl: string
 beforeAll(async () => {
   server = createServer((req, res) => {
     const key = `${req.method ?? "GET"} ${req.url ?? ""}`
+    // A per-person route: answers only with the session cookie, as
+    // file_host's `SubjectId` extractor does.
+    if (key === "GET /api/v1/mine") {
+      const signedIn = (req.headers.cookie ?? "").includes(
+        "__Host-session=s3cret"
+      )
+      res.writeHead(signedIn ? 200 : 401, {
+        "content-type": "application/json",
+      })
+      res.end(JSON.stringify(signedIn ? { id: 1 } : { error: "unauthorized" }))
+      return
+    }
     const route = ROUTES[key]
     if (route === undefined) {
       res.writeHead(404, { "content-type": "application/json" })
@@ -351,5 +363,38 @@ describe("probeContract against a live server", () => {
     )
 
     expect(outcome.status).toBe("skipped")
+  })
+
+  it("skips a per-person contract when no session is supplied, saying how to supply one", async () => {
+    const outcome = await probeContract(
+      defineContract({
+        ...base,
+        id: "mine",
+        method: "GET",
+        path: "/mine",
+        session: true,
+        expect: { status: 200 },
+      }),
+      { baseUrl }
+    )
+
+    expect(outcome.status).toBe("skipped")
+    expect(outcome.findings[0]?.message).toMatch(/--session-cookie/)
+  })
+
+  it("sends the session cookie with a per-person contract when one is supplied", async () => {
+    const outcome = await probeContract(
+      defineContract({
+        ...base,
+        id: "mine",
+        method: "GET",
+        path: "/mine",
+        session: true,
+        expect: { status: 200, schema: z.object({ id: z.number() }) },
+      }),
+      { baseUrl, sessionCookie: "s3cret" }
+    )
+
+    expect(outcome.status).toBe("passed")
   })
 })

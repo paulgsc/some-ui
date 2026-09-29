@@ -18,6 +18,76 @@
       "module": "activities"
     },
     {
+      "method": "DELETE",
+      "path": "/auth/account",
+      "full_path": "/api/v1/auth/account",
+      "versioned": true,
+      "module": "auth"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/passkeys/finish",
+      "full_path": "/api/v1/auth/passkeys/finish",
+      "versioned": true,
+      "module": "auth"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/passkeys/start",
+      "full_path": "/api/v1/auth/passkeys/start",
+      "versioned": true,
+      "module": "auth"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/register/finish",
+      "full_path": "/api/v1/auth/register/finish",
+      "versioned": true,
+      "module": "auth"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/register/start",
+      "full_path": "/api/v1/auth/register/start",
+      "versioned": true,
+      "module": "auth"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/session",
+      "full_path": "/api/v1/auth/session",
+      "versioned": true,
+      "module": "auth"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/sign-in/finish",
+      "full_path": "/api/v1/auth/sign-in/finish",
+      "versioned": true,
+      "module": "auth"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/sign-in/start",
+      "full_path": "/api/v1/auth/sign-in/start",
+      "versioned": true,
+      "module": "auth"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/sign-out",
+      "full_path": "/api/v1/auth/sign-out",
+      "versioned": true,
+      "module": "auth"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/sign-out-everywhere",
+      "full_path": "/api/v1/auth/sign-out-everywhere",
+      "versioned": true,
+      "module": "auth"
+    },
+    {
       "method": "GET",
       "path": "/curriculum/:key",
       "full_path": "/api/v1/curriculum/:key",

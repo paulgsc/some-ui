@@ -36,7 +36,11 @@ shadcn-style page with brand, aside, and footer slots. It is intentionally a
 copy-friendly composition rather than an application shell or router. The
 template is passkey-first by default: its initial sign-in surface is a single
 passkey action, while email/password and OAuth stay behind an explicit backup
-method link. Set `passkeyFirst={false}` for a conventional all-methods form.
+method link. Set `passkeyFirst={false}` for a conventional all-methods form,
+or `passkeyOnly` for a deployment where a passkey is the only way in: every
+other method disappears, and with `onCreatePasskey` the sign-in step offers
+"Create a passkey", whose `passkey-enrollment` step is then the new-account
+step (a passkey _is_ the account, so there is nothing to skip to).
 The template defaults to the same seven-cell `AuthBrand` mark as the Some UI
 favicon and adds a subtle CSS honeycomb lattice. Every colour outside the
 fixed amber brand mark comes from the shared semantic tokens (`background`,

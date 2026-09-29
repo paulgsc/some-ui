@@ -39,7 +39,12 @@ export type AuthFlowProps = AuthFormStatusProps & {
   passkeyAvailable?: boolean
   /** Makes passkey the sole initial action; legacy methods remain a fallback. */
   passkeyFirst?: boolean
-  /** Removes the backup-method and account-creation affordances. */
+  /**
+   * Removes every non-passkey method. Account creation stays, as a passkey:
+   * with `onCreatePasskey`, the sign-in step offers "Create a passkey", and
+   * `passkey-enrollment` becomes the new-account step (a passkey *is* the
+   * account, so it has nothing to skip to).
+   */
   passkeyOnly?: boolean
 
   providers?: ReadonlyArray<OAuthProvider>
@@ -99,7 +104,18 @@ export const AuthFlow: FC<AuthFlowProps> = ({
               : `Welcome back to ${productName}.`
           }
           footer={
-            passkeyOnly ? null : (
+            passkeyOnly ? (
+              onCreatePasskey ? (
+                <button
+                  type="button"
+                  onClick={() => onStepChange("passkey-enrollment")}
+                  disabled={pending}
+                  className="hover:text-foreground underline-offset-4 hover:underline disabled:opacity-50"
+                >
+                  New here? Create a passkey
+                </button>
+              ) : null
+            ) : (
               <button
                 type="button"
                 onClick={() => onStepChange("sign-up")}
@@ -224,12 +240,28 @@ export const AuthFlow: FC<AuthFlowProps> = ({
     case "passkey-enrollment": {
       return (
         <AuthCard
-          title="Protect your account"
-          description="Add a passkey for secure, passwordless sign-in."
+          title={passkeyOnly ? "Create your passkey" : "Protect your account"}
+          description={
+            passkeyOnly
+              ? `Your passkey is your ${productName} account. There is no email or password to remember.`
+              : "Add a passkey for secure, passwordless sign-in."
+          }
+          footer={
+            passkeyOnly ? (
+              <button
+                type="button"
+                onClick={() => onStepChange("sign-in")}
+                disabled={pending}
+                className="hover:text-foreground underline-offset-4 hover:underline disabled:opacity-50"
+              >
+                Already have a passkey? Sign in
+              </button>
+            ) : null
+          }
         >
           <PasskeyEnrollment
             onCreate={onCreatePasskey}
-            onSkip={onSkipPasskey}
+            onSkip={passkeyOnly ? undefined : onSkipPasskey}
             pending={pending}
             error={error}
           />

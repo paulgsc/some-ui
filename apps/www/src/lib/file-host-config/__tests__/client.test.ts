@@ -18,10 +18,74 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { FileHostUnreachableError } from "@/lib/file-host-config"
 import type { FileHostTransport } from "@/lib/file-host-config/client"
-import { requestJSON } from "@/lib/file-host-config/client"
+import {
+  createFileHostTransport,
+  FileHostNotConfiguredError,
+  requestJSON,
+} from "@/lib/file-host-config/client"
 
 afterEach(() => {
   vi.unstubAllEnvs()
+  vi.unstubAllGlobals()
+})
+
+describe("requestJSON: what a 503 means", () => {
+  const answering =
+    (code: string): FileHostTransport =>
+    () =>
+      Promise.resolve(
+        Response.json({ error: { code, message: "m" } }, { status: 503 })
+      )
+
+  it("reads feature_not_configured as a feature this deployment lacks", async () => {
+    await expect(
+      requestJSON(answering("feature_not_configured"), "auth/sign-in/start")
+    ).rejects.toBeInstanceOf(FileHostNotConfiguredError)
+  })
+
+  it("reads service_overloaded (a busy server, a spent daily cap) as an answer with its code", async () => {
+    await expect(
+      requestJSON(answering("service_overloaded"), "auth/register/start")
+    ).rejects.toMatchObject({ status: 503, code: "service_overloaded" })
+  })
+})
+
+describe("createFileHostTransport: credentials", () => {
+  const fetchSpy = (): ReturnType<typeof vi.fn> => {
+    const spy = vi.fn(() => Promise.resolve(new Response("{}")))
+    vi.stubGlobal("fetch", spy)
+    return spy
+  }
+
+  it("sends the session cookie to a published-port file_host, which is cross-origin", async () => {
+    const spy = fetchSpy()
+    const transport = createFileHostTransport({
+      baseUrl: "http://localhost:3000/api/v1",
+      source: "published-port",
+    })
+
+    await transport?.("auth/session")
+
+    expect(spy).toHaveBeenCalledWith(
+      "http://localhost:3000/api/v1/auth/session",
+      expect.objectContaining({ credentials: "include" })
+    )
+  })
+
+  it("lets a caller of an uncredentialed read module opt out", async () => {
+    const spy = fetchSpy()
+    const transport = createFileHostTransport({
+      baseUrl: "http://localhost:3000/api/v1",
+      source: "published-port",
+    })
+
+    await transport?.("curriculum", { credentials: "same-origin" })
+
+    expect(spy).toHaveBeenCalledWith(
+      "http://localhost:3000/api/v1/curriculum",
+      expect.objectContaining({ credentials: "same-origin" })
+    )
+  })
 })
 
 describe("requestJSON: bounded wait", () => {

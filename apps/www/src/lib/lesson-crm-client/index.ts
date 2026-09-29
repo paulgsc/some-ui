@@ -84,7 +84,12 @@ export function createLessonCrmClient(
     // its first save from the CRM is then a new version.
     read: async (key) =>
       `${JSON.stringify(
-        await request<unknown>(`/curriculum/${encodeURIComponent(key)}`),
+        // The public curriculum module answers CORS without credentials,
+        // so a credentialed read of it would be dropped cross-origin
+        // (`createFileHostTransport`).
+        await request<unknown>(`/curriculum/${encodeURIComponent(key)}`, {
+          credentials: "same-origin",
+        }),
         null,
         2
       )}\n`,

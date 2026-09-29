@@ -10,7 +10,7 @@ import {
   Sparkles,
 } from "lucide-react"
 
-import { useHasDecorativeSession } from "@/lib/auth-session"
+import { useHasSession } from "@/lib/auth"
 import { HexCombMark } from "@/components/brand/hex-comb-mark"
 import { ExtensionsPage } from "@/components/extensions/extensions-page"
 import { ThemeSwitcher } from "@/components/theme-switcher"
@@ -175,12 +175,13 @@ const Landing = (): JSX.Element => (
  * their own work.
  *
  * Chosen in the component rather than by redirecting in `beforeLoad`, so the
- * front door keeps the address `"/"` and a session appearing (the passkey
- * stub in `lib/auth-session`) swaps the page in place. `useHasDecorativeSession`
+ * front door keeps the address `"/"` and a session appearing (a passkey
+ * sign-in, or `lib/auth` learning of an existing one) swaps the page
+ * in place. `useHasSession`
  * is the subscribing read for exactly that.
  */
 const Root = (): JSX.Element =>
-  useHasDecorativeSession() ? <Landing /> : <ExtensionsPage chrome="front" />
+  useHasSession() ? <Landing /> : <ExtensionsPage chrome="front" />
 
 export const Route = createFileRoute("/")({
   component: Root,
