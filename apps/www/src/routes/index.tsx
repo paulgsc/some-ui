@@ -176,7 +176,7 @@ const Landing = (): JSX.Element => (
  *
  * Chosen in the component rather than by redirecting in `beforeLoad`, so the
  * front door keeps the address `"/"` and a session appearing (a passkey
- * sign-in, or `lib/auth-session` learning of an existing one) swaps the page
+ * sign-in, or `lib/auth` learning of an existing one) swaps the page
  * in place. `useHasSession`
  * is the subscribing read for exactly that.
  */

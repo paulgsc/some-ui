@@ -28,7 +28,7 @@ beforeEach(() => {
   // query, which stays disabled until there is a session (see
   // `lib/tenant/hooks.ts`) - this component only ever renders inside the
   // signed-in dashboard, so its tests establish that precondition rather
-  // than exercising the signed-out state, which `auth-session.test.ts` and
+  // than exercising the signed-out state, which `lib/auth/__tests__/session.test.ts` and
   // `providers/tts.test.tsx` already cover.
   markSignedIn()
 })

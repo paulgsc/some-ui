@@ -10,7 +10,7 @@ import { isPublicPath, useSessionStatus } from "@/lib/auth"
  * The root guard only runs on navigation. A session can also end between
  * navigations: the server answers `401` to some request because the
  * session expired, or was ended from another device ("sign out
- * everywhere"), or the account was deleted. `lib/auth-session` learns of
+ * everywhere"), or the account was deleted. `lib/auth` learns of
  * that through the file_host transport, and this is what acts on it,
  * keeping the current address as the place to come back to.
  */

@@ -115,7 +115,7 @@ let unauthorizedHandler: (() => void) | null = null
 /**
  * Called whenever `file_host` answers `401`: the session cookie is missing,
  * expired or revoked (signed out everywhere, account deleted). Registered by
- * `lib/auth-session` rather than imported here, which would be a cycle: that
+ * `lib/auth` rather than imported here, which would be a cycle: that
  * module is itself a caller of this one.
  */
 export function onFileHostUnauthorized(handler: (() => void) | null): void {

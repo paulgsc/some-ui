@@ -24,7 +24,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
   beforeLoad: async ({ location }) => {
     const isPublicRoute = isPublicPath(location.pathname)
     // Asked once per page load, then answered from memory
-    // (`lib/auth-session`). A public route does not wait for the answer,
+    // (`lib/auth`). A public route does not wait for the answer,
     // but still asks, so `"/"` can swap to the signed-in landing in place.
     if (isPublicRoute) {
       void resolveSession()
