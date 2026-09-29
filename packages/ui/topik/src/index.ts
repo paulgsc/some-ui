@@ -61,3 +61,4 @@ export type {
   WordOccurrence,
 } from "./lib/topik/read-aloud/content"
 export { STARTER_DECK } from "./lib/topik/read-aloud/starter"
+export { BUNDLED_DECK } from "./lib/topik/read-aloud/bundled"
