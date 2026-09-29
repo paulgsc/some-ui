@@ -11,6 +11,10 @@ overrides:
   "@eslint/core": 0.17.0
   "@eslint/config-helpers": 0.4.2
   ws: ^8.21.1
+  # fx-runner (via web-ext) pins shell-quote 1.7.3, which Dependabot cannot
+  # bump; <= 1.8.3 is GHSA-affected (quote() leaves newlines in .op). One
+  # repo-wide floor also dedupes concurrently's exact 1.8.4 pin.
+  shell-quote: ^1.9.0
 minimumReleaseAgeExclude:
   - "@some-ui/leetype-wasm"
 # Single source of truth for dependencies that more than one workspace needs
