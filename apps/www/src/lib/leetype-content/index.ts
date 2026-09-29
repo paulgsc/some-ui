@@ -9,6 +9,13 @@
  * - **`static` mode** (GitHub Pages): no `file_host`, so no request at all.
  *   This resolves empty and `Leetype` plays its bundled, reviewed rounds.
  *
+ * A round's recorded runs (X2, #1223; paulgsc/server#381) follow the same
+ * split: `GET /api/v1/leetype/rounds/:id/runs` in `server` mode, nothing in
+ * `static` mode, where the package shows its bundled transcript (the
+ * server's `dump-leetype-snapshot`, checked in as `corpus/runs/`). Either
+ * way the package parses the body and shows it only if it was recorded for
+ * the exact bytes of the round being played.
+ *
  * # Failing open, on purpose
  *
  * `sessions-backend` fails loudly on an unreachable server, because a write
@@ -76,6 +83,27 @@ const roundSource = createDataSource<string, unknown>(
   { mode: DATA_MODE }
 )
 
+const locateRunsUrl = (id: string): URL =>
+  toUrl(fileHostRouteUrl("/api/v1/leetype/rounds/:id/runs", { id }))
+
+/**
+ * How long a round waits for its runs before the package falls back to the
+ * bundled transcript. Short, and never retried: the runs are only shown
+ * after the learner commits, and the round never waits on them to play.
+ */
+const RUNS_TIMEOUT_MS = 5_000
+
+const runsSource = createDataSource<string, unknown>(
+  { static: locateRunsUrl, server: locateRunsUrl },
+  {
+    mode: DATA_MODE,
+    fetchOptions: {
+      timeout: RUNS_TIMEOUT_MS,
+      retry: { count: 0, delay: 0 },
+    },
+  }
+)
+
 /** A uniform pick of `count` ids, without replacement. */
 function sample(ids: ReadonlyArray<string>, count: number): Array<string> {
   const pool = [...ids]
@@ -102,4 +130,19 @@ export async function loadLeetypeRounds(): Promise<ReadonlyArray<unknown>> {
   return bodies.flatMap((body) =>
     body.status === "fulfilled" ? [body.value] : []
   )
+}
+
+/**
+ * Handed to `Leetype` as `loadRuns`. Resolves to the raw body of a round's
+ * recorded runs, or `null` in a static build, having issued no request.
+ *
+ * Fails open, like the rounds above and unlike `sessions-backend`: a
+ * rejection (the route absent, a `404` for a round the server does not
+ * hold, a timeout) makes the package show its bundled transcript, or no
+ * runs at all. A read of a recording is never worth failing a round over,
+ * and a round never needs a run to play (X5's never #4).
+ */
+export async function loadLeetypeRoundRuns(roundId: string): Promise<unknown> {
+  if (!FETCHES_CONTENT) return null
+  return runsSource.fetch(roundId)
 }
