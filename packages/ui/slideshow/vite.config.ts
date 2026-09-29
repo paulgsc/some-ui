@@ -7,10 +7,6 @@ export default createViteConfig({
   alias: {
     "@slideshow": resolve(import.meta.dirname, "src"),
   },
-  contentPackage: true,
-  dtsOptions: {
-    exclude: ["**/recap/**"],
-  },
   tsConfigPaths: {
     projects: [resolve(import.meta.dirname, "tsconfig.build.json")],
   },

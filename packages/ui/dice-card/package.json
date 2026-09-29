@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.6",
   "type": "module",
+  "someUi": {
+    "audience": "public"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && vite build",
     "build:tsc-alias": "tsc-alias -p tsconfig.build.json",
@@ -46,14 +49,13 @@
     "*.css"
   ],
   "unpkg": "@some-ui/dice-card.umd.js",
-  "main": "./dist/@some-ui/dice-card.cjs.js",
+  "main": "./dist/@some-ui/dice-card.es.js",
   "module": "./dist/@some-ui/dice-card.es.js",
   "types": "./dist/@some-ui/dice-card.d.ts",
   "exports": {
     ".": {
       "types": "./dist/@some-ui/dice-card.d.ts",
       "import": "./dist/@some-ui/dice-card.es.js",
-      "require": "./dist/@some-ui/dice-card.cjs.js",
       "default": "./dist/@some-ui/dice-card.es.js"
     },
     "./style.css": "./dist/dice-card.css"

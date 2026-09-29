@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query"
 
-import { useHasDecorativeSession } from "@/lib/auth-session"
+import { useHasSession } from "@/lib/auth"
 import { reportSessionTransition } from "@/lib/study-nudge/signals"
 
 import {
@@ -50,7 +50,7 @@ export { settingsKey } from "./queries"
  * have been *allowed* is the server's question, not this one.
  */
 function useTenantQueriesEnabled(): boolean {
-  return useHasDecorativeSession()
+  return useHasSession()
 }
 
 export function useProfile(): UseQueryResult<UserProfile> {

@@ -1,15 +1,11 @@
 import { defineSomeUiConfig } from "@some-ui/styles/config"
 
+import { CONTENT_SOURCES } from "./uno.sources"
+
 export default defineSomeUiConfig(
   { preflight: false },
   {
-    content: {
-      filesystem: [
-        "src/**/*.{ts,tsx,html}",
-        "src/styles/content.css",
-        "src/styles/components/*.css",
-      ],
-    },
+    content: { filesystem: CONTENT_SOURCES },
     blocklist: [
       "container",
       "contents",
@@ -44,6 +40,21 @@ export default defineSomeUiConfig(
       "text",
       "ms",
       "px",
+      // Harvested from identifiers and prose in the scanned modules (e.g. the
+      // `b`/`py` particle variables, a `btn` loop variable, "my rating").
+      "b",
+      "blur",
+      "btn",
+      "me",
+      "my",
+      "py",
+      // `display: table` on every host element with class="table" (Bootstrap).
+      "table",
+      // Also prose: "every other tab", "(not `absolute`)".
+      "absolute",
+      "tab",
+      // tests/content-css.test.ts fails on the next one — add it here, or
+      // reword the comment that produced it.
     ],
   }
 )

@@ -46,8 +46,8 @@ vi.mock("@/lib/tts-config", () => ({
 }))
 
 let hasSession = false
-vi.mock("@/lib/auth-session", () => ({
-  useHasDecorativeSession: (): boolean => hasSession,
+vi.mock("@/lib/auth", () => ({
+  useHasSession: (): boolean => hasSession,
 }))
 
 describe("TTSProvider: does not build a speech session before there is a session", () => {

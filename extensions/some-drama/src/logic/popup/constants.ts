@@ -1,5 +1,3 @@
-export const VIDEO_HOSTS = []
-
 export const MAX_WATCHLIST = 5
 
 export const POPUP_WIDTH_PX = 340

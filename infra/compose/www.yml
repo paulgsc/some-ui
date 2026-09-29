@@ -39,13 +39,13 @@
 # `docker compose up www` working out of the box against this repo's own
 # (mostly empty/gitignored) copy.
 #
-# packages/some-content/public/hangul and .../topiks are the same story with
-# one difference: they're optional, not load-bearing. HangulHexGrid's own
+# packages/some-content/public/hangul is the same story with one
+# difference: it's optional, not load-bearing. HangulHexGrid's own
 # bundled demo pool (@some-ui/honeycomb's HANGUL_WORDS) works with nothing
 # mounted here at all - that volume only matters if you've asked an LLM to
 # generate a hangul/words/vocab.json (see apps/www/src/lib/hangul-vocab) and
 # want this container to serve one instead of its demo pool. Unlike sfx, the
-# GitHub Pages build never bakes any of these in either way: there's no
+# GitHub Pages build never bakes it in either way: there's no
 # companion data there, by design (apps/www resolves to "static" mode and
 # never fetches them).
 #
@@ -55,12 +55,12 @@
 # That also removes the only difference the Pages and Docker builds had for
 # this activity - they now run the same code path.
 #
-# topiks differs from those two in one respect worth knowing before you mount
-# nothing and wonder why the applet is empty: @some-ui/topik ships no bundled
-# demo pool, so an unmounted topiks dir means an empty catalogue rather than a
-# fallback one. That is the honest state - the study material is curated, not
-# generated at build time - and apps/www renders it as "nothing to study"
-# rather than as an error (see src/lib/topik-content).
+# topiks used to be mounted here too (WWW_TOPIK_ASSETS_PATH). Lessons are rows
+# in file_host now (paulgsc/server#276, some-ui#1048): this container reaches
+# them through the same /api/file-host proxy as every other file_host call,
+# and adding one means running file_host's `import-curriculum` against its
+# database, not mounting a directory. An empty study catalogue means nothing
+# has been imported (see apps/www/src/lib/topik-content).
 #
 # REPO_ROOT must actually be exported (e.g. `export REPO_ROOT=$(pwd)` from
 # repo root) before running docker compose. The root docker-compose.yml
@@ -84,7 +84,6 @@ services:
       - ${REPO_ROOT:-.}/certs:/etc/nginx/certs:ro
       - ${WWW_SFX_ASSETS_PATH:-${REPO_ROOT:-.}/packages/some-content/public/sfx}:/usr/share/nginx/html/sfx:ro
       - ${WWW_HANGUL_ASSETS_PATH:-${REPO_ROOT:-.}/packages/some-content/public/hangul}:/usr/share/nginx/html/hangul:ro
-      - ${WWW_TOPIK_ASSETS_PATH:-${REPO_ROOT:-.}/packages/some-content/public/topiks}:/usr/share/nginx/html/topiks:ro
     networks:
       - some-ui-network
       - monitoring-network

@@ -1,6 +1,7 @@
 import type { JSX, ReactNode } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
+import { onAccountChange } from "@/lib/auth"
 import { isFileHostTimeout } from "@/lib/file-host-config/client"
 
 const createQueryClient = (): QueryClient =>
@@ -35,6 +36,13 @@ const createQueryClient = (): QueryClient =>
  * warming a cache nobody reads.
  */
 export const queryClient = createQueryClient()
+
+// Per-person reads share keys across accounts (`["tenant", "sessions"]`), and
+// stay fresh for 15 minutes. So when a session ends, nothing cached is kept
+// for a signed-out page. Signing in to an account is a full page load
+// (`enterAccount`), which is what keeps a mutation still in flight for the
+// previous account from writing its result back after this clear.
+onAccountChange(() => queryClient.clear())
 
 export const QueryProvider = ({
   children,

@@ -23,6 +23,7 @@ import { Briefcase, FileText, ListVideo, Settings, User } from "lucide-react"
 import { cn, useIsMobile, useIsTerminal } from "some-ui-utils"
 
 import { AmbientIntentStatus } from "@/lib/intent/render"
+import { useIsDeclaredBounded } from "@/lib/route-bounds"
 import { useMigrationSignal } from "@/lib/tenant/migration-signal"
 import { AudioIndicator } from "@/components/audio/audio-indicator"
 import { HexCombMark } from "@/components/brand/hex-comb-mark"
@@ -173,7 +174,9 @@ const DashboardLayout = (): JSX.Element => {
    * that *was* scrolled with the chrome hidden, `dvh` is the height actually
    * on screen and `svh` is short by exactly the chrome.
    */
-  const isBoundedRoute = isLiveViewportRoute || isComposerPath(pathname)
+  const isDeclaredBounded = useIsDeclaredBounded()
+  const isBoundedRoute =
+    isLiveViewportRoute || isComposerPath(pathname) || isDeclaredBounded
 
   /**
    * The one place the shell gets out of the way entirely.

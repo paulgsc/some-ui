@@ -9,7 +9,7 @@
 //   every particle was anchored to (0,0) regardless of card position.
 //
 //   Fix: two distinct namespaces.
-//     --b-layer-x / --b-layer-y  — set on the layer element by the RAF loop;
+//     --b-layer-x / --b-layer-y  — set on the layer element by reposition();
 //                                   track the card's current viewport position.
 //     --b-px / --b-py            — set per-particle inline; static relative
 //                                   offset from the layer origin.
@@ -18,71 +18,104 @@
 //   Particles use `position: fixed` (not `absolute`) so their left/top resolve
 //   against the viewport directly — no intermediate offset parent confusion.
 
-import { rnd } from "@drama/logic/content/utils"
+import { DEFAULT_THEME, MOODS } from "@drama/logic/content/constants"
+import {
+  BURST_MAX_S,
+  burstFor,
+  petalPeak,
+  petalsFor,
+} from "@drama/logic/content/petals"
+import type { Burst, PetalLook, PetalSpec } from "@drama/logic/content/petals"
+import type { Disposables } from "@some-extension/common"
 import { getOverlayRoot } from "@some-extension/common/lib/layers"
 
 import { el } from "./dom"
 
-const BLOSSOM_GLYPHS = ["🌸", "🌺", "🌼", "✿", "❀"] as const
-const PARTICLE_COUNT = 7
+export type Blossoms = {
+  /** Re-read the anchor's rect — call whenever the card moves or resizes. */
+  reposition: () => void
+  /** Re-seed the drifting petals for a new mood or rating. */
+  restyle: (look: PetalLook) => void
+  /** Play one burst from the card; its particles remove themselves. */
+  burst: (burst: Burst) => void
+  /** Remove the layer and its particles. */
+  destroy: () => void
+}
+
+function particle(spec: PetalSpec, className: string): HTMLSpanElement {
+  const b = el("span", className)
+  b.textContent = spec.glyph
+  // Per-particle STATIC offset from the layer origin — use --b-px / --b-py
+  // so they don't collide with the layer-level tracking vars.
+  b.style.setProperty("--b-px", `${spec.px}px`)
+  b.style.setProperty("--b-py", `${spec.py}px`)
+  b.style.setProperty("--b-tx", `${spec.tx}px`)
+  b.style.setProperty("--b-ty", `${spec.ty}px`)
+  b.style.setProperty("--b-rot", `${spec.rot}deg`)
+  b.style.setProperty("--b-dur", `${spec.dur}s`)
+  b.style.setProperty("--b-delay", `${spec.delay}s`)
+  return b
+}
 
 /**
- * Spawn floating blossom particles that track `anchorEl`'s position.
- * Returns a teardown function — call it to remove the layer and stop the RAF.
+ * Spawn floating blossom particles anchored to `anchorEl`'s position, dressed
+ * for `look`: the mood picks the glyphs, their motion and (via the same
+ * --dc-hue / --dc-sat the card uses) their tint; the rating picks how many
+ * there are and how bright they get.
+ *
+ * No per-frame loop: the card only moves when it is dragged, placed or
+ * resized, and its owner calls `reposition()` at exactly those moments. (A
+ * requestAnimationFrame loop re-reading the anchor's rect every frame, for as
+ * long as the card existed, used to do this.) The particles' drift is CSS and
+ * stops with the layer. Everything here ends with `life` — the card's active
+ * scope, since the layer lives outside the card's dormant gate: the layer,
+ * and each burst's removal timer.
  */
-export function spawnBlossoms(anchorEl: HTMLElement): () => void {
+export function spawnBlossoms(
+  anchorEl: HTMLElement,
+  life: Disposables,
+  look: PetalLook
+): Blossoms {
   const root = getOverlayRoot()
   const layer = el("div", "dc-blossom-layer")
+  const drifting = el("div", "dc-petals")
+  layer.appendChild(drifting)
 
   /** Update --b-layer-x/y on the layer from the anchor's current rect. */
-  const updateOrigin = (): void => {
+  const reposition = (): void => {
     const rect = anchorEl.getBoundingClientRect()
     // Anchor near the right-centre of the card for a natural floating effect
     layer.style.setProperty("--b-layer-x", `${rect.right}px`)
     layer.style.setProperty("--b-layer-y", `${rect.top + rect.height / 2}px`)
   }
 
-  updateOrigin()
-
-  for (let i = 0; i < PARTICLE_COUNT; i++) {
-    const glyph = BLOSSOM_GLYPHS[i % BLOSSOM_GLYPHS.length]!
-    const b = el("span", "dc-blossom")
-    b.textContent = glyph
-
-    // Per-particle STATIC offset from the layer origin — use --b-px / --b-py
-    // so they don't collide with the layer-level tracking vars.
-    const px = rnd(-20, 40) // horizontal scatter around anchor right edge
-    const py = rnd(-30, 30) // vertical scatter around anchor centre
-    const tx = rnd(-70, 70) // drift X over lifetime
-    const ty = rnd(-110, -35) // drift Y (upward)
-    const rot = rnd(-210, 210)
-    const dur = rnd(5, 9)
-    const delay = rnd(0, 4)
-
-    b.style.setProperty("--b-px", `${px}px`)
-    b.style.setProperty("--b-py", `${py}px`)
-    b.style.setProperty("--b-tx", `${tx}px`)
-    b.style.setProperty("--b-ty", `${ty}px`)
-    b.style.setProperty("--b-rot", `${rot}deg`)
-    b.style.setProperty("--b-dur", `${dur}s`)
-    b.style.setProperty("--b-delay", `${delay}s`)
-
-    layer.appendChild(b)
+  const restyle = (next: PetalLook): void => {
+    const theme = MOODS.find((m) => m.type === next.mood) ?? DEFAULT_THEME
+    layer.dataset.mood = next.mood ?? "none"
+    layer.style.setProperty("--dc-hue", String(theme.hue))
+    layer.style.setProperty("--dc-sat", String(theme.sat))
+    layer.style.setProperty("--b-peak", String(petalPeak(next.rating)))
+    drifting.replaceChildren(
+      ...petalsFor(next).map((spec) => particle(spec, "dc-blossom"))
+    )
   }
 
+  const burst = (next: Burst): void => {
+    const particles = burstFor(next).map((spec) =>
+      particle(spec, "dc-blossom dc-blossom-burst")
+    )
+    layer.append(...particles)
+    life.timeout(() => {
+      for (const b of particles) b.remove()
+    }, BURST_MAX_S * 1000)
+  }
+
+  reposition()
+  restyle(look)
   root.appendChild(layer)
 
-  // RAF loop: re-read anchor rect each frame and push to --b-layer-x/y.
-  // Cheap — just two getBoundingClientRect reads + two setProperty calls.
-  let rafId: number
-  const track = (): void => {
-    updateOrigin()
-    rafId = requestAnimationFrame(track)
-  }
-  rafId = requestAnimationFrame(track)
+  const destroy = (): void => layer.remove()
+  life.add(destroy)
 
-  return (): void => {
-    cancelAnimationFrame(rafId)
-    layer.remove()
-  }
+  return { reposition, restyle, burst, destroy }
 }

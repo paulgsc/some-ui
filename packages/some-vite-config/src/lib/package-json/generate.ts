@@ -1,4 +1,5 @@
 import type { ViteConfigOptions } from "@/types/index.js"
+import { DEFAULT_FORMATS } from "@/lib/build-config.js"
 
 export type PackageJsonExportTarget = string | Record<string, string>
 
@@ -40,7 +41,7 @@ export function generatePackageJsonFields(
   options: ViteConfigOptions,
   realPackageName: string = options.packageName
 ): PackageJsonFields {
-  const { packageName, formats = ["es", "cjs"] } = options
+  const { packageName, formats = DEFAULT_FORMATS } = options
 
   const hasESM = formats.includes("es")
   const hasCJS = formats.includes("cjs")

@@ -50,6 +50,15 @@ describe("mapFileHostError", () => {
     }
   )
 
+  it("says a 401 ended the session, and offers no retry that could not work", () => {
+    const result = mapFileHostError(
+      new FileHostResponseError(401, "/sessions", "unauthorized")
+    )
+    expect(result.kind).toBe("rejected")
+    expect(result.retryable).toBe(false)
+    expect(result.summary).toMatch(/sign in/i)
+  })
+
   it("falls back to intent-kit's generic normalizer for anything else, rather than throwing", () => {
     const inputs: ReadonlyArray<unknown> = [
       new Error("some unrelated failure"),

@@ -13,7 +13,6 @@
     ".": {
       "types": "./dist/@some-ui/activity-catalog.d.ts",
       "import": "./dist/@some-ui/activity-catalog.es.js",
-      "require": "./dist/@some-ui/activity-catalog.cjs.js",
       "default": "./dist/@some-ui/activity-catalog.es.js"
     },
     "./style.css": "./dist/activity-catalog.css"
@@ -24,7 +23,7 @@
   "homepage": "https://pgdev.maishatu.com/?tab=github",
   "keywords": [],
   "license": "MIT",
-  "main": "./dist/@some-ui/activity-catalog.cjs.js",
+  "main": "./dist/@some-ui/activity-catalog.es.js",
   "module": "./dist/@some-ui/activity-catalog.es.js",
   "name": "@some-ui/activity-catalog",
   "private": true,

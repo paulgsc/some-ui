@@ -51,7 +51,10 @@ Kubernetes, managed-cloud operation, startup employment, or ML infrastructure.
 
 - The backend spans 24 Rust crates; `file_host` composes Axum/Tower, Tokio,
   SQLx/SQLite, Redis, NATS JetStream, WebSockets, Prometheus, OpenTelemetry, and
-  Web Push behind 39 inventoried method/path operations.
+  Web Push behind 40+ inventoried method/path routes (47 in
+  `packages/contract-harness/routes.server.json` on 2026-09-27, including the
+  `GET /ws` upgrade; `scripts/check-claims.mjs` holds the rendered "40+" to
+  that file).
 - SQLx repositories and paired migrations own sessions, consented subscriptions,
   engagement gates, interventions, tabs, captures, and mood events; Redis
   coalesces concurrent misses and JetStream redelivers retryable typed jobs.
@@ -61,7 +64,8 @@ Kubernetes, managed-cloud operation, startup employment, or ML infrastructure.
 - Six falsifiable service states --- unreachable, dependency-down, rejecting,
   saturated, stalled, and observability-blind --- are represented by Prometheus
   metrics and dashboards that render missing data as unknown, never healthy.
-- More than 300 Rust test functions, strict Clippy groups, cargo-deny, SQLx
+- More than 300 Rust test functions, a ratcheted all/pedantic/nursery Clippy
+  baseline (`lint.yml` + `scripts/clippy_baseline.json`), cargo-deny, SQLx
   preparation, route-source parity, live contracts, and browser suites cover the
   boundary from durable storage to the real service worker.
 
@@ -326,7 +330,7 @@ backs should be cut, not kept and re-justified.
 
 == Counts
 
-*57 workspace packages, 6 browser extensions* --- counted 2026-08-29 by
+*58 workspace packages, 6 browser extensions* --- counted 2026-09-27 by
 `scripts/check-claims.mjs`, which walks the globs in `pnpm-workspace.yaml`
 (`packages/ui/*`, `apps/*`, `docs/canon`, `extensions/**`, `packages/*`,
 `crates/*`) for a `package.json`, the same method `pnpm -r list --depth -1`
@@ -338,7 +342,9 @@ catches build scripts): `some-censor`, `some-conveyor`, `some-drama`,
 `filter-classifier`, `docs`, and `scripts` are excluded — shared code and a
 test corpus, not shipped extensions.
 
-The package count is 52 -> 57 since the last recount: new additions include
+The package count is 57 -> 58 on 2026-09-27: `packages/ui/lesson-crm`, the
+operator's lesson CRM and the first `lan`-audience workspace. Before that it
+was 52 -> 57 at the 2026-08-29 recount: new additions include
 `packages/activity-catalog`, `packages/contract-harness`,
 `packages/server-routes`, `packages/intent-kit`, `packages/fetch-kit`,
 `packages/job-tracker` (this revision's own addition — see the job-tracker
@@ -451,13 +457,13 @@ deliberately out of scope for the MVP cut.
   [Strict TypeScript spans the monorepo, browser workers, API clients, runtime schemas, contract harness, and test infrastructure.],
 
   [Production APIs / backend services], [Match],
-  [`file_host` authorship covers 39 versioned HTTP operations, WebSockets, SQL repositories, Redis caching, NATS jobs, admission control, readiness, metrics, and graceful shutdown.],
+  [`file_host` authorship covers 40+ inventoried HTTP operations, WebSockets, SQL repositories, Redis caching, NATS jobs, admission control, readiness, metrics, and graceful shutdown.],
 
   [Distributed systems / async processing], [Match],
   [Tokio tasks, HTTP boundaries, Redis, JetStream redelivery, WebSockets, push providers, cancellation, bounded queues, and restartable browser workers. No claim of large-scale operation.],
 
   [Testing / engineering practice], [Match],
-  [300+ Rust test functions, strict Clippy groups, cargo-deny, SQLx checks, route parity, 48 live HTTP contract tests, Vitest, Playwright, and signed release gates.],
+  [300+ Rust test functions, a ratcheted Clippy baseline, cargo-deny, SQLx checks, route parity, live HTTP contract tests, Vitest, Playwright, and signed release gates.],
 
   [Databases / data modeling], [Match],
   [Typed SQLite/SQLx repositories and migrations cover sessions, engagement, gates, consented subscriptions, interventions, tabs, captures, and mood events.],
@@ -589,6 +595,38 @@ substantiate those claims.
 
 
 = Current revision
+
+*v13 (2026-09-27).* Brought three figures back in line with the repositories
+they cite, after the server's route snapshot started syncing automatically
+(some-ui #1547) and exposed how far the hand-kept numbers had drifted.
+
+- *Route figures.* The rendered résumé said "42 inventoried HTTP operations"
+  and "21 of 42 routes with 13 tests"; the synced snapshot has 47 routes and
+  `pnpm --filter @some-ui/contract-harness contract:coverage` reports 15 of
+  them covered, by 21 contracts. "21" was the contract count, not a route
+  count. The operation count is now a floor ("40+"), which a new server route
+  cannot falsify, and the coverage fraction is gone from the rendered résumé:
+  its denominator moves with every server merge. `scripts/check-claims.mjs`
+  now reads `routes.server.json` and, for any "N of M routes" figure, the
+  harness's own coverage report, and fails the build when a figure in
+  `src/data/resume.typ` or the harness README disagrees with them.
+- *Clippy.* "Strict all/pedantic/nursery Clippy groups" read as a clean
+  workspace. The server enables those groups but runs them as a ratchet over
+  a committed baseline (`lint.yml`, `scripts/check_clippy_baseline.py`): new
+  findings fail, existing debt is recorded. Every composition now says
+  "ratcheted Clippy baseline" instead of "strict".
+- *Skills lines.* An Indeed match against a posting listed Node.js, JSON,
+  and GitHub as unmatched though the repositories support all three: the
+  build and check tooling and the contract harness are Node.js CLIs, the
+  service speaks JSON, and CI is GitHub Actions. The backend line had them
+  only fused into "HTTP/JSON" and "CI/CD pipeline automation", which a
+  keyword parser does not split. They are now separate terms, and
+  `scripts/check-ats.mjs` requires them in the rendered PDFs. PostgreSQL
+  was unmatched too although the CABA Design entry already names it, so the
+  match reads Indeed's profile skills at least as much as the résumé text;
+  it stays out of the engineering skills lines because neither repository
+  uses it. AI and debugging are not claimed: neither repository ships an AI
+  feature, and "debugging" is not a capability a skills line can evidence.
 
 *v12 (2026-09-05).* Corrected a personal-schema error and applied two
 review-suggested bullet replacements, both re-verified against the current

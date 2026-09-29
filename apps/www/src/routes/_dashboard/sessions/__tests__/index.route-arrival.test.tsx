@@ -8,8 +8,8 @@
  * `global.fetch`, exactly like `index.intent.test.tsx`'s write-path sabotage
  * but for the route's own initial read.
  *
- * `useSessions` gates on `useHasDecorativeSession()` (see `lib/tenant/hooks.ts`),
- * so this file calls the real `createDecorativeSession()` rather than mocking
+ * `useSessions` gates on `useHasSession()` (see `lib/tenant/hooks.ts`),
+ * so this file calls the real `markSignedIn()` rather than mocking
  * `@/lib/tenant` the way the other sessions/index test files do - mocking the
  * hook away would hide the exact defect under test.
  */
@@ -25,7 +25,7 @@ import type * as ReactRouterModule from "@tanstack/react-router"
 import { cleanup, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 
-import { createDecorativeSession } from "@/lib/auth-session"
+import { markSignedIn } from "@/lib/auth"
 
 vi.mock(
   "@tanstack/react-router",
@@ -46,7 +46,7 @@ const { Route } = await import("@/routes/_dashboard/sessions/index")
 const SessionsRoute = Route.options.component as () => JSX.Element
 
 beforeAll(() => {
-  createDecorativeSession()
+  markSignedIn()
 })
 
 afterEach(() => {

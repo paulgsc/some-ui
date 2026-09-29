@@ -1,12 +1,12 @@
 import type { JSX, ReactNode } from "react"
-import { Toaster } from "sonner"
 
-import { useHasDecorativeSession } from "@/lib/auth-session"
+import { useHasSession } from "@/lib/auth"
 
 import { OrchestratorWrapper } from "./orchestrator"
 import { StudyNudgeWatcher } from "./study-nudge"
 import { QueryProvider } from "./tanstack-query"
 import { ThemeProvider } from "./theme"
+import { AppToaster } from "./toaster"
 import { TTSProvider } from "./tts"
 
 export const AppProviders = ({
@@ -21,7 +21,7 @@ export const AppProviders = ({
   // happen for a visitor with no tenant workspace to watch yet. This is not
   // a security boundary (the server still decides who sees what) - it is
   // the client declining to do work whose result would be thrown away.
-  const hasSession = useHasDecorativeSession()
+  const hasSession = useHasSession()
 
   return (
     <ThemeProvider>
@@ -31,7 +31,7 @@ export const AppProviders = ({
           <OrchestratorWrapper>{children}</OrchestratorWrapper>
         </TTSProvider>
       </QueryProvider>
-      <Toaster />
+      <AppToaster />
     </ThemeProvider>
   )
 }

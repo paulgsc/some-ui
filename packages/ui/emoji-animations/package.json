@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.10",
   "type": "module",
+  "someUi": {
+    "audience": "public"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && vite build",
     "build:tsc-alias": "tsc-alias -p tsconfig.json",
@@ -45,14 +48,13 @@
     "*.css"
   ],
   "unpkg": "some-ui-emoji-animations.umd.js",
-  "main": "./dist/some-ui-emoji-animations.cjs.js",
+  "main": "./dist/some-ui-emoji-animations.es.js",
   "module": "./dist/some-ui-emoji-animations.es.js",
   "types": "./dist/some-ui-emoji-animations.d.ts",
   "exports": {
     ".": {
       "types": "./dist/some-ui-emoji-animations.d.ts",
       "import": "./dist/some-ui-emoji-animations.es.js",
-      "require": "./dist/some-ui-emoji-animations.cjs.js",
       "default": "./dist/some-ui-emoji-animations.es.js"
     },
     "./style.css": "./dist/some-ui-emoji-animations.css"

@@ -1,6 +1,7 @@
 import type { JSX, ReactNode } from "react"
 import { useMemo } from "react"
 import type { SolvedNode } from "@wireframes/lib/layout-types"
+import { cn } from "some-ui-utils"
 
 export const RenderSolved = <T extends string>({
   node,
@@ -16,6 +17,12 @@ export const RenderSolved = <T extends string>({
   onLeafContextMenu?: (id: T, position: { x: number; y: number }) => void
   transitionMs?: number
 }): JSX.Element => {
+  // A pane's border separates it from its neighbours, so a layout of one pane
+  // has nothing to separate and draws none. That is the whole screen on a
+  // phone, where the viewport is full-bleed and a frame is only an outline
+  // around the edge of the display.
+  const lone = node.type === "leaf"
+
   // Iterative render using useMemo for performance
   const elements = useMemo(() => {
     const stack: Array<SolvedNode<T>> = [node]
@@ -44,7 +51,9 @@ export const RenderSolved = <T extends string>({
               cursor: onLeafClick ? "pointer" : "default",
               transition: `all ${transitionMs}ms ease-in-out`,
             }}
-            className="border border-pink-100 overflow-hidden"
+            // The theme's own border token: a hardcoded light pink read as a
+            // glaring white frame on every dark palette.
+            className={cn("overflow-hidden", !lone && "border border-border")}
             data-pane-id={current.id}
           >
             <div className="size-full relative">{renderLeaf(current.id)}</div>
@@ -59,7 +68,7 @@ export const RenderSolved = <T extends string>({
     }
 
     return out
-  }, [node, renderLeaf, onLeafClick, onLeafContextMenu, transitionMs])
+  }, [node, lone, renderLeaf, onLeafClick, onLeafContextMenu, transitionMs])
 
   return <>{elements}</>
 }

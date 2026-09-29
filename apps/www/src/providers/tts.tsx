@@ -5,7 +5,7 @@ import { cn } from "some-ui-utils"
 import { toast } from "sonner"
 
 import { useAudioPreferences } from "@/lib/audio-preferences/use-audio-preferences"
-import { useHasDecorativeSession } from "@/lib/auth-session"
+import { useHasSession } from "@/lib/auth"
 import { DATA_MODE } from "@/lib/data-mode"
 import { useSettings } from "@/lib/tenant"
 import { describeTTSEndpoint, resolveTTSEndpoint } from "@/lib/tts-config"
@@ -110,7 +110,7 @@ export const TTSProvider = ({
   // is a tenant workspace to speak for. `children` still renders either
   // way: this tree wraps every route, and none of them should wait on a
   // speech session nobody has asked for yet.
-  const hasSession = useHasDecorativeSession()
+  const hasSession = useHasSession()
   const { data: settings } = useSettings()
   const { preferences } = useAudioPreferences()
 

@@ -32,6 +32,7 @@ import { IntentButton, IntentFailure } from "@/lib/intent/render"
 import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import type { UserSettings } from "@/lib/tenant"
 import { settingsQuery, useSettings, useUpdateSettings } from "@/lib/tenant"
+import { AccountSection } from "@/components/settings/account-section"
 import { StudyNudgeSection } from "@/components/settings/study-nudge-section"
 
 const TTS_PROVIDER_OPTIONS: ReadonlyArray<{
@@ -249,7 +250,16 @@ const SettingsForm = ({
   )
 }
 
-const SettingsRoute = (): JSX.Element => {
+/** Outside the settings outcome: signing out must work when settings don't load. */
+const AccountCard = (): JSX.Element => (
+  <Card className="max-w-xl">
+    <CardContent className="pt-6">
+      <AccountSection />
+    </CardContent>
+  </Card>
+)
+
+const SettingsOutcome = (): JSX.Element => {
   const outcome = queryOutcome(useSettings())
 
   return matchQueryOutcome(outcome, {
@@ -272,6 +282,13 @@ const SettingsRoute = (): JSX.Element => {
     ),
   })
 }
+
+const SettingsRoute = (): JSX.Element => (
+  <div className="max-w-xl space-y-4">
+    <SettingsOutcome />
+    <AccountCard />
+  </div>
+)
 
 export const Route = createFileRoute("/_dashboard/settings")({
   // See `sessions/$sessionId.tsx`'s loader for why this is a non-awaited

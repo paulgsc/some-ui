@@ -11,7 +11,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
-import { createDecorativeSession } from "@/lib/auth-session"
+import { markSignedIn } from "@/lib/auth"
 
 import { AudioActivityHint, AudioActivityNotice } from "./audio-activity-notice"
 
@@ -28,9 +28,9 @@ beforeEach(() => {
   // query, which stays disabled until there is a session (see
   // `lib/tenant/hooks.ts`) - this component only ever renders inside the
   // signed-in dashboard, so its tests establish that precondition rather
-  // than exercising the signed-out state, which `auth-session.test.ts` and
+  // than exercising the signed-out state, which `lib/auth/__tests__/session.test.ts` and
   // `providers/tts.test.tsx` already cover.
-  createDecorativeSession()
+  markSignedIn()
 })
 
 afterEach(() => {

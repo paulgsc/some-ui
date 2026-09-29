@@ -33,7 +33,10 @@
   transform: translateZ(0);
   transition:
     opacity 400ms var(--dc-ease),
-    transform 400ms var(--dc-ease);
+    transform 400ms var(--dc-ease),
+    --dc-hue 700ms var(--dc-ease),
+    --dc-hue-2 700ms var(--dc-ease),
+    --dc-sat 700ms var(--dc-ease);
   -webkit-user-select: none;
   user-select: none;
   will-change: transform, opacity;
@@ -54,6 +57,20 @@
 #dc-root.dc-dragging {
   cursor: grabbing;
   transition: none;
+}
+
+/* ── Dormant gate ──────────────────────────────────────────────────────────
+   The card is dormant before its entrance, while minimised and while hidden
+   (DramaCard's ActiveScope sets .dc-dormant, and has already released its
+   timer and blossoms). Every CSS animation inside the card stops with it —
+   the ring, the float, the atmosphere drift, the beat pulse. Transitions are
+   left alone, so hiding still fades out. tests/card-lifetime.test.ts checks
+   that nothing with an infinite animation is left outside this gate. */
+#dc-root.dc-dormant,
+#dc-root.dc-dormant *,
+#dc-root.dc-dormant *::before,
+#dc-root.dc-dormant *::after {
+  animation: none;
 }
 
 /* ── Size: min — only the spinning pip ────────────────────────────────────── */

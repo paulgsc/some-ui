@@ -55,6 +55,7 @@ type Options = {
   showUncovered: boolean
   json: boolean
   timeoutMs: number
+  sessionCookie: string | undefined
 }
 
 function parseArgs(argv: ReadonlyArray<string>): Options {
@@ -81,6 +82,8 @@ function parseArgs(argv: ReadonlyArray<string>): Options {
     showUncovered: has("--show-uncovered"),
     json: has("--json"),
     timeoutMs: Number.isFinite(parsedTimeout) ? parsedTimeout : 10_000,
+    sessionCookie:
+      value("--session-cookie") ?? process.env["CONTRACT_SESSION_COOKIE"],
   }
 }
 
@@ -94,12 +97,14 @@ pnpm --filter @some-ui/contract-harness contract [options]
   --include-mutations     also run contracts marked as mutating (they are skipped by default)
   --show-uncovered        list server routes that no contract covers
   --timeout <ms>          per-request timeout (default 10000)
+  --session-cookie <val>  a signed-in __Host-session value, for per-person routes
+                          (or $CONTRACT_SESSION_COOKIE); without it they are skipped
   --json                  emit the raw run report as JSON instead of text
   --help                  this
 
-Regenerate the snapshot from the server repo with:
-  DATABASE_URL=sqlite://$PWD/dev.db make routes
-and copy routes.server.json into this package.
+The snapshot arrives from the server's CI as a PR on bot/server-route-snapshot.
+By hand: run \`make routes\` in the server repo, then
+  scripts/sync-server-routes.sh <routes.server.json> <routes.server.ts> --verify
 `.trim()
 
 function loadInventory(path: string): RouteInventory {
@@ -108,7 +113,7 @@ function loadInventory(path: string): RouteInventory {
     raw = readFileSync(path, "utf8")
   } catch {
     throw new Error(
-      `could not read route inventory at ${path}. Generate it in the server repo with \`make routes\` and copy it here.`
+      `could not read route inventory at ${path}. Generate it in the server repo with \`make routes\` and write it with scripts/sync-server-routes.sh.`
     )
   }
   return parseInventory(JSON.parse(raw))
@@ -167,6 +172,7 @@ async function main(): Promise<number> {
         await probeContract(contract, {
           baseUrl: options.baseUrl,
           timeoutMs: options.timeoutMs,
+          sessionCookie: options.sessionCookie,
         })
       )
     }

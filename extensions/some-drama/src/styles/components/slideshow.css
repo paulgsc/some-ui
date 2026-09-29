@@ -32,7 +32,9 @@
   border-radius: 50%;
 
   /* Glow effect */
-  filter: drop-shadow(0 0 8px hsl(340deg 70% 55% / 50%));
+  filter: drop-shadow(
+    0 0 8px hsl(var(--dc-hue) calc(70% * var(--dc-sat)) 55% / 50%)
+  );
   inset: -4px;
   position: absolute;
 
@@ -49,7 +51,7 @@
 
 /* Mask — covers ring interior so only the border shows */
 .dc-circle-ring::after {
-  background: hsl(25deg 25% 14%);
+  background: hsl(var(--dc-hue-2) calc(25% * var(--dc-sat)) 14%);
   border-radius: 50%;
   content: "";
   inset: 4px;
@@ -111,7 +113,9 @@
   background: linear-gradient(135deg, var(--dc-peach), var(--dc-rose));
   border-radius: 50%;
   display: flex;
-  filter: drop-shadow(0 2px 8px hsl(340deg 60% 40% / 40%));
+  filter: drop-shadow(
+    0 2px 8px hsl(var(--dc-hue) calc(60% * var(--dc-sat)) 40% / 40%)
+  );
   font-size: 40px;
   height: 100%;
   justify-content: center;
@@ -122,11 +126,11 @@
 .dc-slide-rating {
   background: linear-gradient(
     135deg,
-    hsl(340deg 70% 45%) 0%,
-    hsl(18deg 85% 55%) 100%
+    hsl(var(--dc-hue) calc(70% * var(--dc-sat)) 45%) 0%,
+    hsl(var(--dc-hue-2) calc(85% * var(--dc-sat)) 55%) 100%
   );
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .dc-rating-value {
@@ -137,7 +141,7 @@
   font-weight: bold;
   line-height: 1;
   text-shadow:
-    0 2px 4px hsl(340deg 60% 25% / 50%),
+    0 2px 4px hsl(var(--dc-hue) calc(60% * var(--dc-sat)) 25% / 50%),
     0 0 20px hsl(0deg 0% 100% / 30%);
 
   /* Prevent jitter on animation */
@@ -169,7 +173,7 @@
   font-size: 10px;
   font-style: italic;
   letter-spacing: 0.06em;
-  text-shadow: 0 1px 3px hsl(340deg 50% 25% / 50%);
+  text-shadow: 0 1px 3px hsl(var(--dc-hue) calc(50% * var(--dc-sat)) 25% / 50%);
 }
 
 /* Slide 3: emotion — dynamic mood background */
@@ -266,7 +270,7 @@
   animation: dc-bubble-in 400ms var(--dc-ease-bounce) both;
 
   /* Solid dark background */
-  background: hsl(340deg 25% 18% / 97%);
+  background: hsl(var(--dc-hue) calc(25% * var(--dc-sat)) 18% / 97%);
   border: 1.5px solid var(--dc-border-strong);
   border-radius: 6px 16px 16px;
   bottom: -44px;
@@ -274,8 +278,8 @@
   /* Glow shadow */
   box-shadow:
     0 4px 20px var(--dc-shadow),
-    0 0 30px hsl(340deg 60% 50% / 10%),
-    inset 0 1px 0 hsl(340deg 40% 40% / 20%);
+    0 0 30px hsl(var(--dc-hue) calc(60% * var(--dc-sat)) 50% / 10%),
+    inset 0 1px 0 hsl(var(--dc-hue) calc(40% * var(--dc-sat)) 40% / 20%);
   left: 6px;
   max-width: 120px;
   padding: 8px 12px 9px;
@@ -300,7 +304,8 @@
 }
 
 .dc-chat-bubble::after {
-  border-bottom: 7px solid hsl(340deg 25% 18% / 97%);
+  border-bottom: 7px solid
+    hsl(var(--dc-hue) calc(25% * var(--dc-sat)) 18% / 97%);
   border-left: 6px solid transparent;
   border-right: 6px solid transparent;
   content: "";
@@ -349,7 +354,11 @@
 .dc-slide-tags,
 .dc-slide-momentum,
 .dc-slide-summary {
-  background: linear-gradient(135deg, hsl(25deg 25% 14%), hsl(340deg 20% 12%));
+  background: linear-gradient(
+    135deg,
+    hsl(var(--dc-hue-2) calc(25% * var(--dc-sat)) 14%),
+    hsl(var(--dc-hue) calc(20% * var(--dc-sat)) 12%)
+  );
   flex-direction: column;
   gap: 4px;
   padding: 10px;
@@ -456,8 +465,8 @@
 
 .dc-tag-chip {
   align-items: center;
-  background: hsl(340deg 30% 22% / 85%);
-  border: 1px solid hsl(340deg 50% 55% / 50%);
+  background: hsl(var(--dc-hue) calc(30% * var(--dc-sat)) 22% / 85%);
+  border: 1px solid hsl(var(--dc-hue) calc(50% * var(--dc-sat)) 55% / 50%);
   border-radius: 50%;
   display: flex;
   font-size: 12px;
@@ -467,7 +476,7 @@
 }
 
 .dc-tag-more {
-  color: hsl(340deg 70% 80%);
+  color: hsl(var(--dc-hue) calc(70% * var(--dc-sat)) 80%);
   font-size: 9px;
   font-weight: bold;
 }
@@ -609,5 +618,35 @@
   font-size: 8px;
   font-style: italic;
   letter-spacing: 0.04em;
-  text-shadow: 0 1px 3px hsl(340deg 50% 25% / 50%);
+  text-shadow: 0 1px 3px hsl(var(--dc-hue) calc(50% * var(--dc-sat)) 25% / 50%);
+}
+
+/* Slide 6: the verdicts' trend across episodes (logic/verdict-log.ts) */
+.dc-rating-trend {
+  display: block;
+  height: 10px;
+  overflow: visible;
+  width: 56px;
+}
+
+.dc-rating-trend.dc-trend-empty {
+  display: none;
+}
+
+.dc-trend-rating,
+.dc-trend-finish {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dc-trend-rating {
+  stroke: var(--dc-gold);
+  stroke-width: 1.6;
+}
+
+.dc-trend-finish {
+  stroke: hsl(0deg 0% 100% / 70%);
+  stroke-dasharray: 2 2;
+  stroke-width: 1.2;
 }

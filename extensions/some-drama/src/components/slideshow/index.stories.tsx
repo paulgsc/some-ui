@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react"
 import type { CardState, MomentTag } from "@drama/types"
+import { Disposables } from "@some-extension/common"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
 import { Slideshow } from "."
@@ -166,8 +167,15 @@ const SlideshowBridge = ({
     ss.setBubbleQuote(featuredQuote)
     ss.setSlide(activeSlide)
 
-    if (autoAdvance) ss.startAutoAdvance()
-    else ss.stopAutoAdvance()
+    if (!autoAdvance) {
+      ss.stopAutoAdvance()
+      return undefined
+    }
+    // The story owns the timer here: it runs until a control changes or the
+    // story unmounts.
+    const life = new Disposables()
+    ss.startAutoAdvance(life)
+    return () => life.dispose()
   }, [
     activeSlide,
     autoAdvance,

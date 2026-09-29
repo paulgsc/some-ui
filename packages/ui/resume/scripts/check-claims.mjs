@@ -26,13 +26,33 @@
 // dependency graph are on disk there, so a filesystem recount would always
 // read wrong through no fault of resume.typ. The text-content checks below
 // don't depend on which packages are present, so they still run.
-import { readdirSync, readFileSync, statSync } from "node:fs"
+//
+// Route figures are the third thing that drifts. The server's route snapshot
+// (packages/contract-harness/routes.server.json) now arrives by bot PR on
+// every server merge, so any route count a person typed is stale the next
+// time the server adds one. checkRouteFigures() holds every route figure in
+// resume.typ and the harness README to that snapshot and to the harness's own
+// coverage report. Prefer figures that cannot go stale (a floor like "40+",
+// or none) over exact ones: an exact count fails this check on the next
+// server merge.
+//
+// That is why package.json lists @some-ui/contract-harness as a
+// devDependency with no import behind it (knip.json ignores it there): it
+// makes this package a dependent of the harness, so PR CI's
+// `--filter=...[HEAD^1]` rebuilds the résumé, and runs this check, on the
+// bot's snapshot-sync PR itself rather than only on the next trunk sweep.
+// turbo.json's `inputs` do the same for a local turbo cache.
+import { spawnSync } from "node:child_process"
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs"
 import { join, relative } from "node:path"
 
 import { packageDir } from "./typst.mjs"
 
 const repoRoot = join(packageDir, "..", "..", "..")
 const resumeSource = join(packageDir, "src", "data", "resume.typ")
+const harnessDir = join(repoRoot, "packages", "contract-harness")
+const routeSnapshot = join(harnessDir, "routes.server.json")
+const harnessReadme = join(harnessDir, "README.md")
 
 // Mirrors pnpm-workspace.yaml's `packages:` globs. Not a general glob
 // implementation — just enough to walk this repo's own layout, which is the
@@ -48,7 +68,7 @@ const WORKSPACE_ROOTS = [
 // The known-good counts as of the last recount (see resume.meta.typ's
 // Counts section, which names the date and method). Update both places
 // together when a recount genuinely changes the number.
-const EXPECTED_PACKAGE_COUNT = 57
+const EXPECTED_PACKAGE_COUNT = 58
 const EXPECTED_EXTENSION_COUNT = 6
 
 // Set by apps/www/Dockerfile's release build, whose `turbo prune` step
@@ -199,6 +219,99 @@ function checkNoBareWorkspaceCounts(text) {
   }
 }
 
+// "15 of 52 routes", "21/42 inventoried routes": a coverage fraction.
+const ROUTE_FRACTION =
+  /\b(\d+)\s*(?:of|\/)\s*(\d+)((?:[\s-]+(?:inventoried|server|HTTP|API))*[\s-]+routes?)\b/gi
+// "42 inventoried HTTP operations", "40+ operation service surface".
+const ROUTE_COUNT =
+  /\b(\d+)(\+?)((?:[\s-]+(?:inventoried|server|HTTP|API|method\/path))*[\s-]+(?:operations?|routes?))\b/gi
+
+function readRouteTotal() {
+  const snapshot = JSON.parse(readFileSync(routeSnapshot, "utf8"))
+  if (!Array.isArray(snapshot.routes)) {
+    throw new Error(`${relative(repoRoot, routeSnapshot)} has no routes array`)
+  }
+  return snapshot.routes.length
+}
+
+// The harness's own coverage report, not a re-implementation of its
+// contract-to-route matching: a second copy of that rule is one more thing
+// to drift. Only run when a fraction is actually stated.
+function readCoverage() {
+  const tsx = join(harnessDir, "node_modules", ".bin", "tsx")
+  const result = spawnSync(tsx, ["src/cli.ts", "--drift-only", "--json"], {
+    cwd: harnessDir,
+    encoding: "utf8",
+  })
+  let report
+  try {
+    report = JSON.parse(result.stdout)
+  } catch {
+    throw new Error(
+      "Could not read the contract harness's coverage report " +
+        `(${relative(repoRoot, tsx)} src/cli.ts --drift-only --json): ` +
+        `${result.error?.message ?? result.stderr ?? "no JSON on stdout"}`
+    )
+  }
+  const { covered, total } = report.drift ?? {}
+  if (!Number.isInteger(covered) || !Number.isInteger(total)) {
+    throw new Error(
+      "The contract harness's coverage report has no covered/total"
+    )
+  }
+  return { covered, total }
+}
+
+function checkRouteFigures(files) {
+  const routeTotal = readRouteTotal()
+  let coverage
+  const problems = []
+
+  for (const file of files) {
+    let text = readFileSync(file, "utf8")
+    const where = relative(repoRoot, file)
+
+    for (const match of text.matchAll(ROUTE_FRACTION)) {
+      coverage ??= readCoverage()
+      const [claim, covered, total] = match
+      if (
+        Number(covered) !== coverage.covered ||
+        Number(total) !== coverage.total
+      ) {
+        problems.push(
+          `${where}: "${claim}", but contract:coverage reports ` +
+            `${coverage.covered} of ${coverage.total}`
+        )
+      }
+    }
+    // A fraction's denominator is also a bare "N routes"; don't judge it twice.
+    text = text.replace(ROUTE_FRACTION, "")
+
+    for (const match of text.matchAll(ROUTE_COUNT)) {
+      const [claim, count, floor] = match
+      const holds = floor
+        ? routeTotal >= Number(count)
+        : routeTotal === Number(count)
+      if (!holds) {
+        problems.push(
+          `${where}: "${claim}", but ${relative(repoRoot, routeSnapshot)} ` +
+            `lists ${routeTotal} routes`
+        )
+      }
+    }
+  }
+
+  if (problems.length) {
+    throw new Error(
+      `Route figures disagree with the server's route snapshot:\n  ` +
+        `${problems.join("\n  ")}\nState a floor ("40+") or no count at all ` +
+        "rather than an exact figure: the snapshot changes on every server " +
+        "merge, and an exact figure is wrong the next time it does."
+    )
+  }
+  return { routeTotal, coverage }
+}
+
 function main() {
   const text = readFileSync(resumeSource, "utf8")
 
@@ -206,12 +319,28 @@ function main() {
   checkUnqualifiedProduction(text)
   checkNoBareWorkspaceCounts(text)
 
+  // The pruned release build may not carry the harness at all; a full
+  // checkout must, so a missing snapshot there is a failure, not a skip.
+  if (WORKSPACE_PRUNED && !existsSync(routeSnapshot)) {
+    // eslint-disable-next-line no-console
+    console.log(
+      "[resume] claims check passed: no forbidden terms, no unqualified " +
+        "production claims, no bare workspace-size numbers in resume " +
+        "content (workspace/extension package counts and route figures " +
+        "skipped — SOME_UI_PRUNED_WORKSPACE is set)"
+    )
+    return
+  }
+
+  const { routeTotal } = checkRouteFigures([resumeSource, harnessReadme])
+
   if (WORKSPACE_PRUNED) {
     // eslint-disable-next-line no-console
     console.log(
       "[resume] claims check passed: no forbidden terms, no unqualified " +
         "production claims, no bare workspace-size numbers in resume " +
-        "content (workspace/extension package counts skipped — " +
+        `content, route figures agree with ${routeTotal} snapshot routes ` +
+        "(workspace/extension package counts skipped — " +
         "SOME_UI_PRUNED_WORKSPACE is set)"
     )
     return
@@ -241,7 +370,8 @@ function main() {
   // eslint-disable-next-line no-console
   console.log(
     `[resume] claims check passed: ${packages.size} workspace packages, ` +
-      `${extensions} browser extensions, no forbidden terms, no unqualified ` +
+      `${extensions} browser extensions, route figures agree with ` +
+      `${routeTotal} snapshot routes, no forbidden terms, no unqualified ` +
       "production claims, no bare workspace-size numbers in resume content"
   )
 }

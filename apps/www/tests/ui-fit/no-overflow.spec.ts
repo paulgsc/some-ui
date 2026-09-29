@@ -71,6 +71,9 @@ const ALLOWED_SCROLL_INTENTS = new Set([
  */
 const NON_RENDERING_STORIES: ReadonlyArray<string> = []
 
+/** How long a story gets to mount after `load` before it counts as empty. */
+const MOUNT_TIMEOUT_MS = 3000
+
 type Offender = {
   tag: string
   intent: string | null
@@ -168,6 +171,20 @@ test.describe("every story fits the box it is given", () => {
           `${storybook!.origin}/iframe.html?id=${story.id}&viewMode=story`,
           { waitUntil: "load" }
         )
+        // `load` fires before a story whose component sits in a lazy chunk has
+        // mounted - the topik applet lands ~130ms later - so a fixed settle
+        // alone races the mount and reports "rendered nothing" for a story
+        // that renders. Wait for the mount, bounded: one that never comes is
+        // still caught below.
+        await page
+          .waitForFunction(
+            () =>
+              (document.getElementById("storybook-root")?.childElementCount ??
+                0) > 0,
+            null,
+            { timeout: MOUNT_TIMEOUT_MS }
+          )
+          .catch(() => undefined)
         // Stories that measure themselves need a frame to settle; the fitted
         // pager deliberately converges over one or two.
         await page.waitForTimeout(150)

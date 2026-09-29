@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.10",
   "type": "module",
+  "someUi": {
+    "audience": "public"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && vite build",
     "build:tsc-alias": "tsc-alias -p tsconfig.json",
@@ -18,7 +21,7 @@
   "peerDependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "canvas-confetti": "1.9.3"
+    "canvas-confetti": "1.9.4"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "catalog:",
@@ -27,7 +30,7 @@
     "@some-ui/styles": "workspace:*",
     "@types/canvas-confetti": "1.9.0",
     "@types/react": "^19.0.4",
-    "canvas-confetti": "1.9.3",
+    "canvas-confetti": "1.9.4",
     "lucide-react": "catalog:",
     "some-ui-input": "workspace:*",
     "some-ui-utils": "workspace:*"
@@ -54,7 +57,7 @@
     "*.css"
   ],
   "unpkg": "some-ui-stepper.umd.js",
-  "main": "./dist/some-ui-stepper.cjs.js",
+  "main": "./dist/some-ui-stepper.es.js",
   "module": "./dist/some-ui-stepper.es.js",
   "types": "./dist/some-ui-stepper.d.ts",
   "style": "./dist/stepper.css",
@@ -62,7 +65,6 @@
     ".": {
       "types": "./dist/some-ui-stepper.d.ts",
       "import": "./dist/some-ui-stepper.es.js",
-      "require": "./dist/some-ui-stepper.cjs.js",
       "default": "./dist/some-ui-stepper.es.js"
     },
     "./style.css": "./dist/stepper.css"

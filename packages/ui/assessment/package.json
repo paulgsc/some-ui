@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "someUi": {
+    "audience": "public"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && vite build",
     "build:tsc-alias": "tsc-alias -p tsconfig.json",
@@ -42,14 +45,13 @@
     "*.css"
   ],
   "unpkg": "some-ui-assessment.umd.js",
-  "main": "./dist/@some-ui/assessment.cjs.js",
+  "main": "./dist/@some-ui/assessment.es.js",
   "module": "./dist/@some-ui/assessment.es.js",
   "types": "./dist/@some-ui/assessment.d.ts",
   "exports": {
     ".": {
       "types": "./dist/@some-ui/assessment.d.ts",
       "import": "./dist/@some-ui/assessment.es.js",
-      "require": "./dist/@some-ui/assessment.cjs.js",
       "default": "./dist/@some-ui/assessment.es.js"
     },
     "./style.css": "./dist/assessment.css"

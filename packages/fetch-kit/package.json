@@ -16,7 +16,6 @@
     ".": {
       "types": "./dist/@some-ui/fetch-kit.d.ts",
       "import": "./dist/@some-ui/fetch-kit.es.js",
-      "require": "./dist/@some-ui/fetch-kit.cjs.js",
       "default": "./dist/@some-ui/fetch-kit.es.js"
     },
     "./style.css": "./dist/fetch-kit.css"
@@ -27,7 +26,7 @@
   "homepage": "https://pgdev.maishatu.com/?tab=github",
   "keywords": [],
   "license": "MIT",
-  "main": "./dist/@some-ui/fetch-kit.cjs.js",
+  "main": "./dist/@some-ui/fetch-kit.es.js",
   "module": "./dist/@some-ui/fetch-kit.es.js",
   "name": "@some-ui/fetch-kit",
   "private": true,

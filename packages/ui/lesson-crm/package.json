@@ -1,0 +1,69 @@
+{
+  "name": "@some-ui/lesson-crm",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "someUi": {
+    "audience": "lan"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && vite build",
+    "build:tsc-alias": "tsc-alias -p tsconfig.build.json",
+    "watch": "concurrently \"rollup --bundleConfigAsCjs -c --watch\" \"tsc --watch\"",
+    "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\"",
+    "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
+    "clean:build": "rimraf ./dist ./tsconfig.build.tsbuildinfo ./tsconfig.tsbuildinfo",
+    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+    "lint:js": "cross-env NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
+    "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "dependencies": {
+    "@some-ui/intent-kit": "workspace:*",
+    "@some-ui/shared": "workspace:*",
+    "@some-ui/styles": "workspace:*",
+    "@some-ui/topik": "workspace:*",
+    "lucide-react": "catalog:",
+    "some-ui-utils": "workspace:*"
+  },
+  "devDependencies": {
+    "@some-ui/tsconfig": "workspace:*",
+    "@some-ui/vite-config": "workspace:*",
+    "@types/react": "^19.0.4",
+    "concurrently": "10.0.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paulgsc/some-ui"
+  },
+  "bugs": {
+    "url": "https://github.com/paulgsc/some-ui/issues"
+  },
+  "homepage": "https://pgdev.maishatu.com/?tab=github",
+  "license": "MIT",
+  "keywords": [],
+  "files": [
+    "dist"
+  ],
+  "sideEffects": [
+    "*.css"
+  ],
+  "unpkg": "@some-ui/lesson-crm.umd.js",
+  "main": "./dist/@some-ui/lesson-crm.es.js",
+  "module": "./dist/@some-ui/lesson-crm.es.js",
+  "types": "./dist/@some-ui/lesson-crm.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/@some-ui/lesson-crm.d.ts",
+      "import": "./dist/@some-ui/lesson-crm.es.js",
+      "default": "./dist/@some-ui/lesson-crm.es.js"
+    },
+    "./style.css": "./dist/lesson-crm.css"
+  },
+  "style": "./dist/lesson-crm.css"
+}

@@ -10,6 +10,7 @@ import {
   DEFAULT_FILE_HOST_PORT,
   describeFileHost,
   FILE_HOST_PROXY_PATH,
+  fileHostRouteUrl,
   fileHostUrl,
   resolveFileHostBase,
 } from "@/lib/file-host-config"
@@ -104,5 +105,32 @@ describe("fileHostUrl", () => {
     expect(fileHostUrl("sessions")).toBe(
       "https://study.example.com/api/v1/sessions"
     )
+  })
+})
+
+describe("fileHostRouteUrl", () => {
+  it("joins a server-named route onto the base, below its API prefix", () => {
+    servePageOver("https:", "nixos.local")
+
+    // `apiUrl` would resolve `/api/v1/...` as absolute and lose the proxy.
+    expect(fileHostRouteUrl("/api/v1/curriculum/manifest.json")).toBe(
+      `${FILE_HOST_PROXY_PATH}/api/v1/curriculum/manifest.json`
+    )
+  })
+
+  it("binds and encodes a route's placeholders", () => {
+    servePageOver("http:", "nixos.local")
+
+    expect(fileHostRouteUrl("/api/v1/curriculum/:key", { key: "a/b c" })).toBe(
+      `http://nixos.local:${DEFAULT_FILE_HOST_PORT}/api/v1/curriculum/a%2Fb%20c`
+    )
+  })
+
+  it("refuses, at compile time, a route the server does not have", () => {
+    // @ts-expect-error - not a ServerRoute
+    fileHostRouteUrl("/api/v1/curriculm/manifest.json")
+    // @ts-expect-error - `:key` must be bound
+    fileHostRouteUrl("/api/v1/curriculum/:key")
+    expect(true).toBe(true)
   })
 })

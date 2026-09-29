@@ -111,3 +111,10 @@ export function syncPackageJson(
 ): Record<string, unknown> {
   return updatePackageJson(options, packageRoot)
 }
+
+export {
+  audiencePlugin,
+  BUILD_PROFILE_MODULE,
+  type AudiencePluginOptions,
+  type GatedAudience,
+} from "./audience/plugin.js"

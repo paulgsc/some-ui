@@ -10,9 +10,9 @@
   /* Solid dark background with warm tint — visible on any dark page */
   background: linear-gradient(
     135deg,
-    hsl(25deg 25% 16% / 97%) 0%,
-    hsl(340deg 20% 14% / 95%) 50%,
-    hsl(20deg 25% 15% / 97%) 100%
+    hsl(var(--dc-hue-2) calc(25% * var(--dc-sat)) 16% / 97%) 0%,
+    hsl(var(--dc-hue) calc(20% * var(--dc-sat)) 14% / 95%) 50%,
+    hsl(var(--dc-hue-2) calc(25% * var(--dc-sat)) 15% / 97%) 100%
   );
 
   /* Visible border with glow */
@@ -21,11 +21,11 @@
 
   /* Layered shadows for depth + glow effect */
   box-shadow:
-    0 0 0 1px hsl(340deg 50% 40% / 15%),
+    0 0 0 1px hsl(var(--dc-hue) calc(50% * var(--dc-sat)) 40% / 15%),
     0 8px 32px var(--dc-shadow-strong),
-    0 0 60px hsl(340deg 60% 50% / 15%),
-    inset 0 1px 0 hsl(340deg 40% 50% / 20%),
-    inset 0 -1px 0 hsl(340deg 30% 30% / 30%);
+    0 0 60px hsl(var(--dc-hue) calc(60% * var(--dc-sat)) 50% / 15%),
+    inset 0 1px 0 hsl(var(--dc-hue) calc(40% * var(--dc-sat)) 50% / 20%),
+    inset 0 -1px 0 hsl(var(--dc-hue) calc(30% * var(--dc-sat)) 30% / 30%);
   transform: translateZ(0);
   transition:
     box-shadow 300ms var(--dc-ease),
@@ -38,16 +38,16 @@
 .dc-card:hover {
   border-color: var(--dc-rose);
   box-shadow:
-    0 0 0 1px hsl(340deg 60% 50% / 30%),
+    0 0 0 1px hsl(var(--dc-hue) calc(60% * var(--dc-sat)) 50% / 30%),
     0 12px 48px var(--dc-shadow-strong),
-    0 0 80px hsl(340deg 70% 55% / 20%),
-    inset 0 1px 0 hsl(340deg 50% 55% / 25%),
-    inset 0 -1px 0 hsl(340deg 30% 30% / 30%);
+    0 0 80px hsl(var(--dc-hue) calc(70% * var(--dc-sat)) 55% / 20%),
+    inset 0 1px 0 hsl(var(--dc-hue) calc(50% * var(--dc-sat)) 55% / 25%),
+    inset 0 -1px 0 hsl(var(--dc-hue) calc(30% * var(--dc-sat)) 30% / 30%);
 }
 
 /* Drag handle affordance — subtle pill that appears on hover */
 .dc-card::before {
-  background: hsl(340deg 40% 50% / 40%);
+  background: hsl(var(--dc-hue) calc(40% * var(--dc-sat)) 50% / 40%);
   border-radius: 2px;
   content: "";
   height: 4px;
@@ -66,7 +66,7 @@
 
 /* Size toggle button — top-right corner */
 .dc-size-btn {
-  background: hsl(340deg 30% 25% / 80%);
+  background: hsl(var(--dc-hue) calc(30% * var(--dc-sat)) 25% / 80%);
   border: 1px solid var(--dc-border);
   border-radius: 50%;
   color: var(--dc-text-secondary);
@@ -85,7 +85,7 @@
 }
 
 .dc-size-btn:hover {
-  background: hsl(340deg 40% 35% / 90%);
+  background: hsl(var(--dc-hue) calc(40% * var(--dc-sat)) 35% / 90%);
   border-color: var(--dc-border-strong);
   color: var(--dc-text-primary);
 }

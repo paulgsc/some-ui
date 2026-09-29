@@ -4,6 +4,7 @@ import {
   noUnprefixedNamespace,
   noZindexEscalation,
   requireNamedLifetime,
+  requireScopedLifetime,
   requireStoryTitlePrefix,
 } from "@eslint/rules/index.js"
 import { defineConfig } from "eslint/config"
@@ -28,6 +29,7 @@ export const extensionCharterPlugin = {
     "no-raw-storage": noRawStorage,
     "require-story-title-prefix": requireStoryTitlePrefix,
     "require-named-lifetime": requireNamedLifetime,
+    "require-scoped-lifetime": requireScopedLifetime,
   },
 }
 
@@ -55,10 +57,22 @@ const extensionsCharterConfig = defineConfig([
       // clearInterval — see the rule's own doc comment for why that is
       // precisely the reason this is not a cleanup-pairing check.
       //
-      // Workspace-agnostic by default: it names no module, so the message
-      // falls back to generic wording. A workspace with its own lifecycle
-      // helper should pass `lifecycleModule` so the error points at it.
-      "extension-charter/require-named-lifetime": "error",
+      // The message points at commons' `Disposables`, whose interval() and
+      // loop() are these resources with a lifetime attached. A workspace with
+      // its own lifecycle helper can pass a different `lifecycleModule`.
+      "extension-charter/require-named-lifetime": [
+        "error",
+        { lifecycleModule: "@some-extension/common's Disposables" },
+      ],
+      // §8, the listener and frame-loop half of the same question (see the
+      // rule's doc comment for what got past require-named-lifetime). `warn`
+      // here, so it lands as an audit in every workspace without failing
+      // one that has not adopted a lifetime helper yet; a workspace that has
+      // turns it to "error" in its own eslint.config.js, as some-drama does.
+      "extension-charter/require-scoped-lifetime": [
+        "warn",
+        { lifecycleModule: "@some-extension/common's Disposables" },
+      ],
     },
   },
   {

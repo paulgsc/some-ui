@@ -2,6 +2,13 @@ import type { ServerRoute, UnversionedRoute } from "@some-ui/server-routes"
 import { API_BASE_PATH } from "@some-ui/server-routes"
 
 /**
+ * Re-exported so an app can name a route by the server's own type without
+ * taking a second dependency for it; `@some-ui/server-routes` stays the one
+ * place the union is generated into.
+ */
+export type { ServerRoute } from "@some-ui/server-routes"
+
+/**
  * Re-exported under its historical name: `apps/www/src/lib/file-host-config`
  * builds a base URL by hand from this constant (`${proxyPath}${API_V1_PREFIX}`),
  * not through `apiUrl`, so the name stays put. Aliased rather than
@@ -23,6 +30,9 @@ type Params<P extends string> =
     : P extends `${string}:${infer Name}`
       ? Name
       : never
+
+/** `Params`, for a caller that binds a route's placeholders itself. */
+export type RouteParams<P extends string> = Params<P>
 
 /**
  * Builds a `file_host` API URL from one of the server's own routes

@@ -93,6 +93,14 @@ export type Contract<TResponse = unknown> = {
   mutates?: boolean
   /** Set to a reason to skip. The contract still appears in the report. */
   skip?: string
+  /**
+   * Marks a contract whose route is per-person: the server answers it only
+   * with a passkey session, and `401` without one. Probed only when a session
+   * cookie is supplied (`--session-cookie`); skipped, with that reason,
+   * otherwise. A session is made by signing in to the app and copying the
+   * `__Host-session` cookie's value from the browser's storage inspector.
+   */
+  session?: boolean
 }
 
 /**

@@ -7,7 +7,8 @@ import {
 } from "@tanstack/react-router"
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
 
-import { hasDecorativeSession } from "@/lib/auth-session"
+import { isPublicPath, resolveSession } from "@/lib/auth"
+import { SignedOutRedirect } from "@/components/auth/signed-out-redirect"
 
 /**
  * What every route's `loader` is handed. The `queryClient` is the app's single
@@ -20,31 +21,16 @@ export type RouterContext = {
 }
 
 export const Route = createRootRouteWithContext<RouterContext>()({
-  beforeLoad: ({ location }) => {
-    // The router's own basepath rewrite preserves a trailing slash (it
-    // only strips the basepath prefix), and GitHub Pages' /resume/index.html
-    // shell (see vite.config.ts's build.rolldownOptions.input) is the
-    // canonical, publicly-shared résumé URL - with the slash. A bare
-    // string match against "/resume" would pass every in-app navigation
-    // (which the router's default trailingSlash: "never" always produces
-    // without one) but fail a fresh visitor's first hit on that exact
-    // canonical link, redirecting them to /auth instead of the résumé they
-    // followed. Stripping a single trailing slash before comparing (never
-    // for "/" itself, which has nothing left to strip) matches that
-    // default instead of special-casing "/resume/" alone.
-    const normalizedPathname =
-      location.pathname !== "/" && location.pathname.endsWith("/")
-        ? location.pathname.slice(0, -1)
-        : location.pathname
-    const isPublicRoute =
-      normalizedPathname === "/" ||
-      normalizedPathname === "/auth" ||
-      normalizedPathname === "/resume" ||
-      // A page built to be sent to someone who has no account here and
-      // never will - gating it behind the passkey screen would defeat the
-      // only reason it exists.
-      normalizedPathname === "/extensions"
-    if (!isPublicRoute && !hasDecorativeSession()) {
+  beforeLoad: async ({ location }) => {
+    const isPublicRoute = isPublicPath(location.pathname)
+    // Asked once per page load, then answered from memory
+    // (`lib/auth`). A public route does not wait for the answer,
+    // but still asks, so `"/"` can swap to the signed-in landing in place.
+    if (isPublicRoute) {
+      void resolveSession()
+      return
+    }
+    if (!(await resolveSession())) {
       throw redirect({
         to: "/auth",
         search: { redirect: location.href },
@@ -53,6 +39,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
   },
   component: () => (
     <>
+      <SignedOutRedirect />
       <Outlet />
       {/* Vite strips this whole block (and its two devtools deps) from the
           production bundle - without the guard it also renders on the

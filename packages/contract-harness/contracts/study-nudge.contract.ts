@@ -148,6 +148,7 @@ export const contracts = [
   defineContract({
     id: "push.subscribe",
     module: "push",
+    session: true,
     method: "POST",
     path: "/push/subscriptions",
     summary:
@@ -178,6 +179,7 @@ export const contracts = [
   defineContract({
     id: "presence.lease",
     module: "presence",
+    session: true,
     method: "POST",
     path: "/presence/lease",
     summary:
@@ -194,6 +196,7 @@ export const contracts = [
   defineContract({
     id: "signals.session_started",
     module: "signals",
+    session: true,
     method: "POST",
     path: "/signals",
     summary:
@@ -213,6 +216,7 @@ export const contracts = [
   defineContract({
     id: "sessions.list",
     module: "sessions",
+    session: true,
     method: "GET",
     path: "/sessions",
     summary: "every session, in the camelCase the client's SessionRecord uses",
@@ -222,6 +226,7 @@ export const contracts = [
   defineContract({
     id: "sessions.get_by_id",
     module: "sessions",
+    session: true,
     method: "GET",
     path: "/sessions/:id",
     summary:
@@ -237,6 +242,7 @@ export const contracts = [
   defineContract({
     id: "sessions.create",
     module: "sessions",
+    session: true,
     method: "POST",
     path: "/sessions",
     summary:

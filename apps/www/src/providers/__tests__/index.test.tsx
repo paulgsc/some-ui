@@ -24,13 +24,20 @@ vi.mock("@/providers/study-nudge", () => ({
   },
 }))
 
+// Reads the viewport (`useIsMobile`), which this file has no reason to
+// stand up; its position has its own test (toaster.test.tsx).
+vi.mock("@/providers/toaster", () => ({
+  AppToaster: (): null => null,
+}))
+
 vi.mock("@/providers/tts", () => ({
   TTSProvider: ({ children }: { children?: ReactNode }): ReactNode => children,
 }))
 
 let hasSession = false
-vi.mock("@/lib/auth-session", () => ({
-  useHasDecorativeSession: (): boolean => hasSession,
+vi.mock("@/lib/auth", () => ({
+  useHasSession: (): boolean => hasSession,
+  onAccountChange: (): (() => void) => () => undefined,
 }))
 
 describe("AppProviders: does not mount StudyNudgeWatcher before there is a session", () => {

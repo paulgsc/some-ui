@@ -6,7 +6,7 @@
  * a signed-in one. The choice is made in the component, not by a redirect,
  * so it is asserted by rendering the route's component under each state -
  * and a session appearing has to swap the page in place, which is what the
- * subscribing `useHasDecorativeSession` read is for.
+ * subscribing `useHasSession` read is for.
  */
 
 import type { JSX, ReactNode } from "react"
@@ -17,10 +17,10 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 let session = false
 const listeners = new Set<() => void>()
 
-vi.mock("@/lib/auth-session", async () => {
+vi.mock("@/lib/auth", async () => {
   const { useSyncExternalStore } = await import("react")
   return {
-    useHasDecorativeSession: (): boolean =>
+    useHasSession: (): boolean =>
       useSyncExternalStore(
         (listener) => {
           listeners.add(listener)

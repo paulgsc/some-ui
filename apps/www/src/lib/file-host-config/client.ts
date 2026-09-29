@@ -110,6 +110,25 @@ async function errorCodeOf(response: Response): Promise<string | null> {
  * for both. Not exported - nothing outside `resolveTimeoutMs` needs the
  * default directly; a test wanting a different deadline overrides it via
  * `VITE_FILE_HOST_TIMEOUT_MS`, not by importing this value. */
+let unauthorizedHandler: (() => () => void) | null = null
+
+/**
+ * What to do when `file_host` answers `401`: the session cookie is missing,
+ * expired or revoked (signed out everywhere, account deleted). Registered by
+ * `lib/auth` rather than imported here, which would be a cycle: that
+ * module is itself a caller of this one.
+ *
+ * `handler` is called as each request is sent, and returns what to run if
+ * that request is refused. So the response is judged against the session
+ * the request was sent under: a slow cookieless request answering `401`
+ * after a sign-in says nothing about the new session.
+ */
+export function onFileHostUnauthorized(
+  handler: (() => () => void) | null
+): void {
+  unauthorizedHandler = handler
+}
+
 const DEFAULT_FILE_HOST_TIMEOUT_MS = 10_000
 
 /** Read fresh on every call, not cached at transport-creation time - so a
@@ -135,6 +154,17 @@ function resolveTimeoutMs(): number {
  * the static build takes. Deliberately has no timeout of its own - see this
  * file's header, point 3, and `requestJSON` below, which owns the deadline
  * for the whole request this transport is only the first half of.
+ *
+ * Sends credentials (`credentials: "include"`), because the passkey session
+ * is an `HttpOnly` cookie and a `published-port` base URL is cross-origin,
+ * where fetch's default `same-origin` would neither store the cookie a
+ * sign-in sets nor send it back. A caller can still override it per request.
+ * Every module this transport reaches answers with
+ * `Access-Control-Allow-Credentials` (paulgsc/server `routes/cors.rs`,
+ * `allowlisted_cors_with_credentials`). A browser drops a credentialed
+ * cross-origin response without that header, so a caller of one of the
+ * server's uncredentialed read modules (`db/curriculum`, `db/activities`)
+ * must pass `credentials: "same-origin"`.
  */
 export function createFileHostTransport(
   resolution: FileHostResolution = describeFileHost()
@@ -146,6 +176,7 @@ export function createFileHostTransport(
     const url = `${baseUrl.replace(/\/+$/, "")}/${route.replace(/^\/+/, "")}`
     try {
       return await fetch(url, {
+        credentials: "include",
         ...init,
         headers: {
           "Content-Type": "application/json",
@@ -189,8 +220,24 @@ export function isFileHostTimeout(error: unknown): boolean {
  * from "the server already created it and the response was slow" - see
  * `requestJSON`'s own use of this below.
  */
-function isNonIdempotent(init: RequestInit | undefined): boolean {
-  return init?.method === "POST"
+function isNonIdempotent(
+  init: RequestInit | undefined,
+  options: RequestOptions | undefined
+): boolean {
+  return options?.idempotent === undefined
+    ? init?.method === "POST"
+    : !options.idempotent
+}
+
+export type RequestOptions = {
+  /**
+   * Whether repeating this request converges on the same end state, when its
+   * method alone says otherwise. A `POST` is taken to mint something unless a
+   * caller says it does not - the lesson CRM's retire and restore are
+   * `POST`s that set a state, so a timed-out one is as safe to retry as a
+   * `PATCH`. Omit it to let the method decide.
+   */
+  idempotent?: boolean
 }
 
 /**
@@ -210,18 +257,31 @@ function isNonIdempotent(init: RequestInit | undefined): boolean {
 export async function requestJSON<T>(
   transport: FileHostTransport,
   route: string,
-  init?: RequestInit
+  init?: RequestInit,
+  options?: RequestOptions
 ): Promise<T> {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), resolveTimeoutMs())
 
+  const onUnauthorized = unauthorizedHandler?.()
   const operation = async (): Promise<T> => {
     const response = await transport(route, {
       ...init,
       signal: controller.signal,
     })
 
-    if (response.status === 503) throw new FileHostNotConfiguredError(route)
+    if (response.status === 503) {
+      // `503` is two things on `file_host`: a feature this deployment has
+      // not configured, and a busy server or a spent quota
+      // (`service_overloaded`, e.g. the daily new-account cap). Only the
+      // first is "not configured"; the second is an answer with a code.
+      const code = await errorCodeOf(response)
+      if (code === "service_overloaded") {
+        throw new FileHostResponseError(503, route, code)
+      }
+      throw new FileHostNotConfiguredError(route)
+    }
+    if (response.status === 401) onUnauthorized?.()
     if (!response.ok) {
       throw new FileHostResponseError(
         response.status,
@@ -275,7 +335,7 @@ export async function requestJSON<T>(
         ),
         // Not retryable for a non-idempotent write - see `isNonIdempotent`'s
         // own header and `FileHostUnreachableError`'s `retryable` doc.
-        !isNonIdempotent(init)
+        !isNonIdempotent(init, options)
       )
     }
     throw new FileHostUnreachableError(route, cause)

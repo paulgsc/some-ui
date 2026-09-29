@@ -20,7 +20,7 @@ import type * as ReactRouterModule from "@tanstack/react-router"
 import { cleanup, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 
-import { createDecorativeSession } from "@/lib/auth-session"
+import { markSignedIn } from "@/lib/auth"
 
 vi.mock(
   "@tanstack/react-router",
@@ -39,7 +39,7 @@ vi.mock(
 const { EditSessionRoute } = await import("@/routes/_dashboard/sessions/new")
 
 beforeAll(() => {
-  createDecorativeSession()
+  markSignedIn()
 })
 
 afterEach(() => {

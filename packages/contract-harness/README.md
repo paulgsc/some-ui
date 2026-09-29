@@ -49,14 +49,15 @@ it's optional, every response validates and the drift has been invisible.
 ```
   server repo                             client repo
   ───────────                             ───────────
-  change a route
+  change a route (on its RouteTable)
         │
-        ├── cargo test -p file_host --lib routes::inventory
-        │     ↑ fails if you renamed a route and didn't
-        │       update src/routes/inventory.rs
+        ├── server PR CI (routes.yml) ──► scripts/sync-server-routes.sh --verify
+        │     ↑ fails on the server PR             against this repo's main
+        │       if a contract here loses
+        │       its route
         │
-        └── make routes ──► routes.server.json ──┐
-                                                 ▼
+        └── merge ──► sync PR here ──► routes.server.json ──┐
+                                                            ▼
                                         packages/contract-harness/
                                                  │
                                                  ├── pnpm contract:drift
@@ -106,18 +107,25 @@ is safe by default rather than safe by remembering.
 
 ## Refreshing the route snapshot
 
-In the **server** repo:
+You normally don't: the server's CI does it. Every server PR runs
+`scripts/sync-server-routes.sh --verify` against this repo's `main`, so a route
+change that strands a contract here fails on the server PR that made it. Every
+merge to the server's `main` opens (or updates) a PR here on
+`bot/server-route-snapshot` carrying the new snapshot (server
+`.github/workflows/routes.yml`).
+
+By hand, in the **server** repo:
 
 ```sh
 # the build needs a migrated SQLite file because sqlx checks queries at compile time
 DATABASE_URL="sqlite://$PWD/dev.db" make routes
 ```
 
-then copy `routes.server.json` into this package. The server's own test
-(`routes::inventory::inventory_matches_route_sources`) guarantees the snapshot
-describes the routers that actually exist — it parses the `routes/*.rs` sources
-and fails if the declaration and the `.route(...)` calls disagree in either
-direction.
+then, here, `scripts/sync-server-routes.sh <routes.server.json> <routes.server.ts> --verify`.
+The snapshot cannot describe routes the server does not serve: the server
+records each route in the same call that registers it with axum
+(`src/routes/table.rs`), and its router and the snapshot are built from one
+list of route modules.
 
 ## Writing a contract
 
@@ -177,9 +185,13 @@ Worth knowing before trusting a green run.
   one declaration — that removes the copy without making the check circular,
   since the server side still comes from the wire.
 
-- **Coverage is 15 of 52 routes.** Not a gap to close for its own sake; the
-  valuable contracts are the ones on boundaries that actually move. Run
-  `contract:coverage` to see what's unwritten.
+- **Coverage is partial.** Not a gap to close for its own sake; the valuable
+  contracts are the ones on boundaries that actually move. Run
+  `contract:coverage` for the current covered/total figure and what's
+  unwritten. This README doesn't repeat the figure: the snapshot changes on
+  every server merge, so a written count is wrong by the next one.
+  (`@some-ui/resume`'s `check-claims.mjs` fails the build if a "N of M routes"
+  figure here disagrees with that report.)
 
 - **This is not a browser test.** Requests go server-to-server, deliberately.
   The tabs and mood-event routes pin CORS to a single origin, so a

@@ -44,6 +44,7 @@
  * `file_host` somewhere else entirely - the same escape hatch
  * `VITE_TTS_ENDPOINT` is.
  */
+import type { RouteParams, ServerRoute } from "@some-ui/fetch-kit"
 import { API_V1_PREFIX } from "@some-ui/fetch-kit"
 
 /** The port `file_host` listens on. */
@@ -117,6 +118,37 @@ export function fileHostUrl(route: string): string | undefined {
   const base = resolveFileHostBase()
   if (base === undefined) return undefined
   return `${base.replace(/\/+$/, "")}/${route.replace(/^\/+/, "")}`
+}
+
+/**
+ * `fileHostUrl` for a route named exactly as the server names it.
+ *
+ * `apiUrl` (`@some-ui/fetch-kit`) is where `ServerRoute` turns a typo'd path
+ * or a forgotten `:key` into a `tsc` error, but it resolves `/api/v1/...` as
+ * an absolute path, which drops a base's own path - the same-origin
+ * `FILE_HOST_PROXY_PATH` above is exactly such a base. This keeps the type
+ * check and joins onto `resolveFileHostBase()` instead, which already ends in
+ * the API prefix. Placeholders are bound here, URI-encoded, because unlike
+ * `apiUrl`'s module-scope callers the values are known at the call.
+ */
+export function fileHostRouteUrl<P extends ServerRoute>(
+  route: P,
+  ...params: RouteParams<P> extends never
+    ? []
+    : [Record<RouteParams<P>, string | number>]
+): string | undefined
+// Plain implementation signature, for the reason `apiUrl` gives for its own:
+// the conditional tuple above is unresolved inside a generic body.
+export function fileHostRouteUrl(
+  route: string,
+  params?: Record<string, string | number>
+): string | undefined {
+  const bound = route
+    .slice(API_V1_PREFIX.length)
+    .replace(/:([A-Za-z_]\w*)/g, (_, name: string) =>
+      encodeURIComponent(String(params?.[name]))
+    )
+  return fileHostUrl(bound)
 }
 
 /**

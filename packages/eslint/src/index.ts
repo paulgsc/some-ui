@@ -3,8 +3,6 @@ import type { Config } from "typescript-eslint"
 
 import {
   baseConfig,
-  buildHygieneConfig,
-  buildHygienePlugin,
   compiledPackageStyleImportBanPattern,
   depsOverrideConfig,
   eslintPluginStorybook,
@@ -48,7 +46,6 @@ export const maishatuRecommended: Config = defineConfig(
   ...reactPeerDependencyConfig,
   ...eslintPluginStorybook,
   ...wasmLoaderGuardConfig,
-  ...buildHygieneConfig,
   ...switchLintConfig,
   ...tailwindIdiomConfig,
   ...fitsTheBoxConfig,
@@ -67,7 +64,6 @@ export const maishatuNonStylistic: Config = defineConfig(
   ...reactPeerDependencyConfig,
   ...eslintPluginStorybook,
   ...wasmLoaderGuardConfig,
-  ...buildHygieneConfig,
   ...tailwindIdiomConfig,
   toolsOverrideConfig,
   testsOverrideConfig
@@ -112,9 +108,6 @@ export { styleImportProtocolConfig, compiledPackageStyleImportBanPattern }
 export { lazyRegistryConfig, lazyRegistryPlugin }
 export { tailwindIdiomConfig, tailwindIdiomPlugin }
 
-// ── Library-build hygiene (centralized dts excludes) ───────────────────────
-export { buildHygieneConfig, buildHygienePlugin }
-
 /**
  * Recommended preset for browser-extension workspaces.
  * Extends maishatuRecommended with AMO security rules and Good-Citizen Charter lints.
@@ -155,11 +148,10 @@ export const uiRecommended: Config = [
  * "style.css" instead of letting main.tsx pull that package's authored CSS
  * from source).
  *
- * The parallel is `extensionsRecommended`, not `buildHygieneConfig` - the
- * latter stays in maishatuRecommended and self-limits by file glob
- * (`**\/vite.config.*`) plus call-site detection, so it is inert where it
- * does not apply. A lint that must look at every source file cannot do
- * that, so it is scoped by who extends it.
+ * The parallel is `extensionsRecommended`. A lint that can limit itself by
+ * file glob or call site may sit in maishatuRecommended and stay inert where
+ * it does not apply; a lint that must look at every source file cannot, so
+ * it is scoped by who extends it.
  */
 export const appsRecommended: Config = [
   ...maishatuRecommended,

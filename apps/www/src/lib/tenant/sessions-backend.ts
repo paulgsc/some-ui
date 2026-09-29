@@ -28,8 +28,14 @@
  * return an empty array a moment before the migration fills it — which
  * would render "no sessions yet" at exactly the person whose sessions were
  * being carried over.
+ *
+ * The upload goes to per-person routes, so it starts only once this browser
+ * is signed in, on the first call made after that. Started any earlier
+ * (this module is imported before anyone signs in), it would meet a `401`,
+ * spend its one turn, and leave the new account empty until a reload.
  */
 
+import { resolveSession } from "@/lib/auth"
 import { DATA_MODE } from "@/lib/data-mode"
 import { createFileHostTransport } from "@/lib/file-host-config/client"
 
@@ -47,7 +53,7 @@ import { browserLocalStorage } from "./storage"
 import type { SessionRecord, SessionStatus } from "./types"
 
 /**
- * A store that defers every call until `ready` settles.
+ * A store that defers every call until `ready()` settles.
  *
  * `ready` never rejects: a migration that could not finish is reported and
  * the store is used anyway. The sessions that did not upload are still in
@@ -55,44 +61,47 @@ import type { SessionRecord, SessionStatus } from "./types"
  * so the right response to a half-done migration is to carry on, not to
  * take the app down.
  */
-function afterReady(store: SessionsStore, ready: Promise<void>): SessionsStore {
+function afterReady(
+  store: SessionsStore,
+  ready: () => Promise<void>
+): SessionsStore {
   return {
     list: async (): Promise<Array<SessionRecord>> => {
-      await ready
+      await ready()
       return store.list()
     },
     get: async (id: string): Promise<SessionRecord | null> => {
-      await ready
+      await ready()
       return store.get(id)
     },
     create: async (input: CreateSessionInput): Promise<SessionRecord> => {
-      await ready
+      await ready()
       return store.create(input)
     },
     update: async (
       id: string,
       patch: UpdateSessionInput
     ): Promise<SessionRecord> => {
-      await ready
+      await ready()
       return store.update(id, patch)
     },
     remove: async (id: string): Promise<void> => {
-      await ready
+      await ready()
       return store.remove(id)
     },
     removeMany: async (ids: ReadonlyArray<string>): Promise<void> => {
-      await ready
+      await ready()
       return store.removeMany(ids)
     },
     updateStatusMany: async (
       ids: ReadonlyArray<string>,
       status: SessionStatus
     ): Promise<Array<SessionRecord>> => {
-      await ready
+      await ready()
       return store.updateStatusMany(ids, status)
     },
     duplicate: async (id: string): Promise<SessionRecord> => {
-      await ready
+      await ready()
       return store.duplicate(id)
     },
   }
@@ -100,7 +109,8 @@ function afterReady(store: SessionsStore, ready: Promise<void>): SessionsStore {
 
 export function createSessionsBackend(
   mode = DATA_MODE,
-  storage: StorageAdapter = browserLocalStorage
+  storage: StorageAdapter = browserLocalStorage,
+  signedIn: () => Promise<boolean> = resolveSession
 ): SessionsStore {
   if (mode === "static") return createSessionsRepository(storage)
 
@@ -112,16 +122,30 @@ export function createSessionsBackend(
 
   const remote = createHttpSessionsRepository(transport)
 
-  const ready = migrateLocalSessions(remote, storage)
-    .then((outcome) => {
-      if (outcome.kind !== "partial") return
-      reportPartialMigration(outcome.migrated, outcome.remaining, outcome.error)
-    })
-    .catch(() => {
-      // Reading localStorage threw (private mode, a corrupted blob). There
-      // is nothing to migrate that can be read, and refusing to serve
-      // sessions over it would be a strange trade.
-    })
+  const migrate = (): Promise<void> =>
+    migrateLocalSessions(remote, storage)
+      .then((outcome) => {
+        if (outcome.kind !== "partial") return
+        reportPartialMigration(
+          outcome.migrated,
+          outcome.remaining,
+          outcome.error
+        )
+      })
+      .catch(() => {
+        // Reading localStorage threw (private mode, a corrupted blob). There
+        // is nothing to migrate that can be read, and refusing to serve
+        // sessions over it would be a strange trade.
+      })
+
+  let migration: Promise<void> | null = null
+  const ready = async (): Promise<void> => {
+    // Signed out, the call itself goes ahead and meets the server's 401;
+    // the migration waits for a call made with a session.
+    if (!(await signedIn())) return
+    migration ??= migrate()
+    await migration
+  }
 
   return afterReady(remote, ready)
 }
