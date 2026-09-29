@@ -49,7 +49,7 @@ request goes to the real network.
 | --------------------------------------------------------- | ---------------------------------------------------------- |
 | `/sessions*`                                              | the `sessions` table                                       |
 | `/shelf/:activity[/:key]`                                 | `learner_shelf` (keep a pasted lesson or your own round)   |
-| `/curriculum/manifest[.json]`, `/curriculum/:key`         | `curriculum`, filled by a sync from home (not yet built)   |
+| `/curriculum/manifest[.json]`, `/curriculum/:key`         | `curriculum`, filled by a sync from home                   |
 | `/leetype/rounds`, `/:id`, `/:id/runs`                    | `leetype_round*`, seeded from `packages/ui/leetype/corpus` |
 | `/auth/session`, `/signals`, `/presence/lease`, `/push/*` | see above                                                  |
 
@@ -62,10 +62,9 @@ too old to have that route would answer.
   every start, together with its recorded runs. The raw files hash to the same
   content hashes their runs were recorded against, so the runs show offline.
 - **TOPIK:** lessons are not in either repository. They exist only in the home
-  server's database. The phone will get them by a **sync from home**, still to
-  be built: on the LAN, the app copies the curriculum into its SQLite, and
-  after that it works offline. Until then, TOPIK offers the bundled read-aloud
-  decks, plus any lesson you paste and keep on the shelf.
+  server's database, so the phone gets them by a **sync from home** (below).
+  Before the first sync, TOPIK offers the bundled read-aloud decks, plus any
+  lesson you paste and keep on the shelf.
 
 ## Build
 
@@ -121,15 +120,61 @@ sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 The Claude Code sandbox cannot install it (`dl.google.com` is outside its
 egress policy), which is why CI builds the APK.
 
+## Sync from home
+
+**Settings → This phone** has one field and one button. The field takes the
+home server's address, for example `192.168.1.10:3000`. **Sync lessons from
+home**, pressed while on the home network, copies two things into the
+phone's database:
+
+- every listed TOPIK lesson;
+- any Leetype round whose content hash differs from the one the phone holds,
+  together with its runs.
+
+A lesson home no longer lists is retired (unlisted, still loadable by key).
+A lesson that merely failed to download is kept. Only published content
+moves, and only home → phone. Sessions and the shelf stay where they were
+made.
+
+The sync goes through Capacitor's native HTTP (`device-backend/native-http`).
+The app's page is `https://localhost`, so a browser `fetch` to
+`http://<lan-ip>:3000` is blocked as mixed content, and the server's CORS
+allowlist would also have to name that origin. Two consequences:
+
+- `AndroidManifest.xml` sets `usesCleartextTraffic`. Android refuses
+  plain-HTTP connections otherwise, and a network security config cannot
+  scope that to "private addresses".
+- Native HTTP parses JSON, so the bytes change. A synced Leetype round is
+  therefore stored against the hash the server's manifest attests, which is
+  the hash its runs were recorded against, not the hash of the re-serialized
+  bytes.
+
+## Study nudges
+
+An Android WebView has no web `Notification` API and no push. On the phone,
+the client's own nudge policy decides (`clientOwnsNudgeDelivery`), and the
+OS delivers the nudge as a **scheduled local notification**
+(`@capacitor/local-notifications`), which fires with the app closed:
+
+- **Leaving the screen:** `study-nudge/schedule` finds when `decideNudge`
+  would next say "nudge", by stepping the same pure policy forward in time.
+  That moment is scheduled, so quiet hours, "studied today" and the cooldown
+  are all respected with no second copy of the rules.
+- **Coming back:** a nudge whose time has passed becomes the cooldown, and a
+  pending one is cancelled, because sessions or preferences may be about to
+  change.
+- **Tapping it:** the app opens the session it names.
+
+The Android permission prompt comes from the reminders toggle under
+**Settings → Study reminders**.
+
 ## Not done yet
 
-- **Sync from home.** Pull the curriculum (and newer Leetype rounds) from the
-  LAN `file_host` while on the LAN. Nothing syncs _back_ yet. A session
-  recorded on the phone stays on the phone.
-- **Native notifications.** An Android WebView has no web `Notification`
-  API, so study nudges need `@capacitor/local-notifications`.
+- **Nothing syncs back.** A session recorded on the phone stays on the
+  phone. Two histories of one person's sessions need a merge rule first.
 - **Speech.** The device build asks for the platform voice, as the static
   build does. Whether Android's WebView offers `speechSynthesis` needs checking
   on a real phone. If it does not, speech needs a native text-to-speech
   adapter, which `@some-ui/speech`'s adapter registry already has a seam for.
-- **Sign-out** has nothing to end on the device, and should be hidden there.
+- **Nothing here has run on a phone yet.** CI proves the APK builds. Every
+  test runs the backend's SQL in Node's SQLite, not through the native bridge.

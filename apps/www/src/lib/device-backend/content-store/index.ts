@@ -36,18 +36,27 @@ function witnessesOf(round: unknown): Array<Witness> {
  * A Leetype round, by the `id` in its own body. Re-listed if it had been
  * retired; its witness rows are rewritten with it. Throws on a body that is
  * not a round, since both callers hand over bodies that should be.
+ *
+ * `attestedHash` is the content hash the home server's manifest gives for
+ * the round, used instead of hashing `body` when the bytes did not survive
+ * the trip: Capacitor's native HTTP parses any `application/json` answer, so
+ * a synced body is a re-serialisation of the server's. The hash is what the
+ * runs are keyed on, and the server's is the one they were recorded against.
+ * (`@some-ui/leetype` hashes its own canonical `serializeRound` of the parsed
+ * round, so it is indifferent to the bytes either way.)
  */
 export async function upsertRound(
   db: SqlDriver,
   body: string,
-  nowMs: number
+  nowMs: number,
+  attestedHash?: string
 ): Promise<UpsertOutcome> {
   const round: unknown = JSON.parse(body)
   if (!isRecord(round) || typeof round.id !== "string") {
     throw new Error("device backend: a Leetype round needs a string `id`")
   }
   const id = round.id
-  const contentHash = await sha256Hex(body)
+  const contentHash = attestedHash ?? (await sha256Hex(body))
   return db.transaction(async () => {
     const stored = await one(
       db,
@@ -155,6 +164,19 @@ export type LessonEntry = {
 }
 
 const LEVELS = ["beginner", "intermediate", "advanced"]
+
+/** The content hash the device holds for round `id`, or `null`. */
+export async function storedRoundHash(
+  db: SqlDriver,
+  id: string
+): Promise<string | null> {
+  const row = await one(
+    db,
+    "SELECT content_hash FROM leetype_round WHERE id = ? AND retired_at IS NULL",
+    [id]
+  )
+  return row === null ? null : text(row, "content_hash")
+}
 
 /** One TOPIK lesson: its manifest entry and its body, verbatim. */
 export async function upsertLesson(

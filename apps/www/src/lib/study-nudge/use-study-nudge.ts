@@ -51,7 +51,7 @@
 import { useEffect, useRef } from "react"
 import type { RuntimeMode } from "@some-ui/fetch-kit"
 
-import { DATA_MODE } from "@/lib/data-mode"
+import { DATA_MODE, DEVICE_BACKEND } from "@/lib/data-mode"
 import { useSessions, useSettings } from "@/lib/tenant"
 
 import type { NudgeDecision, NudgePreferences } from "./index"
@@ -74,11 +74,16 @@ const POLL_INTERVAL_MS = 5 * 60_000
  * The same bit `sessions-backend.ts` uses to pick a store picks the
  * trigger, and for the same underlying reason: it is the answer to "is
  * there a backend here".
+ *
+ * The Android app is the exception that answers "yes" with a backend: its
+ * backend is in-process and has no push to send, so there too the client's
+ * own policy decides, and the OS delivers (`./native`).
  */
 export function clientOwnsNudgeDelivery(
-  mode: RuntimeMode = DATA_MODE
+  mode: RuntimeMode = DATA_MODE,
+  device: boolean = DEVICE_BACKEND
 ): boolean {
-  return mode === "static"
+  return mode === "static" || device
 }
 
 export type NudgeTickDeps = {
@@ -193,4 +198,56 @@ export function useStudyNudge(): void {
     const id = window.setInterval(() => void tick(), POLL_INTERVAL_MS)
     return (): void => window.clearInterval(id)
   }, [deliver])
+
+  useNativeNudgeSchedule(sessionsRef, preferencesRef)
+}
+
+/**
+ * The Android app's half: a timer cannot run with the app off screen, so
+ * the next nudge is handed to the OS on the way out and taken back on the
+ * way in (`./native`, `./schedule`). A no-op in every other build.
+ */
+function useNativeNudgeSchedule(
+  sessionsRef: {
+    readonly current: Parameters<typeof decideNudge>[0]["sessions"] | undefined
+  },
+  preferencesRef: { readonly current: NudgePreferences }
+): void {
+  useEffect(() => {
+    if (!DEVICE_BACKEND) return undefined
+    let cancelled = false
+
+    const onVisibility = async (): Promise<void> => {
+      const native = await import("./native")
+      if (cancelled) return
+      if (document.visibilityState === "visible") {
+        await native.reconcileNativeNudge(new Date())
+        return
+      }
+      const { nextNudge } = await import("./schedule")
+      await native.scheduleNativeNudge(
+        nextNudge(
+          {
+            sessions: sessionsRef.current ?? [],
+            preferences: preferencesRef.current,
+            lastNudgeAt: readLastNudgeAt(),
+          },
+          new Date()
+        )
+      )
+    }
+
+    void import("./native").then(async (native) => {
+      if (cancelled) return
+      native.listenForNudgeTaps()
+      await native.refreshNativePermission()
+      await native.reconcileNativeNudge(new Date())
+    })
+    const listener = (): void => void onVisibility()
+    document.addEventListener("visibilitychange", listener)
+    return (): void => {
+      cancelled = true
+      document.removeEventListener("visibilitychange", listener)
+    }
+  }, [sessionsRef, preferencesRef])
 }

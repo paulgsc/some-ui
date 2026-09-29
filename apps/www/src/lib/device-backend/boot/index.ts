@@ -20,8 +20,11 @@ import { resolveFileHostBase } from "@/lib/file-host-config"
 
 let opening: Promise<DeviceBackend> | null = null
 
-/** Opens the database once; every request waits on the same promise. */
-function backend(): Promise<DeviceBackend> {
+/**
+ * Opens the database once; every request waits on the same promise. Also
+ * how device-only UI (the sync from home) reaches the same database.
+ */
+export function deviceBackend(): Promise<DeviceBackend> {
   opening ??= (async (): Promise<DeviceBackend> => {
     const [{ openCapacitorSqlite }, { openDeviceBackend }] = await Promise.all([
       import("@/lib/device-backend/capacitor-sqlite"),
@@ -37,5 +40,5 @@ export function bootDeviceBackend(): void {
   if (!DEVICE_BACKEND || typeof window === "undefined") return
   const base = resolveFileHostBase()
   if (base === undefined) return
-  installDeviceFetch(new URL(base, window.location.origin), backend)
+  installDeviceFetch(new URL(base, window.location.origin), deviceBackend)
 }
