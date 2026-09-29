@@ -833,13 +833,21 @@ function checkRoundProseForClassLiterals(
 ): Array<string> {
   const violations: Array<string> = []
   round.diffSet.forEach((member, index) => {
-    if (member.distractorStatement !== undefined) {
-      violations.push(
-        ...checkNoAssertedComplexityClassLiteral(
-          member.distractorStatement,
-          `${locateRound(round)}, diff-set member ${index} (distractorStatement)`
+    // Every authored prose field on a member (review finding on #1543:
+    // `propositionGloss`, the round-specific half of a verdict, went
+    // unscanned while `distractorStatement` was checked).
+    for (const [field, text] of [
+      ["distractorStatement", member.distractorStatement],
+      ["propositionGloss", member.propositionGloss],
+    ] as const) {
+      if (text !== undefined) {
+        violations.push(
+          ...checkNoAssertedComplexityClassLiteral(
+            text,
+            `${locateRound(round)}, diff-set member ${index} (${field})`
+          )
         )
-      )
+      }
     }
     member.hunk.segments.forEach((segment, segmentIndex) => {
       violations.push(

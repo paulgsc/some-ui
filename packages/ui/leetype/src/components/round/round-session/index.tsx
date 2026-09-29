@@ -264,12 +264,21 @@ export const RoundSession: FC<RoundSessionProps> = ({
     [store]
   )
 
+  // A fresh session, as `ReadingSession`'s restart is: the counters, the
+  // queue position and the recent-rounds history all start over (review
+  // finding on #1598). The learner's own round stays held; it is the
+  // session store's, and plays first again the way it does after a reload.
   const handleRestart = useCallback((): void => {
     setFinished(false)
     setSessionClockMs(0)
     setSessionGeneration((generation) => generation + 1)
     setProgress(FRESH)
-  }, [])
+    setPlayed(0)
+    setPosition(0)
+    setRecent([])
+    setOwn(store.get())
+    setGenerating(false)
+  }, [store])
 
   if (finished) {
     return (

@@ -86,6 +86,22 @@ describe("intakeRound", () => {
     ).toBe(true)
   })
 
+  it("refuses a round whose program asserts a complexity class in a comment", () => {
+    const commented: Round = {
+      ...ROUND,
+      algorithm: {
+        ...ROUND.algorithm,
+        source: `${ROUND.algorithm.source}// this is Θ(n m)\n`,
+      },
+    }
+    const intake = intakeRound(reply(JSON.stringify(commented)))
+    expect(intake.ok).toBe(false)
+    if (intake.ok) return
+    expect(intake.violations.some((v) => v.includes("algorithm.source"))).toBe(
+      true
+    )
+  })
+
   it("refuses a round whose admissibility claims disagree with its cost graphs", () => {
     const swapped: Round = {
       ...ROUND,

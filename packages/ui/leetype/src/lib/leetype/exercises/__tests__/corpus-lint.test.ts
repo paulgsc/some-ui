@@ -727,6 +727,39 @@ describe("lintRoundCorpus — R5 (#1208), the round-shaped corpus lint", () => {
       expect(violations.some((v) => v.includes("Prop. 2.1"))).toBe(true)
     })
 
+    it("fails when a propositionGloss asserts a complexity class literal (review finding on #1543)", () => {
+      const diffSet: DiffSet = [
+        {
+          hunk: {
+            path: "src/fixture/a.rs",
+            oldStart: 1,
+            newStart: 1,
+            segments: [{ kind: "addition", text: "let a = true;" }],
+          },
+          propositionId: "CW-P1",
+          admissible: true,
+          propositionGloss: "This rewrite is Θ(n).",
+        },
+        {
+          hunk: {
+            path: "src/fixture/b.rs",
+            oldStart: 1,
+            newStart: 1,
+            segments: [{ kind: "addition", text: "let b = true;" }],
+          },
+          propositionId: "CW-P2",
+          admissible: false,
+          distractorStatement: "a plausible but wrong repair.",
+        },
+      ]
+      const violations = lintRoundCorpus([round({ diffSet })])
+      expect(
+        violations.some(
+          (v) => v.includes("propositionGloss") && v.includes("Prop. 2.1")
+        )
+      ).toBe(true)
+    })
+
     it("fails when a hunk segment's own text asserts a complexity class literal (review finding on #1283)", () => {
       // A round's diff is displayed source, not distractorStatement's own
       // prose, but a segment's text can still carry a comment — and Prop.

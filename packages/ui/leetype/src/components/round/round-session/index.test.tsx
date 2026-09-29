@@ -1,3 +1,4 @@
+import { act } from "react"
 import { RoundSession } from "@leetype/components/round/round-session"
 import { AUTHORED_ROUNDS } from "@leetype/lib/leetype/authored-rounds"
 import type { PastedRoundStore } from "@leetype/lib/leetype/pasted-round"
@@ -128,6 +129,40 @@ describe("RoundSession", () => {
 
     expect(set).toHaveBeenCalledWith(COUNT_PRESENT)
     expect(screen.getByText("Your round")).toBeInTheDocument()
+  })
+
+  it("starts a fresh session on Restart: round 1 again, not where the last one stopped", () => {
+    vi.useFakeTimers({
+      toFake: ["setInterval", "clearInterval", "performance"],
+    })
+    try {
+      render(
+        <RoundSession
+          rounds={[COUNT_PRESENT]}
+          sessionSeed={3}
+          sessionDurationMs={1000}
+          pastedStore={memoryStore()}
+        />
+      )
+      goTo("Rewrites")
+      chooseRewriteContaining("binary_search")
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: new RegExp(PROPOSITION_REGISTER["CW-P6"].title),
+        })
+      )
+      fireEvent.click(screen.getByRole("button", { name: "Next round" }))
+      expect(screen.getByText("Round 2")).toBeInTheDocument()
+
+      act(() => {
+        vi.advanceTimersByTime(1250)
+      })
+      expect(screen.getByText("1 round played")).toBeInTheDocument()
+      fireEvent.click(screen.getByRole("button", { name: "Restart" }))
+      expect(screen.getByText("Round 1")).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it("skips a round that fails the authored-round checks rather than playing it", () => {

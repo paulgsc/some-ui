@@ -12,10 +12,13 @@ import type * as SomeUiUtils from "some-ui-utils"
 import { describe, expect, it, vi } from "vitest"
 
 // jsdom lays nothing out; every page holds everything, as in LessonCrm's tests.
+// A phone's one-pane layout is chosen by `useIsMobile`; each test sets it.
+const viewport = { mobile: false }
 vi.mock("some-ui-utils", async () => {
   const actual = await vi.importActual<typeof SomeUiUtils>("some-ui-utils")
   return {
     ...actual,
+    useIsMobile: (): boolean => viewport.mobile,
     useFittedPage: <T,>(
       items: ReadonlyArray<T>
     ): ReturnType<typeof SomeUiUtils.useFittedPage<T>> => ({
@@ -144,6 +147,32 @@ describe("RoundCrm", () => {
     })
     expect(screen.getByText(/already exists/)).toBeInTheDocument()
     expect(screen.getByRole("button", { name: /Save/ })).toBeDisabled()
+  })
+
+  it("shows one pane at a time on a phone: the list, then the editor with a way back", async () => {
+    viewport.mobile = true
+    try {
+      render(
+        <RoundCrm
+          client={fakeClient([operatorRound(PARSED.id)])}
+          reporting={reporting()}
+        />
+      )
+      fireEvent.click(
+        await screen.findByRole("button", { name: new RegExp(PARSED.id) })
+      )
+      expect(screen.queryByRole("navigation", { name: "Rounds" })).toBeNull()
+      await waitFor(() =>
+        expect(screen.getByLabelText("Round JSON")).toHaveValue(BODY)
+      )
+      fireEvent.click(screen.getByRole("button", { name: /All rounds/ }))
+      expect(
+        screen.getByRole("navigation", { name: "Rounds" })
+      ).toBeInTheDocument()
+      expect(screen.queryByLabelText("Round JSON")).toBeNull()
+    } finally {
+      viewport.mobile = false
+    }
   })
 
   it("retires a served round", async () => {

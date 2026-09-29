@@ -18,12 +18,13 @@ import { Badge, Button, PageControls, Textarea } from "@some-ui/shared"
 import {
   Archive,
   ArchiveRestore,
+  ArrowLeft,
   Check,
   Plus,
   RotateCcw,
   Save,
 } from "lucide-react"
-import { cn, useFittedPage } from "some-ui-utils"
+import { cn, useFittedPage, useIsMobile } from "some-ui-utils"
 
 type RoundCrmProps = {
   client: RoundCrmClient
@@ -73,6 +74,7 @@ const upsert = (
  * it in CI.
  */
 export const RoundCrm = ({ client, reporting }: RoundCrmProps): JSX.Element => {
+  const isMobile = useIsMobile()
   const [rounds, setRounds] = useState<Array<OperatorRound>>([])
   const [indexed, setIndexed] = useState(false)
   const [editing, setEditing] = useState<Editing>({ kind: "none" })
@@ -364,13 +366,57 @@ export const RoundCrm = ({ client, reporting }: RoundCrmProps): JSX.Element => {
       </section>
     )
 
+  // The editor holds a prompt form or a round's whole JSON, taller than a
+  // phone and than a short window, so it is the one region that scrolls.
+  const editorPane = (
+    <div
+      data-scroll-intent="round-editor"
+      className={
+        /* scroll-intent: round-editor — a round is one long JSON body or a
+           two-step prompt form; splitting either into pages would separate
+           the text from the check that reports on it. Nothing nested
+           scrolls vertically. */ "flex min-h-0 min-w-0 flex-col gap-3 overflow-y-auto"
+      }
+    >
+      {editor}
+    </div>
+  )
+
+  // A phone shows one pane at a time, as `LessonCrm` does: the list until a
+  // round is open, then the editor with a way back (review finding on #1598:
+  // stacked in one bounded column, the editor sat below the viewport).
+  if (isMobile) {
+    return (
+      <div data-slot="round-crm" className="flex h-full min-h-0 flex-col gap-3">
+        {editing.kind === "none" ? (
+          list
+        ) : (
+          <>
+            <Button
+              variant="ghost"
+              className="min-h-11 shrink-0 gap-2 self-start"
+              onClick={() => {
+                selection.current += 1
+                setEditing({ kind: "none" })
+                setGenerating(false)
+              }}
+            >
+              <ArrowLeft className="size-4" /> All rounds
+            </Button>
+            {editorPane}
+          </>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div
       data-slot="round-crm"
-      className="grid h-full min-h-0 gap-6 md:grid-cols-[minmax(14rem,18rem)_1fr]"
+      className="grid h-full min-h-0 grid-cols-[minmax(14rem,18rem)_1fr] gap-6"
     >
       {list}
-      {editor}
+      {editorPane}
     </div>
   )
 }
