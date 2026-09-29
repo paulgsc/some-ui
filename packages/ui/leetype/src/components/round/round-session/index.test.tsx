@@ -688,5 +688,7 @@ describe("RoundSession — recorded runs (X2, #1223)", () => {
     expect(new Set(drawn[0]).size).toBeGreaterThan(1)
     expect(drawn[1]).toEqual(drawn[0])
     expect(drawn[2]).toEqual(drawn[0])
-  })
+    // Three whole sessions of six rounds, each waiting for runs to settle:
+    // about 3.3 s here and 5.5 s on CI's runner, past vitest's 5 s default.
+  }, 15_000)
 })
