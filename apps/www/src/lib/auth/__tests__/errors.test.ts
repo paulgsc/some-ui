@@ -48,6 +48,24 @@ describe("describeAuthError", () => {
     [new PasskeyCancelledError(), "claim", /No passkey was created/],
     [
       new FileHostResponseError(
+        503,
+        "/auth/register/start",
+        "service_overloaded"
+      ),
+      "create",
+      /all the new accounts it allows today/,
+    ],
+    [
+      new FileHostResponseError(
+        503,
+        "/auth/sign-in/start",
+        "service_overloaded"
+      ),
+      "sign-in",
+      /busy/,
+    ],
+    [
+      new FileHostResponseError(
         422,
         "/auth/register/finish",
         "unprocessable_entity"

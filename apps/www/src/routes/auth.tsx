@@ -20,6 +20,8 @@ function validateSearch(search: Record<string, unknown>): AuthSearch {
   return typeof search.redirect === "string" &&
     search.redirect.startsWith("/") &&
     !search.redirect.startsWith("//") &&
+    // A browser reads `\` as `/` in a URL, so `/\host` is `//host`.
+    !search.redirect.includes("\\") &&
     search.redirect !== "/auth"
     ? { redirect: search.redirect }
     : {}

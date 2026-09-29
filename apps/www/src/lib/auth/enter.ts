@@ -18,11 +18,31 @@ export function enterAccount(
   href: string,
   navigate: (href: string) => void,
   mode = DATA_MODE,
-  assign: (url: string) => void = (url) => window.location.assign(url)
+  assign: (url: string) => void = (url) => window.location.assign(url),
+  here: string = window.location.href
 ): void {
   if (mode === "static") {
     navigate(href)
     return
   }
-  assign(`${import.meta.env.BASE_URL.replace(/\/+$/, "")}${href}`)
+  assign(sameOriginUrl(href, here))
+}
+
+const FALLBACK = "/app"
+
+/**
+ * `href` under this app's base, resolved the way the browser will resolve
+ * it, and refused (for `/app`) unless it stays on this origin. `/auth`'s
+ * `?redirect=` is attacker-controlled: `/\evil.example` starts with `/` and
+ * not `//`, yet a URL parser reads the backslash as a slash and lands on
+ * another host. Checking the parsed origin catches that and any other
+ * spelling a prefix check would miss.
+ */
+function sameOriginUrl(href: string, here: string): string {
+  const base = import.meta.env.BASE_URL.replace(/\/+$/, "")
+  const origin = new URL(here).origin
+  const target = new URL(`${base}${href}`, here)
+  return target.origin === origin
+    ? `${target.pathname}${target.search}${target.hash}`
+    : `${base}${FALLBACK}`
 }

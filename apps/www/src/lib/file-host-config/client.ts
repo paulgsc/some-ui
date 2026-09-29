@@ -270,7 +270,17 @@ export async function requestJSON<T>(
       signal: controller.signal,
     })
 
-    if (response.status === 503) throw new FileHostNotConfiguredError(route)
+    if (response.status === 503) {
+      // `503` is two things on `file_host`: a feature this deployment has
+      // not configured, and a busy server or a spent quota
+      // (`service_overloaded`, e.g. the daily new-account cap). Only the
+      // first is "not configured"; the second is an answer with a code.
+      const code = await errorCodeOf(response)
+      if (code === "service_overloaded") {
+        throw new FileHostResponseError(503, route, code)
+      }
+      throw new FileHostNotConfiguredError(route)
+    }
     if (response.status === 401) onUnauthorized?.()
     if (!response.ok) {
       throw new FileHostResponseError(

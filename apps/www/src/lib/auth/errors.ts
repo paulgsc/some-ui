@@ -37,6 +37,11 @@ export function describeAuthError(
     if (error.status === 409) {
       return "That passkey is already registered here. Sign in with it instead."
     }
+    if (error.status === 503) {
+      return attempt === "sign-in"
+        ? "The server is busy right now. Try again in a moment."
+        : "This server has made all the new accounts it allows today. Try again tomorrow, or sign in if you already have a passkey."
+    }
     if (error.status === 422) {
       return "That took too long or the passkey couldn't be checked. Please try again."
     }

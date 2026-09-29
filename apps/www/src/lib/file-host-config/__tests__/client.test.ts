@@ -20,12 +20,34 @@ import { FileHostUnreachableError } from "@/lib/file-host-config"
 import type { FileHostTransport } from "@/lib/file-host-config/client"
 import {
   createFileHostTransport,
+  FileHostNotConfiguredError,
   requestJSON,
 } from "@/lib/file-host-config/client"
 
 afterEach(() => {
   vi.unstubAllEnvs()
   vi.unstubAllGlobals()
+})
+
+describe("requestJSON: what a 503 means", () => {
+  const answering =
+    (code: string): FileHostTransport =>
+    () =>
+      Promise.resolve(
+        Response.json({ error: { code, message: "m" } }, { status: 503 })
+      )
+
+  it("reads feature_not_configured as a feature this deployment lacks", async () => {
+    await expect(
+      requestJSON(answering("feature_not_configured"), "auth/sign-in/start")
+    ).rejects.toBeInstanceOf(FileHostNotConfiguredError)
+  })
+
+  it("reads service_overloaded (a busy server, a spent daily cap) as an answer with its code", async () => {
+    await expect(
+      requestJSON(answering("service_overloaded"), "auth/register/start")
+    ).rejects.toMatchObject({ status: 503, code: "service_overloaded" })
+  })
 })
 
 describe("createFileHostTransport: credentials", () => {
