@@ -159,6 +159,13 @@
     },
     {
       "method": "GET",
+      "path": "/leetype/rounds/:id/runs",
+      "full_path": "/api/v1/leetype/rounds/:id/runs",
+      "versioned": true,
+      "module": "leetype"
+    },
+    {
+      "method": "GET",
       "path": "/leetype/operator/rounds",
       "full_path": "/api/v1/leetype/operator/rounds",
       "versioned": true,
@@ -366,6 +373,34 @@
       "full_path": "/api/v1/sessions/status",
       "versioned": true,
       "module": "sessions"
+    },
+    {
+      "method": "GET",
+      "path": "/shelf/:activity",
+      "full_path": "/api/v1/shelf/:activity",
+      "versioned": true,
+      "module": "shelf"
+    },
+    {
+      "method": "DELETE",
+      "path": "/shelf/:activity/:key",
+      "full_path": "/api/v1/shelf/:activity/:key",
+      "versioned": true,
+      "module": "shelf"
+    },
+    {
+      "method": "GET",
+      "path": "/shelf/:activity/:key",
+      "full_path": "/api/v1/shelf/:activity/:key",
+      "versioned": true,
+      "module": "shelf"
+    },
+    {
+      "method": "PUT",
+      "path": "/shelf/:activity/:key",
+      "full_path": "/api/v1/shelf/:activity/:key",
+      "versioned": true,
+      "module": "shelf"
     },
     {
       "method": "POST",
