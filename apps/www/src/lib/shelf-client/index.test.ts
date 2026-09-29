@@ -26,7 +26,7 @@ const refusal = (status: number, code: string) => (): Response =>
   Response.json({ error: { code, message: code } }, { status })
 
 describe("createShelfClient", () => {
-  it("lists, reads, keeps the body as sent and removes, under an encoded key", async () => {
+  it("lists, reads and keeps the body as sent, under an encoded key", async () => {
     const listing = { items: [], cap: 20 }
     const { transport, calls } = recording(() => Response.json(listing))
     const client = createShelfClient("topik", transport)!
@@ -69,10 +69,20 @@ describe("createShelfClient", () => {
     })
   })
 
-  it("leaves every other failure as file_host's own error", async () => {
+  it("says a refused item is refused, so the learner is not told to retry", async () => {
     const client = createShelfClient(
       "topik",
       recording(refusal(422, "unprocessable_entity")).transport
+    )!
+    await expect(client.keep("k", "{}")).rejects.toMatchObject({
+      reason: "invalid",
+    })
+  })
+
+  it("leaves every other failure as file_host's own error", async () => {
+    const client = createShelfClient(
+      "topik",
+      recording(refusal(500, "internal")).transport
     )!
     const error: unknown = await client
       .keep("k.json", "{}")

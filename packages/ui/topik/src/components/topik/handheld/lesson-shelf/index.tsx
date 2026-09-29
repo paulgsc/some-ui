@@ -9,7 +9,7 @@
  */
 
 import type { JSX } from "react"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "@some-ui/shared"
 import type { PastedLesson } from "@topik/lib/topik/adapter/pasted-lesson"
 import type {
@@ -17,7 +17,11 @@ import type {
   ShelfItem,
   ShelfPort,
 } from "@topik/lib/topik/adapter/shelf"
-import { keptLessonOf, shelfFailureOf } from "@topik/lib/topik/adapter/shelf"
+import {
+  keepWithoutReplacing,
+  keptLessonOf,
+  shelfFailureOf,
+} from "@topik/lib/topik/adapter/shelf"
 import { Bookmark, Check, Loader2, Play, Trash2 } from "lucide-react"
 
 type Listing =
@@ -28,6 +32,8 @@ type Listing =
 const FAILURE_TEXT: Record<ShelfFailure, string> = {
   full: "Your shelf is full.",
   "signed-out": "Sign in to see what you kept.",
+  // A listing is never "invalid" (that is a refused keep); said plainly if so.
+  invalid: "Your shelf could not be loaded.",
   failed: "Your shelf could not be loaded.",
 }
 
@@ -82,6 +88,16 @@ export const LessonShelf = ({
     setAttempt((count) => count + 1)
   }
 
+  // A replay the learner walked away from must not start playing when its
+  // read resolves (review, #1600).
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return (): void => {
+      mounted.current = false
+    }
+  }, [])
+
   const replay = (key: string, play: (lesson: PastedLesson) => void): void => {
     setBusy(key)
     setRowError(null)
@@ -89,6 +105,7 @@ export const LessonShelf = ({
       .read(key)
       .then(
         (body) => {
+          if (!mounted.current) return
           const lesson = keptLessonOf(body, key)
           if (lesson) play(lesson)
           else setUnreadable((keys) => new Set(keys).add(key))
@@ -227,12 +244,12 @@ export const LessonShelf = ({
 type Keeping =
   | { status: "idle" }
   | { status: "keeping" }
-  | { status: "kept"; unchanged: boolean }
+  | { status: "kept"; unchanged: boolean; key: string }
   | { status: "failed"; failure: ShelfFailure }
 
 type KeepLessonProps = {
   shelf: ShelfPort
-  /** The pasted lesson's shelf key (`shelfKeyOf`). */
+  /** The pasted lesson's shelf key (`shelfKeyOf`); a `-2`… variant when another lesson holds it. */
   shelfKey: string
   /** The pasted slot's document (`serializePastedLesson`). */
   body: string
@@ -252,9 +269,9 @@ export const KeepLesson = ({
 
   const keep = (): void => {
     setKeeping({ status: "keeping" })
-    shelf.keep(shelfKey, body).then(
-      ({ change }) =>
-        setKeeping({ status: "kept", unchanged: change === "unchanged" }),
+    keepWithoutReplacing(shelf, shelfKey, body).then(
+      ({ change, key }) =>
+        setKeeping({ status: "kept", unchanged: change === "unchanged", key }),
       (error: unknown) =>
         setKeeping({ status: "failed", failure: shelfFailureOf(error) })
     )
@@ -266,7 +283,9 @@ export const KeepLesson = ({
         <Check className="text-success size-4" />
         {keeping.unchanged
           ? "Already on this account."
-          : "Kept on this account. Replay it from Write your own lesson."}
+          : keeping.key === shelfKey
+            ? "Kept on this account. Replay it from Write your own lesson."
+            : `Kept on this account as ${keeping.key}, beside the one already named ${shelfKey}. Replay it from Write your own lesson.`}
       </p>
     )
   }
@@ -285,12 +304,18 @@ export const KeepLesson = ({
           Sign in to keep this.
         </p>
       )}
+      {failure === "invalid" && (
+        <p role="alert" className="text-destructive text-sm">
+          This lesson can&apos;t be kept: the shelf refused it, most likely
+          because it is too large.
+        </p>
+      )}
       {failure === "failed" && (
         <p role="alert" className="text-destructive text-sm">
           It could not be kept. Try again.
         </p>
       )}
-      {failure !== "signed-out" && (
+      {failure !== "signed-out" && failure !== "invalid" && (
         <Button
           variant="outline"
           className="h-11 gap-2 rounded-xl"

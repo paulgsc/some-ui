@@ -15,8 +15,9 @@
  * What this module holds to, for every caller:
  *
  * - **Only on request.** `keep` is called from one place, the learner's tap
- *   on "Keep on this account" for their own round. Nothing keeps, lists or
- *   reads in the background.
+ *   on "Keep on this account" for their own round. Nothing keeps or removes
+ *   in the background; the listing is read when a screen that shows the
+ *   shelf opens, and a body only on a tap to replay it.
  * - **Content only.** The body kept is the round (`serializeRound`), never
  *   a commitment, an outcome or a count of rounds played.
  * - **Never trusted.** A kept body is read back through the same intake a
@@ -50,14 +51,62 @@ export type ShelfPort = {
 }
 
 /** Why a shelf call failed, as far as the learner can do something about it. */
-export type ShelfFailure = "full" | "signed-out" | "failed"
+export type ShelfFailure = "full" | "signed-out" | "invalid" | "failed"
 
 export function shelfFailureOf(error: unknown): ShelfFailure {
   const reason =
     typeof error === "object" && error !== null && "reason" in error
       ? error.reason
       : undefined
-  return reason === "full" || reason === "signed-out" ? reason : "failed"
+  return reason === "full" || reason === "signed-out" || reason === "invalid"
+    ? reason
+    : "failed"
+}
+
+/** Hex SHA-256 of `body`'s UTF-8 bytes, which is the server's `content_hash`; null where Web Crypto is not available. */
+async function contentHashOf(body: string): Promise<string | null> {
+  // `crypto.subtle` is not exposed outside a secure context.
+  if (typeof crypto === "undefined" || !("subtle" in crypto)) return null
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(body)
+  )
+  return Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0")
+  ).join("")
+}
+
+/**
+ * Keeps `body` without replacing anything else the learner kept. The key
+ * comes from a name their model chose, so two different items can share one
+ * (`first-dinner`, `two-sum`), and a `PUT` to a held key replaces it: past
+ * the cap, too, since only a *new* key is refused (review, #1600). So the
+ * tap reads the listing first. The same bytes already held under `base`, or
+ * under a `-2`, `-3`… variant, are reported unchanged and nothing is
+ * written. Otherwise the body goes under the first of those keys the shelf
+ * does not hold, and a full shelf still answers `full`. A keep from another
+ * device between the listing and the write can still replace; that is one
+ * learner racing themselves.
+ */
+export async function keepWithoutReplacing(
+  shelf: ShelfPort,
+  base: string,
+  body: string
+): Promise<{ change: "kept" | "unchanged"; key: string }> {
+  const [{ items }, hash] = await Promise.all([
+    shelf.list(),
+    contentHashOf(body),
+  ])
+  const held = new Map(items.map((item) => [item.key, item.contentHash]))
+  for (let copy = 1; ; copy += 1) {
+    const key = copy === 1 ? base : `${base}-${copy}`
+    const existing = held.get(key)
+    if (existing === undefined) {
+      const { change } = await shelf.keep(key, body)
+      return { change: change === "unchanged" ? "unchanged" : "kept", key }
+    }
+    if (hash !== null && existing === hash) return { change: "unchanged", key }
+  }
 }
 
 const NOT_UNRESERVED = /[^A-Za-z0-9._~-]+/g

@@ -1,9 +1,16 @@
+import { createHash } from "node:crypto"
 import { FIXTURE_BATCHES } from "@topik/components/topik/handheld/handheld-lesson/fixture"
 import type { TopikMetadata } from "@topik/lib/topik"
 import { serializePastedLesson } from "@topik/lib/topik/adapter/pasted-lesson"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
-import { keptLessonOf, shelfFailureOf, shelfKeyOf } from "."
+import type { ShelfPort } from "."
+import {
+  keepWithoutReplacing,
+  keptLessonOf,
+  shelfFailureOf,
+  shelfKeyOf,
+} from "."
 
 const META: TopikMetadata = {
   key: "local:first-dinner",
@@ -66,5 +73,70 @@ describe("shelfFailureOf", () => {
     expect(shelfFailureOf({ reason: "signed-out" })).toBe("signed-out")
     expect(shelfFailureOf(new Error("offline"))).toBe("failed")
     expect(shelfFailureOf({ reason: "other" })).toBe("failed")
+  })
+})
+
+describe("keepWithoutReplacing", () => {
+  const sha256 = (body: string): string =>
+    createHash("sha256").update(body).digest("hex")
+
+  function port(held: Record<string, string>): ShelfPort & {
+    held: Map<string, string>
+  } {
+    const bodies = new Map(Object.entries(held))
+    return {
+      held: bodies,
+      list: vi.fn(() =>
+        Promise.resolve({
+          items: [...bodies].map(([key, body]) => ({
+            key,
+            contentHash: sha256(body),
+            savedAt: "2026-09-29T00:00:00.000Z",
+          })),
+          cap: 20,
+        })
+      ),
+      read: vi.fn(),
+      keep: vi.fn((key: string, body: string) => {
+        bodies.set(key, body)
+        return Promise.resolve({
+          change: "kept" as const,
+          item: { key, contentHash: sha256(body), savedAt: "" },
+        })
+      }),
+      remove: vi.fn(),
+    }
+  }
+
+  it("keeps under the name when the shelf does not hold it", async () => {
+    const shelf = port({})
+    await expect(keepWithoutReplacing(shelf, "k", "{}")).resolves.toEqual({
+      change: "kept",
+      key: "k",
+    })
+    expect(shelf.held.get("k")).toBe("{}")
+  })
+
+  it("writes nothing when the same bytes are already kept", async () => {
+    const shelf = port({ k: "{}" })
+    await expect(keepWithoutReplacing(shelf, "k", "{}")).resolves.toEqual({
+      change: "unchanged",
+      key: "k",
+    })
+    expect(shelf.keep).not.toHaveBeenCalled()
+  })
+
+  it("never replaces a different item that holds the name", async () => {
+    const shelf = port({ k: '{"a":1}', "k-2": '{"a":2}' })
+    await expect(keepWithoutReplacing(shelf, "k", '{"a":3}')).resolves.toEqual({
+      change: "kept",
+      key: "k-3",
+    })
+    expect(shelf.held.get("k")).toBe('{"a":1}')
+    expect(shelf.held.get("k-2")).toBe('{"a":2}')
+    await expect(keepWithoutReplacing(shelf, "k", '{"a":2}')).resolves.toEqual({
+      change: "unchanged",
+      key: "k-2",
+    })
   })
 })

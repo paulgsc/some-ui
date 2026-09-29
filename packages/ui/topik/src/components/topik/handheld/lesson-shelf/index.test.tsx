@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import type { JSX } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import {
@@ -53,7 +54,10 @@ function fakeShelf(cap = 20, signedIn = true): FakeShelf {
     Promise.reject(Object.assign(new Error(reason), { reason }))
   const item = (key: string): ShelfItem => ({
     key,
-    contentHash: String(bodies.get(key)?.length),
+    // The server's content hash, which the keep compares against.
+    contentHash: createHash("sha256")
+      .update(bodies.get(key) ?? "")
+      .digest("hex"),
     savedAt: "2026-09-29T00:00:00.000Z",
   })
   return {

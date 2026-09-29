@@ -1,11 +1,15 @@
 import type { FC } from "react"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import type {
   ShelfFailure,
   ShelfItem,
   ShelfPort,
 } from "@leetype/lib/leetype/shelf"
-import { keptRoundOf, shelfFailureOf } from "@leetype/lib/leetype/shelf"
+import {
+  keepWithoutReplacing,
+  keptRoundOf,
+  shelfFailureOf,
+} from "@leetype/lib/leetype/shelf"
 import type { Round } from "@leetype/types/authored-round"
 import { Button } from "@some-ui/shared"
 import { Bookmark, Check, Loader2, Play, Trash2 } from "lucide-react"
@@ -74,6 +78,16 @@ export const RoundShelf: FC<RoundShelfProps> = ({ shelf, onReplay }) => {
     setAttempt((count) => count + 1)
   }
 
+  // A replay the learner walked away from must not start playing when its
+  // read resolves (review, #1600).
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return (): void => {
+      mounted.current = false
+    }
+  }, [])
+
   const replay = (key: string, play: (round: Round) => void): void => {
     setBusy(key)
     setRowError(null)
@@ -81,6 +95,7 @@ export const RoundShelf: FC<RoundShelfProps> = ({ shelf, onReplay }) => {
       .read(key)
       .then(
         (body) => {
+          if (!mounted.current) return
           const round = keptRoundOf(body)
           if (round) play(round)
           else setUnreadable((keys) => new Set(keys).add(key))
@@ -222,12 +237,12 @@ export const RoundShelf: FC<RoundShelfProps> = ({ shelf, onReplay }) => {
 type Keeping =
   | { status: "idle" }
   | { status: "keeping" }
-  | { status: "kept"; unchanged: boolean }
+  | { status: "kept"; unchanged: boolean; key: string }
   | { status: "failed"; failure: ShelfFailure }
 
 type KeepRoundProps = {
   shelf: ShelfPort
-  /** The round's shelf key (`shelfKeyOf`). */
+  /** The round's shelf key (`shelfKeyOf`); a `-2`… variant when another round holds it. */
   shelfKey: string
   /** The round as `serializeRound` writes it. */
   body: string
@@ -243,9 +258,9 @@ export const KeepRound: FC<KeepRoundProps> = ({ shelf, shelfKey, body }) => {
 
   const keep = (): void => {
     setKeeping({ status: "keeping" })
-    shelf.keep(shelfKey, body).then(
-      ({ change }) =>
-        setKeeping({ status: "kept", unchanged: change === "unchanged" }),
+    keepWithoutReplacing(shelf, shelfKey, body).then(
+      ({ change, key }) =>
+        setKeeping({ status: "kept", unchanged: change === "unchanged", key }),
       (error: unknown) =>
         setKeeping({ status: "failed", failure: shelfFailureOf(error) })
     )
@@ -257,7 +272,9 @@ export const KeepRound: FC<KeepRoundProps> = ({ shelf, shelfKey, body }) => {
         <Check className="size-4 text-emerald-400" aria-hidden="true" />
         {keeping.unchanged
           ? "Already on this account."
-          : "Kept on this account. Replay it from Make your own."}
+          : keeping.key === shelfKey
+            ? "Kept on this account. Replay it from Make your own."
+            : `Kept on this account as ${keeping.key}, beside the one already named ${shelfKey}. Replay it from Make your own.`}
       </p>
     )
   }
@@ -276,12 +293,18 @@ export const KeepRound: FC<KeepRoundProps> = ({ shelf, shelfKey, body }) => {
           Sign in to keep this.
         </p>
       )}
+      {failure === "invalid" && (
+        <p role="alert" className="text-sm text-destructive">
+          This round can&apos;t be kept: the shelf refused it, most likely
+          because it is too large.
+        </p>
+      )}
       {failure === "failed" && (
         <p role="alert" className="text-sm text-destructive">
           It could not be kept. Try again.
         </p>
       )}
-      {failure !== "signed-out" && (
+      {failure !== "signed-out" && failure !== "invalid" && (
         <Button
           variant="outline"
           className="min-h-11 gap-2 rounded-xl"

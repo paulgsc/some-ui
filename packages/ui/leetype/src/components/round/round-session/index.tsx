@@ -601,8 +601,10 @@ export const RoundSession: FC<RoundSessionProps> = ({
 
         {play.own && shelf && ownBody !== null && (
           <KeepRound
-            // Each own round is its own question: back to "Keep".
-            key={roundKey}
+            // Each own round is its own question: back to "Keep". Keyed on
+            // its bytes, not only `roundKey`: a second own round can share
+            // the first's id and `played` (review, #1600).
+            key={`${roundKey}:${ownBody}`}
             shelf={shelf}
             shelfKey={shelfKeyOf(round.id)}
             body={ownBody}

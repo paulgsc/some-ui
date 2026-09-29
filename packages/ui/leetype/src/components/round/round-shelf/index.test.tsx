@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { RoundSession } from "@leetype/components/round/round-session"
 import { AUTHORED_ROUNDS } from "@leetype/lib/leetype/authored-rounds"
 import type { PastedRoundStore } from "@leetype/lib/leetype/pasted-round"
@@ -32,7 +33,10 @@ function fakeShelf(cap = 20, signedIn = true): FakeShelf {
     Promise.reject(Object.assign(new Error(reason), { reason }))
   const item = (key: string): ShelfItem => ({
     key,
-    contentHash: String(bodies.get(key)?.length),
+    // The server's content hash, which the keep compares against.
+    contentHash: createHash("sha256")
+      .update(bodies.get(key) ?? "")
+      .digest("hex"),
     savedAt: "2026-09-29T00:00:00.000Z",
   })
   return {
@@ -154,6 +158,41 @@ describe("the learner shelf in a round session (canon Rem. 7.3)", () => {
     expect(set).not.toHaveBeenCalled()
     // Prop. 8.1: the shelf's capacity is not a count of rounds.
     expect(screen.queryByText(/Round \d+ (of|\/)/)).not.toBeInTheDocument()
+  })
+
+  it("asks again for a different own round that shares the kept one's id", async () => {
+    // Review, #1600: the Keep control kept saying "Kept" for a second own
+    // round with the first one's id, and that round was never kept.
+    const shelf = fakeShelf()
+    const other: Round = { ...AUTHORED_ROUNDS[2]!, id: "my-own-round" }
+    shelf.bodies.set("elsewhere", serializeRound(other))
+    render(
+      <RoundSession
+        rounds={[CORPUS]}
+        sessionSeed={3}
+        pastedStore={memoryStore(MINE)}
+        shelf={shelf}
+      />
+    )
+    fireEvent.click(keepButton()!)
+    expect(await screen.findByText(/Kept on this account/)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: /Make your own/ }))
+    const kept = await screen.findByRole("region", { name: "Your shelf" })
+    fireEvent.click(
+      within(kept).getByRole("button", { name: "Play elsewhere" })
+    )
+    expect(await screen.findByText("Your round")).toBeInTheDocument()
+    expect(keepButton()).toBeInTheDocument()
+    expect(screen.queryByText(/Kept on this account/)).not.toBeInTheDocument()
+
+    // Kept beside the first, never over it: the shelf holds both.
+    fireEvent.click(keepButton()!)
+    expect(
+      await screen.findByText(/Kept on this account as my-own-round-2/)
+    ).toBeInTheDocument()
+    expect(shelf.bodies.get("my-own-round")).toBe(serializeRound(MINE))
+    expect(shelf.bodies.get("my-own-round-2")).toBe(serializeRound(other))
   })
 
   it("says a full shelf is full, and removes only what the learner removes", async () => {

@@ -193,11 +193,12 @@ export function recordObservations(
 /**
  * Both ledgers' evidence in one: every observation either holds, folded in
  * timestamp order with duplicates dropped (Ax. 5.1), and the earlier
- * `recognizedAt` of the two. Neither side's evidence is lost, so a tab can
- * fold what another tab stored into its own copy before writing without a
- * whole-value `set` erasing it (Codex, #1599). Order-free up to ties: two
- * observations with the same `at` keep arrival order, so only commits in
- * the same millisecond from two tabs can sit in a different order. A ledger that failed to
+ * `recognizedAt` of the two, kept to the newest `RING_CAPACITY` per
+ * entry as every ring is. So a tab can fold what another tab stored into
+ * its own copy before writing without a whole-value `set` erasing it
+ * (Codex, #1599). Order-free up to ties: two observations with the same
+ * `at` keep arrival order, so only commits in the same millisecond from two
+ * tabs can sit in a different order. A ledger that failed to
  * read is `EMPTY_LEDGER`, which merges as a no-op, so this tab's in-memory
  * evidence survives a storage that reads nothing (Prop. 7.2).
  */

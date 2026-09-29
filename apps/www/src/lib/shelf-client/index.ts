@@ -61,13 +61,15 @@ type ShelfClient = {
 /** A refusal the learner can act on; `reason` is what the packages read. */
 export class ShelfRefusedError extends Error {
   constructor(
-    readonly reason: "full" | "signed-out",
+    readonly reason: "full" | "signed-out" | "invalid",
     options?: ErrorOptions
   ) {
     super(
       reason === "full"
         ? "The shelf is full: remove an item before keeping another."
-        : "Sign in to keep this.",
+        : reason === "invalid"
+          ? "The shelf refused this item: too large, or not one it holds."
+          : "Sign in to keep this.",
       options
     )
     this.name = "ShelfRefusedError"
@@ -81,6 +83,10 @@ function refusalOf(error: unknown): unknown {
   if (error.status === 401) {
     return new ShelfRefusedError("signed-out", { cause: error })
   }
+  // A 422 is this item, not the moment: retrying cannot help.
+  if (error.status === 422) {
+    return new ShelfRefusedError("invalid", { cause: error })
+  }
   return error
 }
 
@@ -92,7 +98,13 @@ const bodilessAsNull =
   (transport: FileHostTransport): FileHostTransport =>
   async (route, init) => {
     const response = await transport(route, init)
-    return response.status === 204 ? Response.json(null) : response
+    // `new Response`, not `Response.json`: the static method is missing
+    // before Safari 17, where it would turn a done DELETE into a failure.
+    return response.status === 204
+      ? new Response("null", {
+          headers: { "content-type": "application/json" },
+        })
+      : response
   }
 
 /**
