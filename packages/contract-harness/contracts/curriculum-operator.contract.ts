@@ -10,6 +10,11 @@
  * `ManifestEntry` flattened into the server's bookkeeping, camelCase, with
  * `retiredAt` always present and `null` while the lesson is listed.
  *
+ * Every route here is operator-only (paulgsc/server `auth::operator`): `401`
+ * without a passkey session, `403` for a subject not in the server's
+ * `OPERATOR_SUBJECTS`. So each contract is marked `session`, and the cookie
+ * passed with `--session-cookie` must be an operator's.
+ *
  * No contract writes a lesson. A lesson written to a real server is served to
  * everyone and announced as new material by the study nudge, so there is no
  * such thing as a harmless probe write. The write route is pinned by its
@@ -48,6 +53,7 @@ export const contracts = [
   defineContract({
     id: "curriculum_operator.list",
     module: "curriculum_operator",
+    session: true,
     method: "GET",
     path: "/curriculum/operator/lessons",
     summary: "every lesson, retired included, with the server's bookkeeping",
@@ -60,6 +66,7 @@ export const contracts = [
   defineContract({
     id: "curriculum_operator.write_refused",
     module: "curriculum_operator",
+    session: true,
     method: "PUT",
     path: "/curriculum/operator/lessons/:key",
     summary:
@@ -86,6 +93,7 @@ export const contracts = [
   defineContract({
     id: "curriculum_operator.retire_not_found",
     module: "curriculum_operator",
+    session: true,
     method: "POST",
     path: "/curriculum/operator/lessons/:key/retire",
     summary: "retiring a key the table does not hold is a 404, not a no-op",
@@ -96,6 +104,7 @@ export const contracts = [
   defineContract({
     id: "curriculum_operator.restore_not_found",
     module: "curriculum_operator",
+    session: true,
     method: "POST",
     path: "/curriculum/operator/lessons/:key/restore",
     summary: "restoring a key the table does not hold is a 404, not a no-op",

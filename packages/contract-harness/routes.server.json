@@ -145,6 +145,48 @@
     },
     {
       "method": "GET",
+      "path": "/leetype/rounds",
+      "full_path": "/api/v1/leetype/rounds",
+      "versioned": true,
+      "module": "leetype"
+    },
+    {
+      "method": "GET",
+      "path": "/leetype/rounds/:id",
+      "full_path": "/api/v1/leetype/rounds/:id",
+      "versioned": true,
+      "module": "leetype"
+    },
+    {
+      "method": "GET",
+      "path": "/leetype/operator/rounds",
+      "full_path": "/api/v1/leetype/operator/rounds",
+      "versioned": true,
+      "module": "leetype_operator"
+    },
+    {
+      "method": "PUT",
+      "path": "/leetype/operator/rounds/:id",
+      "full_path": "/api/v1/leetype/operator/rounds/:id",
+      "versioned": true,
+      "module": "leetype_operator"
+    },
+    {
+      "method": "POST",
+      "path": "/leetype/operator/rounds/:id/restore",
+      "full_path": "/api/v1/leetype/operator/rounds/:id/restore",
+      "versioned": true,
+      "module": "leetype_operator"
+    },
+    {
+      "method": "POST",
+      "path": "/leetype/operator/rounds/:id/retire",
+      "full_path": "/api/v1/leetype/operator/rounds/:id/retire",
+      "versioned": true,
+      "module": "leetype_operator"
+    },
+    {
+      "method": "GET",
       "path": "/mood_events",
       "full_path": "/api/v1/mood_events",
       "versioned": true,
