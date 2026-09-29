@@ -15,8 +15,15 @@
  */
 
 import { evaluate } from "@leetype/lib/leetype/admissibility"
-import type { CostGraph, Monomial } from "@leetype/lib/leetype/cost"
-import { costOf, printClass, printMonomial } from "@leetype/lib/leetype/cost"
+import type { CostGraph, Dimension, Monomial } from "@leetype/lib/leetype/cost"
+import {
+  costOf,
+  dimensionsOfGraph,
+  multiplyMonomials,
+  ONE,
+  printClass,
+  printMonomial,
+} from "@leetype/lib/leetype/cost"
 import type { Budget, ConstraintSet } from "@leetype/types/constraint"
 import { assertNever } from "some-ui-utils"
 
@@ -217,4 +224,120 @@ export function semanticDistance(
 export type RewriteWitness = {
   readonly rewrite: Rewrite
   readonly behaviourPreserving: boolean
+}
+
+/**
+ * Beyond this many dimensions `rewriteKeyOf` stops trying every renaming
+ * (`n!` of them) and renames in sorted-name order instead. Six is 720
+ * serializations of two small graphs; every authored round names two.
+ */
+const CANONICAL_RENAMING_MAX_DIMENSIONS = 6
+
+function permutations<T>(items: ReadonlyArray<T>): Array<Array<T>> {
+  if (items.length <= 1) return [[...items]]
+  return items.flatMap((item, index) =>
+    permutations([...items.slice(0, index), ...items.slice(index + 1)]).map(
+      (rest) => [item, ...rest]
+    )
+  )
+}
+
+function renamedMonomial(
+  monomial: Monomial,
+  rename: ReadonlyMap<Dimension, Dimension>
+): string {
+  return printMonomial(
+    multiplyMonomials(
+      monomial.map((factor) => ({
+        ...factor,
+        dimension: rename.get(factor.dimension) ?? factor.dimension,
+      })),
+      ONE
+    )
+  )
+}
+
+/**
+ * A graph's shape: `Seq` and `Loop` in order, each loop's repetition under
+ * `rename`, and every `W` as a bare `W`. A work node's constant is not
+ * structure: Def. 2.1 gives only a `Loop` a repetition expression, Def.
+ * 5.2's distance counts only loop edges, and `W(1)` against `W(3)` is a
+ * constant factor no Θ-class (Def. 2.2) can see.
+ */
+function shapeOf(
+  graph: CostGraph,
+  rename: ReadonlyMap<Dimension, Dimension>
+): string {
+  switch (graph.kind) {
+    case "work": {
+      return "W"
+    }
+    case "seq": {
+      return `S(${graph.children.map((child) => shapeOf(child, rename)).join(",")})`
+    }
+    case "loop": {
+      return `L[${renamedMonomial(graph.repetition, rename)}](${shapeOf(graph.body, rename)})`
+    }
+    default: {
+      return assertNever(graph)
+    }
+  }
+}
+
+/** FNV-1a over UTF-16 code units, 32 bits, from a given offset basis. */
+function fnv1a(text: string, basis: number): string {
+  let hash = basis >>> 0
+  for (let index = 0; index < text.length; index += 1) {
+    hash = Math.imul(hash ^ text.charCodeAt(index), 0x01000193) >>> 0
+  }
+  return hash.toString(16).padStart(8, "0")
+}
+
+/**
+ * A rewrite's structural identity (#1212 G4, consumed by #1229 L3): two
+ * rewrites share a key exactly when their `(G_A, G_{A'})` pairs have the
+ * same shape up to renaming the input dimensions, so it is computed from
+ * the rewrite, never from a round id. Def. 10.2's positive transfer counts
+ * rounds whose diffs "induce structurally distinct rewrites"; three rounds
+ * carrying the same rewrite are one piece of evidence under this key,
+ * however their programs, ids or dimension names differ.
+ *
+ * Why not `semanticDistance`: Def. 5.2 is a count, and two unrelated
+ * rewrites can each move one edge. Distinctness needs an identity, so this
+ * keys the whole pair's shape (see `shapeOf` for what counts as shape).
+ *
+ * Renaming: `n` in one round and `m` in another are author's choices
+ * (`Dimension`), so the key is the least serialization over every renaming
+ * of the pair's dimensions onto `d0, d1, ...`, applied to both graphs at
+ * once so a dimension shared by before and after stays shared. That is a
+ * canonical form: equal keys mean isomorphic shapes, and isomorphic shapes
+ * give equal keys. Past `CANONICAL_RENAMING_MAX_DIMENSIONS` it renames in
+ * sorted-name order, which stays sound (equal keys still mean equal
+ * shapes) and may split one shape across two keys.
+ *
+ * The serialization is hashed (two FNV-1a passes, 64 bits) because the
+ * ledger stores a key on every observation (`lib/leetype/ledger`) and
+ * Thm. 7.1 of the sibling canon prices each byte of it.
+ */
+export function rewriteKeyOf(rewrite: Rewrite): string {
+  const dimensions = [
+    ...new Set([
+      ...dimensionsOfGraph(rewrite.before),
+      ...dimensionsOfGraph(rewrite.after),
+    ]),
+  ].sort()
+  const orders =
+    dimensions.length <= CANONICAL_RENAMING_MAX_DIMENSIONS
+      ? permutations(dimensions)
+      : [dimensions]
+  let least: string | undefined
+  for (const order of orders) {
+    const rename = new Map(
+      order.map((dimension, index) => [dimension, `d${index}`])
+    )
+    const shape = `${shapeOf(rewrite.before, rename)}=>${shapeOf(rewrite.after, rename)}`
+    if (least === undefined || shape < least) least = shape
+  }
+  const canonical = least ?? ""
+  return `rw:${fnv1a(canonical, 0x811c9dc5)}${fnv1a(canonical, 0x01000193)}`
 }

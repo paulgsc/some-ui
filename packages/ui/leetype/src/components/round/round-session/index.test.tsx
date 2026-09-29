@@ -1,12 +1,21 @@
 import { act } from "react"
 import { RoundSession } from "@leetype/components/round/round-session"
 import { AUTHORED_ROUNDS } from "@leetype/lib/leetype/authored-rounds"
+import type { Ledger } from "@leetype/lib/leetype/ledger"
+import { EMPTY_LEDGER, recordObservations } from "@leetype/lib/leetype/ledger"
+import type { Observation } from "@leetype/lib/leetype/ledger/observation"
+import { observationsOfCommitment } from "@leetype/lib/leetype/ledger/observation"
+import { LEDGER_STATE_COPY } from "@leetype/lib/leetype/ledger/state"
+import type { LedgerStore } from "@leetype/lib/leetype/ledger/store"
 import type { PastedRoundStore } from "@leetype/lib/leetype/pasted-round"
 import { PROPOSITION_REGISTER } from "@leetype/lib/leetype/proposition-register/generated"
+import type { PropositionId } from "@leetype/lib/leetype/proposition-register/generated"
 import { serializeRound } from "@leetype/lib/leetype/round-export"
+import { BOOST_CAP, WEIGHT_FLOOR } from "@leetype/lib/leetype/round-sampler"
 import type { Round } from "@leetype/types/authored-round"
+import type { DiffSetMember } from "@leetype/types/round"
 import { fireEvent, render, screen, within } from "@testing-library/react"
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const COUNT_PRESENT = AUTHORED_ROUNDS[0]!
 
@@ -21,6 +30,49 @@ function memoryStore(initial: Round | null = null): PastedRoundStore {
       held = null
     },
   }
+}
+
+/** A ledger store in memory, starting from `initial` (empty: a cleared store). */
+function memoryLedgerStore(
+  initial: Ledger = EMPTY_LEDGER
+): LedgerStore & { held: () => Ledger } {
+  let held = initial
+  return {
+    get: (): Ledger => held,
+    set: (ledger): void => {
+      held = ledger
+    },
+    held: (): Ledger => held,
+  }
+}
+
+/** The evidence ring filed under a register id read off the screen. */
+function ringOf(ledger: Ledger, id: string): ReadonlyArray<Observation> {
+  return (
+    Object.entries(ledger.entries).find(([key]) => key === id)?.[1]?.ring ?? []
+  )
+}
+
+/** The corpus member whose hunk a rewrite card shows. */
+function memberOfCard(card: HTMLElement): DiffSetMember {
+  const text = card.textContent.replace(/\s+/g, "")
+  const member = AUTHORED_ROUNDS.flatMap((round) =>
+    round.diffOptions.map((option) => option.member)
+  ).find((candidate) => {
+    // Line by line: the card puts a gutter between lines.
+    const lines = (kind: "addition" | "deletion"): Array<string> =>
+      candidate.hunk.segments
+        .filter((segment) => segment.kind === kind)
+        .flatMap((segment) => segment.text.split("\n"))
+        .map((line) => line.replace(/\s+/g, ""))
+        .filter((line) => line.length > 0)
+    const added = lines("addition")
+    return (added.length > 0 ? added : lines("deletion")).every((line) =>
+      text.includes(line)
+    )
+  })
+  if (member === undefined) throw new Error("no corpus member matches card")
+  return member
 }
 
 /** Presses the switcher's Next until `label` is the artifact in view. */
@@ -47,6 +99,11 @@ function chooseRewriteContaining(text: string): void {
 }
 
 describe("RoundSession", () => {
+  beforeEach(() => {
+    // The default ledger store is `localStorage`; no test inherits another's.
+    localStorage.clear()
+  })
+
   it("plays a round end to end: the admissible rewrite, its proposition, the verdict, the next round", () => {
     render(
       <RoundSession
@@ -185,6 +242,191 @@ describe("RoundSession", () => {
     // shown again.
     expect(screen.getByRole("button", { name: answer })).toBeDisabled()
     expect(screen.getByRole("button", { name: "Next round" })).toBeEnabled()
+  })
+
+  it("files each (d, p) commitment into the ledger: three cases, the wrong choice named", () => {
+    const ledgerStore = memoryLedgerStore()
+    render(
+      <RoundSession
+        rounds={[COUNT_PRESENT]}
+        sessionSeed={3}
+        pastedStore={memoryStore()}
+        ledgerStore={ledgerStore}
+      />
+    )
+    goTo("Rewrites")
+    chooseRewriteContaining("binary_search")
+    const wrong = screen
+      .getAllByRole("button")
+      .find(
+        (button) =>
+          Object.values(PROPOSITION_REGISTER).some(({ title }) =>
+            button.textContent.includes(title)
+          ) && !button.textContent.includes(PROPOSITION_REGISTER["CW-P6"].title)
+      )!
+    const chosen = Object.values(PROPOSITION_REGISTER).find(({ title }) =>
+      wrong.textContent.includes(title)
+    )!.id
+    fireEvent.click(wrong)
+
+    const witness = ledgerStore.held().entries["CW-P6"]?.ring[0]
+    expect(witness).toMatchObject({
+      outcome: { kind: "incorrect", chosen },
+      propositionId: "CW-P6",
+      role: "witness",
+      roundId: COUNT_PRESENT.id,
+    })
+    expect(witness?.rewriteKey).toMatch(/^rw:/)
+    // Filed under the option they chose too, as the distractor it was.
+    expect(ringOf(ledgerStore.held(), chosen)[0]?.role).toBe("distractor")
+  })
+
+  it("keeps what another tab stored since mount when it files a commitment", () => {
+    const ledgerStore = memoryLedgerStore()
+    render(
+      <RoundSession
+        rounds={[COUNT_PRESENT]}
+        sessionSeed={3}
+        pastedStore={memoryStore()}
+        ledgerStore={ledgerStore}
+      />
+    )
+    // Another tab answers a card after this one read the store.
+    const elsewhere = observationsOfCommitment({
+      answerId: "CW-P16",
+      presented: ["CW-P16", "CW-P8"],
+      commitment: { kind: "choice", id: "CW-P16" },
+      roundId: "another-tab",
+      rewriteKey: "rw:another-tab",
+      sessionId: "another-tab",
+      at: 1,
+    })
+    ledgerStore.set(recordObservations(EMPTY_LEDGER, elsewhere))
+
+    goTo("Rewrites")
+    chooseRewriteContaining("binary_search")
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: new RegExp(PROPOSITION_REGISTER["CW-P6"].title),
+      })
+    )
+
+    const roundsOf = (id: PropositionId): Array<string> =>
+      (ledgerStore.held().entries[id]?.ring ?? []).map(({ roundId }) => roundId)
+    expect(roundsOf("CW-P16")).toContain("another-tab")
+    expect(roundsOf("CW-P6")).toContain(COUNT_PRESENT.id)
+  })
+
+  it("never files the learner's own round: its key was in hand (Ax. 9.2)", () => {
+    const ledgerStore = memoryLedgerStore()
+    render(
+      <RoundSession
+        rounds={[AUTHORED_ROUNDS[1]!]}
+        sessionSeed={3}
+        pastedStore={memoryStore({ ...COUNT_PRESENT, id: "my-own-round" })}
+        ledgerStore={ledgerStore}
+      />
+    )
+    goTo("Rewrites")
+    chooseRewriteContaining("binary_search")
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: new RegExp(PROPOSITION_REGISTER["CW-P6"].title),
+      })
+    )
+    expect(ledgerStore.held()).toEqual(EMPTY_LEDGER)
+  })
+
+  it("from a cleared store, answering every round wrongly, reaches and reveals every round (Thm. 9.1, Thm. 7.2)", () => {
+    // The sampler's reach bound (see `round-sampler`'s tests): with five
+    // rounds each draw reaches an unreached one with probability at least
+    // 1/33, so this many draws miss one with probability under 1e-6.
+    const n = AUTHORED_ROUNDS.length
+    const p =
+      WEIGHT_FLOOR / (WEIGHT_FLOOR + (n - 1) * (WEIGHT_FLOOR + BOOST_CAP))
+    const bound = Math.ceil(Math.log(n / 1e-6) / -Math.log(1 - p))
+    const ledgerStore = memoryLedgerStore()
+    render(
+      <RoundSession
+        rounds={AUTHORED_ROUNDS}
+        sessionSeed={11}
+        pastedStore={memoryStore()}
+        ledgerStore={ledgerStore}
+      />
+    )
+    const reached = new Set<string>()
+    for (let draw = 0; draw < bound && reached.size < n; draw += 1) {
+      // Every artifact is there before any answer: nothing is gated.
+      for (const label of ["Program", "Bounds", "Budget", "Rewrites"]) {
+        goTo(label)
+        expect(
+          screen
+            .getAllByText(label)
+            .some((node) => node.closest("[hidden]") === null)
+        ).toBe(true)
+      }
+      const card = screen.getAllByRole("region", { name: /^Rewrite / })[0]!
+      const answer = PROPOSITION_REGISTER[memberOfCard(card).propositionId]
+      fireEvent.click(
+        within(card).getByRole("button", { name: /^Choose rewrite/ })
+      )
+      const wrong = screen
+        .getAllByRole("button")
+        .find(
+          (button) =>
+            Object.values(PROPOSITION_REGISTER).some(({ title }) =>
+              button.textContent.includes(title)
+            ) && !button.textContent.includes(answer.title)
+        )!
+      fireEvent.click(wrong)
+
+      // Wrong, and everything is revealed anyway: the answer's statement,
+      // the next state, and the way on (Ax. 9.1).
+      expect(screen.getByText(answer.statement)).toBeInTheDocument()
+      const witness = ringOf(ledgerStore.held(), answer.id).at(-1)
+      expect(witness?.outcome.kind).toBe("incorrect")
+      reached.add(witness!.roundId)
+      fireEvent.click(screen.getByRole("button", { name: "Next round" }))
+    }
+    expect([...reached].sort()).toEqual(
+      AUTHORED_ROUNDS.map((round) => round.id).sort()
+    )
+  })
+
+  it("says recognized after one correct selection, and never mastery (Cor. 10.1)", () => {
+    vi.useFakeTimers({
+      toFake: ["setInterval", "clearInterval", "performance"],
+    })
+    try {
+      render(
+        <RoundSession
+          rounds={[COUNT_PRESENT]}
+          sessionSeed={3}
+          sessionDurationMs={1000}
+          pastedStore={memoryStore()}
+          ledgerStore={memoryLedgerStore()}
+        />
+      )
+      goTo("Rewrites")
+      chooseRewriteContaining("binary_search")
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: new RegExp(PROPOSITION_REGISTER["CW-P6"].title),
+        })
+      )
+      act(() => {
+        vi.advanceTimersByTime(1250)
+      })
+      const ledger = screen.getByRole("region", { name: "Your ledger" })
+      const row = within(ledger)
+        .getByText(PROPOSITION_REGISTER["CW-P6"].title)
+        .closest("li")!
+      expect(row).toHaveTextContent(LEDGER_STATE_COPY.recognized)
+      expect(row).not.toHaveTextContent(/Demonstrated:/)
+      expect(document.body.textContent).not.toMatch(/master|%|streak|level/i)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it("skips a round that fails the authored-round checks rather than playing it", () => {

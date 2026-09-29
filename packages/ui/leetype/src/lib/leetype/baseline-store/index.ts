@@ -47,6 +47,14 @@ import { z } from "zod"
  * competence claim belongs, and it does not exist yet (Cor. 4.3: this
  * surface is uncredited by declaration). A `localStorage` key is never the
  * fallback for "O3 isn't built yet."
+ *
+ * One competence record now exists, and it is not that fallback:
+ * `lib/leetype/ledger/store` keeps the round surface's ledger
+ * (`complexity-witness-canon.typ` §10, #1202) under `leetype:ledger`. It
+ * is a competence claim by design, governed by the canon that owns one,
+ * which inherits its persistence from `adaptive-learning-canon.typ` §7
+ * (Rem. 10.1): versioned, bounded, validated on read, and correct when
+ * evicted. The rule above still holds for every other key.
  */
 
 /** One player's sampled typing speed. */
