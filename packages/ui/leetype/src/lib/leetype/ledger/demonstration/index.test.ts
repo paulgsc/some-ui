@@ -22,6 +22,7 @@ type Spec = {
   role: Observation["role"]
   outcome: Observation["outcome"]
   rewriteKey?: string
+  roundId?: string
   sessionId: string
   at: number
 }
@@ -31,7 +32,7 @@ function observation(spec: Spec): Observation {
     outcome: spec.outcome,
     propositionId: spec.role === "witness" ? P : "CW-P8",
     role: spec.role,
-    roundId: `round-${spec.at}`,
+    roundId: spec.roundId ?? `round-${spec.at}`,
     rewriteKey: spec.rewriteKey ?? "rw:z",
     sessionId: spec.sessionId,
     at: spec.at,
@@ -98,6 +99,48 @@ describe("demonstrated — Def. 10.2's conjunction, each conjunct reported", () 
     )
     expect(result.transfer).toEqual({ met: false, distinctRewrites: 1 })
     expect(result.holds).toBe(false)
+  })
+
+  it("counts one round offering three rewrites as one round", () => {
+    const inOneRound = (rewriteKey: string, at: number): Spec => ({
+      ...transfer(rewriteKey, at < T0 + DAY ? "s1" : "s2", at),
+      roundId: "one-round",
+    })
+    const result = demonstrated(
+      P,
+      ledgerOf([
+        inOneRound("rw:a", T0),
+        inOneRound("rw:b", T0 + MINUTE),
+        inOneRound("rw:c", T0 + DAY),
+        rejection("s2", T0 + DAY + MINUTE),
+      ]),
+      T0 + DAY + 2 * MINUTE
+    )
+    expect(result.transfer).toEqual({ met: false, distinctRewrites: 1 })
+    expect(result.holds).toBe(false)
+  })
+
+  it("pairs rounds with rewrites, so neither is counted twice", () => {
+    // Round A offers a and b; rounds B and C carry only a. Three rounds and
+    // two keys pair at most twice (A–b, B–a). Round D with c makes three.
+    const spec = (roundId: string, rewriteKey: string, at: number): Spec => ({
+      ...transfer(rewriteKey, "s1", at),
+      roundId,
+    })
+    const three = [
+      spec("A", "rw:a", T0),
+      spec("A", "rw:b", T0 + 1),
+      spec("B", "rw:a", T0 + 2),
+      spec("C", "rw:a", T0 + 3),
+    ]
+    expect(demonstrated(P, ledgerOf(three), T0 + 4).transfer).toEqual({
+      met: false,
+      distinctRewrites: 2,
+    })
+    expect(
+      demonstrated(P, ledgerOf([...three, spec("D", "rw:c", T0 + 4)]), T0 + 5)
+        .transfer
+    ).toEqual({ met: true, distinctRewrites: 3 })
   })
 
   it("is not demonstrated without a correct rejection (Prop. 10.1)", () => {

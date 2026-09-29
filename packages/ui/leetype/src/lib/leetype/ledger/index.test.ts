@@ -2,6 +2,7 @@ import {
   EMPTY_LEDGER,
   LEDGER_PROFILE,
   LEDGER_SCHEMA_VERSION,
+  mergeLedgers,
   parseLedger,
   recordObservations,
   RING_CAPACITY,
@@ -143,5 +144,35 @@ describe("parseLedger — validated on read, every failure empty (Thm. 7.2, 7.3)
     })
     expect(Object.keys(parsed.entries).sort()).toEqual(["CW-P11", "CW-P6"])
     expect(parsed.entries["CW-P6"]).toEqual(good.entries["CW-P6"])
+  })
+})
+
+describe("mergeLedgers — two tabs, one origin-wide key", () => {
+  const tabA = recordObservations(EMPTY_LEDGER, card(1_000, "CW-P6"))
+  const tabB = recordObservations(EMPTY_LEDGER, card(2_000, "CW-P3"))
+
+  it("keeps both tabs' evidence, in timestamp order", () => {
+    const merged = mergeLedgers(tabB, tabA)
+    expect(merged.entries["CW-P6"]?.ring.map(({ at }) => at)).toEqual([
+      1_000, 2_000,
+    ])
+    expect(merged.entries["CW-P6"]?.recognizedAt).toBe(1_000)
+    expect(mergeLedgers(tabA, tabB)).toEqual(merged)
+  })
+
+  it("is idempotent, and a ledger that read as empty changes nothing", () => {
+    expect(mergeLedgers(tabA, tabA)).toEqual(tabA)
+    expect(mergeLedgers(tabA, EMPTY_LEDGER)).toEqual(tabA)
+  })
+
+  it("drops a duplicate read back from storage whatever its key order", () => {
+    const stored = parseLedger(
+      JSON.parse(JSON.stringify(tabA), (_key, value: unknown) =>
+        value !== null && typeof value === "object" && !Array.isArray(value)
+          ? Object.fromEntries(Object.entries(value).reverse())
+          : value
+      )
+    )
+    expect(mergeLedgers(tabA, stored)).toEqual(tabA)
   })
 })

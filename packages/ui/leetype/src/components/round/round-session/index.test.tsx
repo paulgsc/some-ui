@@ -2,12 +2,14 @@ import { act } from "react"
 import { RoundSession } from "@leetype/components/round/round-session"
 import { AUTHORED_ROUNDS } from "@leetype/lib/leetype/authored-rounds"
 import type { Ledger } from "@leetype/lib/leetype/ledger"
-import { EMPTY_LEDGER } from "@leetype/lib/leetype/ledger"
+import { EMPTY_LEDGER, recordObservations } from "@leetype/lib/leetype/ledger"
 import type { Observation } from "@leetype/lib/leetype/ledger/observation"
+import { observationsOfCommitment } from "@leetype/lib/leetype/ledger/observation"
 import { LEDGER_STATE_COPY } from "@leetype/lib/leetype/ledger/state"
 import type { LedgerStore } from "@leetype/lib/leetype/ledger/store"
 import type { PastedRoundStore } from "@leetype/lib/leetype/pasted-round"
 import { PROPOSITION_REGISTER } from "@leetype/lib/leetype/proposition-register/generated"
+import type { PropositionId } from "@leetype/lib/leetype/proposition-register/generated"
 import { serializeRound } from "@leetype/lib/leetype/round-export"
 import { BOOST_CAP, WEIGHT_FLOOR } from "@leetype/lib/leetype/round-sampler"
 import type { Round } from "@leetype/types/authored-round"
@@ -277,6 +279,42 @@ describe("RoundSession", () => {
     expect(witness?.rewriteKey).toMatch(/^rw:/)
     // Filed under the option they chose too, as the distractor it was.
     expect(ringOf(ledgerStore.held(), chosen)[0]?.role).toBe("distractor")
+  })
+
+  it("keeps what another tab stored since mount when it files a commitment", () => {
+    const ledgerStore = memoryLedgerStore()
+    render(
+      <RoundSession
+        rounds={[COUNT_PRESENT]}
+        sessionSeed={3}
+        pastedStore={memoryStore()}
+        ledgerStore={ledgerStore}
+      />
+    )
+    // Another tab answers a card after this one read the store.
+    const elsewhere = observationsOfCommitment({
+      answerId: "CW-P16",
+      presented: ["CW-P16", "CW-P8"],
+      commitment: { kind: "choice", id: "CW-P16" },
+      roundId: "another-tab",
+      rewriteKey: "rw:another-tab",
+      sessionId: "another-tab",
+      at: 1,
+    })
+    ledgerStore.set(recordObservations(EMPTY_LEDGER, elsewhere))
+
+    goTo("Rewrites")
+    chooseRewriteContaining("binary_search")
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: new RegExp(PROPOSITION_REGISTER["CW-P6"].title),
+      })
+    )
+
+    const roundsOf = (id: PropositionId): Array<string> =>
+      (ledgerStore.held().entries[id]?.ring ?? []).map(({ roundId }) => roundId)
+    expect(roundsOf("CW-P16")).toContain("another-tab")
+    expect(roundsOf("CW-P6")).toContain(COUNT_PRESENT.id)
   })
 
   it("never files the learner's own round: its key was in hand (Ax. 9.2)", () => {

@@ -127,8 +127,23 @@ export function parseLedger(value: unknown): Ledger {
   return { ...EMPTY_LEDGER, entries }
 }
 
+/**
+ * Field by field, not by `JSON.stringify`: `mergeLedgers` compares an
+ * observation built in memory with one parsed back from storage, and the
+ * two need not list their keys in the same order.
+ */
 function sameObservation(a: Observation, b: Observation): boolean {
-  return JSON.stringify(a) === JSON.stringify(b)
+  return (
+    a.at === b.at &&
+    a.sessionId === b.sessionId &&
+    a.roundId === b.roundId &&
+    a.role === b.role &&
+    a.propositionId === b.propositionId &&
+    a.rewriteKey === b.rewriteKey &&
+    a.outcome.kind === b.outcome.kind &&
+    (a.outcome.kind === "incorrect" ? a.outcome.chosen : null) ===
+      (b.outcome.kind === "incorrect" ? b.outcome.chosen : null)
+  )
 }
 
 function withObservation(
@@ -173,4 +188,34 @@ export function recordObservations(
     entries[about] = withObservation(entries[about], observation)
   }
   return { ...ledger, entries }
+}
+
+/**
+ * Both ledgers' evidence in one: every observation either holds, folded in
+ * timestamp order with duplicates dropped (Ax. 5.1), and the earlier
+ * `recognizedAt` of the two. Order-free, so a tab can fold what another tab
+ * stored into its own copy before writing, and neither loses the other's
+ * evidence to a whole-value `set` (Codex, #1599). A ledger that failed to
+ * read is `EMPTY_LEDGER`, which merges as a no-op, so this tab's in-memory
+ * evidence survives a storage that reads nothing (Prop. 7.2).
+ */
+export function mergeLedgers(into: Ledger, from: Ledger): Ledger {
+  const entries = { ...into.entries }
+  for (const [key, theirs] of Object.entries(from.entries)) {
+    if (!isPropositionId(key)) continue
+    let merged = entries[key]
+    for (const observation of theirs.ring) {
+      merged = withObservation(merged, observation)
+    }
+    const recognizedAt = Math.min(
+      entries[key]?.recognizedAt ?? Infinity,
+      theirs.recognizedAt ?? Infinity,
+      merged?.recognizedAt ?? Infinity
+    )
+    if (merged !== undefined) {
+      entries[key] =
+        recognizedAt === Infinity ? merged : { ...merged, recognizedAt }
+    }
+  }
+  return { ...into, entries }
 }

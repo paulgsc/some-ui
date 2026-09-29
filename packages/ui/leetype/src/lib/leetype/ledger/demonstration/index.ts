@@ -15,10 +15,12 @@
  *
  * 1. *Positive transfer*: `witness` observations with outcome `correct`
  *    (the learner named μ(d) for the diff they chose) on at least
- *    `TRANSFER_REWRITES` distinct `rewriteKey`s. The key is `rewriteKeyOf`
- *    over `(G_A, G_{A+d})` (#1212 G4, `lib/leetype/rewrite`), so three
- *    rounds carrying one rewrite are one piece of evidence whatever their
- *    ids, programs or dimension names.
+ *    `TRANSFER_REWRITES` distinct `rewriteKey`s, each from a different
+ *    round. The key is `rewriteKeyOf` over `(G_A, G_{A+d})` (#1212 G4,
+ *    `lib/leetype/rewrite`), so three rounds carrying one rewrite are one
+ *    piece of evidence whatever their ids, programs or dimension names; and
+ *    one round offering three rewrites of `p` is one round. The count is a
+ *    maximum matching of rounds to keys (`roundsPairedWithRewrites`).
  * 2. *Negative discrimination* (Prop. 10.1): at least one *correct
  *    rejection* — a `distractor` observation with outcome `correct`: `p` was
  *    presented on the card, a different proposition was μ(d), and the
@@ -136,6 +138,7 @@ export type Demonstration = {
   /** Def. 10.2 (1). */
   readonly transfer: {
     readonly met: boolean
+    /** Correct transfers paired with a distinct round *and* a distinct rewrite key. */
     readonly distinctRewrites: number
   }
   /** Def. 10.2 (2). */
@@ -157,6 +160,45 @@ export type Demonstration = {
   }
   /** All three conjuncts, and not lapsed. */
   readonly holds: boolean
+}
+
+/**
+ * Def. 10.2 (1) asks for `T` rounds *and* `T` structurally distinct
+ * rewrites, so a transfer counts only when it can be paired with a round
+ * and a rewrite key no other counted transfer uses: the size of a maximum
+ * matching between the rounds and the rewrite keys the correct witness
+ * observations connect. One round whose `D` holds three differently shaped
+ * rewrites of `p` is one round, not three (Codex, #1599); three rounds
+ * sharing one rewrite are one rewrite. Kuhn's augmenting paths; the ring
+ * holds at most `RING_CAPACITY` observations, so this is a few hundred steps.
+ */
+function roundsPairedWithRewrites(
+  transfers: ReadonlyArray<Observation>
+): number {
+  const keysOfRound = new Map<string, Set<string>>()
+  for (const { roundId, rewriteKey } of transfers) {
+    const keys = keysOfRound.get(roundId) ?? new Set<string>()
+    keys.add(rewriteKey)
+    keysOfRound.set(roundId, keys)
+  }
+  const roundOfKey = new Map<string, string>()
+  const augment = (roundId: string, seen: Set<string>): boolean => {
+    for (const key of keysOfRound.get(roundId) ?? []) {
+      if (seen.has(key)) continue
+      seen.add(key)
+      const holder = roundOfKey.get(key)
+      if (holder === undefined || augment(holder, seen)) {
+        roundOfKey.set(key, roundId)
+        return true
+      }
+    }
+    return false
+  }
+  let paired = 0
+  for (const roundId of keysOfRound.keys()) {
+    if (augment(roundId, new Set())) paired += 1
+  }
+  return paired
 }
 
 function isTransfer(observation: Observation): boolean {
@@ -244,9 +286,7 @@ export function demonstrated(
     (observation) => isTransfer(observation) || isRejection(observation)
   )
 
-  const distinctRewrites = new Set(
-    transfers.map((observation) => observation.rewriteKey)
-  ).size
+  const distinctRewrites = roundsPairedWithRewrites(transfers)
   const spacedSessions = spacedSessionsOf(qualifying).length
   const transfer = {
     met: distinctRewrites >= TRANSFER_REWRITES,

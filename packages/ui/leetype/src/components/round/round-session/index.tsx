@@ -16,7 +16,7 @@ import { SourcePanel } from "@leetype/components/round/source-panel"
 import { shuffledBySeed } from "@leetype/lib/leetype/deterministic-random"
 import { buildRoundPrompt } from "@leetype/lib/leetype/generation"
 import type { Ledger } from "@leetype/lib/leetype/ledger"
-import { recordObservations } from "@leetype/lib/leetype/ledger"
+import { mergeLedgers, recordObservations } from "@leetype/lib/leetype/ledger"
 import { observationsOfCommitment } from "@leetype/lib/leetype/ledger/observation"
 import type { EntryReading } from "@leetype/lib/leetype/ledger/state"
 import {
@@ -363,8 +363,10 @@ export const RoundSession: FC<RoundSessionProps> = ({
       }))
       // Ax. 9.2: the learner's own round was answered with its key in hand.
       if (play.own) return
+      // Another tab may have stored evidence since this one last read; fold
+      // it in first, or this whole-value write would erase it (Codex, #1599).
       const next = recordObservations(
-        ledger,
+        mergeLedgers(ledger, ledgers.get()),
         observationsOfCommitment({
           answerId: probe.answerId,
           presented: probe.options.map(({ id }) => id),
