@@ -151,6 +151,12 @@ export type HandheldLessonVM = {
      * null with nothing pasted.
      */
     pastedDocument: string | null
+    /**
+     * The document as kept under a shelf key: the same, with `meta.key` that
+     * key's `local:` form, so a replayed copy serializes back to its kept
+     * bytes. Null with nothing pasted.
+     */
+    keptBodyFor: ((shelfKey: string) => string) | null
     active: boolean
     open: () => void
     close: () => void
@@ -694,6 +700,17 @@ export function useHandheldLesson({
     () => (pasted ? serializePastedLesson(pasted.meta, pasted.batches) : null),
     [pasted]
   )
+  const keptBodyFor = useMemo(
+    () =>
+      pasted
+        ? (shelfKey: string): string =>
+            serializePastedLesson(
+              { ...pasted.meta, key: `${LOCAL_LESSON_PREFIX}${shelfKey}` },
+              pasted.batches
+            )
+        : null,
+    [pasted]
+  )
 
   return {
     catalog: {
@@ -759,6 +776,7 @@ export function useHandheldLesson({
     generator: {
       pasted: pasted?.meta ?? null,
       pastedDocument,
+      keptBodyFor,
       active: generating && topikKey === null,
       open: (): void => setGenerating(true),
       close: (): void => setGenerating(false),

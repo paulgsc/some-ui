@@ -19,11 +19,12 @@
  *
  * Every route needs a passkey session and answers `401` without one; a
  * write from an untrusted origin is `403` (the server checks `Origin`, which
- * the browser sends; there is no token to add). Two refusals are ones the
+ * the browser sends; there is no token to add). Three refusals are ones the
  * learner can act on, so they arrive as a `ShelfRefusedError` whose `reason`
  * the packages read: `full` (`409`, a new key on a shelf at its cap, which
- * the server never evicts from) and `signed-out` (`401`). Everything else is
- * `requestJSON`'s own error.
+ * the server never evicts from), `signed-out` (`401`) and `invalid` (`422`,
+ * an item the shelf will not hold, which retrying cannot change).
+ * Everything else is `requestJSON`'s own error.
  *
  * A build with no `file_host` (the GitHub Pages build, or no `window`) gets
  * no client at all, so the packages offer no shelf rather than one that

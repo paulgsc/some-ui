@@ -192,13 +192,16 @@ export const HandheldLesson = ({
           onCreate={generator.open}
           onForget={generator.forget}
           keep={
-            shelf && generator.pasted && generator.pastedDocument !== null ? (
+            shelf &&
+            generator.pasted &&
+            generator.pastedDocument !== null &&
+            generator.keptBodyFor !== null ? (
               <KeepLesson
                 // A newly pasted lesson is a new question: back to "Keep".
                 key={generator.pastedDocument}
                 shelf={shelf}
                 shelfKey={shelfKeyOf(generator.pasted.key)}
-                body={generator.pastedDocument}
+                bodyFor={generator.keptBodyFor}
               />
             ) : undefined
           }

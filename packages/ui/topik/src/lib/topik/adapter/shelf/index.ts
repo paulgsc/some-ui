@@ -80,37 +80,66 @@ async function contentHashOf(body: string): Promise<string | null> {
   ).join("")
 }
 
+/** Whether `key` on the shelf holds exactly `body`. */
+async function holdsSame(
+  shelf: ShelfPort,
+  key: string,
+  heldHash: string,
+  body: string
+): Promise<boolean> {
+  const hash = await contentHashOf(body)
+  if (hash !== null) return hash === heldHash
+  // No Web Crypto (not a secure context): compare what is kept instead.
+  try {
+    const kept: unknown = await shelf.read(key)
+    const mine: unknown = JSON.parse(body)
+    return JSON.stringify(kept) === JSON.stringify(mine)
+  } catch {
+    return false
+  }
+}
+
 /**
- * Keeps `body` without replacing anything else the learner kept. The key
+ * Keeps an item without replacing anything else the learner kept. The key
  * comes from a name their model chose, so two different items can share one
  * (`first-dinner`, `two-sum`), and a `PUT` to a held key replaces it: past
  * the cap, too, since only a *new* key is refused (review, #1600). So the
- * tap reads the listing first. The same bytes already held under `base`, or
- * under a `-2`, `-3`… variant, are reported unchanged and nothing is
- * written. Otherwise the body goes under the first of those keys the shelf
- * does not hold, and a full shelf still answers `full`. A keep from another
- * device between the listing and the write can still replace; that is one
- * learner racing themselves.
+ * tap reads the listing first. If `base` or a `-2`, `-3`… variant already
+ * holds these bytes, that is reported unchanged and nothing is written;
+ * otherwise the item goes under the first of those keys the shelf does not
+ * hold, and a full shelf still answers `full`.
+ *
+ * `body` may depend on the key it is kept under (a TOPIK lesson carries its
+ * own key), so a replayed copy serializes back to exactly what was kept and
+ * is found again rather than kept twice. A keep from another device between
+ * the listing and the write can still replace; that is one learner racing
+ * themselves.
  */
 export async function keepWithoutReplacing(
   shelf: ShelfPort,
   base: string,
-  body: string
+  body: string | ((key: string) => string)
 ): Promise<{ change: "kept" | "unchanged"; key: string }> {
-  const [{ items }, hash] = await Promise.all([
-    shelf.list(),
-    contentHashOf(body),
-  ])
+  const bodyAt = (key: string): string =>
+    typeof body === "string" ? body : body(key)
+  const { items } = await shelf.list()
   const held = new Map(items.map((item) => [item.key, item.contentHash]))
-  for (let copy = 1; ; copy += 1) {
-    const key = copy === 1 ? base : `${base}-${copy}`
-    const existing = held.get(key)
-    if (existing === undefined) {
-      const { change } = await shelf.keep(key, body)
-      return { change: change === "unchanged" ? "unchanged" : "kept", key }
+  const candidates = Array.from({ length: held.size + 1 }, (_, index) =>
+    index === 0 ? base : `${base}-${index + 1}`
+  )
+  let free: string | undefined
+  for (const key of candidates) {
+    const heldHash = held.get(key)
+    if (heldHash === undefined) {
+      free ??= key
+    } else if (await holdsSame(shelf, key, heldHash, bodyAt(key))) {
+      return { change: "unchanged", key }
     }
-    if (hash !== null && existing === hash) return { change: "unchanged", key }
   }
+  // One more candidate than held keys, so one of them is free.
+  const key = free ?? `${base}-${candidates.length + 1}`
+  const { change } = await shelf.keep(key, bodyAt(key))
+  return { change: change === "unchanged" ? "unchanged" : "kept", key }
 }
 
 const NOT_UNRESERVED = /[^A-Za-z0-9._~-]+/g
@@ -147,8 +176,9 @@ const KeptDocumentSchema = z.object({
  * paste is: `intakeLesson` holds the conversations to the schema, withholds
  * every probe the audit finds in error and derives the counts and relation
  * tags, with the kept manifest entry standing in for the one a reply
- * carries. The lesson plays under `local:<key>`, so keeping it again from
- * the pasted slot replaces this item rather than adding another.
+ * carries. The lesson plays under `local:<key>`, the key it was kept
+ * under, so keeping it again from the pasted slot serializes to the kept
+ * bytes and is found rather than kept twice (`keepWithoutReplacing`).
  */
 export function keptLessonOf(body: unknown, key: string): PastedLesson | null {
   const kept = KeptDocumentSchema.safeParse(body)

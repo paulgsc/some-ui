@@ -251,8 +251,8 @@ type KeepLessonProps = {
   shelf: ShelfPort
   /** The pasted lesson's shelf key (`shelfKeyOf`); a `-2`… variant when another lesson holds it. */
   shelfKey: string
-  /** The pasted slot's document (`serializePastedLesson`). */
-  body: string
+  /** The pasted slot's document as kept under a given key (`keptBodyFor`). */
+  bodyFor: (key: string) => string
 }
 
 /**
@@ -263,13 +263,13 @@ type KeepLessonProps = {
 export const KeepLesson = ({
   shelf,
   shelfKey,
-  body,
+  bodyFor,
 }: KeepLessonProps): JSX.Element => {
   const [keeping, setKeeping] = useState<Keeping>({ status: "idle" })
 
   const keep = (): void => {
     setKeeping({ status: "keeping" })
-    keepWithoutReplacing(shelf, shelfKey, body).then(
+    keepWithoutReplacing(shelf, shelfKey, bodyFor).then(
       ({ change, key }) =>
         setKeeping({ status: "kept", unchanged: change === "unchanged", key }),
       (error: unknown) =>
