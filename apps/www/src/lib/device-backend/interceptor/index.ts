@@ -69,7 +69,7 @@ export function createDeviceFetch(
       // A handler bug or a failed open answers like a server fault, not a
       // network error: the caller's `FileHostResponseError` path names the
       // route, where a rejected fetch would read as "file_host unreachable".
-      // eslint-disable-next-line no-console -- the only trace a handler bug leaves on a phone
+      // eslint-disable-next-line no-console -- visible in a dev build's WebView inspector; the production minifier drops it
       console.error("device backend:", method, path, error)
       return errorResponse(500, "operation_error")
     }

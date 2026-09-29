@@ -65,16 +65,24 @@ jobs:
         env:
           NODE_ENV: production
 
+      # The device backend reaches the bundle only through a dynamic import
+      # behind VITE_DEVICE_BACKEND, and www's build drops anything it decides
+      # has no side effects - silently, with a clean log. An APK without it
+      # installs and opens and then fails every request, so check for it by a
+      # string only its handlers carry rather than trusting the build.
+      - name: Check the device backend is in the bundle
+        run: |
+          if ! grep -rqF 'subject-device' apps/www/dist/assets; then
+            echo "::error::apps/www/dist has no device backend - the APK would have nothing answering file_host"
+            exit 1
+          fi
+
       # Outside the nix shell on purpose: Gradle wants the runner's JDK and the
       # preinstalled SDK, neither of which the ci devShell carries.
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
-          cache: gradle
-          cache-dependency-path: |
-            apps/mobile/android/**/*.gradle*
-            apps/mobile/android/gradle/wrapper/gradle-wrapper.properties
       - name: Assemble debug APK
         working-directory: apps/mobile/android
         run: ./gradlew assembleDebug --no-daemon --stacktrace

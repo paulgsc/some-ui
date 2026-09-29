@@ -4,11 +4,11 @@ import type { CapacitorConfig } from "@capacitor/cli"
  * The Android shell around `apps/www`.
  *
  * This workspace holds no application code and is not a second client. It
- * packages the *existing* backendless www build - the same shape of artifact
- * `.github/workflows/pages.yml` deploys - into a WebView that serves it from
- * inside the APK, so there is no server to reach and nothing to host. All
- * the UI, routing and state is www's; see this package's README for the
- * build flow and for what "backendless" costs.
+ * packages www's own build, made with `VITE_DEVICE_BACKEND=true`, into a
+ * WebView that serves it from inside the APK. In that build www answers its
+ * own `file_host` requests in-process from an on-device SQLite database
+ * (www `lib/device-backend`), so there is no server to reach and nothing to
+ * host. All the UI, routing and state is www's; see this package's README.
  */
 const config: CapacitorConfig = {
   appId: "dev.paulgsc.someui",
@@ -16,9 +16,9 @@ const config: CapacitorConfig = {
 
   /**
    * `apps/www`'s Vite output, reached across the workspace. Nothing is built
-   * here: `pnpm build:web` runs www's own build with `VITE_STATIC_DATA=true`,
-   * the flag that already means "no backend behind this build" everywhere in
-   * www, and `cap sync` copies whatever it left behind.
+   * here: `pnpm build:web` runs www's own build with `VITE_DEVICE_BACKEND=true`
+   * (and `VITE_STATIC_DATA=false`, pinned for the reason below), and
+   * `cap sync` copies whatever it left behind.
    *
    * www's `base` must be `/` for this, which is why `build:web` pins
    * `VITE_BASE_PATH=/` rather than leaving it unset. Unset is not the same
@@ -39,20 +39,18 @@ const config: CapacitorConfig = {
 
   server: {
     /**
-     * Pinned rather than left to default to the same value, because
-     * something now depends on it.
+     * Pinned rather than left to default to the same value, because two
+     * things depend on it and neither fails loudly if it changes.
      *
-     * Capacitor serves the bundle from `https://localhost` under this
-     * scheme. `resolveLanSocketUrl` (@some-ui/ws) treats any non-`http:`
-     * origin as "no LAN companion server behind this page" and declines to
-     * build a socket URL - which is what keeps `NowPlayingCard` and
-     * `PromptDox` from dialing `ws://localhost:3000/ws`, a port on the
-     * phone itself, and retrying on a timer forever.
-     *
-     * Switching this to `"http"` would make that heuristic answer the other
-     * way and quietly restore exactly that drain, with no build or test
-     * failure to say so. If it ever has to change, give those call sites an
-     * explicit URL instead of relying on the scheme.
+     * 1. **The device backend's interception.** On an `https:` page,
+     *    `resolveFileHostBase` (www `lib/file-host-config`) answers the
+     *    same-origin `/api/file-host/api/v1`, which is the base the
+     *    in-process backend wraps `fetch` for. On `http:` it answers
+     *    `http://localhost:3000/api/v1` instead - a different origin, so
+     *    every request would go to the real network, find nothing on the
+     *    phone's port 3000, and the app would show `file_host` unreachable.
+     * 2. **`crypto.subtle`**, which the backend hashes content with, exists
+     *    only in a secure context.
      *
      * Lives under `server`, not `android` - Capacitor accepts an unknown key
      * under `android` silently, so the misplaced version of this line parsed

@@ -16,7 +16,7 @@ import type { SqlDriver } from "@/lib/device-backend/sql"
 export type DeviceRequest = {
   method: string
   /** Path params, URI-decoded. */
-  params: Record<string, string>
+  params: Partial<Record<string, string>>
   query: URLSearchParams
   /** The raw request body; `""` when there was none. */
   body: string

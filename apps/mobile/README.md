@@ -1,129 +1,135 @@
 # `@some-ui/mobile`
 
-A sideloadable Android APK that is `apps/www` with its backend removed, served
-from inside the app by a WebView.
+A sideloadable Android APK of `apps/www` that needs no network. It keeps its
+own SQLite database on the phone, and answers the app's `file_host` requests
+from it in-process.
 
 There is no application code here. This workspace is a **packaging** step: it
-runs www's own Vite build with two flags that strip its server, then hands the
-output to Capacitor, which copies it into an Android project. Every screen,
-route and piece of state is www's.
+runs www's own Vite build with `VITE_DEVICE_BACKEND=true` and hands the output
+to Capacitor, which copies it into an Android project. Every screen, route and
+handler is www's, and so is the backend (`apps/www/src/lib/device-backend`).
 
-## Why this exists rather than a native app
+> Status: **beta, on the mobile staging branch only.** Nothing here is on
+> `main`, and the branch is not headed there until the on-device experience is
+> settled.
 
-The affordance is "log things while out and about". That is a _hosting_
-problem, not a client-platform problem — a React Native app on cellular cannot
-reach a `file_host` on the LAN any better than a web page can. So the client
-stays exactly as it is, and the APK simply stops expecting a server:
+## Why
 
-- **On the LAN**, use the web app as before. It reaches `file_host`, so
-  sessions, mood events, push and the realtime socket all work.
-- **Off the LAN**, use the APK. It has no backend by construction and never
-  tries to reach one.
+TOPIK and Leetype sessions are meant to fit a commute or a 30-minute break,
+which is exactly when the home `file_host` (on the LAN) is out of reach. A
+client on cellular cannot reach a LAN server any better than a web page can,
+so the phone carries its own backend instead.
+
+## How the device backend works
+
+www reaches `file_host` in one way everywhere: a `fetch` of
+`<base>/api/v1/<route>`. In the device build, `main.tsx` wraps `fetch` once
+(`bootDeviceBackend`). Requests under the `file_host` base are answered by
+www's in-process route table, over `@capacitor-community/sqlite`. Every other
+request goes to the real network.
+
+- **`DATA_MODE` stays `"server"`.** There _is_ a backend; it just lives in the
+  same process. So sessions, the shelf, the TOPIK catalogue and Leetype rounds
+  all take their normal server-mode code paths, unchanged.
+- **It answers like the server.** The routes, status codes, error envelope and
+  JSON shapes are copied from paulgsc/server. The schema is the server's
+  migrations, column for column, subject column included. A test runs every
+  `@some-ui/contract-harness` contract for a route the device serves against
+  it (`device-backend/__tests__/conformance.test.ts`). It also checks that the
+  device serves no route the server does not.
+- **It differs from the server on purpose in three places** (named in that
+  test):
+  - `/auth/session` is always signed in. There is one person, and the phone's
+    lock screen is the lock.
+  - `/push/*` answers `503 feature_not_configured`. There is no VAPID identity
+    on a phone.
+  - The server's engagement fold behind `/signals` is not ported.
+
+| Served on the device                                      | From                                                       |
+| --------------------------------------------------------- | ---------------------------------------------------------- |
+| `/sessions*`                                              | the `sessions` table                                       |
+| `/shelf/:activity[/:key]`                                 | `learner_shelf` (keep a pasted lesson or your own round)   |
+| `/curriculum/manifest[.json]`, `/curriculum/:key`         | `curriculum`, filled by a sync from home (not yet built)   |
+| `/leetype/rounds`, `/:id`, `/:id/runs`                    | `leetype_round*`, seeded from `packages/ui/leetype/corpus` |
+| `/auth/session`, `/signals`, `/presence/lease`, `/push/*` | see above                                                  |
+
+Anything else answers `file_host`'s plain-text `404`, which is what a server
+too old to have that route would answer.
+
+### What content is on the phone
+
+- **Leetype:** the bundled corpus (`packages/ui/leetype/corpus`), seeded on
+  every start, together with its recorded runs. The raw files hash to the same
+  content hashes their runs were recorded against, so the runs show offline.
+- **TOPIK:** lessons are not in either repository. They exist only in the home
+  server's database. The phone will get them by a **sync from home**, still to
+  be built: on the LAN, the app copies the curriculum into its SQLite, and
+  after that it works offline. Until then, TOPIK offers the bundled read-aloud
+  decks, plus any lesson you paste and keep on the shelf.
 
 ## Build
 
 ```sh
-# 1. www's build, with its backend compiled out, into apps/www/dist
+# www's build in device mode, into apps/www/dist
 pnpm --filter @some-ui/mobile build:web
 
-# 2. copy that into the Android project
+# copy that, and the native plugins, into the Android project
 pnpm --filter @some-ui/mobile sync
 
-# both of the above (not named `build`: the root `turbo run build` would
-# otherwise pick it up and re-run www's build nested inside its own)
+# both
 pnpm --filter @some-ui/mobile bundle
 
-# ... and then the APK itself (needs the Android SDK — see below)
+# ... and the APK itself (needs the Android SDK)
 pnpm --filter @some-ui/mobile apk
 ```
 
-The APK lands at `android/app/build/outputs/apk/debug/app-debug.apk`. A debug
-APK is signed with the local debug key, which is all sideloading to your own
-phone needs — there is no release-signing or Play Store step here, by design.
+`build:web` pins four variables, each for a reason that fails silently:
 
-`build:web` goes through `turbo`, not `pnpm --filter www build`, so www's
-workspace dependencies are built first — a fresh clone has no prebuilt `dist/`,
-and www resolves `@some-ui/*` to `dist`, so building it alone against stale or
-missing output is how you get an APK bundling last week's packages.
+- `VITE_DEVICE_BACKEND=true`: without it, the APK has no backend.
+- `VITE_STATIC_DATA=false`: an inherited `true` would select the old
+  localStorage-only paths.
+- `VITE_BASE_PATH=/`: an inherited Pages prefix gives a blank app.
+- `SOME_UI_PROFILE=pages`: leaves out the LAN-only operator CRMs.
 
-`build:web` also pins `VITE_BASE_PATH=/`. Leaving it unset is not
-equivalent — `apps/www/vite.config.ts` reads `process.env.VITE_BASE_PATH || "/"`
-and turbo forwards every inferred `VITE_*`, so a value lingering in the
-invoking shell would be inherited, emit assets under that prefix, and produce
-an APK that loads nothing. The build log looks entirely normal.
+turbo passes each one through: it infers `VITE_*` for this workspace, and
+`SOME_UI_PROFILE` is declared in `turbo.json`.
 
-`VITE_STATIC_DATA` survives that hop despite `turbo.json`'s `build` task
-declaring only `SOME_UI_PRUNED_WORKSPACE` under `env`: turbo detects Vite for
-this workspace and _infers_ `VITE_*`, which puts the flag in the task hash and
-passes it through under `envMode: strict`. Confirmed rather than assumed —
-`turbo run build --filter=www --dry=json` lists it under
-`environmentVariables.inferred`, and unset/`true`/`false` produce three
-different task hashes. A non-`VITE_` variable would need declaring; that
-inference is the whole reason this one does not.
+### In CI (how to get the APK onto a phone)
 
-### The Android SDK
+`.github/workflows/mobile-apk.yml` builds it on every push to the mobile
+staging branch, and on nothing else. Open the run in the repository's
+**Actions** tab and download the `some-ui-apk-<sha>` artifact. It is a zip
+holding `some-ui-<sha>-debug.apk`. Install that on the phone (allow installs
+from your browser or file manager). The debug key signs it, which is all
+sideloading needs.
 
-Gradle needs a local SDK (`compileSdkVersion 35`, see `android/variables.gradle`)
-and will not fetch one itself. Either install Android Studio, or the
-command-line tools:
+The workflow also fails if the device backend is missing from the bundle.
+That is not hypothetical: www's build drops any import it considers
+side-effect-free, and the first version of the boot hook was dropped that way,
+with a clean build log.
+
+### Locally
+
+Gradle needs the Android SDK (`compileSdkVersion 35`,
+`android/variables.gradle`):
 
 ```sh
 export ANDROID_HOME="$HOME/Android/Sdk"
 sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 ```
 
-Gradle finds it via `ANDROID_HOME`/`ANDROID_SDK_ROOT`, or via
-`android/local.properties` (`sdk.dir=...`), which is machine-specific and
-correctly gitignored.
+The Claude Code sandbox cannot install it (`dl.google.com` is outside its
+egress policy), which is why CI builds the APK.
 
-## What "backendless" actually switches off
+## Not done yet
 
-One build-time flag: **`VITE_STATIC_DATA=true`**, the same one
-`.github/workflows/pages.yml` sets. In www that single bit answers "is there a
-backend here at all", and every consumer is already gated on it:
-
-| Consumer                                | Behaviour under `DATA_MODE === "static"`                                                                   |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `lib/tenant/sessions-backend`           | `localStorage` **is** the sessions store — not a fallback. `createFileHostTransport` is never constructed. |
-| `lib/study-nudge/{signals,presence}`    | Return before building a transport; no `/signals` or `/presence` calls.                                    |
-| `lib/study-nudge/use-study-nudge`       | `clientOwnsNudgeDelivery()` is true, so nudges are raised client-side instead of by server push.           |
-| `lib/topik-content`, `lib/hangul-vocab` | `FETCHES_CONTENT` is false; every shim uses its bundled seed.                                              |
-| `providers/tts`                         | Resolves to the browser's own voice rather than the TTS service.                                           |
-
-So there is no mobile-specific backend flag, and deliberately so — adding one
-would be a second name for a question www already answers in one place.
-
-The realtime socket is the one thing this flag does _not_ cover, because
-`packages/ui/umag`'s socket components are not gated on `DATA_MODE` at all.
-That is handled at the source instead: `resolveLanSocketUrl` (`@some-ui/ws`)
-only builds a `ws://` URL for a plain-HTTP origin, so on the WebView's HTTPS
-origin it returns `undefined` and `useWebSocket` stays deliberately
-disconnected. See `capacitor.config.ts`'s note on `androidScheme`, which that
-behaviour depends on.
-
-## Where writes actually go
-
-They persist. `localStorage`, in every case:
-
-- **profile** and **settings** always use `browserLocalStorage`, in both modes.
-- **sessions** use it because `DATA_MODE` is `"static"` here — see the table
-  above.
-
-Inside a Capacitor WebView that store lives in the app's own data directory,
-so unlike a browser tab it is not subject to eviction under storage pressure
-and needs no `navigator.storage.persist()` call. The APK is a read-_and_-write
-offline build as it stands.
-
-Two things it is not, worth knowing before relying on it:
-
-- **`localStorage` is synchronous and capped** (a few MB, and the cap is on
-  serialised strings). Fine for sessions, profile and settings; an
-  ever-growing activity log would eventually want IndexedDB behind the same
-  `StorageAdapter`/`SessionsStore` seam that already exists.
-- **Nothing syncs back to `file_host`.** A session written on the phone stays
-  on the phone; one written on the LAN stays on the LAN. `sessions-migration`
-  does a one-time local-to-server upload in server mode, but there is no
-  two-way sync, and `sessions-backend`'s header is explicit that a silent
-  fallback between stores is the thing it refuses — two divergent histories
-  with no way to tell which is which. Closing that gap is a real design
-  decision, not a missing flag.
+- **Sync from home.** Pull the curriculum (and newer Leetype rounds) from the
+  LAN `file_host` while on the LAN. Nothing syncs _back_ yet. A session
+  recorded on the phone stays on the phone.
+- **Native notifications.** An Android WebView has no web `Notification`
+  API, so study nudges need `@capacitor/local-notifications`.
+- **Speech.** The device build asks for the platform voice, as the static
+  build does. Whether Android's WebView offers `speechSynthesis` needs checking
+  on a real phone. If it does not, speech needs a native text-to-speech
+  adapter, which `@some-ui/speech`'s adapter registry already has a seam for.
+- **Sign-out** has nothing to end on the device, and should be hidden there.
