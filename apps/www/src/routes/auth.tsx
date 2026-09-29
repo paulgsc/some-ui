@@ -7,6 +7,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import {
   createAccount,
   describeAuthError,
+  enterAccount,
   readLegacyClaim,
   signIn,
 } from "@/lib/auth"
@@ -50,7 +51,13 @@ const AuthPage = (): JSX.Element => {
     const described =
       attempt === "create" && claim !== undefined ? "claim" : attempt
     ceremony()
-      .then(() => navigate({ href: redirect }))
+      .then(() =>
+        // Narrowed here because type-aware lint reads `useSearch()` as `any`.
+        enterAccount(
+          typeof redirect === "string" ? redirect : "/app",
+          (href) => void navigate({ href })
+        )
+      )
       .catch((cause: unknown) => setError(describeAuthError(cause, described)))
       .finally(() => setPending(false))
   }

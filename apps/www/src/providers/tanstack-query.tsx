@@ -38,9 +38,10 @@ const createQueryClient = (): QueryClient =>
 export const queryClient = createQueryClient()
 
 // Per-person reads share keys across accounts (`["tenant", "sessions"]`), and
-// stay fresh for 15 minutes. So when the account may have changed (a session
-// ended, or a ceremony started one), nothing cached may be shown to whoever
-// is signed in next.
+// stay fresh for 15 minutes. So when a session ends, nothing cached is kept
+// for a signed-out page. Signing in to an account is a full page load
+// (`enterAccount`), which is what keeps a mutation still in flight for the
+// previous account from writing its result back after this clear.
 onAccountChange(() => queryClient.clear())
 
 export const QueryProvider = ({
