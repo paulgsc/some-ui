@@ -27,6 +27,12 @@ type GenerateLessonProps = {
   short: boolean
   /** Stories open with a reply already pasted. */
   initialReply?: string
+  /**
+   * The learner's shelf of kept lessons, where the host has one: shown
+   * after the paste, since replaying one is the other way to a lesson of
+   * their own.
+   */
+  kept?: JSX.Element
 }
 
 /** Findings shown before "and N more". */
@@ -56,6 +62,7 @@ export const GenerateLesson = ({
   onStart,
   short,
   initialReply = "",
+  kept,
 }: GenerateLessonProps): JSX.Element => {
   const [level, setLevel] = useState<TopikLevel>(defaultLevel)
   const [scene, setScene] = useState("")
@@ -226,6 +233,7 @@ export const GenerateLesson = ({
           </div>
         )}
       </section>
+      {kept}
     </div>
   )
 

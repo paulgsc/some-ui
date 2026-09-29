@@ -5,9 +5,15 @@
  * `lib/topik/adapter/pasted-lesson`): the learner's own model wrote it, the
  * app checked it (`lib/leetype/generation/intake`), and the app holds it in
  * `sessionStorage` for the session. It survives a reload of the tab and is
- * gone when the tab closes. The learner's conversation with their model
- * already holds the round, so keeping it longer buys nothing a second paste
- * doesn't.
+ * gone when the tab closes. The device keeps it no longer: the learner's
+ * conversation with their model already holds the round, so keeping it
+ * longer here buys nothing a second paste doesn't.
+ *
+ * It is kept longer only when the learner asks, for that round, and then on
+ * their account rather than on the device: "Keep on this account" puts it
+ * on the host's learner shelf (`lib/leetype/shelf`, canon Rem. 7.3), and
+ * replaying a kept round puts it back in this slot. Nothing here writes to
+ * the shelf by itself.
  *
  * One slot: pasting another round replaces it. It is re-checked on the way
  * out, like everything read back from storage, and every failure is silent:

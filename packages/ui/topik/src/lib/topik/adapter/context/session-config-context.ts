@@ -4,6 +4,7 @@ import type {
   ITopikMetadataRepository,
   ITopikRepository,
 } from "@topik/lib/topik"
+import type { ShelfPort } from "@topik/lib/topik/adapter/shelf"
 
 export type SessionConfig = {
   topikRepository: ITopikRepository
@@ -14,6 +15,12 @@ export type SessionConfig = {
    * with no pronunciation is degraded, and one that throws is not a lesson.
    */
   speechAdapter: SpeechAdapter | null
+  /**
+   * The learner shelf, where the host has one and a session to key it by
+   * (`adapter/shelf`). Absent, nothing offers to keep a lesson, and the
+   * applet is otherwise the same.
+   */
+  shelf?: ShelfPort
 }
 
 const SessionConfigContext = createContext<SessionConfig | null>(null)

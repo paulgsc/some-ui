@@ -11,6 +11,7 @@ import {
   SESSION_EXERCISE_IDS,
 } from "@leetype/lib/leetype/exercises"
 import { lintAuthoredRounds } from "@leetype/lib/leetype/round-assembly"
+import type { ShelfPort } from "@leetype/lib/leetype/shelf"
 import type { Round } from "@leetype/types/authored-round"
 import { RoundSchema } from "@leetype/types/authored-round"
 import type { Exercise } from "@leetype/types/exercise"
@@ -84,6 +85,14 @@ type LeetypeProps = {
    * only on the phone surface; the typing surface never reads a round.
    */
   loadRounds?: () => Promise<ReadonlyArray<unknown>>
+  /**
+   * The learner shelf (`lib/leetype/shelf`): where a round the learner made
+   * is kept on their account when they ask (canon Rem. 7.3). A plain object
+   * for the same reason as `loadRounds`; `apps/www` passes one only with a
+   * passkey session on a build with a `file_host`. Read only on the phone
+   * surface, where rounds are made.
+   */
+  shelf?: ShelfPort
 }
 
 /**
@@ -170,6 +179,7 @@ export const Leetype: FC<LeetypeProps> = ({
   surface = "auto",
   exerciseBadges,
   loadRounds,
+  shelf,
 }) => {
   const isMobile = useIsMobile()
   const resolved =
@@ -283,6 +293,7 @@ export const Leetype: FC<LeetypeProps> = ({
             rounds={roundPlay.rounds}
             sessionDurationMs={roundPlay.remainingMs}
             {...(sessionSeed === undefined ? {} : { sessionSeed })}
+            {...(shelf === undefined ? {} : { shelf })}
             onSessionComplete={(): void => onSessionComplete?.()}
           />
         )}

@@ -4,9 +4,15 @@
  * On the learner's opt-in path their own model writes a lesson, and they
  * paste it in (adaptive-learning canon Cor. 8.2). The app holds it for the
  * session, in `sessionStorage`: it survives a reload of the tab and is gone
- * when the tab closes (Rem. 7.4). It is not kept longer, because it does not
- * need to be. The learner's conversation with their model already holds the
- * lesson, and doing it again means pasting it again.
+ * when the tab closes (Rem. 7.4). The device keeps it no longer: the
+ * learner's conversation with their model already holds the lesson, and
+ * doing it again means pasting it again.
+ *
+ * It is kept longer only when the learner asks, for that lesson, and then
+ * on their account rather than on the device: "Keep on this account" puts
+ * this slot's own document (`serializePastedLesson`) on the host's learner
+ * shelf (`adapter/shelf`, canon Rem. 7.3), and replaying a kept lesson puts
+ * it back in this slot. Nothing here writes to the shelf by itself.
  *
  * One slot: pasting another lesson replaces it. It is validated on the way
  * out, like everything read back from storage, and every failure is silent:
@@ -37,6 +43,17 @@ const PastedDocumentSchema = z.object({
   meta: TopikMetadataSchema,
   batches: TopikFileSchema,
 })
+
+/**
+ * The document this slot holds, and the body "Keep on this account" sends:
+ * one shape, so a kept lesson replays through the same check as a held one.
+ */
+export function serializePastedLesson(
+  meta: TopikMetadata,
+  batches: Array<ConversationBatch>
+): string {
+  return JSON.stringify({ version: 1, meta, batches })
+}
 
 /**
  * `window.sessionStorage`, or null wherever touching it throws. Also where a
@@ -87,8 +104,7 @@ export function createPastedLessonStore(
         return null
       }
     },
-    set: (meta, batches): void =>
-      write(JSON.stringify({ version: 1, meta, batches })),
+    set: (meta, batches): void => write(serializePastedLesson(meta, batches)),
     // An empty value is "nothing held": StorageLike has no removeItem.
     clear: (): void => write(""),
   }

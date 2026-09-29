@@ -44,6 +44,8 @@ export type ServerRoute =
   | "/api/v1/sessions/:id"
   | "/api/v1/sessions/:id/duplicate"
   | "/api/v1/sessions/status"
+  | "/api/v1/shelf/:activity"
+  | "/api/v1/shelf/:activity/:key"
   | "/api/v1/signals"
   | "/api/v1/subjects/me/stats"
   | "/api/v1/tabs"

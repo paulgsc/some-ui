@@ -36,6 +36,11 @@ type MaterialListProps = {
   onCreate?: () => void
   /** Lets the pasted lesson go before the session ends. */
   onForget?: () => void
+  /**
+   * "Keep on this account" for the pasted lesson, where the host has a
+   * learner shelf; shown under it. Absent, the lesson lasts the session.
+   */
+  keep?: JSX.Element
   /** Opens the read-aloud drill; absent where it isn't offered. */
   onReadAloud?: () => void
 }
@@ -128,6 +133,7 @@ export const MaterialList = ({
   onReload,
   onCreate,
   onForget,
+  keep,
   onReadAloud,
 }: MaterialListProps): JSX.Element => {
   const [next, ...rest] = order
@@ -266,6 +272,7 @@ export const MaterialList = ({
               </button>
             )}
           </div>
+          {keep}
         </section>
       )}
 

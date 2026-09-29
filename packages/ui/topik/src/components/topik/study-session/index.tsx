@@ -53,6 +53,7 @@ import {
   isShort,
   useElementBox,
 } from "@topik/lib/topik/adapter/hooks/use-surface"
+import type { ShelfPort } from "@topik/lib/topik/adapter/shelf"
 import { cn } from "some-ui-utils"
 
 /** Where the manifest lives when a host doesn't say otherwise. */
@@ -79,6 +80,13 @@ export type KoreanStudyPageProps = {
   loadManifest?: () => Promise<unknown>
   /** Same seam for a single topik's batches, keyed by its manifest key. */
   loadTopik?: (key: string) => Promise<unknown>
+  /**
+   * The learner shelf: where a lesson the learner pasted is kept on their
+   * account when they ask (canon Rem. 7.3). A plain object for the same
+   * reason as the loaders; `apps/www` passes one only with a passkey
+   * session on a build with a `file_host`. Absent, nothing offers to keep.
+   */
+  shelf?: ShelfPort
   /**
    * Art direction. `inherit` — the default — renders in whatever theme the
    * host established, so the user's session theme reaches the applet.
@@ -192,6 +200,7 @@ export const KoreanStudyPage = ({
   manifestUrl = DEFAULT_TOPIK_MANIFEST_URL,
   loadManifest,
   loadTopik,
+  shelf,
   appearance = "inherit",
   surface = "auto",
 }: KoreanStudyPageProps = {}): JSX.Element => {
@@ -218,6 +227,7 @@ export const KoreanStudyPage = ({
         metadataRepository ??
         createTopikMetadataRepository(loadManifest ?? manifestUrl),
       speechAdapter,
+      ...(shelf ? { shelf } : {}),
     }),
     [
       topikRepository,
@@ -226,6 +236,7 @@ export const KoreanStudyPage = ({
       loadManifest,
       loadTopik,
       speechAdapter,
+      shelf,
     ]
   )
 
