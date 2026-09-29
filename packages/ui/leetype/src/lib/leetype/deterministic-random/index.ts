@@ -7,7 +7,8 @@
  * `reading-probe`, whose distractor ordering has to be replayable from a
  * session seed for the same reason a session's old exercise order did: a run
  * reported in a bug, pinned in a test or mounted in a story must produce the
- * same screen twice. `reading-probe` is this module's one caller now.
+ * same screen twice. `unitIntervalBySeed` is the second shape it hands out,
+ * for `lib/leetype/round-sampler`'s one weighted draw per round (L4, #1230).
  *
  * Specified here rather than delegated to `Math.random` for that replay
  * property, and kept as one implementation rather than two because two
@@ -63,4 +64,29 @@ export function shuffledBySeed<T>(
     order[swapWith] = current
   }
   return order
+}
+
+/**
+ * fmix32, MurmurHash3's finalizer: an avalanche over the seed's bits, so two
+ * seeds differing in one bit start xorshift32 from unrelated states. Without
+ * it a small seed yields a tiny first output (seed `1` gives about `6e-5`
+ * of the range), which a permutation tolerates and a single draw does not.
+ */
+function mixed(seed: number): number {
+  let hash = seed >>> 0
+  hash = Math.imul(hash ^ (hash >>> 16), 0x85ebca6b)
+  hash = Math.imul(hash ^ (hash >>> 13), 0xc2b2ae35)
+  return (hash ^ (hash >>> 16)) >>> 0
+}
+
+/**
+ * One uniform draw in `[0, 1)` from `seed`: a weighted choice needs a point
+ * on the line, not a permutation, and shuffling a list to read its first
+ * element would be the "subtly-biased shuffle written at a call site" the
+ * note on `randomValues` warns about, in reverse. Same generator, so "seed
+ * 7" still means one thing in this package; the seed is mixed first (see
+ * `mixed`) because only the first output is read.
+ */
+export function unitIntervalBySeed(seed: number): number {
+  return randomValues(mixed(seed))() / 2 ** 32
 }

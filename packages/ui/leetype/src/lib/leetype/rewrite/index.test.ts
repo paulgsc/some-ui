@@ -16,6 +16,7 @@ import type { EdgeIdentity, Rewrite, RewriteWitness } from "./index"
 import {
   classesOf,
   isAdmissibilityRestoring,
+  rewriteKeyOf,
   rewriteOf,
   semanticDistance,
 } from "./index"
@@ -179,5 +180,62 @@ describe("exported types stay referenced by name", () => {
     const rewrite: Rewrite = rewriteOf(W(1), W(1))
     const witness: RewriteWitness = { rewrite, behaviourPreserving: true }
     expect(witness.behaviourPreserving).toBe(true)
+  })
+})
+
+describe("rewriteKeyOf — structural identity of a rewrite (G4, for L3's transfer)", () => {
+  const nested = (outer: string, inner: string): CostGraph =>
+    Loop(dim(outer), Loop(dim(inner), W(1)))
+  const sorted = (outer: string, inner: string): CostGraph =>
+    Seq(
+      Loop(multiplyMonomials(dim(inner), logDim(inner)), W(1)),
+      Loop(dim(outer), Loop(logDim(inner), W(1)))
+    )
+
+  it("gives the same key to the same rewrite under renamed dimensions", () => {
+    expect(rewriteKeyOf(rewriteOf(nested("n", "m"), sorted("n", "m")))).toBe(
+      rewriteKeyOf(rewriteOf(nested("q", "k"), sorted("q", "k")))
+    )
+    expect(rewriteKeyOf(rewriteOf(nested("n", "m"), sorted("n", "m")))).toBe(
+      rewriteKeyOf(rewriteOf(nested("m", "n"), sorted("m", "n")))
+    )
+  })
+
+  it("ignores work constants, which no Θ-class can see", () => {
+    expect(
+      rewriteKeyOf(rewriteOf(Loop(dim("n"), W(1)), Loop(logDim("n"), W(1))))
+    ).toBe(
+      rewriteKeyOf(rewriteOf(Loop(dim("n"), W(5)), Loop(logDim("n"), W(2))))
+    )
+  })
+
+  it("separates rewrites whose shapes differ, even at the same semantic distance", () => {
+    const toLog = rewriteOf(Loop(dim("n"), W(1)), Loop(logDim("n"), W(1)))
+    const toConstant = rewriteOf(Loop(dim("n"), W(1)), W(1))
+    expect(semanticDistance(toLog.before, toLog.after)).toBe(
+      semanticDistance(toConstant.before, toConstant.after)
+    )
+    expect(rewriteKeyOf(toLog)).not.toBe(rewriteKeyOf(toConstant))
+  })
+
+  it("keeps a dimension shared across before and after shared", () => {
+    // n → log n is not m → log n: renaming applies to both graphs at once.
+    const sameDimension = rewriteOf(
+      Loop(dim("n"), W(1)),
+      Loop(logDim("n"), W(1))
+    )
+    const otherDimension = rewriteOf(
+      Loop(dim("n"), W(1)),
+      Loop(logDim("m"), W(1))
+    )
+    expect(rewriteKeyOf(sameDimension)).not.toBe(rewriteKeyOf(otherDimension))
+  })
+
+  it("is short and stable, since the ledger stores one per observation", () => {
+    const key = rewriteKeyOf(rewriteOf(nested("n", "m"), sorted("n", "m")))
+    expect(key).toMatch(/^rw:[0-9a-f]{16}$/)
+    expect(rewriteKeyOf(rewriteOf(nested("n", "m"), sorted("n", "m")))).toBe(
+      key
+    )
   })
 })
