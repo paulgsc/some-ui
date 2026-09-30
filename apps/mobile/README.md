@@ -13,6 +13,35 @@ handler is www's, and so is the backend (`apps/www/src/lib/device-backend`).
 > `main`, and the branch is not headed there until the on-device experience is
 > settled.
 
+## What the app carries: sessions
+
+The phone gets **sessions** - the list, the composer and the player - and
+nothing else www routes to. The landing page, Home, the résumé, jobs, profile,
+the extensions tour and the LAN tools are the web app's; the Storybook is a
+separate site that was never in www's bundle. **Settings** stays, because on
+the phone it is the phone's own page: the sync from home, study reminders and
+the voice.
+
+How that is enforced (www `src/lib/app-surface`):
+
+- `build:web` selects the `mobile` profile (`apps/www/build.profiles.ts`),
+  which sets `MOBILE_APP` in the bundle.
+- `MOBILE_SURFACE` is an **allowlist**: `/sessions` and `/settings`, typed
+  against the route tree. (Also `/auth`, which the phone never shows since it
+  is always signed in, so that the sign-in guard and this one cannot redirect
+  each other in a loop.) The root route redirects any other path to
+  `/sessions` before its own guards run, so the app opens on the sessions list,
+  and a page added to www later stays off the phone until someone lists it.
+- The sidebar shows only the listed pages, and "Start something new" goes to
+  the composer rather than Home's launcher.
+- The build leaves out the résumé's PDFs and its `/resume/` document.
+
+What that does not do: the other pages' code is still in the bundle, as
+unreachable lazy chunks. The route tree is the same in every build (that is
+what keeps typed links honest), so stubbing those pages out would take a new
+build audience; `routes/__tests__/mobile-surface.test.ts` shows none of them
+can be reached.
+
 ## Why
 
 TOPIK and Leetype sessions are meant to fit a commute or a 30-minute break,
@@ -88,7 +117,9 @@ pnpm --filter @some-ui/mobile apk
 - `VITE_STATIC_DATA=false`: an inherited `true` would select the old
   localStorage-only paths.
 - `VITE_BASE_PATH=/`: an inherited Pages prefix gives a blank app.
-- `SOME_UI_PROFILE=pages`: leaves out the LAN-only operator CRMs.
+- `SOME_UI_PROFILE=mobile`: sessions only (above); like `pages`, it also
+  leaves out the LAN-only operator CRMs. Inherit `pages` or `lan` instead and
+  the phone gets the whole web app.
 
 turbo passes each one through: it infers `VITE_*` for this workspace, and
 `SOME_UI_PROFILE` is declared in `turbo.json`.
@@ -151,6 +182,21 @@ install over a CI build, or the other way round.
   the APK in an emulator.
 - **`versionCode` is the run number**, so each APK is an update of the last,
   and Settings → Apps → Some UI shows which build is installed.
+
+### Icon and splash
+
+The launcher icon is the favicon's mark (`apps/www/public/favicon.svg`): the
+seven-cell honeycomb in its honey pair, on the dark of www's `manifest.json`
+(`#101010`, `values/ic_launcher_background.xml`).
+
+- **Android 8+:** an adaptive icon whose foreground is a vector,
+  `drawable/ic_launcher_foreground.xml`, with the favicon's geometry, plus a
+  `monochrome` layer for Android 13's themed icons.
+- **Android 6-7:** `mipmap-*/ic_launcher{,_round}.png`, rendered from the same
+  geometry. Re-render them if the mark changes.
+- **Splash:** the same background and mark, as `drawable/splash.xml` before
+  Android 12 and through the `windowSplashScreen*` items in
+  `values/styles.xml` from 12 on. Capacitor's stock splash images are gone.
 
 ### Locally
 

@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Capacitor shell that packages www as a sideloadable Android APK, answering its own file_host routes from on-device SQLite",
   "scripts": {
-    "build:web": "cross-env VITE_DEVICE_BACKEND=true VITE_STATIC_DATA=false VITE_BASE_PATH=/ SOME_UI_PROFILE=pages turbo run build --filter=www",
+    "build:web": "cross-env VITE_DEVICE_BACKEND=true VITE_STATIC_DATA=false VITE_BASE_PATH=/ SOME_UI_PROFILE=mobile turbo run build --filter=www",
     "sync": "cap sync android",
     "bundle": "pnpm build:web && pnpm sync",
     "apk": "pnpm bundle && cd android && ./gradlew assembleDebug",

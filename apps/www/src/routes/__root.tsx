@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-router"
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
 
+import { keepToMobileSurface } from "@/lib/app-surface"
 import { isPublicPath, resolveSession } from "@/lib/auth"
 import { SignedOutRedirect } from "@/components/auth/signed-out-redirect"
 
@@ -22,6 +23,9 @@ export type RouterContext = {
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   beforeLoad: async ({ location }) => {
+    // The Android app is sessions only; first, so no other page's own guard
+    // (sign-in, an audience gate) runs for a path the phone never shows.
+    keepToMobileSurface(location.pathname)
     const isPublicRoute = isPublicPath(location.pathname)
     // Asked once per page load, then answered from memory
     // (`lib/auth`). A public route does not wait for the answer,

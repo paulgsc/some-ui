@@ -19,6 +19,7 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import { Copy, Pencil, Play, Sparkles, Trash2, X } from "lucide-react"
 import { cn, formatRelativeTime } from "some-ui-utils"
 
+import { MOBILE_APP } from "@/lib/build-profile"
 import { useIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton, IntentFailure } from "@/lib/intent/render"
 import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
@@ -400,7 +401,11 @@ const SessionsList = ({
             <Sparkles className="size-6" />
             <p>No sessions yet.</p>
             <Button asChild size="sm" className="mt-2">
-              <Link to="/app">Start something new</Link>
+              {/* Home's launcher is the web app's; the phone goes straight
+                  to the composer, whose picker has the whole catalogue. */}
+              <Link to={MOBILE_APP ? "/sessions/new" : "/app"}>
+                Start something new
+              </Link>
             </Button>
           </CardContent>
         </Card>

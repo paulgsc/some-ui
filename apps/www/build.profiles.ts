@@ -15,14 +15,26 @@ import type { Plugin } from "vite"
  * - **`lan`** - the default: `vite dev`, `vite preview` and the Docker image
  *   served on the home network. Carries everything.
  * - **`pages`** - the GitHub Pages build (.github/workflows/pages.yml).
+ * - **`mobile`** - the Android app (apps/mobile's `build:web`). The same
+ *   audiences as `pages`; what sets it apart is that the app carries sessions
+ *   only (`src/lib/app-surface`), and so leaves the résumé's pages and PDFs
+ *   out of its output (`vite.config.ts`).
  *
  * A future VPS image is one more line here plus `SOME_UI_PROFILE` in its
  * pipeline. The variable is declared in turbo.json's `www#build` env, so two
  * profiles never share a cache entry.
  */
+/**
+ * The Android app's profile. www's bundle cannot import this file, so
+ * `src/lib/build-profile` repeats the name; the mobile-surface test checks
+ * the two against each other.
+ */
+export const MOBILE_PROFILE = "mobile"
+
 const profiles = defineProfiles({
   lan: { audiences: ["public", "lan"] },
   pages: { audiences: ["public"] },
+  [MOBILE_PROFILE]: { audiences: ["public"] },
 })
 
 /** Directories whose immediate children carry `package.json#someUi`. */
