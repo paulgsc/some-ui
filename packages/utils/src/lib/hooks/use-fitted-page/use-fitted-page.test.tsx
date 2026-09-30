@@ -159,7 +159,25 @@ type HarnessProps = {
    * string), rather than being tied to each item's own value.
    */
   keys?: ReadonlyArray<string>
+  /**
+   * Width, in px, a classic scrollbar takes from the viewport while - and
+   * only while - the content overflows it. The box's own (border-box) width
+   * never changes; its *client* width does, exactly as in a browser that
+   * paints scrollbars in the layout (every desktop one, and a phone-width
+   * window on it). Omitted: no scrollbar, which is every other test here.
+   */
+  scrollbar?: number
+  /**
+   * Height, in px, a pager takes from the box - while, and only while, the
+   * list has more than one page (`PageControls` renders nothing for one). The
+   * box is a flex sibling of it, so how many pages there are changes how tall
+   * the box being fitted is: the count the hook is trying decides the space
+   * it is trying it in. Omitted: no pager.
+   */
+  pager?: number
 }
+
+const VIEWPORT_WIDTH = 358
 
 /**
  * Wires real `clientHeight` / `scrollHeight` readings to plain numbers a test
@@ -177,10 +195,12 @@ const Harness = ({
   extra,
   getItemKey,
   keys,
+  scrollbar = 0,
+  pager = 0,
 }: HarnessProps): React.JSX.Element => {
   const memoized = useMemo(() => heights.map((_, index) => index), [heights])
   const items = unmemoizedItems ? heights.map((_, index) => index) : memoized
-  const { viewportRef, contentRef, pageItems, perPage, page, next } =
+  const { viewportRef, contentRef, pageItems, perPage, pageCount, page, next } =
     useFittedPage(items, {
       minPerPage,
       maxPerPage,
@@ -196,9 +216,25 @@ const Harness = ({
       ref={(node) => {
         viewportRef.current = node
         if (node) {
+          // The box, as laid out for the count on screen: what is left of
+          // `available` once the pager (if this many pages need one) is out.
+          const boxHeight = available - (pageCount > 1 ? pager : 0)
           Object.defineProperty(node, "clientHeight", {
             configurable: true,
-            value: available,
+            value: boxHeight,
+          })
+          Object.defineProperty(node, "offsetWidth", {
+            configurable: true,
+            value: VIEWPORT_WIDTH,
+          })
+          Object.defineProperty(node, "clientWidth", {
+            configurable: true,
+            get(this: HTMLElement) {
+              const content = this.firstElementChild
+              const overflows =
+                content !== null && content.scrollHeight > boxHeight
+              return VIEWPORT_WIDTH - (overflows ? scrollbar : 0)
+            },
           })
         }
       }}
@@ -832,6 +868,102 @@ describe("useFittedPage: convergence with non-uniform row heights", () => {
     expect(onPageOne.converged).toBe(true)
     expect(readPerPage()).toBe(1)
     expect(screen.getByTestId("page").textContent).toBe("1")
+  })
+})
+
+describe("useFittedPage: a scrollbar the probe itself causes is not a new box", () => {
+  // Seen on the composer's picker in a phone-width desktop window: 2 cards
+  // fit, a 3rd overflows, the scrollbar that overflow brings takes 4px off
+  // the box's client width, and the hook - reading a different width as a
+  // different box - forgot it had just rejected 3, grew to 3, overflowed,
+  // and so on, one pass per frame, for as long as the page was open. The
+  // scrollbar flickered in and out because it was the thing being measured.
+  it("settles instead of alternating between the count that fits and the one that overflows", () => {
+    render(<Harness heights={[100, 100, 100]} available={250} scrollbar={4} />)
+
+    const { readings, converged } = settleAndReadPerPage(30)
+
+    expect(
+      converged,
+      `never reached a fixed point: ${JSON.stringify(readings)}. A scrollbar ` +
+        `appearing because a count overflowed cannot be evidence the box changed.`
+    ).toBe(true)
+    expect(readings[readings.length - 1]).toBe(2)
+  })
+
+  it("keeps rejecting an overflowing count once the scrollbar has come and gone", () => {
+    render(<Harness heights={[100, 100, 100]} available={250} scrollbar={15} />)
+    expect(settleAndReadPerPage(30).converged).toBe(true)
+
+    // Whatever else happens, the settled count does not move on its own.
+    for (let frame = 0; frame < 10; frame += 1) {
+      act(() => {
+        for (const observer of FakeResizeObserver.instances) observer.fire()
+        flushFrame()
+      })
+      expect(readPerPage()).toBe(2)
+    }
+  })
+
+  it("still forgets a rejection when the box really does change size", () => {
+    // The floor may only be dropped for a genuinely different box: the same
+    // scrollbar logic must not make the fit deaf to the window growing.
+    const heights = [100, 100, 100]
+    const { rerender } = render(
+      <Harness heights={heights} available={250} scrollbar={4} />
+    )
+    expect(settleAndReadPerPage(30).converged).toBe(true)
+    expect(readPerPage()).toBe(2)
+
+    rerender(<Harness heights={heights} available={320} scrollbar={4} />)
+    act(() => {
+      FakeResizeObserver.instances[0]!.fire()
+    })
+    const grown = settleAndReadPerPage(30)
+
+    expect(grown.converged).toBe(true)
+    expect(readPerPage()).toBe(3)
+  })
+})
+
+describe("useFittedPage: a pager the count itself brings is not a new box", () => {
+  // Seen on the composer's Configure pane on a phone: two cards overflow the
+  // box, so the hook goes back to one per page - which makes two pages, which
+  // brings the pager, which takes 52px from the box. Read as a different box,
+  // that voided the rejection of two, and two was tried again.
+  it("settles instead of alternating between the count that fits and the one that overflows", () => {
+    // Two rows (300 + 340) overflow the 621px box the lone page has; one row
+    // fits the 569px left beside the pager. Neither box is wrong - they are
+    // the same window, asked about two counts.
+    render(<Harness heights={[300, 340]} available={621} pager={52} />)
+
+    const { readings, converged } = settleAndReadPerPage(30)
+
+    expect(
+      converged,
+      `never reached a fixed point: ${JSON.stringify(readings)}. The pager ` +
+        `appearing because the page count changed cannot be evidence that ` +
+        `the box did.`
+    ).toBe(true)
+    expect(readings[readings.length - 1]).toBe(1)
+  })
+
+  it("still grows when the window really does get taller", () => {
+    const heights = [300, 340]
+    const { rerender } = render(
+      <Harness heights={heights} available={621} pager={52} />
+    )
+    expect(settleAndReadPerPage(30).converged).toBe(true)
+    expect(readPerPage()).toBe(1)
+
+    rerender(<Harness heights={heights} available={760} pager={52} />)
+    act(() => {
+      FakeResizeObserver.instances[0]!.fire()
+    })
+    const grown = settleAndReadPerPage(30)
+
+    expect(grown.converged).toBe(true)
+    expect(readPerPage()).toBe(2)
   })
 })
 

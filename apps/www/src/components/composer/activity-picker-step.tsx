@@ -51,10 +51,20 @@ type PickedActivity = {
   activityId: ActivityId
 }
 
+/**
+ * Which half of the picker to show. A wide screen shows both, the catalogue
+ * above the manifest, in one step. A phone gives each concern a pane of its
+ * own (`./panes`), so each half fits, and is fitted to, the whole of one.
+ */
+export type PickerSection = "both" | "catalogue" | "manifest"
+
 type ActivityPickerStepProps = {
   items: ReadonlyArray<PickedActivity>
   onAdd: (id: ActivityId) => void
   onRemove: (instanceId: string) => void
+  section?: PickerSection
+  /** Where the manifest's empty state sends someone who has added nothing. */
+  onBrowse?: () => void
 }
 
 /**
@@ -80,10 +90,21 @@ export const ActivityPickerStep = ({
   items,
   onAdd,
   onRemove,
+  section = "both",
+  onBrowse,
 }: ActivityPickerStepProps): JSX.Element => {
+  const showCatalogue = section !== "manifest"
+  const showManifest = section !== "catalogue"
+  // Alone in its pane a half takes all of it; shared, the catalogue gets the
+  // larger part (see the two constants above).
+  const catalogueShare = showManifest ? CATALOGUE_SHARE : "min-h-0 flex-1"
+  const manifestShare = showCatalogue ? MANIFEST_SHARE : "min-h-0 flex-1"
+
   const [query, setQuery] = useState("")
   const searchRef = useRef<HTMLInputElement>(null)
-  useSearchHotkey(searchRef)
+  // A manifest-only pane has no field to focus, and `/` there would be
+  // swallowed (`preventDefault`) for nothing.
+  useSearchHotkey(searchRef, showCatalogue)
 
   const countsById = new Map<ActivityId, number>()
   for (const item of items) {
@@ -147,124 +168,132 @@ export const ActivityPickerStep = ({
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 [@media(min-height:640px)]:gap-4">
-      {/* A first-run explainer: the first thing a short window sheds. On a
+      {showCatalogue && (
+        <>
+          {/* A first-run explainer: the first thing a short window sheds. On a
           landscape phone it wraps to four lines and takes ~80px of a ~170px
           body - half the room the catalogue it explains has to work in. */}
-      <p
-        className={cn(
-          "text-muted-foreground shrink-0 text-sm",
-          TALL_WINDOW_ONLY
-        )}
-      >
-        Add one or more activities to this session. The same activity can be
-        added more than once - e.g. two Hangul Honeycomb blocks with different
-        modes - and you will configure each one separately in the next step.
-      </p>
-
-      <div className="shrink-0">
-        <ActivitySearchField
-          value={query}
-          onChange={setQuery}
-          inputRef={searchRef}
-          placeholder="Filter activities"
-        />
-      </div>
-
-      {visible.length === 0 ? (
-        <p className="text-muted-foreground shrink-0 rounded-md border border-dashed px-3 py-6 text-center text-sm">
-          No activity matches &ldquo;{query.trim()}&rdquo;
-        </p>
-      ) : (
-        <div className={cn("flex flex-col gap-3", CATALOGUE_SHARE)}>
-          <div
-            ref={viewportRef}
-            data-scroll-intent="fitted-residue"
-            className={
-              // scroll-intent: fitted-residue — `useFittedPage` guarantees this
-              // box's content fits it, with exactly one documented exception:
-              // at `minPerPage` a single item taller than the whole box has to
-              // overflow somewhere (see the hook's own Options doc). This says
-              // where. It is not a greedy scroll - in every case the fit can
-              // actually solve, the scrollbar never appears because the content
-              // genuinely fits - it is the named home for the residue the fit
-              // is honest about not being able to remove. Clipping it instead
-              // is worse than it sounds: a card whose centre falls outside the
-              // box stops being clickable at all.
-              "min-h-0 flex-1 overflow-y-auto"
-            }
+          <p
+            className={cn(
+              "text-muted-foreground shrink-0 text-sm",
+              TALL_WINDOW_ONLY
+            )}
           >
-            <div
-              ref={contentRef}
-              className="grid content-start gap-3 sm:grid-cols-2"
-            >
-              {visiblePage.map((activity) => {
-                const count = countsById.get(activity.id) ?? 0
-                return (
-                  <button
-                    key={activity.id}
-                    type="button"
-                    onClick={() => onAdd(activity.id)}
-                    className="text-left"
-                  >
-                    <Card
-                      className={cn(
-                        "h-full transition-colors",
-                        count > 0
-                          ? "border-primary/50"
-                          : "hover:border-primary/50"
-                      )}
-                    >
-                      <CardContent className="flex items-start gap-3 pt-6">
-                        <ActivityIcon
-                          icon={activity.icon}
-                          className="text-primary size-6 shrink-0"
-                        />
-                        <div className="min-w-0 flex-1 space-y-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="font-semibold">{activity.name}</p>
-                            <ActivityMaturityBadge activity={activity} />
-                          </div>
-                          <p className="text-muted-foreground text-sm">
-                            {activity.description}
-                          </p>
-                          {/* Both said while the person is still choosing, so
+            Add one or more activities to this session. The same activity can be
+            added more than once - e.g. two Hangul Honeycomb blocks with
+            different modes - and you will configure each one separately in the
+            next step.
+          </p>
+
+          <div className="shrink-0">
+            <ActivitySearchField
+              value={query}
+              onChange={setQuery}
+              inputRef={searchRef}
+              placeholder="Filter activities"
+            />
+          </div>
+
+          {visible.length === 0 ? (
+            <p className="text-muted-foreground shrink-0 rounded-md border border-dashed px-3 py-6 text-center text-sm">
+              No activity matches &ldquo;{query.trim()}&rdquo;
+            </p>
+          ) : (
+            <div className={cn("flex flex-col gap-3", catalogueShare)}>
+              <div
+                ref={viewportRef}
+                data-scroll-intent="fitted-residue"
+                className={
+                  // scroll-intent: fitted-residue — `useFittedPage` guarantees this
+                  // box's content fits it, with exactly one documented exception:
+                  // at `minPerPage` a single item taller than the whole box has to
+                  // overflow somewhere (see the hook's own Options doc). This says
+                  // where. It is not a greedy scroll - in every case the fit can
+                  // actually solve, the scrollbar never appears because the content
+                  // genuinely fits - it is the named home for the residue the fit
+                  // is honest about not being able to remove. Clipping it instead
+                  // is worse than it sounds: a card whose centre falls outside the
+                  // box stops being clickable at all.
+                  // Below `md` the bar is hidden (`max-md:no-scrollbar`): a phone
+                  // scrolls by finger, so a bar there is only noise - and on a
+                  // browser that lays bars out it took its width out of the box.
+                  "min-h-0 flex-1 overflow-y-auto max-md:no-scrollbar"
+                }
+              >
+                <div
+                  ref={contentRef}
+                  className="grid content-start gap-3 sm:grid-cols-2"
+                >
+                  {visiblePage.map((activity) => {
+                    const count = countsById.get(activity.id) ?? 0
+                    return (
+                      <button
+                        key={activity.id}
+                        type="button"
+                        onClick={() => onAdd(activity.id)}
+                        className="text-left"
+                      >
+                        <Card
+                          className={cn(
+                            "h-full transition-colors",
+                            count > 0
+                              ? "border-primary/50"
+                              : "hover:border-primary/50"
+                          )}
+                        >
+                          <CardContent className="flex items-start gap-3 pt-6">
+                            <ActivityIcon
+                              icon={activity.icon}
+                              className="text-primary size-6 shrink-0"
+                            />
+                            <div className="min-w-0 flex-1 space-y-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="font-semibold">{activity.name}</p>
+                                <ActivityMaturityBadge activity={activity} />
+                              </div>
+                              <p className="text-muted-foreground text-sm">
+                                {activity.description}
+                              </p>
+                              {/* Both said while the person is still choosing, so
                               neither what this does to their ears nor what it
                               asks of their hands is a surprise once the
                               session starts. */}
-                          <ActivityInputHint activity={activity} />
-                          <AudioActivityHint activity={activity} />
-                        </div>
-                        <div className="flex shrink-0 items-center gap-1.5">
-                          {count > 0 && (
-                            <Badge variant="secondary">×{count}</Badge>
-                          )}
-                          <div className="bg-primary/10 text-primary flex size-5 shrink-0 items-center justify-center rounded-full">
-                            <Plus className="size-3" />
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
+                              <ActivityInputHint activity={activity} />
+                              <AudioActivityHint activity={activity} />
+                            </div>
+                            <div className="flex shrink-0 items-center gap-1.5">
+                              {count > 0 && (
+                                <Badge variant="secondary">×{count}</Badge>
+                              )}
+                              <div className="bg-primary/10 text-primary flex size-5 shrink-0 items-center justify-center rounded-full">
+                                <Plus className="size-3" />
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
 
-          {/* Paging the catalogue does not touch `items`, so adding an
+              {/* Paging the catalogue does not touch `items`, so adding an
               activity from page 3 leaves you on page 3 - the fitted pager
               only resets when the list it is paging changes length. */}
-          <PageControls
-            page={page}
-            pageCount={pageCount}
-            onPrevious={previousPage}
-            onNext={nextPage}
-            label="activities"
-          />
-        </div>
+              <PageControls
+                page={page}
+                pageCount={pageCount}
+                onPrevious={previousPage}
+                onNext={nextPage}
+                label="activities"
+              />
+            </div>
+          )}
+        </>
       )}
 
-      {items.length > 0 && (
-        <div className={cn("flex flex-col gap-2", MANIFEST_SHARE)}>
+      {showManifest && items.length > 0 && (
+        <div className={cn("flex flex-col gap-2", manifestShare)}>
           <p className="shrink-0 text-sm font-medium">
             Added to this session{" "}
             <span className="text-muted-foreground font-normal">
@@ -285,7 +314,10 @@ export const ActivityPickerStep = ({
               // is honest about not being able to remove. Clipping it instead
               // is worse than it sounds: a card whose centre falls outside the
               // box stops being clickable at all.
-              "min-h-0 flex-1 overflow-y-auto"
+              // Below `md` the bar is hidden (`max-md:no-scrollbar`): a phone
+              // scrolls by finger, so a bar there is only noise - and on a
+              // browser that lays bars out it took its width out of the box.
+              "min-h-0 flex-1 overflow-y-auto max-md:no-scrollbar"
             }
           >
             <div ref={manifestContentRef} className="space-y-1.5">
@@ -328,6 +360,20 @@ export const ActivityPickerStep = ({
             onNext={nextManifestPage}
             label="added activities"
           />
+        </div>
+      )}
+
+      {section === "manifest" && items.length === 0 && (
+        <div className="text-muted-foreground flex flex-col items-start gap-3 rounded-md border border-dashed px-3 py-6 text-sm">
+          <p>
+            Nothing added yet. Browse the activities and tap one to add it to
+            this session.
+          </p>
+          {onBrowse && (
+            <Button type="button" variant="outline" onClick={onBrowse}>
+              Browse activities
+            </Button>
+          )}
         </div>
       )}
     </div>

@@ -1,4 +1,4 @@
-import type { JSX } from "react"
+import type { JSX, ReactNode } from "react"
 import { useMemo } from "react"
 import {
   ACTIVITY_CATALOG,
@@ -40,6 +40,13 @@ type ReviewStepProps = {
   sessionName: string
   onSessionNameChange: (name: string) => void
   defaultName: string
+  /**
+   * The save controls, when this pane is where a session is finished. On a
+   * phone the tab bar is the navigation, so there is no Back / Continue
+   * footer to carry them and they belong to the last pane - the lesson CRM's
+   * Check pane holds its Save the same way.
+   */
+  actions?: ReactNode
 }
 
 export const ReviewStep = ({
@@ -49,6 +56,7 @@ export const ReviewStep = ({
   sessionName,
   onSessionNameChange,
   defaultName,
+  actions,
 }: ReviewStepProps): JSX.Element => {
   const totalDurationMs = totalDurationOfScenes(scenes)
 
@@ -114,7 +122,10 @@ export const ReviewStep = ({
               // is honest about not being able to remove. Clipping it instead
               // is worse than it sounds: a card whose centre falls outside the
               // box stops being clickable at all.
-              "min-h-0 flex-1 overflow-y-auto"
+              // Below `md` the bar is hidden (`max-md:no-scrollbar`): a phone
+              // scrolls by finger, so a bar there is only noise - and on a
+              // browser that lays bars out it took its width out of the box.
+              "min-h-0 flex-1 overflow-y-auto max-md:no-scrollbar"
             }
           >
             <div ref={contentRef} className="space-y-3">
@@ -183,6 +194,12 @@ export const ReviewStep = ({
           {arrangementLabel}
         </Badge>
       </div>
+
+      {actions && (
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t pt-2">
+          {actions}
+        </div>
+      )}
     </div>
   )
 }
