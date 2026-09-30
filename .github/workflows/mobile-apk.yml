@@ -25,6 +25,7 @@ on:
       - "packages/**"
       - "pnpm-lock.yaml"
       - ".github/workflows/mobile-apk.yml"
+      - ".github/workflows/_mobile-review.yml"
       - ".github/actions/**"
 
 concurrency:
@@ -33,7 +34,8 @@ concurrency:
 
 permissions:
   contents: read
-  # To delete this workflow's older APK artifacts once a newer one uploads.
+  # To read the retained APK the review compares versionCode against, and to
+  # delete older APK artifacts once a newer one has passed it.
   actions: write
 
 jobs:
@@ -132,15 +134,69 @@ jobs:
           name: some-ui-apk-${{ github.sha }}
           path: ${{ steps.name.outputs.file }}
           if-no-files-found: error
-          # A backstop, not the cleanup: the step below already removes every
-          # older APK, so this bounds only the newest one's life. After 30
-          # days with no push there is nothing to download until the next.
+          # A backstop, not the cleanup: the prune job removes every older
+          # APK, so this bounds only the newest one's life. After 30 days with
+          # no push there is nothing to download until the next.
           retention-days: 30
 
-      # Only the newest APK is worth keeping, so each successful upload
-      # deletes this workflow's older ones: one ~10 MB artifact on GitHub at a
-      # time, not one per push. Runs after the upload, so a failed or
-      # cancelled build never leaves the branch with no APK at all.
+      # What Play would take: the release build, shrunk by R8, as an APK and
+      # as the app bundle Play requires of new apps. Built on every run,
+      # after the phone's APK is already uploaded, so release-only breakage
+      # turns the run red without costing the phone its build.
+      - name: Build release APK and app bundle
+        working-directory: apps/mobile/android
+        env:
+          SOME_UI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          SOME_UI_VERSION_CODE: ${{ github.run_number }}
+          SOME_UI_VERSION_NAME: 0.1.${{ github.run_number }}+${{ github.sha }}
+        run: ./gradlew assembleRelease bundleRelease --no-daemon --stacktrace
+
+      # Android Lint over the release variant. Report-only: the review
+      # summarizes it, and gates on it once apps/mobile/review/policy.json
+      # sets lint.gate.
+      - name: Android Lint
+        continue-on-error: true
+        working-directory: apps/mobile/android
+        env:
+          SOME_UI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          SOME_UI_VERSION_CODE: ${{ github.run_number }}
+          SOME_UI_VERSION_NAME: 0.1.${{ github.run_number }}+${{ github.sha }}
+        run: ./gradlew :app:lintRelease --no-daemon
+
+      - name: Collect the review's inputs
+        run: |
+          out=apps/mobile/android/app/build
+          mkdir review-inputs
+          cp "$out/outputs/apk/debug/app-debug.apk" review-inputs/debug.apk
+          cp "$out/outputs/apk/release/app-release.apk" review-inputs/release.apk
+          cp "$out/outputs/bundle/release/app-release.aab" review-inputs/release.aab
+          cp "$out/outputs/mapping/release/mapping.txt" review-inputs/mapping.txt
+          cp "$out/reports/lint-results.xml" "$out/reports/lint-results.html" review-inputs/ || true
+      - name: Upload the review's inputs
+        uses: actions/upload-artifact@v7
+        with:
+          name: mobile-review-${{ github.sha }}
+          path: review-inputs
+          if-no-files-found: error
+          retention-days: 3
+
+  review:
+    name: Play readiness
+    needs: apk
+    uses: ./.github/workflows/_mobile-review.yml
+    with:
+      inputs-artifact: mobile-review-${{ github.sha }}
+
+  # Only the newest APK is worth keeping, so a run that passes the review
+  # deletes this workflow's older ones: one ~10 MB artifact on GitHub at a
+  # time, not one per push. After the review, because the review reads the
+  # retained APK to check versionCode only ever rises; and never after a
+  # failed or cancelled run, which leaves the previous APK in place.
+  prune:
+    name: Delete older APK artifacts
+    needs: [apk, review]
+    runs-on: ubuntu-latest
+    steps:
       - name: Delete older APK artifacts
         env:
           GH_TOKEN: ${{ github.token }}

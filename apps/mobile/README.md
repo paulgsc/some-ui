@@ -130,8 +130,8 @@ turbo passes each one through: it infers `VITE_*` for this workspace, and
 staging branch, and on nothing else. Open the run in the repository's
 **Actions** tab and download the `some-ui-apk-<sha>` artifact. It is a zip
 holding `some-ui-<sha>-debug.apk`. Install that on the phone (allow installs
-from your browser or file manager). The debug key signs it, which is all
-sideloading needs.
+from your browser or file manager). It is signed with the repository's key
+("Signing", below).
 
 The workflow also fails if the device backend is missing from the bundle.
 That is not hypothetical: www's build drops any import it considers
@@ -171,10 +171,10 @@ install over a CI build, or the other way round.
 
 ### Artifacts on GitHub
 
-- **One APK at a time.** Each successful run uploads its APK and then
-  deletes every older `some-ui-apk-*` artifact, so GitHub holds about 10 MB,
-  not 10 MB per push. The deletion runs after the upload, so a failed or
-  cancelled build leaves the previous APK in place.
+- **One APK at a time.** Each run uploads its APK, and a run that also
+  passes the review (below) then deletes every older `some-ui-apk-*`
+  artifact, so GitHub holds about 10 MB, not 10 MB per push. A failed or
+  cancelled run deletes nothing, so the previous APK stays in place.
 - **30-day expiry.** `retention-days: 30` bounds the newest one too.
 - **arm64 only.** SQLCipher, which the SQLite plugin brings, ships a native
   library per ABI. `abiFilters` keeps only `arm64-v8a` (5.2 MB of the four's
@@ -182,6 +182,95 @@ install over a CI build, or the other way round.
   the APK in an emulator.
 - **`versionCode` is the run number**, so each APK is an update of the last,
   and Settings → Apps → Some UI shows which build is installed.
+
+### Play readiness
+
+The app is sideloaded and there is no plan to publish it. But if it ever goes
+through Google Play, that should be an increment, not an overhaul. So every
+run also builds what Play would take, a **release** APK and **app bundle**
+(R8-shrunk, not debuggable, same key), and
+`.github/workflows/_mobile-review.yml` reviews the build against Google's
+guidance. The rules are `review/checks.mjs`; the values they hold the build
+to, each with its reason, are `review/policy.json`.
+
+Fails the run:
+
+- **Identity.** `applicationId` stays `dev.paulgsc.someui`, and both builds
+  are signed by the pinned certificate. Play treats a new applicationId as a
+  different app, and an update needs the same key
+  ([source](https://developer.android.com/build/configure-app-module#set-application-id)).
+- **The key is the future upload key.** Under Play App Signing, the key CI
+  signs with is what an upload would be signed with
+  ([source](https://developer.android.com/studio/publish/app-signing)). Do
+  not rotate the `ANDROID_KEYSTORE_*` secrets casually. A new key fails the
+  review, and it would also stop the phone taking updates.
+- **versionCode only rises.** It must be above every retained APK's (Play's
+  ceiling is 2,100,000,000,
+  [source](https://developer.android.com/studio/publish/versioning)). It is
+  the run number, which resets if `mobile-apk.yml` is renamed. This check
+  catches that.
+- **Target API level.** Play's dated schedule is in `policy.json`
+  ([source](https://developer.android.com/google/play/requirements/target-sdk)).
+  Inside Google's extension window a shortfall is a warning; after it, an
+  error. A schedule a year stale is itself an error.
+- **16 KB page size.** Every 64-bit native library has LOAD segments aligned
+  to 16 KB and is stored uncompressed at a 16 KB boundary, in the APKs
+  (also `zipalign -c -P 16`) and in the bundle
+  ([source](https://developer.android.com/guide/practices/page-sizes)).
+  SQLCipher 4.10.0 complies (every segment 0x4000, checked 2026-09-30).
+- **Permissions and exported components.** Every permission in the _merged_
+  manifest, and every exported component, is listed with a reason. A new
+  one from a plugin fails, and so does a listed one that is gone. Play's
+  restricted permissions (exact alarms, full-screen intents, and so on) also
+  need the declaration they would take.
+- **The release build.** It is not debuggable, R8 ran (a non-empty
+  `mapping.txt`), and it builds.
+
+Reported only: size, with a per-directory breakdown (warns over 25 MiB), and
+Android Lint (gated once `policy.json` sets `lint.gate`).
+
+#### Departures from Google's guidance
+
+Where the app knowingly differs from what Play would expect. A future
+submission starts from this list, not from an audit.
+
+| ID  | Departure                                                   | Why                                                                                                                         | Undo before Play                                                      |
+| --- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| PD1 | The phone installs the **debug** build (debuggable).        | It is the build the CI run names and the phone updates from.                                                                | Install `release` instead (same key, same versionCode).               |
+| PD2 | `usesCleartextTraffic="true"`                               | The sync from home is plain http to a LAN address the person types. A network security config cannot name it ahead of time. | Sync over https, or a network security config naming the host.        |
+| PD3 | `allowBackup="true"`, with no backup rules                  | Backup is how the phone's history would survive a new phone.                                                                | Add `dataExtractionRules` saying what is backed up.                   |
+| PD4 | `targetSdk` 35, below Play's 36 (required since 2026-08-31) | Capacitor 7 targets 35; 36 needs Capacitor 8.                                                                               | Upgrade Capacitor. The review turns this into an error on 2026-11-01. |
+| PD5 | arm64 only (`abiFilters`)                                   | Keeps SQLCipher's other ABIs out of a sideloaded APK.                                                                       | Nothing for Play itself; 32-bit phones would not be offered it.       |
+
+`policy.json` records PD2 and PD3 as the flags' expected values, so changing
+either fails the review until the entry changes too.
+
+#### Invariants the review cannot check
+
+In the `CLAUDE.md` "Gray-area invariants" shape.
+
+> **P1: The pinned identity never changes.**
+>
+> - _Claim:_ once set, `identity.applicationId` and
+>   `identity.signingCertSha256` in `review/policy.json` keep their values.
+> - _Falsified by_ a hunk that changes, removes or moves either value, or
+>   that deletes or renames `policy.json`, or that stops `review.mjs`
+>   calling `reviewSigner` or `reviewManifest`.
+> - _Scope:_ `apps/mobile/review/`.
+> - _Why not enforced:_ the review enforces the build against these values,
+>   but the values sit in the same repository. A diff that changes both the
+>   build and the pin passes, and only a person can tell a deliberate reset
+>   (before any Play upload) from drift.
+
+> **P2: Every allowlist reason is true.**
+>
+> - _Claim:_ each `reason` in `policy.json` names why this app needs the
+>   permission, exported component or flag.
+> - _Falsified by_ a hunk that adds or rewords an entry whose reason does not
+>   name a feature of this app or the library that brings it.
+> - _Scope:_ `apps/mobile/review/policy.json`.
+> - _Why not enforced:_ the review enforces that a reason exists. Whether it
+>   is true needs a person to read it.
 
 ### Icon and splash
 

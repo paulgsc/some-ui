@@ -10,7 +10,20 @@ apply plugin: 'com.android.application'
 // over the last ("App not installed"), and the only way forward is to
 // uninstall - which deletes the app's SQLite database, the thing this app
 // exists to keep. Unset (a local build), the default debug key is used.
+//
+// It is also the release key, and so the future Play *upload key* (Play App
+// Signing re-signs what Play delivers with a key of its own). The review pins
+// its certificate (apps/mobile/review/policy.json), so a rotated key fails CI
+// rather than stranding the installed app.
 def someUiKeystore = System.getenv("SOME_UI_KEYSTORE")
+
+// CI must say which build this is. Falling back to 1 there would give a
+// green build that no phone accepts as an update, and that Play refuses as a
+// reused versionCode.
+def someUiVersionCode = System.getenv("SOME_UI_VERSION_CODE")
+if (System.getenv("CI") && !someUiVersionCode) {
+    throw new GradleException("SOME_UI_VERSION_CODE is not set - see .github/workflows/mobile-apk.yml")
+}
 
 android {
     namespace "dev.paulgsc.someui"
@@ -21,7 +34,7 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // CI passes its run number, so each build installs as an update of the
         // one before it and Settings > Apps shows which build is on the phone.
-        versionCode Integer.parseInt(System.getenv("SOME_UI_VERSION_CODE") ?: "1")
+        versionCode Integer.parseInt(someUiVersionCode ?: "1")
         versionName System.getenv("SOME_UI_VERSION_NAME") ?: "0.1.0-local"
         // arm64 only. @capacitor-community/sqlite brings SQLCipher's native
         // library for four ABIs (~19 MB uncompressed, measured from
@@ -39,8 +52,8 @@ android {
         }
     }
     signingConfigs {
-        debug {
-            if (someUiKeystore) {
+        if (someUiKeystore) {
+            someUi {
                 storeFile file(someUiKeystore)
                 storePassword System.getenv("SOME_UI_KEYSTORE_PASSWORD")
                 keyAlias System.getenv("SOME_UI_KEY_ALIAS") ?: "some-ui"
@@ -49,10 +62,30 @@ android {
         }
     }
     buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        debug {
+            if (someUiKeystore) {
+                signingConfig signingConfigs.someUi
+            }
         }
+        // What Play would take (as an app bundle): shrunk and optimized by R8,
+        // not debuggable. CI builds it on every run beside the debug APK the
+        // phone installs, so release-only breakage cannot pile up unseen.
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (someUiKeystore) {
+                signingConfig signingConfigs.someUi
+            }
+        }
+    }
+    // Machine-readable, for the review (apps/mobile/review). Lint runs as its
+    // own report-only CI step, so its findings do not stop the APK.
+    lint {
+        xmlReport = true
+        xmlOutput = file("build/reports/lint-results.xml")
+        htmlReport = true
+        htmlOutput = file("build/reports/lint-results.html")
     }
 }
 

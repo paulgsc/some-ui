@@ -1,0 +1,66 @@
+name: Mobile Play Readiness
+# The Android app's review against Google's guidance, the mobile sibling of
+# _extension-verify.yml's `web-ext lint`. Called by mobile-apk.yml once the
+# build job has uploaded its outputs (the debug and release APKs, the release
+# app bundle, R8's mapping and Android Lint's report).
+#
+# Not Play review parity: the app is sideloaded. It checks the drift that
+# would be costly to undo if it ever goes through Play - identity and signing
+# key, versionCode, target API level, 16 KB page size, the merged manifest's
+# permissions and exported components, the release build - and reports size
+# and Lint. apps/mobile/README.md ("Play readiness") lists what it checks and
+# the app's recorded departures; the rules are apps/mobile/review/checks.mjs,
+# the values policy.json.
+#
+# Outside the nix shell, like mobile-apk.yml's Gradle steps: it needs the
+# runner's Android SDK (apkanalyzer, apksigner, zipalign) and JDK. The review
+# script uses only Node's standard library, so the runner's Node suffices and
+# no install runs.
+on:
+  workflow_call:
+    inputs:
+      inputs-artifact:
+        description: The artifact holding the build's review inputs
+        required: true
+        type: string
+
+jobs:
+  review:
+    name: Review
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: apps/mobile/review
+      - uses: actions/download-artifact@v8
+        with:
+          name: ${{ inputs.inputs-artifact }}
+          path: review-inputs
+
+      # The parsers and rules on built inputs, before trusting their verdict.
+      - name: Self-test the review
+        run: node --test apps/mobile/review/checks.test.mjs
+
+      # The APK the phone may already have: this build's versionCode must be
+      # above it. The prune job deletes older ones only after this passes, so
+      # the retained set is every build since the last green review.
+      - name: Fetch the retained APKs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir previous
+          gh api --paginate "repos/$GITHUB_REPOSITORY/actions/artifacts?per_page=100" \
+            --jq ".artifacts[]
+                  | select(.name | startswith(\"some-ui-apk-\"))
+                  | select(.workflow_run.id != $GITHUB_RUN_ID)
+                  | select(.expired | not)
+                  | .id" |
+          while read -r id; do
+            gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" > "previous/$id.zip"
+            unzip -q -o "previous/$id.zip" -d previous
+          done
+          ls -la previous
+
+      - name: Review
+        run: node apps/mobile/review/review.mjs review-inputs --previous previous
