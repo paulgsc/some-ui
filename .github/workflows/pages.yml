@@ -322,10 +322,13 @@ jobs:
         with:
           name: storybook-dist
           path: site/storybook
+      # Read only by `deploy`, in this same run. 1 is also the action's own
+      # default; it is spelled out so the retention check need not know that.
       - name: Upload combined Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:
           path: ./site
+          retention-days: 1
   # ── Deploy ────────────────────────────────────────────────────────────────
   deploy:
     name: Deploy to GitHub Pages
