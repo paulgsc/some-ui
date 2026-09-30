@@ -12,22 +12,22 @@
 // literal number of days (`0`, empty, a `${{ }}` expression): each can
 // resolve to that default.
 //
-// RS1 (CLAUDE.md, "Cross-repo coupling"): `server-route-snapshot.yml`, with
-// full-line comments and blank lines outside block scalars removed, hashes to
-// RS1_FINGERPRINT. Any other edit, a deletion or a rename fails until the pin
-// is updated in the same change, and that pin bump is the reviewer's cue to
-// re-check RS1's claim. Block scalars (`run: |` and any other `key: |` or
-// `key: >`) and multi-line quoted scalars are hashed verbatim, because a `#`
-// line inside one is data, not a comment. That includes the blank lines
-// between a block scalar and the next line indented no deeper than its key:
-// with `|+` they are part of the value, so they change the pin too.
+// RS1 (CLAUDE.md, "Cross-repo coupling"): `server-route-snapshot.yml`, byte
+// for byte, hashes to RS1_FINGERPRINT. Every edit fails until the pin moves in
+// the same change, comment lines included, and so does a deletion or rename.
+// The pin bump is where a reviewer applies RS1's falsifier to the diff: a
+// comment-only change needs no re-check, anything else does. The raw bytes, not
+// a normal form with the free lines taken out, because telling a comment from
+// a `#` line inside a multi-line scalar is YAML parsing, and each lexical
+// attempt at it left an edit that changed the workflow without moving the pin
+// (#1604: trailing blanks under `|+`, trailing whitespace, `- |` items).
 //
 // RS2 (same section): no workflow or composite action other than
 // `server-route-snapshot.yml` names `bot/server-route-snapshot`.
 //
 // Deliberately lexical, like test-layout.ts: a YAML parser would need an
-// install for a check that otherwise runs on bare Node, and every shape these
-// rules read is a single line (`uses:`, `retention-days:`, a `#` line).
+// install for a check that otherwise runs on bare Node. So each rule accepts a
+// closed shape and fails the rest, rather than listing shapes it rejects.
 
 import { createHash } from "node:crypto"
 
@@ -35,7 +35,7 @@ export const RS1_FILE = ".github/workflows/server-route-snapshot.yml"
 // Updating this pin is the RS1 re-check: whoever changes it confirms, in the
 // same change, that the workflow still only reads and dispatches.
 export const RS1_FINGERPRINT =
-  "85def42add6297be2e16b37dff0adff93424e5d3a7e86acc31e44f3584d25f1f"
+  "f1f668d5edd39995e1bf23e74c7aac9d21d9124c10110c9dfaffe3f93c7d2927"
 export const SNAPSHOT_BRANCH = "bot/server-route-snapshot"
 
 export type WorkflowViolation =
@@ -209,67 +209,8 @@ export function findRetentionViolations(
   return violations
 }
 
-// `key: |`, `- run: >-`, `key: |2 # note`: the column of the key, so that
-// every later line indented deeper (or blank) belongs to the scalar.
-const BLOCK_SCALAR_KEY =
-  /^(\s*(?:-\s+)?)[^\s#"'][^#]*?:\s*[|>][-+0-9]*\s*(?:#.*)?$/
-// `key: "…` or `- key: '…` whose quote does not close on the same line.
-const QUOTED_VALUE = /^\s*(?:-\s+)?[^\s#"'][^#]*?:\s+(["'])(.*)$/
-
-// Whether `rest` holds the closing quote: `''` escapes a single quote, a
-// backslash escapes inside double quotes.
-function closesQuote(rest: string, quote: string): boolean {
-  return quote === "'"
-    ? rest.replace(/''/g, "").includes("'")
-    : rest.replace(/\\./g, "").includes('"')
-}
-
-export function rs1Normalize(text: string): string {
-  const lines = text.split(/\r?\n/)
-  const out: Array<string> = []
-  let blockKeyColumn: number | null = null
-  let block: Array<string> = []
-  let openQuote: string | null = null
-
-  const flushBlock = (): void => {
-    out.push(...block)
-    block = []
-    blockKeyColumn = null
-  }
-
-  for (const line of lines) {
-    if (openQuote !== null) {
-      out.push(line)
-      if (closesQuote(line, openQuote)) openQuote = null
-      continue
-    }
-    if (blockKeyColumn !== null) {
-      if (line.trim() === "" || indentOf(line) > blockKeyColumn) {
-        block.push(line)
-        continue
-      }
-      flushBlock()
-    }
-    if (isBlankOrComment(line)) continue
-    out.push(line.trimEnd())
-
-    const blockKey = BLOCK_SCALAR_KEY.exec(line)
-    if (blockKey) {
-      blockKeyColumn = (blockKey[1] ?? "").length
-      continue
-    }
-    const quoted = QUOTED_VALUE.exec(line)
-    const quote = quoted?.[1]
-    if (quote !== undefined && !closesQuote(quoted?.[2] ?? "", quote)) {
-      openQuote = quote
-    }
-  }
-  flushBlock()
-  return out.join("\n")
-}
-
 export function rs1Fingerprint(text: string): string {
-  return createHash("sha256").update(rs1Normalize(text)).digest("hex")
+  return createHash("sha256").update(text).digest("hex")
 }
 
 export function checkRs1(text: string | null): Array<WorkflowViolation> {
@@ -321,7 +262,7 @@ export function describeWorkflowViolation(v: WorkflowViolation): string {
     case "rs1Changed": {
       return v.actual === null
         ? `${v.file} is missing. Deleting, renaming or moving it changes RS1 (CLAUDE.md, "Cross-repo coupling"): re-check the claim, then update RS1_FILE and RS1_FINGERPRINT in packages/eslint/src/workflow-guards.ts.`
-        : `${v.file} changed beyond comment lines (fingerprint ${v.actual}). Re-check RS1 (CLAUDE.md, "Cross-repo coupling"): it still only reads and dispatches. Then set RS1_FINGERPRINT in packages/eslint/src/workflow-guards.ts to that value in the same change.`
+        : `${v.file} changed (fingerprint ${v.actual}). Unless the change is comment lines only, re-check RS1 (CLAUDE.md, "Cross-repo coupling"): it still only reads and dispatches. Then set RS1_FINGERPRINT in packages/eslint/src/workflow-guards.ts to that value in the same change.`
     }
     case "rs2Named": {
       return `${v.file}:${v.line}: names ${SNAPSHOT_BRANCH}. Only ${RS1_FILE} may (RS2, CLAUDE.md, "Cross-repo coupling"); paulgsc/server's routes.yml is that PR's one writer.`

@@ -199,67 +199,43 @@ describe("findRetentionViolations", () => {
 })
 
 describe("rs1Fingerprint", () => {
-  const base = [
+  const text = [
     "name: X",
     "# header",
     "on: push",
     "jobs:",
     "  a:",
-    "    if: >-",
-    "      a &&",
-    "      # data inside a folded scalar",
-    "      b",
+    "    strategy:",
+    "      matrix:",
+    "        cmd:",
+    "          - |",
+    "            # data inside a sequence-item block scalar",
+    "            echo hi",
     "    steps:",
-    "      - run: |",
-    "          set -e",
-    "          # data inside a run block",
+    "      - run: |+",
     "          echo hi",
     "",
     "      # between steps",
-    "      - name: q",
-    '        env: { A: "x',
-    "          # data inside a quoted scalar",
-    '          y" }',
-    "        run: echo # inline",
-  ]
-  const text = base.join("\n")
-  const edit = (index: number, line: string): string =>
-    base.map((l, i) => (i === index ? line : l)).join("\n")
+    "      - run: echo",
+  ].join("\n")
 
-  it("ignores full-line comments and blank lines outside scalars", () => {
-    const fingerprint = rs1Fingerprint(text)
-    expect(rs1Fingerprint(edit(1, "# reworded header"))).toBe(fingerprint)
-    expect(rs1Fingerprint(edit(15, "      # reworded, still a comment"))).toBe(
-      fingerprint
-    )
-    expect(rs1Fingerprint(edit(2, "on: push\n"))).toBe(fingerprint)
-    expect(rs1Fingerprint(`${text}\n\n# trailing comment\n`)).toBe(fingerprint)
-    expect(rs1Fingerprint(text.replace("on: push", "on: push   "))).toBe(
-      fingerprint
-    )
-  })
-
-  it("sees every other edit, including # lines that are data", () => {
+  // Every edit moves the pin, comment lines included: telling a comment from a
+  // `#` line inside a scalar is YAML parsing, and each lexical attempt at it
+  // missed one of the shapes below (#1604).
+  it("moves on every edit, comments and whitespace included", () => {
     const fingerprint = rs1Fingerprint(text)
     for (const changed of [
-      edit(2, "on: pull_request"),
-      edit(7, "      # changed data inside a folded scalar"),
-      edit(12, "          # changed data inside a run block"),
-      edit(18, "          # changed data inside a quoted scalar"),
-      edit(20, "        run: echo # changed inline comment"),
-      edit(13, "          echo bye"),
-      // The blank line closing a block scalar belongs to it (Codex on #1604).
-      base.filter((_, i) => i !== 14).join("\n"),
+      text.replace("# header", "# reworded header"),
+      text.replace("      # between steps", "      # reworded"),
+      text.replace("# data inside", "# changed data inside"),
+      text.replace("echo hi\n\n", "echo hi\n"),
+      text.replace("on: push", "on: push "),
+      `${text}\n`,
+      text.replace("run: echo", "run: gh pr merge"),
     ]) {
       expect(rs1Fingerprint(changed)).not.toBe(fingerprint)
     }
-  })
-
-  it("counts a blank line kept by |+ as part of the value", () => {
-    const keep = edit(10, "      - run: |+")
-    expect(rs1Fingerprint(keep.replace("echo hi\n", "echo hi\n\n"))).not.toBe(
-      rs1Fingerprint(keep)
-    )
+    expect(rs1Fingerprint(text)).toBe(fingerprint)
   })
 
   it("pins the real file, and fails when it is missing", () => {

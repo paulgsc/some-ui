@@ -18,8 +18,9 @@ name: Server route snapshot
 #   RS1  This workflow only reads and dispatches; any change here other
 #        than to a comment line is re-checked against that
 #        (CLAUDE.md, "Cross-repo coupling"). `pnpm check:workflows` fails
-#        on such a change until RS1_FINGERPRINT in
-#        packages/eslint/src/workflow-guards.ts is updated with it.
+#        on any change to this file, comments included, until
+#        RS1_FINGERPRINT in packages/eslint/src/workflow-guards.ts is
+#        updated with it.
 #   RS2  Nothing else in this repo writes the route snapshot PR (not
 #        reviewable; same section). The same check fails if another
 #        workflow names the branch.

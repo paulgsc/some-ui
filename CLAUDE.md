@@ -60,11 +60,12 @@ so a PR whose snapshot already reached `main` another way closes itself.
 > - _Scope:_ `.github/workflows/server-route-snapshot.yml`.
 > - _Why not enforced:_ no lint, type or test here can tell what a workflow change writes,
 >   so whether the claim still holds needs a person. That the file changed is enforced:
->   `pnpm check:workflows` (below, "Workflow storage") hashes it without the lines the
->   falsifier exempts (blank lines closing a block scalar are hashed: with `|+` they are
->   its value) and fails until `RS1_FINGERPRINT` in
->   `packages/eslint/src/workflow-guards.ts` matches, and a deletion, rename or move
->   fails it too. A diff that bumps that pin is the one to re-check against the claim.
+>   `pnpm check:workflows` (below, "Workflow storage") hashes its raw bytes and fails
+>   until `RS1_FINGERPRINT` in `packages/eslint/src/workflow-guards.ts` matches, so every
+>   edit, a deletion, rename or move included, must bump the pin in the same change. A
+>   diff that bumps it is where this falsifier is applied: comment lines only need no
+>   re-check, anything else does. The check does not try to tell those apart itself:
+>   that is YAML parsing, and each lexical attempt on #1604 missed a shape.
 >
 > True when declared: the scripts' only calls that reach GitHub are one `gh pr view`
 > (a read), one `gh api` adding a reaction, and one
