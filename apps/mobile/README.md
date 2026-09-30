@@ -287,9 +287,16 @@ In the `CLAUDE.md` "Gray-area invariants" shape.
 >   still in it, or the library that brings the entry.
 > - _Falsified by_ a hunk that adds or rewords an entry whose reason does not
 >   name such a feature or library; that names a new app feature without
->   adding its code to the list below; or that deletes, renames or moves the
->   code of a feature an unchanged reason names. Those features, and their
->   code: the sync from home (`INTERNET`, `usesCleartextTraffic`),
+>   adding its code to the list below; that deletes, renames or moves the
+>   code of a feature an unchanged reason names; or that changes, replaces
+>   or removes the declaration of a library an unchanged reason names:
+>   `@capacitor/local-notifications` (`apps/mobile/package.json`, and its
+>   `pnpm-lock.yaml` entry); `androidx.core` (`androidxCoreVersion`) and
+>   `androidx.profileinstaller`, which arrives through `androidx.appcompat`
+>   (`androidxAppCompatVersion`), both in `android/variables.gradle`. A
+>   replacement can supply the same entry for another reason. The app
+>   features, and their code: the sync from home (`INTERNET`,
+>   `usesCleartextTraffic`),
 >   `apps/www/src/lib/device-backend/home-sync/` and its Settings entry
 >   `apps/www/src/components/settings/device-section.tsx`; study nudges
 >   (`POST_NOTIFICATIONS`), `apps/www/src/lib/study-nudge/native.ts`; the
@@ -297,7 +304,8 @@ In the `CLAUDE.md` "Gray-area invariants" shape.
 >   `apps/www/src/lib/device-backend/capacitor-sqlite/`; the launcher
 >   activity (`MainActivity`), `MainActivity.java` and its launcher
 >   intent-filter in `android/app/src/main/AndroidManifest.xml`.
-> - _Scope:_ `apps/mobile/review/policy.json` and the code listed above.
+> - _Scope:_ `apps/mobile/review/policy.json`, the code listed above, and
+>   those library declarations.
 > - _Why not enforced:_ the review enforces that a reason exists, and that
 >   a library's entries go when the library does (they leave the merged
 >   manifest, and an allowlist entry the build no longer has fails). An app
@@ -322,12 +330,12 @@ seven-cell honeycomb in its honey pair, on the dark of www's `manifest.json`
 
 ### Locally
 
-Gradle needs the Android SDK (`compileSdkVersion 35`,
+Gradle needs the Android SDK (`compileSdkVersion 36`,
 `android/variables.gradle`):
 
 ```sh
 export ANDROID_HOME="$HOME/Android/Sdk"
-sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 ```
 
 The Claude Code sandbox cannot install it (`dl.google.com` is outside its
