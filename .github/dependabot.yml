@@ -47,6 +47,12 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+    ignore:
+      # changesets/action v2 only runs against @changesets/cli v3 and renames
+      # its inputs; its bump (#1085) broke wasm-release.yml and release.yml
+      # silently for six weeks. Take the major by hand, with the CLI.
+      - dependency-name: "changesets/action"
+        update-types: ["version-update:semver-major"]
     groups:
       determinate-systems:
         patterns:

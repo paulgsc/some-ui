@@ -288,8 +288,15 @@ jobs:
             --prefer-offline
         env:
           HUSKY: 0
+      # v1, not v2: changesets/action v2 refuses to run against
+      # @changesets/cli v2 (this repo's root devDependency) and renamed every
+      # input used here (commit -> commit-message, version -> version-script,
+      # ...), ignoring the old names with only a warning. Dependabot's v2 bump
+      # (#1085) failed this job on every crate change from then on. Moving to
+      # v2 means moving the CLI to v3 and renaming these inputs together;
+      # dependabot.yml holds the major back until then.
       - name: Create Release PR or Publish
-        uses: changesets/action@v2.1.2
+        uses: changesets/action@v1.9.0
         with:
           commit: ${{ env.RELEASE_COMMIT_MESSAGE }}
           title: ${{ env.RELEASE_COMMIT_MESSAGE }}
