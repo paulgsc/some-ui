@@ -194,7 +194,7 @@ describe("rs1Fingerprint", () => {
     expect(rs1Fingerprint(edit(15, "      # reworded, still a comment"))).toBe(
       fingerprint
     )
-    expect(rs1Fingerprint(edit(14, "   "))).toBe(fingerprint)
+    expect(rs1Fingerprint(edit(2, "on: push\n"))).toBe(fingerprint)
     expect(rs1Fingerprint(`${text}\n\n# trailing comment\n`)).toBe(fingerprint)
     expect(rs1Fingerprint(text.replace("on: push", "on: push   "))).toBe(
       fingerprint
@@ -210,9 +210,18 @@ describe("rs1Fingerprint", () => {
       edit(18, "          # changed data inside a quoted scalar"),
       edit(20, "        run: echo # changed inline comment"),
       edit(13, "          echo bye"),
+      // The blank line closing a block scalar belongs to it (Codex on #1604).
+      base.filter((_, i) => i !== 14).join("\n"),
     ]) {
       expect(rs1Fingerprint(changed)).not.toBe(fingerprint)
     }
+  })
+
+  it("counts a blank line kept by |+ as part of the value", () => {
+    const keep = edit(10, "      - run: |+")
+    expect(rs1Fingerprint(keep.replace("echo hi\n", "echo hi\n\n"))).not.toBe(
+      rs1Fingerprint(keep)
+    )
   })
 
   it("pins the real file, and fails when it is missing", () => {

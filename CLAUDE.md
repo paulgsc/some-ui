@@ -61,7 +61,8 @@ so a PR whose snapshot already reached `main` another way closes itself.
 > - _Why not enforced:_ no lint, type or test here can tell what a workflow change writes,
 >   so whether the claim still holds needs a person. That the file changed is enforced:
 >   `pnpm check:workflows` (below, "Workflow storage") hashes it without the lines the
->   falsifier exempts and fails until `RS1_FINGERPRINT` in
+>   falsifier exempts (blank lines closing a block scalar are hashed: with `|+` they are
+>   its value) and fails until `RS1_FINGERPRINT` in
 >   `packages/eslint/src/workflow-guards.ts` matches, and a deletion, rename or move
 >   fails it too. A diff that bumps that pin is the one to re-check against the claim.
 >

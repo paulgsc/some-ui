@@ -18,7 +18,9 @@
 // is updated in the same change, and that pin bump is the reviewer's cue to
 // re-check RS1's claim. Block scalars (`run: |` and any other `key: |` or
 // `key: >`) and multi-line quoted scalars are hashed verbatim, because a `#`
-// line inside one is data, not a comment.
+// line inside one is data, not a comment. That includes the blank lines
+// between a block scalar and the next line indented no deeper than its key:
+// with `|+` they are part of the value, so they change the pin too.
 //
 // RS2 (same section): no workflow or composite action other than
 // `server-route-snapshot.yml` names `bot/server-route-snapshot`.
@@ -33,7 +35,7 @@ export const RS1_FILE = ".github/workflows/server-route-snapshot.yml"
 // Updating this pin is the RS1 re-check: whoever changes it confirms, in the
 // same change, that the workflow still only reads and dispatches.
 export const RS1_FINGERPRINT =
-  "ad4708620ce48eed5dd81e42cbeea37f7ba7e4fedf51005fb42aeb8d4890817d"
+  "85def42add6297be2e16b37dff0adff93424e5d3a7e86acc31e44f3584d25f1f"
 export const SNAPSHOT_BRANCH = "bot/server-route-snapshot"
 
 export type WorkflowViolation =
@@ -172,9 +174,6 @@ export function rs1Normalize(text: string): string {
   let openQuote: string | null = null
 
   const flushBlock = (): void => {
-    while (block.length > 0 && block.at(-1)?.trim() === "") {
-      block.pop()
-    }
     out.push(...block)
     block = []
     blockKeyColumn = null
