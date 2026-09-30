@@ -62,9 +62,12 @@ jobs:
           PR: ${{ github.event.issue.number }}
         run: |
           set -euo pipefail
-          head=$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json headRefName --jq .headRefName)
-          if [ "$head" != "bot/server-route-snapshot" ]; then
-            echo "::notice::/resync only applies to the route snapshot PR (bot/server-route-snapshot); #$PR is from $head."
+          # The branch name alone is not enough: a fork can name a branch
+          # anything, so the PR must also come from this repository.
+          head=$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json headRefName,isCrossRepository \
+            --jq '"\(.headRefName) \(.isCrossRepository)"')
+          if [ "$head" != "bot/server-route-snapshot false" ]; then
+            echo "::notice::/resync only applies to the route snapshot PR (bot/server-route-snapshot in this repository); #$PR is not it."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
 
