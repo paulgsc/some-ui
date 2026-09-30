@@ -1,5 +1,17 @@
 apply plugin: 'com.android.application'
 
+// The one key every build of this app is signed with, from the environment
+// CI sets out of repository secrets (.github/workflows/mobile-apk.yml).
+//
+// Android only installs an update over an existing app when both carry the
+// same signature. Left to its default, the debug build is signed with
+// ~/.android/debug.keystore, which a fresh CI runner generates anew on every
+// run: each APK then has a different key, the next one refuses to install
+// over the last ("App not installed"), and the only way forward is to
+// uninstall - which deletes the app's SQLite database, the thing this app
+// exists to keep. Unset (a local build), the default debug key is used.
+def someUiKeystore = System.getenv("SOME_UI_KEYSTORE")
+
 android {
     namespace "dev.paulgsc.someui"
     compileSdk rootProject.ext.compileSdkVersion
@@ -7,13 +19,33 @@ android {
         applicationId "dev.paulgsc.someui"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // CI passes its run number, so each build installs as an update of the
+        // one before it and Settings > Apps shows which build is on the phone.
+        versionCode Integer.parseInt(System.getenv("SOME_UI_VERSION_CODE") ?: "1")
+        versionName System.getenv("SOME_UI_VERSION_NAME") ?: "0.1.0-local"
+        // arm64 only. @capacitor-community/sqlite brings SQLCipher's native
+        // library for four ABIs (~19 MB uncompressed, measured from
+        // sqlcipher-android 4.10.0's aar); a phone uses one of them. This drops
+        // armeabi-v7a (32-bit phones) and the two x86 emulator builds - add
+        // "x86_64" here to run the APK in an emulator.
+        ndk {
+            abiFilters "arm64-v8a"
+        }
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    signingConfigs {
+        debug {
+            if (someUiKeystore) {
+                storeFile file(someUiKeystore)
+                storePassword System.getenv("SOME_UI_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("SOME_UI_KEY_ALIAS") ?: "some-ui"
+                keyPassword System.getenv("SOME_UI_KEYSTORE_PASSWORD")
+            }
         }
     }
     buildTypes {

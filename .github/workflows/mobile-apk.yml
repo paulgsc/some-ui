@@ -33,6 +33,8 @@ concurrency:
 
 permissions:
   contents: read
+  # To delete this workflow's older APK artifacts once a newer one uploads.
+  actions: write
 
 jobs:
   apk:
@@ -83,8 +85,37 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
+      # One signing key for every build, so each APK installs as an update of
+      # the last. Without it every runner signs with a debug key it generated
+      # itself, the next APK refuses to install over the previous one, and the
+      # only way out is an uninstall - which deletes the phone's database.
+      # Failing here, rather than falling back to that key, is the point: a
+      # green build must be one the phone can take as an update.
+      #
+      # Secrets (Settings > Secrets and variables > Actions), made once with
+      # the commands in apps/mobile/README.md ("Signing"):
+      #   ANDROID_KEYSTORE_BASE64    - the PKCS12 keystore, base64-encoded
+      #   ANDROID_KEYSTORE_PASSWORD  - its password (also the key's)
+      - name: Install the signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD are not set - see apps/mobile/README.md, 'Signing'"
+            exit 1
+          fi
+          keystore="$RUNNER_TEMP/some-ui.keystore"
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          echo "SOME_UI_KEYSTORE=$keystore" >> "$GITHUB_ENV"
+
       - name: Assemble debug APK
         working-directory: apps/mobile/android
+        env:
+          SOME_UI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          # Rises with every run, so each APK is an update of the one before.
+          SOME_UI_VERSION_CODE: ${{ github.run_number }}
+          SOME_UI_VERSION_NAME: 0.1.${{ github.run_number }}+${{ github.sha }}
         run: ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Name the APK after its commit
@@ -101,4 +132,26 @@ jobs:
           name: some-ui-apk-${{ github.sha }}
           path: ${{ steps.name.outputs.file }}
           if-no-files-found: error
+          # A backstop, not the cleanup: the step below already removes every
+          # older APK, so this bounds only the newest one's life. After 30
+          # days with no push there is nothing to download until the next.
           retention-days: 30
+
+      # Only the newest APK is worth keeping, so each successful upload
+      # deletes this workflow's older ones: one ~10 MB artifact on GitHub at a
+      # time, not one per push. Runs after the upload, so a failed or
+      # cancelled build never leaves the branch with no APK at all.
+      - name: Delete older APK artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --paginate "repos/$GITHUB_REPOSITORY/actions/artifacts?per_page=100" \
+            --jq ".artifacts[]
+                  | select(.name | startswith(\"some-ui-apk-\"))
+                  | select(.workflow_run.id != $GITHUB_RUN_ID)
+                  | select(.expired | not)
+                  | .id" |
+          while read -r id; do
+            echo "deleting artifact $id"
+            gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$id"
+          done

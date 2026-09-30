@@ -107,6 +107,51 @@ That is not hypothetical: www's build drops any import it considers
 side-effect-free, and the first version of the boot hook was dropped that way,
 with a clean build log.
 
+### Signing (one-time setup)
+
+Every CI build is signed with one key, kept in two repository secrets. The
+workflow fails without them rather than signing with a throwaway key. Android
+installs an update only over an app with the same signature. With a new key
+per build, each APK would refuse to install over the last, and the only way
+out would be an uninstall, which deletes the phone's database.
+
+Make the key once, on your own machine (any JDK has `keytool`):
+
+```sh
+keytool -genkeypair -keystore some-ui.keystore -storetype PKCS12 \
+  -alias some-ui -keyalg RSA -keysize 2048 -validity 10000 \
+  -dname "CN=some-ui"            # prompts for a password: remember it
+base64 -w0 some-ui.keystore      # macOS: base64 -i some-ui.keystore
+```
+
+Then, under **Settings → Secrets and variables → Actions → New repository
+secret**, add:
+
+- `ANDROID_KEYSTORE_BASE64`: the `base64` output;
+- `ANDROID_KEYSTORE_PASSWORD`: the password.
+
+Keep `some-ui.keystore` somewhere safe outside the repository. Lose it, and the
+next key is a different signature, which means one uninstall. The alias
+defaults to `some-ui`, and the key's password is the keystore's password.
+
+`app/build.gradle` uses this key only when `SOME_UI_KEYSTORE` is set. A local
+build without it falls back to your own debug key, and that build cannot
+install over a CI build, or the other way round.
+
+### Artifacts on GitHub
+
+- **One APK at a time.** Each successful run uploads its APK and then
+  deletes every older `some-ui-apk-*` artifact, so GitHub holds about 10 MB,
+  not 10 MB per push. The deletion runs after the upload, so a failed or
+  cancelled build leaves the previous APK in place.
+- **30-day expiry.** `retention-days: 30` bounds the newest one too.
+- **arm64 only.** SQLCipher, which the SQLite plugin brings, ships a native
+  library per ABI. `abiFilters` keeps only `arm64-v8a` (5.2 MB of the four's
+  roughly 19 MB). Add `x86_64` to `abiFilters` in `app/build.gradle` to run
+  the APK in an emulator.
+- **`versionCode` is the run number**, so each APK is an update of the last,
+  and Settings → Apps → Some UI shows which build is installed.
+
 ### Locally
 
 Gradle needs the Android SDK (`compileSdkVersion 35`,
