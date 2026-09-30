@@ -3,9 +3,10 @@
  * Leetype rounds get *into* the phone's database.
  *
  * Two callers: the bundled Leetype corpus, seeded on every start (cheap: an
- * unchanged body is a no-op), and a sync from the home `file_host`
- * (`device-backend/home-sync`), which is how TOPIK lessons arrive at all -
- * they live only in the server's database, not in either repository.
+ * unchanged body is a no-op, and so is a round the home sync wrote), and a
+ * sync from the home `file_host` (`device-backend/home-sync`), which is how
+ * TOPIK lessons arrive at all - they live only in the server's database, not
+ * in either repository.
  *
  * Bodies are stored exactly as received and hashed as received, so a
  * round's recorded runs (keyed by the round's content hash) keep matching:
@@ -17,6 +18,13 @@ import type { SqlDriver } from "@/lib/device-backend/sql"
 import { num, one, text } from "@/lib/device-backend/sql"
 
 export type UpsertOutcome = "inserted" | "updated" | "unchanged"
+
+/**
+ * Where a round's bytes came from. Home's copy wins: the bundled seed runs
+ * on every start, and would otherwise put the APK's older bytes back over a
+ * round the sync from home had updated.
+ */
+export type RoundOrigin = "bundled" | "home"
 
 type Witness = { propositionId: string; admissible: boolean }
 
@@ -44,11 +52,15 @@ function witnessesOf(round: unknown): Array<Witness> {
  * runs are keyed on, and the server's is the one they were recorded against.
  * (`@some-ui/leetype` hashes its own canonical `serializeRound` of the parsed
  * round, so it is indifferent to the bytes either way.)
+ *
+ * A `"bundled"` write leaves a round the home sync wrote alone
+ * (`"unchanged"`); a `"home"` write marks the round as home's.
  */
 export async function upsertRound(
   db: SqlDriver,
   body: string,
   nowMs: number,
+  origin: RoundOrigin,
   attestedHash?: string
 ): Promise<UpsertOutcome> {
   const round: unknown = JSON.parse(body)
@@ -58,6 +70,16 @@ export async function upsertRound(
   const id = round.id
   const contentHash = attestedHash ?? (await sha256Hex(body))
   return db.transaction(async () => {
+    if (
+      origin === "bundled" &&
+      (await one(
+        db,
+        "SELECT 1 FROM device_round_from_home WHERE round_id = ?",
+        [id]
+      )) !== null
+    ) {
+      return "unchanged"
+    }
     const stored = await one(
       db,
       "SELECT content_hash, version, retired_at FROM leetype_round WHERE id = ?",
@@ -87,6 +109,12 @@ export async function upsertRound(
         [id, index, witness.propositionId, witness.admissible ? 1 : 0]
       )
       index += 1
+    }
+    if (origin === "home") {
+      await db.run(
+        "INSERT OR IGNORE INTO device_round_from_home (round_id) VALUES (?)",
+        [id]
+      )
     }
     return stored === null ? "inserted" : "updated"
   })

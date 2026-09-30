@@ -9,6 +9,10 @@
  * something out (the `account` trigger on `learner_shelf`, whose table is
  * the passkey store the device has no use for) it says so.
  *
+ * One table is the device's own, with no server counterpart:
+ * `device_round_from_home` (migration 2), the rounds the sync from home
+ * wrote, so the bundled seed never replaces them with older bytes.
+ *
  * Migrations are append-only and numbered by `PRAGMA user_version`. Never
  * edit a shipped entry - a phone that already ran it will not run it again.
  */
@@ -109,6 +113,13 @@ const MIGRATIONS: ReadonlyArray<string> = [
       context_key  TEXT NOT NULL,
       observed_at  TEXT NOT NULL,
       PRIMARY KEY (subject_id, context_key)
+  );
+  `,
+  // 2 - device only: the rounds the sync from home wrote
+  // (`content-store`'s `RoundOrigin`).
+  `
+  CREATE TABLE device_round_from_home (
+      round_id TEXT PRIMARY KEY REFERENCES leetype_round(id) ON DELETE CASCADE
   );
   `,
 ]

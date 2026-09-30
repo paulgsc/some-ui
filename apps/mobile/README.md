@@ -283,12 +283,27 @@ In the `CLAUDE.md` "Gray-area invariants" shape.
 > **P2: Every allowlist reason is true.**
 >
 > - _Claim:_ each `reason` in `policy.json` names why this app needs the
->   permission, exported component or flag.
+>   permission, exported component or flag: a feature of this app that is
+>   still in it, or the library that brings the entry.
 > - _Falsified by_ a hunk that adds or rewords an entry whose reason does not
->   name a feature of this app or the library that brings it.
-> - _Scope:_ `apps/mobile/review/policy.json`.
-> - _Why not enforced:_ the review enforces that a reason exists. Whether it
->   is true needs a person to read it.
+>   name such a feature or library; that names a new app feature without
+>   adding its code to the list below; or that deletes, renames or moves the
+>   code of a feature an unchanged reason names. Those features, and their
+>   code: the sync from home (`INTERNET`, `usesCleartextTraffic`),
+>   `apps/www/src/lib/device-backend/home-sync/` and its Settings entry
+>   `apps/www/src/components/settings/device-section.tsx`; study nudges
+>   (`POST_NOTIFICATIONS`), `apps/www/src/lib/study-nudge/native.ts`; the
+>   phone's SQLite history (`allowBackup`),
+>   `apps/www/src/lib/device-backend/capacitor-sqlite/`; the launcher
+>   activity (`MainActivity`), `MainActivity.java` and its launcher
+>   intent-filter in `android/app/src/main/AndroidManifest.xml`.
+> - _Scope:_ `apps/mobile/review/policy.json` and the code listed above.
+> - _Why not enforced:_ the review enforces that a reason exists, and that
+>   a library's entries go when the library does (they leave the merged
+>   manifest, and an allowlist entry the build no longer has fails). An app
+>   feature's removal is not caught: `INTERNET` and the two flags are the
+>   app's own manifest's, and stay after the code that used them is gone.
+>   Whether a reason's words are true needs a person to read it.
 
 ### Icon and splash
 

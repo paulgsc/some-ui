@@ -116,13 +116,24 @@ export async function syncFromHome(
   }
 
   // The manifest first, and a failure here fails the sync: an unreachable
-  // home is the one error a person needs told plainly.
+  // home is the one error a person needs told plainly. So does a manifest
+  // with no `topiks` array: it is not an empty one, and retiring against it
+  // would empty the phone's catalogue.
   const manifest = await getJson(get, base, "/curriculum/manifest.json")
-  const entries =
-    isRecord(manifest) && Array.isArray(manifest.topiks)
-      ? manifest.topiks.filter(isLessonEntry)
-      : []
-  report.lessons.listed = entries.length
+  if (!isRecord(manifest) || !Array.isArray(manifest.topiks)) {
+    throw new Error("home's curriculum manifest has no `topiks` array")
+  }
+  const listed: Array<unknown> = manifest.topiks
+  // Every key home still lists, including an entry this phone cannot read:
+  // that one fails, and is not retired.
+  const listedKeys = listed.flatMap((entry) =>
+    isRecord(entry) && typeof entry.key === "string" ? [entry.key] : []
+  )
+  const entries = listed.filter(isLessonEntry)
+  report.lessons.listed = listedKeys.length
+  for (const key of listedKeys) {
+    if (!entries.some((entry) => entry.key === key)) report.failed.push(key)
+  }
   for (const entry of entries) {
     try {
       const answer = await get(
@@ -138,11 +149,7 @@ export async function syncFromHome(
   }
   // Only once every listed lesson had its turn: retire what home no longer
   // lists, but never a lesson that merely failed to download just now.
-  report.lessons.retired = await retireLessonsExcept(
-    db,
-    entries.map((entry) => entry.key),
-    now()
-  )
+  report.lessons.retired = await retireLessonsExcept(db, listedKeys, now())
 
   const rounds = await getJson(get, base, "/leetype/rounds")
   const listings =
@@ -163,6 +170,7 @@ export async function syncFromHome(
         db,
         body.body,
         now(),
+        "home",
         listing.contentHash
       )
       if (outcome === "inserted") report.rounds.added += 1

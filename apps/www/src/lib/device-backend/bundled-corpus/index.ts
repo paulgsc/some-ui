@@ -28,14 +28,18 @@ const RUNS: Record<string, string> = import.meta.glob(
 
 export type SeedReport = { rounds: number; runs: number }
 
-/** Idempotent: an unchanged round is a read, not a write. */
+/**
+ * Idempotent: an unchanged round is a read, not a write. A round the home
+ * sync wrote is left as it is, even when the bundle's bytes differ.
+ */
 export async function seedBundledCorpus(
   db: SqlDriver,
   nowMs: number
 ): Promise<SeedReport> {
   let rounds = 0
   for (const body of Object.values(ROUNDS)) {
-    if ((await upsertRound(db, body, nowMs)) !== "unchanged") rounds += 1
+    if ((await upsertRound(db, body, nowMs, "bundled")) !== "unchanged")
+      rounds += 1
   }
   let runs = 0
   for (const body of Object.values(RUNS)) {

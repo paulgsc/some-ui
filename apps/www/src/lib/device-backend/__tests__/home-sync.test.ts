@@ -8,7 +8,7 @@ import { openNodeSqlite } from "@/test-support/node-sqlite-driver"
 import { beforeEach, describe, expect, it } from "vitest"
 
 import { openDeviceBackend } from "@/lib/device-backend/backend"
-import { sha256Hex } from "@/lib/device-backend/common"
+import { isRecord, sha256Hex } from "@/lib/device-backend/common"
 import {
   upsertLesson,
   upsertRound,
@@ -85,7 +85,7 @@ beforeEach(async () => {
   homeDb = openNodeSqlite()
   home = await openDeviceBackend(homeDb, () => NOW)
   await upsertLesson(homeDb, LESSON, '{\n  "batches": []\n}', NOW)
-  await upsertRound(homeDb, HOME_ROUND, NOW)
+  await upsertRound(homeDb, HOME_ROUND, NOW, "bundled")
   await upsertRuns(
     homeDb,
     JSON.stringify({
@@ -190,6 +190,54 @@ describe("syncFromHome", () => {
     const report = await syncFromHome(phoneDb, HOME, flaky, () => NOW)
     expect(report.failed).toEqual(["k2-cafe"])
     expect(report.lessons.retired).toBe(0)
+  })
+})
+
+describe("syncFromHome against a home it cannot read", () => {
+  it("fails on a manifest with no `topiks` array, and retires nothing", async () => {
+    await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
+    const skewed: HomeGet = async (url) =>
+      url.endsWith("/curriculum/manifest.json")
+        ? { status: 200, body: "{}" }
+        : verbatimGet(url)
+    await expect(
+      syncFromHome(phoneDb, HOME, skewed, () => NOW)
+    ).rejects.toThrow(/topiks/)
+    await expect(phoneJson("/curriculum/manifest.json")).resolves.toMatchObject(
+      { topiks: [{ key: "k2-cafe" }] }
+    )
+  })
+
+  it("keeps a lesson whose manifest entry it cannot read", async () => {
+    await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
+    const partial: HomeGet = async (url) =>
+      url.endsWith("/curriculum/manifest.json")
+        ? {
+            status: 200,
+            body: JSON.stringify({ topiks: [{ key: "k2-cafe" }] }),
+          }
+        : verbatimGet(url)
+    const report = await syncFromHome(phoneDb, HOME, partial, () => NOW)
+    expect(report.failed).toEqual(["k2-cafe"])
+    expect(report.lessons.retired).toBe(0)
+  })
+})
+
+describe("the bundled seed after a sync", () => {
+  it("leaves a round home updated as home's, across a restart", async () => {
+    const id = "has-duplicate-sort-adjacent"
+    const bundled = await phoneJson(`/leetype/rounds/${id}`)
+    if (!isRecord(bundled)) throw new Error("the bundled round is not a record")
+    const newer = JSON.stringify({ ...bundled, homeEdit: true })
+    await upsertRound(homeDb, newer, NOW, "bundled")
+    const report = await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
+    expect(report.rounds.updated).toBe(1)
+
+    // The next start seeds the bundle again.
+    phone = await openDeviceBackend(phoneDb, () => NOW)
+    await expect(phoneJson(`/leetype/rounds/${id}`)).resolves.toMatchObject({
+      homeEdit: true,
+    })
   })
 })
 
