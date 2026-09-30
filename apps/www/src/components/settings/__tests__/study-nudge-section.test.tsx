@@ -31,7 +31,7 @@ const requestNudgePermission = vi.fn<() => Promise<NotificationPermission>>()
 const registerNudgeWorker =
   vi.fn<() => Promise<ServiceWorkerRegistration | null>>()
 const unsubscribeFromPush = vi.fn<() => Promise<void>>()
-const showNudge = vi.fn<() => Promise<boolean>>()
+const showTestNudge = vi.fn<() => Promise<boolean>>()
 
 vi.mock("sonner", () => ({
   toast: (...args: Array<unknown>): void => {
@@ -55,7 +55,7 @@ vi.mock(
     | "requestNudgePermission"
     | "registerNudgeWorker"
     | "unsubscribeFromPush"
-    | "showNudge"
+    | "showTestNudge"
     | "fetchPushTopics"
     | "hasPushSubscription"
   > => ({
@@ -64,7 +64,7 @@ vi.mock(
     requestNudgePermission: () => requestNudgePermission(),
     registerNudgeWorker: () => registerNudgeWorker(),
     unsubscribeFromPush: () => unsubscribeFromPush(),
-    showNudge: () => showNudge(),
+    showTestNudge: () => showTestNudge(),
     fetchPushTopics: () => Promise.resolve([]),
     hasPushSubscription: () => Promise.resolve(false),
   })
@@ -111,7 +111,7 @@ beforeEach(() => {
   requestNudgePermission.mockReset().mockResolvedValue("granted")
   registerNudgeWorker.mockReset().mockResolvedValue(null)
   unsubscribeFromPush.mockReset().mockResolvedValue(undefined)
-  showNudge.mockReset().mockResolvedValue(true)
+  showTestNudge.mockReset().mockResolvedValue(true)
 })
 
 afterEach(() => {
@@ -183,7 +183,7 @@ describe("study-nudge-section: enabling reminders", () => {
 
 describe("study-nudge-section: Send a test", () => {
   it("a failed test notification shows the same toast as before", async () => {
-    showNudge.mockResolvedValue(false)
+    showTestNudge.mockResolvedValue(false)
     renderSection({ ...DEFAULT_NUDGE_PREFERENCES, enabled: true })
 
     const sendTest = screen.getByRole("button", { name: /send a test/i })
@@ -198,7 +198,7 @@ describe("study-nudge-section: Send a test", () => {
   })
 
   it("a successful test notification shows no toast - the notification is the confirmation", async () => {
-    showNudge.mockResolvedValue(true)
+    showTestNudge.mockResolvedValue(true)
     renderSection({ ...DEFAULT_NUDGE_PREFERENCES, enabled: true })
 
     const sendTest = screen.getByRole("button", { name: /send a test/i })

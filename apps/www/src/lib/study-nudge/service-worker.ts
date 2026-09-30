@@ -156,6 +156,20 @@ export async function showNudge(
   }
 }
 
+/**
+ * The settings page's "Send a test": `showNudge`, except on the device,
+ * whose notifications are native (`./native`) and where `showNudge` has no
+ * worker to show through. The poll tick keeps `showNudge`, so on the device
+ * it shows nothing: the OS delivers the one scheduled nudge instead.
+ */
+export async function showTestNudge(
+  decision: Extract<NudgeDecision, { kind: "nudge" }>
+): Promise<boolean> {
+  if (!DEVICE_BACKEND) return showNudge(decision)
+  const { showNativeTestNudge } = await import("./native")
+  return showNativeTestNudge(decision).catch(() => false)
+}
+
 export function readLastNudgeAt(): string | null {
   if (typeof window === "undefined") return null
   try {

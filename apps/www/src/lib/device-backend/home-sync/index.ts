@@ -158,23 +158,24 @@ export async function syncFromHome(
       : []
   report.rounds.listed = listings.length
   for (const listing of listings) {
-    // Same bytes as already held: nothing to fetch.
-    if ((await storedRoundHash(db, listing.id)) === listing.contentHash) {
-      continue
-    }
     try {
       const id = encodeURIComponent(listing.id)
-      const body = await get(`${base}/leetype/rounds/${id}`)
-      if (body.status !== 200) throw new Error(String(body.status))
-      const outcome = await upsertRound(
-        db,
-        body.body,
-        now(),
-        "home",
-        listing.contentHash
-      )
-      if (outcome === "inserted") report.rounds.added += 1
-      if (outcome === "updated") report.rounds.updated += 1
+      // Same bytes as already held: no body to fetch. The runs still are,
+      // since home can record runs without changing the round, and a sync
+      // whose runs request failed must be able to pick them up next time.
+      if ((await storedRoundHash(db, listing.id)) !== listing.contentHash) {
+        const body = await get(`${base}/leetype/rounds/${id}`)
+        if (body.status !== 200) throw new Error(String(body.status))
+        const outcome = await upsertRound(
+          db,
+          body.body,
+          now(),
+          "home",
+          listing.contentHash
+        )
+        if (outcome === "inserted") report.rounds.added += 1
+        if (outcome === "updated") report.rounds.updated += 1
+      }
       const runs = await get(`${base}/leetype/rounds/${id}/runs`)
       if (runs.status === 200) {
         report.rounds.runs += await upsertRuns(db, runs.body, now())

@@ -8,23 +8,28 @@
  *
  * - **leaving the screen** - `nextNudge` (the policy, stepped forward) picks
  *   the moment, and it is scheduled;
- * - **coming back** - if that moment has passed, the notification was
- *   shown, and its time becomes the cooldown `decideNudge` reads (the same
- *   `localStorage` stamp the web builds write); then whatever is still
- *   pending is cancelled, since sessions or preferences may be about to
- *   change.
+ * - **coming back** - if that moment has passed and the OS no longer holds
+ *   the notification as pending, it was shown, and its time becomes the
+ *   cooldown `decideNudge` reads (the same `localStorage` stamp the web
+ *   builds write). An inexact alarm can still be pending after its time,
+ *   and that one was not shown. Then whatever is still pending is
+ *   cancelled, since sessions or preferences may be about to change.
  *
- * One notification id, so a reschedule replaces rather than stacks.
+ * One notification id, so a reschedule replaces rather than stacks. The
+ * settings page's test notification has its own id, so it never cancels
+ * or replaces the real one.
  *
  * Only ever imported dynamically, and only by the device build: the plugin
  * is native, and the web builds have no business loading it.
  */
 import { LocalNotifications } from "@capacitor/local-notifications"
 
+import type { NudgeDecision } from "./index"
 import type { ScheduledNudge } from "./schedule"
 import { recordNudgeShown, setNativeNudgePermission } from "./service-worker"
 
 const NUDGE_ID = 1001
+const TEST_NUDGE_ID = 1002
 /** When the pending nudge is due, so a return can tell it was shown. */
 const SCHEDULED_KEY = "some-ui.study-nudge.native-scheduled-at.v1"
 
@@ -95,16 +100,36 @@ export async function scheduleNativeNudge(
 }
 
 /**
- * On the way back to the screen: stamp the cooldown for a nudge whose time
- * came, and cancel one whose time has not.
+ * On the way back to the screen: stamp the cooldown for a nudge the OS
+ * delivered, and cancel one it has not.
  */
 export async function reconcileNativeNudge(now: Date): Promise<void> {
   const scheduledAt = readScheduledAt()
   if (scheduledAt !== null) {
     const due = new Date(scheduledAt)
-    if (!Number.isNaN(due.getTime()) && due <= now) recordNudgeShown(due)
+    const { notifications } = await LocalNotifications.getPending()
+    const pending = notifications.some(({ id }) => id === NUDGE_ID)
+    if (!pending && !Number.isNaN(due.getTime()) && due <= now) {
+      recordNudgeShown(due)
+    }
   }
   await scheduleNativeNudge(null)
+}
+
+/**
+ * The settings page's "Send a test", shown now. Returns whether the OS took
+ * it; the cooldown is not touched, since nobody was nudged.
+ */
+export async function showNativeTestNudge(
+  decision: Extract<NudgeDecision, { kind: "nudge" }>
+): Promise<boolean> {
+  if ((await refreshNativePermission()) !== "granted") return false
+  await LocalNotifications.schedule({
+    notifications: [
+      { id: TEST_NUDGE_ID, title: decision.title, body: decision.body },
+    ],
+  })
+  return true
 }
 
 let tapListening = false

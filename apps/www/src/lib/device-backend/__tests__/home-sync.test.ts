@@ -181,6 +181,20 @@ describe("syncFromHome", () => {
     )
   })
 
+  it("picks up a round's runs on the next sync after their request failed", async () => {
+    const noRuns: HomeGet = async (url) =>
+      url.endsWith("/runs") ? { status: 500, body: "" } : verbatimGet(url)
+    await syncFromHome(phoneDb, HOME, noRuns, () => NOW)
+    await expect(
+      phoneJson("/leetype/rounds/home-only-round/runs")
+    ).resolves.toMatchObject({ runs: [] })
+
+    await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
+    await expect(
+      phoneJson("/leetype/rounds/home-only-round/runs")
+    ).resolves.toMatchObject({ runs: [{ variant: "A" }] })
+  })
+
   it("keeps a lesson that failed to download, rather than retiring it", async () => {
     await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
     const flaky: HomeGet = async (url) =>

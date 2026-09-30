@@ -62,7 +62,7 @@ import {
   nudgesSupported,
   registerNudgeWorker,
   requestNudgePermission,
-  showNudge,
+  showTestNudge,
   subscribeToPush,
   unsubscribeFromPush,
 } from "@/lib/study-nudge/service-worker"
@@ -241,7 +241,7 @@ export const StudyNudgeSection = ({
   })
 
   const runTest = async (_trigger: undefined): Promise<void> => {
-    const shown = await showNudge({
+    const shown = await showTestNudge({
       kind: "nudge",
       sessionId: "test",
       title: "Reminders are working",
