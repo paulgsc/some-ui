@@ -124,7 +124,11 @@ export async function upsertRound(
  * A round's recorded runs (`RoundRuns`: `{ roundId, contentHash, runs }`).
  * Stored against the hash the runs name, which is what lets the runs route
  * drop them the moment the round's bytes change. Ignored for a round the
- * device does not hold (the table's foreign key would refuse them anyway).
+ * device does not hold (the table's foreign key would refuse them anyway),
+ * and for runs recorded against other bytes than the round's the device
+ * holds: the runs route would drop them, and writing them would replace
+ * runs that do match - the bundled seed's older runs over the runs of a
+ * round the home sync updated.
  */
 export async function upsertRuns(
   db: SqlDriver,
@@ -144,10 +148,10 @@ export async function upsertRuns(
   return db.transaction(async () => {
     const round = await one(
       db,
-      "SELECT 1 AS held FROM leetype_round WHERE id = ?",
+      "SELECT content_hash FROM leetype_round WHERE id = ?",
       [roundId]
     )
-    if (round === null) return 0
+    if (round === null || text(round, "content_hash") !== contentHash) return 0
     let written = 0
     for (const run of runs) {
       if (
@@ -206,7 +210,11 @@ export async function storedRoundHash(
   return row === null ? null : text(row, "content_hash")
 }
 
-/** One TOPIK lesson: its manifest entry and its body, verbatim. */
+/**
+ * One TOPIK lesson: its manifest entry and its body, verbatim. Unchanged
+ * only when both are: home can edit a lesson's name, description, level or
+ * tags without touching its body.
+ */
 export async function upsertLesson(
   db: SqlDriver,
   entry: LessonEntry,
@@ -222,13 +230,22 @@ export async function upsertLesson(
   return db.transaction(async () => {
     const stored = await one(
       db,
-      "SELECT content_hash, version, retired_at FROM curriculum WHERE key = ?",
+      `SELECT content_hash, version, retired_at, level, display_name, description,
+              batch_count, total_questions, total_messages, tags
+       FROM curriculum WHERE key = ?`,
       [entry.key]
     )
     if (
       stored !== null &&
       text(stored, "content_hash") === contentHash &&
-      stored.retired_at === null
+      stored.retired_at === null &&
+      stored.level === level &&
+      stored.display_name === entry.displayName &&
+      stored.description === entry.description &&
+      stored.batch_count === entry.batchCount &&
+      stored.total_questions === entry.totalQuestions &&
+      stored.total_messages === entry.totalMessages &&
+      stored.tags === tags
     ) {
       return "unchanged"
     }

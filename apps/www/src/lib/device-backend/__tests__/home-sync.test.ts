@@ -230,14 +230,54 @@ describe("the bundled seed after a sync", () => {
     if (!isRecord(bundled)) throw new Error("the bundled round is not a record")
     const newer = JSON.stringify({ ...bundled, homeEdit: true })
     await upsertRound(homeDb, newer, NOW, "bundled")
+    // Home's run under the same (variant, bounds) key as a bundled one.
+    await upsertRuns(
+      homeDb,
+      JSON.stringify({
+        roundId: id,
+        contentHash: await sha256Hex(newer),
+        runs: [{ variant: "A", bounds: "before", sizes: { n: 99 } }],
+      }),
+      NOW
+    )
     const report = await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
     expect(report.rounds.updated).toBe(1)
 
-    // The next start seeds the bundle again.
+    // The next start seeds the bundle again, rounds and runs.
     phone = await openDeviceBackend(phoneDb, () => NOW)
     await expect(phoneJson(`/leetype/rounds/${id}`)).resolves.toMatchObject({
       homeEdit: true,
     })
+    await expect(
+      phoneJson(`/leetype/rounds/${id}/runs`)
+    ).resolves.toMatchObject({
+      runs: [{ variant: "A", bounds: "before", sizes: { n: 99 } }],
+    })
+  })
+})
+
+describe("a lesson home re-described", () => {
+  it("takes home's new name and tags when the body is unchanged", async () => {
+    await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
+    await upsertLesson(
+      homeDb,
+      { ...LESSON, displayName: "At the café, again", tags: ["food", "k2"] },
+      '{\n  "batches": []\n}',
+      NOW
+    )
+    const report = await syncFromHome(phoneDb, HOME, verbatimGet, () => NOW)
+    expect(report.lessons.updated).toBe(1)
+    await expect(phoneJson("/curriculum/manifest.json")).resolves.toMatchObject(
+      {
+        topiks: [
+          {
+            key: "k2-cafe",
+            displayName: "At the café, again",
+            tags: ["food", "k2"],
+          },
+        ],
+      }
+    )
   })
 })
 
