@@ -15,6 +15,9 @@ name: Server route snapshot
 # the branch itself: a second writer would race the first, and could
 # disagree with it about what the PR should hold.
 #
+#   RS1  The route snapshot PR has one writer; nothing here writes its
+#        branch or its PR (CLAUDE.md, "Cross-repo coupling").
+#
 #   push to main touching either snapshot file   resync
 #   a comment starting `/resync` on the bot PR   resync (owners, members and
 #                                                collaborators only)

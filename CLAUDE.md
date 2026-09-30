@@ -43,6 +43,28 @@ is the bot PR's only writer; `.github/workflows/server-route-snapshot.yml` just 
 when this repo's snapshot files change on `main`, or on a `/resync` comment on the bot PR,
 so a PR whose snapshot already reached `main` another way closes itself.
 
+> **RS1: the route snapshot PR has one writer.**
+>
+> - _Claim:_ no workflow in this repository writes to the `bot/server-route-snapshot`
+>   branch or opens, edits or closes its PR. `server-route-snapshot.yml` only dispatches
+>   paulgsc/server's `routes.yml`, whose `sync` job is the writer.
+> - _Falsified by_ a hunk in `.github/workflows/` that pushes to or creates that branch, or
+>   edits, closes or merges its PR (a `git push`, a `create-pull-request` with that
+>   `branch:`, a `gh pr edit`/`close`/`merge` on it). Also falsified by a hunk that lets
+>   `server-route-snapshot.yml` do more than read and dispatch: granting it
+>   `contents: write` or `pull-requests: write`, adding a checkout, or removing its
+>   `gh workflow run` in favour of anything that writes.
+> - _Scope:_ `.github/workflows/` in this repo. That `routes.yml`'s `sync` job is the one
+>   writer on the server side is not reviewable from here; the server's `routes.yml`
+>   header states it.
+> - _Why not enforced:_ no lint, type or test here looks inside workflow YAML, and
+>   `actionlint` does not track which branch a step writes. A grep for the branch name in
+>   `.github/workflows/` outside `server-route-snapshot.yml` would catch most of it
+>   ("mechanical; not yet a rule").
+>
+> True when declared: no other workflow names the branch, and `server-route-snapshot.yml`
+> holds only `issues: write` and `pull-requests: read`, with no checkout and no push.
+
 If you need a snapshot the bot hasn't delivered yet, follow
 `apps/servers/file_host/docs/route-inventory.md` in the server repo: apply the
 `migrations/*.up.sql` files to a throwaway SQLite db (Python's built-in `sqlite3`
