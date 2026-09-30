@@ -125,14 +125,31 @@ turbo passes each one through: it infers `VITE_*` for this workspace, and
 
 ### In CI (how to get the APK onto a phone)
 
-`.github/workflows/mobile-apk.yml` builds it on every push to `main` that
-touches what it is built from, and on nothing else (pull requests do not).
-Open the run in the repository's **Actions** tab and download the
-`some-ui-apk-<sha>` artifact. It is a zip holding `some-ui-<sha7>.apk`, the
-**release** build (R8-shrunk, not debuggable). Install that on the phone
-(allow installs from your browser or file manager). It is signed with the
-repository's key ("Signing", below), so it installs as an update over any
-earlier CI build, debug ones included.
+`.github/workflows/mobile-apk.yml` builds it when you merge a release PR, not on
+every push (the same pattern as the Docker image and the Pages site):
+
+1. A push to `main` that touches what the APK is built from (`apps/mobile`,
+   `apps/www`, `packages/**`, the lockfile, the workflow and its actions) opens
+   or updates one standing PR, `chore(release): publish mobile apk`, on the
+   branch `changeset-release/mobile-apk`. Nothing is built. Its diff is a
+   version bump and a `CHANGELOG.md` entry for this package, cut from `main`'s
+   tip; each later push refreshes it rather than opening another, so merges
+   pile up behind a single PR.
+2. **Merge it (squash)** when you want an APK. The merge commit's message is
+   what tells the workflow to build. Closing it without merging is fine: it
+   reopens the next time something changes.
+3. Open the run that merge started, in the repository's **Actions** tab, and
+   download the `some-ui-apk-<sha>` artifact. It is a zip holding
+   `some-ui-<sha7>.apk`, the **release** build (R8-shrunk, not debuggable).
+   Install that on the phone (allow installs from your browser or file
+   manager). It is signed with the repository's key ("Signing", below), so it
+   installs as an update over any earlier CI build, debug ones included.
+
+If the build fails after the merge, fix `main`: the next qualifying push opens
+a fresh release PR. To retry without a new change, run the workflow from the
+**Actions** tab on `main` with `publish_only` ticked. That builds whatever
+`main` is at that moment, and only `main` can publish.
+
 The debug APK is still built, for the review only (`mobile-review-<sha>`).
 
 **Launch test.** Before a run counts as green, its release APK is installed
@@ -185,17 +202,20 @@ install over a CI build, or the other way round.
 
 ### Artifacts on GitHub
 
-- **One APK at a time.** Each run uploads its APK, and a run that also
+- **One APK at a time.** Each build uploads its APK, and a build that also
   passes the review (below) and the launch test then deletes every older `some-ui-apk-*`
-  artifact, so GitHub holds about 10 MB, not 10 MB per push. A failed or
-  cancelled run deletes nothing, so the previous APK stays in place.
+  artifact, so GitHub holds about 10 MB, not 10 MB per release. A failed or
+  cancelled build deletes nothing, so the previous APK stays in place. Runs
+  that only update the release PR upload nothing.
 - **30-day expiry.** `retention-days: 30` bounds the newest one too.
 - **arm64 only.** SQLCipher, which the SQLite plugin brings, ships a native
   library per ABI. `abiFilters` keeps only `arm64-v8a` (5.2 MB of the four's
   roughly 19 MB). To run the APK in an emulator, build it with
   `SOME_UI_EXTRA_ABI=x86_64`, as the launch test does.
 - **`versionCode` is the run number**, so each APK is an update of the last,
-  and Settings → Apps → Some UI shows which build is installed.
+  and Settings → Apps → Some UI shows which build is installed. It has gaps:
+  the runs that only update the release PR take numbers too. It still only
+  rises, which is all Android and the review ask of it.
 
 ### Play readiness
 

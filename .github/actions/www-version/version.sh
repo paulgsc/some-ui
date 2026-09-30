@@ -7,9 +7,11 @@ set -euo pipefail
 # release.yml or wasm-release.yml's own runs, silently absorbing an
 # unrelated npm package or wasm crate bump into this Docker-only release.
 # Move everything else aside first and restore it after, so this release
-# track only ever touches www's own changeset.
+# track only ever touches its own changeset. CHANGESET_PREFIX names that
+# track's files (action.yml defaults it to www-docker-; mobile-apk.yml passes
+# mobile-apk-), so a further track reuses this rather than forking it.
 staging_dir=$(mktemp -d)
-find .changeset -maxdepth 1 -name '*.md' ! -name 'www-docker-*.md' \
+find .changeset -maxdepth 1 -name '*.md' ! -name "${CHANGESET_PREFIX}*.md" \
 	-exec mv {} "$staging_dir/" \;
 
 nix develop .#ci --command npx changeset version

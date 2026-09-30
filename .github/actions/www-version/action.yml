@@ -1,7 +1,14 @@
 name: "WWW Version"
-description: "Apply the pending www changeset (bump version + changelog) without disturbing changesets awaiting other release tracks."
+description: "Apply a release track's pending changeset (bump version + changelog) without disturbing changesets awaiting other release tracks."
+inputs:
+  changeset-prefix:
+    description: "Filename prefix this track's changeset files use; every other .changeset/*.md is set aside while `changeset version` runs. Defaults to the www Docker track's; mobile-apk.yml passes its own."
+    required: false
+    default: "www-docker-"
 runs:
   using: composite
   steps:
     - shell: bash
+      env:
+        CHANGESET_PREFIX: ${{ inputs.changeset-prefix }}
       run: bash "${{ github.action_path }}/version.sh"

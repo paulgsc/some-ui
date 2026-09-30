@@ -2,12 +2,35 @@ name: Mobile APK
 
 # Builds the sideloadable APK (`apps/mobile`, the R8-shrunk release build) and
 # uploads it as a run artifact, so a phone can install what `main` actually
-# contains.
+# contains - but only when a release PR is merged, not on every push.
 #
-# On pushes to `main` only, and only when something the APK is built from
-# changes. It grew up on a long-lived mobile staging branch and moved to
-# `main` when that branch landed; pull requests do not build it (pr.yml still
-# lints, typechecks and tests the www code it carries).
+# Mirrors www-docker-release.yml and pages.yml. `apps/mobile`, `apps/www` and
+# most of `packages/**` feed the APK, so nearly every merge to main could
+# change it, and a ~25-minute Gradle + emulator run per merge (each superseded
+# by the next) is mostly wasted. So a push to main that touches what the APK is
+# built from doesn't build. It opens/updates a standing release PR
+# (`changeset-release/mobile-apk`) instead. Merging that PR - the human "yes,
+# cut an APK from main now" - is what builds, reviews and launch-tests it.
+# Several merges before you get to it collapse into one APK instead of one
+# each.
+#
+# Which of the two a run does is decided by the `if:` expressions below, not
+# by a script: a release commit (the merged release PR, or a publish_only
+# dispatch) builds; anything else on main opens/updates the PR; any other
+# branch does neither. Expressions, because nothing is spliced into a shell
+# (a raw commit message in a `run:` is what broke www-docker-release.yml's
+# detect job, #674) and actionlint type-checks them.
+#
+# Deliberately NOT changesets/action for the PR step, for the reason in
+# www-docker-release.yml's header: release.yml and wasm-release.yml already
+# point it at `changeset-release/main`, and a third consumer would mix an
+# unrelated APK decision into the npm version PR. This drives `@changesets/cli`
+# directly on its own branch (through ./.github/actions/www-version, which sets
+# aside every changeset but this track's), so review here is scoped to "does
+# this warrant a new APK" and nothing else.
+#
+# Pull requests do not build it (pr.yml still lints, typechecks and tests the
+# www code it carries).
 #
 # Why CI builds it rather than a laptop or the agent sandbox: Gradle needs the
 # Android SDK (`compileSdkVersion` in apps/mobile/android/variables.gradle),
@@ -25,10 +48,16 @@ on:
       - ".github/workflows/mobile-apk.yml"
       - ".github/workflows/_mobile-review.yml"
       - ".github/actions/**"
+  workflow_dispatch:
+    inputs:
+      publish_only:
+        description: "Skip the release PR and build the APK straight from the current main (use to retry a build that failed after the release PR merged)"
+        type: boolean
+        default: false
 
-concurrency:
-  group: mobile-apk-${{ github.ref }}
-  cancel-in-progress: true
+env:
+  RELEASE_COMMIT_MESSAGE: "chore(release): publish mobile apk"
+  RELEASE_BRANCH: "changeset-release/mobile-apk"
 
 permissions:
   contents: read
@@ -36,9 +65,87 @@ permissions:
   # delete older APK artifacts once a newer one has passed it.
   actions: write
 
+# Two groups, neither cancelling. A build is the only thing that makes the
+# APK, so an ordinary push landing while it runs (they come every few
+# minutes) must not cancel it, and - since a group keeps only one pending run -
+# must not replace a merged release PR's build that is still waiting its
+# turn. Release-PR updates share the other group: a newer one supersedes an
+# older pending one, which is right, because each rebuilds the PR from main.
+# The release message is a literal here and in the two `if:`s below because
+# `env` is available in none of them; keep all three in step with
+# RELEASE_COMMIT_MESSAGE.
+concurrency:
+  group: "mobile-apk-${{ (inputs.publish_only || startsWith(github.event.head_commit.message, 'chore(release): publish mobile apk')) && 'publish' || 'release-pr' }}"
+  cancel-in-progress: false
+
 jobs:
+  # ── Open/update the release PR ──────────────────────────────────────────
+  # Runs `@changesets/cli` directly to bump apps/mobile's version + CHANGELOG,
+  # then opens a PR on a dedicated branch. A later push re-runs this against
+  # main's new tip and updates the same PR/branch, so every merge before you
+  # get to it lands in one PR's changelog. Nothing is built here.
+  release-pr:
+    name: Open/Update APK Release PR
+    if: >
+      github.ref == 'refs/heads/main' &&
+      !inputs.publish_only &&
+      !startsWith(github.event.head_commit.message, 'chore(release): publish mobile apk')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+      - uses: ./.github/actions/nix-setup
+      - uses: ./.github/actions/pnpm-cache
+      - name: Install dependencies
+        run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline
+        env:
+          HUSKY: 0
+      - name: Write changeset
+        run: |
+          cat > ".changeset/mobile-apk-release.md" << EOF
+          ---
+          "@some-ui/mobile": patch
+          ---
+
+          APK cut from main at ${GITHUB_SHA::7}. Everything that reached main
+          since the last APK is in it: merge (squash) this PR to build, review
+          and launch-test it, or close it to skip.
+          EOF
+      - name: Apply version bump and changelog
+        uses: ./.github/actions/www-version
+        with:
+          changeset-prefix: mobile-apk-
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Open release PR
+        uses: peter-evans/create-pull-request@v8
+        with:
+          branch: ${{ env.RELEASE_BRANCH }}
+          base: main
+          delete-branch: true
+          commit-message: ${{ env.RELEASE_COMMIT_MESSAGE }}
+          title: ${{ env.RELEASE_COMMIT_MESSAGE }}
+          body: >
+            Opened automatically because a change the APK is built from (`apps/mobile`, `apps/www`, `packages/**`) landed on `main`. Nothing has been built yet, and later merges to `main` update this PR rather than opening another.
+
+
+            Merge via **squash** (the merge commit message drives the build below) to build, review and launch-test the APK and publish it as the `some-ui-apk-<sha>` artifact of the run that starts, replacing the previous one. Closing this PR without merging is also fine - it reopens the next time something changes.
+
+  # ── Build, review, launch-test and publish the APK ──────────────────────
+  # Only once the release PR above has actually been merged (or you forced it
+  # with workflow_dispatch publish_only). The jobs below it (review, launch,
+  # prune) follow apk and are skipped with it.
   apk:
     name: Build APK
+    if: >
+      github.ref == 'refs/heads/main' &&
+      (inputs.publish_only ||
+      startsWith(github.event.head_commit.message, 'chore(release): publish mobile apk'))
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -140,11 +247,11 @@ jobs:
           echo "file=$out" >> "$GITHUB_OUTPUT"
           echo "Built \`$out\` ($(du -h "$out" | cut -f1))." >> "$GITHUB_STEP_SUMMARY"
       # Retention: the phone's owner downloads this APK to install it, often
-      # days after the push, and the next run's review reads it to check that
-      # versionCode only ever rises. 30 days is a backstop, not the cleanup:
-      # the prune job removes every older APK, so this bounds only the newest
-      # one's life. After 30 days with no push there is nothing to download
-      # until the next.
+      # days after merging the release PR, and the next run's review reads it
+      # to check that versionCode only ever rises. 30 days is a backstop, not
+      # the cleanup: the prune job removes every older APK, so this bounds
+      # only the newest one's life. After 30 days with no release there is
+      # nothing to download until the next release PR is merged.
       - name: Upload APK
         uses: actions/upload-artifact@v7
         with:
@@ -263,7 +370,7 @@ jobs:
 
   # Only the newest APK is worth keeping, so a run that passes the review
   # deletes this workflow's older ones: one ~10 MB artifact on GitHub at a
-  # time, not one per push. After the review, because the review reads the
+  # time, not one per release. After the review, because the review reads the
   # retained APK to check versionCode only ever rises, and after the launch
   # test, so an APK that will not open never replaces one that does; and
   # never after a failed or cancelled run, which leaves the previous APK in
