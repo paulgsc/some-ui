@@ -70,6 +70,9 @@ export type WorkflowViolation =
 
 const UPLOAD_STEP =
   /^(\s*)(-\s+)?uses:\s*["']?actions\/upload-(?:pages-)?artifact@/
+// The same reference anywhere else on a line (`- {uses: actions/upload-…}`)
+// is a step this check cannot read, so it fails rather than being skipped.
+const UPLOAD_ANYWHERE = /uses:\s*["']?actions\/upload-(?:pages-)?artifact@/
 const SEQUENCE_ITEM = /^(\s*)-(\s+)\S/
 const RETENTION = /^\s*retention-days:\s*(.*)$/
 const WITH_KEY = /^\s*with:(.*)$/
@@ -129,7 +132,8 @@ function stepBody(
 // One closed shape, not a list of rejected ones: the value counts only as a
 // direct child of the step's block-style `with:` map, the one place the action
 // receives it. Anywhere else (under `env:`, nested deeper) it is missing, and a
-// flow-style `with: {...}` is reported as unreadable rather than guessed at.
+// flow-style `with: {...}`, like a whole `- {uses: ...}` step, is reported as
+// unreadable rather than guessed at.
 type WithRetention =
   | { readonly shape: "value"; readonly value: string }
   | { readonly shape: "missing" | "flow" }
@@ -167,7 +171,12 @@ export function findRetentionViolations(
   const violations: Array<WorkflowViolation> = []
   lines.forEach((line, index) => {
     const upload = UPLOAD_STEP.exec(line)
-    if (!upload) return
+    if (!upload) {
+      if (!line.trim().startsWith("#") && UPLOAD_ANYWHERE.test(line)) {
+        violations.push({ kind: "retentionUnreadable", file, line: index + 1 })
+      }
+      return
+    }
     const keyColumn = `${upload[1] ?? ""}${upload[2] ?? ""}`.length
     const start = upload[2] ? index : stepStart(lines, index)
 
@@ -251,7 +260,7 @@ export function describeWorkflowViolation(v: WorkflowViolation): string {
       return `${v.file}:${v.line}: upload step sets no retention-days in its \`with:\` map. Set \`retention-days: 1\`, or a longer period with a \`# Retention: <why>\` line directly above the step.`
     }
     case "retentionUnreadable": {
-      return `${v.file}:${v.line}: upload step has a flow-style \`with: {...}\` this check cannot read. Write \`with:\` as a block mapping, with \`retention-days\` on its own line.`
+      return `${v.file}:${v.line}: upload step is written in a form this check cannot read (a flow-style \`with: {...}\` or \`- {uses: ...}\`). Write it as a block mapping, with \`uses:\`, \`with:\` and \`retention-days\` each on their own line.`
     }
     case "retentionNotDays": {
       return `${v.file}:${v.line}: upload step sets retention-days to "${v.value}", not a literal number of days. 0, empty or an expression can mean the repo default, so no \`Retention:\` line can justify it.`

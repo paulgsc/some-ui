@@ -178,13 +178,17 @@ describe("findRetentionViolations", () => {
     ])
   })
 
-  it("reports a flow-style with: as unreadable instead of guessing", () => {
+  it("reports a flow-style with: or step as unreadable instead of guessing", () => {
     const text = steps(
       "      - uses: actions/upload-artifact@v7",
-      "        with: { path: dist, retention-days: 1 }"
+      "        with: { path: dist, retention-days: 1 }",
+      "      - { uses: actions/upload-artifact@v7, with: { path: dist } }",
+      "      # e.g. - { uses: actions/upload-artifact@v7 }",
+      "      - run: echo actions/upload-artifact@v7"
     )
     expect(findRetentionViolations(F, text)).toEqual([
       { kind: "retentionUnreadable", file: F, line: 4 },
+      { kind: "retentionUnreadable", file: F, line: 6 },
     ])
   })
 
