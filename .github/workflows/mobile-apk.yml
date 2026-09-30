@@ -182,6 +182,31 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
+      # The launch test's APK: this release build again with x86_64 added,
+      # because the runner's emulator is x86_64 and the phone's APK is arm64
+      # only. R8 and resource shrinking do not rerun (their inputs have not
+      # changed), so the code is the phone's. Last, so its outputs overwrite
+      # nothing the steps above read.
+      - name: Build the launch test's APK
+        working-directory: apps/mobile/android
+        env:
+          SOME_UI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          SOME_UI_VERSION_CODE: ${{ github.run_number }}
+          SOME_UI_VERSION_NAME: 0.1.${{ github.run_number }}+${{ github.sha }}
+          SOME_UI_EXTRA_ABI: x86_64
+        run: |
+          ./gradlew assembleRelease --no-daemon
+          mkdir ../../../launch-apk
+          cp app/build/outputs/apk/release/app-release.apk ../../../launch-apk/launch.apk
+      - name: Upload the launch test's APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: mobile-launch-apk-${{ github.sha }}
+          path: launch-apk
+          if-no-files-found: error
+          # Read by the launch job of this same run only.
+          retention-days: 1
+
   review:
     name: Play readiness
     needs: apk
@@ -189,14 +214,58 @@ jobs:
     with:
       inputs-artifact: mobile-review-${{ github.sha }}
 
+  # The release APK started in an emulator and driven briefly: a build R8
+  # broke would otherwise reach the phone as an update that installs and
+  # then will not open. apps/mobile/launch/launch-test.sh says what fails it.
+  launch:
+    name: Launch test
+    needs: apk
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: apps/mobile/launch
+      - uses: actions/download-artifact@v8
+        with:
+          name: mobile-launch-apk-${{ github.sha }}
+          path: launch-apk
+      # The hosted runner has /dev/kvm but not the permission to use it.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Launch the release APK in an emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          # The app's targetSdk, so the platform behaviour tested is the one
+          # the app opted into.
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          script: bash apps/mobile/launch/launch-test.sh launch-apk/launch.apk launch-out
+      - name: Upload what the emulator showed
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mobile-launch-${{ github.sha }}
+          path: launch-out
+          if-no-files-found: ignore
+          # For reading a failure right after the run; a later look is a
+          # re-run away.
+          retention-days: 1
+
   # Only the newest APK is worth keeping, so a run that passes the review
   # deletes this workflow's older ones: one ~10 MB artifact on GitHub at a
   # time, not one per push. After the review, because the review reads the
-  # retained APK to check versionCode only ever rises; and never after a
-  # failed or cancelled run, which leaves the previous APK in place.
+  # retained APK to check versionCode only ever rises, and after the launch
+  # test, so an APK that will not open never replaces one that does; and
+  # never after a failed or cancelled run, which leaves the previous APK in
+  # place.
   prune:
     name: Delete older APK artifacts
-    needs: [apk, review]
+    needs: [apk, review, launch]
     runs-on: ubuntu-latest
     steps:
       - name: Delete older APK artifacts

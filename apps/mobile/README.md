@@ -135,6 +135,17 @@ file manager). It is signed with the repository's key ("Signing", below), so
 it installs as an update over any earlier CI build, debug ones included.
 The debug APK is still built, for the review only (`mobile-review-<sha>`).
 
+**Launch test.** Before a run counts as green, its release APK is installed
+and started in an API 36 emulator, then driven by a short seeded monkey run
+(`launch/launch-test.sh`). A dead process, a crash or an ANR fails the run,
+and the older APK is then kept. Since the release build is R8-shrunk, this is
+what catches a class it stripped that something needed by name. The job
+summary also reports, without failing, the WebView's console errors and
+whether the sessions page's text was on screen; the screenshots and logcat
+are in the `mobile-launch-<sha>` artifact. The emulator is x86_64, so it runs
+the same build with `x86_64` added (`SOME_UI_EXTRA_ABI`): the dex and
+resources are byte-identical to the phone's (checked 2026-09-30).
+
 The workflow also fails if the device backend is missing from the bundle.
 That is not hypothetical: www's build drops any import it considers
 side-effect-free, and the first version of the boot hook was dropped that way,
@@ -174,14 +185,14 @@ install over a CI build, or the other way round.
 ### Artifacts on GitHub
 
 - **One APK at a time.** Each run uploads its APK, and a run that also
-  passes the review (below) then deletes every older `some-ui-apk-*`
+  passes the review (below) and the launch test then deletes every older `some-ui-apk-*`
   artifact, so GitHub holds about 10 MB, not 10 MB per push. A failed or
   cancelled run deletes nothing, so the previous APK stays in place.
 - **30-day expiry.** `retention-days: 30` bounds the newest one too.
 - **arm64 only.** SQLCipher, which the SQLite plugin brings, ships a native
   library per ABI. `abiFilters` keeps only `arm64-v8a` (5.2 MB of the four's
-  roughly 19 MB). Add `x86_64` to `abiFilters` in `app/build.gradle` to run
-  the APK in an emulator.
+  roughly 19 MB). To run the APK in an emulator, build it with
+  `SOME_UI_EXTRA_ABI=x86_64`, as the launch test does.
 - **`versionCode` is the run number**, so each APK is an update of the last,
   and Settings → Apps → Some UI shows which build is installed.
 
