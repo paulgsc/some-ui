@@ -81,6 +81,12 @@ export async function scheduleNativeNudge(
         title: next.decision.title,
         body: next.decision.body,
         schedule: { at: next.at },
+        // Inexact on purpose. The plugin defaults to exact (since 8.3.0), and
+        // on Android 12+ an app without exact-alarm access then gets the
+        // "Alarms & reminders" settings screen opened on every schedule().
+        // A study nudge minutes late is fine, and the APK does not ask for
+        // SCHEDULE_EXACT_ALARM (apps/mobile AndroidManifest.xml).
+        isExactNotification: false,
         extra: { url: `/sessions/${next.decision.sessionId}` },
       },
     ],

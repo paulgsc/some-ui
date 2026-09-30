@@ -17,6 +17,13 @@
     <uses-permission android:name="android.permission.USE_BIOMETRIC" tools:node="remove" />
     <uses-permission android:name="android.permission.USE_FINGERPRINT" tools:node="remove" />
 
+    <!-- @capacitor/local-notifications (8.x) declares this, but study nudges
+         are inexact alarms: www's lib/study-nudge/native.ts schedules them
+         with isExactNotification: false, so the plugin never asks for exact
+         ones. Play restricts it to alarm-clock and calendar apps, and Android
+         14 denies it by default to everything else. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" tools:node="remove" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -33,7 +40,7 @@
              Everything else the app loads is its own bundle, over https. -->
 
         <activity
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
             android:name=".MainActivity"
             android:label="@string/title_activity_main"
             android:theme="@style/AppTheme.NoActionBarLaunch"

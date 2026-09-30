@@ -14,13 +14,13 @@
     "clean": "rimraf .turbo && rimraf node_modules && rimraf android/app/build && rimraf android/build"
   },
   "dependencies": {
-    "@capacitor-community/sqlite": "^7.0.3",
-    "@capacitor/android": "^7.0.0",
-    "@capacitor/core": "^7.0.0",
-    "@capacitor/local-notifications": "^7.0.7"
+    "@capacitor-community/sqlite": "^8.1.1",
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/local-notifications": "^8.3.1"
   },
   "devDependencies": {
-    "@capacitor/cli": "^7.0.0",
+    "@capacitor/cli": "^8.5.2",
     "@some-ui/tsconfig": "workspace:*",
     "cross-env": "^10.1.0",
     "rimraf": "6.0.1",

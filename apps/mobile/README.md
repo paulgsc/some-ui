@@ -219,7 +219,8 @@ Fails the run:
   to 16 KB and is stored uncompressed at a 16 KB boundary, in the APKs
   (also `zipalign -c -P 16`) and in the bundle
   ([source](https://developer.android.com/guide/practices/page-sizes)).
-  SQLCipher 4.10.0 complies (every segment 0x4000, checked 2026-09-30).
+  SQLCipher complies: 4.10.0 measured by hand (every segment 0x4000), and
+  4.17.0 (with Capacitor 8) by the review, both 2026-09-30.
 - **Permissions and exported components.** Every permission in the _merged_
   manifest, and every exported component, is listed with a reason. A new
   one from a plugin fails, and so does a listed one that is gone. Play's
@@ -239,13 +240,13 @@ Android Lint (gated once `policy.json` sets `lint.gate`).
 Where the app knowingly differs from what Play would expect. A future
 submission starts from this list, not from an audit.
 
-| ID  | Departure                                                   | Why                                                                                                                         | Undo before Play                                                      |
-| --- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| PD1 | _Retired 2026-09-30:_ the phone installs the release build. | Was: the phone installed the debuggable debug build.                                                                        | Done.                                                                 |
-| PD2 | `usesCleartextTraffic="true"`                               | The sync from home is plain http to a LAN address the person types. A network security config cannot name it ahead of time. | Sync over https, or a network security config naming the host.        |
-| PD3 | `allowBackup="true"`, with no backup rules                  | Backup is how the phone's history would survive a new phone.                                                                | Add `dataExtractionRules` saying what is backed up.                   |
-| PD4 | `targetSdk` 35, below Play's 36 (required since 2026-08-31) | Capacitor 7 targets 35; 36 needs Capacitor 8.                                                                               | Upgrade Capacitor. The review turns this into an error on 2026-11-01. |
-| PD5 | arm64 only (`abiFilters`)                                   | Keeps SQLCipher's other ABIs out of a sideloaded APK.                                                                       | Nothing for Play itself; 32-bit phones would not be offered it.       |
+| ID  | Departure                                                   | Why                                                                                                                         | Undo before Play                                                |
+| --- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| PD1 | _Retired 2026-09-30:_ the phone installs the release build. | Was: the phone installed the debuggable debug build.                                                                        | Done.                                                           |
+| PD2 | `usesCleartextTraffic="true"`                               | The sync from home is plain http to a LAN address the person types. A network security config cannot name it ahead of time. | Sync over https, or a network security config naming the host.  |
+| PD3 | `allowBackup="true"`, with no backup rules                  | Backup is how the phone's history would survive a new phone.                                                                | Add `dataExtractionRules` saying what is backed up.             |
+| PD4 | _Retired 2026-09-30:_ `targetSdk` 36, on Capacitor 8.       | Was: `targetSdk` 35 on Capacitor 7, below Play's 36.                                                                        | Done. `minSdk` is now 24 (Android 7).                           |
+| PD5 | arm64 only (`abiFilters`)                                   | Keeps SQLCipher's other ABIs out of a sideloaded APK.                                                                       | Nothing for Play itself; 32-bit phones would not be offered it. |
 
 `policy.json` records PD2 and PD3 as the flags' expected values, so changing
 either fails the review until the entry changes too.
@@ -286,7 +287,7 @@ seven-cell honeycomb in its honey pair, on the dark of www's `manifest.json`
 - **Android 8+:** an adaptive icon whose foreground is a vector,
   `drawable/ic_launcher_foreground.xml`, with the favicon's geometry, plus a
   `monochrome` layer for Android 13's themed icons.
-- **Android 6-7:** `mipmap-*/ic_launcher{,_round}.png`, rendered from the same
+- **Android 7:** `mipmap-*/ic_launcher{,_round}.png`, rendered from the same
   geometry. Re-render them if the mark changes.
 - **Splash:** the same background and mark, as `drawable/splash.xml` before
   Android 12 and through the `windowSplashScreen*` items in
@@ -352,6 +353,13 @@ OS delivers the nudge as a **scheduled local notification**
 
 The Android permission prompt comes from the reminders toggle under
 **Settings → Study reminders**.
+
+Nudges are **inexact** alarms: Android may deliver one a few minutes late,
+which a study reminder can afford. `study-nudge/native.ts` schedules them
+with `isExactNotification: false`, and the manifest removes the plugin's
+`SCHEDULE_EXACT_ALARM`. Both halves matter: from plugin 8.3.0 the default is
+exact, and without exact-alarm access (Android 14 denies it by default) each
+`schedule()` would open the "Alarms & reminders" settings screen.
 
 ## Not done yet
 
