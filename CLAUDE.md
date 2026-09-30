@@ -52,8 +52,10 @@ so a PR whose snapshot already reached `main` another way closes itself.
 >   edits, closes or merges its PR (a `git push`, a `create-pull-request` with that
 >   `branch:`, a `gh pr edit`/`close`/`merge` on it). Also falsified by a hunk that lets
 >   `server-route-snapshot.yml` do more than read and dispatch: granting it
->   `contents: write` or `pull-requests: write`, adding a checkout, or removing its
->   `gh workflow run` in favour of anything that writes.
+>   `contents: write` or `pull-requests: write`, or adding a checkout. And by any hunk
+>   that deletes, moves or changes its one dispatch,
+>   `gh workflow run routes.yml --repo paulgsc/server --ref main`, whatever replaces it:
+>   what a different target would write cannot be judged from here.
 > - _Scope:_ `.github/workflows/` in this repo. That `routes.yml`'s `sync` job is the one
 >   writer on the server side is not reviewable from here; the server's `routes.yml`
 >   header states it.
