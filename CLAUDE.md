@@ -38,7 +38,44 @@ The snapshot normally arrives on its own: every merge to the server's `main` ope
 updates) a PR here on `bot/server-route-snapshot`, and every server PR is checked against
 this repo's contracts before it merges (server `.github/workflows/routes.yml`). Both go
 through `scripts/sync-server-routes.sh`, which is the one thing that writes these two
-files — if they move, update that script and nothing in the server repo.
+files — if they move, update that script and nothing in the server repo. That server job
+is the bot PR's only writer; `.github/workflows/server-route-snapshot.yml` just re-runs it
+when this repo's snapshot files change on `main`, or on a `/resync` comment on the bot PR,
+so a PR whose snapshot already reached `main` another way closes itself.
+
+> **RS1: the resync workflow only reads and dispatches.**
+>
+> - _Claim:_ `server-route-snapshot.yml` never writes the `bot/server-route-snapshot`
+>   branch or its PR; it reads, reacts to the comment, and dispatches paulgsc/server's
+>   `routes.yml`, whose `sync` job is the PR's writer.
+> - _Falsified by_ any change to `.github/workflows/server-route-snapshot.yml` other than
+>   adding, removing or editing full-line `#` comments or blank lines outside `run:`
+>   blocks (inside one, a `#` line is part of the script and can be data). That includes
+>   deleting, renaming or moving the file, which a pure rename shows with no hunk at all.
+>   Every other line can change what runs or with what authority, and what a change can
+>   reach cannot be judged from a hunk, so each such change is a finding for a person to
+>   re-check against the claim. The exemption is closed: a YAML comment line is the only
+>   edit that cannot execute.
+> - _Scope:_ `.github/workflows/server-route-snapshot.yml`.
+> - _Why not enforced:_ no lint, type or test here can tell what a workflow change writes.
+>   A CODEOWNERS entry on the file, or a CI check that fails when anything changes but
+>   its comment lines outside `run:` blocks, would be the mechanical form ("mechanical;
+>   not yet a rule").
+>
+> True when declared: the scripts' only calls that reach GitHub are one `gh pr view`
+> (a read), one `gh api` adding a reaction, and one
+> `gh workflow run routes.yml --repo paulgsc/server --ref main`; the rest is shell built-ins
+> (`set`, `if`, `[`, `exit`, one assignment) and `echo` to the log and `$GITHUB_OUTPUT`.
+> There is no `uses:` step, and the only permissions are
+> `issues: write` and `pull-requests: read` under a top-level `permissions: {}`.
+>
+> **RS2: nothing else in this repository writes the route snapshot PR** (not reviewable).
+> Any workflow's action or script could push that branch without naming it, so no hunk
+> can settle it, and a reviewer should not flag or clear a diff on it. What can be
+> checked mechanically is the narrow case: no workflow other than
+> `server-route-snapshot.yml` names `bot/server-route-snapshot`. That grep is the
+> tracked debt; it belongs in the planned CI check that also enforces artifact
+> retention. True when declared: no other workflow names the branch.
 
 If you need a snapshot the bot hasn't delivered yet, follow
 `apps/servers/file_host/docs/route-inventory.md` in the server repo: apply the
