@@ -21,6 +21,7 @@
  * will use, and only the *trigger* changes.
  */
 
+import { DEVICE_BACKEND } from "@/lib/data-mode"
 import type { FileHostTransport } from "@/lib/file-host-config/client"
 import {
   createFileHostTransport,
@@ -52,6 +53,9 @@ const LAST_NUDGE_KEY = "some-ui.study-nudge.last-shown.v1"
  * that has to remember to check two things will eventually check one.
  */
 export function nudgesSupported(): boolean {
+  // The Android app has neither API, and native local notifications instead
+  // (`./native`).
+  if (DEVICE_BACKEND) return true
   return (
     typeof window !== "undefined" &&
     "serviceWorker" in navigator &&
@@ -60,7 +64,21 @@ export function nudgesSupported(): boolean {
   )
 }
 
+/**
+ * The Android app's notification permission, as last read from the OS.
+ * Android's answer is asynchronous and this module's is not, so `./native`
+ * writes it here whenever it asks, and `useStudyNudge` asks on mount.
+ */
+let nativePermission: NotificationPermission = "default"
+
+export function setNativeNudgePermission(
+  permission: NotificationPermission
+): void {
+  nativePermission = permission
+}
+
 export function nudgePermission(): NotificationPermission {
+  if (DEVICE_BACKEND) return nativePermission
   if (!nudgesSupported()) return "denied"
   return Notification.permission
 }
@@ -71,6 +89,12 @@ export function nudgePermission(): NotificationPermission {
  * the settings toggle is the only caller and should stay that way.
  */
 export async function requestNudgePermission(): Promise<NotificationPermission> {
+  if (DEVICE_BACKEND) {
+    const { requestNativePermission } = await import("./native")
+    return requestNativePermission().catch(
+      (): NotificationPermission => "denied"
+    )
+  }
   if (!nudgesSupported()) return "denied"
   try {
     return await Notification.requestPermission()
@@ -93,7 +117,8 @@ let registration: Promise<ServiceWorkerRegistration | null> | null = null
  * scope on the root deployment instead of inheriting it.
  */
 export async function registerNudgeWorker(): Promise<ServiceWorkerRegistration | null> {
-  if (!nudgesSupported()) return null
+  // Nothing on the device needs a worker: no push, and the OS schedules.
+  if (DEVICE_BACKEND || !nudgesSupported()) return null
   registration ??= navigator.serviceWorker
     .register(`${import.meta.env.BASE_URL}sw.js`, {
       scope: import.meta.env.BASE_URL,
@@ -129,6 +154,20 @@ export async function showNudge(
   } catch {
     return false
   }
+}
+
+/**
+ * The settings page's "Send a test": `showNudge`, except on the device,
+ * whose notifications are native (`./native`) and where `showNudge` has no
+ * worker to show through. The poll tick keeps `showNudge`, so on the device
+ * it shows nothing: the OS delivers the one scheduled nudge instead.
+ */
+export async function showTestNudge(
+  decision: Extract<NudgeDecision, { kind: "nudge" }>
+): Promise<boolean> {
+  if (!DEVICE_BACKEND) return showNudge(decision)
+  const { showNativeTestNudge } = await import("./native")
+  return showNativeTestNudge(decision).catch(() => false)
 }
 
 export function readLastNudgeAt(): string | null {

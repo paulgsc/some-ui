@@ -1,0 +1,29 @@
+{
+  "name": "@some-ui/mobile",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Capacitor shell that packages www as a sideloadable Android APK, answering its own file_host routes from on-device SQLite",
+  "scripts": {
+    "build:web": "cross-env VITE_DEVICE_BACKEND=true VITE_STATIC_DATA=false VITE_BASE_PATH=/ SOME_UI_PROFILE=mobile turbo run build --filter=www",
+    "sync": "cap sync android",
+    "bundle": "pnpm build:web && pnpm sync",
+    "apk": "pnpm bundle && cd android && ./gradlew assembleDebug",
+    "open": "cap open android",
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf .turbo && rimraf node_modules && rimraf android/app/build && rimraf android/build"
+  },
+  "dependencies": {
+    "@capacitor-community/sqlite": "^8.1.1",
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/local-notifications": "^8.3.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.2",
+    "@some-ui/tsconfig": "workspace:*",
+    "cross-env": "^10.1.0",
+    "rimraf": "6.0.1",
+    "typescript": "^5.7.3"
+  }
+}

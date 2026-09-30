@@ -1,0 +1,289 @@
+name: Mobile APK
+
+# Builds the sideloadable APK (`apps/mobile`, the R8-shrunk release build) and
+# uploads it as a run artifact, so a phone can install what `main` actually
+# contains.
+#
+# On pushes to `main` only, and only when something the APK is built from
+# changes. It grew up on a long-lived mobile staging branch and moved to
+# `main` when that branch landed; pull requests do not build it (pr.yml still
+# lints, typechecks and tests the www code it carries).
+#
+# Why CI builds it rather than a laptop or the agent sandbox: Gradle needs the
+# Android SDK (`compileSdkVersion` in apps/mobile/android/variables.gradle),
+# which `ubuntu-latest` ships preinstalled at $ANDROID_HOME. The Claude Code
+# sandbox can install it too when its environment allows dl.google.com, but
+# only CI holds the signing key the phone's installed app was signed with.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/mobile/**"
+      - "apps/www/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/mobile-apk.yml"
+      - ".github/workflows/_mobile-review.yml"
+      - ".github/actions/**"
+
+concurrency:
+  group: mobile-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  # To read the retained APK the review compares versionCode against, and to
+  # delete older APK artifacts once a newer one has passed it.
+  actions: write
+
+jobs:
+  apk:
+    name: Build APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/nix-setup
+      - uses: ./.github/actions/pnpm-cache
+      - name: Cache workspace build outputs
+        uses: actions/cache@v6
+        with:
+          path: packages/*/dist
+          key: workspace-dist-${{ runner.os }}-${{ hashFiles('packages/**/src/**') }}
+          restore-keys: workspace-dist-${{ runner.os }}-
+      - name: Install dependencies
+        run: |
+          nix develop .#ci --command pnpm install \
+            --frozen-lockfile \
+            --prefer-offline
+        env:
+          HUSKY: 0
+      - uses: ./.github/actions/resume-assets-cache
+
+      # www's build (with the flags `build:web` pins) into apps/www/dist, then
+      # `cap sync` copies it and the Capacitor plugins into the Gradle project.
+      - name: Build www for the device and sync it into Android
+        run: nix develop .#ci --command pnpm --filter @some-ui/mobile bundle
+        env:
+          NODE_ENV: production
+
+      # The device backend reaches the bundle only through a dynamic import
+      # behind VITE_DEVICE_BACKEND, and www's build drops anything it decides
+      # has no side effects - silently, with a clean log. An APK without it
+      # installs and opens and then fails every request, so check for it by a
+      # string only its handlers carry rather than trusting the build.
+      - name: Check the device backend is in the bundle
+        run: |
+          if ! grep -rqF 'subject-device' apps/www/dist/assets; then
+            echo "::error::apps/www/dist has no device backend - the APK would have nothing answering file_host"
+            exit 1
+          fi
+
+      # Outside the nix shell on purpose: Gradle wants the runner's JDK and the
+      # preinstalled SDK, neither of which the ci devShell carries.
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      # One signing key for every build, so each APK installs as an update of
+      # the last. Without it every runner signs with a debug key it generated
+      # itself, the next APK refuses to install over the previous one, and the
+      # only way out is an uninstall - which deletes the phone's database.
+      # Failing here, rather than falling back to that key, is the point: a
+      # green build must be one the phone can take as an update.
+      #
+      # Secrets (Settings > Secrets and variables > Actions), made once with
+      # the commands in apps/mobile/README.md ("Signing"):
+      #   ANDROID_KEYSTORE_BASE64    - the PKCS12 keystore, base64-encoded
+      #   ANDROID_KEYSTORE_PASSWORD  - its password (also the key's)
+      - name: Install the signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD are not set - see apps/mobile/README.md, 'Signing'"
+            exit 1
+          fi
+          keystore="$RUNNER_TEMP/some-ui.keystore"
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          echo "SOME_UI_KEYSTORE=$keystore" >> "$GITHUB_ENV"
+
+      - name: Assemble debug APK
+        working-directory: apps/mobile/android
+        env:
+          SOME_UI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          # Rises with every run, so each APK is an update of the one before.
+          SOME_UI_VERSION_CODE: ${{ github.run_number }}
+          SOME_UI_VERSION_NAME: 0.1.${{ github.run_number }}+${{ github.sha }}
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      # What the phone installs and what Play would take: the release build,
+      # shrunk by R8, as an APK and as the app bundle Play requires of new
+      # apps. The debug APK above goes only to the review, which checks both.
+      # A release build that fails leaves the run with no new APK, and the
+      # previous one stays (prune runs only after a green review).
+      - name: Build release APK and app bundle
+        working-directory: apps/mobile/android
+        env:
+          SOME_UI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          SOME_UI_VERSION_CODE: ${{ github.run_number }}
+          SOME_UI_VERSION_NAME: 0.1.${{ github.run_number }}+${{ github.sha }}
+        run: ./gradlew assembleRelease bundleRelease --no-daemon --stacktrace
+
+      - name: Name the APK after its commit
+        id: name
+        run: |
+          short="${GITHUB_SHA::7}"
+          out="some-ui-${short}.apk"
+          cp apps/mobile/android/app/build/outputs/apk/release/app-release.apk "$out"
+          echo "file=$out" >> "$GITHUB_OUTPUT"
+          echo "Built \`$out\` ($(du -h "$out" | cut -f1))." >> "$GITHUB_STEP_SUMMARY"
+      # Retention: the phone's owner downloads this APK to install it, often
+      # days after the push, and the next run's review reads it to check that
+      # versionCode only ever rises. 30 days is a backstop, not the cleanup:
+      # the prune job removes every older APK, so this bounds only the newest
+      # one's life. After 30 days with no push there is nothing to download
+      # until the next.
+      - name: Upload APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: some-ui-apk-${{ github.sha }}
+          path: ${{ steps.name.outputs.file }}
+          if-no-files-found: error
+          retention-days: 30
+
+      # Android Lint over the release variant. Report-only: the review
+      # summarizes it, and gates on it once apps/mobile/review/policy.json
+      # sets lint.gate.
+      - name: Android Lint
+        continue-on-error: true
+        working-directory: apps/mobile/android
+        env:
+          SOME_UI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          SOME_UI_VERSION_CODE: ${{ github.run_number }}
+          SOME_UI_VERSION_NAME: 0.1.${{ github.run_number }}+${{ github.sha }}
+        run: ./gradlew :app:lintRelease --no-daemon
+
+      - name: Collect the review's inputs
+        run: |
+          out=apps/mobile/android/app/build
+          mkdir review-inputs
+          cp "$out/outputs/apk/debug/app-debug.apk" review-inputs/debug.apk
+          cp "$out/outputs/apk/release/app-release.apk" review-inputs/release.apk
+          cp "$out/outputs/bundle/release/app-release.aab" review-inputs/release.aab
+          cp "$out/outputs/mapping/release/mapping.txt" review-inputs/mapping.txt
+          cp "$out/reports/lint-results.xml" "$out/reports/lint-results.html" review-inputs/ || true
+      # Retention: a person reads these after the run - Lint's HTML report,
+      # and R8's mapping.txt to retrace a crash reported from this build on
+      # the phone - which rarely happens within the day. Three days covers a
+      # weekend; later, re-running that run's jobs rebuilds the same commit
+      # with the same versionCode.
+      - name: Upload the review's inputs
+        uses: actions/upload-artifact@v7
+        with:
+          name: mobile-review-${{ github.sha }}
+          path: review-inputs
+          if-no-files-found: error
+          retention-days: 3
+
+      # The launch test's APK: this release build again with x86_64 added,
+      # because the runner's emulator is x86_64 and the phone's APK is arm64
+      # only. R8 and resource shrinking do not rerun (their inputs have not
+      # changed), so the code is the phone's. Last, so its outputs overwrite
+      # nothing the steps above read.
+      - name: Build the launch test's APK
+        working-directory: apps/mobile/android
+        env:
+          SOME_UI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          SOME_UI_VERSION_CODE: ${{ github.run_number }}
+          SOME_UI_VERSION_NAME: 0.1.${{ github.run_number }}+${{ github.sha }}
+          SOME_UI_EXTRA_ABI: x86_64
+        run: |
+          ./gradlew assembleRelease --no-daemon
+          mkdir ../../../launch-apk
+          cp app/build/outputs/apk/release/app-release.apk ../../../launch-apk/launch.apk
+      - name: Upload the launch test's APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: mobile-launch-apk-${{ github.sha }}
+          path: launch-apk
+          if-no-files-found: error
+          # Read by the launch job of this same run only.
+          retention-days: 1
+
+  review:
+    name: Play readiness
+    needs: apk
+    uses: ./.github/workflows/_mobile-review.yml
+    with:
+      inputs-artifact: mobile-review-${{ github.sha }}
+
+  # The release APK started in an emulator and driven briefly: a build R8
+  # broke would otherwise reach the phone as an update that installs and
+  # then will not open. apps/mobile/launch/launch-test.sh says what fails it.
+  launch:
+    name: Launch test
+    needs: apk
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: apps/mobile/launch
+      - uses: actions/download-artifact@v8
+        with:
+          name: mobile-launch-apk-${{ github.sha }}
+          path: launch-apk
+      # The hosted runner has /dev/kvm but not the permission to use it.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Launch the release APK in an emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          # The app's targetSdk, so the platform behaviour tested is the one
+          # the app opted into.
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          script: bash apps/mobile/launch/launch-test.sh launch-apk/launch.apk launch-out
+      - name: Upload what the emulator showed
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mobile-launch-${{ github.sha }}
+          path: launch-out
+          if-no-files-found: ignore
+          # For reading a failure right after the run; a later look is a
+          # re-run away.
+          retention-days: 1
+
+  # Only the newest APK is worth keeping, so a run that passes the review
+  # deletes this workflow's older ones: one ~10 MB artifact on GitHub at a
+  # time, not one per push. After the review, because the review reads the
+  # retained APK to check versionCode only ever rises, and after the launch
+  # test, so an APK that will not open never replaces one that does; and
+  # never after a failed or cancelled run, which leaves the previous APK in
+  # place.
+  prune:
+    name: Delete older APK artifacts
+    needs: [apk, review, launch]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete older APK artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --paginate "repos/$GITHUB_REPOSITORY/actions/artifacts?per_page=100" \
+            --jq ".artifacts[]
+                  | select(.name | startswith(\"some-ui-apk-\"))
+                  | select(.workflow_run.id != $GITHUB_RUN_ID)
+                  | select(.expired | not)
+                  | .id" |
+          while read -r id; do
+            echo "deleting artifact $id"
+            gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$id"
+          done

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- www's manifest.json theme_color: the dark the favicon's honey pair is
+         drawn for. Also the splash background, before and after Android 12. -->
+    <color name="ic_launcher_background">#101010</color>
+</resources>

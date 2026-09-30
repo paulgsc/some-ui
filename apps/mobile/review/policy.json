@@ -1,0 +1,88 @@
+{
+  "$comment": "What the Play-readiness review (review.mjs, run by .github/workflows/_mobile-review.yml) holds the APK to. Every entry carries a reason; departures from Google's guidance name their PD id in apps/mobile/README.md -> 'Play readiness'. Keys may write the app's own package as ${applicationId}.",
+
+  "identity": {
+    "$comment": "Frozen (PD invariant P1 in the README). Play treats a new applicationId as a different app, and an update must carry the same signing certificate: https://developer.android.com/build/configure-app-module#set-application-id. The certificate is the CI key (ANDROID_KEYSTORE_* secrets), which is the future Play upload key: https://developer.android.com/studio/publish/app-signing",
+    "applicationId": "dev.paulgsc.someui",
+    "signingCertSha256": "61ecab46ebf36e2831d33a21952c5f2b960e52aaa65a0620c4e881db7fdf06b6"
+  },
+
+  "targetSdk": {
+    "$comment": "The level Play requires of new apps and updates, by date. Checked 2026-09-30 against the source. Add each year's row when Google announces it; the review fails once the last row is a year old.",
+    "source": "https://developer.android.com/google/play/requirements/target-sdk",
+    "rows": [
+      { "from": "2026-08-31", "level": 36, "extensionUntil": "2026-11-01" }
+    ]
+  },
+
+  "permissions": {
+    "android.permission.INTERNET": {
+      "reason": "The sync from home (Settings -> This phone) fetches lessons from the LAN file_host."
+    },
+    "android.permission.POST_NOTIFICATIONS": {
+      "reason": "Study nudges are local notifications (@capacitor/local-notifications); asked for from Settings -> Study reminders."
+    },
+    "android.permission.RECEIVE_BOOT_COMPLETED": {
+      "reason": "@capacitor/local-notifications re-schedules pending nudges after a reboot (LocalNotificationRestoreReceiver)."
+    },
+    "android.permission.WAKE_LOCK": {
+      "reason": "@capacitor/local-notifications, to deliver a scheduled nudge while the phone sleeps."
+    },
+    "${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION": {
+      "reason": "androidx.core (1.9+) declares and holds this signature permission to keep its runtime-registered receivers private on Android < 13. Not user-visible."
+    }
+  },
+
+  "restrictedPermissions": {
+    "$comment": "Permissions Google Play restricts to named use cases or a Permissions Declaration. An entry for one of these in 'permissions' also needs a 'playDeclaration'. Sources: exact alarms https://developer.android.com/about/versions/14/changes/schedule-exact-alarms; the rest, Play Console Help 'Permissions and APIs that access sensitive information' (answer 16558241), 'Use of All files access' (10467955), 'Use of the broad package visibility' (10158779), 'Understanding foreground service and full-screen intent requirements' (13392821).",
+    "android.permission.SCHEDULE_EXACT_ALARM": "exact alarms: denied by default on Android 14 for apps that are not alarm clocks or calendars",
+    "android.permission.USE_EXACT_ALARM": "exact alarms: alarm clock and calendar apps only",
+    "android.permission.USE_FULL_SCREEN_INTENT": "full-screen intents: calling and alarm apps only",
+    "android.permission.FOREGROUND_SERVICE_*": "foreground service types need a Play Console declaration",
+    "android.permission.QUERY_ALL_PACKAGES": "broad package visibility: Permissions Declaration",
+    "android.permission.MANAGE_EXTERNAL_STORAGE": "all files access: Permissions Declaration",
+    "android.permission.READ_MEDIA_IMAGES": "photo and video permissions: access review",
+    "android.permission.READ_MEDIA_VIDEO": "photo and video permissions: access review",
+    "android.permission.ACCESS_BACKGROUND_LOCATION": "background location: Permissions Declaration",
+    "android.permission.REQUEST_INSTALL_PACKAGES": "installing packages: core-purpose only",
+    "android.permission.READ_CONTACTS": "contacts: Permissions Declaration (from 2026)",
+    "android.permission.READ_SMS": "SMS and Call Log: Permissions Declaration",
+    "android.permission.SEND_SMS": "SMS and Call Log: Permissions Declaration",
+    "android.permission.RECEIVE_SMS": "SMS and Call Log: Permissions Declaration",
+    "android.permission.READ_CALL_LOG": "SMS and Call Log: Permissions Declaration",
+    "android.permission.WRITE_CALL_LOG": "SMS and Call Log: Permissions Declaration",
+    "android.permission.PROCESS_OUTGOING_CALLS": "SMS and Call Log: Permissions Declaration"
+  },
+
+  "exportedComponents": {
+    "${applicationId}.MainActivity": {
+      "reason": "The launcher activity: the home screen starts it, so it must be exported."
+    },
+    "androidx.profileinstaller.ProfileInstallReceiver": {
+      "reason": "androidx.profileinstaller (via androidx.appcompat and Capacitor) installs baseline profiles when adb or the Play Store asks it to. Guarded by android.permission.DUMP, which only the system and adb hold."
+    }
+  },
+
+  "applicationFlags": {
+    "usesCleartextTraffic": {
+      "expect": true,
+      "departure": "PD2",
+      "reason": "The home file_host is plain http on a LAN address the person types, which a network security config cannot name ahead of time."
+    },
+    "allowBackup": {
+      "expect": true,
+      "departure": "PD3",
+      "reason": "Android backup is how the phone's SQLite history would survive a new phone."
+    }
+  },
+
+  "size": {
+    "$comment": "Warn, don't fail. The APK was about 10 MB at a6b82fa.",
+    "warnMiB": 25
+  },
+
+  "lint": {
+    "$comment": "Android Lint errors (Error or Fatal severity) fail the review. Gated from 2026-09-30, when run 7 (d3ac827) had none; warnings stay report-only.",
+    "gate": true
+  }
+}

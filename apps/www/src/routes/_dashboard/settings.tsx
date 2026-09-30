@@ -27,12 +27,14 @@ import {
 import { createFileRoute } from "@tanstack/react-router"
 import { toast } from "sonner"
 
+import { DEVICE_BACKEND } from "@/lib/data-mode"
 import { useIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton, IntentFailure } from "@/lib/intent/render"
 import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import type { UserSettings } from "@/lib/tenant"
 import { settingsQuery, useSettings, useUpdateSettings } from "@/lib/tenant"
 import { AccountSection } from "@/components/settings/account-section"
+import { DeviceSection } from "@/components/settings/device-section"
 import { StudyNudgeSection } from "@/components/settings/study-nudge-section"
 
 const TTS_PROVIDER_OPTIONS: ReadonlyArray<{
@@ -250,11 +252,15 @@ const SettingsForm = ({
   )
 }
 
-/** Outside the settings outcome: signing out must work when settings don't load. */
+/**
+ * Outside the settings outcome: signing out must work when settings don't
+ * load. On the Android app there is no account to sign out of; the card
+ * holds the phone's own controls instead (the sync from home).
+ */
 const AccountCard = (): JSX.Element => (
   <Card className="max-w-xl">
     <CardContent className="pt-6">
-      <AccountSection />
+      {DEVICE_BACKEND ? <DeviceSection /> : <AccountSection />}
     </CardContent>
   </Card>
 )

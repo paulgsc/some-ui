@@ -15,6 +15,15 @@ interface ImportMetaEnv {
   readonly VITE_STATIC_DATA?: string
 
   /**
+   * `"true"` only for the Android app's build (`apps/mobile` `build:web`).
+   * The app then answers its own `file_host` requests in-process, from an
+   * on-device SQLite database, instead of over the network - so it runs
+   * every server-mode code path with no server. Mutually exclusive with
+   * `VITE_STATIC_DATA`. See src/lib/device-backend.
+   */
+  readonly VITE_DEVICE_BACKEND?: string
+
+  /**
    * Overrides where the app looks for its speech backend (the
    * `openai-edge-tts` service in `infra/compose/tts.yml`). Left unset, the
    * app follows the page it is served from: `http://<current

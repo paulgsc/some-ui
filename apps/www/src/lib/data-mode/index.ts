@@ -36,3 +36,21 @@ export const DATA_MODE: RuntimeMode =
 
 /** True when this build fetches its content rather than using bundled seeds. */
 export const FETCHES_CONTENT = DATA_MODE === "server"
+
+/**
+ * True in the Android app's build, where `file_host` is not a server but an
+ * in-process one over on-device SQLite (see `lib/device-backend`).
+ *
+ * `DATA_MODE` stays `"server"` there, and that is the point rather than an
+ * oversight: the question it answers is "is there a backend here at all",
+ * and on the device there is - it simply lives in the same process. Every
+ * `DATA_MODE` consumer (sessions, shelf, curriculum, leetype rounds,
+ * signals, presence) therefore takes its server path unchanged.
+ *
+ * This bit is only for the few places where "a backend" and "a network"
+ * part ways: what the device has no service for (a TTS server) and what it
+ * delivers differently (a nudge is a native local notification, not a web
+ * push). Keep that list short; a new consumer here is a place the device
+ * build diverges from the LAN build, and each one wants a reason.
+ */
+export const DEVICE_BACKEND = import.meta.env.VITE_DEVICE_BACKEND === "true"

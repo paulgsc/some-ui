@@ -6,7 +6,7 @@ import viteReact from "@vitejs/plugin-react"
 import type { Plugin, UserConfig } from "vite"
 import { defineConfig, loadEnv } from "vite"
 
-import { buildAudiencePlugin } from "./build.profiles.ts"
+import { buildAudiencePlugin, MOBILE_PROFILE } from "./build.profiles.ts"
 import {
   describeTarget,
   fileHostDevPlugin,
@@ -88,6 +88,30 @@ function warnMissingContentAssets(): Plugin {
           `  Otherwise this is expected on a fresh checkout - those assets are` +
           ` curated and gitignored.\n`
       )
+    },
+  }
+}
+
+// The Android app carries sessions and nothing else (src/lib/app-surface), so
+// its build leaves out what exists only for /resume: the document entry below,
+// and the PDFs scripts/sync-resume.mjs copies into public/ - about as much as
+// every other file the app ships from public/ together. Vite copies public/
+// wholesale, with no filter of its own, and before the bundle is written, so
+// they come out once the build is done.
+const isMobileBuild = process.env.SOME_UI_PROFILE === MOBILE_PROFILE
+
+function omitResumePdfs(): Plugin {
+  let outDir = ""
+  return {
+    name: "omit-resume-pdfs",
+    apply: "build",
+    configResolved(config): void {
+      outDir = resolve(config.root, config.build.outDir)
+    },
+    closeBundle(): void {
+      for (const name of fs.readdirSync(outDir)) {
+        if (/^resume.*\.pdf$/.test(name)) fs.rmSync(resolve(outDir, name))
+      }
     },
   }
 }
@@ -196,6 +220,7 @@ export default defineConfig(
       ...(command === "serve"
         ? [warnMissingContentAssets(), fileHostDevPlugin(fileHost)]
         : []),
+      ...(isMobileBuild ? [omitResumePdfs()] : []),
     ],
     // An http:// page skips the proxy and asks :3000 directly
     // (src/lib/file-host-config) - the container. While the proxy points
@@ -232,7 +257,9 @@ export default defineConfig(
         // 404.html fallback every other unmatched path relies on.
         input: {
           main: resolve(import.meta.dirname, "index.html"),
-          resume: resolve(import.meta.dirname, "resume/index.html"),
+          ...(isMobileBuild
+            ? {}
+            : { resume: resolve(import.meta.dirname, "resume/index.html") }),
         },
         // No `output.manualChunks`. The hand-rolled version here matched with
         // `id.includes(pkg)` — a substring test against the full module path —

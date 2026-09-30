@@ -22,6 +22,8 @@ import {
 import { Briefcase, FileText, ListVideo, Settings, User } from "lucide-react"
 import { cn, useIsMobile, useIsTerminal } from "some-ui-utils"
 
+import { isOnMobileSurface } from "@/lib/app-surface"
+import { MOBILE_APP } from "@/lib/build-profile"
 import { AmbientIntentStatus } from "@/lib/intent/render"
 import { useIsDeclaredBounded } from "@/lib/route-bounds"
 import { useMigrationSignal } from "@/lib/tenant/migration-signal"
@@ -84,6 +86,11 @@ const NAV_ITEMS: ReadonlyArray<NavItem> = [
   { to: "/settings", label: "Settings", icon: Settings },
 ]
 
+/** In the Android app, only the pages it carries (`lib/app-surface`). */
+const SHOWN_NAV_ITEMS = MOBILE_APP
+  ? NAV_ITEMS.filter((item) => isOnMobileSurface(item.to))
+  : NAV_ITEMS
+
 function isNavItemActive(itemPath: NavItem["to"], pathname: string): boolean {
   return pathname === itemPath || pathname.startsWith(`${itemPath}/`)
 }
@@ -101,7 +108,12 @@ const DashboardSidebarContent = ({
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild size="lg" tooltip="Some UI home">
-              <Link to="/" aria-label="Some UI home">
+              {/* The phone has no landing page: its home is the sessions
+                  list. */}
+              <Link
+                to={MOBILE_APP ? "/sessions" : "/"}
+                aria-label="Some UI home"
+              >
                 <span className="flex size-8 shrink-0 items-center justify-center">
                   <HexCombMark tone="brand" className="size-6" />
                 </span>
@@ -117,7 +129,7 @@ const DashboardSidebarContent = ({
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {NAV_ITEMS.map((item) => (
+              {SHOWN_NAV_ITEMS.map((item) => (
                 <SidebarMenuItem key={item.to}>
                   <SidebarMenuButton
                     asChild

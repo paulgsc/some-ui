@@ -6,7 +6,7 @@ import { toast } from "sonner"
 
 import { useAudioPreferences } from "@/lib/audio-preferences/use-audio-preferences"
 import { useHasSession } from "@/lib/auth"
-import { DATA_MODE } from "@/lib/data-mode"
+import { DATA_MODE, DEVICE_BACKEND } from "@/lib/data-mode"
 import { useSettings } from "@/lib/tenant"
 import { describeTTSEndpoint, resolveTTSEndpoint } from "@/lib/tts-config"
 
@@ -121,7 +121,9 @@ export const TTSProvider = ({
   return (
     <SpeechProvider
       config={{
-        mode: DATA_MODE,
+        // The device build has a backend but no TTS service behind it, so
+        // it speaks with the platform's own voice, as the static build does.
+        mode: DEVICE_BACKEND ? "static" : DATA_MODE,
         provider: settings?.ttsProvider,
         voiceId: settings?.ttsVoiceId || undefined,
         endpoint: resolveTTSEndpoint(),
