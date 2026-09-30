@@ -236,6 +236,21 @@ Signer #1 certificate SHA-1 digest: ffff
   assert.deepEqual(reviewSigner("x", digests, "AB:12:CD"), [])
   assert.deepEqual(levels(reviewSigner("x", digests, "00")), ["error:signing"])
   assert.deepEqual(levels(reviewSigner("x", digests, null)), ["error:signing"])
+
+  // build-tools 37's shape, one line per scheme: the same key counts once,
+  // a second key does not hide.
+  const v37 = `V1 Signer: certificate SHA-256 digest: AB12cd
+V2 Signer: certificate DN: CN=some-ui
+V2 Signer: certificate SHA-256 digest: ab12cd
+V2 Signer: certificate SHA-1 digest: ffff
+`
+  assert.deepEqual(parseSignerDigests(v37), ["ab12cd"])
+  assert.deepEqual(reviewSigner("x", parseSignerDigests(v37), "AB:12:CD"), [])
+  assert.deepEqual(
+    parseSignerDigests(`${v37}V3 Signer: certificate SHA-256 digest: 00ff\n`),
+    ["ab12cd", "00ff"]
+  )
+  assert.deepEqual(parseSignerDigests("Verifies\n"), [])
 })
 
 // ── ZIP: a stored entry whose data offset we control through the extra field.

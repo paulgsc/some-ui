@@ -338,12 +338,18 @@ export function reviewVersionCode(versionCode, previous) {
 
 // ── Signing certificate (apksigner verify --print-certs) ────────────────
 
+// The line's prefix changed across build-tools: 35.0.0 prints
+// "Signer #1 certificate SHA-256 digest: <hex>", 37.0.0 prints
+// "V2 Signer: certificate SHA-256 digest: <hex>", one line per signature
+// scheme. The review runs the runner's newest build-tools, so both are
+// accepted, and a certificate listed once per scheme counts once.
 export function parseSignerDigests(text) {
-  return [
+  const digests = [
     ...text.matchAll(
-      /^Signer #\d+ certificate SHA-256 digest:\s*([0-9a-f]+)\s*$/gim
+      /^[^\n]*\bSigner\b[^\n]*\bcertificate SHA-256 digest:\s*([0-9a-f]+)\s*$/gim
     ),
   ].map((m) => m[1].toLowerCase())
+  return [...new Set(digests)]
 }
 
 export function reviewSigner(label, digests, expected) {
