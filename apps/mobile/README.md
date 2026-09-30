@@ -9,9 +9,8 @@ runs www's own Vite build with `VITE_DEVICE_BACKEND=true` and hands the output
 to Capacitor, which copies it into an Android project. Every screen, route and
 handler is www's, and so is the backend (`apps/www/src/lib/device-backend`).
 
-> Status: **beta, on the mobile staging branch only.** Nothing here is on
-> `main`, and the branch is not headed there until the on-device experience is
-> settled.
+> Status: **beta, on `main`.** It grew on a mobile staging branch until the
+> release APK had been used on a phone, then landed; iteration continues here.
 
 ## What the app carries: sessions
 
@@ -126,13 +125,14 @@ turbo passes each one through: it infers `VITE_*` for this workspace, and
 
 ### In CI (how to get the APK onto a phone)
 
-`.github/workflows/mobile-apk.yml` builds it on every push to the mobile
-staging branch, and on nothing else. Open the run in the repository's
-**Actions** tab and download the `some-ui-apk-<sha>` artifact. It is a zip
-holding `some-ui-<sha7>.apk`, the **release** build (R8-shrunk, not
-debuggable). Install that on the phone (allow installs from your browser or
-file manager). It is signed with the repository's key ("Signing", below), so
-it installs as an update over any earlier CI build, debug ones included.
+`.github/workflows/mobile-apk.yml` builds it on every push to `main` that
+touches what it is built from, and on nothing else (pull requests do not).
+Open the run in the repository's **Actions** tab and download the
+`some-ui-apk-<sha>` artifact. It is a zip holding `some-ui-<sha7>.apk`, the
+**release** build (R8-shrunk, not debuggable). Install that on the phone
+(allow installs from your browser or file manager). It is signed with the
+repository's key ("Signing", below), so it installs as an update over any
+earlier CI build, debug ones included.
 The debug APK is still built, for the review only (`mobile-review-<sha>`).
 
 **Launch test.** Before a run counts as green, its release APK is installed

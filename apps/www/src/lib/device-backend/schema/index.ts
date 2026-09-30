@@ -114,7 +114,7 @@ const MIGRATIONS: ReadonlyArray<string> = [
 ]
 
 /** The schema version a fully migrated database reports. */
-export const SCHEMA_VERSION = MIGRATIONS.length
+const SCHEMA_VERSION = MIGRATIONS.length
 
 /**
  * Brings `db` up to `SCHEMA_VERSION`, one migration per transaction, and
@@ -125,7 +125,7 @@ export async function migrate(db: SqlDriver): Promise<void> {
   await db.exec("PRAGMA foreign_keys = ON")
   const row = await one(db, "PRAGMA user_version")
   const current = row === null ? 0 : num(row, "user_version")
-  for (let index = current; index < MIGRATIONS.length; index++) {
+  for (let index = current; index < SCHEMA_VERSION; index++) {
     const sql = MIGRATIONS[index] ?? ""
     await db.transaction(async () => {
       await db.exec(sql)

@@ -14,7 +14,7 @@ import { MOBILE_APP } from "@/lib/build-profile"
  * stays off the phone until someone puts it here. Typed against the route
  * tree, so renaming or removing one of these routes fails `tsc` here.
  */
-export const MOBILE_SURFACE: ReadonlyArray<keyof FileRoutesByTo> = [
+const MOBILE_SURFACE: ReadonlyArray<keyof FileRoutesByTo> = [
   "/sessions",
   "/settings",
   // Not a page the phone shows: the device backend is always signed in. But

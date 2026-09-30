@@ -105,9 +105,9 @@ the shortest life that works, and nothing recreated leaves its old copy behind.
   path is one we want taken. A step with no `retention-days` fails either way: the repo
   default (90 days) is not a period anyone chose. So does a value that is not a literal
   number of days (`0`, empty, a `${{ }}` expression), since each can resolve to that
-  default. Every artifact here keeps one day
-  today, so none carries a `Retention:` line. Artifacts cannot be overwritten across
-  runs, so a short `retention-days` is how a recreated one leaves no tail.
+  default. Two artifacts keep longer today, both in `mobile-apk.yml`: the phone's APK
+  (30 days, pruned to one) and the Play review's inputs (3 days). Artifacts cannot be
+  overwritten across runs, so a short `retention-days` is how a recreated one leaves no tail.
 - **Enforced by `pnpm check:workflows`** (`scripts/check-workflows.ts`, rules in
   `packages/eslint/src/workflow-guards.ts`), in root `pnpm lint` and as its own `pr.yml`
   job that CI Gate requires. The same script carries RS1's fingerprint and RS2's grep

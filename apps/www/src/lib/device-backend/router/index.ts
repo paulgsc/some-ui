@@ -13,7 +13,7 @@
  */
 import type { SqlDriver } from "@/lib/device-backend/sql"
 
-export type DeviceRequest = {
+type DeviceRequest = {
   method: string
   /** Path params, URI-decoded. */
   params: Partial<Record<string, string>>
@@ -28,7 +28,7 @@ export type DeviceContext = {
   now: () => number
 }
 
-export type DeviceHandler = (
+type DeviceHandler = (
   request: DeviceRequest,
   context: DeviceContext
 ) => Promise<Response>
@@ -123,7 +123,7 @@ export function readJson(
   }
 }
 
-export function plainText(status: number, text: string): Response {
+function plainText(status: number, text: string): Response {
   return new Response(text, {
     status,
     headers: { "content-type": "text/plain; charset=utf-8" },

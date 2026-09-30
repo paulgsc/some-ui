@@ -100,7 +100,7 @@ function toWire(session: Stored): Record<string, unknown> {
 }
 
 /** `total_duration_of`: the latest scene end, snake_case keys, floor 0. */
-export function totalDurationOf(scenes: ReadonlyArray<unknown>): number {
+function totalDurationOf(scenes: ReadonlyArray<unknown>): number {
   let latest = 0
   for (const scene of scenes) {
     if (!isRecord(scene)) continue

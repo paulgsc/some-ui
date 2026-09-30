@@ -28,8 +28,8 @@ import {
 import type { SqlRow } from "@/lib/device-backend/sql"
 import { one, text } from "@/lib/device-backend/sql"
 
-export const SHELF_CAP = 20
-export const SHELF_BODY_CEILING = 262_144
+const SHELF_CAP = 20
+const SHELF_BODY_CEILING = 262_144
 
 const ACTIVITIES = ["topik", "leetype"]
 
@@ -37,7 +37,7 @@ const KEY_PROBLEM =
   "must be a plain key: URL-unreserved characters, not starting with `.` or `http`, no `.json` suffix"
 
 /** `is_plain_key` (curriculum `model.rs`). */
-export function isPlainKey(key: string): boolean {
+function isPlainKey(key: string): boolean {
   return (
     /^[A-Za-z0-9\-._~]+$/.test(key) &&
     !key.startsWith("http") &&

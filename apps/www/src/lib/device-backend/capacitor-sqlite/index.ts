@@ -19,7 +19,7 @@ import { Capacitor } from "@capacitor/core"
 import type { SqlDriver, SqlRow, SqlValue } from "@/lib/device-backend/sql"
 
 /** The on-device database's file name (the plugin appends `SQLite.db`). */
-export const DEVICE_DB_NAME = "some-ui"
+const DEVICE_DB_NAME = "some-ui"
 
 export async function openCapacitorSqlite(
   name: string = DEVICE_DB_NAME
