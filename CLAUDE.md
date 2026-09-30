@@ -43,16 +43,13 @@ is the bot PR's only writer; `.github/workflows/server-route-snapshot.yml` just 
 when this repo's snapshot files change on `main`, or on a `/resync` comment on the bot PR,
 so a PR whose snapshot already reached `main` another way closes itself.
 
-> **RS1: the route snapshot PR has one writer.**
+> **RS1: the resync workflow only reads and dispatches.**
 >
-> - _Claim:_ no workflow in this repository writes to the `bot/server-route-snapshot`
->   branch or opens, edits or closes its PR. `server-route-snapshot.yml` only dispatches
->   paulgsc/server's `routes.yml`, whose `sync` job is the writer.
-> - _Falsified by_ a hunk in `.github/workflows/` that pushes to or creates that branch, or
->   edits, closes or merges its PR (a `git push`, a `create-pull-request` with that
->   `branch:`, a `gh pr edit`/`close`/`merge` on it). Also by any hunk after which
->   `server-route-snapshot.yml` holds anything outside this closed list, checked against
->   the whole file as it stands after the diff:
+> - _Claim:_ `server-route-snapshot.yml` never writes the `bot/server-route-snapshot`
+>   branch or its PR; it reads, reacts to the comment, and dispatches paulgsc/server's
+>   `routes.yml`, whose `sync` job is the PR's writer.
+> - _Falsified by_ any hunk after which `server-route-snapshot.yml` holds anything outside
+>   this closed list, checked against the whole file as it stands after the diff:
 >
 >   - its `run:` scripts call no `gh`, `git`, `curl` or `wget` except `gh pr view` (a
 >     read), `gh api` on `…/issues/comments/…/reactions` (the 👀), and exactly one
@@ -64,17 +61,22 @@ so a PR whose snapshot already reached `main` another way closes itself.
 >   deleting or changing the one dispatch, whatever replaces it. The list is closed
 >   because what an unlisted command would write cannot be judged from the hunk.
 >
-> - _Scope:_ `.github/workflows/` in this repo. That `routes.yml`'s `sync` job is the one
->   writer on the server side is not reviewable from here; the server's `routes.yml`
->   header states it.
+> - _Scope:_ `.github/workflows/server-route-snapshot.yml`.
 > - _Why not enforced:_ no lint, type or test here looks inside workflow YAML, and
->   `actionlint` does not track which branch a step writes. A grep for the branch name in
->   `.github/workflows/` outside `server-route-snapshot.yml` would catch most of it
->   ("mechanical; not yet a rule").
+>   `actionlint` does not check what a step may call. Comparing the file against the list
+>   is mechanical ("mechanical; not yet a rule").
 >
-> True when declared: no other workflow names the branch, and `server-route-snapshot.yml`
-> matches the closed list exactly (those three `gh` calls, no `uses:` step, and only
-> `issues: write` and `pull-requests: read` under a top-level `permissions: {}`).
+> True when declared: the file matches the list exactly (those three `gh` calls, no
+> `uses:` step, and only `issues: write` and `pull-requests: read` under a top-level
+> `permissions: {}`).
+>
+> **RS2: nothing else in this repository writes the route snapshot PR** (not reviewable).
+> Any workflow's action or script could push that branch without naming it, so no hunk
+> can settle it, and a reviewer should not flag or clear a diff on it. What can be
+> checked mechanically is the narrow case: no workflow other than
+> `server-route-snapshot.yml` names `bot/server-route-snapshot`. That grep is the
+> tracked debt; it belongs in the planned CI check that also enforces artifact
+> retention. True when declared: no other workflow names the branch.
 
 If you need a snapshot the bot hasn't delivered yet, follow
 `apps/servers/file_host/docs/route-inventory.md` in the server repo: apply the
