@@ -54,3 +54,10 @@ updates:
       actions-core:
         patterns:
           - "actions/*"
+    # changesets/action v2 needs Changesets CLI v3 and renames the inputs
+    # release.yml and wasm-release.yml pass, so a Dependabot major bump alone
+    # breaks both (it broke WASM Release from 2026-09 on). Minors and patches
+    # of v1 still arrive; take v2 by hand together with the CLI upgrade.
+    ignore:
+      - dependency-name: "changesets/action"
+        update-types: ["version-update:semver-major"]
