@@ -82,7 +82,7 @@
   },
 
   "lint": {
-    "$comment": "Android Lint errors are reported, not gated, until the first clean run sets this true.",
-    "gate": false
+    "$comment": "Android Lint errors (Error or Fatal severity) fail the review. Gated from 2026-09-30, when run 7 (d3ac827) had none; warnings stay report-only.",
+    "gate": true
   }
 }

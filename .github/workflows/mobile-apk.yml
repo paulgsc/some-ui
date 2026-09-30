@@ -1,7 +1,8 @@
 name: Mobile APK
 
-# Builds the sideloadable debug APK (`apps/mobile`) and uploads it as a run
-# artifact, so a phone can install what this branch actually contains.
+# Builds the sideloadable APK (`apps/mobile`, the R8-shrunk release build) and
+# uploads it as a run artifact, so a phone can install what this branch
+# actually contains.
 #
 # Scoped to the mobile staging branch on purpose. That branch is a long-lived
 # spine that is not headed for `main` until the on-device experience is
@@ -13,9 +14,9 @@ name: Mobile APK
 #
 # Why CI builds it rather than a laptop or the agent sandbox: Gradle needs the
 # Android SDK (`compileSdkVersion` in apps/mobile/android/variables.gradle),
-# which `ubuntu-latest` ships preinstalled at $ANDROID_HOME, and which the
-# Claude Code sandbox cannot install (dl.google.com is outside its egress
-# policy).
+# which `ubuntu-latest` ships preinstalled at $ANDROID_HOME. The Claude Code
+# sandbox can install it too when its environment allows dl.google.com, but
+# only CI holds the signing key the phone's installed app was signed with.
 on:
   push:
     branches: [ccr-25f1eb44-ep84g6]
@@ -40,7 +41,7 @@ permissions:
 
 jobs:
   apk:
-    name: Build debug APK
+    name: Build APK
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -120,12 +121,25 @@ jobs:
           SOME_UI_VERSION_NAME: 0.1.${{ github.run_number }}+${{ github.sha }}
         run: ./gradlew assembleDebug --no-daemon --stacktrace
 
+      # What the phone installs and what Play would take: the release build,
+      # shrunk by R8, as an APK and as the app bundle Play requires of new
+      # apps. The debug APK above goes only to the review, which checks both.
+      # A release build that fails leaves the run with no new APK, and the
+      # previous one stays (prune runs only after a green review).
+      - name: Build release APK and app bundle
+        working-directory: apps/mobile/android
+        env:
+          SOME_UI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          SOME_UI_VERSION_CODE: ${{ github.run_number }}
+          SOME_UI_VERSION_NAME: 0.1.${{ github.run_number }}+${{ github.sha }}
+        run: ./gradlew assembleRelease bundleRelease --no-daemon --stacktrace
+
       - name: Name the APK after its commit
         id: name
         run: |
           short="${GITHUB_SHA::7}"
-          out="some-ui-${short}-debug.apk"
-          cp apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk "$out"
+          out="some-ui-${short}.apk"
+          cp apps/mobile/android/app/build/outputs/apk/release/app-release.apk "$out"
           echo "file=$out" >> "$GITHUB_OUTPUT"
           echo "Built \`$out\` ($(du -h "$out" | cut -f1))." >> "$GITHUB_STEP_SUMMARY"
       - name: Upload APK
@@ -138,18 +152,6 @@ jobs:
           # APK, so this bounds only the newest one's life. After 30 days with
           # no push there is nothing to download until the next.
           retention-days: 30
-
-      # What Play would take: the release build, shrunk by R8, as an APK and
-      # as the app bundle Play requires of new apps. Built on every run,
-      # after the phone's APK is already uploaded, so release-only breakage
-      # turns the run red without costing the phone its build.
-      - name: Build release APK and app bundle
-        working-directory: apps/mobile/android
-        env:
-          SOME_UI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          SOME_UI_VERSION_CODE: ${{ github.run_number }}
-          SOME_UI_VERSION_NAME: 0.1.${{ github.run_number }}+${{ github.sha }}
-        run: ./gradlew assembleRelease bundleRelease --no-daemon --stacktrace
 
       # Android Lint over the release variant. Report-only: the review
       # summarizes it, and gates on it once apps/mobile/review/policy.json

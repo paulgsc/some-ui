@@ -131,6 +131,16 @@ for (const variant of ["debug", "release"]) {
         message: `${label} does not verify: ${signers.stderr.trim()}`,
       },
     ])
+  } else if (parseSignerDigests(signers.stdout).length === 0) {
+    // It verified, so it is signed: an empty parse means apksigner's output
+    // changed shape again, which is not the same finding as "unsigned".
+    add([
+      {
+        level: "error",
+        check: "signing",
+        message: `${label} verifies, but no certificate digest could be read from apksigner's output (${tool.apksigner}): ${signers.stdout.trim().split("\n").slice(0, 4).join(" | ")}`,
+      },
+    ])
   } else {
     add(
       reviewSigner(
@@ -282,9 +292,11 @@ if (existsSync(file("lint-results.xml"))) {
     )
   }
 } else {
+  // Once gated, no report is a failure too: a Lint step that crashed must not
+  // pass as a clean one.
   add([
     {
-      level: "warning",
+      level: policy.lint.gate ? "error" : "warning",
       check: "lint",
       message:
         "lint-results.xml is missing: Android Lint did not run or did not report.",

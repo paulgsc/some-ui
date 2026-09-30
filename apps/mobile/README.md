@@ -129,9 +129,11 @@ turbo passes each one through: it infers `VITE_*` for this workspace, and
 `.github/workflows/mobile-apk.yml` builds it on every push to the mobile
 staging branch, and on nothing else. Open the run in the repository's
 **Actions** tab and download the `some-ui-apk-<sha>` artifact. It is a zip
-holding `some-ui-<sha>-debug.apk`. Install that on the phone (allow installs
-from your browser or file manager). It is signed with the repository's key
-("Signing", below).
+holding `some-ui-<sha7>.apk`, the **release** build (R8-shrunk, not
+debuggable). Install that on the phone (allow installs from your browser or
+file manager). It is signed with the repository's key ("Signing", below), so
+it installs as an update over any earlier CI build, debug ones included.
+The debug APK is still built, for the review only (`mobile-review-<sha>`).
 
 The workflow also fails if the device backend is missing from the bundle.
 That is not hypothetical: www's build drops any import it considers
@@ -187,8 +189,8 @@ install over a CI build, or the other way round.
 
 The app is sideloaded and there is no plan to publish it. But if it ever goes
 through Google Play, that should be an increment, not an overhaul. So every
-run also builds what Play would take, a **release** APK and **app bundle**
-(R8-shrunk, not debuggable, same key), and
+run builds what Play would take, a **release** APK (the one the phone
+installs) and **app bundle** (R8-shrunk, not debuggable, same key), and
 `.github/workflows/_mobile-review.yml` reviews the build against Google's
 guidance. The rules are `review/checks.mjs`; the values they hold the build
 to, each with its reason, are `review/policy.json`.
@@ -239,7 +241,7 @@ submission starts from this list, not from an audit.
 
 | ID  | Departure                                                   | Why                                                                                                                         | Undo before Play                                                      |
 | --- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| PD1 | The phone installs the **debug** build (debuggable).        | It is the build the CI run names and the phone updates from.                                                                | Install `release` instead (same key, same versionCode).               |
+| PD1 | _Retired 2026-09-30:_ the phone installs the release build. | Was: the phone installed the debuggable debug build.                                                                        | Done.                                                                 |
 | PD2 | `usesCleartextTraffic="true"`                               | The sync from home is plain http to a LAN address the person types. A network security config cannot name it ahead of time. | Sync over https, or a network security config naming the host.        |
 | PD3 | `allowBackup="true"`, with no backup rules                  | Backup is how the phone's history would survive a new phone.                                                                | Add `dataExtractionRules` saying what is backed up.                   |
 | PD4 | `targetSdk` 35, below Play's 36 (required since 2026-08-31) | Capacitor 7 targets 35; 36 needs Capacitor 8.                                                                               | Upgrade Capacitor. The review turns this into an error on 2026-11-01. |
