@@ -48,16 +48,17 @@ so a PR whose snapshot already reached `main` another way closes itself.
 > - _Claim:_ `server-route-snapshot.yml` never writes the `bot/server-route-snapshot`
 >   branch or its PR; it reads, reacts to the comment, and dispatches paulgsc/server's
 >   `routes.yml`, whose `sync` job is the PR's writer.
-> - _Falsified by_ any hunk to `server-route-snapshot.yml` that adds, removes or changes a
->   line of a `run:` script, a `permissions:` block, a `uses:` or the list of steps
->   (adding, removing or reordering one). What a changed script can reach cannot be judged
->   from a hunk (an interpreter, a socket or any executable can write), so every such
->   change is a finding for a person to re-check against the claim. Header comments and
->   step `name:`s may change freely.
+> - _Falsified by_ any hunk to `server-route-snapshot.yml` that changes anything other
+>   than a comment or a `name:` value. Every other key can change what runs or with what
+>   authority (a `run:` line, `permissions`, `uses:`, `env`, `if:`, `defaults.run.shell`,
+>   the triggers, the step list), and what a change can reach cannot be judged from a
+>   hunk. So each such hunk is a finding for a person to re-check against the claim. The
+>   free list is closed because it names the only edits that cannot execute.
 > - _Scope:_ `.github/workflows/server-route-snapshot.yml`.
-> - _Why not enforced:_ no lint, type or test here can tell what a shell script writes.
->   A CODEOWNERS entry or a CI check that fails on any change to these parts of the file
->   would be the mechanical form ("mechanical; not yet a rule").
+> - _Why not enforced:_ no lint, type or test here can tell what a workflow change writes.
+>   A CODEOWNERS entry on the file, or a CI check that fails when it changes outside
+>   comments and `name:` values, would be the mechanical form ("mechanical; not yet a
+>   rule").
 >
 > True when declared: the scripts' only calls that reach GitHub are one `gh pr view`
 > (a read), one `gh api` adding a reaction, and one
