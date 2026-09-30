@@ -48,10 +48,22 @@ test.afterAll(() => {
   stopAppServer()
 })
 
-/** The app's auth is an in-memory stub; this is the whole of signing in. */
+/**
+ * Signed in without a `file_host`: this spec starts only `vite`, and since
+ * #1595 signing in is a real passkey ceremony against the server. The app
+ * learns it is signed in from `GET /auth/session` alone, so answering that
+ * the way a live session does (`SessionView`, as the device backend also
+ * answers it) is the whole of it. Sign-in itself is `tests/auth`'s subject.
+ */
 async function openComposer(page: Page): Promise<void> {
+  await page.route("**/auth/session", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ expiresAt: Date.now() + 60 * 60 * 1000 }),
+    })
+  )
   await page.goto(`${BASE_URL}/sessions/new`, { waitUntil: "domcontentloaded" })
-  await page.getByRole("button", { name: /passkey/i }).click()
   await page.waitForURL(/sessions\/new/)
   // Waits on the wizard's own nav rather than the step rail, so this spec can
   // be pointed at a build from before the rail existed and still fail for the
