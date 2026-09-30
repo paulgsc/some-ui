@@ -110,8 +110,11 @@ the shortest life that works, and nothing recreated leaves its old copy behind.
 - **Enforced by `pnpm check:workflows`** (`scripts/check-workflows.ts`, rules in
   `packages/eslint/src/workflow-guards.ts`), in root `pnpm lint` and as its own `pr.yml`
   job that CI Gate requires. The same script carries RS1's fingerprint and RS2's grep
-  (above). It reads `uses:` lines, so an upload wrapped in a composite action or
-  another publisher's upload action is not seen: add it to the rule when one appears.
+  (above). It reads the value only as a direct child of the step's block-style `with:`
+  map, where the action gets it; anywhere else it does not count, and a flow-style
+  `with: {...}` fails as unreadable. It finds steps by their `uses:` line, so an upload
+  wrapped in a composite action or another publisher's upload action is not seen: add
+  it to the rule when one appears.
 - **Before shortening something to one day, name the path that breaks and its
   recovery** in the comment above the step. The usual one is "Re-run failed jobs" more
   than a day later, which finds no artifact: the recovery is a fresh run or the

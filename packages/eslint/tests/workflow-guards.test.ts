@@ -43,7 +43,7 @@ describe("findRetentionViolations", () => {
       '          retention-days: "1" # same run only'
     )
     expect(findRetentionViolations(F, text)).toEqual([
-      { kind: "retentionMissing", file: F, line: 12 },
+      { kind: "retentionUnreadable", file: F, line: 12 },
     ])
   })
 
@@ -148,6 +148,44 @@ describe("findRetentionViolations", () => {
         (v) => v.kind === "retentionUnstated" && v.line
       )
     ).toEqual([6, 11, 15])
+  })
+
+  it("reads the value only as a direct child of the step's block with: map", () => {
+    const text = steps(
+      "      - uses: actions/upload-artifact@v7",
+      "        env:",
+      "          retention-days: 1",
+      "      - uses: actions/upload-artifact@v7",
+      "        with:",
+      "          name: a",
+      "        env:",
+      "          retention-days: 1",
+      "      - uses: actions/upload-artifact@v7",
+      "        with:",
+      "          nested:",
+      "            retention-days: 1",
+      "      - uses: actions/upload-artifact@v7",
+      "        retention-days: 1",
+      "      - with: # inputs first",
+      "          retention-days: 1",
+      "        uses: actions/upload-artifact@v7"
+    )
+    expect(findRetentionViolations(F, text)).toEqual([
+      { kind: "retentionMissing", file: F, line: 4 },
+      { kind: "retentionMissing", file: F, line: 7 },
+      { kind: "retentionMissing", file: F, line: 12 },
+      { kind: "retentionMissing", file: F, line: 16 },
+    ])
+  })
+
+  it("reports a flow-style with: as unreadable instead of guessing", () => {
+    const text = steps(
+      "      - uses: actions/upload-artifact@v7",
+      "        with: { path: dist, retention-days: 1 }"
+    )
+    expect(findRetentionViolations(F, text)).toEqual([
+      { kind: "retentionUnreadable", file: F, line: 4 },
+    ])
   })
 
   it("ignores download steps and other actions", () => {
@@ -268,6 +306,7 @@ describe("describeWorkflowViolation", () => {
         { kind: "retentionUnstated", file: F, line: 4, value: "90" },
         "Retention:",
       ],
+      [{ kind: "retentionUnreadable", file: F, line: 7 }, "block mapping"],
       [
         { kind: "retentionNotDays", file: F, line: 6, value: "0" },
         "not a literal number of days",

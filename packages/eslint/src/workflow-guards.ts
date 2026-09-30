@@ -45,6 +45,11 @@ export type WorkflowViolation =
       readonly line: number
     }
   | {
+      readonly kind: "retentionUnreadable"
+      readonly file: string
+      readonly line: number
+    }
+  | {
       readonly kind: "retentionNotDays"
       readonly file: string
       readonly line: number
@@ -67,6 +72,7 @@ const UPLOAD_STEP =
   /^(\s*)(-\s+)?uses:\s*["']?actions\/upload-(?:pages-)?artifact@/
 const SEQUENCE_ITEM = /^(\s*)-(\s+)\S/
 const RETENTION = /^\s*retention-days:\s*(.*)$/
+const WITH_KEY = /^\s*with:(.*)$/
 const RETENTION_TAG = /^#+\s*Retention:\s*\S/
 const DAYS = /^[1-9][0-9]*$/
 
@@ -101,6 +107,58 @@ function stepStart(lines: ReadonlyArray<string>, usesLine: number): number {
   return usesLine
 }
 
+// The step's lines, its `- ` marker blanked so every key sits at `keyColumn`.
+function stepBody(
+  lines: ReadonlyArray<string>,
+  start: number,
+  keyColumn: number
+): Array<string> {
+  const first = lines[start] ?? ""
+  const body = [
+    SEQUENCE_ITEM.test(first)
+      ? " ".repeat(keyColumn) + first.slice(keyColumn)
+      : first,
+  ]
+  for (const next of lines.slice(start + 1)) {
+    if (!isBlankOrComment(next) && indentOf(next) < keyColumn) break
+    body.push(next)
+  }
+  return body
+}
+
+// One closed shape, not a list of rejected ones: the value counts only as a
+// direct child of the step's block-style `with:` map, the one place the action
+// receives it. Anywhere else (under `env:`, nested deeper) it is missing, and a
+// flow-style `with: {...}` is reported as unreadable rather than guessed at.
+type WithRetention =
+  | { readonly shape: "value"; readonly value: string }
+  | { readonly shape: "missing" | "flow" }
+
+function withRetention(
+  body: ReadonlyArray<string>,
+  keyColumn: number
+): WithRetention {
+  for (const [index, line] of body.entries()) {
+    const key = WITH_KEY.exec(line)
+    if (!key || indentOf(line) !== keyColumn) continue
+    if ((key[1] ?? "").replace(/(^|\s+)#.*$/, "").trim() !== "") {
+      return { shape: "flow" }
+    }
+    let childColumn: number | null = null
+    for (const child of body.slice(index + 1)) {
+      if (isBlankOrComment(child)) continue
+      if (indentOf(child) <= keyColumn) break
+      childColumn ??= indentOf(child)
+      const retention = RETENTION.exec(child)
+      if (retention && indentOf(child) === childColumn) {
+        return { shape: "value", value: scalarValue(retention[1] ?? "") }
+      }
+    }
+    return { shape: "missing" }
+  }
+  return { shape: "missing" }
+}
+
 export function findRetentionViolations(
   file: string,
   text: string
@@ -113,16 +171,16 @@ export function findRetentionViolations(
     const keyColumn = `${upload[1] ?? ""}${upload[2] ?? ""}`.length
     const start = upload[2] ? index : stepStart(lines, index)
 
-    let value: string | null = null
-    for (const next of lines.slice(start + 1)) {
-      if (!isBlankOrComment(next) && indentOf(next) < keyColumn) break
-      const retention = RETENTION.exec(next)
-      if (retention) value = scalarValue(retention[1] ?? "")
+    const found = withRetention(stepBody(lines, start, keyColumn), keyColumn)
+    if (found.shape === "flow") {
+      violations.push({ kind: "retentionUnreadable", file, line: start + 1 })
+      return
     }
-    if (value === null) {
+    if (found.shape !== "value") {
       violations.push({ kind: "retentionMissing", file, line: start + 1 })
       return
     }
+    const { value } = found
     if (value === "1") return
     if (!DAYS.test(value)) {
       violations.push({
@@ -249,7 +307,10 @@ function assertNever(value: never): never {
 export function describeWorkflowViolation(v: WorkflowViolation): string {
   switch (v.kind) {
     case "retentionMissing": {
-      return `${v.file}:${v.line}: upload step sets no retention-days. Set \`retention-days: 1\`, or a longer period with a \`# Retention: <why>\` line directly above the step.`
+      return `${v.file}:${v.line}: upload step sets no retention-days in its \`with:\` map. Set \`retention-days: 1\`, or a longer period with a \`# Retention: <why>\` line directly above the step.`
+    }
+    case "retentionUnreadable": {
+      return `${v.file}:${v.line}: upload step has a flow-style \`with: {...}\` this check cannot read. Write \`with:\` as a block mapping, with \`retention-days\` on its own line.`
     }
     case "retentionNotDays": {
       return `${v.file}:${v.line}: upload step sets retention-days to "${v.value}", not a literal number of days. 0, empty or an expression can mean the repo default, so no \`Retention:\` line can justify it.`
