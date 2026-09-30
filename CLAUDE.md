@@ -50,12 +50,20 @@ so a PR whose snapshot already reached `main` another way closes itself.
 >   paulgsc/server's `routes.yml`, whose `sync` job is the writer.
 > - _Falsified by_ a hunk in `.github/workflows/` that pushes to or creates that branch, or
 >   edits, closes or merges its PR (a `git push`, a `create-pull-request` with that
->   `branch:`, a `gh pr edit`/`close`/`merge` on it). Also falsified by a hunk that lets
->   `server-route-snapshot.yml` do more than read and dispatch: granting it
->   `contents: write` or `pull-requests: write`, or adding a checkout. And by any hunk
->   that deletes, moves or changes its one dispatch,
->   `gh workflow run routes.yml --repo paulgsc/server --ref main`, whatever replaces it:
->   what a different target would write cannot be judged from here.
+>   `branch:`, a `gh pr edit`/`close`/`merge` on it). Also by any hunk after which
+>   `server-route-snapshot.yml` holds anything outside this closed list, checked against
+>   the whole file as it stands after the diff:
+>
+>   - its `run:` scripts call no `gh`, `git`, `curl` or `wget` except `gh pr view` (a
+>     read), `gh api` on `…/issues/comments/…/reactions` (the 👀), and exactly one
+>     `gh workflow run routes.yml --repo paulgsc/server --ref main`;
+>   - it has no `uses:` step;
+>   - its permissions are only `issues: write` and `pull-requests: read`.
+>
+>   So adding a network call, a second dispatch or an action falsifies RS1, and so does
+>   deleting or changing the one dispatch, whatever replaces it. The list is closed
+>   because what an unlisted command would write cannot be judged from the hunk.
+>
 > - _Scope:_ `.github/workflows/` in this repo. That `routes.yml`'s `sync` job is the one
 >   writer on the server side is not reviewable from here; the server's `routes.yml`
 >   header states it.
@@ -65,7 +73,8 @@ so a PR whose snapshot already reached `main` another way closes itself.
 >   ("mechanical; not yet a rule").
 >
 > True when declared: no other workflow names the branch, and `server-route-snapshot.yml`
-> holds only `issues: write` and `pull-requests: read`, with no checkout and no push.
+> matches the closed list exactly (those three `gh` calls, no `uses:` step, and only
+> `issues: write` and `pull-requests: read` under a top-level `permissions: {}`).
 
 If you need a snapshot the bot hasn't delivered yet, follow
 `apps/servers/file_host/docs/route-inventory.md` in the server repo: apply the
