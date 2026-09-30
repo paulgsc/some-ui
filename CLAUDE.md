@@ -48,27 +48,23 @@ so a PR whose snapshot already reached `main` another way closes itself.
 > - _Claim:_ `server-route-snapshot.yml` never writes the `bot/server-route-snapshot`
 >   branch or its PR; it reads, reacts to the comment, and dispatches paulgsc/server's
 >   `routes.yml`, whose `sync` job is the PR's writer.
-> - _Falsified by_ any hunk after which `server-route-snapshot.yml` holds anything outside
->   this closed list, checked against the whole file as it stands after the diff:
->
->   - its `run:` scripts call no `gh`, `git`, `curl` or `wget` except `gh pr view` (a
->     read), `gh api` on `…/issues/comments/…/reactions` (the 👀), and exactly one
->     `gh workflow run routes.yml --repo paulgsc/server --ref main`;
->   - it has no `uses:` step;
->   - its permissions are only `issues: write` and `pull-requests: read`.
->
->   So adding a network call, a second dispatch or an action falsifies RS1, and so does
->   deleting or changing the one dispatch, whatever replaces it. The list is closed
->   because what an unlisted command would write cannot be judged from the hunk.
->
+> - _Falsified by_ any hunk to `server-route-snapshot.yml` that adds, removes or changes a
+>   line of a `run:` script, a `permissions:` block, a `uses:` or the list of steps
+>   (adding, removing or reordering one). What a changed script can reach cannot be judged
+>   from a hunk (an interpreter, a socket or any executable can write), so every such
+>   change is a finding for a person to re-check against the claim. Header comments and
+>   step `name:`s may change freely.
 > - _Scope:_ `.github/workflows/server-route-snapshot.yml`.
-> - _Why not enforced:_ no lint, type or test here looks inside workflow YAML, and
->   `actionlint` does not check what a step may call. Comparing the file against the list
->   is mechanical ("mechanical; not yet a rule").
+> - _Why not enforced:_ no lint, type or test here can tell what a shell script writes.
+>   A CODEOWNERS entry or a CI check that fails on any change to these parts of the file
+>   would be the mechanical form ("mechanical; not yet a rule").
 >
-> True when declared: the file matches the list exactly (those three `gh` calls, no
-> `uses:` step, and only `issues: write` and `pull-requests: read` under a top-level
-> `permissions: {}`).
+> True when declared: the scripts' only calls that reach GitHub are one `gh pr view`
+> (a read), one `gh api` adding a reaction, and one
+> `gh workflow run routes.yml --repo paulgsc/server --ref main`; the rest is shell built-ins
+> (`set`, `if`, `[`, `exit`, one assignment) and `echo` to the log and `$GITHUB_OUTPUT`.
+> There is no `uses:` step, and the only permissions are
+> `issues: write` and `pull-requests: read` under a top-level `permissions: {}`.
 >
 > **RS2: nothing else in this repository writes the route snapshot PR** (not reviewable).
 > Any workflow's action or script could push that branch without naming it, so no hunk

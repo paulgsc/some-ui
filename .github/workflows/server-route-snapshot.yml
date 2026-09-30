@@ -15,8 +15,9 @@ name: Server route snapshot
 # the branch itself: a second writer would race the first, and could
 # disagree with it about what the PR should hold.
 #
-#   RS1  This workflow only reads and dispatches; its closed list of calls
-#        and permissions is in CLAUDE.md, "Cross-repo coupling".
+#   RS1  This workflow only reads and dispatches; any change to its run:
+#        scripts, steps or permissions is re-checked against that
+#        (CLAUDE.md, "Cross-repo coupling").
 #   RS2  Nothing else in this repo writes the route snapshot PR (not
 #        reviewable; same section).
 #
