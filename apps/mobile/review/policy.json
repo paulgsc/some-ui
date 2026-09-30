@@ -4,7 +4,7 @@
   "identity": {
     "$comment": "Frozen (PD invariant P1 in the README). Play treats a new applicationId as a different app, and an update must carry the same signing certificate: https://developer.android.com/build/configure-app-module#set-application-id. The certificate is the CI key (ANDROID_KEYSTORE_* secrets), which is the future Play upload key: https://developer.android.com/studio/publish/app-signing",
     "applicationId": "dev.paulgsc.someui",
-    "signingCertSha256": null
+    "signingCertSha256": "61ecab46ebf36e2831d33a21952c5f2b960e52aaa65a0620c4e881db7fdf06b6"
   },
 
   "targetSdk": {
@@ -57,6 +57,9 @@
   "exportedComponents": {
     "${applicationId}.MainActivity": {
       "reason": "The launcher activity: the home screen starts it, so it must be exported."
+    },
+    "androidx.profileinstaller.ProfileInstallReceiver": {
+      "reason": "androidx.profileinstaller (via androidx.appcompat and Capacitor) installs baseline profiles when adb or the Play Store asks it to. Guarded by android.permission.DUMP, which only the system and adb hold."
     }
   },
 

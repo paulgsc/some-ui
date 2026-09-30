@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <application
         android:allowBackup="true"
@@ -45,4 +46,15 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- androidx.biometric (a dependency of @capacitor-community/sqlite)
+         declares these two, but the plugin reaches its biometric code only
+         when capacitor.config sets both plugins.CapacitorSQLite
+         androidIsEncryption and androidBiometric.biometricAuth, and this app
+         sets neither: the database is not encrypted and nothing prompts for a
+         fingerprint. So the app asks for neither. Setting biometricAuth later
+         means deleting these two lines and listing both in
+         review/policy.json. -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" tools:node="remove" />
+    <uses-permission android:name="android.permission.USE_FINGERPRINT" tools:node="remove" />
 </manifest>

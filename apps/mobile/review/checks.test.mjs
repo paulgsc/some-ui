@@ -47,6 +47,8 @@ const manifest = ({
       </intent-filter>
     </activity>
     <provider android:name="androidx.core.content.FileProvider" android:exported="false" />
+    <receiver android:name="androidx.profileinstaller.ProfileInstallReceiver"
+        android:permission="android.permission.DUMP" android:enabled="true" android:exported="true" />
     ${extraApp}
   </application>
 </manifest>`

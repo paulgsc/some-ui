@@ -222,7 +222,10 @@ Fails the run:
   manifest, and every exported component, is listed with a reason. A new
   one from a plugin fails, and so does a listed one that is gone. Play's
   restricted permissions (exact alarms, full-screen intents, and so on) also
-  need the declaration they would take.
+  need the declaration they would take. `USE_BIOMETRIC` and `USE_FINGERPRINT`,
+  which `androidx.biometric` brings with the SQLite plugin, are removed in
+  `AndroidManifest.xml` rather than listed: the app never turns on the
+  plugin's biometric unlock.
 - **The release build.** It is not debuggable, R8 ran (a non-empty
   `mapping.txt`), and it builds.
 
