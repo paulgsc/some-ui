@@ -48,12 +48,14 @@ so a PR whose snapshot already reached `main` another way closes itself.
 > - _Claim:_ `server-route-snapshot.yml` never writes the `bot/server-route-snapshot`
 >   branch or its PR; it reads, reacts to the comment, and dispatches paulgsc/server's
 >   `routes.yml`, whose `sync` job is the PR's writer.
-> - _Falsified by_ any hunk to `server-route-snapshot.yml` that changes anything other
->   than a comment or a `name:` value. Every other key can change what runs or with what
->   authority (a `run:` line, `permissions`, `uses:`, `env`, `if:`, `defaults.run.shell`,
->   the triggers, the step list), and what a change can reach cannot be judged from a
->   hunk. So each such hunk is a finding for a person to re-check against the claim. The
->   free list is closed because it names the only edits that cannot execute.
+> - _Falsified by_ any change to `.github/workflows/server-route-snapshot.yml` other than
+>   to a comment or a `name:` value, including deleting, renaming or moving the file,
+>   which a pure rename shows with no hunk at all. Every other key can change what runs
+>   or with what authority (a `run:` line, `permissions`, `uses:`, `env`, `if:`,
+>   `defaults.run.shell`, the triggers, the step list), and what a change can reach
+>   cannot be judged from a hunk. So each such change is a finding for a person to
+>   re-check against the claim. The free list is closed because it names the only edits
+>   that cannot execute.
 > - _Scope:_ `.github/workflows/server-route-snapshot.yml`.
 > - _Why not enforced:_ no lint, type or test here can tell what a workflow change writes.
 >   A CODEOWNERS entry on the file, or a CI check that fails when it changes outside
