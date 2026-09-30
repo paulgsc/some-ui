@@ -36,8 +36,11 @@ jobs:
       # tarball ships with a dist built for that exact version.
       - name: Build packages
         run: nix develop .#ci --command pnpm build --concurrency=100%
+      # Pinned to v1 on purpose: v2 only runs with Changesets CLI v3 and this
+      # repo is on CLI v2. See the same step in wasm-release.yml for the full
+      # reason and the inputs a move to v2 would also have to rename.
       - name: Create Release PR or Publish
-        uses: changesets/action@v2.1.2
+        uses: changesets/action@v1.9.0
         with:
           commit: "chore(release): version packages"
           title: "chore(release): version packages"

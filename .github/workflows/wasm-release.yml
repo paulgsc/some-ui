@@ -191,15 +191,21 @@ jobs:
           EOF
 
           echo "file=${CHANGESET_FILE}" >> "$GITHUB_OUTPUT"
+      # Read only by `release` below, in this same run; the default kept every
+      # run's copy for 90 days. Past a day, "Re-run failed jobs" on `release`
+      # finds nothing to download: use "Re-run all jobs", which rebuilds it, or
+      # a publish_only dispatch for a release commit whose publish failed.
       - name: Upload dist artifact
         uses: actions/upload-artifact@v7
         with:
           name: wasm-dist-${{ matrix.crate_name }}
           path: crates/${{ matrix.crate_name }}/dist
           if-no-files-found: error
+          retention-days: 1
       # The build job's checkout is a separate, ephemeral working tree from
       # the release job's - a changeset file written here never reaches
       # `release` unless it travels as an artifact like the dist output does.
+      # A day, like the dist artifact above and for the same reason.
       - name: Upload changeset
         if: needs.detect.outputs.is_release_commit != 'true'
         uses: actions/upload-artifact@v7
@@ -207,6 +213,7 @@ jobs:
           name: wasm-changeset-${{ matrix.crate_name }}
           path: ${{ steps.changeset.outputs.file }}
           if-no-files-found: error
+          retention-days: 1
   # ── Publish via changesets ───────────────────────────────────────────────
   release:
     name: Changesets WASM Release
@@ -281,8 +288,16 @@ jobs:
             --prefer-offline
         env:
           HUSKY: 0
+      # Pinned to v1 on purpose. changesets/action v2 only runs with
+      # Changesets CLI v3 and exits at start-up against the CLI v2 this repo
+      # uses ("designed to work with Changesets CLI v3 ... use Changesets
+      # action v1 instead"), so no run that built a crate got past this step
+      # while it was on v2. v2 also renamed the `commit`, `title`, `version`
+      # and `publish` inputs below and only warns about the old names. Moving
+      # to v2 means upgrading the CLI to v3 and renaming those inputs in the
+      # same change; .github/dependabot.yml ignores its majors for that reason.
       - name: Create Release PR or Publish
-        uses: changesets/action@v2.1.2
+        uses: changesets/action@v1.9.0
         with:
           commit: ${{ env.RELEASE_COMMIT_MESSAGE }}
           title: ${{ env.RELEASE_COMMIT_MESSAGE }}

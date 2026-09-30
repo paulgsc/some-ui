@@ -110,16 +110,23 @@ jobs:
       # is submitted, without waiting on manual review — so no signed .xpi is
       # downloaded in this job run. It becomes available on the AMO version
       # page once a reviewer approves it.
+      #
+      # So this step normally uploads nothing. It stays so that a run which
+      # does get a signed .xpi back keeps it, and for a day only: nothing in CI
+      # reads it, and the signed build lives on its AMO version page.
       - uses: actions/upload-artifact@v7
         with:
           name: signed-${{ matrix.extension_name }}
           path: artifacts/*.xpi
           if-no-files-found: warn
-          retention-days: 30
+          retention-days: 1
+      # For looking at what was just submitted, not for keeping: nothing in CI
+      # reads it, AMO holds the copy it was sent, and package-source.sh at the
+      # release commit rebuilds the same archive (`git archive HEAD`).
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: source-${{ matrix.extension_name }}
           path: ${{ matrix.extension_path }}/artifacts/source-*.zip
           if-no-files-found: warn
-          retention-days: 90
+          retention-days: 1

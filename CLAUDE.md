@@ -38,7 +38,50 @@ The snapshot normally arrives on its own: every merge to the server's `main` ope
 updates) a PR here on `bot/server-route-snapshot`, and every server PR is checked against
 this repo's contracts before it merges (server `.github/workflows/routes.yml`). Both go
 through `scripts/sync-server-routes.sh`, which is the one thing that writes these two
-files — if they move, update that script and nothing in the server repo.
+files — if they move, update that script and nothing in the server repo. That server job
+is the bot PR's only writer; `.github/workflows/server-route-snapshot.yml` just re-runs it
+when this repo's snapshot files change on `main`, or on a `/resync` comment on the bot PR,
+so a PR whose snapshot already reached `main` another way closes itself.
+
+> **RS1: the resync workflow only reads and dispatches.**
+>
+> - _Claim:_ `server-route-snapshot.yml` never writes the `bot/server-route-snapshot`
+>   branch or its PR; it reads, reacts to the comment, and dispatches paulgsc/server's
+>   `routes.yml`, whose `sync` job is the PR's writer.
+> - _Falsified by_ any change to `.github/workflows/server-route-snapshot.yml` other than
+>   adding, removing or editing full-line `#` comments or blank lines outside `run:`
+>   blocks and other multi-line scalars (`key: |`, `key: >-`, a quoted string spanning
+>   lines: inside one, a `#` line is part of the value and can be data). That includes
+>   deleting, renaming or moving the file, which a pure rename shows with no hunk at all.
+>   Every other line can change what runs or with what authority, and what a change can
+>   reach cannot be judged from a hunk, so each such change is a finding for a person to
+>   re-check against the claim. The exemption is closed: a YAML comment line is the only
+>   edit that cannot execute.
+> - _Scope:_ `.github/workflows/server-route-snapshot.yml`.
+> - _Why not enforced:_ no lint, type or test here can tell what a workflow change writes,
+>   so whether the claim still holds needs a person. That the file changed is enforced:
+>   `pnpm check:workflows` (below, "Workflow storage") hashes its raw bytes and fails
+>   until `RS1_FINGERPRINT` in `packages/eslint/src/workflow-guards.ts` matches, so every
+>   edit, a deletion, rename or move included, must bump the pin in the same change. A
+>   diff that bumps it is where this falsifier is applied: comment lines only need no
+>   re-check, anything else does. The check does not try to tell those apart itself:
+>   that is YAML parsing, and each lexical attempt on #1604 missed a shape.
+>
+> True when declared: the scripts' only calls that reach GitHub are one `gh pr view`
+> (a read), one `gh api` adding a reaction, and one
+> `gh workflow run routes.yml --repo paulgsc/server --ref main`; the rest is shell built-ins
+> (`set`, `if`, `[`, `exit`, one assignment) and `echo` to the log, `$GITHUB_OUTPUT` and
+> `$GITHUB_STEP_SUMMARY`.
+> There is no `uses:` step, and the only permissions are
+> `issues: write` and `pull-requests: read` under a top-level `permissions: {}`.
+>
+> **RS2: nothing else in this repository writes the route snapshot PR** (not reviewable).
+> Any workflow's action or script could push that branch without naming it, so no hunk
+> can settle it, and a reviewer should not flag or clear a diff on it. What can be
+> checked mechanically is the narrow case: no workflow other than
+> `server-route-snapshot.yml` names `bot/server-route-snapshot`. `pnpm check:workflows`
+> enforces that over every workflow and composite action (`.github/actions/**`), comment
+> lines included. True when declared: no other workflow names the branch.
 
 If you need a snapshot the bot hasn't delivered yet, follow
 `apps/servers/file_host/docs/route-inventory.md` in the server repo: apply the
@@ -49,6 +92,50 @@ then pass both to `scripts/sync-server-routes.sh <json> <ts> --verify`. The diff
 prints should be exactly the routes that changed, nothing else. Never hand-edit
 `routes.server.json` or `routes.ts` to add a route; both are generated, and a
 hand-written entry can silently drift from what the server actually serves.
+
+## Workflow storage
+
+Everything a workflow stores costs GitHub space for as long as it lives, so the default is
+the shortest life that works, and nothing recreated leaves its old copy behind.
+
+- **Artifacts live one day.** Every `actions/upload-artifact` and
+  `actions/upload-pages-artifact` step sets `retention-days: 1`. Anything else is written
+  as an explicit number with a `Retention:` line in the unbroken `#` comment block
+  directly above the step, saying who reads the artifact after that day and why that
+  path is one we want taken. A step with no `retention-days` fails either way: the repo
+  default (90 days) is not a period anyone chose. So does a value that is not a literal
+  number of days (`0`, empty, a `${{ }}` expression), since each can resolve to that
+  default. Every artifact here keeps one day
+  today, so none carries a `Retention:` line. Artifacts cannot be overwritten across
+  runs, so a short `retention-days` is how a recreated one leaves no tail.
+- **Enforced by `pnpm check:workflows`** (`scripts/check-workflows.ts`, rules in
+  `packages/eslint/src/workflow-guards.ts`), in root `pnpm lint` and as its own `pr.yml`
+  job that CI Gate requires. The same script carries RS1's fingerprint and RS2's grep
+  (above). It reads the value only as a direct child of the step's block-style `with:`
+  map, where the action gets it; anywhere else it does not count, and a flow-style
+  `with: {...}` or `- {uses: ...}` step fails as unreadable. It finds steps by their `uses:` line, so an upload
+  wrapped in a composite action or another publisher's upload action is not seen: add
+  it to the rule when one appears.
+- **Before shortening something to one day, name the path that breaks and its
+  recovery** in the comment above the step. The usual one is "Re-run failed jobs" more
+  than a day later, which finds no artifact: the recovery is a fresh run or the
+  workflow's own `publish_only` dispatch, since re-running a day-old publish would ship a
+  day-old build anyway.
+- **What stays, and why** (not artifacts, so no `retention-days` applies):
+  - Actions caches (`pnpm-cache`, `cargo-cache`, `resume-assets-cache`, the
+    workspace-dist and Storybook caches, the Docker `type=gha` layer cache in
+    `www-docker-release.yml`): GitHub evicts an entry unused for 7 days and caps the
+    repo at 10 GB. Keys that change with their inputs churn that cap but cannot grow
+    past it.
+  - The Pages deployment, npm packages, AMO submissions and the `paulgsc/www` Docker Hub
+    image are the point of their workflows and are meant to last. Nothing prunes old
+    Docker Hub tags; that is Docker Hub's storage, not this repo's.
+  - Bot branches (`release/pages`, `changeset-release/*`, `bot/server-route-snapshot`)
+    are opened with `create-pull-request`'s `delete-branch: true`, so each deletes itself
+    once `main` carries its content.
+- **Repo setting, not code:** Settings → Actions → General → "Artifact and log
+  retention" sets the default for any upload without `retention-days` and caps any
+  explicit value above it. It also sets how long run logs are kept.
 
 ## Test layout
 
