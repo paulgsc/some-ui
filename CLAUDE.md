@@ -49,18 +49,18 @@ so a PR whose snapshot already reached `main` another way closes itself.
 >   branch or its PR; it reads, reacts to the comment, and dispatches paulgsc/server's
 >   `routes.yml`, whose `sync` job is the PR's writer.
 > - _Falsified by_ any change to `.github/workflows/server-route-snapshot.yml` other than
->   to a comment or a `name:` value, including deleting, renaming or moving the file,
->   which a pure rename shows with no hunk at all. Every other key can change what runs
->   or with what authority (a `run:` line, `permissions`, `uses:`, `env`, `if:`,
->   `defaults.run.shell`, the triggers, the step list), and what a change can reach
->   cannot be judged from a hunk. So each such change is a finding for a person to
->   re-check against the claim. The free list is closed because it names the only edits
->   that cannot execute.
+>   adding, removing or editing full-line `#` comments or blank lines outside `run:`
+>   blocks (inside one, a `#` line is part of the script and can be data). That includes
+>   deleting, renaming or moving the file, which a pure rename shows with no hunk at all.
+>   Every other line can change what runs or with what authority, and what a change can
+>   reach cannot be judged from a hunk, so each such change is a finding for a person to
+>   re-check against the claim. The exemption is closed: a YAML comment line is the only
+>   edit that cannot execute.
 > - _Scope:_ `.github/workflows/server-route-snapshot.yml`.
 > - _Why not enforced:_ no lint, type or test here can tell what a workflow change writes.
->   A CODEOWNERS entry on the file, or a CI check that fails when it changes outside
->   comments and `name:` values, would be the mechanical form ("mechanical; not yet a
->   rule").
+>   A CODEOWNERS entry on the file, or a CI check that fails when anything changes but
+>   its comment lines outside `run:` blocks, would be the mechanical form ("mechanical;
+>   not yet a rule").
 >
 > True when declared: the scripts' only calls that reach GitHub are one `gh pr view`
 > (a read), one `gh api` adding a reaction, and one
