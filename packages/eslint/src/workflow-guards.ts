@@ -8,7 +8,9 @@
 // unbroken `#` comment block directly above the step. A step with no
 // `retention-days` at all fails either way: the repo default (90 days unless
 // changed in Settings) is not a period anybody chose, and a stated reason
-// should sit next to the number it justifies.
+// should sit next to the number it justifies. So does a value that is not a
+// literal number of days (`0`, empty, a `${{ }}` expression): each can
+// resolve to that default.
 //
 // RS1 (CLAUDE.md, "Cross-repo coupling"): `server-route-snapshot.yml`, with
 // full-line comments and blank lines outside block scalars removed, hashes to
@@ -41,6 +43,12 @@ export type WorkflowViolation =
       readonly line: number
     }
   | {
+      readonly kind: "retentionNotDays"
+      readonly file: string
+      readonly line: number
+      readonly value: string
+    }
+  | {
       readonly kind: "retentionUnstated"
       readonly file: string
       readonly line: number
@@ -58,6 +66,7 @@ const UPLOAD_STEP =
 const SEQUENCE_ITEM = /^(\s*)-(\s+)\S/
 const RETENTION = /^\s*retention-days:\s*(.*)$/
 const RETENTION_TAG = /^#+\s*Retention:\s*\S/
+const DAYS = /^[1-9][0-9]*$/
 
 function indentOf(line: string): number {
   return line.length - line.trimStart().length
@@ -113,6 +122,15 @@ export function findRetentionViolations(
       return
     }
     if (value === "1") return
+    if (!DAYS.test(value)) {
+      violations.push({
+        kind: "retentionNotDays",
+        file,
+        line: start + 1,
+        value,
+      })
+      return
+    }
 
     let tagged = false
     for (const above of lines.slice(0, start).reverse()) {
@@ -233,6 +251,9 @@ export function describeWorkflowViolation(v: WorkflowViolation): string {
   switch (v.kind) {
     case "retentionMissing": {
       return `${v.file}:${v.line}: upload step sets no retention-days. Set \`retention-days: 1\`, or a longer period with a \`# Retention: <why>\` line directly above the step.`
+    }
+    case "retentionNotDays": {
+      return `${v.file}:${v.line}: upload step sets retention-days to "${v.value}", not a literal number of days. 0, empty or an expression can mean the repo default, so no \`Retention:\` line can justify it.`
     }
     case "retentionUnstated": {
       return `${v.file}:${v.line}: upload step keeps its artifact for ${v.value} (not 1 day) with no \`# Retention: <why>\` line in the comment block directly above it.`

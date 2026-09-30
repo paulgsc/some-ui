@@ -101,7 +101,9 @@ the shortest life that works, and nothing recreated leaves its old copy behind.
   as an explicit number with a `Retention:` line in the unbroken `#` comment block
   directly above the step, saying who reads the artifact after that day and why that
   path is one we want taken. A step with no `retention-days` fails either way: the repo
-  default (90 days) is not a period anyone chose. Every artifact here keeps one day
+  default (90 days) is not a period anyone chose. So does a value that is not a literal
+  number of days (`0`, empty, a `${{ }}` expression), since each can resolve to that
+  default. Every artifact here keeps one day
   today, so none carries a `Retention:` line. Artifacts cannot be overwritten across
   runs, so a short `retention-days` is how a recreated one leaves no tail.
 - **Enforced by `pnpm check:workflows`** (`scripts/check-workflows.ts`, rules in

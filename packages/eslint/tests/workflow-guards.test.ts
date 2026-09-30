@@ -78,14 +78,40 @@ describe("findRetentionViolations", () => {
     )
     expect(findRetentionViolations(F, text)).toEqual([
       { kind: "retentionUnstated", file: F, line: 4, value: "90" },
-      { kind: "retentionUnstated", file: F, line: 7, value: "0" },
+      { kind: "retentionNotDays", file: F, line: 7, value: "0" },
       {
-        kind: "retentionUnstated",
+        kind: "retentionNotDays",
         file: F,
         line: 10,
         value: "${{ inputs.days }}",
       },
     ])
+  })
+
+  it("does not let a Retention: line excuse a value that is not a number of days", () => {
+    const text = steps(
+      "      # Retention: tagged.",
+      "      - uses: actions/upload-artifact@v7",
+      "        with:",
+      "          retention-days: 0",
+      "      # Retention: tagged.",
+      "      - uses: actions/upload-artifact@v7",
+      "        with:",
+      "          retention-days:",
+      "      # Retention: tagged.",
+      "      - uses: actions/upload-artifact@v7",
+      "        with:",
+      "          retention-days: ${{ inputs.days }}",
+      "      # Retention: tagged.",
+      "      - uses: actions/upload-artifact@v7",
+      "        with:",
+      "          retention-days: 7d"
+    )
+    expect(
+      findRetentionViolations(F, text).map((v) =>
+        v.kind === "retentionNotDays" ? v.value : v.kind
+      )
+    ).toEqual(["0", "", "${{ inputs.days }}", "7d"])
   })
 
   it("accepts a Retention: line anywhere in the unbroken block above", () => {
@@ -232,6 +258,10 @@ describe("describeWorkflowViolation", () => {
       [
         { kind: "retentionUnstated", file: F, line: 4, value: "90" },
         "Retention:",
+      ],
+      [
+        { kind: "retentionNotDays", file: F, line: 6, value: "0" },
+        "not a literal number of days",
       ],
       [{ kind: "rs1Changed", file: RS1_FILE, actual: "abc" }, "abc"],
       [{ kind: "rs1Changed", file: RS1_FILE, actual: null }, "missing"],
