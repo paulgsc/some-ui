@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The Some UI mark as the adaptive icon's foreground: the seven-cell honeycomb
+  of apps/www/public/favicon.svg, same geometry (flat-top hexagons of
+  circumradius 9, neighbour centres 20 apart on the 30/90/.../330 degree
+  spokes) and the honey pair that file draws on a dark tab strip. Keep it in
+  step with that file and with www's components/brand/hex-comb-mark.tsx.
+
+  Scaled 1.1 about the centre of the 108 canvas (a group applies scale before
+  translate), so the mark's outermost vertices sit at radius 31: inside the
+  66dp safe zone every launcher mask keeps, with the rest of the 108 left for
+  the mask to crop.
+
+  Also the Android 12+ splash icon (values/styles.xml) and the centre of the
+  launch window before 12 (drawable/splash.xml).
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="1.1"
+        android:scaleY="1.1"
+        android:translateX="54"
+        android:translateY="54">
+        <group
+            android:translateX="0"
+            android:translateY="-20">
+            <path
+                android:pathData="M9,0 L4.5,7.794 L-4.5,7.794 L-9,0 L-4.5,-7.794 L4.5,-7.794 Z"
+                android:fillColor="#F59E0B" />
+        </group>
+        <group
+            android:translateX="17.321"
+            android:translateY="-10">
+            <path
+                android:pathData="M9,0 L4.5,7.794 L-4.5,7.794 L-9,0 L-4.5,-7.794 L4.5,-7.794 Z"
+                android:fillColor="#F59E0B" />
+        </group>
+        <group
+            android:translateX="17.321"
+            android:translateY="10">
+            <path
+                android:pathData="M9,0 L4.5,7.794 L-4.5,7.794 L-9,0 L-4.5,-7.794 L4.5,-7.794 Z"
+                android:fillColor="#F59E0B" />
+        </group>
+        <group
+            android:translateX="0"
+            android:translateY="20">
+            <path
+                android:pathData="M9,0 L4.5,7.794 L-4.5,7.794 L-9,0 L-4.5,-7.794 L4.5,-7.794 Z"
+                android:fillColor="#F59E0B" />
+        </group>
+        <group
+            android:translateX="-17.321"
+            android:translateY="10">
+            <path
+                android:pathData="M9,0 L4.5,7.794 L-4.5,7.794 L-9,0 L-4.5,-7.794 L4.5,-7.794 Z"
+                android:fillColor="#F59E0B" />
+        </group>
+        <group
+            android:translateX="-17.321"
+            android:translateY="-10">
+            <path
+                android:pathData="M9,0 L4.5,7.794 L-4.5,7.794 L-9,0 L-4.5,-7.794 L4.5,-7.794 Z"
+                android:fillColor="#F59E0B" />
+        </group>
+        <path
+            android:pathData="M9,0 L4.5,7.794 L-4.5,7.794 L-9,0 L-4.5,-7.794 L4.5,-7.794 Z"
+            android:fillColor="#FDE68A" />
+    </group>
+</vector>

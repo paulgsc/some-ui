@@ -16,7 +16,14 @@
     </style>
 
 
+    <!-- The brand, not Capacitor's: before Android 12 the launch window is
+         drawable/splash; from 12 on the system draws its own splash from the
+         two windowSplashScreen items, which otherwise default to the theme's
+         (light) background and the launcher icon. -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
+        <item name="windowSplashScreenBackground">@color/ic_launcher_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>
 </resources>
