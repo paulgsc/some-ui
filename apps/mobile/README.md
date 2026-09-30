@@ -137,14 +137,15 @@ The debug APK is still built, for the review only (`mobile-review-<sha>`).
 
 **Launch test.** Before a run counts as green, its release APK is installed
 and started in an API 36 emulator, then driven by a short seeded monkey run
-(`launch/launch-test.sh`). A dead process, a crash or an ANR fails the run,
-and the older APK is then kept. Since the release build is R8-shrunk, this is
-what catches a class it stripped that something needed by name. The job
-summary also reports, without failing, the WebView's console errors and
-whether the sessions page's text was on screen; the screenshots and logcat
-are in the `mobile-launch-<sha>` artifact. The emulator is x86_64, so it runs
-the same build with `x86_64` added (`SOME_UI_EXTRA_ABI`): the dex and
-resources are byte-identical to the phone's (checked 2026-09-30).
+(`launch/launch-test.sh`). A dead process, a crash, an ANR or a monkey run
+that did not finish fails the run, and the older APK is then kept. Since the
+release build is R8-shrunk, this is what catches a class it stripped that
+something needed by name. It cannot see a WebView that loads blank, which
+does not crash: `launched.png` in the `mobile-launch-<sha>` artifact is the
+only evidence the page rendered (the first run, 2026-09-30, shows the
+sessions list's empty state). The emulator is x86_64, so it runs the same
+build with `x86_64` added (`SOME_UI_EXTRA_ABI`): the dex and resources are
+byte-identical to the phone's (checked 2026-09-30).
 
 The workflow also fails if the device backend is missing from the bundle.
 That is not hypothetical: www's build drops any import it considers
