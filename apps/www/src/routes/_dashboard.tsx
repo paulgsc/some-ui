@@ -94,9 +94,12 @@ const NAV_ITEMS: ReadonlyArray<NavItem> = [
   // house — the same seven-cell comb as the favicon and the landing hero.
   { to: "/app", label: "Home", icon: HexCombMark },
   { to: "/sessions", label: "Sessions", icon: ListVideo },
-  // Only in a build that carries the page (the Android app's; "apk").
+  // Only in a build that carries the page (the Android app's; "apk"). The
+  // library, so it opens idle: the sessions list's "Say why" and a reminder's
+  // "Not today" are the ways in that start listening, and this is the one
+  // that lets the recordings be played or deleted without a live microphone.
   ...(hasAudience("apk")
-    ? [{ to: "/soundbites", label: "Say why", icon: Mic } satisfies NavItem]
+    ? [{ to: "/soundbites", label: "Soundbites", icon: Mic } satisfies NavItem]
     : []),
   { to: "/resume", label: "Résumé", icon: FileText },
   { to: "/jobs", label: "Jobs", icon: Briefcase },

@@ -409,8 +409,7 @@ happen; these recordings are how the app finds out when it was.
 
 **Getting there is one tap, and the tap starts listening.**
 
-- **Sessions → Not studying today? → Say why** (the list the app opens on),
-  or **Say why** in the sidebar.
+- **Sessions → Not studying today? → Say why** (the list the app opens on).
 - A study reminder's **Not today: say why** button. A reminder that is not
   going to be followed is when the reason is freshest, so the answer is one
   tap from the notification instead of a dismissal.
@@ -419,6 +418,9 @@ Both land on `/soundbites?say=…`, which opens the microphone on arrival.
 Tap again to keep it. There is nothing to type, choose or confirm, and a
 row of sentence starters ("Too tired", "No time today", "The app got in the
 way" …) is there for the moment the mind goes blank.
+
+**Soundbites** in the sidebar opens the same page without listening: the
+way to play back or delete what is kept, with no live microphone.
 
 **What the app notes by itself**, beside each recording: when it was made
 (with the phone's time zone), how it was reached (the list, a reminder, or
