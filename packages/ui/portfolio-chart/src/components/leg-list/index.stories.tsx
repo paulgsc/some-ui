@@ -2,7 +2,6 @@ import type { Leg } from "@portfolio/types"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 
 import { LegList } from "."
-import { LegRow } from "./leg-row"
 
 // ── fixtures ──────────────────────────────────────────────────────────────────
 
@@ -56,30 +55,6 @@ const IC_PLS: Record<string, number> = {
   lc1: -85,
   sp1: 175,
   lp1: -70,
-}
-
-// ── LegRow stories ────────────────────────────────────────────────────────────
-
-type RowStory = StoryObj<typeof LegRow>
-type RowMeta = Meta<typeof LegRow>
-
-export const RowShortCallProfit: RowStory = {
-  args: { leg: SHORT_CALL, pl: 210, onRemove: () => {} },
-}
-
-export const RowLongCallLoss: RowStory = {
-  args: { leg: LONG_CALL, pl: -85, onRemove: () => {} },
-}
-
-export const RowShortPutBreakeven: RowStory = {
-  args: { leg: SHORT_PUT, pl: 0, onRemove: () => {} },
-}
-
-export const LegRowMeta: RowMeta = {
-  title: "Sandlot/Components/LegList/LegRow",
-  component: LegRow,
-  parameters: { layout: "padded" },
-  args: { onRemove: () => {} },
 }
 
 // ── LegList stories ───────────────────────────────────────────────────────────

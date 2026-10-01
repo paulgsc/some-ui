@@ -41,11 +41,3 @@ const meta: Meta = {
 export default meta
 
 export const Default: Story = {}
-
-/**
- * What the content registry mounts: no props, no providers, no host
- * knowledge of what this applet needs.
- */
-export const AsMountedByTheRegistry: Story = {
-  decorators: [(Story) => <Story />],
-}

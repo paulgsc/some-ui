@@ -145,6 +145,7 @@ export const LongTitleMarquee: Story = {
 }
 
 export const RapidSwitch: Story = {
+  args: Default.args,
   render: (args) => {
     const [song, setSong] = useState(args)
 

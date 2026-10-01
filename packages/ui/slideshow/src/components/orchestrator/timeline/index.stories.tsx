@@ -62,45 +62,6 @@ export const Default: Story = {
 }
 
 /**
- * Active Playback: Shows the timeline as if the stream is currently 8 seconds in.
- * Demonstrates past (muted), active (emerald), and future (primary) states.
- */
-export const ActiveStream: Story = {
-  args: {
-    scenes: mockScenes,
-  },
-  parameters: {
-    // Mocking the store state via your store's provider/initial state if using a decorator
-    orchestratorInitialState: {
-      current_time: 8000,
-      total_duration: 25000,
-      active_lifetimes: [
-        {
-          id: 1,
-          kind: {
-            type: "Scene",
-            scene_id: "Guest Interview",
-            scene_name: "Guest Interview",
-            duration: 15000,
-          },
-          started_at: 5000,
-        },
-        {
-          id: 2,
-          kind: {
-            type: "Scene",
-            scene_id: "Lower Third Overlay",
-            scene_name: "Lower Third Overlay",
-            duration: 4000,
-          },
-          started_at: 7000,
-        },
-      ],
-    },
-  },
-}
-
-/**
  * High Density: Many short scenes starting at the same time.
  * Tests the ergonomic "Collision" icons and UI layer counting.
  */

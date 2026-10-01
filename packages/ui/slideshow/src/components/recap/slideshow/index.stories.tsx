@@ -5,7 +5,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite"
 import type { SlideData, Status } from "."
 import { createCodeSlide, createStatusCardSlide, Slideshow } from "."
 
-export const StatusCards: Array<Status> = [
+const StatusCards: Array<Status> = [
   {
     id: "auth",
     icon: "✅",
@@ -63,34 +63,6 @@ export const StatusCards: Array<Status> = [
     tags: [{ text: "Core Feature", variant: "default" }],
     status: "planned",
   },
-]
-
-export const CodeSnippets = [
-  "const",
-  "function",
-  "{}",
-  "=>",
-  "async",
-  "await",
-  "import",
-  "export",
-  "[]",
-  "()",
-  "return",
-  "if",
-  "else",
-  "for",
-  "map",
-  "filter",
-  "reduce",
-  "===",
-  "!==",
-  "&&",
-  "||",
-  "true",
-  "false",
-  "null",
-  "undefined",
 ]
 
 const createDefaultSlides = (StatusCards: Array<Status>): Array<SlideData> => [

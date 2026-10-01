@@ -127,15 +127,3 @@ export const TopikLayout: Story = {
     },
   },
 }
-
-export const ChildrenOnly: Story = {
-  render: (args) => <AnimatedStory transitionMs={args.transitionMs} />,
-  args: { transitionMs: 300 },
-  parameters: {
-    docs: {
-      description: {
-        story: "**Children Without Focus** - Pure hierarchical composition",
-      },
-    },
-  },
-}

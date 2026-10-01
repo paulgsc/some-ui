@@ -44,22 +44,3 @@ export const Unresolved: Story = {
     </Phone>
   ),
 }
-
-/**
- * Tap any row, including "Not sure," to see the verdict land immediately —
- * no separate submit step, and abstaining still marks the answer's own row
- * correct ("a learner who abstained sees exactly what a learner who
- * answered sees," #1220).
- */
-export const Interactive: Story = {
-  render: () => (
-    <Phone>
-      <RoundChoices
-        prompt={ROUND_PROBE_PROMPT}
-        options={OPTIONS}
-        answerId={ANSWER_ID}
-        onCommit={() => {}}
-      />
-    </Phone>
-  ),
-}
