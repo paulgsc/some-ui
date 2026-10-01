@@ -30,7 +30,6 @@
     "@some-ui/styles": "workspace:*",
     "@some-ui/viewport-rotation": "0.0.4",
     "@some-ui/wasm-loader": "workspace:*",
-    "katex": "^0.18.1",
     "lucide-react": "catalog:",
     "some-ui-utils": "workspace:*",
     "zod": "catalog:"
