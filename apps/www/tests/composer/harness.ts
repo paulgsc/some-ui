@@ -78,20 +78,38 @@ export function stopAppServer(): void {
 }
 
 /**
- * The passkey screen, answered. With the static build (see `startAppServer`)
- * this is the whole of signing in: the button's own name is what tells it from
- * "New here? Create a passkey" beside it.
+ * Signed in, whichever kind of server `BASE_URL` turned out to be.
+ *
+ * `startAppServer` launches the static build, where the passkey screen's
+ * "Continue with a passkey" only opens the in-memory demo. But it reuses a
+ * server already on the port, and the usual one there is a plain
+ * `pnpm --filter www dev`, where that same button starts a real passkey
+ * ceremony against a `file_host` that is not running, and every suite here
+ * would time out. So `GET /auth/session` is also answered the way a live
+ * session answers it (`SessionView`, as the device backend also answers it):
+ * a server-mode app then believes it is signed in and opens the composer
+ * straight away, and the button is pressed only if the passkey screen is
+ * what actually appears. Its own name is what tells it from "New here?
+ * Create a passkey" beside it.
  */
 export async function signIn(page: Page): Promise<void> {
+  await page.route("**/auth/session", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ expiresAt: Date.now() + 60 * 60 * 1000 }),
+    })
+  )
   await page.goto(`${BASE_URL}/sessions/new`, { waitUntil: "domcontentloaded" })
-  await page.getByRole("button", { name: "Continue with a passkey" }).click()
   // Whichever layout the window is: a phone gets the tab bar, everything
   // wider gets the wizard's own nav. Both are there once the composer is.
-  await expect(
-    page
-      .getByRole("tablist", { name: "Composer panes" })
-      .or(page.getByRole("button", { name: "Continue", exact: true }))
-  ).toBeVisible()
+  const composer = page
+    .getByRole("tablist", { name: "Composer panes" })
+    .or(page.getByRole("button", { name: "Continue", exact: true }))
+  const passkey = page.getByRole("button", { name: "Continue with a passkey" })
+  await expect(composer.or(passkey)).toBeVisible()
+  if (await passkey.isVisible()) await passkey.click()
+  await expect(composer).toBeVisible()
 }
 
 /**
