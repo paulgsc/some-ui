@@ -1000,9 +1000,6 @@ importers:
       '@some-ui/makjang':
         specifier: workspace:*
         version: link:../ui/makjang
-      '@some-ui/portfolio':
-        specifier: workspace:*
-        version: link:../ui/portfolio-chart
       '@some-ui/slideshow':
         specifier: workspace:*
         version: link:../ui/slideshow
@@ -1725,24 +1722,6 @@ importers:
       '@some-ui/vite-config':
         specifier: workspace:*
         version: link:../../some-vite-config
-
-  packages/ui/searchbar:
-    devDependencies:
-      '@some-ui/tsconfig':
-        specifier: workspace:*
-        version: link:../../tsconfig
-      '@some-ui/vite-config':
-        specifier: workspace:*
-        version: link:../../some-vite-config
-      concurrently:
-        specifier: 10.0.3
-        version: 10.0.3
-      react:
-        specifier: ^19.0.0
-        version: 19.0.0
-      react-dom:
-        specifier: ^19.0.0
-        version: 19.0.0(react@19.0.0)
 
   packages/ui/shared:
     dependencies:

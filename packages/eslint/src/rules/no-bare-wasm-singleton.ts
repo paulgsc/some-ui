@@ -7,17 +7,16 @@ import type { Rule } from "eslint"
 /* eslint-disable @typescript-eslint/no-explicit-any -- ESTree shapes not modeled precisely by @types/eslint's Node union, see comment above */
 
 /**
- * The 8 wasm-bindgen crates under crates/* (UTL-WASM epic #529). Kept as a
- * literal list rather than a naming convention because these package names
- * don't share a common prefix/suffix to pattern-match on. 6 of the 8 are
- * published under the @some-ui npm scope; some-bricks/some-charts aren't
- * pnpm workspace packages yet, so they stay unscoped.
+ * The 7 wasm-bindgen crate names (UTL-WASM epic #529). Kept as a literal list
+ * rather than a naming convention because these package names don't share a
+ * common prefix/suffix to pattern-match on. 6 of the 7 are published under the
+ * @some-ui npm scope; some-charts isn't a pnpm workspace package yet, so it
+ * stays unscoped.
  */
 const WASM_CRATE_NAMES = [
   "@some-ui/hangul-game-core",
   "@some-ui/leetype-wasm",
   "@some-ui/polyhedron",
-  "some-bricks",
   "some-charts",
   "@some-ui/some-crossword",
   "@some-ui/some-hexagon",
