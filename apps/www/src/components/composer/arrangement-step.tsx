@@ -89,7 +89,10 @@ const BasicSceneList = ({ scenes }: BasicSceneListProps): JSX.Element => {
           // is honest about not being able to remove. Clipping it instead
           // is worse than it sounds: a card whose centre falls outside the
           // box stops being clickable at all.
-          "min-h-0 flex-1 overflow-y-auto"
+          // On a handheld the bar is hidden (`handheld:no-scrollbar`): a phone
+          // scrolls by finger, so a bar there is only noise - and on a
+          // browser that lays bars out it took its width out of the box.
+          "min-h-0 flex-1 overflow-y-auto handheld:no-scrollbar"
         }
       >
         <div ref={contentRef} className="space-y-2">
@@ -192,7 +195,7 @@ export const ArrangementStep = ({
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">
       <Card className="shrink-0">
-        <CardContent className="flex items-center justify-between gap-4 pt-6">
+        <CardContent className="flex items-center justify-between gap-4 pt-[var(--card-p,1.5rem)]">
           <div className="min-w-0">
             <p className="font-medium">Advanced arrangement</p>
             <p className="text-muted-foreground text-sm">
@@ -223,7 +226,7 @@ export const ArrangementStep = ({
             // docs/ui-fit's case 5: the one place in the wizard where scrolling
             // is the answer, declared here rather than inherited from a page
             // that happened to be taller than the window.
-            "min-h-0 flex-1 space-y-4 overflow-y-auto"
+            "min-h-0 flex-1 space-y-4 overflow-y-auto handheld:no-scrollbar"
           }
         >
           <Card>
@@ -256,7 +259,7 @@ export const ArrangementStep = ({
           </Card>
 
           <Card>
-            <CardContent className="pt-6">
+            <CardContent className="pt-[var(--card-p,1.5rem)]">
               <p className="font-medium">Editing the layout</p>
               <p className="text-muted-foreground text-sm">
                 Layout isn&apos;t arranged here. Press{" "}

@@ -5,10 +5,7 @@ import { LessonCheck } from "@lesson-crm/components/lesson-check"
 import { LessonDetails } from "@lesson-crm/components/lesson-details"
 import { LessonList } from "@lesson-crm/components/lesson-list"
 import { LessonSourcePane } from "@lesson-crm/components/lesson-source"
-import {
-  PaneTabBar,
-  useShowOnScrollUp,
-} from "@lesson-crm/components/pane-tab-bar"
+import { PaneTabBar } from "@lesson-crm/components/pane-tab-bar"
 import { PromptCard } from "@lesson-crm/components/prompt-card"
 import { StepRail } from "@lesson-crm/components/step-rail"
 import type {
@@ -32,7 +29,7 @@ import type { LessonSource } from "@lesson-crm/lib/source"
 import { sourceFromFile, sourceFromText } from "@lesson-crm/lib/source"
 import { Button } from "@some-ui/shared"
 import { ConversationPreview } from "@some-ui/topik"
-import { useIsMobile } from "some-ui-utils"
+import { useIsMobile, useShowOnScrollUp } from "some-ui-utils"
 
 type LessonCrmProps = {
   client: LessonCrmClient

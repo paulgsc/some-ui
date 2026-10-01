@@ -89,7 +89,7 @@ const ProfileSummary = (): JSX.Element => {
 
   return (
     <Card>
-      <CardContent className="flex items-center gap-4 pt-6">
+      <CardContent className="flex items-center gap-4 pt-[var(--card-p,1.5rem)]">
         {profileSummaryContent(outcome)}
         <Button asChild variant="outline" className="ml-auto">
           <Link to="/profile">Edit profile</Link>
@@ -106,7 +106,7 @@ const ContinueSessionCard = ({
 }): JSX.Element => {
   return (
     <Card className="border-primary/30 bg-primary/5">
-      <CardContent className="flex items-center gap-4 pt-6">
+      <CardContent className="flex items-center gap-4 pt-[var(--card-p,1.5rem)]">
         <div className="bg-primary/10 flex size-12 items-center justify-center rounded-full">
           <Play className="text-primary size-5" />
         </div>

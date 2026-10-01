@@ -257,7 +257,13 @@ export function useFittedPage<T>(
     // property of the list, not of whichever page happened to prove it, and
     // it is what makes probing terminate.
     let overflowFloor = Number.POSITIVE_INFINITY
-    let measuredAt: { available: number; width: number } | null = null
+    // The box each count has been seen in. A count is always measured in the
+    // box *it* produces - the pager beside the box exists only while there is
+    // more than one page, so a count that changes the page count changes the
+    // box's height too - which makes "the box differs from the last pass" a
+    // question the hook's own probing answers yes to. "The same count now
+    // produces a different box" is the question only the outside can answer.
+    const measuredAt = new Map<number, { available: number; width: number }>()
     // What the previous pass saw, so that content changing height *on its
     // own* - same page, same count, different pixels - can be told apart
     // from this hook's own convergence steps, which change `perPage` and are
@@ -269,16 +275,41 @@ export function useFittedPage<T>(
       const used = content.scrollHeight
       if (available === 0) return
 
-      const width = viewport.clientWidth
+      // `offsetWidth`, not `clientWidth`: this is the box's *identity*, and a
+      // classic scrollbar takes its width out of `clientWidth` exactly while
+      // the content overflows. Overflow is what a rejected probe is - so with
+      // `clientWidth` here, every rejection changed the "box", which voided
+      // the floor that rejection had just set, which let the same count be
+      // proposed again, which overflowed again: one pass per frame, forever,
+      // with the scrollbar flickering in and out as the visible symptom. The
+      // border-box width is set by layout and is the same with or without a
+      // bar, so only the window (or a parent) actually resizing changes it.
+      // Height stays `clientHeight`: nothing this hook measures gains a
+      // horizontal bar from its own probing.
+      const width = viewport.offsetWidth
+
+      const current = latestRef.current.perPage
 
       // A box of a different size is a different question, and every answer
       // learned about the old one is void. This is the *only* thing that
       // clears the floor from inside a pass - a list of a different length
       // tears this whole effect down and rebuilds it, which clears it too.
-      if (measuredAt?.available !== available || measuredAt.width !== width) {
-        measuredAt = { available, width }
+      //
+      // "Different" is judged count by count (see `measuredAt`): with one
+      // remembered box, the pager appearing because two per page became one
+      // per page was a new box, which voided the rejection of two, which let
+      // two be tried again - forever, with the page length flickering. The
+      // pager appearing is what one per page always looks like; the window
+      // growing is one per page looking different from last time.
+      const seen = measuredAt.get(current)
+      if (
+        seen !== undefined &&
+        (seen.available !== available || seen.width !== width)
+      ) {
+        measuredAt.clear()
         overflowFloor = Number.POSITIVE_INFINITY
       }
+      measuredAt.set(current, { available, width })
 
       // Consumed regardless of which branch below runs: a one-shot grant is
       // spent on the very next attempt whether or not it turns out to need it.
@@ -310,7 +341,6 @@ export function useFittedPage<T>(
       const clamp = (value: number): number =>
         Math.min(maxPerPage, Math.max(minPerPage, value))
 
-      const current = latestRef.current.perPage
       const currentPage = latestRef.current.page
       let settled = current
 

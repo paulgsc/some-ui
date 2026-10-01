@@ -10,6 +10,7 @@
  */
 
 import type { JSX, ReactNode } from "react"
+import { resetViewport, setViewport } from "@/test-support/viewport"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import type * as ReactRouterModule from "@tanstack/react-router"
 import {
@@ -169,11 +170,14 @@ async function renderAtReviewStep(): Promise<void> {
 beforeEach(() => {
   navigateSpy.mockClear()
   toastSpy.mockClear()
+  // The wizard: these flows walk it with Continue, which is the wide layout.
+  setViewport(false)
 })
 
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
+  resetViewport()
 })
 
 describe("SessionComposer: Save & Play, new session - success path and regressions", () => {

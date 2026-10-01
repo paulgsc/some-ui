@@ -82,7 +82,7 @@ function goTo(label: string): void {
     if (screen.queryByText(label, { selector: "p, span" })) {
       const visible = screen
         .getAllByText(label)
-        .some((node) => node.closest("[hidden]") === null)
+        .some((node) => node.closest("[hidden],[inert]") === null)
       if (visible) return
     }
     fireEvent.click(
@@ -363,7 +363,7 @@ describe("RoundSession", () => {
         expect(
           screen
             .getAllByText(label)
-            .some((node) => node.closest("[hidden]") === null)
+            .some((node) => node.closest("[hidden],[inert]") === null)
         ).toBe(true)
       }
       const card = screen.getAllByRole("region", { name: /^Rewrite / })[0]!
@@ -562,7 +562,7 @@ describe("RoundSession — recorded runs (X2, #1223)", () => {
       expect(runsPanel()).not.toBeInTheDocument()
       const runsLabel = screen
         .queryAllByText("Runs", { selector: "p, span" })
-        .filter((node) => node.closest("[hidden]") === null)
+        .filter((node) => node.closest("[hidden],[inert]") === null)
       expect(runsLabel).toHaveLength(0)
     }
     const step = (name: string): boolean => {

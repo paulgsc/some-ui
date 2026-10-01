@@ -81,7 +81,7 @@ const DestinationCard = (destination: Destination): JSX.Element => {
   const { title, description, icon: Icon, cta, external } = destination
   const body = (
     <Card className="hover:border-primary/50 group h-full transition-colors">
-      <CardContent className="flex h-full flex-col gap-4 pt-6">
+      <CardContent className="flex h-full flex-col gap-4 pt-[var(--card-p,1.5rem)]">
         <div className="bg-primary/10 flex size-11 items-center justify-center rounded-full">
           <Icon className="text-primary size-5" aria-hidden />
         </div>

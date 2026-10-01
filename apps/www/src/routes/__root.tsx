@@ -51,7 +51,11 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       {import.meta.env.DEV && (
         <TanstackDevtools
           config={{
-            position: "bottom-left",
+            // Not a bottom corner: on a phone the bottom edge is the tab bar
+            // (the composer's, the lesson CRM's), and this trigger sat on its
+            // first tab and swallowed the tap. The header's far side is empty
+            // at every width.
+            position: "top-right",
           }}
           plugins={[
             {

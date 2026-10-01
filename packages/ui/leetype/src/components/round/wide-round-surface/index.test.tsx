@@ -116,7 +116,9 @@ describe("WideRoundSurface", () => {
       />
     )
     fireEvent.click(screen.getByLabelText("Next artifact"))
-    expect(screen.getByText("Constraints")).toBeInTheDocument()
+    expect(
+      screen.getByText("Constraints", { selector: "span" })
+    ).toBeInTheDocument()
 
     rerender(
       <WideRoundSurface
@@ -130,7 +132,9 @@ describe("WideRoundSurface", () => {
     // Still on the second artifact — the primary switcher's own instance
     // (and its position state) survived the second switcher appearing,
     // rather than being remounted from scratch.
-    expect(screen.getByText("Constraints")).toBeInTheDocument()
+    expect(
+      screen.getByText("Constraints", { selector: "span" })
+    ).toBeInTheDocument()
   })
 
   it("offers no way to open the production probe before a commitment is recorded", () => {
