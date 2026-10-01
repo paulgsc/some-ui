@@ -120,7 +120,7 @@ const RecordButton = ({
   const label = RECORD_LABELS[phase.kind]
 
   return (
-    <div className="relative mx-auto size-44">
+    <div className="relative mx-auto size-44 [@media(max-height:479px)]:size-36">
       <svg
         className="absolute inset-0 size-full -rotate-90"
         viewBox="0 0 100 100"
@@ -469,35 +469,41 @@ export const Soundbites = ({
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-6 pb-8">
-      <header className="space-y-1 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">Not today?</h1>
-        <p className="text-muted-foreground text-sm">
-          Say why, out loud, in a minute or less. No typing, no wrong answers.
-        </p>
-      </header>
+      {/* A phone held sideways (under 480px tall: the height half of the
+          `handheld` variant in @some-ui/styles) has no room to stack the
+          header over the button, and stacked, "Throw it away" fell below
+          the fold mid-take. There they sit side by side instead. */}
+      <div className="flex flex-col gap-6 [@media(max-height:479px)]:flex-row [@media(max-height:479px)]:items-center [@media(max-height:479px)]:gap-8">
+        <header className="space-y-1 text-center [@media(max-height:479px)]:flex-1 [@media(max-height:479px)]:text-left">
+          <h1 className="text-2xl font-semibold tracking-tight">Not today?</h1>
+          <p className="text-muted-foreground text-sm">
+            Say why, out loud, in a minute or less. No typing, no wrong answers.
+          </p>
+        </header>
 
-      <div className="flex flex-col items-center gap-3">
-        <RecordButton
-          phase={phase}
-          elapsed={elapsed}
-          level={level}
-          onPress={() => void (recording ? finish() : start())}
-        />
-        {recording ? (
-          <Button variant="ghost" size="sm" onClick={discard}>
-            Throw it away
-          </Button>
-        ) : (
-          // Holds the line the button above takes while recording, so the
-          // page does not jump when a take starts.
-          <div className="h-9" aria-hidden="true" />
-        )}
-        <p
-          aria-live="polite"
-          className="text-muted-foreground min-h-5 text-center text-sm"
-        >
-          {notice}
-        </p>
+        <div className="flex flex-col items-center gap-3">
+          <RecordButton
+            phase={phase}
+            elapsed={elapsed}
+            level={level}
+            onPress={() => void (recording ? finish() : start())}
+          />
+          {recording ? (
+            <Button variant="ghost" size="sm" onClick={discard}>
+              Throw it away
+            </Button>
+          ) : (
+            // Holds the line the button above takes while recording, so the
+            // page does not jump when a take starts.
+            <div className="h-9" aria-hidden="true" />
+          )}
+          <p
+            aria-live="polite"
+            className="text-muted-foreground min-h-5 text-center text-sm"
+          >
+            {notice}
+          </p>
+        </div>
       </div>
 
       {phase.kind === "blocked" && (
