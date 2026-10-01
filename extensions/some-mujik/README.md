@@ -35,7 +35,7 @@ The extension operates via three distinct components:
 
 ## Extension Points
 
-- **Audio Analysis:** Hook into `inferSongDims` to transition from placeholder values to real-time `AudioContext` or `AnalyserNode` data.
+- **Audio Analysis:** Hook into `paramsFromSongMeta` to transition from placeholder values to real-time `AudioContext` or `AnalyserNode` data.
 - **Visualization Model:** Modify the mapping (e.g., mapping valence to hue) or animation rules without touching extraction logic.
 - **Metadata Extraction:** Update the scraping layer if YouTube’s DOM structure changes.
 

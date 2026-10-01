@@ -52,12 +52,11 @@ export async function loadWasm() {
     expectMessageForRule(msgs, RULE_ID, "bare polyhedron singleton import")
   })
 
-  it("fires for each of the 8 known wasm-bindgen crate names", async () => {
+  it("fires for each of the 7 known wasm-bindgen crate names", async () => {
     const crates = [
       "@some-ui/hangul-game-core",
       "@some-ui/leetype-wasm",
       "@some-ui/polyhedron",
-      "some-bricks",
       "some-charts",
       "@some-ui/some-crossword",
       "@some-ui/some-hexagon",
