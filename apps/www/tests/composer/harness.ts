@@ -16,6 +16,8 @@
 import { spawn, type ChildProcess } from "node:child_process"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { expect } from "@playwright/test"
+import type { Page } from "@playwright/test"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -56,6 +58,10 @@ export async function startAppServer(): Promise<void> {
     cwd: APP_ROOT,
     stdio: "ignore",
     detached: false,
+    // The static build: no `file_host`, so "signing in" only opens the
+    // in-memory demo (`lib/auth/session.ts`). Without it the passkey screen
+    // asks a server that is not there and never lets the spec in.
+    env: { ...process.env, VITE_STATIC_DATA: "true" },
   })
 
   if (!(await waitForServer(90_000))) {
@@ -69,4 +75,38 @@ export async function startAppServer(): Promise<void> {
 export function stopAppServer(): void {
   server?.kill("SIGTERM")
   server = null
+}
+
+/**
+ * The passkey screen, answered. With the static build (see `startAppServer`)
+ * this is the whole of signing in: the button's own name is what tells it from
+ * "New here? Create a passkey" beside it.
+ */
+export async function signIn(page: Page): Promise<void> {
+  await page.goto(`${BASE_URL}/sessions/new`, { waitUntil: "domcontentloaded" })
+  await page.getByRole("button", { name: "Continue with a passkey" }).click()
+  // Whichever layout the window is: a phone gets the tab bar, everything
+  // wider gets the wizard's own nav. Both are there once the composer is.
+  await expect(
+    page
+      .getByRole("tablist", { name: "Composer panes" })
+      .or(page.getByRole("button", { name: "Continue", exact: true }))
+  ).toBeVisible()
+}
+
+/**
+ * Whether a window of this size is handheld, by `useIsMobile`'s rule
+ * (`isHandheldBox`, some-ui-utils): narrower than `md` or shorter than 480px.
+ * Restated rather than imported, since that package's index pulls in React
+ * hooks this Node-side harness has no use for. Width alone used to be the
+ * rule, and it called a landscape phone a desktop.
+ */
+export function isHandheld({
+  width,
+  height,
+}: {
+  width: number
+  height: number
+}): boolean {
+  return width < 768 || height < 480
 }

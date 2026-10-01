@@ -630,6 +630,17 @@ describe("LessonCrm on a phone: a bottom tab per pane", () => {
     const bar = (): Element | null => container.querySelector("[data-shown]")
     const scroller = screen.getByRole("navigation", { name: "Lessons" })
 
+    // A box with almost nothing to scroll cannot drive the bar (see
+    // `useShowOnScrollUp`), so this one is given real room: 300px in a 400px
+    // window of it.
+    Object.defineProperty(scroller, "clientHeight", {
+      configurable: true,
+      value: 400,
+    })
+    Object.defineProperty(scroller, "scrollHeight", {
+      configurable: true,
+      value: 700,
+    })
     const scrollTo = (top: number): void => {
       Object.defineProperty(scroller, "scrollTop", {
         configurable: true,

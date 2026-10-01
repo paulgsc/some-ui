@@ -12,10 +12,11 @@
  */
 
 import type { ReactNode } from "react"
+import { resetViewport, setViewport } from "@/test-support/viewport"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import type * as ReactRouterModule from "@tanstack/react-router"
 import { cleanup, render, screen } from "@testing-library/react"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import type * as TenantModule from "@/lib/tenant"
 import type { SessionRecord } from "@/lib/tenant"
@@ -61,9 +62,14 @@ vi.mock(
 
 const { EditSessionRoute } = await import("@/routes/_dashboard/sessions/new")
 
+beforeEach(() => {
+  setViewport(false)
+})
+
 afterEach(() => {
   cleanup()
   refetch.mockClear()
+  resetViewport()
 })
 
 function withQueryClient(children: ReactNode): ReactNode {

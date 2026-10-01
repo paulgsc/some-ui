@@ -1,6 +1,7 @@
 import type { JSX } from "react"
 import { useEffect, useRef } from "react"
 import {
+  cn,
   useIsMobile,
   useIsTerminal,
   useOrchestratorClock,
@@ -100,7 +101,7 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
   /**
    * On a phone the activity gets the screen and the chrome gets an icon.
    *
-   * The desktop composition below is three bands stacked under the viewport
+   * The desktop composition is three bands stacked under the viewport
    * (notice, now/next, transport) plus the dashboard header above it. That
    * is a reasonable use of space a wide screen has spare and an unreasonable
    * one at 390px, where between them they take more room than the activity —
@@ -112,27 +113,38 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
    * about something the app is about to do to a person's ears, shown once
    * per activity ever; putting it behind a tap would be hiding a disclosure
    * behind an affordance nobody has a reason to open yet.
+   *
+   * One tree, not one per layout. `isMobile` can change mid-lesson (a phone
+   * window resized, a desktop window dragged across `md`), and React keys a
+   * child by its type and its slot: when the two layouts were two returns,
+   * `SessionViewport` sat in slot 2 of one and slot 1 of the other, so
+   * crossing the line unmounted it and every activity inside it - a Topik
+   * lesson went back to its material list. Here each child owns one slot in
+   * both layouts and only the chrome around the viewport comes and goes, so
+   * the activity is the same mount on both sides of the breakpoint
+   * (`__tests__/live-player.test.tsx` flips it mid-render to hold that).
    */
-  if (isMobile) {
-    return (
-      <div className="flex h-full min-h-0 w-full flex-col">
-        <SessionAudioNotice session={session} className="shrink-0" />
-        {/* Above the viewport, not over it — see `SessionChrome`'s own note
-            on why the trigger is layout and only the sheet is overlay. */}
-        <SessionChrome scenes={session.scenes} onPlay={() => void start()} />
-        <SessionViewport session={session} />
-      </div>
-    )
-  }
-
   return (
-    <div className="flex h-full min-h-0 w-full flex-col gap-4">
+    <div
+      className={cn(
+        "flex h-full min-h-0 w-full flex-col",
+        !isMobile && "gap-4"
+      )}
+    >
       {/* Layer 2 of audio disclosure: shown the first time a person enters
           an activity that uses audio, then never again for that activity. */}
-      <SessionAudioNotice session={session} />
+      <SessionAudioNotice
+        session={session}
+        className={isMobile ? "shrink-0" : undefined}
+      />
+      {/* Above the viewport, not over it — see `SessionChrome`'s own note
+          on why the trigger is layout and only the sheet is overlay. */}
+      {isMobile && (
+        <SessionChrome scenes={session.scenes} onPlay={() => void start()} />
+      )}
       <SessionViewport session={session} />
-      <NowNextStrip scenes={session.scenes} />
-      <TransportControls onPlay={() => void start()} />
+      {!isMobile && <NowNextStrip scenes={session.scenes} />}
+      {!isMobile && <TransportControls onPlay={() => void start()} />}
     </div>
   )
 }

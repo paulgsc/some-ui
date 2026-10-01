@@ -304,7 +304,34 @@ pnpm --filter www exec playwright test tests/composer
 ```
 
 It reuses an already-running dev server if it finds one, so a local `pnpm dev`
-loop stays fast.
+loop stays fast. When it boots its own it runs the static build
+(`VITE_STATIC_DATA=true`): there is no `file_host` to sign in to, so "signing
+in" is the in-memory demo.
+
+**On a phone the composer is not the wizard.** Below `md` it is the lesson
+CRM's shape: one concern per pane (Browse, Added, Configure, Arrange, Review),
+switched by the shared `BottomTabBar` (`@some-ui/shared`), with Save living in
+the last pane because there is no Back / Continue footer. Both layouts walk one
+position (`components/composer/panes.ts`), so crossing the breakpoint keeps
+your place. `tests/composer/mobile.spec.ts` holds that shape, and two things
+more that nothing else could see:
+
+- **`useFittedPage` must not take its own probing for evidence.** It forgets
+  the counts it has rejected when "the box changed", and two things it does
+  itself looked like that: a rejected count overflowing brings a scrollbar
+  that takes width from the box, and a count that changes the page count
+  brings or removes the pager beside the box, which changes its height. Each
+  voided the rejection, the count was tried again, and the scrollbar (or the
+  page length) flickered every frame for as long as the page was open. The box
+  is now identified by its border-box width, which a scrollbar cannot change,
+  and judged count by count: only _the same count_ producing a different box is
+  the window resizing. The spec fails against the old hook with
+  `Configure: the fitted box kept changing between frames`.
+- **A phone paints no scrollbar.** Scrolling there is by finger, and a bar is
+  only noise, so the fitted boxes carry `handheld:no-scrollbar` (below `md`
+  wide or 480px tall: a landscape phone is a phone too). The spec
+  launches Chromium _without_ `--hide-scrollbars` (Playwright's headless
+  default), because a run that can paint no scrollbar cannot fail on one.
 
 ### 3. CI
 

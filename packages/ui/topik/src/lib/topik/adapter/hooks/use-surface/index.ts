@@ -13,18 +13,20 @@
  * width test and far too short for a header, a transcript and a quiz. The
  * applet measures its own box rather than the viewport, since a host may
  * mount it in a pane.
+ *
+ * The numbers are the workspace's (`isHandheldBox`, some-ui-utils), not this
+ * applet's own: the host's `useIsMobile` applies the same rule to the window.
+ * When they were two pairs of constants they disagreed on a landscape phone -
+ * the host read it as a desktop and the applet as a handheld - and it was the
+ * host's half that rebuilt the lesson on rotation.
  */
 
 import type { RefObject } from "react"
 import { useLayoutEffect, useState } from "react"
+import { HANDHELD_MAX_HEIGHT, isHandheldBox } from "some-ui-utils"
 
 export type Surface = "desktop" | "handheld"
 export type SurfacePreference = Surface | "auto"
-
-/** Tailwind's `md`: where the desktop session stops fitting side by side. */
-export const HANDHELD_MAX_WIDTH = 768
-/** Below this the desktop header alone takes most of the height. */
-export const HANDHELD_MAX_HEIGHT = 480
 
 export type Box = { width: number; height: number }
 
@@ -35,9 +37,7 @@ export type Box = { width: number; height: number }
  */
 export function chooseSurface({ width, height }: Box): Surface {
   if (width <= 0 || height <= 0) return "desktop"
-  return width < HANDHELD_MAX_WIDTH || height < HANDHELD_MAX_HEIGHT
-    ? "handheld"
-    : "desktop"
+  return isHandheldBox({ width, height }) ? "handheld" : "desktop"
 }
 
 /** Landscape handhelds lay the lesson out in two columns. */

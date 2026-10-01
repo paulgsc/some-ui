@@ -26,7 +26,7 @@
 import { expect, test } from "@playwright/test"
 import type { Page } from "@playwright/test"
 
-import { BASE_URL, startAppServer, stopAppServer } from "./harness"
+import { isHandheld, signIn, startAppServer, stopAppServer } from "./harness"
 
 /**
  * Portrait phone, landscape phone, laptop. The landscape entry is the one
@@ -48,29 +48,8 @@ test.afterAll(() => {
   stopAppServer()
 })
 
-/**
- * Signed in without a `file_host`: this spec starts only `vite`, and since
- * #1595 signing in is a real passkey ceremony against the server. The app
- * learns it is signed in from `GET /auth/session` alone, so answering that
- * the way a live session does (`SessionView`, as the device backend also
- * answers it) is the whole of it. Sign-in itself is `tests/auth`'s subject.
- */
 async function openComposer(page: Page): Promise<void> {
-  await page.route("**/auth/session", (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ expiresAt: Date.now() + 60 * 60 * 1000 }),
-    })
-  )
-  await page.goto(`${BASE_URL}/sessions/new`, { waitUntil: "domcontentloaded" })
-  await page.waitForURL(/sessions\/new/)
-  // Waits on the wizard's own nav rather than the step rail, so this spec can
-  // be pointed at a build from before the rail existed and still fail for the
-  // reason it is about.
-  await expect(
-    page.getByRole("button", { name: "Continue", exact: true })
-  ).toBeVisible()
+  await signIn(page)
   await waitForSettledFit(page)
 }
 
@@ -194,6 +173,10 @@ for (const viewport of VIEWPORTS) {
     test("the step rail walks the wizard the way Continue does", async ({
       page,
     }) => {
+      // A handheld window gets the tab bar (`components/composer/panes.ts`),
+      // whose shape `mobile.spec.ts` holds; the rail and Back/Continue are
+      // the wizard's.
+      test.skip(isHandheld(viewport), "a phone has tabs, not a wizard")
       await openComposer(page)
 
       // Steps 2-4 go through the same predicate Continue does, so with
@@ -223,6 +206,10 @@ for (const viewport of VIEWPORTS) {
     test("every step fits the window instead of scrolling the page", async ({
       page,
     }) => {
+      // A handheld window gets the tab bar (`components/composer/panes.ts`),
+      // whose shape `mobile.spec.ts` holds; the rail and Back/Continue are
+      // the wizard's.
+      test.skip(isHandheld(viewport), "a phone has tabs, not a wizard")
       await openComposer(page)
       await page.locator(".grid > button").first().click()
 

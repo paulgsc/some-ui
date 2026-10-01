@@ -26,6 +26,7 @@ import {
   installFileHostSabotage,
   SABOTAGE_MODES,
 } from "@/test-support/file-host-sabotage"
+import { resetViewport, setViewport } from "@/test-support/viewport"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import type * as ReactRouterModule from "@tanstack/react-router"
 import {
@@ -109,12 +110,15 @@ function isRetryableMode(mode: (typeof REJECTING_MODES)[number]): boolean {
 
 beforeEach(() => {
   navigateSpy.mockClear()
+  // The wizard: these flows walk it with Continue, which is the wide layout.
+  setViewport(false)
 })
 
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
   vi.unstubAllEnvs()
+  resetViewport()
 })
 
 describe("composer Save & Play, new session (#933's flow)", () => {
