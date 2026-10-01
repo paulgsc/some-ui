@@ -19,7 +19,6 @@
     "vitest.*.ts",
     "../../../assets/**/*",
     "**/data/chat-messages.ts",
-    "**/data/index.ts",
     "**/demo/**",
     "../../some-content/src/**/*"
   ]

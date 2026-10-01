@@ -5,10 +5,73 @@
     "apps/www/public/sw.js",
     "packages/speech/src/lib/testing/**",
     "**/__type-fixtures__/**",
-    "apps/www/tests/layout-invariants/stress-content.ts"
+    "apps/www/tests/layout-invariants/stress-content.ts",
+    "packages/eslint/tests/lint-fixtures/**",
+    "packages/some-styles/styles-build/*.d.mts",
+    "packages/some-styles/styles-build/examples/**",
+    "packages/ui/chat/test/polyhedron-stub.ts"
   ],
   "ignoreBinaries": ["typst", "rustc"],
   "workspaces": {
+    ".": {
+      "entry": [
+        ".storybook/uno.config.ts",
+        "scripts/audit-node-licenses.mjs",
+        "scripts/fix-gen.ts",
+        "extensions/scripts/*.mjs"
+      ]
+    },
+    "extensions/some-censor": {
+      "entry": [
+        "src/background/background.ts",
+        "src/content/content.ts",
+        "src/popup/popup.ts",
+        "src/lib/platform/**/api.*.ts",
+        "src/lib/content/actuator/index.ts",
+        "scripts/setup-test-profile.mjs"
+      ]
+    },
+    "extensions/some-conveyor": {
+      "entry": [
+        "src/background/background.ts",
+        "src/content/content.ts",
+        "src/lib/platform/**/api.*.ts"
+      ]
+    },
+    "extensions/some-drama": {
+      "entry": [
+        "src/background/background.ts",
+        "src/content/content.ts",
+        "src/popup/popup.ts",
+        "uno.config.popup.ts"
+      ]
+    },
+    "extensions/some-filter": {
+      "entry": ["public/prepaint-start.js"]
+    },
+    "extensions/some-mujik": {
+      "entry": [
+        "src/background/background.ts",
+        "src/content/content.ts",
+        "src/popup/popup.ts"
+      ]
+    },
+    "extensions/suspender-ledger": {
+      "entry": [
+        "src/worker/worker.ts",
+        "src/content/watch.ts",
+        "src/content/resume-veil.ts",
+        "src/popup/index.ts",
+        "src/debug/index.ts",
+        "src/lib/platform/firefox.ts"
+      ]
+    },
+    "extensions/transport": {
+      "entry": ["tests/e2e/harness/entry.ts"]
+    },
+    "extensions/filter-classifier": {
+      "entry": ["tests/e2e/harness/entry.ts"]
+    },
     "packages/ui/resume": {
       "ignoreDependencies": ["@some-ui/contract-harness"]
     }

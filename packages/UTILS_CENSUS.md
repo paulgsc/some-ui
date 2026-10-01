@@ -178,10 +178,10 @@ averaging them would misstate both.
 
 ## 11. Region-rect-store
 
-| Symbol               | Real consumers                                                                       | Verdict      |
-| -------------------- | ------------------------------------------------------------------------------------ | ------------ |
-| `useRegionRectStore` | 1 workspace: `packages/ui/wireframes/src/components/layout-rect-publisher/index.tsx` | **de-hoist** |
-| `useRegionRect`      | 0 external                                                                           | dead code    |
+| Symbol               | Real consumers                                                               | Verdict   |
+| -------------------- | ---------------------------------------------------------------------------- | --------- |
+| `useRegionRectStore` | 0 external — internal to `useRegionRect` only (its one consumer was removed) | dead code |
+| `useRegionRect`      | 0 external                                                                   | dead code |
 
 ## 12. Event-bus
 
@@ -255,7 +255,7 @@ of scope for this census.
 | now-playing socket/store                                                        | 1 workspace                                                                | de-hoist                                                                 |
 | discovery                                                                       | 1 workspace                                                                | de-hoist                                                                 |
 | registry                                                                        | 3 workspaces                                                               | hoist                                                                    |
-| region-rect-store                                                               | 1 workspace                                                                | de-hoist                                                                 |
+| region-rect-store                                                               | 0 (both symbols unused outside the module)                                 | dead code                                                                |
 | event-bus (`createEventBus`)                                                    | 2 workspaces                                                               | **borderline** (demo fixtures dead/unreachable)                          |
 | string-query-state                                                              | 0 (symbol removed with its only consumer)                                  | removed                                                                  |
 | use-prompt-utterance                                                            | 1 workspace                                                                | de-hoist                                                                 |
