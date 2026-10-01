@@ -17,7 +17,6 @@
       "@calendar/*": ["./packages/ui/calendar/src/*"],
       "@input/*": ["./packages/ui/input/src/*"],
       "@utils/*": ["./packages/utils/src/*"],
-      "@searchbar/*": ["./packages/ui/searchbar/src/*"],
       "@slideshow/*": ["./packages/ui/slideshow/src/*"],
       "@dice-card/*": ["./packages/ui/dice-card/src/*"],
       "@leetype/*": ["./packages/ui/leetype/src/*"],
