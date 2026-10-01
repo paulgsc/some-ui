@@ -308,6 +308,29 @@ describe("Soundbites", () => {
     vi.unstubAllGlobals()
   })
 
+  it("never shows an unreadable phone as an empty one", async () => {
+    const memory = memoryStore([bite("kept", 5)])
+    vi.spyOn(memory.store, "list").mockRejectedValueOnce(new Error("busy"))
+    render(
+      <Soundbites
+        context={() => CONTEXT}
+        store={memory.store}
+        startRecording={fakeMic().start}
+      />
+    )
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Couldn't read what's on this phone"
+    )
+    expect(screen.queryByText("Nothing kept yet.")).not.toBeInTheDocument()
+
+    await tap("Read them again")
+    expect(
+      await screen.findByRole("img", { name: "1 of 6 kept" })
+    ).toBeInTheDocument()
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument()
+  })
+
   it("deletes a kept one after asking", async () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(true)
     const { kept } = setup({ kept: [bite("only", 5)] })

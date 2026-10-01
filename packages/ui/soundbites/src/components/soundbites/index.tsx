@@ -287,6 +287,10 @@ export const Soundbites = ({
 }: SoundbitesProps): JSX.Element => {
   const store = givenStore ?? phoneStore()
   const [kept, setKept] = useState<Array<Soundbite> | null>(null)
+  // A failed read is not an empty phone: shown as such, with a retry, so a
+  // full phone is never mistaken for an empty one.
+  const [unreadable, setUnreadable] = useState(false)
+  const [readAttempt, setReadAttempt] = useState(0)
   const [phase, setPhase] = useState<Phase>({ kind: "idle" })
   const [elapsed, setElapsed] = useState(0)
   const [level, setLevel] = useState(0)
@@ -315,16 +319,18 @@ export const Soundbites = ({
     let live = true
     store.list().then(
       (all) => {
-        if (live) setKept(byNewest(all))
+        if (!live) return
+        setKept(byNewest(all))
+        setUnreadable(false)
       },
       () => {
-        if (live) setKept([])
+        if (live) setUnreadable(true)
       }
     )
     return (): void => {
       live = false
     }
-  }, [store])
+  }, [store, readAttempt])
 
   // Bumped by every stop, so a play still waiting on the store for its
   // audio can tell it was overtaken (a second tap, a recording starting).
@@ -390,7 +396,10 @@ export const Soundbites = ({
       // The take is stored. A refresh that fails after this must not say
       // otherwise, or the retry it invites would keep it twice.
       const refreshed = await store.list().then(byNewest, () => null)
-      if (refreshed !== null) setKept(refreshed)
+      if (refreshed !== null) {
+        setKept(refreshed)
+        setUnreadable(false)
+      }
       setNotice(
         refreshed === null
           ? `Kept, ${formatDuration(bite.durationMs)}.`
@@ -593,7 +602,27 @@ export const Soundbites = ({
           </p>
         )}
 
-        {kept === null ? null : kept.length === 0 ? (
+        {kept === null && unreadable ? (
+          <div
+            role="alert"
+            className="space-y-3 rounded-lg border border-dashed p-4 text-center text-sm"
+          >
+            <p className="text-muted-foreground">
+              Couldn&apos;t read what&apos;s on this phone. If it is full, your
+              next one replaces the oldest.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setUnreadable(false)
+                setReadAttempt((attempt) => attempt + 1)
+              }}
+            >
+              Read them again
+            </Button>
+          </div>
+        ) : kept === null ? null : kept.length === 0 ? (
           <p className="text-muted-foreground rounded-lg border border-dashed p-4 text-center text-sm">
             Nothing kept yet.
           </p>
