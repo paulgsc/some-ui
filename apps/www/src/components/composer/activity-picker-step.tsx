@@ -251,7 +251,7 @@ export const ActivityPickerStep = ({
                               : "hover:border-primary/50"
                           )}
                         >
-                          <CardContent className="flex items-start gap-3 pt-6">
+                          <CardContent className="flex items-start gap-3 pt-[var(--card-p,1.5rem)]">
                             <ActivityIcon
                               icon={activity.icon}
                               className="text-primary size-6 shrink-0"
