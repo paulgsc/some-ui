@@ -150,12 +150,19 @@ const SessionCard = ({
                 )
               })}
             </div>
-            <p className="text-muted-foreground mt-1 text-xs">
+            <p className="text-muted-foreground mt-1 hidden text-xs sm:block">
               Updated {formatRelativeTime(session.updatedAt)}
             </p>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+        {/* On a phone the actions drop below the details, and the "Updated"
+            line rides in their row rather than taking one of its own above
+            it: a row that held three buttons pushed to its right edge was a
+            band of nothing across the card. */}
+        <div className="flex shrink-0 items-center gap-2 sm:self-auto">
+          <p className="text-muted-foreground mr-auto min-w-0 truncate pl-7 text-xs sm:hidden">
+            {formatRelativeTime(session.updatedAt)}
+          </p>
           {primaryAction}
           <IntentButton
             state={duplicateIntent.state}

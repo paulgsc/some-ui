@@ -1,5 +1,5 @@
-import type { FC, ReactNode, TouchEvent as ReactTouchEvent } from "react"
-import { useRef, useState } from "react"
+import type { FC, KeyboardEvent, ReactNode } from "react"
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "some-ui-utils"
 
@@ -96,11 +96,40 @@ type ArtifactSwitcherProps = {
 }
 
 /**
- * Large enough that the few stray pixels of a vertical scroll's initial
- * wobble never register as a switch; small enough that a real swipe does
- * not need to travel edge to edge.
+ * Which slots hold their artifact's content: the current one, every one
+ * visited this round, and the current one's two neighbours. The neighbours
+ * are there so a swipe drags real content into view rather than an empty
+ * slot that fills in once the gesture settles.
  */
-const SWIPE_THRESHOLD_PX = 40
+function mountedSlotIds(
+  artifacts: ReadonlyArray<SwitchableArtifact>,
+  index: number,
+  visited: ReadonlySet<ArtifactId>
+): ReadonlySet<ArtifactId> {
+  const ids = new Set(visited)
+  for (const offset of [-1, 0, 1]) {
+    const artifact = artifacts[index + offset]
+    if (artifact !== undefined) ids.add(artifact.id)
+  }
+  return ids
+}
+
+/**
+ * The page a pager rests on, or `null` when it has no width to say (not laid
+ * out yet, or a test environment without layout).
+ */
+function pageInView(pager: HTMLElement | null): number | null {
+  if (!pager || pager.clientWidth === 0) return null
+  return Math.round(pager.scrollLeft / pager.clientWidth)
+}
+
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  )
+}
 
 /**
  * Def. 9.2 / Rem. 9.2 (C1, #1213): the switcher owning "which of the six
@@ -109,75 +138,93 @@ const SWIPE_THRESHOLD_PX = 40
  * exercises, prompts, steps or competencies" and "draws what it is
  * handed"; this component knows nothing about answers, commitments or
  * ledgers, and draws whichever `content` it is handed for the artifact
- * currently in view. `artifacts[number].id` is read for exactly two
+ * currently in view. `artifacts[number].id` is read for exactly three
  * purposes — finding the current artifact's position after a re-render,
- * and testing Set membership to decide what stays mounted — never to
- * branch rendering or interaction on which artifact it is. There is no
- * `switch (id)` anywhere in this file, and there should never need to be
- * one: a seventh artifact some future story adds costs its caller one
- * more array entry, not a change here.
+ * testing Set membership to decide what stays mounted, and naming each
+ * tab/panel pair for assistive tech — never to branch rendering or
+ * interaction on which artifact it is. There is no `switch (id)` anywhere
+ * in this file, and there should never need to be one: a seventh artifact
+ * some future story adds costs its caller one more array entry, not a
+ * change here.
  *
- * # Press and swipe, and neither is the only way
+ * # A pager the finger drives, not a slideshow with buttons
  *
- * Two chevron buttons (`type="button"`, so a mounted `<form>` upstream
- * never submits on tap) move by exactly one position and are disabled at
- * the ends — a real boundary of the *current* set, not a hint about an
- * artifact that does not exist right now. A horizontal touch drag past
- * `SWIPE_THRESHOLD_PX` does the same, in the same direction a reader
- * already expects (drag left reveals what is to the right, the same
- * convention every paging surface on a phone already uses). Both call the
- * identical `goTo` — there is no swipe-only or press-only transition, the
- * literal acceptance criterion ("a swipe that means something no press can
- * mean is a keyboard by another name").
+ * The artifacts sit side by side in one native horizontal scroller with
+ * mandatory scroll snapping, one artifact per page. A swipe is therefore
+ * the platform's own scroll: the content follows the finger, flings and
+ * settles the way every other pager on the phone does, and needs no
+ * gesture code here. Position is read back from the scroller (`onScroll`),
+ * so a swipe, a tab press, an arrow press and a `focusId` move all land in
+ * the one `activeId`, and the effect below scrolls the pager to wherever
+ * `activeId` says when something other than the scroller moved it. There is
+ * no swipe-only or press-only transition (the literal acceptance criterion:
+ * "a swipe that means something no press can mean is a keyboard by another
+ * name").
  *
- * # The swipe defers to a scrolling artifact's own horizontal scroll
+ * The pager grows to fill whatever height its caller gives it, so the whole
+ * screen below the tabs is something to swipe on, not just the few lines a
+ * short artifact like the budget draws.
+ *
+ * # Phones get labelled tabs; wide screens keep arrows and dots
+ *
+ * Below `md` the header is a row of tabs naming every artifact, with the
+ * current one marked: on a phone the swipe is the expected affordance, and
+ * dots plus a pair of chevrons said less (a dot has no name) while taking
+ * the same row. From `md` up, where a pointer and not a thumb is the usual
+ * input, the header keeps its chevron buttons (`type="button"`, so a
+ * mounted `<form>` upstream never submits on press; disabled at the ends,
+ * a real boundary of the *current* set, not a hint about an artifact that
+ * does not exist right now) and the dots. Both headers are always in the
+ * DOM and CSS shows one, so the same buttons are reachable by role in a
+ * test at any width.
+ *
+ * # A scrolling artifact keeps its own horizontal scroll
  *
  * LTY-MOBILE's rule, kept verbatim: "the code region scrolls horizontally
- * inside itself, the page does not." A touch that starts inside a
- * descendant marked `data-scroll-intent` (`DiffCard`, `TypingViewport`,
- * and any future artifact content doing the same) is never tracked as a
- * switch candidate at all — the native scroller gets the whole gesture,
- * untouched. This is a property of *where a touch starts*, not of which
- * artifact is showing, so it costs no per-artifact branch either: any
- * content, from any artifact, that declares its own horizontal scroll
- * region is exempted the same way.
+ * inside itself, the page does not." With a native pager this needs no
+ * code either. The browser gives a horizontal gesture to the innermost
+ * scroller that can still move that way, so dragging a long line in
+ * `SourcePanel` or `DiffCard` reads past its edge; only once that region is
+ * at its edge does a new swipe page between artifacts. The pager sets
+ * `overscroll-behavior-x: contain`, so swiping past the last artifact never
+ * becomes the browser's own back gesture.
  *
  * # No round state
  *
- * `activeId` and `mountedIds` are the only state this component owns, and
+ * `activeId` and `visitedIds` are the only state this component owns, and
  * both name positions, never an answer. Nothing here reads a commitment, a
  * ledger, or `runResult`'s own `ok`/`error` discriminant — the artifacts
  * array is opaque `content`, and this component would render identically
  * if every artifact's `content` were replaced with a fixed placeholder.
  *
- * # Switching away never unmounts — it hides
+ * # Switching away never unmounts — it makes inert
  *
  * An artifact's own `content` may hold state that only exists once, the
  * same way `RoundChoices`'s one-shot `committed` does (review finding on
- * #1430, chatgpt-codex-connector): rendering only `current.content` would
- * unmount that state the instant a learner switched away and mount a fresh
- * instance on switching back, silently re-arming an already-spent
+ * #1430, chatgpt-codex-connector): unmounting it on a switch would mount a
+ * fresh instance on switching back, silently re-arming an already-spent
  * commitment. So every artifact this switcher has ever shown *this round*
- * stays mounted — `mountedIds` grows as `activeId` visits new positions —
- * and only the current one is unhidden, via the plain `hidden` attribute
- * (out of layout and the accessibility tree both, so this is still
- * "exactly one is load-bearing," Def. 9.2, in every way a learner or a
- * screen reader can observe). An artifact never visited this round is
- * never mounted at all, so a `runResult` nobody has looked at yet still
- * costs nothing. `mountedIds` clears with everything else on a round
- * advance — carrying a previous round's mounted instances forward would
- * reintroduce the identical staleness one round later, since not every
- * artifact's own content resets itself on a prop change the way
- * `SourcePanel` does for `algorithm.source`.
+ * stays mounted — `visitedIds` grows as `activeId` visits new positions —
+ * and so do the current artifact's neighbours, so a swipe has something to
+ * drag in. Every slot but the current one is `inert` and `aria-hidden`: out
+ * of the tab order and the accessibility tree, so this is still "exactly
+ * one is load-bearing," Def. 9.2, in every way a learner or a screen reader
+ * can observe. A slot that is neither visited nor next to the current one
+ * is laid out (the pager's page positions need its width) but empty, so an
+ * artifact two swipes away still costs nothing. `visitedIds` clears with
+ * everything else on a round advance — carrying a previous round's mounted
+ * instances forward would reintroduce the identical staleness one round
+ * later, since not every artifact's own content resets itself on a prop
+ * change the way `SourcePanel` does for `algorithm.source`.
  *
- * Clearing `mountedIds` alone is not sufficient, and was itself a review
+ * Clearing `visitedIds` alone is not sufficient, and was itself a review
  * finding (#1430, chatgpt-codex-connector, round 2): consecutive rounds
  * typically share a first artifact id (`algorithm` is first every round),
  * so that one child sits at the same keyed position before and after a
  * round change, and React reconciles a same-key same-type child by
  * updating its props rather than remounting it — carrying local state
  * across the round boundary regardless of what this component's own
- * bookkeeping reset. Every mounted child is therefore keyed on
+ * bookkeeping reset. Every slot is therefore keyed on
  * `` `${roundId}:${artifact.id}` ``, not `artifact.id` alone, so a round
  * change always produces a genuinely new key and a genuine remount, even
  * for an artifact whose id and position did not change.
@@ -194,18 +241,19 @@ export const ArtifactSwitcher: FC<ArtifactSwitcherProps> = ({
     ? `${ariaLabel}: previous artifact`
     : "Previous artifact"
   const nextLabel = ariaLabel ? `${ariaLabel}: next artifact` : "Next artifact"
+  const baseId = useId()
 
   const [seenRoundId, setSeenRoundId] = useState(roundId)
   const [activeId, setActiveId] = useState<ArtifactId | null>(
     artifacts[0]?.id ?? null
   )
-  const [mountedIds, setMountedIds] = useState<ReadonlySet<ArtifactId>>(
+  const [visitedIds, setVisitedIds] = useState<ReadonlySet<ArtifactId>>(
     () => new Set(artifacts[0] ? [artifacts[0].id] : [])
   )
   if (roundId !== seenRoundId) {
     setSeenRoundId(roundId)
     setActiveId(artifacts[0]?.id ?? null)
-    setMountedIds(new Set(artifacts[0] ? [artifacts[0].id] : []))
+    setVisitedIds(new Set(artifacts[0] ? [artifacts[0].id] : []))
   }
   const [seenFocusId, setSeenFocusId] = useState(focusId)
   if (focusId !== seenFocusId) {
@@ -226,14 +274,15 @@ export const ArtifactSwitcher: FC<ArtifactSwitcherProps> = ({
   const index = rawIndex === -1 ? 0 : rawIndex
   const current = artifacts[index]
 
-  // The current artifact joins the mounted set the instant it becomes
+  // The current artifact joins the visited set the instant it becomes
   // current — synchronously during render, the same "adjust state during
   // render" idiom the round-reset above uses, so the very first paint of a
   // newly-active artifact already includes it rather than a frame of
   // nothing.
-  if (current !== undefined && !mountedIds.has(current.id)) {
-    setMountedIds(new Set([...mountedIds, current.id]))
+  if (current !== undefined && !visitedIds.has(current.id)) {
+    setVisitedIds(new Set([...visitedIds, current.id]))
   }
+  const mountedIds = mountedSlotIds(artifacts, index, visitedIds)
 
   const goTo = (nextIndex: number): void => {
     const clamped = Math.max(0, Math.min(artifacts.length - 1, nextIndex))
@@ -241,41 +290,153 @@ export const ArtifactSwitcher: FC<ArtifactSwitcherProps> = ({
     if (next !== undefined) setActiveId(next.id)
   }
 
-  const touchStart = useRef<{ x: number; y: number } | null>(null)
+  const pagerRef = useRef<HTMLDivElement>(null)
+  const tabListRef = useRef<HTMLDivElement>(null)
+  const currentContentRef = useRef<HTMLDivElement>(null)
+  // The round the pager was last scrolled for: a round advance jumps to the
+  // first artifact instead of scrolling back through the old round's.
+  const scrolledRoundRef = useRef(roundId)
+  // The page a scroll this component started is heading to, until it gets
+  // there (see `handleScroll`).
+  const headingToRef = useRef<number | null>(null)
+  const [currentHeight, setCurrentHeight] = useState(0)
 
-  const handleTouchStart = (event: ReactTouchEvent<HTMLDivElement>): void => {
-    const target = event.target
-    if (target instanceof Element && target.closest("[data-scroll-intent]")) {
-      touchStart.current = null
-      return
+  // A swipe moves the scroller; this moves `activeId` to match. A press
+  // moves `activeId`; the effect below moves the scroller to match. Each
+  // checks the other first, so neither ever echoes the other's move back.
+  //
+  // While a press's smooth scroll is on its way, the pages it passes are
+  // not choices: reading them back would move `activeId` to each in turn,
+  // and the first one would turn the scroll back where it came from. So a
+  // scroll this component started is ignored until it arrives, or until a
+  // finger takes the pager over.
+  const handleScroll = (): void => {
+    const page = pageInView(pagerRef.current)
+    if (page === null) return
+    if (headingToRef.current !== null) {
+      if (page !== headingToRef.current) return
+      headingToRef.current = null
     }
-    const touch = event.touches[0]
-    touchStart.current = touch ? { x: touch.clientX, y: touch.clientY } : null
+    const artifact = artifacts[page]
+    if (artifact !== undefined && artifact.id !== activeId) {
+      setActiveId(artifact.id)
+    }
   }
 
-  const handleTouchEnd = (event: ReactTouchEvent<HTMLDivElement>): void => {
-    const start = touchStart.current
-    touchStart.current = null
-    if (!start) return
-    const touch = event.changedTouches[0]
-    if (!touch) return
-    const dx = touch.clientX - start.x
-    const dy = touch.clientY - start.y
-    if (Math.abs(dx) < SWIPE_THRESHOLD_PX || Math.abs(dx) <= Math.abs(dy)) {
+  useLayoutEffect(() => {
+    const pager = pagerRef.current
+    const jump = scrolledRoundRef.current !== roundId
+    scrolledRoundRef.current = roundId
+    if (!pager || pageInView(pager) === index) return
+    const left = index * pager.clientWidth
+    if (typeof pager.scrollTo !== "function") {
+      pager.scrollLeft = left
       return
     }
-    goTo(index + (dx < 0 ? 1 : -1))
-  }
+    headingToRef.current = index
+    pager.scrollTo({
+      left,
+      behavior: jump || prefersReducedMotion() ? "instant" : "smooth",
+    })
+  }, [index, roundId])
 
-  const handleTouchCancel = (): void => {
-    touchStart.current = null
+  // Keep the current tab in view when there are more tabs than fit, by
+  // scrolling the tab row only: `scrollIntoView` would also scroll the page
+  // back up to the tabs, away from what the learner was reading.
+  useLayoutEffect(() => {
+    const list = tabListRef.current
+    const tab = list?.children[index]
+    if (!list || !(tab instanceof HTMLElement)) return
+    if (list.scrollWidth <= list.clientWidth) return
+    const left = tab.offsetLeft - (list.clientWidth - tab.offsetWidth) / 2
+    if (typeof list.scrollTo === "function") {
+      list.scrollTo({ left, behavior: "smooth" })
+    }
+  }, [index])
+
+  // The pager is as tall as the current artifact (or as the caller's room,
+  // if that is more), never as tall as the tallest one: a long option set
+  // on the next page must not leave blank page to scroll through under a
+  // short budget. Measured rather than left to CSS because a flex row is
+  // always as tall as its tallest child; the measurement is the pager's
+  // flex basis, so it is also what the pager reports as its own height to
+  // a caller sizing itself from its content.
+  const currentKey = current === undefined ? null : current.id
+  useEffect(() => {
+    const content = currentContentRef.current
+    if (!content || typeof ResizeObserver === "undefined") return
+    const observer = new ResizeObserver(() => {
+      setCurrentHeight(content.offsetHeight)
+    })
+    observer.observe(content)
+    return (): void => observer.disconnect()
+  }, [currentKey, roundId])
+
+  const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>): void => {
+    const step =
+      event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0
+    const target =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? artifacts.length - 1
+          : index + step
+    if (target === index || target < 0 || target >= artifacts.length) return
+    event.preventDefault()
+    goTo(target)
+    const tab = tabListRef.current?.children[target]
+    if (tab instanceof HTMLElement) tab.focus()
   }
 
   if (current === undefined) return null
 
+  const tabId = (artifact: SwitchableArtifact): string =>
+    `${baseId}-tab-${artifact.id}`
+  const panelId = (artifact: SwitchableArtifact): string =>
+    `${baseId}-panel-${artifact.id}`
+
   return (
-    <div className={cn("w-full min-w-0", className)}>
-      <div className="flex items-center justify-between gap-2">
+    <div className={cn("flex w-full min-w-0 flex-col", className)}>
+      {artifacts.length > 1 && (
+        <div
+          ref={tabListRef}
+          role="tablist"
+          aria-label={announceLabel}
+          className="flex shrink-0 gap-1 overflow-x-auto overflow-y-hidden border-b border-border/60 [scrollbar-width:none] md:hidden [&::-webkit-scrollbar]:hidden"
+        >
+          {artifacts.map((artifact, position) => {
+            const selected = position === index
+            return (
+              <button
+                key={artifact.id}
+                id={tabId(artifact)}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                aria-controls={panelId(artifact)}
+                tabIndex={selected ? 0 : -1}
+                onClick={() => goTo(position)}
+                onKeyDown={handleTabKeyDown}
+                className={cn(
+                  "-mb-px min-h-11 shrink-0 whitespace-nowrap border-b-2 px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+                  selected
+                    ? "border-foreground text-foreground"
+                    : "border-transparent text-muted-foreground"
+                )}
+              >
+                {artifact.label}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      <div
+        className={cn(
+          "hidden items-center justify-between gap-2 md:flex",
+          artifacts.length === 1 && "flex"
+        )}
+      >
         <button
           type="button"
           aria-label={previousLabel}
@@ -316,22 +477,26 @@ export const ArtifactSwitcher: FC<ArtifactSwitcherProps> = ({
         </button>
       </div>
 
-      {/* The same fact the dots paint decoratively, said in words for a
-          screen reader — `aria-live="polite"` so a press or a swipe is
-          announced without stealing focus. */}
+      {/* Which artifact is current, and where, said in words for a screen
+          reader — `aria-live="polite"` so a swipe or a press is announced
+          without stealing focus. The tabs carry the same fact as
+          `aria-selected`, but only while focus is on them. */}
       <p aria-live="polite" className="sr-only">
         {announceLabel}: {current.label}, {index + 1} of {artifacts.length}
       </p>
 
       <div
-        className="mt-2 min-w-0 touch-pan-y"
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-        onTouchCancel={handleTouchCancel}
+        ref={pagerRef}
+        onScroll={handleScroll}
+        onPointerDown={() => {
+          headingToRef.current = null
+        }}
+        style={{ flexBasis: currentHeight }}
+        className="mt-3 flex min-w-0 shrink-0 grow snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {artifacts
-          .filter((artifact) => mountedIds.has(artifact.id))
-          .map((artifact) => (
+        {artifacts.map((artifact) => {
+          const isCurrent = artifact.id === current.id
+          return (
             // Keyed on `roundId` too, not just `artifact.id` (review finding
             // on #1430, chatgpt-codex-connector): consecutive rounds sharing
             // a first artifact id (the common case — `algorithm` is
@@ -339,19 +504,31 @@ export const ArtifactSwitcher: FC<ArtifactSwitcherProps> = ({
             // child at the same keyed position across a round change, and
             // React reconciles same-key same-type children by updating
             // props rather than remounting — carrying its local state into
-            // the new round despite `mountedIds`/`activeId` both having
+            // the new round despite `visitedIds`/`activeId` both having
             // reset. Prefixing the key with `roundId` guarantees every
             // child gets a genuinely new key the instant the round changes,
             // so "resets on round advance" holds for a child's own state,
             // not just for this component's position bookkeeping.
             <div
               key={`${roundId}:${artifact.id}`}
-              hidden={artifact.id !== current.id}
-              className="min-w-0"
+              id={panelId(artifact)}
+              role="tabpanel"
+              aria-labelledby={
+                artifacts.length > 1 ? tabId(artifact) : undefined
+              }
+              aria-label={artifacts.length > 1 ? undefined : artifact.label}
+              aria-hidden={isCurrent ? undefined : true}
+              inert={!isCurrent}
+              className="w-full min-w-0 shrink-0 snap-start snap-always"
             >
-              {artifact.content}
+              {mountedIds.has(artifact.id) && (
+                <div ref={isCurrent ? currentContentRef : undefined}>
+                  {artifact.content}
+                </div>
+              )}
             </div>
-          ))}
+          )
+        })}
       </div>
     </div>
   )

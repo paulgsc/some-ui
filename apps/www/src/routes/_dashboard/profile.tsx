@@ -49,7 +49,7 @@ function isTopikLevel(value: string): value is TopikLevel {
 
 const ProfileSkeleton = (): JSX.Element => (
   <Card className="max-w-xl">
-    <CardContent className="space-y-4 pt-6">
+    <CardContent className="space-y-4 pt-[var(--card-p,1.5rem)]">
       <Skeleton className="size-12 rounded-full" />
       <Skeleton className="h-10 w-full" />
       <Skeleton className="h-10 w-full" />

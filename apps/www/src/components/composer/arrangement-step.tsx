@@ -192,7 +192,7 @@ export const ArrangementStep = ({
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">
       <Card className="shrink-0">
-        <CardContent className="flex items-center justify-between gap-4 pt-6">
+        <CardContent className="flex items-center justify-between gap-4 pt-[var(--card-p,1.5rem)]">
           <div className="min-w-0">
             <p className="font-medium">Advanced arrangement</p>
             <p className="text-muted-foreground text-sm">
@@ -256,7 +256,7 @@ export const ArrangementStep = ({
           </Card>
 
           <Card>
-            <CardContent className="pt-6">
+            <CardContent className="pt-[var(--card-p,1.5rem)]">
               <p className="font-medium">Editing the layout</p>
               <p className="text-muted-foreground text-sm">
                 Layout isn&apos;t arranged here. Press{" "}

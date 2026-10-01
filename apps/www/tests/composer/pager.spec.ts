@@ -154,6 +154,10 @@ for (const viewport of VIEWPORTS) {
       page,
     }) => {
       await openComposer(page)
+      test.skip(
+        (await page.locator('[data-scroll-intent="touch-list"]').count()) > 0,
+        "an upright phone scrolls the catalogue instead of paging it"
+      )
 
       // Walk every page: `perPage` is one number for the whole list, so a
       // count that fits page 1 and overflows page 3 is still the wrong count.
@@ -189,6 +193,35 @@ for (const viewport of VIEWPORTS) {
         await next.click()
         await page.waitForTimeout(400)
       }
+    })
+
+    test("an upright phone scrolls the catalogue rather than paging it", async ({
+      page,
+    }) => {
+      test.skip(
+        viewport.width >= 768,
+        "from 768px up the catalogue is fitted and paged"
+      )
+      await openComposer(page)
+
+      expect(await readPager(page)).toBeNull()
+      const list = page.locator('[data-scroll-intent="touch-list"]')
+      await expect(list).toHaveCount(1)
+      // Every activity is in the list, not just the ones a page would hold,
+      // and the ones below the box are a scroll away.
+      const scrolled = await list.evaluate((box) => {
+        box.scrollTop = box.scrollHeight
+        return {
+          cards: box.querySelectorAll(".grid > button").length,
+          overflows: box.scrollHeight > box.clientHeight,
+          moved: box.scrollTop > 0,
+        }
+      })
+      expect(scrolled.cards).toBeGreaterThan(3)
+      if (scrolled.overflows) expect(scrolled.moved).toBe(true)
+      await expect(
+        page.getByRole("button", { name: "Continue", exact: true })
+      ).toBeInViewport()
     })
 
     test("the step rail walks the wizard the way Continue does", async ({

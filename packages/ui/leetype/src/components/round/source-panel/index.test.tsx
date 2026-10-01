@@ -94,9 +94,8 @@ describe("SourcePanel", () => {
   })
 
   // Review finding on #1430 (chatgpt-codex-connector): the code region here
-  // scrolls horizontally on its own, the same as `DiffCard`'s, so a caller
-  // that treats an unmarked horizontal drag as something else (`ArtifactSwitcher`'s
-  // own swipe-to-switch) needs a way to tell them apart.
+  // scrolls horizontally on its own, the same as `DiffCard`'s, and the ui-fit
+  // sweep needs a way to tell that deliberate scroller from an overflow.
   it("marks its own horizontal scroller, the same as DiffCard's", async () => {
     const { container } = render(<SourcePanel algorithm={ALGORITHM} />)
     await open()

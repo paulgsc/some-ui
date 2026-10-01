@@ -16,7 +16,7 @@ import {
   TALL_WINDOW_ONLY,
 } from "@some-ui/shared"
 import { Plus, X } from "lucide-react"
-import { cn, useFittedPage } from "some-ui-utils"
+import { cn, useFittedPage, useIsMobile } from "some-ui-utils"
 
 import { ActivityIcon } from "@/components/activity-icon"
 import { ActivityInputHint } from "@/components/activity/activity-input"
@@ -75,12 +75,38 @@ type ActivityPickerStepProps = {
  * and the two constants that used to live here (a `h-72 sm:h-80` box for the
  * catalogue, a page of 10 for the manifest) were each picked in a different
  * one.
+ *
+ * Except on a phone held upright, where both lists scroll instead. A pager
+ * is what a pointer and a fixed box want; a thumb expects a list to move
+ * under it, and "Prev 1 / 2 Next" under three cards of a four-card
+ * catalogue was a desktop control on a screen that had no use for it. The
+ * box keeps its share of the step, so Continue stays where it is, and the
+ * list scrolls inside it (`data-scroll-intent="touch-list"`). A phone on
+ * its side keeps the fitted pager: there the scarce axis is height, and a
+ * box a card and a half tall is better paged than scrolled.
  */
-export const ActivityPickerStep = ({
+export const ActivityPickerStep = (
+  props: ActivityPickerStepProps
+): JSX.Element => {
+  const scrolls = useIsMobile()
+  // Remounted when the mode flips (a phone turned on its side):
+  // `useFittedPage` attaches to its box once, at mount, and a box that was
+  // a scroll list then has nothing attached to fit.
+  return (
+    <ActivityPickerBody
+      key={scrolls ? "scrolls" : "paged"}
+      scrolls={scrolls}
+      {...props}
+    />
+  )
+}
+
+const ActivityPickerBody = ({
   items,
   onAdd,
   onRemove,
-}: ActivityPickerStepProps): JSX.Element => {
+  scrolls,
+}: ActivityPickerStepProps & { scrolls: boolean }): JSX.Element => {
   const [query, setQuery] = useState("")
   const searchRef = useRef<HTMLInputElement>(null)
   useSearchHotkey(searchRef)
@@ -177,8 +203,8 @@ export const ActivityPickerStep = ({
       ) : (
         <div className={cn("flex flex-col gap-3", CATALOGUE_SHARE)}>
           <div
-            ref={viewportRef}
-            data-scroll-intent="fitted-residue"
+            ref={scrolls ? undefined : viewportRef}
+            data-scroll-intent={scrolls ? "touch-list" : "fitted-residue"}
             className={
               // scroll-intent: fitted-residue — `useFittedPage` guarantees this
               // box's content fits it, with exactly one documented exception:
@@ -189,15 +215,16 @@ export const ActivityPickerStep = ({
               // genuinely fits - it is the named home for the residue the fit
               // is honest about not being able to remove. Clipping it instead
               // is worse than it sounds: a card whose centre falls outside the
-              // box stops being clickable at all.
-              "min-h-0 flex-1 overflow-y-auto"
+              // box stops being clickable at all. On an upright phone it is
+              // the list's own scroll instead (`touch-list`, above).
+              "min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
             }
           >
             <div
-              ref={contentRef}
+              ref={scrolls ? undefined : contentRef}
               className="grid content-start gap-3 sm:grid-cols-2"
             >
-              {visiblePage.map((activity) => {
+              {(scrolls ? visible : visiblePage).map((activity) => {
                 const count = countsById.get(activity.id) ?? 0
                 return (
                   <button
@@ -214,7 +241,7 @@ export const ActivityPickerStep = ({
                           : "hover:border-primary/50"
                       )}
                     >
-                      <CardContent className="flex items-start gap-3 pt-6">
+                      <CardContent className="flex items-start gap-3 pt-[var(--card-p,1.5rem)]">
                         <ActivityIcon
                           icon={activity.icon}
                           className="text-primary size-6 shrink-0"
@@ -253,13 +280,15 @@ export const ActivityPickerStep = ({
           {/* Paging the catalogue does not touch `items`, so adding an
               activity from page 3 leaves you on page 3 - the fitted pager
               only resets when the list it is paging changes length. */}
-          <PageControls
-            page={page}
-            pageCount={pageCount}
-            onPrevious={previousPage}
-            onNext={nextPage}
-            label="activities"
-          />
+          {!scrolls && (
+            <PageControls
+              page={page}
+              pageCount={pageCount}
+              onPrevious={previousPage}
+              onNext={nextPage}
+              label="activities"
+            />
+          )}
         </div>
       )}
 
@@ -272,8 +301,8 @@ export const ActivityPickerStep = ({
             </span>
           </p>
           <div
-            ref={manifestViewportRef}
-            data-scroll-intent="fitted-residue"
+            ref={scrolls ? undefined : manifestViewportRef}
+            data-scroll-intent={scrolls ? "touch-list" : "fitted-residue"}
             className={
               // scroll-intent: fitted-residue — `useFittedPage` guarantees this
               // box's content fits it, with exactly one documented exception:
@@ -285,49 +314,57 @@ export const ActivityPickerStep = ({
               // is honest about not being able to remove. Clipping it instead
               // is worse than it sounds: a card whose centre falls outside the
               // box stops being clickable at all.
-              "min-h-0 flex-1 overflow-y-auto"
+              // On an upright phone it is the list's own scroll instead.
+              "min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
             }
           >
-            <div ref={manifestContentRef} className="space-y-1.5">
-              {pageItems.map(({ item, position }) => {
-                const activity = getActivity(item.activityId)
-                return (
-                  <div
-                    key={item.instanceId}
-                    className="bg-muted/50 flex items-center gap-2 rounded-md border px-3 py-1.5"
-                  >
-                    <span className="bg-muted flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-medium">
-                      {position}
-                    </span>
-                    <ActivityIcon
-                      icon={activity.icon}
-                      className="text-primary size-4 shrink-0"
-                    />
-                    <span className="min-w-0 flex-1 text-sm">
-                      {activity.name}
-                    </span>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => onRemove(item.instanceId)}
-                      title="Remove"
-                      className="text-muted-foreground hover:text-destructive size-6 p-0"
+            <div
+              ref={scrolls ? undefined : manifestContentRef}
+              className="space-y-1.5"
+            >
+              {(scrolls ? numberedItems : pageItems).map(
+                ({ item, position }) => {
+                  const activity = getActivity(item.activityId)
+                  return (
+                    <div
+                      key={item.instanceId}
+                      className="bg-muted/50 flex items-center gap-2 rounded-md border px-3 py-1.5"
                     >
-                      <X className="size-3.5" />
-                    </Button>
-                  </div>
-                )
-              })}
+                      <span className="bg-muted flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-medium">
+                        {position}
+                      </span>
+                      <ActivityIcon
+                        icon={activity.icon}
+                        className="text-primary size-4 shrink-0"
+                      />
+                      <span className="min-w-0 flex-1 text-sm">
+                        {activity.name}
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => onRemove(item.instanceId)}
+                        title="Remove"
+                        className="text-muted-foreground hover:text-destructive size-6 p-0"
+                      >
+                        <X className="size-3.5" />
+                      </Button>
+                    </div>
+                  )
+                }
+              )}
             </div>
           </div>
-          <PageControls
-            page={manifestPage}
-            pageCount={manifestPageCount}
-            onPrevious={previousManifestPage}
-            onNext={nextManifestPage}
-            label="added activities"
-          />
+          {!scrolls && (
+            <PageControls
+              page={manifestPage}
+              pageCount={manifestPageCount}
+              onPrevious={previousManifestPage}
+              onNext={nextManifestPage}
+              label="added activities"
+            />
+          )}
         </div>
       )}
     </div>

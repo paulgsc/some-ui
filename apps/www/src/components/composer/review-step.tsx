@@ -159,7 +159,7 @@ export const ReviewStep = ({
           that is most of what the activity list has left, so the short form
           keeps the facts and drops the box. */}
       <Card className={cn("shrink-0", TALL_WINDOW_ONLY)}>
-        <CardContent className="flex items-center justify-between py-6">
+        <CardContent className="flex items-center justify-between py-[var(--card-p,1.5rem)]">
           <div className="min-w-0">
             <p className="text-muted-foreground text-sm">Total duration</p>
             <p className="font-semibold">{formatDurationMs(totalDurationMs)}</p>
