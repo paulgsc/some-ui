@@ -571,24 +571,28 @@ export const Soundbites = ({
           <h2 id="kept-soundbites" className="text-base font-semibold">
             On this phone
           </h2>
-          <div
-            className="flex items-center gap-1"
-            role="img"
-            aria-label={`${kept?.length ?? 0} of ${SOUNDBITE_LIMIT} kept`}
-          >
-            {Array.from({ length: SOUNDBITE_LIMIT }, (_, slot) => (
-              <span
-                key={slot}
-                className={cn(
-                  "size-2 rounded-full",
-                  slot < (kept?.length ?? 0) ? "bg-primary" : "bg-muted"
-                )}
-              />
-            ))}
-            <span className="text-muted-foreground ml-1.5 text-xs tabular-nums">
-              {kept?.length ?? 0}/{SOUNDBITE_LIMIT}
-            </span>
-          </div>
+          {/* Only a count that was read: before a read succeeds (or when
+              it failed) there is no number to show, and 0 would say empty. */}
+          {kept !== null && (
+            <div
+              className="flex items-center gap-1"
+              role="img"
+              aria-label={`${kept.length} of ${SOUNDBITE_LIMIT} kept`}
+            >
+              {Array.from({ length: SOUNDBITE_LIMIT }, (_, slot) => (
+                <span
+                  key={slot}
+                  className={cn(
+                    "size-2 rounded-full",
+                    slot < kept.length ? "bg-primary" : "bg-muted"
+                  )}
+                />
+              ))}
+              <span className="text-muted-foreground ml-1.5 text-xs tabular-nums">
+                {kept.length}/{SOUNDBITE_LIMIT}
+              </span>
+            </div>
+          )}
         </div>
 
         {full && replaced !== null && (

@@ -323,6 +323,9 @@ describe("Soundbites", () => {
       "Couldn't read what's on this phone"
     )
     expect(screen.queryByText("Nothing kept yet.")).not.toBeInTheDocument()
+    // No count either: an unread phone has none, and 0 would say empty.
+    expect(screen.queryByRole("img", { name: /of 6 kept/ })).toBeNull()
+    expect(screen.queryByText("0/6")).toBeNull()
 
     await tap("Read them again")
     expect(
