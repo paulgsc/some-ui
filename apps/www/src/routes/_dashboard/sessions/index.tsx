@@ -161,7 +161,7 @@ const SessionCard = ({
             band of nothing across the card. */}
         <div className="flex shrink-0 items-center gap-2 sm:self-auto">
           <p className="text-muted-foreground mr-auto min-w-0 truncate pl-7 text-xs sm:hidden">
-            {formatRelativeTime(session.updatedAt)}
+            Updated {formatRelativeTime(session.updatedAt)}
           </p>
           {primaryAction}
           <IntentButton

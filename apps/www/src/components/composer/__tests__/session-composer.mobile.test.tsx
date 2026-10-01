@@ -15,6 +15,7 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import type * as ReactRouterModule from "@tanstack/react-router"
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -185,6 +186,50 @@ describe("SessionComposer on a phone", () => {
     fireEvent.click(screen.getByRole("button", { name: "Browse activities" }))
 
     expect(isSelected(tab("Browse"))).toBe(true)
+  })
+})
+
+describe("SessionComposer's tab bar on a phone", () => {
+  /** Scrolls a box inside the composer down by `by`, past the bar's thresholds. */
+  function scrollDown(box: HTMLElement, by: number): void {
+    Object.defineProperty(box, "scrollHeight", {
+      configurable: true,
+      value: 2000,
+    })
+    Object.defineProperty(box, "clientHeight", {
+      configurable: true,
+      value: 400,
+    })
+    box.scrollTop += by
+    fireEvent.scroll(box)
+  }
+
+  const barOf = (): HTMLElement => {
+    const wrapper = screen
+      .getByRole("tablist", { name: "Composer panes" })
+      .closest<HTMLElement>("[data-shown]")
+    if (!wrapper) throw new Error("no tab bar")
+    return wrapper
+  }
+
+  it("tucks away when a pane scrolls down", () => {
+    const { container } = render(withQueryClient(<SessionComposer />))
+    const pane = container.querySelector<HTMLElement>("#composer-pane-browse")!
+    scrollDown(pane, 300)
+    expect(barOf().getAttribute("data-shown")).toBe("false")
+    expect(tab("Browse").getAttribute("tabindex")).toBe("-1")
+  })
+
+  it("stays shown while one of its tabs holds focus", () => {
+    const { container } = render(withQueryClient(<SessionComposer />))
+    act(() => tab("Browse").focus())
+    const pane = container.querySelector<HTMLElement>("#composer-pane-browse")!
+    scrollDown(pane, 300)
+    expect(barOf().getAttribute("data-shown")).toBe("true")
+    expect(tab("Browse").getAttribute("tabindex")).toBe("0")
+    // Focus leaving the bar lets the scroll's answer through.
+    act(() => tab("Browse").blur())
+    expect(barOf().getAttribute("data-shown")).toBe("false")
   })
 })
 
