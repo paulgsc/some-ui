@@ -220,6 +220,36 @@ describe("Soundbites", () => {
     ).toBeInTheDocument()
   })
 
+  it("reports a take kept only once it is safely stored", async () => {
+    const onKept = vi.fn()
+    const memory = memoryStore()
+    const save = vi
+      .spyOn(memory.store, "save")
+      .mockRejectedValueOnce(new Error("IndexedDB unavailable"))
+    const mic = fakeMic()
+    render(
+      <Soundbites
+        context={() => CONTEXT}
+        store={memory.store}
+        startRecording={mic.start}
+        onKept={onKept}
+      />
+    )
+
+    await tap("Start talking")
+    await tap("Done, keep it")
+    expect(
+      await screen.findByText("That one couldn't be kept. Try again?")
+    ).toBeInTheDocument()
+    expect(onKept).not.toHaveBeenCalled()
+
+    await tap("Start talking")
+    await tap("Done, keep it")
+    await screen.findByText(/1 of 6 on this phone/)
+    expect(save).toHaveBeenCalledTimes(2)
+    expect(onKept).toHaveBeenCalledTimes(1)
+  })
+
   it("deletes a kept one after asking", async () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(true)
     const { kept } = setup({ kept: [bite("only", 5)] })

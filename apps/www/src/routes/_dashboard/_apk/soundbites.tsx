@@ -53,8 +53,10 @@ const SoundbitesRoute = (): JSX.Element => {
   // Never waited on: the recording starts whether or not the list has
   // loaded, and a soundbite saved before it has notes no sessions.
   const { data: sessions } = useSessions()
-  // Read as the first take is kept; any take after it on this visit was the
-  // page's own doing. Not `say` itself, which the auto-start clears.
+  // The way in, until a take is kept; any take after that on this visit was
+  // the page's own doing. Cleared only once a save succeeds, so a retry after
+  // a failed one still records how the person got here. Not `say` itself,
+  // which the auto-start clears.
   const source = useRef(sourceOf(say))
 
   return (
@@ -65,10 +67,9 @@ const SoundbitesRoute = (): JSX.Element => {
       onAutoStart={() =>
         void navigate({ to: "/soundbites", search: {}, replace: true })
       }
-      context={() => {
-        const context = contextFrom(sessions ?? [], source.current)
+      context={() => contextFrom(sessions ?? [], source.current)}
+      onKept={() => {
         source.current = "direct"
-        return context
       }}
     />
   )

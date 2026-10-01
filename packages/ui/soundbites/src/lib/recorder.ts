@@ -151,9 +151,17 @@ export const startMicRecording: StartRecording = async () => {
   }
   const levels = meter(stream)
   const startedAt = performance.now()
-  // A timeslice, so what was said is already in `chunks` if the WebView is
-  // torn down before `stop` delivers the last of it.
-  recorder.start(1_000)
+  try {
+    // A timeslice, so what was said is already in `chunks` if the WebView
+    // is torn down before `stop` delivers the last of it.
+    recorder.start(1_000)
+  } catch (error) {
+    // Let go of what was acquired: the caller offers a retry, which would
+    // otherwise find the microphone still held by this failed attempt.
+    levels.close()
+    release()
+    throw new RecordingError("failed", { cause: error })
+  }
 
   const stopped = new Promise<void>((resolve) => {
     recorder.onstop = (): void => resolve()

@@ -50,6 +50,11 @@ export type SoundbitesProps = {
   autoStart?: boolean
   /** Called as an auto-start begins, so the caller can forget the request. */
   onAutoStart?: () => void
+  /**
+   * Called once a soundbite is safely stored, and not before: a save that
+   * fails leaves whatever `context` depends on as it was, for the retry.
+   */
+  onKept?: () => void
   /** Where soundbites are kept. The phone's IndexedDB unless a test says. */
   store?: SoundbiteStore
   startRecording?: StartRecording
@@ -276,6 +281,7 @@ export const Soundbites = ({
   context,
   autoStart = false,
   onAutoStart,
+  onKept,
   store: givenStore,
   startRecording = startMicRecording,
 }: SoundbitesProps): JSX.Element => {
@@ -294,9 +300,11 @@ export const Soundbites = ({
   const busyRef = useRef(false)
   const choiceRef = useRef(choice)
   const contextRef = useRef(context)
+  const onKeptRef = useRef(onKept)
   useEffect(() => {
     choiceRef.current = choice
     contextRef.current = context
+    onKeptRef.current = onKept
   })
   const playerRef = useRef<{ audio: HTMLAudioElement; url: string } | null>(
     null
@@ -372,6 +380,7 @@ export const Soundbites = ({
         context: contextRef.current(),
       }
       await store.save(bite, take.blob, choiceRef.current)
+      onKeptRef.current?.()
       setChoice(null)
       const after = byNewest(await store.list())
       setKept(after)
