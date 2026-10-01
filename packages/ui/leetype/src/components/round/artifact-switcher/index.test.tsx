@@ -403,4 +403,22 @@ describe("ArtifactSwitcher", () => {
     settleOn(pager, 1)
     expectCurrent(screen.getByText("C to C′"))
   })
+
+  it("takes wherever the pager comes to rest as current, even short of a press's target", () => {
+    const { container } = render(
+      <ArtifactSwitcher artifacts={ARTIFACTS} roundId="round-1" />
+    )
+    const pager = pagerOf(container)
+    stubScrollTo(pager, vi.fn())
+    fireEvent.click(screen.getByRole("tab", { name: "Budget" }))
+    // The press's scroll stops on the middle page instead of the third.
+    settleOn(pager, 1)
+    expectCurrent(screen.getByText("Operation count"))
+    fireEvent(pager, new Event("scrollend"))
+    expectCurrent(screen.getByText("C to C′"))
+    expect(screen.getByRole("tab", { name: "Constraints" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    )
+  })
 })

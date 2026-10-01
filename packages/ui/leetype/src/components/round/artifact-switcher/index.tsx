@@ -297,7 +297,7 @@ export const ArtifactSwitcher: FC<ArtifactSwitcherProps> = ({
   // first artifact instead of scrolling back through the old round's.
   const scrolledRoundRef = useRef(roundId)
   // The page a scroll this component started is heading to, until it gets
-  // there (see `handleScroll`).
+  // there (see `followPager`).
   const headingToRef = useRef<number | null>(null)
   const [currentHeight, setCurrentHeight] = useState(0)
 
@@ -308,13 +308,15 @@ export const ArtifactSwitcher: FC<ArtifactSwitcherProps> = ({
   // While a press's smooth scroll is on its way, the pages it passes are
   // not choices: reading them back would move `activeId` to each in turn,
   // and the first one would turn the scroll back where it came from. So a
-  // scroll this component started is ignored until it arrives, or until a
-  // finger takes the pager over.
-  const handleScroll = (): void => {
+  // scroll this component started is ignored until it arrives, until a
+  // finger takes the pager over, or until it comes to rest anywhere at all
+  // (`scrollend`): wherever the pager settles is then the truth, so a scroll
+  // that stops short can never leave the tabs naming a page nobody sees.
+  const followPager = (settled: boolean): void => {
     const page = pageInView(pagerRef.current)
     if (page === null) return
     if (headingToRef.current !== null) {
-      if (page !== headingToRef.current) return
+      if (page !== headingToRef.current && !settled) return
       headingToRef.current = null
     }
     const artifact = artifacts[page]
@@ -487,7 +489,8 @@ export const ArtifactSwitcher: FC<ArtifactSwitcherProps> = ({
 
       <div
         ref={pagerRef}
-        onScroll={handleScroll}
+        onScroll={() => followPager(false)}
+        onScrollEnd={() => followPager(true)}
         onPointerDown={() => {
           headingToRef.current = null
         }}
@@ -519,7 +522,7 @@ export const ArtifactSwitcher: FC<ArtifactSwitcherProps> = ({
               aria-label={artifacts.length > 1 ? undefined : artifact.label}
               aria-hidden={isCurrent ? undefined : true}
               inert={!isCurrent}
-              className="w-full min-w-0 shrink-0 snap-start snap-always"
+              className="w-full min-w-0 shrink-0 snap-start"
             >
               {mountedIds.has(artifact.id) && (
                 <div ref={isCurrent ? currentContentRef : undefined}>
