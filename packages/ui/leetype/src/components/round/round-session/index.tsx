@@ -532,7 +532,7 @@ export const RoundSession: FC<RoundSessionProps> = ({
   const column =
     // scroll-intent: reading-page — the phone's one vertical scroll, for
     // the reason `ReadingSession` gives; nothing nested scrolls vertically.
-    "mx-auto flex h-full w-full max-w-lg flex-col gap-4 overflow-y-auto px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3"
+    "mx-auto flex h-full w-full max-w-lg flex-col gap-4 overflow-y-auto px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-1"
 
   if (play === null) {
     return (
@@ -654,7 +654,7 @@ export const RoundSession: FC<RoundSessionProps> = ({
           `RoundChoices` holds its one-shot state itself, and remounting it
           would re-enable a commitment already made (review finding on
           #1598). */}
-      <div hidden={generating} className="flex min-w-0 flex-col gap-4">
+      <div hidden={generating} className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="flex shrink-0 items-center justify-between gap-3 px-1">
           <span className="text-sm font-medium text-foreground">
             {play.own ? "Your round" : `Round ${played + 1}`}
@@ -686,7 +686,13 @@ export const RoundSession: FC<RoundSessionProps> = ({
           roundId={roundKey}
           focusId={focusId}
           ariaLabel="Round"
-          className="shrink-0"
+          // Grows into the rest of the screen, so the whole of it is
+          // something to swipe on rather than the strip a short artifact
+          // draws. `grow`, not `flex-1`: its basis is its content, so a long
+          // artifact makes the page scroll instead of being squeezed into
+          // what is left of it (`min-h-0` is then moot, and keeps the
+          // fit-the-box lint quiet).
+          className="min-h-0 grow"
         />
 
         {progress.outcome !== null && (

@@ -17,7 +17,7 @@ import { LivePlayer } from "@/components/player/live-player"
 
 const PlayerSkeleton = (): JSX.Element => (
   <Card className="max-w-3xl">
-    <CardContent className="space-y-4 pt-6">
+    <CardContent className="space-y-4 pt-[var(--card-p,1.5rem)]">
       <Skeleton className="aspect-video w-full" />
       <Skeleton className="h-16 w-full" />
     </CardContent>
@@ -64,7 +64,7 @@ const PlayerFailure = ({
   onRetry: () => void
 }): JSX.Element => (
   <Card className="max-w-3xl">
-    <CardContent className="pt-6">
+    <CardContent className="pt-[var(--card-p,1.5rem)]">
       <IntentFailure error={error} onRetry={onRetry} />
     </CardContent>
   </Card>

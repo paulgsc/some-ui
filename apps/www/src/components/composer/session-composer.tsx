@@ -1,5 +1,5 @@
-import type { JSX } from "react"
-import { useState } from "react"
+import type { ComponentType, JSX, ReactNode } from "react"
+import { useRef, useState } from "react"
 import {
   defaultSessionName,
   getActivity,
@@ -18,10 +18,17 @@ import {
   succeeded,
   working,
 } from "@some-ui/intent-kit"
-import { Button } from "@some-ui/shared"
+import { BottomTabBar, Button } from "@some-ui/shared"
 import type { SceneConfig } from "@some-ui/types"
 import { useNavigate } from "@tanstack/react-router"
-import { cn } from "some-ui-utils"
+import {
+  ClipboardCheck,
+  LayoutGrid,
+  ListChecks,
+  ListOrdered,
+  SlidersHorizontal,
+} from "lucide-react"
+import { cn, useIsMobile, useShowOnScrollUp } from "some-ui-utils"
 import { toast } from "sonner"
 
 import {
@@ -40,19 +47,29 @@ import { useCreateSession, useUpdateSession } from "@/lib/tenant"
 import { ActivityPickerStep } from "./activity-picker-step"
 import { ArrangementStep } from "./arrangement-step"
 import { ConfigureStep } from "./configure-step"
+import type { ComposerPane, ComposerStep } from "./panes"
+import {
+  PANE_LABELS,
+  PANE_ORDER,
+  PANE_STEP,
+  STEP_LABELS,
+  STEP_ORDER,
+  STEP_PANE,
+} from "./panes"
 import { ReviewStep } from "./review-step"
 import { buildSessionActivities } from "./utils"
 
 type ArrangementMode = "basic" | "advanced"
-type ComposerStep = 1 | 2 | 3 | 4
 
-const STEP_ORDER: ReadonlyArray<ComposerStep> = [1, 2, 3, 4]
-
-const STEP_LABELS: Record<ComposerStep, string> = {
-  1: "Choose activities",
-  2: "Configure",
-  3: "Arrange",
-  4: "Review",
+const PANE_ICONS: Record<
+  ComposerPane,
+  ComponentType<{ className?: string }>
+> = {
+  browse: LayoutGrid,
+  added: ListChecks,
+  configure: SlidersHorizontal,
+  arrange: ListOrdered,
+  review: ClipboardCheck,
 }
 
 type SessionComposerProps = {
@@ -244,7 +261,16 @@ export const SessionComposer = ({
     }
   })
 
-  const [step, setStep] = useState<ComposerStep>(1)
+  // One position for both layouts (see `./panes`): the wizard reads it as a
+  // step, the phone's tab bar as a pane.
+  const [pane, setPane] = useState<ComposerPane>("browse")
+  // The catalogue's search, here for the same reason as `pane`: the picker
+  // that shows it is a different mount in each layout.
+  const [query, setQuery] = useState("")
+  const step = PANE_STEP[pane]
+  const isMobile = useIsMobile()
+  const scope = useRef<HTMLDivElement | null>(null)
+  const barShown = useShowOnScrollUp(scope, pane)
   const [items, setItems] = useState<Array<ComposerActivity>>(() =>
     existingSession
       ? existingSession.activities.map((activity) => ({
@@ -338,18 +364,18 @@ export const SessionComposer = ({
     setAdvancedScenes(null)
   }
 
+  const goToStep = (target: ComposerStep): void => {
+    setPane(STEP_PANE[target])
+  }
+
   const handleNext = (): void => {
-    setStep((current) => {
-      const index = STEP_ORDER.indexOf(current)
-      return STEP_ORDER[Math.min(index + 1, STEP_ORDER.length - 1)] ?? current
-    })
+    const index = STEP_ORDER.indexOf(step)
+    goToStep(STEP_ORDER[Math.min(index + 1, STEP_ORDER.length - 1)] ?? step)
   }
 
   const handleBack = (): void => {
-    setStep((current) => {
-      const index = STEP_ORDER.indexOf(current)
-      return STEP_ORDER[Math.max(index - 1, 0)] ?? current
-    })
+    const index = STEP_ORDER.indexOf(step)
+    goToStep(STEP_ORDER[Math.max(index - 1, 0)] ?? step)
   }
 
   /**
@@ -370,8 +396,12 @@ export const SessionComposer = ({
 
   const handleGoToStep = (target: ComposerStep): void => {
     if (!canGoToStep(target)) return
-    setStep(target)
+    goToStep(target)
   }
+
+  /** The phone's tabs are held to the same rule as the rail: a pane is as reachable as its step. */
+  const canGoToPane = (target: ComposerPane): boolean =>
+    canGoToStep(PANE_STEP[target])
 
   const finalName = sessionName.trim() || defaultSessionName(selectedIds)
 
@@ -441,8 +471,110 @@ export const SessionComposer = ({
         : playChainState
       : idle()
 
+  // The two save controls, once: the wizard's footer holds them on step 4, and
+  // a phone - which has no footer - holds them in the Review pane.
+  const saveActions = (
+    <>
+      <IntentButton
+        state={saveDraftState}
+        onPress={handleSaveDraft}
+        idleLabel="Save as draft"
+        workingLabel="Saving..."
+        variant="outline"
+        disabled={
+          anySaving ||
+          // Forced disabled whenever a fresh create is unsafe, *unless*
+          // this button's own state currently offers a legitimate
+          // retry of its own (see `hasOwnRetryableFailure`'s header) -
+          // not gated by `activeAction`, which let a non-retryable
+          // activate-PATCH failure on the *active* button slip through
+          // to its `onPress` fallback.
+          (createBlocked && !hasOwnRetryableFailure(saveDraftState)) ||
+          durationCheck.state !== "valid"
+        }
+      />
+      <IntentButton
+        state={saveAndPlayState}
+        onPress={handleSaveAndPlay}
+        idleLabel="Save & Play"
+        workingLabel="Saving..."
+        workingStepLabel={(step) =>
+          step === "activate" ? "Starting..." : undefined
+        }
+        disabled={
+          anySaving ||
+          (createBlocked && !hasOwnRetryableFailure(saveAndPlayState)) ||
+          durationCheck.state !== "valid"
+        }
+      />
+    </>
+  )
+
+  const durationBanner = durationWarning ? (
+    <div className="border-destructive/50 bg-destructive/10 text-destructive shrink-0 rounded-md border px-3 py-2 text-sm">
+      {durationWarning}
+    </div>
+  ) : null
+
+  // On a phone the composer is the lesson CRM's shape (`@some-ui/lesson-crm`):
+  // one concern per pane, and the bottom tab bar - not a Back and a Continue -
+  // is how they are switched. Every pane stays mounted and only the current
+  // one shows, so leaving Browse does not forget what was typed into its
+  // search or which page it was on, exactly as the CRM keeps its prompt's
+  // level. A hidden pane measures 0px and `useFittedPage` sits out until it is
+  // shown, so the ones nobody has opened cost nothing to keep.
+  const panes: Record<ComposerPane, ReactNode> = {
+    browse: (
+      <ActivityPickerStep
+        section="catalogue"
+        items={items}
+        onAdd={handleAddActivity}
+        onRemove={handleRemoveActivity}
+        query={query}
+        onQueryChange={setQuery}
+      />
+    ),
+    added: (
+      <ActivityPickerStep
+        section="manifest"
+        items={items}
+        onAdd={handleAddActivity}
+        onRemove={handleRemoveActivity}
+        query={query}
+        onQueryChange={setQuery}
+        onBrowse={() => setPane("browse")}
+      />
+    ),
+    configure: (
+      <ConfigureStep items={items} onFieldChange={handleFieldChange} />
+    ),
+    arrange: (
+      <ArrangementStep
+        basicScenes={basicScenes}
+        mode={arrangementMode}
+        advancedScenes={advancedScenes}
+        onEnableAdvanced={handleEnableAdvanced}
+        onDisableAdvanced={handleDisableAdvanced}
+        onScenesChange={setAdvancedScenes}
+      />
+    ),
+    review: (
+      <ReviewStep
+        items={items}
+        scenes={scenes}
+        mode={arrangementMode}
+        sessionName={sessionName}
+        onSessionNameChange={setSessionName}
+        defaultName={defaultSessionName(selectedIds)}
+        actions={saveActions}
+      />
+    ),
+  }
+  const shownPane: ComposerPane = canGoToPane(pane) ? pane : "browse"
+
   return (
     <div
+      ref={scope}
       className={cn(
         "flex h-full min-h-0 w-full max-w-3xl flex-col",
         // Every seam costs height twice over on a landscape phone: four gaps
@@ -450,156 +582,151 @@ export const SessionComposer = ({
         "gap-2 [@media(min-height:640px)]:gap-4"
       )}
     >
-      {/* The rail is chrome, not content: it never scrolls out of reach, and
-          it never competes with the body for height. */}
-      <nav
-        aria-label="Composer steps"
-        className="-mx-2 flex shrink-0 items-center"
-      >
-        {STEP_ORDER.map((s) => {
-          const reachable = canGoToStep(s)
-          return (
-            <div
-              key={s}
-              className="flex min-w-0 flex-1 items-center gap-2 last:flex-none"
-            >
-              <button
-                type="button"
-                onClick={() => handleGoToStep(s)}
-                disabled={!reachable}
-                aria-current={s === step ? "step" : undefined}
-                aria-label={`Step ${s}: ${STEP_LABELS[s]}`}
-                // 44px of touch target around a 28px dot: the dot is the
-                // affordance, the padding is what a thumb actually hits.
-                // Real padding rather than padding-plus-negative-margin - the
-                // latter keeps the dots flush to the rail's edges but makes
-                // every button paint 8px outside the nav that holds it, which
-                // is a leak (docs/ui-fit) even when it looks fine.
-                className="flex shrink-0 items-center gap-2 rounded-full p-2 disabled:cursor-not-allowed disabled:opacity-60"
+      {isMobile ? (
+        <>
+          <div className="min-h-0 flex-1">
+            {PANE_ORDER.map((candidate) => (
+              <div
+                key={candidate}
+                id={`composer-pane-${candidate}`}
+                role="tabpanel"
+                aria-labelledby={`composer-tab-${candidate}`}
+                hidden={candidate !== shownPane}
+                className="h-full min-h-0"
               >
-                <span
-                  className={cn(
-                    "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-medium transition-colors",
-                    s === step
-                      ? "bg-primary text-primary-foreground"
-                      : s < step
-                        ? "bg-primary/20 text-primary"
-                        : "bg-muted text-muted-foreground",
-                    reachable && s !== step && "hover:bg-primary/30"
-                  )}
-                >
-                  {s}
-                </span>
-                <span
-                  className={cn(
-                    // `sm:` is 640px of *window*, which at 780x390 leaves the
-                    // rail ~490px once the sidebar has its 256 - four labels
-                    // and three connectors do not fit that, and they overlap
-                    // rather than wrap. `lg:` is the width the rail actually
-                    // needs; below it the numbered dots are the affordance,
-                    // and each button keeps the label as its aria-label.
-                    "hidden text-sm lg:inline",
-                    s === step ? "font-medium" : "text-muted-foreground"
-                  )}
-                >
-                  {STEP_LABELS[s]}
-                </span>
-              </button>
-              {s !== 4 && (
-                <div className="bg-border mx-2 h-px min-w-0 flex-1" />
-              )}
-            </div>
-          )
-        })}
-      </nav>
-
-      <div className="min-h-0 flex-1">
-        {step === 1 && (
-          <ActivityPickerStep
-            items={items}
-            onAdd={handleAddActivity}
-            onRemove={handleRemoveActivity}
-          />
-        )}
-        {step === 2 && (
-          <ConfigureStep items={items} onFieldChange={handleFieldChange} />
-        )}
-        {step === 3 && (
-          <ArrangementStep
-            basicScenes={basicScenes}
-            mode={arrangementMode}
-            advancedScenes={advancedScenes}
-            onEnableAdvanced={handleEnableAdvanced}
-            onDisableAdvanced={handleDisableAdvanced}
-            onScenesChange={setAdvancedScenes}
-          />
-        )}
-        {step === 4 && (
-          <ReviewStep
-            items={items}
-            scenes={scenes}
-            mode={arrangementMode}
-            sessionName={sessionName}
-            onSessionNameChange={setSessionName}
-            defaultName={defaultSessionName(selectedIds)}
-          />
-        )}
-      </div>
-
-      {durationWarning && (
-        <div className="border-destructive/50 bg-destructive/10 text-destructive shrink-0 rounded-md border px-3 py-2 text-sm">
-          {durationWarning}
-        </div>
-      )}
-
-      <div className="flex shrink-0 items-center justify-between border-t pt-2 [@media(min-height:640px)]:pt-4">
-        <Button variant="outline" onClick={handleBack} disabled={step === 1}>
-          Back
-        </Button>
-        {step < 4 ? (
-          <Button
-            onClick={handleNext}
-            disabled={step === 1 && !canProceedFromStep1}
-          >
-            Continue
-          </Button>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            <IntentButton
-              state={saveDraftState}
-              onPress={handleSaveDraft}
-              idleLabel="Save as draft"
-              workingLabel="Saving..."
-              variant="outline"
-              disabled={
-                anySaving ||
-                // Forced disabled whenever a fresh create is unsafe, *unless*
-                // this button's own state currently offers a legitimate
-                // retry of its own (see `hasOwnRetryableFailure`'s header) -
-                // not gated by `activeAction`, which let a non-retryable
-                // activate-PATCH failure on the *active* button slip through
-                // to its `onPress` fallback.
-                (createBlocked && !hasOwnRetryableFailure(saveDraftState)) ||
-                durationCheck.state !== "valid"
-              }
-            />
-            <IntentButton
-              state={saveAndPlayState}
-              onPress={handleSaveAndPlay}
-              idleLabel="Save & Play"
-              workingLabel="Saving..."
-              workingStepLabel={(step) =>
-                step === "activate" ? "Starting..." : undefined
-              }
-              disabled={
-                anySaving ||
-                (createBlocked && !hasOwnRetryableFailure(saveAndPlayState)) ||
-                durationCheck.state !== "valid"
-              }
-            />
+                {panes[candidate]}
+              </div>
+            ))}
           </div>
-        )}
-      </div>
+
+          {durationBanner}
+
+          <BottomTabBar
+            tabs={PANE_ORDER.map((candidate) => ({
+              id: candidate,
+              label: PANE_LABELS[candidate],
+              icon: PANE_ICONS[candidate],
+              disabled: !canGoToPane(candidate),
+              badge: candidate === "added" ? items.length : undefined,
+            }))}
+            current={shownPane}
+            onChange={setPane}
+            shown={barShown}
+            label="Composer panes"
+            idPrefix="composer"
+          />
+        </>
+      ) : (
+        <>
+          {/* The rail is chrome, not content: it never scrolls out of reach, and
+          it never competes with the body for height. */}
+          <nav
+            aria-label="Composer steps"
+            className="-mx-2 flex shrink-0 items-center"
+          >
+            {STEP_ORDER.map((s) => {
+              const reachable = canGoToStep(s)
+              return (
+                <div
+                  key={s}
+                  className="flex min-w-0 flex-1 items-center gap-2 last:flex-none"
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleGoToStep(s)}
+                    disabled={!reachable}
+                    aria-current={s === step ? "step" : undefined}
+                    aria-label={`Step ${s}: ${STEP_LABELS[s]}`}
+                    // 44px of touch target around a 28px dot: the dot is the
+                    // affordance, the padding is what a thumb actually hits.
+                    // Real padding rather than padding-plus-negative-margin - the
+                    // latter keeps the dots flush to the rail's edges but makes
+                    // every button paint 8px outside the nav that holds it, which
+                    // is a leak (docs/ui-fit) even when it looks fine.
+                    className="flex shrink-0 items-center gap-2 rounded-full p-2 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <span
+                      className={cn(
+                        "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-medium transition-colors",
+                        s === step
+                          ? "bg-primary text-primary-foreground"
+                          : s < step
+                            ? "bg-primary/20 text-primary"
+                            : "bg-muted text-muted-foreground",
+                        reachable && s !== step && "hover:bg-primary/30"
+                      )}
+                    >
+                      {s}
+                    </span>
+                    <span
+                      className={cn(
+                        // The rail only shows label text at `lg:`: below it the
+                        // numbered dots are the affordance, and each button
+                        // keeps the label as its aria-label. (A phone, below
+                        // `md`, does not get this rail at all - it gets the
+                        // tab bar above.)
+                        "hidden text-sm lg:inline",
+                        s === step ? "font-medium" : "text-muted-foreground"
+                      )}
+                    >
+                      {STEP_LABELS[s]}
+                    </span>
+                  </button>
+                  {s !== 4 && (
+                    <div className="bg-border mx-2 h-px min-w-0 flex-1" />
+                  )}
+                </div>
+              )
+            })}
+          </nav>
+
+          <div className="min-h-0 flex-1">
+            {step === 1 && (
+              <ActivityPickerStep
+                items={items}
+                onAdd={handleAddActivity}
+                onRemove={handleRemoveActivity}
+                query={query}
+                onQueryChange={setQuery}
+              />
+            )}
+            {step === 2 && panes.configure}
+            {step === 3 && panes.arrange}
+            {step === 4 && (
+              <ReviewStep
+                items={items}
+                scenes={scenes}
+                mode={arrangementMode}
+                sessionName={sessionName}
+                onSessionNameChange={setSessionName}
+                defaultName={defaultSessionName(selectedIds)}
+              />
+            )}
+          </div>
+
+          {durationBanner}
+
+          <div className="flex shrink-0 items-center justify-between border-t pt-2 [@media(min-height:640px)]:pt-4">
+            <Button
+              variant="outline"
+              onClick={handleBack}
+              disabled={step === 1}
+            >
+              Back
+            </Button>
+            {step < 4 ? (
+              <Button
+                onClick={handleNext}
+                disabled={step === 1 && !canProceedFromStep1}
+              >
+                Continue
+              </Button>
+            ) : (
+              <div className="flex flex-wrap gap-2">{saveActions}</div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   )
 }

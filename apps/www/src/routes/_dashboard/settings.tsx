@@ -74,7 +74,7 @@ function isLayoutTreeId(value: string): value is LayoutTreeId {
 
 const SettingsSkeleton = (): JSX.Element => (
   <Card className="max-w-xl">
-    <CardContent className="space-y-4 pt-6">
+    <CardContent className="space-y-4 pt-[var(--card-p,1.5rem)]">
       <Skeleton className="h-10 w-full" />
       <Skeleton className="h-10 w-full" />
       <Skeleton className="h-10 w-full" />
@@ -259,7 +259,7 @@ const SettingsForm = ({
  */
 const AccountCard = (): JSX.Element => (
   <Card className="max-w-xl">
-    <CardContent className="pt-6">
+    <CardContent className="pt-[var(--card-p,1.5rem)]">
       {DEVICE_BACKEND ? <DeviceSection /> : <AccountSection />}
     </CardContent>
   </Card>
