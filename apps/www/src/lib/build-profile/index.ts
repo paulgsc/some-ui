@@ -35,3 +35,9 @@ export function requireAudience(audience: Audience): () => void {
  * takes the name from there, so the two cannot drift apart unnoticed.
  */
 export const MOBILE_APP = profile === "mobile"
+
+/**
+ * Whether this build carries `audience`'s workspaces. What a link to a gated
+ * route sits behind (A3, packages/some-vite-config/AUDIENCES.md).
+ */
+export { hasAudience }

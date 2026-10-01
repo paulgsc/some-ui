@@ -19,11 +19,18 @@ import {
   Outlet,
   useRouterState,
 } from "@tanstack/react-router"
-import { Briefcase, FileText, ListVideo, Settings, User } from "lucide-react"
+import {
+  Briefcase,
+  FileText,
+  ListVideo,
+  Mic,
+  Settings,
+  User,
+} from "lucide-react"
 import { cn, useIsMobile, useIsTerminal } from "some-ui-utils"
 
 import { isOnMobileSurface } from "@/lib/app-surface"
-import { MOBILE_APP } from "@/lib/build-profile"
+import { hasAudience, MOBILE_APP } from "@/lib/build-profile"
 import { AmbientIntentStatus } from "@/lib/intent/render"
 import { useIsDeclaredBounded } from "@/lib/route-bounds"
 import { useMigrationSignal } from "@/lib/tenant/migration-signal"
@@ -67,7 +74,14 @@ function isComposerPath(pathname: string): boolean {
 }
 
 type NavItem = {
-  to: "/app" | "/sessions" | "/resume" | "/jobs" | "/profile" | "/settings"
+  to:
+    | "/app"
+    | "/sessions"
+    | "/soundbites"
+    | "/resume"
+    | "/jobs"
+    | "/profile"
+    | "/settings"
   label: string
   // Widened from `typeof Home` so the brand mark sits alongside the lucide
   // glyphs. Both are sized the same way, by the sidebar's own `[&>svg]:size-4`
@@ -80,6 +94,10 @@ const NAV_ITEMS: ReadonlyArray<NavItem> = [
   // house — the same seven-cell comb as the favicon and the landing hero.
   { to: "/app", label: "Home", icon: HexCombMark },
   { to: "/sessions", label: "Sessions", icon: ListVideo },
+  // Only in a build that carries the page (the Android app's; "apk").
+  ...(hasAudience("apk")
+    ? [{ to: "/soundbites", label: "Say why", icon: Mic } satisfies NavItem]
+    : []),
   { to: "/resume", label: "Résumé", icon: FileText },
   { to: "/jobs", label: "Jobs", icon: Briefcase },
   { to: "/profile", label: "Profile", icon: User },

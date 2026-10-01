@@ -15,7 +15,7 @@ handler is www's, and so is the backend (`apps/www/src/lib/device-backend`).
 ## What the app carries: sessions
 
 The phone gets **sessions** - the list, the composer and the player - and
-nothing else www routes to. The landing page, Home, the résumé, jobs, profile,
+**soundbites** (below), and nothing else www routes to. The landing page, Home, the résumé, jobs, profile,
 the extensions tour and the LAN tools are the web app's; the Storybook is a
 separate site that was never in www's bundle. **Settings** stays, because on
 the phone it is the phone's own page: the sync from home, study reminders and
@@ -25,8 +25,8 @@ How that is enforced (www `src/lib/app-surface`):
 
 - `build:web` selects the `mobile` profile (`apps/www/build.profiles.ts`),
   which sets `MOBILE_APP` in the bundle.
-- `MOBILE_SURFACE` is an **allowlist**: `/sessions` and `/settings`, typed
-  against the route tree. (Also `/auth`, which the phone never shows since it
+- `MOBILE_SURFACE` is an **allowlist**: `/sessions`, `/soundbites` and
+  `/settings`, typed against the route tree. (Also `/auth`, which the phone never shows since it
   is always signed in, so that the sign-in guard and this one cannot redirect
   each other in a loop.) The root route redirects any other path to
   `/sessions` before its own guards run, so the app opens on the sessions list,
@@ -116,9 +116,10 @@ pnpm --filter @some-ui/mobile apk
 - `VITE_STATIC_DATA=false`: an inherited `true` would select the old
   localStorage-only paths.
 - `VITE_BASE_PATH=/`: an inherited Pages prefix gives a blank app.
-- `SOME_UI_PROFILE=mobile`: sessions only (above); like `pages`, it also
+- `SOME_UI_PROFILE=mobile`: sessions only (above), plus the `apk`-audience
+  workspaces no other build carries (the soundbites); like `pages`, it also
   leaves out the LAN-only operator CRMs. Inherit `pages` or `lan` instead and
-  the phone gets the whole web app.
+  the phone gets the whole web app, without the soundbites.
 
 turbo passes each one through: it infers `VITE_*` for this workspace, and
 `SOME_UI_PROFILE` is declared in `turbo.json`.
@@ -295,8 +296,10 @@ In the `CLAUDE.md` "Gray-area invariants" shape.
 >   `androidx.profileinstaller`, which arrives through `androidx.appcompat`
 >   (`androidxAppCompatVersion`), both in `android/variables.gradle`. A
 >   replacement can supply the same entry for another reason. The app
->   features, and their code: the sync from home (`INTERNET`,
->   `usesCleartextTraffic`),
+>   features, and their code: soundbites (`RECORD_AUDIO`,
+>   `MODIFY_AUDIO_SETTINGS`), `packages/ui/soundbites/src/lib/recorder.ts`
+>   and its page `apps/www/src/routes/_dashboard/_apk/soundbites.tsx`; the
+>   sync from home (`INTERNET`, `usesCleartextTraffic`),
 >   `apps/www/src/lib/device-backend/home-sync/` and its Settings entry
 >   `apps/www/src/components/settings/device-section.tsx`; study nudges
 >   (`POST_NOTIFICATIONS`), `apps/www/src/lib/study-nudge/native.ts`; the
@@ -395,6 +398,70 @@ with `isExactNotification: false`, and the manifest removes the plugin's
 `SCHEDULE_EXACT_ALARM`. Both halves matter: from plugin 8.3.0 the default is
 exact, and without exact-alarm access (Android 14 denies it by default) each
 `schedule()` would open the "Alarms & reminders" settings screen.
+
+## Soundbites: saying why a session did not happen
+
+The phone's answer to "why didn't I study?", asked in the one way that costs
+nothing: out loud, with no form. Each soundbite is a data point in a
+longitudinal record of what gets in the way, for an agent (or a person) to
+make sense of later. Engagement should never be the reason a lesson did not
+happen; these recordings are how the app finds out when it was.
+
+**Getting there is one tap, and the tap starts listening.**
+
+- **Sessions → Not studying today? → Say why** (the list the app opens on),
+  or **Say why** in the sidebar.
+- A study reminder's **Not today: say why** button. A reminder that is not
+  going to be followed is when the reason is freshest, so the answer is one
+  tap from the notification instead of a dismissal.
+
+Both land on `/soundbites?say=…`, which opens the microphone on arrival.
+Tap again to keep it. There is nothing to type, choose or confirm, and a
+row of sentence starters ("Too tired", "No time today", "The app got in the
+way" …) is there for the moment the mind goes blank.
+
+**What the app notes by itself**, beside each recording: when it was made
+(with the phone's time zone), how it was reached (the list, a reminder, or
+the page), when a session was last touched, and how many are open. The
+person only ever supplies the why.
+
+**Bounded, never blocking** (`packages/ui/soundbites/src/lib/policy.ts`):
+
+- A take stops itself, and is kept, at **one minute**. The ring around the
+  button shows the minute running out, amber for the last ten seconds.
+  Under a second is a stray tap, and not kept.
+- The phone keeps **six**. A seventh never waits on a decision: it replaces
+  the oldest, unless the person marked another to replace instead (before,
+  during or never). The cap is enforced in the same IndexedDB transaction
+  as the write.
+- A take cut short from outside (the screen off, the app backgrounded, the
+  page left) is kept up to that point, not lost.
+
+**Where they live:** the WebView's IndexedDB (`some-ui.soundbites`), on the
+phone only, as Opus in WebM at 32 kbps (at most 4 KB a second, about a quarter
+of a megabyte for a full minute). Not the device backend's SQLite: they are
+not `file_host` data and no server route exists for them.
+
+**Only the APK carries it.** `@some-ui/soundbites` is the first workspace of
+the `apk` build audience (`packages/some-vite-config/AUDIENCES.md`): only the
+`mobile` profile bundles it, every other build stubs it, and its page sits
+under `_dashboard/_apk/`, whose layout answers not-found anywhere else. To
+try it in a desktop browser, run `SOME_UI_PROFILE=mobile pnpm dev` in
+`apps/www`.
+
+**Microphone permission:** the first tap to talk shows Android's prompt
+(`RECORD_AUDIO`, requested by Capacitor's `BridgeWebChromeClient` for the
+WebView). Refused, the page says where in Android Settings to turn it back
+on.
+
+**Not done yet: getting soundbites off the phone.** Today they can be played
+back and deleted on the phone, and nothing more. Delivery (a file to share,
+or the home server, for an agent to read), then clearing what was
+delivered, is the next step. A WebView cannot download a blob, so on the
+phone a file needs `@capacitor/filesystem` and `@capacitor/share` (neither
+adds a permission or an exported component: their manifests are empty,
+checked 2026-10-01 at 8.1.3 and 8.0.2), and the home server needs a route to
+receive them.
 
 ## Not done yet
 

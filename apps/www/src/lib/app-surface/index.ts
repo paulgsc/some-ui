@@ -1,14 +1,15 @@
 import type { FileRoutesByTo } from "@/routeTree.gen"
 import { redirect } from "@tanstack/react-router"
 
-import { MOBILE_APP } from "@/lib/build-profile"
+import { hasAudience, MOBILE_APP } from "@/lib/build-profile"
 
 /**
  * What the Android app (apps/mobile) carries: sessions - the list, the
- * composer and the player - and the settings page, which in that build is the
- * phone's own (sync from home, study nudges, the voice). Everything else www
- * routes to (the landing, Home, the résumé, jobs, profile, the extensions tour,
- * the LAN tools) is the web app's, and the phone has no use for it.
+ * composer and the player - the soundbites, and the settings page, which in
+ * that build is the phone's own (sync from home, study nudges, the voice).
+ * Everything else www routes to (the landing, Home, the résumé, jobs,
+ * profile, the extensions tour, the LAN tools) is the web app's, and the
+ * phone has no use for it.
  *
  * An allowlist, not a list of exclusions, so that a page added to www later
  * stays off the phone until someone puts it here. Typed against the route
@@ -16,6 +17,10 @@ import { MOBILE_APP } from "@/lib/build-profile"
  */
 const MOBILE_SURFACE: ReadonlyArray<keyof FileRoutesByTo> = [
   "/sessions",
+  // Saying why a session did not happen. It needs the phone's microphone,
+  // so it is the one page here that only the Android app's build carries
+  // (the "apk" audience); asked rather than assumed, like any gated link.
+  ...(hasAudience("apk") ? (["/soundbites"] as const) : []),
   "/settings",
   // Not a page the phone shows: the device backend is always signed in. But
   // the root's sign-in guard sends a signed-out visit here, and redirecting it
