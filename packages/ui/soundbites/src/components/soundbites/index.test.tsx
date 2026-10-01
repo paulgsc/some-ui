@@ -250,6 +250,64 @@ describe("Soundbites", () => {
     expect(onKept).toHaveBeenCalledTimes(1)
   })
 
+  it("says a take was kept even when the list cannot be re-read after", async () => {
+    const onKept = vi.fn()
+    const memory = memoryStore()
+    const mic = fakeMic()
+    render(
+      <Soundbites
+        context={() => CONTEXT}
+        store={memory.store}
+        startRecording={mic.start}
+        onKept={onKept}
+      />
+    )
+    await screen.findByText("Nothing kept yet.")
+    vi.spyOn(memory.store, "list").mockRejectedValueOnce(new Error("busy"))
+
+    await tap("Start talking")
+    await tap("Done, keep it")
+
+    expect(await screen.findByText("Kept, 0:05.")).toBeInTheDocument()
+    expect(screen.queryByText(/couldn't be kept/)).not.toBeInTheDocument()
+    expect(onKept).toHaveBeenCalledTimes(1)
+    expect(memory.kept.size).toBe(1)
+  })
+
+  it("plays one recording at a time, however fast the taps", async () => {
+    const played: Array<string> = []
+    vi.stubGlobal(
+      "Audio",
+      class {
+        onended: (() => void) | null = null
+        constructor(readonly src: string) {}
+        play(): Promise<void> {
+          played.push(this.src)
+          return Promise.resolve()
+        }
+        pause(): void {}
+      }
+    )
+    let urls = 0
+    vi.spyOn(URL, "createObjectURL").mockImplementation(() => `blob:${++urls}`)
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined)
+    setup({ kept: [bite("a", 5), bite("b", 10)] })
+
+    const [first, second] = await screen.findAllByRole("button", {
+      name: /^Play /,
+    })
+    if (first === undefined || second === undefined)
+      throw new Error("two recordings to play")
+    await settle(() => {
+      fireEvent.click(first)
+      fireEvent.click(second)
+    })
+
+    await screen.findByRole("button", { name: /^Stop playing / })
+    expect(played).toHaveLength(1)
+    vi.unstubAllGlobals()
+  })
+
   it("deletes a kept one after asking", async () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(true)
     const { kept } = setup({ kept: [bite("only", 5)] })

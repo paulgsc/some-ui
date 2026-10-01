@@ -326,7 +326,12 @@ export const Soundbites = ({
     }
   }, [store])
 
+  // Bumped by every stop, so a play still waiting on the store for its
+  // audio can tell it was overtaken (a second tap, a recording starting).
+  const playRequestRef = useRef(0)
+
   const stopPlaying = useCallback((): void => {
+    playRequestRef.current += 1
     const player = playerRef.current
     if (player === null) return
     player.audio.pause()
@@ -382,10 +387,14 @@ export const Soundbites = ({
       await store.save(bite, take.blob, choiceRef.current)
       onKeptRef.current?.()
       setChoice(null)
-      const after = byNewest(await store.list())
-      setKept(after)
+      // The take is stored. A refresh that fails after this must not say
+      // otherwise, or the retry it invites would keep it twice.
+      const refreshed = await store.list().then(byNewest, () => null)
+      if (refreshed !== null) setKept(refreshed)
       setNotice(
-        `Kept, ${formatDuration(bite.durationMs)}. ${after.length} of ${SOUNDBITE_LIMIT} on this phone.`
+        refreshed === null
+          ? `Kept, ${formatDuration(bite.durationMs)}.`
+          : `Kept, ${formatDuration(bite.durationMs)}. ${refreshed.length} of ${SOUNDBITE_LIMIT} on this phone.`
       )
     } catch {
       setNotice("That one couldn't be kept. Try again?")
@@ -450,7 +459,10 @@ export const Soundbites = ({
     const wasPlaying = playingId === bite.id
     stopPlaying()
     if (wasPlaying) return
+    const request = playRequestRef.current
     const blob = await store.audio(bite.id)
+    // Overtaken while the audio loaded: only the latest request plays.
+    if (request !== playRequestRef.current) return
     if (blob === null) {
       setNotice("That recording's audio is missing.")
       return

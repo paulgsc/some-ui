@@ -90,7 +90,12 @@ export function indexedDbSoundbiteStore(): SoundbiteStore {
       // Best effort: a refusal still leaves ordinary (evictable) storage.
       if ("storage" in navigator)
         void navigator.storage.persist().catch(() => false)
-      db = open()
+      // A failed open is not kept: the page offers a retry, which must get
+      // a fresh attempt rather than the same rejection.
+      db = open().catch((error: unknown) => {
+        db = null
+        throw error
+      })
     }
     return db
   }
