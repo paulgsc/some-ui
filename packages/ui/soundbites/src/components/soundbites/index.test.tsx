@@ -3,7 +3,7 @@ import { bite, memoryStore } from "@soundbites/lib/__tests__/fixture"
 import type { Recording, StartRecording, Take } from "@soundbites/lib/recorder"
 import { RecordingError } from "@soundbites/lib/recorder"
 import type { SoundbiteContext } from "@soundbites/lib/types"
-import { act, fireEvent, render, screen } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import type { Mock } from "vitest"
 import { describe, expect, it, vi } from "vitest"
 
@@ -272,6 +272,122 @@ describe("Soundbites", () => {
     expect(screen.queryByText(/couldn't be kept/)).not.toBeInTheDocument()
     expect(onKept).toHaveBeenCalledTimes(1)
     expect(memory.kept.size).toBe(1)
+    // ... and the list it could not re-read goes unknown, not stale: no
+    // "Nothing kept yet" and no 0/6 beside a take that was just kept.
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Couldn't read what's on this phone"
+    )
+    expect(screen.queryByText("Nothing kept yet.")).toBeNull()
+    expect(screen.queryByRole("img", { name: /of 6 kept/ })).toBeNull()
+  })
+
+  it("keeps the new recording playing when an old play fails late", async () => {
+    const audios: Array<{
+      src: string
+      fail: (error: Error) => void
+    }> = []
+    vi.stubGlobal(
+      "Audio",
+      class {
+        onended: (() => void) | null = null
+        constructor(readonly src: string) {}
+        play(): Promise<void> {
+          return new Promise((_resolve, reject) => {
+            audios.push({ src: this.src, fail: reject })
+          })
+        }
+        pause(): void {}
+      }
+    )
+    let urls = 0
+    vi.spyOn(URL, "createObjectURL").mockImplementation(() => `blob:${++urls}`)
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined)
+    setup({ kept: [bite("a", 5), bite("b", 10)] })
+
+    const [first, second] = await screen.findAllByRole("button", {
+      name: /^Play /,
+    })
+    if (first === undefined || second === undefined)
+      throw new Error("two recordings to play")
+    await settle(() => fireEvent.click(first))
+    await screen.findByRole("button", { name: /^Stop playing / })
+    await settle(() => fireEvent.click(second))
+    await waitFor(() => expect(audios).toHaveLength(2))
+
+    // The first recording's play, abandoned by the switch, fails now.
+    await settle(() => audios[0]?.fail(new Error("interrupted")))
+
+    expect(
+      screen.getAllByRole("button", { name: /^Stop playing / })
+    ).toHaveLength(1)
+    expect(
+      screen.getAllByRole("button", { name: /^(Play|Stop playing) / })[1]
+    ).toHaveAccessibleName(/^Stop playing /)
+    vi.unstubAllGlobals()
+  })
+
+  it("says so when a recording's audio cannot be read", async () => {
+    const memory = memoryStore([bite("a", 5)])
+    vi.spyOn(memory.store, "audio").mockRejectedValueOnce(new Error("busy"))
+    render(
+      <Soundbites
+        context={() => CONTEXT}
+        store={memory.store}
+        startRecording={fakeMic().start}
+      />
+    )
+
+    await tap(/^Play /)
+
+    expect(
+      await screen.findByText("That recording couldn't be played.")
+    ).toBeInTheDocument()
+  })
+
+  it("keeps a recording it could not delete, and says so", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true)
+    const memory = memoryStore([bite("a", 5)])
+    vi.spyOn(memory.store, "remove").mockRejectedValueOnce(new Error("busy"))
+    render(
+      <Soundbites
+        context={() => CONTEXT}
+        store={memory.store}
+        startRecording={fakeMic().start}
+      />
+    )
+
+    await tap(/^Delete /)
+
+    expect(
+      await screen.findByText("That one couldn't be deleted. Try again?")
+    ).toBeInTheDocument()
+    expect(screen.getByRole("img", { name: "1 of 6 kept" })).toBeVisible()
+    confirm.mockRestore()
+  })
+
+  it("shows the list unknown when it cannot be re-read after a delete", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true)
+    const memory = memoryStore([bite("a", 5), bite("b", 10)])
+    render(
+      <Soundbites
+        context={() => CONTEXT}
+        store={memory.store}
+        startRecording={fakeMic().start}
+      />
+    )
+    await screen.findByRole("img", { name: "2 of 6 kept" })
+    vi.spyOn(memory.store, "list").mockRejectedValueOnce(new Error("busy"))
+
+    const [first] = screen.getAllByRole("button", { name: /^Delete / })
+    if (first === undefined) throw new Error("a recording to delete")
+    await settle(() => fireEvent.click(first))
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Couldn't read what's on this phone"
+    )
+    expect(screen.queryByRole("img", { name: /of 6 kept/ })).toBeNull()
+    expect(memory.kept.size).toBe(1)
+    confirm.mockRestore()
   })
 
   it("plays one recording at a time, however fast the taps", async () => {

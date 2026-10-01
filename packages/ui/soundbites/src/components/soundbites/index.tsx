@@ -12,6 +12,18 @@
  * A take in progress is kept, not lost, when it is cut short from outside:
  * the screen turning off, the app going to the background, or the page being
  * left. What was said up to then is the soundbite.
+ *
+ * Two rules every asynchronous path here keeps (each was a bug before it was
+ * a rule):
+ *
+ * - **The list shown is a read that succeeded, or "unknown".** Any failed
+ *   read of the store sets it unknown, with a retry; it never shows a stale
+ *   list, an empty one, or a zero it did not read. `refresh` is the one way
+ *   the list is re-read.
+ * - **A continuation checks it still owns what it touches.** A play waiting
+ *   on the store checks its request is still the latest; an `Audio`'s ended
+ *   and failed handlers stop playback only while that `Audio` is the one
+ *   playing.
  */
 import type { JSX } from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -336,6 +348,20 @@ export const Soundbites = ({
   // audio can tell it was overtaken (a second tap, a recording starting).
   const playRequestRef = useRef(0)
 
+  /** The one way the list is re-read: a fresh snapshot, or unknown. */
+  const refresh = useCallback(async (): Promise<Array<Soundbite> | null> => {
+    try {
+      const all = byNewest(await store.list())
+      setKept(all)
+      setUnreadable(false)
+      return all
+    } catch {
+      setKept(null)
+      setUnreadable(true)
+      return null
+    }
+  }, [store])
+
   const stopPlaying = useCallback((): void => {
     playRequestRef.current += 1
     const player = playerRef.current
@@ -394,12 +420,9 @@ export const Soundbites = ({
       onKeptRef.current?.()
       setChoice(null)
       // The take is stored. A refresh that fails after this must not say
-      // otherwise, or the retry it invites would keep it twice.
-      const refreshed = await store.list().then(byNewest, () => null)
-      if (refreshed !== null) {
-        setKept(refreshed)
-        setUnreadable(false)
-      }
+      // otherwise, or the retry it invites would keep it twice; the list
+      // goes unknown instead of showing what it was before the save.
+      const refreshed = await refresh()
       setNotice(
         refreshed === null
           ? `Kept, ${formatDuration(bite.durationMs)}.`
@@ -411,7 +434,7 @@ export const Soundbites = ({
       busyRef.current = false
       setPhase({ kind: "idle" })
     }
-  }, [store])
+  }, [store, refresh])
 
   const discard = (): void => {
     recordingRef.current?.discard()
@@ -469,7 +492,14 @@ export const Soundbites = ({
     stopPlaying()
     if (wasPlaying) return
     const request = playRequestRef.current
-    const blob = await store.audio(bite.id)
+    let blob: Blob | null
+    try {
+      blob = await store.audio(bite.id)
+    } catch {
+      if (request === playRequestRef.current)
+        setNotice("That recording couldn't be played.")
+      return
+    }
     // Overtaken while the audio loaded: only the latest request plays.
     if (request !== playRequestRef.current) return
     if (blob === null) {
@@ -480,16 +510,26 @@ export const Soundbites = ({
     const audio = new Audio(url)
     playerRef.current = { audio, url }
     setPlayingId(bite.id)
-    audio.onended = stopPlaying
-    audio.play().catch(stopPlaying)
+    // Only while this is still the one playing: an earlier recording's play
+    // that fails after the switch must not stop the new one.
+    const release = (): void => {
+      if (playerRef.current?.audio === audio) stopPlaying()
+    }
+    audio.onended = release
+    audio.play().catch(release)
   }
 
   const remove = async (bite: Soundbite, when: string): Promise<void> => {
     if (!window.confirm(`Delete the soundbite from ${when}?`)) return
     if (playingId === bite.id) stopPlaying()
-    await store.remove(bite.id)
+    try {
+      await store.remove(bite.id)
+    } catch {
+      setNotice("That one couldn't be deleted. Try again?")
+      return
+    }
     if (choice === bite.id) setChoice(null)
-    setKept(byNewest(await store.list()))
+    await refresh()
   }
 
   const now = new Date()
