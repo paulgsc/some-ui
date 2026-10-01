@@ -392,7 +392,9 @@ describe("RoundSession", () => {
     expect([...reached].sort()).toEqual(
       AUTHORED_ROUNDS.map((round) => round.id).sort()
     )
-  })
+    // Up to `bound` whole draws, each visiting four tabs before answering:
+    // about 2 s here and 5.3 s on CI's runner, past vitest's 5 s default.
+  }, 15_000)
 
   it("says recognized after one correct selection, and never mastery (Cor. 10.1)", () => {
     vi.useFakeTimers({
