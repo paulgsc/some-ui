@@ -7,7 +7,11 @@
  */
 
 import type { JSX, ReactNode } from "react"
-import { resetViewport, setViewport } from "@/test-support/viewport"
+import {
+  resetViewport,
+  setViewport,
+  turnViewport,
+} from "@/test-support/viewport"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import type * as ReactRouterModule from "@tanstack/react-router"
 import {
@@ -196,5 +200,62 @@ describe("SessionComposer on a wide screen", () => {
       false
     )
     expect(screen.queryByRole("tablist", { name: "Composer panes" })).toBeNull()
+  })
+})
+
+/**
+ * A window can cross `md` mid-task: a phone turned over, a desktop window
+ * resized. The two layouts mount their panes in different places, so anything
+ * a pane held itself was dropped at the crossing; what the composer holds
+ * above the layouts is what survives it.
+ */
+describe("SessionComposer across the breakpoint", () => {
+  const searchValue = (): string | false => {
+    const search = screen.getByRole("searchbox", { name: "Filter activities" })
+    return search instanceof HTMLInputElement && search.value
+  }
+
+  it("keeps a half-typed search from a phone onto a wide screen", () => {
+    render(withQueryClient(<SessionComposer initialActivity="honeycomb" />))
+    fireEvent.change(
+      screen.getByRole("searchbox", { name: "Filter activities" }),
+      { target: { value: "hon" } }
+    )
+
+    turnViewport(false)
+
+    expect(
+      screen.getByRole("navigation", { name: "Composer steps" })
+    ).toBeDefined()
+    expect(searchValue()).toBe("hon")
+  })
+
+  it("keeps it from a wide screen onto a phone, and back", () => {
+    setViewport(false)
+    render(withQueryClient(<SessionComposer initialActivity="honeycomb" />))
+    fireEvent.change(
+      screen.getByRole("searchbox", { name: "Filter activities" }),
+      { target: { value: "hon" } }
+    )
+
+    turnViewport(true)
+    expect(isSelected(tab("Browse"))).toBe(true)
+    expect(searchValue()).toBe("hon")
+
+    turnViewport(false)
+    expect(searchValue()).toBe("hon")
+  })
+
+  it("keeps the pane it was on as the matching wizard step", () => {
+    render(withQueryClient(<SessionComposer initialActivity="honeycomb" />))
+    fireEvent.click(tab("Arrange"))
+
+    turnViewport(false)
+
+    expect(
+      screen
+        .getByRole("button", { name: "Step 3: Arrange" })
+        .getAttribute("aria-current")
+    ).toBe("step")
   })
 })

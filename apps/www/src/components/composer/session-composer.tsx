@@ -264,6 +264,9 @@ export const SessionComposer = ({
   // One position for both layouts (see `./panes`): the wizard reads it as a
   // step, the phone's tab bar as a pane.
   const [pane, setPane] = useState<ComposerPane>("browse")
+  // The catalogue's search, here for the same reason as `pane`: the picker
+  // that shows it is a different mount in each layout.
+  const [query, setQuery] = useState("")
   const step = PANE_STEP[pane]
   const isMobile = useIsMobile()
   const scope = useRef<HTMLDivElement | null>(null)
@@ -527,6 +530,8 @@ export const SessionComposer = ({
         items={items}
         onAdd={handleAddActivity}
         onRemove={handleRemoveActivity}
+        query={query}
+        onQueryChange={setQuery}
       />
     ),
     added: (
@@ -535,6 +540,8 @@ export const SessionComposer = ({
         items={items}
         onAdd={handleAddActivity}
         onRemove={handleRemoveActivity}
+        query={query}
+        onQueryChange={setQuery}
         onBrowse={() => setPane("browse")}
       />
     ),
@@ -679,6 +686,8 @@ export const SessionComposer = ({
                 items={items}
                 onAdd={handleAddActivity}
                 onRemove={handleRemoveActivity}
+                query={query}
+                onQueryChange={setQuery}
               />
             )}
             {step === 2 && panes.configure}

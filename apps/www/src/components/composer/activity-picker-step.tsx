@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { useMemo, useRef, useState } from "react"
+import { useMemo, useRef } from "react"
 import type { ActivityDefinition, ActivityId } from "@some-ui/activity-catalog"
 import {
   ACTIVITY_CATALOG,
@@ -65,6 +65,15 @@ type ActivityPickerStepProps = {
   section?: PickerSection
   /** Where the manifest's empty state sends someone who has added nothing. */
   onBrowse?: () => void
+  /**
+   * The catalogue's search, held by the composer rather than here. This
+   * component is mounted in a different place by each of the composer's two
+   * layouts, so whatever it holds itself is lost when the window crosses
+   * `md` (a phone turned, a window resized) - the composer's position and
+   * picks survived that from the start; the search did not.
+   */
+  query: string
+  onQueryChange: (query: string) => void
 }
 
 /**
@@ -92,6 +101,8 @@ export const ActivityPickerStep = ({
   onRemove,
   section = "both",
   onBrowse,
+  query,
+  onQueryChange,
 }: ActivityPickerStepProps): JSX.Element => {
   const showCatalogue = section !== "manifest"
   const showManifest = section !== "catalogue"
@@ -100,7 +111,6 @@ export const ActivityPickerStep = ({
   const catalogueShare = showManifest ? CATALOGUE_SHARE : "min-h-0 flex-1"
   const manifestShare = showCatalogue ? MANIFEST_SHARE : "min-h-0 flex-1"
 
-  const [query, setQuery] = useState("")
   const searchRef = useRef<HTMLInputElement>(null)
   // A manifest-only pane has no field to focus, and `/` there would be
   // swallowed (`preventDefault`) for nothing.
@@ -188,7 +198,7 @@ export const ActivityPickerStep = ({
           <div className="shrink-0">
             <ActivitySearchField
               value={query}
-              onChange={setQuery}
+              onChange={onQueryChange}
               inputRef={searchRef}
               placeholder="Filter activities"
             />

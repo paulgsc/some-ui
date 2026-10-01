@@ -226,3 +226,47 @@ test.describe("the tab bar gets out of the way", () => {
     await expect(bar).toHaveAttribute("data-shown", "true")
   })
 })
+
+/**
+ * A fixed viewport per test only shows that each size renders. Turning a
+ * phone over happens to a page already in use, and what it can break - a
+ * search typed, a pane chosen - exists only across the change. So this one
+ * resizes the window under a composer someone is part way through.
+ */
+test.describe("turning the phone over", () => {
+  test.use({ viewport: { width: 390, height: 780 } })
+
+  const search = (page: Page): ReturnType<Page["getByRole"]> =>
+    page.getByRole("searchbox", { name: "Filter activities" })
+
+  test("keeps the tabs, the pane and the search", async ({ page }) => {
+    await signIn(page)
+    await search(page).fill("hon")
+
+    await page.setViewportSize({ width: 780, height: 390 })
+    await expect(
+      page.getByRole("tablist", { name: "Composer panes" })
+    ).toBeVisible()
+    await expect(tab(page, "Browse")).toHaveAttribute("aria-selected", "true")
+    await expect(search(page)).toHaveValue("hon")
+
+    await page.setViewportSize({ width: 390, height: 780 })
+    await expect(search(page)).toHaveValue("hon")
+  })
+
+  test("keeps the search across into the wide layout and back", async ({
+    page,
+  }) => {
+    await signIn(page)
+    await search(page).fill("hon")
+
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await expect(
+      page.getByRole("navigation", { name: "Composer steps" })
+    ).toBeVisible()
+    await expect(search(page)).toHaveValue("hon")
+
+    await page.setViewportSize({ width: 390, height: 780 })
+    await expect(search(page)).toHaveValue("hon")
+  })
+})
