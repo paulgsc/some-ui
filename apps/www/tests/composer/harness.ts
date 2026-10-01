@@ -26,7 +26,7 @@ const APP_ROOT = resolve(__dirname, "../..")
 
 const PORT = Number(process.env["COMPOSER_E2E_PORT"] ?? 5173)
 
-export const BASE_URL = `http://localhost:${PORT}`
+const BASE_URL = `http://localhost:${PORT}`
 
 async function isUp(): Promise<boolean> {
   try {

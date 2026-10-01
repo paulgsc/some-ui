@@ -56,7 +56,7 @@ type PickedActivity = {
  * above the manifest, in one step. A phone gives each concern a pane of its
  * own (`./panes`), so each half fits, and is fitted to, the whole of one.
  */
-export type PickerSection = "both" | "catalogue" | "manifest"
+type PickerSection = "both" | "catalogue" | "manifest"
 
 type ActivityPickerStepProps = {
   items: ReadonlyArray<PickedActivity>
