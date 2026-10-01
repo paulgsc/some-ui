@@ -3,18 +3,14 @@ import { useSyncExternalStore } from "react"
 const MOBILE_BREAKPOINT = 768
 const QUERY = `(max-width: ${MOBILE_BREAKPOINT - 1}px)`
 
-/** Absent in jsdom, which reads as the desktop layout (see below). */
-const canMatch = (): boolean => typeof window.matchMedia === "function"
-
 function subscribe(onChange: () => void): () => void {
-  if (!canMatch()) return (): void => {}
   const mql = window.matchMedia(QUERY)
   mql.addEventListener("change", onChange)
   return (): void => mql.removeEventListener("change", onChange)
 }
 
 function snapshot(): boolean {
-  return canMatch() && window.matchMedia(QUERY).matches
+  return window.matchMedia(QUERY).matches
 }
 
 /**
