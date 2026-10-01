@@ -3,7 +3,13 @@ export { useMeasureRect } from "./use-measure-rect"
 export { useResizeObserver } from "./use-resize-observer"
 export { useEventListener } from "./use-event-listener"
 export { useIsomorphicLayoutEffect } from "./use-isomorphic"
-export { useIsMobile } from "./use-mobile"
+export {
+  HANDHELD_MAX_HEIGHT,
+  HANDHELD_MAX_WIDTH,
+  HANDHELD_QUERY,
+  isHandheldBox,
+  useIsMobile,
+} from "./use-mobile"
 export { useLocalStorage } from "./use-local-storage"
 export * from "./use-fetch"
 export * from "./use-interval"

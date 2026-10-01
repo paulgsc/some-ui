@@ -26,12 +26,7 @@
 import { expect, test } from "@playwright/test"
 import type { Page } from "@playwright/test"
 
-import {
-  MOBILE_MAX_WIDTH,
-  signIn,
-  startAppServer,
-  stopAppServer,
-} from "./harness"
+import { isHandheld, signIn, startAppServer, stopAppServer } from "./harness"
 
 /**
  * Portrait phone, landscape phone, laptop. The landscape entry is the one
@@ -52,16 +47,6 @@ test.beforeAll(async () => {
 test.afterAll(() => {
   stopAppServer()
 })
-
-/**
- * Whether this window gets the tab bar rather than the wizard. A phone's
- * composer is a different shape (`components/composer/panes.ts`), so the
- * wizard-only behaviours below - the step rail, Back, Continue - have nothing
- * to assert there; `mobile.spec.ts` is what holds that shape.
- */
-function isPhone(width: number): boolean {
-  return width <= MOBILE_MAX_WIDTH
-}
 
 async function openComposer(page: Page): Promise<void> {
   await signIn(page)
@@ -188,7 +173,10 @@ for (const viewport of VIEWPORTS) {
     test("the step rail walks the wizard the way Continue does", async ({
       page,
     }) => {
-      test.skip(isPhone(viewport.width), "a phone has tabs, not a wizard")
+      // A handheld window gets the tab bar (`components/composer/panes.ts`),
+      // whose shape `mobile.spec.ts` holds; the rail and Back/Continue are
+      // the wizard's.
+      test.skip(isHandheld(viewport), "a phone has tabs, not a wizard")
       await openComposer(page)
 
       // Steps 2-4 go through the same predicate Continue does, so with
@@ -218,7 +206,10 @@ for (const viewport of VIEWPORTS) {
     test("every step fits the window instead of scrolling the page", async ({
       page,
     }) => {
-      test.skip(isPhone(viewport.width), "a phone has tabs, not a wizard")
+      // A handheld window gets the tab bar (`components/composer/panes.ts`),
+      // whose shape `mobile.spec.ts` holds; the rail and Back/Continue are
+      // the wizard's.
+      test.skip(isHandheld(viewport), "a phone has tabs, not a wizard")
       await openComposer(page)
       await page.locator(".grid > button").first().click()
 

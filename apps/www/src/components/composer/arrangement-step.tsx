@@ -89,10 +89,10 @@ const BasicSceneList = ({ scenes }: BasicSceneListProps): JSX.Element => {
           // is honest about not being able to remove. Clipping it instead
           // is worse than it sounds: a card whose centre falls outside the
           // box stops being clickable at all.
-          // Below `md` the bar is hidden (`max-md:no-scrollbar`): a phone
+          // On a handheld the bar is hidden (`handheld:no-scrollbar`): a phone
           // scrolls by finger, so a bar there is only noise - and on a
           // browser that lays bars out it took its width out of the box.
-          "min-h-0 flex-1 overflow-y-auto max-md:no-scrollbar"
+          "min-h-0 flex-1 overflow-y-auto handheld:no-scrollbar"
         }
       >
         <div ref={contentRef} className="space-y-2">
@@ -226,7 +226,7 @@ export const ArrangementStep = ({
             // docs/ui-fit's case 5: the one place in the wizard where scrolling
             // is the answer, declared here rather than inherited from a page
             // that happened to be taller than the window.
-            "min-h-0 flex-1 space-y-4 overflow-y-auto max-md:no-scrollbar"
+            "min-h-0 flex-1 space-y-4 overflow-y-auto handheld:no-scrollbar"
           }
         >
           <Card>

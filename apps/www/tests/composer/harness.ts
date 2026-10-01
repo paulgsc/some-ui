@@ -94,5 +94,19 @@ export async function signIn(page: Page): Promise<void> {
   ).toBeVisible()
 }
 
-/** Below `md`, which is where `useIsMobile` (some-ui-utils) draws the line. */
-export const MOBILE_MAX_WIDTH = 767
+/**
+ * Whether a window of this size is handheld, by `useIsMobile`'s rule
+ * (`isHandheldBox`, some-ui-utils): narrower than `md` or shorter than 480px.
+ * Restated rather than imported, since that package's index pulls in React
+ * hooks this Node-side harness has no use for. Width alone used to be the
+ * rule, and it called a landscape phone a desktop.
+ */
+export function isHandheld({
+  width,
+  height,
+}: {
+  width: number
+  height: number
+}): boolean {
+  return width < 768 || height < 480
+}

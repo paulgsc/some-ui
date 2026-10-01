@@ -328,7 +328,8 @@ more that nothing else could see:
   the window resizing. The spec fails against the old hook with
   `Configure: the fitted box kept changing between frames`.
 - **A phone paints no scrollbar.** Scrolling there is by finger, and a bar is
-  only noise, so the fitted boxes carry `max-md:no-scrollbar`. The spec
+  only noise, so the fitted boxes carry `handheld:no-scrollbar` (below `md`
+  wide or 480px tall: a landscape phone is a phone too). The spec
   launches Chromium _without_ `--hide-scrollbars` (Playwright's headless
   default), because a run that can paint no scrollbar cannot fail on one.
 

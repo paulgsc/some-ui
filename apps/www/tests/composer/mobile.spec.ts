@@ -41,6 +41,9 @@ const PHONES = [
   { name: "medium", width: 390, height: 640 },
   { name: "compact", width: 360, height: 560 },
   { name: "small", width: 320, height: 480 },
+  // On its side a phone is still a phone (`useIsMobile` counts height), and
+  // this is the size every width-only breakpoint used to call a desktop.
+  { name: "landscape", width: 780, height: 390 },
 ] as const
 
 const PANES = ["Browse", "Added", "Configure", "Arrange", "Review"] as const
