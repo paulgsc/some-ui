@@ -129,3 +129,13 @@ services:
       start_period: 5s
       retries: 3
     restart: unless-stopped
+    # The image turns the access log off (see the Dockerfile), but whatever the
+    # container still writes - nginx's own error log, which carries a client
+    # address and request line when an upstream fails - goes to Docker's
+    # json-file store, and Docker's default keeps it with no size limit. Bound
+    # how long it lives: rotate at 10 MB and keep three files.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

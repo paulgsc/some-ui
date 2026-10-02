@@ -63,8 +63,24 @@ async function press(name: RegExp): Promise<void> {
 describe("AccountSection", () => {
   it("says what the server keeps, and that there is no recovery by email", () => {
     render(<AccountSection />)
-    expect(screen.getByText(/never a name, an email/i)).toBeTruthy()
+    expect(screen.getByText(/no name, email or phone number/i)).toBeTruthy()
     expect(screen.getByText(/no email to recover your account/i)).toBeTruthy()
+  })
+
+  it("does not promise what the server cannot show it holds", () => {
+    render(<AccountSection />)
+    // The old copy said "never ... your device's details" and that deleting
+    // removes "everything the server stores"; neither is something a screen
+    // can promise (sessions are stored under the account, logs and backups
+    // outlive a delete). Pin the honest wording so it cannot drift back.
+    expect(screen.queryByText(/device's details/i)).toBeNull()
+    expect(screen.queryByText(/everything the server stores/i)).toBeNull()
+    expect(
+      screen.getByText(/sessions and when you start and finish them/i)
+    ).toBeTruthy()
+    expect(
+      screen.getByText(/does not rewrite server logs or backups/i)
+    ).toBeTruthy()
   })
 
   it("deletes only on the second, explicit press, then leaves for the passkey screen", async () => {

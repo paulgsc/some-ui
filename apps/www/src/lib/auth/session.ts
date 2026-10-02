@@ -265,7 +265,10 @@ export const signOut = (): Promise<void> => leave("/auth/sign-out")
 export const signOutEverywhere = (): Promise<void> =>
   leave("/auth/sign-out-everywhere")
 
-/** Delete the account and everything the server stores for it. */
+/**
+ * Delete the account and everything stored under its ID in the server's
+ * database. Server logs and backups are not rewritten.
+ */
 export const deleteAccount = (): Promise<void> =>
   leave("/auth/account", { method: "DELETE" })
 

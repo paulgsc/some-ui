@@ -116,7 +116,7 @@ const AuthPage = (): JSX.Element => {
               : {
                   title: "What the server keeps",
                   description:
-                    "A random account ID and your passkey's public key. Never a name, an email or your device's details.",
+                    "An account is a random ID and your passkey's public key, with no name, email or phone number asked for. While you're signed in, your sessions and when you start and finish them are stored under that ID.",
                 }
       }
     />
