@@ -135,8 +135,14 @@ declared (checked by reading every call site and by the tests named).
   `createHttpSessionsRepository`'s `create`/`update` with data from
   `createSessionsRepository`; one that calls `copyDeviceSessions`,
   `copyDeviceSessionsAndRefresh`, `useCopyDeviceSessions`, `planTransfer` or
-  `runTransfer` from anywhere but the file that owns that step; or one that lets
-  the button act on its first press.
+  `runTransfer` from anywhere but the file that owns that step; one that lets
+  the button act on its first press; one that removes the `withTransferLock` call
+  in `copyDeviceSessions`, or moves `planTransfer` or `runTransfer` out of the
+  function it runs, so that either happens outside the lock; one that makes the
+  lock grant on a lease it has not read back, or stop renewing a lease while a
+  transfer runs (`lib/tenant/transfer-lock`); or one that has `runTransfer` write
+  a receipt it read before the first send instead of reading it again for every
+  write (the `write` helper).
 - _Scope:_ `apps/www/src`.
 - _Why not enforced:_ the callers are pinned by
   `lib/serving-privacy/__tests__/egress-choke-points.test.ts` (each name is
@@ -216,8 +222,13 @@ declared (checked by reading every call site and by the tests named).
   that carries signals, presence or a push subscription; that makes `reporting`
   start on, or persist across `session-started`, a forgetting `session-ended` or
   a `chose` of the device; that changes `reportingAllowed` to ignore
-  `reporting`; or that flips the setting before the unsubscribe in
-  `lib/study-nudge/reporting.ts`.
+  `reporting`; that flips the setting before the unsubscribe in
+  `lib/study-nudge/reporting.ts`; or one that removes the `onRemoteChange` call
+  in `createAuthority` (`lib/authority/runtime.ts`), stops `browserPorts`
+  (`lib/authority/singleton.ts`) listening for `storage` events on the authority
+  key, or drops either of the two things the listener does: dispatching `chose`
+  of the device when the stored choice has become `local`, and dispatching
+  `reporting-set` off when the stored opt-in has been turned off.
 - _Scope:_ `apps/www/src/lib/authority`, `lib/file-host-config/client.ts`,
   `lib/study-nudge`.
 - _Why not enforced:_ the state transitions are pure and tested
