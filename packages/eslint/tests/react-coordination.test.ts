@@ -27,6 +27,7 @@ describe("isInScope", () => {
       "packages/ui/x/src/__tests__/a.tsx",
       "packages/ui/x/src/a.stories.tsx",
       "apps/www/e2e/a.ts",
+      "apps/www/src/test-support/a.ts",
       "packages/eslint/tests/lint-fixtures/a.tsx",
       "apps/www/src/routeTree.gen.ts",
       "packages/x/src/a.d.ts",
@@ -71,6 +72,42 @@ describe("coordinationSites", () => {
       export const X = () => <p>We await your reply, then {hint}</p>
     `
     expect(coordinationSites("packages/x/src/x.tsx", source)).toBe(0)
+  })
+
+  it("treats a module importing a React binding library as React", () => {
+    const source = `
+      import { useQueryClient } from "@tanstack/react-query"
+      export function usePrefetch() {
+        const client = useQueryClient()
+        return async (key: string) => { await client.prefetchQuery({ queryKey: [key] }) }
+      }
+    `
+    expect(coordinationSites("packages/x/src/lib/queries.ts", source)).toBe(1)
+  })
+
+  it("treats a hook built only on other hooks as React: no import needed", () => {
+    const declared = `
+      import { useSessions } from "@/lib/tenant"
+      export const useLatest = () => { const s = useSessions(); return s }
+      export async function load() { return await fetch("/x") }
+    `
+    expect(coordinationSites("apps/www/src/lib/latest.ts", declared)).toBe(1)
+    const calledOnly = `
+      import { useStore } from "./store"
+      export function select() { return useStore((s) => s.x) }
+      export const save = async () => { await Promise.resolve() }
+    `
+    expect(coordinationSites("apps/www/src/lib/select.ts", calledOnly)).toBe(1)
+  })
+
+  it("does not mistake a non-hook name or a method called use for a hook", () => {
+    const source = `
+      declare const app: { use: (f: unknown) => void }
+      const useless = () => 0
+      app.use(useless)
+      export const load = async () => { await fetch("/x") }
+    `
+    expect(coordinationSites("packages/x/src/server.ts", source)).toBeNull()
   })
 
   it("is null for a module that is not React: R1 does not cover it", () => {

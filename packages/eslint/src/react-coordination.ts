@@ -17,10 +17,14 @@
 //
 // What counts as a site: an `await` expression, a `for await` loop, and a
 // call to `.then`, `.catch` or `.finally`. What counts as a React module: any
-// `.jsx`/`.tsx` file, and any other source file that imports from `react` or
-// `react-dom` (so a custom hook counts: moving nine awaits from a component
-// into `useRecorder()` moves nothing out of React). Tests, stories, fixtures,
-// generated files and declarations are out of scope.
+// `.jsx`/`.tsx` file; any other source file that imports a React library
+// (`react`, `react-dom`, or a binding such as `@tanstack/react-query`); and
+// any that declares or calls a hook, by the `use` + capital naming convention
+// eslint-plugin-react-hooks also goes by. So a custom hook counts however it
+// reaches React (moving nine awaits from a component into `useRecorder()`
+// moves nothing out of React), including one built only on other hooks.
+// Tests, stories, fixtures, generated files and declarations are out of
+// scope.
 //
 // Known blind spot: a fire-and-forget call (`void save()`) is not a site.
 // Counting `void <call>` would sweep in every `void navigate(...)` and query
@@ -38,12 +42,15 @@ const SCOPE = /^(?:apps|packages|extensions)\//
 const SOURCE = /\.[cm]?[jt]sx?$/
 const JSX_SOURCE = /\.[jt]sx$/
 const OUT_OF_SCOPE = [
-  /(?:^|\/)(?:node_modules|dist|__tests__|__mocks__|tests|e2e|lint-fixtures)\//,
+  /(?:^|\/)(?:node_modules|dist|__tests__|__mocks__|tests|test-support|e2e|lint-fixtures)\//,
   /\.(?:test|spec|stories)\.[cm]?[jt]sx?$/,
   /\.d\.[cm]?ts$/,
   /\.gen\.[cm]?[jt]sx?$/,
 ]
-const REACT_MODULE = /^react(?:-dom)?(?:\/|$)/
+// `react`, `react-dom`, their subpaths, and bindings named for React:
+// `@tanstack/react-query`, `react-hook-form`, `lucide-react`.
+const REACT_LIBRARY = /(?:^|\/)react(?:-[^/]*)?(?:\/|$)|-react(?:\/|$)/
+const HOOK_NAME = /^use[A-Z0-9]/
 const PROMISE_CHAIN = new Set(["then", "catch", "finally"])
 const REASON = /^#\s*(?:Coordination|Grandfathered):\s*\S/
 
@@ -70,8 +77,32 @@ function importsReact(file: ts.SourceFile): boolean {
         ts.isExportDeclaration(statement)) &&
       statement.moduleSpecifier !== undefined &&
       ts.isStringLiteral(statement.moduleSpecifier) &&
-      REACT_MODULE.test(statement.moduleSpecifier.text)
+      REACT_LIBRARY.test(statement.moduleSpecifier.text)
   )
+}
+
+/** A hook declared (`function useX`, `const useX = ...`) or called (`useX()`). */
+function isHook(node: ts.Node): boolean {
+  if (ts.isFunctionDeclaration(node))
+    return node.name !== undefined && HOOK_NAME.test(node.name.text)
+  if (ts.isVariableDeclaration(node))
+    return (
+      ts.isIdentifier(node.name) &&
+      HOOK_NAME.test(node.name.text) &&
+      node.initializer !== undefined &&
+      (ts.isArrowFunction(node.initializer) ||
+        ts.isFunctionExpression(node.initializer))
+    )
+  return (
+    ts.isCallExpression(node) &&
+    ts.isIdentifier(node.expression) &&
+    HOOK_NAME.test(node.expression.text)
+  )
+}
+
+/** Whether `node` or anything under it is a hook; stops at the first. */
+function hasHook(node: ts.Node): boolean {
+  return isHook(node) || ts.forEachChild(node, hasHook) === true
 }
 
 function isSite(node: ts.Node): boolean {
@@ -96,7 +127,8 @@ export function coordinationSites(path: string, source: string): number | null {
     false,
     scriptKind(path)
   )
-  if (!JSX_SOURCE.test(path) && !importsReact(file)) return null
+  if (!JSX_SOURCE.test(path) && !importsReact(file) && !hasHook(file))
+    return null
   let sites = 0
   const visit = (node: ts.Node): void => {
     if (isSite(node)) sites += 1
