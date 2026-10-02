@@ -163,10 +163,12 @@ and the sibling workspaces for one that already does the job, then reuse or gene
 When yours replaces something, remove the old one and its tests in the same PR. When a
 behavior changes, edit its existing test rather than adding another beside it.
 
-Every PR body has a **Superseded** section (`.github/pull_request_template.md`). It says
-what the change made obsolete and removed, or "None" and why. A second implementation
-without that is a blocking review finding (`REVIEW.md`, "Second implementations and code
-left behind").
+Every PR opened from the template (`.github/pull_request_template.md`), by a person or an
+agent, has a **Superseded** section. It says what the change made obsolete and removed, or
+"None" and why. A second implementation without that is a blocking review finding
+(`REVIEW.md`, "Second implementations and code left behind"). PRs a workflow opens with a
+fixed body (Changesets, the Pages and Docker release PRs, extension releases, the route
+snapshot) are exempt: they carry generated content, not new implementations.
 
 ## React is not the coordinator
 

@@ -65,4 +65,5 @@ Each one found is a **blocking** finding, never a nit, suggestion or optional co
    "Deleting is in scope").
 
 No finding when the PR body's **Superseded** section names the existing code and says why
-both must exist. Whether that reason holds is for a person to judge.
+both must exist. Whether that reason holds is for a person to judge. PRs a workflow opens with a
+fixed body (release, Changesets and snapshot PRs) carry generated content and are exempt.
