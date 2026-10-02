@@ -4,6 +4,11 @@
 
 Please include a summary of the changes and the related issue. Please also include relevant motivation and context.
 
+## Superseded
+
+What this change made obsolete (code, tests, docs) and removed, or "None" and why. If it adds
+something existing code already does, name that code and say why both must exist.
+
 ## Type of Change
 
 Please delete options that are not relevant.

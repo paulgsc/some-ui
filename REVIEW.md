@@ -43,3 +43,26 @@ Flag the declaration itself when it:
   mechanism fails, or without the label "mechanical; not yet a rule";
 - is false on the code in the same change;
 - renumbers an existing ID, or removes one instead of marking it retired with a reason.
+
+## Second implementations and code left behind
+
+A duplicate passes every lint, type and test, so review is the only place it is caught,
+and agents add code far more readily than they reuse or remove it. Check three things.
+Each one found is a **blocking** finding, never a nit, suggestion or optional comment:
+
+1. **Copies inside the diff.** Two added files, components or functions that are the same
+   code with names, strings or classes changed. #1600 added LeetType's `RoundShelf` and
+   TOPIK's `LessonShelf` this way, and #1641 merges them.
+2. **A parallel implementation of something that exists.** An added module, component,
+   hook or helper whose job existing code already does. Search before flagging: look for the
+   added exports' names and close synonyms in `packages/ui/shared`, `packages/utils` and
+   the sibling workspaces of the one the diff touches. Flag only with the existing code's
+   path in hand.
+3. **Code left behind.** A diff that moves callers to a new way of doing something and
+   keeps the old one, now with fewer callers or none. Likewise a behavior change that adds
+   a new test beside the existing test of that behavior instead of changing that test.
+   Removing what the change made redundant is in scope for the same PR (`CLAUDE.md`,
+   "Deleting is in scope").
+
+No finding when the PR body's **Superseded** section names the existing code and says why
+both must exist. Whether that reason holds is for a person to judge.
