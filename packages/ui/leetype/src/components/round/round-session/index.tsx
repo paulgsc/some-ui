@@ -13,7 +13,6 @@ import { RecordedRuns } from "@leetype/components/round/recorded-runs"
 import { RoundChoices } from "@leetype/components/round/round-choices"
 import { RoundFeedback } from "@leetype/components/round/round-feedback"
 import { RoundOutcome } from "@leetype/components/round/round-outcome"
-import { KeepRound, RoundShelf } from "@leetype/components/round/round-shelf"
 import { SourcePanel } from "@leetype/components/round/source-panel"
 import { shuffledBySeed } from "@leetype/lib/leetype/deterministic-random"
 import { buildRoundPrompt } from "@leetype/lib/leetype/generation"
@@ -52,11 +51,15 @@ import type {
 } from "@leetype/lib/leetype/round-runs"
 import { resolveRoundRuns, variantOf } from "@leetype/lib/leetype/round-runs"
 import { nextRound } from "@leetype/lib/leetype/round-sampler"
-import type { ShelfPort } from "@leetype/lib/leetype/shelf"
-import { shelfKeyOf } from "@leetype/lib/leetype/shelf"
+import {
+  keptRoundOf,
+  ROUND_SHELF_WORDS,
+  shelfKeyOf,
+} from "@leetype/lib/leetype/shelf"
 import type { Round } from "@leetype/types/authored-round"
 import type { Commitment } from "@leetype/types/commitment"
-import { Button } from "@some-ui/shared"
+import type { ShelfPort } from "@some-ui/shared"
+import { Button, KeepOnShelf, KeptShelf } from "@some-ui/shared"
 import { Sparkles } from "lucide-react"
 import { cn } from "some-ui-utils"
 
@@ -546,7 +549,13 @@ export const RoundSession: FC<RoundSessionProps> = ({
           buildPrompt={(request) => buildRoundPrompt({ ...request, recent })}
           onStart={handleOwnRound}
         />
-        {shelf && <RoundShelf shelf={shelf} onReplay={handleOwnRound} />}
+        {shelf && (
+          <KeptShelf
+            shelf={shelf}
+            words={ROUND_SHELF_WORDS}
+            replay={{ read: keptRoundOf, play: handleOwnRound }}
+          />
+        )}
       </div>
     )
   }
@@ -647,7 +656,13 @@ export const RoundSession: FC<RoundSessionProps> = ({
             onStart={handleOwnRound}
             onCancel={() => setGenerating(false)}
           />
-          {shelf && <RoundShelf shelf={shelf} onReplay={handleOwnRound} />}
+          {shelf && (
+            <KeptShelf
+              shelf={shelf}
+              words={ROUND_SHELF_WORDS}
+              replay={{ read: keptRoundOf, play: handleOwnRound }}
+            />
+          )}
         </>
       )}
       {/* Hidden, not unmounted, while the generator is open: a committed
@@ -670,12 +685,13 @@ export const RoundSession: FC<RoundSessionProps> = ({
         </div>
 
         {play.own && shelf && ownBody !== null && (
-          <KeepRound
+          <KeepOnShelf
             // Each own round is its own question: back to "Keep". Keyed on
             // its bytes, not only `roundKey`: a second own round can share
             // the first's id and `played` (review, #1600).
             key={`${roundKey}:${ownBody}`}
             shelf={shelf}
+            words={ROUND_SHELF_WORDS}
             shelfKey={shelfKeyOf(round.id)}
             body={ownBody}
           />

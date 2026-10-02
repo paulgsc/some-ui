@@ -39,7 +39,6 @@
 1 packages/ui/leetype/src/components/leetype/index.tsx
 2 packages/ui/leetype/src/components/round/generate-round/index.tsx
 1 packages/ui/leetype/src/components/round/round-session/index.tsx
-6 packages/ui/leetype/src/components/round/round-shelf/index.tsx
 1 packages/ui/leetype/src/hooks/leetype/use-preview-game/index.ts
 1 packages/ui/leetype/src/hooks/leetype/use-typing-game-wasm/index.ts
 6 packages/ui/lesson-crm/src/components/lesson-crm/index.tsx
@@ -50,7 +49,6 @@
 2 packages/ui/slideshow/src/hooks/use-animated-steps.ts
 1 packages/ui/topik/src/components/topik/conversation-preview/index.tsx
 2 packages/ui/topik/src/components/topik/handheld/generate-lesson/index.tsx
-6 packages/ui/topik/src/components/topik/handheld/lesson-shelf/index.tsx
 2 packages/ui/topik/src/lib/topik/adapter/hooks/use-handheld-lesson/index.ts
 2 packages/ui/topik/src/lib/topik/adapter/hooks/use-read-aloud/index.ts
 1 packages/ui/topik/src/lib/topik/adapter/hooks/use-session/index.ts
