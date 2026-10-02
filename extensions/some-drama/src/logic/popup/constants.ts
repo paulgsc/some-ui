@@ -1,7 +1,5 @@
 export const MAX_WATCHLIST = 5
 
-export const POPUP_WIDTH_PX = 340
-
 export const ACCENT_COLORS = [
   "#ff6b6b", // Coral Red
   "#f97316", // Amber Orange

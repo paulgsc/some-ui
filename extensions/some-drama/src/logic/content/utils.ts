@@ -2,11 +2,6 @@
 // Pure functions only. No DOM, no global state.
 // Each function does one thing; test in isolation.
 
-/** Uniform random float in [min, max). */
-export function rnd(min: number, max: number): number {
-  return min + Math.random() * (max - min)
-}
-
 /** Map a 0–10 rating to a 5-star string. */
 export function starsFor(rating: number): string {
   const full = Math.round(rating / 2)

@@ -20,35 +20,3 @@ export class HttpJsonLoader implements ResourceLoader {
     return res.json()
   }
 }
-
-/**
- * Vite-based loader using dynamic imports
- */
-export class ViteModuleLoader implements ResourceLoader {
-  constructor(private modules: Record<string, () => Promise<unknown>>) {}
-
-  async load(path: string): Promise<unknown> {
-    const loader = this.modules[path]
-    if (!loader) {
-      throw new Error(`Module not found: ${path}`)
-    }
-    return loader()
-  }
-}
-
-/**
- * In-memory loader for testing
- */
-export class StaticResourceLoader implements ResourceLoader {
-  constructor(private resources: Map<string, unknown>) {}
-
-  // Synchronous under an async interface - see StaticFileDiscovery. The
-  // throw becomes a rejection either way, which is what callers already
-  // handle.
-  load(path: string): Promise<unknown> {
-    if (!this.resources.has(path)) {
-      return Promise.reject(new Error(`Resource not found: ${path}`))
-    }
-    return Promise.resolve(this.resources.get(path))
-  }
-}

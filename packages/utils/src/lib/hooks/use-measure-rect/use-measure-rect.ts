@@ -2,12 +2,6 @@ import type { RefObject } from "react"
 
 import { useResizeObserver } from "../use-resize-observer"
 
-// Define the Rect type
-export type Rect<T extends Element> = {
-  size: Size
-  options: Options<T>
-}
-
 type Size = {
   width: number | undefined
 

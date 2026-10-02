@@ -29,7 +29,7 @@ closed union. The closedness was entirely at the instantiation sites.
 - `YouTubeRegion` has exactly one definition now
   (`packages/types/orchestrator-types`), re-exported (not redefined) from
   `youtube-config.ts`. It remains the known, non-exhaustive vocabulary
-  behind `regionColors`/`defaultConstraints`/`ALL_YOUTUBE_REGIONS` - real
+  behind `regionColors`/`ALL_YOUTUBE_REGIONS` - real
   values, just no longer the only valid ones. `getSlotColor(id: SlotId)`
   is the new lookup, with a neutral fallback for ids outside that set.
 - `LayoutEditor` (the composer's old exploration sandbox, now retired - see

@@ -1,24 +1,7 @@
-// youtube-config.ts - Constraints that allow filling
+// youtube-config.ts - YouTube region colours and slot lookups
 import type { SlotId, YouTubeRegion } from "@some-ui/types"
 
 export type { YouTubeRegion }
-
-export type Constraint = {
-  ideal: number // Preferred size
-  min: number // Minimum size
-  max: number // Maximum size (use Infinity to allow filling)
-}
-
-// Updated: min is minimum, max is Infinity to allow natural filling
-export const defaultConstraints = new Map<YouTubeRegion, Constraint>([
-  ["title", { ideal: 10, min: 5, max: Infinity }],
-  ["video", { ideal: 300, min: 150, max: Infinity }],
-  ["mainContent", { ideal: 400, min: 200, max: Infinity }],
-  ["footerLeft", { ideal: 200, min: 100, max: Infinity }],
-  ["footerRight", { ideal: 20, min: 10, max: Infinity }],
-  ["sidebarTop", { ideal: 25, min: 12, max: Infinity }],
-  ["sidebarBottom", { ideal: 25, min: 12, max: Infinity }],
-])
 
 export const regionColors: Record<YouTubeRegion, string> = {
   video: "bg-blue-100 border-blue-300",

@@ -19,9 +19,9 @@ import { z } from "zod"
  * gate is typed against this list, so a misspelt one fails `tsc` or the
  * manifest check rather than silently matching nothing.
  */
-export const AUDIENCES = ["public", "lan", "apk"] as const
+const AUDIENCES = ["public", "lan", "apk"] as const
 
-export const AudienceSchema = z.enum(AUDIENCES)
+const AudienceSchema = z.enum(AUDIENCES)
 export type Audience = z.infer<typeof AudienceSchema>
 
 /** The `package.json` key each `packages/ui/*` workspace must declare. */
@@ -35,10 +35,9 @@ export const MANIFEST_FIELD = "someUi"
  *
  * Strict: an unknown key is a typo of a known one until proven otherwise.
  */
-export const SomeUiManifestFieldSchema = z.strictObject({
+const SomeUiManifestFieldSchema = z.strictObject({
   audience: AudienceSchema,
 })
-export type SomeUiManifestField = z.infer<typeof SomeUiManifestFieldSchema>
 
 /**
  * The one subpath of an excluded workspace that is never stubbed.

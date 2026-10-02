@@ -17,7 +17,7 @@ type UseUtteranceOptions = Omit<
   "incomingMessageSchema" | "outgoingMessageSchema" | "init"
 >
 
-export const defaultPrompt: UtterancePrompt = {
+const defaultPrompt: UtterancePrompt = {
   text: "the utterance text",
   metadata: {
     url: "https://example.com/page",

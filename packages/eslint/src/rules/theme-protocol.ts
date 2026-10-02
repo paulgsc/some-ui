@@ -341,7 +341,3 @@ export const noStructuralPaletteColor: Rule.RuleModule = {
     }
   },
 }
-
-/** Exported for the drift test that pins this list to the canonical registry. */
-export const THEME_BOUNDARY_OVERRIDE_CLASSES: ReadonlyArray<string> =
-  BOUNDARY_OVERRIDE_CLASSES

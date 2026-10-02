@@ -10,7 +10,7 @@ export type AccordionItem = {
   isOpen: () => boolean
 }
 
-export function buildAccordionItem(
+function buildAccordionItem(
   title: string,
   body: HTMLElement,
   onToggle: (self: AccordionItem) => void

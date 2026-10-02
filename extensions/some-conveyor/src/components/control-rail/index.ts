@@ -9,7 +9,7 @@
 
 import { el, elText } from "@conveyor/components/dom"
 
-export type ChipTone = "default" | "signal" | "live" | "alert"
+type ChipTone = "default" | "signal" | "live" | "alert"
 
 export type RailChip = {
   label: string

@@ -12,7 +12,7 @@ import type { Question } from "@interview/lib/interview/core/interview-types"
  * UI-agnostic state and actions, so adding it later means writing a new
  * presenter component, not touching session logic.
  */
-export type InterviewPresentationMode = "slideshow" | "chat"
+type InterviewPresentationMode = "slideshow" | "chat"
 
 type InterviewAppProps = {
   mode?: InterviewPresentationMode

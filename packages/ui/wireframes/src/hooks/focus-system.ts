@@ -1,22 +1,13 @@
 import type { SlotId } from "@some-ui/types"
-import { z } from "zod"
 import { create } from "zustand"
 
-// Focus Proposal Schema
-export const FocusProposalSchema = z.object({
-  source: z.enum(["server", "component"]),
-  region: z.string(),
-  intensity: z.number().min(0).max(1),
-  priority: z.number(),
-  expiresAt: z.number().optional(),
-})
-
-export type FocusProposal = z.infer<typeof FocusProposalSchema>
-
-export type ResolvedFocus = {
-  region: SlotId
-  intensity: number
-} | null
+type FocusProposal = {
+  source: "server" | "component"
+  region: string
+  intensity: number // 0..1
+  priority: number
+  expiresAt?: number
+}
 
 // Focus Store
 type FocusStore = {
@@ -25,7 +16,7 @@ type FocusStore = {
   prune: (now: number) => void
 }
 
-export const useFocusStore = create<FocusStore>((set) => ({
+const useFocusStore = create<FocusStore>((set) => ({
   proposals: [],
 
   emit: (p): void =>
@@ -40,26 +31,6 @@ export const useFocusStore = create<FocusStore>((set) => ({
       ),
     })),
 }))
-
-// Focus Resolution (Pure Function)
-export function selectResolvedFocus(
-  now: number
-): (s: FocusStore) => ResolvedFocus {
-  return (s: FocusStore): ResolvedFocus => {
-    const active = s.proposals.filter(
-      (p) => p.expiresAt == null || p.expiresAt > now
-    )
-
-    if (active.length === 0) return null
-
-    const winner = active.reduce((a, b) => (b.priority > a.priority ? b : a))
-
-    return {
-      region: winner.region,
-      intensity: winner.intensity,
-    }
-  }
-}
 
 // Hook for components to request focus (sandboxed)
 export function useRequestFocus(

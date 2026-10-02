@@ -9,7 +9,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json && vite build",
     "build:tsc-alias": "tsc-alias -p tsconfig.json",
-    "watch": "concurrently \"rollup --bundleConfigAsCjs -c --watch\" \"tsc --watch\"",
+    "knip": "knip --directory \"$(git rev-parse --show-toplevel)\" --workspace \"$(git rev-parse --show-prefix | sed 's:/*$::')\"",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\"",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist ./tsconfig.build.tsbuildinfo ./tsconfig.tsbuildinfo",
@@ -26,15 +26,13 @@
   "dependencies": {
     "@some-ui/shared": "workspace:*",
     "@some-ui/speech": "workspace:*",
-    "@some-ui/styles": "workspace:*",
     "lucide-react": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/vite-config": "workspace:*",
-    "@types/react": "^19.0.4",
-    "concurrently": "10.0.3"
+    "@types/react": "^19.0.4"
   },
   "repository": {
     "type": "git",

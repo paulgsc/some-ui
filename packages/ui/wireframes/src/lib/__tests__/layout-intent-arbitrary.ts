@@ -26,7 +26,7 @@ const reorderEdgeArbitrary: fc.Arbitrary<"before" | "after"> = fc.constantFrom(
   "after"
 )
 
-export const layoutIntentArbitrary: fc.Arbitrary<LayoutIntent<YouTubeRegion>> =
+const layoutIntentArbitrary: fc.Arbitrary<LayoutIntent<YouTubeRegion>> =
   fc.oneof(
     fc.record({
       kind: fc.constant("place" as const),

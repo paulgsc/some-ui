@@ -1,6 +1,6 @@
 import type { AvatarOptions } from "@some-ui/shared"
 
-export type MessageType = "chat" | "thinking"
+type MessageType = "chat" | "thinking"
 
 export type Message = {
   id: string
@@ -11,10 +11,4 @@ export type Message = {
   timestamp: string
   avatar: AvatarOptions
   avatarSize?: number
-}
-
-export type Character = {
-  id: string
-  name: string
-  avatar: string
 }

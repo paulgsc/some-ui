@@ -32,7 +32,6 @@ import {
   extensionStoragePersistence,
   Recorder,
   type DiagnosticsBundle,
-  type HealthReport,
   type Invariant,
   type InvariantOutcome,
   type JsonValue,
@@ -408,7 +407,7 @@ export function forgetTab(tabId: number): void {
  * to "unknown" rather than propagating: a health check that throws would be a
  * worse outcome than one that admits it does not know.
  */
-export async function collectInvariantContext(): Promise<InvariantContext> {
+async function collectInvariantContext(): Promise<InvariantContext> {
   const now = Date.now()
   const stored = await readSchedulingPrefs()
   const schedulingEnabled =
@@ -453,7 +452,7 @@ export async function collectInvariantContext(): Promise<InvariantContext> {
  * the scheduler can never disagree about what "on time" means — the kind of
  * quiet drift that makes a health check lie.
  */
-export function checkIntervalMs(periodSeconds: number): number {
+function checkIntervalMs(periodSeconds: number): number {
   return clampCheckPeriodSeconds(periodSeconds) * 1000
 }
 
@@ -503,11 +502,6 @@ async function readSchedulingPrefs(): Promise<{
   } catch {
     return fallback
   }
-}
-
-/** The extension's own answer to "am I working?". */
-export async function healthReport(): Promise<HealthReport> {
-  return obs.health(await collectInvariantContext())
 }
 
 /**

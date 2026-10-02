@@ -49,14 +49,6 @@ import { trace } from "./trace"
 import { log } from "./utils"
 
 /**
- * The single suspend operation this extension performs. There is intentionally
- * **no** `close` variant: suspender-ledger discards a tab natively — it never
- * removes a tab. This type exists to make that invariant structural rather
- * than incidental.
- */
-export type SuspendOperation = { tabId: number }
-
-/**
  * In-flight FSM state per tab, for the lifetime of this worker instance. Only
  * *unsettled* tabs are present — once a tab reaches a settled state (idle,
  * blocked, or cleanly discarded) there is no follow-up obligation left to

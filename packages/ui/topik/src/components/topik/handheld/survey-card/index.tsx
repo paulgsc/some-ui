@@ -44,7 +44,7 @@ const ENTHUSIASM_CHOICES: Array<Choice<Enthusiasm>> = [
   { value: "drained", label: "Running out of steam" },
 ]
 
-export type SurveyStep =
+type SurveyStep =
   | "worthwhile"
   | "difficulty"
   | "blocking"

@@ -3,12 +3,8 @@
  *
  */
 
-import type {
-  QueryClient,
-  UseQueryOptions,
-  UseQueryResult,
-} from "@tanstack/react-query"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import type { UseQueryOptions, UseQueryResult } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import type { ConversationBatch, ITopikRepository } from "@topik/lib/topik"
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -113,62 +109,5 @@ export function useTopikCurrentBatch(
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     ...options,
-  })
-}
-
-/**
- * Prefetch topik data (for preloading)
- *
- * Usage:
- * const prefetch = usePrefetchTopik(repository)
- * await prefetch("topik-key")
- */
-export function usePrefetchTopik(repository: ITopikRepository) {
-  const queryClient = useQueryClient()
-
-  return async (key: string): Promise<void> => {
-    await queryClient.prefetchQuery({
-      queryKey: topikKeys.detail(key),
-      queryFn: () => repository.load(key),
-      staleTime: 5 * 60 * 1000,
-    })
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// IMPERATIVE API (for non-hook contexts)
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Get cached batches synchronously
- * Returns undefined if not in cache
- *
- * WARNING: Only use in contexts where hooks cannot be used
- */
-export function getCachedTopikBatches(
-  queryClient: QueryClient,
-  key: string
-): Array<ConversationBatch> | undefined {
-  return queryClient.getQueryData<Array<ConversationBatch>>(
-    topikKeys.detail(key)
-  )
-}
-
-/**
- * Invalidate topik cache
- * Triggers refetch on next access
- */
-export function invalidateTopik(
-  queryClient: QueryClient,
-  key?: string
-): Promise<void> {
-  if (key) {
-    return queryClient.invalidateQueries({
-      queryKey: topikKeys.detail(key),
-    })
-  }
-
-  return queryClient.invalidateQueries({
-    queryKey: topikKeys.all,
   })
 }

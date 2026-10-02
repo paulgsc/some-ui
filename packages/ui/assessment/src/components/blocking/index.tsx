@@ -2,7 +2,7 @@ import type { FC, JSX } from "react"
 import { useEffect, useRef, useState } from "react"
 import { CheckCircle, Code, FileText, Zap } from "lucide-react"
 
-export type CategoryKey = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H"
+type CategoryKey = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H"
 
 type Answer = {
   text?: string
@@ -10,14 +10,14 @@ type Answer = {
   didResearch?: boolean
 }
 
-export type Category = {
+type Category = {
   id: CategoryKey
   name: string
   color: string
   minRequired: number // Used for selection logic
 }
 
-export type Question = {
+type Question = {
   id: string
   text: string
   category: CategoryKey
@@ -26,7 +26,7 @@ export type Question = {
 
 // --- Data ---
 
-export const CATEGORIES: Record<CategoryKey, Category> = {
+const CATEGORIES: Record<CategoryKey, Category> = {
   A: {
     id: "A",
     name: "Memory Layout & Representation",
@@ -77,7 +77,7 @@ export const CATEGORIES: Record<CategoryKey, Category> = {
   },
 }
 
-export const ALL_QUESTIONS: Record<string, Question> = {
+const ALL_QUESTIONS: Record<string, Question> = {
   // A: Memory Layout
   A1: {
     id: "A1",

@@ -325,7 +325,7 @@ export const FIXTURE_BATCHES: Array<ConversationBatch> = [
   },
 ]
 
-export const FIXTURE_MANIFEST: TopikManifestFile = {
+const FIXTURE_MANIFEST: TopikManifestFile = {
   version: "1",
   topiks: [
     {

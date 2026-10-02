@@ -16,7 +16,7 @@ export type LayoutNode<T> =
 
 // --- Focus Logic ---
 
-export function focusConstraints<T>(
+function focusConstraints<T>(
   tree: LayoutNode<T>,
   base: Map<T | string, Constraint>,
   focusId: T | null,
