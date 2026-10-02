@@ -32,6 +32,20 @@
  * receipt is written after the first (`complete: false`) and again after the
  * second. A retry finishes an incomplete copy rather than creating another.
  *
+ * ## A create whose answer was lost
+ *
+ * `POST /sessions` can commit and its response never arrive (a timeout, a
+ * dropped connection). The server has no idempotency key to ask, so the receipt
+ * records an *unconfirmed attempt* before the request and clears it when the
+ * server answers, either way (an answer with an error status means nothing was
+ * created). A retry that finds an attempt nobody confirmed does not create
+ * blindly: it reads the account's sessions and adopts one with the same name,
+ * layout, activities and scenes that no receipt entry already claims, and
+ * creates only when there is none. What this cannot do is tell the copy from an
+ * identical session the account already held and nothing claims; that one is
+ * adopted instead of a new one made, which costs a copy and never makes a
+ * duplicate.
+ *
  * ## Under one authority
  *
  * The transfer runs under the authority it started in and checks it before each
@@ -47,7 +61,10 @@
 
 import type { Authority } from "@/lib/authority"
 import { authority, StaleAuthorityError } from "@/lib/authority"
-import { createFileHostTransport } from "@/lib/file-host-config/client"
+import {
+  createFileHostTransport,
+  FileHostResponseError,
+} from "@/lib/file-host-config/client"
 import { createHttpSessionsRepository } from "@/lib/tenant/http-sessions-repository"
 import type { SessionsStore } from "@/lib/tenant/sessions-repository"
 import { STORAGE_KEY } from "@/lib/tenant/sessions-repository"
@@ -59,8 +76,11 @@ import type { SessionRecord } from "@/lib/tenant/types"
 const RECEIPT_KEY = "some-ui.tenant.sessions.transfers.v1"
 
 type Copy = {
-  /** The id the server minted. */
-  readonly remoteId: string
+  /**
+   * The id the server minted, or `null` for an attempt to create one whose
+   * answer never arrived.
+   */
+  readonly remoteId: string | null
   /** The second step (restoring status and times) landed too. */
   readonly complete: boolean
 }
@@ -118,10 +138,35 @@ function defaultRemote(token: Authority): SessionsStore | null {
   return transport ? createHttpSessionsRepository(transport) : null
 }
 
+/** JSON with object keys in order, so two spellings of one value compare equal. */
+function canonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`
+  if (typeof value === "object" && value !== null) {
+    return `{${Object.entries(value)
+      .filter(([, member]) => member !== undefined)
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([key, member]) => `${JSON.stringify(key)}:${canonical(member)}`)
+      .join(",")}}`
+  }
+  return value === undefined ? "null" : JSON.stringify(value)
+}
+
+/** What `create` is given, which is what a copy made from it still carries. */
+function sameContent(a: SessionRecord, b: SessionRecord): boolean {
+  const content = (session: SessionRecord): string =>
+    canonical([
+      session.name,
+      session.layoutMode,
+      session.activities,
+      session.scenes,
+    ])
+  return content(a) === content(b)
+}
+
 /**
  * What the account does and does not already hold of the device's sessions.
- * Asks the account about each session this browser has copied before, and
- * nothing else.
+ * Asks the account about each session this browser has copied before, and,
+ * only for one whose create went unanswered, for its list of sessions.
  */
 export async function planTransfer(
   remote: SessionsStore,
@@ -134,17 +179,43 @@ export async function planTransfer(
   const finish: Array<{ session: SessionRecord; remoteId: string }> = []
   let alreadyThere = 0
 
+  /** Every id any device session has been copied to, in any account. */
+  const claimed = new Set(
+    Object.values(receipt).flatMap((copies) =>
+      copies.flatMap((copy) => (copy.remoteId === null ? [] : [copy.remoteId]))
+    )
+  )
+  let inAccount: Array<SessionRecord> | null = null
+
   for (const session of local) {
     let unfinished: string | null = null
     let complete = false
+    let unconfirmed = false
     for (const copy of receipt[session.id] ?? []) {
       if (!isCurrent()) throw new StaleAuthorityError("a transfer")
+      if (copy.remoteId === null) {
+        unconfirmed = true
+        continue
+      }
       if ((await remote.get(copy.remoteId)) === null) continue
       if (copy.complete) {
         complete = true
         break
       }
       unfinished ??= copy.remoteId
+    }
+    if (!complete && unfinished === null && unconfirmed) {
+      // A create went out and nobody heard back: look for it before sending another.
+      const held: Array<SessionRecord> = inAccount ?? (await remote.list())
+      inAccount = held
+      const found = held.find(
+        (candidate) =>
+          !claimed.has(candidate.id) && sameContent(session, candidate)
+      )
+      if (found !== undefined) {
+        claimed.add(found.id)
+        unfinished = found.id
+      }
     }
     if (complete) alreadyThere += 1
     else if (unfinished !== null) finish.push({ session, remoteId: unfinished })
@@ -191,25 +262,52 @@ export async function runTransfer(
   let copied = 0
 
   const remember = (localId: string, copy: Copy): void => {
+    // A real copy supersedes any unconfirmed attempt, and replaces itself.
     const others = (receipt[localId] ?? []).filter(
-      (known) => known.remoteId !== copy.remoteId
+      (known) => known.remoteId !== null && known.remoteId !== copy.remoteId
     )
     receipt[localId] = [...others, copy]
     writeJSON(storage, RECEIPT_KEY, receipt)
   }
 
+  /** Written before a create goes out, so a lost answer is not forgotten. */
+  const attempting = (localId: string): void => {
+    const known = receipt[localId] ?? []
+    if (known.some((copy) => copy.remoteId === null)) return
+    receipt[localId] = [...known, { remoteId: null, complete: false }]
+    writeJSON(storage, RECEIPT_KEY, receipt)
+  }
+
+  /** The server answered with an error status: nothing was created. */
+  const answeredNo = (localId: string): void => {
+    receipt[localId] = (receipt[localId] ?? []).filter(
+      (known) => known.remoteId !== null
+    )
+    writeJSON(storage, RECEIPT_KEY, receipt)
+  }
+
   const steps: Array<() => Promise<void>> = [
     ...plan.finish.map(({ session, remoteId }) => async (): Promise<void> => {
+      // Adopted from the account's list, or left unfinished by an earlier try:
+      // it is this device session's copy from here on.
+      remember(session.id, { remoteId, complete: false })
       await remote.update(remoteId, restoration(session))
       remember(session.id, { remoteId, complete: true })
     }),
     ...plan.create.map((session) => async (): Promise<void> => {
-      const created = await remote.create({
-        name: session.name,
-        activities: session.activities,
-        scenes: session.scenes,
-        layoutMode: session.layoutMode,
-      })
+      attempting(session.id)
+      let created: SessionRecord
+      try {
+        created = await remote.create({
+          name: session.name,
+          activities: session.activities,
+          scenes: session.scenes,
+          layoutMode: session.layoutMode,
+        })
+      } catch (error) {
+        if (error instanceof FileHostResponseError) answeredNo(session.id)
+        throw error
+      }
       // Written before the patch: a failure after this finishes this copy next
       // time instead of creating a second.
       remember(session.id, { remoteId: created.id, complete: false })

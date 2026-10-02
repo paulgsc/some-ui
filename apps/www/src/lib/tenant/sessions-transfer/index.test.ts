@@ -11,6 +11,7 @@
 import { beforeEach, describe, expect, it } from "vitest"
 
 import { authority } from "@/lib/authority"
+import { FileHostResponseError } from "@/lib/file-host-config/client"
 import type {
   CreateSessionInput,
   SessionsStore,
@@ -231,6 +232,140 @@ describe("resumable, and never duplicating", () => {
     created = Number.NEGATIVE_INFINITY
     expect(await copy(remote)).toEqual({ kind: "copied", copied: 2 })
     expect(await inner.list()).toHaveLength(3)
+  })
+})
+
+describe("a create whose answer was lost", () => {
+  /** Commits the create, then fails as a dropped connection would. */
+  function losesTheAnswer(inner: SessionsStore): SessionsStore {
+    return wrap(inner, {
+      create: async (input: CreateSessionInput) => {
+        await inner.create(input)
+        throw new Error("the connection dropped")
+      },
+    })
+  }
+
+  it("is found in the account on the retry and finished, not created again", async () => {
+    seed([
+      onDevice({ id: "local-1", name: "Lost answer", status: "completed" }),
+    ])
+    const inner = account()
+
+    expect(await copy(losesTheAnswer(inner))).toMatchObject({
+      kind: "partial",
+      copied: 0,
+    })
+    expect(await inner.list()).toHaveLength(1)
+
+    const plan = await planTransfer(inner, device)
+    expect(plan.create).toHaveLength(0)
+    expect(plan.finish).toHaveLength(1)
+    expect(await runTransfer(plan, inner, device)).toEqual({
+      kind: "copied",
+      copied: 1,
+    })
+    const [only] = await inner.list()
+    expect(only.status).toBe("completed")
+    expect(await inner.list()).toHaveLength(1)
+  })
+
+  it("creates it on the retry when the first request never committed", async () => {
+    seed([onDevice({ id: "local-1" })])
+    const inner = account()
+    const down = wrap(inner, {
+      create: () => Promise.reject(new Error("the connection dropped")),
+    })
+
+    expect(await copy(down)).toMatchObject({ kind: "partial", copied: 0 })
+    expect(await inner.list()).toHaveLength(0)
+
+    const plan = await planTransfer(inner, device)
+    expect(plan.create).toHaveLength(1)
+    expect(await runTransfer(plan, inner, device)).toEqual({
+      kind: "copied",
+      copied: 1,
+    })
+    expect(await inner.list()).toHaveLength(1)
+  })
+
+  it("is not an unconfirmed attempt when the server answered with an error", async () => {
+    seed([onDevice({ id: "local-1" })])
+    const inner = account()
+    const refusing = wrap(inner, {
+      create: () =>
+        Promise.reject(new FileHostResponseError(500, "/sessions", null)),
+    })
+    await copy(refusing)
+
+    // Nothing was created and nothing is waiting to be looked for: the account's
+    // list is not read.
+    let listed = 0
+    const counting = wrap(inner, {
+      list: () => {
+        listed += 1
+        return inner.list()
+      },
+    })
+    const plan = await planTransfer(counting, device)
+    expect(plan.create).toHaveLength(1)
+    expect(listed).toBe(0)
+  })
+
+  it("does not adopt a session another device session's copy already claims", async () => {
+    // Two device sessions with the same content, one copied cleanly, the other
+    // lost in flight: the retry must find the second's, not take the first's.
+    seed([
+      onDevice({ id: "local-1", name: "Twin" }),
+      onDevice({ id: "local-2", name: "Twin" }),
+    ])
+    const inner = account()
+    await runTransfer(
+      {
+        create: [onDevice({ id: "local-1", name: "Twin" })],
+        finish: [],
+        alreadyThere: 0,
+      },
+      inner,
+      device
+    )
+    await runTransfer(
+      {
+        create: [onDevice({ id: "local-2", name: "Twin" })],
+        finish: [],
+        alreadyThere: 0,
+      },
+      losesTheAnswer(inner),
+      device
+    )
+    expect(await inner.list()).toHaveLength(2)
+
+    const plan = await planTransfer(inner, device)
+    expect(plan.alreadyThere).toBe(1)
+    expect(plan.create).toHaveLength(0)
+    expect(plan.finish.map((f) => f.session.id)).toEqual(["local-2"])
+    await runTransfer(plan, inner, device)
+    expect(await inner.list()).toHaveLength(2)
+  })
+
+  it("does not adopt a session with different content", async () => {
+    seed([onDevice({ id: "local-1", name: "Mine" })])
+    const inner = account()
+    await inner.create({
+      name: "Someone else's",
+      activities: [],
+      scenes: [],
+      layoutMode: "basic",
+    })
+    await copy(
+      wrap(inner, {
+        create: () => Promise.reject(new Error("the connection dropped")),
+      })
+    )
+
+    const plan = await planTransfer(inner, device)
+    expect(plan.finish).toHaveLength(0)
+    expect(plan.create).toHaveLength(1)
   })
 })
 

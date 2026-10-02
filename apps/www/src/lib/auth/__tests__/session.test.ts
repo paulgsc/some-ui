@@ -17,6 +17,7 @@
 import { act, renderHook } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { authority } from "@/lib/authority"
 import type { FileHostTransport } from "@/lib/file-host-config/client"
 
 type Call = { route: string; init?: RequestInit }
@@ -109,11 +110,51 @@ describe("resolveSession", () => {
     expect(server.calls).toHaveLength(1)
   })
 
-  it("reads an unreachable server as signed out rather than hanging the guard", async () => {
+  it("does not read an unreachable server as a lost session, or hang the guard", async () => {
     server.answer = (): Response => {
       throw new TypeError("Failed to fetch")
     }
     await expect(auth.resolveSession()).resolves.toBe(false)
+    expect(auth.getSessionStatus()).toBe("unreachable")
+  })
+
+  it("reads any answer that is not a 401 as saying nothing about the session", async () => {
+    server.answer = (): Response =>
+      new Response("{}", {
+        status: 502,
+        headers: { "content-type": "application/json" },
+      })
+    await expect(auth.resolveSession()).resolves.toBe(false)
+    expect(auth.getSessionStatus()).toBe("unreachable")
+  })
+
+  it("asks again after an outage, and believes the answer when it comes", async () => {
+    let up = false
+    server.answer = (): Response => {
+      if (!up) throw new TypeError("Failed to fetch")
+      return json({ expiresAt: 1 })
+    }
+    await auth.resolveSession()
+    up = true
+    await expect(auth.resolveSession()).resolves.toBe(true)
+    expect(auth.getSessionStatus()).toBe("signed-in")
+    expect(server.calls).toHaveLength(2)
+  })
+
+  it("keeps a returning account user on the account through an outage", async () => {
+    window.localStorage.setItem(
+      "some-ui.authority.v1",
+      JSON.stringify({ choice: "account" })
+    )
+    auth.resetSessionForTests()
+    server.answer = (): Response => {
+      throw new TypeError("Failed to fetch")
+    }
+    await auth.resolveSessionIfChosen()
+    // Not the device: new work would otherwise land in a store the person did
+    // not choose, and never be probed for again.
+    expect(authority.getAuthority().kind).toBe("account")
+    expect(authority.getSnapshot().accountUnavailable).toBe(false)
   })
 })
 

@@ -18,6 +18,7 @@
  */
 import { useSyncExternalStore } from "react"
 
+import type { SessionBelief } from "@/lib/authority"
 import { authority } from "@/lib/authority"
 import { DATA_MODE } from "@/lib/data-mode"
 import type { FileHostTransport } from "@/lib/file-host-config/client"
@@ -30,7 +31,7 @@ import {
 import type { CreationOptionsJSON, RequestOptionsJSON } from "@/lib/passkey"
 import { createPasskey, signWithPasskey } from "@/lib/passkey"
 
-export type SessionStatus = "unknown" | "signed-in" | "signed-out"
+export type SessionStatus = SessionBelief
 
 type CeremonyStarted<TOptions> = { ceremony: string; options: TOptions }
 type SessionView = { expiresAt: number }
@@ -118,12 +119,16 @@ function isUnauthorized(error: unknown): boolean {
  * this request: `lib/authority`'s `ensureSessionIfChosen` is the boot-time
  * caller, and it asks only when the account was chosen.
  *
- * An unreachable server reads as signed out: nothing a session would unlock
- * can be fetched anyway, and the passkey screen says what went wrong when
- * the person tries.
+ * An unreachable server is not read as a lost session: the person's choice of
+ * the account stands, its calls fail where they can be seen, and the next
+ * caller asks again. Only a 401 ends the belief.
  */
 export function resolveSession(): Promise<boolean> {
-  if (getSessionStatus() !== "unknown") return Promise.resolve(hasSession())
+  // Only an answer is final: an unreachable server is asked again.
+  const known = getSessionStatus()
+  if (known === "signed-in" || known === "signed-out") {
+    return Promise.resolve(hasSession())
+  }
   if (pending) return pending
 
   const transport = transportOrNull()
@@ -134,7 +139,9 @@ export function resolveSession(): Promise<boolean> {
 
   const asked = generation
   // A ceremony or sign-out since this probe was sent knows better than it.
-  const settle = (answer: "signed-in" | "signed-out"): boolean => {
+  const settle = (
+    answer: "signed-in" | "signed-out" | "unreachable"
+  ): boolean => {
     if (generation === asked) {
       authority.dispatch({ type: "session-learned", session: answer })
     }
@@ -142,7 +149,11 @@ export function resolveSession(): Promise<boolean> {
   }
   pending = requestJSON<SessionView>(transport, "/auth/session")
     .then(() => settle("signed-in"))
-    .catch(() => settle("signed-out"))
+    // Only a 401 says there is no session. Anything else (a timeout, a 5xx, a
+    // refused connection, a CORS failure) says nothing about it.
+    .catch((error: unknown) =>
+      settle(isUnauthorized(error) ? "signed-out" : "unreachable")
+    )
     .finally(() => {
       pending = null
     })

@@ -84,6 +84,37 @@ describe("leaving the account", () => {
     expect(unsubscribe).toHaveBeenCalledTimes(1)
   })
 
+  it("releases it when a returning account user's session turns out to be gone at boot", async () => {
+    // The previous page load had reporting on; this one starts undecided.
+    release()
+    window.localStorage.setItem(
+      "some-ui.authority.v1",
+      JSON.stringify({ choice: "account", reporting: true })
+    )
+    authority.resetForTests()
+    expect(authority.getAuthority().kind).toBe("pending")
+    release = releasePushWhenLeavingTheAccount()
+
+    authority.dispatch({ type: "session-learned", session: "signed-out" })
+    await settle()
+    expect(unsubscribe).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps it through a boot where the session is confirmed, or the server is only unreachable", async () => {
+    for (const session of ["signed-in", "unreachable"] as const) {
+      release()
+      window.localStorage.setItem(
+        "some-ui.authority.v1",
+        JSON.stringify({ choice: "account", reporting: true })
+      )
+      authority.resetForTests()
+      release = releasePushWhenLeavingTheAccount()
+      authority.dispatch({ type: "session-learned", session })
+      await settle()
+    }
+    expect(unsubscribe).not.toHaveBeenCalled()
+  })
+
   it("makes no request and registers no worker to do it", async () => {
     authority.dispatch({ type: "session-started", adopt: true })
     authority.dispatch({ type: "session-ended", forget: true })

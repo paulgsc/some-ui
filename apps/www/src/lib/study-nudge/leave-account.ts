@@ -1,3 +1,4 @@
+import type { AuthoritySnapshot } from "@/lib/authority"
 import { authority } from "@/lib/authority"
 
 import { dropLocalPushSubscription } from "./service-worker"
@@ -19,12 +20,25 @@ import { dropLocalPushSubscription } from "./service-worker"
  * Returns the unsubscribe function, so a test can remove it.
  */
 export function releasePushWhenLeavingTheAccount(): () => void {
+  /**
+   * Whether the server may be holding a subscription for this browser. While a
+   * returning account user's session is still being checked (`pending`) the
+   * previous page load's opt-in is what says so: a probe that then finds the
+   * session gone is the departure, and nothing before it was a transition to
+   * notice.
+   */
+  const mayHold = (snapshot: AuthoritySnapshot): boolean =>
+    snapshot.reportingAllowed ||
+    (snapshot.authority.kind === "pending" && snapshot.reporting)
+
   let before = authority.getSnapshot()
   return authority.subscribe(() => {
     const now = authority.getSnapshot()
     const leftTheAccount =
       before.authority.kind === "account" && now.authority.kind !== "account"
-    const stoppedReporting = before.reportingAllowed && !now.reportingAllowed
+    // `pending` is not an answer: a subscription stays until the check says.
+    const stoppedReporting =
+      mayHold(before) && !mayHold(now) && now.authority.kind !== "pending"
     before = now
     if (leftTheAccount || stoppedReporting) void dropLocalPushSubscription()
   })

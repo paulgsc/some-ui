@@ -43,6 +43,11 @@ Which authority a build starts in depends on what it can reach (`Backend`):
 | Speech                              | the browser's own voice                      | the server's speech service                                            | the same                                   |
 | Reminders                           | the client's own policy, while a tab is open | the client's own policy, while a tab is open                           | the server's push, with the browser closed |
 
+A returning account user whose server cannot be reached at boot (a timeout, a
+5xx, a refused connection) stays on the account, and its calls fail where they
+can be seen: only a 401 says the session is gone, so an outage can never move
+their work to the device or leave it there. The next call asks again.
+
 An account whose session ends (an expiry, another device signing out
 everywhere) stays in place: the page keeps working on the device, a line says
 the session ended, and nothing is wiped, uploaded or redirected. Only a page
@@ -77,9 +82,9 @@ declared (checked by reading every call site and by the tests named).
   restricted by lint in `apps/www/src` except in the two files that are the choke
   point: `lib/file-host-config/client.ts` and `lib/device-backend/interceptor/index.ts`.
 - _Falsified by:_ a hunk that adds a `fetch`, `XMLHttpRequest`, `WebSocket`,
-  `EventSource` or `sendBeacon` to a path under `apps/www/src` (or a package it
-  imports) that carries sessions, signals, presence, a shelf item or a push
-  subscription and does not go through `createFileHostTransport("account")`
+  `EventSource` or `sendBeacon` to a path under `apps/www/src` that carries
+  sessions, signals, presence, a shelf item or a push subscription and does not
+  go through `createFileHostTransport("account")`
   (or `"reporting"`, for behaviour; LA6); one
   that passes `"ceremony"` for such a request; one that makes
   `createFileHostTransport`'s `purpose` optional, or deletes its authority check
@@ -112,7 +117,13 @@ declared (checked by reading every call site and by the tests named).
   `useCopyDeviceSessions` and `copyDeviceSessionsAndRefresh`. That button says
   what will be sent and to which account, takes a second press, and copies each
   session to the account in use at most once: the receipt records the ids the
-  server minted, and the account is asked whether it still holds them.
+  server minted, and the account is asked whether it still holds them. A create
+  whose answer was lost is recorded before it is sent and, on the next press,
+  looked for in the account (a session with the same name, layout, activities
+  and scenes that no receipt entry claims) and adopted rather than repeated.
+  There is no server idempotency key, so the one case this cannot tell apart is
+  an identical session the account already held and nothing claims: it is adopted
+  in place of a new copy, never added to.
 - _Falsified by:_ a hunk that makes a ceremony function, `markSignedIn`, or the
   sessions backend import `sessions-transfer` or call
   `createHttpSessionsRepository`'s `create`/`update` with data from

@@ -56,7 +56,7 @@ describe("the authority a choice and a session amount to", () => {
     [
       string,
       "local" | "account",
-      "unknown" | "signed-in" | "signed-out",
+      "unknown" | "signed-in" | "signed-out" | "unreachable",
       string,
     ]
   > = [
@@ -66,6 +66,13 @@ describe("the authority a choice and a session amount to", () => {
     ["chose the account, still asking", "account", "unknown", "pending"],
     ["chose the account, signed in", "account", "signed-in", "account"],
     ["chose the account, session gone", "account", "signed-out", "local"],
+    [
+      "chose the account, server unreachable",
+      "account",
+      "unreachable",
+      "account",
+    ],
+    ["chose the device, server unreachable", "local", "unreachable", "local"],
   ]
   it.each(table)("%s -> %s", (_name, choice, session, kind) => {
     const state: AuthorityState = {
@@ -287,5 +294,33 @@ describe("reporting", () => {
     expect(run(on, { type: "session-ended", forget: false }).reporting).toBe(
       true
     )
+  })
+})
+
+describe("an unreachable server", () => {
+  it("settles a returning account user on the account, without a change of authority", () => {
+    const returning = initialState("remote", "account")
+    const result = step(returning, {
+      type: "session-learned",
+      session: "unreachable",
+    })
+    expect(authorityOf(returning).kind).toBe("pending")
+    expect(authorityOf(result.state).kind).toBe("account")
+    expect(result.authorityChanged).toBe(false)
+    expect(accountUnavailable(result.state)).toBe(false)
+  })
+
+  it("is not a lost session, so a later answer either way is believed", () => {
+    const down = run(initialState("remote", "account"), {
+      type: "session-learned",
+      session: "unreachable",
+    })
+    expect(
+      authorityOf(run(down, { type: "session-learned", session: "signed-in" }))
+        .kind
+    ).toBe("account")
+    const lost = run(down, { type: "session-ended", forget: false })
+    expect(authorityOf(lost).kind).toBe("local")
+    expect(accountUnavailable(lost)).toBe(true)
   })
 })

@@ -56,7 +56,19 @@ export type Backend =
 
 export type Choice = "local" | "account"
 
-export type SessionBelief = "unknown" | "signed-in" | "signed-out"
+/**
+ * What this browser believes about its server session. `unreachable` is a probe
+ * that got no answer (a timeout, a refused connection, a 5xx, a CORS failure):
+ * it says nothing about the session, so it must not be read as `signed-out`,
+ * which would move a returning account user's work to the device behind their
+ * back. The account stays their choice and its calls fail where they can be
+ * seen.
+ */
+export type SessionBelief =
+  | "unknown"
+  | "signed-in"
+  | "signed-out"
+  | "unreachable"
 
 export type AuthorityKind = "local" | "account" | "pending"
 
@@ -83,7 +95,7 @@ export type AuthorityEvent =
   /** A probe answered. It learns about a session; it does not start one. */
   | {
       readonly type: "session-learned"
-      readonly session: "signed-in" | "signed-out"
+      readonly session: "signed-in" | "signed-out" | "unreachable"
     }
   /**
    * A ceremony (or a test) established a session, possibly for a different
@@ -134,7 +146,11 @@ function effectiveChoice(backend: Backend, choice: Choice): Choice {
 export function authorityOf(state: AuthorityState): Authority {
   const { epoch } = state
   if (state.choice === "local") return { kind: "local", epoch }
-  if (state.session === "signed-in") return { kind: "account", epoch }
+  // An unreachable server is not a lost session: the account stays the choice,
+  // and its calls fail visibly rather than quietly landing on the device.
+  if (state.session === "signed-in" || state.session === "unreachable") {
+    return { kind: "account", epoch }
+  }
   // Chose the account, still asking: undecided.
   if (state.session === "unknown") return { kind: "pending", epoch }
   // Chose the account, session gone: learn on the device until it is back.

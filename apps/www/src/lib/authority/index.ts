@@ -18,7 +18,8 @@
  *   LA6  Behaviour (signals, presence, push) reaches the account only with the
  *        person's own opt-in, which every sign-in and sign-out forgets.
  */
-export type { Authority } from "./state"
+export type { AuthoritySnapshot } from "./runtime"
+export type { Authority, SessionBelief } from "./state"
 export { StaleAuthorityError } from "./runtime"
 export { authority } from "./singleton"
 export { useAuthority, useAuthoritySnapshot } from "./use-authority"
