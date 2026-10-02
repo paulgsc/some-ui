@@ -1,6 +1,5 @@
 import type { JSX } from "react"
-import { useRef } from "react"
-import type { SoundbiteContext, SoundbiteSource } from "@some-ui/soundbites"
+import type { SoundbiteSituation, SoundbiteSource } from "@some-ui/soundbites"
 import { Soundbites } from "@some-ui/soundbites"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 
@@ -30,16 +29,14 @@ const OPEN_STATUSES: ReadonlyArray<SessionStatus> = [
 ]
 
 /** What the soundbite notes about where things stood, from the sessions. */
-function contextFrom(
-  sessions: ReadonlyArray<SessionRecord>,
-  source: SoundbiteSource
-): SoundbiteContext {
+function situationFrom(
+  sessions: ReadonlyArray<SessionRecord>
+): SoundbiteSituation {
   const latest = sessions.reduce<string | null>(
     (max, s) => (max === null || s.updatedAt > max ? s.updatedAt : max),
     null
   )
   return {
-    source,
     lastSessionAt: latest,
     openSessions: sessions.filter((s) => OPEN_STATUSES.includes(s.status))
       .length,
@@ -53,24 +50,20 @@ const SoundbitesRoute = (): JSX.Element => {
   // Never waited on: the recording starts whether or not the list has
   // loaded, and a soundbite saved before it has notes no sessions.
   const { data: sessions } = useSessions()
-  // The way in, until a take is kept; any take after that on this visit was
-  // the page's own doing. Cleared only once a save succeeds, so a retry after
-  // a failed one still records how the person got here. Not `say` itself,
-  // which the auto-start clears.
-  const source = useRef(sourceOf(say))
+  // The way in. Read once by the page, which keeps it until a take is
+  // stored, so clearing `?say=` below does not lose it.
+  const source = sourceOf(say)
 
   return (
     <Soundbites
-      autoStart={sourceOf(say) !== "direct"}
+      source={source}
+      autoStart={source !== "direct"}
       // Forget the request once honoured, so going back or reloading does
       // not open the microphone again.
       onAutoStart={() =>
         void navigate({ to: "/soundbites", search: {}, replace: true })
       }
-      context={() => contextFrom(sessions ?? [], source.current)}
-      onKept={() => {
-        source.current = "direct"
-      }}
+      situation={() => situationFrom(sessions ?? [])}
     />
   )
 }

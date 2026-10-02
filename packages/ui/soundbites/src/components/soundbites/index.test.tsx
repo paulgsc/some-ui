@@ -1,5 +1,7 @@
+import { StrictMode } from "react"
 import { Soundbites } from "@soundbites/components/soundbites"
 import { bite, memoryStore } from "@soundbites/lib/__tests__/fixture"
+import type { SoundbiteSituation } from "@soundbites/lib/machine"
 import type { Recording, StartRecording, Take } from "@soundbites/lib/recorder"
 import { RecordingError } from "@soundbites/lib/recorder"
 import type { SoundbiteContext } from "@soundbites/lib/types"
@@ -7,12 +9,14 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import type { Mock } from "vitest"
 import { describe, expect, it, vi } from "vitest"
 
-const CONTEXT: SoundbiteContext = {
-  source: "sessions",
+const SITUATION: SoundbiteSituation = {
   lastSessionAt: "2026-09-29T08:00:00.000Z",
   openSessions: 1,
   timeZone: "UTC",
 }
+
+/** What a take kept on arrival from the sessions list notes. */
+const CONTEXT: SoundbiteContext = { ...SITUATION, source: "sessions" }
 
 type FakeMic = {
   start: Mock<StartRecording>
@@ -51,9 +55,9 @@ function setup(
   const memory = memoryStore(options.kept)
   const view = render(
     <Soundbites
-      context={() => CONTEXT}
-      store={memory.store}
-      startRecording={mic.start}
+      situation={() => SITUATION}
+      source="sessions"
+      ports={{ store: memory.store, startRecording: mic.start }}
       autoStart={options.autoStart}
       onAutoStart={options.onAutoStart}
     />
@@ -220,20 +224,10 @@ describe("Soundbites", () => {
     ).toBeInTheDocument()
   })
 
-  it("reports a take kept only once it is safely stored", async () => {
-    const onKept = vi.fn()
-    const memory = memoryStore()
-    const save = vi
-      .spyOn(memory.store, "save")
-      .mockRejectedValueOnce(new Error("IndexedDB unavailable"))
-    const mic = fakeMic()
-    render(
-      <Soundbites
-        context={() => CONTEXT}
-        store={memory.store}
-        startRecording={mic.start}
-        onKept={onKept}
-      />
+  it("keeps the way in until a take is stored, so a retry still has it", async () => {
+    const { kept, store } = setup()
+    vi.spyOn(store, "save").mockRejectedValueOnce(
+      new Error("IndexedDB unavailable")
     )
 
     await tap("Start talking")
@@ -241,25 +235,29 @@ describe("Soundbites", () => {
     expect(
       await screen.findByText("That one couldn't be kept. Try again?")
     ).toBeInTheDocument()
-    expect(onKept).not.toHaveBeenCalled()
+    expect(kept.size).toBe(0)
 
     await tap("Start talking")
     await tap("Done, keep it")
     await screen.findByText(/1 of 6 on this phone/)
-    expect(save).toHaveBeenCalledTimes(2)
-    expect(onKept).toHaveBeenCalledTimes(1)
+    expect([...kept.values()][0]?.bite.context.source).toBe("sessions")
+
+    // Once one is stored, any later take on this visit is the page's own.
+    await tap("Start talking")
+    await tap("Done, keep it")
+    await screen.findByText(/2 of 6 on this phone/)
+    const sources = [...kept.values()].map((k) => k.bite.context.source)
+    expect(sources.sort()).toEqual(["direct", "sessions"])
   })
 
   it("says a take was kept even when the list cannot be re-read after", async () => {
-    const onKept = vi.fn()
     const memory = memoryStore()
     const mic = fakeMic()
     render(
       <Soundbites
-        context={() => CONTEXT}
-        store={memory.store}
-        startRecording={mic.start}
-        onKept={onKept}
+        situation={() => SITUATION}
+        source="sessions"
+        ports={{ store: memory.store, startRecording: mic.start }}
       />
     )
     await screen.findByText("Nothing kept yet.")
@@ -270,7 +268,6 @@ describe("Soundbites", () => {
 
     expect(await screen.findByText("Kept, 0:05.")).toBeInTheDocument()
     expect(screen.queryByText(/couldn't be kept/)).not.toBeInTheDocument()
-    expect(onKept).toHaveBeenCalledTimes(1)
     expect(memory.kept.size).toBe(1)
     // ... and the list it could not re-read goes unknown, not stale: no
     // "Nothing kept yet" and no 0/6 beside a take that was just kept.
@@ -331,9 +328,8 @@ describe("Soundbites", () => {
     vi.spyOn(memory.store, "audio").mockRejectedValueOnce(new Error("busy"))
     render(
       <Soundbites
-        context={() => CONTEXT}
-        store={memory.store}
-        startRecording={fakeMic().start}
+        situation={() => SITUATION}
+        ports={{ store: memory.store, startRecording: fakeMic().start }}
       />
     )
 
@@ -350,9 +346,8 @@ describe("Soundbites", () => {
     vi.spyOn(memory.store, "remove").mockRejectedValueOnce(new Error("busy"))
     render(
       <Soundbites
-        context={() => CONTEXT}
-        store={memory.store}
-        startRecording={fakeMic().start}
+        situation={() => SITUATION}
+        ports={{ store: memory.store, startRecording: fakeMic().start }}
       />
     )
 
@@ -370,9 +365,8 @@ describe("Soundbites", () => {
     const memory = memoryStore([bite("a", 5), bite("b", 10)])
     render(
       <Soundbites
-        context={() => CONTEXT}
-        store={memory.store}
-        startRecording={fakeMic().start}
+        situation={() => SITUATION}
+        ports={{ store: memory.store, startRecording: fakeMic().start }}
       />
     )
     await screen.findByRole("img", { name: "2 of 6 kept" })
@@ -429,9 +423,8 @@ describe("Soundbites", () => {
     vi.spyOn(memory.store, "list").mockRejectedValueOnce(new Error("busy"))
     render(
       <Soundbites
-        context={() => CONTEXT}
-        store={memory.store}
-        startRecording={fakeMic().start}
+        situation={() => SITUATION}
+        ports={{ store: memory.store, startRecording: fakeMic().start }}
       />
     )
 
@@ -448,6 +441,71 @@ describe("Soundbites", () => {
       await screen.findByRole("img", { name: "1 of 6 kept" })
     ).toBeInTheDocument()
     expect(screen.queryByRole("alert")).not.toBeInTheDocument()
+  })
+
+  it("plays nothing while the microphone opens (#1636, finding 11)", async () => {
+    const played: Array<string> = []
+    vi.stubGlobal(
+      "Audio",
+      class {
+        onended: (() => void) | null = null
+        constructor(readonly src: string) {}
+        play(): Promise<void> {
+          played.push(this.src)
+          return Promise.resolve()
+        }
+        pause(): void {}
+      }
+    )
+    vi.spyOn(URL, "createObjectURL").mockImplementation(() => "blob:1")
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined)
+    const mic = fakeMic()
+    let open: (recording: Recording) => void = () => undefined
+    mic.start.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          open = resolve
+        })
+    )
+    setup({ kept: [bite("a", 5)], mic })
+
+    await tap("Start talking")
+    const play = screen.getByRole("button", { name: /^Play / })
+    expect(play).toBeDisabled()
+    await settle(() => fireEvent.click(play))
+
+    await settle(() =>
+      open({ level: () => 0, finish: mic.finish, discard: mic.discard })
+    )
+    expect(
+      screen.getByRole("button", { name: "Done, keep it" })
+    ).toBeInTheDocument()
+    expect(played).toEqual([])
+    vi.unstubAllGlobals()
+  })
+
+  it("opens the microphone once under StrictMode's double mount", async () => {
+    const memory = memoryStore()
+    const mic = fakeMic()
+    const onAutoStart = vi.fn()
+    render(
+      <StrictMode>
+        <Soundbites
+          situation={() => SITUATION}
+          source="sessions"
+          autoStart
+          onAutoStart={onAutoStart}
+          ports={{ store: memory.store, startRecording: mic.start }}
+        />
+      </StrictMode>
+    )
+
+    expect(
+      await screen.findByRole("button", { name: "Done, keep it" })
+    ).toBeInTheDocument()
+    expect(mic.start).toHaveBeenCalledTimes(1)
+    expect(mic.discard).not.toHaveBeenCalled()
+    expect(onAutoStart).toHaveBeenCalledTimes(1)
   })
 
   it("deletes a kept one after asking", async () => {

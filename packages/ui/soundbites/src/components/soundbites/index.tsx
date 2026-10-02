@@ -13,48 +13,43 @@
  * the screen turning off, the app going to the background, or the page being
  * left. What was said up to then is the soundbite.
  *
- * Two rules every asynchronous path here keeps (each was a bug before it was
- * a rule):
- *
- * - **The list shown is a read that succeeded, or "unknown".** Any failed
- *   read of the store sets it unknown, with a retry; it never shows a stale
- *   list, an empty one, or a zero it did not read. `refresh` is the one way
- *   the list is re-read.
- * - **A continuation checks it still owns what it touches.** A play waiting
- *   on the store checks its request is still the latest; an `Audio`'s ended
- *   and failed handlers stop playback only while that `Audio` is the one
- *   playing.
+ * This component only renders and forwards taps. What happens, in what
+ * order, and which late result still counts is `lib/machine.ts`; talking to
+ * the microphone, the database and `Audio` is `lib/runtime.ts`. It owns one
+ * runtime for as long as it is mounted, attached while it is
+ * (docs/monorepo-boundaries.md, "Inside a React package").
  */
 import type { JSX } from "react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useEffect, useState, useSyncExternalStore } from "react"
 import { Button } from "@some-ui/shared"
 import {
   describeContext,
   formatDuration,
   formatWhen,
 } from "@soundbites/lib/format"
+import type { Activity, SoundbiteSituation } from "@soundbites/lib/machine"
+import { canUseKept } from "@soundbites/lib/machine"
+import { phonePorts } from "@soundbites/lib/phone"
 import {
-  byNewest,
   nextReplaced,
   SOUNDBITE_LIMIT,
   SOUNDBITE_MAX_MS,
-  SOUNDBITE_MIN_MS,
 } from "@soundbites/lib/policy"
-import type {
-  Recording,
-  RecordingFailure,
-  StartRecording,
-} from "@soundbites/lib/recorder"
-import { RecordingError, startMicRecording } from "@soundbites/lib/recorder"
-import type { SoundbiteStore } from "@soundbites/lib/store"
-import { indexedDbSoundbiteStore } from "@soundbites/lib/store"
-import type { Soundbite, SoundbiteContext } from "@soundbites/lib/types"
+import type { RecordingFailure } from "@soundbites/lib/recorder"
+import type { SoundbitesPorts } from "@soundbites/lib/runtime"
+import { createSoundbites } from "@soundbites/lib/runtime"
+import type { Soundbite, SoundbiteSource } from "@soundbites/lib/types"
 import { Mic, Pause, Play, Square, Trash2 } from "lucide-react"
 import { cn } from "some-ui-utils"
 
 export type SoundbitesProps = {
-  /** What the app knows right now. Read once, as each soundbite is kept. */
-  context: () => SoundbiteContext
+  /** Where the app stands. Read once, as each soundbite is kept. */
+  situation: () => SoundbiteSituation
+  /**
+   * How the person got here. Read once, on mount: it stays with each take
+   * until one is stored, so a retry after a failed save still records it.
+   */
+  source?: SoundbiteSource
   /**
    * Start talking on arrival: the person already tapped "say why" to get
    * here, so a second tap on this page would be one too many.
@@ -62,22 +57,9 @@ export type SoundbitesProps = {
   autoStart?: boolean
   /** Called as an auto-start begins, so the caller can forget the request. */
   onAutoStart?: () => void
-  /**
-   * Called once a soundbite is safely stored, and not before: a save that
-   * fails leaves whatever `context` depends on as it was, for the retry.
-   */
-  onKept?: () => void
-  /** Where soundbites are kept. The phone's IndexedDB unless a test says. */
-  store?: SoundbiteStore
-  startRecording?: StartRecording
+  /** The phone's ports unless a test says otherwise. Read once, on mount. */
+  ports?: Partial<SoundbitesPorts>
 }
-
-type Phase =
-  | { kind: "idle" }
-  | { kind: "starting" }
-  | { kind: "recording"; startedAt: number }
-  | { kind: "saving" }
-  | { kind: "blocked"; reason: RecordingFailure }
 
 /** Ideas to start a sentence with, for the moment the mind goes blank. */
 const STARTERS = [
@@ -97,44 +79,35 @@ const BLOCKED_COPY: Record<RecordingFailure, string> = {
   failed: "The microphone didn't start. Try again.",
 }
 
-/** One store per page load, so the database opens once. */
-let defaultStore: SoundbiteStore | null = null
-function phoneStore(): SoundbiteStore {
-  defaultStore ??= indexedDbSoundbiteStore()
-  return defaultStore
-}
-
 const RING_RADIUS = 46
 const RING_LENGTH = 2 * Math.PI * RING_RADIUS
 /** The last stretch of a take, when the ring warns that time is nearly up. */
 const WARN_MS = 10_000
 
 /** What the big button does when pressed, for a screen reader. */
-const RECORD_LABELS: Record<Phase["kind"], string> = {
+const RECORD_LABELS: Record<Activity["kind"], string> = {
   idle: "Start talking",
-  blocked: "Start talking",
-  starting: "Opening the microphone",
+  playing: "Start talking",
+  opening: "Opening the microphone",
   recording: "Done, keep it",
   saving: "Keeping it",
 }
 
 const RecordButton = ({
-  phase,
-  elapsed,
-  level,
+  activity,
   onPress,
 }: {
-  phase: Phase
-  elapsed: number
-  level: number
+  activity: Activity
   onPress: () => void
 }): JSX.Element => {
-  const recording = phase.kind === "recording"
-  const busy = phase.kind === "starting" || phase.kind === "saving"
+  const recording = activity.kind === "recording"
+  const elapsed = recording ? activity.elapsed : 0
+  const level = recording ? activity.level : 0
+  const busy = activity.kind === "opening" || activity.kind === "saving"
   const progress = recording ? Math.min(1, elapsed / SOUNDBITE_MAX_MS) : 0
   const warning = recording && SOUNDBITE_MAX_MS - elapsed <= WARN_MS
 
-  const label = RECORD_LABELS[phase.kind]
+  const label = RECORD_LABELS[activity.kind]
 
   return (
     <div className="relative mx-auto size-44 [@media(max-height:479px)]:size-36">
@@ -290,252 +263,36 @@ const KeptSoundbite = ({
 }
 
 export const Soundbites = ({
-  context,
+  situation,
+  source = "direct",
   autoStart = false,
   onAutoStart,
-  onKept,
-  store: givenStore,
-  startRecording = startMicRecording,
+  ports,
 }: SoundbitesProps): JSX.Element => {
-  const store = givenStore ?? phoneStore()
-  const [kept, setKept] = useState<Array<Soundbite> | null>(null)
-  // A failed read is not an empty phone: shown as such, with a retry, so a
-  // full phone is never mistaken for an empty one.
-  const [unreadable, setUnreadable] = useState(false)
-  const [readAttempt, setReadAttempt] = useState(0)
-  const [phase, setPhase] = useState<Phase>({ kind: "idle" })
-  const [elapsed, setElapsed] = useState(0)
-  const [level, setLevel] = useState(0)
-  const [notice, setNotice] = useState("")
-  const [choice, setChoice] = useState<string | null>(null)
-  const [playingId, setPlayingId] = useState<string | null>(null)
-
-  // Refs, not state, for what the handlers below must see at once: a second
-  // tap before React re-renders must not open the microphone twice.
-  const recordingRef = useRef<Recording | null>(null)
-  const busyRef = useRef(false)
-  const choiceRef = useRef(choice)
-  const contextRef = useRef(context)
-  const onKeptRef = useRef(onKept)
-  useEffect(() => {
-    choiceRef.current = choice
-    contextRef.current = context
-    onKeptRef.current = onKept
-  })
-  const playerRef = useRef<{ audio: HTMLAudioElement; url: string } | null>(
-    null
-  )
-  const mountedRef = useRef(true)
-
-  useEffect(() => {
-    let live = true
-    store.list().then(
-      (all) => {
-        if (!live) return
-        setKept(byNewest(all))
-        setUnreadable(false)
-      },
-      () => {
-        if (live) setUnreadable(true)
-      }
+  const [runtime] = useState(() =>
+    createSoundbites(
+      { ...phonePorts(), ...ports },
+      { source, autoStart, onAutoStart }
     )
-    return (): void => {
-      live = false
-    }
-  }, [store, readAttempt])
-
-  // Bumped by every stop, so a play still waiting on the store for its
-  // audio can tell it was overtaken (a second tap, a recording starting).
-  const playRequestRef = useRef(0)
-
-  /** The one way the list is re-read: a fresh snapshot, or unknown. */
-  const refresh = useCallback(async (): Promise<Array<Soundbite> | null> => {
-    try {
-      const all = byNewest(await store.list())
-      setKept(all)
-      setUnreadable(false)
-      return all
-    } catch {
-      setKept(null)
-      setUnreadable(true)
-      return null
-    }
-  }, [store])
-
-  const stopPlaying = useCallback((): void => {
-    playRequestRef.current += 1
-    const player = playerRef.current
-    if (player === null) return
-    player.audio.pause()
-    URL.revokeObjectURL(player.url)
-    playerRef.current = null
-    setPlayingId(null)
-  }, [])
-
-  const start = useCallback(async (): Promise<void> => {
-    if (busyRef.current) return
-    busyRef.current = true
-    stopPlaying()
-    setNotice("")
-    setPhase({ kind: "starting" })
-    try {
-      const recording = await startRecording()
-      // The page was left while the microphone was opening: let it go.
-      if (!mountedRef.current) {
-        recording.discard()
-        return
-      }
-      recordingRef.current = recording
-      setElapsed(0)
-      setPhase({ kind: "recording", startedAt: Date.now() })
-    } catch (error) {
-      busyRef.current = false
-      setPhase({
-        kind: "blocked",
-        reason: error instanceof RecordingError ? error.reason : "failed",
-      })
-    }
-  }, [startRecording, stopPlaying])
-
-  const finish = useCallback(async (): Promise<void> => {
-    const recording = recordingRef.current
-    if (recording === null) return
-    recordingRef.current = null
-    setPhase({ kind: "saving" })
-    try {
-      const take = await recording.finish()
-      if (take.durationMs < SOUNDBITE_MIN_MS || take.blob.size === 0) {
-        setNotice("Too short to keep. Tap, talk, then tap again.")
-        return
-      }
-      const bite: Soundbite = {
-        id: crypto.randomUUID(),
-        recordedAt: new Date().toISOString(),
-        durationMs: Math.min(take.durationMs, SOUNDBITE_MAX_MS),
-        mimeType: take.mimeType,
-        bytes: take.blob.size,
-        context: contextRef.current(),
-      }
-      await store.save(bite, take.blob, choiceRef.current)
-      onKeptRef.current?.()
-      setChoice(null)
-      // The take is stored. A refresh that fails after this must not say
-      // otherwise, or the retry it invites would keep it twice; the list
-      // goes unknown instead of showing what it was before the save.
-      const refreshed = await refresh()
-      setNotice(
-        refreshed === null
-          ? `Kept, ${formatDuration(bite.durationMs)}.`
-          : `Kept, ${formatDuration(bite.durationMs)}. ${refreshed.length} of ${SOUNDBITE_LIMIT} on this phone.`
-      )
-    } catch {
-      setNotice("That one couldn't be kept. Try again?")
-    } finally {
-      busyRef.current = false
-      setPhase({ kind: "idle" })
-    }
-  }, [store, refresh])
-
-  const discard = (): void => {
-    recordingRef.current?.discard()
-    recordingRef.current = null
-    busyRef.current = false
-    setPhase({ kind: "idle" })
-    setNotice("Thrown away. Nothing kept.")
-  }
-
-  // The clock and the level meter, and the one-minute stop.
-  const startedAt = phase.kind === "recording" ? phase.startedAt : null
-  useEffect(() => {
-    if (startedAt === null) return
-    const tick = setInterval(() => {
-      const ms = Date.now() - startedAt
-      setElapsed(Math.min(ms, SOUNDBITE_MAX_MS))
-      setLevel(recordingRef.current?.level() ?? 0)
-      if (ms >= SOUNDBITE_MAX_MS) void finish()
-    }, 100)
-    return (): void => clearInterval(tick)
-  }, [startedAt, finish])
-
-  // Keep what was said when the phone takes the screen away mid-sentence.
-  useEffect(() => {
-    if (startedAt === null) return
-    const onHidden = (): void => {
-      if (document.visibilityState === "hidden") void finish()
-    }
-    document.addEventListener("visibilitychange", onHidden)
-    return (): void =>
-      document.removeEventListener("visibilitychange", onHidden)
-  }, [startedAt, finish])
-
-  // ... and when the page is left. `finish` only touches the store after
-  // this point; the setters it calls are no-ops on an unmounted component.
-  useEffect(() => {
-    mountedRef.current = true
-    return (): void => {
-      mountedRef.current = false
-      void finish()
-      stopPlaying()
-    }
-  }, [finish, stopPlaying])
-
-  const autoStarted = useRef(false)
-  useEffect(() => {
-    if (!autoStart || autoStarted.current) return
-    autoStarted.current = true
-    onAutoStart?.()
-    void start()
-  }, [autoStart, onAutoStart, start])
-
-  const play = async (bite: Soundbite): Promise<void> => {
-    const wasPlaying = playingId === bite.id
-    stopPlaying()
-    if (wasPlaying) return
-    const request = playRequestRef.current
-    let blob: Blob | null
-    try {
-      blob = await store.audio(bite.id)
-    } catch {
-      if (request === playRequestRef.current)
-        setNotice("That recording couldn't be played.")
-      return
-    }
-    // Overtaken while the audio loaded: only the latest request plays.
-    if (request !== playRequestRef.current) return
-    if (blob === null) {
-      setNotice("That recording's audio is missing.")
-      return
-    }
-    const url = URL.createObjectURL(blob)
-    const audio = new Audio(url)
-    playerRef.current = { audio, url }
-    setPlayingId(bite.id)
-    // Only while this is still the one playing: an earlier recording's play
-    // that fails after the switch must not stop the new one.
-    const release = (): void => {
-      if (playerRef.current?.audio === audio) stopPlaying()
-    }
-    audio.onended = release
-    audio.play().catch(release)
-  }
-
-  const remove = async (bite: Soundbite, when: string): Promise<void> => {
-    if (!window.confirm(`Delete the soundbite from ${when}?`)) return
-    if (playingId === bite.id) stopPlaying()
-    try {
-      await store.remove(bite.id)
-    } catch {
-      setNotice("That one couldn't be deleted. Try again?")
-      return
-    }
-    if (choice === bite.id) setChoice(null)
-    await refresh()
-  }
+  )
+  useEffect(() => runtime.attach(), [runtime])
+  useEffect(() => runtime.setSituation(situation))
+  const state = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot)
+  const { activity, library, choice, notice, blocked } = state
+  const { dispatch } = runtime
 
   const now = new Date()
-  const recording = phase.kind === "recording"
+  const recording = activity.kind === "recording"
+  const usable = canUseKept(activity)
+  const kept = library.kind === "read" ? library.kept : null
   const full = kept !== null && kept.length >= SOUNDBITE_LIMIT
   const replaced = kept === null ? null : nextReplaced(kept, choice)
+  const playingId = activity.kind === "playing" ? activity.id : null
+
+  const remove = (bite: Soundbite, when: string): void => {
+    if (window.confirm(`Delete the soundbite from ${when}?`))
+      dispatch({ type: "deleteConfirmed", id: bite.id })
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-6 pb-8">
@@ -553,13 +310,15 @@ export const Soundbites = ({
 
         <div className="flex flex-col items-center gap-3">
           <RecordButton
-            phase={phase}
-            elapsed={elapsed}
-            level={level}
-            onPress={() => void (recording ? finish() : start())}
+            activity={activity}
+            onPress={() => dispatch({ type: "recordPressed" })}
           />
           {recording ? (
-            <Button variant="ghost" size="sm" onClick={discard}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => dispatch({ type: "discardPressed" })}
+            >
               Throw it away
             </Button>
           ) : (
@@ -576,14 +335,17 @@ export const Soundbites = ({
         </div>
       </div>
 
-      {phase.kind === "blocked" && (
+      {blocked !== null && activity.kind === "idle" && (
         <div
           role="alert"
           className="border-destructive/40 bg-destructive/5 space-y-3 rounded-lg border p-4 text-sm"
         >
-          <p>{BLOCKED_COPY[phase.reason]}</p>
-          {phase.reason !== "unsupported" && (
-            <Button size="sm" onClick={() => void start()}>
+          <p>{BLOCKED_COPY[blocked]}</p>
+          {blocked !== "unsupported" && (
+            <Button
+              size="sm"
+              onClick={() => dispatch({ type: "recordPressed" })}
+            >
               Try again
             </Button>
           )}
@@ -646,7 +408,7 @@ export const Soundbites = ({
           </p>
         )}
 
-        {kept === null && unreadable ? (
+        {library.kind === "unreadable" ? (
           <div
             role="alert"
             className="space-y-3 rounded-lg border border-dashed p-4 text-center text-sm"
@@ -658,10 +420,7 @@ export const Soundbites = ({
             <Button
               size="sm"
               variant="outline"
-              onClick={() => {
-                setUnreadable(false)
-                setReadAttempt((attempt) => attempt + 1)
-              }}
+              onClick={() => dispatch({ type: "retryRead" })}
             >
               Read them again
             </Button>
@@ -682,10 +441,12 @@ export const Soundbites = ({
                   full={full}
                   isNextReplaced={replaced?.id === bite.id}
                   playing={playingId === bite.id}
-                  disabled={recording}
-                  onPlay={() => void play(bite)}
-                  onReplaceInstead={() => setChoice(bite.id)}
-                  onDelete={() => void remove(bite, when)}
+                  disabled={!usable}
+                  onPlay={() => dispatch({ type: "playPressed", id: bite.id })}
+                  onReplaceInstead={() =>
+                    dispatch({ type: "replacePicked", id: bite.id })
+                  }
+                  onDelete={() => remove(bite, when)}
                 />
               )
             })}
