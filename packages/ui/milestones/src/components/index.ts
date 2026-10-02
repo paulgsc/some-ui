@@ -1,7 +1,0 @@
-export * from "./milestone-board"
-export * from "./milestone-face"
-export * from "./milestone-grid"
-export * from "./milestone-grid-cell"
-export * from "./milestone-hero"
-export * from "./milestone-stat-face"
-export * from "./milestone-timeline"

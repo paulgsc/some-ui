@@ -47,34 +47,18 @@ export default defineConfig({
         import.meta.dirname,
         "./packages/ui/interview/src"
       ),
-      "@emoji": path.resolve(
-        import.meta.dirname,
-        "./packages/ui/emoji-animations/src"
-      ),
       "@wireframes": path.resolve(
         import.meta.dirname,
         "./packages/ui/wireframes/src"
-      ),
-      "@portfolio": path.resolve(
-        import.meta.dirname,
-        "./packages/ui/portfolio-chart/src"
       ),
       "@makjang": path.resolve(
         import.meta.dirname,
         "./packages/ui/makjang/src"
       ),
-      "@milestones": path.resolve(
-        import.meta.dirname,
-        "./packages/ui/milestones/src"
-      ),
       "@umag": path.resolve(import.meta.dirname, "./packages/ui/umag/src"),
       "@honeycomb": path.resolve(
         import.meta.dirname,
         "./packages/ui/honeycomb/src"
-      ),
-      "@calendar": path.resolve(
-        import.meta.dirname,
-        "./packages/ui/calendar/src"
       ),
       "@assessment": path.resolve(
         import.meta.dirname,
