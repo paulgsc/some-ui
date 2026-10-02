@@ -3,7 +3,7 @@ import { resolve } from "node:path"
 import { createStylePlugins } from "@some-ui/styles/styles-build/dev-config"
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite"
 import viteReact from "@vitejs/plugin-react"
-import type { Plugin, UserConfig } from "vite"
+import type { HtmlTagDescriptor, Plugin, UserConfig } from "vite"
 import { defineConfig, loadEnv } from "vite"
 
 import { buildAudiencePlugin, MOBILE_PROFILE } from "./build.profiles.ts"
@@ -116,6 +116,48 @@ function omitResumePdfs(): Plugin {
   }
 }
 
+// The GitHub Pages build has no backend and no operator-bound traffic by
+// design (`VITE_STATIC_DATA`, `lib/data-mode`), and a static host cannot set
+// response headers. A <meta> policy is the one place this build can say so in a
+// form the browser enforces: with `connect-src 'self'`, a `fetch`, `WebSocket`
+// or beacon to any other origin is blocked, so a later change that adds one
+// fails loudly on the demo instead of quietly sending something somewhere.
+//
+// `connect-src` only: the Pages build already runs without any other policy,
+// and widening this to `default-src` would take on the font, image and
+// service-worker questions this change does not need to answer. The lan and
+// Docker builds are not covered, on purpose: they reach `file_host` on another
+// port of the same host (`lib/file-host-config`), a speech provider the person
+// chose and a music-overlay socket, none of which `connect-src` can name
+// without also blocking a learner's own choices. Those are checked by
+// tests/local-mode/no-egress.spec.ts instead.
+//
+// LA5 (docs/learner-data-authority.md): this tag is the invariant; widening the
+// policy, dropping the plugin or moving the tag out of `head-prepend` breaks it.
+//
+// Prepended, because a meta policy only governs what loads after it.
+const PAGES_CONNECT_POLICY = "connect-src 'self'"
+
+function pagesConnectPolicy(): Plugin {
+  return {
+    name: "pages-connect-policy",
+    apply: "build",
+    transformIndexHtml(): Array<HtmlTagDescriptor> {
+      if (process.env.SOME_UI_PROFILE !== "pages") return []
+      return [
+        {
+          tag: "meta",
+          attrs: {
+            "http-equiv": "Content-Security-Policy",
+            content: PAGES_CONNECT_POLICY,
+          },
+          injectTo: "head-prepend",
+        },
+      ]
+    },
+  }
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(
   ({ command, mode }): UserConfig => ({
@@ -221,6 +263,7 @@ export default defineConfig(
         ? [warnMissingContentAssets(), fileHostDevPlugin(fileHost)]
         : []),
       ...(isMobileBuild ? [omitResumePdfs()] : []),
+      pagesConnectPolicy(),
     ],
     // An http:// page skips the proxy and asks :3000 directly
     // (src/lib/file-host-config) - the container. While the proxy points

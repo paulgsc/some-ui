@@ -20,11 +20,11 @@ ends _account_ capability, not _local_ learning, and rewrites nothing.
 
 Which authority a build starts in depends on what it can reach (`Backend`):
 
-| Backend      | Builds                                             | Starts as                                         |
-| ------------ | -------------------------------------------------- | ------------------------------------------------- |
-| `none`       | the GitHub Pages demo                              | always `local`                                    |
-| `remote`     | `vite dev`, `vite preview`, the Docker `lan` image | `local`; the account only by the person's own act |
-| `in-process` | the Android app, whose backend is its own database | always the account                                |
+| Backend      | Builds                                                                | Starts as                                         |
+| ------------ | --------------------------------------------------------------------- | ------------------------------------------------- |
+| `none`       | the GitHub Pages demo, which also declares `connect-src 'self'` (LA5) | always `local`                                    |
+| `remote`     | `vite dev`, `vite preview`, the Docker `lan` image                    | `local`; the account only by the person's own act |
+| `in-process` | the Android app, whose backend is its own database                    | always the account                                |
 
 ## What leaves the device
 
@@ -59,21 +59,33 @@ declared (checked by reading every call site and by the tests named).
   which answers `null` unless the authority is the account, and which refuses to
   send once the authority has become a different one (`StaleAuthorityError`). The
   other purpose, `"ceremony"`, is for the passkey ceremonies and the session
-  probe, which carry no learner state.
+  probe, which carry no learner state. The network globals (`fetch`,
+  `XMLHttpRequest`, `WebSocket`, `EventSource`, `navigator.sendBeacon`) are
+  restricted by lint in `apps/www/src` except in the two files that are the choke
+  point: `lib/file-host-config/client.ts` and `lib/device-backend/interceptor/index.ts`.
 - _Falsified by:_ a hunk that adds a `fetch`, `XMLHttpRequest`, `WebSocket`,
   `EventSource` or `sendBeacon` to a path under `apps/www/src` (or a package it
   imports) that carries sessions, signals, presence, a shelf item or a push
   subscription and does not go through `createFileHostTransport("account")`; one
-  that passes `"ceremony"` for such a request; or one that makes
+  that passes `"ceremony"` for such a request; one that makes
   `createFileHostTransport`'s `purpose` optional, or deletes its authority check
-  or the per-send `isCurrent` check.
+  or the per-send `isCurrent` check; one that adds an `eslint-disable` for
+  `no-restricted-globals` or `no-restricted-properties` under `apps/www/src`, or
+  a file to the exemption list in `apps/www/eslint.config.js`; or one that adds
+  to `isCorpusRead` in `tests/local-mode/no-egress.spec.ts` a route that carries
+  a learner's state.
 - _Scope:_ `apps/www/src`. Not covered: a package under `packages/` that makes
   its own requests (`speech`, `ws`, `fetch-kit` corpus reads), which are listed
   above and carry no learner state by their own contracts.
-- _Why not enforced:_ the type system enforces that a purpose is stated, not that
-  it is truthful, and a lint rule over network globals cannot tell a learner-state
-  request from a corpus read without a list of choke points. **Mechanical; not yet
-  a rule:** restrict the network globals outside the files named above.
+- _Why not enforced:_ the globals are, by lint
+  (`apps/www/eslint.config.js`), and the lint's exemption list and the absence of
+  a disable are pinned by `lib/serving-privacy/__tests__/egress-choke-points.test.ts`.
+  What no rule can check is that a request through the transport states its
+  purpose truthfully: the type system enforces that a purpose is stated, not that
+  it is true, and a lint rule cannot tell a learner-state request from a corpus
+  read. The built app is the evidence for that: `tests/local-mode/no-egress.spec.ts`
+  loads every local route against a stand-in `file_host` and fails on any request
+  that is not a credential-free read of a lesson or round.
 
 ### LA2: signing in or enrolling never writes local data to the account
 
@@ -115,9 +127,33 @@ declared (checked by reading every call site and by the tests named).
   changes `PUBLIC_READ.credentials`.
 - _Scope:_ `apps/www/src/lib/{topik-content,leetype-content,hangul-vocab}`.
 - _Why not enforced:_ a test observes the wire for leetype
-  (`leetype-content/index.test.ts`, "reads the corpus with no credentials"); the
-  other two share the constant, and nothing finds a _new_ data source. **Mechanical;
-  not yet a rule.**
+  (`leetype-content/index.test.ts`, "reads the corpus with no credentials"), and
+  `lib/serving-privacy/__tests__/egress-choke-points.test.ts` parses `apps/www/src`
+  and fails on a `createDataSource` call without `PUBLIC_READ`, and on a data source
+  outside the three named directories being unlisted. What it cannot see is a
+  corpus read made another way (a package's own `fetch`), which is LA1's scope note.
+
+### LA5: the Pages build cannot reach another origin
+
+- _Claim:_ every HTML document in a build made with `SOME_UI_PROFILE=pages` carries
+  `<meta http-equiv="Content-Security-Policy" content="connect-src 'self'">` as the
+  first element of `<head>`, so a `fetch`, `WebSocket`, `EventSource` or beacon to
+  any other origin is blocked by the browser. The lan, Docker and Android builds
+  do not carry it, and are not claimed to.
+- _Falsified by:_ a hunk in `apps/www/vite.config.ts` that widens
+  `PAGES_CONNECT_POLICY` beyond `'self'`, removes `pagesConnectPolicy()` from the
+  plugin list, changes its `injectTo` from `head-prepend`, or changes the profile
+  name it keys on; or one that adds another `<meta http-equiv>` policy to
+  `apps/www/index.html` or `apps/www/resume/index.html` ahead of it.
+- _Scope:_ `apps/www/vite.config.ts`, and the two HTML entries.
+- _Why not enforced:_ a type or a lint rule cannot see a build's output. The
+  claim is checked against the output by `tests/local-mode/no-egress.spec.ts`,
+  which finds the tag, shows the policy blocks a real request, and loads five
+  routes with no violation; `pr.yml` runs it on any change to `apps/www/src` or
+  the files above (wiring, not reviewable here). The lan and Docker builds are
+  left out because they reach `file_host` on another port of the same host, a
+  speech provider the learner chose and a music-overlay socket, none of which a
+  `connect-src` can name without also blocking the learner's own choices.
 
 ## Not covered, on purpose
 

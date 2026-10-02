@@ -6,7 +6,7 @@ import { createAuthority } from "./runtime"
 import type { Backend, Choice } from "./state"
 
 /** What this build can reach, from its build flags. */
-export function backendOf(
+function backendOf(
   device: boolean = DEVICE_BACKEND,
   mode: typeof DATA_MODE = DATA_MODE
 ): Backend {

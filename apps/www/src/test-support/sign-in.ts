@@ -13,8 +13,3 @@ export function signInForTests(): void {
   authority.resetForTests()
   authority.dispatch({ type: "session-started", adopt: true })
 }
-
-/** Back to a fresh page load: on the device, no session. */
-export function signOutForTests(): void {
-  authority.resetForTests()
-}

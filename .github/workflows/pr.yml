@@ -328,6 +328,41 @@ jobs:
             echo "No CSP-relevant www files changed."
           fi
 
+      # What the BUILT app sends when a learner has chosen the device (LA1/LA4,
+      # docs/learner-data-authority.md). The unit tests prove each module asks
+      # the authority first; only a browser running the output can show that
+      # nothing else in the bundle sends. Two builds, because the two claims
+      # are about different ones: the lan build with a stand-in file_host
+      # (corpus reads only, no cookie, sessions survive a reload with it down),
+      # and the Pages build (its connect-src policy is present and enforced).
+      #
+      # The spec fails, not skips, when a build is missing under CI, so a
+      # broken build step cannot turn this into a green run that measured
+      # nothing. Scoped to the source that can change what leaves the page.
+      - name: E2E — local mode sends nothing operator-bound (www)
+        run: |
+          files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \
+            'apps/www/src/**' \
+            'apps/www/tests/local-mode/**' \
+            'apps/www/vite.config.ts' \
+            'apps/www/index.html' \
+            'apps/www/resume/index.html' \
+            'apps/www/build.profiles.ts' \
+            'apps/www/playwright.config.ts' \
+            'packages/fetch-kit/**' \
+            'packages/server-routes/**' || true)
+          if [ -n "$files" ]; then
+            nix develop .#ci --command pnpm turbo build --filter=www... --concurrency=100%
+            nix develop .#ci --command env \
+              SOME_UI_PROFILE=pages VITE_STATIC_DATA=true VITE_BASE_PATH=/some-ui/ \
+              pnpm --filter www exec vite build --outDir dist-pages --emptyOutDir
+            nix develop .#ci-playwright --command env \
+              WWW_DIST_LAN=apps/www/dist WWW_DIST_PAGES=apps/www/dist-pages \
+              pnpm --filter www test:e2e tests/local-mode/no-egress.spec.ts
+          else
+            echo "No files that decide what the built app sends changed."
+          fi
+
       # #1193's own review flagged that this directory - both the sessions
       # badge/completion-summary regression and the session-viewport overflow
       # spec that predates it - ran nowhere in CI: no workflow named either
