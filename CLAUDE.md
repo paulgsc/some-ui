@@ -154,6 +154,25 @@ goes stale. When moving tests, prefer the package's path alias over `../`, which
 workspaces ban. Watch any test that derives a directory from `import.meta.url` to scan it:
 it now sits one level deeper and can pass having scanned nothing.
 
+## React is not the coordinator
+
+When a feature holds anything external with an async lifetime (a microphone, an `Audio`, a
+socket, IndexedDB, a request whose late result can land over a newer one), write its state
+union and pure `step` in `lib/` first, then a runtime over ports that owns the handles and
+decides which result is stale, and only then the component, which reads a snapshot and
+dispatches events. `docs/monorepo-boundaries.md` → "Inside a React package: the component
+is not the coordinator" has the shape, the model to copy (topik's `core/`) and invariant R1.
+`packages/ui/lesson-crm`'s turn counters in refs are grandfathered debt, not precedent: do
+not match that surrounding code.
+
+Enforced as a count, not a verdict: `pnpm check:react-coordination` (root `pnpm lint`, and a
+pr.yml job CI Gate requires) fails when a React module, component or hook, has more or fewer
+`await`/`.then`/`.catch`/`.finally` sites than `scripts/react-coordination.allowlist` says. An
+entry is allowed when the reason is real: put it in its own group under
+`# Coordination: <the external work, and why it cannot live outside React>`, never in the
+grandfathered group. If the only honest reason is "it needs an await", the code belongs in the
+runtime instead.
+
 ## Gray-area invariants: declare them falsifiable
 
 Some rules this codebase depends on cannot be enforced by a lint rule, a type, or a test.
