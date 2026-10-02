@@ -100,6 +100,24 @@ describe("coordinationSites", () => {
     expect(coordinationSites("apps/www/src/lib/select.ts", calledOnly)).toBe(1)
   })
 
+  it("treats a hook called through a PascalCase namespace as React", () => {
+    const source = `
+      import * as Hooks from "./hooks"
+      export function current() { return Hooks.useSession() }
+      export const save = async () => { await Promise.resolve() }
+    `
+    expect(coordinationSites("apps/www/src/lib/current.ts", source)).toBe(1)
+  })
+
+  it("does not take a lowercase object's use-named method for a hook", () => {
+    const source = `
+      import { vi } from "vitest"
+      vi.useFakeTimers()
+      export const tick = async () => { await vi.runAllTimersAsync() }
+    `
+    expect(coordinationSites("packages/x/src/timers.ts", source)).toBeNull()
+  })
+
   it("does not mistake a non-hook name or a method called use for a hook", () => {
     const source = `
       declare const app: { use: (f: unknown) => void }

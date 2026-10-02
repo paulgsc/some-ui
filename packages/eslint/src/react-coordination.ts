@@ -51,6 +51,7 @@ const OUT_OF_SCOPE = [
 // `@tanstack/react-query`, `react-hook-form`, `lucide-react`.
 const REACT_LIBRARY = /(?:^|\/)react(?:-[^/]*)?(?:\/|$)|-react(?:\/|$)/
 const HOOK_NAME = /^use[A-Z0-9]/
+const NAMESPACE = /^[A-Z]/
 const PROMISE_CHAIN = new Set(["then", "catch", "finally"])
 const REASON = /^#\s*(?:Coordination|Grandfathered):\s*\S/
 
@@ -81,7 +82,12 @@ function importsReact(file: ts.SourceFile): boolean {
   )
 }
 
-/** A hook declared (`function useX`, `const useX = ...`) or called (`useX()`). */
+/**
+ * A hook declared (`function useX`, `const useX = ...`) or called: `useX()`,
+ * or `Namespace.useX()` on a PascalCase namespace (`React.useState`,
+ * `Hooks.useSession`), the same call shapes eslint-plugin-react-hooks treats
+ * as hooks. So `vi.useFakeTimers()` is not one.
+ */
 function isHook(node: ts.Node): boolean {
   if (ts.isFunctionDeclaration(node))
     return node.name !== undefined && HOOK_NAME.test(node.name.text)
@@ -93,10 +99,14 @@ function isHook(node: ts.Node): boolean {
       (ts.isArrowFunction(node.initializer) ||
         ts.isFunctionExpression(node.initializer))
     )
+  if (!ts.isCallExpression(node)) return false
+  const callee = node.expression
+  if (ts.isIdentifier(callee)) return HOOK_NAME.test(callee.text)
   return (
-    ts.isCallExpression(node) &&
-    ts.isIdentifier(node.expression) &&
-    HOOK_NAME.test(node.expression.text)
+    ts.isPropertyAccessExpression(callee) &&
+    ts.isIdentifier(callee.expression) &&
+    NAMESPACE.test(callee.expression.text) &&
+    HOOK_NAME.test(callee.name.text)
   )
 }
 
