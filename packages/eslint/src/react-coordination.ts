@@ -17,22 +17,24 @@
 //
 // What counts as a site: an `await` expression, a `for await` loop, and a
 // call to `.then`, `.catch` or `.finally`. What counts as a React module: any
-// `.jsx`/`.tsx` file; any other source file that imports a React library
-// (`react`, `react-dom`, or a binding such as `@tanstack/react-query`); and
-// any that declares or calls a hook, by the `use` + capital naming convention
-// eslint-plugin-react-hooks also goes by: `function useX`, `const useX =
-// <anything>`, `useX()`, `Namespace.useX()`. So moving nine awaits from a
-// component into `useRecorder()` moves nothing out of React, and a hook built
-// only on other hooks counts too. Tests, stories, fixtures, generated files
-// and declarations are out of scope.
+// `.jsx`/`.tsx` file; any other source file whose ES `import` or
+// `export ... from` names a React library (`react`, `react-dom`, or a binding
+// such as `@tanstack/react-query`); and any that declares or calls a hook, by
+// the `use` + capital naming convention eslint-plugin-react-hooks also goes
+// by: `function useX`, any variable declared `useX` (`const`, `let` or `var`,
+// with or without an initializer), `useX()`, `Namespace.useX()`. So moving
+// nine awaits from a component into `useRecorder()` moves nothing out of
+// React, and a hook built only on other hooks counts too. Tests, stories,
+// fixtures, generated files and declarations are out of scope.
 //
 // The classification is that syntax and nothing more, on purpose: R1 cannot
 // claim to find every way a module reaches React, so it claims these shapes.
 // A module whose only link to React is a hook renamed away from the
-// convention (`import { useX as readX }`), or called through a lowercase
-// object (`hooks.useX()`), is not counted. That breaks the naming convention
-// the rules-of-hooks lint already depends on, which is the reviewer's to
-// flag, not this count's to chase.
+// convention (`import { useX as readX }`), called through a lowercase object
+// (`hooks.useX()`), or loaded with CommonJS `require("react")` is not
+// counted. The first two break the naming convention the rules-of-hooks lint
+// already depends on; the third has no instance in scope (every React module
+// here is ES). Each is the reviewer's to flag, not this count's to chase.
 //
 // Known blind spot: a fire-and-forget call (`void save()`) is not a site.
 // Counting `void <call>` would sweep in every `void navigate(...)` and query
@@ -91,7 +93,7 @@ function importsReact(file: ts.SourceFile): boolean {
 }
 
 /**
- * A hook declared (`function useX`, `const useX = <anything>`) or called: `useX()`,
+ * A hook declared (`function useX`, a variable `useX`) or called: `useX()`,
  * or `Namespace.useX()` on a PascalCase namespace (`React.useState`,
  * `Hooks.useSession`), the same call shapes eslint-plugin-react-hooks treats
  * as hooks. So `vi.useFakeTimers()` is not one.
