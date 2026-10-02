@@ -6,14 +6,21 @@ import { browserPorts } from "@/lib/authority/singleton"
 import type { Choice } from "@/lib/authority/state"
 
 function ports(
-  stored: Choice | null = null
-): AuthorityPorts & { written: Array<Choice> } {
+  stored: Choice | null = null,
+  reporting = false
+): AuthorityPorts & { written: Array<Choice>; reported: Array<boolean> } {
   const written: Array<Choice> = []
+  const reported: Array<boolean> = []
   return {
     written,
+    reported,
     readChoice: (): Choice | null => stored,
     writeChoice: (choice): void => {
       written.push(choice)
+    },
+    readReporting: (): boolean => reporting,
+    writeReporting: (on): void => {
+      reported.push(on)
     },
   }
 }
@@ -151,6 +158,106 @@ describe("a token from before a boundary is no longer current", () => {
   })
 })
 
+describe("reporting", () => {
+  function onAccount(p = ports()): ReturnType<typeof createAuthority> {
+    const authority = createAuthority("remote", p)
+    authority.dispatch({ type: "session-started", adopt: true })
+    return authority
+  }
+
+  it("is off by default, and allowed only on the account once turned on", () => {
+    const authority = onAccount()
+    expect(authority.getSnapshot()).toMatchObject({
+      reporting: false,
+      reportingAllowed: false,
+    })
+    authority.setReporting(true)
+    expect(authority.getSnapshot()).toMatchObject({
+      reporting: true,
+      reportingAllowed: true,
+    })
+  })
+
+  it("is remembered, and written only when it changes", () => {
+    const p = ports()
+    const authority = onAccount(p)
+    authority.setReporting(true)
+    authority.setReporting(true)
+    authority.setReporting(false)
+    expect(p.reported).toEqual([true, false])
+  })
+
+  it("comes back after a reload for a returning account user, once the session is learned", () => {
+    const authority = createAuthority("remote", ports("account", true))
+    expect(authority.getSnapshot().reportingAllowed).toBe(false)
+    authority.dispatch({ type: "session-learned", session: "signed-in" })
+    expect(authority.getSnapshot().reportingAllowed).toBe(true)
+  })
+
+  it("does not change the authority, so nothing already fetched is dropped", () => {
+    const authority = onAccount()
+    const before = authority.getAuthority()
+    const changes = vi.fn()
+    authority.onAuthorityChange(changes)
+    authority.setReporting(true)
+    expect(authority.getAuthority()).toBe(before)
+    expect(changes).not.toHaveBeenCalled()
+  })
+
+  it("is notified to subscribers, so the UI and the transports see it at once", () => {
+    const authority = onAccount()
+    const listener = vi.fn()
+    authority.subscribe(listener)
+    authority.setReporting(true)
+    expect(listener).toHaveBeenCalledTimes(1)
+  })
+
+  it("is forgotten by a sign-in, a sign-out and a switch to the device", () => {
+    for (const leave of [
+      (a: ReturnType<typeof createAuthority>): void =>
+        a.dispatch({ type: "session-started", adopt: true }),
+      (a: ReturnType<typeof createAuthority>): void =>
+        a.dispatch({ type: "session-ended", forget: true }),
+      (a: ReturnType<typeof createAuthority>): void => a.chooseLocal(),
+    ]) {
+      const authority = onAccount()
+      authority.setReporting(true)
+      leave(authority)
+      expect(authority.getSnapshot().reporting).toBe(false)
+    }
+  })
+
+  it("survives an expiry, which is not the person leaving, but is not allowed while it lasts", () => {
+    const authority = onAccount()
+    authority.setReporting(true)
+    authority.dispatch({ type: "session-ended", forget: false })
+    expect(authority.getSnapshot()).toMatchObject({
+      reporting: true,
+      reportingAllowed: false,
+    })
+  })
+
+  it("has nothing to turn on where there is no remote account", () => {
+    for (const backend of ["none", "in-process"] as const) {
+      const authority = createAuthority(backend, ports())
+      authority.setReporting(true)
+      expect(authority.getSnapshot().reporting).toBe(false)
+    }
+  })
+
+  it("is not asked of the device build, whose backend never leaves the phone", () => {
+    const authority = createAuthority("in-process", ports())
+    authority.dispatch({ type: "session-learned", session: "signed-in" })
+    expect(authority.getSnapshot().reportingAllowed).toBe(true)
+  })
+
+  it("is not allowed while learning on the device, whatever was remembered", () => {
+    const authority = createAuthority("remote", ports("local", true))
+    authority.dispatch({ type: "session-learned", session: "signed-in" })
+    expect(authority.getSnapshot().reportingAllowed).toBe(false)
+  })
+})
+
 describe("browser ports", () => {
   function storage(initial?: string): MemoryStorage {
     const s = new MemoryStorage()
@@ -164,6 +271,26 @@ describe("browser ports", () => {
     expect(p.readChoice()).toBeNull()
     p.writeChoice("account")
     expect(p.readChoice()).toBe("account")
+  })
+
+  it("keeps the choice and the reporting opt-in side by side", () => {
+    const s = storage()
+    const p = browserPorts(s)
+    p.writeChoice("account")
+    p.writeReporting(true)
+    p.writeChoice("local")
+    expect(p.readChoice()).toBe("local")
+    expect(p.readReporting()).toBe(true)
+    expect(JSON.parse(s.data.get("some-ui.authority.v1") ?? "null")).toEqual({
+      choice: "local",
+      reporting: true,
+    })
+  })
+
+  it("reads anything but an explicit true as not opted in", () => {
+    for (const raw of ["not json", "null", '{"reporting":"yes"}', "{}", "[]"]) {
+      expect(browserPorts(storage(raw)).readReporting()).toBe(false)
+    }
   })
 
   it("reads garbage, a wrong shape and a wrong value as no choice", () => {

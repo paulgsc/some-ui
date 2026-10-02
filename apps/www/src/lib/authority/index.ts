@@ -16,7 +16,7 @@
  *        (`StaleAuthorityError`), not shown.
  *   LA4  A corpus read carries no credentials (`PUBLIC_READ`).
  */
-export type { Authority, AuthorityKind } from "./state"
+export type { Authority } from "./state"
 export { StaleAuthorityError } from "./runtime"
 export { authority } from "./singleton"
 export { useAuthority, useAuthoritySnapshot } from "./use-authority"

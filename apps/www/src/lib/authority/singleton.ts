@@ -20,31 +20,52 @@ function isChoice(value: unknown): value is Choice {
   return value === "local" || value === "account"
 }
 
-/** Browser storage as the runtime's port. Unreadable or absent storage is "no choice". */
+type Remembered = { choice: Choice | null; reporting: boolean }
+
+/** What this browser remembered. Unreadable or absent storage is "nothing". */
+function readRemembered(storage: Storage | undefined): Remembered {
+  try {
+    const raw = storage?.getItem(STORAGE_KEY)
+    if (raw === null || raw === undefined) {
+      return { choice: null, reporting: false }
+    }
+    const parsed: unknown = JSON.parse(raw)
+    if (typeof parsed !== "object" || parsed === null) {
+      return { choice: null, reporting: false }
+    }
+    const choice = "choice" in parsed ? parsed.choice : undefined
+    const reporting = "reporting" in parsed ? parsed.reporting : undefined
+    return {
+      choice: isChoice(choice) ? choice : null,
+      reporting: reporting === true,
+    }
+  } catch {
+    return { choice: null, reporting: false }
+  }
+}
+
+/** Browser storage as the runtime's port. Both facts share one record. */
 export function browserPorts(
   storage: Storage | undefined = safeStorage()
 ): AuthorityPorts {
+  const write = (next: Partial<Remembered>): void => {
+    try {
+      storage?.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ ...readRemembered(storage), ...next })
+      )
+    } catch {
+      // Private mode or a full quota: the setting lasts this page load.
+    }
+  }
   return {
-    readChoice: (): Choice | null => {
-      try {
-        const raw = storage?.getItem(STORAGE_KEY)
-        if (raw === null || raw === undefined) return null
-        const parsed: unknown = JSON.parse(raw)
-        const choice =
-          typeof parsed === "object" && parsed !== null && "choice" in parsed
-            ? parsed.choice
-            : undefined
-        return isChoice(choice) ? choice : null
-      } catch {
-        return null
-      }
-    },
+    readChoice: (): Choice | null => readRemembered(storage).choice,
     writeChoice: (choice): void => {
-      try {
-        storage?.setItem(STORAGE_KEY, JSON.stringify({ choice }))
-      } catch {
-        // Private mode or a full quota: the choice lasts this page load.
-      }
+      write({ choice })
+    },
+    readReporting: (): boolean => readRemembered(storage).reporting,
+    writeReporting: (reporting): void => {
+      write({ reporting })
     },
   }
 }

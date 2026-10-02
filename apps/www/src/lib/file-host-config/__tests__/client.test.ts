@@ -14,8 +14,9 @@
  * directly.
  */
 
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { authority, StaleAuthorityError } from "@/lib/authority"
 import { FileHostUnreachableError } from "@/lib/file-host-config"
 import type { FileHostTransport } from "@/lib/file-host-config/client"
 import {
@@ -85,6 +86,63 @@ describe("createFileHostTransport: credentials", () => {
       "http://localhost:3000/api/v1/curriculum",
       expect.objectContaining({ credentials: "same-origin" })
     )
+  })
+})
+
+describe("createFileHostTransport: what each purpose needs", () => {
+  const resolution = {
+    baseUrl: "http://localhost:3000/api/v1",
+    source: "published-port",
+  } as const
+
+  beforeEach(() => {
+    authority.resetForTests()
+  })
+
+  it("hands out neither an account nor a reporting transport while learning on the device", () => {
+    expect(createFileHostTransport("account", resolution)).toBeNull()
+    expect(createFileHostTransport("reporting", resolution)).toBeNull()
+    // A ceremony is the person's own act and needs no authority.
+    expect(createFileHostTransport("ceremony", resolution)).not.toBeNull()
+  })
+
+  it("hands out an account transport on the account, and a reporting one only once the person opted in", () => {
+    authority.dispatch({ type: "session-started", adopt: true })
+    expect(createFileHostTransport("account", resolution)).not.toBeNull()
+    expect(createFileHostTransport("reporting", resolution)).toBeNull()
+
+    authority.setReporting(true)
+    expect(createFileHostTransport("reporting", resolution)).not.toBeNull()
+  })
+
+  it("stops a reporting transport that was issued while reporting was on", async () => {
+    const spy = vi.fn(() => Promise.resolve(new Response("{}")))
+    vi.stubGlobal("fetch", spy)
+    authority.dispatch({ type: "session-started", adopt: true })
+    authority.setReporting(true)
+    const transport = createFileHostTransport("reporting", resolution)
+
+    await transport?.("signals")
+    expect(spy).toHaveBeenCalledTimes(1)
+
+    authority.setReporting(false)
+    await expect(transport?.("signals")).rejects.toBeInstanceOf(
+      StaleAuthorityError
+    )
+    expect(spy).toHaveBeenCalledTimes(1)
+  })
+
+  it("stops an account transport once another account has signed in", async () => {
+    const spy = vi.fn(() => Promise.resolve(new Response("{}")))
+    vi.stubGlobal("fetch", spy)
+    authority.dispatch({ type: "session-started", adopt: true })
+    const transport = createFileHostTransport("account", resolution)
+    authority.dispatch({ type: "session-started", adopt: true })
+
+    await expect(transport?.("sessions")).rejects.toBeInstanceOf(
+      StaleAuthorityError
+    )
+    expect(spy).not.toHaveBeenCalled()
   })
 })
 

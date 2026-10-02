@@ -26,6 +26,16 @@
  * `local` for as long as the session is gone and returns to `account` when a
  * session is back, so nothing is wiped, uploaded or merged by an expiry.
  *
+ * ## Reporting: a second, narrower consent
+ *
+ * Holding sessions in the account is one thing. Telling the server *when* the
+ * person studies, what they have open and which browser to wake is another:
+ * those are behaviour, not content (canon Remark 7.6). They leave only when
+ * `reporting` is on, which is the person's own act, off by default, per device,
+ * and forgotten at every boundary (a sign-in, a sign-out, a switch to the
+ * device), so it can never silently carry from one account to the next. The
+ * device build's in-process backend is exempt: there it never leaves the phone.
+ *
  * ## The epoch
  *
  * `epoch` changes whenever the authority could mean a different store or a
@@ -60,12 +70,16 @@ export type AuthorityState = {
   readonly backend: Backend
   readonly choice: Choice
   readonly session: SessionBelief
+  /** The person's opt-in to reporting behaviour to the account. See above. */
+  readonly reporting: boolean
   readonly epoch: number
 }
 
 export type AuthorityEvent =
   /** The person picked where their data lives. */
   | { readonly type: "chose"; readonly choice: Choice }
+  /** The person turned reporting on or off. It changes no authority. */
+  | { readonly type: "reporting-set"; readonly on: boolean }
   /** A probe answered. It learns about a session; it does not start one. */
   | {
       readonly type: "session-learned"
@@ -93,12 +107,14 @@ export type StepResult = {
 
 export function initialState(
   backend: Backend,
-  stored: Choice | null
+  stored: Choice | null,
+  reporting = false
 ): AuthorityState {
   return {
     backend,
     choice: effectiveChoice(backend, stored ?? defaultChoice(backend)),
     session: "unknown",
+    reporting: backend === "remote" && reporting,
     epoch: 0,
   }
 }
@@ -125,6 +141,18 @@ export function authorityOf(state: AuthorityState): Authority {
   return { kind: "local", epoch }
 }
 
+/**
+ * Whether behaviour (signals, presence, a push subscription) may be sent to the
+ * account right now: the account is the authority and the person opted in. The
+ * device build's backend is on the phone, so there it is always allowed.
+ */
+export function reportingAllowed(state: AuthorityState): boolean {
+  return (
+    authorityOf(state).kind === "account" &&
+    (state.backend === "in-process" || state.reporting)
+  )
+}
+
 /** The person chose the account but there is no session to use it with. */
 export function accountUnavailable(state: AuthorityState): boolean {
   return state.choice === "account" && state.session === "signed-out"
@@ -136,6 +164,7 @@ export function sameState(a: AuthorityState, b: AuthorityState): boolean {
     a.backend === b.backend &&
     a.choice === b.choice &&
     a.session === b.session &&
+    a.reporting === b.reporting &&
     a.epoch === b.epoch
   )
 }
@@ -166,15 +195,27 @@ function assertNever(value: never): never {
 function apply(state: AuthorityState, event: AuthorityEvent): AuthorityState {
   switch (event.type) {
     case "chose": {
-      return { ...state, choice: effectiveChoice(state.backend, event.choice) }
+      const choice = effectiveChoice(state.backend, event.choice)
+      // Moving to the device ends the account relationship's consents.
+      return {
+        ...state,
+        choice,
+        reporting: choice === "account" ? state.reporting : false,
+      }
+    }
+    case "reporting-set": {
+      return { ...state, reporting: state.backend === "remote" && event.on }
     }
     case "session-learned": {
       return { ...state, session: event.session }
     }
     case "session-started": {
+      // Possibly another account's: whatever was agreed for the last one is not
+      // agreed for this one.
       return {
         ...state,
         session: "signed-in",
+        reporting: false,
         choice: event.adopt
           ? effectiveChoice(state.backend, "account")
           : state.choice,
@@ -184,6 +225,7 @@ function apply(state: AuthorityState, event: AuthorityEvent): AuthorityState {
       return {
         ...state,
         session: "signed-out",
+        reporting: event.forget ? false : state.reporting,
         choice: event.forget ? "local" : state.choice,
       }
     }

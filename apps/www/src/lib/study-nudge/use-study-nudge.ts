@@ -51,8 +51,7 @@
 import { useEffect, useRef } from "react"
 import type { RuntimeMode } from "@some-ui/fetch-kit"
 
-import type { AuthorityKind } from "@/lib/authority"
-import { useAuthority } from "@/lib/authority"
+import { useAuthoritySnapshot } from "@/lib/authority"
 import { DATA_MODE, DEVICE_BACKEND } from "@/lib/data-mode"
 import { useSessions, useSettings } from "@/lib/tenant"
 
@@ -73,27 +72,28 @@ const POLL_INTERVAL_MS = 5 * 60_000
 /**
  * Whether this client is the one that raises notifications.
  *
- * It is when there is no backend to do it (`mode === "static"`), and when
- * the learner's data is on the device, not the account: a server that is not
- * holding someone's sessions has nothing to base a reminder on, so the
- * client's own policy reads the sessions it has and raises one while a tab is
- * open. That is the same trigger the static build has always had, which is
- * the point: learning on the device is that build's behaviour with a `lan`
- * server nearby.
+ * It is when there is no backend to do it (`mode === "static"`), and when the
+ * server is not hearing from this learner (`serverHears` false): on the device
+ * a server holding no sessions has nothing to base a reminder on, and on an
+ * account whose person has not turned on reporting (`lib/authority`,
+ * "Reporting") it has been told nothing about when they study and has no
+ * subscription to send to. In both the client's own policy reads the sessions
+ * it has and raises one while a tab is open: the same trigger the static build
+ * has always had, which is the point.
  *
  * The Android app is the exception that answers "yes" with a backend: its
  * backend is in-process and has no push to send, so there too the client's
  * own policy decides, and the OS delivers (`./native`).
  *
- * `authority` defaults to the account, which is what every caller before the
- * device became a place to learn assumed.
+ * `serverHears` defaults to true, which is what every caller before the device
+ * became a place to learn assumed.
  */
 export function clientOwnsNudgeDelivery(
   mode: RuntimeMode = DATA_MODE,
   device: boolean = DEVICE_BACKEND,
-  authority: AuthorityKind = "account"
+  serverHears = true
 ): boolean {
-  return mode === "static" || device || authority !== "account"
+  return mode === "static" || device || !serverHears
 }
 
 export type NudgeTickDeps = {
@@ -143,8 +143,12 @@ export function useStudyNudge(): void {
   const preferences: NudgePreferences =
     settings?.notifications ?? DEFAULT_NUDGE_PREFERENCES
 
-  const { kind } = useAuthority()
-  const deliver = clientOwnsNudgeDelivery(DATA_MODE, DEVICE_BACKEND, kind)
+  const { reportingAllowed } = useAuthoritySnapshot()
+  const deliver = clientOwnsNudgeDelivery(
+    DATA_MODE,
+    DEVICE_BACKEND,
+    reportingAllowed
+  )
 
   // The interval callback reads the latest sessions and preferences through
   // refs rather than closing over them, so it is installed once instead of

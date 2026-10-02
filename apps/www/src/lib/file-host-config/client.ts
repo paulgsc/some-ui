@@ -151,23 +151,29 @@ function resolveTimeoutMs(): number {
 /**
  * Why a caller wants a transport. Required, so nobody gets one by default.
  *
- * - `"account"`: the caller sends or reads *learner state* (sessions, signals,
- *   presence, the shelf, a push subscription). It is the account's business,
+ * - `"account"`: the caller sends or reads *learner state* (sessions, the
+ *   shelf). It is the account's business,
  *   so this answers `null` unless the learner's data authority is the account
  *   (`lib/authority`, invariant LA1), and a transport it did hand out refuses
  *   to send once the authority has become a different one.
+ * - `"reporting"`: behaviour rather than content, in the account (signals, a
+ *   presence lease, a push subscription). It is `"account"`'s conditions and
+ *   the person's separate opt-in (`lib/authority`, "Reporting"), so a person
+ *   who keeps an account for their sessions tells the server nothing about
+ *   when they study unless they asked it to.
  * - `"ceremony"`: the person is signing in, out or adding a passkey, or the app
  *   is checking whether a session they chose to use still exists. These are
  *   their own explicit acts and carry no learner state.
  */
-export type TransportPurpose = "account" | "ceremony"
+export type TransportPurpose = "account" | "ceremony" | "reporting"
 
 /**
  * Build the default transport for wherever this page is served from.
  *
  * Returns `null` when there is no base URL at all - SSR, or a test with no
  * `window` - or when `purpose` is `"account"` and the learner's data is not
- * the account's. Callers treat that as "no backend", which is the same
+ * the account's, or `"reporting"` and it may not be reported. Callers treat
+ * that as "no backend", which is the same
  * branch the static build takes. Deliberately has no timeout of its own - see
  * this file's header, point 3, and `requestJSON` below, which owns the
  * deadline for the whole request this transport is only the first half of.
@@ -190,13 +196,21 @@ export function createFileHostTransport(
   const { baseUrl } = resolution
   if (baseUrl === undefined) return null
   if (purpose === "account" && !authority.is("account")) return null
+  if (purpose === "reporting" && !authority.getSnapshot().reportingAllowed) {
+    return null
+  }
   // The authority this transport was issued under. It is checked again on every
   // send, so a transport kept across a sign-out, a switch or another account's
   // sign-in cannot carry a request into the new authority.
   const issued = authority.getAuthority()
 
   return async (route, init) => {
-    if (purpose === "account" && !authority.isCurrent(issued)) {
+    if (purpose !== "ceremony" && !authority.isCurrent(issued)) {
+      throw new StaleAuthorityError(route)
+    }
+    // Checked again on every send: turning reporting off stops a transport that
+    // was issued while it was on.
+    if (purpose === "reporting" && !authority.getSnapshot().reportingAllowed) {
       throw new StaleAuthorityError(route)
     }
     const url = `${baseUrl.replace(/\/+$/, "")}/${route.replace(/^\/+/, "")}`

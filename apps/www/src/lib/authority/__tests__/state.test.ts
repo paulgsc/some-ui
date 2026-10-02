@@ -10,6 +10,7 @@ import {
   authorityOf,
   defaultChoice,
   initialState,
+  reportingAllowed,
   step,
 } from "@/lib/authority/state"
 
@@ -71,6 +72,7 @@ describe("the authority a choice and a session amount to", () => {
       backend: "remote",
       choice,
       session,
+      reporting: false,
       epoch: 0,
     }
     expect(authorityOf(state).kind).toBe(kind)
@@ -81,6 +83,7 @@ describe("the authority a choice and a session amount to", () => {
       backend: "remote",
       choice: "account",
       session: "signed-out",
+      reporting: false,
       epoch: 0,
     }
     expect(accountUnavailable(base)).toBe(true)
@@ -222,5 +225,67 @@ describe("leaving on purpose", () => {
     }).state
     expect(expired.choice).toBe("account")
     expect(accountUnavailable(expired)).toBe(true)
+  })
+})
+
+describe("reporting", () => {
+  const signedIn = (): AuthorityState =>
+    run(remote(), { type: "session-started", adopt: true })
+
+  it("is allowed only for the account, and only once the person has said so", () => {
+    expect(reportingAllowed(signedIn())).toBe(false)
+    const on = run(signedIn(), { type: "reporting-set", on: true })
+    expect(reportingAllowed(on)).toBe(true)
+    // Learning on the device, or a session gone: not the account, not allowed.
+    expect(reportingAllowed(run(on, { type: "chose", choice: "local" }))).toBe(
+      false
+    )
+    expect(
+      reportingAllowed(run(on, { type: "session-ended", forget: false }))
+    ).toBe(false)
+  })
+
+  it("is a setting, not a change of authority", () => {
+    const result = step(signedIn(), { type: "reporting-set", on: true })
+    expect(result.authorityChanged).toBe(false)
+    expect(result.state.epoch).toBe(signedIn().epoch)
+    expect(step(result.state, { type: "reporting-set", on: true }).state).toBe(
+      result.state
+    )
+  })
+
+  it("is the device build's by construction, and nobody's with no server", () => {
+    const device = run(initialState("in-process", null), {
+      type: "session-learned",
+      session: "signed-in",
+    })
+    expect(reportingAllowed(device)).toBe(true)
+    const demo = run(initialState("none", null), {
+      type: "reporting-set",
+      on: true,
+    })
+    expect(demo.reporting).toBe(false)
+    expect(reportingAllowed(demo)).toBe(false)
+  })
+
+  it("is only remembered for a build with a remote account", () => {
+    expect(initialState("remote", "account", true).reporting).toBe(true)
+    expect(initialState("none", "account", true).reporting).toBe(false)
+    expect(initialState("in-process", null, true).reporting).toBe(false)
+  })
+
+  it("is forgotten at every boundary: a sign-in, a leaving, a switch", () => {
+    const on = run(signedIn(), { type: "reporting-set", on: true })
+    expect(run(on, { type: "session-started", adopt: false }).reporting).toBe(
+      false
+    )
+    expect(run(on, { type: "session-ended", forget: true }).reporting).toBe(
+      false
+    )
+    expect(run(on, { type: "chose", choice: "local" }).reporting).toBe(false)
+    // An expiry is not the person leaving.
+    expect(run(on, { type: "session-ended", forget: false }).reporting).toBe(
+      true
+    )
   })
 })

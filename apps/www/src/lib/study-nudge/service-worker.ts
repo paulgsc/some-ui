@@ -329,7 +329,7 @@ const VAPID_KEY_BYTES = 65
 
 function defaultTransport(deps: PushDeps): FileHostTransport | null {
   return deps.transport === undefined
-    ? createFileHostTransport("account")
+    ? createFileHostTransport("reporting")
     : deps.transport
 }
 

@@ -18,6 +18,7 @@ import {
   accountUnavailable,
   authorityOf,
   initialState,
+  reportingAllowed,
   sameState,
   step,
 } from "./state"
@@ -27,6 +28,9 @@ export type AuthorityPorts = {
   /** The choice this browser remembered, or `null` for none or unreadable. */
   readChoice: () => Choice | null
   writeChoice: (choice: Choice) => void
+  /** Whether this browser remembered the person's opt-in to reporting. */
+  readReporting: () => boolean
+  writeReporting: (on: boolean) => void
 }
 
 /** A frozen, identity-stable view for React: a new object only when state changes. */
@@ -37,6 +41,10 @@ export type AuthoritySnapshot = {
   readonly backend: Backend
   /** Chose the account, but there is no session to use it with right now. */
   readonly accountUnavailable: boolean
+  /** The person's opt-in to reporting behaviour to the account. */
+  readonly reporting: boolean
+  /** Behaviour may be sent to the account right now (account authority and opted in). */
+  readonly reportingAllowed: boolean
 }
 
 export type AuthorityRuntime = {
@@ -62,17 +70,31 @@ export type AuthorityRuntime = {
   settled: () => Promise<void>
   chooseAccount: () => void
   chooseLocal: () => void
+  /** Turn reporting on or off. Off is also what every sign-in and sign-out does. */
+  setReporting: (on: boolean) => void
   /** Back to a fresh page load's state, keeping listeners. For tests only. */
   resetForTests: () => void
 }
 
-function snapshotOf(state: AuthorityState): AuthoritySnapshot {
+function snapshotOf(
+  state: AuthorityState,
+  previous?: AuthoritySnapshot
+): AuthoritySnapshot {
+  const authority = authorityOf(state)
   return Object.freeze({
-    authority: Object.freeze(authorityOf(state)),
+    // The same object while the authority is the same, so a change of setting
+    // does not look like a change of authority to anything holding it.
+    authority:
+      previous?.authority.kind === authority.kind &&
+      previous.authority.epoch === authority.epoch
+        ? previous.authority
+        : Object.freeze(authority),
     choice: state.choice,
     session: state.session,
     backend: state.backend,
     accountUnavailable: accountUnavailable(state),
+    reporting: state.reporting,
+    reportingAllowed: reportingAllowed(state),
   })
 }
 
@@ -80,7 +102,7 @@ export function createAuthority(
   backend: Backend,
   ports: AuthorityPorts
 ): AuthorityRuntime {
-  let state = initialState(backend, ports.readChoice())
+  let state = initialState(backend, ports.readChoice(), ports.readReporting())
   let snapshot = snapshotOf(state)
   const listeners = new Set<() => void>()
   const changeListeners = new Set<(authority: Authority) => void>()
@@ -89,11 +111,14 @@ export function createAuthority(
     const result = step(state, event)
     if (sameState(state, result.state)) return
     const choiceChanged = state.choice !== result.state.choice
+    const reportingChanged = state.reporting !== result.state.reporting
     state = result.state
-    snapshot = snapshotOf(state)
+    snapshot = snapshotOf(state, snapshot)
     // Only a build where the person has a real choice remembers one.
     if (choiceChanged && state.backend === "remote")
       ports.writeChoice(state.choice)
+    if (reportingChanged && state.backend === "remote")
+      ports.writeReporting(state.reporting)
     // Authority listeners first: a cache must be emptied before any component
     // re-renders against the new snapshot and reads it.
     if (result.authorityChanged)
@@ -135,8 +160,9 @@ export function createAuthority(
     },
     chooseAccount: () => dispatch({ type: "chose", choice: "account" }),
     chooseLocal: () => dispatch({ type: "chose", choice: "local" }),
+    setReporting: (on) => dispatch({ type: "reporting-set", on }),
     resetForTests: (): void => {
-      state = initialState(backend, ports.readChoice())
+      state = initialState(backend, ports.readChoice(), ports.readReporting())
       snapshot = snapshotOf(state)
       for (const listener of listeners) listener()
     },

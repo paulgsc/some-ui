@@ -65,6 +65,25 @@ describe("leaving the account", () => {
     expect(unsubscribe).toHaveBeenCalledTimes(1)
   })
 
+  it("releases it when the person turns reporting off, and not when they turn it on", async () => {
+    authority.dispatch({ type: "session-started", adopt: true })
+    authority.setReporting(true)
+    await settle()
+    expect(unsubscribe).not.toHaveBeenCalled()
+
+    authority.setReporting(false)
+    await settle()
+    expect(unsubscribe).toHaveBeenCalledTimes(1)
+  })
+
+  it("releases it when another account signs in over one that was reporting", async () => {
+    authority.dispatch({ type: "session-started", adopt: true })
+    authority.setReporting(true)
+    authority.dispatch({ type: "session-started", adopt: true })
+    await settle()
+    expect(unsubscribe).toHaveBeenCalledTimes(1)
+  })
+
   it("makes no request and registers no worker to do it", async () => {
     authority.dispatch({ type: "session-started", adopt: true })
     authority.dispatch({ type: "session-ended", forget: true })
@@ -92,15 +111,14 @@ describe("leaving the account", () => {
 })
 
 describe("who delivers a reminder", () => {
-  it("is the server only for the account on a build with one", () => {
-    expect(clientOwnsNudgeDelivery("server", false, "account")).toBe(false)
-    expect(clientOwnsNudgeDelivery("server", false, "local")).toBe(true)
-    expect(clientOwnsNudgeDelivery("server", false, "pending")).toBe(true)
+  it("is the server only where it hears from the learner, on a build with one", () => {
+    expect(clientOwnsNudgeDelivery("server", false, true)).toBe(false)
+    expect(clientOwnsNudgeDelivery("server", false, false)).toBe(true)
   })
 
   it("is always the client where there is no server, and on the phone", () => {
-    expect(clientOwnsNudgeDelivery("static", false, "account")).toBe(true)
-    expect(clientOwnsNudgeDelivery("server", true, "account")).toBe(true)
+    expect(clientOwnsNudgeDelivery("static", false, true)).toBe(true)
+    expect(clientOwnsNudgeDelivery("server", true, true)).toBe(true)
   })
 
   it("keeps its old meaning for a caller that does not say", () => {

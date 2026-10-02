@@ -162,7 +162,7 @@ export async function reportSignal(
 
   const transport =
     deps.transport === undefined
-      ? createFileHostTransport("account")
+      ? createFileHostTransport("reporting")
       : deps.transport
   if (!transport) return false
 
