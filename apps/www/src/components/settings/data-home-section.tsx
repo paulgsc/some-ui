@@ -108,6 +108,11 @@ const TransferControl = (): JSX.Element | null => {
             `Copied ${plural(copied)}; ${plural(remaining)} didn't make it. Press copy again to carry on.`
           )
         },
+        busy: () => {
+          toast("Another tab is copying your sessions", {
+            description: "Wait for it to finish, then check this screen again.",
+          })
+        },
         stale: () => {
           setConfirming(false)
           toast("Your account changed while copying, so it stopped.", {

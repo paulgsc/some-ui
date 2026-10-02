@@ -28,7 +28,11 @@ import {
   runTransfer,
 } from "@/lib/tenant/sessions-transfer"
 import type { StorageAdapter } from "@/lib/tenant/storage"
-import { createInMemoryStorage, writeJSON } from "@/lib/tenant/storage"
+import {
+  createInMemoryStorage,
+  readJSON,
+  writeJSON,
+} from "@/lib/tenant/storage"
 import type { SessionRecord, SessionStatus } from "@/lib/tenant/types"
 
 let device: StorageAdapter
@@ -366,6 +370,90 @@ describe("a create whose answer was lost", () => {
     const plan = await planTransfer(inner, device)
     expect(plan.finish).toHaveLength(0)
     expect(plan.create).toHaveLength(1)
+  })
+})
+
+describe("two tabs at once", () => {
+  const signIn = (): void => {
+    authority.dispatch({ type: "session-started", adopt: true })
+  }
+
+  it("lets one copy and tells the other it is busy, so the account gets one copy", async () => {
+    seed([onDevice({ id: "local-1" })])
+    const inner = account()
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = (): void => {
+        resolve()
+      }
+    })
+    const slow = wrap(inner, {
+      create: async (input: CreateSessionInput) => {
+        await gate
+        return inner.create(input)
+      },
+    })
+    signIn()
+    // The browser has no Web Locks here (plain http), so the storage lease is used.
+    const lock = {
+      locks: undefined,
+      wait: (): Promise<void> => Promise.resolve(),
+    }
+
+    const first = copyDeviceSessions({
+      storage: device,
+      remote: () => slow,
+      lock,
+    })
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    const second = await copyDeviceSessions({
+      storage: device,
+      remote: () => slow,
+      lock,
+    })
+    expect(second).toEqual({ kind: "busy" })
+
+    release()
+    expect(await first).toEqual({ kind: "copied", copied: 1 })
+    expect(await inner.list()).toHaveLength(1)
+
+    // And once the first is done, a press is a no-op, not a second copy.
+    expect(
+      await copyDeviceSessions({ storage: device, remote: () => inner, lock })
+    ).toEqual({ kind: "copied", copied: 0 })
+    expect(await inner.list()).toHaveLength(1)
+  })
+
+  it("never writes a stale receipt over another tab's entries", async () => {
+    seed([onDevice({ id: "local-1" }), onDevice({ id: "local-2" })])
+    const inner = account()
+    // Another tab records a copy of local-2 while this one is mid-transfer.
+    const racing = wrap(inner, {
+      create: async (input: CreateSessionInput) => {
+        device.setItem(
+          "some-ui.tenant.sessions.transfers.v1",
+          JSON.stringify({
+            "local-2": [{ remoteId: "made-elsewhere", complete: true }],
+          })
+        )
+        return inner.create(input)
+      },
+    })
+    await runTransfer(
+      {
+        create: [onDevice({ id: "local-1" })],
+        finish: [],
+        alreadyThere: 0,
+      },
+      racing,
+      device
+    )
+    const receipt = readJSON<Record<string, unknown>>(
+      device,
+      "some-ui.tenant.sessions.transfers.v1",
+      {}
+    )
+    expect(Object.keys(receipt).sort()).toEqual(["local-1", "local-2"])
   })
 })
 

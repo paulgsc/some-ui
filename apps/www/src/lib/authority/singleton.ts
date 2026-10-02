@@ -67,6 +67,17 @@ export function browserPorts(
     writeReporting: (reporting): void => {
       write({ reporting })
     },
+    onRemoteChange: (listener): (() => void) => {
+      if (typeof window === "undefined") return () => undefined
+      // Fired in every *other* document of this origin when its storage changes.
+      const onStorage = (event: StorageEvent): void => {
+        if (event.key === STORAGE_KEY || event.key === null) listener()
+      }
+      window.addEventListener("storage", onStorage)
+      return (): void => {
+        window.removeEventListener("storage", onStorage)
+      }
+    },
   }
 }
 

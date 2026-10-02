@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment jsdom
+ */
 import { describe, expect, it, vi } from "vitest"
 
 import type { AuthorityPorts } from "@/lib/authority/runtime"
@@ -8,19 +11,40 @@ import type { Choice } from "@/lib/authority/state"
 function ports(
   stored: Choice | null = null,
   reporting = false
-): AuthorityPorts & { written: Array<Choice>; reported: Array<boolean> } {
+): AuthorityPorts & {
+  written: Array<Choice>
+  reported: Array<boolean>
+  /** Another tab changed what is remembered. */
+  elsewhere: (next: { choice?: Choice | null; reporting?: boolean }) => void
+} {
   const written: Array<Choice> = []
   const reported: Array<boolean> = []
+  const listeners = new Set<() => void>()
+  let choice = stored
+  let opted = reporting
   return {
     written,
     reported,
-    readChoice: (): Choice | null => stored,
-    writeChoice: (choice): void => {
-      written.push(choice)
+    readChoice: (): Choice | null => choice,
+    writeChoice: (next): void => {
+      choice = next
+      written.push(next)
     },
-    readReporting: (): boolean => reporting,
+    readReporting: (): boolean => opted,
     writeReporting: (on): void => {
+      opted = on
       reported.push(on)
+    },
+    onRemoteChange: (listener): (() => void) => {
+      listeners.add(listener)
+      return (): void => {
+        listeners.delete(listener)
+      }
+    },
+    elsewhere: (next): void => {
+      if (next.choice !== undefined) choice = next.choice
+      if (next.reporting !== undefined) opted = next.reporting
+      for (const listener of listeners) listener()
     },
   }
 }
@@ -258,6 +282,65 @@ describe("reporting", () => {
   })
 })
 
+describe("another tab of the same browser", () => {
+  function onAccount(
+    p = ports()
+  ): [ReturnType<typeof createAuthority>, ReturnType<typeof ports>] {
+    const authority = createAuthority("remote", p)
+    authority.dispatch({ type: "session-started", adopt: true })
+    return [authority, p]
+  }
+
+  it("turning reporting off there turns it off here, at once", () => {
+    const [authority, p] = onAccount()
+    authority.setReporting(true)
+    expect(authority.getSnapshot().reportingAllowed).toBe(true)
+
+    p.elsewhere({ reporting: false })
+
+    expect(authority.getSnapshot()).toMatchObject({
+      reporting: false,
+      reportingAllowed: false,
+    })
+  })
+
+  it("switching to the device there moves this tab to the device, and forgets the opt-in", () => {
+    const [authority, p] = onAccount()
+    authority.setReporting(true)
+    const changes = vi.fn()
+    authority.onAuthorityChange(changes)
+
+    p.elsewhere({ choice: "local", reporting: false })
+
+    expect(authority.getAuthority().kind).toBe("local")
+    expect(authority.getSnapshot().reporting).toBe(false)
+    // A different authority: whatever the account's fetched is dropped.
+    expect(changes).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not copy the other direction: opting in or choosing the account there is that tab's own act", () => {
+    const p = ports()
+    const authority = createAuthority("remote", p)
+    p.elsewhere({ choice: "account", reporting: true })
+    expect(authority.getSnapshot()).toMatchObject({
+      choice: "local",
+      reporting: false,
+    })
+    expect(authority.getAuthority().kind).toBe("local")
+  })
+
+  it("ignores a change that leaves things as they were, and a build with no choice to share", () => {
+    const [authority, p] = onAccount()
+    const listener = vi.fn()
+    authority.subscribe(listener)
+    p.elsewhere({ choice: "account", reporting: false })
+    expect(listener).not.toHaveBeenCalled()
+
+    const device = createAuthority("in-process", ports())
+    expect(() => device.getSnapshot()).not.toThrow()
+  })
+})
+
 describe("browser ports", () => {
   function storage(initial?: string): MemoryStorage {
     const s = new MemoryStorage()
@@ -304,6 +387,24 @@ describe("browser ports", () => {
     ]) {
       expect(browserPorts(storage(raw)).readChoice()).toBeNull()
     }
+  })
+
+  it("tells a listener when another tab writes the record, and not about other keys", () => {
+    const p = browserPorts(storage())
+    const listener = vi.fn()
+    const off = p.onRemoteChange(listener)
+    window.dispatchEvent(
+      new StorageEvent("storage", { key: "some-ui.authority.v1" })
+    )
+    window.dispatchEvent(new StorageEvent("storage", { key: "something-else" }))
+    // `clear()` in another tab arrives with no key.
+    window.dispatchEvent(new StorageEvent("storage", { key: null }))
+    expect(listener).toHaveBeenCalledTimes(2)
+    off()
+    window.dispatchEvent(
+      new StorageEvent("storage", { key: "some-ui.authority.v1" })
+    )
+    expect(listener).toHaveBeenCalledTimes(2)
   })
 
   it("survives storage that throws or does not exist", () => {

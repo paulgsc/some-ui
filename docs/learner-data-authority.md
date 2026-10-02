@@ -123,7 +123,13 @@ declared (checked by reading every call site and by the tests named).
   and scenes that no receipt entry claims) and adopted rather than repeated.
   There is no server idempotency key, so the one case this cannot tell apart is
   an identical session the account already held and nothing claims: it is adopted
-  in place of a new copy, never added to.
+  in place of a new copy, never added to. Across tabs, plan and run happen under
+  one lock (`lib/tenant/transfer-lock`): Web Locks where the browser has them
+  (https and localhost), where it is atomic; on plain `http://`, which has none,
+  a renewed storage lease, which shrinks a race between two presses to the same
+  instant without closing it. A second tab is told it is busy. The receipt is read
+  from storage for every write, so a lock that did fail could not overwrite
+  another tab's entries.
 - _Falsified by:_ a hunk that makes a ceremony function, `markSignedIn`, or the
   sessions backend import `sessions-transfer` or call
   `createHttpSessionsRepository`'s `create`/`update` with data from
@@ -202,6 +208,10 @@ declared (checked by reading every call site and by the tests named).
   and is reset by every sign-in, every sign-out that forgets the account and
   every move back to the device. Turning it off ends the push subscription at
   both ends first, while the transport that can tell the server still works.
+  What one tab decides binds the browser in the direction of less: another tab's
+  switch to the device or turned-off opt-in is applied to every other tab at once
+  (the `storage` event; `lib/authority/runtime.ts`), so it cannot keep sending
+  until it reloads. Signing in or opting in is not copied between tabs.
 - _Falsified by:_ a hunk that passes `"account"` or `"ceremony"` for a request
   that carries signals, presence or a push subscription; that makes `reporting`
   start on, or persist across `session-started`, a forgetting `session-ended` or

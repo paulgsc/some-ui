@@ -31,6 +31,11 @@ export type AuthorityPorts = {
   /** Whether this browser remembered the person's opt-in to reporting. */
   readReporting: () => boolean
   writeReporting: (on: boolean) => void
+  /**
+   * Calls `listener` when another tab of this browser changed what is
+   * remembered. Returns the unsubscribe.
+   */
+  onRemoteChange: (listener: () => void) => () => void
 }
 
 /** A frozen, identity-stable view for React: a new object only when state changes. */
@@ -125,6 +130,21 @@ export function createAuthority(
       for (const listener of changeListeners) listener(snapshot.authority)
     for (const listener of listeners) listener()
   }
+
+  // What one tab decides binds the whole browser, in the direction of less: a
+  // switch to the device or a turned-off opt-in made in another tab is applied
+  // here at once, so it cannot keep sending until this tab reloads. The other
+  // direction is not copied: signing in or opting in is that tab's own act, and
+  // this one has no session belief to go with it.
+  ports.onRemoteChange(() => {
+    if (state.backend !== "remote") return
+    if (state.choice === "account" && ports.readChoice() === "local") {
+      dispatch({ type: "chose", choice: "local" })
+    }
+    if (state.reporting && !ports.readReporting()) {
+      dispatch({ type: "reporting-set", on: false })
+    }
+  })
 
   return {
     getSnapshot: () => snapshot,

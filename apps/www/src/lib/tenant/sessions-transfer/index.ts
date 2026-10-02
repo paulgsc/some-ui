@@ -46,6 +46,15 @@
  * adopted instead of a new one made, which costs a copy and never makes a
  * duplicate.
  *
+ * ## One transfer at a time, across tabs
+ *
+ * Plan and run happen under `withTransferLock`: Web Locks where the browser
+ * has them, a renewed storage lease where it does not (plain `http://`). A
+ * second tab pressing meanwhile is told it is busy and sends nothing. The
+ * receipt is read from storage for every write rather than held in memory, so a
+ * lock that did fail could not write a stale snapshot over another tab's
+ * entries.
+ *
  * ## Under one authority
  *
  * The transfer runs under the authority it started in and checks it before each
@@ -70,6 +79,8 @@ import type { SessionsStore } from "@/lib/tenant/sessions-repository"
 import { STORAGE_KEY } from "@/lib/tenant/sessions-repository"
 import type { StorageAdapter } from "@/lib/tenant/storage"
 import { browserLocalStorage, readJSON, writeJSON } from "@/lib/tenant/storage"
+import type { LockDeps } from "@/lib/tenant/transfer-lock"
+import { withTransferLock } from "@/lib/tenant/transfer-lock"
 import type { SessionRecord } from "@/lib/tenant/types"
 
 /** Versioned alongside the store it describes, so a change is a new key. */
@@ -125,9 +136,13 @@ export type TransferOutcome =
   /** The authority changed mid-way. What was done is recorded; nothing more was sent. */
   | { readonly kind: "stale"; readonly copied: number }
   | { readonly kind: "not-on-account" }
+  /** Another tab is copying right now; nothing was planned or sent. */
+  | { readonly kind: "busy" }
 
 export type TransferDeps = {
   storage?: StorageAdapter
+  /** How the cross-tab lock is taken. A test seam. */
+  lock?: LockDeps
   /** The account's store for the authority a transfer began under. `null`: nothing to talk to. */
   remote?: (token: Authority) => SessionsStore | null
 }
@@ -257,33 +272,44 @@ export async function runTransfer(
   storage: StorageAdapter,
   isCurrent: () => boolean = () => true
 ): Promise<Exclude<TransferOutcome, { kind: "not-on-account" }>> {
-  const receipt = readReceipt(storage)
   const total = plan.create.length + plan.finish.length
   let copied = 0
 
+  // Read from storage for every write, never held from the start: nothing else
+  // should be writing (`withTransferLock`), but a stale snapshot written back
+  // over another tab's entries is how a duplicate would survive a lock that
+  // failed.
+  const write = (
+    localId: string,
+    next: (known: Array<Copy>) => Array<Copy>
+  ): void => {
+    const receipt = readReceipt(storage)
+    receipt[localId] = next(receipt[localId] ?? [])
+    writeJSON(storage, RECEIPT_KEY, receipt)
+  }
+
   const remember = (localId: string, copy: Copy): void => {
     // A real copy supersedes any unconfirmed attempt, and replaces itself.
-    const others = (receipt[localId] ?? []).filter(
-      (known) => known.remoteId !== null && known.remoteId !== copy.remoteId
-    )
-    receipt[localId] = [...others, copy]
-    writeJSON(storage, RECEIPT_KEY, receipt)
+    write(localId, (known) => [
+      ...known.filter(
+        (other) => other.remoteId !== null && other.remoteId !== copy.remoteId
+      ),
+      copy,
+    ])
   }
 
   /** Written before a create goes out, so a lost answer is not forgotten. */
   const attempting = (localId: string): void => {
-    const known = receipt[localId] ?? []
-    if (known.some((copy) => copy.remoteId === null)) return
-    receipt[localId] = [...known, { remoteId: null, complete: false }]
-    writeJSON(storage, RECEIPT_KEY, receipt)
+    write(localId, (known) =>
+      known.some((copy) => copy.remoteId === null)
+        ? known
+        : [...known, { remoteId: null, complete: false }]
+    )
   }
 
   /** The server answered with an error status: nothing was created. */
   const answeredNo = (localId: string): void => {
-    receipt[localId] = (receipt[localId] ?? []).filter(
-      (known) => known.remoteId !== null
-    )
-    writeJSON(storage, RECEIPT_KEY, receipt)
+    write(localId, (known) => known.filter((copy) => copy.remoteId !== null))
   }
 
   const steps: Array<() => Promise<void>> = [
@@ -374,8 +400,16 @@ export async function copyDeviceSessions(
   const storage = deps.storage ?? browserLocalStorage
   const isCurrent = (): boolean => authority.isCurrent(token)
   try {
-    const plan = await planTransfer(remote, storage, isCurrent)
-    return await runTransfer(plan, remote, storage, isCurrent)
+    // Plan and run under one lock: a second tab's plan, made before this one's
+    // receipt was written, would send the same sessions again.
+    const locked = await withTransferLock(
+      async () => {
+        const plan = await planTransfer(remote, storage, isCurrent)
+        return runTransfer(plan, remote, storage, isCurrent)
+      },
+      { storage, ...deps.lock }
+    )
+    return locked.held ? locked.value : { kind: "busy" }
   } catch (error) {
     if (error instanceof StaleAuthorityError)
       return { kind: "stale", copied: 0 }
@@ -388,6 +422,8 @@ export type TransferNotices = {
   readonly copied: (count: number) => void
   readonly partial: (copied: number, remaining: number) => void
   readonly stale: () => void
+  /** Another tab is copying right now. */
+  readonly busy: () => void
 }
 
 /**
@@ -414,6 +450,10 @@ export async function copyDeviceSessionsAndRefresh(
     case "stale":
     case "not-on-account": {
       notices.stale()
+      return
+    }
+    case "busy": {
+      notices.busy()
       return
     }
     default: {
