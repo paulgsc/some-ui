@@ -28,7 +28,6 @@ import type { StyleContext } from "@some-ui/styles/styles-build"
  * fails on any renderable package missing from this list.
  */
 const uiPackages = [
-  "assessment",
   "auth",
   "chat",
   "dice-card",
@@ -36,14 +35,10 @@ const uiPackages = [
   "interview",
   "leetype",
   "lesson-crm",
-  "makjang",
-  "neon-sign",
   "resume",
   "shared",
-  "slideshow",
   "soundbites",
   "topik",
-  "umag",
   "wireframes",
 ]
 

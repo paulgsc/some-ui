@@ -8,8 +8,7 @@
     "apps/www/tests/layout-invariants/stress-content.ts",
     "packages/eslint/tests/lint-fixtures/**",
     "packages/some-styles/styles-build/*.d.mts",
-    "packages/some-styles/styles-build/examples/**",
-    "packages/ui/chat/test/polyhedron-stub.ts"
+    "packages/some-styles/styles-build/examples/**"
   ],
   "ignoreBinaries": ["typst", "rustc", "wasm-pack"],
   "ignoreIssues": {

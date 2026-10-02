@@ -5,7 +5,6 @@ export * from "@some-ui/core-utils"
 export { assertNever } from "./assert-never"
 export * from "./hooks"
 export * from "./speech"
-export { useCycleRotationAdapter, useViewport } from "./polyhedron"
 export {
   createEventBus,
   selectProgress,

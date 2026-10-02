@@ -1,5 +1,0 @@
-export * from "./modern-buildings"
-export * from "./office-building"
-export * from "./stepped-building"
-export * from "./striped-building"
-export * from "./tall-building"

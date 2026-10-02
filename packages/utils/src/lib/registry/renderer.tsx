@@ -111,6 +111,12 @@ export function renderRegistryComponent<K extends string>(
   props: unknown,
   policy: RegistryRenderPolicy = {}
 ): ReactNode {
+  // A saved session can still name a panel the registry no longer has
+  // (#1645 removed eleven keys). It renders as a failed panel would, through
+  // the fallback, rather than throwing before any error boundary exists.
+  if (!Object.hasOwn(registry, key)) {
+    return policy.errorFallback ?? policy.fallback ?? null
+  }
   const entry = registry[key]
 
   assertIsValidProps(props)

@@ -75,7 +75,6 @@ type PanelCoverage =
  * someone says how it gets fitted.
  */
 const PANELS: Record<RegistryKey, PanelCoverage> = {
-  cube: { unswept: "registry-owned overlay demo; ships no story to sweep" },
   hangul: {
     story: "ui-honeycomb-hangul-flow-hangulhexgrid--endless",
     debt: "the hex grid's last row clears the rect by ~10px on a short leaf; the grid measures its own cell size and needs to measure the rect too",
@@ -84,46 +83,10 @@ const PANELS: Record<RegistryKey, PanelCoverage> = {
     story: "ui-input-components-typing-leetype--default",
     debt: "the story mounts the applet in an `h-screen` page shell, and the code pane's long lines clear the rect sideways",
   },
-  scheduled: { unswept: "ActiveLifetimesPanel ships no story to sweep" },
-  music: {
-    story: "ui-umag-components-nowplaying-nowplayingcard--default",
-    debt: "the now-playing card's glow layer paints ~18px wider than the card",
-  },
-  voice: {
-    story: "ui-umag-components-voiceui-avatar--default",
-    debt: "VoiceAvatar's root is `min-h-screen`: it asks for the window rather than accepting the rect it is given",
-  },
-  neon: {
-    story: "ui-neonsign-components-headline--default",
-    debt: "the story mounts the headline in a `min-h-screen` page shell, so the sweep measures a page, not a panel",
-  },
   topik: { story: "ui-chat-components-topik-koreanstudypage--default" },
-  assessment: {
-    story: "ui-assessment-components-technicalblockassessment--default",
-  },
   interview: {
     story: "ui-chat-interview-interviewapp--default",
-    debt: "every phase of InterviewApp roots at `min-h-screen items-center` - the same 'ask for the window' shape as VoiceAvatar, in six files",
-  },
-  "cdrama-header": {
-    story: "ui-makjang-components-cdrama-dramaheader--default",
-    debt: "the episode/title row does not wrap, so it clears the rect sideways on a narrow leaf",
-  },
-  "cdrama-couple": {
-    story: "ui-makjang-components-cdrama-couplerating--default",
-    debt: "the rating body is taller than a short leaf and neither pages nor bounds",
-  },
-  "cdrama-metrics": {
-    story: "ui-makjang-components-cdrama-metricspanel--default",
-    debt: "the metric bars are sized from a percentage of a width they assume rather than the rect's, and run far past it",
-  },
-  "cdrama-emoji": {
-    story: "ui-makjang-components-cdrama-emojitimeline--default",
-    debt: "timeline markers are positioned past the right edge on a narrow leaf",
-  },
-  "cdrama-ost": {
-    story: "ui-makjang-components-cdrama-ostpanel--default",
-    debt: "the OST card's inner box holds ~5px more than it can, in both axes - small enough to be a padding/border arithmetic slip rather than a layout decision",
+    debt: "every phase of InterviewApp roots at `min-h-screen items-center`: it asks for the window rather than accepting the rect it is given, in six files",
   },
 }
 

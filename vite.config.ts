@@ -24,10 +24,6 @@ export default defineConfig({
       "@chat": path.resolve(import.meta.dirname, "./packages/ui/chat/src"),
       "@nfl": path.resolve(import.meta.dirname, "./packages/ui/nfl/src"),
       "@charts": path.resolve(import.meta.dirname, "./packages/charts/d3/src"),
-      "@slideshow": path.resolve(
-        import.meta.dirname,
-        "./packages/ui/slideshow/src"
-      ),
       "@dice-card": path.resolve(
         import.meta.dirname,
         "./packages/ui/dice-card/src"
@@ -51,22 +47,9 @@ export default defineConfig({
         import.meta.dirname,
         "./packages/ui/wireframes/src"
       ),
-      "@makjang": path.resolve(
-        import.meta.dirname,
-        "./packages/ui/makjang/src"
-      ),
-      "@umag": path.resolve(import.meta.dirname, "./packages/ui/umag/src"),
       "@honeycomb": path.resolve(
         import.meta.dirname,
         "./packages/ui/honeycomb/src"
-      ),
-      "@assessment": path.resolve(
-        import.meta.dirname,
-        "./packages/ui/assessment/src"
-      ),
-      "@neon-sign": path.resolve(
-        import.meta.dirname,
-        "./packages/ui/neon-sign/src"
       ),
       "@content": path.resolve(
         import.meta.dirname,

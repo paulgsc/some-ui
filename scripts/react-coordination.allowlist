@@ -42,17 +42,11 @@
 1 packages/ui/lesson-crm/src/components/prompt-card/index.tsx
 4 packages/ui/lesson-crm/src/components/round-crm/index.tsx
 1 packages/ui/lesson-crm/src/lib/operation.ts
-2 packages/ui/slideshow/src/components/orchestrator/controls/index.tsx
-2 packages/ui/slideshow/src/hooks/use-animated-steps.ts
 1 packages/ui/topik/src/components/topik/conversation-preview/index.tsx
 2 packages/ui/topik/src/components/topik/handheld/generate-lesson/index.tsx
 2 packages/ui/topik/src/lib/topik/adapter/hooks/use-handheld-lesson/index.ts
 2 packages/ui/topik/src/lib/topik/adapter/hooks/use-read-aloud/index.ts
 1 packages/ui/topik/src/lib/topik/adapter/hooks/use-session/index.ts
-1 packages/ui/umag/src/components/mujik-discovery/index.tsx
-2 packages/ui/umag/src/components/now-playing/audio-player/demo/index.tsx
-1 packages/ui/umag/src/hooks/now-playing/use-now-playing-socket.ts
-1 packages/ui/umag/src/hooks/prompt-utterance/use-prompt-utterance.ts
 2 packages/ui/wireframes/src/components/youtube/layout-crm/index.tsx
 11 packages/utils/src/lib/context/zustand-store/obs-store.ts
 9 packages/utils/src/lib/context/zustand-store/orchestrator-store.ts
@@ -61,6 +55,5 @@
 2 packages/utils/src/lib/hooks/socket-tenants/use-obs-socket.ts
 2 packages/utils/src/lib/hooks/use-fetch.ts
 1 packages/utils/src/lib/hooks/use-interval/index.ts
-12 packages/utils/src/lib/polyhedron/use-viewport.ts
 2 packages/utils/src/lib/registry/utils.ts
 2 packages/ws/src/lib/use-websocket/index.ts
