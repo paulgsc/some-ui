@@ -30,10 +30,8 @@ import type { StyleContext } from "@some-ui/styles/styles-build"
 const uiPackages = [
   "assessment",
   "auth",
-  "calendar",
   "chat",
   "dice-card",
-  "emoji-animations",
   "honeycomb",
   "input",
   "interview",
@@ -41,7 +39,6 @@ const uiPackages = [
   "lesson-crm",
   "makjang",
   "neon-sign",
-  "portfolio-chart",
   "resume",
   "shared",
   "slideshow",
