@@ -67,6 +67,17 @@ checking in, read what the pattern of rounds actually shows:
     for: filing it would land a defect this PR is responsible for. If the rework itself will not
     converge, _that_ is the point to put the shape of the change to the user — with the PR
     explicitly not mergeable, which is a legitimate reason to wait and the only one left.
+  - **When the cluster is races, stale results or resource ownership in a React module**
+    (two taps start two players, a late read lands over a newer one, a handle outlives its
+    page, a control works in a phase it shouldn't), the rework is moving the coordination
+    out of React into the shape `docs/monorepo-boundaries.md` → "Inside a React package"
+    describes. It is not one more guard per finding, because each guard is the next ref
+    the next finding races against. Nor is it narrowing the feature, which removes where
+    the races show and keeps what causes them. Put that option to the author by name,
+    with the findings that point to it. On #1636 (soundbites), 8 of 11 Codex findings
+    over 7 rounds were this cluster, and every option put to the author kept the
+    component as the coordinator. These findings are the signal R1's count cannot give:
+    they are confirmed bugs, not a heuristic.
 - **Genuinely unclear which** — treat it as in-scope until shown otherwise, and say so when you
   summarize; guessing "out of scope" is the expensive direction to be wrong in, since it files a
   defect instead of fixing one.

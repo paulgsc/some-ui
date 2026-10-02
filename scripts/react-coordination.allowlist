@@ -1,0 +1,69 @@
+# R1 (docs/monorepo-boundaries.md, "Inside a React package: the component is not
+# the coordinator"). Every React module that awaits or chains a promise, with
+# exactly how many such sites it has (`await`, `for await`, `.then`/`.catch`/
+# `.finally`). `pnpm check:react-coordination` fails on any module missing
+# here, and on any count that no longer matches, in either direction.
+#
+# One entry per line: `<sites> <path>`. A blank line ends a group, and each
+# group's `#` lines must include one starting `Coordination:` (why this module
+# coordinates async work instead of a runtime outside React doing it) or
+# `Grandfathered:`. A new entry, or a raised count, goes in its own group
+# under `Coordination:`; it never joins or raises the grandfathered group.
+#
+# This file is where R1 is reviewed. The check counts; it does not judge.
+
+# Grandfathered: these coordinated before R1 landed. Debt, not a judgment that
+# each is fine: a count here may only fall (lower it in the same change), and
+# an entry leaves when its module stops awaiting.
+1 apps/www/src/components/extensions/extensions-page.tsx
+1 apps/www/src/components/player/live-player.tsx
+5 apps/www/src/components/settings/account-section.tsx
+3 apps/www/src/components/settings/device-section.tsx
+7 apps/www/src/components/settings/study-nudge-section.tsx
+15 apps/www/src/lib/auth/session.ts
+1 apps/www/src/lib/intent/use-async-intent.ts
+9 apps/www/src/lib/study-nudge/use-study-nudge.ts
+1 apps/www/src/routes/__root.tsx
+3 apps/www/src/routes/auth.tsx
+5 packages/speech/src/lib/hooks/use-audio-storage.ts
+3 packages/ui/honeycomb/src/hooks/use-game-audio.ts
+3 packages/ui/honeycomb/src/hooks/use-hangul-wasm/index.ts
+3 packages/ui/honeycomb/src/hooks/use-hexgrid-wasm/index.ts
+1 packages/ui/input/src/components/timeline-editor/index.tsx
+3 packages/ui/input/src/hooks/use-crossword-wasm/index.ts
+2 packages/ui/input/src/hooks/use-viewport-rotation-wasm/index.ts
+1 packages/ui/interview/src/components/mock-interview/question-playback/index.tsx
+1 packages/ui/interview/src/hooks/use-audio-level/index.ts
+2 packages/ui/interview/src/hooks/use-audio-recorder/index.ts
+4 packages/ui/interview/src/hooks/use-interview-session.ts
+1 packages/ui/leetype/src/components/leetype/index.tsx
+2 packages/ui/leetype/src/components/round/generate-round/index.tsx
+1 packages/ui/leetype/src/components/round/round-session/index.tsx
+6 packages/ui/leetype/src/components/round/round-shelf/index.tsx
+1 packages/ui/leetype/src/hooks/leetype/use-preview-game/index.ts
+1 packages/ui/leetype/src/hooks/leetype/use-typing-game-wasm/index.ts
+6 packages/ui/lesson-crm/src/components/lesson-crm/index.tsx
+1 packages/ui/lesson-crm/src/components/prompt-card/index.tsx
+4 packages/ui/lesson-crm/src/components/round-crm/index.tsx
+1 packages/ui/lesson-crm/src/lib/operation.ts
+2 packages/ui/slideshow/src/components/orchestrator/controls/index.tsx
+2 packages/ui/slideshow/src/hooks/use-animated-steps.ts
+1 packages/ui/topik/src/components/topik/conversation-preview/index.tsx
+2 packages/ui/topik/src/components/topik/handheld/generate-lesson/index.tsx
+6 packages/ui/topik/src/components/topik/handheld/lesson-shelf/index.tsx
+2 packages/ui/topik/src/lib/topik/adapter/hooks/use-handheld-lesson/index.ts
+2 packages/ui/topik/src/lib/topik/adapter/hooks/use-read-aloud/index.ts
+1 packages/ui/topik/src/lib/topik/adapter/hooks/use-session/index.ts
+1 packages/ui/umag/src/components/mujik-discovery/index.tsx
+2 packages/ui/umag/src/components/now-playing/audio-player/demo/index.tsx
+1 packages/ui/umag/src/hooks/now-playing/use-now-playing-socket.ts
+1 packages/ui/umag/src/hooks/prompt-utterance/use-prompt-utterance.ts
+2 packages/ui/wireframes/src/components/youtube/layout-crm/index.tsx
+3 packages/utils/src/lib/discovery/hooks/use-recursive-library.ts
+3 packages/utils/src/lib/hooks/socket-tenants/orchestrator/use-orchestrator.ts
+2 packages/utils/src/lib/hooks/socket-tenants/use-obs-socket.ts
+2 packages/utils/src/lib/hooks/use-fetch.ts
+1 packages/utils/src/lib/hooks/use-interval/index.ts
+12 packages/utils/src/lib/polyhedron/use-viewport.ts
+2 packages/utils/src/lib/registry/utils.ts
+2 packages/ws/src/lib/use-websocket/index.ts
