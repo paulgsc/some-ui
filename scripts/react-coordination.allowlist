@@ -60,6 +60,5 @@
 2 packages/utils/src/lib/hooks/socket-tenants/use-obs-socket.ts
 2 packages/utils/src/lib/hooks/use-fetch.ts
 1 packages/utils/src/lib/hooks/use-interval/index.ts
-12 packages/utils/src/lib/polyhedron/use-viewport.ts
 2 packages/utils/src/lib/registry/utils.ts
 2 packages/ws/src/lib/use-websocket/index.ts
