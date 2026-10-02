@@ -19,5 +19,11 @@ apply to any agent working here, not only Claude.
   falsifier that can't be decided from the hunk and the file it changes, or that covers only additions (missing a deletion, rename or move that also breaks the claim), covers something a lint rule, type or
   test could enforce without saying why that fails, is false on the code in the same
   change, or renumbers or removes an ID instead of retiring it.
+- **Second implementations and code left behind are blocking findings.** Flag two
+  copies of the same code added in one diff; an added module, component, hook or helper
+  whose job existing code already does (search `packages/ui/shared`, `packages/utils` and
+  sibling workspaces first, and cite the existing path); and old code or tests a change
+  replaced but kept. No finding when the PR body's **Superseded** section names the
+  existing code and says why both must exist.
 
 Full text: `REVIEW.md`.

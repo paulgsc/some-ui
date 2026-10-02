@@ -1,5 +1,16 @@
 # `some-ui-utils` / `@some-ui/shared` Named-Import Consumer Census
 
+> **Superseded counts (2026-10-02).** This is a dated snapshot. Workspaces it
+> counts as consumers have since been deleted: `nfl`, `attributions` and
+> `overlays` earlier, `emoji-animations` in #1640, `input` and `stepper` in
+> #1644, and `slideshow`, `makjang`, `neon-sign`, `umag` and `assessment` in
+> #1645. Do not score a hoist or de-hoist from these rows without recounting.
+> Known consequences of #1644 alone:
+> `createSequentialCycler` is dead (its one consumer was `stepper`), and
+> `getRandomSubarray`, `useObsStatusWebSocket` and `createEventBus` are down
+> to one consumer at most. The recount, by knip with `includeEntryExports`
+> rather than by hand, is tracked in #1647.
+
 > Evidence base for UTL-FOUND S2 (#521). Every hoist/keep/de-hoist decision
 > in this milestone is scored against this table via the
 > [Doctrine](./SHARED_WORKSPACE_DOCTRINE.md) §3 decision matrix — not

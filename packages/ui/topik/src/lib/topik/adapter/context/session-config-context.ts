@@ -1,10 +1,10 @@
 import { createContext, useContext } from "react"
+import type { ShelfPort } from "@some-ui/shared"
 import type { SpeechAdapter } from "@some-ui/speech"
 import type {
   ITopikMetadataRepository,
   ITopikRepository,
 } from "@topik/lib/topik"
-import type { ShelfPort } from "@topik/lib/topik/adapter/shelf"
 
 export type SessionConfig = {
   topikRepository: ITopikRepository

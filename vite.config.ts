@@ -22,7 +22,6 @@ export default defineConfig({
         "./packages/ui/attributions/src"
       ),
       "@chat": path.resolve(import.meta.dirname, "./packages/ui/chat/src"),
-      "@input": path.resolve(import.meta.dirname, "./packages/ui/input/src"),
       "@nfl": path.resolve(import.meta.dirname, "./packages/ui/nfl/src"),
       "@charts": path.resolve(import.meta.dirname, "./packages/charts/d3/src"),
       "@dice-card": path.resolve(
@@ -47,10 +46,6 @@ export default defineConfig({
       "@wireframes": path.resolve(
         import.meta.dirname,
         "./packages/ui/wireframes/src"
-      ),
-      "@stepper": path.resolve(
-        import.meta.dirname,
-        "./packages/ui/stepper/src"
       ),
       "@honeycomb": path.resolve(
         import.meta.dirname,

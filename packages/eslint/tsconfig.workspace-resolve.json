@@ -16,9 +16,7 @@
       "@some-ui/eslint-kit": ["./src/index.ts"],
       "@some-ui/types": ["../types/src/index.ts"],
       "@some-ui/chat": ["../ui/chat/src/index.ts"],
-      "some-ui-input": ["../ui/input/src/index.ts"],
       "@some-ui/shared": ["../ui/shared/src/index.ts"],
-      "@some-ui/stepper": ["../ui/stepper/src/index.ts"],
       "some-ui-utils": ["../utils/src/index.ts"],
       "wireframes": ["../ui/wireframes/src/index.ts"]
     }

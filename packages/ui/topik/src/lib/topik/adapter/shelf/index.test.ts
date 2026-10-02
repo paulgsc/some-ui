@@ -1,18 +1,13 @@
 import { createHash } from "node:crypto"
+import type { ShelfPort } from "@some-ui/shared"
+import { keepWithoutReplacing } from "@some-ui/shared"
 import { FIXTURE_BATCHES } from "@topik/components/topik/handheld/handheld-lesson/fixture"
 import type { TopikMetadata } from "@topik/lib/topik"
 import type { PastedLesson } from "@topik/lib/topik/adapter/pasted-lesson"
 import { serializePastedLesson } from "@topik/lib/topik/adapter/pasted-lesson"
 import { describe, expect, it, vi } from "vitest"
 
-import type { ShelfPort } from "."
-import {
-  keepWithoutReplacing,
-  keptBodyOf,
-  keptLessonOf,
-  shelfFailureOf,
-  shelfKeyOf,
-} from "."
+import { keptBodyOf, keptLessonOf, shelfKeyOf } from "."
 
 const META: TopikMetadata = {
   key: "local:first-dinner",
@@ -67,84 +62,31 @@ describe("keptLessonOf", () => {
   })
 })
 
-describe("shelfFailureOf", () => {
-  it("reads the host's reason, and calls anything else a failure", () => {
-    expect(shelfFailureOf(Object.assign(new Error(), { reason: "full" }))).toBe(
-      "full"
-    )
-    expect(shelfFailureOf({ reason: "signed-out" })).toBe("signed-out")
-    expect(shelfFailureOf(new Error("offline"))).toBe("failed")
-    expect(shelfFailureOf({ reason: "other" })).toBe("failed")
-  })
-})
-
-describe("keepWithoutReplacing", () => {
-  const sha256 = (body: string): string =>
-    createHash("sha256").update(body).digest("hex")
-
-  function port(held: Record<string, string>): ShelfPort & {
-    held: Map<string, string>
-  } {
-    const bodies = new Map(Object.entries(held))
-    return {
-      held: bodies,
-      list: vi.fn(() =>
-        Promise.resolve({
-          items: [...bodies].map(([key, body]) => ({
-            key,
-            contentHash: sha256(body),
-            savedAt: "2026-09-29T00:00:00.000Z",
-          })),
-          cap: 20,
-        })
-      ),
-      read: vi.fn(),
-      keep: vi.fn((key: string, body: string) => {
-        bodies.set(key, body)
-        return Promise.resolve({
-          change: "kept" as const,
-          item: { key, contentHash: sha256(body), savedAt: "" },
-        })
-      }),
-      remove: vi.fn(),
-    }
-  }
-
-  it("keeps under the name when the shelf does not hold it", async () => {
-    const shelf = port({})
-    await expect(keepWithoutReplacing(shelf, "k", "{}")).resolves.toEqual({
-      change: "kept",
-      key: "k",
-    })
-    expect(shelf.held.get("k")).toBe("{}")
-  })
-
-  it("writes nothing when the same bytes are already kept", async () => {
-    const shelf = port({ k: "{}" })
-    await expect(keepWithoutReplacing(shelf, "k", "{}")).resolves.toEqual({
-      change: "unchanged",
-      key: "k",
-    })
-    expect(shelf.keep).not.toHaveBeenCalled()
-  })
-
-  it("never replaces a different item that holds the name", async () => {
-    const shelf = port({ k: '{"a":1}', "k-2": '{"a":2}' })
-    await expect(keepWithoutReplacing(shelf, "k", '{"a":3}')).resolves.toEqual({
-      change: "kept",
-      key: "k-3",
-    })
-    expect(shelf.held.get("k")).toBe('{"a":1}')
-    expect(shelf.held.get("k-2")).toBe('{"a":2}')
-    await expect(keepWithoutReplacing(shelf, "k", '{"a":2}')).resolves.toEqual({
-      change: "unchanged",
-      key: "k-2",
-    })
-  })
-
+describe("keeping a replayed lesson again", () => {
   it("finds a replayed copy kept beside another, rather than keeping it again", async () => {
     // Confirming review, #1600: a replay of `first-dinner-2` came back under
     // `local:first-dinner-2` and was kept a third time.
+    const held = new Map<string, string>()
+    const shelf: ShelfPort = {
+      list: () =>
+        Promise.resolve({
+          items: [...held].map(([key, body]) => ({
+            key,
+            contentHash: createHash("sha256").update(body).digest("hex"),
+            savedAt: "2026-09-29T00:00:00.000Z",
+          })),
+          cap: 20,
+        }),
+      read: vi.fn(),
+      keep: (key, body) => {
+        held.set(key, body)
+        return Promise.resolve({
+          change: "kept" as const,
+          item: { key, contentHash: "", savedAt: "" },
+        })
+      },
+      remove: vi.fn(),
+    }
     // Two pastes, as intake leaves them, that share a model-chosen key.
     const pasted = (meta: TopikMetadata): PastedLesson =>
       keptLessonOf(
@@ -156,7 +98,6 @@ describe("keepWithoutReplacing", () => {
       (lesson: PastedLesson) =>
       (key: string): string =>
         keptBodyOf(lesson, key)
-    const shelf = port({})
     await keepWithoutReplacing(shelf, "first-dinner", bodyFor(pasted(META)))
     await expect(
       keepWithoutReplacing(
@@ -167,7 +108,7 @@ describe("keepWithoutReplacing", () => {
     ).resolves.toEqual({ change: "kept", key: "first-dinner-2" })
 
     const replayed = keptLessonOf(
-      JSON.parse(shelf.held.get("first-dinner-2")!),
+      JSON.parse(held.get("first-dinner-2")!),
       "first-dinner-2"
     )!
     await expect(
@@ -177,50 +118,6 @@ describe("keepWithoutReplacing", () => {
         bodyFor(replayed)
       )
     ).resolves.toEqual({ change: "unchanged", key: "first-dinner-2" })
-    expect(shelf.held.size).toBe(2)
-  })
-
-  it("finds the same bytes past a gap before taking the free key", async () => {
-    const shelf = port({ k: '{"a":1}', "k-3": '{"a":3}' })
-    await expect(keepWithoutReplacing(shelf, "k", '{"a":3}')).resolves.toEqual({
-      change: "unchanged",
-      key: "k-3",
-    })
-    expect(shelf.keep).not.toHaveBeenCalled()
-  })
-
-  it("compares what is kept where Web Crypto is not available", async () => {
-    vi.stubGlobal("crypto", {})
-    try {
-      const shelf = port({ k: '{"a":1}' })
-      shelf.read = vi.fn((key: string) => {
-        const kept: unknown = JSON.parse(shelf.held.get(key)!)
-        return Promise.resolve(kept)
-      })
-      await expect(
-        keepWithoutReplacing(shelf, "k", '{"a":1}')
-      ).resolves.toEqual({
-        change: "unchanged",
-        key: "k",
-      })
-      await expect(
-        keepWithoutReplacing(shelf, "k", '{"a":2}')
-      ).resolves.toEqual({
-        change: "kept",
-        key: "k-2",
-      })
-    } finally {
-      vi.unstubAllGlobals()
-    }
-  })
-
-  it("finds the same bytes under any held copy, past the scan window", async () => {
-    // Only `k-5` is left after removals; pasting its lesson again is it.
-    const shelf = port({ "k-5": '{"a":5}' })
-    await expect(keepWithoutReplacing(shelf, "k", '{"a":5}')).resolves.toEqual({
-      change: "unchanged",
-      key: "k-5",
-    })
-    expect(shelf.keep).not.toHaveBeenCalled()
+    expect(held.size).toBe(2)
   })
 })

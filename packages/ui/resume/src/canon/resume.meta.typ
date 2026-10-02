@@ -330,7 +330,7 @@ backs should be cut, not kept and re-justified.
 
 == Counts
 
-*50 workspace packages, 6 browser extensions* --- counted 2026-10-02 by
+*46 workspace packages, 6 browser extensions* --- counted 2026-10-02 by
 `scripts/check-claims.mjs`, which walks the globs in `pnpm-workspace.yaml`
 (`packages/ui/*`, `apps/*`, `docs/canon`, `extensions/**`, `packages/*`,
 `crates/*`) for a `package.json`, the same method `pnpm -r list --depth -1`
@@ -342,14 +342,18 @@ catches build scripts): `some-censor`, `some-conveyor`, `some-drama`,
 `filter-classifier`, `docs`, and `scripts` are excluded — shared code and a
 test corpus, not shipped extensions.
 
-The package count is 55 -> 50 on 2026-10-02: `packages/ui/slideshow`,
+The package count is 51 -> 46 on 2026-10-02: `packages/ui/slideshow`,
 `packages/ui/makjang`, `packages/ui/umag`, `packages/ui/neon-sign` and
 `packages/ui/assessment` were deleted. www now registers only its four
 activities' panels; the composer's scene editor moved from slideshow into
-`apps/www`. Before that it was 59 -> 55 the same day: `packages/ui/calendar`,
-`packages/ui/milestones`, `packages/ui/emoji-animations` and
-`packages/ui/portfolio-chart` were deleted. None was imported by any other
-workspace or by a deployable. Before that it was 58 -> 59 on 2026-10-01:
+`apps/www`. Before that it was 55 -> 51 the same day: `packages/ui/input`,
+`packages/ui/stepper` and the two wasm crates only `input` loaded,
+`crates/some-crossword` and `crates/viewport-rotation`, were deleted. Nothing
+deployable rendered any of them. Before that it was 59 -> 55 the same day:
+`packages/ui/calendar`, `packages/ui/milestones`,
+`packages/ui/emoji-animations` and `packages/ui/portfolio-chart` were deleted.
+None was imported by any other workspace or by a deployable. Before that it
+was 58 -> 59 on 2026-10-01:
 `packages/ui/soundbites`, the
 Android app's "say why" recorder and the first `apk`-audience workspace.
 Before that it was 59 -> 58 the same day: `packages/ui/searchbar`, a

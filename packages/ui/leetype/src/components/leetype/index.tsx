@@ -12,7 +12,6 @@ import {
 } from "@leetype/lib/leetype/exercises"
 import { lintAuthoredRounds } from "@leetype/lib/leetype/round-assembly"
 import type { RoundRunsLoader } from "@leetype/lib/leetype/round-runs"
-import type { ShelfPort } from "@leetype/lib/leetype/shelf"
 import type { Round } from "@leetype/types/authored-round"
 import { RoundSchema } from "@leetype/types/authored-round"
 import type { Exercise } from "@leetype/types/exercise"
@@ -20,6 +19,7 @@ import type {
   CompletedSessionStats,
   TextGradient,
 } from "@leetype/types/leetype"
+import type { ShelfPort } from "@some-ui/shared"
 import type { Appearance } from "@some-ui/styles/theme"
 import { appearanceClassName } from "@some-ui/styles/theme"
 import { cn, useIsMobile } from "some-ui-utils"
