@@ -30,6 +30,7 @@
 
 import type { JSX } from "react"
 import { useMemo, useRef } from "react"
+import type { ShelfPort } from "@some-ui/shared"
 import { useOptionalSpeechAdapter } from "@some-ui/speech"
 import type { Appearance } from "@some-ui/styles/theme"
 import { appearanceClassName } from "@some-ui/styles/theme"
@@ -53,7 +54,6 @@ import {
   isShort,
   useElementBox,
 } from "@topik/lib/topik/adapter/hooks/use-surface"
-import type { ShelfPort } from "@topik/lib/topik/adapter/shelf"
 import { cn } from "some-ui-utils"
 
 /** Where the manifest lives when a host doesn't say otherwise. */

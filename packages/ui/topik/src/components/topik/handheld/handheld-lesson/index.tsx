@@ -13,12 +13,8 @@
 
 import type { JSX } from "react"
 import { useState } from "react"
-import { Button } from "@some-ui/shared"
+import { Button, KeepOnShelf, KeptShelf } from "@some-ui/shared"
 import { GenerateLesson } from "@topik/components/topik/handheld/generate-lesson"
-import {
-  KeepLesson,
-  LessonShelf,
-} from "@topik/components/topik/handheld/lesson-shelf"
 import { LineCard } from "@topik/components/topik/handheld/line-card"
 import { MaterialList } from "@topik/components/topik/handheld/material-list"
 import { ProbeCard } from "@topik/components/topik/handheld/probe-card"
@@ -29,7 +25,11 @@ import { useSessionConfig } from "@topik/lib/topik/adapter/context/session-confi
 import type { UseHandheldLessonOptions } from "@topik/lib/topik/adapter/hooks/use-handheld-lesson"
 import { useHandheldLesson } from "@topik/lib/topik/adapter/hooks/use-handheld-lesson"
 import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
-import { shelfKeyOf } from "@topik/lib/topik/adapter/shelf"
+import {
+  keptLessonOf,
+  LESSON_SHELF_WORDS,
+  shelfKeyOf,
+} from "@topik/lib/topik/adapter/shelf"
 import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
 import { ChevronLeft, Loader2 } from "lucide-react"
 import { cn } from "some-ui-utils"
@@ -172,9 +172,13 @@ export const HandheldLesson = ({
           short={short}
           kept={
             shelf ? (
-              <LessonShelf
+              <KeptShelf
                 shelf={shelf}
-                onReplay={(kept) => generator.start(kept.meta, kept.batches)}
+                words={LESSON_SHELF_WORDS}
+                replay={{
+                  read: keptLessonOf,
+                  play: (kept) => generator.start(kept.meta, kept.batches),
+                }}
               />
             ) : undefined
           }
@@ -196,12 +200,13 @@ export const HandheldLesson = ({
             generator.pasted &&
             generator.pastedDocument !== null &&
             generator.keptBodyFor !== null ? (
-              <KeepLesson
+              <KeepOnShelf
                 // A newly pasted lesson is a new question: back to "Keep".
                 key={generator.pastedDocument}
                 shelf={shelf}
+                words={LESSON_SHELF_WORDS}
                 shelfKey={shelfKeyOf(generator.pasted.key)}
-                bodyFor={generator.keptBodyFor}
+                body={generator.keptBodyFor}
               />
             ) : undefined
           }
