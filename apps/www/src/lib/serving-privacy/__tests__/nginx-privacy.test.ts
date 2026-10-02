@@ -51,6 +51,7 @@ const DOCKERFILE = "apps/www/Dockerfile"
 const HTTPS_CONF = "apps/www/nginx.https.conf"
 const HEADERS_CONF = "apps/www/nginx.security-headers.conf"
 const ROOT_CONF = "nginx.conf"
+const VITE_CONFIG = "apps/www/vite.config.ts"
 
 const HEADERS_INCLUDE = "include /etc/nginx/security-headers.conf"
 const FILE_HOST_LOCATION = "location ^~ /api/file-host/"
@@ -326,6 +327,27 @@ function serversOf(root: Block): Array<Block> {
   return walk(root).filter((block) => block.head === "server")
 }
 
+/**
+ * `vite dev` and `vite preview` proxy `/api/file-host/` with no path
+ * allowlist, so the tabs stop-gap needs the same refusal there as in nginx.
+ * Reads the proxy's entry in vite.config.ts as text (that file runs Vite, so
+ * it cannot be imported here) and requires its `bypass` to ask
+ * `isBlockedProxyPath`, the predicate `file-host.dev.ts` defines and
+ * dev-target.test.ts exercises.
+ */
+function viteProxyProblems(file: string, text: string): Array<string> {
+  const entry = /\[FILE_HOST_PROXY_PATH\]:\s*\{([\s\S]*?)\n {8}\},/.exec(text)
+  if (!entry) {
+    return [`${file}: no proxy entry for FILE_HOST_PROXY_PATH to check`]
+  }
+  return /bypass:[^\n]*\n?[^\n]*isBlockedProxyPath\(/.test(entry[1])
+    ? []
+    : [
+        `${file}: the file_host proxy has no bypass that asks isBlockedProxyPath, ` +
+          "so the unauthenticated tabs routes are reachable through vite dev.",
+      ]
+}
+
 const dockerfile = read(DOCKERFILE)
 const dockerConf = parseNginx(dockerfileServerConf(dockerfile), DOCKERFILE)
 const dockerServers = serversOf(dockerConf)
@@ -377,6 +399,10 @@ describe("access logs stay off", () => {
 describe("the file_host proxy", () => {
   it("forwards no client address, and 404s the unauthenticated tabs routes", () => {
     expect(fileHostProblems(HTTPS_CONF, httpsServers)).toEqual([])
+  })
+
+  it("is refused the tabs routes by the Vite proxy as well", () => {
+    expect(viteProxyProblems(VITE_CONFIG, read(VITE_CONFIG))).toEqual([])
   })
 
   it("no longer sets the old forwarding lines anywhere in nginx.https.conf", () => {
@@ -438,6 +464,26 @@ describe("the checks can fail", () => {
     const problems = accessLogProblems("f", root, serversOf(root))
     expect(problems).toHaveLength(1)
     expect(problems[0]).toContain("turns an access log back on")
+  })
+
+  it("flags a Vite proxy entry with no bypass, or with none that asks the predicate", () => {
+    const entry = (body: string): string =>
+      `proxy: {\n        [FILE_HOST_PROXY_PATH]: {\n${body}\n        },\n      }`
+    expect(
+      viteProxyProblems("f", entry("          changeOrigin: true,"))
+    ).toHaveLength(1)
+    expect(
+      viteProxyProblems("f", entry("          bypass: () => undefined,"))
+    ).toHaveLength(1)
+    expect(
+      viteProxyProblems(
+        "f",
+        entry(
+          "          bypass: (req) =>\n            isBlockedProxyPath(req.url) ? false : undefined,"
+        )
+      )
+    ).toEqual([])
+    expect(viteProxyProblems("f", "export default {}")).toHaveLength(1)
   })
 
   it("flags the old forwarding lines, a missing tabs block and a bad policy", () => {

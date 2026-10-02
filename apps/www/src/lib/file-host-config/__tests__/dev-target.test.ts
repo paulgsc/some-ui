@@ -2,6 +2,7 @@ import type { Probe } from "@/file-host.dev"
 import {
   CONTAINER_TARGET,
   devPortFile,
+  isBlockedProxyPath,
   resolveFileHostTarget,
 } from "@/file-host.dev"
 import { describe, expect, it } from "vitest"
@@ -66,5 +67,41 @@ describe("resolveFileHostTarget: vite dev's file_host", () => {
   it("reads the path paulgsc/server's make dev writes", () => {
     expect(devPortFile(env)).toBe(FILE)
     expect(devPortFile({})).toBe("/tmp/file_host/dev-port.json")
+  })
+})
+
+describe("isBlockedProxyPath: what the dev proxy will not forward", () => {
+  const tabs = "/api/file-host/api/v1/tabs"
+
+  it("refuses the tabs routes, however they are spelled", () => {
+    for (const url of [
+      tabs,
+      `${tabs}/batch`,
+      `${tabs}/summaries?limit=5`,
+      `${tabs}/`,
+      "/api/file-host//api/v1/tabs",
+      "/api/file-host/api/v1/%74abs",
+      "/api/file-host/api/v1/./tabs",
+      "/api/file-host/x/../api/v1/tabs/prune",
+    ]) {
+      expect(isBlockedProxyPath(url), url).toBe(true)
+    }
+  })
+
+  it("refuses a path it cannot decode rather than guess", () => {
+    expect(isBlockedProxyPath("/api/file-host/api/v1/%E0%A4%A")).toBe(true)
+  })
+
+  it("forwards everything else, including routes that merely mention tabs", () => {
+    for (const url of [
+      "/api/file-host/api/v1/sessions",
+      "/api/file-host/api/v1/auth/session",
+      "/api/file-host/api/v1/curriculum/manifest",
+      "/api/file-host/api/v1/shelf/tabs",
+      "/api/tts/v1/audio/speech",
+    ]) {
+      expect(isBlockedProxyPath(url), url).toBe(false)
+    }
+    expect(isBlockedProxyPath(undefined)).toBe(false)
   })
 })

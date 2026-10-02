@@ -11,6 +11,7 @@ import {
   readLegacyClaim,
   signIn,
 } from "@/lib/auth"
+import { ACCOUNT_KEEPS } from "@/lib/auth/account-keeps"
 import { DATA_MODE } from "@/lib/data-mode"
 import { passkeysSupported } from "@/lib/passkey"
 
@@ -115,8 +116,7 @@ const AuthPage = (): JSX.Element => {
                 }
               : {
                   title: "What the server keeps",
-                  description:
-                    "An account is a random ID and your passkey's public key, with no name, email or phone number asked for. While you're signed in, your sessions and when you start and finish them are stored under that ID.",
+                  description: ACCOUNT_KEEPS,
                 }
       }
     />

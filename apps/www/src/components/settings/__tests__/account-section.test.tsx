@@ -78,6 +78,9 @@ describe("AccountSection", () => {
     expect(
       screen.getByText(/sessions and when you start and finish them/i)
     ).toBeTruthy()
+    // The sign-up screen lists the shelf items and reminders too; so does this.
+    expect(screen.getByText(/items you save to shelves/i)).toBeTruthy()
+    expect(screen.getByText(/turn on reminders/i)).toBeTruthy()
     expect(
       screen.getByText(/does not rewrite server logs or backups/i)
     ).toBeTruthy()

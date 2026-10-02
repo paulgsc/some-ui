@@ -28,6 +28,7 @@ import {
   signOut,
   signOutEverywhere,
 } from "@/lib/auth"
+import { ACCOUNT_KEEPS } from "@/lib/auth/account-keeps"
 import { DATA_MODE } from "@/lib/data-mode"
 import { useAsyncIntent } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
@@ -76,7 +77,7 @@ export const AccountSection = (): JSX.Element => {
         <Label id="account-heading">Account</Label>
         <p className="text-muted-foreground text-sm">
           {serverAccount
-            ? "Your passkey is your account. An account is a random ID and your passkeys' public keys, with no name, email or phone number asked for. While you're signed in, your sessions and when you start and finish them are stored under that ID."
+            ? `Your passkey is your account. ${ACCOUNT_KEEPS}`
             : "This build has no server, so there is no account: everything stays in this browser."}
         </p>
       </div>
