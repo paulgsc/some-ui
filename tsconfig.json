@@ -14,7 +14,6 @@
     "paths": {
       "@shared/*": ["./packages/ui/shared/src/*"],
       "@chat/*": ["./packages/ui/chat/src/*"],
-      "@calendar/*": ["./packages/ui/calendar/src/*"],
       "@input/*": ["./packages/ui/input/src/*"],
       "@utils/*": ["./packages/utils/src/*"],
       "@dice-card/*": ["./packages/ui/dice-card/src/*"],
@@ -26,7 +25,6 @@
       "@types-utils/*": ["./packages/types/src/*"],
       "@stepper/*": ["./packages/ui/stepper/src/*"],
       "@wireframes/*": ["./packages/ui/wireframes/src/*"],
-      "@portfolio-chart/*": ["./packages/ui/portfolio-chart/src/*"],
       "@attributions/*": ["./packages/ui/attributions/src/*"],
       "@mujik/*": ["./extensions/some-mujik/src/*"],
       "@filter/*": ["./extensions/some-filter/src/*"],

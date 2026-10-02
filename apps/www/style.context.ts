@@ -29,16 +29,13 @@ import type { StyleContext } from "@some-ui/styles/styles-build"
  */
 const uiPackages = [
   "auth",
-  "calendar",
   "chat",
   "dice-card",
-  "emoji-animations",
   "honeycomb",
   "input",
   "interview",
   "leetype",
   "lesson-crm",
-  "portfolio-chart",
   "resume",
   "shared",
   "soundbites",
