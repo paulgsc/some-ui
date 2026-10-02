@@ -145,7 +145,6 @@ export async function keepWithoutReplacing(
 }
 
 const NOT_UNRESERVED = /[^A-Za-z0-9._~-]+/g
-const JSON_SUFFIX = /(?:\.json)+$/i
 const LEADING_DOTS = /^\.+/
 
 /**
@@ -158,10 +157,11 @@ const LEADING_DOTS = /^\.+/
  * `http`.
  */
 export function plainShelfKey(name: string, noun: string): string {
-  const plain = name
-    .replace(NOT_UNRESERVED, "-")
-    .replace(JSON_SUFFIX, "")
-    .replace(LEADING_DOTS, "")
+  let plain = name.replace(NOT_UNRESERVED, "-")
+  // A loop, not `/(?:\.json)+$/i`: that regex backtracks polynomially on a
+  // name of many `.json`s that does not end in one (CodeQL, #1641).
+  while (plain.toLowerCase().endsWith(".json")) plain = plain.slice(0, -5)
+  plain = plain.replace(LEADING_DOTS, "")
   if (plain === "") return noun
   return plain.startsWith("http") ? `${noun}-${plain}` : plain
 }

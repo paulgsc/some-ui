@@ -16,6 +16,14 @@ describe("plainShelfKey", () => {
     expect(plainShelfKey("notes.json.json", "lesson")).toBe("notes")
     expect(plainShelfKey("::", "round")).toBe("-")
     expect(plainShelfKey(".", "lesson")).toBe("lesson")
+    expect(plainShelfKey("Notes.JSON", "lesson")).toBe("Notes")
+  })
+
+  it("stays linear on a name of many .json repeats", () => {
+    const name = `${".json".repeat(50_000)}x`
+    const started = performance.now()
+    expect(plainShelfKey(name, "round")).toBe(name.slice(1))
+    expect(performance.now() - started).toBeLessThan(500)
   })
 })
 
