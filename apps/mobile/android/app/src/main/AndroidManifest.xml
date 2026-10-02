@@ -6,6 +6,17 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- The soundbites page (www routes/_dashboard/_apk/soundbites.tsx,
+         @some-ui/soundbites): saying out loud why a session did not happen.
+         The page asks the WebView for the microphone (getUserMedia), and
+         Capacitor's BridgeWebChromeClient turns that into a request for both
+         of these, which Android grants only if the manifest declares them.
+         RECORD_AUDIO is the runtime prompt the person sees, the first time
+         they tap to talk; MODIFY_AUDIO_SETTINGS (install-time, no prompt) is
+         what the WebView's audio capture needs to route the microphone. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
     <!-- androidx.biometric (a dependency of @capacitor-community/sqlite)
          declares these two, but the plugin reaches its biometric code only
          when capacitor.config sets both plugins.CapacitorSQLite

@@ -19,6 +19,12 @@
     "android.permission.INTERNET": {
       "reason": "The sync from home (Settings -> This phone) fetches lessons from the LAN file_host."
     },
+    "android.permission.RECORD_AUDIO": {
+      "reason": "Soundbites (Sessions -> Say why): the person records, on the phone, why a session did not happen. The WebView's getUserMedia, asked for by Capacitor's BridgeWebChromeClient on the first tap to talk."
+    },
+    "android.permission.MODIFY_AUDIO_SETTINGS": {
+      "reason": "Soundbites: Capacitor's BridgeWebChromeClient requests it with RECORD_AUDIO for any WebView audio capture. Install-time, no prompt."
+    },
     "android.permission.POST_NOTIFICATIONS": {
       "reason": "Study nudges are local notifications (@capacitor/local-notifications); asked for from Settings -> Study reminders."
     },

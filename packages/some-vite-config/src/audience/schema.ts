@@ -10,11 +10,16 @@ import { z } from "zod"
  * nothing. Nothing here hides or protects anything; whatever a LAN-only UI
  * talks to is the server's to guard.
  *
+ * - `public`: every build.
+ * - `lan`: builds served on the home network.
+ * - `apk`: the Android app only - what needs the phone itself (its
+ *   microphone, its own storage) and means nothing in a browser tab.
+ *
  * Adding an audience is adding a string here. Every profile, manifest and
  * gate is typed against this list, so a misspelt one fails `tsc` or the
  * manifest check rather than silently matching nothing.
  */
-export const AUDIENCES = ["public", "lan"] as const
+export const AUDIENCES = ["public", "lan", "apk"] as const
 
 export const AudienceSchema = z.enum(AUDIENCES)
 export type Audience = z.infer<typeof AudienceSchema>
