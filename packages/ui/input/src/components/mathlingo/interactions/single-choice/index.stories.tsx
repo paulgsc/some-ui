@@ -44,28 +44,6 @@ export const CorrectResult: Story = {
 }
 
 /**
- * When a user selects the wrong option and results are shown,
- * the selected option turns red while the correct one turns green.
- */
-export const WrongResult: Story = {
-  // We use a decorator or play function to simulate state if needed,
-  // but for documentation, we show the result classes logic.
-  args: {
-    options: mockOptions,
-    correctAnswer: "a",
-    showResult: true,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "To see 'Wrong' styling, select an incorrect option then toggle showResult.",
-      },
-    },
-  },
-}
-
-/**
  * Read-only state where interactions are disabled.
  */
 export const Disabled: Story = {

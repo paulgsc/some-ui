@@ -43,26 +43,6 @@ export const CorrectSpot: Story = {
   },
 }
 
-/**
- * When the user selects a "truth" as the "lie".
- * The selected item turns red, and the actual lie is revealed with a line-through.
- */
-export const IncorrectSpot: Story = {
-  args: {
-    options: mockOptions,
-    correctAnswer: "3",
-    showResult: true,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Displays the line-through style on the actual lie when the user guesses wrong.",
-      },
-    },
-  },
-}
-
 export const Disabled: Story = {
   args: {
     options: mockOptions,

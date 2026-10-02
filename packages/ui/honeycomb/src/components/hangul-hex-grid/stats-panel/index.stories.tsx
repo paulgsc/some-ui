@@ -143,15 +143,6 @@ export const EasyDifficulty: Story = {
   },
 }
 
-export const MediumDifficulty: Story = {
-  args: {
-    stats: baseStats(),
-    timingParams: baseTiming({ characterLifetimeMs: 2_500 }),
-    currentTimeWindow: 2_500,
-    mode: "endless",
-  },
-}
-
 export const HardDifficulty: Story = {
   args: {
     stats: baseStats({
