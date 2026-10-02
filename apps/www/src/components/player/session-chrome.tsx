@@ -80,8 +80,6 @@ import {
 } from "some-ui-utils"
 
 import { formatTimecode } from "@/lib/format"
-import { AmbientIntentStatus } from "@/lib/intent/render"
-import { useMigrationSignal } from "@/lib/tenant/migration-signal"
 import { AudioIndicator } from "@/components/audio/audio-indicator"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
@@ -111,7 +109,6 @@ export const SessionChrome = ({
   // that an ambient signal is quiet when there is nothing to say and never
   // silent when there is. Folding the chrome must not turn it into the
   // latter.
-  const migrationSignal = useMigrationSignal()
 
   const nowPlaying = primaryScene
     ? friendlyActivityName(
@@ -239,8 +236,6 @@ export const SessionChrome = ({
             <ThemeSwitcher />
             <AudioIndicator />
           </div>
-
-          <AmbientIntentStatus state={migrationSignal} className="mt-3" />
         </SheetContent>
       </Sheet>
     </>

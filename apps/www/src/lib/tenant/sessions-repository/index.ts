@@ -12,7 +12,7 @@ import {
 } from "@/lib/tenant/storage"
 import type { SessionRecord, SessionStatus } from "@/lib/tenant/types"
 
-/** Also read by `sessions-migration`, which uploads what is under it. */
+/** Also read by `sessions-transfer`, which copies what is under it when the person asks. */
 export const STORAGE_KEY = "some-ui.tenant.sessions.v1"
 
 export type CreateSessionInput = {

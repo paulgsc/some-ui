@@ -1,6 +1,6 @@
 import type { JSX, ReactNode } from "react"
 
-import { useHasSession } from "@/lib/auth"
+import { useAuthority } from "@/lib/authority"
 
 import { OrchestratorWrapper } from "./orchestrator"
 import { StudyNudgeWatcher } from "./study-nudge"
@@ -15,18 +15,17 @@ export const AppProviders = ({
   children: ReactNode
 }): JSX.Element => {
   // This tree renders on the public landing page and the passkey screen too,
-  // not just the signed-in dashboard - `StudyNudgeWatcher` isn't rendered at
-  // all until there is a session, so registering a service worker,
-  // reconciling a push subscription, and polling every five minutes don't
-  // happen for a visitor with no tenant workspace to watch yet. This is not
-  // a security boundary (the server still decides who sees what) - it is
-  // the client declining to do work whose result would be thrown away.
-  const hasSession = useHasSession()
+  // not just the dashboard. `StudyNudgeWatcher` waits until the learner's data
+  // authority is decided, then runs for both: on the account the server
+  // delivers and the watcher reconciles its push subscription, on the device
+  // the client's own policy reminds them while a tab is open, and nothing is
+  // sent to anyone (`clientOwnsNudgeDelivery`).
+  const decided = useAuthority().kind !== "pending"
 
   return (
     <ThemeProvider>
       <QueryProvider>
-        {hasSession && <StudyNudgeWatcher />}
+        {decided && <StudyNudgeWatcher />}
         <TTSProvider>
           <OrchestratorWrapper>{children}</OrchestratorWrapper>
         </TTSProvider>

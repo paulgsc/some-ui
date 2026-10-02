@@ -18,6 +18,8 @@
  */
 import { useSyncExternalStore } from "react"
 
+import type { SessionBelief } from "@/lib/authority"
+import { authority } from "@/lib/authority"
 import { DATA_MODE } from "@/lib/data-mode"
 import type { FileHostTransport } from "@/lib/file-host-config/client"
 import {
@@ -29,12 +31,11 @@ import {
 import type { CreationOptionsJSON, RequestOptionsJSON } from "@/lib/passkey"
 import { createPasskey, signWithPasskey } from "@/lib/passkey"
 
-export type SessionStatus = "unknown" | "signed-in" | "signed-out"
+export type SessionStatus = SessionBelief
 
 type CeremonyStarted<TOptions> = { ceremony: string; options: TOptions }
 type SessionView = { expiresAt: number }
 
-let status: SessionStatus = "unknown"
 let pending: Promise<boolean> | null = null
 /**
  * Bumped by every ceremony or sign-out, so a `/auth/session` probe that was
@@ -42,61 +43,47 @@ let pending: Promise<boolean> | null = null
  * probe answering 401 after a sign-in must not sign the person back out.
  */
 let generation = 0
-const listeners = new Set<() => void>()
-const accountListeners = new Set<() => void>()
 
-function publish(next: SessionStatus): void {
-  if (next === status) return
-  status = next
-  for (const listener of listeners) listener()
-}
-
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener)
-  return () => {
-    listeners.delete(listener)
-  }
-}
-
-/** Whether the client currently believes it is signed in. Synchronous. */
+/**
+ * Whether the client currently believes it holds a server session.
+ * Synchronous. The belief itself lives in `lib/authority`, next to the
+ * person's choice of where their data lives: a session says what the account
+ * *could* do, the authority says what it is doing.
+ */
 export function hasSession(): boolean {
-  return status === "signed-in"
+  return authority.getSnapshot().session === "signed-in"
 }
 
 export function getSessionStatus(): SessionStatus {
-  return status
+  return authority.getSnapshot().session
 }
 
 /**
- * Call `listener` whenever the account this tab acts for may have changed:
- * a session ended, or a ceremony started one (possibly for another account).
- * The app clears its query cache on it (`providers/tanstack-query`), so
- * nothing one account fetched is shown to the next. Not called when a page
- * load learns of an existing session, which changes no account.
+ * Call `listener` whenever the authority this tab acts for may have changed:
+ * a session ended, a ceremony started one (possibly for another account), or
+ * the person moved their data between the device and the account. The app
+ * clears its query cache on it (`providers/tanstack-query`), so nothing one
+ * authority fetched is shown under the next. Not called when a page load
+ * learns of an existing session, which changes no account.
  */
 export function onAccountChange(listener: () => void): () => void {
-  accountListeners.add(listener)
-  return () => {
-    accountListeners.delete(listener)
-  }
+  return authority.onAuthorityChange(listener)
 }
 
-function announceAccountChange(): void {
-  for (const listener of accountListeners) listener()
-}
-
-/** A ceremony (or a test) established a session. */
+/** A ceremony (or a test) established a session, and the account is now the person's data. */
 export function markSignedIn(): void {
   generation += 1
-  announceAccountChange()
-  publish("signed-in")
+  authority.dispatch({ type: "session-started", adopt: true })
 }
 
-/** The server said no session, or the person signed out. */
-export function markSignedOut(): void {
+/**
+ * The session ended. `forget` is the person leaving on purpose; a server `401`
+ * (an expiry, another device's "sign out everywhere") is not that, and leaves
+ * their choice of the account standing for when a session is back.
+ */
+export function markSignedOut(options: { forget?: boolean } = {}): void {
   generation += 1
-  if (status === "signed-in") announceAccountChange()
-  publish("signed-out")
+  authority.dispatch({ type: "session-ended", forget: options.forget ?? false })
 }
 
 // A 401 ends the session only if nothing has changed it since that request
@@ -111,13 +98,12 @@ onFileHostUnauthorized(() => {
 /** Forget what is known, so the next `resolveSession` asks again. Tests. */
 export function resetSessionForTests(): void {
   pending = null
-  status = "unknown"
   generation += 1
-  for (const listener of listeners) listener()
+  authority.resetForTests()
 }
 
 function transportOrNull(): FileHostTransport | null {
-  return DATA_MODE === "static" ? null : createFileHostTransport()
+  return DATA_MODE === "static" ? null : createFileHostTransport("ceremony")
 }
 
 function isUnauthorized(error: unknown): boolean {
@@ -128,33 +114,65 @@ function isUnauthorized(error: unknown): boolean {
  * Ask the server, once, whether this browser has a session; later calls
  * return what was learned. Resolves to whether there is one.
  *
- * An unreachable server reads as signed out: nothing a session would unlock
- * can be fetched anyway, and the passkey screen says what went wrong when
- * the person tries.
+ * Only a caller that has reason to (the person chose their account, or is
+ * on the passkey screen) asks. A visitor learning on the device never causes
+ * this request: `lib/authority`'s `ensureSessionIfChosen` is the boot-time
+ * caller, and it asks only when the account was chosen.
+ *
+ * An unreachable server is not read as a lost session: the person's choice of
+ * the account stands, its calls fail where they can be seen, and the next
+ * caller asks again. Only a 401 ends the belief.
  */
 export function resolveSession(): Promise<boolean> {
-  if (status !== "unknown") return Promise.resolve(hasSession())
+  // Only an answer is final: an unreachable server is asked again.
+  const known = getSessionStatus()
+  if (known === "signed-in" || known === "signed-out") {
+    return Promise.resolve(hasSession())
+  }
   if (pending) return pending
 
   const transport = transportOrNull()
   if (!transport) {
-    publish("signed-out")
+    authority.dispatch({ type: "session-learned", session: "signed-out" })
     return Promise.resolve(false)
   }
 
   const asked = generation
   // A ceremony or sign-out since this probe was sent knows better than it.
-  const settle = (answer: SessionStatus): boolean => {
-    if (generation === asked) publish(answer)
+  const settle = (
+    answer: "signed-in" | "signed-out" | "unreachable"
+  ): boolean => {
+    if (generation === asked) {
+      authority.dispatch({ type: "session-learned", session: answer })
+    }
     return hasSession()
   }
   pending = requestJSON<SessionView>(transport, "/auth/session")
     .then(() => settle("signed-in"))
-    .catch(() => settle("signed-out"))
+    // Only a 401 says there is no session. Anything else (a timeout, a 5xx, a
+    // refused connection, a CORS failure) says nothing about it.
+    .catch((error: unknown) =>
+      settle(isUnauthorized(error) ? "signed-out" : "unreachable")
+    )
     .finally(() => {
       pending = null
     })
   return pending
+}
+
+/**
+ * `resolveSession`, but only for someone who chose their account.
+ *
+ * This is what boot and a returning account user's first call use. A visitor
+ * learning on the device has no reason to ask a server whether they hold a
+ * session, so for them it asks nothing and sends nothing: the first request a
+ * cookie rides on is one they started themselves, on the passkey screen.
+ */
+export function resolveSessionIfChosen(): Promise<boolean> {
+  if (authority.getSnapshot().choice !== "account") {
+    return Promise.resolve(hasSession())
+  }
+  return resolveSession()
 }
 
 const POST: RequestInit = { method: "POST" }
@@ -255,7 +273,7 @@ async function leave(path: string, init: RequestInit = POST): Promise<void> {
       if (!isUnauthorized(error)) throw error
     })
   }
-  markSignedOut()
+  markSignedOut({ forget: true })
 }
 
 /** End this browser's session. */
@@ -265,7 +283,10 @@ export const signOut = (): Promise<void> => leave("/auth/sign-out")
 export const signOutEverywhere = (): Promise<void> =>
   leave("/auth/sign-out-everywhere")
 
-/** Delete the account and everything the server stores for it. */
+/**
+ * Delete the account and everything stored under its ID in the server's
+ * database. Server logs and backups are not rewritten.
+ */
 export const deleteAccount = (): Promise<void> =>
   leave("/auth/account", { method: "DELETE" })
 
@@ -277,13 +298,18 @@ export const deleteAccount = (): Promise<void> =>
  * appears or ends, not just the next time the router re-evaluates a route.
  *
  * Read the name literally: this answers "does the client believe there is a
- * session", which is a statement about whether client-side work has anything
- * to do yet. Whether a request is *allowed* is the server's question.
+ * session", which is a statement about whether *account* work has anything to
+ * do. It does not say where the person's data lives (`useAuthority`), and
+ * learning on the device needs no session at all.
  */
 export function useHasSession(): boolean {
-  return useSyncExternalStore(subscribe, hasSession, hasSession)
+  return useSyncExternalStore(authority.subscribe, hasSession, hasSession)
 }
 
 export function useSessionStatus(): SessionStatus {
-  return useSyncExternalStore(subscribe, getSessionStatus, getSessionStatus)
+  return useSyncExternalStore(
+    authority.subscribe,
+    getSessionStatus,
+    getSessionStatus
+  )
 }

@@ -43,7 +43,10 @@ function deviceFetch(): typeof fetch {
  */
 function transport(): FileHostTransport {
   vi.stubGlobal("fetch", deviceFetch())
-  const real = createFileHostTransport({ baseUrl: BASE, source: "override" })
+  const real = createFileHostTransport("ceremony", {
+    baseUrl: BASE,
+    source: "override",
+  })
   if (real === null) throw new Error("expected a transport")
   return real
 }

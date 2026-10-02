@@ -10,6 +10,7 @@
  */
 
 import type { JSX, ReactNode } from "react"
+import { signInForTests } from "@/test-support/sign-in"
 import { resetViewport, setViewport } from "@/test-support/viewport"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import type * as ReactRouterModule from "@tanstack/react-router"
@@ -22,6 +23,11 @@ import {
   waitFor,
 } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+// These suites are about the account's store failing: start from an account.
+beforeEach(() => {
+  signInForTests()
+})
 
 const navigateSpy = vi.fn()
 const toastSpy = vi.fn()

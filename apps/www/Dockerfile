@@ -148,6 +148,18 @@ FROM mirror.gcr.io/library/nginx:alpine AS runtime
 
 COPY apps/www/nginx.security-headers.conf /etc/nginx/security-headers.conf
 
+#
+# `access_log off;` below is deliberate. The stock nginx:alpine image logs every
+# request to the container's stdout (client address, full request line with its
+# query string, referrer, user agent), and this server only serves a static
+# bundle: nothing here needs that record, and a log that is never written
+# cannot be kept, shipped or leaked. `error_log` is deliberately left on:
+# nginx's error log still carries the client address and request line when an
+# upstream fails, and it cannot be made address-free without dropping nginx's
+# own errors. Bounding how long what remains lives is the compose file's
+# `logging:` block (infra/compose/www.yml).
+# apps/www/src/lib/serving-privacy/__tests__/nginx-privacy.test.ts pins this.
+#
 RUN <<'EOF' > /etc/nginx/conf.d/default.conf
 server {
     listen 80;
@@ -155,6 +167,8 @@ server {
 
     root /usr/share/nginx/html;
     index index.html;
+
+    access_log off;
 
     location / {
         try_files $uri $uri/ /index.html;

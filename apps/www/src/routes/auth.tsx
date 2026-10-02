@@ -11,6 +11,8 @@ import {
   readLegacyClaim,
   signIn,
 } from "@/lib/auth"
+import { ACCOUNT_KEEPS } from "@/lib/auth/account-keeps"
+import { authority, useAuthoritySnapshot } from "@/lib/authority"
 import { DATA_MODE } from "@/lib/data-mode"
 import { passkeysSupported } from "@/lib/passkey"
 
@@ -64,6 +66,15 @@ const AuthPage = (): JSX.Element => {
       .finally(() => setPending(false))
   }
 
+  // Where a server is optional, an account is a choice and not a gate: say so,
+  // and let the person make the other one. It is persisted (`lib/authority`),
+  // so it is a decision and not a dismissed banner.
+  const optional = useAuthoritySnapshot().backend === "remote"
+  const chooseDevice = (): void => {
+    authority.chooseLocal()
+    void navigate({ href: typeof redirect === "string" ? redirect : "/app" })
+  }
+
   const changeStep = (next: AuthFlowStep): void => {
     setError(null)
     setStep(next)
@@ -88,6 +99,24 @@ const AuthPage = (): JSX.Element => {
       passkeyFirst
       passkeyOnly
       productName="Some UI"
+      {...(optional
+        ? {
+            footer: (
+              <>
+                Don&apos;t want an account?{" "}
+                <button
+                  type="button"
+                  className="text-foreground underline underline-offset-2"
+                  onClick={chooseDevice}
+                >
+                  Use Some UI on this device
+                </button>
+                . Your sessions stay in this browser and nothing about them is
+                sent to the server.
+              </>
+            ),
+          }
+        : {})}
       welcome={{
         eyebrow: "Welcome",
         title: "Ready for another learning session?",
@@ -115,8 +144,7 @@ const AuthPage = (): JSX.Element => {
                 }
               : {
                   title: "What the server keeps",
-                  description:
-                    "A random account ID and your passkey's public key. Never a name, an email or your device's details.",
+                  description: ACCOUNT_KEEPS,
                 }
       }
     />

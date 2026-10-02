@@ -49,6 +49,8 @@ import {
 } from "@tanstack/react-router"
 import { beforeAll, describe, expect, it, vi } from "vitest"
 
+import { authority } from "@/lib/authority"
+
 const build = vi.hoisted(() => ({ audiences: new Set<string>(["public"]) }))
 
 vi.mock("virtual:build-profile", () => ({
@@ -178,14 +180,21 @@ describe("audience gates", () => {
   })
 
   it("the same routes load past the gate when the build carries the audience", async () => {
-    for (const gate of gated) {
-      build.audiences = new Set(["public", gate.audience])
-      for (const url of gate.urls) {
-        const status = await gateStatusAt(url)
-        expect(status.get(gate.routeId), url).toBe("success")
+    // The `lan` layout is also the account's own (`requireAccount`), so this
+    // probe runs as someone who has one: it is the audience gate under test.
+    authority.dispatch({ type: "session-started", adopt: true })
+    try {
+      for (const gate of gated) {
+        build.audiences = new Set(["public", gate.audience])
+        for (const url of gate.urls) {
+          const status = await gateStatusAt(url)
+          expect(status.get(gate.routeId), url).toBe("success")
+        }
       }
+    } finally {
+      build.audiences = new Set(["public"])
+      authority.resetForTests()
     }
-    build.audiences = new Set(["public"])
   })
 
   it("the link scan recognises a quoted path and nothing looser", () => {

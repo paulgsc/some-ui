@@ -22,7 +22,7 @@
  * `file_host` answers `401` when a passkey session is missing, expired or
  * revoked. No caller acts on that differently from any other refusal: the
  * transport's unauthorized handler has already ended the session
- * (`lib/auth`), and `SignedOutRedirect` sends the person to the passkey
+ * (`lib/auth`), and `AccountRouteGuard` sends the person to the passkey
  * screen. So a 401 is a `rejected` with its own wording, not a `kind` every
  * `matchIntent`-style caller would have to grow an arm for and do nothing
  * in (#942/#935: an arm nobody acts on teaches that arms are decorative).

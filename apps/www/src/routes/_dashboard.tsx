@@ -30,11 +30,11 @@ import {
 import { cn, useIsMobile, useIsTerminal } from "some-ui-utils"
 
 import { isOnMobileSurface } from "@/lib/app-surface"
+import { authority } from "@/lib/authority"
 import { hasAudience, MOBILE_APP } from "@/lib/build-profile"
-import { AmbientIntentStatus } from "@/lib/intent/render"
 import { useIsDeclaredBounded } from "@/lib/route-bounds"
-import { useMigrationSignal } from "@/lib/tenant/migration-signal"
 import { AudioIndicator } from "@/components/audio/audio-indicator"
+import { AccountUnavailableBanner } from "@/components/auth/account-unavailable-banner"
 import { HexCombMark } from "@/components/brand/hex-comb-mark"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
@@ -185,7 +185,6 @@ const DashboardLayout = (): JSX.Element => {
   const isViewportRoute = isViewportPath(pathname)
   const isMobile = useIsMobile()
   const isTerminal = useIsTerminal()
-  const migrationSignal = useMigrationSignal()
 
   /**
    * `V` (the fixed, bounded, non-scrolling viewport) only exists while
@@ -242,12 +241,9 @@ const DashboardLayout = (): JSX.Element => {
                 canonical place a person learns this app has audio, and the
                 place the first-use notices point back to. */}
             <AudioIndicator />
-            {/* #947: sessions-backend.ts's partial-migration outcome, ambient
-                per #940 - quiet unless there's something to say, and never
-                silent when there is. */}
-            <AmbientIntentStatus state={migrationSignal} className="ml-2" />
           </header>
         )}
+        {!bareViewport && <AccountUnavailableBanner />}
         <div
           className={cn(
             "flex-1",
@@ -271,5 +267,9 @@ const DashboardLayout = (): JSX.Element => {
 }
 
 export const Route = createFileRoute("/_dashboard")({
+  // No page here renders against the wrong store: a returning account user
+  // waits (once, with the probe's own deadline) for their session to be
+  // checked, and anyone learning on the device does not wait at all.
+  beforeLoad: () => authority.settled(),
   component: DashboardLayout,
 })

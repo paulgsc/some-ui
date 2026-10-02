@@ -9,8 +9,10 @@
  * discovered on the day a phone is lost.
  *
  * Deleting is two presses, the second a button that only appears after the
- * first, because it cannot be undone: the server deletes every row it holds
- * for the account, and the passkeys stop opening anything.
+ * first, because it cannot be undone: the server deletes everything stored
+ * under the account's ID from its database (sessions, shelf items, reminders,
+ * passkeys), and the passkeys stop opening anything. Server logs and backups
+ * are not rewritten, and the copy next to the button says so.
  */
 
 import type { JSX } from "react"
@@ -26,6 +28,7 @@ import {
   signOut,
   signOutEverywhere,
 } from "@/lib/auth"
+import { ACCOUNT_KEEPS } from "@/lib/auth/account-keeps"
 import { DATA_MODE } from "@/lib/data-mode"
 import { useAsyncIntent } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
@@ -74,7 +77,7 @@ export const AccountSection = (): JSX.Element => {
         <Label id="account-heading">Account</Label>
         <p className="text-muted-foreground text-sm">
           {serverAccount
-            ? "Your passkey is your account. The server keeps a random account ID and your passkeys' public keys, never a name, an email or your device's details."
+            ? `Your passkey is your account. ${ACCOUNT_KEEPS}`
             : "This build has no server, so there is no account: everything stays in this browser."}
         </p>
       </div>
@@ -124,9 +127,11 @@ export const AccountSection = (): JSX.Element => {
           <Separator />
           <div className="space-y-2">
             <p className="text-muted-foreground text-sm">
-              Deleting removes everything the server stores for this account,
-              and your passkeys will no longer open anything here. This
-              can&apos;t be undone.
+              Deleting removes everything stored under this account&apos;s ID
+              from the server&apos;s database (your sessions, saved shelf items,
+              reminder and progress records, and passkeys), so your passkeys
+              will no longer open anything here. It does not rewrite server logs
+              or backups, and it can&apos;t be undone.
             </p>
             {confirmingDelete ? (
               <div className="flex flex-wrap gap-2">

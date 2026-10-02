@@ -79,7 +79,7 @@
     `@some-ui/interview` · `pedagogy/` · and every tutor skill
   ]
   #v(1em)
-  #text(size: 9.5pt)[Version 1.10 --- 2026-09-28]
+  #text(size: 9.5pt)[Version 1.11 --- 2026-10-02]
   #v(2cm)
 ]
 
@@ -2359,7 +2359,7 @@ also survives its relaxation.
   anyone else, and it does not enter a catalogue other learners read. A
   counter that names no unit and no outcome --- how far a subject's reminders
   have caught up with newly served content, say --- records neither, and this
-  remark does not reach it.
+  remark does not reach it. Remark 7.6 adds what a learner's account may hold.
 ]
 
 #remark("7.4", name: "Learner records are brief")[
@@ -2399,6 +2399,51 @@ also survives its relaxation.
   (Def. 7.2) extends to the practice record, which is the learner's own
   history; the pace is cheaper to relearn than to carry, and need not
   travel.
+]
+
+#remark("7.6", name: "What an account may hold")[
+  Axiom 7.1 (i)--(iii) and Remark 7.3 describe a client with no server of its
+  own. The application also runs against the project's file host, which can
+  hold an *account* the learner chooses, and this remark amends them for that
+  learner and no other. Learning on the device stays the default and stays
+  complete: for every build with no account, and for every learner who has not
+  chosen one, nothing a learner writes leaves the device, as Remark 7.3 says.
+
+  A learner who keeps an account may have the file host hold, against the
+  account's random identifier (an identity the learner claims, Remark 7.3 (b)),
+  three things and no others:
+  (a) their *sessions*: a plan the learner composed (its name, the activities
+  and layout they chose) with its status and the times it was started and
+  finished. A session is a schedule, not an observation (Def. 3.1): it names
+  no unit the learner was given within an activity and records nothing of how
+  they did on one;
+  (b) their *shelf*, exactly as Remark 7.3 admits it; and
+  (c) only if the learner turns on *reporting*, which is its own act, off by
+  default, made per device, and forgotten at every sign-in, sign-out and move
+  back to the device, so that it never carries from one account to the next:
+  the session-grain signals that let the server remind them with the browser
+  closed (a session was prepared, started, completed with the fraction
+  reached, or abandoned after an elapsed time), which session is open, and the
+  push address of the browser to remind.
+
+  Nothing in (a)--(c) is a belief, an evidence ring, a resume point, an
+  evaluation report or its $f$, a practice record, a pace, or an observation of
+  a unit (Defs. 3.1, 3.3; Rems. 7.4, 7.5). Those stay on the device
+  (Remark 7.3). Moving the sessions a device already holds into an account is
+  the learner's explicit act, taken per account and confirmed after being told
+  what would be sent, never a side effect of signing in; the device keeps what
+  it had. Losing the account, or only its session, costs the learner what the
+  account held and nothing else (Thm. 7.2): the device carries on from its own
+  sessions, and nothing is wiped, uploaded or merged by the loss.
+
+  This is about what the application sends, and what the server may be asked
+  to hold. It does not say what the server does with it beyond reminding, and
+  it does not reach what a network or a proxy observes of the request that
+  carries it: those are stated, with what enforces them, in the file host's
+  `docs/identity.md` ("What is still exposed"), and for the browser's side in
+  `docs/learner-data-authority.md`. Axiom 7.1 (iii) is amended to the extent
+  that the sessions in (a) are available on another device the learner signs
+  in on; the export document of Def. 7.2 remains the way to carry the rest.
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3103,6 +3148,16 @@ would cost.
   detecting speech, not grading it --- becomes a condition of
   Proposition 6.4 (i).
 
++ *An account turns out to carry what Remark 7.6 says it does not.* If a
+  request the application sends under an account holds a unit, a belief, an
+  evaluation report, a practice record or any per-unit outcome --- or reporting
+  is found to send before the learner turned it on, or to carry from one
+  account to the next --- then Remark 7.6 is false of the source and Remark
+  7.3's bound on what may leave the device is in force again. Cost: the
+  offending record is removed from the request, not admitted by amending the
+  remark. Detectable mechanically: `apps/www/tests/local-mode` records what the
+  built application sends with and without an account and without the opt-in.
+
 // ═══════════════════════════════════════════════════════════════════════════
 = Amendment Protocol
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3291,6 +3346,21 @@ ladder that trades teaching for engagement is not preferred on engagement
 alone. A note under the TPK-READ row points to it. Motivated by the final
 review of the v1.9 change (issue \#1569). The sealed story check planned as
 the next amendment (issue \#1568) now follows this one.
+
+*v1.11 --- 2026-10-02.* States what an account may hold, as a new item
+(Remark 7.6) rather than a rewrite of Remark 7.3, which gains one pointer
+sentence. A learner who keeps an account may have the file host hold their
+sessions (a schedule with times, not an observation), their shelf, and, only
+if they turn on reporting, session-grain signals, which session is open and a
+push address. Reporting is its own opt-in, off by default and forgotten at
+every sign-in and sign-out; the device keeps what it had; moving its sessions
+into an account is the learner's explicit, confirmed, per-account act. Adds a
+falsifier to §12. Motivated by the privacy review of the file host and the
+web tier (paulgsc/some-ui and paulgsc/server, stage A--C), which found that
+the application's account feature had been sending behaviour to the server,
+and uploading a browser's sessions to whichever account signed in first,
+without this canon admitting either. Filed with `apps/www/src/lib/authority`
+and `docs/learner-data-authority.md`, which implement and declare it.
 
 #pagebreak()
 

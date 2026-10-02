@@ -33,7 +33,7 @@ import { IntentButton, IntentFailure } from "@/lib/intent/render"
 import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import type { UserSettings } from "@/lib/tenant"
 import { settingsQuery, useSettings, useUpdateSettings } from "@/lib/tenant"
-import { AccountSection } from "@/components/settings/account-section"
+import { DataHomeSection } from "@/components/settings/data-home-section"
 import { DeviceSection } from "@/components/settings/device-section"
 import { StudyNudgeSection } from "@/components/settings/study-nudge-section"
 
@@ -260,7 +260,7 @@ const SettingsForm = ({
 const AccountCard = (): JSX.Element => (
   <Card className="max-w-xl">
     <CardContent className="pt-[var(--card-p,1.5rem)]">
-      {DEVICE_BACKEND ? <DeviceSection /> : <AccountSection />}
+      {DEVICE_BACKEND ? <DeviceSection /> : <DataHomeSection />}
     </CardContent>
   </Card>
 )

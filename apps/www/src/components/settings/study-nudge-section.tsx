@@ -51,7 +51,8 @@ import { matchIntent } from "@some-ui/intent-kit"
 import { Input, Label, Separator, Switch } from "@some-ui/shared"
 import { toast } from "sonner"
 
-import { DEVICE_BACKEND } from "@/lib/data-mode"
+import { useAuthoritySnapshot } from "@/lib/authority"
+import { DATA_MODE, DEVICE_BACKEND } from "@/lib/data-mode"
 import { useAsyncIntent } from "@/lib/intent"
 import { IntentButton, IntentFailure } from "@/lib/intent/render"
 import type { NudgePreferences } from "@/lib/study-nudge"
@@ -69,6 +70,8 @@ import {
 } from "@/lib/study-nudge/service-worker"
 import { clientOwnsNudgeDelivery } from "@/lib/study-nudge/use-study-nudge"
 import { useSessions } from "@/lib/tenant"
+
+import { ReportingControl } from "./reporting-control"
 
 /**
  * Words for the server's topic names. A topic this build has no label for
@@ -151,7 +154,12 @@ export const StudyNudgeSection = ({
 }): JSX.Element => {
   const supported = nudgesSupported()
   const permission = nudgePermission()
-  const serverDelivers = !clientOwnsNudgeDelivery()
+  const { reportingAllowed, backend } = useAuthoritySnapshot()
+  const serverDelivers = !clientOwnsNudgeDelivery(
+    DATA_MODE,
+    DEVICE_BACKEND,
+    reportingAllowed
+  )
 
   /**
    * What the browser actually holds, not what settings claim.
@@ -256,6 +264,7 @@ export const StudyNudgeSection = ({
   if (!supported) {
     return (
       <div className="space-y-2">
+        <ReportingControl preferences={preferences} />
         <Label>Study reminders</Label>
         <p className="text-muted-foreground text-sm">
           {/* The overwhelmingly likely cause on this app's own LAN setup, so
@@ -272,6 +281,8 @@ export const StudyNudgeSection = ({
   return (
     <div className="space-y-4">
       <Separator />
+
+      <ReportingControl preferences={preferences} />
 
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
@@ -411,7 +422,9 @@ export const StudyNudgeSection = ({
                 : "Reminders arrive even with the browser closed - this browser is registered with file_host."
               : DEVICE_BACKEND
                 ? "Reminders come from this phone as notifications, even with the app closed. Android may deliver one a few minutes late."
-                : "Reminders only fire while this app is open in a tab (it can be in the background). This build has no backend to notify you with no tab open - see docs/study-nudge.md."}
+                : backend === "remote"
+                  ? "Reminders only fire while this app is open in a tab (it can be in the background), and are worked out on this device from your sessions. To get them with the browser closed, keep an account and turn on Reminders and progress sync."
+                  : "Reminders only fire while this app is open in a tab (it can be in the background). This build has no backend to notify you with no tab open - see docs/study-nudge.md."}
           </p>
         </>
       ) : null}

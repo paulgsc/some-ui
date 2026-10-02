@@ -1,15 +1,11 @@
 import { TanstackDevtools } from "@tanstack/react-devtools"
 import type { QueryClient } from "@tanstack/react-query"
-import {
-  createRootRouteWithContext,
-  Outlet,
-  redirect,
-} from "@tanstack/react-router"
+import { createRootRouteWithContext, Outlet } from "@tanstack/react-router"
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
 
 import { keepToMobileSurface } from "@/lib/app-surface"
-import { isPublicPath, resolveSession } from "@/lib/auth"
-import { SignedOutRedirect } from "@/components/auth/signed-out-redirect"
+import { resolveSessionIfChosen } from "@/lib/auth"
+import { AccountRouteGuard } from "@/components/auth/account-route-guard"
 
 /**
  * What every route's `loader` is handed. The `queryClient` is the app's single
@@ -22,28 +18,20 @@ export type RouterContext = {
 }
 
 export const Route = createRootRouteWithContext<RouterContext>()({
-  beforeLoad: async ({ location }) => {
+  beforeLoad: ({ location }) => {
     // The Android app is sessions only; first, so no other page's own guard
     // (sign-in, an audience gate) runs for a path the phone never shows.
     keepToMobileSurface(location.pathname)
-    const isPublicRoute = isPublicPath(location.pathname)
-    // Asked once per page load, then answered from memory
-    // (`lib/auth`). A public route does not wait for the answer,
-    // but still asks, so `"/"` can swap to the signed-in landing in place.
-    if (isPublicRoute) {
-      void resolveSession()
-      return
-    }
-    if (!(await resolveSession())) {
-      throw redirect({
-        to: "/auth",
-        search: { redirect: location.href },
-      })
-    }
+    // Learning on the device needs no session, so no route waits for one and
+    // nothing is asked of a server to let someone in. A returning account
+    // user's session is checked in the background (once per page load, then
+    // answered from memory); the pages that really are the account's check it
+    // themselves (`requireAccount`, `routes/_dashboard/_lan.tsx`).
+    void resolveSessionIfChosen()
   },
   component: () => (
     <>
-      <SignedOutRedirect />
+      <AccountRouteGuard />
       <Outlet />
       {/* Vite strips this whole block (and its two devtools deps) from the
           production bundle - without the guard it also renders on the

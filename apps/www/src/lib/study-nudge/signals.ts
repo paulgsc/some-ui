@@ -161,7 +161,9 @@ export async function reportSignal(
   if ((deps.mode ?? DATA_MODE) === "static") return false
 
   const transport =
-    deps.transport === undefined ? createFileHostTransport() : deps.transport
+    deps.transport === undefined
+      ? createFileHostTransport("reporting")
+      : deps.transport
   if (!transport) return false
 
   try {
