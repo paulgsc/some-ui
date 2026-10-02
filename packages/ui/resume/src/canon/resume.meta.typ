@@ -330,7 +330,7 @@ backs should be cut, not kept and re-justified.
 
 == Counts
 
-*59 workspace packages, 6 browser extensions* --- counted 2026-10-01 by
+*55 workspace packages, 6 browser extensions* --- counted 2026-10-02 by
 `scripts/check-claims.mjs`, which walks the globs in `pnpm-workspace.yaml`
 (`packages/ui/*`, `apps/*`, `docs/canon`, `extensions/**`, `packages/*`,
 `crates/*`) for a `package.json`, the same method `pnpm -r list --depth -1`
@@ -342,7 +342,11 @@ catches build scripts): `some-censor`, `some-conveyor`, `some-drama`,
 `filter-classifier`, `docs`, and `scripts` are excluded — shared code and a
 test corpus, not shipped extensions.
 
-The package count is 58 -> 59 on 2026-10-01: `packages/ui/soundbites`, the
+The package count is 59 -> 55 on 2026-10-02: `packages/ui/input`,
+`packages/ui/stepper` and the two wasm crates only `input` loaded,
+`crates/some-crossword` and `crates/viewport-rotation`, were deleted. Nothing
+deployable rendered any of them. Before that it was 58 -> 59 on 2026-10-01:
+`packages/ui/soundbites`, the
 Android app's "say why" recorder and the first `apk`-audience workspace.
 Before that it was 59 -> 58 the same day: `packages/ui/searchbar`, a
 placeholder whose `src/index.ts` had been gutted to `export {}` and which no

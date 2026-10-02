@@ -10,8 +10,8 @@ const DEFAULT_CALLEE_NAMES = [
   "twMerge",
   "twJoin",
 ]
-// "language-${language}" (syntax-highlighter token classes, e.g.
-// packages/ui/input's code-display component) isn't a Tailwind utility —
+// "language-${language}" (a syntax highlighter's token classes) isn't a
+// Tailwind utility —
 // content-scanning it doing nothing is fine, so it's exempt by default.
 const DEFAULT_IGNORE = ["language-"]
 

@@ -511,11 +511,7 @@ importers:
 
   crates/polyhedron: {}
 
-  crates/some-crossword: {}
-
   crates/some-hexagon: {}
-
-  crates/viewport-rotation: {}
 
   docs/canon: {}
 
@@ -1010,9 +1006,6 @@ importers:
       '@some-ui/slideshow':
         specifier: workspace:*
         version: link:../ui/slideshow
-      '@some-ui/stepper':
-        specifier: workspace:*
-        version: link:../ui/stepper
       '@some-ui/topik':
         specifier: workspace:*
         version: link:../ui/topik
@@ -1396,55 +1389,6 @@ importers:
       '@some-ui/vite-config':
         specifier: workspace:*
         version: link:../../some-vite-config
-
-  packages/ui/input:
-    dependencies:
-      '@some-ui/dice-card':
-        specifier: workspace:*
-        version: link:../dice-card
-      '@some-ui/shared':
-        specifier: workspace:*
-        version: link:../shared
-      '@some-ui/some-crossword':
-        specifier: 0.0.4
-        version: 0.0.4
-      '@some-ui/styles':
-        specifier: workspace:*
-        version: link:../../some-styles
-      '@some-ui/viewport-rotation':
-        specifier: 0.0.4
-        version: 0.0.4
-      '@some-ui/wasm-loader':
-        specifier: workspace:*
-        version: link:../../wasm-loader
-      lucide-react:
-        specifier: 'catalog:'
-        version: 0.562.0(react@19.0.0)
-      react:
-        specifier: ^19.0.0
-        version: 19.0.0
-      react-dom:
-        specifier: ^19.0.0
-        version: 19.0.0(react@19.0.0)
-      some-ui-utils:
-        specifier: workspace:*
-        version: link:../../utils
-      zod:
-        specifier: 'catalog:'
-        version: 4.6.5
-    devDependencies:
-      '@some-ui/tsconfig':
-        specifier: workspace:*
-        version: link:../../tsconfig
-      '@some-ui/vite-config':
-        specifier: workspace:*
-        version: link:../../some-vite-config
-      concurrently:
-        specifier: 10.0.3
-        version: 10.0.3
-      eslint-import-resolver-typescript:
-        specifier: 4.4.5
-        version: 4.4.5(eslint-plugin-import-x@4.17.1(@typescript-eslint/utils@8.70.1(eslint@10.11.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)(typescript@5.9.3))(eslint-import-resolver-node@0.3.10(supports-color@10.2.2))(eslint@10.11.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2))(eslint-plugin-import@2.32.0)(eslint@10.11.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)
 
   packages/ui/interview:
     dependencies:
@@ -1915,55 +1859,6 @@ importers:
       '@types/react':
         specifier: ^19.0.4
         version: 19.2.17
-      concurrently:
-        specifier: 10.0.3
-        version: 10.0.3
-
-  packages/ui/stepper:
-    dependencies:
-      '@radix-ui/react-accordion':
-        specifier: 'catalog:'
-        version: 1.2.14(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@some-ui/shared':
-        specifier: workspace:*
-        version: link:../shared
-      '@some-ui/speech':
-        specifier: workspace:*
-        version: link:../../speech
-      '@some-ui/styles':
-        specifier: workspace:*
-        version: link:../../some-styles
-      '@types/canvas-confetti':
-        specifier: 1.9.0
-        version: 1.9.0
-      '@types/react':
-        specifier: ^19.0.4
-        version: 19.2.17
-      canvas-confetti:
-        specifier: 1.9.4
-        version: 1.9.4
-      lucide-react:
-        specifier: 'catalog:'
-        version: 0.562.0(react@19.0.0)
-      react:
-        specifier: ^19.0.0
-        version: 19.0.0
-      react-dom:
-        specifier: ^19.0.0
-        version: 19.0.0(react@19.0.0)
-      some-ui-input:
-        specifier: workspace:*
-        version: link:../input
-      some-ui-utils:
-        specifier: workspace:*
-        version: link:../../utils
-    devDependencies:
-      '@some-ui/tsconfig':
-        specifier: workspace:*
-        version: link:../../tsconfig
-      '@some-ui/vite-config':
-        specifier: workspace:*
-        version: link:../../some-vite-config
       concurrently:
         specifier: 10.0.3
         version: 10.0.3
@@ -5130,14 +5025,8 @@ packages:
   '@some-ui/polyhedron@0.0.4':
     resolution: {integrity: sha512-6KgJ6rRUCoKiFjSbwTh1Mvj5f7DctDcBEIpM65aoujv9daLTU6zJhwnRqn8fz4jYHQf51fWtt68wbvWChEIr+g==}
 
-  '@some-ui/some-crossword@0.0.4':
-    resolution: {integrity: sha512-OIn/Bf6y5ZF9ADuTjdvTsPDN8hdR1BWyzG9upewJbNLJlsnZ72kBzka2teLMY7J4O/Vy/uhRP5PnP5JHm4U3Mw==}
-
   '@some-ui/some-hexagon@0.0.5':
     resolution: {integrity: sha512-S00SDGTSlR80KL9zOy7pT20e+vFhZ/x/E8AfFP7Or7Yk1IWqYbMZt1hSzhyDDFthCTeGhNNqaGkBJFj9J/FUHA==}
-
-  '@some-ui/viewport-rotation@0.0.4':
-    resolution: {integrity: sha512-qFYwIsWJifkaJ2CbzxGU6cHvc90/z624QAo1zOSv4vTpNgAYgqv0br5F6+HB1SNHZYqdqbZZLWnhM4cCrkR65g==}
 
   '@stencil/core@4.45.1':
     resolution: {integrity: sha512-/b8CItmSwOzZwafxXwomJnN9X/Ic/Fxum9ka/RDHmADVf4DA4152uY7zitzLV+vk8JdXxKA7FKyLT3GKNo9R3A==}
@@ -5737,9 +5626,6 @@ packages:
 
   '@types/babel__traverse@7.28.0':
     resolution: {integrity: sha512-8PvcXf70gTDZBgt9ptxJ8elBeBjcLOAcOtoO/mPJjtji1+CdGbHgm77om1GrsPxsiE+uXIpNSK64UYaIwQXd4Q==}
-
-  '@types/canvas-confetti@1.9.0':
-    resolution: {integrity: sha512-aBGj/dULrimR1XDZLtG9JwxX1b4HPRF6CX9Yfwh3NvstZEm1ZL7RBnel4keCPSqs1ANRu1u2Aoz9R+VmtjYuTg==}
 
   '@types/chai@5.2.3':
     resolution: {integrity: sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==}
@@ -6725,9 +6611,6 @@ packages:
 
   caniuse-lite@1.0.30001810:
     resolution: {integrity: sha512-TITQPUkaz+aVk5GL6NhOdwk1aEaNTSDPsGFWrTuhKGtjTF70jL/Oht2W4c6rXUe5fu7Ie19VIahAXHIIiWWNeg==}
-
-  canvas-confetti@1.9.4:
-    resolution: {integrity: sha512-yxQbJkAVrFXWNbTUjPqjF7G+g6pDotOUHGbkZq2NELZUMDpiJ85rIEazVb8GTaAptNW2miJAXbs1BtioA251Pw==}
 
   ce-la-react@0.3.2:
     resolution: {integrity: sha512-QJ6k4lOD/btI08xG8jBPxRCGXvCnusGGkTsiXk0u3NqUu/W+BXRnFD4PYjwtqh8AWmGa5LDbGk0fLQsqr0nSMA==}
@@ -13954,11 +13837,7 @@ snapshots:
 
   '@some-ui/polyhedron@0.0.4': {}
 
-  '@some-ui/some-crossword@0.0.4': {}
-
   '@some-ui/some-hexagon@0.0.5': {}
-
-  '@some-ui/viewport-rotation@0.0.4': {}
 
   '@stencil/core@4.45.1':
     optionalDependencies:
@@ -14549,8 +14428,6 @@ snapshots:
   '@types/babel__traverse@7.28.0':
     dependencies:
       '@babel/types': 7.29.8
-
-  '@types/canvas-confetti@1.9.0': {}
 
   '@types/chai@5.2.3':
     dependencies:
@@ -15698,8 +15575,6 @@ snapshots:
   caniuse-lite@1.0.30001803: {}
 
   caniuse-lite@1.0.30001810: {}
-
-  canvas-confetti@1.9.4: {}
 
   ce-la-react@0.3.2(react@19.0.0):
     dependencies:

@@ -272,9 +272,8 @@ jobs:
             # this is NOT turbo-filtered the way the steps above are.
             #
             # STORYBOOK_SCOPE=packages compiles every story under packages/**,
-            # and a story reaching a sibling workspace by package name
-            # (packages/ui/input's demo-dice -> @some-ui/dice-card) resolves it
-            # through node_modules to that package's dist/. "Build (affected
+            # and a story reaching a sibling workspace by package name resolves
+            # it through node_modules to that package's dist/. "Build (affected
             # packages)" only covers the changed package and its dependents, so
             # any workspace outside that closure has no dist and the build dies
             # on "Rolldown failed to resolve", pointing at a file the PR never

@@ -21,8 +21,8 @@ pnpm install
 #   Both scripts now carry `--filter='!./crates/*'`, so the only difference
 #   between them is the resource-limit wrapper.
 # - The crates filter lives in the root package.json rather than here. The
-#   Rust/wasm-bindgen crates (leetype-wasm, some-crossword,
-#   viewport-rotation, polyhedron, hangul-game-core, some-hexagon) are
+#   Rust/wasm-bindgen crates (leetype-wasm, polyhedron, hangul-game-core,
+#   some-hexagon) are
 #   consumed from the npm registry by every workspace that needs them, so
 #   nothing in a normal build depends on crates/*/dist. Building them
 #   requires wasm-pack, the wasm32-unknown-unknown target and wasm-opt's
@@ -30,11 +30,8 @@ pnpm install
 #   of cargo compilation. When a task genuinely needs a locally built crate,
 #   ask for it declaratively with `pnpm build:crates` (or run
 #   `scripts/bootstrap-wasm-crates.sh` first on a cold sandbox).
-# - `--continue=always`: packages/ui/input's own build still fails here even
-#   with the wasm crates excluded from the graph, because its source
-#   directly imports them (TS2307 — tracked separately as debt, not fixed by
-#   this hook). Without --continue, that one failure aborts the whole turbo
-#   run and leaves every other, unrelated package unbuilt too.
+# - `--continue=always`: without it, one package's build failure aborts the
+#   whole turbo run and leaves every other, unrelated package unbuilt too.
 pnpm build:unsafe --continue=always || true
 
 # apps/www's build regenerates src/routeTree.gen.ts via

@@ -2,8 +2,7 @@
  * Regression coverage for #660: the production CSP header blocked
  * WebAssembly instantiation (missing 'wasm-unsafe-eval'), breaking every
  * wasm-bindgen crate apps/www ships (hangul game via @some-ui/honeycomb,
- * leetype via @some-ui/leetype, crossword + viewport-rotation via
- * some-ui-input).
+ * leetype via @some-ui/leetype).
  *
  * These tests don't boot nginx/Docker: they read the literal header string
  * from apps/www/nginx.security-headers.conf (the file both the Dockerfile
