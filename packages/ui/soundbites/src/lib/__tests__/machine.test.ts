@@ -317,4 +317,51 @@ describe("step", () => {
       [{ type: "stopPlayback" }, { type: "remove", id: "a" }]
     )
   })
+
+  it("shares only what it read, one activity at a time, stopping playback first", () => {
+    const playing = step(here(), { type: "playPressed", id: "a" }).state
+    const sharing = step(playing, { type: "sharePressed", ids: ["b", "zz"] })
+    expect(sharing.state.activity.kind).toBe("sharing")
+    expect(sharing.effects).toEqual([
+      { type: "stopPlayback" },
+      { type: "share", bites: [bite("b", 10)] },
+    ])
+
+    // While the sheet is up: no recording, playing, deleting or second share.
+    for (const event of [
+      { type: "recordPressed" },
+      { type: "playPressed", id: "a" },
+      { type: "deleteConfirmed", id: "a" },
+      { type: "sharePressed", ids: ["a"] },
+    ] as const)
+      expect(step(sharing.state, event).effects).toEqual([])
+
+    // Nothing kept by those ids, or no list read: nothing to share.
+    expect(step(here(), { type: "sharePressed", ids: ["zz"] }).effects).toEqual(
+      []
+    )
+    expect(
+      step(initialState("direct"), { type: "sharePressed", ids: ["a"] }).effects
+    ).toEqual([])
+  })
+
+  it("says how a share ended, except when the person backed out", () => {
+    const sharing = step(here(), { type: "sharePressed", ids: ["a"] }).state
+    const ended = (
+      outcome: "shared" | "cancelled" | "missing" | "failed"
+    ): SoundbitesState => step(sharing, { type: "shareEnded", outcome }).state
+
+    expect(ended("shared")).toMatchObject({
+      activity: { kind: "idle" },
+      notice: NOTICES.shared,
+    })
+    expect(ended("cancelled").notice).toBe("")
+    expect(ended("missing").notice).toBe(NOTICES.shareMissing)
+    expect(ended("failed").notice).toBe(NOTICES.notShared)
+    // A late answer for a share no longer in progress changes nothing.
+    const idle = here()
+    expect(step(idle, { type: "shareEnded", outcome: "failed" }).state).toBe(
+      idle
+    )
+  })
 })

@@ -25,6 +25,9 @@
     "react-dom": "^19.0.0"
   },
   "dependencies": {
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/filesystem": "^8.1.3",
+    "@capacitor/share": "^8.0.2",
     "@some-ui/shared": "workspace:*",
     "lucide-react": "catalog:",
     "some-ui-utils": "workspace:*"

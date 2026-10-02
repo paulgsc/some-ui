@@ -456,14 +456,29 @@ try it in a desktop browser, run `SOME_UI_PROFILE=mobile pnpm dev` in
 WebView). Refused, the page says where in Android Settings to turn it back
 on.
 
-**Not done yet: getting soundbites off the phone.** Today they can be played
-back and deleted on the phone, and nothing more. Delivery (a file to share,
-or the home server, for an agent to read), then clearing what was
-delivered, is the next step. A WebView cannot download a blob, so on the
-phone a file needs `@capacitor/filesystem` and `@capacitor/share` (neither
-adds a permission or an exported component: their manifests are empty,
-checked 2026-10-01 at 8.1.3 and 8.0.2), and the home server needs a route to
-receive them.
+**Getting them off the phone: the share sheet.** Each kept soundbite has a
+send button, and with two or more, **Send all** sends every one. Either opens
+Android's share sheet with the audio files (`soundbite-<UTC time>-<id>.webm`)
+and one `soundbites.md` that says what the recordings are and lists, per
+file, what the app noted above. The notes are for whoever is handed the
+files: an assistant asked what got in the way reads them beside the audio,
+and audio alone says none of that. Drive, an email or an assistant's app are
+all targets; the page has no opinion.
+
+A WebView has neither `navigator.share` nor blob downloads, so the phone's
+port (`packages/ui/soundbites/src/lib/phone.ts`) writes the files to the
+app's cache with `@capacitor/filesystem` and hands their paths to
+`@capacitor/share`, which serves them through the app's existing
+`FileProvider` `cache-path`. Neither plugin adds a permission or an exported
+component (their manifests are empty, checked at 8.1.3 and 8.0.2). The cache
+folder is emptied at the start of the next share, since a target may read
+the files after the sheet closes, so at most one share's files sit there.
+Anywhere but the Android app the page offers no send.
+
+**Not done yet:** sending them to the home server for an agent to read
+without a person in between (a `file_host` route to receive them), a
+transcript beside each recording (most assistants read text, not WebM), and
+clearing what was delivered.
 
 ## Not done yet
 

@@ -5,6 +5,7 @@ import { bite, memoryStore } from "@soundbites/lib/__tests__/fixture"
 import type { SoundbiteSituation } from "@soundbites/lib/machine"
 import type { Recording, StartRecording, Take } from "@soundbites/lib/recorder"
 import { RecordingError } from "@soundbites/lib/recorder"
+import type { ShareSoundbites } from "@soundbites/lib/share"
 import type { SoundbiteContext } from "@soundbites/lib/types"
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import type { Mock } from "vitest"
@@ -49,6 +50,7 @@ function setup(
     mic?: FakeMic
     autoStart?: boolean
     onAutoStart?: () => void
+    share?: ShareSoundbites
   } = {}
 ): ReturnType<typeof memoryStore> &
   ReturnType<typeof render> & { mic: FakeMic } {
@@ -58,7 +60,11 @@ function setup(
     <Soundbites
       situation={() => SITUATION}
       source="sessions"
-      ports={{ store: memory.store, startRecording: mic.start }}
+      ports={{
+        store: memory.store,
+        startRecording: mic.start,
+        ...(options.share === undefined ? {} : { share: options.share }),
+      }}
       autoStart={options.autoStart}
       onAutoStart={options.onAutoStart}
     />
@@ -572,5 +578,59 @@ describe("Soundbites", () => {
     expect(await screen.findByText("Nothing kept yet.")).toBeInTheDocument()
     expect(kept.size).toBe(0)
     confirm.mockRestore()
+  })
+
+  it("sends every kept one, with notes on them, through the share sheet", async () => {
+    const share = vi.fn<ShareSoundbites>(() => Promise.resolve("shared"))
+    setup({ kept: [bite("a", 5), bite("b", 10)], share })
+
+    await tap("Send all 2")
+
+    await waitFor(() => expect(share).toHaveBeenCalledTimes(1))
+    const sent = share.mock.calls[0]?.[0]
+    expect(sent?.title).toBe("2 soundbites from Some UI")
+    expect(sent?.files.map((file) => file.name)).toEqual([
+      "soundbite-20261001T115500Z-a.webm",
+      "soundbite-20261001T115000Z-b.webm",
+      "soundbites.md",
+    ])
+    expect(
+      await screen.findByText(/^Shared, with a note of when/)
+    ).toBeInTheDocument()
+  })
+
+  it("sends one, says nothing if the person backs out, and plays nothing meanwhile", async () => {
+    let answer: (outcome: "cancelled") => void = () => undefined
+    const share = vi.fn<ShareSoundbites>(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve
+        })
+    )
+    setup({ kept: [bite("a", 5), bite("b", 10)], share })
+    const [first] = await screen.findAllByRole("button", { name: /^Send / })
+    if (first === undefined) throw new Error("no send button")
+    await settle(() => fireEvent.click(first))
+
+    await waitFor(() => expect(share).toHaveBeenCalledTimes(1))
+    expect(share.mock.calls[0]?.[0].files).toHaveLength(2)
+    // The sheet is up: nothing else on the list takes a tap.
+    for (const button of screen.getAllByRole("button", { name: /^Play / }))
+      expect(button).toBeDisabled()
+
+    await settle(() => answer("cancelled"))
+    await waitFor(() =>
+      expect(screen.getAllByRole("button", { name: /^Play / })[0]).toBeEnabled()
+    )
+    expect(screen.queryByText(/Shared|couldn't be shared/)).toBeNull()
+  })
+
+  it("offers no send where there is no share sheet", async () => {
+    setup({ kept: [bite("a", 5), bite("b", 10)] })
+
+    expect(
+      await screen.findAllByRole("button", { name: /^Play / })
+    ).toHaveLength(2)
+    expect(screen.queryByRole("button", { name: /^Send / })).toBeNull()
   })
 })

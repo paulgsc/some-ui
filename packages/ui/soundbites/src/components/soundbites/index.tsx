@@ -13,6 +13,10 @@
  * the screen turning off, the app going to the background, or the page being
  * left. What was said up to then is the soundbite.
  *
+ * Getting them off the phone is the share sheet: one recording, or all of
+ * them, each with a notes file saying what they are and what the app noted,
+ * so they can go to Drive, an email or an assistant to make sense of.
+ *
  * This component only renders and forwards taps. What happens, in what
  * order, and which late result still counts is `lib/machine.ts`; talking to
  * the microphone, the database and `Audio` is `lib/runtime.ts`. It owns one
@@ -39,7 +43,7 @@ import type { RecordingFailure } from "@soundbites/lib/recorder"
 import type { SoundbitesPorts } from "@soundbites/lib/runtime"
 import { createSoundbites } from "@soundbites/lib/runtime"
 import type { Soundbite, SoundbiteSource } from "@soundbites/lib/types"
-import { Mic, Pause, Play, Square, Trash2 } from "lucide-react"
+import { Mic, Pause, Play, Share2, Square, Trash2 } from "lucide-react"
 import { cn } from "some-ui-utils"
 
 export type SoundbitesProps = {
@@ -91,6 +95,7 @@ const RECORD_LABELS: Record<Activity["kind"], string> = {
   opening: "Opening the microphone",
   recording: "Done, keep it",
   saving: "Keeping it",
+  sharing: "Sending",
 }
 
 const RecordButton = ({
@@ -103,7 +108,10 @@ const RecordButton = ({
   const recording = activity.kind === "recording"
   const elapsed = recording ? activity.elapsed : 0
   const level = recording ? activity.level : 0
-  const busy = activity.kind === "opening" || activity.kind === "saving"
+  const busy =
+    activity.kind === "opening" ||
+    activity.kind === "saving" ||
+    activity.kind === "sharing"
   const progress = recording ? Math.min(1, elapsed / SOUNDBITE_MAX_MS) : 0
   const warning = recording && SOUNDBITE_MAX_MS - elapsed <= WARN_MS
 
@@ -189,6 +197,7 @@ const KeptSoundbite = ({
   disabled,
   onPlay,
   onReplaceInstead,
+  onShare,
   onDelete,
 }: {
   bite: Soundbite
@@ -199,6 +208,8 @@ const KeptSoundbite = ({
   disabled: boolean
   onPlay: () => void
   onReplaceInstead: () => void
+  /** Absent where there is no share sheet to send it to. */
+  onShare: (() => void) | null
   onDelete: () => void
 }): JSX.Element => {
   const when = formatWhen(bite.recordedAt, now)
@@ -248,6 +259,18 @@ const KeptSoundbite = ({
             </button>
           ))}
       </div>
+      {onShare !== null && (
+        <Button
+          size="icon"
+          variant="ghost"
+          className="text-muted-foreground hover:text-foreground shrink-0"
+          onClick={onShare}
+          disabled={disabled}
+          aria-label={`Send ${when}`}
+        >
+          <Share2 className="size-4" aria-hidden="true" />
+        </Button>
+      )}
       <Button
         size="icon"
         variant="ghost"
@@ -279,7 +302,7 @@ export const Soundbites = ({
   useEffect(() => runtime.setSituation(situation))
   const state = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot)
   const { activity, library, choice, notice, blocked } = state
-  const { dispatch } = runtime
+  const { dispatch, canShare } = runtime
 
   const now = new Date()
   const recording = activity.kind === "recording"
@@ -446,11 +469,40 @@ export const Soundbites = ({
                   onReplaceInstead={() =>
                     dispatch({ type: "replacePicked", id: bite.id })
                   }
+                  onShare={
+                    canShare
+                      ? (): void =>
+                          dispatch({ type: "sharePressed", ids: [bite.id] })
+                      : null
+                  }
                   onDelete={() => remove(bite, when)}
                 />
               )
             })}
           </ul>
+        )}
+
+        {canShare && kept !== null && kept.length > 1 && (
+          <div className="space-y-2 pt-1 text-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                dispatch({
+                  type: "sharePressed",
+                  ids: kept.map((bite) => bite.id),
+                })
+              }
+              disabled={!usable}
+            >
+              <Share2 className="size-4" aria-hidden="true" />
+              Send all {kept.length}
+            </Button>
+            <p className="text-muted-foreground text-xs">
+              To Drive, an email or an assistant, with a note of when and around
+              what each was said.
+            </p>
+          </div>
         )}
       </section>
     </div>

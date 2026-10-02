@@ -7,7 +7,8 @@
  * deletes none of this.
  *
  * The ports are the browser's machines, which we do not control
- * (`getUserMedia`/`MediaRecorder`, `Audio`, IndexedDB, the page's visibility).
+ * (`getUserMedia`/`MediaRecorder`, `Audio`, IndexedDB, the page's visibility,
+ * Android's share sheet).
  * Each is reached through a narrow function whose results come back as our
  * own events, and nothing here records the state of one of them.
  */
@@ -21,6 +22,8 @@ import type {
 import { initialState, step } from "./machine"
 import type { Recording, StartRecording } from "./recorder"
 import { RecordingError } from "./recorder"
+import type { ShareSoundbites } from "./share"
+import { soundbiteShare } from "./share"
 import type { SoundbiteStore } from "./store"
 import type { SoundbiteSource } from "./types"
 
@@ -47,6 +50,12 @@ export type SoundbitesPorts = {
    * unsubscribe.
    */
   onVisibility: (listener: (hidden: boolean) => void) => () => void
+  /**
+   * Hands files to the system's share sheet, or null where there is none
+   * to hand them to (anything but the Android app), and the page then
+   * offers no share.
+   */
+  share: ShareSoundbites | null
 }
 
 export type SoundbitesOptions = {
@@ -62,6 +71,8 @@ export type SoundbitesRuntime = {
   getSnapshot: () => SoundbitesState
   subscribe: (listener: () => void) => () => void
   dispatch: (intent: SoundbitesIntent) => void
+  /** Whether this page can send soundbites anywhere (`ports.share`). */
+  canShare: boolean
   /** Where the app stands, read once as each take is kept. */
   setSituation: (situation: () => SoundbiteSituation) => void
   /**
@@ -215,6 +226,30 @@ export function createSoundbites(
         options.onAutoStart?.()
         return
       }
+      case "share": {
+        const { share } = ports
+        if (share === null) {
+          dispatch({ type: "shareEnded", outcome: "failed" })
+          return
+        }
+        const { bites } = effect
+        Promise.all(bites.map((bite) => ports.store.audio(bite.id)))
+          .then((audio) => {
+            const kept = bites.flatMap((bite, i) => {
+              const blob = audio[i]
+              return blob === undefined || blob === null
+                ? []
+                : [{ bite, audio: blob }]
+            })
+            if (kept.length < bites.length) return "missing" as const
+            return share(soundbiteShare(kept))
+          })
+          .then(
+            (outcome) => dispatch({ type: "shareEnded", outcome }),
+            () => dispatch({ type: "shareEnded", outcome: "failed" })
+          )
+        return
+      }
       default: {
         assertNever(effect)
       }
@@ -239,6 +274,7 @@ export function createSoundbites(
       }
     },
     dispatch,
+    canShare: ports.share !== null,
     setSituation(next): void {
       situation = next
     },

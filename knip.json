@@ -32,7 +32,9 @@
     "apps/mobile": {
       "ignoreDependencies": [
         "@capacitor-community/sqlite",
-        "@capacitor/local-notifications"
+        "@capacitor/filesystem",
+        "@capacitor/local-notifications",
+        "@capacitor/share"
       ]
     },
     "extensions/common": {

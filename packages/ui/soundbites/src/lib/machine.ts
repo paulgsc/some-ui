@@ -8,10 +8,11 @@
  *
  * What used to be rules each async path had to remember is now structure:
  *
- * - **One activity at a time.** Playing, opening the microphone, recording
- *   and saving are arms of one union, so "playing while the microphone
- *   opens" (or while recording) cannot be written down. Pressing record
- *   while playing stops the playback in the same step.
+ * - **One activity at a time.** Playing, opening the microphone, recording,
+ *   saving and sharing are arms of one union, so "playing while the
+ *   microphone opens" (or while recording, or "recording while the share
+ *   sheet is up") cannot be written down. Pressing record while playing
+ *   stops the playback in the same step, and so does sharing.
  * - **The list shown is a read that succeeded, or unknown.** `Library` is
  *   `reading`, `unreadable` or `read`; there is no stale list and no zero
  *   that was not read.
@@ -44,6 +45,7 @@ import {
   SOUNDBITE_MIN_MS,
 } from "./policy"
 import type { RecordingFailure, Take } from "./recorder"
+import type { ShareOutcome } from "./share"
 import type { Soundbite, SoundbiteContext, SoundbiteSource } from "./types"
 
 /** What the app knows when a take is kept, apart from the way in. */
@@ -65,6 +67,8 @@ export type Activity =
       readonly level: number
     }
   | { readonly kind: "saving" }
+  /** Packing the audio and notes, then the share sheet, until it answers. */
+  | { readonly kind: "sharing" }
 
 export type SoundbitesState = {
   /** Whether the page is mounted. A take cut short by leaving is kept. */
@@ -107,6 +111,8 @@ export type SoundbitesIntent =
   | { readonly type: "deleteConfirmed"; readonly id: string }
   | { readonly type: "replacePicked"; readonly id: string }
   | { readonly type: "retryRead" }
+  /** Send these kept ones off the phone, through the share sheet. */
+  | { readonly type: "sharePressed"; readonly ids: ReadonlyArray<string> }
 
 /** What the page, the clock and the ports report. */
 type SoundbitesSignal =
@@ -141,6 +147,11 @@ type SoundbitesSignal =
   | { readonly type: "playbackEnded"; readonly seq: number }
   | { readonly type: "removed"; readonly id: string }
   | { readonly type: "removeFailed" }
+  | {
+      readonly type: "shareEnded"
+      /** Also "missing" when a recording's audio was not there to send. */
+      readonly outcome: ShareOutcome | "missing" | "failed"
+    }
 
 export type SoundbitesEvent = SoundbitesIntent | SoundbitesSignal
 
@@ -166,6 +177,8 @@ export type SoundbitesEffect =
   | { readonly type: "stopPlayback" }
   | { readonly type: "remove"; readonly id: string }
   | { readonly type: "announceAutoStart" }
+  /** The audio of each of `bites`, with notes on them, to the share sheet. */
+  | { readonly type: "share"; readonly bites: ReadonlyArray<Soundbite> }
 
 export type Step = {
   readonly state: SoundbitesState
@@ -180,7 +193,21 @@ export const NOTICES = {
   notPlayable: "That recording couldn't be played.",
   notDeleted: "That one couldn't be deleted. Try again?",
   notStarted: "The screen went away before the microphone opened. Tap to talk.",
+  shared: "Shared, with a note of when and around what each was said.",
+  shareMissing: "A recording's audio is missing, so nothing was shared.",
+  notShared: "That couldn't be shared. Try again?",
 } as const
+
+const SHARE_NOTICES: Record<
+  Extract<SoundbitesEvent, { type: "shareEnded" }>["outcome"],
+  string
+> = {
+  shared: NOTICES.shared,
+  // Backing out of the share sheet is not a failure to report.
+  cancelled: "",
+  missing: NOTICES.shareMissing,
+  failed: NOTICES.notShared,
+}
 
 export function initialState(source: SoundbiteSource): SoundbitesState {
   return {
@@ -559,6 +586,32 @@ export function step(state: SoundbitesState, event: SoundbitesEvent): Step {
 
     case "replacePicked": {
       return stay({ ...state, choice: event.id })
+    }
+
+    case "sharePressed": {
+      if (!canUseKept(activity) || state.library.kind !== "read")
+        return stay(state)
+      const wanted = new Set(event.ids)
+      const bites = state.library.kept.filter((bite) => wanted.has(bite.id))
+      if (bites.length === 0) return stay(state)
+      return {
+        state: { ...state, activity: { kind: "sharing" }, notice: "" },
+        effects: [
+          ...(activity.kind === "playing"
+            ? [{ type: "stopPlayback" } as const]
+            : []),
+          { type: "share", bites },
+        ],
+      }
+    }
+
+    case "shareEnded": {
+      if (activity.kind !== "sharing") return stay(state)
+      return stay({
+        ...state,
+        activity: { kind: "idle" },
+        notice: SHARE_NOTICES[event.outcome],
+      })
     }
 
     default: {
