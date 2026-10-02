@@ -70,8 +70,11 @@ export const SHARED_LIBRARY = 2
 /** Own code untouched for longer than this counts as stale. */
 export const STALE_DAYS = 60
 
+// Manifests, docs and config are upkeep, not work on the story: any
+// `*.config.*` (vite, vitest, eslint, uno, playwright, capacitor, ...) and
+// `*.setup.*`, tsconfigs, and the files every workspace carries.
 const NOT_OWN_WORK =
-  /(^|\/)(package\.json|CHANGELOG\.md|README\.md|tsconfig[^/]*\.json|eslint\.config\.[cm]?js|vite\.config\.ts|vitest\.config\.ts|vitest\.setup\.ts|knip\.json)$|\.(test|spec|stories)\.[cm]?[jt]sx?$|\/(__tests__|tests?)\//
+  /(^|\/)(package\.json|CHANGELOG\.md|README\.md|tsconfig[^/]*\.json|knip\.json|[^/]+\.(config|setup)\.[cm]?[jt]sx?)$|\.(test|spec|stories)\.[cm]?[jt]sx?$|\/(__tests__|tests?)\//
 
 const REQUIRED_SCRIPTS: ReadonlyArray<ReadonlyArray<string>> = [
   ["lint", "lint:js"],

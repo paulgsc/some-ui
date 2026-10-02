@@ -66,6 +66,25 @@ describe("lastOwnChange", () => {
     })
   })
 
+  it("does not count config of any kind as own work", () => {
+    const commits: Array<CommitFacts> = [
+      {
+        date: "2026-09-30",
+        files: [
+          "packages/ui/a/uno.config.ts",
+          "packages/ui/a/playwright.config.ts",
+          "packages/ui/a/vite.config.mts",
+          "packages/ui/a/capacitor.config.ts",
+          "packages/ui/a/vitest.setup.ts",
+        ],
+      },
+      { date: "2026-08-01", files: ["packages/ui/a/src/x.ts"] },
+    ]
+    expect(lastOwnChange("packages/ui/a", commits, dirs).date).toBe(
+      "2026-08-01"
+    )
+  })
+
   it("does not count a sweep across many workspaces as own work", () => {
     const sweepDirs = Array.from(
       { length: SWEEP_WORKSPACES + 1 },
