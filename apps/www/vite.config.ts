@@ -10,6 +10,7 @@ import { buildAudiencePlugin, MOBILE_PROFILE } from "./build.profiles.ts"
 import {
   describeTarget,
   fileHostDevPlugin,
+  isBlockedProxyPath,
   resolveFileHostTarget,
 } from "./file-host.dev.ts"
 import styleContext from "./style.context.ts"
@@ -200,6 +201,10 @@ export default defineConfig(
         [FILE_HOST_PROXY_PATH]: {
           target: fileHostProxyTarget,
           changeOrigin: true,
+          // `false` answers 404 (and refuses a WebSocket upgrade the same
+          // way). See `isBlockedProxyPath`.
+          bypass: (req): false | undefined =>
+            isBlockedProxyPath(req.url) ? false : undefined,
           rewrite: (path): string =>
             path.replace(new RegExp(`^${FILE_HOST_PROXY_PATH}`), ""),
           // Name the backend, the same way the TTS proxy names its
