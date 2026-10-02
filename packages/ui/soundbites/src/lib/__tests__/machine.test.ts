@@ -205,6 +205,55 @@ describe("step", () => {
     ])
   })
 
+  it("never records while the page is hidden, even if the mic opens late", () => {
+    const opening = step(here(), { type: "recordPressed" }).state
+    const hidden = step(opening, { type: "hidden" }).state
+    const opened = step(hidden, { type: "micOpened", at: 0 })
+    expect(opened.effects).toEqual([{ type: "discardTake" }])
+    expect(opened.state.activity.kind).toBe("idle")
+    expect(opened.state.notice).toBe(NOTICES.notStarted)
+
+    // Back on screen before the mic opened (a permission dialog, say): record.
+    const back = run(opening, { type: "hidden" }, { type: "shown" }).state
+    expect(step(back, { type: "micOpened", at: 0 }).effects).toEqual([
+      { type: "startClock" },
+    ])
+  })
+
+  it("reads once for its own save, and still catches a change while a save fails", () => {
+    const saving = step(recording(), { type: "recordPressed" }).state
+    const taken = step(saving, {
+      type: "taken",
+      take: take(),
+      id: "t1",
+      at: "2026-10-02T00:00:00.000Z",
+      situation: SITUATION,
+    })
+    const save = taken.effects[0]
+    if (save?.type !== "save") throw new Error("a save")
+    // The store reports the commit before the save's own promise lands.
+    const noted = step(taken.state, { type: "storeChanged" })
+    expect(noted.effects).toEqual([])
+    expect(
+      step(noted.state, { type: "saved", bite: save.bite }).effects
+    ).toEqual([{ type: "read", seq: 2 }])
+
+    // Another page's save commits while ours fails: still re-read.
+    expect(step(noted.state, { type: "saveFailed" }).effects).toEqual([
+      { type: "read", seq: 2 },
+    ])
+    // Ours fails and nothing else changed: nothing to read.
+    expect(step(taken.state, { type: "saveFailed" }).effects).toEqual([])
+  })
+
+  it("re-reads the list when the store changes, while the page is here", () => {
+    expect(step(here(), { type: "storeChanged" }).effects).toEqual([
+      { type: "read", seq: 2 },
+    ])
+    const gone = step(here(), { type: "left" }).state
+    expect(step(gone, { type: "storeChanged" }).effects).toEqual([])
+  })
+
   it("resumes, not restarts, when it arrives again after leaving (StrictMode)", () => {
     const first = step(initialState("sessions"), {
       type: "arrived",

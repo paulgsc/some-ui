@@ -18,6 +18,12 @@
  * - **A late result for something superseded is dropped here.** Reads and
  *   plays carry the sequence number of the request that asked for them, and
  *   any result whose number is not the latest is ignored.
+ * - **Nothing records while the page is off screen.** A take recording when
+ *   the page is hidden is finished and kept; a microphone that opens while
+ *   it is hidden is let go. Either order of events ends the same way.
+ * - **A store change from elsewhere is read.** Another instance of this page
+ *   (the one left mid-take, still saving) can commit after this one read
+ *   the list; the store reports each commit, and the list is re-read.
  * - **The way in is kept until a take is stored.** `source` says how the
  *   person got here and becomes "direct" only on `saved`, so a retry after a
  *   failed save still records the way in.
@@ -59,8 +65,10 @@ export type Activity =
   | { readonly kind: "saving" }
 
 export type SoundbitesState = {
-  /** Whether the page is showing. A take cut short by leaving is kept. */
+  /** Whether the page is mounted. A take cut short by leaving is kept. */
   readonly page: "new" | "here" | "left"
+  /** Whether the page is on screen. Nothing records while it is not. */
+  readonly visible: boolean
   readonly library: Library
   readonly activity: Activity
   /** Why the microphone last refused, until the next try. */
@@ -73,6 +81,13 @@ export type SoundbitesState = {
   readonly readSeq: number
   /** The latest play asked for; a result for any other is stale. */
   readonly playSeq: number
+  /**
+   * Saves and removes this page has asked for and not yet heard back on.
+   * Each one re-reads the list when it lands, so a store change seen
+   * meanwhile only needs noting (`changedMeanwhile`), not a read of its own.
+   */
+  readonly writing: number
+  readonly changedMeanwhile: boolean
   /** A save's read, which says how many are kept once it lands. */
   readonly keptNote: {
     readonly seq: number
@@ -94,6 +109,9 @@ type SoundbitesSignal =
   | { readonly type: "arrived"; readonly autoStart: boolean }
   | { readonly type: "left" }
   | { readonly type: "hidden" }
+  | { readonly type: "shown" }
+  /** The store committed a change, possibly from another page instance. */
+  | { readonly type: "storeChanged" }
   | { readonly type: "ticked"; readonly now: number; readonly level: number }
   | { readonly type: "micOpened"; readonly at: number }
   | { readonly type: "micFailed"; readonly reason: RecordingFailure }
@@ -157,11 +175,13 @@ export const NOTICES = {
   audioMissing: "That recording's audio is missing.",
   notPlayable: "That recording couldn't be played.",
   notDeleted: "That one couldn't be deleted. Try again?",
+  notStarted: "The screen went away before the microphone opened. Tap to talk.",
 } as const
 
 export function initialState(source: SoundbiteSource): SoundbitesState {
   return {
     page: "new",
+    visible: true,
     library: { kind: "reading" },
     activity: { kind: "idle" },
     blocked: null,
@@ -170,6 +190,8 @@ export function initialState(source: SoundbiteSource): SoundbitesState {
     source,
     readSeq: 0,
     playSeq: 0,
+    writing: 0,
+    changedMeanwhile: false,
     keptNote: null,
   }
 }
@@ -209,6 +231,19 @@ function finishRecording(state: SoundbitesState): Step {
     state: { ...state, activity: { kind: "saving" } },
     effects: [{ type: "stopClock" }, { type: "finishTake" }],
   }
+}
+
+/**
+ * One of this page's writes has landed. A write that changed the store
+ * re-reads the list; one that failed re-reads only if the store changed
+ * meanwhile (another page instance's save, say).
+ */
+function writeLanded(state: SoundbitesState, changed: boolean): Step {
+  const writing = Math.max(0, state.writing - 1)
+  const settled = { ...state, writing }
+  if (!changed && !state.changedMeanwhile) return stay(settled)
+  if (writing > 0 && !changed) return stay(settled)
+  return read({ ...settled, changedMeanwhile: false })
 }
 
 /** Whether `seq` is the play the page is still waiting on. */
@@ -255,7 +290,19 @@ export function step(state: SoundbitesState, event: SoundbitesEvent): Step {
     }
 
     case "hidden": {
-      return finishRecording(state)
+      return finishRecording({ ...state, visible: false })
+    }
+
+    case "shown": {
+      return stay({ ...state, visible: true })
+    }
+
+    case "storeChanged": {
+      // A save or delete committed, maybe by the page instance that was
+      // left mid-take: re-read, so a remount does not keep a pre-save list.
+      // While a write of ours is out, its landing re-reads anyway.
+      if (state.writing > 0) return stay({ ...state, changedMeanwhile: true })
+      return state.page === "here" ? read(state) : stay(state)
     }
 
     case "recordPressed": {
@@ -292,10 +339,15 @@ export function step(state: SoundbitesState, event: SoundbitesEvent): Step {
 
     case "micOpened": {
       if (activity.kind !== "opening") return stay(state)
-      // Left while the microphone was opening: let it go.
-      if (state.page === "left")
+      // Left, or hidden, while the microphone was opening: let it go.
+      // Nothing records while the page is off screen.
+      if (state.page === "left" || !state.visible)
         return {
-          state: { ...state, activity: { kind: "idle" } },
+          state: {
+            ...state,
+            activity: { kind: "idle" },
+            notice: state.page === "left" ? state.notice : NOTICES.notStarted,
+          },
           effects: [{ type: "discardTake" }],
         }
       return {
@@ -339,15 +391,14 @@ export function step(state: SoundbitesState, event: SoundbitesEvent): Step {
         context: { ...event.situation, source: state.source },
       }
       return {
-        state,
+        state: { ...state, writing: state.writing + 1 },
         effects: [
           { type: "save", bite, audio: take.blob, replace: state.choice },
         ],
       }
     }
 
-    case "takeFailed":
-    case "saveFailed": {
+    case "takeFailed": {
       if (activity.kind !== "saving") return stay(state)
       return stay({
         ...state,
@@ -356,18 +407,29 @@ export function step(state: SoundbitesState, event: SoundbitesEvent): Step {
       })
     }
 
+    case "saveFailed": {
+      if (activity.kind !== "saving") return stay(state)
+      return writeLanded(
+        { ...state, activity: { kind: "idle" }, notice: NOTICES.notKept },
+        false
+      )
+    }
+
     case "saved": {
       if (activity.kind !== "saving") return stay(state)
       // Stored. A re-read that fails after this must not say otherwise, or
       // the retry it invites would keep it twice: the list goes unknown and
       // the notice still says kept.
-      const next = read({
-        ...state,
-        activity: { kind: "idle" },
-        source: "direct",
-        choice: null,
-        notice: `Kept, ${formatDuration(event.bite.durationMs)}.`,
-      })
+      const next = writeLanded(
+        {
+          ...state,
+          activity: { kind: "idle" },
+          source: "direct",
+          choice: null,
+          notice: `Kept, ${formatDuration(event.bite.durationMs)}.`,
+        },
+        true
+      )
       return {
         state: {
           ...next.state,
@@ -460,20 +522,20 @@ export function step(state: SoundbitesState, event: SoundbitesEvent): Step {
           ? stopPlay(state)
           : stay(state)
       return {
-        state: stopped.state,
+        state: { ...stopped.state, writing: stopped.state.writing + 1 },
         effects: [...stopped.effects, { type: "remove", id: event.id }],
       }
     }
 
     case "removed": {
-      return read({
-        ...state,
-        choice: state.choice === event.id ? null : state.choice,
-      })
+      return writeLanded(
+        { ...state, choice: state.choice === event.id ? null : state.choice },
+        true
+      )
     }
 
     case "removeFailed": {
-      return stay({ ...state, notice: NOTICES.notDeleted })
+      return writeLanded({ ...state, notice: NOTICES.notDeleted }, false)
     }
 
     case "replacePicked": {

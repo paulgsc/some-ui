@@ -1,3 +1,4 @@
+import type { JSX } from "react"
 import { StrictMode } from "react"
 import { Soundbites } from "@soundbites/components/soundbites"
 import { bite, memoryStore } from "@soundbites/lib/__tests__/fixture"
@@ -506,6 +507,39 @@ describe("Soundbites", () => {
     expect(mic.start).toHaveBeenCalledTimes(1)
     expect(mic.discard).not.toHaveBeenCalled()
     expect(onAutoStart).toHaveBeenCalledTimes(1)
+  })
+
+  it("shows a take saved by the page that was left, after coming back", async () => {
+    const memory = memoryStore()
+    const mic = fakeMic()
+    const save = memory.store.save
+    let commit: () => void = () => undefined
+    vi.spyOn(memory.store, "save").mockImplementationOnce(
+      (...args) =>
+        new Promise((resolve) => {
+          commit = (): void => {
+            void save(...args).then(resolve)
+          }
+        })
+    )
+    const page = (): JSX.Element => (
+      <Soundbites
+        situation={() => SITUATION}
+        ports={{ store: memory.store, startRecording: mic.start }}
+      />
+    )
+    const first = render(page())
+    await tap("Start talking")
+    // Left mid-take: the take is finishing and its save is still pending.
+    await settle(first.unmount)
+
+    render(page())
+    expect(await screen.findByText("Nothing kept yet.")).toBeInTheDocument()
+
+    await settle(commit)
+    expect(
+      await screen.findByRole("img", { name: "1 of 6 kept" })
+    ).toBeInTheDocument()
   })
 
   it("deletes a kept one after asking", async () => {

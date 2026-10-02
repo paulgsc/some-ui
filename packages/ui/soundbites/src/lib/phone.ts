@@ -36,10 +36,8 @@ const audioPlayer: Player = {
   },
 }
 
-function onPageHidden(listener: () => void): () => void {
-  const onChange = (): void => {
-    if (document.visibilityState === "hidden") listener()
-  }
+function onPageVisibility(listener: (hidden: boolean) => void): () => void {
+  const onChange = (): void => listener(document.visibilityState === "hidden")
   document.addEventListener("visibilitychange", onChange)
   return () => document.removeEventListener("visibilitychange", onChange)
 }
@@ -55,6 +53,6 @@ export function phonePorts(): SoundbitesPorts {
     player: audioPlayer,
     now: () => Date.now(),
     newId: () => crypto.randomUUID(),
-    onHidden: onPageHidden,
+    onVisibility: onPageVisibility,
   }
 }

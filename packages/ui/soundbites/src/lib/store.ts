@@ -21,6 +21,11 @@ export type SoundbiteStore = {
    */
   save: (bite: Soundbite, audio: Blob, replace: string | null) => Promise<void>
   remove: (id: string) => Promise<void>
+  /**
+   * Calls `listener` after each save or remove commits, on this page, so a
+   * page showing the list can re-read it. Returns an unsubscribe.
+   */
+  subscribe: (listener: () => void) => () => void
 }
 
 const DB_NAME = "some-ui.soundbites"
@@ -85,6 +90,10 @@ function open(): Promise<IDBDatabase> {
  */
 export function indexedDbSoundbiteStore(): SoundbiteStore {
   let db: Promise<IDBDatabase> | null = null
+  const listeners = new Set<() => void>()
+  const changed = (): void => {
+    for (const listener of listeners) listener()
+  }
   const connect = (): Promise<IDBDatabase> => {
     if (db === null) {
       // Best effort: a refusal still leaves ordinary (evictable) storage.
@@ -126,6 +135,7 @@ export function indexedDbSoundbiteStore(): SoundbiteStore {
       meta.put(bite)
       audios.put(audio, bite.id)
       await done(tx)
+      changed()
     },
 
     async remove(id): Promise<void> {
@@ -133,6 +143,14 @@ export function indexedDbSoundbiteStore(): SoundbiteStore {
       tx.objectStore(META).delete(id)
       tx.objectStore(AUDIO).delete(id)
       await done(tx)
+      changed()
+    },
+
+    subscribe(listener): () => void {
+      listeners.add(listener)
+      return (): void => {
+        listeners.delete(listener)
+      }
     },
   }
 }

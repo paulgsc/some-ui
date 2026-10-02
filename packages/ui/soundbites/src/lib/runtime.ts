@@ -41,8 +41,11 @@ export type SoundbitesPorts = {
   /** Milliseconds since the epoch. */
   now: () => number
   newId: () => string
-  /** Calls `listener` whenever the page is hidden; returns an unsubscribe. */
-  onHidden: (listener: () => void) => () => void
+  /**
+   * Calls `listener` whenever the page is hidden (`true`) or shown again
+   * (`false`); returns an unsubscribe.
+   */
+  onVisibility: (listener: (hidden: boolean) => void) => () => void
 }
 
 export type SoundbitesOptions = {
@@ -62,7 +65,7 @@ export type SoundbitesRuntime = {
   setSituation: (situation: () => SoundbiteSituation) => void
   /**
    * The page is showing: reads the list, auto-starts if asked, and listens
-   * for the page being hidden. Returns the matching detach, which keeps a
+   * for the page being hidden or shown and for the store changing. Returns the matching detach, which keeps a
    * take in progress. Attaching again after detaching resumes.
    */
   attach: () => () => void
@@ -240,9 +243,15 @@ export function createSoundbites(
     },
     attach(): () => void {
       dispatch({ type: "arrived", autoStart: options.autoStart })
-      const unsubscribe = ports.onHidden(() => dispatch({ type: "hidden" }))
+      const unwatchPage = ports.onVisibility((hidden) =>
+        dispatch({ type: hidden ? "hidden" : "shown" })
+      )
+      const unwatchStore = ports.store.subscribe(() =>
+        dispatch({ type: "storeChanged" })
+      )
       return () => {
-        unsubscribe()
+        unwatchPage()
+        unwatchStore()
         dispatch({ type: "left" })
       }
     },

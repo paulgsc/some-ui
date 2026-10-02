@@ -32,6 +32,10 @@ export function memoryStore(initial: ReadonlyArray<Soundbite> = []): {
   const kept = new Map(
     initial.map((b) => [b.id, { bite: b, audio: new Blob(["x"]) }])
   )
+  const listeners = new Set<() => void>()
+  const changed = (): void => {
+    for (const listener of listeners) listener()
+  }
   return {
     kept,
     store: {
@@ -43,11 +47,19 @@ export function memoryStore(initial: ReadonlyArray<Soundbite> = []): {
         const all = [...kept.values()].map((k) => k.bite)
         for (const id of displacedBy(all, replace)) kept.delete(id)
         kept.set(b.id, { bite: b, audio })
+        changed()
         return Promise.resolve()
       },
       remove: (id): Promise<void> => {
         kept.delete(id)
+        changed()
         return Promise.resolve()
+      },
+      subscribe: (listener): (() => void) => {
+        listeners.add(listener)
+        return (): void => {
+          listeners.delete(listener)
+        }
       },
     },
   }
