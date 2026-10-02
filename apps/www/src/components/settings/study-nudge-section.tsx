@@ -51,7 +51,8 @@ import { matchIntent } from "@some-ui/intent-kit"
 import { Input, Label, Separator, Switch } from "@some-ui/shared"
 import { toast } from "sonner"
 
-import { DEVICE_BACKEND } from "@/lib/data-mode"
+import { useAuthority } from "@/lib/authority"
+import { DATA_MODE, DEVICE_BACKEND } from "@/lib/data-mode"
 import { useAsyncIntent } from "@/lib/intent"
 import { IntentButton, IntentFailure } from "@/lib/intent/render"
 import type { NudgePreferences } from "@/lib/study-nudge"
@@ -151,7 +152,12 @@ export const StudyNudgeSection = ({
 }): JSX.Element => {
   const supported = nudgesSupported()
   const permission = nudgePermission()
-  const serverDelivers = !clientOwnsNudgeDelivery()
+  const { kind } = useAuthority()
+  const serverDelivers = !clientOwnsNudgeDelivery(
+    DATA_MODE,
+    DEVICE_BACKEND,
+    kind
+  )
 
   /**
    * What the browser actually holds, not what settings claim.

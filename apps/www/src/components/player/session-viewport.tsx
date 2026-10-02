@@ -13,7 +13,7 @@ import {
 import { LiveEditOverlay, OrchestratedYouTubeViewport } from "wireframes"
 
 import { useAudioPreferences } from "@/lib/audio-preferences/use-audio-preferences"
-import { useHasSession } from "@/lib/auth"
+import { useAuthority } from "@/lib/authority"
 import { useHangulVocab } from "@/lib/hangul-vocab"
 import { AmbientIntentStatus } from "@/lib/intent/render"
 import { loadLeetypeRoundRuns, loadLeetypeRounds } from "@/lib/leetype-content"
@@ -85,13 +85,14 @@ export const SessionViewport = ({
   // whether they play, and this is the seam between the two - without it,
   // the "Game sounds" toggle in the audio indicator would control nothing.
   const { preferences: audioPreferences } = useAudioPreferences()
-  // The learner shelf (paulgsc/server#387): offered only while the client
-  // believes there is a passkey session, since every shelf route is per
-  // person and answers 401 without one, and never on a build with no
-  // file_host (`createShelfClient` is then undefined). A session ending
-  // mid-lesson takes the shelf away with it; the lesson plays on, because
-  // nothing in either activity depends on a shelf being there.
-  const signedIn = useHasSession()
+  // The learner shelf (paulgsc/server#387): offered only while the learner's
+  // data is the account's, since every shelf route is per person and answers
+  // 401 without a session, and never on a build with no file_host
+  // (`createShelfClient` is then undefined). Learning on the device keeps no
+  // shelf: it would be a server store for someone who has not asked for one. A
+  // session ending mid-lesson takes the shelf away with it; the lesson plays
+  // on, because nothing in either activity depends on a shelf being there.
+  const signedIn = useAuthority().kind === "account"
   const shelves = useMemo(
     () =>
       signedIn

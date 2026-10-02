@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router"
 
+import { requireAccount } from "@/lib/auth"
 import { requireAudience } from "@/lib/build-profile"
 
 /**
@@ -18,7 +19,17 @@ import { requireAudience } from "@/lib/build-profile"
  *       take what they need from the workspace's `/contract`
  *   A3  a link to a route here from outside it sits behind `hasAudience`
  */
+const requireLan = requireAudience("lan")
+
+/**
+ * Also the account's own: these tools act as an operator, which only a signed-in
+ * account can be. Everything else in the app works on the device without one
+ * (`lib/auth/guards`).
+ */
 export const Route = createFileRoute("/_dashboard/_lan")({
-  beforeLoad: requireAudience("lan"),
+  beforeLoad: async ({ location }) => {
+    requireLan()
+    await requireAccount(location.href)
+  },
   component: Outlet,
 })

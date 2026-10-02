@@ -81,6 +81,30 @@ describe("loadLeetypeRounds - builds with a file_host", () => {
     expect(fetchSpy).toHaveBeenCalledTimes(3)
   })
 
+  it("reads the corpus with no credentials, so no account cookie rides on it", async () => {
+    vi.stubEnv("VITE_STATIC_DATA", undefined)
+    const fetchSpy = vi.fn((url: URL) =>
+      Promise.resolve(
+        url.href === httpBase()
+          ? jsonResponse({
+              version: "v",
+              rounds: [{ id: "a", version: 1, witnesses: [] }],
+            })
+          : jsonResponse({ id: "a" })
+      )
+    )
+    vi.stubGlobal("fetch", fetchSpy)
+
+    const { loadLeetypeRounds } = await loadModule()
+    await loadLeetypeRounds()
+
+    expect(fetchSpy).toHaveBeenCalledTimes(2)
+    const calls: ReadonlyArray<ReadonlyArray<unknown>> = fetchSpy.mock.calls
+    for (const call of calls) {
+      expect(call[1]).toMatchObject({ credentials: "omit" })
+    }
+  })
+
   it("fetches at most MAX_FETCHED_ROUNDS bodies from a large corpus", async () => {
     vi.stubEnv("VITE_STATIC_DATA", undefined)
     const { MAX_FETCHED_ROUNDS } = await loadModule()

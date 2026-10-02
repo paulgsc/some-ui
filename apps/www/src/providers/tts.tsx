@@ -5,7 +5,7 @@ import { cn } from "some-ui-utils"
 import { toast } from "sonner"
 
 import { useAudioPreferences } from "@/lib/audio-preferences/use-audio-preferences"
-import { useHasSession } from "@/lib/auth"
+import { useAuthority } from "@/lib/authority"
 import { DATA_MODE, DEVICE_BACKEND } from "@/lib/data-mode"
 import { useSettings } from "@/lib/tenant"
 import { describeTTSEndpoint, resolveTTSEndpoint } from "@/lib/tts-config"
@@ -104,26 +104,27 @@ export const TTSProvider = ({
 }: {
   children: ReactNode
 }): JSX.Element => {
-  // `SpeechProvider`'s mount effect builds a real adapter - an audio
-  // context, a network client - which is exactly the cost this app should
-  // not pay on the public landing page or the passkey screen, before there
-  // is a tenant workspace to speak for. `children` still renders either
-  // way: this tree wraps every route, and none of them should wait on a
-  // speech session nobody has asked for yet.
-  const hasSession = useHasSession()
+  // Where the lesson text is spoken depends on whose data this is. On an
+  // account the speech service is the server's (`mode: DATA_MODE`); on the
+  // device it is the browser's own voice (`"static"`), so what a learner reads
+  // aloud never reaches the operator's TTS container. Wait while a returning
+  // account user's authority is being decided: `children` still renders either
+  // way, because none of the routes should wait on a speech session nobody has
+  // asked for yet.
+  const { kind } = useAuthority()
   const { data: settings } = useSettings()
   const { preferences } = useAudioPreferences()
 
   discloseEndpoint()
 
-  if (!hasSession) return <>{children}</>
+  if (kind === "pending") return <>{children}</>
 
   return (
     <SpeechProvider
       config={{
         // The device build has a backend but no TTS service behind it, so
         // it speaks with the platform's own voice, as the static build does.
-        mode: DEVICE_BACKEND ? "static" : DATA_MODE,
+        mode: kind === "account" && !DEVICE_BACKEND ? DATA_MODE : "static",
         provider: settings?.ttsProvider,
         voiceId: settings?.ttsVoiceId || undefined,
         endpoint: resolveTTSEndpoint(),

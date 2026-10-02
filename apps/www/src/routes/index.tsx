@@ -10,7 +10,7 @@ import {
   Sparkles,
 } from "lucide-react"
 
-import { useHasSession } from "@/lib/auth"
+import { useAuthoritySnapshot } from "@/lib/authority"
 import { HexCombMark } from "@/components/brand/hex-comb-mark"
 import { ExtensionsPage } from "@/components/extensions/extensions-page"
 import { ThemeSwitcher } from "@/components/theme-switcher"
@@ -166,22 +166,30 @@ const Landing = (): JSX.Element => (
 )
 
 /**
- * `"/"` is two pages, chosen by whether there is a session.
+ * `"/"` is two pages.
  *
- * A visitor without one — a stranger sent a link, which on the public site is
- * everyone — gets the extensions comb as the front door: the site introduces
- * itself by showing what it has built rather than listing where to go. A
- * signed-in visitor gets the landing above, whose cards are the way into
- * their own work.
+ * Where a person can learn on the device (every build with a `file_host`,
+ * which is the `lan` image and the Android app), the landing above is the front
+ * door for everyone: its cards are the way into their own work, and none of it
+ * needs an account.
+ *
+ * On the public site there is no server and no one's work to resume, and
+ * visitors are mostly strangers sent a link, so the extensions comb is the
+ * front door: the site introduces itself by showing what it has built rather
+ * than listing where to go. Someone who has opened the demo there (a "session"
+ * that lives in memory) gets the landing.
  *
  * Chosen in the component rather than by redirecting in `beforeLoad`, so the
- * front door keeps the address `"/"` and a session appearing (a passkey
- * sign-in, or `lib/auth` learning of an existing one) swaps the page
- * in place. `useHasSession`
- * is the subscribing read for exactly that.
+ * front door keeps the address `"/"` and a change swaps the page in place.
  */
-const Root = (): JSX.Element =>
-  useHasSession() ? <Landing /> : <ExtensionsPage chrome="front" />
+const Root = (): JSX.Element => {
+  const { backend, session } = useAuthoritySnapshot()
+  return backend !== "none" || session === "signed-in" ? (
+    <Landing />
+  ) : (
+    <ExtensionsPage chrome="front" />
+  )
+}
 
 export const Route = createFileRoute("/")({
   component: Root,

@@ -59,7 +59,7 @@ describe("createFileHostTransport: credentials", () => {
 
   it("sends the session cookie to a published-port file_host, which is cross-origin", async () => {
     const spy = fetchSpy()
-    const transport = createFileHostTransport({
+    const transport = createFileHostTransport("ceremony", {
       baseUrl: "http://localhost:3000/api/v1",
       source: "published-port",
     })
@@ -74,7 +74,7 @@ describe("createFileHostTransport: credentials", () => {
 
   it("lets a caller of an uncredentialed read module opt out", async () => {
     const spy = fetchSpy()
-    const transport = createFileHostTransport({
+    const transport = createFileHostTransport("ceremony", {
       baseUrl: "http://localhost:3000/api/v1",
       source: "published-port",
     })

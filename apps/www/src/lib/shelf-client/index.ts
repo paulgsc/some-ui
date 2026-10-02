@@ -116,7 +116,7 @@ export function createShelfClient(
   activity: ShelfActivity,
   transport: FileHostTransport | null = DATA_MODE === "static"
     ? null
-    : createFileHostTransport()
+    : createFileHostTransport("account")
 ): ShelfClient | undefined {
   if (transport === null) return undefined
   const through = bodilessAsNull(transport)

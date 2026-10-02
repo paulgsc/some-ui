@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query"
 
-import { useHasSession } from "@/lib/auth"
+import { useAuthority } from "@/lib/authority"
 import { reportSessionTransition } from "@/lib/study-nudge/signals"
 
 import {
@@ -40,17 +40,18 @@ export { settingsKey } from "./queries"
  * these hooks can also be called from outside the routed tree entirely (a
  * provider mounted above the router, a future one nobody has written yet),
  * where there is no route guard to rely on. Gating the read here, once,
- * means any caller gets it for free instead of each one having to remember
- * to ask "is there a session" before it fetches.
+ * means any caller gets it for free.
  *
- * This is a waste guard, not a security one: a `useQuery` that never fires
- * is a request this tab never had to make (and, upstream of that, a
- * provider that skips mounting the expensive thing this data feeds - see
- * `providers/index.tsx` and `providers/tts.tsx`). Whether the request would
- * have been *allowed* is the server's question, not this one.
+ * What it waits for is the learner's data authority to be *decided*
+ * (`lib/authority`): the device needs no session, so there is nothing to wait
+ * for there, but a returning account user's is undecided until their session
+ * has been checked, and reading before then would flash the wrong store.
+ *
+ * This is a waste guard, not a security one: whether a request is *allowed*
+ * is the server's question, not this one.
  */
 function useTenantQueriesEnabled(): boolean {
-  return useHasSession()
+  return useAuthority().kind !== "pending"
 }
 
 export function useProfile(): UseQueryResult<UserProfile> {

@@ -14,14 +14,20 @@
  */
 
 import type { JSX, ReactNode } from "react"
+import { signInForTests } from "@/test-support/sign-in"
 import { matchIntent } from "@some-ui/intent-kit"
 import type { ActiveLifetime } from "@some-ui/types"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { act, renderHook } from "@testing-library/react"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { SessionRecord } from "@/lib/tenant"
 import { useLiveLayoutEditor } from "@/components/player/use-live-layout-editor"
+
+// These suites are about the account's store failing: start from an account.
+beforeEach(() => {
+  signInForTests()
+})
 
 function withQueryClient(): {
   wrapper: (props: { children: ReactNode }) => JSX.Element

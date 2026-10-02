@@ -9,6 +9,7 @@
  */
 
 import type { JSX, ReactNode } from "react"
+import { signInForTests } from "@/test-support/sign-in"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import type * as ReactRouterModule from "@tanstack/react-router"
 import {
@@ -23,6 +24,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import type * as TenantModule from "@/lib/tenant"
 import type { SessionRecord } from "@/lib/tenant"
+
+// These suites are about the account's store failing: start from an account.
+beforeEach(() => {
+  signInForTests()
+})
 
 function fixtureSession(id: string, name: string): SessionRecord {
   return {

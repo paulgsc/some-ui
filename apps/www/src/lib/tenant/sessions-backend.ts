@@ -1,47 +1,45 @@
 /**
- * Which `SessionsStore` this build talks to, decided by `DATA_MODE`.
+ * Which `SessionsStore` a call goes to, decided *per call* by the learner's
+ * data authority (`lib/authority`).
  *
- * The same bit that already chooses whether companion data is fetched or
- * bundled chooses this, because it is the same question: is there a backend
- * here at all.
+ * - **Local** — the device. `localStorage` (`sessions-repository`). Nothing
+ *   leaves the browser, and no account or session is needed. This is the
+ *   default wherever a `file_host` is optional, and the only store on the
+ *   GitHub Pages build.
+ * - **Account** — `file_host`, through the credentialed account transport.
+ *   Chosen by the person (signing in, or switching), never by default.
  *
- * - **`"static"`** — the GitHub Pages build. No `file_host`, no push, and
- *   `localStorage` is not a fallback there but the actual store. The client
- *   nudge policy stays with it; see `use-study-nudge.ts`.
- * - **`"server"`** — `vite dev`, `vite preview`, and the Docker image. The
- *   sessions live in `file_host` so that the server's policy can see them.
+ * The choice is read when a call *starts* and kept with it. If the authority
+ * is a different one by the time the call finishes (a sign-out, a switch,
+ * another account signing in), the result is dropped with a
+ * `StaleAuthorityError` rather than handed to a view that now reads another
+ * store. A write that already reached the old store stays there: it was made
+ * for the old authority, and nothing here moves it.
  *
- * ## Server mode does not fall back
+ * ## No fallback between the two
  *
- * A `file_host` that is down makes sessions fail, visibly, rather than
- * quietly reverting to `localStorage`. That is deliberate and it is the
- * less obvious of the two options: a silent fallback means writes land in
- * whichever store happened to be reachable at the time, and two divergent
- * histories with no way to tell which is which. An error naming `file_host`
- * (see `lib/file-host-config`) is recoverable; a split-brain store is not.
+ * A `file_host` that is down makes account sessions fail, visibly, rather than
+ * quietly writing to the device. That is deliberate: a silent fallback lands
+ * writes in whichever store happened to be reachable, and leaves two histories
+ * with no way to tell which is which. The only switch is the person's own, or
+ * a lost session, and a lost session is a *named* state (`accountUnavailable`)
+ * the UI says out loud, not a hidden retry.
  *
- * ## The migration runs before the first read
+ * ## Nothing is uploaded for the person
  *
- * Every call goes through `ready`, a promise that resolves once the
- * one-time upload in `sessions-migration.ts` has had its turn. It is
- * awaited rather than fired-and-forgotten so that the first `list()` cannot
- * return an empty array a moment before the migration fills it — which
- * would render "no sessions yet" at exactly the person whose sessions were
- * being carried over.
- *
- * The upload goes to per-person routes, so it starts only once this browser
- * is signed in, on the first call made after that. Started any earlier
- * (this module is imported before anyone signs in), it would meet a `401`,
- * spend its one turn, and leave the new account empty until a reload.
+ * Signing in does not copy this browser's sessions to the account. That used to
+ * happen on the first call after a sign-in, with no prompt, to whichever
+ * account signed in first. Moving them is an explicit, per-account act
+ * (`sessions-migration`, offered by the account screens), invariant LA2 in
+ * `lib/authority`.
  */
 
-import { resolveSession } from "@/lib/auth"
-import { DATA_MODE } from "@/lib/data-mode"
+import { resolveSessionIfChosen } from "@/lib/auth/session"
+import type { Authority } from "@/lib/authority"
+import { authority, StaleAuthorityError } from "@/lib/authority"
 import { createFileHostTransport } from "@/lib/file-host-config/client"
 
 import { createHttpSessionsRepository } from "./http-sessions-repository"
-import { reportPartialMigration } from "./migration-signal"
-import { migrateLocalSessions } from "./sessions-migration"
 import type {
   CreateSessionInput,
   SessionsStore,
@@ -52,100 +50,75 @@ import type { StorageAdapter } from "./storage"
 import { browserLocalStorage } from "./storage"
 import type { SessionRecord, SessionStatus } from "./types"
 
-/**
- * A store that defers every call until `ready()` settles.
- *
- * `ready` never rejects: a migration that could not finish is reported and
- * the store is used anyway. The sessions that did not upload are still in
- * `localStorage` under their own key and will be retried on the next load,
- * so the right response to a half-done migration is to carry on, not to
- * take the app down.
- */
-function afterReady(
-  store: SessionsStore,
-  ready: () => Promise<void>
-): SessionsStore {
-  return {
-    list: async (): Promise<Array<SessionRecord>> => {
-      await ready()
-      return store.list()
-    },
-    get: async (id: string): Promise<SessionRecord | null> => {
-      await ready()
-      return store.get(id)
-    },
-    create: async (input: CreateSessionInput): Promise<SessionRecord> => {
-      await ready()
-      return store.create(input)
-    },
-    update: async (
-      id: string,
-      patch: UpdateSessionInput
-    ): Promise<SessionRecord> => {
-      await ready()
-      return store.update(id, patch)
-    },
-    remove: async (id: string): Promise<void> => {
-      await ready()
-      return store.remove(id)
-    },
-    removeMany: async (ids: ReadonlyArray<string>): Promise<void> => {
-      await ready()
-      return store.removeMany(ids)
-    },
-    updateStatusMany: async (
-      ids: ReadonlyArray<string>,
-      status: SessionStatus
-    ): Promise<Array<SessionRecord>> => {
-      await ready()
-      return store.updateStatusMany(ids, status)
-    },
-    duplicate: async (id: string): Promise<SessionRecord> => {
-      await ready()
-      return store.duplicate(id)
-    },
+/** What `createSessionsBackend` reads from the world; every part is a test seam. */
+export type SessionsBackendDeps = {
+  storage?: StorageAdapter
+  /** Settles a returning account user's undecided authority. */
+  settle?: () => Promise<unknown>
+  /** The account store for the authority a call began under. `null`: nothing to talk to. */
+  remote?: (token: Authority) => SessionsStore | null
+}
+
+function defaultRemote(): (token: Authority) => SessionsStore | null {
+  // One account repository per authority incarnation: its transport refuses to
+  // send once the authority has moved on, so it must not outlive it.
+  let held: { epoch: number; store: SessionsStore | null } | null = null
+  return (token) => {
+    if (held?.epoch !== token.epoch) {
+      const transport = createFileHostTransport("account")
+      held = {
+        epoch: token.epoch,
+        store: transport ? createHttpSessionsRepository(transport) : null,
+      }
+    }
+    return held.store
   }
 }
 
 export function createSessionsBackend(
-  mode = DATA_MODE,
-  storage: StorageAdapter = browserLocalStorage,
-  signedIn: () => Promise<boolean> = resolveSession
+  deps: SessionsBackendDeps = {}
 ): SessionsStore {
-  if (mode === "static") return createSessionsRepository(storage)
+  const local = createSessionsRepository(deps.storage ?? browserLocalStorage)
+  const settle = deps.settle ?? resolveSessionIfChosen
+  const remote = deps.remote ?? defaultRemote()
 
-  const transport = createFileHostTransport()
-  // No `window`, so no base URL: SSR and the unit tests land here. The
-  // localStorage repository is the honest answer for both — there is
-  // nothing to talk to.
-  if (!transport) return createSessionsRepository(storage)
-
-  const remote = createHttpSessionsRepository(transport)
-
-  const migrate = (): Promise<void> =>
-    migrateLocalSessions(remote, storage)
-      .then((outcome) => {
-        if (outcome.kind !== "partial") return
-        reportPartialMigration(
-          outcome.migrated,
-          outcome.remaining,
-          outcome.error
-        )
-      })
-      .catch(() => {
-        // Reading localStorage threw (private mode, a corrupted blob). There
-        // is nothing to migrate that can be read, and refusing to serve
-        // sessions over it would be a strange trade.
-      })
-
-  let migration: Promise<void> | null = null
-  const ready = async (): Promise<void> => {
-    // Signed out, the call itself goes ahead and meets the server's 401;
-    // the migration waits for a call made with a session.
-    if (!(await signedIn())) return
-    migration ??= migrate()
-    await migration
+  /** The authority this call runs under, once a returning account user's is decided. */
+  async function begin(): Promise<Authority> {
+    if (authority.getAuthority().kind === "pending") await settle()
+    return authority.getAuthority()
   }
 
-  return afterReady(remote, ready)
+  async function through<T>(
+    run: (store: SessionsStore) => Promise<T>
+  ): Promise<T> {
+    const token = await begin()
+    // No `window`, so no base URL (SSR, a unit test): the device is the honest
+    // answer, as it is for `local`.
+    const store = token.kind === "account" ? (remote(token) ?? local) : local
+    const result = await run(store)
+    if (!authority.isCurrent(token)) {
+      throw new StaleAuthorityError("a sessions call")
+    }
+    return result
+  }
+
+  return {
+    list: (): Promise<Array<SessionRecord>> => through((s) => s.list()),
+    get: (id: string): Promise<SessionRecord | null> =>
+      through((s) => s.get(id)),
+    create: (input: CreateSessionInput): Promise<SessionRecord> =>
+      through((s) => s.create(input)),
+    update: (id: string, patch: UpdateSessionInput): Promise<SessionRecord> =>
+      through((s) => s.update(id, patch)),
+    remove: (id: string): Promise<void> => through((s) => s.remove(id)),
+    removeMany: (ids: ReadonlyArray<string>): Promise<void> =>
+      through((s) => s.removeMany(ids)),
+    updateStatusMany: (
+      ids: ReadonlyArray<string>,
+      status: SessionStatus
+    ): Promise<Array<SessionRecord>> =>
+      through((s) => s.updateStatusMany(ids, status)),
+    duplicate: (id: string): Promise<SessionRecord> =>
+      through((s) => s.duplicate(id)),
+  }
 }

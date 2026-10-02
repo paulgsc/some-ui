@@ -51,6 +51,8 @@
 import { useEffect, useRef } from "react"
 import type { RuntimeMode } from "@some-ui/fetch-kit"
 
+import type { AuthorityKind } from "@/lib/authority"
+import { useAuthority } from "@/lib/authority"
 import { DATA_MODE, DEVICE_BACKEND } from "@/lib/data-mode"
 import { useSessions, useSettings } from "@/lib/tenant"
 
@@ -69,21 +71,29 @@ import {
 const POLL_INTERVAL_MS = 5 * 60_000
 
 /**
- * Whether this build's client is the one that raises notifications.
+ * Whether this client is the one that raises notifications.
  *
- * The same bit `sessions-backend.ts` uses to pick a store picks the
- * trigger, and for the same underlying reason: it is the answer to "is
- * there a backend here".
+ * It is when there is no backend to do it (`mode === "static"`), and when
+ * the learner's data is on the device, not the account: a server that is not
+ * holding someone's sessions has nothing to base a reminder on, so the
+ * client's own policy reads the sessions it has and raises one while a tab is
+ * open. That is the same trigger the static build has always had, which is
+ * the point: learning on the device is that build's behaviour with a `lan`
+ * server nearby.
  *
  * The Android app is the exception that answers "yes" with a backend: its
  * backend is in-process and has no push to send, so there too the client's
  * own policy decides, and the OS delivers (`./native`).
+ *
+ * `authority` defaults to the account, which is what every caller before the
+ * device became a place to learn assumed.
  */
 export function clientOwnsNudgeDelivery(
   mode: RuntimeMode = DATA_MODE,
-  device: boolean = DEVICE_BACKEND
+  device: boolean = DEVICE_BACKEND,
+  authority: AuthorityKind = "account"
 ): boolean {
-  return mode === "static" || device
+  return mode === "static" || device || authority !== "account"
 }
 
 export type NudgeTickDeps = {
@@ -133,7 +143,8 @@ export function useStudyNudge(): void {
   const preferences: NudgePreferences =
     settings?.notifications ?? DEFAULT_NUDGE_PREFERENCES
 
-  const deliver = clientOwnsNudgeDelivery()
+  const { kind } = useAuthority()
+  const deliver = clientOwnsNudgeDelivery(DATA_MODE, DEVICE_BACKEND, kind)
 
   // The interval callback reads the latest sessions and preferences through
   // refs rather than closing over them, so it is installed once instead of

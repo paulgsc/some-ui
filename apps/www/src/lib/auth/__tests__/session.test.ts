@@ -65,6 +65,7 @@ function bodyOf(call: Call | undefined): unknown {
 const auth = await import("@/lib/auth")
 
 beforeEach(() => {
+  window.localStorage.clear()
   server.calls.length = 0
   server.answer = (): Response => json({})
   auth.resetSessionForTests()
@@ -113,6 +114,60 @@ describe("resolveSession", () => {
       throw new TypeError("Failed to fetch")
     }
     await expect(auth.resolveSession()).resolves.toBe(false)
+  })
+})
+
+describe("resolveSessionIfChosen", () => {
+  it("sends nothing for someone who never chose their account", async () => {
+    server.answer = (): Response => json({ expiresAt: 1 })
+    await expect(auth.resolveSessionIfChosen()).resolves.toBe(false)
+    expect(server.calls).toEqual([])
+    expect(auth.getSessionStatus()).toBe("unknown")
+  })
+
+  it("asks once for someone who did, and believes the answer", async () => {
+    window.localStorage.setItem(
+      "some-ui.authority.v1",
+      JSON.stringify({ choice: "account" })
+    )
+    auth.resetSessionForTests()
+    server.answer = (): Response => json({ expiresAt: 1 })
+
+    await expect(auth.resolveSessionIfChosen()).resolves.toBe(true)
+    await auth.resolveSessionIfChosen()
+    expect(server.calls.map((call) => call.route)).toEqual(["/auth/session"])
+  })
+})
+
+describe("what signing in and out do to where the data lives", () => {
+  it("adopting the account on a ceremony, and forgetting it only when the person leaves", async () => {
+    const { authority } = await import("@/lib/authority")
+    expect(authority.getSnapshot().choice).toBe("local")
+
+    await auth.signIn()
+    expect(authority.getSnapshot().authority.kind).toBe("account")
+    expect(authority.getSnapshot().choice).toBe("account")
+
+    await auth.signOut()
+    expect(authority.getSnapshot().authority.kind).toBe("local")
+    expect(authority.getSnapshot().choice).toBe("local")
+  })
+
+  it("keeps the account as the person's choice when a request meets a 401", async () => {
+    const { authority } = await import("@/lib/authority")
+    const { createFileHostTransport, requestJSON } = await import(
+      "@/lib/file-host-config/client"
+    )
+    await auth.signIn()
+    server.answer = unauthorized
+    const transport = createFileHostTransport("ceremony")
+    if (!transport) throw new Error("the mocked transport is always present")
+
+    await expect(requestJSON(transport, "/sessions")).rejects.toThrow()
+
+    expect(authority.getSnapshot().authority.kind).toBe("local")
+    expect(authority.getSnapshot().choice).toBe("account")
+    expect(authority.getSnapshot().accountUnavailable).toBe(true)
   })
 })
 
@@ -169,7 +224,7 @@ describe("a 401 from any file_host request", () => {
     )
     auth.markSignedIn()
     server.answer = unauthorized
-    const transport = createFileHostTransport()
+    const transport = createFileHostTransport("ceremony")
     if (!transport) throw new Error("the mocked transport is always present")
 
     await expect(requestJSON(transport, "/sessions")).rejects.toThrow()

@@ -48,6 +48,22 @@ import type { RouteParams, ServerRoute } from "@some-ui/fetch-kit"
 import { API_V1_PREFIX } from "@some-ui/fetch-kit"
 
 /** The port `file_host` listens on. */
+/**
+ * How a read of *public corpus content* is made (lessons, rounds, the vocab
+ * file): with no credentials at all.
+ *
+ * These routes answer everyone the same thing and hold nothing about whoever
+ * asks, so there is no reason for a request to carry the account's session
+ * cookie. With the default `same-origin`, it would, on the `/api/file-host`
+ * proxy, and the operator would see a learner who chose to learn on the device
+ * and an account holder as the same visitor. A person learning on the device
+ * must be able to fetch a lesson without that. Spread this into a data source's
+ * `fetchOptions`.
+ */
+export const PUBLIC_READ: { readonly credentials: RequestCredentials } = {
+  credentials: "omit",
+}
+
 export const DEFAULT_FILE_HOST_PORT = 3000
 
 /**

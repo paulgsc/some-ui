@@ -42,6 +42,8 @@
  *    and that must still count as this deadline, not a different failure.
  */
 
+import { authority, StaleAuthorityError } from "@/lib/authority"
+
 import type { FileHostResolution } from "."
 import { describeFileHost, FileHostUnreachableError } from "."
 
@@ -147,13 +149,28 @@ function resolveTimeoutMs(): number {
 }
 
 /**
+ * Why a caller wants a transport. Required, so nobody gets one by default.
+ *
+ * - `"account"`: the caller sends or reads *learner state* (sessions, signals,
+ *   presence, the shelf, a push subscription). It is the account's business,
+ *   so this answers `null` unless the learner's data authority is the account
+ *   (`lib/authority`, invariant LA1), and a transport it did hand out refuses
+ *   to send once the authority has become a different one.
+ * - `"ceremony"`: the person is signing in, out or adding a passkey, or the app
+ *   is checking whether a session they chose to use still exists. These are
+ *   their own explicit acts and carry no learner state.
+ */
+export type TransportPurpose = "account" | "ceremony"
+
+/**
  * Build the default transport for wherever this page is served from.
  *
  * Returns `null` when there is no base URL at all - SSR, or a test with no
- * `window`. Callers treat that as "no backend", which is the same branch
- * the static build takes. Deliberately has no timeout of its own - see this
- * file's header, point 3, and `requestJSON` below, which owns the deadline
- * for the whole request this transport is only the first half of.
+ * `window` - or when `purpose` is `"account"` and the learner's data is not
+ * the account's. Callers treat that as "no backend", which is the same
+ * branch the static build takes. Deliberately has no timeout of its own - see
+ * this file's header, point 3, and `requestJSON` below, which owns the
+ * deadline for the whole request this transport is only the first half of.
  *
  * Sends credentials (`credentials: "include"`), because the passkey session
  * is an `HttpOnly` cookie and a `published-port` base URL is cross-origin,
@@ -167,12 +184,21 @@ function resolveTimeoutMs(): number {
  * must pass `credentials: "same-origin"`.
  */
 export function createFileHostTransport(
+  purpose: TransportPurpose,
   resolution: FileHostResolution = describeFileHost()
 ): FileHostTransport | null {
   const { baseUrl } = resolution
   if (baseUrl === undefined) return null
+  if (purpose === "account" && !authority.is("account")) return null
+  // The authority this transport was issued under. It is checked again on every
+  // send, so a transport kept across a sign-out, a switch or another account's
+  // sign-in cannot carry a request into the new authority.
+  const issued = authority.getAuthority()
 
   return async (route, init) => {
+    if (purpose === "account" && !authority.isCurrent(issued)) {
+      throw new StaleAuthorityError(route)
+    }
     const url = `${baseUrl.replace(/\/+$/, "")}/${route.replace(/^\/+/, "")}`
     try {
       return await fetch(url, {

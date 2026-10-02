@@ -46,7 +46,9 @@ export async function reportPresence(
   if (!contextKey) return false
 
   const transport =
-    deps.transport === undefined ? createFileHostTransport() : deps.transport
+    deps.transport === undefined
+      ? createFileHostTransport("account")
+      : deps.transport
   if (!transport) return false
 
   try {

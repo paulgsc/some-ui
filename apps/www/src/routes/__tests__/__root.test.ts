@@ -1,23 +1,27 @@
 /**
  * @vitest-environment jsdom
  *
- * `__root.tsx`'s `beforeLoad` is the one gate every non-public route goes
- * through. Two things are asserted here that a route-tree-only test can't
- * see: which pathnames count as public (`/resume` was carved out so a
- * signed-out visitor can read it without hitting the passkey screen), and
- * that everything else still redirects while the server says there is no
- * session (`resolveSession`, mocked here).
+ * `__root.tsx`'s `beforeLoad` is the gate every route goes through. Learning on
+ * the device needs no session, so what is asserted here is that the gate lets
+ * every page open for a visitor with none, and that it makes the one check it
+ * does make (`resolveSessionIfChosen`, mocked here) without waiting on it: a
+ * page must never be held up on a server round trip, and a visitor who never
+ * chose an account is never asked about one (see `session.test.ts`).
+ *
+ * The pages that really are the account's are guarded by `requireAccount` in
+ * their own layout (`routes/_dashboard/_lan.tsx`); `guards.test.ts` covers it.
  */
 
 import { describe, expect, it, vi } from "vitest"
 
-const session = vi.hoisted(() => ({ signedIn: false, asked: 0 }))
+const checks = vi.hoisted(() => ({ asked: 0 }))
 
 vi.mock("@/lib/auth", async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  resolveSession: (): Promise<boolean> => {
-    session.asked += 1
-    return Promise.resolve(session.signedIn)
+  resolveSessionIfChosen: (): Promise<boolean> => {
+    checks.asked += 1
+    // Never settles: the gate must not wait on it.
+    return new Promise<boolean>(() => undefined)
   },
 }))
 
@@ -31,71 +35,36 @@ type BeforeLoadUnderTest = (args: {
   location: { pathname: string; href: string }
 }) => unknown
 
-function callBeforeLoad(pathname: string): Promise<unknown> {
+function callBeforeLoad(pathname: string): unknown {
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see BeforeLoadUnderTest
   const beforeLoad = Route.options.beforeLoad as BeforeLoadUnderTest
-  return Promise.resolve(beforeLoad({ location: { pathname, href: pathname } }))
+  return beforeLoad({ location: { pathname, href: pathname } })
 }
 
 const { Route } = await import("@/routes/__root")
 
-describe("root beforeLoad: which routes require a session", () => {
-  it("lets an unauthenticated visitor read /resume", async () => {
-    await expect(callBeforeLoad("/resume")).resolves.toBeUndefined()
+describe("root beforeLoad: no page needs a session", () => {
+  it.each([
+    "/",
+    "/auth",
+    "/resume",
+    "/resume/",
+    "/extensions",
+    "/extensions/",
+    "/app",
+    "/app/",
+    "/sessions",
+    "/sessions/new",
+    "/settings",
+    "/profile",
+  ])("lets a visitor with no session open %s", (pathname) => {
+    expect(callBeforeLoad(pathname)).toBeUndefined()
   })
 
-  // The canonical, publicly-shared résumé URL (GitHub Pages'
-  // /resume/index.html shell) carries a trailing slash the router's
-  // basepath rewrite doesn't strip - see __root.tsx's beforeLoad comment.
-  it("lets an unauthenticated visitor read /resume/ (trailing slash)", async () => {
-    await expect(callBeforeLoad("/resume/")).resolves.toBeUndefined()
-  })
-
-  it("still redirects an unauthenticated visitor away from /app/ (trailing slash)", async () => {
-    await expect(callBeforeLoad("/app/")).rejects.toBeDefined()
-  })
-
-  it("still redirects an unauthenticated visitor away from /app", async () => {
-    await expect(callBeforeLoad("/app")).rejects.toBeDefined()
-  })
-
-  it("still redirects an unauthenticated visitor away from /sessions", async () => {
-    await expect(callBeforeLoad("/sessions")).rejects.toBeDefined()
-  })
-
-  it("leaves / public", async () => {
-    await expect(callBeforeLoad("/")).resolves.toBeUndefined()
-  })
-
-  it("leaves /auth public", async () => {
-    await expect(callBeforeLoad("/auth")).resolves.toBeUndefined()
-  })
-
-  // Shared with people who have no account here, so the passkey screen would
-  // defeat the point - and the trailing-slash form is what a pasted link or a
-  // static-host rewrite can produce.
-  it("lets an unauthenticated visitor read /extensions", async () => {
-    await expect(callBeforeLoad("/extensions")).resolves.toBeUndefined()
-  })
-
-  it("lets an unauthenticated visitor read /extensions/ (trailing slash)", async () => {
-    await expect(callBeforeLoad("/extensions/")).resolves.toBeUndefined()
-  })
-})
-
-describe("root beforeLoad: asking the server", () => {
-  it("lets a signed-in visitor through to a guarded route", async () => {
-    session.signedIn = true
-    try {
-      await expect(callBeforeLoad("/app")).resolves.toBeUndefined()
-    } finally {
-      session.signedIn = false
-    }
-  })
-
-  it("asks on a public route too, without waiting on the answer", async () => {
-    const before = session.asked
-    await expect(callBeforeLoad("/")).resolves.toBeUndefined()
-    expect(session.asked).toBe(before + 1)
+  it("is not held up by the session check it starts", () => {
+    const before = checks.asked
+    // Returns at once, synchronously, although the check it started never settles.
+    expect(callBeforeLoad("/sessions")).toBeUndefined()
+    expect(checks.asked).toBe(before + 1)
   })
 })
