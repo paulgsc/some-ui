@@ -246,6 +246,21 @@ describe("step", () => {
     expect(step(taken.state, { type: "saveFailed" }).effects).toEqual([])
   })
 
+  it("waits to auto-start until a page that arrived hidden is shown", () => {
+    const arrived = run(
+      initialState("reminder"),
+      { type: "hidden" },
+      { type: "arrived", autoStart: true }
+    )
+    expect(arrived.effects).toEqual([{ type: "read", seq: 1 }])
+    expect(arrived.state.activity.kind).toBe("idle")
+
+    expect(step(arrived.state, { type: "shown" }).effects).toEqual([
+      { type: "announceAutoStart" },
+      { type: "openMic" },
+    ])
+  })
+
   it("re-reads the list when the store changes, while the page is here", () => {
     expect(step(here(), { type: "storeChanged" }).effects).toEqual([
       { type: "read", seq: 2 },

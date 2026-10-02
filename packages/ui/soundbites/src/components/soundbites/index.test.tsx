@@ -542,6 +542,26 @@ describe("Soundbites", () => {
     ).toBeInTheDocument()
   })
 
+  it("does not open the microphone for a page that mounts hidden, until it shows", async () => {
+    const visibility = vi
+      .spyOn(document, "visibilityState", "get")
+      .mockReturnValue("hidden")
+    const onAutoStart = vi.fn()
+    const { mic } = setup({ autoStart: true, onAutoStart })
+    await screen.findByText("Nothing kept yet.")
+    expect(mic.start).not.toHaveBeenCalled()
+    expect(onAutoStart).not.toHaveBeenCalled()
+
+    visibility.mockReturnValue("visible")
+    await settle(() => document.dispatchEvent(new Event("visibilitychange")))
+    expect(
+      await screen.findByRole("button", { name: "Done, keep it" })
+    ).toBeInTheDocument()
+    expect(mic.start).toHaveBeenCalledTimes(1)
+    expect(onAutoStart).toHaveBeenCalledTimes(1)
+    visibility.mockRestore()
+  })
+
   it("deletes a kept one after asking", async () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(true)
     const { kept } = setup({ kept: [bite("only", 5)] })

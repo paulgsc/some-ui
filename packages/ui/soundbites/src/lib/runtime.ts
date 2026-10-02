@@ -42,8 +42,9 @@ export type SoundbitesPorts = {
   now: () => number
   newId: () => string
   /**
-   * Calls `listener` whenever the page is hidden (`true`) or shown again
-   * (`false`); returns an unsubscribe.
+   * Calls `listener` at once with whether the page is hidden now, then on
+   * each change: hidden (`true`) or shown again (`false`). Returns an
+   * unsubscribe.
    */
   onVisibility: (listener: (hidden: boolean) => void) => () => void
 }
@@ -242,10 +243,12 @@ export function createSoundbites(
       situation = next
     },
     attach(): () => void {
-      dispatch({ type: "arrived", autoStart: options.autoStart })
+      // Visibility first: an auto-start must know whether the page is on
+      // screen before it opens the microphone.
       const unwatchPage = ports.onVisibility((hidden) =>
         dispatch({ type: hidden ? "hidden" : "shown" })
       )
+      dispatch({ type: "arrived", autoStart: options.autoStart })
       const unwatchStore = ports.store.subscribe(() =>
         dispatch({ type: "storeChanged" })
       )

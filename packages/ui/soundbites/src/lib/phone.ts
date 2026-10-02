@@ -39,6 +39,8 @@ const audioPlayer: Player = {
 function onPageVisibility(listener: (hidden: boolean) => void): () => void {
   const onChange = (): void => listener(document.visibilityState === "hidden")
   document.addEventListener("visibilitychange", onChange)
+  // Now, not only on the next change: a page can mount already hidden.
+  onChange()
   return () => document.removeEventListener("visibilitychange", onChange)
 }
 

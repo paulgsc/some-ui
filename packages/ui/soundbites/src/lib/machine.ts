@@ -20,7 +20,9 @@
  *   any result whose number is not the latest is ignored.
  * - **Nothing records while the page is off screen.** A take recording when
  *   the page is hidden is finished and kept; a microphone that opens while
- *   it is hidden is let go. Either order of events ends the same way.
+ *   it is hidden is let go; an auto-start that arrives while it is hidden
+ *   waits until it is shown. Either order of events ends the same way, and
+ *   the runtime reports the page's visibility before it reports arrival.
  * - **A store change from elsewhere is read.** Another instance of this page
  *   (the one left mid-take, still saving) can commit after this one read
  *   the list; the store reports each commit, and the list is re-read.
@@ -69,6 +71,8 @@ export type SoundbitesState = {
   readonly page: "new" | "here" | "left"
   /** Whether the page is on screen. Nothing records while it is not. */
   readonly visible: boolean
+  /** An auto-start asked for while the page was hidden, for when it shows. */
+  readonly autoStartPending: boolean
   readonly library: Library
   readonly activity: Activity
   /** Why the microphone last refused, until the next try. */
@@ -182,6 +186,7 @@ export function initialState(source: SoundbiteSource): SoundbitesState {
   return {
     page: "new",
     visible: true,
+    autoStartPending: false,
     library: { kind: "reading" },
     activity: { kind: "idle" },
     blocked: null,
@@ -271,6 +276,13 @@ export function step(state: SoundbitesState, event: SoundbitesEvent): Step {
       if (state.page !== "new") return stay({ ...state, page: "here" })
       const here = read({ ...state, page: "here" })
       if (!event.autoStart) return here
+      // Arrived off screen (launched in the background, say): listen once
+      // the page is shown, not before.
+      if (!state.visible)
+        return {
+          state: { ...here.state, autoStartPending: true },
+          effects: here.effects,
+        }
       const started = startRecording(here.state)
       return {
         state: started.state,
@@ -294,7 +306,14 @@ export function step(state: SoundbitesState, event: SoundbitesEvent): Step {
     }
 
     case "shown": {
-      return stay({ ...state, visible: true })
+      const shown = { ...state, visible: true }
+      if (!state.autoStartPending || activity.kind !== "idle")
+        return stay(shown)
+      const started = startRecording({ ...shown, autoStartPending: false })
+      return {
+        state: started.state,
+        effects: [{ type: "announceAutoStart" }, ...started.effects],
+      }
     }
 
     case "storeChanged": {
