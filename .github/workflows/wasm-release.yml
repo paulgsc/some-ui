@@ -155,7 +155,7 @@ jobs:
       # the Rust/cargo toolchain from the nix devshell, and nothing later in
       # this job touches node_modules. A workspace-wide pnpm install would
       # also be broken on the release commit itself - changesets has just
-      # bumped consumer package.json files (e.g. packages/ui/input) to pin
+      # bumped consumer package.json files (e.g. packages/ui/leetype) to pin
       # the crate version this job is about to build, and pnpm-lock.yaml
       # can't reflect that until it's regenerated.
       # Each crate's own package.json wraps this same invocation under

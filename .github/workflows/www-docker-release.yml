@@ -3,8 +3,8 @@ name: WWW Docker Release
 # (paulgsc/www — see infra/compose/www.yml).
 #
 # apps/www sits at the wide end of this monorepo's dependency graph: nearly
-# every workspace package (and, transitively through some-ui-input, several
-# wasm crates) can end up in its build. A workspace dependency bumping its
+# every workspace package (and, transitively, several wasm crates) can end up
+# in its build. A workspace dependency bumping its
 # own version is a poor publish trigger on its own — it very often carries
 # no user-visible change to www at all. So this workflow doesn't build+push
 # straight off a green build. It mirrors the changesets idiom already used

@@ -46,7 +46,7 @@ set -euo pipefail
 
 # Keep in sync with crates/*/package.json — these are the crates whose
 # `build`/`wasm:prod` script invokes wasm-pack.
-ALL_WASM_CRATES=(hangul-game-core leetype_wasm polyhedron some-crossword some-hexagon viewport-rotation)
+ALL_WASM_CRATES=(hangul-game-core leetype_wasm polyhedron some-hexagon)
 CRATES=("${@:-${ALL_WASM_CRATES[@]}}")
 
 export PATH="$HOME/.cargo/bin:$PATH"

@@ -17,8 +17,8 @@ export default defineConfig({
     // Match your file structure
     include: ["**/*.test.{ts,tsx}"],
 
-    // Mirrors packages/ui/input's S1 vitest infra: a clean "no tests yet"
-    // run must still exit 0 for packages that land spec files incrementally.
+    // A clean "no tests yet" run must still exit 0 for packages that land
+    // spec files incrementally.
     passWithNoTests: true,
 
     deps: {

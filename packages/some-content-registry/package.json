@@ -10,7 +10,6 @@
     "@some-ui/leetype": "workspace:*",
     "some-ui-neon-sign": "workspace:*",
     "@some-ui/slideshow": "workspace:*",
-    "@some-ui/stepper": "workspace:*",
     "some-ui-utils": "workspace:*",
     "@some-ui/assessment": "workspace:*",
     "@some-ui/umag": "workspace:*",
