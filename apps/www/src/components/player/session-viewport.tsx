@@ -53,6 +53,10 @@ export const SessionViewport = ({
    * for editing is rendered.
    */
   const isMobile = useIsMobile()
+  /** The single owner of "may this surface be edited" - handed to the
+   * editor hook as well as read for chrome below, so the hotkey and the
+   * chrome can never disagree about it. */
+  const editable = !isMobile
   const {
     editMode,
     toggleEditMode,
@@ -63,7 +67,7 @@ export const SessionViewport = ({
     onBind,
     onLeafResize,
     autosaveStatus,
-  } = useLiveLayoutEditor(session, activeLifetimes)
+  } = useLiveLayoutEditor(session, activeLifetimes, { editable })
 
   // This is the layer with write authority over both facts - which session
   // is live, and whether the layout editor currently needs exclusive
@@ -162,8 +166,6 @@ export const SessionViewport = ({
     [effectiveLifetimes, sceneProps]
   )
 
-  const editable = !isMobile
-
   return (
     <div
       className={cn(
@@ -186,7 +188,13 @@ export const SessionViewport = ({
             componentRegistry={componentRegistry}
             enableFocus={false}
             collapseUnbound={editable ? !editMode : true}
-            onLeafResize={onLeafResize}
+            // Gated with the rest of the editor, not passed unconditionally.
+            // This is the one editor gesture that is not chrome, so it was
+            // the one that survived the desktop-only decision above: a long
+            // press is a context menu on a touch device, which is what arms
+            // the viewport's resize handle. Left wired, a phone could edit
+            // and persist a layout through an editor it is never shown.
+            onLeafResize={editable ? onLeafResize : undefined}
           />
 
           {editable && editMode && (

@@ -298,6 +298,60 @@ describe("useIntent", () => {
     expect(mutationFn.mock.calls).toHaveLength(1)
   })
 
+  it("thundering-herd guard: a burst of the *same* variables stays silent", async () => {
+    const { wrapper } = withQueryClient()
+    // eslint-disable-next-line @typescript-eslint/require-await -- mutationFn's contract is Promise<T>; async is the plainest way to satisfy it for a stub with nothing to actually await.
+    const mutationFn = vi.fn(async (input: { id: string }) => input.id)
+
+    const { result } = renderHook(
+      () =>
+        useIntent(useMutation({ mutationFn }), { presentation: "interactive" }),
+      { wrapper }
+    )
+
+    // Equal but not identical objects, which is the real double-click
+    // shape: the handler rebuilds its variables on each call. The drop
+    // must stay silent here - see `dropped-write.ts` on why only a
+    // *distinct* payload is worth reporting.
+    expect(() => {
+      act(() => {
+        result.current.start({ id: "session-a" })
+        result.current.start({ id: "session-a" })
+      })
+    }).not.toThrow()
+
+    await waitFor(() => {
+      expect(mutationFn.mock.calls).toHaveLength(1)
+    })
+  })
+
+  it("reports a *distinct* write discarded by the guard rather than losing it", async () => {
+    const { wrapper } = withQueryClient()
+    // eslint-disable-next-line @typescript-eslint/require-await -- mutationFn's contract is Promise<T>; async is the plainest way to satisfy it for a stub with nothing to actually await.
+    const mutationFn = vi.fn(async (input: { id: string }) => input.id)
+
+    const { result } = renderHook(
+      () =>
+        useIntent(useMutation({ mutationFn }), { presentation: "interactive" }),
+      { wrapper }
+    )
+
+    // The shape that cost six panel binds and reported nothing: one intent
+    // instance, two genuinely different writes, the second silently
+    // dropped. Under vitest that now throws, which is what makes the class
+    // red wherever it reappears - not only in the hook it was found in.
+    expect(() => {
+      act(() => {
+        result.current.start({ id: "session-a" })
+        result.current.start({ id: "session-b" })
+      })
+    }).toThrow(/distinct write was discarded/)
+
+    await waitFor(() => {
+      expect(mutationFn.mock.calls).toHaveLength(1)
+    })
+  })
+
   it("thundering-herd guard: retry() during an in-flight retry does not double-dispatch", async () => {
     const { wrapper } = withQueryClient()
     let resolveMutation: ((value: string) => void) | undefined
