@@ -158,10 +158,15 @@ const LEADING_DOTS = /^\.+/
  */
 export function plainShelfKey(name: string, noun: string): string {
   let plain = name.replace(NOT_UNRESERVED, "-")
-  // A loop, not `/(?:\.json)+$/i`: that regex backtracks polynomially on a
-  // name of many `.json`s that does not end in one (CodeQL, #1641).
-  while (plain.toLowerCase().endsWith(".json")) plain = plain.slice(0, -5)
-  plain = plain.replace(LEADING_DOTS, "")
+  // Not `/(?:\.json)+$/i`, which backtracks polynomially on many `.json`s
+  // that do not end the name (CodeQL), and not a loop that re-reads the
+  // whole string per suffix, which is quadratic on many that do (review,
+  // #1641): walk one end index back five characters at a time.
+  let end = plain.length
+  while (end >= 5 && plain.slice(end - 5, end).toLowerCase() === ".json") {
+    end -= 5
+  }
+  plain = plain.slice(0, end).replace(LEADING_DOTS, "")
   if (plain === "") return noun
   return plain.startsWith("http") ? `${noun}-${plain}` : plain
 }
