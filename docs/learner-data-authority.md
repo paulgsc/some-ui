@@ -6,7 +6,9 @@ Where a learner's data lives, and what that means for what leaves their device.
 (`state.ts`), a runtime that owns the handles (`runtime.ts`), and a React hook
 that only reads a snapshot (`use-authority.ts`). The reasoning for that shape is
 `docs/monorepo-boundaries.md`, "Inside a React package: the component is not the
-coordinator" (R1).
+coordinator" (R1). What an account may hold is the canon's Remark 7.6
+(`docs/canon/adaptive-learning-canon.typ`); this document is how the browser
+keeps to it.
 
 ## The two questions
 
@@ -28,16 +30,25 @@ Which authority a build starts in depends on what it can reach (`Backend`):
 
 ## What leaves the device
 
-|                                     | Learning on the device                       | On the account                               |
-| ----------------------------------- | -------------------------------------------- | -------------------------------------------- |
-| Sessions, settings, profile         | `localStorage`, never sent                   | sessions go to `file_host`                   |
-| Session probe (`GET /auth/session`) | never made                                   | at boot, only because the account was chosen |
-| Passkey ceremonies                  | only when the person starts one              | the same                                     |
-| Lesson, round and vocab reads       | made, **without credentials**                | made, without credentials                    |
-| `/signals`, `/presence/lease`       | never                                        | sent while the account is the authority      |
-| Shelf, push subscription            | never                                        | the account's, on the person's own taps      |
-| Speech                              | the browser's own voice                      | the server's speech service                  |
-| Reminders                           | the client's own policy, while a tab is open | the server's push                            |
+|                                     | Learning on the device                       | On the account, reporting off                                          | On the account, reporting on               |
+| ----------------------------------- | -------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------ |
+| Sessions, settings, profile         | `localStorage`, never sent                   | sessions go to `file_host`                                             | the same                                   |
+| Session probe (`GET /auth/session`) | never made                                   | at boot, only because the account was chosen                           | the same                                   |
+| Passkey ceremonies                  | only when the person starts one              | the same                                                               | the same                                   |
+| Lesson, round and vocab reads       | made, **without credentials**                | made, without credentials                                              | the same                                   |
+| This device's sessions              | stay here                                    | copied only by "Copy to my account", per account, after a confirmation | the same                                   |
+| `/signals`, `/presence/lease`       | never                                        | never                                                                  | sent                                       |
+| Push subscription                   | never                                        | never                                                                  | the account's, on the person's own taps    |
+| Shelf                               | never                                        | the account's, on the person's own taps                                | the same                                   |
+| Speech                              | the browser's own voice                      | the server's speech service                                            | the same                                   |
+| Reminders                           | the client's own policy, while a tab is open | the client's own policy, while a tab is open                           | the server's push, with the browser closed |
+
+An account whose session ends (an expiry, another device signing out
+everywhere) stays in place: the page keeps working on the device, a line says
+the session ended, and nothing is wiped, uploaded or redirected. Only a page
+that is the account's alone, with nothing to show without it, sends the person to
+sign in. Reporting is off for every new sign-in, every sign-out and every move
+back to the device; it survives an expiry and a reload for the same person.
 
 Corpus reads still reach the host and are visible to it and to the network: a
 request for a lesson is a request. What they do not carry is a cookie, so the
@@ -58,15 +69,18 @@ declared (checked by reading every call site and by the tests named).
   `file_host` is made with a transport from `createFileHostTransport("account")`,
   which answers `null` unless the authority is the account, and which refuses to
   send once the authority has become a different one (`StaleAuthorityError`). The
-  other purpose, `"ceremony"`, is for the passkey ceremonies and the session
-  probe, which carry no learner state. The network globals (`fetch`,
+  other purposes are `"ceremony"`, for the passkey ceremonies and the session
+  probe, which carry no learner state, and `"reporting"`, for behaviour (signals,
+  the presence lease, a push subscription), which needs the account _and_ the
+  person's separate opt-in (LA6). The network globals (`fetch`,
   `XMLHttpRequest`, `WebSocket`, `EventSource`, `navigator.sendBeacon`) are
   restricted by lint in `apps/www/src` except in the two files that are the choke
   point: `lib/file-host-config/client.ts` and `lib/device-backend/interceptor/index.ts`.
 - _Falsified by:_ a hunk that adds a `fetch`, `XMLHttpRequest`, `WebSocket`,
   `EventSource` or `sendBeacon` to a path under `apps/www/src` (or a package it
   imports) that carries sessions, signals, presence, a shelf item or a push
-  subscription and does not go through `createFileHostTransport("account")`; one
+  subscription and does not go through `createFileHostTransport("account")`
+  (or `"reporting"`, for behaviour; LA6); one
   that passes `"ceremony"` for such a request; one that makes
   `createFileHostTransport`'s `purpose` optional, or deletes its authority check
   or the per-send `isCurrent` check; one that adds an `eslint-disable` for
@@ -91,17 +105,29 @@ declared (checked by reading every call site and by the tests named).
 
 - _Claim:_ nothing in a ceremony's success path (`createAccount`, `signIn`,
   `markSignedIn`, `enterAccount`) reads this browser's local sessions or sends
-  them anywhere; and the sessions backend (`lib/tenant/sessions-backend.ts`)
-  never creates or updates an account record from a local one.
+  them anywhere; the sessions backend (`lib/tenant/sessions-backend.ts`) never
+  creates or updates an account record from a local one; and the one transfer
+  (`lib/tenant/sessions-transfer`) is started from one place, the confirmation
+  button in `components/settings/data-home-section.tsx`, through
+  `useCopyDeviceSessions` and `copyDeviceSessionsAndRefresh`. That button says
+  what will be sent and to which account, takes a second press, and copies each
+  session to the account in use at most once: the receipt records the ids the
+  server minted, and the account is asked whether it still holds them.
 - _Falsified by:_ a hunk that makes a ceremony function, `markSignedIn`, or the
-  sessions backend call `migrateLocalSessions` or `createHttpSessionsRepository`'s
-  `create`/`update` with data from `createSessionsRepository`; or that restores a
-  call to `migrateLocalSessions` that is not behind an explicit, per-account
-  confirmation by the person.
-- _Scope:_ `apps/www/src/lib/auth`, `apps/www/src/lib/tenant`.
-- _Why not enforced:_ a test pins today's behaviour
-  (`lib/tenant/__tests__/sessions-backend.test.ts`, "signing in uploads nothing"),
-  but a new caller could add an upload on a path the test does not exercise.
+  sessions backend import `sessions-transfer` or call
+  `createHttpSessionsRepository`'s `create`/`update` with data from
+  `createSessionsRepository`; one that calls `copyDeviceSessions`,
+  `copyDeviceSessionsAndRefresh`, `useCopyDeviceSessions`, `planTransfer` or
+  `runTransfer` from anywhere but the file that owns that step; or one that lets
+  the button act on its first press.
+- _Scope:_ `apps/www/src`.
+- _Why not enforced:_ the callers are pinned by
+  `lib/serving-privacy/__tests__/egress-choke-points.test.ts` (each name is
+  called from exactly one file), and today's behaviour by
+  `lib/tenant/__tests__/sessions-backend.test.ts` ("signing in uploads nothing")
+  and `lib/tenant/sessions-transfer/index.test.ts`. A lint rule cannot say a
+  button asked first: `components/settings/__tests__/data-home-section.test.tsx`
+  pins that it does.
 
 ### LA3: a result that outlives its authority is dropped
 
@@ -154,6 +180,32 @@ declared (checked by reading every call site and by the tests named).
   left out because they reach `file_host` on another port of the same host, a
   speech provider the learner chose and a music-overlay socket, none of which a
   `connect-src` can name without also blocking the learner's own choices.
+
+### LA6: behaviour reaches the account only with the person's opt-in
+
+- _Claim:_ signals, the presence lease and a push subscription are sent only with
+  a transport from `createFileHostTransport("reporting")`, which answers `null`
+  unless the authority is the account and `reporting` is on (the device build's
+  in-process backend aside, where nothing leaves the phone), and which refuses to
+  send once either has stopped being true. `reporting` is off for a new sign-in,
+  and is reset by every sign-in, every sign-out that forgets the account and
+  every move back to the device. Turning it off ends the push subscription at
+  both ends first, while the transport that can tell the server still works.
+- _Falsified by:_ a hunk that passes `"account"` or `"ceremony"` for a request
+  that carries signals, presence or a push subscription; that makes `reporting`
+  start on, or persist across `session-started`, a forgetting `session-ended` or
+  a `chose` of the device; that changes `reportingAllowed` to ignore
+  `reporting`; or that flips the setting before the unsubscribe in
+  `lib/study-nudge/reporting.ts`.
+- _Scope:_ `apps/www/src/lib/authority`, `lib/file-host-config/client.ts`,
+  `lib/study-nudge`.
+- _Why not enforced:_ the state transitions are pure and tested
+  (`lib/authority/__tests__`), the transport's refusals are
+  (`lib/file-host-config/__tests__/client.test.ts`), and the built application
+  is (`tests/local-mode/no-egress.spec.ts`: an account without the opt-in is sent
+  no signals, presence or push, and reaches for push once it opts in). What no
+  test can say is that a new caller chose the right purpose, which is LA1's
+  limit too.
 
 ## Not covered, on purpose
 

@@ -62,7 +62,12 @@ would be asserting something untrue.
 Running both triggers at once would not produce "occasionally two"
 notifications — it would produce reliably two whenever both concluded it was
 time, from two pacing mechanisms that cannot see each other. So the client
-trigger stands down in server mode. It keeps registering the worker and
+trigger stands down when, and only when, the server hears from this learner:
+the account is where their data lives **and** they turned on "Reminders and
+progress sync" (`lib/authority`, LA6). On the device, or on an account that has
+not opted in, the server has been told nothing about when they study and holds no
+subscription to send to, so the client's own policy raises the reminder while a
+tab is open. In the standing-down case it keeps registering the worker and
 reconciling the push subscription; it just stops raising.
 
 ## Signals are where the work originates
@@ -71,7 +76,11 @@ reconciling the push subscription; it just stops raising.
 transitions. **This is not telemetry.** A subject that has never sent a signal
 has no row in the engagement ledger, is never returned by the waker's query,
 and is never notified — not late, never. Without this module the rest of the
-server half is inert.
+server half is inert. Which is why it is also **opt-in**: signals, the presence
+lease and a push subscription leave only through the `"reporting"` transport,
+which needs the account and the person's own switch (off by default, forgotten
+at every sign-in and sign-out; canon Remark 7.6, `docs/learner-data-authority.md`
+LA6).
 
 Four of the domain's seven signals are emitted, because they are the four a
 session record can honestly justify:
@@ -248,9 +257,10 @@ malformed-payload cases exercise.
   replacing.
 - **No multi-device coordination.** The server fans out to every subscription
   a subject consented on; dismissing on a laptop does not silence a phone.
-- **No accounts or auth.** Everything is keyed by subject server-side, but the
-  subject is a singleton until auth lands — so anyone who can reach the LAN
-  can register a subscription or read sessions.
+- **Reminders with the browser closed need an account and an opt-in.** Everything
+  is keyed by subject server-side, and a subject is a passkey account. A person
+  who learns on the device, or keeps an account without turning on reporting,
+  gets reminders only while a tab is open.
 
 ## Secure context
 

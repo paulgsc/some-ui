@@ -15,6 +15,8 @@
  *   LA3  A sessions-store result that outlives its authority is dropped
  *        (`StaleAuthorityError`), not shown.
  *   LA4  A corpus read carries no credentials (`PUBLIC_READ`).
+ *   LA6  Behaviour (signals, presence, push) reaches the account only with the
+ *        person's own opt-in, which every sign-in and sign-out forgets.
  */
 export type { Authority } from "./state"
 export { StaleAuthorityError } from "./runtime"
