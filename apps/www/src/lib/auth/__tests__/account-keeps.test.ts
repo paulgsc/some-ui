@@ -44,6 +44,11 @@ describe("what an account keeps", () => {
     expect(ACCOUNT_KEEPS).toMatch(/shelves/)
     expect(ACCOUNT_KEEPS).toMatch(/reminders/)
     expect(ACCOUNT_KEEPS).toMatch(/push address/)
+    // The behaviour that leaves only with the opt-in, named, with the switch.
+    expect(ACCOUNT_KEEPS).toMatch(/Reminders and progress sync/)
+    expect(ACCOUNT_KEEPS).toMatch(/how far you get in each session/)
+    expect(ACCOUNT_KEEPS).toMatch(/which session you have open/)
+    expect(ACCOUNT_KEEPS).toMatch(/off until you turn it on/)
   })
 
   it("is the text both the sign-up and the settings screen use", () => {

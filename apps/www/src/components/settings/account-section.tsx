@@ -129,9 +129,9 @@ export const AccountSection = (): JSX.Element => {
             <p className="text-muted-foreground text-sm">
               Deleting removes everything stored under this account&apos;s ID
               from the server&apos;s database (your sessions, saved shelf items,
-              reminders and passkeys), so your passkeys will no longer open
-              anything here. It does not rewrite server logs or backups, and it
-              can&apos;t be undone.
+              reminder and progress records, and passkeys), so your passkeys
+              will no longer open anything here. It does not rewrite server logs
+              or backups, and it can&apos;t be undone.
             </p>
             {confirmingDelete ? (
               <div className="flex flex-wrap gap-2">

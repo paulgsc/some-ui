@@ -112,7 +112,7 @@ test.describe("the lan build, learning on the device", () => {
 
   test.describe("with file_host reachable", () => {
     test.beforeAll(async () => {
-      stub = await startFileHost()
+      stub = await startFileHost(app().origin)
     })
     test.afterAll(async () => {
       await stub?.close()
@@ -209,7 +209,7 @@ test.describe("the lan build, with an account", () => {
   test.beforeAll(async () => {
     served = await serveBuild(skipUnlessBuilt("lan").dir, "/")
     // A live session, a push identity, and nothing else.
-    stub = await startFileHost({
+    stub = await startFileHost(app().origin, {
       "/auth/session": { expiresAt: Date.now() + 3_600_000 },
       "/sessions": [],
       "/push/vapid-key": { public_key: "", topics: ["lesson-ready"] },
@@ -278,7 +278,7 @@ test.describe("the Pages build", () => {
 
   test.beforeAll(async () => {
     served = await serveBuild(skipUnlessBuilt("pages").dir, BASE)
-    stub = await startFileHost()
+    stub = await startFileHost(app().origin)
   })
 
   test.afterAll(async () => {

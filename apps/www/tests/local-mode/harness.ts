@@ -149,26 +149,28 @@ export type Received = {
 /**
  * A stand-in `file_host` that answers every route with an empty 404, except
  * the ones named in `answers` (a path ending, to a JSON body, with a 200), and
- * keeps what it was sent. CORS is open to the asking origin, with credentials, so a
+ * keeps what it was sent.
+ *
+ * CORS is open, with credentials, to `appOrigin` and to nothing else, and the
+ * value is the one the spec passes in, never one read back from the request. A
  * request that *would* carry the cookie is able to, and the spec can see it do
- * so (the control that makes "no cookie" mean something).
+ * so (the control that makes "no cookie" mean something); no other page could
+ * read a response, which is also what keeps this from being a credentialed CORS
+ * reflector (CodeQL `js/cors-misconfiguration-for-credentials`).
  */
 export async function startFileHost(
+  appOrigin: string,
   answers: Readonly<Record<string, unknown>> = {}
 ): Promise<Listening & { received: Array<Received> }> {
   const received: Array<Received> = []
+  const cors: Record<string, string> = {
+    "access-control-allow-origin": appOrigin,
+    "access-control-allow-credentials": "true",
+    "access-control-allow-headers": "content-type",
+    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE",
+    vary: "Origin",
+  }
   const server = createServer((req: IncomingMessage, res) => {
-    const origin = req.headers.origin
-    const cors: Record<string, string> =
-      typeof origin === "string"
-        ? {
-            "access-control-allow-origin": origin,
-            "access-control-allow-credentials": "true",
-            "access-control-allow-headers": "content-type",
-            "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE",
-            vary: "Origin",
-          }
-        : {}
     if (req.method === "OPTIONS") {
       res.writeHead(204, cors).end()
       return
