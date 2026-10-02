@@ -53,8 +53,8 @@ export const SITTING_MS = 30 * 60_000
 /** Pace factor: bounds, and how a rep moves it (Cor. 4.6 (iii)). */
 export const PACE_MIN = 0.5
 export const PACE_MAX = 2
-export const PACE_CLEAN = 0.88
-export const PACE_REPORTED = 1.4
+const PACE_CLEAN = 0.88
+const PACE_REPORTED = 1.4
 
 /** A rough speaking time, for fallbacks and nominal credit. */
 export const SPEECH_MS_PER_SYLLABLE = 300

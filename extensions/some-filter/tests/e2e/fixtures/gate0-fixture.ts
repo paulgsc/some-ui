@@ -33,7 +33,7 @@ const DIST = path.resolve(__dirname, "../../../dist")
 const FIXTURE_DIR = path.resolve(__dirname, "..", "fixtures")
 
 /** Fixed so every captured video/frame set is directly comparable across runs. */
-export const GATE0_VIEWPORT = { width: 800, height: 600 }
+const GATE0_VIEWPORT = { width: 800, height: 600 }
 
 type Gate0Fixtures = {
   context: BrowserContext
@@ -145,4 +145,4 @@ export const test = base.extend<Gate0Fixtures>({
 })
 
 export { expect } from "@playwright/test"
-export { waitForClassification, type FilterDebug } from "../fixture"
+export { waitForClassification } from "../fixture"

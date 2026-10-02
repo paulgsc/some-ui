@@ -215,7 +215,7 @@ export function intakeLesson(
  * without this a pasted lesson would ask exactly what it was told it would
  * not. Warnings are authoring judgement and stay.
  */
-export function withholdErrors(
+function withholdErrors(
   batches: Array<ConversationBatch>,
   findings: Array<ProbeFinding>
 ): Array<ConversationBatch> {

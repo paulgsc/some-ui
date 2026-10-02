@@ -20,7 +20,7 @@ import { intakeLesson, RELATION_TAG_PREFIX } from "@some-ui/topik"
 import type { LessonWrite, OperatorLesson } from "./client"
 
 /** Every served lesson is a topik lesson; the server announces it under this. */
-export const LESSON_ACTIVITY = "topik"
+const LESSON_ACTIVITY = "topik"
 
 /** What the operator edits beside the lesson text. */
 export type LessonForm = {
@@ -64,7 +64,7 @@ export function keyProblem(key: string): string | null {
   return null
 }
 
-export const authoredTags = (tags: Array<string> = []): Array<string> =>
+const authoredTags = (tags: Array<string> = []): Array<string> =>
   tags.filter((tag) => !tag.startsWith(RELATION_TAG_PREFIX))
 
 /** Comma- or space-separated tags, as typed. */

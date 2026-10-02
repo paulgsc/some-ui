@@ -19,17 +19,6 @@ export type BoyoSurface =
   | "subscriptions"
   | "other"
 
-export const BOYO_SURFACES: ReadonlyArray<BoyoSurface> = [
-  "home",
-  "search",
-  "watch",
-  "playlist",
-  "shorts",
-  "channel",
-  "subscriptions",
-  "other",
-]
-
 export function surfaceOf(pathname: string): BoyoSurface {
   if (pathname === "/") return "home"
   if (pathname === "/results") return "search"

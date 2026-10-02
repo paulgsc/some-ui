@@ -30,7 +30,7 @@ import type {
 import type { SessionId } from "@some-extension/common"
 import { assertNever } from "@some-extension/common"
 
-export type { MetaData, TitleData }
+export type { MetaData }
 
 // ── State variants ────────────────────────────────────────────────────────────
 
@@ -148,7 +148,7 @@ export function applySkipToTitle(
 
 // ── RenderModel — pure projection output ─────────────────────────────────────
 
-export type DataBoyo = "0" | "1" | "2" | "3" | "wl"
+type DataBoyo = "0" | "1" | "2" | "3" | "wl"
 
 export type VeilContent =
   | { readonly kind: "empty" }
@@ -169,13 +169,13 @@ export type VeilContent =
  * the exhaustive switch below fail to compile rather than silently rendering a
  * pill with no text.
  */
-export type HintModel = {
+type HintModel = {
   readonly label: string
   readonly tone: HintTone
 }
 
 /** Which role the veil is playing — occluding the card, or merely tinting it. */
-export type VeilTone = "occluding" | "whitelisted"
+type VeilTone = "occluding" | "whitelisted"
 
 export type RenderModel = {
   readonly dataBoyo: DataBoyo

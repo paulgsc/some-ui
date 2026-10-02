@@ -54,7 +54,7 @@ function resolveSafePath(filePath: string): string {
 
 export type EffectiveRules = Record<string, Linter.RuleEntry>
 export type LintMessage = Linter.LintMessage
-export type Severity = 0 | 1 | 2
+type Severity = 0 | 1 | 2
 
 // ── calculateConfig ───────────────────────────────────────────────────────────
 //
@@ -171,7 +171,7 @@ export async function lintSnippetFixed(
 
 // ── Severity normalisation ────────────────────────────────────────────────────
 
-export function severityOf(entry: Linter.RuleEntry | undefined): Severity {
+function severityOf(entry: Linter.RuleEntry | undefined): Severity {
   if (entry === undefined) return 0
   if (Array.isArray(entry)) return normalizeSev(entry[0])
   return normalizeSev(entry)

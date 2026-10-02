@@ -20,7 +20,7 @@ import type {
 } from "@topik/lib/topik/read-aloud/content"
 import { syllablesOf } from "@topik/lib/topik/read-aloud/timing"
 
-export type WordItem = {
+type WordItem = {
   kind: "word"
   /** Stable within a deck: `w:<wordId>:<surface>`. */
   key: string
@@ -32,7 +32,7 @@ export type WordItem = {
   syllables: number
 }
 
-export type SentenceItem = {
+type SentenceItem = {
   kind: "sentence"
   /** Stable within a deck: `s:<lineId>`. */
   key: string
@@ -54,8 +54,8 @@ export type SetOptions = {
   sentences?: number
 }
 
-export const DEFAULT_WORDS = 6
-export const DEFAULT_SENTENCES = 4
+const DEFAULT_WORDS = 6
+const DEFAULT_SENTENCES = 4
 
 /** How many fresh orders are drawn before falling back to a spread one. */
 const ORDER_ATTEMPTS = 32

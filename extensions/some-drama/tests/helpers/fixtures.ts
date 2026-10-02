@@ -22,7 +22,7 @@ export const CONTENT_CSS = CONTENT_SOURCES.filter((p) => p.endsWith(".css"))
 /** The card's dormant gate: the root while minimised or hidden. */
 export const DORMANT_GATE = "#dc-root.dc-dormant"
 
-export const ENTRY: DramaEntry = {
+const ENTRY: DramaEntry = {
   id: "d1",
   addedAt: 0,
   title: "Queen of Tears",

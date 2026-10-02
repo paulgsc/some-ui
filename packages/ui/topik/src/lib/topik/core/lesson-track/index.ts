@@ -50,7 +50,7 @@ export type LineStep = {
   checks: number
 }
 
-export type CheckStep = {
+type CheckStep = {
   kind: "check"
   /** Index into the conversation's `probes`. */
   probe: number
@@ -64,7 +64,7 @@ export type CheckStep = {
   repeat: boolean
 }
 
-export type WrapStep = { kind: "wrap" }
+type WrapStep = { kind: "wrap" }
 
 export type LessonStep = LineStep | CheckStep | WrapStep
 
@@ -253,7 +253,7 @@ export type LessonOutcomes = {
   reviewed?: Array<string>
 }
 
-export const startReveal = (audio: boolean): RevealLevel => (audio ? 0 : 1)
+const startReveal = (audio: boolean): RevealLevel => (audio ? 0 : 1)
 
 export function createLessonState(
   audio: boolean,
@@ -273,7 +273,7 @@ export function createLessonState(
 }
 
 /** Every step of the current conversation, including review and wrap. */
-export function stepsOf(
+function stepsOf(
   plan: LessonPlan,
   state: Pick<LessonState, "review">
 ): Array<LessonStep> {
@@ -325,7 +325,7 @@ export function glossUnlocked(
 }
 
 /** The key a check's results are recorded under: its probe's authored id. */
-export const checkKey = (step: CheckStep): string => step.id
+const checkKey = (step: CheckStep): string => step.id
 
 /**
  * What a probe asks and what counts as right, as a short hash. An authored id
@@ -419,7 +419,7 @@ function restoreOutcomes(
 }
 
 /** Position of a message's line step, or -1. */
-export function lineStepIndex(plan: LessonPlan, message: number): number {
+function lineStepIndex(plan: LessonPlan, message: number): number {
   return plan.steps.findIndex(
     (step) => step.kind === "line" && step.message === message
   )

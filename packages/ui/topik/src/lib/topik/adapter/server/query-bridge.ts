@@ -15,7 +15,7 @@ import type {
 import { metadataKeys } from "./topik-metadata-queries"
 import { topikKeys } from "./topik-queries"
 
-export class QueryBridge implements IQueryBridge {
+class QueryBridge implements IQueryBridge {
   constructor(
     private readonly queryClient: QueryClient,
     private readonly catalogQueryFn: () => Promise<TopikManifestFile>,

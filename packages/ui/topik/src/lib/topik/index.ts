@@ -12,30 +12,15 @@
 export type {
   // State types
   SessionState,
-  SessionPhase,
-  SessionMode,
   PlayState,
   QuizStage,
   SessionCursor,
-  ActiveSessionState,
-  HydrationStatus,
-  DataReference,
   BatchMetadata,
   FeedbackData,
   CatalogStatus,
 
   // Event types
   SessionEvent,
-  SelectionEvent,
-  HydrationEvent,
-  IterationEvent,
-  ModeEvent,
-  EvaluationEvent,
-  TimerEvent,
-
-  // Effect types
-  SessionEffect,
-  ReducerResult,
 
   // Interfaces
   ITopikRepository,
@@ -71,19 +56,12 @@ export {
 // CORE FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════
 
-export { sessionReducer, createInitialState } from "./core/session-reducer"
+export { createTopikRepository } from "./core/topik-repository"
+export { createTopikMetadataRepository } from "./core/topik-metadata-repository"
 
-export { TopikRepository, createTopikRepository } from "./core/topik-repository"
-export {
-  TopikMetadataRepository,
-  createTopikMetadataRepository,
-} from "./core/topik-metadata-repository"
-
-export { SessionMachine, createSessionMachine } from "./core/session-machine"
+export { createSessionMachine } from "./core/session-machine"
 
 export { EffectExecutor, createEffectExecutor } from "./core/effect-executor"
-export type { EffectExecutorConfig } from "./core/effect-executor"
-export type { TTSEffectHandler } from "./core/tts-effect-handler"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SELECTORS & ACTIONS
@@ -94,10 +72,7 @@ export {
   actions,
   getCurrentBatch,
   getCurrentMessage,
-  getCurrentQuestion,
   getVisibleMessages,
-  getAllMessages,
-  getAllQuestions,
 } from "./adapter/session-selectors"
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -112,5 +87,4 @@ export { TopikFileSchema } from "./entity/topik-types"
 
 export { useKoreanStudyPageVM } from "./adapter/hooks"
 export { useSession } from "./adapter/hooks"
-export { useTopikCurrentBatch } from "./adapter/server"
-export { SessionConfigProvider, useSessionConfig } from "./adapter"
+export { useSessionConfig } from "./adapter"

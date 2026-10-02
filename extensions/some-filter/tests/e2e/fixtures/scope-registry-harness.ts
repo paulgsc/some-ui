@@ -36,10 +36,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const FIXTURE_DIR = path.resolve(__dirname)
 
 /** Fixed so every captured video/frame set is directly comparable across runs — mirrors gate0-fixture.ts's own GATE0_VIEWPORT. */
-export const HARNESS_VIEWPORT = { width: 800, height: 600 }
+const HARNESS_VIEWPORT = { width: 800, height: 600 }
 
-export const SCOPE_REGISTRY_GLOBAL = "ScopeRegistryModule"
-export const CUSTODY_PRIMITIVE_GLOBAL = "CustodyPrimitiveModule"
+const SCOPE_REGISTRY_GLOBAL = "ScopeRegistryModule"
+const CUSTODY_PRIMITIVE_GLOBAL = "CustodyPrimitiveModule"
 
 type ScopeRegistryFixtures = {
   context: BrowserContext

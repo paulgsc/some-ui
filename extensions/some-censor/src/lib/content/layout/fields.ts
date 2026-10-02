@@ -23,13 +23,6 @@ export const LOCKUP_TEXT =
 
 export type CardField = "title" | "channelName" | "duration" | "uploadDate"
 
-export const CARD_FIELDS: ReadonlyArray<CardField> = [
-  "title",
-  "channelName",
-  "duration",
-  "uploadDate",
-]
-
 /**
  * Selectors in priority order. The first one that yields non-empty text wins
  * at extraction time; the fingerprint records every one that matched.

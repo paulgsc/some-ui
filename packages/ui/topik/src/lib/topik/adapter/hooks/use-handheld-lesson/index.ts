@@ -80,7 +80,7 @@ import { LOCAL_LESSON_PREFIX } from "@topik/lib/topik/generation/intake"
 const EMPTY_PLAN: LessonPlan = { steps: [], lineCount: 0, checkCount: 0 }
 const SPOKEN_LANGUAGE = "ko"
 
-export type HandheldLessonView = {
+type HandheldLessonView = {
   topikKey: string
   displayName: string
   batch: ConversationBatch

@@ -18,7 +18,7 @@ export type UseViewportOptions = {
   onContentAdvance?: (newCursor: number, oldCursor: number) => void
 }
 
-export type FaceContent<T = unknown> = {
+type FaceContent<T = unknown> = {
   faceIndex: number
   contentIndices: Array<number>
   isActive: boolean

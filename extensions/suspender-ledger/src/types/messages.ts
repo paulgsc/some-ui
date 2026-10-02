@@ -87,7 +87,7 @@ export type PopupToWorkerMessage =
  * Sending a message also wakes a recycled event page, so the page never reports
  * on a worker that is merely asleep.
  */
-export type ObservabilityCommand = "export" | "clear"
+type ObservabilityCommand = "export" | "clear"
 
 export type DebugToWorkerMessage = {
   method: "observability"
@@ -107,13 +107,6 @@ export function isDebugToWorkerMessage(
   const cmd: unknown = Reflect.get(value, "cmd")
   return cmd === "export" || cmd === "clear"
 }
-
-/**
- * The worker's reply to a {@link PopupToWorkerMessage} `storage` read: the
- * merged `local` + `session` preference snapshot. Keys are untyped at the wire
- * boundary; callers narrow against the `Prefs` schema before use.
- */
-export type WorkerToPopupMessage = Record<string, unknown>
 
 /** Narrowing guard for the popup→worker protocol. */
 export function isPopupToWorkerMessage(

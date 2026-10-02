@@ -30,10 +30,10 @@ type UseObsStatusOptions = Omit<
  * useObsStatusWebSocket({ url: "ws://localhost:4455" })
  *
  * // In child components, use selectors
- * import { useScenes, useIsStreaming, useObsCommands } from './obs-store'
+ * import { useSceneInfo, useIsStreaming, useObsCommands } from './obs-store'
  *
  * function SceneList() {
- *   const scenes = useScenes() // Only rerenders when scenes change
+ *   const { scenes } = useSceneInfo() // Only rerenders when scenes change
  *   const { switchScene } = useObsCommands()
  *   // ...
  * }
@@ -45,7 +45,7 @@ type UseObsStatusOptions = Omit<
  * }
  *
  * function StatsDisplay() {
- *   const stats = useObsStats() // Rerenders frequently - opt-in only!
+ *   const cpu = useCpuUsage() // Rerenders frequently - opt-in only!
  *   // ...
  * }
  * ```

@@ -303,7 +303,7 @@ function warn(action: string): void {
 // Use these ONLY for: progress bars, timecode displays, playheads, animations
 // -----------------------------------------------------------------------------
 
-export const selectClock = (s: OrchestratorStoreState): ClockState => s.clock
+const selectClock = (s: OrchestratorStoreState): ClockState => s.clock
 
 export const useOrchestratorClock = (): ClockState =>
   useOrchestratorStore(useShallow(selectClock))
@@ -313,9 +313,6 @@ export const selectCurrentTime = (s: OrchestratorStoreState): number =>
 
 export const selectProgress = (s: OrchestratorStoreState): number =>
   s.clock.progress
-
-export const selectTimeRemaining = (s: OrchestratorStoreState): number =>
-  s.clock.time_remaining
 
 export const selectTotalDuration = (s: OrchestratorStoreState): number =>
   s.clock.total_duration
@@ -330,39 +327,12 @@ export const selectTotalDuration = (s: OrchestratorStoreState): number =>
  * STABLE: Does not change on tick updates, only on lifetime boundaries.
  * May contain multiple concurrent scenes.
  */
-export const selectSceneLifetimes = (
+const selectSceneLifetimes = (
   s: OrchestratorStoreState
 ): Array<ActiveLifetime> => s.lifetimes.scene_lifetimes
 
 export const useSceneLifetimes = (): Array<ActiveLifetime> =>
   useOrchestratorStore(useShallow(selectSceneLifetimes))
-
-/**
- * Returns set of active scene IDs (concurrent-aware).
- * STABLE: Only changes when lifetime boundaries change.
- */
-export const selectActiveSceneIds = (s: OrchestratorStoreState): Set<string> =>
-  s.lifetimes.active_scene_ids
-
-export const useActiveSceneIds = (): Set<string> =>
-  useOrchestratorStore(selectActiveSceneIds)
-
-/**
- * Returns a specific lifetime by ID.
- * STABLE: Only changes when that lifetime starts/ends.
- */
-export const selectLifetimeById =
-  (id: number) =>
-  (s: OrchestratorStoreState): ActiveLifetime | null =>
-    s.lifetimes.lifetimes.get(id) ?? null
-
-/**
- * Returns all active lifetimes as a Map.
- * STABLE: Only changes on lifetime boundaries.
- */
-export const selectAllLifetimes = (
-  s: OrchestratorStoreState
-): Map<number, ActiveLifetime> => s.lifetimes.lifetimes
 
 // -----------------------------------------------------------------------------
 // 🟡 MODE SELECTORS (stable across ticks, changes on commands)
@@ -373,8 +343,7 @@ export const selectAllLifetimes = (
  * Returns the current orchestrator mode.
  * STABLE: Only changes on mode transitions (Start, Stop, Pause, etc.)
  */
-export const selectMode = (s: OrchestratorStoreState): OrchestratorMode =>
-  s.mode.mode
+const selectMode = (s: OrchestratorStoreState): OrchestratorMode => s.mode.mode
 
 export const useMode = (): OrchestratorMode => useOrchestratorStore(selectMode)
 
@@ -391,8 +360,7 @@ export const useIsRunning = (): boolean => useOrchestratorStore(selectIsRunning)
  * Returns true if orchestrator is paused.
  * STABLE: Only changes on mode transitions.
  */
-export const selectIsPaused = (s: OrchestratorStoreState): boolean =>
-  s.mode.is_paused
+const selectIsPaused = (s: OrchestratorStoreState): boolean => s.mode.is_paused
 
 export const useIsPaused = (): boolean => useOrchestratorStore(selectIsPaused)
 
@@ -400,62 +368,15 @@ export const useIsPaused = (): boolean => useOrchestratorStore(selectIsPaused)
  * Returns true if orchestrator is in a terminal state (Finished, Stopped, Error).
  * STABLE: Only changes on mode transitions.
  */
-export const selectIsTerminal = (s: OrchestratorStoreState): boolean =>
+const selectIsTerminal = (s: OrchestratorStoreState): boolean =>
   s.mode.is_terminal
 
 export const useIsTerminal = (): boolean =>
   useOrchestratorStore(selectIsTerminal)
 
-/**
- * Returns true if orchestrator can accept playback commands (Idle, Running, Paused).
- * STABLE: Only changes on mode transitions.
- */
-export const selectIsActive = (s: OrchestratorStoreState): boolean =>
-  s.mode.mode === "Idle" ||
-  s.mode.mode === "Running" ||
-  s.mode.mode === "Paused"
-
-export const useIsActive = (): boolean => useOrchestratorStore(selectIsActive)
-
-// -----------------------------------------------------------------------------
-// LEGACY COMPATIBILITY (deprecated but kept for migration)
-// -----------------------------------------------------------------------------
-
-/**
- * @deprecated Use selectActiveSceneIds or selectSceneLifetimes instead.
- * Returns first active scene ID for legacy code that assumes single scene.
- * Returns null if no scenes active, or if multiple scenes are concurrent.
- */
-export const selectCurrentSceneId = (
-  s: OrchestratorStoreState
-): string | null => {
-  const sceneIds = s.lifetimes.active_scene_ids
-  // Only return a value if exactly one scene is active
-  return sceneIds.size === 1 ? (Array.from(sceneIds).at(0) ?? null) : null
-}
-
-/**
- * @deprecated Use useSceneLifetimes or selectActiveSceneIds instead.
- *
- * The selector below it carried the deprecation and this wrapper did not, so
- * a consumer reaching for the hook - the form anyone would actually reach for
- * - got no warning at all. Marked now; it has no consumers in this repo and
- * can go once that is true outside it too.
- */
-export const useCurrentSceneId = (): string | null =>
-  // Referencing a deprecated selector is this shim's entire purpose.
-  // eslint-disable-next-line @typescript-eslint/no-deprecated -- see above
-  useOrchestratorStore(selectCurrentSceneId)
-
 // -----------------------------------------------------------------------------
 // OTHER STATE SELECTORS
 // -----------------------------------------------------------------------------
-
-export const selectStreamStatus = (s: OrchestratorStoreState): StreamStatus =>
-  s.rawState.stream_status
-
-export const useStreamStatus = (): StreamStatus =>
-  useOrchestratorStore(useShallow(selectStreamStatus))
 
 export const selectConnectionStatus = (
   s: OrchestratorStoreState
@@ -465,60 +386,9 @@ export const selectConnectionStatus = (
   error: s.error,
 })
 
-export const useConnectionStatus = (): ReturnType<
-  typeof selectConnectionStatus
-> => useOrchestratorStore(useShallow(selectConnectionStatus))
-
-// -----------------------------------------------------------------------------
-// ESCAPE HATCH (use only for debugging)
-// -----------------------------------------------------------------------------
-
-/**
- * ⚠️ WARNING: Returns raw state from server.
- * This updates every tick. Do not use in components unless you explicitly
- * want tick-rate rerenders. Use temporal-specific selectors instead.
- */
-export const selectRawState = (s: OrchestratorStoreState): OrchestratorState =>
-  s.rawState
-
 // ============================================================================
 // DERIVED HOOKS (Concurrent-aware computations)
 // ============================================================================
-
-/**
- * Returns time elapsed for a specific scene lifetime.
- * TICK-AWARE: Rerenders every tick (explicit leakage).
- * @param sceneId - The scene ID to track
- */
-export function useSceneElapsedTime(sceneId: string): number | null {
-  const { current_time } = useOrchestratorClock()
-  const lifetimes = useSceneLifetimes()
-
-  const sceneLifetime = lifetimes.find(
-    (l) => "Scene" in l.kind && l.kind.Scene.scene_id === sceneId
-  )
-  if (!sceneLifetime) return null
-
-  return current_time - sceneLifetime.started_at
-}
-
-/**
- * Returns progress for a specific scene lifetime (0-1).
- * TICK-AWARE: Rerenders every tick (explicit leakage).
- * @param sceneId - The scene ID to track
- */
-export function useSceneProgress(sceneId: string): number | null {
-  const elapsed = useSceneElapsedTime(sceneId)
-  const lifetimes = useSceneLifetimes()
-
-  const sceneLifetime = lifetimes.find(
-    (l) => "Scene" in l.kind && l.kind.Scene.scene_id === sceneId
-  )
-  if (!sceneLifetime || elapsed === null) return null
-
-  const duration = sceneLifetime.kind.Scene.duration
-  return duration > 0 ? Math.min(elapsed / duration, 1) : 0
-}
 
 /**
  * Returns primary scene (useful for UI that needs a "main" scene).
@@ -533,13 +403,4 @@ export function usePrimaryScene(): ActiveLifetime | null {
   return lifetimes.reduce((earliest, current) =>
     current.started_at < earliest.started_at ? current : earliest
   )
-}
-
-/**
- * Check if a specific scene is currently active.
- * STABLE: Only changes on lifetime boundaries.
- */
-export function useIsSceneActive(sceneId: string): boolean {
-  const activeIds = useActiveSceneIds()
-  return activeIds.has(sceneId)
 }

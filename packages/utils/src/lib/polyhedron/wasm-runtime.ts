@@ -34,22 +34,6 @@ export async function getWasmManager(): Promise<WasmViewportManager | null> {
 }
 
 /**
- * Get WASM manager synchronously (returns null if not loaded)
- * Useful for non-async contexts
- */
-export function getWasmManagerSync(): WasmViewportManager | null {
-  return loader.peek()
-}
-
-/**
- * Preload WASM (fire-and-forget)
- * Useful for warming up runtime before first use
- */
-export function preloadWasm(): void {
-  loader.preload()
-}
-
-/**
  * Reset WASM runtime (for HMR, tests, cleanup)
  *
  * IMPORTANT: This is a HARD reset that:

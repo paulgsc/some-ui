@@ -8,7 +8,7 @@ import { defineConfig } from "eslint/config"
  * bundle can leak a runtime `require("react")` that only fails when a consumer
  * loads it. See rules/require-react-peer-dependency.ts.
  */
-export const reactPeerDependencyPlugin = {
+const reactPeerDependencyPlugin = {
   meta: { name: "react-peer-dependency", version: "0.0.1" },
   rules: {
     "require-react-peer-dependency": requireReactPeerDependency,

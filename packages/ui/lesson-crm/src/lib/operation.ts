@@ -13,13 +13,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { Intent, IntentError } from "@some-ui/intent-kit"
-import {
-  failed,
-  idle,
-  succeeded,
-  toIntentError,
-  working,
-} from "@some-ui/intent-kit"
+import { failed, idle, succeeded, working } from "@some-ui/intent-kit"
 
 /** One outcome, for the host to show on its overlay plane (a toast). */
 export type CrmNotice =
@@ -36,11 +30,6 @@ export type Reporting = {
   notify: (notice: CrmNotice) => void
   /** The host's normaliser for its transport's errors. */
   mapError: (error: unknown) => IntentError
-}
-
-export const SILENT_REPORTING: Reporting = {
-  notify: () => undefined,
-  mapError: toIntentError,
 }
 
 export type OperationWords<V, T> = {

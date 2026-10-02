@@ -78,7 +78,7 @@ export type PracticeCounts = {
   practiceMs: number
 }
 
-export type PracticeDay = PracticeCounts & {
+type PracticeDay = PracticeCounts & {
   /** The learner's local date, `YYYY-MM-DD`. */
   day: string
 }

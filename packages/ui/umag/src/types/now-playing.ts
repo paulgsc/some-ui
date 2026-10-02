@@ -1,13 +1,9 @@
-import { z } from "zod"
-
-// Schema for `NowPlaying` struct
-export const NowPlayingSchema = z.object({
-  title: z.string().optional(),
-  channel: z.string().optional(),
-  video_id: z.string().optional(),
-  current_time: z.number().int().nonnegative().optional(),
-  duration: z.number().int().nonnegative().optional(),
-  thumbnail: z.string().optional(),
-})
-
-export type NowPlayingType = z.infer<typeof NowPlayingSchema>
+// Shape of the `NowPlaying` struct
+export type NowPlayingType = {
+  title?: string
+  channel?: string
+  video_id?: string
+  current_time?: number
+  duration?: number
+  thumbnail?: string
+}

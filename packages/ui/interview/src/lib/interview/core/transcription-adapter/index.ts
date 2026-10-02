@@ -1,10 +1,8 @@
-import {
-  TranscriptionJobSchema,
-  TranscriptionResultSchema,
-  type QuestionCategory,
-  type TranscriptionAdapter,
-  type TranscriptionJob,
-  type TranscriptionResult,
+import type {
+  QuestionCategory,
+  TranscriptionAdapter,
+  TranscriptionJob,
+  TranscriptionResult,
 } from "@interview/lib/interview/core/interview-types"
 
 const SAMPLE_TRANSCRIPTS: Record<QuestionCategory, string> = {
@@ -82,58 +80,6 @@ export const createMockTranscriptionAdapter = (
         return Promise.resolve({ status: "processing" })
       }
       return Promise.resolve(job.result)
-    },
-  }
-}
-
-type HttpTranscriptionAdapterOptions = {
-  baseUrl: string
-  headers?: Record<string, string>
-}
-
-/**
- * Real backend seam. POSTs the recording, then polls a status endpoint
- * until the job resolves. Not wired up by default - swap
- * `createMockTranscriptionAdapter()` for `createHttpTranscriptionAdapter(...)`
- * once the transcription service exists.
- */
-export const createHttpTranscriptionAdapter = (
-  options: HttpTranscriptionAdapterOptions
-): TranscriptionAdapter => {
-  const { baseUrl, headers = {} } = options
-
-  return {
-    async submit(blob, meta): Promise<TranscriptionJob> {
-      const formData = new FormData()
-      formData.append("audio", blob)
-      formData.append("questionId", meta.questionId)
-      formData.append("durationSeconds", String(meta.durationSeconds))
-
-      const response = await fetch(`${baseUrl}/recordings`, {
-        method: "POST",
-        headers,
-        body: formData,
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to submit recording: ${response.status}`)
-      }
-
-      return TranscriptionJobSchema.parse(await response.json())
-    },
-
-    async poll(jobId): Promise<TranscriptionResult> {
-      const response = await fetch(`${baseUrl}/recordings/${jobId}`, {
-        headers,
-      })
-
-      if (!response.ok) {
-        throw new Error(
-          `Failed to fetch transcription status: ${response.status}`
-        )
-      }
-
-      return TranscriptionResultSchema.parse(await response.json())
     },
   }
 }

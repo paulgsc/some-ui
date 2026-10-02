@@ -17,7 +17,7 @@ import type {
  * Top-level session phases
  * Minimal, stable enumeration
  */
-export type SessionPhase =
+type SessionPhase =
   | "selecting" // User is choosing content
   | "hydrating" // Content is being loaded
   | "active" // Session is running (chat or quiz)
@@ -32,7 +32,7 @@ export type CatalogStatus = "idle" | "loading" | "ready" | "failed"
 /**
  * Catalog loading state (orthogonal to phase)
  */
-export type CatalogState = {
+type CatalogState = {
   status: CatalogStatus
   data: Array<TopikMetadata> | null
   error: string | null
@@ -42,7 +42,7 @@ export type CatalogState = {
  * Active session mode
  * Determines behavior within "active" phase
  */
-export type SessionMode = "chat" | "quiz"
+type SessionMode = "chat" | "quiz"
 
 /**
  * Chat playback state
@@ -89,12 +89,12 @@ export type ActiveSessionState = {
  * Hydration status
  * Tracks loading state without embedding payload
  */
-export type HydrationStatus = "empty" | "loading" | "ready" | "failed"
+type HydrationStatus = "empty" | "loading" | "ready" | "failed"
 
 /**
  * Data reference - FSM does own the batches
  */
-export type DataReference = {
+type DataReference = {
   // Catalog state (orthogonal to phase)
   catalog: CatalogState
 
@@ -166,7 +166,7 @@ export type SessionState = {
 /**
  * Catalog events (from TanStack Query)
  */
-export type CatalogEvent =
+type CatalogEvent =
   | { type: "CATALOG_LOADING" }
   | { type: "CATALOG_SUCCESS"; data: Array<TopikMetadata> }
   | { type: "CATALOG_FAILURE"; error: string }
@@ -174,19 +174,19 @@ export type CatalogEvent =
 /**
  * User action to request catalog
  */
-export type CatalogRequestEvent = { type: "REQUEST_CATALOG" }
+type CatalogRequestEvent = { type: "REQUEST_CATALOG" }
 
 /**
  * Selection events
  */
-export type SelectionEvent =
+type SelectionEvent =
   | { type: "SELECT_TOPIK"; key: string }
   | { type: "CHANGE_TOPIK" }
 
 /**
  * Hydration events
  */
-export type HydrationEvent =
+type HydrationEvent =
   | { type: "HYDRATION_STARTED"; key: string }
   | {
       type: "HYDRATION_SUCCESS"
@@ -198,7 +198,7 @@ export type HydrationEvent =
 /**
  * Iteration events
  */
-export type IterationEvent =
+type IterationEvent =
   | { type: "ADVANCE_MESSAGE" }
   | { type: "ADVANCE_QUESTION" }
   | { type: "ADVANCE_BATCH" }
@@ -208,7 +208,7 @@ export type IterationEvent =
 /**
  * Mode control events
  */
-export type ModeEvent =
+type ModeEvent =
   | { type: "START_SESSION" }
   | { type: "START_CHAT" }
   | { type: "START_QUIZ" }
@@ -219,7 +219,7 @@ export type ModeEvent =
 /**
  * Evaluation events
  */
-export type EvaluationEvent =
+type EvaluationEvent =
   | { type: "ANSWER_SUBMITTED"; correct: boolean; userAnswer?: string }
   | { type: "DISMISS_FEEDBACK" }
   | { type: "BATCH_PASSED" }
@@ -228,7 +228,7 @@ export type EvaluationEvent =
 /**
  * Timer events
  */
-export type TimerEvent = { type: "TIMER_TICK" }
+type TimerEvent = { type: "TIMER_TICK" }
 
 /**
  * Complete event union

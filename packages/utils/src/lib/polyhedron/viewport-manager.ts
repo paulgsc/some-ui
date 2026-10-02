@@ -192,36 +192,3 @@ const sharedManager = new ViewportManager()
 export function getViewportManager(): ViewportManager {
   return sharedManager
 }
-
-/**
- * Reset shared manager (clears viewports)
- *
- * NOTE: This only clears the manager's viewport registry.
- * To reset WASM runtime, call resetWasmRuntime() separately.
- */
-export function resetViewportManager(): void {
-  sharedManager.clearAll()
-}
-
-/**
- * FULL reset (manager + WASM runtime)
- *
- * Use cases:
- * - Hot module reload
- * - Test cleanup
- * - Complete system reset
- */
-export function resetViewportSystem(): void {
-  // 1. Clear viewports
-  resetViewportManager()
-
-  // 2. Reset WASM runtime
-  resetWasmRuntime()
-}
-
-/**
- * Type guard
- */
-export function isViewportManager(value: unknown): value is ViewportManager {
-  return value instanceof ViewportManager
-}
