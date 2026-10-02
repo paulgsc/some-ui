@@ -20,11 +20,19 @@
 // `.jsx`/`.tsx` file; any other source file that imports a React library
 // (`react`, `react-dom`, or a binding such as `@tanstack/react-query`); and
 // any that declares or calls a hook, by the `use` + capital naming convention
-// eslint-plugin-react-hooks also goes by. So a custom hook counts however it
-// reaches React (moving nine awaits from a component into `useRecorder()`
-// moves nothing out of React), including one built only on other hooks.
-// Tests, stories, fixtures, generated files and declarations are out of
-// scope.
+// eslint-plugin-react-hooks also goes by: `function useX`, `const useX =
+// <anything>`, `useX()`, `Namespace.useX()`. So moving nine awaits from a
+// component into `useRecorder()` moves nothing out of React, and a hook built
+// only on other hooks counts too. Tests, stories, fixtures, generated files
+// and declarations are out of scope.
+//
+// The classification is that syntax and nothing more, on purpose: R1 cannot
+// claim to find every way a module reaches React, so it claims these shapes.
+// A module whose only link to React is a hook renamed away from the
+// convention (`import { useX as readX }`), or called through a lowercase
+// object (`hooks.useX()`), is not counted. That breaks the naming convention
+// the rules-of-hooks lint already depends on, which is the reviewer's to
+// flag, not this count's to chase.
 //
 // Known blind spot: a fire-and-forget call (`void save()`) is not a site.
 // Counting `void <call>` would sweep in every `void navigate(...)` and query
@@ -83,7 +91,7 @@ function importsReact(file: ts.SourceFile): boolean {
 }
 
 /**
- * A hook declared (`function useX`, `const useX = ...`) or called: `useX()`,
+ * A hook declared (`function useX`, `const useX = <anything>`) or called: `useX()`,
  * or `Namespace.useX()` on a PascalCase namespace (`React.useState`,
  * `Hooks.useSession`), the same call shapes eslint-plugin-react-hooks treats
  * as hooks. So `vi.useFakeTimers()` is not one.
@@ -91,14 +99,10 @@ function importsReact(file: ts.SourceFile): boolean {
 function isHook(node: ts.Node): boolean {
   if (ts.isFunctionDeclaration(node))
     return node.name !== undefined && HOOK_NAME.test(node.name.text)
+  // Whatever the initializer: a factory's result (`createQueryHook(...)`,
+  // zustand's `create(...)`) is as much a hook as an arrow function.
   if (ts.isVariableDeclaration(node))
-    return (
-      ts.isIdentifier(node.name) &&
-      HOOK_NAME.test(node.name.text) &&
-      node.initializer !== undefined &&
-      (ts.isArrowFunction(node.initializer) ||
-        ts.isFunctionExpression(node.initializer))
-    )
+    return ts.isIdentifier(node.name) && HOOK_NAME.test(node.name.text)
   if (!ts.isCallExpression(node)) return false
   const callee = node.expression
   if (ts.isIdentifier(callee)) return HOOK_NAME.test(callee.text)

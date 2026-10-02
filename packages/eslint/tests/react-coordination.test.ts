@@ -100,6 +100,15 @@ describe("coordinationSites", () => {
     expect(coordinationSites("apps/www/src/lib/select.ts", calledOnly)).toBe(1)
   })
 
+  it("treats a hook declared from a factory's result as React", () => {
+    const source = `
+      import { apiHooks } from "./api"
+      export const useChapters = apiHooks.createQueryHook("chapters")
+      export const load = async () => { await Promise.resolve() }
+    `
+    expect(coordinationSites("packages/x/src/data/chapters.ts", source)).toBe(1)
+  })
+
   it("treats a hook called through a PascalCase namespace as React", () => {
     const source = `
       import * as Hooks from "./hooks"

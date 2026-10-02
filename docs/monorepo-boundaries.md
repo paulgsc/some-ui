@@ -168,16 +168,20 @@ coordination, each fixed by one more local guard.
 >   `.finally` sites are not listed at exactly that number, in either
 >   direction. A React module is a `.jsx`/`.tsx` file, a module importing a
 >   React library (`react`, `react-dom`, or a binding such as
->   `@tanstack/react-query`), or one that declares or calls a `use` + capital
->   hook, so a custom hook counts however it reaches React. Whether those
->   sites make the component the coordinator is not decidable. Lint sees one
->   awaited submit and nine interleaved awaits over a microphone, a store and
->   an `Audio` as the same construct. Types do not help, because the problem
->   is how hooks compose, not any one signature. Tests pass either way,
->   because behaviour is the same and only the race surface differs. So the
->   check never judges. It turns every change in how much a React module
->   coordinates into a line in the diff, and that line is where this falsifier
->   is applied, as with RS1's fingerprint and the Rust side's
+>   `@tanstack/react-query`), or one that declares or calls a hook by the
+>   `use` + capital convention (`function useX`, `const useX = <anything>`,
+>   `useX()`, `Namespace.useX()`), so a custom hook counts too. That syntax is
+>   the whole classification: a hook renamed away from the convention, or
+>   called through a lowercase object, is not counted, and is a rules-of-hooks
+>   naming problem for review, not a gap in R1. Whether those sites make the
+>   component the coordinator is not decidable. Lint sees one awaited submit
+>   and nine interleaved awaits over a microphone, a store and an `Audio` as
+>   the same construct. Types do not help, because the problem is how hooks
+>   compose, not any one signature. Tests pass either way, because behaviour
+>   is the same and only the race surface differs. So the check never judges.
+>   It turns every change in how much a React module coordinates into a line
+>   in the diff, and that line is where this falsifier is applied, as with
+>   RS1's fingerprint and the Rust side's
 >   `scripts/check-mutation-boundary.sh`. "Grandfathered counts never rise" is
 >   mechanical; not yet a rule (it needs the base branch's allowlist to
 >   compare against).
