@@ -23,17 +23,6 @@ export function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t
 }
 
-export function normalize(values: Array<number>): Array<number> {
-  const sum = values.reduce((a, b) => a + b, 0)
-  if (sum === 0) return values.map(() => 0)
-  return values.map((v) => v / sum)
-}
-
-export function solveWeights(constraints: Array<Constraint>): Array<number> {
-  const clamped = constraints.map((c) => clamp(c.ideal, c.min, c.max))
-  return normalize(clamped)
-}
-
 // --- Common Solved Node Type ---
 
 export type SolvedNode<T> =
@@ -47,15 +36,6 @@ export type SolvedNode<T> =
     }
 
 // --- Focus Path Calculation ---
-
-export type TreeNode<T> =
-  | { type: "leaf"; id: T }
-  | {
-      type: "split"
-      axis: "row" | "col"
-      splitId: string
-      children: Array<TreeNode<T>>
-    }
 
 export function getFocusPath<N, T>(
   tree: N,
@@ -91,26 +71,4 @@ export function getFocusPath<N, T>(
   }
 
   return pathSet
-}
-
-// --- Extract Leaf Slots ---
-
-export function extractLeafSlots<T>(
-  tree: TreeNode<T>,
-  getChildren: (node: TreeNode<T>) => Array<TreeNode<T>>
-): Array<T> {
-  const slots: Array<T> = []
-  const stack: Array<TreeNode<T>> = [tree]
-
-  while (stack.length) {
-    const node = stack.pop()!
-    if (node.type === "leaf") {
-      slots.push(node.id)
-    } else {
-      const children = getChildren(node)
-      stack.push(...children.slice().reverse())
-    }
-  }
-
-  return slots
 }

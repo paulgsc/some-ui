@@ -21,10 +21,3 @@ export type DeleteWhitelistResponse = { ok: true }
 export type GetSettingsResponse = { enabled: boolean }
 export type PutSettingsRequest = { enabled: boolean }
 export type PutSettingsResponse = { enabled: boolean }
-
-// ── API Error ─────────────────────────────────────────────────────────────────
-
-export type ApiError = {
-  status: number
-  message: string
-}

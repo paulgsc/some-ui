@@ -56,7 +56,7 @@ const details = (item: TopikMetadata): string => {
 }
 
 /** Why a lesson is up next, in the learner's words (canon Rem. 3.5). */
-export function reasonText(reasons: Array<SelectionReason>): string | null {
+function reasonText(reasons: Array<SelectionReason>): string | null {
   const parts = reasons.map((reason) => {
     switch (reason.kind) {
       case "brings-back": {

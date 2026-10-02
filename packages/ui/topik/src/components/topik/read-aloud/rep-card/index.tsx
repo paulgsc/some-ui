@@ -19,7 +19,7 @@ import { SPEECH_MS_PER_SYLLABLE } from "@topik/lib/topik/read-aloud/timing"
 import { Hand, Play, SkipForward } from "lucide-react"
 import { cn } from "some-ui-utils"
 
-export type RepCardStep = RepStep | IntroductionStep | "paused"
+type RepCardStep = RepStep | IntroductionStep | "paused"
 
 type RepCardProps = {
   deck: ReadAloudDeck

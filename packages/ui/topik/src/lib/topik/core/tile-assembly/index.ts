@@ -31,7 +31,7 @@ export type TileBoard = {
 
 const stripPunctuation = (text: string): string => text.replace(PUNCTUATION, "")
 
-export function normalizeAnswer(text: string, joiner: "" | " "): string {
+function normalizeAnswer(text: string, joiner: "" | " "): string {
   const stripped = stripPunctuation(text).toLowerCase().trim()
   return joiner === ""
     ? stripped.replace(/\s+/g, "")

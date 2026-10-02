@@ -65,7 +65,7 @@ function makePolledFace<P>(spec: PolledFace<P>): FaceContent {
   }
 }
 
-export function makeStreakCountFace(): FaceContent {
+function makeStreakCountFace(): FaceContent {
   return makePolledFace({
     id: "streak-count",
     intervalMs: 10_000,
@@ -82,7 +82,7 @@ export function makeStreakCountFace(): FaceContent {
   })
 }
 
-export function makeTodayProgressFace(): FaceContent {
+function makeTodayProgressFace(): FaceContent {
   return makePolledFace({
     id: "today-progress",
     intervalMs: 10_000,
@@ -97,7 +97,7 @@ export function makeTodayProgressFace(): FaceContent {
   })
 }
 
-export function makeLastActivityFace(): FaceContent {
+function makeLastActivityFace(): FaceContent {
   return makePolledFace({
     id: "last-activity",
     intervalMs: 15_000,
@@ -121,7 +121,7 @@ export function makeLastActivityFace(): FaceContent {
   })
 }
 
-export function makeCategoryOverviewFace(): FaceContent {
+function makeCategoryOverviewFace(): FaceContent {
   return makePolledFace({
     id: "category-overview",
     intervalMs: 10_000,
@@ -141,7 +141,7 @@ export function makeCategoryOverviewFace(): FaceContent {
   })
 }
 
-export function makeClockFace(): FaceContent {
+function makeClockFace(): FaceContent {
   const read = (): ClockProps => {
     const now = new Date()
     return {
@@ -163,7 +163,7 @@ export function makeClockFace(): FaceContent {
   })
 }
 
-export function makeActionFace(): FaceContent {
+function makeActionFace(): FaceContent {
   return { id: "action", slowOnHover: true, render: () => ActionFace({}) }
 }
 

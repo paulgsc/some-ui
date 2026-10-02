@@ -57,5 +57,3 @@ export function defineSomeUiConfig(
     ...restUserConfig,
   })
 }
-
-export default defineSomeUiConfig

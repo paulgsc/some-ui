@@ -21,7 +21,7 @@ import type { FileDiscovery, ResourceLoader } from ".."
 /**
  * Error stage taxonomy - every error is tagged with its origin
  */
-export type LibraryStage =
+type LibraryStage =
   | "discovery" // Failed to list files
   | "load" // Failed to read file contents
   | "validation" // Failed Zod schema validation
@@ -315,25 +315,4 @@ export function hasErrors<TValidated, TKey extends string>(
   result: LibraryResult<TValidated, TKey>
 ): boolean {
   return result.fatalError !== null || result.fileErrors.length > 0
-}
-
-/**
- * Utility: Get all error messages as array
- */
-export function getAllErrorMessages<TValidated, TKey extends string>(
-  result: LibraryResult<TValidated, TKey>
-): Array<string> {
-  const messages: Array<string> = []
-
-  if (result.fatalError) {
-    const cause =
-      result.fatalError.cause instanceof Error
-        ? result.fatalError.cause.message
-        : String(result.fatalError.cause)
-    messages.push(`[FATAL] ${cause}`)
-  }
-
-  messages.push(...result.fileErrors.map(formatLibraryError))
-
-  return messages
 }

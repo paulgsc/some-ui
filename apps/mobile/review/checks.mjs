@@ -307,7 +307,7 @@ export function reviewTargetSdk(targetSdk, schedule, today) {
 // ── versionCode ──────────────────────────────────────────────────────────
 
 /** Play's ceiling, https://developer.android.com/studio/publish/versioning */
-export const MAX_VERSION_CODE = 2_100_000_000
+const MAX_VERSION_CODE = 2_100_000_000
 
 export function reviewVersionCode(versionCode, previous) {
   const findings = []

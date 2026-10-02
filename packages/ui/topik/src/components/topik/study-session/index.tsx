@@ -57,7 +57,7 @@ import type { ShelfPort } from "@topik/lib/topik/adapter/shelf"
 import { cn } from "some-ui-utils"
 
 /** Where the manifest lives when a host doesn't say otherwise. */
-export const DEFAULT_TOPIK_MANIFEST_URL = "/topiks/manifest.json"
+const DEFAULT_TOPIK_MANIFEST_URL = "/topiks/manifest.json"
 
 export type KoreanStudyPageProps = {
   /** Overrides the default HTTP-backed repository outright. */
@@ -148,14 +148,10 @@ const DesktopSession = (): JSX.Element => {
 }
 
 /**
- * The applet proper. Assumes its context.
- *
- * Exported for the callers that legitimately own the whole config - a story
- * pinning fixtures, a test injecting fakes - which render it inside their
- * own `SessionConfigProvider`. Ordinary hosts render `KoreanStudyPage` and
- * pass the overrides they care about.
+ * The applet proper. Assumes its context: `KoreanStudyPage` provides it,
+ * and hosts render that with the overrides they care about.
  */
-export const KoreanStudySession = ({
+const KoreanStudySession = ({
   appearance = "inherit",
   surface: preference = "auto",
 }: {

@@ -50,7 +50,7 @@ const HANGUL = /^[가-힣]/
 const byId = <T extends { id: string }>(items: Array<T>): Map<string, T> =>
   new Map(items.map((item) => [item.id, item]))
 
-export function lineOf(
+function lineOf(
   deck: ReadAloudDeck,
   lineId: string
 ): ReadAloudLine | undefined {
@@ -150,7 +150,7 @@ export function isMarked(
   return item.kind === "word" ? cell.syllable === mark : cell.word === mark
 }
 
-export type GlossEntry = {
+type GlossEntry = {
   wordId: string
   lemma: string
   /** What the word means here: the line's sense, else the dictionary gloss. */

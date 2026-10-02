@@ -33,7 +33,7 @@ const LEVEL_TAG = /^topik-([1-6])$/
 export const RELATION_TAG_PREFIX = "relation:"
 
 /** Only the most recent reports steer the order: the delta, not the path. */
-export const STEERING_REPORTS = 3
+const STEERING_REPORTS = 3
 
 /** The TOPIK level a lesson's tags carry, if any. */
 export function topikLevelOf(tags: Array<string> = []): number | undefined {

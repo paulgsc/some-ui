@@ -32,11 +32,9 @@ const FIXTURE_DIR = path.resolve(__dirname, "fixtures")
 // Chromium needs a writable user data dir for the persistent context
 const USER_DATA_DIR = path.resolve(__dirname, ".chromium-user-data")
 
-export const CDP_PORT = 9222
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type BoyoDebug = {
+type BoyoDebug = {
   tick: number
   phase: "idle" | "running"
   mounted: number

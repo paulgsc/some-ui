@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url"
 import type { EyeScoreMap } from "./eye-score"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-export const EYE_SCORES_PATH = path.resolve(__dirname, "./eye-scores.json")
+const EYE_SCORES_PATH = path.resolve(__dirname, "./eye-scores.json")
 
 export function loadEyeScores(): EyeScoreMap {
   const raw = readFileSync(EYE_SCORES_PATH, "utf8")

@@ -12,7 +12,7 @@ import { prefs, storage } from "./prefs"
  * fired once preferences have been hydrated on the first `onStartup` /
  * `onInstalled` event; callbacks pushed afterwards run immediately.
  */
-export type Starters = {
+type Starters = {
   ready: boolean
   cache: Array<() => void>
   push(c: () => void): void

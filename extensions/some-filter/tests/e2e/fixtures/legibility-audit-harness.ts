@@ -15,7 +15,7 @@ import {
   legibilityAuditScript,
 } from "./legibility-audit-module"
 
-export type LegibilityAuditWindowApi = {
+type LegibilityAuditWindowApi = {
   auditLegibility: (root: Element) => {
     attrsByKey: ReadonlyMap<string, { foreground: unknown; backdrop: unknown }>
   }

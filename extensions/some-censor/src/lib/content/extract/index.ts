@@ -44,7 +44,6 @@ export { representsVideo } from "./video-id"
 export { extractTitle } from "./title"
 export { extractMeta, extractUploadDate } from "./meta"
 export type { FullyExtracted, VideoOnlyExtracted } from "./extracted"
-export { isFullyExtracted, isVideoOnly } from "./extracted"
 
 export function tryExtract(el: HTMLElement): Extracted {
   const videoId = extractVideoId(el)

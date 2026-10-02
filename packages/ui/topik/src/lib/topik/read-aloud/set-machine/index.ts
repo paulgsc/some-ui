@@ -82,7 +82,7 @@ export type SetProgress = {
 export type RepStep = "glyphs" | "turn" | "audio" | "echo" | "gloss"
 export type IntroductionStep = "intro-audio" | "intro-hold"
 
-export type SetPhase =
+type SetPhase =
   /** No set: the host is asked for one with `request-set`. */
   | { name: "idle" }
   /** A step of the entry at `cursor`. */
@@ -162,8 +162,8 @@ export type SetTransition = {
 /** Cor. 4.6: an item reported stuck returns at most twice in a set. */
 export const MAX_RETURNS = 2
 /** How far after a report its return, or introduction, is placed. */
-export const RETURN_GAP = 3
-export const INTRODUCTION_GAP = 2
+const RETURN_GAP = 3
+const INTRODUCTION_GAP = 2
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPERS

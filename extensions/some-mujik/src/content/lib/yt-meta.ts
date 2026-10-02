@@ -68,8 +68,3 @@ export function extractMetadata(): YTMetadata | null {
     duration: Math.floor(video.duration) || 0,
   }
 }
-
-export function isVideoPlaying(): boolean {
-  const v = document.querySelector<HTMLVideoElement>("video")
-  return !!v && !v.paused && !v.ended && v.readyState > 2
-}

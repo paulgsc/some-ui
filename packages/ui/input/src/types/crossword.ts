@@ -1,7 +1,7 @@
 // types file
 import { z } from "zod"
 
-export const WordPlacementSchema = z.object({
+const WordPlacementSchema = z.object({
   word: z.string(),
   startX: z.number().int(),
   startY: z.number().int(),
@@ -57,5 +57,3 @@ export type CrosswordGrid = {
 export type CrosswordClueWithNum = {
   clueNum: number
 } & CrosswordClue
-
-export type CrosswordClues = Record<Direction, Array<CrosswordClueWithNum>>

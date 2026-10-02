@@ -54,7 +54,7 @@ export function livePosition(report: SourceReport, now: number): LivePosition {
 // ── Publishing ────────────────────────────────────────────────────────────────
 
 /** How far (s) a display's clock may drift before a report is worth sending. */
-export const DRIFT_TOLERANCE_S = 1
+const DRIFT_TOLERANCE_S = 1
 
 /**
  * Whether a display running the clock from `prev` already shows what `next`

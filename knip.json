@@ -8,10 +8,13 @@
     "apps/www/tests/layout-invariants/stress-content.ts",
     "packages/eslint/tests/lint-fixtures/**",
     "packages/some-styles/styles-build/*.d.mts",
-    "packages/some-styles/styles-build/examples/**",
-    "packages/ui/chat/test/polyhedron-stub.ts"
+    "packages/some-styles/styles-build/examples/**"
   ],
-  "ignoreBinaries": ["typst", "rustc"],
+  "ignoreBinaries": ["typst", "rustc", "wasm-pack"],
+  "ignoreIssues": {
+    "extensions/some-censor/src/lib/content/debug.ts": ["exports"],
+    "packages/eslint/src/index.ts": ["duplicates"]
+  },
   "workspaces": {
     ".": {
       "entry": [
@@ -19,7 +22,21 @@
         "scripts/audit-node-licenses.mjs",
         "scripts/fix-gen.ts",
         "extensions/scripts/*.mjs"
+      ],
+      "ignoreDependencies": [
+        "@changesets/cli",
+        "typescript-language-server",
+        "typescript-transform-paths"
       ]
+    },
+    "apps/mobile": {
+      "ignoreDependencies": [
+        "@capacitor-community/sqlite",
+        "@capacitor/local-notifications"
+      ]
+    },
+    "extensions/common": {
+      "ignoreDependencies": ["@types/firefox-webext-browser"]
     },
     "extensions/some-censor": {
       "entry": [
@@ -29,14 +46,16 @@
         "src/lib/platform/**/api.*.ts",
         "src/lib/content/actuator/index.ts",
         "scripts/setup-test-profile.mjs"
-      ]
+      ],
+      "ignoreDependencies": ["@unocss/cli"]
     },
     "extensions/some-conveyor": {
       "entry": [
         "src/background/background.ts",
         "src/content/content.ts",
         "src/lib/platform/**/api.*.ts"
-      ]
+      ],
+      "ignoreDependencies": ["@some-ui/polyhedron", "@unocss/cli"]
     },
     "extensions/some-drama": {
       "entry": [
@@ -44,7 +63,8 @@
         "src/content/content.ts",
         "src/popup/popup.ts",
         "uno.config.popup.ts"
-      ]
+      ],
+      "ignoreDependencies": ["@unocss/cli"]
     },
     "extensions/some-filter": {
       "entry": ["public/prepaint-start.js"]
@@ -74,6 +94,9 @@
     },
     "packages/ui/resume": {
       "ignoreDependencies": ["@some-ui/contract-harness"]
+    },
+    "packages/ui/shared": {
+      "ignoreDependencies": ["clsx", "tailwind-merge"]
     }
   }
 }

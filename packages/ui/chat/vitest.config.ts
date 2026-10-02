@@ -41,13 +41,6 @@ export default defineConfig({
       // "@utils/*" -> "./src/*" aliases.
       "@shared": path.resolve(import.meta.dirname, "../shared/src"),
       "@utils": path.resolve(import.meta.dirname, "../../utils/src"),
-      // The real package only exists once wasm-pack has built the
-      // `crates/polyhedron` crate. Nothing under test here ever loads it
-      // (see test/polyhedron-stub.ts for why it still must resolve).
-      "@some-ui/polyhedron": path.resolve(
-        import.meta.dirname,
-        "./test/polyhedron-stub.ts"
-      ),
     },
   },
 })

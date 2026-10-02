@@ -92,7 +92,7 @@ export function setPrefs(partial: Partial<Prefs>): Promise<void> {
   })
 }
 
-export type StorageArea = "local" | "session"
+type StorageArea = "local" | "session"
 
 /**
  * Generic storage reader: resolves the supplied defaults merged with whatever
