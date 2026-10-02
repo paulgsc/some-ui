@@ -8,13 +8,25 @@
  *
  * Being inexact, a nudge can still be pending after its time, so a return
  * to the app asks the OS what is pending before stamping the cooldown.
+ *
+ * In a build carrying the soundbites page ("apk", the Android app's), a nudge
+ * also carries a "Not today: say why" button that opens it.
  */
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+const build = vi.hoisted(() => ({ apk: false }))
+vi.mock("virtual:build-profile", () => ({
+  profile: "native-test",
+  audiences: [],
+  hasAudience: (audience: string): boolean =>
+    audience === "public" || (audience === "apk" && build.apk),
+}))
 
 const plugin = vi.hoisted(() => ({
   cancel: vi.fn(() => Promise.resolve()),
   schedule: vi.fn(() => Promise.resolve({ notifications: [] })),
   checkPermissions: vi.fn(() => Promise.resolve({ display: "granted" })),
+  registerActionTypes: vi.fn(() => Promise.resolve()),
   getPending: vi.fn(
     (): Promise<{ notifications: Array<{ id: number }> }> =>
       Promise.resolve({ notifications: [] })
@@ -24,8 +36,12 @@ vi.mock("@capacitor/local-notifications", () => ({
   LocalNotifications: plugin,
 }))
 
-const { reconcileNativeNudge, scheduleNativeNudge, showNativeTestNudge } =
-  await import("@/lib/study-nudge/native")
+const {
+  nudgeTarget,
+  reconcileNativeNudge,
+  scheduleNativeNudge,
+  showNativeTestNudge,
+} = await import("@/lib/study-nudge/native")
 const { readLastNudgeAt } = await import("@/lib/study-nudge/service-worker")
 
 const DUE = new Date(2026, 8, 30, 14, 0, 0)
@@ -100,5 +116,67 @@ describe("showNativeTestNudge", () => {
     plugin.checkPermissions.mockResolvedValueOnce({ display: "denied" })
     await expect(showNativeTestNudge(NUDGE.decision)).resolves.toBe(false)
     expect(plugin.schedule).not.toHaveBeenCalled()
+  })
+})
+
+describe('the nudge\'s "Not today" button', () => {
+  beforeEach(() => vi.clearAllMocks())
+  afterEach(() => {
+    build.apk = false
+  })
+
+  it("rides on every nudge in the Android app's build", async () => {
+    build.apk = true
+    await scheduleNativeNudge(NUDGE)
+    expect(plugin.registerActionTypes).toHaveBeenCalledWith({
+      types: [
+        {
+          id: "study-nudge",
+          actions: [{ id: "not-today", title: "Not today: say why" }],
+        },
+      ],
+    })
+    expect(plugin.schedule).toHaveBeenCalledWith({
+      notifications: [
+        expect.objectContaining({ id: 1001, actionTypeId: "study-nudge" }),
+      ],
+    })
+  })
+
+  it("and on the test nudge, so the test shows what a nudge will", async () => {
+    build.apk = true
+    await showNativeTestNudge(NUDGE.decision)
+    expect(plugin.schedule).toHaveBeenCalledWith({
+      notifications: [
+        expect.objectContaining({ id: 1002, actionTypeId: "study-nudge" }),
+      ],
+    })
+  })
+
+  it("is left off where there is no soundbites page", async () => {
+    await scheduleNativeNudge(NUDGE)
+    expect(plugin.registerActionTypes).not.toHaveBeenCalled()
+    expect(plugin.schedule).toHaveBeenCalledWith({
+      notifications: [expect.objectContaining({ actionTypeId: undefined })],
+    })
+  })
+
+  it("does not cost the nudge when the button cannot be declared", async () => {
+    build.apk = true
+    plugin.registerActionTypes.mockRejectedValueOnce(new Error("no"))
+    await scheduleNativeNudge(NUDGE)
+    expect(plugin.schedule).toHaveBeenCalledWith({
+      notifications: [expect.objectContaining({ actionTypeId: undefined })],
+    })
+  })
+
+  it("opens the soundbites page, listening; a plain tap opens the session", () => {
+    build.apk = true
+    const extra = { url: "/sessions/s1" }
+    expect(nudgeTarget("not-today", extra)).toBe("/soundbites?say=reminder")
+    expect(nudgeTarget("tap", extra)).toBe("/sessions/s1")
+    expect(nudgeTarget("tap", undefined)).toBeNull()
+    build.apk = false
+    expect(nudgeTarget("not-today", extra)).toBe("/sessions/s1")
   })
 })

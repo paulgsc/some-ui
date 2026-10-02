@@ -1,8 +1,8 @@
 /**
  * @vitest-environment jsdom
  *
- * The Android app carries sessions and settings, and nothing else www routes
- * to (`lib/app-surface`). Checked against the real route tree, in a bundle
+ * The Android app carries sessions, the soundbites and settings, and nothing
+ * else www routes to (`lib/app-surface`). Checked against the real route tree, in a bundle
  * built with the real `mobile` profile's name: every route either loads where
  * it was asked for, or ends on the sessions list. The profile name comes from
  * build.profiles.ts, so a `lib/build-profile` that spells it differently turns
@@ -20,11 +20,15 @@ import { beforeAll, describe, expect, it, vi } from "vitest"
 import { isOnMobileSurface, MOBILE_HOME } from "@/lib/app-surface"
 
 vi.mock("virtual:build-profile", async () => {
-  const { MOBILE_PROFILE } = await import("@/build.profiles")
+  const { MOBILE_PROFILE, profiles } = await import("@/build.profiles")
+  // The real profile's audiences, so a page gated to one of them (the
+  // soundbites, "apk") loads here as it does on the phone.
+  const { audiences } = profiles[MOBILE_PROFILE]
   return {
     profile: MOBILE_PROFILE,
-    audiences: ["public"],
-    hasAudience: (audience: string): boolean => audience === "public",
+    audiences,
+    hasAudience: (audience: string): boolean =>
+      audiences.some((carried) => carried === audience),
   }
 })
 

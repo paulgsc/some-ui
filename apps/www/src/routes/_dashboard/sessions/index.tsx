@@ -16,10 +16,10 @@ import {
   Skeleton,
 } from "@some-ui/shared"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { Copy, Pencil, Play, Sparkles, Trash2, X } from "lucide-react"
+import { Copy, Mic, Pencil, Play, Sparkles, Trash2, X } from "lucide-react"
 import { cn, formatRelativeTime } from "some-ui-utils"
 
-import { MOBILE_APP } from "@/lib/build-profile"
+import { hasAudience, MOBILE_APP } from "@/lib/build-profile"
 import { useIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton, IntentFailure } from "@/lib/intent/render"
 import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
@@ -469,7 +469,25 @@ const SessionsList = ({
   )
 }
 
-const SessionsRoute = (): JSX.Element => {
+/**
+ * The way in to saying why a session is not happening, in the one place the
+ * phone opens on. One tap lands on the soundbites page already listening
+ * (`?say=`), so the reason is spoken before it can be second-guessed.
+ * Above the list's own states, so it is there while the list loads or fails.
+ */
+const SayWhyPrompt = (): JSX.Element => (
+  <div className="mb-6 flex max-w-3xl items-center justify-between gap-3 rounded-lg border border-dashed px-4 py-3">
+    <p className="text-muted-foreground text-sm">Not studying today?</p>
+    <Button asChild size="sm" variant="secondary">
+      <Link to="/soundbites" search={{ say: "sessions" }}>
+        <Mic className="mr-1.5 size-3.5" />
+        Say why
+      </Link>
+    </Button>
+  </div>
+)
+
+const SessionsOutcome = (): JSX.Element => {
   const outcome = queryOutcome(useSessions())
 
   return matchQueryOutcome(outcome, {
@@ -480,6 +498,14 @@ const SessionsRoute = (): JSX.Element => {
     ),
   })
 }
+
+const SessionsRoute = (): JSX.Element => (
+  <>
+    {/* "apk" only: the soundbites page exists in the Android app alone. */}
+    {hasAudience("apk") && <SayWhyPrompt />}
+    <SessionsOutcome />
+  </>
+)
 
 export const Route = createFileRoute("/_dashboard/sessions/")({
   // See `$sessionId.tsx`'s loader for why this is a non-awaited prefetch and

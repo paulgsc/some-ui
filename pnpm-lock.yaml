@@ -431,6 +431,9 @@ importers:
       '@some-ui/slideshow':
         specifier: workspace:*
         version: link:../../packages/ui/slideshow
+      '@some-ui/soundbites':
+        specifier: workspace:*
+        version: link:../../packages/ui/soundbites
       '@some-ui/speech':
         specifier: workspace:*
         version: link:../../packages/speech
@@ -1881,6 +1884,37 @@ importers:
       '@some-ui/vite-config':
         specifier: workspace:*
         version: link:../../some-vite-config
+      concurrently:
+        specifier: 10.0.3
+        version: 10.0.3
+
+  packages/ui/soundbites:
+    dependencies:
+      '@some-ui/shared':
+        specifier: workspace:*
+        version: link:../shared
+      lucide-react:
+        specifier: 'catalog:'
+        version: 0.562.0(react@19.0.0)
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.0.0(react@19.0.0)
+      some-ui-utils:
+        specifier: workspace:*
+        version: link:../../utils
+    devDependencies:
+      '@some-ui/tsconfig':
+        specifier: workspace:*
+        version: link:../../tsconfig
+      '@some-ui/vite-config':
+        specifier: workspace:*
+        version: link:../../some-vite-config
+      '@types/react':
+        specifier: ^19.0.4
+        version: 19.2.17
       concurrently:
         specifier: 10.0.3
         version: 10.0.3

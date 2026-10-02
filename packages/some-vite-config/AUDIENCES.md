@@ -1,8 +1,10 @@
 # Build audiences: one app, a bundle per deploy
 
-`apps/www` is one TanStack app that deploys three ways: the Docker image on the home
-network, the GitHub Pages site, and (later) a VPS. Some of what it will carry only means
-anything on the home network (the OBS control workspace is the first). **Build audiences**
+`apps/www` is one TanStack app that deploys four ways: the Docker image on the home
+network, the GitHub Pages site, the Android app (`apps/mobile`), and (later) a VPS. Some of
+what it will carry only means anything on the home network (the OBS control workspace is
+the first), and some only inside the Android app (`@some-ui/soundbites`, which records
+from the phone's microphone). **Build audiences**
 keep that code out of every build that never runs there, without a second app, a second
 route tree or a weaker type system.
 
@@ -12,18 +14,19 @@ a LAN-only page talks to is the server's to guard.
 ## How it works
 
 - **Each `packages/ui/*` workspace declares an audience** in `package.json`:
-  `"someUi": { "audience": "public" | "lan" }` (schema: `src/audience/schema.ts`). The field
+  `"someUi": { "audience": "public" | "lan" | "apk" }` (schema: `src/audience/schema.ts`). The field
   is required. Every profile, manifest and gate is typed against `AUDIENCES`.
 - **Each build selects a profile.** `apps/www/build.profiles.ts` lists them (`lan`, the default,
-  carries everything; `pages` carries `public`), chosen by `SOME_UI_PROFILE`.
+  carries `public` and `lan`; `pages` carries `public`; `mobile`, the Android app's, carries
+  `public` and `apk`), chosen by `SOME_UI_PROFILE`.
 - **`audiencePlugin` stubs what the profile leaves out.** An import of an excluded workspace
   resolves to a module exporting the same names, each a function that throws when called.
   `tsc` still resolves the real package, so the route tree, typed links, search schemas and
   loaders are identical in every profile; only the bundle differs. The workspace's
   `/contract` subpath is never stubbed.
 - **Gated routes live under a gate directory** (`gates` in `build.profiles.ts`; for `lan`,
-  `apps/www/src/routes/_dashboard/_lan/`). Its layout (`_lan.tsx`) calls
-  `requireAudience("lan")` in `beforeLoad`, which turns a visit into the app's ordinary
+  `apps/www/src/routes/_dashboard/_lan/`, for `apk`, `_dashboard/_apk/`). Its layout
+  (`_lan.tsx`, `_apk.tsx`) calls `requireAudience("lan")` (or `"apk"`) in `beforeLoad`, which turns a visit into the app's ordinary
   not-found in a build without the audience, before a loader or component can reach a stub.
 
 ## What is enforced, and what is not
@@ -86,7 +89,8 @@ is a regression, not debt. Each falsifier covers deletions and moves as well as 
   module does not meet it.
 - _Scope:_ `packages/ui/*` workspaces with a non-`public` audience. Held when written, with
   none in the repo yet. The first, `@some-ui/lesson-crm`, exports no `./contract` at all, so
-  it holds vacuously there; the OBS workspace is expected to be the first with one.
+  it holds vacuously there, as it does for the first `apk` workspace, `@some-ui/soundbites`;
+  the OBS workspace is expected to be the first with one.
 - _Why not enforced:_ mechanical; not yet a test. The plugin never stubs `/contract`, so
   whatever a contract module imports ships in every profile: a size regression, not a
   broken build, so neither the build nor an existing test notices. A lint rule would see one
@@ -126,4 +130,5 @@ checked against every existing link. What is left is inside such a file.
   lists every UI package `www` depends on, as its test requires, so utilities used only by a
   LAN workspace are generated into the public stylesheet too. Bytes of CSS, no code. The
   first LAN workspace, `@some-ui/lesson-crm`, landed without fixing it: it is built from
-  `@some-ui/shared` components and adds few utilities of its own.
+  `@some-ui/shared` components and adds few utilities of its own. So did the first `apk`
+  one, `@some-ui/soundbites`, for the same reason.
