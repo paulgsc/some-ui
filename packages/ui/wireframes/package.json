@@ -5,7 +5,6 @@
   "dependencies": {
     "@some-ui/honeycomb": "workspace:*",
     "@some-ui/shared": "workspace:*",
-    "@some-ui/slideshow": "workspace:*",
     "@some-ui/styles": "workspace:*",
     "@some-ui/types": "workspace:*",
     "lucide-react": "catalog:",

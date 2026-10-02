@@ -10,9 +10,7 @@
       "@some-ui/leetype": ["../ui/leetype/src/index.ts"],
       "@some-ui/topik": ["../ui/topik/src/index.ts"],
       "@some-ui/interview": ["../ui/interview/src/index.ts"],
-      "@some-ui/makjang": ["../ui/makjang/src/index.ts"],
       "@some-ui/portfolio": ["../ui/portfolio-chart/src/index.ts"],
-      "@some-ui/assessment": ["../ui/assessment/src/index.ts"],
       "@some-ui/styles": ["../some-styles/src/index.ts"],
       "@some-ui/vite-config": ["../some-vite-config/src/index.ts"],
       "@some-ui/wasm-loader": ["../wasm-loader/src/index.ts"],
@@ -22,12 +20,9 @@
       "@some-ui/chat": ["../ui/chat/src/index.ts"],
       "some-ui-emoji-animations": ["../ui/emoji-animations/src/index.ts"],
       "some-ui-input": ["../ui/input/src/index.ts"],
-      "some-ui-neon-sign": ["../ui/neon-sign/src/index.ts"],
       "@some-ui/shared": ["../ui/shared/src/index.ts"],
-      "@some-ui/slideshow": ["../ui/slideshow/src/index.ts"],
       "@some-ui/stepper": ["../ui/stepper/src/index.ts"],
       "some-ui-utils": ["../utils/src/index.ts"],
-      "@some-ui/umag": ["../ui/umag/src/index.ts"],
       "wireframes": ["../ui/wireframes/src/index.ts"]
     }
   },

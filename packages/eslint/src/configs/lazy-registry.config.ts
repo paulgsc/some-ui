@@ -46,21 +46,7 @@ export default defineConfig([
             "@some-ui/honeycomb",
             "@some-ui/interview",
             "@some-ui/leetype",
-            "@some-ui/makjang",
             "@some-ui/topik",
-            "@some-ui/umag",
-            "@some-ui/assessment",
-            "@some-ui/slideshow",
-            "some-ui-neon-sign",
-          ],
-          allow: [
-            // One genuine direct dependency, and not the component the
-            // registry loads: apps/www's composer embeds slideshow's
-            // *editor* (editorReducer, EditSceneDialog,
-            // OrchestratorTimeline), while the registry loads
-            // `ActiveLifetimesPanel` under "scheduled". The composer route
-            // is itself code-split, so the eager edge is bounded to it.
-            "@some-ui/slideshow",
           ],
         },
       ],

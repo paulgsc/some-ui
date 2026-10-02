@@ -24,16 +24,14 @@ import {
   PageControls,
   Switch,
 } from "@some-ui/shared"
-import {
-  editorReducer,
-  EditSceneDialog,
-  OrchestratorTimeline,
-} from "@some-ui/slideshow"
-import type { EditorState } from "@some-ui/slideshow"
 import type { SceneConfig } from "@some-ui/types"
 import { useFittedPage } from "some-ui-utils"
 
 import { formatTimecode } from "@/lib/format"
+import { EditSceneDialog } from "@/components/composer/scene-editor/edit-scene-dialog"
+import type { EditorState } from "@/components/composer/scene-editor/scene-editor"
+import { editorReducer } from "@/components/composer/scene-editor/scene-editor"
+import { OrchestratorTimeline } from "@/components/composer/scene-editor/timeline"
 
 const CLOSED_EDITOR_STATE: EditorState = { type: "Closed" }
 

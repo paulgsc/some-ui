@@ -1,19 +1,14 @@
 {
   "dependencies": {
     "@some-ui/fetch-kit": "workspace:*",
-    "@some-ui/makjang": "workspace:*",
     "@some-ui/types": "workspace:*",
     "@some-ui/chat": "workspace:*",
     "@some-ui/interview": "workspace:*",
     "@some-ui/topik": "workspace:*",
     "@some-ui/honeycomb": "workspace:*",
     "@some-ui/leetype": "workspace:*",
-    "some-ui-neon-sign": "workspace:*",
-    "@some-ui/slideshow": "workspace:*",
     "@some-ui/stepper": "workspace:*",
     "some-ui-utils": "workspace:*",
-    "@some-ui/assessment": "workspace:*",
-    "@some-ui/umag": "workspace:*",
     "wireframes": "workspace:*",
     "zod": "catalog:",
     "node-fetch": "^3.3.2"
@@ -52,7 +47,6 @@
   },
   "scripts": {
     "seed": "tsx src/scripts/mood-events/seed.ts",
-    "build:manifest": "tsx scripts/generate-manifest.ts",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist ./tsconfig.tsbuildinfo",
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
