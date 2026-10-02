@@ -101,18 +101,22 @@ export function reachableDirs(
   return reached
 }
 
-function workspaceOf(
-  path: string,
-  dirs: ReadonlyArray<string>
-): string | undefined {
-  return dirs.find((dir) => path.startsWith(`${dir}/`))
+/**
+ * The workspace a path belongs to, read from the path itself (the
+ * pnpm-workspace.yaml globs), not from today's workspace list: a sweep that
+ * touched workspaces since deleted still counts them (review, #1648).
+ */
+const WORKSPACE_ROOT =
+  /^(packages\/ui\/[^/]+|apps\/[^/]+|extensions\/[^/]+|crates\/[^/]+|docs\/canon|packages\/[^/]+)\//
+
+export function workspaceRootOf(path: string): string | undefined {
+  return WORKSPACE_ROOT.exec(path)?.[1]
 }
 
 /** Last commit that changed `dir`'s own source; `commits` newest first. */
 export function lastOwnChange(
   dir: string,
-  commits: ReadonlyArray<CommitFacts>,
-  dirs: ReadonlyArray<string>
+  commits: ReadonlyArray<CommitFacts>
 ): { date: string | null; sweepOnly: boolean } {
   let sweep: string | null = null
   for (const commit of commits) {
@@ -123,7 +127,7 @@ export function lastOwnChange(
     const touched = new Set(
       commit.files
         .filter((file) => !NOT_OWN_WORK.test(file))
-        .map((file) => workspaceOf(file, dirs))
+        .map(workspaceRootOf)
         .filter((found) => found !== undefined)
     )
     if (touched.size <= SWEEP_WORKSPACES) {
@@ -151,11 +155,10 @@ export function assessVestiges(
       dependents.set(dep, (dependents.get(dep) ?? 0) + 1)
     }
   }
-  const dirs = workspaces.map((w) => w.dir).sort((a, b) => b.length - a.length)
   return workspaces
     .filter((w) => !w.deployable)
     .map((w): VestigeReport => {
-      const last = lastOwnChange(w.dir, commits, dirs)
+      const last = lastOwnChange(w.dir, commits)
       const days = last.date === null ? null : daysBetween(last.date, today)
       // Only code is held to code's conventions: a Rust crate, a docs build
       // or a config-only package has no JS source to lint, test or knip.

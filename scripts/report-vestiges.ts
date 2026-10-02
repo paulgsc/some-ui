@@ -137,5 +137,5 @@ for (const r of reports) {
 }
 // eslint-disable-next-line no-console
 console.log(
-  `[vestiges] ${reports.length} candidate(s). Higher is likelier dead; see CLAUDE.md "Vestiges".`
+  `[vestiges] ${reports.filter((r) => r.candidate).length} candidate(s)${all ? ` of ${reports.length} workspaces listed` : ""}. Higher is likelier dead; see CLAUDE.md "Vestiges".`
 )

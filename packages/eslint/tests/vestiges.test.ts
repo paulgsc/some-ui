@@ -12,6 +12,7 @@ import {
   SHARED_LIBRARY,
   STALE_DAYS,
   SWEEP_WORKSPACES,
+  workspaceRootOf,
 } from "@eslint/vestiges.js"
 import { describe, expect, it } from "vitest"
 
@@ -52,15 +53,13 @@ describe("reachableDirs", () => {
 })
 
 describe("lastOwnChange", () => {
-  const dirs = ["packages/ui/a", "packages/ui/b"]
-
   it("is the newest commit that changed the workspace's own source", () => {
     const commits: Array<CommitFacts> = [
       { date: "2026-09-30", files: ["packages/ui/a/package.json"] },
       { date: "2026-09-20", files: ["packages/ui/a/src/x.test.ts"] },
       { date: "2026-09-10", files: ["packages/ui/a/src/x.ts"] },
     ]
-    expect(lastOwnChange("packages/ui/a", commits, dirs)).toEqual({
+    expect(lastOwnChange("packages/ui/a", commits)).toEqual({
       date: "2026-09-10",
       sweepOnly: false,
     })
@@ -80,9 +79,7 @@ describe("lastOwnChange", () => {
       },
       { date: "2026-08-01", files: ["packages/ui/a/src/x.ts"] },
     ]
-    expect(lastOwnChange("packages/ui/a", commits, dirs).date).toBe(
-      "2026-08-01"
-    )
+    expect(lastOwnChange("packages/ui/a", commits).date).toBe("2026-08-01")
   })
 
   it("does not count a sweep across many workspaces as own work", () => {
@@ -94,10 +91,33 @@ describe("lastOwnChange", () => {
       { date: "2026-09-30", files: sweepDirs.map((dir) => `${dir}/src/x.ts`) },
       { date: "2026-08-01", files: ["packages/ui/w0/src/x.ts"] },
     ]
-    expect(lastOwnChange("packages/ui/w0", commits, sweepDirs)).toEqual({
+    expect(lastOwnChange("packages/ui/w0", commits)).toEqual({
       date: "2026-08-01",
       sweepOnly: false,
     })
+  })
+
+  it("counts a sweep's workspaces from its paths, deleted ones included", () => {
+    // Only w0 exists today; the other workspaces this rollout touched were
+    // deleted since, and must still make it a sweep (review, #1648).
+    const swept = Array.from(
+      { length: SWEEP_WORKSPACES + 1 },
+      (_, index) => `packages/ui/gone${index}/src/x.ts`
+    )
+    const commits: Array<CommitFacts> = [
+      { date: "2026-09-30", files: ["packages/ui/w0/src/x.ts", ...swept] },
+      { date: "2026-08-01", files: ["packages/ui/w0/src/x.ts"] },
+    ]
+    expect(lastOwnChange("packages/ui/w0", commits).date).toBe("2026-08-01")
+  })
+
+  it("reads the workspace root from the path", () => {
+    expect(workspaceRootOf("packages/ui/topik/src/x.ts")).toBe(
+      "packages/ui/topik"
+    )
+    expect(workspaceRootOf("packages/utils/src/x.ts")).toBe("packages/utils")
+    expect(workspaceRootOf("docs/canon/x.typ")).toBe("docs/canon")
+    expect(workspaceRootOf("scripts/x.ts")).toBeUndefined()
   })
 
   it("falls back to a sweep, marked as such, when nothing else touched it", () => {
@@ -108,7 +128,7 @@ describe("lastOwnChange", () => {
     const commits: Array<CommitFacts> = [
       { date: "2026-09-30", files: sweepDirs.map((dir) => `${dir}/src/x.ts`) },
     ]
-    expect(lastOwnChange("packages/ui/w0", commits, sweepDirs)).toEqual({
+    expect(lastOwnChange("packages/ui/w0", commits)).toEqual({
       date: "2026-09-30",
       sweepOnly: true,
     })
