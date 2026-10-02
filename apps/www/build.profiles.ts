@@ -15,10 +15,12 @@ import type { Plugin } from "vite"
  * - **`lan`** - the default: `vite dev`, `vite preview` and the Docker image
  *   served on the home network. Carries everything.
  * - **`pages`** - the GitHub Pages build (.github/workflows/pages.yml).
- * - **`mobile`** - the Android app (apps/mobile's `build:web`). The same
- *   audiences as `pages`; what sets it apart is that the app carries sessions
- *   only (`src/lib/app-surface`), and so leaves the résumé's pages and PDFs
- *   out of its output (`vite.config.ts`).
+ * - **`mobile`** - the Android app (apps/mobile's `build:web`). `public`
+ *   plus `apk`, the workspaces that need the phone itself (the soundbite
+ *   recorder). It also carries sessions only (`src/lib/app-surface`), and so
+ *   leaves the résumé's pages and PDFs out of its output (`vite.config.ts`).
+ *   `lan` does not carry `apk`: run `vite dev` with `SOME_UI_PROFILE=mobile`
+ *   to see those pages in a browser.
  *
  * A future VPS image is one more line here plus `SOME_UI_PROFILE` in its
  * pipeline. The variable is declared in turbo.json's `www#build` env, so two
@@ -31,10 +33,10 @@ import type { Plugin } from "vite"
  */
 export const MOBILE_PROFILE = "mobile"
 
-const profiles = defineProfiles({
+export const profiles = defineProfiles({
   lan: { audiences: ["public", "lan"] },
   pages: { audiences: ["public"] },
-  [MOBILE_PROFILE]: { audiences: ["public"] },
+  [MOBILE_PROFILE]: { audiences: ["public", "apk"] },
 })
 
 /** Directories whose immediate children carry `package.json#someUi`. */
@@ -44,14 +46,15 @@ export const workspaceRoots = [
 
 /**
  * Where each gated audience's workspaces may be imported from: only routes
- * under `_lan/`, whose layout (`_lan.tsx`, beside the directory) sends a visit
- * to not-found in builds that stub the audience out. The build fails on an
+ * under `_lan/` (or `_apk/`), whose layout (`_lan.tsx`, beside the directory)
+ * sends a visit to not-found in builds that stub the audience out. The build fails on an
  * import from anywhere else, in every profile; and
  * `src/routes/__tests__/audience-gates.test.ts` fails if a gate directory has
  * no guarded layout, or a route under it loads without its audience.
  */
 export const gates: Readonly<Record<GatedAudience, ReadonlyArray<string>>> = {
   lan: ["src/routes/_dashboard/_lan"],
+  apk: ["src/routes/_dashboard/_apk"],
 }
 
 /**

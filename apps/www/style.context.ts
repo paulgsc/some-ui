@@ -45,6 +45,7 @@ const uiPackages = [
   "resume",
   "shared",
   "slideshow",
+  "soundbites",
   "stepper",
   "topik",
   "umag",

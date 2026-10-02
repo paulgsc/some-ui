@@ -20,12 +20,14 @@ import { Route as DashboardProfileRouteImport } from './routes/_dashboard/profil
 import { Route as DashboardJobsRouteImport } from './routes/_dashboard/jobs'
 import { Route as DashboardAppRouteImport } from './routes/_dashboard/app'
 import { Route as DashboardLanRouteImport } from './routes/_dashboard/_lan'
+import { Route as DashboardApkRouteImport } from './routes/_dashboard/_apk'
 import { Route as DashboardSessionsIndexRouteImport } from './routes/_dashboard/sessions/index'
 import { Route as DashboardSessionsNewRouteImport } from './routes/_dashboard/sessions/new'
 import { Route as DashboardSessionsSessionIdRouteImport } from './routes/_dashboard/sessions/$sessionId'
 import { Route as DashboardLanRoundsRouteImport } from './routes/_dashboard/_lan/rounds'
 import { Route as DashboardLanLessonsRouteImport } from './routes/_dashboard/_lan/lessons'
 import { Route as DashboardLanLanRouteImport } from './routes/_dashboard/_lan/lan'
+import { Route as DashboardApkSoundbitesRouteImport } from './routes/_dashboard/_apk/soundbites'
 
 const MissionRoute = MissionRouteImport.update({
   id: '/mission',
@@ -80,6 +82,10 @@ const DashboardLanRoute = DashboardLanRouteImport.update({
   id: '/_lan',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardApkRoute = DashboardApkRouteImport.update({
+  id: '/_apk',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardSessionsIndexRoute = DashboardSessionsIndexRouteImport.update({
   id: '/sessions/',
   path: '/sessions/',
@@ -111,6 +117,11 @@ const DashboardLanLanRoute = DashboardLanLanRouteImport.update({
   path: '/lan',
   getParentRoute: () => DashboardLanRoute,
 } as any)
+const DashboardApkSoundbitesRoute = DashboardApkSoundbitesRouteImport.update({
+  id: '/soundbites',
+  path: '/soundbites',
+  getParentRoute: () => DashboardApkRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -122,6 +133,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof DashboardProfileRoute
   '/resume': typeof DashboardResumeRoute
   '/settings': typeof DashboardSettingsRoute
+  '/soundbites': typeof DashboardApkSoundbitesRoute
   '/lan': typeof DashboardLanLanRoute
   '/lessons': typeof DashboardLanLessonsRoute
   '/rounds': typeof DashboardLanRoundsRoute
@@ -139,6 +151,7 @@ export interface FileRoutesByTo {
   '/profile': typeof DashboardProfileRoute
   '/resume': typeof DashboardResumeRoute
   '/settings': typeof DashboardSettingsRoute
+  '/soundbites': typeof DashboardApkSoundbitesRoute
   '/lan': typeof DashboardLanLanRoute
   '/lessons': typeof DashboardLanLessonsRoute
   '/rounds': typeof DashboardLanRoundsRoute
@@ -153,12 +166,14 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/extensions': typeof ExtensionsRoute
   '/mission': typeof MissionRoute
+  '/_dashboard/_apk': typeof DashboardApkRouteWithChildren
   '/_dashboard/_lan': typeof DashboardLanRouteWithChildren
   '/_dashboard/app': typeof DashboardAppRoute
   '/_dashboard/jobs': typeof DashboardJobsRoute
   '/_dashboard/profile': typeof DashboardProfileRoute
   '/_dashboard/resume': typeof DashboardResumeRoute
   '/_dashboard/settings': typeof DashboardSettingsRoute
+  '/_dashboard/_apk/soundbites': typeof DashboardApkSoundbitesRoute
   '/_dashboard/_lan/lan': typeof DashboardLanLanRoute
   '/_dashboard/_lan/lessons': typeof DashboardLanLessonsRoute
   '/_dashboard/_lan/rounds': typeof DashboardLanRoundsRoute
@@ -178,6 +193,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/resume'
     | '/settings'
+    | '/soundbites'
     | '/lan'
     | '/lessons'
     | '/rounds'
@@ -195,6 +211,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/resume'
     | '/settings'
+    | '/soundbites'
     | '/lan'
     | '/lessons'
     | '/rounds'
@@ -208,12 +225,14 @@ export interface FileRouteTypes {
     | '/auth'
     | '/extensions'
     | '/mission'
+    | '/_dashboard/_apk'
     | '/_dashboard/_lan'
     | '/_dashboard/app'
     | '/_dashboard/jobs'
     | '/_dashboard/profile'
     | '/_dashboard/resume'
     | '/_dashboard/settings'
+    | '/_dashboard/_apk/soundbites'
     | '/_dashboard/_lan/lan'
     | '/_dashboard/_lan/lessons'
     | '/_dashboard/_lan/rounds'
@@ -309,6 +328,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardLanRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/_dashboard/_apk': {
+      id: '/_dashboard/_apk'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof DashboardApkRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/_dashboard/sessions/': {
       id: '/_dashboard/sessions/'
       path: '/sessions'
@@ -351,8 +377,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardLanLanRouteImport
       parentRoute: typeof DashboardLanRoute
     }
+    '/_dashboard/_apk/soundbites': {
+      id: '/_dashboard/_apk/soundbites'
+      path: '/soundbites'
+      fullPath: '/soundbites'
+      preLoaderRoute: typeof DashboardApkSoundbitesRouteImport
+      parentRoute: typeof DashboardApkRoute
+    }
   }
 }
+
+interface DashboardApkRouteChildren {
+  DashboardApkSoundbitesRoute: typeof DashboardApkSoundbitesRoute
+}
+
+const DashboardApkRouteChildren: DashboardApkRouteChildren = {
+  DashboardApkSoundbitesRoute: DashboardApkSoundbitesRoute,
+}
+
+const DashboardApkRouteWithChildren = DashboardApkRoute._addFileChildren(
+  DashboardApkRouteChildren,
+)
 
 interface DashboardLanRouteChildren {
   DashboardLanLanRoute: typeof DashboardLanLanRoute
@@ -371,6 +416,7 @@ const DashboardLanRouteWithChildren = DashboardLanRoute._addFileChildren(
 )
 
 interface DashboardRouteChildren {
+  DashboardApkRoute: typeof DashboardApkRouteWithChildren
   DashboardLanRoute: typeof DashboardLanRouteWithChildren
   DashboardAppRoute: typeof DashboardAppRoute
   DashboardJobsRoute: typeof DashboardJobsRoute
@@ -383,6 +429,7 @@ interface DashboardRouteChildren {
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardApkRoute: DashboardApkRouteWithChildren,
   DashboardLanRoute: DashboardLanRouteWithChildren,
   DashboardAppRoute: DashboardAppRoute,
   DashboardJobsRoute: DashboardJobsRoute,
