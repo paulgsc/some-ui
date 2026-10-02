@@ -1,27 +1,3 @@
-export const SOLUTIONS: Record<
-  number,
-  { direction: "across" | "down"; answer: string }
-> = {
-  1: { direction: "down", answer: "TALL" },
-  2: { direction: "across", answer: "SAD" },
-  3: { direction: "across", answer: "COLD" },
-  4: { direction: "down", answer: "DOWN" },
-  5: { direction: "across", answer: "SLOW" },
-  6: { direction: "down", answer: "LEFT" },
-  7: { direction: "down", answer: "SMALL" },
-  8: { direction: "down", answer: "LIKE" },
-  9: { direction: "across", answer: "UNDER" },
-  10: { direction: "across", answer: "END" },
-  11: { direction: "down", answer: "SOFT" },
-  12: { direction: "down", answer: "DRY" },
-  13: { direction: "across", answer: "STRONG" },
-  14: { direction: "across", answer: "CLOSED" },
-  15: { direction: "across", answer: "LOW" },
-  16: { direction: "down", answer: "OLD" },
-  17: { direction: "across", answer: "COLD" },
-  18: { direction: "across", answer: "LOUD" },
-}
-
 export const CLUES = {
   across: [
     { num: 2, clue: "Opposite of happy" },

@@ -1,7 +1,7 @@
 import type { ViteConfigOptions } from "@/types/index.js"
 import { DEFAULT_FORMATS } from "@/lib/build-config.js"
 
-export type PackageJsonExportTarget = string | Record<string, string>
+type PackageJsonExportTarget = string | Record<string, string>
 
 export type PackageJsonFields = {
   name?: string

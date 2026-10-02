@@ -5,7 +5,7 @@ export type Character = {
   speed: number
 }
 
-export const CHAR_SET =
+const CHAR_SET =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?"
 
 const randomCharacter = (): string =>

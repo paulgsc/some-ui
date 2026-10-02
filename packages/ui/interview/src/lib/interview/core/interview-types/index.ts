@@ -29,19 +29,11 @@ export type Question = {
   durationSeconds: number
 }
 
-export const QuestionSchema = z.object({
-  id: z.string(),
-  level: z.enum(["junior", "mid", "senior"]),
-  category: z.enum(["behavioral", "system-design", "technical", "leadership"]),
-  question: z.string(),
-  durationSeconds: z.number().positive(),
-})
-
 // ═══════════════════════════════════════════════════════════════════════════
 // TRANSCRIPTION
 // ═══════════════════════════════════════════════════════════════════════════
 
-export type TranscriptionStatus = "pending" | "processing" | "done" | "error"
+type TranscriptionStatus = "pending" | "processing" | "done" | "error"
 
 export type TranscriptionResult = {
   status: TranscriptionStatus
@@ -53,21 +45,11 @@ export type TranscriptionJob = {
   jobId: string
 }
 
-export const TranscriptionResultSchema = z.object({
-  status: z.enum(["pending", "processing", "done", "error"]),
-  transcript: z.string().optional(),
-  error: z.string().optional(),
-})
-
-export const TranscriptionJobSchema = z.object({
-  jobId: z.string(),
-})
-
 /**
  * Seam for the future transcription backend. `submit` hands off a
  * recording, `poll` is called until it resolves to a terminal status
- * ("done" | "error"). Swapping the mock for an HTTP-backed adapter is a
- * one-line change at the call site.
+ * ("done" | "error"). A backend-backed adapter replaces the mock at the
+ * call site.
  */
 export type TranscriptionAdapter = {
   submit(
@@ -96,7 +78,7 @@ export type QuestionRepository = {
 // TTS (question playback)
 // ═══════════════════════════════════════════════════════════════════════════
 
-export type SpeakOptions = {
+type SpeakOptions = {
   onBoundary?: (charIndex: number, charLength: number) => void
 }
 

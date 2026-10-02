@@ -65,7 +65,7 @@ export type UseReadAloudOptions = {
 }
 
 /** The running wait: how long the current step lasts. */
-export type ReadAloudStep = { seq: number; ms: number } | null
+type ReadAloudStep = { seq: number; ms: number } | null
 
 export type ReadAloudVM = {
   state: SetMachineState

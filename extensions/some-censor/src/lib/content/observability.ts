@@ -128,39 +128,39 @@ export const BOYO_EVENT_KINDS = [
 
 export type BoyoEventKind = (typeof BOYO_EVENT_KINDS)[number]
 
-export const BOYO_COUNTERS = [
-  "sessions_started",
-  "navigations",
-  "mutation_batches",
-  "mounts_resolved",
-  "mounts_provisional",
-  "cards_queued_unresolved",
-  "cards_rejected",
-  "stale_promotions_discarded",
+type BoyoCounter =
+  | "sessions_started"
+  | "navigations"
+  | "mutation_batches"
+  | "mounts_resolved"
+  | "mounts_provisional"
+  | "cards_queued_unresolved"
+  | "cards_rejected"
+  | "stale_promotions_discarded"
   /** Id changes ruled vendor churn rather than a recycle (#1423). */
-  "churn_ignored",
-  "channels_backfilled",
-  "channels_abandoned",
+  | "churn_ignored"
+  | "channels_backfilled"
+  | "channels_abandoned"
   /** Bulk advance-to-title keystrokes handled while running (#1424). */
-  "bulk_advances",
+  | "bulk_advances"
   /** Cards those keystrokes moved from masked/meta to title. */
-  "bulk_advance_advanced",
+  | "bulk_advance_advanced"
   /**
    * Cards they did not act on and could not have: detached, or hidden by the
    * occluder while mid-resolution, mid-mount, or untracked. Deliberately
    * excludes cards already at or past title, which are covered rather than
    * skipped, and tiles the occluder never hid, which were never cards to miss.
    */
-  "bulk_advance_skipped",
-  "entries_masked",
-  "entries_meta",
-  "entries_title",
-  "entries_revealed",
-  "entries_whitelisted",
+  | "bulk_advance_skipped"
+  | "entries_masked"
+  | "entries_meta"
+  | "entries_title"
+  | "entries_revealed"
+  | "entries_whitelisted"
   /** Every sighting, including repeats of a form already in the corpus. */
-  "dates_observed",
-  "dates_absent",
-  "invariant_violations",
+  | "dates_observed"
+  | "dates_absent"
+  | "invariant_violations"
   /**
    * How many times the invariants were actually evaluated.
    *
@@ -170,18 +170,15 @@ export const BOYO_COUNTERS = [
    * visibly broken page. `sampleHealth()` only rides VideoManager's retry loop
    * and the stall watch, so a quiet page can legitimately evaluate nothing.
    */
-  "health_samples",
-] as const
+  | "health_samples"
 
-export type BoyoCounter = (typeof BOYO_COUNTERS)[number]
-
-export const BOYO_AGGREGATES = [
+type BoyoAggregate =
   /** Candidate elements in one observer batch — mutation pressure per batch. */
-  "mutation_batch_candidates",
+  | "mutation_batch_candidates"
   /** `_unresolved.size` sampled whenever the health cadence fires. */
-  "unresolved_depth",
+  | "unresolved_depth"
   /** `_channelPending.size`, sampled alongside it. */
-  "channel_pending_depth",
+  | "channel_pending_depth"
   /**
    * Per-keystroke skipped count for a bulk advance (#1424). An aggregate
    * rather than only a counter because the shape is the finding: the live
@@ -189,10 +186,7 @@ export const BOYO_AGGREGATES = [
    * total cannot distinguish from one catastrophic press among many clean
    * ones.
    */
-  "bulk_advance_skipped_per_command",
-] as const
-
-export type BoyoAggregate = (typeof BOYO_AGGREGATES)[number]
+  | "bulk_advance_skipped_per_command"
 
 /**
  * One kind per FSM state, as a total map rather than a partial one: a new

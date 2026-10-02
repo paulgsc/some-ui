@@ -24,7 +24,7 @@ import type { Observation } from "./observation"
 
 // ── Tokens: what the Sensor derives from the vendor (B5) ─────────────────────
 
-export type Token =
+type Token =
   /**
    * A navigation finished. The shell mints the new session so Core never
    * has to (a counter is hidden state, and B8 forbids it); every card of the
@@ -62,7 +62,7 @@ export type Token =
 
 export type Gesture = "click" | "dblclick"
 
-export type CensorCommand = "advance-all-to-title"
+type CensorCommand = "advance-all-to-title"
 
 export type Input =
   /** The shell started a session (bootstrap, or re-enable). */

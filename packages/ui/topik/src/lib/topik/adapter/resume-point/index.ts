@@ -28,7 +28,7 @@ export const MAX_RESUME_POINTS = 12
  * discarded with the point, and restoring it drops any key the content no
  * longer has (Thm. 1.1).
  */
-export type ResumeOutcomes = {
+type ResumeOutcomes = {
   firstTry: Record<string, boolean>
   review: Array<string>
   /** Repeats already answered, so a reload does not serve them again. */
@@ -43,13 +43,13 @@ export type ResumeOutcomes = {
  * learner who leaves and comes back would be surveyed on half a lesson.
  * Like the outcomes, it goes with the point when the lesson finishes.
  */
-export type ResumeSurveyEvidence = {
+type ResumeSurveyEvidence = {
   /** Pinned to the probe version missed, `id@fp` (`pinMisses`). */
   missed: Record<number, Array<string>>
   flagged: Array<SurveyItem>
 }
 
-export type ResumePoint = {
+type ResumePoint = {
   /**
    * The conversation's authored id - what it is. `conversation` is only where
    * it was, and a file that inserts or reorders conversations moves it

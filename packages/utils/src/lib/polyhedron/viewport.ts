@@ -304,10 +304,3 @@ export class ViewportFactory {
     }
   }
 }
-
-/**
- * Type guard
- */
-export function isViewport(value: unknown): value is Viewport {
-  return value instanceof Viewport
-}

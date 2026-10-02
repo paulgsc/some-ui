@@ -34,9 +34,9 @@ import { createHash } from "node:crypto"
 export const RS1_FILE = ".github/workflows/server-route-snapshot.yml"
 // Updating this pin is the RS1 re-check: whoever changes it confirms, in the
 // same change, that the workflow still only reads and dispatches.
-export const RS1_FINGERPRINT =
+const RS1_FINGERPRINT =
   "f1f668d5edd39995e1bf23e74c7aac9d21d9124c10110c9dfaffe3f93c7d2927"
-export const SNAPSHOT_BRANCH = "bot/server-route-snapshot"
+const SNAPSHOT_BRANCH = "bot/server-route-snapshot"
 
 export type WorkflowViolation =
   | {

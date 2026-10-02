@@ -113,7 +113,7 @@ export function episodeBeats(
   return beats.filter((b) => b.dramaId === dramaId && b.episode === episode)
 }
 
-export function valenceOf(mood: MoodType): number {
+function valenceOf(mood: MoodType): number {
   return MOODS.find((m) => m.type === mood)?.valence ?? 0
 }
 

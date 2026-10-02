@@ -7,7 +7,7 @@ import type { VerdictChange, VerdictField } from "@drama/types"
 
 type Range = { min: number; max: number; step: number }
 
-export const VERDICT_RANGE: Record<VerdictField, Range> = {
+const VERDICT_RANGE: Record<VerdictField, Range> = {
   rating: { min: 0, max: 10, step: 0.5 },
   completionLikelihood: { min: 0, max: 1, step: 0.1 },
 }

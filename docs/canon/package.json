@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "canon:build": "bash ./scripts/build.sh",
-    "canon:check": "bash ./scripts/check-citations.sh"
+    "canon:check": "bash ./scripts/check-citations.sh",
+    "knip": "knip --directory \"$(git rev-parse --show-toplevel)\" --workspace \"$(git rev-parse --show-prefix | sed 's:/*$::')\""
   }
 }

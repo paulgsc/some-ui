@@ -18,7 +18,7 @@ import type { CardKey } from "./keys"
 import type { Observation } from "./observation"
 
 /** What Core knows about a card's channel, and the whitelist verdict on it. */
-export type ChannelState =
+type ChannelState =
   /** No channel evidence yet (a provisional mount, canon Def. 4.1's "partial"). */
   | { readonly kind: "unknown" }
   /**
@@ -82,7 +82,7 @@ export type CardState = {
   readonly lastSeenAt: number
 }
 
-export type Phase = "idle" | "running"
+type Phase = "idle" | "running"
 
 export type CoreState = {
   readonly phase: Phase

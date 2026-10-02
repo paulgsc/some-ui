@@ -49,7 +49,7 @@ export function totalDurationOf(scenes: Array<SceneConfig>): number {
 }
 
 /** Synthetic scene_id - SceneConfig has no id of its own, only scene_name. */
-export function sceneIdFor(scene: SceneConfig, index: number): string {
+function sceneIdFor(scene: SceneConfig, index: number): string {
   return `${scene.scene_name}#${index}`
 }
 

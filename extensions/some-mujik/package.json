@@ -7,6 +7,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json && vite build --configLoader runner",
     "build:chromium": "tsc -p tsconfig.build.json && vite build --configLoader runner",
+    "knip": "knip --directory \"$(git rev-parse --show-toplevel)\" --workspace \"$(git rev-parse --show-prefix | sed 's:/*$::')\"",
     "test:e2e": "pnpm build:chromium && playwright test",
     "clean": "rimraf .turbo && rimraf node_modules && rimraf .eslintcache && pnpm clean:build",
     "clean:build": "rimraf ./dist ./tsconfig.build.tsbuildinfo ./tsconfig.tsbuildinfo",
@@ -17,7 +18,6 @@
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
     "test": "vitest",
     "typecheck": "tsc --noEmit",
-    "watch:build": "rollup --bundleConfigAsCjs -c --watch",
     "watch:lint": "eslint --watch --cache --fix \"**/*.{js,mjs,ts,tsx}\""
   },
   "dependencies": {

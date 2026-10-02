@@ -12,6 +12,7 @@
   "types": "base.json",
   "scripts": {
     "clean": "rimraf ./dist ./.turbo ./node_modules ./.eslintcache",
-    "clean:build": "rimraf ./dist"
+    "clean:build": "rimraf ./dist",
+    "knip": "knip --directory \"$(git rev-parse --show-toplevel)\" --workspace \"$(git rev-parse --show-prefix | sed 's:/*$::')\""
   }
 }

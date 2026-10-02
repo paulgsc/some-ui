@@ -40,8 +40,6 @@ export const MAX_SURVEYS = 10
 /** Thirty days: a report older than that no longer describes the learner. */
 export const SURVEY_TTL_MS = 30 * 24 * 60 * 60 * 1000
 
-export type { SurveyReport }
-
 const SurveyItemSchema = z.object({
   batchId: z.number(),
   probeId: z.string(),

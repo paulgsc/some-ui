@@ -25,7 +25,7 @@ import { z } from "zod"
 
 /** Raw file format: array of UI layout intents */
 const SceneUIFileSchema = z.array(UILayoutIntentSchema)
-export type SceneUIFile = z.infer<typeof SceneUIFileSchema>
+type SceneUIFile = z.infer<typeof SceneUIFileSchema>
 
 /** Library item for consumer convenience */
 export type SceneLibraryItem = {

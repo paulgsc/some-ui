@@ -18,7 +18,7 @@ import { resolveEntryPath } from "@/lib/build-config.js"
  * Where a library's `tsc -p tsconfig.build.json` writes its declarations,
  * relative to the package root.
  */
-export const DECLARATION_DIR = "dist/types"
+const DECLARATION_DIR = "dist/types"
 
 /**
  * Publishes the declarations that `tsc -p tsconfig.build.json` already wrote.
@@ -175,7 +175,7 @@ const RUN_TSC_FIRST =
   "build script does both, in that order."
 
 /** A1, the part that can be checked: `tsc` wrote declarations at all. */
-export function assertDeclarationsEmitted(declarationDir: string): void {
+function assertDeclarationsEmitted(declarationDir: string): void {
   if (!existsSync(declarationDir)) {
     throw new Error(
       `[some-ui:declarations] ${declarationDir} does not exist. ${RUN_TSC_FIRST}`
@@ -265,7 +265,7 @@ export function assertDeclarationSettings(
  * records the latter as `pathsBasePath`, an internal field it has set since
  * TypeScript 4.1.
  */
-export function pathsBaseOf(
+function pathsBaseOf(
   compilerOptions: ts.CompilerOptions,
   configFile: string
 ): string {
@@ -441,7 +441,7 @@ function rewriteAliases(layout: DeclarationLayout): Array<string> {
 }
 
 /** A1 and A3: the entry's declaration, which must exist. */
-export function entryDeclaration(
+function entryDeclaration(
   options: ViteConfigOptions,
   packageRoot: string,
   layout: DeclarationLayout

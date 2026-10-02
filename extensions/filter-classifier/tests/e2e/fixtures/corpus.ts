@@ -46,7 +46,7 @@ import {
   SWATCHES,
 } from "@some-extension/filter/adapter/swatches"
 
-export type HumanLabel =
+type HumanLabel =
   /** A light, unthemed vendor page — the everyday case some-filter themes. */
   | "needs-theming"
   /** Dark, and it satisfies Φ_comfort — the shipped classifier should exonerate it. */

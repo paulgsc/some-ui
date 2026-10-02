@@ -25,7 +25,7 @@
 
 import type { ChannelId, VideoId } from "@censor/types/ids"
 
-export type RawExtracted = {
+type RawExtracted = {
   readonly kind: "raw"
   readonly videoId: string | null
   readonly channelId: string | null
@@ -44,13 +44,3 @@ export type FullyExtracted = {
 }
 
 export type Extracted = RawExtracted | VideoOnlyExtracted | FullyExtracted
-
-/** Narrowing predicate — usable as a type guard in filter chains. */
-export function isFullyExtracted(x: Extracted): x is FullyExtracted {
-  return x.kind === "full"
-}
-
-/** Narrowing predicate for the masked-but-channel-pending case. */
-export function isVideoOnly(x: Extracted): x is VideoOnlyExtracted {
-  return x.kind === "video-only"
-}

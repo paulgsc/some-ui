@@ -165,7 +165,7 @@ const defaultCoreState: CoreObsState = {
   sceneItemEnableStates: {},
 }
 
-export const defaultClientObsState: ClientObsState = {
+const defaultClientObsState: ClientObsState = {
   ...defaultCoreState,
   ...defaultStatsState,
 }
@@ -648,33 +648,22 @@ function warn(action: string): void {
 // Use these ONLY for: timecode displays, stats monitoring, performance metrics
 // -----------------------------------------------------------------------------
 
-export const selectStats = (s: ObsStoreState): ObsStats => s.stats.stats
-
-export const useObsStats = (): ObsStats => useObsStore(useShallow(selectStats))
-
-export const selectStreamTimecode = (s: ObsStoreState): string =>
+const selectStreamTimecode = (s: ObsStoreState): string =>
   s.stats.streamTimecode
 
 export const useStreamTimecode = (): string => useObsStore(selectStreamTimecode)
 
-export const selectRecordTimecode = (s: ObsStoreState): string =>
+const selectRecordTimecode = (s: ObsStoreState): string =>
   s.stats.recordTimecode
 
 export const useRecordTimecode = (): string => useObsStore(selectRecordTimecode)
 
 // Individual stat selectors (for targeted subscriptions)
-export const selectCpuUsage = (s: ObsStoreState): number =>
-  s.stats.stats.cpuUsage
+const selectCpuUsage = (s: ObsStoreState): number => s.stats.stats.cpuUsage
 
 export const useCpuUsage = (): number => useObsStore(selectCpuUsage)
 
-export const selectMemoryUsage = (s: ObsStoreState): number =>
-  s.stats.stats.memoryUsage
-
-export const useMemoryUsage = (): number => useObsStore(selectMemoryUsage)
-
-export const selectActiveFps = (s: ObsStoreState): number =>
-  s.stats.stats.activeFps
+const selectActiveFps = (s: ObsStoreState): number => s.stats.stats.activeFps
 
 export const useActiveFps = (): number => useObsStore(selectActiveFps)
 
@@ -684,11 +673,11 @@ export const useActiveFps = (): number => useObsStore(selectActiveFps)
 // -----------------------------------------------------------------------------
 
 // Connection
-export const selectIsConnected = (s: ObsStoreState): boolean => s.isConnected
+const selectIsConnected = (s: ObsStoreState): boolean => s.isConnected
 
 export const useIsConnected = (): boolean => useObsStore(selectIsConnected)
 
-export const selectConnectionInfo = (
+const selectConnectionInfo = (
   s: ObsStoreState
 ): {
   isConnected: boolean
@@ -708,38 +697,15 @@ export const useConnectionInfo = (): ReturnType<typeof selectConnectionInfo> =>
   useObsStore(useShallow(selectConnectionInfo))
 
 // Stream/Record status (boolean only)
-export const selectIsStreaming = (s: ObsStoreState): boolean => s.core.streaming
+const selectIsStreaming = (s: ObsStoreState): boolean => s.core.streaming
 
 export const useIsStreaming = (): boolean => useObsStore(selectIsStreaming)
 
-export const selectIsRecording = (s: ObsStoreState): boolean => s.core.recording
+const selectIsRecording = (s: ObsStoreState): boolean => s.core.recording
 
 export const useIsRecording = (): boolean => useObsStore(selectIsRecording)
 
-export const selectStreamRecordStatus = (
-  s: ObsStoreState
-): { streaming: boolean; recording: boolean } => ({
-  streaming: s.core.streaming,
-  recording: s.core.recording,
-})
-
-export const useStreamRecordStatus = (): ReturnType<
-  typeof selectStreamRecordStatus
-> => useObsStore(useShallow(selectStreamRecordStatus))
-
-// Scenes
-export const selectScenes = (s: ObsStoreState): Array<SceneInfo> =>
-  s.core.scenes
-
-export const useScenes = (): Array<SceneInfo> =>
-  useObsStore(useShallow(selectScenes))
-
-export const selectCurrentScene = (s: ObsStoreState): string =>
-  s.core.currentScene
-
-export const useCurrentScene = (): string => useObsStore(selectCurrentScene)
-
-export const selectSceneInfo = (
+const selectSceneInfo = (
   s: ObsStoreState
 ): { scenes: Array<SceneInfo>; currentScene: string } => ({
   scenes: s.core.scenes,
@@ -749,116 +715,36 @@ export const selectSceneInfo = (
 export const useSceneInfo = (): ReturnType<typeof selectSceneInfo> =>
   useObsStore(useShallow(selectSceneInfo))
 
-// Sources and Inputs
-export const selectSources = (s: ObsStoreState): Array<SourceInfo> =>
-  s.core.sources
-
-export const useSources = (): Array<SourceInfo> =>
-  useObsStore(useShallow(selectSources))
-
-export const selectInputs = (s: ObsStoreState): Array<InputInfo> =>
-  s.core.inputs
-
-export const useInputs = (): Array<InputInfo> =>
-  useObsStore(useShallow(selectInputs))
-
-// Audio
-export const selectAudioMutes = (s: ObsStoreState): Record<string, boolean> =>
-  s.core.audioMutes
-
-export const useAudioMutes = (): Record<string, boolean> =>
-  useObsStore(useShallow(selectAudioMutes))
-
-export const selectAudioVolumes = (
-  s: ObsStoreState
-): Record<string, { volumeDb: number; volumeMul: number }> =>
-  s.core.audioVolumes
-
-export const useAudioVolumes = (): Record<
-  string,
-  { volumeDb: number; volumeMul: number }
-> => useObsStore(useShallow(selectAudioVolumes))
-
-export const selectInputAudio =
-  (inputName: string) =>
-  (
-    s: ObsStoreState
-  ): { muted: boolean; volume: { volumeDb: number; volumeMul: number } } => ({
-    muted: s.core.audioMutes[inputName] ?? false,
-    volume: s.core.audioVolumes[inputName] ?? { volumeDb: 0, volumeMul: 1 },
-  })
-
-export const useInputAudio = (
-  inputName: string
-): ReturnType<ReturnType<typeof selectInputAudio>> =>
-  useObsStore(useShallow(selectInputAudio(inputName)))
-
-// Profiles and Collections
-export const selectProfiles = (s: ObsStoreState): Array<string> =>
-  s.core.profiles
-
-export const useProfiles = (): Array<string> =>
-  useObsStore(useShallow(selectProfiles))
-
-export const selectCurrentProfile = (s: ObsStoreState): string =>
-  s.core.currentProfile
+const selectCurrentProfile = (s: ObsStoreState): string => s.core.currentProfile
 
 export const useCurrentProfile = (): string => useObsStore(selectCurrentProfile)
 
-export const selectCollections = (s: ObsStoreState): Array<string> =>
-  s.core.collections
-
-export const useCollections = (): Array<string> =>
-  useObsStore(useShallow(selectCollections))
-
-export const selectCurrentCollection = (s: ObsStoreState): string =>
+const selectCurrentCollection = (s: ObsStoreState): string =>
   s.core.currentCollection
 
 export const useCurrentCollection = (): string =>
   useObsStore(selectCurrentCollection)
 
 // Features
-export const selectVirtualCamActive = (s: ObsStoreState): boolean =>
+const selectVirtualCamActive = (s: ObsStoreState): boolean =>
   s.core.virtualCamActive
 
 export const useVirtualCamActive = (): boolean =>
   useObsStore(selectVirtualCamActive)
 
-export const selectReplayBufferActive = (s: ObsStoreState): boolean =>
+const selectReplayBufferActive = (s: ObsStoreState): boolean =>
   s.core.replayBufferActive
 
 export const useReplayBufferActive = (): boolean =>
   useObsStore(selectReplayBufferActive)
 
-export const selectStudioModeEnabled = (s: ObsStoreState): boolean =>
+const selectStudioModeEnabled = (s: ObsStoreState): boolean =>
   s.core.studioModeEnabled
 
 export const useStudioModeEnabled = (): boolean =>
   useObsStore(selectStudioModeEnabled)
 
-export const selectFeatureStatus = (
-  s: ObsStoreState
-): {
-  virtualCamActive: boolean
-  replayBufferActive: boolean
-  studioModeEnabled: boolean
-} => ({
-  virtualCamActive: s.core.virtualCamActive,
-  replayBufferActive: s.core.replayBufferActive,
-  studioModeEnabled: s.core.studioModeEnabled,
-})
-
-export const useFeatureStatus = (): ReturnType<typeof selectFeatureStatus> =>
-  useObsStore(useShallow(selectFeatureStatus))
-
-// Transitions
-export const selectTransitions = (s: ObsStoreState): Array<TransitionInfo> =>
-  s.core.transitions
-
-export const useTransitions = (): Array<TransitionInfo> =>
-  useObsStore(useShallow(selectTransitions))
-
-export const selectCurrentTransition = (
+const selectCurrentTransition = (
   s: ObsStoreState
 ): { name: string; duration: number } => ({
   name: s.core.currentTransitionName,
@@ -869,44 +755,11 @@ export const useCurrentTransition = (): ReturnType<
   typeof selectCurrentTransition
 > => useObsStore(useShallow(selectCurrentTransition))
 
-// Filters
-export const selectSourceFilters = (
-  s: ObsStoreState
-): Record<string, Array<FilterInfo>> => s.core.sourceFilters
-
-export const useSourceFilters = (): Record<string, Array<FilterInfo>> =>
-  useObsStore(useShallow(selectSourceFilters))
-
-export const selectFiltersForSource =
-  (sourceName: string) =>
-  (s: ObsStoreState): Array<FilterInfo> =>
-    s.core.sourceFilters[sourceName] ?? []
-
-export const useFiltersForSource = (sourceName: string): Array<FilterInfo> =>
-  useObsStore(useShallow(selectFiltersForSource(sourceName)))
-
-// Hotkeys
-export const selectHotkeys = (s: ObsStoreState): Array<HotkeyInfo> =>
-  s.core.hotkeys
-
-export const useHotkeys = (): Array<HotkeyInfo> =>
-  useObsStore(useShallow(selectHotkeys))
-
-// Scene Items
-export const selectSceneItemEnableStates = (
-  s: ObsStoreState
-): Record<string, Record<number, boolean>> => s.core.sceneItemEnableStates
-
-export const useSceneItemEnableStates = (): Record<
-  string,
-  Record<number, boolean>
-> => useObsStore(useShallow(selectSceneItemEnableStates))
-
 // -----------------------------------------------------------------------------
 // COMMAND SELECTORS (get command functions)
 // -----------------------------------------------------------------------------
 
-export const selectCommands = (
+const selectCommands = (
   s: ObsStoreState
 ): Pick<
   ObsStoreState,
@@ -937,45 +790,3 @@ export const selectCommands = (
 
 export const useObsCommands = (): ReturnType<typeof selectCommands> =>
   useObsStore(useShallow(selectCommands))
-
-// -----------------------------------------------------------------------------
-// ESCAPE HATCH (use only for debugging)
-// -----------------------------------------------------------------------------
-
-/**
- * ⚠️ WARNING: Returns raw state from OBS.
- * This may update frequently. Do not use in components unless you explicitly
- * want high-frequency rerenders. Use temporal-specific selectors instead.
- */
-export const selectRawState = (s: ObsStoreState): ClientObsState => s.rawState
-
-// ============================================================================
-// DERIVED HOOKS
-// ============================================================================
-
-/**
- * Check if a specific scene is active.
- * STABLE: Only changes when scene changes.
- */
-export function useIsSceneActive(sceneName: string): boolean {
-  const currentScene = useCurrentScene()
-  return currentScene === sceneName
-}
-
-/**
- * Get all scene names as an array.
- * STABLE: Only changes when scene list changes.
- */
-export function useSceneNames(): Array<string> {
-  const scenes = useScenes()
-  return scenes.map((s) => s.name)
-}
-
-/**
- * Get input names as an array.
- * STABLE: Only changes when input list changes.
- */
-export function useInputNames(): Array<string> {
-  const inputs = useInputs()
-  return inputs.map((i) => i.name)
-}

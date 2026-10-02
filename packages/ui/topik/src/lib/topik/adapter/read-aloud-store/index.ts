@@ -36,7 +36,7 @@ export const READ_ALOUD_STORAGE_KEYS = {
 } as const
 
 /** A counted rep or a finished set, as the drill reports it. */
-export type ReadAloudCount = { type: "rep"; creditMs: number } | { type: "set" }
+type ReadAloudCount = { type: "rep"; creditMs: number } | { type: "set" }
 
 export type ReadAloudStore = {
   paces: () => PaceBook

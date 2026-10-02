@@ -4,7 +4,6 @@ export {
   default as reactConfig,
   reactImportBanSelectors,
 } from "./react.config.js"
-export { default as tailwindConfig } from "./tailwind.config.js"
 export {
   default as tailwindIdiomConfig,
   tailwindIdiomPlugin,
@@ -30,14 +29,8 @@ export {
   default as switchLintConfig,
   switchLintPlugin,
 } from "./switch-lint.config.js"
-export {
-  default as wasmLoaderGuardConfig,
-  wasmLoaderGuardPlugin,
-} from "./wasm-loader-guard.config.js"
-export {
-  default as reactPeerDependencyConfig,
-  reactPeerDependencyPlugin,
-} from "./react-peer-dependency.config.js"
+export { default as wasmLoaderGuardConfig } from "./wasm-loader-guard.config.js"
+export { default as reactPeerDependencyConfig } from "./react-peer-dependency.config.js"
 export {
   default as intentGuardConfig,
   intentGuardPlugin,

@@ -99,8 +99,6 @@ export type SuspendEvent =
   | { readonly type: "TAB_ACTIVATED" } // user focused the tab
   | { readonly type: "TAB_RELOADED" } // reactivated tab finished reloading
 
-export type SuspendEventType = SuspendEvent["type"]
-
 // ── Structural predicates (the invariant is defined in terms of these) ──────
 
 const LIVE_KINDS: ReadonlySet<SuspendStateKind> = new Set([

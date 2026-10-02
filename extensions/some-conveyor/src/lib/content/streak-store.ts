@@ -11,7 +11,7 @@ import {
   isStringField,
 } from "@conveyor/utils/content/type-guards"
 
-export type Task = { id: string; label: string; done: boolean }
+type Task = { id: string; label: string; done: boolean }
 export type Category = {
   id: string
   name: string
