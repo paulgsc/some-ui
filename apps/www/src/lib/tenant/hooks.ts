@@ -16,11 +16,15 @@ import {
   settingsKey,
   settingsQuery,
   settingsRepository,
+  transferPreviewKey,
+  transferPreviewQuery,
 } from "./queries"
 import type {
   CreateSessionInput,
   UpdateSessionInput,
 } from "./sessions-repository"
+import type { TransferNotices, TransferPreview } from "./sessions-transfer"
+import { copyDeviceSessionsAndRefresh } from "./sessions-transfer"
 import type {
   SessionRecord,
   SessionStatus,
@@ -209,4 +213,36 @@ export function useUpdateStatusManySessions(): UseMutationResult<
       // trusts on an administrative action.
     },
   })
+}
+
+/**
+ * How many of this device's sessions are not yet in the account in use, for the
+ * screen that offers to copy them. Asks nothing while learning on the device.
+ */
+export function useTransferPreview(): UseQueryResult<TransferPreview | null> {
+  const { kind, epoch } = useAuthority()
+  return useQuery({
+    ...transferPreviewQuery(epoch),
+    enabled: kind === "account",
+  })
+}
+
+/**
+ * The action behind the "copy to my account" confirmation: copy, refresh what
+ * the screens read, and say what happened. The one place the transfer is
+ * started from (invariant LA2), and called only by that button.
+ */
+export function useCopyDeviceSessions(): (
+  notices: TransferNotices
+) => Promise<void> {
+  const queryClient = useQueryClient()
+  return (notices) =>
+    copyDeviceSessionsAndRefresh(
+      () =>
+        Promise.all([
+          queryClient.invalidateQueries({ queryKey: sessionsKey }),
+          queryClient.invalidateQueries({ queryKey: transferPreviewKey }),
+        ]),
+      notices
+    )
 }

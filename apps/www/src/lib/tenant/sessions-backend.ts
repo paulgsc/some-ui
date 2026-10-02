@@ -30,7 +30,7 @@
  * Signing in does not copy this browser's sessions to the account. That used to
  * happen on the first call after a sign-in, with no prompt, to whichever
  * account signed in first. Moving them is an explicit, per-account act
- * (`sessions-migration`, offered by the account screens), invariant LA2 in
+ * (`sessions-transfer`, behind a button on the settings screen), invariant LA2 in
  * `lib/authority`.
  */
 

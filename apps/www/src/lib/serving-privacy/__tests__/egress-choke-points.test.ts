@@ -131,6 +131,43 @@ function networkGlobalUses(path: string, text: string): Array<string> {
   return problems
 }
 
+/**
+ * LA2: where the transfer of device sessions to the account may be started.
+ * Each name is called from exactly one place: the button's action, through its
+ * hook, through the one function that copies.
+ */
+const TRANSFER_CALLERS: Record<string, string> = {
+  useCopyDeviceSessions: "components/settings/data-home-section.tsx",
+  copyDeviceSessionsAndRefresh: "lib/tenant/hooks.ts",
+  copyDeviceSessions: "lib/tenant/sessions-transfer/index.ts",
+  planTransfer: "lib/tenant/sessions-transfer/index.ts",
+  runTransfer: "lib/tenant/sessions-transfer/index.ts",
+}
+
+function transferCalls(path: string, text: string): Array<string> {
+  const found: Array<string> = []
+  const file = parse(path, text)
+  walk(file, (node) => {
+    if (
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.text in TRANSFER_CALLERS
+    ) {
+      found.push(node.expression.text)
+    }
+  })
+  return found
+}
+
+function transferCallProblems(path: string, text: string): Array<string> {
+  return transferCalls(path, text)
+    .filter((name) => TRANSFER_CALLERS[name] !== path)
+    .map(
+      (name) =>
+        `${path} calls ${name}, which only ${TRANSFER_CALLERS[name]} may (LA2)`
+    )
+}
+
 describe("LA4: a corpus read carries no credentials", () => {
   it("passes PUBLIC_READ in every createDataSource call", () => {
     const problems = sourceFiles()
@@ -183,6 +220,41 @@ describe("LA1: only the choke points name a network global", () => {
   })
 })
 
+describe("LA2: the transfer to the account starts from one button", () => {
+  it("is called from nowhere but the places that own each step", () => {
+    const problems = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .flatMap((f) =>
+        transferCallProblems(f, readFileSync(join(SRC, f), "utf8"))
+      )
+    expect(problems).toEqual([])
+  })
+
+  it("still finds each of those calls where it is expected", () => {
+    for (const [name, owner] of Object.entries(TRANSFER_CALLERS)) {
+      const calls = transferCalls(owner, readFileSync(join(SRC, owner), "utf8"))
+      expect(calls, `${owner} should call ${name}`).toContain(name)
+    }
+  })
+
+  it("is not started by a ceremony or the sessions backend", () => {
+    for (const file of [
+      "lib/auth/session.ts",
+      "lib/auth/enter.ts",
+      "lib/tenant/sessions-backend.ts",
+    ]) {
+      const source = parse(file, readFileSync(join(SRC, file), "utf8"))
+      const imports = source.statements
+        .filter(ts.isImportDeclaration)
+        .map((node) => node.moduleSpecifier.getText(source))
+      expect(
+        imports.filter((specifier) => /sessions-transfer/.test(specifier)),
+        file
+      ).toEqual([])
+    }
+  })
+})
+
 describe("the checks themselves", () => {
   it("flags a data source with no PUBLIC_READ, in any call shape", () => {
     expect(
@@ -211,6 +283,21 @@ describe("the checks themselves", () => {
         "x.ts",
         'type F = typeof fetch; const s = "fetch("; // fetch("/x")'
       )
+    ).toEqual([])
+  })
+
+  it("flags a transfer started from anywhere but its owner", () => {
+    expect(
+      transferCallProblems("lib/auth/session.ts", "void copyDeviceSessions()")
+    ).toHaveLength(1)
+    expect(
+      transferCallProblems(
+        "lib/tenant/sessions-transfer/index.ts",
+        "await copyDeviceSessions()"
+      )
+    ).toEqual([])
+    expect(
+      transferCallProblems("x.ts", "const copy = copyDeviceSessions")
     ).toEqual([])
   })
 

@@ -147,14 +147,15 @@ export type Received = {
 }
 
 /**
- * A stand-in `file_host` that answers every route with an empty 404 and keeps
- * what it was sent. CORS is open to the asking origin, with credentials, so a
+ * A stand-in `file_host` that answers every route with an empty 404, except
+ * the ones named in `answers` (a path ending, to a JSON body, with a 200), and
+ * keeps what it was sent. CORS is open to the asking origin, with credentials, so a
  * request that *would* carry the cookie is able to, and the spec can see it do
  * so (the control that makes "no cookie" mean something).
  */
-export async function startFileHost(): Promise<
-  Listening & { received: Array<Received> }
-> {
+export async function startFileHost(
+  answers: Readonly<Record<string, unknown>> = {}
+): Promise<Listening & { received: Array<Received> }> {
   const received: Array<Received> = []
   const server = createServer((req: IncomingMessage, res) => {
     const origin = req.headers.origin
@@ -177,9 +178,16 @@ export async function startFileHost(): Promise<
       path: req.url ?? "",
       cookie: req.headers.cookie,
     })
+    const route = (req.url ?? "").split("?")[0] ?? ""
+    const answered = Object.entries(answers).find(([ending]) =>
+      route.endsWith(ending)
+    )
     res
-      .writeHead(404, { ...cors, "content-type": "application/json" })
-      .end("{}")
+      .writeHead(answered ? 200 : 404, {
+        ...cors,
+        "content-type": "application/json",
+      })
+      .end(JSON.stringify(answered ? answered[1] : {}))
   })
   const listening = await listen(server, FILE_HOST_PORT)
   return { ...listening, received }

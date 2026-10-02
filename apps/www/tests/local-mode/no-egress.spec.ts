@@ -20,7 +20,7 @@
  */
 
 import { expect, test } from "@playwright/test"
-import type { BrowserContext } from "@playwright/test"
+import type { BrowserContext, Page } from "@playwright/test"
 
 import { builtApp, FILE_HOST_PORT, serveBuild, startFileHost } from "./harness"
 import type { BuildName, Listening, Received } from "./harness"
@@ -197,6 +197,75 @@ test.describe("the lan build, learning on the device", () => {
     await expect(page.getByText("Korean review").first()).toBeVisible()
 
     expect(seen.filter((line) => LEARNER_STATE.test(line))).toEqual([])
+  })
+})
+
+test.describe("the lan build, with an account", () => {
+  let served: Listening | undefined
+  let stub: FileHost | undefined
+  const app = held(() => served)
+  const host = held(() => stub)
+
+  test.beforeAll(async () => {
+    served = await serveBuild(skipUnlessBuilt("lan").dir, "/")
+    // A live session, a push identity, and nothing else.
+    stub = await startFileHost({
+      "/auth/session": { expiresAt: Date.now() + 3_600_000 },
+      "/sessions": [],
+      "/push/vapid-key": { public_key: "", topics: ["lesson-ready"] },
+    })
+  })
+
+  test.afterAll(async () => {
+    await served?.close()
+    await stub?.close()
+  })
+
+  const BEHAVIOUR = /\/api\/v1\/(signals|presence|push)/
+
+  /** Returns what the account was sent, after a visit to every route. */
+  async function visitAsAccount(
+    page: Page,
+    remembered: { choice: string; reporting?: boolean }
+  ): Promise<Array<Received>> {
+    host().received.length = 0
+    await page.addInitScript((value) => {
+      window.localStorage.setItem("some-ui.authority.v1", value)
+    }, JSON.stringify(remembered))
+    for (const route of ["/app", "/sessions", "/settings"]) {
+      await page.goto(`${app().origin}${route}`)
+      await page.waitForLoadState("networkidle")
+      await expect(page.locator("#app")).not.toBeEmpty()
+    }
+    return [...host().received]
+  }
+
+  test("tells the server nothing about behaviour until the person opts in", async ({
+    page,
+  }) => {
+    const received = await visitAsAccount(page, { choice: "account" })
+
+    // The account is in use: the session was checked and its sessions read ...
+    expect(received.some((r) => r.path.endsWith("/auth/session"))).toBe(true)
+    expect(received.some((r) => r.path.endsWith("/sessions"))).toBe(true)
+    // ... and nothing about when or what they study, nor a push identity.
+    expect(received.filter((r) => BEHAVIOUR.test(r.path))).toEqual([])
+    await expect(
+      page.getByRole("switch", { name: /reminders and progress sync/i })
+    ).not.toBeChecked()
+  })
+
+  test("reaches for push once the person has opted in, which is the control for the test above", async ({
+    page,
+  }) => {
+    const received = await visitAsAccount(page, {
+      choice: "account",
+      reporting: true,
+    })
+    expect(received.some((r) => r.path.endsWith("/push/vapid-key"))).toBe(true)
+    await expect(
+      page.getByRole("switch", { name: /reminders and progress sync/i })
+    ).toBeChecked()
   })
 })
 
