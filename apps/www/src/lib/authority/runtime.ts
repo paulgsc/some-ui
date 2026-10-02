@@ -53,6 +53,13 @@ export type AuthorityRuntime = {
   isCurrent: (token: Authority) => boolean
   /** Whether the current authority is `kind`. */
   is: (kind: AuthorityKind) => boolean
+  /**
+   * Resolves once the authority is decided (anything but `pending`), at once
+   * if it already is. What a route waits on so that no page renders against
+   * the wrong store while a returning account user's session is checked. It
+   * starts nothing: the check is started elsewhere, and has a deadline.
+   */
+  settled: () => Promise<void>
   chooseAccount: () => void
   chooseLocal: () => void
   /** Back to a fresh page load's state, keeping listeners. For tests only. */
@@ -112,6 +119,20 @@ export function createAuthority(
     dispatch,
     isCurrent: (token) => token.epoch === state.epoch,
     is: (kind) => snapshot.authority.kind === kind,
+    settled: (): Promise<void> => {
+      if (snapshot.authority.kind !== "pending") return Promise.resolve()
+      return new Promise<void>((resolve) => {
+        const off = (): void => {
+          listeners.delete(check)
+        }
+        const check = (): void => {
+          if (snapshot.authority.kind === "pending") return
+          off()
+          resolve()
+        }
+        listeners.add(check)
+      })
+    },
     chooseAccount: () => dispatch({ type: "chose", choice: "account" }),
     chooseLocal: () => dispatch({ type: "chose", choice: "local" }),
     resetForTests: (): void => {

@@ -23,6 +23,7 @@ import { Briefcase, FileText, ListVideo, Settings, User } from "lucide-react"
 import { cn, useIsMobile, useIsTerminal } from "some-ui-utils"
 
 import { isOnMobileSurface } from "@/lib/app-surface"
+import { authority } from "@/lib/authority"
 import { MOBILE_APP } from "@/lib/build-profile"
 import { AmbientIntentStatus } from "@/lib/intent/render"
 import { useIsDeclaredBounded } from "@/lib/route-bounds"
@@ -250,5 +251,9 @@ const DashboardLayout = (): JSX.Element => {
 }
 
 export const Route = createFileRoute("/_dashboard")({
+  // No page here renders against the wrong store: a returning account user
+  // waits (once, with the probe's own deadline) for their session to be
+  // checked, and anyone learning on the device does not wait at all.
+  beforeLoad: () => authority.settled(),
   component: DashboardLayout,
 })

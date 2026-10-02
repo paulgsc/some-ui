@@ -1,6 +1,6 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router"
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router"
 
-import { requireAccount } from "@/lib/auth"
+import { authority } from "@/lib/authority"
 import { requireAudience } from "@/lib/build-profile"
 
 /**
@@ -22,14 +22,18 @@ import { requireAudience } from "@/lib/build-profile"
 const requireLan = requireAudience("lan")
 
 /**
- * Also the account's own: these tools act as an operator, which only a signed-in
- * account can be. Everything else in the app works on the device without one
- * (`lib/auth/guards`).
+ * These pages are also the account's own: the tools act as an operator, which
+ * only a signed-in account can be. Everything else in the app works on the
+ * device without one. By the time this runs the parent layout has waited for a
+ * returning account user's session to be checked (`authority.settled()`), so a
+ * synchronous look at the authority is the whole answer.
  */
 export const Route = createFileRoute("/_dashboard/_lan")({
-  beforeLoad: async ({ location }) => {
+  beforeLoad: ({ location }) => {
     requireLan()
-    await requireAccount(location.href)
+    if (!authority.is("account")) {
+      throw redirect({ to: "/auth", search: { redirect: location.href } })
+    }
   },
   component: Outlet,
 })

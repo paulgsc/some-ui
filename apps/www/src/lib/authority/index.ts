@@ -12,6 +12,9 @@
  *        reaches the operator's backend, and it answers `null` unless the
  *        authority is the account.
  *   LA2  Signing in or enrolling never writes local data to the account.
+ *   LA3  A sessions-store result that outlives its authority is dropped
+ *        (`StaleAuthorityError`), not shown.
+ *   LA4  A corpus read carries no credentials (`PUBLIC_READ`).
  */
 export type {
   AuthorityPorts,

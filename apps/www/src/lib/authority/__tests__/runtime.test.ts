@@ -189,3 +189,42 @@ describe("browser ports", () => {
     expect(() => none.writeChoice("local")).not.toThrow()
   })
 })
+
+describe("settled", () => {
+  it("resolves at once for anyone whose authority is already decided", async () => {
+    // The device, and a build with no server at all, whatever was remembered.
+    await expect(
+      createAuthority("remote", ports()).settled()
+    ).resolves.toBeUndefined()
+    await expect(
+      createAuthority("none", ports("account")).settled()
+    ).resolves.toBeUndefined()
+  })
+
+  it("waits while a returning account user's authority is undecided, then resolves", async () => {
+    const authority = createAuthority("remote", ports("account"))
+    expect(authority.getAuthority().kind).toBe("pending")
+
+    let done = false
+    const waiting = authority.settled().then(() => {
+      done = true
+    })
+    await new Promise((resolve) => setTimeout(resolve, 5))
+    expect(done).toBe(false)
+
+    authority.dispatch({ type: "session-learned", session: "signed-out" })
+    await waiting
+    expect(done).toBe(true)
+  })
+
+  it("stops listening once it has resolved", async () => {
+    const authority = createAuthority("remote", ports("account"))
+    const waiting = authority.settled()
+    authority.dispatch({ type: "session-learned", session: "signed-in" })
+    await waiting
+    // Another change must not re-run a resolved waiter or throw.
+    expect(() =>
+      authority.dispatch({ type: "session-ended", forget: false })
+    ).not.toThrow()
+  })
+})

@@ -23,7 +23,6 @@
 15 apps/www/src/lib/auth/session.ts
 1 apps/www/src/lib/intent/use-async-intent.ts
 9 apps/www/src/lib/study-nudge/use-study-nudge.ts
-1 apps/www/src/routes/__root.tsx
 3 apps/www/src/routes/auth.tsx
 1 packages/fetch-kit/src/lib/query-hooks/index.ts
 5 packages/speech/src/lib/hooks/use-audio-storage.ts
