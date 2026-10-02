@@ -137,6 +137,36 @@ the shortest life that works, and nothing recreated leaves its old copy behind.
   retention" sets the default for any upload without `retention-days` and caps any
   explicit value above it. It also sets how long run logs are kept.
 
+## Vestiges
+
+A workspace earns its place only while something live points to it: an app, a shipped
+extension, a document build, or an activity in `@some-ui/activity-catalog`. A skeleton
+kept for a story "we'll come back to" does not. New code is cheap here and the
+conventions keep moving, so a skeleton goes stale anyway (no current lint config, no
+knip, thin tests), and the chance of returning to it falls with every day its own code
+goes untouched. Git history keeps what is deleted.
+
+`pnpm report:vestiges` (`scripts/report-vestiges.ts`, rule and tests in
+`packages/eslint/src/vestiges.ts`) ranks the candidates. Run it near the start of any
+session that plans cleanup, or before adding to a workspace whose last activity you don't
+know. It needs full history (`git fetch --unshallow`); in a shallow clone it warns, and every
+date is clipped. A workspace is a candidate when it is:
+
+- **unreached:** no deployable depends on it, directly or through another workspace; or
+- **stale and drifting:** its own source has not changed in 60 days, it is missing a script
+  live workspaces carry (`lint`, `typecheck`, `test`, `knip`) or has no tests, and it is not a
+  shared library (more than two dependents).
+
+"Own change" ignores tests, manifests and config, file deletions (cleanup is not work on the
+story), and sweeps across more than eight workspaces (version bumps, renames, rollouts).
+
+It is a report, never a gate: whether a story is dead is the owner's call, so put the
+candidates to them instead of deleting on the score alone. Known false positives come from
+what `package.json` cannot show. `packages/some-content` is consumed by file path (its
+`public/` assets), not by package name. A registry key reaches a package only if something
+can still bind it, so check `componentRegistry` and the activity catalog before calling a
+reached package live.
+
 ## Test layout
 
 A source directory keeps **at most one** `*.test.*` file. A second one means all of that
