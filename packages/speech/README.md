@@ -43,7 +43,7 @@ data — selects one:
 | mode       | where it comes from                | backend                                               |
 | ---------- | ---------------------------------- | ----------------------------------------------------- |
 | `"server"` | `vite dev`, `vite preview`, Docker | `openai-edge-tts` over HTTP (`infra/compose/tts.yml`) |
-| `"static"` | the GitHub Pages build             | the browser's own `speechSynthesis`                   |
+| `"static"` | the GitHub Pages build, the APK    | the device's own voice (below)                        |
 
 That mapping is `DEFAULT_SPEECH_ADAPTERS` in `lib/adapters/registry.ts`, and
 it is a default, not a rule: `config.adapters` replaces either entry,
@@ -64,10 +64,15 @@ handling it.
   (`DEFAULT_HOSTED_VOICE`), else no voice and an honest failure. Nothing
   falls back to "the first voice in the list". A stored string becomes a
   choice in one place, `parseHostedVoiceChoice`.
-- **The device's voices are not ours.** The browser's `speechSynthesis` is
+- **The device's voices are not ours.** The browser's `speechSynthesis`,
+  and the phone's text-to-speech that the Android app passes as
+  `config.native` (its WebView has no working `speechSynthesis`), are
   someone else's API with someone else's voices, different on every device.
-  It is handed a language and speaks it in whatever voice it has; none of
-  its voices ever becomes a `VoiceConfig`.
+  They are handed a language and speak it in whatever voice they have, or
+  in the one the person picked from the phone's own list; none of their
+  voices ever becomes a `VoiceConfig`. A phone without voice data for the
+  language refuses the line (`VoiceMissingError`) and the app hears about
+  it through `native.onMissingVoice`, instead of the lesson staying silent.
 
 ## Telling the person
 

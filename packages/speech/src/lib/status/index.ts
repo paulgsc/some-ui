@@ -50,12 +50,13 @@ export type {
 } from "./types"
 
 /**
- * The browser's own synthesizer is the only backend that never sends text
- * anywhere; everything else this package can resolve to is, from a person's
- * point of view, "a service somewhere else".
+ * The device's own synthesizers, the browser's and the operating system's,
+ * are the only backends that never send text anywhere; everything else this
+ * package can resolve to is, from a person's point of view, "a service
+ * somewhere else".
  */
 export function voiceKindOf(adapter: SpeechAdapter): SpeechVoiceKind {
-  return adapter.id === "web-speech" ? "device" : "hosted"
+  return adapter.id === "http" ? "hosted" : "device"
 }
 
 export function healthOf(

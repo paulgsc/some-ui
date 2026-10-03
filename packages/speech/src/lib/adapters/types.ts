@@ -14,7 +14,7 @@
  * `@some-ui/fetch-kit`, and not for branching.
  */
 
-export type SpeechAdapterId = "http" | "web-speech"
+export type SpeechAdapterId = "http" | "native" | "web-speech"
 
 /**
  * Who would speak a line in a given language, as a person would want to
