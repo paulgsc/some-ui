@@ -6,8 +6,8 @@ import { BookOpen, Mic } from "lucide-react"
 
 import { useMinuteClock } from "@/lib/clock"
 import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
-import type { SessionRecord, SessionStatus } from "@/lib/tenant"
-import { sessionsQuery, useSessions } from "@/lib/tenant"
+import type { SessionRecord } from "@/lib/tenant"
+import { resumableSession, sessionsQuery, useSessions } from "@/lib/tenant"
 
 /**
  * Home: the Android app's front door, where each daily tool shows what it
@@ -17,22 +17,6 @@ import { sessionsQuery, useSessions } from "@/lib/tenant"
  * Each tool's card is its own (aph's comes from `@some-ui/aph`, which owns
  * what "due" means); Home only lays them out and supplies the links.
  */
-
-const IN_PROGRESS: ReadonlyArray<SessionStatus> = [
-  "active",
-  "paused",
-  "scheduled",
-]
-
-function resumable(
-  sessions: ReadonlyArray<SessionRecord>
-): SessionRecord | null {
-  return (
-    [...sessions]
-      .filter((s) => IN_PROGRESS.includes(s.status))
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0] ?? null
-  )
-}
 
 type StudyStatus =
   | { kind: "pending" }
@@ -57,7 +41,7 @@ const StudyCard = (): JSX.Element => {
     failed: (_error, retry): StudyStatus => ({ kind: "failed", retry }),
     ready: (sessions, refreshError): StudyStatus => ({
       kind: "ready",
-      open: resumable(sessions),
+      open: resumableSession(sessions),
       refreshRetry: refreshError?.retry ?? null,
     }),
   })
