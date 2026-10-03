@@ -85,6 +85,9 @@ const EntryDetail = ({
   const { settings, entries } = useAph(store)
   const { status, gap } = reconcile(settings, entry)
   const chips = labelsFor(settings, entry)
+  // An edit buffer for the note I'm typing: seeded from the entry it edits,
+  // and EntrySheet keys this by `entry.id`, so another entry is a fresh one.
+  // eslint-disable-next-line owner-guard/no-mount-snapshot -- edit buffer, keyed by the entry it edits (see above)
   const [note, setNote] = useState(entry.note ?? "")
 
   return (

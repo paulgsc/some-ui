@@ -38,20 +38,17 @@ import { cn } from "some-ui-utils"
 export type AphHistoryProps = {
   /** Where "Enter their figure" goes: the logger, on the theirs side. */
   onEnterTheirs?: (entryId: string) => void
-  now?: Date
+  /** The host's clock (`useMinuteClock` in www), which moves while the screen stays open. */
+  now: Date
   store?: AphStore
 }
 
 export const AphHistory = ({
   onEnterTheirs,
-  now: givenNow,
+  now,
   store = aphStore,
 }: AphHistoryProps): JSX.Element => {
   const { settings, entries } = useAph(store)
-  // The host's clock when it passes one (it re-renders as time moves);
-  // otherwise the moment this mounted.
-  const [mounted] = useState(() => new Date())
-  const now = givenNow ?? mounted
   const [filter, setFilter] = useState<ReconcileStatus | null>(null)
   const [open, setOpen] = useState<string | null>(null)
   const today = dayOf(now)

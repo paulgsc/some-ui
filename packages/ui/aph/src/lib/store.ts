@@ -5,9 +5,10 @@
  * first, and storage replaces this module's insides later without changing
  * what the screens read.
  *
- * Every write is checked against `violations` (model.ts) and refused, the
- * state left as it was, when it would break one: the rules live here, once,
- * not in each screen that edits.
+ * Every write is checked against `violations` (the state it leaves) and
+ * `breaches` (the step it takes), both in model.ts, and refused, the state
+ * left as it was, when it would break one: the rules live here, once, not
+ * in each screen that edits.
  *
  * Synchronous on purpose. Every change is a pure function of the current
  * value (`draft.ts`, `model.ts`), so there is no result that can arrive late
@@ -17,7 +18,7 @@
 import type { Commit, Draft } from "./draft"
 import { commitDraft, reviewEntry } from "./draft"
 import type { AphSettings, Entry, Review } from "./model"
-import { violations } from "./model"
+import { breaches, violations } from "./model"
 import { SEED_ENTRIES, SEED_SETTINGS } from "./seed"
 
 export type AphState = {
@@ -44,6 +45,7 @@ export function createAphStore(initial: AphState): AphStore {
   const listeners = new Set<() => void>()
   const set = (next: AphState): boolean => {
     if (violations(next.settings, next.entries).length > 0) return false
+    if (breaches(state.entries, next.entries).length > 0) return false
     state = next
     for (const listener of listeners) listener()
     return true

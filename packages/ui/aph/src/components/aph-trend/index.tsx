@@ -26,7 +26,8 @@ import { useAph } from "@aph/lib/use-aph"
 import { cn } from "some-ui-utils"
 
 type AphTrendProps = {
-  now?: Date
+  /** The host's clock (`useMinuteClock` in www), which moves while the screen stays open. */
+  now: Date
   store?: AphStore
 }
 
@@ -48,14 +49,10 @@ const BAR_FILL = {
 } as const
 
 export const AphTrend = ({
-  now: givenNow,
+  now,
   store = aphStore,
 }: AphTrendProps): JSX.Element => {
   const { settings, entries } = useAph(store)
-  // The host's clock when it passes one (it re-renders as time moves);
-  // otherwise the moment this mounted.
-  const [mounted] = useState(() => new Date())
-  const now = givenNow ?? mounted
   const [range, setRange] = useState<RangeId>("3w")
   const today = dayOf(now)
   const span = RANGES.find((r) => r.id === range)?.days ?? null

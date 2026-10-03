@@ -20,7 +20,6 @@ import type { Draft, Side } from "@aph/lib/draft"
 import {
   atTime,
   correcting,
-  defaultCheckpoint,
   draftValue,
   newDraft,
   stepDraft,
@@ -46,16 +45,19 @@ import { cn } from "some-ui-utils"
 
 export type AphLogProps = {
   /**
-   * Which figure the form opens on. Mine unless a link asked for theirs;
-   * the form can switch, so `onSaved` says which side was saved.
+   * Which figure the form opens on, read once: mine unless a link asked for
+   * theirs. The form can switch, so `onSaved` says which side was saved.
    */
-  side?: Side
-  /** Theirs: the entry to fill in, when the way here already chose one. */
-  target?: string | null
+  initialSide?: Side
+  /**
+   * Theirs: the entry to fill in, when the way here already chose one. Read
+   * once; without it, the newest entry awaiting their figure, at the time.
+   */
+  initialTarget?: string | null
   /** Called after a save, with the entry as it now stands and the side saved. */
   onSaved?: (entry: Entry, side: Side) => void
-  /** The host's clock; without one, the moment this mounted (and the tap's, on save). */
-  now?: Date
+  /** The host's clock (`useMinuteClock` in www), which moves while the screen stays open. */
+  now: Date
   store?: AphStore
 }
 
@@ -69,17 +71,13 @@ function clockOf(date: Date): string {
 }
 
 export const AphLog = ({
-  side = "mine",
-  target = null,
+  initialSide = "mine",
+  initialTarget = null,
   onSaved,
-  now: givenNow,
+  now,
   store = aphStore,
 }: AphLogProps): JSX.Element => {
   const { settings, entries } = useAph(store)
-  // The host's clock when it passes one (it re-renders as time moves);
-  // otherwise the moment this mounted.
-  const [mounted] = useState(() => new Date())
-  const now = givenNow ?? mounted
   const today = dayOf(now)
   const waiting = awaitingTheirs(settings, entries)
   const [showOlder, setShowOlder] = useState(false)
@@ -87,14 +85,10 @@ export const AphLog = ({
   const [raw, dispatch] = useReducer(
     stepDraft,
     undefined,
-    (): Draft =>
-      newDraft(
-        side,
-        defaultCheckpoint(settings, entries, now),
-        target ?? waiting[0]?.id ?? null
-      )
+    (): Draft => newDraft(initialSide, null, initialTarget)
   )
-  // The checkpoint follows the clock until I pick one (`atTime`).
+  // The checkpoint follows the clock, and the target the waiting list,
+  // until I pick one (`atTime`).
   const draft = atTime(raw, settings, entries, now)
 
   const value = draftValue(draft)
@@ -109,13 +103,12 @@ export const AphLog = ({
 
   const save = (): void => {
     const id = crypto.randomUUID()
-    // The day and time of the tap, not of the mount: the screen may have
-    // sat open across midnight.
-    const at = givenNow ?? new Date()
+    // The host's clock as it stands at the tap, not at the mount: the screen
+    // may have sat open across midnight.
     // The entry it landed on: a new one, or the one it filled in or corrected.
-    const landed = store.save(atTime(raw, settings, entries, at), {
-      day: dayOf(at),
-      time: clockOf(at),
+    const landed = store.save(draft, {
+      day: today,
+      time: clockOf(now),
       id,
     })
     if (landed !== null) onSaved?.(landed, raw.side)

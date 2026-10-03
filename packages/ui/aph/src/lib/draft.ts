@@ -116,7 +116,7 @@ function assertNever(value: never): never {
 }
 
 /** The checkpoint a new figure of mine goes to by default at a moment. */
-export function defaultCheckpoint(
+function defaultCheckpoint(
   settings: AphSettings,
   entries: ReadonlyArray<Entry>,
   at: Date
@@ -126,9 +126,11 @@ export function defaultCheckpoint(
 }
 
 /**
- * The draft as it stands at a moment: a checkpoint I picked stays put; one I
- * did not is the clock's default for `at`. A derived value, computed where
- * it is used (rendering, saving) and never stored, so it cannot go stale.
+ * The draft as it stands at a moment. A checkpoint I picked stays put; one I
+ * did not is the clock's default for `at`. A target I named stays put; with
+ * none, it is the newest entry still awaiting their figure. Both defaults
+ * are derived where they are used (rendering, saving) and never stored, so
+ * neither can go stale while the form sits open.
  */
 export function atTime(
   draft: Draft,
@@ -136,9 +138,13 @@ export function atTime(
   entries: ReadonlyArray<Entry>,
   at: Date
 ): Draft {
-  return draft.pinned
-    ? draft
-    : { ...draft, checkpoint: defaultCheckpoint(settings, entries, at) }
+  return {
+    ...draft,
+    checkpoint: draft.pinned
+      ? draft.checkpoint
+      : defaultCheckpoint(settings, entries, at),
+    target: draft.target ?? awaitingTheirs(settings, entries)[0]?.id ?? null,
+  }
 }
 
 export function draftValue(draft: Draft): number | null {

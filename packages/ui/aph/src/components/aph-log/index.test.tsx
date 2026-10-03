@@ -94,17 +94,27 @@ describe("a logger left open", () => {
   })
 
   it("saves under the day of the tap, not of the mount", () => {
-    vi.useFakeTimers({ toFake: ["Date"] })
-    vi.setSystemTime(new Date(2026, 9, 2, 23, 58))
     const store = createAphStore({ settings: SEED_SETTINGS, entries: [] })
     const onSaved = vi.fn()
-    render(<AphLog store={store} onSaved={onSaved} />)
+    const { rerender } = render(
+      <AphLog
+        now={new Date(2026, 9, 2, 23, 58)}
+        store={store}
+        onSaved={onSaved}
+      />
+    )
     fireEvent.click(screen.getByRole("radio", { name: /Other/ }))
     for (const d of "4500") {
       fireEvent.click(screen.getByRole("button", { name: d }))
     }
-    // Past midnight, the screen still up.
-    vi.setSystemTime(new Date(2026, 9, 3, 0, 4))
+    // Past midnight, the screen still up: the host's clock has moved on.
+    rerender(
+      <AphLog
+        now={new Date(2026, 9, 3, 0, 4)}
+        store={store}
+        onSaved={onSaved}
+      />
+    )
     fireEvent.click(screen.getByRole("button", { name: /Save mine/ }))
     expect(onSaved).toHaveBeenCalledWith(
       expect.objectContaining({ day: "2026-10-03", time: "0:04" }),
@@ -115,7 +125,7 @@ describe("a logger left open", () => {
 
 describe("logging theirs", () => {
   it("shows, before saving, that a far-off figure will wait on my call", () => {
-    const { type, store } = setup({ side: "theirs" })
+    const { type, store } = setup({ initialSide: "theirs" })
     // The newest waiting entry: Oct 2 at 7:00, mine ~4,300.
     type("4900")
     expect(screen.getByText("Your call")).toBeInTheDocument()
@@ -138,7 +148,12 @@ describe("logging theirs", () => {
       (e) => e.day === "2026-10-02" && e.checkpoint === "7"
     )
     render(
-      <AphLog now={noon} store={store} side="theirs" target={target?.id} />
+      <AphLog
+        now={noon}
+        store={store}
+        initialSide="theirs"
+        initialTarget={target?.id}
+      />
     )
     for (const d of "4900") {
       fireEvent.click(screen.getByRole("button", { name: d }))
@@ -159,7 +174,7 @@ describe("logging theirs", () => {
   })
 
   it("shows a close figure as reconciled", () => {
-    const { type } = setup({ side: "theirs" })
+    const { type } = setup({ initialSide: "theirs" })
     type("4350")
     expect(screen.getByText("Reconciled")).toBeInTheDocument()
   })

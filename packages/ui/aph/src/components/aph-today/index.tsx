@@ -5,7 +5,6 @@
  * this package never knows the app's routes.
  */
 import type { JSX, ReactNode } from "react"
-import { useState } from "react"
 import {
   CheckpointMark,
   Figures,
@@ -35,21 +34,18 @@ type AphTodayCardProps = {
   renderLog: (label: string) => ReactNode
   /** The host's link to History, wrapped around the "waits on you" line. */
   renderReview: (children: ReactNode) => ReactNode
-  now?: Date
+  /** The host's clock (`useMinuteClock` in www), which moves while the screen stays open. */
+  now: Date
   store?: AphStore
 }
 
 export const AphTodayCard = ({
   renderLog,
   renderReview,
-  now: givenNow,
+  now,
   store = aphStore,
 }: AphTodayCardProps): JSX.Element => {
   const { settings, entries } = useAph(store)
-  // The host's clock when it passes one (Home re-renders as time moves);
-  // otherwise the moment this mounted.
-  const [mounted] = useState(() => new Date())
-  const now = givenNow ?? mounted
   const today = dayOf(now)
   const minutes = minutesOf(now)
   const due = dueCheckpoint(settings, entries, today, minutes)
@@ -121,21 +117,18 @@ export const AphTodayCard = ({
 type AphTodayEntriesProps = {
   /** Shown in place of the rows when today has none. */
   empty?: ReactNode
-  now?: Date
+  /** The host's clock (`useMinuteClock` in www), which moves while the screen stays open. */
+  now: Date
   store?: AphStore
 }
 
 /** Today's aph entries, as list items for Home's timeline. */
 export const AphTodayEntries = ({
   empty = null,
-  now: givenNow,
+  now,
   store = aphStore,
 }: AphTodayEntriesProps): JSX.Element => {
   const { settings, entries } = useAph(store)
-  // The host's clock when it passes one (Home re-renders as time moves);
-  // otherwise the moment this mounted.
-  const [mounted] = useState(() => new Date())
-  const now = givenNow ?? mounted
   const todays = entriesOn(settings, entries, dayOf(now))
   if (todays.length === 0) return <>{empty}</>
   return (

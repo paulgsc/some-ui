@@ -73,6 +73,28 @@ describe("the checkpoint over time", () => {
   })
 })
 
+describe("the target over time", () => {
+  const at = new Date(2026, 10, 1, 9, 0)
+
+  it("follows the newest entry awaiting their figure until I name one", () => {
+    const d = newDraft("theirs", null, null)
+    const newest = SEED_ENTRIES.at(-1)?.id
+    expect(atTime(d, settings, SEED_ENTRIES, at).target).toBe(newest)
+    // Once that one is filled, the next newest is the default.
+    const filled = SEED_ENTRIES.map((e) =>
+      e.id === newest ? { ...e, theirs: { value: 4300 } } : e
+    )
+    const next = atTime(d, settings, filled, at).target
+    expect(next).not.toBe(newest)
+    expect(filled.find((e) => e.id === next)?.theirs).toBeNull()
+  })
+
+  it("keeps a target I named", () => {
+    const d = newDraft("theirs", null, "paper-1")
+    expect(atTime(d, settings, SEED_ENTRIES, at).target).toBe("paper-1")
+  })
+})
+
 describe("saving mine", () => {
   it("adds an entry that keeps the goal it was made under", () => {
     const d = run(newDraft("mine", "12", null), [
