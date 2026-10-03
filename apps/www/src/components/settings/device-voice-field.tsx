@@ -28,17 +28,17 @@ import { queryOptions, useQuery } from "@tanstack/react-query"
 
 import type { DeviceVoices } from "@/lib/device-speech"
 import {
-  DEVICE_SPEECH_LANG,
   openVoiceInstall,
   previewDeviceVoice,
   readDeviceVoices,
   voiceLabel,
 } from "@/lib/device-speech"
 import { IntentFailure } from "@/lib/intent/render"
+import { LESSON_LANGUAGE } from "@/lib/lesson-voice"
 import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 
 const deviceVoicesQuery = queryOptions({
-  queryKey: ["device-speech", "voices", DEVICE_SPEECH_LANG],
+  queryKey: ["device-speech", "voices", LESSON_LANGUAGE],
   queryFn: readDeviceVoices,
   // A voice installed from the system settings shows up on return.
   refetchOnWindowFocus: "always",

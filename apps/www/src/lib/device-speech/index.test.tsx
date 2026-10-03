@@ -165,11 +165,11 @@ describe("the phone's voices for Settings", () => {
     ])
   })
 
-  it("names a voice by its variant and whether it works offline", () => {
+  it("lists a voice by its name and whether it works offline", () => {
     expect(
       voiceLabel({
         id: "ko-kr-x-kob-local",
-        name: "Korean",
+        name: "Voice KOB",
         lang: "ko-KR",
         local: true,
       })
@@ -177,7 +177,7 @@ describe("the phone's voices for Settings", () => {
     expect(
       voiceLabel({
         id: "ko-kr-x-ism-network",
-        name: "Korean",
+        name: "Voice ISM",
         lang: "ko-KR",
         local: false,
       })

@@ -21,13 +21,21 @@ import type {
   NativeVoice,
 } from "@some-ui/speech"
 
+/**
+ * A name a person can tell voices apart by. The plugin's `name` is the
+ * voice's language and country, the same for every voice in a language;
+ * Android's own name (`ko-kr-x-kob-local`) carries the variant.
+ */
+function nameOf(voice: PluginVoice): string {
+  const variant = /-x-([a-z0-9]+)/i.exec(voice.voiceURI)?.[1]
+  return variant ? `Voice ${variant.toUpperCase()}` : voice.voiceURI
+}
+
 function toNativeVoice(voice: PluginVoice): NativeVoice {
   return {
-    // Android's `Voice.getName()`, which is unique and stable. The plugin's
-    // `name` is the voice's language and country, the same for every voice
-    // in a language.
+    // Android's `Voice.getName()`, which is unique and stable.
     id: voice.voiceURI,
-    name: voice.name,
+    name: nameOf(voice),
     lang: voice.lang,
     local: voice.localService,
   }

@@ -39,7 +39,11 @@
  *   learns why nothing was said.
  */
 
-import type { SpeakOptions, SpeechAdapter } from "@speech/lib/adapters/types"
+import type {
+  SpeakOptions,
+  SpeechAdapter,
+  VoiceReport,
+} from "@speech/lib/adapters/types"
 import { createSpeechLedger } from "@speech/lib/promise"
 import { createAbortError, toError } from "@speech/lib/promise/abort"
 
@@ -125,6 +129,8 @@ export function createNativeSpeechAdapter(
   let voices: ReadonlyArray<NativeVoice> = []
   /** Only `true` is cached: a missing voice can be installed at any time. */
   const installed = new Set<string>()
+  /** Languages the last probe found no voice data for, for `describe`. */
+  const missing = new Set<string>()
 
   // Only to learn which language the chosen voice speaks. The list loads
   // over the bridge, so until it answers (or if it fails) the chosen voice
@@ -141,9 +147,17 @@ export function createNativeSpeechAdapter(
     // A probe that fails says nothing about the voice. Let the utterance
     // try, and let the engine's own error say what went wrong.
     const supported = await engine.isLanguageSupported(lang).catch(() => true)
-    if (supported) installed.add(lang)
+    if (supported) {
+      installed.add(lang)
+      missing.delete(lang)
+    } else {
+      missing.add(lang)
+    }
     return supported
   }
+  // Probed up front for the session's own language, so `describe` can say
+  // whether the phone speaks it before the first line is tried.
+  if (options.lang) void hasVoiceFor(options.lang)
 
   const voiceIdFor = (lang: string | undefined): string | undefined => {
     const chosen = voices.find((voice) => voice.id === options.voiceId)
@@ -238,6 +252,14 @@ export function createNativeSpeechAdapter(
   return {
     id: "native",
     supported: true,
+    describe: (lang): VoiceReport => {
+      const chosen = voices.find((voice) => voice.id === voiceIdFor(lang))
+      return {
+        platform: "phone",
+        voice: chosen?.name ?? null,
+        speaksLanguage: !missing.has(lang),
+      }
+    },
     get pending(): number {
       return ledger.size
     },

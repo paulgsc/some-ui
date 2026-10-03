@@ -7,7 +7,8 @@ import { toast } from "sonner"
 import { useAudioPreferences } from "@/lib/audio-preferences/use-audio-preferences"
 import { useAuthority } from "@/lib/authority"
 import { DATA_MODE, DEVICE_BACKEND } from "@/lib/data-mode"
-import { DEVICE_SPEECH_LANG, deviceSpeechBackend } from "@/lib/device-speech"
+import { deviceSpeechBackend } from "@/lib/device-speech"
+import { LESSON_LANGUAGE } from "@/lib/lesson-voice"
 import { useSettings } from "@/lib/tenant"
 import { describeTTSEndpoint, resolveTTSEndpoint } from "@/lib/tts-config"
 
@@ -129,7 +130,7 @@ export const TTSProvider = ({
               // it, so it speaks with the phone's own engine: Korean, in
               // the voice picked from the phone's list in Settings.
               mode: "static",
-              lang: DEVICE_SPEECH_LANG,
+              lang: LESSON_LANGUAGE,
               native: deviceSpeechBackend(settings?.deviceVoiceId),
             }
           : {

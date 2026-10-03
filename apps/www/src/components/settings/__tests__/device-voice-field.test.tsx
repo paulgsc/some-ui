@@ -89,7 +89,12 @@ describe("DeviceVoiceField", () => {
     fake.state.voices = {
       installed: true,
       voices: [
-        { id: "ko-kr-x-kob-local", name: "Korean", lang: "ko-KR", local: true },
+        {
+          id: "ko-kr-x-kob-local",
+          name: "Voice KOB",
+          lang: "ko-KR",
+          local: true,
+        },
       ],
     }
     renderField("ko-kr-x-gone-local")
@@ -103,7 +108,12 @@ describe("DeviceVoiceField", () => {
     fake.state.voices = {
       installed: true,
       voices: [
-        { id: "ko-kr-x-kob-local", name: "Korean", lang: "ko-KR", local: true },
+        {
+          id: "ko-kr-x-kob-local",
+          name: "Voice KOB",
+          lang: "ko-KR",
+          local: true,
+        },
       ],
     }
     renderField("ko-kr-x-kob-local")

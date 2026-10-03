@@ -18,10 +18,9 @@ import type {
 } from "@some-ui/speech"
 import { toast } from "sonner"
 
-import type * as NativeModule from "./native"
+import { LESSON_LANGUAGE } from "@/lib/lesson-voice"
 
-/** What every study surface on the phone speaks. */
-export const DEVICE_SPEECH_LANG = "ko-KR"
+import type * as NativeModule from "./native"
 
 let loading: Promise<typeof NativeModule> | null = null
 function native(): Promise<typeof NativeModule> {
@@ -100,7 +99,7 @@ export function previewDeviceVoice(voiceId: string | undefined): void {
   void lazyEngine
     .speak({
       text: PREVIEW_TEXT,
-      lang: DEVICE_SPEECH_LANG,
+      lang: LESSON_LANGUAGE,
       voiceId,
       rate: 1,
       pitch: 1,
@@ -110,34 +109,26 @@ export function previewDeviceVoice(voiceId: string | undefined): void {
 }
 
 export type DeviceVoices = {
-  /** Voice data for `DEVICE_SPEECH_LANG` is installed and usable. */
+  /** Voice data for `LESSON_LANGUAGE` is installed and usable. */
   readonly installed: boolean
   /** The phone's voices in that language, offline ones first. */
   readonly voices: ReadonlyArray<NativeVoice>
 }
 
-/** The phone's voices in `DEVICE_SPEECH_LANG`, for Settings. */
+/** The phone's voices in `LESSON_LANGUAGE`, for Settings. */
 export async function readDeviceVoices(): Promise<DeviceVoices> {
   const [installed, all] = await Promise.all([
-    lazyEngine.isLanguageSupported(DEVICE_SPEECH_LANG),
+    lazyEngine.isLanguageSupported(LESSON_LANGUAGE),
     lazyEngine.getVoices(),
   ])
-  const primary = DEVICE_SPEECH_LANG.split("-")[0] ?? DEVICE_SPEECH_LANG
+  const primary = LESSON_LANGUAGE.split("-")[0] ?? LESSON_LANGUAGE
   const voices = all
     .filter((voice) => voice.lang.toLowerCase().startsWith(primary))
     .sort((a, b) => Number(b.local) - Number(a.local))
   return { installed, voices }
 }
 
-/**
- * A short label that tells one voice from another. Android names a voice
- * like `ko-kr-x-ism-local`; the plugin's display name is only the language,
- * the same for all of them.
- */
+/** A voice as Settings lists it: its name, and whether it works offline. */
 export function voiceLabel(voice: NativeVoice): string {
-  const variant = /-x-([a-z0-9]+)/i.exec(voice.id)?.[1]
-  const where = voice.local ? "offline" : "needs internet"
-  return variant
-    ? `Voice ${variant.toUpperCase()} (${where})`
-    : `${voice.id} (${where})`
+  return `${voice.name} (${voice.local ? "offline" : "needs internet"})`
 }

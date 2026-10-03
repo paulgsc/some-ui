@@ -172,6 +172,29 @@ describe("native adapter", () => {
     ])
   })
 
+  it("says who speaks: the chosen voice by name, and whether Korean is installed", async () => {
+    const fake = createFakeNativeEngine({ voices: VOICES, installed: [] })
+    const adapter = createNativeSpeechAdapter({
+      engine: fake.engine,
+      lang: "ko-KR",
+      voiceId: "ko-kr-x-kod-local",
+    })
+    await flushAsync()
+
+    expect(adapter.describe("ko-KR")).toEqual({
+      platform: "phone",
+      voice: "Korean",
+      speaksLanguage: false,
+    })
+
+    fake.install("ko-KR")
+    void adapter.speak("안녕하세요").catch(() => undefined)
+    await flushAsync()
+    expect(adapter.describe("ko-KR").speaksLanguage).toBe(true)
+    // English is not the chosen voice's language: the engine's default.
+    expect(adapter.describe("en-US").voice).toBeNull()
+  })
+
   it("leaves the voice to the engine when the chosen one speaks another language", async () => {
     const fake = createFakeNativeEngine({ voices: VOICES })
     const adapter = createNativeSpeechAdapter({
