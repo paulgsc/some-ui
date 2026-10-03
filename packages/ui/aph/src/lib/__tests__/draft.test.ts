@@ -93,6 +93,35 @@ describe("saving mine", () => {
     expect(reconcile(settings, must(after[0])).status).toBe("matched")
   })
 
+  it("corrects the plain figure already logged there, rather than adding a second", () => {
+    // Oct 2 at 7:00 is logged (~4,300) and their figure flagged against it.
+    const target = must(
+      SEED_ENTRIES.find((e) => e.day === "2026-10-02" && e.checkpoint === "7")
+    )
+    const before = reviewEntry(
+      SEED_ENTRIES.map((e) =>
+        e.id === target.id ? { ...e, theirs: { value: 4900 } } : e
+      ),
+      target.id,
+      "flagged"
+    )
+    const d = run(newDraft("mine", "7", null), typed("4850"))
+    const after = commitDraft(settings, before, d, commit) ?? []
+    expect(after).toHaveLength(before.length)
+    const fixed = must(after.find((e) => e.id === target.id))
+    expect(fixed.mine).toEqual({ value: 4850, approx: true })
+    expect(reconcile(settings, fixed).status).toBe("matched")
+  })
+
+  it("adds a labelled figure beside the plain one, as a comparison", () => {
+    const d = run(newDraft("mine", "7", null), [
+      ...typed("4100"),
+      { type: "toggleLabel", label: "no-bs" },
+    ])
+    const after = commitDraft(settings, SEED_ENTRIES, d, commit) ?? []
+    expect(after).toHaveLength(SEED_ENTRIES.length + 1)
+  })
+
   it("saves nothing without a figure", () => {
     expect(
       commitDraft(settings, [], newDraft("mine", "7", null), commit)

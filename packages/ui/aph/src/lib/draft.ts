@@ -110,7 +110,9 @@ export type Commit = {
  * (no figure, or theirs with no entry chosen).
  *
  * Mine at a checkpoint where today already holds a reported figure but none
- * of mine fills that entry in, so the two meet; otherwise it is a new entry.
+ * of mine fills that entry in, so the two meet; an unlabelled figure where
+ * one is already logged corrects it (`correcting`); otherwise it is a new
+ * entry.
  * Theirs lands on its target and clears any earlier call on it: a new
  * figure deserves a fresh look.
  */
@@ -143,6 +145,15 @@ export function commitDraft(
       e === reportedOnly ? { ...e, mine, labels: draft.labels } : e
     )
   }
+  // An unlabelled figure where one is already logged corrects it: the day
+  // has one plain figure per checkpoint, the one `primary` reads. A changed
+  // figure deserves a fresh look, so any earlier call on it is cleared.
+  const corrected = correcting(entries, draft, commit.day)
+  if (corrected !== undefined) {
+    return entries.map((e) =>
+      e === corrected ? { ...e, mine, review: null } : e
+    )
+  }
   const checkpoint = checkpointById(settings, draft.checkpoint)
   return [
     ...entries,
@@ -159,6 +170,27 @@ export function commitDraft(
       review: null,
     },
   ]
+}
+
+/**
+ * The entry saving `draft` on `day` would correct rather than add to: mine
+ * at a checkpoint, unlabelled, where an unlabelled figure of mine is already
+ * logged. A labelled figure there is a comparison and is added beside it.
+ */
+export function correcting(
+  entries: ReadonlyArray<Entry>,
+  draft: Draft,
+  day: string
+): Entry | undefined {
+  if (draft.side !== "mine" || draft.checkpoint === null) return undefined
+  if (draft.labels.length > 0) return undefined
+  return entries.find(
+    (e) =>
+      e.day === day &&
+      e.checkpoint === draft.checkpoint &&
+      e.mine !== null &&
+      e.labels.length === 0
+  )
 }
 
 /** Record my call on an entry, or take it back with null. */

@@ -1,10 +1,11 @@
 import type { JSX } from "react"
-import { useState } from "react"
 import { AphTodayCard, AphTodayEntries } from "@some-ui/aph"
 import { Button, Skeleton } from "@some-ui/shared"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { BookOpen, Mic } from "lucide-react"
 
+import { useMinuteClock } from "@/lib/clock"
+import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import type { SessionRecord, SessionStatus } from "@/lib/tenant"
 import { sessionsQuery, useSessions } from "@/lib/tenant"
 
@@ -33,9 +34,26 @@ function resumable(
   )
 }
 
+type StudyStatus =
+  | { kind: "pending" }
+  | { kind: "failed"; retry: () => void }
+  | { kind: "ready"; open: SessionRecord | null }
+
+/**
+ * The study card's three honest states: still loading, failed (never read
+ * as "nothing in progress", which would offer Start over a session that is
+ * only unreadable), and known.
+ */
 const StudyCard = (): JSX.Element => {
-  const { data: sessions, isPending } = useSessions()
-  const open = resumable(sessions ?? [])
+  const outcome = queryOutcome(useSessions())
+  const status = matchQueryOutcome(outcome, {
+    pending: (): StudyStatus => ({ kind: "pending" }),
+    failed: (_error, retry): StudyStatus => ({ kind: "failed", retry }),
+    ready: (sessions): StudyStatus => ({
+      kind: "ready",
+      open: resumable(sessions),
+    }),
+  })
 
   return (
     <div className="bg-card flex flex-col gap-2 rounded-xl border p-3">
@@ -45,27 +63,41 @@ const StudyCard = (): JSX.Element => {
         </span>
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="font-semibold">Study</span>
-          {isPending ? (
-            <Skeleton className="mt-1 h-4 w-32" />
-          ) : (
+          {status.kind === "pending" && <Skeleton className="mt-1 h-4 w-32" />}
+          {status.kind === "failed" && (
+            <span className="text-destructive truncate text-sm">
+              couldn’t read your sessions
+            </span>
+          )}
+          {status.kind === "ready" && (
             <span className="text-muted-foreground truncate text-sm">
-              {open === null ? "nothing in progress" : open.name}
+              {status.open === null ? "nothing in progress" : status.open.name}
             </span>
           )}
         </span>
-        <Button
-          asChild
-          size="sm"
-          variant={open === null ? "outline" : "default"}
-        >
-          {open === null ? (
-            <Link to="/sessions/new">Start</Link>
-          ) : (
-            <Link to="/sessions/$sessionId" params={{ sessionId: open.id }}>
-              Resume
-            </Link>
-          )}
-        </Button>
+        {status.kind === "failed" && (
+          <Button size="sm" variant="outline" onClick={status.retry}>
+            Retry
+          </Button>
+        )}
+        {status.kind === "ready" && (
+          <Button
+            asChild
+            size="sm"
+            variant={status.open === null ? "outline" : "default"}
+          >
+            {status.open === null ? (
+              <Link to="/sessions/new">Start</Link>
+            ) : (
+              <Link
+                to="/sessions/$sessionId"
+                params={{ sessionId: status.open.id }}
+              >
+                Resume
+              </Link>
+            )}
+          </Button>
+        )}
       </div>
       <Link
         to="/soundbites"
@@ -80,7 +112,9 @@ const StudyCard = (): JSX.Element => {
 }
 
 const TodayRoute = (): JSX.Element => {
-  const [now] = useState(() => new Date())
+  // Moves while Home stays open, so a checkpoint turns due, then missed, and
+  // the date turns over, without leaving the page.
+  const now = useMinuteClock()
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-5">

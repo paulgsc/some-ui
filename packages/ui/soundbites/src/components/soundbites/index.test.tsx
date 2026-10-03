@@ -49,6 +49,7 @@ function setup(
     mic?: FakeMic
     autoStart?: boolean
     onAutoStart?: () => void
+    source?: SoundbiteContext["source"]
   } = {}
 ): ReturnType<typeof memoryStore> &
   ReturnType<typeof render> & { mic: FakeMic } {
@@ -57,7 +58,7 @@ function setup(
   const view = render(
     <Soundbites
       situation={() => SITUATION}
-      source="sessions"
+      source={options.source ?? "sessions"}
       ports={{ store: memory.store, startRecording: mic.start }}
       autoStart={options.autoStart}
       onAutoStart={options.onAutoStart}
@@ -560,6 +561,22 @@ describe("Soundbites", () => {
     expect(mic.start).toHaveBeenCalledTimes(1)
     expect(onAutoStart).toHaveBeenCalledTimes(1)
     visibility.mockRestore()
+  })
+
+  it("asks for a comment, not a reason, from Talk now", async () => {
+    setup({ source: "capture" })
+    expect(
+      await screen.findByRole("heading", { name: "Talk now" })
+    ).toBeInTheDocument()
+    expect(screen.queryByText("Too tired")).not.toBeInTheDocument()
+  })
+
+  it("asks why, with starters, from a skipped session", async () => {
+    setup()
+    expect(
+      await screen.findByRole("heading", { name: "Not today?" })
+    ).toBeInTheDocument()
+    expect(screen.getByText("Too tired")).toBeInTheDocument()
   })
 
   it("deletes a kept one after asking", async () => {

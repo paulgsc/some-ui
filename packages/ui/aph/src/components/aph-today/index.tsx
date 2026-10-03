@@ -45,7 +45,10 @@ export const AphTodayCard = ({
   store = aphStore,
 }: AphTodayCardProps): JSX.Element => {
   const { settings, entries } = useAph(store)
-  const [now] = useState(() => givenNow ?? new Date())
+  // The host's clock when it passes one (Home re-renders as time moves);
+  // otherwise the moment this mounted.
+  const [mounted] = useState(() => new Date())
+  const now = givenNow ?? mounted
   const today = dayOf(now)
   const minutes = minutesOf(now)
   const due = dueCheckpoint(settings, entries, today, minutes)
@@ -128,7 +131,10 @@ export const AphTodayEntries = ({
   store = aphStore,
 }: AphTodayEntriesProps): JSX.Element => {
   const { settings, entries } = useAph(store)
-  const [now] = useState(() => givenNow ?? new Date())
+  // The host's clock when it passes one (Home re-renders as time moves);
+  // otherwise the moment this mounted.
+  const [mounted] = useState(() => new Date())
+  const now = givenNow ?? mounted
   const today = dayOf(now)
   const todays = entries.filter((e) => e.day === today)
   if (todays.length === 0) return <>{empty}</>

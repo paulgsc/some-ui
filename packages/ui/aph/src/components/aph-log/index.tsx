@@ -17,7 +17,7 @@ import {
   whenOf,
 } from "@aph/components/status"
 import type { Draft, Side } from "@aph/lib/draft"
-import { draftValue, newDraft, stepDraft } from "@aph/lib/draft"
+import { correcting, draftValue, newDraft, stepDraft } from "@aph/lib/draft"
 import type { AphSettings, Entry } from "@aph/lib/model"
 import {
   awaitingTheirs,
@@ -327,7 +327,7 @@ export const AphLog = ({
       >
         <Check aria-hidden className="mr-2 size-5" />
         {draft.side === "mine"
-          ? `Save mine · ${checkpoint?.label ?? "now"}`
+          ? `${correcting(entries, draft, today) === undefined ? "Save" : "Correct"} mine · ${checkpoint?.label ?? "now"}`
           : targetEntry === null
             ? "Save theirs"
             : `Save theirs · ${formatDay(targetEntry.day)} ${whenOf(settings, targetEntry)}`}

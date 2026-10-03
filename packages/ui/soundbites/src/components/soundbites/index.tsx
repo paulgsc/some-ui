@@ -71,6 +71,29 @@ const STARTERS = [
   "The app got in the way",
 ]
 
+/**
+ * What the page asks for. Every way in but "Talk now" is about a session
+ * that is not happening; "Talk now" (`capture`) is a comment on anything,
+ * so it asks for that, and the starters, which are all reasons, stay away.
+ */
+function askFor(source: SoundbiteSource): {
+  title: string
+  lede: string
+  starters: boolean
+} {
+  return source === "capture"
+    ? {
+        title: "Talk now",
+        lede: "Whatever is on your mind, out loud, in a minute or less.",
+        starters: false,
+      }
+    : {
+        title: "Not today?",
+        lede: "Say why, out loud, in a minute or less. No typing, no wrong answers.",
+        starters: true,
+      }
+}
+
 const BLOCKED_COPY: Record<RecordingFailure, string> = {
   denied:
     "The microphone is off for Some UI. Turn it on under Android Settings → Apps → Some UI → Permissions → Microphone, then try again.",
@@ -282,6 +305,7 @@ export const Soundbites = ({
   const { dispatch } = runtime
 
   const now = new Date()
+  const ask = askFor(source)
   const recording = activity.kind === "recording"
   const usable = canUseKept(activity)
   const kept = library.kind === "read" ? library.kept : null
@@ -302,10 +326,8 @@ export const Soundbites = ({
           the fold mid-take. There they sit side by side instead. */}
       <div className="flex flex-col gap-6 [@media(max-height:479px)]:flex-row [@media(max-height:479px)]:items-center [@media(max-height:479px)]:gap-8">
         <header className="space-y-1 text-center [@media(max-height:479px)]:flex-1 [@media(max-height:479px)]:text-left">
-          <h1 className="text-2xl font-semibold tracking-tight">Not today?</h1>
-          <p className="text-muted-foreground text-sm">
-            Say why, out loud, in a minute or less. No typing, no wrong answers.
-          </p>
+          <h1 className="text-2xl font-semibold tracking-tight">{ask.title}</h1>
+          <p className="text-muted-foreground text-sm">{ask.lede}</p>
         </header>
 
         <div className="flex flex-col items-center gap-3">
@@ -352,21 +374,23 @@ export const Soundbites = ({
         </div>
       )}
 
-      <section aria-label="If you're stuck" className="space-y-2">
-        <p className="text-muted-foreground text-center text-xs">
-          Stuck? Start with one of these and keep going.
-        </p>
-        <ul className="flex flex-wrap justify-center gap-1.5">
-          {STARTERS.map((starter) => (
-            <li
-              key={starter}
-              className="bg-muted text-muted-foreground rounded-full px-3 py-1 text-xs"
-            >
-              {starter}
-            </li>
-          ))}
-        </ul>
-      </section>
+      {ask.starters && (
+        <section aria-label="If you're stuck" className="space-y-2">
+          <p className="text-muted-foreground text-center text-xs">
+            Stuck? Start with one of these and keep going.
+          </p>
+          <ul className="flex flex-wrap justify-center gap-1.5">
+            {STARTERS.map((starter) => (
+              <li
+                key={starter}
+                className="bg-muted text-muted-foreground rounded-full px-3 py-1 text-xs"
+              >
+                {starter}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section aria-labelledby="kept-soundbites" className="space-y-3">
         <div className="flex items-baseline justify-between gap-3">
