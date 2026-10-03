@@ -14,7 +14,7 @@
  * rest.
  */
 
-import type { SpeakOptions } from "@speech/lib/adapters/types"
+import type { SpeakOptions, VoiceReport } from "@speech/lib/adapters/types"
 
 export type SayOptions = Pick<
   SpeakOptions,
@@ -36,4 +36,9 @@ export type Speaker = {
   say: (text: string, options: SayOptions) => Promise<void>
   /** Stops whatever this page is saying. */
   stop: () => void
+  /**
+   * Who would speak a line in `lang`: the platform and the voice, by name.
+   * For showing a person, not for choosing - an applet still cannot pick.
+   */
+  describe: (lang: string) => VoiceReport
 }

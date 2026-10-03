@@ -123,6 +123,11 @@ function createFakeSpeaker(): Speaker {
       return Promise.resolve()
     }),
     stop: vi.fn(),
+    describe: () => ({
+      platform: "browser",
+      voice: null,
+      speaksLanguage: true,
+    }),
   }
 }
 

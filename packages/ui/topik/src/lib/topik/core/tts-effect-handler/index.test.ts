@@ -54,6 +54,11 @@ function createFakeSpeaker(): {
       })
     }),
     stop: vi.fn(),
+    describe: () => ({
+      platform: "browser",
+      voice: null,
+      speaksLanguage: true,
+    }),
   }
 
   return { speaker, calls }

@@ -11,6 +11,7 @@
 export type FakeUtterance = {
   text: string
   lang: string
+  voice: SpeechSynthesisVoice | null
   rate: number
   pitch: number
   volume: number
@@ -95,6 +96,7 @@ export function createFakeSpeechSynthesis(
     const utterance: FakeUtterance = {
       text,
       lang: "",
+      voice: null,
       rate: 1,
       pitch: 1,
       volume: 1,

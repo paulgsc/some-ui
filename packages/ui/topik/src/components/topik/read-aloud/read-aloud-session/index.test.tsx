@@ -22,6 +22,11 @@ function fakeSpeech(): Speaker {
       })
     },
     stop: () => undefined,
+    describe: () => ({
+      platform: "browser",
+      voice: null,
+      speaksLanguage: true,
+    }),
   }
 }
 

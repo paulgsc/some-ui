@@ -24,7 +24,7 @@
  * starts from nothing.
  */
 
-import type { SpeechAdapter } from "@speech/lib/adapters/types"
+import type { SpeechAdapter, VoiceReport } from "@speech/lib/adapters/types"
 import {
   createAbortError,
   isAbortError,
@@ -69,6 +69,7 @@ export class SpeechQueueManager {
       available: adapter.supported,
       say: (text, options): Promise<void> => this.say(text, options),
       stop: (): void => this.adapter.stop(),
+      describe: (lang): VoiceReport => this.adapter.describe(lang),
     }
   }
 
