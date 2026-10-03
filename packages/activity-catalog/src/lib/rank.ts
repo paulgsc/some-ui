@@ -153,7 +153,13 @@ export function rankActivitiesWithScores(
   catalogue: ReadonlyArray<ActivityDefinition>,
   { history = [], targetLevel, now = Date.now() }: RankingSignals = {}
 ): Array<RankedActivity> {
-  const { lastPlayedAt, playCount, maxPlayCount } = summarize(history)
+  // Only plays of what is being ranked count. Stored history can name an
+  // activity this catalogue no longer has (a retired one), and letting it set
+  // `maxPlayCount` would shrink every live activity's frequency.
+  const ranked = new Set<string>(catalogue.map((activity) => activity.id))
+  const { lastPlayedAt, playCount, maxPlayCount } = summarize(
+    history.filter((play) => ranked.has(play.activityId))
+  )
 
   const scored = catalogue.map((activity, index) => {
     const plays = playCount.get(activity.id) ?? 0

@@ -46,7 +46,7 @@ const DESTINATIONS: ReadonlyArray<Destination> = [
   {
     title: "Adaptive learning sessions",
     description:
-      "Compose and run focused study sessions - Hangul Honeycomb, TOPIK practice, interview prep, and timed code-typing drills.",
+      "Compose and run focused study sessions - Hangul Honeycomb, TOPIK practice, and timed code-typing drills.",
     icon: Sparkles,
     cta: "Open the app",
     href: "/app",

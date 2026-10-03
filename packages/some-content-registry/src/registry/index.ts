@@ -7,7 +7,7 @@ import { lazyWithPreload } from "some-ui-utils"
  * scene-props adapter, which associates fetched content with the exact keys
  * that consume it instead of merging one bag onto every panel).
  */
-export type RegistryKey = "hangul" | "leetype" | "topik" | "interview"
+export type RegistryKey = "hangul" | "leetype" | "topik"
 
 /**
  * ## The contract every entry here owes its hosts
@@ -21,9 +21,8 @@ export type RegistryKey = "hangul" | "leetype" | "topik" | "interview"
  * internals, which is exactly what this indirection exists to prevent.
  *
  * Configuration comes in as optional props with package-owned defaults:
- * honeycomb defaults `words` to its bundled seed, `InterviewApp` takes an
- * optional `sessionConfig`, `KoreanStudyPage` builds its own repositories
- * and provides its own session context. Genuinely page-wide state (the
+ * honeycomb defaults `words` to its bundled seed, `KoreanStudyPage` builds
+ * its own repositories and provides its own session context. Genuinely page-wide state (the
  * speech session) is read through an *optional* accessor, so an applet
  * degrades rather than throws where the host has mounted none.
  */
@@ -31,8 +30,4 @@ export const componentRegistry: ComponentRegistry<RegistryKey> = {
   hangul: lazyWithPreload(() => import("@some-ui/honeycomb"), "HangulHexGrid"),
   leetype: lazyWithPreload(() => import("@some-ui/leetype"), "Leetype"),
   topik: lazyWithPreload(() => import("@some-ui/topik"), "KoreanStudyPage"),
-  interview: lazyWithPreload(
-    () => import("@some-ui/interview"),
-    "InterviewApp"
-  ),
 }

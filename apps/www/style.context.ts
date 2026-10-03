@@ -32,7 +32,6 @@ const uiPackages = [
   "chat",
   "dice-card",
   "honeycomb",
-  "interview",
   "leetype",
   "lesson-crm",
   "resume",

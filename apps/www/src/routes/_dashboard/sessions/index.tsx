@@ -1,6 +1,6 @@
 import type { JSX } from "react"
 import { useState } from "react"
-import { getActivity, summarizeConfig } from "@some-ui/activity-catalog"
+import { findActivity, summarizeConfig } from "@some-ui/activity-catalog"
 import type { Intent, IntentError } from "@some-ui/intent-kit"
 import { matchIntent } from "@some-ui/intent-kit"
 import {
@@ -136,7 +136,9 @@ const SessionCard = ({
                 Endless, don't otherwise look identical in this list. */}
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
               {session.activities.map((sessionActivity, index) => {
-                const activity = getActivity(sessionActivity.activityId)
+                const activity = findActivity(sessionActivity.activityId)
+                // A retired activity has nothing left to summarize.
+                if (!activity) return null
                 return (
                   <Badge
                     // eslint-disable-next-line react/no-array-index-key -- position within one session's fixed activity list is a stable identity here; the same activityId can repeat within a session

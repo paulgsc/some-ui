@@ -3,6 +3,7 @@ import { useRef, useState } from "react"
 import {
   defaultSessionName,
   getActivity,
+  isActivityId,
   sequenceScenes,
   totalDurationOfScenes,
 } from "@some-ui/activity-catalog"
@@ -273,11 +274,13 @@ export const SessionComposer = ({
   const barShown = useShowOnScrollUp(scope, pane)
   const [items, setItems] = useState<Array<ComposerActivity>>(() =>
     existingSession
-      ? existingSession.activities.map((activity) => ({
-          instanceId: crypto.randomUUID(),
-          activityId: activity.activityId,
-          config: activity.config,
-        }))
+      ? // A retired activity can't be configured or played, so editing a
+        // session that held one drops it; the next save writes the rest.
+        existingSession.activities.flatMap(({ activityId, config }) =>
+          isActivityId(activityId)
+            ? [{ instanceId: crypto.randomUUID(), activityId, config }]
+            : []
+        )
       : initialActivity
         ? [
             {

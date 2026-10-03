@@ -13,9 +13,8 @@
  *   - apps/www/src/components/player/live-player.tsx
  *   - apps/www/src/components/player/session-viewport.tsx
  * then drops in a deliberately oversized child (standing in for an activity
- * like @some-ui/interview's InterviewApp, which assumes `min-h-screen` -
- * logged in the doc above) to prove the chain clips instead of growing the
- * page. The BEFORE fixture reproduces the pre-#695 classes so the AFTER
+ * that assumes `min-h-screen`, as the ones logged in the doc above did) to
+ * prove the chain clips instead of growing the page. The BEFORE fixture reproduces the pre-#695 classes so the AFTER
  * assertions are pinned against a fixture that's known to fail without the
  * fix (mirrors the CSP spec's own "sanity" test).
  */
@@ -64,7 +63,7 @@ function shellHtml(variant: ShellVariant): string {
   /* mirrors session-viewport.tsx's root div */
   .session-viewport { ${sessionViewportCss} border: 1px solid #999; position: relative; width: 100%; }
   /* stand-in for an activity that assumes it owns the whole viewport
-     (e.g. InterviewApp's 'min-h-screen', VoiceAvatar's 'min-h-screen') */
+     (an applet rooted at 'min-h-screen') */
   .activity { min-height: ${ACTIVITY_HEIGHT}px; background: repeating-linear-gradient(45deg, #ddd, #ddd 10px, #eee 10px, #eee 20px); }
 </style>
 </head>

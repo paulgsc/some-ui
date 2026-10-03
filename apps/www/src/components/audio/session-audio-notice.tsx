@@ -12,7 +12,7 @@
  */
 
 import type { JSX } from "react"
-import { ACTIVITY_CATALOG } from "@some-ui/activity-catalog"
+import { findActivity } from "@some-ui/activity-catalog"
 import { cn } from "some-ui-utils"
 
 import type { SessionRecord } from "@/lib/tenant"
@@ -28,8 +28,8 @@ export const SessionAudioNotice = ({
   className,
 }: SessionAudioNoticeProps): JSX.Element | null => {
   const leadingAudioActivity = session.activities
-    .map((item) => ACTIVITY_CATALOG[item.activityId])
-    .find((activity) => activity.audio !== undefined)
+    .map((item) => findActivity(item.activityId))
+    .find((activity) => activity?.audio !== undefined)
 
   if (!leadingAudioActivity) return null
 

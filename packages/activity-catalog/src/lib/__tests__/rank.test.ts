@@ -1,5 +1,9 @@
 import { ACTIVITY_CATALOG, ACTIVITY_IDS } from "@activity-catalog/lib/catalog"
-import { pickRecommended, rankActivities } from "@activity-catalog/lib/rank"
+import {
+  pickRecommended,
+  rankActivities,
+  rankActivitiesWithScores,
+} from "@activity-catalog/lib/rank"
 import type { ActivityPlay } from "@activity-catalog/lib/rank"
 import type {
   ActivityDefinition,
@@ -79,14 +83,35 @@ describe("rankActivities", () => {
     expect(second).toEqual(first)
   })
 
+  it("ignores plays of an activity the catalogue no longer has", () => {
+    const catalogue = syntheticCatalogue(6, { uniformMaturity: true })
+    const live: Array<ActivityPlay> = [
+      { activityId: catalogue[1]!.id, at: NOW - DAY },
+      { activityId: catalogue[4]!.id, at: NOW - 5 * DAY },
+      { activityId: catalogue[4]!.id, at: NOW - 6 * DAY },
+    ]
+    // A retired activity played far more than anything live.
+    const retired: Array<ActivityPlay> = Array.from({ length: 20 }, (_, i) => ({
+      activityId: "interview",
+      at: NOW - (i + 1) * DAY,
+    }))
+
+    expect(
+      rankActivitiesWithScores(catalogue, {
+        history: [...live, ...retired],
+        now: NOW,
+      })
+    ).toEqual(rankActivitiesWithScores(catalogue, { history: live, now: NOW }))
+  })
+
   it("ranks the real catalogue with no signals at all, keeping every entry", () => {
     const real = ACTIVITY_IDS.map((id) => ACTIVITY_CATALOG[id])
     const ranked = rankActivities(real)
 
     expect(new Set(idsOf(ranked))).toEqual(new Set(ACTIVITY_IDS))
-    // topik is "preview" and interview is "early", so both sit below the two
-    // finished activities - the dashboard's default order, with no history.
-    expect(ranked.at(-1)!.id).toBe("interview")
+    // topik is "preview", so it sits below the two finished activities -
+    // the dashboard's default order, with no history.
+    expect(ranked.at(-1)!.id).toBe("topik")
   })
 })
 

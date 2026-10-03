@@ -8,7 +8,6 @@
       "@some-ui/honeycomb": ["../ui/honeycomb/src/index.ts"],
       "@some-ui/leetype": ["../ui/leetype/src/index.ts"],
       "@some-ui/topik": ["../ui/topik/src/index.ts"],
-      "@some-ui/interview": ["../ui/interview/src/index.ts"],
       "@some-ui/styles": ["../some-styles/src/index.ts"],
       "@some-ui/vite-config": ["../some-vite-config/src/index.ts"],
       "@some-ui/wasm-loader": ["../wasm-loader/src/index.ts"],

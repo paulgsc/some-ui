@@ -3,8 +3,8 @@
  *
  * Turns text into audio bytes over HTTP. Formerly `useTTSFetch`; it is a
  * plain client now because nothing about issuing a POST needs React, and
- * the HTTP adapter has to be constructible outside a component tree (the
- * interview and honeycomb call sites hold an adapter, not a hook).
+ * the HTTP adapter has to be constructible outside a component tree
+ * (honeycomb's call site holds an adapter, not a hook).
  *
  * The per-provider request shapes are unchanged. The default provider,
  * `openai`, is the one `infra/compose/tts.yml` serves: `openai-edge-tts`
