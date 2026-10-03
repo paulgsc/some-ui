@@ -281,13 +281,31 @@ export type RequestOptions = {
 }
 
 /**
+ * A transport that reads a bodiless `204` as the JSON `null`, for the few
+ * routes that answer one: `requestJSON` decodes every answer.
+ */
+export const bodilessAsNull =
+  (transport: FileHostTransport): FileHostTransport =>
+  async (route, init) => {
+    const response = await transport(route, init)
+    // `new Response`, not `Response.json`: the static method is missing
+    // before Safari 17, where it would turn a done DELETE into a failure.
+    return response.status === 204
+      ? new Response("null", {
+          headers: { "content-type": "application/json" },
+        })
+      : response
+  }
+
+/**
  * `fetch`, decode, and turn every failure into one of the three errors
  * above - bounded by one deadline covering both halves.
  *
  * Every `file_host` route answers with a JSON body, including the deletes
- * (`{ removed }`, `{ deletedCount }`), with one exception: the learner
- * shelf's `DELETE` is a bodiless `204`, which `lib/shelf-client` reads as
- * `null` before it reaches here.
+ * (`{ removed }`, `{ deletedCount }`), with two exceptions: the learner
+ * shelf's `DELETE` and `DELETE /oauth/grants/:grant` are a bodiless `204`,
+ * which their clients read as `null` (`bodilessAsNull`) before it reaches
+ * here.
  *
  * The deadline is owned here rather than inside the transport: `transport`
  * only promises headers, and a stalled body after a prompt response would

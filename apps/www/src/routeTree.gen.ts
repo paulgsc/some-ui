@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as MissionRouteImport } from './routes/mission'
 import { Route as ExtensionsRouteImport } from './routes/extensions'
+import { Route as ConnectRouteImport } from './routes/connect'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as DashboardRouteImport } from './routes/_dashboard'
 import { Route as IndexRouteImport } from './routes/index'
@@ -37,6 +38,11 @@ const MissionRoute = MissionRouteImport.update({
 const ExtensionsRoute = ExtensionsRouteImport.update({
   id: '/extensions',
   path: '/extensions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConnectRoute = ConnectRouteImport.update({
+  id: '/connect',
+  path: '/connect',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -126,6 +132,7 @@ const DashboardApkSoundbitesRoute = DashboardApkSoundbitesRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/connect': typeof ConnectRoute
   '/extensions': typeof ExtensionsRoute
   '/mission': typeof MissionRoute
   '/app': typeof DashboardAppRoute
@@ -144,6 +151,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/connect': typeof ConnectRoute
   '/extensions': typeof ExtensionsRoute
   '/mission': typeof MissionRoute
   '/app': typeof DashboardAppRoute
@@ -164,6 +172,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_dashboard': typeof DashboardRouteWithChildren
   '/auth': typeof AuthRoute
+  '/connect': typeof ConnectRoute
   '/extensions': typeof ExtensionsRoute
   '/mission': typeof MissionRoute
   '/_dashboard/_apk': typeof DashboardApkRouteWithChildren
@@ -186,6 +195,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/connect'
     | '/extensions'
     | '/mission'
     | '/app'
@@ -204,6 +214,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/connect'
     | '/extensions'
     | '/mission'
     | '/app'
@@ -223,6 +234,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_dashboard'
     | '/auth'
+    | '/connect'
     | '/extensions'
     | '/mission'
     | '/_dashboard/_apk'
@@ -245,6 +257,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ConnectRoute: typeof ConnectRoute
   ExtensionsRoute: typeof ExtensionsRoute
   MissionRoute: typeof MissionRoute
 }
@@ -263,6 +276,13 @@ declare module '@tanstack/react-router' {
       path: '/extensions'
       fullPath: '/extensions'
       preLoaderRoute: typeof ExtensionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/connect': {
+      id: '/connect'
+      path: '/connect'
+      fullPath: '/connect'
+      preLoaderRoute: typeof ConnectRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -449,6 +469,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRouteWithChildren,
   AuthRoute: AuthRoute,
+  ConnectRoute: ConnectRoute,
   ExtensionsRoute: ExtensionsRoute,
   MissionRoute: MissionRoute,
 }

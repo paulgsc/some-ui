@@ -34,6 +34,7 @@
 import { DATA_MODE } from "@/lib/data-mode"
 import type { FileHostTransport } from "@/lib/file-host-config/client"
 import {
+  bodilessAsNull,
   createFileHostTransport,
   FileHostResponseError,
   requestJSON,
@@ -90,23 +91,6 @@ function refusalOf(error: unknown): unknown {
   }
   return error
 }
-
-/**
- * `DELETE` answers `204` with no body, the one shelf answer that is not
- * JSON; `requestJSON` decodes every answer, so that one is read as `null`.
- */
-const bodilessAsNull =
-  (transport: FileHostTransport): FileHostTransport =>
-  async (route, init) => {
-    const response = await transport(route, init)
-    // `new Response`, not `Response.json`: the static method is missing
-    // before Safari 17, where it would turn a done DELETE into a failure.
-    return response.status === 204
-      ? new Response("null", {
-          headers: { "content-type": "application/json" },
-        })
-      : response
-  }
 
 /**
  * `transport` is a seam for tests. The default is `file_host` wherever this

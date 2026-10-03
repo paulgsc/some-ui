@@ -45,6 +45,11 @@ vi.mock("@/lib/auth", async (importOriginal) => ({
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
+// Its own test (`connected-services-section.test.tsx`); here, only a place.
+vi.mock("@/components/settings/connected-services-section", () => ({
+  ConnectedServicesSection: (): null => null,
+}))
+
 const { AccountSection } = await import("@/components/settings/account-section")
 
 afterEach(() => {
