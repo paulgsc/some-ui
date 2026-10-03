@@ -11,7 +11,6 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import type { SpeechAdapter } from "@some-ui/speech"
 import type {
   ConversationBatch,
   Message,
@@ -69,6 +68,7 @@ import {
   revealCap,
   tallyOf,
 } from "@topik/lib/topik/core/lesson-track"
+import { SPOKEN_LANGUAGE } from "@topik/lib/topik/core/spoken-language"
 import type { LessonRequest } from "@topik/lib/topik/generation"
 import {
   buildLessonPrompt,
@@ -78,7 +78,6 @@ import {
 import { LOCAL_LESSON_PREFIX } from "@topik/lib/topik/generation/intake"
 
 const EMPTY_PLAN: LessonPlan = { steps: [], lineCount: 0, checkCount: 0 }
-const SPOKEN_LANGUAGE = "ko"
 
 type HandheldLessonView = {
   topikKey: string
@@ -204,22 +203,13 @@ export type UseHandheldLessonOptions = {
 export const lineText = (message: Message): string =>
   message.korean || message.content
 
-export function voiceFor(
-  adapter: SpeechAdapter
-): SpeechAdapter["voices"][number] | undefined {
-  return adapter.voices.find((candidate) =>
-    candidate.language?.toLowerCase().startsWith(SPOKEN_LANGUAGE)
-  )
-}
-
 export function useHandheldLesson({
   resumeStore,
   surveyStore,
   pastedStore,
   pastedResumeStore,
 }: UseHandheldLessonOptions = {}): HandheldLessonVM {
-  const { topikRepository, metadataRepository, speechAdapter } =
-    useSessionConfig()
+  const { topikRepository, metadataRepository, speaker } = useSessionConfig()
   const [store] = useState(() => {
     const points = resumeStore ?? createResumeStore()
     // Places left in pasted lessons by builds that kept them in
@@ -235,7 +225,7 @@ export function useHandheldLesson({
   const [sessionPoints] = useState(
     () => pastedResumeStore ?? createResumeStore(sessionStorageOrNull())
   )
-  const audioAvailable = speechAdapter?.supported === true
+  const audioAvailable = speaker?.available === true
 
   // ── Catalogue and content ────────────────────────────────────────────────
 
@@ -416,19 +406,19 @@ export function useHandheldLesson({
   const stopSpeaking = useCallback((): void => {
     utterance.current?.abort()
     utterance.current = null
-    speechAdapter?.stop()
-  }, [speechAdapter])
+    speaker?.stop()
+  }, [speaker])
 
   const speak = useCallback(
     (message: Message): void => {
-      if (!speechAdapter || !audioAvailable) return
+      if (!speaker || !audioAvailable) return
       stopSpeaking()
       const controller = new AbortController()
       utterance.current = controller
-      speechAdapter
-        .speak(lineText(message), {
+      speaker
+        .say(lineText(message), {
+          lang: SPOKEN_LANGUAGE,
           signal: controller.signal,
-          voice: voiceFor(speechAdapter),
           onStart: () => setSpeakingId(message.id),
         })
         .catch(() => {
@@ -440,7 +430,7 @@ export function useHandheldLesson({
           setSpeakingId((id) => (id === message.id ? null : id))
         })
     },
-    [speechAdapter, audioAvailable, stopSpeaking]
+    [speaker, audioAvailable, stopSpeaking]
   )
 
   // Lines speak themselves once the learner has touched the lesson: a tap is

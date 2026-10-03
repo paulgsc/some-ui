@@ -63,8 +63,7 @@ function withQueryClient(children: ReactNode): JSX.Element {
 }
 
 const FIXTURE_SETTINGS: UserSettings = {
-  ttsProvider: "openai",
-  ttsVoiceId: "",
+  ttsVoice: { provider: "openai", voiceId: null },
   audio: DEFAULT_AUDIO_PREFERENCES,
   notifications: DEFAULT_NUDGE_PREFERENCES,
   defaultSessionDurationMinutes: 10,

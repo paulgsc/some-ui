@@ -183,6 +183,17 @@ export const speechReducer: Reducer<SpeechQueueState, SpeechAction> = (
       }
     }
 
+    // Lines said through the speaker bypass the queue's items, but not its
+    // record of how speech is going: a heard line ends a fault episode like
+    // a completed item does, and a failed one starts or continues it.
+    case "SAID": {
+      return { ...state, error: null }
+    }
+
+    case "SAY_FAILED": {
+      return { ...state, error: action.payload.error }
+    }
+
     // eslint-disable-next-line switch-lint/require-fail-fast-default -- every arm above is exhaustive over SpeechAction; an unrecognized action reaching a live queue (a stale bundle, a shim mid-upgrade) must leave state untouched rather than throw from inside a dispatch the speaking path is awaiting
     default: {
       return state

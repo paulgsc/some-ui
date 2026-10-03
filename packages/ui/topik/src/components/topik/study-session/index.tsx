@@ -31,7 +31,7 @@
 import type { JSX } from "react"
 import { useMemo, useRef } from "react"
 import type { ShelfPort } from "@some-ui/shared"
-import { useOptionalSpeechAdapter } from "@some-ui/speech"
+import { useSpeaker } from "@some-ui/speech"
 import type { Appearance } from "@some-ui/styles/theme"
 import { appearanceClassName } from "@some-ui/styles/theme"
 import { ChatPanel } from "@topik/components/topik/chat-panel"
@@ -203,12 +203,12 @@ export const KoreanStudyPage = ({
   /*
    * The one thing that is legitimately ambient. There is one pair of
    * speakers per page, so a page-wide speech session is the right shape -
-   * but this applet must not require one. `useOptionalSpeechAdapter`
+   * but this applet must not require one. `useSpeaker`
    * returns null where no `<SpeechProvider>` is mounted, and the session
    * below simply runs without spoken prompts. Silence is a degraded
    * lesson; a crash is not a lesson at all.
    */
-  const speechAdapter = useOptionalSpeechAdapter()
+  const speaker = useSpeaker()
 
   const value = useMemo(
     () => ({
@@ -222,7 +222,7 @@ export const KoreanStudyPage = ({
       metadataRepository:
         metadataRepository ??
         createTopikMetadataRepository(loadManifest ?? manifestUrl),
-      speechAdapter,
+      speaker,
       ...(shelf ? { shelf } : {}),
     }),
     [
@@ -231,7 +231,7 @@ export const KoreanStudyPage = ({
       manifestUrl,
       loadManifest,
       loadTopik,
-      speechAdapter,
+      speaker,
       shelf,
     ]
   )

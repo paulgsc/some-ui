@@ -18,6 +18,7 @@ import {
   flushAsync,
   track,
 } from "@speech/lib/testing"
+import { hostedVoiceFor } from "@speech/lib/voices"
 import { describe, expect, it } from "vitest"
 
 type Harness = {
@@ -37,6 +38,8 @@ function httpHarness(): Harness {
   const audio: FakeAudioContextHandle = createFakeAudioContextHandle()
   const adapter = createHttpSpeechAdapter({
     service: { provider: "openai", apiUrl: "http://tts.test/v1/audio/speech" },
+    voiceFor: (lang) =>
+      hostedVoiceFor({ provider: "openai", voiceId: null }, lang),
     fetchImpl: () =>
       Promise.resolve(
         new Response(new ArrayBuffer(8), {

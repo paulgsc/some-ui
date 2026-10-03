@@ -1,11 +1,5 @@
-export type { SpeechProviderProps, SpeechSession } from "./speech-provider"
-export {
-  SpeechProvider,
-  useOptionalSpeechAdapter,
-  useOptionalSpeechSession,
-  useSpeechAdapter,
-  useSpeechSession,
-} from "./speech-provider"
+export type { SpeechProviderProps } from "./speech-provider"
+export { SpeechProvider, useSpeaker } from "./speech-provider"
 export type {
   SpeechStatusAnnouncerProps,
   SpeechStatusBadgeProps,

@@ -1,6 +1,6 @@
 import type { JSX, ReactNode } from "react"
 import { StrictMode } from "react"
-import type { SpeechAdapter } from "@some-ui/speech"
+import type { Speaker } from "@some-ui/speech"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { act, renderHook } from "@testing-library/react"
 import type {
@@ -51,12 +51,12 @@ function createStrictWrapper(
 }
 
 /**
- * `enableTTS: false` keeps the executor from ever touching `speechAdapter`, so an
+ * `enableTTS: false` keeps the executor from ever touching `speaker`, so an
  * empty placeholder that satisfies the type is enough here.
  */
-function fakeAudioTTS(): SpeechAdapter {
+function fakeAudioTTS(): Speaker {
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see comment above
-  return {} as SpeechAdapter
+  return {} as Speaker
 }
 
 function makeConfig(
@@ -71,7 +71,7 @@ function makeConfig(
   return {
     repository,
     metadataRepository,
-    speechAdapter: fakeAudioTTS(),
+    speaker: fakeAudioTTS(),
     componentId: "c1",
     enableTTS: false,
     ...overrides,

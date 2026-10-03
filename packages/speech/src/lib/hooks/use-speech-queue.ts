@@ -7,14 +7,15 @@
  * `ttsHook` (the whole `useAudioTTS` return) and `store` (the raw reducer
  * store), which is how `packages/ui/umag` ended up reaching through the
  * queue into the TTS hook to read `voices` - a consumer holding the exact
- * detail this workspace exists to own. Voices are surfaced directly now,
- * and the adapter behind them stays this package's business.
+ * detail this workspace exists to own. It has no voices at all now: an
+ * item names its language (`TTSOptions.lang`), and the session picks the
+ * voice (`lib/voices`).
  */
 
 import { useCallback, useEffect, useId, useMemo } from "react"
 import type { SpeechQueueManager, SpeechQueueState } from "@speech/lib/queue"
 import { getSpeechQueue } from "@speech/lib/queue"
-import type { TTSOptions, VoiceConfig } from "@speech/lib/types/tts-types"
+import type { TTSOptions } from "@speech/lib/types/tts-types"
 
 import { useQueueStore } from "./use-queue-store"
 
@@ -40,11 +41,6 @@ export type UseSpeechQueueReturn = SpeechQueueActions & {
   error: string | null
   totalProcessed: number
   totalFailed: number
-  /** Voices the resolved adapter offers - browser or backend, same shape. */
-  voices: ReadonlyArray<VoiceConfig>
-  /** Voice used by utterances that don't carry one. */
-  defaultVoice: VoiceConfig | null
-  setDefaultVoice: (voice: VoiceConfig | null) => void
 }
 
 const selectSelf = (state: SpeechQueueState): SpeechQueueState => state
@@ -111,11 +107,6 @@ export function useSpeechQueue(componentId?: string): UseSpeechQueueReturn {
   const totalProcessed = useQueueStore(store, selectTotalProcessed)
   const totalFailed = useQueueStore(store, selectTotalFailed)
 
-  const setDefaultVoice = useCallback(
-    (voice: VoiceConfig | null) => manager.setDefaultVoice(voice),
-    [manager]
-  )
-
   return {
     ...actions,
     queueState,
@@ -126,9 +117,6 @@ export function useSpeechQueue(componentId?: string): UseSpeechQueueReturn {
     error,
     totalProcessed,
     totalFailed,
-    voices: manager.getVoices(),
-    defaultVoice: manager.getDefaultVoice(),
-    setDefaultVoice,
   }
 }
 
