@@ -48,7 +48,10 @@ export const AphHistory = ({
   store = aphStore,
 }: AphHistoryProps): JSX.Element => {
   const { settings, entries } = useAph(store)
-  const [now] = useState(() => givenNow ?? new Date())
+  // The host's clock when it passes one (it re-renders as time moves);
+  // otherwise the moment this mounted.
+  const [mounted] = useState(() => new Date())
+  const now = givenNow ?? mounted
   const [filter, setFilter] = useState<ReconcileStatus | null>(null)
   const [open, setOpen] = useState<string | null>(null)
   const today = dayOf(now)

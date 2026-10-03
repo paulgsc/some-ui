@@ -3,6 +3,8 @@ import type { Side } from "@some-ui/aph"
 import { AphLog } from "@some-ui/aph"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 
+import { useMinuteClock } from "@/lib/clock"
+
 /**
  * `?side=theirs` opens the logger on their figure, and `?entry=` names the
  * entry it is for, which is how History's "Enter their figure" arrives.
@@ -12,9 +14,11 @@ type LogSearch = { side?: Side; entry?: string }
 const LogRoute = (): JSX.Element => {
   const { side, entry } = readSearch(Route.useSearch())
   const navigate = useNavigate()
+  const now = useMinuteClock()
 
   return (
     <AphLog
+      now={now}
       // A new arrival (another entry, the other side) is a fresh form.
       key={`${side ?? "mine"}:${entry ?? ""}`}
       side={side}

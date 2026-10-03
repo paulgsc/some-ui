@@ -52,7 +52,10 @@ export const AphTrend = ({
   store = aphStore,
 }: AphTrendProps): JSX.Element => {
   const { settings, entries } = useAph(store)
-  const [now] = useState(() => givenNow ?? new Date())
+  // The host's clock when it passes one (it re-renders as time moves);
+  // otherwise the moment this mounted.
+  const [mounted] = useState(() => new Date())
+  const now = givenNow ?? mounted
   const [range, setRange] = useState<RangeId>("3w")
   const today = dayOf(now)
   const span = RANGES.find((r) => r.id === range)?.days ?? null
@@ -243,15 +246,16 @@ function goalSteps(
     goal: p.entry.goal ?? current,
   }))
   let goal = goals[0]?.goal ?? current
-  const steps: Array<string> = [`${PAD.left},${y(goal)}`]
+  let at: number = PAD.left
+  const steps: Array<string> = [`${at},${y(goal)}`]
   for (const g of goals) {
     steps.push(`${g.at},${y(goal)}`, `${g.at},${y(g.goal)}`)
     goal = g.goal
+    at = g.at
   }
-  steps.push(`${W - PAD.right},${y(goal)}`)
-  if (goal !== current) {
-    steps.push(`${W - PAD.right},${y(current)}`)
-  }
+  // After the last entry the goal is today's, from that point on.
+  if (goal !== current) steps.push(`${at},${y(current)}`)
+  steps.push(`${W - PAD.right},${y(current)}`)
   return steps.join(" ")
 }
 

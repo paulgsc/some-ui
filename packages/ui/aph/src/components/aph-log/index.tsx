@@ -68,7 +68,10 @@ export const AphLog = ({
   store = aphStore,
 }: AphLogProps): JSX.Element => {
   const { settings, entries } = useAph(store)
-  const [now] = useState(() => givenNow ?? new Date())
+  // The host's clock when it passes one (it re-renders as time moves);
+  // otherwise the moment this mounted.
+  const [mounted] = useState(() => new Date())
+  const now = givenNow ?? mounted
   const today = dayOf(now)
   const waiting = awaitingTheirs(settings, entries)
   const [showOlder, setShowOlder] = useState(false)
@@ -92,8 +95,15 @@ export const AphLog = ({
 
   const save = (): void => {
     const id = crypto.randomUUID()
+    // The day and time of the tap, not of the mount: the screen may have
+    // sat open across midnight.
+    const at = givenNow ?? new Date()
     // The entry it landed on: a new one, or the one it filled in or corrected.
-    const landed = store.save(draft, { day: today, time: clockOf(now), id })
+    const landed = store.save(draft, {
+      day: dayOf(at),
+      time: clockOf(at),
+      id,
+    })
     if (landed !== null) onSaved?.(landed)
   }
 

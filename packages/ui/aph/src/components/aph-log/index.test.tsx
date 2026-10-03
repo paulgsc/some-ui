@@ -74,6 +74,26 @@ describe("logging mine", () => {
   })
 })
 
+describe("a logger left open", () => {
+  it("saves under the day of the tap, not of the mount", () => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date(2026, 9, 2, 23, 58))
+    const store = createAphStore({ settings: SEED_SETTINGS, entries: [] })
+    const onSaved = vi.fn()
+    render(<AphLog store={store} onSaved={onSaved} />)
+    fireEvent.click(screen.getByRole("radio", { name: /Other/ }))
+    for (const d of "4500") {
+      fireEvent.click(screen.getByRole("button", { name: d }))
+    }
+    // Past midnight, the screen still up.
+    vi.setSystemTime(new Date(2026, 9, 3, 0, 4))
+    fireEvent.click(screen.getByRole("button", { name: /Save mine/ }))
+    expect(onSaved).toHaveBeenCalledWith(
+      expect.objectContaining({ day: "2026-10-03", time: "0:04" })
+    )
+  })
+})
+
 describe("logging theirs", () => {
   it("shows, before saving, that a far-off figure will wait on my call", () => {
     const { type, store } = setup({ side: "theirs" })
