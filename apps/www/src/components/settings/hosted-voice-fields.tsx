@@ -29,6 +29,8 @@ import {
   parseHostedVoiceChoice,
 } from "@some-ui/speech"
 
+import { LESSON_LANGUAGE } from "@/lib/lesson-voice"
+
 const PROVIDER_LABEL: Readonly<Record<TTSProvider, string>> = {
   openai: "OpenAI",
   elevenlabs: "ElevenLabs",
@@ -39,9 +41,6 @@ const PROVIDER_LABEL: Readonly<Record<TTSProvider, string>> = {
 
 /** Radix's Select reserves the empty string, so "the default" needs a name. */
 const PROVIDER_DEFAULT = "provider-default"
-
-/** What every lesson on this site is spoken in. */
-const LESSON_LANGUAGE = "ko-KR"
 
 type HostedVoiceFieldsProps = {
   value: HostedVoiceChoice

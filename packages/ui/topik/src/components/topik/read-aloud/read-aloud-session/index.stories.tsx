@@ -27,6 +27,11 @@ const silentVoice: Speaker = {
     })
   },
   stop: noop,
+  describe: () => ({
+    platform: "browser",
+    voice: null,
+    speaksLanguage: true,
+  }),
 }
 
 const meta: Meta = {

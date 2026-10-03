@@ -62,6 +62,11 @@ export function createControllableAdapter(): ControllableAdapter {
   return {
     id: "web-speech",
     supported: true,
+    describe: () => ({
+      platform: "browser",
+      voice: "Controllable",
+      speaksLanguage: true,
+    }),
     get pending(): number {
       return ledger.size
     },

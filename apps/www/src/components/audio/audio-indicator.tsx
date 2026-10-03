@@ -10,6 +10,13 @@
  * points here ("you can change this anytime from the speaker icon"), and
  * transient toasts stay reserved for things that actually happened rather
  * than for teaching the feature.
+ *
+ * It also says who reads lessons aloud: the voice, by name, and the
+ * platform behind it (this site's voice service, the browser's own voice,
+ * or the phone's). A Korean line that sounds un-Korean is usually a browser
+ * with no Korean voice reading Hangul in another language's voice, and this
+ * is where that becomes visible: the icon carries a warning, and the
+ * popover says what to do.
  */
 
 import type { JSX } from "react"
@@ -23,7 +30,7 @@ import {
   Slider,
   Switch,
 } from "@some-ui/shared"
-import { useSpeechStatus } from "@some-ui/speech"
+import { useSpeaker, useSpeechStatus } from "@some-ui/speech"
 import { cn } from "some-ui-utils"
 
 import type { AudioChannelId } from "@/lib/audio-preferences"
@@ -35,6 +42,8 @@ import {
   summarizeAudio,
 } from "@/lib/audio-preferences"
 import { useAudioPreferences } from "@/lib/audio-preferences/use-audio-preferences"
+import type { LessonVoiceSummary } from "@/lib/lesson-voice"
+import { LESSON_LANGUAGE, summarizeLessonVoice } from "@/lib/lesson-voice"
 
 /**
  * A one-line health note, shown only when speech is not simply fine.
@@ -57,9 +66,26 @@ const SpeechHealthNote = (): JSX.Element | null => {
   )
 }
 
+/** Who reads lessons aloud: the voice by name, and the platform. */
+const LessonVoice = ({ voice }: { voice: LessonVoiceSummary }): JSX.Element => (
+  <div className={cn("space-y-1")} data-lesson-voice-warning={voice.warning}>
+    <p className={cn("text-sm font-medium")}>
+      {voice.warning ? "⚠ " : ""}
+      {voice.label}
+    </p>
+    <p className={cn("text-muted-foreground text-xs")}>{voice.detail}</p>
+  </div>
+)
+
 export const AudioIndicator = (): JSX.Element => {
   const { preferences, update, isReady } = useAudioPreferences()
   const summary = summarizeAudio(preferences)
+  // Read at render, which includes every open of the popover: a browser's
+  // voices load asynchronously, so a snapshot taken once would go stale.
+  const speaker = useSpeaker()
+  const voice = speaker
+    ? summarizeLessonVoice(speaker.describe(LESSON_LANGUAGE))
+    : null
 
   const toggleChannel = (channel: AudioChannelId, enabled: boolean): void => {
     update(setChannelEnabled(preferences, channel, enabled))
@@ -73,10 +99,14 @@ export const AudioIndicator = (): JSX.Element => {
           size="sm"
           className={cn("gap-2")}
           disabled={!isReady}
-          aria-label={`Audio: ${summary.label}`}
+          aria-label={`Audio: ${summary.label}${voice ? `. Lessons: ${voice.label}` : ""}`}
+          title={voice ? `Lessons: ${voice.label}` : undefined}
           data-audio-summary={summary.label}
         >
-          <span aria-hidden="true">{summary.icon}</span>
+          <span aria-hidden="true">
+            {summary.icon}
+            {voice?.warning ? "⚠" : ""}
+          </span>
           <span className={cn("hidden text-xs sm:inline")}>
             {summary.label}
           </span>
@@ -90,6 +120,8 @@ export const AudioIndicator = (): JSX.Element => {
             What this app may play. Changes apply immediately.
           </p>
         </div>
+
+        {voice ? <LessonVoice voice={voice} /> : null}
 
         <div className={cn("space-y-4")}>
           {AUDIO_CHANNELS.map((channel) => (

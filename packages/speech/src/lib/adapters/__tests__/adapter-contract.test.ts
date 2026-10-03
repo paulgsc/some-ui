@@ -261,6 +261,55 @@ describe("web-speech adapter - browser specifics", () => {
     ])
   })
 
+  const browserVoice = (
+    name: string,
+    lang: string,
+    extra: { default?: boolean; localService?: boolean } = {}
+  ): SpeechSynthesisVoice => ({
+    name,
+    lang,
+    voiceURI: name,
+    default: extra.default ?? false,
+    localService: extra.localService ?? true,
+  })
+
+  it("hands a line to the browser's voice for its language, by name", async () => {
+    const english = browserVoice("Samantha", "en-US", { default: true })
+    const korean = browserVoice("Yuna", "ko-KR")
+    const fake = createFakeSpeechSynthesis([english, korean])
+    const adapter = createWebSpeechAdapter({
+      synthesis: fake.synthesis,
+      utteranceFactory: fake.utteranceFactory,
+    })
+
+    void adapter.speak("안녕하세요", { lang: "ko-KR" }).catch(() => undefined)
+    await flushAsync()
+
+    // Named, not left to the browser's guess from `lang`.
+    expect(fake.controls.spoken[0]?.voice).toBe(korean)
+    expect(adapter.describe("ko-KR")).toEqual({
+      platform: "browser",
+      voice: "Yuna",
+      speaksLanguage: true,
+    })
+  })
+
+  it("says when the browser has no voice for the language, and whose voice reads it instead", () => {
+    const fake = createFakeSpeechSynthesis([
+      browserVoice("Samantha", "en-US", { default: true }),
+    ])
+    const adapter = createWebSpeechAdapter({
+      synthesis: fake.synthesis,
+      utteranceFactory: fake.utteranceFactory,
+    })
+
+    expect(adapter.describe("ko-KR")).toEqual({
+      platform: "browser",
+      voice: "Samantha",
+      speaksLanguage: false,
+    })
+  })
+
   it("is unsupported, and honest about it, with no speechSynthesis", async () => {
     const adapter = createWebSpeechAdapter({
       synthesis: undefined,

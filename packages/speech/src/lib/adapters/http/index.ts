@@ -11,7 +11,11 @@
  * that is visible to a caller, who only ever holds a `SpeechAdapter`.
  */
 
-import type { SpeakOptions, SpeechAdapter } from "@speech/lib/adapters/types"
+import type {
+  SpeakOptions,
+  SpeechAdapter,
+  VoiceReport,
+} from "@speech/lib/adapters/types"
 import type { AudioPlayer, AudioPlayerOptions } from "@speech/lib/engine"
 import { createAudioPlayer } from "@speech/lib/engine"
 import type { FetchImpl, TTSClient } from "@speech/lib/engine/tts-client"
@@ -113,6 +117,14 @@ export function createHttpSpeechAdapter(
   return {
     id: "http",
     supported: player.supported,
+    describe: (lang): VoiceReport => {
+      const voice = options.voiceFor(lang)
+      return {
+        platform: "hosted",
+        voice: voice?.name ?? null,
+        speaksLanguage: voice !== null,
+      }
+    },
     get pending(): number {
       return ledger.size + player.pending
     },

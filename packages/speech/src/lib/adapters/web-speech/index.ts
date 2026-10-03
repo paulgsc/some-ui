@@ -7,10 +7,14 @@
  * utterance.
  *
  * The browser's voices are the browser's: which ones exist depends on the
- * device, and they are not ours to list or choose among. A line gives this
- * adapter its language, and the browser speaks it in whatever voice it has
- * for that language. None of them ever becomes a `VoiceConfig`, which
- * describes the hosted catalogue only (`lib/voices`).
+ * device, and they are not ours to list or let a person choose among. A line
+ * gives this adapter its language, and the adapter hands it to the browser
+ * voice for that language, named explicitly (`voiceForLanguage`) rather than
+ * left to the browser's guess from `lang` alone, so the voice `describe`
+ * reports is the voice that speaks. A browser with no voice for the language
+ * reads the line in its default voice, another language's, and `describe`
+ * says so. None of these ever becomes a `VoiceConfig`, which describes the
+ * hosted catalogue only (`lib/voices`).
  *
  * Three settlement bugs from the call sites this replaces are fixed here,
  * and pinned by `adapter-contract.test.ts`:
@@ -27,7 +31,11 @@
  *   settle a promise belonging to the next one.
  */
 
-import type { SpeakOptions, SpeechAdapter } from "@speech/lib/adapters/types"
+import type {
+  SpeakOptions,
+  SpeechAdapter,
+  VoiceReport,
+} from "@speech/lib/adapters/types"
 import { createSpeechLedger } from "@speech/lib/promise"
 import { createAbortError } from "@speech/lib/promise/abort"
 
@@ -54,6 +62,32 @@ function resolveSynthesis(
   if (provided) return provided
   if (typeof window === "undefined") return null
   return "speechSynthesis" in window ? window.speechSynthesis : null
+}
+
+function normalizedTag(tag: string): string {
+  return tag.toLowerCase().replace(/_/g, "-")
+}
+
+/**
+ * The browser voice for `lang`: one for exactly that tag, else one for its
+ * language (`ko` for `ko-KR`), preferring a voice that works offline.
+ */
+function voiceForLanguage(
+  voices: ReadonlyArray<SpeechSynthesisVoice>,
+  lang: string
+): SpeechSynthesisVoice | null {
+  const wanted = normalizedTag(lang)
+  const primary = wanted.split("-")[0] ?? wanted
+  const ranked = [...voices].sort(
+    (a, b) => Number(b.localService) - Number(a.localService)
+  )
+  return (
+    ranked.find((voice) => normalizedTag(voice.lang) === wanted) ??
+    ranked.find(
+      (voice) => (normalizedTag(voice.lang).split("-")[0] ?? "") === primary
+    ) ??
+    null
+  )
 }
 
 export function createWebSpeechAdapter(
@@ -107,7 +141,11 @@ export function createWebSpeechAdapter(
     utterance.pitch = options.pitch ?? DEFAULT_PITCH
     utterance.volume = speakOptions.volume ?? volume
     const lang = speakOptions.lang ?? options.lang
-    if (lang) utterance.lang = lang
+    if (lang) {
+      utterance.lang = lang
+      const voice = voiceForLanguage(synthesis.getVoices(), lang)
+      if (voice) utterance.voice = voice
+    }
 
     let abortListener: (() => void) | null = null
 
@@ -160,6 +198,20 @@ export function createWebSpeechAdapter(
   return {
     id: "web-speech",
     supported: synthesis !== null,
+    describe: (lang): VoiceReport => {
+      const voices = synthesis?.getVoices() ?? []
+      const voice = voiceForLanguage(voices, lang)
+      if (voice) {
+        return { platform: "browser", voice: voice.name, speaksLanguage: true }
+      }
+      // What the browser falls back to for a language it has no voice for.
+      const fallback = voices.find((candidate) => candidate.default) ?? null
+      return {
+        platform: "browser",
+        voice: fallback?.name ?? null,
+        speaksLanguage: false,
+      }
+    },
     get pending(): number {
       return ledger.size
     },

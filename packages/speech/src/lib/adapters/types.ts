@@ -17,6 +17,27 @@
 export type SpeechAdapterId = "http" | "web-speech"
 
 /**
+ * Who would speak a line in a given language, as a person would want to
+ * know it: the platform, and the voice by name.
+ *
+ * - `"hosted"` - this site's voice service; `voice` is the catalogue voice
+ *   `hostedVoiceFor` picks for the language.
+ * - `"browser"` - the browser's own synthesizer; `voice` is the browser
+ *   voice the adapter hands the line to.
+ * - `"phone"` - the phone's text-to-speech (the Android app).
+ *
+ * `speaksLanguage` is false when the platform has no voice for the
+ * language: a hosted line then fails, and a browser reads it in `voice`
+ * anyway, another language's voice, which is what an un-Korean Korean line
+ * sounds like. `voice` is null when there is no voice to name at all.
+ */
+export type VoiceReport = {
+  readonly platform: "hosted" | "browser" | "phone"
+  readonly voice: string | null
+  readonly speaksLanguage: boolean
+}
+
+/**
  * What a line asks for: its language, never a voice. Which voice speaks it
  * is the backend's business - the person's hosted choice (`lib/voices`), or
  * whatever the device's synthesizer has for that language - so no caller
@@ -63,6 +84,11 @@ export type SpeechAdapter = {
   readonly id: SpeechAdapterId
   /** False when the runtime can't do speech at all - callers may show UI. */
   readonly supported: boolean
+  /**
+   * Who would speak a line in `lang` right now. A snapshot: a browser's or
+   * phone's voices load asynchronously, so read it when it is shown.
+   */
+  describe: (lang: string) => VoiceReport
   /** Outstanding `speak()` promises. Diagnostics and tests only. */
   readonly pending: number
   speak: (text: string, options?: SpeakOptions) => Promise<void>

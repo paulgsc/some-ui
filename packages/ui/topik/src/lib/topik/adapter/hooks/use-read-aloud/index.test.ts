@@ -38,6 +38,11 @@ function fakeSpeech(): FakeSpeech {
     stop: () => {
       speech.stops += 1
     },
+    describe: () => ({
+      platform: "browser",
+      voice: null,
+      speaksLanguage: true,
+    }),
   }
   return speech
 }

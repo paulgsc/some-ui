@@ -12,8 +12,10 @@ import { act, cleanup, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
 import { markSignedIn } from "@/lib/auth"
-
-import { AudioActivityHint, AudioActivityNotice } from "./audio-activity-notice"
+import {
+  AudioActivityHint,
+  AudioActivityNotice,
+} from "@/components/audio/audio-activity-notice"
 
 function withQueryClient(children: ReactNode): JSX.Element {
   const client = new QueryClient({

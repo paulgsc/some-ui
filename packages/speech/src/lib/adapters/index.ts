@@ -1,4 +1,9 @@
-export type { SpeakOptions, SpeechAdapter, SpeechAdapterId } from "./types"
+export type {
+  SpeakOptions,
+  SpeechAdapter,
+  SpeechAdapterId,
+  VoiceReport,
+} from "./types"
 export type {
   SpeechAdapterFactory,
   SpeechAdapterRegistry,
