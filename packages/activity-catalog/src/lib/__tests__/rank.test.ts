@@ -1,5 +1,9 @@
 import { ACTIVITY_CATALOG, ACTIVITY_IDS } from "@activity-catalog/lib/catalog"
-import { pickRecommended, rankActivities } from "@activity-catalog/lib/rank"
+import {
+  pickRecommended,
+  rankActivities,
+  rankActivitiesWithScores,
+} from "@activity-catalog/lib/rank"
 import type { ActivityPlay } from "@activity-catalog/lib/rank"
 import type {
   ActivityDefinition,
@@ -77,6 +81,27 @@ describe("rankActivities", () => {
 
     expect(first).toHaveLength(20)
     expect(second).toEqual(first)
+  })
+
+  it("ignores plays of an activity the catalogue no longer has", () => {
+    const catalogue = syntheticCatalogue(6, { uniformMaturity: true })
+    const live: Array<ActivityPlay> = [
+      { activityId: catalogue[1]!.id, at: NOW - DAY },
+      { activityId: catalogue[4]!.id, at: NOW - 5 * DAY },
+      { activityId: catalogue[4]!.id, at: NOW - 6 * DAY },
+    ]
+    // A retired activity played far more than anything live.
+    const retired: Array<ActivityPlay> = Array.from({ length: 20 }, (_, i) => ({
+      activityId: "interview",
+      at: NOW - (i + 1) * DAY,
+    }))
+
+    expect(
+      rankActivitiesWithScores(catalogue, {
+        history: [...live, ...retired],
+        now: NOW,
+      })
+    ).toEqual(rankActivitiesWithScores(catalogue, { history: live, now: NOW }))
   })
 
   it("ranks the real catalogue with no signals at all, keeping every entry", () => {
