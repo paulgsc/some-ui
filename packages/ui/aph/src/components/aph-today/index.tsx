@@ -16,6 +16,7 @@ import {
   dayOf,
   dueCheckpoint,
   formatValue,
+  isMissed,
   minutesOf,
   needsAttention,
   nextCheckpoint,
@@ -48,6 +49,7 @@ export const AphTodayCard = ({
   const today = dayOf(now)
   const minutes = minutesOf(now)
   const due = dueCheckpoint(settings, entries, today, minutes)
+  const missed = due !== null && isMissed(due, minutes)
   const next = nextCheckpoint(settings, minutes)
   const { review, flagged } = needsAttention(settings, entries)
   const morning = settings.checkpoints[0]
@@ -60,7 +62,8 @@ export const AphTodayCard = ({
     <div
       className={cn(
         "bg-card flex flex-col gap-2 rounded-xl border p-3",
-        due !== null && "border-foreground border-2"
+        due !== null &&
+          (missed ? "border-warning/60 border-2" : "border-foreground border-2")
       )}
     >
       <div className="flex items-center gap-3">
@@ -70,6 +73,11 @@ export const AphTodayCard = ({
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="font-semibold">
             {due === null ? "aph" : `aph · ${due.label}`}
+            {missed && (
+              <span className="text-warning ml-1.5 text-sm font-medium">
+                missed
+              </span>
+            )}
           </span>
           <span className="text-muted-foreground truncate text-sm">
             {due !== null
@@ -83,7 +91,7 @@ export const AphTodayCard = ({
                 : "all logged today"}
           </span>
         </span>
-        {renderLog(due === null ? "Log" : "Log mine")}
+        {renderLog(due === null ? "Log" : missed ? "Log late" : "Log mine")}
       </div>
       {review + flagged > 0 &&
         renderReview(

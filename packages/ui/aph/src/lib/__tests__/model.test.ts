@@ -6,6 +6,7 @@ import {
   formatValue,
   goalDelta,
   history,
+  isMissed,
   needsAttention,
   nextCheckpoint,
   reconcile,
@@ -98,6 +99,24 @@ describe("checkpoints over a day", () => {
     expect(dueCheckpoint(settings, [], "2026-10-03", 5 * 60 + 30)?.id).toBe("7")
     expect(nextCheckpoint(settings, 8 * 60)?.id).toBe("12")
     expect(nextCheckpoint(settings, 11 * 60)).toBeNull()
+  })
+})
+
+describe("a checkpoint left unlogged", () => {
+  it("is missed once its window closes, and not before", () => {
+    const [seven] = settings.checkpoints
+    if (seven === undefined) throw new Error("a morning checkpoint")
+    expect(isMissed(seven, 8 * 60 + 30)).toBe(false)
+    expect(isMissed(seven, 8 * 60 + 31)).toBe(true)
+  })
+
+  it("stays the one Home offers, late, while nothing later is open", () => {
+    // 10:30: noon's window has opened, so noon is the one due; at 9:00 the
+    // morning is still offered, though missed.
+    expect(dueCheckpoint(settings, [], "2026-10-03", 9 * 60)?.id).toBe("7")
+    expect(dueCheckpoint(settings, [], "2026-10-03", 10 * 60 + 30)?.id).toBe(
+      "12"
+    )
   })
 })
 

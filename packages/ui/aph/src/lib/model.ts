@@ -167,6 +167,14 @@ export function dueCheckpoint(
   return open.at(-1) ?? null
 }
 
+/**
+ * Whether a checkpoint's window has closed. Home still offers it, since a
+ * late figure beats none, but says it was missed rather than calling it due.
+ */
+export function isMissed(checkpoint: Checkpoint, minutes: number): boolean {
+  return minutes > checkpoint.minutes + WINDOW_MINUTES
+}
+
 /** The next checkpoint still to come today, or null when the day is done. */
 export function nextCheckpoint(
   settings: AphSettings,
