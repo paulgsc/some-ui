@@ -150,6 +150,13 @@ export function useSession(
     callbacksRef.current.onSpeechEnd?.(messageId)
   }, [])
 
+  // Muted mid-line: nothing is speaking, but the line has not ended, so the
+  // caller's onSpeechEnd (which the lesson advances on) is not told.
+  const handleSpeechStopped = useCallback(() => {
+    setIsSpeaking(false)
+    setCurrentSpeakingId(null)
+  }, [])
+
   const handleBatchComplete = useCallback((batchIndex: number) => {
     callbacksRef.current.onBatchComplete?.(batchIndex)
   }, [])
@@ -179,6 +186,7 @@ export function useSession(
       onSessionComplete: handleSessionComplete,
       onSpeechStart: handleSpeechStart,
       onSpeechEnd: handleSpeechEnd,
+      onSpeechStopped: handleSpeechStopped,
       onError: (error, effect) => {
         // eslint-disable-next-line no-console
         console.error("[Executor] Error:", effect, error)
@@ -201,6 +209,7 @@ export function useSession(
     handleSessionComplete,
     handleSpeechStart,
     handleSpeechEnd,
+    handleSpeechStopped,
   ])
 
   // ══════════════════════════════════════════════════════

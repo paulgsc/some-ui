@@ -320,6 +320,53 @@ describe("SpeechProvider", () => {
     expect(screen.getByText("Yuna")).toBeDefined()
   })
 
+  it("catches voices that load before the report starts listening", async () => {
+    const fake = createFakeSpeechSynthesis()
+    const adapter = createWebSpeechAdapter({
+      synthesis: fake.synthesis,
+      utteranceFactory: fake.utteranceFactory,
+    })
+
+    // As in Chrome: the first read comes back empty and starts the voices
+    // loading, and they land before anything has subscribed.
+    const readVoices = fake.synthesis.getVoices
+    let loading = false
+    fake.synthesis.getVoices = (): Array<SpeechSynthesisVoice> => {
+      const voices = readVoices()
+      if (!loading) {
+        loading = true
+        fake.controls.loadVoices([
+          {
+            name: "Yuna",
+            lang: "ko-KR",
+            voiceURI: "Yuna",
+            default: false,
+            localService: true,
+          },
+        ])
+      }
+      return voices
+    }
+
+    const Report = (): JSX.Element => {
+      const report = useVoiceReport("ko-KR")
+      return <span>{report?.voice ?? "no voice"}</span>
+    }
+
+    render(
+      <SpeechProvider
+        config={{
+          mode: "static",
+          adapters: { server: () => adapter, static: () => adapter },
+        }}
+      >
+        <Report />
+      </SpeechProvider>
+    )
+
+    await waitFor(() => expect(screen.getByText("Yuna")).toBeDefined())
+  })
+
   it("has no speaker outside a provider, rather than a broken one", () => {
     const Orphan = (): JSX.Element => (
       <span>{useSpeaker() === null ? "no speaker" : "a speaker"}</span>

@@ -35,6 +35,12 @@ export type TTSEffectHandlerConfig = {
   onMessageComplete?: (messageId: string) => void
   onSpeechStart?: (messageId: string) => void
   onSpeechEnd?: (messageId: string) => void
+  /**
+   * The line's audio stopped without the line ending: mute refused or cut
+   * it off, and it is held to replay on unmute. Whoever shows "speaking"
+   * clears it here; the lesson does not advance, as it does on `onSpeechEnd`.
+   */
+  onSpeechStopped?: (messageId: string) => void
   onError?: (error: Error, messageId: string) => void
 }
 
@@ -124,6 +130,10 @@ export class TTSEffectHandler {
    * Stop current speech and clear queue
    */
   handleStopAudio(): void {
+    // A line held for unmute is the line in hand: stopping ends it, as
+    // stopping one in flight does, so the lesson is not left waiting on it.
+    const held = this.heldForUnmute ? this.queue[0] : undefined
+
     if (this.currentMessageId) {
       this.config.speaker.stop()
       this.speaking = false
@@ -133,6 +143,9 @@ export class TTSEffectHandler {
       this.activeRun = null
 
       this.config.onSpeechEnd?.(stoppedId)
+    } else if (held) {
+      this.config.onSpeechEnd?.(held.message.id)
+      if (held.isAuto) this.markSpoken(held.message.id)
     }
 
     // Clear queue
@@ -193,6 +206,14 @@ export class TTSEffectHandler {
     this.processing = false
   }
 
+  /** Dedup for an auto line, and its completion, reported once. */
+  private markSpoken(messageId: string): void {
+    this.spokenAutoIds.add(messageId)
+    if (this.completedIds.has(messageId)) return
+    this.completedIds.add(messageId)
+    this.config.onMessageComplete?.(messageId)
+  }
+
   /** Picks the held line back up once the session is unmuted. */
   private resumeAfterUnmute(): void {
     if (!this.heldForUnmute || this.config.speaker.muted) return
@@ -246,16 +267,7 @@ export class TTSEffectHandler {
       if (this.isSuperseded(run)) return
       release()
 
-      // Mark as spoken for deduplication
-      if (isAuto) {
-        this.spokenAutoIds.add(message.id)
-      }
-
-      // Fire completion callback ONLY ONCE per message
-      if (isAuto && !this.completedIds.has(message.id)) {
-        this.completedIds.add(message.id)
-        this.config.onMessageComplete?.(message.id)
-      }
+      if (isAuto) this.markSpoken(message.id)
     }
 
     try {
@@ -275,16 +287,17 @@ export class TTSEffectHandler {
       cleanupAndComplete()
     } catch (error) {
       if (
-        isAuto &&
         isAbortError(error) &&
         this.config.speaker.muted &&
         this.isCurrent(run)
       ) {
         // Refused, or cut off, by mute: not heard, so not spoken. Hold it
-        // at the front of the queue until unmute replays it. A replay the
-        // learner pressed while muted is theirs to press again.
+        // at the front of the queue until unmute replays it, a replay the
+        // learner pressed as much as a lesson line: either way the lesson
+        // advances only when it is heard.
         completionFired = true
         release()
+        this.config.onSpeechStopped?.(message.id)
         this.queue.unshift({ message, isAuto })
         this.heldForUnmute = true
         return

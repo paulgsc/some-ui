@@ -185,6 +185,14 @@ export function useSpeaker(): Speaker | null {
 export function useVoiceReport(lang: string): VoiceReport | null {
   const speaker = useSpeaker()
   const [, refresh] = useReducer((count: number) => count + 1, 0)
-  useEffect(() => speaker?.subscribe(refresh), [speaker])
+  useEffect(() => {
+    if (!speaker) return undefined
+    const unsubscribe = speaker.subscribe(refresh)
+    // A change announced between this render's read and the subscription
+    // just made had no listener to tell: Chrome's voices load in response
+    // to the very `getVoices()` call that read them. Read once more.
+    refresh()
+    return unsubscribe
+  }, [speaker])
   return speaker ? speaker.describe(lang) : null
 }

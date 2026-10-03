@@ -40,6 +40,8 @@ export type EffectExecutorConfig = {
   onSessionComplete?: () => void
   onSpeechStart?: (messageId: string) => void
   onSpeechEnd?: (messageId: string) => void
+  /** A line's audio stopped without it ending; see `TTSEffectHandlerConfig`. */
+  onSpeechStopped?: (messageId: string) => void
   onError?: (error: Error, effect: SessionEffect) => void
 }
 
@@ -74,6 +76,10 @@ export class EffectExecutor {
           const effects = this.config.machine.dispatch(actions.advanceMessage())
           this.execute(effects)
           if (this.config.onSpeechEnd) this.config.onSpeechEnd(messageId)
+        },
+
+        onSpeechStopped: (messageId) => {
+          this.config.onSpeechStopped?.(messageId)
         },
 
         onError: (error, messageId) => {
