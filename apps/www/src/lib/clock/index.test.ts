@@ -25,6 +25,25 @@ describe("useMinuteClock", () => {
     expect(result.current.getMinutes()).toBe(0)
   })
 
+  it("moves on the wall clock's minute, however late in it it subscribed", () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 9, 2, 23, 59, 59))
+    const { result } = renderHook(() => useMinuteClock())
+    expect(result.current.getDate()).toBe(2)
+
+    act(() => {
+      vi.advanceTimersByTime(1_000)
+    })
+    expect(result.current.getDate()).toBe(3)
+    expect(result.current.getMinutes()).toBe(0)
+
+    // And keeps to the boundary after that.
+    act(() => {
+      vi.advanceTimersByTime(60_000)
+    })
+    expect(result.current.getMinutes()).toBe(1)
+  })
+
   it("catches up as soon as the page is seen again", () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date(2026, 9, 3, 6, 0))

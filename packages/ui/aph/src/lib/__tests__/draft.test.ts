@@ -1,5 +1,6 @@
 import type { Draft, DraftEvent } from "@aph/lib/draft"
 import {
+  atTime,
   commitDraft,
   draftValue,
   keepsOnePlain,
@@ -49,6 +50,26 @@ describe("typing a figure", () => {
     ])
     expect(d.side).toBe("theirs")
     expect(draftValue(d)).toBeNull()
+  })
+})
+
+describe("the checkpoint over time", () => {
+  const nine = new Date(2026, 9, 3, 9, 0)
+  const elevenThirty = new Date(2026, 9, 3, 11, 30)
+
+  it("follows the clock until I pick one", () => {
+    const d = newDraft("mine", "7", null)
+    expect(atTime(d, settings, [], nine).checkpoint).toBe("7")
+    // Noon's window has opened while the form sat open.
+    expect(atTime(d, settings, [], elevenThirty).checkpoint).toBe("12")
+  })
+
+  it("stays where I put it", () => {
+    const d = stepDraft(newDraft("mine", "12", null), {
+      type: "pickCheckpoint",
+      checkpoint: "7",
+    })
+    expect(atTime(d, settings, [], elevenThirty).checkpoint).toBe("7")
   })
 })
 

@@ -75,6 +75,22 @@ describe("logging mine", () => {
 })
 
 describe("a logger left open", () => {
+  it("moves its default checkpoint with the clock, until I pick one", () => {
+    const store = createAphStore({ settings: SEED_SETTINGS, entries: [] })
+    const morning = new Date(2026, 9, 3, 9, 0)
+    const { rerender } = render(<AphLog now={morning} store={store} />)
+    const checked = (name: RegExp): string | null =>
+      screen.getByRole("radio", { name }).getAttribute("aria-checked")
+    expect(checked(/7:00/)).toBe("true")
+
+    rerender(<AphLog now={new Date(2026, 9, 3, 11, 30)} store={store} />)
+    expect(checked(/12:00/)).toBe("true")
+
+    fireEvent.click(screen.getByRole("radio", { name: /7:00/ }))
+    rerender(<AphLog now={new Date(2026, 9, 3, 11, 45)} store={store} />)
+    expect(checked(/7:00/)).toBe("true")
+  })
+
   it("saves under the day of the tap, not of the mount", () => {
     vi.useFakeTimers({ toFake: ["Date"] })
     vi.setSystemTime(new Date(2026, 9, 2, 23, 58))

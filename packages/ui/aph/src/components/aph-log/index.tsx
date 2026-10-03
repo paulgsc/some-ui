@@ -17,18 +17,23 @@ import {
   whenOf,
 } from "@aph/components/status"
 import type { Draft, Side } from "@aph/lib/draft"
-import { correcting, draftValue, newDraft, stepDraft } from "@aph/lib/draft"
+import {
+  atTime,
+  correcting,
+  defaultCheckpoint,
+  draftValue,
+  newDraft,
+  stepDraft,
+} from "@aph/lib/draft"
 import type { AphSettings, Entry } from "@aph/lib/model"
 import {
   awaitingTheirs,
   checkpointById,
   dayOf,
-  dueCheckpoint,
   formatDay,
   formatDelta,
   formatValue,
   isUsual,
-  minutesOf,
   primary,
   reconcile,
 } from "@aph/lib/model"
@@ -76,14 +81,18 @@ export const AphLog = ({
   const waiting = awaitingTheirs(settings, entries)
   const [showOlder, setShowOlder] = useState(false)
 
-  const [draft, dispatch] = useReducer(stepDraft, undefined, (): Draft => {
-    const due = dueCheckpoint(settings, entries, today, minutesOf(now))
-    return newDraft(
-      side,
-      due?.id ?? settings.checkpoints[0]?.id ?? null,
-      target ?? waiting[0]?.id ?? null
-    )
-  })
+  const [raw, dispatch] = useReducer(
+    stepDraft,
+    undefined,
+    (): Draft =>
+      newDraft(
+        side,
+        defaultCheckpoint(settings, entries, now),
+        target ?? waiting[0]?.id ?? null
+      )
+  )
+  // The checkpoint follows the clock until I pick one (`atTime`).
+  const draft = atTime(raw, settings, entries, now)
 
   const value = draftValue(draft)
   const checkpoint = checkpointById(settings, draft.checkpoint)
@@ -99,7 +108,7 @@ export const AphLog = ({
     // sat open across midnight.
     const at = givenNow ?? new Date()
     // The entry it landed on: a new one, or the one it filled in or corrected.
-    const landed = store.save(draft, {
+    const landed = store.save(atTime(raw, settings, entries, at), {
       day: dayOf(at),
       time: clockOf(at),
       id,

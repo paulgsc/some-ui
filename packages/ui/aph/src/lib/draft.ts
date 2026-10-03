@@ -7,7 +7,7 @@
  * is a reported figure for an entry that is waiting on one.
  */
 import type { AphSettings, Entry, Review } from "./model"
-import { checkpointById } from "./model"
+import { checkpointById, dayOf, dueCheckpoint, minutesOf } from "./model"
 
 export type Side = "mine" | "theirs"
 
@@ -17,8 +17,17 @@ export type Draft = {
   digits: string
   /** Mine only: written with a "~". */
   approx: boolean
-  /** Mine only: the checkpoint, or null for another time of day. */
+  /**
+   * Mine only: the checkpoint, or null for another time of day. Until
+   * `pinned`, a default that `atTime` replaces with the clock's.
+   */
   checkpoint: string | null
+  /**
+   * Whether I chose the checkpoint. Until I do, it follows the clock: a form
+   * left open from the morning into the noon window, or past midnight,
+   * saves at the checkpoint of the moment of the tap.
+   */
+  pinned: boolean
   /** Theirs only: the entry whose figure this is. */
   target: string | null
   /** Mine only. */
@@ -44,7 +53,15 @@ export function newDraft(
   checkpoint: string | null,
   target: string | null
 ): Draft {
-  return { side, digits: "", approx: true, checkpoint, target, labels: [] }
+  return {
+    side,
+    digits: "",
+    approx: true,
+    checkpoint,
+    pinned: false,
+    target,
+    labels: [],
+  }
 }
 
 export function stepDraft(draft: Draft, event: DraftEvent): Draft {
@@ -69,7 +86,7 @@ export function stepDraft(draft: Draft, event: DraftEvent): Draft {
         : { ...draft, side: event.side, digits: "" }
     }
     case "pickCheckpoint": {
-      return { ...draft, checkpoint: event.checkpoint }
+      return { ...draft, checkpoint: event.checkpoint, pinned: true }
     }
     case "pickTarget": {
       return { ...draft, target: event.target, digits: "" }
@@ -90,6 +107,32 @@ export function stepDraft(draft: Draft, event: DraftEvent): Draft {
 
 function assertNever(value: never): never {
   throw new Error(`Unhandled draft event: ${JSON.stringify(value)}`)
+}
+
+/** The checkpoint a new figure of mine goes to by default at a moment. */
+export function defaultCheckpoint(
+  settings: AphSettings,
+  entries: ReadonlyArray<Entry>,
+  at: Date
+): string | null {
+  const due = dueCheckpoint(settings, entries, dayOf(at), minutesOf(at))
+  return due?.id ?? settings.checkpoints[0]?.id ?? null
+}
+
+/**
+ * The draft as it stands at a moment: a checkpoint I picked stays put; one I
+ * did not is the clock's default for `at`. A derived value, computed where
+ * it is used (rendering, saving) and never stored, so it cannot go stale.
+ */
+export function atTime(
+  draft: Draft,
+  settings: AphSettings,
+  entries: ReadonlyArray<Entry>,
+  at: Date
+): Draft {
+  return draft.pinned
+    ? draft
+    : { ...draft, checkpoint: defaultCheckpoint(settings, entries, at) }
 }
 
 export function draftValue(draft: Draft): number | null {

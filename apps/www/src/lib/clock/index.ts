@@ -3,7 +3,7 @@
  * that shows "what is due now" and stays open: Home on the phone, left in
  * the background over a checkpoint or past midnight.
  *
- * Two things move it: a timer once a minute while the page runs, and the
+ * Two things move it: a timer on each wall-clock minute while the page runs, and the
  * page coming back into view, since a backgrounded WebView's timers stall
  * and the first thing seen on return should already be current. Both only
  * re-read `Date.now()`; nothing here holds state of its own beyond the
@@ -13,14 +13,29 @@ import { useSyncExternalStore } from "react"
 
 const MINUTE_MS = 60_000
 
+/** Milliseconds until the wall clock next reaches a whole minute. */
+function untilNextMinute(): number {
+  return MINUTE_MS - (Date.now() % MINUTE_MS)
+}
+
+/**
+ * Ticks on the wall clock's minutes, not every 60 s from whenever it was
+ * subscribed: subscribed at 23:59:59, it moves at 00:00:00, not 00:00:59.
+ * Each tick re-aims at the next boundary, so a late timer does not drift.
+ */
 function subscribe(onChange: () => void): () => void {
-  const timer = window.setInterval(onChange, MINUTE_MS)
+  let timer = 0
+  const tick = (): void => {
+    onChange()
+    timer = window.setTimeout(tick, untilNextMinute())
+  }
+  timer = window.setTimeout(tick, untilNextMinute())
   const onVisible = (): void => {
     if (document.visibilityState === "visible") onChange()
   }
   document.addEventListener("visibilitychange", onVisible)
   return (): void => {
-    window.clearInterval(timer)
+    window.clearTimeout(timer)
     document.removeEventListener("visibilitychange", onVisible)
   }
 }
