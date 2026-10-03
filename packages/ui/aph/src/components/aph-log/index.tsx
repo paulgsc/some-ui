@@ -99,7 +99,9 @@ export const AphLog = ({
 
   const value = draftValue(draft)
   const checkpoint = checkpointById(settings, draft.checkpoint)
-  const targetEntry = entries.find((e) => e.id === draft.target) ?? null
+  // Only a waiting entry can be the target: one filled since the link was
+  // made (Back after saving) shows as unselected, and Save stays off.
+  const targetEntry = waiting.find((e) => e.id === draft.target) ?? null
   const base =
     draft.side === "mine"
       ? (checkpoint?.goal ?? settings.usualLow)

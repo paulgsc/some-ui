@@ -196,6 +196,15 @@ describe("saving theirs", () => {
     })
   })
 
+  it("saves nothing over a figure already reported", () => {
+    // Back to a form opened for an entry that has been filled since.
+    const filled = SEED_ENTRIES.map((e) =>
+      e.id === target.id ? { ...e, theirs: { value: 4300 } } : e
+    )
+    const d = run(newDraft("theirs", null, target.id), typed("4900"))
+    expect(commitDraft(settings, filled, d, commit)).toBeNull()
+  })
+
   it("saves nothing for an entry that is not there", () => {
     const d = run(newDraft("theirs", null, "gone"), typed("4900"))
     expect(commitDraft(settings, SEED_ENTRIES, d, commit)).toBeNull()

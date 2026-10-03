@@ -7,7 +7,13 @@
  * is a reported figure for an entry that is waiting on one.
  */
 import type { AphSettings, Entry, Review } from "./model"
-import { checkpointById, dayOf, dueCheckpoint, minutesOf } from "./model"
+import {
+  awaitingTheirs,
+  checkpointById,
+  dayOf,
+  dueCheckpoint,
+  minutesOf,
+} from "./model"
 
 export type Side = "mine" | "theirs"
 
@@ -174,8 +180,17 @@ export function commitDraft(
   if (value === null) return null
 
   if (draft.side === "theirs") {
+    // Only onto an entry still awaiting it. The draft's target is a
+    // reference from wherever the form was opened (a link, Back), and the
+    // entry may have been filled since: writing over it would replace their
+    // figure and clear my call without either being on screen.
     const target = draft.target
-    if (target === null || !entries.some((e) => e.id === target)) return null
+    if (
+      target === null ||
+      !awaitingTheirs(settings, entries).some((e) => e.id === target)
+    ) {
+      return null
+    }
     return {
       id: target,
       entries: entries.map((e) =>

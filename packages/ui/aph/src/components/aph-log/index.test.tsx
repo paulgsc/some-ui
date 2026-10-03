@@ -126,6 +126,26 @@ describe("logging theirs", () => {
     expect(landed?.theirs).toEqual({ value: 4900 })
   })
 
+  it("won't write over a figure reported since the link was made", () => {
+    // Back to "Enter their figure" for Oct 2 at 7:00, already filled.
+    const filled = SEED_ENTRIES.map((e) =>
+      e.day === "2026-10-02" && e.checkpoint === "7"
+        ? { ...e, theirs: { value: 4300 } }
+        : e
+    )
+    const store = createAphStore({ settings: SEED_SETTINGS, entries: filled })
+    const target = filled.find(
+      (e) => e.day === "2026-10-02" && e.checkpoint === "7"
+    )
+    render(
+      <AphLog now={noon} store={store} side="theirs" target={target?.id} />
+    )
+    for (const d of "4900") {
+      fireEvent.click(screen.getByRole("button", { name: d }))
+    }
+    expect(screen.getByRole("button", { name: /Save theirs/ })).toBeDisabled()
+  })
+
   it("reports the side it saved, not the side it opened on", () => {
     // Opened on mine (Home's due card), switched to theirs before saving.
     const { type, onSaved } = setup()
