@@ -46,9 +46,23 @@ export class TTSEffectHandler {
   private currentMessageId: string | null = null
   private speaking: boolean = false
 
-  // Reference to the resolver of the currently active speech promise
-  private activeResolve: (() => void) | null = null
-  private activeReject: ((error: Error) => void) | null = null
+  /**
+   * Which `_speak` call owns the line in flight, so a call that a newer one
+   * (a manual replay) or a stop has displaced cannot clear the newer line's
+   * state, report its end, or undo its dedup when its own promise settles
+   * late. Null when no line is in flight.
+   */
+  private runSeq = 0
+  private activeRun: number | null = null
+
+  /**
+   * A line was refused because the session is muted. It is back at the
+   * front of the queue, and the queue waits for unmute rather than marking
+   * it spoken: TOPIK's lesson advances on a line's end, so a line skipped
+   * while muted would leave the lesson stuck on it after unmuting.
+   */
+  private heldForUnmute = false
+  private readonly unsubscribe: () => void
 
   // Deduplication tracking
   private spokenAutoIds: Set<string> = new Set()
@@ -61,6 +75,9 @@ export class TTSEffectHandler {
   constructor(private readonly config: TTSEffectHandlerConfig) {
     // Force stop any existing audio on construction (handles remount case)
     this.config.speaker.stop()
+    this.unsubscribe = this.config.speaker.subscribe(() => {
+      this.resumeAfterUnmute()
+    })
   }
 
   // ═════════════════════════════════════════════════════════════════════════
@@ -96,14 +113,8 @@ export class TTSEffectHandler {
 
     // Clear queue and stop current speech
     this.queue = []
+    this.heldForUnmute = false
     this.config.speaker.stop()
-
-    // Reject any pending promise
-    if (this.activeReject) {
-      this.activeReject(new Error("Interrupted by manual speak"))
-      this.activeReject = null
-      this.activeResolve = null
-    }
 
     // Speak immediately (not auto-play)
     await this._speak(message, false)
@@ -119,19 +130,14 @@ export class TTSEffectHandler {
 
       const stoppedId = this.currentMessageId
       this.currentMessageId = null
+      this.activeRun = null
 
       this.config.onSpeechEnd?.(stoppedId)
-
-      // Resolve the active promise to unblock the queue
-      if (this.activeResolve) {
-        this.activeResolve()
-        this.activeResolve = null
-        this.activeReject = null
-      }
     }
 
     // Clear queue
     this.queue = []
+    this.heldForUnmute = false
   }
 
   isSpeaking(): boolean {
@@ -150,6 +156,7 @@ export class TTSEffectHandler {
   }
 
   destroy(): void {
+    this.unsubscribe()
     this.handleStopAudio()
     this.config.speaker.stop()
     this.spokenAutoIds.clear()
@@ -166,7 +173,7 @@ export class TTSEffectHandler {
   private async processQueue(): Promise<void> {
     this.processing = true
 
-    while (this.queue.length > 0) {
+    while (this.queue.length > 0 && !this.heldForUnmute) {
       const { message, isAuto } = this.queue.shift()!
 
       // Double-check deduplication (in case queue was filled before processing)
@@ -186,32 +193,58 @@ export class TTSEffectHandler {
     this.processing = false
   }
 
+  /** Picks the held line back up once the session is unmuted. */
+  private resumeAfterUnmute(): void {
+    if (!this.heldForUnmute || this.config.speaker.muted) return
+    this.heldForUnmute = false
+    if (!this.processing && this.queue.length > 0) void this.processQueue()
+  }
+
   /**
-   * Read through a method rather than the field, so a check after an
-   * `await` sees the current value: TypeScript keeps a field's narrowing
-   * across the await even though `handleStopAudio` may have run during it.
+   * Read through methods rather than the field, so a check after an `await`
+   * sees the current value: TypeScript keeps a field's narrowing across the
+   * await even though a stop or a newer line may have run during it.
    */
-  private isCurrent(messageId: string): boolean {
-    return this.currentMessageId === messageId
+  private isCurrent(run: number): boolean {
+    return this.activeRun === run
+  }
+
+  /**
+   * A newer line has started since this one, whether or not it is still in
+   * flight: a cancellation can settle after the replay that caused it has
+   * already finished.
+   */
+  private isSuperseded(run: number): boolean {
+    return this.runSeq !== run
   }
 
   /**
    * Speak a single message and wait for completion
    */
   private async _speak(message: Message, isAuto: boolean): Promise<void> {
+    this.runSeq += 1
+    const run = this.runSeq
+    this.activeRun = run
     this.currentMessageId = message.id
     this.speaking = true
 
     let completionFired = false // Guard against double-firing
 
+    const release = (): void => {
+      if (!this.isCurrent(run)) return
+      this.activeRun = null
+      this.speaking = false
+      this.currentMessageId = null
+    }
+
     const cleanupAndComplete = (): void => {
       if (completionFired) return
       completionFired = true
 
-      this.speaking = false
-      this.currentMessageId = null
-      this.activeResolve = null
-      this.activeReject = null
+      // Displaced by a newer line (a manual replay of this very message,
+      // say): its state, its end and its dedup are its own to settle.
+      if (this.isSuperseded(run)) return
+      release()
 
       // Mark as spoken for deduplication
       if (isAuto) {
@@ -238,14 +271,29 @@ export class TTSEffectHandler {
       // `handleStopAudio` reports a stopped line's end itself, and a line
       // can finish in the same tick it is stopped; only a line that is still
       // this run's own reports its end here.
-      if (this.isCurrent(message.id)) this.config.onSpeechEnd?.(message.id)
+      if (this.isCurrent(run)) this.config.onSpeechEnd?.(message.id)
       cleanupAndComplete()
     } catch (error) {
-      // A cancellation (a stop, a newer line, a muted session) is not an
-      // error and does not end the line: the queue just moves on. A real
+      if (
+        isAuto &&
+        isAbortError(error) &&
+        this.config.speaker.muted &&
+        this.isCurrent(run)
+      ) {
+        // Refused, or cut off, by mute: not heard, so not spoken. Hold it
+        // at the front of the queue until unmute replays it. A replay the
+        // learner pressed while muted is theirs to press again.
+        completionFired = true
+        release()
+        this.queue.unshift({ message, isAuto })
+        this.heldForUnmute = true
+        return
+      }
+      // A cancellation (a stop, a newer line) is not an error and does not
+      // end the line: the queue just moves on. A real
       // failure does, so the lesson is not left waiting on a line that will
       // never be heard.
-      if (this.isCurrent(message.id) && !isAbortError(error)) {
+      if (this.isCurrent(run) && !isAbortError(error)) {
         const failure = toError(error)
         // eslint-disable-next-line no-console
         console.error(`[TTS] ❌ Error: ${message.id}`, failure)

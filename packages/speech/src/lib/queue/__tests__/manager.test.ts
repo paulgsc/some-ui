@@ -419,4 +419,20 @@ describe("SpeechQueueManager - the speaker", () => {
     expect(isAbortError(said.error)).toBe(true)
     expect(manager.getStore().get().error).toBeNull()
   })
+
+  it("tells subscribers when mute changes, and says whether it is muted", () => {
+    const { manager } = setup()
+    const seen: Array<boolean> = []
+    const unsubscribe = manager.speaker.subscribe(() => {
+      seen.push(manager.speaker.muted)
+    })
+
+    manager.setMuted(true)
+    manager.setMuted(true)
+    manager.setMuted(false)
+    unsubscribe()
+    manager.setMuted(true)
+
+    expect(seen).toEqual([true, false])
+  })
 })

@@ -27,6 +27,8 @@ const silentVoice: Speaker = {
     })
   },
   stop: noop,
+  muted: false,
+  subscribe: () => () => undefined,
   describe: () => ({
     platform: "browser",
     voice: null,

@@ -57,6 +57,7 @@ describe("HostedVoiceFields - while the browser's voice is the one speaking", ()
       id: "web-speech",
       supported: true,
       pending: 0,
+      subscribe: () => () => undefined,
       describe: () => ({
         platform: "browser",
         voice: "Yuna",

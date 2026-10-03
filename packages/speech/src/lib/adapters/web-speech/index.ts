@@ -104,10 +104,16 @@ export function createWebSpeechAdapter(
   let volume = 1
   let playbackRate = options.rate ?? DEFAULT_RATE
 
+  /** The live utterances' detaches, so a flush can release them all. */
+  const attached = new Set<() => void>()
+
   const cancelAll = (error: Error): void => {
-    // Flush before cancelling: `cancel()` fires `onend` on the utterance in
-    // flight, and an entry that is already settled can't be mistaken for a
-    // clean finish by that handler.
+    // Detach, then flush, then cancel: `cancel()` fires `onend` on the
+    // utterance in flight, and a settled, detached entry can't be mistaken
+    // for a clean finish by it. Detaching also drops the displaced caller's
+    // abort listener, which would otherwise cancel whatever is speaking
+    // when that caller's signal fires later.
+    for (const detach of [...attached]) detach()
     ledger.flush(error)
     synthesis?.cancel()
   }
@@ -150,6 +156,7 @@ export function createWebSpeechAdapter(
     let abortListener: (() => void) | null = null
 
     const detach = (): void => {
+      attached.delete(detach)
       utterance.onstart = null
       utterance.onend = null
       utterance.onerror = null
@@ -187,6 +194,7 @@ export function createWebSpeechAdapter(
       entry.reject(createAbortError("Speech aborted"))
       synthesis.cancel()
     }
+    attached.add(detach)
     speakOptions.signal?.addEventListener("abort", abortListener, {
       once: true,
     })
@@ -198,6 +206,17 @@ export function createWebSpeechAdapter(
   return {
     id: "web-speech",
     supported: synthesis !== null,
+    // Browsers load their voices asynchronously and announce it; until then
+    // `describe` can only report what has loaded so far.
+    subscribe: (listener): (() => void) => {
+      if (typeof synthesis?.addEventListener !== "function") {
+        return () => undefined
+      }
+      synthesis.addEventListener("voiceschanged", listener)
+      return (): void => {
+        synthesis.removeEventListener("voiceschanged", listener)
+      }
+    },
     describe: (lang): VoiceReport => {
       const voices = synthesis?.getVoices() ?? []
       const voice = voiceForLanguage(voices, lang)

@@ -89,6 +89,12 @@ export type SpeechAdapter = {
    * phone's voices load asynchronously, so read it when it is shown.
    */
   describe: (lang: string) => VoiceReport
+  /**
+   * Calls `listener` when what `describe` would say may have changed: a
+   * browser's or phone's voices finished loading, voice data was found
+   * missing. Returns the unsubscribe.
+   */
+  subscribe: (listener: () => void) => () => void
   /** Outstanding `speak()` promises. Diagnostics and tests only. */
   readonly pending: number
   speak: (text: string, options?: SpeakOptions) => Promise<void>

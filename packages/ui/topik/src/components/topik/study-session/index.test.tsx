@@ -50,6 +50,7 @@ function createSilentAdapter(): SpeechAdapter & { spoken: Array<string> } {
       return Promise.resolve()
     },
     stop: () => undefined,
+    subscribe: () => () => undefined,
     describe: () => ({
       platform: "browser",
       voice: null,

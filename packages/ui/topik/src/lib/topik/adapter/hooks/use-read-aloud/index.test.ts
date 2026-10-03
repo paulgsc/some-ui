@@ -38,6 +38,8 @@ function fakeSpeech(): FakeSpeech {
     stop: () => {
       speech.stops += 1
     },
+    muted: false,
+    subscribe: () => () => undefined,
     describe: () => ({
       platform: "browser",
       voice: null,

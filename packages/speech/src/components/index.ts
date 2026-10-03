@@ -1,5 +1,5 @@
 export type { SpeechProviderProps } from "./speech-provider"
-export { SpeechProvider, useSpeaker } from "./speech-provider"
+export { SpeechProvider, useSpeaker, useVoiceReport } from "./speech-provider"
 export type {
   SpeechStatusAnnouncerProps,
   SpeechStatusBadgeProps,

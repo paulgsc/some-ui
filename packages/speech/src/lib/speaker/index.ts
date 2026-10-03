@@ -41,4 +41,12 @@ export type Speaker = {
    * For showing a person, not for choosing - an applet still cannot pick.
    */
   describe: (lang: string) => VoiceReport
+  /** Whether the person has muted voice output; `say` refuses meanwhile. */
+  readonly muted: boolean
+  /**
+   * Calls `listener` when `muted` or `describe` may have changed. Returns
+   * the unsubscribe. A caller that held a line back while muted replays it
+   * from here, and a display of `describe` refreshes from here.
+   */
+  subscribe: (listener: () => void) => () => void
 }

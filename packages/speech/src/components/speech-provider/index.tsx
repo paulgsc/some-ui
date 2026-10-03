@@ -18,9 +18,19 @@
  */
 
 import type { JSX, ReactNode } from "react"
-import { createContext, useContext, useEffect, useState } from "react"
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useReducer,
+  useState,
+} from "react"
 import { SpeechStatusAnnouncer } from "@speech/components/speech-status"
-import type { SpeechAdapter, SpeechConfig } from "@speech/lib/adapters"
+import type {
+  SpeechAdapter,
+  SpeechConfig,
+  VoiceReport,
+} from "@speech/lib/adapters"
 import { createSpeechAdapter } from "@speech/lib/adapters"
 import type { SpeechQueueManager } from "@speech/lib/queue"
 import { initializeSpeechQueue, releaseSpeechQueue } from "@speech/lib/queue"
@@ -164,4 +174,17 @@ export function useSpeechSession(): SpeechSession {
  */
 export function useSpeaker(): Speaker | null {
   return useContext(SpeechSessionContext)?.manager.speaker ?? null
+}
+
+/**
+ * Who would read a line in `lang` on this page, kept current: it re-reads
+ * when the speaker says its voices or mute changed, which a browser's or a
+ * phone's voices do some time after the page loads. `null` without a
+ * `<SpeechProvider>`.
+ */
+export function useVoiceReport(lang: string): VoiceReport | null {
+  const speaker = useSpeaker()
+  const [, refresh] = useReducer((count: number) => count + 1, 0)
+  useEffect(() => speaker?.subscribe(refresh), [speaker])
+  return speaker ? speaker.describe(lang) : null
 }

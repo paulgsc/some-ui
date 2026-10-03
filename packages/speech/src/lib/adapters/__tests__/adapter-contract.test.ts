@@ -235,6 +235,54 @@ describe("web-speech adapter - browser specifics", () => {
     expect(replacement.state).toBe("resolved")
   })
 
+  it("lets a displaced caller's late abort leave the replacement speaking", async () => {
+    const fake = createFakeSpeechSynthesis()
+    const adapter = createWebSpeechAdapter({
+      synthesis: fake.synthesis,
+      utteranceFactory: fake.utteranceFactory,
+    })
+    const first = new AbortController()
+
+    void adapter.speak("first", { signal: first.signal }).catch(() => undefined)
+    await flushAsync()
+    const replacement = track(adapter.speak("second"))
+    await flushAsync()
+    const cancelsSoFar = fake.controls.cancelCount
+
+    first.abort()
+    await flushAsync()
+
+    expect(fake.controls.cancelCount).toBe(cancelsSoFar)
+    expect(replacement.state).toBe("pending")
+  })
+
+  it("announces when the browser's voices load", () => {
+    const fake = createFakeSpeechSynthesis()
+    const adapter = createWebSpeechAdapter({
+      synthesis: fake.synthesis,
+      utteranceFactory: fake.utteranceFactory,
+    })
+    let announced = 0
+    const unsubscribe = adapter.subscribe(() => {
+      announced += 1
+    })
+
+    expect(adapter.describe("ko-KR").speaksLanguage).toBe(false)
+    fake.controls.loadVoices([
+      {
+        name: "Yuna",
+        lang: "ko-KR",
+        voiceURI: "Yuna",
+        default: false,
+        localService: true,
+      },
+    ])
+
+    expect(announced).toBe(1)
+    expect(adapter.describe("ko-KR").voice).toBe("Yuna")
+    unsubscribe()
+  })
+
   it("reports word boundaries for callers that follow along", async () => {
     const fake = createFakeSpeechSynthesis()
     const adapter = createWebSpeechAdapter({
