@@ -54,6 +54,12 @@ the tokens in:
 - **Shortcuts** — shadcn-flavored components: `btn-primary`, `btn-outline`,
   `card`, `card-header`, `input`, `badge-secondary`, `kbd`, …
 
+### Brand mark
+
+`brand/favicon.svg` is the one Some UI mark. `brand/` is also a Nix flake that
+renders every other size from it, which is how repos outside some-ui pin it; see
+[`brand/README.md`](./brand/README.md).
+
 ## Using it in an extension (preview — wiring lands in a later milestone)
 
 ```ts
