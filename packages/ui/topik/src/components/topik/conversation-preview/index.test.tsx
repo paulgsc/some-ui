@@ -89,8 +89,7 @@ describe("ConversationPreview - speaking through the page's session", () => {
       <SpeechProvider
         config={{
           mode: "server",
-          provider: "openai",
-          voiceId: "ko-KR-InJoonNeural",
+          hosted: { provider: "openai", voiceId: "ko-KR-InJoonNeural" },
           fetchImpl,
           // jsdom has no Web Audio; without this the hosted voice would
           // fall back to the device's.

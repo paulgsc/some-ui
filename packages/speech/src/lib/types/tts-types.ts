@@ -48,7 +48,8 @@ export type TTSOptions = {
   readonly volume?: number
   readonly playbackRate?: number
   readonly autoPlay?: boolean
-  readonly voice?: VoiceConfig
+  /** BCP-47 tag of the text; the session picks the voice for it. */
+  readonly lang?: string
   readonly onStart?: () => void
   readonly onEnd?: () => void
   readonly onError?: (error: Error) => void
@@ -59,8 +60,12 @@ export type UseAudioTTSOptions = TTSOptions & {
   readonly service: TTSServiceConfig
 }
 
-// Built-in voice configurations
-export const BUILTIN_VOICES: Record<TTSProvider, ReadonlyArray<VoiceConfig>> = {
+/**
+ * Every voice a hosted backend offers, per provider. The ids are kept as
+ * literals (`satisfies`, not an annotation), so `HostedVoiceOf<P>` in
+ * `lib/voices` is a closed union a typo cannot pass.
+ */
+export const BUILTIN_VOICES = {
   elevenlabs: [
     {
       id: "rachel",
@@ -154,4 +159,4 @@ export const BUILTIN_VOICES: Record<TTSProvider, ReadonlyArray<VoiceConfig>> = {
     },
   ],
   custom: [],
-} as const
+} as const satisfies Record<TTSProvider, ReadonlyArray<VoiceConfig>>

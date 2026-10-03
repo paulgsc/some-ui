@@ -75,8 +75,8 @@ const TimingParamsSchema = z.object({
 
 // Stimulus (canon Def. 3.1, ADR 0001 §2(a)): what the player perceives. The engine only ever
 // carries ids/refs (Axiom 3.1's asset-opacity invariant) - this package resolves them to
-// renderable/speakable sources (icon glyphs via @honeycomb/data, TTS via
-// @honeycomb/lib/hangul/speech).
+// renderable/speakable sources (icon glyphs via @honeycomb/data, TTS via the page's speech
+// session, @honeycomb/lib/hangul/speech).
 const StimulusSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("glyph"), text: z.string() }),
   z.object({ kind: z.literal("image"), assetId: z.string() }),

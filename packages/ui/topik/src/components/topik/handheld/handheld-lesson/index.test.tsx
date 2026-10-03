@@ -55,7 +55,7 @@ function renderLesson(
           topikRepository,
           metadataRepository,
           // No voice: the ladder starts at Hangul (canon Def. 9.3).
-          speechAdapter: null,
+          speaker: null,
         }}
       >
         <HandheldLesson
@@ -137,18 +137,10 @@ describe("HandheldLesson", () => {
           value={{
             topikRepository: fixtureTopikRepository,
             metadataRepository: fixtureMetadataRepository,
-            speechAdapter: {
-              id: "web-speech",
-              supported: true,
-              voices: [],
-              pending: 0,
-              speak: (): Promise<void> => Promise.resolve(),
+            speaker: {
+              available: true,
+              say: (): Promise<void> => Promise.resolve(),
               stop: (): void => undefined,
-              pause: (): void => undefined,
-              resume: (): void => undefined,
-              setVolume: (): void => undefined,
-              setPlaybackRate: (): void => undefined,
-              dispose: (): void => undefined,
             },
           }}
         >

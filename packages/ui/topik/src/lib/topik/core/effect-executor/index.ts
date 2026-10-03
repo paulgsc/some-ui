@@ -5,7 +5,7 @@
  * Bridges FSM (pure state transitions) with impure runtime (I/O, timers, queries).
  */
 
-import type { SpeechAdapter } from "@some-ui/speech"
+import type { Speaker } from "@some-ui/speech"
 import type { Message } from "@topik/lib/topik"
 import { actions, getCurrentMessage } from "@topik/lib/topik"
 import type {
@@ -28,7 +28,7 @@ export type EffectExecutorConfig = {
 
   // TTS configuration
   /** Absent or null both mean "no voice" - the TTS handler is not built. */
-  speechAdapter?: SpeechAdapter | null
+  speaker?: Speaker | null
   componentId?: string
   enableTTS?: boolean
 
@@ -58,14 +58,10 @@ export class EffectExecutor {
   private destroyed = false
 
   constructor(private readonly config: EffectExecutorConfig) {
-    // Initialize TTS handler if enabled and speechAdapter provided
-    if (
-      config.enableTTS !== false &&
-      config.speechAdapter &&
-      config.componentId
-    ) {
+    // Initialize TTS handler if enabled and speaker provided
+    if (config.enableTTS !== false && config.speaker && config.componentId) {
       this.ttsHandler = createTTSEffectHandler({
-        speechAdapter: config.speechAdapter,
+        speaker: config.speaker,
         componentId: config.componentId,
         machine: config.machine,
 

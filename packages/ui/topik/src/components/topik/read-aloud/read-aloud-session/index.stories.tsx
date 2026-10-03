@@ -1,4 +1,4 @@
-import type { SpeechAdapter } from "@some-ui/speech"
+import type { Speaker } from "@some-ui/speech"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 import { STARTER_DECK } from "@topik/lib/topik/read-aloud/starter"
 
@@ -13,28 +13,20 @@ const noop = (): void => undefined
  * A voice that says nothing, taking about as long as the item would take to
  * say, so the ladder can be watched running without audio in Storybook.
  */
-const silentVoice: SpeechAdapter = {
-  id: "web-speech",
-  supported: true,
-  voices: [],
-  pending: 0,
-  speak: (text, options): Promise<void> => {
-    options?.onStart?.()
+const silentVoice: Speaker = {
+  available: true,
+  say: (text, options): Promise<void> => {
+    options.onStart?.()
     const syllables = text.match(/[가-힣]/g)?.length ?? 1
     return new Promise<void>((resolve, reject) => {
       const timer = setTimeout(resolve, 250 + syllables * 280)
-      options?.signal?.addEventListener("abort", () => {
+      options.signal?.addEventListener("abort", () => {
         clearTimeout(timer)
         reject(new DOMException("aborted", "AbortError"))
       })
     })
   },
   stop: noop,
-  pause: noop,
-  resume: noop,
-  setVolume: noop,
-  setPlaybackRate: noop,
-  dispose: noop,
 }
 
 const meta: Meta = {

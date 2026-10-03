@@ -25,6 +25,10 @@ export type SpeechAction =
       payload: { itemId: string; error: string; shouldRetry: boolean }
     }
   | { type: "ITEM_CANCELLED"; payload: { itemId: string } }
+  /** A line said through the speaker was heard. */
+  | { type: "SAID" }
+  /** A line said through the speaker failed (not cancelled). */
+  | { type: "SAY_FAILED"; payload: { error: string } }
 
 export const generateId = (): string =>
   `speech_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`

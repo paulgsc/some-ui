@@ -6,6 +6,12 @@
  * companion services at all, so an HTTP adapter there would fail on every
  * utterance.
  *
+ * The browser's voices are the browser's: which ones exist depends on the
+ * device, and they are not ours to list or choose among. A line gives this
+ * adapter its language, and the browser speaks it in whatever voice it has
+ * for that language. None of them ever becomes a `VoiceConfig`, which
+ * describes the hosted catalogue only (`lib/voices`).
+ *
  * Three settlement bugs from the call sites this replaces are fixed here,
  * and pinned by `adapter-contract.test.ts`:
  *
@@ -24,7 +30,6 @@
 import type { SpeakOptions, SpeechAdapter } from "@speech/lib/adapters/types"
 import { createSpeechLedger } from "@speech/lib/promise"
 import { createAbortError } from "@speech/lib/promise/abort"
-import type { VoiceConfig } from "@speech/lib/types/tts-types"
 
 export type WebSpeechAdapterOptions = {
   /** Injected in tests; defaults to `window.speechSynthesis`. */
@@ -49,17 +54,6 @@ function resolveSynthesis(
   if (provided) return provided
   if (typeof window === "undefined") return null
   return "speechSynthesis" in window ? window.speechSynthesis : null
-}
-
-function toVoiceConfig(voice: SpeechSynthesisVoice): VoiceConfig {
-  return {
-    id: voice.voiceURI,
-    name: voice.name,
-    // The `TTSProvider` union describes TTS *vendors*; a browser voice
-    // belongs to none of them, and "custom" is the union's escape hatch.
-    provider: "custom",
-    language: voice.lang,
-  }
 }
 
 export function createWebSpeechAdapter(
@@ -112,7 +106,7 @@ export function createWebSpeechAdapter(
     utterance.rate = speakOptions.playbackRate ?? playbackRate
     utterance.pitch = options.pitch ?? DEFAULT_PITCH
     utterance.volume = speakOptions.volume ?? volume
-    const lang = speakOptions.voice?.language ?? options.lang
+    const lang = speakOptions.lang ?? options.lang
     if (lang) utterance.lang = lang
 
     let abortListener: (() => void) | null = null
@@ -166,11 +160,6 @@ export function createWebSpeechAdapter(
   return {
     id: "web-speech",
     supported: synthesis !== null,
-    get voices(): ReadonlyArray<VoiceConfig> {
-      // Voices load asynchronously in every browser, so this has to be read
-      // at access time rather than captured at construction.
-      return synthesis?.getVoices().map(toVoiceConfig) ?? []
-    },
     get pending(): number {
       return ledger.size
     },

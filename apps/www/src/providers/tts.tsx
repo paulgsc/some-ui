@@ -125,8 +125,7 @@ export const TTSProvider = ({
         // The device build has a backend but no TTS service behind it, so
         // it speaks with the platform's own voice, as the static build does.
         mode: kind === "account" && !DEVICE_BACKEND ? DATA_MODE : "static",
-        provider: settings?.ttsProvider,
-        voiceId: settings?.ttsVoiceId || undefined,
+        hosted: settings?.ttsVoice,
         endpoint: resolveTTSEndpoint(),
       }}
       fallback={<InitializingSpeech />}

@@ -12,7 +12,7 @@
 
 import type { JSX } from "react"
 import { useState } from "react"
-import type { SpeechAdapter } from "@some-ui/speech"
+import type { Speaker } from "@some-ui/speech"
 import { ReadAloudSession } from "@topik/components/topik/read-aloud/read-aloud-session"
 import type { ReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
@@ -26,7 +26,7 @@ import { dayKey } from "@topik/lib/topik/read-aloud/records"
 type ReadAloudScreenProps = {
   /** The TOPIK level held on the material list, one to six. */
   topikLevel: number
-  speech: SpeechAdapter | null
+  speech: Speaker | null
   store?: ReadAloudStore
   deck?: ReadAloudDeck
   short?: boolean

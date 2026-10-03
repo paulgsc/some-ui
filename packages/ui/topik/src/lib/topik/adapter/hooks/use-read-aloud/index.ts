@@ -11,14 +11,14 @@
  *
  * Nothing starts until `begin`: a phone plays no audio before the learner's
  * first tap, and a drill that talks before being asked is its own way to lose
- * a learner. Where no speech adapter is supported the exercise is not offered
+ * a learner. Where nothing here can speak the exercise is not offered
  * at all (Cor. 4.6), which is the host's to render from `audio`.
  */
 
 import type { RefObject } from "react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
-import type { SpeechAdapter } from "@some-ui/speech"
-import { voiceFor } from "@topik/lib/topik/adapter/hooks/use-handheld-lesson"
+import type { Speaker } from "@some-ui/speech"
+import { SPOKEN_LANGUAGE } from "@topik/lib/topik/core/spoken-language"
 import type {
   ReadAloudDeck,
   ReadAloudLevel,
@@ -49,7 +49,7 @@ export type ReadAloudRecordEvent =
 export type UseReadAloudOptions = {
   deck: ReadAloudDeck
   level: ReadAloudLevel
-  speech: SpeechAdapter | null
+  speech: Speaker | null
   /** The stored pace book; the drill keeps its own copy once it starts. */
   paces?: PaceBook
   /** A set left unfinished in an earlier sitting, resumed at its next rep. */
@@ -162,16 +162,16 @@ function createRunner(
 
   const speak = (seq: number, text: string, playingMs: number): void => {
     const { speech } = options()
-    if (!speech?.supported) return
+    if (!speech?.available) return
     utterance?.abort()
     const controller = new AbortController()
     utterance = controller
     const asked = now()
     let started: number | null = null
     speech
-      .speak(text, {
+      .say(text, {
+        lang: SPOKEN_LANGUAGE,
         signal: controller.signal,
-        voice: voiceFor(speech),
         onStart: () => {
           started = now()
           if (utterance !== controller) return
@@ -364,7 +364,7 @@ export function useReadAloud(options: UseReadAloudOptions): ReadAloudVM {
   return {
     state: snapshot.state,
     started,
-    audio: options.speech?.supported === true,
+    audio: options.speech?.available === true,
     entry: currentEntry(snapshot.state),
     step: snapshot.step,
     playing: snapshot.playing,
