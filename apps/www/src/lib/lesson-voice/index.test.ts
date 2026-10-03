@@ -18,6 +18,21 @@ describe("summarizeLessonVoice", () => {
     })
   })
 
+  it("does not warn about a platform that speaks Korean in an unnamed default voice", () => {
+    expect(
+      summarizeLessonVoice({
+        platform: "phone",
+        voice: null,
+        speaksLanguage: true,
+      })
+    ).toEqual({
+      label: "Default voice · this phone's text-to-speech",
+      detail:
+        "Korean lessons are read by its default Korean voice, this phone's text-to-speech.",
+      warning: false,
+    })
+  })
+
   it("warns when a browser reads Korean in another language's voice", () => {
     const summary = summarizeLessonVoice({
       platform: "browser",

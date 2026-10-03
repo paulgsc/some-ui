@@ -31,10 +31,13 @@ const PLATFORM: Readonly<Record<VoiceReport["platform"], string>> = {
 export function summarizeLessonVoice(report: VoiceReport): LessonVoiceSummary {
   const platform = PLATFORM[report.platform]
 
-  if (report.speaksLanguage && report.voice) {
+  if (report.speaksLanguage) {
+    // A platform can speak Korean without a voice it will name: the
+    // phone's own default, say.
+    const voice = report.voice ?? "its default Korean voice"
     return {
-      label: `${report.voice} · ${platform}`,
-      detail: `Korean lessons are read by ${report.voice}, ${platform}.`,
+      label: `${report.voice ?? "Default voice"} · ${platform}`,
+      detail: `Korean lessons are read by ${voice}, ${platform}.`,
       warning: false,
     }
   }
