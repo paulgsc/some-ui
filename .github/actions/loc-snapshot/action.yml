@@ -1,0 +1,59 @@
+name: "LOC snapshot"
+description: >-
+  Write the lines-of-code snapshot that www's header widget shows
+  (apps/www/src/lib/loc-report), from this repository's history and, when a
+  token is given, paulgsc/server's. Run it after checkout and before www is
+  built; the build carries whatever it wrote.
+
+# Best-effort, and every caller says `continue-on-error: true`: a number in a
+# header is not worth a failed release. When this step fails or is skipped the
+# build ships the tracked placeholder and the widget stays out of the header.
+#
+# Needs Nix set up first (./.github/actions/nix-setup) for a Node that runs
+# TypeScript; it needs no `pnpm install`, which the Docker release job does not
+# run. The server's history is cloned into $RUNNER_TEMP, outside the workspace,
+# so it never reaches the Docker build context.
+#
+# Why a clone and not the API: the widget leaves lockfiles and generated files
+# out of the default total, and only a diff says which files a commit touched.
+#
+# Not for pull requests: they build www only to check it, and a fork's has no
+# secrets. Callers gate on the event.
+inputs:
+  server-token:
+    description: >-
+      Token that can read paulgsc/server (a fine-grained PAT with Contents:
+      read, repo secret LOC_SNAPSHOT_TOKEN). Empty skips the server, and the
+      snapshot covers this repository alone. Not the route snapshot's
+      SERVER_ROUTES_DISPATCH_TOKEN, whose reach is pinned by RS1 in CLAUDE.md.
+    required: false
+    default: ""
+runs:
+  using: composite
+  steps:
+    # git shows a shallow clone's oldest commit as adding every file it holds,
+    # so a count over one is wrong by orders of magnitude. The script refuses
+    # one; this is what makes it not shallow.
+    - name: Fetch this repository's full history
+      shell: bash
+      run: |
+        if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+          git fetch --unshallow --no-tags --quiet
+        fi
+
+    - name: Clone the server's history
+      if: inputs.server-token != ''
+      shell: bash
+      env:
+        SERVER_TOKEN: ${{ inputs.server-token }}
+      run: |
+        auth="$(printf 'x-access-token:%s' "$SERVER_TOKEN" | base64 --wrap=0)"
+        echo "::add-mask::$auth"
+        git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" \
+          clone --no-checkout --no-tags --quiet \
+          https://github.com/paulgsc/server.git "$RUNNER_TEMP/loc-server"
+        echo "LOC_SERVER_DIR=$RUNNER_TEMP/loc-server" >> "$GITHUB_ENV"
+
+    - name: Write the snapshot
+      shell: bash
+      run: nix develop .#ci --command node --no-warnings scripts/loc-snapshot.ts

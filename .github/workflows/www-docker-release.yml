@@ -150,6 +150,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      # The lines-of-code number in the dashboard header is a snapshot taken
+      # here, as the image is built (apps/www/src/lib/loc-report). It is written
+      # into the workspace, which is the Docker build's context. This job runs
+      # no pnpm, so Nix is here for the script's Node and nothing else.
+      # Best-effort: without it the image ships the tracked placeholder and no
+      # widget.
+      - uses: ./.github/actions/nix-setup
+      - name: Snapshot lines of code
+        continue-on-error: true
+        uses: ./.github/actions/loc-snapshot
+        with:
+          server-token: ${{ secrets.LOC_SNAPSHOT_TOKEN }}
       - name: Read version
         id: version
         run: echo "version=$(jq -r .version apps/www/package.json)" >> "$GITHUB_OUTPUT"
