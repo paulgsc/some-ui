@@ -8,15 +8,22 @@
  */
 
 import type { JSX } from "react"
+import { useEffect } from "react"
 import type { SpeechAdapterRegistry } from "@speech/lib/adapters"
+import { createWebSpeechAdapter } from "@speech/lib/adapters/web-speech"
 import { useSpeechQueue } from "@speech/lib/hooks"
+import { isAbortError } from "@speech/lib/promise/abort"
 import { peekSpeechQueue, resetSpeechQueue } from "@speech/lib/queue"
 import type { ControllableAdapter } from "@speech/lib/testing"
-import { createControllableAdapter, flushAsync } from "@speech/lib/testing"
+import {
+  createControllableAdapter,
+  createFakeSpeechSynthesis,
+  flushAsync,
+} from "@speech/lib/testing"
 import { act, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
 
-import { SpeechProvider, useSpeechAdapter } from "."
+import { SpeechProvider, useSpeaker, useVoiceReport } from "."
 
 afterEach(() => {
   resetSpeechQueue()
@@ -113,7 +120,11 @@ describe("SpeechProvider", () => {
 
     const view = render(
       <SpeechProvider
-        config={{ mode: "server", voiceId: "onyx", adapters: registry }}
+        config={{
+          mode: "server",
+          hosted: { provider: "openai", voiceId: "onyx" },
+          adapters: registry,
+        }}
       >
         <Speaker phrase="first session" />
       </SpeechProvider>
@@ -128,7 +139,11 @@ describe("SpeechProvider", () => {
     await act(async () => {
       view.rerender(
         <SpeechProvider
-          config={{ mode: "server", voiceId: "nova", adapters: registry }}
+          config={{
+            mode: "server",
+            hosted: { provider: "openai", voiceId: "nova" },
+            adapters: registry,
+          }}
         >
           <Speaker phrase="second session" />
         </SpeechProvider>
@@ -166,14 +181,21 @@ describe("SpeechProvider", () => {
     expect(adapters).toHaveLength(1)
   })
 
-  it("exposes the session's adapter to call sites that speak directly", async () => {
+  it("gives applets the session's speaker, which speaks through the session's own adapter", async () => {
     const { registry, adapters } = trackingRegistry()
 
     const Direct = (): JSX.Element => {
-      const adapter = useSpeechAdapter()
+      const speaker = useSpeaker()
       return (
-        <button type="button" onClick={() => void adapter.speak("direct")}>
-          {adapter.id}
+        <button
+          type="button"
+          onClick={() =>
+            void speaker
+              ?.say("direct", { lang: "ko-KR" })
+              .catch(() => undefined)
+          }
+        >
+          speak
         </button>
       )
     }
@@ -190,18 +212,167 @@ describe("SpeechProvider", () => {
       await flushAsync()
     })
 
-    // The adapter a direct call site holds is the session's own - not a
-    // second one built on the side.
+    // Not a second adapter built on the side: the session's own, and the
+    // line carries its language, not a voice.
     expect(adapters).toHaveLength(1)
     expect(adapters[0]?.calls.at(0)?.text).toBe("direct")
+    expect(adapters[0]?.calls.at(0)?.options.lang).toBe("ko-KR")
   })
 
-  it("throws a directed error when the hooks are used outside a provider", () => {
-    const Orphan = (): JSX.Element => {
-      useSpeechAdapter()
-      return <span>never rendered</span>
+  it("keeps a muted session silent, and says so as a cancellation", async () => {
+    const { registry, adapters } = trackingRegistry()
+    const outcomes: Array<unknown> = []
+
+    const Direct = (): JSX.Element => {
+      const speaker = useSpeaker()
+      return (
+        <button
+          type="button"
+          onClick={() =>
+            void speaker?.say("direct", { lang: "ko-KR" }).catch((error) => {
+              outcomes.push(isAbortError(error))
+            })
+          }
+        >
+          speak
+        </button>
+      )
     }
 
-    expect(() => render(<Orphan />)).toThrow(/SpeechProvider/)
+    render(
+      <SpeechProvider config={{ mode: "server", adapters: registry }} muted>
+        <Direct />
+      </SpeechProvider>
+    )
+    await waitFor(() => expect(screen.getByRole("button")).toBeDefined())
+
+    await act(async () => {
+      screen.getByRole("button").click()
+      await flushAsync()
+    })
+
+    expect(adapters[0]?.calls).toHaveLength(0)
+    expect(outcomes).toEqual([true])
+  })
+
+  it("is muted before any child can speak, even one that speaks on mount", async () => {
+    const { registry, adapters } = trackingRegistry()
+
+    // A child's effects run before its parent's, so this reaches the
+    // speaker before any effect of the provider's own has run.
+    const SpeaksOnMount = (): JSX.Element => {
+      const speaker = useSpeaker()
+      useEffect(() => {
+        void speaker?.say("on mount", { lang: "ko-KR" }).catch(() => undefined)
+      }, [speaker])
+      return <span>mounted</span>
+    }
+
+    render(
+      <SpeechProvider config={{ mode: "server", adapters: registry }} muted>
+        <SpeaksOnMount />
+      </SpeechProvider>
+    )
+    await waitFor(() => expect(screen.getByText("mounted")).toBeDefined())
+    await act(async () => {
+      await flushAsync()
+    })
+
+    expect(adapters[0]?.calls).toHaveLength(0)
+  })
+
+  it("keeps a displayed voice report current as the browser's voices load", async () => {
+    const fake = createFakeSpeechSynthesis()
+    const adapter = createWebSpeechAdapter({
+      synthesis: fake.synthesis,
+      utteranceFactory: fake.utteranceFactory,
+    })
+
+    const Report = (): JSX.Element => {
+      const report = useVoiceReport("ko-KR")
+      return <span>{report?.voice ?? "no voice"}</span>
+    }
+
+    render(
+      <SpeechProvider
+        config={{
+          mode: "static",
+          adapters: { server: () => adapter, static: () => adapter },
+        }}
+      >
+        <Report />
+      </SpeechProvider>
+    )
+    await waitFor(() => expect(screen.getByText("no voice")).toBeDefined())
+
+    act(() => {
+      fake.controls.loadVoices([
+        {
+          name: "Yuna",
+          lang: "ko-KR",
+          voiceURI: "Yuna",
+          default: false,
+          localService: true,
+        },
+      ])
+    })
+
+    expect(screen.getByText("Yuna")).toBeDefined()
+  })
+
+  it("catches voices that load before the report starts listening", async () => {
+    const fake = createFakeSpeechSynthesis()
+    const adapter = createWebSpeechAdapter({
+      synthesis: fake.synthesis,
+      utteranceFactory: fake.utteranceFactory,
+    })
+
+    // As in Chrome: the first read comes back empty and starts the voices
+    // loading, and they land before anything has subscribed.
+    const readVoices = fake.synthesis.getVoices
+    let loading = false
+    fake.synthesis.getVoices = (): Array<SpeechSynthesisVoice> => {
+      const voices = readVoices()
+      if (!loading) {
+        loading = true
+        fake.controls.loadVoices([
+          {
+            name: "Yuna",
+            lang: "ko-KR",
+            voiceURI: "Yuna",
+            default: false,
+            localService: true,
+          },
+        ])
+      }
+      return voices
+    }
+
+    const Report = (): JSX.Element => {
+      const report = useVoiceReport("ko-KR")
+      return <span>{report?.voice ?? "no voice"}</span>
+    }
+
+    render(
+      <SpeechProvider
+        config={{
+          mode: "static",
+          adapters: { server: () => adapter, static: () => adapter },
+        }}
+      >
+        <Report />
+      </SpeechProvider>
+    )
+
+    await waitFor(() => expect(screen.getByText("Yuna")).toBeDefined())
+  })
+
+  it("has no speaker outside a provider, rather than a broken one", () => {
+    const Orphan = (): JSX.Element => (
+      <span>{useSpeaker() === null ? "no speaker" : "a speaker"}</span>
+    )
+
+    render(<Orphan />)
+    expect(screen.getByText("no speaker")).toBeDefined()
   })
 })

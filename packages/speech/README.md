@@ -22,10 +22,19 @@ one (`packages/ui/interview`, `packages/ui/honeycomb`).
 ```
 
 ```tsx
-// A component, anywhere below it.
-const { speak } = useSpeechQueue("chat")
-speak("안녕하세요", { volume: 1 }, /* priority */ 2)
+// An applet, anywhere below it: a line in a language, never a voice.
+const speaker = useSpeaker() // null without a provider: run silently
+await speaker?.say("안녕하세요", { lang: "ko-KR" })
 ```
+
+The `Speaker` (`lib/speaker`) is all an applet gets. It cannot name a voice
+and cannot reach the adapter, because the session owns what a person decides
+about speech: **which voice** (their choice in Settings speaks every line in
+its language) and **whether it is muted** (a muted session says nothing, and
+`say` rejects as a cancellation). TOPIK once held the adapter instead, named
+"the first Korean voice" on every line and called the adapter directly, so a
+chosen voice never spoke a lesson and mute stopped only the line already
+playing. Queued speech (`useSpeechQueue`) goes through the same session.
 
 Nothing there names a backend, a host, a port, or an API key. The
 `mode` — the same `"static" | "server"` bit `@some-ui/fetch-kit` uses for
@@ -39,11 +48,26 @@ data — selects one:
 That mapping is `DEFAULT_SPEECH_ADAPTERS` in `lib/adapters/registry.ts`, and
 it is a default, not a rule: `config.adapters` replaces either entry,
 `config.mode` pins the choice, and every knob the built-in factories read —
-endpoint, key, provider, format, timeout, voice — is a config field. If the
+endpoint, key, hosted voice, format, timeout — is a config field. If the
 resolved adapter reports `supported === false` (a browser with no Web Audio,
 say), the other one is used instead, because that is a fact about the
 browser rather than about the deployment and the caller has no business
 handling it.
+
+### Two kinds of voice, never mixed
+
+- **Hosted voices are ours, and closed.** Every one is in `BUILTIN_VOICES`,
+  so `HostedVoiceOf<P>` (`lib/voices`) is a compile-time union and
+  `config.hosted` pairs a provider with one of its own voices or with
+  nothing chosen. `hostedVoiceFor` decides each line: the chosen voice when
+  it speaks the line's language, else that language's declared default
+  (`DEFAULT_HOSTED_VOICE`), else no voice and an honest failure. Nothing
+  falls back to "the first voice in the list". A stored string becomes a
+  choice in one place, `parseHostedVoiceChoice`.
+- **The device's voices are not ours.** The browser's `speechSynthesis` is
+  someone else's API with someone else's voices, different on every device.
+  It is handed a language and speaks it in whatever voice it has; none of
+  its voices ever becomes a `VoiceConfig`.
 
 ## Telling the person
 

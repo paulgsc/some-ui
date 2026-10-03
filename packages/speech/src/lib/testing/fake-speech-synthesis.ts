@@ -11,6 +11,7 @@
 export type FakeUtterance = {
   text: string
   lang: string
+  voice: SpeechSynthesisVoice | null
   rate: number
   pitch: number
   volume: number
@@ -28,6 +29,10 @@ export type FakeSpeechSynthesis = {
   pause: () => void
   resume: () => void
   getVoices: () => Array<SpeechSynthesisVoice>
+  addEventListener: (type: string, listener: () => void) => void
+  removeEventListener: (type: string, listener: () => void) => void
+  /** Replaces the voices and fires `voiceschanged`, as a browser does. */
+  loadVoices: (voices: Array<SpeechSynthesisVoice>) => void
   readonly spoken: ReadonlyArray<FakeUtterance>
   readonly paused: boolean
   readonly cancelCount: number
@@ -45,8 +50,10 @@ export type FakeSpeechSynthesisHandle = {
 }
 
 export function createFakeSpeechSynthesis(
-  voices: Array<SpeechSynthesisVoice> = []
+  initialVoices: Array<SpeechSynthesisVoice> = []
 ): FakeSpeechSynthesisHandle {
+  let voices = initialVoices
+  const voicesChanged = new Set<() => void>()
   const spoken: Array<FakeUtterance> = []
   let paused = false
   let cancelCount = 0
@@ -68,6 +75,16 @@ export function createFakeSpeechSynthesis(
       paused = false
     },
     getVoices: (): Array<SpeechSynthesisVoice> => voices,
+    addEventListener: (type: string, listener: () => void): void => {
+      if (type === "voiceschanged") voicesChanged.add(listener)
+    },
+    removeEventListener: (type: string, listener: () => void): void => {
+      if (type === "voiceschanged") voicesChanged.delete(listener)
+    },
+    loadVoices: (next: Array<SpeechSynthesisVoice>): void => {
+      voices = next
+      for (const listener of [...voicesChanged]) listener()
+    },
     get spoken(): ReadonlyArray<FakeUtterance> {
       return spoken
     },
@@ -95,6 +112,7 @@ export function createFakeSpeechSynthesis(
     const utterance: FakeUtterance = {
       text,
       lang: "",
+      voice: null,
       rate: 1,
       pitch: 1,
       volume: 1,

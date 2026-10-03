@@ -3,7 +3,7 @@ import type {
   SessionActivity,
   TopikLevel,
 } from "@some-ui/activity-catalog"
-import type { TTSProvider } from "@some-ui/speech"
+import type { HostedVoiceChoice } from "@some-ui/speech"
 import type { SceneConfig, SlotId } from "@some-ui/types"
 import type { LayoutNode } from "wireframes"
 
@@ -26,9 +26,13 @@ export type UserProfile = {
 }
 
 export type UserSettings = {
-  ttsProvider: TTSProvider
-  /** Empty string means "use the provider's default voice". */
-  ttsVoiceId: string
+  /**
+   * The hosted voice: a provider and the voice chosen from it, or `null`
+   * for the provider's default in each language. Typed so a voice of
+   * another provider cannot be held; storage is read into it once, in the
+   * settings repository.
+   */
+  ttsVoice: HostedVoiceChoice
   /**
    * What this app may play, per channel. Lives with the rest of the tenant
    * settings rather than in its own store so that a person's audio choices

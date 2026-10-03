@@ -11,7 +11,6 @@ import type { SpeakOptions, SpeechAdapter } from "@speech/lib/adapters/types"
 import type { PendingSpeech } from "@speech/lib/promise"
 import { createSpeechLedger } from "@speech/lib/promise"
 import { createAbortError } from "@speech/lib/promise/abort"
-import type { VoiceConfig } from "@speech/lib/types/tts-types"
 
 export type AdapterCall = {
   readonly text: string
@@ -29,9 +28,7 @@ export type ControllableAdapter = SpeechAdapter & {
   fail: (error?: Error) => void
 }
 
-export function createControllableAdapter(
-  voices: ReadonlyArray<VoiceConfig> = []
-): ControllableAdapter {
+export function createControllableAdapter(): ControllableAdapter {
   const ledger = createSpeechLedger()
   const calls: Array<AdapterCall> = []
   let stopCount = 0
@@ -65,7 +62,12 @@ export function createControllableAdapter(
   return {
     id: "web-speech",
     supported: true,
-    voices,
+    subscribe: () => () => undefined,
+    describe: () => ({
+      platform: "browser",
+      voice: "Controllable",
+      speaksLanguage: true,
+    }),
     get pending(): number {
       return ledger.size
     },

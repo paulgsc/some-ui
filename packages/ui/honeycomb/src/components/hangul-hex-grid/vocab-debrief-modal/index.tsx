@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react"
 import type { WordEntry } from "@honeycomb/data"
 import { useAutoDismiss } from "@honeycomb/hooks/use-auto-dismiss"
-import { speak } from "@honeycomb/lib/hangul/speech"
+import { sayWord } from "@honeycomb/lib/hangul/speech"
 import type { MissedWord } from "@honeycomb/types/hangul-types"
+import { useSpeaker } from "@some-ui/speech"
 
 import "./index.css"
 
@@ -51,6 +52,7 @@ export const VocabDebriefModal = ({
   entry,
   onDismiss,
 }: VocabDebriefModalProps): React.JSX.Element | null => {
+  const speaker = useSpeaker()
   // Tracked apart rather than as one "engaged" flag: a player who tabs in and
   // then happens to move the mouse back out is still reading, and collapsing
   // the two would have that pointer-leave cancel their focus.
@@ -207,7 +209,7 @@ export const VocabDebriefModal = ({
           {entry && (
             <button
               type="button"
-              onClick={() => speak(entry.ttsText)}
+              onClick={() => sayWord(speaker, entry.ttsText)}
               className="rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold text-white/80 transition-colors hover:bg-white/20"
             >
               🔊 Hear it

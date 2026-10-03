@@ -1,12 +1,10 @@
 import type { JSX } from "react"
 import { useEffect, useRef, useState } from "react"
-import { useOptionalSpeechAdapter } from "@some-ui/speech"
+import { useSpeaker } from "@some-ui/speech"
 import { ChatPanel } from "@topik/components/topik/chat-panel"
 import type { ConversationBatch, Message, PlayState } from "@topik/lib/topik"
-import {
-  lineText,
-  voiceFor,
-} from "@topik/lib/topik/adapter/hooks/use-handheld-lesson"
+import { lineText } from "@topik/lib/topik/adapter/hooks/use-handheld-lesson"
+import { SPOKEN_LANGUAGE } from "@topik/lib/topik/core/spoken-language"
 import { cn } from "some-ui-utils"
 
 type ConversationPreviewProps = {
@@ -41,7 +39,7 @@ export const ConversationPreview = ({
   const [shown, setShown] = useState(() => batches[0]?.messages.length ?? 0)
   const [playState, setPlayState] = useState<PlayState>("paused")
   const [speakingId, setSpeakingId] = useState<string | null>(null)
-  const speech = useOptionalSpeechAdapter()
+  const speech = useSpeaker()
   const utterance = useRef<AbortController | null>(null)
 
   // The lesson under the preview can change under it (the operator edits the
@@ -84,9 +82,9 @@ export const ConversationPreview = ({
     const controller = new AbortController()
     utterance.current = controller
     try {
-      await speech.speak(lineText(message), {
+      await speech.say(lineText(message), {
+        lang: SPOKEN_LANGUAGE,
         signal: controller.signal,
-        voice: voiceFor(speech),
         onStart: () => setSpeakingId(message.id),
       })
     } catch {

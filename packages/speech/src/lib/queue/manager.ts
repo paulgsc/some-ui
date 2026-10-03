@@ -24,20 +24,20 @@
  * starts from nothing.
  */
 
-import type { SpeechAdapter } from "@speech/lib/adapters/types"
-import { isAbortError, toError } from "@speech/lib/promise/abort"
-import type { TTSOptions, VoiceConfig } from "@speech/lib/types/tts-types"
+import type { SpeechAdapter, VoiceReport } from "@speech/lib/adapters/types"
+import {
+  createAbortError,
+  isAbortError,
+  toError,
+} from "@speech/lib/promise/abort"
+import type { SayOptions, Speaker } from "@speech/lib/speaker"
+import type { TTSOptions } from "@speech/lib/types/tts-types"
 
 import type { SpeechAction } from "./actions"
 import { speechReducer } from "./reducer"
 import type { Store } from "./store"
 import { createStore } from "./store"
 import type { SpeechItem, SpeechQueueState } from "./types"
-
-export type SpeechQueueManagerOptions = {
-  /** Voice used by items that don't name one of their own. */
-  defaultVoice?: VoiceConfig | null
-}
 
 const INITIAL_STATE: SpeechQueueState = {
   items: [],
@@ -51,16 +51,78 @@ const INITIAL_STATE: SpeechQueueState = {
 export class SpeechQueueManager {
   private readonly store: Store<SpeechQueueState, SpeechAction>
   private readonly adapter: SpeechAdapter
-  private defaultVoice: VoiceConfig | null
   private pumpScheduled = false
   private inFlight: SpeechItem | null = null
   private disposed = false
   private muted = false
 
-  constructor(adapter: SpeechAdapter, options: SpeechQueueManagerOptions = {}) {
+  /**
+   * The page's speech, for applets: one line at a time, in the language it
+   * names, silent while muted. See `lib/speaker`.
+   */
+  readonly speaker: Speaker
+
+  /** Who to tell when `muted` or the adapter's voices change. */
+  private readonly speakerListeners = new Set<() => void>()
+  private readonly unsubscribeAdapter: () => void
+
+  constructor(adapter: SpeechAdapter) {
     this.adapter = adapter
-    this.defaultVoice = options.defaultVoice ?? null
     this.store = createStore(INITIAL_STATE, speechReducer)
+    this.unsubscribeAdapter = adapter.subscribe(() => this.notifySpeaker())
+    const isMuted = (): boolean => this.muted
+    this.speaker = {
+      available: adapter.supported,
+      say: (text, options): Promise<void> => this.say(text, options),
+      stop: (): void => this.adapter.stop(),
+      describe: (lang): VoiceReport => this.adapter.describe(lang),
+      get muted(): boolean {
+        return isMuted()
+      },
+      subscribe: (listener): (() => void) => {
+        this.speakerListeners.add(listener)
+        return (): void => {
+          this.speakerListeners.delete(listener)
+        }
+      },
+    }
+  }
+
+  private notifySpeaker(): void {
+    for (const listener of [...this.speakerListeners]) listener()
+  }
+
+  // ── Speaker ──────────────────────────────────────────────────────────────
+
+  /**
+   * One line, spoken now rather than queued: an applet that paces itself
+   * (TOPIK's lesson, its read-aloud) needs the line's own promise. Muted, it
+   * is not spoken and rejects as a cancellation, so a lesson waits rather
+   * than racing on through lines nobody heard. Its outcome feeds the same
+   * `error` the queue's items do, which is what the session's notices read.
+   */
+  private say(text: string, options: SayOptions): Promise<void> {
+    if (this.disposed) {
+      return Promise.reject(createAbortError("The speech session has ended"))
+    }
+    if (this.muted) {
+      return Promise.reject(createAbortError("Voice output is muted"))
+    }
+    return this.adapter.speak(text, options).then(
+      () => {
+        if (!this.disposed) this.store.dispatch({ type: "SAID" })
+      },
+      (error: unknown) => {
+        const failure = toError(error)
+        if (!this.disposed && !isAbortError(failure)) {
+          this.store.dispatch({
+            type: "SAY_FAILED",
+            payload: { error: failure.message },
+          })
+        }
+        throw failure
+      }
+    )
   }
 
   // ── Queue API ────────────────────────────────────────────────────────────
@@ -131,18 +193,6 @@ export class SpeechQueueManager {
     return this.adapter
   }
 
-  getVoices(): ReadonlyArray<VoiceConfig> {
-    return this.adapter.voices
-  }
-
-  getDefaultVoice(): VoiceConfig | null {
-    return this.defaultVoice
-  }
-
-  setDefaultVoice(voice: VoiceConfig | null): void {
-    this.defaultVoice = voice
-  }
-
   isDisposed(): boolean {
     return this.disposed
   }
@@ -165,9 +215,10 @@ export class SpeechQueueManager {
     if (muted) {
       this.store.dispatch({ type: "CLEAR" })
       this.adapter.stop()
-      return
+    } else {
+      this.schedulePump()
     }
-    this.schedulePump()
+    this.notifySpeaker()
   }
 
   /**
@@ -216,6 +267,8 @@ export class SpeechQueueManager {
     this.store.dispatch({ type: "CLEAR" })
     this.inFlight = null
     this.adapter.stop()
+    this.unsubscribeAdapter()
+    this.speakerListeners.clear()
   }
 
   // ── Processing ───────────────────────────────────────────────────────────
@@ -252,7 +305,7 @@ export class SpeechQueueManager {
 
       await this.adapter.speak(next.text, {
         signal: next.controller.signal,
-        voice: next.options?.voice ?? this.defaultVoice,
+        lang: next.options?.lang,
         volume: next.options?.volume,
         playbackRate: next.options?.playbackRate,
         onStart: next.options?.onStart,

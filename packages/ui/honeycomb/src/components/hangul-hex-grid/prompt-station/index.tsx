@@ -2,9 +2,10 @@ import { useEffect, useRef } from "react"
 import { HANGUL_WORDS } from "@honeycomb/data"
 import type { WordEntry } from "@honeycomb/data"
 import type { HintTier } from "@honeycomb/hooks/use-prompt-escalation"
-import { speak } from "@honeycomb/lib/hangul/speech"
+import { sayWord } from "@honeycomb/lib/hangul/speech"
 import type { Stimulus } from "@honeycomb/lib/hangul/wasm-game-bridge"
 import type { WordProgress } from "@honeycomb/types/hangul-types"
+import { useSpeaker } from "@some-ui/speech"
 
 type PromptStationProps = {
   stimulus: Stimulus | null
@@ -48,6 +49,7 @@ export const PromptStation = ({
   words = HANGUL_WORDS,
 }: PromptStationProps): React.JSX.Element | null => {
   const lastAutoPlayedTierRef = useRef<HintTier | null>(null)
+  const speaker = useSpeaker()
 
   const entry =
     stimulus?.kind === "icon"
@@ -64,9 +66,9 @@ export const PromptStation = ({
     // usePromptEscalation) while that tier is active.
     if (lastAutoPlayedTierRef.current !== tier) {
       lastAutoPlayedTierRef.current = tier
-      speak(entry.ttsText)
+      sayWord(speaker, entry.ttsText)
     }
-  }, [entry, tier])
+  }, [entry, tier, speaker])
 
   if (stimulus?.kind !== "icon" || !entry) return null
 
@@ -102,7 +104,7 @@ export const PromptStation = ({
           {(tier === "icon-tts" || tier === "icon-tts-hangul") && (
             <button
               type="button"
-              onClick={() => speak(entry.ttsText)}
+              onClick={() => sayWord(speaker, entry.ttsText)}
               className="text-xs font-semibold text-white/80 bg-white/10 hover:bg-white/20 rounded-full px-3 py-1 transition-colors"
             >
               🔊 Replay

@@ -17,8 +17,6 @@ import {
   SelectValue,
   Skeleton,
 } from "@some-ui/shared"
-import { BUILTIN_VOICES } from "@some-ui/speech"
-import type { TTSProvider } from "@some-ui/speech"
 import {
   isThemePreference,
   SESSION_THEMES,
@@ -35,18 +33,8 @@ import type { UserSettings } from "@/lib/tenant"
 import { settingsQuery, useSettings, useUpdateSettings } from "@/lib/tenant"
 import { DataHomeSection } from "@/components/settings/data-home-section"
 import { DeviceSection } from "@/components/settings/device-section"
+import { HostedVoiceFields } from "@/components/settings/hosted-voice-fields"
 import { StudyNudgeSection } from "@/components/settings/study-nudge-section"
-
-const TTS_PROVIDER_OPTIONS: ReadonlyArray<{
-  value: TTSProvider
-  label: string
-}> = [
-  { value: "openai", label: "OpenAI" },
-  { value: "elevenlabs", label: "ElevenLabs" },
-  { value: "google", label: "Google" },
-  { value: "azure", label: "Azure" },
-  { value: "custom", label: "Custom" },
-]
 
 const LAYOUT_TREE_OPTIONS: ReadonlyArray<{
   value: LayoutTreeId
@@ -63,10 +51,6 @@ const THEME_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
   { value: SYSTEM_PREFERENCE, label: "Match system" },
   ...SESSION_THEMES.map((theme) => ({ value: theme.id, label: theme.label })),
 ]
-
-function isTTSProvider(value: string): value is TTSProvider {
-  return TTS_PROVIDER_OPTIONS.some((option) => option.value === value)
-}
 
 function isLayoutTreeId(value: string): value is LayoutTreeId {
   return LAYOUT_TREE_OPTIONS.some((option) => option.value === value)
@@ -94,7 +78,6 @@ const SettingsForm = ({
   const { preference, setPreference } = useTheme()
 
   const isDirty = JSON.stringify(settings) !== JSON.stringify(draft)
-  const voicesForProvider = BUILTIN_VOICES[draft.ttsProvider]
 
   // Lifted verbatim from the pre-migration `onSuccess`. No navigation, so
   // no `disabled` check is needed here the way session-composer's chain
@@ -102,11 +85,6 @@ const SettingsForm = ({
   useIntentEffect(saveIntent.state, () => {
     toast("Settings saved")
   })
-
-  const handleProviderChange = (provider: TTSProvider): void => {
-    // A voice id from the old provider won't exist on the new one.
-    setDraft({ ...draft, ttsProvider: provider, ttsVoiceId: "" })
-  }
 
   const handleSave = (): void => {
     saveIntent.start(draft)
@@ -121,54 +99,10 @@ const SettingsForm = ({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="space-y-2">
-          <Label>Text-to-speech provider</Label>
-          <Select
-            value={draft.ttsProvider}
-            onValueChange={(value: string) => {
-              if (isTTSProvider(value)) handleProviderChange(value)
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {TTS_PROVIDER_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label>Voice</Label>
-          {voicesForProvider.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              No preset voices for this provider. Uses the endpoint default
-              voice.
-            </p>
-          ) : (
-            <Select
-              value={draft.ttsVoiceId || voicesForProvider[0]?.id}
-              onValueChange={(value: string) =>
-                setDraft({ ...draft, ttsVoiceId: value })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {voicesForProvider.map((voice) => (
-                  <SelectItem key={voice.id} value={voice.id}>
-                    {voice.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
+        <HostedVoiceFields
+          value={draft.ttsVoice}
+          onChange={(ttsVoice) => setDraft({ ...draft, ttsVoice })}
+        />
 
         <div className="space-y-2">
           <Label htmlFor="default-duration">

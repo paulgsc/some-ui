@@ -6,6 +6,16 @@
  * companion services at all, so an HTTP adapter there would fail on every
  * utterance.
  *
+ * The browser's voices are the browser's: which ones exist depends on the
+ * device, and they are not ours to list or let a person choose among. A line
+ * gives this adapter its language, and the adapter hands it to the browser
+ * voice for that language, named explicitly (`voiceForLanguage`) rather than
+ * left to the browser's guess from `lang` alone, so the voice `describe`
+ * reports is the voice that speaks. A browser with no voice for the language
+ * reads the line in its default voice, another language's, and `describe`
+ * says so. None of these ever becomes a `VoiceConfig`, which describes the
+ * hosted catalogue only (`lib/voices`).
+ *
  * Three settlement bugs from the call sites this replaces are fixed here,
  * and pinned by `adapter-contract.test.ts`:
  *
@@ -21,10 +31,13 @@
  *   settle a promise belonging to the next one.
  */
 
-import type { SpeakOptions, SpeechAdapter } from "@speech/lib/adapters/types"
+import type {
+  SpeakOptions,
+  SpeechAdapter,
+  VoiceReport,
+} from "@speech/lib/adapters/types"
 import { createSpeechLedger } from "@speech/lib/promise"
 import { createAbortError } from "@speech/lib/promise/abort"
-import type { VoiceConfig } from "@speech/lib/types/tts-types"
 
 export type WebSpeechAdapterOptions = {
   /** Injected in tests; defaults to `window.speechSynthesis`. */
@@ -51,15 +64,30 @@ function resolveSynthesis(
   return "speechSynthesis" in window ? window.speechSynthesis : null
 }
 
-function toVoiceConfig(voice: SpeechSynthesisVoice): VoiceConfig {
-  return {
-    id: voice.voiceURI,
-    name: voice.name,
-    // The `TTSProvider` union describes TTS *vendors*; a browser voice
-    // belongs to none of them, and "custom" is the union's escape hatch.
-    provider: "custom",
-    language: voice.lang,
-  }
+function normalizedTag(tag: string): string {
+  return tag.toLowerCase().replace(/_/g, "-")
+}
+
+/**
+ * The browser voice for `lang`: one for exactly that tag, else one for its
+ * language (`ko` for `ko-KR`), preferring a voice that works offline.
+ */
+function voiceForLanguage(
+  voices: ReadonlyArray<SpeechSynthesisVoice>,
+  lang: string
+): SpeechSynthesisVoice | null {
+  const wanted = normalizedTag(lang)
+  const primary = wanted.split("-")[0] ?? wanted
+  const ranked = [...voices].sort(
+    (a, b) => Number(b.localService) - Number(a.localService)
+  )
+  return (
+    ranked.find((voice) => normalizedTag(voice.lang) === wanted) ??
+    ranked.find(
+      (voice) => (normalizedTag(voice.lang).split("-")[0] ?? "") === primary
+    ) ??
+    null
+  )
 }
 
 export function createWebSpeechAdapter(
@@ -76,10 +104,16 @@ export function createWebSpeechAdapter(
   let volume = 1
   let playbackRate = options.rate ?? DEFAULT_RATE
 
+  /** The live utterances' detaches, so a flush can release them all. */
+  const attached = new Set<() => void>()
+
   const cancelAll = (error: Error): void => {
-    // Flush before cancelling: `cancel()` fires `onend` on the utterance in
-    // flight, and an entry that is already settled can't be mistaken for a
-    // clean finish by that handler.
+    // Detach, then flush, then cancel: `cancel()` fires `onend` on the
+    // utterance in flight, and a settled, detached entry can't be mistaken
+    // for a clean finish by it. Detaching also drops the displaced caller's
+    // abort listener, which would otherwise cancel whatever is speaking
+    // when that caller's signal fires later.
+    for (const detach of [...attached]) detach()
     ledger.flush(error)
     synthesis?.cancel()
   }
@@ -112,12 +146,17 @@ export function createWebSpeechAdapter(
     utterance.rate = speakOptions.playbackRate ?? playbackRate
     utterance.pitch = options.pitch ?? DEFAULT_PITCH
     utterance.volume = speakOptions.volume ?? volume
-    const lang = speakOptions.voice?.language ?? options.lang
-    if (lang) utterance.lang = lang
+    const lang = speakOptions.lang ?? options.lang
+    if (lang) {
+      utterance.lang = lang
+      const voice = voiceForLanguage(synthesis.getVoices(), lang)
+      if (voice) utterance.voice = voice
+    }
 
     let abortListener: (() => void) | null = null
 
     const detach = (): void => {
+      attached.delete(detach)
       utterance.onstart = null
       utterance.onend = null
       utterance.onerror = null
@@ -155,6 +194,7 @@ export function createWebSpeechAdapter(
       entry.reject(createAbortError("Speech aborted"))
       synthesis.cancel()
     }
+    attached.add(detach)
     speakOptions.signal?.addEventListener("abort", abortListener, {
       once: true,
     })
@@ -166,10 +206,30 @@ export function createWebSpeechAdapter(
   return {
     id: "web-speech",
     supported: synthesis !== null,
-    get voices(): ReadonlyArray<VoiceConfig> {
-      // Voices load asynchronously in every browser, so this has to be read
-      // at access time rather than captured at construction.
-      return synthesis?.getVoices().map(toVoiceConfig) ?? []
+    // Browsers load their voices asynchronously and announce it; until then
+    // `describe` can only report what has loaded so far.
+    subscribe: (listener): (() => void) => {
+      if (typeof synthesis?.addEventListener !== "function") {
+        return () => undefined
+      }
+      synthesis.addEventListener("voiceschanged", listener)
+      return (): void => {
+        synthesis.removeEventListener("voiceschanged", listener)
+      }
+    },
+    describe: (lang): VoiceReport => {
+      const voices = synthesis?.getVoices() ?? []
+      const voice = voiceForLanguage(voices, lang)
+      if (voice) {
+        return { platform: "browser", voice: voice.name, speaksLanguage: true }
+      }
+      // What the browser falls back to for a language it has no voice for.
+      const fallback = voices.find((candidate) => candidate.default) ?? null
+      return {
+        platform: "browser",
+        voice: fallback?.name ?? null,
+        speaksLanguage: false,
+      }
     },
     get pending(): number {
       return ledger.size

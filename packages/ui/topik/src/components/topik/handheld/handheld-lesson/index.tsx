@@ -56,7 +56,7 @@ export const HandheldLesson = ({
     pastedResumeStore,
   })
   const { lesson, audio, dispatch, generator } = vm
-  const { speechAdapter, shelf } = useSessionConfig()
+  const { speaker, shelf } = useSessionConfig()
   // The read-aloud drill takes the whole screen, header included; leaving it
   // returns to the material list it was opened from.
   const [reading, setReading] = useState(false)
@@ -70,7 +70,7 @@ export const HandheldLesson = ({
       >
         <ReadAloudScreen
           topikLevel={vm.selection.level}
-          speech={speechAdapter}
+          speech={speaker}
           store={readAloudStore}
           short={short}
           onExit={() => setReading(false)}

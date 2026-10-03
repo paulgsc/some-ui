@@ -14,14 +14,40 @@
  * `@some-ui/fetch-kit`, and not for branching.
  */
 
-import type { VoiceConfig } from "@speech/lib/types/tts-types"
-
 export type SpeechAdapterId = "http" | "web-speech"
 
+/**
+ * Who would speak a line in a given language, as a person would want to
+ * know it: the platform, and the voice by name.
+ *
+ * - `"hosted"` - this site's voice service; `voice` is the catalogue voice
+ *   `hostedVoiceFor` picks for the language.
+ * - `"browser"` - the browser's own synthesizer; `voice` is the browser
+ *   voice the adapter hands the line to.
+ * - `"phone"` - the phone's text-to-speech (the Android app).
+ *
+ * `speaksLanguage` is false when the platform has no voice for the
+ * language: a hosted line then fails, and a browser reads it in `voice`
+ * anyway, another language's voice, which is what an un-Korean Korean line
+ * sounds like. `voice` is null when there is no voice to name at all.
+ */
+export type VoiceReport = {
+  readonly platform: "hosted" | "browser" | "phone"
+  readonly voice: string | null
+  readonly speaksLanguage: boolean
+}
+
+/**
+ * What a line asks for: its language, never a voice. Which voice speaks it
+ * is the backend's business - the person's hosted choice (`lib/voices`), or
+ * whatever the device's synthesizer has for that language - so no caller
+ * can override the person's choice by naming a voice of its own.
+ */
 export type SpeakOptions = {
+  /** BCP-47 tag of the text. Omitted, the backend's default language. */
+  lang?: string
   /** Aborting this rejects the returned promise with an `AbortError`. */
   signal?: AbortSignal
-  voice?: VoiceConfig | null
   volume?: number
   playbackRate?: number
   onStart?: () => void
@@ -58,7 +84,17 @@ export type SpeechAdapter = {
   readonly id: SpeechAdapterId
   /** False when the runtime can't do speech at all - callers may show UI. */
   readonly supported: boolean
-  readonly voices: ReadonlyArray<VoiceConfig>
+  /**
+   * Who would speak a line in `lang` right now. A snapshot: a browser's or
+   * phone's voices load asynchronously, so read it when it is shown.
+   */
+  describe: (lang: string) => VoiceReport
+  /**
+   * Calls `listener` when what `describe` would say may have changed: a
+   * browser's or phone's voices finished loading, voice data was found
+   * missing. Returns the unsubscribe.
+   */
+  subscribe: (listener: () => void) => () => void
   /** Outstanding `speak()` promises. Diagnostics and tests only. */
   readonly pending: number
   speak: (text: string, options?: SpeakOptions) => Promise<void>

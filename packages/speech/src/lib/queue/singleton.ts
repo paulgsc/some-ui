@@ -23,21 +23,19 @@
 
 import type { SpeechAdapter } from "@speech/lib/adapters/types"
 
-import type { SpeechQueueManagerOptions } from "./manager"
 import { SpeechQueueManager } from "./manager"
 
 let current: SpeechQueueManager | null = null
 
 export function initializeSpeechQueue(
-  adapter: SpeechAdapter,
-  options: SpeechQueueManagerOptions = {}
+  adapter: SpeechAdapter
 ): SpeechQueueManager {
   if (current && !current.isDisposed() && current.getAdapter() === adapter) {
     return current
   }
 
   resetSpeechQueue()
-  current = new SpeechQueueManager(adapter, options)
+  current = new SpeechQueueManager(adapter)
   return current
 }
 

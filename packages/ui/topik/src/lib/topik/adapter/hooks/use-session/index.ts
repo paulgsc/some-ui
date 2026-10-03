@@ -6,7 +6,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react"
-import type { SpeechAdapter } from "@some-ui/speech"
+import type { Speaker } from "@some-ui/speech"
 import { useQueryClient } from "@tanstack/react-query"
 import type {
   EffectExecutor,
@@ -28,7 +28,7 @@ export type UseEnhancedSessionConfig = {
   repository: ITopikRepository
   metadataRepository: ITopikMetadataRepository
   /** Null when the host provides no speech session. */
-  speechAdapter: SpeechAdapter | null
+  speaker: Speaker | null
   componentId: string
   enableTTS: boolean
   onBatchComplete?: (batchIndex: number) => void
@@ -46,7 +46,7 @@ export type UseEnhancedSessionReturn = {
   currentSpeakingId: string | null
   machine: ISessionMachine
   repository: ITopikRepository
-  speechAdapter: SpeechAdapter | null
+  speaker: Speaker | null
 }
 
 export function useSession(
@@ -55,7 +55,7 @@ export function useSession(
   const {
     repository,
     metadataRepository,
-    speechAdapter,
+    speaker,
     componentId,
     enableTTS = true,
     onBatchComplete,
@@ -150,6 +150,13 @@ export function useSession(
     callbacksRef.current.onSpeechEnd?.(messageId)
   }, [])
 
+  // Muted mid-line: nothing is speaking, but the line has not ended, so the
+  // caller's onSpeechEnd (which the lesson advances on) is not told.
+  const handleSpeechStopped = useCallback(() => {
+    setIsSpeaking(false)
+    setCurrentSpeakingId(null)
+  }, [])
+
   const handleBatchComplete = useCallback((batchIndex: number) => {
     callbacksRef.current.onBatchComplete?.(batchIndex)
   }, [])
@@ -171,7 +178,7 @@ export function useSession(
       machine,
       repository,
       queryBridge,
-      speechAdapter, // Pass the audio TTS instance instead of speech queue
+      speaker, // Pass the audio TTS instance instead of speech queue
       componentId,
       enableTTS,
       timerInterval,
@@ -179,6 +186,7 @@ export function useSession(
       onSessionComplete: handleSessionComplete,
       onSpeechStart: handleSpeechStart,
       onSpeechEnd: handleSpeechEnd,
+      onSpeechStopped: handleSpeechStopped,
       onError: (error, effect) => {
         // eslint-disable-next-line no-console
         console.error("[Executor] Error:", effect, error)
@@ -193,7 +201,7 @@ export function useSession(
     machine,
     repository,
     queryBridge,
-    speechAdapter,
+    speaker,
     componentId,
     enableTTS,
     timerInterval,
@@ -201,6 +209,7 @@ export function useSession(
     handleSessionComplete,
     handleSpeechStart,
     handleSpeechEnd,
+    handleSpeechStopped,
   ])
 
   // ══════════════════════════════════════════════════════
@@ -248,6 +257,6 @@ export function useSession(
     currentSpeakingId,
     machine,
     repository,
-    speechAdapter,
+    speaker,
   }
 }

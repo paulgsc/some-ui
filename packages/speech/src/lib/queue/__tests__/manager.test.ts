@@ -354,3 +354,85 @@ describe("SpeechQueueManager - muting", () => {
     expect(manager.isMuted()).toBe(true)
   })
 })
+
+describe("SpeechQueueManager - the speaker", () => {
+  it("says a line in its language and resolves once it is heard", async () => {
+    const { adapter, manager } = setup()
+
+    const said = track(manager.speaker.say("안녕", { lang: "ko-KR" }))
+    await flushAsync()
+    expect(adapter.calls[0]?.options.lang).toBe("ko-KR")
+
+    adapter.finish()
+    await flushAsync()
+    expect(said.state).toBe("resolved")
+  })
+
+  it("keeps a muted session silent: nothing reaches the adapter", async () => {
+    const { adapter, manager } = setup()
+    manager.setMuted(true)
+
+    const said = track(manager.speaker.say("안녕", { lang: "ko-KR" }))
+    await flushAsync()
+
+    expect(adapter.calls).toHaveLength(0)
+    expect(said.state).toBe("rejected")
+    expect(isAbortError(said.error)).toBe(true)
+  })
+
+  it("stops the line playing when the session is muted mid-line", async () => {
+    const { manager } = setup()
+
+    const said = track(manager.speaker.say("안녕", { lang: "ko-KR" }))
+    await flushAsync()
+    manager.setMuted(true)
+    await flushAsync()
+
+    expect(isAbortError(said.error)).toBe(true)
+  })
+
+  it("feeds a failed line into the session's health, and a heard one clears it", async () => {
+    const { adapter, manager } = setup()
+
+    const failed = track(manager.speaker.say("하나", { lang: "ko-KR" }))
+    await flushAsync()
+    adapter.fail(new Error("tts down"))
+    await flushAsync()
+    expect(failed.state).toBe("rejected")
+    expect(manager.getStore().get().error).toBe("tts down")
+
+    void manager.speaker.say("둘", { lang: "ko-KR" })
+    await flushAsync()
+    adapter.finish()
+    await flushAsync()
+    expect(manager.getStore().get().error).toBeNull()
+  })
+
+  it("does not count a cancelled line as a failure", async () => {
+    const { manager } = setup()
+
+    const said = track(manager.speaker.say("하나", { lang: "ko-KR" }))
+    await flushAsync()
+    manager.speaker.stop()
+    await flushAsync()
+
+    expect(isAbortError(said.error)).toBe(true)
+    expect(manager.getStore().get().error).toBeNull()
+  })
+
+  it("tells subscribers when mute changes, and says whether it is muted", () => {
+    const { manager } = setup()
+    const seen: Array<boolean> = []
+    const unsubscribe = manager.speaker.subscribe(() => {
+      seen.push(manager.speaker.muted)
+    })
+
+    manager.setMuted(true)
+    manager.setMuted(true)
+    manager.setMuted(false)
+    unsubscribe()
+    manager.setMuted(true)
+
+    expect(seen).toEqual([true, false])
+  })
+})

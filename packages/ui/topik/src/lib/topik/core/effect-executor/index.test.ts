@@ -1,4 +1,4 @@
-import type { SpeakOptions, SpeechAdapter } from "@some-ui/speech"
+import type { SayOptions, Speaker } from "@some-ui/speech"
 import type {
   ConversationBatch,
   ITopikRepository,
@@ -115,23 +115,21 @@ function emptyActiveState(): SessionState {
   }
 }
 
-function createFakeSpeechAdapter(): SpeechAdapter {
+function createFakeSpeaker(): Speaker {
   return {
-    id: "web-speech",
-    supported: true,
-    voices: [],
-    pending: 0,
-    speak: vi.fn((_content: string, options: SpeakOptions = {}) => {
+    available: true,
+    say: vi.fn((_content: string, options: SayOptions) => {
       options.onStart?.()
-      options.onEnd?.()
       return Promise.resolve()
     }),
     stop: vi.fn(),
-    pause: vi.fn(),
-    resume: vi.fn(),
-    setVolume: vi.fn(),
-    setPlaybackRate: vi.fn(),
-    dispose: vi.fn(),
+    muted: false,
+    subscribe: () => () => undefined,
+    describe: () => ({
+      platform: "browser",
+      voice: null,
+      speaksLanguage: true,
+    }),
   }
 }
 
@@ -330,12 +328,12 @@ describe("EffectExecutor", () => {
     it("PLAY_AUDIO enqueues the current message for speech", async () => {
       const state = activeStateWithBatch(makeBatchWithMessage("hello world"))
       const machine = createFakeMachine(state)
-      const speechAdapter = createFakeSpeechAdapter()
+      const speaker = createFakeSpeaker()
       executor = createEffectExecutor({
         machine,
         repository: fakeRepository,
         queryBridge: createFakeQueryBridge(),
-        speechAdapter,
+        speaker,
         componentId: "c1",
         enableTTS: true,
       })
@@ -343,63 +341,97 @@ describe("EffectExecutor", () => {
       executor.execute([{ type: "PLAY_AUDIO" }])
       await flushAsync()
 
-      // The second argument is the utterance's own callback bundle - the
-      // handler passes onStart/onEnd/onError per `speak` now rather than
-      // installing them statefully beforehand.
-      expect(speechAdapter.speak).toHaveBeenCalledWith(
+      // The second argument is the line's own options: its language and
+      // its start callback, never a voice.
+      expect(speaker.say).toHaveBeenCalledWith(
         "hello world",
-        expect.objectContaining({ onEnd: expect.any(Function) })
+        expect.objectContaining({
+          lang: "ko-KR",
+          onStart: expect.any(Function),
+        })
       )
     })
 
-    it("PLAY_AUDIO is a safe no-op when there is no current message", () => {
-      const machine = createFakeMachine(emptyActiveState())
-      const speechAdapter = createFakeSpeechAdapter()
+    it("reports a line muted mid-speech as stopped, without advancing the lesson", async () => {
+      const state = activeStateWithBatch(makeBatchWithMessage("hello world"))
+      const machine = createFakeMachine(state)
+      const speaker: Speaker = {
+        ...createFakeSpeaker(),
+        muted: true,
+        say: vi.fn((_content: string, options: SayOptions) => {
+          options.onStart?.()
+          return Promise.reject(new DOMException("muted", "AbortError"))
+        }),
+      }
+      const onSpeechStopped = vi.fn()
+      const onSpeechEnd = vi.fn()
       executor = createEffectExecutor({
         machine,
         repository: fakeRepository,
         queryBridge: createFakeQueryBridge(),
-        speechAdapter,
+        speaker,
+        componentId: "c1",
+        enableTTS: true,
+        onSpeechStopped,
+        onSpeechEnd,
+      })
+
+      executor.execute([{ type: "PLAY_AUDIO" }])
+      await flushAsync()
+
+      expect(onSpeechStopped).toHaveBeenCalledTimes(1)
+      expect(onSpeechEnd).not.toHaveBeenCalled()
+      expect(machine.dispatch).not.toHaveBeenCalled()
+    })
+
+    it("PLAY_AUDIO is a safe no-op when there is no current message", () => {
+      const machine = createFakeMachine(emptyActiveState())
+      const speaker = createFakeSpeaker()
+      executor = createEffectExecutor({
+        machine,
+        repository: fakeRepository,
+        queryBridge: createFakeQueryBridge(),
+        speaker,
         componentId: "c1",
         enableTTS: true,
       })
 
       expect(() => executor?.execute([{ type: "PLAY_AUDIO" }])).not.toThrow()
-      expect(speechAdapter.speak).not.toHaveBeenCalled()
+      expect(speaker.say).not.toHaveBeenCalled()
     })
 
     it("PLAY_AUDIO is a safe no-op when TTS is disabled", () => {
       const state = activeStateWithBatch(makeBatchWithMessage("hello"))
       const machine = createFakeMachine(state)
-      const speechAdapter = createFakeSpeechAdapter()
+      const speaker = createFakeSpeaker()
       executor = createEffectExecutor({
         machine,
         repository: fakeRepository,
         queryBridge: createFakeQueryBridge(),
-        speechAdapter,
+        speaker,
         componentId: "c1",
         enableTTS: false,
       })
 
       expect(() => executor?.execute([{ type: "PLAY_AUDIO" }])).not.toThrow()
-      expect(speechAdapter.speak).not.toHaveBeenCalled()
+      expect(speaker.say).not.toHaveBeenCalled()
     })
 
     it("STOP_AUDIO stops the underlying audio", () => {
       const state = activeStateWithBatch(makeBatchWithMessage("hello"))
       const machine = createFakeMachine(state)
-      const speechAdapter = createFakeSpeechAdapter()
+      const speaker = createFakeSpeaker()
       executor = createEffectExecutor({
         machine,
         repository: fakeRepository,
         queryBridge: createFakeQueryBridge(),
-        speechAdapter,
+        speaker,
         componentId: "c1",
         enableTTS: true,
       })
 
       executor.execute([{ type: "STOP_AUDIO" }])
-      expect(speechAdapter.stop).toHaveBeenCalled()
+      expect(speaker.stop).toHaveBeenCalled()
     })
   })
 
@@ -506,12 +538,12 @@ describe("EffectExecutor", () => {
 
   describe("public TTS-control API", () => {
     it("speakMessage delegates to the TTS handler's manual speak", async () => {
-      const speechAdapter = createFakeSpeechAdapter()
+      const speaker = createFakeSpeaker()
       executor = createEffectExecutor({
         machine: createFakeMachine(emptyActiveState()),
         repository: fakeRepository,
         queryBridge: createFakeQueryBridge(),
-        speechAdapter,
+        speaker,
         componentId: "c1",
         enableTTS: true,
       })
@@ -525,9 +557,9 @@ describe("EffectExecutor", () => {
         english: "hello",
       })
 
-      expect(speechAdapter.speak).toHaveBeenCalledWith(
+      expect(speaker.say).toHaveBeenCalledWith(
         "manual line",
-        expect.objectContaining({ onEnd: expect.any(Function) })
+        expect.objectContaining({ lang: "ko-KR" })
       )
     })
 

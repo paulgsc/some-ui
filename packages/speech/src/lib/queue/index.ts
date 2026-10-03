@@ -1,6 +1,5 @@
 export type { SpeechAction } from "./actions"
 export { createSpeechItem, generateId } from "./actions"
-export type { SpeechQueueManagerOptions } from "./manager"
 export { SpeechQueueManager } from "./manager"
 export { speechReducer } from "./reducer"
 export {
