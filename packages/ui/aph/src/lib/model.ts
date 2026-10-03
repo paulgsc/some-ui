@@ -289,6 +289,29 @@ export function entriesOn(
   return entries.filter((e) => e.day === day).sort(inDayOrder(settings))
 }
 
+/**
+ * The labels an entry's chips show: the ones offered, then any of its own
+ * that Settings has since retired. Removing a label stops offering it; it
+ * never rewrites the entries tagged with it, which can still drop it.
+ */
+export function labelsFor(settings: AphSettings, entry: Entry): Array<string> {
+  return [
+    ...settings.labels,
+    ...entry.labels.filter((l) => !settings.labels.includes(l)),
+  ]
+}
+
+/** Every label in use: the ones offered, then retired ones entries still carry. */
+function labelsInUse(
+  settings: AphSettings,
+  entries: ReadonlyArray<Entry>
+): Array<string> {
+  const retired = new Set(
+    entries.flatMap((e) => e.labels).filter((l) => !settings.labels.includes(l))
+  )
+  return [...settings.labels, ...retired]
+}
+
 export type HistoryRow =
   | { kind: "day"; day: string; entries: ReadonlyArray<Entry> }
   | { kind: "gap"; from: string; to: string; days: number }
@@ -433,7 +456,7 @@ export function stats(
   }
   for (const e of entries) reconciliation[reconcile(settings, e).status] += 1
 
-  const labels = settings.labels.map((label) => {
+  const labels = labelsInUse(settings, entries).map((label) => {
     const tagged = entries.filter((e) => e.labels.includes(label))
     const differences = tagged.flatMap((t) => {
       const plain = entries.find(

@@ -204,6 +204,15 @@ describe("the paper notes", () => {
     })
     expect(labels.find((l) => l.label === "no-bs")?.pairs).toBe(0)
   })
+
+  it("still count a label Settings has retired", () => {
+    const retired = {
+      ...settings,
+      labels: settings.labels.filter((l) => l !== "w/o office"),
+    }
+    const labels = stats(retired, SEED_ENTRIES, today).labels
+    expect(labels.find((l) => l.label === "w/o office")?.tagged).toBe(1)
+  })
 })
 
 describe("formatting", () => {

@@ -84,7 +84,7 @@ export const AphSettingsPanel = ({
 
       <Section
         title="Labels"
-        hint="Offered as chips when logging, so common cases are one tap."
+        hint="Offered as chips when logging, so common cases are one tap. Removing one stops offering it; entries already tagged keep it."
       >
         <div className="flex flex-wrap gap-2">
           {settings.labels.map((label) => (

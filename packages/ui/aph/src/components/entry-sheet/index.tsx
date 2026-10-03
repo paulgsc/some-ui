@@ -14,6 +14,7 @@ import {
   formatDelta,
   formatValue,
   formatWeekday,
+  labelsFor,
   reconcile,
 } from "@aph/lib/model"
 import type { AphStore } from "@aph/lib/store"
@@ -83,6 +84,7 @@ const EntryDetail = ({
 }): JSX.Element => {
   const { settings, entries } = useAph(store)
   const { status, gap } = reconcile(settings, entry)
+  const chips = labelsFor(settings, entry)
   const [note, setNote] = useState(entry.note ?? "")
 
   return (
@@ -161,13 +163,13 @@ const EntryDetail = ({
         </Button>
       )}
 
-      {settings.labels.length > 0 && (
+      {chips.length > 0 && (
         <div className="flex flex-col gap-2">
           <span className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">
             Labels
           </span>
           <div className="flex flex-wrap gap-2">
-            {settings.labels.map((label) => {
+            {chips.map((label) => {
               const on = entry.labels.includes(label)
               const next = on
                 ? entry.labels.filter((l) => l !== label)

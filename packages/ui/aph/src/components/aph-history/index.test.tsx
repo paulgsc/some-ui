@@ -100,6 +100,26 @@ describe("History", () => {
     expect(plainAtNoon).toHaveLength(1)
   })
 
+  it("keeps a retired label on the entries it tags, and lets them drop it", () => {
+    const { store } = setup()
+    store.editSettings({
+      labels: SEED_SETTINGS.labels.filter((l) => l !== "no-bs"),
+    })
+    const day = screen.getByRole("region", { name: "Tue Sep 22" })
+    fireEvent.click(within(day).getByRole("button", { name: /^7:00:/ }))
+    const label = screen.getByRole("button", { name: "no-bs" })
+    expect(label).toHaveAttribute("aria-pressed", "true")
+    fireEvent.click(label)
+    const seven = store
+      .get()
+      .entries.find((e) => e.day === "2026-09-22" && e.checkpoint === "7")
+    expect(seven?.labels).toEqual([])
+    // Retired, so not offered back once dropped.
+    expect(
+      screen.queryByRole("button", { name: "no-bs" })
+    ).not.toBeInTheDocument()
+  })
+
   it("folds missed days into one line", () => {
     setup()
     expect(screen.getByText(/Sep 26 – Sep 27 · 2 days/)).toBeInTheDocument()
