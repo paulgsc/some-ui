@@ -41,7 +41,47 @@ function toNativeVoice(voice: PluginVoice): NativeVoice {
   }
 }
 
+/**
+ * Android binds its text-to-speech service asynchronously, after the plugin
+ * loads, and until it has, the plugin answers wrongly rather than waiting:
+ * `speak` refuses as unavailable, `isLanguageSupported` says false (which
+ * would read as "no Korean voice") and `getSupportedVoices` throws. The
+ * plugin exposes no readiness call, so a voice list that comes back is the
+ * signal, and every call below waits for it. A phone with no engine at all
+ * never answers: after `READY_TIMEOUT_MS` the calls fail, and keep failing
+ * until a later call finds the engine.
+ */
+const READY_TIMEOUT_MS = 10_000
+const READY_FIRST_RETRY_MS = 100
+const READY_MAX_RETRY_MS = 1_000
+
+let ready: Promise<void> | null = null
+
+function whenReady(): Promise<void> {
+  ready ??= waitForEngine().catch((error: unknown) => {
+    ready = null
+    throw error
+  })
+  return ready
+}
+
+async function waitForEngine(): Promise<void> {
+  const deadline = Date.now() + READY_TIMEOUT_MS
+  let retryIn = READY_FIRST_RETRY_MS
+  for (;;) {
+    try {
+      await TextToSpeech.getSupportedVoices()
+      return
+    } catch (error) {
+      if (Date.now() + retryIn > deadline) throw error
+    }
+    await new Promise((resolve) => setTimeout(resolve, retryIn))
+    retryIn = Math.min(retryIn * 2, READY_MAX_RETRY_MS)
+  }
+}
+
 async function getVoices(): Promise<ReadonlyArray<NativeVoice>> {
+  await whenReady()
   const { voices } = await TextToSpeech.getSupportedVoices()
   return voices.map(toNativeVoice)
 }
@@ -67,12 +107,14 @@ let generation = 0
 async function speak(request: NativeSpeechRequest): Promise<void> {
   generation += 1
   const mine = generation
+  await whenReady()
   const voice =
     request.voiceId === undefined
       ? undefined
       : await voiceIndexOf(request.voiceId)
   if (mine !== generation) {
-    // Replaced before it started. The engine contract lets a replaced
+    // Replaced before it started (while the engine came up, or during the
+    // voice lookup). The engine contract lets a replaced
     // utterance never settle, and the adapter has already settled it.
     return new Promise<void>(() => undefined)
   }
@@ -93,6 +135,7 @@ async function stop(): Promise<void> {
 }
 
 async function isLanguageSupported(lang: string): Promise<boolean> {
+  await whenReady()
   const { supported } = await TextToSpeech.isLanguageSupported({ lang })
   return supported
 }

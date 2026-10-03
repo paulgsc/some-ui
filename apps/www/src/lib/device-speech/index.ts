@@ -7,9 +7,10 @@
  * its `native` voice instead, and everything that speaks through the
  * session gets it: TOPIK's lessons and Honeycomb's word prompts alike.
  *
- * The plugin sits behind a dynamic import, so the engine costs nothing
- * until something speaks, and the web builds, which never pass it to the
- * session, never load it.
+ * The plugin sits behind a dynamic import, so the web builds, which never
+ * pass it to the session, never load it. On the phone it loads with the
+ * session, which asks for the phone's voices and whether it has Korean
+ * before the first line.
  */
 import type {
   NativeSpeechBackend,
