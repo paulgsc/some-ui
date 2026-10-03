@@ -27,7 +27,9 @@ export const AphSettingsPanel = ({
 }: AphSettingsProps): JSX.Element => {
   const { settings } = useAph(store)
   const [newLabel, setNewLabel] = useState("")
-  const edit = (patch: Partial<AphSettings>): void => store.editSettings(patch)
+  const edit = (patch: Partial<AphSettings>): void => {
+    store.editSettings(patch)
+  }
 
   const addLabel = (): void => {
     const label = newLabel.trim()

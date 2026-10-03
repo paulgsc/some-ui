@@ -35,6 +35,22 @@ describe("History", () => {
     ).toBeInTheDocument()
   })
 
+  it("keeps the filter clearable once its last entry is settled", () => {
+    setup()
+    fireEvent.click(screen.getByRole("button", { name: /1 Your call/ }))
+    const day = screen.getByRole("region", { name: "Thu Oct 1" })
+    fireEvent.click(
+      within(day).getByRole("button", { name: "12:00: Your call" })
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Agree with theirs" }))
+    fireEvent.click(screen.getByRole("button", { name: "Close" }))
+    const chip = screen.getByRole("button", { name: /0 Your call/ })
+    fireEvent.click(chip)
+    expect(
+      screen.getByRole("region", { name: "Fri Oct 2" })
+    ).toBeInTheDocument()
+  })
+
   it("flags a mismatch from the entry, and takes it back", () => {
     const { store } = setup()
     const day = screen.getByRole("region", { name: "Thu Oct 1" })

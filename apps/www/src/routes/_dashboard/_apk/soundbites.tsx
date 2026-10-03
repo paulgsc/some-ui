@@ -3,6 +3,7 @@ import type { SoundbiteSituation, SoundbiteSource } from "@some-ui/soundbites"
 import { Soundbites } from "@some-ui/soundbites"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 
+import { useArrivalKey } from "@/lib/arrival-key"
 import type { SessionRecord, SessionStatus } from "@/lib/tenant"
 import { sessionsQuery, useSessions } from "@/lib/tenant"
 
@@ -65,9 +66,14 @@ const SoundbitesRoute = (): JSX.Element => {
   // The way in. Read once by the page, which keeps it until a take is
   // stored, so clearing `?say=` below does not lose it.
   const source = sourceOf(say)
+  // A new request remounts the recorder, which reads its way in once: "Talk
+  // now" while already here would otherwise be ignored. The clearing below
+  // is not a new request, so it never remounts mid-take.
+  const arrival = useArrivalKey(isSaySource(say) ? say : undefined)
 
   return (
     <Soundbites
+      key={arrival}
       source={source}
       autoStart={source !== "direct"}
       // Forget the request once honoured, so going back or reloading does

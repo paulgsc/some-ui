@@ -227,6 +227,34 @@ const Tile = ({
   </div>
 )
 
+/**
+ * The goal as it stood for each point: each entry keeps the goal it was made
+ * under (`Entry.goal`), so the line steps where a goal changed rather than
+ * redrawing the past at today's goal. Past the last entry it is today's.
+ */
+function goalSteps(
+  points: ReadonlyArray<{ i: number; entry: Entry }>,
+  current: number,
+  x: (i: number) => number,
+  y: (v: number) => number
+): string {
+  const goals = points.map((p) => ({
+    at: x(p.i),
+    goal: p.entry.goal ?? current,
+  }))
+  let goal = goals[0]?.goal ?? current
+  const steps: Array<string> = [`${PAD.left},${y(goal)}`]
+  for (const g of goals) {
+    steps.push(`${g.at},${y(goal)}`, `${g.at},${y(g.goal)}`)
+    goal = g.goal
+  }
+  steps.push(`${W - PAD.right},${y(goal)}`)
+  if (goal !== current) {
+    steps.push(`${W - PAD.right},${y(current)}`)
+  }
+  return steps.join(" ")
+}
+
 const W = 340
 const H = 170
 const PAD = { left: 36, right: 8, top: 8, bottom: 20 }
@@ -259,6 +287,9 @@ const Chart = ({
   }))
   const values = [
     ...series.flatMap((s) => s.points.map((p) => p.v)),
+    ...series.flatMap((s) =>
+      s.points.map((p) => p.entry.goal ?? s.checkpoint.goal)
+    ),
     ...settings.checkpoints.map((c) => c.goal),
   ]
   const lo = Math.floor((Math.min(...values) - 200) / 500) * 500
@@ -316,14 +347,12 @@ const Chart = ({
         const tone = checkpointTone(settings, checkpoint.id)
         return (
           <g key={checkpoint.id}>
-            <line
-              x1={PAD.left}
-              x2={W - PAD.right}
-              y1={y(checkpoint.goal)}
-              y2={y(checkpoint.goal)}
+            <polyline
+              fill="none"
               stroke={tone}
               strokeDasharray="4 4"
               opacity="0.7"
+              points={goalSteps(points, checkpoint.goal, x, y)}
             />
             <polyline
               fill="none"

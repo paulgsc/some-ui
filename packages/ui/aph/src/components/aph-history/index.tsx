@@ -66,26 +66,30 @@ export const AphHistory = ({
         aria-label="Show only"
         className="flex flex-wrap gap-1.5 pb-1"
       >
-        {RECONCILE_ORDER.filter((s) => counts[s] > 0).map((s) => {
-          const on = filter === s
-          return (
-            <button
-              key={s}
-              type="button"
-              aria-pressed={on}
-              onClick={() => setFilter(on ? null : s)}
-              className={cn(
-                "inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-sm",
-                STATUS[s].surface,
-                on && "ring-foreground ring-2"
-              )}
-            >
-              <StatusIcon status={s} />
-              <span className="font-semibold tabular-nums">{counts[s]}</span>
-              <span className={STATUS[s].tone}>{STATUS[s].label}</span>
-            </button>
-          )
-        })}
+        {/* The chip that is on stays even at zero, or settling the last
+            entry it shows would leave a filter nothing can clear. */}
+        {RECONCILE_ORDER.filter((s) => counts[s] > 0 || filter === s).map(
+          (s) => {
+            const on = filter === s
+            return (
+              <button
+                key={s}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setFilter(on ? null : s)}
+                className={cn(
+                  "inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-sm",
+                  STATUS[s].surface,
+                  on && "ring-foreground ring-2"
+                )}
+              >
+                <StatusIcon status={s} />
+                <span className="font-semibold tabular-nums">{counts[s]}</span>
+                <span className={STATUS[s].tone}>{STATUS[s].label}</span>
+              </button>
+            )
+          }
+        )}
       </div>
 
       {rows.map((row) =>

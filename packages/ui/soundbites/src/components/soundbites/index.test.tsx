@@ -571,6 +571,20 @@ describe("Soundbites", () => {
     expect(screen.queryByText("Too tired")).not.toBeInTheDocument()
   })
 
+  it("keeps asking for a comment once the way in is forgotten", async () => {
+    const { rerender } = setup({ source: "capture" })
+    await screen.findByRole("heading", { name: "Talk now" })
+    // The route clears `?say=` once listening starts, so `source` turns
+    // "direct" mid-take.
+    rerender(
+      <Soundbites situation={() => SITUATION} source="direct" ports={{}} />
+    )
+    expect(
+      screen.getByRole("heading", { name: "Talk now" })
+    ).toBeInTheDocument()
+    expect(screen.queryByText("Too tired")).not.toBeInTheDocument()
+  })
+
   it("asks why, with starters, from a skipped session", async () => {
     setup()
     expect(

@@ -443,6 +443,54 @@ const NO_ENTRY: Entry = {
   review: null,
 }
 
+/**
+ * What must hold of aph's entries, stated once, in code, and checked on
+ * every write (`store.ts` refuses a write that breaks one). Each was a rule
+ * consumers had to remember and, for a while, did not:
+ *
+ * - every id is unique;
+ * - an entry's checkpoint, if it has one, is one of the settings';
+ * - at most one plain (unlabelled) entry per checkpoint a day: the one
+ *   `primary` reads, so a second would count in History and nowhere else;
+ * - an entry at a checkpoint carries the goal it was made under, and one off
+ *   the checkpoints carries none, so a delta never borrows today's goal;
+ * - the clock time is written only off the checkpoints;
+ * - an entry holds at least one figure, mine or theirs.
+ *
+ * Returns what is wrong, in words, so a test can say which rule broke.
+ */
+export function violations(
+  settings: AphSettings,
+  entries: ReadonlyArray<Entry>
+): Array<string> {
+  const wrong: Array<string> = []
+  const ids = new Set<string>()
+  const plain = new Set<string>()
+  for (const e of entries) {
+    if (ids.has(e.id)) wrong.push(`${e.id}: id used twice`)
+    ids.add(e.id)
+    if (e.mine === null && e.theirs === null) {
+      wrong.push(`${e.id}: holds no figure`)
+    }
+    if (e.checkpoint === null) {
+      if (e.goal !== null) wrong.push(`${e.id}: a goal off the checkpoints`)
+      continue
+    }
+    if (checkpointById(settings, e.checkpoint) === null) {
+      wrong.push(`${e.id}: unknown checkpoint ${e.checkpoint}`)
+    }
+    if (e.goal === null) wrong.push(`${e.id}: no goal at a checkpoint`)
+    if (e.time !== null) wrong.push(`${e.id}: a clock time at a checkpoint`)
+    if (e.labels.length === 0) {
+      const slot = `${e.day} ${e.checkpoint}`
+      if (plain.has(slot))
+        wrong.push(`${e.id}: a second plain figure at ${slot}`)
+      plain.add(slot)
+    }
+  }
+  return wrong
+}
+
 /** "4,300", or "~4,300" for an approximate figure. */
 export function formatValue(value: number, approx = false): string {
   return `${approx ? "~" : ""}${Math.round(value).toLocaleString("en-US")}`
