@@ -4,10 +4,15 @@
  * different data points for whoever listens later.
  */
 export type SoundbiteSource =
-  /** The "Not today? Say why" button on the sessions list. */
+  /**
+   * "Not today? Say why" beside the study card on Home (the sessions list
+   * held it before Home did; the value stays, so older takes still read).
+   */
   | "sessions"
   /** The "Not today" action on a study reminder notification. */
   | "reminder"
+  /** "Hold to talk" in Home's + sheet: a comment, not a reason. */
+  | "capture"
   /** The soundbites page itself. */
   | "direct"
 

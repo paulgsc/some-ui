@@ -19,23 +19,16 @@ import {
   Outlet,
   useRouterState,
 } from "@tanstack/react-router"
-import {
-  Briefcase,
-  FileText,
-  ListVideo,
-  Mic,
-  Settings,
-  User,
-} from "lucide-react"
+import { Briefcase, FileText, ListVideo, Settings, User } from "lucide-react"
 import { cn, useIsMobile, useIsTerminal } from "some-ui-utils"
 
-import { isOnMobileSurface } from "@/lib/app-surface"
 import { authority } from "@/lib/authority"
-import { hasAudience, MOBILE_APP } from "@/lib/build-profile"
+import { MOBILE_APP } from "@/lib/build-profile"
 import { useIsDeclaredBounded } from "@/lib/route-bounds"
 import { AudioIndicator } from "@/components/audio/audio-indicator"
 import { AccountUnavailableBanner } from "@/components/auth/account-unavailable-banner"
 import { HexCombMark } from "@/components/brand/hex-comb-mark"
+import { MobileNav } from "@/components/mobile-shell"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
 /**
@@ -73,15 +66,9 @@ function isComposerPath(pathname: string): boolean {
   return COMPOSER_PATH.test(pathname)
 }
 
+/** The web app's sidebar. The Android app has its own bar (`MobileNav`). */
 type NavItem = {
-  to:
-    | "/app"
-    | "/sessions"
-    | "/soundbites"
-    | "/resume"
-    | "/jobs"
-    | "/profile"
-    | "/settings"
+  to: "/app" | "/sessions" | "/resume" | "/jobs" | "/profile" | "/settings"
   label: string
   // Widened from `typeof Home` so the brand mark sits alongside the lucide
   // glyphs. Both are sized the same way, by the sidebar's own `[&>svg]:size-4`
@@ -94,23 +81,11 @@ const NAV_ITEMS: ReadonlyArray<NavItem> = [
   // house — the same seven-cell comb as the favicon and the landing hero.
   { to: "/app", label: "Home", icon: HexCombMark },
   { to: "/sessions", label: "Sessions", icon: ListVideo },
-  // Only in a build that carries the page (the Android app's; "apk"). The
-  // library, so it opens idle: the sessions list's "Say why" and a reminder's
-  // "Not today" are the ways in that start listening, and this is the one
-  // that lets the recordings be played or deleted without a live microphone.
-  ...(hasAudience("apk")
-    ? [{ to: "/soundbites", label: "Soundbites", icon: Mic } satisfies NavItem]
-    : []),
   { to: "/resume", label: "Résumé", icon: FileText },
   { to: "/jobs", label: "Jobs", icon: Briefcase },
   { to: "/profile", label: "Profile", icon: User },
   { to: "/settings", label: "Settings", icon: Settings },
 ]
-
-/** In the Android app, only the pages it carries (`lib/app-surface`). */
-const SHOWN_NAV_ITEMS = MOBILE_APP
-  ? NAV_ITEMS.filter((item) => isOnMobileSurface(item.to))
-  : NAV_ITEMS
 
 function isNavItemActive(itemPath: NavItem["to"], pathname: string): boolean {
   return pathname === itemPath || pathname.startsWith(`${itemPath}/`)
@@ -129,12 +104,7 @@ const DashboardSidebarContent = ({
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild size="lg" tooltip="Some UI home">
-              {/* The phone has no landing page: its home is the sessions
-                  list. */}
-              <Link
-                to={MOBILE_APP ? "/sessions" : "/"}
-                aria-label="Some UI home"
-              >
+              <Link to="/" aria-label="Some UI home">
                 <span className="flex size-8 shrink-0 items-center justify-center">
                   <HexCombMark tone="brand" className="size-6" />
                 </span>
@@ -150,7 +120,7 @@ const DashboardSidebarContent = ({
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {SHOWN_NAV_ITEMS.map((item) => (
+              {NAV_ITEMS.map((item) => (
                 <SidebarMenuItem key={item.to}>
                   <SidebarMenuButton
                     asChild
@@ -230,17 +200,27 @@ const DashboardLayout = (): JSX.Element => {
 
   return (
     <SidebarProvider className={cn(isBoundedRoute && "h-dvh overflow-hidden")}>
-      <DashboardSidebarContent pathname={pathname} />
+      {/* The phone navigates by the bar along the bottom instead. */}
+      {!MOBILE_APP && <DashboardSidebarContent pathname={pathname} />}
       <SidebarInset>
         {!bareViewport && (
           <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
-            <SidebarTrigger />
+            {!MOBILE_APP && <SidebarTrigger />}
             <ThemeSwitcher />
             {/* Layer 1 of audio disclosure: a standing indicator of what this
                 app may play, always visible and never interrupting. It is the
                 canonical place a person learns this app has audio, and the
                 place the first-use notices point back to. */}
             <AudioIndicator />
+            {MOBILE_APP && (
+              <Link
+                to="/settings"
+                aria-label="Settings"
+                className="hover:bg-accent ml-auto flex size-10 items-center justify-center rounded-md"
+              >
+                <Settings className="size-5" />
+              </Link>
+            )}
           </header>
         )}
         {!bareViewport && <AccountUnavailableBanner />}
@@ -261,6 +241,11 @@ const DashboardLayout = (): JSX.Element => {
         >
           <Outlet />
         </div>
+        {/* A persistent bar may not paint over a bounded surface
+            (docs/session-viewport/05-the-mobile-shell.md §4), so the
+            player and the composer go without it: they have their own
+            way back. */}
+        {MOBILE_APP && !isBoundedRoute && <MobileNav pathname={pathname} />}
       </SidebarInset>
     </SidebarProvider>
   )

@@ -7,19 +7,31 @@ import type { SessionRecord, SessionStatus } from "@/lib/tenant"
 import { sessionsQuery, useSessions } from "@/lib/tenant"
 
 /**
- * `?say=` arrives from a tap that already meant "let me say why": the
- * sessions list's button, or a study reminder's "Not today" action. The page
- * starts listening at once, and records which of the two it was.
+ * `?say=` arrives from a tap that already meant "let me talk": Home's "Not
+ * today? Say why", a study reminder's "Not today" action, or "Hold to talk"
+ * in Home's + sheet. The page starts listening at once, and records which it
+ * was.
  */
-type SoundbitesSearch = { say?: "sessions" | "reminder" }
+type SoundbitesSearch = { say?: "sessions" | "reminder" | "capture" }
+
+const SAY_SOURCES: ReadonlyArray<NonNullable<SoundbitesSearch["say"]>> = [
+  "sessions",
+  "reminder",
+  "capture",
+]
+
+function isSaySource(
+  say: unknown
+): say is NonNullable<SoundbitesSearch["say"]> {
+  return SAY_SOURCES.some((s) => s === say)
+}
 
 /**
  * `?say=` as the source it names. Takes `unknown`: www declares no router
  * `Register`, so `useSearch` is untyped and this is where it is narrowed.
  */
 function sourceOf(say: unknown): SoundbiteSource {
-  if (say === "sessions" || say === "reminder") return say
-  return "direct"
+  return isSaySource(say) ? say : "direct"
 }
 
 const OPEN_STATUSES: ReadonlyArray<SessionStatus> = [
@@ -69,9 +81,7 @@ const SoundbitesRoute = (): JSX.Element => {
 }
 
 function validateSearch(search: Record<string, unknown>): SoundbitesSearch {
-  return search.say === "sessions" || search.say === "reminder"
-    ? { say: search.say }
-    : {}
+  return isSaySource(search.say) ? { say: search.say } : {}
 }
 
 export const Route = createFileRoute("/_dashboard/_apk/soundbites")({

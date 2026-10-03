@@ -4,12 +4,13 @@ import { redirect } from "@tanstack/react-router"
 import { hasAudience, MOBILE_APP } from "@/lib/build-profile"
 
 /**
- * What the Android app (apps/mobile) carries: sessions - the list, the
- * composer and the player - the soundbites, and the settings page, which in
- * that build is the phone's own (sync from home, study nudges, the voice).
- * Everything else www routes to (the landing, Home, the résumé, jobs,
- * profile, the extensions tour, the LAN tools) is the web app's, and the
- * phone has no use for it.
+ * What the Android app (apps/mobile) carries: its own Home (`/today`), the
+ * hub its daily tools hang off; sessions - the list, the composer and the
+ * player; the soundbites; aph; and the settings page, which in that build is
+ * the phone's own (sync from home, study nudges, the voice). Everything else
+ * www routes to (the landing, the web's Home, the résumé, jobs, profile, the
+ * extensions tour, the LAN tools) is the web app's, and the phone has no use
+ * for it.
  *
  * An allowlist, not a list of exclusions, so that a page added to www later
  * stays off the phone until someone puts it here. Typed against the route
@@ -17,10 +18,10 @@ import { hasAudience, MOBILE_APP } from "@/lib/build-profile"
  */
 const MOBILE_SURFACE: ReadonlyArray<keyof FileRoutesByTo> = [
   "/sessions",
-  // Saying why a session did not happen. It needs the phone's microphone,
-  // so it is the one page here that only the Android app's build carries
-  // (the "apk" audience); asked rather than assumed, like any gated link.
-  ...(hasAudience("apk") ? (["/soundbites"] as const) : []),
+  // The pages only the Android app's build carries (the "apk" audience):
+  // Home, the soundbites (the phone's microphone) and aph. Asked rather than
+  // assumed, like any gated link.
+  ...(hasAudience("apk") ? (["/today", "/soundbites", "/aph"] as const) : []),
   "/settings",
   // Not a page the phone shows: the device backend is always signed in. But
   // the root's sign-in guard sends a signed-out visit here, and redirecting it
@@ -30,8 +31,8 @@ const MOBILE_SURFACE: ReadonlyArray<keyof FileRoutesByTo> = [
   "/auth",
 ]
 
-/** Where the app opens, and where a path off the surface lands. */
-export const MOBILE_HOME = "/sessions" satisfies keyof FileRoutesByTo
+/** Where the app opens, and where a path off the surface lands: Home. */
+export const MOBILE_HOME = "/today" satisfies keyof FileRoutesByTo
 
 /** Whether `pathname` is one of `MOBILE_SURFACE`'s routes or under one. */
 export function isOnMobileSurface(pathname: string): boolean {
@@ -43,8 +44,8 @@ export function isOnMobileSurface(pathname: string): boolean {
 /**
  * The root route's first `beforeLoad` step. In the Android app's build, a
  * path off the surface - `"/"` at launch, a link some shared component still
- * makes to Home, a stale deep link - is replaced by the sessions list. A no-op
- * in every other build.
+ * makes to the web's Home, a stale deep link - is replaced by the phone's
+ * Home. A no-op in every other build.
  *
  * A redirect rather than not-found: nothing the person did on the phone is
  * wrong when they reach one of these, so it should land them somewhere useful.

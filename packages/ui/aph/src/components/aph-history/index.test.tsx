@@ -1,0 +1,69 @@
+import { AphHistory } from "@aph/components/aph-history"
+import { SEED_ENTRIES, SEED_SETTINGS } from "@aph/lib/seed"
+import type { AphStore } from "@aph/lib/store"
+import { createAphStore } from "@aph/lib/store"
+import { fireEvent, render, screen, within } from "@testing-library/react"
+import { describe, expect, it, vi } from "vitest"
+
+const noon = new Date(2026, 9, 2, 12, 4)
+
+function setup(): {
+  store: AphStore
+  onEnterTheirs: ReturnType<typeof vi.fn>
+} {
+  const store = createAphStore({
+    settings: SEED_SETTINGS,
+    entries: SEED_ENTRIES.map((e) =>
+      e.day === "2026-10-01" && e.checkpoint === "12"
+        ? { ...e, theirs: { value: 5200 } }
+        : e
+    ),
+  })
+  const onEnterTheirs = vi.fn()
+  render(<AphHistory now={noon} store={store} onEnterTheirs={onEnterTheirs} />)
+  return { store, onEnterTheirs }
+}
+
+describe("History", () => {
+  it("counts what waits on my call, and filters to it", () => {
+    setup()
+    const filter = screen.getByRole("button", { name: /1 Your call/ })
+    fireEvent.click(filter)
+    expect(screen.getAllByRole("region")).toHaveLength(1)
+    expect(
+      screen.getByRole("region", { name: "Thu Oct 1" })
+    ).toBeInTheDocument()
+  })
+
+  it("flags a mismatch from the entry, and takes it back", () => {
+    const { store } = setup()
+    const day = screen.getByRole("region", { name: "Thu Oct 1" })
+    fireEvent.click(
+      within(day).getByRole("button", { name: "12:00: Your call" })
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Flag it" }))
+    const entry = store
+      .get()
+      .entries.find((e) => e.day === "2026-10-01" && e.checkpoint === "12")
+    expect(entry?.review).toBe("flagged")
+    fireEvent.click(screen.getByRole("button", { name: /Take back/ }))
+    expect(
+      store.get().entries.find((e) => e.id === entry?.id)?.review
+    ).toBeNull()
+  })
+
+  it("sends an entry still waiting on them to the logger", () => {
+    const { onEnterTheirs } = setup()
+    const day = screen.getByRole("region", { name: "Fri Oct 2" })
+    fireEvent.click(
+      within(day).getByRole("button", { name: "7:00: Awaiting theirs" })
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Enter their figure" }))
+    expect(onEnterTheirs).toHaveBeenCalledWith(expect.stringMatching(/^paper-/))
+  })
+
+  it("folds missed days into one line", () => {
+    setup()
+    expect(screen.getByText(/Sep 26 – Sep 27 · 2 days/)).toBeInTheDocument()
+  })
+})
