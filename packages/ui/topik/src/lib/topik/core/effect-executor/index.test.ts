@@ -352,6 +352,38 @@ describe("EffectExecutor", () => {
       )
     })
 
+    it("reports a line muted mid-speech as stopped, without advancing the lesson", async () => {
+      const state = activeStateWithBatch(makeBatchWithMessage("hello world"))
+      const machine = createFakeMachine(state)
+      const speaker: Speaker = {
+        ...createFakeSpeaker(),
+        muted: true,
+        say: vi.fn((_content: string, options: SayOptions) => {
+          options.onStart?.()
+          return Promise.reject(new DOMException("muted", "AbortError"))
+        }),
+      }
+      const onSpeechStopped = vi.fn()
+      const onSpeechEnd = vi.fn()
+      executor = createEffectExecutor({
+        machine,
+        repository: fakeRepository,
+        queryBridge: createFakeQueryBridge(),
+        speaker,
+        componentId: "c1",
+        enableTTS: true,
+        onSpeechStopped,
+        onSpeechEnd,
+      })
+
+      executor.execute([{ type: "PLAY_AUDIO" }])
+      await flushAsync()
+
+      expect(onSpeechStopped).toHaveBeenCalledTimes(1)
+      expect(onSpeechEnd).not.toHaveBeenCalled()
+      expect(machine.dispatch).not.toHaveBeenCalled()
+    })
+
     it("PLAY_AUDIO is a safe no-op when there is no current message", () => {
       const machine = createFakeMachine(emptyActiveState())
       const speaker = createFakeSpeaker()

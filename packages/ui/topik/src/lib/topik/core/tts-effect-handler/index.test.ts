@@ -453,12 +453,100 @@ describe("TTSEffectHandler - a line refused while muted waits for unmute", () =>
     expect(calls[1]!.content).toBe("content-m1")
   })
 
-  it("drops the held line when the learner stops", async () => {
+  it("reports the held line as stopped, not ended, so the lesson waits for it", async () => {
+    const onSpeechStopped = vi.fn()
+    const onSpeechEnd = vi.fn()
     const { speaker, calls, setMuted } = createFakeSpeaker()
     const handler = createTTSEffectHandler({
       speaker,
       componentId: "c1",
       machine: fakeMachine,
+      onSpeechStopped,
+      onSpeechEnd,
+    })
+
+    handler.enqueue(makeMessage("m1"), true)
+    setMuted(true)
+    errorSpeaking(calls[0]!, aborted())
+    await flushAsync()
+
+    expect(onSpeechStopped).toHaveBeenCalledWith("m1")
+    expect(onSpeechEnd).not.toHaveBeenCalled()
+  })
+
+  it("holds a replay muted mid-speech, and ends it once heard", async () => {
+    const onSpeechStopped = vi.fn()
+    const onSpeechEnd = vi.fn()
+    const { speaker, calls, setMuted } = createFakeSpeaker()
+    const handler = createTTSEffectHandler({
+      speaker,
+      componentId: "c1",
+      machine: fakeMachine,
+      onSpeechStopped,
+      onSpeechEnd,
+    })
+    const msg = makeMessage("m1")
+
+    handler.enqueue(msg, true)
+    finishSpeaking(calls[0]!)
+    await flushAsync()
+    onSpeechEnd.mockClear()
+
+    void handler.speakManually(msg)
+    setMuted(true)
+    errorSpeaking(calls[1]!, aborted())
+    await flushAsync()
+    expect(onSpeechStopped).toHaveBeenCalledWith("m1")
+
+    setMuted(false)
+    await flushAsync()
+    expect(calls[2]!.content).toBe("content-m1")
+    finishSpeaking(calls[2]!)
+    await flushAsync()
+    expect(onSpeechEnd).toHaveBeenCalledWith("m1")
+  })
+
+  it("holds a replay pressed while muted in place of the held lesson line", async () => {
+    const onSpeechEnd = vi.fn()
+    const { speaker, calls, setMuted } = createFakeSpeaker()
+    const handler = createTTSEffectHandler({
+      speaker,
+      componentId: "c1",
+      machine: fakeMachine,
+      onSpeechEnd,
+    })
+
+    setMuted(true)
+    handler.enqueue(makeMessage("m2"), true)
+    errorSpeaking(calls[0]!, aborted())
+    await flushAsync()
+
+    void handler.speakManually(makeMessage("m1"))
+    errorSpeaking(calls[1]!, aborted())
+    await flushAsync()
+
+    setMuted(false)
+    await flushAsync()
+    expect(calls.map((call) => call.content)).toEqual([
+      "content-m2",
+      "content-m1",
+      "content-m1",
+    ])
+    finishSpeaking(calls[2]!)
+    await flushAsync()
+    expect(onSpeechEnd).toHaveBeenCalledWith("m1")
+  })
+
+  it("ends the held line when the learner stops, and does not replay it", async () => {
+    const onSpeechEnd = vi.fn()
+    const onMessageComplete = vi.fn()
+    const { speaker, calls, setMuted } = createFakeSpeaker()
+    const handler = createTTSEffectHandler({
+      speaker,
+      componentId: "c1",
+      machine: fakeMachine,
+      onSpeechEnd,
+      onMessageComplete,
     })
 
     setMuted(true)
@@ -466,6 +554,11 @@ describe("TTSEffectHandler - a line refused while muted waits for unmute", () =>
     errorSpeaking(calls[0]!, aborted())
     await flushAsync()
     handler.handleStopAudio()
+
+    // Stopping a held line ends it, as stopping a line in flight does.
+    expect(onSpeechEnd).toHaveBeenCalledTimes(1)
+    expect(onSpeechEnd).toHaveBeenCalledWith("m1")
+    expect(onMessageComplete).toHaveBeenCalledWith("m1")
 
     setMuted(false)
     await flushAsync()
