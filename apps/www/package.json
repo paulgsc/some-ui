@@ -36,6 +36,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@radix-ui/react-accordion": "catalog:",
     "@some-ui/activity-catalog": "workspace:*",
+    "@some-ui/aph": "workspace:*",
     "@some-ui/auth": "workspace:*",
     "@some-ui/content-registry": "workspace:*",
     "@some-ui/fetch-kit": "workspace:*",

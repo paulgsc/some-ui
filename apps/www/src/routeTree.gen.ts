@@ -27,7 +27,13 @@ import { Route as DashboardSessionsSessionIdRouteImport } from './routes/_dashbo
 import { Route as DashboardLanRoundsRouteImport } from './routes/_dashboard/_lan/rounds'
 import { Route as DashboardLanLessonsRouteImport } from './routes/_dashboard/_lan/lessons'
 import { Route as DashboardLanLanRouteImport } from './routes/_dashboard/_lan/lan'
+import { Route as DashboardApkTodayRouteImport } from './routes/_dashboard/_apk/today'
 import { Route as DashboardApkSoundbitesRouteImport } from './routes/_dashboard/_apk/soundbites'
+import { Route as DashboardApkAphRouteImport } from './routes/_dashboard/_apk/aph'
+import { Route as DashboardApkAphIndexRouteImport } from './routes/_dashboard/_apk/aph/index'
+import { Route as DashboardApkAphTrendRouteImport } from './routes/_dashboard/_apk/aph/trend'
+import { Route as DashboardApkAphSettingsRouteImport } from './routes/_dashboard/_apk/aph/settings'
+import { Route as DashboardApkAphHistoryRouteImport } from './routes/_dashboard/_apk/aph/history'
 
 const MissionRoute = MissionRouteImport.update({
   id: '/mission',
@@ -117,10 +123,40 @@ const DashboardLanLanRoute = DashboardLanLanRouteImport.update({
   path: '/lan',
   getParentRoute: () => DashboardLanRoute,
 } as any)
+const DashboardApkTodayRoute = DashboardApkTodayRouteImport.update({
+  id: '/today',
+  path: '/today',
+  getParentRoute: () => DashboardApkRoute,
+} as any)
 const DashboardApkSoundbitesRoute = DashboardApkSoundbitesRouteImport.update({
   id: '/soundbites',
   path: '/soundbites',
   getParentRoute: () => DashboardApkRoute,
+} as any)
+const DashboardApkAphRoute = DashboardApkAphRouteImport.update({
+  id: '/aph',
+  path: '/aph',
+  getParentRoute: () => DashboardApkRoute,
+} as any)
+const DashboardApkAphIndexRoute = DashboardApkAphIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DashboardApkAphRoute,
+} as any)
+const DashboardApkAphTrendRoute = DashboardApkAphTrendRouteImport.update({
+  id: '/trend',
+  path: '/trend',
+  getParentRoute: () => DashboardApkAphRoute,
+} as any)
+const DashboardApkAphSettingsRoute = DashboardApkAphSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => DashboardApkAphRoute,
+} as any)
+const DashboardApkAphHistoryRoute = DashboardApkAphHistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
+  getParentRoute: () => DashboardApkAphRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -133,13 +169,19 @@ export interface FileRoutesByFullPath {
   '/profile': typeof DashboardProfileRoute
   '/resume': typeof DashboardResumeRoute
   '/settings': typeof DashboardSettingsRoute
+  '/aph': typeof DashboardApkAphRouteWithChildren
   '/soundbites': typeof DashboardApkSoundbitesRoute
+  '/today': typeof DashboardApkTodayRoute
   '/lan': typeof DashboardLanLanRoute
   '/lessons': typeof DashboardLanLessonsRoute
   '/rounds': typeof DashboardLanRoundsRoute
   '/sessions/$sessionId': typeof DashboardSessionsSessionIdRoute
   '/sessions/new': typeof DashboardSessionsNewRoute
   '/sessions/': typeof DashboardSessionsIndexRoute
+  '/aph/history': typeof DashboardApkAphHistoryRoute
+  '/aph/settings': typeof DashboardApkAphSettingsRoute
+  '/aph/trend': typeof DashboardApkAphTrendRoute
+  '/aph/': typeof DashboardApkAphIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -152,12 +194,17 @@ export interface FileRoutesByTo {
   '/resume': typeof DashboardResumeRoute
   '/settings': typeof DashboardSettingsRoute
   '/soundbites': typeof DashboardApkSoundbitesRoute
+  '/today': typeof DashboardApkTodayRoute
   '/lan': typeof DashboardLanLanRoute
   '/lessons': typeof DashboardLanLessonsRoute
   '/rounds': typeof DashboardLanRoundsRoute
   '/sessions/$sessionId': typeof DashboardSessionsSessionIdRoute
   '/sessions/new': typeof DashboardSessionsNewRoute
   '/sessions': typeof DashboardSessionsIndexRoute
+  '/aph/history': typeof DashboardApkAphHistoryRoute
+  '/aph/settings': typeof DashboardApkAphSettingsRoute
+  '/aph/trend': typeof DashboardApkAphTrendRoute
+  '/aph': typeof DashboardApkAphIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -173,13 +220,19 @@ export interface FileRoutesById {
   '/_dashboard/profile': typeof DashboardProfileRoute
   '/_dashboard/resume': typeof DashboardResumeRoute
   '/_dashboard/settings': typeof DashboardSettingsRoute
+  '/_dashboard/_apk/aph': typeof DashboardApkAphRouteWithChildren
   '/_dashboard/_apk/soundbites': typeof DashboardApkSoundbitesRoute
+  '/_dashboard/_apk/today': typeof DashboardApkTodayRoute
   '/_dashboard/_lan/lan': typeof DashboardLanLanRoute
   '/_dashboard/_lan/lessons': typeof DashboardLanLessonsRoute
   '/_dashboard/_lan/rounds': typeof DashboardLanRoundsRoute
   '/_dashboard/sessions/$sessionId': typeof DashboardSessionsSessionIdRoute
   '/_dashboard/sessions/new': typeof DashboardSessionsNewRoute
   '/_dashboard/sessions/': typeof DashboardSessionsIndexRoute
+  '/_dashboard/_apk/aph/history': typeof DashboardApkAphHistoryRoute
+  '/_dashboard/_apk/aph/settings': typeof DashboardApkAphSettingsRoute
+  '/_dashboard/_apk/aph/trend': typeof DashboardApkAphTrendRoute
+  '/_dashboard/_apk/aph/': typeof DashboardApkAphIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -193,13 +246,19 @@ export interface FileRouteTypes {
     | '/profile'
     | '/resume'
     | '/settings'
+    | '/aph'
     | '/soundbites'
+    | '/today'
     | '/lan'
     | '/lessons'
     | '/rounds'
     | '/sessions/$sessionId'
     | '/sessions/new'
     | '/sessions/'
+    | '/aph/history'
+    | '/aph/settings'
+    | '/aph/trend'
+    | '/aph/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -212,12 +271,17 @@ export interface FileRouteTypes {
     | '/resume'
     | '/settings'
     | '/soundbites'
+    | '/today'
     | '/lan'
     | '/lessons'
     | '/rounds'
     | '/sessions/$sessionId'
     | '/sessions/new'
     | '/sessions'
+    | '/aph/history'
+    | '/aph/settings'
+    | '/aph/trend'
+    | '/aph'
   id:
     | '__root__'
     | '/'
@@ -232,13 +296,19 @@ export interface FileRouteTypes {
     | '/_dashboard/profile'
     | '/_dashboard/resume'
     | '/_dashboard/settings'
+    | '/_dashboard/_apk/aph'
     | '/_dashboard/_apk/soundbites'
+    | '/_dashboard/_apk/today'
     | '/_dashboard/_lan/lan'
     | '/_dashboard/_lan/lessons'
     | '/_dashboard/_lan/rounds'
     | '/_dashboard/sessions/$sessionId'
     | '/_dashboard/sessions/new'
     | '/_dashboard/sessions/'
+    | '/_dashboard/_apk/aph/history'
+    | '/_dashboard/_apk/aph/settings'
+    | '/_dashboard/_apk/aph/trend'
+    | '/_dashboard/_apk/aph/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -377,6 +447,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardLanLanRouteImport
       parentRoute: typeof DashboardLanRoute
     }
+    '/_dashboard/_apk/today': {
+      id: '/_dashboard/_apk/today'
+      path: '/today'
+      fullPath: '/today'
+      preLoaderRoute: typeof DashboardApkTodayRouteImport
+      parentRoute: typeof DashboardApkRoute
+    }
     '/_dashboard/_apk/soundbites': {
       id: '/_dashboard/_apk/soundbites'
       path: '/soundbites'
@@ -384,15 +461,72 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardApkSoundbitesRouteImport
       parentRoute: typeof DashboardApkRoute
     }
+    '/_dashboard/_apk/aph': {
+      id: '/_dashboard/_apk/aph'
+      path: '/aph'
+      fullPath: '/aph'
+      preLoaderRoute: typeof DashboardApkAphRouteImport
+      parentRoute: typeof DashboardApkRoute
+    }
+    '/_dashboard/_apk/aph/': {
+      id: '/_dashboard/_apk/aph/'
+      path: '/'
+      fullPath: '/aph/'
+      preLoaderRoute: typeof DashboardApkAphIndexRouteImport
+      parentRoute: typeof DashboardApkAphRoute
+    }
+    '/_dashboard/_apk/aph/trend': {
+      id: '/_dashboard/_apk/aph/trend'
+      path: '/trend'
+      fullPath: '/aph/trend'
+      preLoaderRoute: typeof DashboardApkAphTrendRouteImport
+      parentRoute: typeof DashboardApkAphRoute
+    }
+    '/_dashboard/_apk/aph/settings': {
+      id: '/_dashboard/_apk/aph/settings'
+      path: '/settings'
+      fullPath: '/aph/settings'
+      preLoaderRoute: typeof DashboardApkAphSettingsRouteImport
+      parentRoute: typeof DashboardApkAphRoute
+    }
+    '/_dashboard/_apk/aph/history': {
+      id: '/_dashboard/_apk/aph/history'
+      path: '/history'
+      fullPath: '/aph/history'
+      preLoaderRoute: typeof DashboardApkAphHistoryRouteImport
+      parentRoute: typeof DashboardApkAphRoute
+    }
   }
 }
 
+interface DashboardApkAphRouteChildren {
+  DashboardApkAphHistoryRoute: typeof DashboardApkAphHistoryRoute
+  DashboardApkAphSettingsRoute: typeof DashboardApkAphSettingsRoute
+  DashboardApkAphTrendRoute: typeof DashboardApkAphTrendRoute
+  DashboardApkAphIndexRoute: typeof DashboardApkAphIndexRoute
+}
+
+const DashboardApkAphRouteChildren: DashboardApkAphRouteChildren = {
+  DashboardApkAphHistoryRoute: DashboardApkAphHistoryRoute,
+  DashboardApkAphSettingsRoute: DashboardApkAphSettingsRoute,
+  DashboardApkAphTrendRoute: DashboardApkAphTrendRoute,
+  DashboardApkAphIndexRoute: DashboardApkAphIndexRoute,
+}
+
+const DashboardApkAphRouteWithChildren = DashboardApkAphRoute._addFileChildren(
+  DashboardApkAphRouteChildren,
+)
+
 interface DashboardApkRouteChildren {
+  DashboardApkAphRoute: typeof DashboardApkAphRouteWithChildren
   DashboardApkSoundbitesRoute: typeof DashboardApkSoundbitesRoute
+  DashboardApkTodayRoute: typeof DashboardApkTodayRoute
 }
 
 const DashboardApkRouteChildren: DashboardApkRouteChildren = {
+  DashboardApkAphRoute: DashboardApkAphRouteWithChildren,
   DashboardApkSoundbitesRoute: DashboardApkSoundbitesRoute,
+  DashboardApkTodayRoute: DashboardApkTodayRoute,
 }
 
 const DashboardApkRouteWithChildren = DashboardApkRoute._addFileChildren(

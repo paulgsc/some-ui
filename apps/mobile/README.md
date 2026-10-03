@@ -12,27 +12,38 @@ handler is www's, and so is the backend (`apps/www/src/lib/device-backend`).
 > Status: **beta, on `main`.** It grew on a mobile staging branch until the
 > release APK had been used on a phone, then landed; iteration continues here.
 
-## What the app carries: sessions
+## What the app carries: a Home and its daily tools
 
-The phone gets **sessions** - the list, the composer and the player - and
-**soundbites** (below), and nothing else www routes to. The landing page, Home, the résumé, jobs, profile,
-the extensions tour and the LAN tools are the web app's; the Storybook is a
-separate site that was never in www's bundle. **Settings** stays, because on
-the phone it is the phone's own page: the sync from home, study reminders and
-the voice.
+The phone opens on its own **Home** (`/today`): what each daily tool needs
+from me right now, and what today has held so far. The tools hang off it,
+one tab each in the bar along the bottom:
+
+- **Study**: sessions - the list, the composer and the player;
+- **Bites**: the soundbites (below);
+- **aph**: logging aph and reconciling it (below).
+
+The + in the middle of the bar is a shortcut into those same tools ("Talk
+now", aph's mine or theirs, a new session), never a place of its own.
+Nothing else www routes to is here: the landing page, the web's Home, the
+résumé, jobs, profile, the extensions tour and the LAN tools are the web
+app's; the Storybook is a separate site that was never in www's bundle.
+**Settings** stays, behind the gear in the header, because on the phone it
+is the phone's own page: the sync from home, study reminders and the voice.
 
 How that is enforced (www `src/lib/app-surface`):
 
 - `build:web` selects the `mobile` profile (`apps/www/build.profiles.ts`),
   which sets `MOBILE_APP` in the bundle.
-- `MOBILE_SURFACE` is an **allowlist**: `/sessions`, `/soundbites` and
-  `/settings`, typed against the route tree. (Also `/auth`, which the phone never shows since it
+- `MOBILE_SURFACE` is an **allowlist**: `/today`, `/sessions`, `/soundbites`,
+  `/aph` and `/settings`, typed against the route tree. (Also `/auth`, which the phone never shows since it
   is always signed in, so that the sign-in guard and this one cannot redirect
   each other in a loop.) The root route redirects any other path to
-  `/sessions` before its own guards run, so the app opens on the sessions list,
+  `/today` before its own guards run, so the app opens on Home,
   and a page added to www later stays off the phone until someone lists it.
-- The sidebar shows only the listed pages, and "Start something new" goes to
-  the composer rather than Home's launcher.
+- There is no sidebar: the bottom bar (`src/components/mobile-shell`) links
+  the tools, and steps aside on the two bounded screens (the player and the
+  composer). "Start something new" goes to the composer rather than the web
+  Home's launcher.
 - The build leaves out the résumé's PDFs and its `/resume/` document.
 
 What that does not do: the other pages' code is still in the bundle, as
@@ -399,6 +410,33 @@ with `isExactNotification: false`, and the manifest removes the plugin's
 exact, and without exact-alarm access (Android 14 denies it by default) each
 `schedule()` would open the "Alarms & reminders" settings screen.
 
+## aph: my figure, their figure, and the goal
+
+A reconciliation, the way a ledger is reconciled against a bank statement.
+For each day and time of day (the checkpoints, 7:00 and 12:00) there are
+three figures: **mine**, observed and usually rough ("~4,300"); **theirs**,
+reported later by the side I do not control; and the **goal** it should be.
+Defined **labels** ("no-bs", "w/o office" …) and a short note say what was
+different that day.
+
+- **Reconciled** (green check): mine and theirs within the tolerance (±100
+  by default), settled without me.
+- **Your call** (amber): further apart, or theirs with no figure of mine.
+  It waits until I **agree** with theirs (green, double check) or **flag**
+  it (red flag, the only red).
+- **Awaiting theirs** (grey, dashed): their figure has not come in.
+
+The delta is the standing figure (theirs once reported, else mine) against
+the goal the entry was made under, so changing a goal never rewrites the
+past. Colours are theme tokens (`--success`, `--warning`, `--destructive`,
+`--chart-*`), so every theme restyles it.
+
+Code: `packages/ui/aph` (`lib/model.ts` decides everything; the screens
+draw it), routed under `_dashboard/_apk/aph`. **Not stored yet:** entries
+live in memory, starting from the paper notes they replace
+(`lib/seed.ts`), and a reload starts over. Storage comes once the screens
+have settled.
+
 ## Soundbites: saying why a session did not happen
 
 The phone's answer to "why didn't I study?", asked in the one way that costs
@@ -409,7 +447,7 @@ happen; these recordings are how the app finds out when it was.
 
 **Getting there is one tap, and the tap starts listening.**
 
-- **Sessions → Not studying today? → Say why** (the list the app opens on).
+- **Home → Study → Not today? Say why** (the screen the app opens on).
 - A study reminder's **Not today: say why** button. A reminder that is not
   going to be followed is when the reason is freshest, so the answer is one
   tap from the notification instead of a dismissal.
@@ -419,8 +457,10 @@ Tap again to keep it. There is nothing to type, choose or confirm, and a
 row of sentence starters ("Too tired", "No time today", "The app got in the
 way" …) is there for the moment the mind goes blank.
 
-**Soundbites** in the sidebar opens the same page without listening: the
-way to play back or delete what is kept, with no live microphone.
+**Talk now** in the + sheet opens it listening too, for a comment rather
+than a reason (`say=capture`). **Bites** in the bottom bar opens the same
+page without listening: the way to play back or delete what is kept, with
+no live microphone.
 
 **What the app notes by itself**, beside each recording: when it was made
 (with the phone's time zone), how it was reached (the list, a reminder, or

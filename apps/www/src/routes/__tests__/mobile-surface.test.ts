@@ -1,10 +1,10 @@
 /**
  * @vitest-environment jsdom
  *
- * The Android app carries sessions, the soundbites and settings, and nothing
- * else www routes to (`lib/app-surface`). Checked against the real route tree, in a bundle
+ * The Android app carries its Home, sessions, the soundbites, aph and
+ * settings, and nothing else www routes to (`lib/app-surface`). Checked against the real route tree, in a bundle
  * built with the real `mobile` profile's name: every route either loads where
- * it was asked for, or ends on the sessions list. The profile name comes from
+ * it was asked for, or ends on the phone's Home. The profile name comes from
  * build.profiles.ts, so a `lib/build-profile` that spells it differently turns
  * the guard off and fails here.
  *
@@ -82,7 +82,7 @@ describe("the Android app's surface", () => {
     }
   })
 
-  it("sends every other route to the sessions list", async () => {
+  it("sends every other route to the phone's Home", async () => {
     for (const url of urls.filter((u) => !isOnMobileSurface(u))) {
       expect(await landingOf(url), url).toBe(MOBILE_HOME)
     }
@@ -90,7 +90,7 @@ describe("the Android app's surface", () => {
 
   it("never redirects a signed-out visit away from sign-in", () => {
     // The root sends a signed-out visit to /auth; off the surface, that would
-    // be sent back to /sessions, and round again.
+    // be sent back to Home, and round again.
     expect(isOnMobileSurface("/auth")).toBe(true)
   })
 
