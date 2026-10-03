@@ -1046,6 +1046,9 @@ importers:
 
   packages/ui/aph:
     dependencies:
+      '@some-ui/core-utils':
+        specifier: workspace:*
+        version: link:../../core-utils
       '@some-ui/shared':
         specifier: workspace:*
         version: link:../shared
@@ -1204,6 +1207,9 @@ importers:
 
   packages/ui/leetype:
     dependencies:
+      '@some-ui/core-utils':
+        specifier: workspace:*
+        version: link:../../core-utils
       '@some-ui/leetype-wasm':
         specifier: ^0.0.14
         version: 0.0.14

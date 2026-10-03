@@ -1,3 +1,4 @@
+import { quantile } from "@some-ui/core-utils"
 import { z } from "zod"
 
 /**
@@ -238,8 +239,8 @@ export function sampleFromIntervals(
     // speed at the slow one, which is the width the deadband actually cares
     // about.
     dispersion: Math.abs(
-      wpmFromInterval(quantile(sorted, 0.25)) -
-        wpmFromInterval(quantile(sorted, 0.75))
+      wpmFromInterval(quantile(sorted, 0.25) ?? 0) -
+        wpmFromInterval(quantile(sorted, 0.75) ?? 0)
     ),
     samples: 1,
     updatedAt: Date.now(),
@@ -277,15 +278,4 @@ function mix(previous: number, next: number): number {
 function wpmFromInterval(intervalMs: number): number {
   if (intervalMs <= 0) return 0
   return 60_000 / intervalMs / 5
-}
-
-/** Linear-interpolated quantile of an already-sorted array. */
-function quantile(sorted: ReadonlyArray<number>, fraction: number): number {
-  if (sorted.length === 0) return 0
-  const position = (sorted.length - 1) * fraction
-  const lower = Math.floor(position)
-  const upper = Math.ceil(position)
-  const low = sorted[lower] ?? 0
-  const high = sorted[upper] ?? low
-  return low + (high - low) * (position - lower)
 }

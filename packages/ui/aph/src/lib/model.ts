@@ -20,6 +20,8 @@
  * carry only mine and the goals.
  */
 
+import { median } from "@some-ui/core-utils"
+
 /** A fixed time of day an entry is taken at, and what aph should be then. */
 export type Checkpoint = {
   id: string
@@ -353,14 +355,6 @@ export function history(
 
 function mean(xs: ReadonlyArray<number>): number | null {
   return xs.length === 0 ? null : xs.reduce((a, b) => a + b, 0) / xs.length
-}
-
-function median(xs: ReadonlyArray<number>): number | null {
-  if (xs.length === 0) return null
-  const sorted = [...xs].sort((a, b) => a - b)
-  const mid = Math.floor(sorted.length / 2)
-  const at = (i: number): number => sorted[i] ?? 0
-  return sorted.length % 2 === 1 ? at(mid) : (at(mid - 1) + at(mid)) / 2
 }
 
 /**
