@@ -11,7 +11,7 @@
     "@types/chrome": "^0.0.293",
     "@types/firefox-webext-browser": "^120.0.4",
     "eslint": "^10.11.0",
-    "fast-check": "^3.23.1",
+    "fast-check": "^4.10.2",
     "vite": "^8.3.1",
     "web-ext": "^10.7.0"
   },

@@ -6,7 +6,7 @@
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/vite-config": "workspace:*",
-    "fast-check": "^3.23.1"
+    "fast-check": "^4.10.2"
   },
   "exports": {
     ".": {

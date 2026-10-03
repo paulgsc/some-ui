@@ -33,7 +33,7 @@
     "@some-ui/tsconfig": "workspace:*",
     "@tanstack/react-query": "^5.66.11",
     "@testing-library/react": "^16.3.0",
-    "fast-check": "^3.23.1",
+    "fast-check": "^4.10.2",
     "jsdom": "26.0.0"
   },
   "repository": {
