@@ -27,6 +27,7 @@ import {
   hostedVoicesOf,
   isTTSProvider,
   parseHostedVoiceChoice,
+  useSpeaker,
 } from "@some-ui/speech"
 
 import { LESSON_LANGUAGE } from "@/lib/lesson-voice"
@@ -48,6 +49,23 @@ type HostedVoiceFieldsProps = {
 }
 
 const LessonVoice = ({ value }: { value: HostedVoiceChoice }): JSX.Element => {
+  // The fields below choose a hosted voice, but the session only uses one
+  // when it can reach the voice service (signed in, on a deployment that
+  // has it). Otherwise saying which hosted voice reads lessons would be
+  // false: the browser's own voice does.
+  const speaking = useSpeaker()?.describe(LESSON_LANGUAGE)
+  if (speaking && speaking.platform !== "hosted") {
+    const now = speaking.speaksLanguage
+      ? `${speaking.voice ?? "its default Korean voice"}, your browser's own voice`
+      : "your browser's own voice, which has no Korean voice (see the speaker icon)"
+    return (
+      <p className="text-muted-foreground text-sm">
+        Lessons are read by {now} right now. The voice chosen here applies when
+        you&apos;re signed in.
+      </p>
+    )
+  }
+
   const lessonVoice = hostedVoiceFor(value, LESSON_LANGUAGE)
   const chosen = hostedVoicesOf(value.provider).find(
     (voice) => voice.id === value.voiceId
