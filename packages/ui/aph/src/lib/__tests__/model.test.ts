@@ -102,6 +102,17 @@ describe("checkpoints over a day", () => {
   })
 })
 
+describe("entries waiting on their figure", () => {
+  it("offer the latest checkpoint of the latest day first", () => {
+    const seven = entry({ id: "seven", checkpoint: "7", goal: 4100 })
+    const noon = entry({ id: "noon", checkpoint: "12" })
+    const yesterday = entry({ id: "yesterday", day: "2026-10-01" })
+    expect(
+      awaitingTheirs(settings, [yesterday, seven, noon]).map((e) => e.id)
+    ).toEqual(["noon", "seven", "yesterday"])
+  })
+})
+
 describe("a checkpoint left unlogged", () => {
   it("is missed once its window closes, and not before", () => {
     const [seven] = settings.checkpoints

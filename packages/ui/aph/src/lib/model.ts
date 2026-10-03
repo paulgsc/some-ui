@@ -186,14 +186,18 @@ export function nextCheckpoint(
   )
 }
 
-/** Entries that still want their figure, newest first. */
+/**
+ * Entries that still want their figure, newest first: the latest day, and
+ * within it the latest checkpoint, so a report arriving at noon lands on
+ * noon unless I pick another.
+ */
 export function awaitingTheirs(
   settings: AphSettings,
   entries: ReadonlyArray<Entry>
 ): Array<Entry> {
   return entries
     .filter((e) => reconcile(settings, e).status === "awaiting")
-    .sort(byNewest(settings))
+    .sort(byLatest(settings))
 }
 
 /** Entries waiting on my call (`review`) or disputed (`flagged`). */
@@ -216,6 +220,21 @@ function byNewest(settings: AphSettings): (a: Entry, b: Entry) => number {
   const rank = (e: Entry): number => {
     const i = settings.checkpoints.findIndex((c) => c.id === e.checkpoint)
     return i === -1 ? settings.checkpoints.length : i
+  }
+  return (a, b) =>
+    a.day === b.day ? rank(a) - rank(b) : b.day.localeCompare(a.day)
+}
+
+/**
+ * Newest day first; within a day, the latest checkpoint first, others after.
+ * The order a list of "what came in most recently" wants, where History's
+ * `byNewest` reads a day top to bottom.
+ */
+function byLatest(settings: AphSettings): (a: Entry, b: Entry) => number {
+  const last = settings.checkpoints.length
+  const rank = (e: Entry): number => {
+    const i = settings.checkpoints.findIndex((c) => c.id === e.checkpoint)
+    return i === -1 ? last : last - 1 - i
   }
   return (a, b) =>
     a.day === b.day ? rank(a) - rank(b) : b.day.localeCompare(a.day)
