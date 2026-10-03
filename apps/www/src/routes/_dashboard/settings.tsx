@@ -87,6 +87,7 @@ const SettingsForm = ({
 }: {
   settings: UserSettings
 }): JSX.Element => {
+  // eslint-disable-next-line owner-guard/no-mount-snapshot -- an edit buffer: a refetch must not overwrite unsaved choices, and isDirty compares it against the live settings
   const [draft, setDraft] = useState<UserSettings>(settings)
   const saveIntent = useIntent(useUpdateSettings(), {
     presentation: "interactive",

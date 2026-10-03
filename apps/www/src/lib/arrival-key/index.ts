@@ -14,6 +14,7 @@ import { useState } from "react"
  * own pattern for state derived from a changing prop.
  */
 export function useArrivalKey(request: string | undefined): number {
+  // eslint-disable-next-line owner-guard/no-mount-snapshot -- the previous request, compared against the live one on every render below
   const [seen, setSeen] = useState({ request, key: 0 })
   if (request === seen.request) return seen.key
   const next = {

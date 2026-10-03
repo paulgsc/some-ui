@@ -58,6 +58,7 @@ const TOUCH_LANDSCAPE_QUERY = "(max-height: 500px) and (pointer: coarse)"
 
 function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(() =>
+    // eslint-disable-next-line owner-guard/no-mount-snapshot -- the first paint's answer; the effect below re-reads it whenever `query` changes
     typeof window === "undefined" ? false : window.matchMedia(query).matches
   )
   useEffect(() => {
