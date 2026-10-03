@@ -2,6 +2,7 @@ import type { Entry } from "@aph/lib/model"
 import {
   awaitingTheirs,
   dueCheckpoint,
+  entriesOn,
   formatDelta,
   formatValue,
   goalDelta,
@@ -110,6 +111,26 @@ describe("entries waiting on their figure", () => {
     expect(
       awaitingTheirs(settings, [yesterday, seven, noon]).map((e) => e.id)
     ).toEqual(["noon", "seven", "yesterday"])
+  })
+})
+
+describe("a day's entries", () => {
+  it("read in checkpoint order, whatever order they were logged in", () => {
+    // Noon logged first, then the missed 7:00 late, then an off-checkpoint one.
+    const noon = entry({ id: "noon", checkpoint: "12" })
+    const extra = entry({
+      id: "extra",
+      checkpoint: null,
+      time: "4:00",
+      goal: null,
+    })
+    const late = entry({ id: "late", checkpoint: "7", goal: 4100 })
+    const other = entry({ id: "other", day: "2026-10-01" })
+    expect(
+      entriesOn(settings, [noon, extra, late, other], "2026-10-02").map(
+        (e) => e.id
+      )
+    ).toEqual(["late", "noon", "extra"])
   })
 })
 

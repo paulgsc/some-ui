@@ -15,6 +15,7 @@ import {
 import {
   dayOf,
   dueCheckpoint,
+  entriesOn,
   formatValue,
   isMissed,
   minutesOf,
@@ -135,8 +136,7 @@ export const AphTodayEntries = ({
   // otherwise the moment this mounted.
   const [mounted] = useState(() => new Date())
   const now = givenNow ?? mounted
-  const today = dayOf(now)
-  const todays = entries.filter((e) => e.day === today)
+  const todays = entriesOn(settings, entries, dayOf(now))
   if (todays.length === 0) return <>{empty}</>
   return (
     <>

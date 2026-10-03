@@ -215,20 +215,19 @@ export function needsAttention(
   return { review, flagged }
 }
 
-/** Newest day first; within a day, checkpoints in order, others after. */
-function byNewest(settings: AphSettings): (a: Entry, b: Entry) => number {
+/** Within a day: checkpoints in order, others after (stable among those). */
+function inDayOrder(settings: AphSettings): (a: Entry, b: Entry) => number {
   const rank = (e: Entry): number => {
     const i = settings.checkpoints.findIndex((c) => c.id === e.checkpoint)
     return i === -1 ? settings.checkpoints.length : i
   }
-  return (a, b) =>
-    a.day === b.day ? rank(a) - rank(b) : b.day.localeCompare(a.day)
+  return (a, b) => rank(a) - rank(b)
 }
 
 /**
  * Newest day first; within a day, the latest checkpoint first, others after.
  * The order a list of "what came in most recently" wants, where History's
- * `byNewest` reads a day top to bottom.
+ * `entriesOn` reads a day top to bottom.
  */
 function byLatest(settings: AphSettings): (a: Entry, b: Entry) => number {
   const last = settings.checkpoints.length
@@ -277,6 +276,19 @@ export function formatWeekday(day: string): string {
 }
 
 /** One row of History: a day with entries, or a run of days without. */
+/**
+ * One day's entries in reading order: checkpoints in their order, others
+ * after. Every list that shows a day reads it from here, whatever order the
+ * entries were logged in.
+ */
+export function entriesOn(
+  settings: AphSettings,
+  entries: ReadonlyArray<Entry>,
+  day: string
+): Array<Entry> {
+  return entries.filter((e) => e.day === day).sort(inDayOrder(settings))
+}
+
 export type HistoryRow =
   | { kind: "day"; day: string; entries: ReadonlyArray<Entry> }
   | { kind: "gap"; from: string; to: string; days: number }
@@ -292,14 +304,18 @@ export function history(
   today: string
 ): Array<HistoryRow> {
   const byDay = new Map<string, Array<Entry>>()
-  for (const e of [...entries].sort(byNewest(settings))) {
+  for (const e of entries) {
     byDay.set(e.day, [...(byDay.get(e.day) ?? []), e])
   }
   const rows: Array<HistoryRow> = []
   for (let day = today; day >= settings.since; day = addDays(day, -1)) {
     const logged = byDay.get(day)
     if (logged !== undefined || day === today) {
-      rows.push({ kind: "day", day, entries: logged ?? [] })
+      rows.push({
+        kind: "day",
+        day,
+        entries: entriesOn(settings, logged ?? [], day),
+      })
       continue
     }
     const last = rows.at(-1)
