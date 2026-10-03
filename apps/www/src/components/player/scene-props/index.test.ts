@@ -37,7 +37,7 @@ function panelsOf(
 
 const PROPS: ScenePropsMap = {
   hangul: { words: ["사과"], sessionKey: "s-1", suspended: false },
-  interview: { level: "mid", category: "technical" },
+  topik: { path: "topiks/beginner.json" },
 }
 
 describe("withSceneProps", () => {
@@ -65,7 +65,7 @@ describe("withSceneProps", () => {
       PROPS
     )
 
-    // The whole point: `neon` never sees hangul's words or interview's config.
+    // The whole point: `neon` never sees hangul's words or topik's path.
     expect(panelsOf(result).sidebar.props).toBeUndefined()
   })
 
@@ -74,7 +74,7 @@ describe("withSceneProps", () => {
       [
         lifetime({
           main: { registry_key: "hangul" },
-          footer: { registry_key: "interview" },
+          footer: { registry_key: "topik" },
         }),
       ],
       PROPS
@@ -85,10 +85,7 @@ describe("withSceneProps", () => {
       "sessionKey",
       "suspended",
     ])
-    expect(Object.keys(panelsOf(result).footer.props!)).toEqual([
-      "level",
-      "category",
-    ])
+    expect(Object.keys(panelsOf(result).footer.props!)).toEqual(["path"])
   })
 
   it("keeps persisted scene props and lets runtime props win a conflict", () => {
@@ -118,14 +115,13 @@ describe("withSceneProps", () => {
     const result = withSceneProps(
       [
         lifetime({ main: { registry_key: "neon" } }, 1),
-        lifetime({ main: { registry_key: "interview" } }, 2),
+        lifetime({ main: { registry_key: "topik" } }, 2),
       ],
       PROPS
     )
 
     expect(panelsOf(result, 1).main.props).toEqual({
-      level: "mid",
-      category: "technical",
+      path: "topiks/beginner.json",
     })
   })
 
@@ -180,12 +176,12 @@ describe("defineSceneProps", () => {
   it("passes a valid map through unchanged", () => {
     const map = defineSceneProps({
       hangul: { words: ["사과"] },
-      interview: { level: "mid" },
+      topik: { path: "topiks/beginner.json" },
     })
 
     expect(map).toEqual({
       hangul: { words: ["사과"] },
-      interview: { level: "mid" },
+      topik: { path: "topiks/beginner.json" },
     })
   })
 

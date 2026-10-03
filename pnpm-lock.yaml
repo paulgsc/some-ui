@@ -886,9 +886,6 @@ importers:
       '@some-ui/honeycomb':
         specifier: workspace:*
         version: link:../ui/honeycomb
-      '@some-ui/interview':
-        specifier: workspace:*
-        version: link:../ui/interview
       '@some-ui/leetype':
         specifier: workspace:*
         version: link:../ui/leetype
@@ -1173,37 +1170,6 @@ importers:
       '@some-ui/vite-config':
         specifier: workspace:*
         version: link:../../some-vite-config
-
-  packages/ui/interview:
-    dependencies:
-      '@some-ui/shared':
-        specifier: workspace:*
-        version: link:../shared
-      '@some-ui/speech':
-        specifier: workspace:*
-        version: link:../../speech
-      lucide-react:
-        specifier: 'catalog:'
-        version: 0.562.0(react@19.0.0)
-      react:
-        specifier: ^19.0.0
-        version: 19.0.0
-      react-dom:
-        specifier: ^19.0.0
-        version: 19.0.0(react@19.0.0)
-      zod:
-        specifier: 'catalog:'
-        version: 4.6.5
-    devDependencies:
-      '@some-ui/tsconfig':
-        specifier: workspace:*
-        version: link:../../tsconfig
-      '@some-ui/vite-config':
-        specifier: workspace:*
-        version: link:../../some-vite-config
-      '@types/react':
-        specifier: ^19.0.4
-        version: 19.2.17
 
   packages/ui/leetype:
     dependencies:

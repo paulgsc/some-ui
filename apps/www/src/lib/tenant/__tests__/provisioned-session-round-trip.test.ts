@@ -1,8 +1,10 @@
 import { readFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import type { SessionActivity } from "@some-ui/activity-catalog"
 import {
   defaultSessionName,
+  isActivityId,
   sequenceScenes,
   totalDurationOfScenes,
 } from "@some-ui/activity-catalog"
@@ -136,6 +138,16 @@ function loadFixture(): SessionRecord {
  */
 describe("a server-provisioned session round-trips into the client's SessionRecord (server#282)", () => {
   const record: SessionRecord = loadFixture()
+  // The server provisions only activities this client still offers, so every
+  // stored id must narrow; one that doesn't fails here, by name.
+  const activities: Array<SessionActivity> = record.activities.map(
+    ({ activityId, config }) => {
+      if (!isActivityId(activityId)) {
+        throw new Error(`fixture names a retired activity: ${activityId}`)
+      }
+      return { activityId, config }
+    }
+  )
 
   it("deserialises into a well-formed SessionRecord", () => {
     expect(record.id).toMatch(/^session-/)
@@ -166,12 +178,12 @@ describe("a server-provisioned session round-trips into the client's SessionReco
   })
 
   it("names the session exactly what defaultSessionName would produce for the same activity list", () => {
-    const activityIds = record.activities.map((activity) => activity.activityId)
+    const activityIds = activities.map((activity) => activity.activityId)
     expect(record.name).toBe(defaultSessionName(activityIds))
   })
 
   it("schedules every activity at its floor, never its default", () => {
-    const scenes = sequenceScenes(record.activities)
+    const scenes = sequenceScenes(activities)
     // honeycomb: floor 5m (its own minMinutes), default 10m.
     // topik: floor 10m (topik's own 10m minimum beats the client's 5m
     // floor), default 15m.
@@ -182,7 +194,7 @@ describe("a server-provisioned session round-trips into the client's SessionReco
   })
 
   it("passes checkSessionDuration outright, the same guarantee server#281 established for activities alone", () => {
-    const scenes = sequenceScenes(record.activities)
+    const scenes = sequenceScenes(activities)
     expect(checkSessionDuration(scenes)).toEqual({ state: "valid" })
   })
 
@@ -193,7 +205,7 @@ describe("a server-provisioned session round-trips into the client's SessionReco
     // scenes `sequenceScenes` would build, because Basic scenes are placed
     // back-to-back with no gaps or overlap. This is the assertion that
     // proves it rather than just claiming it.
-    const scenes = sequenceScenes(record.activities)
+    const scenes = sequenceScenes(activities)
     expect(record.totalDurationMs).toBe(totalDurationOfScenes(scenes))
   })
 

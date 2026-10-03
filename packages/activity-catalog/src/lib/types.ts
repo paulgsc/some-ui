@@ -26,7 +26,7 @@ export type TopikLevel = "beginner" | "intermediate" | "advanced"
  * the vocabulary the dashboard's UI speaks, translated into orchestrator
  * primitives only at the edges (see `toSceneConfig`).
  */
-export type ActivityId = "honeycomb" | "topik" | "interview" | "leetype"
+export type ActivityId = "honeycomb" | "topik" | "leetype"
 
 /** Which pre-built layout tree (from @some-ui/content-registry) an activity defaults to. */
 export type LayoutTreeId = "study" | "topik" | "drama" | "voice"

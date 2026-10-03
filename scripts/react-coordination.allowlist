@@ -29,10 +29,6 @@
 3 packages/ui/honeycomb/src/hooks/use-game-audio.ts
 3 packages/ui/honeycomb/src/hooks/use-hangul-wasm/index.ts
 3 packages/ui/honeycomb/src/hooks/use-hexgrid-wasm/index.ts
-1 packages/ui/interview/src/components/mock-interview/question-playback/index.tsx
-1 packages/ui/interview/src/hooks/use-audio-level/index.ts
-2 packages/ui/interview/src/hooks/use-audio-recorder/index.ts
-4 packages/ui/interview/src/hooks/use-interview-session.ts
 1 packages/ui/leetype/src/components/leetype/index.tsx
 2 packages/ui/leetype/src/components/round/generate-round/index.tsx
 1 packages/ui/leetype/src/components/round/round-session/index.tsx

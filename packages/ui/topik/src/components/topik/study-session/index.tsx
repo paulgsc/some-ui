@@ -19,8 +19,8 @@
  *
  * So the applet provides its own context and takes overrides as props,
  * which is what every other applet in this repo already does: honeycomb
- * defaults `words` to its bundled seed, `InterviewApp` takes an optional
- * `sessionConfig`. `<KoreanStudyPage />` with no props is a working applet;
+ * defaults `words` to its bundled seed. `<KoreanStudyPage />` with no props
+ * is a working applet;
  * a host that wants to inject repositories passes them.
  *
  * `useSessionConfig` still throws without a provider, and should: it is now

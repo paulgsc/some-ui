@@ -84,9 +84,9 @@ describe("rankActivities", () => {
     const ranked = rankActivities(real)
 
     expect(new Set(idsOf(ranked))).toEqual(new Set(ACTIVITY_IDS))
-    // topik is "preview" and interview is "early", so both sit below the two
-    // finished activities - the dashboard's default order, with no history.
-    expect(ranked.at(-1)!.id).toBe("interview")
+    // topik is "preview", so it sits below the two finished activities -
+    // the dashboard's default order, with no history.
+    expect(ranked.at(-1)!.id).toBe("topik")
   })
 })
 

@@ -39,10 +39,6 @@ export default defineConfig({
         "./packages/ui/leetype/corpus"
       ),
       "@topik": path.resolve(import.meta.dirname, "./packages/ui/topik/src"),
-      "@interview": path.resolve(
-        import.meta.dirname,
-        "./packages/ui/interview/src"
-      ),
       "@wireframes": path.resolve(
         import.meta.dirname,
         "./packages/ui/wireframes/src"

@@ -29,7 +29,7 @@ import { describe, expect, it } from "vitest"
  * before saying so. Bump this number in the same commit that adds the
  * activity, having run `pnpm --filter www test:ui-fit`.
  */
-const KNOWN_CATALOGUE_SIZE = 4
+const KNOWN_CATALOGUE_SIZE = 3
 
 describe("catalogue size", () => {
   it("has not grown without the launcher being re-checked", () => {

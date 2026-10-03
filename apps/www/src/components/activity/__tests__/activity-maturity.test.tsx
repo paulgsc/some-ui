@@ -5,6 +5,7 @@
  * a badge on every card is a badge on none of them.
  */
 
+import type { ActivityDefinition } from "@some-ui/activity-catalog"
 import { getActivity } from "@some-ui/activity-catalog"
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
@@ -17,6 +18,10 @@ import {
 afterEach(() => {
   cleanup()
 })
+
+// No shipped activity is "early" today, so the construction-zone sign is
+// checked against a stand-in rather than whichever activity happens to be.
+const EARLY: ActivityDefinition = { ...getActivity("topik"), maturity: "early" }
 
 describe("activity maturity signs", () => {
   it("says nothing at all for a finished activity", () => {
@@ -35,13 +40,13 @@ describe("activity maturity signs", () => {
   })
 
   it("marks a construction zone before a person walks into it", () => {
-    render(<ActivityMaturityNote activity={getActivity("interview")} />)
+    render(<ActivityMaturityNote activity={EARLY} />)
 
     expect(screen.getByText(/under construction/i)).toBeDefined()
   })
 
   it("sets expectations without exposing anything about the build", () => {
-    render(<ActivityMaturityNote activity={getActivity("interview")} />)
+    render(<ActivityMaturityNote activity={EARLY} />)
 
     // Not a diagnostic and not an apology: no error text, no issue numbers,
     // no roadmap, nothing a person would have to be an engineer to read.
