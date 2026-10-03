@@ -16,7 +16,16 @@ import {
   Skeleton,
 } from "@some-ui/shared"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { Copy, Mic, Pencil, Play, Sparkles, Trash2, X } from "lucide-react"
+import {
+  Copy,
+  Mic,
+  Pencil,
+  Play,
+  Plus,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react"
 import { cn, formatRelativeTime } from "some-ui-utils"
 
 import { hasAudience, MOBILE_APP } from "@/lib/build-profile"
@@ -369,6 +378,29 @@ const IN_PROGRESS_STATUSES: ReadonlyArray<SessionStatus> = [
   "scheduled",
 ]
 
+/**
+ * Where a new session starts. Home's launcher is the web app's; the phone
+ * has no Home, so it goes straight to the composer, whose picker has the
+ * whole catalogue.
+ */
+const NEW_SESSION_TO = MOBILE_APP ? "/sessions/new" : "/app"
+
+/**
+ * Above a list that has sessions in it. The empty list has its own way in;
+ * without this one, the phone (which has no Home) could compose its first
+ * session and never another.
+ */
+const NewSessionButton = (): JSX.Element => (
+  <div className="flex justify-end">
+    <Button asChild size="sm">
+      <Link to={NEW_SESSION_TO}>
+        <Plus className="mr-1.5 size-3.5" />
+        New session
+      </Link>
+    </Button>
+  </div>
+)
+
 const SessionsList = ({
   sessions,
   refreshError,
@@ -410,11 +442,7 @@ const SessionsList = ({
             <Sparkles className="size-6" />
             <p>No sessions yet.</p>
             <Button asChild size="sm" className="mt-2">
-              {/* Home's launcher is the web app's; the phone goes straight
-                  to the composer, whose picker has the whole catalogue. */}
-              <Link to={MOBILE_APP ? "/sessions/new" : "/app"}>
-                Start something new
-              </Link>
+              <Link to={NEW_SESSION_TO}>Start something new</Link>
             </Button>
           </CardContent>
         </Card>
@@ -443,6 +471,7 @@ const SessionsList = ({
           onRetry={refreshError.retry}
         />
       )}
+      <NewSessionButton />
       {selectedIds.size > 0 && (
         <BulkActionBar
           selectedIds={selectedIds}
