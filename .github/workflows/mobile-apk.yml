@@ -79,6 +79,18 @@ jobs:
             exit 1
           fi
 
+      # The phone's voice arrives the same way (the speech session's `native`
+      # backend in the device build, then a dynamic import of the plugin),
+      # and without it every lesson is silent.
+      # The plugin's bridge name survives minification only as the string
+      # its `registerPlugin` call passes, so finding it finds the plugin.
+      - name: Check the phone's speech engine is in the bundle
+        run: |
+          if ! grep -rqF 'TextToSpeech' apps/www/dist/assets; then
+            echo "::error::apps/www/dist has no text-to-speech plugin - the APK would speak nothing"
+            exit 1
+          fi
+
       # Outside the nix shell on purpose: Gradle wants the runner's JDK and the
       # preinstalled SDK, neither of which the ci devShell carries.
       - uses: actions/setup-java@v5
