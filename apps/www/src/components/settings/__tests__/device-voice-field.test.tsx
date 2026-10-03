@@ -101,7 +101,7 @@ describe("DeviceVoiceField", () => {
 
     await screen.findByText("Phone default")
     fireEvent.click(screen.getByRole("button", { name: "Play sample" }))
-    expect(fake.previewDeviceVoice).toHaveBeenCalledWith(undefined)
+    expect(fake.previewDeviceVoice).toHaveBeenCalledWith(undefined, null)
   })
 
   it("previews the voice that is chosen", async () => {
@@ -120,6 +120,9 @@ describe("DeviceVoiceField", () => {
 
     await screen.findByText("Voice KOB (offline)")
     fireEvent.click(screen.getByRole("button", { name: "Play sample" }))
-    expect(fake.previewDeviceVoice).toHaveBeenCalledWith("ko-kr-x-kob-local")
+    expect(fake.previewDeviceVoice).toHaveBeenCalledWith(
+      "ko-kr-x-kob-local",
+      null
+    )
   })
 })

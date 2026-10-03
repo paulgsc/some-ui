@@ -14,13 +14,14 @@ import { act, cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 const fake = vi.hoisted(() => {
-  const state = { installed: true }
+  // `hold`: lines never settle, as the plugin's do when it is cut off.
+  const state = { installed: true, hold: false }
   const spoken: Array<unknown> = []
   const openInstall = vi.fn((): Promise<void> => Promise.resolve())
   const engine = {
     speak: (request: unknown): Promise<void> => {
       spoken.push(request)
-      return Promise.resolve()
+      return state.hold ? new Promise<void>(() => undefined) : Promise.resolve()
     },
     stop: (): Promise<void> => Promise.resolve(),
     getVoices: (): Promise<
@@ -64,9 +65,12 @@ vi.mock(
   })
 )
 
-const { deviceSpeechBackend, readDeviceVoices, voiceLabel } = await import(
-  "@/lib/device-speech"
-)
+const {
+  deviceSpeechBackend,
+  previewDeviceVoice,
+  readDeviceVoices,
+  voiceLabel,
+} = await import("@/lib/device-speech")
 
 const settle = (): Promise<void> =>
   act(async () => {
@@ -108,6 +112,7 @@ function renderSession(voiceId: string, lines: ReadonlyArray<string>): void {
 afterEach(() => {
   cleanup()
   fake.state.installed = true
+  fake.state.hold = false
   fake.spoken.length = 0
   warning.mockClear()
 })
@@ -151,6 +156,59 @@ describe("the phone's engine as the session's voice", () => {
     warning.mock.calls[0]?.[1].action.onClick()
     await settle()
     expect(fake.openInstall).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("a voice sample in Settings", () => {
+  it("settles the session's line in flight before the engine drops it", async () => {
+    fake.state.hold = true
+    let settled: "pending" | "rejected" = "pending"
+    const Sample = (): JSX.Element => {
+      const speaker = useSpeaker()
+      return (
+        <>
+          <button
+            type="button"
+            onClick={() => {
+              void speaker?.say("하나", { lang: "ko-KR" }).catch(() => {
+                settled = "rejected"
+              })
+            }}
+          >
+            say
+          </button>
+          <button
+            type="button"
+            onClick={() => previewDeviceVoice("ko-kr-x-kob-local", speaker)}
+          >
+            sample
+          </button>
+        </>
+      )
+    }
+    render(
+      <SpeechProvider
+        config={{
+          mode: "static",
+          lang: "ko-KR",
+          native: deviceSpeechBackend(""),
+        }}
+      >
+        <Sample />
+      </SpeechProvider>
+    )
+    await settle()
+
+    screen.getByRole("button", { name: "say" }).click()
+    await settle()
+    screen.getByRole("button", { name: "sample" }).click()
+    await settle()
+
+    // The lesson's line would otherwise wait on the engine forever.
+    expect(settled).toBe("rejected")
+    expect(fake.spoken.at(-1)).toEqual(
+      expect.objectContaining({ voiceId: "ko-kr-x-kob-local" })
+    )
   })
 })
 

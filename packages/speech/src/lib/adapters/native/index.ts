@@ -131,6 +131,26 @@ export function createNativeSpeechAdapter(
   const installed = new Set<string>()
   /** Languages the last probe found no voice data for, for `describe`. */
   const missing = new Set<string>()
+  /**
+   * Whoever shows `describe`'s answer. The voice list and the probes answer
+   * over the bridge after the first render, so each change is announced.
+   */
+  const listeners = new Set<() => void>()
+  const announce = (): void => {
+    for (const listener of [...listeners]) listener()
+  }
+  /** Each in-flight utterance's abort-listener detacher. */
+  const attached = new Set<() => void>()
+
+  /**
+   * Settles every caller with `error`. Detaching first matters: a displaced
+   * caller's signal that aborts later would otherwise stop the engine under
+   * the utterance that replaced it, whose own promise may then never settle.
+   */
+  const settleAll = (error: Error): void => {
+    for (const detach of [...attached]) detach()
+    ledger.flush(error)
+  }
 
   // Only to learn which language the chosen voice speaks. The list loads
   // over the bridge, so until it answers (or if it fails) the chosen voice
@@ -138,6 +158,7 @@ export function createNativeSpeechAdapter(
   engine.getVoices().then(
     (loaded) => {
       voices = loaded
+      announce()
     },
     () => undefined
   )
@@ -147,12 +168,14 @@ export function createNativeSpeechAdapter(
     // A probe that fails says nothing about the voice. Let the utterance
     // try, and let the engine's own error say what went wrong.
     const supported = await engine.isLanguageSupported(lang).catch(() => true)
+    const wasMissing = missing.has(lang)
     if (supported) {
       installed.add(lang)
       missing.delete(lang)
     } else {
       missing.add(lang)
     }
+    if (wasMissing === supported) announce()
     return supported
   }
   // Probed up front for the session's own language, so `describe` can say
@@ -186,13 +209,14 @@ export function createNativeSpeechAdapter(
     // stops the old utterance itself when the new one reaches it, and may
     // never settle the old promise, so the displaced caller is rejected
     // here rather than left to whatever the engine does.
-    ledger.flush(createAbortError("Superseded by a newer utterance"))
+    settleAll(createAbortError("Superseded by a newer utterance"))
 
     const entry = ledger.open()
     const lang = speakOptions.lang ?? options.lang
 
     let abortListener: (() => void) | null = null
     const detach = (): void => {
+      attached.delete(detach)
       if (abortListener) {
         speakOptions.signal?.removeEventListener("abort", abortListener)
         abortListener = null
@@ -210,6 +234,7 @@ export function createNativeSpeechAdapter(
       entry.reject(createAbortError("Speech aborted"))
       stopEngine()
     }
+    attached.add(detach)
     speakOptions.signal?.addEventListener("abort", abortListener, {
       once: true,
     })
@@ -245,13 +270,19 @@ export function createNativeSpeechAdapter(
   }
 
   const stop = (): void => {
-    ledger.flush(createAbortError("Speech stopped"))
+    settleAll(createAbortError("Speech stopped"))
     stopEngine()
   }
 
   return {
     id: "native",
     supported: true,
+    subscribe: (listener): (() => void) => {
+      listeners.add(listener)
+      return (): void => {
+        listeners.delete(listener)
+      }
+    },
     describe: (lang): VoiceReport => {
       const chosen = voices.find((voice) => voice.id === voiceIdFor(lang))
       return {
@@ -278,7 +309,8 @@ export function createNativeSpeechAdapter(
     dispose: (): void => {
       if (disposed) return
       disposed = true
-      ledger.flush(createAbortError("Speech adapter was disposed"))
+      settleAll(createAbortError("Speech adapter was disposed"))
+      listeners.clear()
       stopEngine()
     },
   }

@@ -24,6 +24,7 @@ import {
   Skeleton,
 } from "@some-ui/shared"
 import type { NativeVoice } from "@some-ui/speech"
+import { useSpeaker } from "@some-ui/speech"
 import { queryOptions, useQuery } from "@tanstack/react-query"
 
 import type { DeviceVoices } from "@/lib/device-speech"
@@ -78,6 +79,7 @@ const VoicePicker = ({
   const selected = voices.some((voice) => voice.id === value)
     ? value
     : PHONE_DEFAULT
+  const session = useSpeaker()
 
   return (
     <div className="space-y-2">
@@ -105,7 +107,8 @@ const VoicePicker = ({
           variant="outline"
           onClick={() =>
             previewDeviceVoice(
-              selected === PHONE_DEFAULT ? undefined : selected
+              selected === PHONE_DEFAULT ? undefined : selected,
+              session
             )
           }
         >

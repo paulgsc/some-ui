@@ -15,6 +15,7 @@ import type {
   NativeSpeechBackend,
   NativeSpeechEngine,
   NativeVoice,
+  Speaker,
 } from "@some-ui/speech"
 import { toast } from "sonner"
 
@@ -92,10 +93,18 @@ const PREVIEW_TEXT = "안녕하세요. 오늘도 같이 공부해요."
 
 /**
  * Says a sample line in `voiceId` (or the phone's default voice), so a
- * person can hear a voice before choosing it. Fire and forget: whatever was
- * speaking stops, as it would for any new line.
+ * person can hear a voice before choosing it. Fire and forget.
+ *
+ * The sample goes to the engine directly, since a line through the session
+ * cannot name a voice. The engine drops whatever it was saying without
+ * settling it, so the page's `session` is stopped first: that settles its
+ * line in flight and its queue, which would otherwise wait on it forever.
  */
-export function previewDeviceVoice(voiceId: string | undefined): void {
+export function previewDeviceVoice(
+  voiceId: string | undefined,
+  session: Speaker | null
+): void {
+  session?.stop()
   void lazyEngine
     .speak({
       text: PREVIEW_TEXT,

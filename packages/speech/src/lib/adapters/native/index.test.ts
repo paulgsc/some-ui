@@ -113,6 +113,84 @@ describe("native adapter", () => {
     expect(replacement.state).toBe("resolved")
   })
 
+  it("does not let a displaced caller's late abort stop its replacement", async () => {
+    const fake = createFakeNativeEngine()
+    const adapter = createNativeSpeechAdapter({
+      engine: fake.engine,
+      lang: "ko-KR",
+    })
+    const controller = new AbortController()
+
+    track(adapter.speak("하나", { signal: controller.signal }))
+    await flushAsync()
+    const replacement = track(adapter.speak("둘"))
+    await flushAsync()
+    controller.abort()
+    await flushAsync()
+
+    expect(fake.stopCount).toBe(0)
+    fake.end()
+    await flushAsync()
+    expect(replacement.state).toBe("resolved")
+  })
+
+  it("does not let a stopped caller's late abort stop the next line", async () => {
+    const fake = createFakeNativeEngine()
+    const adapter = createNativeSpeechAdapter({
+      engine: fake.engine,
+      lang: "ko-KR",
+    })
+    const controller = new AbortController()
+
+    track(adapter.speak("하나", { signal: controller.signal }))
+    await flushAsync()
+    adapter.stop()
+    const next = track(adapter.speak("둘"))
+    await flushAsync()
+    controller.abort()
+    await flushAsync()
+
+    expect(fake.stopCount).toBe(1)
+    fake.end()
+    await flushAsync()
+    expect(next.state).toBe("resolved")
+  })
+
+  it("announces when the phone's voices and its Korean probe answer", async () => {
+    const fake = createFakeNativeEngine({ voices: VOICES, installed: [] })
+    const adapter = createNativeSpeechAdapter({
+      engine: fake.engine,
+      lang: "ko-KR",
+      voiceId: "ko-kr-x-kod-local",
+    })
+    const listener = vi.fn()
+    const unsubscribe = adapter.subscribe(listener)
+
+    // Before the bridge answers, describe has nothing to go on.
+    expect(adapter.describe("ko-KR")).toEqual({
+      platform: "phone",
+      voice: null,
+      speaksLanguage: true,
+    })
+    await flushAsync()
+    expect(listener).toHaveBeenCalledTimes(2)
+    expect(adapter.describe("ko-KR")).toEqual({
+      platform: "phone",
+      voice: "Korean",
+      speaksLanguage: false,
+    })
+
+    // Installing Korean is announced on the probe that finds it.
+    fake.install("ko-KR")
+    void adapter.speak("안녕하세요").catch(() => undefined)
+    await flushAsync()
+    expect(listener).toHaveBeenCalledTimes(3)
+
+    unsubscribe()
+    adapter.dispose()
+    expect(listener).toHaveBeenCalledTimes(3)
+  })
+
   it("reports an engine failure as that failure, not a cancellation", async () => {
     const fake = createFakeNativeEngine()
     const adapter = createNativeSpeechAdapter({
