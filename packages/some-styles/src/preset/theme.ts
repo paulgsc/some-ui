@@ -31,6 +31,7 @@ export const colors = {
   accent: pair("accent"),
   destructive: pair("destructive"),
   success: pair("success"),
+  warning: pair("warning"),
   card: pair("card"),
   popover: pair("popover"),
   surface: pair("surface"),

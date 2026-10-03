@@ -19,6 +19,7 @@ import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import type { SessionRecord, SessionStatus, UserProfile } from "@/lib/tenant"
 import {
   profileQuery,
+  resumableSession,
   sessionsQuery,
   useProfile,
   useSessions,
@@ -32,8 +33,6 @@ const STATUS_LABEL: Record<SessionStatus, string> = {
   paused: "Paused",
   completed: "Completed",
 }
-
-const RESUMABLE_STATUSES: ReadonlyArray<SessionStatus> = ["active", "paused"]
 
 /** A named function, not an inline arrow embedded in `ProfileSummary`'s own
  * JSX - the latter trips `react/no-unstable-nested-components` the moment
@@ -243,23 +242,22 @@ function recentSessionsContent(
 
 function findResumableSession(
   outcome: QueryOutcome<Array<SessionRecord>>
-): SessionRecord | undefined {
+): SessionRecord | null {
   return matchQueryOutcome(outcome, {
-    pending: () => undefined,
-    failed: () => undefined,
-    ready: (sessions) =>
-      sessions.find((s) => RESUMABLE_STATUSES.includes(s.status)),
+    pending: () => null,
+    failed: () => null,
+    ready: (sessions) => resumableSession(sessions),
   })
 }
 
 const DashboardHome = (): JSX.Element => {
   const outcome = queryOutcome(useSessions())
-  const resumableSession = findResumableSession(outcome)
+  const resumable = findResumableSession(outcome)
 
   return (
     <div className="mx-auto max-w-5xl space-y-8">
       <ProfileSummary />
-      {resumableSession && <ContinueSessionCard session={resumableSession} />}
+      {resumable !== null && <ContinueSessionCard session={resumable} />}
       <ActivityLauncher />
       {recentSessionsContent(outcome)}
     </div>

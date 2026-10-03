@@ -28,6 +28,7 @@ import type { StyleContext } from "@some-ui/styles/styles-build"
  * fails on any renderable package missing from this list.
  */
 const uiPackages = [
+  "aph",
   "auth",
   "chat",
   "dice-card",
