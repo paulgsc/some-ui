@@ -10,15 +10,20 @@
 import type { JSX } from "react"
 import { useEffect } from "react"
 import type { SpeechAdapterRegistry } from "@speech/lib/adapters"
+import { createWebSpeechAdapter } from "@speech/lib/adapters/web-speech"
 import { useSpeechQueue } from "@speech/lib/hooks"
 import { isAbortError } from "@speech/lib/promise/abort"
 import { peekSpeechQueue, resetSpeechQueue } from "@speech/lib/queue"
 import type { ControllableAdapter } from "@speech/lib/testing"
-import { createControllableAdapter, flushAsync } from "@speech/lib/testing"
+import {
+  createControllableAdapter,
+  createFakeSpeechSynthesis,
+  flushAsync,
+} from "@speech/lib/testing"
 import { act, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
 
-import { SpeechProvider, useSpeaker } from "."
+import { SpeechProvider, useSpeaker, useVoiceReport } from "."
 
 afterEach(() => {
   resetSpeechQueue()
@@ -274,6 +279,45 @@ describe("SpeechProvider", () => {
     })
 
     expect(adapters[0]?.calls).toHaveLength(0)
+  })
+
+  it("keeps a displayed voice report current as the browser's voices load", async () => {
+    const fake = createFakeSpeechSynthesis()
+    const adapter = createWebSpeechAdapter({
+      synthesis: fake.synthesis,
+      utteranceFactory: fake.utteranceFactory,
+    })
+
+    const Report = (): JSX.Element => {
+      const report = useVoiceReport("ko-KR")
+      return <span>{report?.voice ?? "no voice"}</span>
+    }
+
+    render(
+      <SpeechProvider
+        config={{
+          mode: "static",
+          adapters: { server: () => adapter, static: () => adapter },
+        }}
+      >
+        <Report />
+      </SpeechProvider>
+    )
+    await waitFor(() => expect(screen.getByText("no voice")).toBeDefined())
+
+    act(() => {
+      fake.controls.loadVoices([
+        {
+          name: "Yuna",
+          lang: "ko-KR",
+          voiceURI: "Yuna",
+          default: false,
+          localService: true,
+        },
+      ])
+    })
+
+    expect(screen.getByText("Yuna")).toBeDefined()
   })
 
   it("has no speaker outside a provider, rather than a broken one", () => {

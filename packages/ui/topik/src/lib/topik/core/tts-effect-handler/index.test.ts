@@ -38,11 +38,23 @@ type CapturedCall = {
 function createFakeSpeaker(): {
   speaker: Speaker
   calls: Array<CapturedCall>
+  setMuted: (muted: boolean) => void
 } {
   const calls: Array<CapturedCall> = []
+  const listeners = new Set<() => void>()
+  let muted = false
 
   const speaker: Speaker = {
     available: true,
+    get muted() {
+      return muted
+    },
+    subscribe: (listener) => {
+      listeners.add(listener)
+      return () => {
+        listeners.delete(listener)
+      }
+    },
     say: vi.fn((content: string, options: SayOptions) => {
       return new Promise<void>((resolve, reject) => {
         calls.push({
@@ -61,8 +73,15 @@ function createFakeSpeaker(): {
     }),
   }
 
-  return { speaker, calls }
+  const setMuted = (next: boolean): void => {
+    muted = next
+    for (const listener of listeners) listener()
+  }
+
+  return { speaker, calls, setMuted }
 }
+
+const aborted = (): DOMException => new DOMException("muted", "AbortError")
 
 const flushAsync = (): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, 0))
@@ -321,6 +340,155 @@ describe("TTSEffectHandler - speakManually", () => {
     handler.enqueue(msg, true)
     await flushAsync()
     expect(speaker.say).toHaveBeenCalledTimes(3)
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// A STALE CANCELLATION AFTER A MANUAL REPLAY
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("TTSEffectHandler - a cancelled line cannot settle a replay", () => {
+  it("lets the replay end itself when the cut-off line's abort lands first", async () => {
+    const onSpeechEnd = vi.fn()
+    const { speaker, calls } = createFakeSpeaker()
+    const handler = createTTSEffectHandler({
+      speaker,
+      componentId: "c1",
+      machine: fakeMachine,
+      onSpeechEnd,
+    })
+    const msg = makeMessage("m1")
+
+    handler.enqueue(msg, true)
+    const replay = handler.speakManually(msg)
+    // The stop rejects the auto line asynchronously, after the replay began.
+    errorSpeaking(calls[0]!, aborted())
+    await flushAsync()
+
+    expect(handler.isSpeaking()).toBe(true)
+    expect(handler.getCurrentMessageId()).toBe("m1")
+
+    finishSpeaking(calls[1]!)
+    await replay
+    expect(onSpeechEnd).toHaveBeenCalledTimes(1)
+    expect(handler.isSpeaking()).toBe(false)
+  })
+
+  it("does not re-add the dedup a replay cleared, even when its abort lands last", async () => {
+    const onMessageComplete = vi.fn()
+    const { speaker, calls } = createFakeSpeaker()
+    const handler = createTTSEffectHandler({
+      speaker,
+      componentId: "c1",
+      machine: fakeMachine,
+      onMessageComplete,
+    })
+    const msg = makeMessage("m1")
+
+    handler.enqueue(msg, true)
+    const replay = handler.speakManually(msg)
+    finishSpeaking(calls[1]!)
+    await replay
+    errorSpeaking(calls[0]!, aborted())
+    await flushAsync()
+
+    // The cut-off auto line was never heard: no completion, and a later
+    // auto trigger for it still plays.
+    expect(onMessageComplete).not.toHaveBeenCalled()
+    handler.enqueue(msg, true)
+    expect(speaker.say).toHaveBeenCalledTimes(3)
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MUTE HOLDS THE QUEUE
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("TTSEffectHandler - a line refused while muted waits for unmute", () => {
+  it("does not mark the line spoken, and replays it, then the rest, on unmute", async () => {
+    const onMessageComplete = vi.fn()
+    const { speaker, calls, setMuted } = createFakeSpeaker()
+    const handler = createTTSEffectHandler({
+      speaker,
+      componentId: "c1",
+      machine: fakeMachine,
+      onMessageComplete,
+    })
+
+    setMuted(true)
+    handler.enqueue(makeMessage("m1"), true)
+    handler.enqueue(makeMessage("m2"), true)
+    errorSpeaking(calls[0]!, aborted())
+    await flushAsync()
+
+    expect(onMessageComplete).not.toHaveBeenCalled()
+    expect(speaker.say).toHaveBeenCalledTimes(1)
+
+    setMuted(false)
+    await flushAsync()
+    expect(calls[1]!.content).toBe("content-m1")
+
+    finishSpeaking(calls[1]!)
+    await flushAsync()
+    expect(onMessageComplete).toHaveBeenCalledWith("m1")
+    expect(calls[2]!.content).toBe("content-m2")
+  })
+
+  it("holds a line cut off by muting mid-speech", async () => {
+    const { speaker, calls, setMuted } = createFakeSpeaker()
+    const handler = createTTSEffectHandler({
+      speaker,
+      componentId: "c1",
+      machine: fakeMachine,
+    })
+
+    handler.enqueue(makeMessage("m1"), true)
+    setMuted(true)
+    errorSpeaking(calls[0]!, aborted())
+    await flushAsync()
+    expect(handler.isSpeaking()).toBe(false)
+
+    setMuted(false)
+    await flushAsync()
+    expect(calls[1]!.content).toBe("content-m1")
+  })
+
+  it("drops the held line when the learner stops", async () => {
+    const { speaker, calls, setMuted } = createFakeSpeaker()
+    const handler = createTTSEffectHandler({
+      speaker,
+      componentId: "c1",
+      machine: fakeMachine,
+    })
+
+    setMuted(true)
+    handler.enqueue(makeMessage("m1"), true)
+    errorSpeaking(calls[0]!, aborted())
+    await flushAsync()
+    handler.handleStopAudio()
+
+    setMuted(false)
+    await flushAsync()
+    expect(speaker.say).toHaveBeenCalledTimes(1)
+  })
+
+  it("stops listening for unmute once destroyed", async () => {
+    const { speaker, calls, setMuted } = createFakeSpeaker()
+    const handler = createTTSEffectHandler({
+      speaker,
+      componentId: "c1",
+      machine: fakeMachine,
+    })
+
+    setMuted(true)
+    handler.enqueue(makeMessage("m1"), true)
+    errorSpeaking(calls[0]!, aborted())
+    await flushAsync()
+    handler.destroy()
+
+    setMuted(false)
+    await flushAsync()
+    expect(speaker.say).toHaveBeenCalledTimes(1)
   })
 })
 

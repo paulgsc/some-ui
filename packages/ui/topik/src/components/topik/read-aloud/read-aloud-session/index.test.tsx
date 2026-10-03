@@ -22,6 +22,8 @@ function fakeSpeech(): Speaker {
       })
     },
     stop: () => undefined,
+    muted: false,
+    subscribe: () => () => undefined,
     describe: () => ({
       platform: "browser",
       voice: null,

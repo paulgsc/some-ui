@@ -62,6 +62,7 @@ export function createControllableAdapter(): ControllableAdapter {
   return {
     id: "web-speech",
     supported: true,
+    subscribe: () => () => undefined,
     describe: () => ({
       platform: "browser",
       voice: "Controllable",

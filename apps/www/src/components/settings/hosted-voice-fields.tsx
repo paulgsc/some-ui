@@ -27,7 +27,7 @@ import {
   hostedVoicesOf,
   isTTSProvider,
   parseHostedVoiceChoice,
-  useSpeaker,
+  useVoiceReport,
 } from "@some-ui/speech"
 
 import { LESSON_LANGUAGE } from "@/lib/lesson-voice"
@@ -53,7 +53,7 @@ const LessonVoice = ({ value }: { value: HostedVoiceChoice }): JSX.Element => {
   // when it can reach the voice service (signed in, on a deployment that
   // has it). Otherwise saying which hosted voice reads lessons would be
   // false: the browser's own voice does.
-  const speaking = useSpeaker()?.describe(LESSON_LANGUAGE)
+  const speaking = useVoiceReport(LESSON_LANGUAGE)
   if (speaking && speaking.platform !== "hosted") {
     const now = speaking.speaksLanguage
       ? `${speaking.voice ?? "its default Korean voice"}, your browser's own voice`

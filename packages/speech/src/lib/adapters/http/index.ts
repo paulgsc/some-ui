@@ -117,6 +117,8 @@ export function createHttpSpeechAdapter(
   return {
     id: "http",
     supported: player.supported,
+    // The catalogue is fixed at build time: nothing to announce.
+    subscribe: () => () => undefined,
     describe: (lang): VoiceReport => {
       const voice = options.voiceFor(lang)
       return {

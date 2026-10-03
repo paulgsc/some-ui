@@ -62,15 +62,34 @@ export class SpeechQueueManager {
    */
   readonly speaker: Speaker
 
+  /** Who to tell when `muted` or the adapter's voices change. */
+  private readonly speakerListeners = new Set<() => void>()
+  private readonly unsubscribeAdapter: () => void
+
   constructor(adapter: SpeechAdapter) {
     this.adapter = adapter
     this.store = createStore(INITIAL_STATE, speechReducer)
+    this.unsubscribeAdapter = adapter.subscribe(() => this.notifySpeaker())
+    const isMuted = (): boolean => this.muted
     this.speaker = {
       available: adapter.supported,
       say: (text, options): Promise<void> => this.say(text, options),
       stop: (): void => this.adapter.stop(),
       describe: (lang): VoiceReport => this.adapter.describe(lang),
+      get muted(): boolean {
+        return isMuted()
+      },
+      subscribe: (listener): (() => void) => {
+        this.speakerListeners.add(listener)
+        return (): void => {
+          this.speakerListeners.delete(listener)
+        }
+      },
     }
+  }
+
+  private notifySpeaker(): void {
+    for (const listener of [...this.speakerListeners]) listener()
   }
 
   // ── Speaker ──────────────────────────────────────────────────────────────
@@ -196,9 +215,10 @@ export class SpeechQueueManager {
     if (muted) {
       this.store.dispatch({ type: "CLEAR" })
       this.adapter.stop()
-      return
+    } else {
+      this.schedulePump()
     }
-    this.schedulePump()
+    this.notifySpeaker()
   }
 
   /**
@@ -247,6 +267,8 @@ export class SpeechQueueManager {
     this.store.dispatch({ type: "CLEAR" })
     this.inFlight = null
     this.adapter.stop()
+    this.unsubscribeAdapter()
+    this.speakerListeners.clear()
   }
 
   // ── Processing ───────────────────────────────────────────────────────────

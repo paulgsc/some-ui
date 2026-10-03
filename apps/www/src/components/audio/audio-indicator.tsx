@@ -30,7 +30,7 @@ import {
   Slider,
   Switch,
 } from "@some-ui/shared"
-import { useSpeaker, useSpeechStatus } from "@some-ui/speech"
+import { useSpeechStatus, useVoiceReport } from "@some-ui/speech"
 import { cn } from "some-ui-utils"
 
 import type { AudioChannelId } from "@/lib/audio-preferences"
@@ -85,12 +85,13 @@ const LessonVoice = ({ voice }: { voice: LessonVoiceSummary }): JSX.Element => (
 export const AudioIndicator = (): JSX.Element => {
   const { preferences, update, isReady } = useAudioPreferences()
   const summary = summarizeAudio(preferences)
-  // Read at render, which includes every open of the popover: a browser's
-  // voices load asynchronously, so a snapshot taken once would go stale.
-  const speaker = useSpeaker()
-  const voice = speaker
+  // Re-read whenever the session announces a change: a browser's voices
+  // load asynchronously, and opening the popover re-renders only the
+  // popover, not this.
+  const report = useVoiceReport(LESSON_LANGUAGE)
+  const voice = report
     ? summarizeLessonVoice(
-        speaker.describe(LESSON_LANGUAGE),
+        report,
         deviceKindOf(
           typeof navigator === "undefined" ? "" : navigator.userAgent
         )

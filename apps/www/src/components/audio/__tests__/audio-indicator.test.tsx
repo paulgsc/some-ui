@@ -11,6 +11,7 @@ import type { SpeechAdapter, VoiceReport } from "@some-ui/speech"
 import { SpeechProvider } from "@some-ui/speech"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -22,12 +23,30 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { markSignedIn } from "@/lib/auth"
 import { AudioIndicator } from "@/components/audio/audio-indicator"
 
-function reportingAdapter(report: VoiceReport): SpeechAdapter {
+/**
+ * An adapter that reports `report`, and whose `announce` replaces it the way
+ * a browser's `voiceschanged` does.
+ */
+function reportingAdapter(
+  initial: VoiceReport
+): SpeechAdapter & { announce: (next: VoiceReport) => void } {
+  let report = initial
+  const listeners = new Set<() => void>()
   return {
     id: "web-speech",
     supported: true,
     pending: 0,
     describe: () => report,
+    subscribe: (listener) => {
+      listeners.add(listener)
+      return () => {
+        listeners.delete(listener)
+      }
+    },
+    announce: (next) => {
+      report = next
+      for (const listener of listeners) listener()
+    },
     speak: () => Promise.resolve(),
     stop: () => undefined,
     pause: () => undefined,
@@ -127,5 +146,38 @@ describe("AudioIndicator - who reads lessons aloud", () => {
     expect(
       screen.getByText(/Add a Korean voice in your system’s speech settings/)
     ).toBeDefined()
+  })
+
+  it("updates when the browser's voices load after the first render", async () => {
+    const adapter = reportingAdapter({
+      platform: "browser",
+      voice: null,
+      speaksLanguage: false,
+    })
+    renderIndicator((children) => (
+      <SpeechProvider
+        config={{
+          mode: "static",
+          adapters: { server: () => adapter, static: () => adapter },
+        }}
+      >
+        {children}
+      </SpeechProvider>
+    ))
+    const button = await trigger()
+    expect(button.textContent).toContain("⚠")
+
+    act(() => {
+      adapter.announce({
+        platform: "browser",
+        voice: "Yuna",
+        speaksLanguage: true,
+      })
+    })
+
+    expect(button.getAttribute("title")).toBe(
+      "Lessons: Yuna · your browser's own voice"
+    )
+    expect(button.textContent).not.toContain("⚠")
   })
 })
