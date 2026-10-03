@@ -15,6 +15,8 @@ import {
   intentGuardPlugin,
   lazyRegistryConfig,
   lazyRegistryPlugin,
+  ownerGuardConfig,
+  ownerGuardPlugin,
   queryGuardConfig,
   queryGuardPlugin,
   reactConfig,
@@ -89,6 +91,9 @@ export { intentGuardConfig, intentGuardPlugin }
 
 // ── Query-hook default-elision guard (#968/MS8) ────────────────────────────
 export { queryGuardConfig, queryGuardPlugin }
+
+// ── State seeded from a prop or the clock (#1659) ──────────────────────────
+export { ownerGuardConfig, ownerGuardPlugin }
 
 // ── Tailwind static-classname idiom rules ──────────────────────────────────
 export { fitsTheBoxConfig, fitsTheBoxPlugin }
