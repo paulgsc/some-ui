@@ -106,64 +106,6 @@ const topik: ActivityDefinition = {
   toSceneProps: (config) => ({ path: `topiks/${String(config.level)}.json` }),
 }
 
-const interview: ActivityDefinition = {
-  id: "interview",
-  name: "Interview Prep",
-  description: "Practice answering mock interview questions on a timer.",
-  icon: "mic",
-  registryKey: "interview",
-  // Shares the "topik" template's sidebar layout rather than a dedicated tree.
-  layoutTree: "topik",
-  fields: [
-    {
-      kind: "select",
-      key: "level",
-      label: "Level",
-      options: [
-        { value: "junior", label: "Junior" },
-        { value: "mid", label: "Mid" },
-        { value: "senior", label: "Senior" },
-      ],
-      defaultValue: "mid",
-    },
-    {
-      kind: "select",
-      key: "category",
-      label: "Category",
-      options: [
-        { value: "technical", label: "Technical" },
-        { value: "behavioral", label: "Behavioral" },
-        { value: "system-design", label: "System Design" },
-      ],
-      defaultValue: "technical",
-    },
-    {
-      kind: "duration",
-      key: "durationMinutes",
-      label: "Session length",
-      minMinutes: 10,
-      maxMinutes: 45,
-      stepMinutes: 5,
-      defaultMinutes: 20,
-    },
-  ],
-  audio: {
-    channels: ["speech"],
-    blurb: "Reads questions aloud",
-  },
-  maturity: "early",
-  defaultConfig: { level: "mid", category: "technical", durationMinutes: 20 },
-  // Config, not content. Selecting the questions here meant importing the
-  // question bank, and importing anything from `@some-ui/interview` for a
-  // value puts that package in this app's eager bundle - undoing the lazy
-  // import the content registry exists for. The applet owns its own bank
-  // and does the selection (see `selectInterviewQuestions`).
-  toSceneProps: (config) => ({
-    level: config.level,
-    category: config.category,
-  }),
-}
-
 const leetype: ActivityDefinition = {
   id: "leetype",
   name: "LeetType",
@@ -227,19 +169,32 @@ const leetype: ActivityDefinition = {
 export const ACTIVITY_CATALOG: Record<ActivityId, ActivityDefinition> = {
   honeycomb,
   topik,
-  interview,
   leetype,
 }
 
 export const ACTIVITY_IDS: ReadonlyArray<ActivityId> = [
   "honeycomb",
   "topik",
-  "interview",
   "leetype",
 ]
 
 export function getActivity(id: ActivityId): ActivityDefinition {
   return ACTIVITY_CATALOG[id]
+}
+
+/**
+ * Narrows an id read back from storage. A stored session outlives the
+ * catalogue it was composed from: an activity can be retired while sessions
+ * that used it still sit in localStorage, the phone's database or the
+ * server, so a stored id is a string until this says otherwise.
+ */
+export function isActivityId(value: unknown): value is ActivityId {
+  return typeof value === "string" && ACTIVITY_IDS.some((id) => id === value)
+}
+
+/** {@link getActivity} for a stored id: `undefined` once it is retired. */
+export function findActivity(id: string): ActivityDefinition | undefined {
+  return isActivityId(id) ? ACTIVITY_CATALOG[id] : undefined
 }
 
 /**

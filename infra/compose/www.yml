@@ -1,6 +1,7 @@
 # Serves the built apps/www static bundle over HTTPS for LAN/mDNS use
-# (e.g. https://nixos.local:8443), so getUserMedia (mic access, used by the
-# interview app) sees a secure context. HTTP stays available on 8080 for
+# (e.g. https://nixos.local:8443), so the service worker and notifications
+# behind study nudges see a secure context (docs/study-nudge.md, "Secure
+# context"). HTTP stays available on 8080 for
 # plain local checks.
 #
 # That HTTPS listener is also why nginx.tts-proxy.conf is mounted below. The

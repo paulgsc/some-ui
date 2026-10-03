@@ -44,7 +44,6 @@ export default defineConfig([
           // Every package behind a key in `componentRegistry`.
           packages: [
             "@some-ui/honeycomb",
-            "@some-ui/interview",
             "@some-ui/leetype",
             "@some-ui/topik",
           ],

@@ -1,8 +1,10 @@
 export {
   ACTIVITY_CATALOG,
   ACTIVITY_IDS,
+  findActivity,
   getActivity,
   getActivityByRegistryKey,
+  isActivityId,
 } from "./lib/catalog"
 export type {
   ActivityConfigValues,

@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { ACTIVITY_IDS } from "@some-ui/activity-catalog"
+import { isActivityId } from "@some-ui/activity-catalog"
 import type { ActivityId } from "@some-ui/activity-catalog"
 import type { IntentError } from "@some-ui/intent-kit"
 import {
@@ -19,10 +19,6 @@ import { SessionComposer } from "@/components/composer/session-composer"
 type NewSessionSearch = {
   activity?: ActivityId
   edit?: string
-}
-
-function isActivityId(value: unknown): value is ActivityId {
-  return typeof value === "string" && ACTIVITY_IDS.some((id) => id === value)
 }
 
 const ComposerSkeleton = (): JSX.Element => (

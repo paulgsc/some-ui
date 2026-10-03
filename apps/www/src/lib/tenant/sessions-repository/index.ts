@@ -1,4 +1,3 @@
-import type { SessionActivity } from "@some-ui/activity-catalog"
 import type { SceneConfig } from "@some-ui/types"
 
 import type { StorageAdapter } from "@/lib/tenant/storage"
@@ -10,14 +9,20 @@ import {
   readJSON,
   writeJSON,
 } from "@/lib/tenant/storage"
-import type { SessionRecord, SessionStatus } from "@/lib/tenant/types"
+import type {
+  SessionRecord,
+  SessionStatus,
+  StoredSessionActivity,
+} from "@/lib/tenant/types"
 
 /** Also read by `sessions-transfer`, which copies what is under it when the person asks. */
 export const STORAGE_KEY = "some-ui.tenant.sessions.v1"
 
 export type CreateSessionInput = {
   name: string
-  activities: Array<SessionActivity>
+  // The stored shape, not the catalogue's: copying this device's sessions to
+  // an account passes their activities through verbatim, retired ids and all.
+  activities: Array<StoredSessionActivity>
   scenes: Array<SceneConfig>
   layoutMode: "basic" | "advanced"
 }

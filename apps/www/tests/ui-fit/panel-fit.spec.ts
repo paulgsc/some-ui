@@ -84,10 +84,6 @@ const PANELS: Record<RegistryKey, PanelCoverage> = {
     debt: "the story mounts the applet in an `h-screen` page shell, and the code pane's long lines clear the rect sideways",
   },
   topik: { story: "ui-chat-components-topik-koreanstudypage--default" },
-  interview: {
-    story: "ui-chat-interview-interviewapp--default",
-    debt: "every phase of InterviewApp roots at `min-h-screen items-center`: it asks for the window rather than accepting the rect it is given, in six files",
-  },
 }
 
 /**

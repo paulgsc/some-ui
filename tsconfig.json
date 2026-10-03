@@ -18,7 +18,6 @@
       "@dice-card/*": ["./packages/ui/dice-card/src/*"],
       "@leetype/*": ["./packages/ui/leetype/src/*"],
       "@topik/*": ["./packages/ui/topik/src/*"],
-      "@interview/*": ["./packages/ui/interview/src/*"],
       "@honeycomb/*": ["./packages/ui/honeycomb/src/*"],
       "@nfl/*": ["./packages/ui/nfl/src/*"],
       "@types-utils/*": ["./packages/types/src/*"],
