@@ -43,7 +43,7 @@ function reportingAdapter(
         listeners.delete(listener)
       }
     },
-    announce: (next) => {
+    announce: (next): void => {
       report = next
       for (const listener of listeners) listener()
     },
