@@ -92,14 +92,9 @@ export const AphLog = ({
 
   const save = (): void => {
     const id = crypto.randomUUID()
-    const saved = store.save(draft, { day: today, time: clockOf(now), id })
-    if (!saved) return
-    const landed = store
-      .get()
-      .entries.find(
-        (e) => e.id === (draft.side === "theirs" ? draft.target : id)
-      )
-    if (landed !== undefined) onSaved?.(landed)
+    // The entry it landed on: a new one, or the one it filled in or corrected.
+    const landed = store.save(draft, { day: today, time: clockOf(now), id })
+    if (landed !== null) onSaved?.(landed)
   }
 
   const shownWaiting = showOlder ? waiting : waiting.slice(0, RECENT_WAITING)

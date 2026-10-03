@@ -7,6 +7,7 @@
 import type { JSX } from "react"
 import { useState } from "react"
 import { GoalMeter, STATUS, StatusBadge, whenOf } from "@aph/components/status"
+import { keepsOnePlain } from "@aph/lib/draft"
 import type { Entry } from "@aph/lib/model"
 import {
   formatDay,
@@ -80,7 +81,7 @@ const EntryDetail = ({
   store: AphStore
   onEnterTheirs?: (entryId: string) => void
 }): JSX.Element => {
-  const { settings } = useAph(store)
+  const { settings, entries } = useAph(store)
   const { status, gap } = reconcile(settings, entry)
   const [note, setNote] = useState(entry.note ?? "")
 
@@ -168,20 +169,19 @@ const EntryDetail = ({
           <div className="flex flex-wrap gap-2">
             {settings.labels.map((label) => {
               const on = entry.labels.includes(label)
+              const next = on
+                ? entry.labels.filter((l) => l !== label)
+                : [...entry.labels, label]
+              const allowed = keepsOnePlain(entries, entry.id, next)
               return (
                 <button
                   key={label}
                   type="button"
                   aria-pressed={on}
-                  onClick={() =>
-                    store.editEntry(entry.id, {
-                      labels: on
-                        ? entry.labels.filter((l) => l !== label)
-                        : [...entry.labels, label],
-                    })
-                  }
+                  disabled={!allowed}
+                  onClick={() => store.editEntry(entry.id, { labels: next })}
                   className={cn(
-                    "h-9 rounded-full border px-3.5 text-sm",
+                    "h-9 rounded-full border px-3.5 text-sm disabled:opacity-60",
                     on
                       ? "bg-foreground text-background border-foreground"
                       : "border-border"
@@ -192,6 +192,13 @@ const EntryDetail = ({
               )
             })}
           </div>
+          {!keepsOnePlain(entries, entry.id, []) &&
+            entry.labels.length === 1 && (
+              <p className="text-muted-foreground text-xs">
+                A plain figure is already logged here, so this comparison keeps
+                at least one label.
+              </p>
+            )}
         </div>
       )}
 

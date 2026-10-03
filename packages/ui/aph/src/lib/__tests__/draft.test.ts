@@ -2,6 +2,7 @@ import type { Draft, DraftEvent } from "@aph/lib/draft"
 import {
   commitDraft,
   draftValue,
+  keepsOnePlain,
   newDraft,
   reviewEntry,
   stepDraft,
@@ -57,7 +58,7 @@ describe("saving mine", () => {
       ...typed("4600"),
       { type: "toggleLabel", label: "no-bs" },
     ])
-    const saved = commitDraft(settings, SEED_ENTRIES, d, commit)?.at(-1)
+    const saved = commitDraft(settings, SEED_ENTRIES, d, commit)?.entries.at(-1)
     expect(saved).toMatchObject({
       id: "new",
       day: "2026-10-02",
@@ -71,7 +72,7 @@ describe("saving mine", () => {
 
   it("keeps the clock time off the checkpoints, with no goal", () => {
     const d = run(newDraft("mine", null, null), typed("4700"))
-    expect(commitDraft(settings, [], d, commit)?.[0]).toMatchObject({
+    expect(commitDraft(settings, [], d, commit)?.entries[0]).toMatchObject({
       checkpoint: null,
       time: "16:05",
       goal: null,
@@ -88,7 +89,7 @@ describe("saving mine", () => {
       theirs: { value: 4650 },
     }
     const d = run(newDraft("mine", "12", null), typed("4600"))
-    const after = commitDraft(settings, [reported], d, commit) ?? []
+    const after = commitDraft(settings, [reported], d, commit)?.entries ?? []
     expect(after).toHaveLength(1)
     expect(reconcile(settings, must(after[0])).status).toBe("matched")
   })
@@ -106,7 +107,10 @@ describe("saving mine", () => {
       "flagged"
     )
     const d = run(newDraft("mine", "7", null), typed("4850"))
-    const after = commitDraft(settings, before, d, commit) ?? []
+    const saved = commitDraft(settings, before, d, commit)
+    // It landed on the entry it corrected, not on the id a new one would get.
+    expect(saved?.id).toBe(target.id)
+    const after = saved?.entries ?? []
     expect(after).toHaveLength(before.length)
     const fixed = must(after.find((e) => e.id === target.id))
     expect(fixed.mine).toEqual({ value: 4850, approx: true })
@@ -118,7 +122,7 @@ describe("saving mine", () => {
       ...typed("4100"),
       { type: "toggleLabel", label: "no-bs" },
     ])
-    const after = commitDraft(settings, SEED_ENTRIES, d, commit) ?? []
+    const after = commitDraft(settings, SEED_ENTRIES, d, commit)?.entries ?? []
     expect(after).toHaveLength(SEED_ENTRIES.length + 1)
   })
 
@@ -129,13 +133,39 @@ describe("saving mine", () => {
   })
 })
 
+describe("one plain figure per checkpoint", () => {
+  // Sep 22 at 12:00: a plain ~5,200 and ~4,200 under "w/o office".
+  const plain = must(
+    SEED_ENTRIES.find(
+      (e) =>
+        e.day === "2026-09-22" && e.checkpoint === "12" && e.labels.length === 0
+    )
+  )
+  const comparison = must(
+    SEED_ENTRIES.find(
+      (e) => e.day === "2026-09-22" && e.checkpoint === "12" && e !== plain
+    )
+  )
+
+  it("refuses to clear a comparison's last label beside a plain figure", () => {
+    expect(keepsOnePlain(SEED_ENTRIES, comparison.id, [])).toBe(false)
+    expect(keepsOnePlain(SEED_ENTRIES, comparison.id, ["no-bs"])).toBe(true)
+  })
+
+  it("lets the plain one take a label, and an entry off the checkpoints go plain", () => {
+    expect(keepsOnePlain(SEED_ENTRIES, plain.id, ["no-bs"])).toBe(true)
+    const offCheckpoint = must(SEED_ENTRIES.find((e) => e.checkpoint === null))
+    expect(keepsOnePlain(SEED_ENTRIES, offCheckpoint.id, [])).toBe(true)
+  })
+})
+
 describe("saving theirs", () => {
   const target = must(SEED_ENTRIES.at(-1))
 
   it("lands on the entry it was for, and clears an old call", () => {
     const flagged = reviewEntry(SEED_ENTRIES, target.id, "flagged")
     const d = run(newDraft("theirs", null, target.id), typed("4900"))
-    const after = commitDraft(settings, flagged, d, commit) ?? []
+    const after = commitDraft(settings, flagged, d, commit)?.entries ?? []
     const landed = after.find((e) => e.id === target.id)
     expect(landed?.theirs).toEqual({ value: 4900 })
     expect(landed?.review).toBeNull()

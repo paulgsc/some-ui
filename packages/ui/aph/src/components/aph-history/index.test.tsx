@@ -62,6 +62,28 @@ describe("History", () => {
     expect(onEnterTheirs).toHaveBeenCalledWith(expect.stringMatching(/^paper-/))
   })
 
+  it("keeps a comparison's last label while a plain figure sits beside it", () => {
+    const { store } = setup()
+    const day = screen.getByRole("region", { name: "Tue Sep 22" })
+    const [, comparison] = within(day).getAllByRole("button", {
+      name: /^12:00:/,
+    })
+    if (comparison === undefined) throw new Error("two figures at noon")
+    fireEvent.click(comparison)
+    const label = screen.getByRole("button", { name: "w/o office" })
+    expect(label).toBeDisabled()
+    fireEvent.click(label)
+    const plainAtNoon = store
+      .get()
+      .entries.filter(
+        (e) =>
+          e.day === "2026-09-22" &&
+          e.checkpoint === "12" &&
+          e.labels.length === 0
+      )
+    expect(plainAtNoon).toHaveLength(1)
+  })
+
   it("folds missed days into one line", () => {
     setup()
     expect(screen.getByText(/Sep 26 – Sep 27 · 2 days/)).toBeInTheDocument()

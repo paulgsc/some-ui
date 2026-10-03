@@ -96,6 +96,9 @@ export function draftValue(draft: Draft): number | null {
   return draft.digits === "" ? null : Number(draft.digits)
 }
 
+/** The entries after a save, and the id of the entry the figure landed on. */
+export type Saved = { entries: Array<Entry>; id: string }
+
 export type Commit = {
   /** Local day for a new entry of mine. */
   day: string
@@ -106,7 +109,9 @@ export type Commit = {
 }
 
 /**
- * The entries after saving `draft`, or null when there is nothing to save
+ * The entries after saving `draft`, with the id of the entry the figure
+ * landed on (an existing one when it filled in or corrected), or null when
+ * there is nothing to save
  * (no figure, or theirs with no entry chosen).
  *
  * Mine at a checkpoint where today already holds a reported figure but none
@@ -121,15 +126,19 @@ export function commitDraft(
   entries: ReadonlyArray<Entry>,
   draft: Draft,
   commit: Commit
-): Array<Entry> | null {
+): Saved | null {
   const value = draftValue(draft)
   if (value === null) return null
 
   if (draft.side === "theirs") {
-    if (!entries.some((e) => e.id === draft.target)) return null
-    return entries.map((e) =>
-      e.id === draft.target ? { ...e, theirs: { value }, review: null } : e
-    )
+    const target = draft.target
+    if (target === null || !entries.some((e) => e.id === target)) return null
+    return {
+      id: target,
+      entries: entries.map((e) =>
+        e.id === target ? { ...e, theirs: { value }, review: null } : e
+      ),
+    }
   }
 
   const mine = { value, approx: draft.approx }
@@ -141,35 +150,44 @@ export function commitDraft(
       e.mine === null
   )
   if (reportedOnly !== undefined) {
-    return entries.map((e) =>
-      e === reportedOnly ? { ...e, mine, labels: draft.labels } : e
-    )
+    return {
+      id: reportedOnly.id,
+      entries: entries.map((e) =>
+        e === reportedOnly ? { ...e, mine, labels: draft.labels } : e
+      ),
+    }
   }
   // An unlabelled figure where one is already logged corrects it: the day
   // has one plain figure per checkpoint, the one `primary` reads. A changed
   // figure deserves a fresh look, so any earlier call on it is cleared.
   const corrected = correcting(entries, draft, commit.day)
   if (corrected !== undefined) {
-    return entries.map((e) =>
-      e === corrected ? { ...e, mine, review: null } : e
-    )
+    return {
+      id: corrected.id,
+      entries: entries.map((e) =>
+        e === corrected ? { ...e, mine, review: null } : e
+      ),
+    }
   }
   const checkpoint = checkpointById(settings, draft.checkpoint)
-  return [
-    ...entries,
-    {
-      id: commit.id,
-      day: commit.day,
-      checkpoint: checkpoint?.id ?? null,
-      time: checkpoint === null ? commit.time : null,
-      mine,
-      theirs: null,
-      goal: checkpoint?.goal ?? null,
-      labels: draft.labels,
-      note: null,
-      review: null,
-    },
-  ]
+  return {
+    id: commit.id,
+    entries: [
+      ...entries,
+      {
+        id: commit.id,
+        day: commit.day,
+        checkpoint: checkpoint?.id ?? null,
+        time: checkpoint === null ? commit.time : null,
+        mine,
+        theirs: null,
+        goal: checkpoint?.goal ?? null,
+        labels: draft.labels,
+        note: null,
+        review: null,
+      },
+    ],
+  }
 }
 
 /**
@@ -189,6 +207,30 @@ export function correcting(
       e.day === day &&
       e.checkpoint === draft.checkpoint &&
       e.mine !== null &&
+      e.labels.length === 0
+  )
+}
+
+/**
+ * Whether giving entry `id` these `labels` keeps at most one plain
+ * (unlabelled) entry at its checkpoint that day: the one `primary` reads.
+ * Clearing a comparison's last label beside a plain figure would make two,
+ * and the second would count in History but nowhere else.
+ */
+export function keepsOnePlain(
+  entries: ReadonlyArray<Entry>,
+  id: string,
+  labels: ReadonlyArray<string>
+): boolean {
+  if (labels.length > 0) return true
+  const entry = entries.find((e) => e.id === id)
+  if (entry === undefined) return true
+  if (entry.checkpoint === null) return true
+  return !entries.some(
+    (e) =>
+      e.id !== id &&
+      e.day === entry.day &&
+      e.checkpoint === entry.checkpoint &&
       e.labels.length === 0
   )
 }

@@ -37,21 +37,28 @@ function resumable(
 type StudyStatus =
   | { kind: "pending" }
   | { kind: "failed"; retry: () => void }
-  | { kind: "ready"; open: SessionRecord | null }
+  | {
+      kind: "ready"
+      open: SessionRecord | null
+      /** The list shown is cached; refreshing it just failed. */
+      refreshRetry: (() => void) | null
+    }
 
 /**
- * The study card's three honest states: still loading, failed (never read
- * as "nothing in progress", which would offer Start over a session that is
- * only unreadable), and known.
+ * The study card's honest states: still loading; failed (never read as
+ * "nothing in progress", which would offer Start over a session that is
+ * only unreadable); and known, which says so when what it shows is a cached
+ * list whose refresh just failed.
  */
 const StudyCard = (): JSX.Element => {
   const outcome = queryOutcome(useSessions())
   const status = matchQueryOutcome(outcome, {
     pending: (): StudyStatus => ({ kind: "pending" }),
     failed: (_error, retry): StudyStatus => ({ kind: "failed", retry }),
-    ready: (sessions): StudyStatus => ({
+    ready: (sessions, refreshError): StudyStatus => ({
       kind: "ready",
       open: resumable(sessions),
+      refreshRetry: refreshError?.retry ?? null,
     }),
   })
 
@@ -99,6 +106,19 @@ const StudyCard = (): JSX.Element => {
           </Button>
         )}
       </div>
+      {status.kind === "ready" && status.refreshRetry !== null && (
+        <p
+          role="status"
+          className="text-destructive flex items-center gap-2 text-sm"
+        >
+          <span className="min-w-0 flex-1">
+            Couldn’t refresh; this may be out of date.
+          </span>
+          <Button size="sm" variant="ghost" onClick={status.refreshRetry}>
+            Retry
+          </Button>
+        </p>
+      )}
       <Link
         to="/soundbites"
         search={{ say: "sessions" }}

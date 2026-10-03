@@ -52,6 +52,21 @@ describe("logging mine", () => {
     )
   })
 
+  it("corrects an already-logged figure and still reports the save", () => {
+    // 7:00 on Oct 2 is logged (~4,300); logging it again corrects it.
+    const { type, onSaved, store } = setup()
+    fireEvent.click(screen.getByRole("radio", { name: /7:00/ }))
+    type("4400")
+    fireEvent.click(screen.getByRole("button", { name: /Correct mine · 7:00/ }))
+    expect(onSaved).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: expect.stringMatching(/^paper-/),
+        mine: { value: 4400, approx: true },
+      })
+    )
+    expect(store.get().entries).toHaveLength(SEED_ENTRIES.length)
+  })
+
   it("warns about a figure outside the usual range", () => {
     const { type } = setup()
     type("460")

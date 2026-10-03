@@ -87,6 +87,21 @@ describe("Home's study card", () => {
     expect(refetch).toHaveBeenCalledTimes(1)
   })
 
+  it("keeps a cached list through a failed refresh, and says it may be stale", () => {
+    mockResult = fakeResult({
+      data: [],
+      isError: true,
+      error: new Error("refresh failed"),
+    })
+
+    render(withQueryClient(<TodayRoute />))
+
+    expect(screen.getByText("nothing in progress")).toBeTruthy()
+    expect(screen.getByText(/this may be out of date/)).toBeTruthy()
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }))
+    expect(refetch).toHaveBeenCalledTimes(1)
+  })
+
   it("offers Start only once the list is known to hold nothing in progress", () => {
     mockResult = fakeResult({ data: [], isError: false })
 
@@ -94,5 +109,6 @@ describe("Home's study card", () => {
 
     expect(screen.getByText("nothing in progress")).toBeTruthy()
     expect(screen.getByText("Start")).toBeTruthy()
+    expect(screen.queryByText(/this may be out of date/)).toBeNull()
   })
 })
