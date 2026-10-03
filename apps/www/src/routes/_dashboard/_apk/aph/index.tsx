@@ -23,9 +23,10 @@ const LogRoute = (): JSX.Element => {
       key={`${side ?? "mine"}:${entry ?? ""}`}
       side={side}
       target={entry ?? null}
-      onSaved={() =>
+      onSaved={(_entry, saved) =>
+        // By the side saved, not the side asked for: the form can switch.
         // Mine came from Home's "due" card; theirs mostly from History.
-        void navigate({ to: side === "theirs" ? "/aph/history" : "/today" })
+        void navigate({ to: saved === "theirs" ? "/aph/history" : "/today" })
       }
     />
   )

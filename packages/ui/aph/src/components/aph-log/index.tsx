@@ -45,13 +45,16 @@ import { Check, Delete, Minus, Plus, TriangleAlert } from "lucide-react"
 import { cn } from "some-ui-utils"
 
 export type AphLogProps = {
-  /** Which figure is being logged. Mine unless a link asked for theirs. */
+  /**
+   * Which figure the form opens on. Mine unless a link asked for theirs;
+   * the form can switch, so `onSaved` says which side was saved.
+   */
   side?: Side
   /** Theirs: the entry to fill in, when the way here already chose one. */
   target?: string | null
-  /** Called after a save, with the entry as it now stands. */
-  onSaved?: (entry: Entry) => void
-  /** The clock, read once on mount. */
+  /** Called after a save, with the entry as it now stands and the side saved. */
+  onSaved?: (entry: Entry, side: Side) => void
+  /** The host's clock; without one, the moment this mounted (and the tap's, on save). */
   now?: Date
   store?: AphStore
 }
@@ -113,7 +116,7 @@ export const AphLog = ({
       time: clockOf(at),
       id,
     })
-    if (landed !== null) onSaved?.(landed)
+    if (landed !== null) onSaved?.(landed, raw.side)
   }
 
   const shownWaiting = showOlder ? waiting : waiting.slice(0, RECENT_WAITING)

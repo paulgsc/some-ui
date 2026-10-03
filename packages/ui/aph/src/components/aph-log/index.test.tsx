@@ -48,7 +48,8 @@ describe("logging mine", () => {
         mine: { value: 4600, approx: true },
         goal: 5100,
         labels: ["no-bs"],
-      })
+      }),
+      "mine"
     )
   })
 
@@ -62,7 +63,8 @@ describe("logging mine", () => {
       expect.objectContaining({
         id: expect.stringMatching(/^paper-/),
         mine: { value: 4400, approx: true },
-      })
+      }),
+      "mine"
     )
     expect(store.get().entries).toHaveLength(SEED_ENTRIES.length)
   })
@@ -105,7 +107,8 @@ describe("a logger left open", () => {
     vi.setSystemTime(new Date(2026, 9, 3, 0, 4))
     fireEvent.click(screen.getByRole("button", { name: /Save mine/ }))
     expect(onSaved).toHaveBeenCalledWith(
-      expect.objectContaining({ day: "2026-10-03", time: "0:04" })
+      expect.objectContaining({ day: "2026-10-03", time: "0:04" }),
+      "mine"
     )
   })
 })
@@ -121,6 +124,18 @@ describe("logging theirs", () => {
       .get()
       .entries.find((e) => e.day === "2026-10-02" && e.checkpoint === "7")
     expect(landed?.theirs).toEqual({ value: 4900 })
+  })
+
+  it("reports the side it saved, not the side it opened on", () => {
+    // Opened on mine (Home's due card), switched to theirs before saving.
+    const { type, onSaved } = setup()
+    fireEvent.click(screen.getByRole("radio", { name: /^Theirs/ }))
+    type("4900")
+    fireEvent.click(screen.getByRole("button", { name: /Save theirs/ }))
+    expect(onSaved).toHaveBeenCalledWith(
+      expect.objectContaining({ theirs: { value: 4900 } }),
+      "theirs"
+    )
   })
 
   it("shows a close figure as reconciled", () => {
