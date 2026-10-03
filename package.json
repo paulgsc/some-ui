@@ -80,7 +80,7 @@
     "@vitejs/plugin-react-swc": "^4.3.3",
     "autoprefixer": "^10.4.20",
     "cross-env": "^10.1.0",
-    "es-module-lexer": "2.3.2",
+    "es-module-lexer": "3.0.2",
     "eslint": "^10.11.0",
     "eslint-import-resolver-typescript": "4.4.5",
     "eslint-plugin-import": "2.32.0",
