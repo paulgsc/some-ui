@@ -6,7 +6,8 @@
  * "Onyx" with nothing chosen while lessons spoke SunHi.
  */
 
-import type { HostedVoiceChoice } from "@some-ui/speech"
+import type { HostedVoiceChoice, SpeechAdapter } from "@some-ui/speech"
+import { SpeechProvider } from "@some-ui/speech"
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -47,5 +48,47 @@ describe("HostedVoiceFields - the voice a lesson is heard in", () => {
   it("says so when the provider has no Korean voice at all", () => {
     renderFields({ provider: "google", voiceId: null })
     expect(screen.getByText(/has no Korean voice here/)).toBeDefined()
+  })
+})
+
+describe("HostedVoiceFields - while the browser's voice is the one speaking", () => {
+  it("says the browser reads lessons, and the choice here applies once signed in", async () => {
+    const adapter: SpeechAdapter = {
+      id: "web-speech",
+      supported: true,
+      pending: 0,
+      describe: () => ({
+        platform: "browser",
+        voice: "Yuna",
+        speaksLanguage: true,
+      }),
+      speak: () => Promise.resolve(),
+      stop: () => undefined,
+      pause: () => undefined,
+      resume: () => undefined,
+      setVolume: () => undefined,
+      setPlaybackRate: () => undefined,
+      dispose: () => undefined,
+    }
+    render(
+      <SpeechProvider
+        config={{
+          mode: "static",
+          adapters: { server: () => adapter, static: () => adapter },
+        }}
+      >
+        <HostedVoiceFields
+          value={{ provider: "openai", voiceId: "ko-KR-InJoonNeural" }}
+          onChange={vi.fn()}
+        />
+      </SpeechProvider>
+    )
+
+    expect(
+      await screen.findByText(
+        "Lessons are read by Yuna, your browser's own voice right now. The voice chosen here applies when you're signed in."
+      )
+    ).toBeDefined()
+    expect(screen.queryByText(/Korean lessons are read by In-Joon/)).toBeNull()
   })
 })

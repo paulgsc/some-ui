@@ -43,7 +43,11 @@ import {
 } from "@/lib/audio-preferences"
 import { useAudioPreferences } from "@/lib/audio-preferences/use-audio-preferences"
 import type { LessonVoiceSummary } from "@/lib/lesson-voice"
-import { LESSON_LANGUAGE, summarizeLessonVoice } from "@/lib/lesson-voice"
+import {
+  deviceKindOf,
+  LESSON_LANGUAGE,
+  summarizeLessonVoice,
+} from "@/lib/lesson-voice"
 
 /**
  * A one-line health note, shown only when speech is not simply fine.
@@ -74,6 +78,7 @@ const LessonVoice = ({ voice }: { voice: LessonVoiceSummary }): JSX.Element => (
       {voice.label}
     </p>
     <p className={cn("text-muted-foreground text-xs")}>{voice.detail}</p>
+    {voice.fix ? <p className={cn("text-xs")}>{voice.fix}</p> : null}
   </div>
 )
 
@@ -84,7 +89,12 @@ export const AudioIndicator = (): JSX.Element => {
   // voices load asynchronously, so a snapshot taken once would go stale.
   const speaker = useSpeaker()
   const voice = speaker
-    ? summarizeLessonVoice(speaker.describe(LESSON_LANGUAGE))
+    ? summarizeLessonVoice(
+        speaker.describe(LESSON_LANGUAGE),
+        deviceKindOf(
+          typeof navigator === "undefined" ? "" : navigator.userAgent
+        )
+      )
     : null
 
   const toggleChannel = (channel: AudioChannelId, enabled: boolean): void => {

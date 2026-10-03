@@ -123,5 +123,9 @@ describe("AudioIndicator - who reads lessons aloud", () => {
         /reads Korean with Samantha, a voice for another language/
       )
     ).toBeDefined()
+    // And the one step that fixes it (jsdom's user agent names no system).
+    expect(
+      screen.getByText(/Add a Korean voice in your system’s speech settings/)
+    ).toBeDefined()
   })
 })
