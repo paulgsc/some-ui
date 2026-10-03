@@ -305,10 +305,11 @@ export const Soundbites = ({
   const { dispatch } = runtime
 
   const now = new Date()
-  // What the page asks for follows the way in it was opened by, read once
-  // like `source` itself: the route clears `?say=` as soon as listening
-  // starts, and that must not turn "Talk now" back into "Not today?".
-  const [ask] = useState(() => askFor(source))
+  // What the page asks for follows the runtime's way in, not the prop: the
+  // route clears `?say=` as soon as listening starts, which must not turn
+  // "Talk now" back into "Not today?", and the runtime alone knows when a
+  // stored take has made the next one "direct".
+  const ask = askFor(state.source)
   const recording = activity.kind === "recording"
   const usable = canUseKept(activity)
   const kept = library.kind === "read" ? library.kept : null

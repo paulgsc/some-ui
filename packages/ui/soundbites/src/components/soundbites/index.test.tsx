@@ -585,6 +585,18 @@ describe("Soundbites", () => {
     expect(screen.queryByText("Too tired")).not.toBeInTheDocument()
   })
 
+  it("asks like any other visit once the Talk now take is kept", async () => {
+    setup({ source: "capture" })
+    await tap("Start talking")
+    await tap("Done, keep it")
+    await screen.findByText("Kept, 0:05. 1 of 6 on this phone.")
+    // The runtime records the next take as "direct", so the page asks as it
+    // does for one.
+    expect(
+      screen.getByRole("heading", { name: "Not today?" })
+    ).toBeInTheDocument()
+  })
+
   it("asks why, with starters, from a skipped session", async () => {
     setup()
     expect(
