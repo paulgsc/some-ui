@@ -79,9 +79,10 @@ export type SpeechProviderProps = {
  * keying the session on the *values* keeps that from tearing the session
  * down and rebuilding it on each one.
  *
- * `adapters` and `fetchImpl` are deliberately excluded - they are function
- * references, they cannot be serialized, and the callers that pass them
- * (tests, future backends) pass stable ones.
+ * `adapters`, `fetchImpl` and the native engine are deliberately excluded -
+ * they are function references, they cannot be serialized, and the callers
+ * that pass them (tests, the Android app) pass stable ones. Whether there is
+ * a native engine, and the phone voice chosen for it, are part of the key.
  */
 function configKeyOf(config: SpeechConfig): string {
   return JSON.stringify([
@@ -93,6 +94,8 @@ function configKeyOf(config: SpeechConfig): string {
     config.format ?? null,
     config.timeoutMs ?? null,
     config.lang ?? null,
+    config.native ? "native" : null,
+    config.native?.voiceId ?? null,
     config.fallbackWhenUnsupported ?? null,
     config.serverHostnames ?? null,
   ])

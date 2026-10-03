@@ -20,6 +20,7 @@ const STORAGE_KEY = "some-ui.tenant.settings.v1"
 
 export const DEFAULT_SETTINGS: UserSettings = {
   ttsVoice: { provider: "openai", voiceId: null },
+  deviceVoiceId: "",
   audio: DEFAULT_AUDIO_PREFERENCES,
   notifications: DEFAULT_NUDGE_PREFERENCES,
   defaultSessionDurationMinutes: 10,

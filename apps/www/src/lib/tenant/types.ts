@@ -34,6 +34,13 @@ export type UserSettings = {
    */
   ttsVoice: HostedVoiceChoice
   /**
+   * The Android app's voice, as the phone's own engine names it
+   * (`ko-kr-x-ism-local`). Separate from `ttsVoiceId` because the two name
+   * voices from different catalogues: a hosted voice id means nothing to
+   * the phone. Empty string means "the phone's default Korean voice".
+   */
+  deviceVoiceId: string
+  /**
    * What this app may play, per channel. Lives with the rest of the tenant
    * settings rather than in its own store so that a person's audio choices
    * round-trip exactly like their voice choice does.

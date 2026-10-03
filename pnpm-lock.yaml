@@ -265,6 +265,9 @@ importers:
       '@capacitor-community/sqlite':
         specifier: ^8.1.1
         version: 8.1.1(@capacitor/core@8.5.2)
+      '@capacitor-community/text-to-speech':
+        specifier: ^8.0.2
+        version: 8.0.2(@capacitor/core@8.5.2)
       '@capacitor/android':
         specifier: ^8.5.2
         version: 8.5.2(@capacitor/core@8.5.2)
@@ -296,6 +299,9 @@ importers:
       '@capacitor-community/sqlite':
         specifier: ^8.1.1
         version: 8.1.1(@capacitor/core@8.5.2)
+      '@capacitor-community/text-to-speech':
+        specifier: ^8.0.2
+        version: 8.0.2(@capacitor/core@8.5.2)
       '@capacitor/core':
         specifier: ^8.5.2
         version: 8.5.2
@@ -1635,6 +1641,11 @@ packages:
   '@capacitor-community/sqlite@8.1.1':
     resolution: {integrity: sha512-wsqscMOMveDeIvB9WHLm38jkUV2317LmuWvvbhvmOB1REdr8GH6weFZpAiKmLimbpP2CQ2eVs8nmRcrTqbd9ng==}
     engines: {node: '>=16.0.0'}
+    peerDependencies:
+      '@capacitor/core': '>=8.0.0'
+
+  '@capacitor-community/text-to-speech@8.0.2':
+    resolution: {integrity: sha512-SbpBMzcmzdTiN8jQDme/yUYHEJISZA+IiaRn5zT14k3UKpjaA7eYBnSm9h76rJHRV/y6DVZVhT1J0SaK5JTKtA==}
     peerDependencies:
       '@capacitor/core': '>=8.0.0'
 
@@ -9936,6 +9947,10 @@ snapshots:
     dependencies:
       '@capacitor/core': 8.5.2
       jeep-sqlite: 2.8.0
+
+  '@capacitor-community/text-to-speech@8.0.2(@capacitor/core@8.5.2)':
+    dependencies:
+      '@capacitor/core': 8.5.2
 
   '@capacitor/android@8.5.2(@capacitor/core@8.5.2)':
     dependencies:

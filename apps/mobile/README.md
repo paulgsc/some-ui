@@ -465,13 +465,40 @@ adds a permission or an exported component: their manifests are empty,
 checked 2026-10-01 at 8.1.3 and 8.0.2), and the home server needs a route to
 receive them.
 
+## Speech
+
+Android System WebView has no working `speechSynthesis`: it is missing, or a
+stub with no voices that never speaks. So the phone speaks with Android's
+own **text-to-speech engine** (`@capacitor-community/text-to-speech`),
+offline, in any language whose voice data is installed (#1625):
+
+- **Wiring:** in the device build, `providers/tts.tsx` hands the speech
+  session `deviceSpeechBackend()` (`apps/www/src/lib/device-speech`) as its
+  `native` voice. Everything that speaks through the session gets it: TOPIK
+  (in Korean) and Honeycomb's word prompts. The plugin loads on the first
+  utterance.
+- **Korean has to be installed.** Speech Services by Google ships Korean as
+  a download (Settings → Accessibility → Text-to-speech → the engine's gear
+  → Install voice data). Until it is there, the first line a lesson tries
+  raises one toast with an **Install** button, and **Settings → Voice** says
+  the same and offers the same button.
+- **Settings → Voice** lists the phone's Korean voices, offline ones first,
+  with a sample to play. The web builds' provider and voice fields, which
+  choose a hosted voice, are hidden on the phone (#1628).
+- **Manifest:** the plugin adds one `<queries>` entry for
+  `android.intent.action.TTS_SERVICE`, so the app can see the installed
+  engines. It adds no permission and no exported component, and the review
+  does not audit `<queries>`; the restricted kind, `QUERY_ALL_PACKAGES`,
+  stays in `restrictedPermissions`.
+- **R8:** Capacitor's consumer rules keep every `@CapacitorPlugin` class,
+  so `proguard-rules.pro` needs nothing.
+- **CI** checks the plugin reached the bundle (`mobile-apk.yml`), since it
+  arrives through a dynamic import behind `VITE_DEVICE_BACKEND`. It cannot
+  hear anything: whether a lesson actually speaks is checked on the phone.
+
 ## Not done yet
 
 - **Nothing syncs back.** A session recorded on the phone stays on the
   phone. Two histories of one person's sessions need a merge rule first.
-- **Speech.** The device build asks for the platform voice, as the static
-  build does. Whether Android's WebView offers `speechSynthesis` needs checking
-  on a real phone. If it does not, speech needs a native text-to-speech
-  adapter, which `@some-ui/speech`'s adapter registry already has a seam for.
 - **Nothing here has run on a phone yet.** CI proves the APK builds. Every
   test runs the backend's SQL in Node's SQLite, not through the native bridge.
