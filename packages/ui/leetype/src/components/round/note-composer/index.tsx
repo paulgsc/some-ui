@@ -99,23 +99,23 @@ export const NoteComposer: FC<NoteComposerProps> = ({
   const { phase } = composer
   const open = phase !== "closed"
   const before = useRef(phase)
-  // Whether the learner's last tap or key was inside the panel, so focus
-  // is put back only on a close they made there, never on one a control
-  // elsewhere caused (Next round, "Make your own").
+  // Whether the learner's last activation was one of the panel's closing
+  // buttons (Done, Undo: `data-closes-note`), so focus is put back only on a close they made
+  // there, never on one a control elsewhere caused (Next round, "Make your
+  // own") or the session ending while they typed. `click`, in the capture
+  // phase so it is seen before the dispatch: it is what a mouse, a key, a
+  // screen reader's browse mode and voice control all send.
   const actedInside = useRef(false)
   useEffect(() => {
     if (!open) return undefined
+    actedInside.current = false
     const track = (event: Event): void => {
       actedInside.current =
         event.target instanceof Element &&
-        event.target.closest("[data-note-panel]") !== null
+        event.target.closest("[data-note-panel] [data-closes-note]") !== null
     }
-    document.addEventListener("pointerdown", track, true)
-    document.addEventListener("keydown", track, true)
-    return (): void => {
-      document.removeEventListener("pointerdown", track, true)
-      document.removeEventListener("keydown", track, true)
-    }
+    document.addEventListener("click", track, true)
+    return (): void => document.removeEventListener("click", track, true)
   }, [open])
   useEffect(() => {
     const was = before.current
@@ -204,6 +204,7 @@ export const NoteComposer: FC<NoteComposerProps> = ({
             variant="ghost"
             size="sm"
             className="min-h-11 shrink-0"
+            data-closes-note=""
             onClick={() => dispatch({ type: "undoPressed" })}
           >
             Undo
@@ -251,6 +252,7 @@ export const NoteComposer: FC<NoteComposerProps> = ({
           <Button
             type="button"
             className="ml-auto min-h-11"
+            data-closes-note=""
             onClick={() => dispatch({ type: "donePressed" })}
           >
             Done

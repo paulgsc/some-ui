@@ -623,9 +623,15 @@ describe("RoundSession — margin notes (canon Rem. 3.7)", () => {
     expect(document.activeElement).toBe(
       screen.getByRole("button", { name: "Note on Program" })
     )
+
+    // Typing, then a close nobody pressed (here, leaving the round through
+    // the generator's own button, which is outside the panel): no jump.
     screen.getByRole("button", { name: "Note on Program" }).blur()
     press(screen.getByRole("button", { name: "Note on Program" }))
-    press(screen.getByRole("button", { name: "Just a thought" }))
+    press(screen.getByRole("button", { name: "I don't know this" }))
+    fireEvent.keyDown(screen.getByLabelText("Add words to the note"), {
+      key: "a",
+    })
     press(screen.getByRole("button", { name: /Make your own/ }))
     // The generator hides the round, the Note button with it.
     expect(document.activeElement).not.toBe(
