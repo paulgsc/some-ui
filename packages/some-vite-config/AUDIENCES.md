@@ -176,8 +176,10 @@ declaration leaves a stray `var ` mapped to its first line).
 What it cannot see, by construction:
 
 - **Inside a prebuilt workspace.** A `packages/*` dist has no sourcemap for www's build to
-  chain, so `@some-ui/speech` is one module: its HTTP, browser and native voices ship in every
-  profile, and no rule can name one of them until the package exports them as separate entries.
+  chain, so each file of it is one module. A workspace with code only some profiles run splits
+  it into subpath entries (`BUILD.md`), and each entry file can then be named in a rule:
+  `@some-ui/speech` exports its HTTP, browser and native voices this way, and `build.paths.ts`
+  keeps each in the profiles that run it.
 - **Code with no mapping** (a JSON module, a virtual module) belongs to its chunk only.
 - **Files copied from `public/`**, which are not chunks: the APK carries the web-push
   service worker `sw.js`, which it never registers.

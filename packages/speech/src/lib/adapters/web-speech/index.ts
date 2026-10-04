@@ -32,6 +32,8 @@
  *   settle a promise belonging to the next one.
  */
 
+import type { SpeechBackend } from "@speech/lib/adapters/backend"
+import { defineSpeechBackend } from "@speech/lib/adapters/backend"
 import type {
   SpeakOptions,
   SpeechAdapter,
@@ -301,3 +303,8 @@ export function createWebSpeechAdapter(
     },
   }
 }
+
+/** The browser's own `speechSynthesis`, in the session's language. */
+export const webSpeech: SpeechBackend = defineSpeechBackend((config) =>
+  createWebSpeechAdapter({ language: config.language })
+)

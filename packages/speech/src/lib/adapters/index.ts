@@ -1,3 +1,4 @@
+export type { SpeechBackend } from "./backend"
 export type {
   DeviceVoiceChoice,
   SpeakOptions,
@@ -18,4 +19,3 @@ export type {
   NativeSpeechRequest,
   NativeVoice,
 } from "./native"
-export { VOICE_MISSING_ERROR_NAME } from "./native"

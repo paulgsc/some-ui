@@ -15,6 +15,7 @@
     "jsdom": "26.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "typescript": "^5.7.3",
     "zod": "catalog:"
   },
   "exports": {
@@ -23,7 +24,22 @@
       "import": "./dist/@some-ui/speech.es.js",
       "default": "./dist/@some-ui/speech.es.js"
     },
-    "./style.css": "./dist/speech.css"
+    "./style.css": "./dist/speech.css",
+    "./http": {
+      "types": "./dist/@some-ui/speech/http.d.ts",
+      "import": "./dist/@some-ui/speech/http.es.js",
+      "default": "./dist/@some-ui/speech/http.es.js"
+    },
+    "./web-speech": {
+      "types": "./dist/@some-ui/speech/web-speech.d.ts",
+      "import": "./dist/@some-ui/speech/web-speech.es.js",
+      "default": "./dist/@some-ui/speech/web-speech.es.js"
+    },
+    "./native": {
+      "types": "./dist/@some-ui/speech/native.d.ts",
+      "import": "./dist/@some-ui/speech/native.es.js",
+      "default": "./dist/@some-ui/speech/native.es.js"
+    }
   },
   "files": [
     "dist"

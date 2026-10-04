@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
 import { SpeechProvider } from "@some-ui/speech"
+import { httpSpeech } from "@some-ui/speech/http"
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { ConversationPreview } from "@topik/components/topik/conversation-preview"
 import { FIXTURE_BATCHES } from "@topik/components/topik/handheld/handheld-lesson/fixture"
@@ -94,6 +95,7 @@ describe("ConversationPreview - speaking through the page's session", () => {
           // jsdom has no Web Audio; without this the hosted voice would
           // fall back to the device's.
           fallbackWhenUnsupported: false,
+          adapters: { server: httpSpeech },
         }}
         muted={muted}
       >

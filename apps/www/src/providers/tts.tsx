@@ -1,6 +1,9 @@
 import type { JSX, ReactNode } from "react"
 import type { SpeechNotice } from "@some-ui/speech"
 import { SpeechProvider } from "@some-ui/speech"
+import { httpSpeech } from "@some-ui/speech/http"
+import { nativeSpeech } from "@some-ui/speech/native"
+import { webSpeech } from "@some-ui/speech/web-speech"
 import { cn } from "some-ui-utils"
 import { toast } from "sonner"
 
@@ -27,6 +30,12 @@ import { describeTTSEndpoint, resolveTTSEndpoint } from "@/lib/tts-config"
  * the GitHub Pages build, "server" is dev/preview/Docker). The speech
  * package turns it into a backend: the `openai-edge-tts` container where
  * one is reachable, the browser's own voice on Pages where nothing is.
+ *
+ * Which backends exist at all is this build's to say, and it says it in
+ * place: each is its own `@some-ui/speech` entry, and the
+ * `VITE_DEVICE_BACKEND` test below folds while the module is compiled, so
+ * the APK carries only the phone's voice and the web builds never carry it
+ * (build.paths.ts checks both).
  */
 
 /**
@@ -132,9 +141,11 @@ export const TTSProvider = ({
               mode: "static",
               language: LESSON_LANGUAGE,
               native: deviceSpeechBackend(settings?.deviceVoiceId),
+              adapters: { static: nativeSpeech },
             }
           : {
               mode: kind === "account" ? DATA_MODE : "static",
+              adapters: { server: httpSpeech, static: webSpeech },
               hosted: settings?.ttsVoice,
               endpoint: resolveTTSEndpoint(),
             }

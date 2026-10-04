@@ -65,8 +65,15 @@ export const MOBILE_ROUTE_FILES = [
   "apps/www/src/routes/auth.tsx*",
 ] as const
 
+/**
+ * `@some-ui/speech`'s backend entries, one per voice (packages/speech,
+ * src/lib/adapters/registry.ts). Its main entry is in every profile.
+ */
+const SPEECH_ENTRY = "packages/speech/dist/@some-ui/speech"
+
 /** Modules that exist for the phone: the device backend and its plugins. */
 const DEVICE_MODULES = [
+  `${SPEECH_ENTRY}/native.es.js`,
   "apps/www/src/lib/device-backend/**",
   "apps/www/src/lib/device-speech/**",
   "apps/www/src/lib/dictation/**",
@@ -114,6 +121,14 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "web-only code: the Android app has no account to move sessions to or sign out of, and no hosted voice (it speaks with the phone's engine)",
     },
     {
+      modules: [
+        `${SPEECH_ENTRY}/http.es.js`,
+        `${SPEECH_ENTRY}/web-speech.es.js`,
+      ],
+      profiles: ["lan", "pages"],
+      why: "the web builds' voices, the hosted service and the browser's own synthesizer: the Android app speaks only with the phone's engine (src/providers/tts.tsx)",
+    },
+    {
       modules: DEVICE_MODULES,
       profiles: [MOBILE_PROFILE],
       why: "native-only code, which runs only in the Android app (src/lib/device-backend, src/vite-env.d.ts on VITE_DEVICE_BACKEND)",
@@ -144,6 +159,7 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
         "apps/www/src/lib/device-backend/backend/index.ts",
         "apps/www/src/lib/device-backend/capacitor-sqlite/index.ts",
         "apps/www/src/lib/device-speech/native.ts",
+        `${SPEECH_ENTRY}/native.es.js`,
         "apps/www/src/lib/study-nudge/native.ts",
         "apps/www/src/lib/study-nudge/schedule.ts",
         "apps/www/src/lib/dictation/index.ts",

@@ -9,8 +9,12 @@
  * localhost:5050 - which is what `vite dev` and the Docker image get. The
  * other providers in `tts-client` are reachable by configuration; none of
  * that is visible to a caller, who only ever holds a `SpeechAdapter`.
+ *
+ * An app reaches it as `httpSpeech`, from the `@some-ui/speech/http` entry.
  */
 
+import type { SpeechBackend } from "@speech/lib/adapters/backend"
+import { defineSpeechBackend } from "@speech/lib/adapters/backend"
 import type {
   SpeakOptions,
   SpeechAdapter,
@@ -19,7 +23,10 @@ import type {
 import type { AudioPlayer, AudioPlayerOptions } from "@speech/lib/engine"
 import { createAudioPlayer } from "@speech/lib/engine"
 import type { FetchImpl, TTSClient } from "@speech/lib/engine/tts-client"
-import { createTTSClient } from "@speech/lib/engine/tts-client"
+import {
+  createTTSClient,
+  DEFAULT_OPENAI_EDGE_ENDPOINT,
+} from "@speech/lib/engine/tts-client"
 import type { SpokenLanguage } from "@speech/lib/language"
 import { createSpeechLedger } from "@speech/lib/promise"
 import {
@@ -28,6 +35,8 @@ import {
   toError,
 } from "@speech/lib/promise/abort"
 import type { TTSServiceConfig, VoiceConfig } from "@speech/lib/types/tts-types"
+import type { HostedVoiceChoice } from "@speech/lib/voices"
+import { hostedVoiceFor } from "@speech/lib/voices"
 
 export type HttpSpeechAdapterOptions = {
   service: TTSServiceConfig
@@ -151,3 +160,28 @@ export function createHttpSpeechAdapter(
     },
   }
 }
+
+const DEFAULT_HOSTED_CHOICE: HostedVoiceChoice = {
+  provider: "openai",
+  voiceId: null,
+}
+
+/**
+ * The hosted voice service, for a session's `"server"` mode: the session's
+ * config with this backend's defaults applied, `openai-edge-tts` at
+ * `DEFAULT_OPENAI_EDGE_ENDPOINT` and no voice chosen.
+ */
+export const httpSpeech: SpeechBackend = defineSpeechBackend((config) => {
+  const hosted = config.hosted ?? DEFAULT_HOSTED_CHOICE
+  return createHttpSpeechAdapter({
+    service: {
+      provider: hosted.provider,
+      apiUrl: config.endpoint ?? DEFAULT_OPENAI_EDGE_ENDPOINT,
+      apiKey: config.apiKey,
+      format: config.format ?? "mp3",
+      timeout: config.timeoutMs,
+    },
+    voiceFor: (language) => hostedVoiceFor(hosted, language ?? config.language),
+    fetchImpl: config.fetchImpl,
+  })
+})
