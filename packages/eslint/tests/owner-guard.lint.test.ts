@@ -70,6 +70,44 @@ function useTimer(props: { side: string }) {
     expect(msgs.filter((m) => m.ruleId === RULE)).toHaveLength(2)
   })
 
+  it("fires inside a component declared through memo or forwardRef", async () => {
+    const code = `
+const Page = memo(({ value }: { value: string }) => {
+  const [copy] = useState(value)
+  return <p>{copy}</p>
+})
+const Field = React.forwardRef(({ label }: { label: string }, ref) => {
+  const [text] = useState(label)
+  return <input ref={ref} defaultValue={text} />
+})
+`
+    const msgs = await lintSnippet(makeConfig(), code, TSX_FILE)
+    expect(msgs.filter((m) => m.ruleId === RULE)).toHaveLength(2)
+  })
+
+  it("fires on the clock function passed uncalled, which React calls at mount", async () => {
+    const code = `
+const Timer = () => {
+  const [started] = useState(Date.now)
+  const [state] = useReducer(step, null, performance.now)
+  return <p>{started}{state}</p>
+}
+`
+    const msgs = await lintSnippet(makeConfig(), code, TSX_FILE)
+    expect(msgs.filter((m) => m.ruleId === RULE)).toHaveLength(2)
+  })
+
+  it("reports a called clock once, not again for its callee", async () => {
+    const code = `
+const Timer = () => {
+  const [started] = useState(() => Date.now())
+  return <p>{started}</p>
+}
+`
+    const msgs = await lintSnippet(makeConfig(), code, TSX_FILE)
+    expect(msgs.filter((m) => m.ruleId === RULE)).toHaveLength(1)
+  })
+
   it("does NOT fire for a parameter named initial* or default*", async () => {
     const code = `
 const Log = ({ initialSide, defaultOpen }: Props) => {

@@ -34,6 +34,8 @@ import type { Rule, Scope } from "eslint"
 const STATE_HOOKS = new Set(["useState", "useReducer"])
 const CLOCK_CALLS = new Set(["Date.now", "performance.now"])
 const READ_ONCE_NAME = /^(initial|default)[A-Z]/
+/** Wrappers a component is declared through: `const Page = memo((...) => ...)`. */
+const COMPONENT_WRAPPERS = new Set(["memo", "forwardRef"])
 
 type Node = any
 
@@ -56,16 +58,24 @@ function hookName(callee: Node): string | null {
 /** The name a function is known by: its own, or the variable it's assigned to. */
 function functionName(fn: Node): string | null {
   let name: unknown = null
+  // Through `memo(...)`/`forwardRef(...)`, however nested, to the variable.
+  let declared: Node = fn.parent
+  while (
+    declared.type === "CallExpression" &&
+    COMPONENT_WRAPPERS.has(hookName(declared.callee) ?? "")
+  ) {
+    declared = declared.parent
+  }
   if (
     (fn.type === "FunctionDeclaration" || fn.type === "FunctionExpression") &&
     fn.id
   ) {
     name = fn.id.name
   } else if (
-    fn.parent.type === "VariableDeclarator" &&
-    fn.parent.id.type === "Identifier"
+    declared.type === "VariableDeclarator" &&
+    declared.id.type === "Identifier"
   ) {
-    name = fn.parent.id.name
+    name = declared.id.name
   }
   return typeof name === "string" ? name : null
 }
@@ -105,6 +115,26 @@ function seeds(call: Node, hook: string): Array<Node> {
   return hook === "useState" ? args.slice(0, 1) : args.slice(1, 3)
 }
 
+/** `Date.now` or `performance.now`, as written, or null. */
+function clockFunction(node: Node): string | null {
+  if (
+    node.type !== "MemberExpression" ||
+    node.computed ||
+    node.object.type !== "Identifier" ||
+    node.property.type !== "Identifier"
+  ) {
+    return null
+  }
+  const object: unknown = node.object.name
+  const property: unknown = node.property.name
+  const name = `${String(object)}.${String(property)}`
+  return CLOCK_CALLS.has(name) ? name : null
+}
+
+/**
+ * A read of the clock: `new Date()`, `Date.now()`, or the function itself
+ * passed uncalled (`useState(Date.now)`), which React calls once at mount.
+ */
 function clockCall(node: Node): string | null {
   if (
     node.type === "NewExpression" &&
@@ -114,19 +144,17 @@ function clockCall(node: Node): string | null {
   ) {
     return "new Date()"
   }
-  if (
-    node.type === "CallExpression" &&
-    node.callee.type === "MemberExpression" &&
-    !node.callee.computed &&
-    node.callee.object.type === "Identifier" &&
-    node.callee.property.type === "Identifier"
-  ) {
-    const object: unknown = node.callee.object.name
-    const property: unknown = node.callee.property.name
-    const name = `${String(object)}.${String(property)}`
-    return CLOCK_CALLS.has(name) ? `${name}()` : null
+  if (node.type === "CallExpression") {
+    const called = clockFunction(node.callee)
+    return called === null ? null : `${called}()`
   }
-  return null
+  // Uncalled: the callee of a call is reported as that call, above.
+  const passed = clockFunction(node)
+  if (passed === null) return null
+  const parent: Node = node.parent
+  return parent.type === "CallExpression" && parent.callee === node
+    ? null
+    : passed
 }
 
 export const noMountSnapshot: Rule.RuleModule = {
