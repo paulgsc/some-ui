@@ -35,8 +35,10 @@
  * - **Nothing listens while the page is off screen.** Hiding the page
  *   finishes an utterance in progress (what was heard is kept), and the
  *   microphone does not start while hidden.
- * - **Leaving the round closes the composer** and abandons an utterance:
- *   a note belongs to the round it was raised on.
+ * - **Leaving the round closes the composer.** An utterance in progress
+ *   is finished as Done finishes it, so the words land on the note, which
+ *   keeps the anchor of the round it was raised on; leaving is never held
+ *   back for it (Ax. 9.1).
  */
 
 import type {
@@ -395,10 +397,11 @@ export function step(state: ComposerState, event: ComposerEvent): ComposerStep {
     }
     case "roundLeft": {
       if (composer.phase === "closed") return stay({ ...state, notice: "" })
-      return {
-        state: { ...state, composer: { phase: "closed" }, notice: "" },
-        effects: isListening(composer) ? [{ type: "cancelListening" }] : [],
-      }
+      // Words still being turned into text are the learner's, said about
+      // the round they were on: finish them as Done would (the note keeps
+      // its own anchor), rather than hold the next round back (Ax. 9.1).
+      if (isListening(composer)) return finish(state)
+      return stay({ ...state, composer: { phase: "closed" }, notice: "" })
     }
     case "hidden": {
       const hidden = { ...state, visible: false }

@@ -179,14 +179,27 @@ describe("the note composer's step", () => {
     expect(state.composer.phase).toBe("closed")
   })
 
-  it("closes on leaving the round, and writes nothing that lands afterwards", () => {
+  it("finishes an utterance in progress on leaving the round, keeping the words", () => {
     const { state, effects } = run([
       ...OPENED,
       { type: "micPressed" },
       { type: "roundLeft" },
-      { type: "transcribed", seq: 1, text: "too late" },
+      { type: "roundLeft" },
+      { type: "transcribed", seq: 1, text: "said on the old round" },
     ])
-    expect(effects).toEqual(["save:", "listen", "cancelListening"])
+    expect(effects).toEqual([
+      "save:",
+      "listen",
+      "finishListening",
+      "startFinishTimer",
+      "save:said on the old round",
+    ])
+    expect(state.composer.phase).toBe("closed")
+  })
+
+  it("simply closes on leaving the round when nothing is being said", () => {
+    const { state, effects } = run([...OPENED, { type: "roundLeft" }])
+    expect(effects).toEqual(["save:"])
     expect(state.composer.phase).toBe("closed")
   })
 

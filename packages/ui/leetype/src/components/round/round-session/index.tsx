@@ -2,6 +2,7 @@ import type { FC } from "react"
 import {
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -374,6 +375,7 @@ export const RoundSession: FC<RoundSessionProps> = ({
   )
   useEffect(() => composer.attach(), [composer])
   const noteButtonRef = useRef<HTMLButtonElement>(null)
+  const finishingHintId = useId()
   const returnFocusToNote = useCallback((): void => {
     noteButtonRef.current?.focus()
   }, [])
@@ -805,6 +807,14 @@ export const RoundSession: FC<RoundSessionProps> = ({
           <span className="text-sm font-medium text-foreground">
             {play.own ? "Your round" : `Round ${played + 1}`}
           </span>
+          {isListening(noteState.composer) && (
+            <span
+              id={finishingHintId}
+              className="ml-auto text-xs text-muted-foreground"
+            >
+              Finishing your spoken note…
+            </span>
+          )}
           <Button
             variant="ghost"
             size="sm"
@@ -814,6 +824,9 @@ export const RoundSession: FC<RoundSessionProps> = ({
             // being turned into text it waits, and otherwise the open note
             // is closed first (what was typed is already saved).
             disabled={isListening(noteState.composer)}
+            aria-describedby={
+              isListening(noteState.composer) ? finishingHintId : undefined
+            }
             onClick={() => {
               composer.dispatch({ type: "donePressed" })
               setGenerating(true)
