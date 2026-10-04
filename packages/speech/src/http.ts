@@ -6,6 +6,3 @@
  */
 export { httpSpeech } from "@speech/lib/adapters/http"
 export * from "@speech/lib/engine"
-export type { UseAudioPlayerReturn } from "@speech/lib/hooks/use-audio-player"
-export { useAudioPlayer } from "@speech/lib/hooks/use-audio-player"
-export { useAudioFromStorage } from "@speech/lib/hooks/use-audio-storage"

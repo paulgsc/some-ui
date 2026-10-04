@@ -67,10 +67,6 @@ export type TTSOptions = {
   readonly onBoundary?: (charIndex: number, charLength: number) => void
 }
 
-export type UseAudioTTSOptions = TTSOptions & {
-  readonly service: TTSServiceConfig
-}
-
 /**
  * Every voice a hosted backend offers, per provider. The ids are kept as
  * literals (`satisfies`, not an annotation), so `HostedVoiceOf<P>` in

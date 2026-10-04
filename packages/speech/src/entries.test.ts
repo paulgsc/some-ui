@@ -105,12 +105,7 @@ function reachedFrom(entry: string): Set<string> {
 
 /** What belongs to one backend, and to no other entry. */
 const BACKEND_MODULES = {
-  http: [
-    "lib/adapters/http/",
-    "lib/engine/",
-    "lib/hooks/use-audio-player.ts",
-    "lib/hooks/use-audio-storage.ts",
-  ],
+  http: ["lib/adapters/http/", "lib/engine/"],
   "web-speech": ["lib/adapters/web-speech/"],
   native: ["lib/adapters/native/"],
 } as const
