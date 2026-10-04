@@ -135,23 +135,28 @@ describe("calendar days across a daylight-saving change", () => {
     vi.unstubAllEnvs()
   })
 
-  // Not UTC, where this could not fail: in a zone that changes its clocks, adding
-  // `n * 24h` to a local midnight lands an hour off the day it should, and a
-  // plain day count goes wrong. `addDays` counts days on the calendar.
+  // Not UTC, where none of this could fail. The rows that matter are the
+  // fall-back crossings (the day is 25 hours long): adding `n * 24h` to a local
+  // midnight there lands at 23:00 on the day before the one it should, so a day
+  // count built on milliseconds is a day short. The spring-forward rows and the
+  // backward one pass for that implementation too; they guard the rest.
   it.each([
-    // [zone, day, days to add, expected], each spanning that zone's clock change
-    ["America/New_York", "2026-03-07", 1, "2026-03-08"],
-    ["America/New_York", "2026-03-07", 2, "2026-03-09"],
-    ["America/New_York", "2026-10-31", 1, "2026-11-01"],
-    ["America/New_York", "2026-10-31", 2, "2026-11-02"],
-    ["America/New_York", "2026-11-02", -2, "2026-10-31"],
-    ["Australia/Sydney", "2026-10-03", 2, "2026-10-05"],
-    ["Australia/Sydney", "2026-04-04", 2, "2026-04-06"],
-  ])("%s: addDays(%s, %i) is %s", (zone, day, n, expected) => {
-    vi.stubEnv("TZ", zone)
-    // The stub only means something if the runtime took the zone.
-    const probe = new Date(2026, 6, 1, 12).getTimezoneOffset()
-    expect(probe).not.toBe(0)
-    expect(addDays(day, n)).toBe(expected)
-  })
+    // [zone, its offset in July (what getTimezoneOffset says), day, days to add, expected]
+    ["America/New_York", 240, "2026-10-31", 2, "2026-11-02"],
+    ["America/New_York", 240, "2026-11-01", 1, "2026-11-02"],
+    ["America/New_York", 240, "2026-10-30", 3, "2026-11-02"],
+    ["America/New_York", 240, "2026-03-07", 2, "2026-03-09"],
+    ["America/New_York", 240, "2026-11-02", -2, "2026-10-31"],
+    ["Australia/Sydney", -600, "2026-04-04", 2, "2026-04-06"],
+    ["Australia/Sydney", -600, "2026-04-05", 1, "2026-04-06"],
+    ["Australia/Sydney", -600, "2026-10-03", 2, "2026-10-05"],
+  ])(
+    "%s (offset %i): addDays(%s, %i) is %s",
+    (zone, offset, day, n, expected) => {
+      vi.stubEnv("TZ", zone)
+      // The stub only means something if the runtime took exactly this zone.
+      expect(new Date(2026, 6, 1, 12).getTimezoneOffset()).toBe(offset)
+      expect(addDays(day, n)).toBe(expected)
+    }
+  )
 })
