@@ -1,6 +1,6 @@
 ---
 name: steward
-description: Repo-specific PR-driving policy Claude Code consults before acting on CI, review, or merge events for a PR it opened or drives on the author's behalf — auto-merge mechanics, bot-review handling, and the re-review-request idiom this repo's bot reviewer needs. Takes precedence over generic PR-driving judgment; consulted automatically, not meant for direct/manual invocation. See babysit/SKILL.md for the separate polling-cadence policy — this file does not restate it.
+description: Repo-specific PR-driving policy Claude Code consults before acting on CI, review, or merge events for a PR it opened or drives on the author's behalf — auto-merge mechanics, bot-review handling, and what counts as review coverage on a head. Takes precedence over generic PR-driving judgment; consulted automatically, not meant for direct/manual invocation. See babysit/SKILL.md for the separate polling-cadence policy — this file does not restate it.
 ---
 
 # steward
@@ -13,15 +13,16 @@ directory). Nothing here weakens a "never" rule the parent Claude Code instructi
 widen a PR beyond what a finding needs) — it only nails down mechanics sessions on this relay
 have gotten wrong before, so the next one doesn't have to relearn them.
 
-## Re-request review after every push
+## Review coverage on every head
 
-`chatgpt-codex-connector` (this repo's bot reviewer) only reviews a PR on open,
-ready-for-review, or an explicit mention by default — **not on every subsequent push,
-including a rebase**. A rebase changes the head SHA even when the diff content doesn't, and
-`babysit/SKILL.md`'s review-coverage check matches that exact SHA — skip the request on a
-rebase and the PR can never satisfy that check again, however many check-ins pass. After
-every push that changes the head SHA, leave a PR comment explicitly requesting review
-(`@codex review`) before waiting on anything else.
+A head is covered when someone who didn't write it has reviewed it: a Codex pass naming that
+SHA (`Reviewed commit: <sha>`), or an independent fresh-context review (an agent with no part
+in writing the change, given its diff and intent but not your conclusions) of the PR's changes
+since the last covered head, or the base (after a rebase, `git range-diff`), recorded in a PR
+comment naming the range and every finding's outcome, each fixed or answered. After a fix push,
+re-review only that delta. Request `@codex review` per push only while the user hasn't rationed
+Codex: `chatgpt-codex-connector` reviews on open, ready-for-review or an explicit mention,
+**not on later pushes, a rebase included**, so a head nobody requested it for stays uncovered.
 
 ## Treat every bot finding as a bug report until traced and disproven
 
@@ -40,7 +41,7 @@ A fix's own diff is new surface area for the next review, and there is no a prio
 how many rounds that can take — this canon's own landing PR hit real, escalating findings for
 seven straight rounds, each fix surfacing ground the previous rounds hadn't touched. "Treat
 every finding as real" (above) is still correct, but combined with an unconditional
-re-request-after-every-push idiom it has no natural stopping point, and every round costs real
+review on every head it has no natural stopping point, and every round costs real
 tokens.
 
 **After 3 review rounds since the PR was opened**, stop auto-requesting the next review. Before
@@ -210,10 +211,10 @@ reporting `skipped` is the confirming signal.
 Standing authorization is scoped to the exact repo(s) it was granted for and must be restated
 in every handoff, not assumed to persist silently — a grant for this repo does not imply
 `paulgsc/server`, or vice versa. When it applies here: confirm CI is green on the _current_
-head (per the freshness check above), confirm `mergeable_state: "clean"`, confirm bot-review
-coverage on the current head is actually confirmed if this repo's reviewer doesn't auto-review
-pushes — "no unresolved thread" is not the same as "reviewed," since a review requested but
-not yet answered creates no thread at all. **Unlike `babysit/SKILL.md`'s stand-down criteria,
+head (per the freshness check above), confirm `mergeable_state: "clean"`, confirm review
+coverage on the current head ("Review coverage on every head" above) — "no unresolved thread"
+is not the same as "reviewed," since a review requested but not yet answered creates no
+thread at all. **Unlike `babysit/SKILL.md`'s stand-down criteria,
 auto-merge does not get babysit's graceful timeout** — that timeout only licenses ending
 active polling while leaving the PR for a human to merge; it never licenses merging a push
 nobody has actually reviewed. If review coverage can't be confirmed, don't merge — fall back

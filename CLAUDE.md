@@ -449,6 +449,6 @@ If you're leaving unfinished multi-session work: write the next handoff from
 `SendUserFile`) rather than committing it.
 
 See `.claude/skills/steward/SKILL.md` for how to drive an already-open PR (auto-merge
-mechanics, bot-review handling, the re-review-request idiom) and
+mechanics, bot-review handling, review coverage on every head) and
 `.claude/skills/babysit/SKILL.md` for the separate polling-cadence policy — both are
 consulted automatically when acting on CI or review events, not just on request.
