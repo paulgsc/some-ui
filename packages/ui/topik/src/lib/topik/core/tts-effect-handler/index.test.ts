@@ -711,3 +711,189 @@ describe("TTSEffectHandler - every line says its language and names no voice", (
     expect(calls[1]!.options.lang).toBe("ko-KR")
   })
 })
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EVERY INTERLEAVING
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * A speaker that behaves as the session does, not as a test drives it: a
+ * new line cancels the one in flight, `stop` cancels it, muting cancels it
+ * and refuses new lines, and a line starts the moment it is said.
+ */
+function createSessionLikeSpeaker(): {
+  speaker: Speaker
+  setMuted: (muted: boolean) => void
+  finish: () => void
+  fail: () => void
+  readonly inFlight: boolean
+} {
+  const listeners = new Set<() => void>()
+  let muted = false
+  let current: { resolve: () => void; reject: (error: Error) => void } | null =
+    null
+  const cancel = (): void => {
+    const cancelled = current
+    current = null
+    cancelled?.reject(aborted())
+  }
+  const speaker: Speaker = {
+    available: true,
+    get muted() {
+      return muted
+    },
+    subscribe: (listener) => {
+      listeners.add(listener)
+      return () => {
+        listeners.delete(listener)
+      }
+    },
+    say: (_content: string, options: SayOptions) => {
+      cancel()
+      if (muted) return Promise.reject(aborted())
+      return new Promise<void>((resolve, reject) => {
+        current = { resolve, reject }
+        options.onStart?.()
+      })
+    },
+    stop: cancel,
+    describe: () => ({
+      platform: "browser",
+      voice: null,
+      speaksLanguage: true,
+    }),
+  }
+  return {
+    speaker,
+    setMuted: (next): void => {
+      muted = next
+      if (next) cancel()
+      for (const listener of listeners) listener()
+    },
+    finish: (): void => {
+      const finished = current
+      current = null
+      finished?.resolve()
+    },
+    fail: (): void => {
+      const failed = current
+      current = null
+      failed?.reject(new Error("engine failed"))
+    },
+    get inFlight(): boolean {
+      return current !== null
+    },
+  }
+}
+
+const settleMicrotasks = async (): Promise<void> => {
+  for (let tick = 0; tick < 10; tick += 1) await Promise.resolve()
+}
+
+const EVENTS = [
+  "auto m1",
+  "auto m2",
+  "replay m1",
+  "stop",
+  "mute",
+  "unmute",
+  "line ends",
+  "line fails",
+] as const
+type Event = (typeof EVENTS)[number]
+
+function* sequences(length: number): Generator<ReadonlyArray<Event>> {
+  if (length === 0) {
+    yield []
+    return
+  }
+  for (const head of sequences(length - 1)) {
+    for (const event of EVENTS) yield [...head, event]
+  }
+}
+
+/**
+ * Runs `events`, checking after each one that what React shows as speaking
+ * is what the handler is doing, then unmutes and lets every line end, and
+ * checks the queue still speaks: a wedged queue (stuck `processing`, a hold
+ * nobody releases) would say nothing for a new line.
+ */
+async function runInterleaving(
+  events: ReadonlyArray<Event>
+): Promise<string | null> {
+  const session = createSessionLikeSpeaker()
+  let showsSpeaking = false
+  vi.spyOn(console, "error").mockImplementation(() => undefined)
+  const handler = createTTSEffectHandler({
+    speaker: session.speaker,
+    componentId: "c1",
+    machine: fakeMachine,
+    onSpeechStart: () => {
+      showsSpeaking = true
+    },
+    onSpeechEnd: () => {
+      showsSpeaking = false
+    },
+    onSpeechStopped: () => {
+      showsSpeaking = false
+    },
+  })
+
+  const act: Readonly<Record<Event, () => void>> = {
+    "auto m1": () => handler.enqueue(makeMessage("m1"), true),
+    "auto m2": () => handler.enqueue(makeMessage("m2"), true),
+    "replay m1": () => void handler.speakManually(makeMessage("m1")),
+    stop: () => handler.handleStopAudio(),
+    mute: () => session.setMuted(true),
+    unmute: () => session.setMuted(false),
+    "line ends": () => session.finish(),
+    "line fails": () => session.fail(),
+  }
+
+  const check = (step: string): string | null => {
+    if (showsSpeaking !== handler.isSpeaking()) {
+      return `${step}: shows speaking=${String(showsSpeaking)}, handler=${String(handler.isSpeaking())}`
+    }
+    if (handler.isSpeaking() !== session.inFlight) {
+      return `${step}: handler speaking=${String(handler.isSpeaking())}, line in flight=${String(session.inFlight)}`
+    }
+    return null
+  }
+
+  for (const event of events) {
+    act[event]()
+    await settleMicrotasks()
+    const problem = check(event)
+    if (problem) return problem
+  }
+
+  session.setMuted(false)
+  await settleMicrotasks()
+  for (let line = 0; line < 10 && session.inFlight; line += 1) {
+    session.finish()
+    await settleMicrotasks()
+  }
+  const drained = check("drained")
+  if (drained) return drained
+
+  handler.enqueue(makeMessage("fresh"), true)
+  await settleMicrotasks()
+  if (!session.inFlight) return "drained: a new line was not spoken"
+  handler.destroy()
+  return null
+}
+
+describe("TTSEffectHandler - every interleaving of up to five events", () => {
+  it("keeps 'speaking' true to the handler, and never wedges the queue", async () => {
+    const failures: Array<string> = []
+    for (let length = 1; length <= 5; length += 1) {
+      for (const events of sequences(length)) {
+        const problem = await runInterleaving(events)
+        if (problem && failures.length < 5) {
+          failures.push(`${events.join(" → ")} :: ${problem}`)
+        }
+      }
+    }
+    expect(failures).toEqual([])
+  }, 120_000)
+})
