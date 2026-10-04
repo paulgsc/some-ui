@@ -182,9 +182,10 @@ agrees:
 - Its origin is `http://localhost:5173`, not `https://localhost`. Web storage
   (localStorage, IndexedDB) starts empty; the SQLite file is the same app-private
   one. www's `file_host` base takes its http branch (`lib/file-host-config`),
-  which the device backend should still answer in-process, since it and its
-  callers resolve the same base. If sessions look empty or `file_host` is
-  unreachable, look there first.
+  which the device backend still answers in-process, since it and its callers
+  resolve the same base (`device-backend/__tests__/round-trip.test.ts` pins
+  that). If sessions look empty or `file_host` is unreachable, look there
+  first.
 - It is signed with your own debug key, so it cannot install over a CI APK, and
   uninstalling one deletes its database (see Signing). Use an emulator or a spare
   phone.

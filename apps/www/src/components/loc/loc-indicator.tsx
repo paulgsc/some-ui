@@ -40,9 +40,12 @@ const ADDED_FILL = "bg-blue-700 dark:bg-blue-400"
 const REMOVED_TEXT = "text-orange-700 dark:text-orange-400"
 const REMOVED_FILL = "bg-orange-700 dark:bg-orange-400"
 
-/** Where the person can see the same numbers live, one repository at a time. */
-const CODE_FREQUENCY_URL =
-  "https://github.com/paulgsc/some-ui/graphs/code-frequency"
+/**
+ * Where each repository's own numbers can be seen live on GitHub: its
+ * code-frequency graph. One link per repository, because the snapshot is a sum
+ * over several and a single link would open one of them.
+ */
+const GITHUB_URL = "https://github.com/paulgsc"
 
 /** The chart's height, split at the baseline: additions above, removals below. */
 const ABOVE_BASELINE_PX = 60
@@ -356,20 +359,23 @@ const LocPulse = ({ snapshot }: { snapshot: LocSnapshot }): JSX.Element => {
             "text-muted-foreground flex items-center justify-between gap-2 text-xs"
           )}
         >
-          <span>
-            As of {formatDay(snapshot.through)} · {snapshot.repos.join(" + ")}
+          <span>As of {formatDay(snapshot.through)}</span>
+          <span className={cn("flex items-center gap-3")}>
+            {snapshot.repos.map((repo) => (
+              <a
+                key={repo}
+                href={`${GITHUB_URL}/${repo}/graphs/code-frequency`}
+                target="_blank"
+                rel="noreferrer"
+                className={cn(
+                  "hover:text-foreground inline-flex items-center gap-1 underline underline-offset-2 max-sm:min-h-11"
+                )}
+              >
+                {repo}
+                <ArrowUpRight aria-hidden="true" className={cn("size-3")} />
+              </a>
+            ))}
           </span>
-          <a
-            href={CODE_FREQUENCY_URL}
-            target="_blank"
-            rel="noreferrer"
-            className={cn(
-              "hover:text-foreground inline-flex items-center gap-1 underline underline-offset-2 max-sm:min-h-11"
-            )}
-          >
-            GitHub
-            <ArrowUpRight aria-hidden="true" className={cn("size-3")} />
-          </a>
         </div>
       </PopoverContent>
     </Popover>

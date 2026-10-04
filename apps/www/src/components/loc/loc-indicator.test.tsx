@@ -90,8 +90,12 @@ describe("LocIndicator", () => {
     expect(within(dialog).getByText(/added in the last 7 days/i)).toBeDefined()
     // Dated, not "live": the numbers are as old as the build.
     expect(within(dialog).getByText(/as of oct 3/i)).toBeDefined()
-    expect(within(dialog).getByText("some-ui")).toBeDefined()
-    expect(within(dialog).getByText("server")).toBeDefined()
+    // The split by repository, and a link to each one's own numbers.
+    expect(within(dialog).getAllByText("some-ui")).toHaveLength(2)
+    expect(within(dialog).getAllByText("server")).toHaveLength(2)
+    expect(
+      within(dialog).getByRole("link", { name: "server" }).getAttribute("href")
+    ).toBe("https://github.com/paulgsc/server/graphs/code-frequency")
 
     fireEvent.click(within(dialog).getByRole("button", { name: "90d" }))
     expect(within(dialog).getByText("+1,450")).toBeDefined()

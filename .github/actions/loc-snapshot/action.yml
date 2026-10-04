@@ -9,16 +9,21 @@ description: >-
 # header is not worth a failed release. When this step fails or is skipped the
 # build ships the tracked placeholder and the widget stays out of the header.
 #
-# Needs Nix set up first (./.github/actions/nix-setup) for a Node that runs
-# TypeScript; it needs no `pnpm install`, which the Docker release job does not
-# run. The server's history is cloned into $RUNNER_TEMP, outside the workspace,
-# so it never reaches the Docker build context.
+# Needs Nix set up first (./.github/actions/nix-setup), for a Node that runs
+# TypeScript. It runs in `.#extension` (Node and pnpm only), not `.#ci`, whose
+# Rust, poppler and web-ext closure the Docker publish job never needed. It
+# needs no `pnpm install`, which that job does not run either.
 #
 # Why a clone and not the API: the widget leaves lockfiles and generated files
 # out of the default total, and only a diff says which files a commit touched.
 #
+# Both histories are cloned into $RUNNER_TEMP, outside the workspace, and the
+# workspace itself is left a depth-1 checkout. Deepening it in place would put
+# the whole history into the Docker build's context (`COPY . .` takes `.git`).
+#
 # Not for pull requests: they build www only to check it, and a fork's has no
-# secrets. Callers gate on the event.
+# secrets. Callers gate on the event, and on a rollback build (an older commit
+# than the history the numbers would count up to).
 inputs:
   server-token:
     description: >-
@@ -33,16 +38,27 @@ runs:
   steps:
     # git shows a shallow clone's oldest commit as adding every file it holds,
     # so a count over one is wrong by orders of magnitude. The script refuses
-    # one; this is what makes it not shallow.
+    # a shallow repository; a fetch of the one commit this job built, with no
+    # depth, is a full history of it.
     - name: Fetch this repository's full history
       shell: bash
+      env:
+        REPO_TOKEN: ${{ github.token }}
       run: |
-        if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
-          git fetch --unshallow --no-tags --quiet
-        fi
+        dir="$RUNNER_TEMP/loc-some-ui"
+        auth="$(printf 'x-access-token:%s' "$REPO_TOKEN" | base64 --wrap=0)"
+        echo "::add-mask::$auth"
+        git init --quiet "$dir"
+        git -C "$dir" -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" \
+          fetch --quiet --no-tags "https://github.com/$GITHUB_REPOSITORY.git" "$(git rev-parse HEAD)"
+        git -C "$dir" update-ref --no-deref HEAD FETCH_HEAD
+        echo "LOC_UI_DIR=$dir" >> "$GITHUB_ENV"
 
+    # A token that has expired or lost its reach fails only this step: the
+    # snapshot is then this repository's alone, which the script reports.
     - name: Clone the server's history
       if: inputs.server-token != ''
+      continue-on-error: true
       shell: bash
       env:
         SERVER_TOKEN: ${{ inputs.server-token }}
@@ -56,4 +72,9 @@ runs:
 
     - name: Write the snapshot
       shell: bash
-      run: nix develop .#ci --command node --no-warnings scripts/loc-snapshot.ts
+      run: |
+        args=(--repo "some-ui=$LOC_UI_DIR")
+        if [ -n "${LOC_SERVER_DIR:-}" ]; then
+          args+=(--repo "server=$LOC_SERVER_DIR")
+        fi
+        nix develop .#extension --command node --no-warnings scripts/loc-snapshot.ts "${args[@]}"

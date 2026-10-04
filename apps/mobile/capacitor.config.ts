@@ -42,13 +42,18 @@ const config: CapacitorConfig = {
      * Pinned rather than left to default to the same value, because two
      * things depend on it and neither fails loudly if it changes.
      *
-     * 1. **The device backend's interception.** On an `https:` page,
-     *    `resolveFileHostBase` (www `lib/file-host-config`) answers the
-     *    same-origin `/api/file-host/api/v1`, which is the base the
-     *    in-process backend wraps `fetch` for. On `http:` it answers
-     *    `http://localhost:3000/api/v1` instead - a different origin, so
-     *    every request would go to the real network, find nothing on the
-     *    phone's port 3000, and the app would show `file_host` unreachable.
+     * 1. **A stable origin.** Every release build's origin is
+     *    `https://localhost`, so web storage (localStorage, IndexedDB) and the
+     *    file_host base `resolveFileHostBase` answers on an `https:` page (the
+     *    same-origin `/api/file-host/api/v1`) never change under an update. A
+     *    different scheme is a different origin, and a person's stored state
+     *    would not follow them to it. The device backend would still answer on
+     *    an `http:` page - boot wraps `fetch` for whatever base the page
+     *    resolved, which `device-backend/__tests__/round-trip.test.ts` pins,
+     *    and the dev loop in this package's README runs on
+     *    `http://localhost:5173` - so this is about the stored state, not about
+     *    the backend failing.
+     *
      * 2. **`crypto.subtle`**, which the backend hashes content with, exists
      *    only in a secure context.
      *

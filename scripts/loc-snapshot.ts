@@ -15,8 +15,14 @@
 //   pnpm loc:snapshot --through 2026-10-03    count back from another day
 //
 // Best-effort by design: a repository it cannot read is skipped with a
-// warning, and with none left it writes nothing and exits 1, leaving the
-// placeholder in place. A shallow clone is one it cannot read: git shows a
+// warning, and the snapshot is still written from the rest, but the run then
+// exits 1, so a build that was given the server's history and could not use it
+// shows a failed-but-continued step and not a quiet pass. With none left it
+// writes nothing and exits 1, leaving the placeholder in place.
+//
+// It overwrites the tracked placeholder, so after a local run reset it with
+// `git checkout apps/www/src/generated/loc-snapshot.json`; the www tests fail
+// until you do, so real numbers are never committed by accident. A shallow clone is one it cannot read: git shows a
 // shallow clone's oldest commit as adding every file it holds, which is how a
 // one-week count came out at 431,758 lines. The action deepens the clone first.
 //
@@ -99,12 +105,14 @@ function commitsOf(directory: string, through: string): Array<CommitStat> {
 }
 
 const repos: Array<{ name: string; commits: Array<CommitStat> }> = []
+const skipped: Array<string> = []
 for (const spec of requested) {
   const [name, ...rest] = spec.split("=")
   const directory = resolve(rest.join("="))
   try {
     repos.push({ name, commits: commitsOf(directory, through) })
   } catch (error) {
+    skipped.push(name)
     warn(
       `loc-snapshot: skipping ${name}: ${error instanceof Error ? error.message : String(error)}`
     )
@@ -127,4 +135,10 @@ if (repos.length === 0) {
   console.log(
     `loc-snapshot: ${repos.map((repo) => repo.name).join(", ")} through ${through}, ${snapshot.days.length} active days -> ${out}`
   )
+  if (skipped.length > 0) {
+    warn(
+      `loc-snapshot: wrote the snapshot without ${skipped.join(", ")}; see the warnings above`
+    )
+    process.exitCode = 1
+  }
 }
