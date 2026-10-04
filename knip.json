@@ -32,6 +32,7 @@
     "apps/mobile": {
       "ignoreDependencies": [
         "@capacitor-community/sqlite",
+        "@capacitor-community/text-to-speech",
         "@capacitor/local-notifications"
       ]
     },

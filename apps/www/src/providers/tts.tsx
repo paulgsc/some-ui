@@ -7,6 +7,8 @@ import { toast } from "sonner"
 import { useAudioPreferences } from "@/lib/audio-preferences/use-audio-preferences"
 import { useAuthority } from "@/lib/authority"
 import { DATA_MODE, DEVICE_BACKEND } from "@/lib/data-mode"
+import { deviceSpeechBackend } from "@/lib/device-speech"
+import { LESSON_LANGUAGE } from "@/lib/lesson-voice"
 import { useSettings } from "@/lib/tenant"
 import { describeTTSEndpoint, resolveTTSEndpoint } from "@/lib/tts-config"
 
@@ -121,13 +123,22 @@ export const TTSProvider = ({
 
   return (
     <SpeechProvider
-      config={{
-        // The device build has a backend but no TTS service behind it, so
-        // it speaks with the platform's own voice, as the static build does.
-        mode: kind === "account" && !DEVICE_BACKEND ? DATA_MODE : "static",
-        hosted: settings?.ttsVoice,
-        endpoint: resolveTTSEndpoint(),
-      }}
+      config={
+        DEVICE_BACKEND
+          ? {
+              // The device build has a backend but no TTS service behind
+              // it, so it speaks with the phone's own engine: Korean, in
+              // the voice picked from the phone's list in Settings.
+              mode: "static",
+              language: LESSON_LANGUAGE,
+              native: deviceSpeechBackend(settings?.deviceVoiceId),
+            }
+          : {
+              mode: kind === "account" ? DATA_MODE : "static",
+              hosted: settings?.ttsVoice,
+              endpoint: resolveTTSEndpoint(),
+            }
+      }
       fallback={<InitializingSpeech />}
       // The speech channel of the app's audio preferences, live. Muting
       // stops what is speaking and drops what was queued, without ending

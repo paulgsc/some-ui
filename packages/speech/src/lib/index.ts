@@ -4,6 +4,11 @@
 // voice and deaf to mute, which is what Honeycomb did. Inside this package,
 // import them from `@speech/lib/adapters`.
 export type {
+  NativeSpeechBackend,
+  NativeSpeechEngine,
+  NativeSpeechRequest,
+  NativeVoice,
+  DeviceVoiceChoice,
   SpeakOptions,
   SpeechAdapter,
   SpeechAdapterFactory,
@@ -13,6 +18,7 @@ export type {
   VoiceAvailability,
   VoiceReport,
 } from "./adapters"
+export { VOICE_MISSING_ERROR_NAME } from "./adapters"
 export * from "./engine"
 export * from "./hooks"
 export * from "./language"

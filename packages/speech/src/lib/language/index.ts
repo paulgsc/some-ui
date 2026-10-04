@@ -29,6 +29,12 @@ export const LANGUAGE_TAG: Readonly<Record<SpokenLanguage, string>> = {
   english: "en-US",
 }
 
+/** The name a person reads for each language. */
+export const LANGUAGE_NAME: Readonly<Record<SpokenLanguage, string>> = {
+  korean: "Korean",
+  english: "English",
+}
+
 /**
  * A platform's tag as one of our languages, or `null` for any language we
  * do not speak. Compares the whole primary subtag, in the forms platforms

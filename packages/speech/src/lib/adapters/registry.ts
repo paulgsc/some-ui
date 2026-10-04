@@ -12,7 +12,8 @@
  *   all have `infra/compose/tts.yml`'s `openai-edge-tts` reachable, so they
  *   get the HTTP adapter pointed at it.
  * - **`"static"`** - the GitHub Pages build ships no services, so it gets
- *   the browser's `speechSynthesis`.
+ *   the device's own voice: the browser's `speechSynthesis`, or the phone's
+ *   text-to-speech when the app passes one as `native` (the Android app).
  *
  * Both halves are overridable. `adapters` swaps a factory per mode (a test
  * fake, a future backend), `mode` pins the choice outright, and every knob
@@ -32,6 +33,8 @@ import type { HostedVoiceChoice } from "@speech/lib/voices"
 import { hostedVoiceFor } from "@speech/lib/voices"
 
 import { createHttpSpeechAdapter } from "./http"
+import type { NativeSpeechEngine } from "./native"
+import { createNativeSpeechAdapter } from "./native"
 import type { SpeechAdapter } from "./types"
 import { createWebSpeechAdapter } from "./web-speech"
 
@@ -55,6 +58,12 @@ export type SpeechConfig = RuntimeModeOptions & {
   timeoutMs?: number
   /** The language of lines that don't say their own. */
   language?: SpokenLanguage
+  /**
+   * The phone's own text-to-speech, for an app that has one (the Android
+   * app, whose WebView has no working `speechSynthesis`). It becomes the
+   * session's device voice in `"static"` mode, in place of the browser's.
+   */
+  native?: NativeSpeechBackend
   /** Per-mode factory overrides. Anything omitted keeps the default. */
   adapters?: Partial<SpeechAdapterRegistry>
   /** Injected in tests. */
@@ -67,6 +76,19 @@ export type SpeechConfig = RuntimeModeOptions & {
    * discovering it. Set false to make an unsupported runtime observable.
    */
   fallbackWhenUnsupported?: boolean
+}
+
+export type NativeSpeechBackend = {
+  /** A stable object, like `adapters`: not part of the session's identity. */
+  readonly engine: NativeSpeechEngine
+  /**
+   * The voice the person picked from the phone's own list (an opaque id from
+   * `engine.getVoices`). The phone's voices are the platform's, not ours, so
+   * this is a string from that list rather than a catalogue type.
+   */
+  readonly voiceId?: string
+  /** Called when a line is refused for want of voice data. */
+  readonly onMissingVoice?: (language: SpokenLanguage) => void
 }
 
 /** Everything a factory needs, with the defaults already applied. */
@@ -92,7 +114,15 @@ const DEFAULT_SPEECH_ADAPTERS: SpeechAdapterRegistry = {
         hostedVoiceFor(config.hosted, language ?? config.language),
       fetchImpl: config.fetchImpl,
     }),
-  static: (config) => createWebSpeechAdapter({ language: config.language }),
+  static: (config) =>
+    config.native
+      ? createNativeSpeechAdapter({
+          engine: config.native.engine,
+          language: config.language,
+          voiceId: config.native.voiceId,
+          onMissingVoice: config.native.onMissingVoice,
+        })
+      : createWebSpeechAdapter({ language: config.language }),
 }
 
 const DEFAULT_HOSTED_CHOICE: HostedVoiceChoice = {

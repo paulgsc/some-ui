@@ -37,7 +37,11 @@ import { createSpeechAdapter } from "@speech/lib/adapters"
 import type { SpokenLanguage } from "@speech/lib/language"
 import type { SpeechQueueManager } from "@speech/lib/queue"
 import { initializeSpeechQueue, releaseSpeechQueue } from "@speech/lib/queue"
-import type { Speaker } from "@speech/lib/speaker"
+import type {
+  PreviewOptions,
+  Speaker,
+  SpeechOutcome,
+} from "@speech/lib/speaker"
 import type { SpeechNotifier } from "@speech/lib/status"
 
 export type SpeechSession = {
@@ -82,9 +86,10 @@ export type SpeechProviderProps = {
  * keying the session on the *values* keeps that from tearing the session
  * down and rebuilding it on each one.
  *
- * `adapters` and `fetchImpl` are deliberately excluded - they are function
- * references, they cannot be serialized, and the callers that pass them
- * (tests, future backends) pass stable ones.
+ * `adapters`, `fetchImpl` and the native engine are deliberately excluded -
+ * they are function references, they cannot be serialized, and the callers
+ * that pass them (tests, the Android app) pass stable ones. Whether there is
+ * a native engine, and the phone voice chosen for it, are part of the key.
  */
 function configKeyOf(config: SpeechConfig): string {
   return JSON.stringify([
@@ -96,6 +101,8 @@ function configKeyOf(config: SpeechConfig): string {
     config.format ?? null,
     config.timeoutMs ?? null,
     config.language ?? null,
+    config.native ? "native" : null,
+    config.native?.voiceId ?? null,
     config.fallbackWhenUnsupported ?? null,
     config.serverHostnames ?? null,
   ])
@@ -186,13 +193,10 @@ export function useSpeaker(): Speaker | null {
 }
 
 /**
- * Who would read a line in `language` on this page, kept current: it
- * re-reads when the speaker says its voices or mute changed, which a
- * browser's or a phone's voices do some time after the page loads. `null`
- * without a `<SpeechProvider>`.
+ * Re-renders the caller when `speaker` says its voices or mute changed,
+ * which a browser's or a phone's voices do some time after the page loads.
  */
-export function useVoiceReport(language: SpokenLanguage): VoiceReport | null {
-  const speaker = useSpeaker()
+function useSpeakerUpdates(speaker: Speaker | null): void {
   const [, refresh] = useReducer((count: number) => count + 1, 0)
   useEffect(() => {
     if (!speaker) return undefined
@@ -203,5 +207,39 @@ export function useVoiceReport(language: SpokenLanguage): VoiceReport | null {
     refresh()
     return unsubscribe
   }, [speaker])
+}
+
+/**
+ * Who would read a line in `language` on this page, kept current. `null`
+ * without a `<SpeechProvider>`.
+ */
+export function useVoiceReport(language: SpokenLanguage): VoiceReport | null {
+  const speaker = useSpeaker()
+  useSpeakerUpdates(speaker)
   return speaker ? speaker.describe(language) : null
+}
+
+export type VoicePreview = {
+  /** Says a sample line through the session; see `SpeechQueueManager.preview`. */
+  readonly play: (
+    text: string,
+    options: PreviewOptions
+  ) => Promise<SpeechOutcome>
+  /** Whether the person has muted voice output, so a sample is refused. */
+  readonly muted: boolean
+}
+
+/**
+ * Settings' sample of a voice a person is choosing between, kept current
+ * with mute. `null` without a `<SpeechProvider>`.
+ */
+export function useVoicePreview(): VoicePreview | null {
+  const manager = useContext(SpeechSessionContext)?.manager ?? null
+  const speaker = useSpeaker()
+  useSpeakerUpdates(speaker)
+  if (!manager || !speaker) return null
+  return {
+    play: (text, options) => manager.preview(text, options),
+    muted: speaker.muted,
+  }
 }

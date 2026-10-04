@@ -592,3 +592,45 @@ describe("SpeechQueueManager - the speaker", () => {
     expect(seen).toEqual([true, false])
   })
 })
+
+describe("SpeechQueueManager - a voice preview", () => {
+  it("names its voice for its one line, interrupting the lesson, which plays again in its own", async () => {
+    const { adapter, manager } = setup()
+
+    const lesson = manager
+      .speakerFor("lesson")
+      .say("하나", { language: "korean" })
+    await flushAsync()
+    const sample = manager.preview("안녕하세요", {
+      language: "korean",
+      voice: { kind: "voice", id: "ko-kr-x-kob-local" },
+    })
+    await flushAsync()
+    adapter.finish()
+    expect(await sample).toEqual({ kind: "heard" })
+    await flushAsync()
+    adapter.finish()
+    expect(await lesson).toEqual({ kind: "heard" })
+
+    expect(
+      adapter.calls.map((call) => [call.text, call.options.voice])
+    ).toEqual([
+      ["하나", undefined],
+      ["안녕하세요", { kind: "voice", id: "ko-kr-x-kob-local" }],
+      ["하나", undefined],
+    ])
+  })
+
+  it("is refused while muted, like any line", async () => {
+    const { adapter, manager } = setup()
+    manager.setMuted(true)
+
+    expect(
+      await manager.preview("안녕하세요", {
+        language: "korean",
+        voice: { kind: "engine-default" },
+      })
+    ).toEqual({ kind: "muted" })
+    expect(adapter.calls).toEqual([])
+  })
+})

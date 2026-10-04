@@ -37,7 +37,11 @@
  * spoke a lesson.
  */
 
-import type { SpeakOptions, VoiceReport } from "@speech/lib/adapters/types"
+import type {
+  DeviceVoiceChoice,
+  SpeakOptions,
+  VoiceReport,
+} from "@speech/lib/adapters/types"
 import type { SpokenLanguage } from "@speech/lib/language"
 
 /** Whether a line interrupts what is playing, or waits its turn. */
@@ -57,6 +61,16 @@ export type SayOptions = Pick<
    * meanwhile. Its `onStart` fires again when it does.
    */
   onInterrupted?: () => void
+}
+
+/**
+ * A sample of a voice a person is choosing between, in Settings. Not part
+ * of `Speaker`: an applet cannot name a voice.
+ */
+export type PreviewOptions = {
+  readonly language: SpokenLanguage
+  /** The voice being sampled: the engine's default, or one by its id. */
+  readonly voice: DeviceVoiceChoice
 }
 
 /** What became of a line. */

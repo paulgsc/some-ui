@@ -55,6 +55,7 @@ describe("SettingsRepository - forward compatibility", () => {
 
     expect(settings.audio).toEqual(DEFAULT_SETTINGS.audio)
     expect(settings.ttsVoice).toEqual({ provider: "openai", voiceId: null })
+    expect(settings.deviceVoiceId).toBe("")
   })
 
   it("reads a voice saved before the choice was typed", async () => {

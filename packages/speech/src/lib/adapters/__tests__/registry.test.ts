@@ -1,6 +1,10 @@
 import type { SpeechAdapter, SpeechAdapterRegistry } from "@speech/lib/adapters"
 import { createSpeechAdapter, resolveSpeechConfig } from "@speech/lib/adapters"
-import { createControllableAdapter } from "@speech/lib/testing"
+import {
+  createControllableAdapter,
+  createFakeNativeEngine,
+  flushAsync,
+} from "@speech/lib/testing"
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
@@ -223,6 +227,21 @@ describe("createSpeechAdapter - default registry", () => {
   it("reaches for the browser in static mode, where no backend exists", () => {
     const adapter = createSpeechAdapter({ mode: "static" })
     expect(adapter.id).toBe("web-speech")
+  })
+
+  it("reaches for the phone's engine in static mode when the app passes one", async () => {
+    const fake = createFakeNativeEngine()
+    const adapter = createSpeechAdapter({
+      mode: "static",
+      language: "korean",
+      native: { engine: fake.engine },
+    })
+
+    expect(adapter.id).toBe("native")
+    void adapter.speak("안녕하세요").catch(() => undefined)
+    await flushAsync()
+    expect(fake.spoken[0]?.language).toBe("korean")
+    adapter.dispose()
   })
 
   it("reaches for the HTTP backend in server mode", () => {
