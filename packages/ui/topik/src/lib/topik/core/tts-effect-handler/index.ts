@@ -36,9 +36,10 @@ export type TTSEffectHandlerConfig = {
   onSpeechStart?: (messageId: string) => void
   onSpeechEnd?: (messageId: string) => void
   /**
-   * The line's audio stopped without the line ending: mute refused or cut
-   * it off, and it is held to replay on unmute. Whoever shows "speaking"
-   * clears it here; the lesson does not advance, as it does on `onSpeechEnd`.
+   * The line's audio stopped without the line ending: mute cut it off (a
+   * lesson line is then held to replay on unmute). Whoever shows
+   * "speaking" clears it here; the lesson does not advance, as it does on
+   * `onSpeechEnd`.
    */
   onSpeechStopped?: (messageId: string) => void
   onError?: (error: Error, messageId: string) => void
@@ -113,6 +114,11 @@ export class TTSEffectHandler {
    * Clears deduplication for this message
    */
   async speakManually(message: Message): Promise<void> {
+    // A muted session would refuse it. Pressing replay while muted changes
+    // nothing, so a lesson line held for unmute keeps its place: dropping it
+    // for a replay that cannot play would leave the lesson waiting on it.
+    if (this.config.speaker.muted) return
+
     // Clear deduplication for this message
     this.spokenAutoIds.delete(message.id)
     this.completedIds.delete(message.id)
@@ -170,6 +176,10 @@ export class TTSEffectHandler {
 
   destroy(): void {
     this.unsubscribe()
+    // A held line was never heard, and nothing replays it now: it is
+    // dropped, not ended, so the session's lesson does not advance past it.
+    this.queue = []
+    this.heldForUnmute = false
     this.handleStopAudio()
     this.config.speaker.stop()
     this.spokenAutoIds.clear()
@@ -291,15 +301,19 @@ export class TTSEffectHandler {
         this.config.speaker.muted &&
         this.isCurrent(run)
       ) {
-        // Refused, or cut off, by mute: not heard, so not spoken. Hold it
-        // at the front of the queue until unmute replays it, a replay the
-        // learner pressed as much as a lesson line: either way the lesson
-        // advances only when it is heard.
+        // Cut off, or refused, by mute: not heard, so not spoken, and
+        // nothing shows it speaking. A lesson line waits at the front of the
+        // queue until unmute replays it, since the lesson advances only when
+        // it is heard. A replay does not: it would play ahead of lesson lines
+        // queued meanwhile, each advancing the lesson. The learner can press
+        // it again.
         completionFired = true
         release()
         this.config.onSpeechStopped?.(message.id)
-        this.queue.unshift({ message, isAuto })
-        this.heldForUnmute = true
+        if (isAuto) {
+          this.queue.unshift({ message, isAuto })
+          this.heldForUnmute = true
+        }
         return
       }
       // A cancellation (a stop, a newer line) is not an error and does not

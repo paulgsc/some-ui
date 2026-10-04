@@ -474,7 +474,7 @@ describe("TTSEffectHandler - a line refused while muted waits for unmute", () =>
     expect(onSpeechEnd).not.toHaveBeenCalled()
   })
 
-  it("holds a replay muted mid-speech, and ends it once heard", async () => {
+  it("does not hold a replay muted mid-speech: it stops, and can be pressed again", async () => {
     const onSpeechStopped = vi.fn()
     const onSpeechEnd = vi.fn()
     const { speaker, calls, setMuted } = createFakeSpeaker()
@@ -497,16 +497,17 @@ describe("TTSEffectHandler - a line refused while muted waits for unmute", () =>
     errorSpeaking(calls[1]!, aborted())
     await flushAsync()
     expect(onSpeechStopped).toHaveBeenCalledWith("m1")
+    expect(handler.isSpeaking()).toBe(false)
 
+    // Held, it would play ahead of lesson lines queued while muted, and
+    // each would advance the lesson.
     setMuted(false)
     await flushAsync()
-    expect(calls[2]!.content).toBe("content-m1")
-    finishSpeaking(calls[2]!)
-    await flushAsync()
-    expect(onSpeechEnd).toHaveBeenCalledWith("m1")
+    expect(speaker.say).toHaveBeenCalledTimes(2)
+    expect(onSpeechEnd).not.toHaveBeenCalled()
   })
 
-  it("holds a replay pressed while muted in place of the held lesson line", async () => {
+  it("ignores a replay pressed while muted, and keeps the held lesson line", async () => {
     const onSpeechEnd = vi.fn()
     const { speaker, calls, setMuted } = createFakeSpeaker()
     const handler = createTTSEffectHandler({
@@ -521,20 +522,38 @@ describe("TTSEffectHandler - a line refused while muted waits for unmute", () =>
     errorSpeaking(calls[0]!, aborted())
     await flushAsync()
 
-    void handler.speakManually(makeMessage("m1"))
-    errorSpeaking(calls[1]!, aborted())
-    await flushAsync()
+    await handler.speakManually(makeMessage("m1"))
+    expect(speaker.say).toHaveBeenCalledTimes(1)
 
     setMuted(false)
     await flushAsync()
-    expect(calls.map((call) => call.content)).toEqual([
-      "content-m2",
-      "content-m1",
-      "content-m1",
-    ])
-    finishSpeaking(calls[2]!)
+    expect(calls[1]!.content).toBe("content-m2")
+    finishSpeaking(calls[1]!)
     await flushAsync()
-    expect(onSpeechEnd).toHaveBeenCalledWith("m1")
+    expect(onSpeechEnd).toHaveBeenCalledWith("m2")
+  })
+
+  it("drops a held line on destroy without ending it", async () => {
+    const onSpeechEnd = vi.fn()
+    const onMessageComplete = vi.fn()
+    const { speaker, calls, setMuted } = createFakeSpeaker()
+    const handler = createTTSEffectHandler({
+      speaker,
+      componentId: "c1",
+      machine: fakeMachine,
+      onSpeechEnd,
+      onMessageComplete,
+    })
+
+    setMuted(true)
+    handler.enqueue(makeMessage("m1"), true)
+    errorSpeaking(calls[0]!, aborted())
+    await flushAsync()
+    handler.destroy()
+
+    // Ending it would advance the session's lesson past a line never heard.
+    expect(onSpeechEnd).not.toHaveBeenCalled()
+    expect(onMessageComplete).not.toHaveBeenCalled()
   })
 
   it("ends the held line when the learner stops, and does not replay it", async () => {
@@ -727,7 +746,10 @@ function createSessionLikeSpeaker(): {
   finish: () => void
   fail: () => void
   readonly inFlight: boolean
+  /** The text of every line said, refused or not, in order. */
+  readonly said: ReadonlyArray<string>
 } {
+  const said: Array<string> = []
   const listeners = new Set<() => void>()
   let muted = false
   let current: { resolve: () => void; reject: (error: Error) => void } | null =
@@ -748,7 +770,8 @@ function createSessionLikeSpeaker(): {
         listeners.delete(listener)
       }
     },
-    say: (_content: string, options: SayOptions) => {
+    say: (content: string, options: SayOptions) => {
+      said.push(content)
       cancel()
       if (muted) return Promise.reject(aborted())
       return new Promise<void>((resolve, reject) => {
@@ -783,8 +806,11 @@ function createSessionLikeSpeaker(): {
     get inFlight(): boolean {
       return current !== null
     },
+    said,
   }
 }
+
+const REPLAY_TEXT = "replayed by the learner"
 
 const settleMicrotasks = async (): Promise<void> => {
   for (let tick = 0; tick < 10; tick += 1) await Promise.resolve()
@@ -842,7 +868,9 @@ async function runInterleaving(
   const act: Readonly<Record<Event, () => void>> = {
     "auto m1": () => handler.enqueue(makeMessage("m1"), true),
     "auto m2": () => handler.enqueue(makeMessage("m2"), true),
-    "replay m1": () => void handler.speakManually(makeMessage("m1")),
+    // The same message as the lesson's m1, told apart by its text.
+    "replay m1": () =>
+      void handler.speakManually(makeMessage("m1", REPLAY_TEXT)),
     stop: () => handler.handleStopAudio(),
     mute: () => session.setMuted(true),
     unmute: () => session.setMuted(false),
@@ -860,12 +888,23 @@ async function runInterleaving(
     return null
   }
 
+  // A replay plays when it is pressed or not at all. Played later, it
+  // would land among lesson lines queued since, each advancing the lesson.
+  const replayedLate = (step: string, saidBefore: number): string | null =>
+    session.said.slice(saidBefore).includes(REPLAY_TEXT)
+      ? `${step}: a replay played after it was pressed`
+      : null
+
   for (const event of events) {
+    const saidBefore = session.said.length
     act[event]()
     await settleMicrotasks()
+    const late = event === "replay m1" ? null : replayedLate(event, saidBefore)
+    if (late) return late
     const problem = check(event)
     if (problem) return problem
   }
+  const saidBeforeDrain = session.said.length
 
   session.setMuted(false)
   await settleMicrotasks()
@@ -873,7 +912,7 @@ async function runInterleaving(
     session.finish()
     await settleMicrotasks()
   }
-  const drained = check("drained")
+  const drained = replayedLate("drained", saidBeforeDrain) ?? check("drained")
   if (drained) return drained
 
   handler.enqueue(makeMessage("fresh"), true)
