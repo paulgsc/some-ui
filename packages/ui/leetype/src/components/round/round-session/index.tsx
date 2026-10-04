@@ -1,5 +1,12 @@
 import type { FC } from "react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
 import { ArtifactSwitcher } from "@leetype/components/round/artifact-switcher"
 import type {
   ArtifactId,
@@ -9,6 +16,10 @@ import { BudgetDisplay } from "@leetype/components/round/budget-display"
 import { ConstraintDiff } from "@leetype/components/round/constraint-diff"
 import { DiffSetChoices } from "@leetype/components/round/diff-set-choices"
 import { GenerateRound } from "@leetype/components/round/generate-round"
+import {
+  NoteButton,
+  NoteComposer,
+} from "@leetype/components/round/note-composer"
 import { RecordedRuns } from "@leetype/components/round/recorded-runs"
 import { RoundChoices } from "@leetype/components/round/round-choices"
 import { RoundFeedback } from "@leetype/components/round/round-feedback"
@@ -28,6 +39,16 @@ import {
 } from "@leetype/lib/leetype/ledger/state"
 import type { LedgerStore } from "@leetype/lib/leetype/ledger/store"
 import { createLedgerStore } from "@leetype/lib/leetype/ledger/store"
+import type { RoundNote } from "@leetype/lib/leetype/notes"
+import { NOTE_KIND_COPY } from "@leetype/lib/leetype/notes"
+import type { Dictation } from "@leetype/lib/leetype/notes/dictation"
+import { webSpeechDictation } from "@leetype/lib/leetype/notes/dictation"
+import {
+  browserComposerPorts,
+  createNoteComposer,
+} from "@leetype/lib/leetype/notes/runtime"
+import type { NoteStore } from "@leetype/lib/leetype/notes/store"
+import { createNoteStore } from "@leetype/lib/leetype/notes/store"
 import type { PastedRoundStore } from "@leetype/lib/leetype/pasted-round"
 import { createPastedRoundStore } from "@leetype/lib/leetype/pasted-round"
 import { PROPOSITION_REGISTER } from "@leetype/lib/leetype/proposition-register/generated"
@@ -62,6 +83,16 @@ import type { ShelfPort } from "@some-ui/shared"
 import { Button, KeepOnShelf, KeptShelf } from "@some-ui/shared"
 import { Sparkles } from "lucide-react"
 import { cn } from "some-ui-utils"
+
+/** Each artifact's tab label, also how a margin note names where it was raised. */
+const ARTIFACT_LABELS: Readonly<Record<ArtifactId, string>> = {
+  algorithm: "Program",
+  constraintDiff: "Bounds",
+  budget: "Budget",
+  diffSet: "Rewrites",
+  optionSet: "Which proposition?",
+  runResult: "Runs",
+}
 
 /** Decorrelates consecutive rounds' seeds; the same stride `ReadingSession` uses per step. */
 const ROUND_SEED_STRIDE = 0x9e3779b9
@@ -115,6 +146,14 @@ type RoundSessionProps = {
    * plays the same. Never called for the learner's own round.
    */
   loadRuns?: RoundRunsLoader
+  /** Where margin notes are kept (canon Rem. 3.7); `localStorage` unless a test passes one. */
+  noteStore?: NoteStore
+  /**
+   * What turns a spoken note into text. Absent, the browser's own
+   * recognizer where it has one (`webSpeechDictation`); the Android app
+   * passes the phone's. `null` offers typing only.
+   */
+  dictation?: Dictation | null
   className?: string
 }
 
@@ -142,6 +181,44 @@ type SummaryRow = {
   readonly id: PropositionId
   readonly title: string
   readonly reading: EntryReading
+}
+
+/**
+ * The session-complete screen's view of the margin notes raised this
+ * session (canon Rem. 3.7), so the learner can read back what got in the
+ * way. Words only, and no count of them.
+ */
+const NotesSummary: FC<{ notes: ReadonlyArray<RoundNote> }> = ({ notes }) => {
+  if (notes.length === 0) return null
+  return (
+    <section aria-label="Your notes" className="w-full min-w-0 text-left">
+      <p className="text-sm font-medium text-foreground">
+        What you noted this session
+      </p>
+      <ul className="mt-2 flex flex-col gap-2">
+        {notes.map(({ id, kind, text, anchor }) => (
+          <li
+            key={id}
+            className="min-w-0 rounded-lg border border-border/60 px-3 py-2"
+          >
+            <p className="text-pretty text-sm font-medium text-foreground">
+              {NOTE_KIND_COPY[kind].label}
+            </p>
+            <p className="text-pretty text-xs text-muted-foreground">
+              {ARTIFACT_LABELS[anchor.artifact]}
+              {anchor.own ? ", your round" : ""}
+              {anchor.committed ? ", after answering" : ""}
+            </p>
+            {text !== "" && (
+              <p className="text-pretty text-sm text-muted-foreground">
+                {text}
+              </p>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
 }
 
 /**
@@ -263,6 +340,16 @@ function playable(rounds: ReadonlyArray<Round>): Array<Round> {
  * their account ("Keep on this account", one tap per round), and the
  * generator lists what they kept: a kept round replayed goes through the
  * paste's own check and then plays exactly as a pasted one does.
+ *
+ * # Margin notes (canon Rem. 3.7)
+ *
+ * A Note button sits beside the tabs at every moment. It opens an inline
+ * panel on whatever artifact is showing: one tap on a kind saves the note,
+ * and words, spoken or typed, are optional. The composer is a runtime
+ * outside React (`lib/leetype/notes/runtime`); this component only renders
+ * its state. Notes go into the prompt "Make your own" copies, and onto the
+ * session-complete screen, and nowhere else: neither the ledger nor the
+ * draw reads them (Prop. 3.4).
  */
 export const RoundSession: FC<RoundSessionProps> = ({
   rounds,
@@ -273,8 +360,22 @@ export const RoundSession: FC<RoundSessionProps> = ({
   ledgerStore,
   shelf,
   loadRuns,
+  noteStore,
+  dictation,
   className,
 }) => {
+  const [notes] = useState(() => noteStore ?? createNoteStore())
+  const [recognizer] = useState(() =>
+    dictation === undefined ? webSpeechDictation() : dictation
+  )
+  const [composer] = useState(() =>
+    createNoteComposer(browserComposerPorts(notes, recognizer))
+  )
+  useEffect(() => composer.attach(), [composer])
+  const noteState = useSyncExternalStore(
+    composer.subscribe,
+    composer.getSnapshot
+  )
   const [seed] = useState(
     () => sessionSeed ?? crypto.getRandomValues(new Uint32Array(1))[0]!
   )
@@ -338,8 +439,10 @@ export const RoundSession: FC<RoundSessionProps> = ({
     // end-of-session effect.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setFinishedAt(Date.now())
+    // The round surface is gone: a note open on it closes with it.
+    composer.dispatch({ type: "roundLeft" })
     onSessionCompleteRef.current?.()
-  }, [finished, sessionClockMs, sessionDurationMs])
+  }, [finished, sessionClockMs, sessionDurationMs, composer])
 
   const drawn = useMemo(
     () =>
@@ -457,6 +560,7 @@ export const RoundSession: FC<RoundSessionProps> = ({
   )
 
   const handleNext = useCallback((): void => {
+    composer.dispatch({ type: "roundLeft" })
     if (play !== null) {
       setRecent((ids) => [play.round.id, ...ids].slice(0, 5))
     }
@@ -464,16 +568,17 @@ export const RoundSession: FC<RoundSessionProps> = ({
     setPlayed((count) => count + 1)
     setDrawBasis({ ledger, now: Date.now() })
     setProgress(FRESH)
-  }, [play, ledger])
+  }, [play, ledger, composer])
 
   const handleOwnRound = useCallback(
     (round: Round): void => {
+      composer.dispatch({ type: "roundLeft" })
       store.set(round)
       setOwn(round)
       setGenerating(false)
       setProgress(FRESH)
     },
-    [store]
+    [store, composer]
   )
 
   // A fresh session, as `ReadingSession`'s restart is: the counters, the
@@ -483,6 +588,7 @@ export const RoundSession: FC<RoundSessionProps> = ({
   // is the session store's, and plays first again the way it does after a
   // reload.
   const handleRestart = useCallback((): void => {
+    composer.dispatch({ type: "roundLeft" })
     setFinishedAt(null)
     setSessionClockMs(0)
     setSessionGeneration((generation) => generation + 1)
@@ -493,7 +599,7 @@ export const RoundSession: FC<RoundSessionProps> = ({
     setRecent([])
     setOwn(store.get())
     setGenerating(false)
-  }, [store, ledger])
+  }, [store, ledger, composer])
 
   const summary = useMemo(
     () =>
@@ -506,6 +612,13 @@ export const RoundSession: FC<RoundSessionProps> = ({
           })),
     [finishedAt, ledger, sessionId]
   )
+
+  const sessionNotes =
+    finishedAt === null
+      ? []
+      : notes
+          .list(finishedAt)
+          .filter(({ anchor }) => anchor.sessionId === sessionId)
 
   if (finished) {
     const page =
@@ -524,6 +637,7 @@ export const RoundSession: FC<RoundSessionProps> = ({
             </p>
           </div>
           <LedgerSummary rows={summary} />
+          <NotesSummary notes={sessionNotes} />
           <Button onClick={handleRestart} size="lg">
             Restart
           </Button>
@@ -546,7 +660,13 @@ export const RoundSession: FC<RoundSessionProps> = ({
           No rounds are available right now. You can make your own.
         </p>
         <GenerateRound
-          buildPrompt={(request) => buildRoundPrompt({ ...request, recent })}
+          buildPrompt={(request) =>
+            buildRoundPrompt({
+              ...request,
+              recent,
+              notes: notes.list(Date.now()),
+            })
+          }
           onStart={handleOwnRound}
         />
         {shelf && (
@@ -564,22 +684,22 @@ export const RoundSession: FC<RoundSessionProps> = ({
   const artifacts: Array<SwitchableArtifact> = [
     {
       id: "algorithm",
-      label: "Program",
+      label: ARTIFACT_LABELS.algorithm,
       content: <SourcePanel algorithm={round.algorithm} />,
     },
     {
       id: "constraintDiff",
-      label: "Bounds",
+      label: ARTIFACT_LABELS.constraintDiff,
       content: <ConstraintDiff diff={round.constraintDiff} />,
     },
     {
       id: "budget",
-      label: "Budget",
+      label: ARTIFACT_LABELS.budget,
       content: <BudgetDisplay budget={round.budget} />,
     },
     {
       id: "diffSet",
-      label: "Rewrites",
+      label: ARTIFACT_LABELS.diffSet,
       content: (
         <DiffSetChoices
           options={presented}
@@ -595,7 +715,7 @@ export const RoundSession: FC<RoundSessionProps> = ({
   if (probe !== null) {
     artifacts.push({
       id: "optionSet",
-      label: "Which proposition?",
+      label: ARTIFACT_LABELS.optionSet,
       content: (
         <div className="flex flex-col gap-4">
           <RoundChoices
@@ -628,7 +748,7 @@ export const RoundSession: FC<RoundSessionProps> = ({
   ) {
     artifacts.push({
       id: "runResult",
-      label: "Runs",
+      label: ARTIFACT_LABELS.runResult,
       content: (
         <RecordedRuns
           transcript={runs.transcript}
@@ -652,7 +772,13 @@ export const RoundSession: FC<RoundSessionProps> = ({
       {generating && (
         <>
           <GenerateRound
-            buildPrompt={(request) => buildRoundPrompt({ ...request, recent })}
+            buildPrompt={(request) =>
+              buildRoundPrompt({
+                ...request,
+                recent,
+                notes: notes.list(Date.now()),
+              })
+            }
             onStart={handleOwnRound}
             onCancel={() => setGenerating(false)}
           />
@@ -702,6 +828,40 @@ export const RoundSession: FC<RoundSessionProps> = ({
           roundId={roundKey}
           focusId={focusId}
           ariaLabel="Round"
+          renderHeaderAction={(current) => (
+            <NoteButton
+              label={current.label}
+              open={noteState.composer.phase !== "closed"}
+              onPress={() =>
+                composer.dispatch({
+                  type: "notePressed",
+                  anchor: {
+                    roundId: round.id,
+                    own: play.own,
+                    artifact: current.id,
+                    picked: pickedIndex ?? null,
+                    committed: progress.outcome !== null,
+                    sessionId,
+                  },
+                })
+              }
+            />
+          )}
+          headerPanel={
+            <NoteComposer
+              state={noteState}
+              dispatch={composer.dispatch}
+              label={
+                noteState.composer.phase === "choosing"
+                  ? ARTIFACT_LABELS[noteState.composer.anchor.artifact]
+                  : noteState.composer.phase === "noted"
+                    ? ARTIFACT_LABELS[noteState.composer.note.anchor.artifact]
+                    : ""
+              }
+              recognizer={recognizer?.recognizer ?? null}
+              className="mt-2"
+            />
+          }
           // Grows into the rest of the screen, so the whole of it is
           // something to swipe on rather than the strip a short artifact
           // draws. `grow`, not `flex-1`: its basis is its content, so a long

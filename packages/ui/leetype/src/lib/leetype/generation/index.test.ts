@@ -4,9 +4,26 @@ import {
   MAX_MEMBERS,
   ROUND_PROMPT,
 } from "@leetype/lib/leetype/generation"
+import type { RoundNote } from "@leetype/lib/leetype/notes"
 import { PROPOSITION_REGISTER } from "@leetype/lib/leetype/proposition-register/generated"
 import { serializeRound } from "@leetype/lib/leetype/round-export"
 import { describe, expect, it } from "vitest"
+
+const NOTE: RoundNote = {
+  id: "n-1",
+  at: "2026-10-03T12:00:00.000Z",
+  kind: "unclear",
+  text: 'what is "admissible" here?',
+  spoken: true,
+  anchor: {
+    roundId: "count-present-sorted-lookup",
+    own: false,
+    artifact: "diffSet",
+    picked: null,
+    committed: false,
+    sessionId: "s-1",
+  },
+}
 
 describe("buildRoundPrompt", () => {
   it("carries the prompt, every active register entry and a reviewed example", () => {
@@ -31,9 +48,23 @@ describe("buildRoundPrompt", () => {
     expect(prompt).toContain("Recent rounds (newest first): a, b")
   })
 
+  it("carries the learner's notes, quoted, with where they were raised", () => {
+    const prompt = buildRoundPrompt({ notes: [NOTE] })
+    expect(prompt).toContain("Learner notes (newest first):")
+    expect(prompt).toContain(
+      `- On the rewrites of round \`count-present-sorted-lookup\`, before answering, the learner could not tell what was being asked: "what is 'admissible' here?"`
+    )
+    expect(buildRoundPrompt()).toContain("Learner notes: none.")
+  })
+
   it("names no learner history for the operator's corpus rounds", () => {
-    const prompt = buildRoundPrompt({ audience: "corpus", recent: ["a"] })
+    const prompt = buildRoundPrompt({
+      audience: "corpus",
+      recent: ["a"],
+      notes: [NOTE],
+    })
     expect(prompt).toContain("joins the shared corpus")
     expect(prompt).not.toContain("Recent rounds (newest first)")
+    expect(prompt).not.toContain("Learner notes (newest first)")
   })
 })

@@ -14,6 +14,8 @@ import { LiveEditOverlay, OrchestratedYouTubeViewport } from "wireframes"
 
 import { useAudioPreferences } from "@/lib/audio-preferences/use-audio-preferences"
 import { useAuthority } from "@/lib/authority"
+import { DEVICE_BACKEND } from "@/lib/data-mode"
+import { phoneDictation } from "@/lib/dictation"
 import { useHangulVocab } from "@/lib/hangul-vocab"
 import { AmbientIntentStatus } from "@/lib/intent/render"
 import { loadLeetypeRoundRuns, loadLeetypeRounds } from "@/lib/leetype-content"
@@ -23,6 +25,13 @@ import { loadTopikFile, loadTopikManifest } from "@/lib/topik-content"
 
 import { defineSceneProps, withSceneProps } from "./scene-props"
 import { useLiveLayoutEditor } from "./use-live-layout-editor"
+
+/**
+ * LeetType's margin-note recognizer: the phone's own on the Android app
+ * (src/lib/dictation), absent elsewhere so the package uses the browser's.
+ * One per app: it holds nothing until a learner taps Speak.
+ */
+const PHONE_DICTATION = DEVICE_BACKEND ? phoneDictation() : undefined
 
 const BIND_OPTIONS = Object.keys(componentRegistry).map((key) => ({
   value: key,
@@ -152,6 +161,10 @@ export const SessionViewport = ({
           // mode, nothing in `static` mode (the package bundles them).
           loadRuns: loadLeetypeRoundRuns,
           shelf: shelves?.leetype,
+          // A spoken margin note's recognizer: the phone's on the Android
+          // app, whose WebView has none of its own. Elsewhere the package
+          // uses the browser's (src/lib/dictation).
+          dictation: PHONE_DICTATION,
         },
       }),
     [sessionKey, suspended, hangulWords, audioPreferences.effects, shelves]

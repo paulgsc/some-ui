@@ -31,3 +31,10 @@ export { serializeRound } from "./lib/leetype/round-export"
 export { RoundSchema } from "./types/authored-round"
 export type { Round } from "./types/authored-round"
 export { AUTHORED_ROUNDS } from "./lib/leetype/authored-rounds"
+// Margin notes (canon Rem. 3.7): the port a host implements to give the
+// phone surface a speech recognizer the browser lacks (the Android app's).
+export type {
+  Dictation,
+  DictationFailure,
+  Listening,
+} from "./lib/leetype/notes/dictation"

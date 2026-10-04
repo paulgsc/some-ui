@@ -16,6 +16,8 @@
  */
 
 import { AUTHORED_ROUNDS } from "@leetype/lib/leetype/authored-rounds"
+import type { RoundNote } from "@leetype/lib/leetype/notes"
+import { promptLinesOf } from "@leetype/lib/leetype/notes"
 import { PROPOSITION_REGISTER } from "@leetype/lib/leetype/proposition-register/generated"
 import type { PropositionId } from "@leetype/lib/leetype/proposition-register/generated"
 import { serializeRound } from "@leetype/lib/leetype/round-export"
@@ -41,6 +43,13 @@ export type RoundRequest = {
   members?: number
   /** Ids of rounds the learner has played recently, newest first. */
   recent?: ReadonlyArray<string>
+  /**
+   * The learner's margin notes, newest first (`lib/leetype/notes`, canon
+   * Rem. 3.7): what they said while playing, for the model to write the
+   * next round against (Rem. 3.3). Never a belief: the prompt carries them
+   * to the learner's own model and nothing else reads them here.
+   */
+  notes?: ReadonlyArray<RoundNote>
   /**
    * `learner` (the default) is one person's next round, kept on their
    * device. `corpus` is the operator writing a round for everyone (the
@@ -98,6 +107,13 @@ export function buildRoundPrompt(request: RoundRequest = {}): string {
       : recent.length > 0
         ? `Recent rounds (newest first): ${recent.join(", ")}`
         : "Recent rounds: none yet."
+  // One learner's notes say nothing about a round written for everyone.
+  const notes =
+    request.audience === "corpus" ? [] : promptLinesOf(request.notes ?? [])
+  const noted =
+    notes.length > 0
+      ? ["Learner notes (newest first):", ...notes]
+      : ["Learner notes: none."]
   return [
     ROUND_PROMPT.trimEnd(),
     "",
@@ -115,6 +131,7 @@ export function buildRoundPrompt(request: RoundRequest = {}): string {
     "",
     ...lines,
     history,
+    ...noted,
     "",
   ].join("\n")
 }

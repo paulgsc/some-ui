@@ -28,6 +28,7 @@
     "test:sw": "playwright test --config playwright.config.ts tests/study-nudge"
   },
   "dependencies": {
+    "@capacitor-community/speech-recognition": "^7.0.1",
     "@capacitor-community/sqlite": "^8.1.1",
     "@capacitor-community/text-to-speech": "^8.0.2",
     "@capacitor/core": "^8.5.2",

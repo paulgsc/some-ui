@@ -369,14 +369,18 @@ In the `CLAUDE.md` "Gray-area invariants" shape.
 >   adding its code to the list below; that deletes, renames or moves the
 >   code of a feature an unchanged reason names; or that changes, replaces
 >   or removes the declaration of a library an unchanged reason names:
->   `@capacitor/local-notifications` (`apps/mobile/package.json`, and its
->   `pnpm-lock.yaml` entry); `androidx.core` (`androidxCoreVersion`) and
+>   `@capacitor/local-notifications` and
+>   `@capacitor-community/speech-recognition` (`apps/mobile/package.json`,
+>   and their `pnpm-lock.yaml` entries); `androidx.core` (`androidxCoreVersion`) and
 >   `androidx.profileinstaller`, which arrives through `androidx.appcompat`
 >   (`androidxAppCompatVersion`), both in `android/variables.gradle`. A
 >   replacement can supply the same entry for another reason. The app
 >   features, and their code: soundbites (`RECORD_AUDIO`,
 >   `MODIFY_AUDIO_SETTINGS`), `packages/ui/soundbites/src/lib/recorder.ts`
->   and its page `apps/www/src/routes/_dashboard/_apk/soundbites.tsx`; the
+>   and its page `apps/www/src/routes/_dashboard/_apk/soundbites.tsx`;
+>   LeetType's spoken margin notes (`RECORD_AUDIO`),
+>   `apps/www/src/lib/dictation/` and the composer in
+>   `packages/ui/leetype/src/lib/leetype/notes/`; the
 >   sync from home (`INTERNET`, `usesCleartextTraffic`),
 >   `apps/www/src/lib/device-backend/home-sync/` and its Settings entry
 >   `apps/www/src/components/settings/device-section.tsx`; study nudges
@@ -562,6 +566,18 @@ try it in a desktop browser, run `SOME_UI_PROFILE=mobile pnpm dev` in
 (`RECORD_AUDIO`, requested by Capacitor's `BridgeWebChromeClient` for the
 WebView). Refused, the page says where in Android Settings to turn it back
 on.
+
+**Spoken margin notes in LeetType use the phone's recognizer, not the
+WebView's.** A note on a round (canon Rem. 3.7) can be spoken as well as
+typed. An Android WebView has no Web Speech recognizer, so the app passes
+LeetType the phone's own `SpeechRecognizer` through
+`@capacitor-community/speech-recognition` (`apps/www/src/lib/dictation/`).
+Only the transcript is kept; no audio is written. The plugin needs
+`RECORD_AUDIO`, the permission soundbites already holds, and its manifest
+adds a `<queries>` entry for `android.speech.RecognitionService`, which is
+package visibility for that one intent, not a permission. Soundbites itself
+does not transcribe: it keeps recording audio through the WebView, and two
+recorders cannot reliably share the microphone on Android.
 
 **Not done yet: getting soundbites off the phone.** Today they can be played
 back and deleted on the phone, and nothing more. Delivery (a file to share,
