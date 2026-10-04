@@ -38,7 +38,8 @@
  * - **Leaving the round closes the composer.** An utterance in progress
  *   is finished as Done finishes it, so the words land on the note, which
  *   keeps the anchor of the round it was raised on; leaving is never held
- *   back for it (Ax. 9.1).
+ *   back for it (Ax. 9.1). Only while the runtime stays attached: a host
+ *   that unmounts the round session detaches it, which cancels.
  */
 
 import type {

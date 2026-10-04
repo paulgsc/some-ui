@@ -812,7 +812,10 @@ export const RoundSession: FC<RoundSessionProps> = ({
               id={finishingHintId}
               className="ml-auto text-xs text-muted-foreground"
             >
-              Finishing your spoken note…
+              {noteState.composer.phase === "noted" &&
+              noteState.composer.voice.kind === "finishing"
+                ? "Finishing your spoken note…"
+                : "Listening for your note…"}
             </span>
           )}
           <Button
