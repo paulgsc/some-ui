@@ -1,6 +1,7 @@
 import {
   appsRecommended,
   intentGuardConfig,
+  ownerGuardConfig,
   queryGuardConfig,
 } from "@some-ui/eslint-kit"
 import { defineConfig } from "eslint/config"
@@ -19,6 +20,10 @@ import { defineConfig } from "eslint/config"
 // reason: this is the one workspace with query hooks (`src/lib/tenant/`)
 // whose `data` is worth guarding against a silently-defaulted destructure.
 //
+// ownerGuardConfig (#1659): state seeded from a prop or the clock freezes at
+// mount a value its owner keeps changing. #1659's review found that here and
+// in the aph and soundbites packages this app hosts, five times.
+//
 // LA1 (docs/learner-data-authority.md): the network globals are restricted in
 // `src/` so a request carrying learner state cannot be written beside the
 // account transport and skip its authority check. The files that may use them
@@ -32,6 +37,7 @@ export default defineConfig([
   ...appsRecommended,
   ...intentGuardConfig,
   ...queryGuardConfig,
+  ...ownerGuardConfig,
 
   {
     files: ["src/**/*.{ts,tsx}"],

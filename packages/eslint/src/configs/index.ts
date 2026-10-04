@@ -40,6 +40,10 @@ export {
   queryGuardPlugin,
 } from "./query-guard.config.js"
 export {
+  default as ownerGuardConfig,
+  ownerGuardPlugin,
+} from "./owner-guard.config.js"
+export {
   default as themeProtocolConfig,
   structuralColorRatchet,
   themeProtocolPlugin,

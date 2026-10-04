@@ -6,11 +6,16 @@
  * in `violations`, the store refuses a write that breaks it, and this throws
  * random sequences of everything the screens can do at the store and checks
  * after every step that nothing got through.
+ *
+ * Their figure is aimed at any entry, filled or not, the way a stale link
+ * or a Back press aims it. That once replaced a reported figure with no
+ * rule broken (#1659's last round), because `violations` judges a state and
+ * the state was valid; `breaches` judges the step, and is checked here too.
  */
 import { newDraft, stepDraft } from "@aph/lib/draft"
 import type { Draft, DraftEvent } from "@aph/lib/draft"
 import type { Entry } from "@aph/lib/model"
-import { violations } from "@aph/lib/model"
+import { breaches, violations } from "@aph/lib/model"
 import { SEED_ENTRIES, SEED_SETTINGS } from "@aph/lib/seed"
 import { createAphStore } from "@aph/lib/store"
 import { describe, expect, it } from "vitest"
@@ -67,6 +72,7 @@ describe("the store's rules, under random edits", () => {
       const store = createAphStore({ settings, entries: SEED_ENTRIES })
       for (let step = 0; step < 400; step += 1) {
         const { entries } = store.get()
+        const before = entries
         const kind = Math.floor(next() * 5)
         if (kind === 0 || kind === 1) {
           // Mine: at a checkpoint or not, with or without labels.
@@ -107,6 +113,9 @@ describe("the store's rules, under random edits", () => {
           violations(settings, store.get().entries),
           `step ${step}`
         ).toEqual([])
+        expect(breaches(before, store.get().entries), `step ${step}`).toEqual(
+          []
+        )
       }
     })
   }

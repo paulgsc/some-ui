@@ -543,6 +543,44 @@ export function violations(
   return wrong
 }
 
+/**
+ * What a change to aph's entries must not do, checked on every write next to
+ * `violations` (which judges a state; this judges the step between two).
+ * The rules that protect what was written down from a stale reference: a
+ * form opened from an old link, a Back press, a reference kept past the
+ * entry it named. Each acts on a record that has moved on, and the state it
+ * leaves can be perfectly valid, so `violations` alone can't see it.
+ *
+ * - no entry disappears;
+ * - an entry stays where and when it was logged: its day, checkpoint, clock
+ *   time and goal never change;
+ * - their figure, once reported, is never replaced or removed. There is no
+ *   flow for correcting it, so a change to it can only be a stale write.
+ *
+ * Returns what is wrong, in words, like `violations`.
+ */
+export function breaches(
+  before: ReadonlyArray<Entry>,
+  after: ReadonlyArray<Entry>
+): Array<string> {
+  const wrong: Array<string> = []
+  const now = new Map(after.map((e) => [e.id, e]))
+  for (const was of before) {
+    const is = now.get(was.id)
+    if (is === undefined) {
+      wrong.push(`${was.id}: removed`)
+      continue
+    }
+    for (const field of ["day", "checkpoint", "time", "goal"] as const) {
+      if (is[field] !== was[field]) wrong.push(`${was.id}: ${field} rewritten`)
+    }
+    if (was.theirs !== null && is.theirs?.value !== was.theirs.value) {
+      wrong.push(`${was.id}: their figure replaced`)
+    }
+  }
+  return wrong
+}
+
 /** "4,300", or "~4,300" for an approximate figure. */
 export function formatValue(value: number, approx = false): string {
   return `${approx ? "~" : ""}${Math.round(value).toLocaleString("en-US")}`

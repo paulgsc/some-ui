@@ -272,6 +272,10 @@ export const SessionComposer = ({
   const isMobile = useIsMobile()
   const scope = useRef<HTMLDivElement | null>(null)
   const barShown = useShowOnScrollUp(scope, pane)
+  // The draft being composed, seeded from the session it edits. An edit
+  // buffer: a refetch must not overwrite unsaved changes, and the route says
+  // so beside its refresh failure (sessions/new.tsx).
+  /* eslint-disable owner-guard/no-mount-snapshot -- an edit buffer seeded from the session it edits (see above) */
   const [items, setItems] = useState<Array<ComposerActivity>>(() =>
     existingSession
       ? // A retired activity can't be configured or played, so editing a
@@ -301,6 +305,7 @@ export const SessionComposer = ({
   const [sessionName, setSessionName] = useState(
     () => existingSession?.name ?? ""
   )
+  /* eslint-enable owner-guard/no-mount-snapshot */
 
   const selectedIds = items.map((item) => item.activityId)
   const activities = buildSessionActivities(items)

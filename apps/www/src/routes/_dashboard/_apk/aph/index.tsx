@@ -21,8 +21,8 @@ const LogRoute = (): JSX.Element => {
       now={now}
       // A new arrival (another entry, the other side) is a fresh form.
       key={`${side ?? "mine"}:${entry ?? ""}`}
-      side={side}
-      target={entry ?? null}
+      initialSide={side}
+      initialTarget={entry ?? null}
       onSaved={(_entry, saved) =>
         // By the side saved, not the side asked for: the form can switch.
         // Mine came from Home's "due" card; theirs mostly from History.

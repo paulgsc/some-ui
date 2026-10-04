@@ -219,6 +219,14 @@ entry is allowed when the reason is real: put it in its own group under
 grandfathered group. If the only honest reason is "it needs an await", the code belongs in the
 runtime instead.
 
+A component or hook that seeds `useState`/`useReducer` from its own prop or from the clock keeps
+a copy frozen at mount while the owner moves on; #1659's review found that five times, one per
+round. `owner-guard/no-mount-snapshot` (eslint-kit's opt-in `ownerGuardConfig`, on in aph,
+soundbites and www) reports it. Derive the value where it is used, name a read-once prop
+`initial*`, or disable the line with the reason (an edit buffer keyed by what it edits, a runtime
+made once per mount). The aph store also refuses a write that rewrites what was already logged
+(`breaches` in its model), since a stale reference leaves a valid state that no lint can see.
+
 ## Gray-area invariants: declare them falsifiable
 
 Some rules this codebase depends on cannot be enforced by a lint rule, a type, or a test.

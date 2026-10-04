@@ -58,6 +58,7 @@ const ProfileSkeleton = (): JSX.Element => (
 )
 
 const ProfileForm = ({ profile }: { profile: UserProfile }): JSX.Element => {
+  // eslint-disable-next-line owner-guard/no-mount-snapshot -- an edit buffer: a refetch must not overwrite what I'm typing, and isDirty compares it against the live profile
   const [draft, setDraft] = useState<UserProfile>(profile)
   const saveIntent = useIntent(useUpdateProfile(), {
     presentation: "interactive",

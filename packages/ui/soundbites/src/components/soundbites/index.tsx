@@ -292,12 +292,18 @@ export const Soundbites = ({
   onAutoStart,
   ports,
 }: SoundbitesProps): JSX.Element => {
+  // The runtime owns the microphone and the store for this mount, so it is
+  // made once, from the props it arrived with. A new arrival is a new mount:
+  // the host keys this component by its request (www: `useArrivalKey`).
+  // What the page shows reads the runtime's state, never these props again.
+  /* eslint-disable owner-guard/no-mount-snapshot -- the runtime is created once per mount and the host remounts on a new arrival (see above) */
   const [runtime] = useState(() =>
     createSoundbites(
       { ...phonePorts(), ...ports },
       { source, autoStart, onAutoStart }
     )
   )
+  /* eslint-enable owner-guard/no-mount-snapshot */
   useEffect(() => runtime.attach(), [runtime])
   useEffect(() => runtime.setSituation(situation))
   const state = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot)
