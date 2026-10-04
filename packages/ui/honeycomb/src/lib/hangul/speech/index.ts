@@ -8,9 +8,9 @@
 // prompt ignored the chosen voice, ignored mute, and failed without a notice. Honeycomb has no
 // voice of its own now: it names the word's language and the session does the rest.
 
-import type { Speaker } from "@some-ui/speech"
+import type { Speaker, SpokenLanguage } from "@some-ui/speech"
 
-const WORD_LANGUAGE = "ko-KR"
+const WORD_LANGUAGE: SpokenLanguage = "korean"
 
 /**
  * Says `text` through the page's speaker. A no-op (never throws) without one - a story, a test,
@@ -21,8 +21,7 @@ export function sayWord(speaker: Speaker | null, text: string): void {
   if (!speaker || text.length === 0) return
 
   // Fire and forget, by design: a challenge advances on the learner's answer, not on the audio
-  // finishing. The rejection still has to be consumed - a superseded, stopped or muted line
-  // rejects as a cancellation instead of pretending it was spoken, and an unhandled rejection is
-  // a poor way to find that out.
-  void speaker.say(text, { lang: WORD_LANGUAGE }).catch(() => undefined)
+  // finishing, so the line's outcome is not needed. A word is said now, interrupting whatever
+  // else is speaking on the page (a lesson line there is said again after it).
+  void speaker.say(text, { language: WORD_LANGUAGE, urgency: "now" })
 }

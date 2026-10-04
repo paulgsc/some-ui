@@ -21,7 +21,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@some-ui/shared"
-import type { HostedVoiceChoice, TTSProvider } from "@some-ui/speech"
+import type {
+  HostedVoiceChoice,
+  TTSProvider,
+  VoiceReport,
+} from "@some-ui/speech"
 import {
   hostedVoiceFor,
   hostedVoicesOf,
@@ -48,6 +52,29 @@ type HostedVoiceFieldsProps = {
   onChange: (next: HostedVoiceChoice) => void
 }
 
+/** Who reads lessons when it is not the hosted voice, as part of a sentence. */
+function browserVoiceNow(report: VoiceReport): string {
+  switch (report.availability) {
+    case "available": {
+      return `${report.voice ?? "its default Korean voice"}, your browser's own voice`
+    }
+    case "missing": {
+      return "your browser's own voice, which has no Korean voice (see the speaker icon)"
+    }
+    case "checking":
+    case "unverifiable": {
+      return "your browser's own voice"
+    }
+    default: {
+      return assertNever(report.availability)
+    }
+  }
+}
+
+function assertNever(value: never): never {
+  throw new Error(`Unhandled voice availability: ${JSON.stringify(value)}`)
+}
+
 const LessonVoice = ({ value }: { value: HostedVoiceChoice }): JSX.Element => {
   // The fields below choose a hosted voice, but the session only uses one
   // when it can reach the voice service (signed in, on a deployment that
@@ -55,9 +82,7 @@ const LessonVoice = ({ value }: { value: HostedVoiceChoice }): JSX.Element => {
   // false: the browser's own voice does.
   const speaking = useVoiceReport(LESSON_LANGUAGE)
   if (speaking && speaking.platform !== "hosted") {
-    const now = speaking.speaksLanguage
-      ? `${speaking.voice ?? "its default Korean voice"}, your browser's own voice`
-      : "your browser's own voice, which has no Korean voice (see the speaker icon)"
+    const now = browserVoiceNow(speaking)
     return (
       <p className="text-muted-foreground text-sm">
         Lessons are read by {now} right now. The voice chosen here applies when

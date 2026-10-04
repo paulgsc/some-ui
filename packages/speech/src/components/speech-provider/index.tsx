@@ -22,6 +22,8 @@ import {
   createContext,
   useContext,
   useEffect,
+  useId,
+  useMemo,
   useReducer,
   useState,
 } from "react"
@@ -32,6 +34,7 @@ import type {
   VoiceReport,
 } from "@speech/lib/adapters"
 import { createSpeechAdapter } from "@speech/lib/adapters"
+import type { SpokenLanguage } from "@speech/lib/language"
 import type { SpeechQueueManager } from "@speech/lib/queue"
 import { initializeSpeechQueue, releaseSpeechQueue } from "@speech/lib/queue"
 import type { Speaker } from "@speech/lib/speaker"
@@ -92,7 +95,7 @@ function configKeyOf(config: SpeechConfig): string {
     config.hosted?.voiceId ?? null,
     config.format ?? null,
     config.timeoutMs ?? null,
-    config.lang ?? null,
+    config.language ?? null,
     config.fallbackWhenUnsupported ?? null,
     config.serverHostnames ?? null,
   ])
@@ -163,26 +166,32 @@ export function useSpeechSession(): SpeechSession {
 }
 
 /**
- * The page's speaker, or `null` when no `<SpeechProvider>` is mounted.
+ * This component's handle on the page's speech, or `null` when no
+ * `<SpeechProvider>` is mounted.
  *
- * The one way an applet speaks (`lib/speaker`). Null rather than throwing,
- * because speech is ambient and optional: a lazily-loaded applet a host may
- * mount anywhere, a story or a test runs without a voice, and silence is a
- * degraded lesson rather than a broken one. There is deliberately no way to
- * reach the adapter from here: the session decides the voice and honors
- * mute, and an applet holding the adapter could do neither.
+ * The one way an applet speaks (`lib/speaker`): its lines go through the
+ * session, which decides what plays, and its `stop` reaches only its own
+ * lines. Each component gets its own handle, so one applet stopping cannot
+ * silence another. Null rather than throwing, because speech is ambient and
+ * optional: a lazily-loaded applet a host may mount anywhere, a story or a
+ * test runs without a voice, and silence is a degraded lesson rather than a
+ * broken one. There is deliberately no way to reach the adapter from here:
+ * the session decides the voice and honors mute, and an applet holding the
+ * adapter could do neither.
  */
 export function useSpeaker(): Speaker | null {
-  return useContext(SpeechSessionContext)?.manager.speaker ?? null
+  const manager = useContext(SpeechSessionContext)?.manager ?? null
+  const owner = useId()
+  return useMemo(() => manager?.speakerFor(owner) ?? null, [manager, owner])
 }
 
 /**
- * Who would read a line in `lang` on this page, kept current: it re-reads
- * when the speaker says its voices or mute changed, which a browser's or a
- * phone's voices do some time after the page loads. `null` without a
- * `<SpeechProvider>`.
+ * Who would read a line in `language` on this page, kept current: it
+ * re-reads when the speaker says its voices or mute changed, which a
+ * browser's or a phone's voices do some time after the page loads. `null`
+ * without a `<SpeechProvider>`.
  */
-export function useVoiceReport(lang: string): VoiceReport | null {
+export function useVoiceReport(language: SpokenLanguage): VoiceReport | null {
   const speaker = useSpeaker()
   const [, refresh] = useReducer((count: number) => count + 1, 0)
   useEffect(() => {
@@ -194,5 +203,5 @@ export function useVoiceReport(lang: string): VoiceReport | null {
     refresh()
     return unsubscribe
   }, [speaker])
-  return speaker ? speaker.describe(lang) : null
+  return speaker ? speaker.describe(language) : null
 }

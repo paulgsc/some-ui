@@ -66,7 +66,7 @@ export function createControllableAdapter(): ControllableAdapter {
     describe: () => ({
       platform: "browser",
       voice: "Controllable",
-      speaksLanguage: true,
+      availability: "available",
     }),
     get pending(): number {
       return ledger.size

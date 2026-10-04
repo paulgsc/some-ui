@@ -415,17 +415,15 @@ export function useHandheldLesson({
       stopSpeaking()
       const controller = new AbortController()
       utterance.current = controller
-      speaker
+      // Whatever its outcome, the line stays readable: a failed or
+      // cancelled one is the degraded lesson, not a broken one.
+      void speaker
         .say(lineText(message), {
-          lang: SPOKEN_LANGUAGE,
+          language: SPOKEN_LANGUAGE,
           signal: controller.signal,
           onStart: () => setSpeakingId(message.id),
         })
-        .catch(() => {
-          // Cancellation is an AbortError by the adapter's settlement laws; a
-          // real failure leaves the line readable, which is the degraded lesson.
-        })
-        .finally(() => {
+        .then(() => {
           if (utterance.current === controller) utterance.current = null
           setSpeakingId((id) => (id === message.id ? null : id))
         })

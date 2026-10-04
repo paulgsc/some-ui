@@ -21,6 +21,7 @@
  * Nothing falls back to "the first voice in the list".
  */
 
+import type { SpokenLanguage } from "@speech/lib/language"
 import type { TTSProvider, VoiceConfig } from "@speech/lib/types/tts-types"
 import { BUILTIN_VOICES } from "@speech/lib/types/tts-types"
 
@@ -56,28 +57,21 @@ export type HostedVoiceChoice = {
   }
 }[TTSProvider]
 
-/** BCP-47 primary subtag: `ko` for `ko-KR`. */
-export type LanguageKey = string
-
 /**
  * The voice a language gets when the person's choice does not speak it.
- * Keyed by primary subtag; each value must be a voice of its own provider,
- * which the type checks, and must speak that language, which the tests do.
+ * Each value must be a voice of its own provider, which the type checks,
+ * and must speak that language, which the tests do.
  */
 export const DEFAULT_HOSTED_VOICE: {
   readonly [P in TTSProvider]: Readonly<
-    Partial<Record<LanguageKey, HostedVoiceOf<P>>>
+    Partial<Record<SpokenLanguage, HostedVoiceOf<P>>>
   >
 } = {
-  elevenlabs: { en: "rachel" },
-  openai: { en: "onyx", ko: "ko-KR-SunHiNeural" },
-  google: { en: "en-US-Wavenet-D" },
-  azure: { en: "en-US-JennyNeural" },
+  elevenlabs: { english: "rachel" },
+  openai: { english: "onyx", korean: "ko-KR-SunHiNeural" },
+  google: { english: "en-US-Wavenet-D" },
+  azure: { english: "en-US-JennyNeural" },
   custom: {},
-}
-
-export function languageKeyOf(lang: string): LanguageKey {
-  return lang.toLowerCase().split(/[-_]/)[0] ?? ""
 }
 
 export function hostedVoicesOf(
@@ -144,18 +138,18 @@ function assertNever(value: never): never {
 }
 
 /**
- * The voice that speaks a line in `lang`: the chosen voice when it speaks
- * that language, else the language's default, else none. With no `lang`,
- * the chosen voice, else English's default.
+ * The voice that speaks a line in `language`: the chosen voice when it
+ * speaks that language, else the language's default, else none. With no
+ * `language`, the chosen voice, else English's default.
  */
 export function hostedVoiceFor(
   choice: HostedVoiceChoice,
-  lang: string | undefined
+  language: SpokenLanguage | undefined
 ): VoiceConfig | null {
   const chosen = findVoice(choice.provider, choice.voiceId)
-  const key = languageKeyOf(lang ?? chosen?.language ?? "en")
-  if (chosen && languageKeyOf(chosen.language ?? "") === key) return chosen
-  const defaults: Readonly<Partial<Record<LanguageKey, string>>> =
+  const wanted = language ?? chosen?.language ?? "english"
+  if (chosen?.language === wanted) return chosen
+  const defaults: Readonly<Partial<Record<SpokenLanguage, string>>> =
     DEFAULT_HOSTED_VOICE[choice.provider]
-  return findVoice(choice.provider, defaults[key])
+  return findVoice(choice.provider, defaults[wanted])
 }

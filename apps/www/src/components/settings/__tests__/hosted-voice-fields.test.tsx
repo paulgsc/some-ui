@@ -61,7 +61,7 @@ describe("HostedVoiceFields - while the browser's voice is the one speaking", ()
       describe: () => ({
         platform: "browser",
         voice: "Yuna",
-        speaksLanguage: true,
+        availability: "available",
       }),
       speak: () => Promise.resolve(),
       stop: () => undefined,

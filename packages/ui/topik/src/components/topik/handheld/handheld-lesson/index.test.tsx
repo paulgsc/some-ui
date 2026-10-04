@@ -1,4 +1,5 @@
 import type { JSX } from "react"
+import type { SpeechOutcome } from "@some-ui/speech"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import type {
@@ -139,15 +140,15 @@ describe("HandheldLesson", () => {
             metadataRepository: fixtureMetadataRepository,
             speaker: {
               available: true,
-              say: (): Promise<void> => Promise.resolve(),
+              say: (): Promise<SpeechOutcome> =>
+                Promise.resolve({ kind: "heard" }),
               stop: (): void => undefined,
               muted: false,
-              speaking: false,
               subscribe: () => (): void => undefined,
               describe: () => ({
                 platform: "browser",
                 voice: null,
-                speaksLanguage: true,
+                availability: "available",
               }),
             },
           }}
@@ -256,7 +257,9 @@ describe("HandheldLesson", () => {
     // Query observers are notified on a later task, not within the refetch.
     await act(async () => {
       await client.invalidateQueries()
-      await new Promise((resolve) => setTimeout(resolve, 0))
+      await new Promise((resolve) =>
+        setTimeout(() => resolve({ kind: "heard" }), 0)
+      )
     })
 
     // A later miss in the same conversation is pinned to what it is now;
@@ -928,7 +931,9 @@ describe("HandheldLesson", () => {
       // the fallback on screen is still the first prompt.
       vi.stubGlobal("navigator", {
         ...navigator,
-        clipboard: { writeText: () => new Promise<void>(() => undefined) },
+        clipboard: {
+          writeText: () => new Promise<SpeechOutcome>(() => undefined),
+        },
       })
       click(/Copy the prompt/)
       expect(manual.textContent).not.toContain("ordering without pointing")

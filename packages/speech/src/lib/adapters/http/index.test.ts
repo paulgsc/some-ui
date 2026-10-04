@@ -1,3 +1,4 @@
+import type { SpokenLanguage } from "@speech/lib/language"
 import { isAbortError, TIMEOUT_ERROR_NAME } from "@speech/lib/promise/abort"
 import {
   createFakeAudioContextHandle,
@@ -10,9 +11,9 @@ import { describe, expect, it, vi } from "vitest"
 import { createHttpSpeechAdapter } from "."
 
 const openaiVoice = (
-  lang: string | undefined
+  language: SpokenLanguage | undefined
 ): ReturnType<typeof hostedVoiceFor> =>
-  hostedVoiceFor({ provider: "openai", voiceId: null }, lang)
+  hostedVoiceFor({ provider: "openai", voiceId: null }, language)
 
 const audioResponse = (): Promise<Response> =>
   Promise.resolve(new Response(new ArrayBuffer(16), { status: 200 }))

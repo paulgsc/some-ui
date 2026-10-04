@@ -9,10 +9,10 @@
  * English one) from the page itself, with the one step that fixes it on the
  * device in hand.
  */
-import type { VoiceReport } from "@some-ui/speech"
+import type { SpokenLanguage, VoiceReport } from "@some-ui/speech"
 
 /** What every lesson on this site is spoken in. */
-export const LESSON_LANGUAGE = "ko-KR"
+export const LESSON_LANGUAGE: SpokenLanguage = "korean"
 
 /** The systems whose speech settings this module can point into. */
 export type DeviceKind = "android" | "ios" | "mac" | "windows" | "other"
@@ -27,7 +27,7 @@ export type LessonVoiceSummary = {
    * with the alternative; otherwise null.
    */
   readonly fix: string | null
-  /** The platform has no Korean voice: lessons are silent or un-Korean. */
+  /** The platform said it has no Korean voice: lessons are silent or un-Korean. */
   readonly warning: boolean
 }
 
@@ -73,18 +73,50 @@ export function summarizeLessonVoice(
 ): LessonVoiceSummary {
   const platform = PLATFORM[report.platform]
 
-  if (report.speaksLanguage) {
-    // A platform can speak Korean without a voice it will name: the
-    // phone's own default, say.
-    const voice = report.voice ?? "its default Korean voice"
-    return {
-      label: `${report.voice ?? "Default voice"} · ${platform}`,
-      detail: `Korean lessons are read by ${voice}, ${platform}.`,
-      fix: null,
-      warning: false,
+  switch (report.availability) {
+    case "available": {
+      // A platform can speak Korean without a voice it will name: the
+      // phone's own default, say.
+      const voice = report.voice ?? "its default Korean voice"
+      return {
+        label: `${report.voice ?? "Default voice"} · ${platform}`,
+        detail: `Korean lessons are read by ${voice}, ${platform}.`,
+        fix: null,
+        warning: false,
+      }
+    }
+    // Not a warning: nothing has said Korean is missing. A browser still
+    // loading its voices used to read as "no Korean voice" until they came.
+    case "checking": {
+      return {
+        label: `Checking for a Korean voice · ${platform}`,
+        detail: `Still finding out whether ${platform} has a Korean voice.`,
+        fix: null,
+        warning: false,
+      }
+    }
+    case "unverifiable": {
+      return {
+        label: `Korean voice unknown · ${platform}`,
+        detail: `${platform} could not say whether it has a Korean voice; lessons will try it anyway.`,
+        fix: null,
+        warning: false,
+      }
+    }
+    case "missing": {
+      return missingVoice(report, platform, device)
+    }
+    default: {
+      return assertNever(report.availability)
     }
   }
+}
 
+function missingVoice(
+  report: VoiceReport,
+  platform: string,
+  device: DeviceKind
+): LessonVoiceSummary {
   const label = `No Korean voice · ${platform}`
   switch (report.platform) {
     case "hosted": {
@@ -122,5 +154,5 @@ export function summarizeLessonVoice(
 }
 
 function assertNever(value: never): never {
-  throw new Error(`Unhandled speech platform: ${JSON.stringify(value)}`)
+  throw new Error(`Unhandled voice report: ${JSON.stringify(value)}`)
 }

@@ -14,11 +14,34 @@
  * `@some-ui/fetch-kit`, and not for branching.
  */
 
+import type { SpokenLanguage } from "@speech/lib/language"
+
 export type SpeechAdapterId = "http" | "web-speech"
 
 /**
+ * Whether a platform can speak a language, as far as it has said. The
+ * platform's own answer is its business (a catalogue lookup, a voice list
+ * that loads late, a probe over a native bridge); this is what the adapter
+ * makes of it, and all anything outside an adapter switches on.
+ *
+ * - `"available"` - it has a voice for the language.
+ * - `"missing"` - it has said it has none: a hosted provider with no voice
+ *   for it, a browser whose loaded voices include none, a phone without the
+ *   voice data.
+ * - `"checking"` - it has not said yet: a browser's voices still loading, a
+ *   phone's probe still out.
+ * - `"unverifiable"` - asking failed, so nothing is known; a line is tried
+ *   anyway, and the platform's own error says what went wrong.
+ */
+export type VoiceAvailability =
+  | "available"
+  | "missing"
+  | "checking"
+  | "unverifiable"
+
+/**
  * Who would speak a line in a given language, as a person would want to
- * know it: the platform, and the voice by name.
+ * know it: the platform, the voice by name, and whether it has one.
  *
  * - `"hosted"` - this site's voice service; `voice` is the catalogue voice
  *   `hostedVoiceFor` picks for the language.
@@ -26,15 +49,15 @@ export type SpeechAdapterId = "http" | "web-speech"
  *   voice the adapter hands the line to.
  * - `"phone"` - the phone's text-to-speech (the Android app).
  *
- * `speaksLanguage` is false when the platform has no voice for the
- * language: a hosted line then fails, and a browser reads it in `voice`
- * anyway, another language's voice, which is what an un-Korean Korean line
- * sounds like. `voice` is null when there is no voice to name at all.
+ * When `availability` is `"missing"`, a hosted line fails and a browser
+ * reads it in `voice` anyway, another language's voice, which is what an
+ * un-Korean Korean line sounds like. `voice` is a name to show a person,
+ * null when there is none to show; nothing branches on it.
  */
 export type VoiceReport = {
   readonly platform: "hosted" | "browser" | "phone"
   readonly voice: string | null
-  readonly speaksLanguage: boolean
+  readonly availability: VoiceAvailability
 }
 
 /**
@@ -44,8 +67,8 @@ export type VoiceReport = {
  * can override the person's choice by naming a voice of its own.
  */
 export type SpeakOptions = {
-  /** BCP-47 tag of the text. Omitted, the backend's default language. */
-  lang?: string
+  /** The text's language. Omitted, the backend's default language. */
+  language?: SpokenLanguage
   /** Aborting this rejects the returned promise with an `AbortError`. */
   signal?: AbortSignal
   volume?: number
@@ -85,10 +108,11 @@ export type SpeechAdapter = {
   /** False when the runtime can't do speech at all - callers may show UI. */
   readonly supported: boolean
   /**
-   * Who would speak a line in `lang` right now. A snapshot: a browser's or
-   * phone's voices load asynchronously, so read it when it is shown.
+   * Who would speak a line in `language` right now. A snapshot: a
+   * browser's or phone's voices load asynchronously, so read it when it is
+   * shown, and again when `subscribe` says it may have changed.
    */
-  describe: (lang: string) => VoiceReport
+  describe: (language: SpokenLanguage) => VoiceReport
   /**
    * Calls `listener` when what `describe` would say may have changed: a
    * browser's or phone's voices finished loading, voice data was found

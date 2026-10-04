@@ -8,13 +8,14 @@
  *
  * The browser's voices are the browser's: which ones exist depends on the
  * device, and they are not ours to list or let a person choose among. A line
- * gives this adapter its language, and the adapter hands it to the browser
- * voice for that language, named explicitly (`voiceForLanguage`) rather than
- * left to the browser's guess from `lang` alone, so the voice `describe`
- * reports is the voice that speaks. A browser with no voice for the language
- * reads the line in its default voice, another language's, and `describe`
- * says so. None of these ever becomes a `VoiceConfig`, which describes the
- * hosted catalogue only (`lib/voices`).
+ * gives this adapter its language, one of ours (`lib/language`); the adapter
+ * reads each browser voice's tag into one of ours too (`spokenLanguageOf`),
+ * and hands the line to the voice for that language, named explicitly
+ * (`voiceForLanguage`) rather than left to the browser's guess from the tag
+ * alone, so the voice `describe` reports is the voice that speaks. A browser
+ * with no voice for the language reads the line in its default voice,
+ * another language's, and `describe` says so. None of these ever becomes a
+ * `VoiceConfig`, which describes the hosted catalogue only (`lib/voices`).
  *
  * Three settlement bugs from the call sites this replaces are fixed here,
  * and pinned by `adapter-contract.test.ts`:
@@ -36,6 +37,12 @@ import type {
   SpeechAdapter,
   VoiceReport,
 } from "@speech/lib/adapters/types"
+import type { SpokenLanguage } from "@speech/lib/language"
+import {
+  isPreferredTag,
+  LANGUAGE_TAG,
+  spokenLanguageOf,
+} from "@speech/lib/language"
 import { createSpeechLedger } from "@speech/lib/promise"
 import { createAbortError } from "@speech/lib/promise/abort"
 
@@ -44,8 +51,8 @@ export type WebSpeechAdapterOptions = {
   synthesis?: SpeechSynthesis
   /** Injected in tests; defaults to `SpeechSynthesisUtterance`. */
   utteranceFactory?: (text: string) => SpeechSynthesisUtterance
-  /** BCP-47 tag for utterances that don't carry a voice of their own. */
-  lang?: string
+  /** The language of lines that don't say their own. */
+  language?: SpokenLanguage
   rate?: number
   pitch?: number
 }
@@ -64,28 +71,21 @@ function resolveSynthesis(
   return "speechSynthesis" in window ? window.speechSynthesis : null
 }
 
-function normalizedTag(tag: string): string {
-  return tag.toLowerCase().replace(/_/g, "-")
-}
-
 /**
- * The browser voice for `lang`: one for exactly that tag, else one for its
- * language (`ko` for `ko-KR`), preferring a voice that works offline.
+ * The browser voice for `language`: one with exactly the tag this package
+ * would hand the browser, else any voice the browser files under that
+ * language, preferring one that works offline.
  */
 function voiceForLanguage(
   voices: ReadonlyArray<SpeechSynthesisVoice>,
-  lang: string
+  language: SpokenLanguage
 ): SpeechSynthesisVoice | null {
-  const wanted = normalizedTag(lang)
-  const primary = wanted.split("-")[0] ?? wanted
-  const ranked = [...voices].sort(
-    (a, b) => Number(b.localService) - Number(a.localService)
-  )
+  const ranked = voices
+    .filter((voice) => spokenLanguageOf(voice.lang) === language)
+    .sort((a, b) => Number(b.localService) - Number(a.localService))
   return (
-    ranked.find((voice) => normalizedTag(voice.lang) === wanted) ??
-    ranked.find(
-      (voice) => (normalizedTag(voice.lang).split("-")[0] ?? "") === primary
-    ) ??
+    ranked.find((voice) => isPreferredTag(voice.lang, language)) ??
+    ranked[0] ??
     null
   )
 }
@@ -106,6 +106,18 @@ export function createWebSpeechAdapter(
 
   /** The live utterances' detaches, so a flush can release them all. */
   const attached = new Set<() => void>()
+
+  // Chrome answers `getVoices()` with nothing until it has loaded them, and
+  // says so with `voiceschanged`. Until then an empty list means "not yet",
+  // not "none". A browser that cannot announce has said all it will.
+  const canAnnounce = typeof synthesis?.addEventListener === "function"
+  let announced = false
+  const onVoicesChanged = (): void => {
+    announced = true
+  }
+  if (canAnnounce) {
+    synthesis.addEventListener("voiceschanged", onVoicesChanged)
+  }
 
   const cancelAll = (error: Error): void => {
     // Detach, then flush, then cancel: `cancel()` fires `onend` on the
@@ -146,10 +158,10 @@ export function createWebSpeechAdapter(
     utterance.rate = speakOptions.playbackRate ?? playbackRate
     utterance.pitch = options.pitch ?? DEFAULT_PITCH
     utterance.volume = speakOptions.volume ?? volume
-    const lang = speakOptions.lang ?? options.lang
-    if (lang) {
-      utterance.lang = lang
-      const voice = voiceForLanguage(synthesis.getVoices(), lang)
+    const language = speakOptions.language ?? options.language
+    if (language) {
+      utterance.lang = LANGUAGE_TAG[language]
+      const voice = voiceForLanguage(synthesis.getVoices(), language)
       if (voice) utterance.voice = voice
     }
 
@@ -217,18 +229,25 @@ export function createWebSpeechAdapter(
         synthesis.removeEventListener("voiceschanged", listener)
       }
     },
-    describe: (lang): VoiceReport => {
+    describe: (language): VoiceReport => {
       const voices = synthesis?.getVoices() ?? []
-      const voice = voiceForLanguage(voices, lang)
+      const voice = voiceForLanguage(voices, language)
       if (voice) {
-        return { platform: "browser", voice: voice.name, speaksLanguage: true }
+        return {
+          platform: "browser",
+          voice: voice.name,
+          availability: "available",
+        }
+      }
+      if (voices.length === 0 && canAnnounce && !announced) {
+        return { platform: "browser", voice: null, availability: "checking" }
       }
       // What the browser falls back to for a language it has no voice for.
       const fallback = voices.find((candidate) => candidate.default) ?? null
       return {
         platform: "browser",
         voice: fallback?.name ?? null,
-        speaksLanguage: false,
+        availability: "missing",
       }
     },
     get pending(): number {
@@ -247,6 +266,9 @@ export function createWebSpeechAdapter(
     dispose: (): void => {
       if (disposed) return
       disposed = true
+      if (canAnnounce) {
+        synthesis.removeEventListener("voiceschanged", onVoicesChanged)
+      }
       cancelAll(createAbortError("Speech adapter was disposed"))
     },
   }

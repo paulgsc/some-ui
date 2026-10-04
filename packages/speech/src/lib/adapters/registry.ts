@@ -26,6 +26,7 @@ import type { RuntimeMode, RuntimeModeOptions } from "@some-ui/fetch-kit"
 import { resolveRuntimeMode } from "@some-ui/fetch-kit"
 import type { FetchImpl } from "@speech/lib/engine/tts-client"
 import { DEFAULT_OPENAI_EDGE_ENDPOINT } from "@speech/lib/engine/tts-client"
+import type { SpokenLanguage } from "@speech/lib/language"
 import type { AudioFormat, TTSServiceConfig } from "@speech/lib/types/tts-types"
 import type { HostedVoiceChoice } from "@speech/lib/voices"
 import { hostedVoiceFor } from "@speech/lib/voices"
@@ -52,8 +53,8 @@ export type SpeechConfig = RuntimeModeOptions & {
   hosted?: HostedVoiceChoice
   format?: AudioFormat
   timeoutMs?: number
-  /** BCP-47 tag for lines that don't say what language they are in. */
-  lang?: string
+  /** The language of lines that don't say their own. */
+  language?: SpokenLanguage
   /** Per-mode factory overrides. Anything omitted keeps the default. */
   adapters?: Partial<SpeechAdapterRegistry>
   /** Injected in tests. */
@@ -87,10 +88,11 @@ const DEFAULT_SPEECH_ADAPTERS: SpeechAdapterRegistry = {
   server: (config) =>
     createHttpSpeechAdapter({
       service: config.service,
-      voiceFor: (lang) => hostedVoiceFor(config.hosted, lang ?? config.lang),
+      voiceFor: (language) =>
+        hostedVoiceFor(config.hosted, language ?? config.language),
       fetchImpl: config.fetchImpl,
     }),
-  static: (config) => createWebSpeechAdapter({ lang: config.lang }),
+  static: (config) => createWebSpeechAdapter({ language: config.language }),
 }
 
 const DEFAULT_HOSTED_CHOICE: HostedVoiceChoice = {

@@ -1,4 +1,4 @@
-import type { Speaker } from "@some-ui/speech"
+import type { Speaker, SpeechOutcome } from "@some-ui/speech"
 import { act, renderHook } from "@testing-library/react"
 import type {
   ReadAloudRecordEvent,
@@ -24,14 +24,14 @@ function fakeSpeech(): FakeSpeech {
     available: true,
     said: [],
     stops: 0,
-    say: (text, options): Promise<void> => {
+    say: (text, options): Promise<SpeechOutcome> => {
       speech.said.push(text)
       options.onStart?.()
-      return new Promise<void>((resolve, reject) => {
-        const timer = setTimeout(resolve, SPOKEN_MS)
+      return new Promise<SpeechOutcome>((resolve) => {
+        const timer = setTimeout(() => resolve({ kind: "heard" }), SPOKEN_MS)
         options.signal?.addEventListener("abort", () => {
           clearTimeout(timer)
-          reject(new DOMException("aborted", "AbortError"))
+          resolve({ kind: "cancelled" })
         })
       })
     },
@@ -39,12 +39,11 @@ function fakeSpeech(): FakeSpeech {
       speech.stops += 1
     },
     muted: false,
-    speaking: false,
     subscribe: () => () => undefined,
     describe: () => ({
       platform: "browser",
       voice: null,
-      speaksLanguage: true,
+      availability: "available",
     }),
   }
   return speech
@@ -180,12 +179,12 @@ describe("useReadAloud", () => {
     let begin: (() => void) | undefined
     const slow: typeof speech = {
       ...speech,
-      say: (text, speakOptions): Promise<void> =>
-        new Promise<void>((resolve) => {
+      say: (text, speakOptions): Promise<SpeechOutcome> =>
+        new Promise<SpeechOutcome>((resolve) => {
           // A server voice: synthesis first, then playback.
           begin = (): void => {
             speakOptions.onStart?.()
-            setTimeout(resolve, SPOKEN_MS)
+            setTimeout(() => resolve({ kind: "heard" }), SPOKEN_MS)
           }
           void text
         }),
@@ -205,11 +204,11 @@ describe("useReadAloud", () => {
     let play: (() => void) | undefined
     const slow: typeof speech = {
       ...speech,
-      say: (_text, speakOptions): Promise<void> =>
-        new Promise<void>((resolve) => {
+      say: (_text, speakOptions): Promise<SpeechOutcome> =>
+        new Promise<SpeechOutcome>((resolve) => {
           play = (): void => {
             speakOptions.onStart?.()
-            setTimeout(resolve, SPOKEN_MS)
+            setTimeout(() => resolve({ kind: "heard" }), SPOKEN_MS)
           }
         }),
     }
@@ -233,9 +232,9 @@ describe("useReadAloud", () => {
     let play: (() => void) | undefined
     const late: typeof speech = {
       ...speech,
-      say: (_text, speakOptions): Promise<void> =>
+      say: (_text, speakOptions): Promise<SpeechOutcome> =>
         // Never resolves: the fallback alone must end the step.
-        new Promise<void>(() => {
+        new Promise<SpeechOutcome>(() => {
           play = (): void => speakOptions.onStart?.()
         }),
     }

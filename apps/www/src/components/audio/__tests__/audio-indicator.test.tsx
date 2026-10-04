@@ -115,7 +115,7 @@ describe("AudioIndicator - who reads lessons aloud", () => {
     const adapter = reportingAdapter({
       platform: "browser",
       voice: "Samantha",
-      speaksLanguage: false,
+      availability: "missing",
     })
     renderIndicator((children) => (
       <SpeechProvider
@@ -148,11 +148,11 @@ describe("AudioIndicator - who reads lessons aloud", () => {
     ).toBeDefined()
   })
 
-  it("updates when the browser's voices load after the first render", async () => {
+  it("says it is checking, not that Korean is missing, until the browser's voices load", async () => {
     const adapter = reportingAdapter({
       platform: "browser",
       voice: null,
-      speaksLanguage: false,
+      availability: "checking",
     })
     renderIndicator((children) => (
       <SpeechProvider
@@ -165,13 +165,16 @@ describe("AudioIndicator - who reads lessons aloud", () => {
       </SpeechProvider>
     ))
     const button = await trigger()
-    expect(button.textContent).toContain("⚠")
+    expect(button.getAttribute("title")).toBe(
+      "Lessons: Checking for a Korean voice · your browser's own voice"
+    )
+    expect(button.textContent).not.toContain("⚠")
 
     act(() => {
       adapter.announce({
         platform: "browser",
         voice: "Yuna",
-        speaksLanguage: true,
+        availability: "available",
       })
     })
 

@@ -267,7 +267,8 @@ describe("web-speech adapter - browser specifics", () => {
       announced += 1
     })
 
-    expect(adapter.describe("ko-KR").speaksLanguage).toBe(false)
+    // Nothing loaded yet is not "no Korean voice": the browser has not said.
+    expect(adapter.describe("korean").availability).toBe("checking")
     fake.controls.loadVoices([
       {
         name: "Yuna",
@@ -279,8 +280,44 @@ describe("web-speech adapter - browser specifics", () => {
     ])
 
     expect(announced).toBe(1)
-    expect(adapter.describe("ko-KR").voice).toBe("Yuna")
+    expect(adapter.describe("korean")).toEqual({
+      platform: "browser",
+      voice: "Yuna",
+      availability: "available",
+    })
     unsubscribe()
+  })
+
+  it("says a language is missing once the browser's voices have loaded without it", () => {
+    const fake = createFakeSpeechSynthesis()
+    const adapter = createWebSpeechAdapter({
+      synthesis: fake.synthesis,
+      utteranceFactory: fake.utteranceFactory,
+    })
+
+    fake.controls.loadVoices([
+      {
+        name: "Samantha",
+        lang: "en-US",
+        voiceURI: "Samantha",
+        default: true,
+        localService: true,
+      },
+      // Konkani: its tag starts with "ko", and it is not Korean.
+      {
+        name: "Konkani",
+        lang: "kok-IN",
+        voiceURI: "Konkani",
+        default: false,
+        localService: true,
+      },
+    ])
+
+    expect(adapter.describe("korean")).toEqual({
+      platform: "browser",
+      voice: "Samantha",
+      availability: "missing",
+    })
   })
 
   it("reports word boundaries for callers that follow along", async () => {
@@ -330,15 +367,17 @@ describe("web-speech adapter - browser specifics", () => {
       utteranceFactory: fake.utteranceFactory,
     })
 
-    void adapter.speak("안녕하세요", { lang: "ko-KR" }).catch(() => undefined)
+    void adapter
+      .speak("안녕하세요", { language: "korean" })
+      .catch(() => undefined)
     await flushAsync()
 
     // Named, not left to the browser's guess from `lang`.
     expect(fake.controls.spoken[0]?.voice).toBe(korean)
-    expect(adapter.describe("ko-KR")).toEqual({
+    expect(adapter.describe("korean")).toEqual({
       platform: "browser",
       voice: "Yuna",
-      speaksLanguage: true,
+      availability: "available",
     })
   })
 
@@ -351,10 +390,10 @@ describe("web-speech adapter - browser specifics", () => {
       utteranceFactory: fake.utteranceFactory,
     })
 
-    expect(adapter.describe("ko-KR")).toEqual({
+    expect(adapter.describe("korean")).toEqual({
       platform: "browser",
       voice: "Samantha",
-      speaksLanguage: false,
+      availability: "missing",
     })
   })
 
