@@ -24,7 +24,7 @@ the last check-in:
   check-in,
 - **review coverage on the current head is confirmed** (`steward/SKILL.md`, "Review
   coverage on every head") — a Codex pass's `Reviewed commit: <sha>` or an independent
-  review's diff must reach the current head, not a prior one. A review requested but not yet
+  review's recorded range must reach the current head, not a prior one. A review requested but not yet
   answered blocks quiet-and-green — "no new activity" isn't the same as "reviewed and
   clean." But be graceful: the reviewer itself can be down or unreachable. If a requested
   review gets no response across 2 consecutive check-ins, stop waiting on it specifically —
