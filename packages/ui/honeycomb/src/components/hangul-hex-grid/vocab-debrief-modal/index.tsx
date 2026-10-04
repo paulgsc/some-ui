@@ -209,7 +209,7 @@ export const VocabDebriefModal = ({
           {entry && (
             <button
               type="button"
-              onClick={() => sayWord(speaker, entry.ttsText)}
+              onClick={() => sayWord(speaker, entry.ttsText, "now")}
               className="rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold text-white/80 transition-colors hover:bg-white/20"
             >
               🔊 Hear it

@@ -17,7 +17,7 @@
 
 import type { RefObject } from "react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
-import type { Speaker } from "@some-ui/speech"
+import type { Speaker, Urgency } from "@some-ui/speech"
 import { SPOKEN_LANGUAGE } from "@topik/lib/topik/core/spoken-language"
 import type {
   ReadAloudDeck,
@@ -160,7 +160,12 @@ function createRunner(
     })
   }
 
-  const speak = (seq: number, text: string, playingMs: number): void => {
+  const speak = (
+    seq: number,
+    text: string,
+    playingMs: number,
+    urgency: Urgency
+  ): void => {
     const { speech } = options()
     if (!speech?.available) return
     utterance?.abort()
@@ -171,6 +176,7 @@ function createRunner(
     void speech
       .say(text, {
         language: SPOKEN_LANGUAGE,
+        urgency,
         signal: controller.signal,
         onStart: () => {
           started = now()
@@ -225,7 +231,7 @@ function createRunner(
         return
       }
       case "speak": {
-        speak(effect.seq, effect.text, effect.playingMs)
+        speak(effect.seq, effect.text, effect.playingMs, effect.urgency)
         return
       }
       case "stop-speech": {

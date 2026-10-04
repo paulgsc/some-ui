@@ -149,7 +149,8 @@ export const HostedVoiceFields = ({
         <Label>Voice</Label>
         {voices.length === 0 ? (
           <p className="text-muted-foreground text-sm">
-            No preset voices for this provider. Uses the endpoint default voice.
+            No preset voices for this provider, so it can&apos;t read lessons
+            yet. Choose another provider to hear them.
           </p>
         ) : (
           <Select

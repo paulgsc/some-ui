@@ -641,6 +641,13 @@ async function runInterleaving(
   const count = (tally: Map<string, number>, id: string): void => {
     tally.set(id, (tally.get(id) ?? 0) + 1)
   }
+  // The lesson waits for an end after asking for a line, and only a line's
+  // end (any line's: a heard replay stands in for it) or a stop releases
+  // it. Still owed once everything has drained, the lesson has stalled.
+  const lesson = { owed: false }
+  const ask = (id: string): void => {
+    if (!ended.has(id)) lesson.owed = true
+  }
   vi.spyOn(console, "error").mockImplementation(() => undefined)
   const handler = createTTSEffectHandler({
     speaker: session.manager.speakerFor("topik"),
@@ -651,6 +658,7 @@ async function runInterleaving(
     },
     onSpeechEnd: (id) => {
       showsSpeaking = false
+      lesson.owed = false
       count(ended, id)
     },
     onSpeechStopped: () => {
@@ -662,12 +670,21 @@ async function runInterleaving(
   })
 
   const act: Readonly<Record<Event, () => void>> = {
-    "auto m1": () => handler.enqueue(makeMessage("m1"), true),
-    "auto m2": () => handler.enqueue(makeMessage("m2"), true),
+    "auto m1": () => {
+      ask("m1")
+      handler.enqueue(makeMessage("m1"), true)
+    },
+    "auto m2": () => {
+      ask("m2")
+      handler.enqueue(makeMessage("m2"), true)
+    },
     // The same message as the lesson's m1, told apart by its text.
     "replay m1": () =>
       void handler.speakManually(makeMessage("m1", REPLAY_TEXT)),
-    stop: () => handler.handleStopAudio(),
+    stop: () => {
+      lesson.owed = false
+      handler.handleStopAudio()
+    },
     mute: () => session.manager.setMuted(true),
     unmute: () => session.manager.setMuted(false),
     "line ends": () => session.finish(),
@@ -726,6 +743,7 @@ async function runInterleaving(
   }
   const drained = replayedLate("drained", saidBeforeDrain) ?? check("drained")
   if (drained) return drained
+  if (lesson.owed) return "drained: the lesson waits on a line nobody will say"
 
   handler.enqueue(makeMessage("fresh"), true)
   await settle()

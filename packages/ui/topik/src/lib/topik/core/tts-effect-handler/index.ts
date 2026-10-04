@@ -20,7 +20,9 @@
  *   session refused or cut off because the person muted is held at the
  *   front of the queue and said again on unmute. A replay is not held:
  *   played later, it would land among lesson lines queued since, each
- *   advancing the lesson.
+ *   advancing the lesson. But a replay that is not heard gives back the
+ *   unheard lesson line it displaced, which is said next (or on unmute),
+ *   since the lesson is still waiting on a line's end.
  * - **No duplicate auto-play.** A lesson line already heard is not said
  *   again when its effect is re-dispatched (React Strict Mode); a replay
  *   clears that, so the line can auto-play again later.
@@ -58,6 +60,12 @@ type Entry = {
   readonly urgency: Urgency
   /** Resolves `speakManually`'s promise once the line is done with. */
   readonly done?: () => void
+  /**
+   * A replay's: the unheard lesson line it displaced. A heard replay ends
+   * in its place (the lesson advances on any line's end); a replay that is
+   * not heard gives it back, or the lesson would wait on it forever.
+   */
+  readonly displaced?: Message
 }
 
 /** The line in hand: submitted, playing, or held for unmute. */
@@ -120,7 +128,7 @@ export class TTSEffectHandler {
 
     this.spokenAutoIds.delete(message.id)
     this.completedIds.delete(message.id)
-    this.dropQueue()
+    const dropped = this.dropQueue()
     this.held = false
     // The line this replaces stops here, and nothing reports it later: its
     // outcome is not this handler's any more. The replay may not start
@@ -130,9 +138,18 @@ export class TTSEffectHandler {
     this.line = null
     if (replaced?.playing) this.config.onSpeechStopped?.(replaced.message.id)
     this.config.speaker.stop()
+    const displaced = replaced?.isAuto
+      ? replaced.message
+      : (replaced?.displaced ?? dropped.find((entry) => entry.isAuto)?.message)
 
     await new Promise<void>((done) => {
-      this.queue.push({ message, isAuto: false, urgency: "now", done })
+      this.queue.push({
+        message,
+        isAuto: false,
+        urgency: "now",
+        done,
+        displaced,
+      })
       if (!this.processing) void this.processQueue()
     })
   }
@@ -171,7 +188,9 @@ export class TTSEffectHandler {
   /**
    * Teardown. Ends nothing: the session's lesson must not advance past a
    * line because the handler speaking it went away (an executor rebuilt
-   * around the same session machine would skip it unheard).
+   * around the same session machine would skip it unheard). Nor does a
+   * rebuilt executor say that line again: the lesson waits on it until
+   * Play re-dispatches it, as it did before this handler's rewrite.
    */
   destroy(): void {
     this.unsubscribe()
@@ -188,10 +207,16 @@ export class TTSEffectHandler {
   // ═════════════════════════════════════════════════════════════════════════
 
   /** Drops every queued line, telling any replay waiting on one. */
-  private dropQueue(): void {
+  private dropQueue(): ReadonlyArray<Entry> {
     const dropped = this.queue
     this.queue = []
     for (const entry of dropped) entry.done?.()
+    return dropped
+  }
+
+  /** Puts a lesson line back first in line, unheard. */
+  private requeueAuto(message: Message): void {
+    this.queue.unshift({ message, isAuto: true, urgency: "next" })
   }
 
   private async processQueue(): Promise<void> {
@@ -270,13 +295,11 @@ export class TTSEffectHandler {
       }
       case "muted": {
         if (wasPlaying) this.config.onSpeechStopped?.(id)
-        if (line.isAuto) {
-          // Not heard, so not spoken: kept in hand, and first in line.
-          this.queue.unshift({
-            message: line.message,
-            isAuto: true,
-            urgency: "next",
-          })
+        // Not heard, so not spoken: a lesson line, or the one a replay
+        // displaced, is kept first in line and said on unmute.
+        const owed = line.isAuto ? line.message : line.displaced
+        if (owed) {
+          this.requeueAuto(owed)
           this.held = true
         } else {
           this.line = null
@@ -284,11 +307,18 @@ export class TTSEffectHandler {
         return
       }
       case "preempted":
-      case "cancelled":
+      case "cancelled": {
+        // A replay another applet's line interrupted, or a line cancelled
+        // by something other than this handler's own stop (which replaces
+        // the line first). Not heard: the lesson line a replay displaced is
+        // said next.
+        this.line = null
+        if (wasPlaying) this.config.onSpeechStopped?.(id)
+        if (line.displaced) this.requeueAuto(line.displaced)
+        return
+      }
       case "ended": {
-        // A replay another applet's replay interrupted; or a line cancelled
-        // or ended by something other than this handler's own stop (which
-        // replaces the line first). Not heard, and nothing to say again.
+        // The session is gone; there is nothing to say anything with.
         this.line = null
         if (wasPlaying) this.config.onSpeechStopped?.(id)
         return

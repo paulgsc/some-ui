@@ -24,7 +24,8 @@ function firstVoice(
 /** Synthesizes once and hands back the request body the provider got. */
 async function bodySent(
   provider: TTSProvider,
-  voice: VoiceConfig
+  voice: VoiceConfig,
+  text = "hello"
 ): Promise<string> {
   let sent = ""
   const fetchImpl: FetchImpl = (_url, init) => {
@@ -37,7 +38,7 @@ async function bodySent(
     service: { provider, apiUrl: "https://tts.test", apiKey: "k" },
     fetchImpl,
   })
-  await client.synthesize("hello", voice)
+  await client.synthesize(text, voice)
   return sent
 }
 
@@ -53,5 +54,17 @@ describe("hosted request bodies carry the provider's language tag", () => {
     const body = await bodySent("azure", firstVoice("azure", "english"))
     expect(body).toContain('xml:lang="en-US"')
     expect(body).not.toContain("english")
+  })
+})
+
+describe("Azure's SSML", () => {
+  it("escapes the text, so a line with & or < is read, not a broken request", async () => {
+    const body = await bodySent(
+      "azure",
+      firstVoice("azure", "english"),
+      "Tom & Jerry <3"
+    )
+    expect(body).toContain(">Tom &amp; Jerry &lt;3</voice>")
+    expect(body).toContain('xmlns="http://www.w3.org/2001/10/synthesis"')
   })
 })

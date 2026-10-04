@@ -66,7 +66,7 @@ export const PromptStation = ({
     // usePromptEscalation) while that tier is active.
     if (lastAutoPlayedTierRef.current !== tier) {
       lastAutoPlayedTierRef.current = tier
-      sayWord(speaker, entry.ttsText)
+      sayWord(speaker, entry.ttsText, "next")
     }
   }, [entry, tier, speaker])
 
@@ -104,7 +104,7 @@ export const PromptStation = ({
           {(tier === "icon-tts" || tier === "icon-tts-hangul") && (
             <button
               type="button"
-              onClick={() => sayWord(speaker, entry.ttsText)}
+              onClick={() => sayWord(speaker, entry.ttsText, "now")}
               className="text-xs font-semibold text-white/80 bg-white/10 hover:bg-white/20 rounded-full px-3 py-1 transition-colors"
             >
               🔊 Replay

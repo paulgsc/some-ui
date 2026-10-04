@@ -430,6 +430,10 @@ export function useHandheldLesson({
           urgency,
           signal: controller.signal,
           onStart: () => setSpeakingId(message.id),
+          // Another applet's "now" line cut in: this line waits to be said
+          // again, and is not playing meanwhile.
+          onInterrupted: () =>
+            setSpeakingId((id) => (id === message.id ? null : id)),
         })
         .then(() => {
           if (utterance.current === controller) utterance.current = null

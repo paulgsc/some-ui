@@ -96,9 +96,11 @@ const TTS_API_CONFIGS: Record<string, TTSAPIConfig> = {
       "Content-Type": "application/ssml+xml",
       "X-Microsoft-OutputFormat": "audio-16khz-128kbitrate-mono-mp3",
     }),
+    // SSML is XML: the text is escaped, so a line with `&` or `<` is read
+    // rather than breaking the request, and the namespace is SSML's own.
     body: (text, voice) =>
-      `<speak version="1.0" xmlns="https://www.w3.org/2001/10/synthesis" xml:lang="${LANGUAGE_TAG[voice.language]}">
-        <voice name="${voice.id}">${text}</voice>
+      `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="${LANGUAGE_TAG[voice.language]}">
+        <voice name="${escapeXml(voice.id)}">${escapeXml(text)}</voice>
       </speak>`,
     processResponse: (response) => response.arrayBuffer(),
   },
@@ -235,4 +237,16 @@ export function createTTSClient(options: TTSClientOptions): TTSClient {
     synthesize,
     clearCache: (): void => cache.clear(),
   }
+}
+
+const XML_ESCAPES: Readonly<Record<string, string>> = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&apos;",
+}
+
+function escapeXml(text: string): string {
+  return text.replace(/[&<>"']/g, (char) => XML_ESCAPES[char] ?? char)
 }
