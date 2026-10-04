@@ -1,4 +1,5 @@
 export type {
+  DeviceVoiceChoice,
   SpeakOptions,
   SpeechAdapter,
   SpeechAdapterId,

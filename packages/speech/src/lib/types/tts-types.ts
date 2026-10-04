@@ -1,3 +1,4 @@
+import type { DeviceVoiceChoice } from "@speech/lib/adapters/types"
 import type { SpokenLanguage } from "@speech/lib/language"
 
 // TTS Service providers
@@ -54,10 +55,10 @@ export type TTSOptions = {
   /** The text's language; the session picks the voice for it. */
   readonly language?: SpokenLanguage
   /**
-   * A device voice for this one line, as the adapter's own opaque id. Only
-   * the session's voice preview sets it (`SpeechQueueManager.preview`).
+   * A device voice for this one line. Only the session's voice preview
+   * sets it (`SpeechQueueManager.preview`).
    */
-  readonly voiceId?: string
+  readonly voice?: DeviceVoiceChoice
   readonly onStart?: () => void
   readonly onEnd?: () => void
   readonly onError?: (error: Error) => void

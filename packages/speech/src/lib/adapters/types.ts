@@ -61,6 +61,16 @@ export type VoiceReport = {
 }
 
 /**
+ * A device voice named for one line: the engine's own default for the
+ * line's language, or one of the engine's voices by its opaque id. Two
+ * arms, not an optional id, so "the engine's default" cannot be mistaken
+ * for "nothing named, use the person's choice".
+ */
+export type DeviceVoiceChoice =
+  | { readonly kind: "engine-default" }
+  | { readonly kind: "voice"; readonly id: string }
+
+/**
  * What a line asks for: its language, never a voice. Which voice speaks it
  * is the backend's business - the person's hosted choice (`lib/voices`), or
  * whatever the device's synthesizer has for that language - so no caller
@@ -70,11 +80,12 @@ export type SpeakOptions = {
   /** The text's language. Omitted, the backend's default language. */
   language?: SpokenLanguage
   /**
-   * A device voice named for this one line, by the session only (Settings'
-   * sample of a phone voice). An applet cannot set it: `SayOptions` leaves
-   * it out. Adapters with no device voices to name ignore it.
+   * A device voice for this one line, named by the session only (Settings'
+   * sample of a phone voice); absent, the voice the person chose. An applet
+   * cannot set it: `SayOptions` leaves it out. Adapters with no device
+   * voices to name ignore it.
    */
-  voiceId?: string
+  voice?: DeviceVoiceChoice
   /** Aborting this rejects the returned promise with an `AbortError`. */
   signal?: AbortSignal
   volume?: number

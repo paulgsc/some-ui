@@ -24,7 +24,11 @@
  * starts from nothing.
  */
 
-import type { SpeechAdapter, VoiceReport } from "@speech/lib/adapters/types"
+import type {
+  DeviceVoiceChoice,
+  SpeechAdapter,
+  VoiceReport,
+} from "@speech/lib/adapters/types"
 import {
   createAbortError,
   isAbortError,
@@ -141,15 +145,15 @@ export class SpeechQueueManager {
    * Says `text` in a voice a person is choosing between (Settings' sample),
    * as a `"now"` line through the queue like any other, so it interrupts
    * what plays and honors mute instead of writing to the engine behind the
-   * session's back. The one line a voice is named for: `voiceId` is the
-   * adapter's own id, which an applet's `say` cannot pass.
+   * session's back. The one line a voice is named for, which an applet's
+   * `say` cannot do.
    */
   preview(text: string, options: PreviewOptions): Promise<SpeechOutcome> {
     return this.say(
       PREVIEW_OWNER,
       text,
       { language: options.language, urgency: "now" },
-      options.voiceId
+      options.voice
     )
   }
 
@@ -157,7 +161,7 @@ export class SpeechQueueManager {
     owner: string,
     text: string,
     options: SayOptions,
-    voiceId?: string
+    voice?: DeviceVoiceChoice
   ): Promise<SpeechOutcome> {
     if (this.disposed) return Promise.resolve(ENDED)
     // Refused rather than queued, for the reason `speak` drops muted items.
@@ -192,7 +196,7 @@ export class SpeechQueueManager {
           maxRetries: 0,
           options: {
             language: options.language,
-            voiceId,
+            voice,
             volume: options.volume,
             playbackRate: options.playbackRate,
             onStart: options.onStart,
@@ -453,7 +457,7 @@ export class SpeechQueueManager {
       await this.adapter.speak(next.text, {
         signal: next.controller.signal,
         language: next.options?.language,
-        voiceId: next.options?.voiceId,
+        voice: next.options?.voice,
         volume: next.options?.volume,
         playbackRate: next.options?.playbackRate,
         onStart: next.options?.onStart,

@@ -116,9 +116,11 @@ describe("DeviceVoiceField", () => {
 
     await screen.findByText("Phone default")
     fireEvent.click(screen.getByRole("button", { name: "Play sample" }))
+    // The phone's default, not the voice saved before: an absent voice
+    // would read as "the person's choice".
     expect(fake.play).toHaveBeenCalledWith(PREVIEW_TEXT, {
       language: "korean",
-      voiceId: undefined,
+      voice: { kind: "engine-default" },
     })
   })
 
@@ -140,7 +142,7 @@ describe("DeviceVoiceField", () => {
     fireEvent.click(screen.getByRole("button", { name: "Play sample" }))
     expect(fake.play).toHaveBeenCalledWith(PREVIEW_TEXT, {
       language: "korean",
-      voiceId: "ko-kr-x-kob-local",
+      voice: { kind: "voice", id: "ko-kr-x-kob-local" },
     })
   })
 

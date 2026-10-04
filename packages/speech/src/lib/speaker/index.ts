@@ -37,7 +37,11 @@
  * spoke a lesson.
  */
 
-import type { SpeakOptions, VoiceReport } from "@speech/lib/adapters/types"
+import type {
+  DeviceVoiceChoice,
+  SpeakOptions,
+  VoiceReport,
+} from "@speech/lib/adapters/types"
 import type { SpokenLanguage } from "@speech/lib/language"
 
 /** Whether a line interrupts what is playing, or waits its turn. */
@@ -65,8 +69,8 @@ export type SayOptions = Pick<
  */
 export type PreviewOptions = {
   readonly language: SpokenLanguage
-  /** The adapter's own id for the voice; absent, its default. */
-  readonly voiceId?: string
+  /** The voice being sampled: the engine's default, or one by its id. */
+  readonly voice: DeviceVoiceChoice
 }
 
 /** What became of a line. */

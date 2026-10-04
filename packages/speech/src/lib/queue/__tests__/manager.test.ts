@@ -603,7 +603,7 @@ describe("SpeechQueueManager - a voice preview", () => {
     await flushAsync()
     const sample = manager.preview("안녕하세요", {
       language: "korean",
-      voiceId: "ko-kr-x-kob-local",
+      voice: { kind: "voice", id: "ko-kr-x-kob-local" },
     })
     await flushAsync()
     adapter.finish()
@@ -613,10 +613,10 @@ describe("SpeechQueueManager - a voice preview", () => {
     expect(await lesson).toEqual({ kind: "heard" })
 
     expect(
-      adapter.calls.map((call) => [call.text, call.options.voiceId])
+      adapter.calls.map((call) => [call.text, call.options.voice])
     ).toEqual([
       ["하나", undefined],
-      ["안녕하세요", "ko-kr-x-kob-local"],
+      ["안녕하세요", { kind: "voice", id: "ko-kr-x-kob-local" }],
       ["하나", undefined],
     ])
   })
@@ -625,9 +625,12 @@ describe("SpeechQueueManager - a voice preview", () => {
     const { adapter, manager } = setup()
     manager.setMuted(true)
 
-    expect(await manager.preview("안녕하세요", { language: "korean" })).toEqual(
-      { kind: "muted" }
-    )
+    expect(
+      await manager.preview("안녕하세요", {
+        language: "korean",
+        voice: { kind: "engine-default" },
+      })
+    ).toEqual({ kind: "muted" })
     expect(adapter.calls).toEqual([])
   })
 })

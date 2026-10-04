@@ -34,6 +34,10 @@ export type FakeNativeEngineHandle = {
   end: () => void
   /** Fails the utterance in flight. */
   fail: (message?: string) => void
+  /** The app returns to the front. */
+  resume: () => void
+  /** How many resume listeners are attached. */
+  readonly resumeListeners: number
 }
 
 type InFlight = {
@@ -50,6 +54,7 @@ export function createFakeNativeEngine(
   let current: InFlight | null = null
   let stopCount = 0
   let probeCount = 0
+  const resumeListeners = new Set<() => void>()
 
   const engine: NativeSpeechEngine = {
     speak: (request) => {
@@ -66,6 +71,12 @@ export function createFakeNativeEngine(
       return Promise.resolve()
     },
     getVoices: () => Promise.resolve(options.voices ?? []),
+    subscribeResume: (listener) => {
+      resumeListeners.add(listener)
+      return (): void => {
+        resumeListeners.delete(listener)
+      }
+    },
     isLanguageSupported: (language) => {
       probeCount += 1
       return Promise.resolve(installed === null || installed.has(language))
@@ -82,6 +93,12 @@ export function createFakeNativeEngine(
     },
     get probeCount(): number {
       return probeCount
+    },
+    get resumeListeners(): number {
+      return resumeListeners.size
+    },
+    resume: (): void => {
+      for (const listener of [...resumeListeners]) listener()
     },
     install: (language): void => {
       installed?.add(language)

@@ -14,7 +14,12 @@ import type {
   SayOptions,
   SpeechOutcome,
 } from "@some-ui/speech"
-import { SpeechProvider, useSpeaker, useVoicePreview } from "@some-ui/speech"
+import {
+  SpeechProvider,
+  useSpeaker,
+  useVoicePreview,
+  useVoiceReport,
+} from "@some-ui/speech"
 import { act, cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -174,6 +179,40 @@ describe("the phone's engine as the session's voice", () => {
   })
 })
 
+describe("the phone's voice on return to the app", () => {
+  it("asks again for a voice found missing, so installing one clears the warning", async () => {
+    fake.state.installed = false
+    const Report = (): JSX.Element => (
+      <p data-testid="availability">{useVoiceReport("korean")?.availability}</p>
+    )
+    render(
+      <SpeechProvider
+        config={{
+          mode: "static",
+          language: "korean",
+          native: deviceSpeechBackend(""),
+        }}
+      >
+        <Report />
+      </SpeechProvider>
+    )
+    await settle()
+    const availability = screen.getByTestId("availability")
+    expect(availability.textContent).toBe("missing")
+
+    // The Install button's round trip: the system settings, then back.
+    fake.state.installed = true
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "visible",
+    })
+    document.dispatchEvent(new Event("visibilitychange"))
+    await settle()
+
+    expect(availability.textContent).toBe("available")
+  })
+})
+
 describe("a voice sample in Settings", () => {
   it("goes through the session: its voice for its line, and the lesson's line said again after", async () => {
     fake.state.hold = true
@@ -200,7 +239,7 @@ describe("a voice sample in Settings", () => {
             onClick={() => {
               void preview?.play(PREVIEW_TEXT, {
                 language: "korean",
-                voiceId: "ko-kr-x-kob-local",
+                voice: { kind: "voice", id: "ko-kr-x-kob-local" },
               })
             }}
           >

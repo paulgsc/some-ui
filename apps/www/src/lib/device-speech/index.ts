@@ -37,6 +37,17 @@ const lazyEngine: NativeSpeechEngine = {
   getVoices: () => native().then(({ engine }) => engine.getVoices()),
   isLanguageSupported: (language) =>
     native().then(({ engine }) => engine.isLanguageSupported(language)),
+  // The WebView fires `visibilitychange` when the app returns from the
+  // system settings, as it does for react-query's refetch on focus.
+  subscribeResume: (listener) => {
+    const onVisibility = (): void => {
+      if (document.visibilityState === "visible") listener()
+    }
+    document.addEventListener("visibilitychange", onVisibility)
+    return (): void => {
+      document.removeEventListener("visibilitychange", onVisibility)
+    }
+  },
 }
 
 /** Languages already announced as missing, so a lesson says so once. */

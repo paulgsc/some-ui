@@ -362,6 +362,52 @@ describe("native adapter", () => {
     expect(fake.probeCount).toBe(1)
   })
 
+  it("lets the session's sample name a voice, or the engine's default over the person's choice", async () => {
+    const fake = createFakeNativeEngine({ voices: VOICES })
+    const adapter = createNativeSpeechAdapter({
+      engine: fake.engine,
+      language: "korean",
+      voiceId: "ko-kr-x-kob-local",
+    })
+    await flushAsync()
+
+    void adapter
+      .speak("하나", { voice: { kind: "voice", id: "ko-kr-x-kod-local" } })
+      .catch(() => undefined)
+    await flushAsync()
+    void adapter
+      .speak("둘", { voice: { kind: "engine-default" } })
+      .catch(() => undefined)
+    await flushAsync()
+    void adapter.speak("셋").catch(() => undefined)
+    await flushAsync()
+
+    expect(fake.spoken.map((request) => request.voiceId)).toEqual([
+      "ko-kr-x-kod-local",
+      undefined,
+      "ko-kr-x-kob-local",
+    ])
+  })
+
+  it("asks again on return to the app, so a voice installed meanwhile is seen without a line", async () => {
+    const fake = createFakeNativeEngine({ installed: [] })
+    const adapter = createNativeSpeechAdapter({
+      engine: fake.engine,
+      language: "korean",
+    })
+    await flushAsync()
+    expect(adapter.describe("korean").availability).toBe("missing")
+
+    // The Install button's round trip: the system settings, then back.
+    fake.install("korean")
+    fake.resume()
+    await flushAsync()
+    expect(adapter.describe("korean").availability).toBe("available")
+
+    adapter.dispose()
+    expect(fake.resumeListeners).toBe(0)
+  })
+
   it("leaves the voice to the engine when the chosen one speaks another language", async () => {
     const fake = createFakeNativeEngine({ voices: VOICES })
     const adapter = createNativeSpeechAdapter({

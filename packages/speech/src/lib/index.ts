@@ -8,6 +8,7 @@ export type {
   NativeSpeechEngine,
   NativeSpeechRequest,
   NativeVoice,
+  DeviceVoiceChoice,
   SpeakOptions,
   SpeechAdapter,
   SpeechAdapterFactory,

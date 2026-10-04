@@ -40,6 +40,7 @@
  */
 
 import type {
+  DeviceVoiceChoice,
   SpeakOptions,
   SpeechAdapter,
   VoiceAvailability,
@@ -94,6 +95,12 @@ export type NativeSpeechEngine = {
   getVoices: () => Promise<ReadonlyArray<NativeVoice>>
   /** True when voice data for `language` is installed and usable. */
   isLanguageSupported: (language: SpokenLanguage) => Promise<boolean>
+  /**
+   * Calls `listener` when the app returns to the front, where a voice
+   * installed from the system settings (the Install button's round trip)
+   * shows up. Returns the unsubscribe.
+   */
+  subscribeResume?: (listener: () => void) => () => void
 }
 
 export type NativeSpeechAdapterOptions = {
@@ -213,6 +220,18 @@ export function createNativeSpeechAdapter(
     probes.set(language, settled)
     return settled
   }
+  // A language found missing, or not checkable, is asked again when the
+  // app comes back: the person may have just installed it.
+  // Lifetime: ended by `dispose`.
+  const unsubscribeResume = engine.subscribeResume?.(() => {
+    if (disposed) return
+    for (const [language, known] of availability) {
+      if (known === "missing" || known === "unverifiable") {
+        void hasVoiceFor(language)
+      }
+    }
+  })
+
   // Probed up front for the session's own language, so `describe` can say
   // whether the phone speaks it before the first line is tried.
   if (options.language) void hasVoiceFor(options.language)
@@ -223,6 +242,29 @@ export function createNativeSpeechAdapter(
     const chosen = voices.find((voice) => voice.id === options.voiceId)
     if (chosen && (!language || chosen.language === language)) return chosen.id
     return undefined
+  }
+
+  /**
+   * The voice for one line: one the session named for it (Settings'
+   * sample, which may name the engine's default), else the one the person
+   * chose, when it reads the language.
+   */
+  const lineVoiceId = (
+    voice: DeviceVoiceChoice | undefined,
+    language: SpokenLanguage | undefined
+  ): string | undefined => {
+    if (!voice) return voiceIdFor(language)
+    switch (voice.kind) {
+      case "engine-default": {
+        return undefined
+      }
+      case "voice": {
+        return voice.id
+      }
+      default: {
+        return assertNever(voice)
+      }
+    }
   }
 
   const stopEngine = (): void => {
@@ -292,9 +334,7 @@ export function createNativeSpeechAdapter(
         await engine.speak({
           text,
           language,
-          // A voice the session named for this one line (Settings' sample),
-          // else the one the person chose, when it reads the language.
-          voiceId: speakOptions.voiceId ?? voiceIdFor(language),
+          voiceId: lineVoiceId(speakOptions.voice, language),
           rate: speakOptions.playbackRate ?? playbackRate,
           pitch: options.pitch ?? DEFAULT_PITCH,
           volume: speakOptions.volume ?? volume,
@@ -368,9 +408,14 @@ export function createNativeSpeechAdapter(
     dispose: (): void => {
       if (disposed) return
       disposed = true
+      unsubscribeResume?.()
       settleAll(createAbortError("Speech adapter was disposed"))
       listeners.clear()
       stopEngine()
     },
   }
+}
+
+function assertNever(value: never): never {
+  throw new Error(`Unexpected device voice choice: ${JSON.stringify(value)}`)
 }

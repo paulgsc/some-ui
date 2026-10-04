@@ -112,7 +112,10 @@ const VoicePicker = ({
           onClick={() => {
             void preview?.play(PREVIEW_TEXT, {
               language: LESSON_LANGUAGE,
-              voiceId: selected === PHONE_DEFAULT ? undefined : selected,
+              voice:
+                selected === PHONE_DEFAULT
+                  ? { kind: "engine-default" }
+                  : { kind: "voice", id: selected },
             })
           }}
         >
