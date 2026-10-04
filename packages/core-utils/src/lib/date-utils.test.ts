@@ -129,3 +129,29 @@ describe("calendar days", () => {
     expect(formatWeekday("2026-10-02")).toBe("Fri")
   })
 })
+
+describe("calendar days across a daylight-saving change", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  // Not UTC, where this could not fail: in a zone that changes its clocks, adding
+  // `n * 24h` to a local midnight lands an hour off the day it should, and a
+  // plain day count goes wrong. `addDays` counts days on the calendar.
+  it.each([
+    // [zone, day, days to add, expected], each spanning that zone's clock change
+    ["America/New_York", "2026-03-07", 1, "2026-03-08"],
+    ["America/New_York", "2026-03-07", 2, "2026-03-09"],
+    ["America/New_York", "2026-10-31", 1, "2026-11-01"],
+    ["America/New_York", "2026-10-31", 2, "2026-11-02"],
+    ["America/New_York", "2026-11-02", -2, "2026-10-31"],
+    ["Australia/Sydney", "2026-10-03", 2, "2026-10-05"],
+    ["Australia/Sydney", "2026-04-04", 2, "2026-04-06"],
+  ])("%s: addDays(%s, %i) is %s", (zone, day, n, expected) => {
+    vi.stubEnv("TZ", zone)
+    // The stub only means something if the runtime took the zone.
+    const probe = new Date(2026, 6, 1, 12).getTimezoneOffset()
+    expect(probe).not.toBe(0)
+    expect(addDays(day, n)).toBe(expected)
+  })
+})

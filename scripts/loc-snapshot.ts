@@ -61,6 +61,8 @@ const { values } = parseArgs({
 const out =
   values.out ?? resolve(root, "apps/www/src/generated/loc-snapshot.json")
 const through = values.through ?? new Date().toISOString().slice(0, 10)
+// The first day of the window, once: what git is asked for and what is kept.
+const from = addDays(through, -(WINDOW_DAYS - 1))
 
 // `name=directory`. By default this repository, plus the server's when
 // LOC_SERVER_DIR names a clone of it.
@@ -84,7 +86,7 @@ const git = (cwd: string, ...args: Array<string>): string =>
     env: { ...process.env, TZ: "UTC" },
   })
 
-function commitsOf(directory: string, through: string): Array<CommitStat> {
+function commitsOf(directory: string): Array<CommitStat> {
   if (!existsSync(directory)) throw new Error(`${directory} does not exist`)
   if (
     git(directory, "rev-parse", "--is-shallow-repository").trim() === "true"
@@ -93,14 +95,13 @@ function commitsOf(directory: string, through: string): Array<CommitStat> {
       `${directory} is a shallow clone, whose oldest commit would count as adding everything; run git fetch --unshallow`
     )
   }
-  const since = addDays(through, -(WINDOW_DAYS - 1))
   return parseGitLog(
     git(
       directory,
       "log",
       "HEAD",
       "--no-merges",
-      `--since=${since}T00:00:00Z`,
+      `--since=${from}T00:00:00Z`,
       "--numstat",
       `--date=${GIT_LOG_DATE}`,
       `--format=${GIT_LOG_FORMAT}`
@@ -114,7 +115,7 @@ for (const spec of requested) {
   const [name, ...rest] = spec.split("=")
   const directory = resolve(rest.join("="))
   try {
-    repos.push({ name, commits: commitsOf(directory, through) })
+    repos.push({ name, commits: commitsOf(directory) })
   } catch (error) {
     skipped.push(name)
     warn(
@@ -130,7 +131,7 @@ if (repos.length === 0) {
   process.exitCode = 1
 } else {
   const snapshot = assembleSnapshot({
-    from: addDays(through, -(WINDOW_DAYS - 1)),
+    from,
     through,
     generatedAt: new Date().toISOString(),
     repos,

@@ -152,16 +152,17 @@ pnpm --filter @some-ui/mobile dev:android
 pnpm --filter @some-ui/mobile dev:android --target <id>   # pick one (cap run android --list)
 ```
 
-Leave terminal 2 running; Ctrl-C puts the app's config back. On a fresh
-checkout there is no web build (`apps/www/dist`), and `cap run` syncs before it
-can point the app at the dev server, so `dev:android` syncs `live-reload/`, a
-tracked stand-in page, instead (`SOME_UI_LIVE_RELOAD=1` in `capacitor.config.ts`).
-The WebView never shows it in this mode. It stays in
-`android/app/src/main/assets/public` afterwards, so build an APK with
-`pnpm --filter @some-ui/mobile apk` (or `bundle` first), never from that
-directory as it is; an APK built from the stand-in says so on screen. Edits under
+Leave terminal 2 running; Ctrl-C puts the app's config back. Edits under
 `apps/www` then hot-reload on the device. Anything native (the manifest, a
 plugin, `capacitor.config.ts`) needs `dev:android` run again.
+
+On a fresh checkout there is no web build (`apps/www/dist`), and `cap run` syncs
+before it can point the app at the dev server, so with no build present
+`dev:android` syncs `live-reload/` instead, a tracked stand-in page
+(`SOME_UI_LIVE_RELOAD=1` in `capacitor.config.ts`). The WebView never shows it in
+this mode. It stays in `android/app/src/main/assets/public` afterwards, so build
+an APK with `pnpm --filter @some-ui/mobile apk` (or `bundle` first), never from
+that directory as it is; an APK built from the stand-in says so on screen.
 
 You need the Android SDK (platform 36 and platform-tools), JDK 21, `ANDROID_HOME`
 set, and a device that `adb devices` lists: an emulator, or a phone with USB or

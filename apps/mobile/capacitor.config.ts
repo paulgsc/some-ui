@@ -1,4 +1,20 @@
+import { existsSync } from "node:fs"
 import type { CapacitorConfig } from "@capacitor/cli"
+
+/**
+ * `pnpm dev:android` sets `SOME_UI_LIVE_RELOAD`. In that mode the WebView loads
+ * the dev server, so a bundled web build is never shown, but `cap run` syncs
+ * before it can point the app at the server, and a sync fails when `webDir` is
+ * missing, which `../www/dist` is on a fresh checkout. So, only then, `webDir`
+ * is `live-reload/`: a tracked stand-in that says what it is, so the sync has
+ * something to copy and an APK built from it by mistake says so on screen. A
+ * real build that is there is synced as always, and with the variable unset
+ * (every build that ships) `webDir` is the real build, as before. The paths are
+ * relative to the directory `cap` runs in, as `webDir` itself is.
+ */
+const useLiveReloadStandIn =
+  process.env.SOME_UI_LIVE_RELOAD === "1" &&
+  !existsSync("../www/dist/index.html")
 
 /**
  * The Android shell around `apps/www`.
@@ -10,17 +26,6 @@ import type { CapacitorConfig } from "@capacitor/cli"
  * (www `lib/device-backend`), so there is no server to reach and nothing to
  * host. All the UI, routing and state is www's; see this package's README.
  */
-/**
- * Set only by `pnpm dev:android`. In live-reload mode the WebView loads the
- * dev server, so the bundled web build is never shown, but `cap run` syncs
- * before it can point the app at the server, and a sync fails when `webDir` is
- * missing: on a fresh checkout `../www/dist` is. `live-reload/` is a tracked
- * stand-in that says what it is, so the sync has something to copy and an APK
- * built from it by mistake says so on screen. Unset (every build that ships),
- * `webDir` is the real build, as before.
- */
-const liveReload = process.env.SOME_UI_LIVE_RELOAD === "1"
-
 const config: CapacitorConfig = {
   appId: "dev.paulgsc.someui",
   appName: "Some UI",
@@ -46,7 +51,7 @@ const config: CapacitorConfig = {
    * 404s every one of them. Absolute is correct here; the Pages build's
    * `/some-ui/` prefix is not.
    */
-  webDir: liveReload ? "live-reload" : "../www/dist",
+  webDir: useLiveReloadStandIn ? "live-reload" : "../www/dist",
 
   server: {
     /**
