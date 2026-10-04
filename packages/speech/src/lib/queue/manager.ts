@@ -30,14 +30,42 @@ import {
   isAbortError,
   toError,
 } from "@speech/lib/promise/abort"
-import type { SayOptions, Speaker } from "@speech/lib/speaker"
+import type {
+  SayOptions,
+  Speaker,
+  SpeechOutcome,
+  Urgency,
+} from "@speech/lib/speaker"
 import type { TTSOptions } from "@speech/lib/types/tts-types"
 
 import type { SpeechAction } from "./actions"
+import { generateId } from "./actions"
 import { speechReducer } from "./reducer"
 import type { Store } from "./store"
 import { createStore } from "./store"
 import type { SpeechItem, SpeechQueueState } from "./types"
+
+/** A `"now"` line goes ahead of everything, and interrupts what plays. */
+const NOW_PRIORITY = Number.MAX_SAFE_INTEGER
+const NEXT_PRIORITY = 0
+
+/** Why the session stopped an item, when it was the session that did. */
+type Ending = "preempted" | "cancelled" | "muted" | "ended"
+
+const ENDED: SpeechOutcome = { kind: "ended" }
+const MUTED: SpeechOutcome = { kind: "muted" }
+const CANCELLED: SpeechOutcome = { kind: "cancelled" }
+
+function outcomeOf(ending: Ending): SpeechOutcome {
+  return { kind: ending }
+}
+
+/** A speaker's line, while it is queued or playing. */
+type Line = {
+  readonly urgency: Urgency
+  readonly onInterrupted: (() => void) | undefined
+  readonly settle: (outcome: SpeechOutcome) => void
+}
 
 const INITIAL_STATE: SpeechQueueState = {
   items: [],
@@ -56,43 +84,45 @@ export class SpeechQueueManager {
   private disposed = false
   private muted = false
 
-  /**
-   * The page's speech, for applets: one line at a time, in the language it
-   * names, silent while muted. See `lib/speaker`.
-   */
-  readonly speaker: Speaker
-
-  /** Who to tell when `muted`, `speaking` or the adapter's voices change. */
+  /** Who to tell when `muted` or the adapter's voices change. */
   private readonly speakerListeners = new Set<() => void>()
   private readonly unsubscribeAdapter: () => void
 
-  /** `say` calls not yet settled; with the queue's item, `speaking`. */
-  private saysInFlight = 0
-  /** `speaking` as last announced, so only a change is announced. */
-  private announcedSpeaking = false
+  /** Each speaker line in the queue or playing, by item id. */
+  private readonly lines = new Map<string, Line>()
+  /**
+   * Why an item's controller was aborted, recorded by whoever aborts it,
+   * before it does: the outcome is the session's to state, not the line's
+   * to infer.
+   */
+  private readonly endings = new Map<string, Ending>()
 
   constructor(adapter: SpeechAdapter) {
     this.adapter = adapter
     this.store = createStore(INITIAL_STATE, speechReducer)
     this.unsubscribeAdapter = adapter.subscribe(() => this.notifySpeaker())
-    // The queue's item counts as speaking too: chat's lines displace an
-    // applet's as surely as another applet's do.
-    this.store.subscribe(
-      (state) => state.currentItem?.id ?? null,
-      () => this.noteSpeaking()
-    )
+  }
+
+  private notifySpeaker(): void {
+    for (const listener of [...this.speakerListeners]) listener()
+  }
+
+  // ── Speaker ──────────────────────────────────────────────────────────────
+
+  /**
+   * A handle for one applet (`owner`): its lines go through this session's
+   * queue, and its `stop` reaches only them. See `lib/speaker`.
+   */
+  speakerFor(owner: string): Speaker {
     const isMuted = (): boolean => this.muted
-    const isSpeaking = (): boolean => this.isSpeaking()
-    this.speaker = {
-      available: adapter.supported,
-      say: (text, options): Promise<void> => this.say(text, options),
-      stop: (): void => this.adapter.stop(),
-      describe: (lang): VoiceReport => this.adapter.describe(lang),
+    return {
+      available: this.adapter.supported,
+      say: (text, options): Promise<SpeechOutcome> =>
+        this.say(owner, text, options),
+      stop: (): void => this.cancelOwner(owner, "cancelled"),
+      describe: (language): VoiceReport => this.adapter.describe(language),
       get muted(): boolean {
         return isMuted()
-      },
-      get speaking(): boolean {
-        return isSpeaking()
       },
       subscribe: (listener): (() => void) => {
         this.speakerListeners.add(listener)
@@ -103,60 +133,116 @@ export class SpeechQueueManager {
     }
   }
 
-  private notifySpeaker(): void {
-    for (const listener of [...this.speakerListeners]) listener()
+  private say(
+    owner: string,
+    text: string,
+    options: SayOptions
+  ): Promise<SpeechOutcome> {
+    if (this.disposed) return Promise.resolve(ENDED)
+    // Refused rather than queued, for the reason `speak` drops muted items.
+    if (this.muted) return Promise.resolve(MUTED)
+    if (options.signal?.aborted) return Promise.resolve(CANCELLED)
+
+    const urgency = options.urgency ?? "next"
+    const id = generateId()
+    return new Promise<SpeechOutcome>((resolve) => {
+      const onAbort = (): void => this.cancelItem(id, "cancelled")
+      this.lines.set(id, {
+        urgency,
+        onInterrupted: options.onInterrupted,
+        settle: (outcome): void => {
+          options.signal?.removeEventListener("abort", onAbort)
+          resolve(outcome)
+        },
+      })
+      options.signal?.addEventListener("abort", onAbort, { once: true })
+
+      const current = this.store.get().currentItem
+      if (current && urgency === "now") this.interrupt(current)
+
+      this.store.dispatch({
+        type: "SPEAK",
+        payload: {
+          componentId: owner,
+          text,
+          id,
+          // A line is said once: a failure is the applet's to handle (a
+          // lesson moves on), not the queue's to repeat.
+          maxRetries: 0,
+          options: {
+            language: options.language,
+            volume: options.volume,
+            playbackRate: options.playbackRate,
+            onStart: options.onStart,
+            onBoundary: options.onBoundary,
+          },
+        },
+        priority: urgency === "now" ? NOW_PRIORITY : NEXT_PRIORITY,
+      })
+      this.schedulePump()
+    })
   }
 
-  private isSpeaking(): boolean {
-    return this.saysInFlight > 0 || this.store.get().currentItem !== null
+  /** Ends a line with `outcome`, once. */
+  private settleLine(id: string, outcome: SpeechOutcome): void {
+    const line = this.lines.get(id)
+    if (!line) return
+    this.lines.delete(id)
+    line.settle(outcome)
   }
 
-  private noteSpeaking(): void {
-    const speaking = this.isSpeaking()
-    if (speaking === this.announcedSpeaking) return
-    this.announcedSpeaking = speaking
-    this.notifySpeaker()
+  /** Stops the playing item so another can play, recording why. */
+  private interrupt(current: SpeechItem): void {
+    this.recordEnding(current.id, "preempted")
+    current.controller.abort()
   }
-
-  // ── Speaker ──────────────────────────────────────────────────────────────
 
   /**
-   * One line, spoken now rather than queued: an applet that paces itself
-   * (TOPIK's lesson, its read-aloud) needs the line's own promise. Muted, it
-   * is not spoken and rejects as a cancellation, so a lesson waits rather
-   * than racing on through lines nobody heard. Its outcome feeds the same
-   * `error` the queue's items do, which is what the session's notices read.
+   * The first reason recorded for an item wins over an interruption, until
+   * its abort lands: a line its owner stopped, or that mute cut off, must
+   * not be replayed because something interrupted it in the same moment.
    */
-  private say(text: string, options: SayOptions): Promise<void> {
-    if (this.disposed) {
-      return Promise.reject(createAbortError("The speech session has ended"))
+  private recordEnding(id: string, ending: Ending): void {
+    if (ending === "preempted" && this.endings.has(id)) return
+    this.endings.set(id, ending)
+  }
+
+  /**
+   * Cancels one item, playing or waiting. A waiting line is settled here;
+   * a playing one when its abort lands in `pump`.
+   */
+  private cancelItem(id: string, ending: Ending): void {
+    if (this.disposed) return
+    const state = this.store.get()
+    if (state.currentItem?.id === id) {
+      this.endings.set(id, ending)
+    } else if (state.items.some((item) => item.id === id)) {
+      this.settleLine(id, outcomeOf(ending))
     }
-    if (this.muted) {
-      return Promise.reject(createAbortError("Voice output is muted"))
+    this.store.dispatch({ type: "CANCEL", payload: { itemId: id } })
+    this.schedulePump()
+  }
+
+  /** Cancels every item `owner` has, playing or waiting. */
+  private cancelOwner(owner: string, ending: Ending): void {
+    if (this.disposed) return
+    const state = this.store.get()
+    if (state.currentItem?.componentId === owner) {
+      this.endings.set(state.currentItem.id, ending)
     }
-    this.saysInFlight += 1
-    this.noteSpeaking()
-    const settled = (): void => {
-      this.saysInFlight -= 1
-      if (!this.disposed) this.noteSpeaking()
+    for (const item of state.items) {
+      if (item.componentId === owner)
+        this.settleLine(item.id, outcomeOf(ending))
     }
-    return this.adapter.speak(text, options).then(
-      () => {
-        settled()
-        if (!this.disposed) this.store.dispatch({ type: "SAID" })
-      },
-      (error: unknown) => {
-        settled()
-        const failure = toError(error)
-        if (!this.disposed && !isAbortError(failure)) {
-          this.store.dispatch({
-            type: "SAY_FAILED",
-            payload: { error: failure.message },
-          })
-        }
-        throw failure
-      }
-    )
+    this.store.dispatch({ type: "CANCEL", payload: { componentId: owner } })
+    this.schedulePump()
+  }
+
+  /** Ends every line, playing or waiting, with `ending`. */
+  private endAll(ending: Ending): void {
+    const state = this.store.get()
+    if (state.currentItem) this.endings.set(state.currentItem.id, ending)
+    for (const item of state.items) this.settleLine(item.id, outcomeOf(ending))
   }
 
   // ── Queue API ────────────────────────────────────────────────────────────
@@ -181,7 +267,7 @@ export class SpeechQueueManager {
       // adapter - the in-flight `speak()` rejects with an `AbortError` and
       // the pump records `ITEM_CANCELLED`. No `adapter.stop()` here: that
       // would also flush utterances belonging to other components.
-      current.controller.abort()
+      this.interrupt(current)
     }
 
     this.store.dispatch({
@@ -194,12 +280,16 @@ export class SpeechQueueManager {
 
   cancel(componentId?: string, itemId?: string): void {
     if (this.disposed) return
-    this.store.dispatch({ type: "CANCEL", payload: { componentId, itemId } })
-    this.schedulePump()
+    if (itemId) this.cancelItem(itemId, "cancelled")
+    else if (componentId) this.cancelOwner(componentId, "cancelled")
   }
 
   pause(): void {
     if (this.disposed) return
+    // A paused line is interrupted like any other: a "next" one plays
+    // again on resume, a "now" one is over.
+    const current = this.store.get().currentItem
+    if (current) this.recordEnding(current.id, "preempted")
     this.store.dispatch({ type: "PAUSE" })
     this.adapter.pause()
   }
@@ -213,6 +303,7 @@ export class SpeechQueueManager {
 
   clear(): void {
     if (this.disposed) return
+    this.endAll("cancelled")
     this.store.dispatch({ type: "CLEAR" })
     this.adapter.stop()
   }
@@ -247,6 +338,7 @@ export class SpeechQueueManager {
     if (this.disposed || muted === this.muted) return
     this.muted = muted
     if (muted) {
+      this.endAll("muted")
       this.store.dispatch({ type: "CLEAR" })
       this.adapter.stop()
     } else {
@@ -300,6 +392,8 @@ export class SpeechQueueManager {
     this.store.dispose()
     this.store.dispatch({ type: "CLEAR" })
     this.inFlight = null
+    for (const id of [...this.lines.keys()]) this.settleLine(id, ENDED)
+    this.endings.clear()
     this.adapter.stop()
     this.unsubscribeAdapter()
     this.speakerListeners.clear()
@@ -330,22 +424,20 @@ export class SpeechQueueManager {
 
     try {
       if (next.controller.signal.aborted) {
-        this.store.dispatch({
-          type: "ITEM_CANCELLED",
-          payload: { itemId: next.id },
-        })
+        this.finishAborted(next, createAbortError("Cancelled before it began"))
         return
       }
 
       await this.adapter.speak(next.text, {
         signal: next.controller.signal,
-        lang: next.options?.lang,
+        language: next.options?.language,
         volume: next.options?.volume,
         playbackRate: next.options?.playbackRate,
         onStart: next.options?.onStart,
         onEnd: next.options?.onEnd,
         onError: next.options?.onError,
         onProgress: next.options?.onProgress,
+        onBoundary: next.options?.onBoundary,
       })
 
       // `this.isDisposed()` rather than `this.disposed`: the field was
@@ -353,28 +445,28 @@ export class SpeechQueueManager {
       // keeps that narrowing across the await even though `dispose()` may
       // well have run during it.
       if (this.isDisposed()) return
+      this.endings.delete(next.id)
       this.store.dispatch({
         type: "ITEM_COMPLETED",
         payload: { itemId: next.id },
       })
+      this.settleLine(next.id, { kind: "heard" })
     } catch (error) {
       if (this.isDisposed()) return
       const failure = toError(error)
 
       if (isAbortError(failure)) {
-        this.store.dispatch({
-          type: "ITEM_CANCELLED",
-          payload: { itemId: next.id },
-        })
+        this.finishAborted(next, failure)
       } else {
+        this.endings.delete(next.id)
+        const shouldRetry = next.retryCount < next.maxRetries
         this.store.dispatch({
           type: "ITEM_FAILED",
-          payload: {
-            itemId: next.id,
-            error: failure.message,
-            shouldRetry: next.retryCount < next.maxRetries,
-          },
+          payload: { itemId: next.id, error: failure.message, shouldRetry },
         })
+        if (!shouldRetry) {
+          this.settleLine(next.id, { kind: "failed", error: failure })
+        }
       }
     } finally {
       this.inFlight = null
@@ -383,5 +475,39 @@ export class SpeechQueueManager {
       // where the next pump gets scheduled from.
       this.schedulePump()
     }
+  }
+
+  /**
+   * The playing item was stopped. Whoever stopped it recorded why
+   * (`endings`); a "next" line that was only interrupted goes back in the
+   * queue, to play after whatever interrupted it. An abort the session did
+   * not cause (the platform stopping speech by itself) is not something a
+   * line can wait out, so it fails with the platform's error.
+   */
+  private finishAborted(item: SpeechItem, failure: Error): void {
+    const ending = this.endings.get(item.id)
+    this.endings.delete(item.id)
+    const line = this.lines.get(item.id)
+    const requeue =
+      line !== undefined &&
+      ending === "preempted" &&
+      line.urgency === "next" &&
+      !this.muted
+    // Back in the queue before the item stops being current, so the store
+    // never reads as idle in between (`whenIdle`, chat's `isActive`).
+    if (requeue) this.store.dispatch({ type: "REQUEUE", payload: { item } })
+    this.store.dispatch({
+      type: "ITEM_CANCELLED",
+      payload: { itemId: item.id },
+    })
+    if (!line) return
+    if (requeue) {
+      line.onInterrupted?.()
+      return
+    }
+    this.settleLine(
+      item.id,
+      ending ? outcomeOf(ending) : { kind: "failed", error: failure }
+    )
   }
 }

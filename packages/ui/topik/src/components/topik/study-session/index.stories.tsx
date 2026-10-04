@@ -19,7 +19,7 @@ import { KoreanStudyPage } from "."
  * but a Korean lesson is worth hearing.
  */
 const WithSpeech = ({ children }: { children: ReactNode }): JSX.Element => (
-  <SpeechProvider config={{ mode: "static", lang: "ko-KR" }}>
+  <SpeechProvider config={{ mode: "static", language: "korean" }}>
     {children}
   </SpeechProvider>
 )

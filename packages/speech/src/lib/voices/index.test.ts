@@ -4,7 +4,6 @@ import {
   DEFAULT_HOSTED_VOICE,
   hostedVoiceFor,
   isTTSProvider,
-  languageKeyOf,
   parseHostedVoiceChoice,
   TTS_PROVIDERS,
 } from "@speech/lib/voices"
@@ -16,7 +15,7 @@ describe("hostedVoiceFor - the person's choice speaks every line it can", () => 
   it("speaks a line in the chosen voice when the voice speaks its language", () => {
     const voice = hostedVoiceFor(
       { provider: "openai", voiceId: "ko-KR-InJoonNeural" },
-      "ko-KR"
+      "korean"
     )
     expect(voice?.id).toBe("ko-KR-InJoonNeural")
   })
@@ -25,23 +24,23 @@ describe("hostedVoiceFor - the person's choice speaks every line it can", () => 
     // An English Edge voice handed Hangul answers with an HTTP 500.
     const voice = hostedVoiceFor(
       { provider: "openai", voiceId: "onyx" },
-      "ko-KR"
+      "korean"
     )
     expect(voice?.id).toBe("ko-KR-SunHiNeural")
   })
 
   it("gives a line its language's default when nothing is chosen", () => {
     expect(
-      hostedVoiceFor({ provider: "openai", voiceId: null }, "ko")?.id
+      hostedVoiceFor({ provider: "openai", voiceId: null }, "korean")?.id
     ).toBe("ko-KR-SunHiNeural")
     expect(
-      hostedVoiceFor({ provider: "openai", voiceId: null }, "en-US")?.id
+      hostedVoiceFor({ provider: "openai", voiceId: null }, "english")?.id
     ).toBe("onyx")
   })
 
   it("gives no voice, rather than a wrong one, for a language the provider cannot speak", () => {
     expect(
-      hostedVoiceFor({ provider: "google", voiceId: null }, "ko-KR")
+      hostedVoiceFor({ provider: "google", voiceId: null }, "korean")
     ).toBeNull()
   })
 
@@ -66,7 +65,7 @@ describe("DEFAULT_HOSTED_VOICE", () => {
           (candidate) => candidate.id === id
         )
         expect(voice, `${provider}.${key}`).toBeDefined()
-        expect(languageKeyOf(voice?.language ?? "")).toBe(key)
+        expect(voice?.language).toBe(key)
       }
     }
   )
@@ -78,7 +77,7 @@ describe("DEFAULT_HOSTED_VOICE", () => {
         DEFAULT_HOSTED_VOICE[provider]
       for (const voice of BUILTIN_VOICES[provider]) {
         expect(
-          defaults[languageKeyOf(voice.language)],
+          defaults[voice.language],
           `${provider}: ${voice.id}`
         ).toBeDefined()
       }

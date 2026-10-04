@@ -1,4 +1,4 @@
-import type { Speaker } from "@some-ui/speech"
+import type { Speaker, SpeechOutcome } from "@some-ui/speech"
 import type { Meta as MetaObj, StoryObj } from "@storybook/react-vite"
 import { STARTER_DECK } from "@topik/lib/topik/read-aloud/starter"
 
@@ -15,25 +15,27 @@ const noop = (): void => undefined
  */
 const silentVoice: Speaker = {
   available: true,
-  say: (text, options): Promise<void> => {
+  say: (text, options): Promise<SpeechOutcome> => {
     options.onStart?.()
     const syllables = text.match(/[가-힣]/g)?.length ?? 1
-    return new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(resolve, 250 + syllables * 280)
+    return new Promise<SpeechOutcome>((resolve) => {
+      const timer = setTimeout(
+        () => resolve({ kind: "heard" }),
+        250 + syllables * 280
+      )
       options.signal?.addEventListener("abort", () => {
         clearTimeout(timer)
-        reject(new DOMException("aborted", "AbortError"))
+        resolve({ kind: "cancelled" })
       })
     })
   },
   stop: noop,
   muted: false,
-  speaking: false,
   subscribe: () => () => undefined,
   describe: () => ({
     platform: "browser",
     voice: null,
-    speaksLanguage: true,
+    availability: "available",
   }),
 }
 

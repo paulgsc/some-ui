@@ -10,10 +10,17 @@ export type SpeechAction =
         text: string
         options?: TTSOptions
         maxRetries?: number
+        /** Given when the caller tracks the item (a speaker's line). */
+        id?: string
       }
       priority?: number
       key?: string
     }
+  /**
+   * An interrupted item goes back to the front of its priority band, to be
+   * said again from the start once the interruption has played.
+   */
+  | { type: "REQUEUE"; payload: { item: SpeechItem } }
   | { type: "CANCEL"; payload: { componentId?: string; itemId?: string } }
   | { type: "PAUSE" }
   | { type: "RESUME" }
@@ -25,10 +32,6 @@ export type SpeechAction =
       payload: { itemId: string; error: string; shouldRetry: boolean }
     }
   | { type: "ITEM_CANCELLED"; payload: { itemId: string } }
-  /** A line said through the speaker was heard. */
-  | { type: "SAID" }
-  /** A line said through the speaker failed (not cancelled). */
-  | { type: "SAY_FAILED"; payload: { error: string } }
 
 export const generateId = (): string =>
   `speech_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
@@ -38,9 +41,10 @@ export const createSpeechItem = (
   text: string,
   options?: TTSOptions,
   maxRetries = 2,
-  priority = 0
+  priority = 0,
+  id: string = generateId()
 ): SpeechItem => ({
-  id: generateId(),
+  id,
   componentId,
   text,
   options,

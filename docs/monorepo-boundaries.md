@@ -128,6 +128,14 @@ lifetime:
 - **A runtime** beside it, plain TypeScript over ports (the store, the
   recorder, the clock). It owns the handles, runs the effects, decides which
   late result is stale, and has a `dispose()`.
+- **A port translates.** What crosses it is ours: an adapter turns the
+  platform's values (its tags, ids, booleans, errors) into this package's
+  closed types, and nothing past it branches on a raw platform string or a
+  collapsed flag. A translation that collapses states (to a boolean, to
+  `null`) says so where it happens. `@some-ui/speech` is the example: a
+  line's language is `"korean" | "english"`, a platform's tag is read only by
+  `spokenLanguageOf` in an adapter or its transport, and voice availability
+  is four states, not a boolean, so "still loading" never reads as "missing".
 - **The component** reads a snapshot (`useSyncExternalStore`) and dispatches
   events. A hook that subscribes, or an effect that forwards
   `visibilitychange` as an event, is wiring. What the event _means_ is the

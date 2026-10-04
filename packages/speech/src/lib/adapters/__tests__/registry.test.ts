@@ -244,19 +244,21 @@ describe("createSpeechAdapter - default registry", () => {
       },
     })
 
-    await adapter.speak("안녕하세요", { lang: "ko-KR" }).catch(() => undefined)
-    await adapter.speak("hello", { lang: "en-US" }).catch(() => undefined)
+    await adapter
+      .speak("안녕하세요", { language: "korean" })
+      .catch(() => undefined)
+    await adapter.speak("hello", { language: "english" }).catch(() => undefined)
     adapter.dispose()
 
     // InJoon cannot read English, so the English line gets English's
     // declared default rather than Hangul's voice.
     expect(sent).toEqual(["ko-KR-InJoonNeural", "onyx"])
     // And it says so, by name, for whoever is asking what they will hear.
-    expect(adapter.describe("ko-KR")).toEqual({
+    expect(adapter.describe("korean")).toEqual({
       platform: "hosted",
       voice: "In-Joon (Korean Male)",
-      speaksLanguage: true,
+      availability: "available",
     })
-    expect(adapter.describe("en-US").voice).toBe("Onyx")
+    expect(adapter.describe("english").voice).toBe("Onyx")
   })
 })

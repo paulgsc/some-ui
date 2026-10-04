@@ -20,6 +20,7 @@ import type { AudioPlayer, AudioPlayerOptions } from "@speech/lib/engine"
 import { createAudioPlayer } from "@speech/lib/engine"
 import type { FetchImpl, TTSClient } from "@speech/lib/engine/tts-client"
 import { createTTSClient } from "@speech/lib/engine/tts-client"
+import type { SpokenLanguage } from "@speech/lib/language"
 import { createSpeechLedger } from "@speech/lib/promise"
 import {
   createAbortError,
@@ -31,12 +32,12 @@ import type { TTSServiceConfig, VoiceConfig } from "@speech/lib/types/tts-types"
 export type HttpSpeechAdapterOptions = {
   service: TTSServiceConfig
   /**
-   * The voice for a line in `lang` (`hostedVoiceFor` over the person's
+   * The voice for a line in `language` (`hostedVoiceFor` over the person's
    * choice, from the registry). `null` means this service has no voice for
    * that language, and the line fails rather than going to one that cannot
    * read it.
    */
-  voiceFor: (lang: string | undefined) => VoiceConfig | null
+  voiceFor: (language: SpokenLanguage | undefined) => VoiceConfig | null
   fetchImpl?: FetchImpl
   player?: AudioPlayer
   playerOptions?: AudioPlayerOptions
@@ -76,10 +77,10 @@ export function createHttpSpeechAdapter(
     void entry.promise.catch(() => controller.abort())
 
     const run = async (): Promise<void> => {
-      const voice = options.voiceFor(speakOptions.lang)
+      const voice = options.voiceFor(speakOptions.language)
       if (!voice) {
         throw new Error(
-          `${service.provider} has no voice for ${speakOptions.lang ?? "the default language"}`
+          `${service.provider} has no voice for ${speakOptions.language ?? "the default language"}`
         )
       }
 
@@ -119,12 +120,12 @@ export function createHttpSpeechAdapter(
     supported: player.supported,
     // The catalogue is fixed at build time: nothing to announce.
     subscribe: () => () => undefined,
-    describe: (lang): VoiceReport => {
-      const voice = options.voiceFor(lang)
+    describe: (language): VoiceReport => {
+      const voice = options.voiceFor(language)
       return {
         platform: "hosted",
         voice: voice?.name ?? null,
-        speaksLanguage: voice !== null,
+        availability: voice ? "available" : "missing",
       }
     },
     get pending(): number {

@@ -168,9 +168,9 @@ function createRunner(
     utterance = controller
     const asked = now()
     let started: number | null = null
-    speech
+    void speech
       .say(text, {
-        lang: SPOKEN_LANGUAGE,
+        language: SPOKEN_LANGUAGE,
         signal: controller.signal,
         onStart: () => {
           started = now()
@@ -194,9 +194,12 @@ function createRunner(
           render({ state, step, playing, empty })
         },
       })
-      .then(() => {
+      .then((outcome) => {
         if (utterance !== controller) return
         utterance = null
+        // Anything but a heard line leaves the step to its fallback wait,
+        // so the rep still ends (Rem. 4.10).
+        if (outcome.kind !== "heard") return
         const end = now()
         dispatch({
           type: "spoken",
@@ -204,11 +207,6 @@ function createRunner(
           seq,
           heardMs: end - (started ?? asked),
         })
-      })
-      .catch(() => {
-        // Cancellation is an AbortError; a real failure leaves the step to
-        // its fallback wait, so the rep still ends (Rem. 4.10).
-        if (utterance === controller) utterance = null
       })
   }
 

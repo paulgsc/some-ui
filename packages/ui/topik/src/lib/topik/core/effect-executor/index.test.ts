@@ -1,4 +1,4 @@
-import type { SayOptions, Speaker } from "@some-ui/speech"
+import type { SayOptions, Speaker, SpeechOutcome } from "@some-ui/speech"
 import type {
   ConversationBatch,
   ITopikRepository,
@@ -120,22 +120,21 @@ function createFakeSpeaker(): Speaker {
     available: true,
     say: vi.fn((_content: string, options: SayOptions) => {
       options.onStart?.()
-      return Promise.resolve()
+      return Promise.resolve<SpeechOutcome>({ kind: "heard" })
     }),
     stop: vi.fn(),
     muted: false,
-    speaking: false,
     subscribe: () => () => undefined,
     describe: () => ({
       platform: "browser",
       voice: null,
-      speaksLanguage: true,
+      availability: "available",
     }),
   }
 }
 
-const flushAsync = (): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, 0))
+const flushAsync = (): Promise<SpeechOutcome> =>
+  new Promise((resolve) => setTimeout(() => resolve({ kind: "heard" }), 0))
 
 /**
  * `repository` is threaded through EffectExecutorConfig but never read by
@@ -347,7 +346,7 @@ describe("EffectExecutor", () => {
       expect(speaker.say).toHaveBeenCalledWith(
         "hello world",
         expect.objectContaining({
-          lang: "ko-KR",
+          language: "korean",
           onStart: expect.any(Function),
         })
       )
@@ -361,7 +360,7 @@ describe("EffectExecutor", () => {
         muted: true,
         say: vi.fn((_content: string, options: SayOptions) => {
           options.onStart?.()
-          return Promise.reject(new DOMException("muted", "AbortError"))
+          return Promise.resolve<SpeechOutcome>({ kind: "muted" })
         }),
       }
       const onSpeechStopped = vi.fn()
@@ -418,10 +417,17 @@ describe("EffectExecutor", () => {
       expect(speaker.say).not.toHaveBeenCalled()
     })
 
-    it("STOP_AUDIO stops the underlying audio", () => {
+    it("STOP_AUDIO stops the line playing", async () => {
       const state = activeStateWithBatch(makeBatchWithMessage("hello"))
       const machine = createFakeMachine(state)
-      const speaker = createFakeSpeaker()
+      const speaker: Speaker = {
+        ...createFakeSpeaker(),
+        // A line that is still playing when the stop comes.
+        say: vi.fn((_content: string, options: SayOptions) => {
+          options.onStart?.()
+          return new Promise<SpeechOutcome>(() => undefined)
+        }),
+      }
       executor = createEffectExecutor({
         machine,
         repository: fakeRepository,
@@ -431,6 +437,8 @@ describe("EffectExecutor", () => {
         enableTTS: true,
       })
 
+      executor.execute([{ type: "PLAY_AUDIO" }])
+      await flushAsync()
       executor.execute([{ type: "STOP_AUDIO" }])
       expect(speaker.stop).toHaveBeenCalled()
     })
@@ -560,7 +568,7 @@ describe("EffectExecutor", () => {
 
       expect(speaker.say).toHaveBeenCalledWith(
         "manual line",
-        expect.objectContaining({ lang: "ko-KR" })
+        expect.objectContaining({ language: "korean" })
       )
     })
 

@@ -10,10 +10,12 @@ export type {
   SpeechAdapterId,
   SpeechAdapterRegistry,
   SpeechConfig,
+  VoiceAvailability,
   VoiceReport,
 } from "./adapters"
 export * from "./engine"
 export * from "./hooks"
+export * from "./language"
 export * from "./promise"
 export * from "./promise/abort"
 export * from "./queue"

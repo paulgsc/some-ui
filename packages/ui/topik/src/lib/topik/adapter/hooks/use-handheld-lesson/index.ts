@@ -11,6 +11,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import type { Urgency } from "@some-ui/speech"
 import type {
   ConversationBatch,
   Message,
@@ -136,6 +137,7 @@ export type HandheldLessonVM = {
   audio: {
     available: boolean
     speakingId: string | null
+    /** A learner's replay: interrupts whatever is playing. */
     speak: (message: Message) => void
   }
   /**
@@ -409,28 +411,37 @@ export function useHandheldLesson({
     speaker?.stop()
   }, [speaker])
 
-  const speak = useCallback(
-    (message: Message): void => {
+  /**
+   * Says `message`. A line the lesson reaches on its own waits its turn
+   * (`"next"`); a learner's replay is their own action and interrupts
+   * whatever is playing (`"now"`), another applet's line included.
+   */
+  const sayLine = useCallback(
+    (message: Message, urgency: Urgency): void => {
       if (!speaker || !audioAvailable) return
       stopSpeaking()
       const controller = new AbortController()
       utterance.current = controller
-      speaker
+      // Whatever its outcome, the line stays readable: a failed or
+      // cancelled one is the degraded lesson, not a broken one.
+      void speaker
         .say(lineText(message), {
-          lang: SPOKEN_LANGUAGE,
+          language: SPOKEN_LANGUAGE,
+          urgency,
           signal: controller.signal,
           onStart: () => setSpeakingId(message.id),
         })
-        .catch(() => {
-          // Cancellation is an AbortError by the adapter's settlement laws; a
-          // real failure leaves the line readable, which is the degraded lesson.
-        })
-        .finally(() => {
+        .then(() => {
           if (utterance.current === controller) utterance.current = null
           setSpeakingId((id) => (id === message.id ? null : id))
         })
     },
     [speaker, audioAvailable, stopSpeaking]
+  )
+
+  const replay = useCallback(
+    (message: Message): void => sayLine(message, "now"),
+    [sayLine]
   )
 
   // Lines speak themselves once the learner has touched the lesson: a tap is
@@ -449,9 +460,9 @@ export function useHandheldLesson({
 
   useEffect(() => {
     if (!lineMessage || !armed.current) return
-    speak(lineMessage)
+    sayLine(lineMessage, "next")
     return stopSpeaking
-  }, [lineMessage, speak, stopSpeaking])
+  }, [lineMessage, sayLine, stopSpeaking])
 
   useEffect(() => stopSpeaking, [stopSpeaking])
 
@@ -773,7 +784,7 @@ export function useHandheldLesson({
       forget: forgetPasted,
     },
     flag: flagItem ? { flagged: isFlagged, toggle: toggleFlag } : null,
-    audio: { available: audioAvailable, speakingId, speak },
+    audio: { available: audioAvailable, speakingId, speak: replay },
     select,
     leave,
     dispatch,

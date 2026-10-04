@@ -81,17 +81,15 @@ export const ConversationPreview = ({
     utterance.current?.abort()
     const controller = new AbortController()
     utterance.current = controller
-    try {
-      await speech.say(lineText(message), {
-        lang: SPOKEN_LANGUAGE,
-        signal: controller.signal,
-        onStart: () => setSpeakingId(message.id),
-      })
-    } catch {
-      // Cancelled, or speech failed: the line is still there to read.
-    } finally {
-      if (utterance.current === controller) setSpeakingId(null)
-    }
+    // Whatever its outcome (heard, cancelled, failed), the line is still
+    // there to read; all that changes is that it is not being spoken.
+    await speech.say(lineText(message), {
+      language: SPOKEN_LANGUAGE,
+      urgency: "now",
+      signal: controller.signal,
+      onStart: () => setSpeakingId(message.id),
+    })
+    if (utterance.current === controller) setSpeakingId(null)
   }
 
   return (

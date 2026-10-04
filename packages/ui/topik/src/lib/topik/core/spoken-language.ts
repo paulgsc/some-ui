@@ -1,5 +1,7 @@
+import type { SpokenLanguage } from "@some-ui/speech"
+
 /**
- * What every TOPIK line is spoken in, as BCP-47.
+ * What every TOPIK line is spoken in.
  *
  * A line says its language and nothing more. Which voice reads it is the
  * page's speech session's call: the voice the person chose when it speaks
@@ -9,4 +11,4 @@
  * voice answers Hangul with an HTTP 500) but also overrode the person's
  * choice, so a voice picked in Settings never spoke a lesson.
  */
-export const SPOKEN_LANGUAGE = "ko-KR"
+export const SPOKEN_LANGUAGE: SpokenLanguage = "korean"

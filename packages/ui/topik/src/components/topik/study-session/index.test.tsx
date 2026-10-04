@@ -54,7 +54,7 @@ function createSilentAdapter(): SpeechAdapter & { spoken: Array<string> } {
     describe: () => ({
       platform: "browser",
       voice: null,
-      speaksLanguage: true,
+      availability: "available",
     }),
     pause: () => undefined,
     resume: () => undefined,

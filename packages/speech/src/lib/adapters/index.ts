@@ -2,6 +2,7 @@ export type {
   SpeakOptions,
   SpeechAdapter,
   SpeechAdapterId,
+  VoiceAvailability,
   VoiceReport,
 } from "./types"
 export type {

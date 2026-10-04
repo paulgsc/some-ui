@@ -12,7 +12,6 @@ import { useEffect } from "react"
 import type { SpeechAdapterRegistry } from "@speech/lib/adapters"
 import { createWebSpeechAdapter } from "@speech/lib/adapters/web-speech"
 import { useSpeechQueue } from "@speech/lib/hooks"
-import { isAbortError } from "@speech/lib/promise/abort"
 import { peekSpeechQueue, resetSpeechQueue } from "@speech/lib/queue"
 import type { ControllableAdapter } from "@speech/lib/testing"
 import {
@@ -189,11 +188,7 @@ describe("SpeechProvider", () => {
       return (
         <button
           type="button"
-          onClick={() =>
-            void speaker
-              ?.say("direct", { lang: "ko-KR" })
-              .catch(() => undefined)
-          }
+          onClick={() => void speaker?.say("direct", { language: "korean" })}
         >
           speak
         </button>
@@ -216,10 +211,10 @@ describe("SpeechProvider", () => {
     // line carries its language, not a voice.
     expect(adapters).toHaveLength(1)
     expect(adapters[0]?.calls.at(0)?.text).toBe("direct")
-    expect(adapters[0]?.calls.at(0)?.options.lang).toBe("ko-KR")
+    expect(adapters[0]?.calls.at(0)?.options.language).toBe("korean")
   })
 
-  it("keeps a muted session silent, and says so as a cancellation", async () => {
+  it("keeps a muted session silent, and says the line was muted", async () => {
     const { registry, adapters } = trackingRegistry()
     const outcomes: Array<unknown> = []
 
@@ -229,9 +224,9 @@ describe("SpeechProvider", () => {
         <button
           type="button"
           onClick={() =>
-            void speaker?.say("direct", { lang: "ko-KR" }).catch((error) => {
-              outcomes.push(isAbortError(error))
-            })
+            void speaker
+              ?.say("direct", { language: "korean" })
+              .then((outcome) => outcomes.push(outcome))
           }
         >
           speak
@@ -252,7 +247,7 @@ describe("SpeechProvider", () => {
     })
 
     expect(adapters[0]?.calls).toHaveLength(0)
-    expect(outcomes).toEqual([true])
+    expect(outcomes).toEqual([{ kind: "muted" }])
   })
 
   it("is muted before any child can speak, even one that speaks on mount", async () => {
@@ -263,7 +258,7 @@ describe("SpeechProvider", () => {
     const SpeaksOnMount = (): JSX.Element => {
       const speaker = useSpeaker()
       useEffect(() => {
-        void speaker?.say("on mount", { lang: "ko-KR" }).catch(() => undefined)
+        void speaker?.say("on mount", { language: "korean" })
       }, [speaker])
       return <span>mounted</span>
     }
@@ -289,7 +284,7 @@ describe("SpeechProvider", () => {
     })
 
     const Report = (): JSX.Element => {
-      const report = useVoiceReport("ko-KR")
+      const report = useVoiceReport("korean")
       return <span>{report?.voice ?? "no voice"}</span>
     }
 
@@ -349,7 +344,7 @@ describe("SpeechProvider", () => {
     }
 
     const Report = (): JSX.Element => {
-      const report = useVoiceReport("ko-KR")
+      const report = useVoiceReport("korean")
       return <span>{report?.voice ?? "no voice"}</span>
     }
 

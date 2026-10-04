@@ -8,7 +8,7 @@ describe("summarizeLessonVoice", () => {
       summarizeLessonVoice({
         platform: "browser",
         voice: "Google 한국의",
-        speaksLanguage: true,
+        availability: "available",
       })
     ).toEqual({
       label: "Google 한국의 · your browser's own voice",
@@ -24,7 +24,7 @@ describe("summarizeLessonVoice", () => {
       summarizeLessonVoice({
         platform: "phone",
         voice: null,
-        speaksLanguage: true,
+        availability: "available",
       })
     ).toEqual({
       label: "Default voice · this phone's text-to-speech",
@@ -39,7 +39,7 @@ describe("summarizeLessonVoice", () => {
     const summary = summarizeLessonVoice({
       platform: "browser",
       voice: "Samantha",
-      speaksLanguage: false,
+      availability: "missing",
     })
     expect(summary.warning).toBe(true)
     expect(summary.detail).toContain("reads Korean with Samantha")
@@ -49,7 +49,7 @@ describe("summarizeLessonVoice", () => {
     const summary = summarizeLessonVoice({
       platform: "browser",
       voice: null,
-      speaksLanguage: false,
+      availability: "missing",
     })
     expect(summary.warning).toBe(true)
     expect(summary.detail).toContain("offers no voice for Korean")
@@ -59,17 +59,29 @@ describe("summarizeLessonVoice", () => {
     const summary = summarizeLessonVoice({
       platform: "hosted",
       voice: null,
-      speaksLanguage: false,
+      availability: "missing",
     })
     expect(summary.warning).toBe(true)
     expect(summary.fix).toBe("Pick a provider with a Korean voice in Settings.")
+  })
+
+  it("does not warn while a platform has not said yet, or could not say", () => {
+    for (const availability of ["checking", "unverifiable"] as const) {
+      const summary = summarizeLessonVoice({
+        platform: "browser",
+        voice: null,
+        availability,
+      })
+      expect(summary.warning).toBe(false)
+      expect(summary.fix).toBeNull()
+    }
   })
 
   it("warns when the phone has no Korean voice", () => {
     const summary = summarizeLessonVoice({
       platform: "phone",
       voice: null,
-      speaksLanguage: false,
+      availability: "missing",
     })
     expect(summary.warning).toBe(true)
     expect(summary.fix).toBe("Install one from Settings → Voice.")
@@ -80,7 +92,7 @@ describe("the one step that adds a Korean voice, on the device in hand", () => {
   const noKorean = {
     platform: "browser",
     voice: "Samantha",
-    speaksLanguage: false,
+    availability: "missing",
   } as const
 
   it.each([

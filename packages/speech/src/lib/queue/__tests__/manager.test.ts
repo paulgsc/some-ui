@@ -356,75 +356,231 @@ describe("SpeechQueueManager - muting", () => {
 })
 
 describe("SpeechQueueManager - the speaker", () => {
-  it("says a line in its language and resolves once it is heard", async () => {
+  it("says a line in its language, and resolves once it is heard", async () => {
     const { adapter, manager } = setup()
 
-    const said = track(manager.speaker.say("안녕", { lang: "ko-KR" }))
+    const line = manager.speakerFor("a").say("안녕", { language: "korean" })
     await flushAsync()
-    expect(adapter.calls[0]?.options.lang).toBe("ko-KR")
-
+    expect(adapter.calls[0]?.options.language).toBe("korean")
     adapter.finish()
-    await flushAsync()
-    expect(said.state).toBe("resolved")
+
+    expect(await line).toEqual({ kind: "heard" })
   })
 
-  it("keeps a muted session silent: nothing reaches the adapter", async () => {
+  it("refuses a line while muted: nothing reaches the adapter", async () => {
     const { adapter, manager } = setup()
     manager.setMuted(true)
 
-    const said = track(manager.speaker.say("안녕", { lang: "ko-KR" }))
-    await flushAsync()
+    const outcome = await manager
+      .speakerFor("a")
+      .say("안녕", { language: "korean" })
 
+    expect(outcome).toEqual({ kind: "muted" })
     expect(adapter.calls).toHaveLength(0)
-    expect(said.state).toBe("rejected")
-    expect(isAbortError(said.error)).toBe(true)
   })
 
-  it("stops the line playing when the session is muted mid-line", async () => {
+  it("says a line playing, and one waiting, were muted when the session is", async () => {
     const { manager } = setup()
+    const speaker = manager.speakerFor("a")
 
-    const said = track(manager.speaker.say("안녕", { lang: "ko-KR" }))
+    const playing = speaker.say("하나", { language: "korean" })
+    const waiting = speaker.say("둘", { language: "korean" })
     await flushAsync()
     manager.setMuted(true)
-    await flushAsync()
 
-    expect(isAbortError(said.error)).toBe(true)
+    expect(await playing).toEqual({ kind: "muted" })
+    expect(await waiting).toEqual({ kind: "muted" })
   })
 
-  it("feeds a failed line into the session's health, and a heard one clears it", async () => {
+  it("reports a failed line, feeds it into the session's health, and a heard one clears it", async () => {
     const { adapter, manager } = setup()
+    const speaker = manager.speakerFor("a")
 
-    const failed = track(manager.speaker.say("하나", { lang: "ko-KR" }))
+    const failed = speaker.say("하나", { language: "korean" })
     await flushAsync()
     adapter.fail(new Error("tts down"))
-    await flushAsync()
-    expect(failed.state).toBe("rejected")
+    const outcome = await failed
+    expect(outcome.kind).toBe("failed")
     expect(manager.getStore().get().error).toBe("tts down")
 
-    void manager.speaker.say("둘", { lang: "ko-KR" })
+    const heard = speaker.say("둘", { language: "korean" })
     await flushAsync()
     adapter.finish()
-    await flushAsync()
+    await heard
     expect(manager.getStore().get().error).toBeNull()
   })
 
-  it("does not count a cancelled line as a failure", async () => {
-    const { manager } = setup()
+  it("stops only the handle's own lines, and calls that cancelled, not failed", async () => {
+    const { adapter, manager } = setup()
+    const lesson = manager.speakerFor("lesson")
+    const chat = manager.speakerFor("chat")
 
-    const said = track(manager.speaker.say("하나", { lang: "ko-KR" }))
+    const mine = lesson.say("하나", { language: "korean" })
+    const theirs = chat.say("둘", { language: "korean" })
     await flushAsync()
-    manager.speaker.stop()
-    await flushAsync()
-
-    expect(isAbortError(said.error)).toBe(true)
+    lesson.stop()
+    expect(await mine).toEqual({ kind: "cancelled" })
     expect(manager.getStore().get().error).toBeNull()
+
+    await flushAsync()
+    adapter.finish()
+    expect(await theirs).toEqual({ kind: "heard" })
+  })
+
+  it("cancels a line whose signal aborts, playing or waiting", async () => {
+    const { manager } = setup()
+    const speaker = manager.speakerFor("a")
+    const first = new AbortController()
+    const second = new AbortController()
+
+    const playing = speaker.say("하나", {
+      language: "korean",
+      signal: first.signal,
+    })
+    const waiting = speaker.say("둘", {
+      language: "korean",
+      signal: second.signal,
+    })
+    await flushAsync()
+    second.abort()
+    first.abort()
+
+    expect(await waiting).toEqual({ kind: "cancelled" })
+    expect(await playing).toEqual({ kind: "cancelled" })
+  })
+
+  it("lets a 'now' line interrupt a 'next' one, then plays the 'next' one again", async () => {
+    const { adapter, manager } = setup()
+    const interrupted: Array<string> = []
+
+    const lesson = manager.speakerFor("lesson").say("하나", {
+      language: "korean",
+      onInterrupted: () => interrupted.push("lesson"),
+    })
+    await flushAsync()
+    const tap = manager
+      .speakerFor("word")
+      .say("둘", { language: "korean", urgency: "now" })
+    await flushAsync()
+
+    expect(interrupted).toEqual(["lesson"])
+    expect(adapter.calls.map((call) => call.text)).toEqual(["하나", "둘"])
+    adapter.finish()
+    expect(await tap).toEqual({ kind: "heard" })
+
+    // The lesson's line, from the start, after the tap's.
+    await flushAsync()
+    expect(adapter.calls.map((call) => call.text)).toEqual([
+      "하나",
+      "둘",
+      "하나",
+    ])
+    adapter.finish()
+    expect(await lesson).toEqual({ kind: "heard" })
+  })
+
+  it("lets a later 'now' line interrupt an earlier one, which is not replayed", async () => {
+    const { adapter, manager } = setup()
+
+    const first = manager
+      .speakerFor("a")
+      .say("하나", { language: "korean", urgency: "now" })
+    await flushAsync()
+    const second = manager
+      .speakerFor("b")
+      .say("둘", { language: "korean", urgency: "now" })
+
+    expect(await first).toEqual({ kind: "preempted" })
+    await flushAsync()
+    adapter.finish()
+    expect(await second).toEqual({ kind: "heard" })
+    await flushAsync()
+    expect(adapter.calls.map((call) => call.text)).toEqual(["하나", "둘"])
+  })
+
+  it("replays a 'next' line the queue's higher-priority item interrupted", async () => {
+    const { adapter, manager } = setup()
+
+    const lesson = manager
+      .speakerFor("lesson")
+      .say("하나", { language: "korean" })
+    await flushAsync()
+    manager.speak("chat", "hello", undefined, 5)
+    await flushAsync()
+    adapter.finish()
+    await flushAsync()
+    adapter.finish()
+
+    expect(await lesson).toEqual({ kind: "heard" })
+    expect(adapter.calls.map((call) => call.text)).toEqual([
+      "하나",
+      "hello",
+      "하나",
+    ])
+  })
+
+  it("does not replay a line its owner stopped, though something interrupts it in the same moment", async () => {
+    const { adapter, manager } = setup()
+    const lesson = manager.speakerFor("lesson")
+
+    const line = lesson.say("하나", { language: "korean" })
+    await flushAsync()
+    lesson.stop()
+    const tap = manager
+      .speakerFor("word")
+      .say("둘", { language: "korean", urgency: "now" })
+
+    expect(await line).toEqual({ kind: "cancelled" })
+    await flushAsync()
+    adapter.finish()
+    await tap
+    await flushAsync()
+    expect(adapter.calls.map((call) => call.text)).toEqual(["하나", "둘"])
+  })
+
+  it("never reads as idle while an interrupted line waits to be said again", async () => {
+    const { adapter, manager } = setup()
+    const states: Array<string> = []
+    manager.getStore().subscribe(
+      (state) => `${String(state.currentItem !== null)}:${state.items.length}`,
+      (key) => states.push(key)
+    )
+
+    void manager.speakerFor("lesson").say("하나", { language: "korean" })
+    await flushAsync()
+    const tap = new AbortController()
+    void manager
+      .speakerFor("word")
+      .say("둘", { language: "korean", urgency: "now", signal: tap.signal })
+    tap.abort()
+    await flushAsync()
+
+    expect(states).not.toContain("false:0")
+    expect(adapter.calls.map((call) => call.text).at(-1)).toBe("하나")
+  })
+
+  it("ends every line, playing or waiting, when the session ends", async () => {
+    const { manager } = setup()
+    const speaker = manager.speakerFor("a")
+
+    const playing = speaker.say("하나", { language: "korean" })
+    const waiting = speaker.say("둘", { language: "korean" })
+    await flushAsync()
+    manager.dispose()
+
+    expect(await playing).toEqual({ kind: "ended" })
+    expect(await waiting).toEqual({ kind: "ended" })
+    expect(await speaker.say("셋", { language: "korean" })).toEqual({
+      kind: "ended",
+    })
   })
 
   it("tells subscribers when mute changes, and says whether it is muted", () => {
     const { manager } = setup()
+    const speaker = manager.speakerFor("a")
     const seen: Array<boolean> = []
-    const unsubscribe = manager.speaker.subscribe(() => {
-      seen.push(manager.speaker.muted)
+    const unsubscribe = speaker.subscribe(() => {
+      seen.push(speaker.muted)
     })
 
     manager.setMuted(true)
@@ -434,51 +590,5 @@ describe("SpeechQueueManager - the speaker", () => {
     manager.setMuted(true)
 
     expect(seen).toEqual([true, false])
-  })
-
-  it("says it is speaking while a line or the queue's item plays, and tells when it stops", async () => {
-    const { adapter, manager } = setup()
-    const seen: Array<boolean> = []
-    manager.speaker.subscribe(() => {
-      seen.push(manager.speaker.speaking)
-    })
-
-    expect(manager.speaker.speaking).toBe(false)
-    void manager.speaker.say("하나", { lang: "ko-KR" })
-    expect(manager.speaker.speaking).toBe(true)
-    await flushAsync()
-    adapter.finish()
-    await flushAsync()
-    expect(manager.speaker.speaking).toBe(false)
-
-    manager.speak("chat", "둘")
-    await flushAsync()
-    expect(manager.speaker.speaking).toBe(true)
-    adapter.finish()
-    await flushAsync()
-    expect(manager.speaker.speaking).toBe(false)
-
-    expect(seen).toEqual([true, false, true, false])
-  })
-
-  it("is still speaking when one applet's line cuts off another's", async () => {
-    const { adapter, manager } = setup()
-
-    // The browser and phone adapters cancel the line playing when a new one
-    // starts; this adapter queues them, so the cut is the first's signal.
-    const cut = new AbortController()
-    const first = track(
-      manager.speaker.say("하나", { lang: "ko-KR", signal: cut.signal })
-    )
-    await flushAsync()
-    void manager.speaker.say("둘", { lang: "ko-KR" })
-    cut.abort()
-    await flushAsync()
-
-    expect(isAbortError(first.error)).toBe(true)
-    expect(manager.speaker.speaking).toBe(true)
-    adapter.finish()
-    await flushAsync()
-    expect(manager.speaker.speaking).toBe(false)
   })
 })

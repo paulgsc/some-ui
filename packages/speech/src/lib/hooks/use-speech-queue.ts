@@ -8,7 +8,7 @@
  * store), which is how `packages/ui/umag` ended up reaching through the
  * queue into the TTS hook to read `voices` - a consumer holding the exact
  * detail this workspace exists to own. It has no voices at all now: an
- * item names its language (`TTSOptions.lang`), and the session picks the
+ * item names its language (`TTSOptions.language`), and the session picks the
  * voice (`lib/voices`).
  */
 

@@ -23,18 +23,48 @@ one (`packages/ui/interview`, `packages/ui/honeycomb`).
 
 ```tsx
 // An applet, anywhere below it: a line in a language, never a voice.
-const speaker = useSpeaker() // null without a provider: run silently
-await speaker?.say("안녕하세요", { lang: "ko-KR" })
+const speaker = useSpeaker() // this component's handle; null without a provider
+const outcome = await speaker?.say("안녕하세요", { language: "korean" })
+// { kind: "heard" | "muted" | "preempted" | "cancelled" | "failed" | "ended" }
 ```
 
-The `Speaker` (`lib/speaker`) is all an applet gets. It cannot name a voice
-and cannot reach the adapter, because the session owns what a person decides
-about speech: **which voice** (their choice in Settings speaks every line in
-its language) and **whether it is muted** (a muted session says nothing, and
-`say` rejects as a cancellation). TOPIK once held the adapter instead, named
-"the first Korean voice" on every line and called the adapter directly, so a
-chosen voice never spoke a lesson and mute stopped only the line already
-playing. Queued speech (`useSpeechQueue`) goes through the same session.
+### One writer
+
+The session is the only thing that writes to the page's voice. An adapter
+plays one line at a time and a new line cancels the one playing, so applets
+writing to it directly could never tell why their line stopped, and had to
+guess from shared state read afterwards. Instead each component gets its
+own `Speaker` handle (`lib/speaker`), and every line, from every applet and
+from the queue (`useSpeechQueue`), goes through the session's one queue:
+
+- A line says its **urgency**. `"now"` (a tapped word, a replay button)
+  interrupts what is playing; `"next"` (a lesson's next line) waits its
+  turn, and if a `"now"` line interrupts it the session says it again
+  afterwards.
+- `say` resolves with the line's **outcome** and never rejects, so an applet
+  switches on what happened instead of inferring it from an `AbortError`.
+- A handle's `stop` cancels **its own lines only**.
+
+What is shared is only read: whether the person muted, and who would speak a
+language (`describe`, with `subscribe` to hear when either changes).
+
+A handle cannot name a voice or reach the adapter either, because the
+session owns what a person decides about speech: **which voice** (their
+choice in Settings speaks every line in its language) and **whether it is
+muted**. TOPIK once held the adapter, named "the first Korean voice" on
+every line and called the adapter directly, so a chosen voice never spoke a
+lesson and mute stopped only the line already playing.
+
+### Our languages, their tags
+
+A line's language is a `SpokenLanguage` (`lib/language`): a closed union of
+the languages this site speaks, not a tag. Platforms name languages with tags
+whose shapes are theirs (`ko-KR`, `ko_KR`, `kor`), and only an adapter ever
+reads one, through `spokenLanguageOf`, which answers with one of ours or
+`null`. Likewise `describe` reports `availability` as one of four states
+(`available`, `missing`, `checking`, `unverifiable`) rather than a boolean, so
+"the browser has not loaded its voices yet" is not shown as "no Korean
+voice".
 
 Nothing there names a backend, a host, a port, or an API key. The
 `mode` — the same `"static" | "server"` bit `@some-ui/fetch-kit` uses for
