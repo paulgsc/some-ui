@@ -92,6 +92,18 @@ type ArtifactSwitcherProps = {
    * `RoundChoices`) survives the move. An id not in `artifacts` is ignored.
    */
   focusId?: ArtifactId
+  /**
+   * A control beside the tabs (or the narrow header's label), given the
+   * artifact showing now: `RoundSession`'s Note button (canon Rem. 3.7),
+   * which raises a note on whatever is current. Rendered once, outside the
+   * tab list, so it is never one of the tabs.
+   */
+  renderHeaderAction?: (current: SwitchableArtifact) => ReactNode
+  /**
+   * Content between the header and the pager, such as the open note: it
+   * pushes the artifact down rather than covering it.
+   */
+  headerPanel?: ReactNode
   className?: string
 }
 
@@ -234,6 +246,8 @@ export const ArtifactSwitcher: FC<ArtifactSwitcherProps> = ({
   roundId,
   ariaLabel,
   focusId,
+  renderHeaderAction,
+  headerPanel,
   className,
 }) => {
   const announceLabel = ariaLabel ?? "Round artifact"
@@ -399,85 +413,99 @@ export const ArtifactSwitcher: FC<ArtifactSwitcherProps> = ({
 
   return (
     <div className={cn("flex w-full min-w-0 flex-col", className)}>
-      {artifacts.length > 1 && (
-        <div
-          ref={tabListRef}
-          role="tablist"
-          aria-label={announceLabel}
-          className="flex shrink-0 gap-1 overflow-x-auto overflow-y-hidden border-b border-border/60 [scrollbar-width:none] md:hidden [&::-webkit-scrollbar]:hidden"
-        >
-          {artifacts.map((artifact, position) => {
-            const selected = position === index
-            return (
-              <button
-                key={artifact.id}
-                id={tabId(artifact)}
-                type="button"
-                role="tab"
-                aria-selected={selected}
-                aria-controls={panelId(artifact)}
-                tabIndex={selected ? 0 : -1}
-                onClick={() => goTo(position)}
-                onKeyDown={handleTabKeyDown}
-                className={cn(
-                  "-mb-px min-h-11 shrink-0 whitespace-nowrap border-b-2 px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-                  selected
-                    ? "border-foreground text-foreground"
-                    : "border-transparent text-muted-foreground"
-                )}
-              >
-                {artifact.label}
-              </button>
-            )
-          })}
-        </div>
-      )}
-
-      <div
-        className={cn(
-          "hidden items-center justify-between gap-2 md:flex",
-          artifacts.length === 1 && "flex"
-        )}
-      >
-        <button
-          type="button"
-          aria-label={previousLabel}
-          disabled={index === 0}
-          onClick={() => goTo(index - 1)}
-          className="flex size-8 shrink-0 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-30 enabled:hover:bg-card/70 enabled:hover:text-foreground"
-        >
-          <ChevronLeft className="size-4" aria-hidden="true" />
-        </button>
-
-        <div className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
-          <span className="max-w-full truncate text-xs font-medium text-muted-foreground">
-            {current.label}
-          </span>
-          {artifacts.length > 1 && (
-            <span aria-hidden="true" className="flex items-center gap-1.5">
-              {artifacts.map((artifact) => (
-                <span
+      <div className="flex min-w-0 shrink-0 items-stretch">
+        {artifacts.length > 1 && (
+          <div
+            ref={tabListRef}
+            role="tablist"
+            aria-label={announceLabel}
+            className="flex min-w-0 flex-1 shrink-0 gap-1 overflow-x-auto overflow-y-hidden border-b border-border/60 [scrollbar-width:none] md:hidden [&::-webkit-scrollbar]:hidden"
+          >
+            {artifacts.map((artifact, position) => {
+              const selected = position === index
+              return (
+                <button
                   key={artifact.id}
+                  id={tabId(artifact)}
+                  type="button"
+                  role="tab"
+                  aria-selected={selected}
+                  aria-controls={panelId(artifact)}
+                  tabIndex={selected ? 0 : -1}
+                  onClick={() => goTo(position)}
+                  onKeyDown={handleTabKeyDown}
                   className={cn(
-                    "size-1.5 shrink-0 rounded-full",
-                    artifact.id === current.id ? "bg-foreground" : "bg-border"
+                    "-mb-px min-h-11 shrink-0 whitespace-nowrap border-b-2 px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+                    selected
+                      ? "border-foreground text-foreground"
+                      : "border-transparent text-muted-foreground"
                   )}
-                />
-              ))}
-            </span>
-          )}
-        </div>
+                >
+                  {artifact.label}
+                </button>
+              )
+            })}
+          </div>
+        )}
 
-        <button
-          type="button"
-          aria-label={nextLabel}
-          disabled={index === artifacts.length - 1}
-          onClick={() => goTo(index + 1)}
-          className="flex size-8 shrink-0 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-30 enabled:hover:bg-card/70 enabled:hover:text-foreground"
+        <div
+          className={cn(
+            "hidden min-w-0 flex-1 items-center justify-between gap-2 md:flex",
+            artifacts.length === 1 && "flex"
+          )}
         >
-          <ChevronRight className="size-4" aria-hidden="true" />
-        </button>
+          <button
+            type="button"
+            aria-label={previousLabel}
+            disabled={index === 0}
+            onClick={() => goTo(index - 1)}
+            className="flex size-8 shrink-0 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-30 enabled:hover:bg-card/70 enabled:hover:text-foreground"
+          >
+            <ChevronLeft className="size-4" aria-hidden="true" />
+          </button>
+
+          <div className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+            <span className="max-w-full truncate text-xs font-medium text-muted-foreground">
+              {current.label}
+            </span>
+            {artifacts.length > 1 && (
+              <span aria-hidden="true" className="flex items-center gap-1.5">
+                {artifacts.map((artifact) => (
+                  <span
+                    key={artifact.id}
+                    className={cn(
+                      "size-1.5 shrink-0 rounded-full",
+                      artifact.id === current.id ? "bg-foreground" : "bg-border"
+                    )}
+                  />
+                ))}
+              </span>
+            )}
+          </div>
+
+          <button
+            type="button"
+            aria-label={nextLabel}
+            disabled={index === artifacts.length - 1}
+            onClick={() => goTo(index + 1)}
+            className="flex size-8 shrink-0 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-30 enabled:hover:bg-card/70 enabled:hover:text-foreground"
+          >
+            <ChevronRight className="size-4" aria-hidden="true" />
+          </button>
+        </div>
+        {renderHeaderAction !== undefined && (
+          <div
+            className={cn(
+              "flex shrink-0 items-center pl-1",
+              artifacts.length > 1 && "border-b border-border/60 md:border-b-0"
+            )}
+          >
+            {renderHeaderAction(current)}
+          </div>
+        )}
       </div>
+
+      {headerPanel}
 
       {/* Which artifact is current, and where, said in words for a screen
           reader — `aria-live="polite"` so a swipe or a press is announced

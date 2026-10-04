@@ -13,7 +13,12 @@
          of these, which Android grants only if the manifest declares them.
          RECORD_AUDIO is the runtime prompt the person sees, the first time
          they tap to talk; MODIFY_AUDIO_SETTINGS (install-time, no prompt) is
-         what the WebView's audio capture needs to route the microphone. -->
+         what the WebView's audio capture needs to route the microphone.
+         RECORD_AUDIO is also what LeetType's spoken margin notes need:
+         @capacitor-community/speech-recognition hands the phone's
+         SpeechRecognizer the microphone (www src/lib/dictation), and its own
+         manifest declares the permission and a <queries> entry for
+         android.speech.RecognitionService. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 

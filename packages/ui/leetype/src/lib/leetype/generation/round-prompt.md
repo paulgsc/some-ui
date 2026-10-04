@@ -166,6 +166,18 @@ The request at the end of this prompt gives:
 - **Members:** how many members `D` has (default 3).
 - **Recent rounds:** optional, rounds the learner has played. Do not reuse
   their programs, and prefer a different focus unless asked.
+- **Learner notes:** optional, what the learner said while playing, each on
+  one part of a round (the program, the bounds, the budget, the rewrites,
+  the proposition question, the runs). Write this round against them, and
+  never mention them in the round itself:
+  - _could not tell what was being asked_: the fault is the round's wording,
+    not the learner. Use plainer names, a shorter `A`, and a
+    `distractorStatement` that says in everyday words what the rewrite does.
+  - _did not know this_: a gap. Prefer a focus that approaches it from a
+    simpler premise, rather than repeating the same one.
+  - _thinks this is wrong_: the learner may be right. Take extra care with
+    the part they named, and run the **Self-check** on it twice.
+  - _noted_: anything else; use it if it helps.
 
 ---
 

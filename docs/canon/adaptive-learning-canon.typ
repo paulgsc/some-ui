@@ -1034,6 +1034,54 @@ before it can update a belief about $mu$ (Prop. 9.1).
   nor pay them anything (Prop. 6.4 (ii)).
 ]
 
+#remark("3.7", name: "A margin note")[
+  A surface that shows one artifact at a time (a round's program, its bounds,
+  its rewrites, its question) accepts a *margin note* on whichever artifact
+  is showing, at any moment, before or after the learner commits. A note is a
+  tuple $(c, x, kappa, a, t)$: the content $c$ it was raised on, the artifact
+  $x$ of $c$ that was showing (with the member of $D$ the learner had picked,
+  if any), a kind $kappa$, optional free text $a$, and the time $t$. The kinds
+  separate the two reasons a learner stops, which this canon otherwise cannot
+  tell apart: *unclear*, the learner cannot tell what is being asked; *gap*,
+  they understand the question and do not know the answer; *wrong*, they
+  think the artifact itself is mistaken (Rem. 3.4's dispute, raised on an
+  artifact rather than an answered item); and *thought*, anything else. The
+  kind alone is a complete note. Free text may be typed or spoken.
+
+  A margin note is the learner's word about themselves or about the teaching,
+  made in the moment and checked by nothing. Like the stuck report of
+  Remark 3.6 it carries no outcome, so it is not an observation (Def. 3.1),
+  and its object is one artifact rather than the unit, so it is not an
+  evaluation report (Def. 3.3). Proposition 3.4's argument applies unchanged:
+  *gap* is consistent with low $mu$, with fatigue, and with a presentation
+  the learner could not parse, and the note carries nothing that separates
+  them. So no belief update consumes a note, and neither does the draw of the
+  next unit. What a note may do is what Remark 3.3 allows an evaluation
+  report: it is input to content generation, carried in the prompt the
+  learner copies to their own model (Def. 8.3), and it is the learner's own
+  record of what the teaching made hard, for whoever revises that teaching.
+  A note neither costs nor pays the learner anything (Prop. 6.4 (ii)), and
+  no surface shows a count of them.
+
+  Notes are a record outside the envelope (Rem. 7.5), bounded on their own:
+  at most thirty are kept, the most recent; each expires after thirty days;
+  and free text is cut at five hundred characters. Unlike an evaluation
+  report's (Rem. 7.4), a note's free text is not deleted once a prompt has
+  carried it, because it has a second reader, the learner reviewing their
+  own record; the cap and the expiry bound it instead. Notes stay on the
+  device (Rem. 7.3), are never sent by the application, and losing them
+  costs the learner their notes and nothing else (Thm. 7.2), so a write that
+  fails is swallowed (Prop. 7.2).
+
+  A spoken note is persisted as its transcript; the audio is never written
+  anywhere. The transcript is made by the speech recognizer the platform
+  provides (the browser's, or the phone's), which may send the audio to its
+  vendor to recognize it. That is a departure from Remark 7.3 that this
+  application does not make itself and cannot prevent, so a surface that
+  offers speech says, before the learner first speaks, that the platform
+  recognizes it, and typing remains available everywhere speech is.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = The Exercise: Instrument and Intervention
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3361,6 +3409,19 @@ the application's account feature had been sending behaviour to the server,
 and uploading a browser's sessions to whichever account signed in first,
 without this canon admitting either. Filed with `apps/www/src/lib/authority`
 and `docs/learner-data-authority.md`, which implement and declare it.
+
+*v1.12 --- 2026-10-03.* Defines the margin note (Remark 3.7): a report the
+learner can raise on whichever artifact of a unit is showing, in one of four
+kinds (*unclear*, *gap*, *wrong*, *thought*) with optional typed or spoken
+free text. It is neither an observation nor an evaluation report, enters no
+belief update and no draw, and reaches the learner's own model through the
+generation prompt. Kept on the device, at most thirty for thirty days; a
+spoken note is kept as its transcript only, and the platform recognizer that
+makes the transcript is disclosed before the first use. Motivated by play on
+the phone round surface, where every artifact was a place to get stuck and
+the canon could not tell "I do not know this" from "I cannot tell what this
+asks". Filed with `packages/ui/leetype`'s `lib/leetype/notes`, which
+implements it.
 
 #pagebreak()
 

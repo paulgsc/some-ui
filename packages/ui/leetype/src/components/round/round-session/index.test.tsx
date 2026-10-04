@@ -7,6 +7,9 @@ import type { Observation } from "@leetype/lib/leetype/ledger/observation"
 import { observationsOfCommitment } from "@leetype/lib/leetype/ledger/observation"
 import { LEDGER_STATE_COPY } from "@leetype/lib/leetype/ledger/state"
 import type { LedgerStore } from "@leetype/lib/leetype/ledger/store"
+import type { RoundNote } from "@leetype/lib/leetype/notes"
+import type { Dictation, Listening } from "@leetype/lib/leetype/notes/dictation"
+import type { NoteStore } from "@leetype/lib/leetype/notes/store"
 import type { PastedRoundStore } from "@leetype/lib/leetype/pasted-round"
 import { PROPOSITION_REGISTER } from "@leetype/lib/leetype/proposition-register/generated"
 import type { PropositionId } from "@leetype/lib/leetype/proposition-register/generated"
@@ -450,6 +453,265 @@ describe("RoundSession", () => {
         "No rounds are available right now. You can make your own."
       )
     ).toBeInTheDocument()
+  })
+})
+
+/** A note store in memory, kept in insertion order. */
+function memoryNoteStore(): NoteStore & { notes: Map<string, RoundNote> } {
+  const notes = new Map<string, RoundNote>()
+  return {
+    notes,
+    list: (): Array<RoundNote> => [...notes.values()].reverse(),
+    put: (note): void => {
+      notes.set(note.id, note)
+    },
+    remove: (id): void => {
+      notes.delete(id)
+    },
+  }
+}
+
+/** A phone recognizer that hears `words` once its utterance is stopped. */
+function hearing(words: string): Dictation {
+  return {
+    recognizer: "phone",
+    listen(onHeard): Listening {
+      let finish: (text: string) => void = () => undefined
+      const done = new Promise<string>((resolve) => {
+        finish = resolve
+      })
+      onHeard(words)
+      return { done, stop: (): void => finish(words), cancel: () => undefined }
+    },
+  }
+}
+
+describe("RoundSession — margin notes (canon Rem. 3.7)", () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it("saves a note on whatever is showing with one tap, and files nothing in the ledger", () => {
+    const notes = memoryNoteStore()
+    const ledger = memoryLedgerStore()
+    render(
+      <RoundSession
+        rounds={[COUNT_PRESENT]}
+        sessionSeed={3}
+        pastedStore={memoryStore()}
+        ledgerStore={ledger}
+        noteStore={notes}
+        dictation={null}
+      />
+    )
+    goTo("Rewrites")
+    chooseRewriteContaining("binary_search")
+    // Choosing a rewrite brings the question into view; go back to it.
+    fireEvent.click(screen.getByRole("tab", { name: "Rewrites" }))
+    fireEvent.click(screen.getByRole("button", { name: "Note on Rewrites" }))
+    fireEvent.click(
+      screen.getByRole("button", { name: "Not sure what it's asking" })
+    )
+
+    const [note] = [...notes.notes.values()]
+    expect(note).toMatchObject({
+      kind: "unclear",
+      text: "",
+      anchor: {
+        roundId: COUNT_PRESENT.id,
+        own: false,
+        artifact: "diffSet",
+        committed: false,
+      },
+    })
+    expect(note?.anchor.picked).not.toBeNull()
+    // Prop. 3.4: a note is not evidence.
+    expect(ledger.held()).toEqual(EMPTY_LEDGER)
+
+    fireEvent.change(screen.getByLabelText("Add words to the note"), {
+      target: { value: "which bound is new? " },
+    })
+    expect(notes.notes.get(note!.id)?.text).toBe("which bound is new?")
+    fireEvent.click(screen.getByRole("button", { name: "Done" }))
+    expect(
+      screen.queryByLabelText("Add words to the note")
+    ).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: "Note on Rewrites" }))
+    fireEvent.click(screen.getByRole("button", { name: "I don't know this" }))
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }))
+    expect(notes.notes.size).toBe(1)
+  })
+
+  it("offers speech where there is a recognizer, says whose it is, and keeps the words", async () => {
+    const notes = memoryNoteStore()
+    render(
+      <RoundSession
+        rounds={[COUNT_PRESENT]}
+        sessionSeed={3}
+        pastedStore={memoryStore()}
+        noteStore={notes}
+        dictation={hearing("the budget is per test case")}
+      />
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Note on Program" }))
+    fireEvent.click(screen.getByRole("button", { name: "Just a thought" }))
+    expect(screen.getByText(/Your phone's speech service/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Speak" }))
+    expect(screen.getByLabelText("Add words to the note")).toHaveValue(
+      "the budget is per test case"
+    )
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Done" }))
+      await Promise.resolve()
+    })
+    expect([...notes.notes.values()][0]).toMatchObject({
+      text: "the budget is per test case",
+      spoken: true,
+      anchor: { artifact: "algorithm" },
+    })
+  })
+
+  it("keeps Make your own unavailable while a spoken note is still being turned into text", async () => {
+    const notes = memoryNoteStore()
+    render(
+      <RoundSession
+        rounds={[COUNT_PRESENT]}
+        sessionSeed={3}
+        pastedStore={memoryStore()}
+        noteStore={notes}
+        dictation={hearing("which bound grew")}
+      />
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Note on Program" }))
+    fireEvent.click(screen.getByRole("button", { name: "I don't know this" }))
+    fireEvent.click(screen.getByRole("button", { name: "Speak" }))
+    // The generator would hide Stop and Done, and read the notes too early.
+    expect(screen.getByRole("button", { name: /Make your own/ })).toBeDisabled()
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Done" }))
+      await Promise.resolve()
+    })
+    expect([...notes.notes.values()][0]).toMatchObject({
+      text: "which bound grew",
+      spoken: true,
+    })
+    expect(screen.getByRole("button", { name: /Make your own/ })).toBeEnabled()
+  })
+
+  it("puts focus back on the Note button after Done, and leaves it alone when a control elsewhere closed the note", () => {
+    render(
+      <RoundSession
+        rounds={[COUNT_PRESENT]}
+        sessionSeed={3}
+        pastedStore={memoryStore()}
+        noteStore={memoryNoteStore()}
+        dictation={null}
+      />
+    )
+    const press = (element: HTMLElement): void => {
+      fireEvent.pointerDown(element)
+      fireEvent.click(element)
+    }
+    press(screen.getByRole("button", { name: "Note on Program" }))
+    press(screen.getByRole("button", { name: "Just a thought" }))
+    // The chip is gone; focus is on the panel, not lost and not the textarea.
+    expect(document.activeElement).toBe(
+      screen.getByRole("region", { name: "Note on the program" })
+    )
+    press(screen.getByRole("button", { name: "Done" }))
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Note on Program" })
+    )
+
+    // A close caused from outside the panel (the generator's own button):
+    // focus stays where it is.
+    screen.getByRole("button", { name: "Note on Program" }).blur()
+    press(screen.getByRole("button", { name: "Note on Program" }))
+    press(screen.getByRole("button", { name: "I don't know this" }))
+    press(screen.getByRole("button", { name: /Make your own/ }))
+    // The generator hides the round, the Note button with it.
+    expect(document.activeElement).not.toBe(
+      screen.getByRole("button", { name: "Note on Program", hidden: true })
+    )
+  })
+
+  it("offers no microphone where there is no recognizer", () => {
+    render(
+      <RoundSession
+        rounds={[COUNT_PRESENT]}
+        sessionSeed={3}
+        pastedStore={memoryStore()}
+        noteStore={memoryNoteStore()}
+        dictation={null}
+      />
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Note on Program" }))
+    fireEvent.click(screen.getByRole("button", { name: "This looks wrong" }))
+    expect(
+      screen.queryByRole("button", { name: "Speak" })
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText(/speech service/)).not.toBeInTheDocument()
+  })
+
+  it("carries the notes into the prompt the learner copies to their model", () => {
+    render(
+      <RoundSession
+        rounds={[COUNT_PRESENT]}
+        sessionSeed={3}
+        pastedStore={memoryStore()}
+        noteStore={memoryNoteStore()}
+        dictation={null}
+      />
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Note on Program" }))
+    fireEvent.click(screen.getByRole("button", { name: "I don't know this" }))
+    fireEvent.click(screen.getByRole("button", { name: "Done" }))
+    fireEvent.click(screen.getByRole("button", { name: /Make your own/ }))
+    fireEvent.click(screen.getByRole("button", { name: /Copy the prompt/ }))
+    // jsdom has no clipboard, so the generator shows the prompt to copy by hand.
+    return screen
+      .findByText(/Learner notes \(newest first\)/, { exact: false })
+      .then((node) => {
+        expect(node.textContent).toContain(
+          `On the program of round \`${COUNT_PRESENT.id}\`, before answering, the learner did not know this`
+        )
+      })
+  })
+
+  it("lists the session's notes on the session-complete screen", () => {
+    vi.useFakeTimers({
+      toFake: ["setInterval", "clearInterval", "performance"],
+    })
+    try {
+      render(
+        <RoundSession
+          rounds={[COUNT_PRESENT]}
+          sessionSeed={3}
+          sessionDurationMs={1000}
+          pastedStore={memoryStore()}
+          noteStore={memoryNoteStore()}
+          dictation={null}
+        />
+      )
+      fireEvent.click(screen.getByRole("button", { name: "Note on Program" }))
+      fireEvent.click(
+        screen.getByRole("button", { name: "Not sure what it's asking" })
+      )
+      fireEvent.change(screen.getByLabelText("Add words to the note"), {
+        target: { value: "what is n here?" },
+      })
+      act(() => {
+        vi.advanceTimersByTime(1250)
+      })
+      const notes = screen.getByRole("region", { name: "Your notes" })
+      expect(
+        within(notes).getByText("Not sure what it's asking")
+      ).toBeInTheDocument()
+      expect(within(notes).getByText("what is n here?")).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 
