@@ -13,7 +13,7 @@ export type {
   SpeechAdapterRegistry,
   SpeechConfig,
 } from "./registry"
-export { createSpeechAdapter, resolveSpeechConfig } from "./registry"
+export { createSpeechAdapter } from "./registry"
 export type {
   NativeSpeechEngine,
   NativeSpeechRequest,

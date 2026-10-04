@@ -16,7 +16,13 @@ one (`packages/ui/interview`, `packages/ui/honeycomb`).
 
 ```tsx
 // The app: one session, configured by deployment, at the root.
-<SpeechProvider config={{ mode: DATA_MODE, endpoint: resolveTTSEndpoint() }}>
+<SpeechProvider
+  config={{
+    mode: DATA_MODE,
+    endpoint: resolveTTSEndpoint(),
+    adapters: { server: httpSpeech, static: webSpeech },
+  }}
+>
   <App />
 </SpeechProvider>
 ```
@@ -98,9 +104,12 @@ in every build whether it runs there or not: the Android app passes only
 browser's synthesizer (`apps/www/build.paths.ts` checks it).
 `src/entries.test.ts` fails if the main entry, or one backend's entry,
 reaches another backend's code at runtime, which would move that code into a
-chunk every build loads. What an entry exports is an inert token only the
-session can turn into an adapter (`lib/adapters/backend.ts`), so an applet
-that imports one still cannot speak outside the session. `config.adapters`
+chunk every build loads. The backend each entry exports is an inert token
+only the session can turn into an adapter (`lib/adapters/backend.ts`), so an
+applet holding one still cannot build an adapter. The HTTP entry also carries
+the HTTP engine's own primitives (`createTTSClient`, `createAudioPlayer` and
+their hooks), which play audio directly; they are there for the HTTP backend,
+not for applets, as they were when the main entry exported them. `config.adapters`
 also takes a factory of the caller's own (a test fake, a future backend),
 `config.mode` pins the choice, and every knob a backend reads — endpoint,
 key, hosted voice, format, timeout — is a config field. If the resolved

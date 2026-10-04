@@ -95,7 +95,7 @@ export type NativeSpeechBackend = {
 }
 
 /** Everything a factory needs: the config, with the mode decided. */
-export type ResolvedSpeechConfig = SpeechConfig & {
+type ResolvedSpeechConfig = SpeechConfig & {
   mode: RuntimeMode
 }
 
@@ -110,12 +110,6 @@ export type SpeechAdapterRegistry = Readonly<
 const OTHER_MODE: Readonly<Record<RuntimeMode, RuntimeMode>> = {
   server: "static",
   static: "server",
-}
-
-export function resolveSpeechConfig(
-  config: SpeechConfig
-): ResolvedSpeechConfig {
-  return { ...config, mode: resolveRuntimeMode(config) }
 }
 
 function buildAdapter(
@@ -134,7 +128,10 @@ function buildAdapter(
  * is false and whose `speak()` rejects honestly.
  */
 export function createSpeechAdapter(config: SpeechConfig): SpeechAdapter {
-  const resolved = resolveSpeechConfig(config)
+  const resolved: ResolvedSpeechConfig = {
+    ...config,
+    mode: resolveRuntimeMode(config),
+  }
   const fallbackMode = OTHER_MODE[resolved.mode]
 
   const primary = buildAdapter(resolved, resolved.mode)

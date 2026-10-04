@@ -166,6 +166,16 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       ],
       why: "the Android app answers file_host, speaks, nudges and takes dictation through these; a build without one is an APK that installs and then fails",
     },
+    // Also what keeps the web-voices rule in `exclusive` from passing by
+    // matching nothing, should the speech dist layout move.
+    ...(["lan", "pages"] as const).map((profile) => ({
+      profile,
+      modules: [
+        `${SPEECH_ENTRY}/http.es.js`,
+        `${SPEECH_ENTRY}/web-speech.es.js`,
+      ],
+      why: "the web builds speak through these (src/providers/tts.tsx); a build without them is silent",
+    })),
   ],
   // Every profile builds one route tree, shared by design until now
   // (AUDIENCES.md, "Build audiences"): a route off a profile's path ships

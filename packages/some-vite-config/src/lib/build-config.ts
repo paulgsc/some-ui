@@ -42,6 +42,14 @@ export function libraryEntries(
   options: ViteConfigOptions
 ): Array<LibraryEntry> {
   const { packageName, entry = DEFAULT_ENTRY, entries = {} } = options
+  const bundled = (options.formats ?? DEFAULT_FORMATS).filter(
+    (format) => format === "umd" || format === "iife"
+  )
+  if (Object.keys(entries).length > 0 && bundled.length > 0) {
+    throw new Error(
+      `[some-ui:entries] ${packageName}: a ${bundled.join("/")} build has one entry, so it cannot carry \`entries\`. Build "es" (or "cjs") instead.`
+    )
+  }
   return [
     { subpath: ".", outputName: packageName, source: entry },
     ...Object.entries(entries).map(([name, source]) => {

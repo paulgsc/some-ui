@@ -19,13 +19,19 @@ const SRC = dirname(new URL(import.meta.url).pathname)
 
 const CANDIDATES = ["", ".ts", ".tsx", "/index.ts", "/index.tsx"]
 
+const PACKAGE = "@some-ui/speech"
+
 /** A source file for an import of this package's own code, or null. */
 function resolveImport(from: string, specifier: string): string | null {
-  const base = specifier.startsWith("@speech/")
-    ? join(SRC, specifier.slice("@speech/".length))
-    : specifier.startsWith(".")
-      ? join(dirname(from), specifier)
-      : null
+  // The package naming itself goes to the entry's source, as the build would.
+  if (specifier === PACKAGE) return join(SRC, "index.ts")
+  const base = specifier.startsWith(`${PACKAGE}/`)
+    ? join(SRC, specifier.slice(PACKAGE.length + 1))
+    : specifier.startsWith("@speech/")
+      ? join(SRC, specifier.slice("@speech/".length))
+      : specifier.startsWith(".")
+        ? join(dirname(from), specifier)
+        : null
   if (base === null) return null
   for (const suffix of CANDIDATES) {
     const path = `${base}${suffix}`
@@ -67,18 +73,31 @@ function reachedFrom(entry: string): Set<string> {
       readFileSync(file, "utf-8"),
       ts.ScriptTarget.Latest
     )
-    for (const statement of source.statements) {
-      if (
-        (ts.isImportDeclaration(statement) ||
-          ts.isExportDeclaration(statement)) &&
-        statement.moduleSpecifier &&
-        ts.isStringLiteral(statement.moduleSpecifier) &&
-        isRuntime(statement)
-      ) {
-        const target = resolveImport(file, statement.moduleSpecifier.text)
-        if (target) visit(target)
-      }
+    const follow = (specifier: ts.Expression | undefined): void => {
+      if (!specifier || !ts.isStringLiteralLike(specifier)) return
+      const target = resolveImport(file, specifier.text)
+      if (target) visit(target)
     }
+    // Every node, not only top-level statements: a lazy `import()` anywhere
+    // reaches its module as surely as a static import does.
+    const walk = (node: ts.Node): void => {
+      if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
+        if (isRuntime(node)) follow(node.moduleSpecifier)
+      } else if (
+        ts.isImportEqualsDeclaration(node) &&
+        !node.isTypeOnly &&
+        ts.isExternalModuleReference(node.moduleReference)
+      ) {
+        follow(node.moduleReference.expression)
+      } else if (
+        ts.isCallExpression(node) &&
+        node.expression.kind === ts.SyntaxKind.ImportKeyword
+      ) {
+        follow(node.arguments[0])
+      }
+      ts.forEachChild(node, walk)
+    }
+    walk(source)
   }
   visit(join(SRC, entry))
   return new Set([...seen].map((file) => relative(SRC, file)))
@@ -132,4 +151,20 @@ describe("package entries", () => {
       expect([...owners].filter((owner) => owner !== null)).toEqual([backend])
     }
   )
+
+  it("classifies everything a backend reaches that the main entry does not", () => {
+    // Otherwise a module only one backend uses, outside the prefixes above,
+    // is invisible to the tests before it: the main entry could start
+    // importing it, moving it into a shared chunk, and nothing would fail.
+    const main = reachedFrom("index.ts")
+    const unclassified = BACKENDS.flatMap((backend) =>
+      [...reachedFrom(`${backend}.ts`)].filter(
+        (module) =>
+          module !== `${backend}.ts` &&
+          !main.has(module) &&
+          backendOf(module) === null
+      )
+    )
+    expect(unclassified).toEqual([])
+  })
 })

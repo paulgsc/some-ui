@@ -1,5 +1,5 @@
 import type { SpeechAdapter, SpeechAdapterRegistry } from "@speech/lib/adapters"
-import { createSpeechAdapter, resolveSpeechConfig } from "@speech/lib/adapters"
+import { createSpeechAdapter } from "@speech/lib/adapters"
 import { httpSpeech } from "@speech/lib/adapters/http"
 import { webSpeech } from "@speech/lib/adapters/web-speech"
 import { createControllableAdapter } from "@speech/lib/testing"
@@ -23,21 +23,6 @@ function supported(id: SpeechAdapter["id"]): SpeechAdapter {
   const adapter = createControllableAdapter()
   return { ...adapter, id }
 }
-
-describe("resolveSpeechConfig", () => {
-  it("decides the mode and leaves the rest of the config as given", () => {
-    const adapters: SpeechAdapterRegistry = {}
-    const resolved = resolveSpeechConfig({
-      mode: "server",
-      endpoint: "https://tts.internal/v1/audio/speech",
-      adapters,
-    })
-
-    expect(resolved.mode).toBe("server")
-    expect(resolved.endpoint).toBe("https://tts.internal/v1/audio/speech")
-    expect(resolved.adapters).toBe(adapters)
-  })
-})
 
 describe("createSpeechAdapter - mode-driven selection", () => {
   it("uses the server factory in server mode and the static one in static mode", () => {

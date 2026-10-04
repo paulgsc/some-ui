@@ -48,6 +48,16 @@ describe("libraryEntries", () => {
       libraryEntries({ packageName: "p", entries: { ".": "src/a.ts" } })
     ).toThrow('"." is not a subpath name')
   })
+
+  it("refuses subpaths in a format that bundles one entry", () => {
+    expect(() =>
+      libraryEntries({
+        packageName: "p",
+        formats: ["es", "umd"],
+        entries: { a: "src/a.ts" },
+      })
+    ).toThrow("a umd build has one entry")
+  })
 })
 
 describe("createBuildConfig", () => {
