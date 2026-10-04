@@ -37,8 +37,10 @@ type LineAdapter = {
   adapter: SpeechAdapter
   /** Every line handed to the device, in order. */
   readonly said: ReadonlyArray<string>
-  /** The line the device is saying, or null. */
+  /** The line the device is saying (started, not ended), or null. */
   readonly playing: string | null
+  /** Starts a line handed over but not yet audible (`startsAt: "later"`). */
+  start: () => void
   finish: () => void
   fail: () => void
 }
@@ -46,12 +48,16 @@ type LineAdapter = {
 /**
  * A device voice that says one line at a time and ends it when a test says,
  * keeping the adapter settlement laws: a line cancelled by its signal or by
- * `stop` rejects as an `AbortError`.
+ * `stop` rejects as an `AbortError`. A browser voice starts the moment it
+ * is handed a line (`startsAt: "once"`); a hosted one fetches the audio
+ * first, so its line starts later, when a test says (`"later"`).
  */
-function createLineAdapter(): LineAdapter {
+function createLineAdapter(startsAt: "once" | "later" = "once"): LineAdapter {
   const said: Array<string> = []
   let current: {
     text: string
+    started: boolean
+    onStart: (() => void) | undefined
     resolve: () => void
     reject: (error: Error) => void
   } | null = null
@@ -75,7 +81,13 @@ function createLineAdapter(): LineAdapter {
       if (options.signal?.aborted) return Promise.reject(aborted())
       said.push(text)
       return new Promise<void>((resolve, reject) => {
-        const entry = { text, resolve, reject }
+        const entry = {
+          text,
+          started: startsAt === "once",
+          onStart: options.onStart,
+          resolve,
+          reject,
+        }
         current = entry
         options.signal?.addEventListener(
           "abort",
@@ -85,7 +97,7 @@ function createLineAdapter(): LineAdapter {
           },
           { once: true }
         )
-        options.onStart?.()
+        if (entry.started) options.onStart?.()
       })
     },
     stop,
@@ -99,7 +111,12 @@ function createLineAdapter(): LineAdapter {
     adapter,
     said,
     get playing(): string | null {
-      return current?.text ?? null
+      return current?.started === true ? current.text : null
+    },
+    start: (): void => {
+      if (!current || current.started) return
+      current.started = true
+      current.onStart?.()
     },
     finish: (): void => {
       const finished = current
@@ -116,8 +133,8 @@ function createLineAdapter(): LineAdapter {
 
 type Session = LineAdapter & { manager: SpeechQueueManager }
 
-function createSession(): Session {
-  const line = createLineAdapter()
+function createSession(startsAt: "once" | "later" = "once"): Session {
+  const line = createLineAdapter(startsAt)
   return Object.assign(line, { manager: new SpeechQueueManager(line.adapter) })
 }
 
@@ -379,6 +396,37 @@ describe("TTSEffectHandler - a lesson line muted waits for unmute", () => {
     expect(t.said).toEqual(["content-m1", "content-m1"])
   })
 
+  it("clears 'speaking' for the line a replay replaces, though the replay never starts", async () => {
+    const t = createSession("later")
+    const onSpeechStopped = vi.fn()
+    let speaking = false
+    const handler = createTTSEffectHandler({
+      speaker: t.manager.speakerFor("topik"),
+      componentId: "c1",
+      machine: fakeMachine,
+      onSpeechStart: () => {
+        speaking = true
+      },
+      onSpeechStopped: (id) => {
+        speaking = false
+        onSpeechStopped(id)
+      },
+    })
+
+    handler.enqueue(makeMessage("m1"), true)
+    await settle()
+    t.start()
+    expect(speaking).toBe(true)
+    void handler.speakManually(makeMessage("m2"))
+    await settle()
+    // Muted while the replay's audio is still on its way.
+    t.manager.setMuted(true)
+    await settle()
+
+    expect(onSpeechStopped).toHaveBeenCalledWith("m1")
+    expect(speaking).toBe(false)
+  })
+
   it("does not hold a replay muted mid-speech: it stops, and can be pressed again", async () => {
     const t = setup()
 
@@ -559,6 +607,7 @@ const EVENTS = [
   "line fails",
   "another applet says a word",
   "another applet stops",
+  "the voice starts",
 ] as const
 type Event = (typeof EVENTS)[number]
 
@@ -582,7 +631,9 @@ function* sequences(length: number): Generator<ReadonlyArray<Event>> {
 async function runInterleaving(
   events: ReadonlyArray<Event>
 ): Promise<string | null> {
-  const session = createSession()
+  // A hosted voice: a line is handed over, then starts when its audio
+  // arrives, so anything can happen in between.
+  const session = createSession("later")
   const words = session.manager.speakerFor("honeycomb")
   let showsSpeaking = false
   const ended = new Map<string, number>()
@@ -624,6 +675,7 @@ async function runInterleaving(
     "another applet says a word": () =>
       void words.say(WORD_TEXT, { language: "korean", urgency: "now" }),
     "another applet stops": () => words.stop(),
+    "the voice starts": () => session.start(),
   }
 
   const ours = (): boolean =>
@@ -666,7 +718,9 @@ async function runInterleaving(
 
   session.manager.setMuted(false)
   await settle()
-  for (let line = 0; line < 10 && session.playing !== null; line += 1) {
+  for (let line = 0; line < 10; line += 1) {
+    session.start()
+    if (session.playing === null) break
     session.finish()
     await settle()
   }
@@ -675,6 +729,7 @@ async function runInterleaving(
 
   handler.enqueue(makeMessage("fresh"), true)
   await settle()
+  session.start()
   if (session.playing !== "content-fresh") {
     return "drained: a new line was not spoken"
   }

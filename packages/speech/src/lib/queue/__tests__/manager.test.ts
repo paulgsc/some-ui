@@ -519,6 +519,46 @@ describe("SpeechQueueManager - the speaker", () => {
     ])
   })
 
+  it("does not replay a line its owner stopped, though something interrupts it in the same moment", async () => {
+    const { adapter, manager } = setup()
+    const lesson = manager.speakerFor("lesson")
+
+    const line = lesson.say("하나", { language: "korean" })
+    await flushAsync()
+    lesson.stop()
+    const tap = manager
+      .speakerFor("word")
+      .say("둘", { language: "korean", urgency: "now" })
+
+    expect(await line).toEqual({ kind: "cancelled" })
+    await flushAsync()
+    adapter.finish()
+    await tap
+    await flushAsync()
+    expect(adapter.calls.map((call) => call.text)).toEqual(["하나", "둘"])
+  })
+
+  it("never reads as idle while an interrupted line waits to be said again", async () => {
+    const { adapter, manager } = setup()
+    const states: Array<string> = []
+    manager.getStore().subscribe(
+      (state) => `${String(state.currentItem !== null)}:${state.items.length}`,
+      (key) => states.push(key)
+    )
+
+    void manager.speakerFor("lesson").say("하나", { language: "korean" })
+    await flushAsync()
+    const tap = new AbortController()
+    void manager
+      .speakerFor("word")
+      .say("둘", { language: "korean", urgency: "now", signal: tap.signal })
+    tap.abort()
+    await flushAsync()
+
+    expect(states).not.toContain("false:0")
+    expect(adapter.calls.map((call) => call.text).at(-1)).toBe("하나")
+  })
+
   it("ends every line, playing or waiting, when the session ends", async () => {
     const { manager } = setup()
     const speaker = manager.speakerFor("a")

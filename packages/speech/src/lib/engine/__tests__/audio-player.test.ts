@@ -1,3 +1,4 @@
+import { createAudioPlayer } from "@speech/lib/engine/audio-player"
 import { isAbortError } from "@speech/lib/promise/abort"
 import {
   createFakeAudioContextHandle,
@@ -6,8 +7,6 @@ import {
 } from "@speech/lib/testing"
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
-
-import { createAudioPlayer } from "./audio-player"
 
 const AUDIO = (): ArrayBuffer => new ArrayBuffer(8)
 

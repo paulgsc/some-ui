@@ -19,7 +19,7 @@ import {
   track,
 } from "@speech/lib/testing"
 import { hostedVoiceFor } from "@speech/lib/voices"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 type Harness = {
   adapter: SpeechAdapter
@@ -286,6 +286,51 @@ describe("web-speech adapter - browser specifics", () => {
       availability: "available",
     })
     unsubscribe()
+  })
+
+  it("stops waiting for voices a browser never announces, and says so", () => {
+    vi.useFakeTimers()
+    try {
+      const fake = createFakeSpeechSynthesis()
+      const adapter = createWebSpeechAdapter({
+        synthesis: fake.synthesis,
+        utteranceFactory: fake.utteranceFactory,
+        voicesWaitMs: 1000,
+      })
+      let told = 0
+      adapter.subscribe(() => {
+        told += 1
+      })
+
+      expect(adapter.describe("korean").availability).toBe("checking")
+      vi.advanceTimersByTime(1000)
+      // No voices, and no announcement coming: Korean is missing here.
+      expect(told).toBe(1)
+      expect(adapter.describe("korean").availability).toBe("missing")
+      adapter.dispose()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("does not wait when the browser's voices are already loaded", () => {
+    const fake = createFakeSpeechSynthesis()
+    fake.controls.loadVoices([
+      {
+        name: "Samantha",
+        lang: "en-US",
+        voiceURI: "Samantha",
+        default: true,
+        localService: true,
+      },
+    ])
+    const adapter = createWebSpeechAdapter({
+      synthesis: fake.synthesis,
+      utteranceFactory: fake.utteranceFactory,
+    })
+
+    expect(adapter.describe("korean").availability).toBe("missing")
+    adapter.dispose()
   })
 
   it("says a language is missing once the browser's voices have loaded without it", () => {

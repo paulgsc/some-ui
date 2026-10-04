@@ -122,7 +122,13 @@ export class TTSEffectHandler {
     this.completedIds.delete(message.id)
     this.dropQueue()
     this.held = false
+    // The line this replaces stops here, and nothing reports it later: its
+    // outcome is not this handler's any more. The replay may not start
+    // (muted or interrupted before its audio arrives), so "speaking" is
+    // cleared now rather than left for the replay's start to overwrite.
+    const replaced = this.line
     this.line = null
+    if (replaced?.playing) this.config.onSpeechStopped?.(replaced.message.id)
     this.config.speaker.stop()
 
     await new Promise<void>((done) => {

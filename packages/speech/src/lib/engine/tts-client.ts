@@ -12,6 +12,7 @@
  * localhost:5050 default below is an OpenAI-shaped request.
  */
 
+import { LANGUAGE_TAG } from "@speech/lib/language"
 import { linkSignals, toError } from "@speech/lib/promise/abort"
 import type {
   TTSAPIConfig,
@@ -70,7 +71,7 @@ const TTS_API_CONFIGS: Record<string, TTSAPIConfig> = {
     body: (text, voice, config) =>
       JSON.stringify({
         input: { text },
-        voice: { languageCode: voice.language ?? "en-US", name: voice.id },
+        voice: { languageCode: LANGUAGE_TAG[voice.language], name: voice.id },
         audioConfig: {
           audioEncoding: config.format?.toUpperCase() ?? "MP3",
           sampleRateHertz: config.sampleRate ?? 24000,
@@ -96,7 +97,7 @@ const TTS_API_CONFIGS: Record<string, TTSAPIConfig> = {
       "X-Microsoft-OutputFormat": "audio-16khz-128kbitrate-mono-mp3",
     }),
     body: (text, voice) =>
-      `<speak version="1.0" xmlns="https://www.w3.org/2001/10/synthesis" xml:lang="${voice.language ?? "en-US"}">
+      `<speak version="1.0" xmlns="https://www.w3.org/2001/10/synthesis" xml:lang="${LANGUAGE_TAG[voice.language]}">
         <voice name="${voice.id}">${text}</voice>
       </speak>`,
     processResponse: (response) => response.arrayBuffer(),

@@ -193,8 +193,18 @@ export class SpeechQueueManager {
 
   /** Stops the playing item so another can play, recording why. */
   private interrupt(current: SpeechItem): void {
-    this.endings.set(current.id, "preempted")
+    this.recordEnding(current.id, "preempted")
     current.controller.abort()
+  }
+
+  /**
+   * The first reason recorded for an item wins over an interruption, until
+   * its abort lands: a line its owner stopped, or that mute cut off, must
+   * not be replayed because something interrupted it in the same moment.
+   */
+  private recordEnding(id: string, ending: Ending): void {
+    if (ending === "preempted" && this.endings.has(id)) return
+    this.endings.set(id, ending)
   }
 
   /**
@@ -279,7 +289,7 @@ export class SpeechQueueManager {
     // A paused line is interrupted like any other: a "next" one plays
     // again on resume, a "now" one is over.
     const current = this.store.get().currentItem
-    if (current) this.endings.set(current.id, "preempted")
+    if (current) this.recordEnding(current.id, "preempted")
     this.store.dispatch({ type: "PAUSE" })
     this.adapter.pause()
   }
@@ -477,14 +487,21 @@ export class SpeechQueueManager {
   private finishAborted(item: SpeechItem, failure: Error): void {
     const ending = this.endings.get(item.id)
     this.endings.delete(item.id)
+    const line = this.lines.get(item.id)
+    const requeue =
+      line !== undefined &&
+      ending === "preempted" &&
+      line.urgency === "next" &&
+      !this.muted
+    // Back in the queue before the item stops being current, so the store
+    // never reads as idle in between (`whenIdle`, chat's `isActive`).
+    if (requeue) this.store.dispatch({ type: "REQUEUE", payload: { item } })
     this.store.dispatch({
       type: "ITEM_CANCELLED",
       payload: { itemId: item.id },
     })
-    const line = this.lines.get(item.id)
     if (!line) return
-    if (ending === "preempted" && line.urgency === "next" && !this.muted) {
-      this.store.dispatch({ type: "REQUEUE", payload: { item } })
+    if (requeue) {
       line.onInterrupted?.()
       return
     }

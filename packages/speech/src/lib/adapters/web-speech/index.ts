@@ -53,12 +53,20 @@ export type WebSpeechAdapterOptions = {
   utteranceFactory?: (text: string) => SpeechSynthesisUtterance
   /** The language of lines that don't say their own. */
   language?: SpokenLanguage
+  /**
+   * How long an empty voice list counts as "still loading" before it counts
+   * as the browser's answer. Defaults to `VOICES_WAIT_MS`.
+   */
+  voicesWaitMs?: number
   rate?: number
   pitch?: number
 }
 
 /** Browser voices that mean "the user cancelled", not "synthesis failed". */
 const CANCELLATION_REASONS: ReadonlyArray<string> = ["canceled", "interrupted"]
+
+/** Chrome announces its voices within a few hundred milliseconds. */
+const VOICES_WAIT_MS = 3000
 
 const DEFAULT_RATE = 0.98
 const DEFAULT_PITCH = 1
@@ -109,11 +117,30 @@ export function createWebSpeechAdapter(
 
   // Chrome answers `getVoices()` with nothing until it has loaded them, and
   // says so with `voiceschanged`. Until then an empty list means "not yet",
-  // not "none". A browser that cannot announce has said all it will.
+  // not "none". But a browser with no voices may never announce (Linux
+  // without a speech service), and an adapter built after the one
+  // announcement never hears it, so the wait is bounded: past it, an empty
+  // list is the browser's answer. A browser that cannot announce at all has
+  // said all it will.
+  const listeners = new Set<() => void>()
+  const tell = (): void => {
+    for (const listener of [...listeners]) listener()
+  }
   const canAnnounce = typeof synthesis?.addEventListener === "function"
-  let announced = false
+  let loaded = !canAnnounce || synthesis.getVoices().length > 0
+  // Lifetime: cleared by the first announcement or by `dispose`.
+  let waitTimer: ReturnType<typeof setTimeout> | null = loaded
+    ? null
+    : setTimeout(() => {
+        waitTimer = null
+        loaded = true
+        tell()
+      }, options.voicesWaitMs ?? VOICES_WAIT_MS)
   const onVoicesChanged = (): void => {
-    announced = true
+    loaded = true
+    if (waitTimer !== null) clearTimeout(waitTimer)
+    waitTimer = null
+    tell()
   }
   if (canAnnounce) {
     synthesis.addEventListener("voiceschanged", onVoicesChanged)
@@ -219,14 +246,12 @@ export function createWebSpeechAdapter(
     id: "web-speech",
     supported: synthesis !== null,
     // Browsers load their voices asynchronously and announce it; until then
-    // `describe` can only report what has loaded so far.
+    // `describe` can only report what has loaded so far. Subscribers hear
+    // each announcement, and the end of the wait for one.
     subscribe: (listener): (() => void) => {
-      if (typeof synthesis?.addEventListener !== "function") {
-        return () => undefined
-      }
-      synthesis.addEventListener("voiceschanged", listener)
+      listeners.add(listener)
       return (): void => {
-        synthesis.removeEventListener("voiceschanged", listener)
+        listeners.delete(listener)
       }
     },
     describe: (language): VoiceReport => {
@@ -239,7 +264,7 @@ export function createWebSpeechAdapter(
           availability: "available",
         }
       }
-      if (voices.length === 0 && canAnnounce && !announced) {
+      if (voices.length === 0 && !loaded) {
         return { platform: "browser", voice: null, availability: "checking" }
       }
       // What the browser falls back to for a language it has no voice for.
@@ -269,6 +294,9 @@ export function createWebSpeechAdapter(
       if (canAnnounce) {
         synthesis.removeEventListener("voiceschanged", onVoicesChanged)
       }
+      if (waitTimer !== null) clearTimeout(waitTimer)
+      waitTimer = null
+      listeners.clear()
       cancelAll(createAbortError("Speech adapter was disposed"))
     },
   }

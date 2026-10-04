@@ -21,8 +21,10 @@
  *   plays it again afterwards, so the applet never hears of it.
  * - **Each line has one outcome**, and `say` resolves with it; it never
  *   rejects. A line is heard, or refused or cut off by mute, or interrupted
- *   by another `"now"` line (`"now"` lines are not replayed), or cancelled
- *   by this applet's own `stop` or signal, or failed, or the session ended.
+ *   (`"now"` lines are not replayed), or cancelled by this applet's own
+ *   `stop` or signal, or failed, or the session ended. Whatever stops a
+ *   line first decides its outcome: a line its owner stopped is not
+ *   replayed because something interrupted it in the same moment.
  * - **A handle reaches only its own lines.** `stop` cancels this applet's
  *   lines, and no one else's.
  *
@@ -62,7 +64,10 @@ export type SpeechOutcome =
   | { readonly kind: "heard" }
   /** Refused, or cut off, because the person muted voice output. */
   | { readonly kind: "muted" }
-  /** A `"now"` line another `"now"` line interrupted. Not replayed. */
+  /**
+   * A `"now"` line something interrupted: a later `"now"` line, a
+   * higher-priority queue item, or a pause. Not replayed.
+   */
   | { readonly kind: "preempted" }
   /** This handle's own `stop`, or the line's signal. */
   | { readonly kind: "cancelled" }
