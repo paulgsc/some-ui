@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { formatRelativeTime } from "./date-utils"
+import {
+  addDays,
+  dayOf,
+  formatDay,
+  formatRelativeTime,
+  formatWeekday,
+} from "./date-utils"
 
 const FIXED_NOW = new Date("2024-06-15T12:00:00.000Z")
 
@@ -97,4 +103,60 @@ describe("formatRelativeTime - input types", () => {
     expect(formatRelativeTime(date.toISOString())).toBe("2 minutes ago")
     expect(formatRelativeTime(date.getTime())).toBe("2 minutes ago")
   })
+})
+
+describe("calendar days", () => {
+  it("dayOf reads the local calendar day, padded", () => {
+    expect(dayOf(new Date(2026, 0, 5))).toBe("2026-01-05")
+    expect(dayOf(new Date(2026, 11, 31))).toBe("2026-12-31")
+  })
+
+  it.each([
+    ["2026-10-03", 1, "2026-10-04"],
+    ["2026-10-03", -6, "2026-09-27"],
+    ["2026-10-31", 1, "2026-11-01"],
+    ["2026-12-31", 1, "2027-01-01"],
+    ["2028-02-28", 1, "2028-02-29"],
+    ["2027-02-28", 1, "2027-03-01"],
+    ["2026-10-03", 0, "2026-10-03"],
+    ["2026-10-03", -179, "2026-04-07"],
+  ])("addDays(%s, %i) is %s", (day, n, expected) => {
+    expect(addDays(day, n)).toBe(expected)
+  })
+
+  it("formats a day as the month and date, or the weekday", () => {
+    expect(formatDay("2026-10-02")).toBe("Oct 2")
+    expect(formatWeekday("2026-10-02")).toBe("Fri")
+  })
+})
+
+describe("calendar days across a daylight-saving change", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  // Not UTC, where none of this could fail. The rows that matter are the
+  // fall-back crossings (the day is 25 hours long): adding `n * 24h` to a local
+  // midnight there lands at 23:00 on the day before the one it should, so a day
+  // count built on milliseconds is a day short. The spring-forward rows and the
+  // backward one pass for that implementation too; they guard the rest.
+  it.each([
+    // [zone, its offset in July (what getTimezoneOffset says), day, days to add, expected]
+    ["America/New_York", 240, "2026-10-31", 2, "2026-11-02"],
+    ["America/New_York", 240, "2026-11-01", 1, "2026-11-02"],
+    ["America/New_York", 240, "2026-10-30", 3, "2026-11-02"],
+    ["America/New_York", 240, "2026-03-07", 2, "2026-03-09"],
+    ["America/New_York", 240, "2026-11-02", -2, "2026-10-31"],
+    ["Australia/Sydney", -600, "2026-04-04", 2, "2026-04-06"],
+    ["Australia/Sydney", -600, "2026-04-05", 1, "2026-04-06"],
+    ["Australia/Sydney", -600, "2026-10-03", 2, "2026-10-05"],
+  ])(
+    "%s (offset %i): addDays(%s, %i) is %s",
+    (zone, offset, day, n, expected) => {
+      vi.stubEnv("TZ", zone)
+      // The stub only means something if the runtime took exactly this zone.
+      expect(new Date(2026, 6, 1, 12).getTimezoneOffset()).toBe(offset)
+      expect(addDays(day, n)).toBe(expected)
+    }
+  )
 })

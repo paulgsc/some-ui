@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Some UI (live-reload stand-in)</title>
+  </head>
+  <body>
+    <p>
+      This is not the app. It stands in for the web build so that
+      <code>pnpm --filter @some-ui/mobile dev:android</code> can sync without
+      one; in live-reload mode the WebView loads the dev server instead.
+    </p>
+    <p>
+      If you can read this, an APK was built without
+      <code>pnpm --filter @some-ui/mobile bundle</code>. Run that, then build
+      again.
+    </p>
+  </body>
+</html>

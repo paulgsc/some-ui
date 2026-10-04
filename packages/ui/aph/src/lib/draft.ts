@@ -6,11 +6,12 @@
  * Two sides, one form: "mine" is my figure for a checkpoint today, "theirs"
  * is a reported figure for an entry that is waiting on one.
  */
+import { dayOf } from "@some-ui/core-utils"
+
 import type { AphSettings, Entry, Review } from "./model"
 import {
   awaitingTheirs,
   checkpointById,
-  dayOf,
   dueCheckpoint,
   minutesOf,
 } from "./model"

@@ -9,16 +9,10 @@ import { useState } from "react"
 import { GoalMeter, STATUS, StatusBadge, whenOf } from "@aph/components/status"
 import { keepsOnePlain } from "@aph/lib/draft"
 import type { Entry } from "@aph/lib/model"
-import {
-  formatDay,
-  formatDelta,
-  formatValue,
-  formatWeekday,
-  labelsFor,
-  reconcile,
-} from "@aph/lib/model"
+import { formatDelta, formatValue, labelsFor, reconcile } from "@aph/lib/model"
 import type { AphStore } from "@aph/lib/store"
 import { useAph } from "@aph/lib/use-aph"
+import { formatDay, formatWeekday } from "@some-ui/core-utils"
 import {
   Button,
   Input,

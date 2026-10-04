@@ -1,4 +1,20 @@
+import { existsSync } from "node:fs"
 import type { CapacitorConfig } from "@capacitor/cli"
+
+/**
+ * `pnpm dev:android` sets `SOME_UI_LIVE_RELOAD`. In that mode the WebView loads
+ * the dev server, so a bundled web build is never shown, but `cap run` syncs
+ * before it can point the app at the server, and a sync fails when `webDir` is
+ * missing, which `../www/dist` is on a fresh checkout. So, only then, `webDir`
+ * is `live-reload/`: a tracked stand-in that says what it is, so the sync has
+ * something to copy and an APK built from it by mistake says so on screen. A
+ * real build that is there is synced as always, and with the variable unset
+ * (every build that ships) `webDir` is the real build, as before. The paths are
+ * relative to the directory `cap` runs in, as `webDir` itself is.
+ */
+const useLiveReloadStandIn =
+  process.env.SOME_UI_LIVE_RELOAD === "1" &&
+  !existsSync("../www/dist/index.html")
 
 /**
  * The Android shell around `apps/www`.
@@ -35,20 +51,25 @@ const config: CapacitorConfig = {
    * 404s every one of them. Absolute is correct here; the Pages build's
    * `/some-ui/` prefix is not.
    */
-  webDir: "../www/dist",
+  webDir: useLiveReloadStandIn ? "live-reload" : "../www/dist",
 
   server: {
     /**
      * Pinned rather than left to default to the same value, because two
      * things depend on it and neither fails loudly if it changes.
      *
-     * 1. **The device backend's interception.** On an `https:` page,
-     *    `resolveFileHostBase` (www `lib/file-host-config`) answers the
-     *    same-origin `/api/file-host/api/v1`, which is the base the
-     *    in-process backend wraps `fetch` for. On `http:` it answers
-     *    `http://localhost:3000/api/v1` instead - a different origin, so
-     *    every request would go to the real network, find nothing on the
-     *    phone's port 3000, and the app would show `file_host` unreachable.
+     * 1. **A stable origin.** Every release build's origin is
+     *    `https://localhost`, so web storage (localStorage, IndexedDB) and the
+     *    file_host base `resolveFileHostBase` answers on an `https:` page (the
+     *    same-origin `/api/file-host/api/v1`) never change under an update. A
+     *    different scheme is a different origin, and a person's stored state
+     *    would not follow them to it. The device backend would still answer on
+     *    an `http:` page - boot wraps `fetch` for whatever base the page
+     *    resolved, which `device-backend/__tests__/round-trip.test.ts` pins,
+     *    and the dev loop in this package's README runs on
+     *    `http://localhost:5173` - so this is about the stored state, not about
+     *    the backend failing.
+     *
      * 2. **`crypto.subtle`**, which the backend hashes content with, exists
      *    only in a secure context.
      *

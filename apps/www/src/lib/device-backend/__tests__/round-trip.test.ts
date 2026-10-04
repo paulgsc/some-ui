@@ -8,6 +8,7 @@ import { openNodeSqlite } from "@/test-support/node-sqlite-driver"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { openDeviceBackend } from "@/lib/device-backend/backend"
+import { deviceFileHostBase } from "@/lib/device-backend/boot"
 import { BUNDLED_ROUND_COUNT } from "@/lib/device-backend/bundled-corpus"
 import {
   retireLessonsExcept,
@@ -258,5 +259,24 @@ describe("content on the device", () => {
       "https://device.test/hangul/words/vocab.json",
       "https://elsewhere.test/api/file-host/api/v1/sessions",
     ])
+  })
+
+  it.each([
+    ["an http page, the Android dev loop's origin", "http://localhost:5173/"],
+    ["an https page, the release app's origin", "https://localhost/"],
+  ])("answers the base %s resolves", async (_page, location) => {
+    // Through the real seam: the base boot installs the wrapper for, from
+    // `resolveFileHostBase` on that page. Nothing here is the https proxy
+    // path by assumption, so a change to either that moves the base away from
+    // what callers ask for fails here, instead of going to the network.
+    vi.stubGlobal("window", { location: new URL(location) })
+    const base = deviceFileHostBase()
+    if (base === undefined) throw new Error("expected a base")
+    const fetchIn = createDeviceFetch(
+      base,
+      () => Promise.resolve(backend),
+      () => Promise.reject(new Error("went to the network"))
+    )
+    expect((await fetchIn(`${base.href}/auth/session`)).status).toBe(200)
   })
 })

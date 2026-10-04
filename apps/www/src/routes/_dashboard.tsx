@@ -28,6 +28,7 @@ import { useIsDeclaredBounded } from "@/lib/route-bounds"
 import { AudioIndicator } from "@/components/audio/audio-indicator"
 import { AccountUnavailableBanner } from "@/components/auth/account-unavailable-banner"
 import { HexCombMark } from "@/components/brand/hex-comb-mark"
+import { LocIndicator } from "@/components/loc/loc-indicator"
 import { MobileNav } from "@/components/mobile-shell"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
@@ -212,6 +213,11 @@ const DashboardLayout = (): JSX.Element => {
                 canonical place a person learns this app has audio, and the
                 place the first-use notices point back to. */}
             <AudioIndicator />
+            {/* Lines written lately, from a snapshot taken when this build was
+                made (`lib/loc-report`). Renders nothing in a build without
+                one. Before the phone's Settings link, which `ml-auto` pins to
+                the far side. */}
+            <LocIndicator />
             {MOBILE_APP && (
               <Link
                 to="/settings"

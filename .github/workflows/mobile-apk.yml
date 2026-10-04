@@ -60,6 +60,13 @@ jobs:
           HUSKY: 0
       - uses: ./.github/actions/resume-assets-cache
 
+      # The lines-of-code number in the dashboard header is a snapshot taken
+      # here, as the app is built (apps/www/src/lib/loc-report). Best-effort:
+      # without it the app ships the tracked placeholder and no widget.
+      - name: Snapshot lines of code
+        continue-on-error: true
+        uses: ./.github/actions/loc-snapshot
+
       # www's build (with the flags `build:web` pins) into apps/www/dist, then
       # `cap sync` copies it and the Capacitor plugins into the Gradle project.
       - name: Build www for the device and sync it into Android

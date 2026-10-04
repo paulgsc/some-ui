@@ -22,6 +22,15 @@ const keyPath = resolve(
 )
 const hasLocalCerts = fs.existsSync(certPath) && fs.existsSync(keyPath)
 
+// `SOME_UI_DEV_HTTP=1` serves plain HTTP even where the certs above exist. The
+// Android app's dev loop (apps/mobile, `pnpm dev:web`) needs it: the WebView
+// loads this server as `http://localhost` over `adb reverse`, and Capacitor
+// does nothing with a certificate error, so a mkcert certificate (which the
+// WebView does not trust) is a blank screen. `localhost` is a secure context
+// over plain HTTP too, which is what the device backend's `crypto.subtle`
+// needs; a LAN address or `nixos.local` is not.
+const devHttp = process.env.SOME_UI_DEV_HTTP === "1"
+
 // The dev/preview counterpart of apps/www/nginx.tts-proxy.conf: the same
 // same-origin /api/tts/ route, pointed at the port infra/compose/tts.yml
 // publishes on the host instead of at the container over the compose
@@ -230,7 +239,7 @@ export default defineConfig(
       // `vite dev`/`vite preview` - `vite build` never starts a server, and
       // CI/Docker builds don't have these certs, so only wire this up when
       // both apply.
-      ...(command === "serve" && hasLocalCerts
+      ...(command === "serve" && hasLocalCerts && !devHttp
         ? {
             https: {
               cert: fs.readFileSync(certPath),

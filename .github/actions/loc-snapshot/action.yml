@@ -1,0 +1,73 @@
+name: "LOC snapshot"
+description: >-
+  Write the lines-of-code snapshot that www's header widget shows
+  (apps/www/src/lib/loc-report), from the history of this repository and of
+  paulgsc/server. Run it after checkout and before www is built; the build
+  carries whatever it wrote.
+
+# Best-effort, and every caller says `continue-on-error: true`: a number in a
+# header is not worth a failed release. When this step fails or is skipped the
+# build ships the tracked placeholder and the widget stays out of the header.
+#
+# No secret of its own. This repository is read with the job's own token and
+# the server is public, so is cloned with none: nothing here needs the route
+# snapshot's SERVER_ROUTES_DISPATCH_TOKEN (a read/write token on the server) or
+# a new one. If the server were made private, the clone below fails, the script
+# reports it and exits 1, and that is the moment to give this step a credential.
+#
+# Needs Nix set up first (./.github/actions/nix-setup), for a Node that runs
+# TypeScript. It runs in `.#extension` (Node and pnpm only), not `.#ci`, whose
+# Rust, poppler and web-ext closure the Docker publish job never needed. It
+# needs no `pnpm install`, which that job does not run either.
+#
+# Why a clone and not the API: the widget leaves lockfiles and generated files
+# out of the default total, and only a diff says which files a commit touched.
+#
+# Both histories go into $RUNNER_TEMP, outside the workspace, which stays a
+# depth-1 checkout: deepening it in place would put the whole history into the
+# Docker build's context (`COPY . .` takes `.git`). The paths are fixed rather
+# than passed on through $GITHUB_ENV, so they do not leak into the build steps
+# that follow.
+#
+# Not for pull requests: they build www only to check it. Callers gate on the
+# event, and on a rollback build (an older commit than the history the numbers
+# would count up to).
+runs:
+  using: composite
+  steps:
+    # git shows a shallow clone's oldest commit as adding every file it holds,
+    # so a count over one is wrong by orders of magnitude, and the script
+    # refuses a shallow repository. This fetches the one commit the job built
+    # with no depth, which is its full history. The history is not on the
+    # runner (a checkout is depth 1), so this is what deepening in place would
+    # download too.
+    - name: Fetch this repository's full history
+      shell: bash
+      env:
+        REPO_TOKEN: ${{ github.token }}
+      run: |
+        dir="$RUNNER_TEMP/loc-some-ui"
+        auth="$(printf 'x-access-token:%s' "$REPO_TOKEN" | base64 --wrap=0)"
+        echo "::add-mask::$auth"
+        git init --quiet "$dir"
+        git -C "$dir" -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" \
+          fetch --quiet --no-tags "https://github.com/$GITHUB_REPOSITORY.git" "$(git rev-parse HEAD)"
+        git -C "$dir" update-ref --no-deref HEAD FETCH_HEAD
+
+    # Anonymous: the server is public. A failure here fails only this step. The
+    # script is still told the server was wanted, finds nothing at the path,
+    # writes the snapshot without it and exits 1, so the run shows as
+    # failed-but-continued rather than passing.
+    - name: Clone the server's history
+      continue-on-error: true
+      shell: bash
+      run: |
+        git clone --no-checkout --no-tags --quiet \
+          https://github.com/paulgsc/server.git "$RUNNER_TEMP/loc-server"
+
+    - name: Write the snapshot
+      shell: bash
+      run: |
+        nix develop .#extension --command node --no-warnings scripts/loc-snapshot.ts \
+          --repo "some-ui=$RUNNER_TEMP/loc-some-ui" \
+          --repo "server=$RUNNER_TEMP/loc-server"

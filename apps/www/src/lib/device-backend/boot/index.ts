@@ -35,10 +35,22 @@ export function deviceBackend(): Promise<DeviceBackend> {
   return opening
 }
 
+/**
+ * The `file_host` base the device backend answers for: whatever base this page
+ * resolves (`lib/file-host-config`), joined onto its origin. Every caller
+ * resolves the same one, so the backend answers on an `https:` page (the
+ * same-origin proxy path) and on an `http:` one (`http://localhost:3000/...`,
+ * the Android dev loop's) alike. Apart from the install so a test can pin that.
+ */
+export function deviceFileHostBase(): URL | undefined {
+  const base = resolveFileHostBase()
+  return base === undefined ? undefined : new URL(base, window.location.origin)
+}
+
 /** Installs the device backend in the device build; a no-op in any other. */
 export function bootDeviceBackend(): void {
   if (!DEVICE_BACKEND || typeof window === "undefined") return
-  const base = resolveFileHostBase()
+  const base = deviceFileHostBase()
   if (base === undefined) return
-  installDeviceFetch(new URL(base, window.location.origin), deviceBackend)
+  installDeviceFetch(base, deviceBackend)
 }

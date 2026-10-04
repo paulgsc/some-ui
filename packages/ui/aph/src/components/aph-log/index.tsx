@@ -28,8 +28,6 @@ import type { AphSettings, Entry } from "@aph/lib/model"
 import {
   awaitingTheirs,
   checkpointById,
-  dayOf,
-  formatDay,
   formatDelta,
   formatValue,
   isUsual,
@@ -39,6 +37,7 @@ import {
 import type { AphStore } from "@aph/lib/store"
 import { aphStore } from "@aph/lib/store"
 import { useAph } from "@aph/lib/use-aph"
+import { dayOf, formatDay } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import { Check, Delete, Minus, Plus, TriangleAlert } from "lucide-react"
 import { cn } from "some-ui-utils"
