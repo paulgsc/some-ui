@@ -33,6 +33,7 @@ import type { UserSettings } from "@/lib/tenant"
 import { settingsQuery, useSettings, useUpdateSettings } from "@/lib/tenant"
 import { DataHomeSection } from "@/components/settings/data-home-section"
 import { DeviceSection } from "@/components/settings/device-section"
+import { DeviceVoiceField } from "@/components/settings/device-voice-field"
 import { HostedVoiceFields } from "@/components/settings/hosted-voice-fields"
 import { StudyNudgeSection } from "@/components/settings/study-nudge-section"
 
@@ -100,10 +101,19 @@ const SettingsForm = ({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <HostedVoiceFields
-          value={draft.ttsVoice}
-          onChange={(ttsVoice) => setDraft({ ...draft, ttsVoice })}
-        />
+        {/* The phone speaks with its own engine, so a hosted provider and
+            voice mean nothing there (#1628): it gets its own voices. */}
+        {DEVICE_BACKEND ? (
+          <DeviceVoiceField
+            value={draft.deviceVoiceId}
+            onChange={(deviceVoiceId) => setDraft({ ...draft, deviceVoiceId })}
+          />
+        ) : (
+          <HostedVoiceFields
+            value={draft.ttsVoice}
+            onChange={(ttsVoice) => setDraft({ ...draft, ttsVoice })}
+          />
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="default-duration">

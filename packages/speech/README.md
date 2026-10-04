@@ -55,13 +55,21 @@ muted**. TOPIK once held the adapter, named "the first Korean voice" on
 every line and called the adapter directly, so a chosen voice never spoke a
 lesson and mute stopped only the line already playing.
 
+The one line that names a voice is Settings' sample of a voice a person is
+choosing between (`useVoicePreview`). It is a request to the session too
+(`SpeechQueueManager.preview`): a `"now"` line through the same queue, so it
+interrupts what plays, honors mute, and leaves the lesson it cut off to be
+said again, instead of writing to the engine behind the session's back.
+
 ### Our languages, their tags
 
 A line's language is a `SpokenLanguage` (`lib/language`): a closed union of
 the languages this site speaks, not a tag. Platforms name languages with tags
-whose shapes are theirs (`ko-KR`, `ko_KR`, `kor`), and only an adapter ever
-reads one, through `spokenLanguageOf`, which answers with one of ours or
-`null`. Likewise `describe` reports `availability` as one of four states
+whose shapes are theirs (`ko-KR`, `ko_KR`, `kor`), and only an adapter, or
+the app's transport behind one (the phone's, in `apps/www`'s
+`lib/device-speech/native.ts`), ever reads one, through `spokenLanguageOf`,
+which answers with one of ours or `null`, and writes one, from
+`LANGUAGE_TAG`. Likewise `describe` reports `availability` as one of four states
 (`available`, `missing`, `checking`, `unverifiable`) rather than a boolean, so
 "the browser has not loaded its voices yet" is not shown as "no Korean
 voice".
@@ -73,7 +81,7 @@ data — selects one:
 | mode       | where it comes from                | backend                                               |
 | ---------- | ---------------------------------- | ----------------------------------------------------- |
 | `"server"` | `vite dev`, `vite preview`, Docker | `openai-edge-tts` over HTTP (`infra/compose/tts.yml`) |
-| `"static"` | the GitHub Pages build             | the browser's own `speechSynthesis`                   |
+| `"static"` | the GitHub Pages build, the APK    | the device's own voice (below)                        |
 
 That mapping is `DEFAULT_SPEECH_ADAPTERS` in `lib/adapters/registry.ts`, and
 it is a default, not a rule: `config.adapters` replaces either entry,
@@ -94,10 +102,15 @@ handling it.
   (`DEFAULT_HOSTED_VOICE`), else no voice and an honest failure. Nothing
   falls back to "the first voice in the list". A stored string becomes a
   choice in one place, `parseHostedVoiceChoice`.
-- **The device's voices are not ours.** The browser's `speechSynthesis` is
+- **The device's voices are not ours.** The browser's `speechSynthesis`,
+  and the phone's text-to-speech that the Android app passes as
+  `config.native` (its WebView has no working `speechSynthesis`), are
   someone else's API with someone else's voices, different on every device.
-  It is handed a language and speaks it in whatever voice it has; none of
-  its voices ever becomes a `VoiceConfig`.
+  They are handed a language and speak it in whatever voice they have, or
+  in the one the person picked from the phone's own list; none of their
+  voices ever becomes a `VoiceConfig`. A phone without voice data for the
+  language refuses the line (`VoiceMissingError`) and the app hears about
+  it through `native.onMissingVoice`, instead of the lesson staying silent.
 
 ## Telling the person
 

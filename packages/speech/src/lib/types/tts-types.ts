@@ -53,6 +53,11 @@ export type TTSOptions = {
   readonly autoPlay?: boolean
   /** The text's language; the session picks the voice for it. */
   readonly language?: SpokenLanguage
+  /**
+   * A device voice for this one line, as the adapter's own opaque id. Only
+   * the session's voice preview sets it (`SpeechQueueManager.preview`).
+   */
+  readonly voiceId?: string
   readonly onStart?: () => void
   readonly onEnd?: () => void
   readonly onError?: (error: Error) => void

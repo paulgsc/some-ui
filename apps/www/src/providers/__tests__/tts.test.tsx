@@ -9,6 +9,8 @@
  * - on the device, the browser's own voice (`mode: "static"`), so what a
  *   learner reads aloud never reaches the operator's TTS service;
  * - on the account, the server's speech service;
+ * - in the Android app, the phone's own engine (`mode: "static"` with a
+ *   `native` backend), in Korean;
  * - while a returning account user's authority is undecided, nothing is built
  *   at all.
  *
@@ -19,7 +21,10 @@ import type { ReactNode } from "react"
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
+import type * as DataModeModule from "@/lib/data-mode"
+
 const speechProviderSpy = vi.fn()
+const speechConfigSpy = vi.fn()
 
 vi.mock("@some-ui/speech", () => ({
   SpeechProvider: ({
@@ -30,7 +35,16 @@ vi.mock("@some-ui/speech", () => ({
     config: { mode: string }
   }): ReactNode => {
     speechProviderSpy(config.mode)
+    speechConfigSpy(config)
     return children
+  },
+}))
+
+let deviceBackend = false
+vi.mock("@/lib/data-mode", async (importOriginal) => ({
+  ...(await importOriginal<typeof DataModeModule>()),
+  get DEVICE_BACKEND(): boolean {
+    return deviceBackend
   },
 }))
 
@@ -65,6 +79,8 @@ vi.mock("@/lib/authority", () => ({
 afterEach(() => {
   cleanup()
   speechProviderSpy.mockClear()
+  speechConfigSpy.mockClear()
+  deviceBackend = false
 })
 
 describe("TTSProvider: where the speech is made follows whose data this is", () => {
@@ -96,5 +112,21 @@ describe("TTSProvider: where the speech is made follows whose data this is", () 
     screen.getByText("routed content")
     // The test build is a server build (`DATA_MODE` is "server").
     expect(speechProviderSpy).toHaveBeenCalledWith("server")
+  })
+
+  it("speaks Korean with the phone's own engine in the Android app, whatever the account", async () => {
+    kind = "account"
+    deviceBackend = true
+    const { TTSProvider } = await import("@/providers/tts")
+    render(<TTSProvider>{children}</TTSProvider>)
+
+    expect(speechConfigSpy).toHaveBeenCalledWith({
+      mode: "static",
+      language: "korean",
+      native: expect.objectContaining({
+        engine: expect.any(Object),
+        voiceId: undefined,
+      }),
+    })
   })
 })

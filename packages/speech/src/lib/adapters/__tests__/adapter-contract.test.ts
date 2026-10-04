@@ -8,12 +8,14 @@
  */
 
 import { createHttpSpeechAdapter } from "@speech/lib/adapters/http"
+import { createNativeSpeechAdapter } from "@speech/lib/adapters/native"
 import type { SpeechAdapter } from "@speech/lib/adapters/types"
 import { createWebSpeechAdapter } from "@speech/lib/adapters/web-speech"
 import { isAbortError } from "@speech/lib/promise/abort"
 import type { FakeAudioContextHandle } from "@speech/lib/testing"
 import {
   createFakeAudioContextHandle,
+  createFakeNativeEngine,
   createFakeSpeechSynthesis,
   flushAsync,
   track,
@@ -76,8 +78,23 @@ function webSpeechHarness(): Harness {
   }
 }
 
+function nativeHarness(): Harness {
+  const fake = createFakeNativeEngine()
+  const adapter = createNativeSpeechAdapter({
+    engine: fake.engine,
+    language: "korean",
+  })
+
+  return {
+    adapter,
+    finish: (): void => fake.end(),
+    fail: (): void => fake.fail(),
+  }
+}
+
 const HARNESSES: ReadonlyArray<HarnessFactory> = [
   { name: "http", create: httpHarness },
+  { name: "native", create: nativeHarness },
   { name: "web-speech", create: webSpeechHarness },
 ]
 

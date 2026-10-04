@@ -8,6 +8,11 @@ export type {
 } from "./fake-audio-context"
 export { createFakeAudioContextHandle } from "./fake-audio-context"
 export type {
+  FakeNativeEngineHandle,
+  FakeNativeEngineOptions,
+} from "./fake-native-engine"
+export { createFakeNativeEngine } from "./fake-native-engine"
+export type {
   FakeSpeechSynthesis,
   FakeSpeechSynthesisHandle,
   FakeUtterance,

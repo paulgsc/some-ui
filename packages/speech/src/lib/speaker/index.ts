@@ -59,6 +59,16 @@ export type SayOptions = Pick<
   onInterrupted?: () => void
 }
 
+/**
+ * A sample of a voice a person is choosing between, in Settings. Not part
+ * of `Speaker`: an applet cannot name a voice.
+ */
+export type PreviewOptions = {
+  readonly language: SpokenLanguage
+  /** The adapter's own id for the voice; absent, its default. */
+  readonly voiceId?: string
+}
+
 /** What became of a line. */
 export type SpeechOutcome =
   | { readonly kind: "heard" }

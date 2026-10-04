@@ -16,7 +16,7 @@
 
 import type { SpokenLanguage } from "@speech/lib/language"
 
-export type SpeechAdapterId = "http" | "web-speech"
+export type SpeechAdapterId = "http" | "native" | "web-speech"
 
 /**
  * Whether a platform can speak a language, as far as it has said. The
@@ -69,6 +69,12 @@ export type VoiceReport = {
 export type SpeakOptions = {
   /** The text's language. Omitted, the backend's default language. */
   language?: SpokenLanguage
+  /**
+   * A device voice named for this one line, by the session only (Settings'
+   * sample of a phone voice). An applet cannot set it: `SayOptions` leaves
+   * it out. Adapters with no device voices to name ignore it.
+   */
+  voiceId?: string
   /** Aborting this rejects the returned promise with an `AbortError`. */
   signal?: AbortSignal
   volume?: number
