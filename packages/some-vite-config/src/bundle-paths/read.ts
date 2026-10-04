@@ -156,7 +156,12 @@ export function readBuild(
       for (const [index, bytes] of presentSources(text, map)) {
         const source = map.sources[index]
         if (source == null) continue
-        const id = moduleId(resolve(base, source), repoRoot)
+        const absolute = resolve(base, source)
+        // A source inside the output directory (a virtual module given a
+        // segment) would otherwise carry each build's own path in its id.
+        const id = absolute.startsWith(`${resolve(outDir)}/`)
+          ? `<out>/${relative(outDir, absolute)}`
+          : moduleId(absolute, repoRoot)
         modules.set(id, (modules.get(id) ?? 0) + bytes)
       }
     }

@@ -136,8 +136,11 @@ separate entry, a route tree per deployable) the repository pays for that, not t
 `pnpm --filter www check:bundle-paths` (`apps/www/check-bundle-paths.ts`, rules in
 `apps/www/build.paths.ts`, reader and checks in `src/bundle-paths/`) holds www to it. It
 builds every profile the way its deployable does (`profileBuildEnv`), plus `--manifest` and
-hidden sourcemaps, so the code checked is byte-for-byte what ships. It runs in `pr.yml`'s Node
-job whenever www or anything it builds from changed, and in root `pnpm lint`. It fails on:
+hidden sourcemaps, so the code checked is byte-for-byte what ships. It runs in root `pnpm lint`,
+and in `pr.yml`'s Node job when that job runs (`_detect-changes.yml`'s `node` filter: source,
+`json` and `package.json` files) and turbo's affected filter includes www. A PR that changes
+only `pnpm-lock.yaml` or an `.html` file skips that job, so a bundler bump alone is not
+checked in CI; run it locally for one. It fails on:
 
 - **an orphan chunk**: emitted, and no HTML entry loads it through any chain of chunks;
 - **an off-path module**: one `exclusive` gives to other profiles only, or one under an
@@ -151,14 +154,17 @@ job whenever www or anything it builds from changed, and in root `pnpm lint`. It
 - **stale debt**: a `debt` entry that matches nothing any more, so the list only shrinks;
 - **an unmapped chunk** over 2 KiB: one whose contents cannot be attributed.
 
-**Read a build flag where you branch on it.** The audit that led here (October 2026) found
+**Read a build flag where it guards an `import()`, or code that should not ship.** The audit that led here (October 2026) found
 ~118 KiB of native code in the web builds behind `VITE_DEVICE_BACKEND`, though Rolldown
 does fold a constant across modules: it lays out chunks first and folds afterwards. A branch
 on a flag imported from another module loses its code, but the chunk its `import()` named is
 still written, and a module-level statement of an included module survives without the code
 that used it. Written as `import.meta.env.VITE_X === "true"` at the branch, the value is a
-literal before chunking and nothing is emitted. `src/bundle-paths/__tests__` pins both
-behaviours on a real build; `apps/www/src/vite-env.d.ts` says it where the flag is declared.
+literal before chunking and nothing is emitted. `src/bundle-paths/__tests__` pins the
+first behaviour and its fix on a real build (the second is the same ordering, seen in www);
+`apps/www/src/vite-env.d.ts` says it where the flag is declared. Flags still exported as
+constants (`DATA_MODE`, `FETCHES_CONTENT`, `MOBILE_APP`) guard no `import()` today; one that
+starts to leaves an orphan chunk, which fails.
 
 **Why it reads the written output.** Rolldown's `OutputChunk.modules` lists modules whose code
 was dropped after chunking (with a rendered length), and chunk names seen in `generateBundle`
@@ -173,6 +179,8 @@ What it cannot see, by construction:
   chain, so `@some-ui/speech` is one module: its HTTP, browser and native voices ship in every
   profile, and no rule can name one of them until the package exports them as separate entries.
 - **Code with no mapping** (a JSON module, a virtual module) belongs to its chunk only.
+- **Files copied from `public/`**, which are not chunks: the APK carries the web-push
+  service worker `sw.js`, which it never registers.
 - **A module every profile ships**, but one of them never runs: the comparison has nothing to
   compare. It is caught only once `exclusive` names it.
 

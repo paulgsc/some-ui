@@ -156,12 +156,6 @@ describe("readBuild", () => {
     )
   })
 
-  it("does not count a module whose code the bundler dropped", () => {
-    expect(modules(web)).not.toContain("native/literal.js")
-    // Its chunk is still written, and carries it (below).
-    expect(modules(web)).toContain("native/exported.js")
-  })
-
   it("keeps the chunk behind a flag read through an exported constant, loaded by nothing", () => {
     // Pins the bundler behaviour the check exists for. If this fails, the
     // bundler now folds before laying out chunks: good news, and the reason
@@ -172,6 +166,33 @@ describe("readBuild", () => {
     expect(orphans).toHaveLength(1)
     const [orphan] = orphans
     expect(orphan?.facades).toEqual(["native/exported.js"])
+    expect([...(orphan?.modules.keys() ?? [])]).toEqual(["native/exported.js"])
+  })
+
+  it("names a source inside the output directory the same in every build", () => {
+    // A virtual module given a segment resolves next to the chunk; its id
+    // must not carry the per-build directory, or every profile looks unique.
+    for (const name of ["out-a", "out-b"]) {
+      write(
+        `${name}/index.html`,
+        `<script type="module" src="/assets/a.js"></script>`
+      )
+      write(
+        `${name}/.vite/manifest.json`,
+        JSON.stringify({ "index.html": { file: "assets/a.js", isEntry: true } })
+      )
+      write(`${name}/assets/a.js`, "x=1;")
+      write(
+        `${name}/assets/a.js.map`,
+        JSON.stringify({
+          version: 3,
+          sources: ["../virtual.js"],
+          mappings: "AAAA",
+        })
+      )
+      const [chunk] = readBuild(join(root, name), root, root).chunks
+      expect([...(chunk?.modules.keys() ?? [])]).toEqual(["<out>/virtual.js"])
+    }
   })
 
   it("emits nothing for the same branch with the flag read in place", () => {

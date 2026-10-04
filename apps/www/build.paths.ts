@@ -29,13 +29,19 @@ export const PROFILES: ReadonlyArray<Profile> =
  * The environment each deployable builds with, beside `SOME_UI_PROFILE`, so
  * the check builds what ships. Kept in step by hand with where each is set:
  * the Dockerfile (`lan`), .github/workflows/pages.yml (`pages`; its base path
- * is the repository's name), and apps/mobile's `build:web` (`mobile`).
+ * is the repository's name), and apps/mobile's `build:web` (`mobile`). Every
+ * profile sets all three, so a value exported in the caller's shell (Vite
+ * prefers it to any .env file) cannot change what is checked.
  */
 export const profileBuildEnv: Readonly<
   Record<Profile, Readonly<Record<string, string>>>
 > = {
-  lan: {},
-  pages: { VITE_STATIC_DATA: "true", VITE_BASE_PATH: "/some-ui/" },
+  lan: { VITE_DEVICE_BACKEND: "", VITE_STATIC_DATA: "", VITE_BASE_PATH: "/" },
+  pages: {
+    VITE_DEVICE_BACKEND: "",
+    VITE_STATIC_DATA: "true",
+    VITE_BASE_PATH: "/some-ui/",
+  },
   [MOBILE_PROFILE]: {
     VITE_DEVICE_BACKEND: "true",
     VITE_STATIC_DATA: "false",
