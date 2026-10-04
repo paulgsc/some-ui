@@ -7,7 +7,8 @@
  * widget's footer dates ("as of Sep 12") rather than pretending otherwise.
  */
 
-import { addDays } from "./dates.ts"
+import { addDays } from "some-ui-utils"
+
 import type { LocSnapshot } from "./schema.ts"
 
 /**

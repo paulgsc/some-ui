@@ -20,7 +20,7 @@
  * carry only mine and the goals.
  */
 
-import { median } from "@some-ui/core-utils"
+import { addDays, median } from "@some-ui/core-utils"
 
 /** A fixed time of day an entry is taken at, and what aph should be then. */
 export type Checkpoint = {
@@ -241,40 +241,8 @@ function byLatest(settings: AphSettings): (a: Entry, b: Entry) => number {
     a.day === b.day ? rank(a) - rank(b) : b.day.localeCompare(a.day)
 }
 
-/** Local `YYYY-MM-DD` for `date`. */
-export function dayOf(date: Date): string {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, "0")
-  const d = String(date.getDate()).padStart(2, "0")
-  return `${y}-${m}-${d}`
-}
-
 export function minutesOf(date: Date): number {
   return date.getHours() * 60 + date.getMinutes()
-}
-
-function dateOf(day: string): Date {
-  const [y = 1970, m = 1, d = 1] = day.split("-").map(Number)
-  return new Date(y, m - 1, d)
-}
-
-export function addDays(day: string, n: number): string {
-  const date = dateOf(day)
-  date.setDate(date.getDate() + n)
-  return dayOf(date)
-}
-
-/** "Oct 2" */
-export function formatDay(day: string): string {
-  return dateOf(day).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  })
-}
-
-/** "Fri" */
-export function formatWeekday(day: string): string {
-  return dateOf(day).toLocaleDateString("en-US", { weekday: "short" })
 }
 
 /** One row of History: a day with entries, or a run of days without. */

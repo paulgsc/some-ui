@@ -17,7 +17,6 @@
  * - **By the day a commit landed**, in UTC.
  */
 
-import { addDays } from "./dates.ts"
 import type { LocSnapshot, RepoDay } from "./schema.ts"
 
 /**
@@ -25,10 +24,13 @@ import type { LocSnapshot, RepoDay } from "./schema.ts"
  * and the 90 days before it, which its "vs previous period" line compares
  * against.
  *
- * This module imports nothing at runtime but `dates.ts`, on purpose: the
- * Docker release job runs the generator with Node and nothing installed, so
- * `zod` (which `schema.ts` loads) is out of reach there. The shape is checked
- * by this module's test instead.
+ * This module imports nothing at runtime, on purpose: the Docker release job
+ * runs the generator with Node and nothing installed, so neither `zod` (which
+ * `schema.ts` loads) nor a workspace package is within reach there. The one
+ * thing it would need a package for, calendar-day arithmetic, is done by the
+ * script, which loads `@some-ui/core-utils`' `date-utils.ts` from source and
+ * hands `assembleSnapshot` where the window starts. The shape is checked by
+ * this module's test instead of by `zod`.
  */
 export const WINDOW_DAYS = 180
 
@@ -156,15 +158,17 @@ export function foldCommits(
 type RepoCommits = { name: string; commits: ReadonlyArray<CommitStat> }
 
 export function assembleSnapshot({
+  from,
   through,
   generatedAt,
   repos,
 }: {
+  /** First day of the window: `WINDOW_DAYS - 1` days before `through`. */
+  from: string
   through: string
   generatedAt: string
   repos: ReadonlyArray<RepoCommits>
 }): LocSnapshot {
-  const from = addDays(through, -(WINDOW_DAYS - 1))
   const byDate = new Map<string, Record<string, RepoDay>>()
   for (const repo of repos) {
     for (const [date, day] of foldCommits(repo.commits, from, through)) {

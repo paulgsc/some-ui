@@ -46,7 +46,8 @@ import {
   parseGitLog,
   WINDOW_DAYS,
 } from "../apps/www/src/lib/loc-report/collect.ts"
-import { addDays } from "../apps/www/src/lib/loc-report/dates.ts"
+// Loaded from source, not through the package, so nothing has to be installed.
+import { addDays } from "../packages/core-utils/src/lib/date-utils.ts"
 
 const root = resolve(import.meta.dirname, "..")
 
@@ -129,6 +130,7 @@ if (repos.length === 0) {
   process.exitCode = 1
 } else {
   const snapshot = assembleSnapshot({
+    from: addDays(through, -(WINDOW_DAYS - 1)),
     through,
     generatedAt: new Date().toISOString(),
     repos,

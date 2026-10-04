@@ -140,6 +140,7 @@ describe("foldCommits", () => {
 
 describe("assembleSnapshot", () => {
   const input = {
+    from: "2026-04-07",
     through: "2026-10-03",
     generatedAt: "2026-10-03T12:00:00Z",
     repos: [

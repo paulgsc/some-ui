@@ -27,9 +27,8 @@ import {
   TooltipTrigger,
 } from "@some-ui/shared"
 import { ArrowUpRight, TrendingDown, TrendingUp } from "lucide-react"
-import { cn } from "some-ui-utils"
+import { cn, formatDay } from "some-ui-utils"
 
-import { formatDay } from "@/lib/loc-report/dates"
 import type { LocSnapshot } from "@/lib/loc-report/schema"
 import { locSnapshot } from "@/lib/loc-report/snapshot"
 import type { RangeKey, Summary } from "@/lib/loc-report/summarize"

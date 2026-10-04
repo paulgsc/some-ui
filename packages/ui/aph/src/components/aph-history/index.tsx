@@ -19,11 +19,8 @@ import {
 } from "@aph/components/status"
 import type { Entry, ReconcileStatus } from "@aph/lib/model"
 import {
-  dayOf,
-  formatDay,
   formatDelta,
   formatValue,
-  formatWeekday,
   goalDelta,
   history,
   reconcile,
@@ -33,6 +30,7 @@ import {
 import type { AphStore } from "@aph/lib/store"
 import { aphStore } from "@aph/lib/store"
 import { useAph } from "@aph/lib/use-aph"
+import { dayOf, formatDay, formatWeekday } from "@some-ui/core-utils"
 import { cn } from "some-ui-utils"
 
 export type AphHistoryProps = {

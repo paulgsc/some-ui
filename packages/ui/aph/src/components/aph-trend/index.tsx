@@ -9,9 +9,6 @@ import { useState } from "react"
 import { CheckpointMark, checkpointTone, STATUS } from "@aph/components/status"
 import type { AphSettings, Entry } from "@aph/lib/model"
 import {
-  addDays,
-  dayOf,
-  formatDay,
   formatDelta,
   formatValue,
   primary,
@@ -23,6 +20,7 @@ import {
 import type { AphStore } from "@aph/lib/store"
 import { aphStore } from "@aph/lib/store"
 import { useAph } from "@aph/lib/use-aph"
+import { addDays, dayOf, formatDay } from "@some-ui/core-utils"
 import { cn } from "some-ui-utils"
 
 type AphTrendProps = {
