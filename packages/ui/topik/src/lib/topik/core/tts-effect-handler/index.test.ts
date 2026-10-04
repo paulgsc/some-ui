@@ -359,6 +359,32 @@ describe("TTSEffectHandler - a replay", () => {
 // MUTE
 // ═══════════════════════════════════════════════════════════════════════════
 
+describe("TTSEffectHandler - a replay that is not heard", () => {
+  it("gives back the lesson line it displaced, even after two presses in one task", async () => {
+    const t = setup()
+    const words = t.manager.speakerFor("honeycomb")
+
+    t.handler.enqueue(makeMessage("m1"), true)
+    await settle()
+    // Two presses before anything settles: the second replaces the first
+    // while it is still queued.
+    void t.handler.speakManually(makeMessage("m1", "replay one"))
+    void t.handler.speakManually(makeMessage("m1", "replay two"))
+    await settle()
+    // Another applet's line cuts the replay off, so it is not heard.
+    void words.say("사과", { language: "korean", urgency: "now" })
+    await settle()
+    t.finish()
+    await settle()
+
+    // The lesson line is said again, and its end releases the lesson.
+    expect(t.said.at(-1)).toBe("content-m1")
+    t.finish()
+    await settle()
+    expect(t.callbacks.onSpeechEnd).toHaveBeenCalledWith("m1")
+  })
+})
+
 describe("TTSEffectHandler - a lesson line muted waits for unmute", () => {
   it("does not mark a refused line spoken, and says it, then the rest, on unmute", async () => {
     const t = setup()

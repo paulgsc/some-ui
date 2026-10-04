@@ -56,6 +56,10 @@ export const PromptStation = ({
       ? words.find((word) => word.id === stimulus.name)
       : undefined
 
+  // A hint for a word the learner has moved past is not said: waiting
+  // behind another applet's line, it would play late, for the wrong word.
+  useEffect(() => (): void => speaker?.stop(), [entry, speaker])
+
   useEffect(() => {
     if (!entry || tier === "idle" || tier === "icon") {
       lastAutoPlayedTierRef.current = null

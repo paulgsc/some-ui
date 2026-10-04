@@ -295,14 +295,21 @@ describe("a stuck report", () => {
     host.begin(SET)
     host.step()
     expect(host.state.phase.name).toBe("turn")
-    // The set's own clock reached the earlier entries: they wait their turn.
-    expect(host.of("speak").map((each) => each.urgency)).not.toContain("now")
     host.send({ type: "stuck", at: host.now })
     expect(host.state.phase.name).toBe("audio")
     // The learner asked to hear it: it cuts in.
     expect(host.of("speak").at(-1)).toEqual(
       expect.objectContaining({ text: JUSEYO.text, urgency: "now" })
     )
+  })
+
+  it("leaves audio the set's own clock reaches to wait its turn", () => {
+    const host = new Host()
+    host.begin(SET)
+    while (host.state.phase.name !== "audio") host.step()
+    expect(host.of("speak")).toEqual([
+      expect.objectContaining({ text: JUSEYO.text, urgency: "next" }),
+    ])
   })
 
   it("lengthens the word's pace, and a clean return shortens it", () => {

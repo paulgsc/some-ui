@@ -138,9 +138,13 @@ export class TTSEffectHandler {
     this.line = null
     if (replaced?.playing) this.config.onSpeechStopped?.(replaced.message.id)
     this.config.speaker.stop()
+    // The lesson line still owed: in hand, queued, or carried by a replay
+    // this one replaces before it started (two presses in one task).
     const displaced = replaced?.isAuto
       ? replaced.message
-      : (replaced?.displaced ?? dropped.find((entry) => entry.isAuto)?.message)
+      : (replaced?.displaced ??
+        dropped.find((entry) => entry.isAuto)?.message ??
+        dropped.find((entry) => entry.displaced)?.displaced)
 
     await new Promise<void>((done) => {
       this.queue.push({

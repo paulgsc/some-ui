@@ -6,8 +6,9 @@
 
 import type { ReactNode } from "react"
 import { HANGUL_WORDS } from "@honeycomb/data"
+import type { SpeechAdapter } from "@some-ui/speech"
 import { SpeechProvider } from "@some-ui/speech"
-import { act, render, waitFor } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 
 import { PromptStation } from "."
@@ -74,5 +75,94 @@ describe("PromptStation - speaking through the page's session", () => {
     })
 
     expect(sent).toEqual([])
+  })
+})
+
+/**
+ * A device voice that holds each line until `finish`, and drops it when
+ * cancelled, as the settlement laws require (`AbortError`).
+ */
+function holdingAdapter(): SpeechAdapter & {
+  said: Array<string>
+  finish: () => void
+} {
+  const said: Array<string> = []
+  let current: { resolve: () => void; reject: (error: Error) => void } | null =
+    null
+  const drop = (): void => {
+    const dropped = current
+    current = null
+    dropped?.reject(new DOMException("stopped", "AbortError"))
+  }
+  return {
+    id: "web-speech",
+    supported: true,
+    pending: 0,
+    said,
+    finish: (): void => {
+      const finished = current
+      current = null
+      finished?.resolve()
+    },
+    describe: () => ({
+      platform: "browser",
+      voice: null,
+      availability: "available",
+    }),
+    subscribe: () => () => undefined,
+    speak: (text, options = {}): Promise<void> => {
+      drop()
+      said.push(text)
+      return new Promise<void>((resolve, reject) => {
+        const entry = { resolve, reject }
+        current = entry
+        options.signal?.addEventListener("abort", () => {
+          if (current === entry) current = null
+          reject(new DOMException("stopped", "AbortError"))
+        })
+      })
+    },
+    stop: drop,
+    pause: () => undefined,
+    resume: () => undefined,
+    setVolume: () => undefined,
+    setPlaybackRate: () => undefined,
+    dispose: drop,
+  }
+}
+
+describe("PromptStation - a hint and a tap", () => {
+  it("lets a tap replace the hint it cuts off, which is not said again after it", async () => {
+    if (!word) throw new Error("no seed words")
+    const adapter = holdingAdapter()
+    render(
+      <PromptStation
+        stimulus={{ kind: "icon", name: word.id }}
+        tier="icon-tts"
+        progress={null}
+      />,
+      {
+        wrapper: ({ children }: { children: ReactNode }) => (
+          <SpeechProvider
+            config={{
+              mode: "static",
+              adapters: { server: () => adapter, static: () => adapter },
+            }}
+          >
+            {children}
+          </SpeechProvider>
+        ),
+      }
+    )
+    await waitFor(() => expect(adapter.said).toEqual([word.ttsText]))
+
+    fireEvent.click(screen.getByRole("button", { name: /Replay/ }))
+    await waitFor(() => expect(adapter.said).toHaveLength(2))
+    await act(async () => {
+      adapter.finish()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+
+    expect(adapter.said).toEqual([word.ttsText, word.ttsText])
   })
 })
