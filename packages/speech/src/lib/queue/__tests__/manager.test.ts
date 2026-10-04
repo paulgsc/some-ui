@@ -435,4 +435,50 @@ describe("SpeechQueueManager - the speaker", () => {
 
     expect(seen).toEqual([true, false])
   })
+
+  it("says it is speaking while a line or the queue's item plays, and tells when it stops", async () => {
+    const { adapter, manager } = setup()
+    const seen: Array<boolean> = []
+    manager.speaker.subscribe(() => {
+      seen.push(manager.speaker.speaking)
+    })
+
+    expect(manager.speaker.speaking).toBe(false)
+    void manager.speaker.say("하나", { lang: "ko-KR" })
+    expect(manager.speaker.speaking).toBe(true)
+    await flushAsync()
+    adapter.finish()
+    await flushAsync()
+    expect(manager.speaker.speaking).toBe(false)
+
+    manager.speak("chat", "둘")
+    await flushAsync()
+    expect(manager.speaker.speaking).toBe(true)
+    adapter.finish()
+    await flushAsync()
+    expect(manager.speaker.speaking).toBe(false)
+
+    expect(seen).toEqual([true, false, true, false])
+  })
+
+  it("is still speaking when one applet's line cuts off another's", async () => {
+    const { adapter, manager } = setup()
+
+    // The browser and phone adapters cancel the line playing when a new one
+    // starts; this adapter queues them, so the cut is the first's signal.
+    const cut = new AbortController()
+    const first = track(
+      manager.speaker.say("하나", { lang: "ko-KR", signal: cut.signal })
+    )
+    await flushAsync()
+    void manager.speaker.say("둘", { lang: "ko-KR" })
+    cut.abort()
+    await flushAsync()
+
+    expect(isAbortError(first.error)).toBe(true)
+    expect(manager.speaker.speaking).toBe(true)
+    adapter.finish()
+    await flushAsync()
+    expect(manager.speaker.speaking).toBe(false)
+  })
 })

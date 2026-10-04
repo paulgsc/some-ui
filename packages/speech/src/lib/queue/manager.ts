@@ -62,15 +62,27 @@ export class SpeechQueueManager {
    */
   readonly speaker: Speaker
 
-  /** Who to tell when `muted` or the adapter's voices change. */
+  /** Who to tell when `muted`, `speaking` or the adapter's voices change. */
   private readonly speakerListeners = new Set<() => void>()
   private readonly unsubscribeAdapter: () => void
+
+  /** `say` calls not yet settled; with the queue's item, `speaking`. */
+  private saysInFlight = 0
+  /** `speaking` as last announced, so only a change is announced. */
+  private announcedSpeaking = false
 
   constructor(adapter: SpeechAdapter) {
     this.adapter = adapter
     this.store = createStore(INITIAL_STATE, speechReducer)
     this.unsubscribeAdapter = adapter.subscribe(() => this.notifySpeaker())
+    // The queue's item counts as speaking too: chat's lines displace an
+    // applet's as surely as another applet's do.
+    this.store.subscribe(
+      (state) => state.currentItem?.id ?? null,
+      () => this.noteSpeaking()
+    )
     const isMuted = (): boolean => this.muted
+    const isSpeaking = (): boolean => this.isSpeaking()
     this.speaker = {
       available: adapter.supported,
       say: (text, options): Promise<void> => this.say(text, options),
@@ -78,6 +90,9 @@ export class SpeechQueueManager {
       describe: (lang): VoiceReport => this.adapter.describe(lang),
       get muted(): boolean {
         return isMuted()
+      },
+      get speaking(): boolean {
+        return isSpeaking()
       },
       subscribe: (listener): (() => void) => {
         this.speakerListeners.add(listener)
@@ -90,6 +105,17 @@ export class SpeechQueueManager {
 
   private notifySpeaker(): void {
     for (const listener of [...this.speakerListeners]) listener()
+  }
+
+  private isSpeaking(): boolean {
+    return this.saysInFlight > 0 || this.store.get().currentItem !== null
+  }
+
+  private noteSpeaking(): void {
+    const speaking = this.isSpeaking()
+    if (speaking === this.announcedSpeaking) return
+    this.announcedSpeaking = speaking
+    this.notifySpeaker()
   }
 
   // ── Speaker ──────────────────────────────────────────────────────────────
@@ -108,11 +134,19 @@ export class SpeechQueueManager {
     if (this.muted) {
       return Promise.reject(createAbortError("Voice output is muted"))
     }
+    this.saysInFlight += 1
+    this.noteSpeaking()
+    const settled = (): void => {
+      this.saysInFlight -= 1
+      if (!this.disposed) this.noteSpeaking()
+    }
     return this.adapter.speak(text, options).then(
       () => {
+        settled()
         if (!this.disposed) this.store.dispatch({ type: "SAID" })
       },
       (error: unknown) => {
+        settled()
         const failure = toError(error)
         if (!this.disposed && !isAbortError(failure)) {
           this.store.dispatch({

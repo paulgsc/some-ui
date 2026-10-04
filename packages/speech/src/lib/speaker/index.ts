@@ -44,9 +44,17 @@ export type Speaker = {
   /** Whether the person has muted voice output; `say` refuses meanwhile. */
   readonly muted: boolean
   /**
-   * Calls `listener` when `muted` or `describe` may have changed. Returns
-   * the unsubscribe. A caller that held a line back while muted replays it
-   * from here, and a display of `describe` refreshes from here.
+   * Whether anything on the page is speaking through the session: any
+   * applet's `say`, or the session's queue. Several applets share one
+   * session, and a new line cancels the one playing, so a line cancelled by
+   * someone else's waits for this to turn false before it is said again.
+   */
+  readonly speaking: boolean
+  /**
+   * Calls `listener` when `muted`, `speaking` or `describe` may have
+   * changed. Returns the unsubscribe. A caller that held a line back (muted,
+   * or cut off by another applet) replays it from here, and a display of
+   * `describe` refreshes from here.
    */
   subscribe: (listener: () => void) => () => void
 }

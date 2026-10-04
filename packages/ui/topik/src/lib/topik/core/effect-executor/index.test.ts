@@ -124,6 +124,7 @@ function createFakeSpeaker(): Speaker {
     }),
     stop: vi.fn(),
     muted: false,
+    speaking: false,
     subscribe: () => () => undefined,
     describe: () => ({
       platform: "browser",

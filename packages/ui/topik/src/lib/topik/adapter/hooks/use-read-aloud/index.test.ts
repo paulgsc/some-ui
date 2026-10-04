@@ -39,6 +39,7 @@ function fakeSpeech(): FakeSpeech {
       speech.stops += 1
     },
     muted: false,
+    speaking: false,
     subscribe: () => () => undefined,
     describe: () => ({
       platform: "browser",

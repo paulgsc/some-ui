@@ -36,8 +36,9 @@ export type TTSEffectHandlerConfig = {
   onSpeechStart?: (messageId: string) => void
   onSpeechEnd?: (messageId: string) => void
   /**
-   * The line's audio stopped without the line ending: mute cut it off (a
-   * lesson line is then held to replay on unmute). Whoever shows
+   * The line's audio stopped without the line ending: mute or another
+   * applet's line cut it off (a lesson line is then held to replay once the
+   * session is free). Whoever shows
    * "speaking" clears it here; the lesson does not advance, as it does on
    * `onSpeechEnd`.
    */
@@ -63,12 +64,14 @@ export class TTSEffectHandler {
   private activeRun: number | null = null
 
   /**
-   * A line was refused because the session is muted. It is back at the
-   * front of the queue, and the queue waits for unmute rather than marking
-   * it spoken: TOPIK's lesson advances on a line's end, so a line skipped
-   * while muted would leave the lesson stuck on it after unmuting.
+   * A lesson line was refused or cut off before it was heard: the session
+   * is muted, or another applet on the page started a line of its own (the
+   * session is shared, and a new line cancels the one playing). It is back
+   * at the front of the queue, which waits until the session is unmuted and
+   * nothing else is speaking, rather than marking it spoken: the lesson
+   * advances on a line's end, so a skipped line would leave it stuck.
    */
-  private heldForUnmute = false
+  private held = false
   private readonly unsubscribe: () => void
 
   // Deduplication tracking
@@ -83,7 +86,7 @@ export class TTSEffectHandler {
     // Force stop any existing audio on construction (handles remount case)
     this.config.speaker.stop()
     this.unsubscribe = this.config.speaker.subscribe(() => {
-      this.resumeAfterUnmute()
+      this.resumeWhenFree()
     })
   }
 
@@ -115,7 +118,7 @@ export class TTSEffectHandler {
    */
   async speakManually(message: Message): Promise<void> {
     // A muted session would refuse it. Pressing replay while muted changes
-    // nothing, so a lesson line held for unmute keeps its place: dropping it
+    // nothing, so a held lesson line keeps its place: dropping it
     // for a replay that cannot play would leave the lesson waiting on it.
     if (this.config.speaker.muted) return
 
@@ -125,7 +128,7 @@ export class TTSEffectHandler {
 
     // Clear queue and stop current speech
     this.queue = []
-    this.heldForUnmute = false
+    this.held = false
     this.config.speaker.stop()
 
     // Speak immediately (not auto-play)
@@ -136,9 +139,9 @@ export class TTSEffectHandler {
    * Stop current speech and clear queue
    */
   handleStopAudio(): void {
-    // A line held for unmute is the line in hand: stopping ends it, as
+    // A held line is the line in hand: stopping ends it, as
     // stopping one in flight does, so the lesson is not left waiting on it.
-    const held = this.heldForUnmute ? this.queue[0] : undefined
+    const held = this.held ? this.queue[0] : undefined
 
     if (this.currentMessageId) {
       this.config.speaker.stop()
@@ -156,7 +159,7 @@ export class TTSEffectHandler {
 
     // Clear queue
     this.queue = []
-    this.heldForUnmute = false
+    this.held = false
   }
 
   isSpeaking(): boolean {
@@ -179,7 +182,7 @@ export class TTSEffectHandler {
     // A held line was never heard, and nothing replays it now: it is
     // dropped, not ended, so the session's lesson does not advance past it.
     this.queue = []
-    this.heldForUnmute = false
+    this.held = false
     this.handleStopAudio()
     this.config.speaker.stop()
     this.spokenAutoIds.clear()
@@ -196,7 +199,7 @@ export class TTSEffectHandler {
   private async processQueue(): Promise<void> {
     this.processing = true
 
-    while (this.queue.length > 0 && !this.heldForUnmute) {
+    while (this.queue.length > 0 && !this.held) {
       const { message, isAuto } = this.queue.shift()!
 
       // Double-check deduplication (in case queue was filled before processing)
@@ -224,10 +227,11 @@ export class TTSEffectHandler {
     this.config.onMessageComplete?.(messageId)
   }
 
-  /** Picks the held line back up once the session is unmuted. */
-  private resumeAfterUnmute(): void {
-    if (!this.heldForUnmute || this.config.speaker.muted) return
-    this.heldForUnmute = false
+  /** Picks the held line back up once the session is unmuted and quiet. */
+  private resumeWhenFree(): void {
+    const { speaker } = this.config
+    if (!this.held || speaker.muted || speaker.speaking) return
+    this.held = false
     if (!this.processing && this.queue.length > 0) void this.processQueue()
   }
 
@@ -296,24 +300,31 @@ export class TTSEffectHandler {
       if (this.isCurrent(run)) this.config.onSpeechEnd?.(message.id)
       cleanupAndComplete()
     } catch (error) {
-      if (
-        isAbortError(error) &&
-        this.config.speaker.muted &&
-        this.isCurrent(run)
-      ) {
-        // Cut off, or refused, by mute: not heard, so not spoken, and
-        // nothing shows it speaking. A lesson line waits at the front of the
-        // queue until unmute replays it, since the lesson advances only when
-        // it is heard. A replay does not: it would play ahead of lesson lines
-        // queued meanwhile, each advancing the lesson. The learner can press
-        // it again.
+      if (isAbortError(error) && this.isCurrent(run)) {
+        // Cancelled by something other than this handler: its own stops and
+        // newer lines make the run stale first.
         completionFired = true
         release()
-        this.config.onSpeechStopped?.(message.id)
-        if (isAuto) {
-          this.queue.unshift({ message, isAuto })
-          this.heldForUnmute = true
+        const { speaker } = this.config
+        if (speaker.muted || speaker.speaking) {
+          // Refused or cut off by mute, or by another applet's line: not
+          // heard, so not spoken, and nothing shows it speaking. A lesson
+          // line waits at the front of the queue until the session is free
+          // again, since the lesson advances only when it is heard. A replay
+          // does not: it would play ahead of lesson lines queued meanwhile,
+          // each advancing the lesson. The learner can press it again.
+          this.config.onSpeechStopped?.(message.id)
+          if (isAuto) {
+            this.queue.unshift({ message, isAuto })
+            this.held = true
+          }
+          return
         }
+        // Stopped from elsewhere with nothing speaking now (another applet's
+        // `stop`): a stop, as this handler's own would be, so the lesson
+        // moves on rather than waiting on a line nothing will replay.
+        this.config.onSpeechEnd?.(message.id)
+        if (isAuto) this.markSpoken(message.id)
         return
       }
       // A cancellation (a stop, a newer line) is not an error and does not

@@ -49,6 +49,7 @@ function createFakeSpeaker(): {
     get muted() {
       return muted
     },
+    speaking: false,
     subscribe: (listener) => {
       listeners.add(listener)
       return () => {
@@ -737,14 +738,19 @@ describe("TTSEffectHandler - every line says its language and names no voice", (
 
 /**
  * A speaker that behaves as the session does, not as a test drives it: a
- * new line cancels the one in flight, `stop` cancels it, muting cancels it
- * and refuses new lines, and a line starts the moment it is said.
+ * new line cancels the one in flight (another applet's as much as this
+ * handler's), `stop` cancels it, muting cancels it and refuses new lines,
+ * a line starts the moment it is said, and listeners hear when mute or
+ * "speaking" changes.
  */
 function createSessionLikeSpeaker(): {
   speaker: Speaker
   setMuted: (muted: boolean) => void
+  /** Another applet on the page says a line through the same session. */
+  sayOther: () => void
   finish: () => void
   fail: () => void
+  /** A line of this handler's is playing. */
   readonly inFlight: boolean
   /** The text of every line said, refused or not, in order. */
   readonly said: ReadonlyArray<string>
@@ -752,8 +758,20 @@ function createSessionLikeSpeaker(): {
   const said: Array<string> = []
   const listeners = new Set<() => void>()
   let muted = false
-  let current: { resolve: () => void; reject: (error: Error) => void } | null =
-    null
+  let current: {
+    resolve: () => void
+    reject: (error: Error) => void
+    ours: boolean
+  } | null = null
+  let announcedSpeaking = false
+  const announce = (): void => {
+    for (const listener of [...listeners]) listener()
+  }
+  const noteSpeaking = (): void => {
+    if (announcedSpeaking === (current !== null)) return
+    announcedSpeaking = current !== null
+    announce()
+  }
   const cancel = (): void => {
     const cancelled = current
     current = null
@@ -764,6 +782,9 @@ function createSessionLikeSpeaker(): {
     get muted() {
       return muted
     },
+    get speaking() {
+      return current !== null
+    },
     subscribe: (listener) => {
       listeners.add(listener)
       return () => {
@@ -773,38 +794,56 @@ function createSessionLikeSpeaker(): {
     say: (content: string, options: SayOptions) => {
       said.push(content)
       cancel()
-      if (muted) return Promise.reject(aborted())
+      if (muted) {
+        noteSpeaking()
+        return Promise.reject(aborted())
+      }
       return new Promise<void>((resolve, reject) => {
-        current = { resolve, reject }
+        current = { resolve, reject, ours: true }
+        noteSpeaking()
         options.onStart?.()
       })
     },
-    stop: cancel,
+    stop: (): void => {
+      cancel()
+      noteSpeaking()
+    },
     describe: () => ({
       platform: "browser",
       voice: null,
       speaksLanguage: true,
     }),
   }
+  const settle = (outcome: "ends" | "fails"): void => {
+    const settled = current
+    current = null
+    if (outcome === "ends") settled?.resolve()
+    else settled?.reject(new Error("engine failed"))
+    noteSpeaking()
+  }
   return {
     speaker,
     setMuted: (next): void => {
       muted = next
       if (next) cancel()
-      for (const listener of listeners) listener()
+      announcedSpeaking = current !== null
+      announce()
     },
-    finish: (): void => {
-      const finished = current
-      current = null
-      finished?.resolve()
+    sayOther: (): void => {
+      cancel()
+      if (!muted) {
+        current = {
+          resolve: (): void => undefined,
+          reject: (): void => undefined,
+          ours: false,
+        }
+      }
+      noteSpeaking()
     },
-    fail: (): void => {
-      const failed = current
-      current = null
-      failed?.reject(new Error("engine failed"))
-    },
+    finish: (): void => settle("ends"),
+    fail: (): void => settle("fails"),
     get inFlight(): boolean {
-      return current !== null
+      return current?.ours === true
     },
     said,
   }
@@ -825,6 +864,8 @@ const EVENTS = [
   "unmute",
   "line ends",
   "line fails",
+  "another applet speaks",
+  "another applet stops",
 ] as const
 type Event = (typeof EVENTS)[number]
 
@@ -849,6 +890,11 @@ async function runInterleaving(
 ): Promise<string | null> {
   const session = createSessionLikeSpeaker()
   let showsSpeaking = false
+  const ended = new Map<string, number>()
+  const completed = new Map<string, number>()
+  const count = (tally: Map<string, number>, id: string): void => {
+    tally.set(id, (tally.get(id) ?? 0) + 1)
+  }
   vi.spyOn(console, "error").mockImplementation(() => undefined)
   const handler = createTTSEffectHandler({
     speaker: session.speaker,
@@ -857,8 +903,12 @@ async function runInterleaving(
     onSpeechStart: () => {
       showsSpeaking = true
     },
-    onSpeechEnd: () => {
+    onSpeechEnd: (id) => {
       showsSpeaking = false
+      count(ended, id)
+    },
+    onMessageComplete: (id) => {
+      count(completed, id)
     },
     onSpeechStopped: () => {
       showsSpeaking = false
@@ -876,6 +926,8 @@ async function runInterleaving(
     unmute: () => session.setMuted(false),
     "line ends": () => session.finish(),
     "line fails": () => session.fail(),
+    "another applet speaks": () => session.sayOther(),
+    "another applet stops": () => session.speaker.stop(),
   }
 
   const check = (step: string): string | null => {
@@ -884,6 +936,13 @@ async function runInterleaving(
     }
     if (handler.isSpeaking() !== session.inFlight) {
       return `${step}: handler speaking=${String(handler.isSpeaking())}, line in flight=${String(session.inFlight)}`
+    }
+    // The lesson advances on a line's end; a line marked complete without
+    // one leaves the lesson waiting on it, and dedup refuses to replay it.
+    for (const [id, times] of completed) {
+      if (times > (ended.get(id) ?? 0)) {
+        return `${step}: ${id} completed without ending`
+      }
     }
     return null
   }
@@ -908,7 +967,7 @@ async function runInterleaving(
 
   session.setMuted(false)
   await settleMicrotasks()
-  for (let line = 0; line < 10 && session.inFlight; line += 1) {
+  for (let line = 0; line < 10 && session.speaker.speaking; line += 1) {
     session.finish()
     await settleMicrotasks()
   }
@@ -921,6 +980,59 @@ async function runInterleaving(
   handler.destroy()
   return null
 }
+
+describe("TTSEffectHandler - another applet on the page speaks", () => {
+  it("holds a lesson line another applet cut off, and plays it once that line ends", async () => {
+    const onSpeechEnd = vi.fn()
+    const onMessageComplete = vi.fn()
+    const session = createSessionLikeSpeaker()
+    const handler = createTTSEffectHandler({
+      speaker: session.speaker,
+      componentId: "c1",
+      machine: fakeMachine,
+      onSpeechEnd,
+      onMessageComplete,
+    })
+
+    handler.enqueue(makeMessage("m1"), true)
+    session.sayOther()
+    await settleMicrotasks()
+
+    // Not heard, so neither ended nor complete: the lesson waits for it.
+    expect(onSpeechEnd).not.toHaveBeenCalled()
+    expect(onMessageComplete).not.toHaveBeenCalled()
+    expect(session.said).toEqual(["content-m1"])
+
+    session.finish()
+    await settleMicrotasks()
+    expect(session.said).toEqual(["content-m1", "content-m1"])
+    session.finish()
+    await settleMicrotasks()
+    expect(onSpeechEnd).toHaveBeenCalledWith("m1")
+    expect(onMessageComplete).toHaveBeenCalledWith("m1")
+  })
+
+  it("ends a lesson line another applet stopped, so the lesson moves on", async () => {
+    const onSpeechEnd = vi.fn()
+    const onMessageComplete = vi.fn()
+    const session = createSessionLikeSpeaker()
+    const handler = createTTSEffectHandler({
+      speaker: session.speaker,
+      componentId: "c1",
+      machine: fakeMachine,
+      onSpeechEnd,
+      onMessageComplete,
+    })
+
+    handler.enqueue(makeMessage("m1"), true)
+    session.speaker.stop()
+    await settleMicrotasks()
+
+    expect(onSpeechEnd).toHaveBeenCalledWith("m1")
+    expect(onMessageComplete).toHaveBeenCalledWith("m1")
+    expect(handler.isSpeaking()).toBe(false)
+  })
+})
 
 describe("TTSEffectHandler - every interleaving of up to five events", () => {
   it("keeps 'speaking' true to the handler, and never wedges the queue", async () => {

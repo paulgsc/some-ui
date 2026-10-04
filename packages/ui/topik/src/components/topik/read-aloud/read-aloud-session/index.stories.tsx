@@ -28,6 +28,7 @@ const silentVoice: Speaker = {
   },
   stop: noop,
   muted: false,
+  speaking: false,
   subscribe: () => () => undefined,
   describe: () => ({
     platform: "browser",

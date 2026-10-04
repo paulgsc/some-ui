@@ -142,6 +142,7 @@ describe("HandheldLesson", () => {
               say: (): Promise<void> => Promise.resolve(),
               stop: (): void => undefined,
               muted: false,
+              speaking: false,
               subscribe: () => (): void => undefined,
               describe: () => ({
                 platform: "browser",
