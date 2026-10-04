@@ -52,7 +52,16 @@ export type ComposerRuntime = {
 
 export function createNoteComposer(ports: ComposerPorts): ComposerRuntime {
   let state = initialComposerState(ports.dictation !== null)
-  let listening: Listening | null = null
+  /**
+   * The utterance being listened to. `live` turns false the moment it is
+   * cancelled or settles, and nothing it reports afterwards is sent: a
+   * cancelled recognizer that still settles (after Undo, leaving the round,
+   * or unmount) writes nothing, as `Listening.cancel` promises.
+   */
+  let listening: {
+    readonly handle: Listening
+    readonly entry: { live: boolean }
+  } | null = null
   let finishTimer: ReturnType<typeof setTimeout> | null = null
   const listeners = new Set<() => void>()
 
@@ -71,7 +80,10 @@ export function createNoteComposer(ports: ComposerPorts): ComposerRuntime {
   }
 
   const cancel = (): void => {
-    listening?.cancel()
+    if (listening !== null) {
+      listening.entry.live = false
+      listening.handle.cancel()
+    }
     listening = null
   }
 
@@ -92,17 +104,23 @@ export function createNoteComposer(ports: ComposerPorts): ComposerRuntime {
           send({ type: "listenFailed", seq, reason: "failed" })
           return
         }
-        const utterance = ports.dictation.listen((heard) =>
-          send({ type: "heard", seq, heard })
-        )
-        listening = utterance
-        utterance.done.then(
+        const entry = { live: true }
+        const handle = ports.dictation.listen((heard) => {
+          if (entry.live) send({ type: "heard", seq, heard })
+        })
+        listening = { handle, entry }
+        const settled = (): boolean => {
+          if (!entry.live) return false
+          entry.live = false
+          if (listening?.entry === entry) listening = null
+          return true
+        }
+        handle.done.then(
           (text) => {
-            if (listening === utterance) listening = null
-            send({ type: "transcribed", seq, text })
+            if (settled()) send({ type: "transcribed", seq, text })
           },
           (error: unknown) => {
-            if (listening === utterance) listening = null
+            if (!settled()) return
             send({
               type: "listenFailed",
               seq,
@@ -113,7 +131,7 @@ export function createNoteComposer(ports: ComposerPorts): ComposerRuntime {
         return
       }
       case "finishListening": {
-        listening?.stop()
+        listening?.handle.stop()
         return
       }
       case "cancelListening": {

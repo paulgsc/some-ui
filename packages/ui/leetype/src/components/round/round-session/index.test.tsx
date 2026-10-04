@@ -572,7 +572,7 @@ describe("RoundSession — margin notes (canon Rem. 3.7)", () => {
     })
   })
 
-  it("finishes what is being said, and closes the note, before the generator hides the round", async () => {
+  it("keeps Make your own unavailable while a spoken note is still being turned into text", async () => {
     const notes = memoryNoteStore()
     render(
       <RoundSession
@@ -586,17 +586,17 @@ describe("RoundSession — margin notes (canon Rem. 3.7)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Note on Program" }))
     fireEvent.click(screen.getByRole("button", { name: "I don't know this" }))
     fireEvent.click(screen.getByRole("button", { name: "Speak" }))
+    // The generator would hide Stop and Done, and read the notes too early.
+    expect(screen.getByRole("button", { name: /Make your own/ })).toBeDisabled()
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /Make your own/ }))
+      fireEvent.click(screen.getByRole("button", { name: "Done" }))
       await Promise.resolve()
     })
     expect([...notes.notes.values()][0]).toMatchObject({
       text: "which bound grew",
       spoken: true,
     })
-    expect(
-      screen.queryByLabelText("Add words to the note")
-    ).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /Make your own/ })).toBeEnabled()
   })
 
   it("puts focus back on the Note button after Done, and leaves it alone when a control elsewhere closed the note", () => {

@@ -41,6 +41,7 @@ import type { LedgerStore } from "@leetype/lib/leetype/ledger/store"
 import { createLedgerStore } from "@leetype/lib/leetype/ledger/store"
 import type { RoundNote } from "@leetype/lib/leetype/notes"
 import { NOTE_KIND_COPY } from "@leetype/lib/leetype/notes"
+import { isListening } from "@leetype/lib/leetype/notes/composer"
 import type { Dictation } from "@leetype/lib/leetype/notes/dictation"
 import { webSpeechDictation } from "@leetype/lib/leetype/notes/dictation"
 import {
@@ -808,9 +809,12 @@ export const RoundSession: FC<RoundSessionProps> = ({
             variant="ghost"
             size="sm"
             className="min-h-11 gap-1.5"
+            // The generator hides the round, the note's Stop and Done with
+            // it, and its own actions read the notes: while words are still
+            // being turned into text it waits, and otherwise the open note
+            // is closed first (what was typed is already saved).
+            disabled={isListening(noteState.composer)}
             onClick={() => {
-              // The generator hides the round, and the note's Stop and Done
-              // with it: finish what is being said and close the note first.
               composer.dispatch({ type: "donePressed" })
               setGenerating(true)
             }}

@@ -65,6 +65,22 @@ describe("phoneDictation", () => {
     ).rejects.toMatchObject({ reason: "silent" })
   })
 
+  it("never asks for the microphone or starts once cancelled while loading", async () => {
+    let granted: (value: { speechRecognition: string }) => void = () =>
+      undefined
+    plugin.checkPermissions.mockReturnValue(
+      new Promise((resolve) => {
+        granted = resolve
+      })
+    )
+    const listening = phoneDictation().listen(() => undefined)
+    listening.cancel()
+    granted({ speechRecognition: "prompt" })
+    await expect(listening.done).rejects.toMatchObject({ reason: "failed" })
+    expect(plugin.requestPermissions).not.toHaveBeenCalled()
+    expect(plugin.start).not.toHaveBeenCalled()
+  })
+
   it("stops the recognizer on stop, even before it has started", async () => {
     let finish: (value: { matches: Array<string> }) => void = () => undefined
     plugin.start.mockReturnValue(

@@ -167,6 +167,23 @@ describe("the note composer's runtime", () => {
     }
   })
 
+  it("writes nothing a cancelled recognizer reports afterwards", async () => {
+    const dictation = fakeDictation()
+    const { runtime, store, detach } = setup(dictation)
+    runtime.dispatch({ type: "notePressed", anchor: ANCHOR })
+    runtime.dispatch({ type: "kindPicked", kind: "gap" })
+    runtime.dispatch({ type: "micPressed" })
+    detach()
+    const [utterance] = dictation.utterances
+    utterance!.heard("after unmount")
+    utterance!.resolve("after unmount")
+    await Promise.resolve()
+    expect(store.notes.get("n1")?.text).toBe("")
+    expect(runtime.getSnapshot().composer).toMatchObject({
+      voice: { heard: "" },
+    })
+  })
+
   it("removes the note on undo", () => {
     const { runtime, store } = setup(null)
     runtime.dispatch({ type: "notePressed", anchor: ANCHOR })

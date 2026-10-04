@@ -8,8 +8,9 @@
  *   is dropped alone, so one bad entry costs one note.
  * - Prop. 7.2: a failed write is swallowed. Losing a note costs that note.
  * - Rem. 7.3: nothing here leaves the device.
- * - Rem. 3.7: bounded on every write and every read (`boundNotes`), so the
- *   key never holds more than thirty notes of at most thirty days.
+ * - Rem. 3.7: bounded on every write and every read (`boundNotes`), and a
+ *   read that drops a note writes the bound back, so an expired note is
+ *   deleted from the key rather than only hidden from callers.
  *
  * `localStorage`, not `sessionStorage`: a note is read by the next round
  * the learner generates, which may be days later.
@@ -61,15 +62,6 @@ function parseNotes(raw: unknown): Array<RoundNote> {
 export function createNoteStore(
   storage: NoteStorage | null = localStorageOrNull()
 ): NoteStore {
-  const read = (now: number): Array<RoundNote> => {
-    try {
-      const raw = storage?.getItem(NOTES_KEY)
-      if (!raw) return []
-      return boundNotes(parseNotes(JSON.parse(raw)), now)
-    } catch {
-      return []
-    }
-  }
   const write = (notes: ReadonlyArray<RoundNote>, now: number): void => {
     try {
       storage?.setItem(
@@ -79,6 +71,21 @@ export function createNoteStore(
     } catch {
       // Quota or privacy mode: the notes already kept are still true, and
       // this one is lost (Prop. 7.2).
+    }
+  }
+  const read = (now: number): Array<RoundNote> => {
+    try {
+      const raw = storage?.getItem(NOTES_KEY)
+      if (!raw) return []
+      const stored = parseNotes(JSON.parse(raw))
+      const kept = boundNotes(stored, now)
+      // A note past its thirty days is deleted, not only hidden (Rem. 3.7):
+      // its free text must not outlive the bound because nothing was
+      // written since.
+      if (kept.length !== stored.length) write(kept, now)
+      return kept
+    } catch {
+      return []
     }
   }
   return {

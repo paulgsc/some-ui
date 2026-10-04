@@ -66,6 +66,17 @@ describe("createNoteStore", () => {
     expect(store.list(NOW + NOTE_TTL_MS + NOTE_LIMIT + 4)).toEqual([])
   })
 
+  it("deletes an expired note from storage on read, not only from the list", () => {
+    const storage = memoryStorage()
+    const store = createNoteStore(storage)
+    store.put(note("old", NOW, "private words"), NOW)
+    store.put(note("new", NOW + NOTE_TTL_MS), NOW + NOTE_TTL_MS)
+    expect(store.list(NOW + NOTE_TTL_MS + 1).map(({ id }) => id)).toEqual([
+      "new",
+    ])
+    expect(storage.values.get(NOTES_KEY)).not.toContain("private words")
+  })
+
   it("reads every failure as no notes (Thm. 7.2), dropping a bad entry alone", () => {
     const storage = memoryStorage()
     const store = createNoteStore(storage)
