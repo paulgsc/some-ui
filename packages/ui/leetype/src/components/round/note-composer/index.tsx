@@ -100,9 +100,11 @@ export const NoteComposer: FC<NoteComposerProps> = ({
   const open = phase !== "closed"
   const before = useRef(phase)
   // Whether the learner's last activation was one of the panel's closing
-  // buttons (Done, Undo: `data-closes-note`), so focus is put back only on a close they made
-  // there, never on one a control elsewhere caused (Next round, "Make your
-  // own") or the session ending while they typed. `click`, in the capture
+  // buttons (Done, Undo: `data-closes-note`), so focus is put back only on
+  // a close they made there, never on one a control elsewhere caused (Next
+  // round, "Make your own") or the session ending while they typed. A close
+  // that lands while a Done is still waiting on its transcript counts as
+  // theirs: they already asked the panel to close. `click`, in the capture
   // phase so it is seen before the dispatch: it is what a mouse, a key, a
   // screen reader's browse mode and voice control all send.
   const actedInside = useRef(false)
