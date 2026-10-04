@@ -127,6 +127,57 @@ describe("HandheldLesson", () => {
     expect(screen.queryByRole("button", { name: /Read aloud/ })).toBeNull()
   })
 
+  it("lets a replay interrupt what is playing, while a line the lesson reaches waits its turn", async () => {
+    const urgencies: Array<string> = []
+    render(
+      <QueryClientProvider
+        client={
+          new QueryClient({ defaultOptions: { queries: { retry: false } } })
+        }
+      >
+        <SessionConfigProvider
+          value={{
+            topikRepository: fixtureTopikRepository,
+            metadataRepository: fixtureMetadataRepository,
+            speaker: {
+              available: true,
+              say: (_text, options): Promise<SpeechOutcome> => {
+                urgencies.push(options.urgency ?? "next")
+                return Promise.resolve({ kind: "heard" })
+              },
+              stop: (): void => undefined,
+              muted: false,
+              subscribe: () => (): void => undefined,
+              describe: () => ({
+                platform: "browser",
+                voice: null,
+                availability: "available",
+              }),
+            },
+          }}
+        >
+          <HandheldLesson
+            resumeStore={createResumeStore(memoryStorage())}
+            surveyStore={createSurveyStore(memoryStorage())}
+            pastedStore={createPastedLessonStore(memoryStorage())}
+            pastedResumeStore={createResumeStore(memoryStorage())}
+            readAloudStore={createReadAloudStore(memoryStorage())}
+          />
+        </SessionConfigProvider>
+      </QueryClientProvider>
+    )
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Ordering at a café/ })
+    )
+    await screen.findByRole("button", { name: "Play line" })
+    const reached = [...urgencies]
+
+    click("Play line")
+
+    expect(reached.every((urgency) => urgency === "next")).toBe(true)
+    expect(urgencies.slice(reached.length)).toEqual(["now"])
+  })
+
   it("opens the read-aloud drill from the material list, and comes back", async () => {
     render(
       <QueryClientProvider
