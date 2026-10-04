@@ -10,6 +10,17 @@ import type { CapacitorConfig } from "@capacitor/cli"
  * (www `lib/device-backend`), so there is no server to reach and nothing to
  * host. All the UI, routing and state is www's; see this package's README.
  */
+/**
+ * Set only by `pnpm dev:android`. In live-reload mode the WebView loads the
+ * dev server, so the bundled web build is never shown, but `cap run` syncs
+ * before it can point the app at the server, and a sync fails when `webDir` is
+ * missing: on a fresh checkout `../www/dist` is. `live-reload/` is a tracked
+ * stand-in that says what it is, so the sync has something to copy and an APK
+ * built from it by mistake says so on screen. Unset (every build that ships),
+ * `webDir` is the real build, as before.
+ */
+const liveReload = process.env.SOME_UI_LIVE_RELOAD === "1"
+
 const config: CapacitorConfig = {
   appId: "dev.paulgsc.someui",
   appName: "Some UI",
@@ -35,7 +46,7 @@ const config: CapacitorConfig = {
    * 404s every one of them. Absolute is correct here; the Pages build's
    * `/some-ui/` prefix is not.
    */
-  webDir: "../www/dist",
+  webDir: liveReload ? "live-reload" : "../www/dist",
 
   server: {
     /**

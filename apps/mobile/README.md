@@ -152,7 +152,14 @@ pnpm --filter @some-ui/mobile dev:android
 pnpm --filter @some-ui/mobile dev:android --target <id>   # pick one (cap run android --list)
 ```
 
-Leave terminal 2 running; Ctrl-C puts the app's config back. Edits under
+Leave terminal 2 running; Ctrl-C puts the app's config back. On a fresh
+checkout there is no web build (`apps/www/dist`), and `cap run` syncs before it
+can point the app at the dev server, so `dev:android` syncs `live-reload/`, a
+tracked stand-in page, instead (`SOME_UI_LIVE_RELOAD=1` in `capacitor.config.ts`).
+The WebView never shows it in this mode. It stays in
+`android/app/src/main/assets/public` afterwards, so build an APK with
+`pnpm --filter @some-ui/mobile apk` (or `bundle` first), never from that
+directory as it is; an APK built from the stand-in says so on screen. Edits under
 `apps/www` then hot-reload on the device. Anything native (the manifest, a
 plugin, `capacitor.config.ts`) needs `dev:android` run again.
 
