@@ -123,6 +123,19 @@ jobs:
             --filter='!./crates/*' \
             --concurrency=100%
 
+      # What each deployable's build ships (apps/www/build.paths.ts;
+      # packages/some-vite-config/AUDIENCES.md, "Paths"): builds every profile
+      # the way its deployable does and fails on code off that profile's path,
+      # which no other check reads the output to see. Same filters as the
+      # steps above, so it runs exactly when www or something www builds from
+      # changed, and its `^build` is cache hits from the Build step.
+      - name: Bundle paths (www)
+        run: |
+          nix develop .#ci --command pnpm turbo run check:bundle-paths \
+            --filter=...[HEAD^1] \
+            --filter='!./extensions/**' \
+            --filter='!./crates/*'
+
       # Repo-wide invariant, so not turbo-filtered: a manifest that opts out
       # of the catalog is drift regardless of which package changed. Runs
       # without an install (no dependencies of its own) and is cheap enough

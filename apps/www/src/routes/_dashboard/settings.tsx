@@ -25,7 +25,6 @@ import {
 import { createFileRoute } from "@tanstack/react-router"
 import { toast } from "sonner"
 
-import { DEVICE_BACKEND } from "@/lib/data-mode"
 import { useIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton, IntentFailure } from "@/lib/intent/render"
 import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
@@ -103,7 +102,7 @@ const SettingsForm = ({
       <CardContent className="space-y-6">
         {/* The phone speaks with its own engine, so a hosted provider and
             voice mean nothing there (#1628): it gets its own voices. */}
-        {DEVICE_BACKEND ? (
+        {import.meta.env.VITE_DEVICE_BACKEND === "true" ? (
           <DeviceVoiceField
             value={draft.deviceVoiceId}
             onChange={(deviceVoiceId) => setDraft({ ...draft, deviceVoiceId })}
@@ -205,7 +204,11 @@ const SettingsForm = ({
 const AccountCard = (): JSX.Element => (
   <Card className="max-w-xl">
     <CardContent className="pt-[var(--card-p,1.5rem)]">
-      {DEVICE_BACKEND ? <DeviceSection /> : <DataHomeSection />}
+      {import.meta.env.VITE_DEVICE_BACKEND === "true" ? (
+        <DeviceSection />
+      ) : (
+        <DataHomeSection />
+      )}
     </CardContent>
   </Card>
 )

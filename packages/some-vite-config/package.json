@@ -55,6 +55,11 @@
       "import": "./dist/esm/src/audience/index.js",
       "require": "./dist/esm/src/audience/index.js"
     },
+    "./bundle-paths": {
+      "types": "./dist/esm/src/bundle-paths/index.d.ts",
+      "import": "./dist/esm/src/bundle-paths/index.js",
+      "require": "./dist/esm/src/bundle-paths/index.js"
+    },
     "./build-profile-client": {
       "types": "./src/audience/client.d.ts"
     }

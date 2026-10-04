@@ -14,7 +14,6 @@ import { LiveEditOverlay, OrchestratedYouTubeViewport } from "wireframes"
 
 import { useAudioPreferences } from "@/lib/audio-preferences/use-audio-preferences"
 import { useAuthority } from "@/lib/authority"
-import { DEVICE_BACKEND } from "@/lib/data-mode"
 import { phoneDictation, runsNatively } from "@/lib/dictation"
 import { useHangulVocab } from "@/lib/hangul-vocab"
 import { AmbientIntentStatus } from "@/lib/intent/render"
@@ -35,7 +34,9 @@ import { useLiveLayoutEditor } from "./use-live-layout-editor"
  * nothing until a learner taps Speak.
  */
 const PHONE_DICTATION =
-  DEVICE_BACKEND && runsNatively() ? phoneDictation() : undefined
+  import.meta.env.VITE_DEVICE_BACKEND === "true" && runsNatively()
+    ? phoneDictation()
+    : undefined
 
 const BIND_OPTIONS = Object.keys(componentRegistry).map((key) => ({
   value: key,
