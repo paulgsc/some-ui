@@ -63,10 +63,11 @@ jobs:
   # in series (about 11.5 min on #1673), though none needs another's result.
   # Each job repeats the setup and the affected build below (~2.5 min: there
   # is no remote turbo cache to share it), so the wall time is the slowest
-  # job instead of the sum. The setup steps are spelled out in each job, and
-  # explained once, in node-checks. CI Gate requires all four. Each reads the
-  # repo and nothing else, so its token is read-only (mobile-apk.yml runs the
-  # same setup and build on `contents: read`).
+  # job instead of the sum. That setup and build is one composite action,
+  # .github/actions/node-ci-setup, so the four cannot drift onto different
+  # builds. CI Gate requires all four. Each reads the repo and nothing else,
+  # so its token is read-only (mobile-apk.yml runs the same setup and build
+  # on `contents: read`).
   node-checks:
     name: Node CI / typecheck & repo checks
     needs: changes
@@ -80,39 +81,10 @@ jobs:
           # turbo --filter=[HEAD^1] needs the parent commit to diff against.
           fetch-depth: 2
 
-      - uses: ./.github/actions/nix-setup
-      - uses: ./.github/actions/pnpm-cache
+      # Nix, the install and the affected build, shared by all four jobs.
+      - uses: ./.github/actions/node-ci-setup
 
-      - name: Install dependencies
-        run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline
-        env:
-          HUSKY: 0
-
-      - uses: ./.github/actions/resume-assets-cache
-
-      # Build only the packages that changed or whose dependents changed.
-      # The ...[HEAD^1] syntax means: this package and everything that
-      # depends on it, filtered to what changed since the last commit.
-      #
-      # crates/* are excluded explicitly (this step calls turbo directly, so
-      # it does not pick up the root `pnpm build` script's filter). A PR that
-      # touches a .rs file makes ...[HEAD^1] select that crate, whose `build`
-      # script is `wasm-pack build --release` - a ~45s compile per crate, and
-      # this job has no cargo-cache to make it cheaper. Nothing in the PR
-      # needs the output: packages consume the wasm packages from the npm
-      # registry at a pinned version, so no dependent is waiting on that dist.
-      # The `rust` job in this same workflow already compiles, clippies and
-      # tests the crate, and wasm-release.yml is the only flow that has to
-      # turn a crate diff into an actual artifact.
-      - name: Build (affected packages)
-        run: |
-          nix develop .#ci --command pnpm turbo run build \
-            --filter=...[HEAD^1] \
-            --filter='!./extensions/**' \
-            --filter='!./crates/*' \
-            --concurrency=100%
-
-      # Same filter set as Build above, so the `^build` these tasks now
+      # Same filter set as node-ci-setup's build, so the `^build` these tasks now
       # declare in turbo.json (#1454) selects only builds that step already
       # ran: cache hits, not extra work. `!./crates/*` changes nothing today
       # (crates have no typecheck or lint:js script, and no package depends on
@@ -131,7 +103,7 @@ jobs:
       # the way its deployable does and fails on code off that profile's path,
       # which no other check reads the output to see. Same filters as the
       # steps above, so it runs exactly when www or something www builds from
-      # changed, and its `^build` is cache hits from the Build step.
+      # changed, and its `^build` is cache hits from node-ci-setup's build.
       - name: Bundle paths (www)
         run: |
           nix develop .#ci --command pnpm turbo run check:bundle-paths \
@@ -195,20 +167,8 @@ jobs:
         with:
           # turbo --filter=[HEAD^1] needs the parent commit to diff against.
           fetch-depth: 2
-      - uses: ./.github/actions/nix-setup
-      - uses: ./.github/actions/pnpm-cache
-      - name: Install dependencies
-        run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline
-        env:
-          HUSKY: 0
-      - uses: ./.github/actions/resume-assets-cache
-      - name: Build (affected packages)
-        run: |
-          nix develop .#ci --command pnpm turbo run build \
-            --filter=...[HEAD^1] \
-            --filter='!./extensions/**' \
-            --filter='!./crates/*' \
-            --concurrency=100%
+      # Nix, the install and the affected build, shared by all four jobs.
+      - uses: ./.github/actions/node-ci-setup
 
       - name: Lint (affected packages)
         run: |
@@ -251,20 +211,8 @@ jobs:
         with:
           # turbo --filter=[HEAD^1] needs the parent commit to diff against.
           fetch-depth: 2
-      - uses: ./.github/actions/nix-setup
-      - uses: ./.github/actions/pnpm-cache
-      - name: Install dependencies
-        run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline
-        env:
-          HUSKY: 0
-      - uses: ./.github/actions/resume-assets-cache
-      - name: Build (affected packages)
-        run: |
-          nix develop .#ci --command pnpm turbo run build \
-            --filter=...[HEAD^1] \
-            --filter='!./extensions/**' \
-            --filter='!./crates/*' \
-            --concurrency=100%
+      # Nix, the install and the affected build, shared by all four jobs.
+      - uses: ./.github/actions/node-ci-setup
 
       - name: Test (affected packages)
         run: |
@@ -312,20 +260,8 @@ jobs:
         with:
           # turbo --filter=[HEAD^1] needs the parent commit to diff against.
           fetch-depth: 2
-      - uses: ./.github/actions/nix-setup
-      - uses: ./.github/actions/pnpm-cache
-      - name: Install dependencies
-        run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline
-        env:
-          HUSKY: 0
-      - uses: ./.github/actions/resume-assets-cache
-      - name: Build (affected packages)
-        run: |
-          nix develop .#ci --command pnpm turbo run build \
-            --filter=...[HEAD^1] \
-            --filter='!./extensions/**' \
-            --filter='!./crates/*' \
-            --concurrency=100%
+      # Nix, the install and the affected build, shared by all four jobs.
+      - uses: ./.github/actions/node-ci-setup
 
       # public/sw.js is the one file in apps/www that nothing else checks: a
       # plain public/ asset, never bundled, never imported, never type-checked,
