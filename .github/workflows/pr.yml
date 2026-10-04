@@ -64,12 +64,16 @@ jobs:
   # Each job repeats the setup and the affected build below (~2.5 min: there
   # is no remote turbo cache to share it), so the wall time is the slowest
   # job instead of the sum. The setup steps are spelled out in each job, and
-  # explained once, in node-checks. CI Gate requires all four.
+  # explained once, in node-checks. CI Gate requires all four. Each reads the
+  # repo and nothing else, so its token is read-only (mobile-apk.yml runs the
+  # same setup and build on `contents: read`).
   node-checks:
     name: Node CI / typecheck & repo checks
     needs: changes
     if: needs.changes.outputs.node == 'true' || needs.changes.outputs.ci == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v7
         with:
@@ -184,6 +188,8 @@ jobs:
     needs: changes
     if: needs.changes.outputs.node == 'true' || needs.changes.outputs.ci == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v7
         with:
@@ -238,6 +244,8 @@ jobs:
     needs: changes
     if: needs.changes.outputs.node == 'true' || needs.changes.outputs.ci == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v7
         with:
@@ -297,6 +305,8 @@ jobs:
     needs: changes
     if: needs.changes.outputs.node == 'true' || needs.changes.outputs.ci == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v7
         with:
