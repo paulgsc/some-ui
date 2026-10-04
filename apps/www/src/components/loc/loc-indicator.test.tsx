@@ -94,7 +94,9 @@ describe("LocIndicator", () => {
     expect(within(dialog).getAllByText("some-ui")).toHaveLength(2)
     expect(within(dialog).getAllByText("server")).toHaveLength(2)
     expect(
-      within(dialog).getByRole("link", { name: "server" }).getAttribute("href")
+      within(dialog)
+        .getByRole("link", { name: /^server on github/i })
+        .getAttribute("href")
     ).toBe("https://github.com/paulgsc/server/graphs/code-frequency")
 
     fireEvent.click(within(dialog).getByRole("button", { name: "90d" }))

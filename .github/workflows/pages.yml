@@ -203,8 +203,6 @@ jobs:
         if: github.event_name != 'pull_request' && inputs.rollback_sha == ''
         continue-on-error: true
         uses: ./.github/actions/loc-snapshot
-        with:
-          server-token: ${{ secrets.LOC_SNAPSHOT_TOKEN }}
 
       # honeycomb's sfx lives in packages/some-content (pure assets, no build
       # step of its own) and isn't part of www's own public/ dir. It's

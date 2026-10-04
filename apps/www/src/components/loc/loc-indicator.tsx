@@ -364,9 +364,10 @@ const LocPulse = ({ snapshot }: { snapshot: LocSnapshot }): JSX.Element => {
             {snapshot.repos.map((repo) => (
               <a
                 key={repo}
-                href={`${GITHUB_URL}/${repo}/graphs/code-frequency`}
+                href={`${GITHUB_URL}/${encodeURIComponent(repo)}/graphs/code-frequency`}
                 target="_blank"
                 rel="noreferrer"
+                aria-label={`${repo} on GitHub (opens in a new tab)`}
                 className={cn(
                   "hover:text-foreground inline-flex items-center gap-1 underline underline-offset-2 max-sm:min-h-11"
                 )}

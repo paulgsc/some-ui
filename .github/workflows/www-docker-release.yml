@@ -162,8 +162,6 @@ jobs:
       - name: Snapshot lines of code
         continue-on-error: true
         uses: ./.github/actions/loc-snapshot
-        with:
-          server-token: ${{ secrets.LOC_SNAPSHOT_TOKEN }}
       - name: Read version
         id: version
         run: echo "version=$(jq -r .version apps/www/package.json)" >> "$GITHUB_OUTPUT"

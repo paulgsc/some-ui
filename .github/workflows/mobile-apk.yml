@@ -66,8 +66,6 @@ jobs:
       - name: Snapshot lines of code
         continue-on-error: true
         uses: ./.github/actions/loc-snapshot
-        with:
-          server-token: ${{ secrets.LOC_SNAPSHOT_TOKEN }}
 
       # www's build (with the flags `build:web` pins) into apps/www/dist, then
       # `cap sync` copies it and the Capacitor plugins into the Gradle project.
