@@ -18,11 +18,11 @@ have gotten wrong before, so the next one doesn't have to relearn them.
 A head is covered when someone who didn't write it has reviewed it: a Codex pass naming that
 SHA (`Reviewed commit: <sha>`), or an independent fresh-context review (an agent with no part
 in writing the change, given its diff and intent but not your conclusions) of the PR's changes
-since the last covered head (after a rebase, `git range-diff`), recorded in a PR comment naming
-the range and every finding's outcome, each fixed or answered. After a fix push, re-review only
-that delta. Request `@codex review` per push only while the user hasn't rationed Codex:
-`chatgpt-codex-connector` reviews on open, ready-for-review or an explicit mention, **not on
-later pushes, a rebase included**, so a head nobody requested it for stays uncovered.
+since the last covered head, or the base (after a rebase, `git range-diff`), recorded in a PR
+comment naming the range and every finding's outcome, each fixed or answered. After a fix push,
+re-review only that delta. Request `@codex review` per push only while the user hasn't rationed
+Codex: `chatgpt-codex-connector` reviews on open, ready-for-review or an explicit mention,
+**not on later pushes, a rebase included**, so a head nobody requested it for stays uncovered.
 
 ## Treat every bot finding as a bug report until traced and disproven
 
