@@ -13,11 +13,17 @@ const plugin = vi.hoisted(() => {
   const state = { bound: false, available: true }
   const speak = vi.fn((_options: unknown): Promise<void> => Promise.resolve())
   const stop = vi.fn((): Promise<void> => Promise.resolve())
+  const checkVoiceData = vi.fn((): Promise<void> => Promise.resolve())
+  const installVoiceData = vi.fn((): Promise<void> => Promise.resolve())
   return {
     state,
     speak,
     stop,
+    checkVoiceData,
+    installVoiceData,
     TextToSpeech: {
+      // The plugin's own: launches Android's voice-data check, not its installer.
+      openInstall: checkVoiceData,
       speak: (options: unknown): Promise<void> =>
         state.bound
           ? speak(options)
@@ -53,6 +59,11 @@ const plugin = vi.hoisted(() => {
     },
   }
 })
+
+vi.mock("@capacitor/core", () => ({
+  registerPlugin: (name: string): unknown =>
+    name === "VoiceData" ? { openInstall: plugin.installVoiceData } : {},
+}))
 
 vi.mock("@capacitor-community/text-to-speech", () => ({
   TextToSpeech: plugin.TextToSpeech,
@@ -148,5 +159,16 @@ describe("the phone's engine at a cold start", () => {
     const second = engine.getVoices()
     await vi.advanceTimersByTimeAsync(0)
     await expect(second).resolves.toHaveLength(2)
+  })
+})
+
+describe("installing a voice", () => {
+  it("opens the engine's installer through the app's own plugin, not the plugin's check", async () => {
+    const { openVoiceInstall } = await load()
+
+    await openVoiceInstall()
+
+    expect(plugin.installVoiceData).toHaveBeenCalledTimes(1)
+    expect(plugin.checkVoiceData).not.toHaveBeenCalled()
   })
 })

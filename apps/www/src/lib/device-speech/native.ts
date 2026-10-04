@@ -20,6 +20,7 @@ import {
   QueueStrategy,
   TextToSpeech,
 } from "@capacitor-community/text-to-speech"
+import { registerPlugin } from "@capacitor/core"
 import type {
   NativeSpeechEngine,
   NativeSpeechRequest,
@@ -157,9 +158,19 @@ export const engine: NativeSpeechEngine = {
 }
 
 /**
+ * The app's own plugin (`apps/mobile`'s `VoiceDataPlugin.java`). The
+ * text-to-speech plugin's `openInstall` launches Android's voice-data
+ * *check*, which can return without offering a download; this one launches
+ * the engine's installer, or the system's text-to-speech settings.
+ */
+const VoiceData = registerPlugin<{ openInstall: () => Promise<void> }>(
+  "VoiceData"
+)
+
+/**
  * Opens the engine's own screen for installing voice data, where Korean is
  * one download away.
  */
 export async function openVoiceInstall(): Promise<void> {
-  await TextToSpeech.openInstall()
+  await VoiceData.openInstall()
 }

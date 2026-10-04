@@ -525,7 +525,13 @@ offline, in any language whose voice data is installed (#1625):
   a download (Settings → Accessibility → Text-to-speech → the engine's gear
   → Install voice data). Until it is there, the first line a lesson tries
   raises one toast with an **Install** button, and **Settings → Voice** says
-  the same and offers the same button.
+  the same and offers the same button. The button goes through the app's
+  own plugin, `VoiceDataPlugin.java` (registered in `MainActivity`), which
+  launches the engine's installer (`ACTION_INSTALL_TTS_DATA`), or the
+  system's text-to-speech settings when the engine has none. The TTS
+  plugin's own `openInstall` launches the voice-data _check_, which can
+  return without offering a download. The new plugin adds nothing to the
+  manifest.
 - **Settings → Voice** lists the phone's Korean voices, offline ones first,
   with a sample to play. The sample is a line through the speech session
   (`useVoicePreview`), so it honors mute and the lesson it interrupts is
@@ -537,7 +543,7 @@ offline, in any language whose voice data is installed (#1625):
   does not audit `<queries>`; the restricted kind, `QUERY_ALL_PACKAGES`,
   stays in `restrictedPermissions`.
 - **R8:** Capacitor's consumer rules keep every `@CapacitorPlugin` class,
-  so `proguard-rules.pro` needs nothing.
+  the app's own included, so `proguard-rules.pro` needs nothing.
 - **CI** checks the plugin reached the bundle (`mobile-apk.yml`), since it
   arrives through a dynamic import behind `VITE_DEVICE_BACKEND`. It cannot
   hear anything: whether a lesson actually speaks is checked on the phone.
