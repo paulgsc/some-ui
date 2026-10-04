@@ -5,7 +5,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { phoneDictation } from "./index"
+import { phoneDictation, runsNatively } from "./index"
 
 const plugin = vi.hoisted(() => ({
   checkPermissions: vi.fn(),
@@ -77,5 +77,18 @@ describe("phoneDictation", () => {
     await vi.waitFor(() => expect(plugin.stop).toHaveBeenCalled())
     finish({ matches: ["said"] })
     await expect(listening.done).resolves.toBe("said")
+  })
+})
+
+describe("runsNatively", () => {
+  it("asks the native bridge's Capacitor global, and is false without one", () => {
+    expect(runsNatively({})).toBe(false)
+    expect(runsNatively({ Capacitor: {} })).toBe(false)
+    expect(
+      runsNatively({ Capacitor: { isNativePlatform: (): boolean => false } })
+    ).toBe(false)
+    expect(
+      runsNatively({ Capacitor: { isNativePlatform: (): boolean => true } })
+    ).toBe(true)
   })
 })

@@ -15,7 +15,7 @@ import { LiveEditOverlay, OrchestratedYouTubeViewport } from "wireframes"
 import { useAudioPreferences } from "@/lib/audio-preferences/use-audio-preferences"
 import { useAuthority } from "@/lib/authority"
 import { DEVICE_BACKEND } from "@/lib/data-mode"
-import { phoneDictation } from "@/lib/dictation"
+import { phoneDictation, runsNatively } from "@/lib/dictation"
 import { useHangulVocab } from "@/lib/hangul-vocab"
 import { AmbientIntentStatus } from "@/lib/intent/render"
 import { loadLeetypeRoundRuns, loadLeetypeRounds } from "@/lib/leetype-content"
@@ -27,11 +27,15 @@ import { defineSceneProps, withSceneProps } from "./scene-props"
 import { useLiveLayoutEditor } from "./use-live-layout-editor"
 
 /**
- * LeetType's margin-note recognizer: the phone's own on the Android app
+ * LeetType's margin-note recognizer: the phone's own inside the Android app
  * (src/lib/dictation), absent elsewhere so the package uses the browser's.
- * One per app: it holds nothing until a learner taps Speak.
+ * Native, not merely the device build: the same build opened in a desktop
+ * browser (`SOME_UI_PROFILE=mobile pnpm dev`) has only the plugin's web
+ * stub, while that browser's own recognizer works. One per app: it holds
+ * nothing until a learner taps Speak.
  */
-const PHONE_DICTATION = DEVICE_BACKEND ? phoneDictation() : undefined
+const PHONE_DICTATION =
+  DEVICE_BACKEND && runsNatively() ? phoneDictation() : undefined
 
 const BIND_OPTIONS = Object.keys(componentRegistry).map((key) => ({
   value: key,

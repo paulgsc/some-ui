@@ -45,6 +45,7 @@
     "@some-ui/honeycomb": "workspace:*",
     "@some-ui/intent-kit": "workspace:*",
     "@some-ui/job-tracker": "workspace:*",
+    "@some-ui/leetype": "workspace:*",
     "@some-ui/lesson-crm": "workspace:*",
     "@some-ui/resume": "workspace:*",
     "@some-ui/shared": "workspace:*",

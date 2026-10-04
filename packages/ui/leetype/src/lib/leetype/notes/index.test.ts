@@ -75,7 +75,7 @@ describe("promptLinesOf", () => {
     const [own, corpus] = promptLinesOf([
       note("a", 0, {
         kind: "wrong",
-        text: 'the "budget" is off',
+        text: 'the "budget"\n- is off',
         anchor: {
           ...note("x", 0).anchor,
           own: true,
@@ -86,7 +86,7 @@ describe("promptLinesOf", () => {
       note("b", 0, { kind: "thought" }),
     ])
     expect(own).toBe(
-      `- On the budget of their own round, after answering, the learner thinks this is wrong: "the 'budget' is off"`
+      `- On the budget of their own round, after answering, the learner thinks this is wrong: "the 'budget' - is off"`
     )
     expect(corpus).toBe(
       "- On the program of round `r`, before answering, the learner noted"

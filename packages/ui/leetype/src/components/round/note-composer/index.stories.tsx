@@ -54,7 +54,6 @@ const Phone = ({
     <NoteComposer
       state={state}
       dispatch={() => undefined}
-      label="Rewrites"
       recognizer={recognizer}
     />
   </div>

@@ -111,6 +111,25 @@ describe("the note composer's step", () => {
     expect(landed.state.composer.phase).toBe("closed")
   })
 
+  it("closes on a second Done when the transcript never lands, keeping what was heard", () => {
+    const { state, effects } = run([
+      ...OPENED,
+      { type: "micPressed" },
+      { type: "heard", seq: 1, heard: "half a thought" },
+      { type: "donePressed" },
+      { type: "donePressed" },
+      { type: "transcribed", seq: 1, text: "too late" },
+    ])
+    expect(effects).toEqual([
+      "save:",
+      "listen",
+      "finishListening",
+      "save:half a thought",
+      "cancelListening",
+    ])
+    expect(state.composer.phase).toBe("closed")
+  })
+
   it("keeps words heard before a failure, and says why when there were none", () => {
     const kept = run([
       ...OPENED,

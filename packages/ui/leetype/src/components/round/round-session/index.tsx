@@ -804,7 +804,12 @@ export const RoundSession: FC<RoundSessionProps> = ({
             variant="ghost"
             size="sm"
             className="min-h-11 gap-1.5"
-            onClick={() => setGenerating(true)}
+            onClick={() => {
+              // The generator hides the round, and the note's Stop and Done
+              // with it: finish what is being said and close the note first.
+              composer.dispatch({ type: "donePressed" })
+              setGenerating(true)
+            }}
           >
             <Sparkles className="size-4" aria-hidden="true" /> Make your own
           </Button>
@@ -851,13 +856,6 @@ export const RoundSession: FC<RoundSessionProps> = ({
             <NoteComposer
               state={noteState}
               dispatch={composer.dispatch}
-              label={
-                noteState.composer.phase === "choosing"
-                  ? ARTIFACT_LABELS[noteState.composer.anchor.artifact]
-                  : noteState.composer.phase === "noted"
-                    ? ARTIFACT_LABELS[noteState.composer.note.anchor.artifact]
-                    : ""
-              }
               recognizer={recognizer?.recognizer ?? null}
               className="mt-2"
             />

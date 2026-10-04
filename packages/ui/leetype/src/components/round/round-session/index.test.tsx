@@ -572,6 +572,33 @@ describe("RoundSession — margin notes (canon Rem. 3.7)", () => {
     })
   })
 
+  it("finishes what is being said, and closes the note, before the generator hides the round", async () => {
+    const notes = memoryNoteStore()
+    render(
+      <RoundSession
+        rounds={[COUNT_PRESENT]}
+        sessionSeed={3}
+        pastedStore={memoryStore()}
+        noteStore={notes}
+        dictation={hearing("which bound grew")}
+      />
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Note on Program" }))
+    fireEvent.click(screen.getByRole("button", { name: "I don't know this" }))
+    fireEvent.click(screen.getByRole("button", { name: "Speak" }))
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Make your own/ }))
+      await Promise.resolve()
+    })
+    expect([...notes.notes.values()][0]).toMatchObject({
+      text: "which bound grew",
+      spoken: true,
+    })
+    expect(
+      screen.queryByLabelText("Add words to the note")
+    ).not.toBeInTheDocument()
+  })
+
   it("offers no microphone where there is no recognizer", () => {
     render(
       <RoundSession

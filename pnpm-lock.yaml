@@ -368,6 +368,9 @@ importers:
       '@some-ui/job-tracker':
         specifier: workspace:*
         version: link:../../packages/job-tracker
+      '@some-ui/leetype':
+        specifier: workspace:*
+        version: link:../../packages/ui/leetype
       '@some-ui/lesson-crm':
         specifier: workspace:*
         version: link:../../packages/ui/lesson-crm

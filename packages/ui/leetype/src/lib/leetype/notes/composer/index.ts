@@ -28,7 +28,9 @@
  *   so a transcript that lands after the note was closed, undone or
  *   replaced writes nothing.
  * - **Done while listening finishes the utterance first**, then closes, so
- *   the last words said are kept.
+ *   the last words said are kept. Pressed again before the transcript
+ *   lands, it closes at once with the words heard so far: a recognizer that
+ *   never settles cannot hold the panel open.
  * - **Nothing listens while the page is off screen.** Hiding the page
  *   finishes an utterance in progress (what was heard is kept), and the
  *   microphone does not start while hidden.
@@ -181,7 +183,18 @@ function finish(state: ComposerState): ComposerStep {
   if (composer.voice.kind === "idle")
     return close(state, COMPOSER_NOTICES.saved)
   if (composer.voice.kind === "finishing") {
-    return stay({ ...state, composer: { ...composer, closing: true } })
+    if (!composer.closing) {
+      return stay({ ...state, composer: { ...composer, closing: true } })
+    }
+    // Pressed again while a transcript is still on its way: the recognizer
+    // may never settle (another app took the microphone, its service died),
+    // so stop waiting. What was heard so far is kept; the note was saved
+    // when its kind was picked.
+    const landing = landed(state, composer.voice.seq, composer.voice.heard, "")
+    return {
+      state: landing.state,
+      effects: [...landing.effects, { type: "cancelListening" }],
+    }
   }
   return {
     state: {

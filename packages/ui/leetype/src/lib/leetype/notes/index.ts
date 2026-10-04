@@ -68,8 +68,12 @@ const NOTE_ARTIFACTS = [
 ] as const
 type NoteArtifact = (typeof NOTE_ARTIFACTS)[number]
 
-/** How the prompt names each artifact: the tab labels the learner saw. */
-const ARTIFACT_NAMES: Readonly<Record<NoteArtifact, string>> = {
+/**
+ * Each artifact as a noun phrase, for the prompt and the composer's own
+ * copy ("noted on the rewrites"); the tab labels ("Which proposition?")
+ * do not read as one.
+ */
+export const NOTE_ARTIFACT_NAMES: Readonly<Record<NoteArtifact, string>> = {
   algorithm: "the program",
   constraintDiff: "the bounds",
   budget: "the budget",
@@ -79,7 +83,7 @@ const ARTIFACT_NAMES: Readonly<Record<NoteArtifact, string>> = {
 }
 
 const NoteAnchorSchema = z.object({
-  /** The round's id; an own round's is namespaced (`RoundSession`). */
+  /** The round's id, as authored; `own` says whose round it was. */
   roundId: z.string().min(1),
   /** Whether it was the learner's own round rather than the corpus's. */
   own: z.boolean(),
@@ -147,9 +151,12 @@ export const PROMPT_NOTES = 10
  */
 export function promptLinesOf(notes: ReadonlyArray<RoundNote>): Array<string> {
   return notes.slice(0, PROMPT_NOTES).map(({ kind, text, anchor }) => {
-    const where = `${ARTIFACT_NAMES[anchor.artifact]} of ${anchor.own ? "their own round" : `round \`${anchor.roundId}\``}`
+    const where = `${NOTE_ARTIFACT_NAMES[anchor.artifact]} of ${anchor.own ? "their own round" : `round \`${anchor.roundId}\``}`
     const when = anchor.committed ? "after answering" : "before answering"
-    const words = text === "" ? "" : `: "${text.replaceAll('"', "'")}"`
+    // One line per note: a newline typed into the note must not start a
+    // line of its own in the prompt.
+    const flat = text.replace(/\s+/g, " ").trim().replaceAll('"', "'")
+    const words = flat === "" ? "" : `: "${flat}"`
     return `- On ${where}, ${when}, the learner ${NOTE_KIND_COPY[kind].prompt}${words}`
   })
 }

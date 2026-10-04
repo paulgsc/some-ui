@@ -24,28 +24,14 @@
  * before a learner taps Speak, and only the device build passes this in
  * (`components/player/session-viewport.tsx`).
  */
-/**
- * `@some-ui/leetype`'s `Dictation` port (`lib/leetype/notes/dictation`),
- * restated rather than imported: nothing in this app imports the package
- * (see `lib/leetype-content`), so the activity stays out of the main
- * bundle. Nothing type-checks the two against each other across the
- * registry (scene props are `Record<string, unknown>`); keep them in step
- * by hand, as `lib/leetype-content` does for its loaders.
- */
-type DictationFailure = "denied" | "silent" | "failed"
-type Listening = {
-  readonly done: Promise<string>
-  stop(): void
-  cancel(): void
-}
-type Dictation = {
-  readonly recognizer: "browser" | "phone"
-  listen(onHeard: (heard: string) => void): Listening
-}
+// Types only: erased at build, so the activity stays out of the main bundle
+// (the reason `lib/leetype-content` imports nothing from the package).
+import type { Dictation, DictationFailure, Listening } from "@some-ui/leetype"
 
 /**
  * A rejection the port's consumer reads by its `reason`
- * (`dictationFailureOf`), so it need not be the package's own class.
+ * (`dictationFailureOf`), so it need not be the package's own class, which
+ * is a value and would pull the activity into the main bundle.
  */
 class PhoneDictationError extends Error {
   constructor(readonly reason: DictationFailure) {
@@ -60,6 +46,22 @@ function failureOf(error: unknown): DictationFailure {
   if (/permission/i.test(message)) return "denied"
   if (/no match|no speech/i.test(message)) return "silent"
   return "failed"
+}
+
+/**
+ * Whether this page runs inside the native app, read from the
+ * `window.Capacitor` the native bridge injects before the page loads,
+ * rather than from `@capacitor/core`, which would put the runtime in every
+ * build's main bundle to answer one question.
+ */
+export function runsNatively(host: object = globalThis): boolean {
+  const capacitor: unknown = Reflect.get(host, "Capacitor")
+  if (typeof capacitor !== "object" || capacitor === null) return false
+  const isNative: unknown = Reflect.get(capacitor, "isNativePlatform")
+  return (
+    typeof isNative === "function" &&
+    Reflect.apply(isNative, capacitor, []) === true
+  )
 }
 
 export function phoneDictation(): Dictation {
