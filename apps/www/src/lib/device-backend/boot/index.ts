@@ -13,7 +13,6 @@
  * carry none of it, and the device build opens the database on the first
  * `file_host` request rather than before the first paint.
  */
-import { DEVICE_BACKEND } from "@/lib/data-mode"
 import type { DeviceBackend } from "@/lib/device-backend/interceptor"
 import { installDeviceFetch } from "@/lib/device-backend/interceptor"
 import { resolveFileHostBase } from "@/lib/file-host-config"
@@ -49,7 +48,11 @@ export function deviceFileHostBase(): URL | undefined {
 
 /** Installs the device backend in the device build; a no-op in any other. */
 export function bootDeviceBackend(): void {
-  if (!DEVICE_BACKEND || typeof window === "undefined") return
+  if (
+    import.meta.env.VITE_DEVICE_BACKEND !== "true" ||
+    typeof window === "undefined"
+  )
+    return
   const base = deviceFileHostBase()
   if (base === undefined) return
   installDeviceFetch(base, deviceBackend)

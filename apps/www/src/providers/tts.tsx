@@ -6,7 +6,7 @@ import { toast } from "sonner"
 
 import { useAudioPreferences } from "@/lib/audio-preferences/use-audio-preferences"
 import { useAuthority } from "@/lib/authority"
-import { DATA_MODE, DEVICE_BACKEND } from "@/lib/data-mode"
+import { DATA_MODE } from "@/lib/data-mode"
 import { deviceSpeechBackend } from "@/lib/device-speech"
 import { LESSON_LANGUAGE } from "@/lib/lesson-voice"
 import { useSettings } from "@/lib/tenant"
@@ -124,7 +124,7 @@ export const TTSProvider = ({
   return (
     <SpeechProvider
       config={
-        DEVICE_BACKEND
+        import.meta.env.VITE_DEVICE_BACKEND === "true"
           ? {
               // The device build has a backend but no TTS service behind
               // it, so it speaks with the phone's own engine: Korean, in

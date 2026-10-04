@@ -1,5 +1,5 @@
 /** The one authority instance, wired to this build's flags and to browser storage. */
-import { DATA_MODE, DEVICE_BACKEND } from "@/lib/data-mode"
+import { DATA_MODE } from "@/lib/data-mode"
 
 import type { AuthorityPorts } from "./runtime"
 import { createAuthority } from "./runtime"
@@ -7,7 +7,7 @@ import type { Backend, Choice } from "./state"
 
 /** What this build can reach, from its build flags. */
 function backendOf(
-  device: boolean = DEVICE_BACKEND,
+  device: boolean = import.meta.env.VITE_DEVICE_BACKEND === "true",
   mode: typeof DATA_MODE = DATA_MODE
 ): Backend {
   if (device) return "in-process"

@@ -5,8 +5,9 @@ network, the GitHub Pages site, the Android app (`apps/mobile`), and (later) a V
 what it will carry only means anything on the home network (the OBS control workspace is
 the first), and some only inside the Android app (`@some-ui/soundbites`, which records
 from the phone's microphone). **Build audiences**
-keep that code out of every build that never runs there, without a second app, a second
-route tree or a weaker type system.
+keep that code out of every build that never runs there, without a second app or a weaker
+type system. (One route tree for every profile was part of that design; it is now recorded as
+debt, below in "Paths".)
 
 This is about bundle size, not access. Nothing here hides or protects anything; a service
 a LAN-only page talks to is the server's to guard.
@@ -123,6 +124,63 @@ checked against every existing link. What is left is inside such a file.
   for the cost of one link to not-found. `tsc` accepts the link on purpose (the route tree is
   the same in every profile), and a lint rule would need the route tree, another file (the
   `eslint --cache` problem again).
+
+## Paths: what each build ships
+
+Audiences decide which `packages/ui/*` workspaces a profile carries. The rule they serve is
+wider, and it is the one this repository holds every build to: **a profile ships only the code
+on its own path.** Code no visit to that deployable can run does not belong in its output, at
+startup or in a lazy chunk, and when keeping it out takes structure (a split workspace, a
+separate entry, a route tree per deployable) the repository pays for that, not the bundle.
+
+`pnpm --filter www check:bundle-paths` (`apps/www/check-bundle-paths.ts`, rules in
+`apps/www/build.paths.ts`, reader and checks in `src/bundle-paths/`) holds www to it. It
+builds every profile the way its deployable does (`profileBuildEnv`), plus `--manifest` and
+hidden sourcemaps, so the code checked is byte-for-byte what ships. It runs in `pr.yml`'s Node
+job whenever www or anything it builds from changed, and in root `pnpm lint`. It fails on:
+
+- **an orphan chunk**: emitted, and no HTML entry loads it through any chain of chunks;
+- **an off-path module**: one `exclusive` gives to other profiles only, or one under an
+  `allowlists` entry's `within` that its `allow` does not name. When the module is an
+  `import()` target, its chunk and every chunk only it loads are charged to it, so a page
+  off the path is reported with what it brings, not just its route file;
+- **a missing module**: one `required` says the deployable cannot work without;
+- **an undeclared exclusive**: a module some profiles ship and others do not, that no
+  `exclusive` entry (or `decidedElsewhere`, for workspaces and npm packages) accounts for.
+  This keeps `exclusive` complete: a new phone-only module fails the first time it builds;
+- **stale debt**: a `debt` entry that matches nothing any more, so the list only shrinks;
+- **an unmapped chunk** over 2 KiB: one whose contents cannot be attributed.
+
+**Read a build flag where you branch on it.** The audit that led here (October 2026) found
+~118 KiB of native code in the web builds behind `VITE_DEVICE_BACKEND`, though Rolldown
+does fold a constant across modules: it lays out chunks first and folds afterwards. A branch
+on a flag imported from another module loses its code, but the chunk its `import()` named is
+still written, and a module-level statement of an included module survives without the code
+that used it. Written as `import.meta.env.VITE_X === "true"` at the branch, the value is a
+literal before chunking and nothing is emitted. `src/bundle-paths/__tests__` pins both
+behaviours on a real build; `apps/www/src/vite-env.d.ts` says it where the flag is declared.
+
+**Why it reads the written output.** Rolldown's `OutputChunk.modules` lists modules whose code
+was dropped after chunking (with a rendered length), and chunk names seen in `generateBundle`
+are not always the ones written. So the reader starts from the HTML, follows the chunk names
+each loaded chunk spells, and attributes code by sourcemap segments, counting a source only
+where a segment maps something other than a keyword or punctuation to it (a dropped
+declaration leaves a stray `var ` mapped to its first line).
+
+What it cannot see, by construction:
+
+- **Inside a prebuilt workspace.** A `packages/*` dist has no sourcemap for www's build to
+  chain, so `@some-ui/speech` is one module: its HTTP, browser and native voices ship in every
+  profile, and no rule can name one of them until the package exports them as separate entries.
+- **Code with no mapping** (a JSON module, a virtual module) belongs to its chunk only.
+- **A module every profile ships**, but one of them never runs: the comparison has nothing to
+  compare. It is caught only once `exclusive` names it.
+
+**Debt today** (`build.paths.ts`, `debt`): every profile builds the one route tree, so the
+routes off a profile's path ship there as stubs in the startup chunk and as page chunks
+(about 67 KiB in the APK; the `apk` gate's pages in `lan` and `pages`, and the `lan` gate's
+in `pages`). The gates and `keepToMobileSurface` keep them from rendering; the bytes are still
+paid. Each entry goes with the change that gives that deployable its own route tree.
 
 ## Known gaps
 

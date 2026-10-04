@@ -52,7 +52,7 @@ import { Input, Label, Separator, Switch } from "@some-ui/shared"
 import { toast } from "sonner"
 
 import { useAuthoritySnapshot } from "@/lib/authority"
-import { DATA_MODE, DEVICE_BACKEND } from "@/lib/data-mode"
+import { DATA_MODE } from "@/lib/data-mode"
 import { useAsyncIntent } from "@/lib/intent"
 import { IntentButton, IntentFailure } from "@/lib/intent/render"
 import type { NudgePreferences } from "@/lib/study-nudge"
@@ -157,7 +157,7 @@ export const StudyNudgeSection = ({
   const { reportingAllowed, backend } = useAuthoritySnapshot()
   const serverDelivers = !clientOwnsNudgeDelivery(
     DATA_MODE,
-    DEVICE_BACKEND,
+    import.meta.env.VITE_DEVICE_BACKEND === "true",
     reportingAllowed
   )
 
@@ -420,7 +420,7 @@ export const StudyNudgeSection = ({
               ? subscribed === false
                 ? "This browser isn't registered for push yet, so reminders will only arrive while a tab is open. Toggle reminders off and on to retry."
                 : "Reminders arrive even with the browser closed - this browser is registered with file_host."
-              : DEVICE_BACKEND
+              : import.meta.env.VITE_DEVICE_BACKEND === "true"
                 ? "Reminders come from this phone as notifications, even with the app closed. Android may deliver one a few minutes late."
                 : backend === "remote"
                   ? "Reminders only fire while this app is open in a tab (it can be in the background), and are worked out on this device from your sessions. To get them with the browser closed, keep an account and turn on Reminders and progress sync."

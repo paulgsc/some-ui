@@ -21,8 +21,6 @@ import type { ReactNode } from "react"
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import type * as DataModeModule from "@/lib/data-mode"
-
 const speechProviderSpy = vi.fn()
 const speechConfigSpy = vi.fn()
 
@@ -37,14 +35,6 @@ vi.mock("@some-ui/speech", () => ({
     speechProviderSpy(config.mode)
     speechConfigSpy(config)
     return children
-  },
-}))
-
-let deviceBackend = false
-vi.mock("@/lib/data-mode", async (importOriginal) => ({
-  ...(await importOriginal<typeof DataModeModule>()),
-  get DEVICE_BACKEND(): boolean {
-    return deviceBackend
   },
 }))
 
@@ -80,7 +70,7 @@ afterEach(() => {
   cleanup()
   speechProviderSpy.mockClear()
   speechConfigSpy.mockClear()
-  deviceBackend = false
+  vi.unstubAllEnvs()
 })
 
 describe("TTSProvider: where the speech is made follows whose data this is", () => {
@@ -116,7 +106,8 @@ describe("TTSProvider: where the speech is made follows whose data this is", () 
 
   it("speaks Korean with the phone's own engine in the Android app, whatever the account", async () => {
     kind = "account"
-    deviceBackend = true
+    // Read where it is branched on (src/vite-env.d.ts), at render.
+    vi.stubEnv("VITE_DEVICE_BACKEND", "true")
     const { TTSProvider } = await import("@/providers/tts")
     render(<TTSProvider>{children}</TTSProvider>)
 

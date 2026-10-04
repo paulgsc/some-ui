@@ -9,6 +9,7 @@
     "content:link": "node scripts/link-content-assets.js",
     "build": "node scripts/sync-resume.mjs && vite build && tsc",
     "build:analyze": "node scripts/analyze-bundle.js",
+    "check:bundle-paths": "node --no-warnings check-bundle-paths.ts",
     "analyze": "pnpm run build:analyze && open dist/bundle-analysis.html",
     "analyze:ci": "pnpm run build:analyze",
     "serve": "vite preview",
