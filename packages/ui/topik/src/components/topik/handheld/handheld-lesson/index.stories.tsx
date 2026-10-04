@@ -6,7 +6,7 @@ import { KoreanStudyPage } from "@topik/components/topik/study-session"
 import { fixtureMetadataRepository, fixtureTopikRepository } from "./fixture"
 
 const WithSpeech = ({ children }: { children: ReactNode }): JSX.Element => (
-  <SpeechProvider config={{ mode: "static", lang: "ko-KR" }}>
+  <SpeechProvider config={{ mode: "static", language: "korean" }}>
     {children}
   </SpeechProvider>
 )

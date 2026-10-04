@@ -1,92 +1,105 @@
 /**
- * TTS Effect Handler - Serial Queue with Deduplication
+ * TTS Effect Handler - a lesson's lines, one at a time, through the page's
+ * speech session.
  *
- * Speaks through a `SpeechAdapter` from `@some-ui/speech` - whichever
- * backend that session resolved to. This used to be typed against
- * `UseAudioTTSReturn`, the return value of a React hook, which meant this
- * pure-TypeScript handler's contract was "whatever shape that hook happens
- * to have today"; callbacks also had to be installed statefully via
- * `updateOptions` immediately before each `speak`, so the association
- * between a message and its own onStart/onEnd was positional and fragile.
- * Callbacks are per-utterance arguments now.
+ * The session (`@some-ui/speech`) is the one writer of the page's voice:
+ * this handler submits each line through its own `Speaker` handle and is
+ * told what became of it (`SpeechOutcome`), so nothing here infers why a
+ * line stopped from state another applet may have changed meanwhile.
  *
- * Ensures:
- * - Messages speak one at a time (serial queue)
- * - No duplicate auto-play (Set-based deduplication)
- * - onEnd resolves before advancing
- * - Manual override clears deduplication
- * - Survives React Strict Mode (double effect calls)
+ * - **Lesson lines are `"next"`.** They play in order, and when another
+ *   applet's `"now"` line (a tapped word) interrupts one, the session plays
+ *   it again afterwards; `onInterrupted` clears "speaking" meanwhile.
+ * - **A replay is `"now"`.** The learner pressed it: it cancels this
+ *   handler's own lines and plays at once. It goes through the same queue
+ *   as lesson lines, so this handler has one line in hand at a time and one
+ *   path that writes it; a replay beside the queue let a lesson line queued
+ *   during it take over, and the replay's end was lost.
+ * - **The lesson advances only on a heard (or failed) line** (`onSpeechEnd`,
+ *   which the executor turns into `ADVANCE_MESSAGE`). A lesson line the
+ *   session refused or cut off because the person muted is held at the
+ *   front of the queue and said again on unmute. A replay is not held:
+ *   played later, it would land among lesson lines queued since, each
+ *   advancing the lesson. But a replay that is not heard gives back the
+ *   unheard lesson line it displaced, which is said next (or on unmute),
+ *   since the lesson is still waiting on a line's end.
+ * - **No duplicate auto-play.** A lesson line already heard is not said
+ *   again when its effect is re-dispatched (React Strict Mode); a replay
+ *   clears that, so the line can auto-play again later.
  */
 
-import type { SpeechAdapter, VoiceConfig } from "@some-ui/speech"
+import type { Speaker, SpeechOutcome, Urgency } from "@some-ui/speech"
 import type { Message } from "@topik/lib/topik"
 import type { ISessionMachine } from "@topik/lib/topik/core/session-types"
-
-/**
- * What this applet's utterances are, in BCP-47 terms.
- *
- * The session speaks Korean study material, and the voice it speaks with
- * has to match - not as a nicety, but because the backends fail on the
- * mismatch rather than muddling through. `openai-edge-tts` hands Hangul to
- * whatever Edge voice it was asked for, and an en-US voice returns *no
- * audio stream at all* for a script it cannot pronounce, which surfaces as
- * an HTTP 500 ("No audio was received. Please verify that your parameters
- * are correct.") - a message that points at the request and says nothing
- * about the voice being the wrong language.
- *
- * That is what a host's default gets you: `apps/www` ships `ttsVoiceId: ""`
- * in its settings, `@some-ui/speech` resolves an unset voice to the first
- * entry in the provider's catalogue, and the first entry there is English.
- * A Korean lesson then 500s on its first sentence in a deployment where
- * speech is otherwise working perfectly.
- *
- * So the applet asks for its own language rather than inheriting the host's
- * global voice preference, which was never about this content.
- */
-const SPOKEN_LANGUAGE = "ko"
+import { SPOKEN_LANGUAGE } from "@topik/lib/topik/core/spoken-language"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TTS EFFECT HANDLER CONFIG
 // ═══════════════════════════════════════════════════════════════════════════
 
 export type TTSEffectHandlerConfig = {
-  speechAdapter: SpeechAdapter
+  speaker: Speaker
   componentId: string
   machine: ISessionMachine
   onMessageComplete?: (messageId: string) => void
   onSpeechStart?: (messageId: string) => void
   onSpeechEnd?: (messageId: string) => void
+  /**
+   * The line's audio stopped without the line ending: it was muted, or
+   * another applet's line interrupted it (the session plays it again
+   * after). Whoever shows "speaking" clears it here; the lesson does not
+   * advance, as it does on `onSpeechEnd`.
+   */
+  onSpeechStopped?: (messageId: string) => void
   onError?: (error: Error, messageId: string) => void
 }
+
+type Entry = {
+  readonly message: Message
+  readonly isAuto: boolean
+  readonly urgency: Urgency
+  /** Resolves `speakManually`'s promise once the line is done with. */
+  readonly done?: () => void
+  /**
+   * A replay's: the unheard lesson line it displaced. A heard replay ends
+   * in its place (the lesson advances on any line's end); a replay that is
+   * not heard gives it back, or the lesson would wait on it forever.
+   */
+  readonly displaced?: Message
+}
+
+/** The line in hand: submitted, playing, or held for unmute. */
+type Line = Entry & { playing: boolean }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TTS EFFECT HANDLER
 // ═══════════════════════════════════════════════════════════════════════════
 
 export class TTSEffectHandler {
-  private currentMessageId: string | null = null
-  private speaking: boolean = false
+  /**
+   * The line in hand. A line that a stop or a replay has replaced is no
+   * longer it, so whatever its outcome is when it lands, it is not this
+   * handler's to act on any more: whoever replaced it has already done the
+   * bookkeeping.
+   */
+  private line: Line | null = null
 
-  // Reference to the resolver of the currently active speech promise
-  private activeResolve: (() => void) | null = null
-  private activeReject: ((error: Error) => void) | null = null
+  /** `line` is a lesson line the session refused or cut off while muted. */
+  private held = false
+  private readonly unsubscribe: () => void
 
   // Deduplication tracking
   private spokenAutoIds: Set<string> = new Set()
   private completedIds: Set<string> = new Set()
 
   // Serial queue
-  private queue: Array<{ message: Message; isAuto: boolean }> = []
+  private queue: Array<Entry> = []
   private processing: boolean = false
 
-  // Resolved once per handler: the adapter's voice list is fixed for the
-  // session it came from. `null` means "asked, and this backend offers
-  // none" - distinct from "not asked yet".
-  private spokenVoice: VoiceConfig | null | undefined = undefined
-
   constructor(private readonly config: TTSEffectHandlerConfig) {
-    // Force stop any existing audio on construction (handles remount case)
-    this.config.speechAdapter.stop()
+    this.unsubscribe = this.config.speaker.subscribe(() => {
+      this.resumeAfterUnmute()
+    })
   }
 
   // ═════════════════════════════════════════════════════════════════════════
@@ -98,74 +111,75 @@ export class TTSEffectHandler {
    * Auto-play messages are deduplicated
    */
   enqueue(message: Message, isAuto: boolean = true): void {
-    // Deduplicate auto-play
-    if (isAuto && this.spokenAutoIds.has(message.id)) {
-      return
-    }
-
-    this.queue.push({ message, isAuto })
-
-    // Start processing if not already running
-    if (!this.processing) {
-      void this.processQueue()
-    }
+    if (isAuto && this.spokenAutoIds.has(message.id)) return
+    this.queue.push({ message, isAuto, urgency: "next" })
+    if (!this.processing) void this.processQueue()
   }
 
   /**
-   * Manual speak (UI-triggered)
-   * Clears deduplication for this message
+   * A replay the learner pressed: replaces whatever this handler has in
+   * hand or queued, and plays at once. Clears the message's dedup.
    */
   async speakManually(message: Message): Promise<void> {
-    // Clear deduplication for this message
+    // A muted session would refuse it. Pressing replay while muted changes
+    // nothing, so a held lesson line keeps its place: dropping it for a
+    // replay that cannot play would leave the lesson waiting on it.
+    if (this.config.speaker.muted) return
+
     this.spokenAutoIds.delete(message.id)
     this.completedIds.delete(message.id)
+    const dropped = this.dropQueue()
+    this.held = false
+    // The line this replaces stops here, and nothing reports it later: its
+    // outcome is not this handler's any more. The replay may not start
+    // (muted or interrupted before its audio arrives), so "speaking" is
+    // cleared now rather than left for the replay's start to overwrite.
+    const replaced = this.line
+    this.line = null
+    if (replaced?.playing) this.config.onSpeechStopped?.(replaced.message.id)
+    this.config.speaker.stop()
+    // The lesson line still owed: in hand, queued, or carried by a replay
+    // this one replaces before it started (two presses in one task).
+    const displaced = replaced?.isAuto
+      ? replaced.message
+      : (replaced?.displaced ??
+        dropped.find((entry) => entry.isAuto)?.message ??
+        dropped.find((entry) => entry.displaced)?.displaced)
 
-    // Clear queue and stop current speech
-    this.queue = []
-    this.config.speechAdapter.stop()
-
-    // Reject any pending promise
-    if (this.activeReject) {
-      this.activeReject(new Error("Interrupted by manual speak"))
-      this.activeReject = null
-      this.activeResolve = null
-    }
-
-    // Speak immediately (not auto-play)
-    await this._speak(message, false)
+    await new Promise<void>((done) => {
+      this.queue.push({
+        message,
+        isAuto: false,
+        urgency: "now",
+        done,
+        displaced,
+      })
+      if (!this.processing) void this.processQueue()
+    })
   }
 
   /**
-   * Stop current speech and clear queue
+   * Stop: the line in hand ends (as far as the lesson is concerned, which
+   * moves on), and the queue is dropped.
    */
   handleStopAudio(): void {
-    if (this.currentMessageId) {
-      this.config.speechAdapter.stop()
-      this.speaking = false
+    const line = this.line
+    this.line = null
+    this.held = false
+    this.dropQueue()
+    if (!line) return
 
-      const stoppedId = this.currentMessageId
-      this.currentMessageId = null
-
-      this.config.onSpeechEnd?.(stoppedId)
-
-      // Resolve the active promise to unblock the queue
-      if (this.activeResolve) {
-        this.activeResolve()
-        this.activeResolve = null
-        this.activeReject = null
-      }
-    }
-
-    // Clear queue
-    this.queue = []
+    this.config.speaker.stop()
+    this.config.onSpeechEnd?.(line.message.id)
+    if (line.isAuto) this.markSpoken(line.message.id)
   }
 
   isSpeaking(): boolean {
-    return this.speaking
+    return this.line?.playing === true
   }
 
   getCurrentMessageId(): string | null {
-    return this.currentMessageId
+    return this.line?.playing === true ? this.line.message.id : null
   }
 
   reset(): void {
@@ -175,134 +189,153 @@ export class TTSEffectHandler {
     this.processing = false
   }
 
+  /**
+   * Teardown. Ends nothing: the session's lesson must not advance past a
+   * line because the handler speaking it went away (an executor rebuilt
+   * around the same session machine would skip it unheard). Nor does a
+   * rebuilt executor say that line again: the lesson waits on it until
+   * Play re-dispatches it, as it did before this handler's rewrite.
+   */
   destroy(): void {
-    this.handleStopAudio()
-    this.config.speechAdapter.stop()
+    this.unsubscribe()
+    this.line = null
+    this.held = false
+    this.dropQueue()
+    this.config.speaker.stop()
     this.spokenAutoIds.clear()
     this.completedIds.clear()
   }
 
   // ═════════════════════════════════════════════════════════════════════════
-  // PRIVATE QUEUE PROCESSOR
+  // PRIVATE
   // ═════════════════════════════════════════════════════════════════════════
 
-  /**
-   * Process queue serially - one message at a time
-   */
+  /** Drops every queued line, telling any replay waiting on one. */
+  private dropQueue(): ReadonlyArray<Entry> {
+    const dropped = this.queue
+    this.queue = []
+    for (const entry of dropped) entry.done?.()
+    return dropped
+  }
+
+  /** Puts a lesson line back first in line, unheard. */
+  private requeueAuto(message: Message): void {
+    this.queue.unshift({ message, isAuto: true, urgency: "next" })
+  }
+
   private async processQueue(): Promise<void> {
     this.processing = true
-
-    while (this.queue.length > 0) {
-      const { message, isAuto } = this.queue.shift()!
-
-      // Double-check deduplication (in case queue was filled before processing)
-      if (isAuto && this.spokenAutoIds.has(message.id)) {
-        continue
-      }
-
-      try {
-        await this._speak(message, isAuto)
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error(`[TTS] Error speaking ${message.id}:`, error)
-        // Continue processing queue even on error
-      }
+    while (this.queue.length > 0 && !this.held) {
+      const entry = this.queue.shift()!
+      if (entry.isAuto && this.spokenAutoIds.has(entry.message.id)) continue
+      await this.speak(entry)
     }
-
     this.processing = false
   }
 
-  /**
-   * The adapter's own voice for this applet's language, if it has one.
-   *
-   * Asked of the adapter rather than named here on purpose: which voices
-   * exist is a property of the backend that resolved (an `openai-edge-tts`
-   * catalogue, the browser's installed voices), and `SpeechAdapter.voices`
-   * is where that lives. Undefined when the backend offers no Korean voice
-   * - the browser adapter on a machine with none, say - and `speak` then
-   * falls back to whatever default the session was configured with, which
-   * is the behaviour this applet had all along.
-   */
-  private voiceForSpokenLanguage(): VoiceConfig | undefined {
-    if (this.spokenVoice === undefined) {
-      this.spokenVoice =
-        this.config.speechAdapter.voices.find((candidate) =>
-          candidate.language?.toLowerCase().startsWith(SPOKEN_LANGUAGE)
-        ) ?? null
-    }
-    return this.spokenVoice ?? undefined
+  /** Says the held line again once the session is unmuted. */
+  private resumeAfterUnmute(): void {
+    if (!this.held || this.config.speaker.muted) return
+    this.held = false
+    this.line = null
+    if (!this.processing && this.queue.length > 0) void this.processQueue()
   }
 
-  /**
-   * Speak a single message and wait for completion
-   */
-  private async _speak(message: Message, isAuto: boolean): Promise<void> {
-    this.currentMessageId = message.id
-    this.speaking = true
+  /** Dedup for an auto line, and its completion, reported once. */
+  private markSpoken(messageId: string): void {
+    this.spokenAutoIds.add(messageId)
+    if (this.completedIds.has(messageId)) return
+    this.completedIds.add(messageId)
+    this.config.onMessageComplete?.(messageId)
+  }
 
-    let completionFired = false // Guard against double-firing
+  private async speak(entry: Entry): Promise<void> {
+    const line: Line = { ...entry, playing: false }
+    const id = entry.message.id
+    this.line = line
 
-    const cleanupAndComplete = (): void => {
-      if (completionFired) return
-      completionFired = true
+    const outcome = await this.config.speaker.say(entry.message.content, {
+      language: SPOKEN_LANGUAGE,
+      urgency: entry.urgency,
+      onStart: () => {
+        if (this.line !== line) return
+        line.playing = true
+        this.config.onSpeechStart?.(id)
+      },
+      onInterrupted: () => {
+        if (this.line !== line) return
+        line.playing = false
+        this.config.onSpeechStopped?.(id)
+      },
+    })
 
-      this.speaking = false
-      this.currentMessageId = null
-      this.activeResolve = null
-      this.activeReject = null
+    // Replaced by a stop or a replay, which settled it already.
+    if (this.line === line) this.settle(line, outcome)
+    entry.done?.()
+  }
 
-      // Mark as spoken for deduplication
-      if (isAuto) {
-        this.spokenAutoIds.add(message.id)
+  private settle(line: Line, outcome: SpeechOutcome): void {
+    const id = line.message.id
+    const wasPlaying = line.playing
+    line.playing = false
+
+    switch (outcome.kind) {
+      case "heard": {
+        this.line = null
+        this.config.onSpeechEnd?.(id)
+        if (line.isAuto) this.markSpoken(id)
+        return
       }
-
-      // Fire completion callback ONLY ONCE per message
-      if (isAuto && !this.completedIds.has(message.id)) {
-        this.completedIds.add(message.id)
-        this.config.onMessageComplete?.(message.id)
+      case "failed": {
+        // Ends the line, so the lesson is not left waiting on one that will
+        // never be heard.
+        this.line = null
+        // eslint-disable-next-line no-console
+        console.error(`[TTS] ❌ Error: ${id}`, outcome.error)
+        this.config.onError?.(outcome.error, id)
+        this.config.onSpeechEnd?.(id)
+        if (line.isAuto) this.markSpoken(id)
+        return
       }
-    }
-
-    try {
-      // Await the speak promise - this blocks until the audio completes.
-      // The callbacks belong to *this* utterance, so a later one cannot
-      // finish an earlier one's bookkeeping.
-      await this.config.speechAdapter.speak(message.content, {
-        voice: this.voiceForSpokenLanguage(),
-
-        onStart: () => {
-          this.config.onSpeechStart?.(message.id)
-        },
-
-        onEnd: () => {
-          // Guard against duplicate onEnd calls
-          if (completionFired) {
-            return
-          }
-
-          this.config.onSpeechEnd?.(message.id)
-          cleanupAndComplete()
-        },
-
-        onError: (error) => {
-          // Guard against duplicate onError calls
-          if (completionFired) {
-            return
-          }
-
-          // eslint-disable-next-line no-console
-          console.error(`[TTS] ❌ Error: ${message.id}`, error)
-          this.config.onError?.(error, message.id)
-          this.config.onSpeechEnd?.(message.id)
-          cleanupAndComplete()
-        },
-      })
-    } catch {
-      // Already reported through onError - or a cancellation, which is not
-      // an error at all. Either way the queue moves on.
-      cleanupAndComplete()
+      case "muted": {
+        if (wasPlaying) this.config.onSpeechStopped?.(id)
+        // Not heard, so not spoken: a lesson line, or the one a replay
+        // displaced, is kept first in line and said on unmute.
+        const owed = line.isAuto ? line.message : line.displaced
+        if (owed) {
+          this.requeueAuto(owed)
+          this.held = true
+        } else {
+          this.line = null
+        }
+        return
+      }
+      case "preempted":
+      case "cancelled": {
+        // A replay another applet's line interrupted, or a line cancelled
+        // by something other than this handler's own stop (which replaces
+        // the line first). Not heard: the lesson line a replay displaced is
+        // said next.
+        this.line = null
+        if (wasPlaying) this.config.onSpeechStopped?.(id)
+        if (line.displaced) this.requeueAuto(line.displaced)
+        return
+      }
+      case "ended": {
+        // The session is gone; there is nothing to say anything with.
+        this.line = null
+        if (wasPlaying) this.config.onSpeechStopped?.(id)
+        return
+      }
+      default: {
+        return assertNever(outcome)
+      }
     }
   }
+}
+
+function assertNever(value: never): never {
+  throw new Error(`Unhandled speech outcome: ${JSON.stringify(value)}`)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

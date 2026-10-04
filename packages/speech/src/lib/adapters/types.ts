@@ -14,14 +14,63 @@
  * `@some-ui/fetch-kit`, and not for branching.
  */
 
-import type { VoiceConfig } from "@speech/lib/types/tts-types"
+import type { SpokenLanguage } from "@speech/lib/language"
 
 export type SpeechAdapterId = "http" | "web-speech"
 
+/**
+ * Whether a platform can speak a language, as far as it has said. The
+ * platform's own answer is its business (a catalogue lookup, a voice list
+ * that loads late, a probe over a native bridge); this is what the adapter
+ * makes of it, and all anything outside an adapter switches on.
+ *
+ * - `"available"` - it has a voice for the language.
+ * - `"missing"` - it has said it has none: a hosted provider with no voice
+ *   for it, a browser whose loaded voices include none, a phone without the
+ *   voice data.
+ * - `"checking"` - it has not said yet: a browser's voices still loading, a
+ *   phone's probe still out.
+ * - `"unverifiable"` - asking failed, so nothing is known; a line is tried
+ *   anyway, and the platform's own error says what went wrong.
+ */
+export type VoiceAvailability =
+  | "available"
+  | "missing"
+  | "checking"
+  | "unverifiable"
+
+/**
+ * Who would speak a line in a given language, as a person would want to
+ * know it: the platform, the voice by name, and whether it has one.
+ *
+ * - `"hosted"` - this site's voice service; `voice` is the catalogue voice
+ *   `hostedVoiceFor` picks for the language.
+ * - `"browser"` - the browser's own synthesizer; `voice` is the browser
+ *   voice the adapter hands the line to.
+ * - `"phone"` - the phone's text-to-speech (the Android app).
+ *
+ * When `availability` is `"missing"`, a hosted line fails and a browser
+ * reads it in `voice` anyway, another language's voice, which is what an
+ * un-Korean Korean line sounds like. `voice` is a name to show a person,
+ * null when there is none to show; nothing branches on it.
+ */
+export type VoiceReport = {
+  readonly platform: "hosted" | "browser" | "phone"
+  readonly voice: string | null
+  readonly availability: VoiceAvailability
+}
+
+/**
+ * What a line asks for: its language, never a voice. Which voice speaks it
+ * is the backend's business - the person's hosted choice (`lib/voices`), or
+ * whatever the device's synthesizer has for that language - so no caller
+ * can override the person's choice by naming a voice of its own.
+ */
 export type SpeakOptions = {
+  /** The text's language. Omitted, the backend's default language. */
+  language?: SpokenLanguage
   /** Aborting this rejects the returned promise with an `AbortError`. */
   signal?: AbortSignal
-  voice?: VoiceConfig | null
   volume?: number
   playbackRate?: number
   onStart?: () => void
@@ -58,7 +107,18 @@ export type SpeechAdapter = {
   readonly id: SpeechAdapterId
   /** False when the runtime can't do speech at all - callers may show UI. */
   readonly supported: boolean
-  readonly voices: ReadonlyArray<VoiceConfig>
+  /**
+   * Who would speak a line in `language` right now. A snapshot: a
+   * browser's or phone's voices load asynchronously, so read it when it is
+   * shown, and again when `subscribe` says it may have changed.
+   */
+  describe: (language: SpokenLanguage) => VoiceReport
+  /**
+   * Calls `listener` when what `describe` would say may have changed: a
+   * browser's or phone's voices finished loading, voice data was found
+   * missing. Returns the unsubscribe.
+   */
+  subscribe: (listener: () => void) => () => void
   /** Outstanding `speak()` promises. Diagnostics and tests only. */
   readonly pending: number
   speak: (text: string, options?: SpeakOptions) => Promise<void>

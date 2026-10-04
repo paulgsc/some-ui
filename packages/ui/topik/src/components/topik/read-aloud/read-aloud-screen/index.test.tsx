@@ -1,4 +1,4 @@
-import type { SpeechAdapter } from "@some-ui/speech"
+import type { Speaker, SpeechOutcome } from "@some-ui/speech"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import {
   readAloudLevelFor,
@@ -8,28 +8,27 @@ import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
 import type { StorageLike } from "@topik/lib/topik/adapter/resume-point"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-function fakeSpeech(): SpeechAdapter {
+function fakeSpeech(): Speaker {
   return {
-    id: "web-speech",
-    supported: true,
-    voices: [],
-    pending: 0,
-    speak: (_text, options): Promise<void> => {
-      options?.onStart?.()
-      return new Promise<void>((resolve, reject) => {
-        const timer = setTimeout(resolve, 600)
-        options?.signal?.addEventListener("abort", () => {
+    available: true,
+    say: (_text, options): Promise<SpeechOutcome> => {
+      options.onStart?.()
+      return new Promise<SpeechOutcome>((resolve) => {
+        const timer = setTimeout(() => resolve({ kind: "heard" }), 600)
+        options.signal?.addEventListener("abort", () => {
           clearTimeout(timer)
-          reject(new DOMException("aborted", "AbortError"))
+          resolve({ kind: "cancelled" })
         })
       })
     },
     stop: () => undefined,
-    pause: () => undefined,
-    resume: () => undefined,
-    setVolume: () => undefined,
-    setPlaybackRate: () => undefined,
-    dispose: () => undefined,
+    muted: false,
+    subscribe: () => () => undefined,
+    describe: () => ({
+      platform: "browser",
+      voice: null,
+      availability: "available",
+    }),
   }
 }
 

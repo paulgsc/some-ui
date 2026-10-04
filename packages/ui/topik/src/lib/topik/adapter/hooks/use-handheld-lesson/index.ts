@@ -11,7 +11,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import type { SpeechAdapter } from "@some-ui/speech"
+import type { Urgency } from "@some-ui/speech"
 import type {
   ConversationBatch,
   Message,
@@ -69,6 +69,7 @@ import {
   revealCap,
   tallyOf,
 } from "@topik/lib/topik/core/lesson-track"
+import { SPOKEN_LANGUAGE } from "@topik/lib/topik/core/spoken-language"
 import type { LessonRequest } from "@topik/lib/topik/generation"
 import {
   buildLessonPrompt,
@@ -78,7 +79,6 @@ import {
 import { LOCAL_LESSON_PREFIX } from "@topik/lib/topik/generation/intake"
 
 const EMPTY_PLAN: LessonPlan = { steps: [], lineCount: 0, checkCount: 0 }
-const SPOKEN_LANGUAGE = "ko"
 
 type HandheldLessonView = {
   topikKey: string
@@ -137,6 +137,7 @@ export type HandheldLessonVM = {
   audio: {
     available: boolean
     speakingId: string | null
+    /** A learner's replay: interrupts whatever is playing. */
     speak: (message: Message) => void
   }
   /**
@@ -204,22 +205,13 @@ export type UseHandheldLessonOptions = {
 export const lineText = (message: Message): string =>
   message.korean || message.content
 
-export function voiceFor(
-  adapter: SpeechAdapter
-): SpeechAdapter["voices"][number] | undefined {
-  return adapter.voices.find((candidate) =>
-    candidate.language?.toLowerCase().startsWith(SPOKEN_LANGUAGE)
-  )
-}
-
 export function useHandheldLesson({
   resumeStore,
   surveyStore,
   pastedStore,
   pastedResumeStore,
 }: UseHandheldLessonOptions = {}): HandheldLessonVM {
-  const { topikRepository, metadataRepository, speechAdapter } =
-    useSessionConfig()
+  const { topikRepository, metadataRepository, speaker } = useSessionConfig()
   const [store] = useState(() => {
     const points = resumeStore ?? createResumeStore()
     // Places left in pasted lessons by builds that kept them in
@@ -235,7 +227,7 @@ export function useHandheldLesson({
   const [sessionPoints] = useState(
     () => pastedResumeStore ?? createResumeStore(sessionStorageOrNull())
   )
-  const audioAvailable = speechAdapter?.supported === true
+  const audioAvailable = speaker?.available === true
 
   // ── Catalogue and content ────────────────────────────────────────────────
 
@@ -416,31 +408,44 @@ export function useHandheldLesson({
   const stopSpeaking = useCallback((): void => {
     utterance.current?.abort()
     utterance.current = null
-    speechAdapter?.stop()
-  }, [speechAdapter])
+    speaker?.stop()
+  }, [speaker])
 
-  const speak = useCallback(
-    (message: Message): void => {
-      if (!speechAdapter || !audioAvailable) return
+  /**
+   * Says `message`. A line the lesson reaches on its own waits its turn
+   * (`"next"`); a learner's replay is their own action and interrupts
+   * whatever is playing (`"now"`), another applet's line included.
+   */
+  const sayLine = useCallback(
+    (message: Message, urgency: Urgency): void => {
+      if (!speaker || !audioAvailable) return
       stopSpeaking()
       const controller = new AbortController()
       utterance.current = controller
-      speechAdapter
-        .speak(lineText(message), {
+      // Whatever its outcome, the line stays readable: a failed or
+      // cancelled one is the degraded lesson, not a broken one.
+      void speaker
+        .say(lineText(message), {
+          language: SPOKEN_LANGUAGE,
+          urgency,
           signal: controller.signal,
-          voice: voiceFor(speechAdapter),
           onStart: () => setSpeakingId(message.id),
+          // Another applet's "now" line cut in: this line waits to be said
+          // again, and is not playing meanwhile.
+          onInterrupted: () =>
+            setSpeakingId((id) => (id === message.id ? null : id)),
         })
-        .catch(() => {
-          // Cancellation is an AbortError by the adapter's settlement laws; a
-          // real failure leaves the line readable, which is the degraded lesson.
-        })
-        .finally(() => {
+        .then(() => {
           if (utterance.current === controller) utterance.current = null
           setSpeakingId((id) => (id === message.id ? null : id))
         })
     },
-    [speechAdapter, audioAvailable, stopSpeaking]
+    [speaker, audioAvailable, stopSpeaking]
+  )
+
+  const replay = useCallback(
+    (message: Message): void => sayLine(message, "now"),
+    [sayLine]
   )
 
   // Lines speak themselves once the learner has touched the lesson: a tap is
@@ -459,9 +464,9 @@ export function useHandheldLesson({
 
   useEffect(() => {
     if (!lineMessage || !armed.current) return
-    speak(lineMessage)
+    sayLine(lineMessage, "next")
     return stopSpeaking
-  }, [lineMessage, speak, stopSpeaking])
+  }, [lineMessage, sayLine, stopSpeaking])
 
   useEffect(() => stopSpeaking, [stopSpeaking])
 
@@ -783,7 +788,7 @@ export function useHandheldLesson({
       forget: forgetPasted,
     },
     flag: flagItem ? { flagged: isFlagged, toggle: toggleFlag } : null,
-    audio: { available: audioAvailable, speakingId, speak },
+    audio: { available: audioAvailable, speakingId, speak: replay },
     select,
     leave,
     dispatch,

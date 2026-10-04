@@ -1511,9 +1511,6 @@ importers:
       '@some-ui/core-utils':
         specifier: workspace:*
         version: link:../core-utils
-      '@some-ui/speech':
-        specifier: workspace:*
-        version: link:../speech
       '@some-ui/types':
         specifier: workspace:*
         version: link:../types
@@ -1539,9 +1536,6 @@ importers:
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
-      '@tanstack/react-query':
-        specifier: ^5.66.11
-        version: 5.101.1(react@19.0.0)
       '@testing-library/react':
         specifier: ^16.3.0
         version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)

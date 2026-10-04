@@ -1,3 +1,5 @@
+import type { SpokenLanguage } from "@speech/lib/language"
+
 // TTS Service providers
 export type TTSProvider =
   | "elevenlabs"
@@ -11,7 +13,8 @@ export type VoiceConfig = {
   readonly id: string
   readonly name: string
   readonly provider: TTSProvider
-  readonly language?: string
+  /** The language the voice reads; every catalogue voice reads one of ours. */
+  readonly language: SpokenLanguage
   readonly gender?: "male" | "female" | "neutral"
   readonly style?: string
 }
@@ -48,39 +51,46 @@ export type TTSOptions = {
   readonly volume?: number
   readonly playbackRate?: number
   readonly autoPlay?: boolean
-  readonly voice?: VoiceConfig
+  /** The text's language; the session picks the voice for it. */
+  readonly language?: SpokenLanguage
   readonly onStart?: () => void
   readonly onEnd?: () => void
   readonly onError?: (error: Error) => void
   readonly onProgress?: (currentTime: number, duration: number) => void
+  /** Word-boundary progress, where the backend reports it. */
+  readonly onBoundary?: (charIndex: number, charLength: number) => void
 }
 
 export type UseAudioTTSOptions = TTSOptions & {
   readonly service: TTSServiceConfig
 }
 
-// Built-in voice configurations
-export const BUILTIN_VOICES: Record<TTSProvider, ReadonlyArray<VoiceConfig>> = {
+/**
+ * Every voice a hosted backend offers, per provider. The ids are kept as
+ * literals (`satisfies`, not an annotation), so `HostedVoiceOf<P>` in
+ * `lib/voices` is a closed union a typo cannot pass.
+ */
+export const BUILTIN_VOICES = {
   elevenlabs: [
     {
       id: "rachel",
       name: "Rachel",
       provider: "elevenlabs",
-      language: "en-US",
+      language: "english",
       gender: "female",
     },
     {
       id: "drew",
       name: "Drew",
       provider: "elevenlabs",
-      language: "en-US",
+      language: "english",
       gender: "male",
     },
     {
       id: "clyde",
       name: "Clyde",
       provider: "elevenlabs",
-      language: "en-US",
+      language: "english",
       gender: "male",
     },
   ],
@@ -89,35 +99,35 @@ export const BUILTIN_VOICES: Record<TTSProvider, ReadonlyArray<VoiceConfig>> = {
       id: "onyx",
       name: "Onyx",
       provider: "openai",
-      language: "en-US",
+      language: "english",
       gender: "male",
     },
     {
       id: "alloy",
       name: "Alloy",
       provider: "openai",
-      language: "en-US",
+      language: "english",
       gender: "neutral",
     },
     {
       id: "nova",
       name: "Nova",
       provider: "openai",
-      language: "en-US",
+      language: "english",
       gender: "female",
     },
     {
       id: "ko-KR-SunHiNeural",
       name: "Sun-Hi (Korean Female)",
       provider: "openai",
-      language: "ko-KR",
+      language: "korean",
       gender: "female",
     },
     {
       id: "ko-KR-InJoonNeural",
       name: "In-Joon (Korean Male)",
       provider: "openai",
-      language: "ko-KR",
+      language: "korean",
       gender: "male",
     },
   ],
@@ -126,14 +136,14 @@ export const BUILTIN_VOICES: Record<TTSProvider, ReadonlyArray<VoiceConfig>> = {
       id: "en-US-Wavenet-D",
       name: "Google Male",
       provider: "google",
-      language: "en-US",
+      language: "english",
       gender: "male",
     },
     {
       id: "en-US-Wavenet-F",
       name: "Google Female",
       provider: "google",
-      language: "en-US",
+      language: "english",
       gender: "female",
     },
   ],
@@ -142,16 +152,16 @@ export const BUILTIN_VOICES: Record<TTSProvider, ReadonlyArray<VoiceConfig>> = {
       id: "en-US-JennyNeural",
       name: "Jenny",
       provider: "azure",
-      language: "en-US",
+      language: "english",
       gender: "female",
     },
     {
       id: "en-US-GuyNeural",
       name: "Guy",
       provider: "azure",
-      language: "en-US",
+      language: "english",
       gender: "male",
     },
   ],
   custom: [],
-} as const
+} as const satisfies Record<TTSProvider, ReadonlyArray<VoiceConfig>>

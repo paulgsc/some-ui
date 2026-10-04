@@ -11,14 +11,14 @@
  *
  * Nothing starts until `begin`: a phone plays no audio before the learner's
  * first tap, and a drill that talks before being asked is its own way to lose
- * a learner. Where no speech adapter is supported the exercise is not offered
+ * a learner. Where nothing here can speak the exercise is not offered
  * at all (Cor. 4.6), which is the host's to render from `audio`.
  */
 
 import type { RefObject } from "react"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
-import type { SpeechAdapter } from "@some-ui/speech"
-import { voiceFor } from "@topik/lib/topik/adapter/hooks/use-handheld-lesson"
+import type { Speaker, Urgency } from "@some-ui/speech"
+import { SPOKEN_LANGUAGE } from "@topik/lib/topik/core/spoken-language"
 import type {
   ReadAloudDeck,
   ReadAloudLevel,
@@ -49,7 +49,7 @@ export type ReadAloudRecordEvent =
 export type UseReadAloudOptions = {
   deck: ReadAloudDeck
   level: ReadAloudLevel
-  speech: SpeechAdapter | null
+  speech: Speaker | null
   /** The stored pace book; the drill keeps its own copy once it starts. */
   paces?: PaceBook
   /** A set left unfinished in an earlier sitting, resumed at its next rep. */
@@ -160,18 +160,24 @@ function createRunner(
     })
   }
 
-  const speak = (seq: number, text: string, playingMs: number): void => {
+  const speak = (
+    seq: number,
+    text: string,
+    playingMs: number,
+    urgency: Urgency
+  ): void => {
     const { speech } = options()
-    if (!speech?.supported) return
+    if (!speech?.available) return
     utterance?.abort()
     const controller = new AbortController()
     utterance = controller
     const asked = now()
     let started: number | null = null
-    speech
-      .speak(text, {
+    void speech
+      .say(text, {
+        language: SPOKEN_LANGUAGE,
+        urgency,
         signal: controller.signal,
-        voice: voiceFor(speech),
         onStart: () => {
           started = now()
           if (utterance !== controller) return
@@ -194,9 +200,12 @@ function createRunner(
           render({ state, step, playing, empty })
         },
       })
-      .then(() => {
+      .then((outcome) => {
         if (utterance !== controller) return
         utterance = null
+        // Anything but a heard line leaves the step to its fallback wait,
+        // so the rep still ends (Rem. 4.10).
+        if (outcome.kind !== "heard") return
         const end = now()
         dispatch({
           type: "spoken",
@@ -204,11 +213,6 @@ function createRunner(
           seq,
           heardMs: end - (started ?? asked),
         })
-      })
-      .catch(() => {
-        // Cancellation is an AbortError; a real failure leaves the step to
-        // its fallback wait, so the rep still ends (Rem. 4.10).
-        if (utterance === controller) utterance = null
       })
   }
 
@@ -227,7 +231,7 @@ function createRunner(
         return
       }
       case "speak": {
-        speak(effect.seq, effect.text, effect.playingMs)
+        speak(effect.seq, effect.text, effect.playingMs, effect.urgency)
         return
       }
       case "stop-speech": {
@@ -364,7 +368,7 @@ export function useReadAloud(options: UseReadAloudOptions): ReadAloudVM {
   return {
     state: snapshot.state,
     started,
-    audio: options.speech?.supported === true,
+    audio: options.speech?.available === true,
     entry: currentEntry(snapshot.state),
     step: snapshot.step,
     playing: snapshot.playing,

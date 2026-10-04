@@ -11,11 +11,16 @@
  * that is visible to a caller, who only ever holds a `SpeechAdapter`.
  */
 
-import type { SpeakOptions, SpeechAdapter } from "@speech/lib/adapters/types"
+import type {
+  SpeakOptions,
+  SpeechAdapter,
+  VoiceReport,
+} from "@speech/lib/adapters/types"
 import type { AudioPlayer, AudioPlayerOptions } from "@speech/lib/engine"
 import { createAudioPlayer } from "@speech/lib/engine"
 import type { FetchImpl, TTSClient } from "@speech/lib/engine/tts-client"
 import { createTTSClient } from "@speech/lib/engine/tts-client"
+import type { SpokenLanguage } from "@speech/lib/language"
 import { createSpeechLedger } from "@speech/lib/promise"
 import {
   createAbortError,
@@ -23,24 +28,20 @@ import {
   toError,
 } from "@speech/lib/promise/abort"
 import type { TTSServiceConfig, VoiceConfig } from "@speech/lib/types/tts-types"
-import { BUILTIN_VOICES } from "@speech/lib/types/tts-types"
 
 export type HttpSpeechAdapterOptions = {
   service: TTSServiceConfig
-  /** Used when a `speak()` call names no voice of its own. */
-  defaultVoice?: VoiceConfig | null
+  /**
+   * The voice for a line in `language` (`hostedVoiceFor` over the person's
+   * choice, from the registry). `null` means this service has no voice for
+   * that language, and the line fails rather than going to one that cannot
+   * read it.
+   */
+  voiceFor: (language: SpokenLanguage | undefined) => VoiceConfig | null
   fetchImpl?: FetchImpl
   player?: AudioPlayer
   playerOptions?: AudioPlayerOptions
   client?: TTSClient
-}
-
-function pickDefaultVoice(
-  service: TTSServiceConfig,
-  explicit: VoiceConfig | null | undefined
-): VoiceConfig | null {
-  if (explicit) return explicit
-  return BUILTIN_VOICES[service.provider].at(0) ?? null
 }
 
 export function createHttpSpeechAdapter(
@@ -51,8 +52,6 @@ export function createHttpSpeechAdapter(
     options.player ?? createAudioPlayer(options.playerOptions ?? {})
   const client =
     options.client ?? createTTSClient({ service, fetchImpl: options.fetchImpl })
-  const voices = BUILTIN_VOICES[service.provider]
-  const defaultVoice = pickDefaultVoice(service, options.defaultVoice)
 
   // Covers the window the player cannot: between `speak()` being called and
   // the audio bytes arriving there is no `play()` promise yet, so a `stop()`
@@ -78,8 +77,12 @@ export function createHttpSpeechAdapter(
     void entry.promise.catch(() => controller.abort())
 
     const run = async (): Promise<void> => {
-      const voice = speakOptions.voice ?? defaultVoice
-      if (!voice) throw new Error("No voice available for this TTS service")
+      const voice = options.voiceFor(speakOptions.language)
+      if (!voice) {
+        throw new Error(
+          `${service.provider} has no voice for ${speakOptions.language ?? "the default language"}`
+        )
+      }
 
       const audio = await client.synthesize(text, voice, {
         signal: controller.signal,
@@ -115,7 +118,16 @@ export function createHttpSpeechAdapter(
   return {
     id: "http",
     supported: player.supported,
-    voices,
+    // The catalogue is fixed at build time: nothing to announce.
+    subscribe: () => () => undefined,
+    describe: (language): VoiceReport => {
+      const voice = options.voiceFor(language)
+      return {
+        platform: "hosted",
+        voice: voice?.name ?? null,
+        availability: voice ? "available" : "missing",
+      }
+    },
     get pending(): number {
       return ledger.size + player.pending
     },

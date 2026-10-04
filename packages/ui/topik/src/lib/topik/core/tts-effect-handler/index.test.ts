@@ -1,6 +1,17 @@
-import type { SpeakOptions, SpeechAdapter, VoiceConfig } from "@some-ui/speech"
+/**
+ * The effect handler against the real speech session (`SpeechQueueManager`
+ * from `@some-ui/speech`): the session's own policy decides what plays and
+ * what each line's outcome is, so these tests check the handler against
+ * the owner it runs under, not against an imitation of one. Only the
+ * adapter underneath is a test double: one line at a time, ending when a
+ * test says.
+ */
+
+import type { SpeechAdapter } from "@some-ui/speech"
+import { SpeechQueueManager } from "@some-ui/speech"
 import type { Message } from "@topik/lib/topik"
 import type { ISessionMachine } from "@topik/lib/topik/core/session-types"
+import type { Mock } from "vitest"
 import { describe, expect, it, vi } from "vitest"
 
 import { createTTSEffectHandler } from "."
@@ -20,60 +31,124 @@ function makeMessage(id: string, content = `content-${id}`): Message {
   }
 }
 
-type CapturedCall = {
-  content: string
-  options: SpeakOptions
-  resolveSpeak: () => void
-  rejectSpeak: (error: Error) => void
+const aborted = (): DOMException => new DOMException("stopped", "AbortError")
+
+type LineAdapter = {
+  adapter: SpeechAdapter
+  /** Every line handed to the device, in order. */
+  readonly said: ReadonlyArray<string>
+  /** The line the device is saying (started, not ended), or null. */
+  readonly playing: string | null
+  /** Starts a line handed over but not yet audible (`startsAt: "later"`). */
+  start: () => void
+  finish: () => void
+  fail: () => void
 }
 
 /**
- * A `SpeechAdapter` whose utterances finish only when a test says so.
- *
- * Each call's callbacks arrive with the call, so nothing has to assume an
- * ordering to associate an onStart/onEnd with the message that asked for
- * it. The fake this replaces had to capture options installed by a
- * preceding `updateOptions` and trust that the pairing held.
+ * A device voice that says one line at a time and ends it when a test says,
+ * keeping the adapter settlement laws: a line cancelled by its signal or by
+ * `stop` rejects as an `AbortError`. A browser voice starts the moment it
+ * is handed a line (`startsAt: "once"`); a hosted one fetches the audio
+ * first, so its line starts later, when a test says (`"later"`).
  */
-function createFakeSpeechAdapter(voices: ReadonlyArray<VoiceConfig> = []): {
-  speechAdapter: SpeechAdapter
-  calls: Array<CapturedCall>
-} {
-  const calls: Array<CapturedCall> = []
-
-  const speechAdapter: SpeechAdapter = {
+function createLineAdapter(startsAt: "once" | "later" = "once"): LineAdapter {
+  const said: Array<string> = []
+  let current: {
+    text: string
+    started: boolean
+    onStart: (() => void) | undefined
+    resolve: () => void
+    reject: (error: Error) => void
+  } | null = null
+  const stop = (): void => {
+    const stopped = current
+    current = null
+    stopped?.reject(aborted())
+  }
+  const adapter: SpeechAdapter = {
     id: "web-speech",
     supported: true,
-    voices,
     pending: 0,
-    speak: vi.fn((content: string, options: SpeakOptions = {}) => {
-      return new Promise<void>((resolve, reject) => {
-        calls.push({
-          content,
-          options,
-          resolveSpeak: resolve,
-          rejectSpeak: reject,
-        })
-      })
+    describe: () => ({
+      platform: "browser",
+      voice: null,
+      availability: "available",
     }),
-    stop: vi.fn(),
-    pause: vi.fn(),
-    resume: vi.fn(),
-    setVolume: vi.fn(),
-    setPlaybackRate: vi.fn(),
-    dispose: vi.fn(),
+    subscribe: () => () => undefined,
+    speak: (text, options = {}) => {
+      stop()
+      if (options.signal?.aborted) return Promise.reject(aborted())
+      said.push(text)
+      return new Promise<void>((resolve, reject) => {
+        const entry = {
+          text,
+          started: startsAt === "once",
+          onStart: options.onStart,
+          resolve,
+          reject,
+        }
+        current = entry
+        options.signal?.addEventListener(
+          "abort",
+          () => {
+            if (current === entry) current = null
+            reject(aborted())
+          },
+          { once: true }
+        )
+        if (entry.started) options.onStart?.()
+      })
+    },
+    stop,
+    pause: () => undefined,
+    resume: () => undefined,
+    setVolume: () => undefined,
+    setPlaybackRate: () => undefined,
+    dispose: stop,
   }
-
-  return { speechAdapter, calls }
+  return {
+    adapter,
+    said,
+    get playing(): string | null {
+      return current?.started === true ? current.text : null
+    },
+    start: (): void => {
+      if (!current || current.started) return
+      current.started = true
+      current.onStart?.()
+    },
+    finish: (): void => {
+      const finished = current
+      current = null
+      finished?.resolve()
+    },
+    fail: (): void => {
+      const failed = current
+      current = null
+      failed?.reject(new Error("engine failed"))
+    },
+  }
 }
 
-const flushAsync = (): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, 0))
+type Session = LineAdapter & { manager: SpeechQueueManager }
+
+function createSession(startsAt: "once" | "later" = "once"): Session {
+  const line = createLineAdapter(startsAt)
+  return Object.assign(line, { manager: new SpeechQueueManager(line.adapter) })
+}
+
+/**
+ * The session's pump runs on microtasks, an interrupted line goes back in
+ * the queue on another, and so on: enough turns for every chain to settle.
+ */
+const settle = async (): Promise<void> => {
+  for (let tick = 0; tick < 40; tick += 1) await Promise.resolve()
+}
 
 /**
  * `machine` is part of TTSEffectHandlerConfig but is never read anywhere in
- * tts-effect-handler.ts, so an empty placeholder that satisfies the type is
- * enough.
+ * the handler, so an empty placeholder that satisfies the type is enough.
  */
 function makeFakeMachine(): ISessionMachine {
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see comment above
@@ -82,415 +157,642 @@ function makeFakeMachine(): ISessionMachine {
 
 const fakeMachine = makeFakeMachine()
 
-function finishSpeaking(call: CapturedCall): void {
-  call.options.onEnd?.()
-  call.resolveSpeak()
+type Callbacks = {
+  onSpeechStart: Mock<(messageId: string) => void>
+  onSpeechEnd: Mock<(messageId: string) => void>
+  onSpeechStopped: Mock<(messageId: string) => void>
+  onMessageComplete: Mock<(messageId: string) => void>
+  onError: Mock<(error: Error, messageId: string) => void>
 }
 
-function errorSpeaking(call: CapturedCall, error: Error): void {
-  call.options.onError?.(error)
-  call.rejectSpeak(error)
+type Setup = Session & {
+  handler: ReturnType<typeof createTTSEffectHandler>
+  callbacks: Callbacks
+}
+
+function setup(): Setup {
+  const session = createSession()
+  const callbacks: Callbacks = {
+    onSpeechStart: vi.fn(),
+    onSpeechEnd: vi.fn(),
+    onSpeechStopped: vi.fn(),
+    onMessageComplete: vi.fn(),
+    onError: vi.fn(),
+  }
+  vi.spyOn(console, "error").mockImplementation(() => undefined)
+  const handler = createTTSEffectHandler({
+    speaker: session.manager.speakerFor("topik"),
+    componentId: "c1",
+    machine: fakeMachine,
+    ...callbacks,
+  })
+  return Object.assign(session, { handler, callbacks })
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SERIAL QUEUE
+// SERIAL QUEUE AND DEDUP
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe("TTSEffectHandler - serial queue", () => {
-  it("speaks messages one at a time, in FIFO order", async () => {
-    const { speechAdapter, calls } = createFakeSpeechAdapter()
-    const handler = createTTSEffectHandler({
-      speechAdapter,
-      componentId: "c1",
-      machine: fakeMachine,
-    })
+  it("speaks messages one at a time, in order", async () => {
+    const t = setup()
 
-    handler.enqueue(makeMessage("m1"), true)
-    handler.enqueue(makeMessage("m2"), true)
+    t.handler.enqueue(makeMessage("m1"), true)
+    t.handler.enqueue(makeMessage("m2"), true)
+    await settle()
+    expect(t.said).toEqual(["content-m1"])
 
-    // Second message must not start until the first completes.
-    expect(speechAdapter.speak).toHaveBeenCalledTimes(1)
-    expect(calls[0]!.content).toBe("content-m1")
-
-    finishSpeaking(calls[0]!)
-    await flushAsync()
-
-    expect(speechAdapter.speak).toHaveBeenCalledTimes(2)
-    expect(calls[1]!.content).toBe("content-m2")
-
-    finishSpeaking(calls[1]!)
-    await flushAsync()
-    expect(handler.isSpeaking()).toBe(false)
+    t.finish()
+    await settle()
+    expect(t.said).toEqual(["content-m1", "content-m2"])
+    t.finish()
+    await settle()
+    expect(t.handler.isSpeaking()).toBe(false)
   })
 })
-
-// ═══════════════════════════════════════════════════════════════════════════
-// AUTO-PLAY DEDUPLICATION (Set-based)
-// ═══════════════════════════════════════════════════════════════════════════
 
 describe("TTSEffectHandler - auto-play dedup", () => {
-  it("does not re-speak an auto message that has already completed", async () => {
-    const { speechAdapter, calls } = createFakeSpeechAdapter()
-    const handler = createTTSEffectHandler({
-      speechAdapter,
-      componentId: "c1",
-      machine: fakeMachine,
-    })
+  it("does not re-speak an auto message that has already been heard", async () => {
+    const t = setup()
     const msg = makeMessage("m1")
 
-    handler.enqueue(msg, true)
-    finishSpeaking(calls[0]!)
-    await flushAsync()
-    expect(speechAdapter.speak).toHaveBeenCalledTimes(1)
+    t.handler.enqueue(msg, true)
+    await settle()
+    t.finish()
+    await settle()
+    // A later effect re-dispatch (React Strict Mode) re-enqueues it.
+    t.handler.enqueue(msg, true)
+    await settle()
 
-    // A later effect re-dispatch (e.g. StrictMode double effect) re-enqueues
-    // the same already-spoken message.
-    handler.enqueue(msg, true)
-    await flushAsync()
-    expect(speechAdapter.speak).toHaveBeenCalledTimes(1)
+    expect(t.said).toEqual(["content-m1"])
   })
 
-  it("fires onMessageComplete exactly once for a completed auto message", async () => {
-    const onMessageComplete = vi.fn()
-    const { speechAdapter, calls } = createFakeSpeechAdapter()
-    const handler = createTTSEffectHandler({
-      speechAdapter,
-      componentId: "c1",
-      machine: fakeMachine,
-      onMessageComplete,
-    })
+  it("reports a heard auto message complete exactly once", async () => {
+    const t = setup()
 
-    handler.enqueue(makeMessage("m1"), true)
-    finishSpeaking(calls[0]!)
-    await flushAsync()
+    t.handler.enqueue(makeMessage("m1"), true)
+    await settle()
+    t.finish()
+    await settle()
 
-    expect(onMessageComplete).toHaveBeenCalledTimes(1)
-    expect(onMessageComplete).toHaveBeenCalledWith("m1")
+    expect(t.callbacks.onMessageComplete).toHaveBeenCalledTimes(1)
+    expect(t.callbacks.onMessageComplete).toHaveBeenCalledWith("m1")
   })
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
-// DOUBLE-FIRE GUARD (completionFired)
+// A LINE ENDS ONCE
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe("TTSEffectHandler - double-fire guard", () => {
-  it("ignores a duplicate onEnd call for the same message", async () => {
-    const onSpeechEnd = vi.fn()
-    const onMessageComplete = vi.fn()
-    const { speechAdapter, calls } = createFakeSpeechAdapter()
-    const handler = createTTSEffectHandler({
-      speechAdapter,
-      componentId: "c1",
-      machine: fakeMachine,
-      onSpeechEnd,
-      onMessageComplete,
-    })
+describe("TTSEffectHandler - a line ends exactly once", () => {
+  it("ends a heard line once, and a later stop changes nothing", async () => {
+    const t = setup()
 
-    handler.enqueue(makeMessage("m1"), true)
-    calls[0]!.options.onEnd?.()
-    calls[0]!.options.onEnd?.() // underlying implementation fires twice
-    calls[0]!.resolveSpeak()
-    await flushAsync()
+    t.handler.enqueue(makeMessage("m1"), true)
+    await settle()
+    t.finish()
+    await settle()
+    t.handler.handleStopAudio()
 
-    expect(onSpeechEnd).toHaveBeenCalledTimes(1)
-    expect(onMessageComplete).toHaveBeenCalledTimes(1)
+    expect(t.callbacks.onSpeechEnd).toHaveBeenCalledTimes(1)
+    expect(t.callbacks.onMessageComplete).toHaveBeenCalledTimes(1)
   })
 
-  it("ignores onError after onEnd already completed the message", async () => {
-    const onSpeechEnd = vi.fn()
-    const onError = vi.fn()
-    const { speechAdapter, calls } = createFakeSpeechAdapter()
-    const handler = createTTSEffectHandler({
-      speechAdapter,
-      componentId: "c1",
-      machine: fakeMachine,
-      onSpeechEnd,
-      onError,
-    })
+  it("ends a line once when it finishes in the same tick it is stopped", async () => {
+    const t = setup()
 
-    handler.enqueue(makeMessage("m1"), true)
-    calls[0]!.options.onEnd?.()
-    calls[0]!.options.onError?.(new Error("late error"))
-    calls[0]!.resolveSpeak()
-    await flushAsync()
+    t.handler.enqueue(makeMessage("m1"), true)
+    await settle()
+    t.finish()
+    t.handler.handleStopAudio()
+    await settle()
 
-    expect(onSpeechEnd).toHaveBeenCalledTimes(1)
-    expect(onError).not.toHaveBeenCalled()
+    expect(t.callbacks.onSpeechEnd).toHaveBeenCalledTimes(1)
   })
 
-  it("treats onError as terminal too - a following onEnd is ignored", async () => {
-    const onSpeechEnd = vi.fn()
-    const { speechAdapter, calls } = createFakeSpeechAdapter()
-    const handler = createTTSEffectHandler({
-      speechAdapter,
-      componentId: "c1",
-      machine: fakeMachine,
-      onSpeechEnd,
-    })
+  it("ends a failed line once, and reports the failure", async () => {
+    const t = setup()
 
-    handler.enqueue(makeMessage("m1"), true)
-    errorSpeaking(calls[0]!, new Error("boom"))
-    calls[0]!.options.onEnd?.()
-    await flushAsync()
+    t.handler.enqueue(makeMessage("m1"), true)
+    await settle()
+    t.fail()
+    await settle()
 
-    // onSpeechEnd fires once, from the onError branch
-    expect(onSpeechEnd).toHaveBeenCalledTimes(1)
+    expect(t.callbacks.onSpeechEnd).toHaveBeenCalledTimes(1)
+    expect(t.callbacks.onError).toHaveBeenCalledTimes(1)
+  })
+
+  it("ends a stopped line once, as the stop's own, and reports no failure", async () => {
+    const t = setup()
+
+    t.handler.enqueue(makeMessage("m1"), true)
+    await settle()
+    t.handler.handleStopAudio()
+    await settle()
+
+    expect(t.callbacks.onSpeechEnd).toHaveBeenCalledTimes(1)
+    expect(t.callbacks.onError).not.toHaveBeenCalled()
   })
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
-// speakManually - interrupts the queue
+// REPLAY
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe("TTSEffectHandler - speakManually", () => {
-  it("stops current playback and clears any queued auto messages", async () => {
-    const onMessageComplete = vi.fn()
-    const { speechAdapter, calls } = createFakeSpeechAdapter()
-    const handler = createTTSEffectHandler({
-      speechAdapter,
-      componentId: "c1",
-      machine: fakeMachine,
-      onMessageComplete,
-    })
+describe("TTSEffectHandler - a replay", () => {
+  it("replaces the line in hand and the queue, and plays at once", async () => {
+    const t = setup()
 
-    handler.enqueue(makeMessage("m1"), true) // speaking now (calls[0])
-    handler.enqueue(makeMessage("m2"), true) // queued, should never get a turn
+    t.handler.enqueue(makeMessage("m1"), true)
+    t.handler.enqueue(makeMessage("m2"), true)
+    await settle()
+    const replay = t.handler.speakManually(makeMessage("manual"))
+    await settle()
+    expect(t.said).toEqual(["content-m1", "content-manual"])
 
-    const manualPromise = handler.speakManually(makeMessage("manual"))
-    await flushAsync()
-
-    expect(speechAdapter.stop).toHaveBeenCalled()
-    // Manual speak fires immediately - it does not wait for the queue.
-    expect(speechAdapter.speak).toHaveBeenCalledTimes(2)
-    expect(calls[1]!.content).toBe("content-manual")
-
-    finishSpeaking(calls[1]!)
-    await manualPromise
-
-    // Manual speaks are not auto-play - no completion callback.
-    expect(onMessageComplete).not.toHaveBeenCalled()
-
-    // The dropped m2 must never be spoken, even once m1's stale in-flight
-    // call is resolved.
-    finishSpeaking(calls[0]!)
-    await flushAsync()
-    expect(speechAdapter.speak).toHaveBeenCalledTimes(2)
+    t.finish()
+    await replay
+    await settle()
+    // A replay is not auto-play: no completion. And m2, dropped, never plays.
+    expect(t.callbacks.onMessageComplete).not.toHaveBeenCalled()
+    expect(t.said).toEqual(["content-m1", "content-manual"])
   })
 
-  it("clears dedup state for the message being spoken manually", async () => {
-    const { speechAdapter, calls } = createFakeSpeechAdapter()
-    const handler = createTTSEffectHandler({
-      speechAdapter,
-      componentId: "c1",
-      machine: fakeMachine,
-    })
+  it("clears the message's dedup, so a later auto trigger plays it again", async () => {
+    const t = setup()
     const msg = makeMessage("m1")
 
-    handler.enqueue(msg, true)
-    finishSpeaking(calls[0]!)
-    await flushAsync()
-    expect(speechAdapter.speak).toHaveBeenCalledTimes(1)
+    t.handler.enqueue(msg, true)
+    await settle()
+    t.finish()
+    await settle()
+    const replay = t.handler.speakManually(msg)
+    await settle()
+    t.finish()
+    await replay
+    t.handler.enqueue(msg, true)
+    await settle()
 
-    // Replay the already-spoken message manually (e.g. a "replay" button).
-    const manualPromise = handler.speakManually(msg)
-    await flushAsync()
-    expect(speechAdapter.speak).toHaveBeenCalledTimes(2)
+    expect(t.said).toHaveLength(3)
+  })
 
-    finishSpeaking(calls[1]!)
-    await manualPromise
+  it("ends the replay itself, whatever became of the line it replaced", async () => {
+    const t = setup()
+    const msg = makeMessage("m1")
 
-    // Auto dedup was cleared by the manual speak, so a later auto re-trigger
-    // for the same message plays again instead of being silently dropped.
-    handler.enqueue(msg, true)
-    await flushAsync()
-    expect(speechAdapter.speak).toHaveBeenCalledTimes(3)
+    t.handler.enqueue(msg, true)
+    await settle()
+    const replay = t.handler.speakManually(msg)
+    await settle()
+    expect(t.handler.isSpeaking()).toBe(true)
+
+    t.finish()
+    await replay
+    expect(t.callbacks.onSpeechEnd).toHaveBeenCalledTimes(1)
+    // The cut-off auto line was never heard: no completion.
+    expect(t.callbacks.onMessageComplete).not.toHaveBeenCalled()
+    expect(t.handler.isSpeaking()).toBe(false)
   })
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
-// handleStopAudio - mid-queue stop
+// MUTE
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("TTSEffectHandler - a replay that is not heard", () => {
+  it("gives back the lesson line it displaced, even after two presses in one task", async () => {
+    const t = setup()
+    const words = t.manager.speakerFor("honeycomb")
+
+    t.handler.enqueue(makeMessage("m1"), true)
+    await settle()
+    // Two presses before anything settles: the second replaces the first
+    // while it is still queued.
+    void t.handler.speakManually(makeMessage("m1", "replay one"))
+    void t.handler.speakManually(makeMessage("m1", "replay two"))
+    await settle()
+    // Another applet's line cuts the replay off, so it is not heard.
+    void words.say("사과", { language: "korean", urgency: "now" })
+    await settle()
+    t.finish()
+    await settle()
+
+    // The lesson line is said again, and its end releases the lesson.
+    expect(t.said.at(-1)).toBe("content-m1")
+    t.finish()
+    await settle()
+    expect(t.callbacks.onSpeechEnd).toHaveBeenCalledWith("m1")
+  })
+})
+
+describe("TTSEffectHandler - a lesson line muted waits for unmute", () => {
+  it("does not mark a refused line spoken, and says it, then the rest, on unmute", async () => {
+    const t = setup()
+
+    t.manager.setMuted(true)
+    t.handler.enqueue(makeMessage("m1"), true)
+    t.handler.enqueue(makeMessage("m2"), true)
+    await settle()
+    expect(t.said).toEqual([])
+    expect(t.callbacks.onMessageComplete).not.toHaveBeenCalled()
+
+    t.manager.setMuted(false)
+    await settle()
+    expect(t.said).toEqual(["content-m1"])
+    t.finish()
+    await settle()
+    expect(t.callbacks.onMessageComplete).toHaveBeenCalledWith("m1")
+    expect(t.said).toEqual(["content-m1", "content-m2"])
+  })
+
+  it("holds a line cut off by muting, reported as stopped, not ended", async () => {
+    const t = setup()
+
+    t.handler.enqueue(makeMessage("m1"), true)
+    await settle()
+    t.manager.setMuted(true)
+    await settle()
+
+    expect(t.callbacks.onSpeechStopped).toHaveBeenCalledWith("m1")
+    expect(t.callbacks.onSpeechEnd).not.toHaveBeenCalled()
+    expect(t.handler.isSpeaking()).toBe(false)
+
+    t.manager.setMuted(false)
+    await settle()
+    expect(t.said).toEqual(["content-m1", "content-m1"])
+  })
+
+  it("clears 'speaking' for the line a replay replaces, though the replay never starts", async () => {
+    const t = createSession("later")
+    const onSpeechStopped = vi.fn()
+    let speaking = false
+    const handler = createTTSEffectHandler({
+      speaker: t.manager.speakerFor("topik"),
+      componentId: "c1",
+      machine: fakeMachine,
+      onSpeechStart: () => {
+        speaking = true
+      },
+      onSpeechStopped: (id) => {
+        speaking = false
+        onSpeechStopped(id)
+      },
+    })
+
+    handler.enqueue(makeMessage("m1"), true)
+    await settle()
+    t.start()
+    expect(speaking).toBe(true)
+    void handler.speakManually(makeMessage("m2"))
+    await settle()
+    // Muted while the replay's audio is still on its way.
+    t.manager.setMuted(true)
+    await settle()
+
+    expect(onSpeechStopped).toHaveBeenCalledWith("m1")
+    expect(speaking).toBe(false)
+  })
+
+  it("does not hold a replay muted mid-speech: it stops, and can be pressed again", async () => {
+    const t = setup()
+
+    void t.handler.speakManually(makeMessage("m1"))
+    await settle()
+    t.manager.setMuted(true)
+    await settle()
+    expect(t.callbacks.onSpeechStopped).toHaveBeenCalledWith("m1")
+
+    // Held, it would play ahead of lesson lines queued while muted, and
+    // each would advance the lesson.
+    t.manager.setMuted(false)
+    await settle()
+    expect(t.said).toEqual(["content-m1"])
+    expect(t.callbacks.onSpeechEnd).not.toHaveBeenCalled()
+  })
+
+  it("ignores a replay pressed while muted, and keeps the held lesson line", async () => {
+    const t = setup()
+
+    t.manager.setMuted(true)
+    t.handler.enqueue(makeMessage("m2"), true)
+    await settle()
+    await t.handler.speakManually(makeMessage("m1"))
+
+    t.manager.setMuted(false)
+    await settle()
+    expect(t.said).toEqual(["content-m2"])
+    t.finish()
+    await settle()
+    expect(t.callbacks.onSpeechEnd).toHaveBeenCalledWith("m2")
+  })
+
+  it("ends the held line when the learner stops, and does not say it", async () => {
+    const t = setup()
+
+    t.manager.setMuted(true)
+    t.handler.enqueue(makeMessage("m1"), true)
+    await settle()
+    t.handler.handleStopAudio()
+
+    expect(t.callbacks.onSpeechEnd).toHaveBeenCalledTimes(1)
+    expect(t.callbacks.onMessageComplete).toHaveBeenCalledWith("m1")
+    t.manager.setMuted(false)
+    await settle()
+    expect(t.said).toEqual([])
+  })
+
+  it("drops a held line on destroy without ending it, and stops listening", async () => {
+    const t = setup()
+
+    t.manager.setMuted(true)
+    t.handler.enqueue(makeMessage("m1"), true)
+    await settle()
+    t.handler.destroy()
+
+    // Ending it would advance the session's lesson past a line never heard.
+    expect(t.callbacks.onSpeechEnd).not.toHaveBeenCalled()
+    t.manager.setMuted(false)
+    await settle()
+    expect(t.said).toEqual([])
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ANOTHER APPLET ON THE PAGE
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("TTSEffectHandler - another applet on the page speaks", () => {
+  it("lets a tapped word interrupt a lesson line, which plays again after it and ends once", async () => {
+    const t = setup()
+    const words = t.manager.speakerFor("honeycomb")
+
+    t.handler.enqueue(makeMessage("m1"), true)
+    await settle()
+    void words.say("사과", { language: "korean", urgency: "now" })
+    await settle()
+
+    // Not playing meanwhile, and not ended: the lesson waits for it.
+    expect(t.handler.isSpeaking()).toBe(false)
+    expect(t.callbacks.onSpeechStopped).toHaveBeenCalledWith("m1")
+    expect(t.callbacks.onSpeechEnd).not.toHaveBeenCalled()
+
+    t.finish()
+    await settle()
+    expect(t.said).toEqual(["content-m1", "사과", "content-m1"])
+    expect(t.handler.isSpeaking()).toBe(true)
+    t.finish()
+    await settle()
+    expect(t.callbacks.onSpeechEnd).toHaveBeenCalledTimes(1)
+    expect(t.callbacks.onMessageComplete).toHaveBeenCalledWith("m1")
+  })
+
+  it("is not stopped by another applet's stop", async () => {
+    const t = setup()
+
+    t.handler.enqueue(makeMessage("m1"), true)
+    await settle()
+    t.manager.speakerFor("honeycomb").stop()
+    await settle()
+    expect(t.handler.isSpeaking()).toBe(true)
+
+    t.finish()
+    await settle()
+    expect(t.callbacks.onSpeechEnd).toHaveBeenCalledWith("m1")
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STOP AND LIFECYCLE
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe("TTSEffectHandler - handleStopAudio", () => {
-  it("stops mid-message playback, clears state, and drops the rest of the queue", async () => {
-    const onSpeechEnd = vi.fn()
-    const { speechAdapter } = createFakeSpeechAdapter()
-    const handler = createTTSEffectHandler({
-      speechAdapter,
-      componentId: "c1",
-      machine: fakeMachine,
-      onSpeechEnd,
-    })
+  it("stops the line playing, ends it, and drops the rest of the queue", async () => {
+    const t = setup()
 
-    handler.enqueue(makeMessage("m1"), true)
-    handler.enqueue(makeMessage("m2"), true) // queued behind m1
+    t.handler.enqueue(makeMessage("m1"), true)
+    t.handler.enqueue(makeMessage("m2"), true)
+    await settle()
+    expect(t.handler.getCurrentMessageId()).toBe("m1")
 
-    expect(handler.isSpeaking()).toBe(true)
-    expect(handler.getCurrentMessageId()).toBe("m1")
+    t.handler.handleStopAudio()
+    await settle()
 
-    handler.handleStopAudio()
-
-    expect(speechAdapter.stop).toHaveBeenCalled()
-    expect(handler.isSpeaking()).toBe(false)
-    expect(handler.getCurrentMessageId()).toBeNull()
-    expect(onSpeechEnd).toHaveBeenCalledWith("m1")
-
-    // m2 was queued but never gets a turn - the queue was cleared.
-    await flushAsync()
-    expect(speechAdapter.speak).toHaveBeenCalledTimes(1)
+    expect(t.handler.isSpeaking()).toBe(false)
+    expect(t.handler.getCurrentMessageId()).toBeNull()
+    expect(t.callbacks.onSpeechEnd).toHaveBeenCalledWith("m1")
+    expect(t.playing).toBeNull()
+    expect(t.said).toEqual(["content-m1"])
   })
 
-  it("is a no-op when nothing is currently speaking", () => {
-    const onSpeechEnd = vi.fn()
-    const { speechAdapter } = createFakeSpeechAdapter()
-    const handler = createTTSEffectHandler({
-      speechAdapter,
-      componentId: "c1",
-      machine: fakeMachine,
-      onSpeechEnd,
-    })
-    // The constructor itself calls stop() once (handles the remount case) -
-    // clear that so this test only observes handleStopAudio's own behavior.
-    vi.mocked(speechAdapter.stop).mockClear()
+  it("is a no-op when nothing is in hand", () => {
+    const t = setup()
 
-    handler.handleStopAudio()
-    expect(speechAdapter.stop).not.toHaveBeenCalled()
-    expect(onSpeechEnd).not.toHaveBeenCalled()
+    t.handler.handleStopAudio()
+    expect(t.callbacks.onSpeechEnd).not.toHaveBeenCalled()
   })
 })
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Construction / destroy
-// ═══════════════════════════════════════════════════════════════════════════
 
 describe("TTSEffectHandler - lifecycle", () => {
-  it("stops any existing audio on construction (handles the remount case)", () => {
-    const { speechAdapter } = createFakeSpeechAdapter()
-    createTTSEffectHandler({
-      speechAdapter,
-      componentId: "c1",
-      machine: fakeMachine,
-    })
-    expect(speechAdapter.stop).toHaveBeenCalledTimes(1)
-  })
-
-  it("destroy stops playback and clears dedup sets", async () => {
-    const { speechAdapter, calls } = createFakeSpeechAdapter()
-    const handler = createTTSEffectHandler({
-      speechAdapter,
-      componentId: "c1",
-      machine: fakeMachine,
-    })
+  it("destroy stops what it says without ending it, and clears dedup", async () => {
+    const t = setup()
     const msg = makeMessage("m1")
 
-    handler.enqueue(msg, true)
-    finishSpeaking(calls[0]!)
-    await flushAsync()
+    t.handler.enqueue(msg, true)
+    await settle()
+    t.finish()
+    await settle()
+    t.handler.enqueue(makeMessage("m2"), true)
+    await settle()
+    t.handler.destroy()
+    await settle()
+    expect(t.callbacks.onSpeechEnd).toHaveBeenCalledTimes(1)
+    expect(t.playing).toBeNull()
 
-    handler.destroy()
-
-    // Dedup was cleared by destroy, so re-enqueuing the same id after a
-    // fresh handler lifecycle would speak again.
-    handler.enqueue(msg, true)
-    await flushAsync()
-    expect(speechAdapter.speak).toHaveBeenCalledTimes(2)
+    // Dedup was cleared, so the same id plays again.
+    t.handler.enqueue(msg, true)
+    await settle()
+    expect(t.said).toEqual(["content-m1", "content-m2", "content-m1"])
   })
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
-// VOICE SELECTION
+// EVERY INTERLEAVING
 // ═══════════════════════════════════════════════════════════════════════════
 
+const REPLAY_TEXT = "replayed by the learner"
+const WORD_TEXT = "a word another applet says"
+
+const EVENTS = [
+  "auto m1",
+  "auto m2",
+  "replay m1",
+  "stop",
+  "mute",
+  "unmute",
+  "line ends",
+  "line fails",
+  "another applet says a word",
+  "another applet stops",
+  "the voice starts",
+] as const
+type Event = (typeof EVENTS)[number]
+
+function* sequences(length: number): Generator<ReadonlyArray<Event>> {
+  if (length === 0) {
+    yield []
+    return
+  }
+  for (const head of sequences(length - 1)) {
+    for (const event of EVENTS) yield [...head, event]
+  }
+}
+
 /**
- * The mismatch this prevents does not degrade, it fails: `openai-edge-tts`
- * asked to read Hangul in an en-US voice returns an empty audio stream,
- * which the backend reports as a 500 about "parameters" and never as "wrong
- * language". Since a host's default voice is English (apps/www ships an
- * unset `ttsVoiceId`, which resolves to the catalogue's first entry), the
- * applet asking for its own language is the whole difference between a
- * Korean lesson that speaks and one that 500s on its first sentence.
+ * Runs `events` against the real session, checking after each one that
+ * what React would show as speaking is what the handler is doing and what
+ * the device is saying, that no line is complete without having ended, and
+ * that a replay plays when it is pressed or not at all. Then it unmutes,
+ * lets every line end, and checks the queue still speaks a new line.
  */
-const KOREAN_VOICE: VoiceConfig = {
-  id: "ko-KR-SunHiNeural",
-  name: "Sun-Hi",
-  provider: "openai",
-  language: "ko-KR",
+async function runInterleaving(
+  events: ReadonlyArray<Event>
+): Promise<string | null> {
+  // A hosted voice: a line is handed over, then starts when its audio
+  // arrives, so anything can happen in between.
+  const session = createSession("later")
+  const words = session.manager.speakerFor("honeycomb")
+  let showsSpeaking = false
+  const ended = new Map<string, number>()
+  const completed = new Map<string, number>()
+  const count = (tally: Map<string, number>, id: string): void => {
+    tally.set(id, (tally.get(id) ?? 0) + 1)
+  }
+  // The lesson waits for an end after asking for a line, and only a line's
+  // end (any line's: a heard replay stands in for it) or a stop releases
+  // it. Still owed once everything has drained, the lesson has stalled.
+  const lesson = { owed: false }
+  const ask = (id: string): void => {
+    if (!ended.has(id)) lesson.owed = true
+  }
+  vi.spyOn(console, "error").mockImplementation(() => undefined)
+  const handler = createTTSEffectHandler({
+    speaker: session.manager.speakerFor("topik"),
+    componentId: "c1",
+    machine: fakeMachine,
+    onSpeechStart: () => {
+      showsSpeaking = true
+    },
+    onSpeechEnd: (id) => {
+      showsSpeaking = false
+      lesson.owed = false
+      count(ended, id)
+    },
+    onSpeechStopped: () => {
+      showsSpeaking = false
+    },
+    onMessageComplete: (id) => {
+      count(completed, id)
+    },
+  })
+
+  const act: Readonly<Record<Event, () => void>> = {
+    "auto m1": () => {
+      ask("m1")
+      handler.enqueue(makeMessage("m1"), true)
+    },
+    "auto m2": () => {
+      ask("m2")
+      handler.enqueue(makeMessage("m2"), true)
+    },
+    // The same message as the lesson's m1, told apart by its text.
+    "replay m1": () =>
+      void handler.speakManually(makeMessage("m1", REPLAY_TEXT)),
+    stop: () => {
+      lesson.owed = false
+      handler.handleStopAudio()
+    },
+    mute: () => session.manager.setMuted(true),
+    unmute: () => session.manager.setMuted(false),
+    "line ends": () => session.finish(),
+    "line fails": () => session.fail(),
+    "another applet says a word": () =>
+      void words.say(WORD_TEXT, { language: "korean", urgency: "now" }),
+    "another applet stops": () => words.stop(),
+    "the voice starts": () => session.start(),
+  }
+
+  const ours = (): boolean =>
+    session.playing !== null && session.playing !== WORD_TEXT
+
+  const check = (step: string): string | null => {
+    if (showsSpeaking !== handler.isSpeaking()) {
+      return `${step}: shows speaking=${String(showsSpeaking)}, handler=${String(handler.isSpeaking())}`
+    }
+    if (handler.isSpeaking() !== ours()) {
+      return `${step}: handler speaking=${String(handler.isSpeaking())}, saying ours=${String(ours())}`
+    }
+    // The lesson advances on a line's end; a line complete without one
+    // leaves the lesson waiting on it, and dedup refuses to say it again.
+    for (const [id, times] of completed) {
+      if (times > (ended.get(id) ?? 0)) {
+        return `${step}: ${id} completed without ending`
+      }
+    }
+    return null
+  }
+
+  // A replay plays when it is pressed or not at all. Played later, it
+  // would land among lesson lines queued since, each advancing the lesson.
+  const replayedLate = (step: string, saidBefore: number): string | null =>
+    session.said.slice(saidBefore).includes(REPLAY_TEXT)
+      ? `${step}: a replay played after it was pressed`
+      : null
+
+  for (const event of events) {
+    const saidBefore = session.said.length
+    act[event]()
+    await settle()
+    const late = event === "replay m1" ? null : replayedLate(event, saidBefore)
+    if (late) return late
+    const problem = check(event)
+    if (problem) return problem
+  }
+  const saidBeforeDrain = session.said.length
+
+  session.manager.setMuted(false)
+  await settle()
+  for (let line = 0; line < 10; line += 1) {
+    session.start()
+    if (session.playing === null) break
+    session.finish()
+    await settle()
+  }
+  const drained = replayedLate("drained", saidBeforeDrain) ?? check("drained")
+  if (drained) return drained
+  if (lesson.owed) return "drained: the lesson waits on a line nobody will say"
+
+  handler.enqueue(makeMessage("fresh"), true)
+  await settle()
+  session.start()
+  if (session.playing !== "content-fresh") {
+    return "drained: a new line was not spoken"
+  }
+  handler.destroy()
+  session.manager.dispose()
+  return null
 }
-const ENGLISH_VOICE: VoiceConfig = {
-  id: "onyx",
-  name: "Onyx",
-  provider: "openai",
-  language: "en-US",
-}
 
-describe("TTSEffectHandler - voice selection", () => {
-  it("speaks with the adapter's Korean voice, not its first", () => {
-    const { speechAdapter, calls } = createFakeSpeechAdapter([
-      ENGLISH_VOICE,
-      KOREAN_VOICE,
-    ])
-    const handler = createTTSEffectHandler({
-      speechAdapter,
-      componentId: "c1",
-      machine: fakeMachine,
-    })
-
-    handler.enqueue(makeMessage("m1"), true)
-
-    expect(calls[0]!.options.voice).toEqual(KOREAN_VOICE)
-  })
-
-  it("names no voice when the backend offers no Korean one", () => {
-    // The browser adapter on a machine with no Korean voice installed.
-    // Passing nothing leaves the session's own default in charge, which is
-    // what this applet did before it asked for a language at all.
-    const { speechAdapter, calls } = createFakeSpeechAdapter([ENGLISH_VOICE])
-    const handler = createTTSEffectHandler({
-      speechAdapter,
-      componentId: "c1",
-      machine: fakeMachine,
-    })
-
-    handler.enqueue(makeMessage("m1"), true)
-
-    expect(calls[0]!.options.voice).toBeUndefined()
-  })
-
-  it("matches on the language subtag, not an exact locale", () => {
-    // Browser voices report tags like "ko" or "ko-KR-x-something"; an
-    // equality check would miss both and silently fall back to English.
-    const plainKorean: VoiceConfig = { ...KOREAN_VOICE, language: "KO" }
-    const { speechAdapter, calls } = createFakeSpeechAdapter([
-      ENGLISH_VOICE,
-      plainKorean,
-    ])
-    const handler = createTTSEffectHandler({
-      speechAdapter,
-      componentId: "c1",
-      machine: fakeMachine,
-    })
-
-    handler.enqueue(makeMessage("m1"), true)
-
-    expect(calls[0]!.options.voice).toEqual(plainKorean)
-  })
-
-  it("keeps speaking with it across a queue", async () => {
-    const { speechAdapter, calls } = createFakeSpeechAdapter([
-      ENGLISH_VOICE,
-      KOREAN_VOICE,
-    ])
-    const handler = createTTSEffectHandler({
-      speechAdapter,
-      componentId: "c1",
-      machine: fakeMachine,
-    })
-
-    handler.enqueue(makeMessage("m1"), true)
-    handler.enqueue(makeMessage("m2"), true)
-    finishSpeaking(calls[0]!)
-    await flushAsync()
-
-    expect(calls[1]!.options.voice).toEqual(KOREAN_VOICE)
-  })
+describe("TTSEffectHandler - every interleaving of up to four events", () => {
+  it("keeps 'speaking' true to the session, ends every completed line, and never wedges", async () => {
+    const failures: Array<string> = []
+    for (let length = 1; length <= 4; length += 1) {
+      for (const events of sequences(length)) {
+        const problem = await runInterleaving(events)
+        if (problem && failures.length < 5) {
+          failures.push(`${events.join(" → ")} :: ${problem}`)
+        }
+      }
+    }
+    expect(failures).toEqual([])
+  }, 120_000)
 })

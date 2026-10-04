@@ -22,10 +22,49 @@ one (`packages/ui/interview`, `packages/ui/honeycomb`).
 ```
 
 ```tsx
-// A component, anywhere below it.
-const { speak } = useSpeechQueue("chat")
-speak("안녕하세요", { volume: 1 }, /* priority */ 2)
+// An applet, anywhere below it: a line in a language, never a voice.
+const speaker = useSpeaker() // this component's handle; null without a provider
+const outcome = await speaker?.say("안녕하세요", { language: "korean" })
+// { kind: "heard" | "muted" | "preempted" | "cancelled" | "failed" | "ended" }
 ```
+
+### One writer
+
+The session is the only thing that writes to the page's voice. An adapter
+plays one line at a time and a new line cancels the one playing, so applets
+writing to it directly could never tell why their line stopped, and had to
+guess from shared state read afterwards. Instead each component gets its
+own `Speaker` handle (`lib/speaker`), and every line, from every applet and
+from the queue (`useSpeechQueue`), goes through the session's one queue:
+
+- A line says its **urgency**. `"now"` (a tapped word, a replay button)
+  interrupts what is playing; `"next"` (a lesson's next line) waits its
+  turn, and if a `"now"` line interrupts it the session says it again
+  afterwards.
+- `say` resolves with the line's **outcome** and never rejects, so an applet
+  switches on what happened instead of inferring it from an `AbortError`.
+- A handle's `stop` cancels **its own lines only**.
+
+What is shared is only read: whether the person muted, and who would speak a
+language (`describe`, with `subscribe` to hear when either changes).
+
+A handle cannot name a voice or reach the adapter either, because the
+session owns what a person decides about speech: **which voice** (their
+choice in Settings speaks every line in its language) and **whether it is
+muted**. TOPIK once held the adapter, named "the first Korean voice" on
+every line and called the adapter directly, so a chosen voice never spoke a
+lesson and mute stopped only the line already playing.
+
+### Our languages, their tags
+
+A line's language is a `SpokenLanguage` (`lib/language`): a closed union of
+the languages this site speaks, not a tag. Platforms name languages with tags
+whose shapes are theirs (`ko-KR`, `ko_KR`, `kor`), and only an adapter ever
+reads one, through `spokenLanguageOf`, which answers with one of ours or
+`null`. Likewise `describe` reports `availability` as one of four states
+(`available`, `missing`, `checking`, `unverifiable`) rather than a boolean, so
+"the browser has not loaded its voices yet" is not shown as "no Korean
+voice".
 
 Nothing there names a backend, a host, a port, or an API key. The
 `mode` — the same `"static" | "server"` bit `@some-ui/fetch-kit` uses for
@@ -39,11 +78,26 @@ data — selects one:
 That mapping is `DEFAULT_SPEECH_ADAPTERS` in `lib/adapters/registry.ts`, and
 it is a default, not a rule: `config.adapters` replaces either entry,
 `config.mode` pins the choice, and every knob the built-in factories read —
-endpoint, key, provider, format, timeout, voice — is a config field. If the
+endpoint, key, hosted voice, format, timeout — is a config field. If the
 resolved adapter reports `supported === false` (a browser with no Web Audio,
 say), the other one is used instead, because that is a fact about the
 browser rather than about the deployment and the caller has no business
 handling it.
+
+### Two kinds of voice, never mixed
+
+- **Hosted voices are ours, and closed.** Every one is in `BUILTIN_VOICES`,
+  so `HostedVoiceOf<P>` (`lib/voices`) is a compile-time union and
+  `config.hosted` pairs a provider with one of its own voices or with
+  nothing chosen. `hostedVoiceFor` decides each line: the chosen voice when
+  it speaks the line's language, else that language's declared default
+  (`DEFAULT_HOSTED_VOICE`), else no voice and an honest failure. Nothing
+  falls back to "the first voice in the list". A stored string becomes a
+  choice in one place, `parseHostedVoiceChoice`.
+- **The device's voices are not ours.** The browser's `speechSynthesis` is
+  someone else's API with someone else's voices, different on every device.
+  It is handed a language and speaks it in whatever voice it has; none of
+  its voices ever becomes a `VoiceConfig`.
 
 ## Telling the person
 

@@ -4,7 +4,6 @@
 export * from "@some-ui/core-utils"
 export { assertNever } from "./assert-never"
 export * from "./hooks"
-export * from "./speech"
 export {
   createEventBus,
   selectProgress,

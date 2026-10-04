@@ -1,12 +1,19 @@
+import type { SpokenLanguage } from "@speech/lib/language"
 import { isAbortError, TIMEOUT_ERROR_NAME } from "@speech/lib/promise/abort"
 import {
   createFakeAudioContextHandle,
   flushAsync,
   track,
 } from "@speech/lib/testing"
+import { hostedVoiceFor } from "@speech/lib/voices"
 import { describe, expect, it, vi } from "vitest"
 
 import { createHttpSpeechAdapter } from "."
+
+const openaiVoice = (
+  language: SpokenLanguage | undefined
+): ReturnType<typeof hostedVoiceFor> =>
+  hostedVoiceFor({ provider: "openai", voiceId: null }, language)
 
 const audioResponse = (): Promise<Response> =>
   Promise.resolve(new Response(new ArrayBuffer(16), { status: 200 }))
@@ -32,6 +39,7 @@ describe("createHttpSpeechAdapter - transport", () => {
         apiKey: "configured-key",
         format: "wav",
       },
+      voiceFor: openaiVoice,
       fetchImpl,
       playerOptions: { audioContextFactory: audio.factory },
     })
@@ -55,6 +63,7 @@ describe("createHttpSpeechAdapter - transport", () => {
   it("surfaces a non-OK response as a retryable failure, not a cancellation", async () => {
     const adapter = createHttpSpeechAdapter({
       service: { provider: "openai" },
+      voiceFor: openaiVoice,
       fetchImpl: () =>
         Promise.resolve(new Response("upstream is down", { status: 503 })),
       playerOptions: {
@@ -73,6 +82,7 @@ describe("createHttpSpeechAdapter - transport", () => {
   it("reports a timeout as a timeout, so the queue is allowed to retry it", async () => {
     const adapter = createHttpSpeechAdapter({
       service: { provider: "openai", timeout: 5 },
+      voiceFor: openaiVoice,
       fetchImpl: (_input, init) =>
         new Promise<Response>((_resolve, reject) => {
           init?.signal?.addEventListener("abort", () => {
@@ -101,6 +111,7 @@ describe("createHttpSpeechAdapter - transport", () => {
     let observed: AbortSignal | undefined
     const adapter = createHttpSpeechAdapter({
       service: { provider: "openai" },
+      voiceFor: openaiVoice,
       fetchImpl: (_input, init) =>
         new Promise<Response>((_resolve, reject) => {
           observed = init?.signal ?? undefined
@@ -133,6 +144,7 @@ describe("createHttpSpeechAdapter - transport", () => {
   it("stop() flushes an utterance still waiting on the network", async () => {
     const adapter = createHttpSpeechAdapter({
       service: { provider: "openai" },
+      voiceFor: openaiVoice,
       fetchImpl: () => new Promise<Response>(() => undefined),
       playerOptions: {
         audioContextFactory: createFakeAudioContextHandle().factory,
@@ -155,6 +167,7 @@ describe("createHttpSpeechAdapter - transport", () => {
     const fetchImpl = vi.fn(() => audioResponse())
     const adapter = createHttpSpeechAdapter({
       service: { provider: "openai" },
+      voiceFor: openaiVoice,
       fetchImpl,
       playerOptions: { audioContextFactory: audio.factory },
     })
@@ -176,7 +189,8 @@ describe("createHttpSpeechAdapter - transport", () => {
   it("rejects when the service has no voice to speak with", async () => {
     const adapter = createHttpSpeechAdapter({
       service: { provider: "custom", apiUrl: "https://tts.internal" },
-      defaultVoice: null,
+      voiceFor: (lang) =>
+        hostedVoiceFor({ provider: "custom", voiceId: null }, lang),
       fetchImpl: () => audioResponse(),
       playerOptions: {
         audioContextFactory: createFakeAudioContextHandle().factory,
@@ -189,6 +203,6 @@ describe("createHttpSpeechAdapter - transport", () => {
     // `BUILTIN_VOICES.custom` is empty by design - a custom backend names
     // its own voices - so this is the honest failure, not a silent no-op.
     expect(settlement.state).toBe("rejected")
-    expect(settlement.error?.message).toContain("No voice")
+    expect(settlement.error?.message).toContain("has no voice for")
   })
 })

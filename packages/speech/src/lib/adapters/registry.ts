@@ -26,13 +26,10 @@ import type { RuntimeMode, RuntimeModeOptions } from "@some-ui/fetch-kit"
 import { resolveRuntimeMode } from "@some-ui/fetch-kit"
 import type { FetchImpl } from "@speech/lib/engine/tts-client"
 import { DEFAULT_OPENAI_EDGE_ENDPOINT } from "@speech/lib/engine/tts-client"
-import type {
-  AudioFormat,
-  TTSProvider,
-  TTSServiceConfig,
-  VoiceConfig,
-} from "@speech/lib/types/tts-types"
-import { BUILTIN_VOICES } from "@speech/lib/types/tts-types"
+import type { SpokenLanguage } from "@speech/lib/language"
+import type { AudioFormat, TTSServiceConfig } from "@speech/lib/types/tts-types"
+import type { HostedVoiceChoice } from "@speech/lib/voices"
+import { hostedVoiceFor } from "@speech/lib/voices"
 
 import { createHttpSpeechAdapter } from "./http"
 import type { SpeechAdapter } from "./types"
@@ -46,14 +43,18 @@ export type SpeechConfig = RuntimeModeOptions & {
    */
   endpoint?: string
   apiKey?: string
-  /** Request shape for the HTTP adapter. `openai` is edge-tts-compatible. */
-  provider?: TTSProvider
+  /**
+   * The hosted voice: the provider (the HTTP adapter's request shape;
+   * `openai` is edge-tts-compatible) and the voice the person chose from it,
+   * typed so a voice of another provider does not compile. Defaults to
+   * `openai` with nothing chosen. The device's own voice ignores it: it
+   * takes a language, never one of our voices (`lib/voices`).
+   */
+  hosted?: HostedVoiceChoice
   format?: AudioFormat
   timeoutMs?: number
-  /** Preferred voice id, matched against the resolved adapter's voices. */
-  voiceId?: string
-  /** BCP-47 tag handed to the browser adapter when a voice names none. */
-  lang?: string
+  /** The language of lines that don't say their own. */
+  language?: SpokenLanguage
   /** Per-mode factory overrides. Anything omitted keeps the default. */
   adapters?: Partial<SpeechAdapterRegistry>
   /** Injected in tests. */
@@ -72,7 +73,7 @@ export type SpeechConfig = RuntimeModeOptions & {
 export type ResolvedSpeechConfig = SpeechConfig & {
   mode: RuntimeMode
   service: TTSServiceConfig
-  voice: VoiceConfig | null
+  hosted: HostedVoiceChoice
 }
 
 export type SpeechAdapterFactory = (
@@ -83,17 +84,20 @@ export type SpeechAdapterRegistry = Readonly<
   Record<RuntimeMode, SpeechAdapterFactory>
 >
 
-export const DEFAULT_SPEECH_ADAPTERS: SpeechAdapterRegistry = {
+const DEFAULT_SPEECH_ADAPTERS: SpeechAdapterRegistry = {
   server: (config) =>
     createHttpSpeechAdapter({
       service: config.service,
-      defaultVoice: config.voice,
+      voiceFor: (language) =>
+        hostedVoiceFor(config.hosted, language ?? config.language),
       fetchImpl: config.fetchImpl,
     }),
-  static: (config) =>
-    createWebSpeechAdapter({
-      lang: config.lang ?? config.voice?.language,
-    }),
+  static: (config) => createWebSpeechAdapter({ language: config.language }),
+}
+
+const DEFAULT_HOSTED_CHOICE: HostedVoiceChoice = {
+  provider: "openai",
+  voiceId: null,
 }
 
 const OTHER_MODE: Readonly<Record<RuntimeMode, RuntimeMode>> = {
@@ -104,28 +108,20 @@ const OTHER_MODE: Readonly<Record<RuntimeMode, RuntimeMode>> = {
 export function resolveSpeechConfig(
   config: SpeechConfig = {}
 ): ResolvedSpeechConfig {
-  const provider = config.provider ?? "openai"
+  const hosted = config.hosted ?? DEFAULT_HOSTED_CHOICE
   const service: TTSServiceConfig = {
-    provider,
+    provider: hosted.provider,
     apiUrl: config.endpoint ?? DEFAULT_OPENAI_EDGE_ENDPOINT,
     apiKey: config.apiKey,
     format: config.format ?? "mp3",
     timeout: config.timeoutMs,
   }
 
-  const catalogue = BUILTIN_VOICES[provider]
-  const voice =
-    (config.voiceId
-      ? catalogue.find((candidate) => candidate.id === config.voiceId)
-      : undefined) ??
-    catalogue.at(0) ??
-    null
-
   return {
     ...config,
     mode: resolveRuntimeMode(config),
     service,
-    voice,
+    hosted,
   }
 }
 

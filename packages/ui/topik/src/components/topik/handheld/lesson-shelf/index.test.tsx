@@ -109,7 +109,7 @@ function renderLesson(
         value={{
           topikRepository: fixtureTopikRepository,
           metadataRepository: fixtureMetadataRepository,
-          speechAdapter: null,
+          speaker: null,
           ...(shelf ? { shelf } : {}),
         }}
       >

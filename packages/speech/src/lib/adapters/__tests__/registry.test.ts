@@ -1,7 +1,6 @@
 import type { SpeechAdapter, SpeechAdapterRegistry } from "@speech/lib/adapters"
 import { createSpeechAdapter, resolveSpeechConfig } from "@speech/lib/adapters"
 import { createControllableAdapter } from "@speech/lib/testing"
-import type { VoiceConfig } from "@speech/lib/types/tts-types"
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
@@ -48,12 +47,19 @@ describe("resolveSpeechConfig", () => {
     expect(resolved.service.timeout).toBe(5_000)
   })
 
-  it("resolves voiceId against the provider's catalogue, falling back to its first", () => {
-    const korean = resolveSpeechConfig({ voiceId: "ko-KR-SunHiNeural" })
-    expect(korean.voice?.id).toBe("ko-KR-SunHiNeural")
+  it("defaults the hosted voice to openai with nothing chosen", () => {
+    const resolved = resolveSpeechConfig({ mode: "server" })
 
-    const unknown = resolveSpeechConfig({ voiceId: "not-a-voice" })
-    expect(unknown.voice?.id).toBe("onyx")
+    expect(resolved.hosted).toEqual({ provider: "openai", voiceId: null })
+    expect(resolved.service.provider).toBe("openai")
+  })
+
+  it("takes the provider from the hosted choice", () => {
+    const resolved = resolveSpeechConfig({
+      hosted: { provider: "azure", voiceId: "en-US-GuyNeural" },
+    })
+
+    expect(resolved.service.provider).toBe("azure")
   })
 })
 
@@ -227,10 +233,32 @@ describe("createSpeechAdapter - default registry", () => {
     adapter.dispose()
   })
 
-  it("passes the configured voice through as the adapter's default", () => {
-    const voices: ReadonlyArray<VoiceConfig> = createSpeechAdapter({
+  it("speaks each line in the chosen voice when it speaks the line's language", async () => {
+    const sent: Array<unknown> = []
+    const adapter = createSpeechAdapter({
       mode: "server",
-    }).voices
-    expect(voices.some((voice) => voice.id === "onyx")).toBe(true)
+      hosted: { provider: "openai", voiceId: "ko-KR-InJoonNeural" },
+      fetchImpl: (_url, init) => {
+        sent.push(JSON.parse(String(init?.body)).voice)
+        return Promise.reject(new Error("no TTS server in tests"))
+      },
+    })
+
+    await adapter
+      .speak("안녕하세요", { language: "korean" })
+      .catch(() => undefined)
+    await adapter.speak("hello", { language: "english" }).catch(() => undefined)
+    adapter.dispose()
+
+    // InJoon cannot read English, so the English line gets English's
+    // declared default rather than Hangul's voice.
+    expect(sent).toEqual(["ko-KR-InJoonNeural", "onyx"])
+    // And it says so, by name, for whoever is asking what they will hear.
+    expect(adapter.describe("korean")).toEqual({
+      platform: "hosted",
+      voice: "In-Joon (Korean Male)",
+      availability: "available",
+    })
+    expect(adapter.describe("english").voice).toBe("Onyx")
   })
 })
