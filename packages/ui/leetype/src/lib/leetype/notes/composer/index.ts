@@ -28,9 +28,10 @@
  *   so a transcript that lands after the note was closed, undone or
  *   replaced writes nothing.
  * - **Done while listening finishes the utterance first**, then closes, so
- *   the last words said are kept. Pressed again before the transcript
- *   lands, it closes at once with the words heard so far: a recognizer that
- *   never settles cannot hold the panel open.
+ *   the last words said are kept. Pressing it again waits for the same
+ *   transcript; after `FINISH_TIMEOUT_MS` without one the note closes with
+ *   what was heard, so a recognizer that never settles cannot hold the
+ *   panel open.
  * - **Nothing listens while the page is off screen.** Hiding the page
  *   finishes an utterance in progress (what was heard is kept), and the
  *   microphone does not start while hidden.
@@ -112,6 +113,8 @@ type ComposerSignal =
     }
   | { readonly type: "hidden" }
   | { readonly type: "shown" }
+  /** `FINISH_TIMEOUT_MS` passed since Done asked utterance `seq` to finish. */
+  | { readonly type: "finishTimedOut"; readonly seq: number }
 
 /**
  * What `step` reads: every intent but `kindPicked`, which the runtime turns
@@ -127,6 +130,8 @@ export type ComposerEffect =
   | { readonly type: "listen"; readonly seq: number }
   | { readonly type: "finishListening" }
   | { readonly type: "cancelListening" }
+  /** Report `finishTimedOut` for `seq` after `FINISH_TIMEOUT_MS`. */
+  | { readonly type: "startFinishTimer"; readonly seq: number }
 
 export type ComposerStep = {
   readonly state: ComposerState
@@ -140,6 +145,15 @@ export const COMPOSER_NOTICES = {
   silent: "Didn't catch that. Tap the microphone and try again.",
   failed: "Couldn't turn that into text. You can type instead.",
 } as const satisfies Record<"saved" | "removed" | DictationFailure, string>
+
+/**
+ * How long a closing note waits for its last transcript. A phone's
+ * recognizer only hands words over when it is done (final results only), so
+ * closing sooner would drop everything said; a recognizer that never
+ * settles (another app took the microphone, its service died) must not hold
+ * the panel open either.
+ */
+export const FINISH_TIMEOUT_MS = 8_000
 
 export function initialComposerState(canListen: boolean): ComposerState {
   return {
@@ -182,20 +196,10 @@ function finish(state: ComposerState): ComposerStep {
   }
   if (composer.voice.kind === "idle")
     return close(state, COMPOSER_NOTICES.saved)
-  if (composer.voice.kind === "finishing") {
-    if (!composer.closing) {
-      return stay({ ...state, composer: { ...composer, closing: true } })
-    }
-    // Pressed again while a transcript is still on its way: the recognizer
-    // may never settle (another app took the microphone, its service died),
-    // so stop waiting. What was heard so far is kept; the note was saved
-    // when its kind was picked.
-    const landing = landed(state, composer.voice.seq, composer.voice.heard, "")
-    return {
-      state: landing.state,
-      effects: [...landing.effects, { type: "cancelListening" }],
-    }
-  }
+  // Already closing: a second Done (or "Make your own" after Done) waits
+  // for the same transcript rather than dropping it.
+  if (composer.closing) return stay(state)
+  const { seq } = composer.voice
   return {
     state: {
       ...state,
@@ -205,7 +209,12 @@ function finish(state: ComposerState): ComposerStep {
         closing: true,
       },
     },
-    effects: [{ type: "finishListening" }],
+    effects: [
+      ...(composer.voice.kind === "listening"
+        ? [{ type: "finishListening" } as const]
+        : []),
+      { type: "startFinishTimer", seq },
+    ],
   }
 }
 
@@ -409,6 +418,24 @@ export function step(state: ComposerState, event: ComposerEvent): ComposerStep {
     }
     case "shown": {
       return stay({ ...state, visible: true })
+    }
+    case "finishTimedOut": {
+      if (
+        composer.phase !== "noted" ||
+        !composer.closing ||
+        composer.voice.kind !== "finishing" ||
+        composer.voice.seq !== event.seq
+      ) {
+        return stay(state)
+      }
+      // The transcript never came: close with what was heard (nothing, on
+      // a phone), and let go of the recognizer. The note itself was saved
+      // when its kind was picked.
+      const landing = landed(state, event.seq, composer.voice.heard, "")
+      return {
+        state: landing.state,
+        effects: [...landing.effects, { type: "cancelListening" }],
+      }
     }
     default: {
       return assertNever(event)

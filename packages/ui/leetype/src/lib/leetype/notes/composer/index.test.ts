@@ -101,7 +101,7 @@ describe("the note composer's step", () => {
   it("finishes the utterance before closing when Done is pressed mid-sentence", () => {
     const listening = run([...OPENED, { type: "micPressed" }])
     const done = run([{ type: "donePressed" }], listening.state)
-    expect(done.effects).toEqual(["finishListening"])
+    expect(done.effects).toEqual(["finishListening", "startFinishTimer"])
     expect(done.state.composer.phase).toBe("noted")
     const landed = run(
       [{ type: "transcribed", seq: 1, text: "last words" }],
@@ -111,22 +111,43 @@ describe("the note composer's step", () => {
     expect(landed.state.composer.phase).toBe("closed")
   })
 
-  it("closes on a second Done when the transcript never lands, keeping what was heard", () => {
+  it("waits for the transcript on a second Done, and closes with what was heard once it times out", () => {
     const { state, effects } = run([
       ...OPENED,
       { type: "micPressed" },
       { type: "heard", seq: 1, heard: "half a thought" },
       { type: "donePressed" },
       { type: "donePressed" },
-      { type: "transcribed", seq: 1, text: "too late" },
     ])
+    // A phone hands over its words only when done: a second press must not
+    // drop them.
     expect(effects).toEqual([
       "save:",
       "listen",
       "finishListening",
-      "save:half a thought",
-      "cancelListening",
+      "startFinishTimer",
     ])
+    expect(state.composer.phase).toBe("noted")
+    const timedOut = run(
+      [
+        { type: "finishTimedOut", seq: 1 },
+        { type: "transcribed", seq: 1, text: "too late" },
+      ],
+      state
+    )
+    expect(timedOut.effects).toEqual(["save:half a thought", "cancelListening"])
+    expect(timedOut.state.composer.phase).toBe("closed")
+  })
+
+  it("ignores a timeout once the transcript has landed", () => {
+    const { state, effects } = run([
+      ...OPENED,
+      { type: "micPressed" },
+      { type: "donePressed" },
+      { type: "transcribed", seq: 1, text: "landed in time" },
+      { type: "finishTimedOut", seq: 1 },
+    ])
+    expect(effects.at(-1)).toBe("save:landed in time")
     expect(state.composer.phase).toBe("closed")
   })
 

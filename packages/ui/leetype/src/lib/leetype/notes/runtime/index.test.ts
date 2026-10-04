@@ -1,4 +1,5 @@
 import type { NoteAnchor, RoundNote } from "@leetype/lib/leetype/notes"
+import { FINISH_TIMEOUT_MS } from "@leetype/lib/leetype/notes/composer"
 import type { Dictation, Listening } from "@leetype/lib/leetype/notes/dictation"
 import { DictationError } from "@leetype/lib/leetype/notes/dictation"
 import type { ComposerRuntime } from "@leetype/lib/leetype/notes/runtime"
@@ -145,6 +146,25 @@ describe("the note composer's runtime", () => {
     expect(dictation.utterances[0]!.stop).toHaveBeenCalled()
     detach()
     expect(dictation.utterances[0]!.cancel).toHaveBeenCalled()
+  })
+
+  it("closes a note whose transcript never lands, after the finish timeout", () => {
+    vi.useFakeTimers()
+    try {
+      const dictation = fakeDictation()
+      const { runtime } = setup(dictation)
+      runtime.dispatch({ type: "notePressed", anchor: ANCHOR })
+      runtime.dispatch({ type: "kindPicked", kind: "gap" })
+      runtime.dispatch({ type: "micPressed" })
+      runtime.dispatch({ type: "donePressed" })
+      runtime.dispatch({ type: "donePressed" })
+      expect(runtime.getSnapshot().composer.phase).toBe("noted")
+      vi.advanceTimersByTime(FINISH_TIMEOUT_MS)
+      expect(runtime.getSnapshot().composer.phase).toBe("closed")
+      expect(dictation.utterances[0]!.cancel).toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it("removes the note on undo", () => {

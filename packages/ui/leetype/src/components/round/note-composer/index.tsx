@@ -1,5 +1,5 @@
 import type { FC } from "react"
-import { useEffect, useId, useRef } from "react"
+import { forwardRef, useEffect, useId, useRef } from "react"
 import {
   NOTE_ARTIFACT_NAMES,
   NOTE_KIND_COPY,
@@ -42,21 +42,11 @@ type NoteButtonProps = {
 
 /**
  * The one way in to a margin note: always present beside the round's tabs,
- * so a note is one tap from whatever is showing (canon Rem. 3.7).
+ * so a note is one tap from whatever is showing (canon Rem. 3.7). Its ref
+ * is where `NoteComposer`'s `onFocusReturn` sends focus back.
  */
-export const NoteButton: FC<NoteButtonProps> = ({ label, open, onPress }) => {
-  const ref = useRef<HTMLButtonElement>(null)
-  const wasOpen = useRef(open)
-  useEffect(() => {
-    // Closing removes the control that had focus (Done, Undo, a chip):
-    // bring focus back here rather than leave it on the page's body.
-    const lost =
-      document.activeElement === null ||
-      document.activeElement === document.body
-    if (wasOpen.current && !open && lost) ref.current?.focus()
-    wasOpen.current = open
-  }, [open])
-  return (
+export const NoteButton = forwardRef<HTMLButtonElement, NoteButtonProps>(
+  ({ label, open, onPress }, ref) => (
     <Button
       ref={ref}
       type="button"
@@ -71,13 +61,19 @@ export const NoteButton: FC<NoteButtonProps> = ({ label, open, onPress }) => {
       <span className="text-xs">Note</span>
     </Button>
   )
-}
+)
+NoteButton.displayName = "NoteButton"
 
 type NoteComposerProps = {
   state: ComposerState
   dispatch: (intent: ComposerIntent) => void
   /** Whose recognizer listens, or null where none does. */
   recognizer: Dictation["recognizer"] | null
+  /**
+   * Where focus goes when the learner closes the panel from inside it
+   * (Done, Undo) and the control they used is gone: the Note button.
+   */
+  onFocusReturn?: () => void
   className?: string
 }
 
@@ -94,21 +90,48 @@ export const NoteComposer: FC<NoteComposerProps> = ({
   state,
   dispatch,
   recognizer,
+  onFocusReturn,
   className,
 }) => {
   const textId = useId()
   const panelRef = useRef<HTMLElement>(null)
   const { composer, notice } = state
   const { phase } = composer
+  const open = phase !== "closed"
+  const before = useRef(phase)
+  // Whether the learner's last tap or key was inside the panel, so focus
+  // is put back only on a close they made there, never on one a control
+  // elsewhere caused (Next round, "Make your own").
+  const actedInside = useRef(false)
   useEffect(() => {
-    // Picking a kind removes the chip that had focus. Move focus to the
-    // panel, not to the textarea, which would raise a phone's keyboard
-    // for a note the kind may already have said all of.
+    if (!open) return undefined
+    const track = (event: Event): void => {
+      actedInside.current =
+        event.target instanceof Element &&
+        event.target.closest("[data-note-panel]") !== null
+    }
+    document.addEventListener("pointerdown", track, true)
+    document.addEventListener("keydown", track, true)
+    return (): void => {
+      document.removeEventListener("pointerdown", track, true)
+      document.removeEventListener("keydown", track, true)
+    }
+  }, [open])
+  useEffect(() => {
+    const was = before.current
+    before.current = phase
     const lost =
       document.activeElement === null ||
       document.activeElement === document.body
-    if (phase === "noted" && lost) panelRef.current?.focus()
-  }, [phase])
+    if (!lost) return
+    // Picking a kind removes the chip that had focus. Move focus to the
+    // panel, not to the textarea, which would raise a phone's keyboard
+    // for a note the kind may already have said all of.
+    if (was === "choosing" && phase === "noted") panelRef.current?.focus()
+    if (was !== "closed" && phase === "closed" && actedInside.current) {
+      onFocusReturn?.()
+    }
+  }, [phase, onFocusReturn])
   // One live region, mounted for as long as the composer is and always in
   // the same place: a region inserted with its text already in it ("Note
   // removed.") is not announced.
@@ -131,7 +154,11 @@ export const NoteComposer: FC<NoteComposerProps> = ({
     return (
       <>
         {status}
-        <section aria-label={`Note on ${where}`} className={panelClass}>
+        <section
+          data-note-panel=""
+          aria-label={`Note on ${where}`}
+          className={panelClass}
+        >
           <p className="text-sm font-medium text-foreground">
             What is getting in the way on {where}?
           </p>
@@ -160,6 +187,7 @@ export const NoteComposer: FC<NoteComposerProps> = ({
       {status}
       <section
         ref={panelRef}
+        data-note-panel=""
         tabIndex={-1}
         aria-label={`Note on ${where}`}
         className={panelClass}

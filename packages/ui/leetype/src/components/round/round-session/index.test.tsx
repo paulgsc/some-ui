@@ -599,6 +599,40 @@ describe("RoundSession — margin notes (canon Rem. 3.7)", () => {
     ).not.toBeInTheDocument()
   })
 
+  it("puts focus back on the Note button after Done, and leaves it alone when a control elsewhere closed the note", () => {
+    render(
+      <RoundSession
+        rounds={[COUNT_PRESENT]}
+        sessionSeed={3}
+        pastedStore={memoryStore()}
+        noteStore={memoryNoteStore()}
+        dictation={null}
+      />
+    )
+    const press = (element: HTMLElement): void => {
+      fireEvent.pointerDown(element)
+      fireEvent.click(element)
+    }
+    press(screen.getByRole("button", { name: "Note on Program" }))
+    press(screen.getByRole("button", { name: "Just a thought" }))
+    // The chip is gone; focus is on the panel, not lost and not the textarea.
+    expect(document.activeElement).toBe(
+      screen.getByRole("region", { name: "Note on the program" })
+    )
+    press(screen.getByRole("button", { name: "Done" }))
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Note on Program" })
+    )
+    screen.getByRole("button", { name: "Note on Program" }).blur()
+    press(screen.getByRole("button", { name: "Note on Program" }))
+    press(screen.getByRole("button", { name: "Just a thought" }))
+    press(screen.getByRole("button", { name: /Make your own/ }))
+    // The generator hides the round, the Note button with it.
+    expect(document.activeElement).not.toBe(
+      screen.getByRole("button", { name: "Note on Program", hidden: true })
+    )
+  })
+
   it("offers no microphone where there is no recognizer", () => {
     render(
       <RoundSession

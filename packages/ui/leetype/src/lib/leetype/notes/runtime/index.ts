@@ -14,7 +14,11 @@ import type {
   ComposerIntent,
   ComposerState,
 } from "@leetype/lib/leetype/notes/composer"
-import { initialComposerState, step } from "@leetype/lib/leetype/notes/composer"
+import {
+  FINISH_TIMEOUT_MS,
+  initialComposerState,
+  step,
+} from "@leetype/lib/leetype/notes/composer"
 import type { Dictation, Listening } from "@leetype/lib/leetype/notes/dictation"
 import { dictationFailureOf } from "@leetype/lib/leetype/notes/dictation"
 import type { NoteStore } from "@leetype/lib/leetype/notes/store"
@@ -49,7 +53,13 @@ export type ComposerRuntime = {
 export function createNoteComposer(ports: ComposerPorts): ComposerRuntime {
   let state = initialComposerState(ports.dictation !== null)
   let listening: Listening | null = null
+  let finishTimer: ReturnType<typeof setTimeout> | null = null
   const listeners = new Set<() => void>()
+
+  const stopFinishTimer = (): void => {
+    if (finishTimer !== null) clearTimeout(finishTimer)
+    finishTimer = null
+  }
 
   const send = (event: ComposerEvent): void => {
     const next = step(state, event)
@@ -110,6 +120,15 @@ export function createNoteComposer(ports: ComposerPorts): ComposerRuntime {
         cancel()
         return
       }
+      case "startFinishTimer": {
+        stopFinishTimer()
+        const { seq } = effect
+        finishTimer = setTimeout(() => {
+          finishTimer = null
+          send({ type: "finishTimedOut", seq })
+        }, FINISH_TIMEOUT_MS)
+        return
+      }
       default: {
         assertNever(effect)
       }
@@ -142,6 +161,7 @@ export function createNoteComposer(ports: ComposerPorts): ComposerRuntime {
       )
       return (): void => {
         unsubscribe()
+        stopFinishTimer()
         cancel()
       }
     },

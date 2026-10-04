@@ -372,6 +372,10 @@ export const RoundSession: FC<RoundSessionProps> = ({
     createNoteComposer(browserComposerPorts(notes, recognizer))
   )
   useEffect(() => composer.attach(), [composer])
+  const noteButtonRef = useRef<HTMLButtonElement>(null)
+  const returnFocusToNote = useCallback((): void => {
+    noteButtonRef.current?.focus()
+  }, [])
   const noteState = useSyncExternalStore(
     composer.subscribe,
     composer.getSnapshot
@@ -835,6 +839,7 @@ export const RoundSession: FC<RoundSessionProps> = ({
           ariaLabel="Round"
           renderHeaderAction={(current) => (
             <NoteButton
+              ref={noteButtonRef}
               label={current.label}
               open={noteState.composer.phase !== "closed"}
               onPress={() =>
@@ -857,6 +862,7 @@ export const RoundSession: FC<RoundSessionProps> = ({
               state={noteState}
               dispatch={composer.dispatch}
               recognizer={recognizer?.recognizer ?? null}
+              onFocusReturn={returnFocusToNote}
               className="mt-2"
             />
           }
