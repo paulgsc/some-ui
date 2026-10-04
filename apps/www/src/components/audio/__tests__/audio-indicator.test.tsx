@@ -9,6 +9,7 @@
 import type { JSX, ReactNode } from "react"
 import type { SpeechAdapter, VoiceReport } from "@some-ui/speech"
 import { SpeechProvider } from "@some-ui/speech"
+import { httpSpeech } from "@some-ui/speech/http"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import {
   act,
@@ -100,6 +101,7 @@ describe("AudioIndicator - who reads lessons aloud", () => {
           mode: "server",
           hosted: { provider: "openai", voiceId: "ko-KR-InJoonNeural" },
           fallbackWhenUnsupported: false,
+          adapters: { server: httpSpeech },
         }}
       >
         {children}

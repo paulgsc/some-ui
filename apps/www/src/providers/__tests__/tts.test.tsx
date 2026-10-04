@@ -10,7 +10,7 @@
  *   learner reads aloud never reaches the operator's TTS service;
  * - on the account, the server's speech service;
  * - in the Android app, the phone's own engine (`mode: "static"` with a
- *   `native` backend), in Korean;
+ *   `native` backend), in Korean, and no other backend;
  * - while a returning account user's authority is undecided, nothing is built
  *   at all.
  *
@@ -37,6 +37,11 @@ vi.mock("@some-ui/speech", () => ({
     return children
   },
 }))
+
+// Each backend is its own entry; which ones a build passes is the point.
+vi.mock("@some-ui/speech/http", () => ({ httpSpeech: "http backend" }))
+vi.mock("@some-ui/speech/web-speech", () => ({ webSpeech: "web backend" }))
+vi.mock("@some-ui/speech/native", () => ({ nativeSpeech: "native backend" }))
 
 vi.mock("@/lib/tenant", () => ({
   useSettings: (): { data: undefined } => ({ data: undefined }),
@@ -92,6 +97,11 @@ describe("TTSProvider: where the speech is made follows whose data this is", () 
 
     screen.getByText("routed content")
     expect(speechProviderSpy).toHaveBeenCalledWith("static")
+    expect(speechConfigSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        adapters: { server: "http backend", static: "web backend" },
+      })
+    )
   })
 
   it("uses the server's speech service on the account", async () => {
@@ -118,6 +128,7 @@ describe("TTSProvider: where the speech is made follows whose data this is", () 
         engine: expect.any(Object),
         voiceId: undefined,
       }),
+      adapters: { static: "native backend" },
     })
   })
 })

@@ -292,6 +292,10 @@ describe("createDeclarationsPlugin, end to end over a real tsc emit", () => {
     )
     write("src/lib/card.ts", `export type Card = { title: string }\n`)
     write(
+      "src/extra.ts",
+      `import type { Card } from "@demo/lib/card"\nexport const blank: Card = { title: "" }\n`
+    )
+    write(
       "src/index.ts",
       [
         `import type { Card } from "@demo/lib/card"`,
@@ -308,10 +312,13 @@ describe("createDeclarationsPlugin, end to end over a real tsc emit", () => {
   // alone, past vitest's 5 s default when CI runs it beside two dozen other
   // packages' tests (5.4 s and 5.5 s on #1556). A compiler's speed says
   // nothing about the plugin, so this test gets room for one real emit.
-  it("publishes tsc's declarations with aliases rewritten and the types entry written", async () => {
+  it("publishes tsc's declarations with aliases rewritten and each types entry written", async () => {
     emit()
     write("dist/stale.cjs.js", "stale")
-    const plugin = createDeclarationsPlugin({ packageName: "@demo/pkg" }, root)
+    const plugin = createDeclarationsPlugin(
+      { packageName: "@demo/pkg", entries: { extra: "src/extra.ts" } },
+      root
+    )
 
     await run(plugin.buildStart)
     expect(existsSync(join(root, "dist/stale.cjs.js"))).toBe(false)
@@ -327,6 +334,10 @@ describe("createDeclarationsPlugin, end to end over a real tsc emit", () => {
         `export {}`,
         ``,
       ].join("\n")
+    )
+    // A subpath entry's types sit one level deeper, beside its file.
+    expect(readFileSync(join(root, "dist/@demo/pkg/extra.d.ts"), "utf-8")).toBe(
+      [`export * from "../../types/src/extra.js"`, `export {}`, ``].join("\n")
     )
   }, 30_000)
 

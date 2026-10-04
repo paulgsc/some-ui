@@ -1,10 +1,8 @@
 import type { SpeechAdapter, SpeechAdapterRegistry } from "@speech/lib/adapters"
-import { createSpeechAdapter, resolveSpeechConfig } from "@speech/lib/adapters"
-import {
-  createControllableAdapter,
-  createFakeNativeEngine,
-  flushAsync,
-} from "@speech/lib/testing"
+import { createSpeechAdapter } from "@speech/lib/adapters"
+import { httpSpeech } from "@speech/lib/adapters/http"
+import { webSpeech } from "@speech/lib/adapters/web-speech"
+import { createControllableAdapter } from "@speech/lib/testing"
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
@@ -26,47 +24,6 @@ function supported(id: SpeechAdapter["id"]): SpeechAdapter {
   return { ...adapter, id }
 }
 
-describe("resolveSpeechConfig", () => {
-  it("defaults to the openai-edge endpoint the compose file publishes", () => {
-    const resolved = resolveSpeechConfig({ mode: "server" })
-
-    expect(resolved.service.provider).toBe("openai")
-    expect(resolved.service.apiUrl).toBe(
-      "http://localhost:5050/v1/audio/speech"
-    )
-  })
-
-  it("takes the endpoint, key, format and timeout from config", () => {
-    const resolved = resolveSpeechConfig({
-      mode: "server",
-      endpoint: "https://tts.internal/v1/audio/speech",
-      apiKey: "from-config",
-      format: "wav",
-      timeoutMs: 5_000,
-    })
-
-    expect(resolved.service.apiUrl).toBe("https://tts.internal/v1/audio/speech")
-    expect(resolved.service.apiKey).toBe("from-config")
-    expect(resolved.service.format).toBe("wav")
-    expect(resolved.service.timeout).toBe(5_000)
-  })
-
-  it("defaults the hosted voice to openai with nothing chosen", () => {
-    const resolved = resolveSpeechConfig({ mode: "server" })
-
-    expect(resolved.hosted).toEqual({ provider: "openai", voiceId: null })
-    expect(resolved.service.provider).toBe("openai")
-  })
-
-  it("takes the provider from the hosted choice", () => {
-    const resolved = resolveSpeechConfig({
-      hosted: { provider: "azure", voiceId: "en-US-GuyNeural" },
-    })
-
-    expect(resolved.service.provider).toBe("azure")
-  })
-})
-
 describe("createSpeechAdapter - mode-driven selection", () => {
   it("uses the server factory in server mode and the static one in static mode", () => {
     const registry: SpeechAdapterRegistry = {
@@ -82,20 +39,54 @@ describe("createSpeechAdapter - mode-driven selection", () => {
     )
   })
 
-  it("hands the resolved service config to the factory it picks", () => {
-    let seen: string | undefined
+  it("hands the config, with the mode it picked, to the factory", () => {
+    let seen: [string | undefined, string] | undefined
     createSpeechAdapter({
       mode: "server",
       endpoint: "https://tts.internal/v1/audio/speech",
       adapters: {
         server: (config) => {
-          seen = config.service.apiUrl
+          seen = [config.endpoint, config.mode]
           return supported("http")
         },
       },
     })
 
-    expect(seen).toBe("https://tts.internal/v1/audio/speech")
+    expect(seen).toEqual(["https://tts.internal/v1/audio/speech", "server"])
+  })
+
+  it("takes a backend token from an entry as readily as a factory", () => {
+    const adapter = createSpeechAdapter({
+      mode: "static",
+      adapters: { static: webSpeech },
+    })
+
+    expect(adapter.id).toBe("web-speech")
+    adapter.dispose()
+  })
+
+  it("falls through to the other mode when the chosen one has no backend", () => {
+    // The Android app passes only the phone's voice, and pins its mode, but
+    // a host that left the mode to the hostname heuristic still speaks.
+    const adapter = createSpeechAdapter({
+      mode: "server",
+      adapters: { static: () => supported("native") },
+    })
+
+    expect(adapter.id).toBe("native")
+  })
+
+  it("refuses to start a session with no backend to speak with", () => {
+    expect(() => createSpeechAdapter({ mode: "server", adapters: {} })).toThrow(
+      'No speech backend for "server" or "static" mode'
+    )
+    expect(() =>
+      createSpeechAdapter({
+        mode: "server",
+        fallbackWhenUnsupported: false,
+        adapters: { static: () => supported("web-speech") },
+      })
+    ).toThrow('No speech backend for "server" mode')
   })
 
   it("falls through to the other mode's adapter when the chosen one can't speak", () => {
@@ -205,6 +196,7 @@ describe("createSpeechAdapter - property: configuration decides, nothing else", 
             mode: "server",
             endpoint,
             apiKey,
+            adapters: { server: httpSpeech },
           })
 
           // A consumer holds a `SpeechAdapter` and nothing else: the
@@ -220,64 +212,5 @@ describe("createSpeechAdapter - property: configuration decides, nothing else", 
       ),
       { numRuns: 50 }
     )
-  })
-})
-
-describe("createSpeechAdapter - default registry", () => {
-  it("reaches for the browser in static mode, where no backend exists", () => {
-    const adapter = createSpeechAdapter({ mode: "static" })
-    expect(adapter.id).toBe("web-speech")
-  })
-
-  it("reaches for the phone's engine in static mode when the app passes one", async () => {
-    const fake = createFakeNativeEngine()
-    const adapter = createSpeechAdapter({
-      mode: "static",
-      language: "korean",
-      native: { engine: fake.engine },
-    })
-
-    expect(adapter.id).toBe("native")
-    void adapter.speak("안녕하세요").catch(() => undefined)
-    await flushAsync()
-    expect(fake.spoken[0]?.language).toBe("korean")
-    adapter.dispose()
-  })
-
-  it("reaches for the HTTP backend in server mode", () => {
-    // jsdom has no speechSynthesis, so the fallback can't fire and the
-    // server choice stands on its own.
-    const adapter = createSpeechAdapter({ mode: "server" })
-    expect(adapter.id).toBe("http")
-    adapter.dispose()
-  })
-
-  it("speaks each line in the chosen voice when it speaks the line's language", async () => {
-    const sent: Array<unknown> = []
-    const adapter = createSpeechAdapter({
-      mode: "server",
-      hosted: { provider: "openai", voiceId: "ko-KR-InJoonNeural" },
-      fetchImpl: (_url, init) => {
-        sent.push(JSON.parse(String(init?.body)).voice)
-        return Promise.reject(new Error("no TTS server in tests"))
-      },
-    })
-
-    await adapter
-      .speak("안녕하세요", { language: "korean" })
-      .catch(() => undefined)
-    await adapter.speak("hello", { language: "english" }).catch(() => undefined)
-    adapter.dispose()
-
-    // InJoon cannot read English, so the English line gets English's
-    // declared default rather than Hangul's voice.
-    expect(sent).toEqual(["ko-KR-InJoonNeural", "onyx"])
-    // And it says so, by name, for whoever is asking what they will hear.
-    expect(adapter.describe("korean")).toEqual({
-      platform: "hosted",
-      voice: "In-Joon (Korean Male)",
-      availability: "available",
-    })
-    expect(adapter.describe("english").voice).toBe("Onyx")
   })
 })

@@ -16,7 +16,13 @@ one (`packages/ui/interview`, `packages/ui/honeycomb`).
 
 ```tsx
 // The app: one session, configured by deployment, at the root.
-<SpeechProvider config={{ mode: DATA_MODE, endpoint: resolveTTSEndpoint() }}>
+<SpeechProvider
+  config={{
+    mode: DATA_MODE,
+    endpoint: resolveTTSEndpoint(),
+    adapters: { server: httpSpeech, static: webSpeech },
+  }}
+>
   <App />
 </SpeechProvider>
 ```
@@ -76,21 +82,42 @@ voice".
 
 Nothing there names a backend, a host, a port, or an API key. The
 `mode` — the same `"static" | "server"` bit `@some-ui/fetch-kit` uses for
-data — selects one:
+data — selects one of the backends the app passed:
 
-| mode       | where it comes from                | backend                                               |
-| ---------- | ---------------------------------- | ----------------------------------------------------- |
-| `"server"` | `vite dev`, `vite preview`, Docker | `openai-edge-tts` over HTTP (`infra/compose/tts.yml`) |
-| `"static"` | the GitHub Pages build, the APK    | the device's own voice (below)                        |
+| mode       | where it comes from                | backend                                                             |
+| ---------- | ---------------------------------- | ------------------------------------------------------------------- |
+| `"server"` | `vite dev`, `vite preview`, Docker | `httpSpeech`: `openai-edge-tts` over HTTP (`infra/compose/tts.yml`) |
+| `"static"` | the GitHub Pages build, the APK    | `webSpeech` or `nativeSpeech`: the device's own voice (below)       |
 
-That mapping is `DEFAULT_SPEECH_ADAPTERS` in `lib/adapters/registry.ts`, and
-it is a default, not a rule: `config.adapters` replaces either entry,
-`config.mode` pins the choice, and every knob the built-in factories read —
-endpoint, key, hosted voice, format, timeout — is a config field. If the
-resolved adapter reports `supported === false` (a browser with no Web Audio,
-say), the other one is used instead, because that is a fact about the
-browser rather than about the deployment and the caller has no business
-handling it.
+Each backend is its own package entry, and the app names the ones it runs:
+
+```tsx
+import { httpSpeech } from "@some-ui/speech/http"
+import { webSpeech } from "@some-ui/speech/web-speech"
+
+<SpeechProvider config={{ mode, adapters: { server: httpSpeech, static: webSpeech } }}>
+```
+
+There are no defaults, because a default is an import, and an import ships
+in every build whether it runs there or not: the Android app passes only
+`nativeSpeech`, and its build carries neither the HTTP client nor the
+browser's synthesizer (`apps/www/build.paths.ts` checks it).
+`src/entries.test.ts` fails if the main entry, or one backend's entry,
+reaches another backend's code at runtime, which would move that code into a
+chunk every build loads. The backend each entry exports is an inert token
+only the session can turn into an adapter (`lib/adapters/backend.ts`), so an
+applet holding one still cannot build an adapter. The HTTP entry also carries
+the HTTP engine's own primitives (`createTTSClient`, `createAudioPlayer`),
+which play audio directly; they are there for the HTTP backend, not for
+applets, as they were when the main entry exported them. `config.adapters`
+also takes a factory of the caller's own (a test fake, a future backend),
+`config.mode` pins the choice, and every knob a backend reads — endpoint,
+key, hosted voice, format, timeout — is a config field. If the resolved
+adapter reports `supported === false` (a browser with no Web Audio, say), or
+the app passed nothing for that mode, the other mode's is used instead,
+because that is a fact about the browser rather than about the deployment and
+the caller has no business handling it. With nothing for either mode, the
+session refuses to start.
 
 ### Two kinds of voice, never mixed
 

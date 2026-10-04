@@ -5,6 +5,15 @@ export type ViteConfigOptions = {
   packageName: string
   /** Library entry point relative to package root */
   entry?: string
+  /**
+   * Subpath entries beside the main one, each a source file relative to the
+   * package root: `{ http: "src/http.ts" }` builds
+   * `dist/<packageName>/http.es.js` with its own `.d.ts` and exports it as
+   * `<package>/http`. For code only some consumers run: what a consumer
+   * never imports from a subpath never reaches its bundle, and its own
+   * build can see which file each byte came from.
+   */
+  entries?: Record<string, string>
   /** Library display name for UMD builds */
   libraryName?: string
   /** Custom alias mapping */

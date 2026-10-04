@@ -1,5 +1,5 @@
 import type { ViteConfigOptions } from "@/types/index.js"
-import { DEFAULT_FORMATS } from "@/lib/build-config.js"
+import { DEFAULT_FORMATS, libraryEntries } from "@/lib/build-config.js"
 
 type PackageJsonExportTarget = string | Record<string, string>
 
@@ -52,45 +52,42 @@ export function generatePackageJsonFields(
   const distFiles: Array<string> = []
   const exports: Record<string, PackageJsonExportTarget> = {}
 
-  // Main export
-  if (hasESM && hasCJS) {
-    // Dual package setup
-    exports["."] = {
-      types: `./dist/${packageName}.d.ts`,
-      import: `./dist/${packageName}.es.js`,
-      require: `./dist/${packageName}.cjs.js`,
-      default: `./dist/${packageName}.es.js`,
+  // Every entry the build emits gets the same conditions, keyed by its
+  // subpath; the stylesheet is the package's one, after the main entry.
+  for (const entry of libraryEntries(options)) {
+    const name = entry.outputName
+    if (hasESM && hasCJS) {
+      exports[entry.subpath] = {
+        types: `./dist/${name}.d.ts`,
+        import: `./dist/${name}.es.js`,
+        require: `./dist/${name}.cjs.js`,
+        default: `./dist/${name}.es.js`,
+      }
+      distFiles.push(
+        `dist/${name}.es.js`,
+        `dist/${name}.cjs.js`,
+        `dist/${name}.d.ts`
+      )
+    } else if (hasESM) {
+      exports[entry.subpath] = {
+        types: `./dist/${name}.d.ts`,
+        import: `./dist/${name}.es.js`,
+        default: `./dist/${name}.es.js`,
+      }
+      distFiles.push(`dist/${name}.es.js`, `dist/${name}.d.ts`)
+    } else if (hasCJS) {
+      exports[entry.subpath] = {
+        types: `./dist/${name}.d.ts`,
+        require: `./dist/${name}.cjs.js`,
+        default: `./dist/${name}.cjs.js`,
+      }
+      distFiles.push(`dist/${name}.cjs.js`, `dist/${name}.d.ts`)
     }
-    // Add style.css to exports
-    exports["./style.css"] = `./${cssFileName}`
-    distFiles.push(
-      `dist/${packageName}.es.js`,
-      `dist/${packageName}.cjs.js`,
-      `dist/${packageName}.d.ts`
-    )
-  } else if (hasESM) {
-    // ESM only
-    exports["."] = {
-      types: `./dist/${packageName}.d.ts`,
-      import: `./dist/${packageName}.es.js`,
-      default: `./dist/${packageName}.es.js`,
+    if (entry.subpath === "." && (hasESM || hasCJS)) {
+      exports["./style.css"] = `./${cssFileName}`
     }
-    // Add style.css to exports
-    exports["./style.css"] = `./${cssFileName}`
-    distFiles.push(`dist/${packageName}.es.js`, `dist/${packageName}.d.ts`)
-  } else if (hasCJS) {
-    // CJS only
-    exports["."] = {
-      types: `./dist/${packageName}.d.ts`,
-      require: `./dist/${packageName}.cjs.js`,
-      default: `./dist/${packageName}.cjs.js`,
-    }
-    // Add style.css to exports
-    exports["./style.css"] = `./${cssFileName}`
-    distFiles.push(`dist/${packageName}.cjs.js`, `dist/${packageName}.d.ts`)
   }
 
-  // Add UMD if present
   if (hasUMD) {
     distFiles.push(`dist/${packageName}.umd.js`)
   }
