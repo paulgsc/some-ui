@@ -170,8 +170,8 @@ describe("readBuild", () => {
   })
 
   it("names a source inside the output directory the same in every build", () => {
-    // A virtual module given a segment resolves next to the chunk; its id
-    // must not carry the per-build directory, or every profile looks unique.
+    // A source the map places next to the chunk must not carry the
+    // per-build directory in its id, or every profile looks unique.
     for (const name of ["out-a", "out-b"]) {
       write(
         `${name}/index.html`,

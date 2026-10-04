@@ -30,8 +30,8 @@ export const PROFILES: ReadonlyArray<Profile> =
  * the check builds what ships. Kept in step by hand with where each is set:
  * the Dockerfile (`lan`), .github/workflows/pages.yml (`pages`; its base path
  * is the repository's name), and apps/mobile's `build:web` (`mobile`). Every
- * profile sets all three, so a value exported in the caller's shell (Vite
- * prefers it to any .env file) cannot change what is checked.
+ * profile sets all three, so none of them exported in the caller's shell
+ * (Vite prefers it to any .env file) can change which modules are checked.
  */
 export const profileBuildEnv: Readonly<
   Record<Profile, Readonly<Record<string, string>>>

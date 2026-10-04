@@ -157,8 +157,9 @@ export function readBuild(
         const source = map.sources[index]
         if (source == null) continue
         const absolute = resolve(base, source)
-        // A source inside the output directory (a virtual module given a
-        // segment) would otherwise carry each build's own path in its id.
+        // A source the map places inside the output directory would
+        // otherwise carry each build's own path in its id. None does today
+        // (virtual ids resolve under the build's cwd); this keeps one stable.
         const id = absolute.startsWith(`${resolve(outDir)}/`)
           ? `<out>/${relative(outDir, absolute)}`
           : moduleId(absolute, repoRoot)

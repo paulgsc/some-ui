@@ -137,10 +137,10 @@ separate entry, a route tree per deployable) the repository pays for that, not t
 `apps/www/build.paths.ts`, reader and checks in `src/bundle-paths/`) holds www to it. It
 builds every profile the way its deployable does (`profileBuildEnv`), plus `--manifest` and
 hidden sourcemaps, so the code checked is byte-for-byte what ships. It runs in root `pnpm lint`,
-and in `pr.yml`'s Node job when that job runs (`_detect-changes.yml`'s `node` filter: source,
-`json` and `package.json` files) and turbo's affected filter includes www. A PR that changes
-only `pnpm-lock.yaml` or an `.html` file skips that job, so a bundler bump alone is not
-checked in CI; run it locally for one. It fails on:
+and in `pr.yml`'s Node job, which runs for any change that is not Markdown
+(`_detect-changes.yml`: its lone `'!**/*.md'` pattern matches every other file), whenever
+turbo's `...[HEAD^1]` selects www: a file under it or a workspace it builds from changed, or
+the lockfile changed what one of them resolves (a bundler bump included). It fails on:
 
 - **an orphan chunk**: emitted, and no HTML entry loads it through any chain of chunks;
 - **an off-path module**: one `exclusive` gives to other profiles only, or one under an
