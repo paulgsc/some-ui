@@ -70,11 +70,14 @@ const OFF_PATH_PUBLIC_FILES: Readonly<Record<Profile, ReadonlyArray<RegExp>>> =
     ],
   }
 
-/** `OFF_PATH_PUBLIC_FILES` for a `SOME_UI_PROFILE` value (unset is `lan`). */
+/**
+ * `OFF_PATH_PUBLIC_FILES` for a `SOME_UI_PROFILE` value: unset or empty is
+ * `lan`, as in `buildAudiencePlugin`.
+ */
 export function offPathPublicFiles(
   profile: string | undefined
 ): ReadonlyArray<RegExp> {
-  const name = profile ?? "lan"
+  const name = profile || "lan"
   return isProfile(name) ? OFF_PATH_PUBLIC_FILES[name] : []
 }
 
@@ -144,7 +147,6 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
         "apps/www/src/lib/tenant/transfer-lock/**",
         "apps/www/src/components/settings/account-section.tsx",
         "apps/www/src/components/settings/data-home-section.tsx",
-        "apps/www/src/components/settings/hosted-voice-fields.tsx",
       ],
       profiles: ["lan", "pages"],
       why: "web-only code: the Android app has no account to move sessions to or sign out of, and no hosted voice (it speaks with the phone's engine)",
@@ -164,7 +166,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "the web builds' voice, the browser's own synthesizer: the Android app speaks only with the phone's engine (src/providers/tts.tsx)",
     },
     {
-      modules: [`${SPEECH_ENTRY}/http.es.js`, "apps/www/src/lib/tts-config/**"],
+      modules: [
+        `${SPEECH_ENTRY}/http.es.js`,
+        "apps/www/src/lib/tts-config/**",
+        "apps/www/src/components/settings/hosted-voice-fields.tsx",
+      ],
       profiles: ["lan"],
       why: "the hosted voice, which needs the TTS service only the home server runs: Pages has none, and the Android app speaks with the phone's engine (src/providers/tts.tsx)",
     },

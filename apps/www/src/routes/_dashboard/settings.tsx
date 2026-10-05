@@ -101,13 +101,15 @@ const SettingsForm = ({
       </CardHeader>
       <CardContent className="space-y-6">
         {/* The phone speaks with its own engine, so a hosted provider and
-            voice mean nothing there (#1628): it gets its own voices. */}
+            voice mean nothing there (#1628): it gets its own voices. Pages
+            has no voice service at all, only the browser's voice
+            (providers/tts.tsx), so it has nothing to choose. */}
         {import.meta.env.VITE_DEVICE_BACKEND === "true" ? (
           <DeviceVoiceField
             value={draft.deviceVoiceId}
             onChange={(deviceVoiceId) => setDraft({ ...draft, deviceVoiceId })}
           />
-        ) : (
+        ) : import.meta.env.VITE_STATIC_DATA === "true" ? null : (
           <HostedVoiceFields
             value={draft.ttsVoice}
             onChange={(ttsVoice) => setDraft({ ...draft, ttsVoice })}

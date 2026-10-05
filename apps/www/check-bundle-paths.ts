@@ -63,7 +63,10 @@ function publicViolations(
   const offPath = offPathPublicFiles(profile)
   const stale = offPath
     .filter((file) => !publicFiles.some((name) => file.test(name)))
-    .map((file) => `${String(file)} names no file in public/`)
+    .map(
+      (file) =>
+        `${String(file)} names no file in public/: renamed, or not generated (scripts/sync-resume.mjs copies the résumé's PDFs only once it is built)`
+    )
   const shipped = readdirSync(outDir)
     .filter((name) => offPath.some((file) => file.test(name)))
     .map((name) => `${name} is copied from public/ and never loaded`)

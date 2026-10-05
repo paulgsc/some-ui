@@ -36,15 +36,16 @@ How that is enforced (www `src/lib/app-surface`):
   which sets `MOBILE_APP` in the bundle.
 - `MOBILE_SURFACE` is an **allowlist**: `/today`, `/sessions`, `/soundbites`,
   `/aph` and `/settings`, typed against the route tree. (Also `/auth`, which the phone never shows since it
-  is always signed in, so that the sign-in guard and this one cannot redirect
-  each other in a loop.) The root route redirects any other path to
+  is always signed in: should a device route ever answer 401, the account
+  banner links there, and in this build it offers a reload, not a sign-in.) The root route redirects any other path to
   `/today` before its own guards run, so the app opens on Home,
   and a page added to www later stays off the phone until someone lists it.
 - There is no sidebar: the bottom bar (`src/components/mobile-shell`) links
   the tools, and steps aside on the two bounded screens (the player and the
   composer). "Start something new" goes to the composer rather than the web
   Home's launcher.
-- The build leaves out the résumé's PDFs and its `/resume/` document.
+- The build leaves out the résumé's PDFs and its `/resume/` document, and the
+  web-push service worker `sw.js` (www `build.paths.ts`, `offPathPublicFiles`).
 
 What that does not do: the other pages' code is still in the bundle, as
 unreachable lazy chunks. The route tree is the same in every build (that is

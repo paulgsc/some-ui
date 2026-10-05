@@ -131,8 +131,8 @@ describe("the Android app's surface", () => {
   })
 
   it("never redirects a signed-out visit away from sign-in", () => {
-    // The root sends a signed-out visit to /auth; off the surface, that would
-    // be sent back to Home, and round again.
+    // The account banner links a signed-out visit to /auth, which in this
+    // build offers a reload; off the surface, it would be sent to Home first.
     expect(isOnMobileSurface("/auth")).toBe(true)
   })
 
