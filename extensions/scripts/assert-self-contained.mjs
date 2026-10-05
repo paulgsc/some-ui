@@ -21,6 +21,7 @@
 // baseline can only be reduced (never grown) as builds are fixed.
 //
 // Usage: node extensions/scripts/assert-self-contained.mjs <extension-dist-dir> [--baseline <file>]
+/* eslint-disable no-console, no-process-exit -- CLI gate: reports on stderr and CI reads its exit code. */
 import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { basename, dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -70,7 +71,7 @@ if (existsSync(baselinePath))
   baseline = JSON.parse(readFileSync(baselinePath, "utf8"))
 const allowed = new Set(baseline[slug] ?? [])
 
-await init
+await init()
 const newViolations = []
 const clearedFromBaseline = []
 
@@ -81,14 +82,23 @@ for (const entry of classicEntries) {
     continue
   }
   const [imports, exports] = parse(readFileSync(file, "utf8"))
-  const specifiers = imports.map((i) => i.n).filter(Boolean) // named module specifiers only
+  // es-module-lexer 3 names the specifier `specifier` (2.x: `n`). A stale
+  // field name reads as undefined, empties this list and passes every entry,
+  // so a record without the field fails the entry instead.
+  if (imports.some((i) => !("specifier" in i))) {
+    newViolations.push(
+      `${entry}: es-module-lexer import records have no \`specifier\` field; its record shape changed, update this script`
+    )
+    continue
+  }
+  const specifiers = imports.map((i) => i.specifier).filter(Boolean) // named module specifiers only
   const selfContained = specifiers.length === 0 && exports.length === 0
   if (selfContained) {
     if (allowed.has(entry)) clearedFromBaseline.push(entry)
     continue
   }
   const detail = `imports [${specifiers.join(", ")}]${
-    exports.length ? ` exports [${exports.map((e) => e.n).join(", ")}]` : ""
+    exports.length ? ` exports [${exports.map((e) => e.name).join(", ")}]` : ""
   }`
   if (allowed.has(entry)) continue // known, baselined debt — tolerated
   newViolations.push(`${entry}: not self-contained — ${detail}`)
