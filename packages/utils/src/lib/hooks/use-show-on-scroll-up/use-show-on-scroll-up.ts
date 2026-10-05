@@ -5,32 +5,22 @@ import type { RefObject } from "react"
 const SCROLL_SLOP = 8
 
 /**
- * A box must have at least this much left to scroll before its scrolling may
- * hide the bar.
- *
- * Hiding the bar hands the pane its height back, so a box that overflows by
- * only a little stops overflowing the moment the bar goes: the browser clamps
- * its `scrollTop` to 0, that reads as "reached the top", the bar comes back,
- * the box overflows again - and a finger resting near the boundary sees the
- * bar bounce. A bottom bar is ~50px, so a box with less than about three bars
- * of range would spend its whole scroll inside that dead zone. Such a box
- * cannot drive the bar; it can still bring it back.
+ * Scroll range a box needs before scrolling it may hide the bar. Hiding the
+ * bar (~50px) gives the pane its height back, so a box that barely overflows
+ * stops overflowing, clamps `scrollTop` to 0, reads as "at the top", and the
+ * bar bounces. Such a box can still bring the bar back.
  */
 const MIN_SCROLL_RANGE = 160
 
 /**
- * Whether a phone's bottom bar should show: hidden while the content scrolls
- * down, shown again the moment it scrolls up, or reaches its top - the
- * pattern a video app uses for its bottom bar.
+ * Whether a phone's bottom bar should show: hidden while content scrolls
+ * down, shown when it scrolls up or reaches its top.
  *
- * Listens at `scope` in the capture phase, because the scrolling is inside a
- * pane (a text box, a chat, a fitted list's residue) and `scroll` does not
- * bubble. Each scroller's last position is kept separately, so switching
- * which box is scrolling never reads as a jump.
- *
- * `scope` must be attached to the same element for the life of the component
- * that calls this: the listener is added once, to whatever the ref holds when
- * the component mounts.
+ * Listens at `scope` in the capture phase, since `scroll` does not bubble out
+ * of inner panes. Each scroller's last position is kept separately, so
+ * switching scrollers never reads as a jump. `scope` must hold the same
+ * element for the caller's lifetime: the listener is added once, on mount.
+
  */
 export function useShowOnScrollUp(
   scope: RefObject<HTMLElement | null>,

@@ -8,14 +8,10 @@ import { parentRelativeDynamicImportSelectors } from "./react.config.js"
  *
  * Uses only built-in ESLint rules — no TypeScript parser required.
  *
- * NOTE: This config defines `no-restricted-syntax` patterns. If your workspace
- * config also enables `no-restricted-syntax` (e.g. from maishatuRecommended),
- * spread this config AFTER the base preset and add any base patterns you need
- * to preserve, since flat-config rule entries override rather than merge.
- * `extensionsRecommended` does exactly that - this file is spread after
- * `maishatuRecommended` (react.config.ts's `no-restricted-syntax` included),
- * which is why `parentRelativeDynamicImportSelectors` below is restated
- * rather than left to react.config.ts alone.
+ * Its `no-restricted-syntax` replaces any earlier one (flat config overrides
+ * rather than merges), so `extensionsRecommended` spreads it after
+ * `maishatuRecommended` and `parentRelativeDynamicImportSelectors` is
+ * restated here.
  */
 const extensionsSecurityConfig = defineConfig([
   {
@@ -70,16 +66,11 @@ const extensionsSecurityConfig = defineConfig([
           message:
             "Dynamic imports from remote URLs are an immediate AMO block. Bundle all dependencies locally.",
         },
-        // @types/chrome advertises chrome.tabs.discard(tabId, callback), but
-        // Firefox's actual runtime implementation of chrome.tabs.discard only
-        // supports the Promise form (its native schema is
-        // browser.tabs.discard(tabIds), no callback parameter at all) — the
-        // callback form throws "Incorrect argument types for tabs.discard."
-        // synchronously, on every call, regardless of tab state. This is a
-        // types-vs-runtime mismatch tsc cannot catch on its own (see
-        // suspender-ledger/src/worker/core/discard-adapter.ts). Call with
-        // only a tabId and treat the return value as a Promise instead —
-        // that form works on both engines.
+        // @types/chrome advertises a callback form, but Firefox supports only
+        // the Promise form and throws "Incorrect argument types for
+        // tabs.discard." on every callback call, a mismatch tsc cannot see
+        // (see suspender-ledger/src/worker/core/discard-adapter.ts).
+
         {
           selector:
             "CallExpression[callee.object.object.name='chrome'][callee.object.property.name='tabs'][callee.property.name='discard'][arguments.length>1]",

@@ -5,38 +5,31 @@ export type CharacterWithLifetime = DisplayCharacter & {
   /** True once the character has been completed and is locked into its cell. */
   isSolved?: boolean
   /**
-   * True while this cell belongs to a word challenge that ran out of time
-   * unfinished and is being shown back to the player. It outranks the
-   * placeholder mask - the whole point of the debrief is that the jamo the
-   * player never reached are finally revealed - and it is scored as a miss,
-   * not a solve. Cleared by removing the cell when the debrief is dismissed.
+   * The cell belongs to a word that expired unfinished and is being shown
+   * back. Outranks the placeholder mask (the debrief reveals unreached jamo)
+   * and scores as a miss. Cleared by removing the cell after the debrief.
    */
   isMissed?: boolean
 }
 
 /**
- * A vocabulary challenge that expired before the player finished typing it -
- * the input to the reveal-and-debrief step that runs before the next word
- * spawns. A word the player *did* complete never produces one of these; it
- * takes the untouched `matchFound` path (celebrate, clear, spawn the next).
+ * A vocabulary challenge that expired unfinished: the input to the debrief
+ * before the next spawn. A completed word takes the `matchFound` path.
  */
 export type MissedWord = {
   cellIds: Array<string>
   answerGlyphs: Array<string>
   /**
-   * How many tokens the player had matched when the clock ran out, i.e. the
-   * index of the first jamo they never got to. `0` means they typed nothing;
-   * anything less than `answerGlyphs.length` is a miss by definition (a full
-   * cursor completes the challenge instead of expiring).
+   * Tokens matched when the clock ran out: the index of the first jamo never
+   * reached. Always less than `answerGlyphs.length`.
    */
   cursor: number
 }
 
 /**
- * Masked-word feedback state for the currently-tracked multi-token challenge
- * (ADR 0003 §2(d)'s feedback overlay, #426) - null when no word challenge is
- * in progress. Single-jamo (n=1) challenges never populate this; they only
- * ever have one token, so there is no "so far vs. remaining" to show.
+ * Masked-word feedback for the tracked multi-token challenge (ADR 0003
+ * §2(d)); null when none is in progress, and never set for single-jamo play.
+
  */
 export type WordProgress = {
   cellIds: Array<string>

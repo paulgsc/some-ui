@@ -71,16 +71,12 @@ function renderAll(typstBin, fontPath) {
 // layout drops and a subtitle riding up into the line above it are both
 // invisible in `.typ` and obvious in the PDF.
 //
-// Those two need Poppler's `pdftotext`, which the repo's nix CI shell
-// provides and an ordinary dev machine may not. Where it is missing they are
-// mandatory in CI and skipped with a warning locally (#1452) — the same split
-// apps/www/scripts/sync-resume.mjs already makes for a missing résumé build,
-// so the one dependency chain answers "host tool absent" one way. CI is the
-// gate that matters. Not chosen: vendoring Poppler the way scripts/typst.mjs
-// vendors typst (a third pinned binary to keep current, for a check CI
-// already runs), or a JS PDF extractor (it would change what "reading order"
-// means and every assertion would need re-validating against its output).
-// The claims check reads source data only and always runs.
+// Both need Poppler's `pdftotext`, which CI's nix shell provides: missing, they
+// fail in CI and are skipped with a warning locally, as
+// apps/www/scripts/sync-resume.mjs does for a missing résumé build. Not
+// vendored like typst (a third pinned binary for a check CI already runs),
+// and not a JS extractor (it would change what "reading order" means). The
+// claims check reads source data only and always runs.
 function verify() {
   const checks = ["check-claims.mjs", ...EXTRACTOR_CHECKS]
   if (!extractorAvailable()) {
@@ -107,13 +103,9 @@ async function main() {
   const watch = process.argv.includes("--watch")
   // Start from an empty directory, and leave one behind on any failure below:
   // `documents/` is either the complete, verified set with its manifest or
-  // nothing. A directory full of artifacts with no manifest is the worst of
-  // both — it looks built, a later turbo cache hit could restore it, and
-  // apps/www/scripts/sync-resume.mjs would then report "manifest not found"
-  // for a directory that looks full (#1452). Cleared before resolving typst
-  // and the fonts, too: a previous run's complete set must not survive a
-  // rebuild that failed to download them, or sync-resume.mjs would ship it as
-  // current.
+  // nothing; artifacts without a manifest look built and could be restored
+  // from cache. Cleared before resolving typst and the fonts too, so a
+  // previous run's set cannot survive a failed rebuild and ship as current.
   if (!watch) rmSync(outDir, { recursive: true, force: true })
   const { bin: typstBin, fontPath } = await resolveTypst()
 
@@ -167,13 +159,10 @@ async function main() {
   // Preserve the original public filename as the default/backend composition.
   copyFileSync(join(outDir, "resume-backend.pdf"), join(outDir, "resume.pdf"))
 
-  // A self-describing manifest of exactly what this run produced, so a
-  // consumer (apps/www/scripts/sync-resume.mjs) can require the full set
-  // before shipping any of it, without importing this package's JS across
-  // a package boundary (blocked by eslint's ban on `../` imports, and
-  // fragile anyway: @some-ui/vite-config's build overwrites this package's
-  // package.json `exports` field wholesale on every build, which would
-  // silently drop any custom export subpath added for that purpose).
+  // A manifest of exactly what this run produced, so
+  // apps/www/scripts/sync-resume.mjs can require the full set without
+  // importing this package's JS (`../` imports are banned, and the vite-config
+  // build rewrites `exports`, dropping any custom subpath).
   const files = templates
     .flatMap((template) =>
       variants.map((variant) => stemFor(variant, template))
@@ -188,11 +177,9 @@ async function main() {
 }
 
 main().catch((err) => {
-  // `fetch()` collapses every network and TLS failure into the same opaque
-  // "fetch failed" and puts the actionable part — a proxy CA the runtime does
-  // not trust, DNS, a refused connection — only on `err.cause`. Printing the
-  // message alone is what made a stripped `NODE_EXTRA_CA_CERTS` read as an
-  // unreachable network rather than as a one-line environment fix.
+  // `fetch()` reports every network/TLS failure as "fetch failed" and puts
+  // the actionable reason (an untrusted proxy CA, DNS) only on `err.cause`.
+
   const cause = err.cause?.message ?? err.cause
   // eslint-disable-next-line no-console
   console.error(`[resume] ${err.message}${cause ? `: ${cause}` : ""}`)

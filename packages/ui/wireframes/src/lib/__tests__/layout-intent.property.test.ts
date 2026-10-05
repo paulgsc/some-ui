@@ -16,13 +16,8 @@ import {
 } from "./tree-invariants"
 
 /**
- * `applyIntent` is the FSM at the center of the wireframes editor: state is a
- * layout tree, events are user edits (place/move/remove/reorder/resize). Per
- * https://github.com/paulgsc/some-ui/issues/344's idiom, these properties
- * encode invariants that must hold under ANY sequence of edits - not "does
- * placing one region produce the rect I expect" (that checks the bolt; a
- * corrupted or vanished region under a longer, unanticipated sequence is the
- * plane on fire).
+ * `applyIntent` is the editor's FSM: state is a layout tree, events are user
+ * edits. These properties must hold under any sequence of edits (#344).
  */
 describe("applyIntent - tree invariants under random edit sequences", () => {
   it("never produces a structurally broken tree or a non-positive weight", () => {
@@ -76,10 +71,8 @@ describe("applyIntent - tree invariants under random edit sequences", () => {
           for (const intent of intents) tree = applyIntent(tree, intent)
 
           const before = countLeafOccurrences(tree)
-          // Only meaningful for a region that isn't already on the canvas -
-          // if it's already present, "place" now relocates it (see the
-          // dedicated regression test below), so remove would net-delete it
-          // instead of restoring `before`.
+          // Only for a region not yet on the canvas: "place" relocates a
+          // present one, so remove would net-delete it.
           fc.pre((before.get(region) ?? 0) === 0)
 
           const placed = applyIntent(tree, { kind: "place", region, edge })
@@ -148,9 +141,7 @@ describe("applyIntent - tree invariants under random edit sequences", () => {
     )
   })
 
-  // --- Regression: this is the exact scenario the property above generalizes -
-  // pinned down concretely so the failure mode stays legible on its own.
-  it("regression: moving a region relative to itself keeps it on the canvas", () => {
+  it("moving a region relative to itself keeps it on the canvas", () => {
     const withVideo = applyIntent(null, {
       kind: "place",
       region: "video",
@@ -172,7 +163,7 @@ describe("applyIntent - tree invariants under random edit sequences", () => {
     expect(countLeafOccurrences(movedOntoItself).get("video")).toBe(1)
   })
 
-  it("regression: re-placing an already-present region relocates it instead of duplicating it", () => {
+  it("re-placing an already-present region relocates it instead of duplicating it", () => {
     const withVideo = applyIntent(null, {
       kind: "place",
       region: "video",
@@ -188,7 +179,7 @@ describe("applyIntent - tree invariants under random edit sequences", () => {
     expect(countLeafOccurrences(replaced).get("video")).toBe(1)
   })
 
-  it("regression: placing a region with no anchor still works once the canvas already has 2+ panels", () => {
+  it("placing a region with no anchor still works once the canvas already has 2+ panels", () => {
     const withVideo = applyIntent(null, {
       kind: "place",
       region: "video",
@@ -200,8 +191,7 @@ describe("applyIntent - tree invariants under random edit sequences", () => {
       edge: "right",
     })
 
-    // No `relativeTo` - previously this silently no-op'd once the tree was
-    // already a split rather than a lone leaf.
+    // No `relativeTo`, on a tree that is already a split.
     const withMainContent = applyIntent(withTitle, {
       kind: "place",
       region: "mainContent",

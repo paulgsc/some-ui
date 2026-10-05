@@ -5,22 +5,13 @@ import { defineConfig } from "vitest/config"
 export default defineConfig({
   plugins: [react()],
   test: {
-    // Required for renderHook and window event simulation
     environment: "jsdom",
-
-    // Allows you to use 'describe', 'it', 'expect' without importing them in every file
     globals: true,
-
-    // Ensures cleanup after each test to prevent listener leaks
     setupFiles: ["./vitest.setup.ts"],
-
-    // Match your file structure
     include: ["**/*.test.{ts,tsx}"],
-
     deps: {
       optimizer: {
         client: {
-          // If you encounter issues with WASM or specific UI libs, add them here
           include: ["@testing-library/react"],
         },
       },

@@ -2,39 +2,23 @@
 // Claims regression check: prove the résumé's workspace counts and
 // "production" language are still accurate, rather than remembered.
 //
-// Two things drift silently otherwise. Workspace membership changes every
-// time a package is added or archived, so a hard-coded "24-crate" or
-// "52-package" string in src/data/resume.typ is correct on the day it is
-// written and false on every day after that until someone happens to
-// re-read it. And a claim like "production APIs" reads very differently
-// once you know the linked repository's own README says "no users, no
-// traffic" — the 2026-08-29 ATS/positioning review flagged exactly this.
+// Workspace counts in src/data/resume.typ go stale whenever a package is
+// added or archived, and "production APIs" overclaims for a server whose
+// README says "no users, no traffic". So this recomputes this repository's
+// package and extension counts and fails if the prose disagrees, and scans
+// for a forbidden/unqualified-term list. paulgsc/server's crate count is not
+// checked (not checked out in CI), so resume.typ states none; see
+// src/canon/resume.meta.typ's Counts note.
 //
-// So this script recomputes what it can (this repository's own workspace
-// package and browser-extension counts) and fails if src/data/resume.typ's
-// prose no longer matches, and separately scans that same file for a small
-// forbidden/unqualified-term list the review named. It intentionally does
-// NOT try to verify paulgsc/server's crate count: that repository is not
-// checked out during this repository's CI, so src/data/resume.typ says "a
-// multi-crate Rust workspace" instead of a number that this script could
-// never actually check — see src/canon/resume.meta.typ's Counts note for
-// the dated, manually-verified figure and how to re-derive it.
+// Under SOME_UI_PRUNED_WORKSPACE (apps/www/Dockerfile's `turbo prune`), only
+// www's dependency graph is on disk, so the recount is skipped; the text
+// checks still run.
 //
-// The same problem applies to this repository's own package count when
-// SOME_UI_PRUNED_WORKSPACE is set (apps/www/Dockerfile's release build,
-// via `turbo prune www --docker`): only the packages reachable from www's
-// dependency graph are on disk there, so a filesystem recount would always
-// read wrong through no fault of resume.typ. The text-content checks below
-// don't depend on which packages are present, so they still run.
-//
-// Route figures are the third thing that drifts. The server's route snapshot
-// (packages/contract-harness/routes.server.json) now arrives by bot PR on
-// every server merge, so any route count a person typed is stale the next
-// time the server adds one. checkRouteFigures() holds every route figure in
-// resume.typ and the harness README to that snapshot and to the harness's own
-// coverage report. Prefer figures that cannot go stale (a floor like "40+",
-// or none) over exact ones: an exact count fails this check on the next
-// server merge.
+// Route figures drift too: the server's route snapshot
+// (packages/contract-harness/routes.server.json) updates on every server
+// merge. checkRouteFigures() holds every route figure in resume.typ and the
+// harness README to it and to the harness's coverage report. Prefer figures
+// that cannot go stale (a floor like "40+", or none).
 //
 // That is why package.json lists @some-ui/contract-harness as a
 // devDependency with no import behind it (knip.json ignores it there): it
@@ -145,7 +129,8 @@ function countBrowserExtensions() {
   return count
 }
 
-// Forbidden outright: never supported by either repository, per the review.
+// Forbidden outright: never supported by either repository.
+
 const FORBIDDEN_TERMS = [
   "Entity Framework",
   "Kubernetes",

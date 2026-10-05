@@ -23,9 +23,8 @@ describe("toIntentError", () => {
       expect(result.retryable).toBe(true)
       expect(typeof result.summary).toBe("string")
       expect(result.summary.length).toBeGreaterThan(0)
-      // cause is required, and is the original value untouched - the
-      // diagnostic channel this vocabulary exists to keep separate from the
-      // one a person actually sees.
+      // cause is the original value, untouched: the diagnostic channel.
+
       expect(result.cause).toBe(input)
     }
   )

@@ -10,15 +10,11 @@ import type {
 
 // The web reading view of a résumé composition.
 //
-// This is deliberately NOT a reproduction of the Typst templates. A PDF does
-// not render inline on any mobile browser, and Typst's SVG export carries no
-// text at all — only glyph outlines — so the page previously showed an image
-// with a hand-copied `sr-only` transcript beside it. That transcript was a
-// second copy of the résumé, and it had already drifted from the source.
-//
-// So this renders the same content as ordinary semantic HTML: selectable,
-// searchable, crawlable, screen-reader navigable, themed by the host app's own
-// tokens (no filter tricks for dark mode), and a few KB instead of 1.1 MB.
+// Deliberately NOT a reproduction of the Typst templates: a PDF does not render
+// inline on mobile browsers and Typst's SVG export carries no text, so this
+// renders the same content as semantic HTML: selectable, searchable,
+// crawlable, screen-reader navigable, and themed by the host's tokens.
+
 //
 // It does not mirror the rail, the avatar, or the two-column grid, and it
 // should not start to. Those are print decisions; two-column layouts read

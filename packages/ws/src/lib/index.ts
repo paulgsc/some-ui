@@ -1,21 +1,9 @@
-// websocket/index.ts
 /**
- * WebSocket module - Singleton pattern with atomic lifecycle coordination
- *
- * Architecture:
- * - LifecycleStateMachine: FSM for connection states
- * - ReferenceCounter: Ref-counted lifecycle management
- * - MutationQueue: Serialized command execution
- * - ListenerRegistry: Type-safe event listeners
- * - WebSocketManager: Core singleton coordinator
- * - useWebSocket: React hook interface
- *
- * Guarantees:
- * ✅ Single connection per URL across all components
- * ✅ Atomic initialization (runs once, all waiters share result)
- * ✅ Serialized mutations (no race conditions)
- * ✅ Deterministic cleanup (ref-counted disposal)
- * ✅ No thundering herd
+ * WebSocket module: one connection per URL across all components, initialized
+ * once (all waiters share the result), with serialized mutations and
+ * ref-counted disposal. WebSocketManager coordinates LifecycleStateMachine,
+ * ReferenceCounter, MutationQueue and ListenerRegistry; useWebSocket is the
+ * React interface.
  */
 
 export { LifecycleStateMachine } from "./lifecycle"

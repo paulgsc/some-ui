@@ -85,7 +85,7 @@ describe("MutationQueue - pendingMutations/isPending track in-flight work exactl
     expect(queue.pendingMutations).toBe(0)
   })
 
-  it("regression: pendingMutations returns to zero (not negative) after a failing mutation settles", async () => {
+  it("pendingMutations returns to zero (not negative) after a failing mutation settles", async () => {
     // Guards against a double-decrement: enqueue() increments pendingCount
     // once per call, so it must come back down by exactly one per settled
     // mutation regardless of whether that mutation resolved or rejected.

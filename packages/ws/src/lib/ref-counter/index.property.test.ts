@@ -55,7 +55,7 @@ describe("ReferenceCounter - shadow-model agreement under random acquire/release
   })
 })
 
-describe("ReferenceCounter - regression", () => {
+describe("ReferenceCounter - examples", () => {
   it("starts at zero with no references", () => {
     const counter = new ReferenceCounter()
     expect(counter.current).toBe(0)

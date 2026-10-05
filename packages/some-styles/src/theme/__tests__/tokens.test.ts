@@ -2,17 +2,10 @@
  * The CSS half of the contract: what a component is promised will resolve.
  *
  * The registry test proves metadata and CSS agree on which *classes* exist.
- * This one proves the classes carry what components actually consume — the
- * semantic roles, and the feature-namespaced tokens that used to resolve only
- * inside `.cdrama`.
- *
- * That second group is the regression worth pinning. `var(--cdrama-blossom)`
- * outside `.cdrama` resolved to nothing, so five components mounted `.cdrama`
- * on their own root purely to make three variables exist — and mounting a full
- * palette to get three variables is how a feature skin ends up overriding the
- * user's session theme. Defining them ambiently is what made
- * `appearance="inherit"` a viable default; if they ever go back to being
- * `.cdrama`-only, those components render transparent and this fails first.
+ * This one proves the classes carry what components consume: the semantic
+ * roles, and feature-namespaced tokens with ambient defaults. Those defaults
+ * make `appearance="inherit"` viable; without them a component would mount a
+ * full palette (overriding the session theme) just to get three variables.
  */
 
 import { readdirSync, readFileSync } from "node:fs"
@@ -29,15 +22,9 @@ function read(...parts: Array<string>): string {
 }
 
 /**
- * Escape every regex metacharacter, not just the one that happened to appear
- * in a theme id.
- *
- * This used to be `.replace(/-/g, "\\-")`, which CodeQL flagged: escaping one
- * character and leaving `\` itself unescaped means an id containing a
- * backslash would inject into the pattern rather than be matched by it. No
- * registered id contains one today, but "the input is currently well-behaved"
- * is not a property this function states or enforces — and a half-escape reads
- * like a whole one at the call site.
+ * Escape every regex metacharacter, not just the ones today's theme ids use:
+ * a half-escape lets an id with a backslash inject into the pattern.
+
  */
 function escapeRegExp(literal: string): string {
   return literal.replace(/[.*+?^${}()|[\]\\-]/g, "\\$&")

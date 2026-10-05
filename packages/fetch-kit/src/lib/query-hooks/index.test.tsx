@@ -129,7 +129,7 @@ describe("createMutationHook - param routing", () => {
     expect(calledUrl.pathname).toBe("/items/7")
   })
 
-  it("regression: unlike createQueryHook, a param with no matching :placeholder is silently dropped rather than appended as a query param", async () => {
+  it("unlike createQueryHook, a param with no matching :placeholder is silently dropped rather than appended as a query param", async () => {
     const client = fakeClient()
     vi.mocked(client.createMutationFn).mockReturnValue(() =>
       Promise.resolve({ id: 1 })

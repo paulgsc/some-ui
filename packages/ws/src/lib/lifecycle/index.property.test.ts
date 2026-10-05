@@ -116,7 +116,7 @@ describe("LifecycleStateMachine - shadow-model agreement under random attempted 
   })
 })
 
-describe("LifecycleStateMachine - regression: the documented lifecycle diagram", () => {
+describe("LifecycleStateMachine - the documented lifecycle diagram", () => {
   it("walks idle -> initializing -> initialized -> disposing -> idle", () => {
     const machine = new LifecycleStateMachine()
     expect(machine.current).toBe("idle")
@@ -135,14 +135,14 @@ describe("LifecycleStateMachine - regression: the documented lifecycle diagram",
     expect(machine.current).toBe("idle")
   })
 
-  it("regression: an initializing attempt can be cancelled straight back to idle", () => {
+  it("an initializing attempt can be cancelled straight back to idle", () => {
     const machine = new LifecycleStateMachine()
     machine.transitionTo("initializing")
     machine.transitionTo("idle")
     expect(machine.current).toBe("idle")
   })
 
-  it("regression: initialized can only go to disposing, never back to idle or initializing", () => {
+  it("initialized can only go to disposing, never back to idle or initializing", () => {
     const machine = new LifecycleStateMachine()
     machine.transitionTo("initializing")
     machine.transitionTo("initialized")

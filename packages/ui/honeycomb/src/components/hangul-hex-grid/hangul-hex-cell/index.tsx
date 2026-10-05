@@ -15,18 +15,14 @@ type HangulHexCellProps = {
   showRomanization?: boolean // Whether to show hints
   isSolved?: boolean // Whether the character has been completed and locked in
   /**
-   * True while this cell belongs to a not-yet-typed token of a multi-cell
-   * word challenge (ADR 0003 §2(a)/#425): masks the glyph and QWERTY hint
-   * behind a neutral placeholder instead of revealing them early. Always
-   * false for a single-jamo (n=1) challenge.
+   * The cell is a not-yet-typed token of a multi-cell word (ADR 0003
+   * §2(a)): glyph and QWERTY hint are masked. Always false for single jamo.
    */
   isPlaceholder?: boolean
   /**
-   * True while this cell belongs to a word challenge that expired unfinished
-   * and is being revealed back to the player. Outranks `isPlaceholder`: the
-   * jamo they never reached is exactly what the debrief exists to show, so it
-   * is unmasked here and scored in the incorrect register (red, struck, no
-   * checkmark) rather than the solved one.
+   * The cell belongs to a word that expired unfinished. Outranks
+   * `isPlaceholder` (the debrief reveals unreached jamo) and renders in the
+   * incorrect register (red, struck, no checkmark).
    */
   isMissed?: boolean
 }
@@ -51,25 +47,22 @@ export const HangulHexCell: FC<HangulHexCellProps> = ({
 }): React.JSX.Element => {
   const [isHovered, setIsHovered] = useState(false)
 
-  // The debrief's whole purpose is to show what was never reached, so a
-  // missed cell is always unmasked no matter what the cursor said.
+  // A missed cell is always unmasked, whatever the cursor said.
   const isMasked = isPlaceholder && !isMissed
 
   const hangulFontSize = Math.max(16, cellWidth * 0.35)
   const qwertyFontSize = Math.max(10, cellWidth * 0.18)
 
-  // Progress ring
   const ringRadius = cellWidth * 0.42
   const ringStrokeWidth = 3
   const circumference = 2 * Math.PI * ringRadius
-  // Solved and missed cells both show a full ring - their clock is over
-  // either way; only the colour says which way it went. Active cells reflect
-  // remaining time.
+  // Solved and missed cells show a full ring (their clock is over); active
+  // cells show remaining time.
   const progressOffset =
     isSolved || isMissed ? 0 : circumference * (1 - timeRemaining)
 
-  // Color intensity based on time remaining. Solved cells are always calm/green,
-  // missed ones always alarm/red.
+  // By time remaining; solved is always green, missed always red.
+
   const urgencyColor = isMissed
     ? MISSED_COLOR
     : isSolved

@@ -1,17 +1,8 @@
 /**
  * Type-level proof that `matchIntent`'s exhaustiveness is a compiler
- * guarantee, not a convention. Every `@ts-expect-error` below has to be
- * lying about a real error one line down, or TypeScript's own
- * "unused '@ts-expect-error' directive" diagnostic turns red — which is
- * exactly the mechanism S1's acceptance criterion asks for: weaken
- * `IntentArms` (make an arm optional, add a `default`) and the fixture that
- * exercises it stops erroring, and its directive itself becomes the
- * failure.
- *
- * Not a `*.test.ts` - it must be part of the ordinary `tsc --noEmit` run
- * (excluded from the build via tsconfig.build.json), not something that
- * only runs under vitest. Nothing here executes; `void` on every binding
- * exists only to satisfy `noUnusedLocals`.
+ * guarantee: weaken `IntentArms` and a fixture below stops erroring, so its
+ * `@ts-expect-error` is reported as unused. Checked by `tsc --noEmit`
+ * (excluded from the build), not vitest; `void` satisfies `noUnusedLocals`.
  */
 
 import { failed, idle, matchIntent } from "@intent-kit/intent"
@@ -29,10 +20,9 @@ const missingArm = matchIntent(anIntent, {
 })
 void missingArm
 
-// Extra arm: `cancelled` isn't part of the sealed vocabulary - see intent.ts's
-// header for why there is no fifth state to handle. The excess-property
-// error TypeScript reports is anchored on the offending property itself,
-// not the call - the directive has to sit immediately above that line.
+// Extra arm: `cancelled` isn't in the sealed vocabulary. The excess-property
+// error is anchored on the property, so the directive sits above it.
+
 const extraArm = matchIntent(anIntent, {
   idle: () => null,
   working: () => null,

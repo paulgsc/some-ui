@@ -1,13 +1,9 @@
 import { DEFAULT_GAME_CONFIG } from "@honeycomb/lib/hangul/wasm-game-bridge"
 import { describe, expect, it } from "vitest"
 
-// Cross-language tripwire for Prop. 2.3 (crates/hangul-game-core/docs/
-// hangul-progression-canon.typ): the Rust and TypeScript defaults have no
-// shared source, so this test pins every field to the literal values
-// `default_matches_typescript_bridge_defaults`
-// (crates/hangul-game-core/src/internal/types.rs) also asserts against
-// itself. Changing either default without updating both tests leaves this
-// one failing.
+// Cross-language tripwire for Prop. 2.3: Rust and TypeScript defaults share
+// no source, so both this test and `default_matches_typescript_bridge_defaults`
+// (crates/hangul-game-core/src/internal/types.rs) pin the same literals.
 describe("DEFAULT_GAME_CONFIG matches the Rust GameConfig::default()", () => {
   it("agrees with the Rust default on every field", () => {
     expect(DEFAULT_GAME_CONFIG).toEqual({

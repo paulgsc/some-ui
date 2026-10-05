@@ -1,12 +1,5 @@
-// NOTE: FlatCompat has been removed from this file.
-// - eslint-plugin-react-hooks now exports configs.flat.recommended directly
-// - eslint-plugin-import has been replaced with eslint-plugin-import-x
-//   (maintained drop-in replacement with native flat config support)
-// - react/jsx-uses-vars has been removed: ESLint v10 tracks JSX references
-//   natively via scope analysis, making this rule redundant/conflicting.
-// - fixupConfigRules wraps eslint-plugin-react and eslint-plugin-jsx-a11y
-//   recommended configs: both plugins still call context.getFilename() and
-//   other ESLint v8/v9 context methods removed in ESLint v10.
+// fixupConfigRules wraps eslint-plugin-react and eslint-plugin-jsx-a11y's
+// recommended configs: both still call context methods removed in ESLint v10.
 import path from "node:path"
 import { fixupConfigRules } from "@eslint/compat"
 import { createTypeScriptImportResolver } from "eslint-import-resolver-typescript"
@@ -27,20 +20,13 @@ const files = ["**/*.{mdx,js,jsx,ts,tsx}"]
  * the latter, which has no `.value` - only `.quasis[n].value.cooked` - so
  * the plain-literal selector alone doesn't see it.
  *
- * Exported for two reasons:
- * 1. A workspace that must turn off this guard (a raw-source package with
- *    no self-alias - see base.config.ts's `no-restricted-imports` for the
- *    full rationale) can redeclare `no-restricted-syntax` with just
- *    `reactImportBanSelectors`, instead of silently dropping the
- *    React-import ban too. Flat config replaces a rule's value wholesale at
- *    the most specific matching config; there is no way to remove one
- *    selector from this array without restating the rest.
- * 2. `extensions-security.config.ts` also defines `no-restricted-syntax`,
- *    spread *after* this file inside `extensionsRecommended`, so it wins
- *    the same way this file wins over typescript.config.ts. Every
- *    extensions/* workspace needs these selectors spread into that file's
- *    array too, or they go dark there exactly like they would have in
- *    typescript.config.ts.
+ * Exported because flat config replaces a rule's value wholesale at the most
+ * specific match: (1) a raw-source workspace that turns this guard off (see
+ * base.config.ts) redeclares `no-restricted-syntax` with just
+ * `reactImportBanSelectors`; (2) `extensions-security.config.ts`, spread after
+ * this file in `extensionsRecommended`, must restate these selectors or they
+ * go dark there.
+
  */
 export const parentRelativeDynamicImportSelectors = [
   {
@@ -123,8 +109,7 @@ export default defineConfig([
       "import/named": "error",
       "import/export": "error",
       "import/no-anonymous-default-export": "error",
-      // Enforce consistent import ordering is handled by prettier plugin —
-      // but flag duplicate imports at the ESLint level
+      // Ordering is prettier's; duplicates are flagged here.
       "import/no-duplicates": "error",
       "import/no-extraneous-dependencies": [
         "error",
@@ -153,13 +138,12 @@ export default defineConfig([
           unnamedComponents: "arrow-function",
         },
       ],
-      // react/jsx-uses-vars intentionally OMITTED: ESLint v10 tracks JSX
-      // references natively via scope analysis — this rule is now redundant
-      // and can produce conflicts with the native tracking.
+      // react/jsx-uses-vars is omitted: ESLint v10 tracks JSX references
+      // natively, and the rule conflicts with that.
       "react/no-unknown-property": "off",
       "react/react-in-jsx-scope": "off",
       "react/prop-types": "off",
-      // Catch common React footguns
+
       "react/no-array-index-key": "warn",
       "react/no-unstable-nested-components": ["error", { allowAsProps: false }],
       "react/self-closing-comp": "error",

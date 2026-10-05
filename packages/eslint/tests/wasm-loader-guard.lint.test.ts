@@ -1,11 +1,7 @@
 /**
- * LAYER 2 — Lint-time integration tests for
- * wasm-loader-guard/no-bare-wasm-singleton (UTL-WASM epic #529, S5).
- *
- * Purely syntactic (ImportExpression/CallExpression shape checks, no type
- * information needed), so a plain @typescript-eslint/parser (no `project`/
- * `projectService` option) is enough. Same rationale as
- * switch-lint.lint.test.ts.
+ * Lint-time integration tests for wasm-loader-guard/no-bare-wasm-singleton
+ * (#529). Syntactic, so a plain @typescript-eslint/parser suffices.
+
  */
 
 import { wasmLoaderGuardPlugin } from "@eslint/configs/wasm-loader-guard.config.js"

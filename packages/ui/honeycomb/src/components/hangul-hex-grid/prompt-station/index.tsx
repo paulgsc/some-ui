@@ -13,34 +13,21 @@ type PromptStationProps = {
   /** The tracked word's masked-progress snapshot, shown alongside the icon. */
   progress: WordProgress | null
   /**
-   * The word pool `stimulus.name` is looked up against - must be the same
-   * list HangulHexGrid seeded the WASM engine's `wordPool` from, or a
-   * mid-game stimulus id won't resolve to an entry here. Defaults to the
-   * bundled demo seed so direct/Storybook usage needs no wiring.
+   * The word pool `stimulus.name` is looked up in: the same list the engine
+   * was seeded with. Defaults to the bundled demo seed.
    */
   words?: Array<WordEntry>
 }
 
 /**
- * Prompt/Concept Station (ADR 0003 §2(d), #762): a persistent, corner-anchored
- * overlay rendering the active word challenge's stimulus and progress, with
- * progressively richer hints as the player struggles. Idle ("radio") state
- * is a minimal footprint; it expands ("TV") once a word challenge is active,
- * then layers in TTS playback and finally the word's Hangul spelling per
- * `usePromptEscalation`'s tier. Both are host-layer realizations of engine
- * primitives (canon Axiom 3.1) - no new engine type backs this component.
+ * Prompt/Concept Station (ADR 0003 §2(d)): a corner-anchored overlay showing
+ * the active word's stimulus and progress, with richer hints as the player
+ * struggles: idle ("radio"), expanded ("TV"), then TTS and finally the Hangul
+ * spelling per `usePromptEscalation`'s tier. Host-layer realizations of engine
+ * primitives (canon Axiom 3.1); no engine type backs it.
  *
- * The masked-word display (blanks that reveal per-jamo as the cursor
- * advances) lives here rather than as its own centered overlay: the honeycomb
- * grid itself is the game board and must stay uninterrupted, and everything
- * about "what word am I typing and how far along am I" is a single concept -
- * splitting it across a corner station and a separate floating card in the
- * middle of the board duplicated the same information in two places for no
- * benefit.
- *
- * Renders nothing for `Glyph` stimuli (today's single-jamo play): this
- * overlay only exists to carry a non-text prompt, so ordinary jamo modes are
- * unaffected by its presence.
+ * The masked word lives here, not over the board, which must stay
+ * uninterrupted. Renders nothing for `Glyph` stimuli (single-jamo play).
  */
 export const PromptStation = ({
   stimulus,
@@ -66,8 +53,8 @@ export const PromptStation = ({
       return
     }
     // Auto-play once per tier transition into "icon-tts" or beyond, not on
-    // every re-render (e.g. the 250ms elapsed-time tick inside
-    // usePromptEscalation) while that tier is active.
+    // every re-render (usePromptEscalation ticks every 250ms).
+
     if (lastAutoPlayedTierRef.current !== tier) {
       lastAutoPlayedTierRef.current = tier
       sayWord(speaker, entry.ttsText, "next")

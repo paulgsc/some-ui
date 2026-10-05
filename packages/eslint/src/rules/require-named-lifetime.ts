@@ -8,15 +8,9 @@ import type { Rule } from "eslint"
  * delay, which the call site already states. What this rule is about is a
  * resource whose lifetime is not visible from where it is created.
  *
- * `matchMedia` was in this set and was removed, because it is only a
- * standing resource when the returned list is *subscribed to* — and its
- * most common use by far is a one-shot `matchMedia(q).matches` read, which
- * has no lifetime at all. Flagging that is a false positive on correct
- * code, and a rule that cries wolf on the common case teaches people to
- * reach for the disable comment without reading it. Detecting only the
- * subscribed form needs flow analysis this rule does not do, so the honest
- * choice is to leave it out; `addEventListener` on a `MediaQueryList` is
- * covered by whatever governs listeners generally, not by this.
+ * `matchMedia` is absent too: it is standing only when subscribed to, and
+ * its common use is a one-shot `matchMedia(q).matches` read. Telling the two
+ * apart needs flow analysis this rule does not do.
  */
 const STANDING_RESOURCES = new Set(["setInterval", "requestIdleCallback"])
 
@@ -25,24 +19,13 @@ const STANDING_RESOURCES = new Set(["setInterval", "requestIdleCallback"])
  *
  * ## Why "is there a matching clear?" is the wrong question
  *
- * This rule exists because of a measured incident, and the shape of that
- * incident is the whole justification for enforcing it this way rather than
- * the obvious way.
- *
- * `some-filter` ran three 250ms `setInterval` polls per tab. On a profile
- * carrying 200+ tabs that was thousands of callbacks per second across a
- * shared pool of content processes, and it hung the browser. Every one of
- * those `setInterval`s already had a matching `clearInterval` in a
- * `teardown()`. A cleanup-pairing lint would have passed, cleanly, on the
- * code that caused it.
- *
- * The defect was never a missing clear. It was that teardown had been wired
- * to *one* lifecycle — a mode change, and unload — and not to visibility, so
- * a tab the user opened once and left behind polled forever. "Is there a
- * matching clear?" is syntactically checkable and was already true. "Is this
- * stopped on every transition that ought to stop it?" is the question that
- * mattered, and no linter can answer it, because the answer is not at the
- * call site — it is in whichever module decides when teardown runs.
+ * `some-filter`'s per-tab 250ms polls hung a 200+ tab browser, and every one
+ * had a matching `clearInterval`: a cleanup-pairing lint would have passed.
+ * The defect was teardown wired to mode change and unload but not to
+ * visibility. "Is this stopped on every transition that ought to stop it?"
+ * is the question, and its answer is not at the call site but in whichever
+ * module decides when teardown runs.
+
  *
  * ## So this rule does the only useful thing a linter can
  *

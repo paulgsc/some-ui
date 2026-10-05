@@ -1,11 +1,8 @@
 /**
- * The mechanical half of #935's Pushback 3 / Doctrine split: this package
- * clears the Shared-Workspace Doctrine's prongs 2 and 3 (a rarely-churning,
- * orthogonal contract) but not prong 1 (a second genuine consumer, today) —
- * see the epic body's own note about deliberately overriding the `-4` line.
- * What keeps that override honest is that the package stays *actually*
- * dependency-free, and that is invisible to a reviewer skimming a diff. A
- * test that reads the manifest is not.
+ * This package exists as a shared workspace on the condition that it stays
+ * dependency-free (#935), which a reviewer skimming a diff cannot see; a test
+ * that reads the manifest can.
+
  */
 
 import { readFileSync } from "node:fs"

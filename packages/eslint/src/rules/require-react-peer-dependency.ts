@@ -2,9 +2,8 @@ import { existsSync, readFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import type { Rule } from "eslint"
 
-// ESTree JSX nodes (JSXElement/JSXFragment) aren't in @types/eslint's Node
-// union, so those visitor keys are read loosely and narrowed by `.type`,
-// matching the convention documented in the other rules in this directory.
+// ESTree JSX nodes aren't in @types/eslint's Node union; narrowed by `.type`.
+
 /* eslint-disable @typescript-eslint/no-explicit-any -- ESTree JSX shapes not modeled by @types/eslint's Node union, see comment above */
 
 /**

@@ -52,23 +52,18 @@ const extensionsCharterConfig = defineConfig([
     rules: {
       "extension-charter/no-zindex-escalation": "error",
       "extension-charter/no-raw-storage": "error",
-      // §5, added after a 200-tab profile hung the browser on three 250ms
-      // polls per tab. Every one of those polls already had a matching
-      // clearInterval — see the rule's own doc comment for why that is
-      // precisely the reason this is not a cleanup-pairing check.
-      //
+      // §5 (see the rule's doc for why it is not a cleanup-pairing check).
       // The message points at commons' `Disposables`, whose interval() and
-      // loop() are these resources with a lifetime attached. A workspace with
-      // its own lifecycle helper can pass a different `lifecycleModule`.
+      // loop() attach a lifetime; a workspace with its own helper passes a
+      // different `lifecycleModule`.
       "extension-charter/require-named-lifetime": [
         "error",
         { lifecycleModule: "@some-extension/common's Disposables" },
       ],
-      // §8, the listener and frame-loop half of the same question (see the
-      // rule's doc comment for what got past require-named-lifetime). `warn`
-      // here, so it lands as an audit in every workspace without failing
-      // one that has not adopted a lifetime helper yet; a workspace that has
-      // turns it to "error" in its own eslint.config.js, as some-drama does.
+      // §8, the listener and frame-loop half. `warn`: an audit everywhere; a
+      // workspace that has adopted a lifetime helper turns it to "error" in
+      // its own eslint.config.js, as some-drama does.
+
       "extension-charter/require-scoped-lifetime": [
         "warn",
         { lifecycleModule: "@some-extension/common's Disposables" },

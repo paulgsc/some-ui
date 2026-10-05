@@ -99,9 +99,8 @@ describe("zod schema validation", () => {
   })
 
   it("wraps a schema validation failure in an ApiError(400) rather than letting a raw ZodError escape", async () => {
-    // `executeFetch` now forwards `schema` into `processResponse`, which is the
-    // single validation point and wraps a Zod failure in an ApiError. A raw
-    // ZodError no longer escapes for any public method (get/post/etc.).
+    // `processResponse` is the single validation point and wraps a Zod
+    // failure in an ApiError, for every public method.
     fetchMock.mockResolvedValue(jsonResponse({ id: "not-a-number" }))
     const client = createFetchClient()
 
@@ -152,8 +151,9 @@ describe("network error retry/backoff", () => {
 
   it("does not retry a network error unless the call opts into a retry policy", async () => {
     fetchMock.mockRejectedValue(new TypeError("Failed to fetch"))
-    // The client-level default retry config never gates retries on its own -
-    // only a per-call `retry` option does. This test pins that behavior down.
+    // The client-level default retry config never gates retries on its own;
+    // only a per-call `retry` option does.
+
     const client = createFetchClient()
 
     await expect(

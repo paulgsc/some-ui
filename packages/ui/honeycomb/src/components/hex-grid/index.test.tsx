@@ -41,10 +41,7 @@ beforeEach(() => {
 })
 
 describe("HexGrid onStatusChange", () => {
-  // Regression coverage: HexGrid's own hex-geometry WASM failure previously
-  // had no way to reach anything outside it - a parent orchestrating a game
-  // loop, audio, or timers around the grid had no signal to stop on a fatal
-  // load failure. onStatusChange is that signal.
+  // onStatusChange lets a parent running a game loop stop on a fatal load.
   it("reports the underlying wasm hook's loading/error status", () => {
     mockUseHexgridWasm({ isLoading: true, error: null })
     const onStatusChange = vi.fn()

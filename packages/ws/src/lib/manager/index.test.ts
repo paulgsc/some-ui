@@ -154,7 +154,7 @@ describe("WebSocketManager - reconnect gives up after maxReconnectAttempts", () 
 })
 
 describe("WebSocketManager - message handling", () => {
-  it("regression: a successfully parsed message updates the snapshot's lastMessage", async () => {
+  it("a successfully parsed message updates the snapshot's lastMessage", async () => {
     const url = nextUrl()
     const manager = WebSocketManager.getInstance(url)
 

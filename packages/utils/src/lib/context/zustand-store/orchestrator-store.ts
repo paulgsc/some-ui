@@ -12,7 +12,8 @@ import { useShallow } from "zustand/shallow"
 
 type CommandSender = (command: OrchestratorCommand) => Promise<void>
 
-// Temporal layers - separated by update frequency
+// State is split by update frequency: clock per tick, lifetimes on
+// lifetime boundaries, mode on commands. Selectors below follow that split.
 type ClockState = {
   current_time: number
   progress: number
@@ -20,19 +21,12 @@ type ClockState = {
   total_duration: number
 }
 
-// Normalized lifetime tracking (concurrent-aware)
 type LifetimeState = {
-  // All active lifetimes indexed by ID (structural truth)
   lifetimes: Map<number, ActiveLifetime>
-
-  // Derived: set of currently active scene IDs
   active_scene_ids: Set<string>
-
-  // Derived: ordered list of scene lifetimes (for UI iteration)
   scene_lifetimes: Array<ActiveLifetime>
 }
 
-// Orchestrator mode state (FSM tracking)
 type ModeState = {
   mode: OrchestratorMode
   is_running: boolean
@@ -41,35 +35,26 @@ type ModeState = {
 }
 
 type OrchestratorStoreState = {
-  // === TEMPORAL LAYERS ===
-  // Tick-driven state (updates every tick)
   clock: ClockState
-
-  // Lifetime-driven state (updates only on lifetime boundaries)
   lifetimes: LifetimeState
-
-  // Mode-driven state (updates on command boundaries)
   mode: ModeState
 
-  // === RAW STATE (escape hatch for debugging) ===
+  // Escape hatch for debugging.
   rawState: OrchestratorState
 
-  // === CONNECTION STATE ===
   isConnected: boolean
   isInitializing: boolean
   error: string | null
 
-  // === INTERNAL ===
   _commandSender: CommandSender | null
   _streamId: string | null
 
-  // === INTERNAL SETTERS (hook-only) ===
+  // Hook-only setters.
   _setState: (state: OrchestratorState) => void
   _setConnectionStatus: (isConnected: boolean, isInitializing: boolean) => void
   _setError: (error: string | null) => void
   _setCommandSender: (sender: CommandSender, streamId: string) => void
 
-  // === COMMANDS ===
   configure: (scenes: Array<SceneConfig>) => Promise<void>
   start: () => Promise<void>
   stop: () => Promise<void>
@@ -81,7 +66,6 @@ type OrchestratorStoreState = {
   updateStreamStatus: (status: StreamStatus) => Promise<void>
 }
 
-// Helper: Extract scene IDs from active lifetimes
 function extractSceneIds(lifetimes: Array<ActiveLifetime>): Set<string> {
   const ids = new Set<string>()
   for (const lifetime of lifetimes) {
@@ -92,7 +76,6 @@ function extractSceneIds(lifetimes: Array<ActiveLifetime>): Set<string> {
   return ids
 }
 
-// Helper: Check if two sets are equal
 function setEquals<T>(a: Set<T>, b: Set<T>): boolean {
   if (a.size !== b.size) return false
   for (const item of a) {
@@ -101,7 +84,6 @@ function setEquals<T>(a: Set<T>, b: Set<T>): boolean {
   return true
 }
 
-// Helper: Normalize lifetimes into concurrent-aware structure
 function normalizeLifetimes(lifetimes: Array<ActiveLifetime>): LifetimeState {
   const lifetimeMap = new Map<number, ActiveLifetime>()
   const sceneLifetimes: Array<ActiveLifetime> = []
@@ -120,7 +102,6 @@ function normalizeLifetimes(lifetimes: Array<ActiveLifetime>): LifetimeState {
   }
 }
 
-// Helper: Derive mode state from mode enum
 function deriveModeState(mode: OrchestratorMode): ModeState {
   const is_running = mode === "Running"
   const is_paused = mode === "Paused"
@@ -137,7 +118,6 @@ function deriveModeState(mode: OrchestratorMode): ModeState {
 
 export const useOrchestratorStore = create<OrchestratorStoreState>(
   (set, get) => ({
-    // --- Initial state ---
     clock: {
       current_time: 0,
       progress: 0,
@@ -157,23 +137,20 @@ export const useOrchestratorStore = create<OrchestratorStoreState>(
     _commandSender: null,
     _streamId: null,
 
-    // --- Internal setters ---
-    // This is the KEY normalization point - handles concurrent lifetimes and mode
+    // Lifetimes and mode keep their previous reference unless they changed,
+    // so lifetime/mode selectors do not rerender on every tick.
     _setState: (next): void =>
       set((prev) => {
         const prevSceneIds = prev.lifetimes.active_scene_ids
         const nextSceneIds = extractSceneIds(next.active_lifetimes)
 
-        // Structural boundary detection (set-based, not scalar)
         const lifetimesChanged = !setEquals(prevSceneIds, nextSceneIds)
 
-        // Mode boundary detection
         const modeChanged = prev.mode.mode !== next.mode
 
         return {
           rawState: next,
 
-          // Clock ALWAYS updates (tick-driven)
           clock: {
             current_time: next.current_time,
             progress: next.progress,
@@ -181,12 +158,10 @@ export const useOrchestratorStore = create<OrchestratorStoreState>(
             total_duration: next.total_duration,
           },
 
-          // Lifetimes ONLY update on boundary (event-driven)
           lifetimes: lifetimesChanged
             ? normalizeLifetimes(next.active_lifetimes)
             : prev.lifetimes,
 
-          // Mode ONLY updates on state change (command-driven)
           mode: modeChanged ? deriveModeState(next.mode) : prev.mode,
         }
       }),
@@ -199,7 +174,6 @@ export const useOrchestratorStore = create<OrchestratorStoreState>(
     _setCommandSender: (sender, streamId): void =>
       set({ _commandSender: sender, _streamId: streamId }),
 
-    // --- Commands ---
     configure: async (scenes): Promise<void> => {
       const { _commandSender } = get()
       if (!_commandSender) {
@@ -294,14 +268,8 @@ function warn(action: string): void {
   console.warn(`Cannot ${action}: orchestrator not connected`)
 }
 
-// ============================================================================
-// SELECTORS - Organized by temporal contract
-// ============================================================================
-
-// -----------------------------------------------------------------------------
-// 🔴 TICK-AWARE SELECTORS (explicit opt-in, rerenders every tick)
-// Use these ONLY for: progress bars, timecode displays, playheads, animations
-// -----------------------------------------------------------------------------
+// Tick-aware selectors rerender every tick: use only for progress bars,
+// timecodes, playheads and animations.
 
 const selectClock = (s: OrchestratorStoreState): ClockState => s.clock
 
@@ -314,16 +282,8 @@ export const selectCurrentTime = (s: OrchestratorStoreState): number =>
 export const selectTotalDuration = (s: OrchestratorStoreState): number =>
   s.clock.total_duration
 
-// -----------------------------------------------------------------------------
-// 🟢 LIFETIME-STABLE SELECTORS (default for UI, NO tick rerenders)
-// Use these for: layouts, panels, registry resolution, component lifetimes
-// -----------------------------------------------------------------------------
-
-/**
- * Returns all active scene lifetimes (concurrent-aware).
- * STABLE: Does not change on tick updates, only on lifetime boundaries.
- * May contain multiple concurrent scenes.
- */
+// Lifetime-stable selectors (the UI default) change only on lifetime
+// boundaries. Several scenes may be active at once.
 const selectSceneLifetimes = (
   s: OrchestratorStoreState
 ): Array<ActiveLifetime> => s.lifetimes.scene_lifetimes
@@ -331,52 +291,27 @@ const selectSceneLifetimes = (
 export const useSceneLifetimes = (): Array<ActiveLifetime> =>
   useOrchestratorStore(useShallow(selectSceneLifetimes))
 
-// -----------------------------------------------------------------------------
-// 🟡 MODE SELECTORS (stable across ticks, changes on commands)
-// Use these for: control buttons, FSM-dependent UI, status indicators
-// -----------------------------------------------------------------------------
-
-/**
- * Returns true if orchestrator is actively running.
- * STABLE: Only changes on mode transitions.
- */
+// Mode selectors change only on mode transitions.
 const selectIsRunning = (s: OrchestratorStoreState): boolean =>
   s.mode.is_running
 
 export const useIsRunning = (): boolean => useOrchestratorStore(selectIsRunning)
 
-/**
- * Returns true if orchestrator is paused.
- * STABLE: Only changes on mode transitions.
- */
 const selectIsPaused = (s: OrchestratorStoreState): boolean => s.mode.is_paused
 
 export const useIsPaused = (): boolean => useOrchestratorStore(selectIsPaused)
 
-/**
- * Returns true if orchestrator is in a terminal state (Finished, Stopped, Error).
- * STABLE: Only changes on mode transitions.
- */
 const selectIsTerminal = (s: OrchestratorStoreState): boolean =>
   s.mode.is_terminal
 
 export const useIsTerminal = (): boolean =>
   useOrchestratorStore(selectIsTerminal)
 
-// ============================================================================
-// DERIVED HOOKS (Concurrent-aware computations)
-// ============================================================================
-
-/**
- * Returns primary scene (useful for UI that needs a "main" scene).
- * Heuristic: earliest started scene, or null if no scenes active.
- * STABLE: Only changes on lifetime boundaries.
- */
+/** The earliest-started active scene, or null when none is active. */
 export function usePrimaryScene(): ActiveLifetime | null {
   const lifetimes = useSceneLifetimes()
   if (lifetimes.length === 0) return null
 
-  // Return earliest started scene
   return lifetimes.reduce((earliest, current) =>
     current.started_at < earliest.started_at ? current : earliest
   )

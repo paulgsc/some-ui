@@ -99,7 +99,7 @@ describe("lastOwnChange", () => {
 
   it("counts a sweep's workspaces from its paths, deleted ones included", () => {
     // Only w0 exists today; the other workspaces this rollout touched were
-    // deleted since, and must still make it a sweep (review, #1648).
+    // deleted since, and must still make it a sweep.
     const swept = Array.from(
       { length: SWEEP_WORKSPACES + 1 },
       (_, index) => `packages/ui/gone${index}/src/x.ts`

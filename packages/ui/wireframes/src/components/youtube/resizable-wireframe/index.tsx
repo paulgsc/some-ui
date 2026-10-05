@@ -15,53 +15,36 @@ import { getSlotColor } from "@wireframes/lib/youtube-config"
 import { cn, renderRegistryComponent } from "some-ui-utils"
 
 /**
- * A region can be bound by more than one active lifetime at once - most
- * visibly during a scene-transition crossfade, where the outgoing and
- * incoming scene are briefly both "active" and can bind the same slot. Each
- * entry's `key` is `${lifetime.id}:${layoutIndex}` - lifetime id alone in
- * case one lifetime's scene defines the same region across more than one
- * `ui` layout entry (unusual, but not impossible) - stable across renders so
- * a mid-transition panel isn't remounted every tick.
+ * A region can be bound by several active lifetimes at once (a crossfade's
+ * outgoing and incoming scenes). `key` is `${lifetime.id}:${layoutIndex}`,
+ * since one scene may bind a region in several `ui` entries; it is stable so
+ * a mid-transition panel is not remounted every tick.
  */
 type PanelEntry = { key: string; render: () => ReactNode }
 
 type Edge = "left" | "right" | "top" | "bottom"
 
 type OrchestratedViewportProps<K extends string> = {
-  /**
-   * Layout tree from editor (defines topology)
-   * This is the OUTPUT from your CRM editor
-   */
+  /** Layout tree from the editor; defines topology. */
   layoutTree: LayoutNode<SlotId> | null
 
-  /**
-   * Active lifetimes to render content from
-   */
   activeLifetimes: Array<ActiveLifetime>
 
   componentRegistry: ComponentRegistry<K>
 
-  /**
-   * Enable focus feature
-   */
   enableFocus?: boolean
 
-  /**
-   * Transition duration for animations
-   */
   transitionMs?: number
 
   /**
-   * Zero-collapse leaves with nothing bound, redistributing their space to
-   * siblings (story 5). Callers editing topology directly (story 6's edit
-   * mode) turn this off so there's still something to click on to bind.
+   * Zero-collapse leaves with nothing bound, giving their space to siblings.
+   * Edit mode turns this off so there is still something to click to bind.
    */
   collapseUnbound?: boolean
 
   /**
-   * Right-click any leaf to reveal resize handles (story 7) - independent
-   * of edit mode, works during normal playback. Omit to disable the
-   * affordance entirely.
+   * Right-click any leaf to reveal resize handles, during normal playback
+   * too. Omit to disable.
    */
   onLeafResize?: (
     id: SlotId,
@@ -71,15 +54,9 @@ type OrchestratedViewportProps<K extends string> = {
   ) => void
 }
 
-// There is deliberately no `extraProps` escape hatch here. It existed to let a
-// caller merge runtime values onto *every* rendered panel regardless of its
-// `registry_key`, which meant one panel's content concerns landed on every
-// other panel as stray props, and made this layout component the holder of a
-// bag it could not interpret. A caller that needs to inject per-panel props
-// already knows both the key and the value at compile time, so it can merge
-// them into the lifetimes it passes in (see apps/www's scene-props adapter) -
-// and this component goes back to rendering panels with the props they came
-// with.
+// Deliberately no `extraProps` bag merged onto every panel: a caller injecting
+// per-panel props merges them into the lifetimes it passes in (see apps/www's
+// scene-props adapter), so panels render with the props they came with.
 
 function findSolvedRect<T>(node: SolvedNode<T>, id: T): Rect | null {
   if (node.type === "leaf") return node.id === id ? node.rect : null
@@ -91,10 +68,8 @@ function findSolvedRect<T>(node: SolvedNode<T>, id: T): Rect | null {
 }
 
 /**
- * Consumer viewport that:
- * - Receives tree topology from editor
- * - Manages runtime geometry (focus, constraints)
- * - Renders content from active lifetimes
+ * Renders active lifetimes' content into the editor's tree topology,
+ * managing runtime geometry (focus, constraints).
  */
 export const OrchestratedYouTubeViewport = <K extends string>({
   layoutTree,
@@ -107,7 +82,6 @@ export const OrchestratedYouTubeViewport = <K extends string>({
 }: OrchestratedViewportProps<K>): JSX.Element => {
   const { ref, rect } = useContainerRect()
 
-  // Consumer manages its own focus state
   const focusControls = useFocusControls<SlotId>()
 
   const [popup, setPopup] = useState<{
@@ -117,7 +91,6 @@ export const OrchestratedYouTubeViewport = <K extends string>({
 
   const [resizeArmedLeaf, setResizeArmedLeaf] = useState<SlotId | null>(null)
 
-  // Merge panels per region from all active lifetimes
   const mergedPanels = useMemo(() => {
     const panels: Partial<Record<SlotId, Array<PanelEntry>>> = {}
 

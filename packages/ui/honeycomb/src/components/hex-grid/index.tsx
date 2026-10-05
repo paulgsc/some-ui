@@ -44,25 +44,18 @@ export type HexGridProps<T = unknown> = {
   /** Space to reserve on every edge before fitting, in px. @default 16 */
   padding?: number
   /**
-   * How to react when the requested grid no longer fits. See
-   * `HexGridFitStrategy` for the tradeoffs — defaults to `"shrink-only"`
-   * because cell ids can carry meaning beyond rendering (e.g. game state
-   * keyed by cell id), and reducing the radius makes outer-ring cells
-   * disappear entirely.
+   * How to react when the requested grid no longer fits; see
+   * `HexGridFitStrategy`.
    * @default "shrink-only"
    */
   fitStrategy?: HexGridFitStrategy
   /** Called whenever the layout negotiation result changes. */
   onFitChange?: (fit: HexGridFitResult) => void
   /**
-   * Called whenever the internal hex-geometry WASM module's loading/error
-   * status changes. `HexGrid` already renders its own inline
-   * loading/error state in place of the grid - this callback exists so a
-   * parent orchestrating other state around the grid (a game loop, audio,
-   * timers) can react to a fatal load failure instead of continuing to run
-   * blind: nothing about this component's own WASM concern is otherwise
-   * visible outside it.
+   * Called when the geometry WASM's loading/error status changes, so a parent
+   * running a game loop, audio or timers can stop on a fatal load failure.
    */
+
   onStatusChange?: (status: {
     isLoading: boolean
     error: string | null

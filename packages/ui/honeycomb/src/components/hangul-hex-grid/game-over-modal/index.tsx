@@ -13,17 +13,11 @@ type GameOverModalProps = {
 /**
  * The end-of-run summary, sized to fit the board it covers.
  *
- * Everything here is fixed-cardinality - one verdict line, five figures, one
- * button - so `docs/ui-fit`'s first question ("can this just fit?") has a
- * plain yes, and the panel takes no height cap and no scrollbar. It used to
- * take both, and at the 500px board the stories render it was genuinely
- * overflowing them: a stacked emoji, a stacked headline, and five full-width
- * label/value rows at `p-6` came to roughly 550px of content. The fix is the
- * layout, not a scroll container - the verdict is one line, the figures are a
- * 2-up hero over a 3-up footnote, and completion is a single row.
- *
- * The numbers are `tabular-nums` for the same reason: the grid's height must
- * not depend on the run it is describing.
+ * Everything here is fixed-cardinality (one verdict line, five figures, one
+ * button), so per `docs/ui-fit` it simply fits: no height cap, no scrollbar.
+ * The figures are a 2-up hero over a 3-up footnote, in `tabular-nums` so the
+ * height never depends on the run.
+
  */
 export const GameOverModal = ({
   isOpen,

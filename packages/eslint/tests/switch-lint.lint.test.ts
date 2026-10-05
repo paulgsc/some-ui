@@ -1,13 +1,7 @@
 /**
- * LAYER 2 — Lint-time integration tests for switch-lint/require-case-braces
- * and switch-lint/require-fail-fast-default.
- *
- * Uses lintSnippet()/lintSnippetFixed() (lintText() under the hood) because
- * both rules are purely syntactic (SwitchStatement/SwitchCase shape checks,
- * no type information needed) — no TypeScript language service / projectService
- * is required, so a plain @typescript-eslint/parser (no `project`/
- * `projectService` option) is enough to parse the TS syntax in the snippets
- * below. Same rationale as stories.lint.test.ts.
+ * Lint-time integration tests for switch-lint/require-case-braces and
+ * switch-lint/require-fail-fast-default. Both are syntactic, so a plain
+ * @typescript-eslint/parser (no projectService) parses the snippets.
  */
 
 import { switchLintPlugin } from "@eslint/configs/switch-lint.config.js"
@@ -19,6 +13,7 @@ import { describe, expect, it } from "vitest"
 import {
   expectMessageForRule,
   expectNoMessageForRule,
+  expectSnippet,
   lintSnippet,
   lintSnippetFixed,
 } from "./helpers/eslint-resolver.js"
@@ -153,296 +148,114 @@ switch (x) {
 
 // ── require-fail-fast-default ────────────────────────────────────────────────
 
+/** A one-case switch over `discriminant`, with `defaultBody` as its default (none when null). */
+function switchWithDefault(
+  defaultBody: string | null,
+  discriminant = "x"
+): string {
+  const fallback = defaultBody === null ? "" : `  default:${defaultBody}\n`
+  return `
+switch (${discriminant}) {
+  case "a":
+    doThing()
+    break
+${fallback}}
+`
+}
+
 describe("lint: switch-lint/require-fail-fast-default", () => {
-  it("fires when the switch has no default case at all", async () => {
-    const code = `
-switch (x) {
-  case "a":
-    doThing()
-    break
-}
-`
-    const msgs = await lintSnippet(
-      makeConfig("require-fail-fast-default"),
+  it.each<
+    readonly [string, string, Record<string, unknown> | undefined, boolean]
+  >([
+    [
+      "fires when the switch has no default case at all",
+      switchWithDefault(null),
+      undefined,
+      true,
+    ],
+    [
+      "does NOT fire for `default: return assertNever(x)`",
+      switchWithDefault("\n    return assertNever(x)"),
+      undefined,
+      false,
+    ],
+    [
+      "does NOT fire for a braced `default: { return assertNever(x) }`",
+      switchWithDefault(" {\n    return assertNever(x)\n  }"),
+      undefined,
+      false,
+    ],
+    [
+      "does NOT fire for a plain `throw`",
+      switchWithDefault('\n    throw new Error("unreachable: " + x)'),
+      undefined,
+      false,
+    ],
+    [
+      "fires when the default silently breaks",
+      switchWithDefault("\n    break"),
+      undefined,
+      true,
+    ],
+    [
+      "fires when the default is a bare return",
+      switchWithDefault("\n    return"),
+      undefined,
+      true,
+    ],
+    [
+      "fires when the default only logs and swallows the value",
+      switchWithDefault('\n    console.error("unexpected", x)'),
+      undefined,
+      true,
+    ],
+    [
+      "fires when the helper is called with the wrong argument",
+      switchWithDefault("\n    return assertNever(y)"),
+      undefined,
+      true,
+    ],
+    // In `switch (action.type)`'s default, TypeScript narrows `action`, not
+    // `action.type`, to `never`, and a property access on `never` does not
+    // compile, so both spellings are accepted.
+    [
+      "accepts the narrowing object when the discriminant is a member expression",
+      switchWithDefault("\n    return assertNever(action)", "action.type"),
+      undefined,
+      false,
+    ],
+    [
+      "still accepts the full discriminant for a member expression",
+      switchWithDefault("\n    return assertNever(action.type)", "action.type"),
+      undefined,
+      false,
+    ],
+    [
+      "still fires on an unrelated identifier for a member-expression discriminant",
+      switchWithDefault("\n    return assertNever(other)", "action.type"),
+      undefined,
+      true,
+    ],
+    [
+      "does NOT fire for a custom helper name via the helperNames option",
+      switchWithDefault("\n    return unreachable(x)"),
+      { helperNames: ["unreachable"] },
+      false,
+    ],
+    [
+      "does NOT fire on a missing default when requireDefault is false",
+      switchWithDefault(null),
+      { requireDefault: false },
+      false,
+    ],
+  ])("%s", (title, code, options, fires) =>
+    expectSnippet(
+      makeConfig("require-fail-fast-default", options),
       code,
-      TS_FILE
-    )
-    expectMessageForRule(
-      msgs,
+      TS_FILE,
       "switch-lint/require-fail-fast-default",
-      "missing default case"
+      fires,
+      title
     )
-  })
-
-  it("does NOT fire for `default: return assertNever(x)`", async () => {
-    const code = `
-switch (x) {
-  case "a":
-    doThing()
-    break
-  default:
-    return assertNever(x)
-}
-`
-    const msgs = await lintSnippet(
-      makeConfig("require-fail-fast-default"),
-      code,
-      TS_FILE
-    )
-    expectNoMessageForRule(
-      msgs,
-      "switch-lint/require-fail-fast-default",
-      "default: return assertNever(x)"
-    )
-  })
-
-  it("does NOT fire for a braced `default: { return assertNever(x) }`", async () => {
-    const code = `
-switch (x) {
-  case "a":
-    doThing()
-    break
-  default: {
-    return assertNever(x)
-  }
-}
-`
-    const msgs = await lintSnippet(
-      makeConfig("require-fail-fast-default"),
-      code,
-      TS_FILE
-    )
-    expectNoMessageForRule(
-      msgs,
-      "switch-lint/require-fail-fast-default",
-      "braced default calling assertNever"
-    )
-  })
-
-  it("does NOT fire for a plain `throw`", async () => {
-    const code = `
-switch (x) {
-  case "a":
-    doThing()
-    break
-  default:
-    throw new Error("unreachable: " + x)
-}
-`
-    const msgs = await lintSnippet(
-      makeConfig("require-fail-fast-default"),
-      code,
-      TS_FILE
-    )
-    expectNoMessageForRule(
-      msgs,
-      "switch-lint/require-fail-fast-default",
-      "default: throw new Error(...)"
-    )
-  })
-
-  it("fires when the default silently breaks", async () => {
-    const code = `
-switch (x) {
-  case "a":
-    doThing()
-    break
-  default:
-    break
-}
-`
-    const msgs = await lintSnippet(
-      makeConfig("require-fail-fast-default"),
-      code,
-      TS_FILE
-    )
-    expectMessageForRule(
-      msgs,
-      "switch-lint/require-fail-fast-default",
-      "default: break"
-    )
-  })
-
-  it("fires when the default is a bare return", async () => {
-    const code = `
-switch (x) {
-  case "a":
-    doThing()
-    break
-  default:
-    return
-}
-`
-    const msgs = await lintSnippet(
-      makeConfig("require-fail-fast-default"),
-      code,
-      TS_FILE
-    )
-    expectMessageForRule(
-      msgs,
-      "switch-lint/require-fail-fast-default",
-      "default: return (bare)"
-    )
-  })
-
-  it("fires when the default only logs and swallows the value", async () => {
-    const code = `
-switch (x) {
-  case "a":
-    doThing()
-    break
-  default:
-    console.error("unexpected", x)
-}
-`
-    const msgs = await lintSnippet(
-      makeConfig("require-fail-fast-default"),
-      code,
-      TS_FILE
-    )
-    expectMessageForRule(
-      msgs,
-      "switch-lint/require-fail-fast-default",
-      "default: console.error(...) only"
-    )
-  })
-
-  it("fires when the helper is called with the wrong argument", async () => {
-    const code = `
-switch (x) {
-  case "a":
-    doThing()
-    break
-  default:
-    return assertNever(y)
-}
-`
-    const msgs = await lintSnippet(
-      makeConfig("require-fail-fast-default"),
-      code,
-      TS_FILE
-    )
-    expectMessageForRule(
-      msgs,
-      "switch-lint/require-fail-fast-default",
-      "assertNever(y) called with wrong argument"
-    )
-  })
-
-  /**
-   * `switch (action.type)` over a discriminated union is the shape this rule
-   * exists for, and in its default case TypeScript has narrowed `action` -
-   * not `action.type` - to `never`. A property access on `never` does not
-   * compile, so demanding the full discriminant text there would ask for
-   * code that cannot exist. Both spellings are accepted.
-   */
-  it("accepts the narrowing object when the discriminant is a member expression", async () => {
-    const code = `
-switch (action.type) {
-  case "a":
-    doThing()
-    break
-  default:
-    return assertNever(action)
-}
-`
-    const msgs = await lintSnippet(
-      makeConfig("require-fail-fast-default"),
-      code,
-      TS_FILE
-    )
-    expectNoMessageForRule(
-      msgs,
-      "switch-lint/require-fail-fast-default",
-      "assertNever(action) for switch (action.type)"
-    )
-  })
-
-  it("still accepts the full discriminant for a member expression", async () => {
-    const code = `
-switch (action.type) {
-  case "a":
-    doThing()
-    break
-  default:
-    return assertNever(action.type)
-}
-`
-    const msgs = await lintSnippet(
-      makeConfig("require-fail-fast-default"),
-      code,
-      TS_FILE
-    )
-    expectNoMessageForRule(
-      msgs,
-      "switch-lint/require-fail-fast-default",
-      "assertNever(action.type) for switch (action.type)"
-    )
-  })
-
-  it("still fires on an unrelated identifier for a member-expression discriminant", async () => {
-    const code = `
-switch (action.type) {
-  case "a":
-    doThing()
-    break
-  default:
-    return assertNever(other)
-}
-`
-    const msgs = await lintSnippet(
-      makeConfig("require-fail-fast-default"),
-      code,
-      TS_FILE
-    )
-    expectMessageForRule(
-      msgs,
-      "switch-lint/require-fail-fast-default",
-      "assertNever(other) for switch (action.type)"
-    )
-  })
-
-  it("does NOT fire for a custom helper name via the helperNames option", async () => {
-    const code = `
-switch (x) {
-  case "a":
-    doThing()
-    break
-  default:
-    return unreachable(x)
-}
-`
-    const msgs = await lintSnippet(
-      makeConfig("require-fail-fast-default", {
-        helperNames: ["unreachable"],
-      }),
-      code,
-      TS_FILE
-    )
-    expectNoMessageForRule(
-      msgs,
-      "switch-lint/require-fail-fast-default",
-      "default: return unreachable(x) with custom helperNames option"
-    )
-  })
-
-  it("does NOT fire on a missing default when requireDefault is false", async () => {
-    const code = `
-switch (x) {
-  case "a":
-    doThing()
-    break
-}
-`
-    const msgs = await lintSnippet(
-      makeConfig("require-fail-fast-default", { requireDefault: false }),
-      code,
-      TS_FILE
-    )
-    expectNoMessageForRule(
-      msgs,
-      "switch-lint/require-fail-fast-default",
-      "missing default with requireDefault: false"
-    )
-  })
+  )
 })

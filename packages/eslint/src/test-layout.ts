@@ -16,8 +16,9 @@
 // verdict for one file depends on its siblings, and every workspace lints with
 // `eslint --cache`, which re-uses a file's cached result until that file's own
 // content changes. Delete one of two crowded tests and the survivor's cached
-// "crowded" error outlives the fix (bot-found on #1531, and reproduced). A
-// directory-level invariant needs an uncached, whole-tree check:
+// "crowded" error outlives the fix. A directory-level invariant needs an
+// uncached, whole-tree check:
+
 // `scripts/check-test-layout.ts` runs this over `git ls-files`.
 
 const TEST_FILE = /\.test\.[cm]?[jt]sx?$/

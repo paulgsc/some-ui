@@ -1,5 +1,3 @@
-// dateUtil.ts
-
 /**
  * Formats a given date as a relative time string (e.g., "just now", "5 mins ago", "2 days ago").
  * @param date - The date to format.
@@ -42,10 +40,8 @@ export function formatRelativeTime(date: Date | string | number): string {
 // day is the one on this machine's calendar, and the arithmetic goes through
 // `Date#setDate`, which a daylight-saving change cannot shift.
 //
-// Moved here from @some-ui/aph, which www's lines-of-code widget needed too,
-// and www cannot import an APK-audience workspace. Kept free of imports, so a
-// script can load this file straight from source with Node and nothing
-// installed (scripts/loc-snapshot.ts does).
+// Kept free of imports, so a script can load this file from source with Node
+// and nothing installed (scripts/loc-snapshot.ts does).
 
 /** Local `YYYY-MM-DD` for `date`. */
 export function dayOf(date: Date): string {

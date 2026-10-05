@@ -10,25 +10,17 @@ import { z } from "zod"
 /**
  * Radius of the hex board the game plays on.
  *
- * The engine reserves a cell permanently for every completed character
- * (persist-on-completion), so the pool of spawnable cells must be at least as
- * large as the largest set of characters a mode can require the player to
- * master, plus headroom for characters that are still in flight. Completion
- * mode currently tests 40 distinct jamo; a radius-4 board is
- * `3r² + 3r + 1 = 61` cells, which clears that with room to spare.
+ * The engine reserves a cell for every completed character, so the pool must
+ * hold the largest set a mode requires plus characters in flight. Completion
+ * mode tests 40 jamo; radius 4 is `3r² + 3r + 1 = 61` cells.
  *
- * This radius is the single source of truth for board size: `generateCellIds`
- * enumerates the pool from it, and the rendered `HexGrid` is sized from
- * `HANGUL_GRID_CELL_COUNT` so the engine's cell ids and the rendered cell ids
- * are the same set.
+ * The single source of truth for board size: `generateCellIds` and the
+ * rendered `HexGrid` (via `HANGUL_GRID_CELL_COUNT`) both derive from it, so
+ * engine and rendered cell ids are the same set.
  */
 export const HANGUL_GRID_RADIUS = 4
 export const HANGUL_GRID_CELL_COUNT =
   getCellCountForHexagonalGridRadius(HANGUL_GRID_RADIUS)
-
-// ============================================================================
-// SCHEMAS
-// ============================================================================
 
 export const GameConfigSchema = z.object({
   minTimeWindowMs: z.number().positive(),
@@ -88,9 +80,9 @@ const StimulusSchema = z.discriminatedUnion("kind", [
   }),
 ])
 
-// cellId/hangul/expectedKey are the pre-#421 fields (first cell / full display text / first
-// token's key), kept exactly as-is for single-jamo back-compat; cellIds/stimulus/answerKeys/
-// answerGlyphs are the ADR 0001/0003 widening (canon Rem. 8.1: additive only).
+// cellId/hangul/expectedKey (first cell / full display text / first token's key) are kept for
+// single-jamo callers; cellIds/stimulus/answerKeys/answerGlyphs are the ADR 0001/0003 widening
+// (canon Rem. 8.1: additive only).
 const SpawnResultSchema = z.object({
   cellId: z.string(),
   cellIds: z.array(z.string()),
@@ -103,7 +95,7 @@ const SpawnResultSchema = z.object({
   playSpawnSound: z.boolean(),
 })
 
-// NEW: Simplified event schemas (flattened from EventBatch)
+// Event schemas, flattened from EventBatch.
 const DifficultyChangeReasonSchema = z.enum([
   "perfectMatch",
   "inputMiss",
@@ -172,10 +164,6 @@ const GameEventSchema = z.discriminatedUnion("type", [
   }),
 ])
 
-// ============================================================================
-// TYPES
-// ============================================================================
-
 export type GameConfig = z.infer<typeof GameConfigSchema>
 export type GameProgress = z.infer<typeof GameProgressSchema>
 export type GameStatus = z.infer<typeof GameStatusSchema>
@@ -216,10 +204,6 @@ export type ChallengeSeed = {
 
 type StatusListener = () => void
 
-// ============================================================================
-// WASM GAME BRIDGE
-// ============================================================================
-
 export class WasmGameBridge {
   private wasmCore: HangulGameCore
   private availableCells: ReadonlyArray<string>
@@ -232,10 +216,6 @@ export class WasmGameBridge {
     this.availableCells = this.generateCellIds()
     this.gameMode = mode
   }
-
-  // ============================================================================
-  // STATUS SUBSCRIPTION (for useSyncExternalStore)
-  // ============================================================================
 
   subscribeToStatus(listener: StatusListener): () => void {
     this.statusListeners.add(listener)
@@ -272,10 +252,6 @@ export class WasmGameBridge {
     )
   }
 
-  // ============================================================================
-  // GAME CONTROL
-  // ============================================================================
-
   startTimer(): void {
     const now = BigInt(Date.now())
     this.wasmCore.startTimer(now)
@@ -299,11 +275,9 @@ export class WasmGameBridge {
   }
 
   /**
-   * Switches to a different game mode (and word pool, for vocabulary modes)
-   * on the existing engine instance, instead of constructing a new
-   * HangulGameCore - mode is runtime lifecycle state a session can
-   * legitimately change, not fixed construction-time configuration (ADR
-   * 0004 §2(f)). Clears board/stats exactly like reset() does.
+   * Switches mode (and word pool, for vocabulary modes) on the existing
+   * engine: mode is runtime lifecycle state, not construction-time config
+   * (ADR 0004 §2(f)). Clears board/stats like reset().
    */
   changeMode(mode: GameMode, wordPool: Array<ChallengeSeed> = []): void {
     this.wasmCore.changeMode(mode, wordPool)
@@ -312,25 +286,14 @@ export class WasmGameBridge {
     this.notifyStatusChange()
   }
 
-  // ============================================================================
-  // EVENT-DRIVEN API
-  // ============================================================================
-
-  /**
-   * Process a key press - returns array of events
-   */
   processKeyPress(key: string): Array<GameEvent> {
     const now = BigInt(Date.now())
     const result = this.wasmCore.processKeyPress(key, now)
 
-    // Parse as array of events
     const events = z.array(GameEventSchema).parse(result)
     return events
   }
 
-  /**
-   * Check for expired characters - returns array of events
-   */
   checkExpired(): Array<GameEvent> {
     const now = BigInt(Date.now())
     const result = this.wasmCore.checkExpired(now)
@@ -339,9 +302,6 @@ export class WasmGameBridge {
     return events
   }
 
-  /**
-   * Spawn a new character - returns array of events
-   */
   spawnCharacter(): Array<GameEvent> {
     const now = BigInt(Date.now())
     const result = this.wasmCore.spawnCharacter(now, [...this.availableCells])
@@ -350,10 +310,7 @@ export class WasmGameBridge {
     return events
   }
 
-  /**
-   * Correct the in-progress token before it locks in (ADR 0003 §2(b)) -
-   * returns array of events
-   */
+  /** Corrects the in-progress token before it locks in (ADR 0003 §2(b)). */
   processBackspace(): Array<GameEvent> {
     const now = BigInt(Date.now())
     const result = this.wasmCore.processBackspace(now)
@@ -362,17 +319,11 @@ export class WasmGameBridge {
     return events
   }
 
-  // ============================================================================
-  // HELPERS
-  // ============================================================================
-
   /**
-   * Convert a spawn event into one display character per reserved cell
-   * (ADR 0003 §2(a), multi-cell binding). A single-jamo (n=1) spawn returns
-   * a one-element array with exactly today's shape; a word spawn returns
-   * `answerKeys.length` entries, each carrying only its own token - sibling
-   * cells share one color and one `stimulus`, so the word reads as one
-   * challenge rather than several unrelated ones.
+   * One display character per reserved cell (ADR 0003 §2(a)). A word spawn
+   * returns `answerKeys.length` entries, each with only its own token;
+   * siblings share one color and `stimulus`, so the word reads as one
+   * challenge.
    */
   createDisplayCharacters(spawn: SpawnResult): Array<DisplayCharacter> {
     const color = getHangulColor(spawn.answerGlyphs[0] ?? spawn.hangul)
@@ -408,14 +359,8 @@ export class WasmGameBridge {
    * Enumerate every cell of the radius-`HANGUL_GRID_RADIUS` hex board as exact
    * cube coordinates (`x + y + z = 0`), formatted to match the ids emitted by
    * the `some-hexagon` renderer (`hex_{x}_{y}_{z}`).
-   *
-   * The previous implementation approximated ring coordinates with rounded
-   * trigonometry, which (a) collided so it produced only ~33 distinct cells
-   * from a nominal 37, (b) emitted at least one off-grid id that no rendered
-   * cell matched (so a character spawned there was invisible), and (c) was a
-   * smaller, divergent set from the rendered grid. Enumerating the cube
-   * coordinates directly makes the spawn pool exact, fully renderable, and
-   * large enough that persist-on-completion cannot deadlock completion mode.
+   * Exact enumeration (not rounded trigonometry) keeps every spawn id on a
+   * rendered cell.
    */
   private generateCellIds(): ReadonlyArray<string> {
     const radius = HANGUL_GRID_RADIUS
@@ -432,10 +377,6 @@ export class WasmGameBridge {
 
     return cells
   }
-
-  // ============================================================================
-  // LEGACY API (for backward compatibility)
-  // ============================================================================
 
   getStats(): GameStats & { accuracy: number } {
     const stats = GameStatsSchema.parse(this.wasmCore.getStats())
@@ -459,10 +400,6 @@ export class WasmGameBridge {
   }
 }
 
-// ============================================================================
-// DEFAULT CONFIG
-// ============================================================================
-
 // Every field here must match `GameConfig::default()` in
 // crates/hangul-game-core/src/internal/types.rs field for field. There is
 // no automated single-sourcing across the Rust/TS boundary, so
@@ -470,11 +407,9 @@ export class WasmGameBridge {
 // `default_matches_typescript_bridge_defaults` in that Rust file) is the
 // only thing that catches the two copies drifting apart (Prop. 2.3).
 //
-// correctnessThresholdMs is deliberately 1500, not the Rust default's
-// former (unreachable) 600: because `loadHangulWasm` always merges this
-// object before constructing `HangulGameCore`, 1500 is the value every
-// real game session has actually run at, so it's the value the Rust side
-// was reconciled to rather than the reverse.
+// `loadHangulWasm` always merges this object before constructing
+// `HangulGameCore`, so these are the values real sessions run at.
+
 export const DEFAULT_GAME_CONFIG: GameConfig = {
   minTimeWindowMs: 1000,
   maxTimeWindowMs: 3000,

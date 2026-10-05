@@ -4,8 +4,9 @@
  * the list of what the learner kept (`createShelfList`) and the "Keep on
  * this account" control (`createShelfKeeper`). Each owns its shelf calls and
  * drops a result that lands while it is stopped or after a newer call of
- * its own, so a replay the learner walked away from never starts playing
- * (review, #1600). `KeptShelf` and `KeepOnShelf` (`components/ui/shelf`)
+ * its own, so a replay the learner walked away from never starts playing.
+ * `KeptShelf` and `KeepOnShelf` (`components/ui/shelf`)
+
  * read their snapshots and only turn taps into calls.
  *
  * Making one calls nothing; `start()` begins (the list reads the listing)

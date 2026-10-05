@@ -91,9 +91,8 @@ export function primarySceneId(
 export function buildOrchestratorState(engine: EngineState): OrchestratorState {
   const totalDuration = totalDurationOf(engine.scenes)
   const currentTime = Math.min(engine.elapsedMs, totalDuration)
-  // Only "Running"/"Paused" ever have something on screen - Idle (configured
-  // but not started yet), Stopped, and Unconfigured should read as empty
-  // even if elapsedMs would otherwise land inside a scene's window.
+  // Only Running/Paused show a scene, whatever elapsedMs says.
+
   const activeLifetimes =
     engine.mode === "Running" || engine.mode === "Paused"
       ? buildActiveLifetimes(engine.scenes, currentTime)

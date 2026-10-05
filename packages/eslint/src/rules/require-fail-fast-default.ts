@@ -1,10 +1,6 @@
 import type { Rule } from "eslint"
 
-// SwitchStatement/SwitchCase shapes (discriminant, cases[], test, consequent)
-// aren't narrowed cleanly through @types/eslint's Node union across nested
-// `.type` checks, so this rule reads several values as `any`. `any` here
-// plays the same role as the "rawNode: any" convention documented in the
-// other rules in this directory.
+// ESTree shapes aren't narrowed cleanly by @types/eslint's Node union.
 /* eslint-disable @typescript-eslint/no-explicit-any -- ESTree shapes not modeled precisely by @types/eslint's Node union, see comment above */
 
 const DEFAULT_HELPER_NAMES: ReadonlyArray<string> = [
@@ -39,10 +35,8 @@ function meaningfulBody(consequent: Array<any>): Array<any> {
 export const requireFailFastDefault: Rule.RuleModule = {
   meta: {
     type: "problem",
-    // Not autofixable: a fix would have to invent a project-specific "assert
-    // never" helper (import path, name, error shape) that this rule has no
-    // way to know. Contrast require-case-braces, which is a pure syntactic
-    // transform and does autofix.
+    // Not autofixable: a fix would have to invent a project's "assert never"
+    // helper.
     docs: {
       description:
         "Require a switch statement's default case to fail fast (`return assertNever(x)` / `throw ...`) instead of silently falling through (`break`, bare `return`, logging). Pairs with a `never`-typed parameter for compile-time exhaustiveness: forgetting to add a case for a new union member now fails both the type checker and, until that's fixed, the runtime.",
@@ -91,13 +85,10 @@ export const requireFailFastDefault: Rule.RuleModule = {
       SwitchStatement(rawNode): void {
         const node = rawNode
         const discriminantText = sourceCode.getText(node.discriminant)
-        // For `switch (action.type)` over a discriminated union, the value
-        // that narrows to `never` in the default case is `action`, not
-        // `action.type` - TypeScript rejects a property access on `never`
-        // outright, so demanding the full discriminant text there asks for
-        // code that cannot compile. Both spellings are accepted when the
-        // discriminant is a member expression; the object alone is the one
-        // that actually type-checks.
+        // For `switch (action.type)`, `action` (not `action.type`) narrows to
+        // `never`, and a property access on `never` does not compile, so the
+        // object alone is accepted too.
+
         const acceptedArguments = new Set([discriminantText])
         if (node.discriminant.type === "MemberExpression") {
           acceptedArguments.add(sourceCode.getText(node.discriminant.object))

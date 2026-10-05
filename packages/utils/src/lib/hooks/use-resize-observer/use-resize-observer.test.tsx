@@ -13,10 +13,8 @@ type Entry = {
 type Callback = (entries: Array<Entry>) => void
 
 /**
- * jsdom does not implement ResizeObserver at all - this fake gives full,
- * synchronous control over when/what a "resize" delivers, including firing
- * a callback whose observer has already been disconnect()-ed, to model a
- * real browser's already-queued notification arriving right as an
+ * jsdom has no ResizeObserver. `fire(..., true)` can deliver to a
+ * disconnected observer, modelling a notification already queued as an
  * unmount's cleanup runs.
  */
 class FakeResizeObserver {
@@ -31,7 +29,7 @@ class FakeResizeObserver {
   disconnect(): void {
     this.disconnected = true
   }
-  /** `force` bypasses the disconnected guard - see the class doc comment. */
+
   fire(width: number, height: number, force = false): void {
     if (this.disconnected && !force) return
     this.cb([
@@ -75,12 +73,7 @@ const ProbeWithCallback = ({
 }
 
 describe("useResizeObserver: remount correctness (fast-check)", () => {
-  // Property: across any sequence of mount -> (fire zero or more resize
-  // events) -> unmount -> mount -> ..., each mount's own hook instance must
-  // report exactly that mount's own last-fired size once its own resize
-  // events are done - never a size left over from an earlier, already
-  // unmounted instance. 200 randomized sequences, sizes spanning 0 (a
-  // legitimate transient viewport during layout) through 4000px.
+  // Each mount reports its own last-fired size, never an earlier mount's.
   const mountArb = fc.array(
     fc.record({
       width: fc.integer({ min: 0, max: 4000 }),
@@ -121,11 +114,9 @@ describe("useResizeObserver: remount correctness (fast-check)", () => {
 })
 
 describe("useResizeObserver: post-unmount callback guard", () => {
-  // Regression coverage: a resize notification already queued by the
-  // browser right as a component unmounts must not act on either reporting
-  // path. The state-based path (no onResize prop) was already guarded by
-  // isMounted(); the onResize-callback path was not - fixed by moving the
-  // isMounted() check to guard both uniformly.
+  // A notification queued as the component unmounts must not reach either
+  // reporting path (state or `onResize`).
+
   it("does not call setSize (observable via onSize never firing again) after unmount", () => {
     let lastSize: { width?: number; height?: number } = {}
     const onSize = vi.fn((s: { width?: number; height?: number }) => {

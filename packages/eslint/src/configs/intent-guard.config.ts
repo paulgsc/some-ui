@@ -2,7 +2,7 @@ import { noUnboundedIntent } from "@eslint/rules/index.js"
 import { defineConfig } from "eslint/config"
 
 /**
- * S1 of #937: the lint half of the intent boundary. The type layer
+ * The lint half of the intent boundary (#937). The type layer
  * (`matchIntent`'s required arms, `@typescript-eslint/switch-exhaustiveness-check`)
  * cannot see that `onClick={() => { void fetch(...) }}` bypasses `useIntent`
  * entirely - nothing about that expression is ill-typed. This plugin's one
@@ -11,12 +11,9 @@ import { defineConfig } from "eslint/config"
  * initiated from inside a JSX event-handler producer without going through
  * `useIntent`/`useAsyncIntent`'s `start`/`retry`.
  *
- * Opt-in config, following switch-lint.config.ts's precedent - NOT included
- * in maishatuRecommended/appsRecommended/extensionsRecommended. Folding it
- * into a shared preset would fire it across `extensions/` and every
- * `packages/ui/*`, which have their own charters and no `useIntent` of
- * their own. Enable it per-workspace once that workspace actually has an
- * intent boundary to guard:
+ * Opt-in, like switch-lint: `extensions/` and `packages/ui/*` have no
+ * `useIntent`. Enable it per workspace that has an intent boundary:
+
  *
  *   import { intentGuardConfig } from "@some-ui/eslint-kit"
  *   export default defineConfig([...appsRecommended, ...intentGuardConfig])

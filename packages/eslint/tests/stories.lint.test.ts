@@ -1,11 +1,7 @@
 /**
- * LAYER 2 — Lint-time integration tests for story-lint/prefer-meta-satisfies.
- *
- * Uses lintSnippet()/lintSnippetFixed() (lintText() under the hood) because
- * this rule is purely syntactic (ObjectExpression + type-reference name
- * matching) — no TypeScript language service / projectService is needed, so
- * a plain @typescript-eslint/parser (no `project`/`projectService` option)
- * is enough to parse the TS/TSX syntax in the snippets below.
+ * Lint-time integration tests for story-lint/prefer-meta-satisfies. The rule
+ * is syntactic, so a plain @typescript-eslint/parser parses the snippets.
+
  */
 
 import { storyLintPlugin } from "@eslint/configs/stories.config.js"

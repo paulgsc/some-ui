@@ -1,10 +1,7 @@
 /**
- * LAYER 2 — Lint-time integration tests for intent-guard/no-unbounded-intent.
- *
- * Purely syntactic (JSXAttribute/CallExpression/VariableDeclarator shape
- * checks, no type information needed) — a plain @typescript-eslint/parser
- * with `ecmaFeatures.jsx: true` and no `project`/`projectService` is enough
- * to parse the TSX snippets below. Same rationale as switch-lint.lint.test.ts.
+ * Lint-time integration tests for intent-guard/no-unbounded-intent. The rule
+ * is syntactic, so a plain @typescript-eslint/parser with JSX parses the
+ * snippets.
  */
 
 import { intentGuardPlugin } from "@eslint/configs/intent-guard.config.js"
@@ -16,6 +13,7 @@ import { describe, expect, it } from "vitest"
 import {
   expectMessageForRule,
   expectNoMessageForRule,
+  expectSnippet,
   lintSnippet,
 } from "./helpers/eslint-resolver.js"
 
@@ -38,6 +36,18 @@ function makeConfig(options?: Record<string, unknown>): Array<Linter.Config> {
   ])
 }
 
+/** A component whose button's onClick is `name`, an arrow running `body`. */
+function handlerWidget(name: string, body: string, label: string): string {
+  return `
+function Widget() {
+  const ${name} = () => {
+    ${body}
+  }
+  return <button onClick={${name}}>${label}</button>
+}
+`
+}
+
 describe("lint: intent-guard/no-unbounded-intent", () => {
   it("fires on a bare fetch() inside an inline onClick", async () => {
     const code = `
@@ -49,22 +59,80 @@ function Widget() {
     expectMessageForRule(msgs, RULE, "fetch() inside inline onClick")
   })
 
-  it("fires on .mutate(...) inside a named handle* function referenced by onClick", async () => {
-    const code = `
-function Widget() {
-  const handleDelete = () => {
-    deleteSession.mutate(id)
-  }
-  return <button onClick={handleDelete}>Delete</button>
-}
-`
-    const msgs = await lintSnippet(makeConfig(), code, TSX_FILE)
-    expectMessageForRule(
-      msgs,
-      RULE,
-      ".mutate(...) inside a handle* function referenced by onClick"
-    )
-  })
+  it.each<
+    readonly [string, string, Record<string, unknown> | undefined, boolean]
+  >([
+    [
+      "fires on .mutate(...) inside a named handle* function referenced by onClick",
+      handlerWidget("handleDelete", "deleteSession.mutate(id)", "Delete"),
+      undefined,
+      true,
+    ],
+    [
+      "does NOT fire on a handler that calls useIntent's start",
+      handlerWidget("handleSave", "saveIntent.start(draft)", "Save"),
+      undefined,
+      false,
+    ],
+    [
+      "does NOT fire on a handler that calls retry",
+      handlerWidget("handleRetry", "saveIntent.retry()", "Retry"),
+      undefined,
+      false,
+    ],
+    [
+      "does NOT fire on a plain setState handler",
+      handlerWidget("handleToggle", "setOpen(true)", "Open"),
+      undefined,
+      false,
+    ],
+    [
+      "does NOT fire on a navigate-only handler with no I/O",
+      handlerWidget("handleBack", 'navigate({ to: "/sessions" })', "Back"),
+      undefined,
+      false,
+    ],
+    [
+      "does NOT fire when the call carries an intent-exempt comment",
+      handlerWidget(
+        "handleWarm",
+        [
+          "// intent-exempt: fire-and-forget cache warm, not a user-facing intent",
+          'void fetch("/api/warm")',
+        ].join("\n    "),
+        "Warm"
+      ),
+      undefined,
+      false,
+    ],
+    [
+      "does NOT fire on a custom-configured allowedCallees entry",
+      handlerWidget("handleSave", "safeMutate(draft)", "Save"),
+      {
+        effectCallees: ["safeMutate"],
+        allowedCallees: ["safeMutate"],
+      },
+      false,
+    ],
+    [
+      "fires on a configured effectCallees member call",
+      handlerWidget("handleTrack", 'analytics.track("clicked")', "Go"),
+      { effectCallees: ["track"] },
+      true,
+    ],
+    [
+      "fires when the effect is nested inside a closure within the handler (forEach)",
+      handlerWidget(
+        "handleDeleteMany",
+        "items.forEach(() => { deleteSession.mutate(item.id) })",
+        "Delete all"
+      ),
+      undefined,
+      true,
+    ],
+  ])("%s", (title, code, options, fires) =>
+    expectSnippet(makeConfig(options), code, TSX_FILE, RULE, fires, title)
+  )
 
   it("fires on .mutateAsync(...) inside a handle* function declared with `function`", async () => {
     const code = `
@@ -83,58 +151,6 @@ function Widget() {
     )
   })
 
-  it("does NOT fire on a handler that calls useIntent's start", async () => {
-    const code = `
-function Widget() {
-  const handleSave = () => {
-    saveIntent.start(draft)
-  }
-  return <button onClick={handleSave}>Save</button>
-}
-`
-    const msgs = await lintSnippet(makeConfig(), code, TSX_FILE)
-    expectNoMessageForRule(msgs, RULE, "a handler that calls start()")
-  })
-
-  it("does NOT fire on a handler that calls retry", async () => {
-    const code = `
-function Widget() {
-  const handleRetry = () => {
-    saveIntent.retry()
-  }
-  return <button onClick={handleRetry}>Retry</button>
-}
-`
-    const msgs = await lintSnippet(makeConfig(), code, TSX_FILE)
-    expectNoMessageForRule(msgs, RULE, "a handler that calls retry()")
-  })
-
-  it("does NOT fire on a plain setState handler", async () => {
-    const code = `
-function Widget() {
-  const handleToggle = () => {
-    setOpen(true)
-  }
-  return <button onClick={handleToggle}>Open</button>
-}
-`
-    const msgs = await lintSnippet(makeConfig(), code, TSX_FILE)
-    expectNoMessageForRule(msgs, RULE, "a plain setState handler")
-  })
-
-  it("does NOT fire on a navigate-only handler with no I/O", async () => {
-    const code = `
-function Widget() {
-  const handleBack = () => {
-    navigate({ to: "/sessions" })
-  }
-  return <button onClick={handleBack}>Back</button>
-}
-`
-    const msgs = await lintSnippet(makeConfig(), code, TSX_FILE)
-    expectNoMessageForRule(msgs, RULE, "a navigate-only handler")
-  })
-
   it("does NOT fire on fetch() outside any JSX event handler", async () => {
     const code = `
 function loadEverything() {
@@ -143,57 +159,6 @@ function loadEverything() {
 `
     const msgs = await lintSnippet(makeConfig(), code, TSX_FILE)
     expectNoMessageForRule(msgs, RULE, "fetch() outside a JSX event handler")
-  })
-
-  it("does NOT fire when the call carries an intent-exempt comment", async () => {
-    const code = `
-function Widget() {
-  const handleWarm = () => {
-    // intent-exempt: fire-and-forget cache warm, not a user-facing intent
-    void fetch("/api/warm")
-  }
-  return <button onClick={handleWarm}>Warm</button>
-}
-`
-    const msgs = await lintSnippet(makeConfig(), code, TSX_FILE)
-    expectNoMessageForRule(msgs, RULE, "a call with an intent-exempt comment")
-  })
-
-  it("does NOT fire on a custom-configured allowedCallees entry", async () => {
-    const code = `
-function Widget() {
-  const handleSave = () => {
-    safeMutate(draft)
-  }
-  return <button onClick={handleSave}>Save</button>
-}
-`
-    const msgs = await lintSnippet(
-      makeConfig({
-        effectCallees: ["safeMutate"],
-        allowedCallees: ["safeMutate"],
-      }),
-      code,
-      TSX_FILE
-    )
-    expectNoMessageForRule(msgs, RULE, "a call allowed via allowedCallees")
-  })
-
-  it("fires on a configured effectCallees member call", async () => {
-    const code = `
-function Widget() {
-  const handleTrack = () => {
-    analytics.track("clicked")
-  }
-  return <button onClick={handleTrack}>Go</button>
-}
-`
-    const msgs = await lintSnippet(
-      makeConfig({ effectCallees: ["track"] }),
-      code,
-      TSX_FILE
-    )
-    expectMessageForRule(msgs, RULE, "a configured effectCallees member call")
   })
 
   it("does NOT fire on a custom component's onPress handler that renders quietly", async () => {
@@ -222,27 +187,8 @@ function Widget() {
     expect(msgs.some((m) => m.ruleId === RULE)).toBe(true)
   })
 
-  // Regression coverage for a review finding: the nearest enclosing
-  // function is not always the producer itself - a producer can wrap the
-  // effect in another closure (forEach, then, an IIFE) without that
-  // closure being the JSX handler.
-  it("fires when the effect is nested inside a closure within the handler (forEach)", async () => {
-    const code = `
-function Widget() {
-  const handleDeleteMany = () => {
-    items.forEach(() => { deleteSession.mutate(item.id) })
-  }
-  return <button onClick={handleDeleteMany}>Delete all</button>
-}
-`
-    const msgs = await lintSnippet(makeConfig(), code, TSX_FILE)
-    expectMessageForRule(
-      msgs,
-      RULE,
-      "an effect nested inside a forEach callback within the handler"
-    )
-  })
-
+  // The nearest enclosing function is not always the producer: it can wrap
+  // the effect in another closure (forEach, then, an IIFE).
   it("fires when the effect is nested inside a .then() within an inline handler", async () => {
     const code = `
 function Widget() {
@@ -261,9 +207,8 @@ function Widget() {
     )
   })
 
-  // Regression coverage for a review finding: two components in the same
-  // file declaring their own same-named handle* function must not be
-  // conflated via a file-wide name lookup, in either direction.
+  // Two components' same-named handle* functions must not be conflated by a
+  // file-wide name lookup, in either direction.
   it("fires on the dirty handleSave and not the unrelated clean handleSave sharing its name", async () => {
     const code = `
 function Dirty() {

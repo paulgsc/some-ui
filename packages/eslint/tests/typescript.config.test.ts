@@ -1,12 +1,7 @@
 /**
- *
- * LAYER 1 — Config wiring tests (calculateConfigForFile)
- *
- * Proves every rule in typescript.config.ts resolves to the correct severity
- * via ESLint's real flat-config merger.  No code is parsed; no rules execute.
- *
- * filePath must be absolute and the file must exist on disk.
- * Use stubs from tests/lint-fixtures/.
+ * Config wiring tests for typescript.config.ts, via calculateConfigForFile:
+ * every rule resolves to the right severity in the merged flat config. Paths
+ * are absolute stubs under tests/lint-fixtures/.
  */
 
 import path from "node:path"
@@ -28,7 +23,6 @@ const ROLL = path.join(LINT_FIXTURES, "src/rollup.config.ts")
 
 describe("typescript.config — error rules wired for .ts files", () => {
   const rulesPromise = calculateConfig(typescriptConfig, TS)
-  let rules: Awaited<ReturnType<typeof calculateConfig>> | undefined
 
   const EXPECTED_ERRORS = [
     "@typescript-eslint/no-unused-vars",
@@ -62,19 +56,15 @@ describe("typescript.config — error rules wired for .ts files", () => {
     "@typescript-eslint/no-useless-constructor",
   ] as const
 
-  for (const rule of EXPECTED_ERRORS) {
-    it(`"${rule}" resolves to error`, async () => {
-      rules ??= await rulesPromise
-      expectError(rules, rule, ".ts file")
-    })
-  }
+  it.each(EXPECTED_ERRORS)('"%s" resolves to error', async (rule) => {
+    expectError(await rulesPromise, rule, ".ts file")
+  })
 })
 
 // ── TS file: intentionally-off rules ──────────────────────────────────────
 
 describe("typescript.config — intentionally-off rules for .ts files", () => {
   const rulesPromise = calculateConfig(typescriptConfig, TS)
-  let rules: Awaited<ReturnType<typeof calculateConfig>> | undefined
 
   const INTENTIONALLY_OFF = [
     "no-unused-vars",
@@ -83,19 +73,15 @@ describe("typescript.config — intentionally-off rules for .ts files", () => {
     "@typescript-eslint/no-unsafe-member-access",
   ] as const
 
-  for (const rule of INTENTIONALLY_OFF) {
-    it(`"${rule}" is intentionally off`, async () => {
-      rules ??= await rulesPromise
-      expectOff(rules, rule, ".ts file (intentionally disabled)")
-    })
-  }
+  it.each(INTENTIONALLY_OFF)('"%s" is intentionally off', async (rule) => {
+    expectOff(await rulesPromise, rule, ".ts file (intentionally disabled)")
+  })
 })
 
 // ── JS file: type-aware rules suppressed ──────────────────────────────────
 
 describe("typescript.config — type-aware rules suppressed for .js files", () => {
   const rulesPromise = calculateConfig(typescriptConfig, JS)
-  let rules: Awaited<ReturnType<typeof calculateConfig>> | undefined
 
   const TYPE_AWARE = [
     "@typescript-eslint/explicit-function-return-type",
@@ -111,36 +97,34 @@ describe("typescript.config — type-aware rules suppressed for .js files", () =
     "@typescript-eslint/prefer-nullish-coalescing",
   ] as const
 
-  for (const rule of TYPE_AWARE) {
-    it(`"${rule}" is off for .js`, async () => {
-      rules ??= await rulesPromise
-      expectOff(rules, rule, ".js file")
-    })
-  }
+  it.each(TYPE_AWARE)('"%s" is off for .js', async (rule) => {
+    expectOff(await rulesPromise, rule, ".js file")
+  })
 })
 
 // ── Rollup override ────────────────────────────────────────────────────────
 
 describe("typescript.config — rollup override", () => {
   const rulesPromise = calculateConfig(typescriptConfig, ROLL)
-  let rules: Awaited<ReturnType<typeof calculateConfig>> | undefined
 
   it("explicit-function-return-type is off for rollup configs", async () => {
-    rules ??= await rulesPromise
     expectOff(
-      rules,
+      await rulesPromise,
       "@typescript-eslint/explicit-function-return-type",
       "rollup.config.ts"
     )
   })
 
   it("no-deprecated is off for rollup configs", async () => {
-    rules ??= await rulesPromise
-    expectOff(rules, "@typescript-eslint/no-deprecated", "rollup.config.ts")
+    expectOff(
+      await rulesPromise,
+      "@typescript-eslint/no-deprecated",
+      "rollup.config.ts"
+    )
   })
 
   it("other type-aware rules still apply to rollup configs", async () => {
-    rules ??= await rulesPromise
+    const rules = await rulesPromise
     expectError(
       rules,
       "@typescript-eslint/no-floating-promises",
@@ -164,62 +148,26 @@ describe("typescript.config — no-unused-vars replacement integrity", () => {
 
 describe("typescript.config — critical rule options preserved", () => {
   const rulesPromise = calculateConfig(typescriptConfig, TS)
-  let rules: Awaited<ReturnType<typeof calculateConfig>> | undefined
 
-  it("no-floating-promises has ignoreVoid:true", async () => {
-    rules ??= await rulesPromise
-    const entry = rules["@typescript-eslint/no-floating-promises"]
+  it.each<readonly [string, Record<string, unknown>]>([
+    ["no-floating-promises", { ignoreVoid: true }],
+    ["no-unused-vars", { varsIgnorePattern: "^_", argsIgnorePattern: "^_" }],
+    ["no-unnecessary-condition", { allowConstantLoopConditions: true }],
+    // Numbers allowed, booleans not.
+    [
+      "restrict-template-expressions",
+      { allowNumber: true, allowBoolean: false },
+    ],
+    [
+      "consistent-type-imports",
+      { prefer: "type-imports", disallowTypeAnnotations: true },
+    ],
+    // Every type assertion is forbidden.
+    ["consistent-type-assertions", { assertionStyle: "never" }],
+    ["no-misused-promises", { checksVoidReturn: { attributes: false } }],
+  ])("%s keeps its options", async (rule, options) => {
+    const entry = (await rulesPromise)[`@typescript-eslint/${rule}`]
     const opts = Array.isArray(entry) ? entry[1] : undefined
-    expect(opts).toMatchObject({ ignoreVoid: true })
-  })
-
-  it("no-unused-vars has ^_ ignore patterns", async () => {
-    rules ??= await rulesPromise
-    const entry = rules["@typescript-eslint/no-unused-vars"]
-    const opts = Array.isArray(entry) ? entry[1] : undefined
-    expect(opts).toMatchObject({
-      varsIgnorePattern: "^_",
-      argsIgnorePattern: "^_",
-    })
-  })
-
-  it("no-unnecessary-condition has allowConstantLoopConditions:true", async () => {
-    rules ??= await rulesPromise
-    const entry = rules["@typescript-eslint/no-unnecessary-condition"]
-    const opts = Array.isArray(entry) ? entry[1] : undefined
-    expect(opts).toMatchObject({ allowConstantLoopConditions: true })
-  })
-
-  it("restrict-template-expressions allows numbers, not booleans", async () => {
-    rules ??= await rulesPromise
-    const entry = rules["@typescript-eslint/restrict-template-expressions"]
-    const opts = Array.isArray(entry) ? entry[1] : undefined
-    expect(opts).toMatchObject({ allowNumber: true, allowBoolean: false })
-  })
-
-  it("consistent-type-imports enforces type-imports and disallows annotations", async () => {
-    rules ??= await rulesPromise
-    const entry = rules["@typescript-eslint/consistent-type-imports"]
-    const opts = Array.isArray(entry) ? entry[1] : undefined
-    expect(opts).toMatchObject({
-      prefer: "type-imports",
-      disallowTypeAnnotations: true,
-    })
-  })
-
-  it("consistent-type-assertions forbids all type assertions (assertionStyle: never)", async () => {
-    rules ??= await rulesPromise
-    const entry = rules["@typescript-eslint/consistent-type-assertions"]
-    const opts = Array.isArray(entry) ? entry[1] : undefined
-    expect(opts).toMatchObject({
-      assertionStyle: "never",
-    })
-  })
-
-  it("no-misused-promises has checksVoidReturn.attributes:false", async () => {
-    rules ??= await rulesPromise
-    const entry = rules["@typescript-eslint/no-misused-promises"]
-    const opts = Array.isArray(entry) ? entry[1] : undefined
-    expect(opts).toMatchObject({ checksVoidReturn: { attributes: false } })
+    expect(opts).toMatchObject(options)
   })
 })

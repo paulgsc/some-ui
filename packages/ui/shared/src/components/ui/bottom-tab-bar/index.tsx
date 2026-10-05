@@ -30,19 +30,15 @@ type BottomTabBarProps<Id extends string> = {
 }
 
 /**
- * A phone's bottom tab bar, one tab per concern - the shape a video app uses
- * to keep its sections apart: each tab is a whole pane of its own, and
- * switching between them is the navigation, not a Back and a Continue.
+ * A phone's bottom tab bar, one tab per concern: each tab is a whole pane,
+ * and switching is the navigation.
  *
- * Hidden, it collapses to nothing rather than sliding over the content: a
- * persistent affordance may not paint over what it cannot see
- * (`docs/session-viewport/05-the-mobile-shell.md` §4), so the space
- * it gives up goes to the pane, and while shown it has its own strip. It
- * stays shown while a tab inside it holds focus, whatever `shown` says, so
- * a tab pressed and then scrolled away from never becomes focus nobody can
- * see, and the keyboard's next move does not start from a hidden control.
- * Hidden tabs leave the tab order (`tabIndex -1`), so focus only arrives
- * while the bar is visible.
+ * Hidden, it collapses rather than sliding over content: a persistent
+ * affordance may not paint over what it cannot see
+ * (`docs/session-viewport/05-the-mobile-shell.md` §4). It stays shown while
+ * one of its tabs holds focus, whatever `shown` says, so focus is never on a
+ * hidden control; hidden tabs leave the tab order (`tabIndex -1`).
+
  */
 export const BottomTabBar = <Id extends string>({
   tabs,

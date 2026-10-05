@@ -1,23 +1,13 @@
 /**
- * LAYER 2 — Lint-time integration tests for
- * fits-the-box/no-greedy-overflow.
+ * Lint-time integration tests for fits-the-box/no-greedy-overflow (#852).
+ * Pins two things:
  *
- * The rule had no tests, which is how #858 found it: `no-greedy-overflow` is
- * the reason epic #852 exists in the shape it does, and nothing checked that
- * it still fires on the surfaces the epic is about. Two things are pinned
- * here:
+ *   1. The rule fires on the launcher and the composer's picker without
+ *      either seam: neither is in `allowInFiles` or has a `scroll-intent:`.
+ *   2. The shipped `allowInFiles` stays primitives and long-form surfaces;
+ *      adding a launcher surface would quietly remove the guardrail.
  *
- *   1. The rule fires - and, on the launcher and the composer's picker,
- *      fires *without* either of its seams being needed. Neither surface is
- *      in `allowInFiles`, and neither carries a `scroll-intent:` opt-out.
- *   2. The shipped config's `allowInFiles` list stays a list of primitives
- *      and long-form surfaces. Adding a launcher surface to it is how this
- *      guardrail would be quietly removed, so it fails here rather than
- *      passing review.
- *
- * Purely syntactic (string-literal class-list checks), so a plain
- * @typescript-eslint/parser with ecmaFeatures.jsx is enough - same rationale
- * as tailwind-idiom.lint.test.ts.
+ * Syntactic, so a plain @typescript-eslint/parser with JSX suffices.
  */
 
 /* eslint-disable fits-the-box/no-greedy-overflow --

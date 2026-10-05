@@ -80,8 +80,7 @@ const SidebarProvider = forwardRef<
     const isMobile = useIsMobile()
     const [openMobile, setOpenMobile] = useState(false)
 
-    // This is the internal state of the sidebar.
-    // We use openProp and setOpenProp for control from outside the component.
+    // openProp/setOpenProp control it from outside.
     const [_open, _setOpen] = useState(defaultOpen)
     const open = openProp ?? _open
     const setOpen = useCallback(
@@ -99,7 +98,6 @@ const SidebarProvider = forwardRef<
       [setOpenProp, open]
     )
 
-    // Helper to toggle the sidebar.
     const toggleSidebar = useCallback(() => {
       if (isMobile) {
         setOpenMobile((open) => !open)
@@ -126,8 +124,7 @@ const SidebarProvider = forwardRef<
       }
     }, [toggleSidebar])
 
-    // We add a state so that we can do data-state="expanded" or "collapsed".
-    // This makes it easier to style the sidebar with Tailwind classes.
+    // For styling via data-state="expanded" | "collapsed".
     const state = open ? "expanded" : "collapsed"
 
     const contextValue = useMemo<SidebarContext>(
@@ -345,18 +342,10 @@ const SidebarInset = forwardRef<HTMLDivElement, ComponentProps<"main">>(
       <main
         ref={ref}
         className={cn(
-          // `min-w-0` is load-bearing, not tidying. This is the flexible
-          // child of `SidebarProvider`'s flex row, and a flex item's default
-          // `min-width: auto` refuses to shrink below its content's
-          // min-content width — so one un-shrinkable descendant anywhere in
-          // the app grows this <main> past the viewport and the *page* scrolls
-          // sideways, rather than the offending box handling its own overflow.
-          // That is the exact defect `fits-the-box/no-unshrinkable-flex-child`
-          // exists to catch (#899, docs/ui-fit); it had never been applied to
-          // this primitive, so every route of every consumer inherited it.
-          // Found as a horizontal page scroll on apps/www's /sessions at
-          // 390px: 499px of scrollWidth against a 390px viewport, exactly 390
-          // once this class is present.
+          // `min-w-0` is load-bearing: as the flexible child of
+          // `SidebarProvider`'s row, the default `min-width: auto` lets one
+          // un-shrinkable descendant grow <main> past the viewport and scroll
+          // the page sideways (`fits-the-box/no-unshrinkable-flex-child`).
           "relative flex min-h-svh min-w-0 flex-1 flex-col bg-background",
           "peer-data-[variant=inset]:min-h-[calc(100svh-theme(spacing.4))] md:peer-data-[variant=inset]:m-2 md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow",
           className
@@ -678,8 +667,9 @@ const SidebarMenuSkeleton = forwardRef<
     showIcon?: boolean
   }
 >(({ className, showIcon = false, ...props }, ref) => {
-  // Random width between 50 to 90%. Decorative only (loading skeleton), so a
-  // fresh value per render pass is harmless - not worth an effect+state hop.
+  // Random 50-90% width. Decorative (a skeleton), so a fresh value per
+  // render is harmless.
+
   const width = useMemo(() => {
     // eslint-disable-next-line react-hooks/purity
     return `${Math.floor(Math.random() * 40) + 50}%`

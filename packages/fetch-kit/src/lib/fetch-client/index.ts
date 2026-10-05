@@ -18,7 +18,6 @@ export type FetchOptions<TBody = unknown> = {
   }
 }
 
-// Return type definition for createFetchClient
 export type FetchClient = {
   get: <T>(
     url: URL,
@@ -69,9 +68,6 @@ export type FetchClient = {
   ) => (variables: TVariables) => Promise<T>
 }
 
-/**
- * API Error class for typed error responses
- */
 export class ApiError extends Error {
   public status: number
   public data: unknown
@@ -94,9 +90,6 @@ export class ApiError extends Error {
   }
 }
 
-/**
- * Default API options
- */
 const DEFAULT_OPTIONS: FetchOptions = {
   baseUrl: "",
   timeout: 10000, // 10 seconds
@@ -111,22 +104,16 @@ const DEFAULT_OPTIONS: FetchOptions = {
   },
 }
 
-/**
- * Creates a fetch client with default configurations
- */
+/** A fetch client with timeouts, retries and optional Zod validation. */
 export const createFetchClient = (
   defaultOptions: FetchOptions = {}
 ): FetchClient => {
   const options = { ...DEFAULT_OPTIONS, ...defaultOptions }
 
-  /**
-   * Process the response with validation
-   */
   async function processResponse<T>(
     response: Response,
     schema?: z.ZodType<T>
   ): Promise<T> {
-    // Handle non-JSON responses
     const contentType = response.headers.get("content-type")
     let data: unknown
 
@@ -138,7 +125,6 @@ export const createFetchClient = (
       data = await response.blob()
     }
 
-    // Check if response is successful
     if (!response.ok) {
       throw new ApiError(
         `Request failed with status ${response.status}`,
@@ -147,7 +133,6 @@ export const createFetchClient = (
       )
     }
 
-    // Validate response with Zod if schema is provided
     if (schema) {
       try {
         return schema.parse(data)
@@ -162,15 +147,11 @@ export const createFetchClient = (
       }
     }
 
-    // No schema was provided to validate `data` against - the caller is
-    // trusting the generic `T` it asked for, same as an untyped `fetch()` call.
+    // No schema: the caller trusts the `T` it asked for, as with bare fetch().
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     return data as T
   }
 
-  /**
-   * Execute the fetch with timeouts, retries, and error handling
-   */
   async function executeFetch<T>(
     url: URL,
     fetchOptions: FetchOptions,
@@ -179,7 +160,6 @@ export const createFetchClient = (
   ): Promise<T> {
     const { timeout, retry, ...restOptions } = fetchOptions
 
-    // Set up timeout controller
     const controller = new AbortController()
     const timeoutId = setTimeout(
       () => controller.abort(),
@@ -187,15 +167,12 @@ export const createFetchClient = (
     )
 
     try {
-      // `body` is already fully serialized by `fetchWithSchema` (JSON string
-      // for plain objects, untouched for FormData/Blob/etc.). Serializing again
-      // here would double-encode JSON payloads and mangle multipart bodies.
+      // `body` is already serialized by `fetchWithSchema`; serializing again
+      // would double-encode JSON and mangle multipart bodies.
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       const body = restOptions.body as BodyInit | undefined
-      // `headers` is always constructed internally (DEFAULT_OPTIONS + caller
-      // overrides) as a plain string-keyed record, never a Headers instance
-      // or tuple array, even though FetchOptions#headers is typed as the
-      // broader HeadersInit.
+      // `headers` is always built internally as a plain string record, though
+      // typed as the broader HeadersInit.
       const headers: Record<string, string> = {
         // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
         ...(options.headers as Record<string, string>),
@@ -223,7 +200,6 @@ export const createFetchClient = (
 
       return await processResponse(response, schema)
     } catch (error) {
-      // Handle different types of errors
       if (error instanceof ApiError) {
         throw error
       }
@@ -232,7 +208,6 @@ export const createFetchClient = (
         throw new ApiError("Request timed out", 408, undefined, false, true)
       }
 
-      // Handle network errors and retry if configured
       const isNetworkError =
         error instanceof TypeError && error.message.includes("fetch")
       if (
@@ -246,7 +221,6 @@ export const createFetchClient = (
           (retry.delay || options.retry?.delay || 1000) *
           Math.pow(backoffFactor, retryCount)
 
-        // Wait before retrying
         await new Promise((resolve) => setTimeout(resolve, delay))
 
         return executeFetch<T>(url, fetchOptions, schema, retryCount + 1)
@@ -264,9 +238,6 @@ export const createFetchClient = (
     }
   }
 
-  /**
-   * Fetches data and validates with Zod schema
-   */
   async function fetchWithSchema<T>(
     url: URL,
     options: FetchOptions = {},
@@ -279,7 +250,7 @@ export const createFetchClient = (
       },
     }
 
-    // Serialize body to JSON if it's not a FormData, URLSearchParams, etc.
+    // JSON-serialize plain objects; FormData, URLSearchParams etc. pass through.
     if (
       mergedOptions.body &&
       typeof mergedOptions.body === "object" &&
@@ -291,19 +262,12 @@ export const createFetchClient = (
       mergedOptions.body = JSON.stringify(mergedOptions.body)
     }
 
-    // Validation happens once, inside `processResponse` via `executeFetch`,
-    // which wraps a Zod failure in an `ApiError`. Re-parsing here would both
-    // duplicate the work and let a raw `ZodError` escape uncaught.
+    // Validated once, in `processResponse`, which wraps a Zod failure in an
+    // `ApiError`; re-parsing here would let a raw `ZodError` escape.
     return executeFetch<T>(url, mergedOptions, schema)
   }
 
-  /**
-   * HTTP methods with Zod validation
-   */
   return {
-    /**
-     * Performs a GET request
-     */
     get<T>(
       url: URL,
       options: Omit<FetchOptions, "method" | "body"> = {},
@@ -312,9 +276,6 @@ export const createFetchClient = (
       return fetchWithSchema<T>(url, { ...options, method: "GET" }, schema)
     },
 
-    /**
-     * Performs a POST request
-     */
     post<T, TBody = unknown>(
       url: URL,
       body?: TBody,
@@ -328,9 +289,6 @@ export const createFetchClient = (
       )
     },
 
-    /**
-     * Performs a PUT request
-     */
     put<T, TBody = unknown>(
       url: URL,
       body?: TBody,
@@ -344,9 +302,6 @@ export const createFetchClient = (
       )
     },
 
-    /**
-     * Performs a PATCH request
-     */
     patch<T, TBody = unknown>(
       url: URL,
       body?: TBody,
@@ -360,9 +315,6 @@ export const createFetchClient = (
       )
     },
 
-    /**
-     * Performs a DELETE request
-     */
     delete<T>(
       url: URL,
       options: Omit<FetchOptions, "method"> = {},
@@ -371,9 +323,7 @@ export const createFetchClient = (
       return fetchWithSchema<T>(url, { ...options, method: "DELETE" }, schema)
     },
 
-    /**
-     * Creates a query function for React Query
-     */
+    /** A React Query `queryFn`. */
     createQueryFn<T>(
       url: URL,
       method: HttpMethod = "GET",
@@ -385,9 +335,7 @@ export const createFetchClient = (
       }
     },
 
-    /**
-     * Creates a mutation function for React Query
-     */
+    /** A React Query `mutationFn`. */
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
     createMutationFn<T, TVariables = unknown>(
       url: URL,
@@ -410,5 +358,4 @@ export const createFetchClient = (
   }
 }
 
-// Export a default instance with standard configuration
 export const apiClient = createFetchClient()

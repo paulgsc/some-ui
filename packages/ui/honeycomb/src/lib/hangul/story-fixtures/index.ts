@@ -1,15 +1,6 @@
 // Shared Storybook fixtures for the Hangul honeycomb components
-// (`UI/Honeycomb/Hangul/*`). Kept local to this package rather than hoisted
-// to `@some-ui/content`: that workspace is production scene/content data
-// with an explicit "no source code" charter, and every other story file in
-// this monorepo keeps its mock builders local (see
-// `stats-panel/index.stories.tsx`) - this module exists only because the
-// Hangul component tree has enough *shared* shapes (a display character, a
-// word-progress snapshot, an icon stimulus) that duplicating builders across
-// a dozen story files would be worse than one shared, package-local module.
-//
-// Not used by any production code path - `story-fixtures` only ever appears
-// in `.stories.tsx` imports.
+// (`UI/Honeycomb/Hangul/*`), imported only by `.stories.tsx` files. Local to
+// this package: `@some-ui/content` has a "no source code" charter.
 
 import type { Stimulus } from "@honeycomb/lib/hangul/wasm-game-bridge"
 import type {
@@ -22,11 +13,8 @@ import type {
 export const STORY_HEX_WIDTH = 160
 
 /**
- * A regular hexagon SVG path centered at `(cx, cy)`, sized to match `width`
- * the same way `HangulHexCell`'s own callers derive it from real hex-grid
- * geometry (`cellWidth` = the shape's horizontal extent) - close enough for
- * an isolated component story; exact vertex placement doesn't matter since
- * nothing here is compared against the real `some-hexagon` output.
+ * A regular hexagon SVG path centered at `(cx, cy)` whose horizontal extent
+ * is `width`; close enough for an isolated story.
  */
 export function hexPathFor(
   cx: number,
@@ -61,7 +49,8 @@ export function mockCharacter(
   }
 }
 
-/** A word challenge's mid-progress snapshot (`PromptStation`, `#426`/`#762`). Defaults to 사과 (apple) at cursor 2/4. */
+/** A word challenge's mid-progress snapshot (`PromptStation`). Defaults to 사과 (apple) at cursor 2/4. */
+
 export function mockWordProgress(
   overrides: Partial<WordProgress> = {}
 ): WordProgress {

@@ -1,19 +1,15 @@
 /**
  * The learner shelf, as an activity sees it: a host-supplied place on the
  * learner's account where something they made (a LeetType round, a pasted
- * TOPIK lesson) is kept because they asked, so they can replay it on another
- * device (paulgsc/server#387; adaptive-learning canon Rem. 7.3). Each
- * activity keeps under its own name on the host and supplies what is
- * activity-specific: the key an item is kept under and how a kept body is
- * read back (`keptRoundOf` in `@some-ui/leetype`, `keptLessonOf` in
- * `@some-ui/topik`).
+ * TOPIK lesson) is kept on request, to replay on another device
+ * (paulgsc/server#387; adaptive-learning canon Rem. 7.3). Each activity
+ * supplies its key and how a kept body is read back (`keptRoundOf` in
+ * `@some-ui/leetype`, `keptLessonOf` in `@some-ui/topik`).
  *
- * `ShelfPort` is structural on purpose. The host (`apps/www`'s
- * `lib/shelf-client`) builds it over its own transport, and neither side
- * imports the other. A host with no shelf (a static build, no session)
- * passes none, and nothing offers to keep: every activity plays exactly as
- * it does with one, since an item on the shelf is also in the learner's chat
- * with their model (Rem. 7.3 (e)).
+ * `ShelfPort` is structural: the host (`apps/www`'s `lib/shelf-client`) builds
+ * it over its own transport, and neither side imports the other. A host with
+ * no shelf passes none and nothing offers to keep; the activity plays the
+ * same, since the item is also in the learner's chat (Rem. 7.3 (e)).
  *
  * What this module holds to, for every caller:
  *
@@ -97,13 +93,11 @@ async function holdsSame(
 
 /**
  * Keeps an item without replacing anything else the learner kept. The key
- * comes from a name their model chose, so two different items can share one
- * (`first-dinner`, `two-sum`), and a `PUT` to a held key replaces it: past
- * the cap, too, since only a *new* key is refused (review, #1600). So the
- * tap reads the listing first. If `base` or any held `-N` variant already
- * holds these bytes, that is reported unchanged and nothing is written;
- * otherwise the item goes under the first of those keys the shelf does not
- * hold, and a full shelf still answers `full`.
+ * comes from a name their model chose, so two items can share one, and a
+ * `PUT` to a held key replaces it, even past the cap (only a *new* key is
+ * refused). So the listing is read first: if `base` or any held `-N` variant
+ * already holds these bytes, that is reported unchanged; otherwise the item
+ * goes under the first free key, and a full shelf still answers `full`.
  *
  * `body` may depend on the key it is kept under (a TOPIK lesson carries its
  * own key), so a replayed copy serializes back to exactly what was kept and
@@ -124,7 +118,7 @@ export async function keepWithoutReplacing(
     index === 0 ? base : `${base}-${index + 1}`
   )
   // Every held copy of this name too, however high its suffix: after
-  // removals `base-5` can hold these bytes with `base` free (review, #1600).
+  // removals `base-5` can hold these bytes with `base` free.
   const copies = [...held.keys()].filter(
     (key) =>
       key.startsWith(`${base}-`) && /^\d+$/.test(key.slice(base.length + 1))
@@ -158,10 +152,9 @@ const LEADING_DOTS = /^\.+/
  */
 export function plainShelfKey(name: string, noun: string): string {
   let plain = name.replace(NOT_UNRESERVED, "-")
-  // Not `/(?:\.json)+$/i`, which backtracks polynomially on many `.json`s
-  // that do not end the name (CodeQL), and not a loop that re-reads the
-  // whole string per suffix, which is quadratic on many that do (review,
-  // #1641): walk one end index back five characters at a time.
+  // Not `/(?:\.json)+$/i`, which backtracks polynomially (CodeQL), nor a loop
+  // re-reading the string per suffix (quadratic): walk one end index back.
+
   let end = plain.length
   while (end >= 5 && plain.slice(end - 5, end).toLowerCase() === ".json") {
     end -= 5

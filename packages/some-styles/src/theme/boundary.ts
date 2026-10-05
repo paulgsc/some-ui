@@ -8,11 +8,10 @@
  * boundary — a session theme on `<html>`, a feature appearance a host mounted
  * three levels up — gets the right tokens by inheritance alone.
  *
- * The helpers here exist so a component that legitimately takes an
- * `appearance` prop has one shared way to spell it, instead of each package
- * re-deriving `className={appearance === "code" && "code"}` and drifting.
- * `appearanceProps("inherit")` returns nothing at all — the default case
- * genuinely is "do not open a boundary".
+ * These helpers give a component that takes an `appearance` prop one shared
+ * spelling. `appearanceProps("inherit")` returns nothing: the default is "do
+ * not open a boundary".
+
  */
 
 import type { FeatureAppearanceId, ThemeDefinition } from "./registry"

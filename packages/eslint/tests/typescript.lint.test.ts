@@ -1,49 +1,16 @@
 /**
+ * Lint-time integration tests for typescript.config.ts, run with lintFiles()
+ * on real fixture files: `projectService: true` needs files on disk under a
+ * tsconfig, and lintText() with a virtual path throws or silently disables
+ * type-aware rules.
  *
- * LAYER 2 — Lint-time integration tests (lintFiles on real fixture files)
+ * Fixtures live in tests/lint-fixtures/generated/ and are committed;
+ * regenerate after changing a snippet with
+ * `pnpm --filter @some-ui/eslint-kit gen:fixtures`.
  *
- * WHY REAL FILES INSTEAD OF lintText():
- *   typescript.config.ts uses projectService: true, which spins up the
- *   TypeScript language service and resolves files through tsconfig.json.
- *   lintText() passes a virtual filePath that does not exist on disk — the
- *   language service either throws ("file not found in project") or silently
- *   degrades (type-aware rules become no-ops), depending on the TS-ESLint
- *   version.
- *
- *   Fix: every snippet lives as a real .ts/.js file under
- *   tests/lint-fixtures/generated/, anchored by a tsconfig.json that
- *   projectService discovers via directory walk.  Tests call lintFiles()
- *   on those real paths.
- *
- * GENERATING / REGENERATING FIXTURES:
- *   pnpm --filter @some-ui/eslint-kit gen:fixtures
- *
- *   Re-run whenever you add or change a snippet.  The generated files are
- *   committed so CI does not need to run the script.
- *
- * SCOPE RATIONALE:
- *   We only test rules where our config makes a non-default choice that could
- *   silently regress, or where plugin/parser wiring is non-trivial.  See
- *   typescript.config.test.ts (Layer 1) for exhaustive severity wiring checks.
- *
- *   IN SCOPE:
- *     - explicit-function-return-type    (JS and rollup overrides)
- *     - no-explicit-any
- *     - consistent-type-imports
- *     - consistent-type-definitions
- *     - consistent-type-assertions       (assertionStyle: "never" enforcement)
- *     - array-type                       (Array<T> generic form required)
- *     - no-useless-constructor
- *     - no-restricted-syntax             (indexed access guard)
- *     - no-unused-vars                   (core off, TS-aware version on)
- *     - JS bleed guard                   (no @typescript-eslint/* on .js)
- *
- *   OUT OF SCOPE:
- *     - import/no-cycle, import/no-unresolved: require a real module graph.
- *     - Type-aware runtime rules (no-floating-promises, no-misused-promises,
- *       await-thenable, no-deprecated): covered by Layer 1 severity checks;
- *       runtime integration requires a full project with real dependencies,
- *       which belongs in a separate integration test suite.
+ * Only rules where the config makes a non-default choice, or where wiring is
+ * non-trivial; typescript.config.test.ts checks severities exhaustively.
+ * Rules needing a real module graph or full dependencies are out of scope.
  */
 
 import { existsSync } from "node:fs"
@@ -64,9 +31,6 @@ function fix(rel: string): string {
 }
 
 // ── Lint helpers ───────────────────────────────────────────────────────────
-//
-// We use lintFiles() so ESLint reads the file from disk and projectService
-// can include it in the TS language service project.
 
 async function lintFile(
   filePath: string
@@ -85,7 +49,6 @@ async function lintFile(
   })
 
   const [result] = await eslint.lintFiles([filePath])
-  // Filter out fatal parse errors — we only care about rule violations.
   return (result?.messages ?? []).filter((m) => !m.fatal)
 }
 
@@ -120,236 +83,153 @@ function expectNoRule(
   }
 }
 
-// ── explicit-function-return-type ──────────────────────────────────────────
+const TS = "@typescript-eslint"
 
-describe("lint: @typescript-eslint/explicit-function-return-type", () => {
-  it("fires on a function missing a return type annotation", async () => {
-    const msgs = await lintFile(fix("explicit-return-type/missing.ts"))
-    expectRule(
-      msgs,
-      "@typescript-eslint/explicit-function-return-type",
-      "missing.ts"
-    )
-  })
-
-  it("does NOT fire on a function with an explicit return type", async () => {
-    const msgs = await lintFile(fix("explicit-return-type/present.ts"))
-    expectNoRule(
-      msgs,
-      "@typescript-eslint/explicit-function-return-type",
-      "present.ts"
-    )
-  })
-
-  it("does NOT fire for .js files (rule suppressed by JS override)", async () => {
-    const msgs = await lintFile(fix("explicit-return-type/js-file.js"))
-    expectNoRule(
-      msgs,
-      "@typescript-eslint/explicit-function-return-type",
-      "js-file.js"
-    )
-  })
-
-  it("does NOT fire for rollup config files (rollup override)", async () => {
-    const msgs = await lintFile(fix("explicit-return-type/rollup.config.ts"))
-    expectNoRule(
-      msgs,
-      "@typescript-eslint/explicit-function-return-type",
-      "rollup.config.ts"
-    )
-  })
-})
-
-// ── no-explicit-any ────────────────────────────────────────────────────────
-
-describe("lint: @typescript-eslint/no-explicit-any", () => {
-  it("fires when any is used as a type annotation", async () => {
-    const msgs = await lintFile(fix("no-explicit-any/using-any.ts"))
-    expectRule(msgs, "@typescript-eslint/no-explicit-any", "using-any.ts")
-  })
-
-  it("does NOT fire when a proper type is used", async () => {
-    const msgs = await lintFile(fix("no-explicit-any/using-unknown.ts"))
-    expectNoRule(msgs, "@typescript-eslint/no-explicit-any", "using-unknown.ts")
-  })
-})
-
-// ── consistent-type-imports ────────────────────────────────────────────────
-
-describe("lint: @typescript-eslint/consistent-type-imports", () => {
-  it("fires when a type-only import lacks the type keyword", async () => {
-    const msgs = await lintFile(fix("consistent-type-imports/value-style.ts"))
-    expectRule(
-      msgs,
-      "@typescript-eslint/consistent-type-imports",
-      "value-style.ts"
-    )
-  })
-
-  it("does NOT fire when import type is used correctly", async () => {
-    const msgs = await lintFile(fix("consistent-type-imports/type-style.ts"))
-    expectNoRule(
-      msgs,
-      "@typescript-eslint/consistent-type-imports",
-      "type-style.ts"
-    )
-  })
-})
-
-// ── consistent-type-definitions ───────────────────────────────────────────
-
-describe("lint: @typescript-eslint/consistent-type-definitions", () => {
-  it("fires when interface is used instead of type", async () => {
-    const msgs = await lintFile(fix("consistent-type-definitions/interface.ts"))
-    expectRule(
-      msgs,
-      "@typescript-eslint/consistent-type-definitions",
-      "interface.ts"
-    )
-  })
-
-  it("does NOT fire when type alias is used", async () => {
-    const msgs = await lintFile(
-      fix("consistent-type-definitions/type-alias.ts")
-    )
-    expectNoRule(
-      msgs,
-      "@typescript-eslint/consistent-type-definitions",
-      "type-alias.ts"
-    )
-  })
-})
-
-// ── consistent-type-assertions ────────────────────────────────────────────
-//
-// Config: assertionStyle:"never"
-//
-// All type assertions are completely banned to guarantee runtime type safety
-// at module and storage boundaries:
-//   - {} as Foo
-//   - x as string
-//   - <Foo>x
-//
-// Valid narrowing must happen via explicit type guards or data validation.
-
-describe("lint: @typescript-eslint/consistent-type-assertions", () => {
-  it("fires when an object literal is cast with as", async () => {
-    const msgs = await lintFile(
-      fix("consistent-type-assertions/object-literal-as.ts")
-    )
-    expectRule(
-      msgs,
-      "@typescript-eslint/consistent-type-assertions",
-      "object-literal-as.ts — {} as Foo should be banned"
-    )
-  })
-
-  it("fires when a non-object-literal value is asserted with as", async () => {
-    const msgs = await lintFile(
-      fix("consistent-type-assertions/non-object-as.ts")
-    )
-    expectRule(
-      msgs,
-      "@typescript-eslint/consistent-type-assertions",
-      "non-object-as.ts — x as string should be banned"
-    )
-  })
-
-  it("fires when angle-bracket assertion style is used", async () => {
-    const msgs = await lintFile(
-      fix("consistent-type-assertions/angle-bracket.ts")
-    )
-    expectRule(
-      msgs,
-      "@typescript-eslint/consistent-type-assertions",
-      "angle-bracket.ts — <Foo>raw should be banned"
-    )
-  })
-
-  it("does NOT fire when narrowing via clean type guards", async () => {
-    const msgs = await lintFile(
-      fix("consistent-type-assertions/valid-type-guard.ts")
-    )
-    expectNoRule(
-      msgs,
-      "@typescript-eslint/consistent-type-assertions",
-      "valid-type-guard.ts — Type guards are the approved replacement pattern"
-    )
-  })
-})
-
-// ── array-type ────────────────────────────────────────────────────────────
-
-describe("lint: @typescript-eslint/array-type", () => {
-  it("fires when T[] shorthand is used instead of Array<T>", async () => {
-    const msgs = await lintFile(fix("array-type/shorthand.ts"))
-    expectRule(msgs, "@typescript-eslint/array-type", "shorthand.ts")
-  })
-
-  it("does NOT fire when Array<T> generic form is used", async () => {
-    const msgs = await lintFile(fix("array-type/generic.ts"))
-    expectNoRule(msgs, "@typescript-eslint/array-type", "generic.ts")
-  })
-})
-
-// ── no-useless-constructor ────────────────────────────────────────────────
-
-describe("lint: @typescript-eslint/no-useless-constructor", () => {
-  it("fires on a class with a no-op constructor", async () => {
-    const msgs = await lintFile(fix("no-useless-constructor/empty-ctor.ts"))
-    expectRule(
-      msgs,
-      "@typescript-eslint/no-useless-constructor",
-      "empty-ctor.ts"
-    )
-  })
-
-  it("does NOT fire on a constructor that does something", async () => {
-    const msgs = await lintFile(
-      fix("no-useless-constructor/meaningful-ctor.ts")
-    )
-    expectNoRule(
-      msgs,
-      "@typescript-eslint/no-useless-constructor",
-      "meaningful-ctor.ts"
-    )
-  })
-})
-
-// ── no-restricted-syntax (indexed access guard) ────────────────────────────
-
-describe("lint: no-restricted-syntax (indexed access guard)", () => {
-  it("fires on computed member access", async () => {
-    const msgs = await lintFile(fix("no-restricted-syntax/indexed-access.ts"))
-    expectRule(msgs, "no-restricted-syntax", "indexed-access.ts")
-  })
-
-  it("does NOT fire on dot property access", async () => {
-    const msgs = await lintFile(fix("no-restricted-syntax/dot-access.ts"))
-    expectNoRule(msgs, "no-restricted-syntax", "dot-access.ts")
-  })
-})
-
-// ── no-unused-vars replacement ─────────────────────────────────────────────
-
-describe("lint: no-unused-vars replacement (core off, TS-aware on)", () => {
-  it("@typescript-eslint/no-unused-vars fires on an unused variable", async () => {
-    const msgs = await lintFile(fix("no-unused-vars/unused-var.ts"))
-    expectRule(msgs, "@typescript-eslint/no-unused-vars", "unused-var.ts")
-  })
-
-  it("core no-unused-vars does NOT fire (replaced by TS version)", async () => {
-    const msgs = await lintFile(fix("no-unused-vars/unused-var.ts"))
-    expectNoRule(
-      msgs,
+describe("lint: typescript.config fixtures", () => {
+  it.each<readonly [string, string, string, boolean]>([
+    [
+      "explicit-function-return-type fires on a function missing a return type",
+      "explicit-return-type/missing.ts",
+      `${TS}/explicit-function-return-type`,
+      true,
+    ],
+    [
+      "explicit-function-return-type does NOT fire on an explicit return type",
+      "explicit-return-type/present.ts",
+      `${TS}/explicit-function-return-type`,
+      false,
+    ],
+    [
+      "explicit-function-return-type does NOT fire for .js files (JS override)",
+      "explicit-return-type/js-file.js",
+      `${TS}/explicit-function-return-type`,
+      false,
+    ],
+    [
+      "explicit-function-return-type does NOT fire for rollup config files",
+      "explicit-return-type/rollup.config.ts",
+      `${TS}/explicit-function-return-type`,
+      false,
+    ],
+    [
+      "no-explicit-any fires when any is used as a type annotation",
+      "no-explicit-any/using-any.ts",
+      `${TS}/no-explicit-any`,
+      true,
+    ],
+    [
+      "no-explicit-any does NOT fire when a proper type is used",
+      "no-explicit-any/using-unknown.ts",
+      `${TS}/no-explicit-any`,
+      false,
+    ],
+    [
+      "consistent-type-imports fires when a type-only import lacks the type keyword",
+      "consistent-type-imports/value-style.ts",
+      `${TS}/consistent-type-imports`,
+      true,
+    ],
+    [
+      "consistent-type-imports does NOT fire when import type is used",
+      "consistent-type-imports/type-style.ts",
+      `${TS}/consistent-type-imports`,
+      false,
+    ],
+    [
+      "consistent-type-definitions fires when interface is used instead of type",
+      "consistent-type-definitions/interface.ts",
+      `${TS}/consistent-type-definitions`,
+      true,
+    ],
+    [
+      "consistent-type-definitions does NOT fire when a type alias is used",
+      "consistent-type-definitions/type-alias.ts",
+      `${TS}/consistent-type-definitions`,
+      false,
+    ],
+    // assertionStyle "never": every assertion is banned; narrow with guards.
+    [
+      "consistent-type-assertions fires on {} as Foo",
+      "consistent-type-assertions/object-literal-as.ts",
+      `${TS}/consistent-type-assertions`,
+      true,
+    ],
+    [
+      "consistent-type-assertions fires on x as string",
+      "consistent-type-assertions/non-object-as.ts",
+      `${TS}/consistent-type-assertions`,
+      true,
+    ],
+    [
+      "consistent-type-assertions fires on <Foo>raw",
+      "consistent-type-assertions/angle-bracket.ts",
+      `${TS}/consistent-type-assertions`,
+      true,
+    ],
+    [
+      "consistent-type-assertions does NOT fire when narrowing via type guards",
+      "consistent-type-assertions/valid-type-guard.ts",
+      `${TS}/consistent-type-assertions`,
+      false,
+    ],
+    [
+      "array-type fires when T[] shorthand is used instead of Array<T>",
+      "array-type/shorthand.ts",
+      `${TS}/array-type`,
+      true,
+    ],
+    [
+      "array-type does NOT fire when Array<T> is used",
+      "array-type/generic.ts",
+      `${TS}/array-type`,
+      false,
+    ],
+    [
+      "no-useless-constructor fires on a no-op constructor",
+      "no-useless-constructor/empty-ctor.ts",
+      `${TS}/no-useless-constructor`,
+      true,
+    ],
+    [
+      "no-useless-constructor does NOT fire on a constructor that does something",
+      "no-useless-constructor/meaningful-ctor.ts",
+      `${TS}/no-useless-constructor`,
+      false,
+    ],
+    [
+      "no-restricted-syntax fires on computed member access",
+      "no-restricted-syntax/indexed-access.ts",
+      "no-restricted-syntax",
+      true,
+    ],
+    [
+      "no-restricted-syntax does NOT fire on dot property access",
+      "no-restricted-syntax/dot-access.ts",
+      "no-restricted-syntax",
+      false,
+    ],
+    [
+      "@typescript-eslint/no-unused-vars fires on an unused variable",
+      "no-unused-vars/unused-var.ts",
+      `${TS}/no-unused-vars`,
+      true,
+    ],
+    [
+      "core no-unused-vars does NOT fire (replaced by the TS version)",
+      "no-unused-vars/unused-var.ts",
       "no-unused-vars",
-      "unused-var.ts — core rule must be off"
-    )
-  })
-
-  it("underscore-prefixed variables are ignored per config options", async () => {
-    const msgs = await lintFile(fix("no-unused-vars/underscore-var.ts"))
-    expectNoRule(msgs, "@typescript-eslint/no-unused-vars", "underscore-var.ts")
+      false,
+    ],
+    [
+      "underscore-prefixed variables are ignored per config options",
+      "no-unused-vars/underscore-var.ts",
+      `${TS}/no-unused-vars`,
+      false,
+    ],
+  ])("%s", async (title, file, rule, fires) => {
+    const msgs = await lintFile(fix(file))
+    if (fires) expectRule(msgs, rule, title)
+    else expectNoRule(msgs, rule, title)
   })
 })
 
@@ -374,9 +254,6 @@ describe("lint: JS file — no type-aware rule messages emitted", () => {
 })
 
 // ── Severity check for consistent-type-assertions ─────────────────────────
-//
-// Belt-and-suspenders: verify the rule is wired at error severity,
-// separate from the lint-time proof above.
 
 describe("lint: consistent-type-assertions severity is error (not warn)", () => {
   it("message severity is 2 (error) when object literal as fires", async () => {

@@ -16,10 +16,8 @@ vi.mock("@honeycomb/lib/hangul/hangul-wasm-runtime", () => ({
 }))
 
 /**
- * `WasmGameBridge` has private fields, so a plain mock with only an `id`
- * (enough for these tests, which only assert referential identity) can
- * never satisfy it structurally. This is the single, documented cast that
- * lets such a stand-in pass as one.
+ * `WasmGameBridge` has private fields; these tests assert only identity, so
+ * an `{ id }` stand-in is cast to it here, once.
  */
 function asWasmGameBridge(bridge: { id: string }): WasmGameBridge {
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see comment above
@@ -42,8 +40,6 @@ describe("autoStart", () => {
 
     await waitFor(() => expect(result.current.isInitialized).toBe(true))
 
-    // No sessionKey option was given, so undefined is forwarded as-is -
-    // loadHangulWasm's own comparison logic decides what that means.
     expect(loadHangulWasm).toHaveBeenCalledWith(
       undefined,
       "completion",
@@ -104,42 +100,44 @@ describe("manual initialize", () => {
 })
 
 describe("mode switching", () => {
-  // Regression coverage: initializedRef's guard used to stay true forever
-  // after the first successful load, so a mode prop change on an
-  // already-initialized instance (no remount) silently kept the stale
-  // mode's bridge instead of loading a new one.
-  it("re-initializes when mode changes on an already-initialized instance", async () => {
-    const completionBridge = { id: "completion-bridge" }
-    const vocabularyBridge = { id: "vocabulary-bridge" }
+  it.each<[string, UseHangulGameWasmOptions, UseHangulGameWasmOptions]>([
+    [
+      "re-initializes when mode changes on an already-initialized instance",
+      { mode: "completion" },
+      { mode: "vocabulary" },
+    ],
+    [
+      "re-initializes when sessionKey changes even though mode stays the same",
+      { mode: "completion", sessionKey: "session-a" },
+      { mode: "completion", sessionKey: "session-b" },
+    ],
+  ])("%s", async (_, initialProps, nextProps) => {
+    const firstBridge = { id: "first-bridge" }
+    const secondBridge = { id: "second-bridge" }
     vi.mocked(loadHangulWasm).mockResolvedValueOnce(
-      asWasmGameBridge(completionBridge)
+      asWasmGameBridge(firstBridge)
     )
 
     const { result, rerender } = renderHook(
       (props: UseHangulGameWasmOptions) => useHangulGameWasm(props),
-      { initialProps: { mode: "completion" } }
+      { initialProps }
     )
 
     await waitFor(() => expect(result.current.isInitialized).toBe(true))
-    expect(result.current.gameBridge).toBe(completionBridge)
+    expect(result.current.gameBridge).toBe(firstBridge)
 
     vi.mocked(loadHangulWasm).mockResolvedValueOnce(
-      asWasmGameBridge(vocabularyBridge)
+      asWasmGameBridge(secondBridge)
     )
-    rerender({ mode: "vocabulary" })
+    rerender(nextProps)
 
-    await waitFor(() =>
-      expect(result.current.gameBridge).toBe(vocabularyBridge)
-    )
+    await waitFor(() => expect(result.current.gameBridge).toBe(secondBridge))
     expect(loadHangulWasm).toHaveBeenCalledTimes(2)
-    // No sessionKey option was given on either render, so undefined is
-    // forwarded both times unchanged - it's mode-diffing alone (loadHangulWasm's
-    // own concern) that should trigger the reset here.
     expect(loadHangulWasm).toHaveBeenLastCalledWith(
       undefined,
-      "vocabulary",
+      nextProps.mode,
       HANGUL_WORD_POOL,
-      undefined
+      nextProps.sessionKey
     )
   })
 
@@ -158,41 +156,6 @@ describe("mode switching", () => {
       "completion",
       HANGUL_WORD_POOL,
       "session-a"
-    )
-  })
-
-  // Regression coverage for the actual cross-session bug: a sessionKey change
-  // on an already-initialized instance (same mode, e.g. a new session reusing
-  // "completion") must still trigger a fresh load - initialize()'s guard
-  // compares sessionKey independently of mode, not just "has this instance
-  // ever initialized before."
-  it("re-initializes when sessionKey changes even though mode stays the same", async () => {
-    const sessionABridge = { id: "session-a-bridge" }
-    const sessionBBridge = { id: "session-b-bridge" }
-    vi.mocked(loadHangulWasm).mockResolvedValueOnce(
-      asWasmGameBridge(sessionABridge)
-    )
-
-    const { result, rerender } = renderHook(
-      (props: UseHangulGameWasmOptions) => useHangulGameWasm(props),
-      { initialProps: { mode: "completion", sessionKey: "session-a" } }
-    )
-
-    await waitFor(() => expect(result.current.isInitialized).toBe(true))
-    expect(result.current.gameBridge).toBe(sessionABridge)
-
-    vi.mocked(loadHangulWasm).mockResolvedValueOnce(
-      asWasmGameBridge(sessionBBridge)
-    )
-    rerender({ mode: "completion", sessionKey: "session-b" })
-
-    await waitFor(() => expect(result.current.gameBridge).toBe(sessionBBridge))
-    expect(loadHangulWasm).toHaveBeenCalledTimes(2)
-    expect(loadHangulWasm).toHaveBeenLastCalledWith(
-      undefined,
-      "completion",
-      HANGUL_WORD_POOL,
-      "session-b"
     )
   })
 
@@ -243,25 +206,20 @@ describe("error handling", () => {
     )
   })
 
-  it("captures a thrown Error's message", async () => {
-    vi.mocked(loadHangulWasm).mockRejectedValue(new Error("boom"))
+  it.each<[string, unknown, string]>([
+    ["captures a thrown Error's message", new Error("boom"), "boom"],
+    [
+      "stringifies a thrown non-Error value",
+      "some string failure",
+      "some string failure",
+    ],
+  ])("%s", async (_, thrown, message) => {
+    vi.mocked(loadHangulWasm).mockRejectedValue(thrown)
 
     const { result } = renderHook(() =>
       useHangulGameWasm({ mode: "completion" })
     )
 
-    await waitFor(() => expect(result.current.error).toBe("boom"))
-  })
-
-  it("stringifies a thrown non-Error value", async () => {
-    vi.mocked(loadHangulWasm).mockRejectedValue("some string failure")
-
-    const { result } = renderHook(() =>
-      useHangulGameWasm({ mode: "completion" })
-    )
-
-    await waitFor(() =>
-      expect(result.current.error).toBe("some string failure")
-    )
+    await waitFor(() => expect(result.current.error).toBe(message))
   })
 })

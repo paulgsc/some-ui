@@ -66,9 +66,8 @@ export type Reach = "one-site" | "everywhere"
  * extension with site images and web fonts is `site-images`.
  *
  * When an extension's network behaviour changes, change this with it.
- * `local-server` currently describes none of the six — BOYO and Conveyor only
- * reach a local server in development builds — and is kept for when one of
- * them does.
+ * `local-server` describes none of the six today (BOYO and Conveyor reach one
+ * only in development builds).
  */
 export type Network = "none" | "local-server" | "web-fonts" | "site-images"
 
@@ -248,14 +247,9 @@ export const LABEL = {
 } as const
 
 /**
- * The document's heading. It is rendered visually hidden, so it is a label
- * rather than copy: the comb is the page, and at rest a visitor reads nothing
- * they did not ask for by touching a cell. It exists because a screen reader
- * has no comb to look at and a document with no heading gives it nothing to
- * announce or navigate by.
- *
- * It was "The comb" through design, which names the shape and makes no claim,
- * and then "Six tools that stay on your machine" — a privacy claim the six do
- * not all meet (see `Network`). It names what the page is instead.
+ * The document's heading, visually hidden: a label for screen readers, which
+ * have no comb to look at. It names what the page is and makes no privacy
+ * claim, since the six do not all meet one (see `Network`).
+
  */
 export const PAGE_TITLE = "Six small tools for your browser"

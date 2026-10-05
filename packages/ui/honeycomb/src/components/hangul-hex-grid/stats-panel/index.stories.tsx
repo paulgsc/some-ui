@@ -7,10 +7,6 @@ import type { Meta, StoryObj } from "@storybook/react-vite"
 
 import { StatsPanel } from "."
 
-// ---------------------------------------------------------------------------
-// Helpers – build realistic mock data so each story stays declarative
-// ---------------------------------------------------------------------------
-
 const baseStats = (
   overrides: Partial<GameStats & { accuracy: number }> = {}
 ): GameStats & { accuracy: number } => ({
@@ -39,10 +35,6 @@ const baseProgress = (overrides?: Partial<GameProgress>): GameProgress => ({
   ...overrides,
 })
 
-// ---------------------------------------------------------------------------
-// Meta
-// ---------------------------------------------------------------------------
-
 const meta: Meta<typeof StatsPanel> = {
   title: "UI/Honeycomb/Hangul/Components/StatsPanel",
   component: StatsPanel,
@@ -68,10 +60,6 @@ const meta: Meta<typeof StatsPanel> = {
 
 export default meta
 type Story = StoryObj<typeof meta>
-
-// ---------------------------------------------------------------------------
-// Stories
-// ---------------------------------------------------------------------------
 
 export const Default: Story = {
   args: {

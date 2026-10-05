@@ -39,18 +39,12 @@ function focusConstraints<T>(
     (node: LayoutNode<T>) => (node.type === "leaf" ? node.id : node.splitId)
   )
 
-  // `getFocusPath` returns an empty set when `focusId` names a region that
-  // isn't in this tree - callers can hold a focus target across a layout
-  // change that removes it. Without this guard every node is "off path" and
-  // lerps toward `min` (0), so at t=1 the root's own children all solve to
-  // zero extent while the root still claims the whole viewport: the layout
-  // collapses into a gap the size of the screen. Focusing something that is
-  // not laid out has no meaning, so it is a no-op rather than a collapse.
-  //
-  // The zeroing itself is load-bearing elsewhere - `solveLayoutWithBindings`
-  // relies on it to cascade an all-unbound branch to zero - so the fix
-  // belongs here, at the point where an absent target is distinguishable
-  // from a deliberately collapsed one, not in `solveWeightsFromConstraints`.
+  // A `focusId` not in this tree (held across a layout change) gives an
+  // empty path, so every node would lerp to 0 and the layout collapse into a
+  // screen-sized gap. Focusing nothing laid out is a no-op. The guard lives
+  // here, not in `solveWeightsFromConstraints`, whose zeroing
+  // `solveLayoutWithBindings` relies on.
+
   if (focusPath.size === 0) return base
 
   const stack: Array<LayoutNode<T>> = [tree]
