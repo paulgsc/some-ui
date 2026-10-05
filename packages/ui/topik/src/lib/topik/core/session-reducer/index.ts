@@ -22,10 +22,6 @@ import type {
   SessionState,
 } from "@topik/lib/topik/core/session-types"
 
-// ═══════════════════════════════════════════════════════════════════════════
-// INITIAL STATE FACTORY
-// ═══════════════════════════════════════════════════════════════════════════
-
 export function createInitialState(): SessionState {
   return {
     phase: "selecting",
@@ -49,20 +45,13 @@ export function createInitialState(): SessionState {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
 // CURSOR UTILITIES
-// ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * Create initial cursor for new batch
- */
 function createInitialCursor(): SessionCursor {
   return { batch: 0, message: 0, question: 0 }
 }
 
-/**
- * Validate and clamp cursor bounds (V10)
- */
+/** Clamps the cursor into bounds (V10). */
 export function validateCursor(
   cursor: SessionCursor,
   meta: BatchMetadata | null,
@@ -77,9 +66,6 @@ export function validateCursor(
   }
 }
 
-/**
- * Check if all batches complete
- */
 export function isBatchesComplete(
   cursor: SessionCursor,
   batchCount: number
@@ -87,9 +73,7 @@ export function isBatchesComplete(
   return cursor.batch >= batchCount - 1
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
 // ACTIVE STATE FACTORY
-// ═══════════════════════════════════════════════════════════════════════════
 
 export function createActiveState(
   cursor: SessionCursor = createInitialCursor()
@@ -104,32 +88,21 @@ export function createActiveState(
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
 // REDUCER
-// ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * Pure reducer - returns new state + effects
- *
- * V2: No I/O, no mutations, deterministic
- * V3: All transitions explicit
- */
+/** Returns the new state and its effects (V2, V3). */
 export function sessionReducer(
   state: SessionState,
   event: SessionEvent
 ): ReducerResult {
-  // Default: no state change, no effects
   const unchanged = (): ReducerResult => ({ state, effects: [] })
 
-  // Helper: return new state with effects
   const result = (
     newState: SessionState,
     effects: ReducerResult["effects"] = []
   ): ReducerResult => ({ state: newState, effects })
 
-  // ═══════════════════════════════════════════════════════════════════════
   // CATALOG REQUEST
-  // ═══════════════════════════════════════════════════════════════════════
 
   if (event.type === "REQUEST_CATALOG") {
     // Only trigger if not already loading or ready
@@ -156,11 +129,8 @@ export function sessionReducer(
     )
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
   // CATALOG STATE TRANSITIONS (orthogonal to phase)
-  // ═══════════════════════════════════════════════════════════════════════
 
-  // Catalog loading started
   if (event.type === "CATALOG_LOADING") {
     if (state.dataRef.catalog.status === "loading") return unchanged()
 
@@ -177,7 +147,6 @@ export function sessionReducer(
     })
   }
 
-  // Catalog loaded successfully
   if (event.type === "CATALOG_SUCCESS") {
     if (state.dataRef.catalog.status === "ready") return unchanged()
 
@@ -194,7 +163,6 @@ export function sessionReducer(
     })
   }
 
-  // Catalog load failed
   if (event.type === "CATALOG_FAILURE") {
     return result({
       ...state,
@@ -209,9 +177,7 @@ export function sessionReducer(
     })
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
   // PHASE: SELECTING
-  // ═══════════════════════════════════════════════════════════════════════
 
   if (state.phase === "selecting") {
     if (event.type === "SELECT_TOPIK") {
@@ -237,9 +203,7 @@ export function sessionReducer(
     return unchanged()
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
   // PHASE: HYDRATING
-  // ═══════════════════════════════════════════════════════════════════════
 
   if (state.phase === "hydrating") {
     // Race protection (V8): only accept response for current key
@@ -318,9 +282,7 @@ export function sessionReducer(
     return unchanged()
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
   // PHASE: ACTIVE
-  // ═══════════════════════════════════════════════════════════════════════
 
   if (state.phase === "active" && state.active) {
     const { active, dataRef } = state
@@ -359,9 +321,7 @@ export function sessionReducer(
       )
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     // CHAT MODE
-    // ─────────────────────────────────────────────────────────────────────
 
     if (active.mode === "chat") {
       // START_CHAT: Idempotent (V9)
@@ -383,7 +343,6 @@ export function sessionReducer(
         )
       }
 
-      // PAUSE_CHAT
       if (event.type === "PAUSE_CHAT") {
         if (active.playState === "paused") return unchanged()
 
@@ -396,7 +355,6 @@ export function sessionReducer(
         )
       }
 
-      // RESUME_CHAT
       if (event.type === "RESUME_CHAT") {
         if (active.playState === "running") return unchanged()
 
@@ -415,7 +373,6 @@ export function sessionReducer(
         )
       }
 
-      // ADVANCE_MESSAGE
       if (event.type === "ADVANCE_MESSAGE") {
         const nextMessage = active.cursor.message + 1
         const validated = validateCursor(
@@ -445,8 +402,7 @@ export function sessionReducer(
         // Auto-play next message if running
         const effects: Array<SessionEffect> = []
         if (active.playState === "running") {
-          // Emit PLAY_AUDIO effect for new message
-          // messageId will be retrieved by executor from repository
+          // The executor looks up the message id from the repository.
           effects.push({
             type: "PLAY_AUDIO",
           })
@@ -475,7 +431,6 @@ export function sessionReducer(
         })
       }
 
-      // TIMER_TICK
       if (event.type === "TIMER_TICK" && active.playState === "running") {
         if (active.timeRemaining <= 0) return unchanged()
 
@@ -502,9 +457,7 @@ export function sessionReducer(
       }
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     // QUIZ MODE
-    // ─────────────────────────────────────────────────────────────────────
 
     if (active.mode === "quiz") {
       // ANSWER_SUBMITTED
@@ -621,9 +574,7 @@ export function sessionReducer(
     return unchanged()
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
   // PHASE: COMPLETE
-  // ═══════════════════════════════════════════════════════════════════════
 
   if (state.phase === "complete") {
     // V18: Terminal state - only CHANGE_TOPIK allowed

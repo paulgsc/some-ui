@@ -73,10 +73,7 @@ describe("createAudioPlayer - settlement", () => {
 
     player.stop()
 
-    // The observable part of the contract: the ledger is empty the instant
-    // `stop()` returns, not a tick later. This is what the pre-rewrite
-    // implementation got wrong - it replaced its queue with a fresh
-    // `Promise.resolve()` and left the old promises pending forever.
+    // The ledger is empty the instant `stop()` returns, not a tick later.
     expect(player.pending).toBe(0)
 
     await flushAsync()
@@ -119,8 +116,7 @@ describe("createAudioPlayer - settlement", () => {
     await flushAsync()
     expect(abandoned.state).toBe("rejected")
 
-    // The regression this pins: the next utterance used to chain behind a
-    // promise that would never settle, so nothing ever played again.
+    // The next utterance must not chain behind a promise that never settles.
     const revived = track(player.play(AUDIO()))
     await flushAsync()
     audio.current?.finishCurrent()

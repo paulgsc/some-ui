@@ -27,32 +27,18 @@ const { speakMock, useSpeechQueueMock } = vi.hoisted(() => {
   return { speakMock, useSpeechQueueMock }
 })
 
-// Only `useSpeechQueue` is swapped out; the rest of "@some-ui/speech" is
-// kept via importOriginal. Mocking it is what keeps this a test of
-// ChatMessages rather than of the speech session - the hook throws without
-// a live session on purpose, so that a component asking to speak outside
-// one fails loudly instead of silently going quiet.
+// Only `useSpeechQueue` is swapped out (it throws without a live session on
+// purpose), returning just the fields ChatMessages reads, so this tests
+// ChatMessages rather than the speech session.
 vi.mock("@some-ui/speech", async (importOriginal) => {
   const actual = await importOriginal<typeof SomeUiSpeech>()
-  // The mock's useSpeechQueue only returns the 3 fields ChatMessages
-  // actually reads (speak/isActive/currentItem) - the rest of the real
-  // UseSpeechQueueReturn is irrelevant to what's under test here, and
-  // vi.mock's factory return type isn't narrow enough for
-  // typescript-eslint to see that as safe.
   return {
     ...actual,
     useSpeechQueue: useSpeechQueueMock,
   }
 })
 
-// ═══════════════════════════════════════════════════════════════════════════
-// FIXTURES
-//
-// The chat-cycling interval (from useChatMessages) defaults to 10s and isn't
-// overridable from ChatMessages's own props, so tests advance fake timers by
-// that much to drive one tick at a time.
-// ═══════════════════════════════════════════════════════════════════════════
-
+// useChatMessages' cycling interval; ChatMessages cannot override it.
 const TICK_MS = 10_000
 
 function makeMessage(id: string): Message {
@@ -81,18 +67,19 @@ function lastSpeakOptions(): TTSOptions {
   return options
 }
 
-beforeEach(() => {
-  vi.useFakeTimers()
+/** The shared queue: free, or busy speaking for another component. */
+function queue(busy: boolean): void {
   useSpeechQueueMock.mockReturnValue({
     speak: speakMock,
-    isActive: false,
-    currentItem: null,
+    isActive: busy,
+    currentItem: busy ? { componentId: "other-widget" } : null,
   })
-})
+}
 
-// ═══════════════════════════════════════════════════════════════════════════
-// lastSpokenRef dedup guard
-// ═══════════════════════════════════════════════════════════════════════════
+beforeEach(() => {
+  vi.useFakeTimers()
+  queue(false)
+})
 
 describe("ChatMessages - speak dedup guard", () => {
   it("does not re-speak the same index/content pair when onEnd toggles isSpeaking back off", () => {
@@ -143,17 +130,9 @@ describe("ChatMessages - speak dedup guard", () => {
   })
 })
 
-// ═══════════════════════════════════════════════════════════════════════════
-// pause-coordination effect (isActive / currentItem from the shared queue)
-// ═══════════════════════════════════════════════════════════════════════════
-
 describe("ChatMessages - pause-coordination effect", () => {
   it("pauses its own cycling while another component owns the shared speech queue", () => {
-    useSpeechQueueMock.mockReturnValue({
-      speak: speakMock,
-      isActive: true,
-      currentItem: { componentId: "other-widget" },
-    })
+    queue(true)
     const messages = [makeMessage("m0"), makeMessage("m1")]
     render(<ChatMessages messages={messages} />)
 
@@ -163,22 +142,14 @@ describe("ChatMessages - pause-coordination effect", () => {
   })
 
   it("resumes cycling once the shared queue frees up", () => {
-    useSpeechQueueMock.mockReturnValue({
-      speak: speakMock,
-      isActive: true,
-      currentItem: { componentId: "other-widget" },
-    })
+    queue(true)
     const messages = [makeMessage("m0"), makeMessage("m1")]
     const { rerender } = render(<ChatMessages messages={messages} />)
 
     tick()
     expect(speakMock).not.toHaveBeenCalled()
 
-    useSpeechQueueMock.mockReturnValue({
-      speak: speakMock,
-      isActive: false,
-      currentItem: null,
-    })
+    queue(false)
     rerender(<ChatMessages messages={messages} />)
 
     tick()

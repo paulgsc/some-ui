@@ -13,7 +13,7 @@
  *   steam" puts smaller lessons first, and "too easy" puts larger ones first.
  *   Lines are what the handheld plays; `totalQuestions` counts the desktop
  *   quiz, which the handheld never shows, so it says nothing about how long
- *   a lesson is here (Codex, #1555);
+ *   a lesson is here;
  * - its key: a lesson just reported on comes later, unless it brings back
  *   what blocked the learner. It is never dropped, because going through a
  *   lesson again is expected.
@@ -170,7 +170,7 @@ export function orderLessons(
       Number(a.unleveled) - Number(b.unleveled) ||
       // What blocked the learner outranks having just played it: when the
       // only lesson that exercises it is the one just reported on, it is
-      // exactly the lesson to go back to (Codex, #1555).
+      // exactly the lesson to go back to.
       b.brought.length - a.brought.length ||
       Number(a.recent) - Number(b.recent) ||
       (size === "smaller"
@@ -184,7 +184,7 @@ export function orderLessons(
   // A lesson is said to be shorter (or longer) only when that is what put it
   // ahead of another: it ties with a later lesson on everything ranked above
   // size, and is the smaller (or larger) of the two. A long lesson that comes
-  // first for what it brings back is not "shorter" (Codex, #1555).
+  // first for what it brings back is not "shorter".
   const wonOnSize = (index: number): boolean => {
     const entry = scored[index]
     if (!entry || size === null) return false

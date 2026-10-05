@@ -1,31 +1,13 @@
 /**
  * The Topik study applet, and the shell that makes it mountable anywhere.
  *
- * ## Why the shell exists
- *
- * This applet is loaded through `@some-ui/content-registry`, which maps a
- * key to a lazily-imported component and renders it with whatever scene
- * props the host associated with that key. `RegistryEntry`'s props are
- * typed `any`, so nothing checks what a registry component needs - which
- * means "needs a React context its host must remember to mount" is a
- * requirement the type system cannot express and the host cannot discover.
- * It fails at runtime, in a lazy chunk, inside a viewport - the worst place
- * to learn about a missing provider.
- *
- * It is also the wrong shape. A host mounting `SessionConfigProvider` would
- * have to know that *this* registry key, alone among fifteen, needs one -
- * and know which repositories to build for it. That is precisely the
- * internal knowledge the registry indirection exists to remove.
- *
- * So the applet provides its own context and takes overrides as props,
- * which is what every other applet in this repo already does: honeycomb
- * defaults `words` to its bundled seed. `<KoreanStudyPage />` with no props
- * is a working applet;
- * a host that wants to inject repositories passes them.
- *
- * `useSessionConfig` still throws without a provider, and should: it is now
- * a genuine internal invariant that this shell guarantees, rather than a
- * demand on strangers.
+ * `@some-ui/content-registry` renders a lazily-imported component with
+ * whatever scene props the host gave its key, typed `any`, so a context the
+ * host must remember to mount is a requirement nothing can check or
+ * discover. The applet therefore provides its own context and takes
+ * overrides as props: `<KoreanStudyPage />` with no props is a working
+ * applet, and `useSessionConfig` throwing without a provider is an internal
+ * invariant this shell guarantees.
  */
 
 import type { JSX } from "react"
@@ -90,12 +72,8 @@ export type KoreanStudyPageProps = {
   /**
    * Art direction. `inherit` — the default — renders in whatever theme the
    * host established, so the user's session theme reaches the applet.
-   *
-   * This used to be hardcoded as `dark topik`, which is the reason changing
-   * the session theme did nothing here: `.topik` reassigns `--background` /
-   * `--foreground` for the subtree, and the bundled `dark` pinned every
-   * `dark:*` utility on even under a light palette. `appearance="topik"`
-   * restores the old self-contained study surface for a host that wants it.
+   * `appearance="topik"` is the self-contained study surface: `.topik`
+   * reassigns `--background` / `--foreground` for the subtree.
    */
   appearance?: Appearance
   /**
@@ -165,10 +143,7 @@ const KoreanStudySession = ({
   return (
     <div
       ref={root}
-      // A stable hook for hosts and tests. The theme class used to double as
-      // this, which is why removing it broke four tests that only wanted to
-      // know whether the applet had mounted — a mount probe should not depend
-      // on which palette is in play.
+      // A stable mount probe for hosts and tests, independent of the palette.
       data-slot="topik-session"
       data-surface={surface}
       className={cn(

@@ -1,15 +1,10 @@
-/**
- * Topik Query Hooks - TanStack Query Integration
- *
- */
+/** TanStack Query hooks for topik batches. */
 
 import type { UseQueryOptions, UseQueryResult } from "@tanstack/react-query"
 import { useQuery } from "@tanstack/react-query"
 import type { ConversationBatch, ITopikRepository } from "@topik/lib/topik"
 
-// ═══════════════════════════════════════════════════════════════════════════
 // TYPES
-// ═══════════════════════════════════════════════════════════════════════════
 
 export type BatchMetadata = {
   id: number
@@ -17,22 +12,16 @@ export type BatchMetadata = {
   questionCount: number
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
 // QUERY KEYS
-// ═══════════════════════════════════════════════════════════════════════════
 
 export const topikKeys = {
   all: ["topik"] as const,
   detail: (key: string) => ["topik", key] as const,
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
 // HOOKS
-// ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Load topik batches with caching and deduplication
- *
  * INVARIANTS ENFORCED BY TANSTACK QUERY:
  * - V5: Idempotent hydration (automatic)
  * - V6: Remount stability (queryKey-based)
@@ -57,10 +46,7 @@ export function useTopikBatches(
   })
 }
 
-/**
- * Get batch metadata without full content
- * V13: Lazy materialization via select
- */
+/** V13: batch metadata without full content, via select. */
 export function useTopikBatchMetadata(
   repository: ITopikRepository,
   key: string,
@@ -89,10 +75,7 @@ export function useTopikBatchMetadata(
   })
 }
 
-/**
- * Get current batch by index
- * V13: O(1) access via select projection
- */
+/** V13: O(1) access to one batch via select projection. */
 export function useTopikCurrentBatch(
   repository: ITopikRepository,
   key: string,

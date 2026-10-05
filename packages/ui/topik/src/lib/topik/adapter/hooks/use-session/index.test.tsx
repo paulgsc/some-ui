@@ -14,7 +14,6 @@ import { describe, expect, it, vi } from "vitest"
 import { useSession } from "."
 import type { UseEnhancedSessionConfig } from "."
 
-// ═══════════════════════════════════════════════════════════════════════════
 // FIXTURES
 //
 // use-session.ts:91 (`if (!machineRef.current) machineRef.current = ...`)
@@ -24,7 +23,6 @@ import type { UseEnhancedSessionConfig } from "."
 // scenario these tests cover: dispatched state and the machine's identity
 // must not reset just because the component re-renders - including under
 // React 18 StrictMode's double render.
-// ═══════════════════════════════════════════════════════════════════════════
 
 function createWrapper(
   queryClient: QueryClient

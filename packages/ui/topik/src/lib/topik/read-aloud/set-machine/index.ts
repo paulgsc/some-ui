@@ -56,9 +56,7 @@ import {
 } from "@topik/lib/topik/read-aloud/timing"
 import { assertNever } from "some-ui-utils"
 
-// ═══════════════════════════════════════════════════════════════════════════
 // TYPES
-// ═══════════════════════════════════════════════════════════════════════════
 
 /**
  * What an entry in the queue is: a rep drawn for the set, a return caused
@@ -177,9 +175,7 @@ export const MAX_RETURNS = 2
 const RETURN_GAP = 3
 const INTRODUCTION_GAP = 2
 
-// ═══════════════════════════════════════════════════════════════════════════
 // HELPERS
-// ═══════════════════════════════════════════════════════════════════════════
 
 const REP_STEPS: ReadonlySet<string> = new Set<RepStep>([
   "glyphs",
@@ -296,9 +292,7 @@ function insertEntry(
   return { queue: at(index), index }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
 // TRANSITIONS
-// ═══════════════════════════════════════════════════════════════════════════
 
 function endSitting(state: SetMachineState): SetTransition {
   return { state: enter(state, { name: "sitting-over" }), effects: [] }
@@ -588,9 +582,7 @@ function pauseWith(
   return { state: next, effects }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
 // REDUCER
-// ═══════════════════════════════════════════════════════════════════════════
 
 export function setMachineReducer(
   state: SetMachineState,

@@ -28,9 +28,7 @@ import {
   XCircle,
 } from "lucide-react"
 
-// ═══════════════════════════════════════════════════════════════
 // Props
-// ═══════════════════════════════════════════════════════════════
 
 type ChangeMaterialDialogProps = {
   open: boolean
@@ -43,9 +41,7 @@ type ChangeMaterialDialogProps = {
   onReload?: () => void
 }
 
-// ═══════════════════════════════════════════════════════════════
 // Component
-// ═══════════════════════════════════════════════════════════════
 
 export const ChangeMaterialDialog = ({
   open,

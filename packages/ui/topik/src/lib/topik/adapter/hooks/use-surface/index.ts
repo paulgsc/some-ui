@@ -15,10 +15,8 @@
  * mount it in a pane.
  *
  * The numbers are the workspace's (`isHandheldBox`, some-ui-utils), not this
- * applet's own: the host's `useIsMobile` applies the same rule to the window.
- * When they were two pairs of constants they disagreed on a landscape phone -
- * the host read it as a desktop and the applet as a handheld - and it was the
- * host's half that rebuilt the lesson on rotation.
+ * applet's own: the host's `useIsMobile` applies the same rule to the window,
+ * and two pairs of constants would disagree on a landscape phone.
  */
 
 import type { RefObject } from "react"

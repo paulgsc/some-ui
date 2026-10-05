@@ -16,10 +16,6 @@ import { describe, expect, it, vi } from "vitest"
 
 import { createTTSEffectHandler } from "."
 
-// ═══════════════════════════════════════════════════════════════════════════
-// FIXTURES
-// ═══════════════════════════════════════════════════════════════════════════
-
 function makeMessage(id: string, content = `content-${id}`): Message {
   return {
     id,
@@ -189,10 +185,6 @@ function setup(): Setup {
   return Object.assign(session, { handler, callbacks })
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// SERIAL QUEUE AND DEDUP
-// ═══════════════════════════════════════════════════════════════════════════
-
 describe("TTSEffectHandler - serial queue", () => {
   it("speaks messages one at a time, in order", async () => {
     const t = setup()
@@ -239,10 +231,6 @@ describe("TTSEffectHandler - auto-play dedup", () => {
     expect(t.callbacks.onMessageComplete).toHaveBeenCalledWith("m1")
   })
 })
-
-// ═══════════════════════════════════════════════════════════════════════════
-// A LINE ENDS ONCE
-// ═══════════════════════════════════════════════════════════════════════════
 
 describe("TTSEffectHandler - a line ends exactly once", () => {
   it("ends a heard line once, and a later stop changes nothing", async () => {
@@ -294,10 +282,6 @@ describe("TTSEffectHandler - a line ends exactly once", () => {
     expect(t.callbacks.onError).not.toHaveBeenCalled()
   })
 })
-
-// ═══════════════════════════════════════════════════════════════════════════
-// REPLAY
-// ═══════════════════════════════════════════════════════════════════════════
 
 describe("TTSEffectHandler - a replay", () => {
   it("replaces the line in hand and the queue, and plays at once", async () => {
@@ -354,10 +338,6 @@ describe("TTSEffectHandler - a replay", () => {
     expect(t.handler.isSpeaking()).toBe(false)
   })
 })
-
-// ═══════════════════════════════════════════════════════════════════════════
-// MUTE
-// ═══════════════════════════════════════════════════════════════════════════
 
 describe("TTSEffectHandler - a replay that is not heard", () => {
   it("gives back the lesson line it displaced, even after two presses in one task", async () => {
@@ -517,10 +497,6 @@ describe("TTSEffectHandler - a lesson line muted waits for unmute", () => {
   })
 })
 
-// ═══════════════════════════════════════════════════════════════════════════
-// ANOTHER APPLET ON THE PAGE
-// ═══════════════════════════════════════════════════════════════════════════
-
 describe("TTSEffectHandler - another applet on the page speaks", () => {
   it("lets a tapped word interrupt a lesson line, which plays again after it and ends once", async () => {
     const t = setup()
@@ -560,10 +536,6 @@ describe("TTSEffectHandler - another applet on the page speaks", () => {
     expect(t.callbacks.onSpeechEnd).toHaveBeenCalledWith("m1")
   })
 })
-
-// ═══════════════════════════════════════════════════════════════════════════
-// STOP AND LIFECYCLE
-// ═══════════════════════════════════════════════════════════════════════════
 
 describe("TTSEffectHandler - handleStopAudio", () => {
   it("stops the line playing, ends it, and drops the rest of the queue", async () => {
@@ -614,10 +586,6 @@ describe("TTSEffectHandler - lifecycle", () => {
     expect(t.said).toEqual(["content-m1", "content-m2", "content-m1"])
   })
 })
-
-// ═══════════════════════════════════════════════════════════════════════════
-// EVERY INTERLEAVING
-// ═══════════════════════════════════════════════════════════════════════════
 
 const REPLAY_TEXT = "replayed by the learner"
 const WORD_TEXT = "a word another applet says"

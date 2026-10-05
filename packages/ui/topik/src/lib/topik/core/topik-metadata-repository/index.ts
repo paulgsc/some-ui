@@ -1,9 +1,4 @@
-/**
- * Topik Metadata Repository
- *
- * Fetches lightweight metadata for topik selection
- * Separate from full batch loading
- */
+/** Lightweight metadata for topik selection, apart from batch loading. */
 
 import type {
   ITopikMetadataRepository,
@@ -11,9 +6,7 @@ import type {
 } from "@topik/lib/topik"
 import { TopikManifestSchema } from "@topik/lib/topik"
 
-// ═══════════════════════════════════════════════════════════════════════════
 // REPOSITORY IMPLEMENTATION
-// ═══════════════════════════════════════════════════════════════════════════
 
 export class TopikMetadataRepository implements ITopikMetadataRepository {
   constructor(
@@ -27,9 +20,7 @@ export class TopikMetadataRepository implements ITopikMetadataRepository {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
 // FACTORY
-// ═══════════════════════════════════════════════════════════════════════════
 
 /**
  * Create a repository instance. `source` is either a manifest URL (plain

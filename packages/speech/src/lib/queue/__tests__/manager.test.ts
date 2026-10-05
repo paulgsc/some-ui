@@ -72,10 +72,8 @@ describe("SpeechQueueManager - cancellation", () => {
     manager.cancel("chat")
     await flushAsync()
 
-    // The regression: the old loop only checked `signal.aborted` before and
-    // after its await, so a cancel mid-utterance did nothing until the
-    // audio ended on its own - and if it never did, the queue parked here
-    // forever holding `currentItem`.
+    // At once, not when the audio ends on its own: if it never did, the
+    // queue would park here forever holding `currentItem`.
     expect(inFlight.state).toBe("rejected")
     expect(isAbortError(inFlight.error)).toBe(true)
 
@@ -198,10 +196,8 @@ describe("SpeechQueueManager - pause", () => {
     manager.pause()
     await flushAsync()
 
-    // The bug this pins: `PAUSE` aborts the current item, the abort lands
-    // as `ITEM_CANCELLED`, and that used to reset `status` to "speaking"
-    // whenever anything was still queued - so the queue carried on talking
-    // through a pause the caller had explicitly asked for.
+    // `PAUSE` aborts the current item and the abort lands as
+    // `ITEM_CANCELLED`, which must not lift the pause (see reducer.ts).
     expect(manager.getStore().get().status).toBe("paused")
     expect(adapter.calls).toHaveLength(1)
 

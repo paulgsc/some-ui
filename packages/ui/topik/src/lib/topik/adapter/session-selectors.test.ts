@@ -2,6 +2,7 @@ import type {
   ConversationBatch,
   Message,
   Question,
+  SessionCursor,
   SessionState,
 } from "@topik/lib/topik"
 import { describe, expect, it } from "vitest"
@@ -17,10 +18,6 @@ import {
   getVisibleMessages,
   selectors,
 } from "./session-selectors"
-
-// ═══════════════════════════════════════════════════════════════════════════
-// FIXTURES
-// ═══════════════════════════════════════════════════════════════════════════
 
 function makeMessage(id: string): Message {
   return {
@@ -53,7 +50,10 @@ function makeBatch(
   return { id, messages, questions }
 }
 
-function baseState(overrides: Partial<SessionState> = {}): SessionState {
+function baseState(
+  overrides: Partial<SessionState> = {},
+  dataRef: Partial<SessionState["dataRef"]> = {}
+): SessionState {
   return {
     phase: "selecting",
     dataRef: {
@@ -64,6 +64,7 @@ function baseState(overrides: Partial<SessionState> = {}): SessionState {
       error: null,
       batchCount: 0,
       currentBatchMeta: null,
+      ...dataRef,
     },
     active: null,
     feedback: null,
@@ -75,88 +76,67 @@ function baseState(overrides: Partial<SessionState> = {}): SessionState {
 
 function activeState(
   batches: Array<ConversationBatch> | null,
-  cursor: { batch: number; message: number; question: number }
+  cursor: Partial<SessionCursor> = {}
 ): SessionState {
-  return baseState({
-    phase: "active",
-    dataRef: {
-      catalog: { status: "idle", data: null, error: null },
+  return baseState(
+    {
+      phase: "active",
+      active: {
+        mode: "chat",
+        playState: "running",
+        quizStage: "question",
+        cursor: { batch: 0, message: 0, question: 0, ...cursor },
+        score: 0,
+        timeRemaining: 0,
+      },
+    },
+    {
       topikKey: "k1",
       batches,
       status: batches ? "ready" : "empty",
-      error: null,
       batchCount: batches?.length ?? 0,
-      currentBatchMeta: null,
-    },
-    active: {
-      mode: "chat",
-      playState: "running",
-      quizStage: "question",
-      cursor,
-      score: 0,
-      timeRemaining: 0,
-    },
-  })
+    }
+  )
 }
-
-// ═══════════════════════════════════════════════════════════════════════════
-// getCurrentBatch - precondition-based null guards
-// ═══════════════════════════════════════════════════════════════════════════
 
 describe("getCurrentBatch", () => {
   it("returns null when there is no active session", () => {
     const batch = makeBatch(0, [], [])
-    const state = baseState({
-      dataRef: {
-        catalog: { status: "idle", data: null, error: null },
-        topikKey: "k1",
-        batches: [batch],
-        status: "ready",
-        error: null,
-        batchCount: 1,
-        currentBatchMeta: null,
-      },
-      active: null,
-    })
+    const state = baseState(
+      { active: null },
+      { topikKey: "k1", batches: [batch], status: "ready", batchCount: 1 }
+    )
     expect(getCurrentBatch(state)).toBeNull()
   })
 
   it("returns null when batches have not been hydrated", () => {
-    const state = activeState(null, { batch: 0, message: 0, question: 0 })
+    const state = activeState(null)
     expect(getCurrentBatch(state)).toBeNull()
   })
 
   it("returns null when the cursor's batch index is out of range", () => {
     const batch = makeBatch(0, [], [])
-    const state = activeState([batch], { batch: 5, message: 0, question: 0 })
+    const state = activeState([batch], { batch: 5 })
     expect(getCurrentBatch(state)).toBeNull()
   })
 
   it("returns the batch at the cursor's batch index", () => {
     const batch0 = makeBatch(0, [], [])
     const batch1 = makeBatch(1, [], [])
-    const state = activeState([batch0, batch1], {
-      batch: 1,
-      message: 0,
-      question: 0,
-    })
+    const state = activeState([batch0, batch1], { batch: 1 })
     expect(getCurrentBatch(state)).toBe(batch1)
   })
 })
 
-// ═══════════════════════════════════════════════════════════════════════════
-// getCurrentMessage / getCurrentQuestion - compound null guards
-// ═══════════════════════════════════════════════════════════════════════════
-
 describe("getCurrentMessage", () => {
   it("returns null when there is no current batch", () => {
-    const state = activeState(null, { batch: 0, message: 0, question: 0 })
+    const state = activeState(null)
     expect(getCurrentMessage(state)).toBeNull()
   })
 
   it("returns null when the cursor's message index is out of range", () => {
     const batch = makeBatch(0, [makeMessage("m0")], [])
-    const state = activeState([batch], { batch: 0, message: 3, question: 0 })
+    const state = activeState([batch], { message: 3 })
     expect(getCurrentMessage(state)).toBeNull()
   })
 
@@ -164,20 +144,20 @@ describe("getCurrentMessage", () => {
     const m0 = makeMessage("m0")
     const m1 = makeMessage("m1")
     const batch = makeBatch(0, [m0, m1], [])
-    const state = activeState([batch], { batch: 0, message: 1, question: 0 })
+    const state = activeState([batch], { message: 1 })
     expect(getCurrentMessage(state)).toBe(m1)
   })
 })
 
 describe("getCurrentQuestion", () => {
   it("returns null when there is no current batch", () => {
-    const state = activeState(null, { batch: 0, message: 0, question: 0 })
+    const state = activeState(null)
     expect(getCurrentQuestion(state)).toBeNull()
   })
 
   it("returns null when the cursor's question index is out of range", () => {
     const batch = makeBatch(0, [], [makeQuestion("q0")])
-    const state = activeState([batch], { batch: 0, message: 0, question: 3 })
+    const state = activeState([batch], { question: 3 })
     expect(getCurrentQuestion(state)).toBeNull()
   })
 
@@ -185,43 +165,35 @@ describe("getCurrentQuestion", () => {
     const q0 = makeQuestion("q0")
     const q1 = makeQuestion("q1")
     const batch = makeBatch(0, [], [q0, q1])
-    const state = activeState([batch], { batch: 0, message: 0, question: 1 })
+    const state = activeState([batch], { question: 1 })
     expect(getCurrentQuestion(state)).toBe(q1)
   })
 })
 
-// ═══════════════════════════════════════════════════════════════════════════
-// getVisibleMessages - cumulative reveal up to the cursor
-// ═══════════════════════════════════════════════════════════════════════════
-
 describe("getVisibleMessages", () => {
   it("returns an empty array when there is no current batch", () => {
-    const state = activeState(null, { batch: 0, message: 0, question: 0 })
+    const state = activeState(null)
     expect(getVisibleMessages(state)).toEqual([])
   })
 
   it("reveals messages from the start up through the cursor, inclusive", () => {
     const messages = [makeMessage("m0"), makeMessage("m1"), makeMessage("m2")]
     const batch = makeBatch(0, messages, [])
-    const state = activeState([batch], { batch: 0, message: 1, question: 0 })
+    const state = activeState([batch], { message: 1 })
     expect(getVisibleMessages(state)).toEqual([messages[0], messages[1]])
   })
 
   it("caps at the full message list when the cursor is past the end", () => {
     const messages = [makeMessage("m0"), makeMessage("m1")]
     const batch = makeBatch(0, messages, [])
-    const state = activeState([batch], { batch: 0, message: 99, question: 0 })
+    const state = activeState([batch], { message: 99 })
     expect(getVisibleMessages(state)).toEqual(messages)
   })
 })
 
-// ═══════════════════════════════════════════════════════════════════════════
-// getAllMessages / getAllQuestions - ignore cursor entirely
-// ═══════════════════════════════════════════════════════════════════════════
-
 describe("getAllMessages / getAllQuestions", () => {
   it("return empty arrays when there is no current batch", () => {
-    const state = activeState(null, { batch: 0, message: 0, question: 0 })
+    const state = activeState(null)
     expect(getAllMessages(state)).toEqual([])
     expect(getAllQuestions(state)).toEqual([])
   })
@@ -230,15 +202,11 @@ describe("getAllMessages / getAllQuestions", () => {
     const messages = [makeMessage("m0"), makeMessage("m1")]
     const questions = [makeQuestion("q0")]
     const batch = makeBatch(0, messages, questions)
-    const state = activeState([batch], { batch: 0, message: 0, question: 0 })
+    const state = activeState([batch])
     expect(getAllMessages(state)).toBe(messages)
     expect(getAllQuestions(state)).toBe(questions)
   })
 })
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Catalog accessors
-// ═══════════════════════════════════════════════════════════════════════════
 
 describe("getAvailableTopiks / getTopikMetadata", () => {
   it("returns an empty array / undefined before the catalog loads", () => {
@@ -256,26 +224,15 @@ describe("getAvailableTopiks / getTopikMetadata", () => {
       totalQuestions: 1,
       totalMessages: 1,
     }
-    const state = baseState({
-      dataRef: {
-        catalog: { status: "ready", data: [t1], error: null },
-        topikKey: null,
-        batches: null,
-        status: "empty",
-        error: null,
-        batchCount: 0,
-        currentBatchMeta: null,
-      },
-    })
+    const state = baseState(
+      {},
+      { catalog: { status: "ready", data: [t1], error: null } }
+    )
     expect(getAvailableTopiks(state)).toEqual([t1])
     expect(getTopikMetadata(state, "t1")).toEqual(t1)
     expect(getTopikMetadata(state, "missing")).toBeUndefined()
   })
 })
-
-// ═══════════════════════════════════════════════════════════════════════════
-// selectors - mode/playState precondition guards
-// ═══════════════════════════════════════════════════════════════════════════
 
 describe("selectors - mode and play-state guards", () => {
   it("isActive/isInChat/isInQuiz/isChatPlaying/isChatPaused all false before hydration", () => {
@@ -289,7 +246,7 @@ describe("selectors - mode and play-state guards", () => {
 
   it("reflects chat mode + running playState once active", () => {
     const batch = makeBatch(0, [], [])
-    const state = activeState([batch], { batch: 0, message: 0, question: 0 })
+    const state = activeState([batch])
     expect(selectors.isActive(state)).toBe(true)
     expect(selectors.isInChat(state)).toBe(true)
     expect(selectors.isInQuiz(state)).toBe(false)
@@ -299,7 +256,7 @@ describe("selectors - mode and play-state guards", () => {
 
   it("isChatPaused flips once playState is paused, without touching quiz selectors", () => {
     const batch = makeBatch(0, [], [])
-    const state = activeState([batch], { batch: 0, message: 0, question: 0 })
+    const state = activeState([batch])
     const paused: SessionState = {
       ...state,
       active: { ...state.active!, playState: "paused" },

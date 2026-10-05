@@ -31,13 +31,26 @@ const VOICES: ReadonlyArray<NativeVoice> = [
   { id: "ko-kr-x-kod-local", name: "Korean", language: "korean", local: true },
 ]
 
+/** A fake engine, and a Korean adapter over it. */
+function setup(
+  engine: Parameters<typeof createFakeNativeEngine>[0] = {},
+  options: Partial<Parameters<typeof createNativeSpeechAdapter>[0]> = {}
+): {
+  fake: ReturnType<typeof createFakeNativeEngine>
+  adapter: ReturnType<typeof createNativeSpeechAdapter>
+} {
+  const fake = createFakeNativeEngine(engine)
+  const adapter = createNativeSpeechAdapter({
+    engine: fake.engine,
+    language: "korean",
+    ...options,
+  })
+  return { fake, adapter }
+}
+
 describe("native adapter", () => {
   it("hands the engine the text, language, rate and volume", async () => {
-    const fake = createFakeNativeEngine()
-    const adapter = createNativeSpeechAdapter({
-      engine: fake.engine,
-      language: "korean",
-    })
+    const { fake, adapter } = setup()
     adapter.setVolume(0.5)
 
     const settlement = track(adapter.speak("안녕하세요", { playbackRate: 0.8 }))
@@ -57,14 +70,12 @@ describe("native adapter", () => {
   })
 
   it("refuses a language with no voice data, says so, and speaks once it is installed", async () => {
-    const fake = createFakeNativeEngine({ installed: ["english"] })
     const onMissingVoice = vi.fn()
     const onError = vi.fn()
-    const adapter = createNativeSpeechAdapter({
-      engine: fake.engine,
-      language: "korean",
-      onMissingVoice,
-    })
+    const { fake, adapter } = setup(
+      { installed: ["english"] },
+      { onMissingVoice }
+    )
 
     const refused = track(adapter.speak("안녕하세요", { onError }))
     await flushAsync()
@@ -88,13 +99,8 @@ describe("native adapter", () => {
   })
 
   it("does not report a missing voice for an utterance nobody is waiting on", async () => {
-    const fake = createFakeNativeEngine({ installed: [] })
     const onMissingVoice = vi.fn()
-    const adapter = createNativeSpeechAdapter({
-      engine: fake.engine,
-      language: "korean",
-      onMissingVoice,
-    })
+    const { adapter } = setup({ installed: [] }, { onMissingVoice })
 
     const abandoned = track(adapter.speak("안녕하세요"))
     adapter.stop()
@@ -105,11 +111,7 @@ describe("native adapter", () => {
   })
 
   it("rejects the displaced utterance even though the engine never settles it", async () => {
-    const fake = createFakeNativeEngine()
-    const adapter = createNativeSpeechAdapter({
-      engine: fake.engine,
-      language: "korean",
-    })
+    const { fake, adapter } = setup()
 
     const displaced = track(adapter.speak("하나"))
     await flushAsync()
@@ -124,11 +126,7 @@ describe("native adapter", () => {
   })
 
   it("does not let a displaced caller's late abort stop its replacement", async () => {
-    const fake = createFakeNativeEngine()
-    const adapter = createNativeSpeechAdapter({
-      engine: fake.engine,
-      language: "korean",
-    })
+    const { fake, adapter } = setup()
     const controller = new AbortController()
 
     track(adapter.speak("하나", { signal: controller.signal }))
@@ -145,11 +143,7 @@ describe("native adapter", () => {
   })
 
   it("does not let a stopped caller's late abort stop the next line", async () => {
-    const fake = createFakeNativeEngine()
-    const adapter = createNativeSpeechAdapter({
-      engine: fake.engine,
-      language: "korean",
-    })
+    const { fake, adapter } = setup()
     const controller = new AbortController()
 
     track(adapter.speak("하나", { signal: controller.signal }))
@@ -167,12 +161,10 @@ describe("native adapter", () => {
   })
 
   it("announces when the phone's voices and its Korean probe answer", async () => {
-    const fake = createFakeNativeEngine({ voices: VOICES, installed: [] })
-    const adapter = createNativeSpeechAdapter({
-      engine: fake.engine,
-      language: "korean",
-      voiceId: "ko-kr-x-kod-local",
-    })
+    const { fake, adapter } = setup(
+      { voices: VOICES, installed: [] },
+      { voiceId: "ko-kr-x-kod-local" }
+    )
     const listener = vi.fn()
     const unsubscribe = adapter.subscribe(listener)
 
@@ -202,13 +194,11 @@ describe("native adapter", () => {
   })
 
   it("probes again when the engine fails a line in a language it had", async () => {
-    const fake = createFakeNativeEngine({ installed: ["korean"] })
     const onMissingVoice = vi.fn()
-    const adapter = createNativeSpeechAdapter({
-      engine: fake.engine,
-      language: "korean",
-      onMissingVoice,
-    })
+    const { fake, adapter } = setup(
+      { installed: ["korean"] },
+      { onMissingVoice }
+    )
     await flushAsync()
     expect(adapter.describe("korean").availability).toBe("available")
 
@@ -256,11 +246,7 @@ describe("native adapter", () => {
   })
 
   it("reports an engine failure as that failure, not a cancellation", async () => {
-    const fake = createFakeNativeEngine()
-    const adapter = createNativeSpeechAdapter({
-      engine: fake.engine,
-      language: "korean",
-    })
+    const { fake, adapter } = setup()
 
     const settlement = track(adapter.speak("안녕하세요"))
     await flushAsync()
@@ -285,12 +271,10 @@ describe("native adapter", () => {
   })
 
   it("speaks every line in its language in the chosen voice", async () => {
-    const fake = createFakeNativeEngine({ voices: VOICES })
-    const adapter = createNativeSpeechAdapter({
-      engine: fake.engine,
-      language: "korean",
-      voiceId: "ko-kr-x-kod-local",
-    })
+    const { fake, adapter } = setup(
+      { voices: VOICES },
+      { voiceId: "ko-kr-x-kod-local" }
+    )
     await flushAsync()
 
     void adapter.speak("하나").catch(() => undefined)
@@ -315,12 +299,10 @@ describe("native adapter", () => {
   })
 
   it("says who speaks: the chosen voice by name, and whether Korean is installed", async () => {
-    const fake = createFakeNativeEngine({ voices: VOICES, installed: [] })
-    const adapter = createNativeSpeechAdapter({
-      engine: fake.engine,
-      language: "korean",
-      voiceId: "ko-kr-x-kod-local",
-    })
+    const { fake, adapter } = setup(
+      { voices: VOICES, installed: [] },
+      { voiceId: "ko-kr-x-kod-local" }
+    )
     await flushAsync()
 
     expect(adapter.describe("korean")).toEqual({
@@ -363,12 +345,10 @@ describe("native adapter", () => {
   })
 
   it("lets the session's sample name a voice, or the engine's default over the person's choice", async () => {
-    const fake = createFakeNativeEngine({ voices: VOICES })
-    const adapter = createNativeSpeechAdapter({
-      engine: fake.engine,
-      language: "korean",
-      voiceId: "ko-kr-x-kob-local",
-    })
+    const { fake, adapter } = setup(
+      { voices: VOICES },
+      { voiceId: "ko-kr-x-kob-local" }
+    )
     await flushAsync()
 
     void adapter
@@ -390,11 +370,7 @@ describe("native adapter", () => {
   })
 
   it("asks again on return to the app, so a voice installed meanwhile is seen without a line", async () => {
-    const fake = createFakeNativeEngine({ installed: [] })
-    const adapter = createNativeSpeechAdapter({
-      engine: fake.engine,
-      language: "korean",
-    })
+    const { fake, adapter } = setup({ installed: [] })
     await flushAsync()
     expect(adapter.describe("korean").availability).toBe("missing")
 
@@ -409,12 +385,10 @@ describe("native adapter", () => {
   })
 
   it("leaves the voice to the engine when the chosen one speaks another language", async () => {
-    const fake = createFakeNativeEngine({ voices: VOICES })
-    const adapter = createNativeSpeechAdapter({
-      engine: fake.engine,
-      language: "korean",
-      voiceId: "en-us-x-iol-local",
-    })
+    const { fake, adapter } = setup(
+      { voices: VOICES },
+      { voiceId: "en-us-x-iol-local" }
+    )
     await flushAsync()
 
     void adapter.speak("안녕하세요").catch(() => undefined)
@@ -458,11 +432,7 @@ describe("native adapter - every interleaving of up to five events", () => {
   async function runInterleaving(
     events: ReadonlyArray<Event>
   ): Promise<string | null> {
-    const fake = createFakeNativeEngine()
-    const adapter = createNativeSpeechAdapter({
-      engine: fake.engine,
-      language: "korean",
-    })
+    const { fake, adapter } = setup()
     const callers: Array<ReturnType<typeof track>> = []
     let a: { controller: AbortController; caller: ReturnType<typeof track> } = {
       controller: new AbortController(),

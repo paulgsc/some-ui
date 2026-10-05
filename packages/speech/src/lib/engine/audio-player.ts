@@ -4,14 +4,10 @@
  * Web Audio playback of already-fetched audio, as a plain object rather
  * than a hook.
  *
- * It used to be `useAudioSpeech`, and being a hook was the root of the
- * session-poisoning bug: the AudioContext, the source node and the
- * "previous speech" promise chain all lived in refs owned by whichever
- * component happened to mount first. When that component unmounted, the
- * refs went with it while the promises awaiting them did not, and the
- * global speech queue kept a live reference to the dead hook. A player with
- * an explicit `dispose()` has one owner and one teardown, and its lifetime
- * is a decision rather than an accident.
+ * Not a hook: as refs owned by whichever component mounted first, the
+ * AudioContext and its promise chain outlived that component inside the
+ * global queue. A player with an explicit `dispose()` has one owner and one
+ * teardown.
  *
  * Settlement contract (enforced by `audio-player.test.ts`):
  * - `play()` resolves when the buffer has finished playing.
@@ -126,9 +122,8 @@ export function createAudioPlayer(
 
   /**
    * Serializes overlapping `play()` calls. Derived from each entry's own
-   * promise, so a flush settles the entry *and* unblocks the chain - the
-   * previous implementation reassigned this to `Promise.resolve()` on stop
-   * and stranded whatever was waiting on the old one.
+   * promise, so a flush settles the entry *and* unblocks the chain; resetting
+   * it on stop would strand whatever was waiting on the old one.
    */
   let tail: Promise<void> = Promise.resolve()
 

@@ -8,13 +8,9 @@ import type {
 /**
  * Plain-language summary of one activity's config, e.g. "Intermediate • 15 min".
  *
- * Lives with the catalogue rather than with the composer that first needed it
- * (#754/#756): it is a function of an `ActivityDefinition` and nothing else,
- * and three surfaces read it - the composer's review step, the player's
- * completion summary, and the sessions list. Two of those were reaching into
- * `components/composer/utils` to get it, which is a feature folder importing
- * a sibling's internals; the fix is for the shared thing to live somewhere
- * shared.
+ * Lives with the catalogue: it is a function of an `ActivityDefinition` alone,
+ * and three surfaces read it (the composer's review step, the player's
+ * completion summary, the sessions list).
  */
 export function summarizeConfig(
   activity: ActivityDefinition,

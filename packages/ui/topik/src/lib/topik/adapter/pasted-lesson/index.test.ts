@@ -72,7 +72,7 @@ describe("createPastedLessonStore", () => {
   })
 })
 
-describe("a replacement storage refuses (Codex, #1555)", () => {
+describe("a replacement storage refuses", () => {
   it("empties the slot rather than leave the lesson it replaced", () => {
     const storage = memoryStorage()
     const store = createPastedLessonStore(storage)
@@ -109,7 +109,7 @@ describe("a replacement storage refuses (Codex, #1555)", () => {
 })
 
 describe("purgeRetiredLessons", () => {
-  it("deletes what the retired store kept, and nothing else (Codex, #1555)", () => {
+  it("deletes what the retired store kept, and nothing else", () => {
     const storage = memoryStorage()
     storage.setItem(RETIRED_LESSONS_KEY, "[]")
     storage.setItem(PASTED_LESSON_KEY, "kept")

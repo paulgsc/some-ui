@@ -64,8 +64,8 @@ describe("keptLessonOf", () => {
 
 describe("keeping a replayed lesson again", () => {
   it("finds a replayed copy kept beside another, rather than keeping it again", async () => {
-    // Confirming review, #1600: a replay of `first-dinner-2` came back under
-    // `local:first-dinner-2` and was kept a third time.
+    // A replay of `first-dinner-2` comes back under `local:first-dinner-2`;
+    // it must not be kept a third time.
     const held = new Map<string, string>()
     const shelf: ShelfPort = {
       list: () =>

@@ -22,18 +22,10 @@ import {
   createPastedLessonStore,
   serializePastedLesson,
 } from "@topik/lib/topik/adapter/pasted-lesson"
-import type { StorageLike } from "@topik/lib/topik/adapter/resume-point"
 import { createResumeStore } from "@topik/lib/topik/adapter/resume-point"
 import { createSurveyStore } from "@topik/lib/topik/adapter/survey-store"
+import { memoryStorage } from "@topik/testing/memory-storage"
 import { afterEach, describe, expect, it, vi } from "vitest"
-
-const memoryStorage = (): StorageLike => {
-  const map = new Map<string, string>()
-  return {
-    getItem: (key: string): string | null => map.get(key) ?? null,
-    setItem: (key: string, value: string): void => void map.set(key, value),
-  }
-}
 
 const DINNER: TopikMetadata = {
   key: "local:first-dinner",

@@ -1,11 +1,6 @@
 /**
- * Session isolation: the bug report, written as tests.
- *
- * "Prior state survives to poison a new session" had two halves. The queue
- * wedged on promises that never settled (covered in `manager.test.ts`), and
- * the singleton could only ever be initialized once - so the session that
- * replaced it inherited the wedge. These tests are about the second half:
- * whatever a session was holding when it ended, the next one starts clean.
+ * Session isolation: whatever a session was holding when it ended, the next
+ * one starts clean. (Promises that never settle are `manager.test.ts`'s.)
  */
 
 import { isAbortError } from "@speech/lib/promise/abort"
@@ -84,9 +79,8 @@ describe("speech queue singleton", () => {
     manager.speak("chat", "hello")
     await flushAsync()
 
-    // The old singleton handed back the *first* manager on every later
-    // call, so a page that switched TTS provider kept talking through the
-    // provider it had just torn down.
+    // A page that switches TTS provider must not keep talking through the
+    // provider it just tore down.
     expect(secondAdapter.calls).toHaveLength(1)
     expect(firstAdapter.calls).toHaveLength(0)
   })

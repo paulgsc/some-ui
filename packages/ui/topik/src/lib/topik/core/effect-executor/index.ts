@@ -1,9 +1,4 @@
-/**
- * Effect Executor - Runtime Effect Handler
- *
- * Executes side effects emitted by the FSM reducer.
- * Bridges FSM (pure state transitions) with impure runtime (I/O, timers, queries).
- */
+/** Runs the effects the FSM reducer emits: I/O, timers, queries, speech. */
 
 import type { Speaker } from "@some-ui/speech"
 import type { Message } from "@topik/lib/topik"
@@ -17,9 +12,7 @@ import type {
 import type { TTSEffectHandler } from "@topik/lib/topik/core/tts-effect-handler"
 import { createTTSEffectHandler } from "@topik/lib/topik/core/tts-effect-handler"
 
-// ═══════════════════════════════════════════════════════════════════════════
 // EXECUTOR CONFIGURATION
-// ═══════════════════════════════════════════════════════════════════════════
 
 export type EffectExecutorConfig = {
   machine: ISessionMachine
@@ -45,9 +38,7 @@ export type EffectExecutorConfig = {
   onError?: (error: Error, effect: SessionEffect) => void
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
 // EFFECT EXECUTOR
-// ═══════════════════════════════════════════════════════════════════════════
 
 export class EffectExecutor {
   // Timer state
@@ -60,7 +51,6 @@ export class EffectExecutor {
   private destroyed = false
 
   constructor(private readonly config: EffectExecutorConfig) {
-    // Initialize TTS handler if enabled and speaker provided
     if (config.enableTTS !== false && config.speaker && config.componentId) {
       this.ttsHandler = createTTSEffectHandler({
         speaker: config.speaker,
@@ -72,7 +62,6 @@ export class EffectExecutor {
         },
 
         onSpeechEnd: (messageId) => {
-          // Dispatch ADVANCE_MESSAGE event to FSM
           const effects = this.config.machine.dispatch(actions.advanceMessage())
           this.execute(effects)
           if (this.config.onSpeechEnd) this.config.onSpeechEnd(messageId)
@@ -90,13 +79,8 @@ export class EffectExecutor {
     }
   }
 
-  // ═════════════════════════════════════════════════════════════════════════
   // PUBLIC API
-  // ═════════════════════════════════════════════════════════════════════════
 
-  /**
-   * Execute array of effects
-   */
   execute(effects: Array<SessionEffect>): void {
     if (this.destroyed) {
       // eslint-disable-next-line no-console
@@ -109,9 +93,6 @@ export class EffectExecutor {
     }
   }
 
-  /**
-   * Manual speak (for UI controls)
-   */
   async speakMessage(message: Message): Promise<void> {
     if (!this.ttsHandler) {
       // eslint-disable-next-line no-console
@@ -121,36 +102,22 @@ export class EffectExecutor {
     await this.ttsHandler.speakManually(message)
   }
 
-  /**
-   * Check if currently speaking
-   */
   isSpeaking(): boolean {
     return this.ttsHandler?.isSpeaking() ?? false
   }
 
-  /**
-   * Get current speaking message ID
-   */
   getCurrentSpeakingId(): string | null {
     return this.ttsHandler?.getCurrentMessageId() ?? null
   }
 
-  /**
-   * Destroy executor and cleanup all resources
-   */
   destroy(): void {
     this.destroyed = true
     this._stopTimer()
     if (this.ttsHandler) this.ttsHandler.destroy()
   }
 
-  // ═════════════════════════════════════════════════════════════════════════
   // EFFECT DISPATCH
-  // ═════════════════════════════════════════════════════════════════════════
 
-  /**
-   * Execute single effect with error handling
-   */
   private _executeOne(effect: SessionEffect): void {
     try {
       switch (effect.type) {
@@ -219,14 +186,11 @@ export class EffectExecutor {
     }
   }
 
-  // ═════════════════════════════════════════════════════════════════════════
-  // QUERY EFFECTS - Model 1: Await fetch, dispatch result
-  // ═════════════════════════════════════════════════════════════════════════
+  // QUERY EFFECTS: await the fetch, dispatch the result
   private async _triggerCatalogQuery(): Promise<void> {
     let effects: Array<SessionEffect> // trigger any effects
     const { queryBridge, machine } = this.config
 
-    // Dispatch loading immediately
     effects = machine.dispatch({ type: "CATALOG_LOADING" })
     this.execute(effects)
 
@@ -249,7 +213,6 @@ export class EffectExecutor {
     let effects: Array<SessionEffect> // trigger any effects
     const { queryBridge, machine } = this.config
 
-    // Dispatch loading immediately
     effects = machine.dispatch({ type: "HYDRATION_STARTED", key })
     this.execute(effects)
 
@@ -274,9 +237,7 @@ export class EffectExecutor {
     }
   }
 
-  // ═════════════════════════════════════════════════════════════════════════
   // TIMER EFFECTS
-  // ═════════════════════════════════════════════════════════════════════════
 
   private _startTimer(): void {
     if (this.timerHandle) {
@@ -298,9 +259,7 @@ export class EffectExecutor {
     }
   }
 
-  // ═════════════════════════════════════════════════════════════════════════
   // TTS EFFECTS
-  // ═════════════════════════════════════════════════════════════════════════
 
   private _playAudio(): void {
     if (!this.ttsHandler) {
@@ -326,9 +285,7 @@ export class EffectExecutor {
     this.ttsHandler.handleStopAudio()
   }
 
-  // ═════════════════════════════════════════════════════════════════════════
   // NOTIFICATION EFFECTS
-  // ═════════════════════════════════════════════════════════════════════════
 
   private _notifyBatchComplete(batchIndex: number): void {
     if (this.config.onBatchComplete) this.config.onBatchComplete(batchIndex)
@@ -343,9 +300,7 @@ export class EffectExecutor {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
 // FACTORY
-// ═══════════════════════════════════════════════════════════════════════════
 
 export function createEffectExecutor(
   config: EffectExecutorConfig

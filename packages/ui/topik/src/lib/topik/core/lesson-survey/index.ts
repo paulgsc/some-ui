@@ -129,8 +129,8 @@ export function pinMisses(
 /**
  * The pinned misses that still describe the lesson as it is now. A probe
  * revised under an unchanged id was not the one missed, so its miss is
- * dropped rather than offered as blocking and carried into the next prompt
- * (Codex, #1554). An unpinned id, written before misses were pinned, cannot
+ * dropped rather than offered as blocking and carried into the next prompt.
+ * An unpinned id, written before misses were pinned, cannot
  * be checked and is dropped too.
  */
 export function unpinMisses(

@@ -28,9 +28,7 @@
 
 import { z } from "zod"
 
-// ═══════════════════════════════════════════════════════════════════════════
 // TYPES
-// ═══════════════════════════════════════════════════════════════════════════
 
 export const READ_ALOUD_LEVELS = [1, 2, 3] as const
 export type ReadAloudLevel = (typeof READ_ALOUD_LEVELS)[number]
@@ -110,9 +108,7 @@ export type ParsedDeck =
   | { ok: true; deck: ReadAloudDeck; findings: Array<ContentFinding> }
   | { ok: false; error: string }
 
-// ═══════════════════════════════════════════════════════════════════════════
 // SCHEMAS
-// ═══════════════════════════════════════════════════════════════════════════
 
 const ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const HANGUL = /^[가-힣]+$/
@@ -155,9 +151,7 @@ const summarise = (error: z.ZodError): string =>
     .map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`)
     .join("; ")
 
-// ═══════════════════════════════════════════════════════════════════════════
 // PARSE
-// ═══════════════════════════════════════════════════════════════════════════
 
 /**
  * Check an occurrence against the line it sits in and the words the deck

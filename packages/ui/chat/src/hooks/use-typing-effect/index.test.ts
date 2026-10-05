@@ -9,13 +9,20 @@ function advance(ms: number): void {
   })
 }
 
+/** Advances by each step's ms, checking what is shown after it. */
+function expectReveal(
+  result: { current: string },
+  steps: Array<[number, string]>
+): void {
+  for (const [ms, shown] of steps) {
+    advance(ms)
+    expect(result.current).toBe(shown)
+  }
+}
+
 beforeEach(() => {
   vi.useFakeTimers()
 })
-
-// ═══════════════════════════════════════════════════════════════════════════
-// reveals full content after content.length + 1 ticks
-// ═══════════════════════════════════════════════════════════════════════════
 
 describe("useTypingEffect - character reveal", () => {
   it("reveals one more character per tick and stops after content.length + 1 ticks", () => {
@@ -25,23 +32,17 @@ describe("useTypingEffect - character reveal", () => {
 
     expect(result.current).toBe("")
 
-    advance(20)
-    expect(result.current).toBe("") // tick 1: i=0 -> slice(0,0)
-    advance(20)
-    expect(result.current).toBe("a") // tick 2
-    advance(20)
-    expect(result.current).toBe("ab") // tick 3
-    advance(20)
-    expect(result.current).toBe("abc") // tick 4 (content.length + 1) - clears
-
-    advance(100)
-    expect(result.current).toBe("abc") // interval already cleared, no-op
+    // Tick 1 shows slice(0, 0); tick 4 (content.length + 1) clears the
+    // interval, so the last step is a no-op.
+    expectReveal(result, [
+      [20, ""],
+      [20, "a"],
+      [20, "ab"],
+      [20, "abc"],
+      [100, "abc"],
+    ])
   })
 })
-
-// ═══════════════════════════════════════════════════════════════════════════
-// restarts on content/speed change
-// ═══════════════════════════════════════════════════════════════════════════
 
 describe("useTypingEffect - restarts on prop change", () => {
   it("restarts the reveal from scratch when content changes mid-animation", () => {
@@ -58,14 +59,12 @@ describe("useTypingEffect - restarts on prop change", () => {
 
     // The effect's cleanup clears the old interval; the new one starts a
     // fresh reveal for "xyz" rather than continuing from the old index.
-    advance(20)
-    expect(result.current).toBe("")
-    advance(20)
-    expect(result.current).toBe("x")
-    advance(20)
-    expect(result.current).toBe("xy")
-    advance(20)
-    expect(result.current).toBe("xyz")
+    expectReveal(result, [
+      [20, ""],
+      [20, "x"],
+      [20, "xy"],
+      [20, "xyz"],
+    ])
   })
 
   it("restarts the interval cadence when speed changes", () => {

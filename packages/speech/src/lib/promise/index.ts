@@ -7,13 +7,9 @@
  * finish on its own, be cancelled by a higher-priority utterance, be torn
  * down when a session ends, or fail outright. Each of those has to settle
  * the promise the caller is holding - *exactly once, and before the thing
- * that caused it returns*. The bug class this module exists to make
- * impossible is the one that shipped previously: a `new Promise(async
- * (resolve) => ...)` executor that could only ever `resolve`, held in a ref
- * that a later `stop()` overwrote with a fresh `Promise.resolve()`. The
- * overwritten promise was never settled, its `await`ers never resumed, and
- * the queue behind it wedged - so state belonging to a finished session
- * stayed live and poisoned the next one.
+ * that caused it returns*. A promise that is overwritten instead of settled
+ * leaves its `await`ers waiting forever, wedges the queue behind it, and
+ * keeps a finished session's state alive into the next one.
  *
  * A `SpeechLedger` fixes that by construction. Every in-flight promise is
  * registered before it can be awaited and deregistered when it settles, so

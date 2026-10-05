@@ -4,10 +4,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { useChatMessages } from "."
 
-// ═══════════════════════════════════════════════════════════════════════════
-// FIXTURES
-// ═══════════════════════════════════════════════════════════════════════════
-
 function makeMessage(id: string): Message {
   return {
     id,
@@ -36,10 +32,6 @@ beforeEach(() => {
   vi.useFakeTimers()
 })
 
-// ═══════════════════════════════════════════════════════════════════════════
-// index cycling - wraps to 0 past chats.length
-// ═══════════════════════════════════════════════════════════════════════════
-
 describe("useChatMessages - index cycling", () => {
   it("advances one message per tick, then wraps back to index 0 past chats.length", () => {
     const { result } = renderHook(() =>
@@ -49,29 +41,20 @@ describe("useChatMessages - index cycling", () => {
     expect(result.current.currentIndex).toBe(0)
     expect(result.current.chats).toEqual([])
 
-    advance(1000)
-    expect(result.current.currentIndex).toBe(1)
-    expect(result.current.chats).toEqual([chats[0]])
-
-    advance(1000)
-    expect(result.current.currentIndex).toBe(2)
-    expect(result.current.chats).toEqual([chats[0], chats[1]])
-
-    // nextIndex (3) is not < chats.length (3) - wraps to 0, leaving the
-    // previous windowed slice stale since setMessages isn't called this tick.
-    advance(1000)
-    expect(result.current.currentIndex).toBe(0)
-    expect(result.current.chats).toEqual([chats[0], chats[1]])
-
-    advance(1000)
-    expect(result.current.currentIndex).toBe(1)
-    expect(result.current.chats).toEqual([chats[0]])
+    // Past chats.length the index wraps to 0, and the windowed slice is left
+    // stale since setMessages isn't called that tick.
+    for (const [index, shown] of [
+      [1, [chats[0]]],
+      [2, [chats[0], chats[1]]],
+      [0, [chats[0], chats[1]]],
+      [1, [chats[0]]],
+    ] as const) {
+      advance(1000)
+      expect(result.current.currentIndex).toBe(index)
+      expect(result.current.chats).toEqual(shown)
+    }
   })
 })
-
-// ═══════════════════════════════════════════════════════════════════════════
-// onPause / onResume - re-arming the interval
-// ═══════════════════════════════════════════════════════════════════════════
 
 describe("useChatMessages - onPause/onResume", () => {
   it("onPause stops the interval and onResume re-arms it", () => {

@@ -5,16 +5,8 @@ import {
 import type { StorageLike } from "@topik/lib/topik/adapter/resume-point"
 import { emptyRecord } from "@topik/lib/topik/read-aloud/records"
 import type { SetProgress } from "@topik/lib/topik/read-aloud/set-machine"
+import { memoryStorage } from "@topik/testing/memory-storage"
 import { describe, expect, it } from "vitest"
-
-const memoryStorage = (): StorageLike & { map: Map<string, string> } => {
-  const map = new Map<string, string>()
-  return {
-    map,
-    getItem: (key: string): string | null => map.get(key) ?? null,
-    setItem: (key: string, value: string): void => void map.set(key, value),
-  }
-}
 
 const refusing: StorageLike = {
   getItem: (): string | null => {

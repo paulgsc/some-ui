@@ -5,7 +5,7 @@ import {
   ReadAloudScreen,
 } from "@topik/components/topik/read-aloud/read-aloud-screen"
 import { createReadAloudStore } from "@topik/lib/topik/adapter/read-aloud-store"
-import type { StorageLike } from "@topik/lib/topik/adapter/resume-point"
+import { memoryStorage } from "@topik/testing/memory-storage"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 function fakeSpeech(): Speaker {
@@ -29,14 +29,6 @@ function fakeSpeech(): Speaker {
       voice: null,
       availability: "available",
     }),
-  }
-}
-
-const memoryStorage = (): StorageLike => {
-  const map = new Map<string, string>()
-  return {
-    getItem: (key: string): string | null => map.get(key) ?? null,
-    setItem: (key: string, value: string): void => void map.set(key, value),
   }
 }
 

@@ -67,13 +67,9 @@ export function useSession(
 
   const queryClient = useQueryClient()
 
-  // ══════════════════════════════════════════════════════
   // AUDIO TTS HOOK
-  // ══════════════════════════════════════════════════════
 
-  // ══════════════════════════════════════════════════════
   // MEMOIZED REPOSITORY LOADERS
-  // ══════════════════════════════════════════════════════
 
   const loadCatalog = useCallback(
     () => metadataRepository.loadCatalog(),
@@ -89,16 +85,12 @@ export function useSession(
     [queryClient, loadCatalog, loadKey]
   )
 
-  // ══════════════════════════════════════════════════════
   // MACHINE INSTANCE (stable for the component's lifetime)
-  // ══════════════════════════════════════════════════════
 
   const [machine] = useState<ISessionMachine>(createSessionMachine)
   const executorRef = useRef<EffectExecutor | null>(null)
 
-  // ══════════════════════════════════════════════════════
   // REACT STATE SYNC (external store - no render-time ref reads)
-  // ══════════════════════════════════════════════════════
 
   const subscribe = useCallback(
     (onStoreChange: () => void) => machine.subscribe(onStoreChange),
@@ -107,18 +99,14 @@ export function useSession(
   const getSnapshot = useCallback(() => machine.getState(), [machine])
   const state = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 
-  // ══════════════════════════════════════════════════════
   // TTS STATE
-  // ══════════════════════════════════════════════════════
 
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [currentSpeakingId, setCurrentSpeakingId] = useState<string | null>(
     null
   )
 
-  // ══════════════════════════════════════════════════════
   // STABLE CALLBACK REFS (prevent executor recreation)
-  // ══════════════════════════════════════════════════════
 
   const callbacksRef = useRef({
     onBatchComplete,
@@ -127,7 +115,6 @@ export function useSession(
     onSpeechEnd,
   })
 
-  // Update refs when callbacks change (without triggering executor recreation)
   useEffect(() => {
     callbacksRef.current = {
       onBatchComplete,
@@ -137,7 +124,6 @@ export function useSession(
     }
   }, [onBatchComplete, onSessionComplete, onSpeechStart, onSpeechEnd])
 
-  // Stable wrapper functions that use the refs
   const handleSpeechStart = useCallback((messageId: string) => {
     setIsSpeaking(true)
     setCurrentSpeakingId(messageId)
@@ -165,15 +151,11 @@ export function useSession(
     callbacksRef.current.onSessionComplete?.()
   }, [])
 
-  // ══════════════════════════════════════════════════════
   // EXECUTOR EFFECT (only recreate when truly necessary)
-  // ══════════════════════════════════════════════════════
 
   useEffect(() => {
-    // Clean up previous executor
     executorRef.current?.destroy()
 
-    // Create new executor with stable callbacks and audio TTS
     executorRef.current = createEffectExecutor({
       machine,
       repository,
@@ -212,18 +194,14 @@ export function useSession(
     handleSpeechStopped,
   ])
 
-  // ══════════════════════════════════════════════════════
   // INITIAL CATALOG LOAD
-  // ══════════════════════════════════════════════════════
 
   useEffect(() => {
     const effects = machine.dispatch(actions.requestCatalog())
     executorRef.current?.execute(effects)
   }, [machine])
 
-  // ══════════════════════════════════════════════════════
   // DISPATCH FUNCTION
-  // ══════════════════════════════════════════════════════
 
   const dispatch = useCallback(
     (event: SessionEvent) => {
@@ -233,17 +211,13 @@ export function useSession(
     [machine]
   )
 
-  // ══════════════════════════════════════════════════════
   // TTS CONTROLS
-  // ══════════════════════════════════════════════════════
 
   const speakMessage = useCallback(async (message: Message) => {
     await executorRef.current?.speakMessage(message)
   }, [])
 
-  // ══════════════════════════════════════════════════════
   // CLEANUP ON UNMOUNT
-  // ══════════════════════════════════════════════════════
 
   useEffect(() => {
     return (): void => executorRef.current?.destroy()

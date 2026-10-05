@@ -62,7 +62,7 @@ describe("isBlank", () => {
   })
 })
 
-describe("pinned misses (Codex, #1554)", () => {
+describe("pinned misses", () => {
   it("keeps a miss only while its probe is the version that was missed", () => {
     const pinned = pinMisses(FIXTURE_BATCHES, {
       1: ["c1-request-forms", "gone"],

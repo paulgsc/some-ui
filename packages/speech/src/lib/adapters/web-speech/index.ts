@@ -17,18 +17,14 @@
  * another language's, and `describe` says so. None of these ever becomes a
  * `VoiceConfig`, which describes the hosted catalogue only (`lib/voices`).
  *
- * Three settlement bugs from the call sites this replaces are fixed here,
- * and pinned by `adapter-contract.test.ts`:
+ * Settlement, pinned by `adapter-contract.test.ts`:
  *
- * - `utterance.onerror = () => resolve()` reported every failure as a clean
- *   finish, so a queue built on it counted failures as successes and never
- *   retried. Errors reject now; only the browser's own "cancelled" and
- *   "interrupted" reasons map to an `AbortError`.
- * - `speechSynthesis.cancel()` at the top of `speak()` silently killed the
- *   previous utterance, whose promise then settled as if it had finished.
- *   Cancellation now flushes the ledger first, so the displaced caller
- *   learns it was cancelled.
- * - Nothing tore the utterance's handlers down, so a stale utterance could
+ * - Errors reject, so a queue can retry; only the browser's own "cancelled"
+ *   and "interrupted" reasons map to an `AbortError`.
+ * - `speechSynthesis.cancel()` silently kills the previous utterance, so
+ *   cancellation flushes the ledger first and the displaced caller learns
+ *   it was cancelled.
+ * - The utterance's handlers are torn down, so a stale utterance cannot
  *   settle a promise belonging to the next one.
  */
 

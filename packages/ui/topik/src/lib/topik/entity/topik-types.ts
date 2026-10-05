@@ -6,9 +6,7 @@
 
 import { z } from "zod"
 
-// ═══════════════════════════════════════════════════════════════════════════
 // MESSAGE TYPES
-// ═══════════════════════════════════════════════════════════════════════════
 
 export type Message = {
   id: string
@@ -28,9 +26,7 @@ const MessageSchema = z.object({
   english: z.string(),
 })
 
-// ═══════════════════════════════════════════════════════════════════════════
 // QUESTION TYPES
-// ═══════════════════════════════════════════════════════════════════════════
 
 export type Question = {
   type: "multiple-choice" | "text-input"
@@ -64,9 +60,7 @@ const QuestionSchema = z.object({
   anchorMessageId: z.string().optional(),
 })
 
-// ═══════════════════════════════════════════════════════════════════════════
 // MORPHISM PROBES
-// ═══════════════════════════════════════════════════════════════════════════
 
 /**
  * How a candidate relates to the utterance it is judged against
@@ -198,9 +192,7 @@ const ProbesSchema = z.array(z.unknown()).transform(
     })
 )
 
-// ═══════════════════════════════════════════════════════════════════════════
 // BATCH TYPES
-// ═══════════════════════════════════════════════════════════════════════════
 
 export type ConversationBatch = {
   id: number
@@ -218,9 +210,7 @@ const ConversationBatchSchema = z.object({
   probes: ProbesSchema.optional(),
 })
 
-// ═══════════════════════════════════════════════════════════════════════════
 // FILE SCHEMA
-// ═══════════════════════════════════════════════════════════════════════════
 
 /**
  * Schema for topik files

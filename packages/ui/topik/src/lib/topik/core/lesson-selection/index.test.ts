@@ -94,7 +94,7 @@ describe("orderLessons (canon Rem. 3.5)", () => {
     ).toEqual(["big", "connective", "small", "any-level"])
   })
 
-  it("measures size in the lines the handheld plays, not desktop questions (Codex, #1555)", () => {
+  it("measures size in the lines the handheld plays, not desktop questions", () => {
     const long = { ...lesson("long", 2, 1), totalMessages: 100 }
     const short = { ...lesson("short", 2, 2), totalMessages: 5 }
     expect(
@@ -102,7 +102,7 @@ describe("orderLessons (canon Rem. 3.5)", () => {
     ).toEqual(["short", "long"])
   })
 
-  it("says a lesson is shorter only when size is what put it first (Codex, #1555)", () => {
+  it("says a lesson is shorter only when size is what put it first", () => {
     // Long, but it brings back what blocked the learner; the short one does not.
     const long = lesson("long", 2, 9, ["negation"])
     const short = lesson("short", 2, 2)
@@ -145,7 +145,7 @@ describe("orderLessons (canon Rem. 3.5)", () => {
     expect(order.find((entry) => entry.item.key === "big")?.recent).toBe(true)
   })
 
-  it("brings back a blocking relation even from the lesson just played (Codex, #1555)", () => {
+  it("brings back a blocking relation even from the lesson just played", () => {
     const order = orderLessons(
       batch,
       [

@@ -25,10 +25,6 @@ import {
 } from "@topik/lib/topik/read-aloud/timing"
 import { describe, expect, it } from "vitest"
 
-// ═══════════════════════════════════════════════════════════════════════════
-// FIXTURES
-// ═══════════════════════════════════════════════════════════════════════════
-
 const word = (wordId: string, text: string): SetItem => ({
   kind: "word",
   key: `w:${wordId}:${text}`,
@@ -129,10 +125,6 @@ class Host {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// THE LADDER
-// ═══════════════════════════════════════════════════════════════════════════
-
 describe("a rep's ladder (Def. 4.8)", () => {
   it("runs glyphs, turn, audio, echo, gloss, then the next item", () => {
     const host = new Host()
@@ -197,10 +189,6 @@ describe("a rep's ladder (Def. 4.8)", () => {
     expect(host.state).toBe(before)
   })
 })
-
-// ═══════════════════════════════════════════════════════════════════════════
-// COUNTING (Prop. 6.4)
-// ═══════════════════════════════════════════════════════════════════════════
 
 describe("what a set counts (Prop. 6.4)", () => {
   it("counts each rep that ran to the end, at its nominal credit, and the set", () => {
@@ -284,10 +272,6 @@ describe("what a set counts (Prop. 6.4)", () => {
     expect(reported.state.counted).toBe(quiet.state.counted)
   })
 })
-
-// ═══════════════════════════════════════════════════════════════════════════
-// STUCK REPORTS (Cor. 4.6, Rem. 3.6)
-// ═══════════════════════════════════════════════════════════════════════════
 
 describe("a stuck report", () => {
   it("ends the turn and plays the audio", () => {
@@ -475,10 +459,6 @@ describe("a stuck report", () => {
     ])
   })
 })
-
-// ═══════════════════════════════════════════════════════════════════════════
-// THE SITTING (Rem. 4.10)
-// ═══════════════════════════════════════════════════════════════════════════
 
 describe("the sitting bound (Rem. 4.10)", () => {
   it("lets the showing rep finish, then begins nothing new", () => {

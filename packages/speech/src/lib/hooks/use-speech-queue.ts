@@ -3,11 +3,7 @@
  *
  * What a component uses to say something.
  *
- * The return type is deliberately free of internals. It used to hand back
- * `ttsHook` (the whole `useAudioTTS` return) and `store` (the raw reducer
- * store), which is how `packages/ui/umag` ended up reaching through the
- * queue into the TTS hook to read `voices` - a consumer holding the exact
- * detail this workspace exists to own. It has no voices at all now: an
+ * The return type is deliberately free of internals, voices included: an
  * item names its language (`TTSOptions.language`), and the session picks the
  * voice (`lib/voices`).
  */

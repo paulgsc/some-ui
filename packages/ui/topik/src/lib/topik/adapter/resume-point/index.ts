@@ -203,8 +203,7 @@ export function createResumeStore(
       })
       // What a purge drops must go even when storage refuses the rewrite
       // but still reads: the whole document is removed, and the points it
-      // would have kept go with it - a restart, not retained data (Codex,
-      // #1555).
+      // would have kept go with it - a restart, not retained data.
       if (!written) {
         try {
           storage?.removeItem?.(RESUME_STORAGE_KEY)

@@ -7,8 +7,8 @@
  * This exists for the Android app. It runs in Android System WebView, which
  * does not implement Web Speech synthesis: `window.speechSynthesis` is
  * either missing or a stub with no voices that never speaks, so the
- * web-speech adapter there is silent while reporting itself supported
- * (#1625). Android's own `TextToSpeech` service does speak, offline, in any
+ * web-speech adapter there is silent while reporting itself supported.
+ * Android's own `TextToSpeech` service does speak, offline, in any
  * language whose voice data is installed.
  *
  * The engine is injected, so this package never imports a bridge. The app

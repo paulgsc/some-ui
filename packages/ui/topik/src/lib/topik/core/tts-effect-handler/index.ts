@@ -33,9 +33,7 @@ import type { Message } from "@topik/lib/topik"
 import type { ISessionMachine } from "@topik/lib/topik/core/session-types"
 import { SPOKEN_LANGUAGE } from "@topik/lib/topik/core/spoken-language"
 
-// ═══════════════════════════════════════════════════════════════════════════
 // TTS EFFECT HANDLER CONFIG
-// ═══════════════════════════════════════════════════════════════════════════
 
 export type TTSEffectHandlerConfig = {
   speaker: Speaker
@@ -71,9 +69,7 @@ type Entry = {
 /** The line in hand: submitted, playing, or held for unmute. */
 type Line = Entry & { playing: boolean }
 
-// ═══════════════════════════════════════════════════════════════════════════
 // TTS EFFECT HANDLER
-// ═══════════════════════════════════════════════════════════════════════════
 
 export class TTSEffectHandler {
   /**
@@ -102,9 +98,7 @@ export class TTSEffectHandler {
     })
   }
 
-  // ═════════════════════════════════════════════════════════════════════════
   // PUBLIC API
-  // ═════════════════════════════════════════════════════════════════════════
 
   /**
    * Enqueue a message for speaking
@@ -206,9 +200,7 @@ export class TTSEffectHandler {
     this.completedIds.clear()
   }
 
-  // ═════════════════════════════════════════════════════════════════════════
   // PRIVATE
-  // ═════════════════════════════════════════════════════════════════════════
 
   /** Drops every queued line, telling any replay waiting on one. */
   private dropQueue(): ReadonlyArray<Entry> {
@@ -338,9 +330,7 @@ function assertNever(value: never): never {
   throw new Error(`Unhandled speech outcome: ${JSON.stringify(value)}`)
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
 // FACTORY
-// ═══════════════════════════════════════════════════════════════════════════
 
 export function createTTSEffectHandler(
   config: TTSEffectHandlerConfig

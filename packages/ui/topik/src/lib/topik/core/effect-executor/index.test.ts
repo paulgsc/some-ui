@@ -2,6 +2,7 @@ import type { SayOptions, Speaker, SpeechOutcome } from "@some-ui/speech"
 import type {
   ConversationBatch,
   ITopikRepository,
+  Message,
   TopikMetadata,
 } from "@topik/lib/topik"
 import type {
@@ -11,11 +12,11 @@ import type {
 } from "@topik/lib/topik/core/session-types"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { createEffectExecutor, type EffectExecutor } from "."
-
-// ═══════════════════════════════════════════════════════════════════════════
-// FIXTURES
-// ═══════════════════════════════════════════════════════════════════════════
+import {
+  createEffectExecutor,
+  type EffectExecutor,
+  type EffectExecutorConfig,
+} from "."
 
 function createFakeQueryBridge(
   overrides: Partial<IQueryBridge> = {}
@@ -49,21 +50,19 @@ function makeTopikMetadata(key: string): TopikMetadata {
   }
 }
 
-function makeBatchWithMessage(content: string): ConversationBatch {
+function makeMessage(content: string, id = "m0"): Message {
   return {
-    id: 0,
-    messages: [
-      {
-        id: "m0",
-        role: "assistant",
-        content,
-        timestamp: new Date(2024, 0, 1).toISOString(),
-        korean: "안녕",
-        english: "hello",
-      },
-    ],
-    questions: [],
+    id,
+    role: "assistant",
+    content,
+    timestamp: new Date(2024, 0, 1).toISOString(),
+    korean: "안녕",
+    english: "hello",
   }
+}
+
+function makeBatchWithMessage(content: string): ConversationBatch {
+  return { id: 0, messages: [makeMessage(content)], questions: [] }
 }
 
 function activeStateWithBatch(batch: ConversationBatch): SessionState {
@@ -115,12 +114,15 @@ function emptyActiveState(): SessionState {
   }
 }
 
-function createFakeSpeaker(): Speaker {
+/** A speaker whose lines start at once and end with `outcome`. */
+function createFakeSpeaker(
+  outcome: Promise<SpeechOutcome> = Promise.resolve({ kind: "heard" })
+): Speaker {
   return {
     available: true,
     say: vi.fn((_content: string, options: SayOptions) => {
       options.onStart?.()
-      return Promise.resolve<SpeechOutcome>({ kind: "heard" })
+      return outcome
     }),
     stop: vi.fn(),
     muted: false,
@@ -148,9 +150,10 @@ function makeFakeRepository(): ITopikRepository {
 
 const fakeRepository = makeFakeRepository()
 
-// ═══════════════════════════════════════════════════════════════════════════
-// TESTS
-// ═══════════════════════════════════════════════════════════════════════════
+const ticks = (machine: ISessionMachine): number =>
+  vi
+    .mocked(machine.dispatch)
+    .mock.calls.filter(([e]) => e.type === "TIMER_TICK").length
 
 describe("EffectExecutor", () => {
   let executor: EffectExecutor | undefined
@@ -161,18 +164,38 @@ describe("EffectExecutor", () => {
     vi.useRealTimers()
   })
 
+  /** An executor over a stub machine; TTS off unless `config` says. */
+  const start = (
+    state: SessionState = emptyActiveState(),
+    config: Partial<EffectExecutorConfig> = {}
+  ): { machine: ISessionMachine; executor: EffectExecutor } => {
+    const machine = createFakeMachine(state)
+    executor = createEffectExecutor({
+      machine,
+      repository: fakeRepository,
+      queryBridge: createFakeQueryBridge(),
+      enableTTS: false,
+      timerInterval: 1000,
+      ...config,
+    })
+    return { machine, executor }
+  }
+
+  /** As `start`, with a voice. */
+  const voiced = (
+    state: SessionState,
+    speaker: Speaker,
+    config: Partial<EffectExecutorConfig> = {}
+  ): { machine: ISessionMachine; executor: EffectExecutor } =>
+    start(state, { speaker, componentId: "c1", enableTTS: true, ...config })
+
   describe("dispatch switch - query effects", () => {
     it("TRIGGER_CATALOG_QUERY dispatches loading then success on resolve", async () => {
-      const machine = createFakeMachine(emptyActiveState())
       const topiks = [makeTopikMetadata("t1")]
-      const queryBridge = createFakeQueryBridge({
-        fetchCatalog: vi.fn().mockResolvedValue({ version: "1", topiks }),
-      })
-      executor = createEffectExecutor({
-        machine,
-        repository: fakeRepository,
-        queryBridge,
-        enableTTS: false,
+      const { machine, executor } = start(emptyActiveState(), {
+        queryBridge: createFakeQueryBridge({
+          fetchCatalog: vi.fn().mockResolvedValue({ version: "1", topiks }),
+        }),
       })
 
       executor.execute([{ type: "TRIGGER_CATALOG_QUERY" }])
@@ -186,15 +209,10 @@ describe("EffectExecutor", () => {
     })
 
     it("TRIGGER_CATALOG_QUERY dispatches CATALOG_FAILURE when the fetch rejects", async () => {
-      const machine = createFakeMachine(emptyActiveState())
-      const queryBridge = createFakeQueryBridge({
-        fetchCatalog: vi.fn().mockRejectedValue(new Error("network down")),
-      })
-      executor = createEffectExecutor({
-        machine,
-        repository: fakeRepository,
-        queryBridge,
-        enableTTS: false,
+      const { machine, executor } = start(emptyActiveState(), {
+        queryBridge: createFakeQueryBridge({
+          fetchCatalog: vi.fn().mockRejectedValue(new Error("network down")),
+        }),
       })
 
       executor.execute([{ type: "TRIGGER_CATALOG_QUERY" }])
@@ -207,16 +225,11 @@ describe("EffectExecutor", () => {
     })
 
     it("TRIGGER_TOPIK_QUERY dispatches started then success on resolve", async () => {
-      const machine = createFakeMachine(emptyActiveState())
       const batches = [makeBatchWithMessage("hello")]
-      const queryBridge = createFakeQueryBridge({
-        fetchTopik: vi.fn().mockResolvedValue(batches),
-      })
-      executor = createEffectExecutor({
-        machine,
-        repository: fakeRepository,
-        queryBridge,
-        enableTTS: false,
+      const { machine, executor } = start(emptyActiveState(), {
+        queryBridge: createFakeQueryBridge({
+          fetchTopik: vi.fn().mockResolvedValue(batches),
+        }),
       })
 
       executor.execute([{ type: "TRIGGER_TOPIK_QUERY", key: "k1" }])
@@ -234,15 +247,10 @@ describe("EffectExecutor", () => {
     })
 
     it("TRIGGER_TOPIK_QUERY dispatches HYDRATION_FAILURE when the fetch rejects", async () => {
-      const machine = createFakeMachine(emptyActiveState())
-      const queryBridge = createFakeQueryBridge({
-        fetchTopik: vi.fn().mockRejectedValue(new Error("404")),
-      })
-      executor = createEffectExecutor({
-        machine,
-        repository: fakeRepository,
-        queryBridge,
-        enableTTS: false,
+      const { machine, executor } = start(emptyActiveState(), {
+        queryBridge: createFakeQueryBridge({
+          fetchTopik: vi.fn().mockRejectedValue(new Error("404")),
+        }),
       })
 
       executor.execute([{ type: "TRIGGER_TOPIK_QUERY", key: "k1" }])
@@ -259,90 +267,53 @@ describe("EffectExecutor", () => {
   describe("dispatch switch - timer effects + idempotency", () => {
     it("START_TIMER dispatches TIMER_TICK on every interval", () => {
       vi.useFakeTimers()
-      const machine = createFakeMachine(emptyActiveState())
-      executor = createEffectExecutor({
-        machine,
-        repository: fakeRepository,
-        queryBridge: createFakeQueryBridge(),
-        enableTTS: false,
-        timerInterval: 1000,
-      })
+      const { machine, executor } = start()
 
       executor.execute([{ type: "START_TIMER" }])
       vi.advanceTimersByTime(3000)
 
-      const tickCalls = vi
-        .mocked(machine.dispatch)
-        .mock.calls.filter(([event]) => event.type === "TIMER_TICK")
-      expect(tickCalls).toHaveLength(3)
+      expect(ticks(machine)).toBe(3)
     })
 
     it("a second START_TIMER is a no-op while a timer is already running", () => {
       vi.useFakeTimers()
-      const machine = createFakeMachine(emptyActiveState())
-      executor = createEffectExecutor({
-        machine,
-        repository: fakeRepository,
-        queryBridge: createFakeQueryBridge(),
-        enableTTS: false,
-        timerInterval: 1000,
-      })
+      const { machine, executor } = start()
 
       executor.execute([{ type: "START_TIMER" }])
-      executor.execute([{ type: "START_TIMER" }]) // duplicate - must not create a 2nd interval
+      executor.execute([{ type: "START_TIMER" }])
       vi.advanceTimersByTime(1000)
 
-      const tickCalls = vi
-        .mocked(machine.dispatch)
-        .mock.calls.filter(([event]) => event.type === "TIMER_TICK")
-      expect(tickCalls).toHaveLength(1) // would be 2 if idempotency were broken
+      expect(ticks(machine)).toBe(1) // 2 would mean a second interval
     })
 
     it("STOP_TIMER stops ticking and allows a later START_TIMER to restart it", () => {
       vi.useFakeTimers()
-      const machine = createFakeMachine(emptyActiveState())
-      executor = createEffectExecutor({
-        machine,
-        repository: fakeRepository,
-        queryBridge: createFakeQueryBridge(),
-        enableTTS: false,
-        timerInterval: 1000,
-      })
+      const { machine, executor } = start()
 
       executor.execute([{ type: "START_TIMER" }])
       vi.advanceTimersByTime(1000)
       executor.execute([{ type: "STOP_TIMER" }])
-      vi.advanceTimersByTime(5000) // no ticks should occur while stopped
+      vi.advanceTimersByTime(5000)
 
       executor.execute([{ type: "START_TIMER" }])
       vi.advanceTimersByTime(1000)
 
-      const tickCalls = vi
-        .mocked(machine.dispatch)
-        .mock.calls.filter(([event]) => event.type === "TIMER_TICK")
-      expect(tickCalls).toHaveLength(2)
+      expect(ticks(machine)).toBe(2)
     })
   })
 
   describe("dispatch switch - TTS effects", () => {
     it("PLAY_AUDIO enqueues the current message for speech", async () => {
-      const state = activeStateWithBatch(makeBatchWithMessage("hello world"))
-      const machine = createFakeMachine(state)
       const speaker = createFakeSpeaker()
-      executor = createEffectExecutor({
-        machine,
-        repository: fakeRepository,
-        queryBridge: createFakeQueryBridge(),
-        speaker,
-        componentId: "c1",
-        enableTTS: true,
-      })
+      const { executor } = voiced(
+        activeStateWithBatch(makeBatchWithMessage("hello world")),
+        speaker
+      )
 
       executor.execute([{ type: "PLAY_AUDIO" }])
       await flushAsync()
 
-      // The second argument is the line's own options: its language and
-      // its start callback, never a voice.
+      // The line's own options: its language and start callback, never a voice.
       expect(speaker.say).toHaveBeenCalledWith(
         "hello world",
         expect.objectContaining({
@@ -353,28 +324,17 @@ describe("EffectExecutor", () => {
     })
 
     it("reports a line muted mid-speech as stopped, without advancing the lesson", async () => {
-      const state = activeStateWithBatch(makeBatchWithMessage("hello world"))
-      const machine = createFakeMachine(state)
       const speaker: Speaker = {
-        ...createFakeSpeaker(),
+        ...createFakeSpeaker(Promise.resolve({ kind: "muted" })),
         muted: true,
-        say: vi.fn((_content: string, options: SayOptions) => {
-          options.onStart?.()
-          return Promise.resolve<SpeechOutcome>({ kind: "muted" })
-        }),
       }
       const onSpeechStopped = vi.fn()
       const onSpeechEnd = vi.fn()
-      executor = createEffectExecutor({
-        machine,
-        repository: fakeRepository,
-        queryBridge: createFakeQueryBridge(),
+      const { machine, executor } = voiced(
+        activeStateWithBatch(makeBatchWithMessage("hello world")),
         speaker,
-        componentId: "c1",
-        enableTTS: true,
-        onSpeechStopped,
-        onSpeechEnd,
-      })
+        { onSpeechStopped, onSpeechEnd }
+      )
 
       executor.execute([{ type: "PLAY_AUDIO" }])
       await flushAsync()
@@ -384,58 +344,28 @@ describe("EffectExecutor", () => {
       expect(machine.dispatch).not.toHaveBeenCalled()
     })
 
-    it("PLAY_AUDIO is a safe no-op when there is no current message", () => {
-      const machine = createFakeMachine(emptyActiveState())
+    it.each([
+      ["there is no current message", emptyActiveState, true],
+      [
+        "TTS is disabled",
+        (): SessionState => activeStateWithBatch(makeBatchWithMessage("hello")),
+        false,
+      ],
+    ])("PLAY_AUDIO is a safe no-op when %s", (_, state, enableTTS) => {
       const speaker = createFakeSpeaker()
-      executor = createEffectExecutor({
-        machine,
-        repository: fakeRepository,
-        queryBridge: createFakeQueryBridge(),
-        speaker,
-        componentId: "c1",
-        enableTTS: true,
-      })
+      const { executor } = voiced(state(), speaker, { enableTTS })
 
-      expect(() => executor?.execute([{ type: "PLAY_AUDIO" }])).not.toThrow()
-      expect(speaker.say).not.toHaveBeenCalled()
-    })
-
-    it("PLAY_AUDIO is a safe no-op when TTS is disabled", () => {
-      const state = activeStateWithBatch(makeBatchWithMessage("hello"))
-      const machine = createFakeMachine(state)
-      const speaker = createFakeSpeaker()
-      executor = createEffectExecutor({
-        machine,
-        repository: fakeRepository,
-        queryBridge: createFakeQueryBridge(),
-        speaker,
-        componentId: "c1",
-        enableTTS: false,
-      })
-
-      expect(() => executor?.execute([{ type: "PLAY_AUDIO" }])).not.toThrow()
+      expect(() => executor.execute([{ type: "PLAY_AUDIO" }])).not.toThrow()
       expect(speaker.say).not.toHaveBeenCalled()
     })
 
     it("STOP_AUDIO stops the line playing", async () => {
-      const state = activeStateWithBatch(makeBatchWithMessage("hello"))
-      const machine = createFakeMachine(state)
-      const speaker: Speaker = {
-        ...createFakeSpeaker(),
-        // A line that is still playing when the stop comes.
-        say: vi.fn((_content: string, options: SayOptions) => {
-          options.onStart?.()
-          return new Promise<SpeechOutcome>(() => undefined)
-        }),
-      }
-      executor = createEffectExecutor({
-        machine,
-        repository: fakeRepository,
-        queryBridge: createFakeQueryBridge(),
-        speaker,
-        componentId: "c1",
-        enableTTS: true,
-      })
+      // A line that is still playing when the stop comes.
+      const speaker = createFakeSpeaker(new Promise(() => undefined))
+      const { executor } = voiced(
+        activeStateWithBatch(makeBatchWithMessage("hello")),
+        speaker
+      )
 
       executor.execute([{ type: "PLAY_AUDIO" }])
       await flushAsync()
@@ -447,14 +377,7 @@ describe("EffectExecutor", () => {
   describe("dispatch switch - notification effects", () => {
     it("NOTIFY_BATCH_COMPLETE invokes onBatchComplete with the batch index", () => {
       const onBatchComplete = vi.fn()
-      const machine = createFakeMachine(emptyActiveState())
-      executor = createEffectExecutor({
-        machine,
-        repository: fakeRepository,
-        queryBridge: createFakeQueryBridge(),
-        enableTTS: false,
-        onBatchComplete,
-      })
+      const { executor } = start(emptyActiveState(), { onBatchComplete })
 
       executor.execute([{ type: "NOTIFY_BATCH_COMPLETE", batchIndex: 3 }])
       expect(onBatchComplete).toHaveBeenCalledWith(3)
@@ -462,14 +385,7 @@ describe("EffectExecutor", () => {
 
     it("NOTIFY_SESSION_COMPLETE invokes onSessionComplete", () => {
       const onSessionComplete = vi.fn()
-      const machine = createFakeMachine(emptyActiveState())
-      executor = createEffectExecutor({
-        machine,
-        repository: fakeRepository,
-        queryBridge: createFakeQueryBridge(),
-        enableTTS: false,
-        onSessionComplete,
-      })
+      const { executor } = start(emptyActiveState(), { onSessionComplete })
 
       executor.execute([{ type: "NOTIFY_SESSION_COMPLETE" }])
       expect(onSessionComplete).toHaveBeenCalledTimes(1)
@@ -477,14 +393,7 @@ describe("EffectExecutor", () => {
 
     it("NOTIFY_SESSION_RESET destroys the executor - later effects are ignored", () => {
       vi.useFakeTimers()
-      const machine = createFakeMachine(emptyActiveState())
-      executor = createEffectExecutor({
-        machine,
-        repository: fakeRepository,
-        queryBridge: createFakeQueryBridge(),
-        enableTTS: false,
-        timerInterval: 1000,
-      })
+      const { machine, executor } = start()
 
       executor.execute([{ type: "START_TIMER" }])
       executor.execute([{ type: "NOTIFY_SESSION_RESET" }])
@@ -493,10 +402,7 @@ describe("EffectExecutor", () => {
       executor.execute([{ type: "START_TIMER" }])
       vi.advanceTimersByTime(5000)
 
-      const tickCalls = vi
-        .mocked(machine.dispatch)
-        .mock.calls.filter(([event]) => event.type === "TIMER_TICK")
-      expect(tickCalls).toHaveLength(0)
+      expect(ticks(machine)).toBe(0)
     })
   })
 
@@ -504,12 +410,7 @@ describe("EffectExecutor", () => {
     it("routes a callback throw to onError instead of crashing execute()", () => {
       const onError = vi.fn()
       const boom = new Error("callback exploded")
-      const machine = createFakeMachine(emptyActiveState())
-      executor = createEffectExecutor({
-        machine,
-        repository: fakeRepository,
-        queryBridge: createFakeQueryBridge(),
-        enableTTS: false,
+      const { executor } = start(emptyActiveState(), {
         onBatchComplete: () => {
           throw boom
         },
@@ -517,7 +418,7 @@ describe("EffectExecutor", () => {
       })
 
       expect(() =>
-        executor?.execute([{ type: "NOTIFY_BATCH_COMPLETE", batchIndex: 0 }])
+        executor.execute([{ type: "NOTIFY_BATCH_COMPLETE", batchIndex: 0 }])
       ).not.toThrow()
       expect(onError).toHaveBeenCalledWith(boom, {
         type: "NOTIFY_BATCH_COMPLETE",
@@ -529,14 +430,7 @@ describe("EffectExecutor", () => {
   describe("execute() after destroy", () => {
     it("ignores effects once destroyed", () => {
       const onSessionComplete = vi.fn()
-      const machine = createFakeMachine(emptyActiveState())
-      executor = createEffectExecutor({
-        machine,
-        repository: fakeRepository,
-        queryBridge: createFakeQueryBridge(),
-        enableTTS: false,
-        onSessionComplete,
-      })
+      const { executor } = start(emptyActiveState(), { onSessionComplete })
 
       executor.destroy()
       executor.execute([{ type: "NOTIFY_SESSION_COMPLETE" }])
@@ -548,23 +442,9 @@ describe("EffectExecutor", () => {
   describe("public TTS-control API", () => {
     it("speakMessage delegates to the TTS handler's manual speak", async () => {
       const speaker = createFakeSpeaker()
-      executor = createEffectExecutor({
-        machine: createFakeMachine(emptyActiveState()),
-        repository: fakeRepository,
-        queryBridge: createFakeQueryBridge(),
-        speaker,
-        componentId: "c1",
-        enableTTS: true,
-      })
+      const { executor } = voiced(emptyActiveState(), speaker)
 
-      await executor.speakMessage({
-        id: "m1",
-        role: "assistant",
-        content: "manual line",
-        timestamp: new Date(2024, 0, 1).toISOString(),
-        korean: "안녕",
-        english: "hello",
-      })
+      await executor.speakMessage(makeMessage("manual line", "m1"))
 
       expect(speaker.say).toHaveBeenCalledWith(
         "manual line",
@@ -573,32 +453,15 @@ describe("EffectExecutor", () => {
     })
 
     it("speakMessage warns instead of throwing when TTS is disabled", async () => {
-      executor = createEffectExecutor({
-        machine: createFakeMachine(emptyActiveState()),
-        repository: fakeRepository,
-        queryBridge: createFakeQueryBridge(),
-        enableTTS: false,
-      })
+      const { executor } = start()
 
       await expect(
-        executor.speakMessage({
-          id: "m1",
-          role: "assistant",
-          content: "x",
-          timestamp: new Date(2024, 0, 1).toISOString(),
-          korean: "안녕",
-          english: "hello",
-        })
+        executor.speakMessage(makeMessage("x", "m1"))
       ).resolves.toBeUndefined()
     })
 
     it("isSpeaking() reflects the underlying TTS handler state", () => {
-      executor = createEffectExecutor({
-        machine: createFakeMachine(emptyActiveState()),
-        repository: fakeRepository,
-        queryBridge: createFakeQueryBridge(),
-        enableTTS: false,
-      })
+      const { executor } = start()
       expect(executor.isSpeaking()).toBe(false)
       expect(executor.getCurrentSpeakingId()).toBeNull()
     })

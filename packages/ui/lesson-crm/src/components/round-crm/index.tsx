@@ -383,8 +383,8 @@ export const RoundCrm = ({ client, reporting }: RoundCrmProps): JSX.Element => {
   )
 
   // A phone shows one pane at a time, as `LessonCrm` does: the list until a
-  // round is open, then the editor with a way back (review finding on #1598:
-  // stacked in one bounded column, the editor sat below the viewport).
+  // round is open, then the editor with a way back (stacked in one bounded
+  // column, the editor would sit below the viewport).
   if (isMobile) {
     return (
       <div data-slot="round-crm" className="flex h-full min-h-0 flex-col gap-3">

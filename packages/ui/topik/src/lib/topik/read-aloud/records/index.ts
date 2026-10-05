@@ -21,9 +21,7 @@
 import { PACE_MAX, PACE_MIN } from "@topik/lib/topik/read-aloud/timing"
 import { z } from "zod"
 
-// ═══════════════════════════════════════════════════════════════════════════
 // PACE BOOK
-// ═══════════════════════════════════════════════════════════════════════════
 
 export type PaceEntry = {
   /** Scales the word's turn (Cor. 4.6 (iii)). */
@@ -63,9 +61,7 @@ export function prunePaceBook(
   )
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
 // PRACTICE RECORD
-// ═══════════════════════════════════════════════════════════════════════════
 
 /** Days the record keeps; the totals keep everything (Rem. 7.5). */
 export const RECORD_DAYS = 60

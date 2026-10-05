@@ -101,7 +101,7 @@ describe("GenerateLesson", () => {
     )
   })
 
-  it("shows the prompt to copy by hand when the clipboard refuses, and says it was handed off only once it is (Codex, #1555)", async () => {
+  it("shows the prompt to copy by hand when the clipboard refuses, and says it was handed off only once it is", async () => {
     stubClipboard(() => Promise.reject(new Error("denied")))
     const onPromptHandedOff = vi.fn()
     renderGenerate({ onPromptHandedOff })
@@ -112,7 +112,7 @@ describe("GenerateLesson", () => {
     expect(manual.textContent).toBe("PROMPT level=3 scene=-")
     expect(screen.queryByText(/Copied/)).toBeNull()
     expect(onPromptHandedOff).not.toHaveBeenCalled()
-    // A copy event proves some text was copied, not all of it (Codex, #1555).
+    // A copy event proves some text was copied, not all of it.
     fireEvent.copy(manual)
     expect(onPromptHandedOff).not.toHaveBeenCalled()
     click(/I've copied it/)
@@ -160,8 +160,7 @@ describe("GenerateLesson", () => {
       key: "local:untitled-lesson",
       batchCount: FIXTURE_BATCHES.length,
     })
-    // The probe the audit named is withheld from what plays; the rest stay
-    // (Codex, #1554).
+    // The probe the audit named is withheld from what plays; the rest stay.
     const played = onStart.mock.calls[0]?.[1] ?? []
     const ids = played.flatMap((batch) =>
       (batch.probes ?? []).map((probe) => probe.id)

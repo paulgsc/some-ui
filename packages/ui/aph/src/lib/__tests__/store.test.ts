@@ -1,16 +1,12 @@
 /**
  * The store's rules, held under any sequence of edits, not only the ones a
- * test author thought of. Three review rounds on #1659 each found a new path
- * to the same broken state (a second plain figure at a checkpoint) because
- * the rule lived in comments and each path had to remember it. Now it lives
- * in `violations`, the store refuses a write that breaks it, and this throws
- * random sequences of everything the screens can do at the store and checks
- * after every step that nothing got through.
+ * test author thought of: random sequences of everything the screens can do,
+ * checked after every step against `violations` (the state) and `breaches`
+ * (the step).
  *
- * Their figure is aimed at any entry, filled or not, the way a stale link
- * or a Back press aims it. That once replaced a reported figure with no
- * rule broken (#1659's last round), because `violations` judges a state and
- * the state was valid; `breaches` judges the step, and is checked here too.
+ * Their figure is aimed at any entry, filled or not, the way a stale link or
+ * a Back press aims it. Replacing a reported figure leaves a valid state, so
+ * only `breaches`, which judges the step, catches it.
  */
 import { newDraft, stepDraft } from "@aph/lib/draft"
 import type { Draft, DraftEvent } from "@aph/lib/draft"

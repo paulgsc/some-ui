@@ -9,17 +9,10 @@ import type {
 
 /**
  * A catalogue of arbitrary size, for asking what the launcher and the picker
- * do at N = 10, 20, 50 (#853).
+ * do at N = 10, 20, 50, without shipping fake applets in the real catalogue.
  *
- * Why synthetic rather than "add some activities": the question this answers
- * is a layout question, and the real `ACTIVITY_CATALOG` is exactly four
- * entries because there are exactly four applets. Growing it to answer a
- * layout question would mean shipping fake applets. Growing a fixture costs
- * nothing and is the same shape.
- *
- * One fixture, not three: S2's ranking, S3's search and S4's paging are all
- * measured against this, so a change to what a catalogue entry looks like
- * shows up in every one of them at once.
+ * Ranking, search and paging are all measured against this one fixture, so a
+ * change to what a catalogue entry looks like shows up in each at once.
  */
 
 const ICONS: ReadonlyArray<ActivityIconKey> = [

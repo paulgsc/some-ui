@@ -127,7 +127,7 @@ describe("intakeLesson", () => {
     expect(intake.meta.tags).not.toContain("relation:honorific lowering")
   })
 
-  it("withholds only the later of two probes sharing an id (Codex, #1554)", () => {
+  it("withholds only the later of two probes sharing an id", () => {
     const [one, ...rest] = structuredClone(FIXTURE_BATCHES)
     const probes = one?.probes ?? []
     // A probe the schema drops, ahead of them, must not shift which is which.
@@ -141,7 +141,7 @@ describe("intakeLesson", () => {
     expect(ids).toEqual(FIXTURE_BATCHES[0]?.probes?.map((probe) => probe.id))
   })
 
-  it("sends back a lesson whose conversation or line ids repeat (Codex, #1554)", () => {
+  it("sends back a lesson whose conversation or line ids repeat", () => {
     const [one, two] = structuredClone(FIXTURE_BATCHES)
     if (!one || !two) throw new Error("fixture lost a conversation")
     expect(intakeLesson(reply([one, { ...two, id: one.id }]))).toEqual({
