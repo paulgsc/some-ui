@@ -6,6 +6,7 @@ import viteReact from "@vitejs/plugin-react"
 import type { HtmlTagDescriptor, Plugin, UserConfig } from "vite"
 import { defineConfig, loadEnv } from "vite"
 
+import { offPathPublicFiles } from "./build.paths.ts"
 import { buildAudiencePlugin, MOBILE_PROFILE } from "./build.profiles.ts"
 import {
   describeTarget,
@@ -22,18 +23,27 @@ const keyPath = resolve(
 )
 const hasLocalCerts = fs.existsSync(certPath) && fs.existsSync(keyPath)
 
-// `SOME_UI_DEV_HTTP=1` serves plain HTTP even where the certs exist, for the
-// Android dev loop (apps/mobile `pnpm dev:web`): the WebView loads
-// `http://localhost` over `adb reverse` and shows a blank screen on an
-// untrusted certificate. `localhost` is still a secure context, which the
-// device backend's `crypto.subtle` needs.
+// `SOME_UI_DEV_HTTP=1` serves plain HTTP even where the certs above exist. The
+// Android app's dev loop (apps/mobile, `pnpm dev:web`) needs it: the WebView
+// loads this server as `http://localhost` over `adb reverse`, and Capacitor
+// does nothing with a certificate error, so a mkcert certificate (which the
+// WebView does not trust) is a blank screen. `localhost` is a secure context
+// over plain HTTP too, which is what the device backend's `crypto.subtle`
+// needs; a LAN address or `nixos.local` is not.
 const devHttp = process.env.SOME_UI_DEV_HTTP === "1"
 
-// The dev/preview counterpart of nginx.tts-proxy.conf: same-origin /api/tts/,
-// pointed at the port infra/compose/tts.yml publishes, so an HTTPS dev page
-// avoids the mixed-content block. Kept in step by hand with that snippet and
-// TTS_PROXY_PATH in src/lib/tts-config (importing it would pull an
-// `import.meta.env` reader into Node). TTS_PROXY_TARGET overrides the target.
+// The dev/preview counterpart of apps/www/nginx.tts-proxy.conf: the same
+// same-origin /api/tts/ route, pointed at the port infra/compose/tts.yml
+// publishes on the host instead of at the container over the compose
+// network. Without it, `vite dev` with the certs above (i.e. over HTTPS)
+// hits the mixed-content block that path exists to avoid, since
+// src/lib/tts-config resolves an HTTPS page to this path.
+//
+// Kept in step by hand with that nginx snippet and with TTS_PROXY_PATH in
+// src/lib/tts-config - importing the constant here would pull an
+// `import.meta.env` reader into the config's Node context for one string.
+// TTS_PROXY_TARGET covers a PORT other than 5050 in .env, or a backend
+// running somewhere other than this machine.
 const TTS_PROXY_PATH = "/api/tts"
 // Set by scripts/analyze-bundle.js: the analyze build keeps sourcemaps and the
 // gzip report that the default build skips.
@@ -41,19 +51,36 @@ const analyze = process.env.WWW_ANALYZE === "1"
 
 const ttsProxyTarget = process.env.TTS_PROXY_TARGET || "http://127.0.0.1:5050"
 
-// The same for file_host (paulgsc/server), which serves plain HTTP on 3000:
-// an https:// page cannot fetch it directly (mixed content), and a service
-// worker needs a secure context. Kept in step by hand with
-// nginx.https.conf's location block and FILE_HOST_PROXY_PATH in
-// src/lib/file-host-config. Where it points is file-host.dev.ts's call.
+// The same trick for the same reason, one port over: file_host (paulgsc/server)
+// serves plain HTTP on 3000 and terminates no TLS, so an https:// page cannot
+// fetch it directly - mixed content, blocked before the request leaves the
+// page, and no amount of ALLOWED_ORIGINS on the server changes that. This is
+// the study origin's only route to sessions and push subscriptions, since a
+// service worker requires a secure context in the first place.
+//
+// Kept in step by hand with the location block in apps/www/nginx.https.conf
+// and with FILE_HOST_PROXY_PATH in src/lib/file-host-config - changing it means
+// changing all three.
+//
+// Where it points is file-host.dev.ts's call: paulgsc/server's `make dev` while
+// it runs (it records its port when the container already holds 3000), the
+// container otherwise, and FILE_HOST_PROXY_TARGET over both.
 const FILE_HOST_PROXY_PATH = "/api/file-host"
 const fileHost = resolveFileHostTarget()
 const fileHostProxyTarget = fileHost.target
 
-// honeycomb's sfx (scripts/link-content-assets.js) is curated, gitignored and
-// symlinked in by hand. Without it, /sfx/*.mp3 falls through to index.html and
-// the browser reports an opaque "Content-Type text/html" media error, so name
-// the cause. hangul is not warned about: its absence is expected and visible.
+// honeycomb's sfx (see scripts/link-content-assets.js) is curated,
+// gitignored, and only ever present if a developer symlinked it in on purpose
+// - never auto-run on dev startup (see that script's header for why). Without
+// it, requests like /sfx/correct.mp3 fall through vite's SPA history fallback
+// and come back as index.html, which the browser reports as an opaque
+// "Content-Type text/html is not supported" media error. Surface the actual
+// cause loudly instead of leaving that to guess.
+//
+// hangul is deliberately not warned about: its absence is expected and
+// legible in the UI on its own (a bundled demo pool), so a startup warning
+// would fire on almost every checkout and mean nothing. Topik lessons are not
+// a public/ asset at all any more - they come from file_host (#1048).
 function warnMissingContentAssets(): Plugin {
   return {
     name: "warn-missing-content-assets",
@@ -76,34 +103,49 @@ function warnMissingContentAssets(): Plugin {
   }
 }
 
-// The Android app carries sessions only (src/lib/app-surface), so its build
-// leaves out /resume: the document entry below and the PDFs
-// scripts/sync-resume.mjs copies into public/. Vite copies public/ wholesale
-// before the bundle is written, so they are removed after the build.
+// The Android app carries sessions and nothing else (src/lib/app-surface), so
+// its build leaves out the document entry below, which exists only for
+// /resume.
 const isMobileBuild = process.env.SOME_UI_PROFILE === MOBILE_PROFILE
 
-function omitResumePdfs(): Plugin {
+// What a profile's output carries from public/ that it never loads
+// (build.paths.ts, `offPathPublicFiles`; the Android app's résumé PDFs are
+// about as much as every other file it ships from public/ together). Vite
+// copies public/ wholesale, with no filter of its own, and before the bundle
+// is written, so they come out once the build is done.
+function omitOffPathPublicFiles(offPath: ReadonlyArray<RegExp>): Plugin {
   let outDir = ""
   return {
-    name: "omit-resume-pdfs",
+    name: "omit-off-path-public-files",
     apply: "build",
     configResolved(config): void {
       outDir = resolve(config.root, config.build.outDir)
     },
     closeBundle(): void {
       for (const name of fs.readdirSync(outDir)) {
-        if (/^resume.*\.pdf$/.test(name)) fs.rmSync(resolve(outDir, name))
+        if (offPath.some((file) => file.test(name))) {
+          fs.rmSync(resolve(outDir, name))
+        }
       }
     },
   }
 }
 
-// The Pages build has no backend by design (`VITE_STATIC_DATA`,
-// `lib/data-mode`) and a static host cannot set headers, so a <meta> policy
-// with `connect-src 'self'` makes any request to another origin fail loudly.
-// `connect-src` only, and Pages only: the lan and Docker builds reach
-// `file_host`, a chosen speech provider and a music-overlay socket, which
-// tests/local-mode/no-egress.spec.ts checks instead.
+// The GitHub Pages build has no backend and no operator-bound traffic by
+// design (`VITE_STATIC_DATA`, `lib/data-mode`), and a static host cannot set
+// response headers. A <meta> policy is the one place this build can say so in a
+// form the browser enforces: with `connect-src 'self'`, a `fetch`, `WebSocket`
+// or beacon to any other origin is blocked, so a later change that adds one
+// fails loudly on the demo instead of quietly sending something somewhere.
+//
+// `connect-src` only: the Pages build already runs without any other policy,
+// and widening this to `default-src` would take on the font, image and
+// service-worker questions this change does not need to answer. The lan and
+// Docker builds are not covered, on purpose: they reach `file_host` on another
+// port of the same host (`lib/file-host-config`), a speech provider the person
+// chose and a music-overlay socket, none of which `connect-src` can name
+// without also blocking a learner's own choices. Those are checked by
+// tests/local-mode/no-egress.spec.ts instead.
 //
 // LA5 (docs/learner-data-authority.md): this tag is the invariant; widening the
 // policy, dropping the plugin or moving the tag out of `head-prepend` breaks it.
@@ -150,9 +192,13 @@ export default defineConfig(
           changeOrigin: true,
           rewrite: (path): string =>
             path.replace(new RegExp(`^${TTS_PROXY_PATH}`), ""),
-          // `openai-edge-tts` only `expose`s 5050 to the compose network;
-          // the `nginx` service publishes it. Vite's bare ECONNREFUSED does
-          // not say which container is missing, so name it.
+          // `docker compose up openai-edge-tts` publishes nothing on the
+          // host - that container only `expose`s 5050 to the compose
+          // network, and it is the `nginx` service beside it that maps
+          // ${PORT:-5050} to your machine. Starting one without the other
+          // leaves this proxy connecting to a closed port, and Vite's own
+          // "http proxy error: ECONNREFUSED" says nothing about which
+          // container is missing. Name it once, here.
           configure: (proxy): void => {
             proxy.on("error", (error: Error & { code?: string }): void => {
               if (error.code !== "ECONNREFUSED") return
@@ -175,8 +221,10 @@ export default defineConfig(
             isBlockedProxyPath(req.url) ? false : undefined,
           rewrite: (path): string =>
             path.replace(new RegExp(`^${FILE_HOST_PROXY_PATH}`), ""),
-          // Vite's bare ECONNREFUSED gets read as a CORS problem; name the
-          // backend instead.
+          // Name the backend, the same way the TTS proxy names its
+          // container. Vite's bare "http proxy error: ECONNREFUSED" is the
+          // exact message that gets read as a CORS problem and sends
+          // someone to reconfigure a server that was already correct.
           configure: (proxy): void => {
             proxy.on("error", (error: Error & { code?: string }): void => {
               if (error.code !== "ECONNREFUSED") return
@@ -192,7 +240,10 @@ export default defineConfig(
           },
         },
       },
-      // mkcert certs are gitignored and machine-local; only `serve` uses them.
+      // Local mkcert certs are machine-local (gitignored) and only relevant to
+      // `vite dev`/`vite preview` - `vite build` never starts a server, and
+      // CI/Docker builds don't have these certs, so only wire this up when
+      // both apply.
       ...(command === "serve" && hasLocalCerts && !devHttp
         ? {
             https: {
@@ -207,26 +258,39 @@ export default defineConfig(
       // redirects imports of the ones its profile leaves out to stubs before
       // the router plugin or vite's own resolver sees them.
       buildAudiencePlugin(),
-      // Single Tailwind pass over www's declared graph (style.context.ts).
+      // Single Tailwind pass over www's declared graph (style.context.ts):
+      // utilities + the shared design layer are generated exactly once, from an
+      // explicit @source set, instead of once per package. See #636.
       ...createStylePlugins(styleContext),
       TanStackRouterVite({
         autoCodeSplitting: true,
-        // src/routes/ is the routing tree. Only `__tests__/` is ignored, not
-        // `*.test.tsx` by name, so a test dropped beside a route shows up as
-        // a phantom route instead of disappearing.
+        // src/routes/ is the routing tree: every filename in it is a route
+        // path. Tests live in a `__tests__/` directory per #1471, and this
+        // ignores that directory - nothing else.
+        //
+        // It deliberately does NOT ignore `*.test.tsx` by name any more. That
+        // is what it used to do, and it made the routes tree a comfortable
+        // place to drop tests: `_dashboard.shell.test.tsx` parses as the route
+        // /_dashboard/shell, and the pattern quietly swallowed it. Narrowing
+        // this to the directory means a test file dropped back beside a route
+        // shows up as a phantom route instead of disappearing - loud, which is
+        // the point.
         routeFileIgnorePattern: String.raw`(^|/)__tests__(/|$)`,
       }),
       viteReact(),
       ...(command === "serve"
         ? [warnMissingContentAssets(), fileHostDevPlugin(fileHost)]
         : []),
-      ...(isMobileBuild ? [omitResumePdfs()] : []),
+      omitOffPathPublicFiles(offPathPublicFiles(process.env.SOME_UI_PROFILE)),
       pagesConnectPolicy(),
     ],
-    // An http:// page asks :3000 (the container) directly. While the proxy
-    // points elsewhere (`make dev`, FILE_HOST_PROXY_TARGET), route pages
-    // through it too. An explicit VITE_FILE_HOST_ENDPOINT still wins; env
-    // files are loaded here because Vite reads them after this config.
+    // An http:// page skips the proxy and asks :3000 directly
+    // (src/lib/file-host-config) - the container. While the proxy points
+    // anywhere else (`make dev`, or FILE_HOST_PROXY_TARGET), send it through
+    // the proxy too, so every page reaches the server the proxy names.
+    // An explicit VITE_FILE_HOST_ENDPOINT still wins, from the shell or an
+    // env file: Vite reads env files only after this config, so they are
+    // loaded here to see one.
     ...(command === "serve" &&
     fileHost.source !== "container" &&
     !loadEnv(mode, import.meta.dirname, "VITE_").VITE_FILE_HOST_ENDPOINT
@@ -245,43 +309,90 @@ export default defineConfig(
       tsconfigPaths: true,
     },
     build: {
+      // Enable rollup bundle analysis
       rolldownOptions: {
-        // Two HTML entries, one JS app: /resume is the same SPA under its own
-        // document so GitHub Pages serves a real 200 at /resume/ (see
-        // resume/index.html).
+        // Two HTML entries, one JS app: both boot the same
+        // src/main.tsx/router, so the /resume shell isn't a second copy of
+        // the app - it's the same SPA under a route-specific document (see
+        // resume/index.html's header comment) that GitHub Pages can serve
+        // as a real 200 at /resume/ instead of the generic app-shell
+        // 404.html fallback every other unmatched path relies on.
         input: {
           main: resolve(import.meta.dirname, "index.html"),
           ...(isMobileBuild
             ? {}
             : { resume: resolve(import.meta.dirname, "resume/index.html") }),
         },
-        // No `output.manualChunks`: matching with `id.includes(pkg)` under
-        // pnpm sweeps in every package with that peer dep in its store path.
-        // If manual grouping is ever needed, use `advancedChunks` and match on
-        // package boundaries.
-        // Production builds drop console calls. Not in the analyze build:
-        // this would override the `minify: false` analyze-bundle.js passes.
+        // No `output.manualChunks`. The hand-rolled version here matched with
+        // `id.includes(pkg)` — a substring test against the full module path —
+        // which under pnpm matches far more than the package named. pnpm
+        // encodes peer deps in the virtual-store directory name
+        // (`framer-motion@11.15.0_react-dom@19.0.0_react@19.0.0__react@19.0.0`),
+        // so `includes("react")` swept up *every* package declaring react as a
+        // peer: lucide-react, framer-motion/motion-dom, all of @tanstack,
+        // cmdk, sonner, zustand. Those landed in one `react-vendor` chunk that
+        // index.html then `modulepreload`ed, so the landing page eagerly
+        // fetched ~190 KB gzip of which Lighthouse measured 56% unused —
+        // undoing the route splitting `autoCodeSplitting: true` had just done.
+        // Letting Rolldown chunk from the real import graph cut critical-path
+        // JS from ~340 KB to ~161 KB gzip and moved FCP 3.3s -> 2.3s. Reach
+        // for `advancedChunks` (Rolldown's grouping API) if this ever needs
+        // manual grouping again — and match on package *boundaries*, not
+        // substrings of the resolved path.
+        // Production builds strip console calls (terser's `drop_console`,
+        // carried over to oxc — see `minify` below). Not in the analyze
+        // build: this object is spread over Vite's own `minify` setting, so
+        // it would override the `minify: false` that scripts/
+        // analyze-bundle.js passes to keep its chunks unminified.
         output: analyze
           ? {}
           : { minify: { compress: { dropConsole: true }, mangle: true } },
+        // Tree shaking options
         treeshake: {
-          // Every module is treated as side-effect free, so a bare import
-          // (`import "@some-ui/x/register"`) is dropped with its load-time
-          // effects. This overrides every package manifest's `sideEffects`
-          // for JS, but not CSS: Vite's CSS pipeline keeps it regardless.
+          // Every module is treated as side-effect free, so an import that
+          // binds nothing (`import "@some-ui/x/register"`) is dropped from the
+          // bundle along with whatever that module does at load time. Keep
+          // that in mind before adding one: this line overrides the
+          // `sideEffects` field of every workspace package's manifest for JS.
+          //
+          // It does NOT drop stylesheets (#1458, measured on Vite 8 /
+          // Rolldown): with `import "@some-ui/auth/style.css"` added to a
+          // route and a marker rule appended to that file, the marker shipped
+          // in www's CSS both with this setting and without it — Vite's CSS
+          // pipeline keeps CSS modules regardless. So the 22 packages/ui
+          // manifests that declare `sideEffects: ["*.css"]` are not being
+          // overridden here; www imports no package CSS today anyway
+          // (src/index.css runs one Tailwind pass over style.context.ts).
           moduleSideEffects: false,
+          // Custom tree shaking for your authored packages
           propertyReadSideEffects: false,
+          // Enable pure annotation checking
           annotations: true,
         },
       },
-      // Sourcemaps and the gzip column only for `pnpm build:analyze`.
+      // Sourcemaps and the gzip column are for `pnpm build:analyze`, which
+      // sets WWW_ANALYZE before building (scripts/analyze-bundle.js). The
+      // default build — CI, the Pages deploy, the Docker image — pays for
+      // neither: the maps were ~4x the code they describe, ~120 of them, and
+      // nothing that ships reads them; reportCompressedSize gzips every chunk
+      // only to print a column (#1449).
       sourcemap: analyze,
       reportCompressedSize: analyze,
-      // oxc, not terser (faster); `dropConsole` is set via
-      // `rolldownOptions.output` above.
+      // Vite 8's default minifier (oxc), not terser: terser's renderChunk was
+      // most of the plugin time in every build (#1449). `drop_console` moves
+      // with it as oxc's `dropConsole` — set through `rolldownOptions.output`
+      // above, which Vite spreads over its own `minify: true`.
       minify: "oxc",
+      // Chunk size warnings
       chunkSizeWarningLimit: 1000,
     },
-    // No `esbuild` block: Vite 8 transforms with oxc and ignores it.
+    // No `esbuild` block. Vite 8 transforms with oxc, not esbuild, and
+    // ignores this key outright — the build printed "Both esbuild and oxc
+    // options were set. oxc options will be used and esbuild options will be
+    // ignored" on every run. `treeShaking: true` was also already the default,
+    // and `keepNames: true` kept function names through mangling in every
+    // shipped build — bytes users download for the analyzer's sake, when the
+    // analyze build's sourcemaps already give it real names — so nothing here
+    // was doing work worth keeping.
   })
 )

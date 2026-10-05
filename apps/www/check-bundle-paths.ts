@@ -9,7 +9,7 @@
 //
 // Runs on Node's built-in type stripping: imports spell their `.ts` extension.
 import { spawnSync } from "node:child_process"
-import { mkdtempSync, rmSync } from "node:fs"
+import { mkdtempSync, readdirSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import type { BuildContents } from "@some-ui/vite-config/bundle-paths"
@@ -20,7 +20,12 @@ import {
   readBuild,
 } from "@some-ui/vite-config/bundle-paths"
 
-import { paths, profileBuildEnv, PROFILES } from "./build.paths.ts"
+import {
+  offPathPublicFiles,
+  paths,
+  profileBuildEnv,
+  PROFILES,
+} from "./build.paths.ts"
 
 const appRoot = import.meta.dirname
 const out = (line: string): void => void process.stdout.write(`${line}\n`)
@@ -46,6 +51,26 @@ function run(
 
 // The résumé PDFs the build copies from public/ (`build` runs this first too).
 run("node", ["scripts/sync-resume.mjs"], process.env)
+const publicFiles = readdirSync(join(appRoot, "public"))
+
+// What a profile copies from public/ and never loads: not chunks, so this is
+// checked by name (build.paths.ts, `offPathPublicFiles`).
+function publicViolations(
+  profile: (typeof PROFILES)[number],
+  outDir: string
+): Array<string> {
+  const offPath = offPathPublicFiles(profile)
+  const stale = offPath
+    .filter((file) => !publicFiles.some((name) => file.test(name)))
+    .map(
+      (file) =>
+        `${String(file)} names no file in public/: renamed, or not generated (scripts/sync-resume.mjs copies the résumé's PDFs only once it is built)`
+    )
+  const shipped = readdirSync(outDir)
+    .filter((name) => offPath.some((file) => file.test(name)))
+    .map((name) => `${name} is copied from public/ and never loaded`)
+  return [...stale, ...shipped]
+}
 
 const scratch = mkdtempSync(join(tmpdir(), "www-bundle-paths-"))
 let failed = false
@@ -73,12 +98,15 @@ try {
     const build = readBuild(outDir, repoRoot, appRoot)
     builds.set(profile, build)
     const bytes = build.chunks.reduce((sum, chunk) => sum + chunk.bytes, 0)
-    const violations = checkPaths(profile, build, paths)
+    const violations = [
+      ...checkPaths(profile, build, paths).map(describePathViolation),
+      ...publicViolations(profile, outDir),
+    ]
     out(
       `[bundle-paths] ${profile}: ${build.chunks.length} chunks, ${(bytes / 1024).toFixed(1)} KiB JS, ${violations.length} violation(s)`
     )
     for (const violation of violations) {
-      err(`[bundle-paths] ${profile}: ${describePathViolation(violation)}`)
+      err(`[bundle-paths] ${profile}: ${violation}`)
     }
     failed ||= violations.length > 0
   }

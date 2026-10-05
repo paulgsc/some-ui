@@ -128,4 +128,16 @@ describe("TTSProvider: where the speech is made follows whose data this is", () 
       adapters: { static: "native backend" },
     })
   })
+
+  it("has only the browser's voice on GitHub Pages, which has no speech service", async () => {
+    kind = "account"
+    vi.stubEnv("VITE_STATIC_DATA", "true")
+    const { TTSProvider } = await import("@/providers/tts")
+    render(<TTSProvider>{children}</TTSProvider>)
+
+    expect(speechConfigSpy).toHaveBeenCalledWith({
+      mode: "static",
+      adapters: { static: "web backend" },
+    })
+  })
 })

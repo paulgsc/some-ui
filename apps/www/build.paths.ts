@@ -4,12 +4,16 @@ import { definePaths } from "@some-ui/vite-config/bundle-paths"
 import { gates, MOBILE_PROFILE, profiles } from "./build.profiles.ts"
 
 /**
- * What each profile's output may carry, checked against a real build by
- * `pnpm --filter www check:bundle-paths` (check-bundle-paths.ts; rule in
+ * What each profile's output may carry, checked against a real build of it
+ * by `pnpm --filter www check:bundle-paths` (check-bundle-paths.ts;
+ * the rule, and why it reads the written output, in
  * packages/some-vite-config/AUDIENCES.md, "Paths"). A profile ships only the
- * code on its own path. Audiences (build.profiles.ts) cover whole
- * `packages/ui/*` workspaces; these rules cover www's own modules, npm
- * packages, and chunks nothing loads.
+ * code on its own path: what no visit to that deployable can run does not
+ * belong in it, at startup or anywhere else in the output.
+ *
+ * Audiences (build.profiles.ts) already say this for whole `packages/ui/*`
+ * workspaces. These rules say it for what audiences cannot see: www's own
+ * modules, npm packages, and chunks the bundler emits that nothing loads.
  */
 type Profile = keyof typeof profiles
 
@@ -22,11 +26,12 @@ export const PROFILES: ReadonlyArray<Profile> =
   Object.keys(profiles).filter(isProfile)
 
 /**
- * The environment each deployable builds with, beside `SOME_UI_PROFILE`, kept
- * in step by hand with the Dockerfile (`lan`), .github/workflows/pages.yml
- * (`pages`; base path is the repository name) and apps/mobile's `build:web`
- * (`mobile`). Every profile sets all three, so a shell export cannot change
- * what is checked.
+ * The environment each deployable builds with, beside `SOME_UI_PROFILE`, so
+ * the check builds what ships. Kept in step by hand with where each is set:
+ * the Dockerfile (`lan`), .github/workflows/pages.yml (`pages`; its base path
+ * is the repository's name), and apps/mobile's `build:web` (`mobile`). Every
+ * profile sets all three, so none of them exported in the caller's shell
+ * (Vite prefers it to any .env file) can change which modules are checked.
  */
 export const profileBuildEnv: Readonly<
   Record<Profile, Readonly<Record<string, string>>>
@@ -45,9 +50,42 @@ export const profileBuildEnv: Readonly<
 }
 
 /**
- * The route files on the Android app's path: the root, the layouts above
+ * Files Vite copies from public/ that a profile never loads, by name at the
+ * top of its output. They are not chunks, so the module rules below cannot
+ * see them: vite.config.ts deletes them from that profile's output, and
+ * check-bundle-paths.ts fails when one is still there, or when one names no
+ * file in public/ (renamed, it would ship again unnoticed).
+ */
+const OFF_PATH_PUBLIC_FILES: Readonly<Record<Profile, ReadonlyArray<RegExp>>> =
+  {
+    lan: [],
+    pages: [],
+    [MOBILE_PROFILE]: [
+      // What scripts/sync-resume.mjs copies in for /resume, which is not on
+      // the Android app's surface (src/lib/app-surface).
+      /^resume.*\.pdf$/,
+      // The web-push service worker: src/lib/study-nudge/service-worker.ts
+      // never registers it in this build, which nudges natively.
+      /^sw\.js$/,
+    ],
+  }
+
+/**
+ * `OFF_PATH_PUBLIC_FILES` for a `SOME_UI_PROFILE` value: unset or empty is
+ * `lan`, as in `buildAudiencePlugin`.
+ */
+export function offPathPublicFiles(
+  profile: string | undefined
+): ReadonlyArray<RegExp> {
+  const name = profile || "lan"
+  return isProfile(name) ? OFF_PATH_PUBLIC_FILES[name] : []
+}
+
+/**
+ * The route files on the Android app's path: the root and the layouts above
  * `MOBILE_SURFACE`'s routes (src/lib/app-surface), and those routes. The
- * mobile-surface test fails when this list and the route tree differ.
+ * mobile-surface test derives this list from the real route tree and fails
+ * when the two differ, so a route added to the surface is added here too.
  */
 export const MOBILE_ROUTE_FILES = [
   "apps/www/src/routes/__root.tsx*",
@@ -73,6 +111,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/dictation/**",
   "apps/www/src/lib/study-nudge/native.ts",
   "apps/www/src/lib/study-nudge/schedule.ts",
+  "apps/www/src/components/auth/device-*.tsx",
   "apps/www/src/components/settings/device-*.tsx",
   "node_modules/@capacitor/**",
   "node_modules/@capacitor-community/**",
@@ -106,21 +145,34 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       modules: [
         "apps/www/src/lib/tenant/sessions-transfer/**",
         "apps/www/src/lib/tenant/transfer-lock/**",
-        "apps/www/src/lib/tts-config/**",
         "apps/www/src/components/settings/account-section.tsx",
         "apps/www/src/components/settings/data-home-section.tsx",
-        "apps/www/src/components/settings/hosted-voice-fields.tsx",
       ],
       profiles: ["lan", "pages"],
       why: "web-only code: the Android app has no account to move sessions to or sign out of, and no hosted voice (it speaks with the phone's engine)",
     },
     {
       modules: [
-        `${SPEECH_ENTRY}/http.es.js`,
-        `${SPEECH_ENTRY}/web-speech.es.js`,
+        "apps/www/src/lib/passkey/**",
+        "apps/www/src/lib/auth/account-keeps.ts",
+        "apps/www/src/lib/auth/errors.ts",
       ],
       profiles: ["lan", "pages"],
-      why: "the web builds' voices, the hosted service and the browser's own synthesizer: the Android app speaks only with the phone's engine (src/providers/tts.tsx)",
+      why: "the passkey screen and what only it says: the Android app has no sign-in, and its /auth offers a reload instead (src/components/auth/device-session-lost)",
+    },
+    {
+      modules: [`${SPEECH_ENTRY}/web-speech.es.js`],
+      profiles: ["lan", "pages"],
+      why: "the web builds' voice, the browser's own synthesizer: the Android app speaks only with the phone's engine (src/providers/tts.tsx)",
+    },
+    {
+      modules: [
+        `${SPEECH_ENTRY}/http.es.js`,
+        "apps/www/src/lib/tts-config/**",
+        "apps/www/src/components/settings/hosted-voice-fields.tsx",
+      ],
+      profiles: ["lan"],
+      why: "the hosted voice, which needs the TTS service only the home server runs: Pages has none, and the Android app speaks with the phone's engine (src/providers/tts.tsx)",
     },
     {
       modules: DEVICE_MODULES,
@@ -160,21 +212,38 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       ],
       why: "the Android app answers file_host, speaks, nudges and takes dictation through these; a build without one is an APK that installs and then fails",
     },
-    // Also what keeps the web-voices rule in `exclusive` from passing by
-    // matching nothing, should the speech dist layout move.
-    ...(["lan", "pages"] as const).map((profile) => ({
-      profile,
+    {
+      profile: MOBILE_PROFILE,
+      modules: ["apps/www/src/components/auth/device-session-lost.tsx"],
+      why: "the Android app's /auth: without it the route renders the web's passkey screen, which this build cannot use",
+    },
+    // Also what keeps the voice and passkey rules in `exclusive` from passing
+    // by matching nothing, should the speech dist layout or lib/ move.
+    {
+      profile: "lan",
       modules: [
         `${SPEECH_ENTRY}/http.es.js`,
         `${SPEECH_ENTRY}/web-speech.es.js`,
       ],
-      why: "the web builds speak through these (src/providers/tts.tsx); a build without them is silent",
-    })),
+      why: "the home server speaks through these (src/providers/tts.tsx); a build without them is silent",
+    },
+    {
+      profile: "lan",
+      modules: ["apps/www/src/lib/passkey/index.ts"],
+      why: "a passkey is the only way into an account on the home server (src/lib/auth/session.ts)",
+    },
+    {
+      profile: "pages",
+      modules: [`${SPEECH_ENTRY}/web-speech.es.js`],
+      why: "Pages speaks through this (src/providers/tts.tsx); a build without it is silent",
+    },
   ],
-  // Every profile builds one shared route tree (AUDIENCES.md, "Build
-  // audiences"), so an off-path route ships as a stub in the startup chunk
-  // plus its page chunk. Paid off by per-deployable route trees; each entry
-  // goes with the change that drops it.
+  // Every profile builds one route tree, shared by design until now
+  // (AUDIENCES.md, "Build audiences"): a route off a profile's path ships
+  // there as a stub in the startup chunk plus its page chunk, which the
+  // profile redirects or 404s away from before it renders. Paid off by giving
+  // each deployable a route tree of its own routes; each entry goes with the
+  // change that drops it.
   debt: [
     ...(["lan", "pages"] as const).map(
       (profile): Debt => ({
