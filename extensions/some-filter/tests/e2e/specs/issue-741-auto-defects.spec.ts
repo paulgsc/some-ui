@@ -1,17 +1,12 @@
 /**
  * #741 ("guilty until innocent") — falsifiable proof, via the real
  * --load-extension pipeline, of three concrete "auto is bad at applying the
- * theme" claims from the issue. Deliberately not a fix for any of them: the
- * issue asks to prove these first, so every test below asserts what
- * *should* be true and is expected to fail against today's implementation.
- * Each test.describe below cites the exact code path responsible — see each
- * fixture's own header comment for the fuller trace.
+ * theme" claims from the issue. Each test asserts what *should* be true and
+ * cites the responsible code path; see each fixture's header for the trace.
  *
- * A companion classifier-level proof (the same filter-blindness root cause
- * behind the first describe below, isolated at the classifyPage()/detect()
- * level rather than the live pipeline) lives in
- * extensions/filter-classifier's corpus (`filter-invert-reads-dark`/
- * `filter-invert-reads-light`, tests/e2e/fixtures/corpus.ts).
+ * The classifier-level companion (the same filter blindness behind the
+ * first describe) lives in extensions/filter-classifier's corpus
+ * (`filter-invert-reads-dark`/`filter-invert-reads-light`).
  */
 
 import { relativeLuminance } from "@filter/lib/content/color"
@@ -58,12 +53,9 @@ test.describe("auto theme under a vendor-authored filter: invert (#741)", () => 
       Number(bStr) / 255,
     ]
 
-    // getComputedStyle never reflects `filter` — it reports the dark theme's
-    // own token, undistorted. A human (or a screenshot) sees it composited
-    // through the vendor's still-active `invert(1)`, which theme-apply.ts
-    // never touches or removes. invert(1) is an exact per-channel
-    // complement (CSS Filter Effects Level 1) — replicate that here to get
-    // what actually reaches the screen.
+    // getComputedStyle never reflects `filter`; a human sees our token
+    // through the vendor's still-active `invert(1)`, an exact per-channel
+    // complement (CSS Filter Effects Level 1), replicated here.
     const asSeen: [number, number, number] = [
       1 - declared[0],
       1 - declared[1],
@@ -71,12 +63,8 @@ test.describe("auto theme under a vendor-authored filter: invert (#741)", () => 
     ]
     const asSeenLuminance = relativeLuminance(...asSeen)
 
-    // A properly dark, settled canvas should still read dark once the
-    // page's own filter is accounted for — it does not: injecting our dark
-    // token under an active invert(1) composites back to a bright, near-
-    // white canvas, exactly the "auto removes the theme, revealing back the
-    // white vendor bg" symptom, self-inflicted by the theme's own
-    // application rather than any later event.
+    // A dark canvas should still read dark once the page's own filter is
+    // accounted for; under invert(1) our token composites to near-white.
     expect(
       asSeenLuminance,
       `declared computed bg ${rendered.bg} is a properly dark token, but ` +
@@ -104,14 +92,9 @@ test.describe("the prepaint veil under a previously-applied filter, across a new
     )
     expect(firstSession).toBe("dark")
 
-    // content.ts's yt-navigate-start/yt-navigate-finish listeners are plain
-    // window event listeners, not scoped to youtube.com — dispatching them
-    // here simulates an SPA-style re-navigation within the same document.
-    // yt-navigate-start re-arms the veil via enablePrepaint(); this test
-    // only needs that half. Dispatching -finish too would race the
-    // veil-removal rAF pair against the screenshot below for no benefit —
-    // content.ts's navigatingAway guard holds the veil up until -finish
-    // settles the swap, which is what makes the capture deterministic.
+    // Simulates an SPA re-navigation: content.ts's yt-navigate-* listeners
+    // are plain window listeners. Only -start is dispatched; navigatingAway
+    // then holds the veil up until -finish, making the capture deterministic.
     const veil = await page.evaluate(() => {
       window.dispatchEvent(new Event("yt-navigate-start"))
       const el = document.getElementById("__sw_prepaint_veil")
@@ -129,25 +112,12 @@ test.describe("the prepaint veil under a previously-applied filter, across a new
 
     // ── why this asserts on pixels rather than on `1 - declared` ────────────
     //
-    // This test used to derive what a human sees by inverting the veil's
-    // *declared* colour in JS, on the premise that the vendor's still-active
-    // `filter: invert(1)` on <html> composites the veil like any other
-    // descendant. It does not, and the premise is what made the assertion
-    // unsound: enablePrepaint() promotes the veil to the top layer via the
-    // popover API, and a top-layer element is painted outside every ancestor
-    // filter's render surface. No inversion is applied to it at all.
-    //
-    // That gap was not academic. Under the model, compensating the veil to a
-    // light declared value "read dark", and the test passed. On screen the
-    // compensated veil was simply light — measured at rgb(232, 227, 218), a
-    // near-white cream filling the viewport, which is #741's own symptom
-    // ("the anti-flash mechanism becomes the flash") reproduced by its fix.
-    // prepaint.ts now skips compensation in the top layer, where there is no
-    // filter to counter, and the veil renders the dark value it declares.
-    //
-    // A screenshot is the only instrument that can tell those two apart, so
-    // the assertion moved onto one. The declared value is still reported in
-    // the failure message, since it is what a fix would change.
+    // The veil is top-layer, painted outside every ancestor filter, so the
+    // vendor's invert(1) does not apply to it. Modelling it as inverted once
+    // let a compensated light veil "read dark" while it rendered near-white
+    // (rgb(232, 227, 218)) — #741's own symptom reproduced by its fix. Only a
+    // screenshot tells them apart. The declared value is still reported on
+    // failure, since a fix would change it.
     const { color, luminance } = await brightestIn(
       page,
       context,
@@ -214,13 +184,10 @@ test.describe("auto theme's per-surface darkening leaves untargeted text unreada
     const textLuminance = luminanceOf(rendered.text)
     const contrast = contrastRatio(bgLuminance, textLuminance)
 
-    // WCAG AA's own floor for ordinary body text is 4.5:1. #card's
-    // background was hue-preserving-darkened (adapter/theme-adapter.ts,
-    // adapter/actuator.ts's emit-surface-color) while its own inline
-    // `color` — authored for readability against the *original* white
-    // background — was never touched: no per-surface foreground action
-    // exists in the FilterAction alphabet (adapter/contracts.ts), and
-    // buildDarkThemeCSS's static text-color rules don't cover bare <div>.
+    // WCAG AA's floor for body text is 4.5:1. #card's background is
+    // darkened while its inline `color`, authored for white, is untouched:
+    // the FilterAction alphabet has no per-surface foreground action, and the
+    // static text rules don't cover bare <div>.
     expect(
       contrast,
       `#card resolved to bg ${bg} / text ${text} — ` +
@@ -248,11 +215,8 @@ test.describe("auto theme cannot see background-image, only background-color (#7
       }
     })
 
-    // pipeline.ts's readAttr() and theme-detector.ts's classifyPage() both
-    // sample only getComputedStyle().backgroundColor — #gradient-card has
-    // none (only backgroundImage), so it is never scored, never becomes a
-    // SurfaceKey, and never receives a tag-surface/emit-surface-color
-    // action.
+    // Both samplers read only backgroundColor; #gradient-card has only
+    // backgroundImage, so it never becomes a SurfaceKey.
     expect(
       rendered.patched,
       "the gradient surface should have been classified, like any other " +

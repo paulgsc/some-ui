@@ -1,36 +1,25 @@
 /**
- * The swatch registry — Definition D.3's domain vocabulary (canon §D.1),
- * promoted from `theme-apply.ts`'s hardcoded `TOKENS` string to typed data.
- * Domain data: it lives here, in `some-filter`, never in
+ * The swatch registry — Definition D.3's domain vocabulary (canon §D.1) as
+ * typed data. Domain data: it lives in `some-filter`, never in
  * `@some-extension/transport` (Corollary D.2.1).
  *
- * A *swatch* is one named point in the dark-palette design space. The
- * ergonomics note that motivated this milestone (referenced from #687)
- * argues a comfortable dark theme is a family of chromatic-gray palettes —
- * cool blue-gray, soft green-gray, purple-gray, warm paper, neutral,
- * low-contrast — not one `#fff`-on-`#000` maximum-contrast recipe, because
- * near-white text on a near-black background "becomes the new sun": its
- * apparent luminance dominates the visual field regardless of its RGB
- * value. Six such palettes are seeded below; `DEFAULT_SWATCH_ID` is
- * byte-for-byte today's palette, so selecting it is behavior-preserving.
+ * A *swatch* is one named point in the dark-palette design space: a
+ * comfortable dark theme is a family of chromatic-gray palettes, not one
+ * `#fff`-on-`#000` recipe, because near-white text on near-black "becomes
+ * the new sun". Seven palettes are seeded below.
  *
  * `Φ_comfort` (bottom of this file) is the checkable form of that argument:
- * text is never the brightest thing on screen, contrast lives in a comfort
- * band rather than pinned at the 21:1 maximum, the neutral carries a
- * chromatic bias, and the background is a mid-dark reference rather than a
- * void. It is defined here, statically, over the registry; S6 asserts the
- * same predicate on rendered output. A canon amendment proposing `Φ_comfort`
- * as a named predicate (extending `Φ` or as a sibling) is proposed alongside
- * this story per §10 — see `docs/canon/dom-state-estimation-canon.typ`.
+ * text is never the brightest thing on screen, contrast sits in a comfort
+ * band rather than at 21:1, the neutral carries a chromatic bias, and the
+ * background is mid-dark rather than a void. It is defined statically over
+ * the registry; the canon amendment proposing it is per §10 (see
+ * `docs/canon/dom-state-estimation-canon.typ`).
  */
 
-// Relative, not `@filter/*`-aliased: that alias only resolves inside this
-// package's own tsconfig. `filter-classifier` (extensions/filter-classifier)
-// imports this file directly via `@some-extension/filter`'s `./*` source
-// export to test Φ_comfort against live-rendered fixtures (#722), and both
-// its typecheck and its esbuild bundling need a path Node/esbuild can
-// resolve on their own — the same reason transport's own cross-package-safe
-// leaf (`contracts/adapter.ts`) uses only relative imports.
+// Relative, not `@filter/*`-aliased: `filter-classifier` imports this file
+// through `@some-extension/filter`'s `./*` source export (to test Φ_comfort
+// against rendered fixtures), and its typecheck and esbuild bundling need
+// paths they can resolve without this package's tsconfig.
 import {
   compositeOver,
   parseColor,
@@ -40,9 +29,8 @@ import {
 import { rgbToHSL } from "../../lib/content/modify-colors"
 
 /**
- * Generalizes `theme-apply.ts`'s `TOKENS` fields. Every CSS custom property
- * `buildDarkThemeCSS()` currently emits (`--sw-bg-0`, …, plus the
- * previously-hardcoded `code`/`kbd`/`samp` color) has a role here.
+ * One role per CSS custom property `buildDarkThemeCSS()` emits (`--sw-bg-0`,
+ * …, plus the `code`/`kbd`/`samp` color).
  */
 export type Swatch = {
   readonly id: string
@@ -54,18 +42,11 @@ export type Swatch = {
   readonly surface: string
   readonly border: string
   /**
-   * ADR 0002 §2.3 ("E becomes border-led"): the enforcement sheet's erasure
-   * strategy (`adapter/enforcement-sheet.ts`) flattens every vendor
-   * background to `bg0`, so on a generic element `border` is the *only*
-   * remaining channel that can carry hierarchy — unlike `border` above
-   * (tuned as a subtle divider alongside the existing bg1/bg2/bg3 fill
-   * ramp, and left untouched here so the shipped pipeline's look is
-   * unaffected), `borderStrong` has to be visible with nothing else to lean
-   * on. `borderHierarchyReport` below is the checkable form of that
-   * requirement. A separate token rather than a redefinition of `border`
-   * itself: the two channels have different jobs and this keeps the change
-   * additive — every existing `var(--sw-border)` consumer in
-   * `theme-apply.ts` is untouched.
+   * ADR 0002 §2.3 ("E becomes border-led"): the enforcement sheet flattens
+   * every vendor background to `bg0`, so a border is the only channel left
+   * to carry hierarchy and must be visible on its own. `border` stays the
+   * subtle divider the shipped pipeline uses. `borderHierarchyReport` is the
+   * checkable form.
    */
   readonly borderStrong: string
   readonly text0: string
@@ -78,12 +59,9 @@ export type Swatch = {
   readonly selectionBg: string
   readonly codeFg: string
   /**
-   * ADR 0002 §2.3 amendment (border-soup finding, `enforcement-sheet.ts`'s
-   * own header): the top-lit lift gradient that replaces forced borders on
-   * structural containers. Translucent light-from-above for a dark swatch
-   * (`rgb(255 255 255 / α)`); a light swatch would use a dark tint instead
-   * (`rgb(0 0 0 / α)`) — every registry entry here is dark, so this file has
-   * no such case yet, but the token is theme-parametric by construction.
+   * ADR 0002 §2.3 amendment: the top-lit lift gradient on structural
+   * containers (see `enforcement-sheet.ts`'s header). Light-from-above for a
+   * dark swatch; a light swatch would use a dark tint (`rgb(0 0 0 / α)`).
    */
   readonly lift: string
 }
@@ -91,75 +69,40 @@ export type Swatch = {
 export const DEFAULT_SWATCH_ID = "default"
 
 /**
- * The one `borderStrong` value shared by every registry entry below — same
- * pattern as `border`/`inputBorder`, which are also swatch-independent
- * literals repeated per entry rather than derived. A named constant here
- * (rather than a 7x-repeated literal) because this one *is* derived: 0.35 is
- * the smallest round white-alpha step that clears `NON_TEXT_CONTRAST_FLOOR`
- * (WCAG 2.1 SC 1.4.11's 3:1 non-text contrast) against every `bg0` in this
- * registry, with margin — the exact minimum measured across all seven
- * entries was 0.329-0.330 (`bg0` luminance ranges 0.0077-0.0115, narrow
- * enough that one value clears the floor everywhere with comparable
- * margin). `borderHierarchyReport` below is the checkable, per-swatch form
- * of the same claim — this constant is not itself trusted; every entry is
- * still verified against the floor, same as every other `Φ_comfort` clause
- * is checked rather than assumed from the literal that produced it.
+ * The `borderStrong` value shared by every registry entry. 0.35 is the
+ * smallest round white-alpha step that clears `NON_TEXT_CONTRAST_FLOOR`
+ * (WCAG 2.1 SC 1.4.11's 3:1) against every `bg0` here with margin (the
+ * measured minimum was 0.329–0.330). Not trusted on its own:
+ * `borderHierarchyReport` checks every entry.
  *
- * This is a floor against an *invisible* border, not a claim about what
- * looks best — final visual tuning is deferred to ADR 0002 §7 step 4's
- * eye-strain validation, same as the rest of the border-led hierarchy this
- * token exists for (§2.3).
+ * A floor against an invisible border, not a visual tuning; that is ADR 0002
+ * §7 step 4's eye-strain validation.
  */
 const BORDER_STRONG = "rgba(255, 255, 255, 0.35)"
 
 /**
- * The one `lift` value shared by every dark registry entry below — same
- * repeated-literal pattern as `BORDER_STRONG` above, and for the same
- * reason: every entry in this registry is a dark swatch, so light-from-above
- * is the one physically-motivated direction for all seven. 0.035 is a
- * starting value (`enforcement-sheet.ts`'s own header records the lift
- * mechanism this token feeds); a light swatch, if one is ever added, needs
- * its own dark-tint value here instead — `Swatch.lift`'s own doc comment.
+ * The `lift` value shared by every (dark) registry entry. 0.035 is a starting
+ * value; a light swatch needs its own dark tint (see `Swatch.lift`).
  */
 const LIFT = "rgb(255 255 255 / 0.035)"
 
 /**
- * `as const satisfies Record<string, Swatch>` — literal id keys are
- * preserved for `keyof typeof SWATCHES`, while every entry is still checked
- * against the full `Swatch` shape: omitting a role on any entry is a type
- * error, not a silently-`undefined` field (the registry's own acceptance
- * bar, #687).
+ * `as const satisfies Record<string, Swatch>`: literal id keys survive for
+ * `keyof typeof SWATCHES`, and omitting a role on any entry is a type error.
  */
 export const SWATCHES = {
-  // No longer `theme-apply.ts`'s former `TOKENS` verbatim — two rounds of
-  // changes since (#735):
+  // Tuned for sustained-reading comfort, which is served by minimizing
+  // luminance *transitions* over a session:
   //
-  // 1. `text0` first moved from `#e2e8f0` to `#cfdae8` (a blind Comfort Lab
-  //    eye score on the original pair came back hostile — "the text is
-  //    basically the sun" — despite passing the predicate: contrast 15.35,
-  //    right at the old CONTRAST_BAND_MAX of 16). Then to `#8699b1` — a
-  //    genuinely desaturated "reading gray" (213.5°, 21.6% sat, L 61%)
-  //    rather than a dimmed light-blue-white, on the argument that most
-  //    dark themes optimize for maximum perceived contrast while staying
-  //    "dark," but sustained-reading comfort is better served by minimizing
-  //    luminance *transitions* over a session, not just avoiding one
-  //    hostile static frame.
-  // 2. That argument applies to `bg0` too: `#0d1117` (luminance 0.00548) is
-  //    darker than VS Code (#1e1e1e), Tokyo Night (#1a1b26), Catppuccin
-  //    Mocha (#1e1e2e), and Gruvbox (#282828) — none of which go
-  //    near-black, because it maximizes the adaptation distance to
-  //    anything brighter (a white flash, a tab switch). `bg0` moves to
-  //    `#171c25` (luminance 0.01146), which lands almost exactly on Tokyo
-  //    Night's own background. `bg1`/`bg2`/`bg3`/`surface`/`inputBg` shift
-  //    with it, preserving the original luminance *gaps* between tiers
-  //    (not just bg0 in isolation, which would have collided with the old
-  //    bg1–bg3 range and collapsed the elevation ramp).
+  // 1. `text0` is a desaturated "reading gray" (213.5°, 21.6% sat, L 61%);
+  //    the earlier near-white pair (contrast 15.35) scored hostile in a blind
+  //    Comfort Lab eye test despite passing the predicate.
+  // 2. `bg0` is `#171c25` (luminance 0.01146, about Tokyo Night's) rather
+  //    than near-black, which maximizes adaptation distance to anything
+  //    brighter. `bg1`/`bg2`/`bg3`/`surface`/`inputBg` keep the original
+  //    luminance gaps between tiers so the elevation ramp survives.
   //
-  // Together these drop contrast to 5.86 (bg0 #171c25, text0 #8699b1) —
-  // below the old CONTRAST_BAND_MIN of 7.5, which was tightened from the
-  // *other* direction only, never re-examined from below. CONTRAST_BAND_MIN
-  // moves to 5.5 to accommodate this pair with margin (see the constant's
-  // own comment below).
+  // Together: contrast 5.86, which sets CONTRAST_BAND_MIN below.
   default: {
     id: "default",
     label: "Default",
@@ -322,39 +265,21 @@ export function getSwatch(id: string): Swatch {
 
 // ── Φ_comfort ─────────────────────────────────────────────────────────────
 //
-// "Dark" is not the property; "comfortable" is. Today's zero-leak Φ only
-// forbids bright leaks (Remark C.1) — a swatch can pass it while frying the
-// eyes (`#fff` on `#000`, contrast 21:1). Φ_comfort is the additional,
-// checkable predicate the ergonomics note actually argues for.
+// "Dark" is not the property; "comfortable" is. The zero-leak Φ only forbids
+// bright leaks (Remark C.1); a swatch can pass it while frying the eyes
+// (`#fff` on `#000`, 21:1). Φ_comfort is the additional checkable predicate.
 //
-// Generalized (#722) from "a `Swatch`'s (bg0, text0) pair" to any observed
-// `ComfortSample`: the predicate itself was never actually about the
-// registry — `comfortReport`'s body only ever read two RGBA colors — the
-// registry-only signature just meant nothing outside `SWATCHES` could be
-// checked against it. #722 asks for exactly that: classifying a small,
-// human-verified corpus of *rendered* fixtures (hostile → comfortable),
-// which arrive as `getComputedStyle` `rgb()` strings via `color.ts`'s
-// `parseColor`, not as this file's hex literals. `swatchSample` below is the
-// only thing that still knows about hex; every registry call site converts
-// through it, so this generalization changes no existing behavior.
+// Defined over any observed `ComfortSample`, not just a registry entry, so
+// rendered fixtures (`getComputedStyle` strings via `parseColor`) can be
+// classified too. `swatchSample` is the only thing that knows about hex.
 const TEXT_LUMINANCE_CEILING = 0.92
-// 7.5 was never re-examined from below until `default`'s own (bg0, text0)
-// moved to a deliberately lower-contrast "reading gray" pair — #8699b1 on
-// the new #171c25 bg0 lands at 5.86, under the original floor. Unlike the
-// 16→14 tightening above, there's no blind eye-score evidence this pair
-// reads as hostile — the opposite argument (minimizing adaptation cost
-// over a session favors lower, not higher, contrast) is what motivated the
-// pair in the first place. 5.5 accommodates it with real margin (0.36)
-// rather than sitting at the exact edge.
+// 5.5 accommodates `default`'s deliberately lower-contrast reading-gray pair
+// (5.86) with margin. There is no eye-score evidence that pair reads as
+// hostile; lower contrast is the point.
 const CONTRAST_BAND_MIN = 5.5
-// 16 (the WCAG-adjacent round number this started at) let the shipped
-// `default` swatch's own (bg0, text0) pair through at contrast 15.35 — and
-// a blind Comfort Lab eye score on that exact pair came back hostile
-// (overall 19, "the text is basically the sun") despite passing every
-// clause (#735). 14 is the real gap found by checking every registry
-// swatch's own contrast: the next-highest is `warm-paper-dark` at 13.64,
-// comfortably under; `default` at 15.35 is the outlier this band exists to
-// catch, not fit around.
+// The original 16 let a pair through at 15.35 that a blind eye test scored
+// hostile ("the text is basically the sun"). 14 sits in the real gap between
+// that and the highest registry swatch (`warm-paper-dark`, 13.64).
 const CONTRAST_BAND_MAX = 14
 const CHROMATIC_SATURATION_FLOOR = 0.03
 const BACKGROUND_LUMINANCE_FLOOR = 0.001
@@ -431,24 +356,16 @@ export function satisfiesComfort(sample: ComfortSample): boolean {
 
 // ── Border-led hierarchy (ADR 0002 §2.3) ────────────────────────────────────
 //
-// A distinct, independent predicate from Φ_comfort above — a different
-// concern (can a border alone convey structure) checked over a different
-// pair ((bg, border), never (bg, text)), not a clause folded into
-// `comfortReport`/`ComfortSample`. Kept separate deliberately: this file's
-// own header notes `ComfortSample`/`Φ_comfort` are consumed directly by
-// `filter-classifier` against live-rendered fixtures (#722) — widening that
-// existing type's meaning to also cover border legibility would be a second,
-// unrelated claim riding along on an API whose contract external consumers
-// already depend on.
+// Independent of Φ_comfort: a different concern over a different pair
+// ((bg, border), never (bg, text)). Kept separate because external consumers
+// (`filter-classifier`) depend on `ComfortSample`'s meaning.
 //
-// WCAG 2.1 SC 1.4.11 ("Non-text Contrast") sets 3:1 as the contrast floor
-// for a UI component's visual boundary against its background — the
-// standard's own answer to exactly ADR 0002 §2.3's question (can a viewer
-// tell where a border is), applied here to `borderStrong` composited over
-// `bg0` rather than invented from nothing.
+// WCAG 2.1 SC 1.4.11 ("Non-text Contrast") sets 3:1 as the floor for a UI
+// component's boundary against its background, applied to `borderStrong`
+// composited over `bg0`.
 const NON_TEXT_CONTRAST_FLOOR = 3.0
 
-/** The `(bg, border)` pair `borderHierarchyReport` is evaluated over. `border` is composited as translucent-over-opaque (`compositeOver`) before its luminance is read — `borderStrong`'s registry values are semi-transparent white overlays (`rgba(255, 255, 255, α)`), and contrast has to be measured against what a viewer actually sees painted, not against the overlay's own unpremultiplied channel values. */
+/** The `(bg, border)` pair `borderHierarchyReport` is evaluated over. `border` is composited over `bg` (`compositeOver`) before its luminance is read: registry values are translucent white, and contrast is measured against what is painted. */
 export type BorderSample = {
   readonly bg: RGBA
   readonly border: RGBA
@@ -459,11 +376,8 @@ export function borderSample(swatch: Swatch): BorderSample {
   const border = parseColor(swatch.borderStrong)
   return {
     bg: hexToRGBA(swatch.bg0),
-    // Every registry value is a well-formed rgba() string (checked by the
-    // unit test alongside the floor itself), so a null parse here would
-    // itself be the bug the caller wants to see — transparent black is a
-    // safe, maximally-honest default that a floor check will correctly
-    // reject rather than silently pass.
+    // Every registry value parses (unit-tested); transparent black on a null
+    // parse makes the floor check fail rather than silently pass.
     border: border ?? [0, 0, 0, 0],
   }
 }

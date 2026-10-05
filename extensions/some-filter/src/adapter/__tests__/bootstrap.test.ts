@@ -13,6 +13,21 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 const root = document.documentElement
 
+const veil = (): HTMLElement | null => document.getElementById(PREPAINT_VEIL_ID)
+
+function installed(): ReturnType<typeof createFilterBootstrap> {
+  const fb = createFilterBootstrap(root)
+  fb.install()
+  return fb
+}
+
+/** Runs `fn` with the next `Date.now()` returning `ms`. */
+function atTime(ms: number, fn: () => void): void {
+  vi.spyOn(Date, "now").mockReturnValueOnce(ms)
+  fn()
+  vi.restoreAllMocks()
+}
+
 afterEach(() => {
   document.getElementById(PREPAINT_VEIL_ID)?.remove()
   root.removeAttribute("data-transport-bootstrap")
@@ -22,42 +37,36 @@ afterEach(() => {
 
 describe("createFilterBootstrap — install", () => {
   it("installs the Bootstrap sentinel and creates a self-tagged veil", () => {
-    const fb = createFilterBootstrap(root)
-    fb.install()
+    installed()
 
     expect(isInstalled(root)).toBe(true)
 
-    const veil = document.getElementById(PREPAINT_VEIL_ID)
-    expect(veil).not.toBeNull()
-    if (veil === null) return
-    expect(isSelfTagged(veil)).toBe(true)
+    const el = veil()
+    expect(el).not.toBeNull()
+    if (el === null) return
+    expect(isSelfTagged(el)).toBe(true)
   })
 
   it("is idempotent: a second call while already installed changes neither the sentinel nor the veil element", () => {
-    vi.spyOn(Date, "now").mockReturnValueOnce(1_000)
     const fb = createFilterBootstrap(root)
-    fb.install()
-    vi.restoreAllMocks()
+    atTime(1_000, () => fb.install())
 
     const firstInstalledAt = installedAt(root)
-    const firstVeil = document.getElementById(PREPAINT_VEIL_ID)
+    const firstVeil = veil()
 
-    vi.spyOn(Date, "now").mockReturnValueOnce(2_000)
-    fb.install()
-    vi.restoreAllMocks()
+    atTime(2_000, () => fb.install())
 
     expect(installedAt(root)).toBe(firstInstalledAt)
-    expect(document.getElementById(PREPAINT_VEIL_ID)).toBe(firstVeil)
+    expect(veil()).toBe(firstVeil)
   })
 })
 
 describe("createFilterBootstrap — resetContent (Theorem D.1a: same-document navigation)", () => {
   it("advances the epoch on every navigation while the sentinel and veil are untouched", () => {
-    const fb = createFilterBootstrap(root)
-    fb.install()
+    const fb = installed()
 
     const installedAtValue = installedAt(root)
-    const veil = document.getElementById(PREPAINT_VEIL_ID)
+    const veilBefore = veil()
     const epochs: Array<number> = [fb.session.epoch]
 
     for (let i = 0; i < 3; i++) {
@@ -66,7 +75,7 @@ describe("createFilterBootstrap — resetContent (Theorem D.1a: same-document na
 
       expect(isInstalled(root)).toBe(true)
       expect(installedAt(root)).toBe(installedAtValue)
-      expect(document.getElementById(PREPAINT_VEIL_ID)).toBe(veil)
+      expect(veil()).toBe(veilBefore)
     }
 
     const [first, ...rest] = epochs
@@ -81,10 +90,8 @@ describe("createFilterBootstrap — resetContent (Theorem D.1a: same-document na
 
 describe("createFilterBootstrap — resetDocument (Theorem D.1b: refresh)", () => {
   it("tears down the sentinel and veil; a subsequent install() reinstalls fresh with a strictly greater epoch", () => {
-    vi.spyOn(Date, "now").mockReturnValueOnce(1_000)
     const fb = createFilterBootstrap(root)
-    fb.install()
-    vi.restoreAllMocks()
+    atTime(1_000, () => fb.install())
 
     const originalInstalledAt = installedAt(root)
     const epochBeforeReset = fb.session.epoch
@@ -92,20 +99,17 @@ describe("createFilterBootstrap — resetDocument (Theorem D.1b: refresh)", () =
     fb.resetDocument()
 
     expect(isInstalled(root)).toBe(false)
-    expect(document.getElementById(PREPAINT_VEIL_ID)).toBeNull()
+    expect(veil()).toBeNull()
 
-    vi.spyOn(Date, "now").mockReturnValueOnce(2_000)
-    fb.install()
-    vi.restoreAllMocks()
+    atTime(2_000, () => fb.install())
 
     expect(installedAt(root)).not.toBe(originalInstalledAt)
     expect(fb.session.epoch).toBeGreaterThan(epochBeforeReset)
-    expect(document.getElementById(PREPAINT_VEIL_ID)).not.toBeNull()
+    expect(veil()).not.toBeNull()
   })
 
   it("runs every disposable before tearing down Bootstrap", () => {
-    const fb = createFilterBootstrap(root)
-    fb.install()
+    const fb = installed()
 
     const calls: Array<string> = []
     fb.resetDocument([
@@ -124,47 +128,44 @@ describe("createFilterBootstrap — resetDocument (Theorem D.1b: refresh)", () =
 
 describe("createFilterBootstrap — ownership signal (Remark 7.2)", () => {
   it("distinguishes a vendor removal from our own teardown at the element level", () => {
-    const fb = createFilterBootstrap(root)
-    fb.install()
-    const veil = document.getElementById(PREPAINT_VEIL_ID)
-    expect(veil).not.toBeNull()
-    if (veil === null) return
+    installed()
+    const el = veil()
+    expect(el).not.toBeNull()
+    if (el === null) return
 
-    veil.remove() // simulated vendor sweep — no releaseOwnership() first
+    el.remove() // simulated vendor sweep — no releaseOwnership() first
 
-    expect(wasRemovedByVendor(veil)).toBe(true)
-    expect(wasRemovedByUs(veil)).toBe(false)
+    expect(wasRemovedByVendor(el)).toBe(true)
+    expect(wasRemovedByUs(el)).toBe(false)
   })
 
   it("reassertIfRemoved() re-creates the veil after a simulated vendor removal", () => {
-    const fb = createFilterBootstrap(root)
-    fb.install()
-    const originalVeil = document.getElementById(PREPAINT_VEIL_ID)
+    const fb = installed()
+    const originalVeil = veil()
     expect(originalVeil).not.toBeNull()
     if (originalVeil === null) return
 
     originalVeil.remove() // vendor sweep
     fb.reassertIfRemoved()
 
-    const reassertedVeil = document.getElementById(PREPAINT_VEIL_ID)
+    const reassertedVeil = veil()
     expect(reassertedVeil).not.toBeNull()
     expect(reassertedVeil).not.toBe(originalVeil)
   })
 
   it("reassertIfRemoved() is a no-op after our own resetDocument() teardown", () => {
-    const fb = createFilterBootstrap(root)
-    fb.install()
+    const fb = installed()
     fb.resetDocument()
 
     fb.reassertIfRemoved()
 
-    expect(document.getElementById(PREPAINT_VEIL_ID)).toBeNull()
+    expect(veil()).toBeNull()
     expect(isInstalled(root)).toBe(false)
   })
 
   it("reassertIfRemoved() is a no-op before the first install()", () => {
     const fb = createFilterBootstrap(root)
     expect(() => fb.reassertIfRemoved()).not.toThrow()
-    expect(document.getElementById(PREPAINT_VEIL_ID)).toBeNull()
+    expect(veil()).toBeNull()
   })
 })

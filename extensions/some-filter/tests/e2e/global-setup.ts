@@ -1,16 +1,8 @@
 /**
  * some-filter — Playwright global setup.
  *
- * Verifies the extension is built before the suite starts.
- * Chromium context launch (with --load-extension) happens inside fixture.ts,
- * not here — no process to spawn.
- *
- * Why Chromium and not Firefox:
- *   Playwright has no mechanism to attach to a web-ext-managed Firefox process.
- *   Chromium's --load-extension loads an unpacked MV2 extension directly from
- *   dist/, no signing required. The prepaint-handshake logic under test is
- *   browser-agnostic; Firefox-specific rendering is covered by manual smoke
- *   testing with web-ext.
+ * Verifies the extension is built before the suite starts; the context
+ * launch happens in fixture.ts. (Chromium only: see fixture.ts.)
  */
 
 import { existsSync } from "fs"

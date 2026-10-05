@@ -1,13 +1,8 @@
 import { createVisibilityGate } from "@filter/lib/content/visibility-gate"
 import type { VisibilitySource } from "@filter/lib/content/visibility-gate"
-import { describe, expect, it, vi } from "vitest"
+import { describe, expect, it, vi, type Mock } from "vitest"
 
-/**
- * A document whose visibility the test drives directly. The real one cannot
- * be driven: headless Chromium reports every page visible regardless of
- * which target is foregrounded, which is why this gate takes its source as
- * a parameter at all.
- */
+/** A document whose visibility the test drives directly (headless Chromium reports every page visible). */
 type FakeDocument = {
   source: VisibilitySource
   show: () => void
@@ -60,12 +55,25 @@ function fakeDocument(initial: DocumentVisibilityState): FakeDocument {
   }
 }
 
+/** A gate over a fake document, with a spy to start. */
+function setup(initial: DocumentVisibilityState): {
+  doc: FakeDocument
+  gate: ReturnType<typeof createVisibilityGate>
+  start: Mock<() => void>
+} {
+  const doc = fakeDocument(initial)
+  return {
+    doc,
+    gate: createVisibilityGate(doc.source),
+    start: vi.fn<() => void>(),
+  }
+}
+
 describe("createVisibilityGate", () => {
   it("runs immediately in a visible tab", () => {
-    const doc = fakeDocument("visible")
-    const start = vi.fn()
+    const { doc, gate, start } = setup("visible")
 
-    createVisibilityGate(doc.source).whenVisible(start)
+    gate.whenVisible(start)
 
     expect(start).toHaveBeenCalledTimes(1)
     // Nothing to wait for, so nothing is left attached.
@@ -73,12 +81,9 @@ describe("createVisibilityGate", () => {
   })
 
   it("defers in a hidden tab and runs on first view", () => {
-    const doc = fakeDocument("hidden")
-    const start = vi.fn()
+    const { doc, gate, start } = setup("hidden")
 
-    createVisibilityGate(doc.source).whenVisible(start)
-    // The whole point: a restored or re-injected background tab runs the
-    // expensive first round zero times until someone looks at it.
+    gate.whenVisible(start)
     expect(start).not.toHaveBeenCalled()
 
     doc.show()
@@ -86,22 +91,18 @@ describe("createVisibilityGate", () => {
   })
 
   it("ignores a visibilitychange that goes the other way", () => {
-    const doc = fakeDocument("hidden")
-    const start = vi.fn()
+    const { doc, gate, start } = setup("hidden")
 
-    createVisibilityGate(doc.source).whenVisible(start)
-    // `visibilitychange` fires on both edges; hidden -> hidden must not
-    // start anything.
-    doc.hide()
+    gate.whenVisible(start)
+    doc.hide() // `visibilitychange` fires on both edges
 
     expect(start).not.toHaveBeenCalled()
   })
 
   it("runs once across repeated visibility flips", () => {
-    const doc = fakeDocument("hidden")
-    const start = vi.fn()
+    const { doc, gate, start } = setup("hidden")
 
-    createVisibilityGate(doc.source).whenVisible(start)
+    gate.whenVisible(start)
     doc.show()
     doc.hide()
     doc.show()
@@ -111,13 +112,10 @@ describe("createVisibilityGate", () => {
   })
 
   it("supersedes a pending deferral rather than arming a second", () => {
-    const doc = fakeDocument("hidden")
-    const first = vi.fn()
+    const { doc, gate, start: first } = setup("hidden")
     const second = vi.fn()
-    const gate = createVisibilityGate(doc.source)
 
-    // auto -> off -> auto while hidden. Two armed waiters would start two
-    // sessions the moment the tab is finally shown.
+    // auto -> off -> auto while hidden.
     gate.whenVisible(first)
     gate.whenVisible(second)
     doc.show()
@@ -128,9 +126,7 @@ describe("createVisibilityGate", () => {
   })
 
   it("cancel() drops a pending deferral without running it", () => {
-    const doc = fakeDocument("hidden")
-    const start = vi.fn()
-    const gate = createVisibilityGate(doc.source)
+    const { doc, gate, start } = setup("hidden")
 
     gate.whenVisible(start)
     gate.cancel()
@@ -141,26 +137,19 @@ describe("createVisibilityGate", () => {
   })
 
   describe("pending", () => {
-    // Bot-found (#1459 review): callers that do startup-shaped work of their
-    // own have to be able to see a deferral, or they do it anyway and the
-    // gate buys nothing. content.ts's yt-navigate-finish handler is the
-    // case — a background-loaded SPA tab fires it without ever being shown.
-
     it("is false before anything is deferred and in a visible tab", () => {
-      const visible = fakeDocument("visible")
-      const gate = createVisibilityGate(visible.source)
+      const { gate, start } = setup("visible")
       expect(gate.pending).toBe(false)
 
-      gate.whenVisible(vi.fn())
+      gate.whenVisible(start)
       // Ran inline; there is nothing outstanding.
       expect(gate.pending).toBe(false)
     })
 
     it("is true only while a hidden tab's deferral is armed", () => {
-      const doc = fakeDocument("hidden")
-      const gate = createVisibilityGate(doc.source)
+      const { doc, gate, start } = setup("hidden")
 
-      gate.whenVisible(vi.fn())
+      gate.whenVisible(start)
       expect(gate.pending).toBe(true)
 
       doc.show()
@@ -168,25 +157,20 @@ describe("createVisibilityGate", () => {
     })
 
     it("tracks a hidden -> hidden change without clearing", () => {
-      const doc = fakeDocument("hidden")
-      const gate = createVisibilityGate(doc.source)
+      const { doc, gate, start } = setup("hidden")
 
-      gate.whenVisible(vi.fn())
+      gate.whenVisible(start)
       doc.hide()
 
-      // The waiter ignored that edge, so the deferral is still outstanding
-      // and a caller consulting this must still stand down.
+      // The waiter ignored that edge, so callers must still stand down.
       expect(gate.pending).toBe(true)
     })
 
     it("clears on cancel(), so a torn-down session reports nothing pending", () => {
-      const doc = fakeDocument("hidden")
-      const gate = createVisibilityGate(doc.source)
+      const { gate, start } = setup("hidden")
 
-      gate.whenVisible(vi.fn())
-      // What applyState() does when the mode changes out from under a
-      // deferral — the gate's one live cancel() caller.
-      gate.cancel()
+      gate.whenVisible(start)
+      gate.cancel() // what applyState() does when the mode changes
 
       expect(gate.pending).toBe(false)
     })

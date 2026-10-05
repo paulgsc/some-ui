@@ -1,12 +1,8 @@
 /**
- * Shared Playwright harness for injecting the real, compiled
- * `legibility-audit.ts` module (`legibility-audit-module.ts`) into a bare
- * page and calling `auditLegibility`/`decideLegibility` directly — the
- * isolation rationale (bypassing the full `--load-extension` pipeline's own
- * confounding per-surface repair) is `legibility-audit-module.ts`'s own doc
- * comment. Extracted here once a second spec (#1358, alongside #1374's own)
- * needed the identical `test` extension and `auditPage` helper, rather than
- * duplicating both.
+ * Shared harness for injecting the real compiled `legibility-audit.ts`
+ * (`legibility-audit-module.ts`) into a bare page and calling
+ * `auditLegibility`/`decideLegibility` directly, bypassing the pipeline's
+ * confounding per-surface repair.
  */
 import { test as base } from "@playwright/test"
 
@@ -24,12 +20,9 @@ type LegibilityAuditWindowApi = {
   ) => ReadonlyArray<{ kind: string; key: string; verdict: string }>
 }
 
-// `page.evaluate` runs this file's callbacks in the browser, where the
-// injected script (page.addScriptTag) has actually assigned
-// window[LEGIBILITY_AUDIT_GLOBAL] — real at runtime, but nothing lib.dom's
-// own `Window` type knows about. Augmenting it for this one specific,
-// literal key (LEGIBILITY_AUDIT_GLOBAL's own inferred `const` type) lets
-// `window[globalName]` type-check directly, with no type assertion needed.
+// The injected script assigns window[LEGIBILITY_AUDIT_GLOBAL] at runtime;
+// augmenting `Window` for that literal key lets `window[globalName]`
+// type-check without an assertion.
 declare global {
   // `interface`, not `type`: augmenting the existing global `Window`
   // interface via declaration merging requires it — `type` cannot merge.
@@ -48,27 +41,14 @@ export const legibilityAuditTest = base.extend<{ scriptContent: string }>({
 })
 
 /**
- * This harness uses @playwright/test's own default `page` fixture (a bare
- * page, no extension) rather than ../fixture.ts's launchPersistentContext —
- * so, unlike every other spec here, it never reads
- * PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH on its own. Without these launch
- * options, Playwright falls back to its own auto-managed browser download,
- * which this sandbox (and any environment following fixture.ts's own setup)
- * does not have.
+ * This harness uses @playwright/test's default bare `page`, so it does not
+ * read PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH on its own; without these options
+ * Playwright falls back to a browser download this sandbox lacks.
  *
- * Exported as a plain value for each spec to pass to its *own*
- * `legibilityAuditTest.use(...)` call, rather than applied here with a
- * `.use()` in this shared module. Playwright names that exact pattern —
- * "calling test.use() outside of the test file, for example in a common
- * helper" — as the first cause of its own "inconsistent test.use() options"
- * error, and it is not theoretical here: a `.use()` in a helper attaches to
- * the helper's own root suite, so the worker hash the two specs importing
- * it end up with depends on which file Playwright happened to load first.
- * That held only by luck of alphabetical ordering, and adding any spec file
- * that sorts between them (#1341's own) was enough to break it — the run
- * then interleaved a shared-fixture file between the two harness specs and
- * failed the first one to follow the switch, with a Playwright
- * configuration error and no assertion involved.
+ * Exported for each spec's *own* `legibilityAuditTest.use(...)`: a `.use()`
+ * in a shared helper attaches to the helper's root suite, so the worker hash
+ * depends on file load order — Playwright's "inconsistent test.use()
+ * options" error, which a new spec sorting between the two broke.
  */
 export const LEGIBILITY_AUDIT_LAUNCH_OPTIONS = {
   executablePath: process.env["PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"],

@@ -1,28 +1,17 @@
 /**
- * Frame-level pixel oracle for Gate 0 falsification specs (issue #1262's
- * G0.2/G0.3/G0.5).
+ * Frame-level pixel oracle for Gate 0 falsification specs (G0.2/G0.3/G0.5).
  *
- * `pixels.ts`'s `brightestIn` samples exactly one point in time: whatever
- * `page.screenshot()` happens to catch when the test script gets around to
- * calling it, which is bounded below by IPC + PNG-encode latency (tens of
- * ms). Canon Definition C.0's zero-leak invariant is a claim about *every*
- * render opportunity, not the one a polling loop happened to sample --- "a
- * single visible unmasked frame... is a completed failure, not a rare defect
- * to be budgeted against." A screenshot taken 50ms after a mutation cannot
- * distinguish "never painted natively" from "painted natively for one frame,
- * then repainted before the poll landed."
+ * `pixels.ts`'s `brightestIn` samples one moment, tens of ms late. Canon
+ * Definition C.0's zero-leak invariant covers *every* render opportunity ("a
+ * single visible unmasked frame... is a completed failure"), and a late
+ * screenshot cannot tell "never painted natively" from "painted natively for
+ * one frame".
  *
- * This module closes that gap by recording video for the window under test
- * (Chromium's CDP screencast, the same mechanism Playwright's own `video:
- * "on"` option uses) and decoding *every* frame ffmpeg extracts from it, not
- * just a final or periodically-polled one. It is still not a formal proof of
- * zero missed frames --- the screencast is not a vsync-locked capture of the
- * physical display, and a frame the compositor produced and immediately
- * superseded within one screencast interval could in principle still be
- * invisible to it. It is the strongest oracle this tooling stack (Playwright
- * + bundled ffmpeg, no display server, no CDP `HeadlessExperimental.beginFrame`
- * step-by-step driving) can produce without materially rebuilding the harness,
- * and is reported honestly as such rather than as a zero-leak proof.
+ * This records video for the window under test (CDP screencast, as
+ * Playwright's `video: "on"`) and decodes *every* frame. Not a formal
+ * zero-missed-frames proof — the screencast is not vsync-locked, and a frame
+ * superseded within one interval could be missed — but the strongest oracle
+ * this stack allows without rebuilding the harness, and reported as such.
  */
 
 import { execFileSync } from "child_process"
@@ -38,11 +27,8 @@ function ffmpegPath(): string {
   const fromEnv = process.env["PLAYWRIGHT_FFMPEG_EXECUTABLE_PATH"]
   if (fromEnv !== undefined && fromEnv.length > 0) return fromEnv
 
-  // Mirrors fixture.ts's PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH resolution:
-  // Playwright vendors its own ffmpeg build under $PLAYWRIGHT_BROWSERS_PATH
-  // specifically so tooling never depends on a system install. The on-disk
-  // layout is `ffmpeg-<rev>/ffmpeg-linux` (no stable unversioned symlink),
-  // so the revisioned directory is located by prefix rather than hardcoded.
+  // Playwright vendors its own ffmpeg under $PLAYWRIGHT_BROWSERS_PATH as
+  // `ffmpeg-<rev>/ffmpeg-linux`, so the directory is found by prefix.
   const browsersPath = process.env["PLAYWRIGHT_BROWSERS_PATH"]
   if (browsersPath !== undefined && fs.existsSync(browsersPath)) {
     const rev = fs
@@ -70,12 +56,9 @@ export type FrameSample = {
 }
 
 /**
- * Decodes a PNG file's pixels the same way `pixels.ts`'s `brightestIn` does
- * for a live screenshot: via `Image`/`canvas` in a scratch page, never a
- * native Node decoder. Not a redundant choice here either --- it keeps this
- * file dependency-free (no PNG-decoding npm package to add to the lockfile
- * the startup hook already validates against supply-chain policy) and keeps
- * exactly one decode path for both this module and `pixels.ts` to agree on.
+ * Decodes a PNG's pixels as `pixels.ts`'s `brightestIn` does, via `Image`/
+ * `canvas` in a scratch page: no PNG npm dependency, and one decode path for
+ * both modules.
  */
 async function brightestInPng(
   scratch: Page,
@@ -124,15 +107,12 @@ async function brightestInPng(
 }
 
 /**
- * Runs `fn` while `page` is video-recorded, then decodes every frame ffmpeg
- * extracted from the result and returns the brightest pixel seen in each.
+ * Runs `fn` while `page` is video-recorded, then returns the brightest pixel
+ * in every decoded frame.
  *
- * `page` must belong to a context/page created with `recordVideo` configured
- * (see `gate0-fixture.ts`) --- this module never turns recording on itself,
- * since Playwright only supports configuring it at context-creation time.
- * `page.video()` is only finalized once the page closes, so this closes
- * `page` as part of measurement; callers needing further use of the page
- * must open a fresh one afterward.
+ * `page` must come from a context created with `recordVideo` (see
+ * `gate0-fixture.ts`). `page.video()` finalizes only on close, so this
+ * closes `page`; callers needing it afterwards must open a fresh one.
  */
 export async function captureFrames(
   context: BrowserContext,
@@ -150,17 +130,10 @@ export async function captureFrames(
     )
   }
 
-  // Playwright's video recording starts at page creation, not at this call
-  // — every spec here runs real setup first (navigation, waitForClassification,
-  // installing a harness-only remedy/primitive) before the window it
-  // actually wants measured. Without skipping that interval, a transient
-  // loading-state color or an early video-encoder keyframe artifact from
-  // *setup* gets analyzed as if it were part of the window under test
-  // (confirmed directly: G0.6's first pass reported a "leak" at frameIndex
-  // 0, well before sustainedShadowChurn() ever ran). `-ss` after `-i` below
-  // does frame-accurate decode-from-start seeking (slower than a pre-`-i`
-  // keyframe seek, but these clips are ~1s — cost is negligible), skipping
-  // to just before `fn()`'s own first side effect could have painted.
+  // Recording starts at page creation, before setup; without skipping that
+  // interval, a loading colour or encoder keyframe from setup reads as a
+  // leak (seen: a "leak" at frameIndex 0). `-ss` after `-i` seeks
+  // frame-accurately; these clips are ~1s, so the cost is negligible.
   const createdAt = pageCreatedAt.get(page)
   const skipSeconds =
     createdAt === undefined
@@ -172,25 +145,15 @@ export async function captureFrames(
   const videoPath = await video.path()
 
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), "sw-frames-"))
-  // Playwright's bundled ffmpeg is a minimal build (`--disable-everything`,
-  // only `pad`/`crop`/`scale` filters compiled in — confirmed directly: an
-  // `-vf fps=…` resample fails with "No option name near '30'" since the
-  // `fps` filter itself is absent). No `-vf` at all: every frame the
-  // recorder actually produced is decoded exactly once, one-to-one, via the
-  // image2 PNG muxer — a truer frame oracle than a resampled stream would
-  // be anyway, since resampling can itself interpolate across or duplicate
-  // past a single-frame flash. `atSeconds` below is therefore reported
-  // against `opts.fps` as a *display* label only (informational — Chromium's
-  // screencast-based recorder in this build reports 25fps), never used to
-  // select or skip a frame.
+  // The bundled ffmpeg is minimal (no `fps` filter), so no `-vf`: every
+  // recorded frame decodes exactly once, which is also truer than a
+  // resampled stream. `atSeconds` uses `opts.fps` as a display label only.
   const displayFps = opts?.fps ?? 25
   try {
     execFileSync(ffmpegPath(), [
       "-i",
       videoPath,
-      // Placed after -i (accurate decode-from-start seek, not a keyframe
-      // seek) so this never skips *past* fn()'s first real side effect —
-      // see this function's own comment above for why this exists at all.
+      // After -i: an accurate seek that never skips past fn()'s first effect.
       ...(skipSeconds > 0 ? ["-ss", skipSeconds.toFixed(3)] : []),
       path.join(outDir, "frame-%05d.png"),
     ])

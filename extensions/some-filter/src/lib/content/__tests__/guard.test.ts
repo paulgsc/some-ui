@@ -31,10 +31,8 @@ describe("isExtensionMessage — TOGGLE_FILTER", () => {
     ).toBe(true)
   })
 
-  // This is the regression: a TOGGLE_FILTER with no payload used to be
-  // accepted by the guard (the type had no fields to validate), which is
-  // exactly how the background's config/enabled silently got dropped on
-  // the way to the content script.
+  // Accepting it would let the background's config/enabled be silently
+  // dropped on the way to the content script.
   it("rejects a bare TOGGLE_FILTER with no enabled/config payload", () => {
     expect(isExtensionMessage({ type: "TOGGLE_FILTER" })).toBe(false)
   })

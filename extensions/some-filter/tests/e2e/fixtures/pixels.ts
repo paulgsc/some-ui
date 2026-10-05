@@ -1,17 +1,11 @@
 /**
  * Screenshot pixel sampling for e2e specs.
  *
- * `getComputedStyle` never reflects `filter` compositing — it reports the
- * declared value, not what the browser paints. Most of this suite reasons
- * about declared values because that is all it can reach, but a whole class
- * of this extension's bugs lives in the gap between the two: a surface
- * declared white is dark only if something actually filters it, and there
- * are three places where nothing does (the raw ticks before the root
- * filter's output covers newly materialised content, the top layer, and the
- * root scrollbar). Only pixels can tell those apart from the correct case.
- *
- * Shared by `legacy-invert-regimes.spec.ts` and
- * `issue-741-auto-defects.spec.ts`.
+ * `getComputedStyle` reports declared values, never `filter` compositing. A
+ * surface declared white is dark only if something filters it, and three
+ * places are not filtered: raw ticks before the root filter covers new
+ * content, the top layer, and the root scrollbar. Only pixels tell those
+ * apart.
  */
 
 import type { BrowserContext, Page } from "@playwright/test"
@@ -45,15 +39,10 @@ export function describeColor(c: readonly [number, number, number]): string {
 }
 
 /**
- * The viewport minus the classic scrollbar gutter.
- *
- * The root scrollbar is painted outside the root filter's render surface —
- * the same property that makes the top layer interesting here, and verified
- * the same way: a scrollbar declared `scrollbar-color: #00ff00 #ff0000`
- * under the legacy invert preset renders red and green, not the cyan and
- * magenta an inversion would produce. It is browser chrome rather than a
- * surface this extension declares, so it stays out of frame for these
- * assertions; `clientWidth` excludes it where `innerWidth` would not.
+ * The viewport minus the classic scrollbar gutter. The root scrollbar is
+ * painted outside the root filter (verified: declared green/red renders
+ * green/red under the invert preset), and is browser chrome, so it stays
+ * out of frame; `clientWidth` excludes it.
  */
 export function contentWidth(page: Page): Promise<number> {
   return page.evaluate(() => document.documentElement.clientWidth)
@@ -62,12 +51,8 @@ export function contentWidth(page: Page): Promise<number> {
 /**
  * The brightest distinct colour in `region` of a screenshot of `page`.
  *
- * Decoding happens in a scratch page rather than in `page` itself: `page` is
- * the thing under test and may be sitting under a root filter, and a canvas
- * drawn there would be one more surface for that filter to act on. A 2D
- * context's `getImageData` returns the bitmap that was drawn into it — CSS
- * filters never touch it — but keeping the decode off the filtered document
- * removes the question entirely.
+ * Decoded in a scratch page rather than `page`, which may sit under a root
+ * filter, so the decode is never in question.
  */
 export async function brightestIn(
   page: Page,
@@ -90,9 +75,8 @@ export async function brightestIn(
       ctx.drawImage(img, 0, 0)
       const { data } = ctx.getImageData(0, 0, img.width, img.height)
       const seen = new Map<string, [number, number, number]>()
-      // Stride the grid rather than reading every pixel: a flat fill is the
-      // expected result and a flash is never a single stray pixel, so a
-      // sample every 4px in both axes is ample and keeps this fast.
+      // A 4px stride: a flat fill is expected and a flash is never a single
+      // stray pixel.
       for (let y = 0; y < img.height; y += 4) {
         for (let x = 0; x < img.width; x += 4) {
           const i = (y * img.width + x) * 4

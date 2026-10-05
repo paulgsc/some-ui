@@ -7,9 +7,9 @@ export type ExtensionMessage =
   | { type: "TOGGLE_FILTER"; enabled: boolean; config: FilterConfig }
   | { type: "CYCLE_TAB_STATE" }
   | { type: "SET_LEGACY_STYLE"; style: LegacyStyle }
-  // SF-CUT3 (#1489): content -> background, for the requesting frame only.
-  // `swatchId` on removal too: `removeCSS` needs the byte-identical CSS the
-  // insertion used, and the background keeps no per-tab state to recover it.
+  // Content -> background, for the requesting frame only. `swatchId` on
+  // removal too: `removeCSS` needs the byte-identical CSS, and the background
+  // keeps no per-tab state to recover it.
   | { type: "ENSURE_ENFORCEMENT"; swatchId: string }
   | { type: "REMOVE_ENFORCEMENT"; swatchId: string }
 

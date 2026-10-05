@@ -1,25 +1,16 @@
 /**
  * Detects a `filter: invert(...)` a *vendor page* has applied to `<html>`
- * on its own — a real, common pattern (an accessibility "invert colours"
- * toggle some sites ship themselves) that silently defeats every color
- * this extension injects (#741). `getComputedStyle` never reflects
- * `filter` compositing: it reports the literal declared value, not what a
- * human (or a screenshot) actually sees once the browser paints that value
- * through the still-active ancestor filter. Left unaccounted for, this is
- * the root cause behind three of #741's symptoms — the classifier reading
- * a page exactly backwards, and the live pipeline's own dark-theme tokens
- * (both the static canvas and the prepaint veil) compositing back to a
- * bright, near-white result once the vendor's filter is applied on top.
+ * itself (an "invert colours" toggle some sites ship), which silently
+ * defeats every colour this extension injects (#741). `getComputedStyle`
+ * reports declared colours, not what is seen through the ancestor filter, so
+ * unaccounted for, the classifier reads the page backwards and our dark
+ * tokens (canvas and veil) composite back to near-white.
  *
- * Deliberately scoped to `invert()` only — the one filter function both
- * real vendor toggles and this extension's own legacy mode
- * (`theme-apply.ts`'s `applyLegacyFilter`) use to fully reverse a page's
- * rendered colors. Other filter functions (`blur`, `brightness`, …) are
- * out of scope: no known fixture or reported symptom implicates them, and
- * guessing at a compensation for them would be unverifiable.
+ * Scoped to `invert()` only: the one function that fully reverses rendered
+ * colours, used by vendor toggles and our own legacy mode. Compensating
+ * other functions would be unverifiable guesswork.
  *
- * Pure math + a single read-only `getComputedStyle` call — no DOM writes,
- * mirroring `color.ts`'s own read-only discipline.
+ * Pure math + a single read-only `getComputedStyle` call — no DOM writes.
  */
 
 import type { RGBA } from "./color"
@@ -46,9 +37,8 @@ export function parseInvertAmount(filterValue: string): number {
 }
 
 /**
- * Detects a vendor-authored `invert()` filter currently active on
- * `<html>`. Read at call time (not cached) since a vendor's own
- * accessibility toggle can be flipped at any point in a page's lifetime.
+ * Detects a vendor-authored `invert()` filter active on `<html>`. Read at
+ * call time, since a vendor toggle can flip at any point.
  */
 export function detectVendorInvert(): number {
   return parseInvertAmount(getComputedStyle(document.documentElement).filter)
@@ -82,11 +72,9 @@ export function counterInvertColor([r, g, b, a]: RGBA, amount: number): RGBA {
 }
 
 /**
- * The forward direction of `counterInvertColor`: what a human actually
- * sees once `declared` is composited through a still-active
- * `invert(amount)` filter. Used to judge *existing* declared colors (the
- * classifier's sampled backgrounds) rather than to compensate colors this
- * extension is about to inject.
+ * The forward direction of `counterInvertColor`: what a human sees once
+ * `declared` is composited through `invert(amount)`. Used to judge existing
+ * colours (the classifier's samples), not to compensate injected ones.
  */
 export function applyInvertToColor([r, g, b, a]: RGBA, amount: number): RGBA {
   if (amount === 0) return [r, g, b, a]

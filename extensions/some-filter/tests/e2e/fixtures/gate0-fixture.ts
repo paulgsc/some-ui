@@ -1,20 +1,13 @@
 /**
- * Gate 0 falsification harness fixture (issue #1262).
+ * Gate 0 falsification harness fixture (#1262).
  *
- * A deliberate sibling of `../fixture.ts`, not a reuse of it: `fixture.ts`'s
- * `context` fixture is a single `BrowserContext` shared, unrecorded, across
- * every spec file in the suite (`playwright.config.ts` pins `workers: 1`).
- * Gate 0's specs need `recordVideo` turned on so `frames.ts` can extract
- * every frame of the window under test --- turning that on for the shared
- * context would record the entire rest of the suite's runtime for no reason.
- * This fixture launches its own persistent context, scoped to one worker
- * process the same way `fixture.ts`'s is, purely to keep that cost isolated
- * to the specs that actually need a frame oracle.
+ * A sibling of `../fixture.ts`, not a reuse: that context is shared,
+ * unrecorded, across the whole suite (`workers: 1`), and Gate 0's specs need
+ * `recordVideo` for `frames.ts`. This launches its own persistent context to
+ * keep the recording cost to the specs that need a frame oracle.
  *
- * Loads the same real `dist/` build via `--load-extension` as every other
- * e2e spec --- Gate 0's whole premise (per the falsification-spec document
- * this harness answers) is proving propositions against the *built
- * extension*, not a synthetic unit-test context.
+ * Loads the same real `dist/` build via `--load-extension`: Gate 0 proves
+ * propositions against the *built extension*.
  */
 
 import fs from "fs"
@@ -47,15 +40,10 @@ type Gate0Fixtures = {
 }
 
 /**
- * Wall-clock page-creation time, keyed by `Page` instance. A spec typically
- * runs real setup (navigation, `waitForClassification`, installing a
- * harness-only remedy/primitive) *before* the window it actually wants
- * `frames.ts`'s `captureFrames` to measure — but Playwright's video
- * recording always starts at page creation, with no way to start it later.
- * `captureFrames` reads this map to skip past that setup interval via
- * ffmpeg's `-ss`, so an incidental frame from page load/setup (a transient
- * loading-state color, a video-encoder keyframe artifact) is never mistaken
- * for a leak the window under test actually produced.
+ * Wall-clock page-creation time, keyed by `Page`. Recording starts at page
+ * creation, before setup; `captureFrames` reads this to skip the setup
+ * interval via ffmpeg's `-ss`, so a loading colour or encoder keyframe is
+ * never mistaken for a leak.
  */
 export const pageCreatedAt = new WeakMap<Page, number>()
 
@@ -79,15 +67,12 @@ export const test = base.extend<Gate0Fixtures>({
       )
     }
 
-    // Same headless-detection rationale as fixture.ts: Chrome's new headless
-    // mode supports extension content scripts and CDP screencast recording
+    // As fixture.ts: new headless mode supports extensions and screencast
     // without a display server.
     const needsVirtualDisplay =
       !process.env["DISPLAY"] && !process.env["WAYLAND_DISPLAY"]
 
-    // Disposable per-run profile, for the same reason as fixture.ts: a
-    // reused directory lets background.ts's tab-state cache collide across
-    // runs via reused Chromium tab IDs.
+    // Disposable per-run profile, as fixture.ts.
     const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "sw-gate0-e2e-"))
 
     const context = await chromium.launchPersistentContext(userDataDir, {
@@ -110,10 +95,8 @@ export const test = base.extend<Gate0Fixtures>({
   },
 
   gate0: async ({ context }, use) => {
-    // Same leaked-page guard as fixture.ts's `fixture` — see that file's
-    // comment. captureFrames() (frames.ts) closes a page itself once it has
-    // extracted that page's video, so most pages here are already closed by
-    // the time this teardown runs; the catch below absorbs that.
+    // Same leaked-page guard as fixture.ts. captureFrames() closes pages it
+    // has recorded, so the catch below absorbs already-closed ones.
     const openedPages: Array<Page> = []
 
     // eslint-disable-next-line react-hooks/rules-of-hooks

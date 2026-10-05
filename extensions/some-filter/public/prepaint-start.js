@@ -1,31 +1,21 @@
 // document_start
 //
-// Install the dark prepaint veil as an overlay that sits ABOVE the page rather
-// than restyling vendor elements. This eliminates the white-flash during load
-// while leaving vendor computed styles intact, so the content script's detector
-// can read true vendor colors with the veil still up (no veil-drop required).
+// Install the dark prepaint veil as an overlay ABOVE the page rather than
+// restyling vendor elements: no white flash during load, and vendor computed
+// styles stay intact for the detector.
 //
 // Resilience against vendor repaints
 // ────────────────────────────────────
-// The veil is anchored to document.documentElement (the <html> element), not
-// document.body. This means even a full body.innerHTML replacement cannot
-// remove it — the veil survives as a sibling of <body>.
+// The veil is anchored to <html>, not <body>, so a body.innerHTML
+// replacement cannot remove it. prepaint.css's html.sw-dirty > body backstop
+// keeps the canvas black if the element itself is removed; sw-dirty is
+// removed only by disablePrepaint(). A MutationObserver on <html>'s direct
+// children re-inserts a removed veil; disablePrepaint() removes sw-dirty
+// first, so intentional teardown is not undone.
 //
-// A secondary CSS backstop in prepaint.css targets html.sw-dirty > body, so
-// the body canvas stays black even in the rare event the veil element itself
-// is removed by vendor code. The sw-dirty class is added here and removed only
-// by disablePrepaint() after the content script has committed a visual state,
-// which ensures no white flash can bleed through during rerender storms.
-//
-// A lightweight MutationObserver watches documentElement's direct children and
-// re-inserts the veil if vendor code removes it before content.ts takes over.
-// Once content.ts calls disablePrepaint() it removes sw-dirty first, which
-// prevents the observer from re-creating the veil after intentional teardown.
-//
-// The veil is promoted to the top layer via the popover API when supported so
-// vendor stacking contexts cannot paint over it; prepaint.css provides the
-// fixed/max-z fallback. The element carries [data-my-ext] so the content
-// script's detector and luminance patcher both skip it.
+// Promoted to the top layer via the popover API when supported;
+// prepaint.css provides the fixed/max-z fallback. [data-my-ext] makes the
+// detector and patcher skip it.
 
 ;(function () {
   let ID = "__sw_prepaint_veil"
@@ -36,8 +26,8 @@
     try {
       if (typeof veil.showPopover === "function") veil.showPopover()
     } catch (e) {
-      // Popover unsupported or element not eligible — the fixed/max-z fallback
-      // styling keeps the veil covering the viewport regardless.
+      // Popover unsupported or element not eligible — the fixed/max-z
+      // fallback keeps the veil covering the viewport.
     }
   }
 
@@ -62,9 +52,8 @@
 
   createVeil()
 
-  // Self-healing: if vendor code removes the veil before content.ts takes over,
-  // re-insert it immediately. We only watch direct children of <html> to avoid
-  // the overhead of a subtree observer on a potentially large document.
+  // Self-healing: re-insert a removed veil. Direct children of <html> only,
+  // to avoid a subtree observer.
   let observer = new MutationObserver(() => {
     createVeil()
   })

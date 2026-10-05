@@ -132,24 +132,17 @@ function openDiagnostics(): void {
 // ADR 0002 enforcement sheet (behind a flag — §7 step 2)
 // ─────────────────────────────────────────────
 //
-// `chrome.scripting.insertCSS({ origin: "USER" })` (adapter/enforcement-sheet.ts's
-// own header) is only callable from a background/extension-page context —
-// content scripts have no `scripting` API — which is why this lives here
-// rather than alongside `content.ts`'s pipeline.
+// `insertCSS({ origin: "USER" })` is only callable from an extension
+// context (content scripts have no `scripting` API), hence here.
 //
-// `enforcementSheetEnabled` in storage.local, default false/absent — no UI
-// toggle exists yet (this step's own scope: behind a flag, not a shipped
-// feature; with it on, auto mode is the sheet instead of the classifier,
-// never both in one tab — see content.ts). Flip it from an extension
-// context — the background service worker's own console (chrome://extensions
-// → this extension → "service worker" → Console) — with:
+// `enforcementSheetEnabled` in storage.local, default absent; no UI toggle
+// yet. With it on, auto mode is the sheet instead of the classifier (see
+// content.ts). Flip it from the service worker's console
+// (chrome://extensions → this extension → "service worker"):
 //
 //   chrome.storage.local.set({ enforcementSheetEnabled: true })
 //
-// Read directly here rather than folded into StoredState/getState() above:
-// that type is this file's own "legacy filter + tab state" concern, and
-// this is a deliberately separate, experimental one — coupling the two
-// would make an unrelated future change to either read as touching both.
+// Kept out of StoredState: that is the legacy-filter/tab-state concern.
 const ENFORCEMENT_SHEET_STORAGE_KEY = "enforcementSheetEnabled"
 
 async function isEnforcementSheetEnabled(): Promise<boolean> {
@@ -157,13 +150,11 @@ async function isEnforcementSheetEnabled(): Promise<boolean> {
   return data[ENFORCEMENT_SHEET_STORAGE_KEY] === true
 }
 
-// SF-CUT3 (#1489): the sheet is requested per document by the content side
-// (`lib/content/enforcement-handshake.ts`) and injected into exactly the
-// requesting frame. This replaced a `tabs.onUpdated` "loading" injection that
-// ran for every tab regardless of its state — into legacy tabs, where the
-// canvas rule's `filter: none` overrides legacy's own invert, and into off
-// tabs — and that no one could confirm had landed before releasing the veil.
-// The content script is the only thing that knows the tab's state.
+// The sheet is requested per document by the content side
+// (`lib/content/enforcement-handshake.ts`), the only thing that knows the
+// tab's state, and injected into exactly the requesting frame. Injecting
+// per tab regardless of state would put the canvas rule's `filter: none`
+// over legacy's invert.
 //
 // No per-tab bookkeeping here: the content side owns idempotency (it asks
 // only while a read shows the sheet absent, and removes until a read shows
@@ -227,14 +218,11 @@ const compatibleFrameScript = {
 }
 
 // Plus `matchOriginAsFallback`, which also matches `about:blank`, `srcdoc`,
-// `data:` and `blob:` frames by their creator's origin (bot-found on #1521:
-// a same-origin srcdoc iframe with an authored white background got neither
-// a veil nor the sheet). Those frames pay for a veil and one round trip each;
-// an empty one confirms at once. The key needs Chromium 119+ / Firefox 128+
-// and is not in this package's typings yet (hence a variable, not an inline
-// literal); an older browser rejects the whole registration over it, so
-// syncFrameScript() falls back to the compatible definition rather than
-// registering nothing (bot-found on #1521, round 2).
+// `data:` and `blob:` frames by their creator's origin (a srcdoc iframe with
+// a white background otherwise gets neither veil nor sheet). Each pays a veil
+// and one round trip. The key needs Chromium 119+ / Firefox 128+ and is not
+// in this package's typings (hence a variable); an older browser rejects the
+// whole registration, so syncFrameScript() falls back to the compatible one.
 const frameScript = { ...compatibleFrameScript, matchOriginAsFallback: true }
 
 async function syncFrameScript(): Promise<void> {
@@ -252,11 +240,9 @@ async function syncFrameScript(): Promise<void> {
         await ext.scripting.registerContentScripts([compatibleFrameScript])
       }
     } else if (enabled) {
-      // A compatible registration made on an older browser persists across
-      // sessions, so it outlives an upgrade to a browser that does support
-      // matchOriginAsFallback (bot-found on #1521, closing review). Upgrade
-      // it in place whenever the key is missing; on a browser that still
-      // rejects the key this fails and the compatible one stays.
+      // A compatible registration persists across a browser upgrade; upgrade
+      // it in place when the key is missing. On a browser that still rejects
+      // the key this fails and the compatible one stays.
       const current: unknown = registered[0]
       if (
         typeof current === "object" &&
@@ -347,19 +333,11 @@ ext.contextMenus.onClicked.addListener((info): void => {
 // message handling
 // ─────────────────────────────────────────────
 
-// This module's listener types come from `browser`-shaped definitions
-// (platform/api.ts), which model Firefox's promise-returning onMessage —
-// they don't declare a `sendResponse` third parameter at all, because
-// Firefox doesn't need one. At runtime, on the Chromium build, `ext` is
-// literally `globalThis.chrome`, and `chrome.runtime.onMessage` still uses
-// the classic callback contract: returning a bare `true` promises an
-// eventual `sendResponse(...)` call, and nothing else counts. Returning
-// the handler's own Promise directly (`return handler()`, relying on
-// Chrome's documented "a returned Promise is treated like sendResponse"
-// support) was tried and measured to *not* take effect in this build —
-// the sender received `undefined` immediately rather than the resolved
-// value. `sendResponse` is captured explicitly below so `GET_TAB_FILTER_STATE`
-// actually reaches its caller.
+// The listener types model Firefox's promise-returning onMessage (no
+// `sendResponse`). On Chromium `ext` is `chrome`, where only returning a
+// bare `true` and calling `sendResponse` later works: returning the Promise
+// was measured to deliver `undefined` in this build. Hence the explicit
+// `sendResponse` below.
 type SendResponse = (response: unknown) => void
 
 ext.runtime.onMessage.addListener(

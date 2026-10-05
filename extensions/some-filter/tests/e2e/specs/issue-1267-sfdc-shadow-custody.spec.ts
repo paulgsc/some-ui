@@ -1,41 +1,21 @@
 /**
- * SF-DC (#1267) — the same three G0.2 shadow-root creation traces Gate 0
- * used to falsify the pre-fix pipeline, re-run against the real implementation
- * (`shadow-scope-discovery.ts` + `custody-primitive.ts`'s `createOcclusionHold`,
- * wired into `content.ts`), proving the counterexample G0.5 found is now
- * closed rather than merely narrowed. See #1267's own acceptance criteria:
- * "All three of Gate 0's G0.2 creation traces... show zero native-bright
- * frames with the frame oracle."
+ * The three G0.2 shadow-root creation traces Gate 0 used to falsify the
+ * pre-fix pipeline, re-run against shadow-scope discovery and
+ * `createOcclusionHold`: zero native-bright frames under the frame oracle.
  *
  * Each trace is a distinct ordering of "populate" vs. "connect" vs. "mutate"
- * (`shadow-traces.ts`'s own header has the full rationale for why all three
- * are independently required). Measured with `frames.ts`'s real video-frame
- * oracle, not a post-hoc screenshot poll — Definition C.0's zero-leak
- * invariant is a claim about every render opportunity, and a discovery
- * mechanism racing the compositor is exactly the class of bug a polled
- * screenshot cannot catch (this is the same reason the pre-fix G0.2 specs on
- * `claude/new-session-vmw51h` needed a frame oracle to demonstrate the leak
- * in the first place).
+ * (see `shadow-traces.ts`). Measured with `frames.ts`'s video-frame oracle:
+ * Definition C.0 covers every render opportunity, and a discovery mechanism
+ * racing the compositor is exactly what a polled screenshot cannot catch.
  *
- * SF4 (#1360) classification: already compliant, not one of the 16 needing
- * classification — this file already asserts against `frames.ts`'s real
- * video-frame oracle, the same bar #1360 is about promoting other specs
- * toward. Flagged here as a correction to #1360's own inventory, which
- * counted only `issue-741-auto-defects.spec.ts` and
- * `legacy-invert-regimes.spec.ts` as sampling real output.
+ * Classification (#1360): already compliant (frame oracle).
  *
- * Traces 1 and 2 exercise the interval between a scope's *creation* (light-
- * DOM insertion, in the real DOM's actual event order) and its *registration*
- * — Corollary D.3.1 permits that interval to be nonzero, but only because
- * this story's discovery runs synchronously inside a dedicated
- * `MutationObserver`'s microtask callback, decoupled from `pipeline.ts`'s
- * own 50ms-debounced coalescer (the shape G0.5 already falsified). Trace 3
- * exercises the *reactive re-arm* path — a mutation inside an
- * already-registered root — which stays covered for a simpler reason in
- * this story specifically: nothing here ever resolves a shadow scope past
- * `HELD`, so its occlusion never lifts in the first place (see
- * `shadow-scope-discovery.ts`'s own header for why, and for the real
- * production trade-off that follows from it).
+ * Traces 1 and 2 exercise the interval between a scope's creation and its
+ * registration — Corollary D.3.1 permits it to be nonzero only because
+ * discovery runs synchronously in a dedicated `MutationObserver` callback,
+ * not the pipeline's 50ms-debounced coalescer (the shape G0.5 falsified).
+ * Trace 3 exercises the reactive re-arm path: a mutation inside an
+ * already-registered root.
  */
 
 import { captureFrames, firstLeak } from "@filter/playwright/fixtures/frames"
@@ -106,11 +86,9 @@ test.describe("SF-DC — trace 3: mutation inside an already-connected, pre-exis
     context,
   }) => {
     const page = await gate0.goto("shadow-surface-page")
-    // This root exists before classification, unlike traces 1-2 — it is
-    // discovered and held during the very first auto-mode pass, before the
-    // document's own veil ever lifts (this module's own header explains why
-    // that ordering makes trace 3 hold trivially in this story: the scope
-    // never leaves HELD, so there is no later mutation that could expose it).
+    // Unlike traces 1-2, this root exists before classification: it is
+    // discovered and held in the first auto pass, before the document's
+    // veil lifts.
     await traceMutationSetup(page)
     await waitForClassification(page)
 

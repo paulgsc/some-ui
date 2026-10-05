@@ -1,36 +1,19 @@
 /**
- * SF-RG (#1265), acceptance criterion: "The two-phase custody handoff
- * (install successor before releasing predecessor — #1264's new
- * theorem/corollary) is proven for at least one scope, live in a browser
- * (Playwright, Chromium): install the hold, install a committed
- * replacement, confirm the hold is never released before the replacement is
- * confirmed installed."
+ * The two-phase custody handoff (install successor before releasing
+ * predecessor), proven live in Chromium: the hold is never released before
+ * the committed replacement is confirmed installed.
  *
- * `scope-registry.test.ts` already proves the call ordering with mocked
- * `install`/`release` spies — a unit-level proof of the *code path*. This
- * spec proves the same claim empirically, the way canon Theorem D.3 states
- * it: that `Safe_T` never lapses. The harness page's background is bright
- * white (`fixtures/scope-registry-harness-page.html`) standing in for
- * unheld vendor content; `resolveCommitted`'s realization deliberately
- * delays before installing its own dark successor, so if the implementation
- * ever released the hold before that successor was confirmed installed, the
- * frame oracle below would catch a native-bright frame during the gap — not
- * merely "the code reads left to right in the right order."
+ * `scope-registry.test.ts` proves the call ordering with spies. This proves
+ * the claim as canon Theorem D.3 states it — `Safe_T` never lapses: the
+ * harness page is bright white, and `resolveCommitted`'s realization delays
+ * before installing its dark successor, so a premature release would show a
+ * native-bright frame to the frame oracle.
  *
- * Registration (which installs the hold) runs *before* `captureFrames()` is
- * called, not inside its measured callback: `captureFrames` seeks into the
- * recording using a wall-clock estimate of "just before `fn()`'s first side
- * effect" (`frames.ts`'s own header comment explains why, and that the
- * estimate is deliberately allowed to under-skip by up to 20ms rather than
- * risk skipping past it). If registration itself ran inside the measured
- * window, that slop could catch the harness page's genuine pre-hold white
- * frame and misreport it as a handoff leak — a flake in the test, not a bug
- * in the module under test. Registering first means the page is already
- * dark by the time `captureFrames` starts looking, so its callback measures
- * exactly the handoff this spec is about.
+ * Registration (which installs the hold) runs *before* `captureFrames()`:
+ * its setup-skip estimate may under-skip by up to 20ms (see `frames.ts`),
+ * which could otherwise catch the page's genuine pre-hold white frame.
  *
- * SF4 (#1360) classification: already compliant — asserts against
- * `frames.ts`'s real video-frame oracle throughout.
+ * Classification (#1360): already compliant (frame oracle).
  */
 
 import "@filter/playwright/fixtures/scope-registry-window-types"
@@ -48,10 +31,8 @@ test("installs and confirms the committed successor before releasing the hold �
 }) => {
   const page = await harness.goto("scope-registry-harness-page")
 
-  // Registration — which installs the hold — runs before captureFrames() is
-  // called, per this file's own header comment: the page must already be
-  // dark by the time captureFrames() starts looking, so its callback below
-  // measures exactly the handoff and nothing about setup timing.
+  // Registration runs before captureFrames() (see the header), so the page
+  // is already dark when it starts looking.
   await page.evaluate(() => {
     const { createScopeRegistry } = window.ScopeRegistryModule
     const { createOcclusionHold } = window.CustodyPrimitiveModule
@@ -84,10 +65,8 @@ test("installs and confirms the committed successor before releasing the hold �
       await registry.resolveCommitted("root", {
         revision: "test-committed",
         install: async () => {
-          // Widens the window during which a wrong (release-before-confirm)
-          // ordering would leak the page's own bright background —
-          // otherwise a correct-by-accident synchronous ordering could pass
-          // this spec even with the bug present.
+          // Widens the window in which a release-before-confirm ordering
+          // would leak, so a correct-by-accident ordering cannot pass.
           await new Promise((resolve) => setTimeout(resolve, 150))
           const successor = document.createElement("div")
           successor.id = "__committed_successor"

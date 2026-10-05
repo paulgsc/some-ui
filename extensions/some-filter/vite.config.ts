@@ -12,8 +12,8 @@ const platformAlias = (
 
 const entries = [
   { name: "content", input: "src/content/content.ts" },
-  // SF-CUT3 (#1489): registered dynamically by background.ts, only while the
-  // enforcement-sheet flag is on — not listed in either manifest.
+  // Registered dynamically by background.ts while the enforcement-sheet flag
+  // is on; not listed in either manifest.
   { name: "frame", input: "src/frame/frame.ts" },
   { name: "background", input: "src/background/background.ts" },
   { name: "popup", input: "popup.html", classic: false },
@@ -21,11 +21,9 @@ const entries = [
 ]
 
 // One `vite build` per target. `--mode chromium` builds Chrome; the default
-// (production) target is Firefox, matching the prior `build = build:firefox`.
-// public/manifest.json is the chromium manifest (Vite's public-dir copy lands
-// it at dist/manifest.json); the Firefox build overwrites it afterwards.
-// public/prepaint.css and public/prepaint-start.js (the document_start
-// prepaint content script) ride along via the same public-dir copy.
+// target is Firefox. public/manifest.json is the chromium manifest; the
+// Firefox build overwrites it afterwards. public/prepaint.* ride along via
+// the same public-dir copy.
 const config = ({
   mode,
 }: {

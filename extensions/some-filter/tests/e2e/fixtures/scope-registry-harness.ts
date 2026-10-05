@@ -1,21 +1,13 @@
 /**
- * SF-RG (#1265) e2e harness: a bare (no extension) Playwright Chromium
- * context used to prove the scope registry's live-browser claims — the
- * two-phase custody handoff, self-healing under adversarial removal —
- * against the compiled `src/adapter/scope-registry.ts` +
- * `custody-primitive.ts` modules directly (`inline-module.ts`).
+ * A bare (no extension) Chromium context for the scope registry's
+ * live-browser claims — two-phase handoff, self-healing under removal —
+ * against the compiled `scope-registry.ts` + `custody-primitive.ts`
+ * (`inline-module.ts`).
  *
- * Deliberately not `../fixture.ts` or `gate0-fixture.ts`: both load the real
- * built extension via `--load-extension`, which would run `some-filter`'s
- * own auto-theme pipeline against whatever test page these specs use —
- * confounding the pixel/frame assertions here with a second, unrelated
- * source of visual change. #1265's acceptance criteria is explicit that
- * this story has "no wiring into content.ts, pipeline.ts, or any real page
- * yet"; this harness keeps that isolation on the test side too. It does,
- * however, reuse `frames.ts`'s frame oracle and `gate0-fixture.ts`'s
- * `pageCreatedAt` bookkeeping (so `captureFrames`'s setup-skip logic works
- * identically here) — exactly the reusable infrastructure the Gate 0 report
- * flagged as worth landing alongside its first real consumer.
+ * Not `../fixture.ts` or `gate0-fixture.ts`: the real extension's auto
+ * pipeline would add an unrelated source of visual change. Reuses
+ * `frames.ts`'s oracle and `gate0-fixture.ts`'s `pageCreatedAt`, so
+ * `captureFrames`'s setup skip works identically.
  */
 
 import fs from "fs"
@@ -91,9 +83,7 @@ export const test = base.extend<ScopeRegistryFixtures>({
       )
     }
 
-    // Same headless-detection rationale as fixture.ts/gate0-fixture.ts:
-    // Chrome's new headless mode supports CDP screencast recording without
-    // a display server.
+    // As fixture.ts: new headless mode records screencast without a display.
     const needsVirtualDisplay =
       !process.env["DISPLAY"] && !process.env["WAYLAND_DISPLAY"]
 
@@ -124,12 +114,9 @@ export const test = base.extend<ScopeRegistryFixtures>({
         pageCreatedAt.set(page, Date.now())
         openedPages.push(page)
         await page.goto(`file://${path.join(FIXTURE_DIR, `${name}.html`)}`)
-        // Two separate classic scripts, not one concatenated string:
-        // custody-primitive.ts's only cross-file reference is a type-only
-        // import (erased), so injection order between the two never
-        // matters — keeping them separate mirrors the real module boundary
-        // between "the state machine" and "the DOM effect" instead of
-        // presenting them to the page as one blob.
+        // Two classic scripts, not one string: custody-primitive.ts's only
+        // cross-file reference is type-only, so order never matters, and
+        // this mirrors the module boundary.
         await page.addScriptTag({ content: custodyPrimitiveScript() })
         await page.addScriptTag({ content: scopeRegistryScript() })
         return page

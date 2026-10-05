@@ -10,11 +10,9 @@
 export type RGBA = [number, number, number, number]
 
 /**
- * Parses #rgb/#rgba/#rrggbb/#rrggbbaa. getComputedStyle never returns this
- * format (browsers always normalize to rgb()/rgba()), but the swatch
- * registry (swatches.ts) stores its canonical colors as hex literals, and
- * anything comparing a computed style against a swatch color needs both
- * forms to parse to the same representation.
+ * Parses #rgb/#rgba/#rrggbb/#rrggbbaa. getComputedStyle always normalizes to
+ * rgb()/rgba(), but the swatch registry stores hex, and comparisons need both
+ * to parse alike.
  */
 function parseHexColor(css: string): RGBA | null {
   const match = css.match(
@@ -29,9 +27,8 @@ function parseHexColor(css: string): RGBA | null {
     return null
   }
 
-  // charAt() always returns `string` (empty string past the end), unlike
-  // indexed access, which is `string | undefined` under
-  // noUncheckedIndexedAccess — avoids a run of non-null assertions here.
+  // charAt() returns `string` (not `string | undefined` under
+  // noUncheckedIndexedAccess), avoiding non-null assertions.
   const expand = (short: string): string => short + short
   const isShort = hex.length === 3 || hex.length === 4
   const rHex = isShort ? expand(hex.charAt(0)) : hex.slice(0, 2)
@@ -117,8 +114,8 @@ export function relativeLuminance(r: number, g: number, b: number): number {
 
 /**
  * WCAG 2.1 contrast ratio between two relative luminances — order
- * independent (always ≥ 1, ≤ 21). SF-RC1 (#1340)'s κ_lo/κ_hi invariant
- * (canon Definition C.3/Remark C.6, `Φ_comfort`) is expressed against this.
+ * independent (1 to 21). The κ_lo/κ_hi invariant (canon Definition C.3 /
+ * Remark C.6) is expressed against this.
  */
 export function contrastRatio(l1: number, l2: number): number {
   const lighter = Math.max(l1, l2)
@@ -128,9 +125,8 @@ export function contrastRatio(l1: number, l2: number): number {
 
 /**
  * Porter-Duff "top over bottom" alpha compositing, non-premultiplied —
- * SF-RC1 (#1340)'s `resolveEffectiveBackdrop` walks an ancestor chain
- * accumulating each layer's own background this way, innermost first, to
- * resolve the single composited color actually behind a carrier's text.
+ * `resolveEffectiveBackdrop` folds an ancestor chain's backgrounds this way,
+ * innermost first, to find the colour behind a carrier's text.
  */
 export function compositeOver(top: RGBA, bottom: RGBA): RGBA {
   const [tr, tg, tb, ta] = top

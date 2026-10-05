@@ -1,50 +1,42 @@
 /**
- * SF-CUT3 (#1489) — the content side of the enforcement sheet's handshake:
- * request the sheet for *this* document, confirm it by reading the cascade,
- * and only then let the caller release the veil.
+ * The content side of the enforcement sheet's handshake: request the sheet
+ * for *this* document, confirm it by reading the cascade, and only then let
+ * the caller release the veil.
  *
- * The background (`background/background.ts`) owns `insertCSS`/`removeCSS`,
- * because content scripts have no `scripting` API. It answers
- * `ENSURE_ENFORCEMENT`/`REMOVE_ENFORCEMENT` for the requesting frame and
- * keeps no state of its own. That puts idempotency here, and it has to be
- * here: measured on Chromium 1194, two `insertCSS` calls with the same CSS
- * stack two copies, and one `removeCSS` leaves the second one applied. So:
+ * The background owns `insertCSS`/`removeCSS` (content scripts have no
+ * `scripting` API), answers `ENSURE_ENFORCEMENT`/`REMOVE_ENFORCEMENT` for the
+ * requesting frame, and keeps no state. Idempotency has to live here:
+ * measured on Chromium 1194, two identical `insertCSS` calls stack two
+ * copies, and one `removeCSS` leaves the second applied. So:
  *
- *   - `ensureEnforcement()` sends a request only while a read shows the sheet
- *     absent, and re-sends at most once (a worker mid-restart can answer
- *     before its `insertCSS` promise has settled);
- *   - `removeEnforcement()` repeats the request, bounded, until a read shows
- *     the sheet gone, which also cleans up after a stacked duplicate.
+ *   - `ensureEnforcement()` sends only while a read shows the sheet absent,
+ *     and re-sends at most once (a restarting worker can answer before its
+ *     `insertCSS` settles);
+ *   - `removeEnforcement()` repeats, bounded, until a read shows the sheet
+ *     gone, which also cleans up a stacked duplicate.
  *
- * The presence read is the sheet's own sentinel custom property
- * (`ENFORCEMENT_SENTINEL_PROPERTY`, declared by its canvas rule with the
- * swatch id) read from `<html>`'s computed style. It is not the canvas
- * colour: a vendor page can paint `<html>` exactly `bg0` on its own
- * (bot-found on #1521). A read is the confirmation the issue asks for, rather
- * than trusting that an `insertCSS` promise resolving means the sheet is in
- * this document's cascade.
+ * The presence read is the sheet's sentinel custom property
+ * (`ENFORCEMENT_SENTINEL_PROPERTY`) on `<html>`, not the canvas colour,
+ * which a vendor can paint `bg0` on its own. A resolved `insertCSS` promise
+ * is not trusted as confirmation.
  *
  * Transitions: CSS transitions sit above every `!important` origin, so a
- * vendor `transition: background-color 5s` on `<html>` would otherwise
- * interpolate from white to `bg0` *after* the sheet lands, and the veil
- * would come down onto a canvas still mid-way. The freeze (`withPrepaintSuppressed`'s own rule)
- * goes in before the request and comes out only after the confirm read and
- * one painted frame, so the vendor's transitions resume once the sheet's
- * values are already the current ones — nothing is left to animate.
+ * vendor `transition: background-color 5s` on `<html>` would interpolate to
+ * `bg0` *after* the sheet lands and the veil would drop onto a canvas
+ * mid-way. The freeze goes in before the request and comes out after the
+ * confirm read and one painted frame, leaving nothing to animate.
  *
- * Liveness: the whole exchange is bounded by `ENFORCEMENT_LIVENESS_MS`. The
- * timeout bounds *waiting*; it is never read as evidence that the sheet is
- * present. On expiry the caller releases the veil onto the native page.
+ * Liveness: the exchange is bounded by `ENFORCEMENT_LIVENESS_MS`. The
+ * timeout bounds *waiting*; it is never evidence the sheet is present. On
+ * expiry the caller releases the veil onto the native page.
  */
 
 /**
- * An MV3 service worker cold start is a few hundred milliseconds (the worker
- * is started on demand by the message itself), and `insertCSS` then costs one
- * more round trip to the renderer. `COMMIT_FALLBACK_MS` (100 ms) is the wrong
- * scale: it exists for occluded tabs whose rAF never fires, not for a worker
- * that has to boot. 2,500 ms leaves roughly 5x headroom over a cold start,
- * while still ending a dead-worker blackout within the time a user would
- * reload the page themselves.
+ * An MV3 worker cold start (triggered by the message itself) is a few
+ * hundred milliseconds, plus one round trip for `insertCSS`.
+ * `COMMIT_FALLBACK_MS` is the wrong scale (it is for occluded tabs). 2,500 ms
+ * is about 5x a cold start while still ending a dead-worker blackout before a
+ * user would reload.
  */
 export const ENFORCEMENT_LIVENESS_MS = 2_500
 
@@ -103,13 +95,11 @@ function withLiveness<T>(
 
 /**
  * One enforcement operation, split in two. `result` is what the caller acts
- * on and is bounded by the liveness timeout. `settled` is the underlying
- * request, which can outlive that bound — a busy or restarting worker still
- * performs an `insertCSS` it received late — so the queue below holds the
- * next operation until it settles, not merely until the caller stopped
- * waiting (bot-found on #1521: a removal that ran while a timed-out insert
- * was still pending finished first and the insert then landed in an off or
- * legacy tab).
+ * on, bounded by the liveness timeout. `settled` is the underlying request,
+ * which can outlive that bound (a busy worker still performs a late
+ * `insertCSS`), so the queue holds the next operation until it settles —
+ * otherwise a removal could finish first and the insert then land in an off
+ * or legacy tab.
  */
 type Operation<T> = {
   readonly result: Promise<T>
@@ -209,13 +199,11 @@ export type EnforcementQueue = {
 
 /**
  * One document's enforcement operations, strictly in call order: each starts
- * only after the previous one's underlying request has settled, so an ensure
- * can never read a sheet a queued removal is about to take away, nor a
- * removal finish ahead of an insert still in flight (bot-found on #1521, the
- * auto -> legacy -> auto race and the timed-out insert). The caller-facing
- * answer stays bounded regardless: each call resolves within
- * `ENFORCEMENT_LIVENESS_MS` of being made, even while it waits behind a
- * request that never settles — the veil is never held on a dead worker.
+ * only after the previous one's request has settled, so an ensure never
+ * reads a sheet a queued removal is about to take away, and a removal never
+ * finishes ahead of an insert in flight. Each call still resolves within
+ * `ENFORCEMENT_LIVENESS_MS`, even behind a request that never settles — the
+ * veil is never held on a dead worker.
  */
 export function createEnforcementQueue(
   deps: EnforcementDeps,

@@ -1,37 +1,21 @@
 /**
  * Pixel-level proof that legacy invert mode paints a dark surface where the
- * root filter actually reaches, and a documented account of the one place
- * a screenshot from this specific (headless/swiftshader) harness turned out
- * not to be trustworthy.
+ * root filter actually reaches, and the one place this headless harness's
+ * screenshots are not trustworthy.
  *
- * Every other test in this repo reasons about *declared* values, because
- * that is all `getComputedStyle` can see — it never reflects `filter`
- * compositing (issue-741-auto-defects.spec.ts makes the same point). That
- * blind spot is precisely where the canvas and scrollbar bugs below lived:
- * a surface declared white is dark only if something actually filters it.
+ * `getComputedStyle` never reflects `filter` compositing, which is where the
+ * canvas and scrollbar bugs lived: a surface declared white is dark only if
+ * something actually filters it.
  *
- *   #1175 — the propagated <html> canvas was repolarised to white on the
- *           strength of composited maths that were correct but described
- *           the wrong consumer. Raw ticks (vendor content materialised
- *           after document_end and revealed faster than it rasters, e.g. a
- *           held PgDn on GitHub) are filled with the canvas colour
- *           unfiltered, so white was a full-viewport flash.
+ *   #1175 — raw ticks (content revealed faster than it rasters, e.g. a held
+ *           PgDn on GitHub) are filled with the canvas colour unfiltered, so
+ *           a white <html> canvas was a full-viewport flash.
  *   scrollbar — browser chrome, painted outside the root filter's render
- *           surface unconditionally (verified by pixel probe: a scrollbar
- *           declared green/red under this preset renders green/red, not
- *           the inverted cyan/magenta) — so it must simply be dark, no
- *           trade-off to weigh.
+ *           surface (verified by pixel probe), so it must simply be dark.
  *
- * The veil test below is the odd one out, and deliberately asserts less
- * than the other two: an earlier version gave the veil's top-layer
- * (`:popover-open`) rule a dark value on the theory that a top-layer
- * element is outside every ancestor filter's render surface. That theory
- * matched this harness's own pixel measurement and did NOT match real
- * usage — it caused a real refresh/remount flash that reverting the value
- * back to white removed. So for this one case, this harness's pixels are
- * a demonstrated false witness, and the veil test only checks what's
- * actually settled: the declared value, not what this sandbox renders it
- * as. See prepaint.css's own header comment for the full account.
+ * The veil test asserts less: a dark top-layer veil matched this harness's
+ * pixels but caused a real refresh flash, so here the harness is a false
+ * witness and only the declared value is checked (prepaint.css's header).
  */
 
 import fs from "fs"
@@ -68,9 +52,8 @@ test.describe("legacy invert mode, in both rendering regimes", () => {
     context,
     fixture,
   }) => {
-    // transparent-page declares no background anywhere, so what fills the
-    // viewport below its content is exactly the pair under test: the
-    // propagated canvas, and the floor behind it.
+    // transparent-page declares no background, so the viewport below its
+    // content is exactly the pair under test: the canvas and the floor.
     const page = await fixture.goto("transparent-page")
     const sw = await backgroundWorker(context)
     await enterLegacyMode(sw, "transparent-page.html", LEGACY_CONFIG)
@@ -110,10 +93,8 @@ test.describe("legacy invert mode, in both rendering regimes", () => {
     context,
     fixture,
   }) => {
-    // The scrollbar gutter is exactly what contentWidth() excludes from
-    // every other test in this file — it is browser chrome, painted outside
-    // the root filter's render surface, so nothing here composites it. This
-    // test samples that excluded strip on purpose, instead of avoiding it.
+    // Samples the scrollbar gutter that contentWidth() excludes elsewhere:
+    // browser chrome, outside the root filter's render surface.
     const page = await fixture.goto("transparent-page")
     const sw = await backgroundWorker(context)
     await enterLegacyMode(sw, "transparent-page.html", LEGACY_CONFIG)
@@ -160,27 +141,14 @@ test.describe("legacy invert mode, in both rendering regimes", () => {
   test("the shipped veil CSS declares white for both the fallback and the top layer", async ({
     context,
   }) => {
-    // Driven directly rather than through the pipeline: the real veil is torn
-    // down two rAFs after it goes up, which is a race no screenshot can win
-    // reliably. The artifact under test is prepaint.css, so this builds the
-    // exact scene it is written for — real file, real filter, real popover
-    // promotion.
+    // Driven directly: the real veil comes down two rAFs after it goes up, a
+    // race no screenshot wins. This builds the scene prepaint.css is written
+    // for — real file, real filter, real popover promotion.
     //
-    // The fallback (non-promoted) case is asserted on rendered pixels: white,
-    // filtered, is unambiguous — it composites dark everywhere, sandbox or
-    // real hardware, no disagreement on record.
-    //
-    // The top-layer case is asserted on the *declared* value only, not on
-    // rendered pixels. It used to be pixel-checked here too, expecting dark,
-    // back when prepaint.css gave `:popover-open` its own dark value. That
-    // value produced a real refresh/remount white flash in actual use; only
-    // this project's own headless/swiftshader harness ever measured it as
-    // dark. Reverting it to white (this file's header comment has the full
-    // account) fixed the real flash, but it also means a pixel assertion of
-    // "renders dark" here would be asserting this sandbox's own outlier
-    // behaviour rather than the real-world-verified one — so this checks
-    // what the CSS declares, which is what changed and what future edits
-    // should be caught touching, not what one specific renderer does with it.
+    // The fallback case is asserted on pixels (white, filtered, composites
+    // dark everywhere). The top-layer case is asserted on the *declared*
+    // value only: this harness renders it differently from real hardware
+    // (see the header), so a pixel check would pin the outlier.
     const prepaintCss = fs.readFileSync(PREPAINT_CSS, "utf8")
     const scene = await context.newPage()
     await scene.setViewportSize({ width: 400, height: 300 })
@@ -198,10 +166,8 @@ test.describe("legacy invert mode, in both rendering regimes", () => {
        </html>`
 
     try {
-      // Top layer: a *separate* scene, not the fallback one with its popover
-      // later closed — a closed [popover] element is display:none by the UA
-      // stylesheet, not "a plain fixed div", so that approach would sample
-      // whatever is behind it (the canvas) instead of the veil.
+      // Top layer: a *separate* scene — a closed [popover] is display:none,
+      // so closing this one would sample the canvas instead of the veil.
       await scene.setContent(sceneHtml(true))
       const declaredTopLayer = await scene.evaluate(() => {
         const veil = document.getElementById("__sw_prepaint_veil")
@@ -217,9 +183,8 @@ test.describe("legacy invert mode, in both rendering regimes", () => {
         "the top-layer rule must declare the same white the fallback rule does"
       ).toBe("rgb(255, 255, 255)")
 
-      // Fallback: no popover attribute at all, so it's an ordinary fixed div,
-      // visible by default — the same shape the real fallback (popover
-      // unsupported, or showPopover() refused) actually takes.
+      // Fallback: no popover attribute, an ordinary fixed div, as when
+      // popovers are unsupported or showPopover() is refused.
       await scene.setContent(sceneHtml(false))
       const { color, luminance: lum } = await brightestIn(scene, context, {
         x: 0,
@@ -240,28 +205,14 @@ test.describe("legacy invert mode, in both rendering regimes", () => {
   test("the veil's declared white composites dark only once the legacy filter <style> is back — the yt-navigate <head>-swap flash, pixel-side-by-side", async ({
     context,
   }) => {
-    // Reproduces the reported flash directly: a vendor SPA router (YouTube's
-    // Polymer router, dispatching yt-navigate-start/finish) can wholesale-
-    // replace <head> mid-navigation. data-sw-legacy lives on <html> and
-    // survives that; #__sw_legacy_filter — the <style> carrying the actual
-    // `filter: invert(...)` — used to be a <head> child and did not.
-    // prepaint.css's veil rule is gated purely on data-sw-legacy, on the
-    // premise that the same still-active root filter will invert its
-    // declared white back to dark; losing the filter while the attribute
-    // survives falsifies that premise. theme-apply.ts's applyLegacyFilter
-    // now anchors the <style> on <html> itself instead (this file's sibling
-    // test above already proves the *filter* composites correctly once
-    // installed — this proves the specific split-brain window is closed).
+    // Reproduces the reported flash: a router replacing <head> mid-navigation
+    // keeps data-sw-legacy (on <html>) but would take a <head>-anchored
+    // filter <style>, leaving the declared-white veil uninverted. The <style>
+    // is anchored on <html>; this proves that split window is closed.
     //
-    // Fallback (non-popover) rendering path only, same reasoning as the
-    // sibling test above: the top-layer path is where this project's own
-    // headless/swiftshader harness is a documented false witness (prepaint
-    // .css's header comment), so yt-navigate-repaint.spec.ts's real,
-    // extension-driven scene deliberately does not pixel-check it. This
-    // scene isolates the one variable that mechanism actually depends on —
-    // whether the filter <style> is present — with everything else (the
-    // shipped prepaint.css, the real filter string, an un-promoted veil)
-    // identical between the two samples below.
+    // Fallback rendering path only (the harness is a false witness for the
+    // top layer). The two samples differ only in whether the filter <style>
+    // is present.
     const prepaintCss = fs.readFileSync(PREPAINT_CSS, "utf8")
     const scene = await context.newPage()
     await scene.setViewportSize({ width: 400, height: 300 })
@@ -297,9 +248,8 @@ test.describe("legacy invert mode, in both rendering regimes", () => {
           `— this is the literal flash the bug produced`
       ).toBeGreaterThan(1 - DARK)
 
-      // The fix: the filter <style> survives (anchored on <html>, so a
-      // <head>-only swap can't take it) — the same declared-white veil now
-      // composites dark, same as the settled state always has.
+      // The fix: the filter <style> survives, so the white veil composites
+      // dark.
       await scene.setContent(sceneHtml(true))
       const fixed = await brightestIn(scene, context, {
         x: 0,

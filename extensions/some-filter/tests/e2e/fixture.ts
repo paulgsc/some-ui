@@ -1,19 +1,12 @@
 /**
  * some-filter — Playwright Chromium extension fixture.
  *
- * Uses Chromium's --load-extension to load the unpacked extension from dist/.
- * No signing, no profile seeding, no separate launcher process.
+ * Loads the unpacked extension from dist/ with --load-extension. Chromium
+ * because Playwright cannot automate a Firefox with a temporary unsigned
+ * extension; the content-script logic under test is browser-agnostic.
  *
- * Why Chromium:
- *   Playwright has no supported path for loading temporary unsigned extensions
- *   into Firefox and then automating that Firefox instance. Chromium's
- *   --load-extension solves this in one call. The content-script logic under
- *   test (prepaint handshake, classifyPage, dark-theme injection) is entirely
- *   browser-agnostic.
- *
- * NixOS:
- *   Set PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH to the Nix-patched Chromium binary
- *   (done automatically by `nix develop .#playwright`).
+ * NixOS: set PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH to the Nix-patched Chromium
+ * binary (done automatically by `nix develop .#playwright`).
  */
 
 import fs from "fs"
@@ -45,31 +38,18 @@ export type FilterDebug = {
 // ── Classification poller ─────────────────────────────────────────────────────
 
 /**
- * Wait for content.js to finish its synchronous init path (runAutoClassify sets
- * data-sw-theme-applied) then return the full debug snapshot.
- *
- * Timeout is generous: document_end fires after DOMContentLoaded and the init
- * path is synchronous, so in practice the attr is set within one event loop
- * tick after page load.
+ * Wait for the content script's first round to set data-sw-theme-applied,
+ * then return the full debug snapshot.
  */
 export async function waitForClassification(
   page: Page,
   timeout = 5_000
 ): Promise<FilterDebug> {
-  // Two things matter here:
-  //  1. `{ timeout }` MUST be the third (options) argument. Playwright's
-  //     signature is waitForFunction(pageFunction, arg, options) — passed as
-  //     the second argument it is silently treated as `arg` (handed to the
-  //     page function, which ignores it), leaving the real timeout at its
-  //     30s default. That is the "everything times out at 30s" symptom.
-  //  2. `polling: <number>` (timed) rather than the default `'raf'`. The attr
-  //     is set synchronously by the pipeline's onFire hook, but rAF is paused
-  //     in tabs the browser treats as non-foreground (headed automation opens
-  //     a second page, so the fixture page is frequently occluded). With raf
-  //     polling the predicate is never re-evaluated there and the wait hangs
-  //     forever even though the attribute is already present. setTimeout still
-  //     fires (throttled) in occluded tabs, so timed polling always observes
-  //     it. This mirrors the veil-teardown timer fallback in prepaint.ts.
+  // 1. `{ timeout }` MUST be the third argument: waitForFunction(fn, arg,
+  //    options). As the second it is silently `arg`, leaving the 30s default.
+  // 2. Timed polling, not `'raf'`: rAF is paused in occluded tabs (headed
+  //    automation opens a second page), so raf polling could hang with the
+  //    attribute already set.
   try {
     await page.waitForFunction(
       () => document.body.dataset["swThemeApplied"] !== undefined,
@@ -77,13 +57,9 @@ export async function waitForClassification(
       { timeout, polling: 100 }
     )
   } catch (error) {
-    // A bare timeout here only ever said "5000ms exceeded" — useless on its
-    // own, since it cannot distinguish "content script never ran" from "tab
-    // is stuck in legacy/off mode" from "pipeline threw before onFire" from
-    // any other stage. Dump the tab's actual state into the failure message
-    // so the *first* failing run is diagnosable without re-instrumenting by
-    // hand. (Best-effort: if the page/context is already gone, report that
-    // instead of masking the original timeout with a second error.)
+    // Dump the tab's state into the failure so the first failing run is
+    // diagnosable (no script vs. stuck in legacy/off vs. pipeline threw).
+    // Best-effort if the page is already gone.
     let diagnostic = "(page unavailable for diagnostic snapshot)"
     try {
       const snapshot = await page.evaluate(() => ({
@@ -96,12 +72,8 @@ export async function waitForClassification(
     } catch {
       // page/context already closed — original error is diagnostic enough
     }
-    // `cause` is an ES2022 Error feature; this project's lib target is
-    // ES2020, so the two-arg constructor overload isn't typed. Declaring the
-    // variable with the wider structural type (rather than casting) lets the
-    // assignment through without `any` — it still works at runtime (Node and
-    // every evergreen browser have supported Error.cause for years) and
-    // preserves the original error for anything that reads it.
+    // `cause` is ES2022 and the lib target is ES2020; the wider structural
+    // type lets it through without a cast.
     const wrapped: Error & { cause?: unknown } = new Error(
       `waitForClassification timed out after ${timeout}ms. Tab state at ` +
         `failure:\n${diagnostic}\n\nOriginal error: ${String(error)}`
@@ -144,25 +116,15 @@ export const test = base.extend<FilterFixtures & { page: Page }>({
       )
     }
 
-    // Chrome's new headless mode supports extensions and works without a
-    // display server (no DISPLAY/WAYLAND_DISPLAY). Use it in CI environments
-    // where no display is available; skip it locally so the window is visible.
+    // New headless mode supports extensions without a display server; used
+    // only where there is no display.
     const needsVirtualDisplay =
       !process.env["DISPLAY"] && !process.env["WAYLAND_DISPLAY"]
 
-    // A fresh profile dir per run, not a fixed committed path. --load-extension
-    // requires a *persistent* context (Playwright has no other API for loading
-    // unsigned extensions), but "persistent" here must mean "for the lifetime
-    // of this one launch," never "reused across separate `playwright test`
-    // invocations." A fixed, reused directory lets chrome.storage.local's
-    // filteredTabIds/tabStates (background.ts, keyed by raw tab ID) accumulate
-    // across runs; Chromium assigns tab IDs freshly per process, typically from
-    // the same small integers each launch, so a stale entry from an old run can
-    // collide with a brand-new tab's ID and misclassify it as filter-enabled
-    // ("legacy") before the extension ever gets a chance to run auto mode —
-    // silently skipping the entire dark-theme pipeline with no throw anywhere
-    // to explain it. A disposable directory makes every run start from the
-    // same clean slate CI already gets from its fresh checkout.
+    // A fresh profile dir per run. A reused one lets chrome.storage.local's
+    // tab-ID-keyed state accumulate, and Chromium reuses small tab IDs per
+    // launch, so a stale entry could put a new tab in "legacy" and silently
+    // skip the auto pipeline.
     const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "sw-filter-e2e-"))
 
     const context = await chromium.launchPersistentContext(userDataDir, {
@@ -190,13 +152,9 @@ export const test = base.extend<FilterFixtures & { page: Page }>({
   },
 
   fixture: async ({ context }, use) => {
-    // Pages opened via fixture.goto() are tracked here and closed in this
-    // fixture's own teardown. Without this, every fixture.goto() call across
-    // every test in the file leaks a page for the lifetime of the worker —
-    // playwright.config.ts pins workers: 1, so all 12+ tests in this suite
-    // share one BrowserContext and accumulate pages with no bound. Enough
-    // orphaned pages eventually destabilizes the context (observed as
-    // "Target page, context or browser has been closed" mid-test).
+    // Pages opened via fixture.goto() are closed in teardown; with workers: 1
+    // every test shares one context, and leaked pages eventually destabilize
+    // it ("Target page, context or browser has been closed").
     const openedPages: Array<Page> = []
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -206,26 +164,16 @@ export const test = base.extend<FilterFixtures & { page: Page }>({
         openedPages.push(page)
         const filePath = path.join(FIXTURE_DIR, `${name}.html`)
         await page.goto(`file://${filePath}`)
-        // Auto mode now defers its whole first round while the tab is
-        // hidden (content.ts's `whenVisible` — the fix for a 200-tab
-        // profile hanging the browser at `document_end`). Every page this
-        // fixture opens is a new tab in a shared context, so all but the
-        // last would sit deferred and every assertion here would time out
-        // against a page that is behaving exactly as designed.
-        //
-        // Bringing it to front is not a workaround for the gate; it is the
-        // harness saying what it already meant. These specs are all claims
+        // Auto mode defers its first round while the tab is hidden, and every
+        // page here is a new tab in a shared context. These specs are claims
         // about a page the user is looking at.
         await page.bringToFront()
         return page
       },
     })
 
-    // Teardown: close every page this fixture instance opened, regardless
-    // of whether the test passed, failed, or the page was already closed
-    // by the test itself. Closing an already-closed page is a no-op error
-    // we deliberately swallow — order of teardown vs. test-level cleanup
-    // is not guaranteed and either side may have already closed it.
+    // Close every page this fixture opened; one the test already closed
+    // throws, which is swallowed.
     await Promise.all(
       openedPages.map((p) =>
         p.close().catch(() => {

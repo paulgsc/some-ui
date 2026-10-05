@@ -1,29 +1,21 @@
 /**
- * SF-RC3 (#1342) — the rendered-contrast closure projected into shadow
- * scopes, proven against the real `--load-extension` build.
+ * The rendered-contrast closure projected into shadow scopes, against the
+ * real `--load-extension` build.
  *
- * The unit suites (`shadow-actuator.test.ts`, `shadow-scope-theming.test.ts`,
- * `foreground-repair.test.ts`) prove the bookkeeping — which sheets are
- * adopted, which actions survive tagging, what the compensated rule text is.
- * None of them can prove the thing this story is actually about: that a rule
- * realized through a shadow scope's own `adoptedStyleSheets` *wins the
- * cascade* inside that scope, against an inline `style="color: …"` and
- * against the co-located (#741) rule that matches the same carrier's
- * surface. jsdom applies neither `adoptedStyleSheets` nor `<style>` rules to
- * `getComputedStyle` at all, so that half is an e2e claim by construction.
+ * The unit suites prove the bookkeeping (which sheets are adopted, which
+ * actions survive, the compensated rule text). Only e2e can prove a rule
+ * realized through a scope's `adoptedStyleSheets` *wins the cascade* there,
+ * against an inline `style="color: …"` and the co-located surface rule:
+ * jsdom applies neither `adoptedStyleSheets` nor `<style>` rules to
+ * `getComputedStyle`.
  *
  * Measures the *resolved* pair (computed `color` against the nearest opaque
- * background, crossing the shadow boundary through `host` the way
- * `resolveEffectiveBackdrop` itself does) rather than sampling pixels — the
- * same reasoning `issue-1341-sfrc2-foreground-repair.spec.ts`'s own header
- * sets out: a WCAG contrast floor is defined over colour resolution, not
- * over antialiased painted output.
+ * background, crossing shadow boundaries as `resolveEffectiveBackdrop`
+ * does) rather than pixels: a WCAG floor is defined over colour resolution.
  *
- * SF4 (#1360) classification: visual-claim, justified above — the claim is
- * about colour resolution inside a shadow tree, which computed style
- * reflects directly (no `filter` compositing is involved in the four cases
- * that assert a repair; the one case that *is* under a vendor `invert(1)`
- * asserts an absence, and says why).
+ * Classification (#1360): visual claim, justified above — no `filter`
+ * compositing is involved in the cases that assert a repair; the one case
+ * under a vendor `invert(1)` asserts an absence, and says why.
  */
 
 import { relativeLuminance } from "@filter/lib/content/color"
@@ -118,13 +110,10 @@ test.describe("SF-RC3: both Gate-0 witnesses converge inside an open shadow root
   test("both witnesses converge on the same colours a light-DOM carrier would (identical convergence, not merely legible)", async ({
     fixture,
   }) => {
-    // #1342's own wording is "converge identically", not "converge" — the
-    // whole design goal (#1338's "one scope-generic mechanism") is that the
-    // adapter half is scope-agnostic and only the caller changes, so the
-    // same authored pair must land on the same repaired colour whichever
-    // scope it is in. Asserted against the document-scope fixture's own
-    // witnesses rather than a hardcoded literal, so this stays true if
-    // `modifyForegroundColor`'s band is ever retuned.
+    // "Converge identically": the adapter half is scope-agnostic, so the
+    // same authored pair lands on the same repaired colour in any scope.
+    // Compared against the document-scope witnesses, not a literal, so a
+    // retuned band stays covered.
     const page = await fixture.goto("shadow-surface-page")
     await waitForClassification(page)
     await mountShadowWitnesses(page, "sf-rc3-host")
@@ -201,9 +190,8 @@ test.describe("SF-RC3: one CSSStyleSheet object serves every scope sharing a key
       return {
         countA: a.length,
         countB: b.length,
-        // Object identity, not equal rule text: a per-scope parse would be
-        // visually indistinguishable and is exactly what the shared cache
-        // exists to avoid.
+        // Object identity, not equal text: avoiding a per-scope parse is
+        // what the shared cache is for.
         allShared: a.every((sheet) => b.includes(sheet)),
       }
     })
@@ -221,31 +209,18 @@ test.describe("SF-RC3: an active vendor filter: invert(1) (#1342)", () => {
   test("the channel declines rather than repairing against a backdrop it cannot resolve, at both scopes", async ({
     fixture,
   }) => {
-    // #1342 asks that the new foreground rules be counter-inverted the way
-    // the background path's already are, and they are
-    // (`buildForegroundRepairRule`'s own `vendorInvert` parameter, threaded
-    // at both scopes). What this case records is that the compensation is
-    // not reachable *yet*, and why that is the correct state rather than a
-    // gap:
+    // The foreground rules are counter-inverted at both scopes
+    // (`buildForegroundRepairRule`'s `vendorInvert`), but that is not
+    // reachable yet, correctly: `detectVendorInvert()` is non-zero only with
+    // a `filter` on `<html>`, and `hasGroupCompositingHazard` resolves every
+    // carrier under such a root `"underdetermined"`, which
+    // `decideForegroundRepairs` skips — a guess is not a repair. While #1337
+    // (the background path's missing compensation) is open, a live channel
+    // would calibrate against a colour nobody sees. The diagnostic tag still
+    // reports the carrier.
     //
-    // `detectVendorInvert()` is non-zero only when `document.documentElement`
-    // carries a `filter`, and SF-RC1's own `hasGroupCompositingHazard` —
-    // checked for every ancestor up to `documentElement`, regardless of
-    // where colour accumulation resolves, because a group effect cannot be
-    // occluded by an inner opaque layer — resolves every carrier under such
-    // a root as `"underdetermined"`. `decideForegroundRepairs` skips those
-    // outright: a guess is not a repair.
-    //
-    // Declining is right while #1337 (the document-level background path's
-    // own missing compensation) is open. A live channel would score a
-    // carrier against a declared backdrop whose own realization is
-    // uncompensated — i.e. against a colour nobody ever sees — and emit a
-    // repair calibrated for it. The diagnostic tag still reports the
-    // carrier, so the gap is visible rather than silent.
-    //
-    // Asserted as a *recorded boundary*, not a desired end state: when that
-    // hazard is narrowed for a recognized root-level `invert()`, this case
-    // is what will fail and say so.
+    // A *recorded boundary*: when the hazard is narrowed for a root-level
+    // `invert()`, this case will fail and say so.
     const page = await fixture.goto("shadow-surface-vendor-invert-page")
     await waitForClassification(page)
     await mountShadowWitnesses(page, "sf-rc3-invert-host")
@@ -271,18 +246,13 @@ test.describe("SF-RC3: an active vendor filter: invert(1) (#1342)", () => {
   })
 })
 
-test.describe("SF-RC3: a carrier whose backdrop resolves one scope out (#1342, bot-found)", () => {
+test.describe("SF-RC3: a carrier whose backdrop resolves one scope out (#1342)", () => {
   test("a nested-root carrier with no background of its own is repaired against the outer scope's themed surface", async ({
     fixture,
   }) => {
-    // `resolveEffectiveBackdrop` climbs through `ShadowRoot.host`, so this
-    // carrier's backdrop is the *outer* scope's surface — and discovery
-    // registers (and projects) the inner scope first, so its own audit runs
-    // against that surface's still-native white. Nothing the outer scope's
-    // later darkening does is a mutation inside this root, nor a
-    // `class`/`style` change on its host, so nothing re-audits it: without
-    // an ancestor-driven re-contrast the carrier keeps its authored black on
-    // a newly dark surface, permanently.
+    // The backdrop is the *outer* scope's surface, and the inner scope is
+    // projected first, against its still-native white. Without an
+    // ancestor-driven re-contrast the carrier keeps its authored black.
     const page = await fixture.goto("shadow-surface-page")
     await waitForClassification(page)
     await mountNestedBackdropCrosser(
@@ -291,9 +261,7 @@ test.describe("SF-RC3: a carrier whose backdrop resolves one scope out (#1342, b
       "sf-rc3-cross-inner"
     )
     await waitForShadowScopeCommitted(page, ["sf-rc3-cross-outer"])
-    // The repair lands on the *inner* scope's own later re-contrast, which
-    // the outer commit above triggers — poll for it rather than assuming it
-    // is already there when the outer surface's tag appears.
+    // The repair lands on the inner scope's later re-contrast; poll for it.
     await page.waitForFunction(
       () => {
         const outer = document.getElementById("sf-rc3-cross-outer")
@@ -322,17 +290,14 @@ test.describe("SF-RC3: a carrier whose backdrop resolves one scope out (#1342, b
   })
 })
 
-test.describe("SF-RC3: a repaired shadow carrier survives later rounds (#1342, bot-found)", () => {
+test.describe("SF-RC3: a repaired shadow carrier survives later rounds (#1342)", () => {
   test("a carrier under a vendor colour transition stays repaired across a reprojection", async ({
     fixture,
   }) => {
-    // A scope's teardown (`clearShadowSurfaceState`, on every invalidate)
-    // drops the repair sheet, and the very next thing its re-commit does is
-    // audit. If the freeze stops matching before that drop resolves — which
-    // is what clearing `data-sw-legibility-fix` first does, since the freeze
-    // rule selects the same attribute the repair rule keys on — the audit
-    // reads the transition's start value, the repair itself, calls the
-    // carrier legible, and omits the repair for good.
+    // A scope's teardown drops the repair sheet and its re-commit audits
+    // next. If the freeze stops matching before that drop resolves (it
+    // selects the same attribute the repair keys on), the audit reads the
+    // transition's start value — the repair itself — and omits it for good.
     const page = await fixture.goto("shadow-surface-page")
     await waitForClassification(page)
     await mountShadowWitnesses(page, "sf-rc3-tx-host")
@@ -348,9 +313,8 @@ test.describe("SF-RC3: a repaired shadow carrier survives later rounds (#1342, b
       "precondition: the transitioned carrier is repaired on the first commit"
     ).not.toBeNull()
 
-    // Past the 0.3s transition, so the round driven below starts from a
-    // *settled* repaired colour — mid-transition the sensed value is still
-    // violating and the bug hides itself.
+    // Past the 0.3s transition: mid-transition the sensed value still
+    // violates and the bug hides itself.
     await page.waitForTimeout(700)
     await mutateInsideShadowScope(page, "sf-rc3-tx-host")
     await page.waitForTimeout(700)
@@ -373,19 +337,14 @@ test.describe("SF-RC3: a repaired shadow carrier survives later rounds (#1342, b
   })
 })
 
-test.describe("SF-RC3: a carrier whose backdrop resolves out to the document (#1342, bot-found)", () => {
+test.describe("SF-RC3: a carrier whose backdrop resolves out to the document (#1342)", () => {
   test("a top-level shadow carrier is repaired once the document darkens the light-DOM ancestor behind it", async ({
     fixture,
   }) => {
-    // The backdrop walk does not stop at the outermost host — it continues
-    // into the light DOM. Here it lands on an element the *document*
-    // pipeline darkens, and the two paths are not synchronized: this scope
-    // is projected synchronously by the discovery observer, while the
-    // document's round is debounced first. So the audit sees white, and the
-    // `data-sw-patched` write that darkens the ancestor moments later is
-    // outside this host observer's `class`/`style` filter and is not a
-    // mutation inside this root at all. Only a document-driven re-contrast
-    // reaches it.
+    // The backdrop walk continues into the light DOM, onto an element the
+    // document pipeline darkens after its debounce, while this scope was
+    // projected synchronously against white. Only a document-driven
+    // re-contrast reaches it.
     const page = await fixture.goto("shadow-surface-page")
     await waitForClassification(page)
     await mountDocumentBackdropCrosser(
@@ -426,17 +385,13 @@ test.describe("SF-RC3: a carrier whose backdrop resolves out to the document (#1
   })
 })
 
-test.describe("SF-RC3: the audit reads a settled backdrop, not one mid-transition (#1342, bot-found)", () => {
+test.describe("SF-RC3: the audit reads a settled backdrop, not one mid-transition (#1342)", () => {
   test("a shadow carrier over a surface with an authored background-color transition is still repaired", async ({
     fixture,
   }) => {
-    // Darkening the surface starts its authored transition, and the audit
-    // runs in the same task — so `resolveEffectiveBackdrop` reads the
-    // transition's start value, still native white, unless transitions on
-    // what this extension just actuated are frozen first. Scored against
-    // white the carrier is legible, gets no repair, and turns unreadable
-    // when the transition lands; completing a transition is not a mutation,
-    // so nothing schedules another round.
+    // Darkening starts the surface's authored transition and the audit runs
+    // in the same task, so without a freeze it reads native white; finishing
+    // a transition schedules no round.
     const page = await fixture.goto("shadow-surface-page")
     await waitForClassification(page)
     await mountTransitioningBackdropScope(page, "sf-rc3-tx-bg-host")
@@ -466,10 +421,8 @@ test.describe("SF-RC3: the audit reads a settled backdrop, not one mid-transitio
   test("the same holds in the light DOM, where fire() has audited right after realize() since SF-RC1", async ({
     fixture,
   }) => {
-    // One freeze rule covers both scopes; this is the document half of it.
-    // Pre-existing rather than introduced by this story — `fire()` has
-    // called the audit immediately after `realize()` since SF-RC1 — but it
-    // is the same line of code, so it is asserted rather than left implied.
+    // The document half of the same freeze rule, asserted rather than
+    // implied.
     const page = await fixture.goto("shadow-surface-page")
     await waitForClassification(page)
     await mountTransitioningDocumentRegion(

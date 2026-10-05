@@ -1,13 +1,8 @@
 /**
- * Hostile-page churn fixture — vendored from
- * `extensions/transport/tests/e2e/fixtures/hostile-page.ts` (#618's S11
- * conformance fixture), per S6's own task list ("import or vendor
- * hostile-page.ts"). Vendored rather than imported: transport's package
- * exports map (`"./*": "./src/*.ts"`) only covers `src/`, not `tests/`, and
- * these churn steps are property-agnostic by design — none of them touch
- * CSS or a domain concept, so copying introduces no drift risk the
- * original didn't already guard against. No assertion lives here: it only
- * drives the page. See `specs/swatch-oracle.spec.ts` for the proof.
+ * Hostile-page churn fixture, vendored from transport's
+ * `tests/e2e/fixtures/hostile-page.ts`: transport's exports map covers only
+ * `src/`, and these steps are property-agnostic, so a copy carries no drift
+ * risk. No assertion lives here; see `specs/swatch-oracle.spec.ts`.
  */
 
 import type { Page } from "@playwright/test"
@@ -143,11 +138,8 @@ export const churn = {
   },
 
   /**
-   * Not present in transport's original fixture: some-filter-specific
-   * churn exercising the per-surface path directly — a vendor script
-   * mutating an *existing* element's background color in place (Remark
-   * 2.6's endogenous coupling; the attributeFilter: ["class", "style"]
-   * case classifyElement/decide was written for).
+   * some-filter-specific: a vendor script recolouring an *existing*
+   * element's background in place (Remark 2.6's endogenous coupling).
    */
   async recolorInPlace(
     page: Page,

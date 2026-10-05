@@ -1,29 +1,16 @@
 /**
- * SF-AD (#1268) — the direct regression test for issue #1262's own reported
- * repro: a hardcoded-white surface inside `attachShadow({ mode: "open" })`
- * must actually get *themed* (dark), not merely non-leaking. SF-DC's own
- * `issue-1267-sfdc-shadow-custody.spec.ts` proved the frame-oracle half of
- * this (zero native-bright frames) — deliberately narrower than #1262's own
- * symptom, since SF-DC's scopes never left `HELD` (see that module's own
- * header). This spec proves the other half: once discovered and held, the
- * surface's own computed background actually converges on the dark swatch's
- * output, the same way an identical light-DOM surface already does.
+ * The regression test for #1262's repro: a hardcoded-white surface inside
+ * `attachShadow({ mode: "open" })` must get *themed* (dark), not merely not
+ * leak (`issue-1267-sfdc-shadow-custody.spec.ts` proves the zero-leak half).
  *
- * Reuses SF-DC's own three G0.2 creation-trace drivers
- * (`shadow-traces.ts`) — the same independent "populate" vs. "connect" vs.
- * "mutate" orderings, now checked for the *positive* claim (themed) rather
- * than only the negative one (never native-bright) — plus a new nested-root
- * case (#1268's own acceptance criterion: "at least two levels deep").
+ * Reuses the three creation-trace drivers (`shadow-traces.ts`) for the
+ * positive claim, plus a nested root at least two levels deep.
  *
- * `getComputedStyle().backgroundColor` is enough here, unlike
- * `pixels.ts`/`frames.ts`'s screenshot/frame oracle: `emit-surface-color`'s
- * realization is an ordinary CSS `background-color` rule (via
- * `ShadowRoot.adoptedStyleSheets`), not a `filter` — computed style already
- * reflects it directly, with no compositing gap to account for.
+ * `getComputedStyle().backgroundColor` suffices: `emit-surface-color` is an
+ * ordinary `background-color` rule via `adoptedStyleSheets`, not a `filter`,
+ * so there is no compositing gap.
  *
- * SF4 (#1360) classification: visual-claim, already sound — this file's own
- * paragraph above is exactly the justification #1360 asks every such spec to
- * carry. No promotion needed.
+ * Classification (#1360): visual claim, sound — justified above.
  */
 
 import { parseColor, relativeLuminance } from "@filter/lib/content/color"
@@ -41,11 +28,9 @@ import {
 import type { Page } from "@playwright/test"
 
 /**
- * Below `theme-adapter.ts`'s own `LIGHT_THRESHOLD` (0.3) — the white
- * surface's original luminance is 1.0, so anything crossing this bar has
- * unambiguously moved to the dark side, without this spec needing to
- * replicate `modify-colors.ts`'s exact hue-preserving math to know the
- * precise target color a given swatch produces.
+ * Below `theme-adapter.ts`'s `LIGHT_THRESHOLD` (0.3): the white surface
+ * starts at 1.0, so crossing this means it moved dark, without replicating
+ * the exact hue-preserving target.
  */
 const THEMED_LUMINANCE_CEILING = 0.3
 
@@ -181,19 +166,12 @@ test.describe("SF-AD — nested shadow roots, two levels deep (#1268's own accep
   })
 })
 
-test.describe("SF-AD — a shadow host's own inherited foreground also lifts off a darkened surface, not just an explicit one (bot-found, SF-AD's own review, round 5)", () => {
-  // Round 4 closed the case where the surface element itself declares an
-  // explicit `color` differing from what it would inherit (ownTextColor()'s
-  // own shadow-root fallback, pipeline.ts). This is the adjacent case: the
-  // surface declares no color of its own at all, and merely inherits a dark
-  // foreground from its shadow host — a plain vendor `:host { color: #111 }`
-  // pattern. Nothing in the per-surface textCss mechanism ever fires for
-  // that (ownTextColor() correctly reports "no own color"), so only
-  // buildHostTokenRule's own `:host { color: var(--sw-text-0) !important }`
-  // (theme-apply.ts) — the shadow-scope structural equivalent of the
-  // document's own `html, body { color: var(--sw-text-0) }` canvas rule —
-  // can make this self-heal, by forcing the *host's* computed color so the
-  // surface's inherited value changes along with it.
+test.describe("SF-AD — a shadow host's own inherited foreground also lifts off a darkened surface, not just an explicit one", () => {
+  // The surface declares no colour and inherits a dark foreground from its
+  // host (`:host { color: #111 }`). No per-surface textCss fires for that, so
+  // only buildHostTokenRule's `:host { color: var(--sw-text-0) !important }`
+  // — the shadow equivalent of the document's canvas colour rule — fixes it,
+  // by changing the host's computed colour.
   test("a surface with no explicit color of its own, inheriting a dark foreground from its host, reads light text once its background is darkened", async ({
     gate0,
   }) => {
@@ -245,11 +223,8 @@ test.describe("SF-AD — a shadow host's own inherited foreground also lifts off
     const rgba = parseColor(textColor)
     expect(rgba, `unparseable computed color: ${textColor}`).not.toBeNull()
     if (rgba === null) throw new Error("unreachable")
-    // The host's own original color (rgb(17, 17, 17)) has luminance ~0.006;
-    // if it had survived unchanged onto the now-darkened background, this
-    // would still read near that. The default swatch's own text0 token
-    // (what buildHostTokenRule's fix should force this to inherit) has
-    // luminance ~0.31 — comfortably above this bar either way.
+    // The host's original colour has luminance ~0.006; the default swatch's
+    // text0 (what the host rule forces) ~0.31.
     expect(relativeLuminance(rgba[0], rgba[1], rgba[2])).toBeGreaterThan(0.15)
   })
 })

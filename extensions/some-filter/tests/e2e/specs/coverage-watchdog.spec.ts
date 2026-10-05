@@ -1,30 +1,16 @@
 /**
  * Proof, via the real --load-extension pipeline, that the coverage watchdog
- * (`src/lib/content/coverage-watchdog.ts`) actually catches a real coverage
- * gap rather than just a synthetic unit-test context — the class of gap a
- * vendor document flush can open by carrying off `#__sw_legacy_filter`
- * while leaving `data-sw-legacy` on `<html>` behind (the "declared legacy,
- * but the filter rule that makes it real is gone" scenario
- * coverage-observability.ts's header traces the reported live flash to).
+ * catches a real gap: a vendor flush carrying off `#__sw_legacy_filter`
+ * while `data-sw-legacy` stays on `<html>` ("declared legacy, filter gone").
  *
- * This does not reproduce the flash itself (yt-navigate-repaint.spec.ts
- * covers the fix for that) — it proves the *instrument*: that decoupling the
- * two legacy signals is visible afterward in the persisted diagnostics
- * bundle a human would read on debug.html, with no live DOM access needed.
+ * It proves the *instrument* — the decoupling is visible in the persisted
+ * diagnostics bundle debug.html reads — not the flash
+ * (yt-navigate-repaint.spec.ts covers that fix).
  *
- * Reads go through the background service worker, not `page.evaluate()`:
- * `chrome.storage` is an extension-context API, unreachable from a page's
- * own main-world JS (which is what `page.evaluate()` runs in) even on a page
- * a content script is attached to.
+ * Reads go through the background service worker: `chrome.storage` is
+ * unreachable from page JS, even with a content script attached.
  *
- * SF4 (#1360) classification: internal-state claim, fine as-is. Every
- * assertion here reads the diagnostics instrument's own bookkeeping (the
- * persisted events/counters bundle, debug.html's rendered table) — a
- * legitimate, in-scope claim about whether the *watchdog* correctly detects
- * and records a desync, independent of what the page looks like. This file's
- * own header already says as much: it proves the instrument, not the flash
- * (`yt-navigate-repaint.spec.ts` covers that). Not a candidate for
- * pixel-sampling promotion.
+ * Classification (#1360): internal-state claim, fine as-is.
  */
 
 import { expect, test, waitForClassification } from "@filter/playwright/fixture"
@@ -132,17 +118,13 @@ test.describe("coverage watchdog observes a real legacy-signal decoupling", () =
     ).toBeTruthy()
     if (sessionId === undefined) throw new Error("unreachable")
 
-    // Precondition: read whatever the counter already is (0 on a fresh
-    // session, but the assertion below is against the delta regardless) so
-    // this test does not depend on being the very first thing to touch it.
+    // Assert against the delta, so this need not be the counter's first use.
     const before = await readBundle(sw, sessionId)
     const violationsBefore =
       before?.metrics.counters["legacy_signal_mismatches"] ?? 0
 
-    // The decoupling: carry off only the <style> tag that makes the
-    // data-sw-legacy attribute's declaration real, leaving the attribute
-    // itself untouched — exactly what a vendor flush touching only part of
-    // <head> would do.
+    // Carry off only the <style> that makes data-sw-legacy real, as a
+    // vendor flush touching part of the document would.
     await page.evaluate(() => {
       document.getElementById("__sw_legacy_filter")?.remove()
     })
@@ -174,9 +156,8 @@ test.describe("coverage watchdog observes a real legacy-signal decoupling", () =
     )
     expect(coverageEvent).toBeDefined()
 
-    // Recovery: re-apply legacy (the fix under test in
-    // yt-navigate-repaint.spec.ts) and confirm the watchdog notices the
-    // repair too, not just the break.
+    // Recovery: re-apply legacy and confirm the watchdog records the repair
+    // too, not just the break.
     await page.evaluate(() => {
       window.dispatchEvent(new Event("yt-navigate-finish"))
     })
@@ -217,9 +198,8 @@ test.describe("debug.html renders the session a violation was recorded against",
       (b) => (b?.metrics.counters["legacy_signal_mismatches"] ?? 0) > 0
     )
 
-    // debug.html is a normal extension page (not privileged CDP access like
-    // the service worker) — the extension id comes from the worker's own
-    // URL, the only handle this test already has into the loaded extension.
+    // debug.html is a normal extension page; the extension id comes from the
+    // worker's URL.
     const extensionId = new URL(sw.url()).host
     const debugPage = await context.newPage()
     await debugPage.goto(`chrome-extension://${extensionId}/debug.html`)
@@ -255,8 +235,8 @@ test.describe("debug.html renders the session a violation was recorded against",
   })
 })
 
-test.describe("debug.html — SF-RC5 (#1344): contrast health for a session that never entered auto", () => {
-  test("reports degraded/unevaluated, not a false-clean 100/healthy — bot-found (Codex review round 3 on #1443): scoreHealth excludes 'unknown' results from its own score, so an all-unknown ContrastHeld result (nothing ever audited) previously read as 100/healthy", async ({
+test.describe("debug.html — contrast health for a session that never entered auto", () => {
+  test("reports degraded/unevaluated, not a false-clean 100/healthy — scoreHealth excludes 'unknown' results, so an all-unknown ContrastHeld result (nothing ever audited) must not read as 100/healthy", async ({
     context,
     fixture,
   }) => {
@@ -270,11 +250,8 @@ test.describe("debug.html — SF-RC5 (#1344): contrast health for a session that
       { timeout: 5_000, polling: 100 }
     )
 
-    // The debug page's own session picker (readIndex()) and its per-session
-    // bundle (readBundle()) are two separately-debounced storage.local
-    // writes that race independently — wait for both, or debug.html can
-    // load before either lands and show "Nothing to show yet." instead of
-    // the health sections this test actually needs to inspect.
+    // The session index and the per-session bundle are separately debounced
+    // writes; wait for both, or debug.html shows "Nothing to show yet.".
     const sessionId = await page.evaluate(
       () => document.body.dataset["swObservabilitySession"]
     )
@@ -292,10 +269,8 @@ test.describe("debug.html — SF-RC5 (#1344): contrast health for a session that
     const debugPage = await context.newPage()
     await debugPage.goto(`chrome-extension://${extensionId}/debug.html`)
 
-    // render()'s health sections are appended only after its own async
-    // computeHealth()/computeContrastHealth() calls resolve — the
-    // "Session" section (pickerSection(), synchronous) exists well before
-    // that, so a bare "any section exists" wait is racy against it.
+    // Health sections are appended after async computeHealth() calls; the
+    // synchronous "Session" section exists earlier, so wait for health.
     await debugPage.waitForFunction(
       () =>
         Array.from(document.querySelectorAll("h2")).some(
@@ -325,7 +300,7 @@ test.describe("debug.html — SF-RC5 (#1344): contrast health for a session that
   })
 })
 
-// ── SF-RC5 (#1344) ───────────────────────────────────────────────────────────
+// ── The transitioning window ─────────────────────────────────────────────────
 
 /** tab-state.ts's STATE_CYCLE, driven through the real message path — mirrors issue-1341-sfrc2-foreground-repair.spec.ts's own "auto -> off" usage. */
 async function cycleTabState(sw: Worker, tabId: number): Promise<void> {
@@ -345,8 +320,8 @@ async function findTabId(sw: Worker, urlSubstring: string): Promise<number> {
   }, urlSubstring)
 }
 
-test.describe("coverage watchdog — SF-RC5 (#1344): the off->legacy transitioning window", () => {
-  test("no coverage.violated event is recorded across a real off->legacy transition — the exact false pair the story's own live-proof comment traced to this window (bot-found, Codex review round 1 on #1443: the fix was initially a no-op because content.ts set `transitioning` after, not before, coverageWatchdog.observe())", async ({
+test.describe("coverage watchdog — the off->legacy transitioning window", () => {
+  test("no coverage.violated event is recorded across a real off->legacy transition — `transitioning` must be set before coverageWatchdog.observe()", async ({
     context,
     fixture,
   }) => {
@@ -361,10 +336,8 @@ test.describe("coverage watchdog — SF-RC5 (#1344): the off->legacy transitioni
     const sw = await backgroundWorker(context)
     const tabId = await findTabId(sw, "hostile-page.html")
 
-    // auto -> off. Reaching "off" first matters (issue #1344's own live-proof
-    // comment): the transitioning race only exists on the *first* observe()
-    // call after "off" — an auto<->legacy switch never tears the watchdog
-    // down in between, so observe() there is already a no-op.
+    // auto -> off first: the transitioning race exists only on the first
+    // observe() after "off" (auto<->legacy never tears the watchdog down).
     await cycleTabState(sw, tabId)
     await page.waitForFunction(
       () => document.body.dataset["swTabState"] === "off",
@@ -385,21 +358,17 @@ test.describe("coverage watchdog — SF-RC5 (#1344): the off->legacy transitioni
       { timeout: 5_000, polling: 100 }
     )
 
-    // Poll until both checks this transition performs (the watchdog's own
-    // "observe-start", and applyState's explicit post-actuation
-    // "apply-state:legacy") have actually landed — not just a fixed sleep,
-    // since the second is what a broken `transitioning` flag would corrupt.
+    // Poll until both checks ("observe-start" and "apply-state:legacy")
+    // land; the second is what a broken `transitioning` flag corrupts.
     const settled = await pollUntil(
       () => readBundle(sw, sessionId),
       (b) => (b?.metrics.counters["coverage_checks"] ?? 0) >= checksBefore + 2
     )
     if (settled === undefined) throw new Error("unreachable")
 
-    // The regression this test locks: with the flag wired correctly,
-    // CoverageHeld reports {ok: "unknown"} during the pre-actuation window,
-    // never {ok: false} — so no coverage.violated (and consequently no
-    // coverage.recovered heldForMs:0 pair) is ever recorded for this
-    // transition, on top of legacy actually, genuinely holding coverage.
+    // CoverageHeld reports {ok: "unknown"} in the pre-actuation window,
+    // never {ok: false}, so no coverage.violated (or heldForMs:0 recovered)
+    // is recorded, and legacy genuinely holds coverage.
     expect(
       settled.events.filter((e) => e.kind === "coverage.violated"),
       `expected zero coverage.violated events across an off->legacy transition, got: ${JSON.stringify(settled.events)}`

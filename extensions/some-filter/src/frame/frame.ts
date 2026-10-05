@@ -1,25 +1,20 @@
 /**
- * SF-CUT3 (#1489): the enforcement sheet for subframes.
+ * The enforcement sheet for subframes.
  *
  * CSS never crosses a frame boundary, so every frame needs the sheet in its
- * own document, requested for itself. `background.ts` registers this script
- * dynamically — every frame, `document_start`, alongside `prepaint.css` —
- * only while `enforcementSheetEnabled` is on, so the default path puts
- * nothing into any iframe. The registration also matches the top frame, where
- * `content.ts` already owns everything; this script exits there at once.
+ * own document. `background.ts` registers this script dynamically (every
+ * frame, `document_start`, with `prepaint.css`) only while
+ * `enforcementSheetEnabled` is on. It also matches the top frame, where
+ * `content.ts` owns everything, and exits there.
  *
- * A subframe gets the same handshake as the top frame, without the
- * classifier (the flag being on means the sheet is auto mode) and without
- * the top frame's custody registry and watchdogs: raise this frame's veil,
- * ask the background for the tab's state, and in auto request the sheet,
- * confirm it by reading the cascade, then release the veil. Legacy needs
- * nothing here — legacy's filter on the top document's `<html>` composites
- * every frame inside it — and neither does off.
+ * Same handshake as the top frame, without the classifier, custody registry
+ * or watchdogs: raise this frame's veil, ask the tab's state, and in auto
+ * request and confirm the sheet, then release the veil. Legacy needs nothing
+ * (the top document's filter composites every frame), nor does off.
  *
- * The tab-state messages the top frame reacts to (`CYCLE_TAB_STATE`,
- * `TOGGLE_FILTER`) are sent with `tabs.sendMessage` and no `frameId`, so they
- * reach every frame; this frame follows them the same way, removing its own
- * sheet under its own veil before the tab leaves auto.
+ * `CYCLE_TAB_STATE`/`TOGGLE_FILTER` are sent with no `frameId`, so they reach
+ * every frame; this one follows them, removing its sheet under its own veil
+ * before leaving auto.
  */
 
 import { DEFAULT_SWATCH_ID } from "@filter/adapter/swatches"

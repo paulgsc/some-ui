@@ -1,23 +1,14 @@
 /**
- * SF-RG (#1265), acceptance criterion: "A scope's hold survives adversarial
- * removal of its covering artifact (self-healing), proven with the frame
- * oracle Gate 0 built (tests/e2e/fixtures/frames.ts, reused/extended here —
- * this is exactly the reusable infrastructure Gate 0's own report flagged
- * as worth landing alongside its first real consumer)."
+ * A scope's hold survives adversarial removal of its covering artifact
+ * (self-healing), proven with the frame oracle (`frames.ts`).
  *
- * Mirrors Gate 0's own G0.6 methodology (a sustained burst of adversarial
- * removals, not a single lucky recovery) against the production
- * `createOcclusionHold` primitive (`custody-primitive.ts`) instead of the
- * harness-only spike that inspired its shape
- * (`fixtures/occlusion-primitive.ts`, never imported from production code).
+ * Gate 0's G0.6 methodology — a sustained burst of removals, not one lucky
+ * recovery — against the production `createOcclusionHold`.
  *
- * Registration (which installs the hold) runs *before* `captureFrames()` is
- * called — see `scope-registry-handoff.spec.ts`'s own header comment for why
- * this matters: `captureFrames`'s wall-clock seek can otherwise catch the
- * harness page's genuine pre-hold white frame and misreport it as a leak.
+ * Registration runs *before* `captureFrames()`; see
+ * `scope-registry-handoff.spec.ts`'s header.
  *
- * SF4 (#1360) classification: already compliant — asserts against
- * `frames.ts`'s real video-frame oracle throughout.
+ * Classification (#1360): already compliant (frame oracle).
  */
 
 import "@filter/playwright/fixtures/scope-registry-window-types"

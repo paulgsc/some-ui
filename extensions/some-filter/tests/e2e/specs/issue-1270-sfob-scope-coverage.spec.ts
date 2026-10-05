@@ -1,49 +1,23 @@
 /**
- * SF-OB (#1270) — proof, via the real --load-extension pipeline, that
- * scope-quantified coverage observability (`coverage-watchdog.ts`'s
- * `createScopeCoverageWatchdog`) actually catches a real per-scope coverage
- * gap, not just a synthetic unit-test context. Mirrors
- * `coverage-watchdog.spec.ts`'s own structure exactly — that spec proves the
- * document-level "declared legacy, but the filter rule is gone" desync is
- * visible in the diagnostics bundle; this one proves the scope-level
- * analogue: a COMMITTED shadow scope whose own adopted stylesheets are
- * wholesale-reassigned out from under the registry by a vendor component —
- * `#1280`'s own tracked scenario (found on PR #1279's own review) — with no
- * registry transition of its own to signal it (`adoptedStyleSheets`
- * assignment is a plain CSSOM property write, not reflected as a DOM
- * attribute or child node, so it generates no `MutationRecord` for
- * `shadow-scope-discovery.ts`'s own per-root observer to react to).
+ * Proof, via the real --load-extension pipeline, that scope-quantified
+ * coverage observability catches a real per-scope gap. The scope-level
+ * analogue of `coverage-watchdog.spec.ts`: a COMMITTED shadow scope whose
+ * adopted stylesheets a vendor component reassigns wholesale — a plain CSSOM
+ * write that produces no `MutationRecord` and no registry transition.
  *
- * Deliberately not `data-sw-patched` removal (an earlier version of this
- * spec used that): bot-found (#1327's own review, round 2) that a COMMITTED
- * shadow scope with zero evidenced surfaces — a legitimate,
- * `decide()`-produced state, `shadow-scope-theming.test.ts`'s own "adopts
- * the shared static layer and host tokens even for a scope with no
- * evidenced surfaces" case — has no `data-sw-patched` element at all, so
- * checking for one there was itself a false-positive generator, not this
- * story's own desync class. `coverage-observability.ts`'s
- * `scopeArtifactPresent()` now checks for the scope's own host-token rule
- * (always adopted on any commit) instead, which is what this spec's own
- * desync actually removes.
+ * The desync removes the scope's host-token rule, which is what
+ * `scopeArtifactPresent()` checks (a COMMITTED scope can legitimately have
+ * no `data-sw-patched` element).
  *
- * Every poll below targets *this specific shadow scope's own id*, never a
- * bare "any violation happened" counter check: the document scope (r_0) has
- * its own harmless bootstrap-timing violation/recovery blip on every page
- * load (its veil settles a few milliseconds after the watchdog's first,
- * synchronous `observe-start` check) — a generic "violations > 0" poll is
- * satisfied by that alone, racing ahead of this test's own reassignment
- * before it ever takes effect. Scoping every assertion to the shadow
- * scope's id is what makes this deterministic instead of timing-dependent.
+ * Every poll targets *this shadow scope's id*: the document scope has a
+ * harmless bootstrap-timing violation/recovery blip on every load, which a
+ * generic "violations > 0" poll would race on.
  *
- * Reads go through the background service worker, not `page.evaluate()`:
- * `chrome.storage` is an extension-context API, unreachable from a page's
- * own main-world JS.
+ * Reads go through the background service worker: `chrome.storage` is
+ * unreachable from page JS.
  *
- * SF4 (#1360) classification: internal-state claim, fine as-is — same
- * reasoning as `coverage-watchdog.spec.ts`'s own SF4 note (this is its
- * scope-quantified analogue): every assertion here proves the watchdog
- * instrument itself, via its own persisted diagnostics, not a rendered
- * outcome. Not a pixel-sampling candidate.
+ * Classification (#1360): internal-state claim, as `coverage-watchdog.spec.ts`
+ * — it proves the instrument via its persisted diagnostics.
  */
 
 import { expect, test, waitForClassification } from "@filter/playwright/fixture"
@@ -135,12 +109,10 @@ async function waitForSurfaceCommitted(page: Page): Promise<void> {
 }
 
 /**
- * Simulates #1280's own tracked scenario: a vendor component's wholesale
- * `shadowRoot.adoptedStyleSheets = [...]` reassignment, carrying this
- * extension's own realization off with no `MutationRecord` for anything to
- * react to. Stashes the displaced sheets on `window` so
- * `restoreOurSheets()` can simulate them coming back (this spec proves
- * *detection* only — #1280's own self-heal repair does not exist yet).
+ * Simulates a vendor component's wholesale
+ * `shadowRoot.adoptedStyleSheets = [...]`, carrying our realization off.
+ * Stashes the displaced sheets on `window` so `restoreOurSheets()` can bring
+ * them back (this spec proves *detection*).
  */
 async function simulateVendorSheetReassignment(page: Page): Promise<void> {
   await page.evaluate(() => {
@@ -149,11 +121,9 @@ async function simulateVendorSheetReassignment(page: Page): Promise<void> {
     if (shadow === null || shadow === undefined) {
       throw new Error("shadow-trace-host has no shadow root")
     }
-    // A plain-array copy, not the live reference: `adoptedStyleSheets` is a
-    // WebIDL `[SameObject]` observable array — every read returns the exact
-    // same underlying object, so saving the reference itself (not a copy)
-    // would have this same statement's own reassignment below mutate the
-    // "saved" value right out from under it.
+    // A copy, not the live reference: `adoptedStyleSheets` is a
+    // `[SameObject]` observable array, so the reassignment below would
+    // mutate a saved reference.
     Reflect.set(window, "__sfObDisplacedSheets", [...shadow.adoptedStyleSheets])
     const vendorSheet = new CSSStyleSheet()
     vendorSheet.replaceSync("div { color: blue; }")
@@ -216,11 +186,8 @@ test.describe("SF-OB — scope coverage watchdog observes a real per-scope desyn
     const sw = await backgroundWorker(context)
     const shadowId = await findCommittedShadowScopeId(sw, sessionId)
 
-    // The desync: a vendor component's own wholesale adoptedStyleSheets
-    // reassignment (#1280's own tracked scenario) carries this extension's
-    // realization off with no MutationRecord for anything to react to — the
-    // registry still believes this shadow scope is COMMITTED throughout, so
-    // only the periodic scope-coverage poll can ever notice.
+    // The registry still believes this scope is COMMITTED, so only the
+    // periodic scope-coverage poll can notice.
     await simulateVendorSheetReassignment(page)
 
     const settled = await pollUntil(
@@ -247,11 +214,8 @@ test.describe("SF-OB — scope coverage watchdog observes a real per-scope desyn
     expect(scope?.kind).toBe("COMMITTED")
     expect(scope?.artifactPresent).toBe(false)
 
-    // Recovery: restore the displaced sheets and confirm the watchdog
-    // notices the repair too, not just the break — same discipline
-    // coverage-watchdog.spec.ts's own legacy-signal test applies. (This
-    // proves detection only — #1280's own self-heal repair, which would
-    // trigger this same recovery on a real page, doesn't exist yet.)
+    // Recovery: restore the sheets and confirm the watchdog records the
+    // repair too, not just the break.
     await restoreOurSheets(page)
     await pollUntil(
       () => readBundle(sw, sessionId),
@@ -331,7 +295,7 @@ test.describe("debug.html renders the per-scope breakdown for a session with a s
 })
 
 test.describe("SF-OB — the persisted scope snapshot does not go stale after leaving auto mode", () => {
-  test("switching a tab from auto to legacy purges the already-retired shadow scope from the very next 'scopes' snapshot, instead of leaving it COMMITTED forever (bot-found, #1327's own review, round 3)", async ({
+  test("switching a tab from auto to legacy purges the already-retired shadow scope from the very next 'scopes' snapshot, instead of leaving it COMMITTED forever", async ({
     context,
     fixture,
   }) => {
@@ -349,15 +313,10 @@ test.describe("SF-OB — the persisted scope snapshot does not go stale after le
     const sw = await backgroundWorker(context)
     const shadowId = await findCommittedShadowScopeId(sw, sessionId)
 
-    // applyState("legacy") — reached via the real TOGGLE_FILTER message
-    // route, not a content.ts-internal shortcut — calls
-    // shadowScopeDiscovery.teardown() (retiring and purging this shadow
-    // scope from the registry) immediately followed by
-    // scopeCoverageWatchdog.teardown() (stopping the poll). Before this
-    // story's own round-3 fix, nothing in between ever published the
-    // post-purge registry state, so the persisted "scopes" snapshot kept
-    // reporting this scope COMMITTED indefinitely — content.ts's own fix
-    // adds one last check() call in that gap.
+    // applyState("legacy") via the real TOGGLE_FILTER route retires and
+    // purges this scope, then stops the poll; the one check() between them
+    // must publish the post-purge state, or the "scopes" snapshot keeps
+    // reporting it COMMITTED.
     await enterLegacyMode(sw, "shadow-surface-page.html")
 
     const afterLeavingAuto = await pollUntil(
@@ -373,7 +332,7 @@ test.describe("SF-OB — the persisted scope snapshot does not go stale after le
 })
 
 test.describe("SF-OB — the mode-exit scope audit only runs when actually leaving auto", () => {
-  test("cycling auto -> off -> legacy records no false scope.coverage_violated for the document scope on the second (non-auto-originated) transition (bot-found, #1327's own review, round 4)", async ({
+  test("cycling auto -> off -> legacy records no false scope.coverage_violated for the document scope on the second (non-auto-originated) transition", async ({
     context,
     fixture,
   }) => {
@@ -394,19 +353,11 @@ test.describe("SF-OB — the mode-exit scope audit only runs when actually leavi
       return t.id
     })
 
-    // Keyboard cycle (tab-state.ts's STATE_CYCLE): auto -> off -> legacy.
-    // The first hop's own `previous` is "auto" — content.ts's mode-exit
-    // scope-coverage check legitimately runs there, reads the document
-    // scope's registry state while it still matches the live DOM (this
-    // call happens before restoreVendor() strips the artifact), and stays
-    // healthy. The second hop's own `previous` is "off", not "auto":
-    // before this story's own round-4 fix, the same check ran unconditionally
-    // there too, comparing the registry's now-stale COMMITTED entry (never
-    // updated since auto was left) against a DOM that the *first* hop's own
-    // restoreVendor() had already stripped the dark-theme artifact from —
-    // a false "scope.coverage_violated" on every such transition, one the
-    // very next teardown() call then made unrecoverable by wiping the
-    // tracking that would have recorded the eventual recovery.
+    // auto -> off -> legacy. The first hop (previous "auto") runs the
+    // mode-exit check while the registry still matches the DOM. The second
+    // (previous "off") must not: the registry's COMMITTED entry is stale by
+    // then, and checking would record a false, unrecoverable
+    // "scope.coverage_violated".
     for (let i = 0; i < 2; i++) {
       await sw.evaluate(async (id) => {
         // eslint-disable-next-line no-restricted-globals

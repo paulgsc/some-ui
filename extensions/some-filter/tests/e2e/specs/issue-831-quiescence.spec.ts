@@ -1,36 +1,22 @@
 /**
  * #831 — "polling pattern causing constant rerenders and flushing state?"
  *
- * Two symptoms, one root cause family, both asserted here against the real
- * --load-extension pipeline:
+ * Two symptoms, asserted against the real --load-extension pipeline:
  *
- *   1. The theme applies correctly and is then undone by a later round,
- *      revealing the white vendor background. The Sensor was reading the
- *      *extension's own* static-layer output (html/body/input/pre/th/... —
- *      recolored by buildDarkThemeCSS but never tagged data-sw-patched) back
- *      in as vendor evidence; since Ĥ is append-only, pageAlreadyDark()'s
- *      mean drifted down until decide() emitted restore-native.
+ *   1. The theme applies and a later round undoes it: the Sensor read the
+ *      extension's own static-layer output back in as vendor evidence, and
+ *      since Ĥ is append-only, pageAlreadyDark()'s mean drifted until
+ *      decide() emitted restore-native.
+ *   2. Rounds never stop on an idle page: realizing a verdict is a DOM write
+ *      the Sensor's observer sees, schedules a round for, and causes again.
  *
- *   2. Rounds never stop on a page that is not changing. Realizing a verdict
- *      is itself a DOM write (the theme sheet into <head>, the dynamic
- *      sheet's text, the veil's sw-dirty class on <html>) — mutations the
- *      Sensor's own observer sees, schedules another round for, and thereby
- *      causes again. The tell in the issue is a log line that keeps ticking
- *      up on an idle tab.
+ * Both are invariants of a *settled* page: it holds its verdict and costs
+ * nothing.
  *
- * Both are stated as invariants of a *settled* page: once classification has
- * resolved, an untouched page must hold its verdict and cost nothing.
- *
- * SF4 (#1360) classification: the first test below is a visual-claim,
- * promoted — its `bodyBg` check used to only assert `not.toBe("rgb(255,
- * 255, 255)")`, which a page painted any non-white color (including a
- * broken, barely-off-white one) would pass. Tightened to a real luminance
- * threshold, matching issue-1268-sfad-shadow-theming.spec.ts's own bar
- * (`buildDarkThemeCSS` sets background-color directly, no `filter`, so
- * `getComputedStyle` has no compositing gap here). The second test
- * (mutation-count) is an internal-state claim by design — it is
- * specifically about the reactive loop never re-firing on a settled page,
- * not about what color anything ends up; fine as-is.
+ * Classification (#1360): the first test is a visual claim, promoted to a
+ * real luminance threshold (`buildDarkThemeCSS` sets background-color
+ * directly, no `filter`). The second (mutation count) is an internal-state
+ * claim by design.
  */
 
 import { parseColor, relativeLuminance } from "@filter/lib/content/color"
@@ -93,11 +79,9 @@ test.describe("auto theme quiescence on a settled page (#831)", () => {
     await page.waitForTimeout(800)
 
     const churn = await page.evaluate(async (windowMs: number) => {
-      // Count only mutations to artifacts the extension owns: its two
-      // stylesheets (rebuilt per round) and <html>'s class attribute (the
-      // prepaint veil's ownership signal, rewritten by every
-      // commitVisualState -> disablePrepaint). This page's own script is
-      // done mutating by now, so anything counted here is self-inflicted.
+      // Count only mutations to extension-owned artifacts: its two
+      // stylesheets and <html>'s class (the veil's ownership signal). The
+      // page's own script is done, so anything counted is self-inflicted.
       let count = 0
       const observer = new MutationObserver((records) => {
         count += records.length

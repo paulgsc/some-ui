@@ -1,18 +1,12 @@
 /**
- * SF-RC3 (#1342) shadow-scope drivers for the rendered-contrast channel —
- * the shadow-DOM counterpart to `legibility-repair-page.html`'s own three
- * regions, built from the spec rather than baked into a fixture for the
- * same reason `shadow-traces.ts` does it that way: each scope's creation
- * timing relative to classification stays fully controlled by the test,
- * never raced against a fixture's own load sequence.
+ * Shadow-scope drivers for the rendered-contrast channel — the shadow-DOM
+ * counterpart to `legibility-repair-page.html`'s regions, built from the
+ * spec so each scope's creation timing stays controlled by the test.
  *
- * Every surface below is deliberately in **normal flow**, not
- * `position: fixed` the way `shadow-traces.ts`'s own surfaces are. That is
- * load-bearing here, not a style preference: `resolveEffectiveBackdrop`
- * (`legibility-audit.ts`) treats any non-`static` ancestor as a positioning
- * hazard and returns `"underdetermined"` for everything beneath it — a
- * carrier under a `position: fixed` surface is never a repair candidate at
- * all, so a fixture built that way would pass vacuously.
+ * Every surface is in **normal flow**, not `position: fixed`:
+ * `resolveEffectiveBackdrop` returns `"underdetermined"` beneath any
+ * non-`static` ancestor, so a fixed surface would make the fixture pass
+ * vacuously.
  *
  * No assertion lives here; see `issue-1342-sfrc3-shadow-foreground.spec.ts`.
  */
@@ -20,27 +14,21 @@
 import type { Page } from "@playwright/test"
 
 /**
- * The two Gate-0 witnesses (#1338) reproduced inside one open shadow root,
- * on the identical shapes `legibility-repair-page.html` uses at document
- * scope:
+ * The two Gate-0 witnesses reproduced inside one open shadow root, on the
+ * shapes `legibility-repair-page.html` uses at document scope:
  *
- *   - `<hostId>` + `chip` — escape route 2, explicit-colour-equals-computed-
- *     parent: the button repeats the colour its surface parent declares and
- *     owns no background of its own, so the co-located (#741) `textCss` fix
- *     that lands on the *surface* is overridden by the button's own
- *     declaration and no per-surface action can ever name the button.
- *   - `<hostId>` + `label` — escape route 1, own explicit colour with no own
- *     background: never enters the per-surface hypothesis under any
- *     classification.
+ *   - `chip` — escape route 2: the button repeats its surface parent's
+ *     colour and owns no background, so the surface's `textCss` fix is
+ *     overridden and no per-surface action can name the button.
+ *   - `label` — escape route 1: own explicit colour, no own background;
+ *     never enters the per-surface hypothesis.
  *
  * Plus `transitioned`: witness B's shape with a vendor `transition` on
- * `color`, the hazard `legibility-audit.ts`'s own scope freeze exists for.
- * Its colour differs from `label`'s so it resolves to its own
- * `LegibilityKey` and its repair can be asserted independently.
+ * `color` (the hazard the audit's scope freeze exists for), in its own
+ * colour so it resolves to its own `LegibilityKey`.
  *
- * The surface owns a light background, so the scope themes rather than
- * reading as already-dark, and both carriers are left dark-on-dark by
- * everything except SF-RC2's own alphabet.
+ * The surface is light, so the scope themes, and both carriers end up
+ * dark-on-dark except for the foreground-repair alphabet.
  */
 const WITNESS_MARKUP = `
   <div class="sf-rc3-surface"
@@ -78,9 +66,8 @@ export async function mountShadowWitnesses(
 }
 
 /**
- * The same witnesses, two shadow levels deep (#1342's own acceptance
- * criterion, matching the epic's G0.7 fixture shape): an open root whose
- * only content is a host for a second open root.
+ * The same witnesses, two shadow levels deep: an open root whose only
+ * content is a host for a second open root.
  */
 export async function mountNestedShadowWitnesses(
   page: Page,
@@ -121,15 +108,12 @@ export type ShadowCarrierReading = {
 }
 
 /**
- * Reads one carrier inside `hostId`'s own open root: its rendered
- * foreground and the first opaque background at or above it. The walk
- * crosses the shadow boundary through `host` exactly the way
- * `resolveEffectiveBackdrop` itself does — kept deliberately naive
- * otherwise (no hazard handling, no alpha compositing) so the fixture, not
- * the measurement, is what has to stay simple.
+ * Reads one carrier inside `hostId`'s open root: its rendered foreground and
+ * the first opaque background at or above it, crossing the shadow boundary
+ * through `host` as `resolveEffectiveBackdrop` does. Deliberately naive
+ * otherwise (no hazards, no alpha compositing).
  *
- * `hostPath` names the chain of host ids to descend through, so one reader
- * serves both the one-level and the nested-two-levels cases.
+ * `hostPath` names the chain of host ids to descend through.
  */
 export async function readShadowCarrier(
   page: Page,
@@ -212,22 +196,16 @@ export async function waitForShadowScopeCommitted(
 }
 
 /**
- * Codex review round 1 on #1412's own regression shape: a carrier inside a
- * *nested* root whose own ancestors are all transparent, so
- * `resolveEffectiveBackdrop` climbs out through `ShadowRoot.host` and
- * resolves its backdrop in the **outer** scope.
+ * A carrier inside a *nested* root whose ancestors are all transparent, so
+ * its backdrop resolves in the **outer** scope.
  *
- * `shadow-scope-discovery.ts`'s `registerShadowRoot` recurses into nested
- * roots before calling `onScopeReady` for the parent, so this carrier's own
- * scope is audited first, against the outer surface's still-native white —
- * and nothing the outer scope's later darkening does is visible to any
- * observer watching this root. Without `recontrastDescendants` the carrier
- * keeps its authored dark colour on a newly dark surface, permanently.
+ * `registerShadowRoot` recurses into nested roots before `onScopeReady` for
+ * the parent, so this scope is audited first, against the outer surface's
+ * still-native white, and no observer here sees the outer darkening. Without
+ * `recontrastDescendants` the carrier stays dark on a dark surface.
  *
- * Deliberately distinct from `mountNestedShadowWitnesses`, whose inner root
- * owns its own opaque surface and therefore resolves entirely within itself
- * — that fixture passes either way, which is exactly why it did not catch
- * this.
+ * Distinct from `mountNestedShadowWitnesses`, whose inner root owns its own
+ * surface and so passes either way.
  */
 export async function mountNestedBackdropCrosser(
   page: Page,
@@ -295,24 +273,17 @@ export async function mutateInsideShadowScope(
 }
 
 /**
- * Codex review round 2 on #1412: the same cross-scope backdrop dependency
- * one level further out, where the stale ancestor is the **document**
- * rather than an outer shadow scope.
+ * The same cross-scope dependency one level out: the stale ancestor is the
+ * **document**.
  *
- * Everything is created in one synchronous batch on purpose, and the timing
- * that follows is the whole point. The light-DOM ancestor is still native
- * white when the batch lands; the top-level discovery observer registers
- * this host and projects its scope immediately, while the document
- * pipeline's own round waits out `RECONCILE_POLICY`'s debounce first. So
- * the scope audits its carrier against white — legible, no repair — and
- * the document round then tags and darkens that same ancestor. The
- * `data-sw-patched` write that does it is outside this host observer's own
- * `class`/`style` filter and is not a mutation inside this root at all, so
- * without a document-driven re-contrast nothing ever re-audits the carrier.
+ * Created in one synchronous batch on purpose. Discovery projects this scope
+ * immediately, against a still-white light-DOM ancestor, while the document
+ * round waits out its debounce and then darkens that ancestor — a
+ * `data-sw-patched` write no observer of this root sees. Without a
+ * document-driven re-contrast nothing re-audits the carrier.
  *
- * The carrier owns no background and neither does its host, so
- * `resolveEffectiveBackdrop` walks straight out of the shadow tree and
- * lands on the light-DOM ancestor.
+ * Neither carrier nor host owns a background, so the backdrop resolves on
+ * the light-DOM ancestor.
  */
 export async function mountDocumentBackdropCrosser(
   page: Page,
@@ -349,20 +320,13 @@ export async function mountDocumentBackdropCrosser(
 }
 
 /**
- * Codex review round 3 on #1412: the transition hazard on the *backdrop*
- * channel rather than the foreground one.
+ * The transition hazard on the *backdrop* channel: the surface has an
+ * authored `transition` on `background-color`, so the audit, running in the
+ * same task as the darkening, would read the start value (white) unless
+ * frozen — no repair, and an unreadable carrier once it lands.
  *
- * The surface owns an authored `transition` on `background-color`, so
- * darkening it starts a transition — and the audit runs immediately
- * afterwards, in the same task, so `resolveEffectiveBackdrop` reads that
- * transition's start value (still native white) unless it is frozen first.
- * A carrier scored against white is legible, gets no repair, and turns
- * unreadable when the transition lands, with no mutation left to schedule
- * another round.
- *
- * 2s, deliberately long: the failure is a read taken at progress ~0, and a
- * short transition would let a slow round land after it had already settled
- * and pass vacuously.
+ * 2s, deliberately long, so a slow round cannot land after it settled and
+ * pass vacuously.
  */
 export async function mountTransitioningBackdropScope(
   page: Page,
