@@ -1,9 +1,8 @@
 /**
  * @vitest-environment jsdom
  *
- * Settings names the voice a Korean lesson is actually heard in, by the
- * same rule the speech session follows. The dropdown alone used to read
- * "Onyx" with nothing chosen while lessons spoke SunHi.
+ * Settings names the voice a Korean lesson is heard in, by the speech
+ * session's own rule, not just what the dropdown holds.
  */
 
 import type { HostedVoiceChoice, SpeechAdapter } from "@some-ui/speech"

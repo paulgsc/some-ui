@@ -1,8 +1,7 @@
 /**
  * @vitest-environment jsdom
  *
- * Like `lib/tts-config`'s suite, this module reads `window.location` - the
- * base URL follows whatever host is serving the page - so it needs a DOM.
+ * The base URL follows `window.location`, so this needs a DOM.
  */
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -49,10 +48,8 @@ describe("resolveFileHostBase", () => {
   })
 
   /**
-   * The case the whole module exists for. A service worker only exists on
-   * a secure context, so this - not the HTTP branch - is the study origin,
-   * and an absolute `http://` URL here is a mixed-content block that no
-   * server-side CORS change can lift.
+   * The study origin: service workers need a secure context, and an absolute
+   * `http://` URL here is a mixed-content block no CORS change can lift.
    */
   it("routes an HTTPS page through the same-origin proxy path", () => {
     servePageOver("https:", "nixos.local")

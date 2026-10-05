@@ -1,13 +1,9 @@
 /**
- * `@some-ui/lesson-crm`'s round client (`RoundCrmClient`), over this app's
- * `file_host` transport, as `lib/lesson-crm-client` is for lessons. It
- * imports nothing from `@some-ui/lesson-crm`, whose audience is `lan`; the
- * shapes are written out and checked structurally where the round CRM route
- * hands this to `RoundCrm`.
- *
- * The operator routes answer 401 without a passkey session and 403 to a
- * subject not in the server's `OPERATOR_SUBJECTS`; `requestJSON` maps both
- * like any other `file_host` error, so the CRM's toast says which.
+ * `@some-ui/lesson-crm`'s round client (`RoundCrmClient`), as
+ * `lib/lesson-crm-client` is for lessons: no imports from the `lan`
+ * workspace, shapes checked structurally where the route passes it in.
+ * Operator routes answer 401 without a session and 403 outside
+ * `OPERATOR_SUBJECTS`; the CRM's toast says which.
  */
 
 import type {
@@ -37,8 +33,7 @@ const roundPath = (id: string): string =>
   `/leetype/operator/rounds/${encodeURIComponent(id)}`
 
 /**
- * `transport` is a seam for tests; the default resolves `file_host` the way
- * every caller in this app does. A build with no `file_host` gets a client
+ * `transport` is a seam for tests. A build with no `file_host` gets a client
  * whose every call rejects, saying so.
  */
 export function createRoundCrmClient(
@@ -66,10 +61,9 @@ export function createRoundCrmClient(
           "/leetype/operator/rounds"
         )
       ).rounds,
-    // The body comes back parsed; the CRM re-checks and re-serializes it
-    // (`serializeRound`) before any save, so the stored bytes' layout here
-    // does not matter. The public round module answers CORS without
-    // credentials, so this read is same-origin only, as the lesson read is.
+    // Parsed on the way; the CRM re-checks and re-serializes (`serializeRound`)
+    // before saving. The public round module is uncredentialed, so this read
+    // is same-origin only.
     read: async (id) =>
       JSON.stringify(
         await request<unknown>(`/leetype/rounds/${encodeURIComponent(id)}`, {

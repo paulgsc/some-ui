@@ -7,29 +7,16 @@ import { HexCombMark } from "@/components/brand/hex-comb-mark"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
 /**
- * The six browser extensions in `extensions/`, for a non-technical visitor —
- * a recruiter, a friend, someone sent a link. Not a maintainer console:
- * nothing here names a version, a manifest, a test count, a workflow or a
- * workspace, and how far along a tool is arrives as a quantity rather than a
- * changelog.
+ * The six browser extensions in `extensions/`, for a non-technical visitor:
+ * no versions, manifests or workflows; progress as a quantity.
  *
- * It is mounted in two places, which is why it lives here rather than in a
- * route file:
+ * Mounted in two places: `"/"` for a visitor with no session (the front door,
+ * so its chrome offers the résumé and sign-in), and `"/extensions"`, the
+ * address to share (its chrome is a way back).
  *
- * - `"/"` for a visitor with no session. It is the front door, so its
- *   chrome carries the ways onward that the signed-in landing's cards
- *   otherwise would: the résumé, which is what a stranger most often came
- *   for, and sign-in.
- * - `"/extensions"`, the stable address to share, reached from the signed-in
- *   landing and from `/mission`. Its chrome is a way back.
- *
- * The comb itself lives in `@some-ui/honeycomb`, where the rest of this
- * workspace's hex geometry lives, and is pulled in through a dynamic import
- * rather than a static one. That is not stylistic: `@some-ui/honeycomb` is a
- * package the content registry loads lazily, and a single static value import
- * from this app would give the bundler an eager edge and quietly undo that
- * for every host — which is exactly what `lazy-registry/no-eager-registry-import`
- * exists to catch.
+ * The comb comes from `@some-ui/honeycomb` through a dynamic import: a static
+ * value import would undo the registry's lazy load for every host
+ * (`lazy-registry/no-eager-registry-import`).
  */
 const ExtensionsComb = lazy(async () => {
   const { ExtensionsComb: Comb } = await import("@some-ui/honeycomb")
@@ -51,16 +38,9 @@ export const ExtensionsPage = ({
   chrome,
 }: ExtensionsPageProps): JSX.Element => (
   <main className="bg-background text-foreground relative h-svh overflow-hidden">
-    {/* The only chrome, and it costs the comb no space: a seven-cell comb
-        leaves its two top corners empty at every viewport shape, so these
-        controls sit in a region no cell ever reaches and the comb still gets
-        the whole window. Reserving a strip for them instead would be most
-        expensive exactly where there is least to spare - a 390px-tall
-        landscape phone.
-
-        It wraps rather than overflowing: at a narrow width with enlarged
-        default text, the controls drop to a second row instead of running off
-        the edge, since they are the front door's only navigation. */}
+    {/* The only chrome, in the two top corners a seven-cell comb never
+        reaches, so the comb keeps the whole window. It wraps rather than
+        overflowing with enlarged text: it is the only navigation. */}
     <div className="pointer-events-none fixed inset-x-0 top-0 z-10 flex flex-wrap items-center justify-between gap-2 px-3 py-3 md:px-6">
       {chrome === "back" ? (
         <Link to="/" className={CHIP}>
@@ -69,12 +49,10 @@ export const ExtensionsPage = ({
         </Link>
       ) : (
         <span className="pointer-events-auto inline-flex items-center gap-2 px-1">
-          {/* `current`, not `brand`: on this page the comb itself follows the
-              session theme (the `.comb` skin), and a fixed-amber mark beside a
-              slate or berry comb would read as a second palette. */}
+          {/* `current`, not `brand`: the comb follows the session theme, and
+              a fixed-amber mark would read as a second palette. */}
           <HexCombMark className="text-muted-foreground size-6" />
-          {/* The wordmark gives way on a phone, where the mark alone
-              carries the brand and the width is the actions'. */}
+          {/* The wordmark gives way on a phone. */}
           <span className="text-muted-foreground sr-only text-sm font-medium tracking-wide uppercase sm:not-sr-only">
             Some UI
           </span>
@@ -95,11 +73,8 @@ export const ExtensionsPage = ({
       </div>
     </div>
 
-    {/* The comb owns the viewport: it is the page, not an illustration on
-        one. It positions itself absolutely against this element and scales to
-        fill it, so the fallback reserves nothing - there is no layout for a
-        spinner to hold open, and sizing one differently from the comb would
-        only make the page jump once the chunk lands. */}
+    {/* The comb positions itself absolutely and fills this element, so the
+        fallback reserves nothing (a spinner would make the page jump). */}
     <Suspense fallback={null}>
       <ExtensionsComb />
     </Suspense>

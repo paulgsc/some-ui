@@ -1,18 +1,11 @@
 /**
- * Layer 2 of audio disclosure: the first-use contextual notice.
+ * Layer 2 of audio disclosure: an inline callout the first time a person
+ * enters an activity that uses audio, offering the choice there, never shown
+ * for that activity again.
  *
- * An inline callout the first time a person enters an activity that uses
- * audio, offering the choice there and then, and never shown for that
- * activity again.
- *
- * Inline rather than a toast, because a toast that teaches a feature is a
- * toast that gets missed - it lands while someone is still orienting
- * themselves visually and is gone before they look. Inline rather than a
- * modal, because for a learning app audio is the expected case: a
- * "This website contains audio. Press OK." dialog interrupts flow to
- * confirm something the person came here for. The one exception is an
- * activity marked `required`, which cannot function without sound, and
- * where a stronger prompt before starting is honest rather than rude.
+ * Not a toast (one that teaches a feature gets missed) and not a modal (audio
+ * is expected in a learning app), except for a `required` activity, which
+ * cannot work without sound.
  */
 
 import type { JSX } from "react"
@@ -35,9 +28,8 @@ export type AudioActivityNoticeProps = {
 }
 
 /**
- * Renders nothing at all for a silent activity, for one already
- * acknowledged, or before settings have loaded. The common case for a
- * returning person is no notice - which is the point.
+ * Renders nothing for a silent activity, one already acknowledged, or before
+ * settings load: a returning person usually sees no notice.
  */
 export const AudioActivityNotice = ({
   activity,

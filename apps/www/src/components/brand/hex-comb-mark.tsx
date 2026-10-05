@@ -4,21 +4,10 @@ import { cn } from "some-ui-utils"
 /**
  * The Some UI mark: a seven-cell honeycomb, one core cell ringed by six.
  *
- * Same geometry as public/favicon.svg — flat-top hexagons of circumradius 9
- * with neighbour centres 20 apart on the 30/90/…/330 degree spokes, inside a
- * 64 box. Keep the two in step; they are the same mark at different sizes,
- * and the favicon cannot import this file. (The 20 is sized for the favicon's
- * 16px worst case; see the note there. It costs nothing at the sizes this
- * component renders at, and matching matters more than optimising each.)
- *
- * Colour works differently here, though, and deliberately. The favicon is a
- * standalone file with no stylesheet to inherit from, so it hard-codes amber.
- * This draws in `currentColor` instead, so the mark takes the colour of
- * whatever it is placed in — the accent gradient on the landing hero, the
- * active/inactive sidebar foreground on the home button — and follows every
- * theme in the switcher without knowing any of them exist. The ring is drawn
- * at reduced opacity so the core still reads as the centre of a comb when
- * both are the one colour.
+ * Same geometry as public/favicon.svg (flat-top hexagons of circumradius 9,
+ * neighbour centres 20 apart on the 30/90/…/330 degree spokes, a 64 box);
+ * keep the two in step, since the favicon cannot import this. The ring is at
+ * reduced opacity so the core reads as the centre when both share a colour.
  */
 
 const RING_OFFSETS: ReadonlyArray<readonly [number, number]> = [
@@ -39,24 +28,14 @@ const BRAND_CORE = "#fde68a"
 type HexCombMarkProps = {
   className?: string
   /**
-   * How the mark is coloured, which is a real choice and not a style knob.
-   *
-   * `brand` paints the honey pair the favicon uses, unchanged by theme — the
-   * point of a brand mark is that it looks the same everywhere, and running it
-   * through `--primary` means it turns up grey-blue in one theme and rose in
-   * another. Use it where the mark is being shown *as the brand*.
-   *
-   * `current` inherits `currentColor` instead, for the places where the mark
-   * is behaving as a UI glyph rather than a logo — the sidebar's Home item sits
-   * in a row of lucide icons and has to pick up the same active/inactive
-   * foreground they do, or it reads as a stray decoration.
+   * `brand` paints the favicon's honey pair, unchanged by theme: use it where
+   * the mark is shown *as the brand*. `current` inherits `currentColor`, where
+   * the mark acts as a UI glyph (the sidebar's Home item, among lucide icons).
    */
   tone?: "brand" | "current"
   /**
-   * Rendered as a labelled image rather than decoration. Leave it off wherever
-   * adjacent text already names the thing (the "Some UI" wordmark, the "Home"
-   * nav label) — a mark that repeats its neighbour is noise to a screen
-   * reader, not information.
+   * Rendered as a labelled image. Leave it off wherever adjacent text already
+   * names the thing (the wordmark, the "Home" label).
    */
   title?: string
 }

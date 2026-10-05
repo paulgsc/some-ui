@@ -1,48 +1,32 @@
 /**
  * Where this tab's learner data lives, as a state union and one pure step.
  *
- * Pure: no storage, no network, no React. `runtime.ts` owns the handles and
- * calls `step`; components read a snapshot. That is the shape
- * `docs/monorepo-boundaries.md` ("Inside a React package: the component is
- * not the coordinator", R1) asks for wherever a late result could land over a
- * newer one, and an account boundary is exactly that.
+ * Pure: `runtime.ts` owns the handles and calls `step`; components read a
+ * snapshot (`docs/monorepo-boundaries.md`, R1), since an account boundary is
+ * where a late result could land over a newer one.
  *
- * ## The two questions, kept apart
- *
- * - **Which store holds this learner's sessions?** `Authority`: the device
- *   (`local`), the account on the server (`account`), or not yet known
- *   (`pending`, only while a returning account user's session is being
+ * Two questions, kept apart:
+ * - **Which store holds this learner's sessions?** `Authority`: `local`,
+ *   `account`, or `pending` (only while a returning account user's session is
  *   checked, so nothing flashes the wrong store).
- * - **Does this browser hold a server session?** `SessionBelief`. A person can
- *   be signed in and still be learning on this device, and an expired session
- *   must end *account* capability without ending *local* learning.
+ * - **Does this browser hold a server session?** `SessionBelief`. An expired
+ *   session ends *account* capability without ending *local* learning.
  *
- * ## What the choice means
+ * `choice` is the person's own, persisted. It starts `local` where a backend
+ * is optional (the `lan` image) and becomes `account` only by signing in or
+ * switching. Losing the session never rewrites it: the authority falls back
+ * to `local` until a session is back, so an expiry wipes, uploads or merges
+ * nothing.
  *
- * `choice` is the person's own, persisted. It starts as `local` wherever a
- * remote backend is optional (the `lan` image), because learning must not need
- * an account. It becomes `account` only by an explicit act: signing in or
- * switching. Losing the session never rewrites it: the authority falls back to
- * `local` for as long as the session is gone and returns to `account` when a
- * session is back, so nothing is wiped, uploaded or merged by an expiry.
+ * Reporting is a second, narrower consent: when the person studies, what is
+ * open and which browser to wake are behaviour, not content (canon Remark
+ * 7.6). They leave only with `reporting` on: off by default, per device, and
+ * forgotten at every boundary (sign-in, sign-out, switch to the device). The
+ * device build's in-process backend is exempt.
  *
- * ## Reporting: a second, narrower consent
- *
- * Holding sessions in the account is one thing. Telling the server *when* the
- * person studies, what they have open and which browser to wake is another:
- * those are behaviour, not content (canon Remark 7.6). They leave only when
- * `reporting` is on, which is the person's own act, off by default, per device,
- * and forgotten at every boundary (a sign-in, a sign-out, a switch to the
- * device), so it can never silently carry from one account to the next. The
- * device build's in-process backend is exempt: there it never leaves the phone.
- *
- * ## The epoch
- *
- * `epoch` changes whenever the authority could mean a different store or a
- * different account: its kind changed, or a ceremony started or ended a
- * session. A caller that began work under epoch N keeps its token and drops the
- * result if the runtime is no longer on N (`isCurrent`). No callback acts under
- * a new authority because a mutable global changed under it.
+ * `epoch` changes whenever the authority could mean a different store or
+ * account. Work begun under epoch N drops its result if the runtime has moved
+ * on (`isCurrent`).
  */
 
 /** What this build can reach. Fixed per build, decided from the build flags. */
@@ -57,12 +41,10 @@ export type Backend =
 export type Choice = "local" | "account"
 
 /**
- * What this browser believes about its server session. `unreachable` is a probe
- * that got no answer (a timeout, a refused connection, a 5xx, a CORS failure):
- * it says nothing about the session, so it must not be read as `signed-out`,
- * which would move a returning account user's work to the device behind their
- * back. The account stays their choice and its calls fail where they can be
- * seen.
+ * What this browser believes about its server session. `unreachable` (no
+ * answer) says nothing about the session and must not be read as
+ * `signed-out`, which would move a returning account user's work to the
+ * device behind their back.
  */
 export type SessionBelief =
   | "unknown"
@@ -104,10 +86,9 @@ export type AuthorityEvent =
    */
   | { readonly type: "session-started"; readonly adopt: boolean }
   /**
-   * The session ended. `forget` is the person leaving on purpose (signing out,
-   * deleting the account): they are done with the account on this device, so
-   * the choice goes back to the device. An expiry is not that, and leaves the
-   * choice alone so the account is back the moment a session is.
+   * The session ended. `forget` is the person leaving on purpose (sign-out,
+   * account deletion): the choice goes back to the device. An expiry leaves
+   * the choice alone.
    */
   | { readonly type: "session-ended"; readonly forget: boolean }
 
@@ -187,9 +168,8 @@ export function sameState(a: AuthorityState, b: AuthorityState): boolean {
 
 export function step(state: AuthorityState, event: AuthorityEvent): StepResult {
   const next = apply(state, event)
-  // Leaving `pending` is the answer to "which one?", not a change of authority:
-  // nothing could have been read or sent while it was undecided, so there is no
-  // old authority to clear and no work to call stale.
+  // Leaving `pending` answers "which one?", not a change of authority:
+  // nothing was read or sent while undecided, so nothing goes stale.
   const before = authorityOf(state).kind
   const kindChanged = before !== "pending" && before !== authorityOf(next).kind
   const boundary =

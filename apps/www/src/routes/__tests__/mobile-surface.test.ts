@@ -2,14 +2,11 @@
  * @vitest-environment jsdom
  *
  * The Android app carries its Home, sessions, the soundbites, aph and
- * settings, and nothing else www routes to (`lib/app-surface`). Checked against the real route tree, in a bundle
- * built with the real `mobile` profile's name: every route either loads where
- * it was asked for, or ends on the phone's Home. The profile name comes from
- * build.profiles.ts, so a `lib/build-profile` that spells it differently turns
- * the guard off and fails here.
- *
- * A route added to www later is off the phone by default, and this suite
- * probes it without being touched: it walks the tree rather than a list.
+ * settings, and nothing else (`lib/app-surface`). Checked against the real
+ * route tree with the real `mobile` profile name (from build.profiles.ts, so
+ * a misspelling in `lib/build-profile` fails here): every route loads where
+ * asked, or ends on the phone's Home. It walks the tree, so a route added
+ * later is probed without touching this suite.
  */
 
 import { existsSync } from "node:fs"
@@ -105,10 +102,9 @@ describe("the Android app's surface", () => {
   })
 
   it("ships exactly the route files on the surface (build.paths.ts)", () => {
-    // The surface's routes and every layout above them: the files the APK
-    // build may carry (build.paths.ts, checked against the real build by
-    // `check:bundle-paths`). Derived here from the tree, so the declared list
-    // cannot drift from `MOBILE_SURFACE` in either direction.
+    // The surface's routes and the layouts above them: the files the APK
+    // may carry (build.paths.ts), derived from the tree so the declared
+    // list cannot drift from `MOBILE_SURFACE`.
     const onSurface = new Set<string>()
     for (const route of routes) {
       if (!isOnMobileSurface(probeUrl(route.fullPath))) continue

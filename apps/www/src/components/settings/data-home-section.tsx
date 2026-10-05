@@ -13,8 +13,7 @@
  * - **Account session ended**: say so, in place, and offer to sign in or to
  *   carry on here. Nothing is lost either way.
  *
- * The device build (Android) never reaches this: its backend is its own
- * database and settings shows `DeviceSection` instead.
+ * The Android build shows `DeviceSection` instead.
  */
 
 import type { JSX } from "react"

@@ -101,10 +101,8 @@ describe("useAsyncIntent", () => {
   })
 
   it("never rejects even when fn never throws - a resolving fn that returns void still reaches succeeded", async () => {
-    // The shape study-nudge-section.tsx's own handlers actually have: every
-    // branch already resolves (see service-worker.ts's own "no-op that
-    // resolves falsy... rather than throwing"), so `failed` here is a
-    // backstop, not the common case.
+    // As in study-nudge-section.tsx, every branch resolves, so `failed` is
+    // only a backstop.
     // eslint-disable-next-line @typescript-eslint/require-await -- fn's contract is Promise<void>; async is the plainest way to satisfy it for a stub with nothing to actually await.
     const fn = vi.fn(async (_enabled: boolean) => undefined)
 
@@ -129,10 +127,8 @@ describe("useAsyncIntent", () => {
       useAsyncIntent(fn, { presentation: "interactive" })
     )
 
-    // Two calls with no `act`/`await` between them - the same fast
-    // double-click shape `use-intent.test.tsx` guards against, exercised
-    // here since this primitive keeps its own separate guard rather than
-    // sharing `useIntent`'s.
+    // A fast double-click: this primitive keeps its own guard, separate
+    // from `useIntent`'s.
     act(() => {
       result.current.start("a")
       result.current.start("a")
@@ -221,9 +217,8 @@ describe("useAsyncIntent", () => {
   })
 
   it("start() always reads the latest closure, not the one captured on the first render", async () => {
-    // The exact regression `study-nudge-section.tsx`'s `onChange`/
-    // `preferences` closure would hit if `fn` were captured once - the ref
-    // is kept current by its own effect, mirroring `useIntentEffect`.
+    // `fn` must not be captured once (study-nudge-section.tsx's changing
+    // `onChange`/`preferences`): the ref is kept current by an effect.
     let latest = "first"
     // eslint-disable-next-line @typescript-eslint/require-await -- fn's contract is Promise<string>; async is the plainest way to satisfy it for a stub with nothing to actually await.
     const fn = vi.fn(async (_variables: undefined) => latest)

@@ -1,12 +1,7 @@
 /**
- * The mode gate, which is the whole of #924.
- *
- * These assert on `runNudgeTick` rather than on the hook because the
- * property worth pinning is not "an interval was installed" - it is that a
- * day which earns a reminder produces exactly one, from one policy. Shipping
- * the server half without this gate does not produce "occasionally two"
- * notifications; it produces reliably two on every such day, from two
- * cooldowns that cannot see each other.
+ * The mode gate, on `runNudgeTick` rather than the hook: a day that earns a
+ * reminder produces exactly one, from one policy, not two from cooldowns
+ * that cannot see each other.
  */
 import { describe, expect, it, vi } from "vitest"
 

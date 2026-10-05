@@ -1,13 +1,8 @@
 /**
- * Who reads this site's lessons aloud, in words a person can act on.
- *
- * The speech session can say, for any language, which platform would speak
- * a line and in which voice (`Speaker.describe`). This turns that report,
- * for the language every lesson here is in, into the line the header's
- * audio indicator shows - so a Korean line that sounds un-Korean can be
- * traced to its cause (a browser with no Korean voice reading Hangul in an
- * English one) from the page itself, with the one step that fixes it on the
- * device in hand.
+ * Who reads this site's lessons aloud, in words a person can act on: turns
+ * `Speaker.describe`'s report for Korean into the audio indicator's line, so
+ * an un-Korean voice (a browser reading Hangul in an English voice) can be
+ * traced, with the fix on that device in hand.
  */
 import type { SpokenLanguage, VoiceReport } from "@some-ui/speech"
 
@@ -59,9 +54,8 @@ const BROWSER_FIX_TAIL =
 export function deviceKindOf(userAgent: string): DeviceKind {
   if (/android/i.test(userAgent)) return "android"
   if (/iphone|ipad|ipod/i.test(userAgent)) return "ios"
-  // iPadOS reports itself as a Mac; a touch screen tells them apart, which
-  // a user agent cannot, so an iPad here gets the Mac steps. Close enough:
-  // both live under Accessibility → Spoken Content.
+  // iPadOS reports itself as a Mac, so an iPad gets the Mac steps; both live
+  // under Accessibility → Spoken Content.
   if (/macintosh|mac os x/i.test(userAgent)) return "mac"
   if (/windows/i.test(userAgent)) return "windows"
   return "other"
@@ -85,8 +79,8 @@ export function summarizeLessonVoice(
         warning: false,
       }
     }
-    // Not a warning: nothing has said Korean is missing. A browser still
-    // loading its voices used to read as "no Korean voice" until they came.
+    // Not a warning: nothing has said Korean is missing (voices may still be
+    // loading).
     case "checking": {
       return {
         label: `Checking for a Korean voice · ${platform}`,

@@ -1,20 +1,10 @@
 #!/usr/bin/env node
 // Copies the compiled résumé PDFs from @some-ui/resume's build output into
-// public/, where Vite serves them for the /resume route.
+// public/, where Vite serves them for the /resume route. PDFs only: phones get
+// the route's HTML ResumeDocument, not an SVG image.
 //
-// PDFs only. The SVG previews used to be copied too, as a mobile fallback for
-// the fact that no mobile browser renders a PDF inline. That fallback is gone:
-// Typst's SVG export contains no text — every glyph is a path — so it was an
-// image of a résumé, 1.1 MB each, needing a hand-written transcript beside it
-// for anyone who could not see it. The /resume route now renders
-// @some-ui/resume's ResumeDocument from exported data instead, which is real
-// text at a fraction of the size. The SVGs are still built (they are useful
-// for visual diffing) but no longer shipped to the site.
-// Turbo builds @some-ui/resume first via this app's `^build` dependency, so
-// the source is normally already there; running this script directly
-// (bypassing turbo) just warns about missing PDFs instead of failing the dev
-// server. A missing *module* build is different and fails at once — see the
-// check before the manifest read below.
+// Turbo builds @some-ui/resume first (`^build`); run directly, missing PDFs
+// only warn, but a missing *module* build fails at once (see below).
 import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -23,39 +13,23 @@ const appDir = dirname(dirname(fileURLToPath(import.meta.url)))
 const resumeDir = join(appDir, "../../packages/ui/resume/documents")
 const publicDir = join(appDir, "public")
 
-// `compile.mjs` writes documents/manifest.json listing exactly the PDF
-// filenames that compile run produced (every composition x template, plus
-// the `resume.pdf` default-composition alias). Reading it back — rather
-// than hard-coding the list here, or importing @some-ui/resume's
-// variant/template matrix across the package boundary — sidesteps two real
-// problems: a hard-coded list drifted every time a template or composition
-// was renamed or added (this is what "resume-systems.pdf" and
-// "resume-learning.pdf" as fixed entries would have kept doing after the
-// 2026-08-29 composition rename), and a cross-package JS import here would
-// need a `../` path (banned by this workspace's eslint config) or a custom
-// package.json `exports` subpath (silently wiped by
-// @some-ui/vite-config's build, which overwrites that package's `exports`
-// wholesale on every build).
+// `compile.mjs` writes documents/manifest.json listing exactly the PDFs that
+// compile produced (every composition x template, plus the `resume.pdf`
+// alias). Reading it avoids a hard-coded list that drifts on every rename,
+// and a cross-package import (a banned `../` path, or an `exports` subpath
+// @some-ui/vite-config's build overwrites).
 //
-// The full set from the manifest is required, not just "at least one
-// file": apps/www's résumé template picker links to every one of these,
-// and a partial `documents/` directory (a stopped-mid-way compile, a stale
-// watch-mode output) would otherwise sync silently and ship a picker whose
-// other options 404.
+// The full set is required: the template picker links to every one, and a
+// partial `documents/` would ship a picker whose other options 404.
 function expectedResumePdfs() {
   const manifestPath = join(resumeDir, "manifest.json")
   if (!existsSync(manifestPath)) return null
   return JSON.parse(readFileSync(manifestPath, "utf8"))
 }
 
-// #1453: `src/routes/_dashboard/resume.tsx` imports @some-ui/resume as a
-// module, so its built JS is not an artifact that can degrade the way the
-// PDFs below can: without it `vite build` runs for ~8s and then dies inside
-// Rolldown with a stack trace that never says "not built" (and suggests
-// externalizing the import, which would ship a broken bundle). Check for it
-// first and fail at once, in CI and locally alike, naming the package and
-// the command. Read from the package's own manifest so a renamed entry
-// cannot go stale here.
+// #1453: `resume.tsx` imports @some-ui/resume as a module; without its built
+// JS, `vite build` dies in Rolldown with a trace that never says "not built".
+// Fail at once, naming the package and command, read from its own manifest.
 const resumePackageDir = join(appDir, "../../packages/ui/resume")
 const resumeEntry = join(
   resumePackageDir,
@@ -98,14 +72,9 @@ function syncResumePdfs() {
           `missing: ${missing.join(", ")}`
 
     if (process.env["CI"]) {
-      // Warning is right for a developer and wrong for a release. Missing
-      // PDFs here mean the site ships with a 404 behind every download and
-      // desktop preview, and a warning in a green build is not something
-      // anyone reads.
-      //
-      // This fires if @some-ui/resume's build output ever stops arriving -
-      // the way it did when `documents/` was not listed in turbo.json's
-      // build `outputs` and a cache hit restored nothing.
+      // A warning is right for a developer and wrong for a release: missing
+      // PDFs ship a 404 behind every download (e.g. a turbo cache hit that
+      // restored no `documents/`).
       throw new Error(
         `[www] ${detail} in ${resumeDir}. Refusing to build a site whose ` +
           "résumé template picker would 404 on those options - check that " +

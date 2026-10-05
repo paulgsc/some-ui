@@ -4,16 +4,12 @@ import { definePaths } from "@some-ui/vite-config/bundle-paths"
 import { gates, MOBILE_PROFILE, profiles } from "./build.profiles.ts"
 
 /**
- * What each profile's output may carry, checked against a real build of it
- * by `pnpm --filter www check:bundle-paths` (check-bundle-paths.ts;
- * the rule, and why it reads the written output, in
+ * What each profile's output may carry, checked against a real build by
+ * `pnpm --filter www check:bundle-paths` (check-bundle-paths.ts; rule in
  * packages/some-vite-config/AUDIENCES.md, "Paths"). A profile ships only the
- * code on its own path: what no visit to that deployable can run does not
- * belong in it, at startup or anywhere else in the output.
- *
- * Audiences (build.profiles.ts) already say this for whole `packages/ui/*`
- * workspaces. These rules say it for what audiences cannot see: www's own
- * modules, npm packages, and chunks the bundler emits that nothing loads.
+ * code on its own path. Audiences (build.profiles.ts) cover whole
+ * `packages/ui/*` workspaces; these rules cover www's own modules, npm
+ * packages, and chunks nothing loads.
  */
 type Profile = keyof typeof profiles
 
@@ -26,12 +22,11 @@ export const PROFILES: ReadonlyArray<Profile> =
   Object.keys(profiles).filter(isProfile)
 
 /**
- * The environment each deployable builds with, beside `SOME_UI_PROFILE`, so
- * the check builds what ships. Kept in step by hand with where each is set:
- * the Dockerfile (`lan`), .github/workflows/pages.yml (`pages`; its base path
- * is the repository's name), and apps/mobile's `build:web` (`mobile`). Every
- * profile sets all three, so none of them exported in the caller's shell
- * (Vite prefers it to any .env file) can change which modules are checked.
+ * The environment each deployable builds with, beside `SOME_UI_PROFILE`, kept
+ * in step by hand with the Dockerfile (`lan`), .github/workflows/pages.yml
+ * (`pages`; base path is the repository name) and apps/mobile's `build:web`
+ * (`mobile`). Every profile sets all three, so a shell export cannot change
+ * what is checked.
  */
 export const profileBuildEnv: Readonly<
   Record<Profile, Readonly<Record<string, string>>>
@@ -50,10 +45,9 @@ export const profileBuildEnv: Readonly<
 }
 
 /**
- * The route files on the Android app's path: the root and the layouts above
+ * The route files on the Android app's path: the root, the layouts above
  * `MOBILE_SURFACE`'s routes (src/lib/app-surface), and those routes. The
- * mobile-surface test derives this list from the real route tree and fails
- * when the two differ, so a route added to the surface is added here too.
+ * mobile-surface test fails when this list and the route tree differ.
  */
 export const MOBILE_ROUTE_FILES = [
   "apps/www/src/routes/__root.tsx*",
@@ -177,12 +171,10 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "the web builds speak through these (src/providers/tts.tsx); a build without them is silent",
     })),
   ],
-  // Every profile builds one route tree, shared by design until now
-  // (AUDIENCES.md, "Build audiences"): a route off a profile's path ships
-  // there as a stub in the startup chunk plus its page chunk, which the
-  // profile redirects or 404s away from before it renders. Paid off by giving
-  // each deployable a route tree of its own routes; each entry goes with the
-  // change that drops it.
+  // Every profile builds one shared route tree (AUDIENCES.md, "Build
+  // audiences"), so an off-path route ships as a stub in the startup chunk
+  // plus its page chunk. Paid off by per-deployable route trees; each entry
+  // goes with the change that drops it.
   debt: [
     ...(["lan", "pages"] as const).map(
       (profile): Debt => ({

@@ -1,12 +1,7 @@
 /**
- * The app's audio preferences, read and written through the tenant
- * settings repository that already persists everything else about a person.
- *
- * Optimistic on purpose: a speaker toggle that waits on a round-trip before
- * the icon changes feels broken, and the write is a localStorage put behind
- * a simulated latency. The query cache is updated in place so every reader -
- * the indicator, the speech provider, the session viewport - flips together
- * in one render.
+ * The audio preferences, through the tenant settings repository. Optimistic:
+ * a speaker toggle that waits on a round-trip feels broken, so the query
+ * cache is updated in place and every reader flips in one render.
  */
 
 import { useCallback } from "react"

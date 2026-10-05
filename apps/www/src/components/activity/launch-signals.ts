@@ -3,11 +3,8 @@ import type { ActivityPlay } from "@some-ui/activity-catalog"
 import type { SessionRecord } from "@/lib/tenant"
 
 /**
- * A session that was only ever composed is not a play. Ranking asks "what is
- * this person likely to want next", and a draft they abandoned in the
- * composer answers that question differently from a session they actually
- * sat through - counting both identically would let a wizard someone bailed
- * out of shape the front page for a week.
+ * A session only ever composed is not a play: a draft abandoned in the
+ * composer should not shape the front page.
  */
 const PLAYED_STATUSES: ReadonlyArray<SessionRecord["status"]> = [
   "active",
@@ -27,17 +24,9 @@ function playedAt(session: SessionRecord): number | null {
 }
 
 /**
- * Turns the sessions this app already stores into the play history
- * `rankActivities` wants.
- *
- * This is the adapter, and it is the whole reason S2 needs no new tracking
- * and no new persisted state: recency and frequency are already in the
- * session list, they were just never read as signals.
- *
- * One session contributes one play *per activity instance* it contains, so a
- * session built from two Honeycomb blocks counts Honeycomb twice - which is
- * the honest reading of "frequently played" for a repo where repeating an
- * activity within a session is an expected shape.
+ * Turns stored sessions into the play history `rankActivities` wants: no new
+ * tracking, since recency and frequency are already in the session list. One
+ * play *per activity instance*, so two Honeycomb blocks count twice.
  */
 export function playsFromSessions(
   sessions: ReadonlyArray<SessionRecord>

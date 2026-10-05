@@ -12,17 +12,8 @@ import {
 import { createFileRoute } from "@tanstack/react-router"
 import { Download, Layers3, LayoutTemplate } from "lucide-react"
 
-// GitHub Pages serves this app under /<repo>/ (see vite.config.ts's
-// VITE_BASE_PATH); a bare "/resume.pdf" would request the domain root
-// instead and 404 there. import.meta.env.BASE_URL always ends in "/", so
-// this resolves correctly for GitHub Pages, the Docker/nginx build, and
-// local dev alike.
-// Order is a presentation decision and belongs here; the labels are content
-// and do not. They used to be hard-coded alongside these ids and had already
-// drifted - the selector said "Systems & browser infrastructure" while the
-// document said "Distributed systems & infrastructure", so the card header
-// and the résumé under it disagreed. Reading them from resumeData removes
-// the last copy of résumé content in this app.
+// Order is a presentation decision and belongs here; the labels are résumé
+// content and come from resumeData, so the selector and document agree.
 const RESUME_ORDER = ["backend", "platform", "fullstack"] as const
 type ResumeComposition = (typeof RESUME_ORDER)[number]
 const RESUME_COMPOSITIONS: ReadonlyArray<{
@@ -31,15 +22,8 @@ const RESUME_COMPOSITIONS: ReadonlyArray<{
 }> = RESUME_ORDER.map((id) => ({ id, label: resumeData[id].label }))
 const RESUME_COMPOSITION_KEY = "some-ui:resume-composition"
 
-// The *layout* axis, independent of which composition is selected — see
-// packages/ui/resume/README.md's Templates section for what each one is.
-// `rail` is the default/portfolio template and claims the unsuffixed
-// `resume-<composition>.pdf` filename; every other template's PDF is
-// suffixed `resume-<composition>-<template>.pdf` (scripts/typst.mjs's
-// `stemFor`, mirrored here since this is a static site with no renderer to
-// ask). Labels are UI copy for a layout choice, not résumé content, so —
-// unlike RESUME_COMPOSITIONS above — they belong here rather than in
-// @some-ui/resume.
+// The *layout* axis, independent of composition (packages/ui/resume/README.md,
+// Templates). Labels are UI copy, so they belong here, not in @some-ui/resume.
 const RESUME_TEMPLATES = [
   { id: "rail", label: "Rail (portfolio)" },
   { id: "classic", label: "Classic (single column)" },
@@ -91,11 +75,9 @@ function initialTemplate(): ResumeTemplate {
   return isResumeTemplate(stored) ? stored : DEFAULT_TEMPLATE
 }
 
-// Mirrors packages/ui/resume/scripts/typst.mjs's `stemFor`: the default
-// template's PDF keeps the unsuffixed `resume-<composition>` name, every
-// other template's is suffixed. This site has no renderer to ask for the
-// filename, so the naming convention is duplicated here deliberately rather
-// than guessed at.
+// Mirrors packages/ui/resume/scripts/typst.mjs's `stemFor` (a static site has
+// no renderer to ask): `rail`, the default, keeps the unsuffixed
+// `resume-<composition>` name; every other template's is suffixed.
 function resumeStem(
   composition: ResumeComposition,
   template: ResumeTemplate
@@ -112,14 +94,10 @@ const ResumeRoute = (): JSX.Element => {
     useState<ResumeComposition>(initialComposition)
   const [template, setTemplateState] = useState<ResumeTemplate>(initialTemplate)
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
+  // Under BASE_URL: Pages serves the app under /<repo>/, where "/resume.pdf" 404s.
   const pdfPath = `${import.meta.env.BASE_URL}${resumeStem(composition, template)}.pdf`
-  // /resume is the one route this app's link is actually shared as a résumé
-  // URL (see __root.tsx's public-route allowlist), so a social preview or
-  // browser tab reading the app's generic "Some UI — Focused study
-  // sessions" title is a real defect for the one audience that matters
-  // here. Reads the name from @some-ui/resume rather than hard-coding it,
-  // so this stays in step with whichever composition is selected without
-  // re-introducing a second copy of résumé content in this app.
+  // /resume is the route shared as a résumé URL, so the tab and social
+  // preview should carry the name, read from @some-ui/resume.
   useEffect(() => {
     const previousTitle = document.title
     document.title = `${resumeData[composition].profile.name} — Résumé`
@@ -128,12 +106,9 @@ const ResumeRoute = (): JSX.Element => {
     }
   }, [composition])
   const mobilePreview = useMediaQuery(MOBILE_PREVIEW_QUERY)
-  // Landscape on a phone keeps the PDF, because that is what the platform
-  // does with one. What it must not do is pretend: the browser's own embed
-  // placeholder offers an "Open" control that silently downloads, and that
-  // control is browser chrome - it cannot be relabelled or re-iconed from
-  // here. So the embed is not rendered in this state at all, and the page
-  // offers the download in its own words instead.
+  // Landscape on a phone keeps the PDF, but not the browser's embed: its
+  // "Open" placeholder silently downloads and cannot be relabelled, so the
+  // page offers the download in its own words instead.
   const touchLandscape = useMediaQuery(TOUCH_LANDSCAPE_QUERY)
   const label =
     RESUME_COMPOSITIONS.find(({ id }) => id === composition)?.label ??
@@ -208,9 +183,7 @@ const ResumeRoute = (): JSX.Element => {
             Next layout
           </Button>
           {/* Hidden in phone landscape, where the panel below already offers
-              the download - two buttons doing the same thing, one of them
-              redundant, is how the browser's own control got mistaken for
-              ours in the first place. */}
+              the download. */}
           {!touchLandscape && (
             <Button asChild size="sm">
               <a href={pdfPath} download="Paul_Gathondu_Resume.pdf">
@@ -242,14 +215,10 @@ const ResumeRoute = (): JSX.Element => {
               </Button>
             </div>
           ) : mobilePreview ? (
-            // No mobile browser renders a PDF inline - Android Chrome hands it
-            // to the download manager and iOS Safari shows a dead first page -
-            // so the phone viewport gets the document as real HTML instead of
-            // as an embed. It is the same content the PDF carries, rendered
-            // from @some-ui/resume's exported data, so it stays selectable,
-            // searchable and screen-reader navigable, inherits the app's theme
-            // without the filter trick the PDF embed needs, and costs a few KB
-            // rather than the 1.1 MB image this replaced.
+            // No mobile browser renders a PDF inline (Android downloads it,
+            // iOS shows a dead first page), so phones get the same content as
+            // HTML from @some-ui/resume's data: selectable, searchable,
+            // screen-reader navigable and themed.
             <ResumeDocument data={resumeData[composition]} />
           ) : (
             <>
@@ -257,18 +226,16 @@ const ResumeRoute = (): JSX.Element => {
                 key={`${composition}-${template}`}
                 src={pdfPath}
                 title="Résumé preview"
-                // Browser PDF viewers are isolated documents and do not expose a
-                // theme API. Filtering the embedded surface keeps the preview in
-                // step with the app without changing the downloadable PDF itself.
+                // Browser PDF viewers expose no theme API; filtering the embed
+                // keeps the preview in step without changing the PDF.
                 className={`size-full transition-[filter] ${darkPreview ? "invert hue-rotate-180" : ""}`}
               />
               {darkPreview && (
                 <div
                   aria-hidden="true"
                   className="pointer-events-none absolute inset-0 mix-blend-multiply"
-                  // Inversion alone turns black type into bright white. Tinting
-                  // those light pixels with the active theme's foreground token
-                  // preserves the repo's no-sun-white text invariant.
+                  // Inversion alone turns black type bright white; tinting with
+                  // the foreground token keeps the no-sun-white text invariant.
                   style={{ backgroundColor: resolved.swatch.fg }}
                 />
               )}

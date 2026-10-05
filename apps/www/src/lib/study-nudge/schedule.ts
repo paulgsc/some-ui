@@ -1,22 +1,12 @@
 /**
- * When `decideNudge` would next say "nudge", if nothing changed meanwhile.
+ * When `decideNudge` would next say "nudge", if nothing changed meanwhile:
+ * a phone suspends the app's JavaScript off screen, so the Android app hands
+ * the OS a scheduled notification in advance.
  *
- * The Android app needs this and the web builds do not. A browser tab keeps
- * a timer running and asks the policy "is now a good time?" every few
- * minutes; a phone suspends the app's JavaScript the moment it leaves the
- * screen, so the question has to be answered *in advance* and handed to
- * the OS as a scheduled local notification.
- *
- * It answers by asking the same pure policy at successive future instants
- * (with the page hidden, which is the premise), rather than by restating
- * its rules as arithmetic. The policy stays the one place the rules live
- * - quiet hours, "studied today", the cooldown - and a change to any of
- * them is scheduled correctly with no change here. The price is a few
- * hundred calls to a pure function when the app goes to the background.
- *
- * "If nothing changed" is the assumption the caller has to keep true: the
- * schedule is cancelled and recomputed every time the app comes back,
- * which is the only moment sessions or preferences can change.
+ * It asks the same pure policy at successive future instants (page hidden)
+ * rather than restating its rules as arithmetic, so the policy stays the one
+ * place they live; the cost is a few hundred pure calls on backgrounding.
+ * The caller recomputes on every return, the only time inputs can change.
  */
 import type { NudgeDecision, NudgeInput } from "./index"
 import { decideNudge } from "./index"

@@ -1,27 +1,18 @@
 /**
  * @vitest-environment jsdom
  *
- * The layout editor is desktop-only, and this is the tripwire for it coming
- * back to a phone.
- *
- * Every gesture the editor offers assumes hardware a phone does not have —
- * `E` needs a keyboard, resize needs a right-click, retopologising needs a
- * hovering pointer. What leaked through before this was a button advertising
- * a mode that could not be entered, sitting on top of an activity that had
- * been inset and squeezed to make room for a frame nobody could edit.
- *
- * `OrchestratedYouTubeViewport` and the registry are stubbed: what is under
- * test is which chrome this component paints around them, not what they
- * render.
+ * The layout editor is desktop-only (keyboard, right-click and hover): on a
+ * phone, no editor button and no inset frame. The viewport content and the
+ * registry are stubbed; under test is the chrome painted around them.
  */
 
-import type { JSX, ReactNode } from "react"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import type { JSX } from "react"
+import { withQueryClient } from "@/test-support/query-client"
+import { sessionRecord } from "@/test-support/session-record"
 import { cleanup, render, screen } from "@testing-library/react"
 import type * as SomeUiUtils from "some-ui-utils"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import type { SessionRecord } from "@/lib/tenant"
 import { SessionViewport } from "@/components/player/session-viewport"
 
 let mobile = true
@@ -56,29 +47,19 @@ vi.mock("wireframes", () => ({
   applyIntent: (tree: unknown): unknown => tree,
 }))
 
-function fixtureSession(): SessionRecord {
-  return {
-    id: "session-mobile-1",
-    name: "Mobile viewport test",
-    status: "active",
-    activities: [],
-    scenes: [],
-    layoutMode: "basic",
-    totalDurationMs: 60_000,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-  }
-}
-
-function withQueryClient(node: ReactNode): JSX.Element {
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  })
-  return <QueryClientProvider client={client}>{node}</QueryClientProvider>
-}
-
 const mount = (): ReturnType<typeof render> =>
-  render(withQueryClient(<SessionViewport session={fixtureSession()} />))
+  render(
+    withQueryClient(
+      <SessionViewport
+        session={sessionRecord({
+          id: "session-mobile-1",
+          name: "Mobile viewport test",
+          status: "active",
+          totalDurationMs: 60_000,
+        })}
+      />
+    )
+  )
 
 beforeEach(() => {
   mobile = true
@@ -110,9 +91,7 @@ describe("SessionViewport on a phone", () => {
     expect(screen.getByTestId("viewport-content")).toBeDefined()
   })
 
-  // The negative control. Without it, all three assertions above would pass
-  // just as well against a component that had simply stopped rendering its
-  // editor at every width.
+  // The negative control: the editor still renders where it belongs.
   it("keeps the editor and the frame on a wide screen", () => {
     mobile = false
     const { container } = mount()

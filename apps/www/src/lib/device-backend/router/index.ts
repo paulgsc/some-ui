@@ -2,14 +2,11 @@
  * `file_host`'s route table, in-process: a method and a path template
  * (`/shelf/:activity/:key`) map to a handler that answers a `Response`.
  *
- * Paths are written exactly as `routes.server.json` spells them, without the
- * `/api/v1` prefix, so a route here can be checked against the server's own
- * inventory by string equality (`__tests__/router.test.ts` does).
- *
- * A request no route matches answers a plain-text `404`, which is what
- * `file_host` answers for a path it does not serve (`metrics/http.rs`) - so
- * a client feature the device backend has not implemented fails the way it
- * would against a server too old to have it, not with a transport error.
+ * Paths are spelled as in `routes.server.json`, without `/api/v1`, so
+ * `__tests__/router.test.ts` checks them against the server's inventory by
+ * string equality. An unmatched request answers a plain-text `404`, as
+ * `file_host` does (`metrics/http.rs`), so an unimplemented feature fails like
+ * an older server.
  */
 import type { SqlDriver } from "@/lib/device-backend/sql"
 

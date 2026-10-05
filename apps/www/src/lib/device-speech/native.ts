@@ -1,19 +1,14 @@
 /**
  * Android's own text-to-speech, over `@capacitor-community/text-to-speech`.
+ * Only ever imported dynamically, by `./index`, in the device build.
  *
- * Only ever imported dynamically, by `./index`, and only loaded in the
- * device build: the plugin is native, and the web builds have no business
- * loading it.
+ * Never resolve `TextToSpeech` itself from a promise: a Capacitor plugin
+ * proxy answers every property, `then` included, so awaiting it calls a
+ * native `then` that does not exist. Call through this module instead.
  *
- * Never return or resolve `TextToSpeech` itself from a promise. A Capacitor
- * plugin is a proxy that answers every property with a native method, `then`
- * included, so awaiting it calls a plugin method named `then` that does not
- * exist. Hand out this module instead and call through it.
- *
- * This is the transport between the plugin and the speech session: the
- * plugin's language tags are read into our `SpokenLanguage` here, on the
- * way in (`spokenLanguageOf`), and written from it here, on the way out
- * (`LANGUAGE_TAG`). Nothing past this module sees one.
+ * The plugin's language tags are translated to and from `SpokenLanguage`
+ * here (`spokenLanguageOf`, `LANGUAGE_TAG`); nothing past this module sees
+ * one.
  */
 import type { SpeechSynthesisVoice as PluginVoice } from "@capacitor-community/text-to-speech"
 import {
@@ -50,14 +45,11 @@ function toNativeVoice(voice: PluginVoice): NativeVoice {
 }
 
 /**
- * Android binds its text-to-speech service asynchronously, after the plugin
- * loads, and until it has, the plugin answers wrongly rather than waiting:
- * `speak` refuses as unavailable, `isLanguageSupported` says false (which
- * would read as "no Korean voice") and `getSupportedVoices` throws. The
- * plugin exposes no readiness call, so a voice list that comes back is the
- * signal, and every call below waits for it. A phone with no engine at all
- * never answers: after `READY_TIMEOUT_MS` the calls fail, and keep failing
- * until a later call finds the engine.
+ * Android binds its TTS service asynchronously, and until then the plugin
+ * answers wrongly instead of waiting (`speak` refuses, `isLanguageSupported`
+ * says false, `getSupportedVoices` throws). With no readiness call, a voice
+ * list coming back is the signal every call waits for. With no engine at
+ * all, calls fail after `READY_TIMEOUT_MS` until a later call finds one.
  */
 const READY_TIMEOUT_MS = 10_000
 const READY_FIRST_RETRY_MS = 100
@@ -95,9 +87,8 @@ async function getVoices(): Promise<ReadonlyArray<NativeVoice>> {
 }
 
 /**
- * The plugin names a voice by its index in the list `getSupportedVoices`
- * returned, so the index is looked up just before each utterance: one
- * cached from earlier points at another voice once a voice is installed.
+ * The plugin names a voice by its index in `getSupportedVoices`, so the index
+ * is looked up before each utterance: installing a voice shifts it.
  */
 async function voiceIndexOf(voiceId: string): Promise<number | undefined> {
   const index = (await getVoices()).findIndex((voice) => voice.id === voiceId)
@@ -105,10 +96,9 @@ async function voiceIndexOf(voiceId: string): Promise<number | undefined> {
 }
 
 /**
- * Bumped by every `speak` and `stop`. `speak` looks the voice up over the
- * bridge before it reaches the plugin, and a `stop` (or a newer `speak`)
- * that lands during that round trip must win: without this, the stopped
- * utterance would start talking after the stop.
+ * Bumped by every `speak` and `stop`, so a `stop` (or newer `speak`) landing
+ * during `speak`'s voice lookup wins rather than the stopped utterance
+ * starting afterwards.
  */
 let generation = 0
 
@@ -121,8 +111,7 @@ async function speak(request: NativeSpeechRequest): Promise<void> {
       ? undefined
       : await voiceIndexOf(request.voiceId)
   if (mine !== generation) {
-    // Replaced before it started (while the engine came up, or during the
-    // voice lookup). The engine contract lets a replaced
+    // Replaced before it started. The engine contract lets a replaced
     // utterance never settle, and the adapter has already settled it.
     return new Promise<void>(() => undefined)
   }
@@ -158,10 +147,9 @@ export const engine: NativeSpeechEngine = {
 }
 
 /**
- * The app's own plugin (`apps/mobile`'s `VoiceDataPlugin.java`). The
- * text-to-speech plugin's `openInstall` launches Android's voice-data
- * *check*, which can return without offering a download; this one launches
- * the engine's installer, or the system's text-to-speech settings.
+ * The app's own plugin (`apps/mobile`'s `VoiceDataPlugin.java`): the TTS
+ * plugin's `openInstall` launches a voice-data *check* that may offer no
+ * download; this launches the engine's installer or the TTS settings.
  */
 const VoiceData = registerPlugin<{ openInstall: () => Promise<void> }>(
   "VoiceData"

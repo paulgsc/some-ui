@@ -2,21 +2,16 @@
  * Where `apps/www/src` makes network requests (docs/learner-data-authority.md,
  * LA1 and LA4), pinned by reading the source: no browser, no build.
  *
- * Two facts are easy to lose and invisible when lost:
- *
  * - **LA4: a corpus read carries no credentials.** Every `createDataSource`
- *   call passes `PUBLIC_READ`. A new data source that forgets it sends the
- *   account's session cookie with a lesson request, and the operator can tell
- *   a learner who chose the device from an account holder. Nothing fails.
- * - **LA1: nothing but the choke points names a network global.** The lint rule
- *   in `apps/www/eslint.config.js` restricts `fetch`, `XMLHttpRequest`,
- *   `WebSocket`, `EventSource` and `navigator.sendBeacon`. A lint rule is turned
- *   off by an `eslint-disable`, so this also pins the files that carry one
- *   for those rules, and the exemption list in the config itself.
+ *   call passes `PUBLIC_READ`; one that forgets sends the session cookie with
+ *   a lesson request, and nothing fails.
+ * - **LA1: nothing but the choke points names a network global.** The lint
+ *   rule in `apps/www/eslint.config.js` restricts `fetch`, `XMLHttpRequest`,
+ *   `WebSocket`, `EventSource` and `navigator.sendBeacon`; this also pins the
+ *   files that `eslint-disable` it, and the config's exemption list.
  *
- * The checks are pure functions returning problems, and the last group feeds
- * them known-bad sources, so a test that has quietly stopped looking at
- * anything cannot stay green.
+ * The last group feeds the checks known-bad sources, so a check that stopped
+ * looking cannot stay green.
  */
 
 import { readdirSync, readFileSync } from "node:fs"

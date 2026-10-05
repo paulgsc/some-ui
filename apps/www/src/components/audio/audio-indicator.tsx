@@ -1,22 +1,12 @@
 /**
- * Layer 1 of audio disclosure: the persistent capability indicator.
+ * Layer 1 of audio disclosure: a speaker in the chrome that always shows what
+ * this app may play (`🔇 Sound off`, `🔊 Voice`, `🎵 Effects`,
+ * `🔉 Voice + Effects`), without interrupting. The first-use notice points
+ * here; toasts are kept for things that actually happened.
  *
- * A small speaker in the chrome that always reflects what this app may play
- * right now - `🔇 Sound off`, `🔊 Voice`, `🎵 Effects`, `🔉 Voice + Effects`.
- * It communicates the app's audio capability without interrupting anyone,
- * and it is the canonical place a person learns this app has audio at all.
- *
- * The other two layers lean on it: the first-use notice for an activity
- * points here ("you can change this anytime from the speaker icon"), and
- * transient toasts stay reserved for things that actually happened rather
- * than for teaching the feature.
- *
- * It also says who reads lessons aloud: the voice, by name, and the
- * platform behind it (this site's voice service, the browser's own voice,
- * or the phone's). A Korean line that sounds un-Korean is usually a browser
- * with no Korean voice reading Hangul in another language's voice, and this
- * is where that becomes visible: the icon carries a warning, and the
- * popover says what to do.
+ * It also names who reads lessons aloud (the voice and its platform), and
+ * warns when a browser with no Korean voice would read Hangul in another
+ * language's voice.
  */
 
 import type { JSX } from "react"
@@ -51,10 +41,8 @@ import {
 
 /**
  * A one-line health note, shown only when speech is not simply fine.
- *
- * `useSpeechStatus` is the coarse, user-facing view `@some-ui/speech`
- * exposes - which voice, and whether it works. Nothing about endpoints,
- * adapters or error strings is reachable from here, by design.
+ * `useSpeechStatus` exposes no endpoints, adapters or error strings, by
+ * design.
  */
 const SpeechHealthNote = (): JSX.Element | null => {
   const status = useSpeechStatus()
@@ -85,9 +73,8 @@ const LessonVoice = ({ voice }: { voice: LessonVoiceSummary }): JSX.Element => (
 export const AudioIndicator = (): JSX.Element => {
   const { preferences, update, isReady } = useAudioPreferences()
   const summary = summarizeAudio(preferences)
-  // Re-read whenever the session announces a change: a browser's voices
-  // load asynchronously, and opening the popover re-renders only the
-  // popover, not this.
+  // Re-read on every session announcement: voices load asynchronously, and
+  // opening the popover re-renders only the popover.
   const report = useVoiceReport(LESSON_LANGUAGE)
   const voice = report
     ? summarizeLessonVoice(

@@ -1,17 +1,8 @@
 /**
  * The interactive failure affordance every `IntentButton` renders on
- * `failed` — shared so #936's nine files render one failure shape rather
- * than nine invented ones.
- *
- * `Alert`'s own implementation sets `role="alert"` unconditionally (see
- * `packages/ui/shared/src/components/ui/alert.tsx`), which is what makes
- * this announced to assistive technology for free - #945's own acceptance
- * criterion, satisfied by reusing the primitive rather than adding one.
- *
- * No retry control when `!error.retryable` (`FileHostNotConfiguredError` →
- * `unavailable`, most namely): a retry button wired to a request that
- * cannot succeed is the inert-button defect in a new costume, and #945's
- * issue names this exact failure mode.
+ * `failed`. `Alert` sets `role="alert"`, so it is announced for free. No
+ * retry control when `!error.retryable` (e.g. `unavailable`): a retry that
+ * cannot succeed is an inert button.
  */
 
 import type { JSX } from "react"

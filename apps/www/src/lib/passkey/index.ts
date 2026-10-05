@@ -1,24 +1,16 @@
 /**
- * The browser half of a passkey ceremony.
+ * The browser half of a passkey ceremony: converts `file_host`'s base64url
+ * WebAuthn JSON (`paulgsc/server` `handlers/auth.rs`) to and from
+ * `navigator.credentials`' `ArrayBuffer`s, and nothing else.
  *
- * `file_host` hands out WebAuthn options as JSON, with every binary field
- * base64url-encoded, and expects the browser's credential back in the same
- * shape (`paulgsc/server` `handlers/auth.rs`). `navigator.credentials` speaks
- * `ArrayBuffer`s instead, so this module converts both ways and does nothing
- * else: it never decides whether to sign in, and it never sees a session.
- *
- * Deliberately left out of what is sent back:
- *
- * - **`transports`.** The server discards them before storage (they hint at
- *   the device), and a value its WebAuthn library does not know would make
- *   it reject an otherwise good credential.
- * - **Client extension results.** The server reads none of them.
+ * Not sent back: **`transports`** (the server discards them, and an unknown
+ * value would make its library reject a good credential) and **client
+ * extension results** (read by nobody).
  */
 
 /**
- * `{ publicKey }` as `file_host` sends it for `navigator.credentials.create`.
- * Only the members passed on to the browser are named; the server's
- * extension requests are not among them, since it reads no extension result.
+ * `{ publicKey }` as `file_host` sends it for `navigator.credentials.create`,
+ * naming only the members passed to the browser.
  */
 export type CreationOptionsJSON = {
   publicKey: {

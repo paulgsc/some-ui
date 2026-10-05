@@ -2,9 +2,7 @@
  * @vitest-environment jsdom
  *
  * The push half of `service-worker.ts`, against a fake `PushManager` and a
- * mocked transport. Nothing here touches the network or a real worker —
- * the point is to pin the four behaviours that are invisible when they
- * break: the key conversion, the idempotent upsert, the unsubscribe
+ * mocked transport: the key conversion, the idempotent upsert, unsubscribe
  * reaching both ends, and a `503` degrading rather than throwing.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -57,12 +55,14 @@ function mockTransport(
   return Object.assign(transport, { calls })
 }
 
-/**
- * Only what the push layer reads. `PushDeps` takes a structural type rather
- * than `ServiceWorkerRegistration`, so a fake is a plain object instead of a
- * cast through `unknown` — and a fake that has to be cast is a fake that can
- * drift from the shape production code actually uses.
- */
+/** A transport whose every request fails to connect. */
+function failingTransport(): FileHostTransport & { calls: Array<Call> } {
+  return Object.assign(() => Promise.reject(new Error("Failed to fetch")), {
+    calls: [],
+  })
+}
+
+/** Only what the push layer reads (`PushDeps` is structural, so no cast). */
 type FakeSubscription = {
   endpoint: string
   unsubscribed: boolean
@@ -86,11 +86,8 @@ function fakeSubscription(): FakeSubscription {
   return subscription
 }
 
-/**
- * A registration whose `pushManager` starts empty and mints a subscription
- * on `subscribe()`, recording the key it was handed — the assertion that
- * catches a string reaching `applicationServerKey`.
- */
+/** A registration whose `pushManager` mints a subscription on
+ * `subscribe()`, recording the options (and so the key) it was handed. */
 type FakeRegistration = {
   pushManager: {
     getSubscription: () => Promise<FakeSubscription | null>
@@ -124,11 +121,8 @@ function fakeRegistration(existing: FakeSubscription | null = null): {
   return { registration, subscribeCalls }
 }
 
-/**
- * `nudgesSupported()` checks `window`, not `globalThis`, and under some
- * Vitest versions those are different objects (see vitest.setup.ts). Stub
- * both, or the whole suite reports "unsupported".
- */
+/** `nudgesSupported()` checks `window`, which some Vitest versions keep
+ * apart from `globalThis` (vitest.setup.ts), so both are stubbed. */
 function supportNudges(permission: NotificationPermission = "granted"): void {
   const values = {
     Notification: {
@@ -173,9 +167,7 @@ describe("urlBase64ToUint8Array", () => {
   })
 
   it("translates the base64url alphabet rather than passing it through", () => {
-    // `-` and `_` are the two characters plain atob() rejects. Decoding
-    // them as-is is the bug that produces a subscription which every send
-    // reports as 201 Created and no browser ever displays.
+    // `-` and `_` are the characters plain atob() rejects.
     expect(Array.from(urlBase64ToUint8Array("-_8"))).toEqual([251, 255])
   })
 
@@ -209,11 +201,8 @@ describe("subscribeToPush", () => {
     const post = transport.calls[1]
     expect(post.route).toBe("/push/subscriptions")
     expect(post.init?.method).toBe("POST")
-    // The browser's own shape, flattened, plus the grant. `keys` is the
-    // part that goes missing if this ever spreads the subscription object
-    // instead of its `toJSON()` — a live PushSubscription has no own
-    // enumerable properties, so the naive version posts only `topics` and
-    // the server refuses it with a 422 naming `keys.p256dh`.
+    // The browser's `toJSON()` shape plus the grant: spreading a live
+    // PushSubscription would lose `keys`.
     expect(JSON.parse(String(post.init?.body))).toEqual({
       endpoint: ENDPOINT,
       keys: { p256dh: P256DH, auth: AUTH },
@@ -230,23 +219,20 @@ describe("subscribeToPush", () => {
       await subscribeToPush({ transport, registration, topics: TOPICS })
     ).toBe("subscribed")
 
-    // Subscribing twice is idempotent: no second subscribe() call, and the
-    // POST is an upsert keyed on endpoint, so no duplicate row.
+    // No second subscribe(), and one upsert keyed on endpoint.
     expect(subscribeCalls).toHaveLength(0)
     expect(
       transport.calls.filter((c) => c.route === "/push/subscriptions")
     ).toHaveLength(1)
   })
 
-  it("degrades to #907's behaviour when the deployment has no VAPID identity", async () => {
+  it("degrades to the tab-open policy when the deployment has no VAPID identity", async () => {
     const transport = mockTransport({
       "/push/vapid-key": () =>
         jsonResponse({ error: { code: "feature_not_configured" } }, 503),
     })
     const { registration, subscribeCalls } = fakeRegistration()
 
-    // Not a throw: a backend without push configured must cost the
-    // closed-browser case, not the feature.
     expect(
       await subscribeToPush({ transport, registration, topics: TOPICS })
     ).toBe("not-configured")
@@ -254,10 +240,7 @@ describe("subscribeToPush", () => {
   })
 
   it("reports an unreachable file_host rather than throwing", async () => {
-    const transport = Object.assign(
-      () => Promise.reject(new Error("Failed to fetch")),
-      { calls: [] }
-    )
+    const transport = failingTransport()
     const { registration } = fakeRegistration()
 
     expect(
@@ -266,8 +249,7 @@ describe("subscribeToPush", () => {
   })
 
   it("refuses a VAPID key that is not a P-256 point", async () => {
-    // A truncated or re-encoded key subscribes happily and never delivers;
-    // the only symptom is silence. Refuse before the row exists.
+    // A malformed key subscribes happily and never delivers.
     const transport = mockTransport({
       "/push/vapid-key": () => jsonResponse({ public_key: "AQID", topics: [] }),
     })
@@ -320,14 +302,9 @@ describe("unsubscribeFromPush", () => {
 
   it("still leaves reminders off when the server cannot be told", async () => {
     const subscription = fakeSubscription()
-    const transport = Object.assign(
-      () => Promise.reject(new Error("Failed to fetch")),
-      { calls: [] }
-    )
+    const transport = failingTransport()
     const { registration } = fakeRegistration(subscription)
 
-    // Throwing here would leave the settings toggle stuck on for someone
-    // who just asked it to stop.
     await expect(
       unsubscribeFromPush({ transport, registration })
     ).resolves.toBeUndefined()
@@ -367,8 +344,6 @@ describe("reconcilePushSubscription", () => {
 
 describe("hasPushSubscription", () => {
   it("reports what the browser holds, not what settings claim", async () => {
-    // The case this exists for: someone revoked the subscription in browser
-    // settings and the stored `enabled: true` is now a lie.
     const { registration } = fakeRegistration(null)
     expect(await hasPushSubscription({ registration })).toBe(false)
 

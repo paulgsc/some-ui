@@ -5,9 +5,8 @@
  * first-use notice and a banner a returning person has to dismiss forever.
  */
 
-import type { JSX, ReactNode } from "react"
+import { withQueryClient } from "@/test-support/query-client"
 import { getActivity } from "@some-ui/activity-catalog"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
@@ -17,37 +16,27 @@ import {
   AudioActivityNotice,
 } from "@/components/audio/audio-activity-notice"
 
-function withQueryClient(children: ReactNode): JSX.Element {
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  })
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>
-}
+const renderNotice = (
+  id: Parameters<typeof getActivity>[0]
+): ReturnType<typeof render> =>
+  render(withQueryClient(<AudioActivityNotice activity={getActivity(id)} />))
 
 beforeEach(() => {
   window.localStorage.clear()
-  // The audio preferences this notice reads come from the tenant settings
-  // query, which stays disabled until there is a session (see
-  // `lib/tenant/hooks.ts`) - this component only ever renders inside the
-  // signed-in dashboard, so its tests establish that precondition rather
-  // than exercising the signed-out state, which `lib/auth/__tests__/session.test.ts` and
-  // `providers/tts.test.tsx` already cover.
+  // The audio preferences come from the tenant settings query, disabled
+  // without a session (`lib/tenant/hooks.ts`).
   markSignedIn()
 })
 
 afterEach(() => {
-  // Explicit: this app's vitest config doesn't enable `globals`, so Testing
-  // Library never registers its own auto-cleanup and rendered trees would
-  // otherwise pile up in `document.body` across tests in this file.
+  // No vitest `globals`, so Testing Library registers no auto-cleanup.
   cleanup()
   window.localStorage.clear()
 })
 
 describe("AudioActivityNotice", () => {
   it("discloses what the activity does to a person's ears", async () => {
-    render(
-      withQueryClient(<AudioActivityNotice activity={getActivity("topik")} />)
-    )
+    renderNotice("topik")
 
     await waitFor(() =>
       expect(screen.getByText(/uses korean pronunciation/i)).toBeDefined()
@@ -58,9 +47,7 @@ describe("AudioActivityNotice", () => {
   })
 
   it("never shows again once acknowledged", async () => {
-    const view = render(
-      withQueryClient(<AudioActivityNotice activity={getActivity("topik")} />)
-    )
+    const view = renderNotice("topik")
     await waitFor(() => expect(screen.getByRole("alert")).toBeDefined())
 
     await act(async () => {
@@ -73,9 +60,7 @@ describe("AudioActivityNotice", () => {
     // A fresh mount is the case that matters - "dismissed" has to outlive
     // the component, not just hide it.
     view.unmount()
-    render(
-      withQueryClient(<AudioActivityNotice activity={getActivity("topik")} />)
-    )
+    renderNotice("topik")
     await act(async () => {
       await Promise.resolve()
     })
@@ -88,11 +73,7 @@ describe("AudioActivityNotice", () => {
       "true"
     )
 
-    render(
-      withQueryClient(
-        <AudioActivityNotice activity={getActivity("honeycomb")} />
-      )
-    )
+    renderNotice("honeycomb")
 
     // Different activities have different audio semantics - pronunciation
     // versus game sounds - so acknowledging one says nothing about another.
@@ -102,9 +83,7 @@ describe("AudioActivityNotice", () => {
   })
 
   it("renders nothing for an activity with no audio at all", () => {
-    render(
-      withQueryClient(<AudioActivityNotice activity={getActivity("leetype")} />)
-    )
+    renderNotice("leetype")
 
     expect(screen.queryByRole("alert")).toBeNull()
   })

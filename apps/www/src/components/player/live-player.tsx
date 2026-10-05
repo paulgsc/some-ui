@@ -26,9 +26,8 @@ type LivePlayerProps = {
 
 /**
  * Drives the single, app-wide mock orchestrator with this session's scenes.
- * Render with a `key={session.id}` from the caller so switching sessions
- * gets a fresh mount (and a fresh "have I configured this yet" guard)
- * rather than reusing a stale instance across different sessions.
+ * Render with `key={session.id}` so each session gets a fresh mount and
+ * "configured yet" guard.
  */
 export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
   const configure = useOrchestratorStore((s) => s.configure)
@@ -36,12 +35,8 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
   const isTerminal = useIsTerminal()
   const isMobile = useIsMobile()
   const { current_time: currentTime } = useOrchestratorClock()
-  // Ambient per #940/#944's classification: the gesture that ends a session
-  // (finishing it, or Stop) already has its own on-screen confirmation - the
-  // completion screen itself, rendered unconditionally below regardless of
-  // whether this write has settled. This intent only has to make a *failed*
-  // write visible; a silent success stays silent, matching the pre-existing
-  // (and correct) optimistic render.
+  // Ambient (#940/#944): ending a session already shows the completion
+  // screen, unconditionally; this intent only makes a *failed* write visible.
   const completeSessionIntent = useIntent(useUpdateSession(), {
     presentation: "ambient",
   })
@@ -99,30 +94,15 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
   }
 
   /**
-   * On a phone the activity gets the screen and the chrome gets an icon.
+   * On a phone the activity gets the screen and the chrome gets an icon:
+   * `SessionChrome` folds the header and the two bottom bands into one
+   * control (see its doc comment). The audio notice stays resident on both,
+   * as a first-use disclosure must not hide behind a tap.
    *
-   * The desktop composition is three bands stacked under the viewport
-   * (notice, now/next, transport) plus the dashboard header above it. That
-   * is a reasonable use of space a wide screen has spare and an unreasonable
-   * one at 390px, where between them they take more room than the activity —
-   * on the route whose whole purpose is the activity. `SessionChrome` folds
-   * the two bottom bands and the header into one overlay-plane control (see
-   * its own doc comment for why they fold together rather than shrink).
-   *
-   * The audio notice stays resident on both. It is a first-use disclosure
-   * about something the app is about to do to a person's ears, shown once
-   * per activity ever; putting it behind a tap would be hiding a disclosure
-   * behind an affordance nobody has a reason to open yet.
-   *
-   * One tree, not one per layout. `isMobile` can change mid-lesson (a phone
-   * window resized, a desktop window dragged across `md`), and React keys a
-   * child by its type and its slot: when the two layouts were two returns,
-   * `SessionViewport` sat in slot 2 of one and slot 1 of the other, so
-   * crossing the line unmounted it and every activity inside it - a Topik
-   * lesson went back to its material list. Here each child owns one slot in
-   * both layouts and only the chrome around the viewport comes and goes, so
-   * the activity is the same mount on both sides of the breakpoint
-   * (`__tests__/live-player.test.tsx` flips it mid-render to hold that).
+   * One tree, not one per layout: `isMobile` can flip mid-lesson, and React
+   * keys a child by type and slot, so two returns would remount
+   * `SessionViewport` and reset the activity. Each child owns one slot in both
+   * layouts (`__tests__/live-player.test.tsx` flips it mid-render).
    */
   return (
     <div
@@ -137,8 +117,7 @@ export const LivePlayer = ({ session }: LivePlayerProps): JSX.Element => {
         session={session}
         className={isMobile ? "shrink-0" : undefined}
       />
-      {/* Above the viewport, not over it — see `SessionChrome`'s own note
-          on why the trigger is layout and only the sheet is overlay. */}
+      {/* Above the viewport, not over it (see `SessionChrome`). */}
       {isMobile && (
         <SessionChrome scenes={session.scenes} onPlay={() => void start()} />
       )}

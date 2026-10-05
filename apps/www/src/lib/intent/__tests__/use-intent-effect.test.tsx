@@ -2,38 +2,21 @@
  * @vitest-environment jsdom
  */
 
-import type { JSX, ReactNode } from "react"
-import {
-  QueryClient,
-  QueryClientProvider,
-  useMutation,
-} from "@tanstack/react-query"
+import { queryClientWrapper } from "@/test-support/query-client"
+import { useMutation } from "@tanstack/react-query"
 import { act, renderHook, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { useIntent } from "@/lib/intent/use-intent"
 import { useIntentEffect } from "@/lib/intent/use-intent-effect"
 
-function withQueryClient(): {
-  wrapper: (props: { children: ReactNode }) => JSX.Element
-} {
-  const client = new QueryClient({
-    defaultOptions: { mutations: { retry: false } },
-  })
-  return {
-    wrapper: ({ children }: { children: ReactNode }) => (
-      <QueryClientProvider client={client}>{children}</QueryClientProvider>
-    ),
-  }
-}
-
 afterEach(() => {
   vi.restoreAllMocks()
 })
 
 describe("useIntentEffect", () => {
-  it("fires once when the intent transitions to succeeded, and #933's own navigate-on-success shape works", async () => {
-    const { wrapper } = withQueryClient()
+  it("fires once when the intent transitions to succeeded, and navigate-on-success works", async () => {
+    const wrapper = queryClientWrapper()
     const onSucceeded = vi.fn()
     // eslint-disable-next-line @typescript-eslint/require-await -- mutationFn's contract is Promise<T>; async is the plainest way to satisfy it for a stub with nothing to actually await.
     const mutationFn = vi.fn(async (input: string) => `created:${input}`)
@@ -68,7 +51,7 @@ describe("useIntentEffect", () => {
   })
 
   it("does not fire for idle, working, or failed", async () => {
-    const { wrapper } = withQueryClient()
+    const wrapper = queryClientWrapper()
     const onSucceeded = vi.fn()
     const mutationFn = vi
       .fn<(input: string) => Promise<string>>()
@@ -100,7 +83,7 @@ describe("useIntentEffect", () => {
   })
 
   it("fires again for a genuinely new success after a prior one", async () => {
-    const { wrapper } = withQueryClient()
+    const wrapper = queryClientWrapper()
     const onSucceeded = vi.fn()
     // eslint-disable-next-line @typescript-eslint/require-await -- mutationFn's contract is Promise<T>; async is the plainest way to satisfy it for a stub with nothing to actually await.
     const mutationFn = vi.fn(async (input: string) => `created:${input}`)

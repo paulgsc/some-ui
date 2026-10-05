@@ -6,13 +6,12 @@
  * The wide layout's own flows are `session-composer.test.tsx`'s.
  */
 
-import type { JSX, ReactNode } from "react"
+import { withQueryClient } from "@/test-support/query-client"
 import {
   resetViewport,
   setViewport,
   turnViewport,
 } from "@/test-support/viewport"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import type * as ReactRouterModule from "@tanstack/react-router"
 import {
   act,
@@ -36,13 +35,8 @@ const { SessionComposer } = await import(
   "@/components/composer/session-composer"
 )
 
-function withQueryClient(children: ReactNode): JSX.Element {
-  return (
-    <QueryClientProvider client={new QueryClient()}>
-      {children}
-    </QueryClientProvider>
-  )
-}
+const mount = (initialActivity?: "honeycomb"): ReturnType<typeof render> =>
+  render(withQueryClient(<SessionComposer initialActivity={initialActivity} />))
 
 const PANES = ["Browse", "Added", "Configure", "Arrange", "Review"] as const
 
@@ -85,7 +79,7 @@ function firstCard(container: HTMLElement): HTMLElement {
 
 describe("SessionComposer on a phone", () => {
   it("is a tab bar of panes, not a wizard", () => {
-    render(withQueryClient(<SessionComposer />))
+    mount()
 
     const bar = screen.getByRole("tablist", { name: "Composer panes" })
     expect(
@@ -102,9 +96,7 @@ describe("SessionComposer on a phone", () => {
   })
 
   it("opens on Browse, and shows one pane at a time", () => {
-    const { container } = render(
-      withQueryClient(<SessionComposer initialActivity="honeycomb" />)
-    )
+    const { container } = mount("honeycomb")
 
     expect(isSelected(tab("Browse"))).toBe(true)
     for (const pane of ["browse", "added", "configure", "arrange", "review"]) {
@@ -117,7 +109,7 @@ describe("SessionComposer on a phone", () => {
   })
 
   it("holds back what needs an activity until one is added", () => {
-    render(withQueryClient(<SessionComposer />))
+    mount()
 
     // Browse and Added are both step 1: always reachable, and Added says
     // plainly that it is empty. The rest are as unreachable as the wide
@@ -130,7 +122,7 @@ describe("SessionComposer on a phone", () => {
   })
 
   it("opens the rest, and counts on Added, once a card is tapped", () => {
-    const { container } = render(withQueryClient(<SessionComposer />))
+    const { container } = mount()
 
     fireEvent.click(firstCard(container))
 
@@ -143,7 +135,7 @@ describe("SessionComposer on a phone", () => {
   })
 
   it("switches panes from the bar, and remembers the search it was left on", () => {
-    render(withQueryClient(<SessionComposer initialActivity="honeycomb" />))
+    mount("honeycomb")
 
     const search = screen.getByRole("searchbox", { name: "Filter activities" })
     fireEvent.change(search, { target: { value: "zzz" } })
@@ -162,7 +154,7 @@ describe("SessionComposer on a phone", () => {
   })
 
   it("finishes in the Review pane, where the save controls live", () => {
-    render(withQueryClient(<SessionComposer initialActivity="honeycomb" />))
+    mount("honeycomb")
 
     // Not reachable while another pane is showing.
     expect(screen.queryByRole("button", { name: "Save as draft" })).toBeNull()
@@ -178,7 +170,7 @@ describe("SessionComposer on a phone", () => {
   })
 
   it("sends an empty Added pane back to Browse", () => {
-    render(withQueryClient(<SessionComposer />))
+    mount()
 
     fireEvent.click(tab("Added"))
     expect(isShown(screen.getByText(/nothing added yet/i))).toBe(true)
@@ -213,7 +205,7 @@ describe("SessionComposer's tab bar on a phone", () => {
   }
 
   it("tucks away when a pane scrolls down", () => {
-    const { container } = render(withQueryClient(<SessionComposer />))
+    const { container } = mount()
     const pane = container.querySelector<HTMLElement>("#composer-pane-browse")!
     scrollDown(pane, 300)
     expect(barOf().getAttribute("data-shown")).toBe("false")
@@ -221,7 +213,7 @@ describe("SessionComposer's tab bar on a phone", () => {
   })
 
   it("stays shown while one of its tabs holds focus", () => {
-    const { container } = render(withQueryClient(<SessionComposer />))
+    const { container } = mount()
     act(() => tab("Browse").focus())
     const pane = container.querySelector<HTMLElement>("#composer-pane-browse")!
     scrollDown(pane, 300)
@@ -236,7 +228,7 @@ describe("SessionComposer's tab bar on a phone", () => {
 describe("SessionComposer on a wide screen", () => {
   it("is still the wizard: a step rail, Back and Continue, and no tab bar", () => {
     setViewport(false)
-    render(withQueryClient(<SessionComposer initialActivity="honeycomb" />))
+    mount("honeycomb")
 
     expect(
       isShown(screen.getByRole("navigation", { name: "Composer steps" }))
@@ -249,10 +241,9 @@ describe("SessionComposer on a wide screen", () => {
 })
 
 /**
- * A window can cross `md` mid-task: a phone turned over, a desktop window
- * resized. The two layouts mount their panes in different places, so anything
- * a pane held itself was dropped at the crossing; what the composer holds
- * above the layouts is what survives it.
+ * A window can cross `md` mid-task (a phone turned over). The two layouts
+ * mount their panes in different places, so only what the composer holds
+ * above them survives the crossing.
  */
 describe("SessionComposer across the breakpoint", () => {
   const searchValue = (): string | false => {
@@ -261,7 +252,7 @@ describe("SessionComposer across the breakpoint", () => {
   }
 
   it("keeps a half-typed search from a phone onto a wide screen", () => {
-    render(withQueryClient(<SessionComposer initialActivity="honeycomb" />))
+    mount("honeycomb")
     fireEvent.change(
       screen.getByRole("searchbox", { name: "Filter activities" }),
       { target: { value: "hon" } }
@@ -277,7 +268,7 @@ describe("SessionComposer across the breakpoint", () => {
 
   it("keeps it from a wide screen onto a phone, and back", () => {
     setViewport(false)
-    render(withQueryClient(<SessionComposer initialActivity="honeycomb" />))
+    mount("honeycomb")
     fireEvent.change(
       screen.getByRole("searchbox", { name: "Filter activities" }),
       { target: { value: "hon" } }
@@ -292,7 +283,7 @@ describe("SessionComposer across the breakpoint", () => {
   })
 
   it("keeps the pane it was on as the matching wizard step", () => {
-    render(withQueryClient(<SessionComposer initialActivity="honeycomb" />))
+    mount("honeycomb")
     fireEvent.click(tab("Arrange"))
 
     turnViewport(false)

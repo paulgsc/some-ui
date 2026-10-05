@@ -1,17 +1,21 @@
 /**
  * @vitest-environment jsdom
  *
- * #946/S3: settings' save button migrated to `useIntent`/`IntentButton`.
- * The double-submit regression (settings persists to `localStorage`
- * directly, no network mock needed - see `settings-repository.ts`), the
- * toast copy lifted verbatim, and the pre-existing `disabled={!isDirty}`
- * gate doing double duty as the double-terminal reset `use-intent.ts`'s
- * own header names this form as the example of.
+ * Settings' save button (`useIntent`/`IntentButton`). Settings persist through
+ * `SettingsRepository` straight to `localStorage`, so writes are observed and
+ * failures injected by spying on `SettingsRepository.prototype.save`; there
+ * is no `fetch` to sabotage. A non-`FileHost*Error` maps to
+ * `toIntentError`'s `kind: "unknown"`, always retryable.
  */
 
-import type { JSX, ReactNode } from "react"
+import type { JSX } from "react"
 import { ThemeProvider } from "@/providers/theme"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import {
+  expectRetryAffordanceTracksRetryable,
+  expectSomeFailureAffordance,
+} from "@/test-support/file-host-sabotage"
+import { withQueryClient } from "@/test-support/query-client"
+import { routeComponent } from "@/test-support/router-stubs"
 import {
   act,
   cleanup,
@@ -34,9 +38,8 @@ import { markSignedIn } from "@/lib/auth"
 import { SettingsRepository } from "@/lib/tenant/settings-repository"
 
 const toastSpy = vi.fn()
-// Install this before importing the route: hooks.ts creates its repository at
-// module evaluation time, and this test cares about commands crossing that
-// boundary rather than jsdom's WebIDL-backed localStorage implementation.
+// Installed before importing the route: hooks.ts creates its repository at
+// module evaluation time.
 const saveSettingsSpy = vi.spyOn(SettingsRepository.prototype, "save")
 
 vi.mock("sonner", () => ({
@@ -50,27 +53,13 @@ vi.mock("@/components/settings/study-nudge-section", () => ({
 }))
 
 const { Route } = await import("@/routes/_dashboard/settings")
-// eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- createFileRoute's Route.options.component is typed broader than the concrete component this file actually registered; there is no narrower accessor.
-const SettingsRoute = Route.options.component as () => JSX.Element
-
-function withProviders(children: ReactNode): JSX.Element {
-  const client = new QueryClient({
-    defaultOptions: { mutations: { retry: false } },
-  })
-  return (
-    <QueryClientProvider client={client}>
-      <ThemeProvider>{children}</ThemeProvider>
-    </QueryClientProvider>
-  )
-}
+const SettingsRoute = routeComponent(Route)
 
 beforeEach(() => {
   toastSpy.mockClear()
   saveSettingsSpy.mockClear()
   window.localStorage.clear()
-  // This route only ever renders behind the router's auth guard - the
-  // settings query it reads stays disabled without a session (see
-  // `lib/tenant/hooks.ts`), so tests rendering it directly need one too.
+  // The settings query stays disabled without a session (`lib/tenant/hooks.ts`).
   markSignedIn()
 })
 
@@ -82,19 +71,24 @@ afterAll(() => {
   saveSettingsSpy.mockRestore()
 })
 
-async function renderLoaded(): Promise<void> {
-  render(withProviders(<SettingsRoute />))
+/** Renders the loaded form, edits the session length, returns Save. */
+async function editLength(value: string): Promise<HTMLElement> {
+  render(
+    withQueryClient(
+      <ThemeProvider>
+        <SettingsRoute />
+      </ThemeProvider>
+    )
+  )
   await screen.findByText("Settings")
+  const input = await screen.findByLabelText(/default session length/i)
+  fireEvent.change(input, { target: { value } })
+  return screen.getByRole("button", { name: /save changes/i })
 }
 
 describe("settings: save button", () => {
   it("double-clicking Save issues exactly one write (thundering-herd regression)", async () => {
-    await renderLoaded()
-
-    const input = await screen.findByLabelText(/default session length/i)
-    fireEvent.change(input, { target: { value: "25" } })
-
-    const save = screen.getByRole("button", { name: /save changes/i })
+    const save = await editLength("25")
 
     act(() => {
       fireEvent.click(save)
@@ -106,13 +100,8 @@ describe("settings: save button", () => {
     })
   })
 
-  it("saves, toasts, and the button disables again without a further edit - unchanged from pre-migration", async () => {
-    await renderLoaded()
-
-    const input = await screen.findByLabelText(/default session length/i)
-    fireEvent.change(input, { target: { value: "30" } })
-
-    const save = screen.getByRole("button", { name: /save changes/i })
+  it("saves, toasts, and the button disables again without a further edit", async () => {
+    const save = await editLength("30")
     expect(save.hasAttribute("disabled")).toBe(false)
 
     act(() => {
@@ -127,5 +116,20 @@ describe("settings: save button", () => {
           .hasAttribute("disabled")
       ).toBe(true)
     })
+  })
+})
+
+describe("settings: save button, repository write fails", () => {
+  it("tells the person the save failed, with a retry control (unknown errors are always retryable)", async () => {
+    saveSettingsSpy.mockRejectedValueOnce(new Error("localStorage write boom"))
+    const save = await editLength("25")
+
+    // eslint-disable-next-line @typescript-eslint/require-await -- act's async form is what flushes the microtask-queued mutation state update; see test-support/file-host-sabotage.ts's header.
+    await act(async () => {
+      fireEvent.click(save)
+    })
+
+    await expectSomeFailureAffordance(document.body)
+    expectRetryAffordanceTracksRetryable(document.body, true)
   })
 })

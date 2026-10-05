@@ -1,15 +1,9 @@
 /**
- * The composer's concerns, one pane each - the lesson CRM's shape
- * (`@some-ui/lesson-crm`, `lib/panes`): the same panes are laid out two ways,
- * a bottom tab bar on a phone and the four-step wizard on a wide screen, and
- * both walk one state, so turning a phone over (or resizing a window across
- * the breakpoint) leaves the person where they were.
- *
- * A phone has one more pane than the wizard has steps. Step 1 holds two
- * concerns - what exists to add, and what has been added - which a wide
- * screen can show side by side and a phone cannot: on a phone they are two
- * tabs, and the second one wears a count so a tap on the first is confirmed
- * without leaving it.
+ * The composer's concerns, one pane each (the lesson CRM's `lib/panes`
+ * shape): a bottom tab bar on a phone, the four-step wizard on a wide screen,
+ * both walking one state, so crossing the breakpoint keeps the person's
+ * place. Step 1's two concerns (what to add, what was added) are two tabs on
+ * a phone; the second wears a count.
  */
 
 export type ComposerStep = 1 | 2 | 3 | 4

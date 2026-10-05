@@ -5,10 +5,9 @@
  * when it has none, the one sentence and button that fix it.
  */
 
-import type { ReactNode } from "react"
+import { queryClientWrapper } from "@/test-support/query-client"
 import type * as SpeechModule from "@some-ui/speech"
 import type { SpeechOutcome, VoicePreview } from "@some-ui/speech"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -50,15 +49,23 @@ const { DeviceVoiceField } = await import(
   "@/components/settings/device-voice-field"
 )
 
+const KOB_INSTALLED: DeviceVoices = {
+  installed: true,
+  voices: [
+    {
+      id: "ko-kr-x-kob-local",
+      name: "Voice KOB",
+      language: "korean",
+      local: true,
+    },
+  ],
+}
+
 function renderField(value = ""): { onChange: ReturnType<typeof vi.fn> } {
   const onChange = vi.fn()
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
+  render(<DeviceVoiceField value={value} onChange={onChange} />, {
+    wrapper: queryClientWrapper(),
   })
-  const wrapper = ({ children }: { children: ReactNode }): ReactNode => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
-  )
-  render(<DeviceVoiceField value={value} onChange={onChange} />, { wrapper })
   return { onChange }
 }
 
@@ -101,17 +108,7 @@ describe("DeviceVoiceField", () => {
   })
 
   it("plays the chosen voice, and an uninstalled choice reads as the default", async () => {
-    fake.state.voices = {
-      installed: true,
-      voices: [
-        {
-          id: "ko-kr-x-kob-local",
-          name: "Voice KOB",
-          language: "korean",
-          local: true,
-        },
-      ],
-    }
+    fake.state.voices = KOB_INSTALLED
     renderField("ko-kr-x-gone-local")
 
     await screen.findByText("Phone default")
@@ -125,17 +122,7 @@ describe("DeviceVoiceField", () => {
   })
 
   it("previews the voice that is chosen", async () => {
-    fake.state.voices = {
-      installed: true,
-      voices: [
-        {
-          id: "ko-kr-x-kob-local",
-          name: "Voice KOB",
-          language: "korean",
-          local: true,
-        },
-      ],
-    }
+    fake.state.voices = KOB_INSTALLED
     renderField("ko-kr-x-kob-local")
 
     await screen.findByText("Voice KOB (offline)")
@@ -148,17 +135,7 @@ describe("DeviceVoiceField", () => {
 
   it("says why there is no sample while voice output is muted", async () => {
     fake.state.muted = true
-    fake.state.voices = {
-      installed: true,
-      voices: [
-        {
-          id: "ko-kr-x-kob-local",
-          name: "Voice KOB",
-          language: "korean",
-          local: true,
-        },
-      ],
-    }
+    fake.state.voices = KOB_INSTALLED
     renderField("ko-kr-x-kob-local")
 
     await screen.findByText("Voice KOB (offline)")

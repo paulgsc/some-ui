@@ -1,48 +1,21 @@
 /**
- * #945/S1: the one interactive renderer #936's nine files migrate onto,
- * so seventeen call sites become declarative instead of seventeen
- * hand-written four-branch matches. Consumes `matchIntent` internally and
- * holds no lifecycle state of its own - everything it renders comes from
- * the `Intent` it is handed.
+ * The one interactive renderer: call sites declare labels instead of writing
+ * four-branch matches. Consumes `matchIntent` and holds no lifecycle state.
  *
- * Double-submit protection does **not** live here: it lives in
- * `useIntent`'s `dispatchingRef` guard (see that module's header), because
- * the race it closes is a render-cycle timing gap, not a rendering
- * concern - a synchronous ref guard at the dispatch site is the only place
- * that actually closes it. `IntentButton` disabling itself while `working`
- * is a visible echo of that guard, not the mechanism.
+ * Double-submit protection lives in `useIntent`'s `dispatchingRef`, not
+ * here: the race is a render-cycle gap only a synchronous guard at dispatch
+ * closes. Disabling while `working` is a visible echo of it.
  *
- * The outer action stack is deliberately stable across every state. Earlier
- * versions introduced it only for failures, changing the button's flex item
- * between a button and a div as the intent settled. In toolbars that caused a
- * visible horizontal jump. A retryable failure also replaces the original
- * action with its retry rather than rendering two controls that dispatch the
- * same intent.
+ * The outer action stack is stable across every state, so a toolbar does not
+ * jump as the intent settles; a retryable failure replaces the action with
+ * its retry rather than adding a second control.
  *
- * A non-retryable failure only disables the button outright when
- * `error.blocksResubmission` says so - two rounds of bot review on the
- * route-arrival PR shaped this:
- *
- * 1. An earlier version fell back to `onClick={onPress}` for *every*
- *    non-retryable failure. `retryable: false` can mean "this write may
- *    have already succeeded and resubmitting it could duplicate it"
- *    (`file-host-config/client.ts`'s deadline on a non-idempotent `POST`),
- *    and falling back to `onPress` there replays exactly the write that's
- *    unsafe to replay.
- * 2. The fix for that - disabling on *any* `retryable: false` - went too
- *    far the other way: a definitive 4xx rejection (a validation error) is
- *    also `retryable: false`, but there the request demonstrably never
- *    took effect, so blocking `onPress` forever left a person unable to
- *    fix their input and resubmit without remounting the form.
- *
- * `blocksResubmission` is the distinct signal that closes both: `false` (or
- * absent) for a non-retryable failure that's merely pointless to repeat
- * verbatim (falls back to `onPress`, same as `retryable: true`'s "Try
- * again" case, just without a literal retry of stale variables); `true`
- * only when the previous attempt's outcome is genuinely unknown, where even
- * a *new* attempt is unsafe. See `@some-ui/intent-kit`'s `IntentError` and
- * `apps/www/src/lib/intent/errors.ts`'s `fromUnreachable` for the one
- * producer that sets it.
+ * A non-retryable failure disables the button only when
+ * `error.blocksResubmission` says the previous outcome is unknown (a
+ * timed-out non-idempotent `POST`, `errors.ts`'s `fromUnreachable`), where
+ * replaying `onPress` could duplicate a write. Otherwise (e.g. a 4xx
+ * validation error) it falls back to `onPress`, so the person can fix their
+ * input and resubmit.
  */
 
 import type { JSX, PropsWithChildren, ReactNode } from "react"
@@ -59,16 +32,11 @@ export type IntentButtonProps<TStep extends string = never> = {
   onPress: () => void
   idleLabel: ReactNode
   workingLabel: ReactNode
-  /** For a composite intent's `working` step - e.g. "Saving..." while
-   * creating, "Starting..." while activating. Falls back to `workingLabel`
-   * for any step (or no step) left unmapped. */
+  /** For a composite intent's `working` step (e.g. "Saving...",
+   * "Starting..."). Falls back to `workingLabel` for an unmapped step. */
   workingStepLabel?: (step: TStep | undefined) => ReactNode | undefined
-  /** Shown instead of `idleLabel` immediately after success. Most call
-   * sites don't need this - a toast or a navigation is today's actual
-   * confirmation, lifted verbatim, and the button reverting to its idle
-   * label the moment it re-enables (or disabling via `disabled` when the
-   * caller's own dirty-check says there's nothing new to save) is already
-   * correct. */
+  /** Shown instead of `idleLabel` after success. Rarely needed: a toast or
+   * navigation usually confirms. */
   succeededLabel?: ReactNode
   variant?: ButtonProps["variant"]
   size?: ButtonProps["size"]
@@ -77,9 +45,8 @@ export type IntentButtonProps<TStep extends string = never> = {
    * caller's `!isDirty` or a validation failure. */
   disabled?: boolean
   failureClassName?: string
-  /** Passed through to every rendered `<Button>` verbatim. Only needed for
-   * an icon-only button (no visible `idleLabel` text) - see
-   * `sessions/index.tsx`'s duplicate/delete row actions. */
+  /** Passed to every rendered `<Button>`; needed for an icon-only button
+   * (`sessions/index.tsx`'s row actions). */
   title?: string
 }
 

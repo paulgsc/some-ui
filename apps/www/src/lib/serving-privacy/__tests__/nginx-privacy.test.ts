@@ -1,39 +1,25 @@
 /**
  * What the web tier does not log, forward or leak (privacy stage A), pinned as
- * plain text: no browser, no nginx binary, no Docker.
- *
- * The settings below are easy to lose and invisible when lost. A request that
- * reaches a container with the stock nginx image is logged to stdout with the
- * client address, the full request line, the referrer and the user agent
- * unless a server block says `access_log off;`, and a proxy that forwards
- * `$remote_addr` hands another process every visitor's address. Nothing fails
- * when either comes back, so this reads the four files that decide it and
- * fails with the line to fix:
+ * plain text: no browser, no nginx binary, no Docker. A lost `access_log off;`
+ * or a forwarded `$remote_addr` fails nothing at runtime, so this reads the
+ * four files that decide it and fails with the line to fix:
  *
  * - `apps/www/Dockerfile`: the server block the image writes to
  *   conf.d/default.conf (the one `docker run` and the published image serve).
  * - `apps/www/nginx.https.conf`: the compose stack's template, which replaces
  *   that file (two server blocks, :80 and :443).
  * - `apps/www/nginx.security-headers.conf`: the `Referrer-Policy` both include.
- * - `nginx.conf` at the repo root: the TTS front-end, which has its own http
- *   block and so its own (otherwise compiled-in) access log.
+ * - `nginx.conf` at the repo root: the TTS front-end, with its own http block
+ *   and so its own access log.
  *
- * Deliberately not covered: `error_log` (left on - nginx's error log still
- * carries a client address and request line when an upstream fails, and cannot
- * be made address-free without dropping nginx's own errors), the TTS proxy
- * snippet's forwarding (`nginx.tts-proxy.conf` and the root `nginx.conf`'s
- * `proxy_set_header`s are not part of this change), and the compose
- * `logging:` bound in infra/compose/www.yml.
+ * Not covered: `error_log` (it cannot be made address-free without dropping
+ * nginx's own errors), the TTS proxy's forwarding, and the compose `logging:`
+ * bound in infra/compose/www.yml.
  *
- * Why a parser and not a regex over the text: `access_log off;` in a comment,
- * or in the wrong block, reads the same as the real thing to a substring
- * match. The tiny block parser below understands comments, quotes and braces
- * (and throws on unbalanced ones), which is all these files use. It is not a
- * general nginx parser.
- *
- * The checks are pure functions returning problems, and the last group feeds
- * them known-bad configs, so a test that has quietly stopped looking at
- * anything cannot stay green.
+ * A tiny block parser (comments, quotes, braces; not general nginx), because
+ * a substring match cannot tell `access_log off;` in a comment or the wrong
+ * block from the real thing. The last group feeds the checks known-bad
+ * configs, so a check that stopped looking cannot stay green.
  */
 
 import { readFileSync } from "node:fs"

@@ -1,13 +1,6 @@
 /**
- * Route-arrival handoff (r1), post-review: a plain `retry: 3` retried a
- * `file_host` timeout exactly as eagerly as a fast rejection, turning one
- * 10s deadline into roughly four (plus backoff) before a route's read
- * actually settled - the bot review on this PR's own first head caught it
- * (`file-host-config/client.ts`'s deadline promised a bounded wait; this
- * config was the reason the promise didn't hold in production, only in
- * tests that construct a client with `retry: false`). This is the
- * regression test for the fix: a timeout gets zero further attempts, every
- * other `file_host` failure still gets the usual 3.
+ * A `file_host` timeout gets no further attempts (retrying multiplies the
+ * `client.ts` deadline); every other `file_host` failure still gets 3.
  */
 
 import { queryClient } from "@/providers/tanstack-query"

@@ -1,13 +1,8 @@
 /**
- * What an account holds is said on two screens, from one string.
- *
- * The sign-up screen is where a person decides whether to make an account, so
- * it must list every kind of record the account will hold: sessions and their
- * times, shelf items, and (once reminders are on) the push address. It listed
- * only the first until review pointed out the settings screen's own deletion
- * copy already named the rest. A screen cannot be rendered here without the
- * router, so the second half reads the two sources and requires that both use
- * the shared constant rather than a copy of their own.
+ * What an account holds is said on two screens, from one string: the
+ * sign-up screen must list every kind of record (sessions and their times,
+ * shelf items, the push address). Screens cannot render without the router,
+ * so the second half reads both sources and requires the shared constant.
  */
 
 import { readFileSync } from "node:fs"

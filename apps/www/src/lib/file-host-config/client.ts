@@ -1,45 +1,21 @@
 /**
- * The one `fetch` wrapper every `file_host` caller goes through.
+ * The one `fetch` wrapper every `file_host` caller goes through, for:
  *
- * It exists for three reasons, and the last two are the ones that earn the
- * file:
+ * 1. **A seam to test against.** `FileHostTransport` is the whole surface its
+ *    callers need, so their tests hand them a function: no `fetch` stubbing.
+ * 2. **A failure that says what failed.** A mixed-content block, a proxy with
+ *    nothing behind it and a stopped `file_host` all arrive as the same opaque
+ *    `TypeError: Failed to fetch`. See `lib/file-host-config`.
+ * 3. **A bounded wait.** Bare `fetch` has no timeout, and a black-holed
+ *    connection stays pending for minutes; `queryOutcome`'s `pending` state
+ *    depends on every request settling within a deadline. It is
+ *    `Promise.race`d rather than trusting `fetch` to honour `AbortSignal`,
+ *    since a test seam may not (`installFileHostSabotage`'s `"hang"`).
  *
- * 1. **A seam to test against.** `FileHostTransport` is the whole surface
- *    the sessions repository and the push subscription need, so their tests
- *    hand them a function and assert on what was called - no `global.fetch`
- *    stubbing, no jsdom, no network.
- * 2. **A failure that says what failed.** Everything this module exists to
- *    survive - a mixed-content block, a proxy with nothing behind it, a
- *    `file_host` that is not running - arrives at the caller as the same
- *    opaque `TypeError: Failed to fetch`. Left bare, the visible symptom is
- *    "sessions don't load" with a browser console warning about CORS that
- *    sends the reader to the wrong repository. See `lib/file-host-config`.
- * 3. **A bounded wait.** Bare `fetch` has no default timeout - a request
- *    against a black-holed connection (the LAN box is powered off but the
- *    switch still answers ARP, a proxy holding the socket open with nothing
- *    behind it) stays pending until the browser gives up, which can be
- *    minutes. Every route-arrival outcome downstream of this transport
- *    (`queryOutcome`'s `pending` state, in particular) depends on this
- *    settling one way or another within a declared deadline - see the
- *    route-arrival handoff (r1) and #911, whose original 13-site raw-`fetch`
- *    census missed this file entirely. `Promise.race`d against the timeout
- *    rather than relying solely on `fetch` honoring `AbortSignal`: a real
- *    browser's `fetch` does, but nothing here can assume every caller of
- *    this module's own test seam does too (see `installFileHostSabotage`'s
- *    `"hang"` mode), and the deadline must hold either way.
- *
- *    The deadline lives in `requestJSON`, not inside `createFileHostTransport`
- *    itself, and covers the *whole* logical request - headers **and** body.
- *    A first version scoped it to just the `fetch()` call and cleared it the
- *    moment headers arrived; `file_host` sending headers promptly and then
- *    stalling the JSON body (a slow disk read, a wedged connection after the
- *    response started) left `response.json()` with no protection at all,
- *    which is exactly the kind of non-settling dependency this deadline
- *    exists to bound. `controller.signal.aborted` (not the specific error
- *    that happened to win the race) is what `requestJSON` checks to decide
- *    "did my own deadline fire" - `fetch` reacting to that same abort can
- *    reject first, with its own `AbortError`, depending on microtask timing,
- *    and that must still count as this deadline, not a different failure.
+ *    The deadline lives in `requestJSON` and covers headers **and** body: a
+ *    prompt response that stalls its body must still time out. "Did my
+ *    deadline fire" is read from `controller.signal.aborted`, not from which
+ *    rejection won, because `fetch`'s own `AbortError` can reject first.
  */
 
 import { authority, StaleAuthorityError } from "@/lib/authority"
@@ -54,15 +30,9 @@ export type FileHostTransport = (
 ) => Promise<Response>
 
 /**
- * A response the caller can do nothing about because the deployment has no
- * such feature - an unconfigured VAPID identity, most of all.
- *
- * Distinct from `FileHostUnreachableError` because the correct response is
- * different: unreachable is "retry later, the LAN or the process is down",
- * `503 feature_not_configured` is "this server will never answer this, stop
- * asking and fall back". #907's client-only behaviour *is* that fallback,
- * so the distinction is what keeps a missing backend costing the
- * closed-browser case rather than the whole feature.
+ * The deployment has no such feature (an unconfigured VAPID identity, most of
+ * all). Distinct from `FileHostUnreachableError` ("retry later"): this server
+ * will never answer, so stop asking and fall back.
  */
 export class FileHostNotConfiguredError extends Error {
   constructor(route: string) {
@@ -104,26 +74,15 @@ async function errorCodeOf(response: Response): Promise<string | null> {
   }
 }
 
-/** A LAN service, not a public API over the open internet - long enough
- * that an ordinary slow response never trips it, short enough that a person
- * waiting on a route read gets a terminal outcome in a time nobody would
- * call "hung." Matches `@some-ui/fetch-kit`'s own default (`DEFAULT_OPTIONS.timeout`),
- * which answers U-2 from the route-arrival handoff: the same policy is safe
- * for both. Not exported - nothing outside `resolveTimeoutMs` needs the
- * default directly; a test wanting a different deadline overrides it via
- * `VITE_FILE_HOST_TIMEOUT_MS`, not by importing this value. */
 let unauthorizedHandler: (() => () => void) | null = null
 
 /**
- * What to do when `file_host` answers `401`: the session cookie is missing,
- * expired or revoked (signed out everywhere, account deleted). Registered by
- * `lib/auth` rather than imported here, which would be a cycle: that
- * module is itself a caller of this one.
+ * What to do when `file_host` answers `401` (cookie missing, expired or
+ * revoked). Registered by `lib/auth`, since importing it would be a cycle.
  *
- * `handler` is called as each request is sent, and returns what to run if
- * that request is refused. So the response is judged against the session
- * the request was sent under: a slow cookieless request answering `401`
- * after a sign-in says nothing about the new session.
+ * `handler` is called as each request is sent and returns what to run if that
+ * request is refused, so a slow `401` is judged against the session it was
+ * sent under, not one signed in since.
  */
 export function onFileHostUnauthorized(
   handler: (() => () => void) | null
@@ -131,13 +90,13 @@ export function onFileHostUnauthorized(
   unauthorizedHandler = handler
 }
 
+/** Long enough that a slow LAN response never trips it, short enough that a
+ * route read never looks hung. Matches `@some-ui/fetch-kit`'s default; tests
+ * override it with `VITE_FILE_HOST_TIMEOUT_MS`. */
 const DEFAULT_FILE_HOST_TIMEOUT_MS = 10_000
 
-/** Read fresh on every call, not cached at transport-creation time - so a
- * test can `vi.stubEnv` a short deadline for the one call it's exercising
- * even though `sessionsRepository` (and therefore this transport) is a
- * module-scope singleton created once. Mirrors `describeFileHost`'s own
- * `import.meta.env` read for the identical reason. */
+/** Read on every call so a test can `vi.stubEnv` a deadline even though the
+ * transport is a module-scope singleton. */
 function resolveTimeoutMs(): number {
   const override: string | undefined = import.meta.env.VITE_FILE_HOST_TIMEOUT_MS
   if (override === undefined || override === "")
@@ -151,43 +110,29 @@ function resolveTimeoutMs(): number {
 /**
  * Why a caller wants a transport. Required, so nobody gets one by default.
  *
- * - `"account"`: the caller sends or reads *learner state* (sessions, the
- *   shelf). It is the account's business,
- *   so this answers `null` unless the learner's data authority is the account
- *   (`lib/authority`, invariant LA1), and a transport it did hand out refuses
- *   to send once the authority has become a different one.
- * - `"reporting"`: behaviour rather than content, in the account (signals, a
- *   presence lease, a push subscription). It is `"account"`'s conditions and
- *   the person's separate opt-in (`lib/authority`, "Reporting"), so a person
- *   who keeps an account for their sessions tells the server nothing about
- *   when they study unless they asked it to.
- * - `"ceremony"`: the person is signing in, out or adding a passkey, or the app
- *   is checking whether a session they chose to use still exists. These are
- *   their own explicit acts and carry no learner state.
+ * - `"account"`: *learner state* (sessions, the shelf). `null` unless the data
+ *   authority is the account (`lib/authority`, invariant LA1); a transport
+ *   handed out refuses to send once the authority changes.
+ * - `"reporting"`: behaviour rather than content (signals, a presence lease, a
+ *   push subscription). `"account"`'s conditions plus the person's separate
+ *   opt-in (`lib/authority`, "Reporting").
+ * - `"ceremony"`: signing in, out, adding a passkey, or checking a chosen
+ *   session still exists. Explicit acts that carry no learner state.
  */
 export type TransportPurpose = "account" | "ceremony" | "reporting"
 
 /**
  * Build the default transport for wherever this page is served from.
  *
- * Returns `null` when there is no base URL at all - SSR, or a test with no
- * `window` - or when `purpose` is `"account"` and the learner's data is not
- * the account's, or `"reporting"` and it may not be reported. Callers treat
- * that as "no backend", which is the same
- * branch the static build takes. Deliberately has no timeout of its own - see
- * this file's header, point 3, and `requestJSON` below, which owns the
- * deadline for the whole request this transport is only the first half of.
+ * `null` with no base URL (SSR, no `window`), or when `purpose`'s authority
+ * conditions fail; callers treat that as "no backend", like the static build.
+ * No timeout of its own: `requestJSON` owns the deadline (header, point 3).
  *
- * Sends credentials (`credentials: "include"`), because the passkey session
- * is an `HttpOnly` cookie and a `published-port` base URL is cross-origin,
- * where fetch's default `same-origin` would neither store the cookie a
- * sign-in sets nor send it back. A caller can still override it per request.
- * Every module this transport reaches answers with
- * `Access-Control-Allow-Credentials` (paulgsc/server `routes/cors.rs`,
- * `allowlisted_cors_with_credentials`). A browser drops a credentialed
- * cross-origin response without that header, so a caller of one of the
- * server's uncredentialed read modules (`db/curriculum`, `db/activities`)
- * must pass `credentials: "same-origin"`.
+ * Sends `credentials: "include"`: the passkey session is an `HttpOnly` cookie
+ * and a `published-port` base URL is cross-origin. Every module this reaches
+ * answers with `Access-Control-Allow-Credentials` (paulgsc/server
+ * `routes/cors.rs`); a caller of an uncredentialed read module
+ * (`db/curriculum`, `db/activities`) must pass `credentials: "same-origin"`.
  */
 export function createFileHostTransport(
   purpose: TransportPurpose,
@@ -230,17 +175,9 @@ export function createFileHostTransport(
 }
 
 /**
- * Whether `error` is this module's own deadline firing, as opposed to a
- * fast rejection (connection refused, a 5xx) or an unconfigured feature.
- *
- * The distinction matters for retry policy, not just diagnostics: TanStack
- * Query's default `retry: 3` (`providers/tanstack-query.tsx`) is cheap to
- * honor for a fast failure, but multiplies a *timeout* by however many
- * attempts it allows - a black-holed connection has no reason to behave
- * differently on a second attempt, so retrying one just pays the same
- * deadline again for nothing. `providers/tanstack-query.tsx` uses this to
- * make a timeout terminal after one attempt while still retrying every
- * other `file_host` failure.
+ * Whether `error` is this module's own deadline firing, as opposed to a fast
+ * rejection. `providers/tanstack-query.tsx` makes a timeout terminal after one
+ * attempt: retrying a black-holed connection just pays the deadline again.
  */
 export function isFileHostTimeout(error: unknown): boolean {
   return (
@@ -251,14 +188,10 @@ export function isFileHostTimeout(error: unknown): boolean {
 }
 
 /**
- * `POST` is the one method this app's `file_host` routes use for a write
- * that mints a new resource (`HttpSessionsRepository`'s `create`/
- * `duplicate` - see that file's own route table); `PATCH`/`DELETE` and a
- * plain `GET` all converge on the same end state if repeated, so aborting
- * and retrying them is safe. A `POST` whose *response* timed out is the one
- * shape where the client genuinely cannot tell "never reached the server"
- * from "the server already created it and the response was slow" - see
- * `requestJSON`'s own use of this below.
+ * `POST` is the method that mints a resource (`HttpSessionsRepository`'s
+ * `create`/`duplicate`); the others converge if repeated. A timed-out `POST`
+ * cannot tell "never arrived" from "created, slow response", so it is not
+ * retryable.
  */
 function isNonIdempotent(
   init: RequestInit | undefined,
@@ -271,30 +204,20 @@ function isNonIdempotent(
 
 export type RequestOptions = {
   /**
-   * Whether repeating this request converges on the same end state, when its
-   * method alone says otherwise. A `POST` is taken to mint something unless a
-   * caller says it does not - the lesson CRM's retire and restore are
-   * `POST`s that set a state, so a timed-out one is as safe to retry as a
-   * `PATCH`. Omit it to let the method decide.
+   * Whether repeating this request converges, when its method says otherwise
+   * (the lesson CRM's retire and restore are state-setting `POST`s). Omit it
+   * to let the method decide.
    */
   idempotent?: boolean
 }
 
 /**
- * `fetch`, decode, and turn every failure into one of the three errors
- * above - bounded by one deadline covering both halves.
+ * `fetch`, decode, and turn every failure into one of the three errors above,
+ * with one deadline racing the whole operation (transport, status check and
+ * body read; see the header, point 3).
  *
- * Every `file_host` route answers with a JSON body, including the deletes
- * (`{ removed }`, `{ deletedCount }`), with one exception: the learner
- * shelf's `DELETE` is a bodiless `204`, which `lib/shelf-client` reads as
- * `null` before it reaches here.
- *
- * The deadline is owned here rather than inside the transport: `transport`
- * only promises headers, and a stalled body after a prompt response would
- * otherwise have no protection at all (see this file's header). Racing the
- * *entire* operation - the transport call, the status check, and the body
- * read, success or error body alike - against one shared abort signal is
- * what closes that gap, whatever step actually stalls.
+ * Every `file_host` route answers with a JSON body except the learner shelf's
+ * bodiless `204` `DELETE`, which `lib/shelf-client` handles before here.
  */
 export async function requestJSON<T>(
   transport: FileHostTransport,
@@ -313,10 +236,8 @@ export async function requestJSON<T>(
     })
 
     if (response.status === 503) {
-      // `503` is two things on `file_host`: a feature this deployment has
-      // not configured, and a busy server or a spent quota
-      // (`service_overloaded`, e.g. the daily new-account cap). Only the
-      // first is "not configured"; the second is an answer with a code.
+      // `503` is either an unconfigured feature or `service_overloaded` (a
+      // busy server, a spent quota such as the daily new-account cap).
       const code = await errorCodeOf(response)
       if (code === "service_overloaded") {
         throw new FileHostResponseError(503, route, code)
@@ -332,9 +253,8 @@ export async function requestJSON<T>(
       )
     }
 
-    // `Response.json()` is `any` by definition — there is no schema to check
-    // against here, and the caller's `T` is the claim it is making about the
-    // route it asked for. Narrowing happens where the shape is known.
+    // No schema here: the caller's `T` is its claim about the route, and
+    // narrowing happens where the shape is known.
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return response.json()
   }
@@ -343,9 +263,8 @@ export async function requestJSON<T>(
     return await Promise.race([
       operation(),
       new Promise<never>((_resolve, reject) => {
-        // Settles this module's own race the instant the deadline fires,
-        // independent of whether `transport`'s own `fetch` honors
-        // `controller.signal` - see this file's header, point 3.
+        // Settles the race when the deadline fires, whether or not the
+        // transport honours `controller.signal` (header, point 3).
         controller.signal.addEventListener("abort", () => {
           reject(
             new DOMException(
@@ -363,11 +282,7 @@ export async function requestJSON<T>(
     ) {
       throw cause
     }
-    // Whichever promise actually won the race above, `controller.signal`
-    // having fired *is* this deadline - not whatever specific rejection
-    // reason happened to propagate first (see this file's header). Folding
-    // both into one canonical, `isFileHostTimeout`-recognizable error keeps
-    // the distinction race-condition-free.
+    // A fired signal *is* this deadline, whichever rejection won the race.
     if (controller.signal.aborted) {
       throw new FileHostUnreachableError(
         route,
@@ -375,8 +290,7 @@ export async function requestJSON<T>(
           `file_host did not answer ${route} within the deadline`,
           "TimeoutError"
         ),
-        // Not retryable for a non-idempotent write - see `isNonIdempotent`'s
-        // own header and `FileHostUnreachableError`'s `retryable` doc.
+        // Not retryable for a non-idempotent write (`isNonIdempotent`).
         !isNonIdempotent(init, options)
       )
     }

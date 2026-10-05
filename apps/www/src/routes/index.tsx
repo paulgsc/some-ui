@@ -16,14 +16,10 @@ import { ExtensionsPage } from "@/components/extensions/extensions-page"
 import { ThemeSwitcher } from "@/components/theme-switcher"
 
 /**
- * This repo's GitHub Pages deployment bundles three unrelated static
- * artifacts under one origin (see .github/workflows/pages.yml): this
- * TanStack app, a Storybook build nested at /storybook/, and this app's own
- * /resume route. This landing is the signed-in visitor's "/": a standalone
- * splash - not the learning app - whose only job is to point at the three of
- * them, plus /extensions, the tour of the browser extensions the same
- * monorepo ships. A visitor with no session gets that tour as "/" itself
- * instead (see `Root` below).
+ * The signed-in visitor's "/": a splash pointing at what this origin hosts
+ * (.github/workflows/pages.yml): the app, Storybook at /storybook/, /resume,
+ * and /extensions. A visitor with no session gets the extensions tour instead
+ * (see `Root`).
  */
 type DestinationBase = {
   title: string
@@ -32,9 +28,8 @@ type DestinationBase = {
   cta: string
 }
 
-// The Storybook build is a separate static site outside the SPA's route
-// tree (its href is only known at runtime, from BASE_URL), so it can't be
-// typed against the router like the two in-app destinations can.
+// Storybook is a separate static site (href known only at runtime, from
+// BASE_URL), so it can't be typed against the router.
 type Destination =
   | (DestinationBase & { external: true; href: string })
   | (DestinationBase & {
@@ -128,9 +123,7 @@ const Landing = (): JSX.Element => (
     </div>
     <div className="mx-auto flex min-h-svh max-w-4xl flex-col justify-center gap-10 px-6 py-16">
       <div className="space-y-3 text-center">
-        {/* The mark leads the hero, with the wordmark under it — the pair is
-            one unit, so the mark is decorative here rather than a second
-            announcement of the same name. */}
+        {/* The mark and wordmark are one unit, so the mark is decorative. */}
         <HexCombMark tone="brand" className="mx-auto size-12" />
         <p className="text-muted-foreground text-sm font-medium tracking-wide uppercase">
           Some UI
@@ -143,9 +136,8 @@ const Landing = (): JSX.Element => (
           browser extensions, and a résumé - built and deployed from a single
           monorepo. Pick a destination below.
         </p>
-        {/* The four cards answer "what is deployed here". /mission answers
-            why any of it exists - kept as a text link so it doesn't compete
-            with the destinations for the same glance. */}
+        {/* /mission answers why any of it exists: a text link, so it doesn't
+            compete with the destinations. */}
         <Link
           to="/mission"
           className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm underline-offset-4 transition-colors hover:underline"
@@ -154,8 +146,7 @@ const Landing = (): JSX.Element => (
           <ArrowRight className="size-3.5" aria-hidden />
         </Link>
       </div>
-      {/* Two by two rather than a row of three: with four destinations a
-          third column leaves the last card alone on a second row. */}
+      {/* Two by two: a row of three would leave the fourth card alone. */}
       <div className="grid gap-4 sm:grid-cols-2">
         {DESTINATIONS.map((destination) => (
           <DestinationCard key={destination.title} {...destination} />
@@ -166,21 +157,13 @@ const Landing = (): JSX.Element => (
 )
 
 /**
- * `"/"` is two pages.
+ * `"/"` is two pages. Where a person can learn on the device (every build with
+ * a `file_host`), the landing above is everyone's front door. On the public
+ * site, with no server and mostly strangers sent a link, the extensions comb
+ * is the front door; someone who opened the demo gets the landing.
  *
- * Where a person can learn on the device (every build with a `file_host`,
- * which is the `lan` image and the Android app), the landing above is the front
- * door for everyone: its cards are the way into their own work, and none of it
- * needs an account.
- *
- * On the public site there is no server and no one's work to resume, and
- * visitors are mostly strangers sent a link, so the extensions comb is the
- * front door: the site introduces itself by showing what it has built rather
- * than listing where to go. Someone who has opened the demo there (a "session"
- * that lives in memory) gets the landing.
- *
- * Chosen in the component rather than by redirecting in `beforeLoad`, so the
- * front door keeps the address `"/"` and a change swaps the page in place.
+ * Chosen in the component, not a `beforeLoad` redirect, so the front door
+ * keeps the address `"/"`.
  */
 const Root = (): JSX.Element => {
   const { backend, session } = useAuthoritySnapshot()

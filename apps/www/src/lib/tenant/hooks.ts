@@ -32,27 +32,17 @@ import type {
   UserSettings,
 } from "./types"
 
-// The queryKey/queryFn pairs these hooks read now live in `queries.ts`, so a
-// route loader can start the same fetch before a component exists to ask for
-// it. Everything below spends those definitions rather than restating them.
+// The queryKey/queryFn pairs live in `queries.ts`, shared with route loaders.
 export { settingsKey } from "./queries"
 
 /**
- * Every read hook below is `enabled` on this, not just the query options a
- * loader prefetches. A route loader never runs before the router's own
- * `beforeLoad` guard clears a location, so it needs no gate of its own - but
- * these hooks can also be called from outside the routed tree entirely (a
- * provider mounted above the router, a future one nobody has written yet),
- * where there is no route guard to rely on. Gating the read here, once,
- * means any caller gets it for free.
+ * Every read hook is `enabled` on this: loaders run behind `beforeLoad`
+ * guards, but these hooks can be called outside the routed tree.
  *
- * What it waits for is the learner's data authority to be *decided*
- * (`lib/authority`): the device needs no session, so there is nothing to wait
- * for there, but a returning account user's is undecided until their session
- * has been checked, and reading before then would flash the wrong store.
- *
- * This is a waste guard, not a security one: whether a request is *allowed*
- * is the server's question, not this one.
+ * It waits for the data authority to be *decided* (`lib/authority`): a
+ * returning account user's is undecided until their session is checked, and
+ * reading before then would flash the wrong store. A waste guard, not a
+ * security one.
  */
 function useTenantQueriesEnabled(): boolean {
   return useAuthority().kind !== "pending"
@@ -119,9 +109,8 @@ export function useCreateSession(): UseMutationResult<
     mutationFn: (input: CreateSessionInput) => sessionsRepository.create(input),
     onSuccess: (session) => {
       void queryClient.invalidateQueries({ queryKey: sessionsKey })
-      // A new session is the opportunity a reminder can point at. See
-      // `lib/study-nudge/signals` for why this is emitted here and not in
-      // the repository.
+      // A new session is the opportunity a reminder can point at
+      // (`lib/study-nudge/signals`).
       reportSessionTransition(session)
     },
   })
@@ -136,20 +125,17 @@ export function useUpdateSession(): UseMutationResult<
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ id, patch }) => sessionsRepository.update(id, patch),
-    // Captured before the write, because after it the cache holds the new
-    // record and the transition is unrecoverable. Only a *change* of status
-    // is a behaviour worth reporting: without the before, renaming a
-    // running session would report "they sat down" all over again and
-    // silently inflate the engagement the server is measuring.
+    // Captured before the write: afterwards the transition is lost. Only a
+    // *change* of status is reported, or renaming a running session would
+    // report "they sat down" again.
     onMutate: ({ id }) => ({
       previous: queryClient.getQueryData<SessionRecord>(sessionKey(id)),
     }),
     onSuccess: (session, _variables, context) => {
       void queryClient.invalidateQueries({ queryKey: sessionsKey })
       queryClient.setQueryData(sessionKey(session.id), session)
-      // No `previous` means the single-session query was never populated —
-      // an update from a list view. Reporting a provisioning for it would
-      // be wrong, so `signalForTransition` is only given what is known.
+      // No `previous`: the single-session query was never populated (an
+      // update from a list view), so no provisioning is reported.
       if (context.previous) {
         reportSessionTransition(session, context.previous)
       }
@@ -207,10 +193,8 @@ export function useUpdateStatusManySessions(): UseMutationResult<
       sessionsRepository.updateStatusMany(ids, status),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: sessionsKey })
-      // Deliberately silent. A bulk status change is housekeeping from the
-      // list view - marking six drafts as scheduled is not six people
-      // sitting down - and reporting it would put behaviour the server
-      // trusts on an administrative action.
+      // Deliberately silent: a bulk status change is list-view housekeeping,
+      // not behaviour.
     },
   })
 }

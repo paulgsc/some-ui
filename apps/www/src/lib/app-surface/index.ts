@@ -4,30 +4,22 @@ import { redirect } from "@tanstack/react-router"
 import { hasAudience, MOBILE_APP } from "@/lib/build-profile"
 
 /**
- * What the Android app (apps/mobile) carries: its own Home (`/today`), the
- * hub its daily tools hang off; sessions - the list, the composer and the
- * player; the soundbites; aph; and the settings page, which in that build is
- * the phone's own (sync from home, study nudges, the voice). Everything else
- * www routes to (the landing, the web's Home, the résumé, jobs, profile, the
- * extensions tour, the LAN tools) is the web app's, and the phone has no use
- * for it.
+ * What the Android app (apps/mobile) carries: its Home (`/today`); sessions
+ * (list, composer, player); the soundbites; aph; and settings, which there is
+ * the phone's own. Everything else www routes to is the web app's.
  *
- * An allowlist, not a list of exclusions, so that a page added to www later
- * stays off the phone until someone puts it here. Typed against the route
- * tree, so renaming or removing one of these routes fails `tsc` here.
+ * An allowlist, so a page added later stays off the phone until listed here.
+ * Typed against the route tree, so renaming a route fails `tsc`.
  */
 const MOBILE_SURFACE: ReadonlyArray<keyof FileRoutesByTo> = [
   "/sessions",
-  // The pages only the Android app's build carries (the "apk" audience):
-  // Home, the soundbites (the phone's microphone) and aph. Asked rather than
-  // assumed, like any gated link.
+  // The "apk" audience's pages: Home, the soundbites (the microphone) and
+  // aph. Asked rather than assumed, like any gated link.
   ...(hasAudience("apk") ? (["/today", "/soundbites", "/aph"] as const) : []),
   "/settings",
-  // Not a page the phone shows: the device backend is always signed in. But
-  // the root's sign-in guard sends a signed-out visit here, and redirecting it
-  // back would loop between the two - so if the backend ever fails to answer,
-  // the app shows the sign-in page's error instead of hanging. The sidebar
-  // never lists it.
+  // Not shown (the device backend is always signed in), but the root's
+  // sign-in guard sends a signed-out visit here; redirecting it back would
+  // loop, so a backend failure shows the sign-in page's error instead.
   "/auth",
 ]
 
@@ -42,17 +34,14 @@ export function isOnMobileSurface(pathname: string): boolean {
 }
 
 /**
- * The root route's first `beforeLoad` step. In the Android app's build, a
- * path off the surface - `"/"` at launch, a link some shared component still
- * makes to the web's Home, a stale deep link - is replaced by the phone's
- * Home. A no-op in every other build.
+ * The root route's first `beforeLoad` step. In the Android build, a path off
+ * the surface (`"/"` at launch, a shared component's link to the web's Home, a
+ * stale deep link) is redirected to the phone's Home, not not-found: the
+ * person did nothing wrong. A no-op elsewhere.
  *
- * A redirect rather than not-found: nothing the person did on the phone is
- * wrong when they reach one of these, so it should land them somewhere useful.
- * The pages themselves are still in the bundle (the route tree is the same in
- * every build); this only makes them unreachable. That is debt, not design:
- * `build.paths.ts` lists each such route against the APK, and
- * `check:bundle-paths` fails on any other route file that reaches it.
+ * Those pages are still in the bundle; that is debt, not design:
+ * `build.paths.ts` lists each such route and `check:bundle-paths` fails on
+ * any other route file that reaches the APK.
  */
 export function keepToMobileSurface(pathname: string): void {
   if (MOBILE_APP && !isOnMobileSurface(pathname)) {

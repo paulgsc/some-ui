@@ -1,23 +1,12 @@
 /**
- * Input disclosure: what an activity is going to ask of a person's hands.
+ * Input disclosure: what an activity will ask of a person's hands. The
+ * sibling of `components/audio/audio-activity-notice`, same shape: a hint on
+ * a card being chosen, a note inside the chosen surface.
  *
- * The sibling of `components/audio/audio-activity-notice`, and deliberately
- * built to the same shape — a hint at rest on a card someone is choosing
- * from, and a note inside the surface they have already chosen. Audio
- * disclosure exists because a module that makes noise should say so before it
- * does; this exists because a module that changes shape on a phone should say
- * so before someone starts it there.
- *
- * The case that made it necessary is LeetType. Its large-screen surface is a
- * typing probe; below the small-screen breakpoint it is a different exercise
- * — read a change, say what it does — because there is no keyboard on a phone
- * to produce code with. A person who launched it on their phone expecting the
- * typing game would otherwise find out by being handed something else.
- *
- * Nothing here reads the viewport. The hint is written to be true at every
- * width ("Typing on a keyboard; reading and tapping on a phone"), which is
- * what a card in a launcher needs: the person may well be choosing on one
- * device for a session they will play on another.
+ * For an activity that changes shape on a phone (LeetType becomes a
+ * read-and-say exercise with no keyboard). Nothing reads the viewport: the
+ * hint is true at every width, since a person may choose on one device and
+ * play on another.
  */
 
 import type { JSX } from "react"
@@ -31,9 +20,8 @@ export type ActivityInputProps = {
 }
 
 /**
- * A glyph and one line, for an activity card a person is choosing between.
- * Renders nothing for an activity that asks nothing worth disclosing — which
- * is most of them, and the point.
+ * A glyph and one line for an activity card; nothing for an activity that
+ * asks nothing worth disclosing (most of them).
  */
 export const ActivityInputHint = ({
   activity,
@@ -59,13 +47,9 @@ export const ActivityInputHint = ({
 }
 
 /**
- * The same disclosure one step further in, on the Configure screen where a
- * person is about to commit to a session length.
- *
- * Only an activity whose small-screen interaction is a genuinely different
- * exercise (`switchesOnSmallScreens`) earns the extra sentence. For anything
- * else the hint above is the right weight, and a second callout would be a
- * banner nobody reads.
+ * The same disclosure on the Configure screen. Only an activity whose
+ * small-screen interaction is a different exercise (`switchesOnSmallScreens`)
+ * gets the extra sentence.
  */
 export const ActivityInputNote = ({
   activity,

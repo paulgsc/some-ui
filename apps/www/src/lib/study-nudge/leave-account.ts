@@ -4,28 +4,18 @@ import { authority } from "@/lib/authority"
 import { dropLocalPushSubscription } from "./service-worker"
 
 /**
- * When the server stops being someone this learner reports to, release this
- * browser's push subscription locally (`dropLocalPushSubscription`): their
- * data stopped being the account's (they left it, or its session ended), or
- * they turned reporting off, or another account signed in and has not agreed
- * to anything.
- *
- * Without it, a browser that was subscribed keeps a live endpoint after the
- * person leaves: the server keeps sending reminders for an account they have
- * left, and the service worker keeps talking to the server about the endpoint
- * whenever the browser rotates it. Doing it on the change itself, outside any
- * component, means it happens whichever screen the person was on, and also
- * when a session simply expires.
- *
- * Returns the unsubscribe function, so a test can remove it.
+ * When the server stops being someone this learner reports to (they left the
+ * account, its session ended, reporting turned off, or another account signed
+ * in), release this browser's push subscription locally
+ * (`dropLocalPushSubscription`), or the server keeps sending reminders for an
+ * account they left. Done on the change, outside any component, so it also
+ * covers an expiry on any screen. Returns the unsubscribe function.
  */
 export function releasePushWhenLeavingTheAccount(): () => void {
   /**
-   * Whether the server may be holding a subscription for this browser. While a
-   * returning account user's session is still being checked (`pending`) the
-   * previous page load's opt-in is what says so: a probe that then finds the
-   * session gone is the departure, and nothing before it was a transition to
-   * notice.
+   * Whether the server may hold a subscription for this browser. While
+   * `pending`, the previous load's opt-in says so; a probe that finds the
+   * session gone is the departure.
    */
   const mayHold = (snapshot: AuthoritySnapshot): boolean =>
     snapshot.reportingAllowed ||

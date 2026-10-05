@@ -1,13 +1,8 @@
 /**
- * `@some-ui/lesson-crm`'s client, over this app's `file_host` transport.
- *
- * The CRM workspace takes its client as a prop so it knows nothing of URLs,
- * the HTTPS proxy or deadlines; this is that client for `apps/www`, built on
- * `requestJSON` like every other `file_host` caller here. It imports nothing
- * from `@some-ui/lesson-crm` - that workspace's audience is `lan`, and only
- * files under `src/routes/_dashboard/_lan/` may import it - so the shapes
- * below are written out and checked against the CRM's `LessonCrmClient`
- * structurally, where the route hands this to it.
+ * `@some-ui/lesson-crm`'s client, over this app's `file_host` transport
+ * (`requestJSON`). Imports nothing from `@some-ui/lesson-crm` (a `lan`
+ * workspace only `src/routes/_dashboard/_lan/` may import), so the shapes are
+ * written out and checked structurally where the route passes this in.
  */
 
 import type {
@@ -78,15 +73,13 @@ export function createLessonCrmClient(
           "/curriculum/operator/lessons"
         )
       ).lessons,
-    // The stored file comes back parsed, so this re-serialises it the way
-    // the CRM writes one (two-space JSON and a newline). A lesson the CRM
-    // saved reads back byte for byte; one the importer wrote may not, and
-    // its first save from the CRM is then a new version.
+    // The stored file comes back parsed, so it is re-serialised as the CRM
+    // writes it (two-space JSON, newline). An importer-written lesson may not
+    // round-trip byte for byte; its first CRM save is a new version.
     read: async (key) =>
       `${JSON.stringify(
-        // The public curriculum module answers CORS without credentials,
-        // so a credentialed read of it would be dropped cross-origin
-        // (`createFileHostTransport`).
+        // The public curriculum module answers CORS without credentials, so a
+        // credentialed read would be dropped cross-origin.
         await request<unknown>(`/curriculum/${encodeURIComponent(key)}`, {
           credentials: "same-origin",
         }),

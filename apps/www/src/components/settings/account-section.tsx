@@ -1,18 +1,14 @@
 /**
- * The settings controls for the account itself: sign out, sign out
- * everywhere, add a passkey on this device, and delete the account.
+ * The settings controls for the account: sign out, sign out everywhere, add a
+ * passkey on this device, delete the account.
  *
- * A passkey is the only way in (`paulgsc/server` `docs/identity.md`), so
- * this section is also where a person learns what that means for them: no
- * email means no recovery, and the safety net is a second passkey. That is
- * said here, next to the button that provides it, rather than left to be
- * discovered on the day a phone is lost.
+ * A passkey is the only way in (`paulgsc/server` `docs/identity.md`): no email
+ * means no recovery, and the safety net is a second passkey, said next to the
+ * button that adds one.
  *
- * Deleting is two presses, the second a button that only appears after the
- * first, because it cannot be undone: the server deletes everything stored
- * under the account's ID from its database (sessions, shelf items, reminders,
- * passkeys), and the passkeys stop opening anything. Server logs and backups
- * are not rewritten, and the copy next to the button says so.
+ * Deleting takes two presses (the second button appears after the first): the
+ * server deletes everything under the account's ID; logs and backups are not
+ * rewritten, and the copy says so.
  */
 
 import type { JSX } from "react"

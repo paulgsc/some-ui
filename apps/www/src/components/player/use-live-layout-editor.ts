@@ -37,26 +37,25 @@ type LiveLayoutEditor = {
   effectiveLifetimes: Array<ActiveLifetime>
   boundLeafIds: Set<SlotId>
   onBind: (leafId: SlotId, registryKey: string) => void
-  /** Story 7: right-click resize, available whether or not edit mode is mounted. */
+  /** Right-click resize, available whether or not edit mode is mounted. */
   onLeafResize: (
     leafId: SlotId,
     edge: "left" | "right" | "top" | "bottom",
     deltaPx: number,
     containerSizePx: number
   ) => void
-  /** `ambient-durable` per `presentation.ts`'s autosave verdict: quiet while
-   * pending or succeeding, but a failure renders (via `AmbientIntentStatus`)
-   * and survives this component unmounting - see `durable-failure.ts`. */
+  /** `ambient-durable` (`presentation.ts`): quiet while pending or
+   * succeeding; a failure renders and survives unmounting
+   * (`durable-failure.ts`). */
   autosaveStatus: Intent<SessionRecord>
 }
 
 /**
- * Drives story 6's live edit mode: local-first topology edits (debounced to
- * the session record so a resize drag doesn't fire a save per pixel) plus
- * bindings, which persist to the currently active scene's panels and are
- * also layered onto what's rendered right now - the orchestrator only
- * re-reads `session.scenes` on its next `configure()`, so without this a
- * bind edit would be invisible until the session is replayed.
+ * Drives live edit mode: local-first topology edits (debounced to the
+ * session record, so a resize drag doesn't save per pixel) plus bindings,
+ * which persist to the active scene's panels and are layered onto what
+ * renders now (the orchestrator only re-reads `session.scenes` on its next
+ * `configure()`).
  */
 export function useLiveLayoutEditor(
   session: SessionRecord,
@@ -74,9 +73,8 @@ export function useLiveLayoutEditor(
   const pendingTreeRef = useRef<LayoutNode<SlotId> | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Seeded once, from whatever the *previous* mount of this session's
-  // editor (or a previous tab) left behind - see `durable-failure.ts`. The
-  // effect below is what keeps it in sync with this mount's own attempts.
+  // Seeded once from what a previous mount (or tab) left behind
+  // (`durable-failure.ts`); the effect below keeps it in step.
   const [restoredFailure, setRestoredFailure] = useState(() =>
     // eslint-disable-next-line owner-guard/no-mount-snapshot -- seeded once by design (comment above); the effect below keeps it in step
     readDurableFailure(session.id)
@@ -85,11 +83,8 @@ export function useLiveLayoutEditor(
     "idle" | "working" | "succeeded" | "failed"
   >("idle")
 
-  // No dependency array, deliberately - `updateIntent.state` is a fresh
-  // object every render (see `use-intent.ts`'s header), so it can't gate
-  // this effect. `lastHandledStatusRef` is what makes each arm act once
-  // per genuine transition rather than once per render, the same idiom
-  // `useIntentEffect` uses for the success-only case.
+  // No dependency array: `updateIntent.state` is a fresh object every render.
+  // `lastHandledStatusRef` makes each arm act once per transition.
   useEffect(() => {
     matchIntent(updateIntent.state, {
       idle: () => undefined,
@@ -116,12 +111,9 @@ export function useLiveLayoutEditor(
     })
   })
 
-  // What actually renders: this mount's own live attempt once one has
-  // happened, otherwise a failure restored from before this mount existed.
-  // The restored case never offers retry - the tree that failed to save
-  // isn't held anywhere by the time a person is back looking at this
-  // screen (see `durable-failure.ts`'s header on why that isn't stored
-  // either), so editing the layout again is the honest retry path.
+  // This mount's live attempt once there is one, else a failure restored from
+  // before. The restored case offers no retry: the failed tree isn't held
+  // anywhere, so editing again is the retry.
   const autosaveStatus: Intent<SessionRecord> = matchIntent<
     SessionRecord,
     Intent<SessionRecord>

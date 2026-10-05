@@ -11,24 +11,18 @@
  * ```
  *
  * `@some-ui/topik` and `@some-ui/leetype` each take this as a `shelf` prop
- * (their `ShelfPort`, written out structurally there as the shapes are here:
- * importing either package would put it in this app's main bundle and undo
- * the content registry's lazy import). Neither package calls it unasked:
- * a write is a learner's tap on "Keep on this account", and nothing here
- * syncs in the background (adaptive-learning canon Rem. 7.3).
+ * (their structural `ShelfPort`; importing either would pull it into the
+ * main bundle). A write is only ever a learner's tap on "Keep on this
+ * account"; nothing syncs in the background (adaptive-learning canon Rem.
+ * 7.3).
  *
- * Every route needs a passkey session and answers `401` without one; a
- * write from an untrusted origin is `403` (the server checks `Origin`, which
- * the browser sends; there is no token to add). Three refusals are ones the
- * learner can act on, so they arrive as a `ShelfRefusedError` whose `reason`
- * the packages read: `full` (`409`, a new key on a shelf at its cap, which
- * the server never evicts from), `signed-out` (`401`) and `invalid` (`422`,
- * an item the shelf will not hold, which retrying cannot change).
- * Everything else is `requestJSON`'s own error.
+ * Every route needs a passkey session (`401` without); an untrusted-origin
+ * write is `403` (the server checks `Origin`). The refusals a learner can act
+ * on arrive as a `ShelfRefusedError` with a `reason`: `full` (`409`, a new key
+ * at the cap; the server never evicts), `signed-out` (`401`), `invalid`
+ * (`422`, retrying cannot help). Everything else is `requestJSON`'s error.
  *
- * A build with no `file_host` (the GitHub Pages build, or no `window`) gets
- * no client at all, so the packages offer no shelf rather than one that
- * always fails.
+ * A build with no `file_host` gets no client, so the packages offer no shelf.
  */
 
 import { DATA_MODE } from "@/lib/data-mode"

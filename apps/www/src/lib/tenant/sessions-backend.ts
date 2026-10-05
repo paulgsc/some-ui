@@ -2,36 +2,22 @@
  * Which `SessionsStore` a call goes to, decided *per call* by the learner's
  * data authority (`lib/authority`).
  *
- * - **Local** — the device. `localStorage` (`sessions-repository`). Nothing
- *   leaves the browser, and no account or session is needed. This is the
- *   default wherever a `file_host` is optional, and the only store on the
- *   GitHub Pages build.
- * - **Account** — `file_host`, through the credentialed account transport.
+ * - **Local**: `localStorage` (`sessions-repository`). Nothing leaves the
+ *   browser. The default where `file_host` is optional, and the only store on
+ *   the Pages build.
+ * - **Account**: `file_host`, through the credentialed account transport.
  *   Chosen by the person (signing in, or switching), never by default.
  *
- * The choice is read when a call *starts* and kept with it. If the authority
- * is a different one by the time the call finishes (a sign-out, a switch,
- * another account signing in), the result is dropped with a
- * `StaleAuthorityError` rather than handed to a view that now reads another
- * store. A write that already reached the old store stays there: it was made
- * for the old authority, and nothing here moves it.
+ * The authority is read when a call *starts*; if it changed by the end, the
+ * result is dropped with a `StaleAuthorityError`. A write that reached the old
+ * store stays there.
  *
- * ## No fallback between the two
+ * No fallback between the two: a down `file_host` fails account calls
+ * visibly, rather than splitting history across whichever store was
+ * reachable. A lost session is a named state (`accountUnavailable`).
  *
- * A `file_host` that is down makes account sessions fail, visibly, rather than
- * quietly writing to the device. That is deliberate: a silent fallback lands
- * writes in whichever store happened to be reachable, and leaves two histories
- * with no way to tell which is which. The only switch is the person's own, or
- * a lost session, and a lost session is a *named* state (`accountUnavailable`)
- * the UI says out loud, not a hidden retry.
- *
- * ## Nothing is uploaded for the person
- *
- * Signing in does not copy this browser's sessions to the account. That used to
- * happen on the first call after a sign-in, with no prompt, to whichever
- * account signed in first. Moving them is an explicit, per-account act
- * (`sessions-transfer`, behind a button on the settings screen), invariant LA2 in
- * `lib/authority`.
+ * Signing in uploads nothing: moving sessions is an explicit, per-account act
+ * (`sessions-transfer`; invariant LA2 in `lib/authority`).
  */
 
 import { resolveSessionIfChosen } from "@/lib/auth/session"

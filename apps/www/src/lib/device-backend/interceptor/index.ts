@@ -1,18 +1,12 @@
 /**
  * Answers this app's `file_host` requests in-process, so the device build
- * runs every server-mode code path unchanged with no network under it.
+ * runs every server-mode code path unchanged with no network.
  *
- * Every `file_host` caller in www - the transport (`createFileHostTransport`),
- * the content data sources (`fileHostRouteUrl`), the CRM clients - ends in a
- * plain `fetch` of `<base>/<route>`. Wrapping `fetch` once is therefore the
- * one seam that covers all of them, where threading a transport through each
- * would be a dozen seams and a new way to miss one. Anything outside `base`
- * (a font, the hangul vocab file, a TTS request) goes to the real `fetch`
- * untouched.
- *
- * The wrapper resolves requests only once `backend` has (the database opened,
- * migrated and seeded). A request made earlier waits rather than failing, so
- * the first `/auth/session` probe cannot race the schema into existence.
+ * Every `file_host` caller ends in a plain `fetch` of `<base>/<route>`, so
+ * wrapping `fetch` once covers them all. Anything outside `base` (a font, the
+ * vocab file, TTS) goes to the real `fetch`. Requests wait until `backend` is
+ * ready (opened, migrated, seeded), so the first `/auth/session` probe cannot
+ * race the schema.
  */
 import type { DeviceContext, DeviceRouter } from "@/lib/device-backend/router"
 import { errorResponse } from "@/lib/device-backend/router"
@@ -66,9 +60,8 @@ export function createDeviceFetch(
       const body = await requestBody(input, init)
       return await router.handle(method, path, url.searchParams, body, context)
     } catch (error) {
-      // A handler bug or a failed open answers like a server fault, not a
-      // network error: the caller's `FileHostResponseError` path names the
-      // route, where a rejected fetch would read as "file_host unreachable".
+      // A handler bug answers like a server fault, naming the route, not like
+      // "file_host unreachable".
       // eslint-disable-next-line no-console -- visible in a dev build's WebView inspector; the production minifier drops it
       console.error("device backend:", method, path, error)
       return errorResponse(500, "operation_error")

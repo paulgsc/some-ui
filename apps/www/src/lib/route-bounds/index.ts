@@ -1,16 +1,11 @@
 /**
  * A route that declares itself bounded: the shell hands it the window's
  * height and never lets the page scroll behind it (`routes/_dashboard.tsx`).
+ * On the route, not a path list in the shell, so a gated route needn't be
+ * named publicly. A bounded route fits its own content (docs/ui-fit).
  *
- * The flag lives on the route rather than in a path list in the shell, so a
- * route under a gate (`_lan`) can be bounded without the public shell naming
- * its path. A bounded route owns fitting its content: fixed chrome around a
- * `min-h-0 flex-1` body, and every pane fits by construction (docs/ui-fit).
- *
- * The session composer and the live session player still decide boundedness
- * by path in the shell, because the player's depends on runtime state (a
- * terminal session is an ordinary document again); the composer could move
- * to this flag.
+ * The composer and live player are still bounded by path in the shell (the
+ * player's depends on runtime state); the composer could move to this flag.
  */
 
 import { useMatches } from "@tanstack/react-router"

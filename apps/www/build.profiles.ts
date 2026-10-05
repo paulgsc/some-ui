@@ -5,26 +5,21 @@ import { defineProfiles } from "@some-ui/vite-config/audience"
 import type { Plugin } from "vite"
 
 /**
- * The deployables this one app builds into, selected per build by
- * `SOME_UI_PROFILE`. A profile lists the audiences whose `packages/ui/*`
- * workspaces it bundles; every other workspace is stubbed out of that build -
- * it still typechecks and routes, it just ships no code. This is about bundle
- * size, not access: a LAN tool is dead weight anywhere off the LAN, so builds
- * that are never on it leave it out.
+ * The deployables this app builds into, selected by `SOME_UI_PROFILE`. A
+ * profile lists the audiences whose `packages/ui/*` workspaces it bundles;
+ * the rest are stubbed (they still typecheck and route, but ship no code).
+ * About bundle size, not access.
  *
  * - **`lan`** - the default: `vite dev`, `vite preview` and the Docker image
  *   served on the home network. Carries everything.
  * - **`pages`** - the GitHub Pages build (.github/workflows/pages.yml).
- * - **`mobile`** - the Android app (apps/mobile's `build:web`). `public`
- *   plus `apk`, the workspaces that need the phone itself (the soundbite
- *   recorder). It also carries sessions only (`src/lib/app-surface`), and so
- *   leaves the résumé's pages and PDFs out of its output (`vite.config.ts`).
- *   `lan` does not carry `apk`: run `vite dev` with `SOME_UI_PROFILE=mobile`
- *   to see those pages in a browser.
+ * - **`mobile`** - the Android app (apps/mobile's `build:web`): `public` plus
+ *   `apk` (workspaces that need the phone, e.g. the soundbite recorder), and
+ *   sessions only (`src/lib/app-surface`). Run `vite dev` with
+ *   `SOME_UI_PROFILE=mobile` to see `apk` pages in a browser.
  *
- * A future VPS image is one more line here plus `SOME_UI_PROFILE` in its
- * pipeline. The variable is declared in turbo.json's `www#build` env, so two
- * profiles never share a cache entry.
+ * The variable is in turbo.json's `www#build` env, so profiles never share a
+ * cache entry.
  */
 /**
  * The Android app's profile. www's bundle cannot import this file, so
@@ -46,11 +41,9 @@ export const workspaceRoots = [
 
 /**
  * Where each gated audience's workspaces may be imported from: only routes
- * under `_lan/` (or `_apk/`), whose layout (`_lan.tsx`, beside the directory)
- * sends a visit to not-found in builds that stub the audience out. The build fails on an
- * import from anywhere else, in every profile; and
- * `src/routes/__tests__/audience-gates.test.ts` fails if a gate directory has
- * no guarded layout, or a route under it loads without its audience.
+ * under `_lan/` (or `_apk/`), whose layout sends a visit to not-found where
+ * the audience is stubbed. The build fails on any other import, and
+ * `src/routes/__tests__/audience-gates.test.ts` checks the layouts.
  */
 export const gates: Readonly<Record<GatedAudience, ReadonlyArray<string>>> = {
   lan: ["src/routes/_dashboard/_lan"],

@@ -17,12 +17,8 @@ function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 /**
- * `/` focuses the field from anywhere on the surface.
- *
- * Guarded against firing while someone is typing into something else - `/` is
- * a character before it is a shortcut, and stealing focus mid-word is worse
- * than having no shortcut at all. Modifier chords are left alone for the same
- * reason.
+ * `/` focuses the field from anywhere on the surface, except while typing
+ * elsewhere (`/` is a character first) or with a modifier held.
  */
 export function useSearchHotkey(
   inputRef: RefObject<HTMLInputElement | null>,
@@ -60,13 +56,8 @@ type ActivitySearchFieldProps = {
 }
 
 /**
- * The one search field, shared by the dashboard launcher and the composer's
- * picker.
- *
- * The two use its results differently - the launcher overlays them, the
- * picker narrows a paged grid - but the field itself is the same affordance
- * in both, down to the `/` shortcut, and there is no reason for a person to
- * learn it twice.
+ * The one search field, shared by the dashboard launcher (which overlays its
+ * results) and the composer's picker (which narrows a paged grid).
  */
 export const ActivitySearchField = ({
   value,

@@ -1,19 +1,17 @@
 /**
  * @vitest-environment jsdom
  *
- * #946/S2: `duplicateSession` migrated to `useIntent` - success target
- * unchanged (navigate to the composer with the copy), and a failure is now
- * visible instead of the button just re-enabling silently.
+ * "Play again" duplicates the session: on success it navigates to the
+ * composer with the copy; a failure is visible, not a silent re-enable.
  */
 
-import type { JSX, ReactNode } from "react"
+import type { ReactNode } from "react"
+import { withQueryClient } from "@/test-support/query-client"
+import { sessionRecord } from "@/test-support/session-record"
 import { signInForTests } from "@/test-support/sign-in"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import type * as ReactRouterModule from "@tanstack/react-router"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-
-import type { SessionRecord } from "@/lib/tenant"
 
 // These suites are about the account's store failing: start from an account.
 beforeEach(() => {
@@ -29,7 +27,6 @@ vi.mock(
     return {
       ...actual,
       useNavigate: () => navigateSpy,
-      // Test stand-in for tanstack-router's Link - href is irrelevant here.
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- LinkComponent's real signature is generic over the whole route tree; a plain <a> stand-in has no narrower match.
       Link: ((props: { children?: ReactNode }) => (
         <a href="/sessions">{props.children}</a>
@@ -42,26 +39,19 @@ const { CompletionSummary } = await import(
   "@/components/player/completion-summary"
 )
 
-function withQueryClient(children: ReactNode): JSX.Element {
-  const client = new QueryClient({
-    defaultOptions: { mutations: { retry: false } },
-  })
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>
-}
-
-function fixtureSession(): SessionRecord {
-  return {
-    id: "session-1",
-    name: "Vocabulary warm-up",
+/** Renders a finished session's summary and presses Play again. */
+async function playAgain(): Promise<void> {
+  const session = sessionRecord({
     status: "completed",
-    activities: [],
-    scenes: [],
-    layoutMode: "basic",
     totalDurationMs: 60_000,
     finalElapsedMs: 60_000,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-  }
+  })
+  render(withQueryClient(<CompletionSummary session={session} />))
+
+  fireEvent.click(screen.getByRole("button", { name: /play again/i }))
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 20))
+  })
 }
 
 beforeEach(() => {
@@ -74,7 +64,7 @@ afterEach(() => {
 })
 
 describe("CompletionSummary: Play again", () => {
-  it("navigates to the composer with the duplicated draft on success - unchanged from pre-migration", async () => {
+  it("navigates to the composer with the duplicated draft on success", async () => {
     const impl: typeof fetch = async (input, init) => {
       const url = String(input)
       if (init?.method === "POST" && url.includes("duplicate")) {
@@ -90,12 +80,7 @@ describe("CompletionSummary: Play again", () => {
     }
     vi.stubGlobal("fetch", impl)
 
-    render(withQueryClient(<CompletionSummary session={fixtureSession()} />))
-
-    fireEvent.click(screen.getByRole("button", { name: /play again/i }))
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 20))
-    })
+    await playAgain()
 
     expect(navigateSpy).toHaveBeenCalledWith({
       to: "/sessions/new",
@@ -108,12 +93,7 @@ describe("CompletionSummary: Play again", () => {
       Promise.reject(new TypeError("Failed to fetch"))
     )
 
-    render(withQueryClient(<CompletionSummary session={fixtureSession()} />))
-
-    fireEvent.click(screen.getByRole("button", { name: /play again/i }))
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 20))
-    })
+    await playAgain()
 
     expect(screen.getByRole("alert")).toBeTruthy()
     expect(navigateSpy).not.toHaveBeenCalled()

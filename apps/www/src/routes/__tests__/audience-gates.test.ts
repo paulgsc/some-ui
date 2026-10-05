@@ -1,36 +1,27 @@
 /**
  * @vitest-environment jsdom
- *
  * Every route under an audience gate resolves to not-found in a build that
- * leaves the audience out - checked against the real route tree, not a model
- * of it.
+ * leaves the audience out, checked against the real route tree.
  *
- * A build without an audience stubs that audience's workspaces: each export
- * becomes a function that throws when called (packages/some-vite-config,
- * `audiencePlugin`). The gate layout's `beforeLoad` then has to turn a visit
- * into not-found before anything reaches a stub. Two things can break that,
- * and neither shows up in a `lan` build, which is the one people run:
+ * Such a build stubs the audience's workspaces with exports that throw
+ * (`audiencePlugin`), and the gate layout's `beforeLoad` must turn a visit
+ * into not-found before anything reaches a stub. Neither failure shows in a
+ * `lan` build:
  *
- * - the gate and its guard drift apart: `gates` in build.profiles.ts names a
- *   directory whose layout no longer calls `requireAudience`, or a route moves
- *   out from under it;
+ * - the gate and its guard drift apart (`gates` in build.profiles.ts names a
+ *   directory whose layout no longer calls `requireAudience`);
  * - a route calls a stub in code the router runs *before* the parent guard.
- *   Measured on @tanstack/react-router 1.170: a throwing `validateSearch` or
- *   `params.parse` is recorded and the guard's not-found still wins, but a
- *   throwing `loaderDeps`, `search.middlewares` or `context` fails matching
- *   before the guard runs. That the first two are tolerated is itself pinned
- *   below, so a router upgrade that changes it fails here.
+ *   On @tanstack/react-router 1.170 a throwing `validateSearch` or
+ *   `params.parse` still ends in the guard's not-found, but `loaderDeps`,
+ *   `search.middlewares` or `context` fail matching first. The tolerated two
+ *   are pinned below, so a router upgrade that changes it fails here.
  *
- * It also scans www's source outside the gates for links to a gated path: a
- * file that has one must import `hasAudience`, so a public build never offers
- * a link to a page it answers with not-found. The gated paths come from the
- * route tree, so moving a page under a gate or adding a gate directory is
- * checked against every existing link without either of them being touched.
+ * It also requires any file outside the gates that links to a gated path
+ * (taken from the route tree) to import `hasAudience`.
  *
- * What this cannot see: a stub reached only on a branch the probe URL does not
- * take (a search param it does not set), and a link that sits outside the
- * `hasAudience` branch of a file that does check. Those are invariants A1 and
- * A3 in packages/some-vite-config/AUDIENCES.md.
+ * Not visible here: a stub reached only on a branch the probe URL does not
+ * take, and a link outside the `hasAudience` branch of a file that checks.
+ * Those are invariants A1 and A3 in packages/some-vite-config/AUDIENCES.md.
  */
 
 import { readdirSync, readFileSync } from "node:fs"

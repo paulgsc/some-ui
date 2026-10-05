@@ -59,9 +59,8 @@ const EditSessionFailure = ({
   </Card>
 )
 
-/** Exported so tests can drive the outcome logic with a plain `sessionId`
- * prop - `Route.useSearch()` needs a real matched router context that a
- * component test has no reason to build. */
+/** Exported so tests can pass `sessionId` directly, without a matched
+ * router context. */
 export const EditSessionRoute = ({
   sessionId,
 }: {
@@ -72,16 +71,13 @@ export const EditSessionRoute = ({
   return matchQueryOutcome(outcome, {
     pending: () => <ComposerSkeleton />,
     // Distinct from `EditSessionNotFound`: a failed read has not told us the
-    // draft is absent, only that we don't yet know - see the route-arrival
-    // handoff's Safety invariant.
+    // draft is absent (the route-arrival Safety invariant).
     failed: (error, retry) => (
       <EditSessionFailure error={error} onRetry={retry} />
     ),
     ready: (session, refreshError) => {
       if (!session) {
-        // A cached "no draft" through a *failed* refresh hasn't actually
-        // been reconfirmed - the same Safety invariant as the `failed` arm
-        // above, not "not found" wearing a different arm.
+        // A cached "no draft" through a failed refresh is not reconfirmed.
         if (refreshError) {
           return (
             <EditSessionFailure
@@ -95,13 +91,9 @@ export const EditSessionRoute = ({
       if (!refreshError) {
         return <SessionComposer existingSession={session} />
       }
-      // Same Safety invariant as the null-session branch above, for a
-      // cached *non-null* draft: the composer may be editing stale data,
-      // so the refresh failure rides alongside it rather than being
-      // silently dropped - a bot review caught this arm handling only the
-      // null case. SessionComposer's own root is `h-full`, so the extra
-      // flex layer here (mirroring `$sessionId.tsx`'s identical fix) keeps
-      // it the sole height-filling child of its parent.
+      // A cached draft through a failed refresh may be stale, so the failure
+      // rides alongside it. The flex layer keeps SessionComposer (`h-full`)
+      // its parent's sole height-filling child, as in `$sessionId.tsx`.
       return (
         <div className="flex h-full min-h-0 w-full max-w-3xl flex-col gap-3">
           <IntentFailure
@@ -130,10 +122,8 @@ export const Route = createFileRoute("/_dashboard/sessions/new")({
     activity: isActivityId(search.activity) ? search.activity : undefined,
     edit: typeof search.edit === "string" ? search.edit : undefined,
   }),
-  // `?edit=` is what this route fetches, so it is what the loader has to
-  // depend on: without `loaderDeps` the router would reuse one navigation's
-  // loader result for a different draft. A bare /sessions/new fetches nothing
-  // — there is no existing session to prefetch.
+  // `?edit=` is what this route fetches, so the loader depends on it, or the
+  // router would reuse one draft's loader result for another.
   loaderDeps: ({ search }) => ({ edit: search.edit }),
   loader: ({ context, deps }) => {
     if (!deps.edit) return

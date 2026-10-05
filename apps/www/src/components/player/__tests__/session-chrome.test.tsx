@@ -2,19 +2,14 @@
  * @vitest-environment jsdom
  *
  * The mobile session shell: the activity gets the screen, and everything
- * that is not the activity gets one icon.
- *
- * What is pinned here is the thing a later refactor is most likely to undo
- * by accident — that on a phone the session player renders *no* resident
- * chrome band and *no* layout-editor affordance. Both were desktop
- * assumptions leaking through a route that had never been looked at below
- * 768px, and both are invisible in a test that only ever renders wide.
+ * that is not the activity gets one icon. On a phone the player renders no
+ * resident chrome band, which a test that only renders wide cannot see.
  */
 
 import type { JSX, ReactNode } from "react"
 import { ThemeProvider } from "@/providers/theme"
+import { withQueryClient } from "@/test-support/query-client"
 import { SidebarProvider } from "@some-ui/shared"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import type * as SomeUiUtils from "some-ui-utils"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -29,9 +24,8 @@ const skipCurrentScene = vi.fn()
 let running = true
 let paused = false
 
-// The orchestrator is a global store driven by a clock; this file is about
-// what the chrome renders and which command a tap issues, so the store is
-// faked and the assertions are about the seam between them.
+// The orchestrator store is faked: this file is about what the chrome renders
+// and which command a tap issues.
 vi.mock("some-ui-utils", async () => {
   const actual = await vi.importActual<typeof SomeUiUtils>("some-ui-utils")
   return {
@@ -45,10 +39,9 @@ vi.mock("some-ui-utils", async () => {
       current_time: 30_000,
       time_remaining: 554_000,
     }),
-    // A real scene shape, not a bare name: `friendlyActivityName` resolves
-    // the *registry key* through the activity catalogue, so a fixture with an
-    // empty `ui` would silently fall back to the raw scene name and this file
-    // would stop proving the sheet shows a person-facing label at all.
+    // A real scene shape: `friendlyActivityName` resolves the registry key
+    // through the catalogue, and an empty `ui` would fall back to the raw
+    // scene name, proving nothing about the person-facing label.
     usePrimaryScene: (): unknown => ({
       kind: {
         Scene: {
@@ -63,44 +56,32 @@ vi.mock("some-ui-utils", async () => {
 })
 
 /**
- * Three providers, none of them scaffolding.
- *
- * `SessionChrome` inherited each one by absorbing a control the dashboard
- * header used to own — the sidebar trigger needs `SidebarProvider`, the
- * theme switcher needs `ThemeProvider`, the migration signal needs a query
- * client — and all three are ancestors in the app, since the session player
- * renders inside `SidebarInset` under the root providers.
- *
- * Wrapping them here rather than stubbing the three controls keeps that
- * dependency honest: this component is not context-free, and if one of these
- * ever stops being an ancestor, this is the shape that breaks. Worth knowing,
- * because the registry's own rule for *applets* is the opposite (render with
- * no ambient context) — this is app chrome, not an applet, and is allowed to
- * depend on the app.
+ * The real ancestors of the header controls `SessionChrome` absorbed (sidebar
+ * trigger, theme switcher, a query-backed signal), not stubs: this is app
+ * chrome, allowed to depend on the app, unlike a registry applet.
  */
 function withProviders(node: ReactNode): JSX.Element {
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  })
-  return (
-    <QueryClientProvider client={client}>
-      <ThemeProvider>
-        <SidebarProvider>{node}</SidebarProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+  return withQueryClient(
+    <ThemeProvider>
+      <SidebarProvider>{node}</SidebarProvider>
+    </ThemeProvider>
   )
 }
 
 const mount = (): ReturnType<typeof render> =>
   render(withProviders(<SessionChrome scenes={[]} onPlay={vi.fn()} />))
 
+/** Mounts and opens the sheet. */
+function open(): void {
+  mount()
+  fireEvent.click(screen.getByRole("button", { name: /session controls/i }))
+}
+
 beforeEach(() => {
   running = true
   paused = false
-  // jsdom implements no `matchMedia`, and `SidebarProvider` reads one
-  // through `useIsMobile`. Answered `true` because that is the only
-  // condition this component renders under at all — it is the phone-width
-  // branch of `LivePlayer`.
+  // jsdom has no `matchMedia` (`SidebarProvider` reads one); `true` because
+  // this component only renders in `LivePlayer`'s phone-width branch.
   const matchMedia = (query: string): MediaQueryList => ({
     matches: true,
     media: query,
@@ -115,8 +96,6 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  // No global cleanup in this app's vitest setup — see the sibling component
-  // tests, which each do the same.
   cleanup()
   vi.clearAllMocks()
   vi.unstubAllGlobals()
@@ -126,40 +105,32 @@ describe("SessionChrome", () => {
   it("costs one icon at rest — no resident transport band", () => {
     mount()
 
-    // No jest-dom in this app's vitest setup, so `getByRole` throwing when
-    // absent is the assertion — a plain `toBeDefined` on the returned node
-    // is what the sibling component tests use.
+    // No jest-dom: `getByRole` throwing when absent is the assertion.
     expect(
       screen.getByRole("button", { name: /session controls/i })
     ).toBeDefined()
-    // The desktop transport's buttons must not be on screen until asked for;
-    // a folded control that still paints its contents has folded nothing.
+    // The transport's buttons are not on screen until asked for.
     expect(screen.queryByRole("button", { name: /^pause$/i })).toBeNull()
     expect(screen.queryByRole("button", { name: /^stop$/i })).toBeNull()
     expect(screen.queryByText(/remaining/i)).toBeNull()
   })
 
   it("opens onto what is playing and how long is left", () => {
-    mount()
-    fireEvent.click(screen.getByRole("button", { name: /session controls/i }))
+    open()
 
     expect(screen.getByText("LeetType")).toBeDefined()
     expect(screen.getByText(/remaining/i)).toBeDefined()
   })
 
   it("issues the transport command the tap names", () => {
-    mount()
-    fireEvent.click(screen.getByRole("button", { name: /session controls/i }))
+    open()
 
     fireEvent.click(screen.getByRole("button", { name: /^pause$/i }))
     expect(pause).toHaveBeenCalledTimes(1)
   })
 
-  // A person who taps Pause wants the activity back, not the menu they used
-  // to pause it.
   it("closes itself after acting", () => {
-    mount()
-    fireEvent.click(screen.getByRole("button", { name: /session controls/i }))
+    open()
     fireEvent.click(screen.getByRole("button", { name: /^skip$/i }))
 
     expect(skipCurrentScene).toHaveBeenCalledTimes(1)
@@ -169,19 +140,15 @@ describe("SessionChrome", () => {
   it("offers Resume rather than Pause once paused", () => {
     running = false
     paused = true
-    mount()
-    fireEvent.click(screen.getByRole("button", { name: /session controls/i }))
+    open()
 
     expect(screen.getByRole("button", { name: /^resume$/i })).toBeDefined()
     expect(screen.queryByRole("button", { name: /^pause$/i })).toBeNull()
   })
 
-  // Folding the header must not drop what it carried. The theme and audio
-  // controls are the only places in the app a person can reach either, and
-  // this route stops rendering the header that normally holds them.
+  // The theme and audio controls are reachable nowhere else on this route.
   it("still carries the chrome the hidden header was holding", () => {
-    mount()
-    fireEvent.click(screen.getByRole("button", { name: /session controls/i }))
+    open()
 
     expect(
       screen.getByRole("button", { name: /toggle sidebar/i })
@@ -191,8 +158,7 @@ describe("SessionChrome", () => {
   })
 
   it("gives every control a thumb-sized target", () => {
-    mount()
-    fireEvent.click(screen.getByRole("button", { name: /session controls/i }))
+    open()
 
     for (const name of [/^pause$/i, /^skip$/i, /^stop$/i]) {
       const control = screen.getByRole("button", { name })

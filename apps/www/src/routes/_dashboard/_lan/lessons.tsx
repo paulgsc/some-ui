@@ -9,10 +9,8 @@ import { mapFileHostError } from "@/lib/intent/errors"
 import { createLessonCrmClient } from "@/lib/lesson-crm-client"
 
 /**
- * The CRM's outcomes on this app's overlay plane: `sonner`, mounted once in
- * `providers/index.tsx`, which is where `interactive` intents report
- * (`lib/intent/presentation.ts`). A failure carries its summary and, when
- * trying again could work, a Retry action.
+ * The CRM's outcomes via `sonner` (where `interactive` intents report,
+ * `lib/intent/presentation.ts`): a summary and, when it could work, Retry.
  */
 const reporting: Reporting = {
   notify: (notice) => {
@@ -30,14 +28,10 @@ const reporting: Reporting = {
 }
 
 /**
- * The lesson CRM: the lessons `file_host` serves every learner, and the
- * weekly batch among them. LAN-only because `@some-ui/lesson-crm` is a `lan`
- * workspace; the server answers its operator routes only to a passkey
- * session whose subject is in `OPERATOR_SUBJECTS` (401 otherwise, or 403
- * for anyone else signed in).
- *
- * Bounded (`lib/route-bounds`): the CRM is panes of fixed chrome around what
- * they hold, so it takes the window and the page never scrolls behind it.
+ * The lesson CRM: the lessons `file_host` serves, and the weekly batch.
+ * LAN-only (`@some-ui/lesson-crm` is a `lan` workspace); operator routes
+ * answer only `OPERATOR_SUBJECTS` (401 signed out, 403 otherwise). Bounded
+ * (`lib/route-bounds`).
  */
 const LessonsRoute = (): JSX.Element => {
   const [client] = useState(createLessonCrmClient)

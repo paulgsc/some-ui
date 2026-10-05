@@ -35,12 +35,8 @@ export const CompletionSummary = ({
   const finalElapsedMs = session.finalElapsedMs ?? session.totalDurationMs
   const finishedNaturally = finalElapsedMs >= session.totalDurationMs
 
-  // Replaying isn't "run the exact same session again" - it hands the
-  // player a fresh draft copy (same activities, same starting config) and
-  // drops them into the composer's own Configure step, where mode/
-  // difficulty/duration are all still editable before they start, exactly
-  // like setting up any other new session. Lifted verbatim from the
-  // pre-migration onSuccess.
+  // Replay hands the player a fresh draft copy and drops them into the
+  // composer's Configure step, where everything is still editable.
   useIntentEffect(replayIntent.state, (copy) => {
     void navigate({ to: "/sessions/new", search: { edit: copy.id } })
   })

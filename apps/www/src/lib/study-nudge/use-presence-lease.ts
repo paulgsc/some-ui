@@ -1,16 +1,11 @@
 /**
- * Fires the presence lease at the moments the server-side redesign was
- * sized for: once on arriving at a session, again on every
- * `visibilitychange` back to visible, and on a sparse renewal in between —
- * never on a timer that runs regardless of tab state.
+ * Fires the presence lease on arriving at a session, on every return to
+ * visible, and on a sparse renewal between, never on a timer that runs in a
+ * hidden tab.
  *
- * 45s renewal against a 75s server-side TTL leaves ~30s of slack for a
- * throttled `setInterval` in a backgrounded tab and for network jitter; that
- * slack is the whole budget, not room for a shorter interval. The renewal
- * timer is only ever alive while the tab is visible — it starts on mount (if
- * already visible) or on the next visible transition, and is torn down the
- * instant the tab hides or this unmounts, which is what keeps a hidden tab
- * from asserting presence nobody has.
+ * 45s renewal against the server's 75s TTL leaves ~30s of slack for a
+ * throttled timer and jitter. The renewal timer lives only while the tab is
+ * visible, so a hidden tab asserts no presence.
  */
 
 import { useEffect } from "react"
@@ -18,13 +13,9 @@ import { useEffect } from "react"
 import { reportPresence } from "./presence"
 
 /**
- * Fixed, not derived from the server's `NUDGE_PRESENCE_LEASE_TTL_SECONDS` —
- * there is no route that exposes it to the client, and inventing one for
- * this alone would be server-side scope this change doesn't otherwise need.
- * The two are meant to move together: a deployment that configures a TTL at
- * or below this interval (default is 75s) leaves no slack for a renewal to
- * land before the previous lease expires, which is a server misconfiguration
- * relative to this client, not something this timer can compensate for.
+ * Fixed: no route exposes the server's `NUDGE_PRESENCE_LEASE_TTL_SECONDS`.
+ * A TTL configured at or below this interval leaves no slack, a server
+ * misconfiguration this timer cannot compensate for.
  */
 const RENEWAL_INTERVAL_MS = 45_000
 

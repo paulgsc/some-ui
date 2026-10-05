@@ -1,24 +1,12 @@
 /**
- * #946/S2: the mechanism behind `ambient-durable`'s `failureMustSurvive
- * Navigation` promise (see `presentation.ts`'s "The autosave verdict").
- * `useIntent`'s own state is plain React state, gone the moment
- * `use-live-layout-editor.ts` unmounts - exactly what happens when the
- * person navigates away from a live session mid-edit. A failed autosave
- * has to outlive that unmount, so it's mirrored here, keyed by session id,
- * and read back the next time that session's editor mounts.
+ * The mechanism behind `ambient-durable`'s `failureMustSurviveNavigation`
+ * (`presentation.ts`): `useIntent`'s state dies when
+ * `use-live-layout-editor.ts` unmounts, so a failed autosave is mirrored here
+ * by session id and read back when that session's editor mounts.
  *
- * Deliberately narrow: this is not a general "durable intent" facility,
- * just a small keyed record store for the one producer the census found
- * that needs it. If a second producer ever needs the same guarantee,
- * that's the signal to generalize - one caller doesn't justify the
- * abstraction yet.
- *
- * No retry payload is stored, on purpose. The policy this mode grants
- * (`presentation.ts`) never requires a retry affordance for
- * `ambient-durable`, and by the time a person is back on this screen the
- * in-memory tree that failed to save is already gone - resending it would
- * mean persisting a whole `LayoutNode` tree here too, for a capability
- * nothing asks for. Editing the layout again is the retry path.
+ * Narrow on purpose: one producer needs it. No retry payload: the policy
+ * requires no retry for this mode, and the failed tree is gone by then;
+ * editing again is the retry.
  */
 
 import type { IntentErrorKind } from "@some-ui/intent-kit"
@@ -65,9 +53,8 @@ export function writeDurableFailure(
   try {
     window.localStorage.setItem(keyFor(sessionId), JSON.stringify(failure))
   } catch {
-    // Best-effort - private-mode/quota storage failures here still leave
-    // the in-memory ambient status covering the current mount; only the
-    // survives-navigation guarantee is lost.
+    // Best-effort: on a storage failure the in-memory status still covers this
+    // mount; only surviving navigation is lost.
   }
 }
 

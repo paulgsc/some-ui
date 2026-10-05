@@ -7,22 +7,13 @@ import {
 import { defineConfig } from "eslint/config"
 
 // `appsRecommended`, not the default export: this is a deployable host with
-// an entry chunk, so the lints about what lands in that chunk apply here and
-// nowhere else. See the preset's doc comment.
+// an entry chunk (see the preset's doc comment).
 //
-// intentGuardConfig (#937 S1) is opt-in per its own doc comment - enabled
-// here because this is the one workspace with an intent boundary
-// (`src/lib/intent/`) to guard. `no-unbounded-intent` catches an effect
-// initiated from inside a JSX event handler without going through
-// `useIntent`/`useAsyncIntent`.
-//
-// queryGuardConfig (#968/MS8) is the same kind of opt-in, for the same
-// reason: this is the one workspace with query hooks (`src/lib/tenant/`)
-// whose `data` is worth guarding against a silently-defaulted destructure.
-//
-// ownerGuardConfig (#1659): state seeded from a prop or the clock freezes at
-// mount a value its owner keeps changing. #1659's review found that here and
-// in the aph and soundbites packages this app hosts, five times.
+// The opt-in guards, on because this workspace has what they guard:
+// intentGuardConfig the intent boundary (`src/lib/intent/`; an effect from a
+// JSX handler must go through `useIntent`/`useAsyncIntent`), queryGuardConfig
+// the query hooks (`src/lib/tenant/`; no silently-defaulted `data`), and
+// ownerGuardConfig state seeded from a prop or the clock (frozen at mount).
 //
 // LA1 (docs/learner-data-authority.md): the network globals are restricted in
 // `src/` so a request carrying learner state cannot be written beside the
@@ -76,23 +67,14 @@ export default defineConfig([
     },
   },
 
-  // #937 S2: the compiler half of the boundary. `switch-exhaustiveness-check`
-  // is type-aware (already available here via typescriptConfig's
-  // `projectService: true`) and fires when a `switch` over a union type
-  // is missing a case - the exact failure mode a fifth `Intent` status
-  // would produce in a raw `switch (intent.status)` that isn't routed
-  // through `matchIntent`. `considerDefaultExhaustiveForUnions: false`
-  // deliberately: a `default` that silently absorbs a newly-added member is
-  // the failure this whole epic is about, so a `default` arm must not count
-  // as covering every case - `switch-lint/require-fail-fast-default`
-  // (already active via `maishatuRecommended`) is what makes a `default`
-  // legal at all, by requiring it to fail fast rather than absorb.
+  // `switch-exhaustiveness-check` fires on a `switch` over a union missing a
+  // case (a new `Intent` status outside `matchIntent`). A `default` must not
+  // count as covering every case: `switch-lint/require-fail-fast-default`
+  // already makes a `default` fail fast rather than absorb.
   {
     files: ["**/*.{ts,tsx}"],
-    // Same tool-config globs typescript.config.ts's own override disables
-    // type-aware parsing for - a type-aware rule re-enabled here for one of
-    // them would hit "don't have parserOptions set to generate type
-    // information for this file" the moment it's linted.
+    // The tool-config globs typescript.config.ts excludes from type-aware
+    // parsing; a type-aware rule would fail on them.
     ignores: [
       "**/vitest.config.{ts,js}",
       "**/vitest.config.*.{ts,js}",

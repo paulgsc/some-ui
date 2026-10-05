@@ -1,16 +1,11 @@
 /**
  * @vitest-environment jsdom
  *
- * The APK removes SCHEDULE_EXACT_ALARM (apps/mobile AndroidManifest.xml), so
- * every nudge must be scheduled inexact. Left to the plugin's default
- * (exact, since @capacitor/local-notifications 8.3.0), each schedule() on
- * Android 12+ would open the "Alarms & reminders" settings screen instead.
- *
- * Being inexact, a nudge can still be pending after its time, so a return
- * to the app asks the OS what is pending before stamping the cooldown.
- *
- * In a build carrying the soundbites page ("apk", the Android app's), a nudge
- * also carries a "Not today: say why" button that opens it.
+ * The APK omits SCHEDULE_EXACT_ALARM (AndroidManifest.xml), so every nudge is
+ * scheduled inexact (the plugin's exact default would open "Alarms &
+ * reminders" on Android 12+). An inexact nudge can be pending after its time,
+ * so a return asks the OS what is pending before stamping the cooldown. In
+ * the "apk" build a nudge carries "Not today: say why".
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 

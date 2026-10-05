@@ -1,9 +1,8 @@
 /**
  * @vitest-environment jsdom
  *
- * The mode gate and the fail-open read (H1, #1231). `@vitest-environment
- * jsdom` because the locators resolve against `window.location`, as
- * `lib/topik-content`'s do.
+ * The mode gate and the fail-open read (H1, #1231). jsdom because the
+ * locators resolve against `window.location`.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -19,6 +18,12 @@ function jsonResponse(body: unknown): Response {
 
 const httpBase = (): string =>
   `http://${window.location.hostname}:3000/api/v1/leetype/rounds`
+
+/** Stubs `fetch` and the build's mode, before `loadModule`. */
+function serve(fetchImpl: unknown, mode: "static" | "server" = "server"): void {
+  vi.stubEnv("VITE_STATIC_DATA", mode === "static" ? "true" : undefined)
+  vi.stubGlobal("fetch", fetchImpl)
+}
 
 async function loadModule(): Promise<typeof LeetypeContent> {
   vi.resetModules()
@@ -37,21 +42,18 @@ afterEach(() => {
 
 describe("loadLeetypeRounds - static builds", () => {
   it("resolves empty without issuing a single request", async () => {
-    vi.stubEnv("VITE_STATIC_DATA", "true")
     const fetchSpy = vi.fn()
-    vi.stubGlobal("fetch", fetchSpy)
+    serve(fetchSpy, "static")
 
     const { loadLeetypeRounds } = await loadModule()
 
     await expect(loadLeetypeRounds()).resolves.toEqual([])
-    // The Pages build has no file_host; `Leetype` plays its bundled rounds.
     expect(fetchSpy).toHaveBeenCalledTimes(0)
   })
 })
 
 describe("loadLeetypeRounds - builds with a file_host", () => {
   it("fetches the manifest, then each listed round's verbatim body", async () => {
-    vi.stubEnv("VITE_STATIC_DATA", undefined)
     const bodies: Record<string, unknown> = {
       a: { id: "a", marker: 1 },
       b: { id: "b", marker: 2 },
@@ -71,7 +73,7 @@ describe("loadLeetypeRounds - builds with a file_host", () => {
       const id = url.pathname.split("/").pop() ?? ""
       return Promise.resolve(jsonResponse(bodies[id]))
     })
-    vi.stubGlobal("fetch", fetchSpy)
+    serve(fetchSpy)
 
     const { loadLeetypeRounds } = await loadModule()
     const rounds = await loadLeetypeRounds()
@@ -82,7 +84,6 @@ describe("loadLeetypeRounds - builds with a file_host", () => {
   })
 
   it("reads the corpus with no credentials, so no account cookie rides on it", async () => {
-    vi.stubEnv("VITE_STATIC_DATA", undefined)
     const fetchSpy = vi.fn((url: URL) =>
       Promise.resolve(
         url.href === httpBase()
@@ -93,7 +94,7 @@ describe("loadLeetypeRounds - builds with a file_host", () => {
           : jsonResponse({ id: "a" })
       )
     )
-    vi.stubGlobal("fetch", fetchSpy)
+    serve(fetchSpy)
 
     const { loadLeetypeRounds } = await loadModule()
     await loadLeetypeRounds()
@@ -106,7 +107,6 @@ describe("loadLeetypeRounds - builds with a file_host", () => {
   })
 
   it("fetches at most MAX_FETCHED_ROUNDS bodies from a large corpus", async () => {
-    vi.stubEnv("VITE_STATIC_DATA", undefined)
     const { MAX_FETCHED_ROUNDS } = await loadModule()
     const listed = Array.from({ length: MAX_FETCHED_ROUNDS + 10 }, (_, i) => ({
       id: `round-${i}`,
@@ -118,7 +118,7 @@ describe("loadLeetypeRounds - builds with a file_host", () => {
           : jsonResponse({ id: url.pathname.split("/").pop() })
       )
     )
-    vi.stubGlobal("fetch", fetchSpy)
+    serve(fetchSpy)
 
     const { loadLeetypeRounds } = await loadModule()
 
@@ -127,7 +127,6 @@ describe("loadLeetypeRounds - builds with a file_host", () => {
   })
 
   it("skips a body that fails to arrive instead of failing the whole load", async () => {
-    vi.stubEnv("VITE_STATIC_DATA", undefined)
     const fetchSpy = vi.fn((url: URL) => {
       if (url.href === httpBase()) {
         return Promise.resolve(
@@ -140,7 +139,7 @@ describe("loadLeetypeRounds - builds with a file_host", () => {
           : jsonResponse({ id: "a" })
       )
     })
-    vi.stubGlobal("fetch", fetchSpy)
+    serve(fetchSpy)
 
     const { loadLeetypeRounds } = await loadModule()
 
@@ -148,9 +147,7 @@ describe("loadLeetypeRounds - builds with a file_host", () => {
   })
 
   it("rejects when the manifest is not one, so Leetype plays its bundled rounds", async () => {
-    vi.stubEnv("VITE_STATIC_DATA", undefined)
-    vi.stubGlobal(
-      "fetch",
+    serve(
       vi.fn(() =>
         Promise.resolve(
           new Response("<!doctype html><html></html>", {
@@ -171,9 +168,8 @@ describe("loadLeetypeRoundRuns - a round's recorded runs (X2, X5)", () => {
   const runsUrl = (id: string): string => `${httpBase()}/${id}/runs`
 
   it("resolves null in a static build without issuing a single request", async () => {
-    vi.stubEnv("VITE_STATIC_DATA", "true")
     const fetchSpy = vi.fn()
-    vi.stubGlobal("fetch", fetchSpy)
+    serve(fetchSpy, "static")
 
     const { loadLeetypeRoundRuns } = await loadModule()
 
@@ -183,7 +179,6 @@ describe("loadLeetypeRoundRuns - a round's recorded runs (X2, X5)", () => {
   })
 
   it("fetches the round's runs route once and hands back its body unparsed", async () => {
-    vi.stubEnv("VITE_STATIC_DATA", undefined)
     const body = { roundId: "a", contentHash: "0".repeat(64), runs: [] }
     const fetchSpy = vi.fn((url: URL) =>
       Promise.resolve(
@@ -192,7 +187,7 @@ describe("loadLeetypeRoundRuns - a round's recorded runs (X2, X5)", () => {
           : new Response(null, { status: 500 })
       )
     )
-    vi.stubGlobal("fetch", fetchSpy)
+    serve(fetchSpy)
 
     const { loadLeetypeRoundRuns } = await loadModule()
 
@@ -201,7 +196,6 @@ describe("loadLeetypeRoundRuns - a round's recorded runs (X2, X5)", () => {
   })
 
   it("rejects, once and without retrying, when the route is absent or the round unknown", async () => {
-    vi.stubEnv("VITE_STATIC_DATA", undefined)
     const fetchSpy = vi.fn(() =>
       Promise.resolve(
         new Response(JSON.stringify({ error: "not found" }), {
@@ -210,7 +204,7 @@ describe("loadLeetypeRoundRuns - a round's recorded runs (X2, X5)", () => {
         })
       )
     )
-    vi.stubGlobal("fetch", fetchSpy)
+    serve(fetchSpy)
 
     const { loadLeetypeRoundRuns } = await loadModule()
 

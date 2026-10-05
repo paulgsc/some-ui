@@ -5,11 +5,8 @@ import type { ScenePropsMap } from "."
 import { defineSceneProps, withSceneProps } from "."
 
 /**
- * These pin the property the `extraProps` bag did not have: runtime props
- * reach *only* the panel whose `registry_key` consumes them. Under the old
- * design `words`/`sessionKey`/`suspended` were spread onto every
- * rendered panel, so an unrelated component received all of them as stray
- * props and the layout viewport held content concerns it could not interpret.
+ * Runtime props reach *only* the panel whose `registry_key` consumes them,
+ * not every rendered panel.
  */
 type TestPanel = { registry_key: string; props?: Record<string, unknown> }
 
@@ -189,11 +186,8 @@ describe("defineSceneProps", () => {
     expect(defineSceneProps({})).toEqual({})
   })
 
-  // The guard this exists for is a *compile-time* one and cannot be asserted
-  // at runtime: a key outside the registry union resolves to `never`, so
-  // `defineSceneProps({ hangull: {...} })` fails `tsc`. `@ts-expect-error`
-  // below is the assertion - it fails the typecheck if the key ever stops
-  // being rejected.
+  // A compile-time guard: a key outside the registry union fails `tsc`,
+  // so the `@ts-expect-error` below is the assertion.
   it("rejects a key outside the registry union at compile time", () => {
     const map = defineSceneProps({
       // @ts-expect-error -- 'hangull' is not a RegistryKey; removing this

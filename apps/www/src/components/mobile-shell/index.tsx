@@ -1,16 +1,12 @@
 /**
- * The Android app's navigation: a bar along the bottom, in thumb reach, in
- * place of the web's sidebar. Home is the hub; each tool is one tab; the +
- * in the middle is only a shortcut into those same tools, never a place of
- * its own.
+ * The Android app's navigation: a bottom bar in thumb reach, in place of the
+ * sidebar. Home is the hub, each tool a tab; the + is only a shortcut into
+ * those tools.
  *
- * Route links, not tabs: `BottomTabBar` in @some-ui/shared switches panes
- * inside one page (`role="tablist"`), while each of these leaves for another
- * route, so it is a `<nav>` whose current link says `aria-current="page"`.
- *
- * Only the phone's build renders this (`MOBILE_APP`), and every link it
- * makes is to an "apk" page or under one, asked for behind `hasAudience`
- * like any gated link (A3, packages/some-vite-config/AUDIENCES.md).
+ * Route links, not tabs (`BottomTabBar` switches panes in one page), so a
+ * `<nav>` with `aria-current="page"`. Phone build only (`MOBILE_APP`); every
+ * link targets an "apk" page behind `hasAudience` (A3,
+ * packages/some-vite-config/AUDIENCES.md).
  */
 import type { ComponentType, JSX } from "react"
 import { useState } from "react"

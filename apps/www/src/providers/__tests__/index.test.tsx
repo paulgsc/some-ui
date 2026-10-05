@@ -1,14 +1,9 @@
 /**
  * @vitest-environment jsdom
  *
- * `StudyNudgeWatcher`'s whole body - registering a service worker,
- * reconciling a push subscription, polling every five minutes, plus the
- * sessions/settings queries `hooks.test.tsx` covers separately - is a
- * reminder machinery: on the account the server delivers, on the device the
- * client's own policy does. `AppProviders` mounts this tree above the router,
- * so this asserts it doesn't mount `StudyNudgeWatcher` at all until the
- * learner's data authority is decided (a returning account user's is not, for
- * a moment), rather than mounting it and hoping its internals no-op.
+ * `AppProviders` must not mount `StudyNudgeWatcher` (worker registration,
+ * push reconciliation, polling) until the data authority is decided, rather
+ * than mounting it and hoping its internals no-op.
  */
 
 import type { JSX, ReactNode } from "react"

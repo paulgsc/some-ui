@@ -11,10 +11,8 @@ import type { AudioPreferences } from "@/lib/audio-preferences"
 import type { NudgePreferences } from "@/lib/study-nudge"
 
 /**
- * Re-exported rather than redeclared: the levels a profile can target and the
- * levels an activity offers have to be the same three strings, and
- * `rankActivities` is the code that compares them. The catalogue package owns
- * the vocabulary; this is the profile field that points at it.
+ * Re-exported: profile and activity levels must be the same strings
+ * (`rankActivities` compares them), and the catalogue package owns them.
  */
 export type { TopikLevel }
 
@@ -27,31 +25,19 @@ export type UserProfile = {
 
 export type UserSettings = {
   /**
-   * The hosted voice: a provider and the voice chosen from it, or `null`
-   * for the provider's default in each language. Typed so a voice of
-   * another provider cannot be held; storage is read into it once, in the
-   * settings repository.
+   * The hosted voice: a provider and its chosen voice, or `null` for the
+   * provider's default. Typed so another provider's voice cannot be held.
    */
   ttsVoice: HostedVoiceChoice
   /**
-   * The Android app's voice, as the phone's own engine names it
-   * (`ko-kr-x-ism-local`). Separate from `ttsVoiceId` because the two name
-   * voices from different catalogues: a hosted voice id means nothing to
-   * the phone. Empty string means "the phone's default Korean voice".
+   * The Android app's voice, as the phone's engine names it
+   * (`ko-kr-x-ism-local`): a different catalogue from `ttsVoiceId`. Empty
+   * means the phone's default Korean voice.
    */
   deviceVoiceId: string
-  /**
-   * What this app may play, per channel. Lives with the rest of the tenant
-   * settings rather than in its own store so that a person's audio choices
-   * round-trip exactly like their voice choice does.
-   */
+  /** What this app may play, per channel; round-trips with the voice. */
   audio: AudioPreferences
-  /**
-   * When this app may interrupt you to say a session is waiting. Sits with
-   * the audio preferences rather than in its own store for the same reason
-   * they do - it is one more statement about what this app is allowed to
-   * do unprompted, and the three should round-trip together.
-   */
+  /** When this app may interrupt to say a session is waiting. */
   notifications: NudgePreferences
   defaultSessionDurationMinutes: number
   defaultLayoutTree: LayoutTreeId
@@ -84,11 +70,9 @@ export type SessionRecord = {
   scenes: Array<SceneConfig>
   layoutMode: "basic" | "advanced"
   /**
-   * The session's own `Layout(t)`, one tree for its entire lifetime.
-   * Absent means the naive default (a single leaf filling `V`) - there's
-   * no seeding step, only an explicit edit via the live editor ever sets
-   * this. Scenes contribute bindings for these leaves (`ui.panels`), never
-   * topology.
+   * The session's own `Layout(t)`, one tree for its lifetime. Absent means a
+   * single leaf filling `V`; only the live editor sets it. Scenes bind leaves
+   * (`ui.panels`), never topology.
    */
   layout?: LayoutNode<SlotId>
   totalDurationMs: number

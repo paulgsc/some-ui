@@ -1,35 +1,24 @@
 /**
- * What this app is allowed to play, and how loudly.
+ * What this app is allowed to play, and how loudly: audio *expectation* (does
+ * the person want speech, game sounds), not browser playback permission. A
+ * stated preference per channel, persisted with the tenant settings.
  *
- * Audio *permission* (can the browser play anything at all, has the user
- * gestured yet) and audio *expectation* (does the person want to be spoken
- * to, do they want game sounds) are different problems, and conflating them
- * is how apps end up with a single "sound on/off" switch that answers
- * neither. This module is only the second one: a stated preference per
- * channel, persisted with the rest of the tenant settings.
- *
- * ## Channels are only listed here once something honours them
- *
- * A toggle that controls nothing is worse than no toggle - it tells a
- * person they have turned something off while it keeps playing. So a
- * channel appears in this model only when there is a real seam behind it:
+ * A channel is listed only once something honours it, since a toggle that
+ * controls nothing tells a person something is off while it plays:
  *
  * - **speech** - `@some-ui/speech`'s session, muted through
  *   `SpeechProvider`'s `muted` prop, which drops utterances at the queue.
  * - **effects** - honeycomb's `useGameAudio`, reached through
  *   `HangulHexGrid`'s `audio` prop and the session viewport's scene props.
  *
- * Background ambience is deliberately absent: nothing in this repo plays
- * any. It gets a row here the day something does, and not before.
+ * No background ambience: nothing plays any yet.
  */
 
 import type { AudioChannelId } from "@some-ui/activity-catalog"
 
 /**
- * Re-exported, not redeclared: the ids are owned by
- * `@some-ui/activity-catalog`, where activities *declare* the channels they
- * use. This module is the consuming half - what the person allows - and the
- * two only line up if exactly one of them defines the vocabulary.
+ * Re-exported: `@some-ui/activity-catalog` owns the ids, where activities
+ * declare the channels they use; this is what the person allows.
  */
 export type { AudioChannelId }
 
@@ -42,11 +31,8 @@ type AudioChannelPreference = {
 export type AudioPreferences = Record<AudioChannelId, AudioChannelPreference>
 
 export const DEFAULT_AUDIO_PREFERENCES: AudioPreferences = {
-  // On by default, both of them. This is a learning app: pronunciation is
-  // the content in the Korean modules, not decoration on top of it, and a
-  // silent-by-default TTS lesson is a broken one. The disclosure layers
-  // (the indicator, the first-use notice) exist precisely so that "on by
-  // default" is not a surprise.
+  // On by default: pronunciation is the content in the Korean modules, and
+  // the disclosure layers (indicator, first-use notice) make it no surprise.
   speech: { enabled: true, volume: 1 },
   effects: { enabled: true, volume: 0.5 },
 }
@@ -79,9 +65,8 @@ export type AudioSummary = {
 }
 
 /**
- * The one-line answer to "what can this app do to my ears right now?",
- * which is what the persistent indicator exists to show without
- * interrupting anyone.
+ * The one-line answer to "what can this app do to my ears right now?", for
+ * the persistent indicator.
  */
 export function summarizeAudio(preferences: AudioPreferences): AudioSummary {
   const speech = preferences.speech.enabled
@@ -135,12 +120,8 @@ export function setAllEnabled(
 }
 
 /**
- * Fills in channels a stored preference blob predates.
- *
- * Settings are persisted as one JSON object and `readJSON` hands back
- * whatever was written, so a browser holding a settings object from before
- * this module existed would otherwise produce `preferences.speech.enabled`
- * on `undefined` - a blank page rather than a missing toggle.
+ * Fills in channels a stored preference blob predates (settings persist as
+ * one JSON object), or `preferences.speech.enabled` would read `undefined`.
  */
 export function withAudioDefaults(
   stored: Partial<AudioPreferences> | undefined

@@ -1,15 +1,8 @@
 /**
- * The same `SessionsStore`, backed by `file_host` instead of `localStorage`.
+ * The same `SessionsStore`, backed by `file_host` instead of `localStorage`;
+ * the server's nudge policy can only reason about sessions it has.
  *
- * This is the story that actually moves the source of truth, and without it
- * the rest of the study-nudge migration is decoration: the server's policy
- * can only reason about sessions the server has, so until these writes go
- * through it concludes `nothing-prepared` every day and stays correctly,
- * uselessly silent.
- *
- * The route table was not invented here. `file_host` built one endpoint per
- * method of `SessionsRepository`, on purpose, so this file is a transport
- * and nothing else:
+ * One endpoint per `SessionsRepository` method, so this is a transport only:
  *
  * ```
  * list()                    -> GET    /sessions
@@ -22,24 +15,12 @@
  * duplicate(id)             -> POST   /sessions/:id/duplicate
  * ```
  *
- * ## Two behaviours are gone from the client, not moved
+ * Ids and `totalDurationOf(scenes)` are the server's: `create` sends the four
+ * composed fields and takes the rest from the response (a stale zero duration
+ * would offer a "~1 min" session). `duplicate` resets to `draft` and clears
+ * the stamps server-side, so a copy does not read as "studied today".
  *
- * `generateId("session")` and `totalDurationOf(scenes)` are the server's
- * now, and a client that kept sending either would be a second
- * implementation waiting to disagree. The duration is the nastier of the
- * two: a stale zero produces a notification offering a "~1 min" session.
- * So `create` sends the four fields the composer collected and takes
- * everything else from the response. `duplicate` likewise — the copy resets
- * to `draft` and clears `startedAt`/`completedAt` server-side, because
- * carrying those into a copy would make a fresh duplicate read as "studied
- * today" and silence the day.
- *
- * ## Last write wins
- *
- * There is no conflict resolution, and there is not meant to be. One
- * browser at a time is the assumption; two browsers editing one session
- * will end with whichever wrote last. Written down here rather than
- * silently relied on.
+ * Last write wins: one browser at a time is the assumption.
  */
 
 import type { FileHostTransport } from "@/lib/file-host-config/client"
@@ -60,10 +41,8 @@ function isNotFound(error: unknown): boolean {
 }
 
 /**
- * `404` is the one status with a meaning rather than a failure. The server
- * returns it — not a `500` — precisely so this mapping is possible; a `500`
- * would have the app reporting an outage for a session someone deleted in
- * another tab.
+ * `404` is the one status with a meaning rather than a failure: a session
+ * deleted in another tab, not an outage.
  */
 async function orNotFound<T>(id: string, request: Promise<T>): Promise<T> {
   try {
@@ -86,9 +65,8 @@ export class HttpSessionsRepository implements SessionsStore {
   }
 
   /**
-   * `null` rather than a throw for an unknown id, matching the
-   * `localStorage` repository — `useSession` renders "not found" from it,
-   * and a rejected query would render an error instead.
+   * `null` for an unknown id, like the `localStorage` repository, so
+   * `useSession` renders "not found" rather than an error.
    */
   async get(id: string): Promise<SessionRecord | null> {
     try {
@@ -102,9 +80,8 @@ export class HttpSessionsRepository implements SessionsStore {
   }
 
   async create(input: CreateSessionInput): Promise<SessionRecord> {
-    // No `id`, no `totalDurationMs`, no timestamps: all four are the
-    // server's, and the full record comes back because the react-query
-    // cache depends on it.
+    // No `id`, `totalDurationMs` or timestamps: the server's. The full record
+    // comes back for the react-query cache.
     return this.request<SessionRecord>("/sessions", {
       method: "POST",
       body: JSON.stringify({
@@ -127,17 +104,14 @@ export class HttpSessionsRepository implements SessionsStore {
   }
 
   async remove(id: string): Promise<void> {
-    // Deleting something already gone is not an error here, the same way it
-    // is not for the localStorage repository.
+    // Deleting something already gone is not an error, as in localStorage.
     await this.request(`/sessions/${encodeURIComponent(id)}`, {
       method: "DELETE",
     })
   }
 
   async removeMany(ids: ReadonlyArray<string>): Promise<void> {
-    // The empty case short-circuits rather than asking the server to delete
-    // nothing — the localStorage repository treats it as a no-op and a
-    // round trip would be the only observable difference.
+    // The empty case is a no-op, as in localStorage.
     if (ids.length === 0) return
     await this.request("/sessions", {
       method: "DELETE",

@@ -80,9 +80,7 @@ const SettingsForm = ({
 
   const isDirty = JSON.stringify(settings) !== JSON.stringify(draft)
 
-  // Lifted verbatim from the pre-migration `onSuccess`. No navigation, so
-  // no `disabled` check is needed here the way session-composer's chain
-  // needs `activeAction` - this form only ever has the one save intent.
+  // One save intent and no navigation, so no `activeAction`-style gating.
   useIntentEffect(saveIntent.state, () => {
     toast("Settings saved")
   })
@@ -221,10 +219,8 @@ const SettingsOutcome = (): JSX.Element => {
     failed: (error, retry) => <IntentFailure error={error} onRetry={retry} />,
     ready: (settings, refreshError) => (
       <div className="max-w-xl space-y-4">
-        {/* Same Safety invariant as `profile.tsx`'s identical fix: a cached
-            settings record through a failed background refresh may be
-            stale, so the refresh failure rides alongside the editable form
-            instead of being silently discarded. */}
+        {/* A cached record through a failed refresh may be stale, so the
+              failure rides alongside the form (as in `profile.tsx`). */}
         {refreshError && (
           <IntentFailure
             error={refreshError.error}

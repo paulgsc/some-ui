@@ -16,49 +16,26 @@ import { useSettings } from "@/lib/tenant"
 import { describeTTSEndpoint, resolveTTSEndpoint } from "@/lib/tts-config"
 
 /**
- * Establishes the app's one speech session.
+ * Establishes the app's one speech session; `@some-ui/speech` owns its
+ * lifetime. What is left here is what only this app knows: which deployment
+ * it is (`DATA_MODE`: the `openai-edge-tts` container where reachable, the
+ * browser's voice on Pages), and what the user picked in settings.
  *
- * This used to build a TTS hook from a hardcoded endpoint and API key, call
- * `initializeSpeechQueue` from an effect, swallow the "already initialized"
- * error that a second call always produced, and never tear any of it down -
- * which is why switching provider kept speaking through the torn-down one.
- * All of that is `@some-ui/speech`'s job now; what is left here is the two
- * things only this app knows: which deployment it is, and what the user
- * picked in settings.
- *
- * `DATA_MODE` is the same build-time bit the content shims use ("static" is
- * the GitHub Pages build, "server" is dev/preview/Docker). The speech
- * package turns it into a backend: the `openai-edge-tts` container where
- * one is reachable, the browser's own voice on Pages where nothing is.
- *
- * Which backends exist at all is this build's to say, and it says it in
- * place: each is its own `@some-ui/speech` entry, and the
- * `VITE_DEVICE_BACKEND` test below folds while the module is compiled, so
- * the APK carries only the phone's voice and the web builds never carry it
- * (build.paths.ts checks both).
+ * Each backend is its own `@some-ui/speech` entry, and the
+ * `VITE_DEVICE_BACKEND` test below folds at compile time, so the APK carries
+ * only the phone's voice and the web builds never carry it (build.paths.ts
+ * checks both).
  */
 
 /**
- * Renders a speech notice through the app's existing toaster - except the
- * one that teaches the feature.
+ * Renders a speech notice through the app's toaster, except `activated`: a
+ * toast on mount is gone before anyone looks, so that disclosure lives in the
+ * header's speaker indicator and the inline notice on an audio activity.
+ * Toasts are for what just happened and the person did not do (speech
+ * breaking, recovering, unsupported).
  *
- * `activated` is dropped here deliberately. A toast on initial mount is the
- * easiest thing in the interface to miss: it arrives while a person is
- * still orienting themselves visually, and it is gone before they look. So
- * the disclosure that this app has a voice lives where it can be found on
- * purpose - the speaker indicator in the header (always visible, always
- * current) and the one-time inline notice on an audio activity. Both
- * outlast a toast because neither disappears.
- *
- * What is left is the part a toast is genuinely good at: acknowledging
- * something that just happened and that the person did not do. Speech
- * breaking, recovering, or turning out to be unsupported are all events
- * they would otherwise have to infer from silence.
- *
- * The budget is not enforced here and must not be: `@some-ui/speech` emits
- * a notice only on a transition it has not already announced, so this sees
- * at most a handful of calls across a whole session no matter how many
- * utterances failed underneath.
+ * No budget here: `@some-ui/speech` only emits on a transition it has not
+ * already announced.
  */
 const announce = (notice: SpeechNotice): void => {
   if (notice.kind === "activated") return
@@ -66,22 +43,10 @@ const announce = (notice: SpeechNotice): void => {
   render(notice.title, { description: notice.description })
 }
 /**
- * Says once, in dev, where this session is about to look for speech.
- *
- * Speech is the one thing in this app whose configuration is invisible from
- * the inside: the settings page shows provider and voice but no endpoint,
- * and `@some-ui/speech` deliberately keeps hosts and ports out of its
- * notices (they are for the person using the app, not the person running
- * it). That is right for the UI and unhelpful the moment the endpoint is
- * wrong - a `VITE_TTS_ENDPOINT` left over in a shell or an .env.local wins
- * over every default in `tts-config`, and all the browser shows for it is a
- * 404 on a path nobody serves.
- *
- * So: one line, dev only, naming the endpoint and which rule produced it.
- * Not a toast and not a notice - this is for whoever is running the stack,
- * and the console is where they already are. Production builds drop
- * `console` entirely (see vite.config.ts terser options), and the `MODE`
- * guard keeps it out of the test runner's output.
+ * Says once, in dev, where this session looks for speech. Nothing in the UI
+ * shows the endpoint, and a stale `VITE_TTS_ENDPOINT` beats every default
+ * with only a 404 as evidence. Console only, for whoever runs the stack;
+ * production drops `console` and the `MODE` guard keeps tests quiet.
  */
 let disclosedEndpoint = false
 const discloseEndpoint = (): void => {
@@ -115,13 +80,10 @@ export const TTSProvider = ({
 }: {
   children: ReactNode
 }): JSX.Element => {
-  // Where the lesson text is spoken depends on whose data this is. On an
-  // account the speech service is the server's (`mode: DATA_MODE`); on the
-  // device it is the browser's own voice (`"static"`), so what a learner reads
-  // aloud never reaches the operator's TTS container. Wait while a returning
-  // account user's authority is being decided: `children` still renders either
-  // way, because none of the routes should wait on a speech session nobody has
-  // asked for yet.
+  // On an account, speech is the server's (`mode: DATA_MODE`); on the device
+  // it is the browser's own voice (`"static"`), so text read aloud never
+  // reaches the operator's TTS container. While the authority is pending,
+  // `children` still render: no route waits on speech.
   const { kind } = useAuthority()
   const { data: settings } = useSettings()
   const { preferences } = useAudioPreferences()
@@ -135,9 +97,8 @@ export const TTSProvider = ({
       config={
         import.meta.env.VITE_DEVICE_BACKEND === "true"
           ? {
-              // The device build has a backend but no TTS service behind
-              // it, so it speaks with the phone's own engine: Korean, in
-              // the voice picked from the phone's list in Settings.
+              // The device build has no TTS service: the phone's own engine,
+              // in the voice picked in Settings.
               mode: "static",
               language: LESSON_LANGUAGE,
               native: deviceSpeechBackend(settings?.deviceVoiceId),
@@ -151,9 +112,8 @@ export const TTSProvider = ({
             }
       }
       fallback={<InitializingSpeech />}
-      // The speech channel of the app's audio preferences, live. Muting
-      // stops what is speaking and drops what was queued, without ending
-      // the session - the toggle is a preference, not a teardown.
+      // Muting stops what is speaking and drops the queue without ending the
+      // session.
       muted={!preferences.speech.enabled}
       notify={announce}
     >

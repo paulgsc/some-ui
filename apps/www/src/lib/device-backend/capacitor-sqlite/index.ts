@@ -1,17 +1,13 @@
 /**
  * `SqlDriver` over `@capacitor-community/sqlite`: a real SQLite file in the
- * app's private data directory, so it survives restarts and is not subject
- * to the WebView's storage eviction.
+ * app's private data directory, safe from WebView storage eviction.
  *
- * Only ever loaded by the device build (see `device-backend/install`), and
- * only on the native platform - the plugin's web fallback needs a
- * `jeep-sqlite` element this app does not ship, so a device build opened in
- * a desktop browser fails loudly here rather than half-working.
+ * Native only: the plugin's web fallback needs a `jeep-sqlite` element this
+ * app does not ship, so a device build in a desktop browser fails loudly.
  *
- * Every `run`/`execute` passes `transaction: false`. The plugin otherwise
- * wraps *each* call in its own transaction, which would both nest inside
- * `transaction()` below (SQLite has no nested `BEGIN`) and turn a seed of a
- * few hundred rows into a few hundred fsyncs.
+ * Every `run`/`execute` passes `transaction: false`: otherwise each call gets
+ * its own transaction, which cannot nest inside `transaction()` below and
+ * turns a seed into hundreds of fsyncs.
  */
 import { CapacitorSQLite, SQLiteConnection } from "@capacitor-community/sqlite"
 import { Capacitor } from "@capacitor/core"
@@ -54,9 +50,8 @@ export async function openCapacitorSqlite(
       const values: Array<SqlRow> = result.values ?? []
       return values
     },
-    // One connection, so transactions are serialised here: two handlers
-    // interleaving `BEGIN`s on the same connection would be one transaction
-    // with two owners.
+    // One connection, so transactions are serialised here: interleaved
+    // `BEGIN`s would be one transaction with two owners.
     transaction: <T>(fn: () => Promise<T>): Promise<T> => {
       const next = queue.then(async () => {
         await db.beginTransaction()

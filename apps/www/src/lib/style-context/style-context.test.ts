@@ -7,21 +7,9 @@ import { describe, expect, it } from "vitest"
 /**
  * Every UI package www can render must be in style.context.ts's scan set.
  *
- * The failure this guards is quiet by construction. Tailwind emits a utility if
- * *any* scanned file mentions it, so a package left out of the list does not
- * lose its styling — it loses only the classes no scanned package happens to
- * share. What ships is a component that is mostly right and subtly broken, and
- * the breakage looks like a bug in the component rather than a gap in the build
- * config, in one app only.
- *
- * So the list is checked against the dependency graph rather than reviewed by
- * eye: the closure is the ground truth, and a new UI dependency that renders
- * fails here on the day it is added instead of whenever someone notices a
- * squashed panel.
- *
- * The closure is walked from the workspace manifests rather than shelled out to
- * `pnpm list`, which takes ~17s — long enough that the check would end up
- * excluded from the ordinary test run, which defeats the point of having it.
+ * A package left out loses only the classes no scanned package shares, so it
+ * ships mostly right and subtly broken. The list is checked against the
+ * dependency closure, walked from the manifests (`pnpm list` takes ~17s).
  */
 
 const APP_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..")
@@ -106,9 +94,8 @@ function uiPackagesInGraph(): Array<string> {
 }
 
 /**
- * A package "renders" if it ships .tsx source — that is what authors class
- * candidates. Pure-TS packages (types, hooks, adapters) have nothing to scan,
- * which is why the list can legitimately omit them.
+ * A package "renders" if it ships .tsx source; pure-TS packages have nothing
+ * to scan.
  */
 function shipsComponents(pkg: string): boolean {
   const src = resolve(UI_ROOT, pkg, "src")
@@ -166,9 +153,8 @@ describe("www style context", () => {
   })
 
   it("scans no package that does not exist", () => {
-    // The reverse direction (#1457): an entry whose directory is gone
-    // matches nothing and fails silently, so a deleted package's glob can
-    // outlive it indefinitely — packages/ui/nfl did.
+    // The reverse direction: an entry whose directory is gone matches
+    // nothing and fails silently.
     const phantom = [...SCANNED]
       .filter((pkg) => !existsSync(resolve(UI_ROOT, pkg, "src")))
       .sort()

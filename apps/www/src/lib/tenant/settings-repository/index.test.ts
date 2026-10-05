@@ -35,11 +35,8 @@ describe("SettingsRepository", () => {
 
 describe("SettingsRepository - forward compatibility", () => {
   it("fills in fields a stored blob predates", async () => {
-    // Exactly what a browser holds after using the app before audio
-    // preferences existed. Settings persist as one JSON object under one
-    // key, so a missing field comes back `undefined` rather than defaulted -
-    // and `preferences.speech.enabled` on undefined is a blank page, not a
-    // missing toggle.
+    // What a browser holds from before audio preferences existed: a missing
+    // field comes back `undefined`, not defaulted.
     storage.setItem(
       "some-ui.tenant.settings.v1",
       JSON.stringify({

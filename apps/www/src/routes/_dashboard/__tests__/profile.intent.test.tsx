@@ -1,23 +1,18 @@
 /**
  * @vitest-environment jsdom
  *
- * #937 S3: coverage extension for the profile save form's `useIntent`
- * failure path - this route had no dedicated test file at all before this
- * one. Same rationale as `settings.intent.test.tsx`: profile persists
- * through `ProfileRepository` straight to `localStorage`, never through
- * `file_host`/`fetch`, so the failure is injected by rejecting
- * `ProfileRepository.prototype.save` directly rather than sabotaging
- * `global.fetch`. The thrown error isn't a `FileHost*Error`, so
- * `mapFileHostError` falls through to `@some-ui/intent-kit`'s generic
- * `toIntentError` - `kind: "unknown"`, `retryable: true` always.
+ * The profile save form's failure path. Profile persists through
+ * `ProfileRepository` straight to `localStorage`, so the failure is injected
+ * by rejecting `ProfileRepository.prototype.save` (as in `settings.test.tsx`);
+ * a non-`FileHost*Error` maps to `kind: "unknown"`, always retryable.
  */
 
-import type { JSX, ReactNode } from "react"
 import {
   expectRetryAffordanceTracksRetryable,
   expectSomeFailureAffordance,
 } from "@/test-support/file-host-sabotage"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { withQueryClient } from "@/test-support/query-client"
+import { routeComponent } from "@/test-support/router-stubs"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterAll, afterEach, beforeEach, describe, it, vi } from "vitest"
 
@@ -33,22 +28,12 @@ vi.mock("sonner", () => ({
 }))
 
 const { Route } = await import("@/routes/_dashboard/profile")
-// eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- createFileRoute's Route.options.component is typed broader than the concrete component this file actually registered; there is no narrower accessor.
-const ProfileRoute = Route.options.component as () => JSX.Element
-
-function withProviders(children: ReactNode): JSX.Element {
-  const client = new QueryClient({
-    defaultOptions: { mutations: { retry: false } },
-  })
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>
-}
+const ProfileRoute = routeComponent(Route)
 
 beforeEach(() => {
   saveProfileSpy.mockClear()
   window.localStorage.clear()
-  // This route only ever renders behind the router's auth guard - the
-  // profile query it reads stays disabled without a session (see
-  // `lib/tenant/hooks.ts`), so tests rendering it directly need one too.
+  // The profile query stays disabled without a session (`lib/tenant/hooks.ts`).
   markSignedIn()
 })
 
@@ -61,7 +46,7 @@ afterAll(() => {
 })
 
 async function renderLoaded(): Promise<void> {
-  render(withProviders(<ProfileRoute />))
+  render(withQueryClient(<ProfileRoute />))
   await screen.findByText("Profile")
 }
 

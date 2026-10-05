@@ -1,15 +1,8 @@
 /**
- * The Android app's stand-in for the account section: what is on this
- * phone, and a sync from the home server that puts TOPIK lessons (and any
- * newer Leetype rounds) on it for later.
- *
- * There is nothing to sign out of on the device - `/auth/session` is always
- * signed in there, with the phone's own lock as the lock - so the account
- * controls are not shown rather than shown and inert.
- *
- * The home address is remembered in `localStorage`: a per-phone convenience,
- * and if it is lost the person types it again. What was synced is in the
- * database, not here.
+ * The Android app's stand-in for the account section: what is on this phone,
+ * and a sync from home for TOPIK lessons (and newer Leetype rounds). No
+ * account controls: the device is always signed in, locked by the phone. The
+ * home address is a per-phone convenience in `localStorage`.
  */
 
 import type { JSX } from "react"

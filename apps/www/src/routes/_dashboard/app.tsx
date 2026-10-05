@@ -66,11 +66,8 @@ function profileSummaryContent(
           <p className="text-muted-foreground text-sm">Welcome back</p>
           <p className="text-lg font-semibold">{profile.displayName}</p>
         </div>
-        {/* Same Safety invariant `RecentSessions` below already gets right:
-            a cached profile through a failed background refresh may be
-            stale, so the refresh failure rides alongside it rather than
-            being silently discarded - this arm shared the gap `profile.tsx`/
-            `settings.tsx` had until a bot review caught it there first. */}
+        {/* A cached profile through a failed refresh may be stale, so the
+            failure rides alongside it (as for `RecentSessions` below). */}
         {refreshError && (
           <IntentFailure
             error={refreshError.error}

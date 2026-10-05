@@ -4,19 +4,10 @@ import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
 
 /**
- * The brand mark exists twice on disk and cannot not exist twice: a favicon
- * has to sit at the site root for `/favicon.svg` to resolve, and Storybook —
- * a separately-deployed surface — serves its own from a static dir rather than
- * reaching across into another workspace's build output. Two files is the cost
- * of that; two *different* files is the bug it invites, and it would surface
- * as a mismatched icon in a tab strip nobody looks at twice.
- *
- * So: they must be byte-identical, and editing one without the other fails
- * here rather than in production.
- *
- * (The shared copy lives under packages/some-styles/brand rather than any
- * `public/` directory on purpose — .gitignore excludes every `public` folder
- * under packages, so an asset put there is silently never committed.)
+ * The brand mark exists twice on disk (the site root's `/favicon.svg`, and
+ * Storybook's own static dir) and the copies must be byte-identical. The
+ * shared copy lives under packages/some-styles/brand because .gitignore
+ * excludes every `public` folder under packages.
  */
 
 const REPO_ROOT = resolve(
@@ -44,10 +35,8 @@ describe("brand favicon", () => {
   })
 
   it("keeps the cell spacing that makes it legible at 16px", () => {
-    // The one geometric decision that is easy to "tidy" back into a bug: at a
-    // spacing of 17 the gaps between cells are a third of a pixel once the 64
-    // box is drawn at favicon size, and the mark becomes a blob. Anything that
-    // narrows this should have to argue with a red test first.
+    // At a spacing of 17 the gaps are a third of a pixel at favicon size and
+    // the mark becomes a blob.
     const svg = readFileSync(resolve(REPO_ROOT, COPIES[0]), "utf8")
     const offsets = [...svg.matchAll(/translate\((-?[\d.]+) (-?[\d.]+)\)/g)]
       .map(([, x, y]) => [Number(x), Number(y)] as const)

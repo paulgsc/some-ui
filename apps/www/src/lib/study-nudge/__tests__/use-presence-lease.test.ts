@@ -1,10 +1,9 @@
 /**
  * @vitest-environment jsdom
  *
- * The event-driven half of the presence lease: fires on mount and on
- * returning to visible, renews sparsely while visible, and never writes on a
- * fixed interval regardless of tab state — the property #317's server half
- * was sized around and the one most worth pinning here.
+ * The event-driven presence lease: on mount and on returning to visible,
+ * renewed sparsely while visible, never on a fixed interval regardless of tab
+ * state.
  */
 import { cleanup, renderHook } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"

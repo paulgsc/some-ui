@@ -3,10 +3,9 @@
 // off that profile's path (build.paths.ts, `paths`). The rule and what it
 // can and cannot see: packages/some-vite-config/AUDIENCES.md, "Paths".
 //
-// Each build is the shipped one plus `--manifest` and hidden sourcemaps,
-// written to a temporary directory: the code is byte-for-byte what deploys,
-// and dist/ is left alone. Builds run one at a time; two `vite build`s in
-// this directory at once have overwritten each other's output.
+// Each build is the shipped one plus `--manifest` and hidden sourcemaps, in a
+// temporary directory. One at a time: concurrent `vite build`s here have
+// overwritten each other's output.
 //
 // Runs on Node's built-in type stripping: imports spell their `.ts` extension.
 import { spawnSync } from "node:child_process"

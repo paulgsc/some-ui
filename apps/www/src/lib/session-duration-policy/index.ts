@@ -1,29 +1,20 @@
 import type { SceneConfig } from "@some-ui/types"
 
 /**
- * The knobs that bound what a "session" is allowed to be, kept as a single
- * named, swappable value (an adapter) rather than magic numbers scattered
- * across the composer. A caller wanting looser/stricter limits passes a
- * different `SessionDurationPolicy` into `checkSessionDuration` - nothing
- * about the check itself is hard-coded to these particular numbers.
+ * The bounds on what a "session" may be, as one swappable value: pass a
+ * different `SessionDurationPolicy` to `checkSessionDuration` for other limits.
  */
 export type SessionDurationPolicy = {
   /**
-   * Floor below which a single activity block may not be scheduled. Guards
-   * against a 0-minute (or trivially short) block slipping in - most
-   * activities' own Configure-step field already enforces a minimum, but
-   * the Advanced arrangement editor lets a scene's raw duration be set
-   * directly, bypassing that field entirely. This is the one place every
-   * write path (basic sequencing and advanced editing alike) is checked.
+   * Floor for a single activity block. Configure-step fields already enforce
+   * minimums, but the Advanced editor sets raw scene durations directly; this
+   * checks every write path.
    */
   readonly minActivityDurationMs: number
   /**
-   * Ceiling on the combined duration of every activity in one session.
-   * Nothing stops a user from adding the same activity many times (the
-   * composer allows repeats) or cranking several durations up - without a
-   * cap, a "session" tuple can trivially cumulate to an absurd combined
-   * length (a day, a week, more). This bounds the sum, not any single
-   * activity.
+   * Ceiling on the combined duration of one session: repeats and long
+   * durations could otherwise sum to a day or more. Bounds the sum, not any
+   * single activity.
    */
   readonly maxTotalDurationMs: number
 }
@@ -32,11 +23,8 @@ const MINUTES = 60_000
 const HOURS = 60 * MINUTES
 
 /**
- * 5 minutes matches the tightest per-activity minimum already declared in
- * the activity catalog (honeycomb/leetype), so this floor never tightens
- * anything a normal Configure-step user would hit - it only closes the
- * Advanced-editor bypass. 4 hours is a deliberately generous but finite cap:
- * long enough for a genuine multi-activity study block, nowhere near a day.
+ * 5 minutes matches the tightest per-activity catalog minimum, so it only
+ * closes the Advanced-editor bypass. 4 hours: generous but finite.
  */
 export const DEFAULT_SESSION_DURATION_POLICY: SessionDurationPolicy = {
   minActivityDurationMs: 5 * MINUTES,
@@ -44,10 +32,8 @@ export const DEFAULT_SESSION_DURATION_POLICY: SessionDurationPolicy = {
 }
 
 /**
- * A type-state result: each outcome carries exactly the data its own
- * message needs, and there is no "valid: boolean" flag a caller could
- * forget to check - TypeScript's exhaustiveness checking on the `state`
- * discriminant forces every call site to handle all three shapes.
+ * A type-state result: each outcome carries the data its message needs, with
+ * no `valid: boolean` to forget to check.
  */
 export type DurationCheck =
   | { readonly state: "valid" }
@@ -64,10 +50,8 @@ export type DurationCheck =
     }
 
 /**
- * Validates the actual, final scene durations - not the friendly
- * per-activity form fields - so it catches a policy violation regardless of
- * which composer step produced the numbers (basic sequencing or a manual
- * Advanced-arrangement edit).
+ * Validates the final scene durations, not the per-activity form fields, so
+ * it catches a violation from either basic sequencing or an Advanced edit.
  */
 export function checkSessionDuration(
   scenes: ReadonlyArray<Pick<SceneConfig, "scene_name" | "duration">>,

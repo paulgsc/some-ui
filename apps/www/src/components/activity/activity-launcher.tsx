@@ -30,18 +30,9 @@ const CATALOGUE: ReadonlyArray<ActivityDefinition> = ACTIVITY_IDS.map(
 
 /**
  * The dashboard's front door: `k` recommended activities, and search for
- * everything else (#854, #855).
- *
- * The thing this deliberately does not do is render the catalogue. It used to
- * - `ACTIVITY_IDS.map` into a four-column grid - and that looked polished by
- * coincidence, because there were exactly four activities and exactly four
- * columns. At twenty it is a wall that pushes recent sessions off the first
- * screen, and the obvious repair (`overflow-y-auto`) is banned here for
- * exactly that reason. So: rank, show one row, and make the rest findable.
- *
- * `k` is a function of the box, never of the catalogue - one row of cards at
- * each breakpoint - which is what makes adding a twentieth activity a
- * no-op for this layout.
+ * everything else (#854, #855). It never renders the whole catalogue (a wall
+ * at twenty activities, and `overflow-y-auto` is banned here). `k` depends on
+ * the box (one row per breakpoint), never the catalogue.
  */
 export const ActivityLauncher = (): JSX.Element => {
   const { data: sessions = [] } = useSessions()
@@ -53,9 +44,8 @@ export const ActivityLauncher = (): JSX.Element => {
   const listboxId = useId()
   useSearchHotkey(inputRef)
 
-  // Ranked once, in full: the launcher renders the head of this list and the
-  // overlay searches the whole of it, so both surfaces agree on what "better"
-  // means without ranking twice.
+  // Ranked once, in full: the launcher shows the head, the overlay searches
+  // all of it.
   const ranked = useMemo(
     () =>
       pickRecommended(CATALOGUE, CATALOGUE.length, {
@@ -89,9 +79,8 @@ export const ActivityLauncher = (): JSX.Element => {
         </Button>
       </div>
 
-      {/* The results panel is positioned against this wrapper, so opening it
-          moves nothing underneath - the recommended set stays exactly where
-          it was, and closing the overlay restores the page with no shift. */}
+      {/* The results panel is positioned against this wrapper, so opening
+            it moves nothing underneath. */}
       <div className="relative">
         <ActivitySearchField
           value={overlay.query}

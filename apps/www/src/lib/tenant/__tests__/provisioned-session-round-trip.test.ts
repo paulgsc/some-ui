@@ -19,17 +19,10 @@ import type { SessionRecord } from "@/lib/tenant/types"
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 /**
- * `paulgsc/server`'s `nudge::waker::materialize_provisioned_session`
- * (`#282`, RCM5), run once and copied here by hand
- * (`cargo run --bin dump-provisioned-session`, `paulgsc/server#282`) — the
- * same by-hand fixture discipline `session-duration-policy`'s own
- * `provisioned-session.test.ts` already uses for RCM4's narrower fixture,
- * scaled up here from just `activities` to a full `SessionRecord`.
- *
- * Regenerate this file whenever the server's seed migration, the
- * recommender's rules, or the naming/duration logic change in a way that
- * would move which activities get proposed, what they're named, or what
- * they're scheduled at — see the dump binary's own doc comment.
+ * `paulgsc/server`'s `nudge::waker::materialize_provisioned_session` (RCM5),
+ * dumped by hand with `cargo run --bin dump-provisioned-session`
+ * (paulgsc/server#282). Regenerate it when the seed migration, the
+ * recommender's rules, or the naming/duration logic change.
  */
 const rawFixture = readFileSync(
   join(__dirname, "testdata/provisioned-session.snapshot.json"),
@@ -45,25 +38,15 @@ const SESSION_STATUSES = new Set([
 ])
 
 /**
- * `JSON.parse` returns `any`, so `const record: SessionRecord =
- * JSON.parse(...)` performs neither compile-time nor runtime checking - a
- * regenerated fixture that dropped or renamed a required field, or shipped
- * a malformed nested `activities` entry, would still "pass" every
- * assertion below that doesn't happen to touch it. This is a minimal
- * structural check, not a full schema (`some-ui#1052`'s own "hand-written
- * schema" acceptance criterion is that, and it doesn't exist yet) - just
- * enough to make the round-trip claim this file's own docstring makes
- * actually enforced rather than assumed.
+ * A minimal structural check (not a full schema, #1052): `JSON.parse`
+ * returns `any`, so a regenerated fixture missing a field would otherwise
+ * pass every assertion that doesn't touch it.
  */
 function assertIsSessionRecord(value: unknown): asserts value is SessionRecord {
   if (typeof value !== "object" || value === null) {
     throw new Error("fixture did not parse to an object")
   }
-  // `object` has no index signature, so reading named fields off it needs a
-  // cast - this is the trust boundary this function exists to check, the
-  // same justification `useLocalStorage`'s own deserializer gives its
-  // otherwise-identical `as T`, except every field below is actually
-  // verified rather than assumed.
+  // The trust boundary this function checks: every field read is verified.
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- see above
   const record = value as Record<string, unknown>
 
@@ -127,16 +110,11 @@ function loadFixture(): SessionRecord {
 }
 
 /**
- * `paulgsc/server#282`'s own acceptance criterion: "a provisioned session
- * round-trips through `SessionRepository` and deserialises into the
- * client's `SessionRecord` without error — verified by a fixture the
- * client repo consumes, not by a hand-copied type." This is that fixture
- * and that test — every assertion below runs the fixture through the real
- * client functions a device actually calls (`sequenceScenes`,
- * `defaultSessionName`, `totalDurationOfScenes`, `checkSessionDuration`),
- * never a reimplementation of what any of them should produce.
+ * A provisioned session deserialises into the client's `SessionRecord`,
+ * checked through the real client functions (`sequenceScenes`,
+ * `defaultSessionName`, `totalDurationOfScenes`, `checkSessionDuration`).
  */
-describe("a server-provisioned session round-trips into the client's SessionRecord (server#282)", () => {
+describe("a server-provisioned session round-trips into the client's SessionRecord", () => {
   const record: SessionRecord = loadFixture()
   // The server provisions only activities this client still offers, so every
   // stored id must narrow; one that doesn't fails here, by name.
@@ -156,23 +134,15 @@ describe("a server-provisioned session round-trips into the client's SessionReco
     expect(record.activities.length).toBeGreaterThan(0)
   })
 
-  it("writes scenes as an empty array, RCM5's own decision — not a durationless or partly-fake scene list", () => {
-    // #282's own acceptance criterion: the scenes decision's consequences
-    // for existing client consumers are enumerated in docs/study-nudge.md.
-    // `live-player.tsx`'s `configure(session.scenes)` is the one that
-    // actually needs `scenes` populated before Start — this fixture
-    // documents the shape that consumer has to handle, it does not
-    // populate it, since no client story yet materialises scenes on
-    // read (see study-nudge.md's "Materialising a session" section).
+  it("writes scenes as an empty array, not a durationless or partly-fake scene list", () => {
+    // The shape `live-player.tsx`'s `configure(session.scenes)` must handle
+    // (docs/study-nudge.md, "Materialising a session").
     expect(record.scenes).toEqual([])
   })
 
   it("omits layout entirely — SQL NULL, not the JSON string 'null'", () => {
-    // The distinction the migration comment insists on: `deserializeExplicitNull`-
-    // equivalent absence, not an explicit null the client would read as
-    // "someone cleared it." A key present with value `null` would still
-    // satisfy `record.layout === undefined` at the TS level, so the
-    // stronger check is against the raw JSON text itself.
+    // Absent, not an explicit null ("someone cleared it"); checked against
+    // the raw JSON, since a present `null` key is not distinguishable here.
     expect(record.layout).toBeUndefined()
     expect(rawFixture).not.toContain('"layout"')
   })
@@ -193,18 +163,14 @@ describe("a server-provisioned session round-trips into the client's SessionReco
     ])
   })
 
-  it("passes checkSessionDuration outright, the same guarantee server#281 established for activities alone", () => {
+  it("passes checkSessionDuration outright, as a proposed activity list does", () => {
     const scenes = sequenceScenes(activities)
     expect(checkSessionDuration(scenes)).toEqual({ state: "valid" })
   })
 
   it("computes totalDurationMs identically to what materialising scenes would produce", () => {
-    // The server's own documented equivalence (activity_repo::provisioning::
-    // total_duration_ms's doc comment): for a `basic`-layout session, the
-    // sum of provisioned durations equals `totalDurationOfScenes` of the
-    // scenes `sequenceScenes` would build, because Basic scenes are placed
-    // back-to-back with no gaps or overlap. This is the assertion that
-    // proves it rather than just claiming it.
+    // Basic scenes sit back-to-back, so the sum of provisioned durations
+    // equals `totalDurationOfScenes` (activity_repo::provisioning).
     const scenes = sequenceScenes(activities)
     expect(record.totalDurationMs).toBe(totalDurationOfScenes(scenes))
   })
