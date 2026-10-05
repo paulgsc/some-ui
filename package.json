@@ -104,6 +104,8 @@
     "stylelint-config-standard": "36.0.1",
     "stylelint-order": "6.0.4",
     "stylelint-selector-bem-pattern": "4.0.1",
+    "tailwindcss": "4.1.12",
+    "tailwindcss-animate": "1.0.7",
     "tsc-alias": "^1.9.5",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",

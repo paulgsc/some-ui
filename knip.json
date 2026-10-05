@@ -25,6 +25,8 @@
       ],
       "ignoreDependencies": [
         "@changesets/cli",
+        "tailwindcss",
+        "tailwindcss-animate",
         "typescript-language-server",
         "typescript-transform-paths"
       ]
