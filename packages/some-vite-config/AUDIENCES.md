@@ -181,8 +181,11 @@ What it cannot see, by construction:
   `@some-ui/speech` exports its HTTP, browser and native voices this way, and `build.paths.ts`
   keeps each in the profiles that run it.
 - **Code with no mapping** (a JSON module, a virtual module) belongs to its chunk only.
-- **Files copied from `public/`**, which are not chunks: the APK carries the web-push
-  service worker `sw.js`, which it never registers.
+- **Files copied from `public/`**, which are not chunks, so no module rule reaches them. They
+  are checked by name instead: `build.paths.ts`'s `offPathPublicFiles` lists what a profile
+  never loads (the APK's résumé PDFs and the web-push service worker `sw.js`), `vite.config.ts`
+  removes those from its output, and the check fails on one still there or on a name that
+  matches nothing in `public/`. A file not on that list ships in every profile unexamined.
 - **A module every profile ships**, but one of them never runs: the comparison has nothing to
   compare. It is caught only once `exclusive` names it.
 

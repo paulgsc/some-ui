@@ -19,7 +19,7 @@ import { BOOST_CAP, WEIGHT_FLOOR } from "@leetype/lib/leetype/round-sampler"
 import type { Round } from "@leetype/types/authored-round"
 import type { DiffSetMember } from "@leetype/types/round"
 import { fireEvent, render, screen, within } from "@testing-library/react"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 
 const COUNT_PRESENT = AUTHORED_ROUNDS[0]!
 
@@ -922,24 +922,21 @@ describe("RoundSession — recorded runs (X2, #1223)", () => {
     expect(screen.queryByText("Runs")).not.toBeInTheDocument()
   })
 
-  it("draws the same rounds whether runs load, fail or are absent (Thm. 8.1)", async () => {
-    const sources: ReadonlyArray<
-      ((roundId: string) => Promise<unknown>) | undefined
-    > = [
-      undefined,
-      (roundId): Promise<unknown> =>
-        Promise.resolve(BUNDLED_ROUND_RUNS[roundId]),
-      (): Promise<unknown> => Promise.reject(new Error("unreachable")),
-    ]
-    const drawn: Array<Array<string>> = []
-    for (const loadRuns of sources) {
-      const ledgerStore = memoryLedgerStore()
+  // Thm. 8.1, one whole session per case. All three sessions in one test took
+  // about 5.5 s on CI's runner alone and passed 15 s whenever every
+  // workspace's suite ran at once (#1673, #1684).
+  describe("draws the same rounds whether runs load, fail or are absent (Thm. 8.1)", () => {
+    /** The rounds six answers draw, in order, from a fresh ledger. */
+    async function drawSession(
+      loadRuns?: (roundId: string) => Promise<unknown>
+    ): Promise<Array<string>> {
+      localStorage.clear()
       const { unmount } = render(
         <RoundSession
           rounds={AUTHORED_ROUNDS}
           sessionSeed={11}
           pastedStore={memoryStore()}
-          ledgerStore={ledgerStore}
+          ledgerStore={memoryLedgerStore()}
           {...(loadRuns === undefined ? {} : { loadRuns })}
         />
       )
@@ -958,14 +955,32 @@ describe("RoundSession — recorded runs (X2, #1223)", () => {
         commit(round % 2 === 0, round % 3 !== 0)
         fireEvent.click(screen.getByRole("button", { name: "Next round" }))
       }
-      drawn.push(ids)
       unmount()
+      return ids
     }
-    expect(drawn[0]).toHaveLength(6)
-    expect(new Set(drawn[0]).size).toBeGreaterThan(1)
-    expect(drawn[1]).toEqual(drawn[0])
-    expect(drawn[2]).toEqual(drawn[0])
-    // Three whole sessions of six rounds, each waiting for runs to settle:
-    // about 3.3 s here and 5.5 s on CI's runner, past vitest's 5 s default.
-  }, 15_000)
+
+    let absent: ReadonlyArray<string> = []
+    beforeAll(async () => {
+      absent = await drawSession()
+    }, 10_000)
+
+    it("with no runs at all, draws more than one round", () => {
+      expect(absent).toHaveLength(6)
+      expect(new Set(absent).size).toBeGreaterThan(1)
+    })
+
+    it("when runs load", async () => {
+      expect(
+        await drawSession((roundId) =>
+          Promise.resolve(BUNDLED_ROUND_RUNS[roundId])
+        )
+      ).toEqual(absent)
+    }, 10_000)
+
+    it("when runs fail to load", async () => {
+      expect(
+        await drawSession(() => Promise.reject(new Error("unreachable")))
+      ).toEqual(absent)
+    }, 10_000)
+  })
 })

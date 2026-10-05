@@ -24,10 +24,9 @@ const MOBILE_SURFACE: ReadonlyArray<keyof FileRoutesByTo> = [
   ...(hasAudience("apk") ? (["/today", "/soundbites", "/aph"] as const) : []),
   "/settings",
   // Not a page the phone shows: the device backend is always signed in. But
-  // the root's sign-in guard sends a signed-out visit here, and redirecting it
-  // back would loop between the two - so if the backend ever fails to answer,
-  // the app shows the sign-in page's error instead of hanging. The sidebar
-  // never lists it.
+  // a device route answering 401 ends the session belief, and the account
+  // banner then links here; in this build it is a reload, not a sign-in
+  // (components/auth/device-session-lost). The sidebar never lists it.
   "/auth",
 ]
 
