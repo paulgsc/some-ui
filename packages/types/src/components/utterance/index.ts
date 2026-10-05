@@ -1,19 +1,9 @@
 import { z } from "zod"
 
-export const UtteranceEventTypeSchema = z.enum([
-  "ping",
-  "pong",
-  "error",
-  "clientCount",
-  "utterance",
-])
-
-export type UtteranceEvents = z.infer<typeof UtteranceEventTypeSchema>
-
 const isoTimestampRegex =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?$/
 
-export const ElementInfoSchema = z.object({
+const ElementInfoSchema = z.object({
   tagName: z.string(),
   type: z
     .string()
@@ -66,10 +56,3 @@ export const UtteranceMetadataSchema = z.object({
   }),
   element: ElementInfoSchema,
 })
-
-export const UtterancePromptSchema = z.object({
-  text: z.string(),
-  metadata: UtteranceMetadataSchema,
-})
-
-export type UtterancePrompt = z.infer<typeof UtterancePromptSchema>

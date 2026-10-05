@@ -294,25 +294,3 @@ export function useRecursiveLibrary<
     keys: () => Array.from(library.keys()),
   }
 }
-
-/**
- * Utility: Format error for display/logging
- * Use this to convert structured errors to human-readable strings when needed
- */
-export function formatLibraryError<TKey extends string>(
-  error: LibraryFileError<TKey>
-): string {
-  const causeMessage =
-    error.cause instanceof Error ? error.cause.message : String(error.cause)
-
-  return `[${error.stage}] ${error.key} (${error.path}): ${causeMessage}`
-}
-
-/**
- * Utility: Check if library has any errors
- */
-export function hasErrors<TValidated, TKey extends string>(
-  result: LibraryResult<TValidated, TKey>
-): boolean {
-  return result.fatalError !== null || result.fileErrors.length > 0
-}

@@ -26,8 +26,8 @@ leaf itself or on some ancestor between the leaf and `V`.
    Already built.
 2. **Temporal (when spatial isn't enough):** the leaf becomes a
    time-multiplexed viewport - rotate through `[1, N)` content members
-   (`packages/ui/dice-card`, `packages/ui/slideshow`). Primitive already
-   built, not yet wired into the leaf renderer (story 6, #699).
+   (the former `packages/ui/dice-card` and `packages/ui/slideshow`, both
+   since deleted unwired; story 6, #699).
 3. **Structural (exogenous):** keybindings mutate `Layout(t)` - toggle a
    whole subtree in/out, or cycle a preset (stories 7-8, #700/#701).
 

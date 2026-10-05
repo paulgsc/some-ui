@@ -31,7 +31,6 @@ const uiPackages = [
   "aph",
   "auth",
   "chat",
-  "dice-card",
   "honeycomb",
   "leetype",
   "lesson-crm",

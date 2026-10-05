@@ -10,7 +10,7 @@ import { create } from "zustand"
  * orchestrator-store.ts's `_commandSender`/`isConnected`/`_streamId`, which
  * assume a server round-trip). This store works standalone in a fully
  * static app; a server integration, if one is ever needed, is a separate
- * adapter that calls these same setters/getters from outside - never
+ * adapter that calls these same setters from outside - never
  * something this store's own shape has to assume.
  */
 type SessionContextState = {
@@ -51,10 +51,6 @@ export const setSessionKey = (key: string | null): void =>
   useSessionContextStore.getState().setSessionKey(key)
 export const setSuspended = (suspended: boolean): void =>
   useSessionContextStore.getState().setSuspended(suspended)
-export const getSessionKey = (): string | null =>
-  useSessionContextStore.getState().sessionKey
-export const getSuspended = (): boolean =>
-  useSessionContextStore.getState().suspended
 
 // React selector hooks - for the layer that owns this store's writes to
 // read its own values back reactively. Registries never call these

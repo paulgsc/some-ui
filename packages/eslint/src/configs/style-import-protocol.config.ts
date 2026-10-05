@@ -4,7 +4,7 @@ import { parentRelativeImportPattern } from "./base.config.js"
 
 /**
  * A workspace package's `"./style.css"` export subpath (see
- * packages/ui/dice-card/package.json, packages/ui/auth/package.json) points
+ * packages/ui/auth/package.json) points
  * at a *compiled* stylesheet - its own copy of the shared Tailwind layer plus
  * whatever authored CSS the package built alongside it. That subpath exists
  * for an external consumer who installs the package standalone; it was never

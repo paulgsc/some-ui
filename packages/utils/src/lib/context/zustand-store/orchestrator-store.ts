@@ -311,9 +311,6 @@ export const useOrchestratorClock = (): ClockState =>
 export const selectCurrentTime = (s: OrchestratorStoreState): number =>
   s.clock.current_time
 
-export const selectProgress = (s: OrchestratorStoreState): number =>
-  s.clock.progress
-
 export const selectTotalDuration = (s: OrchestratorStoreState): number =>
   s.clock.total_duration
 
@@ -340,18 +337,10 @@ export const useSceneLifetimes = (): Array<ActiveLifetime> =>
 // -----------------------------------------------------------------------------
 
 /**
- * Returns the current orchestrator mode.
- * STABLE: Only changes on mode transitions (Start, Stop, Pause, etc.)
- */
-const selectMode = (s: OrchestratorStoreState): OrchestratorMode => s.mode.mode
-
-export const useMode = (): OrchestratorMode => useOrchestratorStore(selectMode)
-
-/**
  * Returns true if orchestrator is actively running.
  * STABLE: Only changes on mode transitions.
  */
-export const selectIsRunning = (s: OrchestratorStoreState): boolean =>
+const selectIsRunning = (s: OrchestratorStoreState): boolean =>
   s.mode.is_running
 
 export const useIsRunning = (): boolean => useOrchestratorStore(selectIsRunning)
@@ -373,18 +362,6 @@ const selectIsTerminal = (s: OrchestratorStoreState): boolean =>
 
 export const useIsTerminal = (): boolean =>
   useOrchestratorStore(selectIsTerminal)
-
-// -----------------------------------------------------------------------------
-// OTHER STATE SELECTORS
-// -----------------------------------------------------------------------------
-
-export const selectConnectionStatus = (
-  s: OrchestratorStoreState
-): { isConnected: boolean; isInitializing: boolean; error: string | null } => ({
-  isConnected: s.isConnected,
-  isInitializing: s.isInitializing,
-  error: s.error,
-})
 
 // ============================================================================
 // DERIVED HOOKS (Concurrent-aware computations)

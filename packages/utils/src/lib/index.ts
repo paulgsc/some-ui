@@ -5,50 +5,20 @@ export * from "@some-ui/core-utils"
 export { assertNever } from "./assert-never"
 export * from "./hooks"
 export {
-  createEventBus,
-  selectProgress,
-  selectIsRunning,
   selectTotalDuration,
   selectCurrentTime,
-  selectConnectionStatus,
   useSceneLifetimes,
   useOrchestratorStore,
   useOrchestratorClock,
-  useMode,
   useIsRunning,
   useIsPaused,
   useIsTerminal,
   setSessionKey,
   setSuspended,
-  getSessionKey,
-  getSuspended,
   useSessionKey,
   useSuspended,
-  useRegionRectStore,
-  useRegionRect,
-  useActiveFps,
-  useConnectionInfo,
-  useCpuUsage,
-  useCurrentCollection,
-  useCurrentProfile,
-  useCurrentTransition,
-  useIsConnected,
-  useIsRecording,
-  useIsStreaming,
-  useObsCommands,
-  useRecordTimecode,
   usePrimaryScene,
-  useReplayBufferActive,
-  useSceneInfo,
-  useStreamTimecode,
-  useStudioModeEnabled,
-  useVirtualCamActive,
 } from "./context"
-export {
-  preloadRegistryComponents,
-  hasRegistryKey,
-  lazyWithPreload,
-  renderRegistryComponent,
-} from "./registry"
+export { lazyWithPreload, renderRegistryComponent } from "./registry"
 export type { ComponentEnhancer } from "./registry"
 export * from "./discovery"

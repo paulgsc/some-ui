@@ -1,6 +1,6 @@
 import type { ComponentType } from "react"
 import { lazy } from "react"
-import type { ComponentRegistry, RegistryEntry } from "@some-ui/types"
+import type { RegistryEntry } from "@some-ui/types"
 
 /** What `React.lazy` needs back, and what `preload` hands to a caller. */
 type ComponentModule<P> = { default: ComponentType<P> }
@@ -75,16 +75,4 @@ export function lazyWithPreload<K extends string, P = unknown>(
     Component: lazy(normalizedLoader),
     preload: normalizedLoader,
   }
-}
-
-export function preloadRegistryComponents<K extends string>(
-  registry: ComponentRegistry<K>,
-  keys: Array<K>
-): Promise<Array<void>> {
-  return Promise.all(
-    keys.map((key) => {
-      const entry = registry[key]
-      return entry.preload().then(() => {})
-    })
-  )
 }

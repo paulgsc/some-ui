@@ -113,7 +113,7 @@ export const noInterpolatedClassname: Rule.RuleModule = {
     ],
     messages: {
       interpolatedClassname:
-        'Dynamic expression is fused directly onto literal text ("{{fragment}}") inside {{scope}}. A single-pass content scan only sees complete literal class strings, so this variant won\'t exist in the compiled CSS. Use a complete literal string per branch (ternary/lookup table), or thread the dynamic value through a CSS custom property (style={{"--x": value}}) consumed by a static arbitrary-value utility — see packages/ui/dice-card.',
+        'Dynamic expression is fused directly onto literal text ("{{fragment}}") inside {{scope}}. A single-pass content scan only sees complete literal class strings, so this variant won\'t exist in the compiled CSS. Use a complete literal string per branch (ternary/lookup table), or thread the dynamic value through a CSS custom property (style={{"--x": value}}) consumed by a static arbitrary-value utility — see packages/ui/chat (chat-header).',
       interpolatedClassnameConcat:
         "String concatenation builds a class name fragment inside {{scope}}. A single-pass content scan only sees complete literal class strings, so this variant won't exist in the compiled CSS. Use a complete literal string per branch (ternary/lookup table), or thread the dynamic value through a CSS custom property consumed by a static arbitrary-value utility instead.",
     },

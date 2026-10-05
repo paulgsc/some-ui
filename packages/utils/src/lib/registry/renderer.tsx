@@ -146,10 +146,3 @@ export function renderRegistryComponent<K extends string>(
 
   return node
 }
-
-export function hasRegistryKey<K extends string>(
-  registry: ComponentRegistry<K>,
-  key: string
-): key is K {
-  return key in registry
-}

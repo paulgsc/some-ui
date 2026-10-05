@@ -1,3 +1,3 @@
-export { preloadRegistryComponents, lazyWithPreload } from "./utils"
-export { hasRegistryKey, renderRegistryComponent } from "./renderer"
+export { lazyWithPreload } from "./utils"
+export { renderRegistryComponent } from "./renderer"
 export type { ComponentEnhancer } from "./renderer"

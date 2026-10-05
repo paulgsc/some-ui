@@ -9,6 +9,13 @@
 > utilities, bundled into one workspace because they needed "somewhere to
 > live." This census is evidence + record of what moved and why; per the
 > Doctrine's own convention, a cleanup candidate is not a code move.
+>
+> **Since deleted (2026-10-05)** as unused, once the OBS store and socket left
+> `some-ui-utils` and `orchestrator-to-viewport` left the content registry:
+> `polyhedron` (§2), `createEnumSchema` (§3), `is-null` (§4), the OBS
+> command/outgoing schemas and client-state types, and the now-playing and
+> utterance event-type and outgoing/prompt schemas. `ObsEventSchema` stays: it
+> is the `obsStatus` variant of `IncomingEventSchema`.
 
 ## Actions taken this session
 

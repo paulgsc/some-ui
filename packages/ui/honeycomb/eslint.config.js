@@ -24,13 +24,11 @@ export default defineConfig([
   // Scoped to the files that predate the rule rather than the whole package,
   // so the deferral cannot quietly cover code written after it: the
   // extensions comb takes its paint from the `.comb` skin and is linted like
-  // everything else. The three files beyond the hangul canvas are the
-  // remaining legacy literals (HexGrid's loading/error states and the song
-  // and neuron demos); remove each from the list as it migrates.
+  // everything else. The file beyond the hangul canvas is the remaining
+  // legacy literals (HexGrid's loading/error states); remove each from the
+  // list as it migrates.
   ...structuralColorRatchet([
     "src/components/hangul-hex-grid/**",
     "src/components/hex-grid/index.tsx",
-    "src/components/neuron/index.tsx",
-    "src/components/song-hex-grid/**",
   ]),
 ])

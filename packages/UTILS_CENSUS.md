@@ -10,6 +10,15 @@
 > `getRandomSubarray`, `useObsStatusWebSocket` and `createEventBus` are down
 > to one consumer at most. The recount, by knip with `includeEntryExports`
 > rather than by hand, is tracked in #1647.
+> Since deleted from `some-ui-utils` as unused (knip
+> `--include-entry-exports`): the whole OBS store and `useObsStatusWebSocket`
+> (§7), `useRegionRect`/`useRegionRectStore` (§11), `useFetch`,
+> `useInterval`, `useEventListener`, `useIsomorphicLayoutEffect` and
+> `useContainerRect` (§2), `hasErrors`/`formatLibraryError` (§9),
+> `preloadRegistryComponents`/`hasRegistryKey` (§10), and `useMode`,
+> `selectProgress`, `selectConnectionStatus` (§6a), plus `createEventBus` (§12,
+> its last consumer was `packages/ui/dice-card`). `useIsMounted` stays
+> internal to `useResizeObserver` only. Rows below that name them are history.
 
 > Evidence base for UTL-FOUND S2 (#521). Every hoist/keep/de-hoist decision
 > in this milestone is scored against this table via the
