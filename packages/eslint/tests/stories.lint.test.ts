@@ -1,7 +1,7 @@
 /**
  * Lint-time integration tests for story-lint/prefer-meta-satisfies. The rule
  * is syntactic, so a plain @typescript-eslint/parser parses the snippets.
-
+ *
  */
 
 import { storyLintPlugin } from "@eslint/configs/stories.config.js"

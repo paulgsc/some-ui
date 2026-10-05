@@ -4,7 +4,7 @@
  * flex-col` card around a `flex-1` body with no `min-h-0`. The rule reads the
  * parent/child relationship, not a single class. Syntactic, so a plain
  * @typescript-eslint/parser with JSX suffices.
-
+ *
  */
 
 import { fitsTheBoxPlugin } from "@eslint/configs/fits-the-box.config.js"

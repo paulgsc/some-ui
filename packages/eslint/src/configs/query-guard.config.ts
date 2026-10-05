@@ -9,7 +9,6 @@ import { defineConfig } from "eslint/config"
  *
  * Opt-in, like intent-guard: the destructure shape is an `apps/www`
  * convention. Shipped at `warn`: a first pass may surface unexamined sites.
-
  *
  *   import { queryGuardConfig } from "@some-ui/eslint-kit"
  *   export default defineConfig([...appsRecommended, ...queryGuardConfig])

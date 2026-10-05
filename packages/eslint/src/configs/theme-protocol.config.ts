@@ -135,7 +135,7 @@ export default defineConfig([
  *
  * Each caller lives in the unmigrated package's own `eslint.config.js`, in
  * front of whoever next edits it. Delete the call to migrate.
-
+ *
  */
 export function structuralColorRatchet(
   globs: Array<string> = ["**/*.{ts,tsx}"]

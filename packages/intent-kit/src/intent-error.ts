@@ -59,7 +59,7 @@ const GENERIC_SUMMARY = "Something didn't work. You can try again."
  * The fallback normalizer: total, never throws. An unrecognised failure is
  * `unknown` and retryable, the safer default. Transport-aware boundaries
  * normalize first and fall back to this (see `apps/www/src/lib/intent/errors.ts`).
-
+ *
  */
 export function toIntentError(error: unknown): IntentError {
   return {

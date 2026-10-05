@@ -72,7 +72,7 @@ type HangulHexGridProps = {
   /**
    * The word pool for the vocabulary modes, defaulting to `HANGUL_WORDS`.
    * A host swaps in its own seed here, in `hangul-words.ts`'s shape.
-
+   *
    */
   words?: Array<WordEntry>
 }

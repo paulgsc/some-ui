@@ -416,7 +416,7 @@ export const HANGUL_WORDS: Array<WordEntry> = [
  * `identity` is the entry's stable slug, not its Hangul text - two entries could in principle
  * share display text, but ids are unique by construction. `stimulus.name` carries the same slug,
  * so the Prompt Station can look the full `WordEntry` back up from an active challenge's
-
+ *
  * `Stimulus` alone (`HANGUL_WORDS.find(w => w.id === stimulus.name)`).
  */
 export function toChallengeSeed(entry: WordEntry): ChallengeSeed {

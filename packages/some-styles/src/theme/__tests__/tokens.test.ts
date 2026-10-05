@@ -24,7 +24,7 @@ function read(...parts: Array<string>): string {
 /**
  * Escape every regex metacharacter, not just the ones today's theme ids use:
  * a half-escape lets an id with a backslash inject into the pattern.
-
+ *
  */
 function escapeRegExp(literal: string): string {
   return literal.replace(/[.*+?^${}()|[\]\\-]/g, "\\$&")

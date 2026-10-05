@@ -29,7 +29,7 @@ export type MissedWord = {
 /**
  * Masked-word feedback for the tracked multi-token challenge (ADR 0003
  * §2(d)); null when none is in progress, and never set for single-jamo play.
-
+ *
  */
 export type WordProgress = {
   cellIds: Array<string>

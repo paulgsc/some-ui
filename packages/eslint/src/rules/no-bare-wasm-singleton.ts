@@ -6,12 +6,11 @@ import type { Rule } from "eslint"
 /**
  * The wasm-bindgen crate names, listed because they share no pattern.
  * some-charts is not a workspace package yet, so it stays unscoped.
-
+ *
  */
 const WASM_CRATE_NAMES = [
   "@some-ui/hangul-game-core",
   "@some-ui/leetype-wasm",
-  "@some-ui/polyhedron",
   "some-charts",
   "@some-ui/some-hexagon",
 ]

@@ -13,7 +13,6 @@ import { defineConfig } from "eslint/config"
  *
  * Opt-in, like switch-lint: `extensions/` and `packages/ui/*` have no
  * `useIntent`. Enable it per workspace that has an intent boundary:
-
  *
  *   import { intentGuardConfig } from "@some-ui/eslint-kit"
  *   export default defineConfig([...appsRecommended, ...intentGuardConfig])

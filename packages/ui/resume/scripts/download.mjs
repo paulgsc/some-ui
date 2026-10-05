@@ -4,7 +4,6 @@
 // here.
 //
 // Two things `fetch()` does not do on its own:
-
 //
 // - Say what failed. A connection that never completes throws a bare
 //   "fetch failed" and puts the reason — an errno, a TLS verdict, a DNS

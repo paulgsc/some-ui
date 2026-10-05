@@ -44,7 +44,7 @@ function snapshot(): boolean {
  * let its branch move stateful children in the tree: a moved child remounts
  * and loses its state. Switch only what surrounds it
  * (`{isMobile && <Chrome />}`), or hold its state above the branch.
-
+ *
  */
 export function useIsMobile(): boolean {
   return useSyncExternalStore(subscribe, snapshot, () => false)

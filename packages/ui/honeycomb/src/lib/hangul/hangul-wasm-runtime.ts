@@ -104,7 +104,7 @@ export async function loadHangulWasm(
 /**
  * Reset runtime (HMR, test cleanup); mode and session switches go through
  * loadHangulWasm.
-
+ *
  */
 export function resetHangulWasm(): void {
   loader.reset()

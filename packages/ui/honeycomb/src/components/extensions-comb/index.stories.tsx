@@ -8,7 +8,7 @@ import { ExtensionsComb } from "."
  * viewport-sized box, the comb's contract: it positions and fits itself to
  * its host. Swept by `apps/www/tests/ui-fit/no-overflow.spec.ts`, where
  * 780x390 is the likeliest failure (the comb is bounded by its short axis).
-
+ *
  */
 const meta: Meta<typeof ExtensionsComb> = {
   title: "UI/Honeycomb/ExtensionsComb",

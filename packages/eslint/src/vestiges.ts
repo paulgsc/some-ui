@@ -105,7 +105,7 @@ export function reachableDirs(
  * The workspace a path belongs to, read from the path itself (the
  * pnpm-workspace.yaml globs), not from today's workspace list: a sweep that
  * touched workspaces since deleted still counts them.
-
+ *
  */
 const WORKSPACE_ROOT =
   /^(packages\/ui\/[^/]+|apps\/[^/]+|extensions\/[^/]+|crates\/[^/]+|docs\/canon|packages\/[^/]+)\//

@@ -38,7 +38,7 @@ type BottomTabBarProps<Id extends string> = {
  * (`docs/session-viewport/05-the-mobile-shell.md` §4). It stays shown while
  * one of its tabs holds focus, whatever `shown` says, so focus is never on a
  * hidden control; hidden tabs leave the tab order (`tabIndex -1`).
-
+ *
  */
 export const BottomTabBar = <Id extends string>({
   tabs,

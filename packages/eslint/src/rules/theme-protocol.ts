@@ -14,7 +14,7 @@ import type { Rule } from "eslint"
  * `no-theme-boundary` a component opening its own boundary (replacing the
  * tokens for its subtree), `no-structural-palette-color` a substrate role
  * painted with a literal gray. Both look like ordinary class names.
-
+ *
  */
 
 // ESTree shapes aren't modeled precisely by @types/eslint's Node union.
@@ -57,7 +57,6 @@ const BOUNDARY_OVERRIDE_CLASSES = [
   "code",
   "cdrama",
   "topik",
-  "conveyor",
 ]
 
 /**

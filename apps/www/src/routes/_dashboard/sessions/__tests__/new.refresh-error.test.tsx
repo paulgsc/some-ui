@@ -7,6 +7,7 @@
  */
 
 import { cachedQueryResult, withQueryClient } from "@/test-support/query-client"
+import { sessionRecord } from "@/test-support/session-record"
 import { resetViewport, setViewport } from "@/test-support/viewport"
 import type * as ReactRouterModule from "@tanstack/react-router"
 import { cleanup, render, screen } from "@testing-library/react"
@@ -17,20 +18,6 @@ import type { SessionRecord } from "@/lib/tenant"
 
 const refetch = vi.fn()
 let mockResult: ReturnType<typeof TenantModule.useSession>
-
-function fakeDraft(): SessionRecord {
-  return {
-    id: "draft-1",
-    name: "Vocabulary warm-up",
-    status: "draft",
-    activities: [],
-    scenes: [],
-    layoutMode: "basic",
-    totalDurationMs: 0,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-  }
-}
 
 vi.mock(
   "@/lib/tenant",
@@ -85,7 +72,7 @@ describe("EditSessionRoute: a cached null through a failed refresh is not 'not f
 
 describe("EditSessionRoute: a cached non-null draft through a failed refresh is not silently stale", () => {
   it("shows a failure affordance alongside the composer, not in place of it", () => {
-    renderRoute(fakeDraft(), true)
+    renderRoute(sessionRecord({ id: "draft-1" }), true)
 
     expect(alert()).not.toBeNull()
     expect(screen.queryByText("Draft not found")).toBeNull()
@@ -94,7 +81,7 @@ describe("EditSessionRoute: a cached non-null draft through a failed refresh is 
   })
 
   it("shows no failure affordance with no refresh failure (sanity)", () => {
-    renderRoute(fakeDraft(), false)
+    renderRoute(sessionRecord({ id: "draft-1" }), false)
 
     expect(alert()).toBeNull()
     expect(screen.getByRole("button", { name: /continue/i })).toBeTruthy()

@@ -10,7 +10,6 @@ const WORD_LANGUAGE: SpokenLanguage = "korean"
 /**
  * Says `text` through the page's speaker; a no-op (never throws) without one, and the UI shows
  * the Hangul spelling either way.
-
  *
  * `urgency` says who asked: `"now"` for the learner's tap, which interrupts whatever else is
  * speaking on the page (a lesson line there is said again after it); `"next"` for a prompt the

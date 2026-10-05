@@ -21,7 +21,7 @@ const css = buildEnforcementCSS(swatch)
 
 /** The declaration block of the first rule whose selector starts with `head`. */
 function ruleBody(head: string, sheet = css): string {
-  const start = css.indexOf(head)
+  const start = sheet.indexOf(head)
   expect(start, `no rule starting ${head}`).toBeGreaterThan(-1)
   return sheet.slice(start, sheet.indexOf("}", start))
 }

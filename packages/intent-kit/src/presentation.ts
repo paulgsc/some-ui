@@ -6,6 +6,6 @@
  * interrupting is wrong, but a silent failure loses work the person just
  * authored. `"ambient-durable"` names that case: progress may be quiet, but
  * a failure must survive the tab.
-
+ *
  */
 export type IntentPresentation = "interactive" | "ambient" | "ambient-durable"

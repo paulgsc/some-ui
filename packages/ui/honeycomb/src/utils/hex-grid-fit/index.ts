@@ -118,7 +118,6 @@ function fitWarning(
  * Negotiates a hex grid radius/size that fits inside `viewport` (#760): try
  * the preferred size, shrink it down to `minHexSize`, then (only if
  * `strategy` allows) drop to smaller radii, else report `"impossible"`.
-
  *
  * Pure function: no DOM, no ResizeObserver, no WASM, no React.
  */

@@ -68,7 +68,7 @@ export function apiUrl(
  * A separate function, not an overload: overlapping string unions would let
  * one kind of route pass for the other. Two names make the wrong pick a
  * `tsc` error instead of a 404.
-
+ *
  */
 export function unversionedApiUrl(
   path: UnversionedRoute,

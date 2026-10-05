@@ -25,7 +25,6 @@ const STANDING_RESOURCES = new Set(["setInterval", "requestIdleCallback"])
  * visibility. "Is this stopped on every transition that ought to stop it?"
  * is the question, and its answer is not at the call site but in whichever
  * module decides when teardown runs.
-
  *
  * ## So this rule does the only useful thing a linter can
  *

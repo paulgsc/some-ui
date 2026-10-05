@@ -87,7 +87,6 @@ const DECLARATION_DIR = "dist/types"
  *     that the declarations it lists still exist, so build info kept
  *     elsewhere outlives a deleted `dist/` and the next run emits nothing.
  *     Kept together, the two are removed or kept together.
-
  *
  * NON-GOALS
  *
@@ -279,7 +278,7 @@ function pathsBaseOf(
 /**
  * The files a `paths` alias would send `specifier` to, if any pattern matches
  * it. An exact key ("@some-ui/leetype-wasm") matches only itself; a wildcard
- * key ("@chat/*") matches by prefix and suffix, as TypeScript does.
+ * key ("@leetype/*") matches by prefix and suffix, as TypeScript does.
  */
 export function aliasTargets(
   specifier: string,

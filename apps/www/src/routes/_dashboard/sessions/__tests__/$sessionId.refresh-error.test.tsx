@@ -15,6 +15,7 @@
 
 import type { JSX } from "react"
 import { cachedQueryResult, withQueryClient } from "@/test-support/query-client"
+import { sessionRecord } from "@/test-support/session-record"
 import type * as ReactRouterModule from "@tanstack/react-router"
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -30,20 +31,6 @@ vi.mock("@/components/player/live-player", () => ({
 
 const refetch = vi.fn()
 let mockResult: ReturnType<typeof TenantModule.useSession>
-
-function fakeSession(status: SessionRecord["status"]): SessionRecord {
-  return {
-    id: "session-1",
-    name: "Vocabulary warm-up",
-    status,
-    activities: [],
-    scenes: [],
-    layoutMode: "basic",
-    totalDurationMs: 0,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-  }
-}
 
 vi.mock(
   "@/lib/tenant",
@@ -102,7 +89,7 @@ describe("SessionPlayer: a cached null through a failed refresh is not 'not foun
 
 describe("SessionPlayer: a cached non-null session through a failed refresh is not silently stale", () => {
   it("shows a failure affordance alongside the draft guard, not in place of it", () => {
-    renderPlayer(fakeSession("draft"), true)
+    renderPlayer(sessionRecord({ status: "draft" }), true)
 
     expect(alert()).not.toBeNull()
     expect(
@@ -122,7 +109,7 @@ describe("SessionPlayer: a cached non-null session through a failed refresh is n
         "shows neither the draft guard's nor the live player's refresh banner with no refresh failure (sanity)",
     },
   ])("$title", ({ refreshFailed }) => {
-    renderPlayer(fakeSession("active"), refreshFailed)
+    renderPlayer(sessionRecord({ status: "active" }), refreshFailed)
 
     expect(alert() !== null).toBe(refreshFailed)
     expect(screen.getByTestId("live-player-stub")).toBeTruthy()

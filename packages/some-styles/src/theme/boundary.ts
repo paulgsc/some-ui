@@ -11,7 +11,7 @@
  * These helpers give a component that takes an `appearance` prop one shared
  * spelling. `appearanceProps("inherit")` returns nothing: the default is "do
  * not open a boundary".
-
+ *
  */
 
 import type { FeatureAppearanceId, ThemeDefinition } from "./registry"

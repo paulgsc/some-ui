@@ -2,7 +2,7 @@
  * Lint-time tests for owner-guard/no-mount-snapshot. The firing cases are
  * shapes found in aph and soundbites, each a value read once at mount whose
  * owner kept changing it.
-
+ *
  */
 
 import { ownerGuardPlugin } from "@eslint/configs/owner-guard.config.js"

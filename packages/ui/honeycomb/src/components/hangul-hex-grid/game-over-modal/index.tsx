@@ -17,7 +17,7 @@ type GameOverModalProps = {
  * button), so per `docs/ui-fit` it simply fits: no height cap, no scrollbar.
  * The figures are a 2-up hero over a 3-up footnote, in `tabular-nums` so the
  * height never depends on the run.
-
+ *
  */
 export const GameOverModal = ({
   isOpen,

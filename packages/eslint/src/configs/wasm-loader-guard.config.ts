@@ -16,7 +16,7 @@ export const wasmLoaderGuardPlugin = {
 /**
  * On by default (in maishatuRecommended): a bare `import("<wasm-crate>")`
  * outside createWasmLoader() is never intentional.
-
+ *
  */
 export default defineConfig([
   {

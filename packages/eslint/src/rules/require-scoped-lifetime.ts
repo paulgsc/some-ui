@@ -38,7 +38,6 @@ const PAGE_LIFETIME_MEMBERS = new Set(["body", "documentElement"])
  * resource like `setInterval`, spelled as a one-shot call. A one-shot
  * `requestAnimationFrame(() => …)` is fine; a callback that reschedules
  * *itself* is the loop, and that is what is flagged.
-
  *
  * ## What it recognizes, and what it leaves to review
  *

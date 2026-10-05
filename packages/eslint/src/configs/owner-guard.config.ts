@@ -11,7 +11,6 @@ import { defineConfig } from "eslint/config"
  * Opt-in, like intent-guard and query-guard: repo-wide it reports 60-odd
  * mostly deliberate sites (a store created once, an edit buffer). It is on
  * where the bug kept landing (aph, soundbites, www).
-
  *
  *   import { ownerGuardConfig } from "@some-ui/eslint-kit"
  *   export default defineConfig([...uiRecommended, ...ownerGuardConfig])

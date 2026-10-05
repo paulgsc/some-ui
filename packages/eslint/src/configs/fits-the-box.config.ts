@@ -51,17 +51,13 @@ export default defineConfig([
           // as an explicit list so adding one is a decision someone makes on
           // the record, not a class name that slipped through.
           allowInFiles: [
-            // Primitives whose scroll *is* the primitive: a command palette's
-            // result list, a table's overflow wrapper, a scroll area.
-            "ui/command",
-            "ui/table",
+            // Primitives whose scroll *is* the primitive: a scroll area.
             "scroll-area",
             "sidebar",
             // Surfaces whose length belongs to the author, not the layout.
             "code-display",
             "chat",
             "resume",
-            "slideshow",
           ],
         },
       ],

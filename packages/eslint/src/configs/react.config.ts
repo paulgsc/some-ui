@@ -26,7 +26,7 @@ const files = ["**/*.{mdx,js,jsx,ts,tsx}"]
  * `reactImportBanSelectors`; (2) `extensions-security.config.ts`, spread after
  * this file in `extensionsRecommended`, must restate these selectors or they
  * go dark there.
-
+ *
  */
 export const parentRelativeDynamicImportSelectors = [
   {

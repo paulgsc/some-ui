@@ -15,7 +15,6 @@
  *   - the invariants — what must always be true of a tab suspender;
  *   - the context collector that feeds them from the browser.
  *
-
  * ## Scope discipline (AMO)
  *
  * Nothing recorded here leaves the machine: there is no network path in this

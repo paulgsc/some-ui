@@ -15,7 +15,7 @@ import { defineConfig } from "eslint/config"
  * by one keyword, but only the second is a bundle edge (see the rule).
  *
  * Type imports are always allowed, because they are erased. Value imports
-
+ *
  * need a stated reason: either the applet should own the thing (take plain
  * config through scene props, default its own data), or the host's use is
  * genuinely direct and goes in `allow` with a comment.

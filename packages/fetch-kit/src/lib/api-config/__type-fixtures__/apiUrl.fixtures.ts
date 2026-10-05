@@ -3,7 +3,7 @@
  * extra binding is a `tsc` error. Checked by `tsc --noEmit` (excluded from
  * the build), not vitest: every `@ts-expect-error` must sit on a real error,
  * or TypeScript reports the directive as unused.
-
+ *
  */
 
 import { apiUrl, unversionedApiUrl } from ".."

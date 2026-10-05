@@ -5,7 +5,7 @@
  * `kind` is the distinction toolbars care about (restyle `--primary` on a
  * `.theme-container`, or replace the whole palette on a root?), read off
  * `scope`.
-
+ *
  */
 
 import {

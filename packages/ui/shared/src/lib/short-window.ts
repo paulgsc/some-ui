@@ -29,6 +29,6 @@ export const ROOMY_WHEN_TALL = "py-3 [@media(min-height:640px)]:py-6"
 /**
  * A label a short window hides visually but not from assistive tech
  * (`hidden` would drop the control's accessible name).
-
+ *
  */
 export const LABEL_WHEN_TALL = "sr-only [@media(min-height:640px)]:not-sr-only"

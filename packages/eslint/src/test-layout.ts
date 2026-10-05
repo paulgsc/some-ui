@@ -18,7 +18,6 @@
 // content changes. Delete one of two crowded tests and the survivor's cached
 // "crowded" error outlives the fix. A directory-level invariant needs an
 // uncached, whole-tree check:
-
 // `scripts/check-test-layout.ts` runs this over `git ls-files`.
 
 const TEST_FILE = /\.test\.[cm]?[jt]sx?$/

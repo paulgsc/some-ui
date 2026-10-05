@@ -20,7 +20,7 @@ const MIN_SCROLL_RANGE = 160
  * of inner panes. Each scroller's last position is kept separately, so
  * switching scrollers never reads as a jump. `scope` must hold the same
  * element for the caller's lifetime: the listener is added once, on mount.
-
+ *
  */
 export function useShowOnScrollUp(
   scope: RefObject<HTMLElement | null>,

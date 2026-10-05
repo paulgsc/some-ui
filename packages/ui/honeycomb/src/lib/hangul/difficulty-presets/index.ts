@@ -14,7 +14,7 @@ export const DEFAULT_DIFFICULTY: DifficultyPreset = "standard"
  * defaults. Only fields a player experiences (timing windows, how fast they
  * shrink, timing forgiveness, romanization hints) vary; scoring and buffer
  * fields stay at the default.
-
+ *
  */
 export const DIFFICULTY_PRESETS: Record<
   DifficultyPreset,

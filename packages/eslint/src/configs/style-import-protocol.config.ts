@@ -22,7 +22,7 @@ import { parentRelativeImportPattern } from "./base.config.js"
  * names - see packages/*\/package.json), not a blanket `**\/style.css`,
  * which would also match a local `import "./style.css"` and a third-party
  * package's own stylesheet. Neither is this mistake.
-
+ *
  */
 export const compiledPackageStyleImportBanPattern = {
   group: ["@some-ui/*/style.css", "some-ui-*/style.css"],

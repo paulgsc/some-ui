@@ -2,7 +2,7 @@
  * This package exists as a shared workspace on the condition that it stays
  * dependency-free (#935), which a reviewer skimming a diff cannot see; a test
  * that reads the manifest can.
-
+ *
  */
 
 import { readFileSync } from "node:fs"
